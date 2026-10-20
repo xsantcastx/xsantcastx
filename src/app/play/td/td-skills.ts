@@ -8,6 +8,7 @@
  */
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import type { ItemStats } from '../../shared/rpg/item.model';
+import { LEVEL_GROWTH, levelSteps } from '../../shared/skills/keeper-level';
 import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
@@ -102,11 +103,12 @@ export const MAX_MANA = 60;
  */
 export const ATTR_STEP = { vit: 6, ene: 4, eneRegen: .15, spi: .02, agi: .01, agiCap: .3 } as const;
 export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0, spi: 0, agi: 0 }): { maxHp: number; maxMana: number; power: number; regen: number; haste: number } {
-  const n = Math.max(0, Math.floor(level) - 1);
+  // Level steps: exactly level − 1 to 100, a gentle log taper past it so 10,000 stays sane (shared/skills/keeper-level.ts).
+  const n = levelSteps(level);
   return {
-    maxHp: 100 + n * 8 + stats.vit * ATTR_STEP.vit,
-    maxMana: MAX_MANA + n * 6 + stats.ene * ATTR_STEP.ene,
-    power: 1 + n * .05 + stats.spi * ATTR_STEP.spi,
+    maxHp: Math.round(100 + n * LEVEL_GROWTH.life) + stats.vit * ATTR_STEP.vit,
+    maxMana: Math.round(MAX_MANA + n * LEVEL_GROWTH.mana) + stats.ene * ATTR_STEP.ene,
+    power: 1 + n * LEVEL_GROWTH.power + stats.spi * ATTR_STEP.spi,
     regen: MANA_REGEN + stats.ene * ATTR_STEP.eneRegen,
     haste: Math.min(ATTR_STEP.agiCap, stats.agi * ATTR_STEP.agi),
   };

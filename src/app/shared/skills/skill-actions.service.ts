@@ -23,6 +23,7 @@ import {
 import { LevelUpService } from '../activity/level-up.service';
 import { CraftingService } from '../crafting/crafting.service';
 import { skillDef, skillXp, type SkillId } from './skill.model';
+import { KeeperLevelService } from './keeper-level.service';
 
 export interface SkillActionInput {
   mutationId: string;
@@ -42,6 +43,7 @@ export class SkillActionService {
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly levelUp = inject(LevelUpService);
   private readonly crafting = inject(CraftingService);
+  private readonly keeperLevel = inject(KeeperLevelService);
 
   act(input: SkillActionInput): WorldActionResult {
     this.activity.init();
@@ -57,7 +59,10 @@ export class SkillActionService {
       now: input.now,
     });
     if (result.ok && !result.replayed) {
-      this.levelUp.checkSkill(input.skill, before, skillXp(this.activity.snapshot.progress, input.skill, bench));
+      const after = skillXp(this.activity.snapshot.progress, input.skill, bench);
+      this.levelUp.checkSkill(input.skill, before, after);
+      // Hunting XP is also the Keeper's own level (keeper-level.ts): its fanfare and milestones.
+      if (input.skill === 'hunting') this.keeperLevel.check(before, after);
     }
     return result;
   }

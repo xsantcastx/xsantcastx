@@ -54,17 +54,21 @@ import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget,
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES, WARDEN_FLAG } from './engine/terrain';
-import { miningLevelView } from '../shared/activity/mining-level';
+import { formatXp, miningLevelView } from '../shared/activity/mining-level';
 import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
 import { heldToolPieces, heldToolsKey, type HeldToolKind } from '../shared/skills/held-tool';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
 import { CharacterHubService } from '../shared/character/character-hub.service';
 import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
-import { SKILLS, skillForDiscipline, skillLevel, skillView } from '../shared/skills/skill.model';
+import { SKILLS, skillForDiscipline, skillLevel, skillView, skillXp } from '../shared/skills/skill.model';
 import { keeperDeeds } from './world/keeper-lines';
 import { DELVE_MISSIONS } from '../shared/npc/delve-missions.model';
 import { huntingXpFor } from '../shared/skills/hunting';
+import { keeperLevelView } from '../shared/skills/keeper-level';
+import { KeeperLevelService, type KeeperLevelUp } from '../shared/skills/keeper-level.service';
+import { MILESTONES, frameFor, keeperAttributePoints, nextMilestone, passiveBonus, titlesEarned, type Milestone } from '../shared/skills/keeper-milestones';
+import { skillPointsEarned } from '../shared/keeper-look/skill-points';
 import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
@@ -750,6 +754,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** A level up anywhere this session: the Keeper's face lights up (keeper-paint.ts). */
   private joySub?: Subscription;
   private readonly levelUps = inject(LevelUpService);
+  private readonly keeperLevels = inject(KeeperLevelService);
+  private keeperLvSub?: Subscription;
   /** Where each hooked cast's bob sat (a catch bounty needs the water's column). */
   private readonly hookedAt = new Map<string, { liquid: string; col: number; row: number }>();
 
@@ -847,6 +853,10 @@ export class SideScrollerComponent implements OnDestroy {
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
       this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
       this.joySub = this.levelUps.events$.subscribe(() => { this.engine?.keeperFeel('happy', 1.4); this.companions.levelUp(); });
+      // The Keeper's own level-up (Hunting XP on the Keeper curve): the fanfare banner, the light pillar, the badge.
+      this.keeperLvSub = this.keeperLevels.events$.subscribe(event => this.zone.run(() => this.keeperLeveled(event)));
+      // A save that passed milestones before they existed gets their one-time pay now (receipt first, never twice).
+      queueMicrotask(() => this.zone.run(() => this.payMilestoneBacklog()));
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
@@ -1443,7 +1453,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
     this.unbindFeel();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.launchSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.launchSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.keeperLvSub?.unsubscribe(); clearTimeout(this.levelBannerTimer); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -1777,9 +1787,14 @@ export class SideScrollerComponent implements OnDestroy {
   /** The character sheet (C): D2's attributes page made cozy — level, points to spend, what each gives. */
   sheetOpen = false;
   /** The worn gear's combat totals (docs/design/loot-and-combat.md §3), read off the inventory by td-skills. */
-  private get gearCombat(): Partial<ItemStats> { return wornCombat(this.inventory); }
-  get sheet(): { level: number; into: number; span: number; left: number; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
-    const view = skillView(this.activity.snapshot.progress, 'hunting'), st = this.looks.look.stats, lv = view.level;
+  private get gearCombat(): Partial<ItemStats> {
+    // The milestones' passives (shared/skills/keeper-milestones.ts) ride on the worn totals, under the same caps.
+    const g: Partial<ItemStats> = { ...wornCombat(this.inventory) };
+    for (const [stat, n] of Object.entries(passiveBonus(this.huntingLevel)) as [keyof ItemStats, number][]) g[stat] = ((g[stat] as number | undefined) ?? 0) + n;
+    return g;
+  }
+  get sheet(): { level: number; into: number; span: number; toNext: number; left: number; skillPoints: number; next: Milestone | null; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
+    const view = this.keeperView, st = this.looks.look.stats, lv = view.level;
     const gear = this.gearCombat;
     const derived = fightStats(lv, st, gear);
     const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -1790,7 +1805,8 @@ export class SideScrollerComponent implements OnDestroy {
       agi: this.t('play.td.attr.agi.text', { n: Math.round(ATTR_STEP.agi * 100) }),
     };
     return {
-      level: lv, into: view.into, span: view.span, left: pointsLeft(lv, st),
+      level: lv, into: view.into, span: view.span, toNext: view.toNext, left: pointsLeft(lv, st, keeperAttributePoints(lv)),
+      skillPoints: skillPointsEarned(lv), next: nextMilestone(lv),
       rows: ATTRIBUTES.map(id => ({ id, value: st[id], text: text[id] })),
       totals: [
         { key: 'play.td.total.life', value: `${derived.maxHp}` },
@@ -1808,7 +1824,93 @@ export class SideScrollerComponent implements OnDestroy {
       ],
     };
   }
-  spendPoint(attr: Attribute): void { this.looks.spendPoint(attr, this.huntingLevel); this.tickAbilities(); }
+  spendPoint(attr: Attribute): void { const lv = this.huntingLevel; this.looks.spendPoint(attr, lv, Date.now(), keeperAttributePoints(lv)); this.tickAbilities(); }
+  // ── The Keeper's level (docs/design/leveling.md): the fanfare, the milestones tab, the title, the frame ──
+  /** The character sheet's tab: the attributes, or the level milestones. */
+  sheetTab: 'attrs' | 'milestones' = 'attrs';
+  /** The milestones tab's page (5 a page); -1 = the page holding the next milestone. */
+  milestonePage = -1;
+  /** The level-up banner while it shows. */
+  levelBanner: { level: number; big: boolean; lines: string[]; points: boolean; skill: boolean } | null = null;
+  private levelBannerTimer?: ReturnType<typeof setTimeout>;
+  /** The portrait's level badge bounces for a moment after a level-up. */
+  lvPulse = false;
+  /** The title worn under the Keeper's name ('' none), as words. */
+  get keeperTitle(): string {
+    const id = this.keeperLevels.state.title;
+    return id && titlesEarned(this.huntingLevel).includes(id) ? this.t(`play.lvl.title.${id}`) : '';
+  }
+  /** The portrait frame the level has earned (copper at 10 … starlit at 10,000). */
+  get keeperFrame(): string | null { return frameFor(this.huntingLevel); }
+  /** XP figures for the sheet ("12,450", "1.7M"). */
+  xpText(n: number): string { return formatXp(n); }
+  /** A milestone's rewards, one plain line each (the banner, the sheet). `paidGold` replaces the income line with what was paid. */
+  milestoneLines(m: Milestone, paidGold?: number): string[] {
+    const r = m.rewards, out: string[] = [];
+    if (r.title) out.push(this.t('play.lvl.r.title', { title: this.t(`play.lvl.title.${r.title}`) }));
+    if (r.skillPoints) out.push(this.t(r.skillPoints === 1 ? 'play.lvl.r.skill1' : 'play.lvl.r.skill', { n: r.skillPoints }));
+    if (r.points) out.push(this.t('play.lvl.r.points', { n: r.points }));
+    if (r.passive) out.push(this.t(`play.lvl.r.passive.${r.passive.stat}`, { n: r.passive.n }));
+    if (r.frame) out.push(this.t('play.lvl.r.frame', { frame: this.t(`play.lvl.frame.${r.frame}`) }));
+    if (r.goldMinutes) out.push(paidGold != null ? this.t('play.lvl.paid.gold', { n: paidGold }) : this.t('play.lvl.r.gold', { n: r.goldMinutes }));
+    if (r.gear) out.push(this.t('play.task.gear', { rarity: this.t(`play.task.rarity.${r.gear.rarity}`), name: itemDefinitionById(r.gear.defId)?.name ?? r.gear.defId, level: r.gear.level }));
+    return out;
+  }
+  /** The milestones tab: five a page, each claimed (reached), next, or later. */
+  get milestoneView(): { page: number; pages: number; rows: { level: number; big: boolean; state: 'claimed' | 'next' | 'later'; lines: string[] }[]; titles: string[]; title: string } {
+    const lv = this.huntingLevel, next = nextMilestone(lv), per = 5, pages = Math.ceil(MILESTONES.length / per);
+    const at = next ? MILESTONES.indexOf(next) : MILESTONES.length - 1;
+    const page = Math.max(0, Math.min(pages - 1, this.milestonePage < 0 ? Math.floor(at / per) : this.milestonePage));
+    return {
+      page, pages,
+      rows: MILESTONES.slice(page * per, page * per + per).map(m => ({ level: m.level, big: !!m.big, state: m.level <= lv ? 'claimed' as const : m === next ? 'next' as const : 'later' as const, lines: this.milestoneLines(m) })),
+      titles: titlesEarned(lv), title: this.keeperLevels.state.title,
+    };
+  }
+  pageMilestones(step: number): void {
+    const v = this.milestoneView;
+    this.milestonePage = Math.max(0, Math.min(v.pages - 1, v.page + step));
+  }
+  /** Wear the next (or previous) earned title; '' (none) sits before the first. */
+  cycleTitle(step: number): void {
+    const v = this.milestoneView, list = ['', ...v.titles];
+    const i = Math.max(0, list.indexOf(v.title));
+    this.keeperLevels.setTitle(list[(i + step + list.length) % list.length], this.huntingLevel);
+  }
+  /** The fanfare: a cozy banner listing exactly what the level gave, the light pillar on the Keeper, a gentle chime. */
+  private keeperLeveled(e: KeeperLevelUp): void {
+    const big = e.milestones.some(m => m.big);
+    const lines = [this.t('play.lvl.gain.stats', { life: e.life, mana: e.mana, power: e.power })];
+    if (e.points > 0) lines.push(this.t('play.lvl.gain.points', { n: e.points }));
+    if (e.skillPoints > 0) lines.push(this.t(e.skillPoints === 1 ? 'play.lvl.gain.skill1' : 'play.lvl.gain.skill', { n: e.skillPoints }));
+    for (const m of e.milestones) {
+      const paid = e.paid.find(p => p.level === m.level);
+      lines.push(this.t('play.lvl.milestone', { n: m.level }) + ' ' + this.milestoneLines(m, paid?.gold).join(' · '));
+    }
+    this.levelBanner = { level: e.level, big, lines, points: e.points > 0, skill: e.skillPoints > 0 };
+    this.message = this.t('play.lvl.log', { n: e.level });
+    this.sound.sfx('levelup');
+    (this.engine as unknown as { levelPillar?: (big: boolean) => void } | undefined)?.levelPillar?.(big);
+    this.engine?.keeperFeel('happy', 1.6);
+    this.lvPulse = false;
+    queueMicrotask(() => { this.lvPulse = true; });
+    setTimeout(() => this.zone.run(() => { this.lvPulse = false; }), 1600);
+    clearTimeout(this.levelBannerTimer);
+    this.levelBannerTimer = setTimeout(() => this.zone.run(() => { this.levelBanner = null; }), big ? 16000 : 10000);
+    this.tickAbilities();
+  }
+  /** The banner's buttons: spend the attribute points (C), or the skill points (K). */
+  levelBannerGo(where: 'sheet' | 'book'): void {
+    this.levelBanner = null;
+    clearTimeout(this.levelBannerTimer);
+    this.sheetOpen = where === 'sheet'; this.spellbookOpen = where === 'book'; this.sheetTab = 'attrs';
+  }
+  private payMilestoneBacklog(): void {
+    if (!this.browser) return;
+    this.activity.init();
+    const paid = this.keeperLevels.claimDue(this.huntingLevel);
+    if (paid.length) this.message = this.t('play.lvl.backlog', { n: paid.reduce((g, p) => g + p.gold, 0) });
+  }
   private get loadoutBar(): string[] { const b = this.looks.look.bar; return b.length ? b : defaultBar(this.looks.look.vocation); }
   private get loadoutAura(): string | null { const a = this.looks.look.aura; return a === 'none' ? null : a || defaultAura(this.looks.look.vocation); }
   get spellbook(): { kind: string; rows: { id: string; name: string; text: string; mana: number; cd: number; slot: number; on: boolean }[] }[] {
@@ -2584,7 +2686,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** What the worn loadout buys in a fight. Strike drives damage, Ward max HP. */
   /** The worn loadout's fight numbers, with the Hunting level on top (the Keeper's character level; keeper-combat.ts). */
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
-  get huntingLevel(): number { return skillLevel(this.activity.snapshot.progress, 'hunting'); }
+  /** The Keeper's level: Hunting XP read on the Keeper curve (shared/skills/keeper-level.ts), never below the Hunting skill level. */
+  get huntingLevel(): number { return this.keeperView.level; }
+  private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting')); }
   /** The HUD portrait (top-down): the Keeper's own face, from the engine's sprite; '' until the world is up. */
   get tdPortrait(): string { return this.topDown ? (this.engine as unknown as { heroPortrait?: () => string } | undefined)?.heroPortrait?.() ?? '' : ''; }
   /** The resource strip's icons: the materials' own art. */

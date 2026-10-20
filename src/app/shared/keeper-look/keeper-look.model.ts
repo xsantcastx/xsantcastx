@@ -105,14 +105,20 @@ function index(list: readonly unknown[], value: unknown, fallback: number): numb
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < list.length ? value : fallback;
 }
 
+/** One attribute's ceiling: above every point a level-10,000 Keeper can earn (~2.5k), so no spent point is ever lost. */
+const MAX_STAT = 99_999;
 function coerceStats(raw: unknown): KeeperStats {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const n = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 999 ? v : 0;
+  const n = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_STAT ? v : 0;
   return { vit: n(r['vit']), ene: n(r['ene']), spi: n(r['spi']), agi: n(r['agi']) };
 }
-/** Points still to spend at a level. */
-export function pointsLeft(level: number, stats: KeeperStats): number {
-  return Math.max(0, (Math.max(1, Math.floor(level)) - 1) * POINTS_PER_LEVEL - (stats.vit + stats.ene + stats.spi + stats.agi));
+/**
+ * Points still to spend at a level. `earned` is every point the Keeper has (shared/skills/keeper-milestones
+ * keeperAttributePoints: 5 a level to 100, tapering past it, plus the milestones' batches); without it, the plain
+ * five a level. Passed in so this eager file stays import-free.
+ */
+export function pointsLeft(level: number, stats: KeeperStats, earned = (Math.max(1, Math.floor(level)) - 1) * POINTS_PER_LEVEL): number {
+  return Math.max(0, earned - (stats.vit + stats.ene + stats.spi + stats.agi));
 }
 
 /** Any stored value → a valid look (junk and unknown ids fall back to the default). */

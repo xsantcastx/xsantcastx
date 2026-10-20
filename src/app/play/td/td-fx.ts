@@ -16,6 +16,8 @@ export const FX: Readonly<Record<'ember' | 'shadow' | 'life' | 'bone' | 'cold', 
   bone: { core: '#ffffff', body: '#e8e1cf', edge: '#a89f8a' },
   cold: { core: '#ffffff', body: '#9fd8ff', edge: '#3f78b5' },
 };
+/** The level-up's warm light (docs/design/leveling.md §4): cream core, the lantern's glow, brass at the edge. */
+export const LEVEL_UP: Tones = { core: '#fffbe8', body: '#ffd27a', edge: '#c99a3e' };
 /** The white-hot spark every element shares, and the dark outline a foe's effect carries. */
 export const SPARK = '#ffffff';
 export const HOSTILE_EDGE = '#140c1c';

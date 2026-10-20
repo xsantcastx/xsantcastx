@@ -16,6 +16,7 @@
  *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
  *   node scripts/economy-sim.mjs --town-tasks    # the town keepers' tasks: rule I Gold, once each, XP (in --check too)
  *   node scripts/economy-sim.mjs --levels        # uncapped levels: time to 100/150/200/300 per skill (in --check too)
+ *   node scripts/economy-sim.mjs --leveling      # the Keeper's level to 10,000: hours to each band (in --check too)
  *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
  *   node scripts/economy-sim.mjs --pets          # the pets' helpers: the hedgehog's extra harvest, XP, bite (in --check too)
  *   node scripts/economy-sim.mjs --cabinets      # the Lost Cabinets' Gold, once each, and the set's final reward (in --check too)
@@ -547,6 +548,7 @@ function check(E) {
   fails.push(...townTasksScenario({ quiet: true }));
   // Uncapped levels: 1-99 untouched, 99 -> 100 continuous, time to 300 per skill (`--levels` prints it).
   fails.push(...levelsScenario({ quiet: true }));
+  fails.push(...levelingScenario({ quiet: true }));
   // The high roads (surface height): once-only caches and summits on the rule I bands (`--heights` prints them).
   fails.push(...heightsScenario({ quiet: true }));
   // The pets (shared/pets): small helpers, never a Gold strategy (`--pets` prints it).
@@ -958,6 +960,59 @@ function levelsScenario({ quiet = false } = {}) {
   const h300 = hoursFrom99(sorted[3], 300);
   if (h300 < 500 || h300 > 5000) fails.push(`300 takes ${Math.round(h300)} h at the fastest rate (band 500-5,000)`);
   if (quiet) console.log(`economy-sim levels: 99->100 ${fmtH(hoursFrom99(median, 100))}, ->300 ${fmtH(hoursFrom99(median, 300))} at ${Math.round(median)} XP/min; ${fails.length ? fails.length + ' fail(s)' : 'curve ok'}`);
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// The Keeper's level to 10,000 (docs/design/leveling.md)
+// ───────────────────────────────────────────────────────────────────────────
+// Hunting XP read on the Keeper curve (keeper-level.ts). A kill pays HP / 5
+// (skills/hunting.ts), and the authored top-down creatures (td-mobs MOBS) sit
+// near 30 + 12.5 × level HP (Ash Wolf 45 at 1, Lava Hound 120 at 10, Thorn
+// Weaver 380 at 28), so a creature of level m pays ~6 + 2.5m.
+// KILLS_PER_HOUR counts the walking, resting and looting between fights. The
+// first hour also hands in the Seamworks' six tasks (360 Hunting XP).
+// Two worlds: TODAY (the best creatures stop at level 34: the Mossbound
+// Colossus's Verdant) and PACE (future continents keep a creature at the
+// Keeper's own level; past ~160 a kill's 500-XP gateway cap must be lifted or
+// chunked like the town tasks' xpGrantChunks).
+const KLV = loadTs('src/app/shared/skills/keeper-level.ts');
+function levelingScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = line => { if (!quiet) console.log(line); };
+  const KILLS_PER_HOUR = 240, TODAY_CAP = 34, EMBER_TASKS_XP = 360;
+  const mobXp = (m, capped) => { const x = Math.round((30 + 12.5 * Math.max(1, m)) / 5); return capped ? Math.min(500, x) : x; };
+  const hours = (world) => {
+    const out = new Map();
+    let h = 0;
+    for (let L = 1; L < KLV.KEEPER_MAX_LEVEL; L++) {
+      let need = KLV.keeperXpForLevel(L + 1) - KLV.keeperXpForLevel(L);
+      if (L < 10) { const t = Math.min(need, EMBER_TASKS_XP / 9); need -= t; }
+      const content = world === 'today' ? Math.min(L, TODAY_CAP) : L;
+      const per = need / (KILLS_PER_HOUR * mobXp(content, world === 'today'));
+      h += per;
+      out.set(L + 1, { total: h, per });
+    }
+    return out;
+  };
+  const today = hours('today'), pace = hours('pace');
+  const fmtH = h => h < 10 ? h.toFixed(1) + ' h' : h < 1000 ? Math.round(h) + ' h' : (h / 1000).toFixed(1) + 'k h';
+  const marks = [10, 30, 50, 100, 500, 1000, 5000, 10000];
+  say('Keeper level · xp(L) = 12·(L−1)^2.6 to 50, then xp(50) + A·((L−1)^2.4 − 49^2.4)');
+  say('  ' + 'level'.padEnd(8) + 'XP'.padStart(10) + 'hours (today)'.padStart(16) + 'hours (pace)'.padStart(15) + 'h / level (pace)'.padStart(18));
+  for (const L of marks) say('  ' + String(L).padEnd(8) + fmtN(KLV.keeperXpForLevel(L)).padStart(10) + fmtH(today.get(L).total).padStart(16) + fmtH(pace.get(L).total).padStart(15) + pace.get(L).per.toFixed(2).padStart(18));
+  // 1. The save guarantee: no level costs more than it did on the shared skill curve, so no stored XP reads lower.
+  for (let L = 2; L <= KLV.KEEPER_MAX_LEVEL; L++) if (KLV.keeperXpForLevel(L) > CURVE.xpForLevel(L)) { fails.push(`leveling: level ${L} costs more than the Hunting skill curve (a save would drop)`); break; }
+  // 2. 1 → 10 in about the first hour; 50 in a long weekend's play on today's content.
+  const h10 = today.get(10).total, h50 = today.get(50).total;
+  if (h10 < .5 || h10 > 1.5) fails.push(`leveling: level 10 takes ${h10.toFixed(2)} h (band 0.5–1.5)`);
+  if (h50 < 8 || h50 > 40) fails.push(`leveling: level 50 takes ${h50.toFixed(1)} h on today's content (band 8–40)`);
+  // 3. Humane all the way up when content keeps pace: no single level past 10 asks more than 6 hours.
+  let worst = 0; for (const [L, v] of pace) if (L > 10) worst = Math.max(worst, v.per);
+  if (worst > 6) fails.push(`leveling: a level takes ${worst.toFixed(1)} h at the top with content at pace (ceiling 6)`);
+  // 4. Bounded stats: past 100 a level's growth tapers; at 10,000 at most ~4× level 100's.
+  if (KLV.levelSteps(KLV.KEEPER_MAX_LEVEL) > 4 * KLV.levelSteps(100)) fails.push('leveling: level stats are not bounded at 10,000');
+  if (quiet) console.log(`economy-sim leveling: 10 in ${fmtH(h10)}, 50 in ${fmtH(h50)}, 100 in ${fmtH(today.get(100).total)} today; 1,000 in ${fmtH(pace.get(1000).total)}, 10,000 in ${fmtH(pace.get(10000).total)} at pace; ${fails.length ? fails.length + ' fail(s)' : 'curve ok'}`);
   return fails;
 }
 
@@ -1908,6 +1963,11 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv.levels && !argv.check) {
   const fails = levelsScenario({ quiet: false });
+  for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.leveling && !argv.check) {
+  const fails = levelingScenario({ quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);
   if (fails.length) process.exit(1);
   console.log('  ok');
