@@ -353,6 +353,33 @@ export class TopDownEngine {
   hasDelveCamp(): boolean { return false; }
   readRiftMap(): boolean { return false; }
   get places(): readonly StationDef[] { return this.level.stalls.map(s => s.station); }
+  /** Where the Keeper stands — continent, level (or 'surface'), position — so the HUD can save it and a reload resumes there. */
+  get whereabouts(): { continent: string; level: string; x: number; y: number } {
+    return { continent: this.world.continent, level: this.level === this.world ? 'surface' : this.level.id, x: Math.round(this.player.x), y: Math.round(this.player.y) };
+  }
+  /**
+   * Put the Keeper back where they last stood (owner 2026-10-20: "not saving in my last location"). Anything unknown —
+   * a continent or level that no longer exists — keeps the arrival square; a spot a map change walled in becomes the
+   * nearest free one (standNear), never a wall.
+   */
+  restoreWhereabouts(w: { continent?: unknown; level?: unknown; x?: unknown; y?: unknown }): boolean {
+    if (typeof w.continent !== 'string' || typeof w.level !== 'string' || typeof w.x !== 'number' || typeof w.y !== 'number' || !Number.isFinite(w.x) || !Number.isFinite(w.y)) return false;
+    const def = CONTINENTS[w.continent];
+    if (!def || (w.level !== 'surface' && !LEVELS[w.level])) return false;
+    if (w.continent !== this.world.continent) {
+      let next = this.continents.get(w.continent);
+      if (!next) { next = new TdWorld(def); this.continents.set(w.continent, next); }
+      this.world = next; this.map = next.town; this.populate();
+    }
+    const level = w.level === 'surface' ? this.world : this.handLevel(w.level);
+    this.enter(level, '');
+    const spot = standNear(level, w.x, w.y);
+    if (!footFree(level, spot.x, spot.y)) { this.enter(this.world, ''); this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y; return false; }
+    this.player.x = spot.x; this.player.y = spot.y;
+    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
+    this.report();
+    return true;
+  }
   get settlementKeepers(): readonly { id: string; x: number; y: number; upstairs: boolean; mark: '!' | '?' | null }[] {
     return this.map.stalls.filter(s => s.keeper).map(s => ({ id: s.keeper!.id, x: s.keeper!.x, y: s.keeper!.y, upstairs: false, mark: null }));
   }

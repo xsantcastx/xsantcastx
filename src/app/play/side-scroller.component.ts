@@ -823,7 +823,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1201,9 +1201,34 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setCombatRules({ tier: rules.tier, seed: rules.seed, aura: rules.aura, resists: rules.resists, filter: rules.filter });
     if (first) this.pushPurse();
   }
-  private playSave(): { town?: unknown; coins?: unknown } {
+  private playSave(): { town?: unknown; coins?: unknown; td?: unknown } {
     const raw = this.store.read(PLAY_KEY);
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown } : {};
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown; td?: unknown } : {};
+  }
+  /**
+   * The top-down Keeper's last place (owner 2026-10-20: "not saving in my last location"): kept in PLAY_KEY beside the
+   * town (device-local, like the side view's), written every two seconds when it changed by a tile, restored once.
+   */
+  private tdSavedAt = 0;
+  private tdSavedKey = '';
+  private tdRestored = false;
+  private tickWhereabouts(): void {
+    if (!this.topDown || !this.browser) return;
+    const e = this.engine as unknown as { whereabouts?: { continent: string; level: string; x: number; y: number }; restoreWhereabouts?: (w: unknown) => boolean } | undefined;
+    if (!e?.whereabouts) return;
+    if (!this.tdRestored) {
+      this.tdRestored = true;
+      const saved = this.playSave().td;
+      // A deep link (?at=) means go there, not back.
+      if (saved && typeof saved === 'object' && !this.route.snapshot.queryParamMap.get('at')) e.restoreWhereabouts?.(saved);
+      return;
+    }
+    if (Date.now() - this.tdSavedAt < 2000) return;
+    this.tdSavedAt = Date.now();
+    const w = e.whereabouts, key = `${w.continent}|${w.level}|${Math.round(w.x / 16)}|${Math.round(w.y / 16)}`;
+    if (key === this.tdSavedKey) return;
+    this.tdSavedKey = key;
+    this.store.write(PLAY_KEY, { ...this.playSave(), td: w });
   }
   /** Merge a change into PLAY_KEY; a write that changes nothing is skipped. */
   private writePlay(patch: { town?: RealmTownId; coins?: number }): void {
