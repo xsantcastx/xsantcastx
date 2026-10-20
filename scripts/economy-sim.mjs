@@ -1471,6 +1471,36 @@ function townTasksScenario({ quiet = false } = {}) {
   }
   for (const [town, xp] of byGiverTown) if (xp > level20) fails.push(`${town}'s tasks pay ${xp} Hunting XP, over a level at 20 (${level20})`);
   say(`  Hunting XP per town: ${[...byGiverTown].map(([k, v]) => `${k} ${v}`).join(', ')} (a level at 20 is ${level20}).`);
+  // Dailies: one small errand per giver per local day (DAILY_TASKS). Repeatable, so capped per DAY, worst day.
+  //   5. each pays 1-3 min of income, no gear, a floor within the bounties' rate, at most 100 Hunting XP and 0.2 potion chance;
+  //   6. the worst day (every giver's priciest daily) is at most 25 min of income and a quarter of a level at 20 in XP;
+  //   7. the floor never beats the income seconds at 1 h or 1 d.
+  const dailies = TOWN_TASKS_MODEL.DAILY_TASKS;
+  const givers = [...new Set(dailies.map(t => t.giver))];
+  let worstSecs = 0, worstXp = 0;
+  for (const g of givers) {
+    const pool = dailies.filter(t => t.giver === g);
+    if (pool.length < 3 || pool.length > 5) fails.push(`${g} has ${pool.length} dailies (3-5)`);
+    worstSecs += Math.max(...pool.map(t => t.reward.goldSeconds));
+    worstXp += Math.max(...pool.map(t => t.reward.huntingXp));
+  }
+  for (const t of dailies) {
+    const r = t.reward;
+    if (r.goldSeconds < 60 || r.goldSeconds > 180) fails.push(`${t.id} pays ${r.goldSeconds} s of income (daily band 60-180 s)`);
+    if (r.gold > C.itemScaled(Math.round(r.goldSeconds * 40 / 3))) fails.push(`${t.id}'s floor ${r.gold} is over the bounties' rate`);
+    if (r.gear) fails.push(`${t.id} is a daily and pays gear`);
+    if (r.huntingXp > 100) fails.push(`${t.id} pays ${r.huntingXp} Hunting XP (daily ceiling 100)`);
+    if (r.potion && r.potion.chance > 0.2) fails.push(`${t.id} has a ${r.potion.chance} potion chance (daily ceiling 0.2)`);
+  }
+  for (const [t, label] of [[3600, '1h'], [86400, '1d']]) {
+    const gps = log.at[t]?.gps;
+    if (!gps) continue;
+    const wins = dailies.filter(x => x.reward.gold > x.reward.goldSeconds * gps);
+    if (wins.length) fails.push(`a daily's Gold floor beats its income seconds at ${label} (${wins.map(x => x.id).join(', ')})`);
+  }
+  say(`\n  Dailies: ${dailies.length} across ${givers.length} givers; the worst day pays ${(worstSecs / 60).toFixed(0)} min of income and ${worstXp} Hunting XP (cap 25 min, ${Math.floor(level20 / 4)} XP).`);
+  if (worstSecs > 25 * 60) fails.push(`the worst day of dailies pays ${(worstSecs / 60).toFixed(0)} min of income (must be <= 25)`);
+  if (worstXp > level20 / 4) fails.push(`the worst day of dailies pays ${worstXp} Hunting XP, over a quarter of a level at 20 (${Math.floor(level20 / 4)})`);
   if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
   if (quiet) console.log(`economy-sim town tasks: ${fails.length ? fails.length + ' fail(s)' : 'rule I band, once-only envelope, XP ok'}`);
   return fails;

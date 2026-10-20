@@ -6,13 +6,14 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { ERA, ledger, seed } from './play-helpers';
+import { dailyDay, dailyKey, dailyOf } from '../src/app/shared/town-tasks/town-tasks.model';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const savedGold = (page: Page) => page.evaluate(() => Number(JSON.parse(localStorage.getItem('godforge-economy') || '{}').gold ?? 0));
 /** The town tasks blob (the gateway may wrap it in `{ v, updatedAt }`). */
 const savedTasks = (page: Page) => page.evaluate(() => {
   const raw = JSON.parse(localStorage.getItem('godforge-town-tasks') || 'null');
-  return (raw && 'v' in raw && 'updatedAt' in raw ? raw.v : raw) as { accepted: Record<string, number>; claimed: string[] } | null;
+  return (raw && 'v' in raw && 'updatedAt' in raw ? raw.v : raw) as { accepted: Record<string, number>; claimed: string[]; dClaimed?: string[] } | null;
 });
 const stackOps = (page: Page) => page.evaluate(() => {
   const raw = JSON.parse(localStorage.getItem('godforge-inventory') || 'null');
@@ -20,10 +21,10 @@ const stackOps = (page: Page) => page.evaluate(() => {
   return ((inv?.stackOps ?? []) as { id: string }[]).map(o => o.id);
 });
 
-async function open(page: Page, stacks: Record<string, number>): Promise<void> {
+async function open(page: Page, stacks: Record<string, number>, extra: Record<string, unknown> = {}): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
-  await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'godforge-inventory': ledger(stacks) });
+  await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'godforge-inventory': ledger(stacks), ...extra });
   await page.goto('/play?td=1&hour=12');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
 }
@@ -113,4 +114,76 @@ test('a task giver of their own in Pyrehold, and the talk window on a phone', as
   await talk.locator('[data-talk-accept]').click();
   await expect(page.locator('[data-tasks] li[data-task="pyre-vey-1"]')).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-phone-scroll.jpg', type: 'jpeg', quality: 80 });
+});
+
+/** A local noon on which Mara Voss's daily is a delivery of Cinder Ore (her pick rotates by day; the page clock is pinned to it). */
+function oreDay(): Date {
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(2026, 9, 20 + i, 12);
+    if (dailyOf('bench-smith', dailyDay(d))?.id === 'dly-bench-smith-1') return d;
+  }
+  throw new Error('no day in range picks the ore daily');
+}
+/** Mara has handed in both one-time tasks; the satchel holds the ore her daily asks for. */
+async function openDaily(page: Page): Promise<string> {
+  const day = oreDay();
+  await page.clock.setFixedTime(day);
+  await open(page, { 'cinder-ore': 20 }, {
+    'godforge-town-tasks': { version: 1, accepted: { 'seam-mara-1': 1, 'seam-mara-2': 2 }, progress: {}, claimed: ['seam-mara-1', 'seam-mara-2'] },
+  });
+  return dailyKey(dailyDay(day), 'dly-bench-smith-1');
+}
+
+test('a daily: offered after the one-time tasks, accepted, handed in once, then "come back tomorrow"', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const key = await openDaily(page);
+  // A v1 blob migrated on read: the "!" is back over Mara for her daily.
+  await expect(canvas(page)).toHaveAttribute('data-task-marks', /bench-smith:!/, { timeout: 10000 });
+  await travelTo(page, /mara voss/i);
+  const talk = page.locator('.td-talk');
+  await expect(talk).toHaveAttribute('data-talk', 'bench-smith');
+  await expect(talk.locator('.td-talk__scroll')).toHaveAttribute('data-talk-state', 'offer');
+  await expect(talk.locator('[data-talk-task]')).toHaveAttribute('data-talk-task', 'dly-bench-smith-1');
+  await expect(talk.locator('[data-talk-daily]')).toContainText(/Daily/);
+  await expect(talk.locator('[data-talk-daily]')).toContainText(/Resets in 12h 0m/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-daily.jpg', type: 'jpeg', quality: 80 });
+  const goldBefore = await savedGold(page);
+  await talk.locator('[data-talk-accept]').click();
+  // The satchel already holds the ore: ready at once.
+  await expect(talk.locator('.td-talk__scroll')).toHaveAttribute('data-talk-state', 'ready');
+  await expect(page.locator('[data-tasks] li[data-task="dly-bench-smith-1"]')).toContainText(/Daily/);
+  await talk.locator('[data-talk-handin]').click();
+  await expect(talk.locator('.td-talk__scroll')).toHaveAttribute('data-talk-state', 'thanks');
+  await expect(talk.locator('[data-talk-paid]')).toContainText(/Gold.*Hunting XP/);
+  await expect.poll(async () => (await savedTasks(page))?.dClaimed ?? []).toEqual([key]);
+  await expect.poll(() => savedGold(page), { timeout: 10000 }).toBeGreaterThan(goldBefore);
+  const goldAfter = await savedGold(page);
+  // Nothing else to ask today: she says to come back tomorrow.
+  await talk.locator('.td-talk__acts button', { hasText: /farewell/i }).click();
+  await expect(talk).toHaveCount(0);
+  await expect(canvas(page)).not.toHaveAttribute('data-task-marks', /bench-smith/);
+  await travelTo(page, /mara voss/i);
+  await expect(talk.locator('.td-talk__scroll')).toHaveAttribute('data-talk-state', 'done');
+  await expect(talk).toContainText(/Come back tomorrow/);
+  await expect(talk.locator('[data-talk-accept], [data-talk-handin]')).toHaveCount(0);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-daily-done.jpg', type: 'jpeg', quality: 80 });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(600);
+  expect(await savedGold(page)).toBe(goldAfter);
+  expect((await savedTasks(page))?.claimed).toEqual(['seam-mara-1', 'seam-mara-2']);
+});
+
+test('the daily offer on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openDaily(page);
+  await travelTo(page, /mara voss/i, true);
+  const talk = page.locator('.td-talk');
+  await expect(talk.locator('[data-talk-daily]')).toBeVisible();
+  await page.waitForTimeout(300);
+  const box = (await talk.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(391);
+  expect(box.y + box.height).toBeLessThanOrEqual(845);
+  for (const b of await talk.locator('.td-talk__acts button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-daily-phone.jpg', type: 'jpeg', quality: 80 });
 });
