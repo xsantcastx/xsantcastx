@@ -168,6 +168,8 @@ import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.mode
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
 import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
+import { FRONT_H, FRONT_W, frontSheet } from '../shared/keeper-look/keeper-front';
+import { vocationLook } from '../shared/keeper-look/vocation-look';
 import { LevelUpService } from '../shared/activity/level-up.service';
 import { npcPortrait } from '../shared/keeper-look/npc-portrait';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
@@ -3602,7 +3604,7 @@ export class SideScrollerComponent implements OnDestroy {
   private pushKeeper(): void {
     const look = this.looks.look;
     const gear = wornGear(this.inventory.snapshot.equipped);
-    const key = `${lookKey(look)}#${gearKey(gear)}`;
+    const key = `${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
     this.keeperName = look.made ? look.name : '';
     this.lookNudge = !look.made && !look.prompted;
     if (key !== this.lookPushKey) {
@@ -3641,7 +3643,15 @@ export class SideScrollerComponent implements OnDestroy {
     try {
       const el = document.createElement('canvas');
       el.width = el.height = 176;
-      new KeeperPainter(look, gear).still(el);
+      const v = vocationLook(look.vocation, gear);
+      if (this.topDown) {
+        // The top-down game's doll is the Keeper the world shows (owner 2026-10-20): the front sprite, class garb and
+        // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
+        const sheet = frontSheet(new KeeperPainter(look, v.gear, v.garb), look.vocation === 'warlock');
+        const c = el.getContext('2d')!, k = 4, w = (FRONT_W + 2) * k, h = (FRONT_H + 2) * k;
+        c.imageSmoothingEnabled = false;
+        c.drawImage(sheet, 0, 0, FRONT_W + 2, FRONT_H + 2, Math.round((176 - w) / 2), Math.round((176 - h) / 2) + 4, w, h);
+      } else new KeeperPainter(look, v.gear, v.garb).still(el);
       this.dollFigure = el.toDataURL('image/png');
     } catch { /* no 2D canvas: the doll frame stays empty */ }
   }
