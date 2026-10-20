@@ -8,7 +8,7 @@
  */
 import { RUNES, RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
 import { SOCKET_WORDS } from './socket-words';
-import { ITEM_STAT_KEYS, type GameItem, type ItemRarity } from '../rpg/item.model';
+import { ITEM_STAT_KEYS, LEGACY_STAT_KEYS, type GameItem, type ItemRarity } from '../rpg/item.model';
 import {
   MAX_SOCKETS,
   SOCKET_CHANNEL,
@@ -120,7 +120,7 @@ describe('socket effects', () => {
 
   it('pays the Void on every channel, because it is the only rune that does', () => {
     const void_ = socketEffectOf('void');
-    for (const key of ITEM_STAT_KEYS) {
+    for (const key of LEGACY_STAT_KEYS) {
       expect(void_[key]).toBe(SOCKET_LADDER[key].singular);
     }
     // Nothing else does. A second all-channel rune would make the ladder a lie.
@@ -132,7 +132,7 @@ describe('socket effects', () => {
   });
 
   it('climbs with the rune tier on every channel', () => {
-    for (const key of ITEM_STAT_KEYS) {
+    for (const key of LEGACY_STAT_KEYS) {
       const ladder = SOCKET_LADDER[key];
       for (let i = 1; i < RUNE_TIER_ORDER.length; i++) {
         expect(ladder[RUNE_TIER_ORDER[i]])

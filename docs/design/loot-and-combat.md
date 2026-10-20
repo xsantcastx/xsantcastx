@@ -43,13 +43,57 @@ code; when they disagree, the code and `node scripts/economy-sim.mjs --loot --co
 A **unique** (named object) drops at its authored rarity and adds a crown of four pixels and a top rule on its
 plate, so a gold *name* reads differently from a gold *roll*.
 
-## 3. Affixes and rolls
+## 3. Affixes and rolls — every item is a roll (owner, 2026-10-20)
 
-Unchanged and respected: an item's stats roll inside its rarity band at **mint** and freeze, with the per-stat
-grade (`rollQuality`) frozen beside them; temper never touches the grade; nothing back-fills it. Creature drops are
-rolled as *(definition, rarity)* and minted **at pickup** by `LootService.grantDrop` with `mintEquipment`, seeded by
-the drop id — so the grade is frozen exactly once, the same path every other source takes. Gap: there are still only
-the five item stats (Gold/s, MF, XP, Strike, Ward); resists live on runes (§6), not as an item affix.
+Owner: *"other stats like defense, faster cast speed, movement speed on boots … all items can be good with nice
+stats that range, perfect item rolls, every item is a roll, like an RPG dungeon crawler."* Reference card:
+`docs/design/refs/cozy/top-heroes-items.jpg`.
+
+Unchanged and respected: stats roll at **mint** and freeze with a per-stat grade (`rollQuality`, 0..1 inside the
+range that item could roll); temper never touches the grade; nothing back-fills it; drops mint at pickup in
+`LootService.grantDrop`, seeded by the drop id.
+
+**What an item is now:** a base (its definition: slot, look, name, lore), an **item level** (where it dropped: the
+monster's level; a shop or Forge mint uses its own), a rarity, an **implicit** the base always has, and
+**affixes** drawn from its slot's pool without repeats. Every number rolls inside a range set by item level and
+rarity, and the card shows the range beside the roll (`+7 Defense [4–9]`), D4-style.
+
+| Rarity | Affixes | Range multiplier |
+|---|---|---|
+| common | 0 | ×1.0 |
+| uncommon | 1 | ×1.15 |
+| rare | 2 | ×1.35 |
+| epic | 3 | ×1.55 |
+| legendary | 4 | ×1.8 |
+| mythic | 5 | ×2.2 |
+| singular | 5 | ×2.8 |
+
+**Implicits:** weapon → Spell Damage %; armour (head, chest, hands, legs, feet, off-hand) → Defense; trinket → Life.
+
+**The combat stats** (`ItemStats`, each read by the top-down fight through `equippedTotals`):
+
+| Stat | Range at item level 1 (×rarity) | Growth per item level | Cap (worn total) | Slots that roll it | What it does |
+|---|---|---|---|---|---|
+| Life | 4–8 | +0.9 | — | all but weapon | max life |
+| Mana | 3–6 | +0.6 | — | weapon, head, trinket, off-hand | max mana |
+| Defense | 2–5 | +0.8 | — | armour | blows reduced by Defense ÷ (Defense + 40 + 6×level) |
+| Spell Damage % | 3–6 | +0.25 | 150 | weapon, head, trinket, off-hand | multiplies every spell and the staff bolt |
+| Cast Speed % | 3–6 | +0.1 | 40 | weapon, hands, trinket | shortens spell cooldowns and the bolt's pace |
+| Movement Speed % | 4–7 | +0.1 | 40 (with Agility) | **feet only** | faster on foot |
+| Critical Chance % | 1–3 | +0.05 | 40 | weapon, hands, trinket | a crit hits ×1.75 |
+| Life Regen /s | 0.2–0.6 | +0.03 | — | chest, legs, trinket | life back each second |
+| Mana Regen /s | 0.2–0.6 | +0.03 | — | head, weapon, off-hand, trinket | mana back each second |
+| Magic Find % | 2–4 | +0.1 | — | every slot | loot odds (D2's MF gear) |
+| XP % | 1–3 | +0.05 | — | weapon, head, chest, legs, feet, trinket | Hunting XP |
+
+Every slot has at least five affixes to draw from, so a mythic always gets its five. Gold/sec, Strike and Ward stay
+on old saves and the Forge, but new mints no longer roll them; nor does gear roll anything off a definition's old list (owner: the idle
+gold-per-second is out of the game for now).
+
+**Perfect rolls:** every number carries its grade; an item whose every grade is ≥ 95% is **Perfect** and ≥ 99.9%
+**Flawless** (the thresholds in `item-quality.ts`), named on the card and priced ×3 / ×5 at the till.
+
+Gap left open: resist affixes (fire/shadow) — the families' resists exist (§6), items do not roll them yet.
 
 ## 4. Monster families and roles
 
@@ -183,7 +227,7 @@ creatures, minions) keep their authored HP and the legacy 12 blow on Normal; Nig
 ## 12. Gaps (owned, next)
 
 1. Roles beyond melee have no behaviour yet (ranged shots, healers, shielders, summoners, exploders).
-2. No resist affix on items; Ward stays HP, not physical reduction.
+2. No resist affix on items yet (§3).
 3. Minimap pip: the off-screen **edge pip** ships; the Delve map does not mark drops yet.
 4. Packs of several creatures (a champion *pack* of 3–5) — today a champion is one creature.
 5. Spells: no active skills beyond swing/blast; no mana. Auras are passive only (no hotkey switch beyond the sheet).

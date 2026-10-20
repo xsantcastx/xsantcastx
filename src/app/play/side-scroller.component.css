@@ -3483,16 +3483,74 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .sb__keys button { min-height: 44px; min-width: 34px; }
 }
 
-/* ── The hover card (D2): a small dark plate, centred lines, the name in its rarity colour ── */
-.d2tip { position: fixed; z-index: 30; display: grid; justify-items: center; gap: 2px; min-width: 160px; max-width: 280px; padding: 8px 12px;
-  pointer-events: none; text-align: center; background: color-mix(in srgb, var(--cozy-wood-0) 94%, transparent); box-shadow: 0 0 0 2px var(--cozy-wood-1);
-  font: 13px/1.3 var(--font-pixel); color: var(--cozy-cream); }
-.d2tip b { font-size: 15px; color: var(--tone, var(--cozy-cream)); }
-.d2tip span { font-size: 11px; opacity: .7; }
-.d2tip i { font-style: normal; color: var(--cozy-mana-text); }
-.d2tip small { margin-top: 4px; font-size: 11px; opacity: .65; }
-.d2tip i.up { color: var(--cozy-leaf); }
-.d2tip i.down { color: var(--cozy-berry); }
+/* ── The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): a dark plate framed in its rarity,
+   a big icon, the headline stat, coloured affixes with pips, blue specials, wells, worth along the foot ── */
+.d2tip { --loot: var(--cozy-loot-material); position: fixed; z-index: 30; display: grid; gap: 6px; width: 264px; padding: 10px 12px 9px;
+  pointer-events: none; text-align: left; font: 12px/1.35 var(--font-pixel); color: var(--cozy-cream);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--loot) 22%, var(--cozy-wood-0)) 0, color-mix(in srgb, var(--loot) 6%, var(--cozy-wood-0)) 64px, color-mix(in srgb, var(--cozy-wood-0) 96%, transparent) 100%);
+  border: 2px solid var(--loot); border-radius: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loot) 35%, transparent), inset 0 0 0 3px color-mix(in srgb, var(--cozy-wood-0) 80%, transparent),
+    0 0 18px -2px color-mix(in srgb, var(--loot) 55%, transparent), 0 6px 18px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
+.d2tip::before, .d2tip::after { content: ''; position: absolute; width: 8px; height: 8px; background: var(--loot); transform: rotate(45deg); }
+.d2tip::before { top: -5px; left: calc(50% - 4px); }
+.d2tip::after { bottom: -5px; left: calc(50% - 4px); }
+.d2tip[data-rarity='common'] { --loot: var(--cozy-loot-common); }
+.d2tip[data-rarity='uncommon'] { --loot: var(--cozy-loot-uncommon); }
+.d2tip[data-rarity='rare'] { --loot: var(--cozy-loot-rare); }
+.d2tip[data-rarity='epic'] { --loot: var(--cozy-loot-epic); }
+.d2tip[data-rarity='legendary'] { --loot: var(--cozy-loot-legendary); }
+.d2tip[data-rarity='mythic'] { --loot: var(--cozy-loot-mythic); }
+.d2tip__head { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: start; }
+.d2tip__icon { display: grid; place-items: center; width: 44px; height: 44px; border: 2px solid var(--loot); border-radius: 3px;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--loot) 55%, transparent), color-mix(in srgb, var(--loot) 12%, var(--cozy-wood-0)) 70%);
+  box-shadow: 0 0 10px -1px color-mix(in srgb, var(--loot) 60%, transparent); }
+.d2tip__icon img { width: 34px; height: 34px; image-rendering: pixelated; object-fit: contain; }
+.d2tip__icon em { font: 700 16px var(--font-pixel); font-style: normal; color: var(--cozy-cream); }
+.d2tip__title { display: grid; gap: 1px; min-width: 0; }
+.d2tip__title b { font-size: 15px; line-height: 1.15; color: var(--loot); text-shadow: 0 1px 0 var(--cozy-wood-0); }
+.d2tip__title span { font-size: 11px; color: color-mix(in srgb, var(--loot) 70%, var(--cozy-cream)); }
+.d2tip__title .d2tip__rarity { color: var(--loot); opacity: .85; }
+.d2tip__worth { display: inline-flex; align-items: center; gap: 4px; color: var(--cozy-cream) !important; }
+.d2tip .coin { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--cozy-brass); box-shadow: inset -1px -1px 0 color-mix(in srgb, var(--cozy-wood-0) 40%, transparent); }
+.d2tip__headline { margin: 0; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--loot) 45%, transparent); font-size: 14px; font-weight: 700; color: var(--cozy-cream); }
+.d2tip__affixes { display: grid; gap: 2px; margin: 0; padding: 6px 0 0; list-style: none; border-top: 1px solid color-mix(in srgb, var(--loot) 30%, transparent); }
+.d2tip__affixes li { display: flex; align-items: center; gap: 6px; color: var(--cozy-mana-text); }
+.d2tip__affixes li::before { content: ''; flex: none; width: 7px; height: 7px; transform: rotate(45deg); background: var(--pip, var(--cozy-mana)); }
+.d2tip__affixes li[data-stat='strikePower'] { --pip: var(--cozy-loot-legendary); }
+.d2tip__affixes li[data-stat='ward'] { --pip: var(--cozy-loot-rare); }
+.d2tip__affixes li[data-stat='magicFind'] { --pip: var(--cozy-loot-epic); }
+.d2tip__affixes li[data-stat='xpBonus'] { --pip: var(--cozy-loot-uncommon); }
+.d2tip__affixes li[data-stat='goldPerSec'] { --pip: var(--cozy-loot-mythic); }
+.d2tip__affixes li[data-stat='life'] { --pip: var(--cozy-berry); }
+.d2tip__affixes li[data-stat='lifeRegen'] { --pip: var(--cozy-leaf); }
+.d2tip__affixes li[data-stat='mana'] { --pip: var(--cozy-mana-hi); }
+.d2tip__affixes li[data-stat='manaRegen'] { --pip: var(--cozy-river); }
+.d2tip__affixes li[data-stat='defense'] { --pip: var(--cozy-brass); }
+.d2tip__affixes li[data-stat='spellDamage'] { --pip: var(--cozy-glow); }
+.d2tip__affixes li[data-stat='castSpeed'] { --pip: var(--cozy-loot-epic); }
+.d2tip__affixes li[data-stat='moveSpeed'] { --pip: var(--cozy-loot-uncommon); }
+.d2tip__affixes li[data-stat='critChance'] { --pip: var(--cozy-loot-legendary); }
+/* The range the roll could have landed in (§3), dimmer than the roll itself. */
+.d2tip__range { margin-left: 4px; font-size: 11px; font-weight: 400; color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); }
+.d2tip__meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.d2tip__tag { color: var(--cozy-brass-hi); letter-spacing: .04em; text-transform: uppercase; }
+.d2tip__tag[data-tag='flawless'] { color: var(--cozy-loot-mythic); }
+.d2tip__special { display: grid; gap: 3px; padding: 6px 0 0; border-top: 1px solid color-mix(in srgb, var(--loot) 30%, transparent); }
+.d2tip__special p { margin: 0; font-size: 11px; color: var(--cozy-loot-rare); }
+.d2tip[data-rarity='material'] .d2tip__special p { color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.d2tip__sockets { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.d2tip__sockets li { display: flex; align-items: center; gap: 6px; font-size: 11px; opacity: .75; }
+.d2tip__sockets li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--cozy-cream); }
+.d2tip__sockets li.full { opacity: 1; color: var(--loot); }
+.d2tip__sockets li.full::before { background: var(--loot); border-color: var(--loot); }
+.d2tip__line { margin: 0; color: var(--cozy-mana-text); }
+.d2tip__compare { display: grid; gap: 1px; padding-top: 5px; border-top: 1px dashed color-mix(in srgb, var(--cozy-cream) 25%, transparent); }
+.d2tip__compare small { font-size: 10px; opacity: .65; }
+.d2tip__compare i { font-style: normal; color: var(--cozy-mana-text); }
+.d2tip__compare i.up { color: var(--cozy-leaf); }
+.d2tip__compare i.down { color: var(--cozy-berry); }
+.d2tip__foot { display: grid; justify-items: end; gap: 1px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--loot) 45%, transparent); font-size: 11px; }
+.d2tip__foot span { display: inline-flex; align-items: center; gap: 4px; color: color-mix(in srgb, var(--loot) 60%, var(--cozy-cream)); }
 
 .vital__lv { margin-left: 4px; padding: 0 4px; font: 700 10px/1.4 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); }
 
@@ -3510,3 +3568,10 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .ks__totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font: 13px var(--font-pixel); }
 .ks__totals dt { color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
 .ks__totals dd { margin: 0; text-align: right; color: var(--cozy-glow); }
+/* The whole card reads in a clean sans, like the reference: the pixel face draws 2 like 8 at card sizes. */
+.d2tip, .d2tip__title span, .d2tip__affixes, .d2tip__special, .d2tip__sockets, .d2tip__compare, .d2tip__foot, .d2tip__line {
+  font-family: var(--cozy-font-read); font-size: 12px; letter-spacing: 0; }
+.d2tip__affixes li, .d2tip__compare i { font-weight: 600; }
+.d2tip__range { font-family: var(--cozy-font-read); }
+.d2tip__title b { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; letter-spacing: .01em; }
+.d2tip__headline { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; }

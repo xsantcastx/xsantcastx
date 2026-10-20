@@ -7,6 +7,7 @@
  * the fight (td-mobs.ts) carries out exactly this, so the two can never disagree.
  */
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
+import type { ItemStats } from '../../shared/rpg/item.model';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
@@ -100,6 +101,73 @@ export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0,
 }
 /** Mana back per second. */
 export const MANA_REGEN = 3;
+
+/** Worn-total caps (docs/design/loot-and-combat.md §3): they bound the fight, never the roll. */
+export const GEAR_CAPS = { spellDamage: 150, castSpeed: 40, critChance: 40, moveSpeed: 40 } as const;
+/** A crit hits this many times as hard. */
+export const CRIT_MULT = 1.75;
+
+/** The share of a blow Defense turns aside at this level: D ÷ (D + 40 + 6 × level). */
+export function defenseReduction(defense: number, level: number): number {
+  const d = Math.max(0, defense || 0);
+  return d / (d + 40 + 6 * Math.max(1, Math.floor(level)));
+}
+
+export interface FightStats {
+  maxHp: number;
+  maxMana: number;
+  /** Spell power multiplier: the level's, Spirit's and worn Spell Damage %. */
+  power: number;
+  /** Mana back per second. */
+  regen: number;
+  /** Agility's quicker staff (fraction). */
+  haste: number;
+  /** Faster on foot: Agility + worn Movement Speed, together capped at 40%. */
+  moveHaste: number;
+  /** Spell cooldowns and the bolt's pace are divided by 1 + this. */
+  castSpeed: number;
+  /** Chance (0..1) a hit crits ×1.75. */
+  crit: number;
+  defense: number;
+  /** Life back per second, always. */
+  lifeRegen: number;
+}
+
+/**
+ * The worn gear's combat affixes, read key by key off the inventory's equipped totals — this is the fight's read
+ * of each stat (scripts/check-meaning.js counts `equippedTotals.<key>` as a live stat).
+ */
+export function wornCombat(inventory: { readonly equippedTotals: Required<ItemStats> }): Partial<ItemStats> {
+  return {
+    life: inventory.equippedTotals.life,
+    mana: inventory.equippedTotals.mana,
+    defense: inventory.equippedTotals.defense,
+    spellDamage: inventory.equippedTotals.spellDamage,
+    castSpeed: inventory.equippedTotals.castSpeed,
+    moveSpeed: inventory.equippedTotals.moveSpeed,
+    critChance: inventory.equippedTotals.critChance,
+    lifeRegen: inventory.equippedTotals.lifeRegen,
+    manaRegen: inventory.equippedTotals.manaRegen,
+  };
+}
+
+/** The level and attributes (levelStats) with the worn gear totals on top. */
+export function fightStats(level: number, stats?: KeeperStats, gear: Partial<ItemStats> = {}): FightStats {
+  const base = levelStats(level, stats);
+  const g = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 0);
+  return {
+    maxHp: base.maxHp + Math.round(g(gear.life)),
+    maxMana: base.maxMana + Math.round(g(gear.mana)),
+    power: base.power * (1 + Math.min(GEAR_CAPS.spellDamage, g(gear.spellDamage)) / 100),
+    regen: base.regen + g(gear.manaRegen),
+    haste: base.haste,
+    moveHaste: Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + g(gear.moveSpeed) / 100),
+    castSpeed: Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) / 100,
+    crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
+    defense: g(gear.defense),
+    lifeRegen: g(gear.lifeRegen),
+  };
+}
 
 /** The default bar (keys 1–4) and aura for a class. */
 export function defaultBar(v: Vocation): SkillId[] { return CLASS_SKILLS[v].filter(id => SKILLS[id].kind === 'active').slice(0, 4); }

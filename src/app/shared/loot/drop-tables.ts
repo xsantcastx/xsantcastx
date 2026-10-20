@@ -47,7 +47,7 @@ export interface LootContext {
 }
 
 export type LootDrop =
-  | { kind: 'item'; definitionId: string; rarity: LootTier; unique: boolean; name: string }
+  | { kind: 'item'; definitionId: string; rarity: LootTier; unique: boolean; name: string; /** Item level: the monster's level where it fell. */ level: number }
   | { kind: 'rune'; runeId: string; rarity: LootTier; name: string };
 
 /** Item rolls per kill, and each roll's chance, by rank. */
@@ -205,12 +205,12 @@ export function rollCreatureLoot(ctx: LootContext, rng: () => number): LootDrop[
     const named = uniquesAt(rarity);
     if (named.length && rng() < Math.min(0.5, UNIQUE_SHARE * uniqueBoost)) {
       const u = pick(named, rng);
-      out.push({ kind: 'item', definitionId: u.id, rarity: u.rarity, unique: true, name: u.name });
+      out.push({ kind: 'item', definitionId: u.id, rarity: u.rarity, unique: true, name: u.name, level: ctx.level });
       continue;
     }
     if (!DROP_POOL.length) continue;
     const def = pick(DROP_POOL, rng);
-    out.push({ kind: 'item', definitionId: def.id, rarity, unique: false, name: def.name });
+    out.push({ kind: 'item', definitionId: def.id, rarity, unique: false, name: def.name, level: ctx.level });
   }
   if (rng() < Math.min(1, RUNE_CHANCE[ctx.rank] * diff.itemChance)) {
     const t = rollRuneTier(ctx.level, ctx.tier, rng);
@@ -239,9 +239,9 @@ export function expectedDropsPerHour(ctx: LootContext, killsPerHour: number): Re
 
 /** The engine's drop-table row for a rolled drop (world.model DropEntry 'item' / 'rune'). */
 export function lootEntry(drop: LootDrop, id: string):
-  { id: string; kind: 'item'; definitionId: string; rarity: LootTier; unique: boolean; label: string }
+  { id: string; kind: 'item'; definitionId: string; rarity: LootTier; unique: boolean; label: string; level: number }
   | { id: string; kind: 'rune'; rune: string; rarity: LootTier; label: string } {
   return drop.kind === 'item'
-    ? { id, kind: 'item', definitionId: drop.definitionId, rarity: drop.rarity, unique: drop.unique, label: drop.name }
+    ? { id, kind: 'item', definitionId: drop.definitionId, rarity: drop.rarity, unique: drop.unique, label: drop.name, level: drop.level }
     : { id, kind: 'rune', rune: drop.runeId, rarity: drop.rarity, label: drop.name };
 }

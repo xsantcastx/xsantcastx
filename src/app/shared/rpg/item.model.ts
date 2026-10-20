@@ -117,9 +117,37 @@ export interface ItemStats {
    * when it exists, is the second consumer.
    */
   ward?: number;
+  // ── The combat affixes (docs/design/loot-and-combat.md §3) ───────────────
+  // Rolled at mint from the slot's pool (item-affixes.ts) and read by the
+  // top-down fight through `equippedTotals` (td-engine setKeeperBuild).
+  /** Flat max life. */
+  life?: number;
+  /** Flat max mana. */
+  mana?: number;
+  /** Armour: a blow is cut by Defense ÷ (Defense + 40 + 6×level). */
+  defense?: number;
+  /** % more damage on every spell and the staff bolt (worn cap 150). */
+  spellDamage?: number;
+  /** % shorter spell cooldowns and bolt interval (worn cap 40). */
+  castSpeed?: number;
+  /** % faster on foot — feet only (cap 40 with Agility). */
+  moveSpeed?: number;
+  /** % chance a hit crits ×1.75 (worn cap 40). */
+  critChance?: number;
+  /** Life back each second. */
+  lifeRegen?: number;
+  /** Mana back each second. */
+  manaRegen?: number;
 }
 
 export const ITEM_STAT_KEYS: (keyof ItemStats)[] = [
+  'goldPerSec', 'magicFind', 'xpBonus', 'strikePower', 'ward',
+  'life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
+];
+
+/** The five stats that predate the combat affixes. New mints roll only magicFind / xpBonus of these. */
+export type LegacyStatKey = 'goldPerSec' | 'magicFind' | 'xpBonus' | 'strikePower' | 'ward';
+export const LEGACY_STAT_KEYS: readonly LegacyStatKey[] = [
   'goldPerSec', 'magicFind', 'xpBonus', 'strikePower', 'ward',
 ];
 
@@ -130,6 +158,15 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   xpBonus: 'XP',
   strikePower: 'Strike',
   ward: 'Ward',
+  life: 'Life',
+  mana: 'Mana',
+  defense: 'Defense',
+  spellDamage: 'Spell Damage',
+  castSpeed: 'Cast Speed',
+  moveSpeed: 'Movement Speed',
+  critChance: 'Critical Chance',
+  lifeRegen: 'Life Regen',
+  manaRegen: 'Mana Regen',
 };
 
 /** True for the stats written as a percentage. */
@@ -139,6 +176,15 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   xpBonus: true,
   strikePower: false,
   ward: false,
+  life: false,
+  mana: false,
+  defense: false,
+  spellDamage: true,
+  castSpeed: true,
+  moveSpeed: true,
+  critChance: true,
+  lifeRegen: false,
+  manaRegen: false,
 };
 
 /**
@@ -191,6 +237,11 @@ export interface GameItem {
    * inventing a percentage that cannot be recovered from a tempered instance.
    */
   rollQuality?: Partial<Record<keyof ItemStats, number>>;
+  /**
+   * Where it dropped: the monster's level (or the shop / Forge's own). Sets the
+   * affix ranges (item-affixes.ts). Absent on items minted before affixes.
+   */
+  itemLevel?: number;
   /** Gold this pays if sold. Zero for anything soulbound. */
   sellValue: number;
   /**
@@ -729,6 +780,7 @@ export function mintCharm(
 export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   const total: Required<ItemStats> = {
     goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
+    life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0,
   };
   for (const block of blocks) {
     for (const key of ITEM_STAT_KEYS) {

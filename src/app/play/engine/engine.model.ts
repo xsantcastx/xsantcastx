@@ -131,7 +131,7 @@ export interface EngineState {
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
 /** A rolled gear / rune drop, as rollLoot hands it over (world.model DropEntry 'item' | 'rune', minus the id). */
 export type LootRow =
-  | { kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean }
+  | { kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean; level?: number }
   | { kind: 'rune'; rune: string; rarity: LootRarity; label: string };
 /** A world sound (EngineOptions.onSfx). */
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
@@ -188,7 +188,7 @@ export interface EngineOptions {
    * host mints the item (its roll frozen at mint) or grants the rune. False
    * leaves the drop on the ground (a full satchel).
    */
-  onLoot?: (loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string }) => boolean | void;
+  onLoot?: (loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }) => boolean | void;
   /**
    * What a kill drops on top of its area's table (shared/loot/drop-tables.ts
    * via LootService.rollLoot). Only asked while combat rules are set. Rows are

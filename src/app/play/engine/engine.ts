@@ -153,7 +153,7 @@ interface Drop {
   /** Presentation, fixed at spill time so the render allocates nothing: beam colour/height, hover caption and its measured width. */
   rarity?: LootRarity; color: string; beam: number; caption: string; captionW: number;
   /** A gear or rune drop (shared/loot/drop-tables.ts): minted / granted by the host at pickup. */
-  item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string;
+  item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string;
   /** The corpse run's purse (setFallenPurse): walking over it asks the host (onPurse). */
   purse?: boolean;
   /** The label plate, world px, written each frame it is drawn (the tap target). w = 0: not drawn. */
@@ -3810,7 +3810,7 @@ export class SeamworksEngine {
       } else {
         const gear = entry.kind === 'item';
         this.drops.push({ ...base, coins: 0, ore: 0, art: gear ? entry.definitionId : `rune-${entry.rune}`, label: entry.label, short: entry.label,
-          ...(gear ? { item: { definitionId: entry.definitionId, rarity: entry.rarity, unique: !!entry.unique } } : { rune: entry.rune }),
+          ...(gear ? { item: { definitionId: entry.definitionId, rarity: entry.rarity, unique: !!entry.unique, level: entry.level } } : { rune: entry.rune }),
           rarity: entry.rarity, color: beamColor(entry.rarity, false), beam: beamHeight(entry.rarity, false), caption: entry.label });
         names.push(entry.label);
         if (gear && entry.unique && !unique) { unique = true; loudest = entry.rarity; loudName = entry.label; continue; }

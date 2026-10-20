@@ -11,7 +11,9 @@ describe('item definition rolls', () => {
     expect(b.goldPerSec).toBeGreaterThan(a.goldPerSec ?? 0);
     const first = mintEquipment('eclipse-longblade', 'rare', () => 0, '2026-08-01T00:00:00.000Z', 'a');
     const second = mintEquipment('eclipse-longblade', 'rare', () => 1, '2026-08-01T00:00:00.000Z', 'b');
-    expect(first?.stats.goldPerSec).not.toBe(second?.stats.goldPerSec);
+    // New mints roll the slot's implicit (Spell Damage on a weapon), not Gold/sec (§3).
+    expect(first?.stats.goldPerSec).toBeUndefined();
+    expect(first?.stats.spellDamage).not.toBe(second?.stats.spellDamage);
     expect(first?.definitionId).toBe('eclipse-longblade');
   });
 
