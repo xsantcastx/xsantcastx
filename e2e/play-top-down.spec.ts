@@ -237,6 +237,86 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Molten Deep\'s lower floors: past the Tyrant to the Slag Rivers, the Glass Foundry and the Heart of the Deep, and back up', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the molten deep/i, /scorched throat/i);
+  await go(/stairs down/i, /glass halls/i);
+  await go(/stairs down/i, /caldera/i);
+  // The stair down lies past the Tyrant's ring, south; the Map sets the Keeper on it (no walk past the boss).
+  await go(/stairs down/i, /slag rivers/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-4.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /glass foundry/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-5.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /heart of the deep/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-6.jpg', type: 'jpeg', quality: 72 });
+  // (No walk into the cavern: the Cinder Sovereign would fight a level-1 Keeper, and a test never rides on a fight.)
+  await go(/stairs up/i, /glass foundry/i);
+  await go(/stairs up/i, /slag rivers/i);
+  await go(/stairs up/i, /caldera/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('the Forge of the Four in the Obsidian Badlands: in by its gate, down to the First Anvil, and back out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the forge of the four/i, /ash gate/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/forge-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /four smithies/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/forge-2.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /first anvil/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/forge-3.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /four smithies/i);
+  await go(/stairs up/i, /ash gate/i);
+  await go(/forge gate/i, /^(The Forge of the Four|The Obsidian Badlands)$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/forge-gate.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('a ship from Cinderport\'s pier back to Ember Isle', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  // Into Cinderport by its tavern door and out again, so the Keeper stands in the town.
+  await go(/the salted ember/i, /^The Salted Ember$/);
+  await go(/^door/i, /^Cinderport$/);
+  // Walk east along the street to the pier's head, then down the planks to the ship, for the picture.
+  const T = 16, pierX = (92 + 15) * T + T / 2, pierY = (34 + 14) * T + T;
+  const step = async (key: string) => { await page.keyboard.down(key); await page.waitForTimeout(70); await page.keyboard.up(key); await page.waitForTimeout(40); };
+  for (let i = 0; i < 120 && Math.abs(await px(page) - pierX) > 5; i++) await step(await px(page) < pierX ? 'd' : 'a');
+  for (let i = 0; i < 120 && await py(page) < pierY; i++) await step('s');
+  expect(await py(page)).toBeGreaterThanOrEqual(pierY);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/cinderport-ship.jpg', type: 'jpeg', quality: 72 });
+  await go(/cinderport ship/i, /ember harbour/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone Hall, and back out', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

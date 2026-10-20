@@ -7,7 +7,7 @@ import type { StationDef } from '../world/world.model';
 import type { TdMap } from './seamworks-square';
 
 export type Region = '~' | ',' | '.' | 'f' | 'F' | 'h' | 'm' | 'v' | 'l' | 'T';
-export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard';
+export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard' | 'forge';
 
 export interface ContinentPlace { kind: PlaceKind; c: number; r: number; name: string }
 /** A way on from a place: a cave mouth into a hand-drawn level, a ship to another continent. */
@@ -42,4 +42,10 @@ export interface ContinentDef {
   villages?: readonly ContinentVillage[];
 }
 
-export interface ContinentVillage { name: string; c: number; r: number; build: () => TdMap }
+export interface ContinentVillage {
+  name: string; c: number; r: number; build: () => TdMap;
+  /** Ways on from the village itself (a ship from its own pier), at tile (c, r) of the village. */
+  ways?: readonly VillageWay[];
+}
+/** A village's own way on: like a place's (ContinentWay), but standing at a tile of the village. */
+export interface VillageWay { station: StationDef; c: number; r: number; to: string; arrive: string; ship?: boolean }
