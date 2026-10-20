@@ -583,6 +583,24 @@ describe('Forge Thralls', () => {
   });
 });
 
+describe('the Bestiary blob', () => {
+  const entry = SYNCED_BLOBS.find(b => b.key === 'eclipse-bestiary-v1')!;
+  const merge = (r: unknown, l: unknown) => (entry.merge ?? mergeDeep)(r, l) as { version: number; kills: Record<string, number> };
+
+  it('keeps the most kills of each creature, whichever device signs in first', () => {
+    const a = { version: 1, kills: { 'ash-wolf': 12, 'rivet-maw': 1 } };
+    const b = { version: 1, kills: { 'ash-wolf': 3, 'cinder-imp': 7 } };
+    const want = { version: 1, kills: { 'ash-wolf': 12, 'rivet-maw': 1, 'cinder-imp': 7 } };
+    expect(merge(a, b)).toEqual(want);
+    expect(merge(b, a)).toEqual(want);
+  });
+
+  it('survives a missing side', () => {
+    expect(merge(null, { version: 1, kills: { 'ash-wolf': 2 } }).kills['ash-wolf']).toBe(2);
+    expect(merge({ version: 1, kills: { 'ash-wolf': 2 } }, null).kills['ash-wolf']).toBe(2);
+  });
+});
+
 describe('the registry', () => {
   it('files every blob under a unique document path', () => {
     const paths = SYNCED_BLOBS.map(b => `${b.collection}/${b.doc}`);
@@ -615,6 +633,7 @@ describe('the registry', () => {
       'easter-eggs-dates',
       'easter-eggs-found',
       'eclipse-arena-scores',
+      'eclipse-bestiary-v1',
       'eclipse-combo',
       'eclipse-idle',
       'eclipse-npc',
