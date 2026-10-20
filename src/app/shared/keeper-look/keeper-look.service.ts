@@ -44,10 +44,10 @@ export class KeeperLookService {
   }
 
   /** Spend one of the level's points on an attribute (refused when none is left). */
-  spendPoint(attr: Attribute, level: number, at = Date.now()): boolean {
+  spendPoint(attr: Attribute, level: number, at = Date.now(), earned?: number): boolean {
     this.hydrate();
     const cur = this.subject.value;
-    if (pointsLeft(level, cur.stats) <= 0) return false;
+    if (pointsLeft(level, cur.stats, earned) <= 0) return false;
     this.save(coerceLook({ ...cur, stats: { ...cur.stats, [attr]: cur.stats[attr] + 1 }, updatedAt: Math.max(at, cur.updatedAt + 1) }));
     return true;
   }

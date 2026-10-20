@@ -45,6 +45,8 @@ Built 2026-10-15: **World clock** (`docs/handoff/world-clock.md`): one in-game c
 
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
+Built 2026-10-21: **Leveling to 10,000** (`docs/handoff/leveling.md`, design `docs/design/leveling.md`): the Keeper's own level curve fed by Hunting XP (10 in the first hour, 50 in ~16 h; never a level lost on an old save), bounded stats past 100, 28 milestones (titles, portrait frames, passives, attribute and skill-point batches, one-time Gold and gear), the level-up fanfare (banner listing exactly what you got, a light pillar, the chime, the badge hop) and a Milestones tab in the sheet. Skill points exported for the Warlock skill tree (`shared/keeper-look/skill-points.ts`). Next: content past level ~34 (new continents), titles on the in-world nameplate.
+
 ## Milestones
 
 | Milestone | Player gets | Status |
