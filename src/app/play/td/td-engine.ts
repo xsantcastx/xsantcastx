@@ -43,7 +43,7 @@ import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
-const FOOT = { w: 8, h: 4 };   // the Keeper's collision box at the feet (art px)
+const FOOT = { w: 6, h: 3 };   // the Keeper's collision box at the feet (art px): small, so doorways and passages never catch
 const FOLK = 16;               // townsfolk strolling the square (the references' busy plaza)
 const FOLK_SPEED = 30;         // art px / s: a stroll, under half the Keeper's pace
 
@@ -421,8 +421,15 @@ export class TopDownEngine {
   }
 
   private tryMove(dx: number, dy: number): void {
-    const nx = this.player.x + dx, ny = this.player.y + dy;
-    if (this.free(nx, ny)) { this.player.x = nx; this.player.y = ny; }
+    const p = this.player, nx = p.x + dx, ny = p.y + dy;
+    if (this.free(nx, ny)) { p.x = nx; p.y = ny; return; }
+    // Blocked: slide round the corner (owner 2026-10-20: "getting stuck in places"). If a small sidestep along the
+    // other axis would clear the way, take a step of it now, so the Keeper glides past an edge instead of stopping.
+    const step = Math.max(Math.abs(dx), Math.abs(dy));
+    for (const off of [2, 4, 6, 8]) for (const side of [-1, 1]) {
+      if (dx && !dy && this.free(nx, p.y + side * off)) { const move = side * Math.min(step, off); if (this.free(p.x, p.y + move)) { p.y += move; return; } }
+      if (dy && !dx && this.free(p.x + side * off, ny)) { const move = side * Math.min(step, off); if (this.free(p.x + move, p.y)) { p.x += move; return; } }
+    }
   }
   private free(x: number, y: number): boolean {
     for (const [px, py] of [[x - FOOT.w / 2, y - FOOT.h], [x + FOOT.w / 2, y - FOOT.h], [x - FOOT.w / 2, y - 1], [x + FOOT.w / 2, y - 1]]) {

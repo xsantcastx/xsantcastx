@@ -59,6 +59,27 @@ export interface TdMapDef {
 
 const T = TILE;
 
+/**
+ * Roomier passages (owner 2026-10-20: "the caves … I'm getting stuck, we need more space"): wherever a way is one tile
+ * wide between rock, the rock beside it opens, twice over, so every passage drawn as one tile walks as three. Only
+ * rock is opened (never the map's outer edge); everything drawn stays where it was drawn.
+ */
+export function widen(rows: readonly string[]): string[] {
+  const w = Math.max(...rows.map(r => r.length));
+  const g = rows.map(r => r.padEnd(w, '#').split(''));
+  const h = g.length, rock = (c: number, r: number) => g[r]?.[c] === '#';
+  for (let pass = 0; pass < 2; pass++) {
+    const open: [number, number][] = [];
+    for (let r = 1; r < h - 1; r++) for (let c = 1; c < w - 1; c++) {
+      if (g[r][c] === '#') continue;
+      if (rock(c, r - 1) && rock(c, r + 1)) open.push(r + 1 < h - 1 ? [c, r + 1] : [c, r - 1]);
+      if (rock(c - 1, r) && rock(c + 1, r)) open.push(c + 1 < w - 1 ? [c + 1, r] : [c - 1, r]);
+    }
+    for (const [c, r] of open) if (r > 0 && r < h - 1 && c > 0 && c < w - 1 && g[r][c] === '#') g[r][c] = '.';
+  }
+  return g.map(row => row.join(''));
+}
+
 /** A level made from a hand-made map. */
 export class HandLevel implements TdLevel {
   readonly id: string;
@@ -74,9 +95,10 @@ export class HandLevel implements TdLevel {
 
   constructor(private readonly def: TdMapDef) {
     this.id = def.id; this.dark = def.dark;
-    this.rows = def.rows.length;
-    this.cols = Math.max(...def.rows.map(r => r.length));
-    def.rows.forEach((line, r) => {
+    const drawn = widen(def.rows);
+    this.rows = drawn.length;
+    this.cols = Math.max(...drawn.map(r => r.length));
+    drawn.forEach((line, r) => {
       for (let c = 0; c < this.cols; c++) {
         const e = def.legend[line[c] ?? ' '] ?? { ground: def.outside };
         this.grid[r * this.cols + c] = e.ground;
