@@ -714,6 +714,34 @@ export function caveMouth(): Sprite {
   });
 }
 
+/** The Ashen Crypt's door: a basalt mausoleum front, steps going down into the dark, two violet grave-lights. */
+export function cryptDoor(): Sprite {
+  return cached('crypt-door', () => {
+    const W = 40, H = 36, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 4, 10, 32, 26, PAL.basalt[1]); rect(c, 4, 10, 32, 2, PAL.basalt[3]); rect(c, 2, 6, 36, 5, PAL.basalt[2]); rect(c, 2, 6, 36, 1, PAL.basalt[3]);
+    rect(c, 10, 2, 20, 5, PAL.basalt[2]); rect(c, 18, 0, 4, 3, PAL.stone[1]);
+    rect(c, 13, 15, 14, 21, '#120a0e'); rect(c, 15, 13, 10, 3, '#120a0e');
+    for (let i = 0; i < 4; i++) rect(c, 14 + i, 20 + i * 4, 12 - i * 2, 2, i % 2 ? PAL.stone[2] : PAL.stone[0]);
+    rect(c, 6, 14, 3, 22, PAL.stone[2]); rect(c, 31, 14, 3, 22, PAL.stone[2]); rect(c, 6, 14, 1, 22, PAL.stone[3]);
+    rect(c, 17, 3, 6, 3, '#e8e1cf'); rect(c, 18, 4, 1, 1, '#3a2a2a'); rect(c, 21, 4, 1, 1, '#3a2a2a');
+    rect(c, 0, 22, 4, 8, PAL.basalt[2]); rect(c, 1, 19, 2, 3, '#b06bff'); rect(c, 36, 22, 4, 8, PAL.basalt[2]); rect(c, 37, 19, 2, 3, '#b06bff');
+    return { img: outline(img), ax: 20, ay: H, lights: [{ x: -18, y: -16, r: 16, warm: false }, { x: 18, y: -16, r: 16, warm: false }] };
+  });
+}
+/** A worn gravestone, a little askew. */
+export function gravestone(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`grave-${v}`, () => {
+    const W = 12, H = 15, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    if (v === 2) { rect(c, 5, 0, 2, 13, PAL.stone[2]); rect(c, 2, 3, 8, 2, PAL.stone[2]); rect(c, 5, 0, 1, 13, PAL.stone[3]); }
+    else { rect(c, 2, 2 + v, 8, 11 - v, PAL.stone[1]); rect(c, 3, 1 + v, 6, 1, PAL.stone[1]); rect(c, 2, 2 + v, 2, 11 - v, PAL.stone[3]); rect(c, 4, 5 + v, 4, 1, PAL.stone[2]); rect(c, 4, 7 + v, 4, 1, PAL.stone[2]); }
+    rect(c, 0, 13, 12, 2, PAL.dirt[2]); rect(c, 1, 13, 2, 1, PAL.leaf[2]);
+    return { img: outline(img), ax: 6, ay: H };
+  });
+}
+
 /** Stairs cut down into the rock (to the floor below). */
 export function stairsDown(): Sprite {
   return cached('stairs-down', () => {

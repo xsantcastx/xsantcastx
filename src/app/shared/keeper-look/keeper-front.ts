@@ -6,7 +6,7 @@
  * baked once into one small sheet per Keeper: 2 facings × 4 frames (idle,
  * idle breath, step left, step right). Never a canvas per frame (play-memory).
  */
-import { OUTLINE, type KeeperPainter, type Palette } from './keeper-paint';
+import { OUTLINE, mix, type KeeperPainter, type Palette } from './keeper-paint';
 import { RARITY_TRIM, STYLE_COLORS, type GearPiece, type KeeperGear } from './keeper-gear';
 
 export type Facing = 'down' | 'up';
@@ -36,11 +36,17 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
   const lLift = frame === 2 ? 2 : 0, rLift = frame === 3 ? 2 : 0;
   px(c, x + 4, top + 25, 3, 6 - lLift, p.trousers); px(c, x + 7, top + 25, 3, 6 - rLift, p.trousers);
   px(c, x + 3, top + 31 - lLift, 4, 2, '#3a2a24'); px(c, x + 7, top + 31 - rLift, 4, 2, '#3a2a24');
+  // Shading (owner 2026-10-20: "the detail of characters"): light from the top-left, shade down the right of each limb.
+  px(c, x + 6, top + 25, 1, 6 - lLift, p.trousersLo); px(c, x + 9, top + 25, 1, 6 - rLift, p.trousersLo);
+  px(c, x + 3, top + 31 - lLift, 2, 1, '#5a463c'); px(c, x + 7, top + 31 - rLift, 2, 1, '#5a463c');
   // Body (tunic) with a belt and trim.
   px(c, x + 2, top + 14, 10, 11, p.tunic);
   px(c, x + 2, top + 14, 10, 2, p.tunicHi);
   px(c, x + 2, top + 21, 10, 1, p.trim);
   px(c, x + 2, top + 23, 10, 2, p.tunicLo);
+  // The body's form: a lit left edge, a shaded right side, two folds below the belt.
+  px(c, x + 2, top + 16, 1, 5, p.tunicHi); px(c, x + 10, top + 16, 2, 5, p.tunicLo);
+  px(c, x + 4, top + 22, 1, 3, p.tunicLo); px(c, x + 9, top + 22, 1, 3, p.tunicLo);
   if (facing === 'down') px(c, x + 6, top + 15, 2, 6, p.trim);
   if (phone && facing === 'down') {
     // Both forearms bent up to the chest, the Slate between the hands, its screen lighting the face from below.
@@ -51,19 +57,29 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
   } else {
     // Arms swing with the step.
     const la = frame === 3 ? 1 : 0, ra = frame === 2 ? 1 : 0;
-    px(c, x, top + 15 + la, 2, 7, p.tunicLo); px(c, x + 12, top + 15 + ra, 2, 7, p.tunicLo);
-    px(c, x, top + 22 + la, 2, 2, p.skin); px(c, x + 12, top + 22 + ra, 2, 2, p.skin);
+    px(c, x, top + 15 + la, 2, 7, p.tunic); px(c, x + 12, top + 15 + ra, 2, 7, p.tunicLo);
+    px(c, x, top + 15 + la, 1, 6, p.tunicHi); px(c, x + 13, top + 15 + ra, 1, 7, mix(p.tunicLo, OUTLINE, .25));
+    px(c, x, top + 22 + la, 2, 2, p.skin); px(c, x + 12, top + 22 + ra, 2, 2, p.skinLo);
   }
   // Head: a big round chibi head.
   const hx = x - 1, hy = top;
   px(c, hx + 2, hy + 1, 12, 13, p.skin);
   px(c, hx + 1, hy + 3, 14, 9, p.skin);
+  // The head's roundness: a lit brow, a shaded right cheek and jaw.
+  px(c, hx + 3, hy + 2, 4, 1, p.skinHi);
+  px(c, hx + 13, hy + 4, 2, 7, p.skinLo); px(c, hx + 4, hy + 13, 9, 1, p.skinLo);
   if (staff) {
     // The undead Warlock (owner, 2026-10-20): a deep hood over the head, the face pale and hollow, eyes burning violet.
     const hood = p.tunic, hoodLo = p.tunicLo, hoodHi = p.tunicHi;
     if (facing === 'down') {
       px(c, hx + 1, hy - 1, 14, 5, hood); px(c, hx, hy + 2, 3, 11, hood); px(c, hx + 13, hy + 2, 3, 11, hood);
+      px(c, hx + 6, hy - 2, 4, 1, hood);
       px(c, hx + 3, hy - 1, 10, 1, hoodHi); px(c, hx + 3, hy + 3, 10, 1, hoodLo);
+      // The hood's depth: rim light down its left edge, shade on the right, dark folds framing the face.
+      px(c, hx, hy + 3, 1, 9, hoodHi); px(c, hx + 2, hy - 1, 1, 2, hoodHi);
+      px(c, hx + 14, hy + 3, 2, 10, hoodLo);
+      px(c, hx + 3, hy + 4, 1, 9, mix(hoodLo, OUTLINE, .45)); px(c, hx + 12, hy + 4, 1, 9, mix(hoodLo, OUTLINE, .45));
+      px(c, hx + 1, hy + 12, 3, 2, hoodLo); px(c, hx + 12, hy + 12, 3, 2, hoodLo);
       px(c, hx + 4, hy + 5, 8, 1, p.skinLo);
       if (frame === 1) { px(c, hx + 4, hy + 8, 3, 1, '#b06bff'); px(c, hx + 9, hy + 8, 3, 1, '#b06bff'); }
       else { px(c, hx + 4, hy + 7, 3, 2, '#2a1a2e'); px(c, hx + 9, hy + 7, 3, 2, '#2a1a2e'); px(c, hx + 5, hy + 7, 2, 2, '#b06bff'); px(c, hx + 10, hy + 7, 2, 2, '#b06bff'); px(c, hx + 5, hy + 7, 1, 1, '#f0e0ff'); px(c, hx + 10, hy + 7, 1, 1, '#f0e0ff'); }
@@ -74,13 +90,16 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
       px(c, x + 5, top + 14, 4, 2, p.trim);
     } else {
       px(c, hx + 1, hy - 1, 14, 14, hood); px(c, hx + 3, hy - 1, 10, 1, hoodHi); px(c, hx + 2, hy + 10, 12, 3, hoodLo);
-      px(c, hx + 7, hy + 1, 2, 10, hoodLo);
+      px(c, hx + 7, hy + 1, 2, 10, hoodLo); px(c, hx + 6, hy - 2, 4, 1, hood);
+      px(c, hx + 1, hy + 1, 1, 9, hoodHi); px(c, hx + 13, hy + 1, 2, 10, hoodLo);
     }
   } else if (facing === 'down') {
     // Hair: a dome with a fringe; sides to the ears.
     px(c, hx + 2, hy, 12, 4, p.hair); px(c, hx + 1, hy + 2, 2, 7, p.hair); px(c, hx + 13, hy + 2, 2, 7, p.hair);
     px(c, hx + 3, hy + 4, 3, 2, p.hair); px(c, hx + 9, hy + 4, 4, 2, p.hair);
     px(c, hx + 4, hy, 6, 1, p.hairHi);
+    // Hair's volume: a shine on the crown, the right side in shade.
+    px(c, hx + 3, hy + 1, 3, 1, p.hairHi); px(c, hx + 13, hy + 2, 2, 7, p.hairLo); px(c, hx + 10, hy + 1, 3, 1, p.hairLo);
     // Eyes (2×3 with a highlight), blush, a small mouth; a blink on the breath frame.
     if (frame === 1) { px(c, hx + 4, hy + 8, 3, 1, OUTLINE); px(c, hx + 9, hy + 8, 3, 1, OUTLINE); }
     else if (phone) {
@@ -110,6 +129,8 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
     // The Warlock's staff: ashwood shaft, a violet cage round an ember orb. In the right hand; raised high to cast.
     const sx = facing === 'down' ? x + 13 : x - 1, lift = cast ? -9 : 0, by = top + 4 + lift;
     px(c, sx, by + 4, 2, 26 + (cast ? 0 : 0) - (cast ? 4 : 0), '#6e4526'); px(c, sx, by + 4, 1, 22, '#a06a3b');
+    // Bands of bone round the shaft, and the cage's lit edge.
+    px(c, sx, by + 9, 2, 1, '#e9e4d8'); px(c, sx, by + 15, 2, 1, '#e9e4d8'); px(c, sx - 2, by, 1, 5, '#6b3aa0');
     px(c, sx - 2, by, 6, 5, '#3b2140'); px(c, sx - 1, by + 1, 4, 3, cast ? '#ffd25a' : '#b06bff'); px(c, sx, by + 1, 2, 2, cast ? '#fff6c8' : '#ffb347');
     if (cast) { px(c, sx - 4, by + 2, 2, 1, '#ffd25a'); px(c, sx + 4, by + 2, 2, 1, '#ffd25a'); px(c, sx + 1, by - 3, 1, 2, '#ffd25a'); }
     // The hand on the shaft.

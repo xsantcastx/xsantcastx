@@ -237,6 +237,29 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone Hall, and back out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the ashen crypt/i, /ossuary/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /bone hall/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-2.jpg', type: 'jpeg', quality: 72 });
+  // (No walk into the hall: the Ashbone Dragon would fight a level-1 Keeper there, and a test never rides on a fight.)
+  await go(/stairs up/i, /ossuary/i);
+  await go(/crypt door/i, /^(The Ashen Bastion|The Ashen Crypt)$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-door.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to walk into and a floor above or below', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -260,6 +283,53 @@ test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to wa
   await go(/^door/i, /^Ashgrove$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/ashgrove.jpg', type: 'jpeg', quality: 72 });
   expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('through every door and stair the Keeper lands free and can walk away (never set down inside a wall)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  const walks = async (where: string) => {
+    await page.locator('canvas').first().focus();
+    // Each key on its own: how far that press carried the Keeper (they nearly cancel out as a whole).
+    let moved = 0;
+    for (const key of ['ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowDown']) {
+      const x0 = await px(page), y0 = await py(page);
+      await page.keyboard.down(key); await page.waitForTimeout(250); await page.keyboard.up(key);
+      moved = Math.max(moved, Math.abs((await px(page)) - x0) + Math.abs((await py(page)) - y0));
+    }
+    expect(moved, `${where}: the Keeper could not move`).toBeGreaterThan(4);
+  };
+  await go(/the ember inn/i, /^The Ember Inn$/); await walks('inn tavern');
+  await go(/stairs up/i, /upstairs/i); await walks('inn upstairs');
+  await go(/stairs down/i, /^The Ember Inn$/); await walks('inn tavern from above');
+  await go(/^door/i, /basalt seamworks/i); await walks('square from the inn');
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the pyre spire/i, /watch hall/i); await walks('spire hall');
+  await go(/stairs up/i, /study/i); await walks('spire study');
+  await go(/stairs up/i, /lookout/i); await walks('spire lookout');
+  await go(/stairs down/i, /study/i); await walks('spire study from above');
+});
+
+test('a reload resumes where the Keeper stood — another continent, inside a building — never back in the square', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the pyre spire/i, /watch hall/i);
+  await page.waitForTimeout(2600);   // the place is saved every two seconds
+  await page.reload();
+  await expect(canvas(page)).toHaveAttribute('data-area', /watch hall/i, { timeout: 20000 });
 });
 
 test('without the gate the side view is unchanged', async ({ page }) => {

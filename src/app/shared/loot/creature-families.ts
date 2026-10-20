@@ -17,7 +17,7 @@ import type { DamageType, Resists } from './damage.model';
 
 /** How a creature fights. Only 'melee' has its own engine behaviour today; see the design doc's gaps. */
 export type CreatureRole = 'melee' | 'ranged' | 'healer' | 'shielder' | 'summoner' | 'exploder';
-export type CreatureFamily = 'maw' | 'beast' | 'ember' | 'shade' | 'graft' | 'prism' | 'orrery' | 'wild';
+export type CreatureFamily = 'maw' | 'beast' | 'ember' | 'shade' | 'graft' | 'prism' | 'orrery' | 'bone' | 'orc' | 'wild';
 
 export interface FamilyDef {
   id: CreatureFamily;
@@ -42,6 +42,10 @@ export const FAMILIES: Readonly<Record<CreatureFamily, FamilyDef>> = {
   prism: { id: 'prism', resists: { arcane: 60, lightning: 25, physical: -10 }, hits: 'lightning' },
   // The Orrery Wells: brass and star-iron; cold-hardened, sparks race through it.
   orrery: { id: 'orrery', resists: { cold: 40, physical: 15, lightning: -20 }, hits: 'arcane' },
+  // The Ashen Bastion's dead: dry bone and cinder; cold cannot chill what has no blood, fire cracks it.
+  bone: { id: 'bone', resists: { cold: 40, fire: -20 }, hits: 'physical' },
+  // The Cinder clans of Infernal Reach: thick-hided, raised among the embers.
+  orc: { id: 'orc', resists: { fire: 20, cold: -10 }, hits: 'physical' },
   wild: { id: 'wild', resists: {}, hits: 'physical' },
 };
 
@@ -72,6 +76,16 @@ export const CREATURE_PROFILES: readonly CreatureProfile[] = [
   P('banked-ember', 'ember', 'exploder', 8),
   P('ironwood-sentinel', 'maw', 'shielder', 9, { resists: { physical: 25 } }),
   P('banked-furnace', 'ember', 'summoner', 10, { boss: true }),
+  // Infernal Reach (top-down, td-mobs.ts) — the Ashen Crypt's undead, the Cinder clans, the Molten Fields' drakes.
+  P('bone-walker', 'bone', 'melee', 6),
+  P('bone-archer', 'bone', 'ranged', 8),
+  P('ash-ghoul', 'bone', 'melee', 9, { resists: { physical: -10 } }),
+  P('cinder-wraith', 'bone', 'melee', 12, { hits: 'cold', resists: { physical: 30 } }),
+  P('cinder-orc', 'orc', 'melee', 10),
+  P('orc-firecaller', 'orc', 'ranged', 13, { hits: 'fire' }),
+  P('orc-warlord', 'orc', 'melee', 16, { resists: { physical: 15 } }),
+  P('ember-drake', 'ember', 'ranged', 18),
+  P('bone-dragon', 'bone', 'summoner', 25, { boss: true, hits: 'fire' }),
   // Verdant — the Canopy and the Root Deeps.
   P('rootglass-stag', 'beast', 'melee', 2),
   P('graftling', 'graft', 'healer', 12),

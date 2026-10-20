@@ -3,6 +3,9 @@ export interface RoomPlayer { id: string; name: string; x: number; y: number; zo
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 export interface RoomSnapshot { status: string; connected: boolean; players: RoomPlayer[]; messages: RoomMessage[]; id: string }
 
+/** The Hearth room's service (scripts/social-deployment.md). */
+export const HEARTH_URL = 'https://eclipse-hearth-773269119730.us-central1.run.app';
+
 /** The room owns only presence and chat; inventory never leaves the save gateway. */
 export class SocialRoom {
   private token = '';
@@ -13,8 +16,10 @@ export class SocialRoom {
   private updating = false;
   private lastUpdate = 0;
   private snapshot: RoomSnapshot = { status: 'Solo — join the hearth to meet other Keepers.', connected: false, players: [], messages: [], id: '' };
+  // Straight to the room's Cloud Run service: Firebase Hosting's /social rewrite buffers the event stream (nothing ever
+  // arrives through it), and the service already allows the site's origins (SOCIAL_ORIGINS; firebase.json CSP).
   private readonly endpoint = ['localhost', '127.0.0.1'].includes(location.hostname)
-    ? `${location.protocol}//${location.hostname}:4320` : '/social';
+    ? `${location.protocol}//${location.hostname}:4320` : HEARTH_URL;
   constructor(private readonly changed: (state: RoomSnapshot) => void) {}
   private publish(patch: Partial<RoomSnapshot>): void {
     this.snapshot = { ...this.snapshot, ...patch }; this.changed(this.snapshot);
