@@ -10,6 +10,32 @@
 
   <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
+  <app-station-tabs stationTabs [tabs]="tabs" [active]="tab" (activeChange)="setTab($event)" [label]="t('vendor.tabs')" />
+
+  @if (tab === 'potions') {
+  <!-- Edrin Kade's potion shelf (shared/potions): pick a potion → [− n +] Buy for N Gold. -->
+  <div stationHero class="mv-hero" data-shelf="potions">
+    <app-reward-pop [reward]="reward" (dismissed)="reward = null" />
+    <app-station-journal>
+      <app-journal-list journalList [rows]="potionRows" [selected]="potionId"
+                        [label]="t('vendor.potions.list')" (pick)="pickPotion($event)" />
+      <div journalDetail class="mv-detail">
+        <app-detail-head [art]="potionArt" [name]="potion.name" />
+        <p class="mv-hint">{{ potionDoes }} {{ t('vendor.potions.hold', { n: potionHeld }) }}</p>
+        <app-action-button
+          [label]="t('vendor.buy', { n: fmt(potion.price * potionQty) })"
+          [costs]="potionCosts"
+          [pending]="!hydrated"
+          [stepper]="true"
+          [quantity]="potionQty"
+          (quantityChange)="potionQty = $event"
+          [stepMax]="20"
+          (act)="buyPotion($event)"
+          (refused)="announce = $event" />
+      </div>
+    </app-station-journal>
+  </div>
+  } @else {
   <div stationHero class="mv-hero">
     @if (error) { <p class="mv-why" role="alert">{{ error }}</p> }
 
@@ -49,6 +75,7 @@
       </div>
     </app-station-journal>
   </div>
+  }
 
   <div stationDetails class="mv-details">
     <p class="mv-details__meta">

@@ -37,6 +37,22 @@
       }
     </div>
   }
+  <!-- Top-down: the potion belt (shared/potions): Q drinks the best Health potion held, R the best Mana potion; the count
+       on the glass, the shared cooldown sweeping back. Two buttons on phones. -->
+  @if (topDown && tdBelt.length && !panel) {
+    <div class="td-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore>
+      @for (b of tdBelt; track b.kind) {
+        <button type="button" class="td-pot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
+                (click)="drinkPotion(b.kind)" [attr.aria-label]="beltTitle(b)" [title]="beltTitle(b)">
+          @if (b.potion) { <img [src]="art(b.potion.id)" alt="" draggable="false"> }
+          @else {
+            <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="7" y="2" width="2" height="2" fill="#5a3a22"/><rect x="6" y="4" width="4" height="2" fill="#6a5a6a"/><rect x="4" y="6" width="8" height="7" fill="#3a2e3a"/><rect x="5" y="13" width="6" height="1" fill="#3a2e3a"/><rect x="5" y="7" width="1" height="3" fill="#6a5a6a"/></svg>
+          }
+          <b class="td-pot__n">{{ b.count }}</b><kbd>{{ b.key }}</kbd>
+        </button>
+      }
+    </div>
+  }
   <!-- Top-down: the menu toolbar (docs/design/ui-pass-top-heroes.md, the reference's Build · Workers · Storage row): square
        icon buttons with their names, the key on hover. -->
   @if (topDown && !panel) {

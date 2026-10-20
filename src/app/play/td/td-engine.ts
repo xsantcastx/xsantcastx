@@ -105,6 +105,8 @@ export class TopDownEngine {
   private agility = 0;
   /** Worn Life Regen: life back each second, in the fight too. */
   private lifeRegen = 0;
+  /** A potion still pouring in (potions.model.ts): life and mana left to give, over the seconds left. */
+  private sip = { hp: 0, mana: 0, t: 0 };
   private lastHurt = -99;
   private messageAge = 0;
   /** The engine's own line, as an i18n key the HUD translates (engineMessage). */
@@ -288,6 +290,22 @@ export class TopDownEngine {
     this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' ? aura as SkillId : null;
   }
   get hasted(): boolean { return this.mobs.haste > 0; }
+  /**
+   * A drink from the potion belt (the host consumed the potion; potions.model.ts potionEffect): life and mana pour in
+   * over `secs` (a gentle fill), or at once when `secs` is 0. A green sparkle rises and the amount floats up.
+   */
+  drinkPotion(heal: number, mana: number, secs: number): void {
+    const p = this.player;
+    this.mobs.effects.push({ kind: 'heal', x: p.x, y: p.y, age: 0, life: .7, dir: 1 });
+    if (heal > 0) this.mobs.floaters.push({ x: p.x - 6, y: p.y - 36, text: `+${Math.round(heal)}`, color: '#7fe08a', age: 0 });
+    if (mana > 0) this.mobs.floaters.push({ x: p.x + 6, y: p.y - 30, text: `+${Math.round(mana)}`, color: '#7fb8ff', age: 0 });
+    if (secs <= 0) { this.pour(heal, mana); return; }
+    this.sip = { hp: this.sip.hp + heal, mana: this.sip.mana + mana, t: secs };
+  }
+  private pour(heal: number, mana: number): void {
+    this.hp = Math.min(this.maxHp, this.hp + heal);
+    this.mobs.mana = Math.min(this.mobs.maxMana, this.mobs.mana + mana);
+  }
 
   private say(key: string): void { this.messageKey = key; this.message = key; this.messageAge = 0; }
 
@@ -858,6 +876,12 @@ export class TopDownEngine {
       else this.path = [];
     }
     this.mobs.update(dt);
+    // A potion pouring in: its share of what is left this frame.
+    if (this.sip.t > 0) {
+      const f = Math.min(1, dt / this.sip.t), h = this.sip.hp * f, m = this.sip.mana * f;
+      this.pour(h, m);
+      this.sip = f >= 1 ? { hp: 0, mana: 0, t: 0 } : { hp: this.sip.hp - h, mana: this.sip.mana - m, t: this.sip.t - dt };
+    }
     // Out of the fight a while: the Keeper mends.
     if (this.hp < this.maxHp && this.time - this.lastHurt > 4) this.hp = Math.min(this.maxHp, this.hp + 6 * dt);
     if (this.lifeRegen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.lifeRegen * dt);

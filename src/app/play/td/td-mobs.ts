@@ -13,6 +13,7 @@
 import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
+import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, defenseReduction, type SkillId } from './td-skills';
 
 export interface MobDef {
@@ -984,6 +985,9 @@ export class MobSystem {
       if (Math.random() >= d.chance) continue;
       this.drops.push({ id: `${id}:m${n}`, ...spot(n++), coins: 0, material: d.material, qty: d.qty, label: d.material.replace(/-/g, ' '), color: RARITY_COLOR.common, age: 0 });
     }
+    // Now and then a potion (shared/potions): better ones from stronger creatures, a Rejuvenation rarely from the deep.
+    const potion = rollPotionDrop(m.def.level, m.def.rank ?? 'normal', Math.random);
+    if (potion) this.drops.push({ id: `${id}:p`, ...spot(n++), coins: 0, material: potion.id, qty: 1, label: potion.name, color: RARITY_COLOR.common, age: 0 });
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
     try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: m.def.rank ?? 'normal', killKey: id }) ?? []; } catch { rows = []; }
