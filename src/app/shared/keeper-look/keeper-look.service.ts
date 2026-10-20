@@ -12,7 +12,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { KEEPER_LOOK_KEY, KeeperLook, cleanName, coerceLook, defaultLook, pointsLeft, type Attribute } from './keeper-look.model';
+import { KEEPER_LOOK_KEY, KeeperLook, cleanName, coerceLook, defaultLook, pointsLeft, type Attribute, type KeeperSkillTree } from './keeper-look.model';
 
 @Injectable({ providedIn: 'root' })
 export class KeeperLookService {
@@ -41,6 +41,13 @@ export class KeeperLookService {
   setLoadout(bar: readonly string[], aura: string, at = Date.now()): void {
     this.hydrate();
     this.save(coerceLook({ ...this.subject.value, bar: [...bar], aura, updatedAt: Math.max(at, this.subject.value.updatedAt + 1) }));
+  }
+
+  /** The skill trees after a rank was bought or the trees were reset (the rules live in play/td/td-tree). */
+  setTree(tree: KeeperSkillTree, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value, stamp = Math.max(at, cur.updatedAt + 1, cur.tree.at + 1);
+    this.save(coerceLook({ ...cur, tree: { ...tree, at: stamp }, updatedAt: stamp }));
   }
 
   /** Spend one of the level's points on an attribute (refused when none is left). */

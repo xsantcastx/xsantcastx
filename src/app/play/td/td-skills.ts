@@ -15,7 +15,19 @@ export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
   | 'drain-life' | 'ember-curse' | 'hellfire-nova' | 'dark-ward' | 'bone-spear' | 'raise-skeleton'
   | 'aura-embers' | 'aura-siphon'
-  | 'soul-harvest' | 'ember-bolt';
+  | 'soul-harvest' | 'ember-bolt'
+  // The trees (docs/design/skill-trees.md, owner 2026-10-21: "spells — we need to work on spell trees or something").
+  | 'cinder-rain' | 'flame-wall' | 'ember-mastery' | 'meteor'
+  | 'corpse-burst' | 'skeleton-mastery' | 'bone-armor' | 'bone-storm'
+  | 'weaken' | 'life-tap' | 'doom';
+
+/** The Warlock's three trees (D2's three tabs): fire, necromancy, curses and wards. */
+export const TREES = ['ember', 'bone', 'shadow'] as const;
+export type TreeId = typeof TREES[number];
+/** The level each tier opens at (D2: 1, 6, 12, 18, 24 …). */
+export const TIER_LEVELS: readonly number[] = [1, 6, 12, 18, 24];
+/** The most ranks a skill takes. */
+export const MAX_RANK = 20;
 
 export interface SkillDef {
   id: SkillId;
@@ -27,8 +39,16 @@ export interface SkillDef {
   /** i18n keys: the name, and the one plain line of what it does (numbers in {{}}). */
   nameKey: string;
   textKey: string;
-  /** Numbers the line quotes, so the words always match the fight. */
+  /** Numbers the line quotes at rank 1, so the words always match the fight. */
   vars: Readonly<Record<string, number>>;
+  /** What each rank above the first adds to a var (skillVars); a var not listed stays put. */
+  grow: Readonly<Record<string, number>>;
+  /** Its tree, its tier (0-based: TIER_LEVELS gives the level it needs) and its column (0–2) on the page. */
+  tree: TreeId;
+  tier: number;
+  col: number;
+  /** The skill that must hold a rank first (D2's prerequisite), or null. */
+  req: SkillId | null;
   /** The pixel icon (svg rects inside a 16×16 box). */
   icon: string;
 }
@@ -36,62 +56,138 @@ export interface SkillDef {
 const I = (rects: string) => rects;
 
 export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
+  // ── Ember: fire ──
   'ember-bolt': {
     id: 'ember-bolt', kind: 'passive', mana: 0, cd: .9, nameKey: 'skill.ember-bolt', textKey: 'skill.ember-bolt.text',
-    vars: { min: 8, max: 13, range: 7 },
+    vars: { min: 8, max: 13, range: 7 }, grow: { min: 2, max: 3 }, tree: 'ember', tier: 0, col: 0, req: null,
     icon: I('<rect x="9" y="2" width="5" height="5" fill="#ffd25a"/><rect x="7" y="5" width="5" height="4" fill="#ff8a2e"/><rect x="3" y="9" width="5" height="4" fill="#b06bff"/><rect x="1" y="12" width="3" height="3" fill="#6b3aa0"/>'),
-  },
-  'drain-life': {
-    id: 'drain-life', kind: 'active', mana: 12, cd: 4, nameKey: 'skill.drain-life', textKey: 'skill.drain-life.text',
-    vars: { min: 18, max: 26, heal: 50 },
-    icon: I('<rect x="2" y="3" width="5" height="5" fill="#e2452a"/><rect x="3" y="4" width="3" height="3" fill="#ff8a7a"/><rect x="7" y="5" width="2" height="1" fill="#b06bff"/><rect x="9" y="6" width="2" height="1" fill="#b06bff"/><rect x="10" y="8" width="5" height="5" fill="#7fe08a"/><rect x="11" y="9" width="3" height="3" fill="#e6ffe9"/>'),
-  },
-  'ember-curse': {
-    id: 'ember-curse', kind: 'active', mana: 10, cd: 6, nameKey: 'skill.ember-curse', textKey: 'skill.ember-curse.text',
-    vars: { dps: 5, secs: 8, weaken: 20 },
-    icon: I('<rect x="4" y="2" width="8" height="8" fill="#3b2140"/><rect x="5" y="4" width="2" height="2" fill="#ff6a2a"/><rect x="9" y="4" width="2" height="2" fill="#ff6a2a"/><rect x="6" y="7" width="4" height="1" fill="#ff6a2a"/><rect x="5" y="10" width="2" height="4" fill="#b06bff"/><rect x="9" y="10" width="2" height="5" fill="#b06bff"/>'),
   },
   'hellfire-nova': {
     id: 'hellfire-nova', kind: 'active', mana: 25, cd: 9, nameKey: 'skill.hellfire-nova', textKey: 'skill.hellfire-nova.text',
-    vars: { min: 20, max: 30, radius: 3 },
+    vars: { min: 20, max: 30, radius: 3 }, grow: { min: 4, max: 6, radius: .1 }, tree: 'ember', tier: 0, col: 1, req: null,
     icon: I('<rect x="6" y="2" width="4" height="3" fill="#ffd25a"/><rect x="4" y="4" width="8" height="4" fill="#ff8a2e"/><rect x="3" y="7" width="10" height="5" fill="#e2552a"/><rect x="6" y="8" width="4" height="3" fill="#ffd25a"/><rect x="2" y="12" width="12" height="2" fill="#9e2e1c"/>'),
   },
-  'dark-ward': {
-    id: 'dark-ward', kind: 'active', mana: 20, cd: 18, nameKey: 'skill.dark-ward', textKey: 'skill.dark-ward.text',
-    vars: { absorb: 40, secs: 12 },
-    icon: I('<rect x="3" y="2" width="10" height="9" fill="#6b3aa0"/><rect x="4" y="3" width="8" height="7" fill="#b06bff"/><rect x="5" y="11" width="6" height="2" fill="#6b3aa0"/><rect x="7" y="13" width="2" height="2" fill="#6b3aa0"/><rect x="6" y="5" width="4" height="3" fill="#e9d8ff"/>'),
+  'aura-embers': {
+    id: 'aura-embers', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.aura-embers', textKey: 'skill.aura-embers.text',
+    vars: { dps: 3, radius: 3 }, grow: { dps: 1, radius: .1 }, tree: 'ember', tier: 0, col: 2, req: null,
+    icon: I('<rect x="2" y="2" width="12" height="12" fill="#3b1c14"/><rect x="4" y="4" width="8" height="8" fill="#ff8a2e"/><rect x="6" y="6" width="4" height="4" fill="#ffd25a"/><rect x="1" y="7" width="1" height="2" fill="#ff8a2e"/><rect x="14" y="7" width="1" height="2" fill="#ff8a2e"/>'),
   },
+  'cinder-rain': {
+    id: 'cinder-rain', kind: 'active', mana: 18, cd: 7, nameKey: 'skill.cinder-rain', textKey: 'skill.cinder-rain.text',
+    vars: { min: 6, max: 10, radius: 2, secs: 3 }, grow: { min: 2, max: 3, radius: .05, secs: .1 }, tree: 'ember', tier: 1, col: 1, req: 'hellfire-nova',
+    icon: I('<rect x="2" y="2" width="12" height="4" fill="#3b2140"/><rect x="3" y="3" width="10" height="2" fill="#6b3aa0"/><rect x="3" y="7" width="2" height="2" fill="#ffd25a"/><rect x="8" y="8" width="2" height="2" fill="#ff8a2e"/><rect x="12" y="7" width="2" height="2" fill="#ffd25a"/><rect x="5" y="11" width="2" height="2" fill="#ff8a2e"/><rect x="10" y="12" width="2" height="2" fill="#ffd25a"/><rect x="2" y="14" width="12" height="1" fill="#9e2e1c"/>'),
+  },
+  'flame-wall': {
+    id: 'flame-wall', kind: 'active', mana: 22, cd: 10, nameKey: 'skill.flame-wall', textKey: 'skill.flame-wall.text',
+    vars: { dps: 8, length: 4, secs: 5 }, grow: { dps: 2, length: .1, secs: .2 }, tree: 'ember', tier: 2, col: 1, req: 'cinder-rain',
+    icon: I('<rect x="1" y="12" width="14" height="3" fill="#9e2e1c"/><rect x="2" y="7" width="3" height="5" fill="#e2552a"/><rect x="6" y="4" width="4" height="8" fill="#ff8a2e"/><rect x="11" y="7" width="3" height="5" fill="#e2552a"/><rect x="3" y="9" width="1" height="3" fill="#ffd25a"/><rect x="7" y="7" width="2" height="5" fill="#ffd25a"/><rect x="12" y="9" width="1" height="3" fill="#ffd25a"/><rect x="7" y="2" width="2" height="2" fill="#ff8a2e"/>'),
+  },
+  'ember-mastery': {
+    id: 'ember-mastery', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.ember-mastery', textKey: 'skill.ember-mastery.text',
+    vars: { pct: 10 }, grow: { pct: 3 }, tree: 'ember', tier: 3, col: 0, req: 'ember-bolt',
+    icon: I('<rect x="3" y="1" width="10" height="1" fill="#c8963c"/><rect x="3" y="14" width="10" height="1" fill="#c8963c"/><rect x="1" y="3" width="1" height="10" fill="#c8963c"/><rect x="14" y="3" width="1" height="10" fill="#c8963c"/><rect x="2" y="2" width="1" height="1" fill="#c8963c"/><rect x="13" y="2" width="1" height="1" fill="#c8963c"/><rect x="2" y="13" width="1" height="1" fill="#c8963c"/><rect x="13" y="13" width="1" height="1" fill="#c8963c"/><rect x="6" y="4" width="4" height="8" fill="#ff8a2e"/><rect x="5" y="7" width="6" height="5" fill="#e2552a"/><rect x="7" y="7" width="2" height="4" fill="#ffd25a"/><rect x="7" y="3" width="2" height="1" fill="#ffd25a"/>'),
+  },
+  'meteor': {
+    id: 'meteor', kind: 'active', mana: 35, cd: 12, nameKey: 'skill.meteor', textKey: 'skill.meteor.text',
+    vars: { min: 60, max: 90, radius: 2, delay: 1 }, grow: { min: 10, max: 14, radius: .05 }, tree: 'ember', tier: 4, col: 1, req: 'flame-wall',
+    icon: I('<rect x="1" y="1" width="3" height="3" fill="#ffd25a"/><rect x="3" y="3" width="3" height="3" fill="#ff8a2e"/><rect x="5" y="5" width="3" height="3" fill="#e2552a"/><rect x="7" y="7" width="7" height="7" fill="#5a3a2a"/><rect x="8" y="8" width="5" height="5" fill="#8a5a3a"/><rect x="9" y="9" width="2" height="2" fill="#ffd25a"/><rect x="7" y="7" width="1" height="1" fill="#ffd25a"/>'),
+  },
+  // ── Bone: necromancy ──
   'bone-spear': {
     id: 'bone-spear', kind: 'active', mana: 14, cd: 3, nameKey: 'skill.bone-spear', textKey: 'skill.bone-spear.text',
-    vars: { min: 22, max: 32, range: 8 },
+    vars: { min: 22, max: 32, range: 8 }, grow: { min: 4, max: 6 }, tree: 'bone', tier: 0, col: 0, req: null,
     icon: I('<rect x="12" y="1" width="3" height="3" fill="#ffffff"/><rect x="10" y="3" width="3" height="3" fill="#e8e1cf"/><rect x="8" y="5" width="3" height="3" fill="#e8e1cf"/><rect x="6" y="7" width="3" height="3" fill="#b8ac92"/><rect x="4" y="9" width="3" height="3" fill="#b8ac92"/><rect x="1" y="11" width="4" height="4" fill="#b06bff"/><rect x="2" y="12" width="2" height="2" fill="#e9d8ff"/>'),
   },
   'raise-skeleton': {
     id: 'raise-skeleton', kind: 'active', mana: 30, cd: 12, nameKey: 'skill.raise-skeleton', textKey: 'skill.raise-skeleton.text',
-    vars: { count: 2, max: 2, reach: 5, hp: 50, dmg: 7 },
+    vars: { count: 2, max: 2, reach: 5, hp: 50, dmg: 7 }, grow: { count: .15, max: .25, hp: 10, dmg: 1 }, tree: 'bone', tier: 0, col: 1, req: null,
     icon: I('<rect x="5" y="1" width="6" height="5" fill="#ddd2ea"/><rect x="6" y="3" width="1" height="1" fill="#b06bff"/><rect x="9" y="3" width="1" height="1" fill="#b06bff"/><rect x="6" y="6" width="4" height="1" fill="#a99bc0"/><rect x="4" y="7" width="8" height="1" fill="#ddd2ea"/><rect x="5" y="9" width="6" height="1" fill="#ddd2ea"/><rect x="7" y="7" width="2" height="5" fill="#a99bc0"/><rect x="2" y="12" width="12" height="3" fill="#3b2140"/><rect x="3" y="12" width="10" height="1" fill="#6b3aa0"/>'),
-  },
-  'aura-embers': {
-    id: 'aura-embers', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.aura-embers', textKey: 'skill.aura-embers.text',
-    vars: { dps: 3, radius: 3 },
-    icon: I('<rect x="2" y="2" width="12" height="12" fill="#3b1c14"/><rect x="4" y="4" width="8" height="8" fill="#ff8a2e"/><rect x="6" y="6" width="4" height="4" fill="#ffd25a"/><rect x="1" y="7" width="1" height="2" fill="#ff8a2e"/><rect x="14" y="7" width="1" height="2" fill="#ff8a2e"/>'),
-  },
-  'aura-siphon': {
-    id: 'aura-siphon', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.aura-siphon', textKey: 'skill.aura-siphon.text',
-    vars: { heal: 2 },
-    icon: I('<rect x="2" y="2" width="12" height="12" fill="#1c2a1c"/><rect x="4" y="4" width="8" height="8" fill="#5fd35a"/><rect x="7" y="5" width="2" height="6" fill="#e6ffe9"/><rect x="5" y="7" width="6" height="2" fill="#e6ffe9"/>'),
   },
   'soul-harvest': {
     id: 'soul-harvest', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.soul-harvest', textKey: 'skill.soul-harvest.text',
-    vars: { mana: 8 },
+    vars: { mana: 8 }, grow: { mana: 1 }, tree: 'bone', tier: 0, col: 2, req: null,
     icon: I('<rect x="5" y="2" width="6" height="6" fill="#e9e4f0"/><rect x="6" y="4" width="1" height="2" fill="#2a1a24"/><rect x="9" y="4" width="1" height="2" fill="#2a1a24"/><rect x="4" y="9" width="8" height="5" fill="#5f8bff"/><rect x="6" y="10" width="4" height="3" fill="#c8dcff"/>'),
   },
+  'corpse-burst': {
+    id: 'corpse-burst', kind: 'active', mana: 15, cd: 4, nameKey: 'skill.corpse-burst', textKey: 'skill.corpse-burst.text',
+    vars: { min: 18, max: 28, radius: 2, reach: 6 }, grow: { min: 4, max: 6, radius: .05 }, tree: 'bone', tier: 1, col: 0, req: 'bone-spear',
+    icon: I('<rect x="5" y="5" width="6" height="5" fill="#e8e1cf"/><rect x="6" y="7" width="1" height="1" fill="#2a1a24"/><rect x="9" y="7" width="1" height="1" fill="#2a1a24"/><rect x="6" y="10" width="4" height="1" fill="#a89f8a"/><rect x="1" y="2" width="2" height="2" fill="#e8e1cf"/><rect x="13" y="2" width="2" height="2" fill="#e8e1cf"/><rect x="1" y="12" width="2" height="2" fill="#b06bff"/><rect x="13" y="12" width="2" height="2" fill="#b06bff"/><rect x="7" y="1" width="2" height="2" fill="#b06bff"/><rect x="7" y="13" width="2" height="2" fill="#e8e1cf"/>'),
+  },
+  'skeleton-mastery': {
+    id: 'skeleton-mastery', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.skeleton-mastery', textKey: 'skill.skeleton-mastery.text',
+    vars: { pct: 10 }, grow: { pct: 5 }, tree: 'bone', tier: 1, col: 1, req: 'raise-skeleton',
+    icon: I('<rect x="4" y="1" width="2" height="2" fill="#c8963c"/><rect x="7" y="0" width="2" height="3" fill="#c8963c"/><rect x="10" y="1" width="2" height="2" fill="#c8963c"/><rect x="4" y="3" width="8" height="1" fill="#c8963c"/><rect x="4" y="4" width="8" height="6" fill="#ddd2ea"/><rect x="5" y="6" width="2" height="2" fill="#6b3aa0"/><rect x="9" y="6" width="2" height="2" fill="#6b3aa0"/><rect x="5" y="10" width="6" height="2" fill="#a99bc0"/><rect x="6" y="12" width="1" height="2" fill="#ddd2ea"/><rect x="9" y="12" width="1" height="2" fill="#ddd2ea"/><rect x="2" y="14" width="12" height="1" fill="#3b2140"/>'),
+  },
+  'bone-armor': {
+    id: 'bone-armor', kind: 'active', mana: 18, cd: 16, nameKey: 'skill.bone-armor', textKey: 'skill.bone-armor.text',
+    vars: { absorb: 30, secs: 15 }, grow: { absorb: 8, secs: .5 }, tree: 'bone', tier: 2, col: 2, req: 'soul-harvest',
+    icon: I('<rect x="3" y="2" width="10" height="2" fill="#e8e1cf"/><rect x="7" y="2" width="2" height="12" fill="#a89f8a"/><rect x="3" y="5" width="4" height="1" fill="#e8e1cf"/><rect x="9" y="5" width="4" height="1" fill="#e8e1cf"/><rect x="3" y="8" width="4" height="1" fill="#e8e1cf"/><rect x="9" y="8" width="4" height="1" fill="#e8e1cf"/><rect x="4" y="11" width="3" height="1" fill="#e8e1cf"/><rect x="9" y="11" width="3" height="1" fill="#e8e1cf"/><rect x="2" y="3" width="1" height="9" fill="#6b3aa0"/><rect x="13" y="3" width="1" height="9" fill="#6b3aa0"/><rect x="6" y="14" width="4" height="1" fill="#6b3aa0"/>'),
+  },
+  'bone-storm': {
+    id: 'bone-storm', kind: 'active', mana: 30, cd: 8, nameKey: 'skill.bone-storm', textKey: 'skill.bone-storm.text',
+    vars: { count: 5, min: 14, max: 22, range: 6 }, grow: { count: .2, min: 3, max: 4 }, tree: 'bone', tier: 3, col: 0, req: 'corpse-burst',
+    icon: I('<rect x="7" y="1" width="2" height="3" fill="#ffffff"/><rect x="7" y="4" width="2" height="6" fill="#e8e1cf"/><rect x="1" y="3" width="2" height="2" fill="#ffffff"/><rect x="3" y="5" width="2" height="2" fill="#e8e1cf"/><rect x="5" y="7" width="2" height="2" fill="#b8ac92"/><rect x="13" y="3" width="2" height="2" fill="#ffffff"/><rect x="11" y="5" width="2" height="2" fill="#e8e1cf"/><rect x="9" y="7" width="2" height="2" fill="#b8ac92"/><rect x="5" y="10" width="6" height="5" fill="#b06bff"/><rect x="6" y="11" width="4" height="3" fill="#e9d8ff"/>'),
+  },
+  // ── Shadow: curses and wards ──
+  'drain-life': {
+    id: 'drain-life', kind: 'active', mana: 12, cd: 4, nameKey: 'skill.drain-life', textKey: 'skill.drain-life.text',
+    vars: { min: 18, max: 26, heal: 50 }, grow: { min: 3, max: 5, heal: 1 }, tree: 'shadow', tier: 0, col: 0, req: null,
+    icon: I('<rect x="2" y="3" width="5" height="5" fill="#e2452a"/><rect x="3" y="4" width="3" height="3" fill="#ff8a7a"/><rect x="7" y="5" width="2" height="1" fill="#b06bff"/><rect x="9" y="6" width="2" height="1" fill="#b06bff"/><rect x="10" y="8" width="5" height="5" fill="#7fe08a"/><rect x="11" y="9" width="3" height="3" fill="#e6ffe9"/>'),
+  },
+  'ember-curse': {
+    id: 'ember-curse', kind: 'active', mana: 10, cd: 6, nameKey: 'skill.ember-curse', textKey: 'skill.ember-curse.text',
+    vars: { dps: 5, secs: 8, weaken: 20 }, grow: { dps: 1, secs: .2, weaken: 1 }, tree: 'shadow', tier: 0, col: 1, req: null,
+    icon: I('<rect x="4" y="2" width="8" height="8" fill="#3b2140"/><rect x="5" y="4" width="2" height="2" fill="#ff6a2a"/><rect x="9" y="4" width="2" height="2" fill="#ff6a2a"/><rect x="6" y="7" width="4" height="1" fill="#ff6a2a"/><rect x="5" y="10" width="2" height="4" fill="#b06bff"/><rect x="9" y="10" width="2" height="5" fill="#b06bff"/>'),
+  },
+  'dark-ward': {
+    id: 'dark-ward', kind: 'active', mana: 20, cd: 18, nameKey: 'skill.dark-ward', textKey: 'skill.dark-ward.text',
+    vars: { absorb: 40, secs: 12 }, grow: { absorb: 10, secs: .5 }, tree: 'shadow', tier: 0, col: 2, req: null,
+    icon: I('<rect x="3" y="2" width="10" height="9" fill="#6b3aa0"/><rect x="4" y="3" width="8" height="7" fill="#b06bff"/><rect x="5" y="11" width="6" height="2" fill="#6b3aa0"/><rect x="7" y="13" width="2" height="2" fill="#6b3aa0"/><rect x="6" y="5" width="4" height="3" fill="#e9d8ff"/>'),
+  },
+  'aura-siphon': {
+    id: 'aura-siphon', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.aura-siphon', textKey: 'skill.aura-siphon.text',
+    vars: { heal: 2 }, grow: { heal: .5 }, tree: 'shadow', tier: 1, col: 0, req: 'drain-life',
+    icon: I('<rect x="2" y="2" width="12" height="12" fill="#1c2a1c"/><rect x="4" y="4" width="8" height="8" fill="#5fd35a"/><rect x="7" y="5" width="2" height="6" fill="#e6ffe9"/><rect x="5" y="7" width="6" height="2" fill="#e6ffe9"/>'),
+  },
+  'weaken': {
+    id: 'weaken', kind: 'active', mana: 12, cd: 8, nameKey: 'skill.weaken', textKey: 'skill.weaken.text',
+    vars: { weaken: 25, radius: 2, secs: 8 }, grow: { weaken: 1, radius: .1, secs: .3 }, tree: 'shadow', tier: 1, col: 1, req: 'ember-curse',
+    icon: I('<rect x="2" y="2" width="12" height="12" fill="#3b2140"/><rect x="7" y="3" width="2" height="5" fill="#b06bff"/><rect x="4" y="8" width="8" height="2" fill="#b06bff"/><rect x="5" y="10" width="6" height="1" fill="#b06bff"/><rect x="6" y="11" width="4" height="1" fill="#b06bff"/><rect x="7" y="12" width="2" height="1" fill="#e9d8ff"/>'),
+  },
+  'life-tap': {
+    id: 'life-tap', kind: 'active', mana: 0, cd: 10, nameKey: 'skill.life-tap', textKey: 'skill.life-tap.text',
+    vars: { life: 20, mana: 30 }, grow: { mana: 4 }, tree: 'shadow', tier: 2, col: 2, req: 'dark-ward',
+    icon: I('<rect x="1" y="3" width="3" height="3" fill="#e2452a"/><rect x="4" y="3" width="3" height="3" fill="#e2452a"/><rect x="2" y="6" width="4" height="2" fill="#e2452a"/><rect x="3" y="8" width="2" height="1" fill="#9e2e1c"/><rect x="7" y="7" width="2" height="1" fill="#b06bff"/><rect x="11" y="5" width="2" height="2" fill="#5f8bff"/><rect x="10" y="7" width="4" height="5" fill="#5f8bff"/><rect x="11" y="8" width="2" height="2" fill="#c8dcff"/>'),
+  },
+  'doom': {
+    id: 'doom', kind: 'active', mana: 28, cd: 14, nameKey: 'skill.doom', textKey: 'skill.doom.text',
+    vars: { secs: 4, min: 50, max: 80, radius: 2 }, grow: { min: 9, max: 13, radius: .05 }, tree: 'shadow', tier: 3, col: 1, req: 'weaken',
+    icon: I('<rect x="3" y="1" width="10" height="1" fill="#6b3aa0"/><rect x="2" y="2" width="12" height="12" fill="#2a1a24"/><rect x="3" y="14" width="10" height="1" fill="#6b3aa0"/><rect x="5" y="4" width="6" height="5" fill="#e9e4f0"/><rect x="6" y="6" width="1" height="1" fill="#ff6a2a"/><rect x="9" y="6" width="1" height="1" fill="#ff6a2a"/><rect x="6" y="9" width="4" height="2" fill="#a99bc0"/><rect x="1" y="7" width="1" height="2" fill="#b06bff"/><rect x="14" y="7" width="1" height="2" fill="#b06bff"/>'),
+  },
+};
+
+/** Vars that count whole things (skeletons, spears): a rank adds a fraction, the fight takes the whole part. */
+const WHOLE_VARS = new Set(['count', 'max']);
+/** A skill's numbers at a rank (rank 0 reads as rank 1: what the first point would give). Never smaller at a higher rank. */
+export function skillVars(id: SkillId, rank: number): Record<string, number> {
+  const sk = SKILLS[id], r = Math.max(1, Math.min(MAX_RANK, Math.floor(rank) || 1)), out: Record<string, number> = {};
+  for (const [k, base] of Object.entries(sk.vars)) {
+    const v = base + (sk.grow[k] ?? 0) * (r - 1);
+    out[k] = WHOLE_VARS.has(k) ? Math.floor(v + 1e-9) : Math.round(v * 10) / 10;
+  }
+  return out;
+}
+
+/** The skills a new Keeper of the class starts with at rank 1, free (a new Warlock fights as before the trees). */
+export const STARTER_RANKS: Readonly<Record<Vocation, readonly SkillId[]>> = {
+  warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'soul-harvest'],
 };
 
 /** Each class's book: its actives (the order is the default bar), its auras, its passives. */
 export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   // The first four actives are the default bar; Bone Spear and Raise Skeleton wait in the Spellbook to be put on a key.
-  warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'bone-spear', 'raise-skeleton', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest'],
+  warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'bone-spear', 'raise-skeleton', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest',
+    'cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom'],
 };
 
 export const MAX_MANA = 60;

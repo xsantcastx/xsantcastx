@@ -246,6 +246,17 @@ The top-down Warlock's book (`play/td/td-skills.ts`, the Spellbook reads it) add
   creatures turn on them when they stand closer than the Keeper.
 `--combat` prints time-to-kill / time-to-die per creature, tier and Keeper stage (half of the blows dodged).
 
+**Skill trees (2026-10-21, `docs/design/skill-trees.md`).** The Warlock's 21 skills now sit in three D2 trees —
+**Ember** (fire), **Bone** (necromancy), **Shadow** (curses and wards) — in tiers that open at levels 1, 6, 12, 18 and
+24, each behind one rank in the skill above it. Each Hunting level from 2 gives one skill point (`skillPointsEarned`);
+a point buys one rank (1–20), and every rank grows the skill's numbers by a per-skill step (`SkillDef.grow`, read by
+`skillVars`; rank 1 is exactly the numbers above, so a new Warlock is unchanged — the kit of Ember Bolt, Drain Life,
+Ember Curse, Hellfire Nova, Dark Ward, the Aura of Embers and Soul Harvest holds rank 1 free). A skill at rank 0 cannot
+sit on the bar or run as the aura. Eleven new skills: Cinder Rain, Flame Wall, Ember Mastery, Meteor; Corpse Burst,
+Skeleton Mastery, Bone Armor, Bone Storm; Weaken, Life Tap, Doom. Ember Mastery multiplies every fire hit (the bolt, the
+nova, the aura, the rain, the wall, the meteor, the curse's burn); Weaken and the Ember Curse do not stack (the
+stronger one counts); Bone Armor soaks before the Dark Ward. The respec is free for now.
+
 **Bosses' tells (2026-10-20, docs/design/effects-spec.md fourth pass).** The top-down bosses with a ranged attack
 (the Ashbone Dragon's 3-gout breath, the Cinder Sovereign's 5-gout breath) wind up for **0.6 s** (`BOSS_TELL`)
 before each breath: the shot timer starts at the wind-up, so the breath's cadence (3.4 s / 3.2 s) is unchanged and

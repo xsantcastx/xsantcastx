@@ -214,3 +214,25 @@ export async function stackQty(page: Page, stackKey: string): Promise<number> {
     return Math.max(0, qty);
   }, stackKey);
 }
+
+/**
+ * A Keeper whose Spellbook already holds rank 1 in the skills the starting kit lacks (the trees: a save from before
+ * them keeps what it used, keeper-look.model coerceTree) — for the specs that cast or run them without levelling.
+ */
+export const SKILLS_LEARNED: Blobs = {
+  'godforge-keeper-look': {
+    version: 1, made: true, prompted: true,
+    tree: { spent: {}, free: ['bone-spear', 'raise-skeleton', 'aura-siphon'], at: 1 },
+  },
+};
+
+/** In the open Spellbook (K): find the skill on its tree's tab and pick it, so its card (keys, aura switch) shows. */
+export async function pickSkill(page: Page, id: string): Promise<void> {
+  const node = page.locator(`.sbt__node[data-skill="${id}"]`);
+  for (const tree of ['ember', 'bone', 'shadow']) {
+    if (await node.count()) break;
+    await page.locator(`.sbt__tab[data-tree="${tree}"]`).click();
+  }
+  await node.click();
+  await expect(page.locator(`.sbt__detail[data-skill="${id}"]`)).toBeVisible();
+}

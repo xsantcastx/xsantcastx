@@ -3507,6 +3507,76 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .sb__keys button { min-height: 44px; min-width: 34px; }
 }
 
+/* ── The skill trees (K, docs/design/skill-trees.md): D2's skill page in the cozy frame — three tabs, tiers top to bottom
+   with the level they open at, prerequisite lines, a rank badge on each skill, the picked skill's card beside it ── */
+.spellbook.sbt { width: min(640px, calc(100% - 32px)); overflow: hidden; }
+.sbt > * { flex: none; }
+.sbt__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.sbt__pts { margin: 0; font: 700 14px/1.1 var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.sbt__pts--has { color: var(--cozy-glow); }
+.sbt__reset, .sbt__ask button { min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
+  box-shadow: var(--cozy-chip); font: 700 12px/1 var(--font-pixel); cursor: pointer; }
+.sbt__ask { display: flex; align-items: center; gap: 6px; }
+.sbt__ask small { font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-cream); }
+.sbt__ask .sbt__yes { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.sbt__tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 4px 0 8px; }
+.sbt__tab { min-height: 44px; border: 0; border-radius: 0; background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent);
+  box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.sbt__tab small { margin-left: 4px; font-size: 11px; color: var(--cozy-brass-hi); }
+.sbt__tab[aria-selected="true"] { background: var(--cozy-wood-3); color: var(--cozy-glow); box-shadow: var(--cozy-chip), inset 0 -3px 0 0 var(--cozy-brass); }
+.sbt__body { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 12px; min-height: 0; flex: 1 1 auto; }
+.sbt__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px; background: var(--cozy-well); box-shadow: var(--px-cell-rim); }
+.sbt__tree { position: relative; padding-bottom: 10px; display: grid; grid-template-columns: 34px repeat(3, 1fr); grid-template-rows: repeat(var(--tiers, 5), 70px); align-items: center; justify-items: center; }
+.sbt__lines { position: absolute; top: 0; left: 34px; width: calc(100% - 34px); height: calc(100% - 10px); pointer-events: none; }
+.sbt__lines line { stroke: var(--cozy-wood-3); stroke-width: 4; }
+.sbt__lines line.lit { stroke: var(--cozy-brass); }
+.sbt__lv { grid-column: 1; align-self: center; font: 700 11px/1 var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 45%, transparent); writing-mode: horizontal-tb; }
+.sbt__lv--open { color: var(--cozy-brass-hi); }
+.sbt__node { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 0;
+  background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-3); cursor: pointer; }
+.sbt__node .sbt__icon { display: grid; place-items: center; filter: grayscale(.85) brightness(.75); }
+.sbt__node--learned { background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass-lo); }
+.sbt__node--learned .sbt__icon { filter: none; }
+.sbt__node--buy::after { content: '+'; position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 16px; height: 16px;
+  background: var(--cozy-leaf); color: var(--cozy-wood-0); font: 700 13px/1 var(--font-pixel); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.sbt__node--on { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-glow); }
+.sbt__node[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--cozy-glow), 0 0 0 4px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass); }
+.sbt__node--locked { opacity: .55; }
+.sbt__badge { position: absolute; right: -4px; bottom: -4px; min-width: 18px; height: 18px; padding: 0 3px; display: grid; place-items: center;
+  background: var(--cozy-wood-0); color: var(--cozy-cream); font: 700 11px/1 var(--font-pixel); box-shadow: 0 0 0 1px var(--cozy-wood-3); }
+.sbt__node--learned .sbt__badge { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.sbt__need { position: absolute; left: 50%; bottom: -15px; translate: -50% 0; white-space: nowrap; font: 700 10px/1 var(--font-pixel); color: var(--cozy-berry);
+  text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.sbt__detail { display: grid; align-content: start; gap: 8px; min-height: 0; overflow: auto; padding: 10px 12px; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
+.sbt__dh { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; }
+.sbt__dh b { display: block; font: 700 16px/1.1 var(--font-pixel); color: var(--cozy-glow); }
+.sbt__dh small { display: block; margin-top: 3px; font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); }
+.sbt__now { margin: 0; font: 13px/1.35 var(--font-ui); color: var(--cozy-cream); }
+.sbt__now em { font-style: normal; color: var(--cozy-brass-hi); }
+.sbt__cost { margin: 0; font: 600 11px var(--font-pixel); color: var(--cozy-mana-text); }
+.sbt__next { display: grid; gap: 2px; padding: 6px 8px; background: color-mix(in srgb, var(--cozy-wood-0) 45%, transparent); }
+.sbt__next b { font: 700 12px/1.2 var(--font-pixel); color: var(--cozy-leaf); }
+.sbt__next small { font: 12px/1.3 var(--font-ui); color: var(--cozy-cream); }
+.sbt__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sbt__learn { min-height: 44px; min-width: 96px; padding: 0 14px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0);
+  box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.sbt__learn:disabled { background: var(--cozy-wood-2); color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); cursor: default; }
+.sbt__why { flex: 1 1 100%; font: 600 11px/1.2 var(--font-pixel); color: var(--cozy-berry); }
+.sbt .sb__keys { grid-template-columns: repeat(4, 44px); }
+.sbt .sb__keys button { min-width: 44px; min-height: 44px; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .spellbook.sbt { left: 8px; right: 8px; width: auto; max-height: calc(100% - 96px); padding: 4px 10px 10px; }
+  .sbt__body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .sbt__tree { grid-template-rows: repeat(var(--tiers, 5), 66px); }
+  .sbt__detail { max-height: 46vh; }
+}
+/* Landscape phones: the page and the card side by side again, the window as tall as the screen. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .spellbook.sbt { top: 8px; bottom: 8px; left: auto; width: min(620px, calc(100% - 140px)); max-height: none; }
+  .sbt__body { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: none; }
+  .sbt__detail { max-height: none; }
+}
+
 /* ── The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): a dark plate framed in its rarity,
    a big icon, the headline stat, coloured affixes with pips, blue specials, wells, worth along the foot ── */
 .d2tip { --loot: var(--cozy-loot-material); position: fixed; z-index: 30; display: grid; gap: 6px; width: 264px; padding: 10px 12px 9px;
