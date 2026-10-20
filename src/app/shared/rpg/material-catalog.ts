@@ -15,7 +15,9 @@ import { itemIcon } from '../art/item-icons';
 import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { artFor, type ArtEntry } from '../art/art';
 import { ITEM_DEFINITIONS } from './item-definition';
-import { ALL_CHARMS } from './item.model';
+import { ALL_CHARMS, type GameItem } from './item.model';
+import { gearIcon } from '../art/gear-icons';
+import { gearLookOf } from './item-base';
 
 export interface MaterialDisplay {
   id: string;
@@ -242,11 +244,18 @@ export function materialDisplay(id: string): MaterialDisplay | undefined {
  * Art for any catalogued thing — equipment, artifact, material, consumable,
  * quest object — by its `ITEM_DEFINITIONS` id.
  *
+ * Gear and charms come first: each is painted from its base, realm, rarity and
+ * instance id (art/gear-icons.ts), so two drops of one definition differ.
+ *
  * Basalt Edge is matched by name as well as id because a crafted instance
  * carries a minted id rather than the definition's; the id-to-file difference
  * itself is handled by ART_ALIAS, not here.
  */
-export function itemArt(item: { name?: string; id?: string; definitionId?: string }): ArtEntry | null {
+export function itemArt(item: { name?: string; id?: string; definitionId?: string; rarity?: GameItem['rarity']; type?: GameItem['type'] }): ArtEntry | null {
+  // Gear and charms: their own 32-px picture — base, realm, rarity and the instance's seed (art/gear-icons.ts).
+  // A hand-made icon for one of them replaces this line's answer, nothing else.
+  const look = gearLookOf(item);
+  if (look) return gearIcon(look);
   if (isBasaltEdge(item)) return artFor('basalt-edge');
   for (const key of [item.definitionId, item.id]) {
     if (!key) continue;

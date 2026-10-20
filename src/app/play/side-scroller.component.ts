@@ -156,6 +156,7 @@ import { TownTaskService, type TownTaskView } from '../shared/town-tasks/town-ta
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
 import { itemDefinitionById } from '../shared/rpg/item-definition';
+import { itemRequirements, meetsRequirements, unmetRequirements, type KeeperStanding } from '../shared/rpg/item-requirements';
 import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
 import { HEIGHTS_I18N } from './world/heights.i18n';
 import { HeightsService } from '../shared/heights/heights.service';
@@ -296,6 +297,8 @@ interface BagSlip {
   tone?: string | null;
   /** A loose satchel item: a secondary "Send to Vault" makes room from anywhere. */
   canSend?: boolean;
+  /** Why Equip is shut (an unmet requirement), or absent when it can be worn. */
+  wearBlocked?: string;
   /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
   count?: number;
   /** Wearing it, against what that place holds now. Empty for worn items and materials. */
@@ -323,6 +326,8 @@ interface ItemTip {
   value: number;
   bound: boolean;
   tempered: number;
+  /** "Requires Level 30", "Requires 15 Spirit" — `met` false paints the line red (item-requirements.ts). */
+  reqs?: { text: string; met: boolean }[];
 }
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
@@ -761,6 +766,8 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly hookedAt = new Map<string, { liquid: string; col: number; row: number }>();
 
   constructor() {
+    // Gear asks for a level (and some bases an attribute) before it goes on; already-worn pieces stay worn.
+    this.inventory.setWearCheck(item => meetsRequirements(item, this.standing));
     // Hydration can swap the server canvas after the first callback. Wait until
     // the canvas that is actually on screen has a size, then draw into that one.
     afterNextRender(() => this.startWorld());
@@ -1449,6 +1456,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Menu → Loot & Combat. */
   openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
+    this.inventory.setWearCheck(null);
     this.companions.flush();
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
@@ -2789,6 +2797,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Keeper's level: Hunting XP read on the Keeper curve (shared/skills/keeper-level.ts), never below the Hunting skill level. */
   get huntingLevel(): number { return this.keeperView.level; }
   private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting')); }
+  /** The Keeper as gear requirements read them: the Hunting level and the points spent on each attribute. */
+  get standing(): KeeperStanding { return { level: this.huntingLevel, stats: this.looks.look.stats }; }
   /** The HUD portrait (top-down): the Keeper's own face, from the engine's sprite; '' until the world is up. */
   get tdPortrait(): string { return this.topDown ? (this.engine as unknown as { heroPortrait?: () => string } | undefined)?.heroPortrait?.() ?? '' : ''; }
   /** The resource strip's icons: the materials' own art. */
@@ -3760,6 +3770,8 @@ export class SideScrollerComponent implements OnDestroy {
   wear(): void {
     const item = this.selectedGear();
     if (!item || item.equipped) return;
+    const blocked = this.wearBlockedReason(item);
+    if (blocked) { this.message = blocked; return; }
     const ok = isBasaltEdge(item) ? this.inventory.equip(item.id, 'weapon') : this.inventory.equip(item.id);
     this.message = this.t(ok ? 'play.hud.msg.worn' : 'play.hud.msg.wearFailed', { name: item.name });
     if (!ok) return;
@@ -3871,6 +3883,7 @@ export class SideScrollerComponent implements OnDestroy {
       stats: [...stats, ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level }))],
       tip: this.itemTip(item, level),
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
+      ...(worn ? {} : { wearBlocked: this.wearBlockedReason(item) ?? undefined }),
       canStow: worn,
       canSend: !worn,
       ...this.slipCompare(item, worn),
@@ -3902,7 +3915,24 @@ export class SideScrollerComponent implements OnDestroy {
       tag: qualityTagOf(item),
       specials: itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
       sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
+      reqs: this.reqLines(item),
     };
+  }
+  /** The card's requirement lines; a level of 1 with no attribute says nothing. */
+  private reqLines(item: GameItem): { text: string; met: boolean }[] {
+    const req = itemRequirements(item);
+    const miss = unmetRequirements(item, this.standing);
+    const lines: { text: string; met: boolean }[] = [];
+    if (req.level > 1) lines.push({ text: this.t('play.tip.reqLevel', { n: req.level }), met: !miss.level });
+    if (req.attr) lines.push({ text: this.t('play.tip.reqAttr', { n: req.attr.n, attr: this.t('play.td.attr.' + req.attr.key) }), met: !miss.attr });
+    return lines;
+  }
+  /** Why this piece cannot go on yet, in one line, or null when it can. */
+  private wearBlockedReason(item: GameItem): string | null {
+    const miss = unmetRequirements(item, this.standing);
+    if (miss.level) return this.t('play.hud.msg.needLevel', { n: miss.level, name: item.name });
+    if (miss.attr) return this.t('play.hud.msg.needAttr', { n: miss.attr.n, attr: this.t('play.td.attr.' + miss.attr.key), name: item.name });
+    return null;
   }
   /**
    * The slot `wear()` would put this in — the same pick `InventoryService.equip`

@@ -1274,11 +1274,19 @@ export class InventoryService {
    * An item worn by an explorer is taken off them first, so there is never a
    * moment where it is counted on both.
    */
+  /**
+   * The host's requirement check (item-requirements.ts): the play screen knows the Keeper's level and attributes,
+   * this service does not. Set, it refuses to put on a piece the Keeper cannot wear yet; what is already worn stays.
+   */
+  private wearCheck: ((item: GameItem) => boolean) | null = null;
+  setWearCheck(check: ((item: GameItem) => boolean) | null): void { this.wearCheck = check; }
+
   equip(itemId: string, slot?: SlotId): boolean {
     if (!this.isBrowser) return false;
     const item = this.itemById(itemId);
     if (!item) return false;
     if (item.explorerId) return false;
+    if (!item.equipped && this.wearCheck && !this.wearCheck(item)) return false;
 
     const occupied = new Set<SlotId>(
       this.items
