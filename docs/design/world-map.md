@@ -12,7 +12,7 @@ and dungeons that go down floor by floor. Ships link the harbours (a ship is a s
 | Where | What it is | Towns | Levels | Dungeons (floors) |
 |---|---|---|---|---|
 | **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–8 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
-| **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport, Ashgrove, regions, the Molten Deep −1…−3, the Ashen Crypt −1…−2) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
+| **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport + its ship, Ashgrove, regions, the Molten Deep −1…−6, the Ashen Crypt −1…−2, the Forge of the Four −1…−3) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
 | **Verdant Wilds** | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−4) |
 | **Umbral Marches** | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
 | **Celestial Peaks** | Snow and stone: high passes, observatories, ice caves | **Meridian** (capital, terraced: floors +1…+4), Frostgate, Starhollow | 35–60 | Frostfang Caverns (−1…−5), the Orrery Vault |
@@ -35,8 +35,14 @@ the bottom floor of a dungeon holds its boss.
    edge (the Woodward's Lodge + loft), on roads from Pyrehold. The Ashen Crypt under the Ashen Bastion's ruins (a crypt
    door at the road's west end): floor −1 the Ossuary (Bone Walkers, Bone Archers, Ash Ghouls, Cinder Wraiths), floor
    −2 the Bone Hall (the Ashbone Dragon). The Cinder clans' orcs hold the Deep Charwood and the Obsidian Badlands; Ember
-   Drakes hunt the Molten Fields. Next: the Molten Deep's lower floors (−4…−6), the Forge
-   of the Four, a ship from Cinderport, and something to do in each town (keepers, quests).
+   Drakes hunt the Molten Fields. The Molten Deep goes on past the Tyrant (a stair south of the caldera): floor −4 the
+   Slag Rivers (two slag rivers, one bridge each; Slag Crawlers, Ember Drakes, Cinder Wraiths), −5 the Glass Foundry
+   (casting pits and cold anvils; Glass Sentinels that shoot molten glass, Golems), −6 the Heart of the Deep (the
+   Cinder Sovereign, level 30, who calls two Lava Hounds at half its life). The Forge of the Four, a ruined gate in
+   the Obsidian Badlands at the foot of the Pyre Peaks (place kind `forge`): −1 the Ash Gate, −2 the Four Smithies
+   (four forge rooms off a crossway; Bailiffs and Golems), −3 the First Anvil (the Anvil-Warden, level 18, who calls
+   two Bailiffs at half its life). Cinderport's salt-ketch sails from its pier back to Ember Harbour (a village way,
+   `ContinentVillage.ways`). Next: the Forge's fourth floor, and something to do in each town (keepers, quests).
 
 Buildings you walk into so far: the Ember Inn in the Seamworks (tavern + rooms upstairs), the Pyre Spire in
 Pyrehold, the Salted Ember in Cinderport and the Woodward's Lodge in Ashgrove. A continent holds more towns than its

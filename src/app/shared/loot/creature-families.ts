@@ -86,6 +86,11 @@ export const CREATURE_PROFILES: readonly CreatureProfile[] = [
   P('orc-warlord', 'orc', 'melee', 16, { resists: { physical: 15 } }),
   P('ember-drake', 'ember', 'ranged', 18),
   P('bone-dragon', 'bone', 'summoner', 25, { boss: true, hits: 'fire' }),
+  // The Molten Deep's lower floors and the Forge of the Four.
+  P('slag-crawler', 'ember', 'melee', 21, { resists: { physical: 15 } }),
+  P('glass-sentinel', 'prism', 'ranged', 24, { hits: 'fire' }),
+  P('anvil-warden', 'maw', 'summoner', 18, { boss: true, resists: { physical: 20 } }),
+  P('cinder-sovereign', 'ember', 'summoner', 30, { boss: true }),
   // Verdant — the Canopy and the Root Deeps.
   P('rootglass-stag', 'beast', 'melee', 2),
   P('graftling', 'graft', 'healer', 12),

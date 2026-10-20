@@ -119,6 +119,49 @@ function paintTyrant(c: CanvasRenderingContext2D, f: number): void {
 }
 
 
+/** The Slag Crawler, of the Molten Deep's slag rivers: a long beetle of cooled slag plates, fire showing at every seam. */
+function paintCrawler(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  for (let i = 0; i < 4; i++) px(c, 3 + i * 5, 12, 2, 3 + ((i + f) % 2), '#1c1418');
+  for (let i = 0; i < 4; i++) {
+    const y = 5 + (i % 2 ? b : 0);
+    px(c, 1 + i * 5, y, 6, 8, '#3a2e2a'); px(c, 1 + i * 5, y, 6, 2, '#5a4a40'); px(c, 2 + i * 5, y + 5, 4, 1, i % 2 ? '#ffd25a' : '#ff8a2e');
+    px(c, 6 + i * 5, y + 1, 1, 6, '#ff6a2a');
+  }
+  px(c, 20, 4, 6, 9, '#2e2228'); px(c, 20, 4, 6, 2, '#4a3a42'); px(c, 22, 6, 2, 2, '#ffd25a');
+  px(c, 25, 10 + b, 1, 4, '#e9e4d8'); px(c, 23, 11 - b, 1, 3, '#e9e4d8');
+}
+/** The Glass Sentinel, the Glass Foundry's guard: a statue of black glass the Four cast and never broke, a melt for a heart. */
+function paintSentinel(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 4, 24, 12, 4, '#1c1620'); px(c, 4, 24, 12, 1, '#3e3650');
+  px(c, 5, 8, 10, 16, '#262030'); px(c, 5, 8, 3, 16, '#4a4262'); px(c, 12, 10, 2, 12, '#3e3650');
+  px(c, 8, 13, 4, 5, '#120a0e'); px(c, 9, 14, 2, 3, '#ff6a2a'); px(c, 9, 15, 2, 1, '#ffd25a');
+  px(c, 6, 1 + b, 8, 7, '#2e2638'); px(c, 6, 1 + b, 8, 1, '#4a4262'); px(c, 7, 0 + b, 2, 2, '#a8b8e0'); px(c, 11, 0 + b, 2, 2, '#a8b8e0');
+  px(c, 8, 4 + b, 1, 1, '#ffd25a'); px(c, 11, 4 + b, 1, 1, '#ffd25a');
+  px(c, 1, 10 - b, 3, 9, '#3e3650'); px(c, 0, 8 - b, 2, 3, '#a8b8e0'); px(c, 16, 10 + b, 3, 9, '#3e3650'); px(c, 18, 8 + b, 2, 3, '#a8b8e0');
+}
+/** The Anvil-Warden, set by the First Smith to keep the Forge of the Four: a Bailiff grown huge, an anvil for a crown. */
+function paintAnvilWarden(c: CanvasRenderingContext2D, f: number): void {
+  c.save(); c.translate(4, 6); c.scale(1.6, 1.6); paintBailiff(c, f); c.restore();
+  px(c, 11, 1, 22, 4, '#4a4552'); px(c, 11, 1, 22, 1, '#7a7584'); px(c, 7, 2, 6, 2, '#4a4552');
+  px(c, 18, 5, 8, 3, '#3a3642'); px(c, 15, 7, 14, 2, '#3a3642');
+  if (f) { px(c, 13, 0, 2, 1, '#ffd25a'); px(c, 29, 0, 2, 1, '#ff8a2e'); }
+}
+/** The Cinder Sovereign, the heart of the Molten Deep: a robed king of slag and fire, a burning crown, flame in both hands. */
+function paintSovereign(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  for (let y = 20; y < 58; y++) { const half = 10 + Math.floor((y - 20) * .45); px(c, 30 - half, y, half * 2, 1, y % 7 === 0 ? '#3a2a30' : '#2a1c24'); }
+  px(c, 22, 30, 2, 26, '#ff6a2a'); px(c, 36, 28, 2, 28, '#ff6a2a'); px(c, 29, 34, 2, 22, '#ffd25a');
+  px(c, 18, 44, 6, 2, '#ff8a2e'); px(c, 36, 48, 8, 2, '#ff8a2e'); px(c, 13, 56, 34, 2, '#ff6a2a');
+  px(c, 14, 18, 32, 6, '#3a2a30'); px(c, 14, 18, 32, 2, '#5a4450');
+  px(c, 6, 8 - b, 8, 14, '#2a1c24'); px(c, 46, 7 + b, 8, 14, '#2a1c24'); px(c, 6, 8 - b, 2, 14, '#3a2a30'); px(c, 52, 7 + b, 2, 14, '#3a2a30');
+  px(c, 5, 2 - b, 10, 7, '#ff6a2a'); px(c, 7, 1 - b, 6, 4, '#ffd25a'); px(c, 45, 1 + b, 10, 7, '#ff6a2a'); px(c, 47, b, 6, 4, '#ffd25a');
+  px(c, 22, 6, 16, 13, '#1c1218'); px(c, 22, 6, 16, 2, '#2e2228');
+  px(c, 24, 10, 4, 3, '#ffd25a'); px(c, 32, 10, 4, 3, '#ffd25a'); px(c, 27, 15, 6, 1, f ? '#ffd25a' : '#ff6a2a');
+  px(c, 21, 3, 18, 4, '#9e2e1c'); for (let i = 0; i < 4; i++) px(c, 21 + i * 5, 0, 3, 3, i % 2 ? '#ffd25a' : '#ff8a2e');
+}
+
 const BONE = '#e8e1cf', BONE_SH = '#b8ac92', SOOT = '#2a1a24';
 
 /** A skeleton's body (skull, ribs, pelvis, legs) at x offset `o`: the walker's and the archer's, and the Warlock's raised. */
@@ -357,6 +400,28 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 64, h: 56, rank: 'boss',
     ranged: { range: 130, keep: 0, rate: 3.4, dmg: [16, 26], speed: 120, kind: 'breath', spread: 3 },
     summon: { type: 'bone-walker', count: 2, at: .5 },
+  },
+  // The Molten Deep's lower floors (−4…−6) and the Forge of the Four.
+  'slag-crawler': {
+    id: 'slag-crawler', name: 'Slag Crawler', hp: 300, speed: 30, dmg: [14, 22], rate: 1.4, sight: 120, level: 21,
+    coins: [30, 70], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .4 }], paint: paintCrawler, w: 27, h: 16,
+  },
+  'glass-sentinel': {
+    id: 'glass-sentinel', name: 'Glass Sentinel', hp: 340, speed: 20, dmg: [12, 18], rate: 1.8, sight: 150, level: 24,
+    coins: [40, 90], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .12 }], paint: paintSentinel, w: 20, h: 28,
+    ranged: { range: 110, keep: 80, rate: 2.2, dmg: [12, 18], speed: 140, kind: 'fire' },
+  },
+  'anvil-warden': {
+    id: 'anvil-warden', name: 'The Anvil-Warden', hp: 1100, speed: 22, dmg: [16, 26], rate: 1.7, sight: 150, level: 18,
+    coins: [300, 550], drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 44, h: 46, rank: 'boss',
+    summon: { type: 'cinder-bailiff', count: 2, at: .5 },
+  },
+  'cinder-sovereign': {
+    id: 'cinder-sovereign', name: 'The Cinder Sovereign', hp: 3200, speed: 22, dmg: [26, 40], rate: 1.7, sight: 170, level: 30,
+    coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 60, h: 60, rank: 'boss',
+    ranged: { range: 130, keep: 0, rate: 3.2, dmg: [20, 32], speed: 120, kind: 'breath', spread: 5 },
+    // At half its life it calls the hounds of the deep to its side.
+    summon: { type: 'lava-hound', count: 2, at: .5 },
   },
 };
 
