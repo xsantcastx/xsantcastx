@@ -19,7 +19,7 @@ import type { ItemRarity, ItemStats, SlotId } from './item.model';
 
 export type AffixKey =
   | 'life' | 'mana' | 'defense' | 'spellDamage' | 'castSpeed'
-  | 'moveSpeed' | 'critChance' | 'lifeRegen' | 'manaRegen';
+  | 'moveSpeed' | 'critChance' | 'lifeRegen' | 'manaRegen' | 'magicFind' | 'xpBonus';
 
 /** The gear slots that roll affixes (charms keep their authored rolls). */
 export type AffixSlot = 'weapon' | 'head' | 'chest' | 'hands' | 'legs' | 'feet' | 'off-hand' | 'trinket';
@@ -43,24 +43,30 @@ export const AFFIX_DEFS: Readonly<Record<AffixKey, AffixDef>> = {
   life: { key: 'life', base: [4, 8], growth: 0.9, cap: null, decimals: 0,
     slots: ['head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'] },
   mana: { key: 'mana', base: [3, 6], growth: 0.6, cap: null, decimals: 0,
-    slots: ['weapon', 'head', 'trinket', 'off-hand'] },
+    slots: ['weapon', 'head', 'chest', 'legs', 'trinket', 'off-hand'] },
   defense: { key: 'defense', base: [2, 5], growth: 0.8, cap: null, decimals: 0, slots: ARMOUR },
   spellDamage: { key: 'spellDamage', base: [3, 6], growth: 0.25, cap: 150, decimals: 1,
-    slots: ['weapon', 'head', 'trinket', 'off-hand'] },
+    slots: ['weapon', 'head', 'hands', 'trinket', 'off-hand'] },
   castSpeed: { key: 'castSpeed', base: [3, 6], growth: 0.1, cap: 40, decimals: 1,
     slots: ['weapon', 'hands', 'trinket'] },
   moveSpeed: { key: 'moveSpeed', base: [4, 7], growth: 0.1, cap: 40, decimals: 1, slots: ['feet'] },
   critChance: { key: 'critChance', base: [1, 3], growth: 0.05, cap: 40, decimals: 1,
-    slots: ['weapon', 'hands', 'trinket'] },
+    slots: ['weapon', 'head', 'hands', 'off-hand', 'trinket'] },
   lifeRegen: { key: 'lifeRegen', base: [0.2, 0.6], growth: 0.03, cap: null, decimals: 1,
-    slots: ['chest', 'legs', 'trinket'] },
+    slots: ['chest', 'legs', 'feet', 'trinket'] },
   manaRegen: { key: 'manaRegen', base: [0.2, 0.6], growth: 0.03, cap: null, decimals: 1,
-    slots: ['head', 'weapon', 'off-hand', 'trinket'] },
+    slots: ['head', 'weapon', 'chest', 'legs', 'feet', 'off-hand', 'trinket'] },
+  // Magic Find and XP: the loot and Hunting stats, rolled like any affix (D2's MF gear) on every slot.
+  magicFind: { key: 'magicFind', base: [2, 4], growth: 0.1, cap: null, decimals: 0,
+    slots: ['weapon', 'head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'] },
+  xpBonus: { key: 'xpBonus', base: [1, 3], growth: 0.05, cap: null, decimals: 0,
+    slots: ['weapon', 'head', 'chest', 'legs', 'feet', 'trinket'] },
 };
 
 /** Table order — the order affix lines read on a card. */
 export const AFFIX_KEYS: readonly AffixKey[] = [
   'life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
+  'magicFind', 'xpBonus',
 ];
 
 /** Weapon → Spell Damage; armour → Defense; trinket → Life. */

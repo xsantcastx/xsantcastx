@@ -211,12 +211,6 @@ export function rollItemStats(
 }
 
 /**
- * Legacy keys a gear mint still rolls off the definition (§3: Magic Find and XP
- * stay; Gold/sec, Strike and Ward no longer roll on new gear).
- */
-const LEGACY_GEAR_ROLL_KEYS: readonly ItemStatKey[] = ['magicFind', 'xpBonus'];
-
-/**
  * Definitions that keep their authored legacy roll whole: the Forge's Basalt
  * Edge, whose Strike is what the Forge's yield and the Seamworks' recovery read.
  */
@@ -244,15 +238,9 @@ export function rollMintStats(
 ): RolledStats {
   if (!def.rollKeys.length) return { stats: {}, quality: {} };
   if (!rollsAffixes(def)) return rollItemStatsWithQuality(def, rarity, rng);
+  // Magic Find and XP are affixes now (item-affixes.ts), so gear rolls nothing off the definition's old list.
   const affixes = rollAffixes(def, rarity, itemLevel, rng);
-  const legacyKeys = def.rollKeys.filter(key => LEGACY_GEAR_ROLL_KEYS.includes(key));
-  const legacy = legacyKeys.length
-    ? rollItemStatsWithQuality({ ...def, rollKeys: legacyKeys }, rarity, rng)
-    : { stats: {}, quality: {} };
-  return {
-    stats: { ...affixes.stats, ...legacy.stats },
-    quality: { ...affixes.quality, ...legacy.quality },
-  };
+  return { stats: affixes.stats, quality: affixes.quality };
 }
 
 export function mintEquipment(

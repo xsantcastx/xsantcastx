@@ -3568,3 +3568,10 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .ks__totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font: 13px var(--font-pixel); }
 .ks__totals dt { color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
 .ks__totals dd { margin: 0; text-align: right; color: var(--cozy-glow); }
+/* The whole card reads in a clean sans, like the reference: the pixel face draws 2 like 8 at card sizes. */
+.d2tip, .d2tip__title span, .d2tip__affixes, .d2tip__special, .d2tip__sockets, .d2tip__compare, .d2tip__foot, .d2tip__line {
+  font-family: var(--cozy-font-read); font-size: 12px; letter-spacing: 0; }
+.d2tip__affixes li, .d2tip__compare i { font-weight: 600; }
+.d2tip__range { font-family: var(--cozy-font-read); }
+.d2tip__title b { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; letter-spacing: .01em; }
+.d2tip__headline { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; }

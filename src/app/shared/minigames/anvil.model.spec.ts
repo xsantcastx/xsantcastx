@@ -17,6 +17,15 @@ import { masteryRng, MASTERY_BONUS, CRAFTING_RECIPES } from '../crafting/craftin
 import { itemDefinitionById, mintEquipment, statCeiling } from '../rpg/item-definition';
 import { bandFor } from '../rpg/item-quality';
 import { HOME_TIER_MAX, anvilTierRules, homeAnvilQuality } from './home-forge.model';
+import { affixRange, isAffixKey, isAffixSlot } from '../rpg/item-affixes';
+import type { GameItem, ItemRarity } from '../rpg/item.model';
+import type { ItemDefinition } from '../rpg/item-definition';
+
+/** The best a stat can be on this mint: an affix item's range top (item-affixes.ts), else the legacy band ceiling. */
+function rollCeiling(item: GameItem, def: ItemDefinition, rarity: ItemRarity, key: keyof GameItem['stats'], bandMax: number): number {
+  if (item.itemLevel != null && isAffixKey(key) && isAffixSlot(def.slot)) return affixRange(key, def.slot, item.itemLevel, rarity)[1];
+  return statCeiling(def, rarity, key) * bandMax;
+}
 
 /** A deterministic U[0,1) stream (mulberry32). */
 function seeded(seed: number): () => number {
@@ -120,12 +129,12 @@ describe('anvil roll bias', () => {
       // The best RNG today can return is just under 1.
       const item = mintEquipment(def!.id, r.rarity, anvilRng(() => 1 - Number.EPSILON, 1));
       if (!item) continue;
-      for (const key of def!.rollKeys) {
-        const ceiling = statCeiling(def!, r.rarity, key);
+      for (const key of Object.keys(item.stats) as (keyof typeof item.stats)[]) {
+        const ceiling = rollCeiling(item, def!, r.rarity, key, max);
         if (!ceiling) continue;
         const value = item.stats[key] ?? 0;
         // roundStat may round to a display step; allow one step of slack.
-        expect(value).toBeLessThanOrEqual(ceiling * max + 1);
+        expect(value).toBeLessThanOrEqual(ceiling + 1);
         const grade = item.rollQuality?.[key];
         if (grade != null) expect(grade).toBeLessThanOrEqual(1);
       }
@@ -170,10 +179,10 @@ describe('home anvil tiers (Your Anvil in the Homestead)', () => {
         const item = mintEquipment(def!.id, r.rarity, masteryRng(anvilRng(() => 1 - Number.EPSILON, q), MASTERY_BONUS, r.rarity));
         if (!item) continue;
         const { max } = bandFor(r.rarity, def!.style === 'void' || def!.style === 'void-touched');
-        for (const key of def!.rollKeys) {
-          const ceiling = statCeiling(def!, r.rarity, key);
+        for (const key of Object.keys(item.stats) as (keyof typeof item.stats)[]) {
+          const ceiling = rollCeiling(item, def!, r.rarity, key, max);
           if (!ceiling) continue;
-          expect(item.stats[key] ?? 0).toBeLessThanOrEqual(ceiling * max + 1);
+          expect(item.stats[key] ?? 0).toBeLessThanOrEqual(ceiling + 1);
           const grade = item.rollQuality?.[key];
           if (grade != null) expect(grade).toBeLessThanOrEqual(1);
         }

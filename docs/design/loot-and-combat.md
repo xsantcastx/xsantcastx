@@ -83,9 +83,11 @@ rarity, and the card shows the range beside the roll (`+7 Defense [4–9]`), D4-
 | Critical Chance % | 1–3 | +0.05 | 40 | weapon, hands, trinket | a crit hits ×1.75 |
 | Life Regen /s | 0.2–0.6 | +0.03 | — | chest, legs, trinket | life back each second |
 | Mana Regen /s | 0.2–0.6 | +0.03 | — | head, weapon, off-hand, trinket | mana back each second |
-| Magic Find %, XP % | legacy rolls kept | — | — | as authored | loot odds, Hunting XP |
+| Magic Find % | 2–4 | +0.1 | — | every slot | loot odds (D2's MF gear) |
+| XP % | 1–3 | +0.05 | — | weapon, head, chest, legs, feet, trinket | Hunting XP |
 
-Gold/sec, Strike and Ward stay on old saves and the Forge, but new mints no longer roll them (owner: the idle
+Every slot has at least five affixes to draw from, so a mythic always gets its five. Gold/sec, Strike and Ward stay
+on old saves and the Forge, but new mints no longer roll them; nor does gear roll anything off a definition's old list (owner: the idle
 gold-per-second is out of the game for now).
 
 **Perfect rolls:** every number carries its grade; an item whose every grade is ≥ 95% is **Perfect** and ≥ 99.9%

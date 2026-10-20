@@ -134,12 +134,18 @@ describe('item-affixes (every item is a roll)', () => {
       for (const key of Object.keys(item.stats)) expect(item.rollQuality![key as 'defense']).toBeDefined();
     });
 
-    it('keeps legacy Magic Find / XP rolls the definition authors', () => {
+    it('rolls Magic Find and XP only as affixes, never off the definition\'s old list', () => {
       const item = mintEquipment('keepers-cowl', 'rare', seeded(3))!;
       expect(item.itemLevel).toBe(10);
-      expect(item.stats.magicFind).toBeGreaterThan(0);
-      expect(item.stats.xpBonus).toBeGreaterThan(0);
       expect(item.stats.defense).toBeGreaterThan(0);
+      // implicit + 2 affixes for a rare, nothing else
+      expect(Object.keys(item.stats).length).toBe(3);
+    });
+
+    it('gives every slot a pool deep enough for a mythic\'s five affixes', () => {
+      for (const slot of Object.keys(IMPLICIT_BY_SLOT) as (keyof typeof IMPLICIT_BY_SLOT)[]) {
+        expect(affixPoolFor(slot).filter(k => k !== IMPLICIT_BY_SLOT[slot]).length).toBeGreaterThanOrEqual(5);
+      }
     });
 
     it('leaves the Forge edge and tools on their own rolls', () => {

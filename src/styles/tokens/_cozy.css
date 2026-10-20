@@ -46,4 +46,6 @@
   --cozy-loot-material: #e9cf9a;
   /* The game's lettering: Pixelify Sans (tokens/fonts.css), like the references' quest scroll. */
   --font-game: var(--font-pixel);
+  /* Small stat lines (item cards): a clean sans, since the pixel face draws 2 like 8 under 13px. */
+  --cozy-font-read: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
