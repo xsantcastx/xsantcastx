@@ -69,6 +69,10 @@ const RAMPS = {
   glass: ['#4a5868', '#8a98a8', '#c8d4e0', '#e8f0f8', '#ffffff'],
   ash: ['#3a3236', '#5a5054', '#8a7468', '#b8aca4', '#d4c8bc'],
   grey: ['#3a3339', '#5c5359', '#877c84', '#a0949b', '#c8c0c6'],
+  // Health potions: the cozy berry red (tokens/_cozy.css --cozy-berry is the base step).
+  heal: ['#3a0e10', '#6e1a1c', '#b8432e', '#e0603e', '#ffb08a'],
+  // Mana potions: the cozy mana blue (--cozy-mana is the base step).
+  mana: ['#0e1a4a', '#1e3a8a', '#5f8bff', '#8ab0ff', '#d8e6ff'],
 } as const;
 export type Material = keyof typeof RAMPS;
 
@@ -255,6 +259,14 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'eclipse-fragment-capsule': I('capsule', 'obsidian', 'eclipse'),
   'scroll-shattering-memory': I('scroll', 'paper', 'amethyst'),
   'rift-key': I('key', 'eclipse'),
+  // The potion belt (shared/potions): a vial, a potion, a flask by tier; red for life, blue for mana, violet to rejuvenate.
+  'minor-health-potion': I('vial', 'glass', 'heal'),
+  'lesser-health-potion': I('potion', 'glass', 'heal'),
+  'greater-health-potion': I('flask', 'glass', 'heal'),
+  'minor-mana-potion': I('vial', 'glass', 'mana'),
+  'lesser-mana-potion': I('potion', 'glass', 'mana'),
+  'greater-mana-potion': I('flask', 'glass', 'mana'),
+  'rejuvenation-potion': I('flask', 'glass', 'eclipse'),
 
   // ── Materials ──
   'cinder-ore': I('ore', 'basalt', 'ember'),

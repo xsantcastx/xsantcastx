@@ -161,6 +161,14 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'eclipse-glass': 'Eclipse Glass',
   'mirror-slate': 'Mirror Slate',
   'mirror-slate-ii': 'Mirror Slate II',
+  // The potion belt (shared/potions/potions.model.ts POTIONS; potions.model.spec pins the names together).
+  'minor-health-potion': 'Minor Health Potion',
+  'lesser-health-potion': 'Lesser Health Potion',
+  'greater-health-potion': 'Greater Health Potion',
+  'minor-mana-potion': 'Minor Mana Potion',
+  'lesser-mana-potion': 'Lesser Mana Potion',
+  'greater-mana-potion': 'Greater Mana Potion',
+  'rejuvenation-potion': 'Rejuvenation Potion',
   // The Lost Cabinets (shared/cabinets/cabinets.model.ts CABINET_ITEMS; cabinets.spec pins the names together).
   'curio-unstruck-bell': 'The Unstruck Bell',
   'curio-jar-of-noon': 'A Jar of Noon',

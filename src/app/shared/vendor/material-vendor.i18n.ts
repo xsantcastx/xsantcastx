@@ -5,6 +5,20 @@
  */
 export const VENDOR_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'vendor.title':       { en: 'Material Vendor', es: 'Vendedor de materiales' },
+  // Edrin Kade's potion shelf (shared/potions): the counter's one thing for sale.
+  'vendor.tabs':        { en: 'Counter', es: 'Mostrador' },
+  'vendor.tab.sell':    { en: 'Sell', es: 'Vender' },
+  'vendor.tab.potions': { en: 'Potions', es: 'Pociones' },
+  'vendor.potions.list': { en: 'Potions for the road', es: 'Pociones para el camino' },
+  'vendor.potions.rowSub': { en: '{{held}} held · {{price}} Gold', es: '{{held}} en mano · {{price}} de oro' },
+  'vendor.potions.health': { en: 'Mends {{n}} life over a second (Q).', es: 'Cura {{n}} de vida en un segundo (Q).' },
+  'vendor.potions.mana': { en: 'Pours back {{n}} mana over a second (R).', es: 'Devuelve {{n}} de mana en un segundo (R).' },
+  'vendor.potions.hold': { en: 'You carry {{n}}.', es: 'Llevas {{n}}.' },
+  'vendor.buy':         { en: 'Buy for {{n}} Gold', es: 'Comprar por {{n}} de oro' },
+  'vendor.potions.kicker': { en: 'Bought', es: 'Comprado' },
+  'vendor.potions.bought': { en: 'Bought {{n}} {{name}} for {{gold}} Gold.', es: 'Compraste {{n}} {{name}} por {{gold}} de oro.' },
+  'vendor.potions.funds': { en: 'Not enough Gold for that.', es: 'No tienes oro suficiente.' },
+  'vendor.potions.failed': { en: 'Edrin could not hand over the {{name}}. Try again.', es: 'Edrin no pudo darte la {{name}}. Intentalo de nuevo.' },
   'vendor.detailsHint': { en: 'Where it comes from, which recipes use it, quick amounts and your last sale', es: 'De dónde viene, qué recetas lo usan, cantidades rápidas y tu última venta' },
   'vendor.hint':        { en: 'The Vendor buys surplus at a low floor price. The market pays more.', es: 'El Vendedor compra el excedente a un precio mínimo bajo. El mercado paga más.' },
   'vendor.list':        { en: 'Materials the counter buys', es: 'Materiales que compra el mostrador' },
