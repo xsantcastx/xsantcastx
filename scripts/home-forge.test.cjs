@@ -130,6 +130,7 @@ test('mints no stat above today\'s ceiling at any home tier, even with a perfect
   const crafting = loadTs(src('shared/crafting/crafting.model.ts'));
   const defs = loadTs(src('shared/rpg/item-definition.ts'));
   const quality = loadTs(src('shared/rpg/item-quality.ts'));
+  const affixes = loadTs(src('shared/rpg/item-affixes.ts'));
   const rolled = crafting.CRAFTING_RECIPES
     .map(r => ({ r, def: defs.itemDefinitionById(r.output.itemId) }))
     .filter(x => x.def && x.def.rollKeys.length > 0);
@@ -144,10 +145,13 @@ test('mints no stat above today\'s ceiling at any home tier, even with a perfect
       const item = defs.mintEquipment(def.id, r.rarity, rng);
       if (!item) continue;
       const { max } = quality.bandFor(r.rarity, voidTouched);
-      for (const key of def.rollKeys) {
-        const ceiling = defs.statCeiling(def, r.rarity, key);
+      for (const key of Object.keys(item.stats)) {
+        // An affix item's best is its range top (item-affixes.ts); anything else, the legacy band ceiling.
+        const ceiling = item.itemLevel != null && affixes.isAffixKey(key) && affixes.isAffixSlot(def.slot)
+          ? affixes.affixRange(key, def.slot, item.itemLevel, r.rarity)[1]
+          : defs.statCeiling(def, r.rarity, key) * max;
         if (!ceiling) continue;
-        assert.ok((item.stats[key] ?? 0) <= ceiling * max + 1, `${def.id} ${key} at tier ${t}`);
+        assert.ok((item.stats[key] ?? 0) <= ceiling + 1, `${def.id} ${key} at tier ${t}`);
         const grade = item.rollQuality?.[key];
         if (grade != null) assert.ok(grade <= 1);
         checked++;
