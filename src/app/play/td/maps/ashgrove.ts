@@ -46,6 +46,11 @@ export const buildAshgrove = () => buildTown({
     { kind: 'crate', c: 3, r: 8 }, { kind: 'barrel', c: 25, r: 8 }, { kind: 'signpost', c: 12, r: 1 }, { kind: 'waystone', c: 16, r: 10 },
     { kind: 'pine', c: 1, r: 1 }, { kind: 'pine', c: 26, r: 1 }, { kind: 'oak', c: 1, r: 12 }, { kind: 'pine', c: 26, r: 12 }, { kind: 'oak', c: 11, r: 13 },
   ],
+  // Town task givers (shared/town-tasks): a woodward by the lodge, the charburner at her kilns.
+  givers: [
+    { id: 'woodward-ashby', name: 'Woodward Hesk Ashby', c: 5, r: 8, blurb: 'A woodward of the Charwood, keeper of its maps.' },
+    { id: 'charburner-kiln', name: 'Maud Kiln', c: 20, r: 8, blurb: "Ashgrove's charburner, never far from her kilns." },
+  ],
   spawn: { c: 14, r: 9 },
 });
 

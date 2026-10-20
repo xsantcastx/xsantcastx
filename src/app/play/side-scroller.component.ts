@@ -146,6 +146,10 @@ import type { BucketEvent, BucketId, FishEvent, HandToolId } from './engine/engi
 import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
 import { BountyService } from '../shared/bounties/bounty.service';
+import { TownTaskService, type TownTaskView } from '../shared/town-tasks/town-tasks.service';
+import { giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
+import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
+import { itemDefinitionById } from '../shared/rpg/item-definition';
 import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
 import { HEIGHTS_I18N } from './world/heights.i18n';
 import { HeightsService } from '../shared/heights/heights.service';
@@ -412,6 +416,13 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Bestiary window (top-down only): opened from the Map's menu row or with B. */
   bestiaryOpen = false;
   bestiary: { entries: (BestiaryEntry & { lit: string; dark: string; shownHaunts: string[]; moreHaunts: number })[]; found: number } | null = null;
+  /**
+   * A town task giver spoken to (top-down; shared/town-tasks): who they are, what they ask now (or the thanks for what
+   * was just handed in), and whether they keep a stall (its "Trade" button opens it as before).
+   */
+  taskTalk: { giver: string; name: string; view: TownTaskView | null; stall: StationDef | null; thanks: { task: TownTask; reward: string } | null } | null = null;
+  /** The tasks under way, for the goal scroll's Tasks rows (re-read on the HUD tick). */
+  taskRows: readonly { id: string; title: string; need: string; have: number; n: number; ready: boolean; giver: string }[] = [];
   /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
   lootToasts: LootToast[] = [];
   private toastKey = 0;
@@ -647,6 +658,7 @@ export class SideScrollerComponent implements OnDestroy {
   readonly map = new DelveMapView(() => this.mapSourceV2());
   // ── Map v2 and the Board Herald's bounties (docs/handoff/bounties-map-v2.md) ──
   private readonly bounties = inject(BountyService);
+  private readonly townTasks = inject(TownTaskService);
   private readonly heights = inject(HeightsService);
   private heightsSub?: Subscription;
   private readonly glim = inject(GlimService);
@@ -742,6 +754,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
     this.i18n.register(HUD_I18N);
+    this.i18n.register(TOWN_TASKS_I18N);
     this.i18n.register(ACCOUNT_I18N);
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
@@ -831,7 +844,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -875,6 +888,8 @@ export class SideScrollerComponent implements OnDestroy {
       satchelTarget: () => this.satchelPoint(),
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
+      // Top-down: a town task giver spoken to (E, a tap): the talk window, or false to open the stall as usual.
+      onTalk: keeperId => this.zone.run(() => this.talkTo(keeperId)),
       onLoot: loot => this.zone.run(() => (loot.item || loot.rune ? this.collectGear(loot.id, loot)
         : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
         && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)))),
@@ -1903,6 +1918,99 @@ export class SideScrollerComponent implements OnDestroy {
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-best .places-close')?.focus());
   }
   closeBestiary(): void { this.bestiaryOpen = false; this.focusWorld(); }
+
+  // ── Town tasks (shared/town-tasks): talk to a giver, accept, hand in; the Tasks rows under the goals ──
+
+  /** A task giver was spoken to (their own spot: beside a keeper's counter, or where they stand). A stall keeper keeps a Trade button. */
+  private talkTo(keeperId: string): boolean {
+    if (!this.topDown || !this.townTasks.isGiver(keeperId)) return false;
+    const view = this.townTasks.talk(keeperId);
+    const stall = this.engine?.places.find(p => TOWN_KEEPERS.infernal.some(k => k.id === keeperId && (k.station === p.id || (k.serves ?? []).includes(p.id)))) ?? null;
+    this.taskTalk = { giver: keeperId, name: giverById(keeperId)?.name ?? keeperId, view, stall, thanks: null };
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-talk__acts button')?.focus());
+    return true;
+  }
+  closeTalk(): void {
+    if (!this.taskTalk) return;
+    this.taskTalk = null;
+    if (!this.panel && !this.map.open && !this.storyCard && !this.storyScene) this.engine?.setPaused(false);
+    this.focusWorld();
+  }
+  acceptTask(): void {
+    const tk = this.taskTalk, task = tk?.view?.task;
+    if (!tk || !task || !this.townTasks.accept(task.id)) return;
+    this.message = this.t('play.task.taken', { title: this.t(`task.${task.id}.title`) });
+    this.sound.sfx('coin');
+    // Already done (a delivery the satchel already holds): the giver asks for it at once.
+    this.taskTalk = { ...tk, view: this.townTasks.talk(tk.giver) };
+    if (this.taskTalk.view?.standing !== 'ready') this.closeTalk();
+    this.tickTasks(true);
+  }
+  handInTask(): void {
+    const tk = this.taskTalk, task = tk?.view?.task;
+    if (!tk || !task) return;
+    const claim = this.townTasks.handIn(task.id);
+    if (!claim) { this.message = this.t('play.task.short'); return; }
+    const parts = [this.t('play.task.gold', { n: claim.gold }), this.t('play.task.xp', { n: claim.xp })];
+    if (claim.material) { parts.splice(1, 0, `${claim.material.qty} ${this.taskThing(claim.material.id)}`); this.gotItem(claim.material.qty, this.taskThing(claim.material.id), claim.material.id); }
+    if (claim.gear && task.reward.gear) parts.push(this.taskGearName(task));
+    const reward = parts.join(' · ');
+    this.message = this.t('play.task.done', { title: this.t(`task.${task.id}.title`), reward });
+    this.sound.sfx('coin'); this.bump('.coin-count');
+    this.taskTalk = { ...tk, view: this.townTasks.talk(tk.giver), thanks: { task, reward } };
+    this.tickTasks(true);
+  }
+  /** After the thanks: the next task the giver has, if any. */
+  nextTask(): void { if (this.taskTalk) this.taskTalk = { ...this.taskTalk, thanks: null }; }
+  /** The stall a keeper keeps (Trade): the talk closes, the stall opens as it always did. */
+  tradeInstead(): void {
+    const stall = this.taskTalk?.stall;
+    this.closeTalk();
+    if (stall) this.openStation(stall);
+  }
+  /** "Defeat 6 Rivet Maw" / "Bring 6 Cinder Ore" / "Reach the Ember Inn's upstairs". */
+  taskNeed(task: TownTask): string {
+    if (task.kind === 'visit') return this.t('play.task.need.visit', { place: this.t(`task.place.${task.target}`) });
+    return this.t(task.kind === 'hunt' ? 'play.task.need.hunt' : 'play.task.need.deliver', { n: task.n, name: task.kind === 'hunt' ? (MOBS[task.target]?.name ?? task.target) : this.taskThing(task.target) });
+  }
+  /** What a task pays, as one line: "144 Gold · 2 Ember Residue · 60 Hunting XP · a Rare Keeper's Cowl". */
+  taskReward(view: TownTaskView): string {
+    const r = view.task.reward;
+    const parts = [this.t('play.task.gold', { n: view.gold })];
+    if (r.material) parts.push(`${r.material.qty} ${this.taskThing(r.material.id)}`);
+    parts.push(this.t('play.task.xp', { n: r.huntingXp }));
+    if (r.gear) parts.push(this.taskGearName(view.task));
+    return parts.join(' · ');
+  }
+  private taskGearName(task: TownTask): string {
+    const g = task.reward.gear!;
+    return this.t('play.task.gear', { rarity: this.t(`play.task.rarity.${g.rarity}`), name: itemDefinitionById(g.defId)?.name ?? g.defId, level: g.level });
+  }
+  private taskThing(id: string): string { return materialDisplay(id)?.name ?? itemDefinitionById(id)?.name ?? id; }
+  /** Hunts or visits just finished: say who to go back to. */
+  private tasksFinished(done: readonly TownTask[]): void {
+    for (const task of done) this.message = this.t('play.task.ready', { title: this.t(`task.${task.id}.title`), name: giverById(task.giver)?.name ?? '' });
+    if (done.length) this.tickTasks(true);
+  }
+  private tasksKey = '';
+  private taskLevel = '';
+  /** The HUD tick: a floor reached counts for a visit; the givers' head marks; the Tasks rows. */
+  private tickTasks(force = false): void {
+    if (!this.topDown || !this.browser || !this.engine) return;
+    const e = this.engine as unknown as { whereabouts?: { level: string }; setTaskMarks?: (m: Record<string, '!' | '?'>) => void };
+    const level = e.whereabouts?.level ?? '';
+    if (level !== this.taskLevel) { this.taskLevel = level; if (level && level !== 'surface') this.tasksFinished(this.townTasks.visited(level)); }
+    const marks = this.townTasks.marks();
+    const rows = this.townTasks.active().map(v => ({ id: v.task.id, title: this.t(`task.${v.task.id}.title`), need: this.taskNeed(v.task), have: v.have, n: v.task.n, ready: v.standing === 'ready', giver: giverById(v.task.giver)?.name ?? '' }));
+    const key = JSON.stringify([marks, rows]);
+    if (!force && key === this.tasksKey) return;
+    this.tasksKey = key;
+    e.setTaskMarks?.(marks);
+    this.taskRows = rows;
+    // For tests and tools: the givers' head marks ("bench-smith:!;sexton-wren:!").
+    this.canvas?.nativeElement.setAttribute('data-task-marks', Object.entries(marks).map(([id, m]) => `${id}:${m}`).sort().join(';'));
+  }
   private readonly portraits = new Map<string, string>();
   /** A creature's first frame, painted by its own code, scaled x3 without smoothing; dark: only its outline filled in. */
   private mobPortrait(id: string, dark: boolean): string {
@@ -2488,6 +2596,8 @@ export class SideScrollerComponent implements OnDestroy {
       if (keeper) { const named = this.t(keeper.nameKey); return this.t('play.world.keeper.hearth', { name: named === keeper.nameKey ? keeper.name : named }); }
     }
     if (this.state?.nearby === 'hs-forge') return this.t('play.hud.act.strikeForge');
+    // A town task giver (shared/town-tasks).
+    if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
     const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;
     if (gather) {
@@ -2590,6 +2700,7 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape' || event.code === 'KeyM') { event.preventDefault(); this.closeMap(); }
       return;
     }
+    if (this.taskTalk) { if (event.key === 'Escape') { event.preventDefault(); this.closeTalk(); } return; }
     if (this.bestiaryOpen && event.key === 'Escape') { event.preventDefault(); this.closeBestiary(); return; }
     if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
@@ -4166,10 +4277,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return !!this.taskTalk || this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
-    if (this.petsOpen) this.closePets();
+    if (this.taskTalk) this.closeTalk();
+    else if (this.petsOpen) this.closePets();
     else if (this.bestiaryOpen) this.closeBestiary();
     else if (this.soundOpen) this.soundOpen = false;
     else if (this.anchorSheet) this.closeAnchors();
@@ -4405,6 +4517,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return;
     // The Bestiary counts every top-down kill (account progress: a read-modify-write, so no copy goes stale).
     if (this.topDown) { const blob = withKill(this.store.read(BESTIARY_KEY), event.creature); if (blob) this.store.write(BESTIARY_KEY, blob); }
+    // A town task's hunt counts it (only once taken: shared/town-tasks).
+    if (this.topDown) this.tasksFinished(this.townTasks.killed(event.creature));
     // The Banked Furnace banks itself again for a day after every fall.
     if (event.creature === 'banked-furnace') this.delve.claim(furnaceDayFlag(Date.now()));
     // The two rescues a hunt can earn (pets.model.ts): six Foragers, six Substitutes.

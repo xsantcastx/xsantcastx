@@ -53,6 +53,11 @@ export const buildCinderport = () => buildTown({
     { kind: 'signpost', c: 16, r: 2 }, { kind: 'bench', c: 10, r: 9 }, { kind: 'waystone', c: 20, r: 3 }, { kind: 'pine', c: 1, r: 3 }, { kind: 'pine', c: 28, r: 2 },
     { kind: 'ship', c: 18, r: 15 },
   ],
+  // Town task givers (shared/town-tasks): the harbourmaster at the pier's head, an old netter on the sand.
+  givers: [
+    { id: 'harbourmaster-coyle', name: 'Harbourmaster Tamsin Coyle', c: 18, r: 10, blurb: 'Nothing docks in Cinderport without her nod.' },
+    { id: 'netter-pell', name: 'Old Netter Pell', c: 9, r: 11, blurb: 'Mends nets on the sand and talks to the sea.' },
+  ],
   spawn: { c: 15, r: 7 },
 });
 

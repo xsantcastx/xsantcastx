@@ -109,6 +109,13 @@ export const buildPyrehold = () => buildTown({
   ],
   // The Pyre Spire, the watchtower over the south quarter: its door opens onto three floors (maps/pyre-spire.ts).
   towers: [{ c: 37, r: 21, door: SPIRE_DOOR }],
+  // Town task givers (shared/town-tasks): the Watch's captain by the east road, the forgewife by the north forges,
+  // the Spire's scholar under its tower.
+  givers: [
+    { id: 'captain-vey', name: 'Captain Brannoc Vey', c: 42, r: 16, blurb: 'Captain of the Pyre Watch. He has work for a steady hand.' },
+    { id: 'forgewife-marr', name: 'Forgewife Ysolde Marr', c: 9, r: 10, blurb: "Keeps Pyrehold's great forges lit." },
+    { id: 'scholar-pryor', name: 'Scholar Odette Pryor', c: 34, r: 19, blurb: 'A scholar of the Pyre Spire who maps the Deep.' },
+  ],
   spawn: { c: 23, r: 25 },
 });
 

@@ -1715,3 +1715,16 @@ stars for the Lesser (the Archive swears it is only water), and the night of an 
 before dawn, its glass always cold. **The Rejuvenation** nobody in the Seamworks can brew: the deep things carry it,
 as if someone keeps handing it down to them (an open thread). Sources: creature drops (stronger creatures, better
 potions; Rejuvenations from level 10 up) and Edrin's counter for Gold. Lines live in `shared/potions/potions.model.ts`.
+
+**Town tasks** (shipped 2026-10-20 — owner reviews in play; `shared/town-tasks/town-tasks.i18n.ts`). Every town's
+keepers ask for help. *The Seamworks*: Mara Voss wants ore that "still hums" and world-root bark for her quench water;
+Edrin Kade wants the Rivet Maws off the cart road and a letter "only numbers" carried to his cousin's room upstairs at
+the Ember Inn; **Sexton Aldous Wren**, keeper of the Hushed Barrow, sweeps the graves and counts them twice — some don't
+stay closed, and the cowl he found among the Bone Walkers is yours. *Pyrehold*: **Captain Brannoc Vey** of the Pyre
+Watch (Cinder-clan raiders, the firecallers who "sing the lava up"); **Forgewife Ysolde Marr**, who has never let the
+great forges go cold and fears something in the Deep is drinking her heat (glass grown like frost in the Glass Halls);
+**Scholar Odette Pryor** of the Spire, who watches the caldera's smoke lean east "like it's listening", and arms the
+Tyrant's end in iron that remembers the fire. *Cinderport*: **Harbourmaster Tamsin Coyle** (scratching under the
+Salted Ember; drakes over the Molten Fields; a drowned captain's staff); **Old Netter Pell**, who swears the sea is
+warmer than it used to be. *Ashgrove*: **Woodward Hesk Ashby**, who names the burnt trees still living and found the
+crypt door open; **Maud Kiln**, the charburner, whose mother's gauntlets "have held hotter things than you".

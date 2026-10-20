@@ -200,6 +200,11 @@ export interface EngineOptions {
   onInteract: (target: InteractionTarget) => void;
   /** A panel or waystone station was interacted with. The host opens its panel. */
   onStation?: (station: StationDef) => void;
+  /**
+   * Top-down only: a keeper was spoken to (E, a tap). True when the host took it (a town task giver: it opens the
+   * talk); false lets the stall open as usual (shared/town-tasks).
+   */
+  onTalk?: (keeperId: string) => boolean;
   onState: (state: EngineState) => void;
   /**
    * Where picked-up loot flies: the satchel HUD's centre in CLIENT (viewport) px,

@@ -3754,6 +3754,8 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .td-map__pin:hover i { scale: 1.35; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 8px var(--pin); }
 :is(.td-map__pin, .td-map__key button)[data-kind='way'] { --pin: var(--cozy-loot-epic); }
 :is(.td-map__pin, .td-map__key button)[data-kind='ship'] { --pin: var(--cozy-loot-rare); }
+/* A town task giver (shared/town-tasks). */
+:is(.td-map__pin, .td-map__key button)[data-kind='npc'] { --pin: var(--cozy-leaf); }
 .td-map__me { position: absolute; width: 10px; height: 10px; translate: -50% -50%; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry);
   animation: td-map-me 1.4s ease-in-out infinite; pointer-events: none; }
 @keyframes td-map-me { 50% { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 7px color-mix(in srgb, var(--cozy-berry) 40%, transparent); } }
@@ -3812,4 +3814,49 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .td-release:hover { background: var(--cozy-wood-2) !important; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .td-release { left: 8px; translate: none; bottom: auto; top: calc(50% + 130px); min-height: 44px; }
+}
+
+/* ── Town tasks (shared/town-tasks): the Tasks rows on the quest scroll, and the talk window ── */
+.td-tasks { flex: 1 0 100%; display: grid; gap: 3px; margin: 0; padding: 4px 0 2px; list-style: none; order: 9;
+  box-shadow: 0 -2px 0 0 color-mix(in srgb, var(--cozy-parch-edge) 55%, transparent); font: 600 13px/1.25 var(--font-pixel); color: var(--cozy-ink); }
+.td-tasks li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.td-tasks li span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-tasks li b { flex: none; font: 700 12px/1 var(--font-pixel); color: var(--cozy-ink-soft); }
+/* A task's mark: a small brass diamond; ready to hand in, it lights and the count becomes a "?". */
+.td-tasks i { flex: none; width: 8px; height: 8px; margin: 0 2px; rotate: 45deg; background: var(--cozy-parch); box-shadow: 0 0 0 2px var(--cozy-ink-soft); }
+.td-tasks li.is-ready i { background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-ink); }
+.td-tasks li.is-ready b { color: var(--cozy-ink); }
+.guide--tasks .guide-text { flex: 1 1 100%; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* Phones: the chip keeps one task (the oldest), small. */
+  .td-tasks { padding: 2px 0 0; font-size: 11px; box-shadow: none; }
+  .td-tasks li:nth-child(n + 2) { display: none; }
+  .guide--folded .td-tasks { display: none; }
+  .guide--tasks .guide-text b { font-size: 10px; }
+  /* The chip grows by the one task row instead of spilling it over the world. */
+  .stage--td .guide:has(.td-tasks) { height: auto; min-height: 46px; }
+}
+
+/* The talk window: one small wooden window, the ask on a parchment scroll, one brass button. */
+.stage .places.td-talk { width: min(480px, calc(100% - 32px)); height: auto; max-height: calc(100% - 32px); grid-template-rows: auto auto auto; }
+.td-talk__body { display: grid; gap: 8px; padding: 10px 14px 4px; }
+.td-talk__who { margin: 0; font: italic 500 13px/1.4 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
+.td-talk__scroll { display: grid; gap: 6px; padding: 10px 12px; background: var(--cozy-parch); color: var(--cozy-ink);
+  box-shadow: 0 -4px 0 0 var(--cozy-wood-3), 0 4px 0 0 var(--cozy-wood-3), 0 -6px 0 0 var(--cozy-wood-0), 0 6px 0 0 var(--cozy-wood-0), inset 0 -3px 0 0 var(--cozy-parch-shade); }
+.td-talk__scroll h3 { display: flex; align-items: baseline; gap: 8px; margin: 0; font: 700 17px/1.2 var(--font-pixel); color: var(--cozy-ink); text-transform: none; letter-spacing: 0; }
+.td-talk__scroll h3 small { margin-left: auto; font: 700 11px/1 var(--font-pixel); color: var(--cozy-ink-soft); }
+.td-talk__say { margin: 0; font: 500 14px/1.45 var(--cozy-font-read); color: var(--cozy-ink); }
+.td-talk__say--plain { color: var(--cozy-cream); }
+.td-talk__row { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; margin: 0; font: 600 13px/1.35 var(--cozy-font-read); }
+.td-talk__row b { font: 700 11px/1.6 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-ink-soft); }
+.td-talk__row em { margin-left: 6px; font-style: normal; font-weight: 700; color: var(--cozy-ink-soft); }
+.td-talk__acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px 12px; }
+.td-talk__acts button { min-height: 44px; padding: 0 16px !important; font: 700 14px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer; }
+.td-talk__acts .td-talk__go { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.td-talk__acts .td-talk__trade { margin-left: auto; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* Phones: a bottom sheet over the touch row, never the whole screen; the buttons share the width. */
+  .stage .places.td-map.td-talk { top: auto; bottom: calc(var(--hud-safe-b, 0px) + 8px); max-height: calc(100% - 140px); overflow-y: auto; }
+  .td-talk__acts button { flex: 1 1 0; }
+  .td-talk__acts .td-talk__trade { margin-left: 0; }
 }
