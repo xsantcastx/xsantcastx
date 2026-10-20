@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { anvil, bed, bones, boulder, chest, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, torchPost, TILE, type Ground, type Sprite } from './td-art';
+import { anvil, bed, bones, boulder, chest, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 
@@ -32,9 +32,9 @@ export interface TdExit {
   arrive: string;
 }
 
-export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil';
-const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil };
-const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true };
+export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp';
+const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp };
+const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true };
 /** Objects wider than their tile block the tiles either side too (a forge is three tiles of stone). */
 const WIDE: Partial<Record<MapObject, number>> = { forge: 1 };
 
@@ -122,7 +122,7 @@ export class HandLevel implements TdLevel {
   }
   walkable(c: number, r: number): boolean {
     const g = this.ground(c, r);
-    if (g === 'rock' || g === 'wall' || g === 'water' || g === 'ember') return false;
+    if (SOLID_GROUND.has(g) || g === 'water' || g === 'ember') return false;
     return !(c >= 0 && r >= 0 && c < this.cols && r < this.rows && this.blocked.has(r * this.cols + c));
   }
   objectsIn(x0: number, y0: number, x1: number, y1: number): TdObject[] {

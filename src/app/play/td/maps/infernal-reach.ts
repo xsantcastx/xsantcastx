@@ -18,6 +18,8 @@ import { FORGE_IN } from './forge-of-four';
 import { buildAshgrove } from './ashgrove';
 
 export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'Sail back to Ember Isle.' };
+/** The second ship at Pyrehold's pier, nearer the shore: across the sea to Mossharbor in the Verdant Wilds. */
+export const SHIP_TO_VERDANT: StationDef = { id: 'ship-verdant', x: 0, label: 'SHIP TO THE VERDANT WILDS', kind: 'passage', blurb: 'Sail to Mossharbor, on the jungle continent. Its creatures start at level 15.' };
 
 export const INFERNAL_REACH: readonly string[] = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
@@ -132,7 +134,7 @@ export const REACH_PLACES: readonly ContinentPlace[] = [
   { kind: 'harbour', c: 23, r: 26, name: 'Pyrehold Harbour' },
 ];
 
-export const REACH_NAMES: Readonly<Record<Region, string>> = {
+export const REACH_NAMES: Readonly<Partial<Record<Region, string>>> = {
   '~': 'The Burning Sea', ',': 'The Ashen Shore', '.': 'The Cinder Steppe', f: 'The Charwood', F: 'The Deep Charwood',
   h: 'The Obsidian Badlands', m: 'The Pyre Peaks', v: 'The Molten Fields', l: 'Glasswater', T: 'Pyrehold',
 };
@@ -158,6 +160,7 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
   town: buildPyrehold, townName: 'Pyrehold', streets: { row: 15, col: 23 }, river: false,
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
+    { place: 'harbour', station: SHIP_TO_VERDANT, to: 'verdant-wilds', arrive: 'ship-mossharbor', ship: true, along: -3 },
     { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
     { place: 'crypt', station: CRYPT_IN, to: 'ashen-crypt-1', arrive: 'crypt-out' },
     { place: 'forge', station: FORGE_IN, to: 'forge-of-four-1', arrive: 'forge-out' },
