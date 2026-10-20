@@ -2315,7 +2315,15 @@ export class SideScrollerComponent implements OnDestroy {
     this.pushFishing();
   }
   /** Where the pet is (the canvas's data-pet-* for the e2e). */
-  get petAt(): { id: string; x: number; state: string; fetching: boolean; glow: boolean; act: string; hits: number; gathers: number; finds: number; heals: number; command: string; level: number } | null { return this.engine?.petView ?? null; }
+  get petAt(): { id: string; x: number; y?: number; state: string; fetching: boolean; glow: boolean; act: string; hits: number; gathers: number; finds: number; heals: number; command: string; level: number } | null { return this.engine?.petView ?? null; }
+  /** Top-down: the pet chip by the portrait (its face, its name, what it is doing); it opens the pet sheet. */
+  get tdPet(): { id: string; name: string; doing: string; state: string; face: string } | null {
+    const at = this.topDown ? this.petAt : null;
+    if (!at) return null;
+    const name = this.pets.record(at.id)?.name || this.t('play.pet.name.' + at.id);
+    const face = (this.engine as unknown as { petFace?: () => string } | undefined)?.petFace?.() ?? '';
+    return { id: at.id, name, doing: this.t('play.pet.doing.' + at.state), state: at.state, face };
+  }
   /** The helper of the pet following, or null. */
   private get petAbility(): PetDef['ability'] | null { return this.browser ? followingPet(this.pets.state)?.ability ?? null : null; }
   openPets(): void { this.placesOpen = false; this.petsOpen = true; this.sound.sfx('open'); }
