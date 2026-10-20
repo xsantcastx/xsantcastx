@@ -8,6 +8,7 @@
  */
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import type { ItemStats } from '../../shared/rpg/item.model';
+import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
@@ -142,6 +143,24 @@ export interface FightStats {
   defense: number;
   /** Life back per second, always. */
   lifeRegen: number;
+  /** Worn resists per element (its own + All Resist), each capped at 75. */
+  resists: Record<Element, number>;
+}
+
+/** The ItemStats key that resists each element. */
+export const RESIST_STAT: Readonly<Record<Element, 'fireResist' | 'coldResist' | 'lightningResist' | 'arcaneResist'>> = {
+  fire: 'fireResist', cold: 'coldResist', lightning: 'lightningResist', arcane: 'arcaneResist',
+};
+
+/**
+ * A creature's blow or shot on the Keeper (docs/design/loot-and-combat.md §6): physical is cut by Defense (as it
+ * always was), an element by its worn resist alone — dmg × (1 − min(75, resist) ÷ 100). Never below 1.
+ */
+export function incomingDamage(raw: number, type: DamageType, defense: number, level: number, resists: Partial<Record<Element, number>> = {}): number {
+  if (!(raw > 0)) return 0;
+  if (type === 'physical') return defense > 0 ? Math.max(1, Math.round(raw * (1 - defenseReduction(defense, level)))) : Math.round(raw);
+  const r = Math.max(0, Math.min(MAX_KEEPER_RESIST, resists[type] ?? 0));
+  return Math.max(1, Math.round(raw * (1 - r / 100)));
 }
 
 /**
@@ -159,6 +178,11 @@ export function wornCombat(inventory: { readonly equippedTotals: Required<ItemSt
     critChance: inventory.equippedTotals.critChance,
     lifeRegen: inventory.equippedTotals.lifeRegen,
     manaRegen: inventory.equippedTotals.manaRegen,
+    fireResist: inventory.equippedTotals.fireResist,
+    coldResist: inventory.equippedTotals.coldResist,
+    lightningResist: inventory.equippedTotals.lightningResist,
+    arcaneResist: inventory.equippedTotals.arcaneResist,
+    allResist: inventory.equippedTotals.allResist,
   };
 }
 
@@ -177,6 +201,7 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
     crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
     defense: g(gear.defense),
     lifeRegen: g(gear.lifeRegen),
+    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + g(gear.allResist))])) as Record<Element, number>,
   };
 }
 

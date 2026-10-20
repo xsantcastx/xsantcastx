@@ -22,6 +22,8 @@ const ITEMS = [
   gear('i-rare', 'starplate-cuirass', 'Starplate Cuirass', 'rare', { defense: 18, life: 23, lifeRegen: 1.1, magicFind: 5 }, 2,
     { itemLevel: 12, rollQuality: { defense: 0.97, life: 0.98, lifeRegen: 0.96, magicFind: 0.99 } }),
   gear('i-common', 'voidweave-cowl', 'Voidweave Cowl', 'common', { defense: 6 }, 3, { itemLevel: 4 }),
+  // Resists (§6): a legendary ring at item level 30 — Life, three elements and All Resist, each with its range.
+  gear('i-res', 'anchor-ring', 'Anchor Ring', 'legendary', { life: 58, fireResist: 17, coldResist: 14, arcaneResist: 15, allResist: 9 }, 4, { itemLevel: 30 }),
 ];
 
 async function open(page: Page): Promise<void> {
@@ -73,3 +75,21 @@ test('a click pins the same small card beside the item, with its actions — nev
   await expect(card).toHaveCount(0);
 });
 
+test('a resist ring shows each resist in its element\'s pip, with the range it rolled in', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page);
+  await page.keyboard.press('i');
+  const cell = page.locator('button.pocket[aria-label^="Anchor Ring"]').first();
+  await expect(cell).toBeVisible({ timeout: 10000 });
+  await cell.hover();
+  const card = page.locator('.d2tip');
+  await expect(card).toBeVisible();
+  for (const [key, text] of [['fireResist', '+17% Fire Resist'], ['coldResist', '+14% Cold Resist'], ['arcaneResist', '+15% Arcane Resist'], ['allResist', '+9% All Resist']] as const) {
+    const row = card.locator(`.d2tip__affixes li[data-stat="${key}"]`);
+    await expect(row).toContainText(text);
+    await expect(row.locator('.d2tip__range')).toHaveText(key === 'allResist' ? '[8–11]' : '[13–19]');
+  }
+  const box = (await card.boundingBox())!;
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/item-card-resists.jpg', type: 'jpeg', quality: 80,
+    clip: { x: Math.max(0, box.x - 120), y: Math.max(0, box.y - 60), width: Math.min(1280 - Math.max(0, box.x - 120), box.width + 200), height: Math.min(800 - Math.max(0, box.y - 60), box.height + 100) } });
+});

@@ -14,7 +14,9 @@ import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
-import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, defenseReduction, type SkillId } from './td-skills';
+import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, type SkillId } from './td-skills';
+import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
+import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
 
 export interface MobDef {
   id: string;
@@ -48,6 +50,16 @@ export interface MobDef {
   ghost?: boolean;
   /** Once, when its life falls to `at` of its whole, it calls `count` of `type` to its side. */
   summon?: { type: string; count: number; at: number };
+  /**
+   * The type its blows and shots carry (§6). Unset: its creature family's (creature-families.ts creatureHits), or
+   * physical for a creature with no profile.
+   */
+  hits?: DamageType;
+}
+
+/** The type a creature's blows and shots carry: its own, else its family's, else physical. */
+export function mobHits(def: Pick<MobDef, 'id' | 'hits'>): DamageType {
+  return def.hits ?? (isKnownCreature(def.id) ? creatureHits(def.id) : 'physical');
 }
 
 // ── The bestiary's brushes (the art pass, 2026-10-20: the creatures drawn to the new Keeper's standard) ──────────────
@@ -811,7 +823,7 @@ function paintSovereign(c: CanvasRenderingContext2D, f: number): void {
 
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
-    id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10,
+    id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10, hits: 'fire',
     lore: 'Born in a kiln that was never lit by hand, it tracks a warm boot-print for miles and sleeps in the cracks that still glow.',
     coins: [10, 30], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintHound, w: 32, h: 24,
   },
@@ -821,12 +833,12 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     coins: [24, 60], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .08 }], paint: paintGolem, w: 34, h: 40,
   },
   'ember-warden': {
-    id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8,
+    id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8, hits: 'fire',
     lore: 'Keeper of the flooded galleries, it banks the old forge-fire each night and bites anyone who comes to stoke it.',
     coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 40, h: 56, rank: 'boss',
   },
   'magma-tyrant': {
-    id: 'magma-tyrant', name: 'The Magma Tyrant', hp: 1400, speed: 20, dmg: [18, 30], rate: 1.8, sight: 160, level: 20,
+    id: 'magma-tyrant', name: 'The Magma Tyrant', hp: 1400, speed: 20, dmg: [18, 30], rate: 1.8, sight: 160, level: 20, hits: 'fire',
     lore: 'It was a crown once, poured too hot. Now the caldera wears it, and the caldera does not take kindly to visitors.',
     coins: [400, 700], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 58, h: 72, rank: 'boss',
   },
@@ -836,7 +848,7 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     coins: [2, 9], drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 30, h: 22,
   },
   'cinder-imp': {
-    id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2,
+    id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2, hits: 'fire',
     lore: 'A spark that grew a grudge. It throws small tempers and smaller fires, and giggles when the soot finds your collar.',
     coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 24, h: 24,
   },
@@ -1018,7 +1030,7 @@ export interface Mob {
 }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' }
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath'; type?: DamageType }
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
@@ -1157,6 +1169,8 @@ export class MobSystem {
   crit = 0;
   defense = 0;
   keeperLevel = 1;
+  /** Worn resists per element (td-skills fightStats), each already capped at 75. */
+  resists: Partial<Record<Element, number>> = {};
   /** The running aura (one at a time, D2), or none. */
   aura: SkillId | null = 'aura-embers';
   /** Dark Ward: damage it still absorbs, seconds left. */
@@ -1277,7 +1291,7 @@ export class MobSystem {
           for (let i = 0; i < n; i++) {
             let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
             if (m.cursed > 0) dmg = Math.max(1, Math.round(dmg * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
-            this.shots.push(aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, px0, py0 - 12, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22));
+            this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, px0, py0 - 12, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: mobHits(m.def) });
           }
         }
       } else {
@@ -1303,7 +1317,7 @@ export class MobSystem {
         let n = rnd(m.def.dmg[0], m.def.dmg[1]);
         // A cursed foe bites weaker.
         if (m.cursed > 0) n = Math.max(1, Math.round(n * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
-        if (prey) this.hurtMinion(prey, n); else this.biteKeeper(n);
+        if (prey) this.hurtMinion(prey, n); else this.biteKeeper(n, mobHits(m.def));
       }
     }
     this.updateShots(dt);
@@ -1359,13 +1373,15 @@ export class MobSystem {
       }
     }
   }
-  /** A blow or a shot landing on the Keeper: Worn Defense turns a share aside, the Dark Ward drinks what it can. */
-  private biteKeeper(raw: number): void {
+  /**
+   * A blow or a shot landing on the Keeper (§6): worn Defense turns a share of a physical one aside, a worn resist
+   * of an element's; the Dark Ward drinks what it can. The number floats in the type's colour (physical stays red).
+   */
+  private biteKeeper(raw: number, type: DamageType = 'physical'): void {
     const p = this.host.player();
-    let n = raw;
-    if (this.defense > 0) n = Math.max(1, Math.round(n * (1 - defenseReduction(this.defense, this.keeperLevel))));
+    let n = incomingDamage(raw, type, this.defense, this.keeperLevel, this.resists);
     if (this.ward > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
-    if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, '#ff5a4a'); }
+    if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
   }
   private hurtMinion(k: Minion, n: number): void {
     k.hp -= n; k.hit = .18;
@@ -1380,7 +1396,7 @@ export class MobSystem {
       const s = this.shots[i];
       stepShot(s, dt);
       if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
-      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg); continue; }
+      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }

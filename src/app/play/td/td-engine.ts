@@ -61,7 +61,8 @@ import { FX, burst, circlePixels, discSprite, drawBurst, drawRing, fxNoise, glow
 import type { ItemStats } from '../../shared/rpg/item.model';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
-const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen'];
+const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
+  'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist'];
 
 /** The Map window's ground colours (one pixel per tile, or per two on a continent). */
 const MAP_COL: Partial<Record<Ground, string>> = {
@@ -267,7 +268,7 @@ export class TopDownEngine {
   private buildKey = '';
   /**
    * The Keeper's level, spent points and worn gear totals (the HUD hands them in): life, mana, regeneration, spell
-   * power, speed — and from the gear (§3 affixes) cast speed, crits, Defense and life back each second.
+   * power, speed — and from the gear (§3 affixes) cast speed, crits, Defense, resists and life back each second.
    */
   setKeeperBuild(level: number, stats: KeeperStats, gear: Partial<ItemStats> = {}): void {
     const key = `${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}|${GEAR_KEYS.map(k => gear[k] ?? 0).join(',')}`;
@@ -279,6 +280,7 @@ export class TopDownEngine {
     this.mobs.power = st.power; this.mobs.regen = st.regen; this.mobs.agility = st.haste;
     this.mobs.castSpeed = st.castSpeed; this.mobs.crit = st.crit;
     this.mobs.defense = st.defense; this.mobs.keeperLevel = Math.max(1, Math.floor(level));
+    this.mobs.resists = st.resists;
     this.agility = st.moveHaste;
     this.lifeRegen = st.lifeRegen;
   }

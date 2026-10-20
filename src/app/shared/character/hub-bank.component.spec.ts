@@ -16,7 +16,7 @@ function snap(quantity: number, extra: InventorySnapshot['stacks'] = []): Invent
     bag: [],
     stacks: [{ id: 'stack-cinder', stackKey: 'cinder-ore', quantity }, ...extra],
     equipped: {},
-    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0, life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0 },
+    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0, life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0, fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0 },
     goldFromSales: 0,
     sold: 0,
     usedRows: 1 + extra.length,

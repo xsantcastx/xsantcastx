@@ -3,9 +3,10 @@
  * (owner 2026-10-20: "more spells for the warlock like raise undead skeletons to fight for him").
  */
 import type { EngineOptions } from '../engine/engine.model';
-import { MOBS, MobSystem, aimShot, capMinions, pickMinionTarget, raisedStats, shotHits, stepShot, type Minion, type Mob, type MobHost } from './td-mobs';
+import { MOBS, MobSystem, aimShot, mobHits, capMinions, pickMinionTarget, raisedStats, shotHits, stepShot, type Minion, type Mob, type MobHost } from './td-mobs';
 import { CLASS_SKILLS, SKILLS, defaultBar } from './td-skills';
 import { CREATURE_PROFILES } from '../../shared/loot/creature-families';
+import { DAMAGE_COLORS, DAMAGE_TYPES } from '../../shared/loot/damage.model';
 import { TdWorld } from './td-world';
 import { CONTINENTS } from './td-engine';
 import { TILE } from './td-art';
@@ -205,5 +206,37 @@ describe('td-mobs: where the new creatures live', () => {
     const near = reach.spawnsIn(x - 12 * TILE, y - 12 * TILE, x + 12 * TILE, y + 12 * TILE)
       .filter(s => Math.hypot(s.x / TILE - door.c, s.y / TILE - door.r) < 8);
     expect(near).toEqual([]);
+  });
+});
+
+describe('td-mobs: damage types (§6)', () => {
+  it('each creature hits with its family\'s type unless it says otherwise', () => {
+    for (const def of Object.values(MOBS)) expect(DAMAGE_TYPES).withContext(def.id).toContain(mobHits(def));
+    for (const id of ['ember-drake', 'orc-firecaller', 'cinder-sovereign', 'bone-dragon', 'glass-sentinel', 'lava-hound', 'magma-tyrant', 'cinder-imp']) {
+      expect(mobHits(MOBS[id])).withContext(id).toBe('fire');
+    }
+    expect(mobHits(MOBS['cinder-wraith'])).toBe('cold');
+    for (const id of ['bone-walker', 'bone-archer', 'cinder-orc', 'orc-warlord', 'ash-wolf', 'rivet-maw']) expect(mobHits(MOBS[id])).withContext(id).toBe('physical');
+    expect(mobHits({ id: 'no-such-creature' })).toBe('physical');
+  });
+
+  it('a fire bite is cut by fire resist, not Defense; a physical bite by Defense, not resists', () => {
+    spyOn(Math, 'random').and.returnValue(.5);
+    const bite = (type: string, setup: (sys: MobSystem) => void): { hurt: number[]; colors: string[] } => {
+      const w = world();
+      setup(w.sys);
+      mobAt(w.sys, type, 10, 0);
+      run(w.sys, 1.2);
+      return { hurt: w.hurt, colors: w.sys.floaters.map(f => f.color) };
+    };
+    // Lava Hound [7, 12] → 10 at random .5; Ash Wolf [3, 7] → 5.
+    expect(bite('lava-hound', () => undefined).hurt[0]).toBe(10);
+    expect(bite('lava-hound', sys => { sys.defense = 1000; sys.keeperLevel = 1; }).hurt[0]).toBe(10);
+    const warded = bite('lava-hound', sys => { sys.resists = { fire: 75, cold: 0 }; });
+    expect(warded.hurt[0]).toBe(3);
+    expect(warded.colors).toContain(DAMAGE_COLORS.fire);
+    expect(bite('lava-hound', sys => { sys.resists = { cold: 75, lightning: 75, arcane: 75 }; }).hurt[0]).toBe(10);
+    expect(bite('ash-wolf', sys => { sys.resists = { fire: 75, cold: 75, lightning: 75, arcane: 75 }; }).hurt[0]).toBe(5);
+    expect(bite('ash-wolf', sys => { sys.defense = 100; sys.keeperLevel = 1; }).hurt[0]).toBeLessThan(5);
   });
 });

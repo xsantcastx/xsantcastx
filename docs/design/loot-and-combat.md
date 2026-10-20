@@ -85,6 +85,8 @@ rarity, and the card shows the range beside the roll (`+7 Defense [4–9]`), D4-
 | Mana Regen /s | 0.2–0.6 | +0.03 | — | head, weapon, off-hand, trinket | mana back each second |
 | Magic Find % | 2–4 | +0.1 | — | every slot | loot odds (D2's MF gear) |
 | XP % | 1–3 | +0.05 | — | weapon, head, chest, legs, feet, trinket | Hunting XP |
+| Fire / Cold / Lightning / Arcane Resist % | 3–6 | +0.15 | 75 each | armour + trinket | cuts that element's blows and shots (§6) |
+| All Resist % | 2–4 | +0.08 | 75 (per element, with the element's own) | trinket | adds to all four resists |
 
 Every slot has at least five affixes to draw from, so a mythic always gets its five. Gold/sec, Strike and Ward stay
 on old saves and the Forge, but new mints no longer roll them; nor does gear roll anything off a definition's old list (owner: the idle
@@ -93,7 +95,12 @@ gold-per-second is out of the game for now).
 **Perfect rolls:** every number carries its grade; an item whose every grade is ≥ 95% is **Perfect** and ≥ 99.9%
 **Flawless** (the thresholds in `item-quality.ts`), named on the card and priced ×3 / ×5 at the till.
 
-Gap left open: resist affixes (fire/shadow) — the families' resists exist (§6), items do not roll them yet.
+Resists (2026-10-20): the four elements of `DamageType` (fire, cold, lightning, arcane — arcane is the world's
+"shadow"/light school) roll as their own affixes on armour and the trinket, never on the weapon; All Resist is the
+trinket's smaller prismatic roll. They share the slot's draw, so boots now roll Movement Speed less often (a
+legendary's four picks come from ten, not six). The card pips wear the element (fire `--cozy-loot-legendary`, cold
+`--cozy-loot-rare`, arcane `--cozy-loot-epic`, lightning `--cozy-loot-mythic`, all `--cozy-brass-hi`); the stat sheet
+(C) lists each element's worn total once a piece carries it.
 
 ## 4. Monster families and roles
 
@@ -152,6 +159,16 @@ ground band still show — every blow is telegraphed.
   resisted (Ward is health). Source of Keeper resists: **runes set in ARMOUR wells** (D2's armour-vs-weapon rule):
   Infernal runes fire, Nocturne cold, Verge lightning, Archivum arcane, the top three all (`aura-sources.ts`
   RUNE_ELEMENT/RUNE_RESIST, 6 → 40 by tier). Hell's −100 needs 175 from armour to sit at the 75 cap.
+- **The top-down fight** (`play/td/td-mobs.ts`, 2026-10-20): every creature's blows and shots carry a type —
+  `MobDef.hits` if set, else its profile's/family's `creatureHits()`, else physical (`mobHits`). Fire: Lava Hound,
+  Cinder Imp, the Ember Warden, the Magma Tyrant (own `hits`), the Ember Drake, Orc Firecaller, Glass Sentinel, the
+  Ashbone Dragon, the Cinder Sovereign (profiles); cold: the Cinder Wraith; physical: skeletons, orcs, wolves, golems,
+  maws. Incoming (`td-skills.ts` `incomingDamage`): physical is cut by Defense only (D ÷ (D + 40 + 6×level));
+  an element by its worn resist only — `dmg × (1 − min(75, resist) / 100)`, never under 1. The worn resist is the
+  element's affix total + All Resist, capped at 75 (`fightStats().resists`, read via `equippedTotals.<key>` in
+  `wornCombat`). Runes' armour resists and the tier penalty belong to the side view's rules and are not added here
+  yet. The floating number takes the type's `DAMAGE_COLORS` (physical stays red); the Bestiary card says "Hits with
+  Fire" in the element's colour.
 - The Keeper's damage gains the **Hunting level** (D2's character level): +0.5% damage and +2 HP per level past the
   first, capped at 99 (`keeper-combat.ts`). Level 1 adds nothing.
 

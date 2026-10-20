@@ -5,7 +5,8 @@
  */
 import { materialDisplay } from '../../shared/rpg/material-catalog';
 import { CONTINENTS, LEVELS } from './td-engine';
-import { MOBS } from './td-mobs';
+import type { DamageType } from '../../shared/loot/damage.model';
+import { MOBS, mobHits } from './td-mobs';
 
 /** The save blob (account progress, synced; merge is the structural max per creature). */
 export const BESTIARY_KEY = 'eclipse-bestiary-v1';
@@ -27,6 +28,8 @@ export interface BestiaryEntry {
   coins: [number, number];
   drops: BestiaryDrop[];
   lore: string;
+  /** The type its blows and shots carry (§6): which resist answers it. */
+  hits: DamageType;
   /** Times defeated; 0 = not yet met (the card shows a silhouette). */
   kills: number;
 }
@@ -70,6 +73,7 @@ export function bestiaryEntries(kills: Readonly<Record<string, number>>): Bestia
     coins: def.coins,
     drops: def.drops.map(d => ({ name: dropName(d.material), qty: d.qty, chance: d.chance })),
     lore: def.lore ?? '',
+    hits: mobHits(def),
     kills: Math.max(0, Math.floor(kills[def.id] ?? 0)),
   })).sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
