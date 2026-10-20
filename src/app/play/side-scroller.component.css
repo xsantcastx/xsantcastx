@@ -3704,5 +3704,8 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .stage.stage--td .glim-say { top: calc(var(--hud-safe-t) + 172px); left: 8px; right: 8px; max-width: none; }
   .stage--td .guide-glim, .stage--td .guide-fold { display: none; }
   .stage--td .guide-text b { display: block; font-size: 10px; }
+  /* Touch phones: the attack button stands above the menu grid (it sat under it), Interact above that. */
+  .stage--td .touch-act { left: auto; right: 8px; bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 20px); }
+  .stage--td:has(.touch-act button) .prompt { bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 84px); }
 }
 
