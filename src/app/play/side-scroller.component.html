@@ -314,10 +314,10 @@
       <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
       @if (slateTier > 0) {
         <!-- While the glass is held up (the Lost Cabinets' Scan) the button IS the reading: it glows and pulses with the warmth. -->
-        <button type="button" class="quiet slate-btn" [class.slate-btn--ready]="slateReady" [class.slate-btn--scan]="scanning" (click)="toggleSlate()"
-                [attr.aria-label]="scanning ? t('cabinet.hud.scanning', { warmth: t('cabinet.warmthShort.' + scanWarmth) }) : t(slateReady ? 'slate.hud.ready' : 'slate.hud.open')" [attr.data-slate-tier]="slateTier"
+        <button type="button" class="quiet slate-btn" [class.slate-btn--scan]="scanning" (click)="toggleSlate()"
+                [attr.aria-label]="scanning ? t('cabinet.hud.scanning', { warmth: t('cabinet.warmthShort.' + scanWarmth) }) : t('slate.hud.open')" [attr.data-slate-tier]="slateTier"
                 [attr.data-warmth]="scanning ? scanWarmth : null" [style.--pulse]="scanPeriod ? scanPeriod + 's' : null"
-                aria-keyshortcuts="P"><i class="slate-ico" aria-hidden="true"></i><span class="slate-label">{{ scanning ? t('cabinet.hud.label', { warmth: t('cabinet.warmthShort.' + scanWarmth) }) : t('slate.hud.label') }}</span><kbd class="key-hint">P</kbd>@if (slateReady && !scanning) {<i class="slate-badge" aria-hidden="true"></i>}</button>
+                aria-keyshortcuts="P"><i class="slate-ico" aria-hidden="true"></i><span class="slate-label">{{ scanning ? t('cabinet.hud.label', { warmth: t('cabinet.warmthShort.' + scanWarmth) }) : t('slate.hud.label') }}</span><kbd class="key-hint">P</kbd></button>
       }
       <button type="button" class="quiet" (click)="returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
       <button type="button" class="quiet" (click)="restartHunt()">{{ t('play.hud.restartHunt') }}</button>

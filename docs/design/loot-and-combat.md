@@ -238,7 +238,7 @@ No item, rune or stack is ever lost. The fall card says how much.
 
 ## 9. Drop tables and the curve
 
-`shared/loot/drop-tables.ts`, on top of each area's coins/material table (which stays the Gold/material source):
+`shared/loot/drop-tables.ts`, on top of each creature's Gold pile (§9b) and material table:
 
 - Item rolls per kill: normal 1 × 8%, champion 2 × 45%, unique 3 × 60%, boss 3 × 100% (× the tier's item chance).
 - Rarity: D2's top-down tries — singular, mythic, … uncommon each get a chance; the first success is the rung, none is
@@ -254,6 +254,30 @@ No item, rune or stack is ever lost. The fall card says how much.
 Delve hunt ≈ 1.2 rare, 0.45 epic, 0.12 legendary an hour; Hell trash ≈ 8 rare, 4 epic, 1.1 legendary, 0.26 mythic,
 0.03 singular an hour; a Normal gate boss pays ≥ 1 rare+. Selling an hour of Hell drops is half a minute of 30-minute
 income — gear is for wearing, not a Gold farm.
+
+### 9b. Gold from the hunt (owner, 2026-10-21: "monsters drop more gold like in d2")
+
+The forge no longer makes Gold by the second (`economy-curve IDLE_INCOME = false`: no furnace/automaton income, no
+offline settlement; the Slate's Homestead face is gone). Gold comes from killing things. Every kill drops a pixel Gold
+pile on the ground (`td-engine drawGoldPile`: a stepped coin mound, three sizes by the sum, a glint; "38 Gold" plate
+nearby). The Keeper's pull brings it in from 8 tiles, a pet fetches it, and pickup floats "+38 Gold" into the same
+ledger (`EconomyService.earnGold`, source `hunt`).
+
+    mean(L, rank) = (4 + 2.5·L·(1 + L/100)) × rank       rank: normal 1 · champion 4 · unique 6 · boss 15
+    pile          = mean × uniform(0.6, 1.4), whole Gold, ≥ 1          (economy-curve HUNT_GOLD, rollHuntGold)
+
+| Level | Normal pile | Boss pile | An hour (240 kills) |
+|---|---|---|---|
+| 1 | 4–9 | 59–137 | ~1.6k |
+| 10 | 19–44 | 284–662 | ~7.6k |
+| 20 | 38–90 | 576–1,344 | ~15k |
+| 40 | 86–202 | 1.3k–3.0k | ~35k |
+| 100 | 302–706 | 4.5k–10.6k | ~121k |
+
+Fixed rewards that used to be "N minutes of income" are now N minutes of a steady hunt at their own level
+(`huntGold(level, seconds)`): town tasks and dailies, the level milestones. Rewards still written as
+max(floor, seconds of income) (bounties, heights, cabinets, eclipse marks, fishing lodge) pay their floor.
+`economy-sim --hunt` prints it; `--check` holds the bands. The Gold wipe (`GOLD_ERA`): see economy-ops `enterGoldEra`.
 
 ## 10. Bosses and spells
 

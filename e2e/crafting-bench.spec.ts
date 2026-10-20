@@ -54,7 +54,7 @@ const LEDGER = {
 };
 
 /** Enough Gold to pay the bench several times over. */
-const ECONOMY = { version: 1, gold: 3_000_000, totalGoldEarned: 3_000_000, runGoldEarned: 3_000_000 };
+const ECONOMY = { version: 1, goldEra: 1, gold: 3_000_000, totalGoldEarned: 3_000_000, runGoldEarned: 3_000_000 };
 
 async function open(page: Page): Promise<void> {
   await page.addInitScript(({ ledger, economy }) => {

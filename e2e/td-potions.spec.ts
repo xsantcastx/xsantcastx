@@ -12,7 +12,7 @@ const BAG = { 'minor-health-potion': 3, 'lesser-health-potion': 2, 'minor-mana-p
 async function open(page: Page, gold = 0): Promise<void> {
   await seed(page, {
     'eclipse-td': '1', 'preferred-language': 'en', 'godforge-realm-era': String(ERA), 'godforge-inventory': ledger(BAG),
-    ...(gold ? { 'godforge-economy': { version: 3, gold, totalGoldEarned: gold, runGoldEarned: gold } } : {}),
+    ...(gold ? { 'godforge-economy': { version: 3, goldEra: 1, gold, totalGoldEarned: gold, runGoldEarned: gold } } : {}),
   });
   await page.goto('/play?td=1&hour=12');
   await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });

@@ -67,7 +67,7 @@ export const WORLD_CLOCK_I18N: Readonly<Record<string, { en: string; es: string 
   // Sera Quill's Eclipse Ledger (the reward track)
   'clock.ledger.title': { en: 'Sera Quill\'s Eclipse Ledger', es: 'El Registro de Eclipses de Sera Quill' },
   'clock.ledger.count': { en: '{{n}} eclipses observed', es: '{{n}} eclipses observados' },
-  'clock.ledger.next': { en: 'Next mark at {{at}}: +{{glass}} Eclipse Glass and income', es: 'Proxima marca en {{at}}: +{{glass}} Cristal de Eclipse e ingresos' },
+  'clock.ledger.next': { en: 'Next mark at {{at}}: +{{glass}} Eclipse Glass and Gold', es: 'Proxima marca en {{at}}: +{{glass}} Cristal de Eclipse y oro' },
   'clock.ledger.full': { en: 'Every mark paid. Each eclipse still pays its observation.', es: 'Todas las marcas pagadas. Cada eclipse sigue pagando su observacion.' },
   'clock.ledger.how': { en: 'Be in the world while an eclipse is on and it is written down, once. A missed eclipse is a gap in the data, not a mistake: the next one counts the same.', es: 'Estate en el mundo mientras hay un eclipse y queda anotado, una vez. Un eclipse perdido es un hueco en los datos, no un error: el siguiente cuenta igual.' },
   'clock.ledger.thisOne': { en: 'This eclipse is in the ledger.', es: 'Este eclipse ya esta en el registro.' },

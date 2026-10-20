@@ -197,7 +197,7 @@ class FakeFirestore {
 
   seedGold(gold: number, uid = 'u1'): void {
     this.docs.set(`users/${uid}/economy/state`, {
-      v: { version: 3, gold, totalGoldEarned: gold, lastIdleAt: Date.now() },
+      v: { version: 3, goldEra: 1, gold, totalGoldEarned: gold, lastIdleAt: Date.now() },
       updatedAt: new Date().toISOString(),
     });
   }
@@ -717,7 +717,7 @@ describe('cloud save — Firestore as the record', () => {
    */
   function seedStaleGold(): void {
     localStorage.setItem(ECONOMY_KEY, JSON.stringify({
-      version: 3, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
+      version: 3, goldEra: 1, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
     }));
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressBlob(10, 'device-only')));
     fake.seedGold(100);
@@ -778,7 +778,7 @@ describe('cloud save — Firestore as the record', () => {
     // device never earned. The strategy machinery is what the undo is built
     // on, so it stays honest here.
     localStorage.setItem(ECONOMY_KEY, JSON.stringify({
-      version: 3, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
+      version: 3, goldEra: 1, gold: 5000, totalGoldEarned: 5000, lastIdleAt: Date.now(),
     }));
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressBlob(1000, 'device-only')));
     fake.seedGold(100);

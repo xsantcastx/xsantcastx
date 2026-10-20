@@ -20,7 +20,6 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { EconomyService } from '../economy/economy.service';
-import { itemScaled } from '../economy/economy-curve';
 import { InventoryService } from '../rpg/inventory.service';
 import { mintEquipment } from '../rpg/item-definition';
 import { keeperLevelForXp } from './keeper-level';
@@ -39,8 +38,6 @@ export interface KeeperLevelUp extends LevelUpSummary {
   paid: MilestonePaid[];
 }
 
-/** Gold floor for N minutes of income (the town tasks' rate: 4,000 old Gold per 5 minutes). */
-export function milestoneGoldFloor(minutes: number): number { return itemScaled(Math.round(minutes * 60 * 40 / 3)); }
 
 @Injectable({ providedIn: 'root' })
 export class KeeperLevelService {
@@ -72,7 +69,7 @@ export class KeeperLevelService {
   claimDue(level: number): MilestonePaid[] {
     if (!this.isBrowser) return [];
     this.hydrate();
-    const due = milestonesReached(level).filter(m => (m.rewards.goldMinutes || m.rewards.gear) && !this.current.claimed.includes(m.level));
+    const due = milestonesReached(level).filter(m => (m.rewards.gold || m.rewards.gear) && !this.current.claimed.includes(m.level));
     if (!due.length) return [];
     this.save({ ...this.current, claimed: [...this.current.claimed, ...due.map(m => m.level)].sort((a, b) => a - b) });
     return due.map(m => this.pay(m));
@@ -89,7 +86,7 @@ export class KeeperLevelService {
 
   private pay(m: Milestone): MilestonePaid {
     const r = m.rewards;
-    const gold = r.goldMinutes ? this.economy.earnIncome(milestoneGoldFloor(r.goldMinutes), r.goldMinutes * 60, `keeper:level-${m.level}`) : 0;
+    const gold = r.gold ? this.economy.earnGold(r.gold, `keeper:level-${m.level}`) : 0;
     let gear: string | null = null;
     if (r.gear) {
       const id = `keeper-milestone-${m.level}`;

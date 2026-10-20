@@ -506,21 +506,26 @@ function check(E) {
   if (!(first <= 15)) fails.push(`first purchase at ${fmtT(first)} (must be <= 15 s)`);
   if (inTen < 20) fails.push(`${inTen} purchases in the first 10 min (must be >= 20)`);
   console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
-  // The Mirror Slate (Lune Coyne's shortcut price, rule S): 1-10 minutes of income at the half-hour stage.
+  // The forge above is the legacy clicker (only the side view's Homestead still draws it): with IDLE_INCOME off the
+  // ledger mints nothing by the second, so every "seconds of income" reward below pays its floor, and Gold comes
+  // from the hunt (`--hunt` prints it). The hunt's own checks run in huntScenario.
+  console.log(`  forge idle income: ${C.IDLE_INCOME ? 'ON' : 'off'} (Gold comes from the hunt: HUNT_GOLD)`);
+  if (C.IDLE_INCOME) fails.push('the forge pays idle income again (IDLE_INCOME must stay off: Gold comes from the hunt)');
+  // The Mirror Slate (Lune Coyne's shortcut price): 10-60 minutes of a level-10 hunt, where a Keeper first meets her.
   {
-    const gps = log.at[1800]?.gps ?? 0;
-    const minutes = gps > 0 ? C.MIRROR_SLATE.price / gps / 60 : Infinity;
-    console.log(`  Mirror Slate: ${fmtN(C.MIRROR_SLATE.price)} Gold = ${minutes.toFixed(1)} min of income at 30m; earned free after ${C.MIRROR_SLATE.awardPlays} plays`);
-    if (!(minutes >= 1 && minutes <= 10)) fails.push(`Mirror Slate price is ${minutes.toFixed(1)} min of income at 30m (must be 1-10)`);
+    const perMin = C.huntGold(10, 60);
+    const minutes = C.MIRROR_SLATE.price / perMin;
+    console.log(`  Mirror Slate: ${fmtN(C.MIRROR_SLATE.price)} Gold = ${minutes.toFixed(1)} min of a level-10 hunt; earned free after ${C.MIRROR_SLATE.awardPlays} plays`);
+    if (!(minutes >= 10 && minutes <= 60)) fails.push(`Mirror Slate price is ${minutes.toFixed(1)} min of a level-10 hunt (must be 10-60)`);
   }
   // The potion belt (shared/potions): Edrin Kade's shelf is a sink priced in kills of the creatures that tier meets
-  // (td-mobs MOBS coins), 2-12 kills each; he never buys them back, so buying is never a Gold loop.
+  // (their Gold piles, economy-curve huntGoldMean), 2-12 kills each; he never buys them back, so buying is never a Gold loop.
   {
     const P = loadTs('src/app/shared/potions/potions.model.ts');
     const mobText = readFileSync(resolve(here, '..', 'src/app/play/td/td-mobs.ts'), 'utf8');
     const mobs = mobText.slice(mobText.indexOf('export const MOBS')).split(/\n  '[a-z-]+': \{/).slice(1).map(b => {
-      const level = /level: (\d+)/.exec(b), coins = /coins: \[(\d+), (\d+)\]/.exec(b), rank = /rank: '(\w+)'/.exec(b);
-      return level && coins ? { level: +level[1], avg: (+coins[1] + +coins[2]) / 2, rank: rank ? rank[1] : 'normal' } : null;
+      const level = /level: (\d+)/.exec(b), rank = /rank: '(\w+)'/.exec(b);
+      return level ? { level: +level[1], avg: C.huntGoldMean(+level[1], rank ? rank[1] : 'normal'), rank: rank ? rank[1] : 'normal' } : null;
     }).filter(Boolean);
     const vendor = readFileSync(resolve(here, '..', 'src/app/shared/vendor/material-vendor.model.ts'), 'utf8');
     const rows = [];
@@ -546,6 +551,8 @@ function check(E) {
   fails.push(...bountiesScenario({ quiet: true }));
   // The town keepers' tasks (shared/town-tasks): once-only Gold on the rule I band, XP under the ceiling (`--town-tasks` prints it).
   fails.push(...townTasksScenario({ quiet: true }));
+  // The hunt (economy-curve HUNT_GOLD): the piles, the bosses, the milestones' fixed Gold (`--hunt` prints it).
+  fails.push(...huntScenario({ quiet: true }));
   // Uncapped levels: 1-99 untouched, 99 -> 100 continuous, time to 300 per skill (`--levels` prints it).
   fails.push(...levelsScenario({ quiet: true }));
   fails.push(...levelingScenario({ quiet: true }));
@@ -1495,29 +1502,27 @@ function bountiesScenario({ quiet = false } = {}) {
 //   4. Hunting XP per task stays under the world-action ceiling (500), and a whole town is under a level at 20.
 const TOWN_TASKS_MODEL = loadTsTree('src/app/shared/town-tasks/town-tasks.model.ts');
 function townTasksScenario({ quiet = false } = {}) {
+  // With the forge's income off (IDLE_INCOME), a task pays a fixed sum: `goldSeconds` of a steady hunt of creatures at
+  // the task's own level (economy-curve huntGold). The bands below are the old rule I bands read in hunt time.
+  //   1. every task pays 2-20 min of its level's hunt, exactly huntGold(level, goldSeconds);
+  //   2. all of them together are at most 4 h of hunting, once;
+  //   3. Hunting XP: at most 500 a task and a level at 20 per town.
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
-  const { log } = simulate(PROPOSED);
   const tasks = TOWN_TASKS_MODEL.TOWN_TASKS;
-  say('Town tasks scenario · v3 curve (PROPOSED)\n');
-  say('  task              income   floor   Hunting XP   extra');
+  say('Town tasks scenario · Gold in minutes of a hunt at the task level\n');
+  say('  task              level  hunt     Gold   Hunting XP   extra');
   for (const t of tasks) {
     const r = t.reward;
-    say(`  ${t.id.padEnd(16)}${String(r.goldSeconds / 60).padStart(5)} min${String(r.gold).padStart(7)}${String(r.huntingXp).padStart(12)}   ${r.material ? `${r.material.qty} ${r.material.id}` : ''}${r.gear ? ` ${r.gear.rarity} ${r.gear.defId} iL${r.gear.level}` : ''}`);
-    if (r.goldSeconds < 120 || r.goldSeconds > 20 * 60) fails.push(`${t.id} pays ${r.goldSeconds} s of income (band 120-1200 s)`);
-    if (r.gold > C.itemScaled(Math.round(r.goldSeconds * 40 / 3))) fails.push(`${t.id}'s floor ${r.gold} is over the bounties' rate`);
+    say(`  ${t.id.padEnd(16)}${String(t.level).padStart(6)}${String(r.goldSeconds / 60).padStart(5)} min${String(r.gold).padStart(7)}${String(r.huntingXp).padStart(12)}   ${r.material ? `${r.material.qty} ${r.material.id}` : ''}${r.gear ? ` ${r.gear.rarity} ${r.gear.defId} iL${r.gear.level}` : ''}`);
+    if (r.goldSeconds < 120 || r.goldSeconds > 20 * 60) fails.push(`${t.id} pays ${r.goldSeconds} s of a hunt (band 120-1200 s)`);
+    if (r.gold !== C.huntGold(t.level, r.goldSeconds)) fails.push(`${t.id} pays ${r.gold} Gold, not ${r.goldSeconds} s of a level-${t.level} hunt (${C.huntGold(t.level, r.goldSeconds)})`);
+    if (!(r.gold > 0)) fails.push(`${t.id} pays no Gold`);
     if (r.huntingXp > 500) fails.push(`${t.id} pays ${r.huntingXp} Hunting XP (ceiling 500)`);
   }
   const all = tasks.reduce((s, t) => s + t.reward.goldSeconds, 0);
-  say(`\n  All ${tasks.length} tasks, once: ${(all / 60).toFixed(0)} min of income.`);
-  if (all > 4 * 3600) fails.push(`all town tasks pay ${(all / 60).toFixed(0)} min of income (must be <= 240)`);
-  for (const [t, label] of [[1800, '30m'], [3600, '1h'], [86400, '1d']]) {
-    const gps = log.at[t]?.gps;
-    if (!gps) continue;
-    const wins = tasks.filter(x => x.reward.gold > x.reward.goldSeconds * gps);
-    say(`  ${label.padEnd(4)} ${fmtN(gps).padStart(8)} Gold/s   floor wins on ${wins.length} task(s)`);
-    if (wins.length) fails.push(`a town task's Gold floor beats its income seconds at ${label} (${wins.map(x => x.id).join(', ')})`);
-  }
+  say(`\n  All ${tasks.length} tasks, once: ${(all / 60).toFixed(0)} min of hunting.`);
+  if (all > 4 * 3600) fails.push(`all town tasks pay ${(all / 60).toFixed(0)} min of hunting (must be <= 240)`);
   const level20 = xpFor(21) - xpFor(20);
   const byGiverTown = new Map();
   for (const t of tasks) {
@@ -1527,9 +1532,8 @@ function townTasksScenario({ quiet = false } = {}) {
   for (const [town, xp] of byGiverTown) if (xp > level20) fails.push(`${town}'s tasks pay ${xp} Hunting XP, over a level at 20 (${level20})`);
   say(`  Hunting XP per town: ${[...byGiverTown].map(([k, v]) => `${k} ${v}`).join(', ')} (a level at 20 is ${level20}).`);
   // Dailies: one small errand per giver per local day (DAILY_TASKS). Repeatable, so capped per DAY, worst day.
-  //   5. each pays 1-3 min of income, no gear, a floor within the bounties' rate, at most 100 Hunting XP and 0.2 potion chance;
-  //   6. the worst day (every giver's priciest daily) is at most 25 min of income and a quarter of a level at 20 in XP;
-  //   7. the floor never beats the income seconds at 1 h or 1 d.
+  //   4. each pays 1-3 min of its level's hunt, no gear, at most 100 Hunting XP and 0.2 potion chance;
+  //   5. the worst day (every giver's priciest daily) is at most 25 min of hunting and a quarter of a level at 20 in XP.
   const dailies = TOWN_TASKS_MODEL.DAILY_TASKS;
   const givers = [...new Set(dailies.map(t => t.giver))];
   let worstSecs = 0, worstXp = 0;
@@ -1541,23 +1545,65 @@ function townTasksScenario({ quiet = false } = {}) {
   }
   for (const t of dailies) {
     const r = t.reward;
-    if (r.goldSeconds < 60 || r.goldSeconds > 180) fails.push(`${t.id} pays ${r.goldSeconds} s of income (daily band 60-180 s)`);
-    if (r.gold > C.itemScaled(Math.round(r.goldSeconds * 40 / 3))) fails.push(`${t.id}'s floor ${r.gold} is over the bounties' rate`);
+    if (r.goldSeconds < 60 || r.goldSeconds > 180) fails.push(`${t.id} pays ${r.goldSeconds} s of a hunt (daily band 60-180 s)`);
+    if (r.gold !== C.huntGold(t.level, r.goldSeconds)) fails.push(`${t.id} pays ${r.gold} Gold, not ${r.goldSeconds} s of a level-${t.level} hunt`);
     if (r.gear) fails.push(`${t.id} is a daily and pays gear`);
     if (r.huntingXp > 100) fails.push(`${t.id} pays ${r.huntingXp} Hunting XP (daily ceiling 100)`);
     if (r.potion && r.potion.chance > 0.2) fails.push(`${t.id} has a ${r.potion.chance} potion chance (daily ceiling 0.2)`);
   }
-  for (const [t, label] of [[3600, '1h'], [86400, '1d']]) {
-    const gps = log.at[t]?.gps;
-    if (!gps) continue;
-    const wins = dailies.filter(x => x.reward.gold > x.reward.goldSeconds * gps);
-    if (wins.length) fails.push(`a daily's Gold floor beats its income seconds at ${label} (${wins.map(x => x.id).join(', ')})`);
-  }
-  say(`\n  Dailies: ${dailies.length} across ${givers.length} givers; the worst day pays ${(worstSecs / 60).toFixed(0)} min of income and ${worstXp} Hunting XP (cap 25 min, ${Math.floor(level20 / 4)} XP).`);
-  if (worstSecs > 25 * 60) fails.push(`the worst day of dailies pays ${(worstSecs / 60).toFixed(0)} min of income (must be <= 25)`);
+  say(`\n  Dailies: ${dailies.length} across ${givers.length} givers; the worst day pays ${(worstSecs / 60).toFixed(0)} min of hunting and ${worstXp} Hunting XP (cap 25 min, ${Math.floor(level20 / 4)} XP).`);
+  if (worstSecs > 25 * 60) fails.push(`the worst day of dailies pays ${(worstSecs / 60).toFixed(0)} min of hunting (must be <= 25)`);
   if (worstXp > level20 / 4) fails.push(`the worst day of dailies pays ${worstXp} Hunting XP, over a quarter of a level at 20 (${Math.floor(level20 / 4)})`);
   if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
-  if (quiet) console.log(`economy-sim town tasks: ${fails.length ? fails.length + ' fail(s)' : 'rule I band, once-only envelope, XP ok'}`);
+  if (quiet) console.log(`economy-sim town tasks: ${fails.length ? fails.length + ' fail(s)' : 'hunt-time band, once-only envelope, XP ok'}`);
+  return fails;
+}
+
+// --hunt: Gold from the hunt (economy-curve HUNT_GOLD; owner 2026-10-21, "monsters drop more gold like in d2").
+//   1. the forge pays nothing by the second (IDLE_INCOME off);
+//   2. the pile grows with the level, every level 1..10,000, and never rolls below 1;
+//   3. ranks: a champion's pile is 2-6x a common one's, a boss's 10-25x (a boss is worth a detour, not a farm);
+//   4. a level-appropriate hour of hunting buys 20-200 potions of its tier (meaningful, never trivial);
+//   5. the milestones pay fixed sums: 1-8 h of hunting at their own level, all of them by 100 under 4 h of a level-100 hunt.
+const MILESTONES_MODEL = loadTsTree('src/app/shared/skills/keeper-milestones.ts');
+function huntScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const P = loadTs('src/app/shared/potions/potions.model.ts');
+  if (C.IDLE_INCOME) fails.push('IDLE_INCOME is on');
+  say('Hunt scenario · HUNT_GOLD\n');
+  say('  level   pile (normal)      boss pile           an hour (240 kills)');
+  for (const L of [1, 5, 10, 20, 40, 100, 1000, 10000]) say(`  ${String(L).padEnd(7)} ${C.huntGoldRange(L).join('-').padEnd(18)} ${C.huntGoldRange(L, 'boss').join('-').padEnd(19)} ${fmtN(C.huntGold(L, 3600))}`);
+  let prev = 0;
+  for (let L = 1; L <= 10000; L++) {
+    const m = C.huntGoldMean(L);
+    if (!(m > prev)) { fails.push(`the pile does not grow at level ${L}`); break; }
+    if (C.huntGoldRange(L)[0] < 1) { fails.push(`a level-${L} pile can roll 0`); break; }
+    prev = m;
+  }
+  for (const L of [1, 20, 200]) {
+    const champ = C.huntGoldMean(L, 'champion') / C.huntGoldMean(L), boss = C.huntGoldMean(L, 'boss') / C.huntGoldMean(L);
+    if (champ < 2 || champ > 6) fails.push(`a champion's pile is ${champ}x a common one's (2-6)`);
+    if (boss < 10 || boss > 25) fails.push(`a boss's pile is ${boss}x a common one's (10-25)`);
+  }
+  for (const p of P.POTION_SHELF) {
+    const L = { 1: 5, 2: 15, 3: 30 }[p.tier] ?? 30;
+    const n = C.huntGold(L, 3600) / p.price;
+    say(`  an hour at level ${L} buys ${n.toFixed(0)} ${p.name}`);
+    if (n < 20 || n > 200) fails.push(`an hour at level ${L} buys ${n.toFixed(0)} ${p.name} (20-200)`);
+  }
+  let by100 = 0;
+  for (const m of MILESTONES_MODEL.MILESTONES) {
+    const g = m.rewards.gold;
+    if (!g) continue;
+    const h = g / C.huntGold(m.level, 3600);
+    say(`  milestone ${String(m.level).padEnd(6)} ${fmtN(g).padStart(8)} Gold = ${(h * 60).toFixed(0)} min of its hunt`);
+    if (h < 1 / 60 || h > 8) fails.push(`milestone ${m.level} pays ${(h * 60).toFixed(0)} min of its hunt (1 min-8 h)`);
+    if (m.level <= 100) by100 += g;
+  }
+  if (by100 > C.huntGold(100, 4 * 3600)) fails.push(`the milestones to 100 pay ${fmtN(by100)} Gold, over 4 h of a level-100 hunt`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim hunt: ${fails.length ? fails.length + ' fail(s)' : 'idle off, piles grow, ranks, potions and milestones ok'}`);
   return fails;
 }
 
@@ -1989,6 +2035,10 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv.heights && !argv.check) {
   const fails = heightsScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.hunt && !argv.check) {
+  const fails = huntScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv['town-tasks'] && !argv.check) {

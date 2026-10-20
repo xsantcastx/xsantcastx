@@ -57,7 +57,7 @@ export const FISHING_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'skills.lodge.gift': { en: 'The Warden gives you: {{name}}.', es: 'El Guardian te da: {{name}}.' },
   'skills.lodge.count': { en: '{{n}} turned in', es: '{{n}} entregados' },
   'skills.lodge.next': { en: 'Next gift: {{name}} at {{n}}.', es: 'Proximo regalo: {{name}} a las {{n}}.' },
-  'skills.lodge.reward': { en: 'Pays 10 minutes of your income and Fishing XP.', es: 'Paga 10 minutos de tus ingresos y XP de Pesca.' },
+  'skills.lodge.reward': { en: 'Pays Gold and Fishing XP.', es: 'Paga oro y XP de Pesca.' },
   'skills.lodge.water.seep': { en: 'a Delve seep (Root Hollows or the flooded seam)', es: 'un manantial de la Grieta (Huecos de Raiz o la veta inundada)' },
   'skills.lodge.water.mere': { en: 'the Grotto Mere', es: 'el Lago de la Gruta' },
   'skills.lodge.water.magma': { en: 'Magma Halls lava (a Seam Rod)', es: 'la lava de las Salas de Magma (una Cana de veta)' },

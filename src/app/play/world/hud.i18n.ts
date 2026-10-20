@@ -125,7 +125,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.lvl.r.passive.castSpeed': { en: '+{{n}}% cast speed, for good', es: '+{{n}}% de velocidad de lanzamiento, para siempre' },
   'play.lvl.r.passive.allResist': { en: '+{{n}} to all resistances, for good', es: '+{{n}} a todas las resistencias, para siempre' },
   'play.lvl.r.frame': { en: '{{frame}} portrait frame', es: 'marco de retrato {{frame}}' },
-  'play.lvl.r.gold': { en: '{{n}} minutes of forge income in Gold', es: '{{n}} minutos de ingresos de la forja en oro' },
+  'play.lvl.r.gold': { en: '{{n}} Gold', es: '{{n}} de oro' },
   'play.lvl.paid.gold': { en: '+{{n}} Gold', es: '+{{n}} de oro' },
   'play.lvl.frame.copper': { en: 'Copper', es: 'de cobre' },
   'play.lvl.frame.bronze': { en: 'Bronze', es: 'de bronce' },

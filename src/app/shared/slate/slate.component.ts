@@ -14,10 +14,7 @@
  *    components her stalls host (PANEL_REGISTRY's own loaders), so the odds,
  *    the bet ladder and caps and the replay-safe play ledger are the same code.
  *    A play here and a play at the stall are the same kind of play.
- *  - Homestead: the factory at a glance through HomesteadService (no economy
- *    numbers of its own): purse, Gold/s, the receipt waiting and a Collect, ONE
- *    "Build the next building" button (the economy's receipted purchase), the
- *    crew's one-line standing, and where to walk for what stays in the world.
+ *  - (The Homestead's factory face left with the forge's income, owner 2026-10-21: Gold comes from the hunt.)
  *  - Map & bounties (tier II): the Delve map pins and Pim's three bounties,
  *    read only, each pointing at where it is acted on.
  */
@@ -29,21 +26,13 @@ import { isPlatformBrowser } from '@angular/common';
 import { Subscription, merge } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
-import { EconomyService } from '../economy/economy.service';
-import { InventoryService } from '../rpg/inventory.service';
-import { ExplorerService } from '../explorer/explorer.service';
 import { BountyService, type BountyView } from '../bounties/bounty.service';
 import { BOUNTIES_I18N } from '../bounties/bounties.i18n';
 import { bountyLine } from '../bounties/bounty.model';
 import { DelveSaveService } from '../delve/delve-save.service';
 import type { MapPin } from '../delve/map-pins.model';
-import { artFor } from '../art/art';
-import { ActionButtonComponent } from '../station-ui/action-button.component';
-import type { StationCost } from '../station-ui/station-ui.model';
 import { STATION_UI_I18N } from '../station-ui/station-ui.i18n';
 import { PANEL_REGISTRY } from '../../play/world/panel-registry';
-import { HomesteadService, purchaseMessage } from '../../play/homestead/homestead.service';
-import { formatPerSecond, pendingLine, type ColumnRow } from '../../play/homestead/homestead.model';
 import { SLATE_I18N } from './slate.i18n';
 import { CabinetsService } from '../cabinets/cabinets.service';
 import { CABINETS_I18N } from '../cabinets/cabinets.i18n';
@@ -62,7 +51,7 @@ import { SoundService } from '../sound/sound.service';
 import { sceneMode } from '../sound/sound-palette';
 import { PlayLedgerService } from '../games/play-ledger.service';
 import {
-  SLATE_MACHINES, SLATE_TABLES, SLATE_WORLD_POINTERS, slateMachines, slateTabs,
+  SLATE_MACHINES, SLATE_TABLES, slateMachines, slateTabs,
   type SlateTab, type SlateTableGame, type SlateTier,
 } from './slate.model';
 
@@ -85,27 +74,10 @@ interface CalendarDay { n: number; today: boolean; eclipse: boolean; past: boole
 interface PinRow { id: string; name: string; at: string }
 interface BountyRow { id: string; line: string; progress: string; state: 'open' | 'ready' | 'claimed' }
 
-/** The one building the Homestead tab offers: the best Gold/s per Gold you can afford, else the nearest. */
-export function nextBuilding(rows: readonly ColumnRow[]): ColumnRow | null {
-  const open = rows.filter(r => r.state === 'shown' && !r.maxed);
-  const affordable = open.filter(r => r.affordable);
-  if (affordable.length) return affordable.reduce((a, b) => (b.gain / Math.max(1, b.cost) > a.gain / Math.max(1, a.cost) ? b : a));
-  if (!open.length) return null;
-  return open.reduce((a, b) => (b.shortfall < a.shortfall ? b : a));
-}
-
-/** "4m 12s", "1h 5m", "40s". */
-export function shortDuration(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  if (s >= 3600) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
-  if (s >= 60) return `${Math.floor(s / 60)}m ${s % 60}s`;
-  return `${s}s`;
-}
-
 @Component({
   selector: 'app-slate',
   standalone: true,
-  imports: [ActionButtonComponent, PetSheetComponent],
+  imports: [PetSheetComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './slate.component.html',
   styleUrls: ['./slate.component.css'],
@@ -114,10 +86,6 @@ export class SlateComponent implements OnInit, OnDestroy {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly i18n = inject(TranslationService);
   private readonly slate = inject(SlateService);
-  private readonly economy = inject(EconomyService);
-  private readonly inventory = inject(InventoryService);
-  private readonly homestead = inject(HomesteadService);
-  private readonly explorers = inject(ExplorerService);
   private readonly bounties = inject(BountyService);
   private readonly delve = inject(DelveSaveService);
   private readonly cabinets = inject(CabinetsService);
@@ -146,7 +114,6 @@ export class SlateComponent implements OnInit, OnDestroy {
   readonly tables = SLATE_TABLES;
   /** The machines in the glass: the Eclipse Cascade, and the realm machines this Keeper has found. */
   machines: { game: SlateTableGame; titleKey: string }[] = [];
-  readonly pointers = SLATE_WORLD_POINTERS;
   tier: SlateTier = 0;
   tabs: SlateTab[] = [];
   face: SlateFace = 'home';
@@ -154,16 +121,6 @@ export class SlateComponent implements OnInit, OnDestroy {
   gameLoading = false;
   gameError = false;
 
-  // Homestead
-  gold = '0';
-  rate = '';
-  waiting = '';
-  next: ColumnRow | null = null;
-  nextCosts: StationCost[] = [];
-  nextAdds = '';
-  camp = '';
-  workshop = '';
-  nextHome = '';
   notice = '';
 
   // Map & bounties
@@ -184,7 +141,6 @@ export class SlateComponent implements OnInit, OnDestroy {
   /** The app grid (built per tier) and the dock. */
   apps: SlateApp[] = [];
   readonly dock: readonly SlateApp[] = [
-    { id: 'dock-factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
     { id: 'dock-scan', key: 'slate.app.scan', icon: 'scan', face: 'scan' },
     { id: 'dock-eclipse', key: 'slate.app.eclipse', icon: 'eclipse', face: 'eclipse' },
     { id: 'dock-codex', key: 'slate.app.codex', icon: 'codex', face: 'codex' },
@@ -239,7 +195,6 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.apps = this.buildApps();
     // Opened while the glass is held up: straight onto the Scan face (its reading and Put away).
     if (this.cabinets.scanning && this.tabs.includes('scan')) this.face = 'scan';
-    this.subs.add(merge(this.economy.snapshot$, this.inventory.snapshot$, this.homestead.hud$, this.explorers.state$).subscribe(() => this.read()));
     this.subs.add(merge(this.cabinets.opened$, this.cabinets.scanning$, this.cabinets.reading$).subscribe(() => this.readScan()));
     this.cabinets.refresh();
     this.subs.add(this.eclipses.count$.subscribe(() => this.readLedger()));
@@ -316,7 +271,6 @@ export class SlateComponent implements OnInit, OnDestroy {
   private buildApps(): SlateApp[] {
     const games: SlateApp[] = this.allTables().map(t => ({ id: t.game, key: t.titleKey, icon: t.game, game: t.game }));
     const faces: SlateApp[] = [
-      { id: 'factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
       ...(this.tabs.includes('map') ? [{ id: 'map', key: 'slate.tab.map', icon: 'map', face: 'map' as const }] : []),
       ...(this.tabs.includes('scan') ? [{ id: 'scan', key: 'slate.app.scan', icon: 'scan', face: 'scan' as const }] : []),
       { id: 'pets', key: 'slate.app.pets', icon: 'pets', face: 'pets' },
@@ -330,7 +284,6 @@ export class SlateComponent implements OnInit, OnDestroy {
   /** A notification dot: the Homestead's receipt, a bounty to claim, a warm glass, the eclipse on now. */
   dot(app: SlateApp): boolean {
     switch (app.face) {
-      case 'factory': return !!this.waiting;
       case 'map': return this.bountyRows.some(b => b.state === 'ready');
       case 'scan': return this.scanning && this.warmth !== 'none' && this.warmth !== 'cold';
       case 'eclipse': return this.eclipseOn && !this.thisOneSeen;
@@ -507,39 +460,7 @@ export class SlateComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Homestead ──
-
-  collect(): void {
-    const got = this.homestead.collectAll();
-    const line = pendingLine(got);
-    this.notice = line ? this.t('slate.factory.collected', { line }) : this.t('slate.factory.nothing');
-    this.read();
-  }
-
-  build(): void {
-    const row = this.next;
-    if (!row || !row.affordable) return;
-    const code = this.homestead.buy(row.id);
-    const ok = code === 'ok' || code === 'queued';
-    this.notice = ok ? this.t('homestead.built', { name: row.name }) : purchaseMessage(code);
-    this.read();
-  }
-
-  private read(): void {
-    const hud = this.homestead.snapshotHud();
-    this.gold = Math.floor(hud.gold).toLocaleString('en-US');
-    this.rate = formatPerSecond(hud.perSecond);
-    this.waiting = pendingLine(this.homestead.pendingAll());
-    this.next = nextBuilding(hud.rows);
-    this.nextCosts = this.next ? [{ kind: 'gold', label: this.t('stationUi.gold'), need: Math.ceil(this.next.cost), have: Math.floor(hud.gold), art: artFor('gold') }] : [];
-    this.nextAdds = this.next ? this.t('slate.factory.adds', { rate: formatPerSecond(this.next.gain) }) : '';
-    this.camp = this.homestead.sentence('camp');
-    this.workshop = this.homestead.sentence('workshop');
-    const out = this.explorers.snapshot.active;
-    const soonest = out.length ? Math.min(...out.map(e => e.startedAt + e.duration)) : 0;
-    this.nextHome = soonest ? this.t('slate.factory.nextHome', { t: shortDuration(soonest - Date.now()) }) : '';
-    this.cdr.markForCheck();
-  }
+  private read(): void { this.cdr.markForCheck(); }
 
   // ── Scan (the Lost Cabinets, shared/cabinets) ──
 
