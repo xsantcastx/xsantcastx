@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { anvil, bed, bones, boulder, chest, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
+import { anvil, bed, bones, boulder, chest, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 
@@ -20,6 +20,8 @@ export interface TdLevel {
   placeName(x: number, y: number): string;
   /** Always dark (a dungeon): the night pass runs at full dark whatever the hour. */
   readonly dark: boolean;
+  /** Fog over it (the Umbral Marches, the Drowned Crypts): 0 none … 1 thick. Unset: none. */
+  readonly fog?: number;
   /** Where creatures spawn in (or near) the rectangle (art px). */
   spawnsIn(x0: number, y0: number, x1: number, y1: number): MobSpawn[];
 }
@@ -32,11 +34,11 @@ export interface TdExit {
   arrive: string;
 }
 
-export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp';
-const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp };
-const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true };
+export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp' | 'lantern' | 'great-lantern';
+const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp, lantern: lanternPost, 'great-lantern': greatLantern };
+const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true, lantern: true, 'great-lantern': true };
 /** Objects wider than their tile block the tiles either side too (a forge is three tiles of stone). */
-const WIDE: Partial<Record<MapObject, number>> = { forge: 1 };
+const WIDE: Partial<Record<MapObject, number>> = { forge: 1, 'great-lantern': 1 };
 
 export interface LegendEntry {
   ground: Ground;
@@ -57,6 +59,8 @@ export interface TdMapDef {
   /** Ground outside the drawn rows (a dungeon is solid rock round its halls). */
   outside: Ground;
   dark: boolean;
+  /** Fog drifting over the floor (td-engine drawFog): 0 none … 1 thick. */
+  fog?: number;
 }
 
 const T = TILE;
@@ -86,6 +90,7 @@ export function widen(rows: readonly string[]): string[] {
 export class HandLevel implements TdLevel {
   readonly id: string;
   readonly dark: boolean;
+  readonly fog: number;
   readonly stalls: TdStall[] = [];
   readonly exits = new Map<string, TdExit>();
   private readonly objects: TdObject[] = [];
@@ -96,7 +101,7 @@ export class HandLevel implements TdLevel {
   readonly rows: number;
 
   constructor(private readonly def: TdMapDef) {
-    this.id = def.id; this.dark = def.dark;
+    this.id = def.id; this.dark = def.dark; this.fog = def.fog ?? 0;
     const drawn = widen(def.rows);
     this.rows = drawn.length;
     this.cols = Math.max(...drawn.map(r => r.length));

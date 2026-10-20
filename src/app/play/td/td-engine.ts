@@ -20,7 +20,7 @@ import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFra
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
-import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
+import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
@@ -39,12 +39,16 @@ import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
 import { VERDANT_WILDS_DEF } from './maps/verdant-wilds';
 import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 } from './maps/rootglass-bole';
 import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3 } from './maps/overgrown-temple';
+import { UMBRAL_MARCHES_DEF } from './maps/umbral-marches';
+import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lantern-tower';
+import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
 import type { ContinentDef } from './continent';
 import type { TdMapDef } from './td-level';
 
 /** Every hand-drawn level under (or over) the surface, by id. */
 /** Every continent, by id (ships sail between them). */
-export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF };
+export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
+  'umbral-marches': UMBRAL_MARCHES_DEF };
 
 export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
@@ -54,12 +58,15 @@ export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBE
   'ashen-crypt-1': ASHEN_CRYPT_1, 'ashen-crypt-2': ASHEN_CRYPT_2,
   'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2,
   'rootglass-bole-0': ROOTGLASS_BOLE_0, 'rootglass-bole-1': ROOTGLASS_BOLE_1, 'rootglass-bole-2': ROOTGLASS_BOLE_2, 'rootglass-bole-3': ROOTGLASS_BOLE_3,
-  'overgrown-temple-1': OVERGROWN_TEMPLE_1, 'overgrown-temple-2': OVERGROWN_TEMPLE_2, 'overgrown-temple-3': OVERGROWN_TEMPLE_3 };
+  'overgrown-temple-1': OVERGROWN_TEMPLE_1, 'overgrown-temple-2': OVERGROWN_TEMPLE_2, 'overgrown-temple-3': OVERGROWN_TEMPLE_3,
+  'lantern-tower-0': LANTERN_TOWER_0, 'lantern-tower-1': LANTERN_TOWER_1, 'lantern-tower-2': LANTERN_TOWER_2,
+  'drowned-crypts-1': DROWNED_CRYPTS_1, 'drowned-crypts-2': DROWNED_CRYPTS_2, 'drowned-crypts-3': DROWNED_CRYPTS_3 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
   'bole-door': { to: 'rootglass-bole-0', arrive: 'bole-out' },
+  'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
 };
 import { BOSS_TELL, CALL_TELL, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
@@ -75,6 +82,7 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0],
   water: PAL.water[0], ember: PAL.ember[0], cave: '#6a564c', rock: '#1d1720', wall: '#3a2a24', rug: '#8f3524',
   moss: PAL.moss[1], flagstone: PAL.temple[1], vinewall: '#2c3a2c', canopy: PAL.jungle[2], bark: PAL.bark[2],
+  mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3],
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
 export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number }
@@ -166,6 +174,10 @@ export class TopDownEngine {
   private dark: HTMLCanvasElement | null = null;
   private lightSprite: HTMLCanvasElement | null = null;
   private glowSprite: HTMLCanvasElement | null = null;
+  /** The fog pass: one tileable bank of mist, the half-resolution layer it is laid into, the clear patch round the Keeper. */
+  private fogTile: HTMLCanvasElement | null = null;
+  private fogLayer: HTMLCanvasElement | null = null;
+  private fogHole: HTMLCanvasElement | null = null;
   private readonly unbind: (() => void)[] = [];
   /** The Slate is open: the Keeper faces the camera and looks at it in their hands. */
   private phone = false;
@@ -207,7 +219,7 @@ export class TopDownEngine {
       player: () => this.player,
       hurtPlayer: n => this.hurt(n),
       healPlayer: n => { this.hp = Math.min(this.maxHp, this.hp + n); },
-      hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember',
+      hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember' || this.level.ground(c, r) === 'blackwater',
       passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall' && g !== 'vinewall' && g !== 'bark'; },
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
     });
@@ -791,7 +803,7 @@ export class TopDownEngine {
     const span = Math.ceil(W / k / 2) + 1;
     const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE);
     const ox = W / 2 - (this.player.x / TILE - pc) * k, oy = H / 2 - (this.player.y / TILE - pr) * k;
-    const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0], cave: '#6a564c', rock: '#1d1720', moss: PAL.moss[1], flagstone: PAL.temple[1], vinewall: '#2c3a2c', canopy: PAL.jungle[2], bark: PAL.bark[2] };
+    const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0], cave: '#6a564c', rock: '#1d1720', moss: PAL.moss[1], flagstone: PAL.temple[1], vinewall: '#2c3a2c', canopy: PAL.jungle[2], bark: PAL.bark[2], mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3] };
     c.imageSmoothingEnabled = false;
     // The ground round the Keeper, sampled from the world each time (it has no edge to pre-paint).
     for (let r = -span; r <= span; r++) for (let q = -span; q <= span; q++) {
@@ -973,7 +985,7 @@ export class TopDownEngine {
       frames = [];
       const kind = (c: number, r: number): Ground => this.level.ground(c, r);
       let liquid = false;
-      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember') liquid = true;
+      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember' || kind(c, r) === 'blackwater') liquid = true;
       for (let f = 0; f < (liquid ? 4 : 1); f++) {
         const el = document.createElement('canvas');
         el.width = CHUNK * TILE; el.height = CHUNK * TILE;
@@ -1055,7 +1067,8 @@ export class TopDownEngine {
     // Glim: a small warm light with a pixel core.
     c.fillStyle = '#fff4c2'; c.fillRect(Math.round(this.glim.x) - 1, Math.round(this.glim.y) - 1, 3, 3);
     c.fillStyle = '#ffd27a'; c.fillRect(Math.round(this.glim.x) - 2, Math.round(this.glim.y), 1, 1); c.fillRect(Math.round(this.glim.x) + 2, Math.round(this.glim.y), 1, 1);
-    // Night.
+    // Mist (the Umbral Marches), then night over it.
+    this.drawFog();
     this.drawLight();
     this.drawFireflies();
     // The drag joystick: a ring where the thumb landed and a knob under it (screen space).
@@ -1336,7 +1349,7 @@ export class TopDownEngine {
       // The cone lies on the floor: from the boss's feet toward where the prey stood (its feet, 12 px under the aim).
       const ax = m.aim.x, ay = m.aim.y + 12, a = Math.atan2(ay - oy, ax - ox);
       const len = Math.min(shoot.range, Math.hypot(ax - ox, ay - oy) + 28), half = ((shoot.spread ?? 1) - 1) / 2 * .22 + .14;
-      const cone = conePixels(len, half, a), tn = FX.ember;
+      const cone = conePixels(len, half, a), tn = shoot.kind === 'ink' ? FX.shadow : FX.ember;
       const beat = this.still ? 1 : Math.floor(this.time * 8) % 2 ? 1 : .7;
       // The front: how far the wind-up has filled the cone; behind it the dither burns brighter (body), ahead of it dim.
       const fr = Math.max(4, Math.round((this.still ? .7 : k) * len));
@@ -1456,7 +1469,7 @@ export class TopDownEngine {
     // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).
     for (const m of this.mobs.mobs) if (m.tell > 0 && windsUp(m.def)) {
       const k = this.still ? .7 : 1 - m.tell / BOSS_TELL;
-      glowSquare(c, m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, 2 + Math.round(k * 5), FX.ember, .35 + .25 * k);
+      glowSquare(c, m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, 2 + Math.round(k * 5), m.def.ranged?.kind === 'ink' ? FX.shadow : FX.ember, .35 + .25 * k);
     }
     // Loot pops: out and falling as gear lands; up and in as the Keeper takes it.
     for (const q of this.pops) {
@@ -1491,6 +1504,12 @@ export class TopDownEngine {
       if (s.kind === 'arrow') {
         c.fillStyle = '#e8e1cf'; for (let i = 0; i < 6; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 1, 1);
         c.fillStyle = '#c9c2cc'; c.fillRect(X, Y, 2, 2); c.fillStyle = '#ff8a2e'; c.fillRect(Math.round(X - ux * 6), Math.round(Y - uy * 6), 2, 1);
+      } else if (s.kind === 'ink') {
+        // Ink (the Gloam Witches, the Ink Abbess): a violet gob with a dark trailing smear, a pale core.
+        const r = 3;
+        c.globalAlpha = .5; c.fillStyle = '#2c2258'; c.fillRect(Math.round(X - ux * 5) - r, Math.round(Y - uy * 5) - r, r * 2, r * 2);
+        c.globalAlpha = 1; c.fillStyle = HOSTILE_EDGE; c.fillRect(X - r - 1, Y - r, r * 2 + 2, r * 2);
+        c.fillStyle = '#6e54c8'; c.fillRect(X - r, Y - r, r * 2, r * 2); c.fillStyle = '#b49cff'; c.fillRect(X - 1, Y - 2, 2, 2); c.fillStyle = '#f0e8ff'; c.fillRect(X - 1, Y - 2, 1, 1);
       } else {
         const r = s.kind === 'breath' ? 4 : 3;
         c.globalAlpha = .45; c.fillStyle = '#9e2e1c'; c.fillRect(Math.round(X - ux * 5) - r, Math.round(Y - uy * 5) - r, r * 2, r * 2);
@@ -1610,6 +1629,67 @@ export class TopDownEngine {
     c.fillRect(Math.round(x - w / 2), Math.round(y - 9), w, 9);
     c.fillStyle = color;
     c.fillText(text, Math.round(x), Math.round(y - 1));
+  }
+
+  /**
+   * Fog (a level's `fog`: the Umbral Marches, the Drowned Crypts): two banks of soft mist drifting slowly across each
+   * other, thinning to nothing round the Keeper so the ground at their feet and whatever comes at them stays readable.
+   * One 128-px tileable sprite made once, laid into a half-resolution layer; still under reduced motion.
+   */
+  private drawFog(): void {
+    const f = this.level.fog ?? 0;
+    if (f <= 0 || typeof document === 'undefined') return;
+    const cam = this.cam, s = this.scale, N = 128;
+    if (!this.fogTile) {
+      // Periodic value noise, two octaves, so the tile wraps without a seam; soft lilac-grey, alpha from the noise.
+      const t = document.createElement('canvas'); t.width = t.height = N;
+      const g = t.getContext('2d')!, img = g.createImageData(N, N);
+      const val = (x: number, y: number, p: number, salt: number) => {
+        const fx = x / N * p, fy = y / N * p, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+        const h = (a: number, b: number) => hash(((a % p) + p) % p, ((b % p) + p) % p, salt);
+        const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+        const a = h(x0, y0), b = h(x0 + 1, y0), c = h(x0, y0 + 1), d = h(x0 + 1, y0 + 1);
+        return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+      };
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+        const v = val(x, y, 4, 901) * .65 + val(x, y, 8, 907) * .35, a = Math.max(0, Math.min(1, (v - .32) * 1.9));
+        const i = (y * N + x) * 4;
+        img.data[i] = 206; img.data[i + 1] = 204; img.data[i + 2] = 224; img.data[i + 3] = Math.round(a * 255);
+      }
+      g.putImageData(img, 0, 0);
+      this.fogTile = t;
+      const hcv = document.createElement('canvas'); hcv.width = hcv.height = 64;
+      const hg = hcv.getContext('2d')!, grad = hg.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(0,0,0,1)'); grad.addColorStop(.5, 'rgba(0,0,0,.75)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      hg.fillStyle = grad; hg.fillRect(0, 0, 64, 64);
+      this.fogHole = hcv;
+    }
+    const hw = Math.max(1, Math.ceil(cam.w / 2)), hh = Math.max(1, Math.ceil(cam.h / 2));
+    if (!this.fogLayer || this.fogLayer.width !== hw || this.fogLayer.height !== hh) { this.fogLayer = document.createElement('canvas'); this.fogLayer.width = hw; this.fogLayer.height = hh; }
+    const d = this.fogLayer.getContext('2d')!;
+    d.globalCompositeOperation = 'source-over'; d.globalAlpha = 1;
+    d.clearRect(0, 0, hw, hh);
+    // Two banks: a broad slow one drifting east, a finer one drifting the other way; each pinned to the world, not the screen.
+    for (const [k, vx, vy, a] of [[1, 3, .8, .9], [.6, -2, 1.4, .55]] as const) {
+      const size = N * k, t = this.still ? 0 : this.time;
+      const ox = ((-(cam.x / 2) - t * vx / 2) % size + size) % size - size, oy = ((-(cam.y / 2) - t * vy / 2) % size + size) % size - size;
+      d.globalAlpha = a;
+      for (let y = oy; y < hh; y += size) for (let x = ox; x < hw; x += size) d.drawImage(this.fogTile, x, y, size, size);
+    }
+    // Clear round the Keeper (wide), and a little round every lantern: lit air holds no mist.
+    d.globalCompositeOperation = 'destination-out'; d.globalAlpha = 1;
+    const hole = (x: number, y: number, r: number) => d.drawImage(this.fogHole!, (x - cam.x - r) / 2, (y - cam.y - r) / 2, r, r);
+    hole(this.player.x, this.player.y - 14, 150);
+    d.globalAlpha = .5;
+    for (const o of this.visible) for (const l of o.sprite().lights ?? []) if (l.warm) hole(o.x + l.x, o.y + l.y, l.r * 2);
+    const c = this.ctx;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.imageSmoothingEnabled = true;
+    c.globalAlpha = Math.min(1, f);
+    c.drawImage(this.fogLayer, 0, 0, hw * 2 * s, hh * 2 * s);
+    c.globalAlpha = 1;
+    c.imageSmoothingEnabled = false;
+    c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
   }
 
   /** Darkness by the hour (day clear → dusk amber → night blue), holes for every light. */
