@@ -3630,3 +3630,31 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .td-dock button { width: 44px; height: 44px; }
   .td-dock span, .td-dock kbd { display: none; }
 }
+/* ── The chat box (OSRS): a small translucent box above the toolbar, Game and Chat tabs; fades when quiet ── */
+.td-chat { position: absolute; z-index: 5; left: 16px; bottom: 104px; width: 360px; display: grid; gap: 4px; padding: 6px 8px 8px;
+  background: color-mix(in srgb, var(--cozy-wood-0) 78%, transparent); box-shadow: 0 0 0 2px var(--cozy-wood-1), 0 0 0 4px var(--cozy-wood-0);
+  font: 500 12px/1.35 var(--cozy-font-read); color: var(--cozy-cream); pointer-events: auto; transition: opacity .6s ease; }
+.td-chat--quiet { opacity: .35; }
+.td-chat:hover, .td-chat:focus-within { opacity: 1; }
+.td-chat__tabs { display: flex; gap: 4px; align-items: center; }
+.td-chat__tabs button { min-height: 26px; padding: 0 10px !important; border: 0 !important; border-radius: 0 !important; font: 700 11px/1 var(--cozy-font-read) !important;
+  text-transform: none !important; letter-spacing: 0 !important; color: var(--cozy-cream) !important; background: var(--cozy-wood-2) !important; box-shadow: 0 0 0 1px var(--cozy-wood-0) !important; cursor: pointer; }
+.td-chat__tabs button[aria-selected='true'] { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.td-chat__tabs small { margin-left: 6px; font-weight: 500; opacity: .8; }
+.td-chat__tabs .td-chat__x { margin-left: auto; min-width: 26px; padding: 0 !important; }
+.td-chat__log { display: grid; gap: 1px; min-height: 64px; max-height: 128px; margin: 0; padding: 2px 2px 0; list-style: none; overflow: hidden; align-content: end; }
+.td-chat__log li { overflow-wrap: anywhere; text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-chat__log b { color: var(--cozy-glow); font-weight: 700; }
+.td-chat__game { color: var(--cozy-mana-text); }
+.td-chat__empty { opacity: .6; font-style: italic; }
+.td-chat__say { display: flex; gap: 4px; }
+.td-chat__say input { flex: 1; min-width: 0; min-height: 30px; padding: 0 8px; border: 0; font: 500 12px var(--cozy-font-read); color: var(--cozy-cream);
+  background: color-mix(in srgb, var(--cozy-wood-0) 85%, transparent); box-shadow: inset 0 0 0 1px var(--cozy-wood-2); }
+.td-chat__say button, .td-chat__join { min-height: 30px; padding: 0 10px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; }
+.td-chat-tab { position: absolute; z-index: 5; left: 16px; bottom: 104px; min-height: 30px; padding: 0 12px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-chat { left: 62px; bottom: 64px; width: min(300px, calc(100% - 140px)); }
+  .td-chat__log { min-height: 0; max-height: 70px; }
+  .td-chat-tab { left: 62px; bottom: 64px; }
+}
+

@@ -59,6 +59,40 @@
       </button>
     </nav>
   }
+  <!-- The chat box (owner 2026-10-20: "chat like OSRS, a little box left side, vanishes if needed"): Game (this device's
+       own lines) and Chat (the Hearth room); it fades when quiet, wakes on a new line or a hover, and hides to a tab. -->
+  @if (topDown && !panel) {
+    @if (chatHidden) {
+      <button type="button" class="td-chat-tab" (click)="chatHidden = false; chatLastAt = 0" [attr.aria-label]="t('play.chat.show')" data-engine-ignore>{{ t('play.chat.label') }}</button>
+    } @else {
+      <section class="td-chat" [class.td-chat--quiet]="chatQuiet && chatTab === 'game'" [attr.aria-label]="t('play.chat.label')" data-engine-ignore>
+        <header class="td-chat__tabs" role="tablist">
+          <button type="button" role="tab" [attr.aria-selected]="chatTab === 'game'" (click)="chatTab = 'game'; chatLastAt = 0">{{ t('play.chat.game') }}</button>
+          <button type="button" role="tab" [attr.aria-selected]="chatTab === 'public'" (click)="openPublicChat()">{{ t('play.chat.public') }}@if (social.connected) { <small>{{ t('play.chat.online', { n: social.players.length }) }}</small> }</button>
+          <button type="button" class="td-chat__x" (click)="chatHidden = true" [attr.aria-label]="t('play.chat.hide')">&minus;</button>
+        </header>
+        <ol class="td-chat__log" aria-live="polite">
+          @if (chatTab === 'game') {
+            @for (line of gameLog.slice(-7); track line.key) { <li class="td-chat__game">{{ line.text }}</li> }
+            @empty { <li class="td-chat__empty">{{ t('play.chat.empty') }}</li> }
+          } @else {
+            @for (m of social.messages.slice(-7); track m.id) { <li><b>{{ m.name }}:</b> {{ m.text }}</li> }
+            @empty { <li class="td-chat__empty">{{ social.connected ? t('play.chat.quiet') : (joining ? t('play.chat.joining') : social.status) }}</li> }
+          }
+        </ol>
+        @if (chatTab === 'public') {
+          @if (social.connected) {
+            <form class="td-chat__say" (submit)="$event.preventDefault(); sendChat(chatInput)">
+              <input #chatInput type="text" maxlength="240" autocomplete="off" [placeholder]="t('play.chat.say')" [attr.aria-label]="t('play.chat.say')" [disabled]="sending">
+              <button type="submit" [disabled]="sending">{{ t('play.chat.send') }}</button>
+            </form>
+          } @else if (!joining) {
+            <button type="button" class="td-chat__join" (click)="openPublicChat()">{{ t('play.chat.join', { name: keeperName || 'Keeper' }) }}</button>
+          }
+        }
+      </section>
+    }
+  }
   <!-- The character sheet (C), D2's attributes page made cozy: level, points to spend, what each point gives. -->
   @if (topDown && sheetOpen && !panel) {
     @if (sheet; as sh) {
