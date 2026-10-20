@@ -9,8 +9,8 @@ import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import type { ItemStats } from '../shared/rpg/item.model';
-import { MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, TREES, defaultAura, defaultBar, skillVars, type SkillId, type TreeId } from './td/td-skills';
-import { buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
+import { CLASS_SKILLS as TD_CLASS_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, TREES, defaultAura, defaultBar, skillVars, synergies, type SkillId, type TreeId } from './td/td-skills';
+import { boughtRanks, buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
@@ -1741,7 +1741,8 @@ export class SideScrollerComponent implements OnDestroy {
     const look = this.looks.look, ranks = this.skillRanks, key = `${look.bar.join(',')}|${look.aura}|${Object.values(ranks).join(',')}`;
     if (key !== this.tdLoadoutKey && e?.setSkillLoadout) {
       this.tdLoadoutKey = key;
-      (this.engine as unknown as { setSkillRanks?: (r: Readonly<Record<string, number>>) => void } | undefined)?.setSkillRanks?.(ranks);
+      // The points bought ride along: the synergies (design-bible §4.1) read them, never the kit's free rank.
+      (this.engine as unknown as { setSkillRanks?: (r: Readonly<Record<string, number>>, b: Readonly<Record<string, number>>) => void } | undefined)?.setSkillRanks?.(ranks, this.skillTree.bought);
       e.setSkillLoadout(this.loadoutBar, this.loadoutAura);
     }
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
@@ -1930,14 +1931,14 @@ export class SideScrollerComponent implements OnDestroy {
     if (paid.length) this.message = this.t('play.lvl.backlog', { n: paid.reduce((g, p) => g + p.gold, 0) });
   }
   /** The trees as the fight may use them: the saved tree clamped to the level's points (td-tree). Cached per look + level. */
-  private treeCache: { tree: KeeperSkillTree; level: number; voc: string; out: KeeperSkillTree; ranks: Record<SkillId, number> } | null = null;
-  private get skillTree(): { tree: KeeperSkillTree; ranks: Record<SkillId, number> } {
+  private treeCache: { tree: KeeperSkillTree; level: number; voc: string; out: KeeperSkillTree; ranks: Record<SkillId, number>; bought: Record<SkillId, number> } | null = null;
+  private get skillTree(): { tree: KeeperSkillTree; ranks: Record<SkillId, number>; bought: Record<SkillId, number> } {
     const look = this.looks.look, level = this.huntingLevel, c = this.treeCache;
     if (!c || c.tree !== look.tree || c.level !== level || c.voc !== look.vocation) {
       const out = clampTree(look.tree, look.vocation, level);
-      this.treeCache = { tree: look.tree, level, voc: look.vocation, out, ranks: effectiveRanks(out, look.vocation) };
+      this.treeCache = { tree: look.tree, level, voc: look.vocation, out, ranks: effectiveRanks(out, look.vocation), bought: boughtRanks(out, look.vocation) };
     }
-    return { tree: this.treeCache!.out, ranks: this.treeCache!.ranks };
+    return { tree: this.treeCache!.out, ranks: this.treeCache!.ranks, bought: this.treeCache!.bought };
   }
   private get skillRanks(): Record<SkillId, number> { return this.skillTree.ranks; }
   private ranked(id: string): boolean { return (this.skillRanks[id as SkillId] ?? 0) > 0; }
@@ -1948,12 +1949,12 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** A skill's line at a rank (rank 0 reads as rank 1). */
   private skillLine(id: SkillId, rank: number): string {
-    const sk = TD_SKILLS[id], v = skillVars(id, rank);
+    const sk = TD_SKILLS[id], v = skillVars(id, rank, this.skillTree.bought);
     return this.t(sk.textKey, { ...v, mana: v['mana'] ?? sk.mana, cd: sk.cd });
   }
   /** What the next rank changes, var by var ("Damage: 24–36 → 28–42"); a min/max pair reads as one range. */
   private rankDiff(id: SkillId, rank: number): string[] {
-    const a = skillVars(id, rank), b = skillVars(id, rank + 1), out: string[] = [];
+    const syn = this.skillTree.bought, a = skillVars(id, rank, syn), b = skillVars(id, rank + 1, syn), out: string[] = [];
     const pair = 'min' in a && 'max' in a && !('count' in a && 'reach' in a);
     if (pair && (a['min'] !== b['min'] || a['max'] !== b['max'])) out.push(`${this.t('play.td.tree.var.damage')}: ${a['min']}–${a['max']} → ${b['min']}–${b['max']}`);
     for (const k of Object.keys(a)) {
@@ -1969,7 +1970,8 @@ export class SideScrollerComponent implements OnDestroy {
     tiers: { level: number; open: boolean }[];
     nodes: { id: SkillId; name: string; tier: number; col: number; rank: number; need: number; open: boolean; picked: boolean; buyable: boolean; slot: number; on: boolean }[];
     lines: { x1: number; y1: number; x2: number; y2: number; lit: boolean }[];
-    pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean };
+    pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean;
+      words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[] };
   } {
     const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
     const ids = treeSkills(v, this.bookTree);
@@ -2000,6 +2002,12 @@ export class SideScrollerComponent implements OnDestroy {
       id, name: this.t(sk.nameKey), kind: sk.kind, rank, max: MAX_RANK, now: this.skillLine(id, Math.max(1, rank)), nowRank: Math.max(1, rank),
       next: rank >= MAX_RANK ? [] : rank < 1 ? [] : this.rankDiff(id, rank), mana: sk.mana, cd: sk.cd, block, need,
       slot: bar.indexOf(id) + 1, on: aura === id,
+      // The Seam-Cant (never translated) and the synergies with live numbers: each source, its bought ranks, the % now.
+      words: sk.words ?? '',
+      syn: synergies(id, this.skillTree.bought).map(s => ({
+        from: s.from, name: this.t(TD_SKILLS[s.from].nameKey), ranks: s.ranks, live: s.pct > 0,
+        text: this.t('play.td.tree.syn.line', { pct: s.pct, per: s.per, what: this.t('play.td.tree.syn.' + s.what) }),
+      })),
     };
   }
   /** Open a tree's tab (the first skill on it is picked). */
@@ -2779,7 +2787,19 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.sending || !input.value.trim()) return;
     this.sending = true;
     const text = input.value.trim();
+    // The Seam-Cant typed (design-bible §4.0, Tibia's `exori vis`): a learned spell's words cast it instead of chatting.
+    if (this.castWords(text)) { input.value = ''; this.sending = false; return; }
     try { if (await this.room?.chat(text)) { if (input.value.trim() === text) input.value = ''; } } finally { this.sending = false; }
+  }
+  /** Typed spell words: the class's active that says them goes off (or says why not). False when no spell says them. */
+  private castWords(text: string): boolean {
+    const said = text.toLowerCase().replace(/\s+/g, ' ');
+    const id = this.topDown ? TD_CLASS_SKILLS[this.looks.look.vocation].find(s => TD_SKILLS[s].kind === 'active' && TD_SKILLS[s].words === said) : undefined;
+    if (!id) return false;
+    const why = this.tdEngine?.useAbility?.(id);
+    if (why) this.message = this.t(`play.td.ability.${why}`);
+    this.tickAbilities();
+    return true;
   }
   art(id: string): string { return artFor(id)?.src ?? ''; }
   /** The Keeper's HP as the bar prints it: whole (lava, breath and the furnace's mouth take fractions a step). */

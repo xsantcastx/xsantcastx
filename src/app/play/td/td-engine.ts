@@ -67,6 +67,8 @@ export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBE
   'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
   'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
+/** The Seam-Cant's tone per tree: each element's body tone (effects-spec rule 2), so the words read as the spell's. */
+const CANT_TONE: Readonly<Record<TreeId, string>> = { ember: FX.ember.body, bone: FX.bone.body, shadow: FX.shadow.body };
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
@@ -74,8 +76,8 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
-import { BOSS_TELL, CALL_TELL, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
-import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
@@ -244,6 +246,9 @@ export class TopDownEngine {
   private readonly fxLoot = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxloot=1\b/.test(location.search);
   private showcase: Drop[] = [];
   private tellSeen = '';
+  /** The Seam-Cant line over the Keeper (design-bible §4.0): the last spell's words, their tone, and how long they have hung. */
+  private cant: { text: string; color: string; age: number } | null = null;
+  private cantSeen = '';
   private popSeen = '';
   private showcaseLevel: unknown = null;
   private showcaseT = 0;
@@ -339,7 +344,12 @@ export class TopDownEngine {
   useAbility(idOrSlot: string): ReturnType<MobSystem['useAbility']> {
     const id = /^[1-4]$/.test(idOrSlot) ? this.bar[Number(idOrSlot) - 1] : idOrSlot as SkillId;
     if (!id) return null;
-    return this.paused ? 'cooldown' : this.mobs.useAbility(id);
+    if (this.paused) return 'cooldown';
+    const why = this.mobs.useAbility(id);
+    // It went off: the Keeper speaks its words, a pixel line over the head in the tree's tone (effects-spec palettes).
+    const sk = SKILLS[id];
+    if (!why && sk?.words) this.cant = { text: sk.words, color: CANT_TONE[sk.tree], age: 0 };
+    return why;
   }
   /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
   get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
@@ -384,7 +394,9 @@ export class TopDownEngine {
     this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' && this.mobs.rank(aura as SkillId) > 0 ? aura as SkillId : null;
   }
   /** The trees' ranks (td-tree effectiveRanks): every skill's numbers follow its rank. */
-  setSkillRanks(ranks: Readonly<Record<string, number>>): void { this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>); }
+  setSkillRanks(ranks: Readonly<Record<string, number>>, bought: Readonly<Record<string, number>> | null = null): void {
+    this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>, bought as Partial<Record<SkillId, number>> | null);
+  }
   get hasted(): boolean { return this.mobs.haste > 0; }
   /**
    * A drink from the potion belt (the host consumed the potion; potions.model.ts potionEffect): life and mana pour in
@@ -1126,6 +1138,7 @@ export class TopDownEngine {
 
   private update(dt: number): void {
     this.time += dt;
+    if (this.cant && (this.cant.age += dt) >= CHANT_SECS) this.cant = null;
     let vx = 0, vy = 0;
     if (this.keys.has('a') || this.keys.has('arrowleft')) vx -= 1;
     if (this.keys.has('d') || this.keys.has('arrowright')) vx += 1;
@@ -2205,6 +2218,30 @@ export class TopDownEngine {
       c.fillStyle = f.color; c.fillText(f.text, Math.round(f.x), Math.round(f.y));
     }
     c.globalAlpha = 1;
+    // Spoken lines: a boss's chant over its head while it winds up, and the Keeper's spell words over his.
+    for (const m of this.mobs.mobs) if (m.chantT && m.def.chant && inView(m.x, m.y)) this.speech(m.def.chant, m.x, m.y - m.def.h - 12, CHANT_SECS - m.chantT, '#ff8a7a');
+    const k = this.cant;
+    if (k) this.speech(k.text, this.player.x, this.player.y - 44, k.age, k.color);
+    // For the screenshot spec (e2e/td-cant-shots.spec.ts): the canvas says what the Keeper is saying.
+    const said = k?.text ?? '';
+    if (said !== this.cantSeen) { this.cantSeen = said; this.canvas.setAttribute('data-cant', said); }
+  }
+  /**
+   * A spoken line (the Seam-Cant): pixel text in a tone, outlined one pixel in the night ink, that eases in, drifts up
+   * a few pixels and fades over CHANT_SECS; with reduced motion it stands still at full strength, then is gone.
+   */
+  private speech(text: string, x: number, y: number, age: number, color: string): void {
+    const c = this.ctx, k = Math.min(1, Math.max(0, age / CHANT_SECS));
+    text = text.replace(/ /g, '  ');   // the pixel face's space is a sliver: the words need air between them
+    const alpha = this.still ? 1 : Math.min(1, age / .12, (1 - k) / .35);
+    const tx = Math.round(x), ty = Math.round(y - (this.still ? 0 : 6 * k));
+    c.save();
+    c.font = 'bold 8px "Pixelify Sans", monospace'; c.textAlign = 'center'; c.textBaseline = 'bottom';
+    c.globalAlpha = Math.max(0, alpha);
+    c.fillStyle = '#140c1c';
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) c.fillText(text, tx + dx, ty + dy);
+    c.fillStyle = color; c.fillText(text, tx, ty);
+    c.restore();
   }
 
   private drawPerson(p: Person, action: 'idle' | 'run' | 'walk'): void {
