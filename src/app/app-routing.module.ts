@@ -19,7 +19,8 @@ export const APP_ROUTES: Routes = [
       // description, the JSON-LD and the <noscript> intro; the game itself only
       // starts in the browser (afterNextRender).
       path: 'play',
-      loadComponent: () => import('./play/side-scroller.component').then(m => m.SideScrollerComponent),
+      // The shell shows the title / character list first and mounts the world (SideScrollerComponent) on Enter.
+      loadComponent: () => import('./play/lobby/play-shell.component').then(m => m.PlayShellComponent),
       // Nothing in the game navigates away from it (see the guard's header).
       canDeactivate: [stayInGameGuard],
       title: 'Eclipse Realms — Free Browser RPG, No Download',

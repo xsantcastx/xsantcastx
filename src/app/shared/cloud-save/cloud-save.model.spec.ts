@@ -634,6 +634,8 @@ describe('the registry', () => {
       'easter-eggs-found',
       'eclipse-arena-scores',
       'eclipse-bestiary-v1',
+      // The account's characters (login / character select), account-wide.
+      'eclipse-characters',
       'eclipse-combo',
       'eclipse-idle',
       'eclipse-npc',

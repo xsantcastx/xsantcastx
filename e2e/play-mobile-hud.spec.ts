@@ -332,7 +332,9 @@ test.describe('the /play phone HUD with the first-visit consent bar', () => {
     await page.goto('/robots.txt');
     await page.evaluate(() => {
       const keep = localStorage.getItem('eclipse-onboarding');
+      const keepLobby = localStorage.getItem('eclipse-lobby');
       localStorage.clear();
+      if (keepLobby) localStorage.setItem('eclipse-lobby', keepLobby);
       localStorage.setItem('eclipse-onboarding', keep ?? JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }));
       sessionStorage.setItem('visit-counted', '1');
     });

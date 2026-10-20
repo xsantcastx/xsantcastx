@@ -1,0 +1,119 @@
+<noscript>
+  <section class="noscript-intro">
+    <h1>Eclipse Realms</h1>
+    <p>A free pixel-art RPG you play in the browser, with no download and no sign-up. Mine, forge and craft in five realms, dig the endless Delve, build a Homestead, and meet the people of the Seamworks.</p>
+    <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
+  </section>
+</noscript>
+@if (mode === 'game') {
+  <app-side-scroller />
+} @else {
+  <section class="lobby" [attr.data-lobby]="mode" [attr.aria-busy]="busy || mode === 'boot'">
+    <canvas #art class="lobby__art" aria-hidden="true"></canvas>
+
+    @if (mode === 'boot') {
+      <p class="lobby__waking" role="status">{{ t('lobby.waking') }}</p>
+    }
+
+    @if (mode === 'title') {
+      <div class="title">
+        <h1 class="title__name">{{ t('lobby.title') }}</h1>
+        <p class="title__tag">{{ t('lobby.tagline') }}</p>
+        <div class="title__actions">
+          <button type="button" class="btn btn--brass" data-lobby-signin (click)="signIn()" [disabled]="signingIn">
+            <svg class="btn__g" viewBox="0 0 10 10" width="20" height="20" shape-rendering="crispEdges" aria-hidden="true">
+              <rect x="2" y="1" width="6" height="1" /><rect x="1" y="2" width="1" height="6" /><rect x="2" y="8" width="6" height="1" />
+              <rect x="8" y="5" width="1" height="3" /><rect x="5" y="5" width="3" height="1" />
+            </svg>
+            <span>{{ signingIn ? t('lobby.signingIn') : t('lobby.signIn') }}</span>
+          </button>
+          <small class="title__blurb">{{ t('lobby.signInBlurb') }}</small>
+          <button type="button" class="btn" data-lobby-guest (click)="playOffline()" [disabled]="signingIn">{{ t('lobby.guest') }}</button>
+          <small class="title__blurb">{{ t('lobby.guestBlurb') }}</small>
+          @if (error) { <p class="title__error" role="alert">{{ error }}</p> }
+        </div>
+      </div>
+    }
+
+    @if (mode === 'select') {
+      <div class="win select" role="region" [attr.aria-label]="t('lobby.select.title')" data-character-select>
+        <header class="win__head">
+          <span class="win__brand">{{ t('lobby.title') }}</span>
+          <h1 class="win__title">{{ t('lobby.select.title') }}</h1>
+          <span class="win__slots" data-slots>{{ t('lobby.select.slots', { n: rows.length, max: max }) }}</span>
+        </header>
+        <div class="win__body">
+          @if (rows.length) {
+            <ul class="chars" [attr.aria-label]="t('lobby.select.list')" (keydown)="onListKey($event)">
+              @for (row of rows; track row.id) {
+                <li>
+                  <button type="button" class="char" [attr.aria-pressed]="row.id === picked" [attr.data-character]="row.id"
+                          [attr.data-name]="row.name" [attr.data-level]="row.level" (click)="pick(row.id)" (dblclick)="enter(row.id)">
+                    <span class="char__face"><img [src]="portrait(row)" alt="" width="28" height="40"></span>
+                    <span class="char__text">
+                      <b class="char__name">{{ nameOf(row) }}</b>
+                      <small class="char__line">{{ vocationOf(row) }} &middot; <span data-char-level>{{ t('lobby.select.level', { n: row.level }) }}</span></small>
+                      <small class="char__line char__where" data-char-where>{{ whereOf(row) }}</small>
+                      @if (remote(row)) { <small class="char__line char__cloud">{{ t('lobby.select.elsewhere') }}</small> }
+                    </span>
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="select__empty" data-select-empty>{{ t('lobby.select.empty') }}</p>
+          }
+          @if (notice) { <p class="select__notice" role="status">{{ notice }}</p> }
+        </div>
+        <footer class="win__foot">
+          <button type="button" class="btn btn--brass" data-lobby-enter (click)="enter()" [disabled]="!picked || busy">{{ t('lobby.select.enter') }}</button>
+          <div class="win__row">
+            <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy" [attr.title]="full ? t('lobby.select.full') : null">{{ t('lobby.select.new') }}</button>
+            <button type="button" class="btn btn--quiet" data-lobby-delete (click)="askDelete()" [disabled]="!picked || busy">{{ t('lobby.select.delete') }}</button>
+          </div>
+          @if (full) { <small class="select__full">{{ t('lobby.select.full') }}</small> }
+          <p class="select__account">
+            @if (signedIn) {
+              <span>{{ t('lobby.select.signedIn', { who: account }) }}</span>
+              <button type="button" class="link" data-lobby-signout (click)="signOut()" [disabled]="busy">{{ t('lobby.select.signOut') }}</button>
+            } @else {
+              <span>{{ t('lobby.select.offline') }}</span>
+              <button type="button" class="link" data-lobby-signin (click)="signIn()" [disabled]="busy || signingIn">{{ t('lobby.select.signIn') }}</button>
+            }
+          </p>
+          @if (error) { <p class="title__error" role="alert">{{ error }}</p> }
+        </footer>
+      </div>
+
+      @if (deleting) {
+        <div class="veil" (click)="cancelDelete()" aria-hidden="true"></div>
+        <form class="parch confirm" role="alertdialog" aria-modal="true" aria-labelledby="del-title" aria-describedby="del-body" data-delete-confirm
+              (submit)="$event.preventDefault(); confirmDelete()" (keydown.escape)="cancelDelete()">
+          <h2 id="del-title">{{ t('lobby.delete.title', { name: deleteName }) }}</h2>
+          <p id="del-body">{{ t('lobby.delete.body') }}</p>
+          <input #deleteInput type="text" autocomplete="off" spellcheck="false" [value]="typed" (input)="typed = $any($event.target).value"
+                 [placeholder]="t('lobby.delete.typeHint', { name: deleteName })" [attr.aria-label]="t('lobby.delete.typeHint', { name: deleteName })">
+          <div class="confirm__row">
+            <button type="button" class="btn" (click)="cancelDelete()">{{ t('lobby.delete.cancel') }}</button>
+            <button type="submit" class="btn btn--berry" data-delete-go [disabled]="!deleteReady || busy">{{ t('lobby.delete.confirm') }}</button>
+          </div>
+        </form>
+      }
+    }
+
+    @if (mode === 'create') {
+      <div class="win create" role="region" [attr.aria-label]="t('lobby.create.title')" data-character-create>
+        <header class="win__head">
+          <span class="win__brand">{{ t('look.kicker') }}</span>
+          <h1 class="win__title">{{ t('lobby.create.title') }}</h1>
+        </header>
+        <div class="win__body win__body--maker">
+          <app-keeper-maker (done)="made()" />
+        </div>
+        <footer class="win__foot">
+          <button type="button" class="btn btn--quiet" data-lobby-back (click)="backFromCreate()" [disabled]="busy">{{ t('lobby.create.back') }}</button>
+        </footer>
+      </div>
+    }
+  </section>
+}

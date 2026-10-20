@@ -69,6 +69,7 @@ import { MergeConflict, SaveSummary, summarise } from './cloud-save.model';
 // `publishDirectoryRow` / `readBan` below. See gm-sync.ts.
 import type { BanRecord } from './gm.model';
 import { whenAppCheckReady } from '../../app-check.bootstrap';
+import { characterStorageKey, readActiveCharacter } from '../save/character-scope';
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
 const BOUND_UID_KEY = 'cloud-save-uid';
@@ -90,6 +91,17 @@ const LEGACY_ADOPTED_FLAG = 'cloud-save-adopted';
  * header that still says "Save Progress".
  */
 const REDIRECT_PENDING = 'cloud-save-redirect';
+/**
+ * Was this browser signed in when it was last used (or is it on its way back from a Google redirect)? Synchronous, so
+ * the play lobby can open the character list for a returning player without flashing the title screen first.
+ */
+export function hasBoundAccount(): boolean {
+  try {
+    return localStorage.getItem(BOUND_UID_KEY) !== null || sessionStorage.getItem(REDIRECT_PENDING) !== null;
+  } catch {
+    return false;
+  }
+}
 /** The achievement for opening cloud save. Registered in EASTER_EGGS. */
 export const CLOUD_SAVE_EGG = 'cloud-eternal-archive';
 
@@ -753,10 +765,13 @@ function isAppCheckFailure(code: string, message: string): boolean {
     || haystack.includes('app check');
 }
 
-/** One saved blob, or null if it is absent or unreadable. */
+/**
+ * One saved blob of the character this page plays, or null if it is absent or unreadable. Both keys read here are
+ * per character (shared/save/character-scope.ts), so the key is mapped the way the gateway maps it.
+ */
 function safeRead(key: string): unknown {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(characterStorageKey(key, readActiveCharacter(localStorage)));
     return raw === null ? null : JSON.parse(raw);
   } catch {
     return null;

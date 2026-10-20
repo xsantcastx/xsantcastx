@@ -46,6 +46,7 @@ import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
+import { PlayLobbyService } from './lobby/play-lobby.service';
 import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
 import { ELEMENTS, type Element as DamageElement } from '../shared/loot/damage.model';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
@@ -479,6 +480,7 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly hub = inject(CharacterHubService);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
+  private readonly lobby = inject(PlayLobbyService);
   private readonly economy = inject(EconomyService);
   /** Loot & combat: drops, the aura, the difficulty, the corpse run (shared/loot). */
   private readonly loot = inject(LootService);
@@ -4164,6 +4166,12 @@ export class SideScrollerComponent implements OnDestroy {
       } else new KeeperPainter(look, v.gear, v.garb).still(el);
       this.dollFigure = el.toDataURL('image/png');
     } catch { /* no 2D canvas: the doll frame stays empty */ }
+  }
+  /** The menu's "Character select": the play shell saves this Keeper and shows the character list (play/lobby). */
+  toCharacterSelect(): void {
+    if (!this.browser) return;
+    this.engine?.setPaused(true);
+    this.lobby.requestSelect();
   }
   /** The Glass of Becoming: "Make your Keeper" as a place (the world pauses). */
   openKeeperMaker(): void {
