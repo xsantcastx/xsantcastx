@@ -3575,3 +3575,31 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .d2tip__range { font-family: var(--cozy-font-read); }
 .d2tip__title b { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; letter-spacing: .01em; }
 .d2tip__headline { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; }
+
+/* ── The HUD pass, step 1 (docs/design/ui-pass-top-heroes.md, after docs/design/refs/cozy/top-heroes-items.jpg) ──
+   Top-left: the Keeper's face in a wood frame with the level on its corner, life and mana beside it.
+   Top-right: one slim strip — the bag and its count, then coins, ore and ember as icon + number. */
+.hero-face { display: none; }
+.tally-coin, .tally-ico { display: none; }
+/* Desktop only for now: phones keep their own compact HUD until the goal list moves (step 2). */
+@media (min-width: 901px) and (min-height: 501px) {
+.stage--td .vitals { grid-template-columns: 50px minmax(0, 1fr); column-gap: 10px; row-gap: 5px; align-items: center; width: 216px; padding: 7px 10px 7px 7px; }
+.stage--td .vitals > .vital { grid-column: 2; }
+.stage--td .hero-face { display: block; position: relative; grid-column: 1; grid-row: 1 / span 2; width: 50px; height: 50px;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--cozy-mana) 30%, var(--cozy-wood-1)), var(--cozy-wood-0) 75%);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass), inset 0 0 0 4px var(--cozy-wood-0); overflow: hidden; }
+.stage--td .hero-face img { position: absolute; left: 50%; top: 2px; width: 44px; height: 44px; transform: translateX(-50%); image-rendering: pixelated; object-fit: contain; object-position: center top; }
+.stage--td .hero-lv { position: absolute; left: -2px; bottom: -2px; min-width: 22px; padding: 2px 4px; text-align: center;
+  font: 700 12px/1 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.stage--td .vital__lv { display: none; }
+.stage--td .satchel { width: auto; display: flex; align-items: center; gap: 14px; padding: 6px 14px 6px 8px; }
+.stage--td .satchel .clasp { width: auto; margin: 0; padding: 0 12px 0 0; border-bottom: 0; border-right: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent); gap: 8px; }
+.stage--td .satchel .clasp > span:first-child { display: none; }
+.stage--td .tally { display: flex; align-items: center; gap: 14px; }
+.stage--td .tally p { display: flex; align-items: center; gap: 6px; margin: 0; }
+.stage--td .tally p span, .stage--td .tally .tally-quiet { display: none; }
+.stage--td .tally b { font: 700 15px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.stage--td .tally-coin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--cozy-glow), var(--cozy-brass) 60%, var(--cozy-brass-lo));
+  box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.stage--td .tally-ico { display: inline-block; width: 18px; height: 18px; image-rendering: pixelated; }
+}
