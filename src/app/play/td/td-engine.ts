@@ -57,6 +57,8 @@ import type { ItemStats } from '../../shared/rpg/item.model';
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen'];
 
+/** HUD portraits by look (heroPortrait). */
+const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
@@ -326,6 +328,22 @@ export class TopDownEngine {
   pick(clientX: number, clientY: number): { x: number; y: number; station: StationDef | null } {
     const w = this.toWorld(clientX, clientY);
     return { x: w.x, y: w.y, station: this.stallAt(w.x, w.y)?.station ?? null };
+  }
+  /**
+   * The Keeper's face for the HUD portrait (owner 2026-10-20: the Top Heroes frame, docs/design/ui-pass-top-heroes.md):
+   * the head and shoulders of the front sprite, as a data URL, made once per look.
+   */
+  heroPortrait(): string {
+    const painter = this.player.painter;
+    if (!painter || typeof document === 'undefined') return '';
+    let url = portraits.get(painter);
+    if (url) return url;
+    const sheet = frontSheet(painter, true), out = document.createElement('canvas');
+    out.width = FRONT_W + 2; out.height = 22;
+    out.getContext('2d')!.drawImage(sheet, 0, 0, FRONT_W + 2, 22, 0, 0, FRONT_W + 2, 22);
+    url = out.toDataURL();
+    portraits.set(painter, url);
+    return url;
   }
   delveAnchors(): readonly never[] { return []; }
   hasDelveCamp(): boolean { return false; }

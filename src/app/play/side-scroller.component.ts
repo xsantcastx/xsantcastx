@@ -2325,6 +2325,11 @@ export class SideScrollerComponent implements OnDestroy {
   /** The worn loadout's fight numbers, with the Hunting level on top (the Keeper's character level; keeper-combat.ts). */
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
   get huntingLevel(): number { return skillLevel(this.activity.snapshot.progress, 'hunting'); }
+  /** The HUD portrait (top-down): the Keeper's own face, from the engine's sprite; '' until the world is up. */
+  get tdPortrait(): string { return this.topDown ? (this.engine as unknown as { heroPortrait?: () => string } | undefined)?.heroPortrait?.() ?? '' : ''; }
+  /** The resource strip's icons: the materials' own art. */
+  get oreArt(): string { return materialDisplay(CINDER_ORE_ID)?.art ?? ''; }
+  get emberArt(): string { return materialDisplay(EMBER_RESIDUE_ID)?.art ?? ''; }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
     if (this.state.areaId === 'homestead') return this.t('play.hud.obj.homestead');

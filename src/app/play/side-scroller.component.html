@@ -237,6 +237,13 @@
   }
 
   <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+    @if (topDown) {
+      <!-- The portrait (docs/design/ui-pass-top-heroes.md): the Keeper's face in a frame, the level on its corner. -->
+      <div class="hero-face" aria-hidden="true">
+        @if (tdPortrait) { <img [src]="tdPortrait" alt=""> }
+        <b class="hero-lv">{{ huntingLevel }}</b>
+      </div>
+    }
     <div class="vital">
       <label>{{ keeperName || t('play.hud.keeper') }}@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span> } <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></s><i [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></i></div>
@@ -393,9 +400,9 @@
     <!-- Coins, Ore and Ember are the plate; edge, damage and kills are read out (screen
          readers, the specs) but not painted: the doll and Stats already show them. -->
     <div class="tally">
-      <p><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
-      <p><span>{{ t('play.hud.tally.ore') }}</span><b class="ore-count">{{ ore }}</b></p>
-      <p><span>{{ t('play.hud.tally.ember') }}</span><b class="ember-count">{{ ember }}</b></p>
+      <p><i class="tally-coin" aria-hidden="true"></i><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
+      <p>@if (oreArt) { <img class="tally-ico" [src]="oreArt" alt="" aria-hidden="true"> }<span>{{ t('play.hud.tally.ore') }}</span><b class="ore-count">{{ ore }}</b></p>
+      <p>@if (emberArt) { <img class="tally-ico" [src]="emberArt" alt="" aria-hidden="true"> }<span>{{ t('play.hud.tally.ember') }}</span><b class="ember-count">{{ ember }}</b></p>
       <p class="tally-quiet"><span>{{ t('play.hud.tally.edge') }}</span><b>{{ edge ? t(equipped ? 'play.hud.tally.worn' : 'play.hud.tally.bag') : '—' }}</b></p>
       <p class="tally-quiet"><span>{{ t('play.hud.tally.damage') }}</span><b>{{ pushed.damage }}</b></p>
       <p class="tally-quiet"><span>{{ t('play.hud.tally.defeated') }}</span><b>{{ state.kills || 0 }}</b></p>
