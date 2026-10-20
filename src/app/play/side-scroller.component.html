@@ -116,6 +116,22 @@
       </section>
     }
   }
+  <!-- The level-up fanfare (docs/design/leveling.md §4): what the level gave, exactly, and where to spend it. -->
+  @if (levelBanner; as lb) {
+    <section class="lvl-banner" [class.lvl-banner--big]="lb.big" role="status" aria-live="polite" data-level-banner [attr.data-level]="lb.level" data-engine-ignore>
+      <header class="win-head">
+        <h2>{{ t('play.lvl.banner', { n: lb.level }) }}</h2>
+        <button type="button" class="win-x" (click)="levelBanner = null" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
+      </header>
+      <ul class="lvl-banner__lines">
+        @for (line of lb.lines; track $index) { <li>{{ line }}</li> }
+      </ul>
+      <div class="lvl-banner__acts">
+        @if (lb.points) { <button type="button" class="lvl-banner__go" data-level-spend (click)="levelBannerGo('sheet')">{{ t('play.lvl.spend') }}</button> }
+        @if (lb.skill) { <button type="button" class="lvl-banner__alt" data-level-book (click)="levelBannerGo('book')">{{ t('play.lvl.book') }}</button> }
+      </div>
+    </section>
+  }
   <!-- The character sheet (C), D2's attributes page made cozy: level, points to spend, what each point gives. -->
   @if (topDown && sheetOpen && !panel) {
     @if (sheet; as sh) {
@@ -124,8 +140,36 @@
           <h2 id="ksheet-title">{{ keeperName || t('play.hud.keeper') }} · {{ t('look.class.' + vocation) }}</h2>
           <button type="button" class="win-x" (click)="sheetOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
         </header>
-        <p class="ks__level">{{ t('play.td.level', { n: sh.level }) }} <span class="ks__xp"><i [style.width.%]="sh.span ? sh.into / sh.span * 100 : 100"></i></span> <small>{{ sh.into }} / {{ sh.span }} XP</small></p>
-        <p class="ks__left" [class.ks__left--has]="sh.left > 0">{{ t('play.td.points', { n: sh.left }) }}</p>
+        <p class="ks__level">{{ t('play.td.level', { n: sh.level }) }} <span class="ks__xp"><i [style.width.%]="sh.span ? sh.into / sh.span * 100 : 100"></i></span> <small data-sheet-xp>{{ sh.span ? t('play.lvl.toNext', { n: xpText(sh.toNext), level: sh.level + 1 }) : t('play.lvl.top') }}</small></p>
+        @if (sh.next; as nx) { <p class="ks__next" data-sheet-next>{{ t('play.lvl.next', { n: nx.level }) }} <small>{{ milestoneLines(nx).join(' · ') }}</small></p> }
+        <div class="ks__tabs" role="tablist">
+          <button type="button" role="tab" [attr.aria-selected]="sheetTab === 'attrs'" (click)="sheetTab = 'attrs'">{{ t('play.lvl.tab.attrs') }}</button>
+          <button type="button" role="tab" data-sheet-milestones [attr.aria-selected]="sheetTab === 'milestones'" (click)="sheetTab = 'milestones'; milestonePage = -1">{{ t('play.lvl.tab.milestones') }}</button>
+        </div>
+        @if (sheetTab === 'milestones') {
+          @if (milestoneView; as mv) {
+            <p class="ks__title-pick">
+              <span>{{ t('play.lvl.titleWorn') }}</span>
+              <button type="button" class="px-arrow px-arrow--prev" [disabled]="!mv.titles.length" (click)="cycleTitle(-1)" [attr.aria-label]="t('play.lvl.titlePrev')"></button>
+              <b data-sheet-title>{{ mv.title ? t('play.lvl.title.' + mv.title) : t('play.lvl.titleNone') }}</b>
+              <button type="button" class="px-arrow px-arrow--next" data-title-next [disabled]="!mv.titles.length" (click)="cycleTitle(1)" [attr.aria-label]="t('play.lvl.titleNext')"></button>
+            </p>
+            <ul class="sb__list ks__miles" data-milestones>
+              @for (r of mv.rows; track r.level) {
+                <li class="ks__mile" [attr.data-state]="r.state" [class.ks__mile--big]="r.big" [attr.data-milestone]="r.level">
+                  <b class="ks__val">{{ r.level }}</b>
+                  <span class="sb__body"><b>{{ t('play.lvl.state.' + r.state) }}</b><small>{{ r.lines.join(' · ') }}</small></span>
+                </li>
+              }
+            </ul>
+            <p class="ks__pager">
+              <button type="button" class="px-arrow px-arrow--prev" [disabled]="mv.page <= 0" (click)="pageMilestones(-1)" [attr.aria-label]="t('play.lvl.pagePrev')"></button>
+              <span>{{ mv.page + 1 }} / {{ mv.pages }}</span>
+              <button type="button" class="px-arrow px-arrow--next" [disabled]="mv.page >= mv.pages - 1" (click)="pageMilestones(1)" [attr.aria-label]="t('play.lvl.pageNext')"></button>
+            </p>
+          }
+        } @else {
+        <p class="ks__left" [class.ks__left--has]="sh.left > 0">{{ t('play.td.points', { n: sh.left }) }} <small>{{ t('play.lvl.skillPoints', { n: sh.skillPoints }) }}</small></p>
         <ul class="sb__list">
           @for (r of sh.rows; track r.id) {
             <li class="sb__row ks__row" [attr.data-attr]="r.id">
@@ -139,6 +183,7 @@
         <dl class="ks__totals">
           @for (tot of sh.totals; track tot.key) { <dt>{{ t(tot.key) }}</dt><dd>{{ tot.value }}</dd> }
         </dl>
+        }
       </section>
     }
   }
@@ -469,14 +514,14 @@
   <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     @if (topDown) {
       <!-- The portrait (docs/design/ui-pass-top-heroes.md): the Keeper's face in a frame, the level on its corner. -->
-      <div class="hero-face" aria-hidden="true">
+      <div class="hero-face" aria-hidden="true" [attr.data-frame]="keeperFrame">
         @if (tdPortrait) { <img [src]="tdPortrait" alt=""> }
-        <b class="hero-lv">{{ huntingLevel }}</b>
+        <b class="hero-lv" [class.hero-lv--up]="lvPulse" data-keeper-level>{{ huntingLevel }}</b>
         @if (tdAura) { <i class="td-aura-badge hero-aura" [innerHTML]="skillIcon(tdAura)"></i> }
       </div>
     }
     <div class="vital">
-      <label>{{ keeperName || t('play.hud.keeper') }}@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span> } <b>{{ hpShown }}</b></label>
+      <label>{{ keeperName || t('play.hud.keeper') }}@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span>@if (keeperTitle) { <small class="vital__title" data-keeper-title>{{ keeperTitle }}</small> } } <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></s><i [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></i></div>
     </div>
     @if (topDown) {

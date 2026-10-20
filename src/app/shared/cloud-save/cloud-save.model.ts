@@ -63,6 +63,7 @@ import { mergeSound } from '../sound/sound-settings.model';
 import { mergeLoot } from '../loot/loot-save.model';
 import { mergePets } from '../pets/pets-save.model';
 import { mergeTownTasks } from '../town-tasks/town-tasks-save.model';
+import { mergeKeeperMilestones } from '../skills/keeper-milestones-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -542,6 +543,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // counts take the higher, a task taken on either device is taken (the earlier time). Hand-written so junk ids
     // are dropped. See town-tasks-save.model.ts.
     merge: mergeTownTasks,
+  },
+  {
+    key: 'godforge-keeper-level',
+    collection: 'progress',
+    doc: 'keeper-level',
+    label: 'Level milestones',
+    // `{ version, claimed: [level], title, titleAt }`: the level milestones whose one-time pay (Gold, a gear piece)
+    // was handed over — the receipt, written before the pay and unioned, so two devices never pay a milestone twice —
+    // and the title the Keeper wears (the later pick wins). The level itself is derived from Hunting XP (the activity
+    // ledger); points, passives and frames are derived from it. See keeper-milestones-save.model.ts.
+    merge: mergeKeeperMilestones,
   },
   {
     key: 'godforge-cabinets',

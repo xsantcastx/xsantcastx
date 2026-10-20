@@ -1335,7 +1335,9 @@ export interface Effect {
   kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust' | 'drain' | 'curse' | 'ward' | 'bolt-hit' | 'raise' | 'spark'
     // The effects pass (docs/design/effects-spec.md): an aura's pulse at a foe's side, a crit's white-hot core,
     // the Bone Spear's release flash and the bone chips at each pierce.
-    | 'pulse' | 'crit' | 'flash' | 'bone-chips';
+    | 'pulse' | 'crit' | 'flash' | 'bone-chips'
+    // A level gained (docs/design/leveling.md §4): the light pillar on the Keeper; `dir` 2 for a big milestone.
+    | 'pillar';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
   /** A pulse's element: the aura that did the work. */
   el?: 'ember' | 'life';

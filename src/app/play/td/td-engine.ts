@@ -63,7 +63,7 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 };
 import { BOSS_TELL, CALL_TELL, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
-import { FX, HOSTILE_EDGE, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
+import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
@@ -315,6 +315,10 @@ export class TopDownEngine {
   get raisedCount(): number { return this.mobs.minions.length; }
   /** Let the raised go (they last until killed or released; owner 2026-10-20). */
   releaseRaised(): number { return this.mobs.releaseMinions(); }
+  /** A level gained (the HUD calls it): a column of warm light rises on the Keeper; taller and longer for a big milestone. */
+  levelPillar(big = false): void {
+    this.mobs.effects.push({ kind: 'pillar', x: this.player.x, y: this.player.y, age: 0, life: big ? 1.8 : 1.3, dir: big ? 2 : 1 });
+  }
   get ward(): number { return this.mobs.ward; }
   /** The Spellbook's choices: the bar (up to four actives) and the running aura. */
   setSkillLoadout(bar: readonly string[], aura: string | null): void {
@@ -1431,6 +1435,21 @@ export class TopDownEngine {
         }
         c.fillStyle = FX.shadow.body;
         for (let i = 0; i < 7; i++) c.fillRect(Math.round(X - 8 + i * 2.6), Math.round(Y - 2 - bt * (10 + (i % 3) * 8)), 1, 1);
+      } else if (e.kind === 'pillar') {
+        // The level-up: a stepped column of warm light stands on the Keeper (it follows him), motes climb it, sparks
+        // ring his feet. Thin and see-through over the body (spec rule 4); reduced motion draws the full column still.
+        const big = e.dir > 1, X0 = Math.round(p.x), Y0 = Math.round(p.y), n = big ? 10 : 6;
+        const fade = this.still || t < .6 ? 1 : 1 - (t - .6) / .4, h = Math.round((big ? 96 : 72) * (this.still ? 1 : Math.min(1, t / .25)));
+        c.globalAlpha = .3 * fade; c.fillStyle = LEVEL_UP.edge; c.fillRect(X0 - (big ? 7 : 5), Y0 - h, big ? 14 : 10, h);
+        c.globalAlpha = .5 * fade; c.fillStyle = LEVEL_UP.body; c.fillRect(X0 - 3, Y0 - h, 6, h);
+        c.globalAlpha = .6 * fade; c.fillStyle = LEVEL_UP.core; c.fillRect(X0 - 1, Y0 - h, 2, h);
+        c.globalAlpha = fade;
+        for (let i = 0; i < n; i++) {
+          const k = this.still ? (i + 1) / (n + 1) : (t * 1.4 + i / n) % 1;
+          c.fillStyle = i % 2 ? LEVEL_UP.core : LEVEL_UP.body;
+          c.fillRect(X0 + (i % 2 ? -1 : 1) * (3 + (i * 5) % 6), Math.round(Y0 - 4 - k * h), 1, 2);
+        }
+        if (t < .4 || this.still) { c.globalAlpha = 1; drawBurst(c, X0, Y0 - 2, burst(big ? 10 : 8, bt, seed, 12, 4), LEVEL_UP); }
       } else if (e.kind === 'spark') {
         // A foe's shot breaking: its own fire, edged dark.
         drawBurst(c, X, Y, burst(6, bt, seed, 7, 5), FX.ember, true);
@@ -1658,6 +1677,7 @@ export class TopDownEngine {
         d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 5;
         d.beginPath(); d.arc((e.x - cam.x) / 2, (e.y - cam.y) / 2, r / 2, 0, Math.PI * 2); d.stroke(); d.globalAlpha = 1;
       } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash') hole(e.x, e.y, 28);
+      else if (e.kind === 'pillar' && t < .8) hole(this.player.x, this.player.y - 30, 56);
     }
     for (const b of this.mobs.bolts) hole(b.x, b.y, 24);
     // Gear on the ground is its own light, the rarer the further; a boss's tell lights its jaws and its cone.

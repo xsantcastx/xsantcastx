@@ -3588,7 +3588,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .ks__level { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font: 700 14px var(--font-pixel); color: var(--cozy-cream); }
 .ks__xp { flex: 1; height: 6px; background: var(--cozy-well); box-shadow: 0 0 0 1px var(--cozy-wood-1); }
 .ks__xp i { display: block; height: 100%; background: var(--cozy-brass); }
-.ks__level small { font: 11px var(--font-pixel); opacity: .7; }
+.ks__level small { font: 600 11px var(--cozy-font-read); opacity: .8; }
 .ks__left { margin: 6px 0 8px; font: 600 13px var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
 .ks__left--has { color: var(--cozy-glow); }
 .ks__row { grid-template-columns: 40px minmax(0, 1fr) 44px; }
@@ -3598,6 +3598,57 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .ks__totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font: 13px var(--font-pixel); }
 .ks__totals dt { color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
 .ks__totals dd { margin: 0; text-align: right; color: var(--cozy-glow); }
+/* The Keeper's level (docs/design/leveling.md §4): the next milestone, the two tabs, the milestones list, the title. */
+.ks__next { margin: 4px 0 0; font: 700 12px/1.3 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.ks__next small { display: block; font: 12px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.ks__left small { display: block; margin-top: 2px; font: 12px var(--font-pixel); color: var(--cozy-mana-text); }
+.ks__tabs { display: flex; gap: 6px; margin: 8px 0 4px; }
+.ks__tabs button { flex: 1; min-height: 44px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: var(--cozy-chip); font: 700 13px/1 var(--font-pixel); cursor: pointer; }
+.ks__tabs button[aria-selected="true"] { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); }
+.ks__title-pick { display: flex; align-items: center; gap: 4px; margin: 4px 0 6px; font: 600 13px var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.ks__title-pick > span { margin-right: auto; }
+.ks__title-pick b { min-width: 0; flex: 0 1 auto; text-align: center; color: var(--cozy-glow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks__title-pick .px-arrow--prev::before, .ks__pager .px-arrow--prev::before { border-right-color: var(--cozy-brass-hi); }
+.ks__title-pick .px-arrow--next::before, .ks__pager .px-arrow--next::before { border-left-color: var(--cozy-brass-hi); }
+.ks__mile { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 10px; padding: 5px 8px; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
+/* Numbers in the read face: the pixel face draws 5 like S and 2 like 8 at this size. */
+.ks__mile .ks__val { width: 52px; font: 800 15px var(--cozy-font-read); }
+.ks__mile .sb__body small, .ks__next small { font-family: var(--cozy-font-read); }
+.ks__mile[data-state="claimed"] .ks__val { color: var(--cozy-wood-0); background: var(--cozy-brass); }
+.ks__mile[data-state="next"] { box-shadow: var(--px-on-rim); }
+.ks__mile[data-state="later"] { opacity: .62; }
+.ks__mile--big .ks__val { color: var(--cozy-loot-mythic); }
+.ks__mile--big[data-state="claimed"] .ks__val { color: var(--cozy-wood-0); background: var(--cozy-glow); }
+.ks__pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 0; font: 700 13px var(--font-pixel); color: var(--cozy-cream); }
+.vital__title { margin-left: 4px; font: 600 10px/1.4 var(--font-pixel); color: var(--cozy-brass-hi); }
+/* The portrait's frame metal, earned at the milestones (copper 10 … starlit 10,000). */
+.hero-face[data-frame="copper"] { --frame: var(--cozy-wood-hi); }
+.hero-face[data-frame="bronze"] { --frame: var(--cozy-brass-lo); }
+.hero-face[data-frame="silver"] { --frame: var(--cozy-loot-common); }
+.hero-face[data-frame="gold"] { --frame: var(--cozy-brass-hi); }
+.hero-face[data-frame="eclipse"] { --frame: var(--cozy-loot-epic); }
+.hero-face[data-frame="starlit"] { --frame: var(--cozy-loot-mythic); }
+/* The badge hops when a level lands (steps, no blur); still under reduced motion. */
+@keyframes lv-hop { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+/* The level-up banner: a cozy window at the top centre, under the HUD strip; the big milestones get a brass rim. */
+.lvl-banner { position: absolute; z-index: 9; left: 50%; top: 84px; translate: -50% 0; width: min(380px, calc(100% - 32px)); padding: 6px 14px 12px;
+  background: var(--px-win-planks), var(--px-win-bg); color: var(--cozy-cream); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); animation: slip-in .35s steps(4); }
+.lvl-banner .win-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lvl-banner h2 { margin: 0; font: 700 22px/1.1 var(--font-pixel); color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.lvl-banner--big h2 { color: var(--cozy-loot-mythic); }
+.lvl-banner--big { outline: 2px solid var(--cozy-brass-hi); outline-offset: -6px; }
+.lvl-banner__lines { display: grid; gap: 3px; margin: 6px 0 8px; padding: 0; list-style: none; font: 13px/1.35 var(--cozy-font-read); color: var(--cozy-cream); }
+.lvl-banner__lines li:first-child { font-weight: 700; color: var(--cozy-brass-hi); }
+.lvl-banner__acts { display: flex; gap: 8px; }
+.lvl-banner__acts button { flex: 1; min-height: 44px; border: 0; border-radius: 0; font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.lvl-banner__go { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); }
+.lvl-banner__alt { background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: var(--cozy-chip); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .lvl-banner { top: calc(64px + env(safe-area-inset-top, 0px)); width: auto; left: 8px; right: 8px; translate: none; padding: 4px 10px 8px; }
+  .lvl-banner h2 { font-size: 18px; }
+  .lvl-banner__lines { margin: 4px 0 6px; font-size: 12px; gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) { .lvl-banner, .stage--td .hero-face .hero-lv--up { animation: none; } }
 /* The whole card reads in a clean sans, like the reference: the pixel face draws 2 like 8 at card sizes. */
 .d2tip, .d2tip__title span, .d2tip__affixes, .d2tip__special, .d2tip__sockets, .d2tip__compare, .d2tip__foot, .d2tip__line {
   font-family: var(--cozy-font-read); font-size: 12px; letter-spacing: 0; }
@@ -3622,6 +3673,9 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .stage--td .hero-lv { position: absolute; left: -2px; bottom: -2px; min-width: 22px; padding: 2px 4px; text-align: center;
   font: 700 12px/1 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
 .stage--td .vital__lv { display: none; }
+.stage--td .hero-face[data-frame] { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--frame), inset 0 0 0 4px var(--cozy-wood-0); }
+.stage--td .hero-face[data-frame] .hero-lv { background: var(--frame); }
+.stage--td .hero-lv--up { animation: lv-hop .8s steps(4) 2; }
 /* The running aura's icon on the portrait's corner (docs/design/effects-spec.md §Auras HUD). */
 .stage--td .hero-face { overflow: visible; }
 .stage--td .hero-aura { position: absolute; right: -6px; top: -6px; }
