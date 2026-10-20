@@ -1,0 +1,227 @@
+/**
+ * td-elites.ts — elite packs in the top-down world (design-bible §5.7 / roadmap §10 item 3; loot-and-combat.md §5).
+ *
+ * Diablo II's blue and gold names, brought from the side view (shared/loot/champions.ts) into the endless surface and
+ * the dungeon floors. Now and then a wild spawn comes up as:
+ *  - a CHAMPION PACK: 2–4 tougher copies of the creature, a blue pixel aura under each, one shared affix,
+ *    rank `champion` (×2.5 life, ×1.3 blow; Gold ×4 through rollHuntGold, 2 item rolls at 45%, one ladder step);
+ *  - a UNIQUE: a named leader ("Grimfang the Hollow") with 1–3 affixes and a gold aura, rank `unique` (×3.5 life,
+ *    ×1.5 blow; Gold ×6, 3 item rolls at 60%, two ladder steps), followed by 2–4 ordinary minions.
+ *
+ * Rates are modest — about one pack per 16 eligible spawns (ELITE_CHANCE), a quarter of them uniques — and they only
+ * come where they belong: never in a town or a safe square, never a boss or an authored champion, never a creature
+ * under level 3 (the first hunt stays gentle), and only where the creature's level suits the Keeper's (LEVEL_BAND).
+ *
+ * The roll is deterministic per spawn (its key, the times it has fallen, a session salt): a chunk that scrolls away
+ * and back brings back the same pack; the pack re-rolls only once it has been killed.
+ *
+ * Pure (numbers, names, rolls, loot floors). The fight's behaviour lives in td-mobs.ts, the pixels in td-engine.ts.
+ */
+import { MIN_PACK_LEVEL, RANK_DAMAGE, RANK_HP, hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
+import type { DamageType } from '../../shared/loot/damage.model';
+
+export type EliteAffix =
+  | 'extra-strong' | 'extra-fast' | 'stone-skin' | 'cursed' | 'fire-enchanted'
+  | 'cold-aura' | 'spectral-hit' | 'mana-burn' | 'teleport' | 'lightning-enchanted';
+
+export const ELITE_AFFIXES: readonly EliteAffix[] = [
+  'extra-strong', 'extra-fast', 'stone-skin', 'cursed', 'fire-enchanted',
+  'cold-aura', 'spectral-hit', 'mana-burn', 'teleport', 'lightning-enchanted',
+];
+
+export interface EliteAffixDef {
+  id: EliteAffix;
+  /** The words under the leader's name. */
+  name: string;
+  /** Its tell's colour (art-bible ramps; the affix text and its pixels use it). */
+  color: string;
+  /** Multiplies the creature's blow. */
+  damage?: number;
+  /** Multiplies its walk speed. */
+  speed?: number;
+  /** Divides the time between its bites (a quicker creature bites sooner). */
+  rate?: number;
+  /** Its blows and shots carry this type. */
+  hits?: DamageType;
+  /** What it takes of every hit on it (Stone Skin). */
+  take?: number;
+  /** Only one per creature from the same group (one element on a blow, never two). */
+  group?: 'element';
+}
+
+export const AFFIX_DEFS: Readonly<Record<EliteAffix, EliteAffixDef>> = {
+  'extra-strong': { id: 'extra-strong', name: 'Extra Strong', color: '#ff6a3d', damage: 1.5 },
+  'extra-fast': { id: 'extra-fast', name: 'Extra Fast', color: '#9db8a8', speed: 1.6, rate: 1.3 },
+  'stone-skin': { id: 'stone-skin', name: 'Stone Skin', color: '#c9b79c', take: .6 },
+  // Its blows mark the Keeper for CURSE_SECONDS: −CURSE_RESIST to every resist, and +CURSE_HURT more taken.
+  cursed: { id: 'cursed', name: 'Cursed', color: '#b06bff' },
+  // Its blows burn; it bursts in fire FIRE_BURST.delay seconds after it falls (a hostile ring shows where).
+  'fire-enchanted': { id: 'fire-enchanted', name: 'Fire Enchanted', color: '#ffb347', damage: 1.25, hits: 'fire', group: 'element' },
+  // Its blows freeze, and the cold round it (COLD_AURA_R) slows the Keeper's step by COLD_SLOW.
+  'cold-aura': { id: 'cold-aura', name: 'Cold Aura', color: '#9fd8ff', hits: 'cold', group: 'element' },
+  // Every blow lands as a different element (SPECTRAL), a little harder.
+  'spectral-hit': { id: 'spectral-hit', name: 'Spectral Hit', color: '#e0c8ff', damage: 1.2, group: 'element' },
+  // Its blows drain the Keeper's mana (MANA_BURN).
+  'mana-burn': { id: 'mana-burn', name: 'Mana Burn', color: '#00d4ff' },
+  // When its prey stands off (TELEPORT.min) it blinks to his side after a TELEPORT.tell wind-up, every TELEPORT.cd s.
+  teleport: { id: 'teleport', name: 'Teleport', color: '#c78bff' },
+  'lightning-enchanted': { id: 'lightning-enchanted', name: 'Lightning Enchanted', color: '#ffe36d', damage: 1.2, hits: 'lightning', group: 'element' },
+};
+
+/** About one pack per 16 eligible spawns (the brief: 1 in 12–20), a quarter of them uniques. */
+export const ELITE_CHANCE = 1 / 16;
+export const UNIQUE_SHARE = .25;
+/** A creature suits a Keeper of level L when its level is within L − below … L + above. */
+export const LEVEL_BAND = { below: 10, above: 6 } as const;
+/** The Cursed mark on the Keeper. */
+export const CURSE_SECONDS = 4;
+export const CURSE_RESIST = 25;
+export const CURSE_HURT = .15;
+/** Mana a Mana Burn blow takes. */
+export const MANA_BURN = 14;
+/** The Cold Aura: its reach (art px, 3 tiles) and how much it slows the Keeper's step. */
+export const COLD_AURA_R = 48;
+export const COLD_SLOW = .3;
+/** Fire Enchanted's death burst: its reach (art px), its delay (the ground tell), its blow as a share of the creature's. */
+export const FIRE_BURST = { r: 26, delay: .6, share: 1.5 } as const;
+/** Teleport: it blinks when its prey is farther than `min`, after a `tell`-second wind-up, every `cd` seconds. */
+export const TELEPORT = { min: 64, tell: .45, cd: 5 } as const;
+/** The elements a Spectral Hit cycles through. */
+export const SPECTRAL: readonly DamageType[] = ['fire', 'cold', 'lightning', 'arcane'];
+/** Rank tones: the champion's blue aura and name, the unique's gold. */
+export const ELITE_TONES = {
+  champion: { core: '#d6ecff', body: '#5aa8ff', edge: '#2f5f9e' },
+  unique: { core: '#fff3c0', body: '#ffd25a', edge: '#b0812a' },
+} as const;
+
+export type EliteRank = 'champion' | 'unique';
+export interface ElitePack {
+  rank: EliteRank;
+  affixes: EliteAffix[];
+  /** A unique leader's name ("Grimfang the Hollow"); null for a champion pack. */
+  name: string | null;
+  /** How many others come with the leader: champion copies, or a unique's minions. */
+  followers: number;
+}
+
+/** What a creature in a pack is: the leader (named or first champion), a champion copy, or a unique's minion. */
+export interface EliteTag {
+  rank: EliteRank;
+  role: 'leader' | 'champion' | 'minion';
+  affixes: EliteAffix[];
+  name: string | null;
+}
+
+// Unique names: a first name and a title in the realms' voice — the Seamworks tally-books, the eclipse, the lamps.
+export const NAME_FIRST: readonly string[] = [
+  'Grimfang', 'Sootjaw', 'Ashmantle', 'Gloamtooth', 'Cinderwake', 'Hollowhymn', 'Rivetgrin', 'Rootgnaw',
+  'Glasshowl', 'Inkfang', 'Embermourn', 'Starbiter', 'Marrowgrin', 'Duskclaw', 'Wickmaw', 'Tallowbane',
+];
+export const NAME_TITLE: readonly string[] = [
+  'the Hollow', 'the Unlit', 'the Seam-Eater', 'the Last Ember', 'the Ink-Drinker', 'the Gloamborn',
+  'the Tally-Breaker', 'the Cold Wick', 'the Ashen', 'the Lampless', 'the Rivet Maw', 'the Mourning Bell',
+];
+
+/** A unique's name from a random source. */
+export function eliteName(r: () => number): string {
+  return `${NAME_FIRST[Math.floor(r() * NAME_FIRST.length)]} ${NAME_TITLE[Math.floor(r() * NAME_TITLE.length)]}`;
+}
+
+/** `count` distinct affixes, never two from the same group. */
+export function rollAffixes(r: () => number, count: number): EliteAffix[] {
+  const out: EliteAffix[] = [], pool = [...ELITE_AFFIXES];
+  while (out.length < count && pool.length) {
+    const a = pool.splice(Math.floor(r() * pool.length), 1)[0];
+    const g = AFFIX_DEFS[a].group;
+    if (g && out.some(x => AFFIX_DEFS[x].group === g)) continue;
+    out.push(a);
+  }
+  return out;
+}
+
+/** May this spawn lead a pack at all? */
+export function eliteEligible(o: { level: number; rank?: MonsterRank; keeperLevel: number; safe: boolean }): boolean {
+  if (o.safe) return false;
+  if ((o.rank ?? 'normal') !== 'normal') return false;     // a boss is itself; an authored champion already is one
+  if (o.level < MIN_PACK_LEVEL) return false;               // the first hunt stays gentle
+  return o.level >= o.keeperLevel - LEVEL_BAND.below && o.level <= o.keeperLevel + LEVEL_BAND.above;
+}
+
+/**
+ * Roll a spawn: null (an ordinary creature, the usual case) or a pack. `seed` is the spawn's own (its key, the times
+ * it has fallen, the session salt): the same seed gives the same pack.
+ */
+export function rollElite(seed: string, chance = ELITE_CHANCE): ElitePack | null {
+  const r = seededRandom(hashSeed(`elite|${seed}`));
+  const roll = r();
+  if (roll >= chance) return null;
+  if (roll < chance * UNIQUE_SHARE) {
+    const k = r(), count = k < .3 ? 1 : k < .75 ? 2 : 3;
+    return { rank: 'unique', affixes: rollAffixes(r, count), name: eliteName(r), followers: 2 + Math.floor(r() * 3) };
+  }
+  return { rank: 'champion', affixes: rollAffixes(r, 1), name: null, followers: 1 + Math.floor(r() * 3) };
+}
+
+/** A pack built on purpose (the screenshot hook, the specs). */
+export function makePack(rank: EliteRank, affixes: readonly EliteAffix[], name: string | null, followers: number): ElitePack {
+  return { rank, affixes: [...affixes], name: rank === 'unique' ? name : null, followers };
+}
+
+export interface EliteStats { hp: number; dmg: [number, number]; speed: number; rate: number; hits: DamageType | undefined; take: number }
+
+/**
+ * The numbers of one pack member, from the creature's own. A champion copy and a leader take their rank's life and
+ * blow (champions.ts RANK_HP / RANK_DAMAGE) and every affix; a unique's minion keeps the creature's own numbers.
+ */
+export function eliteStats(base: { hp: number; dmg: readonly [number, number]; speed: number; rate: number; hits?: DamageType }, tag: Pick<EliteTag, 'rank' | 'role' | 'affixes'>): EliteStats {
+  if (tag.role === 'minion') return { hp: base.hp, dmg: [base.dmg[0], base.dmg[1]], speed: base.speed, rate: base.rate, hits: base.hits, take: 1 };
+  let damage = RANK_DAMAGE[tag.rank], speed = 1, rate = 1, take = 1, hits = base.hits;
+  for (const a of tag.affixes) {
+    const d = AFFIX_DEFS[a];
+    damage *= d.damage ?? 1; speed *= d.speed ?? 1; rate *= d.rate ?? 1; take *= d.take ?? 1;
+    if (d.hits) hits = d.hits;
+  }
+  const lo = Math.max(1, Math.round(base.dmg[0] * damage)), hi = Math.max(lo, Math.round(base.dmg[1] * damage));
+  return { hp: Math.round(base.hp * RANK_HP[tag.rank]), dmg: [lo, hi], speed: base.speed * speed, rate: base.rate / rate, hits, take };
+}
+
+/** The rank a pack member drops as: its pack's for the leader and champion copies; a unique's minions are ordinary. */
+export function lootRank(tag: Pick<EliteTag, 'rank' | 'role'> | undefined): MonsterRank {
+  if (!tag || tag.role === 'minion') return 'normal';
+  return tag.rank;
+}
+
+type Row = { kind: 'item'; rarity: string; unique?: boolean } | { kind: 'rune'; rarity: string };
+
+/**
+ * D2's floor on an elite's gear: an ordinary base that rolled common comes up magic (uncommon). A named unique keeps
+ * its authored rarity (uniques-only-drop-at-authored-rarity), and runes keep their tier.
+ */
+export function floorEliteRows<T extends Row>(rows: readonly T[], rank: MonsterRank): T[] {
+  if (rank !== 'champion' && rank !== 'unique') return [...rows];
+  return rows.map(r => (r.kind === 'item' && !r.unique && r.rarity === 'common' ? { ...r, rarity: 'uncommon' } : r));
+}
+
+/** Does the kill already hold a magic-or-better piece of gear? */
+export function hasMagicItem(rows: readonly Row[]): boolean {
+  return rows.some(r => r.kind === 'item' && r.rarity !== 'common');
+}
+
+/**
+ * A unique leader always drops at least one magic-or-better item: when its rolls held none, roll again (up to
+ * `tries` more kills' worth from the host's own table, floored) and keep the first piece of gear that comes.
+ */
+export function guaranteeMagic<T extends Row>(rows: readonly T[], reroll: () => readonly T[], tries = 12): T[] {
+  const out = [...rows];
+  if (hasMagicItem(out)) return out;
+  for (let i = 0; i < tries; i++) {
+    const got = floorEliteRows(reroll(), 'unique').find(r => r.kind === 'item' && r.rarity !== 'common');
+    if (got) { out.push(got); return out; }
+  }
+  return out;
+}
+
+/** A short line of a pack's affixes, for the name plate ("Extra Strong · Cold Aura"). */
+export function affixLine(affixes: readonly EliteAffix[]): string {
+  return affixes.map(a => AFFIX_DEFS[a].name).join(' · ');
+}

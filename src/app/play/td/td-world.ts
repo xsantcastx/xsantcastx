@@ -127,6 +127,8 @@ export class TdWorld implements TdLevel {
     for (const v of this.villages) if (c >= v.c0 - margin && r >= v.r0 - margin && c < v.c0 + v.map.cols + margin && r < v.r0 + v.map.rows + margin) return v;
     return undefined;
   }
+  /** A town, a village, or the clear ground round them (tiles): no elite pack ever spawns here (td-elites.ts). */
+  safeAt(c: number, r: number): boolean { return this.nearTown(c, r); }
   private nearTown(c: number, r: number): boolean {
     if (this.villageAt(c, r, TOWN_MARGIN)) return true;
     return c >= -TOWN_MARGIN && r >= -TOWN_MARGIN && c < this.town.cols + TOWN_MARGIN && r < this.town.rows + TOWN_MARGIN;

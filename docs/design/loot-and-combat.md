@@ -176,6 +176,21 @@ or a minion. Mods (pip colour on the name): **Extra Fast** (×1.6 speed, shorter
 blast — D2's Mana Burn; the Keeper has no mana). **Phones:** the wind-up never drops below 0.55 s, and the `!` and
 ground band still show — every blow is telegraphed.
 
+**Top-down elite packs (2026-10-21, roadmap §10 item 3, `play/td/td-elites.ts`).** In the top-down world a spawn
+rolls on its own key, deaths and a session salt: 1 in 16 eligible spawns comes up a pack, a quarter of them uniques.
+Never in a town or the clear ground round one (`TdWorld.safeAt`), never a boss or an authored champion, never under
+level 3, and only within the Keeper's level −10 … +6. A **champion pack** is 2–4 copies (×2.5 life, ×1.3 blow, one
+shared affix, a blue aura and tint, blue framed bars); a **unique** is a named leader ("Grimfang the Hollow", from
+lore name parts) with 1–3 affixes (×3.5, ×1.5, gold aura and framed bar with studs) and 2–4 ordinary minions.
+Affixes: Extra Strong (×1.5 blow), Extra Fast (×1.6 walk, bites ×1.3 sooner), Stone Skin (takes 60% of each hit),
+Cursed (blows: −25 every resist and +15% taken for 4 s), Fire Enchanted (fire blows ×1.25; bursts r 26 px 0.6 s after
+it falls, its ring on the ground first), Cold Aura (cold blows; −30% to the Keeper's step within 3 tiles, a frost ring
+shows the reach), Spectral Hit (each blow a random element, ×1.2), Mana Burn (blows take 14 mana), Teleport (blinks to
+the Keeper's side when he stands 4+ tiles off, 0.45 s wind-up, every 5 s), Lightning Enchanted (lightning blows ×1.2);
+never two element affixes on one creature. Loot: the rank goes to `rollHuntGold` and `rollCreatureLoot` (Gold ×4/×6,
+2×45% / 3×60% item rolls, +1/+2 ladder steps); an elite's ordinary gear never drops common (floored to magic); a unique
+leader always leaves at least one magic-or-better piece. A unique's minions drop as normal creatures.
+
 ## 6. Damage types and resistances
 
 `shared/loot/damage.model.ts`. Types: physical (the swing), fire, cold, lightning, arcane (the staff blast's light).
