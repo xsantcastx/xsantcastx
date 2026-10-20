@@ -58,6 +58,8 @@ import { mergeHeights } from '../heights/heights-save.model';
 import { mergeCabinets } from '../cabinets/cabinets-save.model';
 import { mergeEclipse } from '../world-clock/eclipse-save.model';
 import { mergeWorldRegionSlots, mergeWorldSaves, WORLD_KEY, WORLD_SLOT_KEYS } from '../delve/world-save.model';
+import { mergeCharacterRoster } from '../characters/character-roster.model';
+import { CHARACTER_ROSTER_KEY } from '../save/character-scope';
 import { mergeWaystones, WAYSTONES_KEY } from '../waystones/waystones.model';
 import { mergeSound } from '../sound/sound-settings.model';
 import { mergeLoot } from '../loot/loot-save.model';
@@ -596,6 +598,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // Spendable points: a structural max would refund every spend. See
     // mergeArenaState. (`progress/arena` is the older Arena Scores board.)
     merge: mergeArenaState,
+  },
+  // The account's characters (login / character select, 2026-10-21). Account-wide
+  // (shared/save/character-scope.ts): one list whichever character is played.
+  // Rows union by id and the newer row wins, so a deletion's tombstone sticks.
+  {
+    key: CHARACTER_ROSTER_KEY,
+    collection: 'progress',
+    doc: 'characters',
+    label: 'Characters',
+    merge: mergeCharacterRoster,
   },
 ];
 

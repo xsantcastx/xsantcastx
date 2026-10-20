@@ -120,6 +120,32 @@ service cloud.firestore {
       allow write: if isLivePlayer(uid);
     }
 
+    // ── Cloud save: characters #2…#5 ──────────────────────────────────────────
+    // Login / character select (2026-10-21): an account holds up to five Keepers.
+    // Character #1 is the save that predates characters and stays exactly where it
+    // was (the two rules above). Every other character keeps the same two
+    // collections one level down: users/{uid}/characters/{charId}/progress/* and
+    // .../economy/*. Same grants as the root ones — owner-only, banned accounts
+    // read but do not write — and the same monotonic-XP guard on progress/state,
+    // for the same reason (a stale device must not delete a Keeper's XP).
+    // `charId` is the client's short id (character-scope.ts isCharacterId);
+    // `coll` is limited to the two collections the gateway writes.
+    match /users/{uid}/characters/{charId}/{coll}/{docId} {
+      allow read, write: if isOwner();
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow delete: if isLivePlayer(uid) && coll in ['progress', 'economy'];
+      allow create: if isLivePlayer(uid) && coll in ['progress', 'economy']
+                    && charId.matches('^[a-z0-9]{2,16}$');
+      allow update: if isLivePlayer(uid) && coll in ['progress', 'economy']
+                    && (
+                      coll != 'progress'
+                      || docId != 'state'
+                      || !('xp' in resource.data)
+                      || !('xp' in request.resource.data)
+                      || request.resource.data.xp >= resource.data.xp
+                    );
+    }
+
     // ── Cloud save: device coordination ──────────────────────────────────────
     // Two documents, both owner-only, both about *which device* rather than
     // what the save contains:
