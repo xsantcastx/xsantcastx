@@ -14,7 +14,8 @@ export interface TownSpec {
   id: string;
   rows: readonly string[];
   legend: Readonly<Record<string, Ground>>;
-  houses: readonly { c: number; r: number; w: number; d: number; roof: RoofStyle; wall: WallStyle }[];
+  /** Houses; one with a door opens onto its hand-drawn ground floor (td-engine DOORS). */
+  houses: readonly { c: number; r: number; w: number; d: number; roof: RoofStyle; wall: WallStyle; door?: StationDef }[];
   /** Stalls: the station (a town StationDef id, or one of its own), its counter's place and look. */
   stalls: readonly { station: string | StationDef; c: number; r: number; w: number; palette: number; goods: 'pots' | 'bread' | 'gems' | 'tools' | 'books' | 'fish' }[];
   props: readonly { kind: PropKind; c: number; r: number }[];
@@ -37,7 +38,10 @@ export function buildTown(spec: TownSpec): TdMap {
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) ground.push(spec.legend[spec.rows[r][c] ?? ' '] ?? 'grass');
   const objects: TdObject[] = [], stalls: TdStall[] = [];
   const tx = (c: number) => c * TILE + TILE / 2, ty = (r: number) => r * TILE + TILE;
-  spec.houses.forEach((h, i) => objects.push({ sprite: () => house(h.w, h.d, h.roof, h.wall, true, i + 40), x: tx(h.c), y: ty(h.r), block: { w: h.w, h: h.d + 1 }, kind: 'building' }));
+  spec.houses.forEach((h, i) => {
+    objects.push({ sprite: () => house(h.w, h.d, h.roof, h.wall, true, i + 40), x: tx(h.c), y: ty(h.r), block: { w: h.w, h: h.d + 1 }, kind: 'building' });
+    if (h.door) stalls.push({ station: h.door, x: tx(h.c), y: ty(h.r) + 6 });
+  });
   for (const s of spec.stalls) {
     const st = typeof s.station === 'string' ? INFERNAL_TOWN.stations.find(d => d.id === s.station) : s.station;
     if (!st) continue;

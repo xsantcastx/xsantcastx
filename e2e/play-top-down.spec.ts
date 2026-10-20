@@ -237,6 +237,31 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to walk into and a floor above or below', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the salted ember/i, /^The Salted Ember$/);
+  await go(/stairs down/i, /cellar/i);
+  await go(/stairs up/i, /^The Salted Ember$/);
+  await go(/^door/i, /^Cinderport$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/cinderport.jpg', type: 'jpeg', quality: 72 });
+  await go(/woodward/i, /^The Woodward's Lodge$/);
+  await go(/stairs up/i, /loft/i);
+  await go(/stairs down/i, /^The Woodward's Lodge$/);
+  await go(/^door/i, /^Ashgrove$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/ashgrove.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

@@ -12,6 +12,8 @@ import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown } from '../town-builder';
 import { SPIRE_DOOR } from './pyre-spire';
 import { DEEP_IN } from './molten-deep';
+import { buildCinderport } from './cinderport';
+import { buildAshgrove } from './ashgrove';
 
 export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'Sail back to Ember Isle.' };
 
@@ -129,6 +131,7 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
     [[0, 15], [-20, 16], [-44, 18], [-80, 10], [-106, -4]],
     [[47, 15], [66, 10], [84, -6], [96, -18]],
     [[84, -6], [76, -22], [70, -34]],
+    [[66, 10], [88, 22], [106, 34]],
   ],
   places: REACH_PLACES, names: REACH_NAMES,
   mobs: {
@@ -141,5 +144,9 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
     { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
+  ],
+  villages: [
+    { name: 'Cinderport', c: 92, r: 34, build: buildCinderport },
+    { name: 'Ashgrove', c: -92, r: 6, build: buildAshgrove },
   ],
 };
