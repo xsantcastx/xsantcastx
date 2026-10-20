@@ -3,7 +3,7 @@
  * (owner 2026-10-20: "more spells for the warlock like raise undead skeletons to fight for him").
  */
 import type { EngineOptions } from '../engine/engine.model';
-import { MOBS, MobSystem, aimShot, mobHits, capMinions, pickMinionTarget, raisedStats, shotHits, stepShot, type Minion, type Mob, type MobHost } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, MOBS, MobSystem, aimShot, mobHits, capMinions, pickMinionTarget, raisedStats, shotHits, stepShot, type Minion, type Mob, type MobHost } from './td-mobs';
 import { CLASS_SKILLS, SKILLS, defaultBar } from './td-skills';
 import { CREATURE_PROFILES } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, DAMAGE_TYPES } from '../../shared/loot/damage.model';
@@ -167,9 +167,58 @@ describe('td-mobs: creatures that shoot', () => {
     sys.keeperLevel = 1;
     dragon.hp = dragon.def.hp * .5 + 1;
     (sys as unknown as { hitFoe(m: Mob, n: number, c: string): void }).hitFoe(dragon, 1, '#fff');
+    // A sigil first where each will stand (the tell), then they climb out.
+    expect(sys.calls.length).toBe(2);
+    expect(sys.mobs.filter(m => m.def.id === 'bone-walker').length).toBe(0);
+    run(sys, CALL_TELL + .05);
+    expect(sys.calls.length).toBe(0);
     expect(sys.mobs.filter(m => m.def.id === 'bone-walker').length).toBe(2);
     (sys as unknown as { hitFoe(m: Mob, n: number, c: string): void }).hitFoe(dragon, 1, '#fff');
+    run(sys, CALL_TELL + .05);
     expect(sys.mobs.filter(m => m.def.id === 'bone-walker').length).toBe(2);
+  });
+});
+
+describe('td-mobs: a boss\'s tell before its breath', () => {
+  it('the Ashbone Dragon winds up for BOSS_TELL seconds before its breath leaves, standing its ground', () => {
+    const { sys, hurt } = world({ x: 0, y: 120 });
+    const dragon = mobAt(sys, 'bone-dragon', 0, 0);
+    dragon.rcd = 0;
+    sys.update(.02);
+    expect(dragon.tell).toBeCloseTo(BOSS_TELL, 5);
+    expect(dragon.aim).toEqual({ x: 0, y: 108 });
+    expect(sys.shots.length).toBe(0);
+    const at = { x: dragon.x, y: dragon.y };
+    run(sys, BOSS_TELL - .1);
+    expect(sys.shots.length).toBe(0);
+    expect({ x: dragon.x, y: dragon.y }).toEqual(at);
+    run(sys, .14);
+    expect(sys.shots.length).toBe(3);
+    expect(dragon.tell).toBe(0);
+    run(sys, 1.6);
+    expect(hurt.length).toBeGreaterThan(0);
+  });
+
+  it('a Keeper who steps aside during the tell is missed: the breath goes where the warning showed', () => {
+    const { sys, hurt, keeper } = world({ x: 0, y: 120 });
+    const dragon = mobAt(sys, 'bone-dragon', 0, 0);
+    dragon.rcd = 0;
+    sys.update(.02);
+    keeper.x = 70;
+    run(sys, BOSS_TELL + .02);
+    expect(sys.shots.length).toBe(3);
+    // Hold him there (out of its bite) while the breath flies by.
+    for (let t = 0; t < 1.4; t += .02) { dragon.x = 0; dragon.y = 0; sys.update(.02); }
+    expect(hurt).toEqual([]);
+  });
+
+  it('a creature that is not a boss shoots at once, with no tell (the Bone Archer)', () => {
+    const { sys } = world({ x: 0, y: 0 });
+    const archer = mobAt(sys, 'bone-archer', 84, 0);
+    archer.rcd = 0;
+    sys.update(.02);
+    expect(archer.tell).toBe(0);
+    expect(sys.shots.length).toBe(1);
   });
 });
 

@@ -48,9 +48,33 @@ An aura is a place, not a sparkle: the ground round the Keeper changes while it 
 - *Raise Skeleton*: a violet sigil on the ground (0.4 s), bones knitting up out of it.
 - *Bone Spear*: keep; add a white flash at the release and bone chips at each pierce.
 
-## Loot (third pass)
+## Loot (third pass — done 2026-10-20)
 Drop beams and ground glints follow the item rarity ladder (`--cozy-loot-*`, docs/design/loot-and-combat.md §2),
 pixel columns with stepped falloff, the rarer the taller; legendary and up get a slow rising mote column.
+As built (`td-fx.ts` `LOOT`, `lootBeam`, `beamSteps`, `beamMotes`, `groundRing`; `td-engine.ts` `drawDrop`):
+- **Tones**: each rung's body is its cozy token (common `#d8d2c2` · uncommon `#6fd36a` · rare `#5aa8ff` · epic
+  `#b46bff` · legendary `#ff9a3c` · mythic `#ffd25a`; singular keeps the ladder's `#ff6dd7`), with a paler core and
+  a deeper edge. The drop's name plate and the name that floats up on pick-up use the body.
+- **Column**: common none (a four-point glint on its own beat); uncommon 10 px, rare 18, epic 28, legendary 38,
+  mythic 44, singular 48. Five pixels wide (edge halo · body · one-pixel core), in up to three bands, each 60% of
+  the one under it; the brightest band is 55% (it may stand over a creature). A gentle pulse (still under reduced
+  motion). Legendary 3, mythic 4, singular 5 motes climb it, one climb per 3 s.
+- **Ground ring** (ground layer): a flattened dithered ring, 4–8 px by rung, two tones, breathing ±1 px.
+- **Light**: in the dark every piece is its own light, the rarer the further it reaches.
+- **Pops**: as gear lands, a flash, a flat ring running out and 12 pixels thrown up and falling (0.4 s); as it is
+  taken, the pixels gather up toward the satchel (0.45 s). Reduced motion: one still frame of each.
+
+## Bosses' tells (fourth pass — done 2026-10-20)
+A boss with a ranged attack (the Ashbone Dragon's breath, the Cinder Sovereign's) winds up for `BOSS_TELL` = 0.6 s
+before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
+- **Ground warning**: a pixel cone from the boss toward where the prey stood, as wide as the breath's fan; ember edge
+  tone, outlined in the hostile dark, its dither pulsing; a two-tone front runs from the boss to the cone's far
+  edge in the 0.6 s — when it arrives, the breath leaves. Ground layer: under every creature.
+- **The boss**: a stepped ember glow gathering at its jaws (≤ 60% over its body); the jaws and the cone light the dark.
+- **Summons** (a boss's call at half life): a hostile ember sigil — a flat ring and a turning three-point mark
+  closing in — where each creature will stand, for `CALL_TELL` = 0.6 s; then it climbs out in a burst.
+- The Glass Sentinel's single shot and the Magma Tyrant / Anvil-Warden's bites stay untold (no big attack to read).
 
 ## Order
-1. Auras (this spec's first pass). 2. Spells. 3. Loot. 4. Monsters' tells and bosses. Each step screenshot-checked.
+1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
+Each step screenshot-checked (e2e/td-fx-shots.spec.ts, e2e/td-fx2-shots.spec.ts → docs/handoff/cozy-ui/fx-*.jpg).

@@ -246,6 +246,15 @@ The top-down Warlock's book (`play/td/td-skills.ts`, the Spellbook reads it) add
   creatures turn on them when they stand closer than the Keeper.
 `--combat` prints time-to-kill / time-to-die per creature, tier and Keeper stage (half of the blows dodged).
 
+**Bosses' tells (2026-10-20, docs/design/effects-spec.md fourth pass).** The top-down bosses with a ranged attack
+(the Ashbone Dragon's 3-gout breath, the Cinder Sovereign's 5-gout breath) wind up for **0.6 s** (`BOSS_TELL`)
+before each breath: the shot timer starts at the wind-up, so the breath's cadence (3.4 s / 3.2 s) is unchanged and
+only the first breath of a fight comes 0.6 s later. The breath is aimed when the wind-up starts — at where the prey
+stood then — so a Keeper who steps aside in the tell is missed. During the wind-up the boss stands still and does
+not bite. A boss's call at half life now shows a sigil for **0.6 s** (`CALL_TELL`) where each summons will stand
+before it appears; the count, the threshold and the creatures are unchanged. Damage, rates, ranges and life are
+untouched.
+
 ## 11. API for the world (stable)
 
 ```ts
