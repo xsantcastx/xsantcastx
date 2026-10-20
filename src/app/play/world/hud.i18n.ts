@@ -179,7 +179,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.best.menu': { en: 'Bestiary', es: 'Bestiario' },
   'play.best.title': { en: 'Bestiary', es: 'Bestiario' },
   'play.best.found': { en: 'Discovered {{n}} of {{total}}', es: 'Descubiertas {{n}} de {{total}}' },
-  'play.best.hint': { en: 'Defeat a creature to learn its name. Where it lives is always written here.', es: 'Derrota a una criatura para saber su nombre. Dónde vive siempre está anotado aquí.' },
+  'play.best.hint': { en: 'Defeat a creature to learn its name. Where it lives is always written here. Beware a blue name (a champion pack) or a gold one (a unique and its minions): their affixes are written under the name, and they pay in Gold and better gear.', es: 'Derrota a una criatura para saber su nombre. Dónde vive siempre está anotado aquí. Cuidado con un nombre azul (una manada de campeones) o dorado (un único y sus esbirros): sus afijos van bajo el nombre, y pagan en Oro y mejor equipo.' },
   'play.best.unknown': { en: '???', es: '???' },
   'play.best.defeated': { en: 'Defeated {{n}}', es: 'Derrotada {{n}}' },
   'play.best.notYet': { en: 'Not yet met', es: 'Aún sin encontrar' },
