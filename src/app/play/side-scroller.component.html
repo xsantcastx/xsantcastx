@@ -686,6 +686,9 @@
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>M</kbd> {{ t('play.hud.key.map') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
   }
 
+  <!-- The Hearth chat is out of the top-down game (owner 2026-10-20: "I hate that hearth chat, it does not work");
+       the side view keeps it. -->
+  @if (!topDown) {
   <!-- The Hearth chat. Folded it is one pill clear of the stalls and the action
        bar; open, the panel. The body stays in the DOM (hidden) so the pill's
        aria-controls always resolves and the room keeps whatever was typed. -->
@@ -733,6 +736,7 @@
     </form>
     </div>
   </section>
+  }
 
   <!-- Touch. A coarse pointer from 901px: one grid row, as it always was.
        Phones: movement on the left, actions on the right, one row, in a band
