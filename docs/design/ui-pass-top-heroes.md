@@ -48,3 +48,7 @@ Status: steps 1–2 of the HUD order shipped (d522c7ba portrait + strip; 1a597ee
    card beside the item with its actions; the big slip stays only in the side view.
 5. **The Satchel's paper doll** still draws the old side-view Keeper (brown hair), not the Warlock: give it the
    front sprite (keeper-front) with worn gear.
+6. **The undead and the Cinder clans** (owner: "scary monsters like skeletons, dragons, orcs, undead … spells like
+   revive undead skeletons"): built on branch `undead` (1bbdf6d5) — nine creatures, the Hushed Barrow graveyard on Ember
+   Isle, the Ashen Crypt (2 floors, the Ashbone Dragon), Raise Skeleton and Bone Spear. Follow-up: Codex Bestiary
+   entries and `play.creature.*` keys for the nine; a Places/minimap mark for the Hushed Barrow.
