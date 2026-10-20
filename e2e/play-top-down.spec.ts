@@ -262,6 +262,37 @@ test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to wa
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('through every door and stair the Keeper lands free and can walk away (never set down inside a wall)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  const walks = async (where: string) => {
+    await page.locator('canvas').first().focus();
+    // Each key on its own: how far that press carried the Keeper (they nearly cancel out as a whole).
+    let moved = 0;
+    for (const key of ['ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowDown']) {
+      const x0 = await px(page), y0 = await py(page);
+      await page.keyboard.down(key); await page.waitForTimeout(250); await page.keyboard.up(key);
+      moved = Math.max(moved, Math.abs((await px(page)) - x0) + Math.abs((await py(page)) - y0));
+    }
+    expect(moved, `${where}: the Keeper could not move`).toBeGreaterThan(4);
+  };
+  await go(/the ember inn/i, /^The Ember Inn$/); await walks('inn tavern');
+  await go(/stairs up/i, /upstairs/i); await walks('inn upstairs');
+  await go(/stairs down/i, /^The Ember Inn$/); await walks('inn tavern from above');
+  await go(/^door/i, /basalt seamworks/i); await walks('square from the inn');
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the pyre spire/i, /watch hall/i); await walks('spire hall');
+  await go(/stairs up/i, /study/i); await walks('spire study');
+  await go(/stairs up/i, /lookout/i); await walks('spire lookout');
+  await go(/stairs down/i, /study/i); await walks('spire study from above');
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');
