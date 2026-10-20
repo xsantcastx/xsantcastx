@@ -42,6 +42,9 @@ const ONBOARDING_SEEN = {
           name: 'eclipse-onboarding',
           value: JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }),
         },
+        // The title / character select (play/lobby) is skipped the same way: every spec written before it lands
+        // straight in the world. e2e/play-lobby.spec.ts removes it to test the lobby itself.
+        { name: 'eclipse-lobby', value: 'skip' },
       ],
     },
   ],

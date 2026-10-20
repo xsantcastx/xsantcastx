@@ -19,7 +19,10 @@ export async function seed(page: Page, blobs: Blobs = {}): Promise<void> {
   await page.goto('/robots.txt');
   await page.evaluate(entries => {
     const keepOnboarding = localStorage.getItem('eclipse-onboarding');
+    // The lobby skip (playwright.config) survives the clear, so a seeded spec still lands in the world.
+    const keepLobby = localStorage.getItem('eclipse-lobby');
     localStorage.clear();
+    if (keepLobby) localStorage.setItem('eclipse-lobby', keepLobby);
     sessionStorage.clear();
     // A seeded tester has been here before: without a record a fresh browser is offered "Make your
     // Keeper" on arrival (game-only shell), which would open over the spec. play-first-session removes it.

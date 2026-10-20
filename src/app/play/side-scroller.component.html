@@ -533,6 +533,7 @@
         <button type="button" data-open="loot" (click)="openLoot()">{{ t('loot.menu') }}</button>
         <button type="button" data-open="account" (click)="placesOpen = false; openAccount()">{{ t('account.menu') }}</button>
         <button type="button" data-open="bestiary" (click)="toggleBestiary()">{{ t('play.best.menu') }}</button>
+        <button type="button" data-open="characters" (click)="placesOpen = false; toCharacterSelect()">{{ t('lobby.menu') }}</button>
       </footer>
     </nav>
   } @else if (placesOpen) {
@@ -558,6 +559,7 @@
         <li><button type="button" data-open="loot" (click)="openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
         <!-- One World (preview): this device only; a flip reloads the world. -->
+        <li><button type="button" data-open="characters" (click)="placesOpen = false; toCharacterSelect()" aria-describedby="place-blurb-characters"><strong>{{ t('lobby.menu') }}</strong><small id="place-blurb-characters">{{ t('lobby.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
