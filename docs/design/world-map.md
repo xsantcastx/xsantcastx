@@ -13,7 +13,7 @@ and dungeons that go down floor by floor. Ships link the harbours (a ship is a s
 |---|---|---|---|---|
 | **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–8 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
 | **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport + its ship, Ashgrove, regions, the Molten Deep −1…−6, the Ashen Crypt −1…−2, the Forge of the Four −1…−3) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
-| **Verdant Wilds** (built so far: Rootglass + the Rootglass Bole 0…+3, Mossharbor + its ship, Thornwick, regions, the Overgrown Temple −1…−3) | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−4) |
+| **Verdant Wilds** (built so far: Rootglass + the Rootglass Bole 0…+3, Mossharbor + its two ships and the Net-Mender's Loft, Thornwick + the Herbalist's Cottage, regions, the Overgrown Temple −1…−5, the Root Hollows −1…−3, four task givers) | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−3) |
 | **Umbral Marches** (built so far: Gloamhaven + the Lantern Tower 0…+2, Mirewatch + its ship, Lanternfen, regions, the Drowned Crypts −1…−3) | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
 | **Celestial Peaks** | Snow and stone: high passes, observatories, ice caves | **Meridian** (capital, terraced: floors +1…+4), Frostgate, Starhollow | 35–60 | Frostfang Caverns (−1…−5), the Orrery Vault |
 | **Luminous Expanse** | Glass desert: dunes, mirror oases, sunken palaces | **Dawnspire** (capital), Prism Oasis, Saltglass | 45–70 | The Sunken Palace (−1…−6), Mirror Labyrinth |
@@ -45,7 +45,7 @@ the bottom floor of a dungeon holds its boss.
    `ContinentVillage.ways`). Next: the Forge's fourth floor, and something to do in each town (keepers, quests).
 
 Buildings you walk into so far: the Ember Inn in the Seamworks (tavern + rooms upstairs), the Pyre Spire in
-Pyrehold, the Salted Ember in Cinderport, the Woodward's Lodge in Ashgrove, the Rootglass Bole in Rootglass and the Lantern Tower in Gloamhaven. A continent holds more towns than its
+Pyrehold, the Salted Ember in Cinderport, the Woodward's Lodge in Ashgrove, the Rootglass Bole in Rootglass, the Net-Mender's Loft in Mossharbor, the Herbalist's Cottage in Thornwick and the Lantern Tower in Gloamhaven. A continent holds more towns than its
 capital through `villages` (continent.ts); any town house takes a `door`. Rule for every interior and dungeon: passages at least two tiles wide, and no monster within about eight
 tiles of a stair or door, so arriving is never a death trap.
 3. **Verdant Wilds** — built (maps/verdant-wilds.ts): the jungle continent, a day's sail from Pyrehold (a second ship
@@ -63,8 +63,21 @@ tiles of a stair or door, so arriving is never a death trap.
    −1 the Sunken Narthex (a pillared nave, two flooded springs, chapels gone to moss), −2 the Hall of Roots (great
    roots through the floor, Thorn Weavers), −3 the Heart Shrine (a moat round an island and the Mossbound Colossus,
    level 34, who calls two Vine Lashers at half its life). New ground: moss, flagstone, and three nobody walks on —
-   a temple wall (`vinewall`), the leaf-sea (`canopy`), living wood (`bark`). Next: the temple's floors −4…−5, Root
-   Hollows (−1…−4), something to do in each town (keepers, quests), a house to walk into in Mossharbor and Thornwick.
+   a temple wall (`vinewall`), the leaf-sea (`canopy`), living wood (`bark`). Deeper (2026-10-21): a passage behind
+   the Heart Shrine goes on down to −4 the Drowned Vault (two flooded channels across a pillared hall, a sunken pool
+   with a chest on its island; Drowned Acolytes, level 33, the priests the moss kept) and −5 the Rootcradle (a cavern
+   ringed with great roots, and the **Elder Rootwyrm**, level 40 — it winds up before it breathes a fan of rootglass
+   splinters, its tell a green cone on the floor, and calls two Acolytes at half its life). **The Root Hollows**
+   (maps/root-hollows.ts), a root-hole in the Deep Wilds up a track off the Thornwick road (place kind `cave`; caves
+   now clear their trees and keep wild packs eight tiles off, like crypts): −1 the Gnawed Galleries, −2 the Sporewell
+   (a dark well in a round cavern), −3 the Heartroot Cellar (the dead giant's heartroot, still lit) — Rootgnaws
+   (level 19, grubs plated in chewed bark) and Sporecaps (level 23, walking mushrooms that cough spores). Houses
+   (maps/verdant-houses.ts): Mossharbor's **Net-Mender's Loft** (a workroom of nets, a loft above) and Thornwick's
+   **Herbalist's Cottage** (jars and drying racks, a root cellar below). Mossharbor's pier has a west finger where a
+   ketch sails the long way round to Ember Harbour (a second ship there, `along: -3`, sails back). Keepers with tasks
+   (shared/town-tasks): Canopy Warden Ilsa Fenn and Mossreader Oren Tull in Rootglass, Netmender Wenna Brisk in
+   Mossharbor, Herbalist Agathe Sorrel in Thornwick (two tasks each, levels 15–34, the Colossus pays rare Verdant
+   Bracers iL30; three dailies each). Next: the Wilds' own shrine and aqueduct as places to go into, more villages.
 4. **Umbral Marches** — built (maps/umbral-marches.ts): the swamp continent, a day's sail from Pyrehold (a third ship
    at Pyrehold's pier, at its far end, `along: 2`). Mist lies over the whole continent (`ContinentDef.fog`, drawn by
    td-engine `drawFog`: two drifting banks, thinning round the Keeper and every warm lantern; still under reduced

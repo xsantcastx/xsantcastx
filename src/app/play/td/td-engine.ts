@@ -38,7 +38,9 @@ import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
 import { VERDANT_WILDS_DEF } from './maps/verdant-wilds';
 import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 } from './maps/rootglass-bole';
-import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3 } from './maps/overgrown-temple';
+import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3, OVERGROWN_TEMPLE_4, OVERGROWN_TEMPLE_5 } from './maps/overgrown-temple';
+import { ROOT_HOLLOWS_1, ROOT_HOLLOWS_2, ROOT_HOLLOWS_3 } from './maps/root-hollows';
+import { HERBAL_0, HERBAL_1, NETLOFT_1, NETLOFT_2 } from './maps/verdant-houses';
 import { UMBRAL_MARCHES_DEF } from './maps/umbral-marches';
 import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lantern-tower';
 import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
@@ -60,13 +62,17 @@ export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBE
   'rootglass-bole-0': ROOTGLASS_BOLE_0, 'rootglass-bole-1': ROOTGLASS_BOLE_1, 'rootglass-bole-2': ROOTGLASS_BOLE_2, 'rootglass-bole-3': ROOTGLASS_BOLE_3,
   'overgrown-temple-1': OVERGROWN_TEMPLE_1, 'overgrown-temple-2': OVERGROWN_TEMPLE_2, 'overgrown-temple-3': OVERGROWN_TEMPLE_3,
   'lantern-tower-0': LANTERN_TOWER_0, 'lantern-tower-1': LANTERN_TOWER_1, 'lantern-tower-2': LANTERN_TOWER_2,
-  'drowned-crypts-1': DROWNED_CRYPTS_1, 'drowned-crypts-2': DROWNED_CRYPTS_2, 'drowned-crypts-3': DROWNED_CRYPTS_3 };
+  'drowned-crypts-1': DROWNED_CRYPTS_1, 'drowned-crypts-2': DROWNED_CRYPTS_2, 'drowned-crypts-3': DROWNED_CRYPTS_3,
+  'overgrown-temple-4': OVERGROWN_TEMPLE_4, 'overgrown-temple-5': OVERGROWN_TEMPLE_5,
+  'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
+  'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
   'bole-door': { to: 'rootglass-bole-0', arrive: 'bole-out' },
   'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
+  'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
 import { BOSS_TELL, CALL_TELL, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
@@ -483,7 +489,12 @@ export class TopDownEngine {
       seen.add(st.station.id);
       const id = st.station.id;
       const kind: TdMapPin['kind'] = id.startsWith('ship') ? 'ship' : id.startsWith('giver-') ? 'npc' : st.station.kind === 'passage' ? 'way' : 'stall';
-      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: u(st.x), v: v(st.y) });
+      let pu = u(st.x);
+      const pv = v(st.y);
+      // Two ships at one harbour (ContinentWay.along) would share a pin's spot and the later one would eat every
+      // click on the first: set a second ship's pin beside it.
+      if (kind === 'ship') while (pins.some(q => q.kind === 'ship' && Math.abs(q.u - pu) < .03 && Math.abs(q.v - pv) < .03)) pu += .035;
+      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv });
     }
     return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
   }
@@ -1349,7 +1360,8 @@ export class TopDownEngine {
       // The cone lies on the floor: from the boss's feet toward where the prey stood (its feet, 12 px under the aim).
       const ax = m.aim.x, ay = m.aim.y + 12, a = Math.atan2(ay - oy, ax - ox);
       const len = Math.min(shoot.range, Math.hypot(ax - ox, ay - oy) + 28), half = ((shoot.spread ?? 1) - 1) / 2 * .22 + .14;
-      const cone = conePixels(len, half, a), tn = shoot.kind === 'ink' ? FX.shadow : FX.ember;
+      // In the breath's own element: ink for the Abbess, rootglass green for the Rootwyrm's splinters, fire otherwise.
+      const cone = conePixels(len, half, a), tn = shoot.kind === 'ink' ? FX.shadow : shoot.kind === 'shard' ? FX.life : FX.ember;
       const beat = this.still ? 1 : Math.floor(this.time * 8) % 2 ? 1 : .7;
       // The front: how far the wind-up has filled the cone; behind it the dither burns brighter (body), ahead of it dim.
       const fr = Math.max(4, Math.round((this.still ? .7 : k) * len));
@@ -1498,10 +1510,18 @@ export class TopDownEngine {
       glowSquare(c, X, Y, 4, FX.shadow, .7);
       c.fillStyle = FX.ember.edge; c.fillRect(X - 2, Y - 2, 4, 4); c.fillStyle = FX.ember.body; c.fillRect(X - 1, Y - 2, 3, 3); c.fillStyle = FX.ember.core; c.fillRect(X, Y - 1, 1, 1);
     }
-    // Creatures' shots: a bone arrow, a fire bolt, a gout of breath.
+    // Creatures' shots: a bone arrow, a fire bolt, a gout of breath, a rootglass splinter, a puff of spores.
     for (const s of this.mobs.shots) {
       const X = Math.round(s.x), Y = Math.round(s.y), sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
-      if (s.kind === 'arrow') {
+      if (s.kind === 'shard') {
+        c.fillStyle = '#17604e'; for (let i = 0; i < 7; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i) + 1, 1, 1);
+        c.fillStyle = '#7affd0'; for (let i = 0; i < 6; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 2, 1);
+        c.fillStyle = '#eafff6'; c.fillRect(X, Y, 2, 2);
+      } else if (s.kind === 'spore') {
+        const puff = Math.floor(s.age * 10) % 2;
+        c.globalAlpha = .5; c.fillStyle = '#8ab84a'; c.fillRect(Math.round(X - ux * 4) - 2, Math.round(Y - uy * 4) - 2, 4, 4);
+        c.globalAlpha = 1; c.fillStyle = '#d4f08a'; c.fillRect(X - 2, Y - 1 - puff, 2, 2); c.fillRect(X + 1, Y + puff, 2, 2); c.fillStyle = '#f6ffe0'; c.fillRect(X, Y, 1, 1);
+      } else if (s.kind === 'arrow') {
         c.fillStyle = '#e8e1cf'; for (let i = 0; i < 6; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 1, 1);
         c.fillStyle = '#c9c2cc'; c.fillRect(X, Y, 2, 2); c.fillStyle = '#ff8a2e'; c.fillRect(Math.round(X - ux * 6), Math.round(Y - uy * 6), 2, 1);
       } else if (s.kind === 'ink') {

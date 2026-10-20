@@ -187,3 +187,26 @@ test('the daily offer on a phone', async ({ page }) => {
   for (const b of await talk.locator('.td-talk__acts button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-daily-phone.jpg', type: 'jpeg', quality: 80 });
 });
+
+test('a Verdant keeper: Mossharbor\'s net-mender offers her task with a "!", and it goes on the scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, {});
+  // Ember Harbour's second ship sails straight to Mossharbor (the Map's ship pin).
+  await canvas(page).focus(); await page.keyboard.press('m');
+  await page.locator('#places-list.td-map .td-map__key button', { hasText: /ship to mossharbor/i }).click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /^Mossharbor$/, { timeout: 30000 });
+  await expect(canvas(page)).toHaveAttribute('data-task-marks', /netmender-brisk:!/, { timeout: 10000 });
+  await travelTo(page, /wenna brisk/i);
+  const talk = page.locator('.td-talk');
+  await expect(talk).toHaveAttribute('data-talk', 'netmender-brisk');
+  await expect(talk.locator('.td-talk__scroll')).toHaveAttribute('data-talk-state', 'offer');
+  await expect(talk.locator('[data-talk-task]')).toHaveAttribute('data-talk-task', 'moss-brisk-1');
+  await expect(talk).toContainText(/Thornroot/);
+  await expect(talk).toContainText(/Hunting XP/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-quest-offer.jpg', type: 'jpeg', quality: 80 });
+  await talk.locator('[data-talk-accept]').click();
+  const row = page.locator('[data-tasks] li[data-task="moss-brisk-1"]');
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('0/6');
+  expect((await savedTasks(page))?.accepted['moss-brisk-1']).toBeGreaterThan(0);
+});

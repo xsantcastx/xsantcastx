@@ -98,6 +98,11 @@ export const CREATURE_PROFILES: readonly CreatureProfile[] = [
   P('rootglass-hart', 'beast', 'melee', 24),
   P('thorn-weaver', 'graft', 'ranged', 28),
   P('mossbound-colossus', 'graft', 'summoner', 34, { boss: true, resists: { physical: 20 } }),
+  // The Verdant Wilds' deeper places — the Root Hollows, the Overgrown Temple's Drowned Vault and Rootcradle.
+  P('rootgnaw', 'beast', 'melee', 19, { resists: { physical: 10 } }),
+  P('sporecap', 'graft', 'ranged', 23, { hits: 'arcane' }),
+  P('drowned-acolyte', 'graft', 'melee', 33, { hits: 'cold', resists: { cold: 20 } }),
+  P('elder-rootwyrm', 'graft', 'summoner', 40, { boss: true, resists: { physical: 15 } }),
   // Verdant — the Canopy and the Root Deeps.
   P('rootglass-stag', 'beast', 'melee', 2),
   P('graftling', 'graft', 'healer', 12),
