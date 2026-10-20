@@ -19,7 +19,7 @@ async function openForge(page: Page): Promise<void> {
       // Merged over a fresh ledger on read, so gold alone is a valid seed.
       window.localStorage.setItem(key, blob);
     },
-    { key: ECONOMY_KEY, blob: JSON.stringify({ version: 2, gold: 400_000_000 }) },
+    { key: ECONOMY_KEY, blob: JSON.stringify({ version: 2, goldEra: 1, gold: 400_000_000 }) },
   );
   await page.goto('/forge/runes', { waitUntil: 'load' });
   await page.waitForFunction(() => {

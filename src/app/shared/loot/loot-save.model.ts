@@ -21,6 +21,7 @@
 import { isAuraId, type AuraId } from './auras';
 import { DIFFICULTY_TIERS, isDifficulty, type DifficultyTier } from './difficulty.model';
 import { isLootFilter, type LootFilter } from './loot-tiers';
+import { GOLD_ERA } from '../economy/economy-curve';
 
 export const LOOT_KEY = 'godforge-loot';
 
@@ -31,6 +32,8 @@ export interface FallenPurse {
   y: number;
   gold: number;
   tier: DifficultyTier;
+  /** The Gold era it was dropped in (economy-curve GOLD_ERA). A purse from before the wipe reads as none. */
+  era: number;
 }
 
 export interface LootSave {
@@ -59,7 +62,10 @@ function coercePurse(raw: unknown): FallenPurse | null {
   const r = raw as Record<string, unknown>;
   const gold = Math.floor(num(r['gold']));
   if (typeof r['area'] !== 'string' || !r['area'] || gold <= 0) return null;
-  return { area: r['area'], x: num(r['x']), y: num(r['y']), gold, tier: isDifficulty(r['tier']) ? r['tier'] : 'normal' };
+  // The Gold wipe (GOLD_ERA): a purse dropped before it held the old balance's Gold; it is gone on every copy.
+  const era = Math.floor(num(r['era']));
+  if (era < GOLD_ERA) return null;
+  return { area: r['area'], x: num(r['x']), y: num(r['y']), gold, tier: isDifficulty(r['tier']) ? r['tier'] : 'normal', era };
 }
 
 export function coerceLoot(raw: unknown): LootSave {

@@ -44,7 +44,7 @@ import {
   type CommerceAppliedMap,
   type CommerceOperation,
 } from './commerce-ops';
-import { ECONOMY_VERSION } from './economy-curve';
+import { ECONOMY_VERSION, GOLD_ERA } from './economy-curve';
 import { migrateEconomyV3 } from './economy-migration';
 
 export type EconomyOpKind =
@@ -124,6 +124,8 @@ export interface EconomyLedger {
   /** Economy save version. Below 3 is converted by `migrateEconomyV3` before any merge. */
   version: number;
   gold: number;
+  /** The Gold era (economy-curve GOLD_ERA); 0 on a blob from before the first wipe. See enterGoldEra. */
+  goldEra: number;
   eclipseEssence: number;
   aetherFragments: number;
   noxFragments: number;
@@ -186,6 +188,7 @@ export function emptyLedger(): EconomyLedger {
   return {
     version: ECONOMY_VERSION,
     gold: 0,
+    goldEra: GOLD_ERA,
     eclipseEssence: 0,
     aetherFragments: 0,
     noxFragments: 0,
@@ -509,6 +512,33 @@ export function compactLocalLedger<T extends LocalLedgerLike>(
   return { ...ledger, origin: folded.origin, ops: folded.ops, applied: { ...folded.origin.applied } };
 }
 
+/** A ledger from before the current Gold era (economy-curve GOLD_ERA): its balance is still the old one. */
+export function needsGoldEra(ledger: { goldEra?: number } | null | undefined): boolean {
+  return !!ledger && (Number.isFinite(ledger.goldEra) ? ledger.goldEra as number : 0) < GOLD_ERA;
+}
+
+/**
+ * Bring a ledger into the current Gold era: the balance goes to 0, once. Idempotent (a stamped ledger is returned
+ * as it is), and merge-safe — the one thing a plain `gold = 0` write is not (memory: admin writes must speak the
+ * merge): the old op log is folded into the origin under a per-device watermark, so its credits never replay; the
+ * origin's purse is 0 too, so `unexplainedGold` finds nothing to add back; and the stamp travels with the blob, so
+ * every copy on every device and in the cloud is emptied exactly once, before any merge meets it. Gold earned after
+ * the stamp is new ops above the watermark and is kept. Only the balance changes: Essence, upgrades, the all-time
+ * counters and everything outside this ledger (items, levels, XP) stay.
+ */
+export function enterGoldEra<T extends {
+  gold: number; goldEra?: number; ops?: EconomyOp[]; origin?: EconomyLedger | null; applied?: Record<string, number>;
+}>(ledger: T): T {
+  if (!needsGoldEra(ledger)) return ledger;
+  const applied: Record<string, number> = { ...(ledger.origin?.applied ?? {}) };
+  for (const [id, seq] of Object.entries(ledger.applied ?? {})) applied[id] = Math.max(applied[id] ?? 0, numberOf(seq));
+  for (const op of ledger.ops ?? []) if (op && typeof op.deviceId === 'string') applied[op.deviceId] = Math.max(applied[op.deviceId] ?? 0, numberOf(op.seq));
+  const next = { ...ledger, gold: 0, goldEra: GOLD_ERA, ops: [] as EconomyOp[], applied };
+  const base = coerceLedger(next);
+  next.origin = base && Object.keys(applied).length ? snapshotOf(base) : null;
+  return next;
+}
+
 /**
  * Two ledgers into one. Commutative: merge(a, b) and merge(b, a) agree on
  * every field that the conflict policy can decide.
@@ -521,13 +551,20 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   // remote is never merged against a v3 local (rebalance spec §4).
   const rawA = coerceLedger(remote) ?? emptyLedger();
   const rawB = coerceLedger(local) ?? emptyLedger();
-  const a = migrateEconomyV3(rawA);
-  const b = migrateEconomyV3(rawB);
+  // Then into the current Gold era: a side from before the wipe arrives with an empty purse and its old log folded
+  // under a watermark, so neither its balance, its unexplained Gold nor its old credits can bring the Gold back.
+  const a = enterGoldEra(migrateEconomyV3(rawA));
+  const b = enterGoldEra(migrateEconomyV3(rawB));
 
   const importA = asImport(a);
   const importB = asImport(b);
   const ops = unionOps(importA.ops, importB.ops);
-  const origin = pickOrigin(importA.origin, importB.origin);
+  // Across the wipe the two origins are folds of different lineages: keep both (max/union, both watermarks), as the
+  // disjoint-device case does — the wiped side's purse is 0, so the max never restores the old balance.
+  const crossed = needsGoldEra(rawA) || needsGoldEra(rawB);
+  const origin = crossed
+    ? { ...conservativeMerge(importA.origin, importB.origin), applied: maxRecord(importA.origin.applied, importB.origin.applied) }
+    : pickOrigin(importA.origin, importB.origin);
   const replay = applyOps(origin, ops);
   const replayed = replay.state;
 
@@ -583,6 +620,7 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.acks = maxRecord(a.acks, b.acks);
   replayed.seenAt = clampSeenAt(maxRecord(a.seenAt, b.seenAt), Date.now());
   replayed.version = ECONOMY_VERSION;
+  replayed.goldEra = Math.max(a.goldEra, b.goldEra);
   const knownIds = new Set(ops.map(op => op.id));
   const appliedIds = new Set(replay.appliedIds);
   const mergedReceipts = mergeCommerceOps(a.commerceOps ?? [], b.commerceOps ?? []);
@@ -760,6 +798,7 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
   return {
     version: Math.max(remote.version, local.version),
     gold: maxOf(remote.gold, local.gold),
+    goldEra: Math.max(remote.goldEra ?? 0, local.goldEra ?? 0),
     eclipseEssence: maxOf(remote.eclipseEssence, local.eclipseEssence),
     aetherFragments: maxOf(remote.aetherFragments, local.aetherFragments),
     noxFragments: maxOf(remote.noxFragments, local.noxFragments),
@@ -854,6 +893,8 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     // all (hand-built, never written by a build) is read as current.
     version: numberOf(value['version']) || ECONOMY_VERSION,
     gold: numberOf(value['gold']),
+    // Absent: a blob from before the first wipe (era 0), which enterGoldEra empties.
+    goldEra: numberOf(value['goldEra']),
     eclipseEssence: numberOf(value['eclipseEssence']),
     aetherFragments: numberOf(value['aetherFragments']),
     noxFragments: numberOf(value['noxFragments']),

@@ -43,6 +43,8 @@ export interface PlayerEconomy {
    */
   version: number;
   gold: number;
+  /** The Gold era this balance belongs to (economy-curve GOLD_ERA). Absent on every save from before the wipe. */
+  goldEra?: number;
   eclipseEssence: number;
   /** Reserved. No source and no sink yet — see the header note. */
   aetherFragments: number;
@@ -203,6 +205,7 @@ export function emptyEconomy(): PlayerEconomy {
   return {
     version: CURVE.ECONOMY_VERSION,
     gold: 0,
+    goldEra: CURVE.GOLD_ERA,
     eclipseEssence: 0,
     aetherFragments: 0,
     noxFragments: 0,

@@ -188,7 +188,7 @@ import { vocationLook } from '../shared/keeper-look/vocation-look';
 import { LevelUpService } from '../shared/activity/level-up.service';
 import { npcPortrait } from '../shared/keeper-look/npc-portrait';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
-import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
+import { CROUPIER_STATIONS, KAEL_STATION, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
 import { SoundService } from '../shared/sound/sound.service';
 import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
@@ -731,8 +731,6 @@ export class SideScrollerComponent implements OnDestroy {
   dollFigure = '';
   /** The pane the Keeper holds (0: none, no button). Re-read on the HUD tick. */
   slateTier: SlateTier = 0;
-  /** The Homestead has something worth a look: the button wears a badge. */
-  slateReady = false;
   private slateSub?: Subscription;
   private storageSub?: Subscription;
   private readonly storageHealth = inject(StorageHealthService);
@@ -1831,7 +1829,8 @@ export class SideScrollerComponent implements OnDestroy {
         { key: 'play.td.total.mana', value: `${derived.maxMana}` },
         { key: 'play.td.total.regen', value: `${derived.regen.toFixed(1)}/s` },
         { key: 'play.td.total.power', value: pct(derived.power) },
-        { key: 'play.td.total.speed', value: `+${pct(derived.moveHaste)}` },
+        // Speed: the level's own pace (Tibia) times Agility and worn Move Speed (td-engine walkSpeed).
+        { key: 'play.td.total.speed', value: `+${pct((1 + derived.levelPace) * (1 + derived.moveHaste) - 1)}` },
         // What the worn gear adds (§3 affixes); a row shows once a piece carries it.
         ...(derived.defense > 0 ? [{ key: 'play.td.total.defense', value: `${Math.round(derived.defense)} (−${pct(defenseReduction(derived.defense, lv))})` }] : []),
         ...(derived.castSpeed > 0 ? [{ key: 'play.td.total.cast', value: `+${pct(derived.castSpeed)}` }] : []),
@@ -1870,7 +1869,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (r.points) out.push(this.t('play.lvl.r.points', { n: r.points }));
     if (r.passive) out.push(this.t(`play.lvl.r.passive.${r.passive.stat}`, { n: r.passive.n }));
     if (r.frame) out.push(this.t('play.lvl.r.frame', { frame: this.t(`play.lvl.frame.${r.frame}`) }));
-    if (r.goldMinutes) out.push(paidGold != null ? this.t('play.lvl.paid.gold', { n: paidGold }) : this.t('play.lvl.r.gold', { n: r.goldMinutes }));
+    if (r.gold) out.push(paidGold != null ? this.t('play.lvl.paid.gold', { n: paidGold.toLocaleString('en-US') }) : this.t('play.lvl.r.gold', { n: r.gold.toLocaleString('en-US') }));
     if (r.gear) out.push(this.t('play.task.gear', { rarity: this.t(`play.task.rarity.${r.gear.rarity}`), name: itemDefinitionById(r.gear.defId)?.name ?? r.gear.defId, level: r.gear.level }));
     return out;
   }
@@ -3031,10 +3030,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.message = line;
   }
   // ── The Mirror Slate ──
-  /** The HUD tick: which pane is held, and whether the Homestead has something worth a look. */
+  /** The HUD tick: which pane is held. (The Homestead's "something waiting" badge left with the forge's income.) */
   private tickSlate(): void {
     this.slateTier = this.slate.tier();
-    this.slateReady = this.slateTier > 0 && slateBadge(this.homestead.pendingAll(), this.economy.snapshot.perSecond);
     this.pushMachines();
   }
   // ── The realm machines (docs/handoff/eclipse-cascade.md): always standing; the ledger says which are found ──

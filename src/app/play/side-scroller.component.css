@@ -2405,22 +2405,6 @@ input::placeholder { color: var(--adventure-hud-muted); }
   box-shadow: inset 0 0 0 1px var(--gold);
 }
 .slate-btn .key-hint { margin: 0; }
-/* Something is ready on the Homestead: a small lit rivet on the bezel. */
-.slate-badge {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 9px;
-  height: 9px;
-  border: 1px solid var(--adventure-hud-shadow);
-  border-radius: 50%;
-  background: var(--adventure-hud-gold);
-  box-shadow: 0 0 6px var(--adventure-hud-gold);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .slate-btn--ready .slate-badge { animation: slate-badge 2.4s ease-in-out infinite; }
-}
-@keyframes slate-badge { 50% { opacity: .55; } }
 
 /* The Lost Cabinets' Scan: the glass held up. The button glows with the warmth (cold blue to burning red,
    from the token ramps) and pulses at the glass's own pace; reduced motion keeps the colour, still. */

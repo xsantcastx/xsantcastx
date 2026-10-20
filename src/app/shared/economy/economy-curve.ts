@@ -52,6 +52,24 @@ export const CENTURY_STRIKE_MULTIPLIER = 10;
 /** Offline cap, seconds. Unchanged by the rebalance. */
 export const MAX_OFFLINE_SECONDS = 8 * 60 * 60;
 
+/**
+ * Does the forge still pay Gold by the second (furnaces, automatons, offline settlement)?
+ *
+ * No (owner, 2026-10-21: "remove the forge where gold is being generated, thats to much gold ... monsters drop more
+ * gold like in d2"). The ladders and their maths stay (old saves still carry rungs, and the side view still draws the
+ * Homestead), but the ledger mints nothing on its own and publishes a rate of 0, so every reward priced as
+ * max(floor, N seconds of income) pays its floor — a fixed sum. Gold now comes from the hunt: td-gold.ts.
+ */
+export const IDLE_INCOME = false;
+
+/**
+ * The Gold era. A ledger stamped below it has its Gold balance set to 0, once, before it is read or merged
+ * (economy-ops enterGoldEra). Era 1 (owner, 2026-10-21: "remove current gold to start from 0 i got like 500
+ * trillion"): the forge's idle years are wiped and every Keeper starts the hunt with an empty purse. Only the balance:
+ * items, levels, XP, upgrades, Essence and the all-time counters stay. Bump it to wipe again.
+ */
+export const GOLD_ERA = 1;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The Gold ladders (ids kept from v2, so saves keep their levels)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -395,13 +413,14 @@ export function gamesHighStake(bet: number, goldPerSecond: number): boolean {
 /**
  * The Mirror Slate (docs/handoff/mirror-slate.md): Lune Coyne hands it over
  * after `awardPlays` plays across her four tables (the Reels, Rune Drop, Seam
- * Sweeper, Eclipse Ascent), or sells it for `price` Gold. Rule S: about five
- * minutes of income at the half-hour stage, where a Keeper first walks into the
- * Nocturne Archive; `economy-sim --check` holds it inside 1-10 minutes there.
+ * Sweeper, Eclipse Ascent), or sells it for `price` Gold. With the forge's
+ * income off (IDLE_INCOME) it is priced in the hunt: about half an hour of a
+ * level-10 hunt (huntGold(10, 1800) ≈ 3.8k); `economy-sim --check` holds it
+ * inside 10-60 minutes there.
  * Ten plays at the 10-Gold minimum cost ~5 Gold on average (the tables return
  * ~95%), so earning it is always the cheap road and buying is the shortcut.
  */
-export const MIRROR_SLATE = { price: 500_000, awardPlays: 10 } as const;
+export const MIRROR_SLATE = { price: 4_000, awardPlays: 10 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Save migration (v2 → v3)
@@ -412,3 +431,56 @@ export const MIGRATION_INCOME_FLOOR = 0.6;
 /** Bounds on the income-seconds factor f. */
 export const MIGRATION_FACTOR_MIN = ITEM_ECONOMY_SCALE;
 export const MIGRATION_FACTOR_MAX = 1_000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gold from the hunt (owner, 2026-10-21: "monsters drop more gold like in d2")
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every creature drops a pile of Gold on the ground where it falls (td-mobs kill → the Keeper walks over it, or a
+ * pet fetches it). Diablo II's shape: the pile follows the monster's level, a champion's and a boss's pile is several
+ * times a common one's, and every pile rolls ± `spread` around its mean.
+ *
+ *   mean(L, rank) = (flat + perLevel × L × (1 + L / growth)) × rank multiplier
+ *   roll          = mean × uniform(1 − spread, 1 + spread), whole Gold, at least 1
+ *
+ * Normal creatures: L1 ≈ 6, L10 ≈ 32, L20 ≈ 64, L40 ≈ 144, L100 ≈ 504, L1000 ≈ 27.5k. The quadratic tail keeps a
+ * high-level hunt paying for high-level prices without a second currency.
+ */
+export const HUNT_GOLD = {
+  flat: 4,
+  perLevel: 2.5,
+  growth: 100,
+  spread: 0.4,
+  rank: { normal: 1, champion: 4, unique: 6, boss: 15 },
+  /** A steady, level-appropriate hunt: the kills an hour the leveling sim also assumes (economy-sim KILLS_PER_HOUR). */
+  killsPerHour: 240,
+} as const;
+
+export type HuntRank = keyof typeof HUNT_GOLD.rank;
+
+/** The mean Gold pile of a creature of `level` and `rank` (unrounded). */
+export function huntGoldMean(level: number, rank: HuntRank | string = 'normal'): number {
+  const L = Number.isFinite(level) ? Math.max(1, level) : 1;
+  const mult = (HUNT_GOLD.rank as Record<string, number>)[rank] ?? 1;
+  return (HUNT_GOLD.flat + HUNT_GOLD.perLevel * L * (1 + L / HUNT_GOLD.growth)) * mult;
+}
+
+/** The smallest and the biggest pile a creature can drop. */
+export function huntGoldRange(level: number, rank: HuntRank | string = 'normal'): [number, number] {
+  const mean = huntGoldMean(level, rank);
+  return [Math.max(1, Math.round(mean * (1 - HUNT_GOLD.spread))), Math.max(1, Math.round(mean * (1 + HUNT_GOLD.spread)))];
+}
+
+/** One pile: `rng` is a uniform [0, 1) source (Math.random in play, a seeded one in specs). */
+export function rollHuntGold(level: number, rank: HuntRank | string = 'normal', rng: () => number = Math.random): number {
+  const mean = huntGoldMean(level, rank);
+  const u = Math.min(1, Math.max(0, rng()));
+  return Math.max(1, Math.round(mean * (1 - HUNT_GOLD.spread + 2 * HUNT_GOLD.spread * u)));
+}
+
+/** What a steady hunt of normal creatures of `level` pays in `seconds` (the yardstick every fixed reward is priced in). */
+export function huntGold(level: number, seconds: number): number {
+  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  return Math.round(huntGoldMean(level) * HUNT_GOLD.killsPerHour * s / 3600);
+}

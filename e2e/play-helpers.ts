@@ -195,7 +195,7 @@ export function bag(stacks: Record<string, number>): Blobs {
 
 /** A v3 economy purse (gold alone merges over a fresh ledger). */
 export function purse(gold: number): Blobs {
-  return { 'godforge-economy': { version: 3, gold, totalGoldEarned: gold, runGoldEarned: gold } };
+  return { 'godforge-economy': { version: 3, goldEra: 1, gold, totalGoldEarned: gold, runGoldEarned: gold } };
 }
 
 /** Stack quantity in the inventory ledger blob: every device's fold plus the live ops past it. */

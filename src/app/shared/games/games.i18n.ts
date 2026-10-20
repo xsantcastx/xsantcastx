@@ -13,7 +13,7 @@ export const GAMES_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'games.bet.label': { en: 'Bet', es: 'Apuesta' },
   'games.bet.less': { en: 'Lower the bet', es: 'Bajar la apuesta' },
   'games.bet.more': { en: 'Raise the bet', es: 'Subir la apuesta' },
-  'games.bet.cap': { en: 'Highest bet now: {{n}} Gold (two minutes of your income, or up to 1% of a deep purse, never more than an hour of income).', es: 'Apuesta maxima ahora: {{n}} de Oro (dos minutos de tus ingresos, o hasta el 1% de una bolsa honda, nunca mas de una hora de ingresos).' },
+  'games.bet.cap': { en: 'Highest bet now: {{n}} Gold.', es: 'Apuesta maxima ahora: {{n}} de Oro.' },
   'games.chips.label': { en: 'Quick bets', es: 'Apuestas rapidas' },
   'games.chips.min': { en: 'Min', es: 'Min' },
   'games.chips.max': { en: 'Max', es: 'Max' },

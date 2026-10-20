@@ -8,7 +8,7 @@
  */
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import type { ItemStats } from '../../shared/rpg/item.model';
-import { LEVEL_GROWTH, levelSteps } from '../../shared/skills/keeper-level';
+import { LEVEL_GROWTH, levelSpeedBonus, levelSteps } from '../../shared/skills/keeper-level';
 import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
@@ -234,6 +234,8 @@ export interface FightStats {
   haste: number;
   /** Faster on foot: Agility + worn Movement Speed, together capped at 40%. */
   moveHaste: number;
+  /** The level's own pace (Tibia: higher level, faster feet; keeper-level levelSpeedBonus, → 0.6). Multiplies moveHaste. */
+  levelPace: number;
   /** Spell cooldowns and the bolt's pace are divided by 1 + this. */
   castSpeed: number;
   /** Chance (0..1) a hit crits ×1.75. */
@@ -295,6 +297,7 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
     regen: base.regen + g(gear.manaRegen),
     haste: base.haste,
     moveHaste: Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + g(gear.moveSpeed) / 100),
+    levelPace: levelSpeedBonus(level),
     castSpeed: Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) / 100,
     crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
     defense: g(gear.defense),

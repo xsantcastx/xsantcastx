@@ -38,6 +38,7 @@ const SETTLED_FIRST_VISIT = ['forge-self-aware'];
 
 /** A ledger holding Bellows at 4 and a couple of one-offs. */
 const SEEDED_LEDGER = {
+  goldEra: 1,
   gold: 250_000,
   essence: 900,
   upgrades: { 'forge-bellows': 4, 'ember-stoker': 2, 'iron-hammer': 1 },
