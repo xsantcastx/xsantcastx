@@ -65,6 +65,12 @@ import { BOSS_TELL, CALL_TELL, MobSystem, RAISED_SKELETON, mobSheet, windsUp, ty
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
 import { FX, HOSTILE_EDGE, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
+import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
+import { GLIM_H, GLIM_W, PET_H, PET_W, glimFrame, petFace, petFrameIndex, petSheet, type TdPetFrame } from './td-pet-art';
+import { PET_ACT, petRole, type PetCommand, type PetMove, type PetRole, type PetSecond } from '../../shared/pets/pet-roles';
+import type { PetAbility } from '../../shared/pets/pets.model';
+import type { GlimMood } from '../../shared/glim/glim-art';
+import type { LootFilter } from '../../shared/loot/loot-tiers';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -100,6 +106,19 @@ const SHARDS = 8;
 interface LootPop { x: number; y: number; rung: LootRung; age: number; life: number; kind: 'drop' | 'pick'; seed: number }
 /** The rung a drop stands on: gear and runes their own, anything else none (a coin pile, a sack). */
 const rungOf = (g: Drop): LootRung | null => g.rarity ?? g.item?.rarity ?? (g.rune ? 'common' : null);
+/** The pet following, in the world (td-pets.ts): where it is, what it is doing, what it carries, how tired it is. */
+interface PetBody {
+  id: string; role: PetRole; move: PetMove; level: number; command: PetCommand;
+  x: number; y: number; face: 1 | -1; t: number; doing: TdPetDoing; moving: boolean;
+  carried: Drop | null; goal: Drop | null; goalT: number; skip: Set<string>;
+  cd: number; nips: number; stamina: number; restT: number; mendCd: number; mendT: number;
+  feel: 'happy' | 'love' | 'trick' | 'alert' | null; feelT: number; hopT: number; stuckT: number; hurtT: number;
+  idleT: number; lookT: number; way: { x: number; y: number } | null; wayT: number;
+  hits: number; gathers: number; heals: number;
+}
+/** A spark Glim sheds (a find, a cheer): one pixel, a short arc. */
+interface Spark { x: number; y: number; vx: number; vy: number; age: number; life: number; col: string }
+const GLIM_FLAP = ['up', 'mid', 'down', 'mid'] as const;
 
 export class TopDownEngine {
   private readonly ctx: CanvasRenderingContext2D;
@@ -163,6 +182,27 @@ export class TopDownEngine {
   /** Head marks over task givers, by keeper id ('!' a task on offer, '?' one to hand in): setTaskMarks. */
   private taskMarks: Readonly<Record<string, '!' | '?'>> = {};
   private glim = { x: 0, y: 0, shown: true };
+  /** Glim's face, its bond's glow and powers, a flight (pointing, a cheer, Show me), what it has pointed at, its sparks. */
+  private glimFeel: { mood: GlimMood; t: number } = { mood: 'calm', t: 0 };
+  private glimBright = false;
+  private glimPowerSet = { lamp: false, missed: false };
+  private glimFlight: { x: number; y: number; phase: 'out' | 'hold' | 'back'; hold: number } | null = null;
+  private glimTrail: { x: number; y: number; t: number } | null = null;
+  private readonly glimTold = new Set<string>();
+  private glimPointT = 4;
+  private glimDartT = 10;
+  private glimFlashT = 0;
+  private glimTellKey = '';
+  private sparks: Spark[] = [];
+  /** The pet following (setPet), the Keeper's stillness (the companions idle by it) and his breadcrumbs (the pet's way round corners). */
+  private pet: PetBody | null = null;
+  private stillT = 0;
+  private readonly trail: { x: number; y: number }[] = [];
+  /** The loot filter (setCombatRules): a pet fetches only the gear it shows. */
+  private lootFilter: LootFilter = 'all';
+  /** E2E only (e2e/td-pets.spec.ts): with `?petfetch=1` under an automated browser, two real materials lie a few steps off. */
+  private readonly petFetchTest = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]petfetch=1\b/.test(location.search);
+  private petFetchLaid: unknown = null;
   private dark: HTMLCanvasElement | null = null;
   private lightSprite: HTMLCanvasElement | null = null;
   private glowSprite: HTMLCanvasElement | null = null;
@@ -212,7 +252,7 @@ export class TopDownEngine {
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
     });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
-    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 44;
+    this.placeCompanions();
     this.populate();
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
@@ -498,7 +538,7 @@ export class TopDownEngine {
     const spot = standNear(level, w.x, w.y);
     if (!footFree(level, spot.x, spot.y)) { this.enter(this.world, ''); this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y; return false; }
     this.player.x = spot.x; this.player.y = spot.y;
-    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 44;
+    this.placeCompanions();
     this.report();
     return true;
   }
@@ -509,9 +549,23 @@ export class TopDownEngine {
   setTaskMarks(marks: Readonly<Record<string, '!' | '?'>>): void { this.taskMarks = { ...marks };
   }
   get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean; mood: string; trail: number | null; lamp: number } {
-    return { shown: this.glim.shown, x: this.glim.x, targetX: null, arrived: true, dimmed: false, bright: false, mood: 'calm', trail: null, lamp: 0 };
+    const f = this.glimFlight;
+    return {
+      shown: this.glim.shown, x: Math.round(this.glim.x), targetX: f ? Math.round(f.x) : null, arrived: !f || f.phase !== 'out', dimmed: false,
+      bright: this.glimBright, mood: this.glimMoodNow(), trail: this.glimTrail ? Math.round(this.glimTrail.x) : null, lamp: this.glimLamp() ? 1 : 0,
+    };
   }
-  get petView(): null { return null; }
+  /** Where the pet is and what it is doing (the HUD chip and the canvas's data-pet-*). */
+  get petView(): { id: string; x: number; y: number; state: string; fetching: boolean; glow: boolean; act: string; hits: number; gathers: number; finds: number; heals: number; command: string; level: number } | null {
+    const b = this.pet;
+    if (!b) return null;
+    return {
+      id: b.id, x: Math.round(b.x), y: Math.round(b.y), state: b.doing, fetching: !!(b.carried || b.goal), glow: tdPetJob(b.id, 'follow') === 'light' && (this.level.dark || this.darkness > .3),
+      act: b.doing, hits: b.hits, gathers: b.gathers, finds: 0, heals: b.heals, command: b.command, level: b.level,
+    };
+  }
+  /** The pet's face for the HUD chip (a data URL, made once per pet). */
+  petFace(): string { return this.pet ? petFace(this.pet.id) : ''; }
   get realm(): null { return null; }
   get placeable(): null { return null; }
   /** Walk to a station and open it on arrival (`instant`: stand there now). */
@@ -556,7 +610,7 @@ export class TopDownEngine {
     const s = level.stalls.find(st => st.station.id === at);
     if (s) { const spot = standNear(level, s.x, s.y + 10); this.player.x = spot.x; this.player.y = spot.y; }
     this.player.dir = 'down';
-    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 44;
+    this.placeCompanions();
     this.report();
   }
 
@@ -570,6 +624,474 @@ export class TopDownEngine {
     this.enter(this.world, '');
     this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y;
     this.mobs.target = null;
+  }
+
+  // ── The companions: the pet and Glim (td-pets.ts; the side view's API, so the play view's wiring just works) ──
+
+  /** The pet following the Keeper, or null (none, or it rests at home). */
+  setPet(pet: { id: string; name: string; hat: boolean; ability: PetAbility; role?: PetRole; move?: PetMove; second?: PetSecond | null; level?: number; command?: PetCommand } | null): void {
+    if (!pet) { if (this.pet) this.dropCarried(this.pet); this.pet = null; return; }
+    const roles = petRole(pet.id);
+    let b = this.pet && this.pet.id === pet.id ? this.pet : null;
+    if (!b) {
+      if (this.pet) this.dropCarried(this.pet);
+      b = {
+        id: pet.id, role: 'combat', move: 'bite', level: 1, command: 'follow', x: this.player.x, y: this.player.y, face: this.player.face, t: Math.random() * 3,
+        doing: 'follow', moving: false, carried: null, goal: null, goalT: 0, skip: new Set(), cd: 0, nips: 0, stamina: PET_ACT.stamina, restT: 0, mendCd: 0, mendT: 0,
+        feel: null, feelT: 0, hopT: 0, stuckT: 0, hurtT: 0, idleT: 0, lookT: 2, way: null, wayT: 0, hits: 0, gathers: 0, heals: 0,
+      };
+      this.pet = b;
+      this.petBeside(b);
+    }
+    b.role = pet.role ?? roles?.role ?? 'combat';
+    b.move = pet.move ?? roles?.move ?? 'bite';
+    b.level = Math.max(1, pet.level ?? 1);
+    b.command = pet.command ?? 'follow';
+  }
+  /** A feeling for the pet: a meal or a pat (a hop), love (hearts), its trick (a spin), a start. */
+  petFeel(kind: 'happy' | 'love' | 'trick' | 'alert'): void {
+    const b = this.pet;
+    if (!b) return;
+    b.feel = kind; b.feelT = kind === 'trick' ? 1 : 1.2; b.hopT = .4; b.idleT = 0;
+  }
+  /** The loot & combat rules (shared/loot): only the filter matters here — a pet fetches the gear it shows. */
+  setCombatRules(rules: { filter: LootFilter } | null): void { this.lootFilter = rules?.filter ?? 'all'; }
+
+  /** Glim (shown once the Keeper has met it); `arrive` flies it in from above, once. */
+  setGlim(shown: boolean, arrive = false): void {
+    if (shown && arrive) { this.glim.x = this.player.x - 60; this.glim.y = this.player.y - 140; }
+    this.glim.shown = shown;
+  }
+  /** Show me: Glim flies to a place (a station by id, or a spot on this row) and back. The x it flies to, or null. */
+  glimShowMe(target: { station: string } | { x: number }): number | null {
+    if (!this.glim.shown) return null;
+    let x: number | undefined, y = this.player.y;
+    if ('station' in target) {
+      let best = Infinity;
+      for (const s of this.level.stalls) if (s.station.id === target.station) { const d = Math.hypot(s.x - this.player.x, s.y - this.player.y); if (d < best) { best = d; x = s.x; y = s.y; } }
+    } else x = target.x;
+    if (x === undefined || !Number.isFinite(x)) return null;
+    this.glimPoint(x, y - 16, 2.4, true);
+    return x;
+  }
+  setGlimBright(bright: boolean): void { this.glimBright = bright; }
+  setGlimPowers(powers: { lamp: boolean; missed: boolean }): void { this.glimPowerSet = { ...powers }; }
+  /** Glim's face for a while (glim-art.ts GlimMood). */
+  glimMood(mood: GlimMood, seconds = 2.5): void { this.glimFeel = { mood, t: seconds }; }
+  /** A level up: Glim darts to the Keeper's raised hand with a burst of sparks; the pet hops. */
+  glimHighFive(): void {
+    if (this.pet) this.petFeel('happy');
+    if (!this.glim.shown) return;
+    const x = this.player.x + this.player.face * 10, y = this.player.y - 44;
+    this.glimPoint(x, y, .7, false);
+    this.glimMood('happy', 3);
+    this.glimBurst(x, y, 10);
+  }
+  /** "Show me something": the nearest thing worth finding; Glim flies to it and a trail runs there. Null when nothing is near. */
+  glimFind(point = true): { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; dir: number; cells: number } | null {
+    if (!this.glim.shown) return null;
+    const spot = glimPointer(this.player, this.glimSpots(GLIM_TD.pointReach * 2), new Set(), GLIM_TD.pointReach * 2);
+    if (!spot) return null;
+    if (point) this.glimPoint(spot.x, spot.y - 14, 2.4, true);
+    const kind = spot.kind === 'way' ? 'room' : spot.kind;
+    return { kind, x: Math.round(spot.x), y: Math.round(spot.y), dir: Math.sign(spot.x - this.player.x) || 1, cells: Math.max(1, Math.round(Math.hypot(spot.x - this.player.x, spot.y - this.player.y) / TILE)) };
+  }
+  /** Nothing floats over the world in the top-down view (the HUD's Glim button is the way in). */
+  glimScreen(): null { return null; }
+  /** A few sparks where the host asks (catch-the-light). */
+  glimSparkle(x: number, y: number): void { this.glimBurst(x, y, 6); }
+
+  private glimMoodNow(): GlimMood { return this.glimFeel.t > 0 ? this.glimFeel.mood : glimIdle(this.stillT) === 'doze' ? 'sleepy' : 'calm'; }
+  /** The lamp (the bond's power): in the dark, while the Keeper rests a moment, Glim's light opens wide. */
+  private glimLamp(): boolean { return this.glimPowerSet.lamp && this.level.dark && this.stillT > 1.5; }
+
+  /** Set the companions down beside the Keeper (arrival, a level change, a reload, a fall). */
+  private placeCompanions(): void {
+    this.glim.x = this.player.x - this.player.face * 14; this.glim.y = this.player.y - 46;
+    this.glimFlight = null; this.glimTrail = null;
+    this.trail.length = 0;
+    const b = this.pet;
+    if (b) { b.carried = null; b.goal = null; b.skip.clear(); this.petBeside(b); }
+  }
+  /** Set the pet down at the Keeper's side (the nearest free spot to its follow spot, never in a wall). */
+  private petBeside(b: PetBody): void {
+    const s = followSpot(this.player), spot = standNear(this.level, s.x, s.y);
+    const ok = footFree(this.level, spot.x, spot.y) && Math.hypot(spot.x - this.player.x, spot.y - this.player.y) < 48;
+    b.x = ok ? spot.x : this.player.x; b.y = ok ? spot.y : this.player.y;
+    b.stuckT = 0; b.way = null; b.wayT = 0; b.face = this.player.face;
+  }
+  /** Whatever it carries is set down where it stands. */
+  private dropCarried(b: PetBody): void {
+    if (b.carried && this.mobs.drops.includes(b.carried)) { b.carried.x = b.x; b.carried.y = b.y; }
+    b.carried = null; b.goal = null;
+  }
+  private petFree(x: number, y: number): boolean { return footFree(this.level, x, y); }
+  /** A straight line its feet can walk. */
+  private petSees(ax: number, ay: number, bx: number, by: number): boolean {
+    const n = Math.ceil(Math.hypot(bx - ax, by - ay) / 4);
+    for (let i = 1; i <= n; i++) if (!this.petFree(ax + (bx - ax) * i / n, ay + (by - ay) * i / n)) return false;
+    return true;
+  }
+  /** One step toward (tx, ty); true when there. It may cross the Keeper's own feet (his never stop on it). */
+  private petStep(b: PetBody, tx: number, ty: number, speed: number, dt: number): boolean {
+    const dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy);
+    if (d < 2) return true;
+    const step = Math.min(d, speed * dt), vx = dx / d * step, vy = dy / d * step;
+    let moved = false;
+    if (this.petFree(b.x + vx, b.y)) { b.x += vx; moved = true; }
+    if (this.petFree(b.x, b.y + vy)) { b.y += vy; moved = true; }
+    b.stuckT = moved ? Math.max(0, b.stuckT - dt) : b.stuckT + dt;
+    b.moving = moved;
+    if (Math.abs(dx) > 1.5) b.face = dx < 0 ? -1 : 1;
+    return false;
+  }
+  /** Walk toward a goal; when a wall stands between, by the newest of the Keeper's breadcrumbs it can see. */
+  private petGo(b: PetBody, tx: number, ty: number, speed: number, dt: number): boolean {
+    b.wayT -= dt;
+    if (b.wayT <= 0) {
+      b.wayT = .25; b.way = null;
+      if (!this.petSees(b.x, b.y, tx, ty)) {
+        for (let i = this.trail.length - 1; i >= 0; i--) {
+          const p = this.trail[i];
+          if (Math.hypot(p.x - b.x, p.y - b.y) > 3 && this.petSees(b.x, b.y, p.x, p.y)) { b.way = p; break; }
+        }
+      }
+    }
+    if (b.way) { if (this.petStep(b, b.way.x, b.way.y, speed, dt)) b.wayT = 0; return false; }
+    return this.petStep(b, tx, ty, speed, dt);
+  }
+
+  /** The pet's step: lost → at his side; then its job (fight, fetch, mend), else following and idling cute. */
+  private updatePet(dt: number): void {
+    const b = this.pet;
+    if (!b) return;
+    const k = this.player;
+    b.t += dt; b.cd -= dt; b.mendCd -= dt;
+    b.feelT = Math.max(0, b.feelT - dt); b.hopT = Math.max(0, b.hopT - dt); b.hurtT = Math.max(0, b.hurtT - dt); b.mendT = Math.max(0, b.mendT - dt);
+    if (!b.feelT) b.feel = null;
+    b.moving = false;
+    this.layPetFetchTest();
+    const job = tdPetJob(b.id, b.command);
+    // Lost (a wall between, a long run): it steps out at his side, as the raised do. Told to Stay, it stays.
+    if (job !== 'stay' && (pastLeash(b, k) || (b.stuckT > 1.2 && Math.hypot(b.x - k.x, b.y - k.y) > 3 * TILE))) {
+      this.dropCarried(b); this.petBeside(b);
+      this.mobs.effects.push({ kind: 'dust', x: b.x, y: b.y, age: 0, life: .4, dir: 1 });
+    }
+    // What it carries rides in its mouth; gone from the ground means the Keeper's own pick-up took it.
+    if (b.carried && !this.mobs.drops.includes(b.carried)) { b.carried = null; this.petBrought(b); }
+    if (b.carried) { b.carried.x = b.x + b.face * 7; b.carried.y = b.y - 1; }
+    if (b.goal && !this.mobs.drops.includes(b.goal)) b.goal = null;
+    const far = Math.hypot(b.x - k.x, b.y - k.y);
+    const run = TD_PET.speed * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (far > 40 ? TD_PET.catchUp : 1);
+    // mend: a pulse of life in a fight (the Sunling); it keeps following while it shines.
+    if (job === 'mend' && b.mendCd <= 0) {
+      const heal = mendPulse(this.hp, this.maxHp, this.time - this.lastHurt < 4);
+      if (heal) {
+        this.hp = Math.min(this.maxHp, this.hp + heal);
+        b.mendCd = PET_ACT.pulseRest; b.mendT = .9; b.heals++;
+        this.mobs.effects.push({ kind: 'heal', x: k.x, y: k.y, age: 0, life: .7, dir: 1 });
+        this.mobs.floaters.push({ x: k.x, y: k.y - 34, text: `+${heal}`, color: '#7fe08a', age: 0 });
+        this.options.onPet?.({ kind: 'heal' });
+      }
+    }
+    // Tired: it rests behind him a moment, then comes back to it (a pet never dies).
+    if (b.restT > 0) {
+      b.restT -= dt; b.doing = 'rest';
+      const s = followSpot(k);
+      if (Math.hypot(s.x - k.face * 8 - b.x, s.y - b.y) > 4 && (k.moving || far > 30)) this.petGo(b, s.x - k.face * 8, s.y, run, dt);
+      return;
+    }
+    if (job === 'stay') { b.idleT += dt; b.doing = b.idleT > TD_PET.sleepAfter ? 'sleep' : 'stay'; return; }
+    const tell = bossTelling(k, this.mobs.mobs);
+    if (job === 'fight' && !tell && this.petFight(b, run, dt)) return;
+    if (job === 'fetch' && !tell && this.petFetch(b, run, dt)) return;
+    if (b.carried) { this.dropCarried(b); }
+    // Following: at his side — behind him, away from a boss winding up — and idling cute when he stands still.
+    let spot = followSpot(k);
+    if (tell) {
+      const d = Math.max(1, Math.hypot(k.x - tell.x, k.y - tell.y)), away = { x: k.x + (k.x - tell.x) / d * 20, y: k.y + (k.y - tell.y) / d * 10 + 2 };
+      if (footFree(this.level, away.x, away.y)) spot = away;
+    }
+    if (job === 'play' && this.stillT > 1) {
+      const a = b.t * 1.3;
+      spot = { x: k.x + Math.cos(a) * 24, y: k.y + 6 + Math.sin(a) * 9 };
+      if (!footFree(this.level, spot.x, spot.y)) spot = followSpot(k);
+      if (b.hopT <= 0 && Math.random() < dt * .8) b.hopT = .4;
+      this.petGo(b, spot.x, spot.y, run * .7, dt); b.doing = 'play'; b.idleT = 0;
+      return;
+    }
+    const gap = Math.hypot(spot.x - b.x, spot.y - b.y);
+    if (gap > 3 && (k.moving || gap > 12 || tell)) {
+      this.petGo(b, spot.x, spot.y, run, dt);
+      b.doing = b.mendT > 0 ? 'mend' : 'follow'; b.idleT = 0;
+      return;
+    }
+    b.idleT += dt;
+    const pose = idlePose(Math.min(this.stillT, b.idleT));
+    b.doing = b.mendT > 0 ? 'mend' : job === 'play' ? 'play' : pose;
+    // Looking round now and then, and once in a while a happy little hop.
+    b.lookT -= dt;
+    if (b.lookT <= 0 && pose !== 'sleep') {
+      b.lookT = 2.4 + Math.random() * 3.2;
+      b.face = Math.random() < .55 ? (k.x < b.x ? -1 : 1) : (k.x < b.x ? 1 : -1);
+      if (Math.random() < .25) b.hopT = .4;
+    }
+  }
+  /** fight: nip the foe at the Keeper's side; true while it is in a fight. */
+  private petFight(b: PetBody, run: number, dt: number): boolean {
+    const foe = pickNipTarget(this.player, this.mobs.target, this.mobs.mobs);
+    if (!foe) return false;
+    b.doing = 'fight'; b.idleT = 0;
+    const side = b.x < foe.x ? -1 : 1, reach = TD_PET.reach + foe.def.w / 4;
+    if (Math.hypot(foe.x - b.x, foe.y - b.y) > reach) { this.petGo(b, foe.x + side * (foe.def.w / 4 + 6), foe.y + 2, run * 1.1, dt); return true; }
+    b.face = foe.x < b.x ? -1 : 1;
+    if (b.cd > 0) return true;
+    const blow = petBlow(b.move, b.role === 'combat', b.level);
+    const hit = this.mobs.petBite(foe, blow.dmg, b.face);
+    b.cd = blow.rest;
+    if (!hit.landed) return true;
+    b.hits++; b.nips++; b.hopT = .25;
+    this.options.onPet?.({ kind: 'hit', move: b.role === 'combat' ? b.move : 'bite', killed: hit.killed });
+    // Every few nips the foe snaps back: it costs the pet stamina, never life; tired, it rests behind the Keeper.
+    if (!hit.killed && b.nips % PET_ACT.aggroEvery === 0) {
+      b.stamina -= PET_ACT.blowCost; b.hurtT = .3;
+      if (b.stamina < PET_ACT.tiredAt) { b.stamina = PET_ACT.stamina; b.restT = TD_PET.restFor; this.options.onPet?.({ kind: 'tired' }); }
+    }
+    return true;
+  }
+  /** fetch: carry a drop lying near back to the Keeper's feet; true while it is fetching or carrying. */
+  private petFetch(b: PetBody, run: number, dt: number): boolean {
+    const k = this.player;
+    if (b.carried) {
+      b.doing = 'carry'; b.idleT = 0;
+      if (this.petGo(b, k.x + k.face * 4, k.y + 1, run, dt) || Math.hypot(b.x - k.x, b.y - k.y) < 12) {
+        // At his feet: set down where his own pick-up takes it (the Satchel's rules); if it stays (a full satchel), let it be.
+        const g = b.carried;
+        g.x = k.x; g.y = k.y; b.skip.add(g.id); b.carried = null;
+        this.petBrought(b);
+      }
+      return true;
+    }
+    if (b.goal && b.goalT > TD_PET.fetchGiveUp) { b.skip.add(b.goal.id); b.goal = null; }
+    // The nearest drop it can walk straight to (a drop behind a wall or across water is left for the Keeper).
+    for (let tries = 0; !b.goal && tries < 4; tries++) {
+      const own = tdPetJob(b.id, 'follow') === 'fetch';
+      const g = pickFetchTarget(k, this.mobs.drops, own ? TD_PET.fetchReach : TD_PET.gatherReach, this.lootFilter, b.skip);
+      if (!g) break;
+      if (this.petSees(b.x, b.y, g.x, g.y) || this.petSees(k.x, k.y, g.x, g.y)) b.goal = g; else b.skip.add(g.id);
+      b.goalT = 0;
+    }
+    const g = b.goal;
+    if (!g) return false;
+    b.doing = 'fetch'; b.idleT = 0; b.goalT += dt;
+    if (this.petGo(b, g.x, g.y, run * 1.15, dt) || Math.hypot(g.x - b.x, g.y - b.y) < 6) { b.carried = g; b.goal = null; b.hopT = .25; }
+    return true;
+  }
+  /** A fetch delivered: pet XP (as a gather), a happy hop. */
+  private petBrought(b: PetBody): void {
+    b.gathers++;
+    this.options.onPet?.({ kind: 'gather' });
+    this.petFeel('happy');
+  }
+  /** E2E only: two real materials a few steps off the Keeper, once per level, for the pet to fetch. */
+  private layPetFetchTest(): void {
+    if (!this.petFetchTest || this.petFetchLaid === this.level || this.time < 1.5) return;
+    this.petFetchLaid = this.level;
+    const k = this.player;
+    let laid = 0;
+    // Two spots a few steps off that a pet can walk straight to from the Keeper.
+    for (const [dx, dy] of [[0, 64], [0, -64], [64, 0], [-64, 0], [48, 48], [-48, 48], [48, -48], [-48, -48]]) {
+      if (laid >= 2) break;
+      const x = k.x + dx, y = k.y + dy;
+      if (!footFree(this.level, x, y) || !this.petSees(k.x, k.y, x, y)) continue;
+      this.mobs.layDrop(`pet-fetch-test:${laid}:${Math.round(this.time * 10)}`, x, y, laid ? 'cinder-ore' : 'ember-residue', 1, laid ? 'cinder ore' : 'ember residue');
+      laid++;
+    }
+  }
+
+  /** Glim's step: a boss's tell (a flash), pointing out a find, a curious dart, else its idle place by the Keeper. */
+  private updateGlim(dt: number): void {
+    const g = this.glim, k = this.player;
+    this.glimFeel.t = Math.max(0, this.glimFeel.t - dt);
+    this.glimFlashT = Math.max(0, this.glimFlashT - dt);
+    for (const s of this.sparks) { s.age += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 40 * dt; }
+    this.sparks = this.sparks.filter(s => s.age < s.life);
+    if (this.glimTrail && (this.glimTrail.t -= dt) <= 0) this.glimTrail = null;
+    if (!g.shown) return;
+    // A boss winding up: a quick flash and a gasp, once per tell (bosses' tells win over every flourish: no find now).
+    const tell = bossTelling(k, this.mobs.mobs, GLIM_TD.pointReach * 1.3);
+    const tk = tell ? tell.key : '';
+    if (tell && tk !== this.glimTellKey) { this.glimFlashT = .45; this.glimMood('gasp', 1.4); this.glimFlight = null; }
+    this.glimTellKey = tk;
+    // Something worth finding nearby (never mid-fight): a hop toward it, a sparkle, maybe a word.
+    this.glimPointT -= dt;
+    if (this.glimPointT <= 0 && !this.glimFlight && !tell) {
+      this.glimPointT = 1;
+      if (!this.mobs.target && this.time - this.lastHurt > 5) {
+        const spot = glimPointer(k, this.glimSpots(GLIM_TD.pointReach), this.glimTold);
+        if (spot) {
+          this.glimTold.add(spot.id);
+          this.glimPointT = GLIM_TD.pointGap;
+          this.glimPoint(spot.x, spot.y - 14, 1.6, true);
+          this.glimMood('curious', 2.5);
+          this.options.onGlimCue?.(spot.kind === 'drop' ? { kind: 'missed' } : { kind: 'spotted' });
+        }
+      }
+    }
+    const idle = glimIdle(this.stillT);
+    // A summer night and the Keeper resting: now and then a curious dart toward the fireflies in a tree.
+    this.glimDartT -= dt;
+    if (this.glimDartT <= 0 && !this.glimFlight) {
+      this.glimDartT = 9 + Math.random() * 8;
+      if (idle !== 'shoulder' && this.level === this.world && Math.max(this.darkness, this.dusk * .6) > .35) {
+        let tree: TdObject | null = null, bd = 110;
+        for (const o of this.visible) if (o.kind === 'tree') { const d = Math.hypot(o.x - k.x, o.y - k.y); if (d < bd) { bd = d; tree = o; } }
+        if (tree) this.glimPoint(tree.x + (Math.random() - .5) * 20, tree.y - 24 - Math.random() * 10, .9, false);
+      }
+    }
+    // Where it goes: the flight's leg, else its idle place (the shoulder, an orbit, a doze).
+    const home = idle === 'orbit'
+      ? { x: k.x + Math.cos(this.time * 1.1) * 24, y: k.y - 30 + Math.sin(this.time * 1.1) * 9 }
+      : idle === 'doze' ? { x: k.x - k.face * 9, y: k.y - 38 + Math.sin(this.time * 1.2) }
+      : { x: k.x - k.face * 14, y: k.y - 46 + Math.sin(this.time * 2.4) * 3 };
+    let tx = home.x, ty = home.y, rate = 4;
+    const f = this.glimFlight;
+    if (f) {
+      if (f.phase === 'out') {
+        tx = f.x; ty = f.y; rate = 6;
+        if (Math.hypot(g.x - f.x, g.y - f.y) < 4 || this.still) { f.phase = 'hold'; this.glimBurst(f.x, f.y, 6); }
+      } else if (f.phase === 'hold') {
+        // The little hop over what it found.
+        tx = f.x; ty = f.y - (this.still ? 0 : Math.abs(Math.sin(this.time * 7)) * 4); rate = 10;
+        if ((f.hold -= dt) <= 0) f.phase = 'back';
+      } else if (Math.hypot(g.x - home.x, g.y - home.y) < 6) this.glimFlight = null;
+    }
+    // Reduced motion: no travel — it simply sits where it is going.
+    if (this.still) { g.x = tx; g.y = ty; return; }
+    g.x += (tx - g.x) * Math.min(1, dt * rate);
+    g.y += (ty - g.y) * Math.min(1, dt * rate);
+  }
+  /** Glim flies to (x, y), hovers `hold` seconds, and comes back; `trail` runs a short line of light there. */
+  private glimPoint(x: number, y: number, hold: number, trail: boolean): void {
+    this.glimFlight = { x, y, phase: 'out', hold };
+    if (trail) this.glimTrail = { x, y: y + 14, t: 3.5 };
+  }
+  /** A small burst of Glim's sparks (spec: 6–10 pixels flying out then falling; the whole lot capped at 16). */
+  private glimBurst(x: number, y: number, n: number): void {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * .4, v = this.still ? 0 : 22 + Math.random() * 18;
+      this.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 14, age: 0, life: this.still ? .35 : .5 + Math.random() * .25, col: i % 3 ? '#ffd98a' : '#c9a6ff' });
+    }
+    if (this.sparks.length > 16) this.sparks.splice(0, this.sparks.length - 16);
+  }
+  /** What Glim may point out here: drops left lying, ore seams, ways down not yet taken (not a house's door). */
+  private glimSpots(reach: number): GlimSpot[] {
+    const k = this.player, lv = this.level, out: GlimSpot[] = [];
+    const near = (x: number, y: number) => Math.abs(x - k.x) < reach && Math.abs(y - k.y) < reach;
+    for (const g of this.mobs.drops) if (!g.coins && g.age > 2.5 && near(g.x, g.y) && this.pet?.carried !== g && this.pet?.goal !== g) out.push({ id: `drop:${g.id}`, kind: 'drop', x: g.x, y: g.y });
+    for (const s of lv.stalls) {
+      if (!near(s.x, s.y)) continue;
+      const id = s.station.id;
+      if (id === 'ore') { out.push({ id: `ore:${lv.id}:${Math.round(s.x)},${Math.round(s.y)}`, kind: 'ore', x: s.x, y: s.y }); continue; }
+      const to = this.wayTo(id);
+      if (to && !this.levels.has(to)) out.push({ id: `way:${lv.id}:${id}`, kind: 'way', x: s.x, y: s.y });
+    }
+    return out;
+  }
+  /** The level a way leads to (a mine shaft, a cave mouth, a stair), or null (a house door, a ship, a stall). */
+  private wayTo(id: string): string | null {
+    if (this.level === this.world) {
+      if (id === 'delve') return 'ember-mine-1';
+      const w = this.world.ways.get(id);
+      return w && !w.ship ? w.to : null;
+    }
+    if (this.level instanceof HandLevel) { const e = this.level.exits.get(id); return e && e.to !== 'surface' ? e.to : null; }
+    return null;
+  }
+
+  /** The pet: its frame by what it is doing, a hover for a flier, what it carries, a nap's z, a feeling. */
+  private drawPet(b: PetBody): void {
+    const sheet = petSheet(b.id);
+    if (!sheet) return;
+    const c = this.ctx, x = Math.round(b.x), y = Math.round(b.y), calm = this.still;
+    const resting = b.doing === 'sleep' || b.doing === 'rest';
+    const fly = TD_PET_FLIES.has(b.id) && !resting;
+    c.fillStyle = 'rgba(30,18,26,.28)';
+    c.fillRect(x - 5, y - 2, 10, 1); c.fillRect(x - 6, y - 1, 12, 2);
+    const frame: TdPetFrame = this.petFrame(b);
+    const hop = !calm && (frame === 'happy' || b.hopT > 0) ? -Math.round(Math.abs(Math.sin(b.t * 11)) * 3) : 0;
+    const hover = fly ? -Math.round(2 + (calm ? 0 : Math.sin(b.t * 3) * 1.5)) : 0;
+    // A blow it took: it blinks (never a body flash over the floor).
+    if (b.hurtT > 0 && Math.floor(b.hurtT * 20) % 2) return;
+    c.save();
+    c.translate(x, y - PET_H + 1 + hop + hover);
+    if (b.face < 0) c.scale(-1, 1);
+    c.drawImage(sheet, petFrameIndex(frame) * PET_W, 0, PET_W, PET_H, -PET_W / 2, 0, PET_W, PET_H);
+    c.restore();
+    // What it carries, in its mouth: a sack, a coin, or the gear's own colour.
+    const g = b.carried;
+    if (g) {
+      const gx = Math.round(g.x) - 1, gy = y - 9 + hop + hover, rung = rungOf(g);
+      c.fillStyle = PAL.outline; c.fillRect(gx - 1, gy - 1, 5, 5);
+      c.fillStyle = g.coins ? '#ffd25a' : rung ? LOOT[rung].body : '#b07a44'; c.fillRect(gx, gy, 3, 3);
+      c.fillStyle = '#fff4dc'; c.fillRect(gx, gy, 1, 1);
+    }
+    // A nap: a small pixel z drifting up. Love: a heart. Tired: a sweat drop.
+    if (resting) {
+      const t = calm ? .3 : (b.t % 1.6) / 1.6, zx = x + b.face * 4 + 3, zy = y - 15 - Math.round(t * 6);
+      c.globalAlpha = 1 - t * .7; c.fillStyle = b.doing === 'rest' ? '#9fd8ff' : '#f3e7cf';
+      c.fillRect(zx, zy, 3, 1); c.fillRect(zx + 1, zy + 1, 1, 1); c.fillRect(zx, zy + 2, 3, 1);
+      c.globalAlpha = 1;
+    }
+    if (b.feel === 'love' || b.feel === 'happy') {
+      const hy = y - 22 - Math.round((1.2 - b.feelT) * 5), hx = x - 2;
+      c.globalAlpha = Math.min(1, b.feelT * 2); c.fillStyle = '#ff7aa8';
+      c.fillRect(hx, hy, 2, 1); c.fillRect(hx + 3, hy, 2, 1); c.fillRect(hx, hy + 1, 5, 1); c.fillRect(hx + 1, hy + 2, 3, 1); c.fillRect(hx + 2, hy + 3, 1, 1);
+      c.globalAlpha = 1;
+    }
+  }
+  private petFrame(b: PetBody): TdPetFrame {
+    if (b.doing === 'sleep' || b.doing === 'rest') return b.doing === 'rest' && b.moving ? (`walk${Math.floor(b.t * 6) % 4}` as TdPetFrame) : 'sleep';
+    if (b.feel || b.hopT > 0) return b.feel === 'trick' ? (Math.floor(b.t * 8) % 2 ? 'happy' : 'sit1') : 'happy';
+    if (b.moving) return `walk${Math.floor(b.t * (b.doing === 'fight' || b.doing === 'fetch' ? 11 : 8)) % 4}` as TdPetFrame;
+    if (b.doing === 'fight') return b.cd > .8 ? 'walk1' : 'walk0';
+    if (b.doing === 'sit' || b.doing === 'stay' || b.doing === 'mend' || b.doing === 'play') {
+      // The wag: every few seconds the tail swings a moment; between, it sits and looks round.
+      const w = b.t % 3.6;
+      return w < 1 ? (Math.floor(b.t * 6) % 2 ? 'sit1' : 'sit0') : w > 2.6 ? 'sit1' : 'sit0';
+    }
+    return 'walk0';
+  }
+  /** Glim: its halo (stepped squares, never a blur), the moth with its mood, a tell's flash, its sparks, a pointing trail. */
+  private drawGlim(): void {
+    const g = this.glim, c = this.ctx;
+    if (g.shown) {
+      const x = Math.round(g.x), y = Math.round(g.y);
+      const dozing = glimIdle(this.stillT) === 'doze' && !this.glimFlight;
+      const flap = this.still ? 'mid' : GLIM_FLAP[Math.floor(this.time * (this.glimFlight ? 14 : dozing ? 3 : 8)) % 4];
+      c.globalCompositeOperation = 'lighter';
+      glowSquare(c, x, y, this.glimBright ? 9 : 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, this.glimBright ? .5 : .32);
+      c.globalCompositeOperation = 'source-over';
+      const sprite = glimFrame(flap, this.glimMoodNow());
+      if (sprite) c.drawImage(sprite, x - Math.floor((GLIM_W + 2) / 2), y - Math.floor((GLIM_H + 2) / 2));
+      if (this.glimFlashT > 0) {
+        const t = 1 - this.glimFlashT / .45, r = 6 + t * 10;
+        c.globalAlpha = .9 * (1 - t); c.fillStyle = '#fff4dc';
+        for (const p of circlePixels(r)) if ((p.x + p.y) % 2 === 0) c.fillRect(x + p.x, y + p.y, 1, 1);
+        c.fillStyle = '#ff8a5a'; c.fillRect(x - 1, y - 14, 2, 5); c.fillRect(x - 1, y - 8, 2, 2);
+        c.globalAlpha = 1;
+      }
+    }
+    // The trail: dashes of light from the Keeper to what Glim found, fading.
+    const tr = this.glimTrail;
+    if (tr) {
+      const p = this.player, d = Math.hypot(tr.x - p.x, tr.y - p.y), n = Math.min(24, Math.floor(d / 7));
+      c.globalAlpha = Math.min(.8, tr.t / 2); c.fillStyle = '#ffd98a';
+      for (let i = 1; i < n; i++) { if ((i + Math.floor(this.time * 6)) % 3 === 0) continue; c.fillRect(Math.round(p.x + (tr.x - p.x) * i / n), Math.round(p.y - 2 + (tr.y - p.y) * i / n), 1, 1); }
+      c.globalAlpha = 1;
+    }
+    for (const s of this.sparks) { c.globalAlpha = Math.max(0, 1 - s.age / s.life); c.fillStyle = s.col; c.fillRect(Math.round(s.x), Math.round(s.y), 1, 1); }
+    c.globalAlpha = 1;
   }
 
   // ── Simulation ─────────────────────────────────────────────────────────────
@@ -607,10 +1129,10 @@ export class TopDownEngine {
       this.tryMove(vx * speed * dt, 0);
       this.tryMove(0, vy * speed * dt);
     }
-    // Glim drifts to the Keeper's shoulder.
-    const gx = this.player.x + this.player.face * -16, gy = this.player.y - 48 + Math.sin(this.time * 2.4) * 3;
-    this.glim.x += (gx - this.glim.x) * Math.min(1, dt * 4);
-    this.glim.y += (gy - this.glim.y) * Math.min(1, dt * 4);
+    // The Keeper's stillness (the companions idle by it) and his breadcrumbs (the pet's way round a corner).
+    this.stillT = this.player.moving || this.mobs.target || this.chop ? 0 : this.stillT + dt;
+    const crumb = this.trail[this.trail.length - 1];
+    if (!crumb || Math.hypot(crumb.x - this.player.x, crumb.y - this.player.y) > 6) { this.trail.push({ x: this.player.x, y: this.player.y }); if (this.trail.length > 48) this.trail.shift(); }
     this.updateFolk(dt);
     // Keepers breathe and turn toward the Keeper when near.
     for (const k of this.keepers) { k.t += dt; if (Math.abs(this.player.x - k.x) < 120) k.face = this.player.x < k.x ? -1 : 1; }
@@ -623,6 +1145,8 @@ export class TopDownEngine {
     this.nearby = best;
     this.updateSmoke(dt);
     this.updateFight(dt);
+    this.updatePet(dt);
+    this.updateGlim(dt);
     this.updateFx(dt);
     this.updateLoot(dt);
     this.updateChop(dt);
@@ -1031,6 +1555,8 @@ export class TopDownEngine {
     for (const g of this.groundLoot()) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
+    const pet = this.pet;
+    if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -1052,9 +1578,8 @@ export class TopDownEngine {
       c.fillRect(Math.round(p.x - r / 2), Math.round(p.y - r / 2), Math.round(r), Math.round(r));
     }
     c.globalAlpha = 1;
-    // Glim: a small warm light with a pixel core.
-    c.fillStyle = '#fff4c2'; c.fillRect(Math.round(this.glim.x) - 1, Math.round(this.glim.y) - 1, 3, 3);
-    c.fillStyle = '#ffd27a'; c.fillRect(Math.round(this.glim.x) - 2, Math.round(this.glim.y), 1, 1); c.fillRect(Math.round(this.glim.x) + 2, Math.round(this.glim.y), 1, 1);
+    // Glim: the lamplight moth, its sparks, its pointing trail (in the air, over everything on the ground).
+    this.drawGlim();
     // Night.
     this.drawLight();
     this.drawFireflies();
@@ -1194,7 +1719,15 @@ export class TopDownEngine {
       const r = rungOf(g);
       if (!r) continue;
       now.add(g.id);
-      if (!this.seenDrops.has(g.id)) this.pops.push({ x: g.x, y: g.y - 3, rung: r, age: 0, life: .4, kind: 'drop', seed: this.dropSeed(g) });
+      if (!this.seenDrops.has(g.id)) {
+        this.pops.push({ x: g.x, y: g.y - 3, rung: r, age: 0, life: .4, kind: 'drop', seed: this.dropSeed(g) });
+        // A rare drop: Glim gasps and hops to it, the host gives it its word (glim-react.ts).
+        if (!this.showcase.includes(g) && (r === 'epic' || r === 'legendary' || r === 'mythic' || r === 'singular')) {
+          this.options.onGlimCue?.({ kind: 'rare', rarity: r });
+          if (this.glim.shown) { this.glimPoint(g.x, g.y - 18, 1.2, false); this.glimBurst(g.x, g.y - 18, 8); }
+          if (this.pet) this.petFeel('alert');
+        }
+      }
       this.seenDrops.set(g.id, { x: g.x, y: g.y, rung: r });
     }
     for (const [id, g] of this.seenDrops) {
@@ -1664,7 +2197,14 @@ export class TopDownEngine {
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r) { const b = lootBeam(r); hole(g.x, g.y - 3 - b.h / 2, b.light + b.h / 2); } }
     for (const m of this.mobs.mobs) if (m.tell > 0 && m.aim && windsUp(m.def)) { hole(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, 40); hole((m.x + m.aim.x) / 2, (m.y + m.aim.y + 12) / 2, 70); }
     for (const k of this.mobs.calls) hole(k.x, k.y, 30);
-    hole(this.glim.x, this.glim.y, 56);
+    // Glim lights the dark wider than the Keeper's own (and wider still with its lamp while he rests); a light pet its own.
+    if (this.glim.shown) {
+      const r = this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80;
+      hole(this.glim.x, this.glim.y, r);
+      glows.push({ x: this.glim.x, y: this.glim.y, r: this.level.dark ? 22 : 14 });
+    }
+    const pb = this.pet;
+    if (pb && tdPetJob(pb.id, 'follow') === 'light') { hole(pb.x, pb.y - 8, TD_PET.light); glows.push({ x: pb.x, y: pb.y - 8, r: 12 }); }
     const c = this.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.imageSmoothingEnabled = true;

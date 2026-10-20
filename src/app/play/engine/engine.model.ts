@@ -135,7 +135,7 @@ export type LootRow =
   | { kind: 'rune'; rune: string; rarity: LootRarity; label: string };
 /** A world sound (EngineOptions.onSfx). */
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
-export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' };
+export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' };
 export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {

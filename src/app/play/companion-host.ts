@@ -162,6 +162,7 @@ export class CompanionHost {
   onGlimCue(cue: GlimCue): void {
     if (cue.kind === 'dodge') this.moment('dodge');
     else if (cue.kind === 'missed') this.moment('missed');
+    else if (cue.kind === 'spotted') this.moment('spotted');
     else this.moment(cue.rarity === 'epic' ? 'rare' : 'legendary');
   }
   /** A level up anywhere: the high five, and a word. */
