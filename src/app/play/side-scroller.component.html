@@ -35,10 +35,29 @@
                 [attr.aria-label]="t('skill.' + a.id) + ' (' + a.key + ')'" [title]="t('skill.' + a.id) + ' (' + a.key + ') · ' + a.mana + ' ' + t('play.td.mana')"
                 [innerHTML]="skillIcon(a.id)"></button>
       }
-      <button type="button" class="td-skill td-skill--book" (click)="spellbookOpen = !spellbookOpen" [attr.aria-expanded]="spellbookOpen" [attr.aria-label]="t('play.td.book') + ' (K)'" [title]="t('play.td.book') + ' (K)'">
-        <svg viewBox="0 0 16 16" width="26" height="26" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
-      </button>
     </div>
+  }
+  <!-- Top-down: the menu toolbar (docs/design/ui-pass-top-heroes.md, the reference's Build · Workers · Storage row): square
+       icon buttons with their names, the key on hover. -->
+  @if (topDown && !panel) {
+    <nav class="td-dock" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore>
+      <button type="button" (click)="toggleBag()" [attr.aria-expanded]="bagOpen" [title]="t('play.td.dock.bag') + ' (I)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
+        <span>{{ t('play.td.dock.bag') }}</span><kbd>I</kbd>
+      </button>
+      <button type="button" (click)="spellbookOpen = !spellbookOpen; sheetOpen = false" [attr.aria-expanded]="spellbookOpen" [title]="t('play.td.dock.book') + ' (K)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
+        <span>{{ t('play.td.dock.book') }}</span><kbd>K</kbd>
+      </button>
+      <button type="button" (click)="sheetOpen = !sheetOpen; spellbookOpen = false" [attr.aria-expanded]="sheetOpen" [title]="t('play.td.dock.sheet') + ' (C)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
+        <span>{{ t('play.td.dock.sheet') }}</span><kbd>C</kbd>
+      </button>
+      <button type="button" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" [title]="t('play.td.dock.places')">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
+        <span>{{ t('play.td.dock.places') }}</span>
+      </button>
+    </nav>
   }
   <!-- The character sheet (C), D2's attributes page made cozy: level, points to spend, what each point gives. -->
   @if (topDown && sheetOpen && !panel) {
