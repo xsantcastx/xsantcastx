@@ -49,355 +49,855 @@ export interface MobDef {
   summon?: { type: string; count: number; at: number };
 }
 
-function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void { c.fillStyle = col; c.fillRect(x, y, w, h); }
+// ── The bestiary's brushes (the art pass, 2026-10-20: the creatures drawn to the new Keeper's standard) ──────────────
+// Every surface is a shaded shape lit from the top-left (a highlight, the base, a shadow, the deep shadow at its foot);
+// mobSheet adds the selective outline (each edge pixel a dark of the colour it borders) and, round a boss, a rim in
+// its element's colour. Four frames: a walk or a hover (contact, passing, contact, passing).
 
-/** The Rivet Maw: a rust-iron jaw on stubby legs, rivets for teeth. */
-function paintMaw(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 3, 13 - b, 3, 3, '#3a2a24'); px(c, 14, 13 + b - 1, 3, 3, '#3a2a24');
-  px(c, 2, 4 + b, 16, 10, '#8a5a3c'); px(c, 2, 4 + b, 16, 3, '#b07a4e'); px(c, 2, 12 + b, 16, 2, '#5e3a28');
-  px(c, 4, 9 + b, 12, 3, '#2a1a1c');
-  for (let i = 0; i < 4; i++) { px(c, 5 + i * 3, 9 + b, 1, 1, '#e9e4d8'); px(c, 6 + i * 3, 11 + b, 1, 1, '#e9e4d8'); }
-  px(c, 5, 6 + b, 2, 2, '#ffd25a'); px(c, 13, 6 + b, 2, 2, '#ffd25a');
-  px(c, 1, 5 + b, 1, 2, '#c99a6a'); px(c, 18, 5 + b, 1, 2, '#c99a6a');
-}
-/** The Cinder Bailiff: a hooded ember-golem with a lantern belly. */
-function paintBailiff(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 5, 20, 4, 4, '#2a2028'); px(c, 13, 20, 4, 4, '#2a2028');
-  px(c, 3, 7 + b, 16, 14, '#4a3a44'); px(c, 3, 7 + b, 16, 2, '#6a5562');
-  px(c, 7, 12 + b, 8, 6, '#2a1a1c'); px(c, 8, 13 + b, 6, 4, '#ff8a2e'); px(c, 9, 14 + b, 4, 2, '#ffd25a');
-  px(c, 5, 1 + b, 12, 7, '#3a2c36'); px(c, 7, 4 + b, 2, 2, '#ff6a2a'); px(c, 13, 4 + b, 2, 2, '#ff6a2a');
-  px(c, 1, 9 + b, 2, 8, '#4a3a44'); px(c, 19, 9 - b + 1, 2, 8, '#4a3a44');
-}
+/** A surface's tones: highlight, base, shadow, deep shadow. */
+type Ramp = readonly [string, string, string, string];
+type P2 = readonly [number, number];
 
-/** The Ash Wolf: a lean grey-ember wolf of the Emberwood. */
-function paintWolf(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 3, 13, 2, 4 - b, '#3a3236'); px(c, 15, 13, 2, 3 + b, '#3a3236'); px(c, 6, 14, 2, 3, '#3a3236'); px(c, 12, 14, 2, 3, '#3a3236');
-  px(c, 3, 7, 15, 7, '#6a5f66'); px(c, 3, 7, 15, 2, '#8a7f86'); px(c, 3, 12, 15, 2, '#4a4248');
-  px(c, 15, 3 + b, 6, 6, '#6a5f66'); px(c, 15, 2 + b, 2, 2, '#4a4248'); px(c, 19, 2 + b, 2, 2, '#4a4248'); px(c, 20, 6 + b, 2, 2, '#2a2226');
-  px(c, 17, 5 + b, 1, 1, '#ff8a2e'); px(c, 0, 6 - b, 4, 2, '#8a7f86'); px(c, 1, 5 - b, 2, 1, '#ff8a2e');
+/** The painter's frame: shapes are drawn grown by K from (OX, OY), so a boss is its kin's own shapes, every edge still a whole pixel. */
+let K = 1, OX = 0, OY = 0;
+function grown(k: number, ox: number, oy: number, draw: () => void): void {
+  const was = [K, OX, OY] as const;
+  K = k; OX = ox; OY = oy;
+  try { draw(); } finally { [K, OX, OY] = was; }
 }
-/** The Cinder Imp: a small horned ember-imp with bat wings. */
-function paintImp(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 2 : 0;
-  px(c, 0, 4 + b, 5, 6, '#7a2a1c'); px(c, 15, 4 + b, 5, 6, '#7a2a1c'); px(c, 1, 5 + b, 3, 4, '#a83a24');
-  px(c, 5, 5, 10, 11, '#c8432a'); px(c, 5, 5, 10, 2, '#e8633a'); px(c, 6, 15, 3, 3, '#7a2a1c'); px(c, 11, 15, 3, 3, '#7a2a1c');
-  px(c, 6, 2, 2, 3, '#2a1a1c'); px(c, 12, 2, 2, 3, '#2a1a1c'); px(c, 7, 8, 2, 2, '#ffd25a'); px(c, 11, 8, 2, 2, '#ffd25a'); px(c, 8, 12, 4, 1, '#2a1a1c');
-}
+const sx = (x: number) => OX + x * K, sy = (y: number) => OY + y * K;
 
-/** The Ember Warden, the Ember Mine's keeper: a towering Bailiff crowned in slag, its lantern a furnace. */
-function paintWarden(c: CanvasRenderingContext2D, f: number): void {
-  c.save(); c.scale(1.7, 1.7); paintBailiff(c, f); c.restore();
-  px(c, 10, 0, 18, 4, '#2a1a1c'); px(c, 12, 0, 3, 2, '#ff8a2e'); px(c, 18, 0, 3, 2, '#ffd25a'); px(c, 24, 0, 3, 2, '#ff8a2e');
+function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void {
+  const x0 = Math.round(sx(x)), y0 = Math.round(sy(y));
+  c.fillStyle = col; c.fillRect(x0, y0, Math.max(1, Math.round(sx(x + w)) - x0), Math.max(1, Math.round(sy(y + h)) - y0));
 }
+/** One pixel, never grown: a glint, a rivet, a spark. */
+function dot(c: CanvasRenderingContext2D, x: number, y: number, col: string): void { c.fillStyle = col; c.fillRect(Math.round(sx(x)), Math.round(sy(y)), 1, 1); }
 
-/** The Lava Hound: a cracked-obsidian hound with magma showing through. */
-function paintHound(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 3, 13, 2, 4 - b, '#1c1418'); px(c, 16, 13, 2, 3 + b, '#1c1418'); px(c, 6, 14, 2, 3, '#1c1418'); px(c, 13, 14, 2, 3, '#1c1418');
-  px(c, 3, 7, 16, 7, '#2e2228'); px(c, 3, 7, 16, 2, '#4a3a42'); px(c, 5, 10, 3, 1, '#ff8a2e'); px(c, 10, 9, 4, 1, '#ffd25a'); px(c, 14, 11, 3, 1, '#ff8a2e');
-  px(c, 16, 3 + b, 6, 6, '#2e2228'); px(c, 16, 2 + b, 2, 2, '#1c1418'); px(c, 20, 2 + b, 2, 2, '#1c1418'); px(c, 19, 5 + b, 2, 1, '#ffd25a');
-  px(c, 21, 7 + b, 2, 1, '#ff6a2a'); px(c, 0, 5 - b, 4, 2, '#ff8a2e'); px(c, 0, 4 - b, 2, 1, '#ffd25a');
-}
-/** The Obsidian Golem: a slab of black glass with a magma heart. */
-function paintGolem(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 4, 22, 6, 4, '#1c1620'); px(c, 16, 22, 6, 4, '#1c1620');
-  px(c, 3, 6 + b, 20, 17, '#262030'); px(c, 3, 6 + b, 20, 3, '#3e3650'); px(c, 5, 9 + b, 2, 10, '#4a4262');
-  px(c, 0, 9 + b, 4, 11, '#262030'); px(c, 22, 9 - b + 1, 4, 11, '#262030');
-  px(c, 10, 12 + b, 6, 6, '#120a0e'); px(c, 11, 13 + b, 4, 4, '#ff6a2a'); px(c, 12, 14 + b, 2, 2, '#ffd25a');
-  px(c, 8, 1 + b, 10, 6, '#2e2638'); px(c, 10, 3 + b, 2, 2, '#ff8a2e'); px(c, 14, 3 + b, 2, 2, '#ff8a2e');
-}
-
-/** The Magma Tyrant, the Molten Deep's master: a Golem grown huge on the caldera's heat, crowned in fire. */
-function paintTyrant(c: CanvasRenderingContext2D, f: number): void {
-  c.save(); c.scale(1.8, 1.8); paintGolem(c, f); c.restore();
-  px(c, 12, 18, 3, 12, '#ff6a2a'); px(c, 33, 20, 3, 10, '#ff6a2a'); px(c, 22, 30, 4, 8, '#ffd25a');
-  px(c, 14, 0, 20, 3, '#9e2e1c'); px(c, 15, 0, 3, 2, '#ffd25a'); px(c, 22, 0, 4, 2, '#ffd25a'); px(c, 30, 0, 3, 2, '#ffd25a');
-}
-
-
-/** The Slag Crawler, of the Molten Deep's slag rivers: a long beetle of cooled slag plates, fire showing at every seam. */
-function paintCrawler(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  for (let i = 0; i < 4; i++) px(c, 3 + i * 5, 12, 2, 3 + ((i + f) % 2), '#1c1418');
-  for (let i = 0; i < 4; i++) {
-    const y = 5 + (i % 2 ? b : 0);
-    px(c, 1 + i * 5, y, 6, 8, '#3a2e2a'); px(c, 1 + i * 5, y, 6, 2, '#5a4a40'); px(c, 2 + i * 5, y + 5, 4, 1, i % 2 ? '#ffd25a' : '#ff8a2e');
-    px(c, 6 + i * 5, y + 1, 1, 6, '#ff6a2a');
+/** Fill the pixels of a box where `inside` holds (pixel space), lit from the top-left by the shape's own edges. */
+function solid(c: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, inside: (x: number, y: number) => boolean, r: Ramp): void {
+  const h = Math.max(1, y1 - y0);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (!inside(x, y)) continue;
+    const v = (y - y0) / h;
+    let col = r[1];
+    if (!inside(x, y + 1)) col = r[3];
+    else if (!inside(x + 1, y) || v > .64) col = r[2];
+    else if ((!inside(x, y - 1) || !inside(x - 1, y)) && v < .5) col = r[0];
+    c.fillStyle = col; c.fillRect(x, y, 1, 1);
   }
-  px(c, 20, 4, 6, 9, '#2e2228'); px(c, 20, 4, 6, 2, '#4a3a42'); px(c, 22, 6, 2, 2, '#ffd25a');
-  px(c, 25, 10 + b, 1, 4, '#e9e4d8'); px(c, 23, 11 - b, 1, 3, '#e9e4d8');
 }
-/** The Glass Sentinel, the Glass Foundry's guard: a statue of black glass the Four cast and never broke, a melt for a heart. */
-function paintSentinel(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 4, 24, 12, 4, '#1c1620'); px(c, 4, 24, 12, 1, '#3e3650');
-  px(c, 5, 8, 10, 16, '#262030'); px(c, 5, 8, 3, 16, '#4a4262'); px(c, 12, 10, 2, 12, '#3e3650');
-  px(c, 8, 13, 4, 5, '#120a0e'); px(c, 9, 14, 2, 3, '#ff6a2a'); px(c, 9, 15, 2, 1, '#ffd25a');
-  px(c, 6, 1 + b, 8, 7, '#2e2638'); px(c, 6, 1 + b, 8, 1, '#4a4262'); px(c, 7, 0 + b, 2, 2, '#a8b8e0'); px(c, 11, 0 + b, 2, 2, '#a8b8e0');
-  px(c, 8, 4 + b, 1, 1, '#ffd25a'); px(c, 11, 4 + b, 1, 1, '#ffd25a');
-  px(c, 1, 10 - b, 3, 9, '#3e3650'); px(c, 0, 8 - b, 2, 3, '#a8b8e0'); px(c, 16, 10 + b, 3, 9, '#3e3650'); px(c, 18, 8 + b, 2, 3, '#a8b8e0');
+/** A shaded ellipse: a sphere's light (highlight up-left, the deep shadow down-right). */
+function orb(c: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, r: Ramp): void {
+  const X = sx(cx), Y = sy(cy), RX = Math.max(.6, rx * K), RY = Math.max(.6, ry * K);
+  for (let y = Math.floor(Y - RY); y <= Math.ceil(Y + RY); y++) for (let x = Math.floor(X - RX); x <= Math.ceil(X + RX); x++) {
+    const nx = (x + .5 - X) / RX, ny = (y + .5 - Y) / RY, d = nx * nx + ny * ny;
+    if (d > 1) continue;
+    const l = -.55 * nx - .65 * ny + .45 * Math.sqrt(1 - d);
+    c.fillStyle = l > .78 ? r[0] : l > .02 ? r[1] : l > -.5 ? r[2] : r[3];
+    c.fillRect(x, y, 1, 1);
+  }
 }
-/** The Anvil-Warden, set by the First Smith to keep the Forge of the Four: a Bailiff grown huge, an anvil for a crown. */
-function paintAnvilWarden(c: CanvasRenderingContext2D, f: number): void {
-  c.save(); c.translate(4, 6); c.scale(1.6, 1.6); paintBailiff(c, f); c.restore();
-  px(c, 11, 1, 22, 4, '#4a4552'); px(c, 11, 1, 22, 1, '#7a7584'); px(c, 7, 2, 6, 2, '#4a4552');
-  px(c, 18, 5, 8, 3, '#3a3642'); px(c, 15, 7, 14, 2, '#3a3642');
-  if (f) { px(c, 13, 0, 2, 1, '#ffd25a'); px(c, 29, 0, 2, 1, '#ff8a2e'); }
+/** A shaded polygon. */
+function poly(c: CanvasRenderingContext2D, pts: readonly P2[], r: Ramp): void {
+  const q = pts.map(([x, y]) => [sx(x), sy(y)] as const);
+  const xs = q.map(p => p[0]), ys = q.map(p => p[1]);
+  const inside = (x: number, y: number) => {
+    const X = x + .5, Y = y + .5;
+    let on = false;
+    for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+      const [ax, ay] = q[i], [bx, by] = q[j];
+      if ((ay > Y) !== (by > Y) && X < (bx - ax) * (Y - ay) / (by - ay) + ax) on = !on;
+    }
+    return on;
+  };
+  solid(c, Math.floor(Math.min(...xs)), Math.floor(Math.min(...ys)), Math.ceil(Math.max(...xs)), Math.ceil(Math.max(...ys)), inside, r);
 }
-/** The Cinder Sovereign, the heart of the Molten Deep: a robed king of slag and fire, a burning crown, flame in both hands. */
-function paintSovereign(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  for (let y = 20; y < 58; y++) { const half = 10 + Math.floor((y - 20) * .45); px(c, 30 - half, y, half * 2, 1, y % 7 === 0 ? '#3a2a30' : '#2a1c24'); }
-  px(c, 22, 30, 2, 26, '#ff6a2a'); px(c, 36, 28, 2, 28, '#ff6a2a'); px(c, 29, 34, 2, 22, '#ffd25a');
-  px(c, 18, 44, 6, 2, '#ff8a2e'); px(c, 36, 48, 8, 2, '#ff8a2e'); px(c, 13, 56, 34, 2, '#ff6a2a');
-  px(c, 14, 18, 32, 6, '#3a2a30'); px(c, 14, 18, 32, 2, '#5a4450');
-  px(c, 6, 8 - b, 8, 14, '#2a1c24'); px(c, 46, 7 + b, 8, 14, '#2a1c24'); px(c, 6, 8 - b, 2, 14, '#3a2a30'); px(c, 52, 7 + b, 2, 14, '#3a2a30');
-  px(c, 5, 2 - b, 10, 7, '#ff6a2a'); px(c, 7, 1 - b, 6, 4, '#ffd25a'); px(c, 45, 1 + b, 10, 7, '#ff6a2a'); px(c, 47, b, 6, 4, '#ffd25a');
-  px(c, 22, 6, 16, 13, '#1c1218'); px(c, 22, 6, 16, 2, '#2e2228');
-  px(c, 24, 10, 4, 3, '#ffd25a'); px(c, 32, 10, 4, 3, '#ffd25a'); px(c, 27, 15, 6, 1, f ? '#ffd25a' : '#ff6a2a');
-  px(c, 21, 3, 18, 4, '#9e2e1c'); for (let i = 0; i < 4; i++) px(c, 21 + i * 5, 0, 3, 3, i % 2 ? '#ffd25a' : '#ff8a2e');
+/** A shaded limb (a bone, a leg, a haft) from p to q, `t` art px thick, round at both ends. */
+function limb(c: CanvasRenderingContext2D, p: P2, q: P2, t: number, r: Ramp): void {
+  const T = Math.max(1, Math.round(t * K)), off = T % 2 ? .5 : 0;
+  const ax = Math.round(sx(p[0])) + off, ay = Math.round(sy(p[1])) + off, bx = Math.round(sx(q[0])) + off, by = Math.round(sy(q[1])) + off;
+  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy || 1, rad = T / 2 + .01;
+  const inside = (x: number, y: number) => {
+    const X = x + .5, Y = y + .5, u = Math.max(0, Math.min(1, ((X - ax) * dx + (Y - ay) * dy) / L));
+    return Math.hypot(X - ax - u * dx, Y - ay - u * dy) <= rad;
+  };
+  solid(c, Math.floor(Math.min(ax, bx) - T), Math.floor(Math.min(ay, by) - T), Math.ceil(Math.max(ax, bx) + T), Math.ceil(Math.max(ay, by) + T), inside, r);
+}
+/** A hard 1px line, never grown thicker (a crack, a seam, a bowstring). */
+function line(c: CanvasRenderingContext2D, p: P2, q: P2, col: string): void {
+  const ax = sx(p[0]), ay = sy(p[1]), bx = sx(q[0]), by = sy(q[1]), n = Math.max(1, Math.round(Math.max(Math.abs(bx - ax), Math.abs(by - ay))));
+  c.fillStyle = col;
+  for (let i = 0; i <= n; i++) c.fillRect(Math.round(ax + (bx - ax) * i / n), Math.round(ay + (by - ay) * i / n), 1, 1);
+}
+/** Something burning: a soft halo (left out of the outline), a body, a white-hot core. */
+function glow(c: CanvasRenderingContext2D, x: number, y: number, size: number, hot: Ramp): void {
+  const X = Math.round(sx(x)), Y = Math.round(sy(y)), s = Math.max(1, Math.round(size * K));
+  // The halo adds light (it brightens what it falls on); over nothing it is a faint haze the outline leaves alone.
+  c.globalCompositeOperation = 'lighter'; c.globalAlpha = .28; c.fillStyle = hot[1];
+  c.fillRect(X - 1, Y, s + 2, s); c.fillRect(X, Y - 1, s, s + 2);
+  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  c.fillStyle = hot[1]; c.fillRect(X, Y, s, s);
+  c.fillStyle = hot[0]; c.fillRect(X, Y, Math.max(1, s - 1), Math.max(1, s - 1));
+}
+/** A tongue of flame `h` tall from its foot (x, y), flickering by frame. */
+function flame(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, f: number, hot: Ramp = EMBER): void {
+  const lean = [0, 1, 0, -1][f % 4], hh = h + [0, 1, 2, 1][f % 4];
+  poly(c, [[x, y], [x + w, y], [x + w * .8, y - hh * .5], [x + w / 2 + lean, y - hh], [x + w * .2, y - hh * .55]], [hot[1], hot[1], hot[2], hot[2]]);
+  if (w >= 3) poly(c, [[x + w * .25, y], [x + w * .75, y], [x + w / 2 + lean * .5, y - hh * .6]], [hot[0], hot[0], hot[1], hot[1]]);
 }
 
-const BONE = '#e8e1cf', BONE_SH = '#b8ac92', SOOT = '#2a1a24';
+const OUT = '#140c1c';
+/** Element palettes (docs/design/effects-spec.md): white-hot core, body, edge, (a deeper edge for the fourth tone). */
+const EMBER: Ramp = ['#fff2a8', '#ffb347', '#e2552a', '#9e2e1c'];
+const VIOLET: Ramp = ['#f0e0ff', '#b06bff', '#6b3aa0', '#40205e'];
+const BLOOD: Ramp = ['#ffd0c0', '#ff4a3a', '#a8201a', '#601010'];
 
-/** A skeleton's body (skull, ribs, pelvis, legs) at x offset `o`: the walker's and the archer's, and the Warlock's raised. */
-function skeleton(c: CanvasRenderingContext2D, o: number, b: number, bone: string, sh: string, eye: string): void {
-  px(c, o + 6, 17, 2, 6 - b, sh); px(c, o + 10, 17, 2, 5 + b, sh); px(c, o + 5, 23 - b, 3, 1, bone); px(c, o + 10, 22 + b, 3, 1, bone);
-  px(c, o + 5, 15, 8, 2, bone); px(c, o + 8, 9, 2, 6, sh);
-  for (let i = 0; i < 3; i++) px(c, o + 5, 9 + i * 2, 8, 1, bone);
-  px(c, o + 4, 8, 10, 1, bone); px(c, o + 3, 9, 1, 6 + b, sh);
-  px(c, o + 5, 1 + b, 8, 6, bone); px(c, o + 5, 6 + b, 8, 1, sh); px(c, o + 6, 7 + b, 6, 1, bone);
-  px(c, o + 6, 3 + b, 2, 2, SOOT); px(c, o + 10, 3 + b, 2, 2, SOOT); px(c, o + 6, 3 + b, 1, 1, eye); px(c, o + 11, 3 + b, 1, 1, eye);
-  px(c, o + 8, 5 + b, 2, 1, SOOT);
+const R = {
+  ash: ['#c9bdc4', '#968a93', '#6a5f6b', '#433a4b'],
+  ashDk: ['#8a7e88', '#625764', '#463d4c', '#2e2636'],
+  obs: ['#6e6290', '#3c3354', '#272138', '#181324'],
+  obsDk: ['#463c60', '#2a2440', '#1c182c', '#120e1c'],
+  rust: ['#e6aa70', '#b47144', '#7e482c', '#50301e'],
+  iron: ['#c2bccc', '#7c7688', '#524c5c', '#34303c'],
+  imp: ['#ffa070', '#da4b2c', '#9c2c1c', '#621a14'],
+  wing: ['#c04a30', '#82301e', '#5a1e16', '#3a140e'],
+  robe: ['#86707f', '#5a4755', '#3e313c', '#271e28'],
+  hood: ['#6e5a68', '#463844', '#30262f', '#1e171e'],
+  bone: ['#fffaf0', '#e8e1cf', '#bdb197', '#857964'],
+  vbone: ['#fdf6ff', '#ddd2ea', '#a99bc0', '#73648c'],
+  orc: ['#aab882', '#77855c', '#566244', '#3a422e'],
+  leather: ['#9c785c', '#6a4c3a', '#483428', '#2e211b'],
+  wood: ['#b07a48', '#8a5a34', '#5a3820', '#3a2414'],
+  char: ['#6a4c3c', '#4a3228', '#33221c', '#211612'],
+  basalt: ['#78707c', '#4e4754', '#35303a', '#231f28'],
+  red: ['#cc5c3c', '#923422', '#642016', '#42140e'],
+  steel: ['#8c8a9c', '#5c5a6c', '#403e4e', '#2a2834'],
+  cowl: ['#7e3c30', '#542622', '#3a1a18', '#26100e'],
+  wraith: ['#86729e', '#544268', '#382b4a', '#221a30'],
+  ghoul: ['#c8bec2', '#988d95', '#6c626b', '#483f48'],
+  drake: ['#ffa264', '#dc4e2c', '#9c2e1c', '#621c14'],
+  belly: ['#fff0b0', '#ffc262', '#dc8a30', '#9e5a1c'],
+  slag: ['#907a68', '#5e4c42', '#40342e', '#28201c'],
+  glass: ['#c4d4f8', '#524c76', '#302b48', '#1b172a'],
+  crystal: ['#ffffff', '#b8c8f0', '#7a8cc4', '#4a5890'],
+  gold: ['#fff0a0', '#e8b040', '#a87420', '#6a4414'],
+  sov: ['#64505c', '#3e2c34', '#2c1e26', '#1a1016'],
+  membrane: ['#6a5482', '#45365a', '#2e2440', '#1c1628'],
+  void: ['#2a1c30', '#140c18', '#0e0812', '#08040a'],
+} satisfies Record<string, Ramp>;
+
+/** The walk: a leg's swing (forward, under, back, under), and the body's rise as a foot passes. */
+const STEP = [2, 0, -2, 0] as const;
+const BOB = [0, -1, 0, -1] as const;
+/** A leg pair's lift: pair A steps on frame 1, pair B on frame 3. */
+const liftA = (f: number) => f === 1 ? 2 : 0, liftB = (f: number) => f === 3 ? 2 : 0;
+
+/** Four legs (far pair darker, drawn first): hips at x `back` and `front`, on row `hip`; feet on row `ground`. */
+function legs4(c: CanvasRenderingContext2D, f: number, back: number, front: number, hip: number, ground: number, t: number, far: Ramp, near: Ramp, claw: string): void {
+  const s = STEP[f];
+  const leg = (x: number, swing: number, lift: number, r: Ramp) => {
+    const fx = x + swing, fy = ground - lift;
+    limb(c, [x, hip], [x + swing * .4 - 1, (hip + fy) / 2 + 1], t + 1, r);
+    limb(c, [x + swing * .4 - 1, (hip + fy) / 2 + 1], [fx, fy - 1], t, r);
+    px(c, fx - 1, fy, t + 2, 1, r[3]); dot(c, fx + t, fy, claw);
+  };
+  leg(back + 2, -s, liftB(f), far); leg(front + 2, s, liftA(f), far);
+  leg(back, s, liftA(f), near); leg(front, -s, liftB(f), near);
 }
-/** The Bone Walker: a skeleton of the old Bastion's garrison, still marching with a slag-iron blade. */
-function paintBoneWalker(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  skeleton(c, 0, b, BONE, BONE_SH, '#ff8a2e');
-  px(c, 14, 9 - b, 1, 5, BONE_SH);
-  px(c, 15, 1 - b + 1, 2, 12, '#8a7f86'); px(c, 15, 1 - b + 1, 1, 12, '#c9c2cc'); px(c, 13, 13 - b, 5, 1, '#5e3a28');
+
+// ── The beasts ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The Ash Wolf: a lean grey-ember wolf of the Emberwood, a cinder in its eye and embers caught in its ruff. */
+function paintWolf(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], wag = [0, 1, 0, -1][f];
+  // Tail: a brush of grey fur held out behind, its tip still smouldering.
+  poly(c, [[7, 9 + b], [3, 5 + wag], [1, 4 + wag], [2, 7 + wag], [5, 11 + b]], R.ash);
+  legs4(c, f, 8, 19, 13 + b, 20, 2, R.ashDk, R.ash, R.bone[2]);
+  orb(c, 13, 11.5 + b, 7.5, 3.8, R.ash);
+  orb(c, 19.5, 10.5 + b, 4.2, 4.6, R.ash);
+  px(c, 10, 14 + b, 8, 1, R.ash[2]);
+  // The ruff: a jag of lighter fur along the back and the chest.
+  for (let i = 0; i < 5; i++) dot(c, 8 + i * 2.5, 8 + b - (i % 2), R.ash[0]);
+  dot(c, 22, 13 + b, R.ash[0]); dot(c, 21, 14 + b, R.ash[0]);
+  // Head: two pricked ears, a long tapering muzzle.
+  poly(c, [[20, 6 + b], [21, 1 + b], [23, 4 + b]], R.ashDk);
+  orb(c, 23.5, 7.5 + b, 3.8, 3.5, R.ash);
+  poly(c, [[23, 4 + b], [24.5, 0 + b], [26, 4 + b]], R.ash);
+  dot(c, 24, 3 + b, R.ash[3]);
+  poly(c, [[24, 6 + b], [29.5, 8.5 + b], [29.5, 10.5 + b], [26, 11 + b], [23, 11 + b]], R.ash);
+  px(c, 28, 8 + b, 2, 1, OUT); line(c, [25, 10 + b], [28, 10 + b], R.ashDk[3]);
+  dot(c, 27, 11 + b, R.bone[1]);
+  glow(c, 24, 6 + b, 1, EMBER);
+  // Embers caught in the fur.
+  if (f % 2 === 0) dot(c, 10, 9 + b, EMBER[1]); else dot(c, 14, 8 + b, EMBER[1]);
+  glow(c, 1, 5 + wag, 1, EMBER);
 }
-/** A skeleton the Warlock raised: the same bones, blanched violet, the eyes burning his colour; a shield instead of a blade. */
-function paintRaised(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  skeleton(c, 0, b, '#ddd2ea', '#a99bc0', '#c88bff');
-  px(c, 14, 9 - b, 1, 5, '#a99bc0');
-  px(c, 15, 1 - b + 1, 2, 12, '#6b5a86'); px(c, 15, 1 - b + 1, 1, 12, '#b06bff'); px(c, 13, 13 - b, 5, 1, '#3b2140');
-  px(c, 0, 9, 4, 6, '#3b2140'); px(c, 1, 10, 2, 4, '#b06bff');
+
+/** The Lava Hound: a hound of cracked obsidian, magma showing through, a mane of flame along its back. */
+function paintHound(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], wag = [0, 1, 0, -1][f];
+  poly(c, [[6, 13 + b], [2, 8 + wag], [1, 10 + wag], [4, 15 + b]], R.obs);
+  flame(c, 0, 9 + wag, 3, 4, f);
+  legs4(c, f, 7, 21, 15 + b, 22, 2, R.obsDk, R.obs, EMBER[1]);
+  orb(c, 13, 13 + b, 9, 5.5, R.obs);
+  orb(c, 21, 12 + b, 5.5, 5.5, R.obs);
+  // The mane: flames that lick back along the spine.
+  for (let i = 0; i < 5; i++) flame(c, 6 + i * 3.4, 9 + b - (i > 2 ? 1 : 0), 3, 2 + ((i + f) % 3), f + i);
+  // Cracks: magma showing through.
+  line(c, [8, 12 + b], [11, 14 + b], EMBER[2]); line(c, [11, 14 + b], [13, 13 + b], EMBER[1]);
+  line(c, [15, 15 + b], [18, 13 + b], EMBER[2]); dot(c, 16, 14 + b, EMBER[0]);
+  line(c, [20, 9 + b], [22, 11 + b], EMBER[2]);
+  // Head: heavy jaw, a mouth of fire.
+  poly(c, [[23, 6 + b], [24, 2 + b], [26, 5 + b]], R.obsDk);
+  orb(c, 26.5, 9 + b, 5, 4.2, R.obs);
+  poly(c, [[27, 8 + b], [31, 10 + b], [31, 12 + b], [27, 12 + b]], R.obs);
+  poly(c, [[26, 13 + b], [31, 13 + b], [30, 15 + b + (f % 2)], [26, 15 + b]], R.obsDk);
+  px(c, 27, 12 + b, 4, 1 + (f % 2), EMBER[1]); dot(c, 28, 12 + b, EMBER[0]);
+  glow(c, 28, 8 + b, 1, EMBER);
 }
-/** The Bone Archer: a hooded skeleton with a bow of blackened charwood. */
-function paintBoneArcher(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  skeleton(c, 2, b, BONE, BONE_SH, '#ffd25a');
-  px(c, 6, 0 + b, 10, 3, '#6a2a24'); px(c, 6, 0 + b, 2, 6, '#6a2a24'); px(c, 14, 0 + b, 2, 6, '#6a2a24');
-  px(c, 16, 9, 1, 5, BONE_SH);
-  px(c, 18, 4, 1, 14, '#5e3a28'); px(c, 17, 3, 1, 2, '#5e3a28'); px(c, 17, 17, 1, 2, '#5e3a28');
-  px(c, 19, 5, 1, 12, '#e9e4d8');
-  if (!f) { px(c, 12, 10, 7, 1, '#c9c2cc'); px(c, 11, 9, 2, 3, '#ff8a2e'); }
-}
-/** The Ash Ghoul: a hunched grey eater of the dead, quick on all fours, red-eyed. */
+
+/** The Ash Ghoul: a hunched grey eater of the dead, quick on all fours, a rag of pyre-ash on its back, red-eyed. */
 function paintGhoul(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 4, 13, 3, 5 - b, '#4a4248'); px(c, 12, 13, 3, 4 + b, '#4a4248'); px(c, 4, 10, 2, 5 + b, '#5e565c');
-  px(c, 3, 6 + b, 13, 8, '#7a7078'); px(c, 3, 6 + b, 13, 2, '#948a92'); px(c, 3, 12 + b, 13, 2, '#5e565c');
-  px(c, 5, 5 + b, 2, 1, '#5e565c'); px(c, 9, 5 + b, 2, 1, '#5e565c'); px(c, 13, 5 + b, 2, 1, '#5e565c');
-  px(c, 14, 4 + b, 6, 6, '#8a8088'); px(c, 14, 4 + b, 6, 1, '#a49aa2');
-  px(c, 16, 6 + b, 1, 1, '#ff4a3a'); px(c, 18, 6 + b, 1, 1, '#ff4a3a'); px(c, 15, 9 + b, 5, 1, SOOT); px(c, 16, 9 + b, 1, 1, BONE); px(c, 18, 9 + b, 1, 1, BONE);
-  px(c, 15, 10, 2, 5 - b, '#5e565c'); px(c, 16, 15 - b, 3, 1, BONE);
-  px(c, 6, 9 + b, 1, 1, '#ff8a2e'); px(c, 10, 11 + b, 1, 1, '#ff8a2e');
+  const b = BOB[f], s = STEP[f];
+  // Far limbs.
+  limb(c, [8, 13 + b], [6, 17], 2, R.ashDk); limb(c, [6, 17], [8 - s / 2, 20 - liftB(f)], 2, R.ashDk);
+  limb(c, [17, 11 + b], [21 - s, 20 - liftA(f)], 2, R.ashDk);
+  // Body: a bony hunch.
+  orb(c, 12, 11 + b, 8, 5, R.ghoul);
+  for (let i = 0; i < 4; i++) dot(c, 7 + i * 3, 6 + b + (i === 1 || i === 2 ? 0 : 1), R.ghoul[0]);
+  for (let i = 0; i < 3; i++) line(c, [10 + i * 3, 12 + b], [11 + i * 3, 15 + b], R.ghoul[2]);
+  // The ash shawl, tattered.
+  poly(c, [[5, 8 + b], [13, 5 + b], [17, 8 + b], [15, 12 + b], [12, 10 + b], [10, 13 + b], [8, 10 + b], [5, 12 + b]], R.hood);
+  // Near limbs: a bent hind leg, a long clawed arm.
+  limb(c, [7, 14 + b], [4, 17], 3, R.ghoul); limb(c, [4, 17], [7 + s / 2, 20 - liftA(f)], 2, R.ghoul);
+  limb(c, [16, 12 + b], [19, 16 + b], 3, R.ghoul); limb(c, [19, 16 + b], [22 + s, 20 - liftB(f)], 2, R.ghoul);
+  dot(c, 23 + s, 20 - liftB(f), R.bone[1]); dot(c, 24 + s, 19 - liftB(f), R.bone[1]);
+  // Head: low and forward, the jaw hanging.
+  orb(c, 22, 11 + b, 4.5, 3.8, R.ghoul);
+  poly(c, [[21, 13 + b], [27, 13 + b], [26, 16 + b + (f % 2)], [22, 15 + b]], R.ghoul);
+  px(c, 22, 13 + b, 5, 1 + (f % 2), R.void[1]);
+  dot(c, 23, 13 + b, R.bone[0]); dot(c, 25, 13 + b, R.bone[0]);
+  px(c, 22, 9 + b, 5, 1, R.ghoul[3]);
+  glow(c, 23, 10 + b, 1, BLOOD); glow(c, 26, 10 + b, 1, BLOOD);
+  if (f === 2) dot(c, 9, 9 + b, EMBER[1]);
 }
-/** The Cinder Wraith: a hooded shade of ash with an ember for a heart; no feet, it drifts. */
+
+/** The Cinder Imp: a small horned ember-imp on bat wings, a spade-tailed grin with a fire in its belly. */
+function paintImp(c: CanvasRenderingContext2D, f: number): void {
+  const b = [1, 0, -1, 0][f], tip = [3, 8, 13, 8][f];
+  // The far wing, then the tail.
+  poly(c, [[10, 12 + b], [5, tip - 1], [1, tip + 2], [4, 14 + b], [9, 16 + b]], [R.wing[2], R.wing[2], R.wing[3], R.wing[3]]);
+  limb(c, [9, 19 + b], [5, 21], 1, R.imp); limb(c, [5, 21], [3, 18], 1, R.imp);
+  poly(c, [[1, 16], [4, 15], [3, 19]], R.imp);
+  // Body and legs.
+  limb(c, [10, 19 + b], [9, 22 + b], 2, R.imp); limb(c, [14, 19 + b], [15, 22 + b], 2, R.imp);
+  orb(c, 12, 15.5 + b, 4.5, 5, R.imp);
+  orb(c, 12.5, 16.5 + b, 2.2, 2.4, [EMBER[1], EMBER[1], EMBER[2], EMBER[2]]);
+  dot(c, 12, 16 + b, EMBER[0]);
+  // The near wing.
+  poly(c, [[14, 12 + b], [19, tip - 1], [23, tip + 2], [20, 14 + b], [15, 16 + b]], R.wing);
+  line(c, [15, 13 + b], [20, tip], R.wing[3]); line(c, [19, tip], [21, 14 + b], R.wing[2]);
+  // Head: horns, yellow eyes, a grin.
+  poly(c, [[7, 7 + b], [6, 1 + b], [9, 5 + b]], R.char); poly(c, [[15, 5 + b], [18, 1 + b], [17, 7 + b]], R.char);
+  orb(c, 12, 8.5 + b, 5.5, 4.5, R.imp);
+  glow(c, 10, 7 + b, 2, EMBER); glow(c, 14, 7 + b, 2, EMBER);
+  px(c, 10, 11 + b, 5, 1, R.imp[3]); dot(c, 11, 12 + b, R.bone[0]); dot(c, 13, 12 + b, R.bone[0]);
+  // Little arms, claws out.
+  limb(c, [8, 14 + b], [6, 17 + b], 1, R.imp); limb(c, [16, 14 + b], [18, 16 + b], 1, R.imp);
+}
+
+/** The Rivet Maw: a rust-iron jaw on stubby legs, rivets for teeth, a forge-glow in its throat. */
+function paintMaw(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], open = [3, 2, 0, 2][f];
+  // Legs.
+  for (const [x, l] of [[5, liftB(f)], [9, liftA(f)], [14, liftB(f)], [18, liftA(f)]] as const) {
+    limb(c, [x, 13 + b], [x - (l ? 1 : 0), 18 - l / 2], 2, x === 9 || x === 18 ? R.iron : [R.iron[1], R.iron[2], R.iron[3], R.iron[3]]);
+    px(c, x - 1 - (l ? 1 : 0), 18 - l / 2, 3, 1, R.iron[3]);
+  }
+  // Lower jaw, the mouth, the throat's glow.
+  poly(c, [[2, 10 + b], [21, 10 + b + open], [21, 14 + b + open], [3, 15 + b]], R.rust);
+  poly(c, [[4, 9 + b], [20, 9 + b], [20, 10 + b + open], [4, 11 + b]], R.void);
+  if (open) { px(c, 7, 10 + b, 5, Math.max(1, open - 1), EMBER[2]); dot(c, 8, 10 + b, EMBER[1]); }
+  for (let i = 0; i < 5; i++) dot(c, 6 + i * 3, 10 + b + Math.round(open * i / 5), R.bone[1]);
+  // Upper jaw: the riveted shell.
+  poly(c, [[2, 5 + b], [5, 2 + b], [18, 2 + b], [22, 5 + b], [22, 9 + b], [2, 9 + b]], R.rust);
+  px(c, 2, 6 + b, 20, 1, R.rust[2]);
+  for (let i = 0; i < 6; i++) { dot(c, 4 + i * 3, 4 + b, R.rust[0]); dot(c, 4 + i * 3, 5 + b, R.rust[3]); }
+  for (let i = 0; i < 5; i++) { dot(c, 5 + i * 3, 9 + b, R.bone[0]); dot(c, 5 + i * 3, 8 + b, R.bone[2]); }
+  // Eyes on stalks of iron.
+  limb(c, [14, 3 + b], [14, 1 + b], 1, R.iron); limb(c, [19, 3 + b], [20, 1 + b], 1, R.iron);
+  glow(c, 13, 0 + b, 2, EMBER); glow(c, 19, 0 + b, 2, EMBER);
+}
+
+/** The Slag Crawler: a long beetle of cooled slag plates, fire showing at every seam, iron mandibles. */
+function paintCrawler(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], pinch = [2, 1, 0, 1][f];
+  // Six legs, the far three darker.
+  for (let i = 0; i < 3; i++) {
+    const sw = (i % 2 ? -1 : 1) * STEP[f] / 2;
+    limb(c, [8 + i * 7, 12], [10 + i * 7 + sw, 17 - (i % 2 ? liftA(f) : liftB(f)) / 2], 1, R.obsDk);
+  }
+  // The plates, back to front, the seams glowing.
+  for (let i = 0; i < 4; i++) {
+    const x = 5 + i * 6.5, y = 10.5 + (i % 2 ? b : 0);
+    orb(c, x, y, 4.6, 4.6 - (i === 0 ? .8 : 0), R.slag);
+    line(c, [x - 3, y - 2], [x + 2, y - 3], R.slag[0]);
+    if (i) { line(c, [x - 5, y - 4], [x - 5, y + 3], R.slag[3]); line(c, [x - 4, y - 3], [x - 4, y + 3], EMBER[2]); dot(c, x - 4, y, EMBER[(i + f) % 2]); }
+    poly(c, [[x - 2, y - 3.5], [x + .5, y - 7], [x + 2, y - 3.5]], R.basalt);
+    line(c, [x - 2, y + 2], [x + 2, y + 1], EMBER[2]);
+  }
+  for (let i = 0; i < 3; i++) {
+    const sw = (i % 2 ? 1 : -1) * STEP[f] / 2;
+    limb(c, [7 + i * 7, 13], [8 + i * 7 + sw, 18 - (i % 2 ? liftB(f) : liftA(f)) / 2], 1, R.basalt);
+    dot(c, 8 + i * 7 + sw, 18, R.basalt[3]);
+  }
+  // Head and mandibles.
+  orb(c, 29, 10.5, 4.5, 4, R.obsDk);
+  glow(c, 30, 8, 1, EMBER); glow(c, 32, 9, 1, EMBER);
+  limb(c, [31, 12], [34, 13 - pinch], 1, R.iron); limb(c, [34, 13 - pinch], [33, 15 - pinch], 1, R.iron);
+  limb(c, [30, 13], [34, 15 + pinch], 1, R.iron); dot(c, 33, 16 + pinch, R.iron[0]);
+}
+
+/** The Ember Drake: a wyvern of the Molten Fields, scales like cooling lava, a belly of banked fire. */
+function paintDrake(c: CanvasRenderingContext2D, f: number): void {
+  const b = [1, 0, -1, 0][f], wy = [1, 7, 15, 7][f], wx = [10, 5, 8, 5][f];
+  // Tail, its tip a flame.
+  limb(c, [10, 19 + b], [5, 21], 3, R.drake); limb(c, [5, 21], [2, 17], 2, R.drake);
+  flame(c, 0, 17, 3, 3, f);
+  // The far wing.
+  poly(c, [[17, 13 + b], [wx + 4, wy - 1], [wx - 2, wy + 3], [12, 16 + b]], [R.wing[2], R.wing[2], R.wing[3], R.wing[3]]);
+  // Legs.
+  limb(c, [12, 21 + b], [11 - STEP[f] / 2, 27 - liftB(f)], 3, R.drake); px(c, 9 - STEP[f] / 2, 27 - liftB(f), 4, 1, R.char[2]);
+  limb(c, [20, 21 + b], [21 + STEP[f] / 2, 27 - liftA(f)], 3, R.drake); px(c, 20 + STEP[f] / 2, 27 - liftA(f), 4, 1, R.char[2]);
+  // Body, belly plates, spines.
+  orb(c, 16, 18 + b, 8, 5.5, R.drake);
+  orb(c, 17, 21 + b, 6, 2.6, R.belly);
+  for (let i = 0; i < 3; i++) line(c, [14 + i * 3, 20 + b], [14 + i * 3, 23 + b], R.belly[2]);
+  for (let i = 0; i < 4; i++) dot(c, 10 + i * 3, 12 + b + (i === 0 ? 1 : 0), R.drake[3]);
+  // Neck and head.
+  limb(c, [21, 16 + b], [27, 10 + b], 4, R.drake);
+  for (let i = 0; i < 3; i++) dot(c, 22 + i * 2, 12 + b - i * 2, R.drake[3]);
+  poly(c, [[26, 7 + b], [23, 3 + b], [27, 5 + b]], R.char);
+  orb(c, 29, 9 + b, 4.5, 3.5, R.drake);
+  poly(c, [[30, 8 + b], [36, 9 + b], [36, 11 + b], [30, 12 + b]], R.drake);
+  poly(c, [[29, 12 + b], [35, 12 + b], [34, 13 + b], [29, 13 + b]], R.belly);
+  dot(c, 35, 9 + b, OUT);
+  glow(c, 29, 8 + b, 1, EMBER);
+  if (f === 0) glow(c, 36, 11 + b, 1, EMBER);
+  // The near wing: arm, fingers, membrane.
+  poly(c, [[17, 13 + b], [wx + 10, wy], [wx + 14, wy + 6], [wx + 15, wy + 10], [20, 16 + b]], R.wing);
+  limb(c, [17, 13 + b], [wx + 10, wy], 1, R.drake);
+  line(c, [wx + 10, wy], [wx + 14, wy + 6], R.wing[3]); line(c, [wx + 10, wy], [wx + 15, wy + 10], R.wing[3]);
+  dot(c, wx + 10, wy - 1, R.bone[1]);
+}
+
+// ── The undead ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+interface Bones { bone: Ramp; eye: Ramp; rag?: Ramp }
+/** A skeleton (skull, ribs, pelvis, legs, the far arm) at x offset `o`: the walker's, the archer's and the Warlock's raised. */
+function skeleton(c: CanvasRenderingContext2D, f: number, o: number, k: Bones): void {
+  const b = BOB[f], s = STEP[f], r = k.bone, far: Ramp = [r[1], r[2], r[3], r[3]];
+  // Far leg and arm.
+  limb(c, [o + 11, 27 + b], [o + 11 - s / 2, 30 + b], 2, far); limb(c, [o + 11 - s / 2, 30 + b], [o + 11 - s, 33 - liftB(f)], 2, far);
+  px(c, o + 11 - s, 34 - liftB(f), 3, 1, far[2]);
+  limb(c, [o + 6, 17 + b], [o + 5 + s / 2, 21 + b], 2, far); limb(c, [o + 5 + s / 2, 21 + b], [o + 6 + s / 2, 25 + b], 2, far);
+  // Spine, ribs, pelvis.
+  limb(c, [o + 10, 14 + b], [o + 10, 26 + b], 2, r);
+  orb(c, o + 10.5, 19 + b, 4.5, 3.8, r);
+  for (let i = 0; i < 3; i++) px(c, o + 7, 17 + b + i * 2, 7, 1, r[3]);
+  px(c, o + 10, 16 + b, 1, 6, r[1]);
+  poly(c, [[o + 7, 25 + b], [o + 14, 25 + b], [o + 13, 28 + b], [o + 8, 28 + b]], r);
+  if (k.rag) poly(c, [[o + 7, 25 + b], [o + 14, 25 + b], [o + 14, 29 + b], [o + 12, 28 + b], [o + 11, 31 + b], [o + 9, 28 + b], [o + 7, 29 + b]], k.rag);
+  // Near leg.
+  limb(c, [o + 9, 27 + b], [o + 9 + s / 2, 30 + b], 2, r); limb(c, [o + 9 + s / 2, 30 + b], [o + 9 + s, 33 - liftA(f)], 2, r);
+  px(c, o + 9 + s, 34 - liftA(f), 3, 1, r[2]);
+  // The skull: big (the Keeper's proportions), a hollow stare, a lit eye.
+  orb(c, o + 10.5, 8 + b, 6.2, 5.6, r);
+  poly(c, [[o + 6, 11 + b], [o + 15, 11 + b], [o + 14, 15 + b], [o + 7, 15 + b]], r);
+  px(c, o + 8, 13 + b, 6, 1, r[3]); for (let i = 0; i < 3; i++) dot(c, o + 8 + i * 2, 14 + b, r[3]);
+  orb(c, o + 9, 9 + b, 1.8, 1.6, R.void); orb(c, o + 13, 9 + b, 1.8, 1.6, R.void);
+  dot(c, o + 11, 11 + b, R.void[1]);
+  glow(c, o + 9, 9 + b, 1, k.eye); glow(c, o + 13, 9 + b, 1, k.eye);
+}
+/** The near arm of a skeleton, out to the hand at (hx, hy). */
+function boneArm(c: CanvasRenderingContext2D, f: number, o: number, hx: number, hy: number, r: Ramp): void {
+  const b = BOB[f];
+  limb(c, [o + 14, 16 + b], [o + 15, 20 + b], 2, r); limb(c, [o + 15, 20 + b], [hx, hy + b], 2, r);
+}
+/** The Bone Walker: a skeleton of the old Bastion's garrison, a rag of its colours, still marching with a slag-iron blade. */
+function paintBoneWalker(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f];
+  skeleton(c, f, 0, { bone: R.bone, eye: EMBER, rag: R.red });
+  limb(c, [18, 22 + b], [18, 6 + b], 2, R.iron); line(c, [18, 7 + b], [18, 20 + b], R.iron[0]);
+  dot(c, 18, 5 + b, R.iron[0]); line(c, [19, 12 + b], [19, 16 + b], EMBER[2]);
+  px(c, 15, 22 + b, 6, 1, R.leather[1]); px(c, 17, 23 + b, 2, 2, R.leather[2]);
+  boneArm(c, f, 0, 17, 23, R.bone);
+}
+/** The Bone Archer: a hooded skeleton with a bow of blackened charwood, an ember-tipped arrow on the string. */
+function paintBoneArcher(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f];
+  skeleton(c, f, 1, { bone: R.bone, eye: EMBER });
+  // The hood over the skull and down the back.
+  poly(c, [[3, 14 + b], [7, 13 + b], [8, 22 + b], [4, 21 + b]], R.cowl);
+  poly(c, [[4, 10 + b], [6, 3 + b], [10, 1 + b], [15, 1 + b], [18, 4 + b], [18, 8 + b], [15, 6 + b], [9, 6 + b], [7, 14 + b], [4, 16 + b]], R.cowl);
+  line(c, [9, 6 + b], [15, 6 + b], R.red[0]);
+  // The bow, held forward; the arrow drawn and loosed in turn.
+  const drawn = f < 2 ? 2 : 0;
+  limb(c, [22, 11 + b], [24, 20 + b], 2, R.char); limb(c, [24, 20 + b], [22, 29 + b], 2, R.char);
+  line(c, [22, 11 + b], [19 - drawn, 20 + b], R.bone[1]); line(c, [19 - drawn, 20 + b], [22, 29 + b], R.bone[1]);
+  line(c, [13 - drawn, 20 + b], [24, 20 + b], R.wood[0]);
+  dot(c, 12 - drawn, 19 + b, R.red[0]); dot(c, 12 - drawn, 21 + b, R.red[0]);
+  glow(c, 24, 19 + b, 1, EMBER);
+  boneArm(c, f, 1, 23, 20, R.bone);
+  limb(c, [15, 17 + b], [18 - drawn, 20 + b], 2, R.bone);
+}
+/** A skeleton the Warlock raised: the same bones blanched violet, his colour burning in the eyes, a rune-shield and a blade. */
+function paintRaised(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f];
+  orb(c, 4, 21 + b, 3.6, 4.6, R.membrane);
+  line(c, [4, 18 + b], [4, 24 + b], VIOLET[1]); line(c, [2, 21 + b], [6, 21 + b], VIOLET[2]);
+  skeleton(c, f, 0, { bone: R.vbone, eye: VIOLET });
+  limb(c, [18, 22 + b], [18, 6 + b], 2, R.membrane); line(c, [18, 7 + b], [18, 20 + b], VIOLET[1]);
+  dot(c, 18, 5 + b, VIOLET[0]); px(c, 15, 22 + b, 6, 1, R.membrane[2]);
+  boneArm(c, f, 0, 17, 23, R.vbone);
+  if (f % 2) dot(c, 4, 21 + b, VIOLET[0]);
+}
+
+/** The Cinder Wraith: a hooded shade of ash, an ember for a heart, bone hands reaching; no feet, it drifts. */
 function paintWraith(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 4, 6, 12, 14, '#3a2c44'); px(c, 4, 6, 2, 14, '#4e3c5c');
-  for (let i = 0; i < 4; i++) { const h = 3 + ((i + f) % 2) * 2; px(c, 4 + i * 3, 20, 2, h, '#3a2c44'); px(c, 4 + i * 3, 19 + h, 2, 1, '#ff6a2a'); }
-  px(c, 5, 1, 10, 7, '#2a2034'); px(c, 6, 0, 8, 2, '#3a2c44'); px(c, 7, 3, 6, 4, '#120a0e');
-  px(c, 8, 4, 1, 1, '#ffd25a'); px(c, 11, 4, 1, 1, '#ffd25a');
-  px(c, 1, 8 + b, 3, 7, '#3a2c44'); px(c, 16, 9 - b, 3, 7, '#3a2c44'); px(c, 1, 15 + b, 2, 2, BONE_SH); px(c, 17, 16 - b, 2, 2, BONE_SH);
-  px(c, 9, 10, 2, 3, '#ff8a2e'); px(c, 9, 11, 2, 1, '#ffd25a');
+  // The tatters where feet should be, waving.
+  for (let i = 0; i < 5; i++) {
+    const x = 5 + i * 3, len = 4 + ((i + f) % 3) * 2, sway = [0, 1, 0, -1][(i + f) % 4];
+    limb(c, [x, 26], [x + sway, 26 + len], 2, R.wraith);
+    dot(c, x + sway, 27 + len, EMBER[(i + f) % 3 === 0 ? 1 : 2]);
+  }
+  // Robe, and the far sleeve.
+  limb(c, [7, 14], [3, 21], 3, [R.wraith[2], R.wraith[2], R.wraith[3], R.wraith[3]]);
+  poly(c, [[6, 11], [17, 11], [20, 29], [3, 29]], R.wraith);
+  line(c, [8, 14], [6, 28], R.wraith[2]); line(c, [14, 14], [16, 28], R.wraith[2]);
+  // The ember heart.
+  glow(c, 11, 18, 2, EMBER);
+  if (f % 2) dot(c, 12, 16, EMBER[1]);
+  // The hood, and nothing inside it but two coals.
+  poly(c, [[6, 10], [9, 2], [13, 0], [15, 4], [19, 8], [18, 13], [6, 14]], R.wraith);
+  orb(c, 13.5, 9.5, 4, 3.4, R.void);
+  glow(c, 12, 9, 1, EMBER); glow(c, 15, 9, 1, EMBER);
+  // The near sleeve, a bone hand reaching out.
+  const r = [0, 1, 0, -1][f];
+  limb(c, [16, 13], [20, 18 + r], 3, R.wraith);
+  limb(c, [20, 18 + r], [22, 20 + r], 1, R.bone); limb(c, [21, 18 + r], [23, 18 + r], 1, R.bone);
+  dot(c, 1, 21, R.bone[2]); dot(c, 2, 22, R.bone[2]);
 }
-const ORC = '#6f7a5a', ORC_SH = '#4f5a40';
+
+/** The Ashbone Dragon: the Bastion's last lord, a dragon of bare bone round a heart of burning slag, violet light in its skull. */
+function paintBoneDragon(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], w = [0, 4, 8, 4][f], B = R.bone, far: Ramp = [B[1], B[2], B[3], B[3]];
+  // The far wing: a bat's arm of bone, three fingers, tattered membrane between.
+  const S: P2 = [34, 30], W: P2 = [26, 6 + w], T1: P2 = [3, 14 + w], T2: P2 = [9, 4 + w], T3: P2 = [18, 1 + w];
+  poly(c, [S, W, T3, [20, 9 + w], T2, [11, 13 + w], T1, [12, 24 + w / 2], [20, 32]], R.membrane);
+  for (let i = 0; i < 3; i++) px(c, 8 + i * 5, 17 + w + i, 2, 2, R.membrane[3]);
+  limb(c, S, W, 3, far); limb(c, W, T1, 2, far); limb(c, W, T2, 2, far); limb(c, W, T3, 2, far);
+  // Tail: vertebrae down to a spike.
+  for (let i = 0; i < 9; i++) orb(c, 26 - i * 2.8, 46 + i * 1.2 + (i > 5 ? (i - 5) : 0), 2.6 - i * .15, 2.2 - i * .12, B);
+  poly(c, [[2, 56], [0, 60], [4, 57]], B);
+  // Far legs.
+  limb(c, [43, 44 + b], [44 - STEP[f] / 2, 52], 3, far); limb(c, [44 - STEP[f] / 2, 52], [43 - STEP[f], 60 - liftB(f)], 3, far);
+  px(c, 41 - STEP[f], 61 - liftB(f), 6, 1, far[2]);
+  // Spine and ribs round the slag heart.
+  for (let i = 0; i < 8; i++) orb(c, 24 + i * 3, 32 + b - Math.sin(i / 7 * Math.PI) * 2, 2, 1.8, B);
+  orb(c, 36, 39 + b, 8, 5.5, [EMBER[3], '#5a1a14', '#3a120e', '#240a08']);
+  const hot = [1.5, 2, 2.5, 2][f];
+  orb(c, 36, 39 + b, 4.2 + hot / 2, 3 + hot / 3, [EMBER[0], EMBER[1], EMBER[2], EMBER[2]]);
+  glow(c, 35, 38 + b, 2, EMBER);
+  for (let i = 0; i < 5; i++) { const x = 28 + i * 4; limb(c, [x, 33 + b], [x + 1, 44 + b - Math.abs(i - 2)], 2, B); }
+  limb(c, [27, 45 + b], [46, 44 + b], 2, far);
+  // Near legs.
+  limb(c, [29, 44 + b], [27 + STEP[f] / 2, 52], 4, B); limb(c, [27 + STEP[f] / 2, 52], [28 + STEP[f], 60 - liftA(f)], 3, B);
+  px(c, 26 + STEP[f], 61 - liftA(f), 7, 1, B[2]); dot(c, 33 + STEP[f], 61 - liftA(f), B[0]);
+  // Neck: vertebrae climbing to the skull.
+  for (let i = 0; i < 6; i++) orb(c, 46 + i * 2.6, 30 - i * 3.4 + b, 2.6, 2.4, B);
+  // The skull: horned, long-snouted, violet light in the socket; the jaw drops to breathe.
+  const jaw = f === 2 ? 3 : f % 2 ? 1 : 0;
+  limb(c, [56, 9 + b], [49, 3 + b], 2, far); limb(c, [49, 3 + b], [46, 6 + b], 1, far);
+  poly(c, [[58, 15 + b], [73, 16 + b + jaw], [73, 18 + b + jaw], [59, 19 + b]], far);
+  for (let i = 0; i < 4; i++) dot(c, 62 + i * 3, 16 + b + Math.round(jaw * i / 4), B[0]);
+  if (jaw > 1) { line(c, [62, 17 + b], [72, 18 + b], EMBER[1]); dot(c, 70, 18 + b, EMBER[0]); }
+  orb(c, 60, 11 + b, 7, 5.5, B);
+  poly(c, [[61, 9 + b], [74, 12 + b], [74, 15 + b], [60, 16 + b]], B);
+  px(c, 63, 15 + b, 11, 1, B[3]); for (let i = 0; i < 4; i++) dot(c, 64 + i * 3, 16 + b, B[0]);
+  dot(c, 73, 12 + b, B[3]);
+  limb(c, [58, 7 + b], [52, 2 + b], 2, B); limb(c, [52, 2 + b], [49, 0 + b + 1], 1, B);
+  orb(c, 60, 10 + b, 2.2, 2, R.void);
+  glow(c, 60, 9 + b, 2, VIOLET);
+  // Violet bone-light along the spine.
+  if (f % 2 === 0) { dot(c, 30, 30 + b, VIOLET[1]); dot(c, 48, 22 + b, VIOLET[1]); } else { dot(c, 38, 29 + b, VIOLET[1]); dot(c, 51, 18 + b, VIOLET[1]); }
+  // The near wing, half-raised.
+  const N: P2 = [36, 31 + b], NW: P2 = [42, 12 + w / 2];
+  poly(c, [N, NW, [52, 8 + w / 2], [50, 18 + w / 2], [47, 24], [44, 29]], R.membrane);
+  limb(c, N, NW, 3, B); limb(c, NW, [52, 8 + w / 2], 2, B); limb(c, NW, [50, 18 + w / 2], 2, far);
+  dot(c, 42, 11 + w / 2, B[0]);
+}
+
+// ── The Cinder clans ──────────────────────────────────────────────────────────────────────────────────────────────
+
+/** An orc's legs, body and head (the axe arm and gear are the caller's): ash-green, tusked, red-eyed, in basalt plates. */
+function orcBody(c: CanvasRenderingContext2D, f: number, robe: Ramp | null): void {
+  const b = BOB[f], s = STEP[f];
+  // Legs and boots.
+  if (!robe) {
+    limb(c, [16, 27 + b], [16 - s, 34 - liftB(f)], 3, [R.leather[1], R.leather[2], R.leather[3], R.leather[3]]);
+    px(c, 15 - s, 34 - liftB(f), 5, 2, R.char[2]);
+    limb(c, [11, 27 + b], [11 + s, 34 - liftA(f)], 3, R.leather);
+    px(c, 10 + s, 34 - liftA(f), 5, 2, R.char[1]); px(c, 10 + s, 34 - liftA(f), 5, 1, R.char[0]);
+  } else {
+    poly(c, [[7, 19 + b], [21, 19 + b], [24, 35], [4, 35]], robe);
+    line(c, [14, 22 + b], [14, 34], robe[3]);
+    px(c, 4, 34, 20, 1, EMBER[2]);
+    px(c, 7 + s / 2, 35, 4, 2, R.char[1]); px(c, 16 - s / 2, 35, 4, 2, R.char[2]);
+  }
+  // Far arm.
+  limb(c, [7, 20 + b], [5, 27 + b], 3, [R.orc[1], R.orc[2], R.orc[3], R.orc[3]]);
+  orb(c, 5, 28 + b, 2, 2, R.orc);
+  if (!robe) {
+    // Torso: bare chest under a leather harness, a belt with a bright buckle.
+    orb(c, 14, 23 + b, 7.5, 5.5, R.orc);
+    line(c, [8, 19 + b], [18, 27 + b], R.leather[2]); line(c, [9, 19 + b], [19, 27 + b], R.leather[1]);
+    px(c, 7, 26 + b, 15, 2, R.leather[2]); px(c, 7, 26 + b, 15, 1, R.leather[1]);
+    glow(c, 13, 26 + b, 2, R.gold);
+  }
+  // Shoulder plates.
+  orb(c, 7.5, 18.5 + b, 4, 3, R.basalt); dot(c, 6, 15 + b, R.bone[1]); dot(c, 6, 16 + b, R.bone[2]);
+  orb(c, 21, 18.5 + b, 4, 3, R.basalt); dot(c, 21, 15 + b, R.bone[1]); dot(c, 21, 16 + b, R.bone[2]);
+  // Head: a big one, ears out, topknot, brow, tusks.
+  poly(c, [[7, 8 + b], [1, 5 + b], [3, 9 + b], [7, 13 + b]], R.orc); dot(c, 4, 8 + b, R.orc[3]);
+  orb(c, 14, 11 + b, 8, 7, R.orc);
+  poly(c, [[9, 13 + b], [21, 13 + b], [21, 17 + b], [10, 18 + b]], R.orc);
+  px(c, 10, 8 + b, 11, 1, R.orc[3]); px(c, 11, 7 + b, 9, 1, R.orc[2]);
+  glow(c, 13, 9 + b, 1, EMBER); glow(c, 18, 9 + b, 1, EMBER);
+  dot(c, 16, 12 + b, R.orc[3]); dot(c, 17, 12 + b, R.orc[3]);
+  px(c, 12, 15 + b, 8, 1, R.orc[3]);
+  limb(c, [12, 15 + b], [12, 13 + b], 1, R.bone); limb(c, [19, 15 + b], [19, 13 + b], 1, R.bone);
+  if (!robe) { poly(c, [[11, 5 + b], [13, 1 + b], [16, 1 + b], [17, 5 + b]], R.char); dot(c, 14, 0 + b, R.char[1]); px(c, 12, 4 + b, 5, 1, EMBER[2]); }
+}
+/** The near arm round a haft at (hx, hy). */
+function orcArm(c: CanvasRenderingContext2D, f: number, hx: number, hy: number): void {
+  const b = BOB[f];
+  limb(c, [21, 20 + b], [hx, hy + b], 3, R.orc); orb(c, hx, hy + 1 + b, 2.2, 2.2, R.orc);
+}
+/** A slag-iron axe with an ember edge, its haft from (x, top) to (x, bottom). */
+function axe(c: CanvasRenderingContext2D, f: number, x: number, top: number, bottom: number): void {
+  const b = BOB[f];
+  limb(c, [x, top + b], [x, bottom + b], 2, R.wood);
+  poly(c, [[x, top + 1 + b], [x + 5, top - 1 + b], [x + 7, top + 3 + b], [x + 5, top + 8 + b], [x, top + 6 + b]], R.iron);
+  line(c, [x + 6, top + 1 + b], [x + 6, top + 6 + b], EMBER[f % 2 ? 1 : 2]);
+}
 /** A Cinder-clan Orc: ash-green, tusked, in basalt plates, with a slag-iron axe. */
 function paintOrc(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 6, 18, 4, 6 - b, '#3a3238'); px(c, 12, 18, 4, 5 + b, '#3a3238');
-  px(c, 4, 9 + b, 14, 10, '#5a4034'); px(c, 4, 16 + b, 14, 2, '#2a1a1c'); px(c, 10, 16 + b, 2, 2, '#ffd25a');
-  px(c, 2, 8 + b, 5, 4, '#3a3238'); px(c, 15, 8 + b, 5, 4, '#3a3238'); px(c, 3, 7 + b, 1, 1, BONE_SH); px(c, 18, 7 + b, 1, 1, BONE_SH);
-  px(c, 2, 12 + b, 3, 6, ORC); px(c, 17, 12 + b, 3, 6, ORC);
-  px(c, 6, 1 + b, 10, 8, ORC); px(c, 6, 3 + b, 10, 1, ORC_SH); px(c, 8, 4 + b, 2, 1, '#ff6a2a'); px(c, 12, 4 + b, 2, 1, '#ff6a2a');
-  px(c, 7, 7 + b, 8, 2, ORC_SH); px(c, 8, 6 + b, 1, 2, BONE); px(c, 13, 6 + b, 1, 2, BONE); px(c, 10, 0 + b, 2, 2, SOOT); px(c, 7, 5 + b, 1, 1, '#ff8a2e');
-  px(c, 20, 6 - b, 1, 14, '#5e3a28'); px(c, 18, 5 - b, 4, 5, '#8a7f86'); px(c, 18, 5 - b, 1, 5, '#c9c2cc');
+  orcBody(c, f, null);
+  axe(c, f, 23, 10, 31);
+  orcArm(c, f, 23, 23);
 }
 /** An Orc Firecaller: the clan's shaman, hooded in ember-red, a flame caught on a skull-topped staff. */
 function paintFirecaller(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0;
-  px(c, 6, 24, 3, 2, SOOT); px(c, 13, 24, 3, 2, SOOT);
-  px(c, 5, 10, 12, 14, '#6a2418'); px(c, 5, 22, 12, 2, '#ff8a2e'); px(c, 10, 10, 2, 12, '#3a2034');
-  px(c, 3, 11 + b, 2, 6, ORC); px(c, 17, 11 + b, 2, 6, ORC);
-  px(c, 6, 3 + b, 10, 7, ORC); px(c, 5, 1 + b, 12, 3, '#4a1a14'); px(c, 5, 1 + b, 2, 8, '#4a1a14'); px(c, 15, 1 + b, 2, 8, '#4a1a14');
-  px(c, 8, 6 + b, 2, 1, '#ffd25a'); px(c, 12, 6 + b, 2, 1, '#ffd25a'); px(c, 8, 8 + b, 1, 2, BONE); px(c, 13, 8 + b, 1, 2, BONE);
-  px(c, 1, 5, 1, 20, '#5e3a28'); px(c, 0, 4, 3, 2, BONE);
-  px(c, 0, 0 + f, 3, 4 - f, '#ff8a2e'); px(c, 1, 1 + f, 1, 2, '#ffd25a');
+  const b = BOB[f];
+  orcBody(c, f, R.red);
+  // The hood over the head and the shoulders.
+  poly(c, [[4, 13 + b], [6, 5 + b], [11, 1 + b], [17, 1 + b], [22, 5 + b], [23, 12 + b], [20, 8 + b], [9, 7 + b], [7, 18 + b]], R.red);
+  px(c, 7, 19 + b, 14, 2, R.gold[2]); dot(c, 14, 20 + b, R.gold[0]);
+  // A string of small bones.
+  for (let i = 0; i < 4; i++) dot(c, 10 + i * 2, 22 + b + (i % 2), R.bone[1]);
+  // The staff, a skull, the flame.
+  limb(c, [24, 7], [24, 37], 2, R.wood);
+  orb(c, 24.5, 6, 2.6, 2.4, R.bone); dot(c, 24, 6, R.void[1]); dot(c, 26, 6, R.void[1]);
+  flame(c, 22, 4, 5, 6, f);
+  orcArm(c, f, 24, 22);
 }
-/** The Orc Warlord: a Cinder-clan chief grown huge, horned helm, a cape the colour of old embers. */
+/** The Orc Warlord: a Cinder-clan chief grown huge, a horned smithing helm, a cape the colour of old embers, a great axe. */
 function paintWarlord(c: CanvasRenderingContext2D, f: number): void {
-  px(c, 8, 12, 15, 18, '#5a1a14'); px(c, 8, 28, 15, 2, '#ff6a2a');
-  c.save(); c.scale(1.35, 1.35); paintOrc(c, f); c.restore();
-  const b = f ? 1 : 0;
-  px(c, 7, 1 + b, 16, 3, '#3a3238'); px(c, 4, 0 + b, 3, 4, BONE); px(c, 3, 0 + b, 2, 2, BONE); px(c, 23, 0 + b, 3, 4, BONE); px(c, 25, 0 + b, 2, 2, BONE);
-  px(c, 14, 1 + b, 2, 2, '#ffd25a');
+  grown(1.2, 1, 4, () => {
+    const b = BOB[f];
+    poly(c, [[5, 17 + b], [21, 17 + b], [26, 36], [0, 37]], R.red);
+    px(c, 0, 35, 26, 1, EMBER[2]); line(c, [6, 20 + b], [3, 34], R.red[2]);
+    warlordBody(c, f);
+    axe(c, f, 25, 6, 33);
+    poly(c, [[25, 5 + b], [20, 3 + b], [19, 11 + b], [25, 9 + b]], R.iron);
+    orcArm(c, f, 25, 22);
+  });
 }
-/** The Ember Drake: a winged lizard of the Molten Fields, scales like cooling lava. */
-function paintDrake(c: CanvasRenderingContext2D, f: number): void {
-  const w = f ? 5 : 1;
-  px(c, 0, 13, 6, 2, '#9e2e1c'); px(c, 0, 12, 2, 1, '#ff6a2a');
-  px(c, 8, w, 3, 9 - Math.min(w, 4), '#7a2a1c'); px(c, 10, w + 1, 8, 7, '#e2552a'); px(c, 10, w + 1, 8, 1, '#7a2a1c'); px(c, 13, w + 1, 1, 7, '#9e2e1c');
-  px(c, 5, 10, 13, 7, '#c8432a'); px(c, 6, 15, 11, 2, '#ffb35a'); px(c, 6, 9, 2, 1, '#7a2a1c'); px(c, 10, 9, 2, 1, '#7a2a1c'); px(c, 14, 9, 2, 1, '#7a2a1c');
-  px(c, 7, 17, 2, 4 - (f ? 1 : 0), '#7a2a1c'); px(c, 14, 17, 2, 3 + (f ? 1 : 0), '#7a2a1c'); px(c, 6, 21, 3, 1, SOOT); px(c, 13, 21, 3, 1, SOOT);
-  px(c, 17, 7, 4, 6, '#c8432a');
-  px(c, 19, 4, 6, 5, '#c8432a'); px(c, 24, 6, 4, 3, '#c8432a'); px(c, 22, 8, 5, 1, '#7a2a1c'); px(c, 21, 5, 2, 1, '#ffd25a'); px(c, 19, 2, 2, 2, SOOT); px(c, 27, 6, 1, 1, '#ffd25a');
+function warlordBody(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f];
+  orcBody(c, f, null);
+  // The helm: basalt, a gold band, two bone horns.
+  poly(c, [[6, 9 + b], [8, 3 + b], [14, 1 + b], [20, 3 + b], [22, 8 + b], [22, 9 + b]], R.basalt);
+  px(c, 6, 8 + b, 17, 1, R.gold[1]); dot(c, 14, 8 + b, R.gold[0]);
+  limb(c, [7, 5 + b], [3, 2 + b], 2, R.bone); limb(c, [3, 2 + b], [3, -2 + b], 1, R.bone);
+  limb(c, [21, 5 + b], [24, 1 + b], 2, R.bone); limb(c, [24, 1 + b], [23, -3 + b], 1, R.bone);
 }
-type P2 = readonly [number, number];
-/** A filled triangle, scanline by scanline in whole pixels (a wing's membrane stays crisp under the outline). */
-function tri(c: CanvasRenderingContext2D, a: P2, b: P2, d: P2, col: string): void {
-  const ys = [a[1], b[1], d[1]], y0 = Math.min(...ys), y1 = Math.max(...ys), edges: [P2, P2][] = [[a, b], [b, d], [d, a]];
-  for (let y = y0; y < y1; y++) {
-    const yc = y + .5, xs: number[] = [];
-    for (const [p, q] of edges) if ((p[1] <= yc) !== (q[1] <= yc)) xs.push(p[0] + (yc - p[1]) / (q[1] - p[1]) * (q[0] - p[0]));
-    if (xs.length < 2) continue;
-    const l = Math.round(Math.min(...xs)), r = Math.round(Math.max(...xs));
-    if (r > l) px(c, l, y, r - l, 1, col);
+
+// ── The forge-born ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The Cinder Bailiff, and the two wardens who are its kin grown huge: a hooded ember-golem in a soot robe, a caged lantern
+ * for a belly, two coals under the hood; the near hand holds a ledger-hook (or the Anvil-Warden's hammer).
+ */
+function bailiff(c: CanvasRenderingContext2D, f: number, tool: 'hook' | 'hammer', robe: Ramp = R.robe): void {
+  const b = BOB[f], s = STEP[f] / 2;
+  // Feet.
+  px(c, 7 - s, 30 - liftB(f) / 2, 5, 3, R.basalt[2]); px(c, 15 + s, 30 - liftA(f) / 2, 5, 3, R.basalt[1]); px(c, 15 + s, 30 - liftA(f) / 2, 5, 1, R.basalt[0]);
+  // Far arm.
+  limb(c, [5, 15 + b], [3, 23 + b], 4, [robe[1], robe[2], robe[3], robe[3]]);
+  orb(c, 3, 24 + b, 2, 2, R.basalt);
+  // Robe, a soot-stained hem.
+  poly(c, [[6, 12 + b], [20, 12 + b], [23, 31], [3, 31]], robe);
+  for (let i = 0; i < 5; i++) dot(c, 5 + i * 4, 30, robe[3]);
+  line(c, [8, 14 + b], [6, 29], robe[2]);
+  // The lantern: an iron cage, a fire that breathes.
+  px(c, 8, 16 + b, 10, 9, R.iron[3]);
+  orb(c, 13, 20.5 + b, 3.5 + (f % 2) * .5, 3.3, [EMBER[0], EMBER[1], EMBER[2], EMBER[2]]);
+  glow(c, 12, 19 + b, 2, EMBER);
+  for (let i = 0; i < 3; i++) px(c, 10 + i * 3, 16 + b, 1, 9, R.iron[1]);
+  px(c, 8, 16 + b, 10, 1, R.iron[0]); px(c, 8, 24 + b, 10, 1, R.iron[2]);
+  // The mantle and the hood, two coals inside.
+  orb(c, 13, 13 + b, 9, 3.6, R.hood);
+  poly(c, [[6, 9 + b], [9, 3 + b], [14, 1 + b], [19, 3 + b], [21, 8 + b], [20, 13 + b], [7, 13 + b]], R.hood);
+  orb(c, 15, 8.5 + b, 4.2, 3.4, R.void);
+  glow(c, 14, 8 + b, 1, EMBER); glow(c, 17, 8 + b, 1, EMBER);
+  // The near arm and what it carries.
+  if (tool === 'hook') {
+    limb(c, [23, 6 + b], [23, 30 + b], 2, R.iron);
+    limb(c, [23, 6 + b], [21, 3 + b], 2, R.iron); limb(c, [21, 3 + b], [19, 5 + b], 1, R.iron);
+    dot(c, 22, 4 + b, R.iron[0]);
+  } else {
+    limb(c, [23, 8 + b], [23, 28 + b], 2, R.wood);
+    poly(c, [[19, 5 + b], [27, 5 + b], [27, 11 + b], [19, 11 + b]], R.iron);
+    line(c, [19, 8 + b], [27, 8 + b], R.iron[2]);
+    if (f === 0) { dot(c, 27, 4 + b, EMBER[0]); dot(c, 28, 7 + b, EMBER[1]); }
   }
+  limb(c, [19, 15 + b], [22, 20 + b], 4, robe);
+  orb(c, 23, 20 + b, 2.2, 2.2, R.basalt);
 }
-/** A bone from p to q, `t` pixels thick. */
-function bone(c: CanvasRenderingContext2D, p: P2, q: P2, t: number, col: string): void {
-  const n = Math.max(Math.abs(q[0] - p[0]), Math.abs(q[1] - p[1]));
-  for (let i = 0; i <= n; i++) px(c, Math.round(p[0] + (q[0] - p[0]) * i / n), Math.round(p[1] + (q[1] - p[1]) * i / n), t, t, col);
+function paintBailiff(c: CanvasRenderingContext2D, f: number): void { bailiff(c, f, 'hook'); }
+
+/** The Ember Warden, the Ember Mine's keeper: a towering Bailiff crowned in slag, its lantern a furnace. */
+function paintWarden(c: CanvasRenderingContext2D, f: number): void {
+  grown(1.4, 2, 7, () => {
+    const b = BOB[f];
+    bailiff(c, f, 'hook', R.slag);
+    for (let i = 0; i < 4; i++) flame(c, 5 + i * 4.5, 31, 2, 1 + ((i + f) % 2), f + i);
+    // The slag crown, fire in every notch.
+    poly(c, [[8, 3 + b], [20, 3 + b], [20, 0 + b], [18, 1 + b], [16, -2 + b], [14, 0 + b], [12, -2 + b], [10, 1 + b], [8, 0 + b]], R.slag);
+    for (let i = 0; i < 3; i++) flame(c, 10 + i * 3, -1 + b, 2, 2 + ((i + f) % 2), f + i);
+    line(c, [9, 2 + b], [19, 2 + b], EMBER[2]);
+  });
 }
-/** The Ashbone Dragon: the Bastion's last lord, a dragon of bare bone round a heart of burning slag. */
-function paintBoneDragon(c: CanvasRenderingContext2D, f: number): void {
-  const b = f ? 1 : 0, w = f ? 3 : 0, M = '#3a2c44';
-  // The far wing, a bat's: an arm of bone up to the wrist, three fingers fanning out, tattered ash between.
-  const S: P2 = [31, 27], W: P2 = [25, 5 + w], T1: P2 = [3, 11 + w], T2: P2 = [10, 2 + w], T3: P2 = [19, 0 + w];
-  tri(c, W, T1, T2, M); tri(c, W, T2, T3, M); tri(c, S, W, T1, M); tri(c, T1, S, [16, 31], M);
-  for (let i = 0; i < 3; i++) px(c, 6 + i * 4, 14 + w + i, 2, 2, '#2a2034');
-  bone(c, S, W, 3, BONE); bone(c, W, T1, 2, BONE_SH); bone(c, W, T2, 2, BONE_SH); bone(c, W, T3, 2, BONE_SH);
-  // Tail and back.
-  for (let i = 0; i < 8; i++) px(c, i * 3, 44 - Math.floor(i * 1.3), 3, 3, i % 2 ? BONE_SH : BONE);
-  px(c, 20, 30, 24, 3, BONE); for (let i = 0; i < 6; i++) px(c, 21 + i * 4, 28, 2, 2, BONE_SH);
-  // The ribs round the slag heart.
-  px(c, 24, 33, 18, 9, '#5a1a14'); px(c, 27, 35, 12, 5, '#ff6a2a'); px(c, 30, 36, 5, 3, '#ffd25a');
-  for (let i = 0; i < 5; i++) px(c, 23 + i * 4, 33, 2, 10 - Math.abs(i - 2) * 2, BONE);
-  px(c, 22, 43, 22, 2, BONE_SH);
+/** The Anvil-Warden, set by the First Smith to keep the Forge of the Four: a Bailiff grown huge, an anvil for a crown, a hammer. */
+function paintAnvilWarden(c: CanvasRenderingContext2D, f: number): void {
+  grown(1.6, 2, 12, () => {
+    const b = BOB[f];
+    bailiff(c, f, 'hammer', R.steel);
+    // The anvil: a face, a horn, a waist, a foot set into the hood.
+    poly(c, [[9, 2 + b], [12, 1 + b], [12, -1 + b], [7, -2 + b], [5, -4 + b], [21, -4 + b], [21, -1 + b], [16, -1 + b], [16, 1 + b], [19, 2 + b]], R.iron);
+    poly(c, [[21, -4 + b], [25, -3 + b], [21, -1 + b]], R.iron);
+    line(c, [6, -4 + b], [21, -4 + b], R.iron[0]);
+    if (f % 2 === 0) { dot(c, 24, -6 + b, EMBER[0]); dot(c, 8, -6 + b, EMBER[1]); } else { dot(c, 14, -6 + b, EMBER[1]); dot(c, 19, -7 + b, EMBER[2]); }
+  });
+}
+
+/** The Obsidian Golem, and the Magma Tyrant it grows into: a slab of black glass, a magma heart, fists to the floor. */
+function golem(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], s = STEP[f] / 2;
   // Legs.
-  px(c, 22, 44, 4, 7 + b, BONE); px(c, 21, 51 + b, 3, 3 - b, BONE_SH); px(c, 19, 54, 7, 2, BONE);
-  px(c, 38, 44, 4, 7 - b + 1, BONE); px(c, 39, 51, 3, 3, BONE_SH); px(c, 37, 54, 7, 2, BONE);
-  // The near wing, folded.
-  px(c, 30, 14 + w, 3, 14 - w, BONE); px(c, 33, 16 + w, 9, 11 - w, M); px(c, 33, 16 + w, 9, 1, BONE_SH);
-  // Neck and skull.
-  for (let i = 0; i < 5; i++) px(c, 42 + i * 2, 27 - i * 3, 4, 4, i % 2 ? BONE_SH : BONE);
-  px(c, 47, 6 + b, 14, 10, BONE); px(c, 47, 14 + b, 14, 2, BONE_SH); px(c, 56, 11 + b, 8, 5, BONE);
-  px(c, 51, 9 + b, 3, 3, SOOT); px(c, 52, 10 + b, 1, 1, '#ffd25a'); px(c, 62, 12 + b, 1, 1, SOOT);
-  px(c, 45, 3 + b, 4, 3, BONE_SH); px(c, 43, 1 + b, 3, 3, BONE_SH); px(c, 49, 4 + b, 3, 2, BONE_SH);
-  px(c, 52, 17 + b + (f ? 2 : 0), 11, 3, BONE_SH);
-  for (let i = 0; i < 4; i++) { px(c, 55 + i * 2, 16 + b, 1, 1, BONE); px(c, 55 + i * 2, 17 + b + (f ? 2 : 0), 1, 1, BONE); }
-  if (f) { px(c, 56, 17 + b, 8, 2, '#ff6a2a'); px(c, 58, 17 + b, 4, 1, '#ffd25a'); }
+  orb(c, 11, 34 - liftB(f) / 2, 4.5, 4.5, R.obsDk); px(c, 6, 37 - liftB(f) / 2, 10, 2, R.obsDk[3]);
+  orb(c, 23, 34 - liftA(f) / 2, 4.5, 4.5, R.obs); px(c, 18, 37 - liftA(f) / 2, 10, 2, R.obs[3]);
+  // The far arm.
+  limb(c, [6, 14 + b], [4 - s, 26 + b], 5, R.obsDk); orb(c, 4 - s, 29 + b, 3.5, 3.2, R.obsDk);
+  // Torso, a glass facet catching the light, the heart in its cracks.
+  poly(c, [[5, 11 + b], [29, 11 + b], [26, 31 + b], [9, 31 + b]], R.obs);
+  line(c, [8, 13 + b], [12, 22 + b], R.obs[0]); line(c, [9, 13 + b], [13, 22 + b], '#8a80b4');
+  line(c, [24, 14 + b], [22, 20 + b], R.obs[0]);
+  orb(c, 17, 20 + b, 4.6, 4.2, R.void);
+  orb(c, 17, 20 + b, 3 + (f % 2) * .5, 2.8, [EMBER[0], EMBER[1], EMBER[2], EMBER[2]]);
+  glow(c, 16, 19 + b, 2, EMBER);
+  line(c, [13, 22 + b], [10, 27 + b], EMBER[2]); line(c, [21, 22 + b], [24, 28 + b], EMBER[2]); line(c, [18, 16 + b], [20, 12 + b], EMBER[2]);
+  // Shoulders, and the head sunk between them.
+  orb(c, 6.5, 12.5 + b, 5, 4.5, R.obs); orb(c, 27.5, 12.5 + b, 5, 4.5, R.obs);
+  dot(c, 5, 10 + b, '#8a80b4');
+  orb(c, 17, 8 + b, 5.5, 4.6, R.obs);
+  px(c, 13, 7 + b, 9, 2, R.void[1]);
+  glow(c, 14, 7 + b, 1, EMBER); glow(c, 19, 7 + b, 1, EMBER);
+  // The near arm.
+  limb(c, [28, 14 + b], [30 + s, 26 + b], 5, R.obs); orb(c, 30 + s, 29 + b, 4, 3.6, R.obs);
+  line(c, [28, 27 + b], [31, 27 + b], R.obs[3]);
+}
+function paintGolem(c: CanvasRenderingContext2D, f: number): void { golem(c, f); }
+
+/** The Magma Tyrant, the Molten Deep's master: a Golem grown huge on the caldera's heat, lava running down it, crowned in fire. */
+function paintTyrant(c: CanvasRenderingContext2D, f: number): void {
+  grown(1.6, 2, 6, () => {
+    const b = BOB[f];
+    golem(c, f);
+    // Lava running down the chest and the arms.
+    line(c, [11, 13 + b], [12, 30 + b], EMBER[1]); line(c, [23, 13 + b], [22, 30 + b], EMBER[1]);
+    for (let i = 0; i < 3; i++) dot(c, 12, 16 + b + ((i * 5 + f * 2) % 14), EMBER[0]);
+    line(c, [30, 18 + b], [31, 26 + b], EMBER[2]);
+    // The crown of fire.
+    poly(c, [[11, 5 + b], [23, 5 + b], [22, 3 + b], [12, 3 + b]], R.gold);
+    for (let i = 0; i < 4; i++) flame(c, 11.5 + i * 3, 3 + b, 2, 2 + ((i + f) % 3), f + i);
+  });
+}
+
+/** The Glass Sentinel, the Glass Foundry's guard: a statue of black glass the Four cast and never broke, a melt for a heart. */
+function paintSentinel(c: CanvasRenderingContext2D, f: number): void {
+  const b = [0, 0, 1, 1][f], s = STEP[f] / 2;
+  // Legs: columns of glass.
+  poly(c, [[8, 28], [12, 28], [12 - s / 2, 40 - liftB(f) / 2], [7 - s / 2, 40 - liftB(f) / 2]], R.glass);
+  poly(c, [[14, 28], [18, 28], [19 + s / 2, 40 - liftA(f) / 2], [14 + s / 2, 40 - liftA(f) / 2]], R.glass);
+  // Far arm, a shard for a hand.
+  limb(c, [7, 15 + b], [4, 26 - b], 3, [R.glass[1], R.glass[2], R.glass[3], R.glass[3]]);
+  poly(c, [[3, 26 - b], [6, 26 - b], [4, 31 - b]], R.crystal);
+  // Torso: facets, a cage round the melt.
+  poly(c, [[6, 13 + b], [20, 13 + b], [19, 29], [7, 29]], R.glass);
+  line(c, [7, 14 + b], [11, 28], R.glass[0]); line(c, [16, 15 + b], [18, 22], R.glass[0]);
+  orb(c, 13, 20 + b, 3.5, 3.5, R.void);
+  orb(c, 13, 20 + b, 2.3 + (f % 2) * .4, 2.3, [EMBER[0], EMBER[1], EMBER[2], EMBER[2]]);
+  glow(c, 12, 19 + b, 1, EMBER);
+  line(c, [10, 17 + b], [16, 23 + b], R.glass[2]);
+  // Shoulder crystals.
+  poly(c, [[4, 14 + b], [6, 7 + b], [9, 13 + b]], R.crystal); poly(c, [[17, 13 + b], [21, 6 + b], [22, 14 + b]], R.crystal);
+  // The helm: angular, a slit of fire, two crystal horns.
+  poly(c, [[8, 4 + b], [18, 4 + b], [19, 12 + b], [7, 12 + b]], R.glass);
+  poly(c, [[8, 5 + b], [7, 0 + b], [10, 4 + b]], R.crystal); poly(c, [[16, 4 + b], [19, 0 + b], [18, 5 + b]], R.crystal);
+  px(c, 10, 8 + b, 8, 1, EMBER[2]); px(c, 13, 8 + b, 3, 1, EMBER[1]); dot(c, 14, 8 + b, EMBER[0]);
+  // Near arm.
+  limb(c, [19, 15 + b], [22, 26 - b], 3, R.glass);
+  poly(c, [[21, 26 - b], [24, 26 - b], [23, 32 - b]], R.crystal);
+}
+
+/** The Cinder Sovereign, the heart of the Molten Deep: a robed king of slag and fire, a burning crown, flame in both hands. */
+function paintSovereign(c: CanvasRenderingContext2D, f: number): void {
+  const b = [0, 0, 1, 1][f];
+  // Robe: slag, veined with fire, a hem that burns.
+  poly(c, [[22, 22 + b], [46, 22 + b], [62, 69], [6, 69]], R.sov);
+  for (const [x0, x1] of [[26, 18], [34, 34], [42, 50]] as const) {
+    line(c, [x0, 26 + b], [(x0 + x1) / 2 + 2, 48], EMBER[2]); line(c, [(x0 + x1) / 2 + 2, 48], [x1, 68], EMBER[2]);
+  }
+  // The under-robe down the front, gold-edged, a belt of slag-iron.
+  poly(c, [[30, 28 + b], [38, 28 + b], [44, 69], [24, 69]], R.slag);
+  line(c, [30, 28 + b], [24, 68], R.gold[2]); line(c, [38, 28 + b], [44, 68], R.gold[1]);
+  for (let i = 0; i < 4; i++) dot(c, 34, 40 + ((i * 7 + f * 2) % 26), EMBER[i % 2]);
+  px(c, 22, 35 + b, 24, 3, R.basalt[2]); px(c, 22, 35 + b, 24, 1, R.basalt[0]);
+  glow(c, 33, 35 + b, 2, R.gold);
+  for (let i = 0; i < 9; i++) flame(c, 7 + i * 6, 69, 4, 2 + ((i + f) % 3), f + i);
+  // The arms, raised, a fire held in each hand.
+  limb(c, [24, 26 + b], [13, 21 - b], 6, R.sov); limb(c, [44, 26 + b], [55, 21 + b], 6, R.sov);
+  orb(c, 12, 19 - b, 3.2, 3, R.basalt); orb(c, 56, 19 + b, 3.2, 3, R.basalt);
+  orb(c, 11, 12 - b, 4.5 + (f % 2) * .5, 4.5, [EMBER[0], EMBER[1], EMBER[2], EMBER[3]]); flame(c, 7, 10 - b, 8, 8, f);
+  orb(c, 57, 12 + b, 4.5 + ((f + 1) % 2) * .5, 4.5, [EMBER[0], EMBER[1], EMBER[2], EMBER[3]]); flame(c, 53, 10 + b, 8, 8, f + 2);
+  // The mantle.
+  orb(c, 34, 25 + b, 15, 5.5, R.slag);
+  for (let i = 0; i < 6; i++) dot(c, 22 + i * 5, 22 + b, R.slag[0]);
+  // The head: a dark face, cracks of fire, coal eyes.
+  orb(c, 34, 16 + b, 8, 8, R.sov);
+  orb(c, 35, 17 + b, 5.5, 5, R.void);
+  glow(c, 32, 15 + b, 2, EMBER); glow(c, 37, 15 + b, 2, EMBER);
+  line(c, [32, 20 + b], [38, 20 + b], f % 2 ? EMBER[0] : EMBER[1]);
+  // The crown, its points burning.
+  poly(c, [[25, 10 + b], [43, 10 + b], [43, 6 + b], [25, 6 + b]], R.gold);
+  for (let i = 0; i < 4; i++) { poly(c, [[25 + i * 5, 6 + b], [29 + i * 5, 6 + b], [27 + i * 5, 2 + b]], R.gold); flame(c, 26 + i * 5, 2 + b, 2, 2 + ((i + f) % 3), f + i); }
+  dot(c, 34, 8 + b, BLOOD[1]); dot(c, 28, 8 + b, EMBER[1]); dot(c, 40, 8 + b, EMBER[1]);
 }
 
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10,
     lore: 'Born in a kiln that was never lit by hand, it tracks a warm boot-print for miles and sleeps in the cracks that still glow.',
-    coins: [10, 30], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintHound, w: 23, h: 17,
+    coins: [10, 30], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintHound, w: 32, h: 24,
   },
   'obsidian-golem': {
     id: 'obsidian-golem', name: 'Obsidian Golem', hp: 260, speed: 22, dmg: [12, 20], rate: 1.7, sight: 110, level: 14,
     lore: 'The glass-cutters walked away mid-shift. Their last statue did not, and it still guards the seam it was told to hold.',
-    coins: [24, 60], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .08 }], paint: paintGolem, w: 26, h: 26,
+    coins: [24, 60], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .08 }], paint: paintGolem, w: 34, h: 40,
   },
   'ember-warden': {
     id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8,
     lore: 'Keeper of the flooded galleries, it banks the old forge-fire each night and bites anyone who comes to stoke it.',
-    coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 38, h: 44, rank: 'boss',
+    coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 40, h: 56, rank: 'boss',
   },
   'magma-tyrant': {
     id: 'magma-tyrant', name: 'The Magma Tyrant', hp: 1400, speed: 20, dmg: [18, 30], rate: 1.8, sight: 160, level: 20,
     lore: 'It was a crown once, poured too hot. Now the caldera wears it, and the caldera does not take kindly to visitors.',
-    coins: [400, 700], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 48, h: 48, rank: 'boss',
+    coins: [400, 700], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 58, h: 72, rank: 'boss',
   },
   'ash-wolf': {
     id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
     lore: 'Grey as a cold hearth and just as quiet, it hunts the Emberwood in the hour after the last ember fades.',
-    coins: [2, 9], drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 22, h: 17,
+    coins: [2, 9], drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 30, h: 22,
   },
   'cinder-imp': {
     id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2,
     lore: 'A spark that grew a grudge. It throws small tempers and smaller fires, and giggles when the soot finds your collar.',
-    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 20, h: 18,
+    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 24, h: 24,
   },
   'rivet-maw': {
     id: 'rivet-maw', name: 'Rivet Maw', hp: 60, speed: 34, dmg: [3, 6], rate: 1.3, sight: 96, level: 1,
     lore: 'Scrap-iron with a hunger. Somebody forgot to take the teeth out of the rivet barrel, and now they chew.',
-    coins: [3, 13], drops: [{ material: 'cinder-ore', qty: 1, chance: .7 }], paint: paintMaw, w: 20, h: 17,
+    coins: [3, 13], drops: [{ material: 'cinder-ore', qty: 1, chance: .7 }], paint: paintMaw, w: 24, h: 20,
   },
   'cinder-bailiff': {
     id: 'cinder-bailiff', name: 'Cinder Bailiff', hp: 110, speed: 28, dmg: [6, 10], rate: 1.5, sight: 110, level: 3,
     lore: 'It still serves writs to the dead mine, and swings its ledger-hook at anyone found behind on their dues.',
-    coins: [8, 24], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .35 }], paint: paintBailiff, w: 22, h: 25,
+    coins: [8, 24], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .35 }], paint: paintBailiff, w: 26, h: 34,
   },
   // The undead and the Cinder clans (owner 2026-10-20: "lots of scary monsters … skeletons, dragons, orcs, undead").
   'bone-walker': {
     id: 'bone-walker', name: 'Bone Walker', hp: 80, speed: 30, dmg: [4, 8], rate: 1.4, sight: 96, level: 6,
     lore: 'It remembers walking to work, so it walks. Nobody has told it which way the work went.',
-    coins: [5, 16], drops: [{ material: 'ember-residue', qty: 1, chance: .25 }], paint: paintBoneWalker, w: 18, h: 24,
+    coins: [5, 16], drops: [{ material: 'ember-residue', qty: 1, chance: .25 }], paint: paintBoneWalker, w: 22, h: 36,
   },
   'bone-archer': {
     id: 'bone-archer', name: 'Bone Archer', hp: 85, speed: 30, dmg: [3, 6], rate: 1.5, sight: 140, level: 8,
     lore: 'A bow strung with something that is not quite sinew. It only ever aims at the lantern you carry.',
-    coins: [8, 20], drops: [{ material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintBoneArcher, w: 20, h: 24,
+    coins: [8, 20], drops: [{ material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintBoneArcher, w: 26, h: 36,
     ranged: { range: 92, keep: 76, rate: 1.9, dmg: [6, 10], speed: 120, kind: 'arrow' },
   },
   'ash-ghoul': {
     id: 'ash-ghoul', name: 'Ash Ghoul', hp: 70, speed: 60, dmg: [5, 9], rate: .8, sight: 130, level: 9,
     lore: 'Quick and starved, it scrapes the ash from old pyres and wears it like a shawl against the cold it can no longer feel.',
-    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintGhoul, w: 20, h: 18,
+    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintGhoul, w: 28, h: 22,
   },
   'cinder-wraith': {
     id: 'cinder-wraith', name: 'Cinder Wraith', hp: 150, speed: 32, dmg: [8, 13], rate: 1.4, sight: 130, level: 12,
     lore: 'A flicker of someone who stood too near the furnace door. It drifts over the slag, humming a shift-bell song.',
-    coins: [14, 36], drops: [{ material: 'ember-residue', qty: 2, chance: .5 }, { material: 'infernal-heartstone', qty: 1, chance: .04 }], paint: paintWraith, w: 20, h: 26,
+    coins: [14, 36], drops: [{ material: 'ember-residue', qty: 2, chance: .5 }, { material: 'infernal-heartstone', qty: 1, chance: .04 }], paint: paintWraith, w: 24, h: 36,
     floats: true, ghost: true,
   },
   'cinder-orc': {
     id: 'cinder-orc', name: 'Cinder-clan Orc', hp: 170, speed: 36, dmg: [9, 15], rate: 1.3, sight: 120, level: 10,
     lore: 'The Cinder clans trade in iron and grudges. This one has plenty of both, and would like to see yours.',
-    coins: [12, 32], drops: [{ material: 'cinder-ore', qty: 1, chance: .5 }, { material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintOrc, w: 22, h: 24,
+    coins: [12, 32], drops: [{ material: 'cinder-ore', qty: 1, chance: .5 }, { material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintOrc, w: 28, h: 38,
   },
   'orc-firecaller': {
     id: 'orc-firecaller', name: 'Orc Firecaller', hp: 130, speed: 30, dmg: [6, 10], rate: 1.5, sight: 150, level: 13,
     lore: 'It talks to the coals in a low voice, and the coals, against their better judgement, answer.',
-    coins: [16, 40], drops: [{ material: 'ember-residue', qty: 2, chance: .6 }], paint: paintFirecaller, w: 22, h: 26,
+    coins: [16, 40], drops: [{ material: 'ember-residue', qty: 2, chance: .6 }], paint: paintFirecaller, w: 28, h: 38,
     ranged: { range: 100, keep: 74, rate: 2.1, dmg: [10, 16], speed: 110, kind: 'fire' },
   },
   'orc-warlord': {
     id: 'orc-warlord', name: 'Orc Warlord', hp: 440, speed: 32, dmg: [15, 24], rate: 1.5, sight: 140, level: 16,
     lore: 'Scarred, crowned in a smithing helm, and followed by every drum in the Badlands. It has never once asked for directions.',
-    coins: [60, 130], drops: [{ material: 'cinder-ore', qty: 3, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .15 }], paint: paintWarlord, w: 30, h: 33, rank: 'champion',
+    coins: [60, 130], drops: [{ material: 'cinder-ore', qty: 3, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .15 }], paint: paintWarlord, w: 42, h: 52, rank: 'champion',
   },
   'ember-drake': {
     id: 'ember-drake', name: 'Ember Drake', hp: 320, speed: 40, dmg: [12, 18], rate: 1.4, sight: 150, level: 18,
     lore: 'It nests where the ground sighs smoke, and treats every traveller as a spark that wandered too near its kindling.',
-    coins: [40, 90], drops: [{ material: 'ember-residue', qty: 2, chance: .8 }, { material: 'infernal-heartstone', qty: 1, chance: .1 }], paint: paintDrake, w: 28, h: 22,
+    coins: [40, 90], drops: [{ material: 'ember-residue', qty: 2, chance: .8 }, { material: 'infernal-heartstone', qty: 1, chance: .1 }], paint: paintDrake, w: 38, h: 30,
     ranged: { range: 84, keep: 0, rate: 3, dmg: [12, 20], speed: 130, kind: 'fire' },
   },
   'bone-dragon': {
     id: 'bone-dragon', name: 'The Ashbone Dragon', hp: 2200, speed: 22, dmg: [22, 34], rate: 1.8, sight: 190, level: 25,
     lore: 'The oldest thing under the Bastion. It was a dragon once; it is now a promise the ash made, and the ash keeps its promises.',
-    coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 64, h: 56, rank: 'boss',
+    coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 76, h: 64, rank: 'boss',
     ranged: { range: 130, keep: 0, rate: 3.4, dmg: [16, 26], speed: 120, kind: 'breath', spread: 3 },
     summon: { type: 'bone-walker', count: 2, at: .5 },
   },
@@ -405,24 +905,24 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'slag-crawler': {
     id: 'slag-crawler', name: 'Slag Crawler', hp: 300, speed: 30, dmg: [14, 22], rate: 1.4, sight: 120, level: 21,
     lore: 'Half beetle, half cooling slag, it walks the rivers of the Deep and leaves a crust behind that hardens into the next floor.',
-    coins: [30, 70], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .4 }], paint: paintCrawler, w: 27, h: 16,
+    coins: [30, 70], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .4 }], paint: paintCrawler, w: 36, h: 20,
   },
   'glass-sentinel': {
     id: 'glass-sentinel', name: 'Glass Sentinel', hp: 340, speed: 20, dmg: [12, 18], rate: 1.8, sight: 150, level: 24,
     lore: 'Poured by the foundry\'s last shift and never told to stop, it fires molten glass at anything that is not a mould.',
-    coins: [40, 90], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .12 }], paint: paintSentinel, w: 20, h: 28,
+    coins: [40, 90], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .12 }], paint: paintSentinel, w: 26, h: 42,
     ranged: { range: 110, keep: 80, rate: 2.2, dmg: [12, 18], speed: 140, kind: 'fire' },
   },
   'anvil-warden': {
     id: 'anvil-warden', name: 'The Anvil-Warden', hp: 1100, speed: 22, dmg: [16, 26], rate: 1.7, sight: 150, level: 18,
     lore: 'The First Smith\'s anvil grew legs to keep its oath; it still hammers the air for a blade nobody will finish.',
-    coins: [300, 550], drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 44, h: 46, rank: 'boss',
+    coins: [300, 550], drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 48, h: 67, rank: 'boss',
     summon: { type: 'cinder-bailiff', count: 2, at: .5 },
   },
   'cinder-sovereign': {
     id: 'cinder-sovereign', name: 'The Cinder Sovereign', hp: 3200, speed: 22, dmg: [26, 40], rate: 1.7, sight: 170, level: 30,
     lore: 'The heart of the Deep wears a crown of its own sparks. It does not rule the fire — it is what the fire remembers.',
-    coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 60, h: 60, rank: 'boss',
+    coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 68, h: 72, rank: 'boss',
     ranged: { range: 130, keep: 0, rate: 3.2, dmg: [20, 32], speed: 120, kind: 'breath', spread: 5 },
     // At half its life it calls the hounds of the deep to its side.
     summon: { type: 'lava-hound', count: 2, at: .5 },
@@ -432,22 +932,63 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
 export const RAISED_SKELETON: MobDef = {
   id: 'raised-skeleton', name: 'Raised Skeleton', hp: 1, speed: 52, dmg: [1, 1], rate: 1.1, sight: 0, level: 1,
-  coins: [0, 0], drops: [], paint: paintRaised, w: 18, h: 24,
+  coins: [0, 0], drops: [], paint: paintRaised, w: 22, h: 36,
 };
 
 const sheets = new Map<string, HTMLCanvasElement>();
-/** Two outlined frames side by side. */
+/** Frames in a creature's sheet: a walk or a hover (contact, passing, contact, passing). The engine reads the count off the sheet. */
+export const MOB_FRAMES = 4;
+/** A boss's rim, in its element's colour (docs/design/effects-spec.md): fire for the forge-born, violet bone-light for the dragon. */
+const RIM: Readonly<Record<string, string>> = {
+  'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
+};
+const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+/**
+ * The selective outline, in place: every empty pixel touching the sprite takes a dark of the colour it borders (lighter on
+ * the lit top-left, near-black down the shadow side); a soft glow's halo is left out of it. A boss gets a second ring, its rim.
+ */
+function outline(img: ImageData, rim?: string): void {
+  const { width: w, height: h, data: d } = img, src = new Uint8ClampedArray(d), edge = new Uint8Array(w * h);
+  const filled = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && src[(y * w + x) * 4 + 3] >= 200;
+  const out = rgb(OUT);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (filled(x, y)) continue;
+    let n = 0, lit = 0;
+    const sum = [0, 0, 0];
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      if (!filled(x + dx, y + dy)) continue;
+      const i = ((y + dy) * w + x + dx) * 4;
+      n++; sum[0] += src[i]; sum[1] += src[i + 1]; sum[2] += src[i + 2];
+      if (dx > 0 || dy > 0) lit++;
+    }
+    if (!n) continue;
+    const t = lit * 2 >= n ? .7 : .86, i = (y * w + x) * 4;
+    for (let k = 0; k < 3; k++) d[i + k] = Math.round(sum[k] / n * (1 - t) + out[k] * t);
+    d[i + 3] = 255; edge[y * w + x] = 1;
+  }
+  if (!rim) return;
+  const col = rgb(rim);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (edge[y * w + x] || filled(x, y)) continue;
+    if (![[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < w && y + dy < h && edge[(y + dy) * w + x + dx])) continue;
+    d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 170;
+  }
+}
+/** A creature's frames side by side, each painted once, outlined (and a boss rimmed) in its own cell. */
 export function mobSheet(def: MobDef): HTMLCanvasElement {
   let s = sheets.get(def.id);
   if (s) return s;
-  const raw = document.createElement('canvas'); raw.width = def.w * 2; raw.height = def.h;
-  const c = raw.getContext('2d')!;
-  for (let f = 0; f < 2; f++) { c.save(); c.translate(f * def.w, 0); def.paint(c, f); c.restore(); }
-  s = document.createElement('canvas'); s.width = raw.width; s.height = raw.height;
+  s = document.createElement('canvas'); s.width = def.w * MOB_FRAMES; s.height = def.h;
   const o = s.getContext('2d')!;
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) o.drawImage(raw, dx, dy);
-  o.globalCompositeOperation = 'source-in'; o.fillStyle = '#2a1a24'; o.fillRect(0, 0, s.width, s.height);
-  o.globalCompositeOperation = 'source-over'; o.drawImage(raw, 0, 0);
+  for (let f = 0; f < MOB_FRAMES; f++) {
+    const cell = document.createElement('canvas'); cell.width = def.w; cell.height = def.h;
+    const c = cell.getContext('2d', { willReadFrequently: true })!;
+    def.paint(c, f);
+    const img = c.getImageData(0, 0, def.w, def.h);
+    outline(img, RIM[def.id]);
+    o.putImageData(img, f * def.w, 0);
+  }
   sheets.set(def.id, s);
   return s;
 }

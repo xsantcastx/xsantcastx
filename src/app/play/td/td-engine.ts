@@ -1007,7 +1007,7 @@ export class TopDownEngine {
   }
 
   private drawMob(m: Mob): void {
-    const c = this.ctx, d = m.def, sheet = mobSheet(d), f = Math.floor(m.t * 4) % 2;
+    const c = this.ctx, d = m.def, sheet = mobSheet(d), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.fillStyle = 'rgba(30,18,26,.3)'; c.fillRect(Math.round(m.x - d.w / 2 + 2), Math.round(m.y - 2), d.w - 4, 3);
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
@@ -1023,7 +1023,7 @@ export class TopDownEngine {
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
-    const c = this.ctx, d = RAISED_SKELETON, sheet = mobSheet(d), f = Math.floor(k.t * 4) % 2;
+    const c = this.ctx, d = RAISED_SKELETON, sheet = mobSheet(d), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
     c.save();
     // Rising out of the ground for its first half second; fading as its time runs out.
