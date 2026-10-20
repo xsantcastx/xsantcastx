@@ -23,6 +23,9 @@ const TOWN_MARGIN = 3;
 /** Chunks of wild objects kept in memory. */
 const KEEP_CHUNKS = 160;
 
+/** A further town or village, stamped at (c0, r0), its things moved there once. */
+interface Village { name: string; c0: number; r0: number; map: TdMap; objects: TdObject[] }
+
 interface WildChunk { objects: TdObject[]; blocked: Set<number>; spawns: MobSpawn[] }
 
 /** Smooth value noise in [0, 1): bilinear over hashed lattice points, smoothstepped. */
@@ -61,6 +64,11 @@ export class TdWorld implements TdLevel {
     this.town = def.town();
     this.roadRow = def.streets.row; this.roadCol = def.streets.col;
     this.allStalls = [...this.town.stalls];
+    this.villages = (def.villages ?? []).map(v => {
+      const map = v.build(), dx = v.c * TILE, dy = v.r * TILE;
+      for (const st of map.stalls) this.allStalls.push({ ...st, x: st.x + dx, y: st.y + dy, ...(st.keeper ? { keeper: { ...st.keeper, x: st.keeper.x + dx, y: st.keeper.y + dy } } : {}) });
+      return { name: v.name, c0: v.c, r0: v.r, map, objects: map.objects.map(o => ({ ...o, x: o.x + dx, y: o.y + dy })) };
+    });
     for (const w of def.ways) {
       const p = def.places.find(pl => pl.kind === w.place);
       if (!p) continue;
@@ -95,12 +103,19 @@ export class TdWorld implements TdLevel {
 
   /** The town's stalls and the island's ways in (a cave mouth). */
   private readonly allStalls: TdStall[];
+  /** The continent's other towns and villages. */
+  private readonly villages: Village[];
   get stalls(): readonly TdStall[] { return this.allStalls; }
   get spawn(): { x: number; y: number } { return this.town.spawn; }
 
   /** Inside the stamped town (tiles). */
   inTown(c: number, r: number): boolean { return c >= 0 && r >= 0 && c < this.town.cols && r < this.town.rows; }
+  private villageAt(c: number, r: number, margin = 0): Village | undefined {
+    for (const v of this.villages) if (c >= v.c0 - margin && r >= v.r0 - margin && c < v.c0 + v.map.cols + margin && r < v.r0 + v.map.rows + margin) return v;
+    return undefined;
+  }
   private nearTown(c: number, r: number): boolean {
+    if (this.villageAt(c, r, TOWN_MARGIN)) return true;
     return c >= -TOWN_MARGIN && r >= -TOWN_MARGIN && c < this.town.cols + TOWN_MARGIN && r < this.town.rows + TOWN_MARGIN;
   }
 
@@ -114,6 +129,8 @@ export class TdWorld implements TdLevel {
 
   ground(c: number, r: number): Ground {
     if (this.inTown(c, r)) return this.town.ground[r * this.town.cols + c];
+    const v = this.villageAt(c, r);
+    if (v) return v.map.ground[(r - v.r0) * v.map.cols + (c - v.c0)];
     if (this.onPier(c, r)) return 'plank';
     const reg = this.regionAt(c, r);
     if (reg === '~') return 'water';
@@ -137,6 +154,8 @@ export class TdWorld implements TdLevel {
 
   walkable(c: number, r: number): boolean {
     if (this.inTown(c, r)) return !!this.town.walkable[r * this.town.cols + c];
+    const v = this.villageAt(c, r);
+    if (v) return !!v.map.walkable[(r - v.r0) * v.map.cols + (c - v.c0)];
     const g = this.ground(c, r);
     if (g === 'water' || g === 'ember' || g === 'rock') return false;
     return !this.chunkAt(Math.floor(c / WORLD_CHUNK), Math.floor(r / WORLD_CHUNK)).blocked.has(this.key(c, r));
@@ -146,6 +165,7 @@ export class TdWorld implements TdLevel {
   objectsIn(x0: number, y0: number, x1: number, y1: number): TdObject[] {
     const out: TdObject[] = [];
     for (const o of this.town.objects) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
+    for (const v of this.villages) for (const o of v.objects) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
     const span = WORLD_CHUNK * TILE, now = Date.now();
     for (let cy = Math.floor(y0 / span); cy <= Math.floor(y1 / span); cy++) {
       for (let cx = Math.floor(x0 / span); cx <= Math.floor(x1 / span); cx++) {
@@ -181,6 +201,8 @@ export class TdWorld implements TdLevel {
   placeName(x: number, y: number): string {
     const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
     if (c >= -6 && r >= -6 && c < this.town.cols + 6 && r < this.town.rows + 6) return this.def.townName;
+    const v = this.villageAt(c, r, 6);
+    if (v) return v.name;
     for (const p of this.def.places) if (Math.hypot(p.c - c, p.r - r) < 10) return p.name;
     return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)];
   }
@@ -247,7 +269,8 @@ export class TdWorld implements TdLevel {
     // Who lives here: packs by region (never near the square, never on a road).
     const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
     const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), table = this.def.mobs[mid];
-    if (table && Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= 3 && hash(cx, cy, 77) < table.chance) {
+    const nearVillage = this.villages.some(v => Math.max(Math.abs(cx - Math.floor((v.c0 + v.map.cols / 2) / WORLD_CHUNK)), Math.abs(cy - Math.floor((v.r0 + v.map.rows / 2) / WORLD_CHUNK))) < 2);
+    if (table && !nearVillage && Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= 3 && hash(cx, cy, 77) < table.chance) {
       const pack = 1 + Math.floor(hash(cx, cy, 78) * 3);
       for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
         const c = cx * WORLD_CHUNK + Math.floor(hash(cx * 31 + tries, cy, 79) * WORLD_CHUNK), r = cy * WORLD_CHUNK + Math.floor(hash(cx, cy * 31 + tries, 80) * WORLD_CHUNK);
