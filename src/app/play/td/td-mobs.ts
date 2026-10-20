@@ -543,7 +543,15 @@ export interface Drop {
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
 
 /** A short-lived picture in the world: a slash, a fire ring, a heal, wood chips, haste dust. */
-export interface Effect { kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust' | 'drain' | 'curse' | 'ward' | 'bolt-hit' | 'raise' | 'spark'; x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number }
+export interface Effect {
+  kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust' | 'drain' | 'curse' | 'ward' | 'bolt-hit' | 'raise' | 'spark'
+    // The effects pass (docs/design/effects-spec.md): an aura's pulse at a foe's side, a crit's white-hot core,
+    // the Bone Spear's release flash and the bone chips at each pierce.
+    | 'pulse' | 'crit' | 'flash' | 'bone-chips';
+  x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
+  /** A pulse's element: the aura that did the work. */
+  el?: 'ember' | 'life';
+}
 
 /** A bolt in flight toward a creature. */
 export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number }
@@ -686,7 +694,7 @@ export class MobSystem {
       if (!this.mobs.includes(b.to) || b.age > 2) { this.bolts.splice(i, 1); continue; }
       if (len <= step + 2) {
         this.bolts.splice(i, 1);
-        this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .25, dir: 1 });
+        this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
         this.hitFoe(b.to, b.dmg, '#ffd25a');
       } else { b.x += dx / len * step; b.y += dy / len * step; }
     }
@@ -699,7 +707,10 @@ export class MobSystem {
         m.cursed -= dt; m.burnT -= dt;
         if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, SKILLS['ember-curse'].vars['dps'], '#ff9a4a'); if (m.hp <= 0) continue; }
       }
-      if (auraTick && this.aura === 'aura-embers' && Math.hypot(m.x - p.x, m.y - p.y) <= SKILLS['aura-embers'].vars['radius'] * TILE) this.hitFoe(m, SKILLS['aura-embers'].vars['dps'], '#ff8a2e');
+      if (auraTick && this.aura === 'aura-embers' && Math.hypot(m.x - p.x, m.y - p.y) <= SKILLS['aura-embers'].vars['radius'] * TILE) {
+        this.effects.push({ kind: 'pulse', el: 'ember', x: m.x, y: m.y, age: 0, life: .2, dir: 1 });
+        this.hitFoe(m, SKILLS['aura-embers'].vars['dps'], '#ff8a2e');
+      }
     }
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
@@ -779,7 +790,11 @@ export class MobSystem {
   private hitFoe(foe: Mob, raw: number, color: string): void {
     const crit = this.crit > 0 && Math.random() < this.crit;
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
-    if (this.aura === 'aura-siphon') this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
+    if (this.aura === 'aura-siphon') {
+      this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
+      this.effects.push({ kind: 'pulse', el: 'life', x: foe.x, y: foe.y, age: 0, life: .2, dir: 1 });
+    }
+    if (crit) this.effects.push({ kind: 'crit', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .15, dir: 1 });
     this.hurtMob(foe, dmg, color, crit);
   }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
@@ -831,7 +846,7 @@ export class MobSystem {
       for (const m of [...this.mobs]) {
         if (s.hit.includes(m) || !shotHits(s, m.x, m.y - m.def.h / 2, Math.max(9, m.def.w / 3))) continue;
         s.hit.push(m);
-        this.effects.push({ kind: 'bolt-hit', x: s.x, y: s.y, age: 0, life: .25, dir: 1 });
+        this.effects.push({ kind: 'bone-chips', x: s.x, y: s.y, age: 0, life: .35, dir: s.vx < 0 ? -1 : 1 });
         this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
       }
       if (s.age > s.life || !flies(s.x, s.y)) this.spears.splice(i, 1);
@@ -889,7 +904,7 @@ export class MobSystem {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       const dmg = rnd(v['min'], v['max']);
-      this.effects.push({ kind: 'drain', x: foe.x, y: foe.y - foe.def.h / 2, tx: p.x, ty: p.y - 20, age: 0, life: .5, dir: 1 });
+      this.effects.push({ kind: 'drain', x: foe.x, y: foe.y - foe.def.h / 2, tx: p.x, ty: p.y - 20, age: 0, life: .65, dir: 1 });
       this.hitFoe(foe, dmg, '#ff7a6a');
       const heal = Math.round(dmg * v['heal'] / 100);
       this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a');
@@ -902,12 +917,14 @@ export class MobSystem {
       this.host.swung(foe);
     } else if (id === 'hellfire-nova') {
       for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']), '#ff9a4a');
-      this.effects.push({ kind: 'wave', x: p.x, y: p.y - 8, age: 0, life: .5, dir: 1 });
+      // The ring runs out for half a second, the scorch fades over the next half (on the ground, at the feet).
+      this.effects.push({ kind: 'wave', x: p.x, y: p.y, age: 0, life: 1, dir: 1 });
       this.host.swung(null);
     } else if (id === 'bone-spear') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
+      this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .15, dir: 1 });
       this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [] });
       this.host.swung(foe);
     } else if (id === 'raise-skeleton') {
