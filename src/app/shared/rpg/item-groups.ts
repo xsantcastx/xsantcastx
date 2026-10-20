@@ -63,6 +63,7 @@ export function identityKeyOf(item: GameItem): string | null {
     item.soulbound ? 1 : 0,
     canonical(item.stats),
     canonical(item.rollQuality),
+    item.itemLevel ?? '',
   ].join('|');
 }
 

@@ -7,6 +7,7 @@ import {
   itemsFromLedger,
   mergeInventoryLedgers,
   migrateV1,
+  parseGameItem,
   parseInventoryLedger,
   restoreCharms,
   pruneTombstones,
@@ -536,5 +537,17 @@ describe('inventory adapter (C3)', () => {
     expect(equipped(ab)[0].location).toEqual({ kind: 'equipped', slotId: 'off-hand' });
     expect((ab.records.find(row => row.id === 'shield') as OwnedItemInstance).location)
       .toEqual({ kind: 'bag' });
+  });
+
+  it('keeps an item level through parse and the ledger, and drops a bad one', () => {
+    const raw = { ...item('helm', { stats: { defense: 7 } }), itemLevel: 12 };
+    expect(parseGameItem(raw)?.itemLevel).toBe(12);
+    expect(parseGameItem({ ...raw, itemLevel: 0 })?.itemLevel).toBeUndefined();
+    expect(parseGameItem({ ...raw, itemLevel: 100 })?.itemLevel).toBeUndefined();
+    expect(parseGameItem({ ...raw, itemLevel: 4.5 })?.itemLevel).toBeUndefined();
+    expect(parseGameItem({ ...raw, itemLevel: '9' })?.itemLevel).toBeUndefined();
+    const ledger = migrateV1({ version: 1, items: [parseGameItem(raw)!], goldFromSales: 0, sold: 0 });
+    const round = parseInventoryLedger(JSON.parse(JSON.stringify(ledger)));
+    expect(itemsFromLedger(round!)[0].itemLevel).toBe(12);
   });
 });

@@ -47,6 +47,16 @@ export const STAT_UNIT: Readonly<Record<StatKey, number>> = {
   xpBonus: 3,
   strikePower: 1,
   ward: 1,
+  // The combat affixes: roughly one uncommon roll at item level 10 each.
+  life: 14,
+  mana: 10,
+  defense: 11,
+  spellDamage: 8,
+  castSpeed: 6,
+  moveSpeed: 7,
+  critChance: 2.5,
+  lifeRegen: 0.8,
+  manaRegen: 0.8,
 };
 
 export const STAT_AXIS: Readonly<Record<StatKey, BuildAxis>> = {
@@ -55,6 +65,15 @@ export const STAT_AXIS: Readonly<Record<StatKey, BuildAxis>> = {
   xpBonus: 'lore',
   strikePower: 'strike',
   ward: 'ward',
+  life: 'ward',
+  mana: 'lore',
+  defense: 'ward',
+  spellDamage: 'strike',
+  castSpeed: 'strike',
+  moveSpeed: 'treasure',
+  critChance: 'strike',
+  lifeRegen: 'ward',
+  manaRegen: 'lore',
 };
 
 export const AXIS_ARCHETYPE: Readonly<Record<BuildAxis, BuildArchetype>> = {

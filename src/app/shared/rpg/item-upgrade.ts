@@ -232,7 +232,8 @@ export function applyTemperBonus(
   rng: () => number = Math.random,
 ): ItemStats {
   const def = definitionFor(item);
-  const keys: ItemStatKey[] = def?.rollKeys?.length
+  // An affix item (§3) tempers what it carries; its definition's rollKeys are legacy.
+  const keys: ItemStatKey[] = item.itemLevel == null && def?.rollKeys?.length
     ? [...def.rollKeys]
     : (Object.keys(item.stats) as ItemStatKey[]);
   if (!keys.length) return { ...item.stats };

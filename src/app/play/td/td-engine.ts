@@ -51,7 +51,11 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
 };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
-import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
+import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
+import type { ItemStats } from '../../shared/rpg/item.model';
+
+/** The worn-gear keys the fight reads (they make up the build's cache key). */
+const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen'];
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -79,6 +83,8 @@ export class TopDownEngine {
   private maxHp = 100;
   /** Agility's speed of foot (0–0.3). */
   private agility = 0;
+  /** Worn Life Regen: life back each second, in the fight too. */
+  private lifeRegen = 0;
   private lastHurt = -99;
   private messageAge = 0;
   /** The engine's own line, as an i18n key the HUD translates (engineMessage). */
@@ -217,22 +223,28 @@ export class TopDownEngine {
   }
   /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
   get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
-    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? (this.mobs.cooldowns[id] ?? 0) / SKILLS[id].cd : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
+    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / SKILLS[id].cd) : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
   }
   get mana(): number { return this.mobs.mana; }
   get maxMana(): number { return this.mobs.maxMana; }
   get maxHealth(): number { return this.maxHp; }
   private buildKey = '';
-  /** The Keeper's level and spent points (the HUD hands them in): life, mana, regeneration, spell power, speed. */
-  setKeeperBuild(level: number, stats: KeeperStats): void {
-    const key = `${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}`;
+  /**
+   * The Keeper's level, spent points and worn gear totals (the HUD hands them in): life, mana, regeneration, spell
+   * power, speed — and from the gear (§3 affixes) cast speed, crits, Defense and life back each second.
+   */
+  setKeeperBuild(level: number, stats: KeeperStats, gear: Partial<ItemStats> = {}): void {
+    const key = `${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}|${GEAR_KEYS.map(k => gear[k] ?? 0).join(',')}`;
     if (key === this.buildKey) return;
     this.buildKey = key;
-    const st = levelStats(level, stats);
+    const st = fightStats(level, stats, gear);
     this.maxHp = st.maxHp; this.hp = Math.min(this.hp, this.maxHp);
     this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
     this.mobs.power = st.power; this.mobs.regen = st.regen; this.mobs.agility = st.haste;
-    this.agility = st.haste;
+    this.mobs.castSpeed = st.castSpeed; this.mobs.crit = st.crit;
+    this.mobs.defense = st.defense; this.mobs.keeperLevel = Math.max(1, Math.floor(level));
+    this.agility = st.moveHaste;
+    this.lifeRegen = st.lifeRegen;
   }
 
   get aura(): SkillId | null { return this.mobs.aura; }
@@ -724,6 +736,7 @@ export class TopDownEngine {
     this.mobs.update(dt);
     // Out of the fight a while: the Keeper mends.
     if (this.hp < this.maxHp && this.time - this.lastHurt > 4) this.hp = Math.min(this.maxHp, this.hp + 6 * dt);
+    if (this.lifeRegen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.lifeRegen * dt);
   }
 
   // ── Smoke ──────────────────────────────────────────────────────────────────

@@ -14,11 +14,14 @@ function gear(id: string, definitionId: string, name: string, rarity: string, st
   };
 }
 
+// Every item is a roll (docs/design/loot-and-combat.md §3): an item level, the slot's implicit and affixes, each
+// shown beside the range it could roll ([min–max]); the Starplate's grades are all ≥ 95%, so it reads Perfect.
 const ITEMS = [
-  gear('i-leg', 'nullthorn-staff', 'Nullthorn Staff', 'legendary', { strikePower: 14, magicFind: 12, xpBonus: 8 }, 0, { upgradeLevel: 2 }),
-  gear('i-epic', 'cindergnaw', 'Cindergnaw', 'epic', { strikePower: 9, xpBonus: 6 }, 1),
-  gear('i-rare', 'starplate-cuirass', 'Starplate Cuirass', 'rare', { ward: 7, magicFind: 5 }, 2),
-  gear('i-common', 'voidweave-cowl', 'Voidweave Cowl', 'common', { ward: 2 }, 3),
+  gear('i-leg', 'nullthorn-staff', 'Nullthorn Staff', 'legendary', { spellDamage: 21.2, mana: 52, castSpeed: 11.3, critChance: 4.9, manaRegen: 2.1, magicFind: 12 }, 0, { upgradeLevel: 2, itemLevel: 30 }),
+  gear('i-epic', 'cindergnaw', 'Cindergnaw', 'epic', { spellDamage: 14.1, critChance: 3.6, mana: 22, castSpeed: 8 }, 1, { itemLevel: 18 }),
+  gear('i-rare', 'starplate-cuirass', 'Starplate Cuirass', 'rare', { defense: 18, life: 23, lifeRegen: 1.1, magicFind: 5 }, 2,
+    { itemLevel: 12, rollQuality: { defense: 0.97, life: 0.98, lifeRegen: 0.96, magicFind: 0.99 } }),
+  gear('i-common', 'voidweave-cowl', 'Voidweave Cowl', 'common', { defense: 6 }, 3, { itemLevel: 4 }),
 ];
 
 async function open(page: Page): Promise<void> {
@@ -41,6 +44,12 @@ test('the hover card wears its rarity: legendary orange, epic purple, rare blue,
     const card = page.locator('.d2tip');
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute('data-rarity', rarity);
+    // Gear shows the range each roll could land in beside it; the material does not.
+    if (rarity !== 'material') {
+      await expect(card.locator('.d2tip__range').first()).toBeVisible();
+      await expect(card).toContainText('[');
+    }
+    if (rarity === 'rare') await expect(card.locator('.d2tip__tag')).toHaveText(/Perfect/i);
     const box = (await card.boundingBox())!;
     await page.screenshot({ path: `docs/handoff/cozy-ui/item-card-${rarity}.jpg`, type: 'jpeg', quality: 80,
       clip: { x: Math.max(0, box.x - 120), y: Math.max(0, box.y - 60), width: Math.min(1280 - Math.max(0, box.x - 120), box.width + 200), height: Math.min(800 - Math.max(0, box.y - 60), box.height + 100) } });
