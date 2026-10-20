@@ -29,6 +29,7 @@ import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
 import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
 import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
 import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
+import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3 } from './maps/molten-deep';
 import { EMBER_ISLE_DEF } from './maps/ember-isle';
 import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
 import type { ContinentDef } from './continent';
@@ -39,7 +40,8 @@ import type { TdMapDef } from './td-level';
 const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
 
 const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
-  'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3 };
+  'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
+  'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },

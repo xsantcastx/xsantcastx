@@ -11,6 +11,7 @@ import type { StationDef } from '../../world/world.model';
 import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown } from '../town-builder';
 import { SPIRE_DOOR } from './pyre-spire';
+import { DEEP_IN } from './molten-deep';
 
 export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'Sail back to Ember Isle.' };
 
@@ -112,6 +113,7 @@ export const REACH_PLACES: readonly ContinentPlace[] = [
   { kind: 'standing-stones', c: -46, r: 18, name: 'The Ring of Pyres' },
   { kind: 'shrine', c: -40, r: -24, name: 'The Ember Altar' },
   { kind: 'caldera', c: 98, r: -22, name: 'The Great Caldera' },
+  { kind: 'cave', c: 70, r: -38, name: 'The Molten Deep' },
   { kind: 'harbour', c: 23, r: 26, name: 'Pyrehold Harbour' },
 ];
 
@@ -126,6 +128,7 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
     [[23, 0], [23, -10], [10, -20], [-20, -24], [-38, -22]],
     [[0, 15], [-20, 16], [-44, 18], [-80, 10], [-106, -4]],
     [[47, 15], [66, 10], [84, -6], [96, -18]],
+    [[84, -6], [76, -22], [70, -34]],
   ],
   places: REACH_PLACES, names: REACH_NAMES,
   mobs: {
@@ -135,5 +138,8 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
     v: { types: ['cinder-imp', 'obsidian-golem'], chance: .55 },
   },
   town: buildPyrehold, townName: 'Pyrehold', streets: { row: 15, col: 23 }, river: false,
-  ways: [{ place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true }],
+  ways: [
+    { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
+    { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
+  ],
 };

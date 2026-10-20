@@ -213,6 +213,30 @@ test('the Pyre Spire in Pyrehold: in by its door and up all three floors to the 
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors to the Tyrant, and back out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the molten deep/i, /scorched throat/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-floor-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /glass halls/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-floor-2.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /caldera/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-floor-3.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /glass halls/i);
+  await go(/stairs up/i, /scorched throat/i);
+  await go(/cave mouth/i, /^(The Molten Deep|The Molten Fields)$/);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

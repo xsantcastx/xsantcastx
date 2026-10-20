@@ -97,6 +97,13 @@ function paintGolem(c: CanvasRenderingContext2D, f: number): void {
   px(c, 8, 1 + b, 10, 6, '#2e2638'); px(c, 10, 3 + b, 2, 2, '#ff8a2e'); px(c, 14, 3 + b, 2, 2, '#ff8a2e');
 }
 
+/** The Magma Tyrant, the Molten Deep's master: a Golem grown huge on the caldera's heat, crowned in fire. */
+function paintTyrant(c: CanvasRenderingContext2D, f: number): void {
+  c.save(); c.scale(1.8, 1.8); paintGolem(c, f); c.restore();
+  px(c, 12, 18, 3, 12, '#ff6a2a'); px(c, 33, 20, 3, 10, '#ff6a2a'); px(c, 22, 30, 4, 8, '#ffd25a');
+  px(c, 14, 0, 20, 3, '#9e2e1c'); px(c, 15, 0, 3, 2, '#ffd25a'); px(c, 22, 0, 4, 2, '#ffd25a'); px(c, 30, 0, 3, 2, '#ffd25a');
+}
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10,
@@ -109,6 +116,10 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'ember-warden': {
     id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8,
     coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 38, h: 44, rank: 'boss',
+  },
+  'magma-tyrant': {
+    id: 'magma-tyrant', name: 'The Magma Tyrant', hp: 1400, speed: 20, dmg: [18, 30], rate: 1.8, sight: 160, level: 20,
+    coins: [400, 700], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 48, h: 48, rank: 'boss',
   },
   'ash-wolf': {
     id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
