@@ -7,7 +7,7 @@ import type { StationDef } from '../world/world.model';
 import type { TdMap } from './seamworks-square';
 
 export type Region = '~' | ',' | '.' | 'f' | 'F' | 'h' | 'm' | 'v' | 'l' | 'T';
-export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour';
+export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard';
 
 export interface ContinentPlace { kind: PlaceKind; c: number; r: number; name: string }
 /** A way on from a place: a cave mouth into a hand-drawn level, a ship to another continent. */

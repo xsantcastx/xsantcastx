@@ -30,6 +30,7 @@ import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
 import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
 import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
 import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3 } from './maps/molten-deep';
+import { ASHEN_CRYPT_1, ASHEN_CRYPT_2 } from './maps/ashen-crypt';
 import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
 import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
 import { EMBER_ISLE_DEF } from './maps/ember-isle';
@@ -44,13 +45,14 @@ export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle'
 export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
   'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
+  'ashen-crypt-1': ASHEN_CRYPT_1, 'ashen-crypt-2': ASHEN_CRYPT_2,
   'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
 };
-import { MobSystem, mobSheet, type Mob } from './td-mobs';
+import { MobSystem, RAISED_SKELETON, mobSheet, type Minion, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
 import type { ItemStats } from '../../shared/rpg/item.model';
 
@@ -151,6 +153,8 @@ export class TopDownEngine {
       player: () => this.player,
       hurtPlayer: n => this.hurt(n),
       healPlayer: n => { this.hp = Math.min(this.maxHp, this.hp + n); },
+      hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember',
+      passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall'; },
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
     });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -852,6 +856,7 @@ export class TopDownEngine {
     for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
     for (const g of this.mobs.drops) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g.x, g.y, g.color, !!g.item || !!g.rune, g.coins > 0) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
+    for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -908,11 +913,31 @@ export class TopDownEngine {
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
     c.save();
-    c.translate(Math.round(m.x), Math.round(m.y - d.h));
+    // A floater drifts a little above the floor; a ghost is half there, flickering.
+    const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
+    c.translate(Math.round(m.x), Math.round(m.y - d.h - lift));
     if (m.face < 0) c.scale(-1, 1);
+    if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14 + (Math.random() < .04 ? -.25 : 0);
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
     if (m.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .7; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
     c.restore();
+  }
+  /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
+  private drawRaised(k: Minion): void {
+    const c = this.ctx, d = RAISED_SKELETON, sheet = mobSheet(d), f = Math.floor(k.t * 4) % 2;
+    c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
+    c.save();
+    // Rising out of the ground for its first half second; fading as its time runs out.
+    const rise = Math.max(0, 1 - k.t / .5);
+    c.translate(Math.round(k.x), Math.round(k.y - d.h + rise * d.h * .6));
+    if (k.face < 0) c.scale(-1, 1);
+    if (k.life < 3) c.globalAlpha = .4 + .6 * (k.life / 3);
+    c.drawImage(sheet, f * d.w, 0, d.w, Math.round(d.h * (1 - rise * .6)), -Math.floor(d.w / 2), 0, d.w, Math.round(d.h * (1 - rise * .6)));
+    if (k.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .6; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
+    c.restore();
+    const w = 14, frac = Math.max(0, k.hp / k.maxHp);
+    c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - d.h - 5), w + 2, 3);
+    c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - d.h - 4), Math.round(w * frac), 1);
   }
   /** A drop on the ground: a coin pile, a sack, or gear lying in a beam of its rarity colour. */
   private drawDrop(x: number, y: number, color: string, gear: boolean, coins: boolean): void {
@@ -964,6 +989,14 @@ export class TopDownEngine {
         c.fillStyle = '#ff6a2a'; c.fillRect(X - 1, Y - 1, 2, 2);
       } else if (e.kind === 'ward') {
         c.strokeStyle = '#c8a8ff'; c.lineWidth = 2; c.beginPath(); c.ellipse(X, Y, 10 + t * 8, 14 + t * 8, 0, 0, Math.PI * 2); c.stroke();
+      } else if (e.kind === 'raise') {
+        // Violet motes climbing out of the ground, a crack of bone-light.
+        c.fillStyle = '#b06bff';
+        for (let i = 0; i < 7; i++) c.fillRect(Math.round(X - 8 + i * 2.6), Math.round(Y - 2 - t * (10 + (i % 3) * 8)), 2, 2);
+        c.fillStyle = '#e9d8ff'; c.fillRect(X - 6, Y - 1, 12, 1);
+      } else if (e.kind === 'spark') {
+        c.fillStyle = '#ff8a2e';
+        for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; c.fillRect(Math.round(X + Math.cos(a) * t * 8), Math.round(Y + Math.sin(a) * t * 8), 2, 2); }
       } else if (e.kind === 'bolt-hit') {
         c.fillStyle = '#ffd25a';
         for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.fillRect(Math.round(X + Math.cos(a) * t * 10), Math.round(Y + Math.sin(a) * t * 10), 2, 2); }
@@ -977,6 +1010,25 @@ export class TopDownEngine {
       const X = Math.round(b.x), Y = Math.round(b.y);
       c.globalAlpha = .45; c.fillStyle = '#b06bff'; c.fillRect(X - 3, Y - 3, 6, 6);
       c.globalAlpha = 1; c.fillStyle = '#ff8a2e'; c.fillRect(X - 2, Y - 2, 4, 4); c.fillStyle = '#fff2a8'; c.fillRect(X - 1, Y - 1, 2, 2);
+    }
+    // Creatures' shots: a bone arrow, a fire bolt, a gout of breath.
+    for (const s of this.mobs.shots) {
+      const X = Math.round(s.x), Y = Math.round(s.y), sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
+      if (s.kind === 'arrow') {
+        c.fillStyle = '#e8e1cf'; for (let i = 0; i < 6; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 1, 1);
+        c.fillStyle = '#c9c2cc'; c.fillRect(X, Y, 2, 2); c.fillStyle = '#ff8a2e'; c.fillRect(Math.round(X - ux * 6), Math.round(Y - uy * 6), 2, 1);
+      } else {
+        const r = s.kind === 'breath' ? 4 : 3;
+        c.globalAlpha = .45; c.fillStyle = '#9e2e1c'; c.fillRect(Math.round(X - ux * 5) - r, Math.round(Y - uy * 5) - r, r * 2, r * 2);
+        c.globalAlpha = 1; c.fillStyle = '#ff6a2a'; c.fillRect(X - r, Y - r, r * 2, r * 2); c.fillStyle = '#ffd25a'; c.fillRect(X - 1, Y - 1, 2, 2);
+      }
+    }
+    // Bone Spears: a white shaft with a violet tail.
+    for (const s of this.mobs.spears) {
+      const X = Math.round(s.x), Y = Math.round(s.y), sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
+      c.fillStyle = '#b06bff'; for (let i = 8; i < 13; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 1, 1);
+      c.fillStyle = '#e8e1cf'; for (let i = 0; i < 9; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 2, 2);
+      c.fillStyle = '#ffffff'; c.fillRect(X, Y, 2, 2);
     }
     // The Dark Ward round the Keeper while it holds; curse marks over cursed foes.
     if (this.mobs.ward > 0) {

@@ -237,6 +237,34 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone Hall, and back out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the ashen crypt/i, /ossuary/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /bone hall/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-2.jpg', type: 'jpeg', quality: 72 });
+  // A few steps into the hall, enough to see what waits there (a picture only: never a fight to assert on).
+  await page.waitForTimeout(5000);   // the floor's name card fades first
+  const y0 = await py(page);
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(1600); await page.keyboard.up('ArrowDown');
+  await expect.poll(() => py(page)).toBeGreaterThan(y0 + 10);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-bone-hall.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /ossuary/i);
+  await go(/crypt door/i, /^(The Ashen Bastion|The Ashen Crypt)$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-door.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to walk into and a floor above or below', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
