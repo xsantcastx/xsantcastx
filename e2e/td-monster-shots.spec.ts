@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 const HOST = 'http://lineup.test';
-const FILES: Readonly<Record<string, string>> = { 'td-mobs': 'td-mobs.ts', 'td-art': 'td-art.ts', 'td-skills': 'td-skills.ts' };
+const FILES: Readonly<Record<string, string>> = { 'td-mobs': 'td-mobs.ts', 'td-art': 'td-art.ts', 'td-skills': 'td-skills.ts', 'potions.model': '../../shared/potions/potions.model.ts' };
 
 test('the monster lineup: every creature of the top-down world, and the raised skeleton', async ({ page }) => {
   await page.route(`${HOST}/**`, route => {
@@ -21,7 +21,9 @@ test('the monster lineup: every creature of the top-down world, and the raised s
     if (!file) return route.fulfill({ status: 404, body: '' });
     const src = readFileSync(`src/app/play/td/${file}`, 'utf8');
     const out = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
-      .replace(/from '\.\/(td-[a-z-]+)'/g, "from './$1.js'");
+      .replace(/from '\.\/(td-[a-z-]+)'/g, "from './$1.js'")
+      // The potion roll the kill code imports (shared/potions): served beside the td modules.
+      .replace(/from '\.\.\/\.\.\/shared\/potions\/potions\.model'/g, "from './potions.model.js'");
     return route.fulfill({ contentType: 'text/javascript', body: out });
   });
   await page.setViewportSize({ width: 1280, height: 720 });
