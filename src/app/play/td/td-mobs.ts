@@ -79,7 +79,33 @@ function paintWarden(c: CanvasRenderingContext2D, f: number): void {
   px(c, 10, 0, 18, 4, '#2a1a1c'); px(c, 12, 0, 3, 2, '#ff8a2e'); px(c, 18, 0, 3, 2, '#ffd25a'); px(c, 24, 0, 3, 2, '#ff8a2e');
 }
 
+/** The Lava Hound: a cracked-obsidian hound with magma showing through. */
+function paintHound(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 3, 13, 2, 4 - b, '#1c1418'); px(c, 16, 13, 2, 3 + b, '#1c1418'); px(c, 6, 14, 2, 3, '#1c1418'); px(c, 13, 14, 2, 3, '#1c1418');
+  px(c, 3, 7, 16, 7, '#2e2228'); px(c, 3, 7, 16, 2, '#4a3a42'); px(c, 5, 10, 3, 1, '#ff8a2e'); px(c, 10, 9, 4, 1, '#ffd25a'); px(c, 14, 11, 3, 1, '#ff8a2e');
+  px(c, 16, 3 + b, 6, 6, '#2e2228'); px(c, 16, 2 + b, 2, 2, '#1c1418'); px(c, 20, 2 + b, 2, 2, '#1c1418'); px(c, 19, 5 + b, 2, 1, '#ffd25a');
+  px(c, 21, 7 + b, 2, 1, '#ff6a2a'); px(c, 0, 5 - b, 4, 2, '#ff8a2e'); px(c, 0, 4 - b, 2, 1, '#ffd25a');
+}
+/** The Obsidian Golem: a slab of black glass with a magma heart. */
+function paintGolem(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 4, 22, 6, 4, '#1c1620'); px(c, 16, 22, 6, 4, '#1c1620');
+  px(c, 3, 6 + b, 20, 17, '#262030'); px(c, 3, 6 + b, 20, 3, '#3e3650'); px(c, 5, 9 + b, 2, 10, '#4a4262');
+  px(c, 0, 9 + b, 4, 11, '#262030'); px(c, 22, 9 - b + 1, 4, 11, '#262030');
+  px(c, 10, 12 + b, 6, 6, '#120a0e'); px(c, 11, 13 + b, 4, 4, '#ff6a2a'); px(c, 12, 14 + b, 2, 2, '#ffd25a');
+  px(c, 8, 1 + b, 10, 6, '#2e2638'); px(c, 10, 3 + b, 2, 2, '#ff8a2e'); px(c, 14, 3 + b, 2, 2, '#ff8a2e');
+}
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
+  'lava-hound': {
+    id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10,
+    coins: [10, 30], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintHound, w: 23, h: 17,
+  },
+  'obsidian-golem': {
+    id: 'obsidian-golem', name: 'Obsidian Golem', hp: 260, speed: 22, dmg: [12, 20], rate: 1.7, sight: 110, level: 14,
+    coins: [24, 60], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .08 }], paint: paintGolem, w: 26, h: 26,
+  },
   'ember-warden': {
     id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8,
     coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 38, h: 44, rank: 'boss',

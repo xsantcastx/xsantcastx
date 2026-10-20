@@ -8,14 +8,16 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, boulder, bush, caveMouth, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
-import { CAVE_IN } from './maps/slagstone-cave';
-import { BLOCK, EMBER_ISLE, OX, OY, PLACES, REGION_MOBS, REGION_NAMES, ROADS, type Region } from './maps/ember-isle';
-import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
+import { beaconPillar, boulder, bush, caveMouth, ship, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
+import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
+import type { ContinentDef, Region } from './continent';
+import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
 
 export const WORLD_CHUNK = 16;
+/** A harbour pier's length in tiles. */
+const PIER = 10;
 /** Clear ground round the stamped town before the wilds begin (tiles). */
 const TOWN_MARGIN = 3;
 /** Chunks of wild objects kept in memory. */
@@ -37,6 +39,8 @@ function fbm(x: number, y: number, salt: number): number {
 
 export class TdWorld implements TdLevel {
   readonly id = 'surface';
+  /** Which continent this is (the engine holds one per continent; 'surface' names whichever the Keeper is on). */
+  readonly continent: string;
   readonly dark = false;
   readonly town: TdMap;
   /** The square's centre streets (tiles): they run on as the world's roads. */
@@ -49,12 +53,23 @@ export class TdWorld implements TdLevel {
   /** Road tiles (hand-drawn waypoints, 3 wide). */
   private readonly roads = new Set<number>();
 
-  constructor() {
-    this.town = buildSeamworksSquare();
-    this.roadRow = 15; this.roadCol = 22;
-    const cave = PLACES.find(p => p.kind === 'cave');
-    this.allStalls = [...this.town.stalls, ...(cave ? [{ station: CAVE_IN, x: cave.c * TILE + TILE / 2, y: cave.r * TILE + TILE + 6 }] : [])];
-    for (const way of ROADS) {
+  /** The ways on from this continent's places (a cave, a ship), by station id. */
+  readonly ways = new Map<string, { to: string; arrive: string; ship: boolean }>();
+
+  constructor(readonly def: ContinentDef = EMBER_ISLE_DEF) {
+    this.continent = def.id;
+    this.town = def.town();
+    this.roadRow = def.streets.row; this.roadCol = def.streets.col;
+    this.allStalls = [...this.town.stalls];
+    for (const w of def.ways) {
+      const p = def.places.find(pl => pl.kind === w.place);
+      if (!p) continue;
+      // A ship is boarded at the pier's end; anything else in front of the place.
+      const at = w.place === 'harbour' ? { x: p.c * TILE + TILE / 2, y: (p.r + PIER - 4) * TILE + TILE } : { x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE + 6 };
+      this.allStalls.push({ station: w.station, ...at });
+      this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
+    }
+    for (const way of def.roads) {
       for (let i = 1; i < way.length; i++) {
         const [x0, y0] = way[i - 1], [x1, y1] = way[i], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
         for (let k = 0; k <= n; k++) {
@@ -70,10 +85,10 @@ export class TdWorld implements TdLevel {
   /** The region under a tile, its border wobbled by noise so the blocks never show. */
   regionAt(c: number, r: number): Region {
     const wx = c + (noise(c / 9, r / 9, 11) - .5) * 9, wy = r + (noise(c / 9, r / 9, 12) - .5) * 9;
-    return this.regionOfBlock(Math.floor(wx / BLOCK) + OX, Math.floor(wy / BLOCK) + OY);
+    return this.regionOfBlock(Math.floor(wx / BLOCK) + this.def.ox, Math.floor(wy / BLOCK) + this.def.oy);
   }
   private regionOfBlock(bx: number, by: number): Region {
-    const row = EMBER_ISLE[by];
+    const row = this.def.map[by];
     return (row?.[bx] ?? '~') as Region;
   }
 
@@ -90,10 +105,16 @@ export class TdWorld implements TdLevel {
   }
 
   /** The river's three water rows at a column (the square's own river, carried on for ever). */
-  private riverAt(c: number): number { return 27 + Math.round(Math.sin(c / 5) * 1.2); }
+  private riverAt(c: number): number { return this.def.river ? 27 + Math.round(Math.sin(c / 5) * 1.2) : -1e9; }
+  /** A harbour's pier: three planks wide, running from the beach out over the sea. */
+  private onPier(c: number, r: number): boolean {
+    for (const p of this.def.places) if (p.kind === 'harbour' && Math.abs(c - p.c) <= 1 && r >= p.r && r < p.r + PIER) return true;
+    return false;
+  }
 
   ground(c: number, r: number): Ground {
     if (this.inTown(c, r)) return this.town.ground[r * this.town.cols + c];
+    if (this.onPier(c, r)) return 'plank';
     const reg = this.regionAt(c, r);
     if (reg === '~') return 'water';
     // The square's river crosses the island and runs into the sea; a road over it is a plank bridge.
@@ -159,9 +180,9 @@ export class TdWorld implements TdLevel {
   /** A name for where the Keeper stands: a place worth finding when near one, else the region (read unwobbled, so it holds steady). */
   placeName(x: number, y: number): string {
     const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
-    if (c >= -6 && r >= -6 && c < this.town.cols + 6 && r < this.town.rows + 6) return 'Basalt Seamworks';
-    for (const p of PLACES) if (Math.hypot(p.c - c, p.r - r) < 10) return p.name;
-    return REGION_NAMES[this.regionOfBlock(Math.floor(c / BLOCK) + OX, Math.floor(r / BLOCK) + OY)];
+    if (c >= -6 && r >= -6 && c < this.town.cols + 6 && r < this.town.rows + 6) return this.def.townName;
+    for (const p of this.def.places) if (Math.hypot(p.c - c, p.r - r) < 10) return p.name;
+    return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)];
   }
 
   private key(c: number, r: number): number { return (c + 0x8000) * 0x10000 + (r + 0x8000); }
@@ -208,8 +229,8 @@ export class TdWorld implements TdLevel {
     }
     // The places worth finding, stamped where the map puts them.
     const x0 = cx * WORLD_CHUNK, y0 = cy * WORLD_CHUNK;
-    for (const p of PLACES) {
-      if (p.c < x0 - 4 || p.c >= x0 + WORLD_CHUNK + 4 || p.r < y0 - 4 || p.r >= y0 + WORLD_CHUNK + 4) continue;
+    for (const p of this.def.places) {
+      if (p.c < x0 - PIER - 4 || p.c >= x0 + WORLD_CHUNK + PIER + 4 || p.r < y0 - PIER - 4 || p.r >= y0 + WORLD_CHUNK + PIER + 4) continue;
       const stamp = (dc: number, dr: number, sprite: () => import('./td-art').Sprite, block = true) => {
         const c = p.c + dc, r = p.r + dr;
         if (c < x0 || c >= x0 + WORLD_CHUNK || r < y0 || r >= y0 + WORLD_CHUNK) return;
@@ -221,10 +242,11 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'shrine') { stamp(0, 0, beaconPillar); stamp(-2, 1, () => flowerbed(2, 3), false); stamp(2, 1, () => flowerbed(2, 5), false); }
       else if (p.kind === 'cave') { stamp(0, 0, caveMouth); }
       else if (p.kind === 'caldera') { stamp(-3, 0, () => standingStone(2)); stamp(3, 0, () => standingStone(0)); }
+      else if (p.kind === 'harbour') { stamp(3, PIER - 2, ship, false); stamp(-2, 1, () => standingStone(1)); }
     }
     // Who lives here: packs by region (never near the square, never on a road).
     const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
-    const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), table = REGION_MOBS[mid];
+    const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), table = this.def.mobs[mid];
     if (table && Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= 3 && hash(cx, cy, 77) < table.chance) {
       const pack = 1 + Math.floor(hash(cx, cy, 78) * 3);
       for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
