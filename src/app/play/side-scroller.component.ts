@@ -45,7 +45,7 @@ import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
-import { createTopDownEngine, topDownGate } from './td/td-engine';
+import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
@@ -1842,6 +1842,12 @@ export class SideScrollerComponent implements OnDestroy {
     // The list (and the focused row) is gone: keep the keyboard in the world, not on <body>.
     this.focusWorld();
   }
+  /** The Map window's picture, pins and the Keeper's mark (td-engine mapView); null in the side view. */
+  get tdMapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
+    return this.topDown ? (this.engine as unknown as { mapView?: () => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.() ?? null : null;
+  }
+  pinName(pin: TdMapPin): string { return titleCase(pin.label); }
+  goPin(pin: TdMapPin): void { this.choosePlace({ id: pin.id, name: titleCase(pin.label), blurb: pin.blurb }); }
   /** Whether the top-down square has this station (a stall the Keeper can walk to). */
   private inSquare(id: string): boolean { return !!this.engine?.places.some(p => p.id === id); }
   /**
@@ -2519,6 +2525,7 @@ export class SideScrollerComponent implements OnDestroy {
     else if (event.code === 'KeyC' && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
+    else if (event.code === 'KeyM' && this.topDown) { event.preventDefault(); this.togglePlaces(); }
     else if (event.code === 'KeyM' && this.oneWorld && this.state.world) { event.preventDefault(); this.openTravelMap(null); }
     else if (event.code === 'KeyM' && this.state.delve) { event.preventDefault(); this.openMap(); }
     else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {

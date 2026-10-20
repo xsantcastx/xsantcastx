@@ -110,6 +110,8 @@ export class TdWorld implements TdLevel {
   private readonly villages: Village[];
   get stalls(): readonly TdStall[] { return this.allStalls; }
   get spawn(): { x: number; y: number } { return this.town.spawn; }
+  /** Every town's and village's own things (the Map draws their roofs). */
+  get settlementObjects(): readonly TdObject[] { return [...this.town.objects, ...this.villages.flatMap(v => v.objects)]; }
 
   /** Inside the stamped town (tiles). */
   inTown(c: number, r: number): boolean { return c >= 0 && r >= 0 && c < this.town.cols && r < this.town.rows; }

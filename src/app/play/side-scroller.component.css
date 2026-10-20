@@ -3709,3 +3709,36 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .stage--td:has(.touch-act button) .prompt { bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 84px); }
 }
 
+
+/* ── The Map (owner 2026-10-20): the floor or continent under you, pins to go, your mark, a small key ── */
+.places.td-map { position: absolute; z-index: 40; left: 50%; top: 50%; translate: -50% -50%; right: auto; bottom: auto;
+  width: min(1040px, calc(100% - 32px)); max-height: calc(100% - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.td-map__body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 12px; min-height: 0; padding: 10px 12px; overflow: hidden; }
+.td-map__view { position: relative; align-self: start; width: 100%; max-height: 100%; background: var(--cozy-wood-0);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-2); }
+.td-map__view img { display: block; width: 100%; height: 100%; image-rendering: pixelated; user-select: none; }
+.td-map__pin { --pin: var(--cozy-brass); position: absolute; width: 18px; height: 18px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  translate: -50% -100%; background: transparent !important; box-shadow: none !important; cursor: pointer; }
+.td-map__pin i, .td-map__key i { display: block; width: 12px; height: 12px; margin: 0 auto; background: var(--pin); rotate: 45deg; box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.td-map__pin:hover i { scale: 1.35; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 8px var(--pin); }
+:is(.td-map__pin, .td-map__key button)[data-kind='way'] { --pin: var(--cozy-loot-epic); }
+:is(.td-map__pin, .td-map__key button)[data-kind='ship'] { --pin: var(--cozy-loot-rare); }
+.td-map__me { position: absolute; width: 10px; height: 10px; translate: -50% -50%; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry);
+  animation: td-map-me 1.4s ease-in-out infinite; pointer-events: none; }
+@keyframes td-map-me { 50% { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 7px color-mix(in srgb, var(--cozy-berry) 40%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .td-map__me { animation: none; } }
+.td-map__key { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.td-map__hint { margin: 0 0 6px; font: 500 12px/1.3 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.td-map__key ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.td-map__key button { --pin: var(--cozy-brass); display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 0 8px !important;
+  text-align: left; font: 600 12px/1.2 var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
+.td-map__key button i { flex: none; margin: 0; width: 10px; height: 10px; }
+.td-map__menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 35%, transparent); }
+.td-map__menu button { min-height: 34px; padding: 0 12px !important; font: 600 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage .places.td-map { inset: calc(var(--hud-safe-t, 0px) + 8px) 8px calc(var(--hud-safe-b, 0px) + 8px) 8px; width: auto; max-height: none; height: auto; translate: none; transform: none; animation: none; opacity: 1; }
+  .td-map__body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .td-map__key ul { grid-template-columns: 1fr 1fr; }
+  .td-map__key button { min-height: 44px; }
+  .td-map__menu button { min-height: 44px; }
+}
