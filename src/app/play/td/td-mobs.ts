@@ -19,6 +19,7 @@ import { LOOT } from './td-fx';
 import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
+import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, type ElitePack, type EliteTag } from './td-elites';
 
 export interface MobDef {
   id: string;
@@ -1676,7 +1677,18 @@ export interface Mob {
   doomHit?: { min: number; max: number; r: number };
   /** Seconds its chant still hangs over its head (a boss winding up, CHANT_SECS). */
   chantT?: number;
+  /** A member of an elite pack (td-elites.ts): its rank, role, affixes and a unique leader's name. */
+  elite?: EliteTag;
+  /** What it takes of every hit (Stone Skin < 1). */
+  take?: number;
+  /** Teleport: seconds until it may blink again, the wind-up left, and where it lands. */
+  blinkCd?: number;
+  blinkT?: number;
+  blinkTo?: { x: number; y: number } | null;
 }
+
+/** Fire Enchanted's last word: a burst of fire where it fell, `t` seconds after (the ground shows the ring meanwhile). */
+export interface DeathBurst { x: number; y: number; t: number; r: number; dmg: number }
 
 /**
  * A boss's tell (docs/design/effects-spec.md, fourth pass): the seconds between the wind-up showing on the ground and
@@ -1693,7 +1705,7 @@ export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!
 export interface Call { x: number; y: number; type: string; key: string; t: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType }
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
@@ -1830,6 +1842,8 @@ export interface MobHost {
   playerHp?(): number;
   /** The Keeper swung (an attack or an ability): the host plays the swing toward `at`. */
   swung(at: { x: number; y: number } | null): void;
+  /** Is (x, y) a town or a safe square (no elite pack ever spawns there)? Default: nowhere is. */
+  safeAt?(x: number, y: number): boolean;
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -1918,6 +1932,18 @@ export class MobSystem {
   private kills = 0;
   private readonly deadUntil = new Map<string, number>();
   private clock = 0;
+  /**
+   * Elite packs (td-elites.ts): off until the host turns them on (the engine does; the specs choose), so a fixed spawn
+   * list stays exactly itself. `eliteSalt` varies the rolls between sessions; `fallen` counts each spawn's deaths, so a
+   * pack re-rolls only once it has been killed.
+   */
+  elites = false;
+  eliteSalt = '';
+  private readonly fallen = new Map<string, number>();
+  /** Fire Enchanted bursts on their way, the Cursed mark on the Keeper (seconds), the Cold Aura's slow on his step (0..1). */
+  readonly bursts: DeathBurst[] = [];
+  curseT = 0;
+  chill = 0;
 
   constructor(private readonly host: MobHost) {}
 
@@ -1927,7 +1953,7 @@ export class MobSystem {
     // Shots and the dead belong to the place they were in; the raised follow the Keeper (owner 2026-10-20: "summons
     // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
     // them down at his side on the new ground.
-    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0; this.zones.length = 0;
+    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0; this.zones.length = 0; this.bursts.length = 0;
     for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
     this.addSpawns(spawns);
   }
@@ -1937,8 +1963,43 @@ export class MobSystem {
       if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) continue;
       const def = MOBS[s.type];
       if (!def) continue;
-      this.mobs.push(this.spawnMob(s.key, def, s.x, s.y));
+      const pack = this.elites ? this.eliteFor(s, def) : null;
+      if (pack) this.spawnPack(s.key, def, s.x, s.y, pack);
+      else this.mobs.push(this.spawnMob(s.key, def, s.x, s.y));
     }
+  }
+  /** Does this spawn come up as an elite pack (td-elites.ts)? Never in a safe square, only where its level suits. */
+  private eliteFor(s: MobSpawn, def: MobDef): ElitePack | null {
+    if (!eliteEligible({ level: def.level, rank: def.rank, keeperLevel: this.keeperLevel, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
+    return rollElite(`${this.eliteSalt}|${this.host.levelId()}|${s.key}|${this.fallen.get(s.key) ?? 0}`);
+  }
+  /**
+   * Bring a pack to life round (x, y): the leader on the spawn itself (key `key`), its champions or minions beside it.
+   * Each member's numbers are its own MobDef copy (eliteStats), so every other path (bars, Gold, loot, XP) reads them.
+   */
+  spawnPack(key: string, def: MobDef, x: number, y: number, pack: ElitePack): Mob[] {
+    const out: Mob[] = [];
+    const gen = this.fallen.get(key) ?? 0;
+    const make = (k: string, role: EliteTag['role'], px: number, py: number): void => {
+      if (this.mobs.some(m => m.key === k)) return;
+      const tag: EliteTag = { rank: pack.rank, role, affixes: role === 'minion' ? [] : [...pack.affixes], name: role === 'leader' ? pack.name : null };
+      const st = eliteStats({ hp: def.hp, dmg: def.dmg, speed: def.speed, rate: def.rate, hits: def.hits }, tag);
+      const rank = lootRank(tag);
+      const own: MobDef = { ...def, hp: st.hp, dmg: st.dmg, speed: st.speed, rate: st.rate, rank, ...(st.hits ? { hits: st.hits } : {}) };
+      const m = this.spawnMob(k, own, px, py);
+      m.elite = tag; m.take = st.take;
+      if (tag.affixes.includes('teleport')) { m.blinkCd = TELEPORT.cd * .5; m.blinkT = 0; m.blinkTo = null; }
+      this.mobs.push(m); out.push(m);
+    };
+    make(key, 'leader', x, y);
+    for (let i = 0; i < pack.followers; i++) {
+      // Behind the leader (south of it), a body-width apart either side, so its name plate stands clear of them.
+      const reach = Math.max(22, Math.round(def.w * .95)), row = Math.floor(i / 2) + 1, side = i % 2 ? -1 : 1;
+      const rx = x + side * Math.round(reach * (i === 2 ? 0 : .5 + .5 * row)), ry = y + 16 * row + (i === 2 ? 12 : 0);
+      const at = this.free(rx, ry) ? { x: rx, y: ry } : { x: x + (i % 2 ? -6 : 6), y };
+      make(`${key}~${gen}e${i}`, pack.rank === 'champion' ? 'champion' : 'minion', at.x, at.y);
+    }
+    return out;
   }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null };
@@ -2009,8 +2070,19 @@ export class MobSystem {
       }
     }
     this.updateZones(dt);
+    this.curseT = Math.max(0, this.curseT - dt);
+    // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
+    this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R) ? COLD_SLOW : 0;
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      // Teleport: a short wind-up where it stands, then it is at its prey's side.
+      if (m.blinkT !== undefined && m.blinkT > 0) {
+        m.blinkT -= dt;
+        if (m.blinkT > 0) continue;
+        m.blinkT = 0;
+        if (m.blinkTo) { this.effects.push({ kind: 'spark', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 }); m.x = m.blinkTo.x; m.y = m.blinkTo.y; m.hx = m.x; m.hy = m.y; m.blinkTo = null; m.cd = Math.max(m.cd, .5); this.effects.push({ kind: 'spark', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 }); }
+      }
+      if (m.blinkCd !== undefined) m.blinkCd -= dt;
       if (m.chantT) m.chantT = Math.max(0, m.chantT - dt);
       // A boss in its wind-up stands its ground; when the tell runs out the attack leaves for where it aimed.
       if (m.tell > 0) {
@@ -2023,6 +2095,12 @@ export class MobSystem {
       for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
       const px0 = prey ? prey.x : p.x, py0 = prey ? prey.y : p.y;
       const hunting = d < m.def.sight, shoot = m.def.ranged;
+      if (hunting && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
+        // Where it will land: a step short of its prey, on its own side; never into a wall.
+        const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
+        m.blinkCd = TELEPORT.cd;
+        if (this.free(bx, by, m.def.floats)) { m.blinkTo = { x: bx, y: by }; m.blinkT = TELEPORT.tell; continue; }
+      }
       let tx: number | null = null, ty: number | null = null, stop = 2;
       if (hunting) {
         m.wander = null;
@@ -2060,8 +2138,18 @@ export class MobSystem {
         // A cursed foe bites weaker.
         const weak = this.weakOf(m);
         if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
-        if (prey) this.hurtMinion(prey, n); else this.biteKeeper(n, mobHits(m.def));
+        if (prey) this.hurtMinion(prey, n);
+        else { this.biteKeeper(n, this.blowType(m)); this.eliteBlow(m); }
       }
+    }
+    // Fire Enchanted's last word: the burst leaves when its ring has shown its reach.
+    for (let i = this.bursts.length - 1; i >= 0; i--) {
+      const b = this.bursts[i];
+      b.t -= dt;
+      if (b.t > 0) continue;
+      this.bursts.splice(i, 1);
+      this.effects.push({ kind: 'wave', el: 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
+      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, 'fire');
     }
     for (let i = this.calls.length - 1; i >= 0; i--) {
       const k = this.calls[i];
@@ -2111,6 +2199,8 @@ export class MobSystem {
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
   private hurtMob(foe: Mob, dmg: number, color: string, crit = false): void {
     if (foe.hp <= 0) return;
+    // Stone Skin turns part of every hit aside.
+    if (foe.take !== undefined && foe.take < 1) dmg = Math.max(1, Math.round(dmg * foe.take));
     foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
     if (foe.hp <= 0) { this.kill(foe); return; }
@@ -2131,7 +2221,10 @@ export class MobSystem {
    */
   private biteKeeper(raw: number, type: DamageType = 'physical'): void {
     const p = this.host.player();
-    let n = incomingDamage(raw, type, this.defense, this.keeperLevel, this.resists);
+    // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
+    const cursed = this.curseT > 0;
+    const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
+    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.defense, this.keeperLevel, resists);
     if (this.bone > 0 && n > 0) { const soak = Math.min(this.bone, n); this.bone -= soak; n -= soak; this.float(p.x - 8, p.y - 30, `-${soak}`, '#e8e1cf'); }
     if (this.ward > 0 && n > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
@@ -2150,7 +2243,8 @@ export class MobSystem {
       let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
       const weak = this.weakOf(m);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
-      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: mobHits(m.def) });
+      const ax = m.elite?.affixes ?? [];
+      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: this.blowType(m), ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
     }
   }
 
@@ -2162,7 +2256,7 @@ export class MobSystem {
       const s = this.shots[i];
       stepShot(s, dt);
       if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
-      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' || s.kind === 'shard' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); continue; }
+      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' || s.kind === 'shard' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); this.shotAffixes(s); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }
@@ -2444,8 +2538,28 @@ export class MobSystem {
 
   private float(x: number, y: number, text: string, color: string): void { this.floaters.push({ x, y, text, color, age: 0 }); }
 
+  /** The type a creature's blow carries now: a Spectral Hit picks a new element each blow. */
+  private blowType(m: Mob): DamageType {
+    if (m.elite?.affixes.includes('spectral-hit')) return SPECTRAL[Math.floor(Math.random() * SPECTRAL.length)];
+    return mobHits(m.def);
+  }
+  /** What an elite's blow does beyond its damage: Mana Burn drains, Cursed marks. */
+  private eliteBlow(m: Mob): void {
+    const ax = m.elite?.affixes;
+    if (!ax?.length) return;
+    this.shotAffixes({ burn: ax.includes('mana-burn'), curse: ax.includes('cursed') });
+  }
+  private shotAffixes(s: { burn?: boolean; curse?: boolean }): void {
+    const p = this.host.player();
+    if (s.burn && this.mana > 0) { const took = Math.min(this.mana, MANA_BURN); this.mana -= took; this.float(p.x - 10, p.y - 40, `-${Math.round(took)}`, AFFIX_DEFS['mana-burn'].color); }
+    if (s.curse) { if (this.curseT <= 0) this.float(p.x + 10, p.y - 40, AFFIX_DEFS.cursed.name, AFFIX_DEFS.cursed.color); this.curseT = CURSE_SECONDS; }
+  }
+
   private kill(m: Mob): void {
     this.mobs.splice(this.mobs.indexOf(m), 1);
+    if (m.elite?.role === 'leader' || !m.elite) this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
+    // Fire Enchanted: it bursts where it fell, after its ring has shown the reach.
+    if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share) });
     // Soul Harvest (passive): every kill gives back mana.
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     if (this.target === m) this.target = null;
@@ -2470,7 +2584,14 @@ export class MobSystem {
     if (potion) this.drops.push({ id: `${id}:p`, ...spot(n++), coins: 0, material: potion.id, qty: 1, label: potion.name, color: RARITY_COLOR.common, age: 0 });
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
-    try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: m.def.rank ?? 'normal', killKey: id }) ?? []; } catch { rows = []; }
+    const rank = m.def.rank ?? 'normal';
+    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k }) ?? []; } catch { return []; } };
+    rows = roll(id);
+    // Elites (td-elites.ts): their gear never drops common, and a unique leader always leaves a magic-or-better piece.
+    if (m.elite) {
+      rows = floorEliteRows(rows, rank);
+      if (m.elite.rank === 'unique' && m.elite.role === 'leader') { let k = 0; rows = guaranteeMagic(rows, () => roll(`${id}:x${k++}`)); }
+    }
     rows.forEach((row, i) => {
       const color = RARITY_COLOR[row.rarity] ?? RARITY_COLOR.common;
       if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique, level: row.level ?? m.def.level }, rarity: row.rarity, label: row.label, color, age: 0 });

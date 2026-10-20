@@ -8,6 +8,7 @@ import { CONTINENTS, LEVELS } from './td-engine';
 import type { DamageType } from '../../shared/loot/damage.model';
 import { MOBS, mobHits } from './td-mobs';
 import { huntGoldRange } from '../../shared/economy/economy-curve';
+import { MIN_PACK_LEVEL } from '../../shared/loot/champions';
 
 /** The save blob (account progress, synced; merge is the structural max per creature). */
 export const BESTIARY_KEY = 'eclipse-bestiary-v1';
@@ -33,6 +34,8 @@ export interface BestiaryEntry {
   hits: DamageType;
   /** Times defeated; 0 = not yet met (the card shows a silhouette). */
   kills: number;
+  /** It can come up as an elite pack (td-elites.ts): a blue champion pack or a gold-named unique with its minions. */
+  elites: boolean;
 }
 
 /** Who lives where: creature id → places, in a stable order (the lands first, then the dungeons by their floors). */
@@ -76,6 +79,7 @@ export function bestiaryEntries(kills: Readonly<Record<string, number>>): Bestia
     lore: def.lore ?? '',
     hits: mobHits(def),
     kills: Math.max(0, Math.floor(kills[def.id] ?? 0)),
+    elites: (def.rank ?? 'normal') === 'normal' && def.level >= MIN_PACK_LEVEL,
   })).sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
 
