@@ -4,7 +4,7 @@
  * never a death trap, and the ship sails from a pier the Keeper can stand on.
  */
 import type { EngineOptions } from '../engine/engine.model';
-import { MOBS, MobSystem, type Mob, type MobHost } from './td-mobs';
+import { CALL_TELL, MOBS, MobSystem, type Mob, type MobHost } from './td-mobs';
 import { CREATURE_PROFILES } from '../../shared/loot/creature-families';
 import { CONTINENTS, LEVELS } from './td-engine';
 import { HandLevel, footFree, standNear } from './td-level';
@@ -38,8 +38,12 @@ describe('td: the deep creatures', () => {
       const m = sys.mobs.find(x => x.key === 'b')!;
       m.hp = m.def.hp * .5 + 1;
       hit(sys, m);
+      // A sigil on the ground first (the summons' tell), then they climb out.
+      expect(sys.calls.length).toBe(2);
+      for (let t = 0; t < CALL_TELL + .05; t += .02) sys.update(.02);
       expect(sys.mobs.filter(x => x.def.id === help).length).toBe(2);
       hit(sys, m);
+      for (let t = 0; t < CALL_TELL + .05; t += .02) sys.update(.02);
       expect(sys.mobs.filter(x => x.def.id === help).length).toBe(2);
     });
   }

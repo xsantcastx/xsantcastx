@@ -195,3 +195,94 @@ export function scorchSprite(r: number): HTMLCanvasElement {
   scorchCache.set(R, cv);
   return cv;
 }
+
+// ── Loot (the third pass) ────────────────────────────────────────────────────
+
+/** The rarity ladder's rungs (world.model's LootRarity, spelt out so the kit stays free of imports). */
+export type LootRung = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'singular';
+
+/**
+ * The rarity ladder as canvas tones: each body is its `--cozy-loot-*` token (src/styles/tokens/_cozy.css), the core
+ * a paler shine of it and the edge a deeper shade. Singular has no cozy token: it keeps the ladder's void pink
+ * (docs/design/loot-and-combat.md §2).
+ */
+export const LOOT: Readonly<Record<LootRung, Tones>> = {
+  common: { core: '#ffffff', body: '#d8d2c2', edge: '#8f8a7c' },
+  uncommon: { core: '#dcffd6', body: '#6fd36a', edge: '#2f7a34' },
+  rare: { core: '#ddeeff', body: '#5aa8ff', edge: '#2a5aa8' },
+  epic: { core: '#f0deff', body: '#b46bff', edge: '#6b3aa0' },
+  legendary: { core: '#fff0c8', body: '#ff9a3c', edge: '#b4521c' },
+  mythic: { core: '#fffbe0', body: '#ffd25a', edge: '#b88a1c' },
+  singular: { core: '#ffe6f6', body: '#ff6dd7', edge: '#a03a8a' },
+};
+
+/**
+ * How a drop of each rung stands on the ground: its light column's height (art px; 0 = a glint only), how many
+ * motes rise up it, the radius of its ground ring (0 = none) and how far its light reaches into the dark.
+ */
+export interface LootBeam { readonly h: number; readonly motes: number; readonly ring: number; readonly light: number }
+const BEAMS: Readonly<Record<LootRung, LootBeam>> = {
+  common: { h: 0, motes: 0, ring: 0, light: 16 },
+  uncommon: { h: 10, motes: 0, ring: 4, light: 22 },
+  rare: { h: 18, motes: 0, ring: 5, light: 28 },
+  epic: { h: 28, motes: 0, ring: 6, light: 34 },
+  legendary: { h: 38, motes: 3, ring: 7, light: 42 },
+  mythic: { h: 44, motes: 4, ring: 7, light: 46 },
+  singular: { h: 48, motes: 5, ring: 8, light: 50 },
+};
+export function lootBeam(rung: LootRung): LootBeam { return BEAMS[rung] ?? BEAMS.common; }
+
+/**
+ * A light column's stepped falloff, bottom up: up to three bands (y0 > y1, both ≤ 0 above the ground), each one
+ * alpha lower than the band under it. `top` is the brightest band's alpha; never above 0.55 (it stands over creatures).
+ */
+export function beamSteps(h: number, top = .55): { y0: number; y1: number; a: number }[] {
+  const H = Math.max(0, Math.round(h)), A = Math.min(.55, top);
+  if (!H) return [];
+  const n = H < 8 ? 1 : H < 14 ? 2 : 3, cuts = n === 1 ? [H] : n === 2 ? [Math.round(H * .55), H] : [Math.round(H * .4), Math.round(H * .72), H];
+  const fall = [1, .6, .3];
+  return cuts.map((c, i) => ({ y0: -(i ? cuts[i - 1] : 0), y1: -c, a: +(A * fall[i]).toFixed(3) }));
+}
+
+/** The motes rising up a column of height h at time t (seconds): one climb every 3 s, staggered, whole pixels. */
+export function beamMotes(h: number, n: number, t: number, seed = 0): Px[] {
+  const out: Px[] = [];
+  for (let i = 0; i < n; i++) {
+    const k = (((t / 3 + i / n + fxNoise(seed, i) * .2) % 1) + 1) % 1;
+    out.push({ x: Math.round((fxNoise(seed, i, 2) - .5) * 4 + Math.sin(k * 6 + i) * 1), y: -Math.round(4 + k * (h - 4)) });
+  }
+  return out;
+}
+
+/** A ring laid on the ground: a circle squashed to half its height (the floor seen at three quarters), each pixel once. */
+export function groundRing(r: number): Px[] {
+  const seen = new Set<string>(), out: Px[] = [];
+  for (const p of circlePixels(r)) { const q = { x: p.x, y: Math.round(p.y / 2) }, k = `${q.x},${q.y}`; if (!seen.has(k)) { seen.add(k); out.push(q); } }
+  return out;
+}
+
+// ── Bosses' tells (the fourth pass) ──────────────────────────────────────────
+
+const coneCache = new Map<string, { edge: Px[]; fill: Px[] }>();
+/**
+ * A cone on the ground from (0, 0) toward angle `a`, `len` long and `half` radians either side: its outline (the
+ * two sides and the far arc) and a sparse dither inside it (every other pixel of every other row). Whole pixels.
+ */
+export function conePixels(len: number, half: number, a: number): { edge: Px[]; fill: Px[] } {
+  const L = Math.max(2, Math.round(len)), key = `${L}|${half.toFixed(3)}|${a.toFixed(2)}`;
+  const hit = coneCache.get(key);
+  if (hit) return hit;
+  const within = (x: number, y: number) => { let d = Math.atan2(y, x) - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return Math.abs(d) <= half; };
+  const seen = new Set<string>(), edge: Px[] = [];
+  const add = (p: Px) => { const k = `${p.x},${p.y}`; if (!seen.has(k)) { seen.add(k); edge.push(p); } };
+  for (const s of [-1, 1]) linePixels(0, 0, Math.cos(a + s * half) * L, Math.sin(a + s * half) * L).forEach(add);
+  ringArc(L, a, half).forEach(add);
+  const fill: Px[] = [];
+  for (let j = 0, y = -L; y <= L; y += 2, j++) for (let x = -L + (j % 2); x <= L; x += 2) {
+    if ((x || y) && x * x + y * y < (L - 1) * (L - 1) && within(x, y) && !seen.has(`${x},${y}`)) fill.push({ x, y });
+  }
+  if (coneCache.size > 24) coneCache.clear();
+  const out = { edge, fill };
+  coneCache.set(key, out);
+  return out;
+}

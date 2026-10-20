@@ -3,7 +3,7 @@
  * frames, the selective outline, a boss's rim), with the Warlock's raised skeleton at the end: docs/handoff/cozy-ui/
  * monster-lineup.jpg; and the oldest six up close with every frame of their walk: monster-lineup-x2.jpg.
  *
- * The page is blank: td-mobs.ts (and the two modules it needs) are transpiled here and served as ES modules, so the
+ * The page is blank: td-mobs.ts (and the modules it needs) are transpiled here and served as ES modules, so the
  * picture is the real paint code, not a copy of it.
  */
 import { expect, test } from '@playwright/test';
@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 const HOST = 'http://lineup.test';
-const FILES: Readonly<Record<string, string>> = { 'td-mobs': 'td-mobs.ts', 'td-art': 'td-art.ts', 'td-skills': 'td-skills.ts', 'potions.model': '../../shared/potions/potions.model.ts' };
+const FILES: Readonly<Record<string, string>> = { 'td-mobs': 'td-mobs.ts', 'td-art': 'td-art.ts', 'td-skills': 'td-skills.ts', 'td-fx': 'td-fx.ts', 'potions.model': '../../shared/potions/potions.model.ts' };
 
 test('the monster lineup: every creature of the top-down world, and the raised skeleton', async ({ page }) => {
   await page.route(`${HOST}/**`, route => {

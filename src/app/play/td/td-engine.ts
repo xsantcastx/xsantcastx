@@ -55,9 +55,9 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
 };
-import { MobSystem, RAISED_SKELETON, mobSheet, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
-import { FX, burst, circlePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, linePixels, polyPoints, ringArc, scorchSprite, type Tones } from './td-fx';
+import { FX, HOSTILE_EDGE, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
@@ -88,6 +88,10 @@ const AURA_R = SKILLS['aura-embers'].vars['radius'] * TILE;
 const NOVA_R = SKILLS['hellfire-nova'].vars['radius'] * TILE;
 const MOTES = 10;              // an aura's motes alive at once (spec: ≤ 10)
 const SHARDS = 8;
+/** A loot pop: the small burst when gear lands on the ground or goes into the satchel (spec §Loot). */
+interface LootPop { x: number; y: number; rung: LootRung; age: number; life: number; kind: 'drop' | 'pick'; seed: number }
+/** The rung a drop stands on: gear and runes their own, anything else none (a coin pile, a sack). */
+const rungOf = (g: Drop): LootRung | null => g.rarity ?? g.item?.rarity ?? (g.rune ? 'common' : null);
 
 export class TopDownEngine {
   private readonly ctx: CanvasRenderingContext2D;
@@ -164,6 +168,20 @@ export class TopDownEngine {
   private motes: Mote[] = [];
   private moteT = 0;
   private wardSeen = 0;
+  /** Loot pops alive, and the gear drops seen last frame (a new one pops as it lands, a vanished one at the feet as it is taken). */
+  private pops: LootPop[] = [];
+  private seenDrops = new Map<string, { x: number; y: number; rung: LootRung }>();
+  private seenLevel: unknown = null;
+  /**
+   * Screenshot-only (e2e/td-fx2-shots.spec.ts): with `?fxloot=1` under an automated browser, one drop of every rung
+   * lies round the Keeper. Drawn only — never in the MobSystem, so nothing can be picked up and nothing reaches a save.
+   */
+  private readonly fxLoot = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxloot=1\b/.test(location.search);
+  private showcase: Drop[] = [];
+  private tellSeen = '';
+  private popSeen = '';
+  private showcaseLevel: unknown = null;
+  private showcaseT = 0;
   private readonly reduceMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   /** Reduced motion, read live: the same shapes, no travel (spec §Rules 6). */
   private get still(): boolean { return !!this.reduceMq?.matches; }
@@ -597,6 +615,7 @@ export class TopDownEngine {
     this.updateSmoke(dt);
     this.updateFight(dt);
     this.updateFx(dt);
+    this.updateLoot(dt);
     this.updateChop(dt);
     this.actT = Math.max(0, this.actT - dt); this.shake = Math.max(0, this.shake - dt);
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
@@ -1000,7 +1019,7 @@ export class TopDownEngine {
     const surface = this.level === this.world;
     for (const k of this.keepers) if (surface && inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
     for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
-    for (const g of this.mobs.drops) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g.x, g.y, g.color, !!g.item || !!g.rune, g.coins > 0) });
+    for (const g of this.groundLoot()) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
@@ -1099,18 +1118,95 @@ export class TopDownEngine {
     c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - d.h - 5), w + 2, 3);
     c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - d.h - 4), Math.round(w * frac), 1);
   }
-  /** A drop on the ground: a coin pile, a sack, or gear lying in a beam of its rarity colour. */
-  private drawDrop(x: number, y: number, color: string, gear: boolean, coins: boolean): void {
-    const c = this.ctx, X = Math.round(x), Y = Math.round(y);
-    if (gear) {
-      c.globalAlpha = .28 + Math.sin(this.time * 4) * .08; c.fillStyle = color; c.fillRect(X - 1, Y - 26, 3, 24); c.globalAlpha = 1;
-      c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 6, 9, 5); c.fillStyle = color; c.fillRect(X - 3, Y - 5, 7, 3); c.fillStyle = '#ffffff'; c.fillRect(X - 2, Y - 5, 2, 1);
-    } else if (coins) {
+  /** The loot on the ground: the fight's drops, and the screenshot showcase when it is on. */
+  private groundLoot(): readonly Drop[] { return this.showcase.length ? [...this.mobs.drops, ...this.showcase] : this.mobs.drops; }
+  /**
+   * A drop on the ground: a coin pile, a sack, or gear standing in a pixel light column of its rung (spec §Loot) —
+   * the rarer the taller, stepped bands (never a gradient), at most 55% over whatever stands behind it; legendary and
+   * up carry motes climbing the column. Common gear only glints. The ground ring is drawn under creatures (drawGroundFx).
+   */
+  private drawDrop(g: Drop): void {
+    const c = this.ctx, X = Math.round(g.x), Y = Math.round(g.y), rung = rungOf(g);
+    if (rung) {
+      const tn = LOOT[rung], beam = lootBeam(rung), seed = this.dropSeed(g);
+      const pulse = this.still ? 1 : .85 + .15 * Math.sin(this.time * 2.6 + seed % 7);
+      for (const b of beamSteps(beam.h)) {
+        // Five pixels wide: an edge-tone halo, a body column, a one-pixel core — each band a step dimmer than the one under it.
+        const top = Y - 3 + b.y1, h = b.y0 - b.y1;
+        c.globalAlpha = b.a * pulse * .45; c.fillStyle = tn.edge; c.fillRect(X - 2, top, 5, h);
+        c.globalAlpha = b.a * pulse; c.fillStyle = tn.body; c.fillRect(X - 1, top, 3, h);
+        c.fillStyle = tn.core; c.fillRect(X, top, 1, h);
+      }
+      if (beam.motes) {
+        c.globalAlpha = .55;
+        for (const [i, m] of beamMotes(beam.h, beam.motes, this.still ? 1.3 : this.time, seed).entries()) {
+          c.fillStyle = i % 2 ? tn.core : tn.body; c.fillRect(X + m.x, Y - 3 + m.y, 1, 1);
+        }
+      }
+      c.globalAlpha = 1;
+      // The piece itself: a dark-outlined tile of its colour with a shine.
+      c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 6, 9, 5);
+      c.fillStyle = tn.edge; c.fillRect(X - 3, Y - 5, 7, 3);
+      c.fillStyle = tn.body; c.fillRect(X - 3, Y - 5, 6, 2);
+      c.fillStyle = tn.core; c.fillRect(X - 2, Y - 5, 2, 1);
+      // A glint: a four-point twinkle that crosses the piece now and then (every drop on its own beat).
+      const beat = this.still ? .05 : ((this.time + (seed % 97) / 31) % 2.2) / 2.2;
+      if (beat < .12) {
+        const big = beat > .03 && beat < .09;
+        c.fillStyle = '#ffffff'; c.fillRect(X + 2, Y - 6, 1, 1);
+        c.globalAlpha = .8; c.fillStyle = tn.core;
+        c.fillRect(X + 1, Y - 6, 1, 1); c.fillRect(X + 3, Y - 6, 1, 1); c.fillRect(X + 2, Y - 7, 1, 1); c.fillRect(X + 2, Y - 5, 1, 1);
+        if (big) { c.fillRect(X, Y - 6, 1, 1); c.fillRect(X + 4, Y - 6, 1, 1); c.fillRect(X + 2, Y - 8, 1, 1); }
+        c.globalAlpha = 1;
+      }
+    } else if (g.coins > 0) {
       c.fillStyle = '#2a1a24'; c.fillRect(X - 5, Y - 5, 10, 5); c.fillStyle = '#e8a83a'; c.fillRect(X - 4, Y - 4, 8, 3); c.fillStyle = '#ffd25a'; c.fillRect(X - 3, Y - 5, 3, 2); c.fillRect(X + 1, Y - 4, 2, 1);
     } else {
       c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 8, 8, 8); c.fillStyle = '#a8743f'; c.fillRect(X - 3, Y - 7, 6, 6); c.fillStyle = '#c99657'; c.fillRect(X - 3, Y - 7, 6, 2);
     }
   }
+  private dropSeed(g: Drop): number { let h = 0; for (let i = 0; i < g.id.length; i++) h = (h * 31 + g.id.charCodeAt(i)) | 0; return Math.abs(h); }
+  /** The top of a drop's column (its label sits just over it). */
+  private dropTop(g: Drop): number { const r = rungOf(g); return g.y - 8 - (r ? lootBeam(r).h : 0); }
+
+  /** Loot pops: a burst in its colour as gear lands, a smaller one rising as it is taken; the showcase, when on. */
+  private updateLoot(dt: number): void {
+    for (const q of this.pops) q.age += dt;
+    this.pops = this.pops.filter(q => q.age < q.life);
+    // The showcase lies down a second after each arrival, round wherever the Keeper stands.
+    if (this.fxLoot && this.showcaseLevel !== this.level) {
+      this.showcase = [];
+      if ((this.showcaseT += dt) > 1) { this.showcase = this.makeShowcase(); this.showcaseLevel = this.level; this.showcaseT = 0; }
+    }
+    const p = this.player;
+    if (this.seenLevel !== this.level) { this.seenLevel = this.level; this.seenDrops.clear(); for (const g of this.groundLoot()) { const r = rungOf(g); if (r) this.seenDrops.set(g.id, { x: g.x, y: g.y, rung: r }); } return; }
+    const now = new Set<string>();
+    for (const g of this.groundLoot()) {
+      const r = rungOf(g);
+      if (!r) continue;
+      now.add(g.id);
+      if (!this.seenDrops.has(g.id)) this.pops.push({ x: g.x, y: g.y - 3, rung: r, age: 0, life: .4, kind: 'drop', seed: this.dropSeed(g) });
+      this.seenDrops.set(g.id, { x: g.x, y: g.y, rung: r });
+    }
+    for (const [id, g] of this.seenDrops) {
+      if (now.has(id)) continue;
+      this.seenDrops.delete(id);
+      // Taken: it vanished at the Keeper's feet (a drop that lay out its time just goes).
+      if (Math.hypot(g.x - p.x, g.y - p.y) < 30) this.pops.push({ x: g.x, y: g.y - 3, rung: g.rung, age: 0, life: .45, kind: 'pick', seed: id.length * 13 });
+    }
+    if (this.pops.length > 12) this.pops.splice(0, this.pops.length - 12);
+    // For the screenshot spec: the canvas says when a pop is in the air.
+    const popping = this.pops.length ? 'pop' : '';
+    if (popping !== this.popSeen) { this.popSeen = popping; this.canvas.setAttribute('data-loot-pop', popping); }
+  }
+  private makeShowcase(): Drop[] {
+    const p = this.player, rows: [LootRung, string, number, number][] = [
+      ['common', 'Worn Cap', -84, 44], ['uncommon', 'Ashwood Staff', -28, 44], ['rare', 'Ember Ring', 28, 44], ['epic', 'Hexed Mantle', 84, 44],
+      ['legendary', 'Pyrelord Crown', -60, 104], ['mythic', 'Eclipse Shard', 0, 104], ['singular', 'Void Rune', 60, 104],
+    ];
+    return rows.map(([rung, label, dx, dy], i) => ({ id: `fx-showcase:${i}`, x: p.x + dx, y: p.y + dy, coins: 0, qty: 0, rarity: rung, label, color: LOOT[rung].body, age: 0 }));
+  }
+
   /** The effects pass's own pixels: an aura's motes (≤ 10 alive), the shards a Dark Ward sheds as it drinks a blow. */
   private updateFx(dt: number): void {
     for (const m of this.motes) m.age += dt;
@@ -1156,6 +1252,8 @@ export class TopDownEngine {
       c.globalAlpha = .6; drawRing(c, X, Y, Math.round(AURA_R * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
       c.globalAlpha = 1;
     }
+    this.drawLootRings();
+    this.drawTells();
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
@@ -1191,6 +1289,69 @@ export class TopDownEngine {
         }
         c.fillStyle = FX.shadow.core; for (const q of pts) c.fillRect(ex + q.x, ey + q.y, 1, 1);
       }
+    }
+    c.globalAlpha = 1;
+  }
+
+  /** The ground ring under each piece of gear above common: two tones, dithered, breathing with its column. */
+  private drawLootRings(): void {
+    const c = this.ctx, cam = this.cam;
+    for (const g of this.groundLoot()) {
+      const r = rungOf(g), beam = r ? lootBeam(r) : null;
+      if (!r || !beam?.ring || g.x < cam.x - 20 || g.x > cam.x + cam.w + 20 || g.y < cam.y - 20 || g.y > cam.y + cam.h + 60) continue;
+      const tn = LOOT[r], X = Math.round(g.x), Y = Math.round(g.y) - 2, seed = this.dropSeed(g);
+      const rr = beam.ring + (this.still ? 0 : Math.round(Math.sin(this.time * 2.6 + seed % 7)));
+      c.globalAlpha = .3; c.fillStyle = tn.edge;
+      for (const q of groundRing(rr + 1)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+      c.globalAlpha = .75;
+      groundRing(rr).forEach((q, i) => { if (i % 2) return; c.fillStyle = i % 4 ? tn.body : tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
+    }
+    c.globalAlpha = 1;
+  }
+
+  /**
+   * Bosses' tells (spec §Order 4): while a boss winds up (BOSS_TELL), the ground where its breath will go shows as a
+   * pixel cone in the ember edge tone, outlined dark (a foe's effect), pulsing, with a bright front running out to
+   * its far edge as the tell runs down — when the front reaches the edge, the breath leaves. A summons' sigil shows
+   * where each called creature will stand (CALL_TELL). Ground layer: under every creature.
+   */
+  private drawTells(): void {
+    const c = this.ctx;
+    // For the screenshot spec (e2e/td-fx2-shots.spec.ts): the canvas says when a tell is on the ground.
+    const telling = this.mobs.mobs.some(m => m.tell > 0) ? 'breath' : this.mobs.calls.length ? 'call' : '';
+    if (telling !== this.tellSeen) { this.tellSeen = telling; this.canvas.setAttribute('data-boss-tell', telling); }
+    for (const m of this.mobs.mobs) {
+      const shoot = m.def.ranged;
+      if (!(m.tell > 0) || !m.aim || !shoot || !windsUp(m.def)) continue;
+      const k = 1 - m.tell / BOSS_TELL, ox = Math.round(m.x + m.face * m.def.w * .3), oy = Math.round(m.y - 2);
+      // The cone lies on the floor: from the boss's feet toward where the prey stood (its feet, 12 px under the aim).
+      const ax = m.aim.x, ay = m.aim.y + 12, a = Math.atan2(ay - oy, ax - ox);
+      const len = Math.min(shoot.range, Math.hypot(ax - ox, ay - oy) + 28), half = ((shoot.spread ?? 1) - 1) / 2 * .22 + .14;
+      const cone = conePixels(len, half, a), tn = FX.ember;
+      const beat = this.still ? 1 : Math.floor(this.time * 8) % 2 ? 1 : .7;
+      // The front: how far the wind-up has filled the cone; behind it the dither burns brighter (body), ahead of it dim.
+      const fr = Math.max(4, Math.round((this.still ? .7 : k) * len));
+      for (const q of cone.fill) {
+        const near = q.x * q.x + q.y * q.y < fr * fr;
+        c.globalAlpha = (near ? .6 : .35) * beat; c.fillStyle = near ? tn.body : tn.edge;
+        c.fillRect(ox + q.x, oy + q.y, 1, 1);
+      }
+      c.globalAlpha = .9 * beat;
+      for (const q of cone.edge) { c.fillStyle = HOSTILE_EDGE; c.fillRect(ox + q.x, oy + q.y + 1, 1, 1); }
+      cone.edge.forEach((q, i) => { c.fillStyle = i % 3 ? tn.edge : tn.body; c.fillRect(ox + q.x, oy + q.y, 1, 1); });
+      c.globalAlpha = .85;
+      c.fillStyle = tn.body; for (const q of ringArc(fr, a, half)) c.fillRect(ox + q.x, oy + q.y, 1, 1);
+      c.fillStyle = tn.core; for (const q of ringArc(fr - 1, a, half * .7)) c.fillRect(ox + q.x, oy + q.y, 1, 1);
+    }
+    for (const k of this.mobs.calls) {
+      const t = 1 - k.t / CALL_TELL, X = Math.round(k.x), Y = Math.round(k.y), tn = FX.ember;
+      c.globalAlpha = this.still ? 1 : Math.min(1, t * 5) * (Math.floor(this.time * 8) % 2 ? 1 : .75);
+      c.fillStyle = HOSTILE_EDGE; for (const q of groundRing(11)) c.fillRect(X + q.x, Y + q.y + 1, 1, 1);
+      c.fillStyle = tn.edge; for (const q of groundRing(11)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+      groundRing(8).forEach((q, i) => { if (i % 2) return; c.fillStyle = tn.body; c.fillRect(X + q.x, Y + q.y, 1, 1); });
+      // A turning three-point mark inside, closing in as the creature comes.
+      const pts = polyPoints(3, 7 - t * 3, 3.5 - t * 1.5, this.still ? 0 : this.time * 3);
+      for (let i = 0; i < 3; i++) linePixels(pts[i].x, pts[i].y, pts[(i + 1) % 3].x, pts[(i + 1) % 3].y).forEach((q, j) => { c.fillStyle = j % 2 ? tn.edge : tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
     }
     c.globalAlpha = 1;
   }
@@ -1283,6 +1444,29 @@ export class TopDownEngine {
     }
     c.globalAlpha = 1;
     this.drawMotes();
+    // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).
+    for (const m of this.mobs.mobs) if (m.tell > 0 && windsUp(m.def)) {
+      const k = this.still ? .7 : 1 - m.tell / BOSS_TELL;
+      glowSquare(c, m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, 2 + Math.round(k * 5), FX.ember, .35 + .25 * k);
+    }
+    // Loot pops: out and falling as gear lands; up and in as the Keeper takes it.
+    for (const q of this.pops) {
+      const t = q.age / q.life, bt = this.still ? .5 : t;
+      c.globalAlpha = Math.max(0, 1 - t * .8);
+      const tn = LOOT[q.rung], X = Math.round(q.x), Y = Math.round(q.y);
+      if (q.kind === 'drop') {
+        // Landing: a flash, a flat ring running out along the ground, and a dozen pixels thrown up and falling.
+        if (t < .3 || this.still) glowSquare(c, X, Y - 2, 4, tn, .6);
+        const rr = 2 + Math.round((this.still ? .5 : 1 - (1 - t) * (1 - t)) * 12);
+        groundRing(rr).forEach((g, i) => { if (i % 2) return; c.fillStyle = i % 4 ? tn.body : tn.core; c.fillRect(X + g.x, Y + 3 + g.y, 1, 1); });
+        drawBurst(c, X, Y - 2, burst(12, bt, q.seed, 14, 7), tn);
+      } else {
+        // Taken: the pixels gather up and in toward the satchel, a last flash where it lay.
+        if (t < .25 || this.still) glowSquare(c, X, Y, 3, tn, .6);
+        drawBurst(c, X, Y - Math.round(bt * 14), burst(9, 1 - bt * .7, q.seed, 9, 0), tn);
+      }
+    }
+    c.globalAlpha = 1;
     // Ember Bolts in flight: a stepped violet halo, an ember core, a three-pixel trail fading in steps.
     for (const b of this.mobs.bolts) {
       const X = Math.round(b.x), Y = Math.round(b.y), dx = b.to.x - b.x, dy = b.to.y - b.to.def.h / 2 - b.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
@@ -1372,7 +1556,7 @@ export class TopDownEngine {
       c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(m.def.name, Math.round(m.x) + 1, Math.round(top) - 1);
       c.fillStyle = m === this.mobs.target ? '#ff8a7a' : '#f3e7cf'; c.fillText(m.def.name, Math.round(m.x), Math.round(top) - 2);
     }
-    for (const g of this.mobs.drops) if ((g.item || g.rune) && inView(g.x, g.y) && Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110) this.plate(g.label, g.x, g.y - 28, g.color);
+    for (const g of this.groundLoot()) { const r = rungOf(g); if (r && inView(g.x, g.y) && (Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110 || this.showcase.includes(g))) this.plate(g.label, g.x, this.dropTop(g), LOOT[r].body); }
     c.font = 'bold 8px "Pixelify Sans", monospace';
     for (const f of this.mobs.floaters) {
       c.globalAlpha = Math.max(0, 1 - f.age);
@@ -1467,6 +1651,10 @@ export class TopDownEngine {
       } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash') hole(e.x, e.y, 28);
     }
     for (const b of this.mobs.bolts) hole(b.x, b.y, 24);
+    // Gear on the ground is its own light, the rarer the further; a boss's tell lights its jaws and its cone.
+    for (const g of this.groundLoot()) { const r = rungOf(g); if (r) { const b = lootBeam(r); hole(g.x, g.y - 3 - b.h / 2, b.light + b.h / 2); } }
+    for (const m of this.mobs.mobs) if (m.tell > 0 && m.aim && windsUp(m.def)) { hole(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, 40); hole((m.x + m.aim.x) / 2, (m.y + m.aim.y + 12) / 2, 70); }
+    for (const k of this.mobs.calls) hole(k.x, k.y, 30);
     hole(this.glim.x, this.glim.y, 56);
     const c = this.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);

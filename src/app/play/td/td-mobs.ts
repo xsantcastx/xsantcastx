@@ -14,6 +14,7 @@ import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
+import { LOOT } from './td-fx';
 import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, defenseReduction, type SkillId } from './td-skills';
 
 export interface MobDef {
@@ -1015,7 +1016,22 @@ export interface Mob {
   rcd: number;
   /** It has called its summons (once). */
   summoned: boolean;
+  /** A boss's wind-up before its big attack (seconds left; 0 = none), and where that attack will land. */
+  tell: number;
+  aim: { x: number; y: number } | null;
 }
+
+/**
+ * A boss's tell (docs/design/effects-spec.md, fourth pass): the seconds between the wind-up showing on the ground and
+ * the breath leaving the jaws, aimed where the prey stood when it began — a step aside in that time and it misses.
+ * Summons get the same: a sigil where each will stand, for CALL_TELL seconds before it climbs out.
+ */
+export const BOSS_TELL = .6;
+export const CALL_TELL = .6;
+/** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
+export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
+/** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
+export interface Call { x: number; y: number; type: string; key: string; t: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
 export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' }
@@ -1077,6 +1093,8 @@ export interface Drop {
   qty: number;
   item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number };
   rune?: string;
+  /** Gear and runes: the rung of the rarity ladder (the beam it stands in). */
+  rarity?: LootRarity;
   label: string;
   color: string;
   age: number;
@@ -1099,8 +1117,10 @@ export interface Effect {
 export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number }
 
 
+/** The ladder's colours on the ground (labels, the name that floats up on pick-up): the `--cozy-loot-*` tokens via td-fx. */
 export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
-  common: '#f3e7cf', uncommon: '#7fd56a', rare: '#5fb6ff', epic: '#c48bff', legendary: '#ffb347', mythic: '#ff6dd7', singular: '#4dffe0',
+  common: LOOT.common.body, uncommon: LOOT.uncommon.body, rare: LOOT.rare.body, epic: LOOT.epic.body,
+  legendary: LOOT.legendary.body, mythic: LOOT.mythic.body, singular: LOOT.singular.body,
 };
 
 const REACH = 24;          // the Keeper's swing
@@ -1139,6 +1159,8 @@ export class MobSystem {
   readonly bolts: Bolt[] = [];
   /** Creatures' shots in flight, the Keeper's Bone Spears, his raised skeletons, and the fresh dead they rise from. */
   readonly shots: MobShot[] = [];
+  /** Summons on their way (a boss's call at half life): each a sigil on the ground until it climbs out. */
+  readonly calls: Call[] = [];
   readonly spears: Spear[] = [];
   readonly minions: Minion[] = [];
   readonly corpses: { x: number; y: number; at: number }[] = [];
@@ -1182,7 +1204,7 @@ export class MobSystem {
     // Shots and the dead belong to the place they were in; the raised follow the Keeper (owner 2026-10-20: "summons
     // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
     // them down at his side on the new ground.
-    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0;
+    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0;
     for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
     this.addSpawns(spawns);
   }
@@ -1196,7 +1218,7 @@ export class MobSystem {
     }
   }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
-    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false };
+    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null };
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
   prune(maxDist: number): void {
@@ -1259,6 +1281,12 @@ export class MobSystem {
     }
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      // A boss in its wind-up stands its ground; when the tell runs out the attack leaves for where it aimed.
+      if (m.tell > 0) {
+        m.tell -= dt;
+        if (m.tell <= 0) { m.tell = 0; if (m.aim) this.loose(m, m.aim.x, m.aim.y); m.aim = null; }
+        else continue;
+      }
       // Its prey: the Keeper, or one of his raised skeletons standing closer.
       let prey: Minion | null = null, d = Math.hypot(p.x - m.x, p.y - m.y);
       for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
@@ -1270,15 +1298,12 @@ export class MobSystem {
         if (shoot && shoot.keep > 0 && d < shoot.keep - 8) { tx = m.x + (m.x - px0); ty = m.y + (m.y - py0); stop = 0; }   // back off
         else if (!(shoot && shoot.keep > 0 && d <= shoot.range)) { tx = px0; ty = py0; stop = MOB_REACH - 4; }
         if (Math.abs(px0 - m.x) > 2) m.face = px0 < m.x ? -1 : 1;
-        // A shot at where the prey stands now: a step aside and it flies by.
-        if (shoot && d <= shoot.range && m.rcd <= 0) {
+        // A shot at where the prey stands now: a step aside and it flies by. A boss winds up first (BOSS_TELL):
+        // it aims now and looses when the tell runs out, so the ground warning is where the breath goes.
+        if (shoot && d <= shoot.range && m.rcd <= 0 && m.tell <= 0) {
           m.rcd = shoot.rate;
-          const n = shoot.spread ?? 1;
-          for (let i = 0; i < n; i++) {
-            let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
-            if (m.cursed > 0) dmg = Math.max(1, Math.round(dmg * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
-            this.shots.push(aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, px0, py0 - 12, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22));
-          }
+          if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; }
+          else this.loose(m, px0, py0 - 12);
         }
       } else {
         // Roam near home: a short stroll, a pause, another.
@@ -1305,6 +1330,14 @@ export class MobSystem {
         if (m.cursed > 0) n = Math.max(1, Math.round(n * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
         if (prey) this.hurtMinion(prey, n); else this.biteKeeper(n);
       }
+    }
+    for (let i = this.calls.length - 1; i >= 0; i--) {
+      const k = this.calls[i];
+      k.t -= dt;
+      if (k.t > 0) continue;
+      this.calls.splice(i, 1);
+      if (MOBS[k.type]) this.mobs.push(this.spawnMob(k.key, MOBS[k.type], k.x, k.y));
+      this.effects.push({ kind: 'spark', x: k.x, y: k.y - 6, age: 0, life: .3, dir: 1 });
     }
     this.updateShots(dt);
     this.updateMinions(dt);
@@ -1354,8 +1387,8 @@ export class MobSystem {
       for (let i = 0; i < call.count; i++) {
         const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 10), y = foe.y + 6;
         const at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
-        this.mobs.push(this.spawnMob(`${foe.key}:call${i}:${Math.round(this.clock * 10)}`, MOBS[call.type], at.x, at.y));
-        this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
+        // A sigil first, where it will stand (CALL_TELL); it climbs out when the sigil runs out (update).
+        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL });
       }
     }
   }
@@ -1370,6 +1403,18 @@ export class MobSystem {
   private hurtMinion(k: Minion, n: number): void {
     k.hp -= n; k.hit = .18;
     this.float(k.x, k.y - 26, `${n}`, '#c8a8ff');
+  }
+
+  /** A creature's shot (or a breath's fan of them) at (tx, ty). */
+  private loose(m: Mob, tx: number, ty: number): void {
+    const shoot = m.def.ranged;
+    if (!shoot) return;
+    const n = shoot.spread ?? 1;
+    for (let i = 0; i < n; i++) {
+      let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
+      if (m.cursed > 0) dmg = Math.max(1, Math.round(dmg * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
+      this.shots.push(aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22));
+    }
   }
 
   /** Creatures' shots and the Keeper's spears in flight. */
@@ -1544,8 +1589,8 @@ export class MobSystem {
     try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: m.def.rank ?? 'normal', killKey: id }) ?? []; } catch { rows = []; }
     rows.forEach((row, i) => {
       const color = RARITY_COLOR[row.rarity] ?? RARITY_COLOR.common;
-      if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique, level: row.level ?? m.def.level }, label: row.label, color, age: 0 });
-      else this.drops.push({ id: `${id}:r${i}`, ...spot(n++), coins: 0, qty: 0, rune: row.rune, label: row.label, color, age: 0 });
+      if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique, level: row.level ?? m.def.level }, rarity: row.rarity, label: row.label, color, age: 0 });
+      else this.drops.push({ id: `${id}:r${i}`, ...spot(n++), coins: 0, qty: 0, rune: row.rune, rarity: row.rarity, label: row.label, color, age: 0 });
     });
   }
 
