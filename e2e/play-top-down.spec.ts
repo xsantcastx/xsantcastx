@@ -316,6 +316,22 @@ test('through every door and stair the Keeper lands free and can walk away (neve
   await go(/stairs down/i, /study/i); await walks('spire study from above');
 });
 
+test('a reload resumes where the Keeper stood — another continent, inside a building — never back in the square', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the pyre spire/i, /watch hall/i);
+  await page.waitForTimeout(2600);   // the place is saved every two seconds
+  await page.reload();
+  await expect(canvas(page)).toHaveAttribute('data-area', /watch hall/i, { timeout: 20000 });
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');
