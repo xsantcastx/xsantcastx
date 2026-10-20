@@ -91,6 +91,9 @@ export function buildSeamworksSquare(): TdMap {
     [5, 23, 5, 3, 'thatch', 'timber'], [38, 23, 5, 3, 'slate', 'timber'],
   ];
   houses.forEach(([c, r, w, d, roof, wall], i) => add(() => house(w, d, roof, wall, true, i), tx(c), ty(r), { w, h: d + 1 }, 'building'));
+  // The Ember Inn's door (the slate-roofed house on the north row): it opens onto its tavern (maps/ember-inn.ts).
+  const innDoor: StationDef = { id: 'inn-door', x: 0, label: 'THE EMBER INN', kind: 'passage', blurb: 'A warm tavern with rooms upstairs.' };
+  const doors: TdStall[] = [{ station: innDoor, x: tx(13), y: ty(3) + 6 }];
 
   // Stalls round the fountain, each a Seamworks station, its keeper behind the counter.
   const keepers = TOWN_KEEPERS.infernal;
@@ -163,5 +166,6 @@ export function buildSeamworksSquare(): TdMap {
       if (c >= 0 && r >= 0 && c < COLS && r < ROWS) walkable[r * COLS + c] = 0;
     }
   }
+  stalls.push(...doors);
   return { id: 'infernal', cols: COLS, rows: ROWS, ground, objects, stalls, spawn: { x: tx(cx), y: ty(cy + 9) }, walkable };
 }

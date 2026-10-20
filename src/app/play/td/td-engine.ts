@@ -27,6 +27,7 @@ import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
 import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
+import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
 import { EMBER_ISLE_DEF } from './maps/ember-isle';
 import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
 import type { ContinentDef } from './continent';
@@ -36,7 +37,9 @@ import type { TdMapDef } from './td-level';
 /** Every continent, by id (ships sail between them). */
 const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
 
-const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE };
+const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2 };
+/** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
+const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = { 'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' } };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
 
@@ -279,6 +282,8 @@ export class TopDownEngine {
     const id = s.station.id;
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
+    // A door into a building: its ground floor.
+    if (this.level === this.world && DOORS[id]) { this.enter(this.handLevel(DOORS[id].to), DOORS[id].arrive); return; }
     // A way on from the continent: a cave mouth into its hand-drawn level, a ship to another continent.
     if (this.level === this.world) {
       const way = this.world.ways.get(id);
