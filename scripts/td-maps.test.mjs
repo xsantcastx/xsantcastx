@@ -10,7 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 const DIR = 'src/app/play/td/maps';
 const BLOCKED = new Set('#~eoOTCB'.split(''));
 const WAYS_IN = ['^', '<', 'D'];
-const MUST_REACH = ['>', '<', '^', 'D', 'm', 'b', 'i', 'W', 'C'];
+const MUST_REACH = ['>', '<', '^', 'D', 'm', 'b', 'i', 'W', 'C', 's', 'a', 'g', 'w', 'X'];
 
 for (const file of readdirSync(DIR).filter(f => f.endsWith('.ts'))) {
   const text = readFileSync(`${DIR}/${file}`, 'utf8');

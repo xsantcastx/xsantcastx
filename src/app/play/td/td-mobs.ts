@@ -33,6 +33,18 @@ export interface MobDef {
   h: number;
   /** Loot rank (shared/loot): a boss rolls more and better gear. Default 'normal'. */
   rank?: 'normal' | 'champion' | 'unique' | 'boss';
+  /**
+   * It shoots (a bone arrow, a fire bolt, a breath): within `range` art px it looses a shot every `rate` s that flies
+   * straight at where its prey stood, so stepping aside dodges it; it backs off to stay `keep` px away (0: it closes in
+   * and shoots as it comes). `spread` shots fan out (a breath).
+   */
+  ranged?: { range: number; keep: number; rate: number; dmg: [number, number]; speed: number; kind: MobShot['kind']; spread?: number };
+  /** It drifts over lava and embers as if they were floor (a wraith). */
+  floats?: boolean;
+  /** Half there: drawn see-through, flickering. */
+  ghost?: boolean;
+  /** Once, when its life falls to `at` of its whole, it calls `count` of `type` to its side. */
+  summon?: { type: string; count: number; at: number };
 }
 
 function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void { c.fillStyle = col; c.fillRect(x, y, w, h); }
@@ -104,6 +116,153 @@ function paintTyrant(c: CanvasRenderingContext2D, f: number): void {
   px(c, 14, 0, 20, 3, '#9e2e1c'); px(c, 15, 0, 3, 2, '#ffd25a'); px(c, 22, 0, 4, 2, '#ffd25a'); px(c, 30, 0, 3, 2, '#ffd25a');
 }
 
+
+const BONE = '#e8e1cf', BONE_SH = '#b8ac92', SOOT = '#2a1a24';
+
+/** A skeleton's body (skull, ribs, pelvis, legs) at x offset `o`: the walker's and the archer's, and the Warlock's raised. */
+function skeleton(c: CanvasRenderingContext2D, o: number, b: number, bone: string, sh: string, eye: string): void {
+  px(c, o + 6, 17, 2, 6 - b, sh); px(c, o + 10, 17, 2, 5 + b, sh); px(c, o + 5, 23 - b, 3, 1, bone); px(c, o + 10, 22 + b, 3, 1, bone);
+  px(c, o + 5, 15, 8, 2, bone); px(c, o + 8, 9, 2, 6, sh);
+  for (let i = 0; i < 3; i++) px(c, o + 5, 9 + i * 2, 8, 1, bone);
+  px(c, o + 4, 8, 10, 1, bone); px(c, o + 3, 9, 1, 6 + b, sh);
+  px(c, o + 5, 1 + b, 8, 6, bone); px(c, o + 5, 6 + b, 8, 1, sh); px(c, o + 6, 7 + b, 6, 1, bone);
+  px(c, o + 6, 3 + b, 2, 2, SOOT); px(c, o + 10, 3 + b, 2, 2, SOOT); px(c, o + 6, 3 + b, 1, 1, eye); px(c, o + 11, 3 + b, 1, 1, eye);
+  px(c, o + 8, 5 + b, 2, 1, SOOT);
+}
+/** The Bone Walker: a skeleton of the old Bastion's garrison, still marching with a slag-iron blade. */
+function paintBoneWalker(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  skeleton(c, 0, b, BONE, BONE_SH, '#ff8a2e');
+  px(c, 14, 9 - b, 1, 5, BONE_SH);
+  px(c, 15, 1 - b + 1, 2, 12, '#8a7f86'); px(c, 15, 1 - b + 1, 1, 12, '#c9c2cc'); px(c, 13, 13 - b, 5, 1, '#5e3a28');
+}
+/** A skeleton the Warlock raised: the same bones, blanched violet, the eyes burning his colour; a shield instead of a blade. */
+function paintRaised(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  skeleton(c, 0, b, '#ddd2ea', '#a99bc0', '#c88bff');
+  px(c, 14, 9 - b, 1, 5, '#a99bc0');
+  px(c, 15, 1 - b + 1, 2, 12, '#6b5a86'); px(c, 15, 1 - b + 1, 1, 12, '#b06bff'); px(c, 13, 13 - b, 5, 1, '#3b2140');
+  px(c, 0, 9, 4, 6, '#3b2140'); px(c, 1, 10, 2, 4, '#b06bff');
+}
+/** The Bone Archer: a hooded skeleton with a bow of blackened charwood. */
+function paintBoneArcher(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  skeleton(c, 2, b, BONE, BONE_SH, '#ffd25a');
+  px(c, 6, 0 + b, 10, 3, '#6a2a24'); px(c, 6, 0 + b, 2, 6, '#6a2a24'); px(c, 14, 0 + b, 2, 6, '#6a2a24');
+  px(c, 16, 9, 1, 5, BONE_SH);
+  px(c, 18, 4, 1, 14, '#5e3a28'); px(c, 17, 3, 1, 2, '#5e3a28'); px(c, 17, 17, 1, 2, '#5e3a28');
+  px(c, 19, 5, 1, 12, '#e9e4d8');
+  if (!f) { px(c, 12, 10, 7, 1, '#c9c2cc'); px(c, 11, 9, 2, 3, '#ff8a2e'); }
+}
+/** The Ash Ghoul: a hunched grey eater of the dead, quick on all fours, red-eyed. */
+function paintGhoul(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 4, 13, 3, 5 - b, '#4a4248'); px(c, 12, 13, 3, 4 + b, '#4a4248'); px(c, 4, 10, 2, 5 + b, '#5e565c');
+  px(c, 3, 6 + b, 13, 8, '#7a7078'); px(c, 3, 6 + b, 13, 2, '#948a92'); px(c, 3, 12 + b, 13, 2, '#5e565c');
+  px(c, 5, 5 + b, 2, 1, '#5e565c'); px(c, 9, 5 + b, 2, 1, '#5e565c'); px(c, 13, 5 + b, 2, 1, '#5e565c');
+  px(c, 14, 4 + b, 6, 6, '#8a8088'); px(c, 14, 4 + b, 6, 1, '#a49aa2');
+  px(c, 16, 6 + b, 1, 1, '#ff4a3a'); px(c, 18, 6 + b, 1, 1, '#ff4a3a'); px(c, 15, 9 + b, 5, 1, SOOT); px(c, 16, 9 + b, 1, 1, BONE); px(c, 18, 9 + b, 1, 1, BONE);
+  px(c, 15, 10, 2, 5 - b, '#5e565c'); px(c, 16, 15 - b, 3, 1, BONE);
+  px(c, 6, 9 + b, 1, 1, '#ff8a2e'); px(c, 10, 11 + b, 1, 1, '#ff8a2e');
+}
+/** The Cinder Wraith: a hooded shade of ash with an ember for a heart; no feet, it drifts. */
+function paintWraith(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 4, 6, 12, 14, '#3a2c44'); px(c, 4, 6, 2, 14, '#4e3c5c');
+  for (let i = 0; i < 4; i++) { const h = 3 + ((i + f) % 2) * 2; px(c, 4 + i * 3, 20, 2, h, '#3a2c44'); px(c, 4 + i * 3, 19 + h, 2, 1, '#ff6a2a'); }
+  px(c, 5, 1, 10, 7, '#2a2034'); px(c, 6, 0, 8, 2, '#3a2c44'); px(c, 7, 3, 6, 4, '#120a0e');
+  px(c, 8, 4, 1, 1, '#ffd25a'); px(c, 11, 4, 1, 1, '#ffd25a');
+  px(c, 1, 8 + b, 3, 7, '#3a2c44'); px(c, 16, 9 - b, 3, 7, '#3a2c44'); px(c, 1, 15 + b, 2, 2, BONE_SH); px(c, 17, 16 - b, 2, 2, BONE_SH);
+  px(c, 9, 10, 2, 3, '#ff8a2e'); px(c, 9, 11, 2, 1, '#ffd25a');
+}
+const ORC = '#6f7a5a', ORC_SH = '#4f5a40';
+/** A Cinder-clan Orc: ash-green, tusked, in basalt plates, with a slag-iron axe. */
+function paintOrc(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 6, 18, 4, 6 - b, '#3a3238'); px(c, 12, 18, 4, 5 + b, '#3a3238');
+  px(c, 4, 9 + b, 14, 10, '#5a4034'); px(c, 4, 16 + b, 14, 2, '#2a1a1c'); px(c, 10, 16 + b, 2, 2, '#ffd25a');
+  px(c, 2, 8 + b, 5, 4, '#3a3238'); px(c, 15, 8 + b, 5, 4, '#3a3238'); px(c, 3, 7 + b, 1, 1, BONE_SH); px(c, 18, 7 + b, 1, 1, BONE_SH);
+  px(c, 2, 12 + b, 3, 6, ORC); px(c, 17, 12 + b, 3, 6, ORC);
+  px(c, 6, 1 + b, 10, 8, ORC); px(c, 6, 3 + b, 10, 1, ORC_SH); px(c, 8, 4 + b, 2, 1, '#ff6a2a'); px(c, 12, 4 + b, 2, 1, '#ff6a2a');
+  px(c, 7, 7 + b, 8, 2, ORC_SH); px(c, 8, 6 + b, 1, 2, BONE); px(c, 13, 6 + b, 1, 2, BONE); px(c, 10, 0 + b, 2, 2, SOOT); px(c, 7, 5 + b, 1, 1, '#ff8a2e');
+  px(c, 20, 6 - b, 1, 14, '#5e3a28'); px(c, 18, 5 - b, 4, 5, '#8a7f86'); px(c, 18, 5 - b, 1, 5, '#c9c2cc');
+}
+/** An Orc Firecaller: the clan's shaman, hooded in ember-red, a flame caught on a skull-topped staff. */
+function paintFirecaller(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 6, 24, 3, 2, SOOT); px(c, 13, 24, 3, 2, SOOT);
+  px(c, 5, 10, 12, 14, '#6a2418'); px(c, 5, 22, 12, 2, '#ff8a2e'); px(c, 10, 10, 2, 12, '#3a2034');
+  px(c, 3, 11 + b, 2, 6, ORC); px(c, 17, 11 + b, 2, 6, ORC);
+  px(c, 6, 3 + b, 10, 7, ORC); px(c, 5, 1 + b, 12, 3, '#4a1a14'); px(c, 5, 1 + b, 2, 8, '#4a1a14'); px(c, 15, 1 + b, 2, 8, '#4a1a14');
+  px(c, 8, 6 + b, 2, 1, '#ffd25a'); px(c, 12, 6 + b, 2, 1, '#ffd25a'); px(c, 8, 8 + b, 1, 2, BONE); px(c, 13, 8 + b, 1, 2, BONE);
+  px(c, 1, 5, 1, 20, '#5e3a28'); px(c, 0, 4, 3, 2, BONE);
+  px(c, 0, 0 + f, 3, 4 - f, '#ff8a2e'); px(c, 1, 1 + f, 1, 2, '#ffd25a');
+}
+/** The Orc Warlord: a Cinder-clan chief grown huge, horned helm, a cape the colour of old embers. */
+function paintWarlord(c: CanvasRenderingContext2D, f: number): void {
+  px(c, 8, 12, 15, 18, '#5a1a14'); px(c, 8, 28, 15, 2, '#ff6a2a');
+  c.save(); c.scale(1.35, 1.35); paintOrc(c, f); c.restore();
+  const b = f ? 1 : 0;
+  px(c, 7, 1 + b, 16, 3, '#3a3238'); px(c, 4, 0 + b, 3, 4, BONE); px(c, 3, 0 + b, 2, 2, BONE); px(c, 23, 0 + b, 3, 4, BONE); px(c, 25, 0 + b, 2, 2, BONE);
+  px(c, 14, 1 + b, 2, 2, '#ffd25a');
+}
+/** The Ember Drake: a winged lizard of the Molten Fields, scales like cooling lava. */
+function paintDrake(c: CanvasRenderingContext2D, f: number): void {
+  const w = f ? 5 : 1;
+  px(c, 0, 13, 6, 2, '#9e2e1c'); px(c, 0, 12, 2, 1, '#ff6a2a');
+  px(c, 8, w, 3, 9 - Math.min(w, 4), '#7a2a1c'); px(c, 10, w + 1, 8, 7, '#e2552a'); px(c, 10, w + 1, 8, 1, '#7a2a1c'); px(c, 13, w + 1, 1, 7, '#9e2e1c');
+  px(c, 5, 10, 13, 7, '#c8432a'); px(c, 6, 15, 11, 2, '#ffb35a'); px(c, 6, 9, 2, 1, '#7a2a1c'); px(c, 10, 9, 2, 1, '#7a2a1c'); px(c, 14, 9, 2, 1, '#7a2a1c');
+  px(c, 7, 17, 2, 4 - (f ? 1 : 0), '#7a2a1c'); px(c, 14, 17, 2, 3 + (f ? 1 : 0), '#7a2a1c'); px(c, 6, 21, 3, 1, SOOT); px(c, 13, 21, 3, 1, SOOT);
+  px(c, 17, 7, 4, 6, '#c8432a');
+  px(c, 19, 4, 6, 5, '#c8432a'); px(c, 24, 6, 4, 3, '#c8432a'); px(c, 22, 8, 5, 1, '#7a2a1c'); px(c, 21, 5, 2, 1, '#ffd25a'); px(c, 19, 2, 2, 2, SOOT); px(c, 27, 6, 1, 1, '#ffd25a');
+}
+type P2 = readonly [number, number];
+/** A filled triangle, scanline by scanline in whole pixels (a wing's membrane stays crisp under the outline). */
+function tri(c: CanvasRenderingContext2D, a: P2, b: P2, d: P2, col: string): void {
+  const ys = [a[1], b[1], d[1]], y0 = Math.min(...ys), y1 = Math.max(...ys), edges: [P2, P2][] = [[a, b], [b, d], [d, a]];
+  for (let y = y0; y < y1; y++) {
+    const yc = y + .5, xs: number[] = [];
+    for (const [p, q] of edges) if ((p[1] <= yc) !== (q[1] <= yc)) xs.push(p[0] + (yc - p[1]) / (q[1] - p[1]) * (q[0] - p[0]));
+    if (xs.length < 2) continue;
+    const l = Math.round(Math.min(...xs)), r = Math.round(Math.max(...xs));
+    if (r > l) px(c, l, y, r - l, 1, col);
+  }
+}
+/** A bone from p to q, `t` pixels thick. */
+function bone(c: CanvasRenderingContext2D, p: P2, q: P2, t: number, col: string): void {
+  const n = Math.max(Math.abs(q[0] - p[0]), Math.abs(q[1] - p[1]));
+  for (let i = 0; i <= n; i++) px(c, Math.round(p[0] + (q[0] - p[0]) * i / n), Math.round(p[1] + (q[1] - p[1]) * i / n), t, t, col);
+}
+/** The Ashbone Dragon: the Bastion's last lord, a dragon of bare bone round a heart of burning slag. */
+function paintBoneDragon(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0, w = f ? 3 : 0, M = '#3a2c44';
+  // The far wing, a bat's: an arm of bone up to the wrist, three fingers fanning out, tattered ash between.
+  const S: P2 = [31, 27], W: P2 = [25, 5 + w], T1: P2 = [3, 11 + w], T2: P2 = [10, 2 + w], T3: P2 = [19, 0 + w];
+  tri(c, W, T1, T2, M); tri(c, W, T2, T3, M); tri(c, S, W, T1, M); tri(c, T1, S, [16, 31], M);
+  for (let i = 0; i < 3; i++) px(c, 6 + i * 4, 14 + w + i, 2, 2, '#2a2034');
+  bone(c, S, W, 3, BONE); bone(c, W, T1, 2, BONE_SH); bone(c, W, T2, 2, BONE_SH); bone(c, W, T3, 2, BONE_SH);
+  // Tail and back.
+  for (let i = 0; i < 8; i++) px(c, i * 3, 44 - Math.floor(i * 1.3), 3, 3, i % 2 ? BONE_SH : BONE);
+  px(c, 20, 30, 24, 3, BONE); for (let i = 0; i < 6; i++) px(c, 21 + i * 4, 28, 2, 2, BONE_SH);
+  // The ribs round the slag heart.
+  px(c, 24, 33, 18, 9, '#5a1a14'); px(c, 27, 35, 12, 5, '#ff6a2a'); px(c, 30, 36, 5, 3, '#ffd25a');
+  for (let i = 0; i < 5; i++) px(c, 23 + i * 4, 33, 2, 10 - Math.abs(i - 2) * 2, BONE);
+  px(c, 22, 43, 22, 2, BONE_SH);
+  // Legs.
+  px(c, 22, 44, 4, 7 + b, BONE); px(c, 21, 51 + b, 3, 3 - b, BONE_SH); px(c, 19, 54, 7, 2, BONE);
+  px(c, 38, 44, 4, 7 - b + 1, BONE); px(c, 39, 51, 3, 3, BONE_SH); px(c, 37, 54, 7, 2, BONE);
+  // The near wing, folded.
+  px(c, 30, 14 + w, 3, 14 - w, BONE); px(c, 33, 16 + w, 9, 11 - w, M); px(c, 33, 16 + w, 9, 1, BONE_SH);
+  // Neck and skull.
+  for (let i = 0; i < 5; i++) px(c, 42 + i * 2, 27 - i * 3, 4, 4, i % 2 ? BONE_SH : BONE);
+  px(c, 47, 6 + b, 14, 10, BONE); px(c, 47, 14 + b, 14, 2, BONE_SH); px(c, 56, 11 + b, 8, 5, BONE);
+  px(c, 51, 9 + b, 3, 3, SOOT); px(c, 52, 10 + b, 1, 1, '#ffd25a'); px(c, 62, 12 + b, 1, 1, SOOT);
+  px(c, 45, 3 + b, 4, 3, BONE_SH); px(c, 43, 1 + b, 3, 3, BONE_SH); px(c, 49, 4 + b, 3, 2, BONE_SH);
+  px(c, 52, 17 + b + (f ? 2 : 0), 11, 3, BONE_SH);
+  for (let i = 0; i < 4; i++) { px(c, 55 + i * 2, 16 + b, 1, 1, BONE); px(c, 55 + i * 2, 17 + b + (f ? 2 : 0), 1, 1, BONE); }
+  if (f) { px(c, 56, 17 + b, 8, 2, '#ff6a2a'); px(c, 58, 17 + b, 4, 1, '#ffd25a'); }
+}
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10,
@@ -137,6 +296,55 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     id: 'cinder-bailiff', name: 'Cinder Bailiff', hp: 110, speed: 28, dmg: [6, 10], rate: 1.5, sight: 110, level: 3,
     coins: [8, 24], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .35 }], paint: paintBailiff, w: 22, h: 25,
   },
+  // The undead and the Cinder clans (owner 2026-10-20: "lots of scary monsters … skeletons, dragons, orcs, undead").
+  'bone-walker': {
+    id: 'bone-walker', name: 'Bone Walker', hp: 80, speed: 30, dmg: [4, 8], rate: 1.4, sight: 96, level: 6,
+    coins: [5, 16], drops: [{ material: 'ember-residue', qty: 1, chance: .25 }], paint: paintBoneWalker, w: 18, h: 24,
+  },
+  'bone-archer': {
+    id: 'bone-archer', name: 'Bone Archer', hp: 85, speed: 30, dmg: [3, 6], rate: 1.5, sight: 140, level: 8,
+    coins: [8, 20], drops: [{ material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintBoneArcher, w: 20, h: 24,
+    ranged: { range: 92, keep: 76, rate: 1.9, dmg: [6, 10], speed: 120, kind: 'arrow' },
+  },
+  'ash-ghoul': {
+    id: 'ash-ghoul', name: 'Ash Ghoul', hp: 70, speed: 60, dmg: [5, 9], rate: .8, sight: 130, level: 9,
+    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintGhoul, w: 20, h: 18,
+  },
+  'cinder-wraith': {
+    id: 'cinder-wraith', name: 'Cinder Wraith', hp: 150, speed: 32, dmg: [8, 13], rate: 1.4, sight: 130, level: 12,
+    coins: [14, 36], drops: [{ material: 'ember-residue', qty: 2, chance: .5 }, { material: 'infernal-heartstone', qty: 1, chance: .04 }], paint: paintWraith, w: 20, h: 26,
+    floats: true, ghost: true,
+  },
+  'cinder-orc': {
+    id: 'cinder-orc', name: 'Cinder-clan Orc', hp: 170, speed: 36, dmg: [9, 15], rate: 1.3, sight: 120, level: 10,
+    coins: [12, 32], drops: [{ material: 'cinder-ore', qty: 1, chance: .5 }, { material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintOrc, w: 22, h: 24,
+  },
+  'orc-firecaller': {
+    id: 'orc-firecaller', name: 'Orc Firecaller', hp: 130, speed: 30, dmg: [6, 10], rate: 1.5, sight: 150, level: 13,
+    coins: [16, 40], drops: [{ material: 'ember-residue', qty: 2, chance: .6 }], paint: paintFirecaller, w: 22, h: 26,
+    ranged: { range: 100, keep: 74, rate: 2.1, dmg: [10, 16], speed: 110, kind: 'fire' },
+  },
+  'orc-warlord': {
+    id: 'orc-warlord', name: 'Orc Warlord', hp: 440, speed: 32, dmg: [15, 24], rate: 1.5, sight: 140, level: 16,
+    coins: [60, 130], drops: [{ material: 'cinder-ore', qty: 3, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .15 }], paint: paintWarlord, w: 30, h: 33, rank: 'champion',
+  },
+  'ember-drake': {
+    id: 'ember-drake', name: 'Ember Drake', hp: 320, speed: 40, dmg: [12, 18], rate: 1.4, sight: 150, level: 18,
+    coins: [40, 90], drops: [{ material: 'ember-residue', qty: 2, chance: .8 }, { material: 'infernal-heartstone', qty: 1, chance: .1 }], paint: paintDrake, w: 28, h: 22,
+    ranged: { range: 84, keep: 0, rate: 3, dmg: [12, 20], speed: 130, kind: 'fire' },
+  },
+  'bone-dragon': {
+    id: 'bone-dragon', name: 'The Ashbone Dragon', hp: 2200, speed: 22, dmg: [22, 34], rate: 1.8, sight: 190, level: 25,
+    coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 64, h: 56, rank: 'boss',
+    ranged: { range: 130, keep: 0, rate: 3.4, dmg: [16, 26], speed: 120, kind: 'breath', spread: 3 },
+    summon: { type: 'bone-walker', count: 2, at: .5 },
+  },
+};
+
+/** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
+export const RAISED_SKELETON: MobDef = {
+  id: 'raised-skeleton', name: 'Raised Skeleton', hp: 1, speed: 52, dmg: [1, 1], rate: 1.1, sight: 0, level: 1,
+  coins: [0, 0], drops: [], paint: paintRaised, w: 18, h: 24,
 };
 
 const sheets = new Map<string, HTMLCanvasElement>();
@@ -173,7 +381,63 @@ export interface Mob {
   hit: number;
   wander: { x: number; y: number } | null;
   wait: number;
+  /** Seconds until its next shot (a ranged creature). */
+  rcd: number;
+  /** It has called its summons (once). */
+  summoned: boolean;
 }
+
+/** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' }
+
+/** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
+export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
+  const a = Math.atan2(ty - y, tx - x) + angle;
+  return { x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dmg, age: 0, life: range * 1.4 / speed, kind };
+}
+export function stepShot(s: MobShot, dt: number): void { s.x += s.vx * dt; s.y += s.vy * dt; s.age += dt; }
+/** Does the shot strike a body whose middle is at (x, y)? */
+export function shotHits(s: { x: number; y: number }, x: number, y: number, r = 8): boolean { return Math.hypot(s.x - x, s.y - y) <= r; }
+
+/** A skeleton the Warlock raised (Raise Skeleton): it follows him, fights the nearest foe, and crumbles in time. */
+export interface Minion {
+  id: number;
+  x: number; y: number;
+  hp: number; maxHp: number;
+  dmg: [number, number];
+  cd: number;
+  t: number;
+  face: 1 | -1;
+  /** Seconds before it crumbles. */
+  life: number;
+  hit: number;
+  target: Mob | null;
+}
+
+/** A raised skeleton's life and blow: Raise Skeleton's numbers grown with the Keeper's level and spell power. */
+export function raisedStats(level: number, power: number, v: Readonly<Record<string, number>>): { hp: number; dmg: [number, number] } {
+  const lv = Math.max(1, Math.floor(level)), pw = Math.max(.1, power);
+  const hp = Math.round(v['hp'] * (1 + .1 * (lv - 1)) * pw);
+  const avg = v['dmg'] * (1 + .06 * (lv - 1)) * pw;
+  return { hp, dmg: [Math.max(1, Math.round(avg * .8)), Math.max(1, Math.round(avg * 1.2))] };
+}
+/** Keep at most `cap` raised: the oldest crumble first. Returns the ones let go. */
+export function capMinions(list: Minion[], cap: number): Minion[] {
+  return list.length > cap ? list.splice(0, list.length - cap) : [];
+}
+/** The foe a raised skeleton goes for: the nearest within its sight that is also within the leash of the Keeper. */
+export function pickMinionTarget(from: { x: number; y: number }, mobs: readonly Mob[], keeper: { x: number; y: number }, sight: number, leash: number): Mob | null {
+  let best: Mob | null = null, bd = sight;
+  for (const m of mobs) {
+    if (m.hp <= 0 || Math.hypot(m.x - keeper.x, m.y - keeper.y) > leash) continue;
+    const d = Math.hypot(m.x - from.x, m.y - from.y);
+    if (d <= bd) { bd = d; best = m; }
+  }
+  return best;
+}
+
+/** A Bone Spear in flight: it passes through every foe in its line, striking each once. */
+export interface Spear { x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[] }
 
 export interface Drop {
   id: string;
@@ -191,7 +455,7 @@ export interface Drop {
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
 
 /** A short-lived picture in the world: a slash, a fire ring, a heal, wood chips, haste dust. */
-export interface Effect { kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust' | 'drain' | 'curse' | 'ward' | 'bolt-hit'; x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number }
+export interface Effect { kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust' | 'drain' | 'curse' | 'ward' | 'bolt-hit' | 'raise' | 'spark'; x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number }
 
 /** A bolt in flight toward a creature. */
 export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number }
@@ -205,6 +469,11 @@ const REACH = 24;          // the Keeper's swing
 const MOB_REACH = 18;      // a creature's bite
 const RESPAWN = 75;        // seconds until a spawn comes back
 const DESPAWN = 300;       // seconds a drop lies on the ground
+const CORPSE_SECS = 20;    // a kill's corpse stays fresh for Raise Skeleton this long
+const MINION_SIGHT = 6 * TILE;
+const MINION_LEASH = 9 * TILE;
+const MINION_SPEED = 52;
+const SPEAR_SPEED = 280;
 
 /** What the mob system needs from the engine. */
 export interface MobHost {
@@ -214,6 +483,10 @@ export interface MobHost {
   player(): { x: number; y: number };
   hurtPlayer(n: number): void;
   healPlayer(n: number): void;
+  /** Can a floating creature drift over this tile (floor, lava, embers)? Default: walkable. */
+  hover?(c: number, r: number): boolean;
+  /** Does a shot fly over this tile (not into a wall)? Default: walkable. */
+  passable?(c: number, r: number): boolean;
   /** The Keeper swung (an attack or an ability): the host plays the swing toward `at`. */
   swung(at: { x: number; y: number } | null): void;
 }
@@ -226,6 +499,12 @@ export class MobSystem {
   readonly floaters: Floater[] = [];
   readonly effects: Effect[] = [];
   readonly bolts: Bolt[] = [];
+  /** Creatures' shots in flight, the Keeper's Bone Spears, his raised skeletons, and the fresh dead they rise from. */
+  readonly shots: MobShot[] = [];
+  readonly spears: Spear[] = [];
+  readonly minions: Minion[] = [];
+  readonly corpses: { x: number; y: number; at: number }[] = [];
+  private minionSeq = 0;
   /** Seconds each skill still cools. */
   readonly cooldowns: Partial<Record<SkillId, number>> = {};
   mana = MAX_MANA;
@@ -262,6 +541,8 @@ export class MobSystem {
   /** Bring the level's spawns to life (those not resting after a death) and drop everything of the last level. */
   enterLevel(spawns: readonly MobSpawn[]): void {
     this.mobs.length = 0; this.drops.length = 0; this.target = null;
+    // The raised, the shots and the dead belong to the place they were in.
+    this.minions.length = 0; this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0;
     this.addSpawns(spawns);
   }
   /** Spawns that came into reach (the endless surface hands them over chunk by chunk). */
@@ -270,8 +551,11 @@ export class MobSystem {
       if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) continue;
       const def = MOBS[s.type];
       if (!def) continue;
-      this.mobs.push({ key: s.key, def, x: s.x, y: s.y, hx: s.x, hy: s.y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3 });
+      this.mobs.push(this.spawnMob(s.key, def, s.x, s.y));
     }
+  }
+  private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
+    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false };
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
   prune(maxDist: number): void {
@@ -329,12 +613,30 @@ export class MobSystem {
       }
       if (auraTick && this.aura === 'aura-embers' && Math.hypot(m.x - p.x, m.y - p.y) <= SKILLS['aura-embers'].vars['radius'] * TILE) this.hitFoe(m, SKILLS['aura-embers'].vars['dps'], '#ff8a2e');
     }
-    for (const m of this.mobs) {
-      m.t += dt; m.cd -= dt; m.hit = Math.max(0, m.hit - dt);
-      const d = Math.hypot(p.x - m.x, p.y - m.y);
-      let tx: number | null = null, ty: number | null = null;
-      if (d < m.def.sight) { tx = p.x; ty = p.y; m.wander = null; }
-      else {
+    for (const m of [...this.mobs]) {
+      m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      // Its prey: the Keeper, or one of his raised skeletons standing closer.
+      let prey: Minion | null = null, d = Math.hypot(p.x - m.x, p.y - m.y);
+      for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
+      const px0 = prey ? prey.x : p.x, py0 = prey ? prey.y : p.y;
+      const hunting = d < m.def.sight, shoot = m.def.ranged;
+      let tx: number | null = null, ty: number | null = null, stop = 2;
+      if (hunting) {
+        m.wander = null;
+        if (shoot && shoot.keep > 0 && d < shoot.keep - 8) { tx = m.x + (m.x - px0); ty = m.y + (m.y - py0); stop = 0; }   // back off
+        else if (!(shoot && shoot.keep > 0 && d <= shoot.range)) { tx = px0; ty = py0; stop = MOB_REACH - 4; }
+        if (Math.abs(px0 - m.x) > 2) m.face = px0 < m.x ? -1 : 1;
+        // A shot at where the prey stands now: a step aside and it flies by.
+        if (shoot && d <= shoot.range && m.rcd <= 0) {
+          m.rcd = shoot.rate;
+          const n = shoot.spread ?? 1;
+          for (let i = 0; i < n; i++) {
+            let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
+            if (m.cursed > 0) dmg = Math.max(1, Math.round(dmg * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
+            this.shots.push(aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, px0, py0 - 12, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22));
+          }
+        }
+      } else {
         // Roam near home: a short stroll, a pause, another.
         if (!m.wander) {
           m.wait -= dt;
@@ -344,25 +646,25 @@ export class MobSystem {
       }
       if (tx !== null && ty !== null) {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
-        if (len > (d < m.def.sight ? MOB_REACH - 4 : 2)) {
+        if (len > stop) {
           const step = Math.min(len, m.def.speed * dt), vx = dx / len * step, vy = dy / len * step;
-          if (this.free(m.x + vx, m.y)) m.x += vx; else m.wander = null;
-          if (this.free(m.x, m.y + vy)) m.y += vy; else m.wander = null;
-          if (Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
+          if (this.free(m.x + vx, m.y, m.def.floats)) m.x += vx; else m.wander = null;
+          if (this.free(m.x, m.y + vy, m.def.floats)) m.y += vy; else m.wander = null;
+          if (!hunting && Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
         }
       }
-      // A bite when the Keeper is in its reach.
+      // A bite when its prey is in reach.
       if (d <= MOB_REACH && m.cd <= 0) {
         m.cd = m.def.rate;
         let n = rnd(m.def.dmg[0], m.def.dmg[1]);
-        // A cursed foe bites weaker; the Dark Ward drinks what it can.
+        // A cursed foe bites weaker.
         if (m.cursed > 0) n = Math.max(1, Math.round(n * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
-        // Worn Defense turns a share of the blow aside (td-skills defenseReduction).
-        if (this.defense > 0) n = Math.max(1, Math.round(n * (1 - defenseReduction(this.defense, this.keeperLevel))));
-        if (this.ward > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
-        if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, '#ff5a4a'); }
+        if (prey) this.hurtMinion(prey, n); else this.biteKeeper(n);
       }
     }
+    this.updateShots(dt);
+    this.updateMinions(dt);
+    for (let i = this.corpses.length - 1; i >= 0; i--) if (this.clock - this.corpses[i].at > CORPSE_SECS) this.corpses.splice(i, 1);
     // Walk over loot to pick it up.
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const g = this.drops[i];
@@ -389,10 +691,96 @@ export class MobSystem {
   private hitFoe(foe: Mob, raw: number, color: string): void {
     const crit = this.crit > 0 && Math.random() < this.crit;
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
-    foe.hp -= dmg; foe.hit = .18;
     if (this.aura === 'aura-siphon') this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
+    this.hurtMob(foe, dmg, color, crit);
+  }
+  /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
+  private hurtMob(foe: Mob, dmg: number, color: string, crit = false): void {
+    if (foe.hp <= 0) return;
+    foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
-    if (foe.hp <= 0) this.kill(foe);
+    if (foe.hp <= 0) { this.kill(foe); return; }
+    const call = foe.def.summon;
+    if (call && !foe.summoned && foe.hp <= foe.def.hp * call.at && MOBS[call.type]) {
+      foe.summoned = true;
+      for (let i = 0; i < call.count; i++) {
+        const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 10), y = foe.y + 6;
+        const at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
+        this.mobs.push(this.spawnMob(`${foe.key}:call${i}:${Math.round(this.clock * 10)}`, MOBS[call.type], at.x, at.y));
+        this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
+      }
+    }
+  }
+  /** A blow or a shot landing on the Keeper: Worn Defense turns a share aside, the Dark Ward drinks what it can. */
+  private biteKeeper(raw: number): void {
+    const p = this.host.player();
+    let n = raw;
+    if (this.defense > 0) n = Math.max(1, Math.round(n * (1 - defenseReduction(this.defense, this.keeperLevel))));
+    if (this.ward > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
+    if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, '#ff5a4a'); }
+  }
+  private hurtMinion(k: Minion, n: number): void {
+    k.hp -= n; k.hit = .18;
+    this.float(k.x, k.y - 26, `${n}`, '#c8a8ff');
+  }
+
+  /** Creatures' shots and the Keeper's spears in flight. */
+  private updateShots(dt: number): void {
+    const p = this.host.player();
+    const flies = (x: number, y: number) => { const c = Math.floor(x / TILE), r = Math.floor((y + 12) / TILE); return this.host.passable ? this.host.passable(c, r) : this.host.walkable(c, r); };
+    for (let i = this.shots.length - 1; i >= 0; i--) {
+      const s = this.shots[i];
+      stepShot(s, dt);
+      if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
+      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg); continue; }
+      const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
+      if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
+    }
+    const v = SKILLS['bone-spear'].vars;
+    for (let i = this.spears.length - 1; i >= 0; i--) {
+      const s = this.spears[i];
+      s.x += s.vx * dt; s.y += s.vy * dt; s.age += dt;
+      for (const m of [...this.mobs]) {
+        if (s.hit.includes(m) || !shotHits(s, m.x, m.y - m.def.h / 2, Math.max(9, m.def.w / 3))) continue;
+        s.hit.push(m);
+        this.effects.push({ kind: 'bolt-hit', x: s.x, y: s.y, age: 0, life: .25, dir: 1 });
+        this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
+      }
+      if (s.age > s.life || !flies(s.x, s.y)) this.spears.splice(i, 1);
+    }
+  }
+
+  /** The raised: crumble when their time is up, keep near the Keeper, fight the nearest foe. */
+  private updateMinions(dt: number): void {
+    const p = this.host.player();
+    for (let i = this.minions.length - 1; i >= 0; i--) {
+      const k = this.minions[i];
+      k.life -= dt; k.t += dt; k.cd -= dt; k.hit = Math.max(0, k.hit - dt);
+      if (k.life <= 0 || k.hp <= 0) {
+        this.minions.splice(i, 1);
+        for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
+        continue;
+      }
+      // Left far behind (a wall between, a long run): it steps out of the ground at the Keeper's side again.
+      if (Math.hypot(k.x - p.x, k.y - p.y) > MINION_LEASH * 1.6) { k.x = p.x + (k.id % 2 ? -14 : 14); k.y = p.y + 2; if (!this.free(k.x, k.y)) { k.x = p.x; k.y = p.y; } k.target = null; }
+      const t = k.target;
+      if (!t || t.hp <= 0 || !this.mobs.includes(t) || Math.hypot(t.x - p.x, t.y - p.y) > MINION_LEASH) k.target = pickMinionTarget(k, this.mobs, p, MINION_SIGHT, MINION_LEASH);
+      const foe = k.target;
+      const tx = foe ? foe.x : p.x + (k.id % 2 ? -16 : 16), ty = foe ? foe.y : p.y + 4, stop = foe ? MOB_REACH - 4 : 6;
+      const dx = tx - k.x, dy = ty - k.y, len = Math.hypot(dx, dy);
+      if (len > stop) {
+        const step = Math.min(len - stop, MINION_SPEED * dt), vx = dx / len * step, vy = dy / len * step;
+        if (this.free(k.x + vx, k.y)) k.x += vx;
+        if (this.free(k.x, k.y + vy)) k.y += vy;
+      }
+      if (Math.abs(dx) > 2) k.face = dx < 0 ? -1 : 1;
+      // Its blow only ever lands on a creature: the Keeper is never its foe.
+      if (foe && Math.hypot(foe.x - k.x, foe.y - k.y) <= MOB_REACH && k.cd <= 0) {
+        k.cd = RAISED_SKELETON.rate;
+        this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .2, dir: k.face });
+        this.hurtMob(foe, rnd(k.dmg[0], k.dmg[1]), '#c88bff');
+      }
+    }
   }
 
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
@@ -428,6 +816,28 @@ export class MobSystem {
       for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']), '#ff9a4a');
       this.effects.push({ kind: 'wave', x: p.x, y: p.y - 8, age: 0, life: .5, dir: 1 });
       this.host.swung(null);
+    } else if (id === 'bone-spear') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
+      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [] });
+      this.host.swung(foe);
+    } else if (id === 'raise-skeleton') {
+      // From the fresh dead nearest the Keeper first; with none, out of the ground at his side.
+      const fresh = this.corpses
+        .filter(cp => this.clock - cp.at <= CORPSE_SECS && Math.hypot(cp.x - p.x, cp.y - p.y) <= v['reach'] * TILE)
+        .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+      const st = raisedStats(this.keeperLevel, this.power, v);
+      for (let i = 0; i < v['count']; i++) {
+        const cp = fresh[i];
+        let at = cp ? { x: cp.x, y: cp.y } : { x: p.x + (i % 2 ? -16 : 16), y: p.y + 2 };
+        if (cp) this.corpses.splice(this.corpses.indexOf(cp), 1);
+        else if (!this.free(at.x, at.y)) at = { x: p.x, y: p.y };
+        this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: v['secs'], hit: 0, target: null });
+        this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
+      }
+      capMinions(this.minions, v['max']);
+      this.host.swung(null);
     } else if (id === 'dark-ward') {
       this.ward = v['absorb']; this.wardT = v['secs'];
       this.effects.push({ kind: 'ward', x: p.x, y: p.y - 14, age: 0, life: .6, dir: 1 });
@@ -441,8 +851,9 @@ export class MobSystem {
   /** Wood chips flying off a struck tree (the host's chopping). */
   chips(x: number, y: number): void { this.effects.push({ kind: 'chips', x, y, age: 0, life: .45, dir: Math.random() < .5 ? -1 : 1 }); }
 
-  private free(x: number, y: number): boolean {
-    for (const [ox, oy] of [[-4, -3], [4, -3], [-4, -1], [4, -1]]) if (!this.host.walkable(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE))) return false;
+  private free(x: number, y: number, floats = false): boolean {
+    const ok = floats && this.host.hover ? (c: number, r: number) => this.host.hover!(c, r) : (c: number, r: number) => this.host.walkable(c, r);
+    for (const [ox, oy] of [[-4, -3], [4, -3], [-4, -1], [4, -1]]) if (!ok(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE))) return false;
     return true;
   }
 
@@ -454,6 +865,9 @@ export class MobSystem {
     this.mana = Math.min(this.maxMana, this.mana + SKILLS['soul-harvest'].vars['mana']);
     if (this.target === m) this.target = null;
     this.deadUntil.set(m.key, this.clock + RESPAWN);
+    // Fresh dead, for Raise Skeleton.
+    this.corpses.push({ x: m.x, y: m.y, at: this.clock });
+    if (this.corpses.length > 12) this.corpses.shift();
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
     this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp });
