@@ -6,10 +6,11 @@ import {
 import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { tdFirstGoal } from './td/td-goals';
-import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
+import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import type { ItemStats } from '../shared/rpg/item.model';
-import { CLASS_SKILLS, MAX_MANA, SKILLS as TD_SKILLS, defaultAura, defaultBar, type SkillId } from './td/td-skills';
+import { MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, TREES, defaultAura, defaultBar, skillVars, type SkillId, type TreeId } from './td/td-skills';
+import { buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
@@ -1705,6 +1706,10 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly iconCache = new Map<string, SafeHtml>();
   private tdLoadoutKey = '';
+  /** The Spellbook's open tree (tab), the skill picked on it, and the respec's "are you sure". */
+  bookTree: TreeId = 'ember';
+  bookPick: SkillId | null = null;
+  respecAsk = false;
   private get tdEngine(): { abilities?: readonly { id: string; key: string; left: number; mana: number; ready: boolean }[]; mana?: number; aura?: string | null; useAbility?: (id: string) => string | null; setSkillLoadout?: (bar: readonly string[], aura: string | null) => void } | undefined {
     return this.engine as never;
   }
@@ -1714,8 +1719,13 @@ export class SideScrollerComponent implements OnDestroy {
     for (const line of [this.message, this.engineMessage]) if (line && line !== this.lastLogged) { this.lastLogged = line; this.logGame(line); }
     const e = this.tdEngine;
     // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
-    const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;
-    if (key !== this.tdLoadoutKey && e?.setSkillLoadout) { this.tdLoadoutKey = key; e.setSkillLoadout(this.loadoutBar, this.loadoutAura); }
+    // The trees' ranks go first: the bar and the aura only take skills that hold a rank.
+    const look = this.looks.look, ranks = this.skillRanks, key = `${look.bar.join(',')}|${look.aura}|${Object.values(ranks).join(',')}`;
+    if (key !== this.tdLoadoutKey && e?.setSkillLoadout) {
+      this.tdLoadoutKey = key;
+      (this.engine as unknown as { setSkillRanks?: (r: Readonly<Record<string, number>>) => void } | undefined)?.setSkillRanks?.(ranks);
+      e.setSkillLoadout(this.loadoutBar, this.loadoutAura);
+    }
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
     // The worn gear's combat affixes (§3) ride along; the engine re-applies only when a number changed.
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
@@ -1764,12 +1774,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.focusWorld();
   }
   /** A skill's pixel icon as markup (our own constant rects, td-skills.ts). */
-  skillIcon(id: string): SafeHtml {
-    let h = this.iconCache.get(id);
+  skillIcon(id: string, size = 28): SafeHtml {
+    let h = this.iconCache.get(`${id}@${size}`);
     if (!h) {
       const sk = TD_SKILLS[id as SkillId];
-      h = this.sanitizer.bypassSecurityTrustHtml(`<svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true">${sk?.icon ?? ''}</svg>`);
-      this.iconCache.set(id, h);
+      h = this.sanitizer.bypassSecurityTrustHtml(`<svg viewBox="0 0 16 16" width="${size}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">${sk?.icon ?? ''}</svg>`);
+      this.iconCache.set(`${id}@${size}`, h);
     }
     return h;
   }
@@ -1809,19 +1819,101 @@ export class SideScrollerComponent implements OnDestroy {
     };
   }
   spendPoint(attr: Attribute): void { this.looks.spendPoint(attr, this.huntingLevel); this.tickAbilities(); }
-  private get loadoutBar(): string[] { const b = this.looks.look.bar; return b.length ? b : defaultBar(this.looks.look.vocation); }
-  private get loadoutAura(): string | null { const a = this.looks.look.aura; return a === 'none' ? null : a || defaultAura(this.looks.look.vocation); }
-  get spellbook(): { kind: string; rows: { id: string; name: string; text: string; mana: number; cd: number; slot: number; on: boolean }[] }[] {
-    const v = this.looks.look.vocation, bar = this.loadoutBar, aura = this.loadoutAura;
-    const row = (id: SkillId) => {
-      const sk = TD_SKILLS[id], vars: Record<string, number> = { ...sk.vars, mana: sk.vars['mana'] ?? sk.mana, cd: sk.cd };
-      return { id, name: this.t(sk.nameKey), text: this.t(sk.textKey, vars), mana: sk.mana, cd: sk.cd, slot: bar.indexOf(id) + 1, on: aura === id };
+  /** The trees as the fight may use them: the saved tree clamped to the level's points (td-tree). Cached per look + level. */
+  private treeCache: { tree: KeeperSkillTree; level: number; voc: string; out: KeeperSkillTree; ranks: Record<SkillId, number> } | null = null;
+  private get skillTree(): { tree: KeeperSkillTree; ranks: Record<SkillId, number> } {
+    const look = this.looks.look, level = this.huntingLevel, c = this.treeCache;
+    if (!c || c.tree !== look.tree || c.level !== level || c.voc !== look.vocation) {
+      const out = clampTree(look.tree, look.vocation, level);
+      this.treeCache = { tree: look.tree, level, voc: look.vocation, out, ranks: effectiveRanks(out, look.vocation) };
+    }
+    return { tree: this.treeCache!.out, ranks: this.treeCache!.ranks };
+  }
+  private get skillRanks(): Record<SkillId, number> { return this.skillTree.ranks; }
+  private ranked(id: string): boolean { return (this.skillRanks[id as SkillId] ?? 0) > 0; }
+  private get loadoutBar(): string[] { const b = this.looks.look.bar; return (b.length ? b : defaultBar(this.looks.look.vocation)).filter(id => this.ranked(id)); }
+  private get loadoutAura(): string | null {
+    const a = this.looks.look.aura, id = a === 'none' ? null : a || defaultAura(this.looks.look.vocation);
+    return id && this.ranked(id) ? id : null;
+  }
+  /** A skill's line at a rank (rank 0 reads as rank 1). */
+  private skillLine(id: SkillId, rank: number): string {
+    const sk = TD_SKILLS[id], v = skillVars(id, rank);
+    return this.t(sk.textKey, { ...v, mana: v['mana'] ?? sk.mana, cd: sk.cd });
+  }
+  /** What the next rank changes, var by var ("Damage: 24–36 → 28–42"); a min/max pair reads as one range. */
+  private rankDiff(id: SkillId, rank: number): string[] {
+    const a = skillVars(id, rank), b = skillVars(id, rank + 1), out: string[] = [];
+    const pair = 'min' in a && 'max' in a && !('count' in a && 'reach' in a);
+    if (pair && (a['min'] !== b['min'] || a['max'] !== b['max'])) out.push(`${this.t('play.td.tree.var.damage')}: ${a['min']}–${a['max']} → ${b['min']}–${b['max']}`);
+    for (const k of Object.keys(a)) {
+      if (pair && (k === 'min' || k === 'max')) continue;
+      if (a[k] !== b[k]) out.push(`${this.t('play.td.tree.var.' + k)}: ${a[k]} → ${b[k]}`);
+    }
+    return out;
+  }
+  /** The Spellbook as D2's skill page: the open tree's tiers and skills, its prerequisite lines, the picked skill's card. */
+  get spellbook(): {
+    trees: { id: TreeId; ranks: number }[];
+    left: number;
+    tiers: { level: number; open: boolean }[];
+    nodes: { id: SkillId; name: string; tier: number; col: number; rank: number; need: number; open: boolean; picked: boolean; buyable: boolean; slot: number; on: boolean }[];
+    lines: { x1: number; y1: number; x2: number; y2: number; lit: boolean }[];
+    pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean };
+  } {
+    const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
+    const ids = treeSkills(v, this.bookTree);
+    const tiers = TIER_LEVELS.slice(0, Math.max(...ids.map(id => TD_SKILLS[id].tier)) + 1).map(lv => ({ level: lv, open: level >= lv }));
+    const pickId = this.bookPick && ids.includes(this.bookPick) ? this.bookPick : ids[0];
+    const nodes = ids.map(id => {
+      const sk = TD_SKILLS[id], need = levelFor(id);
+      return { id, name: this.t(sk.nameKey), tier: sk.tier, col: sk.col, rank: ranks[id] ?? 0, need, open: level >= need,
+        picked: id === pickId, buyable: !rankBlock(tree, v, id, level), slot: bar.indexOf(id) + 1, on: aura === id };
+    });
+    const lines = ids.filter(id => TD_SKILLS[id].req && ids.includes(TD_SKILLS[id].req!)).map(id => {
+      const a = TD_SKILLS[TD_SKILLS[id].req!], b = TD_SKILLS[id];
+      return { x1: a.col + .5, y1: a.tier + .5, x2: b.col + .5, y2: b.tier + .5, lit: (ranks[TD_SKILLS[id].req!] ?? 0) > 0 };
+    });
+    let pick: ReturnType<SideScrollerComponent['spellbookPick']> | null = null;
+    if (pickId) pick = this.spellbookPick(pickId, ranks[pickId] ?? 0, rankBlock(tree, v, pickId, level), bar, aura);
+    return {
+      trees: TREES.map(id => ({ id, ranks: treeSkills(v, id).reduce((n, s) => n + (ranks[s] ?? 0), 0) })),
+      left: treePointsLeft(tree, level), tiers, nodes, lines, pick,
     };
-    const ids = CLASS_SKILLS[v];
-    return (['active', 'aura', 'passive'] as const).map(kind => ({ kind, rows: ids.filter(id => TD_SKILLS[id].kind === kind).map(row) }));
+  }
+  private spellbookPick(id: SkillId, rank: number, block: RankBlock | null, bar: string[], aura: string | null) {
+    const sk = TD_SKILLS[id], req = sk.req;
+    const need = block === 'level' ? this.t('play.td.tree.needLevel', { n: levelFor(id) })
+      : block === 'req' && req ? this.t('play.td.tree.needSkill', { name: this.t(TD_SKILLS[req].nameKey) })
+      : block === 'max' ? this.t('play.td.tree.maxed') : block === 'points' ? this.t('play.td.tree.noPoints') : '';
+    return {
+      id, name: this.t(sk.nameKey), kind: sk.kind, rank, max: MAX_RANK, now: this.skillLine(id, Math.max(1, rank)), nowRank: Math.max(1, rank),
+      next: rank >= MAX_RANK ? [] : rank < 1 ? [] : this.rankDiff(id, rank), mana: sk.mana, cd: sk.cd, block, need,
+      slot: bar.indexOf(id) + 1, on: aura === id,
+    };
+  }
+  /** Open a tree's tab (the first skill on it is picked). */
+  openTree(id: TreeId): void { this.bookTree = id; this.bookPick = null; this.respecAsk = false; }
+  pickSkill(id: string): void { this.bookPick = id as SkillId; this.respecAsk = false; }
+  /** Spend a skill point on a rank (D2: one click, one rank). */
+  learnSkill(id: string): void {
+    const look = this.looks.look, next = buyRank(look.tree, look.vocation, id as SkillId, this.huntingLevel);
+    if (!next) return;
+    this.looks.setTree(next);
+    this.message = this.t('play.td.tree.learned', { name: this.t(TD_SKILLS[id as SkillId].nameKey), n: effectiveRanks(next, look.vocation)[id as SkillId] });
+    this.tickAbilities();
+  }
+  /** The free respec (asked once): every bought point comes back; the starting ranks stay. */
+  respecTree(): void {
+    if (!this.respecAsk) { this.respecAsk = true; return; }
+    this.respecAsk = false;
+    this.looks.setTree(resetTree(this.skillTree.tree));
+    this.message = this.t('play.td.tree.reset');
+    this.tickAbilities();
   }
   /** Put a skill on a key (1–4); whatever sat there swaps to where this one was. */
   assignSkill(id: string, slot: number): void {
+    if (!this.ranked(id)) return;
     const bar = [...this.loadoutBar];
     const from = bar.indexOf(id), was = bar[slot - 1];
     bar[slot - 1] = id;

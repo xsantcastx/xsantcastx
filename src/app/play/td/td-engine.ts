@@ -92,7 +92,6 @@ interface Folk extends Person { path: { x: number; y: number }[]; wait: number }
 interface Puff { x: number; y: number; age: number; life: number; r: number }
 /** A visual-only pixel of the effects pass: an aura's mote, a shard the Dark Ward sheds (docs/design/effects-spec.md). */
 interface Mote { x: number; y: number; sx: number; sy: number; age: number; life: number; kind: 'ember' | 'life' | 'shard'; seed: number }
-const AURA_R = SKILLS['aura-embers'].vars['radius'] * TILE;
 const NOVA_R = SKILLS['hellfire-nova'].vars['radius'] * TILE;
 const MOTES = 10;              // an aura's motes alive at once (spec: ≤ 10)
 const SHARDS = 8;
@@ -207,6 +206,7 @@ export class TopDownEngine {
       player: () => this.player,
       hurtPlayer: n => this.hurt(n),
       healPlayer: n => { this.hp = Math.min(this.maxHp, this.hp + n); },
+      playerHp: () => this.hp,
       hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember',
       passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall' && g !== 'vinewall' && g !== 'bark'; },
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
@@ -278,7 +278,7 @@ export class TopDownEngine {
   /** The skills on keys 1–4 (the Spellbook assigns them). */
   private bar: SkillId[] = defaultBar('warlock');
   /** Use a skill on the bar (by id, or by slot '1'–'4'). Returns why not, or null when it went off. */
-  useAbility(idOrSlot: string): 'cooldown' | 'nofoe' | 'mana' | null {
+  useAbility(idOrSlot: string): ReturnType<MobSystem['useAbility']> {
     const id = /^[1-4]$/.test(idOrSlot) ? this.bar[Number(idOrSlot) - 1] : idOrSlot as SkillId;
     if (!id) return null;
     return this.paused ? 'cooldown' : this.mobs.useAbility(id);
@@ -316,12 +316,13 @@ export class TopDownEngine {
   /** Let the raised go (they last until killed or released; owner 2026-10-20). */
   releaseRaised(): number { return this.mobs.releaseMinions(); }
   get ward(): number { return this.mobs.ward; }
-  /** The Spellbook's choices: the bar (up to four actives) and the running aura. */
+  /** The Spellbook's choices: the bar (up to four actives) and the running aura (a skill at rank 0 cannot sit there). */
   setSkillLoadout(bar: readonly string[], aura: string | null): void {
-    const ok = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active').slice(0, 4);
-    if (ok.length) this.bar = ok;
-    this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' ? aura as SkillId : null;
+    this.bar = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active' && this.mobs.rank(id as SkillId) > 0).slice(0, 4);
+    this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' && this.mobs.rank(aura as SkillId) > 0 ? aura as SkillId : null;
   }
+  /** The trees' ranks (td-tree effectiveRanks): every skill's numbers follow its rank. */
+  setSkillRanks(ranks: Readonly<Record<string, number>>): void { this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>); }
   get hasted(): boolean { return this.mobs.haste > 0; }
   /**
    * A drink from the potion belt (the host consumed the potion; potions.model.ts potionEffect): life and mana pour in
@@ -1239,14 +1240,14 @@ export class TopDownEngine {
     if (kind === 'ember') {
       // Embers rise from the ground anywhere inside the ring.
       this.moteT = .11;
-      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * (AURA_R - 4), x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
+      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * (this.mobs.auraRadius - 4), x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
       this.motes.push({ x, y, sx: x, sy: y, age: 0, life: .9 + Math.random() * .4, kind, seed: Math.random() });
     } else {
       // Siphoning flows inward: from the foes in the ring to the Keeper's chest (from the ring's edge, slower, with none near).
-      const foes = this.mobs.mobs.filter(m => Math.hypot(m.x - p.x, m.y - p.y) <= AURA_R);
+      const foes = this.mobs.mobs.filter(m => Math.hypot(m.x - p.x, m.y - p.y) <= this.mobs.auraRadius);
       let sx: number, sy: number;
       if (foes.length) { const f = foes[Math.floor(Math.random() * foes.length)]; this.moteT = .12; sx = f.x; sy = f.y - f.def.h / 2; }
-      else { if (alive >= 5) return; this.moteT = .32; const a = Math.random() * Math.PI * 2; sx = p.x + Math.cos(a) * AURA_R; sy = p.y + Math.sin(a) * AURA_R; }
+      else { if (alive >= 5) return; this.moteT = .32; const a = Math.random() * Math.PI * 2; sx = p.x + Math.cos(a) * this.mobs.auraRadius; sy = p.y + Math.sin(a) * this.mobs.auraRadius; }
       this.motes.push({ x: sx, y: sy, sx, sy, age: 0, life: .8 + Math.random() * .3, kind, seed: Math.random() });
     }
   }
@@ -1256,9 +1257,9 @@ export class TopDownEngine {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
     if (aura === 'aura-embers' || aura === 'aura-siphon') {
       const tn = aura === 'aura-embers' ? FX.ember : FX.life, turn = this.still ? 0 : this.time / 12;
-      c.drawImage(discSprite(AURA_R, tn.edge, [.05, .045, .04]), X - AURA_R, Y - AURA_R);
-      drawRing(c, X, Y, AURA_R, turn, tn.core, tn.body, 8, 6, tn.edge);
-      c.globalAlpha = .6; drawRing(c, X, Y, Math.round(AURA_R * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
+      c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
+      drawRing(c, X, Y, this.mobs.auraRadius, turn, tn.core, tn.body, 8, 6, tn.edge);
+      c.globalAlpha = .6; drawRing(c, X, Y, Math.round(this.mobs.auraRadius * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
       c.globalAlpha = 1;
     }
     this.drawLootRings();
@@ -1270,21 +1271,23 @@ export class TopDownEngine {
         // A short bright arc of the ring flashes at the foe's side.
         const tn = e.el === 'life' ? FX.life : FX.ember, a = Math.atan2(e.y - p.y, e.x - p.x);
         c.globalAlpha = Math.max(0, 1 - t * .8);
-        c.fillStyle = tn.body; for (const q of ringArc(AURA_R + 1, a, .2)) c.fillRect(X + q.x, Y + q.y, 1, 1);
-        c.fillStyle = tn.core; for (const q of ringArc(AURA_R, a, .3)) c.fillRect(X + q.x, Y + q.y, 1, 1);
-        c.fillStyle = tn.body; for (const q of ringArc(AURA_R - 1, a, .22)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+        c.fillStyle = tn.body; for (const q of ringArc(this.mobs.auraRadius + 1, a, .2)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+        c.fillStyle = tn.core; for (const q of ringArc(this.mobs.auraRadius, a, .3)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+        c.fillStyle = tn.body; for (const q of ringArc(this.mobs.auraRadius - 1, a, .22)) c.fillRect(X + q.x, Y + q.y, 1, 1);
       } else if (e.kind === 'wave') {
         // Hellfire Nova: a two-tone pixel ring runs out to its 3 tiles in half a second; the ground it crossed stays scorched.
-        if (t > .2) {
+        // The trees' bursts (a Meteor, a Corpse Burst, Weaken, Doom) ride the same ring in their own element; only fire scorches.
+        const R = e.r ?? NOVA_R, tn = FX[e.el && e.el !== 'life' ? e.el : 'ember'];
+        if (t > .2 && !e.el) {
           const f = Math.min(1, (t - .2) / .2) * (t > .5 ? 1 - (t - .5) / .5 : 1);
-          c.globalAlpha = .75 * f; c.drawImage(scorchSprite(NOVA_R), ex - NOVA_R, ey - NOVA_R);
+          c.globalAlpha = .75 * f; c.drawImage(scorchSprite(R), ex - R, ey - R);
         }
         if (t < .5) {
-          const k = this.still ? 1 : t / .5, r = Math.round(6 + (NOVA_R - 6) * (1 - (1 - k) * (1 - k)));
+          const k = this.still ? 1 : t / .5, r = Math.round(6 + (R - 6) * (1 - (1 - k) * (1 - k)));
           c.globalAlpha = 1 - k * .3;
           // A two-pixel front (core over body) with a dithered edge tone trailing just inside.
-          drawRing(c, ex, ey, r, 0, FX.ember.core, FX.ember.body, 4, 4, FX.ember.body);
-          drawRing(c, ex, ey, Math.max(1, r - 3), .5, FX.ember.edge, FX.ember.body, 6, 4);
+          drawRing(c, ex, ey, r, 0, tn.core, tn.body, 4, 4, tn.body);
+          drawRing(c, ex, ey, Math.max(1, r - 3), .5, tn.edge, tn.body, 6, 4);
         }
       } else if (e.kind === 'raise' && t < .55) {
         // Raise Skeleton: a violet sigil on the ground for its first 0.4 s, a ring and a five-point star.
@@ -1442,6 +1445,30 @@ export class TopDownEngine {
         drawBurst(c, X, Y, burst(6, bt, seed, 8, 10), FX.bone);
       } else if (e.kind === 'flash') {
         glowSquare(c, X, Y, 4, FX.bone);
+      } else if (e.kind === 'cinder') {
+        // Cinder Rain: an ember dropping out of the dark, its short tail above it (it bursts as a bolt-hit when it lands).
+        const fy = Math.round(Y - 34 * (1 - bt));
+        c.globalAlpha = 1;
+        c.fillStyle = FX.ember.edge; c.fillRect(X + 1, fy - 6, 1, 3);
+        c.fillStyle = FX.ember.body; c.fillRect(X, fy - 3, 2, 3);
+        c.fillStyle = FX.ember.core; c.fillRect(X, fy, 2, 2);
+      } else if (e.kind === 'flame') {
+        // Flame Wall: one tongue of fire licking up and thinning out (core low, edge at the tip).
+        const h = 4 + Math.round(6 * Math.sin(Math.min(1, bt) * Math.PI)), fl = fxNoise(seed, Math.floor(bt * 8)) > .5 ? 1 : 0;
+        c.globalAlpha = Math.max(0, 1 - t * .7);
+        c.fillStyle = FX.ember.edge; c.fillRect(X - 2 + fl, Y - h - 2, 2, 2);
+        c.fillStyle = FX.ember.body; c.fillRect(X - 2, Y - h, 4, h - 1);
+        c.fillStyle = FX.ember.core; c.fillRect(X - 1, Y - Math.ceil(h / 2), 2, Math.ceil(h / 2) - 1);
+      } else if (e.kind === 'meteor') {
+        // Meteor: a stone falling from the upper left (the light's side) with a stepped fire tail; a ring marks where it lands.
+        c.globalAlpha = .7;
+        c.fillStyle = FX.ember.edge; for (const q of circlePixels(10)) if ((q.x + q.y) % 2 === 0) c.fillRect(X + q.x, Y + Math.round(q.y / 2), 1, 1);
+        const k = this.still ? .6 : t, mx = Math.round(X - 60 * (1 - k)), my = Math.round(Y - 8 - 90 * (1 - k));
+        c.globalAlpha = 1;
+        for (let i = 1; i <= 5; i++) { c.fillStyle = i < 3 ? FX.ember.core : i < 5 ? FX.ember.body : FX.ember.edge; c.fillRect(mx - i * 4, my - i * 6, 4 - Math.floor(i / 2), 4 - Math.floor(i / 2)); }
+        c.fillStyle = '#5a3a2a'; c.fillRect(mx - 3, my - 3, 7, 7);
+        c.fillStyle = '#8a5a3a'; c.fillRect(mx - 2, my - 2, 4, 4);
+        c.fillStyle = FX.ember.core; c.fillRect(mx - 1, my - 1, 2, 2);
       } else if (e.kind === 'crit') {
         // A crit's white-hot core (over a creature: never above 60%).
         c.globalAlpha = .6 * Math.max(0, 1 - t);
@@ -1507,8 +1534,22 @@ export class TopDownEngine {
     // The Dark Ward while it holds: the hex turns, and it is missing the pixels the blows it drank have cracked off.
     if (this.mobs.ward > 0) {
       c.globalAlpha = .8;
-      this.drawHex(p.x, p.y - 18, 1, Math.max(.15, this.mobs.ward / SKILLS['dark-ward'].vars['absorb']), this.still ? 0 : this.time * .8);
+      this.drawHex(p.x, p.y - 18, 1, Math.max(.15, Math.min(1, this.mobs.ward / this.mobs.v('dark-ward')['absorb'])), this.still ? 0 : this.time * .8);
       c.globalAlpha = 1;
+    }
+    // Bone Armor while it holds: four bone shards circling the Keeper's chest.
+    if (this.mobs.bone > 0) {
+      for (let i = 0; i < 4; i++) {
+        const a = i / 4 * Math.PI * 2 + (this.still ? 0 : this.time * 2.2), bx = Math.round(p.x + Math.cos(a) * 11), by = Math.round(p.y - 16 + Math.sin(a) * 5);
+        c.fillStyle = FX.bone.edge; c.fillRect(bx - 1, by, 4, 2);
+        c.fillStyle = FX.bone.body; c.fillRect(bx, by, 2, 1);
+      }
+    }
+    // Doom: a pale skull-mark ticking over the doomed.
+    for (const m of this.mobs.mobs) if ((m.doom ?? 0) > 0) {
+      const X = Math.round(m.x), Y = Math.round(m.y - m.def.h - 10);
+      c.fillStyle = Math.floor(this.time * 4) % 2 ? FX.shadow.body : FX.shadow.edge; c.fillRect(X - 3, Y - 3, 6, 5);
+      c.fillStyle = FX.shadow.core; c.fillRect(X - 2, Y - 2, 1, 1); c.fillRect(X + 1, Y - 2, 1, 1);
     }
     for (const m of this.mobs.mobs) if (m.cursed > 0) {
       c.fillStyle = Math.floor(this.time * 6) % 2 ? '#b06bff' : '#ff6a2a';
@@ -1525,7 +1566,7 @@ export class TopDownEngine {
     if (this.still && (aura === 'aura-embers' || aura === 'aura-siphon')) {
       const tn: Tones = aura === 'aura-embers' ? FX.ember : FX.life;
       for (let i = 0; i < 8; i++) {
-        const a = fxNoise(i, 1) * Math.PI * 2, d = (aura === 'aura-embers' ? Math.sqrt(fxNoise(i, 2)) : .55 + fxNoise(i, 2) * .3) * (AURA_R - 4);
+        const a = fxNoise(i, 1) * Math.PI * 2, d = (aura === 'aura-embers' ? Math.sqrt(fxNoise(i, 2)) : .55 + fxNoise(i, 2) * .3) * (this.mobs.auraRadius - 4);
         dot(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d - (aura === 'aura-embers' ? 6 : 10), i % 2 ? tn.core : tn.body, .9);
       }
     }
@@ -1647,17 +1688,17 @@ export class TopDownEngine {
     // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
     if (this.mobs.aura) {
       d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 6;
-      d.beginPath(); d.arc((this.player.x - cam.x) / 2, (this.player.y - cam.y) / 2, AURA_R / 2, 0, Math.PI * 2); d.stroke();
-      d.globalAlpha = .2; hole(this.player.x, this.player.y, AURA_R * 2 + 16); d.globalAlpha = 1;
+      d.beginPath(); d.arc((this.player.x - cam.x) / 2, (this.player.y - cam.y) / 2, this.mobs.auraRadius / 2, 0, Math.PI * 2); d.stroke();
+      d.globalAlpha = .2; hole(this.player.x, this.player.y, this.mobs.auraRadius * 2 + 16); d.globalAlpha = 1;
     }
     // Spells are their own light: the nova's running ring, a bolt's ember, a burst as it breaks.
     for (const e of this.mobs.effects) {
       const t = e.age / e.life;
       if (e.kind === 'wave' && t < .5) {
-        const k = t / .5, r = 6 + (NOVA_R - 6) * (1 - (1 - k) * (1 - k));
+        const k = t / .5, r = 6 + ((e.r ?? NOVA_R) - 6) * (1 - (1 - k) * (1 - k));
         d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 5;
         d.beginPath(); d.arc((e.x - cam.x) / 2, (e.y - cam.y) / 2, r / 2, 0, Math.PI * 2); d.stroke(); d.globalAlpha = 1;
-      } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash') hole(e.x, e.y, 28);
+      } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash' || e.kind === 'flame') hole(e.x, e.y, 28);
     }
     for (const b of this.mobs.bolts) hole(b.x, b.y, 24);
     // Gear on the ground is its own light, the rarer the further; a boss's tell lights its jaws and its cone.

@@ -5,7 +5,7 @@
  * docs/handoff/cozy-ui/fx-*.jpg. Nothing here asserts on a fight's outcome.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { SKILLS_LEARNED, pickSkill, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -27,7 +27,7 @@ async function shot(page: Page, name: string, size?: number): Promise<void> {
 async function toMoltenDeep(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await seed(page, { 'eclipse-td': '1' });
+  await seed(page, { 'eclipse-td': '1', ...SKILLS_LEARNED });
   await page.goto('/play?td=1&hour=21');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
   await canvas(page).focus();
@@ -48,9 +48,8 @@ async function toMoltenDeep(page: Page): Promise<void> {
 async function runAura(page: Page, id: string): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('k');
-  const row = page.locator(`.spellbook .sb__row[data-skill="${id}"]`);
-  await expect(row).toBeVisible();
-  const btn = row.locator('.sb__aura');
+  await pickSkill(page, id);
+  const btn = page.locator('.sbt__detail .sb__aura');
   if ((await btn.getAttribute('aria-pressed')) !== 'true') await btn.click();
   await expect(btn).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.spellbook .win-x').click();
@@ -74,13 +73,15 @@ test('auras at night: Embers, then Siphoning, the icon on the portrait', async (
 /** Leave no aura running, so each spell reads on its own; then each spell goes on key 1 through the Spellbook. */
 async function spellCaster(page: Page): Promise<(id: string, wait: number, name: string, size?: number) => Promise<void>> {
   await page.keyboard.press('k');
-  const on = page.locator('.spellbook .sb__aura[aria-pressed="true"]');
+  await pickSkill(page, 'aura-embers');
+  const on = page.locator('.sbt__detail .sb__aura[aria-pressed="true"]');
   if (await on.count()) await on.first().click();
   await page.locator('.spellbook .win-x').click();
   await canvas(page).focus();
   return async (id, wait, name, size) => {
     await page.keyboard.press('k');
-    await page.locator(`.spellbook .sb__row[data-skill="${id}"] .sb__keys button`, { hasText: '1' }).click();
+    await pickSkill(page, id);
+    await page.locator('.sbt__detail .sb__keys button', { hasText: '1' }).click();
     await page.locator('.spellbook .win-x').click();
     await expect(page.locator('.spellbook')).toHaveCount(0);
     await canvas(page).focus();
