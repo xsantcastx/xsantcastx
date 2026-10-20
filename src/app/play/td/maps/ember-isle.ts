@@ -88,6 +88,8 @@ export const REGION_MOBS: Partial<Record<Region, { types: readonly string[]; cha
 
 /** The ship from Ember Harbour to Pyrehold, and back. */
 export const SHIP_TO_REACH: StationDef = { id: 'ship-reach', x: 0, label: 'SHIP TO PYREHOLD', kind: 'passage', blurb: 'Sail to Pyrehold, the capital of Infernal Reach.' };
+/** The second ship at Ember Harbour, nearer the shore: the long way round to Mossharbor in the Verdant Wilds, and back. */
+export const SHIP_TO_MOSSHARBOR: StationDef = { id: 'ship-isle-verdant', x: 0, label: 'SHIP TO MOSSHARBOR', kind: 'passage', blurb: 'Sail the long way round to Mossharbor, on the jungle continent. Its creatures start at level 15.' };
 
 export const EMBER_ISLE_DEF: ContinentDef = {
   id: 'ember-isle', map: EMBER_ISLE, ox: OX, oy: OY, roads: ROADS, places: PLACES, names: REGION_NAMES, mobs: REGION_MOBS,
@@ -95,5 +97,6 @@ export const EMBER_ISLE_DEF: ContinentDef = {
   ways: [
     { place: 'cave', station: CAVE_IN, to: 'slagstone-cave', arrive: 'cave-out' },
     { place: 'harbour', station: SHIP_TO_REACH, to: 'infernal-reach', arrive: 'ship-isle', ship: true },
+    { place: 'harbour', station: SHIP_TO_MOSSHARBOR, to: 'verdant-wilds', arrive: 'ship-mossharbor-isle', ship: true, along: -3 },
   ],
 };

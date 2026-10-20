@@ -429,6 +429,95 @@ test('the Overgrown Temple in the Sunken Courts: in by its gate, down to the Hea
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+/** Travel by the Map's key (reduced motion: at once) and wait for the area to change. */
+const travel = (page: Page) => async (place: RegExp, area: RegExp) => {
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: place }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+};
+async function openVerdantTrip(page: Page): Promise<string[]> {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  return errors;
+}
+
+test('the Verdant villages\' houses: the Net-Mender\'s Loft and its loft, the Herbalist\'s Cottage and its root cellar', async ({ page }) => {
+  const errors = await openVerdantTrip(page), go = travel(page);
+  // Ember Harbour's second ship sails straight to Mossharbor.
+  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await go(/the net-mender's loft/i, /^The Net-Mender's Loft$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-netloft.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /the loft/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-netloft-loft.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /^The Net-Mender's Loft$/);
+  await go(/^door/i, /^Mossharbor$/);
+  await go(/the herbalist's cottage/i, /^The Herbalist's Cottage$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-cottage.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /root cellar/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-cottage-cellar.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /^The Herbalist's Cottage$/);
+  await go(/^door/i, /^Thornwick$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-thornwick.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('the Overgrown Temple goes deeper: past the Heart Shrine to the Drowned Vault and the Rootcradle, and back up', async ({ page }) => {
+  const errors = await openVerdantTrip(page), go = travel(page);
+  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await go(/the overgrown temple/i, /sunken narthex/i);
+  await go(/stairs down/i, /hall of roots/i);
+  await go(/stairs down/i, /heart shrine/i);
+  // The stairs on behind the shrine are fourteen tiles from the Colossus's island: the Map's key goes straight to them.
+  await go(/stairs down/i, /drowned vault/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-temple-4.jpg', type: 'jpeg', quality: 72 });
+  await canvas(page).focus(); await page.keyboard.press('m');
+  await expect(page.locator('#places-list.td-map')).toBeVisible();
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-temple-4-map.jpg', type: 'jpeg', quality: 78 });
+  await page.keyboard.press('Escape');
+  await go(/stairs down/i, /rootcradle/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-temple-5.jpg', type: 'jpeg', quality: 72 });
+  await canvas(page).focus(); await page.keyboard.press('m');
+  await expect(page.locator('#places-list.td-map')).toBeVisible();
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-temple-5-map.jpg', type: 'jpeg', quality: 78 });
+  await page.keyboard.press('Escape');
+  // (No walk to the Rootwyrm: a level-1 Keeper would fight it, and a test never rides on a fight.)
+  await go(/stairs up/i, /drowned vault/i);
+  await go(/stairs up/i, /heart shrine/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('the Root Hollows in the Deep Wilds: in by the root-hole, down three floors to the Heartroot Cellar, and back out', async ({ page }) => {
+  const errors = await openVerdantTrip(page), go = travel(page);
+  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await go(/the root hollows/i, /gnawed galleries/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /sporewell/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-2.jpg', type: 'jpeg', quality: 72 });
+  await canvas(page).focus(); await page.keyboard.press('m');
+  await expect(page.locator('#places-list.td-map')).toBeVisible();
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-2-map.jpg', type: 'jpeg', quality: 78 });
+  await page.keyboard.press('Escape');
+  await go(/stairs down/i, /heartroot cellar/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-3.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /sporewell/i);
+  await go(/stairs up/i, /gnawed galleries/i);
+  await go(/root-hole/i, /^(The Root Hollows|The Deep Wilds)$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-mouth.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('a ship from Mossharbor\'s west finger to Ember Isle, and Ember Harbour\'s ship back', async ({ page }) => {
+  const errors = await openVerdantTrip(page), go = travel(page);
+  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-mossharbor-ships.jpg', type: 'jpeg', quality: 72 });
+  await go(/ship to ember isle/i, /ember harbour/i);
+  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('through every door and stair the Keeper lands free and can walk away (never set down inside a wall)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });

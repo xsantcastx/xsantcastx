@@ -20,6 +20,7 @@ tasks; docs/design/vision.md, docs/design/world-map.md "Next: something to do in
 | Pyrehold | Captain Brannoc Vey · Forgewife Ysolde Marr · Scholar Odette Pryor | 8 Cinder-clan Orcs; 5 Orc Firecallers · 6 Ember Residue; reach the Glass Halls · the Spire's lookout; the Magma Tyrant → **epic Infernal Cuirass iL20** |
 | Cinderport | Harbourmaster Tamsin Coyle · Old Netter Pell | the Salted Ember's cellar; 4 Ember Drakes → **rare Keeper Staff iL18** · 6 World-Root Bark; 6 Lava Hounds |
 | Ashgrove | Woodward Hesk Ashby · Maud Kiln | reach the Ossuary; 6 Ash Ghouls · 8 World-Root Bark; 6 Bone Archers → **rare Godforge Gauntlets iL12** |
+| Rootglass · Mossharbor · Thornwick (Verdant Wilds, one gear piece among the three) | Canopy Warden Ilsa Fenn · Mossreader Oren Tull · Netmender Wenna Brisk · Herbalist Agathe Sorrel | 8 Canopy Bats; 5 Rootglass Harts · reach the Hall of Roots; the Mossbound Colossus → **rare Verdant Bracers iL30** · 6 Thornroot; reach the Heartroot Cellar · 5 Verdant Sap; 6 Vine Lashers |
 
 Rewards: Gold as 2–15 min of income with a floor (the bounties' rate), a material, Hunting XP (30–450), and one gear
 piece per town. `node scripts/economy-sim.mjs --town-tasks` prints the table (in `--check`).

@@ -2,7 +2,7 @@
  * town-tasks.model.ts — what each town's keepers ask of a Keeper (Tibia / Stardew town tasks; docs/handoff/town-tasks.md).
  *
  * Every town of the top-down world has two or three givers: the Seamworks reuses its stall keepers (world/life.ts
- * TOWN_KEEPERS ids), Pyrehold, Cinderport and Ashgrove place their own (td maps `givers`). A giver's tasks run in order:
+ * TOWN_KEEPERS ids), Pyrehold, Cinderport, Ashgrove and the Verdant Wilds' towns place their own (td maps `givers`). A giver's tasks run in order:
  * the next is offered once the one before it is handed in. Three kinds, all read from real game events:
  *
  *   hunt     fell N of a creature (the top-down kill hook, td-mobs `onKill`), counted from the moment it is taken
@@ -18,7 +18,9 @@
 import { itemScaled } from '../economy/economy-curve';
 
 export type TownTaskKind = 'hunt' | 'deliver' | 'visit';
-export type TaskTown = 'seamworks' | 'pyrehold' | 'cinderport' | 'ashgrove';
+export type TaskTown = 'seamworks' | 'pyrehold' | 'cinderport' | 'ashgrove'
+  // The Verdant Wilds: Rootglass, and its villages Mossharbor and Thornwick.
+  | 'rootglass' | 'mossharbor' | 'thornwick';
 
 export interface TownTaskReward {
   /** Seconds of income (rule I); `gold` is the floor a new save still gets. */
@@ -76,6 +78,11 @@ export const TASK_GIVERS: readonly TaskGiver[] = [
   // ── Ashgrove (the charcoal-burners' village) ──
   { id: 'woodward-ashby', name: 'Woodward Hesk Ashby', town: 'ashgrove' },
   { id: 'charburner-kiln', name: 'Maud Kiln', town: 'ashgrove' },
+  // ── The Verdant Wilds (levels 15–40): Rootglass in the canopy, Mossharbor on the shore, Thornwick in the Fernglades ──
+  { id: 'warden-fenn', name: 'Canopy Warden Ilsa Fenn', town: 'rootglass' },
+  { id: 'mossreader-tull', name: 'Mossreader Oren Tull', town: 'rootglass' },
+  { id: 'netmender-brisk', name: 'Netmender Wenna Brisk', town: 'mossharbor' },
+  { id: 'herbalist-sorrel', name: 'Herbalist Agathe Sorrel', town: 'thornwick' },
 ];
 
 export const TOWN_TASKS: readonly TownTask[] = [
@@ -103,6 +110,15 @@ export const TOWN_TASKS: readonly TownTask[] = [
   { id: 'ash-hesk-2', giver: 'woodward-ashby', kind: 'hunt', target: 'ash-ghoul', n: 6, level: 9, reward: pay(8, 240) },
   { id: 'ash-maud-1', giver: 'charburner-kiln', kind: 'deliver', target: 'world-root-bark', n: 8, level: 8, reward: pay(6, 160, { material: { id: 'ember-residue', qty: 3 } }) },
   { id: 'ash-maud-2', giver: 'charburner-kiln', kind: 'hunt', target: 'bone-archer', n: 6, level: 8, reward: pay(10, 260, { gear: { defId: 'godforge-gauntlets', rarity: 'rare', level: 12 } }) },
+  // The Verdant Wilds (one gear piece among its four givers: the Mossreader's, for the Colossus)
+  { id: 'verd-fenn-1', giver: 'warden-fenn', kind: 'hunt', target: 'canopy-bat', n: 8, level: 15, reward: pay(6, 200, { material: { id: 'verdant-sap', qty: 2 } }) },
+  { id: 'verd-fenn-2', giver: 'warden-fenn', kind: 'hunt', target: 'rootglass-hart', n: 5, level: 24, reward: pay(9, 300) },
+  { id: 'verd-tull-1', giver: 'mossreader-tull', kind: 'visit', target: 'overgrown-temple-2', n: 1, level: 20, reward: pay(7, 220, { material: { id: 'thornroot', qty: 3 } }) },
+  { id: 'verd-tull-2', giver: 'mossreader-tull', kind: 'hunt', target: 'mossbound-colossus', n: 1, level: 34, reward: pay(14, 480, { gear: { defId: 'verdant-bracers', rarity: 'rare', level: 30 } }) },
+  { id: 'moss-brisk-1', giver: 'netmender-brisk', kind: 'deliver', target: 'thornroot', n: 6, level: 17, reward: pay(6, 180, { material: { id: 'world-root-bark', qty: 3 } }) },
+  { id: 'moss-brisk-2', giver: 'netmender-brisk', kind: 'visit', target: 'root-hollows-3', n: 1, level: 24, reward: pay(9, 260, { material: { id: 'verdant-sap', qty: 3 } }) },
+  { id: 'thorn-sorrel-1', giver: 'herbalist-sorrel', kind: 'deliver', target: 'verdant-sap', n: 5, level: 15, reward: pay(6, 180, { material: { id: 'thornroot', qty: 2 } }) },
+  { id: 'thorn-sorrel-2', giver: 'herbalist-sorrel', kind: 'hunt', target: 'vine-lasher', n: 6, level: 21, reward: pay(8, 260) },
 ];
 
 const BY_ID = new Map(TOWN_TASKS.map(t => [t.id, t]));
@@ -116,6 +132,7 @@ export function tasksOf(giver: string): readonly TownTask[] { return TOWN_TASKS.
 // income, a little Hunting XP, now and then a small material, and a chance of a potion; never gear. `economy-sim
 // --town-tasks` holds the per-day cap.
 const bark = { id: 'world-root-bark', qty: 1 }, ore = { id: 'cinder-ore', qty: 2 }, residue = { id: 'ember-residue', qty: 1 };
+const sap = { id: 'verdant-sap', qty: 1 }, thorn = { id: 'thornroot', qty: 1 };
 const hp = { id: 'minor-health-potion', chance: 0.15 }, mp = { id: 'minor-mana-potion', chance: 0.15 };
 const d = (giver: string, n: number, kind: 'hunt' | 'deliver', target: string, count: number, level: number, reward: TownTaskReward): TownTask =>
   ({ id: `dly-${giver}-${n}`, giver, kind, target, n: count, level, reward, daily: true });
@@ -151,6 +168,19 @@ export const DAILY_TASKS: readonly TownTask[] = [
   d('charburner-kiln', 1, 'deliver', 'world-root-bark', 6, 8, pay(2, 40, { material: residue })),
   d('charburner-kiln', 2, 'hunt', 'bone-archer', 5, 8, pay(2, 50, { potion: hp })),
   d('charburner-kiln', 3, 'hunt', 'ash-ghoul', 5, 9, pay(2, 55)),
+  // The Verdant Wilds: a minute of income each (the day's envelope is shared by every giver of every town).
+  d('warden-fenn', 1, 'hunt', 'canopy-bat', 6, 15, pay(1, 60, { potion: hp })),
+  d('warden-fenn', 2, 'hunt', 'moss-stalker', 5, 17, pay(1, 65, { material: sap })),
+  d('warden-fenn', 3, 'deliver', 'verdant-sap', 3, 15, pay(1, 45, { material: bark })),
+  d('mossreader-tull', 1, 'hunt', 'thorn-weaver', 3, 28, pay(1, 80, { potion: mp })),
+  d('mossreader-tull', 2, 'hunt', 'vine-lasher', 4, 21, pay(1, 70)),
+  d('mossreader-tull', 3, 'deliver', 'thornroot', 4, 17, pay(1, 45, { material: sap })),
+  d('netmender-brisk', 1, 'deliver', 'thornroot', 4, 17, pay(1, 45, { material: bark })),
+  d('netmender-brisk', 2, 'hunt', 'rootgnaw', 4, 19, pay(1, 70, { potion: hp })),
+  d('netmender-brisk', 3, 'hunt', 'moss-stalker', 5, 17, pay(1, 65)),
+  d('herbalist-sorrel', 1, 'deliver', 'verdant-sap', 4, 15, pay(1, 45, { material: thorn })),
+  d('herbalist-sorrel', 2, 'hunt', 'sporecap', 3, 23, pay(1, 75, { potion: mp })),
+  d('herbalist-sorrel', 3, 'hunt', 'vine-lasher', 4, 21, pay(1, 70)),
 ];
 
 const DAILY_BY_ID = new Map(DAILY_TASKS.map(t => [t.id, t]));

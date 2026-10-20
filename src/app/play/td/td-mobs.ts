@@ -1003,6 +1003,175 @@ function guardian(c: CanvasRenderingContext2D, f: number): void {
 /** The Mossbound Colossus, the Overgrown Temple's keeper: the guardian grown huge, the Root's own heart set in its chest. */
 function paintColossus(c: CanvasRenderingContext2D, f: number): void { grown(1.6, 2, 3, () => guardian(c, f)); }
 
+// ── The Verdant Wilds' deeper places (maps/root-hollows.ts, maps/overgrown-temple.ts −4…−5) ───────────────────────────
+
+/** Their own tones: dark bark, a grub's pale hide and its chitin, a mushroom's cap and stem, a drowned priest's robe and water. */
+const RV = {
+  barkDk: ['#7a5a3e', '#523c2a', '#38281c', '#221812'],
+  grub: ['#f6eed6', '#d8c8a2', '#aa946c', '#705e42'],
+  chitin: ['#9c7c5a', '#6a4e36', '#4a3424', '#2e2016'],
+  cap: ['#e29aa8', '#a85068', '#723048', '#46192c'],
+  stem: ['#f2e8ce', '#cfc09a', '#9c8c6a', '#685c44'],
+  gill: ['#5a3a4e', '#3e2636', '#2a1a26', '#180e16'],
+  robe: ['#6e8c6a', '#4a6648', '#334833', '#1e2c20'],
+  drown: ['#9ac4c8', '#5e8a90', '#3e6066', '#243a40'],
+  iron: ['#a8a2b0', '#6c6678', '#4a4654', '#2e2a36'],
+} satisfies Record<string, Ramp>;
+
+/** The Rootgnaw: a grub as long as a cart, plated in bark it chewed off the roots, rootglass glowing through its flanks. */
+function paintRootgnaw(c: CanvasRenderingContext2D, f: number): void {
+  const ph = f * Math.PI / 2;
+  // Six segments heave in a wave from tail to head (it inches along the tunnel).
+  const seg = (i: number) => ({ x: 5 + i * 4.4, y: 14 - Math.max(0, Math.sin(ph - i * .9)) * 2, r: 3.2 + Math.sin((i + 1) / 7 * Math.PI) * 2.4 });
+  // Stub legs under the front half, stepping by turns.
+  for (let i = 2; i < 6; i++) { const s = seg(i), sw = (i + f) % 2 ? 1 : -1; limb(c, [s.x, s.y + 2], [s.x + sw, 20], 1, RV.chitin); dot(c, s.x + sw, 20, RV.chitin[3]); }
+  for (let i = 0; i < 6; i++) { const s = seg(i); orb(c, s.x, s.y, s.r, s.r * .88, RV.grub); }
+  // Bark plates down its back, a crease between each, a rootglass spot on every other flank.
+  for (let i = 0; i < 6; i++) {
+    const s = seg(i);
+    orb(c, s.x - .3, s.y - s.r * .42, s.r * .86, s.r * .46, RV.chitin);
+    dot(c, s.x - s.r * .5, s.y - s.r * .5, RV.chitin[0]);
+    if (i) line(c, [s.x - 2.2, s.y - s.r * .6], [s.x - 2.2, s.y + s.r * .6], RV.grub[2]);
+    if (i % 2) glow(c, s.x, s.y + 1.5, 1, ROOTGLOW);
+  }
+  // The head: a blunt chitin dome, two rootglass eyes, mandibles that open and close on the root.
+  const open = [1, 2, 1, 0][f], hy = seg(5).y - .5;
+  orb(c, 32, hy, 3.8, 3.4, RV.chitin);
+  dot(c, 31, hy - 2, RV.chitin[0]); dot(c, 32, hy - 2, RV.chitin[0]);
+  glow(c, 33, hy - 1, 1, ROOTGLOW);
+  limb(c, [34, hy - 1], [37, hy - 2 - open], 1, R.bone); dot(c, 37, hy - 1 - open, R.bone[3]);
+  limb(c, [34, hy + 1.5], [37, hy + 2.5 + open], 1, R.bone); dot(c, 37, hy + 1.5 + open, R.bone[3]);
+  // A crumb of chewed root falling from the jaws.
+  if (f % 2) dot(c, 36, hy + 5, R.bark[1]);
+}
+
+/** A spore's tones: a pale core, a sallow green body. */
+const SPORE: Ramp = ['#f6ffe0', '#d4f08a', '#8ab84a', '#4e7428'];
+/** The Sporecap: a mushroom the height of a child, walking on its roots; it coughs spores at what it wants to grow on. */
+function paintSporecap(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], s = STEP[f] / 2;
+  // Root feet, shuffling.
+  for (const [x, l] of [[9, liftB(f)], [12, liftA(f)], [16, liftB(f)], [19, liftA(f)]] as const) {
+    limb(c, [x + .5, 29], [x + (l ? s : -s), 34 - l / 2], 2, R.bark); dot(c, x + (l ? s : -s) + 1, 35 - l / 2, R.bark[3]);
+  }
+  // Stub arms, then the stem: a pale trunk, ringed, a frill under the cap.
+  limb(c, [11, 21 + b], [6, 25 + b], 2, RV.stem); limb(c, [18, 21 + b], [23, 24 + b - (f === 2 ? 2 : 0)], 2, RV.stem);
+  poly(c, [[9.5, 30], [19.5, 30], [18, 16 + b], [11, 16 + b]], RV.stem);
+  line(c, [11, 24 + b], [18, 24 + b], RV.stem[2]); line(c, [10.5, 27 + b], [19, 27 + b], RV.stem[2]);
+  poly(c, [[10, 17 + b], [19, 17 + b], [20, 20 + b], [9, 20 + b]], [RV.stem[0], RV.stem[1], RV.stem[2], RV.stem[3]]);
+  // Two hollows in the stem for eyes, rootglass light deep in them.
+  px(c, 12, 21 + b, 2, 2, RV.gill[2]); px(c, 16, 21 + b, 2, 2, RV.gill[2]);
+  glow(c, 12, 21 + b, 1, ROOTGLOW); glow(c, 16, 21 + b, 1, ROOTGLOW);
+  // The gills under the cap, faintly lit.
+  orb(c, 14.5, 15.5 + b, 11.5, 2.6, RV.gill);
+  for (let i = 0; i < 6; i++) dot(c, 6 + i * 3.4, 16 + b, ROOTGLOW[3]);
+  // The cap: broad, a dusky rose, pale spots, its rim curled down.
+  orb(c, 14.5, 10 + b, 13, 7.2, RV.cap);
+  for (const [x, y, r] of [[8, 9, 1.6], [14, 6, 2], [20, 9, 1.4], [11, 13, 1.1], [18, 13, 1.2], [24, 12, 1]] as const) orb(c, x, y + b, r, r * .8, RV.stem);
+  // A cough of spores: a little cloud lifting off the cap on the breath frame.
+  if (f === 2) for (const [x, y] of [[6, 2], [9, 1], [13, 0], [18, 1], [22, 2], [11, 3]] as const) dot(c, x, y + b, SPORE[f % 2 ? 0 : 1]);
+  else if (f === 3) for (const [x, y] of [[5, 1], [12, 0], [21, 0]] as const) dot(c, x, y + b, SPORE[2]);
+}
+
+/** The Drowned Acolyte: a temple priest who drowned keeping the Vault, kept since by the moss; a rootglass lantern in its hand. */
+function paintAcolyte(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], sway = [0, 1, 0, -1][f], drip = [0, 1, 2, 3][f];
+  // The far arm, the sleeve heavy with water.
+  limb(c, [8, 16 + b], [5, 26 + b], 2, RV.drown);
+  // The robe: a bell from the shoulders, its hem in tatters that sway.
+  poly(c, [[8.5, 12 + b], [17.5, 12 + b], [21.5 + sway, 35], [4.5 + sway, 35]], RV.robe);
+  for (let i = 0; i < 5; i++) px(c, 6 + i * 3.4 + sway, 34 + (i % 2), 1, 2, RV.robe[3]);
+  // Water still running out of it: dark streaks, and a drop falling from the hem.
+  line(c, [10, 17 + b], [8 + sway, 33], RV.drown[2]); line(c, [16, 17 + b], [18 + sway, 33], RV.drown[1]);
+  dot(c, 13, 19 + b, RV.drown[0]);
+  dot(c, 7 + sway, 36 + (drip > 1 ? 1 : 0), RV.drown[drip % 2 ? 0 : 1]);
+  // A mantle of moss over the shoulders, a sprig of fern growing from it.
+  orb(c, 13, 13 + b, 6, 2, R.moss);
+  limb(c, [9, 12 + b], [7, 8 + b], 1, R.vine); dot(c, 6, 7 + b, R.vine[0]);
+  // The hood: deep, its mouth black, two pale points of light inside.
+  orb(c, 13, 8 + b, 5, 5.4, RV.robe);
+  orb(c, 14, 9.2 + b, 3, 3.2, R.void);
+  dot(c, 13, 9 + b, RV.drown[0]); dot(c, 15, 9 + b, RV.drown[0]);
+  px(c, 10, 4 + b, 6, 1, RV.robe[0]);
+  // The near arm holds a rootglass lantern out on a chain.
+  limb(c, [17, 15 + b], [21, 21 + b], 2, RV.robe); orb(c, 21, 21.5 + b, 1.5, 1.4, RV.drown);
+  line(c, [21, 22 + b], [22 + sway, 26 + b], RV.iron[1]);
+  px(c, 20 + sway, 26 + b, 4, 1, RV.iron[0]); px(c, 20 + sway, 31 + b, 4, 1, RV.iron[2]);
+  px(c, 20 + sway, 27 + b, 1, 4, RV.iron[1]); px(c, 23 + sway, 27 + b, 1, 4, RV.iron[2]);
+  px(c, 21 + sway, 27 + b, 2, 4, ROOTGLOW[1]);
+  glow(c, 21 + sway, 28 + b, 1, ROOTGLOW);
+}
+
+/** A point along a polyline (t in 0..1, by segment), for a body laid along a path. */
+function along(pts: readonly P2[], t: number): P2 {
+  const n = pts.length - 1, u = Math.min(n - 1e-6, Math.max(0, t) * n), i = Math.floor(u), k = u - i;
+  return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * k, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * k];
+}
+
+/**
+ * The Elder Rootwyrm: the first thing the Root grew, under the temple before there was a temple — a wyrm of living bark
+ * coiled round the cradle, moss along its back, thorns down its spine, a crown of rootglass antlers; it breathes a
+ * spray of rootglass splinters. Its body lies along a path: a far loop in shadow, the near coil, the neck reared up.
+ */
+function rootwyrm(c: CanvasRenderingContext2D, f: number): void {
+  const ph = f * Math.PI / 2, b = BOB[f];
+  const ripple = (i: number) => Math.sin(ph + i * .8) * .9;
+  // The far loop, behind everything, in shadow.
+  const FAR: P2[] = [[46, 50], [36, 40], [22, 36], [10, 42], [8, 50]];
+  for (let i = 0; i < 12; i++) {
+    const [x, y] = along(FAR, i / 11), r = 4.8 - Math.abs(i - 5.5) * .12;
+    orb(c, x, y + ripple(i), r, r * .84, RV.barkDk);
+    if (i % 2 === 0) poly(c, [[x - 1.5, y - r + 1 + ripple(i)], [x - .5, y - r - 3 + ripple(i)], [x + 1, y - r + 1 + ripple(i)]], R.thornDk);
+  }
+  // The near coil, from the tail's tip on the left to the base of the neck.
+  const COIL: P2[] = [[3, 59], [14, 61], [28, 60], [42, 57], [52, 51]];
+  const n = 15;
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1), [x, y] = along(COIL, t), r = 2.2 + t * 5.6, w = ripple(i + 3);
+    orb(c, x, y + w, r * 1.1, r * .86, R.bark);
+    // Moss along the top of every segment; a thorn on every other one; a rootglass seam glowing underneath.
+    if (r > 2.5) orb(c, x - .3, y - r * .52 + w, r * .78, r * .3, R.moss);
+    if (i % 2 && r > 3) poly(c, [[x - 1.5, y - r * .8 + w], [x - .5, y - r - 3.5 + w], [x + 1.2, y - r * .8 + w]], R.thorn);
+    if (i % 3 === 1 && r > 3) dot(c, x, y + r * .7 + w, ROOTGLOW[1]);
+  }
+  // A belly seam of rootglass where the coil meets the neck, breathing with the light.
+  glow(c, 47, 56 + ripple(13), f % 2 ? 2 : 1, ROOTGLOW);
+  // The neck, reared up from the coil to the head.
+  const NECK: P2[] = [[52, 51], [56, 40], [58, 30], [62, 22]];
+  for (let i = 0; i < 9; i++) {
+    const t = i / 8, [x, y] = along(NECK, t), r = 6.6 - t * 2.2, sw = Math.sin(ph + t * 2) * .7;
+    orb(c, x + sw, y + b * t, r, r * .8, R.bark);
+    orb(c, x + sw - 1.2, y + b * t, r * .5, r * .55, R.moss);
+    if (i % 2 === 0) poly(c, [[x + sw - r + .5, y + b * t - 1], [x + sw - r - 3, y + b * t - 2.5], [x + sw - r + .5, y + b * t + 1.5]], R.thorn);
+    if (i % 2) dot(c, x + sw + r * .6, y + b * t + 1, ROOTGLOW[2]);
+  }
+  // Hanging vines off the neck, swaying.
+  limb(c, [55, 42 + b], [53 + ripple(2), 48], 1, R.vine); dot(c, 53 + ripple(2), 49, R.vine[0]);
+  limb(c, [59, 32 + b], [61 + ripple(5), 38 + b], 1, R.vineDk);
+  // The head: a long bark skull, a jaw that drops to breathe, thorn teeth, a moss beard.
+  const jaw = [0, 1, 4, 1][f], hy = 16 + b;
+  poly(c, [[66, hy + 3], [82, hy + 4 + jaw], [82, hy + 6 + jaw], [65, hy + 7]], RV.barkDk);
+  for (let i = 0; i < 4; i++) dot(c, 70 + i * 3, hy + 4 + Math.round(jaw * (i + 1) / 4), R.thorn[0]);
+  if (jaw > 1) { line(c, [68, hy + 3], [81, hy + 3 + jaw / 2], ROOTGLOW[1]); glow(c, 72, hy + 3, 2, ROOTGLOW); dot(c, 80, hy + 3, ROOTGLOW[0]); }
+  orb(c, 65, hy - 2, 7, 5.6, R.bark);
+  poly(c, [[67, hy - 5], [83, hy - 1], [83, hy + 3], [66, hy + 3]], R.bark);
+  px(c, 70, hy + 2, 13, 1, R.bark[3]);
+  for (let i = 0; i < 4; i++) dot(c, 71 + i * 3, hy + 3, R.thorn[0]);
+  dot(c, 82, hy - 1, R.bark[3]); dot(c, 80, hy - 2, R.bark[0]);
+  orb(c, 64, hy + 5, 2.6, 2, R.moss); limb(c, [64, hy + 6], [63, hy + 10], 1, R.moss); dot(c, 63, hy + 11, R.moss[0]);
+  // A rootglass eye in a dark socket, and moss on the brow.
+  orb(c, 67, hy - 3, 2.2, 1.9, R.void);
+  glow(c, 67, hy - 4, 2, ROOTGLOW);
+  orb(c, 63, hy - 6.5, 4.5, 1.6, R.moss);
+  // The crown: antlers of living rootglass, branching back off the skull, every tip alight in turn.
+  limb(c, [62, hy - 6], [57, hy - 13], 1, R.rootglass); limb(c, [59, hy - 10], [54, hy - 11], 1, R.rootglass); limb(c, [57, hy - 13], [56, hy - 16], 1, R.rootglass);
+  limb(c, [65, hy - 7], [63, hy - 14], 1, R.rootglass); limb(c, [64, hy - 11], [68, hy - 15], 1, R.rootglass);
+  const lit = f % 2 ? ROOTGLOW[0] : ROOTGLOW[1], dim = f % 2 ? ROOTGLOW[1] : ROOTGLOW[0];
+  dot(c, 54, hy - 11, lit); dot(c, 56, hy - 16, dim); dot(c, 63, hy - 14, lit); dot(c, 68, hy - 15, dim);
+}
+/** The Elder Rootwyrm as the world draws it: its shapes grown a quarter again, set down a little so the crown has room. */
+function paintRootwyrm(c: CanvasRenderingContext2D, f: number): void { grown(1.25, 0, 4, () => rootwyrm(c, f)); }
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10, hits: 'fire',
@@ -1156,6 +1325,31 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     // At half its life it calls the temple's lashers up through the stones.
     summon: { type: 'vine-lasher', count: 2, at: .5 },
   },
+  // The Verdant Wilds' deeper places: the Root Hollows (−1…−3), the Overgrown Temple's Drowned Vault and Rootcradle (−4, −5).
+  'rootgnaw': {
+    id: 'rootgnaw', name: 'Rootgnaw', hp: 300, speed: 26, dmg: [13, 20], rate: 1.3, sight: 120, level: 19,
+    lore: 'It eats the roots of trees that are already dead, and the tunnels it leaves are the Root Hollows. It has not decided yet whether you are a root.',
+    coins: [30, 64], drops: [{ material: 'world-root-bark', qty: 1, chance: .45 }, { material: 'thornroot', qty: 1, chance: .3 }], paint: paintRootgnaw, w: 38, h: 22,
+  },
+  'sporecap': {
+    id: 'sporecap', name: 'Sporecap', hp: 360, speed: 22, dmg: [14, 21], rate: 1.4, sight: 130, level: 23,
+    lore: 'A mushroom that grew in the dark until it could walk. It coughs its spores at anything warm, because warm things are where mushrooms grow best.',
+    coins: [36, 78], drops: [{ material: 'verdant-sap', qty: 1, chance: .6 }, { material: 'thornroot', qty: 1, chance: .25 }], paint: paintSporecap, w: 28, h: 36,
+    ranged: { range: 96, keep: 56, rate: 2.4, dmg: [14, 21], speed: 90, kind: 'spore' },
+  },
+  'drowned-acolyte': {
+    id: 'drowned-acolyte', name: 'Drowned Acolyte', hp: 560, speed: 24, dmg: [20, 30], rate: 1.5, sight: 140, level: 33,
+    lore: 'The priests who stayed to keep the Vault when the springs rose. The moss kept them in turn. They still carry the lamps, and still do not let anyone past.',
+    coins: [52, 108], drops: [{ material: 'verdant-sap', qty: 2, chance: .7 }, { material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintAcolyte, w: 26, h: 38,
+  },
+  'elder-rootwyrm': {
+    id: 'elder-rootwyrm', name: 'The Elder Rootwyrm', hp: 5200, speed: 20, dmg: [32, 48], rate: 1.8, sight: 180, level: 40,
+    lore: 'The first thing the Root grew, coiled in the dark before the temple was raised over it. The priests called it the Cradle; it never answered to anything.',
+    coins: [1400, 2300], drops: [{ material: 'world-root-bark', qty: 4, chance: 1 }, { material: 'verdant-sap', qty: 5, chance: 1 }, { material: 'thornroot', qty: 5, chance: 1 }], paint: paintRootwyrm, w: 106, h: 88, rank: 'boss',
+    // It winds up (BOSS_TELL) and breathes a fan of rootglass splinters; at half its life the drowned priests come down to it.
+    ranged: { range: 140, keep: 0, rate: 3.2, dmg: [24, 36], speed: 120, kind: 'shard', spread: 5 },
+    summon: { type: 'drowned-acolyte', count: 2, at: .5 },
+  },
 };
 
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
@@ -1170,7 +1364,7 @@ export const MOB_FRAMES = 4;
 /** A boss's rim, in its element's colour (docs/design/effects-spec.md): fire for the forge-born, violet bone-light for the dragon. */
 const RIM: Readonly<Record<string, string>> = {
   'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
-  'mossbound-colossus': '#7affd0',
+  'mossbound-colossus': '#7affd0', 'elder-rootwyrm': '#7affd0',
 };
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 /**
@@ -1262,7 +1456,7 @@ export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!
 export interface Call { x: number; y: number; type: string; key: string; t: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath'; type?: DamageType }
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'shard' | 'spore'; type?: DamageType }
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
@@ -1657,7 +1851,7 @@ export class MobSystem {
       const s = this.shots[i];
       stepShot(s, dt);
       if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
-      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); continue; }
+      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' || s.kind === 'shard' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }
