@@ -79,3 +79,14 @@ describe('td-skills incoming damage (damage types, §6)', () => {
     expect(fightStats(10, none).resists).toEqual({ fire: 0, cold: 0, lightning: 0, arcane: 0 });
   });
 });
+
+describe('td-skills level pace', () => {
+  it('the level\'s pace rides beside the gear-capped move haste, never inside its cap', () => {
+    const none = { vit: 0, ene: 0, spi: 0, agi: 0 };
+    expect(fightStats(1, none).levelPace).toBe(0);
+    const high = fightStats(1000, { vit: 0, ene: 0, spi: 0, agi: 30 }, { moveSpeed: 35 });
+    expect(high.moveHaste).toBeCloseTo(0.4, 6);
+    expect(high.levelPace).toBeGreaterThan(0.5);
+    expect(high.levelPace).toBeLessThanOrEqual(0.6);
+  });
+});

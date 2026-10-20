@@ -9,13 +9,14 @@
  *   deliver  bring N of a material (inventory stacks); handed over at the hand-in
  *   visit    reach a hand-drawn floor (a level id: the Ember Inn's upstairs, a dungeon floor) and come back
  *
- * Rewards: Gold paid as seconds of income with a floor (rule I, like the Board Herald's bounties; `economy-sim --check`
- * holds the band), a material, Hunting XP, and in each town one task's guaranteed rolled gear piece at a set rarity
+ * Rewards: a fixed sum of Gold worth `goldSeconds` of a steady hunt at the task's level (economy-curve huntGold; the
+ * forge no longer pays by the second, so "minutes of income" became minutes of the hunt; `economy-sim --check` holds
+ * the band), a material, Hunting XP, and in each town one task's guaranteed rolled gear piece at a set rarity
  * and item level (shared/rpg/item-definition.ts mintEquipment).
  *
  * Pure: imports only the import-free economy curve, so the economy sim and check-meaning can load it.
  */
-import { itemScaled } from '../economy/economy-curve';
+import { huntGold } from '../economy/economy-curve';
 
 export type TownTaskKind = 'hunt' | 'deliver' | 'visit';
 export type TaskTown = 'seamworks' | 'pyrehold' | 'cinderport' | 'ashgrove'
@@ -23,8 +24,9 @@ export type TaskTown = 'seamworks' | 'pyrehold' | 'cinderport' | 'ashgrove'
   | 'rootglass' | 'mossharbor' | 'thornwick';
 
 export interface TownTaskReward {
-  /** Seconds of income (rule I); `gold` is the floor a new save still gets. */
+  /** What the pay is worth: seconds of a steady hunt at the task's level. */
   goldSeconds: number;
+  /** The Gold paid: huntGold(level, goldSeconds), fixed when the table is built. */
   gold: number;
   /** A material stack handed over with the pay. */
   material?: { id: string; qty: number };
@@ -58,10 +60,11 @@ export interface TaskGiver {
   /** i18n: `task.giver.<id>.who` — who they are, one line. */
 }
 
-/** Gold floor for a task's seconds of income: the bounties' rate (4 000 old Gold per 5 minutes). */
-const floor = (seconds: number) => itemScaled(Math.round(seconds * 40 / 3));
+/** `minutes` of a hunt at the task's level; the sum is filled in by `priced` once the level is known. */
 const pay = (minutes: number, huntingXp: number, extra: Partial<TownTaskReward> = {}): TownTaskReward =>
-  ({ goldSeconds: minutes * 60, gold: floor(minutes * 60), huntingXp, ...extra });
+  ({ goldSeconds: minutes * 60, gold: 0, huntingXp, ...extra });
+/** A task with its Gold fixed: its minutes of a hunt of creatures at its own level. */
+const priced = (t: TownTask): TownTask => ({ ...t, reward: { ...t.reward, gold: huntGold(t.level, t.reward.goldSeconds) } });
 
 export const TASK_GIVERS: readonly TaskGiver[] = [
   // ── The Basalt Seamworks (Ember Isle, levels 1–8): its stall keepers, and the sexton of the Hushed Barrow ──
@@ -85,7 +88,7 @@ export const TASK_GIVERS: readonly TaskGiver[] = [
   { id: 'herbalist-sorrel', name: 'Herbalist Agathe Sorrel', town: 'thornwick' },
 ];
 
-export const TOWN_TASKS: readonly TownTask[] = [
+export const TOWN_TASKS: readonly TownTask[] = ([
   // Seamworks
   { id: 'seam-mara-1', giver: 'bench-smith', kind: 'deliver', target: 'cinder-ore', n: 6, level: 1, reward: pay(3, 40, { material: { id: 'ember-residue', qty: 2 } }) },
   { id: 'seam-mara-2', giver: 'bench-smith', kind: 'deliver', target: 'world-root-bark', n: 4, level: 2, reward: pay(4, 50, { material: { id: 'cinder-ore', qty: 4 } }) },
@@ -119,7 +122,7 @@ export const TOWN_TASKS: readonly TownTask[] = [
   { id: 'moss-brisk-2', giver: 'netmender-brisk', kind: 'visit', target: 'root-hollows-3', n: 1, level: 24, reward: pay(9, 260, { material: { id: 'verdant-sap', qty: 3 } }) },
   { id: 'thorn-sorrel-1', giver: 'herbalist-sorrel', kind: 'deliver', target: 'verdant-sap', n: 5, level: 15, reward: pay(6, 180, { material: { id: 'thornroot', qty: 2 } }) },
   { id: 'thorn-sorrel-2', giver: 'herbalist-sorrel', kind: 'hunt', target: 'vine-lasher', n: 6, level: 21, reward: pay(8, 260) },
-];
+] as TownTask[]).map(priced);
 
 const BY_ID = new Map(TOWN_TASKS.map(t => [t.id, t]));
 export function townTask(id: string): TownTask | undefined { return BY_ID.get(id); }
@@ -129,7 +132,7 @@ export function tasksOf(giver: string): readonly TownTask[] { return TOWN_TASKS.
 
 // ── Dailies: once a giver's two tasks are handed in, they offer one small errand a day ──
 // A pool of three per giver; one is chosen per local day (dailyOf). Smaller pay than the one-time tasks: 1-2 minutes of
-// income, a little Hunting XP, now and then a small material, and a chance of a potion; never gear. `economy-sim
+// a hunt, a little Hunting XP, now and then a small material, and a chance of a potion; never gear. `economy-sim
 // --town-tasks` holds the per-day cap.
 const bark = { id: 'world-root-bark', qty: 1 }, ore = { id: 'cinder-ore', qty: 2 }, residue = { id: 'ember-residue', qty: 1 };
 const sap = { id: 'verdant-sap', qty: 1 }, thorn = { id: 'thornroot', qty: 1 };
@@ -137,7 +140,7 @@ const hp = { id: 'minor-health-potion', chance: 0.15 }, mp = { id: 'minor-mana-p
 const d = (giver: string, n: number, kind: 'hunt' | 'deliver', target: string, count: number, level: number, reward: TownTaskReward): TownTask =>
   ({ id: `dly-${giver}-${n}`, giver, kind, target, n: count, level, reward, daily: true });
 
-export const DAILY_TASKS: readonly TownTask[] = [
+export const DAILY_TASKS: readonly TownTask[] = ([
   d('bench-smith', 1, 'deliver', 'cinder-ore', 8, 1, pay(1, 15, { material: residue })),
   d('bench-smith', 2, 'deliver', 'world-root-bark', 5, 2, pay(1, 15, { potion: hp })),
   d('bench-smith', 3, 'hunt', 'rivet-maw', 5, 1, pay(1, 20, { material: ore })),
@@ -168,7 +171,7 @@ export const DAILY_TASKS: readonly TownTask[] = [
   d('charburner-kiln', 1, 'deliver', 'world-root-bark', 6, 8, pay(2, 40, { material: residue })),
   d('charburner-kiln', 2, 'hunt', 'bone-archer', 5, 8, pay(2, 50, { potion: hp })),
   d('charburner-kiln', 3, 'hunt', 'ash-ghoul', 5, 9, pay(2, 55)),
-  // The Verdant Wilds: a minute of income each (the day's envelope is shared by every giver of every town).
+  // The Verdant Wilds: a minute of a hunt each (the day's envelope is shared by every giver of every town).
   d('warden-fenn', 1, 'hunt', 'canopy-bat', 6, 15, pay(1, 60, { potion: hp })),
   d('warden-fenn', 2, 'hunt', 'moss-stalker', 5, 17, pay(1, 65, { material: sap })),
   d('warden-fenn', 3, 'deliver', 'verdant-sap', 3, 15, pay(1, 45, { material: bark })),
@@ -181,7 +184,7 @@ export const DAILY_TASKS: readonly TownTask[] = [
   d('herbalist-sorrel', 1, 'deliver', 'verdant-sap', 4, 15, pay(1, 45, { material: thorn })),
   d('herbalist-sorrel', 2, 'hunt', 'sporecap', 3, 23, pay(1, 75, { potion: mp })),
   d('herbalist-sorrel', 3, 'hunt', 'vine-lasher', 4, 21, pay(1, 70)),
-];
+] as TownTask[]).map(priced);
 
 const DAILY_BY_ID = new Map(DAILY_TASKS.map(t => [t.id, t]));
 /** A one-time or a daily task by id. */
@@ -244,11 +247,9 @@ export function dailyUnlocked(giver: string, claimed: readonly string[]): boolea
   return tasksOf(giver).every(t => claimed.includes(t.id));
 }
 
-/** Gold a hand-in pays: the floor, or the seconds of income when that is more. Whole Gold. */
-export function taskGold(reward: TownTaskReward, perSecond: number): number {
-  const base = Math.max(0, Math.floor(reward.gold));
-  if (!Number.isFinite(perSecond) || perSecond <= 0) return base;
-  return Math.max(base, Math.floor(perSecond * reward.goldSeconds));
+/** Gold a hand-in pays: the task's fixed sum. Whole Gold. */
+export function taskGold(reward: TownTaskReward): number {
+  return Math.max(0, Math.floor(reward.gold));
 }
 
 export type TaskStanding = 'locked' | 'offer' | 'active' | 'ready' | 'done';

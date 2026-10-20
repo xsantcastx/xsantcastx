@@ -138,47 +138,6 @@
     <div class="sl-host" [attr.data-slate-game]="game"><ng-container #gameHost></ng-container></div>
   </section>
 
-  @if (face === 'factory') {
-    <section class="sl-pane sl-factory" [attr.aria-label]="t('slate.tab.factory')">
-      <dl class="sl-read">
-        <div><dt>{{ t('slate.factory.purse') }}</dt><dd class="sl-gold">{{ t('slate.factory.gold', { n: gold }) }}</dd></div>
-        <div><dt>{{ t('slate.factory.making') }}</dt><dd class="sl-rate">{{ rate }}</dd></div>
-      </dl>
-
-      @if (waiting) {
-        <div class="sl-card sl-waiting">
-          <h3>{{ t('slate.factory.waiting') }}</h3>
-          <p class="sl-waiting__line">{{ waiting }}</p>
-          <button type="button" class="sl-collect" (click)="collect()">{{ t('slate.factory.collect') }}</button>
-        </div>
-      }
-
-      <div class="sl-card sl-next">
-        <h3>{{ t('slate.factory.next') }}</h3>
-        @if (next; as row) {
-          <p class="sl-next__adds">{{ nextAdds }}</p>
-          <app-action-button [label]="t('slate.factory.buy', { name: row.name, cost: row.cost.toLocaleString('en-US') })" [costs]="nextCosts" [chips]="'none'" (act)="build()" />
-        } @else {
-          <p>{{ t('slate.factory.allBuilt') }}</p>
-        }
-      </div>
-      @if (notice) { <p class="sl-notice" role="status">{{ notice }}</p> }
-
-      <details class="sl-details">
-        <summary>{{ t('slate.factory.more') }}</summary>
-        <div class="sl-crew">
-          <p>{{ camp }}@if (nextHome) { {{ nextHome }} }</p>
-          <p>{{ workshop }}</p>
-        </div>
-        <div class="sl-walk">
-          <p class="sl-group">{{ t('slate.walk.title') }}</p>
-          <ul>
-            @for (p of pointers; track p.key) { <li>{{ t(p.key) }}</li> }
-          </ul>
-        </div>
-      </details>
-    </section>
-  }
 
   @if (face === 'map') {
     <section class="sl-pane sl-map" [attr.aria-label]="t('slate.tab.map')">

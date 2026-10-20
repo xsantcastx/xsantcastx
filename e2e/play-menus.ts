@@ -93,7 +93,6 @@ export const MENUS: Menu[] = [
   station('market', ''), station('quests', ''), station('codex', ''), station('skills', ''),
   station('waystone', ''), station('reels', '.place .rl-spin, .place .ab__btn'),
   { id: 'slate', open: openSlate, root: '[data-slate-phone]', close: '[data-slate-home]', modal: true },
-  { id: 'slate-homestead', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-face="factory"]').click(); }, root: '[data-slate-phone]', close: '[data-slate-home]', closeClicks: 2, modal: true },
   { id: 'slate-reels', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-game="reels"]').click(); }, root: '[data-slate-phone]', close: '[data-slate-home]', closeClicks: 2, modal: true },
   { id: 'slate-pets', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-app="pets"]').click(); }, root: '[data-slate-phone]', close: '[data-slate-home]', closeClicks: 2, modal: true },
 ];

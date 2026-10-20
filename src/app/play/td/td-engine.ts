@@ -149,6 +149,8 @@ export class TopDownEngine {
   private maxHp = 100;
   /** Agility's speed of foot (0–0.3). */
   private agility = 0;
+  /** The level's pace (0 → 0.6, keeper-level levelSpeedBonus): multiplies everything else that moves the Keeper. */
+  private levelPace = 0;
   /** Worn Life Regen: life back each second, in the fight too. */
   private lifeRegen = 0;
   /** A potion still pouring in (potions.model.ts): life and mana left to give, over the seconds left. */
@@ -244,6 +246,10 @@ export class TopDownEngine {
    * lies round the Keeper. Drawn only — never in the MobSystem, so nothing can be picked up and nothing reaches a save.
    */
   private readonly fxLoot = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxloot=1\b/.test(location.search);
+  /** For the screenshot spec (`?fxgold=1`, only under an automated browser): three real Gold piles laid east of the Keeper, once. */
+  private readonly fxGold = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxgold=1\b/.test(location.search);
+  private fxGoldLaid = false;
+  private goldSeen = -1;
   private showcase: Drop[] = [];
   private tellSeen = '';
   /** The Seam-Cant line over the Keeper (design-bible §4.0): the last spell's words, their tone, and how long they have hung. */
@@ -358,6 +364,8 @@ export class TopDownEngine {
   get mana(): number { return this.mobs.mana; }
   get maxMana(): number { return this.mobs.maxMana; }
   get maxHealth(): number { return this.maxHp; }
+  /** The Keeper's pace now, art px a second: the base, the level's pace, Agility and worn Move Speed, Haste. */
+  get walkSpeed(): number { return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace); }
   private buildKey = '';
   /**
    * The Keeper's level, spent points and worn gear totals (the HUD hands them in): life, mana, regeneration, spell
@@ -375,6 +383,8 @@ export class TopDownEngine {
     this.mobs.defense = st.defense; this.mobs.keeperLevel = Math.max(1, Math.floor(level));
     this.mobs.resists = st.resists;
     this.agility = st.moveHaste;
+    this.levelPace = st.levelPace;
+    this.mobs.pace = 1 + st.levelPace;
     this.lifeRegen = st.lifeRegen;
   }
 
@@ -822,7 +832,7 @@ export class TopDownEngine {
     if (b.carried) { b.carried.x = b.x + b.face * 7; b.carried.y = b.y - 1; }
     if (b.goal && !this.mobs.drops.includes(b.goal)) b.goal = null;
     const far = Math.hypot(b.x - k.x, b.y - k.y);
-    const run = TD_PET.speed * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (far > 40 ? TD_PET.catchUp : 1);
+    const run = TD_PET.speed * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (far > 40 ? TD_PET.catchUp : 1);
     // mend: a pulse of life in a fight (the Sunling); it keeps following while it shines.
     if (job === 'mend' && b.mendCd <= 0) {
       const heal = mendPulse(this.hp, this.maxHp, this.time - this.lastHurt < 4);
@@ -1166,7 +1176,7 @@ export class TopDownEngine {
       if (Math.abs(vx) > .2) this.player.face = vx < 0 ? -1 : 1;
       // Mostly vertical: show the face (south) or the back (north); otherwise the side view.
       this.player.dir = Math.abs(vy) > Math.abs(vx) * 1.2 ? (vy > 0 ? 'down' : 'up') : 'side';
-      const speed = SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility);
+      const speed = this.walkSpeed;
       this.tryMove(vx * speed * dt, 0);
       this.tryMove(0, vy * speed * dt);
     }
@@ -1736,7 +1746,8 @@ export class TopDownEngine {
         c.globalAlpha = 1;
       }
     } else if (g.coins > 0) {
-      c.fillStyle = '#2a1a24'; c.fillRect(X - 5, Y - 5, 10, 5); c.fillStyle = '#e8a83a'; c.fillRect(X - 4, Y - 4, 8, 3); c.fillStyle = '#ffd25a'; c.fillRect(X - 3, Y - 5, 3, 2); c.fillRect(X + 1, Y - 4, 2, 1);
+      const beat = this.still ? .05 : ((this.time + (this.dropSeed(g) % 97) / 31) % 2.4) / 2.4;
+      drawGoldPile(c, X, Y, goldPileSize(g.coins), beat < .12);
     } else {
       c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 8, 8, 8); c.fillStyle = '#a8743f'; c.fillRect(X - 3, Y - 7, 6, 6); c.fillStyle = '#c99657'; c.fillRect(X - 3, Y - 7, 6, 2);
     }
@@ -1747,6 +1758,17 @@ export class TopDownEngine {
 
   /** Loot pops: a burst in its colour as gear lands, a smaller one rising as it is taken; the showcase, when on. */
   private updateLoot(dt: number): void {
+    if (this.fxGold && !this.fxGoldLaid) {
+      // Just past the Keeper's pull (8 tiles), so they lie still until he walks over: a few coins, a pile, a heap.
+      this.fxGoldLaid = true;
+      const p = this.player;
+      for (const [i, coins, dx, dy] of [[0, 12, 134, -2], [1, 64, 152, 4], [2, 640, 202, -4]] as const) {
+        this.mobs.drops.push({ id: `fx-gold:${i}`, x: p.x + dx, y: p.y + dy, coins, qty: 0, label: `${coins} Gold`, color: GOLD_RAMP[0], age: 1 });
+      }
+    }
+    // For the screenshot spec: how many Gold piles lie on the ground.
+    const piles = this.mobs.drops.reduce((n, g) => n + (g.coins > 0 ? 1 : 0), 0);
+    if (piles !== this.goldSeen) { this.goldSeen = piles; this.canvas.setAttribute('data-gold-piles', String(piles)); }
     for (const q of this.pops) q.age += dt;
     this.pops = this.pops.filter(q => q.age < q.life);
     // The showcase lies down a second after each arrival, round wherever the Keeper stands.
@@ -2211,6 +2233,8 @@ export class TopDownEngine {
       c.fillStyle = m === this.mobs.target ? '#ff8a7a' : '#f3e7cf'; c.fillText(m.def.name, Math.round(m.x), Math.round(top) - 2);
     }
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r && inView(g.x, g.y) && (Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110 || this.showcase.includes(g))) this.plate(g.label, g.x, this.dropTop(g), LOOT[r].body); }
+    // A Gold pile names its sum while it lies there (Diablo II's "38 Gold"), in the pile's own gold.
+    for (const g of this.mobs.drops) if (g.coins > 0 && inView(g.x, g.y) && Math.hypot(g.x - this.player.x, g.y - this.player.y) < 160) this.plate(g.label, g.x, g.y - 12, GOLD_RAMP[0]);
     c.font = 'bold 8px "Pixelify Sans", monospace';
     for (const f of this.mobs.floaters) {
       c.globalAlpha = Math.max(0, 1 - f.age);
@@ -2457,4 +2481,59 @@ export function topDownGate(): boolean {
     if (q === '0') localStorage.setItem('eclipse-td', '0');
     return localStorage.getItem('eclipse-td') !== '0';
   } catch { return true; }
+}
+
+/** The gold ramp (light → shadow) and its outline: the creatures' own gold (td-mobs R.gold), lit from the upper left. */
+export const GOLD_RAMP = ['#fff0a0', '#e8b040', '#a87420', '#6a4414'] as const;
+const GOLD_OUTLINE = '#2a1a24';
+
+/** 0 a few coins, 1 a pile, 2 a heap: how much the pile holds, by the sum (whole art pixels whatever the size). */
+export function goldPileSize(coins: number): 0 | 1 | 2 {
+  return coins >= 250 ? 2 : coins >= 25 ? 1 : 0;
+}
+
+/**
+ * A Gold pile on the ground, pixel art (docs/design/effects-spec.md rule 1): coins stacked in a mound, each coin a
+ * lit face over its dark rim, one outline round the whole, a contact shadow under it, and a four-point glint now and
+ * then. (X, Y) is the pile's foot.
+ */
+export function drawGoldPile(c: CanvasRenderingContext2D, X: number, Y: number, size: 0 | 1 | 2, glint: boolean): void {
+  const [hi, body, rim, deep] = GOLD_RAMP;
+  // Rows of the mound, bottom up: [left offset, width]. Each row a step narrower, so the silhouette is stepped.
+  const rows: readonly (readonly [number, number])[] = size === 2
+    ? [[-7, 15], [-6, 13], [-5, 11], [-4, 9], [-3, 7], [-2, 5]]
+    : size === 1 ? [[-5, 11], [-4, 9], [-3, 7], [-2, 5]] : [[-3, 7], [-2, 5]];
+  const h = rows.length;
+  // Contact shadow: a flat dark band, a pixel wider than the base each side.
+  c.globalAlpha = .35; c.fillStyle = '#140c1c'; c.fillRect(X + rows[0][0] - 1, Y, rows[0][1] + 2, 1); c.globalAlpha = 1;
+  // Outline: every row grown a pixel each side, plus a cap over the top row.
+  c.fillStyle = GOLD_OUTLINE;
+  rows.forEach(([x0, w], i) => c.fillRect(X + x0 - 1, Y - 1 - i, w + 2, 1));
+  c.fillRect(X + rows[h - 1][0], Y - 1 - h, rows[h - 1][1], 1);
+  // The mound: dark rims at the foot and the right, the body, the lit upper-left faces.
+  rows.forEach(([x0, w], i) => {
+    const y = Y - 1 - i;
+    c.fillStyle = i === 0 ? deep : rim; c.fillRect(X + x0, y, w, 1);
+    if (i > 0) { c.fillStyle = body; c.fillRect(X + x0, y, w - 1, 1); }
+    if (i > 0 && w > 3) { c.fillStyle = hi; c.fillRect(X + x0 + 1, y, Math.max(1, Math.floor(w / 3)), 1); }
+  });
+  // Coin edges: a dark seam every third pixel across the middle rows, so it reads as coins, not a lump.
+  c.fillStyle = rim;
+  for (let i = 1; i < h - 1; i++) { const [x0, w] = rows[i]; for (let x = x0 + 2 + (i % 2); x < x0 + w - 1; x += 3) c.fillRect(X + x, Y - 1 - i, 1, 1); }
+  // A few loose coins at the foot of a bigger pile: a lit pixel over a rim pixel each.
+  if (size > 0) {
+    const loose = size === 2 ? [[-9, 0], [8, -1], [-8, -2]] : [[-7, 0], [6, 0]];
+    for (const [dx, dy] of loose) {
+      c.fillStyle = GOLD_OUTLINE; c.fillRect(X + dx - 1, Y + dy - 1, 3, 2);
+      c.fillStyle = rim; c.fillRect(X + dx, Y + dy, 1, 1); c.fillStyle = hi; c.fillRect(X + dx, Y + dy - 1, 1, 1);
+    }
+  }
+  // The glint: a white pixel and its four arms over the top coin.
+  if (glint) {
+    const gx = X + rows[h - 1][0] + 1, gy = Y - 1 - h;
+    c.fillStyle = '#ffffff'; c.fillRect(gx, gy, 1, 1);
+    c.globalAlpha = .8; c.fillStyle = hi;
+    c.fillRect(gx - 1, gy, 1, 1); c.fillRect(gx + 1, gy, 1, 1); c.fillRect(gx, gy - 1, 1, 1); c.fillRect(gx, gy + 1, 1, 1);
+    c.globalAlpha = 1;
+  }
 }

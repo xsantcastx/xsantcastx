@@ -71,7 +71,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       const second = playReels(seededRng(`${pin}:1`), 10);
       await seed(page, {
         // Ten Ember Stokers: 10 Gold a second, so the Homestead has a receipt to collect.
-        'godforge-economy': { version: 3, gold: START, totalGoldEarned: START, runGoldEarned: START, upgrades: { 'ember-stoker': 10 } },
+        'godforge-economy': { version: 3, goldEra: 1, gold: START, totalGoldEarned: START, runGoldEarned: START, upgrades: { 'ember-stoker': 10 } },
         // Nine plays already at Lune's tables: the next one is the tenth.
         'godforge-games': { version: 1, secret: pin, nonce: 0, plays: {}, totals: { 'rune-drop': { plays: 6, wagered: 60, paid: 57 }, 'seam-sweeper': { plays: 3, wagered: 30, paid: 28 } } },
       });
@@ -111,9 +111,9 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await openSlate(page, phone);
       const x = await canvas(page).getAttribute('data-player-x');
       await expect(placePanel(page).locator('[data-slate-tier="1"]')).toBeVisible();
-      // It opens on a few big choices: Lune's four tables and the Homestead (no map at tier I).
+      // It opens on a few big choices: Lune's tables (no Homestead: the forge's income is gone; no map at tier I).
       await expect(placePanel(page).locator('.sl-tile--game')).toHaveText(['Reels', 'Rune Drop', 'Seam Sweeper', 'Eclipse Ascent', 'Cascade']);
-      await expect(placePanel(page).locator('.sl-tile[data-face="factory"]')).toBeVisible();
+      await expect(placePanel(page).locator('.sl-tile[data-face="factory"]')).toHaveCount(0);
       await expect(placePanel(page).locator('.sl-tile[data-face="map"]')).toHaveCount(0);
       if (phone) {
         for (const b of await placePanel(page).locator('.sl-tile').all()) {
@@ -141,20 +141,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       // The world runs on round the Slate, but nothing walked the Keeper: they stand where they were.
       expect(await canvas(page).getAttribute('data-player-x')).toBe(x);
 
-      // ── The Homestead tab: collect the receipt, build the next building ──
       await placePanel(page).locator('.sl-back').click();
-      await placePanel(page).locator('.sl-tile[data-face="factory"]').click();
-      const factory = placePanel(page).locator('.sl-factory');
-      await expect(factory.locator('.sl-rate')).toContainText('Gold/s');
-      await expect(factory.locator('.sl-waiting__line')).toContainText('since you were last here', { timeout: 15000 });
-      await page.screenshot({ path: resolve(SHOTS, `${size.width}-4-homestead.png`) });
-      await factory.locator('.sl-collect').click();
-      await expect(factory.locator('.sl-notice')).toContainText('Counted: +');
-      const before = await upgrades(page);
-      await factory.locator('.sl-next .ab__btn').click();
-      await expect(factory.locator('.sl-notice')).toContainText('built');
-      await expect.poll(() => upgrades(page), { timeout: 10000 }).toBe(before + 1);
-      await page.screenshot({ path: resolve(SHOTS, `${size.width}-5-built.png`) });
 
       // P (desktop) or Close folds it; the world moves again.
       if (phone) await page.keyboard.press('Escape');

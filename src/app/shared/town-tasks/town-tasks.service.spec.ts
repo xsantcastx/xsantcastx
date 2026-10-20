@@ -3,6 +3,7 @@
  * taken, a delivery consumed at the hand-in, every reward paid once (receipt first), and the merge that never loses
  * progress nor re-opens a paid task.
  */
+import { huntGold } from '../economy/economy-curve';
 import { TestBed } from '@angular/core/testing';
 import { TownTaskService } from './town-tasks.service';
 import { TOWN_TASKS_KEY, TownTaskState, coerceTownTasks, emptyTownTasks, mergeTownTasks } from './town-tasks-save.model';
@@ -162,10 +163,12 @@ describe('TownTaskService (the town keepers\' tasks)', () => {
     expect(inventory.items.size).toBe(1);
   });
 
-  it('Gold is income seconds when that beats the floor', () => {
+  it('Gold is a fixed sum: minutes of a hunt at the task\'s level, whatever the forge makes', () => {
     economy.snapshot.perSecond = 1000;
     const t = tasksOf('captain-vey')[0];
-    expect(service.talk('captain-vey')?.gold).toBe(1000 * t.reward.goldSeconds);
+    expect(t.reward.gold).toBe(huntGold(t.level, t.reward.goldSeconds));
+    expect(t.reward.gold).toBeGreaterThan(0);
+    expect(service.talk('captain-vey')?.gold).toBe(t.reward.gold);
   });
 
   it('merges: progress never lost, a paid task never re-opened, commutative', () => {

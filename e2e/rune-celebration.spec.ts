@@ -51,7 +51,7 @@ async function openForge(page: Page, tier: Tier): Promise<void> {
       // copy roll from firing, which keeps the reveal to one rune.
       Math.random = () => roll;
     },
-    { key: ECONOMY_KEY, blob: JSON.stringify({ version: 2, gold: 400_000_000 }), roll: AIM[tier].roll },
+    { key: ECONOMY_KEY, blob: JSON.stringify({ version: 2, goldEra: 1, gold: 400_000_000 }), roll: AIM[tier].roll },
   );
   await page.goto('/forge/runes', { waitUntil: 'load' });
   await page.waitForFunction(() => {

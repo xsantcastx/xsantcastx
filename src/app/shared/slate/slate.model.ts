@@ -57,10 +57,11 @@ export const KAEL_STATION = 'runes';
  * moon-mirror glass that knows the cabinets' latches, not Kael's brass, so every
  * Slate can hold it up.
  */
-export type SlateTab = 'tables' | 'factory' | 'map' | 'scan';
+/** The Homestead's factory face left with the forge's income (owner, 2026-10-21): Gold comes from the hunt now. */
+export type SlateTab = 'tables' | 'map' | 'scan';
 export function slateTabs(tier: SlateTier): SlateTab[] {
   if (tier <= 0) return [];
-  return tier >= 2 ? ['tables', 'factory', 'map', 'scan'] : ['tables', 'factory', 'scan'];
+  return tier >= 2 ? ['tables', 'map', 'scan'] : ['tables', 'scan'];
 }
 
 /** Which pane the Keeper holds. `qty` reads a stack total (satchel or Vault: the Keeper owns it either way). */
@@ -132,18 +133,3 @@ export function slateRefusal(m: SlateMoment): SlateRefusal | null {
   return null;
 }
 
-/** Seconds of income piled up on the Homestead receipt that light the badge. */
-export const SLATE_BADGE_INCOME_S = 600;
-/** The Homestead has something worth a look: an explorer home, a rune found, or ten minutes of income waiting. */
-export function slateBadge(pending: { gold: number; runes: number; returns: number }, perSecond: number): boolean {
-  if (pending.returns > 0 || pending.runes > 0) return true;
-  return perSecond > 0 && pending.gold >= perSecond * SLATE_BADGE_INCOME_S;
-}
-
-/** The world's own stations the Slate points at instead of opening (places stay places). */
-export const SLATE_WORLD_POINTERS: readonly { key: string }[] = [
-  { key: 'slate.walk.crafting' },
-  { key: 'slate.walk.market' },
-  { key: 'slate.walk.vendor' },
-  { key: 'slate.walk.sanctum' },
-];
