@@ -46,6 +46,8 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
+import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
+import { MOBS, mobSheet } from './td/td-mobs';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
@@ -405,6 +407,9 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private panelOpener: HTMLElement | null = null;
   placesOpen = false;
+  /** The Bestiary window (top-down only): opened from the Map's menu row or with B. */
+  bestiaryOpen = false;
+  bestiary: { entries: (BestiaryEntry & { lit: string; dark: string; shownHaunts: string[]; moreHaunts: number })[]; found: number } | null = null;
   /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
   lootToasts: LootToast[] = [];
   private toastKey = 0;
@@ -1826,6 +1831,7 @@ export class SideScrollerComponent implements OnDestroy {
     return this.placesCache.rows;
   }
   togglePlaces(): void {
+    this.bestiaryOpen = false;
     this.placesOpen = !this.placesOpen;
     // The nudge is a one-time thing: seen once the list is open (the entry stays).
     this.lookNudgeShown = this.placesOpen && this.lookNudge;
@@ -1845,6 +1851,37 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Map window's picture, pins and the Keeper's mark (td-engine mapView); null in the side view. */
   get tdMapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
     return this.topDown ? (this.engine as unknown as { mapView?: () => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.() ?? null : null;
+  }
+  /** B or the Map's menu: open or fold the Bestiary (cards are rebuilt on open, from the saved kill counts). */
+  toggleBestiary(): void {
+    if (!this.topDown) return;
+    if (this.bestiaryOpen) { this.closeBestiary(); return; }
+    this.placesOpen = false;
+    const entries = bestiaryEntries(readKills(this.store.read(BESTIARY_KEY)));
+    this.bestiary = {
+      found: discoveredCount(entries),
+      entries: entries.map(e => ({ ...e, lit: this.mobPortrait(e.id, false), dark: this.mobPortrait(e.id, true), shownHaunts: e.haunts.slice(0, 3), moreHaunts: Math.max(0, e.haunts.length - 3) })),
+    };
+    this.bestiaryOpen = true;
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-best .places-close')?.focus());
+  }
+  closeBestiary(): void { this.bestiaryOpen = false; this.focusWorld(); }
+  private readonly portraits = new Map<string, string>();
+  /** A creature's first frame, painted by its own code, scaled x3 without smoothing; dark: only its outline filled in. */
+  private mobPortrait(id: string, dark: boolean): string {
+    const key = `${id}:${dark}`;
+    const held = this.portraits.get(key);
+    if (held !== undefined) return held;
+    const def = MOBS[id];
+    if (!def || !this.browser) return '';
+    const c = document.createElement('canvas'); c.width = def.w * 3; c.height = def.h * 3;
+    const g = c.getContext('2d')!;
+    g.imageSmoothingEnabled = false;
+    g.drawImage(mobSheet(def), 0, 0, def.w, def.h, 0, 0, c.width, c.height);
+    if (dark) { g.globalCompositeOperation = 'source-in'; g.fillStyle = '#0d0813'; g.fillRect(0, 0, c.width, c.height); }
+    const url = c.toDataURL('image/png');
+    this.portraits.set(key, url);
+    return url;
   }
   pinName(pin: TdMapPin): string { return titleCase(pin.label); }
   goPin(pin: TdMapPin): void { this.choosePlace({ id: pin.id, name: titleCase(pin.label), blurb: pin.blurb }); }
@@ -2513,6 +2550,7 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape' || event.code === 'KeyM') { event.preventDefault(); this.closeMap(); }
       return;
     }
+    if (this.bestiaryOpen && event.key === 'Escape') { event.preventDefault(); this.closeBestiary(); return; }
     if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
     if (this.hearthOpen && event.key === 'Escape' && (event.target as HTMLElement | null)?.closest?.('.dock')) {
@@ -2521,6 +2559,7 @@ export class SideScrollerComponent implements OnDestroy {
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
+    else if (event.code === 'KeyB' && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
     else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
     else if (event.code === 'KeyC' && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
@@ -4066,10 +4105,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return this.bagOpen || this.placesOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
     if (this.petsOpen) this.closePets();
+    else if (this.bestiaryOpen) this.closeBestiary();
     else if (this.soundOpen) this.soundOpen = false;
     else if (this.anchorSheet) this.closeAnchors();
     else if (this.panel) this.closePanel();
@@ -4302,6 +4342,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
+    // The Bestiary counts every top-down kill (account progress: a read-modify-write, so no copy goes stale).
+    if (this.topDown) { const blob = withKill(this.store.read(BESTIARY_KEY), event.creature); if (blob) this.store.write(BESTIARY_KEY, blob); }
     // The Banked Furnace banks itself again for a day after every fall.
     if (event.creature === 'banked-furnace') this.delve.claim(furnaceDayFlag(Date.now()));
     // The two rescues a hunt can earn (pets.model.ts): six Foragers, six Substitutes.
