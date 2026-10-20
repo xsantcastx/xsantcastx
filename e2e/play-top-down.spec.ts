@@ -253,12 +253,7 @@ test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone 
   await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /bone hall/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-2.jpg', type: 'jpeg', quality: 72 });
-  // A few steps into the hall, enough to see what waits there (a picture only: never a fight to assert on).
-  await page.waitForTimeout(5000);   // the floor's name card fades first
-  const y0 = await py(page);
-  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(1600); await page.keyboard.up('ArrowDown');
-  await expect.poll(() => py(page)).toBeGreaterThan(y0 + 10);
-  await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-bone-hall.jpg', type: 'jpeg', quality: 72 });
+  // (No walk into the hall: the Ashbone Dragon would fight a level-1 Keeper there, and a test never rides on a fight.)
   await go(/stairs up/i, /ossuary/i);
   await go(/crypt door/i, /^(The Ashen Bastion|The Ashen Crypt)$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-door.jpg', type: 'jpeg', quality: 72 });
