@@ -1728,3 +1728,14 @@ Tyrant's end in iron that remembers the fire. *Cinderport*: **Harbourmaster Tams
 Salted Ember; drakes over the Molten Fields; a drowned captain's staff); **Old Netter Pell**, who swears the sea is
 warmer than it used to be. *Ashgrove*: **Woodward Hesk Ashby**, who names the burnt trees still living and found the
 crypt door open; **Maud Kiln**, the charburner, whose mother's gauntlets "have held hotter things than you".
+
+## Level titles (2026-10-21) — shipped, owner reviews in play
+
+The Archive keeps a short roll of names it gives Keepers who keep climbing; you choose which one is read out under
+yours (the sheet, C). *The Kindled* (5): the lamp took. *Ash-Walker* (15): you have crossed the Seamworks' ash without
+stopping. *Warden of the Reach* (25): the Pyre Watch nods you through. *Wildstrider* (40): the Verdant's paths close
+behind you and open in front. *Keeper of the Eclipse* (50): the first name the Archive writes in silver. *Lord of the
+Marches* (75). *The Hundredfold* (100): a gold frame; the Archive says a hundred lamps are lit for you somewhere.
+*Emberbound* (300), *Lantern-Bearer* (500), *the Thousandfold* (1,000, the eclipse frame), *Starwright* (2,000), *Who
+Walks the Eclipse* (5,000), and *Keeper of the Long Night* (10,000, the starlit frame) — the Archive's last line, never
+yet written beside a name. Lines live in `play/world/hud.i18n.ts` (`play.lvl.title.*`).
