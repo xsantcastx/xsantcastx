@@ -15,7 +15,7 @@ import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { LOOT } from './td-fx';
-import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, type SkillId } from './td-skills';
+import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
 
@@ -1666,6 +1666,12 @@ export interface Mob {
   /** A boss's wind-up before its big attack (seconds left; 0 = none), and where that attack will land. */
   tell: number;
   aim: { x: number; y: number } | null;
+  /** Weaken (Shadow tree): seconds left and how much weaker it bites (%). */
+  weak?: number;
+  weakPct?: number;
+  /** Doom (Shadow tree): seconds until it bursts, and the burst it carries. */
+  doom?: number;
+  doomHit?: { min: number; max: number; r: number };
 }
 
 /**
@@ -1730,7 +1736,23 @@ export function pickMinionTarget(from: { x: number; y: number }, mobs: readonly 
 }
 
 /** A Bone Spear in flight: it passes through every foe in its line, striking each once. */
-export interface Spear { x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[] }
+export interface Spear { x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[]; dmg?: [number, number] }
+
+/**
+ * A spell left on the ground (the trees' new fire): Cinder Rain falling on a circle, a Flame Wall burning along a line,
+ * a Meteor on its way down. `t` is the seconds it still lasts (a meteor's: until it lands).
+ */
+export interface Zone {
+  kind: 'rain' | 'wall' | 'meteor';
+  x: number; y: number;
+  /** Radius (art px): the rain's circle, the meteor's blast; a wall's reach either side of its line. */
+  r: number;
+  t: number;
+  tick: number;
+  min: number; max: number;
+  /** A wall's line, one point a tile. */
+  pts?: { x: number; y: number }[];
+}
 
 export interface Drop {
   id: string;
@@ -1756,10 +1778,14 @@ export interface Effect {
     // the Bone Spear's release flash and the bone chips at each pierce.
     | 'pulse' | 'crit' | 'flash' | 'bone-chips'
     // A level gained (docs/design/leveling.md §4): the light pillar on the Keeper; `dir` 2 for a big milestone.
-    | 'pillar';
+    | 'pillar'
+    // The trees (docs/design/skill-trees.md): a falling cinder, a flame tongue of a wall, a meteor coming down.
+    | 'cinder' | 'flame' | 'meteor';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
-  /** A pulse's element: the aura that did the work. */
-  el?: 'ember' | 'life';
+  /** A pulse's or a wave's element: the aura or spell that did the work (a wave is ember unless it says). */
+  el?: 'ember' | 'life' | 'shadow' | 'bone';
+  /** A wave's radius (art px); the Nova's own when absent. */
+  r?: number;
 }
 
 /** A bolt in flight toward a creature. */
@@ -1794,6 +1820,8 @@ export interface MobHost {
   hover?(c: number, r: number): boolean;
   /** Does a shot fly over this tile (not into a wall)? Default: walkable. */
   passable?(c: number, r: number): boolean;
+  /** The Keeper's life now (Life Tap will not spend the last of it). */
+  playerHp?(): number;
   /** The Keeper swung (an attack or an ability): the host plays the swing toward `at`. */
   swung(at: { x: number; y: number } | null): void;
 }
@@ -1813,7 +1841,31 @@ export class MobSystem {
   readonly spears: Spear[] = [];
   readonly minions: Minion[] = [];
   readonly corpses: { x: number; y: number; at: number }[] = [];
+  /** Spells lying on the ground (Cinder Rain, Flame Wall, a Meteor coming down). */
+  readonly zones: Zone[] = [];
   private minionSeq = 0;
+  /**
+   * The ranks the trees give (docs/design/skill-trees.md); null = every skill at rank 1 (the specs, and the moments
+   * before the HUD hands the trees in). A skill at rank 0 does nothing: an active refuses, an aura and a passive rest.
+   */
+  private ranks: Partial<Record<SkillId, number>> | null = null;
+  private readonly varsAt = new Map<SkillId, Record<string, number>>();
+  setRanks(ranks: Partial<Record<SkillId, number>> | null): void { this.ranks = ranks ? { ...ranks } : null; this.varsAt.clear(); }
+  rank(id: SkillId): number { return this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1; }
+  /** A skill's numbers at its rank. */
+  v(id: SkillId): Record<string, number> {
+    let got = this.varsAt.get(id);
+    if (!got) { got = skillVars(id, this.rank(id)); this.varsAt.set(id, got); }
+    return got;
+  }
+  /** Ember Mastery: what fire's damage is multiplied by. */
+  get fireMult(): number { return this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1; }
+  /** The running aura's ring (art px). */
+  get auraRadius(): number { return Math.round((this.aura ? this.v(this.aura)['radius'] ?? 3 : this.v('aura-embers')['radius']) * TILE); }
+  /** How much weaker a creature bites (%): the Ember Curse's and Weaken's, the stronger of the two. */
+  private weakOf(m: Mob): number {
+    return Math.max(m.cursed > 0 ? this.v('ember-curse')['weaken'] : 0, (m.weak ?? 0) > 0 ? m.weakPct ?? 0 : 0);
+  }
   /** Seconds each skill still cools. */
   readonly cooldowns: Partial<Record<SkillId, number>> = {};
   mana = MAX_MANA;
@@ -1835,6 +1887,9 @@ export class MobSystem {
   /** Dark Ward: damage it still absorbs, seconds left. */
   ward = 0;
   wardT = 0;
+  /** Bone Armor: damage it still absorbs (before the ward), seconds left. */
+  bone = 0;
+  boneT = 0;
   /** Seconds of Haste left (kept for kits that have it). */
   haste = 0;
   /** The basic attack reaches this far (art px): the staff's bolt (7 tiles). */
@@ -1855,7 +1910,7 @@ export class MobSystem {
     // Shots and the dead belong to the place they were in; the raised follow the Keeper (owner 2026-10-20: "summons
     // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
     // them down at his side on the new ground.
-    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0;
+    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0; this.zones.length = 0;
     for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
     this.addSpawns(spawns);
   }
@@ -1902,7 +1957,8 @@ export class MobSystem {
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
       this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed);
-      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bolt.vars['min'], bolt.vars['max']), age: 0 });
+      const bv = this.v('ember-bolt');
+      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult, age: 0 });
       this.host.swung(foe);
     }
     for (let i = this.bolts.length - 1; i >= 0; i--) {
@@ -1923,13 +1979,19 @@ export class MobSystem {
     for (const m of [...this.mobs]) {
       if (m.cursed > 0) {
         m.cursed -= dt; m.burnT -= dt;
-        if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, SKILLS['ember-curse'].vars['dps'], '#ff9a4a'); if (m.hp <= 0) continue; }
+        if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, this.v('ember-curse')['dps'] * this.fireMult, '#ff9a4a'); if (m.hp <= 0) continue; }
       }
-      if (auraTick && this.aura === 'aura-embers' && Math.hypot(m.x - p.x, m.y - p.y) <= SKILLS['aura-embers'].vars['radius'] * TILE) {
+      if ((m.weak ?? 0) > 0) m.weak = Math.max(0, (m.weak ?? 0) - dt);
+      if ((m.doom ?? 0) > 0) {
+        m.doom = (m.doom ?? 0) - dt;
+        if (m.doom <= 0) { m.doom = 0; this.doomBurst(m); if (m.hp <= 0) continue; }
+      }
+      if (auraTick && this.aura === 'aura-embers' && this.rank('aura-embers') > 0 && Math.hypot(m.x - p.x, m.y - p.y) <= this.v('aura-embers')['radius'] * TILE) {
         this.effects.push({ kind: 'pulse', el: 'ember', x: m.x, y: m.y, age: 0, life: .2, dir: 1 });
-        this.hitFoe(m, SKILLS['aura-embers'].vars['dps'], '#ff8a2e');
+        this.hitFoe(m, this.v('aura-embers')['dps'] * this.fireMult, '#ff8a2e');
       }
     }
+    this.updateZones(dt);
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
       // A boss in its wind-up stands its ground; when the tell runs out the attack leaves for where it aimed.
@@ -1978,7 +2040,8 @@ export class MobSystem {
         m.cd = m.def.rate;
         let n = rnd(m.def.dmg[0], m.def.dmg[1]);
         // A cursed foe bites weaker.
-        if (m.cursed > 0) n = Math.max(1, Math.round(n * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
+        const weak = this.weakOf(m);
+        if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
         if (prey) this.hurtMinion(prey, n); else this.biteKeeper(n, mobHits(m.def));
       }
     }
@@ -2010,6 +2073,7 @@ export class MobSystem {
     for (const k of Object.keys(this.cooldowns) as SkillId[]) this.cooldowns[k] = Math.max(0, (this.cooldowns[k] ?? 0) - dt);
     this.mana = Math.min(this.maxMana, this.mana + this.regen * dt);
     if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
+    if (this.boneT > 0) { this.boneT -= dt; if (this.boneT <= 0) this.bone = 0; }
     if (this.haste > 0) {
       this.haste = Math.max(0, this.haste - dt);
       if (Math.random() < dt * 8) this.effects.push({ kind: 'dust', x: p.x + rnd(-4, 4), y: p.y, age: 0, life: .4, dir: 1 });
@@ -2019,8 +2083,8 @@ export class MobSystem {
   private hitFoe(foe: Mob, raw: number, color: string): void {
     const crit = this.crit > 0 && Math.random() < this.crit;
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
-    if (this.aura === 'aura-siphon') {
-      this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
+    if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
+      this.host.healPlayer(this.v('aura-siphon')['heal']);
       this.effects.push({ kind: 'pulse', el: 'life', x: foe.x, y: foe.y, age: 0, life: .2, dir: 1 });
     }
     if (crit) this.effects.push({ kind: 'crit', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .15, dir: 1 });
@@ -2050,7 +2114,8 @@ export class MobSystem {
   private biteKeeper(raw: number, type: DamageType = 'physical'): void {
     const p = this.host.player();
     let n = incomingDamage(raw, type, this.defense, this.keeperLevel, this.resists);
-    if (this.ward > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
+    if (this.bone > 0 && n > 0) { const soak = Math.min(this.bone, n); this.bone -= soak; n -= soak; this.float(p.x - 8, p.y - 30, `-${soak}`, '#e8e1cf'); }
+    if (this.ward > 0 && n > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
   }
   private hurtMinion(k: Minion, n: number): void {
@@ -2065,7 +2130,8 @@ export class MobSystem {
     const n = shoot.spread ?? 1;
     for (let i = 0; i < n; i++) {
       let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
-      if (m.cursed > 0) dmg = Math.max(1, Math.round(dmg * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
+      const weak = this.weakOf(m);
+      if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
       this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: mobHits(m.def) });
     }
   }
@@ -2082,7 +2148,7 @@ export class MobSystem {
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }
-    const v = SKILLS['bone-spear'].vars;
+    const v = this.v('bone-spear');
     for (let i = this.spears.length - 1; i >= 0; i--) {
       const s = this.spears[i];
       s.x += s.vx * dt; s.y += s.vy * dt; s.age += dt;
@@ -2090,7 +2156,7 @@ export class MobSystem {
         if (s.hit.includes(m) || !shotHits(s, m.x, m.y - m.def.h / 2, Math.max(9, m.def.w / 3))) continue;
         s.hit.push(m);
         this.effects.push({ kind: 'bone-chips', x: s.x, y: s.y, age: 0, life: .35, dir: s.vx < 0 ? -1 : 1 });
-        this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
+        this.hitFoe(m, s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max']), '#e9dcff');
       }
       if (s.age > s.life || !flies(s.x, s.y)) this.spears.splice(i, 1);
     }
@@ -2151,9 +2217,10 @@ export class MobSystem {
   }
 
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
-  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | null {
+  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | null {
     const sk = SKILLS[id];
     if (!sk || sk.kind !== 'active') return null;
+    if (this.rank(id) < 1) return 'locked';
     if ((this.cooldowns[id] ?? 0) > 0) return 'cooldown';
     if (this.mana < sk.mana) return 'mana';
     const p = this.host.player();
@@ -2163,7 +2230,7 @@ export class MobSystem {
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d <= bd) { bd = d; best = m; } }
       return best;
     };
-    const v = sk.vars;
+    const v = this.v(id);
     if (id === 'drain-life') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
@@ -2180,9 +2247,9 @@ export class MobSystem {
       this.effects.push({ kind: 'curse', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .6, dir: 1 });
       this.host.swung(foe);
     } else if (id === 'hellfire-nova') {
-      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']), '#ff9a4a');
+      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']) * this.fireMult, '#ff9a4a');
       // The ring runs out for half a second, the scorch fades over the next half (on the ground, at the feet).
-      this.effects.push({ kind: 'wave', x: p.x, y: p.y, age: 0, life: 1, dir: 1 });
+      this.effects.push({ kind: 'wave', x: p.x, y: p.y, age: 0, life: 1, dir: 1, r: Math.round(v['radius'] * TILE) });
       this.host.swung(null);
     } else if (id === 'bone-spear') {
       const foe = foeInRange();
@@ -2197,6 +2264,11 @@ export class MobSystem {
         .filter(cp => this.clock - cp.at <= CORPSE_SECS && Math.hypot(cp.x - p.x, cp.y - p.y) <= v['reach'] * TILE)
         .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
       const st = raisedStats(this.keeperLevel, this.power, v);
+      // Skeleton Mastery: the raised stand sturdier and hit harder.
+      if (this.rank('skeleton-mastery') > 0) {
+        const k = 1 + this.v('skeleton-mastery')['pct'] / 100;
+        st.hp = Math.round(st.hp * k); st.dmg = [Math.max(1, Math.round(st.dmg[0] * k)), Math.max(1, Math.round(st.dmg[1] * k))];
+      }
       for (let i = 0; i < v['count']; i++) {
         const cp = fresh[i];
         let at = cp ? { x: cp.x, y: cp.y } : { x: p.x + (i % 2 ? -16 : 16), y: p.y + 2 };
@@ -2211,10 +2283,136 @@ export class MobSystem {
       this.ward = v['absorb']; this.wardT = v['secs'];
       this.effects.push({ kind: 'ward', x: p.x, y: p.y - 14, age: 0, life: .6, dir: 1 });
       this.host.swung(null);
+    } else {
+      const why = this.useTreeSkill(id, v, foeInRange);
+      if (why) return why;
     }
     this.mana -= sk.mana;
     this.cooldowns[id] = sk.cd / (1 + this.castSpeed);
     return null;
+  }
+
+  /**
+   * The trees' new skills (docs/design/skill-trees.md). Each is small and self-contained: it reads its numbers at its
+   * rank, leaves its picture with the td-fx kit, and says why not (no foe, no corpse, too little life) like the rest.
+   */
+  private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | null {
+    const p = this.host.player();
+    if (id === 'cinder-rain') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      this.zones.push({ kind: 'rain', x: foe.x, y: foe.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['min'], max: v['max'] });
+      this.host.swung(foe);
+    } else if (id === 'flame-wall') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      // Across the way from the Keeper to the foe, through the foe: whatever walks it burns.
+      const a = Math.atan2(foe.y - p.y, foe.x - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
+      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE; pts.push({ x: foe.x + Math.cos(a) * o, y: foe.y + Math.sin(a) * o }); }
+      this.zones.push({ kind: 'wall', x: foe.x, y: foe.y, r: TILE * .7, t: v['secs'], tick: 0, min: v['dps'], max: v['dps'], pts });
+      this.host.swung(foe);
+    } else if (id === 'meteor') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      this.zones.push({ kind: 'meteor', x: foe.x, y: foe.y, r: v['radius'] * TILE, t: v['delay'], tick: 0, min: v['min'], max: v['max'] });
+      this.effects.push({ kind: 'meteor', x: foe.x, y: foe.y, age: 0, life: v['delay'], dir: 1 });
+      this.host.swung(foe);
+    } else if (id === 'corpse-burst') {
+      const cp = this.corpses
+        .filter(c => this.clock - c.at <= CORPSE_SECS && Math.hypot(c.x - p.x, c.y - p.y) <= v['reach'] * TILE)
+        .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+      if (!cp) return 'nocorpse';
+      this.corpses.splice(this.corpses.indexOf(cp), 1);
+      for (const m of [...this.mobs]) if (Math.hypot(m.x - cp.x, m.y - cp.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
+      this.effects.push({ kind: 'flash', x: cp.x, y: cp.y - 6, age: 0, life: .2, dir: 1 });
+      this.effects.push({ kind: 'wave', el: 'bone', x: cp.x, y: cp.y, age: 0, life: .6, dir: 1, r: Math.round(v['radius'] * TILE) });
+      for (let i = 0; i < 4; i++) this.effects.push({ kind: 'bone-chips', x: cp.x + (i % 2 ? -8 : 8), y: cp.y - 4 - (i < 2 ? 6 : 0), age: 0, life: .4, dir: i % 2 ? -1 : 1 });
+      this.host.swung(null);
+    } else if (id === 'bone-storm') {
+      // A fan of spears at the foe; with none in reach, a ring of them all round.
+      const foe = foeInRange(), n = Math.max(1, v['count']), sx = p.x, sy = p.y - 16;
+      const base = foe ? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx) : 0;
+      for (let i = 0; i < n; i++) {
+        const a = foe ? base + (i - (n - 1) / 2) * .22 : i / n * Math.PI * 2;
+        this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']] });
+      }
+      this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .2, dir: 1 });
+      this.host.swung(foe);
+    } else if (id === 'bone-armor') {
+      this.bone = v['absorb']; this.boneT = v['secs'];
+      for (let i = 0; i < 4; i++) this.effects.push({ kind: 'bone-chips', x: p.x + (i % 2 ? -9 : 9), y: p.y - 10 - (i < 2 ? 8 : 0), age: 0, life: .4, dir: i % 2 ? -1 : 1 });
+      this.host.swung(null);
+    } else if (id === 'weaken') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      for (const m of this.mobs) if (Math.hypot(m.x - foe.x, m.y - foe.y) <= v['radius'] * TILE) {
+        m.weak = v['secs']; m.weakPct = v['weaken'];
+        this.effects.push({ kind: 'curse', x: m.x, y: m.y - m.def.h - 4, age: 0, life: .6, dir: 1 });
+      }
+      this.effects.push({ kind: 'wave', el: 'shadow', x: foe.x, y: foe.y, age: 0, life: .6, dir: 1, r: Math.round(v['radius'] * TILE) });
+      this.host.swung(foe);
+    } else if (id === 'life-tap') {
+      const hp = this.host.playerHp?.() ?? Infinity;
+      if (hp <= v['life']) return 'life';
+      this.host.hurtPlayer(v['life']);
+      this.mana = Math.min(this.maxMana, this.mana + v['mana']);
+      this.float(p.x - 6, p.y - 36, `-${v['life']}`, '#ff5a4a');
+      this.float(p.x + 6, p.y - 30, `+${v['mana']}`, '#7fb8ff');
+      this.effects.push({ kind: 'drain', x: p.x - 10, y: p.y - 30, tx: p.x + 10, ty: p.y - 18, age: 0, life: .5, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'doom') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      foe.doom = v['secs']; foe.doomHit = { min: v['min'], max: v['max'], r: v['radius'] * TILE };
+      this.effects.push({ kind: 'curse', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .8, dir: 1 });
+      this.host.swung(foe);
+    }
+    return null;
+  }
+
+  /** Doom runs out: the foe bursts, and so does everything near it. */
+  private doomBurst(m: Mob): void {
+    const hit = m.doomHit;
+    if (!hit) return;
+    const at = { x: m.x, y: m.y };
+    for (const o of [...this.mobs]) if (Math.hypot(o.x - at.x, o.y - at.y) <= hit.r) this.hitFoe(o, rnd(hit.min, hit.max), '#c88bff');
+    this.effects.push({ kind: 'wave', el: 'shadow', x: at.x, y: at.y, age: 0, life: .7, dir: 1, r: Math.round(hit.r) });
+    this.effects.push({ kind: 'flash', x: at.x, y: at.y - 8, age: 0, life: .2, dir: 1 });
+  }
+
+  /** Spells on the ground: the rain falls, the wall burns, the meteor lands. */
+  private updateZones(dt: number): void {
+    for (let i = this.zones.length - 1; i >= 0; i--) {
+      const z = this.zones[i];
+      z.t -= dt; z.tick -= dt;
+      if (z.kind === 'meteor') {
+        if (z.t > 0) continue;
+        this.zones.splice(i, 1);
+        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
+        this.effects.push({ kind: 'wave', x: z.x, y: z.y, age: 0, life: 1, dir: 1, r: Math.round(z.r) });
+        this.effects.push({ kind: 'bolt-hit', x: z.x, y: z.y - 6, age: 0, life: .4, dir: 1 });
+        continue;
+      }
+      if (z.t <= 0) { this.zones.splice(i, 1); continue; }
+      if (z.kind === 'rain') {
+        // Falling cinders all over the circle; twice a second each foe under it is struck.
+        if (Math.random() < dt * 14) {
+          const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * z.r, x = z.x + Math.cos(a) * d, y = z.y + Math.sin(a) * d;
+          this.effects.push({ kind: 'cinder', x, y, age: 0, life: .3, dir: 1 });
+          this.effects.push({ kind: 'bolt-hit', x, y, age: -.3, life: .3, dir: 1 });
+        }
+        if (z.tick <= 0) {
+          z.tick = .5;
+          for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
+        }
+      } else if (z.kind === 'wall' && z.pts) {
+        if (Math.random() < dt * 18) { const q = z.pts[Math.floor(Math.random() * z.pts.length)]; this.effects.push({ kind: 'flame', x: q.x + rnd(-4, 4), y: q.y, age: 0, life: .5, dir: 1 }); }
+        if (z.tick <= 0) {
+          z.tick = 1;
+          for (const m of [...this.mobs]) if (z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r)) this.hitFoe(m, z.min * this.fireMult, '#ff8a2e');
+        }
+      }
+    }
   }
 
   /** Wood chips flying off a struck tree (the host's chopping). */
@@ -2231,7 +2429,7 @@ export class MobSystem {
   private kill(m: Mob): void {
     this.mobs.splice(this.mobs.indexOf(m), 1);
     // Soul Harvest (passive): every kill gives back mana.
-    this.mana = Math.min(this.maxMana, this.mana + SKILLS['soul-harvest'].vars['mana']);
+    if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     if (this.target === m) this.target = null;
     this.deadUntil.set(m.key, this.clock + RESPAWN);
     // Fresh dead, for Raise Skeleton.

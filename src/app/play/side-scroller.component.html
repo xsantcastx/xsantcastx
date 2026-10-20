@@ -187,39 +187,90 @@
       </section>
     }
   }
-  <!-- The Spellbook (K), D2's skill page made cozy: every skill, what it does, keys 1–4 to put it on, the aura to run. -->
+  <!-- The Spellbook (K), D2's skill page made cozy: three trees as tabs, tiers top to bottom with their prerequisite
+       lines, a rank badge on every skill, the picked skill's card (this rank, the next), keys 1–4 and the aura switch. -->
   @if (topDown && spellbookOpen && !panel) {
-    <section class="spellbook win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore (keydown.escape)="spellbookOpen = false">
-      <header class="win-head">
-        <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
-        <button type="button" class="win-x" (click)="spellbookOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
-      </header>
-      <p class="sb__mana">{{ t('play.td.mana') }} <b>{{ tdMana }}</b> / {{ tdMaxMana }}</p>
-      @for (sec of spellbook; track sec.kind) {
-        <h3 class="sb__kind">{{ t('play.td.book.' + sec.kind) }}</h3>
-        <ul class="sb__list">
-          @for (r of sec.rows; track r.id) {
-            <li class="sb__row" [attr.data-skill]="r.id" [class.sb__row--on]="r.on || r.slot > 0">
-              <span class="sb__icon" [innerHTML]="skillIcon(r.id)"></span>
-              <span class="sb__body">
-                <b>{{ r.name }}</b>
-                <small>{{ r.text }}</small>
-                @if (sec.kind === 'active') { <em>{{ r.mana }} {{ t('play.td.mana') }} · {{ r.cd }}s</em> }
-              </span>
-              @if (sec.kind === 'active') {
-                <span class="sb__keys" role="group" [attr.aria-label]="t('play.td.book.assign', { name: r.name })">
-                  @for (k of [1, 2, 3, 4]; track k) {
-                    <button type="button" [class.on]="r.slot === k" [attr.aria-pressed]="r.slot === k" (click)="assignSkill(r.id, k)">{{ k }}</button>
-                  }
-                </span>
-              } @else if (sec.kind === 'aura') {
-                <button type="button" class="sb__aura" [attr.aria-pressed]="r.on" (click)="toggleAura(r.id)">{{ t(r.on ? 'play.td.book.auraOn' : 'play.td.book.auraOff') }}</button>
-              }
-            </li>
+    @if (spellbook; as sb) {
+      <section class="spellbook sbt win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore (keydown.escape)="spellbookOpen = false">
+        <header class="win-head">
+          <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
+          <button type="button" class="win-x" (click)="spellbookOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
+        </header>
+        <div class="sbt__top">
+          <p class="sbt__pts" [class.sbt__pts--has]="sb.left > 0">{{ t('play.td.tree.points', { n: sb.left }) }}</p>
+          @if (respecAsk) {
+            <span class="sbt__ask" role="group" [attr.aria-label]="t('play.td.tree.resetAsk')">
+              <small>{{ t('play.td.tree.resetAsk') }}</small>
+              <button type="button" class="sbt__yes" (click)="respecTree()">{{ t('play.td.tree.resetYes') }}</button>
+              <button type="button" (click)="respecAsk = false">{{ t('play.td.tree.resetNo') }}</button>
+            </span>
+          } @else {
+            <button type="button" class="sbt__reset" (click)="respecTree()">{{ t('play.td.tree.resetBtn') }}</button>
           }
-        </ul>
-      }
-    </section>
+        </div>
+        <div class="sbt__tabs" role="tablist" [attr.aria-label]="t('play.td.book')">
+          @for (tr of sb.trees; track tr.id) {
+            <button type="button" role="tab" class="sbt__tab" [attr.data-tree]="tr.id" [attr.aria-selected]="bookTree === tr.id" (click)="openTree(tr.id)">
+              {{ t('play.td.tree.' + tr.id) }} <small>{{ tr.ranks }}</small>
+            </button>
+          }
+        </div>
+        <div class="sbt__body">
+          <div class="sbt__scroll">
+            <div class="sbt__tree" role="tabpanel" [attr.data-tree]="bookTree" [style.--tiers]="sb.tiers.length">
+              <svg class="sbt__lines" [attr.viewBox]="'0 0 3 ' + sb.tiers.length" preserveAspectRatio="none" aria-hidden="true">
+                @for (ln of sb.lines; track $index) {
+                  <line [attr.x1]="ln.x1" [attr.y1]="ln.y1" [attr.x2]="ln.x2" [attr.y2]="ln.y2" [class.lit]="ln.lit" vector-effect="non-scaling-stroke"></line>
+                }
+              </svg>
+              @for (tier of sb.tiers; track $index) {
+                <span class="sbt__lv" [class.sbt__lv--open]="tier.open" [style.grid-row]="$index + 1">{{ t('play.td.level', { n: tier.level }) }}</span>
+              }
+              @for (n of sb.nodes; track n.id) {
+                <button type="button" class="sbt__node" [attr.data-skill]="n.id" [style.grid-row]="n.tier + 1" [style.grid-column]="n.col + 2"
+                  [class.sbt__node--locked]="!n.open" [class.sbt__node--learned]="n.rank > 0" [class.sbt__node--buy]="n.buyable" [class.sbt__node--on]="n.slot > 0 || n.on"
+                  [attr.aria-pressed]="n.picked" [attr.aria-label]="n.name + ' · ' + t('play.td.tree.rank', { n: n.rank, max: 20 })" (click)="pickSkill(n.id)">
+                  <span class="sbt__icon" [innerHTML]="skillIcon(n.id, 36)"></span>
+                  <b class="sbt__badge">{{ n.rank }}</b>
+                  @if (!n.open) { <small class="sbt__need">{{ t('play.td.level', { n: n.need }) }}</small> }
+                </button>
+              }
+            </div>
+          </div>
+          @if (sb.pick; as pk) {
+            <article class="sbt__detail" [attr.data-skill]="pk.id" aria-live="polite">
+              <header class="sbt__dh">
+                <span class="sb__icon" [innerHTML]="skillIcon(pk.id)"></span>
+                <span><b>{{ pk.name }}</b><small>{{ t('play.td.tree.kind.' + pk.kind) }} · <span class="sbt__rank">{{ t('play.td.tree.rank', { n: pk.rank, max: pk.max }) }}</span></small></span>
+              </header>
+              <p class="sbt__now">@if (pk.rank < 1) { <em>{{ t('play.td.tree.atRank', { n: 1 }) }}</em> }{{ pk.now }}</p>
+              @if (pk.kind === 'active') { <p class="sbt__cost">{{ pk.mana }} {{ t('play.td.mana') }} · {{ pk.cd }}s</p> }
+              @if (pk.next.length) {
+                <div class="sbt__next">
+                  <b>{{ t('play.td.tree.next', { a: pk.rank, b: pk.rank + 1 }) }}</b>
+                  @for (line of pk.next; track $index) { <small>{{ line }}</small> }
+                </div>
+              }
+              <div class="sbt__acts">
+                <button type="button" class="sbt__learn" [disabled]="!!pk.block" (click)="learnSkill(pk.id)">
+                  {{ pk.rank > 0 ? t('play.td.tree.rankUp') : t('play.td.tree.learn') }}
+                </button>
+                @if (pk.need) { <small class="sbt__why">{{ pk.need }}</small> }
+                @if (pk.rank > 0 && pk.kind === 'active') {
+                  <span class="sb__keys" role="group" [attr.aria-label]="t('play.td.book.assign', { name: pk.name })">
+                    @for (k of [1, 2, 3, 4]; track k) {
+                      <button type="button" [class.on]="pk.slot === k" [attr.aria-pressed]="pk.slot === k" (click)="assignSkill(pk.id, k)">{{ k }}</button>
+                    }
+                  </span>
+                } @else if (pk.rank > 0 && pk.kind === 'aura') {
+                  <button type="button" class="sb__aura" [attr.aria-pressed]="pk.on" (click)="toggleAura(pk.id)">{{ t(pk.on ? 'play.td.book.auraOn' : 'play.td.book.auraOff') }}</button>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
   }
   <!-- Top-down: what just happened (a deed, a refusal) as a short toast above the prompt; it fades by itself. -->
   @if (topDown && (message || engineMessage)) {

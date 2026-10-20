@@ -5,7 +5,7 @@
  * and jump buttons give way to the drag joystick, and nothing ever drops the Keeper into the old 2D view.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { pickSkill, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const px = async (page: Page) => Number(await canvas(page).getAttribute('data-player-x'));
@@ -134,10 +134,11 @@ test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spe
   await expect(page.locator('.ksheet')).toContainText(/Warlock/);
   await page.keyboard.press('k');
   await expect(page.locator('.ksheet')).toHaveCount(0);
-  await expect(page.locator('.spellbook [data-skill="drain-life"]')).toBeVisible();
-  await expect(page.locator('.spellbook [data-skill="aura-embers"]')).toContainText(/On|Activa/);
+  await pickSkill(page, 'aura-embers');
+  await expect(page.locator('.sbt__detail .sb__aura')).toContainText(/On|Activa/);
   // Put Drain Life on key 4: the bar follows.
-  await page.locator('.spellbook [data-skill="drain-life"] .sb__keys button', { hasText: '4' }).click();
+  await pickSkill(page, 'drain-life');
+  await page.locator('.sbt__detail .sb__keys button', { hasText: '4' }).click();
   await expect(page.locator('.td-skill').nth(3)).toHaveAttribute('aria-label', /Drain Life/);
 });
 
