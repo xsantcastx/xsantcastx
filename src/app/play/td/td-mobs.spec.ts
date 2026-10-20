@@ -3,13 +3,14 @@
  * (owner 2026-10-20: "more spells for the warlock like raise undead skeletons to fight for him").
  */
 import type { EngineOptions } from '../engine/engine.model';
-import { BOSS_TELL, CALL_TELL, MOBS, MobSystem, aimShot, mobHits, capMinions, pickMinionTarget, raisedStats, shotHits, stepShot, type Minion, type Mob, type MobHost } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, MOBS, MobSystem, goldDropFor, aimShot, mobHits, capMinions, pickMinionTarget, raisedStats, shotHits, stepShot, type Minion, type Mob, type MobHost } from './td-mobs';
 import { CLASS_SKILLS, SKILLS, defaultBar } from './td-skills';
 import { CREATURE_PROFILES } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, DAMAGE_TYPES } from '../../shared/loot/damage.model';
 import { TdWorld } from './td-world';
 import { CONTINENTS } from './td-engine';
 import { TILE } from './td-art';
+import { HUNT_GOLD, huntGoldMean, huntGoldRange, rollHuntGold } from '../../shared/economy/economy-curve';
 
 function world(keeper = { x: 0, y: 0 }): { sys: MobSystem; hurt: number[]; keeper: { x: number; y: number } } {
   const hurt: number[] = [];
@@ -287,5 +288,50 @@ describe('td-mobs: damage types (§6)', () => {
     expect(bite('lava-hound', sys => { sys.resists = { cold: 75, lightning: 75, arcane: 75 }; }).hurt[0]).toBe(10);
     expect(bite('ash-wolf', sys => { sys.resists = { fire: 75, cold: 75, lightning: 75, arcane: 75 }; }).hurt[0]).toBe(5);
     expect(bite('ash-wolf', sys => { sys.defense = 100; sys.keeperLevel = 1; }).hurt[0]).toBeLessThan(5);
+  });
+});
+
+describe('td-mobs Gold piles (D2: the pile follows the level and the rank)', () => {
+  it('scales with the creature level, inside ± the spread, never below 1', () => {
+    expect(huntGoldRange(1)).toEqual([4, 9]);
+    expect(huntGoldRange(10)).toEqual([19, 44]);
+    expect(huntGoldRange(40)).toEqual([86, 202]);
+    for (const L of [1, 7, 25, 100, 1000, 10000]) {
+      const [lo, hi] = huntGoldRange(L);
+      expect(rollHuntGold(L, 'normal', () => 0)).toBe(lo);
+      expect(rollHuntGold(L, 'normal', () => 1)).toBe(hi);
+      expect(lo).toBeGreaterThanOrEqual(1);
+      expect(huntGoldMean(L + 1)).toBeGreaterThan(huntGoldMean(L));
+    }
+  });
+
+  it('a boss pays far more than its kin, a champion in between', () => {
+    expect(huntGoldMean(20, 'boss')).toBe(huntGoldMean(20) * HUNT_GOLD.rank.boss);
+    expect(huntGoldMean(20, 'champion')).toBeGreaterThan(huntGoldMean(20));
+    expect(huntGoldMean(20, 'champion')).toBeLessThan(huntGoldMean(20, 'boss'));
+    const tyrant = MOBS['magma-tyrant'], hound = MOBS['lava-hound'];
+    expect(goldDropFor(tyrant, () => .5)).toBeGreaterThan(10 * goldDropFor(hound, () => .5));
+  });
+
+  it('a kill leaves a Gold pile on the ground; walking over it pays the purse and floats +N Gold', () => {
+    const looted: { coins: number }[] = [];
+    const host: MobHost = {
+      options: { onLoot: (l: { coins: number }) => { looted.push(l); return true; } } as unknown as EngineOptions,
+      walkable: () => true, levelId: () => 'surface', player: () => ({ x: 0, y: 0 }), hurtPlayer: () => {}, healPlayer: () => {}, swung: () => {},
+    };
+    const sys = new MobSystem(host);
+    const def = MOBS['cinder-orc'];
+    const mob = { def, key: 'k', x: 400, y: 400, hp: 1 } as unknown as Mob;
+    (sys as unknown as { mobs: Mob[] }).mobs.push(mob);
+    (sys as unknown as { kill(m: Mob): void }).kill(mob);
+    const pile = sys.drops.find(d => d.coins > 0)!;
+    const [lo, hi] = huntGoldRange(def.level);
+    expect(pile.coins).toBeGreaterThanOrEqual(lo);
+    expect(pile.coins).toBeLessThanOrEqual(hi);
+    expect(pile.label).toBe(`${pile.coins} Gold`);
+    pile.x = 0; pile.y = 0; pile.age = 1;
+    sys.update(.016);
+    expect(looted.map(l => l.coins)).toContain(pile.coins);
+    expect(sys.floaters.some(f => f.text === `+${pile.coins} Gold`)).toBeTrue();
   });
 });

@@ -6,7 +6,6 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   // The HUD button and the busy rule
   'slate.hud.label': { en: 'Slate', es: 'Pizarra' },
   'slate.hud.open': { en: 'Open the Mirror Slate (P)', es: 'Abrir la Pizarra Espejo (P)' },
-  'slate.hud.ready': { en: 'Open the Mirror Slate (P): something is ready on your Homestead', es: 'Abrir la Pizarra Espejo (P): hay algo listo en tu Hacienda' },
   'slate.refuse.fight': { en: 'Not mid-fight. Step away from the creature first.', es: 'No en plena pelea. Alejate primero de la criatura.' },
   'slate.refuse.fallen': { en: 'Get back on your feet first.', es: 'Primero ponte en pie.' },
   'slate.refuse.game': { en: 'Finish what your hands are doing first.', es: 'Termina primero lo que tienes entre manos.' },
@@ -18,7 +17,6 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.kicker2': { en: 'Carried · tier II', es: 'Llevada · nivel II' },
   'slate.tabs': { en: 'The Slate', es: 'La Pizarra' },
   'slate.tab.tables': { en: 'Tables', es: 'Mesas' },
-  'slate.tab.factory': { en: 'Homestead', es: 'Hacienda' },
   'slate.tab.map': { en: 'Map & bounties', es: 'Mapa y recompensas' },
   'slate.games': { en: 'Lune\'s tables', es: 'Las mesas de Lune' },
   'slate.table.reels': { en: 'Reels', es: 'Rodillos' },
@@ -48,7 +46,7 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.phone.pages': { en: 'Slate pages', es: 'Paginas de la Pizarra' },
   'slate.phone.page': { en: 'Page {{n}} of {{total}}', es: 'Pagina {{n}} de {{total}}' },
   'slate.phone.dock': { en: 'Favourites', es: 'Favoritos' },
-  'slate.phone.mark': { en: 'Mark {{at}}: +{{glass}} Eclipse Glass and income', es: 'Marca {{at}}: +{{glass}} Cristal de Eclipse e ingresos' },
+  'slate.phone.mark': { en: 'Mark {{at}}: +{{glass}} Eclipse Glass and Gold', es: 'Marca {{at}}: +{{glass}} Cristal de Eclipse y oro' },
   'slate.app.scan': { en: 'Scan', es: 'Escaner' },
   'slate.app.pets': { en: 'Pets', es: 'Mascotas' },
   'slate.app.codex': { en: 'Codex', es: 'Codice' },
@@ -58,20 +56,6 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.app.eclipse': { en: 'Eclipse', es: 'Eclipse' },
 
   // Factory (the Homestead at a glance)
-  'slate.factory.purse': { en: 'Purse', es: 'Bolsa' },
-  'slate.factory.making': { en: 'Making', es: 'Produce' },
-  'slate.factory.gold': { en: '{{n}} Gold', es: '{{n}} de Oro' },
-  'slate.factory.waiting': { en: 'Waiting for you', es: 'Te espera' },
-  'slate.factory.nothing': { en: 'Nothing new since you last looked.', es: 'Nada nuevo desde la ultima vez que miraste.' },
-  'slate.factory.collect': { en: 'Collect', es: 'Recoger' },
-  'slate.factory.collected': { en: 'Counted: {{line}}. Your buildings banked it as it came in.', es: 'Contado: {{line}}. Tus edificios lo guardaron segun llegaba.' },
-  'slate.factory.next': { en: 'Next building', es: 'Siguiente edificio' },
-  'slate.factory.buy': { en: 'Build {{name}} · {{cost}} Gold', es: 'Construir {{name}} · {{cost}} de Oro' },
-  'slate.factory.adds': { en: 'Adds {{rate}}.', es: 'Suma {{rate}}.' },
-  'slate.factory.allBuilt': { en: 'Every building you can see is fully built.', es: 'Todo edificio a la vista esta al maximo.' },
-  'slate.factory.crew': { en: 'Crew', es: 'Equipo' },
-  'slate.factory.more': { en: 'Crew and where things are', es: 'Equipo y donde estan las cosas' },
-  'slate.factory.nextHome': { en: 'Next explorer home in {{t}}.', es: 'El proximo explorador vuelve en {{t}}.' },
 
   // Map & bounties (tier II)
   'slate.map.pins': { en: 'Your map pins', es: 'Tus marcas del mapa' },
@@ -85,11 +69,6 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.upgradeHint': { en: 'Kael at the Rune Forge (Basalt Seamworks) can bind a second face: your map pins and Pim\'s bounties.', es: 'Kael, en la Forja de Runas (Talleres de Basalto), puede atar una segunda cara: tus marcas del mapa y las recompensas de Pim.' },
 
   // Places stay places
-  'slate.walk.title': { en: 'In the world', es: 'En el mundo' },
-  'slate.walk.crafting': { en: 'Crafting: walk to the Crafting Bench, Basalt Seamworks.', es: 'Fabricar: ve al Banco de Forja, Talleres de Basalto.' },
-  'slate.walk.market': { en: 'Upgrades: walk to the Market, Heliograph Court.', es: 'Mejoras: ve al Mercado, Corte Heliografo.' },
-  'slate.walk.vendor': { en: 'Selling materials: walk to the Material Vendor, Basalt Seamworks.', es: 'Vender materiales: ve al Vendedor, Talleres de Basalto.' },
-  'slate.walk.sanctum': { en: 'Sending explorers: walk to the Sanctum, Rootglass Canopy.', es: 'Enviar exploradores: ve al Santuario, Dosel de Raizcristal.' },
   'slate.details': { en: 'What the Slate is', es: 'Que es la Pizarra' },
   'slate.lore': {
     en: 'A palm of the Archive\'s moon mirror, cut where it cracked and bound in Kael\'s brass. It shows what it was facing when it broke: the tables, and whatever you left burning at home.',

@@ -2,7 +2,7 @@
  * keeper-level.spec.ts — the Keeper curve to 10,000 (docs/design/leveling.md §1–2): monotone, the inverse of itself,
  * never a level lost against the old Hunting reading, and bounded stats and points at the top.
  */
-import { KEEPER_MAX_LEVEL, keeperLevelForXp, keeperLevelView, keeperXpForLevel, levelAttributePoints, levelSteps } from './keeper-level';
+import { KEEPER_MAX_LEVEL, LEVEL_SPEED, levelSpeedBonus, keeperLevelForXp, keeperLevelView, keeperXpForLevel, levelAttributePoints, levelSteps } from './keeper-level';
 import { levelForXp, xpForLevel } from '../activity/mining-level';
 import { levelStats } from '../../play/td/td-skills';
 
@@ -72,5 +72,21 @@ describe('Keeper level curve', () => {
     expect(levelAttributePoints(1000)).toBe(1395);
     expect(levelAttributePoints(KEEPER_MAX_LEVEL)).toBe(2295);
     for (let L = 2; L <= KEEPER_MAX_LEVEL; L += 13) expect(levelAttributePoints(L)).toBeGreaterThanOrEqual(levelAttributePoints(L - 1));
+  });
+});
+
+describe('keeper-level speed by level (Tibia: higher level, faster feet)', () => {
+  it('starts at nothing, grows smoothly ~0.15 % a level, and levels off at the cap', () => {
+    expect(levelSpeedBonus(1)).toBe(0);
+    expect(levelSpeedBonus(2)).toBeCloseTo(0.0015, 4);
+    expect(levelSpeedBonus(10)).toBeCloseTo(0.0133, 3);
+    expect(levelSpeedBonus(100)).toBeCloseTo(0.1315, 3);
+    expect(levelSpeedBonus(1000)).toBeCloseTo(0.5506, 3);
+    expect(levelSpeedBonus(KEEPER_MAX_LEVEL)).toBeLessThanOrEqual(LEVEL_SPEED.cap);
+    expect(levelSpeedBonus(KEEPER_MAX_LEVEL)).toBeCloseTo(LEVEL_SPEED.cap, 4);
+    let prev = -1;
+    for (let L = 1; L <= KEEPER_MAX_LEVEL; L += 37) { const b = levelSpeedBonus(L); expect(b).toBeGreaterThan(prev); prev = b; }
+    expect(levelSpeedBonus(NaN)).toBe(0);
+    expect(levelSpeedBonus(1e9)).toBeLessThanOrEqual(LEVEL_SPEED.cap);
   });
 });

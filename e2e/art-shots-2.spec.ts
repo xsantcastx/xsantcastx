@@ -91,7 +91,7 @@ for (const size of SIZES) {
     });
 
     test('market shelves', async ({ page }) => {
-      await seed(page, { ...RESTORED, 'godforge-economy': { version: 3, gold: 50_000_000, totalGoldEarned: 5e7, runGoldEarned: 5e7 } });
+      await seed(page, { ...RESTORED, 'godforge-economy': { version: 3, goldEra: 1, gold: 50_000_000, totalGoldEarned: 5e7, runGoldEarned: 5e7 } });
       await page.goto('/market', { waitUntil: 'load' });
       await waitLoader(page);
       await page.waitForTimeout(800);
@@ -99,7 +99,7 @@ for (const size of SIZES) {
     });
 
     test('gambler altar', async ({ page }) => {
-      await seed(page, { ...RESTORED, 'godforge-economy': { version: 3, gold: 1_000_000, totalGoldEarned: 1e6, runGoldEarned: 1e6 } });
+      await seed(page, { ...RESTORED, 'godforge-economy': { version: 3, goldEra: 1, gold: 1_000_000, totalGoldEarned: 1e6, runGoldEarned: 1e6 } });
       await page.goto('/gambler', { waitUntil: 'load' });
       await waitLoader(page);
       await shot(page, 'gambler', size.name);
@@ -121,7 +121,7 @@ for (const size of SIZES) {
       await seed(page, {
         ...RESTORED,
         'godforge-economy': {
-          version: 3, gold: 2e9, totalGoldEarned: 2e9, runGoldEarned: 2e9,
+          version: 3, goldEra: 1, gold: 2e9, totalGoldEarned: 2e9, runGoldEarned: 2e9,
           upgrades: { 'apprentice-striker': 5, 'forge-golem': 3, 'eclipse-automaton': 1, 'forge-bellows': 4, 'ember-stoker': 2, 'nether-furnace': 1 },
         },
       });

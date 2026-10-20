@@ -25,7 +25,7 @@ const shotDir = resolve('test-results/station-trade');
 /** A purse: merged over a fresh ledger on read, so gold alone is a valid seed. */
 async function seedGold(page: Page, gold: number): Promise<void> {
   await page.addInitScript(g => {
-    window.localStorage.setItem('godforge-economy', JSON.stringify({ version: 2, gold: g }));
+    window.localStorage.setItem('godforge-economy', JSON.stringify({ version: 2, goldEra: 1, gold: g }));
   }, gold);
 }
 

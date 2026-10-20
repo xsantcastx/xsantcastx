@@ -103,3 +103,21 @@ export function levelAttributePoints(level: number): number {
   const L = Number.isFinite(level) ? Math.max(1, Math.min(KEEPER_MAX_LEVEL, Math.floor(level))) : 1;
   return 5 * (Math.min(L, 100) - 1) + Math.max(0, Math.min(L, 1000) - 100) + Math.max(0, Math.floor((L - 1000) / 10));
 }
+
+/**
+ * Tibia's rule, cozy-sized (owner, 2026-10-21: "the higher level the faster they move"): the Keeper's pace grows with
+ * the level, smoothly, and levels off.
+ *
+ *   bonus(L) = cap × (1 − e^(−(L − 1) / scale))      cap 0.60, scale 400
+ *
+ * The first levels add ~0.15 % each (cap / scale); +1.3 % at 10, +7 % at 50, +13 % at 100, +38 % at 400, +55 % at
+ * 1,000, +60 % (the cap, within a hair) from ~3,000 to 10,000. It multiplies the rest of the Keeper's speed (Agility,
+ * worn Move Speed, Haste), never adds to their caps; the pets and the raised keep up through the same factor.
+ */
+export const LEVEL_SPEED = { cap: 0.6, scale: 400 } as const;
+
+/** The level's share of extra pace (0 at level 1, → 0.6). */
+export function levelSpeedBonus(level: number): number {
+  const L = Number.isFinite(level) ? Math.min(KEEPER_MAX_LEVEL, Math.max(1, Math.floor(level))) : 1;
+  return LEVEL_SPEED.cap * (1 - Math.exp(-(L - 1) / LEVEL_SPEED.scale));
+}

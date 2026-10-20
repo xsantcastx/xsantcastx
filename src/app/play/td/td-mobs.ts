@@ -14,6 +14,7 @@ import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
+import { rollHuntGold } from '../../shared/economy/economy-curve';
 import { LOOT } from './td-fx';
 import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
@@ -32,7 +33,6 @@ export interface MobDef {
   level: number;
   /** One line of the world's voice for the Bestiary (td-bestiary.ts). */
   lore?: string;
-  coins: [number, number];
   drops: readonly { material: string; qty: number; chance: number }[];
   paint: (c: CanvasRenderingContext2D, frame: number) => void;
   w: number;
@@ -1367,92 +1367,92 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10, hits: 'fire',
     lore: 'Born in a kiln that was never lit by hand, it tracks a warm boot-print for miles and sleeps in the cracks that still glow.',
-    coins: [10, 30], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintHound, w: 32, h: 24,
+    drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintHound, w: 32, h: 24,
   },
   'obsidian-golem': {
     id: 'obsidian-golem', name: 'Obsidian Golem', hp: 260, speed: 22, dmg: [12, 20], rate: 1.7, sight: 110, level: 14,
     lore: 'The glass-cutters walked away mid-shift. Their last statue did not, and it still guards the seam it was told to hold.',
-    coins: [24, 60], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .08 }], paint: paintGolem, w: 34, h: 40,
+    drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .08 }], paint: paintGolem, w: 34, h: 40,
   },
   'ember-warden': {
     id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8, hits: 'fire',
     lore: 'Keeper of the flooded galleries, it banks the old forge-fire each night and bites anyone who comes to stoke it.',
-    coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 40, h: 56, rank: 'boss',
+    drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 40, h: 56, rank: 'boss',
   },
   'magma-tyrant': {
     id: 'magma-tyrant', name: 'The Magma Tyrant', hp: 1400, speed: 20, dmg: [18, 30], rate: 1.8, sight: 160, level: 20, hits: 'fire',
     lore: 'It was a crown once, poured too hot. Now the caldera wears it, and the caldera does not take kindly to visitors.',
-    coins: [400, 700], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 58, h: 72, rank: 'boss',
+    drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 58, h: 72, rank: 'boss',
   },
   'ash-wolf': {
     id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
     lore: 'Grey as a cold hearth and just as quiet, it hunts the Emberwood in the hour after the last ember fades.',
-    coins: [2, 9], drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 30, h: 22,
+    drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 30, h: 22,
   },
   'cinder-imp': {
     id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2, hits: 'fire',
     lore: 'A spark that grew a grudge. It throws small tempers and smaller fires, and giggles when the soot finds your collar.',
-    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 24, h: 24,
+    drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 24, h: 24,
   },
   'rivet-maw': {
     id: 'rivet-maw', name: 'Rivet Maw', hp: 60, speed: 34, dmg: [3, 6], rate: 1.3, sight: 96, level: 1,
     lore: 'Scrap-iron with a hunger. Somebody forgot to take the teeth out of the rivet barrel, and now they chew.',
-    coins: [3, 13], drops: [{ material: 'cinder-ore', qty: 1, chance: .7 }], paint: paintMaw, w: 24, h: 20,
+    drops: [{ material: 'cinder-ore', qty: 1, chance: .7 }], paint: paintMaw, w: 24, h: 20,
   },
   'cinder-bailiff': {
     id: 'cinder-bailiff', name: 'Cinder Bailiff', hp: 110, speed: 28, dmg: [6, 10], rate: 1.5, sight: 110, level: 3,
     lore: 'It still serves writs to the dead mine, and swings its ledger-hook at anyone found behind on their dues.',
-    coins: [8, 24], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .35 }], paint: paintBailiff, w: 26, h: 34,
+    drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .35 }], paint: paintBailiff, w: 26, h: 34,
   },
   // The undead and the Cinder clans (owner 2026-10-20: "lots of scary monsters … skeletons, dragons, orcs, undead").
   'bone-walker': {
     id: 'bone-walker', name: 'Bone Walker', hp: 80, speed: 30, dmg: [4, 8], rate: 1.4, sight: 96, level: 6,
     lore: 'It remembers walking to work, so it walks. Nobody has told it which way the work went.',
-    coins: [5, 16], drops: [{ material: 'ember-residue', qty: 1, chance: .25 }], paint: paintBoneWalker, w: 22, h: 36,
+    drops: [{ material: 'ember-residue', qty: 1, chance: .25 }], paint: paintBoneWalker, w: 22, h: 36,
   },
   'bone-archer': {
     id: 'bone-archer', name: 'Bone Archer', hp: 85, speed: 30, dmg: [3, 6], rate: 1.5, sight: 140, level: 8,
     lore: 'A bow strung with something that is not quite sinew. It only ever aims at the lantern you carry.',
-    coins: [8, 20], drops: [{ material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintBoneArcher, w: 26, h: 36,
+    drops: [{ material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintBoneArcher, w: 26, h: 36,
     ranged: { range: 92, keep: 76, rate: 1.9, dmg: [6, 10], speed: 120, kind: 'arrow' },
   },
   'ash-ghoul': {
     id: 'ash-ghoul', name: 'Ash Ghoul', hp: 70, speed: 60, dmg: [5, 9], rate: .8, sight: 130, level: 9,
     lore: 'Quick and starved, it scrapes the ash from old pyres and wears it like a shawl against the cold it can no longer feel.',
-    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintGhoul, w: 28, h: 22,
+    drops: [{ material: 'ember-residue', qty: 1, chance: .35 }], paint: paintGhoul, w: 28, h: 22,
   },
   'cinder-wraith': {
     id: 'cinder-wraith', name: 'Cinder Wraith', hp: 150, speed: 32, dmg: [8, 13], rate: 1.4, sight: 130, level: 12,
     lore: 'A flicker of someone who stood too near the furnace door. It drifts over the slag, humming a shift-bell song.',
-    coins: [14, 36], drops: [{ material: 'ember-residue', qty: 2, chance: .5 }, { material: 'infernal-heartstone', qty: 1, chance: .04 }], paint: paintWraith, w: 24, h: 36,
+    drops: [{ material: 'ember-residue', qty: 2, chance: .5 }, { material: 'infernal-heartstone', qty: 1, chance: .04 }], paint: paintWraith, w: 24, h: 36,
     floats: true, ghost: true,
   },
   'cinder-orc': {
     id: 'cinder-orc', name: 'Cinder-clan Orc', hp: 170, speed: 36, dmg: [9, 15], rate: 1.3, sight: 120, level: 10,
     lore: 'The Cinder clans trade in iron and grudges. This one has plenty of both, and would like to see yours.',
-    coins: [12, 32], drops: [{ material: 'cinder-ore', qty: 1, chance: .5 }, { material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintOrc, w: 28, h: 38,
+    drops: [{ material: 'cinder-ore', qty: 1, chance: .5 }, { material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintOrc, w: 28, h: 38,
   },
   'orc-firecaller': {
     id: 'orc-firecaller', name: 'Orc Firecaller', hp: 130, speed: 30, dmg: [6, 10], rate: 1.5, sight: 150, level: 13,
     lore: 'It talks to the coals in a low voice, and the coals, against their better judgement, answer.',
-    coins: [16, 40], drops: [{ material: 'ember-residue', qty: 2, chance: .6 }], paint: paintFirecaller, w: 28, h: 38,
+    drops: [{ material: 'ember-residue', qty: 2, chance: .6 }], paint: paintFirecaller, w: 28, h: 38,
     ranged: { range: 100, keep: 74, rate: 2.1, dmg: [10, 16], speed: 110, kind: 'fire' },
   },
   'orc-warlord': {
     id: 'orc-warlord', name: 'Orc Warlord', hp: 440, speed: 32, dmg: [15, 24], rate: 1.5, sight: 140, level: 16,
     lore: 'Scarred, crowned in a smithing helm, and followed by every drum in the Badlands. It has never once asked for directions.',
-    coins: [60, 130], drops: [{ material: 'cinder-ore', qty: 3, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .15 }], paint: paintWarlord, w: 42, h: 52, rank: 'champion',
+    drops: [{ material: 'cinder-ore', qty: 3, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .15 }], paint: paintWarlord, w: 42, h: 52, rank: 'champion',
   },
   'ember-drake': {
     id: 'ember-drake', name: 'Ember Drake', hp: 320, speed: 40, dmg: [12, 18], rate: 1.4, sight: 150, level: 18,
     lore: 'It nests where the ground sighs smoke, and treats every traveller as a spark that wandered too near its kindling.',
-    coins: [40, 90], drops: [{ material: 'ember-residue', qty: 2, chance: .8 }, { material: 'infernal-heartstone', qty: 1, chance: .1 }], paint: paintDrake, w: 38, h: 30,
+    drops: [{ material: 'ember-residue', qty: 2, chance: .8 }, { material: 'infernal-heartstone', qty: 1, chance: .1 }], paint: paintDrake, w: 38, h: 30,
     ranged: { range: 84, keep: 0, rate: 3, dmg: [12, 20], speed: 130, kind: 'fire' },
   },
   'bone-dragon': {
     id: 'bone-dragon', name: 'The Ashbone Dragon', hp: 2200, speed: 22, dmg: [22, 34], rate: 1.8, sight: 190, level: 25,
     lore: 'The oldest thing under the Bastion. It was a dragon once; it is now a promise the ash made, and the ash keeps its promises.',
-    coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 76, h: 64, rank: 'boss', chant: 'osk vael sha',
+    drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 76, h: 64, rank: 'boss', chant: 'osk vael sha',
     ranged: { range: 130, keep: 0, rate: 3.4, dmg: [16, 26], speed: 120, kind: 'breath', spread: 3 },
     summon: { type: 'bone-walker', count: 2, at: .5 },
   },
@@ -1460,24 +1460,24 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'slag-crawler': {
     id: 'slag-crawler', name: 'Slag Crawler', hp: 300, speed: 30, dmg: [14, 22], rate: 1.4, sight: 120, level: 21,
     lore: 'Half beetle, half cooling slag, it walks the rivers of the Deep and leaves a crust behind that hardens into the next floor.',
-    coins: [30, 70], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .4 }], paint: paintCrawler, w: 36, h: 20,
+    drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .4 }], paint: paintCrawler, w: 36, h: 20,
   },
   'glass-sentinel': {
     id: 'glass-sentinel', name: 'Glass Sentinel', hp: 340, speed: 20, dmg: [12, 18], rate: 1.8, sight: 150, level: 24,
     lore: 'Poured by the foundry\'s last shift and never told to stop, it fires molten glass at anything that is not a mould.',
-    coins: [40, 90], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .12 }], paint: paintSentinel, w: 26, h: 42,
+    drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .12 }], paint: paintSentinel, w: 26, h: 42,
     ranged: { range: 110, keep: 80, rate: 2.2, dmg: [12, 18], speed: 140, kind: 'fire' },
   },
   'anvil-warden': {
     id: 'anvil-warden', name: 'The Anvil-Warden', hp: 1100, speed: 22, dmg: [16, 26], rate: 1.7, sight: 150, level: 18,
     lore: 'The First Smith\'s anvil grew legs to keep its oath; it still hammers the air for a blade nobody will finish.',
-    coins: [300, 550], drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 48, h: 67, rank: 'boss',
+    drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 48, h: 67, rank: 'boss',
     summon: { type: 'cinder-bailiff', count: 2, at: .5 },
   },
   'cinder-sovereign': {
     id: 'cinder-sovereign', name: 'The Cinder Sovereign', hp: 3200, speed: 22, dmg: [26, 40], rate: 1.7, sight: 170, level: 30,
     lore: 'The heart of the Deep wears a crown of its own sparks. It does not rule the fire — it is what the fire remembers.',
-    coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 68, h: 72, rank: 'boss', chant: 'vael ul dra',
+    drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 68, h: 72, rank: 'boss', chant: 'vael ul dra',
     ranged: { range: 130, keep: 0, rate: 3.2, dmg: [20, 32], speed: 120, kind: 'breath', spread: 5 },
     // At half its life it calls the hounds of the deep to its side.
     summon: { type: 'lava-hound', count: 2, at: .5 },
@@ -1486,33 +1486,33 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'canopy-bat': {
     id: 'canopy-bat', name: 'Canopy Bat', hp: 170, speed: 54, dmg: [8, 13], rate: 1, sight: 140, level: 15,
     lore: 'It sleeps folded into the giant trees like a dead leaf, and wakes all at once when a lantern passes underneath.',
-    coins: [24, 54], drops: [{ material: 'verdant-sap', qty: 1, chance: .35 }], paint: paintCanopyBat, w: 28, h: 24,
+    drops: [{ material: 'verdant-sap', qty: 1, chance: .35 }], paint: paintCanopyBat, w: 28, h: 24,
   },
   'moss-stalker': {
     id: 'moss-stalker', name: 'Moss Stalker', hp: 260, speed: 48, dmg: [12, 19], rate: 1.1, sight: 140, level: 17,
     lore: 'You will not see it in the moss. You will see the moss move, once, and that is the last thing the moss does quietly.',
-    coins: [30, 66], drops: [{ material: 'thornroot', qty: 1, chance: .6 }, { material: 'world-root-bark', qty: 1, chance: .15 }], paint: paintMossStalker, w: 34, h: 24,
+    drops: [{ material: 'thornroot', qty: 1, chance: .6 }, { material: 'world-root-bark', qty: 1, chance: .15 }], paint: paintMossStalker, w: 34, h: 24,
   },
   'vine-lasher': {
     id: 'vine-lasher', name: 'Vine Lasher', hp: 340, speed: 22, dmg: [15, 23], rate: 1.3, sight: 110, level: 21,
     lore: 'A bloom that learned to walk so it could go where the food was. It still sings to the bees, and the bees still come.',
-    coins: [34, 74], drops: [{ material: 'thornroot', qty: 2, chance: .8 }, { material: 'verdant-sap', qty: 1, chance: .5 }], paint: paintVineLasher, w: 30, h: 36,
+    drops: [{ material: 'thornroot', qty: 2, chance: .8 }, { material: 'verdant-sap', qty: 1, chance: .5 }], paint: paintVineLasher, w: 30, h: 36,
   },
   'rootglass-hart': {
     id: 'rootglass-hart', name: 'Rootglass Hart', hp: 460, speed: 44, dmg: [18, 27], rate: 1.4, sight: 150, level: 24,
     lore: 'The Rootglass Stags that live long enough stop being shy. Their antlers ring like glass when they lower their heads.',
-    coins: [40, 88], drops: [{ material: 'world-root-bark', qty: 1, chance: .5 }, { material: 'verdant-sap', qty: 2, chance: .6 }], paint: paintRootglassHart, w: 40, h: 38,
+    drops: [{ material: 'world-root-bark', qty: 1, chance: .5 }, { material: 'verdant-sap', qty: 2, chance: .6 }], paint: paintRootglassHart, w: 40, h: 38,
   },
   'thorn-weaver': {
     id: 'thorn-weaver', name: 'Thorn Weaver', hp: 380, speed: 30, dmg: [14, 21], rate: 1.5, sight: 150, level: 28,
     lore: 'It weaves its web from thornroot and spits what it does not need. The Sunken Courts are hung with its work like old banners.',
-    coins: [46, 96], drops: [{ material: 'thornroot', qty: 2, chance: 1 }, { material: 'world-root-bark', qty: 1, chance: .25 }], paint: paintThornWeaver, w: 44, h: 27,
+    drops: [{ material: 'thornroot', qty: 2, chance: 1 }, { material: 'world-root-bark', qty: 1, chance: .25 }], paint: paintThornWeaver, w: 44, h: 27,
     ranged: { range: 104, keep: 70, rate: 2, dmg: [16, 24], speed: 130, kind: 'arrow' },
   },
   'mossbound-colossus': {
     id: 'mossbound-colossus', name: 'The Mossbound Colossus', hp: 3600, speed: 20, dmg: [28, 42], rate: 1.8, sight: 170, level: 34,
     lore: 'The temple set it to keep the shrine; the Root grew in and kept the guardian. Its heart is rootglass now, and it beats slow.',
-    coins: [1000, 1700], drops: [{ material: 'world-root-bark', qty: 3, chance: 1 }, { material: 'verdant-sap', qty: 4, chance: 1 }, { material: 'thornroot', qty: 4, chance: 1 }], paint: paintColossus, w: 64, h: 76, rank: 'boss',
+    drops: [{ material: 'world-root-bark', qty: 3, chance: 1 }, { material: 'verdant-sap', qty: 4, chance: 1 }, { material: 'thornroot', qty: 4, chance: 1 }], paint: paintColossus, w: 64, h: 76, rank: 'boss',
     // At half its life it calls the temple's lashers up through the stones.
     summon: { type: 'vine-lasher', count: 2, at: .5 },
   },
@@ -1520,34 +1520,34 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'mire-lurker': {
     id: 'mire-lurker', name: 'Mire Lurker', hp: 620, speed: 26, dmg: [20, 30], rate: 1.4, sight: 120, level: 25,
     lore: 'Fen folk hang their lanterns high for a reason. The low ones, the ones that bob a little, belong to something that is very patient.',
-    coins: [48, 100], drops: [{ material: 'nightbloom', qty: 1, chance: .5 }, { material: 'umbral-ink', qty: 1, chance: .2 }], paint: paintMireLurker, w: 36, h: 28,
+    drops: [{ material: 'nightbloom', qty: 1, chance: .5 }, { material: 'umbral-ink', qty: 1, chance: .2 }], paint: paintMireLurker, w: 36, h: 28,
   },
   'lantern-wisp': {
     id: 'lantern-wisp', name: 'Lantern Wisp', hp: 480, speed: 46, dmg: [18, 26], rate: 1.1, sight: 150, level: 28,
     lore: 'A lantern dropped in the mire goes out. Most of them. This one kept the flame and lost the lantern, and it is looking for someone to carry it home.',
-    coins: [52, 108], drops: [{ material: 'umbral-ink', qty: 1, chance: .35 }, { material: 'nightglass', qty: 1, chance: .12 }], paint: paintLanternWisp, w: 22, h: 30,
+    drops: [{ material: 'umbral-ink', qty: 1, chance: .35 }, { material: 'nightglass', qty: 1, chance: .12 }], paint: paintLanternWisp, w: 22, h: 30,
     floats: true, ghost: true, hits: 'fire',
   },
   'ink-hound': {
     id: 'ink-hound', name: 'Ink Hound', hp: 760, speed: 56, dmg: [24, 35], rate: 1.1, sight: 160, level: 32,
     lore: 'Poured, not born, out of the Ink Deeps. It leaves pawprints that never dry, and it can follow its own trail back down in the dark.',
-    coins: [60, 124], drops: [{ material: 'umbral-ink', qty: 2, chance: .7 }, { material: 'inkstone', qty: 1, chance: .2 }], paint: paintInkHound, w: 34, h: 24,
+    drops: [{ material: 'umbral-ink', qty: 2, chance: .7 }, { material: 'inkstone', qty: 1, chance: .2 }], paint: paintInkHound, w: 34, h: 24,
   },
   'drowned-knight': {
     id: 'drowned-knight', name: 'Drowned Knight', hp: 1200, speed: 28, dmg: [32, 46], rate: 1.6, sight: 140, level: 38,
     lore: 'Gloamhaven\'s old guard marched into the fen the night the abbey went under. They are still on watch. Nobody has told them to stand down.',
-    coins: [76, 150], drops: [{ material: 'inkstone', qty: 1, chance: .5 }, { material: 'nightglass', qty: 1, chance: .25 }], paint: paintDrownedKnight, w: 30, h: 40,
+    drops: [{ material: 'inkstone', qty: 1, chance: .5 }, { material: 'nightglass', qty: 1, chance: .25 }], paint: paintDrownedKnight, w: 30, h: 40,
   },
   'gloam-witch': {
     id: 'gloam-witch', name: 'Gloam Witch', hp: 900, speed: 30, dmg: [24, 34], rate: 1.5, sight: 170, level: 42,
     lore: 'She sells cures in Lanternfen on market days and curses in the fen on the others. Her lantern burns ink, and what it shows you is true.',
-    coins: [84, 164], drops: [{ material: 'nightbloom', qty: 2, chance: .8 }, { material: 'umbral-ink', qty: 2, chance: .6 }, { material: 'nightglass', qty: 1, chance: .2 }], paint: paintGloamWitch, w: 26, h: 38,
+    drops: [{ material: 'nightbloom', qty: 2, chance: .8 }, { material: 'umbral-ink', qty: 2, chance: .6 }, { material: 'nightglass', qty: 1, chance: .2 }], paint: paintGloamWitch, w: 26, h: 38,
     ranged: { range: 120, keep: 80, rate: 2, dmg: [26, 38], speed: 120, kind: 'ink' },
   },
   'ink-abbess': {
     id: 'ink-abbess', name: 'The Ink Abbess', hp: 7200, speed: 20, dmg: [44, 62], rate: 1.8, sight: 190, level: 50,
     lore: 'The abbess would not leave her prayers when the water came. She is praying still, and the ink in her lantern is everything the abbey ever wrote down.',
-    coins: [2000, 3200], drops: [{ material: 'umbral-sigil', qty: 1, chance: 1 }, { material: 'inkstone', qty: 3, chance: 1 }, { material: 'umbral-ink', qty: 5, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }], paint: paintInkAbbess, w: 66, h: 72, rank: 'boss', chant: 'nyr orum',
+    drops: [{ material: 'umbral-sigil', qty: 1, chance: 1 }, { material: 'inkstone', qty: 3, chance: 1 }, { material: 'umbral-ink', qty: 5, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }], paint: paintInkAbbess, w: 66, h: 72, rank: 'boss', chant: 'nyr orum',
     // Her great attack: a wave of ink from the censer, three wide, after a tell on the floor. At half her life the hounds come.
     ranged: { range: 140, keep: 0, rate: 3.6, dmg: [34, 50], speed: 110, kind: 'ink', spread: 3 },
     summon: { type: 'ink-hound', count: 2, at: .5 },
@@ -1556,23 +1556,23 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'rootgnaw': {
     id: 'rootgnaw', name: 'Rootgnaw', hp: 300, speed: 26, dmg: [13, 20], rate: 1.3, sight: 120, level: 19,
     lore: 'It eats the roots of trees that are already dead, and the tunnels it leaves are the Root Hollows. It has not decided yet whether you are a root.',
-    coins: [30, 64], drops: [{ material: 'world-root-bark', qty: 1, chance: .45 }, { material: 'thornroot', qty: 1, chance: .3 }], paint: paintRootgnaw, w: 38, h: 22,
+    drops: [{ material: 'world-root-bark', qty: 1, chance: .45 }, { material: 'thornroot', qty: 1, chance: .3 }], paint: paintRootgnaw, w: 38, h: 22,
   },
   'sporecap': {
     id: 'sporecap', name: 'Sporecap', hp: 360, speed: 22, dmg: [14, 21], rate: 1.4, sight: 130, level: 23,
     lore: 'A mushroom that grew in the dark until it could walk. It coughs its spores at anything warm, because warm things are where mushrooms grow best.',
-    coins: [36, 78], drops: [{ material: 'verdant-sap', qty: 1, chance: .6 }, { material: 'thornroot', qty: 1, chance: .25 }], paint: paintSporecap, w: 28, h: 36,
+    drops: [{ material: 'verdant-sap', qty: 1, chance: .6 }, { material: 'thornroot', qty: 1, chance: .25 }], paint: paintSporecap, w: 28, h: 36,
     ranged: { range: 96, keep: 56, rate: 2.4, dmg: [14, 21], speed: 90, kind: 'spore' },
   },
   'drowned-acolyte': {
     id: 'drowned-acolyte', name: 'Drowned Acolyte', hp: 560, speed: 24, dmg: [20, 30], rate: 1.5, sight: 140, level: 33,
     lore: 'The priests who stayed to keep the Vault when the springs rose. The moss kept them in turn. They still carry the lamps, and still do not let anyone past.',
-    coins: [52, 108], drops: [{ material: 'verdant-sap', qty: 2, chance: .7 }, { material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintAcolyte, w: 26, h: 38,
+    drops: [{ material: 'verdant-sap', qty: 2, chance: .7 }, { material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintAcolyte, w: 26, h: 38,
   },
   'elder-rootwyrm': {
     id: 'elder-rootwyrm', name: 'The Elder Rootwyrm', hp: 5200, speed: 20, dmg: [32, 48], rate: 1.8, sight: 180, level: 40,
     lore: 'The first thing the Root grew, coiled in the dark before the temple was raised over it. The priests called it the Cradle; it never answered to anything.',
-    coins: [1400, 2300], drops: [{ material: 'world-root-bark', qty: 4, chance: 1 }, { material: 'verdant-sap', qty: 5, chance: 1 }, { material: 'thornroot', qty: 5, chance: 1 }], paint: paintRootwyrm, w: 106, h: 88, rank: 'boss', chant: 'thar orum',
+    drops: [{ material: 'world-root-bark', qty: 4, chance: 1 }, { material: 'verdant-sap', qty: 5, chance: 1 }, { material: 'thornroot', qty: 5, chance: 1 }], paint: paintRootwyrm, w: 106, h: 88, rank: 'boss', chant: 'thar orum',
     // It winds up (BOSS_TELL) and breathes a fan of rootglass splinters; at half its life the drowned priests come down to it.
     ranged: { range: 140, keep: 0, rate: 3.2, dmg: [24, 36], speed: 120, kind: 'shard', spread: 5 },
     summon: { type: 'drowned-acolyte', count: 2, at: .5 },
@@ -1582,7 +1582,7 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
 export const RAISED_SKELETON: MobDef = {
   id: 'raised-skeleton', name: 'Raised Skeleton', hp: 1, speed: 52, dmg: [1, 1], rate: 1.1, sight: 0, level: 1,
-  coins: [0, 0], drops: [], paint: paintRaised, w: 22, h: 36,
+  drops: [], paint: paintRaised, w: 22, h: 36,
 };
 
 const sheets = new Map<string, HTMLCanvasElement>();
@@ -1834,6 +1834,11 @@ export interface MobHost {
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
 
+/** The Gold pile a creature leaves (economy-curve HUNT_GOLD): its level and rank, ± the spread. */
+export function goldDropFor(def: Pick<MobDef, 'level' | 'rank'>, rng: () => number = Math.random): number {
+  return rollHuntGold(def.level, def.rank ?? 'normal', rng);
+}
+
 export class MobSystem {
   readonly mobs: Mob[] = [];
   readonly drops: Drop[] = [];
@@ -1890,6 +1895,8 @@ export class MobSystem {
   crit = 0;
   defense = 0;
   keeperLevel = 1;
+  /** The Keeper's level pace as a factor (1 → 1.6): the raised walk at the Keeper's pace, as the pets do. */
+  pace = 1;
   /** Worn resists per element (td-skills fightStats), each already capped at 75. */
   resists: Partial<Record<Element, number>> = {};
   /** The running aura (one at a time, D2), or none. */
@@ -2213,7 +2220,7 @@ export class MobSystem {
       const tx = foe ? foe.x : p.x + (k.id % 2 ? -16 : 16), ty = foe ? foe.y : p.y + 4, stop = foe ? MOB_REACH - 4 : 6;
       const dx = tx - k.x, dy = ty - k.y, len = Math.hypot(dx, dy);
       if (len > stop) {
-        const step = Math.min(len - stop, MINION_SPEED * dt), vx = dx / len * step, vy = dy / len * step;
+        const step = Math.min(len - stop, MINION_SPEED * this.pace * dt), vx = dx / len * step, vy = dy / len * step;
         if (this.free(k.x + vx, k.y)) k.x += vx;
         if (this.free(k.x, k.y + vy)) k.y += vy;
       }
@@ -2449,10 +2456,11 @@ export class MobSystem {
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
     this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp });
-    // The ground loot: a coin pile with the creature's materials, and whatever gear the host rolls for the kill.
+    // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
+    // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
     let n = 0;
-    const coins = rnd(m.def.coins[0], m.def.coins[1]);
+    const coins = goldDropFor(m.def);
     for (const d of m.def.drops) {
       if (Math.random() >= d.chance) continue;
       this.drops.push({ id: `${id}:m${n}`, ...spot(n++), coins: 0, material: d.material, qty: d.qty, label: d.material.replace(/-/g, ' '), color: RARITY_COLOR.common, age: 0 });
@@ -2477,7 +2485,8 @@ export class MobSystem {
     });
     if (ok === false) return;   // the satchel is full: it stays on the ground
     this.drops.splice(i, 1);
-    this.float(g.x, g.y - 10, g.label, g.color);
+    // Gold says what it added to the purse ("+38 Gold"); everything else says its name.
+    this.float(g.x, g.y - 10, g.coins > 0 ? `+${g.coins} Gold` : g.label, g.color);
   }
 }
 

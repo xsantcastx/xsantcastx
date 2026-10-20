@@ -2,7 +2,7 @@ import { MIRROR_SLATE } from '../economy/economy-curve';
 import { PANEL_REGISTRY } from '../../play/world/panel-registry';
 import { MIRROR_SLATE_ID, MIRROR_SLATE_II_ID, SLATE_ITEMS, SLATE_UPGRADE_INPUTS } from './slate-items.model';
 import {
-  CROUPIER_STATIONS, SLATE_MACHINES, SLATE_TABLES, SLATE_TABLE_GAMES, slateAwardDue, slateMachines, slateBadge, slateOffer, slateRefusal, slateTabs, slateTier,
+  CROUPIER_STATIONS, SLATE_MACHINES, SLATE_TABLES, SLATE_TABLE_GAMES, slateAwardDue, slateMachines, slateOffer, slateRefusal, slateTabs, slateTier,
   slateUpgradeNeeds, slateUpgradeReady, tablesPlayed, type SlateMoment,
 } from './slate.model';
 import { REELS_GAME_ID } from '../reels/reels.service';
@@ -51,8 +51,8 @@ describe('Mirror Slate rules', () => {
 
   it('adds the map tab at tier II and nothing at all without a pane', () => {
     expect(slateTabs(0)).toEqual([]);
-    expect(slateTabs(1)).toEqual(['tables', 'factory', 'scan']);
-    expect(slateTabs(2)).toEqual(['tables', 'factory', 'map', 'scan']);
+    expect(slateTabs(1)).toEqual(['tables', 'scan']);
+    expect(slateTabs(2)).toEqual(['tables', 'map', 'scan']);
   });
 
   describe('the busy rule', () => {
@@ -67,16 +67,6 @@ describe('Mirror Slate rules', () => {
       expect(slateRefusal({ ...calm, reeling: true })).toBe('game');
       expect(slateRefusal({ ...calm, storyCard: true })).toBe('game');
     });
-  });
-
-  it('lights the badge for an explorer home, a rune found or ten minutes of income waiting', () => {
-    expect(slateBadge({ gold: 0, runes: 0, returns: 0 }, 10)).toBeFalse();
-    expect(slateBadge({ gold: 0, runes: 0, returns: 1 }, 10)).toBeTrue();
-    expect(slateBadge({ gold: 0, runes: 1, returns: 0 }, 0)).toBeTrue();
-    expect(slateBadge({ gold: 5_999, runes: 0, returns: 0 }, 10)).toBeFalse();
-    expect(slateBadge({ gold: 6_000, runes: 0, returns: 0 }, 10)).toBeTrue();
-    // No income: Gold alone never lights it.
-    expect(slateBadge({ gold: 1e9, runes: 0, returns: 0 }, 0)).toBeFalse();
   });
 
   it('embeds the stalls\' own panels (same loaders), so the Slate plays on the same ledger ids', () => {

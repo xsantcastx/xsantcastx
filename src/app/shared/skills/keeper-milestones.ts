@@ -7,7 +7,8 @@
  *   points       a batch of attribute points for the sheet
  *   passive      a small lasting edge (+1% spell damage, speed, crits, cast speed; All Resist) — the sheet's totals
  *   frame        the portrait's frame metal (copper → bronze → silver → gold → eclipse → starlit)
- *   goldMinutes  minutes of the forge's income, paid once (receipt first: keeper-level.service)
+ *   gold         a fixed sum, paid once (receipt first: keeper-level.service): worth N minutes of a hunt at that level
+ *                (economy-curve huntGold), since the forge no longer pays by the second (IDLE_INCOME off)
  *   gear         a piece minted once under a fixed id (the town tasks' path)
  *
  * Everything but Gold and gear is DERIVED from the level, so it can never be granted twice; Gold and gear are the
@@ -18,6 +19,10 @@
 import type { ItemStats } from '../rpg/item.model';
 import { MILESTONE_SKILL_POINTS } from '../keeper-look/skill-points';
 import { LEVEL_GROWTH, levelAttributePoints, levelSteps } from './keeper-level';
+import { huntGold } from '../economy/economy-curve';
+
+/** A milestone's Gold: `minutes` of a steady hunt of creatures at its own level, as a fixed sum. */
+const hunt = (level: number, minutes: number): number => huntGold(level, minutes * 60);
 
 export type PassiveStat = Extract<keyof ItemStats, 'spellDamage' | 'moveSpeed' | 'critChance' | 'castSpeed' | 'allResist'>;
 export type FrameId = 'copper' | 'bronze' | 'silver' | 'gold' | 'eclipse' | 'starlit';
@@ -29,7 +34,8 @@ export interface MilestoneRewards {
   points?: number;
   passive?: { stat: PassiveStat; n: number };
   frame?: FrameId;
-  goldMinutes?: number;
+  /** Fixed Gold, paid once. */
+  gold?: number;
   gear?: { defId: string; rarity: 'uncommon' | 'rare' | 'epic'; level: number };
 }
 
@@ -46,25 +52,25 @@ const m = (level: number, rewards: MilestoneRewards, big?: true): Milestone => {
 };
 
 export const MILESTONES: readonly Milestone[] = [
-  m(5, { title: 'kindled', goldMinutes: 3 }),
+  m(5, { title: 'kindled', gold: hunt(5, 3) }),
   m(10, { frame: 'copper', gear: { defId: 'keepers-cowl', rarity: 'uncommon', level: 10 } }),
   m(15, { title: 'ashwalker', passive: { stat: 'spellDamage', n: 1 } }),
-  m(20, { points: 5, goldMinutes: 10 }),
+  m(20, { points: 5, gold: hunt(20, 10) }),
   m(25, { title: 'reachwarden', passive: { stat: 'moveSpeed', n: 1 } }),
   m(30, { frame: 'bronze', gear: { defId: 'keeper-staff', rarity: 'rare', level: 30 } }),
-  m(40, { title: 'wildstrider', passive: { stat: 'critChance', n: 1 }, goldMinutes: 15 }),
-  m(50, { title: 'eclipsekeeper', frame: 'silver', points: 10, goldMinutes: 30, gear: { defId: 'infernal-cuirass', rarity: 'epic', level: 50 } }, true),
+  m(40, { title: 'wildstrider', passive: { stat: 'critChance', n: 1 }, gold: hunt(40, 15) }),
+  m(50, { title: 'eclipsekeeper', frame: 'silver', points: 10, gold: hunt(50, 30), gear: { defId: 'infernal-cuirass', rarity: 'epic', level: 50 } }, true),
   m(75, { title: 'marchlord', points: 5, passive: { stat: 'castSpeed', n: 1 } }),
-  m(100, { title: 'hundredfold', frame: 'gold', points: 10, passive: { stat: 'allResist', n: 2 }, goldMinutes: 60 }, true),
+  m(100, { title: 'hundredfold', frame: 'gold', points: 10, passive: { stat: 'allResist', n: 2 }, gold: hunt(100, 60) }, true),
   m(200, { passive: { stat: 'spellDamage', n: 1 } }),
   m(300, { title: 'emberbound', points: 5 }),
   m(400, { passive: { stat: 'moveSpeed', n: 1 } }),
-  m(500, { title: 'lanternbearer', points: 5, goldMinutes: 90 }),
+  m(500, { title: 'lanternbearer', points: 5, gold: hunt(500, 90) }),
   m(600, { passive: { stat: 'spellDamage', n: 1 } }),
   m(700, { points: 5 }),
   m(800, { passive: { stat: 'critChance', n: 1 } }),
   m(900, { points: 5 }),
-  m(1000, { title: 'thousandfold', frame: 'eclipse', points: 20, passive: { stat: 'allResist', n: 3 }, goldMinutes: 120 }, true),
+  m(1000, { title: 'thousandfold', frame: 'eclipse', points: 20, passive: { stat: 'allResist', n: 3 }, gold: hunt(1000, 120) }, true),
   m(1500, { passive: { stat: 'spellDamage', n: 1 } }),
   m(2000, { title: 'starwright', points: 10 }),
   m(2500, { passive: { stat: 'castSpeed', n: 1 } }),
@@ -72,8 +78,8 @@ export const MILESTONES: readonly Milestone[] = [
   m(3500, { passive: { stat: 'spellDamage', n: 1 } }),
   m(4000, { points: 10 }),
   m(4500, { passive: { stat: 'critChance', n: 1 } }),
-  m(5000, { title: 'eclipsewalker', points: 20, goldMinutes: 240 }, true),
-  m(10000, { title: 'longnight', frame: 'starlit', points: 50, passive: { stat: 'spellDamage', n: 5 }, goldMinutes: 480 }, true),
+  m(5000, { title: 'eclipsewalker', points: 20, gold: hunt(5000, 240) }, true),
+  m(10000, { title: 'longnight', frame: 'starlit', points: 50, passive: { stat: 'spellDamage', n: 5 }, gold: hunt(10000, 480) }, true),
 ];
 
 const BY_LEVEL = new Map(MILESTONES.map(x => [x.level, x]));

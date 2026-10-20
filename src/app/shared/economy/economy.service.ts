@@ -80,6 +80,8 @@ import {
   maxSeqFor,
   nextHlc,
   snapshotOf,
+  enterGoldEra,
+  needsGoldEra,
 } from './economy-ops';
 import {
   beginCommerceOp,
@@ -305,6 +307,8 @@ export class EconomyService implements OnDestroy {
   private frenzyUntil = 0;
   /** What the v3 migration did on this page load, or null. For the console and the spec. */
   migrationReport: EconomyMigrationReport | null = null;
+  /** This load emptied the purse into the current Gold era (economy-ops enterGoldEra): write it back at once. */
+  private goldEraEntered = false;
 
   private readonly snapshot$$ = new BehaviorSubject<EconomySnapshot>(this.snapshotOf(this.state, 0));
   private readonly gain$$ = new Subject<CurrencyGain>();
@@ -354,7 +358,7 @@ export class EconomyService implements OnDestroy {
     this.recoverCommerce();
     // A v2 ledger was converted on read. Write the v3 copy now, so the next
     // load (or cloud push) reads the converted ledger rather than the source.
-    if (this.migrationReport) this.flush();
+    if (this.migrationReport || this.goldEraEntered) this.flush();
     // First run: start the idle clock now rather than at epoch zero, or the
     // first settlement pays out the eight-hour cap for a visitor who has been
     // here four seconds.
@@ -433,6 +437,8 @@ export class EconomyService implements OnDestroy {
     this.bindDevice();
     this.recoverCommerce();
     if (!this.state.lastIdleAt) this.state.lastIdleAt = Date.now();
+    // A pre-wipe blob arrived (adopted whole from the cloud): its emptied purse is written back on the next persist.
+    if (this.goldEraEntered) { this.goldEraEntered = false; this.persistSoon(); }
     this.publish();
   }
 
@@ -711,6 +717,13 @@ export class EconomyService implements OnDestroy {
     const spanStart = this.state.lastIdleAt;
     // Advance by exactly what was paid for, leaving the sub-second remainder.
     this.state.lastIdleAt += wholeSeconds * SECOND_MS;
+
+    // The forge no longer pays by the second (CURVE.IDLE_INCOME): the clock moves, nothing is owed.
+    if (!CURVE.IDLE_INCOME) {
+      this.noteFirstSettlement(seconds, 0);
+      this.persistSoon();
+      return;
+    }
 
     const hidden = document.visibilityState !== 'visible';
     if (hidden && !earnsWhileHidden(this.state)) {
@@ -1541,11 +1554,16 @@ export class EconomyService implements OnDestroy {
         acks: parsed.acks ?? {},
         seenAt: parsed.seenAt ?? {},
       };
-      // Economy v3 (the Cookie-curve rebalance): converted once, idempotent.
-      if (!needsEconomyV3(ledger)) return ledger;
-      const migrated = migrateEconomyV3WithReport(ledger);
-      this.migrationReport = migrated.report;
-      return migrated.ledger;
+      // Economy v3 (the Cookie-curve rebalance): converted once, idempotent. Then the Gold era (the wipe to 0,
+      // economy-ops enterGoldEra): once, stamped, merge-safe; written straight back by init's flush.
+      let out = ledger;
+      if (needsEconomyV3(out)) {
+        const migrated = migrateEconomyV3WithReport(out);
+        this.migrationReport = migrated.report;
+        out = migrated.ledger;
+      }
+      if (needsGoldEra(out)) { out = enterGoldEra(out); this.goldEraEntered = true; }
+      return out;
     } catch {
       return emptyEconomy();
     }
@@ -1746,8 +1764,9 @@ export class EconomyService implements OnDestroy {
       runGoldEarned: state.runGoldEarned,
       totalClicks: state.totalClicks,
       autoClicks: state.autoClicks,
-      perSecond: breakdown.total,
-      perMinute: breakdown.total * 60,
+      // The published rate is what the ledger actually pays: 0 with the forge's income off (CURVE.IDLE_INCOME).
+      perSecond: CURVE.IDLE_INCOME ? breakdown.total : 0,
+      perMinute: CURVE.IDLE_INCOME ? breakdown.total * 60 : 0,
       breakdown,
       autoPerSecond: autoClicksPerSecond(state),
       perClick: goldPerClick(state),

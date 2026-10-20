@@ -7,6 +7,7 @@ import { materialDisplay } from '../../shared/rpg/material-catalog';
 import { CONTINENTS, LEVELS } from './td-engine';
 import type { DamageType } from '../../shared/loot/damage.model';
 import { MOBS, mobHits } from './td-mobs';
+import { huntGoldRange } from '../../shared/economy/economy-curve';
 
 /** The save blob (account progress, synced; merge is the structural max per creature). */
 export const BESTIARY_KEY = 'eclipse-bestiary-v1';
@@ -24,7 +25,7 @@ export interface BestiaryEntry {
   rank: 'normal' | 'champion' | 'unique' | 'boss';
   /** Every place it can be met, e.g. "The Emberwood, Ember Isle" or "Ember Mine · Floor 2". */
   haunts: string[];
-  /** Gold dropped, from..to. */
+  /** Gold dropped, from..to (the level's pile, economy-curve HUNT_GOLD). */
   coins: [number, number];
   drops: BestiaryDrop[];
   lore: string;
@@ -70,7 +71,7 @@ export function bestiaryEntries(kills: Readonly<Record<string, number>>): Bestia
     level: def.level,
     rank: def.rank ?? 'normal',
     haunts: haunts.get(def.id) ?? [],
-    coins: def.coins,
+    coins: huntGoldRange(def.level, def.rank ?? 'normal'),
     drops: def.drops.map(d => ({ name: dropName(d.material), qty: d.qty, chance: d.chance })),
     lore: def.lore ?? '',
     hits: mobHits(def),

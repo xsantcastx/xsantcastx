@@ -3,6 +3,7 @@
  * row gives something; the level-up summary lists exactly what a level gave; skill points; the save merge never
  * double-grants; the service pays a milestone's Gold and gear once (receipt first) and announces only real crossings.
  */
+import { huntGold } from '../economy/economy-curve';
 import { TestBed } from '@angular/core/testing';
 import { HUD_I18N } from '../../play/world/hud.i18n';
 import { EconomyService } from '../economy/economy.service';
@@ -91,7 +92,7 @@ describe('Keeper level milestones', () => {
 class FakeEconomy {
   snapshot = { perSecond: 0 };
   earned: { n: number; source: string }[] = [];
-  earnIncome(floor: number, _seconds: number, source: string): number { this.earned.push({ n: floor, source }); return floor; }
+  earnGold(n: number, source: string): number { this.earned.push({ n, source }); return n; }
 }
 class FakeInventory {
   items = new Map<string, GameItem>();
@@ -137,6 +138,9 @@ describe('KeeperLevelService (the fanfare and the one-time pay)', () => {
     expect(paid.map(p => p.level)).toEqual([5, 10, 20, 30, 40, 50]);
     expect([...inventory.items.keys()].sort()).toEqual(['keeper-milestone-10', 'keeper-milestone-30', 'keeper-milestone-50']);
     expect(economy.earned.map(e => e.source)).toEqual(['keeper:level-5', 'keeper:level-20', 'keeper:level-40', 'keeper:level-50']);
+    // Fixed sums now the forge pays nothing by the second: N minutes of a hunt at the milestone's level.
+    expect(economy.earned.map(e => e.n)).toEqual([huntGold(5, 180), huntGold(20, 600), huntGold(40, 900), huntGold(50, 1800)]);
+    expect(economy.earned[0].n).toBe(206);
     expect(saved().claimed).toEqual([5, 10, 20, 30, 40, 50]);
     expect(boot().claimDue(55)).toEqual([]);
     expect(economy.earned.length).toBe(4);

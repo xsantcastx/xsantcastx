@@ -68,29 +68,38 @@ at 114), so any stored total reads as the **same or a higher** level than the Hu
   `MILESTONE_SKILL_POINTS` (the milestones' bonus rows). They are *spent* by the Warlock skill tree (branch
   `spelltree`), which owns spell ranks; leveling never changes a spell's numbers.
 
+## 2b. Speed by level (Tibia; owner 2026-10-21: "the higher level the faster they move")
+
+    pace(L) = 0.60 × (1 − e^(−(L − 1)/400))          keeper-level LEVEL_SPEED, levelSpeedBonus
+
++0.15 % a level at first: +1.3 % at 10, +7 % at 50, +13 % at 100, +24 % at 200, +38 % at 400, +55 % at 1,000, +60 %
+(the cap) from ~3,000. It multiplies the rest of the Keeper's speed — walk = 74 px/s × (1 + pace) × (1 + Agility and
+worn Move Speed, capped 40 %) × Haste — so it never eats the gear cap. The pet and the raised skeletons move by the
+same factor, so they keep up; the camera is locked to the Keeper. The sheet's **Speed** row shows the total.
+
 ## 3. Milestones
 
 | Level | Gives |
 |---|---|
-| 5 | title *the Kindled* · 3 min of forge income in Gold |
+| 5 | title *the Kindled* · 206 Gold (3 min of a level-5 hunt) |
 | 10 | +1 skill point · **copper** portrait frame · an Uncommon Keeper's Cowl (iL 10) |
 | 15 | title *Ash-Walker* · +1% spell damage |
-| 20 | +5 attribute points · 10 min of income |
+| 20 | +5 attribute points · 2,560 Gold (10 min) |
 | 25 | title *Warden of the Reach* · +1% movement speed |
 | 30 | +1 skill point · **bronze** frame · a Rare Keeper's Staff (iL 30) |
-| 40 | title *Wildstrider* · +1% crit chance · 15 min |
-| **50** | title *Keeper of the Eclipse* · +2 skill points · **silver** frame · +10 points · 30 min · an Epic Infernal Cuirass (iL 50) |
+| 40 | title *Wildstrider* · +1% crit chance · 8,640 Gold (15 min) |
+| **50** | title *Keeper of the Eclipse* · +2 skill points · **silver** frame · +10 points · ~23k Gold (30 min) · an Epic Infernal Cuirass (iL 50) |
 | 75 | title *Lord of the Marches* · +5 points · +1% cast speed |
-| **100** | title *the Hundredfold* · +2 skill points · **gold** frame · +10 points · +2 All Resist · 60 min |
-| 200–900 (every 100) | +1 skill point each, alternating +1% passives (200 spell dmg, 400 speed, 600 spell dmg, 800 crit) and +5 points (300, 500, 700, 900); titles *Emberbound* (300), *Lantern-Bearer* (500, + 90 min) |
-| **1,000** | title *the Thousandfold* · +3 skill points · **eclipse** frame · +20 points · +3 All Resist · 120 min |
+| **100** | title *the Hundredfold* · +2 skill points · **gold** frame · +10 points · +2 All Resist · ~121k Gold (60 min) |
+| 200–900 (every 100) | +1 skill point each, alternating +1% passives (200 spell dmg, 400 speed, 600 spell dmg, 800 crit) and +5 points (300, 500, 700, 900); titles *Emberbound* (300), *Lantern-Bearer* (500, + ~2.7M Gold, 90 min) |
+| **1,000** | title *the Thousandfold* · +3 skill points · **eclipse** frame · +20 points · +3 All Resist · ~13.2M Gold (120 min) |
 | 1,500–4,500 (every 500) | +1 skill point each, alternating +1% passives and +10 points; title *Starwright* (2,000) |
-| **5,000** | title *Who Walks the Eclipse* · +2 skill points · +20 points · 240 min |
-| **10,000** | title *Keeper of the Long Night* · +5 skill points · **starlit** frame · +50 points · +5% spell damage · 480 min |
+| **5,000** | title *Who Walks the Eclipse* · +2 skill points · +20 points · ~612M Gold (240 min) |
+| **10,000** | title *Keeper of the Long Night* · +5 skill points · **starlit** frame · +50 points · +5% spell damage · ~4.85B Gold (480 min) |
 
 Every reward is used and visible: titles are worn under the name on the portrait (picked in the sheet), frames recolour
 the portrait, passives add to the sheet's totals (under the gear caps), points are spent in the sheet, skill points in
-the Spellbook, Gold through the economy's one mint (`earnIncome`, source `keeper:level-<L>`), gear through
+the Spellbook, Gold as a fixed sum — N minutes of a steady hunt at that level, `huntGold(L, N·60)`, since the forge's income is off — through `EconomyService.earnGold` (source `keeper:level-<L>`), gear through
 `mintEquipment` under a fixed id `keeper-milestone-<L>` (existing item definitions only — no new item, so
 `check:meaning` has nothing new to judge). Lore for the titles: `docs/world/lore-addendum.md`.
 

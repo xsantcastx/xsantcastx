@@ -20,6 +20,7 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { EconomyService } from '../economy/economy.service';
+import { GOLD_ERA } from '../economy/economy-curve';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { mintEquipment } from '../rpg/item-definition';
 import { runeById } from '../rune-forge/rune.model';
@@ -144,7 +145,7 @@ export class LootService {
     if (!this.isBrowser) return 0;
     const s = this.state;
     const gold = deathCost(this.economy.snapshot.gold, s.tier);
-    const purse: FallenPurse | null = gold > 0 && this.economy.spendGold(gold, 'fall') ? { area, x: Math.round(x), y: Math.round(y), gold, tier: s.tier } : null;
+    const purse: FallenPurse | null = gold > 0 && this.economy.spendGold(gold, 'fall') ? { area, x: Math.round(x), y: Math.round(y), gold, tier: s.tier, era: GOLD_ERA } : null;
     this.write({ ...s, purse, purseAt: Math.max(at, s.purseAt + 1) });
     return purse?.gold ?? 0;
   }

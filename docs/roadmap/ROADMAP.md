@@ -14,6 +14,8 @@ Reviewed daily; newest review on top of the log at the bottom.
 5. **A surface with height** — ✅ shipped (`docs/handoff/surface-height.md`): the High Roads in all five hunts (ledge-grab, mantle, climbing, wall-jump; once-only caches, carvings, a look-out, a summit cairn + Ridgewalker title per realm; perched creatures, Hollis Fenn). Next: town outskirts, vine walls, painted props.
 6. **World feel** — *the sound of the world*: a Web Audio director (sparse per-realm score, ambience beds, block-aware SFX, sliders + mute, first-tap start, no audio files); *catch & craft*: visible fish shadows, "+1 item" pickup popups, crafted items pop above the bench and open the Satchel. *(built 2026-10-15, `docs/handoff/world-feel.md`: per-realm generative score + Glim's hum, ambience beds, material-aware SFX, Menu → Sound synced per player; fish shadows, bite ripples, the catch's arc, pickup pictures + Satchel pulse, the craft's flight + "in your Satchel" toast)*
 
+Built 2026-10-21: **Gold from the hunt** (`docs/handoff/gold-from-the-hunt.md`): the forge's idle Gold is off (no Gold/s, no offline pay, the Slate's Homestead face gone), every creature drops a D2-style pixel Gold pile by level and rank, town tasks and level milestones pay fixed sums, the Keeper walks faster with level (Tibia, +60% cap), and every save's Gold was wiped to 0 once (`GOLD_ERA`, merge-safe).
+
 Shipped 2026-10-14: The Underhearth (`docs/handoff/underhearth.md`) · The Mirror Slate (`docs/handoff/mirror-slate.md`) · Uncapped levels (`docs/handoff/uncapped-levels.md`) · Glim bond (`docs/handoff/glim-bond.md`).
 
 Built 2026-10-15: **Pets** (`docs/handoff/pets.md`): eight chibi pets found in play, one helper each, names, feeding, a trick and a hat.
