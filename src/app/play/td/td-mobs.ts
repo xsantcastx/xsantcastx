@@ -186,7 +186,25 @@ const R = {
   sov: ['#64505c', '#3e2c34', '#2c1e26', '#1a1016'],
   membrane: ['#6a5482', '#45365a', '#2e2440', '#1c1628'],
   void: ['#2a1c30', '#140c18', '#0e0812', '#08040a'],
+  // The Verdant Wilds: moss, leaf and vine, a jungle cat's pelt, petals, bark, thorn, a bat's fur, a hart's coat, temple stone.
+  moss: ['#a4d47e', '#62a04a', '#3f7034', '#264a22'],
+  mossDk: ['#6e9a54', '#46703a', '#2e502a', '#1c341a'],
+  stalker: ['#8a9c66', '#5a6e44', '#3c4c30', '#24301e'],
+  vine: ['#9ad86e', '#55a03e', '#36702c', '#1e4818'],
+  vineDk: ['#5e9a48', '#36702c', '#24521e', '#163412'],
+  petal: ['#ffd6ec', '#ec6eac', '#a83c74', '#6a2048'],
+  bark: ['#a87e56', '#74543a', '#4e3828', '#30221a'],
+  thorn: ['#d4c098', '#94784e', '#644e32', '#3e2e1e'],
+  thornDk: ['#94784e', '#644e32', '#46361f', '#2c2014'],
+  bat: ['#9a88a8', '#64527a', '#443856', '#2a2236'],
+  hart: ['#d8b07c', '#a4764c', '#6e4c30', '#46301e'],
+  hartDk: ['#a4764c', '#76522f', '#523820', '#342416'],
+  rootglass: ['#f0fff8', '#9af0d0', '#4cb898', '#2a7a64'],
+  temple: ['#c4cab4', '#8e9682', '#666e5c', '#444a3c'],
+  templeDk: ['#8e9682', '#666e5c', '#4a5042', '#30342a'],
 } satisfies Record<string, Ramp>;
+/** The rootglass glow (the Verdant Wilds' element): a mint-white core, a green-blue body. */
+const ROOTGLOW: Ramp = ['#eafff6', '#7affd0', '#2fb38a', '#17604e'];
 
 /** The walk: a leg's swing (forward, under, back, under), and the body's rise as a foot passes. */
 const STEP = [2, 0, -2, 0] as const;
@@ -809,6 +827,169 @@ function paintSovereign(c: CanvasRenderingContext2D, f: number): void {
   dot(c, 34, 8 + b, BLOOD[1]); dot(c, 28, 8 + b, EMBER[1]); dot(c, 40, 8 + b, EMBER[1]);
 }
 
+// ── The Verdant Wilds (maps/verdant-wilds.ts, maps/overgrown-temple.ts) ──────────────────────────────────────────────
+
+/** The Canopy Bat: a dusky bat on wings like broad jungle leaves, rootglass eyes; it roosts in the giant trees' crowns. */
+function paintCanopyBat(c: CanvasRenderingContext2D, f: number): void {
+  const b = [1, 0, -1, 0][f], tip = [4, 9, 14, 9][f];
+  // The far wing: a leaf, veined, in shadow.
+  poly(c, [[12, 11 + b], [7, tip], [1, tip + 2], [3, tip + 6], [8, 15 + b], [12, 15 + b]], R.vineDk);
+  line(c, [11, 12 + b], [4, tip + 3], R.vineDk[3]);
+  // Body and a pale belly; claws tucked.
+  limb(c, [12, 17 + b], [12, 20 + b], 1, R.bat); limb(c, [16, 17 + b], [16, 20 + b], 1, R.bat);
+  dot(c, 11, 21 + b, R.bone[2]); dot(c, 17, 21 + b, R.bone[2]);
+  orb(c, 14, 13 + b, 4.5, 5, R.bat);
+  orb(c, 14.5, 14.5 + b, 2.2, 2.8, [R.bat[0], R.bat[0], R.bat[1], R.bat[2]]);
+  // The near wing, its veins and a lit edge.
+  poly(c, [[16, 11 + b], [21, tip], [27, tip + 2], [25, tip + 6], [20, 15 + b], [16, 15 + b]], R.vine);
+  line(c, [17, 12 + b], [24, tip + 2], R.vine[3]); line(c, [20, 13 + b], [22, tip + 5], R.vine[2]);
+  dot(c, 22, tip + 1, R.vine[0]); dot(c, 25, tip + 3, R.vine[0]);
+  // Head: tall ears, rootglass eyes, two small fangs.
+  poly(c, [[10, 9 + b], [9, 2 + b], [13, 7 + b]], R.bat); poly(c, [[15, 7 + b], [19, 2 + b], [18, 9 + b]], R.bat);
+  dot(c, 10, 5 + b, R.petal[2]); dot(c, 18, 5 + b, R.petal[2]);
+  orb(c, 14, 9 + b, 4, 3.4, R.bat);
+  glow(c, 12, 8 + b, 1, ROOTGLOW); glow(c, 15, 8 + b, 1, ROOTGLOW);
+  dot(c, 13, 11 + b, R.bone[0]); dot(c, 15, 11 + b, R.bone[0]);
+}
+
+/** The Moss Stalker: a jungle cat whose pelt is moss over bark, rootglass shards at its shoulders, eyes of the same light. */
+function paintMossStalker(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], sway = [0, 1, 0, -1][f];
+  // The tail: long and low, a curl of fern at its tip.
+  limb(c, [8, 11 + b], [4, 9 + sway], 2, R.stalker); limb(c, [4, 9 + sway], [2, 5 + sway], 1, R.stalker);
+  poly(c, [[1, 5 + sway], [2, 1 + sway], [4, 5 + sway]], R.vine);
+  legs4(c, f, 10, 22, 15 + b, 23, 2, R.mossDk, R.stalker, R.bone[2]);
+  orb(c, 16, 12.5 + b, 8.5, 4.2, R.stalker);
+  px(c, 10, 16 + b, 12, 1, R.stalker[2]);
+  // Rosettes, the moss down its spine, the shards.
+  for (const x of [12, 15, 18]) { dot(c, x, 12 + b, R.stalker[3]); dot(c, x + 1, 13 + b, R.stalker[3]); }
+  for (let i = 0; i < 6; i++) dot(c, 10 + i * 2.2, 9 + b - (i % 2), R.moss[i % 2 ? 0 : 1]);
+  poly(c, [[19, 9 + b], [20.5, 3 + b], [22, 9 + b]], R.rootglass);
+  poly(c, [[16, 9 + b], [17, 5 + b], [18.5, 9 + b]], R.rootglass);
+  dot(c, 20, 5 + b, ROOTGLOW[0]);
+  // Head: flat and feline, ears laid back, a long jaw.
+  poly(c, [[24, 8 + b], [24, 4 + b], [26.5, 7 + b]], R.stalker); poly(c, [[28, 7 + b], [30, 4 + b], [30, 8 + b]], R.mossDk);
+  orb(c, 27, 11 + b, 4.6, 4, R.stalker);
+  poly(c, [[28, 11 + b], [33, 12 + b], [32.5, 15 + b], [28, 15 + b]], R.stalker);
+  dot(c, 32, 12 + b, OUT); line(c, [29, 14 + b], [32, 14 + b], R.stalker[3]);
+  dot(c, 30, 15 + b, R.bone[0]);
+  glow(c, 28, 10 + b, 1, ROOTGLOW);
+}
+
+/** The Vine Lasher: a carnivorous bloom walking on its roots, a petalled maw on a stalk, two thorned whips. */
+function paintVineLasher(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], s = STEP[f] / 2, whip = [0, 2, 4, 2][f];
+  // Root feet: a tangle that shuffles.
+  for (const [x, l, r] of [[9, liftB(f), R.bark], [13, liftA(f), R.bark], [18, liftB(f), R.bark], [22, liftA(f), R.bark]] as const) {
+    limb(c, [x + 1, 28], [x - 1 + (l ? s : -s), 34 - l / 2], 2, r);
+  }
+  // The far whip, thorned.
+  limb(c, [11, 21 + b], [5, 15 - whip / 2], 2, R.vineDk); limb(c, [5, 15 - whip / 2], [2, 21 - whip], 1, R.vineDk);
+  dot(c, 6, 14 - whip / 2, R.thorn[0]); dot(c, 3, 18 - whip, R.thorn[0]);
+  // The bulb: a swollen pod, leaves round its foot.
+  poly(c, [[6, 30], [11, 25 + b], [9, 31]], R.vineDk); poly(c, [[24, 31], [20, 25 + b], [26, 29]], R.vine);
+  orb(c, 15.5, 24.5 + b, 7.5, 6, R.vine);
+  line(c, [11, 22 + b], [13, 28 + b], R.vine[2]); line(c, [19, 21 + b], [18, 28 + b], R.vine[2]);
+  dot(c, 12, 21 + b, R.vine[0]); dot(c, 14, 20 + b, R.vine[0]);
+  // The stalk, and the bloom: five petals round a maw.
+  limb(c, [16, 19 + b], [18, 12 + b], 3, R.vine);
+  const hx = 19, hy = 9 + b + (f % 2);
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * Math.PI * 2 / 5 + f * .05;
+    orb(c, hx + Math.cos(a) * 4.5, hy + Math.sin(a) * 3.8, 2.8, 2.4, R.petal);
+  }
+  orb(c, hx, hy, 3.2, 2.8, R.void);
+  for (const [dx, dy] of [[-2, -1], [0, -2], [2, -1], [-1, 2], [1, 2]] as const) dot(c, hx + dx, hy + dy, R.bone[0]);
+  glow(c, hx, hy, 1, ROOTGLOW);
+  // The near whip, raised to strike.
+  limb(c, [20, 21 + b], [26, 16 - whip], 2, R.vine); limb(c, [26, 16 - whip], [28, 22 - whip * 1.5], 1, R.vine);
+  dot(c, 25, 15 - whip, R.thorn[0]); dot(c, 27, 19 - whip, R.thorn[0]); dot(c, 28, 22 - whip * 1.5, R.thorn[1]);
+}
+
+/** The Rootglass Hart: the old stags of the canopy, grown huge, a moss mantle on the back, antlers of living rootglass. */
+function paintRootglassHart(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], wag = [0, 1, 0, -1][f];
+  poly(c, [[8, 17 + b], [4, 15 + wag], [6, 19 + b]], R.hart);
+  legs4(c, f, 10, 25, 21 + b, 36, 2, R.hartDk, R.hart, R.bark[3]);
+  orb(c, 17.5, 18 + b, 10, 5.5, R.hart);
+  px(c, 10, 22 + b, 15, 1, R.hart[2]);
+  // Dappling, and the moss mantle over the shoulders.
+  for (const [x, y] of [[12, 17], [15, 19], [19, 17], [22, 19], [13, 20]] as const) dot(c, x, y + b, R.hart[0]);
+  orb(c, 18, 13.5 + b, 8, 2.2, R.moss);
+  for (let i = 0; i < 4; i++) dot(c, 12 + i * 4, 15 + b + (i % 2), R.moss[2]);
+  // Neck and head, held high.
+  poly(c, [[24, 16 + b], [27, 9 + b], [31, 10 + b], [30, 18 + b]], R.hart);
+  poly(c, [[28, 8 + b], [26, 5 + b], [30, 7 + b]], R.hartDk);
+  orb(c, 31, 10 + b, 3.6, 3.2, R.hart);
+  poly(c, [[32, 9 + b], [37.5, 11 + b], [37.5, 13 + b], [32, 13 + b]], R.hart);
+  dot(c, 37, 11 + b, OUT); dot(c, 33, 13 + b, R.hart[3]);
+  glow(c, 31, 9 + b, 1, ROOTGLOW);
+  // Antlers of rootglass: the far one darker, both branching, every tip alight.
+  limb(c, [32, 8 + b], [35, 3 + b], 1, R.rootglass); limb(c, [34, 5 + b], [37, 4 + b], 1, R.rootglass); limb(c, [35, 3 + b], [36, 1 + b], 1, R.rootglass);
+  limb(c, [30, 8 + b], [27, 3 + b], 1, R.rootglass); limb(c, [28, 5 + b], [25, 4 + b], 1, R.rootglass); limb(c, [27, 3 + b], [28, 1 + b], 1, R.rootglass);
+  dot(c, 36, 1 + b, ROOTGLOW[0]); dot(c, 28, 1 + b, ROOTGLOW[0]); dot(c, 25, 4 + b, ROOTGLOW[1]); dot(c, 37, 4 + b, ROOTGLOW[1]);
+}
+
+/** The Thorn Weaver: a spider of bark and thorn, a rootglass sigil on its back; it spits thorns from its web. */
+function paintThornWeaver(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f];
+  const legs = (r: Ramp, dx: number, near: boolean) => {
+    for (let i = 0; i < 4; i++) {
+      // Hips along the thorax; each leg arcs up to a high knee and out to a foot far from the body, a thorn at the knee.
+      const hx = 18 + i * 2 + dx, sw = ((i + (near ? 1 : 0)) % 2 ? 1 : -1) * STEP[f] / 2, lift = (i + (near ? 1 : 0)) % 2 ? liftA(f) : liftB(f);
+      const kx = hx + (i - 1.5) * 5 + sw / 2, ky = 3 + b + (near ? 2 : 0) + Math.abs(i - 1.5), fx = hx + (i - 1.5) * 10.5 + sw;
+      limb(c, [hx, 13 + b], [kx, ky], near ? 2 : 1, r); limb(c, [kx, ky], [fx, 25 - lift], 1, r);
+      dot(c, kx, ky - 1, R.thorn[0]); dot(c, fx, 25 - lift, r[3]);
+    }
+  };
+  legs(R.thornDk, 1, false);
+  // The abdomen, spinnerets and a thread back to the web.
+  line(c, [2, 14 + b], [0, 20], R.bone[1]);
+  orb(c, 9, 13 + b, 7.5, 6.5, R.bark);
+  for (const [x, y] of [[5, 9], [9, 7], [13, 9], [6, 16]] as const) { dot(c, x, y + b, R.thorn[0]); dot(c, x, y + b - 1, R.thorn[1]); }
+  line(c, [6, 12 + b], [12, 12 + b], ROOTGLOW[2]); line(c, [9, 9 + b], [9, 16 + b], ROOTGLOW[2]); glow(c, 9, 12 + b, 1, ROOTGLOW);
+  // Thorax and head, a cluster of rootglass eyes, fangs.
+  orb(c, 20, 13 + b, 5, 4, R.thorn);
+  orb(c, 26, 13.5 + b, 3.6, 3, R.thorn);
+  glow(c, 26, 11 + b, 1, ROOTGLOW); glow(c, 28, 12 + b, 1, ROOTGLOW); dot(c, 27, 10 + b, ROOTGLOW[1]);
+  limb(c, [28, 15 + b], [30, 18 + b], 1, R.bone); limb(c, [26, 16 + b], [27, 19 + b], 1, R.bone);
+  legs(R.thorn, 0, true);
+}
+
+/** The temple's guardian: a carved stone giant the Root grew through, a rootglass heart, a crown of roots. */
+function guardian(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], s = STEP[f] / 2;
+  // Legs: stone pillars bound in roots.
+  poly(c, [[11, 32], [17, 32], [17 - s, 44 - liftB(f) / 2], [10 - s, 44 - liftB(f) / 2]], R.templeDk);
+  poly(c, [[21, 32], [27, 32], [28 + s, 44 - liftA(f) / 2], [21 + s, 44 - liftA(f) / 2]], R.temple);
+  line(c, [21 + s, 35], [27 + s, 39], R.bark[1]); line(c, [22 + s, 40], [27 + s, 37], R.bark[2]);
+  // The far arm.
+  limb(c, [8, 16 + b], [5 - s, 29 + b], 5, R.templeDk); orb(c, 5 - s, 31 + b, 3.5, 3, R.templeDk);
+  // The torso: a carved block, its bands, the heart in a cracked socket.
+  poly(c, [[7, 13 + b], [31, 13 + b], [28, 33 + b], [10, 33 + b]], R.temple);
+  line(c, [9, 18 + b], [29, 18 + b], R.temple[2]); line(c, [11, 29 + b], [27, 29 + b], R.temple[2]);
+  for (let i = 0; i < 4; i++) dot(c, 12 + i * 5, 16 + b, R.temple[3]);
+  orb(c, 19, 23.5 + b, 4.6, 4, R.void);
+  orb(c, 19, 23.5 + b, 3 + (f % 2) * .4, 2.8, ROOTGLOW);
+  glow(c, 18, 22 + b, 2, ROOTGLOW);
+  line(c, [15, 26 + b], [11, 32 + b], R.bark[1]); line(c, [23, 21 + b], [27, 15 + b], R.bark[1]); line(c, [22, 26 + b], [25, 32 + b], R.bark[2]);
+  // Shoulders under moss; a sapling grows from the near one.
+  orb(c, 8, 14 + b, 5, 4, R.temple); orb(c, 30, 14 + b, 5, 4, R.temple);
+  orb(c, 8, 11.5 + b, 5, 1.8, R.moss); orb(c, 30, 11.5 + b, 5, 1.8, R.moss);
+  limb(c, [32, 11 + b], [34, 4 + b], 1, R.bark); orb(c, 34, 3 + b, 3, 2.4, R.vine); orb(c, 31.5, 5 + b, 2, 1.6, R.vine);
+  // The head: a carved face, rootglass eyes, a crown of roots.
+  poly(c, [[14, 3 + b], [24, 3 + b], [25, 12 + b], [13, 12 + b]], R.temple);
+  px(c, 15, 6 + b, 3, 2, R.void[1]); px(c, 21, 6 + b, 3, 2, R.void[1]);
+  glow(c, 16, 6 + b, 1, ROOTGLOW); glow(c, 22, 6 + b, 1, ROOTGLOW);
+  line(c, [16, 10 + b], [22, 10 + b], R.temple[3]);
+  for (let i = 0; i < 5; i++) limb(c, [14.5 + i * 2.3, 3 + b], [13 + i * 3, -1 + b + (i % 2)], 1, R.bark);
+  // The near arm, vines hanging off it.
+  limb(c, [30, 16 + b], [33 + s, 29 + b], 5, R.temple); orb(c, 33 + s, 31 + b, 4, 3.5, R.temple);
+  line(c, [31, 19 + b], [31, 27 + b], R.vine[1]); dot(c, 31, 28 + b, R.vine[0]);
+}
+/** The Mossbound Colossus, the Overgrown Temple's keeper: the guardian grown huge, the Root's own heart set in its chest. */
+function paintColossus(c: CanvasRenderingContext2D, f: number): void { grown(1.6, 2, 3, () => guardian(c, f)); }
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10,
@@ -928,6 +1109,40 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     // At half its life it calls the hounds of the deep to its side.
     summon: { type: 'lava-hound', count: 2, at: .5 },
   },
+  // The Verdant Wilds (levels 15–40): the Greenwood, the Deep Wilds, the Sunken Courts and the Overgrown Temple.
+  'canopy-bat': {
+    id: 'canopy-bat', name: 'Canopy Bat', hp: 170, speed: 54, dmg: [8, 13], rate: 1, sight: 140, level: 15,
+    lore: 'It sleeps folded into the giant trees like a dead leaf, and wakes all at once when a lantern passes underneath.',
+    coins: [24, 54], drops: [{ material: 'verdant-sap', qty: 1, chance: .35 }], paint: paintCanopyBat, w: 28, h: 24,
+  },
+  'moss-stalker': {
+    id: 'moss-stalker', name: 'Moss Stalker', hp: 260, speed: 48, dmg: [12, 19], rate: 1.1, sight: 140, level: 17,
+    lore: 'You will not see it in the moss. You will see the moss move, once, and that is the last thing the moss does quietly.',
+    coins: [30, 66], drops: [{ material: 'thornroot', qty: 1, chance: .6 }, { material: 'world-root-bark', qty: 1, chance: .15 }], paint: paintMossStalker, w: 34, h: 24,
+  },
+  'vine-lasher': {
+    id: 'vine-lasher', name: 'Vine Lasher', hp: 340, speed: 22, dmg: [15, 23], rate: 1.3, sight: 110, level: 21,
+    lore: 'A bloom that learned to walk so it could go where the food was. It still sings to the bees, and the bees still come.',
+    coins: [34, 74], drops: [{ material: 'thornroot', qty: 2, chance: .8 }, { material: 'verdant-sap', qty: 1, chance: .5 }], paint: paintVineLasher, w: 30, h: 36,
+  },
+  'rootglass-hart': {
+    id: 'rootglass-hart', name: 'Rootglass Hart', hp: 460, speed: 44, dmg: [18, 27], rate: 1.4, sight: 150, level: 24,
+    lore: 'The Rootglass Stags that live long enough stop being shy. Their antlers ring like glass when they lower their heads.',
+    coins: [40, 88], drops: [{ material: 'world-root-bark', qty: 1, chance: .5 }, { material: 'verdant-sap', qty: 2, chance: .6 }], paint: paintRootglassHart, w: 40, h: 38,
+  },
+  'thorn-weaver': {
+    id: 'thorn-weaver', name: 'Thorn Weaver', hp: 380, speed: 30, dmg: [14, 21], rate: 1.5, sight: 150, level: 28,
+    lore: 'It weaves its web from thornroot and spits what it does not need. The Sunken Courts are hung with its work like old banners.',
+    coins: [46, 96], drops: [{ material: 'thornroot', qty: 2, chance: 1 }, { material: 'world-root-bark', qty: 1, chance: .25 }], paint: paintThornWeaver, w: 44, h: 27,
+    ranged: { range: 104, keep: 70, rate: 2, dmg: [16, 24], speed: 130, kind: 'arrow' },
+  },
+  'mossbound-colossus': {
+    id: 'mossbound-colossus', name: 'The Mossbound Colossus', hp: 3600, speed: 20, dmg: [28, 42], rate: 1.8, sight: 170, level: 34,
+    lore: 'The temple set it to keep the shrine; the Root grew in and kept the guardian. Its heart is rootglass now, and it beats slow.',
+    coins: [1000, 1700], drops: [{ material: 'world-root-bark', qty: 3, chance: 1 }, { material: 'verdant-sap', qty: 4, chance: 1 }, { material: 'thornroot', qty: 4, chance: 1 }], paint: paintColossus, w: 64, h: 76, rank: 'boss',
+    // At half its life it calls the temple's lashers up through the stones.
+    summon: { type: 'vine-lasher', count: 2, at: .5 },
+  },
 };
 
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
@@ -942,6 +1157,7 @@ export const MOB_FRAMES = 4;
 /** A boss's rim, in its element's colour (docs/design/effects-spec.md): fire for the forge-born, violet bone-light for the dragon. */
 const RIM: Readonly<Record<string, string>> = {
   'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
+  'mossbound-colossus': '#7affd0',
 };
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 /**

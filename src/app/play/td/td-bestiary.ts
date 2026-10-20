@@ -12,7 +12,7 @@ export const BESTIARY_KEY = 'eclipse-bestiary-v1';
 export interface BestiaryBlob { version: 1; kills: Record<string, number> }
 
 /** Continent display names (the defs carry the town's name, not the land's). */
-const CONTINENT_NAMES: Readonly<Record<string, string>> = { 'ember-isle': 'Ember Isle', 'infernal-reach': 'Infernal Reach' };
+const CONTINENT_NAMES: Readonly<Record<string, string>> = { 'ember-isle': 'Ember Isle', 'infernal-reach': 'Infernal Reach', 'verdant-wilds': 'The Verdant Wilds' };
 const continentName = (id: string): string => CONTINENT_NAMES[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export interface BestiaryDrop { name: string; qty: number; chance: number }
@@ -43,7 +43,7 @@ export function creatureHaunts(): Map<string, string[]> {
     const land = continentName(c.id);
     for (const [region, table] of Object.entries(c.mobs)) {
       if (!table) continue;
-      const name = c.names[region as keyof typeof c.names];
+      const name = c.names[region as keyof typeof c.names] ?? c.townName;
       for (const id of table.types) add(id, `${name}, ${land}`);
     }
     // A graveyard's own dead are Bone Walkers (td-world.ts).

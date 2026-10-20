@@ -73,7 +73,7 @@ export const PLACES: readonly ContinentPlace[] = [
   { kind: 'harbour', c: 28, r: 106, name: 'Ember Harbour' },
 ];
 
-export const REGION_NAMES: Readonly<Record<Region, string>> = {
+export const REGION_NAMES: Readonly<Partial<Record<Region, string>>> = {
   '~': 'The Burning Sea', ',': 'Ember Coast', '.': 'Cinder Meadows', f: 'The Emberwood', F: 'The Deep Emberwood',
   h: 'Slagstone Hills', m: 'Slagstone Hills', v: 'The Ashfields', l: 'Ashwater Lake', T: 'Basalt Seamworks',
 };
