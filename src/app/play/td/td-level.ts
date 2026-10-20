@@ -90,8 +90,8 @@ export class HandLevel implements TdLevel {
   private readonly grid: Ground[] = [];
   private readonly blocked = new Set<number>();
   private readonly spawns: MobSpawn[] = [];
-  private readonly cols: number;
-  private readonly rows: number;
+  readonly cols: number;
+  readonly rows: number;
 
   constructor(private readonly def: TdMapDef) {
     this.id = def.id; this.dark = def.dark;

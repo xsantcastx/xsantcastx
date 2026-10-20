@@ -259,7 +259,40 @@
     </div>
   }
 
-  @if (placesOpen) {
+  @if (placesOpen && tdMapView; as mv) {
+    <!-- The Map (owner 2026-10-20: "take that Places UI out, create the map and pin point the stuff"): the floor or the
+         continent you stand on, painted from its own ground, a pin per place (tap it to go), your mark, and a small key. -->
+    <nav id="places-list" class="places win td-map" [attr.aria-label]="t('play.map.title', { area: state.area || town.name })" data-engine-ignore (keydown.escape)="placesOpen = false">
+      <header class="win-head">
+        <h2>{{ t('play.map.title', { area: state.area || town.name }) }}</h2>
+        <button type="button" class="win-x places-close" (click)="placesOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
+      </header>
+      <div class="td-map__body">
+        <div class="td-map__view" [style.aspect-ratio]="mv.aspect">
+          <img [src]="mv.url" alt="" draggable="false">
+          @for (pin of mv.pins; track pin.id) {
+            <button type="button" class="td-map__pin" tabindex="-1" aria-hidden="true" [attr.data-kind]="pin.kind" [style.left.%]="pin.u * 100" [style.top.%]="pin.v * 100" [title]="pinName(pin)" (click)="goPin(pin)"><i></i></button>
+          }
+          <i class="td-map__me" aria-hidden="true" [style.left.%]="mv.me.u * 100" [style.top.%]="mv.me.v * 100" [title]="t('play.map.you')"></i>
+        </div>
+        <aside class="td-map__key">
+          <p class="td-map__hint">{{ t('play.map.hint') }}</p>
+          <ul>
+            @for (pin of mv.pins; track pin.id) {
+              <li><button type="button" [attr.data-kind]="pin.kind" (click)="goPin(pin)" [title]="pin.blurb"><i aria-hidden="true"></i><span>{{ pinName(pin) }}</span></button></li>
+            }
+          </ul>
+        </aside>
+      </div>
+      <footer class="td-map__menu">
+        <button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()">{{ t('look.places') }}</button>
+        <button type="button" data-open="character" (click)="placesOpen = false; openCharacter()">{{ t('play.hud.character') }}</button>
+        <button type="button" data-open="sound" (click)="openSound()">{{ t('play.sound.menu') }}</button>
+        <button type="button" data-open="loot" (click)="openLoot()">{{ t('loot.menu') }}</button>
+        <button type="button" data-open="account" (click)="placesOpen = false; openAccount()">{{ t('account.menu') }}</button>
+      </footer>
+    </nav>
+  } @else if (placesOpen) {
     <nav id="places-list" class="places win" [attr.aria-label]="t('play.hud.placesIn', { area: state.area || town.name })" data-engine-ignore appSheetDrag (sheetDismiss)="placesOpen = false">
       <header class="win-head">
         <h2>{{ t('play.hud.places.title') }}</h2>

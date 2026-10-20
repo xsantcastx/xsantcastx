@@ -33,7 +33,7 @@ import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3 } from './maps/molten-deep'
 import { ASHEN_CRYPT_1, ASHEN_CRYPT_2 } from './maps/ashen-crypt';
 import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
 import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
-import { EMBER_ISLE_DEF } from './maps/ember-isle';
+import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
 import type { ContinentDef } from './continent';
 import type { TdMapDef } from './td-level';
@@ -59,6 +59,13 @@ import type { ItemStats } from '../../shared/rpg/item.model';
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen'];
 
+/** The Map window's ground colours (one pixel per tile, or per two on a continent). */
+const MAP_COL: Partial<Record<Ground, string>> = {
+  grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0],
+  water: PAL.water[0], ember: PAL.ember[0], cave: '#6a564c', rock: '#1d1720', wall: '#3a2a24', rug: '#8f3524',
+};
+/** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
+export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall'; u: number; v: number }
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
@@ -353,6 +360,50 @@ export class TopDownEngine {
   hasDelveCamp(): boolean { return false; }
   readRiftMap(): boolean { return false; }
   get places(): readonly StationDef[] { return this.level.stalls.map(s => s.station); }
+  private readonly mapImages = new Map<string, { url: string; x0: number; y0: number; w: number; h: number }>();
+  /**
+   * The Map window (owner 2026-10-20: "take that Places UI out, create the map and pin point the stuff"): the level the
+   * Keeper is on — a hand-drawn floor whole, or the continent's whole region map — painted once from its own ground,
+   * with a pin per place to go and the Keeper's mark. Positions are 0..1 across and down the picture.
+   */
+  mapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
+    if (typeof document === 'undefined') return null;
+    const lv = this.level, onWorld = lv === this.world;
+    const key = onWorld ? `world:${this.world.continent}` : lv.id;
+    let m = this.mapImages.get(key);
+    if (!m) {
+      const d = this.world.def, step = onWorld ? 2 : 1;
+      const box = onWorld
+        ? { x0: -d.ox * BLOCK, y0: -d.oy * BLOCK, w: d.map[0].length * BLOCK, h: d.map.length * BLOCK }
+        : { x0: 0, y0: 0, w: (lv as HandLevel).cols, h: (lv as HandLevel).rows };
+      const cv = document.createElement('canvas');
+      cv.width = Math.ceil(box.w / step); cv.height = Math.ceil(box.h / step);
+      const c = cv.getContext('2d')!;
+      for (let r = 0; r < cv.height; r++) for (let q = 0; q < cv.width; q++) {
+        c.fillStyle = MAP_COL[lv.ground(box.x0 + q * step, box.y0 + r * step)] ?? PAL.grass[0];
+        c.fillRect(q, r, 1, 1);
+      }
+      // The towns' roofs, so a settlement reads as one.
+      if (onWorld) for (const o of this.world.settlementObjects) {
+        if (o.kind !== 'building' || !o.block) continue;
+        c.fillStyle = PAL.roofRed[2];
+        c.fillRect(Math.round((o.x / TILE - box.x0 - o.block.w / 2) / step), Math.round((o.y / TILE - box.y0 - o.block.h) / step), Math.max(1, Math.round(o.block.w / step)), Math.max(1, Math.round(o.block.h / step)));
+      }
+      m = { url: cv.toDataURL(), ...box };
+      this.mapImages.set(key, m);
+    }
+    const mm = m;
+    const u = (x: number) => (x / TILE - mm.x0) / mm.w, v = (y: number) => (y / TILE - mm.y0) / mm.h;
+    const seen = new Set<string>(), pins: TdMapPin[] = [];
+    for (const st of lv.stalls) {
+      if (seen.has(st.station.id)) continue;
+      seen.add(st.station.id);
+      const id = st.station.id;
+      const kind: TdMapPin['kind'] = id.startsWith('ship') ? 'ship' : st.station.kind === 'passage' ? 'way' : 'stall';
+      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: u(st.x), v: v(st.y) });
+    }
+    return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
+  }
   /** Where the Keeper stands — continent, level (or 'surface'), position — so the HUD can save it and a reload resumes there. */
   get whereabouts(): { continent: string; level: string; x: number; y: number } {
     return { continent: this.world.continent, level: this.level === this.world ? 'surface' : this.level.id, x: Math.round(this.player.x), y: Math.round(this.player.y) };
