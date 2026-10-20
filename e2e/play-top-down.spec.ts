@@ -189,6 +189,30 @@ test('the Ember Inn: in by its door, up its stairs to the rooms, down, and out t
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Pyre Spire in Pyrehold: in by its door and up all three floors to the Lookout, then back down and out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/the pyre spire/i, /watch hall/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/spire-hall.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /study/i);
+  await go(/stairs up/i, /lookout/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/spire-lookout.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /study/i);
+  await go(/stairs down/i, /watch hall/i);
+  await go(/^door/i, /pyrehold/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/spire-outside.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

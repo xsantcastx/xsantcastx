@@ -5,7 +5,7 @@
  */
 import type { StationDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
-import { barrel, bench, brazierFountain, crate, fence, flowerbed, forgeHearth, hearthFire, house, lamp, signpost, stall, tree, waystone, TILE, type Ground, type RoofStyle, type Sprite, type WallStyle } from './td-art';
+import { barrel, bench, brazierFountain, crate, fence, flowerbed, forgeHearth, hearthFire, house, lamp, signpost, stall, tower, tree, waystone, TILE, type Ground, type RoofStyle, type Sprite, type WallStyle } from './td-art';
 import type { TdMap, TdObject, TdStall } from './seamworks-square';
 
 export type PropKind = 'lamp' | 'bench' | 'barrel' | 'crate' | 'flowerbed' | 'fountain' | 'hearth' | 'forge' | 'signpost' | 'fence' | 'oak' | 'pine' | 'waystone';
@@ -18,6 +18,8 @@ export interface TownSpec {
   /** Stalls: the station (a town StationDef id, or one of its own), its counter's place and look. */
   stalls: readonly { station: string | StationDef; c: number; r: number; w: number; palette: number; goods: 'pots' | 'bread' | 'gems' | 'tools' | 'books' | 'fish' }[];
   props: readonly { kind: PropKind; c: number; r: number }[];
+  /** Towers of three floors; one with a door opens onto its hand-drawn ground floor (td-engine DOORS). */
+  towers?: readonly { c: number; r: number; door?: StationDef }[];
   spawn: { c: number; r: number };
 }
 
@@ -42,6 +44,10 @@ export function buildTown(spec: TownSpec): TdMap {
     const x = tx(s.c), y = ty(s.r), seed = s.c * 7 + s.r;
     objects.push({ sprite: () => stall(s.w, s.palette, s.goods, seed), x, y, block: { w: s.w, h: 1 }, kind: 'stall' });
     stalls.push({ station: st, x, y: y + 6 });
+  }
+  for (const t of spec.towers ?? []) {
+    objects.push({ sprite: tower, x: tx(t.c), y: ty(t.r), block: { w: 3, h: 2 }, kind: 'building' });
+    if (t.door) stalls.push({ station: t.door, x: tx(t.c), y: ty(t.r) + 6 });
   }
   for (const p of spec.props) { const d = PROP[p.kind]; objects.push({ sprite: d.sprite, x: tx(p.c), y: ty(p.r), ...(d.block ? { block: d.block } : {}), kind: d.kind ?? 'prop' }); }
   const walkable = new Uint8Array(cols * rows).fill(1);

@@ -792,3 +792,48 @@ export function counter(): Sprite {
     return { img: outline(img), ax: 32, ay: 22 };
   });
 }
+
+/** A round basalt tower of three floors: arched windows lit on each, a door at its foot, a slate cone and an ember finial. */
+export function tower(): Sprite {
+  return cached('tower', () => {
+    const W = 48, cone = 30, storey = 24, wallH = storey * 3, H = cone + wallH;
+    const img = cv(W, H);
+    const c = img.getContext('2d')!;
+    // The drum: basalt courses, shaded at both sides so it reads round.
+    rect(c, 2, cone, W - 4, wallH, PAL.basalt[0]);
+    for (let y = 0; y < wallH; y += 4) for (let x = (y / 4) % 2 ? 2 : 6; x < W - 4; x += 8) {
+      rect(c, x, cone + y, 7, 3, pick(PAL.basalt, hash(x, y, 77)));
+      rect(c, x, cone + y, 7, 1, PAL.basalt[3]);
+    }
+    rect(c, 2, cone, 5, wallH, 'rgba(0,0,0,.22)'); rect(c, W - 7, cone, 5, wallH, 'rgba(0,0,0,.28)');
+    // A ledge at each floor.
+    const lights: { x: number; y: number; r: number; warm?: boolean }[] = [];
+    for (let f = 0; f < 3; f++) {
+      const fy = cone + f * storey;
+      rect(c, 0, fy, W, 3, PAL.stone[2]); rect(c, 0, fy, W, 1, PAL.stone[3]);
+      if (f < 2) {
+        // Two arched windows, warm.
+        for (const x of [12, 30]) {
+          rect(c, x - 1, fy + 7, 8, 11, PAL.stone[2]);
+          rect(c, x, fy + 9, 6, 9, PAL.window); rect(c, x + 1, fy + 8, 4, 1, PAL.window);
+          rect(c, x + 2, fy + 9, 1, 9, PAL.stone[1]);
+          lights.push({ x: x + 3 - W / 2, y: fy + 13 - H, r: 12, warm: true });
+        }
+      }
+    }
+    // The door at the foot.
+    const dy = cone + storey * 2;
+    rect(c, 17, dy + 5, 14, 19, PAL.stone[2]); rect(c, 18, dy + 7, 12, 17, PAL.wood[0]); rect(c, 19, dy + 6, 10, 1, PAL.wood[0]);
+    rect(c, 23, dy + 7, 1, 17, PAL.wood[2]); rect(c, 27, dy + 15, 1, 2, '#e6c35a');
+    rect(c, 8, dy + 9, 4, 5, PAL.glow); lights.push({ x: 10 - W / 2, y: dy + 11 - H, r: 16, warm: true });
+    // The cone: slate, narrowing course by course, an ember finial on top.
+    for (let y = 0; y < cone - 4; y++) {
+      const half = Math.round(4 + (W / 2) * (y / (cone - 4)));
+      rect(c, W / 2 - half, 4 + y, half * 2, 1, pick(PAL.roofSlate, hash(y, 3, 91)));
+      if (y % 4 === 3) rect(c, W / 2 - half, 4 + y, half * 2, 1, PAL.roofSlate[2]);
+    }
+    rect(c, W / 2 - 1, 0, 2, 6, PAL.wood[2]); rect(c, W / 2 - 2, 0, 4, 3, PAL.ember[2]);
+    lights.push({ x: 0, y: -H + 2, r: 10, warm: true });
+    return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights };
+  });
+}
