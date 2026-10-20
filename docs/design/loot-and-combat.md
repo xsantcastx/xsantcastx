@@ -108,6 +108,18 @@ Gap left open: resist affixes (fire/shadow) — the families' resists exist (§6
 | graft | lightning 50, cold 20, fire −20 | physical | Graftling, Graftmother |
 | prism | arcane 60, lightning 25, physical −10 | lightning | Afterimage Moth, Prismling, Hollow Sun (fire) |
 | orrery | cold 40, physical 15, lightning −20 | arcane | Ephemeris Leech, Anchor Warden, Fallen Ephemeris |
+| bone | cold 40, fire −20 | physical | Bone Walker (6), Bone Archer (8, ranged), Ash Ghoul (9), Cinder Wraith (12, cold), the Ashbone Dragon (25, boss, fire) |
+| orc | fire 20, cold −10 | physical | Cinder-clan Orc (10), Orc Firecaller (13, ranged fire), Orc Warlord (16, champion) |
+
+The top-down world's new creatures (2026-10-20, `play/td/td-mobs.ts`; owner: "lots of scary monsters like skeletons,
+dragons, orcs, undead stuff"): the **bone** family is the Ashen Bastion's dead garrison (the Ashen Crypt under its
+ruins in Infernal Reach, a few Bone Walkers in the Hushed Barrow on Ember Isle); the **orc** family is the Cinder clans
+of the Deep Charwood and the Obsidian Badlands; the **Ember Drake** (ember family, 18) hunts the Molten Fields. Ranged
+creatures (Bone Archer, Orc Firecaller, Ember Drake, the dragon's breath) loose a shot that flies straight at where the
+Keeper stood, so a step aside dodges it; archers and firecallers back off to keep their distance. The Cinder Wraith
+drifts over lava and flickers half-seen. The Ashbone Dragon breathes a fan of three fire shots and, once, at half its
+life, calls two Bone Walkers to its side. Drops are the realm's materials (cinder ore, ember residue, infernal
+heartstone, world-root bark) and Gold; the dragon's `boss` rank rolls the boss gear.
 
 Roles: melee, ranged, healer, shielder, summoner, exploder (each profile names one). **Only melee has its own engine
 behaviour today**; the others are data for the living-world agent and the next combat pass (gap §12).
@@ -205,6 +217,16 @@ income — gear is for wearing, not a Gold farm.
 Bosses are the guardians with mechanics (Drowned Lamp, Banked Furnace, Graftmother, Gloam Warden, Hollow Sun, Fallen
 Ephemeris); their profile marks them `boss`: never a pack, always 3 rolls with a 2-step shift, the gate boss opens the
 next tier. Spells today: the swing (physical), the staff blast (arcane cone, ×1.2), the dodge, and the nine auras.
+
+The top-down Warlock's book (`play/td/td-skills.ts`, the Spellbook reads it) adds two spells, not on the default bar
+(keys 1–4 keep Drain Life, Ember Curse, Hellfire Nova, Dark Ward; the Spellbook puts any spell on a key):
+- **Bone Spear** (14 mana, 3 s): a spear of bone flies 8 tiles toward the target and pierces every creature in its
+  line, 22–32 each (× spell power, may crit).
+- **Raise Skeleton** (30 mana, 12 s): raises 2 skeletons from the fresh dead (kills in the last 20 s) within 5 tiles,
+  or from the ground at the Keeper's side; at most 2 stand at once (a new cast replaces the oldest). Life 50 and a
+  7-ish blow, × (1 + 10% / 6% per level above 1) × spell power. They follow the Keeper, fight the nearest creature
+  within 6 tiles that is also within 9 of him, never strike the Keeper, crumble after 40 s or when killed — and
+  creatures turn on them when they stand closer than the Keeper.
 `--combat` prints time-to-kill / time-to-die per creature, tier and Keeper stage (half of the blows dodged).
 
 ## 11. API for the world (stable)

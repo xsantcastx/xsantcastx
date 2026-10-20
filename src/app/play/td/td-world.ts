@@ -8,7 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, boulder, bush, caveMouth, ship, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
+import { beaconPillar, boulder, bush, caveMouth, cryptDoor, gravestone, ship, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
@@ -16,6 +16,9 @@ import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
 
 export const WORLD_CHUNK = 16;
+/** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
+const GRAVES: readonly (readonly [number, number])[] = [[-4, -2], [-2, -2], [2, -2], [4, -2], [-4, 2], [-2, 2], [2, 2], [4, 2], [-5, 0], [5, 0]];
+const GRAVE_WALKERS: readonly (readonly [number, number])[] = [[-3, 0], [3, 0], [0, 3], [0, -2]];
 /** A harbour pier's length in tiles. */
 const PIER = 10;
 /** Clear ground round the stamped town before the wilds begin (tiles). */
@@ -207,6 +210,21 @@ export class TdWorld implements TdLevel {
     return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)];
   }
 
+  /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. */
+  private inClearing(c: number, r: number): boolean {
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
+    return false;
+  }
+  /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
+  private nearWayIn(c: number, r: number): boolean {
+    for (const p of this.def.places) if (p.kind === 'crypt' && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    return false;
+  }
+  private walkableGround(c: number, r: number): boolean {
+    const g = this.ground(c, r);
+    return g !== 'water' && g !== 'ember' && g !== 'rock';
+  }
+
   private key(c: number, r: number): number { return (c + 0x8000) * 0x10000 + (r + 0x8000); }
 
   private chunkAt(cx: number, cy: number): WildChunk {
@@ -225,7 +243,7 @@ export class TdWorld implements TdLevel {
     const put = (o: TdObject, c: number, r: number) => { objects.push(o); if (o.block) blocked.add(this.key(c, r)); };
     for (let r = cy * WORLD_CHUNK; r < (cy + 1) * WORLD_CHUNK; r++) {
       for (let c = cx * WORLD_CHUNK; c < (cx + 1) * WORLD_CHUNK; c++) {
-        if (this.nearTown(c, r)) continue;
+        if (this.nearTown(c, r) || this.inClearing(c, r)) continue;
         const g = this.ground(c, r);
         if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave') continue;
         // A clear lane beside the roads.
@@ -265,6 +283,25 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'cave') { stamp(0, 0, caveMouth); }
       else if (p.kind === 'caldera') { stamp(-3, 0, () => standingStone(2)); stamp(3, 0, () => standingStone(0)); }
       else if (p.kind === 'harbour') { stamp(3, PIER - 2, ship, false); stamp(-2, 1, () => standingStone(1)); }
+      else if (p.kind === 'crypt') {
+        // The mausoleum front is wider than its tile: the tiles either side are its walls.
+        stamp(0, 0, cryptDoor);
+        for (const dc of [-1, 1]) { const c = p.c + dc; if (c >= x0 && c < x0 + WORLD_CHUNK && p.r >= y0 && p.r < y0 + WORLD_CHUNK) blocked.add(this.key(c, p.r)); }
+      }
+      else if (p.kind === 'graveyard') {
+        // Rows of graves round a bare plot; the dead walk between them (GRAVES below).
+        GRAVES.forEach(([dc, dr], i) => stamp(dc, dr, () => gravestone(i)));
+        stamp(0, -4, () => standingStone(2));
+      }
+    }
+    // The graveyards' own dead: a few Bone Walkers between the graves, back again after each falls.
+    for (const p of this.def.places) {
+      if (p.kind !== 'graveyard') continue;
+      for (const [dc, dr] of GRAVE_WALKERS) {
+        const c = p.c + dc, r = p.r + dr;
+        if (c < x0 || c >= x0 + WORLD_CHUNK || r < y0 || r >= y0 + WORLD_CHUNK || !this.walkableGround(c, r)) continue;
+        spawns.push({ key: `g:${c},${r}`, type: 'bone-walker', x: c * TILE + TILE / 2, y: r * TILE + TILE });
+      }
     }
     // Who lives here: packs by region (never near the square, never on a road).
     const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
@@ -275,7 +312,7 @@ export class TdWorld implements TdLevel {
       for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
         const c = cx * WORLD_CHUNK + Math.floor(hash(cx * 31 + tries, cy, 79) * WORLD_CHUNK), r = cy * WORLD_CHUNK + Math.floor(hash(cx, cy * 31 + tries, 80) * WORLD_CHUNK);
         const g = this.ground(c, r);
-        if (g === 'water' || g === 'ember' || g === 'rock' || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r))) continue;
+        if (g === 'water' || g === 'ember' || g === 'rock' || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || this.nearWayIn(c, r)) continue;
         spawns.push({ key: `w:${c},${r}`, type: table.types[Math.floor(hash(c, r, 81) * table.types.length)], x: c * TILE + TILE / 2, y: r * TILE + TILE });
         i++;
       }

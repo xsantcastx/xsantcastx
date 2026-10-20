@@ -12,7 +12,7 @@ and dungeons that go down floor by floor. Ships link the harbours (a ship is a s
 | Where | What it is | Towns | Levels | Dungeons (floors) |
 |---|---|---|---|---|
 | **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–8 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
-| **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport, Ashgrove, regions, the Molten Deep −1…−3) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
+| **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport, Ashgrove, regions, the Molten Deep −1…−3, the Ashen Crypt −1…−2) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
 | **Verdant Wilds** | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−4) |
 | **Umbral Marches** | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
 | **Celestial Peaks** | Snow and stone: high passes, observatories, ice caves | **Meridian** (capital, terraced: floors +1…+4), Frostgate, Starhollow | 35–60 | Frostfang Caverns (−1…−5), the Orrery Vault |
@@ -26,12 +26,16 @@ the bottom floor of a dungeon holds its boss.
 
 ## Order of drawing
 1. **Ember Isle** — built: region map, roads, places, the Ember Mine (−1…−3, the Ember Warden), Slagstone Cave, Ember
-   Harbour with the ship to Pyrehold.
+   Harbour with the ship to Pyrehold; the Hushed Barrow, a graveyard below the Sunken Chapel, off every road, where a
+   few Bone Walkers stir between the graves.
 2. **Infernal Reach** — built: Pyrehold (forge district, plaza of stalls, harbour), the Pyre Spire (a watchtower of
    three floors up), the Cinder Steppe, Charwood, Obsidian Badlands, Molten Fields, Pyre Peaks; Lava Hounds and
    Obsidian Golems; the Molten Deep floors −1…−3 (the Scorched Throat, the Glass Halls, the Tyrant's Caldera with the
    Magma Tyrant); Cinderport on the south-east coast (the Salted Ember tavern + cellar) and Ashgrove at the Charwood's
-   edge (the Woodward's Lodge + loft), on roads from Pyrehold. Next: the Molten Deep's lower floors (−4…−6), the Forge
+   edge (the Woodward's Lodge + loft), on roads from Pyrehold. The Ashen Crypt under the Ashen Bastion's ruins (a crypt
+   door at the road's west end): floor −1 the Ossuary (Bone Walkers, Bone Archers, Ash Ghouls, Cinder Wraiths), floor
+   −2 the Bone Hall (the Ashbone Dragon). The Cinder clans' orcs hold the Deep Charwood and the Obsidian Badlands; Ember
+   Drakes hunt the Molten Fields. Next: the Molten Deep's lower floors (−4…−6), the Forge
    of the Four, a ship from Cinderport, and something to do in each town (keepers, quests).
 
 Buildings you walk into so far: the Ember Inn in the Seamworks (tavern + rooms upstairs), the Pyre Spire in
