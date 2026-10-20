@@ -140,6 +140,18 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.secondLearned': { en: '{{name}} learned something new: {{what}}', es: '{{name}} aprendio algo nuevo: {{what}}' },
   'play.pet.dugCoins': { en: '{{name}} dug up {{n}} coins!', es: '{{name}} desenterro {{n}} monedas!' },
   'play.pet.dugTrinket': { en: '{{name}} dug up {{item}}!', es: '{{name}} desenterro {{item}}!' },
+  // ── The top-down pet chip: what it is doing (td-pets.ts TdPetDoing) ──
+  'play.pet.chipAria': { en: '{{name}}: {{doing}}. Open the pets', es: '{{name}}: {{doing}}. Abrir las mascotas' },
+  'play.pet.doing.follow': { en: 'Following', es: 'Te sigue' },
+  'play.pet.doing.sit': { en: 'Sitting', es: 'Sentado' },
+  'play.pet.doing.sleep': { en: 'Napping', es: 'Echando la siesta' },
+  'play.pet.doing.fetch': { en: 'Fetching', es: 'Va a buscarlo' },
+  'play.pet.doing.carry': { en: 'Bringing it back', es: 'Te lo trae' },
+  'play.pet.doing.fight': { en: 'Fighting', es: 'Peleando' },
+  'play.pet.doing.rest': { en: 'Catching its breath', es: 'Recupera el aliento' },
+  'play.pet.doing.stay': { en: 'Staying', es: 'Se queda' },
+  'play.pet.doing.play': { en: 'Playing', es: 'Jugando' },
+  'play.pet.doing.mend': { en: 'Mending you', es: 'Te cura' },
   'play.pet.tired': { en: '{{name}} is tired and rests behind you a moment.', es: '{{name}} esta cansado y descansa detras de ti un momento.' },
   // ── The Codex ──
   'play.pet.codex.title': { en: 'Pets', es: 'Mascotas' },
