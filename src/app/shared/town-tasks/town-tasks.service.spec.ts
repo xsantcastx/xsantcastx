@@ -76,6 +76,11 @@ describe('TownTaskService (the town keepers\' tasks)', () => {
       expect(givers.length).withContext(town).toBeLessThanOrEqual(3);
       expect(TOWN_TASKS.filter(t => givers.some(g => g.id === t.giver) && t.reward.gear).length).withContext(town).toBe(1);
     }
+    // The Verdant Wilds: two givers in Rootglass, one in each village, one gear piece among the four.
+    const verdant = TASK_GIVERS.filter(g => ['rootglass', 'mossharbor', 'thornwick'].includes(g.town));
+    expect(verdant.map(g => g.town).sort()).toEqual(['mossharbor', 'rootglass', 'rootglass', 'thornwick']);
+    expect(TOWN_TASKS.filter(t => verdant.some(g => g.id === t.giver) && t.reward.gear).length).toBe(1);
+    for (const g of verdant) expect(tasksOf(g.id).length).withContext(g.id).toBe(2);
     for (const t of TOWN_TASKS) {
       expect(TASK_GIVERS.some(g => g.id === t.giver)).withContext(t.id).toBeTrue();
       if (t.kind === 'hunt') expect(MOBS[t.target]).withContext(t.id).toBeDefined();

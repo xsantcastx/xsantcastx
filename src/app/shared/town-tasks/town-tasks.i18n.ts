@@ -17,6 +17,10 @@ const ONCE: Record<string, { en: string; es: string }> = {
   'task.giver.netter-pell.who': { en: 'Mends nets on the pier and swears the sea is warmer than it used to be.', es: 'Remienda redes en el muelle y jura que el mar esta mas caliente que antes.' },
   'task.giver.woodward-ashby.who': { en: 'A woodward of the Charwood. He walks the burnt trees and names the ones still living.', es: 'Guardabosques del Bosque Carbonizado. Recorre los arboles quemados y nombra a los que siguen vivos.' },
   'task.giver.charburner-kiln.who': { en: 'Ashgrove\'s charburner. Her kilns smoke day and night, and she likes it that way.', es: 'La carbonera de Ashgrove. Sus hornos humean dia y noche, y asi le gusta.' },
+  'task.giver.warden-fenn.who': { en: 'Canopy warden of Rootglass. She lights the Bole\'s lamps at dusk and counts the walkways at dawn.', es: 'Guardiana del dosel de Rootglass. Enciende las lamparas del Tronco al anochecer y cuenta las pasarelas al alba.' },
+  'task.giver.mossreader-tull.who': { en: 'A mossreader. He says the moss remembers every foot that crossed it, and he is usually right.', es: 'Un lector de musgo. Dice que el musgo recuerda cada pie que lo piso, y casi siempre acierta.' },
+  'task.giver.netmender-brisk.who': { en: 'Mossharbor\'s net-mender. She twists thornroot into twine that the sea cannot bite through.', es: 'La remendadora de redes de Mossharbor. Trenza raiz de espino en un cordel que el mar no puede morder.' },
+  'task.giver.herbalist-sorrel.who': { en: 'Thornwick\'s herbalist. Her cures taste of moss and work, which is more than most cures manage.', es: 'La herbolaria de Thornwick. Sus remedios saben a musgo y funcionan, que es mas de lo que logran casi todos.' },
 
   // ── The Seamworks ──
   'task.seam-mara-1.title': { en: 'Ore for the Bench', es: 'Mineral para el banco' },
@@ -86,12 +90,40 @@ const ONCE: Record<string, { en: string; es: string }> = {
   'task.ash-maud-2.ask': { en: 'Bone Archers shoot at my kiln-lights from the crypt. Break six and I\'ll give you the gauntlets my mother wore at the fires.', es: 'Los Arqueros de Hueso disparan a las luces de mis hornos desde la cripta. Rompe seis y te dare los guanteletes que llevaba mi madre en las hogueras.' },
   'task.ash-maud-2.thanks': { en: 'No arrows tonight. Wear them well; they\'ve held hotter things than you.', es: 'Esta noche no hay flechas. Llevalos bien; han sostenido cosas mas calientes que tu.' },
 
+  // ── The Verdant Wilds ──
+  'task.verd-fenn-1.title': { en: 'Bats in the Lamplight', es: 'Murcielagos en la luz' },
+  'task.verd-fenn-1.ask': { en: 'Canopy Bats roost under the walkways and put my lamps out with their wings. Thin out eight of them for me, out in the Greenwood.', es: 'Los Murcielagos del Dosel duermen bajo las pasarelas y apagan mis lamparas con las alas. Derriba a ocho en el Bosque Verde.' },
+  'task.verd-fenn-1.thanks': { en: 'Every lamp burned till morning. Here, sap for yours. It glows a little if you ask it nicely.', es: 'Todas las lamparas ardieron hasta el alba. Toma savia para las tuyas. Brilla un poco si se lo pides con amabilidad.' },
+  'task.verd-fenn-2.title': { en: 'Antlers on the Walkways', es: 'Astas en las pasarelas' },
+  'task.verd-fenn-2.ask': { en: 'The old Rootglass Harts have stopped being shy. They come up the roots at night and ring their antlers on my rails. Five of them, from the Deep Wilds.', es: 'Los viejos Ciervos de Raizvidrio ya no son timidos. Suben por las raices de noche y hacen sonar sus astas en mis barandas. Cinco, de las Selvas Hondas.' },
+  'task.verd-fenn-2.thanks': { en: 'Quiet rails. I had forgotten what the canopy sounds like without that ringing. Thank you.', es: 'Barandas en silencio. Habia olvidado como suena el dosel sin ese tintineo. Gracias.' },
+  'task.verd-tull-1.title': { en: 'What the Moss Remembers', es: 'Lo que recuerda el musgo' },
+  'task.verd-tull-1.ask': { en: 'The moss on the temple steps has been growing downward. Moss does not grow downward. Go down to the Hall of Roots and tell me what is pulling it.', es: 'El musgo de los escalones del templo crece hacia abajo. El musgo no crece hacia abajo. Baja al Salon de las Raices y dime que tira de el.' },
+  'task.verd-tull-1.thanks': { en: 'Roots through the floor, and a spring under them. Then the temple is drinking. Take this thornroot; I have read enough of it.', es: 'Raices atravesando el suelo, y un manantial debajo. Entonces el templo esta bebiendo. Toma esta raiz de espino; ya la he leido bastante.' },
+  'task.verd-tull-2.title': { en: 'The Guardian\'s Heart', es: 'El corazon del guardian' },
+  'task.verd-tull-2.ask': { en: 'The Mossbound Colossus was set to keep the Heart Shrine. The Root kept it instead. Lay it down, Keeper, and the bracers its builders left me are yours.', es: 'El Coloso Musgoso debia guardar el Santuario del Corazon. La Raiz lo guardo a el. Derribalo, Guardian, y los brazales que dejaron sus constructores son tuyos.' },
+  'task.verd-tull-2.thanks': { en: 'Still, at last. The moss on the steps grew upward this morning, a little. Wear the bracers; they know the way down.', es: 'Quieto, por fin. Esta manana el musgo de los escalones crecio hacia arriba, un poco. Ponte los brazales; conocen el camino hacia abajo.' },
+  'task.moss-brisk-1.title': { en: 'Twine for the Nets', es: 'Cordel para las redes' },
+  'task.moss-brisk-1.ask': { en: 'Thornroot twists into a twine the sea cannot bite through. The Moss Stalkers carry it on their backs without knowing. Bring me six.', es: 'La raiz de espino se trenza en un cordel que el mar no muerde. Los Acechadores de Musgo la llevan en el lomo sin saberlo. Traeme seis.' },
+  'task.moss-brisk-1.thanks': { en: 'Good and green. The nets will hold till the next storm and the one after. Here, bark for your fire.', es: 'Buena y verde. Las redes aguantaran hasta la proxima tormenta y la siguiente. Toma, corteza para tu fuego.' },
+  'task.moss-brisk-2.title': { en: 'The Heartroot Cellar', es: 'La bodega de la raiz madre' },
+  'task.moss-brisk-2.ask': { en: 'My grandmother said the dead tree in the Deep Wilds kept its heart under the ground, and that it still glows. Go down the Root Hollows to the bottom and tell me if she lied.', es: 'Mi abuela decia que el arbol muerto de las Selvas Hondas guardaba su corazon bajo tierra, y que aun brilla. Baja hasta el fondo de las Oquedades de Raiz y dime si mentia.' },
+  'task.moss-brisk-2.thanks': { en: 'It glows. Of course it glows. She never lied once, the old thorn. Take the sap, Keeper.', es: 'Brilla. Claro que brilla. Nunca mintio, la vieja espina. Toma la savia, Guardian.' },
+  'task.thorn-sorrel-1.title': { en: 'Sap for the Tinctures', es: 'Savia para las tinturas' },
+  'task.thorn-sorrel-1.ask': { en: 'Verdant sap settles a fever and a temper both. The bats and the lashers bleed it. Bring me five, and mind the thorns.', es: 'La savia verde calma la fiebre y el mal genio. Los murcielagos y los latigos la sangran. Traeme cinco, y cuidado con las espinas.' },
+  'task.thorn-sorrel-1.thanks': { en: 'Lovely. Half for the jars, half for Thornwick\'s coughs. Have some thornroot; chew it if you get bitten.', es: 'Precioso. La mitad para los tarros, la mitad para la tos de Thornwick. Toma raiz de espino; mastica si te muerden.' },
+  'task.thorn-sorrel-2.title': { en: 'Blooms at the Gate', es: 'Flores en la cancela' },
+  'task.thorn-sorrel-2.ask': { en: 'Vine Lashers have been walking up the Fernglades to my herb beds. They sing to my bees. Six of them, please, before the bees decide they like it.', es: 'Los Latigos de Enredadera suben por los Helechales hasta mis bancales. Les cantan a mis abejas. Seis, por favor, antes de que a las abejas les guste.' },
+  'task.thorn-sorrel-2.thanks': { en: 'The bees are back to their own business. So am I. Thank you, dear.', es: 'Las abejas han vuelto a lo suyo. Y yo tambien. Gracias, cielo.' },
+
   // ── Places a visit names ──
   'task.place.ember-inn-2': { en: 'the Ember Inn\'s upstairs', es: 'el piso de arriba de la Ember Inn' },
   'task.place.molten-deep-2': { en: 'the Glass Halls (the Molten Deep, floor 2)', es: 'los Salones de Cristal (Profundidad Fundida, piso 2)' },
   'task.place.pyre-spire-3': { en: 'the Pyre Spire\'s lookout', es: 'el mirador de la Aguja de la Pira' },
   'task.place.salted-ember-0': { en: 'the Salted Ember\'s cellar', es: 'la bodega de la Salted Ember' },
   'task.place.ashen-crypt-1': { en: 'the Ossuary (the Ashen Crypt, floor 1)', es: 'el Osario (Cripta Cenicienta, piso 1)' },
+  'task.place.overgrown-temple-2': { en: 'the Hall of Roots (the Overgrown Temple, floor 2)', es: 'el Salon de las Raices (Templo Cubierto, piso 2)' },
+  'task.place.root-hollows-3': { en: 'the Heartroot Cellar (the Root Hollows, floor 3)', es: 'la Bodega de la Raiz Madre (Oquedades de Raiz, piso 3)' },
 };
 
 // ── Dailies (DAILY_TASKS): a title each; one ask and one thanks per giver, shared by their pool ──
@@ -146,6 +178,26 @@ const DAILY: Record<string, { en: string; es: string }> = {
   'task.dly-charburner-kiln-1.title': { en: "Cord for Today's Kilns", es: 'Lena para los hornos de hoy' },
   'task.dly-charburner-kiln-2.title': { en: 'Arrows at the Kiln-Lights', es: 'Flechas en las luces de los hornos' },
   'task.dly-charburner-kiln-3.title': { en: 'Ghouls by the Ash Heap', es: 'Necrofagos junto a la ceniza' },
+  'task.giver.warden-fenn.dailyAsk': { en: 'The canopy wears a little every night. Help me keep it, one small job today.', es: 'El dosel se gasta un poco cada noche. Ayudame a cuidarlo, un trabajo pequeno hoy.' },
+  'task.giver.warden-fenn.dailyThanks': { en: 'The lamps will burn tonight. Come back tomorrow, Keeper.', es: 'Las lamparas arderan esta noche. Vuelve manana, Guardian.' },
+  'task.giver.mossreader-tull.dailyAsk': { en: 'The moss writes a new line every day. Help me read today\'s.', es: 'El musgo escribe una linea nueva cada dia. Ayudame a leer la de hoy.' },
+  'task.giver.mossreader-tull.dailyThanks': { en: 'Read and noted. The Wilds are a little less of a mystery tonight.', es: 'Leido y anotado. Las Selvas son un poco menos misteriosas esta noche.' },
+  'task.giver.netmender-brisk.dailyAsk': { en: 'A net is never finished, only mended for today. Lend me a hand?', es: 'Una red nunca se termina, solo se remienda por hoy. Me echas una mano?' },
+  'task.giver.netmender-brisk.dailyThanks': { en: 'Mended for today. The sea will have another go tomorrow.', es: 'Remendada por hoy. El mar lo intentara otra vez manana.' },
+  'task.giver.herbalist-sorrel.dailyAsk': { en: 'Somebody in Thornwick is always coughing. Fetch me what today\'s cure needs, dear.', es: 'Siempre hay alguien tosiendo en Thornwick. Traeme lo que pide el remedio de hoy, cielo.' },
+  'task.giver.herbalist-sorrel.dailyThanks': { en: 'That will do nicely. Come back tomorrow; somebody will be coughing.', es: 'Con eso basta. Vuelve manana; alguien estara tosiendo.' },
+  'task.dly-warden-fenn-1.title': { en: 'Wings at the Lamps', es: 'Alas en las lamparas' },
+  'task.dly-warden-fenn-2.title': { en: 'Stalkers Under the Boughs', es: 'Acechadores bajo las ramas' },
+  'task.dly-warden-fenn-3.title': { en: 'Sap for the Lamps', es: 'Savia para las lamparas' },
+  'task.dly-mossreader-tull-1.title': { en: 'Weavers in the Courts', es: 'Tejedoras en los Patios' },
+  'task.dly-mossreader-tull-2.title': { en: 'Blooms that Walk', es: 'Flores que caminan' },
+  'task.dly-mossreader-tull-3.title': { en: 'Thornroot to Read', es: 'Raiz de espino para leer' },
+  'task.dly-netmender-brisk-1.title': { en: 'Twine for Today', es: 'Cordel para hoy' },
+  'task.dly-netmender-brisk-2.title': { en: 'Gnaws in the Pilings', es: 'Roedores en los pilotes' },
+  'task.dly-netmender-brisk-3.title': { en: 'Stalkers on the Shore', es: 'Acechadores en la orilla' },
+  'task.dly-herbalist-sorrel-1.title': { en: 'Sap for the Jars', es: 'Savia para los tarros' },
+  'task.dly-herbalist-sorrel-2.title': { en: 'Spores in the Beds', es: 'Esporas en los bancales' },
+  'task.dly-herbalist-sorrel-3.title': { en: 'Lashers at the Gate', es: 'Latigos en la cancela' },
 };
 
 /** Every daily's ask and thanks are its giver's own, so the HUD's `task.<id>.ask|thanks` stems resolve for each. */
