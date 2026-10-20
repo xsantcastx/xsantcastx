@@ -223,14 +223,15 @@ export class TdWorld implements TdLevel {
     return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)] ?? this.def.townName;
   }
 
-  /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. */
+  /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. A cave mouth gets a smaller one. */
   private inClearing(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge' || p.kind === 'temple') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
+    for (const p of this.def.places) if (p.kind === 'cave' && Math.abs(c - p.c) <= 3 && Math.abs(r - p.r) <= 3) return true;
     return false;
   }
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
   private nearWayIn(c: number, r: number): boolean {
-    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple') && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave') && Math.hypot(c - p.c, r - p.r) < 9) return true;
     return false;
   }
   private walkableGround(c: number, r: number): boolean {

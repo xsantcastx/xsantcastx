@@ -6,7 +6,8 @@
  * Rootglass is built on boardwalks over a marsh, round the Rootglass Bole — a giant tree whose floors go up into the
  * canopy (maps/rootglass-bole.ts). South down the boardwalk road lies Mossharbor, whose ship sails to Pyrehold; west,
  * past the Rootwater, the hamlet of Thornwick in the Fernglades; east, across the second river, the Sunken Courts and
- * the Overgrown Temple's gate (maps/overgrown-temple.ts).
+ * the Overgrown Temple's gate (maps/overgrown-temple.ts); north-west, in the Deep Wilds, the root-hole into the Root
+ * Hollows (maps/root-hollows.ts). Mossharbor's second ship sails to Ember Isle.
  *
  * Region legend: ~ the sea · , the mossy shore · . the Fernglades (grass and flowers) · j the Greenwood (jungle, moss
  * underfoot) · J the Deep Wilds (dense jungle, the giant trees) · r a river · l the Glassmere · u the Sunken Courts
@@ -17,9 +18,13 @@ import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown } from '../town-builder';
 import { BOLE_DOOR } from './rootglass-bole';
 import { TEMPLE_IN } from './overgrown-temple';
+import { HOLLOWS_IN } from './root-hollows';
+import { HERBAL_DOOR, NETLOFT_DOOR } from './verdant-houses';
 
 /** Mossharbor's ship, at its pier's end: across the sea to Pyrehold (Pyrehold's own ship back is SHIP_TO_VERDANT). */
 export const MOSSHARBOR_SHIP: StationDef = { id: 'ship-mossharbor', x: 0, label: 'SHIP TO PYREHOLD', kind: 'passage', blurb: 'A moss-sailed sloop bound for Pyrehold, in Infernal Reach.' };
+/** Mossharbor's second ship, off the west finger of its pier: the long way round to Ember Harbour (ember-isle.ts SHIP_TO_MOSSHARBOR back). */
+export const MOSSHARBOR_ISLE_SHIP: StationDef = { id: 'ship-mossharbor-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'A rootwood ketch that sails the long way round to Ember Harbour.' };
 
 export const VERDANT_WILDS: readonly string[] = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
@@ -118,6 +123,11 @@ export const buildRootglass = () => buildTown({
   ],
   // The Rootglass Bole: a door between its roots onto the Root Hall, and three floors above it in the canopy.
   towers: [{ c: 24, r: 9, door: BOLE_DOOR, look: 'bole' }],
+  // Town task givers (shared/town-tasks): the canopy warden by the Bole's door, the mossreader by the books.
+  givers: [
+    { id: 'warden-fenn', name: 'Canopy Warden Ilsa Fenn', c: 28, r: 11, blurb: 'Keeps the Bole\'s lamps lit and its walkways sound.' },
+    { id: 'mossreader-tull', name: 'Mossreader Oren Tull', c: 34, r: 10, blurb: 'Reads the moss the way others read the sky.' },
+  ],
   spawn: { c: 24, r: 21 },
 });
 
@@ -134,23 +144,26 @@ const MOSSHARBOR_ROWS: readonly string[] = [
   '..............===...............',
   'ssssssssssssss===sssssssssssssss',
   'ssssssssssssss===sssssssssssssss',
-  'wwwwwwwwwwwwww=========wwwwwwwww',
-  'wwwwwwwwwwwwww===wwwwwwwwwwwwwww',
-  'wwwwwwwwwwwwww===wwwwwwwwwwwwwww',
-  'wwwwwwwwwwwwww===wwwwwwwwwwwwwww',
-  'wwwwwwwwwwwwww===wwwwwwwwwwwwwww',
+  'wwwwwww================wwwwwwwww',
+  'wwwwwww===wwww===wwwwwwwwwwwwwww',
+  'wwwwwww===wwww===wwwwwwwwwwwwwww',
+  'wwwwwww===wwww===wwwwwwwwwwwwwww',
+  'wwwwwww===wwww===wwwwwwwwwwwwwww',
   'wwwwwwwwwwwwww===wwwwwwwwwwwwwww',
   'wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww',
   'wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww',
 ];
 
-/** Mossharbor, on the south shore: a boardwalk street, leaf-roofed houses, a pier out to the moss-sailed ship. */
+/**
+ * Mossharbor, on the south shore: a boardwalk street, leaf-roofed houses, a pier out to the moss-sailed ship and a west
+ * finger to the ketch for Ember Isle; the Net-Mender's Loft to walk into (verdant-houses.ts), its mender outside.
+ */
 export const buildMossharbor = () => buildTown({
   id: 'mossharbor',
   rows: MOSSHARBOR_ROWS,
   legend: { '=': 'plank', '.': 'moss', g: 'grass', s: 'sand', w: 'water' },
   houses: [
-    { c: 5, r: 4, w: 5, d: 3, roof: 'leaf', wall: 'timber' }, { c: 26, r: 4, w: 5, d: 3, roof: 'thatch', wall: 'timber' },
+    { c: 5, r: 4, w: 5, d: 3, roof: 'leaf', wall: 'timber' }, { c: 26, r: 4, w: 5, d: 3, roof: 'thatch', wall: 'timber', door: NETLOFT_DOOR },
     { c: 6, r: 9, w: 5, d: 2, roof: 'leaf', wall: 'stone' }, { c: 25, r: 9, w: 5, d: 2, roof: 'leaf', wall: 'timber' },
   ],
   stalls: [],
@@ -159,7 +172,11 @@ export const buildMossharbor = () => buildTown({
     { kind: 'barrel', c: 12, r: 11 }, { kind: 'barrel', c: 11, r: 11 }, { kind: 'crate', c: 18, r: 11 }, { kind: 'crate', c: 19, r: 11 },
     { kind: 'signpost', c: 12, r: 1 }, { kind: 'bench', c: 10, r: 8 }, { kind: 'waystone', c: 19, r: 2 },
     { kind: 'jungle', c: 1, r: 2 }, { kind: 'jungle', c: 30, r: 1 }, { kind: 'jungle', c: 9, r: 1 }, { kind: 'fern', c: 21, r: 8 }, { kind: 'fern', c: 2, r: 8 },
-    { kind: 'verdant-ship', c: 19, r: 16 },
+    { kind: 'verdant-ship', c: 19, r: 16 }, { kind: 'verdant-ship', c: 4, r: 16 },
+  ],
+  // Town task givers (shared/town-tasks): the net-mender outside her loft.
+  givers: [
+    { id: 'netmender-brisk', name: 'Netmender Wenna Brisk', c: 23, r: 7, blurb: 'Mends the harbour\'s nets with thornroot twine.' },
   ],
   spawn: { c: 15, r: 7 },
 });
@@ -185,13 +202,16 @@ const THORNWICK_ROWS: readonly string[] = [
   '.............pp.............',
 ];
 
-/** Thornwick, a hamlet in the Fernglades: four leaf-roofed cottages round a green, a crossroads of dirt paths. */
+/**
+ * Thornwick, a hamlet in the Fernglades: four leaf-roofed cottages round a green, a crossroads of dirt paths; the
+ * Herbalist's Cottage to walk into (verdant-houses.ts), its herbalist at her gate.
+ */
 export const buildThornwick = () => buildTown({
   id: 'thornwick',
   rows: THORNWICK_ROWS,
   legend: { p: 'dirt', '.': 'moss', g: 'grass', f: 'flowers' },
   houses: [
-    { c: 8, r: 5, w: 5, d: 3, roof: 'leaf', wall: 'timber' }, { c: 20, r: 5, w: 5, d: 3, roof: 'thatch', wall: 'timber' },
+    { c: 8, r: 5, w: 5, d: 3, roof: 'leaf', wall: 'timber', door: HERBAL_DOOR }, { c: 20, r: 5, w: 5, d: 3, roof: 'thatch', wall: 'timber' },
     { c: 8, r: 16, w: 5, d: 3, roof: 'thatch', wall: 'timber' }, { c: 20, r: 16, w: 5, d: 3, roof: 'leaf', wall: 'stone' },
   ],
   stalls: [],
@@ -202,6 +222,9 @@ export const buildThornwick = () => buildTown({
     { kind: 'jungle', c: 1, r: 2 }, { kind: 'jungle', c: 26, r: 3 }, { kind: 'jungle', c: 2, r: 15 }, { kind: 'jungle', c: 25, r: 16 },
     { kind: 'fern', c: 4, r: 6 }, { kind: 'fern', c: 23, r: 13 },
   ],
+  givers: [
+    { id: 'herbalist-sorrel', name: 'Herbalist Agathe Sorrel', c: 4, r: 7, blurb: 'Thornwick\'s herbalist. Her cures taste of moss.' },
+  ],
   spawn: { c: 13, r: 9 },
 });
 
@@ -211,6 +234,8 @@ export const VERDANT_PLACES: readonly ContinentPlace[] = [
   { kind: 'shrine', c: 4, r: -30, name: 'The Moss Altar' },
   { kind: 'ruins', c: 80, r: 40, name: 'The Drowned Aqueduct' },
   { kind: 'standing-stones', c: -56, r: 44, name: 'The Ring of Thorns' },
+  // The Root Hollows' root-hole in the Deep Wilds, up a track off the Thornwick road.
+  { kind: 'cave', c: -80, r: -22, name: 'The Root Hollows' },
 ];
 
 export const VERDANT_NAMES: Readonly<Partial<Record<Region, string>>> = {
@@ -231,6 +256,8 @@ export const VERDANT_WILDS_DEF: ContinentDef = {
     [[23, 33], [24, 48], [36, 62], [55, 77]],
     // A branch off the east road to the Drowned Aqueduct.
     [[76, 14], [80, 36]],
+    // A track off the Thornwick road, north into the Deep Wilds, to the Root Hollows.
+    [[-56, 14], [-66, -2], [-80, -18]],
   ],
   places: VERDANT_PLACES, names: VERDANT_NAMES,
   mobs: {
@@ -243,10 +270,15 @@ export const VERDANT_WILDS_DEF: ContinentDef = {
   roadGround: { near: 'plank', far: 'dirt' },
   ways: [
     { place: 'temple', station: TEMPLE_IN, to: 'overgrown-temple-1', arrive: 'temple-out' },
+    { place: 'cave', station: HOLLOWS_IN, to: 'root-hollows-1', arrive: 'hollows-out' },
   ],
   villages: [
     // Mossharbor's sloop sails from the pier's end (the village's tile 15, 16) to Pyrehold Harbour.
-    { name: 'Mossharbor', c: 40, r: 78, build: buildMossharbor, ways: [{ station: MOSSHARBOR_SHIP, c: 15, r: 16, to: 'infernal-reach', arrive: 'ship-verdant', ship: true }] },
+    // Its ketch sails from the west finger (tile 8, 16) the long way round to Ember Harbour.
+    { name: 'Mossharbor', c: 40, r: 78, build: buildMossharbor, ways: [
+      { station: MOSSHARBOR_SHIP, c: 15, r: 16, to: 'infernal-reach', arrive: 'ship-verdant', ship: true },
+      { station: MOSSHARBOR_ISLE_SHIP, c: 8, r: 16, to: 'ember-isle', arrive: 'ship-isle-verdant', ship: true },
+    ] },
     { name: 'Thornwick', c: -112, r: 4, build: buildThornwick },
   ],
 };
