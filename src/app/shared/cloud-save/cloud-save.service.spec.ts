@@ -167,6 +167,9 @@ describe('CloudSaveService.init resumes a signed-in device', () => {
   });
 
   it('costs a signed-out visitor nothing: no auth SDK, no Firestore, no attach', async () => {
+    // A timer the previous spec left running (its fake sign-in) can land here: let it drain, then count from zero.
+    await new Promise(r => setTimeout(r, 30));
+    authLoads.calls.reset(); attach.calls.reset();
     const cloud = TestBed.inject(CloudSaveService);
 
     cloud.init();
