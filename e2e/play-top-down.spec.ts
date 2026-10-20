@@ -169,6 +169,26 @@ test('a ship from Ember Harbour to Pyrehold on the mainland, and back', async ({
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Ember Inn: in by its door, up its stairs to the rooms, down, and out to the square', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/the ember inn/i, /^The Ember Inn$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/inn-tavern.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /upstairs/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/inn-upstairs.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /^The Ember Inn$/);
+  await go(/^door/i, /basalt seamworks/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');
