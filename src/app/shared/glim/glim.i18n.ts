@@ -18,8 +18,8 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Lines: the Prologue, the lantern, the stopping point, the tell ──
   'play.glim.line.meet': { en: "Hello. I'm Glim. I keep the maps. Mostly the blank parts; they're the interesting ones.", es: 'Hola. Soy Glim. Guardo los mapas. Sobre todo las partes en blanco; son las interesantes.' },
   'play.glim.line.homestead': { en: 'Somebody left you a plot. Nobody left you a reason. We\'ll find one.', es: 'Alguien te dejo una parcela. Nadie te dejo una razon. Ya la encontraremos.' },
-  'play.glim.line.edge': { en: 'A blade made to show where a boundary is before anyone crosses it. Wear it well.', es: 'Una hoja hecha para mostrar donde esta un limite antes de que alguien lo cruce. Llevala bien.' },
-  'play.glim.line.maws': { en: 'The Maws drag their bolts toward the Delve shaft. I\'d like to know why. I\'ve marked it.', es: 'Las Fauces arrastran sus pernos hacia el pozo de la Sima. Quiero saber por que. Lo he anotado.' },
+  'play.glim.line.edge': { en: 'Whatever you carry out there, carry it like you mean it. I\'ll take notes.', es: 'Lleves lo que lleves ahi fuera, llevalo en serio. Yo tomo notas.' },
+  'play.glim.line.maws': { en: 'The Rivet Maws drag their bolts toward the mine shaft. I\'d like to know why. I\'ve marked it.', es: 'Las Fauces Remachadas arrastran sus pernos hacia el pozo de la mina. Quiero saber por que. Lo he anotado.' },
   'play.glim.line.delve': { en: 'North is a convention. Down is a fact. We\'re going down.', es: 'El norte es una convencion. Abajo es un hecho. Vamos hacia abajo.' },
   'play.glim.line.lantern': { en: 'I\'ll be your light down here. The torches you place are my notes; I leave them for you.', es: 'Aqui abajo sere tu luz. Las antorchas que pones son mis notas; te las dejo.' },
   'play.glim.line.stop': { en: 'This is a good place to stop. The torch is lit and the map is honest.', es: 'Este es un buen sitio para parar. La antorcha esta encendida y el mapa es honesto.' },

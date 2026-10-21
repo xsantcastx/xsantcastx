@@ -54,17 +54,20 @@ export interface FirstGoalFacts {
 }
 
 /** Where "Show me" walks: a station (walk there and use it) or a spot on the floor. */
-export type FirstGoalTarget = { station: string } | { x: number };
+/** A station to walk to, a spot on the row, or (the top-down prologue) the kind of thing Glim's chevrons point at. */
+export type FirstGoalTarget = { station: string } | { x: number } | { guide: string };
 
 export interface FirstGoalView {
   /** A first goal, or 'rune': the one-time Rune Forge hint after all four. */
-  /** A first goal, 'rune', or one of the top-down game's own (td/td-goals.ts). */
-  id: FirstGoalId | 'rune' | 'mine' | 'chop';
+  /** A first goal, 'rune', or a step of the top-down prologue (td/td-prologue.ts, 'pro-<step>'). */
+  id: FirstGoalId | 'rune' | `pro-${string}`;
   /** 1-based, for "Goal 2 of 4". 0 for the Rune Forge hint, which has no number. */
   n: number;
   total: number;
   /** The line to show (first-goals i18n key). */
   key: string;
+  /** Values for the line ({{skill}}: the top-down prologue's key-1 spell). */
+  vars?: Record<string, string | number>;
   target: FirstGoalTarget | null;
 }
 

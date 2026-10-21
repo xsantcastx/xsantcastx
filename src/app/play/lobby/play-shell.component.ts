@@ -30,6 +30,7 @@ import { FRONT_H, FRONT_W, frontSheet } from '../../shared/keeper-look/keeper-fr
 import { vocationLook } from '../../shared/keeper-look/vocation-look';
 import { KeeperMakerComponent } from '../../shared/keeper-look/keeper-maker.component';
 import { SideScrollerComponent } from '../side-scroller.component';
+import { StoryService } from '../../shared/story/story.service';
 import { LOBBY_I18N } from './lobby.i18n';
 import { paintTitleArt, titleArtSize } from './title-art';
 import { hasMeaningfulSave, summarise } from './character-summary';
@@ -58,6 +59,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly lobby = inject(PlayLobbyService);
   private readonly route = inject(ActivatedRoute);
   private readonly zone = inject(NgZone);
+  private readonly story = inject(StoryService);
 
   mode: LobbyMode = 'boot';
   /** The highlighted row on the character list. */
@@ -363,7 +365,12 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── The Glass (a new character) ────────────────────────────────────────────
 
+  /** "I've played before: skip the tutorial" on the Glass (off by default: a new Keeper is taught the island). */
+  skipTutorial = false;
+
   made(): void {
+    // The new Keeper's own story record (this page plays it): the prologue is over before it starts.
+    if (this.skipTutorial) this.story.skipTut();
     this.go('game');
   }
 

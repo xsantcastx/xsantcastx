@@ -59,7 +59,7 @@
 :host-context(.place) .km__stage { grid-area: stage; padding: 0; border: 0; border-radius: 0; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); margin: 2px; }
 :host-context(.place) .km__preview { width: 100%; }
 :host-context(.place) .km__name { grid-area: name; gap: 2px; font: 600 9px/1.2 var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
-:host-context(.place) .km__name input { border: 0; border-radius: 0; background: var(--obsidian-0); box-shadow: var(--px-cell-rim); margin: 2px; }
+:host-context(.place) .km__name input { border: 0; border-radius: 0; background: var(--obsidian-0); box-shadow: var(--px-cell-rim); margin: 2px; min-width: 0; width: calc(100% - 4px); box-sizing: border-box; }
 :host-context(.place) .km__actions { grid-area: actions; grid-template-columns: 1fr 1fr; padding: 2px; align-self: end; }
 :host-context(.place) .km__fields { grid-area: fields; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 2px; }
 :host-context(.place) .km__row { grid-template-columns: 40px minmax(0, 1fr) 40px; grid-template-areas: "prev value next"; gap: 0; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }

@@ -5,7 +5,9 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { tdFirstGoal } from './td/td-goals';
+import { PROLOGUE_ROWS, PROLOGUE_WALK_TILES, type PrologueStep, guideFor, prologueStep, prologueView, tipKey } from './td/td-prologue';
+import { TD_PROLOGUE_I18N } from './td/td-prologue.i18n';
+import { activeCharacterKey } from '../shared/save/character-scope';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import type { ItemStats } from '../shared/rpg/item.model';
@@ -577,8 +579,21 @@ export class SideScrollerComponent implements OnDestroy {
   /** The first-session goal line (world/first-goals.ts); null once all four are done. */
   guide: FirstGoalView | null = null;
   /** The quest scroll's checklist rows (top-down HUD), in goal order. */
-  get questRows(): readonly { n: number; key: string }[] { return this.topDown ? this.tdQuestRows : this.sideQuestRows; }
-  private readonly tdQuestRows = [{ n: 1, key: 'play.td.goal.title.hunt' }, { n: 2, key: 'play.td.goal.title.mine' }, { n: 3, key: 'play.td.goal.title.chop' }];
+  get questRows(): readonly { n: number; key: string }[] { return this.topDown ? PROLOGUE_ROWS : this.sideQuestRows; }
+  /**
+   * The top-down prologue (td/td-prologue.ts): the step now, where the walk step started (it counts a few tiles of
+   * walking), the step Glim last introduced (its tip is said once a session per step), and the prologue being over.
+   */
+  private proStep: PrologueStep | null = null;
+  private proWalkFrom: { x: number; y: number } | null = null;
+  private proTipped: PrologueStep | null = null;
+  private proWasOn = false;
+  /** Phones read the touch words (drag, tap); a pointer reads the keys. */
+  private touchMq: MediaQueryList | null | undefined;
+  private get touchUi(): boolean {
+    if (this.touchMq === undefined) this.touchMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(hover: none) and (pointer: coarse)') : null;
+    return !!this.touchMq?.matches;
+  }
   private readonly sideQuestRows = [
     { n: 1, key: 'play.goal.title.buy' }, { n: 2, key: 'play.goal.title.craft' },
     { n: 3, key: 'play.goal.title.hunt' }, { n: 4, key: 'play.goal.title.delve' },
@@ -853,7 +868,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(CABINETS_I18N);
     this.i18n.register(LIVING_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
-    try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
+    try { this.trackedPinId = localStorage.getItem(activeCharacterKey(TRACK_KEY, localStorage)) || null; } catch { /* nothing tracked */ }
   }
   private liveCanvas(): HTMLCanvasElement | null {
     const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
@@ -949,6 +964,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(UNDERHEARTH_I18N);
     this.i18n.register(RIFT_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
+    this.i18n.register(TD_PROLOGUE_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
@@ -2649,12 +2665,8 @@ export class SideScrollerComponent implements OnDestroy {
     const areaId = this.state.world
       ? this.state.region === 'basalt-seamworks' ? this.town.id : this.state.region === 'ember-delve' ? 'ember-delve' : this.state.region ?? this.town.id
       : this.state.areaId ?? this.town.id;
-    // Top-down: the Warlock's own first goals (no Homestead, no gold per second: owner 2026-10-20).
-    const goal = this.topDown ? tdFirstGoal({
-      hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
-      mined: this.activity.snapshot.miningAccepted > 0 || (progress.xpByDiscipline['mining'] ?? 0) > 0,
-      chopped: (progress.xpByDiscipline['woodcutting'] ?? 0) > 0,
-    }) : firstGoal({
+    // Top-down: the prologue (td/td-prologue.ts), one step at a time, per character.
+    const goal = this.topDown ? this.tickPrologue() : firstGoal({
       ...(this.state.world ? { world: { mawX: ROAD_MAW_APPROACH_X } } : {}),
       bought: this.boughtBuilding,
       hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
@@ -2666,25 +2678,78 @@ export class SideScrollerComponent implements OnDestroy {
       ore: this.ore,
       ember: this.ember,
     });
-    // After the four goals: the Rune Forge, once, the first time a strike is affordable.
-    const next = goal ?? runeForgeHint({
+    // After the four goals: the Rune Forge, once, the first time a strike is affordable (the side view's).
+    const next = goal ?? (this.topDown ? null : runeForgeHint({
       goalsDone: true,
       gold: this.economy.snapshot.gold,
       strikeCost: STRIKE_COST,
       seen: this.runeHintSeen,
       areaId,
-    });
-    if (next?.key !== this.guide?.key || next?.n !== this.guide?.n) this.guide = next;
+    }));
+    if (next?.key !== this.guide?.key || next?.n !== this.guide?.n || next?.vars?.['skill'] !== this.guide?.vars?.['skill']) this.guide = next;
     this.tickStory({
       met: this.glimVoice.met,
-      bought: this.boughtBuilding,
+      // Top-down: the Prologue's beats read the game the island teaches (a hearth lit, a way down the mine).
+      bought: this.topDown ? this.hearth.state.lit.length > 0 : this.boughtBuilding,
       armed: !!worn && !worn.explorerId,
       hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
-      dug: this.delve.hasDug('ember-delve'),
+      dug: this.topDown ? this.activity.snapshot.miningAccepted > 0 || (progress.xpByDiscipline['mining'] ?? 0) > 0 : this.delve.hasDug('ember-delve'),
     });
     this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
     this.tickBond(areaId);
     this.tickPets();
+  }
+
+  /**
+   * The top-down prologue's tick (td/td-prologue.ts): file what the save cannot show (a few tiles walked, the
+   * Spellbook or the Satchel opened while it was the step), point Glim's chevrons at the step's thing, have Glim say
+   * the step's tip once, and return the goal line's view (null: the prologue is over for this Keeper).
+   */
+  private tickPrologue(): FirstGoalView | null {
+    const story = this.story.state;
+    const facts = {
+      level: this.huntingLevel,
+      filed: story.tut ?? [],
+      skipped: !!story.skip,
+      hearthLit: this.hearth.state.lit.length > 0,
+      hunted: (this.activity.snapshot.progress.xpByDiscipline['hunting'] ?? 0) > 0,
+      goldEarned: this.economy.snapshot.totalGoldEarned > 0,
+      storyTaken: this.sexton.view().step !== 'offer',
+    };
+    let step = prologueStep(facts);
+    // What happens where the Keeper stands: filed the moment it is seen, so the line moves on in the same tick.
+    if (step === 'walk' && this.state.x !== undefined && this.state.y !== undefined) {
+      const at = { x: this.state.x, y: this.state.y };
+      if (!this.proWalkFrom || this.proStep !== 'walk') this.proWalkFrom = at;
+      else if (Math.hypot(at.x - this.proWalkFrom.x, at.y - this.proWalkFrom.y) >= PROLOGUE_WALK_TILES * 16) this.story.fileTut('walk');
+    }
+    if (step === 'book' && this.spellbookOpen) this.story.fileTut('book');
+    if (step === 'bag' && this.bagOpen) this.story.fileTut('bag');
+    if (step) step = prologueStep({ ...facts, filed: this.story.state.tut ?? [] });
+    (this.engine as unknown as { setGuide?: (kind: string | null) => void } | undefined)?.setGuide?.(guideFor(step));
+    // The prologue just ended here (not a Keeper who was past it on arrival): Glim says so, once.
+    if (!step && this.proWasOn && !this.story.state.skip) this.message = this.t('play.pro.done');
+    this.proWasOn = !!step;
+    this.proStep = step;
+    // A tip for a step already done goes (the line on screen always matches the scroll).
+    const said = this.glimVoice.speech?.key;
+    if (said?.startsWith('play.pro.tip.') && said !== (step ? tipKey(step) : '')) this.glimVoice.dismiss();
+    if (!step) return null;
+    // Glim introduces each step once a session, when nothing else is on screen (the meeting line comes first).
+    if (step !== this.proTipped && this.glimVoice.met && !this.panel && this.glimVoice.react(tipKey(step), Date.now(), 8000)) this.proTipped = step;
+    const look = this.looks.look;
+    const slot1 = this.tdAbilities[0]?.id as SkillId | undefined;
+    const skill = slot1 && TD_SKILLS[slot1] ? this.t(TD_SKILLS[slot1].nameKey) : '';
+    return prologueView(step, look.vocation, this.touchUi, skill);
+  }
+  /** "Skip tutorial": this Keeper has played before. The prologue is over for them (the save's own beats stay). */
+  skipPrologue(): void {
+    this.story.skipTut();
+    (this.engine as unknown as { setGuide?: (kind: string | null) => void } | undefined)?.setGuide?.(null);
+    this.guide = null;
+    this.proWasOn = false;
+    this.message = this.t('play.pro.skipped');
+    this.focusWorld();
   }
 
   // ── Pets (shared/pets; docs/handoff/pets.md) ──
@@ -3070,6 +3135,8 @@ export class SideScrollerComponent implements OnDestroy {
   askGlim(): void {
     const goal = this.guide;
     if (!goal) return;
+    // The prologue: Glim says the step's tip again and points (its chevrons are already out).
+    if (this.topDown && this.proStep) { this.glimVoice.answer(tipKey(this.proStep), Date.now(), 8000); return; }
     const hint = this.glimVoice.ask(`goal.${goal.id}`, goal.key, Date.now());
     if (hint.walk) this.showGoal();
   }
@@ -3077,6 +3144,7 @@ export class SideScrollerComponent implements OnDestroy {
   get glimAskLabel(): string {
     const goal = this.guide;
     if (!goal) return '';
+    if (this.topDown && this.proStep) return this.t('play.glim.askDone');
     const { next, top } = this.glimVoice.peek(`goal.${goal.id}`, goal.key);
     return top ? this.t('play.glim.ask', { n: next, total: top }) : this.t('play.glim.askDone');
   }
@@ -3108,6 +3176,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.refreshGuide();
     const target = this.guide?.target;
     if (!target || !this.engine) return;
+    // The prologue: walk to the step's thing and use it (light the hearth, talk to the Sexton, close in, the coins).
+    if ('guide' in target) {
+      const went = (this.engine as unknown as { guideGo?: () => boolean }).guideGo?.() ?? false;
+      if (!went) this.message = this.t(this.state.paused ? 'play.hud.msg.closeFirst' : target.guide === 'foe' || target.guide === 'gold' ? 'play.pro.none' : 'play.hud.msg.cannotTravel');
+      this.focusWorld();
+      return;
+    }
     if (this.guide?.id === 'rune') this.markRuneHintSeen();
     this.placesOpen = false;
     // Top-down: the square walks to what it has; the hunt and the mines are not in the world yet (no 2D detour, owner).
@@ -3945,7 +4020,7 @@ export class SideScrollerComponent implements OnDestroy {
     const pin = this.selectedPin;
     if (!pin) return;
     this.trackedPinId = this.trackedPinId === pin.id ? null : pin.id;
-    try { if (this.trackedPinId) localStorage.setItem(TRACK_KEY, this.trackedPinId); else localStorage.removeItem(TRACK_KEY); } catch { /* this session */ }
+    try { if (this.trackedPinId) localStorage.setItem(activeCharacterKey(TRACK_KEY, localStorage), this.trackedPinId); else localStorage.removeItem(activeCharacterKey(TRACK_KEY, localStorage)); } catch { /* this session */ }
     this.drawMaps();
   }
   removePin(): void {

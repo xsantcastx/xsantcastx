@@ -257,7 +257,20 @@
 .confirm__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 /* ── The Glass ─────────────────────────────────────────────────────────── */
-.create { width: min(600px, 100%); }
+.create { width: min(680px, 100%); }
+.create__skip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 4px;
+  font-family: var(--cozy-font-read);
+  font-size: .9rem;
+  color: var(--cozy-cream);
+  cursor: pointer;
+}
+.create__skip input { width: 22px; height: 22px; margin: 0; accent-color: var(--cozy-brass); flex: none; }
+.create__skip input:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
 
 @media (max-width: 480px) {
   .lobby { padding-left: 10px; padding-right: 10px; }

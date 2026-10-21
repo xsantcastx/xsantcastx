@@ -103,7 +103,7 @@ import type { PetAbility } from '../../shared/pets/pets.model';
 import type { GlimMood } from '../../shared/glim/glim-art';
 import type { LootFilter } from '../../shared/loot/loot-tiers';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
-import { levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
+import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece, setSigOf } from '../../shared/rpg/set-items';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
@@ -1649,9 +1649,66 @@ export class TopDownEngine {
     this.options.onSeek?.({ kind: pick.kind, id: pick.id, name: pick.name, dir: r.dir, band: r.band, floor: r.floor, sea: r.sea });
     return true;
   }
+  // ── The prologue's pointer (td-prologue.ts): Glim's chevrons toward what the step asks for ──────────────────────
+
+  /** What the prologue points at ('hearth' | 'foe' | 'gold' | 'sexton'), and where that is now (null: nothing near). */
+  private guideKind: string | null = null;
+  private guideAt: { x: number; y: number; station?: string; foe?: Mob } | null = null;
+  private guideScan = 0;
+  /** The prologue's step wants Glim's chevrons on one kind of thing (null: none). */
+  setGuide(kind: string | null): void {
+    if (kind === this.guideKind) return;
+    this.guideKind = kind; this.guideAt = null; this.guideScan = 0;
+    this.canvas.setAttribute('data-guide', kind ?? '');
+  }
+  /** Show me (the prologue): walk to the thing and use it — light the hearth, talk to the Sexton, close in on the creature, step on the coins. */
+  guideGo(): boolean {
+    if (!this.guideKind || this.paused) return false;
+    const at = this.findGuide(this.guideKind);
+    if (!at) return false;
+    if (this.glim.shown) this.glimPoint(at.x, at.y - 16, 1.8, true);
+    if (at.station) return this.goToStation(at.station);
+    if (at.foe) { this.mobs.target = at.foe; this.chaseTimer = 0; return true; }
+    return this.walkTo(at.x, at.y);
+  }
+  private updateGuide(dt: number): void {
+    if (!this.guideKind || (this.guideScan -= dt) > 0) return;
+    this.guideScan = .4;
+    this.guideAt = this.findGuide(this.guideKind);
+    const where = this.guideAt ? `${Math.round(this.guideAt.x)},${Math.round(this.guideAt.y)}` : '';
+    if (this.canvas.getAttribute('data-guide-at') !== where) this.canvas.setAttribute('data-guide-at', where);
+  }
+  /** The nearest thing of a kind on this level (a creature not yet loaded: the nearest spawn of the surface round). */
+  private findGuide(kind: string): { x: number; y: number; station?: string; foe?: Mob } | null {
+    const p = this.player;
+    let best: { x: number; y: number; station?: string; foe?: Mob } | null = null, bd = Infinity;
+    const near = (x: number, y: number, extra: { station?: string; foe?: Mob } = {}) => { const d = Math.hypot(x - p.x, y - p.y); if (d < bd) { bd = d; best = { x, y, ...extra }; } };
+    if (kind === 'hearth' || kind === 'sexton') {
+      for (const st of this.level.stalls) {
+        const id = st.station.id;
+        if (kind === 'sexton' ? id === 'giver-sexton-wren' : id.startsWith('hearth:') && !this.hearthLit.has(id)) near(st.x, st.y, { station: id });
+      }
+    } else if (kind === 'gold') {
+      for (const d of this.mobs.drops) if (d.coins > 0) near(d.x, d.y);
+      if (!best) return this.findGuide('foe');
+    } else if (kind === 'foe') {
+      for (const m of this.mobs.mobs) if (m.hp > 0 && m.def.rank !== 'boss') near(m.x, m.y, { foe: m });
+      if (!best && this.level === this.world) for (const sp of this.world.spawnsIn(p.x - 1400, p.y - 1400, p.x + 1400, p.y + 1400)) near(sp.x, sp.y);
+    }
+    return best;
+  }
+  /** The prologue's chevrons, Seek-style, while the thing is more than a few tiles off (and no Seek is showing). */
+  private guideArrow(): { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null {
+    const at = this.guideAt;
+    if (!at || this.paused) return null;
+    const dx = at.x - this.player.x, dy = at.y - this.player.y;
+    if (Math.hypot(dx, dy) < TILE * 4) return null;
+    return { dir: compass(dx, dy), floor: 'here', t: .5, life: 10 };
+  }
+
   /** The Seek's arrows (air layer, over the dark): a lamp-toned chevron walking out from the Keeper, a floor mark. */
   private drawSeek(): void {
-    const a = this.seekArrow;
+    const a = this.seekArrow ?? this.guideArrow();
     if (!a || a.t <= 0) return;
     const c = this.ctx, p = this.player, cx = Math.round(p.x), cy = Math.round(p.y - 16);
     const fade = Math.min(1, a.t / .6, (a.life - a.t) / .2 + .2);
@@ -1876,6 +1933,7 @@ export class TopDownEngine {
     this.updateFight(dt);
     this.updatePet(dt);
     this.updateGlim(dt);
+    this.updateGuide(dt);
     this.updateFx(dt);
     this.updateLoot(dt);
     this.updateChop(dt);
