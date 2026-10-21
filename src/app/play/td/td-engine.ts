@@ -12,7 +12,7 @@
  * the same setters), so the play component keeps all its wiring; members the
  * top-down world has no use for yet are no-ops (see createTopDownEngine).
  */
-import type { EngineOptions, EngineState, EngineInput } from '../engine/engine.model';
+import type { EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { vocationLook } from '../../shared/keeper-look/vocation-look';
@@ -93,6 +93,7 @@ import type { LootFilter } from '../../shared/loot/loot-tiers';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
 import { levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
+import { chestSetPiece, setSigOf } from '../../shared/rpg/set-items';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
 import { DarkLayer, type DarkFrame } from './td-dark-layer';
 import { floorEliteRows, guaranteeMagic } from './td-elites';
@@ -962,7 +963,10 @@ export class TopDownEngine {
     const key = `shade:${id}:${Date.now().toString(36)}`;
     const roll = (k: string) => { try { return this.options.rollLoot?.({ creature: def.id, level: def.level, rank: 'champion', killKey: k, mf: this.mobs.darkBoon.mf }) ?? []; } catch { return []; } };
     let n = 0;
-    const rows = guaranteeMagic(floorEliteRows(roll(key), 'champion'), () => roll(`${key}:x${n++}`)).slice(0, 2);
+    const rows: LootRow[] = guaranteeMagic(floorEliteRows(roll(key), 'champion'), () => roll(`${key}:x${n++}`)).slice(0, 2);
+    // The Lamplighter's Things (set-items.ts): each shy chest holds a piece of the set, as well as what is above.
+    const piece = chestSetPiece(id, (() => { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return () => (h = (h * 1664525 + 1013904223) >>> 0) / 4294967296; })());
+    if (piece) rows.push({ kind: 'item', definitionId: piece.id, rarity: piece.rarity, label: piece.name, unique: true, level: def.level });
     let gold = 0;
     for (let i = 0; i < CHEST_GOLD_PILES; i++) gold += goldDropFor(def);
     this.mobs.drops.push({ id: `${key}:c`, x: x - 10, y: y + 8, coins: gold, qty: 0, label: `${gold} Gold`, color: GOLD_RAMP[0], age: 0 });
@@ -1395,7 +1399,7 @@ export class TopDownEngine {
     const key = [...ids].sort().join(',');
     if (key === this.relicKey) return;
     this.relicKey = key;
-    this.mobs.setRelics(relicTotals(ids));
+    this.mobs.setRelics(relicTotals(ids, setSigOf));
   }
   /** The arrow Glim leaves after a Seek: which way, the floor, and the seconds it still holds. */
   private seekArrow: { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null = null;
