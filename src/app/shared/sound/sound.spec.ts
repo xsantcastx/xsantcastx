@@ -30,7 +30,7 @@ describe('sound settings (godforge-sound)', () => {
     expect(coerceSound(null)).toEqual(defaultSound());
     expect(coerceSound([1, 2])).toEqual(defaultSound());
     const s = coerceSound({ music: 1.7, ambience: -2, effects: .333, muted: 'yes', updatedAt: 'x' });
-    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', chat: 'on', updatedAt: 0 });
+    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', updatedAt: 0 });
     expect(clampLevel(NaN, .4)).toBe(.4);
   });
 
@@ -196,6 +196,16 @@ describe('SoundService (levels through the gateway)', () => {
     expect((mergeSound({ chat: 'ignore', updatedAt: 9 }, { chat: 'on', updatedAt: 3 }) as { chat: string }).chat).toBe('ignore');
     sound.setChat('on', 4000);
     expect(sound.settings.chat).toBe('on');
+  });
+
+  it('privacy at the hearth: online and everyone by default; offline and friends-only saved and kept', () => {
+    expect([sound.settings.presence, sound.settings.invites]).toEqual(['online', 'everyone']);
+    expect(coerceSound({ presence: 'ghost', invites: 'nobody' })).toEqual(jasmine.objectContaining({ presence: 'online', invites: 'everyone' }));
+    sound.setPresence('offline', 3000);
+    sound.setInvites('friends', 3001);
+    const saved = JSON.parse(store.get(SOUND_KEY)!);
+    expect([saved.presence, saved.invites]).toEqual(['offline', 'friends']);
+    expect(coerceSound(saved)).toEqual(jasmine.objectContaining({ presence: 'offline', invites: 'friends' }));
   });
 
   it('a cloud merge lands in memory (rehydrate)', () => {

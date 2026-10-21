@@ -958,8 +958,8 @@ plan lives in [`online.md`](online.md); every ⚑ deploy there is the owner's ca
 | Phase | What | Size | State |
 |---|---|---|---|
 | 1 | Presence: see each other, public chat, Wave | — | ✓ live (hearth protocol 2) |
-| 2 | Parties: invite, frames, party chat, shared XP near a kill, Seek/minimap | M | built (branch `party`), ⚑ hearth redeploy to protocol 3 |
-| 3 | Social graph: Firebase-token auth on the hearth, friends, whispers, block/mute/report, privacy | M | next |
+| 2 | Parties: invite, frames, party chat, shared XP near a kill, Seek/minimap | M | ✓ live (hearth protocol 3) |
+| 3 | Social graph: Firebase-token auth on the hearth, friends, whispers, block/mute/report, privacy, profanity mask | M | built (branch `friends`), ⚑ hearth redeploy + rules |
 | 4 | Guilds: ranks, guild chat, tag over the head; hall later | L | |
 | 5 | Co-op encounters: server-seeded spawns, party dailies, group bosses (Seam Eater) with scaling, personal loot | L | |
 | 6 | Trading: two-sided confirm, atomic Function transaction, anti-dupe | M–L | |

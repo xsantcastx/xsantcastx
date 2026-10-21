@@ -20,7 +20,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { CHAT_SETTINGS, HUSH_SETTINGS, NIGHT_SETTINGS, type ChatSetting, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
+import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, type ChatSetting, type InviteSetting, type PresenceSetting, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
 import type { SoundScene } from './sound-palette';
 import type { SfxCue, SfxOptions, SoundDirector } from './sound-director';
 
@@ -88,6 +88,20 @@ export class SoundService {
     const cur = this.subject.value;
     if (cur.chat === chat || !CHAT_SETTINGS.includes(chat)) return;
     this.save({ ...cur, chat, updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+
+  /** Privacy at the Hearth (Menu → Settings): appear online/offline to friends; party invites from everyone/friends. */
+  setPresence(presence: PresenceSetting, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (cur.presence === presence || !PRESENCE_SETTINGS.includes(presence)) return;
+    this.save({ ...cur, presence, updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+  setInvites(invites: InviteSetting, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (cur.invites === invites || !INVITE_SETTINGS.includes(invites)) return;
+    this.save({ ...cur, invites, updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
   toggleMuted(): boolean {
