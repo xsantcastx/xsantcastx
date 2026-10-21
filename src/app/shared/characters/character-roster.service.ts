@@ -6,19 +6,20 @@
  * LocalSaveRegistry in the same tick. What each character's save holds is the gateway's business
  * (shared/save/character-scope.ts); this list only names them and keeps a summary to draw the row.
  */
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, NgZone, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { CHARACTER_ROSTER_KEY } from '../save/character-scope';
-import { CharacterRoster, CharacterRow, coerceRoster, emptyRoster, liveCharacters } from './character-roster.model';
+import { CharacterRoster, CharacterRow, coerceRoster, emptyRoster, liveCharacters, mergeCharacterRoster } from './character-roster.model';
 
 @Injectable({ providedIn: 'root' })
-export class CharacterRosterService {
+export class CharacterRosterService implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly store = inject(GameStateGateway);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly zone = inject(NgZone);
   private readonly subject = new BehaviorSubject<CharacterRoster>(emptyRoster());
   private hydrated = false;
 
@@ -65,14 +66,48 @@ export class CharacterRosterService {
     this.hydrate();
     const cur = this.subject.value;
     if (!cur.chars[id]) return;
-    const chars = { ...cur.chars };
-    delete chars[id];
-    this.save({ ...cur, chars });
+    this.save({ ...cur }, id);
   }
 
-  private save(next: CharacterRoster): void {
-    this.subject.next(next);
-    if (this.isBrowser) this.store.write(CHARACTER_ROSTER_KEY, next);
+  /**
+   * Write `next` merged over what is stored NOW, never over it. Every tab holds the whole roster in memory; writing
+   * that whole copy back used to drop a row another tab had added since (a Keeper made in tab A vanished when tab B
+   * refreshed a summary), and the play shell then treated the made Keeper as one on no list. The merge is the
+   * cloud's own (newest row wins, level never lowers, tombstones stay), so a tab's edits still win when they are
+   * newer. `forgotten` is removed after the merge: forget() is the one edit that is an absence.
+   */
+  private save(next: CharacterRoster, forgotten?: string): void {
+    let merged = next;
+    if (this.isBrowser) {
+      const stored = this.store.read(CHARACTER_ROSTER_KEY);
+      if (stored != null) merged = coerceRoster(mergeCharacterRoster(stored, next));
+    }
+    if (forgotten && merged.chars[forgotten]) {
+      const chars = { ...merged.chars };
+      delete chars[forgotten];
+      merged = { ...merged, chars };
+    }
+    this.subject.next(merged);
+    if (this.isBrowser) this.store.write(CHARACTER_ROSTER_KEY, merged);
+  }
+
+  /** Another tab wrote the roster: take its rows live (merged with ours, nothing written back, so no ping-pong). */
+  private readonly onStorage = (event: StorageEvent): void => {
+    if (event.key !== CHARACTER_ROSTER_KEY && event.key !== null) return;
+    this.zone.run(() => this.adoptStored());
+  };
+
+  /** The stored roster merged into memory. */
+  adoptStored(): void {
+    if (!this.isBrowser || !this.hydrated) return;
+    const stored = this.store.read(CHARACTER_ROSTER_KEY);
+    if (stored == null) return;
+    const merged = coerceRoster(mergeCharacterRoster(stored, this.subject.value));
+    if (JSON.stringify(merged) !== JSON.stringify(this.subject.value)) this.subject.next(merged);
+  }
+
+  ngOnDestroy(): void {
+    if (this.isBrowser) window.removeEventListener('storage', this.onStorage);
   }
 
   private hydrate(): void {
@@ -80,5 +115,6 @@ export class CharacterRosterService {
     this.hydrated = true;
     this.subject.next(coerceRoster(this.store.read(CHARACTER_ROSTER_KEY)));
     this.saves.register(CHARACTER_ROSTER_KEY, { rehydrate: () => this.subject.next(coerceRoster(this.store.read(CHARACTER_ROSTER_KEY))) });
+    window.addEventListener('storage', this.onStorage);
   }
 }
