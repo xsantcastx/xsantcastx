@@ -106,7 +106,11 @@ export class SoundService {
     doc.addEventListener('keydown', gesture, opts);
     doc.addEventListener('touchend', gesture, opts);
     doc.addEventListener('visibilitychange', visibility);
+    // Some phone browsers switch apps without a visibilitychange; pagehide is the backstop.
+    const away = (): void => this.zone.runOutsideAngular(() => this.director?.pause());
+    window.addEventListener('pagehide', away);
     this.unbind = () => {
+      window.removeEventListener('pagehide', away);
       doc.removeEventListener('pointerdown', gesture, opts);
       doc.removeEventListener('keydown', gesture, opts);
       doc.removeEventListener('touchend', gesture, opts);

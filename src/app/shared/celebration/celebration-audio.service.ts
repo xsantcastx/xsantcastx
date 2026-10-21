@@ -31,6 +31,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 import type { SoundProfile } from './celebration.model';
+import { audioHidden, guardAudioContext } from '../sound/audio-visibility';
 
 export const SOUND_PREF_KEY = 'forge-sound-enabled';
 
@@ -120,13 +121,15 @@ export class CelebrationAudioService {
   }
 
   private context(): AudioContext | null {
+    // A hidden page (another app, a locked phone) plays nothing and wakes nothing (shared/sound/audio-visibility).
+    if (audioHidden()) return null;
     if (this.ctx) return this.ctx;
     if (!this.isBrowser) return null;
     try {
       const Ctor = window.AudioContext
         ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return null;
-      this.ctx = new Ctor();
+      this.ctx = guardAudioContext(new Ctor());
       return this.ctx;
     } catch {
       return null;

@@ -17,6 +17,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { audioHidden, guardAudioContext } from '../sound/audio-visibility';
 
 interface Voice {
   type: OscillatorType;
@@ -73,12 +74,14 @@ export class LevelUpAudioService {
   }
 
   private context(): AudioContext | null {
+    // A hidden page (another app, a locked phone) plays nothing and wakes nothing (shared/sound/audio-visibility).
+    if (audioHidden()) return null;
     if (this.ctx) return this.ctx;
     try {
       const Ctor = window.AudioContext
         ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return null;
-      this.ctx = new Ctor();
+      this.ctx = guardAudioContext(new Ctor());
       return this.ctx;
     } catch {
       return null;
