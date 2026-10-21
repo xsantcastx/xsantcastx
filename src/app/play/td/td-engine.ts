@@ -90,6 +90,7 @@ import { PET_ACT, petRole, type PetCommand, type PetMove, type PetRole, type Pet
 import type { PetAbility } from '../../shared/pets/pets.model';
 import type { GlimMood } from '../../shared/glim/glim-art';
 import type { LootFilter } from '../../shared/loot/loot-tiers';
+import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -264,6 +265,18 @@ export class TopDownEngine {
   private readonly fxGold = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxgold=1\b/.test(location.search);
   private fxGoldLaid = false;
   /**
+   * The Cold Hearth (td-hearth.ts, design-bible §5.8): the hearths lit, the wake point and the blessings held (the host
+   * hands them in: setHearths), the fallen purse (setFallenPurse), and the wake after a fall (the veil, then the hearth).
+   */
+  private hearthLit = new Set<string>();
+  private hearthWake: string | null = null;
+  private hearthBlessed = 0;
+  private purse: { area: string; x: number; y: number; gold: number } | null = null;
+  private waking: { t: number; moved: boolean } | null = null;
+  private hearthSeen = '';
+  /** For the hearth specs (`?fxfall=1`, only under an automated browser): `window.__tdHearth` can fell the Keeper and stand him at a hearth. */
+  private readonly fxFall = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxfall=1\b/.test(location.search);
+  /**
    * For the elite specs (`?fxelite=1`, only under an automated browser): a champion pack east of the Keeper and a named
    * unique with three affixes west of him, once — real MobSystem packs, standing calm (no sight) so the shot holds still.
    * `?fxelite=fight` lets them hunt (sight kept), to see the affixes work.
@@ -312,6 +325,11 @@ export class TopDownEngine {
     this.populate();
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
+    if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
+      fall: () => this.hurt(this.hp + 1e6),
+      at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
+      hearths: () => this.hearths.map(h => h.id),
+    };
   }
   private static darknessAt(h: number): number { return h >= 21 || h < 5 ? 1 : h >= 18 ? (h - 18) / 3 : h < 7 ? (7 - h) / 2 : 0; }
 
@@ -337,6 +355,7 @@ export class TopDownEngine {
   }
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
+    if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
@@ -501,6 +520,9 @@ export class TopDownEngine {
     const id = s.station.id;
     // A town task giver's spot (one standing on their own, or beside a keeper's counter): the host opens the talk.
     if (id.startsWith('giver-') && s.keeper && this.options.onTalk?.(s.keeper.id)) return;
+    // The Cold Hearth: a hearth is lit by hand (the wake point); a capital's shrine sells the blessings.
+    if (id.startsWith('hearth:')) { this.lightHearth(id); return; }
+    if (id.startsWith('shrine:')) { const h = this.hearths.find(x => x.shrine?.id === id); this.options.onShrine?.({ id, town: h?.town ?? '' }); return; }
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
     // A door into a building: its ground floor.
@@ -693,16 +715,129 @@ export class TopDownEngine {
     this.report();
   }
 
-  /** A creature's bite. At zero the Keeper wakes in the square, whole (a cozy fall: nothing is lost). */
+  /**
+   * A creature's bite. At zero the Keeper falls (the Cold Hearth, design-bible §5.8): the host is told where (it takes
+   * the fall's cost and hands back the purse), the world goes dark, and they wake at the last lit hearth, whole.
+   */
   private hurt(n: number): void {
+    if (this.waking) return;
     this.hp = Math.max(0, this.hp - n);
     this.lastHurt = this.time;
     if (this.hp > 0) return;
-    this.hp = this.maxHp;
-    this.say('play.td.fell');
-    this.enter(this.world, '');
-    this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y;
-    this.mobs.target = null;
+    const w = this.whereabouts;
+    this.mobs.target = null; this.path = []; this.arrive = null; this.keys.clear(); this.joy = null; this.chop = null;
+    this.waking = { t: 0, moved: false };
+    this.options.onFall?.({ area: `td:${w.continent}|${w.level}`, x: w.x, y: w.y });
+    this.markHearth();
+  }
+
+  // ── The Cold Hearth (td-hearth.ts) ─────────────────────────────────────────
+
+  /** The hearths of the continent the Keeper is on (placed once, with their stalls). */
+  get hearths(): readonly TdHearth[] { return hearthsOf(this.world); }
+  /** The host's word on the hearths: which are lit, the wake point, how many blessings are held (the shrine's pips). */
+  setHearths(s: { lit: readonly string[]; wake: string | null; blessings: number }): void {
+    this.hearthLit = new Set(s.lit); this.hearthWake = s.wake; this.hearthBlessed = Math.max(0, Math.min(5, s.blessings));
+    this.markHearth();
+  }
+  /** The corpse run's purse: it lies only where it fell (`td:<continent>|<level>`). */
+  setFallenPurse(p: { area: string; x: number; y: number; gold: number } | null): void {
+    this.purse = p ? { area: p.area, x: p.x, y: p.y, gold: p.gold } : null;
+    this.markHearth();
+  }
+  /** The purse, when it lies on this continent and level. */
+  private purseHere(): { x: number; y: number; gold: number } | null {
+    const p = this.purse;
+    if (!p) return null;
+    return p.area === `td:${this.world.continent}|${this.level === this.world ? 'surface' : this.level.id}` ? p : null;
+  }
+  /** The Keeper's hand on a hearth: it takes the flame (a burst of embers) and becomes the wake point. */
+  private lightHearth(id: string): void {
+    const h = this.hearths.find(x => x.id === id);
+    if (!h) return;
+    const first = !this.hearthLit.has(id);
+    this.hearthLit.add(id); this.hearthWake = id;
+    this.glimBurst(h.x, h.y - 10, first ? 14 : 6);
+    if (first) this.glimMood('happy', 3);
+    this.options.onHearth?.({ id, town: h.town, capital: h.capital });
+    this.markHearth();
+  }
+  /** The wake: dark, then (at the darkest) the Keeper is moved to the hearth, then warmth back. Nothing moves meanwhile. */
+  private stepWaking(dt: number): void {
+    const w = this.waking!;
+    w.t += dt;
+    const out = this.still ? .25 : .6, back = this.still ? .8 : 1.6;
+    if (!w.moved && w.t >= out + .2) { w.moved = true; this.wakeAtHearth(); this.markHearth(); }
+    if (w.t >= out + .2 + back) { this.waking = null; this.markHearth(); }
+    this.stateTimer -= dt;
+    if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
+  }
+  /** The veil's darkness and warmth now (0–1 each). */
+  private wakeVeil(): { dark: number; warm: number } {
+    const w = this.waking;
+    if (!w) return { dark: 0, warm: 0 };
+    const out = this.still ? .25 : .6, back = this.still ? .8 : 1.6;
+    if (!w.moved) return { dark: Math.min(1, w.t / out), warm: 0 };
+    const k = Math.max(0, Math.min(1, (w.t - out - .2) / back));
+    return { dark: 1 - k, warm: (1 - k) * .9 };
+  }
+  /** Stand the Keeper at the wake hearth (any continent), or the square when none is lit. Life and mana come back whole. */
+  private wakeAtHearth(): void {
+    const id = this.hearthWake, cont = id ? hearthContinent(id) : null;
+    let woke: TdHearth | null = null;
+    if (id && cont && CONTINENTS[cont]) {
+      let world = this.continents.get(cont);
+      if (!world) { world = new TdWorld(CONTINENTS[cont]); this.continents.set(cont, world); }
+      const h = hearthsOf(world).find(x => x.id === id);
+      // Beside the fire, not in front of it: the Keeper wakes where the flame is in view.
+      if (h && this.restoreWhereabouts({ continent: cont, level: 'surface', x: h.x + 18, y: h.y + 14 })) woke = h;
+    }
+    if (!woke) { this.enter(this.world, ''); this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y; }
+    this.hp = this.maxHp; this.mobs.mana = this.mobs.maxMana; this.mobs.target = null;
+    this.player.dir = 'down';
+    this.placeCompanions();
+    this.options.onWoke?.({ hearth: woke?.id ?? null, town: woke?.town ?? this.world.def.townName });
+  }
+  /** Each frame: the purse walked over comes home. */
+  private updateHearth(): void {
+    const pu = this.purseHere();
+    if (pu && Math.hypot(pu.x - this.player.x, pu.y - this.player.y) < 14) {
+      this.purse = null;
+      this.glimBurst(pu.x, pu.y - 6, 8);
+      this.options.onPurse?.();
+    }
+    this.markHearth();
+  }
+  /** The hearth's state on the canvas, for tests and tools (written only when it changes). */
+  private markHearth(): void {
+    const pu = this.purseHere(), near = this.nearby?.station.id ?? '';
+    const waking = this.waking ? (this.waking.moved ? 'in' : 'out') : '';
+    const key = `${this.hearthWake ?? ''}|${this.hearthLit.size}|${pu ? 'here' : this.purse ? 'away' : ''}|${waking}|${near.startsWith('hearth:') || near.startsWith('shrine:') ? near : ''}|${this.hearthBlessed}`;
+    if (key === this.hearthSeen) return;
+    this.hearthSeen = key;
+    const [wake, lit, purse, wk, nearby, blessed] = key.split('|');
+    this.canvas.setAttribute('data-hearth-wake', wake);
+    this.canvas.setAttribute('data-hearths-lit', lit);
+    this.canvas.setAttribute('data-fallen-purse', purse);
+    this.canvas.setAttribute('data-waking', wk);
+    this.canvas.setAttribute('data-hearth-near', nearby);
+    this.canvas.setAttribute('data-blessings', blessed);
+  }
+  /** Test hook only (`?fxfall=1`): stand in front of the nearest hearth (or its shrine) on this continent. */
+  private fxStandAt(what: 'hearth' | 'shrine'): string | null {
+    if (this.level !== this.world) this.enter(this.world, '');
+    let best: { id: string; x: number; y: number } | null = null, bd = Infinity;
+    for (const h of this.hearths) {
+      const spot = what === 'shrine' ? h.shrine : { id: h.id, x: h.x, y: h.y };
+      if (!spot) continue;
+      const d = Math.hypot(spot.x - this.player.x, spot.y - this.player.y);
+      if (d < bd) { bd = d; best = spot; }
+    }
+    if (!best) return null;
+    const at = standNear(this.level, best.x + 18, best.y + 14);
+    this.player.x = at.x; this.player.y = at.y; this.player.dir = 'up'; this.path = [];
+    this.placeCompanions();
+    return best.id;
   }
 
   // ── The companions: the pet and Glim (td-pets.ts; the side view's API, so the play view's wiring just works) ──
@@ -1178,6 +1313,9 @@ export class TopDownEngine {
   private update(dt: number): void {
     this.time += dt;
     if (this.cant && (this.cant.age += dt) >= CHANT_SECS) this.cant = null;
+    // The continent's hearths stand from the first frame (placed once: their stalls join the town's).
+    hearthsOf(this.world);
+    if (this.waking) { this.stepWaking(dt); return; }
     let vx = 0, vy = 0;
     if (this.keys.has('a') || this.keys.has('arrowleft')) vx -= 1;
     if (this.keys.has('d') || this.keys.has('arrowright')) vx += 1;
@@ -1223,6 +1361,7 @@ export class TopDownEngine {
       if (d < bestD) { best = s; bestD = d; }
     }
     this.nearby = best;
+    this.updateHearth();
     this.updateSmoke(dt);
     this.updateFight(dt);
     this.updatePet(dt);
@@ -1672,6 +1811,14 @@ export class TopDownEngine {
     for (const k of this.keepers) if (surface && inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
     for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
     for (const g of this.groundLoot()) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g) });
+    // The Cold Hearth: each settlement's hearth (cold until lit), a capital's shrine, the fallen purse.
+    if (surface) for (const h of this.hearths) {
+      if (inView(h.x, h.y)) items.push({ y: h.y, draw: () => drawHearth(c, h.x, h.y, this.hearthLit.has(h.id), this.time, this.still) });
+      const sh = h.shrine;
+      if (sh && inView(sh.x, sh.y)) items.push({ y: sh.y, draw: () => drawShrine(c, sh.x, sh.y, this.hearthBlessed, this.time, this.still) });
+    }
+    const fallen = this.purseHere();
+    if (fallen && inView(fallen.x, fallen.y)) items.push({ y: fallen.y, draw: () => drawPurse(c, fallen.x, fallen.y, this.time, this.still) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     const pet = this.pet;
@@ -1727,6 +1874,11 @@ export class TopDownEngine {
     this.drawFightUi(inView);
     // A giver standing on their own already wears their name: no second plate.
     if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 62 : 36), '#ffd27a');
+    // The fallen purse names itself when the Keeper is near.
+    if (fallen && Math.hypot(fallen.x - this.player.x, fallen.y - this.player.y) < 110) this.plate(`${fallen.gold} Gold`, fallen.x, fallen.y - 14, '#ffd27a');
+    // The wake veil over everything (screen space).
+    const veil = this.wakeVeil();
+    if (veil.dark > 0 || veil.warm > 0) { c.setTransform(1, 0, 0, 1, 0, 0); drawWakeVeil(c, this.canvas.width, this.canvas.height, veil.dark, veil.warm); }
   }
   /** A pixel speech mark over a head: a brass bubble with '!' or '?', bobbing a little (still under reduced motion). */
   private headMark(mark: '!' | '?', x: number, y: number): void {
@@ -2512,6 +2664,10 @@ export class TopDownEngine {
       for (const l of sp.lights ?? []) { hole(o.x + l.x, o.y + l.y, l.r * 2); if (l.warm) glows.push({ x: o.x + l.x, y: o.y + l.y, r: l.r }); }
     }
     hole(this.player.x, this.player.y - 18, 70);
+    // A lit hearth is a light of its own; the fallen purse's beam a faint one.
+    if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 22 }); }
+    const pl = this.purseHere();
+    if (pl) hole(pl.x, pl.y - 10, 30);
     // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
     if (this.mobs.aura) {
       d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 6;

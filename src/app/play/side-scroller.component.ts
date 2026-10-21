@@ -198,6 +198,10 @@ import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
 import { LootService } from '../shared/loot/loot.service';
 import { LootSheetComponent } from '../shared/loot/loot-sheet.component';
 import { LOOT_I18N } from '../shared/loot/loot.i18n';
+import { HearthService, type FallSummary } from '../shared/hearth/hearth.service';
+import { COLD_HEARTH_I18N } from '../shared/hearth/cold-hearth.i18n';
+import { HEARTH_GRACE_LEVEL } from '../shared/hearth/hearth-rules';
+import { HearthShrineComponent } from '../shared/hearth/hearth-shrine.component';
 import { lootEntry } from '../shared/loot/drop-tables';
 import { itemAuras } from '../shared/loot/aura-sources';
 import { socketCountFor } from '../shared/enchanting/socket.model';
@@ -334,7 +338,7 @@ interface ItemTip {
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
 interface OpenPlace {
-  kind: 'page' | 'waystone' | 'chest' | 'slate'; stationId: string; title: string; kicker: string;
+  kind: 'page' | 'waystone' | 'chest' | 'slate' | 'shrine'; stationId: string; title: string; kicker: string;
   chest?: { areaId: string; index: number };
   /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
   own?: true;
@@ -379,7 +383,7 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
   fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
 };
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -485,6 +489,15 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly economy = inject(EconomyService);
   /** Loot & combat: drops, the aura, the difficulty, the corpse run (shared/loot). */
   private readonly loot = inject(LootService);
+  /** The Cold Hearth (shared/hearth): hearths lit, the Ember debt, the blessings. Top-down only. */
+  private readonly hearth = inject(HearthService);
+  /** The card after a fall: where the Keeper woke and what the fall cost. Fades by itself. */
+  wakeCard: { town: string; hearth: boolean; fall: FallSummary } | null = null;
+  private wakeTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastFall: FallSummary | null = null;
+  private hearthSub?: Subscription;
+  /** Kills whose XP already paid the debt this session (a replayed kill never pays twice). */
+  private readonly debtKills = new Set<string>();
   private rulesKey = '';
   /** Gold the last fall left behind (the fall card says it). */
   fallGold = 0;
@@ -895,6 +908,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HEIGHTS_I18N);
     this.i18n.register(SOUND_I18N);
     this.i18n.register(LOOT_I18N);
+    this.i18n.register(COLD_HEARTH_I18N);
     this.i18n.register(ONE_WORLD_I18N);
     this.i18n.register(TRAVEL_MAP_I18N);
     this.keeperKey = ''; this.marksKey = '';
@@ -927,7 +941,13 @@ export class SideScrollerComponent implements OnDestroy {
       onPurse: () => this.zone.run(() => {
         const gold = this.loot.recover();
         if (gold > 0) { this.message = this.t('play.loot.recovered', { n: gold }); this.sound.sfx('coin'); this.bump('.coin-count'); }
+        this.pushPurse();
       }),
+      // The Cold Hearth (shared/hearth, top-down): a fall's cost, the wake at the hearth, a hearth lit, the shrine.
+      onFall: event => this.zone.run(() => this.tdFell(event)),
+      onWoke: event => this.zone.run(() => this.tdWoke(event)),
+      onHearth: event => this.zone.run(() => this.hearthLit(event)),
+      onShrine: event => this.zone.run(() => this.openShrine(event)),
       onWorldAction: event => this.zone.run(() => {
         const result = this.worldAction(event);
         // A generated Delve cell broke (it paid XP, or would have): the Board Herald's dig bounties count it.
@@ -1031,6 +1051,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.heightsSub?.unsubscribe();
     this.heightsSub = this.heights.found$.subscribe(found => this.engine?.setHeightsFound(found));
     this.heights.refresh();
+    this.hearthSub?.unsubscribe();
+    if (this.topDown) this.hearthSub = this.hearth.state$.subscribe(h => this.tdHearth?.setHearths?.({ lit: h.lit, wake: h.wake, blessings: h.blessings.length }));
     this.bindPointer(canvas);
     this.engine.start();
     if (this.panel && this.panel.kind !== 'slate') this.engine.setPaused(true);
@@ -1236,6 +1258,42 @@ export class SideScrollerComponent implements OnDestroy {
     this.fallGold = this.loot.fall(state.areaId ?? this.town.id, state.x ?? 0, state.y ?? 0);
     this.pushPurse();
   }
+  /** The top-down engine's Cold Hearth members (td-hearth.ts). */
+  private get tdHearth(): { setHearths?: (s: { lit: readonly string[]; wake: string | null; blessings: number }) => void } | undefined {
+    return this.topDown ? this.engine as unknown as { setHearths?: (s: { lit: readonly string[]; wake: string | null; blessings: number }) => void } : undefined;
+  }
+  /** The Keeper fell (top-down): the Cold Hearth takes the fall's cost; the purse lies where they fell. */
+  private tdFell(event: { area: string; x: number; y: number }): void {
+    if (!this.browser) return;
+    this.wakeCard = null;
+    this.lastFall = this.hearth.fall(event, skillXp(this.activity.snapshot.progress, 'hunting'));
+    this.fallGold = this.lastFall.gold;
+    this.pushPurse();
+  }
+  /** The Keeper woke at a hearth (or the square): the wake card says where, and what the fall cost. */
+  private tdWoke(event: { hearth: string | null; town: string }): void {
+    const fall = this.lastFall ?? { grace: true, gold: 0, debt: 0, debtTotal: this.hearth.state.debt, blessed: 0 };
+    this.lastFall = null;
+    this.wakeCard = { town: event.town, hearth: !!event.hearth, fall };
+    this.sound.sfx('glim');
+    clearTimeout(this.wakeTimer);
+    this.wakeTimer = setTimeout(() => this.zone.run(() => { this.wakeCard = null; }), 12000);
+  }
+  /** A hearth lit by the Keeper's hand: it is the wake point now. */
+  private hearthLit(event: { id: string; town: string; capital: boolean }): void {
+    const { first } = this.hearth.light(event.id);
+    this.message = this.t(first ? 'play.coldHearth.lit.first' : 'play.coldHearth.lit.again', { town: event.town });
+    this.sound.sfx(first ? 'five' : 'tap');
+    if (first) this.toastLoot(this.t('play.coldHearth.lit.glim'));
+  }
+  /** A capital's Hearth Shrine: the five blessings in the place panel. */
+  private openShrine(event: { id: string; town: string }): void {
+    if (!this.browser) return;
+    this.showPanel({ kind: 'shrine', stationId: event.id, title: this.t('play.coldHearth.shrine.title'), kicker: event.town });
+  }
+  /** The Ember debt still owed (Hunting XP), for the HUD and the sheet. */
+  readonly graceLevel = HEARTH_GRACE_LEVEL;
+  get emberDebt(): number { return this.topDown ? this.hearth.state.debt : 0; }
   /** Hand the engine the purse (it lies only in the area it fell in). */
   private pushPurse(): void {
     const p = this.loot.state.purse;
@@ -1466,7 +1524,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
     this.unbindFeel();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.launchSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.keeperLvSub?.unsubscribe(); clearTimeout(this.levelBannerTimer); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.launchSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.keeperLvSub?.unsubscribe(); clearTimeout(this.levelBannerTimer); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.hearthSub?.unsubscribe(); clearTimeout(this.wakeTimer); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -2858,6 +2916,9 @@ export class SideScrollerComponent implements OnDestroy {
       if (keeper) { const named = this.t(keeper.nameKey); return this.t('play.world.keeper.hearth', { name: named === keeper.nameKey ? keeper.name : named }); }
     }
     if (this.state?.nearby === 'hs-forge') return this.t('play.hud.act.strikeForge');
+    // The Cold Hearth (shared/hearth): a hearth to light (or warm the hands at: it is the wake point), a capital's shrine.
+    if (this.state?.nearby?.startsWith('hearth:')) return this.t(this.hearth.state.wake === this.state.nearby ? 'play.coldHearth.act.warm' : this.hearth.state.lit.includes(this.state.nearby) ? 'play.coldHearth.act.again' : 'play.coldHearth.act.light');
+    if (this.state?.nearby?.startsWith('shrine:')) return this.t('play.coldHearth.act.shrine');
     // A town task giver (shared/town-tasks).
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
@@ -4818,9 +4879,16 @@ export class SideScrollerComponent implements OnDestroy {
     const opened = this.loot.killed(event.creature);
     if (opened) this.message = this.t('play.loot.unlocked', { tier: this.t('loot.tier.' + opened) });
     const base = Math.round(huntingXpFor(event.hp) * (event.xp ?? 1));
-    const xp = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
+    const gross = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
+    // The Ember debt (shared/hearth): while one is owed, half of each kill's XP pays it off. Once per kill.
+    const owed = this.topDown && this.hearth.state.debt > 0 && !this.debtKills.has(event.id);
+    const pay = owed ? this.hearth.earn(gross) : { earned: gross, paid: 0 };
+    if (owed) this.debtKills.add(event.id);
+    const xp = pay.earned;
+    if (pay.paid > 0 && this.hearth.state.debt === 0) this.message = this.t('play.coldHearth.debt.clear');
+    if (xp <= 0) { if (pay.paid > 0) this.toastLoot(this.t('play.coldHearth.debt.paid', { n: 0, paid: pay.paid })); return; }
     const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });
-    if (result.ok && !result.replayed) this.toastLoot(this.t('play.hunt.xp', { n: xp }));
+    if (result.ok && !result.replayed) this.toastLoot(pay.paid > 0 ? this.t('play.coldHearth.debt.paid', { n: xp, paid: pay.paid }) : this.t('play.hunt.xp', { n: xp }));
   }
   /**
    * The Keeper read a carved wall. The first reading is recorded (for the

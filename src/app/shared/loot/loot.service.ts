@@ -139,12 +139,13 @@ export class LootService {
   /**
    * The Keeper fell at (area, x, y): the tier's share of the purse is taken and
    * left there (the corpse run). An earlier purse not recovered is gone (D2's
-   * second death). Returns the Gold left; 0 when the purse was empty.
+   * second death). Returns the Gold left; 0 when the purse was empty. `scale` is what the Hearth Blessings leave
+   * of the share (1 with none, 0 with all five: then the old purse is still lost to the fall, and none is left).
    */
-  fall(area: string, x: number, y: number, at = Date.now()): number {
+  fall(area: string, x: number, y: number, at = Date.now(), scale = 1): number {
     if (!this.isBrowser) return 0;
     const s = this.state;
-    const gold = deathCost(this.economy.snapshot.gold, s.tier);
+    const gold = deathCost(this.economy.snapshot.gold, s.tier, scale);
     const purse: FallenPurse | null = gold > 0 && this.economy.spendGold(gold, 'fall') ? { area, x: Math.round(x), y: Math.round(y), gold, tier: s.tier, era: GOLD_ERA } : null;
     this.write({ ...s, purse, purseAt: Math.max(at, s.purseAt + 1) });
     return purse?.gold ?? 0;
