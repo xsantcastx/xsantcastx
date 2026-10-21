@@ -25,19 +25,19 @@ export const ASHGUARD_SKILLS: Readonly<Record<AshSkillId, SkillDef>> = {
   // ── Brand: fire on the blade ──
   'watch-blade': {
     id: 'watch-blade', kind: 'passive', mana: 0, cd: .8, nameKey: 'skill.watch-blade', textKey: 'skill.watch-blade.text',
-    vars: { min: 9, max: 14, reach: 1.6, arc: 110 }, grow: { min: 2, max: 3 }, tree: 'brand', tier: 0, col: 0, req: null,
+    vars: { min: 9, max: 14, reach: 1.6, arc: 110 }, grow: { min: 1, max: 2 }, tree: 'brand', tier: 0, col: 0, req: null,
     icon: I('<rect x="11" y="1" width="3" height="2" fill="#f2f5fa"/><rect x="9" y="3" width="3" height="2" fill="#c3cad6"/><rect x="7" y="5" width="3" height="2" fill="#c3cad6"/><rect x="5" y="7" width="3" height="2" fill="#7d8796"/><rect x="2" y="7" width="3" height="1" fill="#c99a3e"/><rect x="5" y="10" width="1" height="3" fill="#c99a3e"/><rect x="3" y="9" width="2" height="2" fill="#6e4526"/><rect x="1" y="11" width="2" height="2" fill="#e2552a"/><rect x="12" y="10" width="1" height="1" fill="#ffb347"/><rect x="13" y="12" width="1" height="1" fill="#ffb347"/><rect x="10" y="13" width="1" height="1" fill="#e2552a"/>'),
   },
   'ember-brand': {
     id: 'ember-brand', kind: 'active', mana: 12, cd: 12, nameKey: 'skill.ember-brand', textKey: 'skill.ember-brand.text',
-    vars: { pct: 40, burn: 6, secs: 8 }, grow: { pct: 5, burn: 1, secs: .3 }, tree: 'brand', tier: 0, col: 1, req: null,
+    vars: { pct: 40, burn: 6, secs: 8 }, grow: { pct: 4, burn: 1, secs: .3 }, tree: 'brand', tier: 0, col: 1, req: null,
     icon: I('<rect x="7" y="1" width="2" height="9" fill="#ffb347"/><rect x="7" y="1" width="1" height="9" fill="#fff2a8"/><rect x="6" y="3" width="1" height="5" fill="#e2552a"/><rect x="9" y="3" width="1" height="5" fill="#e2552a"/><rect x="4" y="10" width="8" height="1" fill="#c99a3e"/><rect x="7" y="11" width="2" height="3" fill="#6e4526"/><rect x="7" y="14" width="2" height="1" fill="#e0b25a"/><rect x="4" y="2" width="1" height="1" fill="#ffb347"/><rect x="11" y="4" width="1" height="1" fill="#fff2a8"/><rect x="3" y="6" width="1" height="1" fill="#e2552a"/>'),
     words: 'brann vael sha',
     syn: [{ from: 'ember-blood', per: 4, what: 'dur' }],
   },
   'cinder-cleave': {
     id: 'cinder-cleave', kind: 'active', mana: 14, cd: 5, nameKey: 'skill.cinder-cleave', textKey: 'skill.cinder-cleave.text',
-    vars: { pct: 120, reach: 2, arc: 160 }, grow: { pct: 6, reach: .03 }, tree: 'brand', tier: 1, col: 1, req: 'ember-brand',
+    vars: { pct: 100, reach: 2, arc: 160 }, grow: { pct: 4, reach: .03 }, tree: 'brand', tier: 1, col: 1, req: 'ember-brand',
     icon: I('<rect x="2" y="3" width="3" height="2" fill="#e2552a"/><rect x="4" y="2" width="4" height="2" fill="#ffb347"/><rect x="8" y="2" width="4" height="2" fill="#fff2a8"/><rect x="11" y="3" width="3" height="2" fill="#ffb347"/><rect x="13" y="5" width="2" height="3" fill="#e2552a"/><rect x="1" y="5" width="2" height="2" fill="#9e2e1c"/><rect x="6" y="7" width="2" height="7" fill="#c3cad6"/><rect x="6" y="7" width="1" height="7" fill="#f2f5fa"/><rect x="4" y="12" width="6" height="1" fill="#c99a3e"/>'),
     words: 'brann vael mur',
     syn: [{ from: 'ember-brand', per: 5, what: 'dmg' }],

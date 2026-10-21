@@ -158,6 +158,7 @@ Roles: melee, ranged, healer, shielder, summoner, exploder (each profile names o
 behaviour today**; the others are data for the living-world agent and the next combat pass (gap §12).
 Levels: base (Rivet Maw 1 … Fallen Ephemeris 20) + 1 per 40 Delve rows (max +12) + the difficulty offset.
 Blow: `12 × (1 + 0.12 × (level − 1))` × pack × tier. HP: authored × (1 + 0.08 per depth level) × pack × tier.
+(That is the side view. The top-down world's creatures rise with their authored life × `td-life lifeScale` — §13.)
 An unknown key is a level-1 'wild' melee brute (never crashes).
 
 ## 5. Champions and uniques (packs)
@@ -179,9 +180,11 @@ ground band still show — every blow is telegraphed.
 **Top-down elite packs (2026-10-21, roadmap §10 item 3, `play/td/td-elites.ts`).** In the top-down world a spawn
 rolls on its own key, deaths and a session salt: 1 in 16 eligible spawns comes up a pack, a quarter of them uniques.
 Never in a town or the clear ground round one (`TdWorld.safeAt`), never a boss or an authored champion, never under
-level 3, and only within the Keeper's level −10 … +6. A **champion pack** is 2–4 copies (×2.5 life, ×1.3 blow, one
+level 3, and only within the Keeper's level −10 … +6. A **champion pack** is 2–4 copies (×3.25 life, ×1.3 blow, one
 shared affix, a blue aura and tint, blue framed bars); a **unique** is a named leader ("Grimfang the Hollow", from
-lore name parts) with 1–3 affixes (×3.5, ×1.5, gold aura and framed bar with studs) and 2–4 ordinary minions.
+lore name parts) with 1–3 affixes (×9 life, ×1.5 blow, gold aura and framed bar with studs) and 2–4 ordinary minions.
+The top-down lives are `td-elites TD_RANK_HP` (the table above, ×2.5 / ×3.5, stays the side view's): the combat sim
+(§13) found packs falling in half their band.
 Affixes: Extra Strong (×1.5 blow), Extra Fast (×1.6 walk, bites ×1.3 sooner), Stone Skin (takes 60% of each hit),
 Cursed (blows: −25 every resist and +15% taken for 4 s), Fire Enchanted (fire blows ×1.25; bursts r 26 px 0.6 s after
 it falls, its ring on the ground first), Cold Aura (cold blows; −30% to the Keeper's step within 3 tiles, a frost ring
@@ -192,7 +195,7 @@ never two element affixes on one creature. Loot: the rank goes to `rollHuntGold`
 leader always leaves at least one magic-or-better piece. A unique's minions drop as normal creatures.
 
 **Eclipse-touched (2026-10-21, design-bible §5.2, `td-phases.ts`).** Under an eclipse, in the open wilds, 1 in 8 wild
-spawns comes up Eclipse-touched: a lone creature becomes a champion (×2.5 life, ×1.3 blow, no followers) with the
+spawns comes up Eclipse-touched: a lone creature becomes a champion (×3.25 life, ×1.3 blow, no followers) with the
 `eclipse-touched` affix (×1.1 blow) and one ordinary affix; a pack it already leads gains the affix. Its drops climb one
 ladder step (`lootRank`: a touched champion drops as a unique — Gold ×6, 3 rolls at 60%; never a boss). Night and the
 eclipse also raise every kill's Hunting XP (×1.1 / ×1.2) and Gold pile (×1.1 / ×1.25) in the wilds; the economy sim's
@@ -355,18 +358,20 @@ continent's rift — its standing stones (Ember Isle's Ninefold Stones, just sou
 outskirts; the Ring of Pyres, the Ring of Thorns, the Lantern Ring) — it rises when the Keeper comes within 30 tiles,
 once per eclipse; the strip says so and Glim warns ("Stay out of the rings"). It never stands on, steps onto or strikes
 into a town's or village's safe ground, never chases past 14 tiles from its rift, and leaves (no kill, no loot) when the
-eclipse ends. *Level:* the Keeper's, held inside **20–60**. *Numbers at level L:* life 1.3 × (200L − 2800) (1560 at 20,
-4160 at 30, 6760 at 40, 9360 at 50, 11960 at 60: above the Ashbone Dragon and the Ink Abbess at their levels), bite
-0.9L–1.3L every 1.8 s, walks 18 px/s, sight 170 px, hits arcane.
+eclipse ends. *Level:* the Keeper's, held inside **20–60**. *Numbers at level L:* life 1.3 × (200L − 2800) ×
+CREATURE_LIFE.boss (22) × SEAM_LIFE (1.25), and past 40 a further half by 60 (SEAM_LATE): 42,900 at 20, 114,400 at 30,
+185,900 at 40, 321,750 at 50, 493,350 at 60 — above the Ashbone Dragon and the Ink Abbess at their levels, a fight of
+two to four minutes (§13); bite 0.75L–1.1L every 1.8 s, walks 18 px/s, sight 170 px, hits arcane.
 - **Void Breath** (`ul nyr sha`): `BOSS_TELL` 0.6 s wind-up with the stepped cone (shadow tones), then a fan of **5**
-  void gouts, 0.6L–0.9L each, every **4 s**, range 140 px; a step aside in the tell and it misses.
+  void gouts, 0.5L–0.75L each, every **4 s**, range 140 px; a step aside in the tell and it misses.
 - **Seam Rend** (`ul dra`): **3** rings (one under the Keeper, two 34 px round him) of 20 px, shown for **1 s**, then
-  each bursts for 1.0L–1.4L arcane; every **6 s**. A step out of the ring and nothing lands.
+  each bursts for 0.85L–1.15L arcane; every **6 s**. A step out of the ring and nothing lands.
 - **At half life** (`ul teth`): two **Eclipse-touched** creatures climb out after the 0.6 s call sigil (lone touched
-  champions of a shade-kin by its level: Lantern Wisp under 30, Ink Hound under 40, Drowned Knight above), and the
-  fight quickens: a fan of **7** every **3.2 s**, **5** rings every **4.5 s**.
+  champions by its level, never above it: the Cinder Wraith under 28, then the shade-kin of the fens — Lantern Wisp
+  under 32, Ink Hound under 40, Drowned Knight above), and the fight quickens: a fan of **7** every **3.2 s**, **5**
+  rings every **4.5 s**.
 - *Rewards:* boss rank (3 item rolls with the 2-step shift, Hunt Gold at the boss band, the boss's potion and Blank
-  odds), Hunting XP by its life, Eclipse Glass ×2, Nightglass ×2, an Umbral Sigil at 50%; and its unique, the
+  odds), Hunting XP by its life before the boss factors (§13), Eclipse Glass ×2, Nightglass ×2, an Umbral Sigil at 50%; and its unique, the
   **Seamstitch Grips** (hands, 1 in 8): "While the sky is dark (night or an eclipse), every hit you land is 20% harder"
   (`RelicSig.umbra`, measured in `td-seam.spec.ts`).
 - *Balance:* for a well-geared solo Keeper at its level. A level-1 Keeper on Ember Isle meets the level-20 one: a
@@ -418,3 +423,67 @@ creatures, minions) keep their authored HP and the legacy 12 blow on Normal; Nig
 5. Spells: no active skills beyond swing/blast; no mana. Auras are passive only (no hotkey switch beyond the sheet).
 6. Boss loot tables are generic (no boss-specific uniques).
 7. The keeper stat sheet on the Forge-keeper page ignores the Hunting bonus (the Satchel's does not).
+
+## 13. The combat simulator and its bands (2026-10-21, branch `balance`)
+
+Owner ask: boss, elite and creature numbers were set by eye; nobody had measured time to kill or how often the Keeper
+falls, across four vocations. `node scripts/combat-sim.mjs` now does, in the **real fight**: it loads `td-mobs`
+MobSystem, the skills, the trees, the item affixes, the elites, the Seam Eater and the tiers through the repo's own
+TypeScript (the modules the Karma truth harness drives), so it cannot drift from the game. Only the Keeper's hands are
+modelled.
+
+**The simulated Keeper** (per vocation, at levels 5 / 10 / 20 / 30 / 40 / 60, 24 seeded runs a cell, each run its own
+gear): the eight gear wells rolled at item level = his level by `rollAffixes` (magic below 10, then rare in weapon,
+head, chest and trinket), each the best of three for his vocation; every attribute point (45% Spirit, 40% Vitality,
+15% Energy — Agility to its 30 cap for the Ashguard and the Thornstrider); every skill point along a D2-style path
+(`PATHS`: the basic attack and one main spell first, synergies after) through the real `buyRank`; the best four actives
+he holds on the bar, his class aura; a belt of 8 + 8 potions of his level's tier, drunk under 40% life / 20% mana; he
+steps out of half the telegraphed attacks (a breath's tell, a Rend ring, a burst); a ranged vocation kites what is
+slower than him; the Thornstrider's spirit beast bites. A hunt is the creatures of his level one after another (an elite
+pack 1 in 16), life and mana carried over, 12 s between pulls (leveling.md's 240 kills an hour), the out-of-fight mend.
+
+**The bands** (`--check`, in CI and the gate; ±15% for seeded noise on a time):
+
+| What | Band |
+|---|---|
+| A creature at his level (three below to two above) | 2–5 s; falls ≤ 2% |
+| A champion pack / a unique pack | 15–40 s / 30–75 s; falls ≤ 10% |
+| A floor boss at its level, first attempt | 60–150 s; falls ≤ 30% |
+| The Seam Eater on Normal (20, 30, 40, 60) | 2–4 min; falls ≤ 30%; Nightmare and Hell harder (more falls or a longer fight) |
+| Vocations on one foe (a creature at level, each boss) | each within ±25% of the four's mean |
+| Hours to level 10 / 30 / 50 on the hunt | 0.4–1 / 4–8 / 8–20 h (leveling.md: 0.6 / 5.8 / 14) |
+| The hunt | XP and Gold an hour climb with the level |
+
+Level 60 is shown, not banded: content stops at 42 (the Gloam Witch) and 50 (the Ink Abbess), so a level-60 Keeper
+outlevels everything he hunts.
+
+**What it found, and what moved** (before → after, the median of the four vocations; full table: run the script):
+
+| | Before | After |
+|---|---|---|
+| A creature at level (L5 / 20 / 40) | 1.3 / 0.7 / 0.7 s | 3.1 / 3.3 / 3.3 s |
+| Champion pack · unique pack (L20) | 8 · 7 s | 31 · 39 s |
+| Floor bosses (L7–50) | 2–10 s, 0% falls | 56–155 s, 0% falls (6–10 potions on the first two) |
+| The Seam Eater on Normal (L20 / 40 / 60) | 8–15 / 8–13 / 4–8 s | 124–159 / 147–228 / 154–244 s, ≤ 25% falls |
+| Ashguard vs the four's mean on one foe | +40% damage | within ±25% |
+| Hours to 10 / 30 / 50 | 0.6 / 3.9 / 7.3 | 0.6 / 4.5 / 9.0 |
+
+- **Creature life** (`play/td/td-life.ts`, applied in `td-mobs` MOBS): authored life × `lifeScale` — ×1 at level 1
+  climbing to ×3 by level 6, then +0.06 a level (×5.1 at 40); a boss ×22. Hunting XP still follows the authored life.
+- **Packs** (`td-elites TD_RANK_HP`): a champion copy ×3.25 life (was 2.5), a unique leader ×9 (was 3.5).
+- **The Seam Eater** (`td-seam`): life × 22 × 1.25, +50% from 40 to 60; its blows, breath and Rend a sixth softer; its
+  half-life call never above its level (the Cinder Wraith under 28).
+- **Skills** (skill-trees.md "Balance pass"): Ember Bolt +3/+5 a rank, Kindle +3/+4, Watch Blade +1/+2, Cinder Cleave
+  100% +4%, Ember Brand +4% a rank.
+
+**Open questions for the owner** (what the numbers say, not decided here):
+1. *Nightmare and Hell* at the Keeper's own level are near-certain falls for every vocation but the Ashguard, even at
+   level 80 against the level-60 Eater: the tiers' ×2 blows and −40/−100 resists need resist gear (the sim rolls none on
+   purpose) or the side view's +20/+40 level offset. Is that the intended wall?
+2. *Kiting:* a ranged Keeper can walk backwards from every boss without a breath or a Rend (the Uncounted, the Warden,
+   the Anvil Warden, the Magma Tyrant, the Mossbound Colossus) and never be touched; the first two bosses cost a melee
+   Ashguard his whole belt. Bosses may want a gap-closer.
+3. *Packs and the blade:* the Ashguard clears a champion pack in about half the ranged vocations' time (his swing
+   strikes the whole arc). Kept as his identity; say if it should close further.
+4. *Leveling pace* past 30 runs ~1.5× faster than leveling.md's "content at pace" column, because the Umbral Marches'
+   creatures were authored above the 30 + 12.5·level rule (Drowned Knight 1,200 at 38 against 505).

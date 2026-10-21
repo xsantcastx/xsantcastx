@@ -28,7 +28,7 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
   // ── Lamp: light as a weapon ──
   'kindle': {
     id: 'kindle', kind: 'passive', mana: 0, cd: 1, nameKey: 'skill.kindle', textKey: 'skill.kindle.text',
-    vars: { min: 7, max: 11, range: 4 }, grow: { min: 2, max: 3 }, tree: 'lamp', tier: 0, col: 0, req: null,
+    vars: { min: 7, max: 11, range: 4 }, grow: { min: 3, max: 4 }, tree: 'lamp', tier: 0, col: 0, req: null,
     icon: I('<rect x="10" y="2" width="4" height="4" fill="#fffbe8"/><rect x="11" y="3" width="2" height="2" fill="#ffffff"/><rect x="8" y="5" width="3" height="3" fill="#ffd27a"/><rect x="6" y="7" width="3" height="2" fill="#c99a3e"/><rect x="4" y="9" width="2" height="2" fill="#c99a3e"/><rect x="2" y="11" width="2" height="2" fill="#8a6a3a"/><rect x="1" y="13" width="1" height="1" fill="#8a6a3a"/><rect x="13" y="7" width="1" height="1" fill="#fff2a8"/><rect x="8" y="1" width="1" height="1" fill="#fff2a8"/>'),
     words: 'lum sha',
   },

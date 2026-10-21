@@ -21,11 +21,17 @@ seconds round to 0.1, counts (`count`, `max`) take the whole part, so a skeleton
 Nothing ever shrinks with a rank (Karma checks every skill, ranks 1→20). Mana and cooldowns do not change with rank.
 Spell power (level, Spirit, gear) multiplies the damage on top, as before.
 
+**Balance pass (2026-10-21, `node scripts/combat-sim.mjs`, loot-and-combat.md §13).** The simulator ran the four
+vocations at levels 5–60 in the real fight and found the Ashguard ~40% ahead on one foe and the Warlock and the
+Lanternwright ~25% behind. Five numbers moved, nothing else: **Ember Bolt** grows +3/+5 a rank (was +2/+3); **Kindle**
++3/+4 (was +2/+3); **Watch Blade** +1/+2 (was +2/+3); **Cinder Cleave** 100% of the blow, +4% a rank (was 120%, +6%);
+**Ember Brand** +4% a rank (was +5%). Each vocation's time to kill one foe now sits within ±25% of the four's mean.
+
 ## The trees
 
 | Tier (level) | Ember (fire) | Bone (necromancy) | Shadow (curses & wards) |
 |---|---|---|---|
-| 1 (1) | **Ember Bolt** (passive staff bolt) 8–13 +2/+3 · **Hellfire Nova** 20–30, r3 +4/+6, r+0.1 · **Aura of Embers** 3 dps r3 +1 dps, r+0.1 | **Bone Spear** 22–32 +4/+6 · **Raise Skeleton** 2 (max 2), life 50, blow 7; count +0.15, max +0.25, life +10, blow +1 · **Soul Harvest** 8 mana a kill +1 | **Drain Life** 18–26, heal 50% +3/+5, +1% · **Ember Curse** 5 dps 8 s, −20% bites; +1 dps, +0.2 s, +1% · **Dark Ward** absorbs 40 for 12 s; +10, +0.5 s |
+| 1 (1) | **Ember Bolt** (passive staff bolt) 8–13 +3/+5 · **Hellfire Nova** 20–30, r3 +4/+6, r+0.1 · **Aura of Embers** 3 dps r3 +1 dps, r+0.1 | **Bone Spear** 22–32 +4/+6 · **Raise Skeleton** 2 (max 2), life 50, blow 7; count +0.15, max +0.25, life +10, blow +1 · **Soul Harvest** 8 mana a kill +1 | **Drain Life** 18–26, heal 50% +3/+5, +1% · **Ember Curse** 5 dps 8 s, −20% bites; +1 dps, +0.2 s, +1% · **Dark Ward** absorbs 40 for 12 s; +10, +0.5 s |
 | 2 (6) | **Cinder Rain** ← Nova: 6–10 twice a second for 3 s in r2 around the target; +2/+3, +0.1 s, r+0.05 | **Corpse Burst** ← Bone Spear: the freshest corpse within 6 tiles bursts, 18–28 in r2; +4/+6 · **Skeleton Mastery** ← Raise: skeletons +10% life and blow, +5%/rank | **Aura of Siphoning** ← Drain Life: heal 2 per hit, +0.5 · **Weaken** ← Curse: foes within r2 of the target bite 25% weaker for 8 s; +1%, r+0.1, +0.3 s |
 | 3 (12) | **Flame Wall** ← Rain: a 4-tile wall across the target, 8 dps for 5 s; +2 dps, +0.1 tile, +0.2 s | **Bone Armor** ← Soul Harvest: absorbs 30 for 15 s (before the ward); +8, +0.5 s | **Life Tap** ← Dark Ward: 20 life → 30 mana; +4 mana (never the last life) |
 | 4 (18) | **Ember Mastery** ← Ember Bolt: +10% fire damage, +3%/rank | **Bone Storm** ← Corpse Burst: 5 spears in a fan (a ring with no foe), 14–22 each; +0.2 count, +3/+4 | **Doom** ← Weaken: after 4 s the target bursts for 50–80 to all within r2; +9/+13, r+0.05 |
@@ -68,8 +74,8 @@ bought ranks. The basic attack is the **Watch Blade**: a swing in a 110° arc in
 
 | Tier (level) | Brand (fire on the blade) | Oath (shield, taunt, guard) | Ash (endurance) |
 |---|---|---|---|
-| 1 (1) | **Watch Blade** (passive swing) 9–14 +2/+3 · **Ember Brand** *brann vael sha* 8 s: blows +40% as fire and a 6 burn over 3 s; +5%, +1, +0.3 s · 12 · 12 s | **Shield Bash** *brann mur* 10–16 and a 1.2 s stun (bosses ⅕); +2/+3, +0.05 s · 8 · 6 s · **Shield Oath** *brann ka* 6 s: blocks 30% of blows whole; +1%, +0.2 s · 12 · 16 s | **Ash Stride** *brann sha* charge 3 tiles, 80% of a blow, knock back 1 tile (not bosses); +5%, +0.05 tile · 10 · 7 s · **Watchfire** (aura) *brann hesk ka* +10 Defense, 1 life/s; +3, +0.2 |
-| 2 (6) | **Cinder Cleave** ← Brand *brann vael mur*: a 160° arc 2 tiles deep, 120% as fire; +6% · 14 · 5 s | **Watch Cry** ← Bash *brann orum*: taunts all within 4 tiles 3 s (bosses ⅕), you take 15% less; +0.1 s, +0.5% · 10 · 10 s | — |
+| 1 (1) | **Watch Blade** (passive swing) 9–14 +1/+2 · **Ember Brand** *brann vael sha* 8 s: blows +40% as fire and a 6 burn over 3 s; +4%, +1, +0.3 s · 12 · 12 s | **Shield Bash** *brann mur* 10–16 and a 1.2 s stun (bosses ⅕); +2/+3, +0.05 s · 8 · 6 s · **Shield Oath** *brann ka* 6 s: blocks 30% of blows whole; +1%, +0.2 s · 12 · 16 s | **Ash Stride** *brann sha* charge 3 tiles, 80% of a blow, knock back 1 tile (not bosses); +5%, +0.05 tile · 10 · 7 s · **Watchfire** (aura) *brann hesk ka* +10 Defense, 1 life/s; +3, +0.2 |
+| 2 (6) | **Cinder Cleave** ← Brand *brann vael mur*: a 160° arc 2 tiles deep, 100% as fire; +4% · 14 · 5 s | **Watch Cry** ← Bash *brann orum*: taunts all within 4 tiles 3 s (bosses ⅕), you take 15% less; +0.1 s, +0.5% · 10 · 10 s | — |
 | 3 (12) | — | **Hold the Line** ← Oath (passive): below 40% life, +20% Defense; +2% | **Ember Blood** ← Watchfire (passive): 3% of damage dealt heals; +0.2% |
 | 4 (18) | **Whirl of Cinders** ← Cleave *vael orum brann*: 4 turns in 2 s, each 60% as fire in r2; +4%, r+0.05 · 26 · 10 s | — | — |
 | 5 (24) | — | — | **Vow of the Last Watch** ← Ember Blood *brann ul ka*: 8 s you cannot fall below 1 life, then 25% of what it held heals; +0.2 s, +1% · 30 · 60 s |
@@ -89,8 +95,8 @@ then the Brand's %, then spell power (level, Spell Damage worn). The weapon's *p
 plus a quarter of its Spell Damage % (the affixed head stat): `flat = round(3 × max(0, power − 1))`, `mult = 1`.
 The starter Basalt Edge (Strike 1) is power 1, so it adds nothing and swings exactly the numbers the book shows. With
 **nothing in hand** the Keeper fights bare-handed: `flat = 0`, `mult = 0.85` (a fifth lighter, still a swing).
-Examples, Watch Blade rank 5 (17–26 base, power ×1): bare hands 14–22 · Basalt Edge 17–26 · Dawnrender (Strike 1.7)
-19–28 · a rare with 12% Spell Damage (power 3, flat +6) 23–32, and its 12% lifts the spell power on top. Cinder Cleave,
+Examples, Watch Blade rank 5 (13–22 base, power ×1): bare hands 11–19 · Basalt Edge 13–22 · Dawnrender (Strike 1.7)
+15–24 · a rare with 12% Spell Damage (power 3, flat +6) 19–28, and its 12% lifts the spell power on top. Cinder Cleave,
 the Whirl and Ash Stride roll the same blow (their % of it), so the weapon counts in all of them. Shield Bash is the shield's
 and keeps its own roll.
 
@@ -115,7 +121,7 @@ ghouls, wisps and drowned (`td-lantern shadowBorn`).
 
 | Tier (level) | Lamp (light as a weapon) | Hearth (mending, wards) | Moth (the lantern's kin) |
 |---|---|---|---|
-| 1 (1) | **Kindle** (passive flare) *lum sha* 7–11 +2/+3, 4 tiles · **Blinding Flash** *lum orum* 8–12 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, a 4–7 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
+| 1 (1) | **Kindle** (passive flare) *lum sha* 7–11 +3/+4, 4 tiles · **Blinding Flash** *lum orum* 8–12 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, a 4–7 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
 | 2 (6; the shutters at 1) | **Shutter the Lantern** *lum un ka* (level 1): shut, the lantern's and the aura's light go and the Light spell goes out; again, open · 0 · 1 s | **Hearth Circle** ← Hearthlight *hesk orum* r3 for 10 s: you mend 4/s inside, foes walk 20% slower, the Hush cannot rise; +1/s, r+0.05 · 24 · 14 s | **Moth-Kin** ← Wisp (passive): the kin's motes +10%; +3% |
 | 3 (12) | **Banish** ← Flash *lum un* 30–46 to one within 6 tiles; one of the dead at ≤ 25% life after it is unmade (a boss of the dead takes ×1.5 instead); +6/+9 · 22 · 6 s | **Lantern Ward** ← Hearthlight *lum hesk ka* absorbs 50 for 12 s; breaking, it blinds all within 3 tiles 2 s (bosses ⅕); +10, +0.3 s · 20 · 18 s | **Beacon** ← Wisp *lum dra* a lantern on a pole 12 s, a 6–10 mote each second at 5 tiles, a fixed light; +2/+3, +0.3 s · 26 · 16 s |
 | 4 (18) | — | **Last Light** ← Hearth Circle (passive): once every 600 s a fatal blow leaves you at 1 life, 3 s untouchable; +0.1 s | — |

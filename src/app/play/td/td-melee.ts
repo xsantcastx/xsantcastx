@@ -4,7 +4,7 @@
  * The Warlock's staff throws a bolt from afar; the Ashguard swings a blade in an arc in front of him. A swing strikes
  * every creature inside the arc — within the reach (plus a little of a big creature's body) and within half the arc's
  * angle either side of where he aims. A blow is the Watch Blade's roll, lifted or cut by a share (Cinder Cleave's
- * 120%, the Whirl's 60% a turn) and by the Ember Brand while it burns. Crowd control on a boss lasts a fifth as long.
+ * 100%, the Whirl's 60% a turn) and by the Ember Brand while it burns. Crowd control on a boss lasts a fifth as long.
  */
 
 /** Bosses take this share of a stun or a taunt (design-bible §4.7: "bosses take 20% of root/slow/blind duration"). */

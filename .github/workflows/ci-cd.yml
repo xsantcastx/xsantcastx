@@ -43,6 +43,11 @@ jobs:
         # Reads the shipped numbers from src/app/shared/economy/economy-curve.ts.
         run: node scripts/economy-sim.mjs --check
 
+      - name: Combat balance (time to kill, deaths, XP an hour per vocation and level)
+        # Drives the real top-down fight (td-mobs MobSystem) for every vocation at levels 5–60, every boss and the
+        # Seam Eater; fails when a band in docs/design/loot-and-combat.md §13 breaks. ~10 s.
+        run: node scripts/combat-sim.mjs --check
+
       - name: Check design-system adherence
         # Ratchet, not a wall: fails only when a rule's count rises above the
         # committed baseline in scripts/ds-adherence.baseline.json. Runs before
