@@ -19,8 +19,9 @@
  *    named uniques — a UNIQUE_SHARE chance it is one of them, at its authored
  *    rarity (uniques reach a player through this one branch only, the same
  *    contract the Gambler keeps), else an ordinary base from the Gambler's pool;
- *  - Magic Find has D2's diminishing returns: full on uncommon, 600/(MF+600)
- *    on rare/epic, 250/(MF+250) on legendary and up;
+ *  - Magic Find has D2's diminishing returns, rung by rung (magic-find-curve.ts):
+ *    linear on uncommon, K 600 on rare, 500 on epic, 250 on legendary, 150 on
+ *    mythic and singular (effective = MF×K/(MF+K));
  *  - level lifts the rare+ weights and gates the top rungs (no Mythic off a
  *    level-3 Maw); difficulty and rank (champion/unique/boss) shift the ladder;
  *  - runes drop on their own small chance, from a fixed per-tier ladder capped
@@ -40,6 +41,9 @@ import { RUNES, type Rune, type RuneTier } from '../rune-forge/rune.model';
 import { DIFFICULTIES, type DifficultyTier } from './difficulty.model';
 import type { MonsterRank } from './champions';
 import { LOOT_TIER_ORDER, type LootTier } from './loot-tiers';
+import { UNIQUE_MF_K, effectiveMagicFind, mfFor } from './magic-find-curve';
+
+export { effectiveMagicFind, mfFor, MF_K, UNIQUE_MF_K } from './magic-find-curve';
 
 export interface LootContext {
   /** Creature key (creature-families.ts). */
@@ -68,18 +72,25 @@ export const ITEM_ROLLS: Readonly<Record<MonsterRank, { rolls: number; chance: n
 /** A rune's chance per kill, by rank. */
 export const RUNE_CHANCE: Readonly<Record<MonsterRank, number>> = { normal: 0.02, champion: 0.12, unique: 0.25, boss: 0.6 };
 /** Ladder steps a rank adds (on top of the difficulty's). */
-export const RANK_SHIFT: Readonly<Record<MonsterRank, number>> = { normal: 0, champion: 1, unique: 2, boss: 2 };
+export const RANK_SHIFT: Readonly<Record<MonsterRank, number>> = { normal: 0, champion: 1, unique: 2, boss: 3 };
+/**
+ * Legendary-and-up multiplier by rank, on top of the ladder steps: the targeted farm (a unique pack, a boss) is
+ * where those rungs come from, as in D2's boss treasure classes. Normal and champion kills get none.
+ */
+export const RANK_TOP: Readonly<Record<MonsterRank, number>> = { normal: 1, champion: 1, unique: 1.5, boss: 2.5 };
 /** Chance a roll that lands on a rung with named uniques is one of them. */
 export const UNIQUE_SHARE = 0.12;
 
 /** Each rung's base chance (per mille), tried from the top down (rarityOdds). */
 export const BASE_WEIGHTS: Readonly<Record<LootTier, number>> = {
-  common: 600, uncommon: 280, rare: 80, epic: 30, legendary: 8, mythic: 1.8, singular: 0.2,
+  common: 600, uncommon: 280, rare: 50, epic: 7.5, legendary: 1.5, mythic: 0.25, singular: 0.04,
 };
 /** The level an item rung starts dropping at (bosses ignore it: a boss pays). */
 export const RUNG_LEVEL: Readonly<Record<LootTier, number>> = {
   common: 0, uncommon: 0, rare: 0, epic: 5, legendary: 8, mythic: 15, singular: 25,
 };
+/** Level lifts the rare+ chances by 1 + level / this (level 20: x1.33, level 60: x2). */
+export const LEVEL_LIFT = 60;
 /** Each ladder step multiplies the rare+ chances by this. */
 export const SHIFT_STEP = 1.6;
 
@@ -92,30 +103,23 @@ export const RUNE_LEVEL: Readonly<Record<RuneTier, number>> = {
   common: 0, uncommon: 3, rare: 8, epic: 20, legendary: 30, mythic: 45, singular: 55,
 };
 
-/** D2's diminishing Magic Find: 600 for rare-class, 250 for unique-class. */
-export function effectiveMagicFind(mf: number, k: number): number {
-  const m = Math.max(0, Number.isFinite(mf) ? mf : 0);
-  return (m * k) / (m + k);
-}
-
 /**
  * Each rung's own chance at a level, Magic Find and shift (difficulty + rank
  * steps): the base per-mille, lifted by level, Magic Find and the shift, and
- * zero below the rung's level (bosses ignore the gate). Capped at 0.9.
+ * zero below the rung's level (bosses ignore the gate). Capped at 0.9. Each rung leans on its own damped
+ * Magic Find (magic-find-curve.ts); `top` (RANK_TOP) multiplies legendary and up.
  */
-export function rarityChances(level: number, magicFind: number, shift: number, boss = false): Record<LootTier, number> {
+export function rarityChances(level: number, magicFind: number, shift: number, boss = false, top = 1): Record<LootTier, number> {
   const out = {} as Record<LootTier, number>;
-  const mfMagic = 1 + Math.max(0, Number.isFinite(magicFind) ? magicFind : 0) / 100;
-  const mfRare = 1 + effectiveMagicFind(magicFind, 600) / 100;
-  const mfTop = 1 + effectiveMagicFind(magicFind, 250) / 100;
-  const lift = 1 + Math.max(0, level) / 30;
+  const lift = 1 + Math.max(0, level) / LEVEL_LIFT;
   const step = Math.pow(SHIFT_STEP, Math.max(0, shift));
   for (const tier of LOOT_TIER_ORDER) {
     if (tier === 'common' || (!boss && level < RUNG_LEVEL[tier])) { out[tier] = 0; continue; }
     let w = BASE_WEIGHTS[tier] / 1000;
-    if (tier === 'uncommon') w *= mfMagic;
-    else if (tier === 'rare' || tier === 'epic') w *= mfRare * lift * step;
-    else w *= mfTop * lift * step;
+    const mf = 1 + mfFor(tier, magicFind) / 100;
+    if (tier === 'uncommon') w *= mf;
+    else if (tier === 'rare' || tier === 'epic') w *= mf * lift * step;
+    else w *= mf * lift * step * Math.max(1, top);
     out[tier] = Math.min(0.9, w);
   }
   return out;
@@ -126,8 +130,8 @@ export function rarityChances(level: number, magicFind: number, shift: number, b
  * first that succeeds is the drop; nothing succeeding is a common. So Magic
  * Find can only ever make the top rungs likelier, never trade a gold for a blue.
  */
-export function rarityOdds(level: number, magicFind: number, shift: number, boss = false): Record<LootTier, number> {
-  const p = rarityChances(level, magicFind, shift, boss);
+export function rarityOdds(level: number, magicFind: number, shift: number, boss = false, top = 1): Record<LootTier, number> {
+  const p = rarityChances(level, magicFind, shift, boss, top);
   const out = {} as Record<LootTier, number>;
   let left = 1;
   for (let i = LOOT_TIER_ORDER.length - 1; i >= 1; i--) {
@@ -143,8 +147,8 @@ function pick<T>(list: readonly T[], rng: () => number): T {
   return list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
 }
 
-function rollRarity(level: number, magicFind: number, shift: number, boss: boolean, rng: () => number): LootTier {
-  const p = rarityChances(level, magicFind, shift, boss);
+function rollRarity(level: number, magicFind: number, shift: number, boss: boolean, top: number, rng: () => number): LootTier {
+  const p = rarityChances(level, magicFind, shift, boss, top);
   for (let i = LOOT_TIER_ORDER.length - 1; i >= 1; i--) {
     const t = LOOT_TIER_ORDER[i];
     if (p[t] > 0 && rng() < p[t]) return t;
@@ -202,7 +206,7 @@ function rollRuneTier(level: number, tier: DifficultyTier, rng: () => number): R
 
 /** The chance a roll that lands on a rung with named uniques is one of them: Magic Find's and a worn pull's lift, ≤ ½. */
 export function uniqueShare(ctx: Pick<LootContext, 'magicFind' | 'named'>): number {
-  return Math.min(0.5, UNIQUE_SHARE * (1 + effectiveMagicFind(ctx.magicFind, 250) / 100) * (1 + Math.max(0, ctx.named ?? 0) / 100));
+  return Math.min(0.5, UNIQUE_SHARE * (1 + effectiveMagicFind(ctx.magicFind, UNIQUE_MF_K) / 100) * (1 + Math.max(0, ctx.named ?? 0) / 100));
 }
 
 /** One kill's gear and runes. See the header for the contract. */
@@ -215,7 +219,7 @@ export function rollCreatureLoot(ctx: LootContext, rng: () => number): LootDrop[
   const chance = Math.min(1, plan.chance * diff.itemChance);
   for (let i = 0; i < plan.rolls; i++) {
     if (rng() >= chance) continue;
-    const rarity = rollRarity(ctx.level, ctx.magicFind, shift, boss, rng);
+    const rarity = rollRarity(ctx.level, ctx.magicFind, shift, boss, RANK_TOP[ctx.rank], rng);
     const named = uniquesAt(rarity);
     if (named.length && rng() < uniqueShare(ctx)) {
       const u = pick(named, rng);
@@ -249,7 +253,7 @@ export function expectedDropsPerHour(ctx: LootContext, killsPerHour: number): Re
   const diff = DIFFICULTIES[ctx.tier] ?? DIFFICULTIES.normal;
   const plan = ITEM_ROLLS[ctx.rank];
   const items = plan.rolls * Math.min(1, plan.chance * diff.itemChance) * killsPerHour;
-  const odds = rarityOdds(ctx.level, ctx.magicFind, diff.rarityShift + RANK_SHIFT[ctx.rank], ctx.rank === 'boss');
+  const odds = rarityOdds(ctx.level, ctx.magicFind, diff.rarityShift + RANK_SHIFT[ctx.rank], ctx.rank === 'boss', RANK_TOP[ctx.rank]);
   const runes = Math.min(1, RUNE_CHANCE[ctx.rank] * diff.itemChance) * killsPerHour;
   const rOdds = runeOdds(ctx.level, ctx.tier);
   const out = {} as Record<LootTier, number>;

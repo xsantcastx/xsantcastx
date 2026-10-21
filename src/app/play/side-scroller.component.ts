@@ -238,6 +238,7 @@ import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
 import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
 import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
 import { RUNG_LEVEL, lootEntry } from '../shared/loot/drop-tables';
+import { mfTowardUnique } from '../shared/loot/magic-find-curve';
 import { DIFFICULTIES } from '../shared/loot/difficulty.model';
 import { itemAuras } from '../shared/loot/aura-sources';
 import { socketCountFor, socketStats } from '../shared/enchanting/socket.model';
@@ -2592,7 +2593,7 @@ export class SideScrollerComponent implements OnDestroy {
         // Resists (§6): each element's worn total (its own + All Resist), capped at 75.
         ...ELEMENTS.filter(el => derived.resists[el] !== 0).map(el => ({ key: RESIST_TOTAL_KEY[el], value: `${Math.round(derived.resists[el])}%` })),
         // The finds (they change the loot, the piles and the XP, not the fight): what each kill is rolled and paid at.
-        ...(mf !== 0 ? [{ key: 'play.td.total.mf', value: `+${mf}%` }] : []),
+        ...(mf !== 0 ? [{ key: 'play.td.total.mf', value: `+${mf}%` }, { key: 'play.td.total.mfu', value: `+${mfTowardUnique(mf)}%` }] : []),
         ...(gf > 0 ? [{ key: 'play.td.total.gf', value: `+${gf}%` }] : []),
         ...(xp > 0 ? [{ key: 'play.td.total.xp', value: `+${xp}%` }] : []),
       ],
