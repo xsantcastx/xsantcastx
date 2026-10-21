@@ -110,12 +110,12 @@
        own lines) and Chat (the Hearth room); it fades when quiet, wakes on a new line or a hover, and hides to a tab. -->
   @if (topDown && !panel) {
     @if (chatHidden) {
-      <button type="button" class="td-chat-tab" (click)="chatHidden = false; chatLastAt = 0" [attr.aria-label]="t('play.chat.show')" data-engine-ignore>{{ t('play.chat.label') }}</button>
+      <button type="button" class="td-chat-tab" (click)="chatHidden = false; chatLastAt = 0; chatTab === 'public' && (chatUnread = 0)" [attr.aria-label]="t('play.chat.show') + (chatUnread && chatSetting === 'on' ? ' (' + t('play.chat.unread', { n: chatUnread }) + ')' : '')" data-engine-ignore>{{ t('play.chat.label') }}@if (chatUnread && chatSetting === 'on') { <span class="td-chat__unread" data-chat-unread aria-hidden="true">{{ chatUnread }}</span> }</button>
     } @else {
-      <section class="td-chat" [class.td-chat--quiet]="chatQuiet && chatTab === 'game'" [attr.aria-label]="t('play.chat.label')" data-engine-ignore>
+      <section class="td-chat" [class.td-chat--quiet]="chatQuiet && chatTab === 'game'" [attr.aria-label]="t('play.chat.label')" data-engine-ignore [attr.data-chat]="chatSetting" [attr.data-chat-connected]="social.connected">
         <header class="td-chat__tabs" role="tablist">
           <button type="button" role="tab" [attr.aria-selected]="chatTab === 'game'" (click)="chatTab = 'game'; chatLastAt = 0">{{ t('play.chat.game') }}</button>
-          <button type="button" role="tab" [attr.aria-selected]="chatTab === 'public'" (click)="openPublicChat()">{{ t('play.chat.public') }}@if (social.connected) { <small>{{ t('play.chat.online', { n: social.players.length }) }}</small> }</button>
+          <button type="button" role="tab" [attr.aria-selected]="chatTab === 'public'" (click)="openPublicChat()">{{ t('play.chat.public') }}@if (social.connected) { <small><span class="td-chat__online">{{ t('play.chat.online', { n: social.players.length }) }}</span><span class="td-chat__count" aria-hidden="true">{{ social.players.length }}</span></small> }@if (chatUnread && chatSetting === 'on') { <span class="td-chat__unread" data-chat-unread [attr.aria-label]="t('play.chat.unread', { n: chatUnread })">{{ chatUnread }}</span> }</button>
           <button type="button" class="td-chat__x" (click)="chatHidden = true" [attr.aria-label]="t('play.chat.hide')">&minus;</button>
         </header>
         <ol class="td-chat__log" aria-live="polite">
@@ -124,21 +124,33 @@
             @empty { <li class="td-chat__empty">{{ t('play.chat.empty') }}</li> }
           } @else {
             @for (m of social.messages.slice(-7); track m.id) { <li><b>{{ m.name }}:</b> {{ m.text }}</li> }
-            @empty { <li class="td-chat__empty">{{ social.connected ? t('play.chat.quiet') : (joining ? t('play.chat.joining') : social.status) }}</li> }
+            @empty { <li class="td-chat__empty">{{ social.connected ? t('play.chat.quiet') : chatSetting === 'ignore' && !hearthWanted ? t('play.chat.ignored') : (joining ? t('play.chat.joining') : social.status) }}</li> }
           }
         </ol>
         @if (chatTab === 'public') {
           @if (social.connected) {
             <form class="td-chat__say" (submit)="$event.preventDefault(); sendChat(chatInput)">
-              <input #chatInput type="text" maxlength="240" autocomplete="off" [placeholder]="t('play.chat.say')" [attr.aria-label]="t('play.chat.say')" [disabled]="sending">
+              <input #chatInput type="text" maxlength="240" autocomplete="off" enterkeyhint="send" [placeholder]="t('play.chat.say')" [attr.aria-label]="t('play.chat.say')" [disabled]="sending">
               <button type="submit" [disabled]="sending">{{ t('play.chat.send') }}</button>
             </form>
-          } @else if (!joining) {
+          } @else if (!joining && !hearthWanted) {
             <button type="button" class="td-chat__join" (click)="openPublicChat()">{{ t('play.chat.join', { name: keeperName || 'Keeper' }) }}</button>
           }
         }
       </section>
     }
+  }
+  <!-- Another Keeper, tapped in the world (td-peers): who they are, and a Wave that shows over both of you. -->
+  @if (topDown && peerCard; as pc) {
+    <section class="td-peer" role="dialog" aria-modal="false" aria-labelledby="td-peer-name" data-peer-card [attr.data-peer-id]="pc.id" data-engine-ignore (keydown.escape)="closePeerCard()">
+      <header class="td-peer__head">
+        <small>{{ t('play.peer.card') }}</small>
+        <button type="button" class="td-peer__x" (click)="closePeerCard()" [attr.aria-label]="t('play.peer.close')">&times;</button>
+      </header>
+      <h2 id="td-peer-name">{{ pc.name }}</h2>
+      <p class="td-peer__line">{{ peerClass(pc.vocation) }}@if (pc.level) { · {{ t('play.peer.level', { n: pc.level }) }} }</p>
+      <button type="button" class="td-peer__wave" data-peer-wave (click)="waveAt()">{{ t('play.peer.wave') }}</button>
+    </section>
   }
   <!-- The level-up fanfare (docs/design/leveling.md §4): what the level gave, exactly, and where to spend it. -->
   @if (levelBanner; as lb) {

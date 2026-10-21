@@ -20,7 +20,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
+import { CHAT_SETTINGS, HUSH_SETTINGS, NIGHT_SETTINGS, type ChatSetting, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
 import type { SoundScene } from './sound-palette';
 import type { SfxCue, SfxOptions, SoundDirector } from './sound-director';
 
@@ -80,6 +80,14 @@ export class SoundService {
     const cur = this.subject.value;
     if (cur.night === night || !NIGHT_SETTINGS.includes(night)) return;
     this.save({ ...cur, night, updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+
+  /** The Hearth chat (Menu → Settings: "Chat"): always connected, or ignored. */
+  setChat(chat: ChatSetting, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (cur.chat === chat || !CHAT_SETTINGS.includes(chat)) return;
+    this.save({ ...cur, chat, updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
   toggleMuted(): boolean {

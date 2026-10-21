@@ -1,4 +1,5 @@
-import { SocialRoom, RoomSnapshot } from './social/social-room';
+import { HEARTH_PORT_KEY, SocialRoom, roomName, type RoomEmote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
+import { packLook } from './social/peer-look';
 import {
   afterNextRender, Component, ComponentRef, ElementRef, HostListener, Injector, NgZone, OnDestroy, PLATFORM_ID, ViewChild,
   ViewContainerRef, inject,
@@ -700,6 +701,16 @@ export class SideScrollerComponent implements OnDestroy {
    */
   chatTab: 'game' | 'public' = 'game';
   chatHidden = false;
+  /** Room lines from other Keepers that landed while the Chat tab was not in view (none while chat is ignored). */
+  chatUnread = 0;
+  private readonly seenMessages = new Set<string>();
+  /** Menu → Settings → Chat: 'on' keeps the Keeper in the Hearth room; 'ignore' never joins. */
+  chatSetting: 'on' | 'ignore' = 'on';
+  private hearthWired = false;
+  private unbindHearth?: () => void;
+  /** Another Keeper's card (tapped in the world): name, class, level and Wave. */
+  peerCard: { id: string; name: string; vocation: string; level: number } | null = null;
+  private lastWaveAt = 0;
   /** When a line last landed (ms): the box fades when quiet, wakes on a new line or a hover. */
   chatLastAt = 0;
   gameLog: { key: number; at: number; text: string }[] = [];
@@ -716,8 +727,110 @@ export class SideScrollerComponent implements OnDestroy {
   async openPublicChat(): Promise<void> {
     this.chatTab = 'public';
     this.chatLastAt = Date.now();
-    if (!this.social.connected && !this.joining) await this.joinRoom(this.keeperName || 'Keeper');
+    this.chatUnread = 0;
+    if (!this.social.connected && !this.joining && !this.room?.wants) await this.joinRoom(this.keeperName || 'Keeper');
   }
+  /**
+   * The Hearth, always on (owner 2026-10-21: "the chat should always be connected to online, unless they decide to
+   * ignore the chat"): entering the top-down world joins the room under the Keeper's name, class, look and level;
+   * the room keeps itself joined (social-room keepAlive), pauses while the page is out of sight and leaves on pagehide.
+   * Settings → Chat: Ignore leaves and never joins. An automated browser joins only when a spec names a local room.
+   */
+  private ensureHearth(): void {
+    if (!this.browser || !this.topDown || !this.room) return;
+    if (!this.hearthWired) this.wireHearth();
+    this.room.setProfile(this.hearthProfile());
+    const want = this.chatSetting === 'on' && this.hearthAllowed();
+    if (want && !this.room.wants && !this.room.isPaused && document.visibilityState !== 'hidden') void this.joinRoom(this.keeperName || 'Keeper');
+    else if (!want && this.room.wants) this.room.leave();
+  }
+  /** The room is joined or being joined (the template's "Join" button hides meanwhile). */
+  get hearthWanted(): boolean { return !!this.room?.wants; }
+  private hearthAllowed(): boolean {
+    if (typeof navigator === 'undefined' || !navigator.webdriver) return true;
+    try { return !!localStorage.getItem(HEARTH_PORT_KEY); } catch { return false; }
+  }
+  /** Who the room is told the Keeper is (protocol 2): the class, the look in a dozen characters, the level. */
+  private hearthProfile(): RoomProfile {
+    const look = this.looks.look;
+    return { vocation: look.vocation, look: packLook(look), level: Math.max(1, this.huntingLevel || 1) };
+  }
+  private wireHearth(): void {
+    this.hearthWired = true;
+    const visible = (): void => { if (document.visibilityState === 'hidden') this.room?.pause(); else { this.room?.resume(); this.ensureHearth(); } };
+    const hide = (): void => { this.room?.leave(); };
+    const show = (event: PageTransitionEvent): void => { if (event.persisted) this.ensureHearth(); };
+    document.addEventListener('visibilitychange', visible);
+    window.addEventListener('pagehide', hide);
+    window.addEventListener('pageshow', show);
+    const sub = this.sound.settings$.subscribe(settings => {
+      if (settings.chat === this.chatSetting) return;
+      this.chatSetting = settings.chat;
+      if (settings.chat === 'ignore') this.chatUnread = 0;
+      this.ensureHearth();
+    });
+    this.chatSetting = this.sound.settings.chat;
+    // The on-screen keyboard (a phone typing in the chat): it shrinks the visual viewport, not the layout, on Android
+    // Chrome and iOS Safari, so the chat would sit under it. --kb-inset lifts the chat by the keyboard's height.
+    const vv = window.visualViewport, host = this.host.nativeElement as HTMLElement;
+    const keyboard = (): void => {
+      const inset = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+      host.style.setProperty('--kb-inset', `${inset > 80 ? inset : 0}px`);
+    };
+    this.zone.runOutsideAngular(() => { vv?.addEventListener('resize', keyboard); vv?.addEventListener('scroll', keyboard); });
+    this.unbindHearth = () => {
+      vv?.removeEventListener('resize', keyboard); vv?.removeEventListener('scroll', keyboard);
+      document.removeEventListener('visibilitychange', visible);
+      window.removeEventListener('pagehide', hide);
+      window.removeEventListener('pageshow', show);
+      sub.unsubscribe();
+    };
+  }
+  /** The room changed: other Keepers to the engine, the unread count for lines that landed out of view. */
+  private roomChanged(snapshot: RoomSnapshot): void {
+    this.social = snapshot;
+    this.engine?.setPeers(this.peersFor(snapshot));
+    this.engine?.setChat(snapshot.messages, snapshot.id);
+    let fresh = 0;
+    for (const m of snapshot.messages) {
+      if (this.seenMessages.has(m.id)) continue;
+      this.seenMessages.add(m.id);
+      if (m.playerId !== snapshot.id) fresh++;
+    }
+    if (this.seenMessages.size > 200) for (const id of [...this.seenMessages].slice(0, 100)) this.seenMessages.delete(id);
+    const inView = this.chatTab === 'public' && !this.chatHidden;
+    if (fresh && !inView && this.chatSetting === 'on') this.chatUnread = Math.min(99, this.chatUnread + fresh);
+    if (this.peerCard && !snapshot.players.some(p => p.id === this.peerCard?.id)) this.peerCard = null;
+  }
+  private peersFor(snapshot: RoomSnapshot): (RoomPlayer & { area: string })[] {
+    return snapshot.players.filter(p => p.id !== snapshot.id).map(p => ({ ...p, area: p.area ?? p.zone }));
+  }
+  /** A Wave arrived: over the one who waved and the one waved at; a line in the Game tab when it was at this Keeper. */
+  private roomEmote(emote: RoomEmote): void {
+    const me = this.social.id, e = this.engine as unknown as { peerWave?: (who: string | null) => void } | undefined;
+    if (emote.from !== me) e?.peerWave?.(emote.from);
+    if (emote.to) e?.peerWave?.(emote.to === me ? null : emote.to);
+    if (emote.to === me && emote.from !== me) this.logGame(this.t('play.chat.wavedAtYou', { name: emote.name }));
+  }
+  /** Another Keeper was tapped in the world. */
+  private peerTapped(peer: { id: string; name: string; vocation: string; level: number }): void {
+    this.peerCard = peer;
+  }
+  peerClass(vocation: string): string {
+    const key = `look.class.${vocation}`, named = this.t(key);
+    return vocation && named !== key ? named : this.t('play.peer.card');
+  }
+  /** Wave at the Keeper on the card: over both heads here, and over both on every screen in the room. */
+  waveAt(): void {
+    const peer = this.peerCard;
+    if (!peer || Date.now() - this.lastWaveAt < 1200) return;
+    this.lastWaveAt = Date.now();
+    const e = this.engine as unknown as { peerWave?: (who: string | null) => void } | undefined;
+    e?.peerWave?.(null); e?.peerWave?.(peer.id);
+    this.logGame(this.t('play.chat.waveAt', { name: peer.name }));
+    void this.room?.wave(peer.id);
+  }
+  closePeerCard(): void { this.peerCard = null; this.focusWorld(); }
   /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
@@ -956,11 +1069,9 @@ export class SideScrollerComponent implements OnDestroy {
     }
     this.coinsKept = Number.isInteger(play.coins) && (play.coins as number) > 0 ? play.coins as number : 0;
     this.zone.runOutsideAngular(() => {
-      this.room = new SocialRoom(snapshot => this.zone.run(() => {
-        this.social = snapshot;
-        this.engine?.setPeers(snapshot.players.filter(p => p.id !== snapshot.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
-        this.engine?.setChat(snapshot.messages, snapshot.id);
-      }));
+      this.room = new SocialRoom(snapshot => this.zone.run(() => this.roomChanged(snapshot)), {
+        keepAlive: true, onEmote: emote => this.zone.run(() => this.roomEmote(emote)),
+      });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
       if (REALM_TOWN_IDS.includes(this.town.id as RealmTownId)) this.noteVisit(`/world/realms/${this.town.id}`);
@@ -1081,6 +1192,8 @@ export class SideScrollerComponent implements OnDestroy {
       onGlimCue: cue => this.zone.run(() => this.companions.onGlimCue(cue)),
       // Lumvesh, the Seek (td-seek.ts): Glim's words for where it points.
       onSeek: answer => this.zone.run(() => { this.message = this.seekLine(answer); }),
+      // Another Keeper tapped in the world (top-down, td-peers): their card.
+      onPeerTap: peer => this.zone.run(() => this.peerTapped(peer)),
       // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
       onSexton: event => this.zone.run(() => this.sextonSaw(event.kind === 'stone' ? { kind: 'stone', n: event.n ?? 1 } : event.kind === 'page' ? { kind: 'page', dark: !!event.dark } : { kind: event.kind })),
       // Each player digs their own Delve: seed and dug cells from the save.
@@ -1136,8 +1249,17 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-hour', this.oneWorld ? this.hour.toFixed(1) : '');
         }
         this.soundScene(state);
-        // Presence: in a world the zone is the WORLD (peers meet anywhere in it); elsewhere the area's name.
-        this.room?.update(state.x, state.y, state.world || state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
+        // Presence: top-down, the area id (a continent or a floor) and the way the Keeper faces; it goes in `zone` too,
+        // so a v1 room (no protocol-2 fields) still lines Keepers up by area. Side view: the WORLD, or the area's name.
+        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean } | undefined) : undefined;
+        const here = td?.peerPresence?.();
+        if (here) {
+          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving });
+          if (el) {
+            el.setAttribute('data-peers', (td?.peersOnScreen?.() ?? []).map(p => `${p.name}@${p.x},${p.y}${p.waving ? '~' : ''}`).join(';'));
+            el.setAttribute('data-self-waving', td?.selfWaving ? 'true' : 'false');
+          }
+        } else this.room?.update(state.x, state.y, state.world || state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
     this.engine.setHomesteadView(this.homestead.scene);
@@ -1150,7 +1272,7 @@ export class SideScrollerComponent implements OnDestroy {
     // A fresh engine gets the sky at once (not on the next world second).
     this.clockSecond = -1; this.tickClock();
     this.sync();
-    this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
+    this.engine.setPeers(this.peersFor(this.social));
     this.engine.setChat(this.social.messages, this.social.id);
     this.heightsSub?.unsubscribe();
     this.heightsSub = this.heights.found$.subscribe(found => this.engine?.setHeightsFound(found));
@@ -1634,7 +1756,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.unStonesHook();
     this.inventory.setWearCheck(null);
     this.companions.flush();
-    this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
+    this.unbindHearth?.(); this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
     this.unbindFeel();
@@ -4715,6 +4837,8 @@ export class SideScrollerComponent implements OnDestroy {
     const key = `${look.vocation}:${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
     this.keeperName = look.made ? look.name : '';
     this.lookNudge = !look.made && !look.prompted;
+    // In the world with a name now: the Hearth joins (or keeps the room told who the Keeper is).
+    this.ensureHearth();
     if (key !== this.lookPushKey) {
       this.lookPushKey = key;
       this.engine?.setKeeperLook(look, gear);
