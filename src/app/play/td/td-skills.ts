@@ -19,11 +19,20 @@ export type SkillId =
   // The trees (docs/design/skill-trees.md, owner 2026-10-21: "spells — we need to work on spell trees or something").
   | 'cinder-rain' | 'flame-wall' | 'ember-mastery' | 'meteor'
   | 'corpse-burst' | 'skeleton-mastery' | 'bone-armor' | 'bone-storm'
-  | 'weaken' | 'life-tap' | 'doom';
+  | 'weaken' | 'life-tap' | 'doom'
+  // The spells every vocation learns (design-bible §4.6, roadmap §10 item 6): Glim's Light and Lumvesh, the Seek.
+  | 'light' | 'seek';
 
 /** The Warlock's three trees (D2's three tabs): fire, necromancy, curses and wards. */
 export const TREES = ['ember', 'bone', 'shadow'] as const;
-export type TreeId = typeof TREES[number];
+/**
+ * The page every vocation shares (design-bible §4.6, Tibia's common spells): Light and the Seek. Not a class tree —
+ * it carries no element, the sky does not touch it — but its ranks are bought with the same points.
+ */
+export const COMMON_TREE = 'common' as const;
+/** The Spellbook's tabs: the class's three trees, then the common page. */
+export const BOOK_TREES = [...TREES, COMMON_TREE] as const;
+export type TreeId = typeof BOOK_TREES[number];
 /** The level each tier opens at (D2: 1, 6, 12, 18, 24 …). */
 export const TIER_LEVELS: readonly number[] = [1, 6, 12, 18, 24];
 /** The most ranks a skill takes. */
@@ -49,6 +58,8 @@ export interface SkillDef {
   col: number;
   /** The skill that must hold a rank first (D2's prerequisite), or null. */
   req: SkillId | null;
+  /** The level it opens at when that is not its tier's (the common spells: the Seek at 8, design-bible §4.6). */
+  level?: number;
   /** The pixel icon (svg rects inside a 16×16 box). */
   icon: string;
   /**
@@ -214,6 +225,19 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     words: 'nyr un ul',
     syn: [{ from: 'weaken', per: 6, what: 'dmg' }, { from: 'ember-curse', per: 4, what: 'dmg' }],
   },
+  // ── Common: the spells every vocation learns (design-bible §4.6) ──
+  'light': {
+    id: 'light', kind: 'active', mana: 10, cd: 3, nameKey: 'skill.light', textKey: 'skill.light.text',
+    vars: { radius: 3, secs: 300 }, grow: { radius: .1, secs: 15 }, tree: 'common', tier: 0, col: 1, req: null,
+    icon: I('<rect x="6" y="1" width="4" height="1" fill="#c99a3e"/><rect x="5" y="2" width="6" height="2" fill="#ffd27a"/><rect x="4" y="4" width="8" height="5" fill="#ffd27a"/><rect x="6" y="5" width="4" height="3" fill="#fffbe8"/><rect x="5" y="9" width="6" height="2" fill="#c99a3e"/><rect x="6" y="11" width="4" height="3" fill="#8a6a3a"/><rect x="1" y="6" width="2" height="1" fill="#ffd27a"/><rect x="13" y="6" width="2" height="1" fill="#ffd27a"/><rect x="2" y="2" width="1" height="1" fill="#fffbe8"/><rect x="13" y="2" width="1" height="1" fill="#fffbe8"/>'),
+    words: 'lum',
+  },
+  'seek': {
+    id: 'seek', kind: 'active', mana: 20, cd: 8, nameKey: 'skill.seek', textKey: 'skill.seek.text',
+    vars: { secs: 6 }, grow: { secs: .5 }, tree: 'common', tier: 1, col: 1, req: null, level: 8,
+    icon: I('<rect x="3" y="3" width="10" height="10" fill="#3a2a14"/><rect x="4" y="4" width="8" height="8" fill="#5a4020"/><rect x="2" y="7" width="1" height="2" fill="#b08a55"/><rect x="13" y="7" width="1" height="2" fill="#b08a55"/><rect x="7" y="2" width="2" height="1" fill="#b08a55"/><rect x="7" y="13" width="2" height="1" fill="#b08a55"/><rect x="9" y="4" width="2" height="2" fill="#fffbe8"/><rect x="8" y="6" width="2" height="2" fill="#ffd27a"/><rect x="6" y="8" width="2" height="2" fill="#c99a3e"/><rect x="5" y="10" width="1" height="1" fill="#8a6a3a"/>'),
+    words: 'lum vesh',
+  },
 };
 
 /** Vars that count whole things (skeletons, spears): a rank adds a fraction, the fight takes the whole part. */
@@ -247,14 +271,17 @@ export function skillVars(id: SkillId, rank: number, bought: Readonly<Partial<Re
 
 /** The skills a new Keeper of the class starts with at rank 1, free (a new Warlock fights as before the trees). */
 export const STARTER_RANKS: Readonly<Record<Vocation, readonly SkillId[]>> = {
-  warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'soul-harvest'],
+  // Light is Glim's first word, taught the first night: every Keeper holds it free (design-bible §4.6).
+  warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'soul-harvest', 'light'],
 };
 
 /** Each class's book: its actives (the order is the default bar), its auras, its passives. */
 export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   // The first four actives are the default bar; Bone Spear and Raise Skeleton wait in the Spellbook to be put on a key.
   warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'bone-spear', 'raise-skeleton', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest',
-    'cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom'],
+    'cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom',
+    // The common page (every vocation's): Light and the Seek.
+    'light', 'seek'],
 };
 
 export const MAX_MANA = 60;

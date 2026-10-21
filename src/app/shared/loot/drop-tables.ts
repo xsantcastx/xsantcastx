@@ -24,12 +24,15 @@
  *  - level lifts the rare+ weights and gates the top rungs (no Mythic off a
  *    level-3 Maw); difficulty and rank (champion/unique/boss) shift the ladder;
  *  - runes drop on their own small chance, from a fixed per-tier ladder capped
- *    by difficulty (DIFFICULTIES.runeCap) and by level.
+ *    by difficulty (DIFFICULTIES.runeCap) and by level;
+ *  - a boss with its own unique (rpg/boss-uniques.ts) rolls it last, at its
+ *    own 1-in-N chance; no other creature and no open roll ever drops one.
  *
  * Pure: the item tables and the rune ladder only.
  */
 import { ITEM_DEFINITIONS, type ItemDefinition } from '../rpg/item-definition';
 import { UNIQUE_ITEMS, type UniqueItem } from '../rpg/unique-items';
+import { rollBossUnique } from '../rpg/boss-uniques';
 import { RUNES, type Rune, type RuneTier } from '../rune-forge/rune.model';
 import { DIFFICULTIES, type DifficultyTier } from './difficulty.model';
 import type { MonsterRank } from './champions';
@@ -154,6 +157,8 @@ export const DROP_POOL: readonly ItemDefinition[] = ITEM_DEFINITIONS.filter(def 
 
 const UNIQUES_AT = new Map<LootTier, UniqueItem[]>();
 for (const u of UNIQUE_ITEMS) {
+  // A boss's own unique drops from its boss alone (rollCreatureLoot's last step), never on an open roll.
+  if (u.boss) continue;
   const list = UNIQUES_AT.get(u.rarity) ?? [];
   list.push(u); UNIQUES_AT.set(u.rarity, list);
 }
@@ -217,6 +222,9 @@ export function rollCreatureLoot(ctx: LootContext, rng: () => number): LootDrop[
     const list = RUNES_AT.get(t) ?? RUNES_AT.get('common') ?? [];
     if (list.length) { const r = pick(list, rng); out.push({ kind: 'rune', runeId: r.id, rarity: r.tier, name: `${r.name} Rune` }); }
   }
+  // A boss's own unique (boss-uniques.ts): only from that boss, at its own chance, rolled last so nothing above moves.
+  const relic = ctx.rank === 'boss' ? rollBossUnique(ctx.creature, rng) : null;
+  if (relic) out.push({ kind: 'item', definitionId: relic.id, rarity: relic.rarity, unique: true, name: relic.name, level: ctx.level });
   return out;
 }
 
