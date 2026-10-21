@@ -239,7 +239,7 @@ test('the Map: zoom, pan, a cave floor, pins that never move, a pin that travels
   await expect(page.locator('[data-map-results] button').first()).toContainText(/vault/i);
   await page.locator('[data-map-find]').fill('');
   // A click on a pin goes there: the Map folds and the Keeper walks.
-  const ship = view.locator('.mw__pin[data-kind="ship"]').first();
+  const ship = view.locator('.mw__pin[data-kind="harbour"]').first();
   await ship.click();
   await expect(page.locator('#places-list')).toHaveCount(0);
 });
