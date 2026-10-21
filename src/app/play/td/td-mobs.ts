@@ -35,6 +35,7 @@ import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow,
 import { THORN_SKILLS } from './td-thorn-skills';
 import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
+import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
 import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 
 export interface MobDef {
@@ -1505,7 +1506,7 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 30, h: 22,
   },
   'cinder-imp': {
-    id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2, hits: 'fire',
+    id: 'cinder-imp', name: 'Cinder Imp', hp: 65, speed: 38, dmg: [4, 7], rate: 1.2, sight: 120, level: 2, hits: 'fire',
     lore: 'A spark that grew a grudge. It throws small tempers and smaller fires, and giggles when the soot finds your collar.',
     drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 24, h: 24,
   },
@@ -1703,8 +1704,8 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     ranged: { range: 140, keep: 0, rate: 3.2, dmg: [24, 36], speed: 120, kind: 'shard', spread: 5 },
     summon: { type: 'drowned-acolyte', count: 2, at: .5 },
   },
-  // The eclipse's world boss (td-seam.ts): it rises at a continent's rift under an eclipse, scaled to the Keeper's level
-  // inside 20–60 as it rises (seamEaterAt). This is its level-20 self, as the Bestiary shows it.
+  // The eclipse's world boss (td-seam.ts): it rises at a continent's rift under an eclipse, at that rift's fixed level
+  // (td-zones SEAM_LEVELS, seamEaterAt). This is its level-20 self, Ember Isle's, as the Bestiary shows it.
   'seam-eater-risen': {
     id: 'seam-eater-risen', name: 'The Seam Eater', hp: seamStats(20).hp, speed: 18, dmg: [15, 22], rate: 1.8, sight: 170, level: 20,
     lore: 'They sank it in the slag under the Seamworks and posted thanks. Under an eclipse the seam it ate opens again, and it climbs out of the tear with the dark still on it.',
@@ -1793,7 +1794,8 @@ export function mobSheet(def: MobDef): HTMLCanvasElement {
   return s;
 }
 
-export interface MobSpawn { key: string; type: string; x: number; y: number }
+/** A spawn: its own key, its kind, where it stands, and its zone's level for it (td-zones zoneLevel; unset: its kind's own). */
+export interface MobSpawn { key: string; type: string; x: number; y: number; level?: number }
 
 export interface Mob {
   key: string;
@@ -1880,6 +1882,8 @@ export interface DeathBurst {
   x: number; y: number; t: number; r: number; dmg: number;
   /** A boss's ground warning (the Seam Eater's Rend): its whole tell (FIRE_BURST.delay when unset), its tone and type. */
   delay?: number; el?: 'ember' | 'shadow'; type?: DamageType;
+  /** The level of the creature it came from (td-zones level gap); unset: none. */
+  lv?: number;
 }
 
 /**
@@ -1894,10 +1898,10 @@ export const CHANT_SECS = 1.2;
 /** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
 export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
 /** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
-export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean }
+export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
@@ -2352,6 +2356,11 @@ export class MobSystem {
    */
   elites = false;
   eliteSalt = '';
+  /**
+   * The level gap and the XP falloff (td-zones.ts LEVEL_GAP, zoneXp): off until the host turns them on (the engine and
+   * the combat sim do; a spec chooses), so a spec's creature fights exactly by its numbers against the default Keeper.
+   */
+  levelGap = false;
   private readonly fallen = new Map<string, number>();
   /** Fire Enchanted bursts on their way, the Cursed mark on the Keeper (seconds), the Cold Aura's slow on his step (0..1). */
   readonly bursts: DeathBurst[] = [];
@@ -2396,7 +2405,8 @@ export class MobSystem {
     if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) return;
     const type = MOBS[s.type];
     if (!type) return;
-    const def = hardened(type, phase);
+    // Its zone's level (td-zones.ts), never the Keeper's: a night creature takes the spawn's level too, so it stays in the band.
+    const def = hardened(s.level ? atZoneLevel(type, s.level) : type, phase);
     let pack = this.elites ? this.eliteFor(s, def) : null;
     if (this.elites && phase !== 'day' && (def.rank ?? 'normal') === 'normal' && rollTouched(seed, phase)) pack = touchPack(pack, touchedRandom(seed));
     if (pack) this.spawnPack(s.key, def, s.x, s.y, pack);
@@ -2404,7 +2414,7 @@ export class MobSystem {
   }
   /** Does this spawn come up as an elite pack (td-elites.ts)? Never in a safe square, only where its level suits. */
   private eliteFor(s: MobSpawn, def: MobDef): ElitePack | null {
-    if (!eliteEligible({ level: def.level, rank: def.rank, keeperLevel: this.keeperLevel, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
+    if (!eliteEligible({ level: def.level, rank: def.rank, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
     return rollElite(`${this.eliteSalt}|${this.host.levelId()}|${s.key}|${this.fallen.get(s.key) ?? 0}`);
   }
   /**
@@ -2703,7 +2713,7 @@ export class MobSystem {
       if (b.t > 0) continue;
       this.bursts.splice(i, 1);
       this.effects.push({ kind: 'wave', el: b.el ?? 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, b.type ?? 'fire');
+      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, b.type ?? 'fire', undefined, b.lv);
     }
     for (let i = this.calls.length - 1; i >= 0; i--) {
       const k = this.calls[i];
@@ -2711,7 +2721,7 @@ export class MobSystem {
       if (k.t > 0) continue;
       this.calls.splice(i, 1);
       // Eclipse-touched summons (the Seam Eater's call) climb out as lone touched champions (td-elites touchPack).
-      if (MOBS[k.type]) { if (k.touched) this.spawnPack(k.key, MOBS[k.type], k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, MOBS[k.type], k.x, k.y)); }
+      if (MOBS[k.type]) { const cd = k.level ? atZoneLevel(MOBS[k.type], k.level) : MOBS[k.type]; if (k.touched) this.spawnPack(k.key, cd, k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, cd, k.x, k.y)); }
       this.effects.push({ kind: 'spark', x: k.x, y: k.y - 6, age: 0, life: .3, dir: 1 });
     }
     this.updateShots(dt);
@@ -2801,12 +2811,22 @@ export class MobSystem {
     return this.hurtMob(foe, dmg, color, crit);
   }
   /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
-  smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff'); }
+  smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff', false, true); }
   /** Test hooks only (the seam specs): one blow of `n` on a creature, through the real path (its call, its half-life change, its fall). */
-  wound(m: Mob, n: number): number { return this.hurtMob(m, Math.max(1, Math.round(n)), '#ffffff'); }
+  wound(m: Mob, n: number): number { return this.hurtMob(m, Math.max(1, Math.round(n)), '#ffffff', false, true); }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
-  private hurtMob(foe: Mob, dmg: number, color: string, crit = false): number {
+  private hurtMob(foe: Mob, dmg: number, color: string, crit = false, exact = false): number {
     if (foe.hp <= 0) return 0;
+    // The level gap (td-zones LEVEL_GAP): a creature above the Keeper is missed more and hurt less (D2's to-hit by level).
+    // `exact`: a test hook's blow (smite, wound) lands as written.
+    const gap = this.levelGap && !exact ? levelGap(this.keeperLevel, foe.def.level) : 0;
+    if (gap > 0) {
+      if (Math.random() < gapMiss(gap)) { foe.hit = .1; this.float(foe.x, foe.y - foe.def.h, 'miss', '#9a948a'); return 0; }
+      // Rounded by chance, so a small tick keeps its share on average (a 2 at ×0.3 is a 1 three times in five, else 0).
+      const cut = dmg * gapDealt(gap);
+      dmg = Math.floor(cut) + (Math.random() < cut % 1 ? 1 : 0);
+      if (dmg <= 0) { foe.hit = .1; return 0; }
+    }
     // Stone Skin turns part of every hit aside.
     if (foe.take !== undefined && foe.take < 1) dmg = Math.max(1, Math.round(dmg * foe.take));
     foe.hp -= dmg; foe.hit = .18;
@@ -2819,7 +2839,7 @@ export class MobSystem {
         const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 10), y = foe.y + 6;
         const at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
         // A sigil first, where it will stand (CALL_TELL); it climbs out when the sigil runs out (update).
-        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, ...(call.touched ? { touched: true } : {}) });
+        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: callLevel(foe.def, MOBS[call.type]), ...(call.touched ? { touched: true } : {}) });
       }
     }
     // The half-life change (MobDef.half): a wider, quicker breath, more rings, sooner; its call spoken.
@@ -2840,14 +2860,18 @@ export class MobSystem {
    * A blow or a shot landing on the Keeper (§6): worn Defense turns a share of a physical one aside, a worn resist
    * of an element's; the Dark Ward drinks what it can. The number floats in the type's colour (physical stays red).
    */
-  private biteKeeper(raw: number, type: DamageType = 'physical', from?: Mob): void {
+  private biteKeeper(raw: number, type: DamageType = 'physical', from?: Mob, lv?: number): void {
     const p = this.host.player();
+    // The level gap (td-zones LEVEL_GAP): a creature above the Keeper's level strikes far harder; never softer below it.
+    const atk = lv ?? from?.def.level;
+    if (this.levelGap && atk !== undefined && raw > 0) raw *= gapHurt(levelGap(this.keeperLevel, atk));
     // A worn unique's thorns (unique-items.ts ward-mirror): a creature striking in melee takes a share of its blow back.
     if (from && from.hp > 0 && this.relics.thorns > 0 && raw > 0) this.hurtMob(from, Math.max(1, Math.round(raw * this.relics.thorns / 100)), '#e0b25a');
     // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
     const cursed = this.curseT > 0;
     const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
-    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, this.keeperLevel, resists);
+    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, atk ?? this.keeperLevel, resists);
+    // (Defense is read against the attacker's level, D2's way: worn armour holds better in a zone below the Keeper.)
     if (this.melee && n > 0) {
       // The Shield Oath turns a share of blows aside whole; the Watch Cry's guard takes a share off the rest.
       if (this.blockT > 0 && Math.random() < this.blockPct / 100) {
@@ -2894,7 +2918,7 @@ export class MobSystem {
       const weak = this.weakOf(m);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
       const ax = m.elite?.affixes ?? [];
-      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: this.blowType(m), ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
+      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: this.blowType(m), lv: m.def.level, ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
     }
   }
 
@@ -2906,7 +2930,7 @@ export class MobSystem {
       const s = this.shots[i];
       stepShot(s, dt);
       if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
-      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' || s.kind === 'shard' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); this.shotAffixes(s); continue; }
+      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' || s.kind === 'shard' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical', undefined, s.lv); this.shotAffixes(s); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }
@@ -3306,10 +3330,12 @@ export class MobSystem {
 
   /** A creature's pace: a Hearth Circle's ground slows whatever walks in it. */
   private paceOf(m: Mob): number {
+    // The level gap (td-zones gapPace): a creature above the Keeper's level is quicker on its feet.
+    const gap = this.levelGap ? gapPace(levelGap(this.keeperLevel, m.def.level)) : 1;
     // Holy Freeze (a worn aura) slows whatever walks near the Keeper.
     const frozen = this.itemAura && this.itemAura.fx.slow > 0 && this.inItemAura(m) ? 1 - this.itemAura.fx.slow : 1;
-    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return (1 - z.max / 100) * frozen;
-    return frozen;
+    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return (1 - z.max / 100) * frozen * gap;
+    return frozen * gap;
   }
   /** Is the Keeper standing in his own Hearth Circle (the Hush cannot rise there)? */
   get inHearth(): boolean { const p = this.host.player(); return this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r)); }
@@ -3765,7 +3791,7 @@ export class MobSystem {
       const a = turn + (i - 1) / Math.max(1, rend.rings - 1) * Math.PI * 2, r = i ? rend.spread : 0;
       let dmg = rnd(rend.dmg[0], rend.dmg[1]);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
-      this.bursts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r * .6, t: rend.tell, r: rend.r, dmg, delay: rend.tell, el: 'shadow', type });
+      this.bursts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r * .6, t: rend.tell, r: rend.r, dmg, delay: rend.tell, el: 'shadow', type, lv: m.def.level });
     }
     m.chantT = CHANT_SECS; m.chantText = rend.chant;
   }
@@ -3817,7 +3843,7 @@ export class MobSystem {
     this.mobs.splice(this.mobs.indexOf(m), 1);
     if (m.elite?.role === 'leader' || !m.elite) this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
     // Fire Enchanted: it bursts where it fell, after its ring has shown the reach.
-    if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share) });
+    if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share), lv: m.def.level });
     // Redemption (a worn aura): a creature that falls near the Keeper heals him.
     if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.host.healPlayer(this.itemAura.fx.healPerCorpse);
     // Soul Harvest (passive): every kill gives back mana.
@@ -3835,7 +3861,8 @@ export class MobSystem {
     const sky = this.wildRules;
     // The Hush pays too (td-dark.ts): a little more XP the deeper it runs, capped.
     // A worn unique (unique-items.ts xp-echo): more Hunting XP from every kill.
-    const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100);
+    // The zone's level against the Keeper's (td-zones zoneXp, D2): full XP at his level, less far below it, a little more above.
+    const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100) * (this.levelGap ? zoneXp(this.keeperLevel, m.def.level) : 1);
     // XP follows the creature's own authored life: not the tier's multiple of it (the tier pays in drops, its blurb says
     // so), nor td-life's (the life a creature rises with is the fight's; the authored life is leveling.md's pace).
     this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp / lifeScale(m.def.level, m.def.rank) / (m.def.tough ?? 1)), ...(xpK !== 1 ? { xp: xpK } : {}) });

@@ -15,7 +15,7 @@ import type { StationDef } from '../../world/world.model';
 import type { LegendEntry, TdMapDef } from '../td-level';
 
 /** The way in, at the Ashen Bastion (td-world stamps the crypt door there). */
-export const CRYPT_IN: StationDef = { id: 'ashen-crypt', x: 0, label: 'THE ASHEN CRYPT', kind: 'passage', blurb: 'Steps down under the Ashen Bastion, where its dead garrison still marches. Dangerous below level 10.' };
+export const CRYPT_IN: StationDef = { id: 'ashen-crypt', x: 0, label: 'THE ASHEN CRYPT', kind: 'passage', blurb: 'Steps down under the Ashen Bastion, where its dead garrison still marches. Dangerous below level 14.' };
 const CRYPT_OUT: StationDef = { id: 'crypt-out', x: 0, label: 'CRYPT DOOR', kind: 'passage', blurb: 'Back up to the Ashen Bastion.' };
 const C1_DOWN: StationDef = { id: 'crypt1-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Bone Hall (floor 2). Something large breathes down there.' };
 const C2_UP: StationDef = { id: 'crypt2-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Ossuary (floor 1).' };

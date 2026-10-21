@@ -55,7 +55,7 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { PlayLobbyService } from './lobby/play-lobby.service';
-import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
+import { createTopDownEngine, topDownGate, type TdMapPin, type TdMapZone, type TopDownEngine } from './td/td-engine';
 import { ELEMENTS, MAX_KEEPER_RESIST, type Element as DamageElement } from '../shared/loot/damage.model';
 import { GOLD_FIND_CAP } from '../shared/economy/economy-curve';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
@@ -177,6 +177,8 @@ import { SextonJournalComponent } from '../shared/sexton/sexton-journal.componen
 import { LORE_PAGES } from '../shared/lore/lore';
 import { LORE_I18N } from '../shared/lore/lore.i18n';
 import { SEAM_I18N } from './td/td-seam.i18n';
+import { ZONES_I18N } from './td/td-zones.i18n';
+import { zoneDanger } from './td/td-zones';
 import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
@@ -513,7 +515,7 @@ export class SideScrollerComponent implements OnDestroy {
   placesOpen = false;
   /** The Bestiary window (top-down only): opened from the Map's menu row or with B. */
   bestiaryOpen = false;
-  bestiary: { entries: (BestiaryEntry & { lit: string; dark: string; shownHaunts: string[]; moreHaunts: number })[]; found: number } | null = null;
+  bestiary: { entries: (BestiaryEntry & { lit: string; dark: string; shownHaunts: { where: string; band: readonly [number, number] | null }[]; moreHaunts: number })[]; found: number } | null = null;
   /**
    * A town task giver spoken to (top-down; shared/town-tasks): who they are, what they ask now (or the thanks for what
    * was just handed in), and whether they keep a stall (its "Trade" button opens it as before).
@@ -1128,6 +1130,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(WORLD_CLOCK_I18N);
     this.i18n.register(DARK_I18N);
     this.i18n.register(SEAM_I18N);
+    this.i18n.register(ZONES_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
@@ -2129,7 +2132,8 @@ export class SideScrollerComponent implements OnDestroy {
    * The place-name card (owner, 2026-10-19): no name parked in the corner; on arriving somewhere new its name rises in
    * the middle of the screen, holds, and fades (the CSS animation does the timing; the card leaves the DOM after it).
    */
-  areaCard: { title: string; realm: string; n: number } | null = null;
+  /** The place-name card; `lv` its zone's fixed band (td-zones.ts), `danger` when that is well above the Keeper. */
+  areaCard: { title: string; realm: string; n: number; lv: string; danger: boolean } | null = null;
   private areaCardSeen = '';
   private areaCardTimer?: ReturnType<typeof setTimeout>;
   /** Top-down: while the Slate is open the Keeper holds it up and looks at it (owner, 2026-10-19). */
@@ -2727,6 +2731,20 @@ export class SideScrollerComponent implements OnDestroy {
     this.looks.setLoadout(this.loadoutBar, this.loadoutAura === id ? 'none' : id);
     this.tickAbilities();
   }
+  /** The zone's band as words ("Lv 6–9"), "Safe ground" in a town, '' where none is written (td-zones.ts). */
+  get zoneLabel(): string {
+    const z = this.topDown ? this.state.zone : null;
+    if (!z) return '';
+    if (z.safe) return this.t('play.zone.safe');
+    return this.bandLabel(z.band);
+  }
+  bandLabel(band: readonly [number, number]): string {
+    return band[0] === band[1] ? this.t('play.zone.one', { n: band[0] }) : this.t('play.zone.band', { lo: band[0], hi: band[1] });
+  }
+  /** Is the zone underfoot well above the Keeper ("Dangerous for your level")? */
+  get zoneDangerous(): boolean { const z = this.topDown ? this.state.zone : null; return !!z && !z.safe && zoneDanger(z.band, this.huntingLevel); }
+  /** A band shown on the Map: is it dangerous for this Keeper? */
+  bandDanger(band: readonly [number, number] | undefined): boolean { return zoneDanger(band, this.huntingLevel); }
   private tickAreaCard(): void {
     const title = this.areaTitle;
     if (!title) return;
@@ -2734,7 +2752,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (title !== this.areaCardPending) { this.areaCardPending = title; this.areaCardSince = Date.now(); return; }
     if (title === this.areaCardSeen || Date.now() - this.areaCardSince < 1200) return;
     this.areaCardSeen = title;
-    this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1 };
+    this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1, lv: this.zoneLabel, danger: this.zoneDangerous };
     clearTimeout(this.areaCardTimer);
     this.areaCardTimer = setTimeout(() => this.zone.run(() => { this.areaCard = null; }), 3600);
   }
@@ -2802,7 +2820,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.focusWorld();
   }
   /** The Map window's picture, pins and the Keeper's mark (td-engine mapView); null in the side view. */
-  get tdMapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
+  get tdMapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number }; zones: TdMapZone[] } | null {
     return this.topDown ? (this.engine as unknown as { mapView?: () => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.() ?? null : null;
   }
   /** B or the Map's menu: open or fold the Bestiary (cards are rebuilt on open, from the saved kill counts). */
@@ -2813,7 +2831,7 @@ export class SideScrollerComponent implements OnDestroy {
     const entries = bestiaryEntries(readKills(this.store.read(BESTIARY_KEY)));
     this.bestiary = {
       found: discoveredCount(entries),
-      entries: entries.map(e => ({ ...e, lit: this.mobPortrait(e.id, false), dark: this.mobPortrait(e.id, true), shownHaunts: e.haunts.slice(0, 3), moreHaunts: Math.max(0, e.haunts.length - 3) })),
+      entries: entries.map(e => ({ ...e, lit: this.mobPortrait(e.id, false), dark: this.mobPortrait(e.id, true), shownHaunts: e.haunts.slice(0, 3).map((where, i) => ({ where, band: e.hauntBands[i] ?? null })), moreHaunts: Math.max(0, e.haunts.length - 3) })),
     };
     this.bestiaryOpen = true;
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-best .places-close')?.focus());

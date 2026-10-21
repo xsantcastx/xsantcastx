@@ -41,7 +41,10 @@
   <!-- The place-name card: rises in the middle on arrival, then fades (the corner title is for screen readers only). -->
   @if (areaCard; as card) {
     @for (c of [card.n]; track c) {
-      <div class="area-card" aria-hidden="true"><small>{{ card.realm }}</small><strong>{{ card.title }}</strong><i></i></div>
+      <div class="area-card" aria-hidden="true" [class.area-card--danger]="card.danger" [attr.data-zone-lv]="card.lv || null"><small>{{ card.realm }}</small><strong>{{ card.title }}</strong><i></i>
+        @if (card.lv) { <em class="area-card__lv">{{ card.lv }}</em> }
+        @if (card.danger) { <b class="area-card__danger">{{ t('play.zone.danger') }}</b> }
+      </div>
     }
   }
   <!-- Top-down: the skill bar (Tibia's hotkeys): one slot per skill on keys 1–4, its cooldown sweeping back, dim without mana. -->
@@ -561,14 +564,14 @@
               <div class="td-best__art"><img [src]="e.kills > 0 ? e.lit : e.dark" alt="" draggable="false"></div>
               <h3>{{ e.kills > 0 ? e.name : t('play.best.unknown') }}</h3>
               <p class="td-best__meta">
-                <span>{{ t('play.td.level', { n: e.level }) }}</span>
+                <span data-best-lv>{{ bandLabel(e.levels) }}</span>
                 @if (e.rank !== 'normal') { <b class="td-best__rank">{{ t(e.rank === 'boss' ? 'play.best.rank.boss' : 'play.best.rank.champion') }}</b> }
                 <span class="td-best__count">{{ e.kills > 0 ? t('play.best.defeated', { n: e.kills }) : t('play.best.notYet') }}</span>
               </p>
               <!-- What its blows carry (§6): the resist that answers it. Known before the first kill, like its haunts. -->
               <p class="td-best__hits" [attr.data-hits]="e.hits">{{ t('play.best.hits', { type: t('loot.resist.' + e.hits) }) }}</p>
               <p class="td-best__where"><small>{{ t('play.best.haunts') }}</small>
-                @for (h of e.shownHaunts; track h) { <span>{{ h }}</span> }
+                @for (h of e.shownHaunts; track h.where) { <span>{{ h.where }}@if (h.band) { <em class="td-best__lv" [class.td-best__lv--danger]="bandDanger(h.band)"> · {{ bandLabel(h.band) }}</em> }</span> }
                 @if (e.moreHaunts) { <span class="td-best__more">{{ t('play.best.more', { n: e.moreHaunts }) }}</span> }
               </p>
               @if (e.kills > 0) {
@@ -615,9 +618,18 @@
           <p class="td-map__hint">{{ t('play.map.hint') }}</p>
           <ul>
             @for (pin of mv.pins; track pin.id) {
-              <li><button type="button" [attr.data-kind]="pin.kind" (click)="goPin(pin)" [title]="pin.blurb"><i aria-hidden="true"></i><span>{{ pinName(pin) }}</span></button></li>
+              <li><button type="button" [attr.data-kind]="pin.kind" (click)="goPin(pin)" [title]="pin.blurb"><i aria-hidden="true"></i><span>{{ pinName(pin) }}</span>@if (pin.band) { <small class="td-map__lv" [class.td-map__lv--danger]="bandDanger(pin.band)" data-zone-lv>{{ bandLabel(pin.band) }}</small> }</button></li>
             }
           </ul>
+          <!-- Zone levels (td-zones.ts): fixed per region and floor, D2's way; red where it is well above the Keeper. -->
+          @if (mv.zones.length) {
+            <h3 class="td-map__zones-head">{{ t('play.zone.mapHead') }}</h3>
+            <ul class="td-map__zones" data-zone-list [title]="t('play.zone.mapNote')">
+              @for (z of mv.zones; track z.id) {
+                <li [class.td-map__zone--danger]="bandDanger(z.band)" [attr.data-zone]="z.id"><span>{{ z.name }}</span><small class="td-map__lv" [class.td-map__lv--danger]="bandDanger(z.band)">{{ bandLabel(z.band) }}</small></li>
+              }
+            </ul>
+          }
         </aside>
       </div>
       <footer class="td-map__menu">

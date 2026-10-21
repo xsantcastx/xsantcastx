@@ -11,6 +11,7 @@ import { huntGoldRange } from '../../shared/economy/economy-curve';
 import { MIN_PACK_LEVEL } from '../../shared/loot/champions';
 import { NIGHT_TABLES } from './td-phases';
 import { SEAM_ID, riftPlace } from './td-seam';
+import { graveyardZone, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import { bossUniqueFor } from '../../shared/rpg/boss-uniques';
 import { ITEM_SETS } from '../../shared/rpg/set-items';
 
@@ -30,6 +31,10 @@ export interface BestiaryEntry {
   rank: 'normal' | 'champion' | 'unique' | 'boss';
   /** Every place it can be met, e.g. "The Emberwood, Ember Isle" or "Ember Mine · Floor 2". */
   haunts: string[];
+  /** The level it is met at in each haunt (td-zones.ts: the zone's fixed band; a boss or the Seam Eater, its own), by index. */
+  hauntBands: (readonly [number, number] | null)[];
+  /** Every level it can be met at, lowest to highest, across its haunts (its own level when none is written). */
+  levels: readonly [number, number];
   /** Gold dropped, from..to (the level's pile, economy-curve HUNT_GOLD). */
   coins: [number, number];
   drops: BestiaryDrop[];
@@ -48,10 +53,17 @@ export interface BestiaryEntry {
 
 /** Who lives where: creature id → places, in a stable order (the lands first, then the dungeons by their floors). */
 export function creatureHaunts(): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  const add = (id: string, where: string): void => {
+  return new Map([...creatureHauntBands()].map(([id, list]) => [id, list.map(h => h.where)]));
+}
+
+/** Who lives where, and at what level there (td-zones.ts): a boss and the Seam Eater at their own, the rest at the zone's band. */
+export function creatureHauntBands(): Map<string, { where: string; band: readonly [number, number] | null }[]> {
+  const out = new Map<string, { where: string; band: readonly [number, number] | null }[]>();
+  const add = (id: string, where: string, zone?: string, own?: number): void => {
     const list = out.get(id) ?? [];
-    if (!list.includes(where)) list.push(where);
+    const boss = MOBS[id]?.rank === 'boss';
+    const band: readonly [number, number] | null = own !== undefined ? [own, own] : boss ? [MOBS[id].level, MOBS[id].level] : zoneOf(zone)?.band ?? null;
+    if (!list.some(h => h.where === where)) list.push({ where, band });
     out.set(id, list);
   };
   for (const c of Object.values(CONTINENTS)) {
@@ -59,19 +71,19 @@ export function creatureHaunts(): Map<string, string[]> {
     for (const [region, table] of Object.entries(c.mobs)) {
       if (!table) continue;
       const name = c.names[region as keyof typeof c.names] ?? c.townName;
-      for (const id of table.types) add(id, `${name}, ${land}`);
+      for (const id of table.types) add(id, `${name}, ${land}`, regionZone(c.id, region));
       // The night tables (td-phases.ts): who comes out there after dark.
-      for (const id of table.types) for (const night of NIGHT_TABLES[id] ?? []) add(night, `${name}, ${land} (at night)`);
+      for (const id of table.types) for (const night of NIGHT_TABLES[id] ?? []) add(night, `${name}, ${land} (at night)`, regionZone(c.id, region));
     }
     // A graveyard's own dead are Bone Walkers (td-world.ts).
-    for (const p of c.places) if (p.kind === 'graveyard') add('bone-walker', `${p.name}, ${land}`);
+    for (const p of c.places) if (p.kind === 'graveyard') add('bone-walker', `${p.name}, ${land}`, graveyardZone(c.id));
     // The Seam Eater rises at each continent's rift, its standing stones, under an eclipse (td-seam.ts).
     const rift = riftPlace(c);
-    if (rift) add(SEAM_ID, `${rift.name}, ${land} (under an eclipse)`);
+    if (rift) add(SEAM_ID, `${rift.name}, ${land} (under an eclipse)`, undefined, seamLevelFor(c.id));
   }
   for (const level of Object.values(LEVELS)) {
     for (const [ch, entry] of Object.entries(level.legend)) {
-      if (entry.mob && level.rows.some(row => row.includes(ch))) add(entry.mob, level.name);
+      if (entry.mob && level.rows.some(row => row.includes(ch))) add(entry.mob, level.name, level.id);
     }
   }
   return out;
@@ -80,13 +92,19 @@ export function creatureHaunts(): Map<string, string[]> {
 const dropName = (material: string): string => materialDisplay(material)?.name ?? material.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 /** Every creature in MOBS (the Warlock's raised skeleton is not a MOBS entry) with what the Keeper has learnt of it, weakest first. */
 export function bestiaryEntries(kills: Readonly<Record<string, number>>): BestiaryEntry[] {
-  const haunts = creatureHaunts();
+  const haunts = creatureHauntBands();
+  const range = (list: readonly { band: readonly [number, number] | null }[], own: number): readonly [number, number] => {
+    const bands = list.map(h => h.band).filter((b): b is readonly [number, number] => !!b);
+    return bands.length ? [Math.min(...bands.map(b => b[0])), Math.max(...bands.map(b => b[1]))] : [own, own];
+  };
   return Object.values(MOBS).map((def): BestiaryEntry => ({
     id: def.id,
     name: def.name,
     level: def.level,
     rank: def.rank ?? 'normal',
-    haunts: haunts.get(def.id) ?? [],
+    haunts: (haunts.get(def.id) ?? []).map(h => h.where),
+    hauntBands: (haunts.get(def.id) ?? []).map(h => h.band),
+    levels: range(haunts.get(def.id) ?? [], def.level),
     coins: huntGoldRange(def.level, def.rank ?? 'normal'),
     drops: def.drops.map(d => ({ name: dropName(d.material), qty: d.qty, chance: d.chance })),
     lore: def.lore ?? '',

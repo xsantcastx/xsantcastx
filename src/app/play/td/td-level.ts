@@ -9,6 +9,7 @@ import type { StationDef } from '../world/world.model';
 import { anvil, barrowDoor, bed, bones, boulder, chest, gravestone, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
+import { zoneLevel, zoneOf } from './td-zones';
 
 /** What the engine asks of any level. */
 export interface TdLevel {
@@ -24,6 +25,8 @@ export interface TdLevel {
   readonly fog?: number;
   /** Where creatures spawn in (or near) the rectangle (art px). */
   spawnsIn(x0: number, y0: number, x1: number, y1: number): MobSpawn[];
+  /** The zone (td-zones.ts ZONES key) at a spot: its fixed level band. */
+  zoneAt(x: number, y: number): string;
 }
 
 /** A way between levels: stand on it and use it (E, a tap) to go. */
@@ -124,7 +127,7 @@ export class HandLevel implements TdLevel {
         }
         if (e.station) this.stalls.push({ station: e.station, x, y: y + 6 });
         if (e.exit) this.exits.set(e.station?.id ?? `exit-${c},${r}`, e.exit);
-        if (e.mob) this.spawns.push({ key: `${def.id}:${c},${r}`, type: e.mob, x, y });
+        if (e.mob) { const key = `${def.id}:${c},${r}`, z = zoneOf(def.id); this.spawns.push({ key, type: e.mob, x, y, ...(z ? { level: zoneLevel(z.band, `${def.id}|${key}`) } : {}) }); }
         if (e.door) {
           const id = e.door;
           this.doorTiles.set(r * this.cols + c, id);
@@ -158,6 +161,8 @@ export class HandLevel implements TdLevel {
     return this.objects.filter(o => o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1);
   }
   placeName(): string { return this.def.name; }
+  /** A floor or a house is one zone, its own id. */
+  zoneAt(): string { return this.def.id; }
   spawnsIn(): MobSpawn[] { return this.spawns; }
 }
 
