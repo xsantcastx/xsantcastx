@@ -3,7 +3,7 @@
  *
  * Two browsers (Aster on a desktop, Bryn on a phone) against a private Hearth room run with SOCIAL_FAKE_AUTH=1 and
  * SOCIAL_FAKE_TRADE=1: tokens `fake.<uid>` sign them in, and the room mounts scripts/trade-fake.mjs — the REAL
- * functions/src/trade-core.ts over an in-memory "Firestore" — as the trade Function. The client plays the gateway's
+ * functions-game/src/trade-core.ts over an in-memory "Firestore" — as the trade Function. The client plays the gateway's
  * part against it (trade-backend.service.ts): push the save before, read and merge it after.
  *
  * Aster asks Bryn to trade from Bryn's card; Bryn accepts from the toast; Aster offers the Ash Blade and 50 Gold, Bryn

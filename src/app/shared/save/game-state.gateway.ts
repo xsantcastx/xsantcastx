@@ -1372,7 +1372,7 @@ export class GameStateGateway {
 
   /**
    * Re-read a few documents right now and adopt what the cloud holds — after a server write this device must see
-   * before it plays on (a trade or a ground pickup: functions/src/trade-core.ts). Not throttled, and only the named
+   * before it plays on (a trade or a ground pickup: functions-game/src/trade-core.ts). Not throttled, and only the named
    * keys are read (one billed read each). Every owner is flushed first, the merged copy is cached and pushed into its
    * owner in the same tick (LocalSaveRegistry), and a key whose merge holds something the cloud lacks is queued.
    * Returns the keys that moved locally. A no-op while signed out.
