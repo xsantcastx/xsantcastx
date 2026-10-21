@@ -1,5 +1,5 @@
 import {
-  BODY_TYPES, FACE_MARKS, HAIR_STYLES, KEEPER_LOOK_KEY, LOOK_FIELDS, NAME_MAX, SKIN_TONES,
+  BODY_TYPES, FACE_MARKS, FORMS, HAIR_STYLES, KEEPER_LOOK_KEY, LOOK_FIELDS, NAME_MAX, SKIN_TONES,
   cleanName, coerceLook, defaultLook, fieldOptions, fieldSwatch, lookFromSeed, lookKey, lookRng, mergeKeeperLook, pointsLeft, randomLook, stepLook,
 } from './keeper-look.model';
 import { SYNCED_BLOBS } from '../cloud-save/cloud-save.model';
@@ -113,5 +113,42 @@ describe('the Keeper record: class, bar and attributes (2026-10-20)', () => {
     expect(pointsLeft(3, { vit: 0, ene: 0, spi: 0, agi: 0 })).toBe(10);
     expect(pointsLeft(3, { vit: 4, ene: 3, spi: 2, agi: 1 })).toBe(0);
     expect(pointsLeft(2, { vit: 9, ene: 0, spi: 0, agi: 0 })).toBe(0);
+  });
+
+  describe('the figure (feminine / masculine)', () => {
+    it('an old save without one stays the figure it always was', () => {
+      const old = coerceLook({ version: 1, made: true, name: 'Aster', hair: 'braid', vocation: 'warlock', updatedAt: 5 });
+      expect(old.form).toBe('masc');
+      expect(old.hair).toBe('braid');
+      expect(coerceLook({ form: 'robot' }).form).toBe('masc');
+      expect(coerceLook({ form: 'fem' }).form).toBe('fem');
+    });
+
+    it('keeps the old hair styles and adds the new ones at the end', () => {
+      expect(HAIR_STYLES.slice(0, 8)).toEqual(['cropped', 'swept', 'long', 'braid', 'topknot', 'curls', 'mohawk', 'shaved']);
+      for (const h of ['bun', 'ponytail', 'pigtails', 'bob']) expect(coerceLook({ hair: h }).hair).toBe(h as never);
+    });
+
+    it('rides the look blob: the later edit carries its figure to the other device', () => {
+      const phone = { ...defaultLook(), made: true, form: 'fem', hair: 'ponytail', updatedAt: 20 };
+      const pc = { ...defaultLook(), made: true, form: 'masc', updatedAt: 10 };
+      expect(coerceLook(mergeKeeperLook(phone, pc)).form).toBe('fem');
+      expect(coerceLook(mergeKeeperLook(pc, phone)).form).toBe('fem');
+    });
+
+    it('is a field of the Glass, changes the painting key, and a random feminine look has no beard', () => {
+      expect(LOOK_FIELDS[0]).toBe('form');
+      expect(fieldOptions('form')).toEqual(FORMS);
+      expect(stepLook(defaultLook(), 'form', 1).form).toBe('fem');
+      expect(lookKey({ ...defaultLook(), form: 'fem' })).not.toBe(lookKey(defaultLook()));
+      const rand = lookRng(7);
+      const forms = new Set<string>();
+      for (let i = 0; i < 60; i++) {
+        const l = randomLook(rand);
+        forms.add(l.form);
+        if (l.form === 'fem') expect(l.face).not.toBe('beard');
+      }
+      expect(forms.size).toBe(2);
+    });
   });
 });

@@ -12,7 +12,7 @@
  */
 import { OUTLINE, mix, type KeeperPainter, type Palette } from './keeper-paint';
 import { RARITY_TRIM, STYLE_COLORS, type GearPiece, type KeeperGear } from './keeper-gear';
-import type { BodyType, EyeStyle, FaceMark, HairStyle } from './keeper-look.model';
+import type { BodyType, EyeStyle, FaceMark, Form, HairStyle } from './keeper-look.model';
 import type { KeeperGarb } from './npc-looks';
 import { WARLOCK_GARB } from './vocation-look';
 
@@ -44,7 +44,7 @@ const staffSheets = new WeakMap<KeeperPainter, HTMLCanvasElement>();
 type Px = (x: number, y: number, w: number, h: number, col: string) => void;
 
 /** What a figure is, besides its colours: the body, the hair, the face, the eyes, the garb's extras. */
-interface Figure { body: BodyType; hair: HairStyle; face: FaceMark; eyes: EyeStyle; garb: KeeperGarb | null }
+interface Figure { body: BodyType; form: Form; hair: HairStyle; face: FaceMark; eyes: EyeStyle; garb: KeeperGarb | null }
 
 /** One frame's pose: the upper body's bob, each foot's lift, each arm's swing, the robe hem's sway. */
 interface Pose { u: number; lLift: number; rLift: number; lArm: number; rArm: number; sway: number }
@@ -71,7 +71,9 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   const cast = frame === CAST_FRAME;
   const pose = poseOf(frame);
   const ht = HT + pose.u, tt = TT + pose.u;
-  const bw = fig.body === 'slight' ? 5 : fig.body === 'broad' ? 7 : 6;
+  // A feminine figure (owner 2026-10-21): a pixel narrower at the shoulders, the hips flaring out under the belt.
+  const fem = fig.form === 'fem';
+  const bw = (fig.body === 'slight' ? 5 : fig.body === 'broad' ? 7 : 6) - (fem ? 1 : 0);
   const head = gear?.head;
   const sash = fig.garb?.sash ?? WARLOCK_GARB.sash ?? p.trim;
   const hooded = head?.kind === 'hood' || (staff && !head);
@@ -90,9 +92,9 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   else toes(P, pose);
 
   // ── The body ──
-  if (staff) robe(P, { base: p.tunic, hi: p.tunicHi, lo: p.tunicLo, trim: p.trim }, tt, bw, pose.sway, front, sash, true);
+  if (staff) robe(P, { base: p.tunic, hi: p.tunicHi, lo: p.tunicLo, trim: p.trim }, tt, bw, pose.sway, front, sash, true, fem);
   else tunic(P, p, fig, tt, bw, front);
-  if (!staff || (chest && chest.kind !== 'robe' && chest.kind !== 'mantle')) paintChest(P, gear, front, tt, bw, pose.sway);
+  if (!staff || (chest && chest.kind !== 'robe' && chest.kind !== 'mantle')) paintChest(P, gear, front, tt, bw, pose.sway, fem);
   // The quiver's tube on the back, seen from behind (over the coat, under the arms).
   if (fig.garb?.quiver && !front) quiver(P, fig.garb.quiver, tt, false);
 
@@ -100,14 +102,14 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   arms(P, p, tt, bw, pose, front, phone, raise, staff, holding);
 
   // ── The head ──
-  headSkin(P, p, ht);
+  headSkin(P, p, ht, fem);
   if (hooded) {
     hood(P, p, hoodCloth, ht, tt, front, staff ? sash : hoodCloth.trim);
-    if (front) { if (staff) undeadFace(P, p, ht, frame, cast); else face(P, p, fig, ht, frame, phone, true); }
+    if (front) { if (staff) undeadFace(P, p, ht, frame, cast, fem); else face(P, p, fig, ht, frame, phone, true); }
   }
   else {
     if (front) {
-      if (staff) undeadFace(P, p, ht, frame, cast);
+      if (staff) undeadFace(P, p, ht, frame, cast, fem);
       else face(P, p, fig, ht, frame, phone, false);
     }
     hair(P, p, fig, ht, front);
@@ -115,7 +117,11 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
     if (!head && fig.garb?.hat) hat(P, fig.garb.hat, fig.garb.hatColor ?? p.trim, ht, front);
   }
   if (hooded && staff) mantle(P, hoodCloth, tt, bw, front);
+  // Her hair escapes the hood: two locks framing the face, falling over the mantle onto the chest.
+  if (hooded && fem && front) locks(P, p, ht, 'hood');
   paintGear(P, M, gear, front, ht, tt, bw, pose, phone);
+  // Under a helm her hair falls out below the cheek guards (in front) and as a tail under the neck guard (behind).
+  if (fem && !hooded && (head?.kind === 'helm')) locks(P, p, ht, front ? 'helm' : 'helm-back');
   // Its arrows' fletchings: over the shoulder from behind, peeking past the hood's edge from the front.
   if (fig.garb?.quiver) quiver(P, fig.garb.quiver, tt, true, front);
 
@@ -165,10 +171,13 @@ function toes(P: Px, pose: Pose): void {
 
 function tunic(P: Px, p: Readonly<Palette>, fig: Figure, tt: number, bw: number, front: boolean): void {
   const l = C - bw, w = bw * 2;
-  // Shoulders rounded, the chest, the belt, the skirt flaring a pixel each side.
+  // Shoulders rounded, the chest, the belt, the skirt flaring a pixel each side (two on a feminine figure: the hips).
+  const fl = fig.form === 'fem' ? 2 : 1;
   P(l + 1, tt, w - 2, 1, p.tunic);
   P(l, tt + 1, w, 6, p.tunic);
-  P(l - 1, tt + 7, w + 2, 4, p.tunic);
+  P(l - fl, tt + 7, w + fl * 2, 4, p.tunic);
+  if (fl === 2) { P(l - 2, tt + 7, 1, 4, p.tunicHi); P(l + w + 1, tt + 7, 1, 4, p.tunicLo); P(l - 2, tt + 10, w + 4, 1, p.tunicLo); }
+  if (fl === 2 && front) { P(C - 4, tt + 4, 3, 1, p.tunicLo); P(C + 1, tt + 4, 3, 1, p.tunicLo); }
   // Light from the top-left: the shoulders and the left edge lit, the right in shade.
   P(l + 1, tt, w - 4, 1, p.tunicHi); P(l, tt + 1, 1, 5, p.tunicHi); P(l - 1, tt + 7, 1, 2, p.tunicHi);
   P(l + w - 2, tt + 1, 2, 6, p.tunicLo); P(l + w - 1, tt + 7, 2, 4, p.tunicLo);
@@ -207,12 +216,13 @@ function tunic(P: Px, p: Readonly<Palette>, fig: Figure, tt: number, bw: number,
 interface Cloth { base: string; hi: string; lo: string; trim: string }
 
 /** A robe to the ankles: flaring below the belt, folds, a trimmed hem that sways with the step. */
-function robe(P: Px, m: Cloth, tt: number, bw: number, sway: number, front: boolean, sash: string, bone: boolean): void {
+function robe(P: Px, m: Cloth, tt: number, bw: number, sway: number, front: boolean, sash: string, bone: boolean, fem = false): void {
   const end = FEET - 1;
   const sw = (y: number) => y >= end - 4 ? sway : 0;
   for (let y = tt; y < end; y++) {
     const k = y - tt;
-    const half = k === 0 ? bw - 1 : k < 7 ? bw : bw + Math.min(2, ((k - 7) >> 1) + 1);
+    // A feminine figure: the waist drawn in at the sash, the hips a pixel wider below it.
+    const half = k === 0 ? bw - 1 : k < 7 ? bw : bw + Math.min(2, ((k - 7) >> 1) + 1) + (fem && k < 13 ? 1 : 0);
     const s = sw(y);
     P(C - half + s, y, half * 2, 1, m.base);
     P(C - half + s, y, 1, 1, k < 7 ? m.hi : mix(m.base, m.hi, .6));
@@ -237,6 +247,7 @@ function robe(P: Px, m: Cloth, tt: number, bw: number, sway: number, front: bool
     for (let y = tt + 2; y < end - 2; y++) { const s = sw(y); P(C - 1 + s, y, 1, 1, m.trim); P(C + s, y, 1, 1, lo(m.trim, .3)); }
     if (bone) for (const y of [tt + 3, tt + 10, tt + 13]) { P(C - 2, y, 4, 1, BONE); P(C + 1, y, 1, 1, BONE_LO); }
   } else P(C, tt + 1, 1, end - tt - 3, m.lo);
+  if (fem && front) { P(C - 4, tt + 4, 3, 1, m.lo); P(C + 1, tt + 4, 3, 1, m.lo); }
   // The sash at the waist, its knotted ends hanging at the left hip.
   P(C - bw, tt + 6, bw * 2, 2, sash); P(C - bw, tt + 7, bw * 2, 1, lo(sash, .3)); P(C - bw, tt + 6, bw * 2 - 3, 1, hi(sash, .2));
   if (front) { P(C - 4, tt + 8, 2, 4, sash); P(C - 3, tt + 8, 1, 4, lo(sash, .3)); P(C - 4, tt + 12, 2, 1, lo(sash, .45)); }
@@ -274,14 +285,44 @@ function arms(P: Px, p: Readonly<Palette>, tt: number, bw: number, pose: Pose, f
   if (!front || !holding) { P(rx, tt + 8 + ra + bell, 3, 2, p.skinLo); P(rx, tt + 8 + ra + bell, 2, 1, p.skin); }
 }
 
-function headSkin(P: Px, p: Readonly<Palette>, ht: number): void {
-  HEAD_IN.forEach((n, r) => {
+/** A feminine head: the same round, a softer, narrower chin. */
+const HEAD_IN_FEM = [4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 5];
+
+function headSkin(P: Px, p: Readonly<Palette>, ht: number, fem = false): void {
+  (fem ? HEAD_IN_FEM : HEAD_IN).forEach((n, r) => {
     P(HX + n, ht + r, 18 - n * 2, 1, p.skin);
     // Round: the right edge in shade, the jaw underneath.
     if (r >= 2) P(HX + 18 - n - 2, ht + r, 2, 1, p.skinLo);
   });
-  P(HX + 4, ht + 13, 12, 1, p.skinLo); P(HX + 6, ht + 14, 9, 1, p.skinLo);
+  if (fem) { P(HX + 4, ht + 13, 11, 1, p.skinLo); P(HX + 6, ht + 14, 7, 1, p.skinLo); }
+  else { P(HX + 4, ht + 13, 12, 1, p.skinLo); P(HX + 6, ht + 14, 9, 1, p.skinLo); }
   P(HX + 2, ht + 9, 1, 2, p.skinHi);
+}
+
+/** A lash flicked out at each eye's outer corner, at row `y` (the feminine face). */
+function lashes(P: Px, ht: number, y: number, col: string): void {
+  P(HX + 3, ht + y, 1, 1, col); P(HX + 2, ht + y - 1, 1, 1, col);
+  P(HX + 14, ht + y, 1, 1, col); P(HX + 15, ht + y - 1, 1, 1, col);
+}
+
+/**
+ * Her hair where headgear covers the rest: `hood`, two locks framing the face inside the opening; `helm`, locks falling
+ * from under the cheek guards to the shoulders; `helm-back`, a tail below the neck guard.
+ */
+function locks(P: Px, p: Readonly<Palette>, ht: number, where: 'hood' | 'helm' | 'helm-back'): void {
+  const at = (x: number, y: number, w: number, col = p.hair) => P(HX + x, ht + y, w, 1, col);
+  if (where === 'hood') {
+    // Inside the opening down the cheeks, then out over the hood's fall onto the chest, a pixel wider.
+    for (let y = 8; y <= 14; y++) { at(3, y, 2); at(13, y, 2); at(3, y, 1, p.hairHi); at(14, y, 1, p.hairLo); }
+    for (let y = 15; y <= 19; y++) { const k = y > 17 ? 1 : 0; at(2 + k, y, 3 - k); at(13, y, 3 - k); at(2 + k, y, 1, p.hairHi); at(15 - k, y, 1, p.hairLo); }
+    at(4, 7, 3); at(11, 7, 3); at(5, 7, 1, p.hairHi);
+  } else if (where === 'helm') {
+    for (let y = 12; y <= 17; y++) { at(-1, y, 3); at(16, y, 3); at(-1, y, 1, p.hairHi); at(18, y, 1, p.hairLo); }
+    at(0, 18, 2, p.hairLo); at(16, 18, 2, p.hairLo);
+  } else {
+    for (let y = 13; y <= 20; y++) { at(7, y, 4); at(7, y, 1, p.hairHi); at(10, y, 1, p.hairLo); }
+    at(7, 13, 4, p.trim); at(8, 21, 2, p.hairLo);
+  }
 }
 
 function face(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, frame: number, phone: boolean, hooded: boolean): void {
@@ -310,16 +351,20 @@ function face(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, frame: numbe
       if (fig.eyes === 'bright') P(ex + 2, ht + 10, 1, 1, '#ffffff');
     }
   }
-  const blushW = fig.face === 'rosy' ? 3 : 2, bx = hooded ? 3 : 2;
+  const fem = fig.form === 'fem';
+  if (fem && !phone) lashes(P, ht, frame === 1 ? 10 : fig.eyes === 'narrow' ? 9 : 8, p.eyeDk);
+  const blushW = fig.face === 'rosy' || fem ? 3 : 2, bx = hooded ? 3 : 2;
   P(HX + bx, ht + 12, blushW, 1, p.blush); P(HX + 18 - bx - blushW, ht + 12, blushW, 1, p.blush);
-  P(HX + 8, ht + 12, 2, 1, p.mouth);
+  // Her mouth a small rosy bow; his a plain line.
+  if (fem) { P(HX + 8, ht + 12, 2, 1, mix(p.mouth, '#e0607a', .55)); P(HX + 8, ht + 13, 2, 1, mix(p.skinLo, '#e0607a', .25)); }
+  else P(HX + 8, ht + 12, 2, 1, p.mouth);
   if (fig.face === 'freckles') for (const [x, y] of [[3, 11], [5, 12], [12, 12], [14, 11]]) P(HX + x, ht + y, 1, 1, p.skinLo);
   if (fig.face === 'scar') { P(HX + 13, ht + 7, 1, 1, '#b85a5a'); P(HX + 12, ht + 8, 1, 1, '#b85a5a'); P(HX + 14, ht + 12, 1, 1, '#b85a5a'); }
   if (fig.face === 'warpaint') { P(HX + 3, ht + 12, 4, 1, p.trim); P(HX + 11, ht + 12, 4, 1, p.trim); }
 }
 
 /** The undead face (owner 2026-10-20: "Warlocks should have an undead look"): grey-green, hollow-cheeked, eyes burning violet. */
-function undeadFace(P: Px, p: Readonly<Palette>, ht: number, frame: number, cast: boolean): void {
+function undeadFace(P: Px, p: Readonly<Palette>, ht: number, frame: number, cast: boolean, fem = false): void {
   const glow = WARLOCK_GARB.eyeGlow ?? '#b06bff', socket = '#1e1424';
   const top = ht + 8;
   for (const ex of [HX + 4, HX + 11]) {
@@ -335,6 +380,7 @@ function undeadFace(P: Px, p: Readonly<Palette>, ht: number, frame: number, cast
   P(HX + 6, ht + 13, 6, 1, '#3a2630');
   for (const x of [6, 8, 10]) P(HX + x, ht + 12, 1, 1, lo(p.skin, .3));
   P(HX + 8, ht + 11, 2, 1, p.skinLo);
+  if (fem) lashes(P, ht, frame === 1 ? 10 : 8, socket);
 }
 
 /** The Warlock's deep hood: a point, a lit rim, the opening in shadow round the face. */
@@ -403,25 +449,38 @@ function hair(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, front: boole
   ([[5, 8], [3, 12], [1, 16], [0, 18], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 1, w));
   if (style === 'curls') for (const [x, y] of [[3, -1], [14, -1], [-1, 1], [18, 1], [-2, 4], [19, 4]]) at(x, y, 2);
   if (style === 'topknot') { at(6, -2, 6); at(6, -2, 2, Hh); at(10, -2, 2, Hl); at(7, -1, 4, p.trim); }
+  // A bun on the crown, tied with the trim colour.
+  if (style === 'bun') { at(6, -5, 6); at(5, -4, 8); at(5, -3, 8); at(6, -2, 6, p.trim); at(6, -5, 3, Hh); at(5, -4, 2, Hh); at(10, -4, 3, Hl); at(11, -3, 2, Hl); }
+  // Pigtails: a tail tied at each side of the head, falling to the shoulders (seen from both sides).
+  if (style === 'pigtails') {
+    for (let y = 9; y <= 18; y++) { const k = y > 15 ? 1 : 0; at(-3 + k, y, 3 - k); at(18, y, 3 - k); at(-3 + k, y, 1, Hh); at(20 - k, y, 1, Hl); }
+    at(-3, 8, 3, p.trim); at(18, 8, 3, p.trim);
+  }
   if (front) {
     // The fringe: locks over the brow.
     if (style === 'swept') {
       at(-1, 6, 11); at(13, 6, 6); at(-1, 7, 7); at(16, 7, 3); at(-1, 8, 3);
       at(5, 7, 2, Hl); at(9, 6, 1, Hl);
+    } else if (style === 'bob') {
+      // A straight-cut fringe right across the brow.
+      at(-1, 6, 20); at(-1, 7, 5); at(5, 7, 8); at(14, 7, 5); at(4, 7, 1, Hl); at(9, 7, 1, Hl); at(13, 7, 1, Hl);
     } else {
       at(-1, 6, 4); at(4, 6, 3); at(9, 6, 2); at(13, 6, 6);
       at(-1, 7, 3); at(5, 7, 1, Hl); at(9, 7, 1, Hl); at(15, 7, 4);
       if (style === 'curls') { at(2, 7, 1); at(11, 7, 2); }
     }
     // Side locks to the jaw (long: past it, onto the shoulders).
-    const end = style === 'long' ? 17 : style === 'curls' ? 12 : style === 'cropped' ? 10 : 11;
+    const end = style === 'long' ? 17 : style === 'bob' ? 13 : style === 'curls' ? 12 : style === 'cropped' || style === 'pigtails' ? 10 : 11;
     for (let y = 7; y <= end; y++) {
-      const wide = style === 'long' && y > 11 ? 1 : 0;
+      const wide = (style === 'long' && y > 11) || (style === 'bob' && y > 9) ? 1 : 0;
       at(-1 - wide, y, 3 + wide); at(1, y, 1, Hl);
       at(16, y, 3 + wide); at(16, y, 1, Hl); at(18 + wide, y, 1, Hl);
     }
     if (style === 'curls') for (const y of [9, 12]) { at(-2, y, 1); at(19, y, 1); }
     if (style === 'braid') for (let y = 12; y <= 23; y++) at(17, y, 2, y === 23 ? p.trim : (y >> 1) % 2 ? H : Hl);
+    if (style === 'bob') { at(-2, 13, 4, Hl); at(16, 13, 4, Hl); }
+    // The ponytail swings out past the right of the neck.
+    if (style === 'ponytail') { for (let y = 9; y <= 17; y++) at(18 + (y > 13 ? 1 : 0), y, 2, y % 3 ? H : Hl); at(18, 8, 2, p.trim); }
   } else {
     // From behind: hair over the whole head, strands, the nape.
     for (let r = 6; r <= 12; r++) at(-1, r, 20);
@@ -430,6 +489,8 @@ function hair(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, front: boole
     at(2, 13, 14, mix(H, Hl, .5)); at(2, 14, 14, Hl);
     if (style === 'long') { for (let y = 15; y <= 19; y++) at(0, y, 18); at(0, 19, 18, Hl); for (let y = 15; y <= 18; y++) { at(14, y, 4, Hl); at(5, y, 1, Hl); at(10, y, 1, Hl); } }
     if (style === 'braid') for (let y = 15; y <= 25; y++) at(8, y, 2, y === 25 ? p.trim : (y >> 1) % 2 ? H : Hl);
+    if (style === 'ponytail') { at(7, 11, 4, p.trim); for (let y = 12; y <= 23; y++) { const w = y > 20 ? 2 : 4; at(9 - w / 2, y, w); at(9 - w / 2, y, 1, Hh); } at(8, 24, 2, Hl); }
+    if (style === 'bob') { at(-1, 13, 20); at(-1, 14, 20, Hl); for (const x of [3, 8, 12, 16]) at(x, 13, 1, Hl); }
     if (style === 'curls') for (const y of [7, 10]) { at(-2, y, 1); at(19, y, 1); }
   }
   // Volume: a shine across the crown, the right side in shade.
@@ -479,19 +540,22 @@ function matOf(pc: GearPiece): Mat {
 }
 
 /** The chest piece: plate, a robe or mantle, or a coat. */
-function paintChest(P: Px, gear: KeeperGear | null, front: boolean, tt: number, bw: number, sway: number): void {
+function paintChest(P: Px, gear: KeeperGear | null, front: boolean, tt: number, bw: number, sway: number, fem = false): void {
   const ch = gear?.chest;
   if (!ch) return;
   const m = matOf(ch), l = C - bw, w = bw * 2;
+  // Below the waist a feminine figure's hips sit a pixel wider each side: the faulds and the coat's skirts follow them.
+  const fx = fem ? 1 : 0;
   if (ch.kind === 'robe' || ch.kind === 'mantle') {
-    robe(P, { base: m.base, hi: m.hi, lo: m.lo, trim: m.trim }, tt, bw, sway, front, m.accent, false);
+    robe(P, { base: m.base, hi: m.hi, lo: m.lo, trim: m.trim }, tt, bw, sway, front, m.accent, false, fem);
     if (ch.kind === 'mantle') { P(l - 1, tt, w + 2, 3, m.accent); P(l - 1, tt, w + 2, 1, hi(m.accent, .25)); P(C + bw - 1, tt, 2, 3, lo(m.accent, .3)); }
   } else if (ch.kind === 'plate') {
     P(l, tt, w, 7, m.base); P(l, tt, w, 1, m.hi); P(l, tt, 2, 6, m.hi); P(l + w - 2, tt + 1, 2, 6, m.lo);
     // Faulds: banded plates over the hips, the trim at the waist.
     P(l, tt + 6, w, 1, m.trim);
-    for (let i = 0; i < 3; i++) { P(l - 1, tt + 7 + i, w + 2, 1, i % 2 ? m.lo : m.base); P(l - 1, tt + 7 + i, 1, 1, m.hi); }
-    P(l - 1, tt + 10, w + 2, 1, lo(m.trim, .3));
+    for (let i = 0; i < 3; i++) { P(l - 1 - fx, tt + 7 + i, w + 2 + fx * 2, 1, i % 2 ? m.lo : m.base); P(l - 1 - fx, tt + 7 + i, 1, 1, m.hi); }
+    P(l - 1 - fx, tt + 10, w + 2 + fx * 2, 1, lo(m.trim, .3));
+    if (fem && front) { P(C - 4, tt + 4, 2, 1, m.lo); P(C + 2, tt + 4, 2, 1, m.lo); }
     if (front) {
       // The chest's ridge catches the light; rivets in the trim; the realm's gem.
       P(C - 1, tt + 1, 1, 5, m.hi); P(C, tt + 1, 1, 5, m.lo);
@@ -507,9 +571,10 @@ function paintChest(P: Px, gear: KeeperGear | null, front: boolean, tt: number, 
     }
   } else {
     // A coat: open at the throat, lapels in trim, tails to the knee, buttons in the realm's accent.
-    P(l, tt, w, 7, m.base); P(l - 1, tt + 7, w + 2, 6, m.base);
-    P(l, tt, 1, 7, m.hi); P(l - 1, tt + 7, 1, 6, m.hi); P(l + w - 2, tt, 2, 7, m.lo); P(l + w - 1, tt + 7, 2, 6, m.lo);
-    P(l - 1, tt + 12, w + 2, 1, m.trim);
+    P(l, tt, w, 7, m.base); P(l - 1 - fx, tt + 7, w + 2 + fx * 2, 6, m.base);
+    P(l, tt, 1, 7, m.hi); P(l - 1 - fx, tt + 7, 1, 6, m.hi); P(l + w - 2, tt, 2, 7, m.lo); P(l + w - 1 + fx, tt + 7, 2, 6, m.lo);
+    P(l - 1 - fx, tt + 12, w + 2 + fx * 2, 1, m.trim);
+    if (fem && front) { P(l + 1, tt + 4, 3, 1, m.lo); P(l + w - 4, tt + 4, 3, 1, m.lo); }
     P(l, tt + 6, w, 1, lo(m.base, .5));
     if (front) {
       P(C - 1, tt + 7, 2, 6, lo(m.base, .55));
@@ -765,7 +830,7 @@ export function frontSheet(painter: KeeperPainter, staff = false): HTMLCanvasEle
   raw.width = FRONT_W * FRAMES; raw.height = FRONT_H * 2;
   const c = raw.getContext('2d')!;
   const look = painter.look;
-  const fig: Figure = { body: look?.body ?? 'sturdy', hair: look?.hair ?? 'cropped', face: look?.face ?? 'none', eyes: look?.eyes ?? 'round', garb: painter.garb ?? null };
+  const fig: Figure = { body: look?.body ?? 'sturdy', form: look?.form ?? 'masc', hair: look?.hair ?? 'cropped', face: look?.face ?? 'none', eyes: look?.eyes ?? 'round', garb: painter.garb ?? null };
   (['down', 'up'] as const).forEach((facing, row) => {
     for (let f = 0; f < FRAMES; f++) {
       c.save(); c.translate(0, row * FRONT_H);
