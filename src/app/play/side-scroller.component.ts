@@ -13,6 +13,11 @@ import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { PROLOGUE_ROWS, PROLOGUE_WALK_TILES, type PrologueStep, guideFor, prologueStep, prologueView, tipKey } from './td/td-prologue';
 import { TD_PROLOGUE_I18N } from './td/td-prologue.i18n';
+import { TD_UX_I18N } from './td/td-ux.i18n';
+import { FitViewportDirective, type FitAnchor } from './fit-viewport.directive';
+import { HudDragDirective, resetHudLayout } from './hud-drag.directive';
+import { TdMapWindowComponent } from './td-map-window.component';
+import type { TdMapSection } from './td/td-map';
 import { activeCharacterKey } from '../shared/save/character-scope';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
@@ -58,7 +63,7 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { PlayLobbyService } from './lobby/play-lobby.service';
-import { createTopDownEngine, topDownGate, type TdMapPin, type TdMapZone, type TopDownEngine } from './td/td-engine';
+import { createTopDownEngine, topDownGate, type TdMapPin, type TdMapView, type TopDownEngine } from './td/td-engine';
 import { ELEMENTS, MAX_KEEPER_RESIST, type Element as DamageElement } from '../shared/loot/damage.model';
 import { GOLD_FIND_CAP } from '../shared/economy/economy-curve';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
@@ -73,6 +78,7 @@ import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/
 import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES, WARDEN_FLAG } from './engine/terrain';
 import { formatXp, miningLevelView } from '../shared/activity/mining-level';
+import { CraftingService } from '../shared/crafting/crafting.service';
 import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
 import { heldToolPieces, heldToolsKey, type HeldToolKind } from '../shared/skills/held-tool';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
@@ -429,6 +435,8 @@ interface ReelView { pending: PendingCatch; seed: number; widen: number; biome: 
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** The pointer as a zero-size box (the hover card sits beside it). */
+const pointAt = (ev: PointerEvent): FitAnchor => ({ left: ev.clientX, top: ev.clientY, right: ev.clientX, bottom: ev.clientY });
 function titleCase(label: string): string {
   return label.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
 }
@@ -465,7 +473,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -568,6 +576,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead's canvas view and its data (homestead/homestead.service.ts). */
   private readonly homestead = inject(HomesteadService);
   private readonly activity = inject(ActivityProgressionGateway);
+  /** The crafting bench's own ladder XP counts toward Smithing on the Skills page (skill.model skillXp). */
+  private readonly crafting = inject(CraftingService);
   private readonly hub = inject(CharacterHubService);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
@@ -631,6 +641,41 @@ export class SideScrollerComponent implements OnDestroy {
   private proWasOn = false;
   /** Phones read the touch words (drag, tap); a pointer reads the keys. */
   private touchMq: MediaQueryList | null | undefined;
+  /** Key caps on the quest scroll and the dock: a computer only (a phone reads the tap words). */
+  get keyCaps(): boolean { return this.topDown && !this.touchUi; }
+  /** The keys each prologue row asks for (owner's player notes 2026-10-21: "show the shortcut letters"). */
+  readonly proKeys: Readonly<Record<string, readonly string[]>> = {
+    'play.pro.title.walk': ['W', 'A', 'S', 'D'], 'play.pro.title.hearth': ['E'], 'play.pro.title.fight': ['1'],
+    'play.pro.title.book': ['K'], 'play.pro.title.bag': ['I'], 'play.pro.title.story': ['E'],
+  };
+  /**
+   * The party frames sit under the Keeper's plate and the pet chip, never over them (owner's player notes 2026-10-21):
+   * the plate grows (a title, the Ember debt, a foe's bar), so its foot is measured (offsetTop/Height: a dragged plate's
+   * translate does not move the frames) and handed to the CSS as --party-top. Only while a party is up.
+   */
+  private partyTopPx = -1;
+  private tickPartyTop(): void {
+    if (!this.browser || !this.topDown || !this.social.party) { this.partyTopPx = -1; return; }
+    const host = this.host.nativeElement as HTMLElement;
+    const stage = host.querySelector<HTMLElement>('.stage');
+    if (!stage) return;
+    let foot = 0;
+    for (const el of Array.from(host.querySelectorAll<HTMLElement>('.stage .vitals, .stage .td-pet'))) {
+      if (el.offsetParent !== stage || !el.offsetHeight) continue;
+      foot = Math.max(foot, el.offsetTop + el.offsetHeight);
+    }
+    const top = foot ? foot + 12 : -1;
+    if (top === this.partyTopPx) return;
+    this.partyTopPx = top;
+    if (top > 0) stage.style.setProperty('--party-top', `${top}px`); else stage.style.removeProperty('--party-top');
+  }
+  /** Settings → Reset HUD layout: every dragged piece goes home (hud-drag.directive). */
+  resetHud(): void { resetHudLayout(); this.message = this.t('ux.hud.resetDone'); this.sound.sfx('tap'); }
+  /** The HUD's keys, under the prologue's list. */
+  readonly hudKeys: readonly { k: string; key: string }[] = [
+    { k: 'I', key: 'ux.keys.satchel' }, { k: 'K', key: 'ux.keys.spells' }, { k: 'C', key: 'ux.keys.character' }, { k: 'M', key: 'ux.keys.map' },
+    { k: 'E', key: 'ux.keys.interact' }, { k: '1-4', key: 'ux.keys.skills' }, { k: 'Esc', key: 'ux.keys.close' },
+  ];
   private get touchUi(): boolean {
     if (this.touchMq === undefined) this.touchMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(hover: none) and (pointer: coarse)') : null;
     return !!this.touchMq?.matches;
@@ -1390,7 +1435,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); this.tickPartyTop(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1405,6 +1450,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(RIFT_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(TD_PROLOGUE_I18N);
+    this.i18n.register(TD_UX_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
@@ -2650,7 +2696,7 @@ export class SideScrollerComponent implements OnDestroy {
   spendPoint(attr: Attribute): void { const lv = this.huntingLevel; this.looks.spendPoint(attr, lv, Date.now(), keeperAttributePoints(lv)); this.tickAbilities(); }
   // ── The Keeper's level (docs/design/leveling.md): the fanfare, the milestones tab, the title, the frame ──
   /** The character sheet's tab: the attributes, or the level milestones. */
-  sheetTab: 'attrs' | 'milestones' | 'lore' = 'attrs';
+  sheetTab: 'attrs' | 'skills' | 'milestones' | 'lore' = 'attrs';
   /** The character sheet's Lore tab: the lore log's pages (shared/lore). */
   readonly lorePages = LORE_PAGES;
   /** The milestones tab's page (5 a page); -1 = the page holding the next milestone. */
@@ -2980,6 +3026,7 @@ export class SideScrollerComponent implements OnDestroy {
   togglePlaces(): void {
     this.bestiaryOpen = false;
     this.placesOpen = !this.placesOpen;
+    this.mapSection = null;
     // The nudge is a one-time thing: seen once the list is open (the entry stays).
     this.lookNudgeShown = this.placesOpen && this.lookNudge;
     if (this.placesOpen && this.lookNudge) { this.looks.markPrompted(); this.lookNudge = false; }
@@ -2996,8 +3043,19 @@ export class SideScrollerComponent implements OnDestroy {
     this.focusWorld();
   }
   /** The Map window's picture, pins and the Keeper's mark (td-engine mapView); null in the side view. */
-  get tdMapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number }; zones: TdMapZone[] } | null {
-    return this.topDown ? (this.engine as unknown as { mapView?: () => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.() ?? null : null;
+  get tdMapView(): TdMapView | null {
+    return this.topDown ? (this.engine as unknown as { mapView?: (section?: string) => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.(this.mapSection ?? undefined) ?? null : null;
+  }
+  /** The section the Map shows (null: where the Keeper stands); reset each time the Map opens. */
+  mapSection: string | null = null;
+  /** Every section of this continent, for the Map's picker (cached per continent: the levels never change). */
+  private sectionsCache: { key: string; rows: TdMapSection[] } | null = null;
+  get tdMapSections(): TdMapSection[] {
+    const eng = this.engine as unknown as { mapSections?: (name: string) => TdMapSection[]; whereabouts?: { continent: string } } | undefined;
+    const continent = eng?.whereabouts?.continent ?? '';
+    if (!eng?.mapSections) return [];
+    if (this.sectionsCache?.key !== continent) this.sectionsCache = { key: continent, rows: eng.mapSections(titleCase(continent.replace(/-/g, ' '))) };
+    return this.sectionsCache.rows;
   }
   /** B or the Map's menu: open or fold the Bestiary (cards are rebuilt on open, from the saved kill counts). */
   toggleBestiary(): void {
@@ -3848,6 +3906,36 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Keeper's level: Hunting XP read on the Keeper curve (shared/skills/keeper-level.ts), never below the Hunting skill level. */
   get huntingLevel(): number { return this.keeperView.level; }
   private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting')); }
+  /**
+   * The Diablo II experience bar along the HUD's foot (owner's player notes 2026-10-21): how far into this Keeper
+   * level, and the words its tooltip shows on hover or tap (current XP in the level, the level's span, the percent).
+   */
+  get xpBar(): { pct: number; level: number; aria: string; tip: string; left: string } {
+    const v = this.keeperView, top = v.span <= 0;
+    const pct = top ? 100 : Math.max(0, Math.min(100, Math.floor(v.into / v.span * 1000) / 10));
+    return {
+      pct, level: v.level,
+      aria: this.t('ux.xp.aria', { level: v.level, pct, next: v.level + 1 }),
+      tip: top ? this.t('ux.xp.top', { level: v.level }) : this.t('ux.xp.tip', { level: v.level, xp: formatXp(v.into), need: formatXp(v.span), pct }),
+      left: top ? '' : this.t('ux.xp.tipLeft', { left: formatXp(v.toNext), next: v.level + 1 }),
+    };
+  }
+  /** The bar's tooltip, held open by a tap (a mouse shows it on hover through CSS). */
+  xpTip = false;
+  /** The character sheet's Skills page (RuneScape's skills tab): every skill the activity ledger tracks, its level and bar. */
+  get skillRows(): { id: string; name: string; level: number; pct: number; xp: string; toNext: string; art: string }[] {
+    const progress = this.activity.snapshot.progress, bench = this.crafting.snapshot.xp;
+    return SKILLS.map(def => {
+      const v = skillView(progress, def.id, def.id === 'smithing' ? bench : 0);
+      const pct = v.span <= 0 ? 100 : Math.max(0, Math.min(100, Math.floor(v.into / v.span * 100)));
+      return {
+        id: def.id, name: this.t(def.labelKey), level: v.level, pct, xp: this.t('ux.skills.xp', { n: formatXp(v.xp) }),
+        toNext: v.next == null ? this.t('ux.skills.max') : this.t('ux.skills.toNext', { n: formatXp(v.next - v.xp), level: v.level + 1 }),
+        art: this.art(def.artId),
+      };
+    });
+  }
+  get skillTotal(): number { return this.skillRows.reduce((n, r) => n + r.level, 0); }
   /** The Keeper as gear requirements read them: the Hunting level and the points spent on each attribute. */
   get standing(): KeeperStanding { return { level: this.huntingLevel, stats: this.looks.look.stats }; }
   /** The HUD portrait (top-down): the Keeper's own face, from the engine's sprite; '' until the world is up. */
@@ -3984,18 +4072,27 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     if (this.taskTalk) { if (event.key === 'Escape') { event.preventDefault(); this.closeTalk(); } return; }
-    if (this.bestiaryOpen && event.key === 'Escape') { event.preventDefault(); this.closeBestiary(); return; }
-    // The settings and pet sheets fold on Escape too, wherever the focus is (their own handlers need it inside them).
-    if (this.soundOpen && event.key === 'Escape') { event.preventDefault(); this.soundOpen = false; this.focusWorld(); return; }
-    if (this.friendsOpen && event.key === 'Escape') { event.preventDefault(); this.closeFriends(); return; }
-    if (this.petsOpen && event.key === 'Escape') { event.preventDefault(); this.closePets(); return; }
-    if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
+    // Chat, WoW / Tibia style (owner's player notes 2026-10-21): in the chat's line, Enter sends and hands the keyboard
+    // back to the world; Enter on an empty line, or Escape, just hands it back.
+    const chatField = (event.target as HTMLElement | null)?.closest?.('.td-chat__say input') as HTMLInputElement | null;
+    if (chatField) {
+      if (event.key === 'Escape' || (event.key === 'Enter' && !chatField.value.trim())) { event.preventDefault(); chatField.blur(); this.focusWorld(); }
+      else if (event.key === 'Enter') setTimeout(() => { chatField.blur(); this.focusWorld(); });
+      return;
+    }
+    // Escape folds the topmost HUD menu, wherever the focus is (owner's player notes 2026-10-21: "Esc doesn't close K
+    // or C"): one ordered list, the card over the satchel first, the satchel last (closeTopMenu).
+    if (event.key === 'Escape' && this.closeTopMenu()) { event.preventDefault(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
     if (this.hearthOpen && event.key === 'Escape' && (event.target as HTMLElement | null)?.closest?.('.dock')) {
       event.preventDefault(); this.toggleHearth(); return;
     }
-    const target = event.target;
-    if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
+    // A field has the keyboard (its target, or whatever holds focus, or an IME composing): no hotkey fires.
+    if (this.typing(event)) return;
+    // Enter opens the chat and puts the cursor in its line (never over a menu, never on a focused button or link).
+    if (event.key === 'Enter' && this.topDown && !this.anyMenuOpen && !(event.target as HTMLElement | null)?.closest?.('button, a, [role="button"], summary')) {
+      event.preventDefault(); this.openChatLine(); return;
+    }
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
     else if (event.code === 'KeyB' && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
     else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
@@ -4126,10 +4223,51 @@ export class SideScrollerComponent implements OnDestroy {
     this.loadPanel({ load: () => import('../shared/cascade/cascade.component').then(m => m.CascadeComponent) }, this.panelInjector,
       ref => ref.setInput('machine', machine));
   }
-  /** A key typed into a field is the field's, not the world's. */
+  /**
+   * Fold the topmost open HUD menu (Escape): a pinned item card before the satchel under it, the settings sheets
+   * before the Map that opened them, then the Bestiary, the Map, the Spellbook, the character sheet, the satchel.
+   * Overlays registered with OverlayStackService (the inspect card, the market) still take Escape first: its capture
+   * listener runs before this one. False when nothing was open (Escape then falls through).
+   */
+  closeTopMenu(): boolean {
+    if (this.bagOpen && this.pick) { this.unpick(); return true; }
+    if (this.peerCard) { this.closePeerCard(); return true; }
+    if (this.lootOpen) { this.lootOpen = false; this.focusWorld(); return true; }
+    if (this.soundOpen) { this.soundOpen = false; this.focusWorld(); return true; }
+    if (this.friendsOpen) { this.closeFriends(); return true; }
+    if (this.petsOpen) { this.closePets(); return true; }
+    if (this.bestiaryOpen) { this.closeBestiary(); return true; }
+    if (this.placesOpen) { this.closePlaces(); return true; }
+    if (this.spellbookOpen) { this.spellbookOpen = false; this.focusWorld(); return true; }
+    if (this.sheetOpen) { this.sheetOpen = false; this.focusWorld(); return true; }
+    if (this.bagOpen) { this.closeBag(); return true; }
+    return false;
+  }
+  /** A key typed into a field is the field's, not the world's (the event's target, the focused element, or an IME). */
   private typing(event: KeyboardEvent): boolean {
-    const target = event.target;
-    return target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable);
+    const field = (el: EventTarget | Element | null) => el instanceof HTMLElement && (el.matches('input, textarea, select') || el.isContentEditable);
+    return event.isComposing || field(event.target) || (typeof document !== 'undefined' && field(document.activeElement));
+  }
+  /** Any HUD menu over the world (Enter then belongs to it, not the chat). */
+  private get anyMenuOpen(): boolean {
+    return this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
+      || !!this.panel || !!this.anchorSheet || !!this.taskTalk || !!this.peerCard || this.map.open;
+  }
+  /**
+   * Enter: show the chat, on the room's tab (joining it when needed, unless chat is set to Ignore), and put the cursor
+   * in its line; the line may only appear once the room answers, so focus is tried for a short while.
+   */
+  openChatLine(): void {
+    this.chatHidden = false;
+    if (this.chatTab === 'game' && this.chatSetting !== 'ignore') void this.openPublicChat();
+    this.chatLastAt = Date.now();
+    let tries = 0;
+    const focus = () => {
+      const input = (this.host.nativeElement as HTMLElement).querySelector<HTMLInputElement>('.td-chat__say input:not([disabled])');
+      if (input) { input.focus({ preventScroll: true }); return; }
+      if (++tries < 20) setTimeout(focus, 100);
+    };
+    setTimeout(focus);
   }
   /** The HUD button: open the Slate, or fold it when it is the place on screen. */
   toggleSlate(): void {
@@ -4644,13 +4782,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.placePick(ev);
   }
   /** Where a click pins the item card: beside the cell, kept on screen (it flips to the cell's left at the right edge). */
-  pickAt = { x: 16, y: 80 };
+  pickAt: FitAnchor = { left: 16, top: 80, right: 16, bottom: 80 };
+  /** The cell's box: FitViewportDirective measures the card itself and keeps it on screen (it flips up and left). */
   private placePick(ev?: Event): void {
     const el = ev?.currentTarget as HTMLElement | null;
     if (!el?.getBoundingClientRect || typeof window === 'undefined') return;
-    const r = el.getBoundingClientRect(), W = 264, H = 380;
-    const x = r.right + 10 + W > window.innerWidth ? r.left - 10 - W : r.right + 10;
-    this.pickAt = { x: Math.max(8, Math.min(x, window.innerWidth - W - 8)), y: Math.max(8, Math.min(r.top - 8, window.innerHeight - H)) };
+    const r = el.getBoundingClientRect();
+    this.pickAt = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
   }
   unpick(): void { this.pick = null; }
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
@@ -4797,19 +4935,19 @@ export class SideScrollerComponent implements OnDestroy {
    * The hover card (owner 2026-10-20: "look at diablo 2, just stats and that's it"): pointing at a cell with a mouse
    * shows the item's name in its rarity colour, what it is, its stats and how it compares — no art, no buttons.
    */
-  hoverTip: { row: BagSlip; x: number; y: number } | null = null;
+  hoverTip: { row: BagSlip; at: FitAnchor } | null = null;
   hoverPocket(pocket: BagPocket, ev: PointerEvent): void {
     if (ev.pointerType !== 'mouse') return;
     const row = pocket.kind === 'stack' ? this.stackSlip(pocket.ref)
       : (() => { const item = this.inventory.snapshot.items.find(r => r.id === pocket.ref && !r.explorerId); return item ? this.itemSlip(item, item.equipped) : null; })();
-    this.hoverTip = row ? { row, x: ev.clientX, y: ev.clientY } : null;
+    this.hoverTip = row ? { row, at: pointAt(ev) } : null;
   }
   hoverWell(slot: string, ev: PointerEvent): void {
     if (ev.pointerType !== 'mouse') return;
     const item = this.inventory.snapshot.equipped[slot as SlotId];
-    this.hoverTip = item && !item.explorerId ? { row: this.itemSlip(item, true), x: ev.clientX, y: ev.clientY } : null;
+    this.hoverTip = item && !item.explorerId ? { row: this.itemSlip(item, true), at: pointAt(ev) } : null;
   }
-  moveTip(ev: PointerEvent): void { if (this.hoverTip) this.hoverTip = { ...this.hoverTip, x: ev.clientX, y: ev.clientY }; }
+  moveTip(ev: PointerEvent): void { if (this.hoverTip) this.hoverTip = { ...this.hoverTip, at: pointAt(ev) }; }
   get slip(): BagSlip | null {
     const pick = this.pick;
     if (!pick) return null;

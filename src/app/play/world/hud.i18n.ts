@@ -229,7 +229,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.social.whisperFrom': { en: '{{name}} whispers:', es: '{{name}} susurra:' },
   'play.social.whisperTo': { en: 'To {{name}}:', es: 'A {{name}}:' },
   'play.social.requestLine': { en: '{{name}} wants to be friends.', es: '{{name}} quiere ser tu amigo.' },
-  'play.social.requestWhy': { en: 'Friends see when each other is online, and where.', es: 'Los amigos ven cuándo el otro está en línea, y dónde.' },
+  'play.social.requestWhy': { en: 'Friends see when the other is online, and where.', es: 'Los amigos ven cuándo el otro está en línea, y dónde.' },
   'play.social.asked': { en: 'Friend request sent to {{name}}.', es: 'Solicitud de amistad enviada a {{name}}.' },
   'play.social.nowFriends': { en: 'You and {{name}} are friends now.', es: 'Tú y {{name}} ya sois amigos.' },
   'play.social.declined': { en: 'You declined {{name}}.', es: 'Rechazaste a {{name}}.' },

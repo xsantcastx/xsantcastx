@@ -9,7 +9,7 @@
  * beyond reaching the scene: this is a camera, not a test.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, ERA, focusWorld, openPlay, seed, walk } from './play-helpers';
+import { canvas, ERA, focusWorld, openPlay, seed, walk, mapFind } from './play-helpers';
 import { DelveFixture } from './play-delve-fixtures';
 import { TOWNS, type RealmTownId } from '../src/app/play/world/world.model';
 import { TOWN_KEEPERS } from '../src/app/play/world/life';
@@ -70,6 +70,7 @@ for (const size of SIZES) {
         await seed(page, { ...RESTORED, 'eclipse-play-world-v1': { town: realm } });
         await openPlay(page);
         await page.getByRole('button', { name: 'Places' }).click();
+        await mapFind(page, HUNT_LINK[realm]);
         await page.locator('#places-list button', { hasText: HUNT_LINK[realm] }).first().click();
         await expect(canvas(page)).toHaveAttribute('data-area', HUNT_NAME[realm], { timeout: 90000 });
         await page.waitForTimeout(800);

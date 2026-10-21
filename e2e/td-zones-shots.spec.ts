@@ -40,16 +40,19 @@ test('zones: the area card shows the zone\'s fixed band, berry and warned where 
   await expect(card.locator('.area-card__danger')).toHaveText('Dangerous for your level');
   await page.screenshot({ path: 'docs/handoff/cozy-ui/zones-danger.jpg', type: 'jpeg', quality: 80 });
 
-  // The Map: the continent's zones by band, the Ashfields and the Hushed Barrow in berry for a level-1 Keeper.
+  // The Map: the region names carry their zone's band (berry where it is well above a level-1 Keeper), and the area
+  // picker lists each floor with its own.
   await canvas(page).focus();
   await page.keyboard.press('m');
-  const map = page.locator('#places-list.td-map');
-  await expect(map).toBeVisible();
-  const list = map.locator('[data-zone-list] li');
-  expect(await list.count()).toBeGreaterThan(3);
-  await expect(map.locator('[data-zone="ember-isle:v"]')).toHaveClass(/td-map__zone--danger/);
-  await expect(map.locator('[data-zone="ember-isle:f"] .td-map__lv')).toHaveText('Lv 2–4');
-  await expect(map.locator('.td-map__key button', { hasText: /slagstone cave/i }).locator('.td-map__lv')).toHaveText('Lv 3–5');
-  await map.locator('[data-zone-list]').evaluate(el => el.scrollIntoView({ block: 'end' }));
+  const view = page.locator('[data-map-view]');
+  await expect(view).toBeVisible();
+  const zone = (name: string) => view.locator('.mw__zone', { hasText: name });
+  await expect(zone('The Emberwood').locator('small')).toHaveText(/^Lv 2[-–]4$/);
+  await expect(zone('The Emberwood')).not.toHaveClass(/mw__zone--danger/);
+  await expect(zone('The Ashfields').locator('small')).toHaveText(/^Lv 7[-–]10$/);
+  await expect(zone('The Ashfields')).toHaveClass(/mw__zone--danger/);
+  await expect(page.locator('[data-map-section] option[value="slagstone-cave"]')).toContainText(/Lv 3[-–]5/);
+  await expect(page.locator('[data-map-section] option[value="ember-mine-3"]')).toContainText(/Lv 7[-–]8/);
+  await expect(page.locator('[data-map-section] option[value="ember-mine-3"]')).toHaveAttribute('data-danger', 'true');
   await page.screenshot({ path: 'docs/handoff/cozy-ui/zones-map.jpg', type: 'jpeg', quality: 80 });
 });
