@@ -9,7 +9,7 @@ import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import type { ItemStats } from '../shared/rpg/item.model';
-import { CLASS_SKILLS as TD_CLASS_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, BOOK_TREES, defaultAura, defaultBar, skillVars, synergies, type SkillId, type TreeId } from './td/td-skills';
+import { CLASS_SKILLS as TD_CLASS_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, bookTrees, defaultAura, defaultBar, skillVars, synergies, type SkillId, type TreeId } from './td/td-skills';
 import { boughtRanks, buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
@@ -93,6 +93,7 @@ import { EMBER_DELVE } from './world/towns/infernal';
 import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
+import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
 import { ACCOUNT_I18N } from '../shared/account/account.i18n';
 import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
 import { GLIM_I18N } from '../shared/glim/glim.i18n';
@@ -810,6 +811,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
     this.i18n.register(HUD_I18N);
+    this.i18n.register(ASHGUARD_I18N);
     this.i18n.register(TOWN_TASKS_I18N);
     this.i18n.register(ACCOUNT_I18N);
     this.i18n.register(TOOLS_I18N);
@@ -2055,7 +2057,7 @@ export class SideScrollerComponent implements OnDestroy {
   get sheet(): { level: number; into: number; span: number; toNext: number; left: number; skillPoints: number; next: Milestone | null; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
     const view = this.keeperView, st = this.looks.look.stats, lv = view.level;
     const gear = this.gearCombat;
-    const derived = fightStats(lv, st, gear);
+    const derived = fightStats(lv, st, gear, this.looks.look.vocation);
     const pct = (n: number) => `${Math.round(n * 100)}%`;
     const text: Record<Attribute, string> = {
       vit: this.t('play.td.attr.vit.text', { n: ATTR_STEP.vit }),
@@ -2215,7 +2217,7 @@ export class SideScrollerComponent implements OnDestroy {
       words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[]; phase: { text: string; up: boolean } | null };
   } {
     const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
-    const ids = treeSkills(v, this.bookTree);
+    const ids = treeSkills(v, this.bookTab);
     // Each row's level: its tier's, or the lowest a skill on it asks (the common page's Seek opens at 8).
     const tiers = TIER_LEVELS.slice(0, Math.max(...ids.map(id => TD_SKILLS[id].tier)) + 1).map((lv, i) => {
       const own = ids.filter(id => TD_SKILLS[id].tier === i).map(levelFor), at = own.length ? Math.min(...own) : lv;
@@ -2234,7 +2236,7 @@ export class SideScrollerComponent implements OnDestroy {
     let pick: ReturnType<SideScrollerComponent['spellbookPick']> | null = null;
     if (pickId) pick = this.spellbookPick(pickId, ranks[pickId] ?? 0, rankBlock(tree, v, pickId, level), bar, aura);
     return {
-      trees: BOOK_TREES.map(id => ({ id, ranks: treeSkills(v, id).reduce((n, s) => n + (ranks[s] ?? 0), 0) })),
+      trees: bookTrees(v).map(id => ({ id, ranks: treeSkills(v, id).reduce((n, s) => n + (ranks[s] ?? 0), 0) })),
       left: treePointsLeft(tree, level), tiers, nodes, lines, pick,
     };
   }
@@ -2264,6 +2266,8 @@ export class SideScrollerComponent implements OnDestroy {
     return { up: pct > 0, text: this.t('clock.spell.now', { phase: this.t('clock.phase.' + this.skyPhase), pct: `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%` }) };
   }
   /** Open a tree's tab (the first skill on it is picked). */
+  /** The open tab: the chosen tree when it is this class's, else the class's first (an Ashguard opens on Brand). */
+  get bookTab(): TreeId { const trees = bookTrees(this.looks.look.vocation); return trees.includes(this.bookTree) ? this.bookTree : trees[0]; }
   openTree(id: TreeId): void { this.bookTree = id; this.bookPick = null; this.respecAsk = false; }
   pickSkill(id: string): void { this.bookPick = id as SkillId; this.respecAsk = false; }
   /** Spend a skill point on a rank (D2: one click, one rank). */
@@ -4389,7 +4393,7 @@ export class SideScrollerComponent implements OnDestroy {
   private pushKeeper(): void {
     const look = this.looks.look;
     const gear = wornGear(this.inventory.snapshot.equipped);
-    const key = `${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
+    const key = `${look.vocation}:${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
     this.keeperName = look.made ? look.name : '';
     this.lookNudge = !look.made && !look.prompted;
     if (key !== this.lookPushKey) {

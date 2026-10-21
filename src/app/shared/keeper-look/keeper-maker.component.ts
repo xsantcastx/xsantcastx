@@ -56,7 +56,13 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
   private sub?: Subscription;
   private reduced = false;
 
-  setVocation(v: Vocation): void { this.draft = { ...this.draft, vocation: v }; this.saved = false; }
+  /** A made Keeper keeps the calling they were made with (their trees and bar are that class's); a new one chooses. */
+  readonly locked = this.looks.look.made;
+  setVocation(v: Vocation): void {
+    if (this.locked && v !== this.looks.look.vocation) return;
+    this.draft = { ...this.draft, vocation: v }; this.saved = false;
+    this.repaintStill();
+  }
 
   ngOnInit(): void {
     this.i18n.register(KEEPER_LOOK_I18N);
@@ -82,7 +88,7 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
   /** The painting key on the preview (for tests: changes whenever the look or the gear does). */
-  get previewKey(): string { return `${lookKey(this.draft)}#${gearKey(this.gear)}`; }
+  get previewKey(): string { return `${lookKey(this.draft)}#${gearKey(this.gear)}#${this.draft.vocation}`; }
 
   fieldLabel(field: LookField): string { return this.t(`look.field.${field}`); }
   valueLabel(field: LookField): string {

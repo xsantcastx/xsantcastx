@@ -25,6 +25,9 @@ import { creatureHits, isKnownCreature } from '../../shared/loot/creature-famili
 import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
 import { extraSpawn, hardened, nightType, rollTouched, rulesOf, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
+import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
+import { ASHGUARD_SKILLS } from './td-ashguard-skills';
+import { brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp } from './td-melee';
 
 export interface MobDef {
   id: string;
@@ -1695,6 +1698,13 @@ export interface Mob {
   singeTick?: number;
   /** The Abbess's Censer: seconds its ink stain lasts (it takes more from every hit meanwhile). */
   inkT?: number;
+  /** The Ashguard (td-ashguard-skills): stunned by a Shield Bash, taunted by a Watch Cry (seconds left). */
+  stun?: number;
+  taunt?: number;
+  /** The Ember Brand's burn on it: seconds left, the tick timer, the damage each tick. */
+  brandT?: number;
+  brandTick?: number;
+  brandDps?: number;
 }
 
 /**
@@ -1784,7 +1794,7 @@ export interface Spear { x: number; y: number; vx: number; vy: number; age: numb
  * a Meteor on its way down. `t` is the seconds it still lasts (a meteor's: until it lands).
  */
 export interface Zone {
-  kind: 'rain' | 'wall' | 'meteor';
+  kind: 'rain' | 'wall' | 'meteor' | 'whirl';
   x: number; y: number;
   /** Radius (art px): the rain's circle, the meteor's blast; a wall's reach either side of its line. */
   r: number;
@@ -1821,10 +1831,15 @@ export interface Effect {
     // A level gained (docs/design/leveling.md §4): the light pillar on the Keeper; `dir` 2 for a big milestone.
     | 'pillar'
     // The trees (docs/design/skill-trees.md): a falling cinder, a flame tongue of a wall, a meteor coming down.
-    | 'cinder' | 'flame' | 'meteor';
+    | 'cinder' | 'flame' | 'meteor'
+    // The Ashguard (td-ashguard-fx.ts): a blade's arc, the brand catching, a bash, an oath, a cry, a stride, a vow.
+    | 'arc' | 'brand' | 'bash' | 'oath' | 'cry' | 'stride' | 'vow';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
   /** A pulse's or a wave's element: the aura or spell that did the work (a wave is ember unless it says). */
-  el?: 'ember' | 'life' | 'shadow' | 'bone';
+  el?: 'ember' | 'life' | 'shadow' | 'bone' | 'brass';
+  /** A blade's arc: where it aims (radians) and how wide it sweeps (degrees). */
+  a?: number;
+  w?: number;
   /** A wave's radius (art px); the Nova's own when absent. */
   r?: number;
 }
@@ -1872,6 +1887,8 @@ export interface MobHost {
    * False when there is nothing to seek (the spell is not spent). Absent: nothing can be sought.
    */
   seek?(secs: number): boolean;
+  /** Ash Stride: carry the Keeper toward (x, y), stopping at the last open step. Absent: he stays where he is. */
+  dash?(x: number, y: number): void;
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -1994,8 +2011,32 @@ export class MobSystem {
   boneT = 0;
   /** Seconds of Haste left (kept for kits that have it). */
   haste = 0;
-  /** The basic attack reaches this far (art px): the staff's bolt (7 tiles). */
-  readonly range = SKILLS['ember-bolt'].vars['range'] * TILE;
+  /**
+   * The Keeper's class (td-ashguard-skills): the Warlock throws the staff's bolt from afar, the Ashguard swings his
+   * blade in an arc in front of him. The class's passives and its swing only ever run for that class.
+   */
+  vocation: Vocation = 'warlock';
+  get melee(): boolean { return this.vocation === 'ashguard'; }
+  /** The basic attack reaches this far (art px): the staff's bolt (7 tiles), or the Watch Blade's reach. */
+  get range(): number { return this.melee ? this.v('watch-blade')['reach'] * TILE : SKILLS['ember-bolt'].vars['range'] * TILE; }
+  /** The Keeper's most life (the host hands it in with the build): Hold the Line reads his share of it. */
+  keeperMaxHp = 100;
+  /** Swings of the blade so far (the specs and the e2e count them). */
+  swings = 0;
+  /** The Ember Brand: seconds the blade still burns. */
+  brandT = 0;
+  /** The Shield Oath: seconds left and the % of blows it blocks. */
+  blockT = 0;
+  blockPct = 0;
+  /** The Watch Cry's guard: seconds left and the % less every blow lands for. */
+  guardT = 0;
+  guardPct = 0;
+  /** The Vow of the Last Watch: seconds left, and the damage it has held off so far (a share comes back as life). */
+  vowT = 0;
+  vowTaken = 0;
+  /** Fractions of life the Watchfire and Ember Blood owe, paid out whole. */
+  private regenOwed = 0;
+  private bloodOwed = 0;
   private auraT = 0;
   target: Mob | null = null;
   attacking = false;
@@ -2121,6 +2162,11 @@ export class MobSystem {
       let bd = this.range;
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd) { bd = d; foe = m; } }
     }
+    // The Ashguard's blade: a swing in an arc toward the foe, striking whatever stands in it.
+    if (this.melee) {
+      if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range + foe.def.w / 4) this.swingBlade(foe);
+      foe = null;
+    }
     // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
@@ -2151,6 +2197,15 @@ export class MobSystem {
         m.cursed -= dt; m.burnT -= dt;
         if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, this.v('ember-curse')['dps'] * this.fireMult, '#ff9a4a'); if (m.hp <= 0) continue; }
       }
+      if ((m.brandT ?? 0) > 0) {
+        m.brandT = (m.brandT ?? 0) - dt; m.brandTick = (m.brandTick ?? 1) - dt;
+        if (m.brandTick <= 0) {
+          m.brandTick = 1;
+          this.effects.push({ kind: 'flame', x: m.x + rnd(-3, 3), y: m.y - 2, age: 0, life: .4, dir: 1 });
+          this.hitFoe(m, (m.brandDps ?? 0) * this.fireMult, '#ff9a4a');
+          if (m.hp <= 0) continue;
+        }
+      }
       if ((m.weak ?? 0) > 0) m.weak = Math.max(0, (m.weak ?? 0) - dt);
       if ((m.inkT ?? 0) > 0) m.inkT = Math.max(0, (m.inkT ?? 0) - dt);
       if ((m.singeT ?? 0) > 0 && this.relics.singe) {
@@ -2171,12 +2226,20 @@ export class MobSystem {
         this.hitFoe(m, this.v('aura-embers')['dps'] * this.fireMult, '#ff8a2e');
       }
     }
+    // The Watchfire (the Ashguard's aura): life back every second while it runs.
+    if (auraTick && this.melee && this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0) {
+      this.regenOwed += this.v('aura-watchfire')['regen'];
+      const whole = Math.floor(this.regenOwed);
+      if (whole > 0) { this.regenOwed -= whole; this.host.healPlayer(whole); }
+    }
     this.updateZones(dt);
     this.curseT = Math.max(0, this.curseT - dt);
     // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
     this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R) ? COLD_SLOW : 0;
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      // Stunned (a Shield Bash): it stands where it is, does nothing, and its blow waits.
+      if ((m.stun ?? 0) > 0) { m.stun = Math.max(0, (m.stun ?? 0) - dt); m.cd = Math.max(m.cd, .2); continue; }
       // Teleport: a short wind-up where it stands, then it is at its prey's side.
       if (m.blinkT !== undefined && m.blinkT > 0) {
         m.blinkT -= dt;
@@ -2192,11 +2255,13 @@ export class MobSystem {
         if (m.tell <= 0) { m.tell = 0; if (m.aim) this.loose(m, m.aim.x, m.aim.y); m.aim = null; }
         else continue;
       }
-      // Its prey: the Keeper, or one of his raised skeletons standing closer.
+      // Its prey: the Keeper, or one of his raised skeletons standing closer — unless a Watch Cry has called it to him.
+      const taunted = (m.taunt ?? 0) > 0;
+      if (taunted) m.taunt = Math.max(0, (m.taunt ?? 0) - dt);
       let prey: Minion | null = null, d = Math.hypot(p.x - m.x, p.y - m.y);
-      for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
+      if (!taunted) for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
       const px0 = prey ? prey.x : p.x, py0 = prey ? prey.y : p.y;
-      const hunting = d < m.def.sight, shoot = m.def.ranged;
+      const hunting = taunted || d < m.def.sight, shoot = m.def.ranged;
       if (hunting && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
         // Where it will land: a step short of its prey, on its own side; never into a wall.
         const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
@@ -2281,6 +2346,7 @@ export class MobSystem {
     for (const k of Object.keys(this.cooldowns) as SkillId[]) this.cooldowns[k] = Math.max(0, (this.cooldowns[k] ?? 0) - dt);
     this.mana = Math.min(this.maxMana, this.mana + this.regen * dt);
     if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
+    if (this.melee) this.tickOaths(dt);
     if (this.boneT > 0) { this.boneT -= dt; if (this.boneT <= 0) this.bone = 0; }
     if (this.lightT > 0) this.lightT = Math.max(0, this.lightT - dt);
     if (this.haste > 0) {
@@ -2305,6 +2371,12 @@ export class MobSystem {
       this.effects.push({ kind: 'pulse', el: 'life', x: foe.x, y: foe.y, age: 0, life: .2, dir: 1 });
     }
     if (crit) this.effects.push({ kind: 'crit', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .15, dir: 1 });
+    // Ember Blood (the Ashguard's passive): a share of every blow he lands comes back as life.
+    if (this.melee && this.rank('ember-blood') > 0 && foe.hp > 0) {
+      this.bloodOwed += Math.min(dmg, foe.hp) * this.v('ember-blood')['pct'] / 100;
+      const whole = Math.floor(this.bloodOwed);
+      if (whole > 0) { this.bloodOwed -= whole; this.host.healPlayer(whole); }
+    }
     this.hurtMob(foe, dmg, color, crit);
   }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
@@ -2335,10 +2407,27 @@ export class MobSystem {
     // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
     const cursed = this.curseT > 0;
     const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
-    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.defense, this.keeperLevel, resists);
+    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, this.keeperLevel, resists);
+    if (this.melee && n > 0) {
+      // The Shield Oath turns a share of blows aside whole; the Watch Cry's guard takes a share off the rest.
+      if (this.blockT > 0 && Math.random() < this.blockPct / 100) {
+        this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
+        this.float(p.x, p.y - 34, '0', '#e0b25a');
+        return;
+      }
+      if (this.guardT > 0) n = Math.max(1, Math.round(n * (1 - this.guardPct / 100)));
+    }
     if (this.bone > 0 && n > 0) { const soak = Math.min(this.bone, n); this.bone -= soak; n -= soak; this.float(p.x - 8, p.y - 30, `-${soak}`, '#e8e1cf'); }
     if (this.ward > 0 && n > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
+    // The Vow of the Last Watch: whatever comes, the Keeper keeps his last point of life; what it held off is counted.
+    if (this.vowT > 0 && n > 0) { this.vowTaken += n; n = vowClamp(n, this.host.playerHp?.() ?? Infinity); }
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
+  }
+  /** The Defense a blow meets on the Ashguard: his own, the Watchfire's, Hold the Line's lift when his life runs low. */
+  guardDefense(): number {
+    const aura = this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0 ? this.v('aura-watchfire')['def'] : 0;
+    const hold = this.rank('hold-the-line') > 0 ? { below: this.v('hold-the-line')['below'], pct: this.v('hold-the-line')['pct'] } : null;
+    return guardedDefense(this.defense, aura, this.host.playerHp?.() ?? this.keeperMaxHp, this.keeperMaxHp, hold);
   }
   private hurtMinion(k: Minion, n: number): void {
     k.hp -= n; k.hit = .18;
@@ -2551,6 +2640,7 @@ export class MobSystem {
    */
   private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | null {
     const p = this.host.player();
+    if (id in ASHGUARD_SKILLS) return this.useAshSkill(id, v);
     if (id === 'cinder-rain') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
@@ -2623,6 +2713,117 @@ export class MobSystem {
     return null;
   }
 
+  // ── The Ashguard (td-ashguard-skills.ts, design-bible §4.4) ──
+
+  /** The basic attack: one swing of the Watch Blade in an arc toward the foe (the Ember Brand lights it while it burns). */
+  private swingBlade(foe: Mob): void {
+    const p = this.host.player(), v = this.v('watch-blade');
+    this.swing = SKILLS['watch-blade'].cd / (1 + this.agility) / (1 + this.castSpeed);
+    this.strike(Math.atan2(foe.y - p.y, foe.x - p.x), v['reach'] * TILE, v['arc'], 100, false, foe);
+    this.swings++;
+    this.host.swung(foe);
+  }
+  /**
+   * A blade's blow on everything in an arc (a swing, a cleave, a turn of the whirl). `fire`: the whole blow is fire.
+   * The Ember Brand, while it burns, lifts each blow by its % and sets its burn. `must` is struck even at the arc's
+   * very edge (the creature the Keeper aimed at). Returns how many it struck.
+   */
+  private strike(aim: number, reach: number, arc: number, pct: number, fire: boolean, must: Mob | null): number {
+    const p = this.host.player(), blade = this.v('watch-blade');
+    const brand = this.brandT > 0 && this.rank('ember-brand') > 0 ? this.v('ember-brand') : null;
+    const lit = fire || !!brand;
+    this.effects.push({ kind: 'arc', x: p.x, y: p.y - 8, a: aim, w: arc, r: Math.round(reach), el: lit ? 'ember' : 'brass', age: 0, life: arc >= 360 ? .3 : .24, dir: 1 });
+    let n = 0;
+    for (const m of [...this.mobs]) {
+      if (m !== must && !inArc(p.x, p.y, aim, reach, arc, m.x, m.y, m.def.w / 2)) continue;
+      let blow = meleeBlow(blade['min'], blade['max'], pct);
+      if (brand) blow = brandedBlow(blow, brand['pct']);
+      if (lit) blow *= this.fireMult;
+      this.effects.push({ kind: 'slash', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .2, dir: m.x < p.x ? -1 : 1 });
+      this.hitFoe(m, blow, lit ? '#ffb347' : '#f3e7cf');
+      if (brand && m.hp > 0) { m.brandT = 3; m.brandTick = 1; m.brandDps = Math.max(1, Math.round(brand['burn'] / 3)); }
+      n++;
+    }
+    return n;
+  }
+  /** The nearest creature within `reach` art px of the Keeper (the target first, when it is in reach). */
+  private foeWithin(reach: number): Mob | null {
+    const p = this.host.player();
+    if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach + this.target.def.w / 4) return this.target;
+    let best: Mob | null = null, bd = Infinity;
+    for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y) - m.def.w / 4; if (d <= reach && d < bd) { bd = d; best = m; } }
+    return best;
+  }
+  /** The Ashguard's spells. Each reads its numbers at its rank and leaves its picture (td-ashguard-fx). */
+  private useAshSkill(id: SkillId, v: Record<string, number>): 'nofoe' | null {
+    const p = this.host.player(), reach = Math.max(this.range, 1.8 * TILE);
+    if (id === 'ember-brand') {
+      this.brandT = v['secs'];
+      this.effects.push({ kind: 'brand', x: p.x, y: p.y - 14, age: 0, life: .45, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'cinder-cleave') {
+      const foe = this.foeWithin(v['reach'] * TILE);
+      if (!foe) return 'nofoe';
+      this.strike(Math.atan2(foe.y - p.y, foe.x - p.x), v['reach'] * TILE, v['arc'], v['pct'], true, foe);
+      this.host.swung(foe);
+    } else if (id === 'whirl-of-cinders') {
+      // Two seconds of turning: a full ring of the blade every half second, round the Keeper wherever he walks.
+      this.zones.push({ kind: 'whirl', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['hits'] * .5, tick: 0, min: v['pct'], max: v['hits'] });
+      this.host.swung(null);
+    } else if (id === 'shield-bash') {
+      const foe = this.foeWithin(reach);
+      if (!foe) return 'nofoe';
+      this.effects.push({ kind: 'bash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .35, dir: foe.x < p.x ? -1 : 1 });
+      this.hitFoe(foe, rnd(v['min'], v['max']), '#e0b25a');
+      if (foe.hp > 0) foe.stun = ccSecs(v['stun'], foe.def.rank);
+      this.host.swung(foe);
+    } else if (id === 'shield-oath') {
+      this.blockT = v['secs']; this.blockPct = v['block'];
+      this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .45, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'watch-cry') {
+      // Every creature within the cry turns on the Keeper (the pet and the raised are spared), and he braces.
+      for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) m.taunt = ccSecs(v['secs'], m.def.rank);
+      this.guardT = v['secs']; this.guardPct = v['guard'];
+      this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .6, dir: 1 });
+    } else if (id === 'ash-stride') {
+      const foe = this.foeWithin(v['reach'] * TILE + this.range);
+      if (!foe) return 'nofoe';
+      const from = { x: p.x, y: p.y }, to = strideEnd(p.x, p.y, foe.x, foe.y, 14);
+      this.host.dash?.(to.x, to.y);
+      const at = this.host.player();
+      this.effects.push({ kind: 'stride', x: at.x, y: at.y, tx: from.x, ty: from.y, age: 0, life: .4, dir: foe.x < from.x ? -1 : 1 });
+      this.hitFoe(foe, meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], v['pct']), '#efe6dc');
+      // The knock: a tile back along the charge, if the ground behind it is open (never for a boss).
+      if (foe.hp > 0 && foe.def.rank !== 'boss') {
+        const d = Math.hypot(foe.x - at.x, foe.y - at.y) || 1, k = v['knock'] * TILE / d, kx = foe.x + (foe.x - at.x) * k, ky = foe.y + (foe.y - at.y) * k;
+        if (this.free(kx, ky, foe.def.floats)) { foe.x = kx; foe.y = ky; }
+      }
+      this.host.swung(foe);
+    } else if (id === 'last-watch') {
+      this.vowT = v['secs']; this.vowTaken = 0;
+      this.effects.push({ kind: 'vow', x: p.x, y: p.y - 30, age: 0, life: .8, dir: 1 });
+      this.host.swung(null);
+    }
+    return null;
+  }
+  /** The Ashguard's timers: the brand, the oath, the guard, the vow (when the vow ends, a share of what it held comes back). */
+  private tickOaths(dt: number): void {
+    if (this.brandT > 0) this.brandT = Math.max(0, this.brandT - dt);
+    if (this.blockT > 0) this.blockT = Math.max(0, this.blockT - dt);
+    if (this.guardT > 0) this.guardT = Math.max(0, this.guardT - dt);
+    if (this.vowT > 0) {
+      this.vowT -= dt;
+      if (this.vowT <= 0) {
+        this.vowT = 0;
+        const heal = Math.round(this.vowTaken * this.v('last-watch')['heal'] / 100), p = this.host.player();
+        this.vowTaken = 0;
+        if (heal > 0) { this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a'); }
+        this.effects.push({ kind: 'heal', x: p.x, y: p.y, age: 0, life: .7, dir: 1 });
+      }
+    }
+  }
+
   /** Doom runs out: the foe bursts, and so does everything near it. */
   private doomBurst(m: Mob): void {
     const hit = m.doomHit;
@@ -2644,6 +2845,15 @@ export class MobSystem {
         for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
         this.effects.push({ kind: 'wave', x: z.x, y: z.y, age: 0, life: 1, dir: 1, r: Math.round(z.r) });
         this.effects.push({ kind: 'bolt-hit', x: z.x, y: z.y - 6, age: 0, life: .4, dir: 1 });
+        continue;
+      }
+      if (z.kind === 'whirl') {
+        // The whirl turns with the Keeper: a full ring of the blade each half second while it lasts.
+        const p = this.host.player();
+        z.x = p.x; z.y = p.y;
+        // `max` counts the turns still to come.
+        if (z.tick <= 0 && z.max > 0) { z.tick = .5; z.max--; this.strike(0, z.r, 360, z.min, true, null); }
+        if (z.max <= 0) this.zones.splice(i, 1);
         continue;
       }
       if (z.t <= 0) { this.zones.splice(i, 1); continue; }

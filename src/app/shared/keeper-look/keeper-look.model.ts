@@ -46,9 +46,11 @@ export const NAME_MAX = 18;
 
 /**
  * The Keeper's calling (owner, 2026-10-20: "we need to create our 1st class, let it be a warlock … get this correct
- * first with one class"). One today; the list grows class by class. Chosen when the Keeper is made.
+ * first with one class"). The list grows class by class (design-bible §4.4: the Ashguard, the Pyre Watch's melee
+ * knight, second). Chosen when the Keeper is made; a save without one — every Keeper made before the second class —
+ * stays a Warlock.
  */
-export const VOCATIONS = ['warlock'] as const;
+export const VOCATIONS = ['warlock', 'ashguard'] as const;
 /** The four attributes a level's points go into (owner 2026-10-20: "rework our stats … think of tibia or diablo 2"). */
 export const ATTRIBUTES = ['vit', 'ene', 'spi', 'agi'] as const;
 export type Attribute = typeof ATTRIBUTES[number];
