@@ -55,7 +55,7 @@ per session and pushed by the room, never polled.
 |---|---|---|---|
 | 1 ✓ | **Presence** — see each other, public chat, Wave | done | (live) |
 | 2 | **Parties** — invite, frames, party chat, shared XP near a kill, Seek/minimap | M (built) | ⚑ redeploy the hearth (protocol 3) |
-| 3 | **Social graph** — hearth auth, friends list, whispers, block/mute/report, privacy settings, profanity filter | M (built, §4b) | ⚑ hearth redeploy with the project env; ⚑ rules (reports, social) |
+| 3 | **Social graph** — hearth auth, friends list, whispers, block/mute/report, privacy settings, profanity filter | M (live 2026-10-21: hearth protocol 4, rules deployed) | done |
 | 4 | **Guilds** — create/join, ranks, guild chat, tag over the head; guild hall later | L | ⚑ rules + ⚑ Functions |
 | 5 | **Co-op encounters** — party quests/dailies, group bosses (Seam Eater) with scaling, personal loot, host-authority dungeons | L | ⚑ hearth redeploy |
 | 6 | **Trading** — two-sided confirm window, atomic Gold/item swap | M–L | ⚑ Functions + ⚑ rules |
