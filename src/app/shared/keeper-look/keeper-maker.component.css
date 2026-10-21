@@ -104,3 +104,14 @@
   :host-context(.place) .km__class { grid-template-columns: minmax(0, 1fr); }
   :host-context(.place) .km__more { display: none; }
 }
+
+/* Phones (a narrow window): the callings take less room — two to a row, only the chosen one spells out what it is
+   (it spans the row); the others are a name and an icon. With four callings the looks and Become stay near the top. */
+@container km (max-width: 480px) {
+  :host-context(.place) .km__classes { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 6px; }
+  :host-context(.place) .km__classcard { grid-template-columns: 28px minmax(0, 1fr); gap: 6px; min-height: 48px; padding: 6px 8px; }
+  :host-context(.place) .km__classcard svg { width: 28px; height: 28px; }
+  :host-context(.place) .km__classcard b { font-size: 14px; }
+  :host-context(.place) .km__classcard[aria-checked="false"] small { display: none; }
+  :host-context(.place) .km__classcard[aria-checked="true"] { grid-column: 1 / -1; }
+}

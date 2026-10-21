@@ -94,3 +94,39 @@ merged by union, so devices agree). Code: `src/app/play/td/td-prologue.ts` (pure
 - No firestore.rules change (the story record already syncs per character; `tut`/`skip` are new optional fields).
 - The cookie banner (16), the Shrine placement (17), the long Show me walk (18), the side view (19).
 - Signed-in cloud flows were not played (no test account); the per-character cloud paths are unchanged.
+
+## P0 (owner, from an Android phone): menus that could not scroll, and New Keeper that made a Keeper on exit
+
+**What blocked the scroll.** `.lobby` is a grid with `place-items: center` and an implicit `auto` row. The wood window
+says `max-height: 100%`, but against an auto track that percentage resolves to the window's own content, so the
+window grew past the screen, the lobby's `overflow: hidden` clipped it, and the window's body — the only scroller —
+never had anything to scroll. On a 360×640 Android the Glass's looks, name and Become sat below the fold with no way
+to reach them. Fix: `grid-template-rows: minmax(0, 1fr)` on the lobby and `min-height: 0` on the window and its
+body (+ `touch-action: pan-y`, `-webkit-overflow-scrolling: touch`). The class cards also fold on narrow screens
+(two to a row, only the chosen one shows its blurb), so Become stays near the top even with four callings.
+
+The guard (`e2e/menus-reach.spec.ts`, Android Chrome emulation: touch, mobile viewport, Android UA; 390×844,
+360×640 and 844×390) found and fixed four more:
+- **Spellbook** (phones): the window was `overflow: hidden` with a fixed-row tree — the lower tiers and the skill
+  card were cut off at 360×640; and the tree's own scroller (`overscroll-behavior: contain`, nothing to scroll)
+  swallowed the finger. Now the window is the one scroller on a phone.
+- **Map** (sideways): the map took the whole height and the key below it (every place, Sexton Wren) had zero height.
+  Now the body scrolls: the map, then its key.
+- **Settings sheet**: Escape did not fold it when the focus was elsewhere, and it stayed up over a place opened after
+  it (it covered the Hearth Shrine's buttons). Escape folds it; opening a place folds it.
+Menus checked (each: a real touch swipe moves it if it scrolls; every scroller taken to its end; its last control on
+screen and hit by `elementFromPoint`): the title, the character list, the Glass, the delete confirm, the Spellbook,
+the Satchel, the character sheet, the Bestiary, the Map, the settings sheet, the Hearth Shrine, Sexton Wren's talk
+window, the Sexton's journal.
+
+**New Keeper made a Keeper on exit.** The roster row was written when *New Keeper* was pressed, before the Glass
+opened, and the page then booted into the new id (its services write `<key>@<id>` at once). Only "Back to the list"
+cleaned up; a refresh, the browser's back or a closed tab left an "Unnamed" Keeper on the list. Now the row is
+written only by **Become this Keeper**; the Glass has an ×, Escape and the phone's back (a history entry) as ways
+out, and every one of them deletes the page's `@<id>` save and reloads onto the list as it was. A page that boots
+into a Keeper on no list (a Glass left by refresh/back/close, or a deleted Keeper) discards it the same way.
+Spec: `e2e/lobby-glass-exit.spec.ts` (×, Back, Escape, browser back, leaving the page, a first Keeper, phone tap
+and phone back): the list is unchanged and no `@` keys remain.
+
+Not fixed: an abandoned Glass while signed in can leave its documents under `users/{uid}/characters/{id}` if the
+cloud was not attached yet when it was discarded (no roster row points at them, so nothing shows them).

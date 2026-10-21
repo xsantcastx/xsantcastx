@@ -165,14 +165,20 @@
 .sbt .sb__keys { grid-template-columns: repeat(4, 44px); }
 .sbt .sb__keys button { min-width: 44px; min-height: 44px; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .spellbook.sbt { left: 8px; right: 8px; width: auto; max-height: calc(100% - 96px); padding: 4px 10px 10px; }
-  .sbt__body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  /* The window scrolls as a whole on a phone (it was overflow: hidden with a fixed-row tree, so on a 360×640 Android
+     the lower tiers and the skill card were cut off and could not be reached). */
+  .spellbook.sbt { left: 8px; right: 8px; width: auto; max-height: calc(100% - 96px); padding: 4px 10px 10px;
+    overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+  .sbt__body { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  /* The tree's own scroller had nothing to scroll here but kept the finger (overscroll-behavior: contain): a swipe
+     on the tree moved nothing. The window is the one scroller on a phone. */
+  .sbt__scroll { overflow: visible; overscroll-behavior: auto; }
   .sbt__tree { grid-template-rows: repeat(var(--tiers, 5), 66px); }
   .sbt__detail { max-height: 46vh; }
 }
 /* Landscape phones: the page and the card side by side again, the window as tall as the screen. */
 @media (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .spellbook.sbt { top: 8px; bottom: 8px; left: auto; width: min(620px, calc(100% - 140px)); max-height: none; }
+  .spellbook.sbt { top: 8px; bottom: 8px; left: auto; width: min(620px, calc(100% - 140px)); max-height: none; overflow-y: auto; }
   .sbt__body { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: none; }
   .sbt__detail { max-height: none; }
 }
@@ -549,6 +555,12 @@
   .td-map__key ul { grid-template-columns: 1fr 1fr; }
   .td-map__key button { min-height: 44px; }
   .td-map__menu button { min-height: 44px; }
+}
+/* Sideways phones: the map fills the width, so the key below it had no height left at all (Wren and every place
+   were out of reach). The body scrolls instead: the map, then its key. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-map__body { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; grid-template-rows: auto auto; }
+  .td-map__key { overflow: visible; overscroll-behavior: auto; }
 }
 
 /* ── The Bestiary: a card per creature; the undefeated are a dark silhouette and "???" ── */
