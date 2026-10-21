@@ -4,8 +4,8 @@
  * Diablo II's blue and gold names, brought from the side view (shared/loot/champions.ts) into the endless surface and
  * the dungeon floors. Now and then a wild spawn comes up as:
  *  - a CHAMPION PACK: 2–4 tougher copies of the creature, a blue pixel aura under each, one shared affix,
- *    rank `champion` (×2.5 life, ×1.3 blow; Gold ×4 through rollHuntGold, 2 item rolls at 45%, one ladder step);
- *  - a UNIQUE: a named leader ("Grimfang the Hollow") with 1–3 affixes and a gold aura, rank `unique` (×3.5 life,
+ *    rank `champion` (×3.25 life, ×1.3 blow; Gold ×4 through rollHuntGold, 2 item rolls at 45%, one ladder step);
+ *  - a UNIQUE: a named leader ("Grimfang the Hollow") with 1–3 affixes and a gold aura, rank `unique` (×6 life,
  *    ×1.5 blow; Gold ×6, 3 item rolls at 60%, two ladder steps), followed by 2–4 ordinary minions.
  *
  * Rates are modest — about one pack per 16 eligible spawns (ELITE_CHANCE), a quarter of them uniques — and they only
@@ -187,11 +187,19 @@ export function makePack(rank: EliteRank, affixes: readonly EliteAffix[], name: 
   return { rank, affixes: [...affixes], name: rank === 'unique' ? name : null, followers };
 }
 
+/**
+ * A pack member's life × this by its rank in the top-down fight (the side view keeps champions.ts RANK_HP, ×2.5 and
+ * ×3.5). The combat sim (loot-and-combat.md §13, `node scripts/combat-sim.mjs`) found, at the Keeper's level, champion
+ * packs falling in 10–30 s and unique packs in 15–30 s, under their 15–40 s and 30–75 s bands: a champion copy is ×3.25
+ * here and a unique leader ×9.
+ */
+export const TD_RANK_HP: Readonly<Record<EliteRank, number>> = { champion: 3.25, unique: 9 };
+
 export interface EliteStats { hp: number; dmg: [number, number]; speed: number; rate: number; hits: DamageType | undefined; take: number }
 
 /**
  * The numbers of one pack member, from the creature's own. A champion copy and a leader take their rank's life and
- * blow (champions.ts RANK_HP / RANK_DAMAGE) and every affix; a unique's minion keeps the creature's own numbers.
+ * blow (TD_RANK_HP, champions.ts RANK_DAMAGE) and every affix; a unique's minion keeps the creature's own numbers.
  */
 export function eliteStats(base: { hp: number; dmg: readonly [number, number]; speed: number; rate: number; hits?: DamageType }, tag: Pick<EliteTag, 'rank' | 'role' | 'affixes'>): EliteStats {
   if (tag.role === 'minion') return { hp: base.hp, dmg: [base.dmg[0], base.dmg[1]], speed: base.speed, rate: base.rate, hits: base.hits, take: 1 };
@@ -202,7 +210,7 @@ export function eliteStats(base: { hp: number; dmg: readonly [number, number]; s
     if (d.hits) hits = d.hits;
   }
   const lo = Math.max(1, Math.round(base.dmg[0] * damage)), hi = Math.max(lo, Math.round(base.dmg[1] * damage));
-  return { hp: Math.round(base.hp * RANK_HP[tag.rank]), dmg: [lo, hi], speed: base.speed * speed, rate: base.rate / rate, hits, take };
+  return { hp: Math.round(base.hp * TD_RANK_HP[tag.rank]), dmg: [lo, hi], speed: base.speed * speed, rate: base.rate / rate, hits, take };
 }
 
 /**

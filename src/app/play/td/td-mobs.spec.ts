@@ -98,6 +98,8 @@ describe('td-mobs: Raise Skeleton', () => {
     const { sys, hurt } = world();
     sys.useAbility('raise-skeleton');
     const foe = mobAt(sys, 'bone-walker', 44, 0);
+    // Its authored life: the level-1 skeletons against a Bone Walker as written (MOBS raises it ×3, td-life).
+    foe.hp = 80;
     let bitten = false;
     for (let t = 0; t < 20 && sys.mobs.includes(foe); t += .02) {
       sys.update(.02);
@@ -333,5 +335,48 @@ describe('td-mobs Gold piles (D2: the pile follows the level and the rank)', () 
     sys.update(.016);
     expect(looted.map(l => l.coins)).toContain(pile.coins);
     expect(sys.floaters.some(f => f.text === `+${pile.coins} Gold`)).toBeTrue();
+  });
+});
+
+describe('td-mobs: the melee bosses\' gap-closers (MobDef.charge; loot-and-combat.md §10)', () => {
+  const MELEE_BOSSES = ['the-uncounted', 'ember-warden', 'anvil-warden', 'magma-tyrant', 'mossbound-colossus'];
+
+  it('every boss with no ranged attack carries one, telegraphed for BOSS_TELL', () => {
+    for (const def of Object.values(MOBS).filter(d => d.rank === 'boss' && !d.ranged)) expect(def.charge).withContext(def.id).toBeDefined();
+    for (const id of MELEE_BOSSES) expect(MOBS[id].charge).withContext(id).toBeDefined();
+  });
+
+  /** A boss 60 px off a Keeper; `move` is how the Keeper walks each step (px/s), `aside` a step he takes in the tell. */
+  function charge(id: string, move: { x: number; y: number }, aside: { x: number; y: number } | null) {
+    const w = world(), m = w.sys.place('boss', { ...MOBS[id], speed: 0 }, 60, 0);
+    m.chargeCd = 99; m.cd = 99;
+    // He is already on the move when it decides (it reads his pace over the last moments).
+    for (let t = 0; t < .5; t += .02) { w.keeper.x += move.x * .02; w.keeper.y += move.y * .02; w.sys.update(.02); }
+    m.chargeCd = 0;
+    let told = false;
+    for (let t = 0; t < 1.6; t += .02) {
+      w.keeper.x += move.x * .02; w.keeper.y += move.y * .02;
+      w.sys.update(.02);
+      if (m.tell > 0 && m.charging && !told) { told = true; if (aside) { w.keeper.x += aside.x; w.keeper.y += aside.y; } }
+    }
+    return { told, hurt: w.hurt };
+  }
+
+  it('it winds up, crosses and strikes a Keeper who stands off — the tier and the blow its own', () => {
+    for (const id of MELEE_BOSSES) {
+      const r = charge(id, { x: 0, y: 0 }, null);
+      expect(r.told).withContext(id).toBeTrue();
+      expect(r.hurt.length).withContext(id).toBe(1);
+      expect(r.hurt[0]).withContext(id).toBeGreaterThanOrEqual(MOBS[id].charge!.dmg[0]);
+      expect(r.hurt[0]).withContext(id).toBeLessThanOrEqual(MOBS[id].charge!.dmg[1]);
+    }
+  });
+
+  it('a step aside in the tell and it lands on nothing', () => {
+    for (const id of MELEE_BOSSES) expect(charge(id, { x: 0, y: 0 }, { x: 0, y: 40 }).hurt).withContext(id).toEqual([]);
+  });
+
+  it('it leads a Keeper walking straight away: kiting is caught', () => {
+    for (const id of MELEE_BOSSES) expect(charge(id, { x: -40, y: 0 }, null).hurt.length).withContext(id).toBe(1);
   });
 });

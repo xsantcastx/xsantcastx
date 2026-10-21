@@ -49,7 +49,7 @@ npm run -s check:meaning
 npx tsc --noEmit -p tsconfig.app.json && npx tsc --noEmit -p tsconfig.spec.json
 node --test scripts/seamworks-engine.test.cjs scripts/homestead.test.cjs scripts/home-forge.test.cjs scripts/delve-endless.test.cjs
 node scripts/check-ds-adherence.js && node scripts/check-i18n-keys.js && node scripts/audit-nav.js
-node scripts/economy-sim.mjs --check
+node scripts/economy-sim.mjs --check && node scripts/combat-sim.mjs --check
 npm run build            # initial < 1.85 MB; then: git checkout -- src/sitemap.xml
 node scripts/verify-csp-hashes.js
 npx ng test --watch=false --browsers=ChromeHeadless --include='<the specs you touched>'

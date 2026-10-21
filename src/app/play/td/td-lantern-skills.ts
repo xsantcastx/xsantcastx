@@ -27,8 +27,8 @@ const I = (rects: string) => rects;
 export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
   // ── Lamp: light as a weapon ──
   'kindle': {
-    id: 'kindle', kind: 'passive', mana: 0, cd: 1, nameKey: 'skill.kindle', textKey: 'skill.kindle.text',
-    vars: { min: 7, max: 11, range: 4 }, grow: { min: 2, max: 3 }, tree: 'lamp', tier: 0, col: 0, req: null,
+    id: 'kindle', kind: 'passive', mana: 0, cd: .9, nameKey: 'skill.kindle', textKey: 'skill.kindle.text',
+    vars: { min: 9, max: 14, range: 4 }, grow: { min: 3, max: 4 }, tree: 'lamp', tier: 0, col: 0, req: null,
     icon: I('<rect x="10" y="2" width="4" height="4" fill="#fffbe8"/><rect x="11" y="3" width="2" height="2" fill="#ffffff"/><rect x="8" y="5" width="3" height="3" fill="#ffd27a"/><rect x="6" y="7" width="3" height="2" fill="#c99a3e"/><rect x="4" y="9" width="2" height="2" fill="#c99a3e"/><rect x="2" y="11" width="2" height="2" fill="#8a6a3a"/><rect x="1" y="13" width="1" height="1" fill="#8a6a3a"/><rect x="13" y="7" width="1" height="1" fill="#fff2a8"/><rect x="8" y="1" width="1" height="1" fill="#fff2a8"/>'),
     words: 'lum sha',
   },
@@ -96,7 +96,7 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
   // ── Moth: the lantern's kin ──
   'lamp-wisp': {
     id: 'lamp-wisp', kind: 'active', mana: 18, cd: 12, nameKey: 'skill.lamp-wisp', textKey: 'skill.lamp-wisp.text',
-    vars: { min: 4, max: 7, secs: 30, count: 1, range: 5 }, grow: { min: 1, max: 2, secs: 1, count: .1 }, tree: 'moth', tier: 0, col: 1, req: null,
+    vars: { min: 8, max: 12, secs: 30, count: 1, range: 5 }, grow: { min: 1, max: 2, secs: 1, count: .1 }, tree: 'moth', tier: 0, col: 1, req: null,
     icon: I('<rect x="6" y="5" width="4" height="5" fill="#ffd27a"/><rect x="7" y="6" width="2" height="3" fill="#fffbe8"/><rect x="2" y="3" width="4" height="3" fill="#e8dcc0"/><rect x="10" y="3" width="4" height="3" fill="#e8dcc0"/><rect x="3" y="8" width="3" height="3" fill="#c9b894"/><rect x="10" y="8" width="3" height="3" fill="#c9b894"/><rect x="7" y="3" width="1" height="2" fill="#8a6a3a"/><rect x="8" y="3" width="1" height="2" fill="#8a6a3a"/><rect x="7" y="10" width="2" height="2" fill="#c99a3e"/><rect x="1" y="13" width="1" height="1" fill="#fff2a8"/><rect x="14" y="12" width="1" height="1" fill="#fff2a8"/>'),
     words: 'lum teth',
     syn: [{ from: 'moth-kin', per: 6, what: 'dmg' }],
