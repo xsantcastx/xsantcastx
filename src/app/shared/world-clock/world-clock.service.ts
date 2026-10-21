@@ -18,7 +18,7 @@
 import { Injectable, PLATFORM_ID, inject, isDevMode } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { setWorldHourSource } from '../world/world-hour';
-import { ECLIPSE, msAt, nextEclipse, skyAt, worldTime, type Sky, type WorldTime, type EclipseWindow, eclipseAt } from './world-clock.model';
+import { ECLIPSE, isEclipseDay, msAt, nextEclipse, skyAt, worldTime, type Sky, type WorldTime, type EclipseWindow, eclipseAt } from './world-clock.model';
 
 /** sessionStorage key of the test skew (ms). Not a save blob. */
 export const CLOCK_SKEW_KEY = 'eclipse-clock-skew';
@@ -69,6 +69,18 @@ export class WorldClockService {
       now: () => this.time(),
     };
     (window as unknown as { __eclipseClock?: ClockHook }).__eclipseClock = hook;
+    // The phase specs (`?phase=day|dusk|night|warn|eclipse`, automation only): the clock jumps to that sky on load, so
+    // the engine's rules, the HUD's phase plate and the eclipse warning all agree. `warn` stands 25 minutes before an
+    // eclipse (the banner), `eclipse` an hour and a half into one.
+    const want = automated ? /[?&]phase=(day|dusk|night|warn|eclipse)\b/.exec(location.search)?.[1] : undefined;
+    if (want) {
+      const { day } = worldTime(Date.now() + this.skewMs);
+      let d = day;
+      while (isEclipseDay(d)) d++;
+      if (want === 'eclipse') hook.toEclipse(ECLIPSE.start + 90);
+      else if (want === 'warn') { const w = nextEclipse(Date.now() + this.skewMs); set(msAt(w.id, ECLIPSE.start - 25) - Date.now()); }
+      else set(msAt(d, want === 'day' ? 12 * 60 : want === 'dusk' ? 18 * 60 + 50 : 22 * 60) - Date.now());
+    }
   }
 
   /** The real instant the world reads (epoch ms; the test skew included). */

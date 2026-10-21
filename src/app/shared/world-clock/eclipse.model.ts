@@ -110,7 +110,7 @@ export function nextMark(count: number): LedgerMark | null {
  * waking, the shrines. The aligned realm (it turns, eclipse by eclipse) gets its
  * hunting ground's glass doubled.
  */
-export const ECLIPSE_EFFECTS = ['sky', 'glass', 'moths', 'dark', 'shrines', 'aligned'] as const;
+export const ECLIPSE_EFFECTS = ['sky', 'glass', 'moths', 'dark', 'touched', 'shrines', 'aligned'] as const;
 export type EclipseEffect = (typeof ECLIPSE_EFFECTS)[number];
 
 /** A rift shrine first touched under an eclipse: its Delving XP is multiplied, its reveal widened. */

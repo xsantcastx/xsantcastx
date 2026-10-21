@@ -414,6 +414,18 @@ hours (8 real minutes) and leans on one realm.
 | **Night** | 20–04 | **night spawns**: each region has a night table (Ash Wolves → †Ashen Hounds (lvl +3), Lantern Wisps appear on land) | Shadow +10%, Lamp −10% | XP +10% | darkness; Glim's light matters; Nightroads open (§5.3) |
 | **Eclipse** | every 5th day, 8 h | **Eclipse-touched**† elites: 1 in 8 creatures gets the *Eclipse-touched* affix (§5.7); the dead rise in every graveyard; the Seam Eater rises (Infernal eclipses, post Act I) | Shadow +25%, Lamp −15%, Small Eclipse doubles its radius | **in the leaning realm**: +1 ladder step for Eclipse-touched kills, Eclipse Glass ×2 (shipped), XP +20% | noon goes black; the four mirror spikes; the tune goes minor (shipped) |
 
+**As built (2026-10-21, `play/td/td-phases.ts`).** Day: Ember spells +10%. Dawn/dusk: 1 spawn in 4 brings a second.
+Night: the night tables (by the day creature: Ash Wolf → Bone Walker, Lava Hound → Ash Ghoul, Cinder Orc → Cinder Wraith,
+Orc Firecaller → Bone Archer, Moss Stalker → Rootgnaw, Vine Lasher → Sporecap, Mire Lurker → Lantern Wisp, Ink Hound →
+Drowned Acolyte; 1 in 3 of those spawns), 2 in 5 spawns bring a second, every wild creature ×1.2 life ×1.1 blow; Shadow
++10%, Ember −10%; XP and Gold +10%. Eclipse: all of night's, and 1 in 8 creatures **Eclipse-touched** (+1 affix, a
+champion's numbers, drops one ladder step up, the dark corona); Shadow +25%, Ember −15%; XP +20%, Gold +25%; the dark
+turns violet. Spawn rules hold only in the open wilds (never a town's safety, a boss, or a dungeon floor); spell strength
+follows the sky everywhere. HUD: a phase plate at the minimap's foot, a warning ribbon 30 minutes before an eclipse, the
+Spellbook card's phase line. Not built yet: the Seam Eater's rising (still the L-sized event below), the eclipse-only
+graveyard rising, Small Eclipse's doubled radius (no such spell yet), and the leaning realm (the boosts hold everywhere).
+The "Lamp" column is the Ember tree until the Lanternwright brings real Lamp spells.
+
 Forecasts: Sera Quill's ledger shows the next eclipse's day and realm; Scholar Odette Pryor's smoke (§3.4) shows the
 leaning realm a day early. S/U/L: *source* `world-clock` + `eclipse.model.ts`; *use* a reason to plan a hunt, the
 night as a different place; *lore* the seam breathing.
@@ -770,7 +782,7 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 1 ★ | **Spell words** (the Seam-Cant): `words` on every `SkillDef`, a pixel speech line over the Keeper on cast, Codex → Cant page; monsters chant before big casts | S | `td-skills.ts` (`words`), `td-engine.ts` (speech line next to the existing `say`/bubble painter), i18n, `side-scroller.component` Spellbook | every cast says *vael orum* over your head |
 | 2 ★ | **Synergies**: `SkillDef.syn`, read in `skillVars`, shown on the Spellbook card | S | `td-skills.ts`, `td-tree.ts`, Spellbook | "+18% from Hellfire Nova" on cards; points feel connected |
 | 3 | **Elite packs in the top-down world**: port `rollPack` + mods, packs of 3–5, the new affixes (Lightless, Grave-called, Brutal, Mirrored) | M | `shared/loot/champions.ts`, `td-mobs.ts` spawn + draw (name pips), `td-fx.ts` | blue/gold named packs with pips; better drops |
-| 4 | **Eclipse phases as rules**: night spawn tables, Eclipse-touched elites, phase modifiers to spell power/XP/loot | M | `world-clock.model.ts` (`Sky`), `td-engine.setSky`, `td-mobs.ts` spawn tables, `drop-tables.ts` | night feels different; the eclipse is an event you plan for |
+| 4 ✓ | **Eclipse phases as rules** (shipped 2026-10-21, §5.2 as built): night spawn tables, Eclipse-touched elites, phase modifiers to spell power/XP/loot | M | `world-clock.model.ts` (`Sky`), `td-engine.setSky`, `td-mobs.ts` spawn tables, `drop-tables.ts` | night feels different; the eclipse is an event you plan for |
 | 5 | **The Cold Hearth + Hearth Blessings**: wake at the last lit hearth, fallen purse in top-down, Ember debt, five shrines | M | `td-engine.hurt`, `LootService.fall`, `keeper-level.service` (debt), capital maps (shrine stalls) | a fall *means* something; a Gold sink for the new economy |
 | 6 ★ | **Lumvesh (Seek) + Light spell** | S | `td-skills.ts` (common spells), `td-world.ts` (find a mob/boss by id), Glim flight (`td-engine` glimFlight) | "The Ink Abbess is very far to the south-east, below you." |
 | 7 | **Light as a resource + dark-born**: torches, Unrecorded shapes, Hollow Footsteps, dark-only chests, 3 Nightroads on Ember Isle | M | `td-engine` darkness/light, `td-art.ts`, `maps/*.ts` (night-only tiles), `eclipse.model` items | the first "did I see that?" moment |

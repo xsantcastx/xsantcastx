@@ -9,6 +9,7 @@ import type { DamageType } from '../../shared/loot/damage.model';
 import { MOBS, mobHits } from './td-mobs';
 import { huntGoldRange } from '../../shared/economy/economy-curve';
 import { MIN_PACK_LEVEL } from '../../shared/loot/champions';
+import { NIGHT_TABLES } from './td-phases';
 
 /** The save blob (account progress, synced; merge is the structural max per creature). */
 export const BESTIARY_KEY = 'eclipse-bestiary-v1';
@@ -52,6 +53,8 @@ export function creatureHaunts(): Map<string, string[]> {
       if (!table) continue;
       const name = c.names[region as keyof typeof c.names] ?? c.townName;
       for (const id of table.types) add(id, `${name}, ${land}`);
+      // The night tables (td-phases.ts): who comes out there after dark.
+      for (const id of table.types) for (const night of NIGHT_TABLES[id] ?? []) add(night, `${name}, ${land} (at night)`);
     }
     // A graveyard's own dead are Bone Walkers (td-world.ts).
     for (const p of c.places) if (p.kind === 'graveyard') add('bone-walker', `${p.name}, ${land}`);

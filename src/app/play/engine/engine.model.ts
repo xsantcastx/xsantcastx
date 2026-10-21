@@ -345,6 +345,8 @@ export interface KillEvent {
   name: string;
   /** The creature's full HP: what Hunting XP scales with. */
   hp: number;
+  /** The sky's XP multiplier on this kill (night, an eclipse: td-phases.ts); unset = 1. */
+  xp?: number;
 }
 export interface DiscoverEvent {
   /**

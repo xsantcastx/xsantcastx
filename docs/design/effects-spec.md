@@ -75,6 +75,12 @@ before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
   closing in — where each creature will stand, for `CALL_TELL` = 0.6 s; then it climbs out in a burst.
 - The Glass Sentinel's single shot and the Magma Tyrant / Anvil-Warden's bites stay untold (no big attack to read).
 
+## The eclipse (2026-10-21)
+- **Eclipse-touched** (`td-elite-fx.ts`): a ring of eclipse-dark pixels (`#140c1c`, 55%) round the body's middle, a
+  dithered pale corona (`#f0e0ff`) one pixel outside it, four violet flares (`#b06bff`, dark-edged) turning slowly on the
+  rim; the body tinted dusk-violet (`#6b3aa0`, 30%). Reduced motion: the same ring, the flares still.
+- **The sky**: under an eclipse the darkness pass is violet, not the night's blue, deepening with the eclipse.
+
 ## Order
 1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
 Each step screenshot-checked (e2e/td-fx-shots.spec.ts, e2e/td-fx2-shots.spec.ts → docs/handoff/cozy-ui/fx-*.jpg).

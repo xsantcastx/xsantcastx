@@ -46,8 +46,15 @@ export const WORLD_CLOCK_I18N: Readonly<Record<string, { en: string; es: string 
   'clock.effect.glass': { en: 'Eclipse Glass outcrops rise in every hunting ground (any pickaxe).', es: 'Afloramientos de Cristal de Eclipse surgen en cada coto de caza (cualquier pico).' },
   'clock.effect.moths': { en: 'Afterimage Moths rise in the Reflection Channels and drop Eclipse Glass.', es: 'Polillas de Posimagen surgen en los Canales de Reflejo y sueltan Cristal de Eclipse.' },
   'clock.effect.dark': { en: 'The night wakes at noon: Moonwake opens, the Mirrorfin bites, Ink Lanterns drift.', es: 'La noche despierta a mediodia: se abre el Velaluna, pica el Espejaleta, vagan las Linternas de Tinta.' },
+  'clock.effect.touched': { en: 'One creature in eight comes back Eclipse-touched: tougher, with better drops. Shadow spells +25%, Hunting XP +20%.', es: 'Una criatura de cada ocho vuelve tocada por el eclipse: mas dura, con mejor botin. Hechizos de Sombra +25%, XP de Caza +20%.' },
   'clock.effect.shrines': { en: 'A rift shrine first touched now pays double Delving XP, shows twice as far and leaves a sliver of Eclipse Glass.', es: 'Un santuario de grieta tocado por primera vez ahora da doble XP de Profundidad, muestra el doble y deja una astilla de Cristal de Eclipse.' },
   'clock.effect.aligned': { en: 'The aligned realm\'s hunting ground ({{realm}}) gives two Eclipse Glass a cut.', es: 'El coto del reino alineado ({{realm}}) da dos Cristales de Eclipse por corte.' },
+
+  // The sky as a rule (play/td/td-phases.ts): the eclipse warning ribbon and the Spellbook's phase line
+  'clock.warn.title': { en: 'The moon mirror is turning', es: 'El espejo lunar esta girando' },
+  'clock.warn.line': { en: 'In {{m}} minutes the sun goes out. Things wake that sleep by day; keep a light close.', es: 'En {{m}} minutos se apaga el sol. Despiertan cosas que duermen de dia; ten una luz cerca.' },
+  'clock.warn.short': { en: 'The sun goes out in {{m}} minutes.', es: 'El sol se apaga en {{m}} minutos.' },
+  'clock.spell.now': { en: '{{phase}} now: {{pct}} power', es: '{{phase}} ahora: {{pct}} de poder' },
 
   // A dark-keeping node by day (the Moonwake Bloom): the engine's line and the HUD's action button
   'clock.gather.shut': { en: 'The {{name}} is shut tight. It opens at night, or under an eclipse.', es: 'La {{name}} esta bien cerrada. Se abre de noche, o bajo un eclipse.' },
@@ -56,9 +63,9 @@ export const WORLD_CLOCK_I18N: Readonly<Record<string, { en: string; es: string 
   // Announcements (the message line)
   'clock.announce.soon': { en: 'The moon mirror is turning: an eclipse begins in {{h}} hours ({{realm}} aligned).', es: 'El espejo lunar esta girando: un eclipse empieza en {{h}} horas ({{realm}} alineado).' },
   'clock.announce.near': { en: 'The light is thinning. The eclipse begins within the hour.', es: 'La luz se adelgaza. El eclipse empieza antes de una hora.' },
-  'clock.announce.start': { en: 'The eclipse! The moon mirror crosses the sun. Eclipse Glass rises in the hunting grounds.', es: 'El eclipse! El espejo lunar cruza el sol. El Cristal de Eclipse surge en los cotos de caza.' },
+  'clock.announce.start': { en: 'The eclipse! The moon mirror crosses the sun. Eclipse Glass rises in the hunting grounds, and some creatures come back Eclipse-touched.', es: 'El eclipse! El espejo lunar cruza el sol. El Cristal de Eclipse surge en los cotos de caza, y algunas criaturas vuelven tocadas por el eclipse.' },
   'clock.announce.end': { en: 'The eclipse passes. The next one comes in five days; it always comes back.', es: 'El eclipse pasa. El proximo llega en cinco dias; siempre vuelve.' },
-  'clock.announce.night': { en: 'Night falls. Moonwake opens in the hunting grounds, and the Mirrorfin rises.', es: 'Cae la noche. El Velaluna se abre en los cotos, y el Espejaleta sube.' },
+  'clock.announce.night': { en: 'Night falls. Moonwake opens, the Mirrorfin rises, and the dead walk the wilds. Stay near the light.', es: 'Cae la noche. Se abre el Velaluna, sube el Espejaleta y los muertos caminan por lo salvaje. Quedate cerca de la luz.' },
   'clock.announce.dawn': { en: 'Dawn. The Moonwake shuts.', es: 'Amanece. El Velaluna se cierra.' },
   'clock.announce.witnessed': { en: 'Sera Quill\'s ledger: eclipse {{n}} observed. +{{gold}} Gold.', es: 'Registro de Sera Quill: eclipse {{n}} observado. +{{gold}} de Oro.' },
   'clock.announce.mark': { en: 'Sera Quill\'s ledger mark {{at}}: +{{gold}} Gold and {{glass}} Eclipse Glass.', es: 'Marca {{at}} del registro de Sera Quill: +{{gold}} de Oro y {{glass}} Cristal de Eclipse.' },

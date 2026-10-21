@@ -19,7 +19,9 @@ import { LOOT } from './td-fx';
 import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
-import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, type ElitePack, type EliteTag } from './td-elites';
+import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
+import { extraSpawn, hardened, nightType, rollTouched, rulesOf, spellMult, touchedRandom } from './td-phases';
+import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 
 export interface MobDef {
   id: string;
@@ -1884,9 +1886,31 @@ export class MobSystem {
   /** A skill's numbers at its rank. */
   v(id: SkillId): Record<string, number> {
     let got = this.varsAt.get(id);
-    if (!got) { got = skillVars(id, this.rank(id), this.bought); this.varsAt.set(id, got); }
+    if (!got) {
+      got = skillVars(id, this.rank(id), this.bought);
+      // The sky's hand on the spell (td-phases.ts): Shadow stronger after dark and under an eclipse, Ember by day.
+      const k = spellMult(SKILLS[id].tree, this.phase);
+      if (k !== 1) {
+        got = { ...got };
+        for (const key of ['min', 'max'] as const) if (key in got) got[key] = Math.max(1, Math.round(got[key] * k));
+        if ('dps' in got) got['dps'] = Math.round(got['dps'] * k * 10) / 10;
+      }
+      this.varsAt.set(id, got);
+    }
     return got;
   }
+  /**
+   * The world clock as a rule (td-phases.ts): the sky's phase, and whether the Keeper stands under it (the surface) —
+   * spell strength follows the sky everywhere, the spawn rules only in the open wilds.
+   */
+  phase: SkyPhase = 'day';
+  open = false;
+  setPhase(phase: SkyPhase, open: boolean): void {
+    if (phase !== this.phase) this.varsAt.clear();
+    this.phase = phase; this.open = open;
+  }
+  /** The spawn rules in force here and now (the open wilds only; day's under a roof). */
+  private get wildRules() { return rulesOf(this.open ? this.phase : 'day'); }
   /** Ember Mastery: what fire's damage is multiplied by. */
   get fireMult(): number { return this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1; }
   /** The running aura's ring (art px). */
@@ -1960,13 +1984,30 @@ export class MobSystem {
   /** Spawns that came into reach (the endless surface hands them over chunk by chunk). */
   addSpawns(spawns: readonly MobSpawn[]): void {
     for (const s of spawns) {
-      if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) continue;
-      const def = MOBS[s.type];
-      if (!def) continue;
-      const pack = this.elites ? this.eliteFor(s, def) : null;
-      if (pack) this.spawnPack(s.key, def, s.x, s.y, pack);
-      else this.mobs.push(this.spawnMob(s.key, def, s.x, s.y));
+      const base = MOBS[s.type];
+      if (!base) continue;
+      // The sky's rules (td-phases.ts), in the open wilds only: never in a town's safety, never a boss or champion.
+      const phase = this.open ? this.phase : 'day', seed = `${this.eliteSalt}|${this.host.levelId()}|${s.key}|${this.fallen.get(s.key) ?? 0}`;
+      const wild = phase !== 'day' && (base.rank ?? 'normal') === 'normal' && !this.host.safeAt?.(s.x, s.y);
+      const type = wild ? nightType(s.type, seed, phase) : s.type;
+      this.spawnOne({ ...s, type }, wild ? phase : 'day', seed);
+      // More of them after dusk: a second creature beside the first, on its own key (it falls and returns on its own).
+      if (wild && extraSpawn(seed, phase)) {
+        const x = s.x + 14, y = s.y + 8;
+        if (this.free(x, y) && !this.host.safeAt?.(x, y)) this.spawnOne({ key: `${s.key}~n`, type, x, y }, phase, `${seed}~n`);
+      }
     }
+  }
+  /** One spawn under a sky: night-hardened, maybe Eclipse-touched, maybe an elite pack. */
+  private spawnOne(s: MobSpawn, phase: SkyPhase, seed: string): void {
+    if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) return;
+    const type = MOBS[s.type];
+    if (!type) return;
+    const def = hardened(type, phase);
+    let pack = this.elites ? this.eliteFor(s, def) : null;
+    if (this.elites && phase !== 'day' && (def.rank ?? 'normal') === 'normal' && rollTouched(seed, phase)) pack = touchPack(pack, touchedRandom(seed));
+    if (pack) this.spawnPack(s.key, def, s.x, s.y, pack);
+    else this.mobs.push(this.spawnMob(s.key, def, s.x, s.y));
   }
   /** Does this spawn come up as an elite pack (td-elites.ts)? Never in a safe square, only where its level suits. */
   private eliteFor(s: MobSpawn, def: MobDef): ElitePack | null {
@@ -2001,6 +2042,8 @@ export class MobSystem {
     }
     return out;
   }
+  /** One ordinary creature, placed on purpose (the phase specs' showcase). */
+  place(key: string, def: MobDef, x: number, y: number): Mob { const m = this.spawnMob(key, def, x, y); this.mobs.push(m); return m; }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null };
   }
@@ -2569,12 +2612,14 @@ export class MobSystem {
     if (this.corpses.length > 12) this.corpses.shift();
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
-    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp });
+    // Night and the eclipse pay a little more (td-phases.ts): Hunting XP and the Gold pile, in the open wilds.
+    const sky = this.wildRules;
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp, ...(sky.xp !== 1 ? { xp: sky.xp } : {}) });
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
     let n = 0;
-    const coins = goldDropFor(m.def);
+    const coins = Math.max(1, Math.round(goldDropFor(m.def) * sky.gold));
     for (const d of m.def.drops) {
       if (Math.random() >= d.chance) continue;
       this.drops.push({ id: `${id}:m${n}`, ...spot(n++), coins: 0, material: d.material, qty: d.qty, label: d.material.replace(/-/g, ' '), color: RARITY_COLOR.common, age: 0 });
