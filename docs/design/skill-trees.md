@@ -37,6 +37,13 @@ Mana · cooldown: Cinder Rain 18 · 7 s, Flame Wall 22 · 10 s, Meteor 35 · 12 
 Ember Mastery multiplies every fire hit: the bolt, the nova, the aura, the rain, the wall, the meteor and the Ember
 Curse's burn. Weaken and the Ember Curse do not stack — a creature bites weaker by the stronger of the two.
 
+## The common page (design-bible §4.6)
+A fourth tab, **Common**: the spells every vocation learns, bought with the same points, no element (the sky does not
+touch them). **Light** (*lum*, level 1, free in the starting kit): +3 tiles of the Keeper's light and Glim's for 300 s;
++0.1 tile and +15 s a rank; 10 mana · 3 s. **Seek** (*lum vesh*, level 8 — `SkillDef.level` overrides the tier's): Glim
+points at the fallen purse, the nearest boss or a task to hand in (`td-seek.ts`); the arrows hold 6 s, +0.5 s a rank;
+20 mana · 8 s; nothing to seek spends nothing. Typed with a name (`lum vesh ember warden`) it seeks that one.
+
 ## Saves
 The tree lives on the Keeper look (`godforge-keeper-look`, synced): `tree: { spent, free, at }`. It merges on its own
 clock — the newer tree wins **whole**, never a sum — and every read is clamped to the level (`clampTree`: unknown ids,

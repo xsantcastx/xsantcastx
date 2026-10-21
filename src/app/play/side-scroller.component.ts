@@ -9,7 +9,7 @@ import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import type { ItemStats } from '../shared/rpg/item.model';
-import { CLASS_SKILLS as TD_CLASS_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, TREES, defaultAura, defaultBar, skillVars, synergies, type SkillId, type TreeId } from './td/td-skills';
+import { CLASS_SKILLS as TD_CLASS_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, BOOK_TREES, defaultAura, defaultBar, skillVars, synergies, type SkillId, type TreeId } from './td/td-skills';
 import { boughtRanks, buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
@@ -52,6 +52,8 @@ import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } f
 import { ELEMENTS, type Element as DamageElement } from '../shared/loot/damage.model';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
 import { MOBS, mobSheet } from './td/td-mobs';
+import { bossUniqueById, type BossUnique } from '../shared/rpg/boss-uniques';
+import type { SeekAnswer } from './engine/engine.model';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
@@ -982,6 +984,8 @@ export class SideScrollerComponent implements OnDestroy {
       onPet: event => this.zone.run(() => this.companions.onPet(event)),
       // A moment Glim reacts to (a dodge, a rare beam, a drop left lying).
       onGlimCue: cue => this.zone.run(() => this.companions.onGlimCue(cue)),
+      // Lumvesh, the Seek (td-seek.ts): Glim's words for where it points.
+      onSeek: answer => this.zone.run(() => { this.message = this.seekLine(answer); }),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -1818,6 +1822,8 @@ export class SideScrollerComponent implements OnDestroy {
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
     // The worn gear's combat affixes (§3) ride along; the engine re-applies only when a number changed.
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
+    // The worn boss uniques' signatures (shared/rpg/boss-uniques.ts): the engine re-applies only when the set changed.
+    (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     this.tdBelt = this.potions.belt(performance.now() / 1000);
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
@@ -1875,6 +1881,28 @@ export class SideScrollerComponent implements OnDestroy {
   get vocation(): string { return this.looks.look.vocation; }
   /** The character sheet (C): D2's attributes page made cozy — level, points to spend, what each gives. */
   sheetOpen = false;
+  /** The boss uniques the Keeper wears (their ids): each one's signature is applied by the fight (td-mobs relics). */
+  private get wornRelics(): string[] {
+    return this.inventory.snapshot.items.filter(it => it.equipped && !it.explorerId && !!bossUniqueById(it.definitionId)).map(it => it.definitionId!);
+  }
+  /** Glim's words for a Seek (td-seek.ts): "The Ink Abbess is very far to the south-east, below you." */
+  private seekLine(a: SeekAnswer): string {
+    if (a.kind === 'unknown') return this.t('play.seek.unknown', { name: a.name });
+    // Glim names nothing it has not seen (design-bible §5.5): a boss not yet met is "something great".
+    const met = a.kind !== 'boss' || (readKills(this.store.read(BESTIARY_KEY))[a.id] ?? 0) > 0;
+    const name = a.kind === 'purse' ? this.t('play.seek.purse') : met ? a.name : this.t('play.seek.unseen');
+    if (a.sea) return this.t('play.seek.sea', { name });
+    const floor = a.floor === 'here' ? '' : this.t('play.seek.floor.' + a.floor);
+    if (!a.dir) return this.t('play.seek.beside', { name, floor });
+    return this.t('play.seek.line', { name, band: this.t('play.seek.band.' + a.band), dir: this.t('play.seek.dir.' + a.dir), floor });
+  }
+  /** A boss unique's card lines: what it does (Used for) and where it is found, its boss and chance (Found in). */
+  private relicLines(u: BossUnique): string[] {
+    return [
+      this.t('play.relic.used', { text: this.t('play.relic.sig.' + u.id) }),
+      this.t('play.relic.found', { boss: MOBS[u.boss]?.name ?? u.boss, where: u.lair, n: u.oneIn }),
+    ];
+  }
   /** The worn gear's combat totals (docs/design/loot-and-combat.md §3), read off the inventory by td-skills. */
   private get gearCombat(): Partial<ItemStats> {
     // The milestones' passives (shared/skills/keeper-milestones.ts) ride on the worn totals, under the same caps.
@@ -2046,7 +2074,11 @@ export class SideScrollerComponent implements OnDestroy {
   } {
     const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
     const ids = treeSkills(v, this.bookTree);
-    const tiers = TIER_LEVELS.slice(0, Math.max(...ids.map(id => TD_SKILLS[id].tier)) + 1).map(lv => ({ level: lv, open: level >= lv }));
+    // Each row's level: its tier's, or the lowest a skill on it asks (the common page's Seek opens at 8).
+    const tiers = TIER_LEVELS.slice(0, Math.max(...ids.map(id => TD_SKILLS[id].tier)) + 1).map((lv, i) => {
+      const own = ids.filter(id => TD_SKILLS[id].tier === i).map(levelFor), at = own.length ? Math.min(...own) : lv;
+      return { level: at, open: level >= at };
+    });
     const pickId = this.bookPick && ids.includes(this.bookPick) ? this.bookPick : ids[0];
     const nodes = ids.map(id => {
       const sk = TD_SKILLS[id], need = levelFor(id);
@@ -2060,7 +2092,7 @@ export class SideScrollerComponent implements OnDestroy {
     let pick: ReturnType<SideScrollerComponent['spellbookPick']> | null = null;
     if (pickId) pick = this.spellbookPick(pickId, ranks[pickId] ?? 0, rankBlock(tree, v, pickId, level), bar, aura);
     return {
-      trees: TREES.map(id => ({ id, ranks: treeSkills(v, id).reduce((n, s) => n + (ranks[s] ?? 0), 0) })),
+      trees: BOOK_TREES.map(id => ({ id, ranks: treeSkills(v, id).reduce((n, s) => n + (ranks[s] ?? 0), 0) })),
       left: treePointsLeft(tree, level), tiers, nodes, lines, pick,
     };
   }
@@ -2872,7 +2904,15 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Typed spell words: the class's active that says them goes off (or says why not). False when no spell says them. */
   private castWords(text: string): boolean {
-    const said = text.toLowerCase().replace(/\s+/g, ' ');
+    const said = text.toLowerCase().replace(/\s+/g, ' ').trim();
+    // Lumvesh with a name (design-bible §4.6, Tibia's exiva "name"): `lum vesh "ink abbess"` seeks that one.
+    const named = this.topDown ? /^lum vesh\s+["“']?(.+?)["”']?$/.exec(said) : null;
+    if (named && this.ranked('seek')) {
+      const why = (this.engine as unknown as { seekFor?: (name: string | null) => string | null } | undefined)?.seekFor?.(named[1]);
+      if (why && why !== 'noseek') this.message = this.t(`play.td.ability.${why}`);
+      this.tickAbilities();
+      return true;
+    }
     const id = this.topDown ? TD_CLASS_SKILLS[this.looks.look.vocation].find(s => TD_SKILLS[s].kind === 'active' && TD_SKILLS[s].words === said) : undefined;
     if (!id) return false;
     const why = this.tdEngine?.useAbility?.(id);
@@ -4016,7 +4056,10 @@ export class SideScrollerComponent implements OnDestroy {
       affixes: held.filter(key => key !== head?.key).map(line),
       itemLevel: item.itemLevel ?? 0,
       tag: qualityTagOf(item),
-      specials: itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
+      specials: [
+        ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
+        ...(bossUniqueById(item.definitionId) ? this.relicLines(bossUniqueById(item.definitionId)!) : []),
+      ],
       sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
       reqs: this.reqLines(item),
     };

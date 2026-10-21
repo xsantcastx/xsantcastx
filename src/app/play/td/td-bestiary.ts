@@ -10,6 +10,7 @@ import { MOBS, mobHits } from './td-mobs';
 import { huntGoldRange } from '../../shared/economy/economy-curve';
 import { MIN_PACK_LEVEL } from '../../shared/loot/champions';
 import { NIGHT_TABLES } from './td-phases';
+import { bossUniqueFor } from '../../shared/rpg/boss-uniques';
 
 /** The save blob (account progress, synced; merge is the structural max per creature). */
 export const BESTIARY_KEY = 'eclipse-bestiary-v1';
@@ -37,6 +38,8 @@ export interface BestiaryEntry {
   kills: number;
   /** It can come up as an elite pack (td-elites.ts): a blue champion pack or a gold-named unique with its minions. */
   elites: boolean;
+  /** A boss's own unique (shared/rpg/boss-uniques.ts): it drops from this boss alone, 1 in `oneIn` kills. */
+  relic: { id: string; name: string; oneIn: number } | null;
 }
 
 /** Who lives where: creature id → places, in a stable order (the lands first, then the dungeons by their floors). */
@@ -83,6 +86,7 @@ export function bestiaryEntries(kills: Readonly<Record<string, number>>): Bestia
     hits: mobHits(def),
     kills: Math.max(0, Math.floor(kills[def.id] ?? 0)),
     elites: (def.rank ?? 'normal') === 'normal' && def.level >= MIN_PACK_LEVEL,
+    relic: (u => (u ? { id: u.id, name: u.name, oneIn: u.oneIn } : null))(def.rank === 'boss' ? bossUniqueFor(def.id) : undefined),
   })).sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
 

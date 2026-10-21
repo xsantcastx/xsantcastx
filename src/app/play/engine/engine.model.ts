@@ -134,6 +134,15 @@ export type LootRow =
   | { kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean; level?: number }
   | { kind: 'rune'; rune: string; rarity: LootRarity; label: string };
 /** A world sound (EngineOptions.onSfx). */
+/** What the Seek found (EngineOptions.onSeek): its kind and id, the name the engine knows, and Glim's reading. */
+export interface SeekAnswer {
+  kind: 'boss' | 'quest' | 'purse' | 'unknown';
+  id: string; name: string;
+  dir: 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | null;
+  band: 'beside' | 'near' | 'far' | 'veryFar';
+  floor: 'here' | 'above' | 'below';
+  sea: boolean;
+}
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' };
 export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
@@ -323,6 +332,11 @@ export interface EngineOptions {
    * rare drop's beam went up, Glim flew to a drop left lying. No change detection needed.
    */
   onGlimCue?: (cue: GlimCue) => void;
+  /**
+   * Lumvesh, the Seek, went off (top-down, td-seek.ts): what Glim points at and its reading, for the host to say in
+   * Glim's words ("The Ink Abbess is very far to the south-east, below you."). `kind: 'unknown'` — no such name.
+   */
+  onSeek?: (answer: SeekAnswer) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug

@@ -225,6 +225,15 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-verdant-accord': I('seedpod', 'rootwood', 'moss'),
   'unique-merchants-scale': I('scale', 'gold', 'sungold'),
   'unique-eclipse-manifest': I('sun', 'obsidian', 'eclipse'),
+  // ── The bosses' own uniques (rpg/boss-uniques.ts): each in its boss's materials ──
+  'unique-wardens-last-ember': I('pendant', 'basalt', 'ember', 'iron'),
+  'unique-tyrants-crucible': I('cup', 'basalt', 'ember', 'iron'),
+  'unique-hammer-first-watch': I('hammer', 'basalt', 'ember', 'iron'),
+  'unique-ashbone-phylactery': I('pendant', 'ivory', 'ember', 'ash'),
+  'unique-crown-banked-coal': I('crown', 'basalt', 'ember'),
+  'unique-mossbound-heart': I('cuirass', 'moss', 'amber', 'rootwood'),
+  'unique-splinterbow-rootcradle': I('bow', 'rootwood', 'amber', 'moss'),
+  'unique-abbess-censer': I('orb', 'umbral', 'amethyst', 'brass'),
 
   // ── Charms (rpg/item.model.ts ALL_CHARMS; minted ids carry the seed id as a prefix, see charmSeedId) ──
   // Find: luck, worn smooth. Fortune: coins and marks. Insight: thread, ink and glass.

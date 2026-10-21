@@ -13,7 +13,7 @@ import { skillPointsEarned } from '../../shared/keeper-look/skill-points';
 import { CLASS_SKILLS, MAX_RANK, SKILLS, STARTER_RANKS, TIER_LEVELS, type SkillId, type TreeId } from './td-skills';
 
 /** The level a skill's tier opens at. */
-export function levelFor(id: SkillId): number { return TIER_LEVELS[SKILLS[id].tier] ?? 1; }
+export function levelFor(id: SkillId): number { return SKILLS[id].level ?? TIER_LEVELS[SKILLS[id].tier] ?? 1; }
 
 function owns(v: Vocation, id: string): id is SkillId { return (CLASS_SKILLS[v] as readonly string[]).includes(id); }
 

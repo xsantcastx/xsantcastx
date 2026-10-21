@@ -3548,11 +3548,13 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .sbt__ask { display: flex; align-items: center; gap: 6px; }
 .sbt__ask small { font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-cream); }
 .sbt__ask .sbt__yes { background: var(--cozy-brass); color: var(--cozy-wood-0); }
-.sbt__tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 4px 0 8px; }
+.sbt__tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 4px 0 8px; }
 .sbt__tab { min-height: 44px; border: 0; border-radius: 0; background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent);
   box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
 .sbt__tab small { margin-left: 4px; font-size: 11px; color: var(--cozy-brass-hi); }
 .sbt__tab[aria-selected="true"] { background: var(--cozy-wood-3); color: var(--cozy-glow); box-shadow: var(--cozy-chip), inset 0 -3px 0 0 var(--cozy-brass); }
+/* Four tabs (the three trees and the common page) in one row on a phone. */
+@media (max-width: 480px) { .sbt__tab { font-size: 11px; padding: 0 2px; } .sbt__tab small { margin-left: 2px; } }
 .sbt__body { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 12px; min-height: 0; flex: 1 1 auto; }
 .sbt__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px; background: var(--cozy-well); box-shadow: var(--px-cell-rim); }
 .sbt__tree { position: relative; padding-bottom: 10px; display: grid; grid-template-columns: 34px repeat(3, 1fr); grid-template-rows: repeat(var(--tiers, 5), 70px); align-items: center; justify-items: center; }
@@ -3987,6 +3989,10 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .td-best__card[data-known='false'] .td-best__count { color: color-mix(in srgb, var(--cozy-cream) 55%, transparent); }
 .td-best__where, .td-best__drops { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0; font: 500 12px/1.3 var(--cozy-font-read); color: var(--cozy-cream); }
 .td-best__where small, .td-best__drops small { font: 700 10px/1.3 var(--cozy-font-read); letter-spacing: .08em; text-transform: uppercase; color: var(--cozy-brass); }
+/* A boss's own unique (boss-uniques.ts): its name in the unique gold, the odds of a kill beside it. */
+.td-best__relic { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin: 2px 0 0; font: 500 12px/1.3 var(--cozy-font-read); color: var(--cozy-cream); }
+.td-best__relic small { flex-basis: 100%; font: 700 10px/1.3 var(--cozy-font-read); letter-spacing: .08em; text-transform: uppercase; color: var(--cozy-brass); }
+.td-best__relic b { color: var(--cozy-loot-legendary); font-weight: 700; }
 .td-best__more { color: color-mix(in srgb, var(--cozy-cream) 65%, transparent); }
 .td-best__hits { --hit: var(--cozy-cream); display: flex; align-items: center; gap: 6px; margin: 0; font: 700 12px/1.3 var(--cozy-font-read); color: var(--hit); }
 .td-best__hits::before { content: ''; flex: none; width: 7px; height: 7px; transform: rotate(45deg); background: var(--hit); }

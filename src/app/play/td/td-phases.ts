@@ -39,7 +39,7 @@ export interface PhaseRules {
   /** Chance a wild creature comes up Eclipse-touched (an elite variant, td-elites.ts). */
   touched: number;
   /** Spell damage by tree. */
-  spell: Readonly<Record<TreeId, number>>;
+  spell: Readonly<Partial<Record<TreeId, number>>>;
 }
 
 const SPELL_NONE = { ember: 1, bone: 1, shadow: 1 } as const;
