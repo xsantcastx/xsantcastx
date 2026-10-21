@@ -281,3 +281,26 @@ test.describe('chat', () => {
     } finally { await ctx.close(); }
   });
 });
+
+test('screenshots: the HUD at 1280×720 (key caps, XP bar, dock keys)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await enter(page, '', true);
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/ux-hud-after.jpg', type: 'jpeg', quality: 80 });
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test('the Map fills the sheet, its pins take a finger, + and − zoom, no key caps', async ({ page }) => {
+    await enter(page, '', true);
+    await expect(page.locator('[data-guide-keys]')).toHaveCount(0);
+    await page.locator('.td-dock button').last().tap();
+    const view = page.locator('[data-map-view]');
+    await expect(view).toBeVisible();
+    await page.locator('[data-map-zoom-in]').tap();
+    await expect.poll(async () => Number(await view.getAttribute('data-zoom'))).toBeGreaterThan(1.2);
+    const pin = (await view.locator('.mw__pin:visible').first().boundingBox())!;
+    expect(pin.width).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: 'docs/handoff/cozy-ui/ux-map-phone-after.jpg', type: 'jpeg', quality: 80 });
+  });
+});

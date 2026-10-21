@@ -244,3 +244,12 @@ export async function pickSkill(page: Page, id: string): Promise<void> {
   await node.click();
   await expect(page.locator(`.sbt__detail[data-skill="${id}"]`)).toBeVisible();
 }
+
+/**
+ * The top-down Map has no list of every place any more (owner's player notes 2026-10-21): its search finds one. Type
+ * the name there first, then click the result as before; on a menu with no search (the side view) this does nothing.
+ */
+export async function mapFind(page: Page, name: string | RegExp): Promise<void> {
+  const find = page.locator('#places-list [data-map-find]');
+  if (await find.count()) await find.fill(typeof name === 'string' ? name : name.source.replace(/[\\^$.*+?()[\]{}|]/g, ''));
+}

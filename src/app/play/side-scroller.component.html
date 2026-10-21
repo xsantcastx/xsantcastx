@@ -489,7 +489,7 @@
   }
 
   @if (companions.chatOpen) {
-    <div class="glim-chat-host win-host" data-engine-ignore (keydown.escape)="closeGlimChat()" appSheetDrag (sheetDismiss)="closeGlimChat()">
+    <div class="glim-chat-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="closeGlimChat()">
       <app-glim-chat [topics]="companions.topics" [reply]="companions.chatReply" [quiet]="glimQuiet" [mood]="companions.chatMood"
                      (ask)="companions.ask($event)" (setQuiet)="companions.setQuiet($event)" (done)="closeGlimChat()" />
     </div>
@@ -526,7 +526,7 @@
 
   @if (taskTalk; as tk) {
     <!-- A town task giver (shared/town-tasks): who they are, the task, the reward, one plain primary button. -->
-    <section class="places win td-map td-talk" role="dialog" aria-modal="true" [attr.aria-label]="t('play.task.talkAria', { name: tk.name })" [attr.data-talk]="tk.giver" data-engine-ignore (keydown.escape)="closeTalk()">
+    <section class="places win td-map td-talk" role="dialog" aria-modal="true" [attr.aria-label]="t('play.task.talkAria', { name: tk.name })" [attr.data-talk]="tk.giver" data-engine-ignore>
       <header class="win-head">
         <h2>{{ tk.name }}</h2>
         <button type="button" class="win-x places-close" (click)="closeTalk()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
