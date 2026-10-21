@@ -220,6 +220,19 @@
   box-sizing: border-box;
 }
 
+/* Ligatures off everywhere. Pixelify Sans (the game's lettering) bakes a broken "fi" into its GSUB that draws a capital A
+   ("Hellfire" read "HellAre", "first" read "Arst") plus fraction ligatures that fuse "5/8" into one glyph. Every `font`
+   shorthand in a component stylesheet resets font-variant-ligatures to normal, so a plain inherited value would lose to
+   them: !important is the only way one rule can cover them all. font-feature-settings is deliberately NOT forced on every
+   element (that would clobber the "tnum" some readouts set); html carries it for anything that inherits.
+   Canvas text cannot be reached from here; tokens/fonts.css splits the shaping run after "f" for the same reason. */
+*, *::before, *::after {
+  font-variant-ligatures: none !important;
+}
+html {
+  font-feature-settings: "liga" 0, "clig" 0;
+}
+
 html {
   font-size: 16px;
   scroll-behavior: smooth;
