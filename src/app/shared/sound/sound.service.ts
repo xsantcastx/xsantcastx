@@ -20,7 +20,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { HUSH_SETTINGS, SOUND_KEY, type HushSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
+import { HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
 import type { SoundScene } from './sound-palette';
 import type { SfxCue, SfxOptions, SoundDirector } from './sound-director';
 
@@ -74,6 +74,14 @@ export class SoundService {
     this.save({ ...cur, hush, updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
+  /** Night darkness (Menu → Sound: "Night darkness"): the full night or a softer one. */
+  setNight(night: NightSetting, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (cur.night === night || !NIGHT_SETTINGS.includes(night)) return;
+    this.save({ ...cur, night, updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+
   toggleMuted(): boolean {
     this.setMuted(!this.settings.muted);
     return this.subject.value.muted;
@@ -98,7 +106,11 @@ export class SoundService {
     doc.addEventListener('keydown', gesture, opts);
     doc.addEventListener('touchend', gesture, opts);
     doc.addEventListener('visibilitychange', visibility);
+    // Some phone browsers switch apps without a visibilitychange; pagehide is the backstop.
+    const away = (): void => this.zone.runOutsideAngular(() => this.director?.pause());
+    window.addEventListener('pagehide', away);
     this.unbind = () => {
+      window.removeEventListener('pagehide', away);
       doc.removeEventListener('pointerdown', gesture, opts);
       doc.removeEventListener('keydown', gesture, opts);
       doc.removeEventListener('touchend', gesture, opts);

@@ -81,6 +81,23 @@ before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
   rim; the body tinted dusk-violet (`#6b3aa0`, 30%). Reduced motion: the same ring, the flares still.
 - **The sky**: under an eclipse the darkness pass is violet, not the night's blue, deepening with the eclipse.
 
+## The night (2026-10-21, `td-night.ts`, `td-engine.ts` drawLight / drawNightEyes)
+- **The pass**: one colour over the world, never pure black. Night `#100e2c` at 86%, the eclipse `#220c3a` at 93%
+  (blended in by its depth), a dark floor `#0a081a` at 90% at any hour. Outdoors its opacity is tone × max(darkness,
+  eclipse depth), darkness being 1 − the clock's daylight, so dusk (18–20) and dawn (05–07) slide; noon is clear.
+- **Lights are holes with stepped pixel falloff**: a clear core to 45% of the radius, then 80% and 50% steps, then a
+  dithered rim (30% / 8% on the world's checker) — three steps, no blur. The Keeper's own light is 56 art px (3.5
+  tiles), Glim's 64 in the open (112 / 150 below ground), hearths 90, a light pet 84, the lantern 46.
+- **Warm wash**: lamps, windows, hearths, the lantern and beacons lay stepped Hearth-palette bands inside their light
+  (`#ffd27a` heart, `#ffb347` body; 26% · 17% · 9%), so a town at midnight is a warm island.
+- **The buffer**: one buffer pixel = 2×2 art pixels, its origin on an even art pixel (the steps and the dither never
+  crawl as the camera moves), hole sprites cached per radius and never scaled, scaled up once with pixelated sampling.
+- **Fair fights**: a creature past the light is a faint `#4a4480` silhouette (≤ 28%) with its own eye colour lit one
+  pixel per eye (found in its sprite, `findEyes`), fading as a light reaches it. HP bars and names are drawn after the
+  pass; the HUD is DOM and is never darkened.
+- **Night darkness** (Menu → Sound, saved with the Hush): Softer drops the pass to 72% / 80% / 78%.
+- Reduced motion: no flicker (an omen dims every light once, then holds); the falloff is static.
+
 ## The dark-born (2026-10-21, `td-dark-layer.ts`)
 - Drawn **over** the night pass (they are what only the dark shows), in the shadow palette with the hostile dark: a shape
   is 12×22 px of `#140c1c` with a `#6b3aa0` rim at 35% and two `#f0e0ff` eye pixels, its foot dithering into the floor;
@@ -134,6 +151,36 @@ Three palettes join rule 2 for the third vocation (design-bible §4.3 asked to r
 - **The lantern itself**: the lamp-staff's glass is cream with a white heart; at night it is its own light (a hole in the
   night pass and a warm glow) unless shuttered — the shutters swing shut over it as two dark slats.
 - Reduced motion: the rings drawn at full reach, the column and the motes still, the wings not beating.
+
+## The Thornstrider (2026-10-21, `td-thorn-fx.ts`)
+Three palettes join rule 2 for the fourth vocation (design-bible §4.5 asked for Life tones with a rot edge; the bow and
+the briar wanted their own green and bark, the beasts the Verdant's rootglass light, which already ships in td-mobs).
+| Element | Core | Body | Edge | Used by |
+|---|---|---|---|---|
+| Thorn (the bow's green) | `#e8f5b0` | `#8fc25a` | `#4a6b2a` | an arrow's tip, its hit tell, the bow's twang |
+| Wild (the beasts' spirit light) | `#f0fff8` | `#9af0d0` | `#4cb898` | the spirit beast, a called beast, the Stampede, Pack Bond's ring and thread |
+| Briar (bark and thorn) | `#c9a66b` | `#7a5a32` | `#3e2a18` | the Thornroot Snare, a Bramble Trap, the roots at a rooted creature's feet |
+| Blood (a barb's bleed) | `#f08070` | `#c43a3a` | `#6a1a1a` | Barbed Shot's drops, a bleeding creature's pip |
+- **Thorn Shot** (air): an arrow in flight — a pale-green tip, a bark shaft, a pale nock, a green fletch either side of the
+  tail and a dark line under it so it reads on grass and stone. It strikes with splinters thrown back along the flight
+  and a white pixel where it bit (≤ 60% over a body); the creature is knocked a quarter tile back (a boss a fifth of it).
+  The bow's twang is three pale pixels of string snapping back. **Volley**: five (+) of the same arrows in a fan.
+- **Barbed Shot**: the same arrow; the barb leaves blood drops falling and a red pip by the creature while it bleeds.
+- **Command** (lasts while sent): a green chevron over the sent-at foe, bobbing; the beast runs to it.
+- **Pack Bond** (aura): the floor ring in the wild's tones; while the beast is near, a dotted thread of spirit light runs
+  from the Keeper to it.
+- **The spirit beast** (y-sorted, lasts): a fox-wolf of rootglass light (td-pet-art `spiritBeast`), drawn as a pet. A
+  **called beast** and the **Stampede** are its kin, drawn half-seen (78% / 62%) with a mint shadow; the stampede raises
+  hoof-dust behind it; a beast steps in and out of the green in a spiral of leaf pixels.
+- **Thornroot Snare** (ground, lasts): one clump a tile — thorned roots out of torn earth, their tips stepping between
+  two heights; rising, they push up two steps. A rooted creature wears a fringe of thorns at its feet.
+- **Bramble Trap** (ground, lasts): a closed jaw of bramble on a dark mat, a faint ring of its reach; springing, a ring of
+  thorns snaps out to it. Leaves settle over it as it is hidden. **Rootwalk**: moss filling in the footprints behind.
+- **The look**: a moss-green hood, a bark-brown leather coat, wrapped hands, the hunting bow (the kit weapon, the
+  painter's own `bow`) and a leather quiver on the back with three green fletchings over the shoulder — on the back from
+  behind, peeking past the hood from the front, behind the head from the side.
+- Reduced motion: the arrows and the beasts still move (they are the game), but every burst is one still frame, the
+  thorns stand at full height, the thread does not crawl.
 
 ## Order
 1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
