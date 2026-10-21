@@ -88,93 +88,21 @@
 .sb__body b { display: block; font: 700 14px/1.1 var(--font-pixel); color: var(--cozy-cream); }
 .sb__body small { display: block; margin-top: 2px; font: 13px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
 .sb__body em { display: block; margin-top: 2px; font: 600 11px var(--font-pixel); font-style: normal; color: var(--cozy-mana-text); }
-.sb__keys { display: grid; grid-template-columns: repeat(2, 30px); gap: 4px; }
-.sb__keys button, .sb__aura, .sbt__belt { min-width: 30px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
-  box-shadow: var(--cozy-chip); font: 700 12px/1 var(--font-pixel); cursor: pointer; }
-.sb__keys button.on, .sb__aura[aria-pressed="true"], .sbt__belt[aria-pressed="true"] { background: var(--cozy-brass); color: var(--cozy-wood-0); }
-.sb__aura, .sbt__belt { min-height: 44px; min-width: 56px; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .spellbook { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 72%; }
-  .sb__keys { grid-template-columns: repeat(4, 34px); }
-  .sb__keys button { min-height: 44px; min-width: 34px; }
 }
 
-/* ── The skill trees (K, docs/design/skill-trees.md): D2's skill page in the cozy frame — three tabs, tiers top to bottom
-   with the level they open at, prerequisite lines, a rank badge on each skill, the picked skill's card beside it ── */
-.spellbook.sbt { width: min(640px, calc(100% - 32px)); overflow: hidden; }
-.sbt > * { flex: none; }
-.sbt__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
-.sbt__pts { margin: 0; font: 700 14px/1.1 var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
-.sbt__pts--has { color: var(--cozy-glow); }
-.sbt__reset, .sbt__ask button { min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
-  box-shadow: var(--cozy-chip); font: 700 12px/1 var(--font-pixel); cursor: pointer; }
-.sbt__ask { display: flex; align-items: center; gap: 6px; }
-.sbt__ask small { font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-cream); }
-.sbt__ask .sbt__yes { background: var(--cozy-brass); color: var(--cozy-wood-0); }
-.sbt__tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 4px 0 8px; }
-.sbt__tab { min-height: 44px; border: 0; border-radius: 0; background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent);
-  box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
-.sbt__tab small { margin-left: 4px; font-size: 11px; color: var(--cozy-brass-hi); }
-.sbt__tab[aria-selected="true"] { background: var(--cozy-wood-3); color: var(--cozy-glow); box-shadow: var(--cozy-chip), inset 0 -3px 0 0 var(--cozy-brass); }
-/* Four tabs (the three trees and the common page) in one row on a phone. */
-@media (max-width: 480px) { .sbt__tab { font-size: 11px; padding: 0 2px; } .sbt__tab small { margin-left: 2px; } }
-.sbt__body { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 12px; min-height: 0; flex: 1 1 auto; }
-.sbt__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px; background: var(--cozy-well); box-shadow: var(--px-cell-rim); }
-.sbt__tree { position: relative; padding-bottom: 10px; display: grid; grid-template-columns: 34px repeat(3, 1fr); grid-template-rows: repeat(var(--tiers, 5), 70px); align-items: center; justify-items: center; }
-.sbt__lines { position: absolute; top: 0; left: 34px; width: calc(100% - 34px); height: calc(100% - 10px); pointer-events: none; }
-.sbt__lines line { stroke: var(--cozy-wood-3); stroke-width: 4; }
-.sbt__lines line.lit { stroke: var(--cozy-brass); }
-.sbt__lv { grid-column: 1; align-self: center; font: 700 11px/1 var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 45%, transparent); writing-mode: horizontal-tb; }
-.sbt__lv--open { color: var(--cozy-brass-hi); }
-.sbt__node { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 0;
-  background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-3); cursor: pointer; }
-.sbt__node .sbt__icon { display: grid; place-items: center; filter: grayscale(.85) brightness(.75); }
-.sbt__node--learned { background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass-lo); }
-.sbt__node--learned .sbt__icon { filter: none; }
-.sbt__node--buy::after { content: '+'; position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 16px; height: 16px;
-  background: var(--cozy-leaf); color: var(--cozy-wood-0); font: 700 13px/1 var(--font-pixel); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
-.sbt__node--on { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-glow); }
-.sbt__node[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--cozy-glow), 0 0 0 4px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass); }
-.sbt__node--locked { opacity: .55; }
-.sbt__badge { position: absolute; right: -4px; bottom: -4px; min-width: 18px; height: 18px; padding: 0 3px; display: grid; place-items: center;
-  background: var(--cozy-wood-0); color: var(--cozy-cream); font: 700 11px/1 var(--font-pixel); box-shadow: 0 0 0 1px var(--cozy-wood-3); }
-.sbt__node--learned .sbt__badge { background: var(--cozy-brass); color: var(--cozy-wood-0); }
-.sbt__need { position: absolute; left: 50%; bottom: -15px; translate: -50% 0; white-space: nowrap; font: 700 10px/1 var(--font-pixel); color: var(--cozy-berry);
-  text-shadow: 1px 1px 0 var(--cozy-wood-0); }
-.sbt__detail { display: grid; align-content: start; gap: 8px; min-height: 0; overflow: auto; padding: 10px 12px; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
-.sbt__dh { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; }
-.sbt__dh b { display: block; font: 700 16px/1.1 var(--font-pixel); color: var(--cozy-glow); }
-.sbt__dh small { display: block; margin-top: 3px; font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); }
-.sbt__now { margin: 0; font: 13px/1.35 var(--font-ui); color: var(--cozy-cream); }
-.sbt__now em { font-style: normal; color: var(--cozy-brass-hi); }
-.sbt__cost { margin: 0; font: 600 11px var(--font-pixel); color: var(--cozy-mana-text); }
-.sbt__next { display: grid; gap: 2px; padding: 6px 8px; background: color-mix(in srgb, var(--cozy-wood-0) 45%, transparent); }
-.sbt__next b { font: 700 12px/1.2 var(--font-pixel); color: var(--cozy-leaf); }
-.sbt__next small { font: 12px/1.3 var(--font-ui); color: var(--cozy-cream); }
-.sbt__cant { margin: 0; font: 600 11px var(--font-pixel); color: var(--cozy-brass-hi); }
-.sbt__cant q { margin-left: 6px; font: 700 15px var(--font-pixel); color: var(--cozy-glow); quotes: none; }
-.sbt__syn { display: grid; gap: 2px; padding: 6px 8px; box-shadow: var(--px-cell-rim); }
-.sbt__syn b { font: 700 12px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); }
-.sbt__syn small { font: 12px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
-.sbt__syn small.on { color: var(--cozy-leaf); }
-.sbt__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.sbt__learn, .sbt__inscribe { min-height: 44px; min-width: 96px; padding: 0 14px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0);
-  box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
-.sbt__learn:disabled, .sbt__inscribe:disabled { background: var(--cozy-wood-2); color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); cursor: default; }
-.sbt__why { flex: 1 1 100%; font: 600 11px/1.2 var(--font-pixel); color: var(--cozy-berry); }
-.sbt .sb__keys { grid-template-columns: repeat(4, 44px); }
-.sbt .sb__keys button { min-width: 44px; min-height: 44px; }
-@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .spellbook.sbt { left: 8px; right: 8px; width: auto; max-height: calc(100% - 96px); padding: 4px 10px 10px; }
-  .sbt__body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
-  .sbt__tree { grid-template-rows: repeat(var(--tiers, 5), 66px); }
-  .sbt__detail { max-height: 46vh; }
+/* ── The skill trees (K, docs/design/skill-trees.md): the window only — the page inside (points, tabs, the tree board,
+   the card) is play/spellbook/spellbook-page.component, with its own stylesheet. ── */
+.spellbook.sbt { display: flex; flex-direction: column; top: 104px; width: min(820px, calc(100% - 32px)); max-height: calc(100% - 128px); overflow: hidden; padding-bottom: 14px; }
+.spellbook.sbt > .sbt__page { flex: 1 1 auto; min-height: 0; }
+/* Upright phones: a tall sheet, so the board and the card both fit under the title. */
+@media (max-width: 900px) and (orientation: portrait) {
+  .spellbook.sbt { top: auto; left: 8px; right: 8px; width: auto; height: min(calc(100% - 88px), 780px); max-height: none; padding: 10px 10px 10px; }
 }
-/* Landscape phones: the page and the card side by side again, the window as tall as the screen. */
-@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .spellbook.sbt { top: 8px; bottom: 8px; left: auto; width: min(620px, calc(100% - 140px)); max-height: none; }
-  .sbt__body { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: none; }
-  .sbt__detail { max-height: none; }
+/* Sideways phones: a side panel as tall as the screen, the left thumb zone clear. */
+@media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .spellbook.sbt { top: calc(8px + env(safe-area-inset-top, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); left: auto; width: min(660px, calc(100% - 112px)); max-height: none; padding: 4px 10px 8px; }
 }
 
 /* ── The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): a dark plate framed in its rarity,
@@ -691,13 +619,6 @@
     color: var(--cozy-cream); background: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-mana-lo); }
   .stage--td .td-soul .soul-pip { width: 2px; height: 2px; box-shadow: 0 -2px 0 var(--cozy-mana-hi), 0 2px 0 var(--cozy-mana-lo); }
 }
-/* The Spellbook's inscribing row. */
-.sbt__stone { display: grid; gap: 3px; margin: 6px 0 0; padding: 6px 8px; background: color-mix(in srgb, var(--cozy-wood-0) 55%, transparent); box-shadow: inset 0 0 0 1px var(--cozy-brass-lo); }
-.sbt__stone > b { display: flex; align-items: center; gap: 6px; font: 700 12px var(--cozy-font-read); color: var(--cozy-brass-hi); }
-.sbt__stone > b img { image-rendering: pixelated; }
-.sbt__stone small { font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
-.sbt__stone-acts { display: flex; flex-wrap: wrap; gap: 6px; }
-
 /* ── Grave-goods on the item card (shared/grave-goods) ── */
 /* A curse: berry red, its gift and its price; laid to rest, it greys to brass. */
 .d2tip__curse { display: grid; gap: 2px; padding: 6px 6px 5px; border-top: 1px solid color-mix(in srgb, var(--cozy-berry) 55%, transparent);
