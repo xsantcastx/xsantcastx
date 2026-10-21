@@ -6,15 +6,31 @@ const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dod
 export interface RoomPlayer {
   id: string; name: string; x: number; y: number; zone: string; facing?: number; animation?: string;
   area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; vocation?: string; look?: string; level?: number;
+  /** Protocol 3: life, for the party frames. */
+  hp?: number; maxHp?: number;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
 export interface RoomEmote { id: string; from: string; name: string; to: string | null; kind: 'wave'; at: number }
-export interface RoomSnapshot { status: string; connected: boolean; players: RoomPlayer[]; messages: RoomMessage[]; id: string; protocol?: number }
+/** Protocol 3: a party (ids of Keepers in the room; the leader first among them). */
+export interface RoomParty { id: string; leader: string; members: string[] }
+/** An invite waiting on this Keeper's answer (it lapses at `until`, the server's clock). */
+export interface RoomInvite { id: string; from: string; name: string; to: string; until: number }
+/** A creature a party member felled, as the room relays it: where the killer last stood is the room's own record. */
+export interface RoomPartyKill { id: string; from: string; name: string; creature: string; level: number; hp: number; xp?: number; area: string; x: number; y: number; at: number }
+/** Something that happened to the party: a member joined, left or was sent away; an invite was declined. */
+export interface RoomPartyNote { kind: 'joined' | 'left' | 'kicked' | 'declined'; name: string; id: string }
+export interface RoomSnapshot {
+  status: string; connected: boolean; players: RoomPlayer[]; messages: RoomMessage[]; id: string; protocol?: number;
+  /** Protocol 3 (absent or empty against an older room). */
+  party?: RoomParty | null; invites?: RoomInvite[]; partyMessages?: RoomMessage[];
+}
+/** The room's party verbs (protocol 3). */
+export const PARTY_PROTOCOL = 3;
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
 export interface RoomProfile { vocation?: string; look?: string; level?: number }
 /** The top-down presence beyond x/y/zone/facing/animation. */
-export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean }
+export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number }
 export interface RoomOptions {
   /**
    * Always on (owner 2026-10-21: "the chat should always be connected"): a dropped stream, an expired session or a
@@ -29,6 +45,10 @@ export interface RoomOptions {
   now?: () => number;
   /** A Wave arrived over the stream. */
   onEmote?: (emote: RoomEmote) => void;
+  /** Protocol 3: a party member felled a creature (the host decides whether to share its XP: party-share.ts). */
+  onPartyKill?: (kill: RoomPartyKill) => void;
+  /** Protocol 3: someone joined, left or was sent away; an invite was declined. */
+  onPartyNote?: (note: RoomPartyNote) => void;
 }
 
 /** The Hearth room's service (scripts/social-deployment.md). */
@@ -76,6 +96,11 @@ export function cleanPresence(p: RoomPresence): RoomPresence {
   if (typeof p.vocation === 'string' && /^[a-z]{1,16}$/.test(p.vocation)) out.vocation = p.vocation;
   if (typeof p.look === 'string' && /^[a-z0-9.]{1,48}$/.test(p.look)) out.look = p.look;
   if (Number.isInteger(p.level)) out.level = Math.max(1, Math.min(999, p.level as number));
+  // Life (protocol 3): both or neither, whole, never above the most (a v2 room ignores them).
+  if (Number.isFinite(p.hp) && Number.isFinite(p.maxHp) && (p.maxHp as number) >= 1) {
+    const max = Math.min(1e6, Math.round(p.maxHp as number));
+    out.maxHp = max; out.hp = Math.max(0, Math.min(max, Math.round(p.hp as number)));
+  }
   return out;
 }
 
@@ -97,7 +122,7 @@ export class SocialRoom {
   private wanted: { name: string; profile: RoomProfile } | null = null;
   /** The page is out of sight: no stream, no updates; the session is kept for the return. */
   private paused = false;
-  private snapshot: RoomSnapshot = { status: SOLO, connected: false, players: [], messages: [], id: '', protocol: 0 };
+  private snapshot: RoomSnapshot = { status: SOLO, connected: false, players: [], messages: [], id: '', protocol: 0, party: null, invites: [], partyMessages: [] };
   private readonly endpoint: string;
   private readonly keepAlive: boolean;
   private readonly send: (url: string, init?: RequestInit) => Promise<Response>;
@@ -132,7 +157,7 @@ export class SocialRoom {
     this.publish({ status: 'Joining the hearth…' });
     try {
       const response = await this.send(`${this.endpoint}/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: wanted.name, ...wanted.profile }), signal: AbortSignal.timeout(8000),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true }), signal: AbortSignal.timeout(8000),
       });
       if (!response.ok) throw new Error('Join failed');
       const result = await response.json();
@@ -165,7 +190,7 @@ export class SocialRoom {
     this.reconnectAttempts = 0; this.updating = false; this.lastUpdate = -Infinity; this.lastBody = '';
     const token = this.token; this.token = '';
     if (token) void this.post('leave', {}, token).catch(() => {});
-    this.publish({ connected: false, players: [], messages: [], id: '' });
+    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [] });
   }
   private async listen(generation: number, signal: AbortSignal): Promise<void> {
     let openedAt: number | undefined;
@@ -193,7 +218,10 @@ export class SocialRoom {
           const packet = pending.slice(0, end); pending = pending.slice(end + 2);
           const line = packet.split('\n').find(line => line.startsWith('data:'));
           if (!line || generation !== this.generation) continue;
-          let data: { type?: string; players?: RoomPlayer[]; messages?: RoomMessage[]; message?: RoomMessage; emote?: RoomEmote };
+          let data: {
+            type?: string; players?: RoomPlayer[]; messages?: RoomMessage[]; message?: RoomMessage; emote?: RoomEmote;
+            party?: RoomParty | null; invite?: RoomInvite; kill?: RoomPartyKill; note?: RoomPartyNote;
+          };
           try { data = JSON.parse(line.slice(5)); } catch { continue; }
           if (data.type === 'snapshot') this.publish({ players: data.players ?? [], messages: data.messages ?? [] });
           if (data.type === 'players') this.publish({ players: data.players ?? [] });
@@ -202,6 +230,7 @@ export class SocialRoom {
             this.publish({ messages: [...this.snapshot.messages, message].slice(-50) });
           }
           if (data.type === 'emote' && data.emote?.kind === 'wave') this.options.onEmote?.(data.emote);
+          this.partyEvent(data);
         }
       }
       if (!signal.aborted) throw new Error('Stream ended');
@@ -224,6 +253,59 @@ export class SocialRoom {
       await reader?.cancel().catch(() => {});
       reader?.releaseLock();
     }
+  }
+  /** Protocol 3's events: the party as it stands, an invite, a party line, a kill, a note. */
+  private partyEvent(data: { type?: string; party?: RoomParty | null; messages?: RoomMessage[]; invite?: RoomInvite; message?: RoomMessage; kill?: RoomPartyKill; note?: RoomPartyNote }): void {
+    if (data.type === 'party') {
+      const p = data.party;
+      const party = p && typeof p.id === 'string' && typeof p.leader === 'string' && Array.isArray(p.members) ? { id: p.id, leader: p.leader, members: p.members.filter(m => typeof m === 'string').slice(0, 4) } : null;
+      const same = !!party && party.id === this.snapshot.party?.id;
+      const lines = Array.isArray(data.messages) ? data.messages.slice(-30) : same ? this.snapshot.partyMessages ?? [] : [];
+      // In a party, no invite stands any more (the room spends them on accept).
+      this.publish({ party, partyMessages: party ? lines : [], invites: party ? [] : this.snapshot.invites ?? [] });
+    }
+    if (data.type === 'invite' && data.invite && typeof data.invite.id === 'string') {
+      const inv = data.invite;
+      if (!(this.snapshot.invites ?? []).some(i => i.id === inv.id)) this.publish({ invites: [...(this.snapshot.invites ?? []), inv].slice(-3) });
+    }
+    const m = data.message;
+    if (data.type === 'party-chat' && m && !(this.snapshot.partyMessages ?? []).some(x => x.id === m.id)) {
+      this.publish({ partyMessages: [...(this.snapshot.partyMessages ?? []), m].slice(-30) });
+    }
+    if (data.type === 'party-kill' && data.kill) this.options.onPartyKill?.(data.kill);
+    if (data.type === 'party-note' && data.note) this.options.onPartyNote?.(data.note);
+  }
+  /** The room knows parties (protocol 3) and the Keeper is in it. */
+  get canParty(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= PARTY_PROTOCOL; }
+  /** Ask a Keeper into the party (a new one on their yes, when there is none yet). The refusal's words, or ''. */
+  async invite(to: string): Promise<string> { return this.partyCall('invite', { to }); }
+  /** Answer an invite: yes or no. It leaves the list either way. */
+  async answer(inviteId: string, yes: boolean): Promise<string> {
+    this.publish({ invites: (this.snapshot.invites ?? []).filter(i => i.id !== inviteId) });
+    return this.partyCall(yes ? 'accept' : 'decline', { invite: inviteId });
+  }
+  /** An invite left unanswered past its time (the toast's own timer): gone from the list, nothing sent. */
+  forgetInvite(inviteId: string): void { this.publish({ invites: (this.snapshot.invites ?? []).filter(i => i.id !== inviteId) }); }
+  async leaveParty(): Promise<string> { return this.partyCall('leave', {}); }
+  async kick(member: string): Promise<string> { return this.partyCall('kick', { member }); }
+  async partyChat(text: string): Promise<boolean> { return (await this.partyCall('chat', { text })) === ''; }
+  /** Tell the party a creature fell to this Keeper (fire and forget; nothing waits on it). */
+  partyKill(kill: { creature: string; level: number; hp: number; xp?: number; area: string }): void {
+    if (!this.canParty || !this.snapshot.party || this.snapshot.party.members.length < 2) return;
+    void this.partyCall('kill', kill);
+  }
+  /** One party verb: '' when it went through, else the room's words (or a plain fallback). */
+  private async partyCall(verb: string, body: unknown): Promise<string> {
+    if (!this.canParty || !this.token) return 'offline';
+    try {
+      const response = await this.send(`${this.endpoint}/party/${verb}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(5000),
+      });
+      if (response.ok) return '';
+      const said = await response.json().catch(() => null) as { error?: unknown } | null;
+      return typeof said?.error === 'string' && said.error ? said.error.slice(0, 120) : 'failed';
+    } catch { return 'failed'; }
   }
   /**
    * The page went out of sight (a tab switch, the phone asleep): close the stream and stop updates, keep the session.

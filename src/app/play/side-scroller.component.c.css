@@ -699,3 +699,54 @@
   .stage--td .td-chat__log { max-height: 34px; }
   .stage--td .td-peer { top: calc(var(--hud-safe-t) + 12px); }
 }
+/* ── Parties (protocol 3; docs/design/online.md Phase 2) ── */
+/* The peer card's second button: a quieter wood one under Wave; the "in your party" line in gold. */
+.td-peer__invite { background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important; box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 1px var(--cozy-brass) !important; }
+.td-peer__mate { color: var(--cozy-glow); font-weight: 700; }
+.td-peer__later { font-size: 12px; opacity: .75; font-style: italic; }
+.td-peer__quiet { min-height: 44px; padding: 0 12px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer;
+  border: 0 !important; border-radius: 0 !important; background: transparent !important; color: var(--cozy-cream) !important; box-shadow: inset 0 0 0 1px var(--cozy-wood-2) !important; }
+/* The invite: a parchment-on-wood toast high in the world, Accept in brass, Decline in wood. */
+.td-invite { position: absolute; z-index: 13; top: calc(var(--hud-top, 0px) + 72px); left: 50%; translate: -50% 0; width: min(300px, calc(100% - 32px)); box-sizing: border-box;
+  display: grid; gap: 6px; padding: 10px 12px 12px; background: var(--cozy-wood-1); color: var(--cozy-cream); pointer-events: auto;
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-glow), 0 0 0 6px var(--cozy-wood-0); font: 500 13px/1.3 var(--cozy-font-read); }
+.td-invite__line { margin: 0; font: 700 14px/1.25 var(--font-pixel); color: var(--cozy-glow); overflow-wrap: anywhere; }
+.td-invite__why { margin: 0; font-size: 12px; opacity: .85; }
+.td-invite__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.td-invite__row button { min-height: 44px; padding: 0 10px !important; font: 700 13px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer;
+  border: 0 !important; border-radius: 0 !important; box-shadow: 0 0 0 2px var(--cozy-wood-0) !important; }
+.td-invite__yes { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.td-invite__no { background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important; }
+/* The party frames: a small wood column under the Keeper's own plate (desktop); name, class · level, life, where. */
+.td-party { position: absolute; z-index: 6; left: 16px; top: calc(var(--hud-top, 0px) + 150px); width: 196px; box-sizing: border-box; display: grid; gap: 4px; padding: 6px 8px 8px;
+  max-height: calc(100dvh - var(--hud-top, 0px) - 420px); overflow-y: auto; pointer-events: auto;
+  background: color-mix(in srgb, var(--cozy-wood-0) 82%, transparent); box-shadow: 0 0 0 2px var(--cozy-wood-1), 0 0 0 4px var(--cozy-wood-0);
+  font: 500 12px/1.25 var(--cozy-font-read); color: var(--cozy-cream); }
+.td-party__head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.td-party__head b { font: 700 11px/1 var(--cozy-font-read); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-glow); }
+.td-party__leave { min-height: 26px; padding: 0 8px !important; font: 700 11px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer;
+  border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important; box-shadow: 0 0 0 1px var(--cozy-wood-0) !important; }
+.td-party__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.td-party__frame { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 6px; }
+.td-party__name { font: 700 12px/1.2 var(--font-pixel); color: var(--cozy-glow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-party__line { justify-self: end; opacity: .8; white-space: nowrap; }
+.td-party__crown { display: inline-block; width: 8px; height: 6px; margin-right: 4px; vertical-align: 1px; background: var(--cozy-brass);
+  clip-path: polygon(0 100%, 0 0, 25% 50%, 50% 0, 75% 50%, 100% 0, 100% 100%); }
+.td-party__bar { grid-column: 1 / -1; display: block; height: 6px; background: var(--cozy-wood-0); box-shadow: inset 0 0 0 1px var(--cozy-wood-2); }
+.td-party__bar i { display: block; height: 100%; width: calc(var(--hp, 1) * 100%); background: var(--cozy-berry); }
+.td-party__where { grid-column: 1 / -1; opacity: .75; font-size: 11px; }
+.td-chat__party b { color: var(--cozy-glow); }
+.td-chat__party { color: var(--cozy-brass-hi); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* Phones: a narrow column at the left edge, above the spell column; the class line and the leave button stay. */
+  .stage--td .td-party { left: 8px; top: calc(var(--hud-safe-t, 0px) + 112px); width: 132px; padding: 4px 6px 6px; gap: 3px;
+    max-height: calc(50dvh - var(--hud-safe-t, 0px) - 120px); }
+  .stage--td .td-party__frame { grid-template-columns: minmax(0, 1fr); }
+  .stage--td .td-party__line { justify-self: start; font-size: 10px; }
+  .stage--td .td-party__leave { min-height: 32px; }
+  .stage--td .td-invite { top: calc(var(--hud-safe-t, 0px) + 124px); z-index: 42; }
+}
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage--td .td-party { top: calc(var(--hud-safe-t, 0px) + 12px); left: 180px; max-height: calc(100dvh - var(--hud-safe-t, 0px) - 120px); }
+  .stage--td .td-invite { top: calc(var(--hud-safe-t, 0px) + 12px); }
+}

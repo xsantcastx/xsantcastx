@@ -117,7 +117,7 @@ import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, heart
 import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
-import { PEER_PLATE, TdPeers } from './td-peers';
+import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
 import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
@@ -351,6 +351,8 @@ export class TopDownEngine {
   private waking: { t: number; moved: boolean } | null = null;
   private hearthSeen = '';
   /** For the hearth specs (`?fxfall=1`, only under an automated browser): `window.__tdHearth` can fell the Keeper and stand him at a hearth. */
+  /** For the party spec (`?fxparty=1`, only under an automated browser): `window.__tdParty` fells the nearest creature (the real kill path) or hurts the Keeper. */
+  private readonly fxParty = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxparty=1\b/.test(location.search);
   private readonly fxFall = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxfall=1\b/.test(location.search);
   /**
    * For the elite specs (`?fxelite=1`, only under an automated browser): a champion pack east of the Keeper and a named
@@ -522,6 +524,16 @@ export class TopDownEngine {
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
       hearths: () => this.hearths.map(h => h.id),
     };
+    if (this.fxParty) (window as unknown as Record<string, unknown>)['__tdParty'] = {
+      // A Rivet Maw laid beside the Keeper and felled at once, through the real kill (onKill: XP, the party's share).
+      smite: (type = 'rivet-maw') => {
+        const def = MOBS[type]; if (!def) return null;
+        const p = this.player, m = this.mobs.place(`fx-party:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + 24, p.y);
+        this.mobs.smite(m);
+        return m.def.id;
+      },
+      hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); this.lastHurt = this.time; },
+    };
   }
 
   // ── Lifecycle (the component's contract) ───────────────────────────────────
@@ -547,6 +559,7 @@ export class TopDownEngine {
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
+    if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
@@ -991,6 +1004,8 @@ export class TopDownEngine {
       x: Math.round(r.left + (p.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (p.y - 16 - this.cam.y) * this.scale / k),
     }));
   }
+  /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
+  setParty(ids: readonly string[]): void { this.peers.party = new Set(ids); }
   /** The local Keeper is waving. */
   get selfWaving(): boolean { return this.peers.waving('', this.time); }
   setHearths(s: { lit: readonly string[]; wake: string | null; blessings: number }): void {
@@ -1768,8 +1783,14 @@ export class TopDownEngine {
     return l ? { continent: l.continent, level, x, y, floor: l.floor, ax: l.ax, ay: l.ay } : { continent, level, x, y, floor: 0, ax: x, ay: y };
   }
   /** What the Seek can point at: the fallen purse, every boss in its hall, every task giver with a task to hand in. */
-  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story'; id: string; name: string; place: SeekPlace }[] {
-    const out: { kind: 'boss' | 'quest' | 'purse' | 'story'; id: string; name: string; place: SeekPlace }[] = [];
+  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party'; id: string; name: string; place: SeekPlace }[] {
+    const out: { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party'; id: string; name: string; place: SeekPlace }[] = [];
+    // Party members (protocol 3), sought by name ("lum vesh Mira"): their area is a continent's surface or a floor's id.
+    for (const m of this.peers.partyWhere()) {
+      const link = this.levelLinks().get(m.area);
+      const place = link ? this.seekPlace(link.continent, m.area, m.x, m.y) : CONTINENTS[m.area] ? this.seekPlace(m.area, null, m.x, m.y) : null;
+      if (place) out.push({ kind: 'party', id: m.id, name: m.name, place });
+    }
     const pu = this.purse, m = pu ? /^td:([^|]+)\|(.+)$/.exec(pu.area) : null;
     if (pu && m) out.push({ kind: 'purse', id: 'purse', name: 'purse', place: this.seekPlace(m[1], m[2] === 'surface' ? null : m[2], pu.x, pu.y) });
     for (const b of levelSpawns(LEVELS, id => MOBS[id]?.rank === 'boss')) {
@@ -1803,7 +1824,7 @@ export class TopDownEngine {
       if (!pick) { this.options.onSeek?.({ kind: 'unknown', id: '', name, dir: null, band: 'veryFar', floor: 'here', sea: false }); return false; }
     } else {
       // The purse first (a fall to set right), then the story's next place (the chain under way), then the nearest.
-      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
+      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse' && t.kind !== 'party').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
     }
     if (!pick) return false;
     const r = pick.r;
@@ -2317,6 +2338,14 @@ export class TopDownEngine {
     for (const st of this.level.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
     if (this.level === this.world) for (const kp of this.keepers) if (kp.kid && this.taskMarks[kp.kid]) dot(kp.x, kp.y, Math.max(2, k - 1), this.taskMarks[kp.kid] === '?' ? '#ffd27a' : '#f3e7cf');
     if (this.level === this.world) for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
+    // Party members (protocol 3): a gold mark where they stand, or a pip on the rim pointing their way.
+    const area = this.peerArea();
+    for (const m of this.peers.partyWhere()) {
+      if (m.area !== area) continue;
+      const dx = (m.x - this.player.x) / TILE * k, dy = (m.y - this.player.y) / TILE * k, lim = W / 2 - 4;
+      const f = Math.max(Math.abs(dx), Math.abs(dy)) > lim ? lim / Math.max(Math.abs(dx), Math.abs(dy)) : 1;
+      dot(this.player.x + dx * f / k * TILE, this.player.y + dy * f / k * TILE, Math.max(2, k - 1), PARTY_PLATE);
+    }
     dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
   }
 
@@ -2747,7 +2776,7 @@ export class TopDownEngine {
     // Other Keepers' name plates (name · level) and Waves (over them and over the Keeper).
     for (const p of this.peers.drawn) {
       if (!inView(p.x, p.y)) continue;
-      this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, PEER_PLATE);
+      this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
       if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - 52, this.time, this.still);
     }
     if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - 46, this.time, this.still);
