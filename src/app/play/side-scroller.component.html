@@ -170,6 +170,7 @@
         <div class="ks__tabs" role="tablist">
           <button type="button" role="tab" [attr.aria-selected]="sheetTab === 'attrs'" (click)="sheetTab = 'attrs'">{{ t('play.lvl.tab.attrs') }}</button>
           <button type="button" role="tab" data-sheet-milestones [attr.aria-selected]="sheetTab === 'milestones'" (click)="sheetTab = 'milestones'; milestonePage = -1">{{ t('play.lvl.tab.milestones') }}</button>
+          <button type="button" role="tab" data-sheet-lore [attr.aria-selected]="sheetTab === 'lore'" (click)="sheetTab = 'lore'">{{ t('lore.tab') }}</button>
         </div>
         @if (sheetTab === 'milestones') {
           @if (milestoneView; as mv) {
@@ -193,6 +194,18 @@
               <button type="button" class="px-arrow px-arrow--next" [disabled]="mv.page >= mv.pages - 1" (click)="pageMilestones(1)" [attr.aria-label]="t('play.lvl.pageNext')"></button>
             </p>
           }
+        } @else if (sheetTab === 'lore') {
+          <!-- The lore log (shared/lore): pages of the world's history, the fifth calling's among them. -->
+          <div class="ks__lore" data-lore>
+            <p class="ks__lore-lead">{{ t('lore.lead') }}</p>
+            @for (pg of lorePages; track pg.id) {
+              <article class="ks__lore-page" [attr.data-lore-page]="pg.id">
+                <small>{{ t(pg.kicker) }}</small>
+                <h3>{{ t(pg.title) }}</h3>
+                @for (para of pg.body; track para) { <p>{{ t(para) }}</p> }
+              </article>
+            }
+          </div>
         } @else {
         <p class="ks__left" [class.ks__left--has]="sh.left > 0">{{ t('play.td.points', { n: sh.left }) }} <small>{{ t('play.lvl.skillPoints', { n: sh.skillPoints }) }}</small></p>
         <ul class="sb__list">

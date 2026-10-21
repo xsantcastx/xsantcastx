@@ -30,6 +30,8 @@ import { KeeperMakerComponent } from '../../shared/keeper-look/keeper-maker.comp
 import { SideScrollerComponent } from '../side-scroller.component';
 import { StoryService } from '../../shared/story/story.service';
 import { LOBBY_I18N } from './lobby.i18n';
+import { LORE_I18N } from '../../shared/lore/lore.i18n';
+import { lorePage } from '../../shared/lore/lore';
 import { paintTitleArt, titleArtSize } from './title-art';
 import { CAMP_SLOTS, CampArt, type CampFigure, type CampLayout, type Rect, campLayout, spotBox } from './camp-art';
 import { hasMeaningfulSave, summarise } from './character-summary';
@@ -41,6 +43,9 @@ import {
 const ART_FPS = 12;
 /** How long a resuming sign-in may hold the quiet "waking" screen before the list shows anyway. */
 const AUTH_WAIT_MS = 8000;
+
+/** The Wanewalker's shape by the fire: a hooded, robed figure (painted as a pale silhouette). */
+const GHOST_LOOK: KeeperLook = coerceLook({ made: true, vocation: 'warlock', form: 'fem', hair: 'long' });
 
 /** The four callings by the fire on the Glass, each with a look of its own so they read as four people. */
 const CLASS_FIGURES: ReadonlyArray<{ vocation: Vocation; look: KeeperLook }> = VOCATIONS.map((vocation, i) => ({
@@ -127,7 +132,11 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor() {
     this.i18n.register(LOBBY_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
+    this.i18n.register(LORE_I18N);
   }
+
+  /** The Wanewalkers' quote, for the Glass's locked figure. */
+  get ghostQuote(): string { return this.t(lorePage('wanewalkers')?.quote ?? ''); }
 
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
@@ -369,6 +378,9 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** On the Glass: a calling by the fire was clicked (the maker's own cards do the same, and say which is chosen). */
+  /** The locked fifth figure's note (the lore's quote) is open. */
+  lockedTip = false;
+
   chooseClass(v: Vocation): void {
     this.maker?.setVocation(v);
     this.dirty = true;
@@ -564,9 +576,11 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.mode === 'create') {
       // The chosen calling steps forward wearing the look being made (its hair, its colours), the others stand by.
       const draft = this.maker?.draft;
-      return CLASS_FIGURES.map(f => f.vocation === draft?.vocation
+      const callings: CampFigure[] = CLASS_FIGURES.map(f => f.vocation === draft?.vocation
         ? { key: this.draftKey(), look: draft, chosen: true }
         : { key: 'class:' + f.vocation, look: f.look, chosen: false });
+      // The fifth place: the Wanewalker, a calling not yet open (shared/lore), a faint figure at the back.
+      return [...callings, { key: 'ghost', look: GHOST_LOOK, chosen: false, ghost: true }];
     }
     return this.rows.slice(0, CAMP_SLOTS.length).map(row => ({ key: row.vocation + '#' + JSON.stringify(row.look), look: this.rowLook(row), chosen: row.id === this.picked }));
   }

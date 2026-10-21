@@ -279,14 +279,44 @@
 .plate__cloud { color: var(--cozy-mana-text); }
 .plate .select__empty { margin: 0; }
 
-/* The Glass by the fire: on a wide screen the fire takes the left, the window the right; narrower, it glows behind. */
-.camp__stage--glass { display: none; grid-area: auto; }
+/* The Glass by the fire, on every screen: the fire on top on a phone (the window below it), beside the window held
+   sideways and on a wide screen. The stage clips its figures' buttons so none reaches over the window. */
+.camp__stage--glass { grid-area: auto; display: block; align-self: stretch; justify-self: stretch; overflow: hidden; }
+.lobby[data-lobby="create"] {
+  grid-template-rows: clamp(150px, 27dvh, 300px) minmax(0, 1fr);
+  row-gap: 8px;
+  place-items: stretch;
+}
+.lobby[data-lobby="create"] .create { justify-self: center; min-height: 0; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .lobby[data-lobby="create"] { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(0, 470px); column-gap: 10px; }
+  .create__foot { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .create .win__head { padding: 4px 8px 6px; }
+}
 @media (min-width: 900px) and (min-height: 560px) {
-  .lobby[data-lobby="create"] { grid-template-columns: minmax(0, 1fr) minmax(0, 680px); gap: 16px; }
-  .lobby[data-lobby="create"] .camp__stage--glass { display: block; align-self: stretch; justify-self: stretch; }
+  .lobby[data-lobby="create"] { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(0, 680px); column-gap: 16px; }
 }
 .keeper--class { background: none; }
 .keeper--class:hover { outline: 2px dashed color-mix(in srgb, var(--cozy-glow) 50%, transparent); outline-offset: 2px; }
+.keeper--locked { background: none; cursor: help; }
+.keeper--locked:focus-visible, .keeper--locked:hover { outline: 2px dotted color-mix(in srgb, var(--cozy-mana-text) 60%, transparent); outline-offset: 2px; }
+.camp__tip {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+  width: min(260px, 80vw);
+  margin: 0;
+  padding: 8px 10px;
+  font-family: var(--cozy-font-read);
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--cozy-ink);
+  background: var(--cozy-parch);
+  border: 2px solid var(--cozy-parch-edge);
+}
+.camp__tip b { display: block; font-family: var(--font-game); color: var(--cozy-ink); }
 
 /* A phone held sideways: the fire on the left, the plate and buttons beside it. */
 @media (orientation: landscape) and (max-height: 520px) {
