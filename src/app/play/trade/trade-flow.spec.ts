@@ -1,8 +1,8 @@
 /**
  * trade-flow.spec.ts — the client trade and ground state machines (trade-flow.ts) against the REAL server core
- * (functions/src/trade-core.ts over its in-memory Db) and a fake room that relays like the Hearth.
+ * (functions-game/src/trade-core.ts over its in-memory Db) and a fake room that relays like the Hearth.
  */
-import * as core from '../../../../functions/src/trade-core';
+import * as core from '../../../../functions-game/src/trade-core';
 import type { RoomTrade, RoomTradeEnd } from '../social/social-room';
 import { GroundFlow, TradeFlow, type TradeBackend, type TradeRoom } from './trade-flow';
 
