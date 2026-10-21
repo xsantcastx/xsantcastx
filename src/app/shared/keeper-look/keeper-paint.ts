@@ -760,6 +760,20 @@ export class KeeperPainter {
     const old = garb?.elder ? 1 : 0;
     const hx = cx - 7 + old, hy = HEAD_TOP + uy + f.nod + old;
     this.head(c, hx, hy, face);
+
+    // 7b. A quiver on the back (the Thornstrider), over the hood's fall: a leather tube slung from the back shoulder toward
+    // the hip, three arrows' green fletchings standing up out of its mouth behind the head.
+    if (garb?.quiver) {
+      const q = garb.quiver, qx = cx - half - 2, qy = SHOULDER + 1 + uy;
+      for (let i = 0; i < 8; i++) { const x = qx + Math.floor(i / 3); px(c, x, qy + i, 3, 1, q); px(c, x, qy + i, 1, 1, light(q, .2)); px(c, x + 2, qy + i, 1, 1, dark(q, .35)); }
+      px(c, qx, qy, 3, 1, dark(q, .45)); px(c, qx + 2, qy + 7, 2, 1, dark(q, .4));
+      // The arrows: shafts up and back out of the mouth, a green fletch on each (one lit, one in shade), a pale nock.
+      for (const [dx, h] of [[-1, 3], [0, 5], [1, 2]] as const) {
+        px(c, qx + dx, qy - h, 1, h, '#a07a4a');
+        px(c, qx + dx - 1, qy - h - 2, 2, 2, dx === 0 ? '#b4e08a' : '#6eae52');
+      }
+      px(c, qx - 2, qy - 4, 1, 1, '#467a38'); px(c, qx, qy - 8, 1, 1, '#e8dcc0');
+    }
     if (garb?.book) {
       // An open book that floats beside the head, its runes lit.
       const bx = hx + HW + 1, by = hy + 2;

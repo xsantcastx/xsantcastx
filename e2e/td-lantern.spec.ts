@@ -76,8 +76,8 @@ test.describe('the Lanternwright', () => {
     await list.locator('[data-lobby-new]').click();
     const glass = page.locator('.lobby[data-lobby="create"]');
     await expect(glass).toBeVisible({ timeout: 20000 });
-    // The calling: three cards, the Warlock first and chosen; the Lanternwright third.
-    await expect(glass.locator('.km__classcard')).toHaveCount(3);
+    // The calling: four cards, the Warlock first and chosen; the Lanternwright third.
+    await expect(glass.locator('.km__classcard')).toHaveCount(4);
     const warlock = glass.locator('.km__classcard[data-vocation="warlock"]'), lw = glass.locator('.km__classcard[data-vocation="lanternwright"]');
     await expect(warlock).toHaveAttribute('aria-checked', 'true');
     await expect(lw).toContainText('Lanternwright');

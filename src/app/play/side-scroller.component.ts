@@ -96,6 +96,7 @@ import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
 import { LANTERN_I18N } from './td/td-lantern.i18n';
+import { THORN_I18N } from './td/td-thorn.i18n';
 import { ACCOUNT_I18N } from '../shared/account/account.i18n';
 import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
 import { GLIM_I18N } from '../shared/glim/glim.i18n';
@@ -840,6 +841,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HUD_I18N);
     this.i18n.register(ASHGUARD_I18N);
     this.i18n.register(LANTERN_I18N);
+    this.i18n.register(THORN_I18N);
     this.i18n.register(TOWN_TASKS_I18N);
     this.i18n.register(ACCOUNT_I18N);
     this.i18n.register(TOOLS_I18N);
