@@ -30,6 +30,7 @@ describe('CookieBannerComponent', () => {
   afterEach(() => {
     fixture?.destroy();
     document.documentElement.style.removeProperty(CONSENT_DOCK_VAR);
+    sessionStorage.removeItem('consent-later');
   });
 
   it('shows nothing once a choice exists', () => {
@@ -44,7 +45,7 @@ describe('CookieBannerComponent', () => {
     expect(bar).not.toBeNull();
     expect(bar.hasAttribute('data-engine-ignore')).toBeTrue();
     const buttons = bar.querySelectorAll('button');
-    expect(buttons.length).toBe(2);
+    expect(buttons.length).toBe(3); // Accept, Essential Only, and "Not now"
     expect(dock()).toMatch(/^\d+px$/);
   });
 
@@ -65,6 +66,16 @@ describe('CookieBannerComponent', () => {
     fixture.detectChanges();
     expect(consent.acceptAnalyticsConsent).toHaveBeenCalledTimes(1);
     expect(analytics.trackConsentDecision).toHaveBeenCalledWith('accepted');
+    expect(dock()).toBe('');
+  });
+
+  it('in-world Not now closes the bar without answering and releases the frame', () => {
+    create(false, true);
+    (fixture.nativeElement.querySelector('.cookie-later') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(consent.denyConsent).not.toHaveBeenCalled();
+    expect(consent.acceptAnalyticsConsent).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.cookie-banner')).toBeNull();
     expect(dock()).toBe('');
   });
 

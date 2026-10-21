@@ -189,12 +189,15 @@ test.describe('the fix itself', () => {
       return {
         lig,
         fi: w(f, 'fi'), parts: w(f, 'f') + w(f, 'i'),
+        ff: w(f, 'ff'), fff: w(f, 'fff'), f1: w(f, 'f'),
         five: w(f, '5'), inter5: w('8px Inter', '5'),
         ok: document.fonts.check('13px "Pixelify Sans"', '5') && document.fonts.check('13px "Pixelify Sans"', 'a'),
       };
     });
     expect(r.lig).toBe('none');
     expect(Math.abs(r.fi - r.parts)).toBeLessThan(.6);   // two glyphs, not the ligature's one
+    expect(Math.abs(r.ff - 2 * r.f1)).toBeLessThan(.6);   // "ff" is two f's: the font ships without its ff ligature
+    expect(Math.abs(r.fff - 3 * r.f1)).toBeLessThan(.6);
     expect(Math.abs(r.five - r.inter5)).toBeLessThan(.6);   // a 5 in the pixel stack is Inter's 5
   });
 });

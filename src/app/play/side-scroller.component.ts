@@ -3286,7 +3286,11 @@ export class SideScrollerComponent implements OnDestroy {
     if (!target || !this.engine) return;
     // The prologue: walk to the step's thing and use it (light the hearth, talk to the Sexton, close in, the coins).
     if ('guide' in target) {
-      const went = (this.engine as unknown as { guideGo?: () => boolean }).guideGo?.() ?? false;
+      const eng = this.engine as unknown as { guideGo?: () => boolean; guideFar?: () => number };
+      // Far off (over ~40 tiles) it does not walk the whole way: Glim points and says how far.
+      const far = eng.guideFar?.() ?? 0;
+      if (far > 0) { this.message = this.t('play.pro.far', { n: far }); this.focusWorld(); return; }
+      const went = eng.guideGo?.() ?? false;
       if (!went) this.message = this.t(this.state.paused ? 'play.hud.msg.closeFirst' : target.guide === 'foe' || target.guide === 'gold' ? 'play.pro.none' : 'play.hud.msg.cannotTravel');
       this.focusWorld();
       return;

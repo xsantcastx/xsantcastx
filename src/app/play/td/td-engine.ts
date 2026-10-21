@@ -141,6 +141,7 @@ export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
+const GUIDE_FAR_TILES = 40;     // Show me walks up to this far; past it Glim points instead
 const REACH = 26;              // art px from a stall's interaction spot
 /** The Row-Walker's spawn key (the Sexton's Count): its kill reads `td:surface:sexton:row-walker:…`, which the host credits. */
 const WALKER_KEY = 'sexton:row-walker';
@@ -1784,6 +1785,20 @@ export class TopDownEngine {
     this.guideKind = kind; this.guideAt = null; this.guideScan = 0;
     this.canvas.setAttribute('data-guide', kind ?? '');
   }
+  /**
+   * Show me from far off: when the step's thing is more than GUIDE_FAR_TILES away, Glim only points (its
+   * chevrons stay up) and the distance in tiles comes back; 0 means close enough to just walk there.
+   */
+  guideFar(): number {
+    if (!this.guideKind || this.paused) return 0;
+    const at = this.findGuide(this.guideKind);
+    if (!at) return 0;
+    const tiles = Math.hypot(at.x - this.player.x, at.y - this.player.y) / TILE;
+    if (tiles <= GUIDE_FAR_TILES) return 0;
+    this.guideAt = at;
+    if (this.glim.shown) this.glimPoint(this.player.x + (at.x - this.player.x) / tiles * 5, this.player.y + (at.y - this.player.y) / tiles * 5 - 16, 1.8, true);
+    return Math.round(tiles);
+  }
   /** Show me (the prologue): walk to the thing and use it — light the hearth, talk to the Sexton, close in on the creature, step on the coins. */
   guideGo(): boolean {
     if (!this.guideKind || this.paused) return false;
@@ -2195,7 +2210,14 @@ export class TopDownEngine {
     // A tap on a task giver's body talks to them (a stall keeper's counter still opens the stall).
     const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < 10 && wy > s.keeper.y - 34 && wy < s.keeper.y + 2);
     if (giver) return giver;
-    return this.level.stalls.find(s => Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16);
+    // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
+    let hit: TdStall | undefined, best = Infinity;
+    for (const s of this.level.stalls) {
+      if (!(Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16)) continue;
+      const d = Math.hypot(wx - s.x, wy - (s.y - 14));
+      if (d < best) { best = d; hit = s; }
+    }
+    return hit;
   }
   private tap(clientX: number, clientY: number): void {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);

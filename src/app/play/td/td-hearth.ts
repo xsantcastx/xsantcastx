@@ -83,7 +83,7 @@ export function hearthsOf(world: TdWorld): TdHearth[] {
     const fire = nearestOpen(map, sc, sr, 2, 9, taken);
     if (!fire) return;
     taken.push(fire);
-    const shrineAt = capital ? nearestOpen(map, fire.c, fire.r, 3, 6, taken) : null;
+    const shrineAt = capital ? nearestOpen(map, fire.c, fire.r, 5, 9, taken) : null;
     const id = hearthId(world.continent, s.name);
     const wx = (c: number) => (s.c0 + c) * TILE + TILE / 2, wy = (r: number) => (s.r0 + r) * TILE + TILE;
     const h: TdHearth = {

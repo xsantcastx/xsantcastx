@@ -29,6 +29,9 @@ describe('td-hearth (the hearths of the top-down world)', () => {
         // Its stall is the continent's, so E and a tap reach it.
         expect(world.stalls.some(s => s.station.id === h.id)).withContext(h.id).toBeTrue();
         if (h.shrine) expect(world.stalls.some(s => s.station.id === h.shrine!.id)).toBeTrue();
+        // The shrine stands well clear of the fire: their tap boxes (34 px either side) never overlap, so a tap meant
+        // for one cannot open the other.
+        if (h.shrine) expect(Math.hypot(h.shrine.x - h.x, h.shrine.y - h.y)).withContext(`${h.id} shrine distance`).toBeGreaterThanOrEqual(5 * TILE - 1);
         all.push(h.id);
       }
       // Placed once: a second call returns the same list and adds no stalls.
