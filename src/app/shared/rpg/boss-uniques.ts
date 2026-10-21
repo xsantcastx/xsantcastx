@@ -2,7 +2,7 @@
  * boss-uniques.ts — one named thing per boss (docs/design/design-bible.md §7.2, roadmap §10 item 9: "every boss has a
  * reason to farm it").
  *
- * Each of the nine top-down bosses (`rank: 'boss'` in play/td/td-mobs.ts) carries one unique that drops from it and
+ * Each of the ten top-down bosses (`rank: 'boss'` in play/td/td-mobs.ts) carries one unique that drops from it and
  * from nothing else: never the Gambler, never another creature's unique roll (unique-items.ts `uniquesAtRarity` and
  * drop-tables.ts leave them out), only `rollBossUnique` on that boss's kill. Each has a **signature** the fight really
  * applies (play/td/td-mobs.ts reads `relicTotals` of what is worn); the card shows it with where it is found.
@@ -39,6 +39,8 @@ export interface RelicSig {
   ink?: { pct: number; secs: number };
   /** Percentage points of Magic Find on every kill's loot roll (the item sets' tiers, set-items.ts). */
   mf?: number;
+  /** % harder every hit the Keeper lands while the sky is dark (night, or an eclipse) — the Seam Eater's. */
+  umbra?: number;
   // ── The ordinary uniques' passives (unique-items.ts `sig`) ──
   /** % more Hunting XP from every kill. */
   xp?: number;
@@ -136,6 +138,14 @@ export const BOSS_UNIQUES: readonly BossUnique[] = [
     lore: 'She swung it over the drowned for a hundred years. The ink in it is everything the abbey ever wrote down.',
     boss: 'ink-abbess', oneIn: 10, lair: 'The Drowned Crypts · Floor 3', sig: { ink: { pct: 10, secs: 3 } },
   },
+  {
+    // The eclipse's world boss (play/td/td-seam.ts): it rises at the rifts under an eclipse and its fall opens the tiers.
+    id: 'unique-seamstitch-grips', name: 'Seamstitch Grips', rarity: 'legendary', slot: 'hands', style: 'umbral',
+    rollKeys: ['spellDamage', 'critChance'], base: { spellDamage: 7, critChance: 3 },
+    passive: { effect: 'relic', text: 'While the sky is dark (night or an eclipse), every hit you land is 20% harder.' },
+    lore: 'The bone thread the Seamworks stitched it shut with. It held for a while. It still remembers which side it was on.',
+    boss: 'seam-eater-risen', oneIn: 8, lair: 'The Ninefold Stones, Ember Isle', sig: { umbra: 20 },
+  },
 ];
 
 const BY_ID = new Map(BOSS_UNIQUES.map(u => [u.id, u]));
@@ -157,12 +167,12 @@ export function rollBossUnique(creature: string, rng: () => number): BossUnique 
 export interface RelicTotals {
   light: number; ranks: Record<string, number>; cdCut: Record<string, number>; construct: number; raisedMax: number;
   breath: number; fire: number; singe: { dps: number; secs: number } | null; regen: number; stillRegen: number;
-  spears: number; spearRange: number; ink: { pct: number; secs: number } | null; mf: number;
+  spears: number; spearRange: number; ink: { pct: number; secs: number } | null; mf: number; umbra: number;
   xp: number; gold: number; thorns: number; echo: readonly { every: number; pct: number }[]; mercy: number; manaKill: number; named: number;
 }
 export const NO_RELICS: RelicTotals = Object.freeze({
   light: 0, ranks: {}, cdCut: {}, construct: 0, raisedMax: 0, breath: 0, fire: 0, singe: null, regen: 0, stillRegen: 1,
-  spears: 0, spearRange: 0, ink: null, mf: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0,
+  spears: 0, spearRange: 0, ink: null, mf: 0, umbra: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0,
 }) as RelicTotals;
 
 export function relicTotals(ids: readonly string[], extra?: (id: string) => RelicSig | undefined): RelicTotals {
@@ -184,6 +194,7 @@ export function relicTotals(ids: readonly string[], extra?: (id: string) => Reli
     out.spears += s.spears ?? 0;
     out.spearRange += s.spearRange ?? 0;
     out.mf += s.mf ?? 0;
+    out.umbra += s.umbra ?? 0;
     if (s.ink) out.ink = { pct: (out.ink?.pct ?? 0) + s.ink.pct, secs: Math.max(out.ink?.secs ?? 0, s.ink.secs) };
     out.xp += s.xp ?? 0;
     out.gold += s.gold ?? 0;

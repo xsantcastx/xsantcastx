@@ -43,15 +43,22 @@ export function drawEliteGround(c: Ctx, m: Mob, time: number, still: boolean): v
 
 /** Fire Enchanted's burst on its way: a hostile ember ring at its reach, tightening as the burst nears. */
 export function drawBurstTell(c: Ctx, b: DeathBurst, delay: number, time: number, still: boolean): void {
-  const X = Math.round(b.x), Y = Math.round(b.y) - 1, k = Math.max(0, Math.min(1, 1 - b.t / delay));
+  // A boss's ground warning (the Seam Eater's Rend) carries its own tell and tone; a Fire Enchanted burst is ember.
+  const X = Math.round(b.x), Y = Math.round(b.y) - 1, k = Math.max(0, Math.min(1, 1 - b.t / (b.delay ?? delay)));
+  const tn = b.el === 'shadow' ? FX.shadow : FX.ember;
   const pulse = still ? 1 : .7 + .3 * Math.sin(time * 18);
+  // A boss's ring is a patch of ground to leave: its inside dithered in the edge tone, so it reads on lit grass too.
+  if (b.el === 'shadow') {
+    c.globalAlpha = .45; c.fillStyle = tn.edge;
+    for (let y = -b.r; y <= b.r; y++) for (let x = -b.r; x <= b.r; x++) if (((x + y) & 1) === 0 && x * x + y * y <= b.r * b.r) c.fillRect(X + x, Y + Math.round(y * .55), 1, 1);
+  }
   c.globalAlpha = .6; c.fillStyle = HOSTILE_EDGE;
   for (const q of circlePixels(b.r + 1)) c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1);
   c.globalAlpha = .85 * pulse;
-  circlePixels(b.r).forEach((q, i) => { if (i % 2) return; c.fillStyle = i % 4 ? FX.ember.body : FX.ember.edge; c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1); });
-  // The front closing in: when it reaches the middle, the fire goes off.
+  circlePixels(b.r).forEach((q, i) => { if (i % 2) return; c.fillStyle = i % 4 ? tn.body : tn.edge; c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1); });
+  // The front closing in: when it reaches the middle, the fire (or the void) goes off.
   const inner = Math.max(2, Math.round(b.r * (1 - k)));
-  c.fillStyle = FX.ember.core;
+  c.fillStyle = tn.core;
   circlePixels(inner).forEach((q, i) => { if (i % 3 === 0) c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1); });
   c.globalAlpha = 1;
 }

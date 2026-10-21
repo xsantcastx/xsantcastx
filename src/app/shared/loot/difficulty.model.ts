@@ -7,8 +7,9 @@
  * higher rune ceiling (the best runes only ever drop in Hell).
  *
  * A tier unlocks once its gate boss falls on the tier below: the Fallen
- * Ephemeris, at the bottom of the Orrery Wells, is the end of a pass. The
- * Keeper can always step back down to an easier tier.
+ * Ephemeris, at the bottom of the Orrery Wells, is the end of a side-view
+ * pass; in the top-down world it is the Seam Eater, risen under an eclipse
+ * (play/td/td-seam.ts). The Keeper can always step back down to an easier tier.
  *
  * Pure: imports only types.
  */
@@ -43,6 +44,8 @@ export interface DifficultyDef {
 }
 
 export const GATE_BOSS = 'fallen-ephemeris';
+/** The top-down world's gate boss: the Seam Eater's second rising (play/td/td-seam.ts SEAM_ID). */
+export const TD_GATE_BOSS = 'seam-eater-risen';
 
 export const DIFFICULTIES: Readonly<Record<DifficultyTier, DifficultyDef>> = {
   normal: {
@@ -75,7 +78,8 @@ export function nextTier(tier: DifficultyTier): DifficultyTier | null {
 
 /** The tier a gate boss's fall on `tier` unlocks (null when that creature is no gate, or at Hell). */
 export function unlockedBy(creature: string, tier: DifficultyTier): DifficultyTier | null {
-  return DIFFICULTIES[tier].gate === creature ? nextTier(tier) : null;
+  const gate = DIFFICULTIES[tier].gate;
+  return gate !== null && (creature === gate || creature === TD_GATE_BOSS) ? nextTier(tier) : null;
 }
 
 /**

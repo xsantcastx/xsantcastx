@@ -235,6 +235,7 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-mossbound-heart': I('cuirass', 'moss', 'amber', 'rootwood'),
   'unique-splinterbow-rootcradle': I('bow', 'rootwood', 'amber', 'moss'),
   'unique-abbess-censer': I('orb', 'umbral', 'amethyst', 'brass'),
+  'unique-seamstitch-grips': I('gauntlet', 'umbral', 'eclipse', 'ivory'),
   // ── The item sets' pieces (rpg/set-items.ts): each set in its own place's materials, the four in one palette ──
   'set-ossuary-helm': I('helm', 'ash', 'ember', 'iron'),
   'set-ossuary-hauberk': I('cuirass', 'ash', 'ember', 'iron'),

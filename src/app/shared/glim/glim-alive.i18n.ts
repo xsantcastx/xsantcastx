@@ -47,6 +47,8 @@ export const GLIM_ALIVE_I18N: Readonly<Record<string, { en: string; es: string }
   'glim.react.missed.1': { en: 'You left something back here.', es: 'Te has dejado algo aqui atras.' },
   'glim.react.missed.2': { en: 'Over here! You dropped this.', es: 'Aqui! Se te cayo esto.' },
   'glim.react.missed.3': { en: 'Not to nag, but... loot.', es: 'No quiero insistir, pero... botin.' },
+  'glim.react.seam.1': { en: 'The stones! A seam is tearing open over there. Something big is climbing out. Stay out of the rings.', es: 'Las piedras! Una costura se esta abriendo alli. Algo grande esta saliendo. No te quedes en los circulos.' },
+  'glim.react.seam.2': { en: 'That is the Seam Eater, out of the tear. If it is too much, run for the town. It will not follow you into the light.', es: 'Es el Devorador de Costuras, fuera del desgarro. Si es demasiado, corre al pueblo. No te seguira hasta la luz.' },
   'glim.react.spotted.1': { en: 'Ooh, over there. Something worth a look.', es: 'Uy, por alli. Algo que merece un vistazo.' },
   'glim.react.spotted.2': { en: 'That way! I saw it glint.', es: 'Por alli! Lo vi brillar.' },
   'glim.react.spotted.3': { en: 'A way we have not taken yet... just saying.', es: 'Un camino que aun no hemos tomado... solo digo.' },

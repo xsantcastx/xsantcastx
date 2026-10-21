@@ -66,8 +66,18 @@ export interface MobDef {
   floats?: boolean;
   /** Half there: drawn see-through, flickering. */
   ghost?: boolean;
-  /** Once, when its life falls to `at` of its whole, it calls `count` of `type` to its side. */
-  summon?: { type: string; count: number; at: number };
+  /** Once, when its life falls to `at` of its whole, it calls `count` of `type` to its side (Eclipse-touched, if `touched`). */
+  summon?: { type: string; count: number; at: number; touched?: boolean };
+  /**
+   * A ground attack (the Seam Eater's Rend, td-seam.ts): every `rate` s while it hunts, `rings` circles of `r` art px
+   * open on the ground (one under its prey, the rest `spread` px round it); after `tell` s each bursts for `dmg`. It
+   * speaks its own `chant` as the rings open.
+   */
+  rend?: { rate: number; rings: number; r: number; spread: number; tell: number; dmg: [number, number]; chant: string };
+  /** At half its life (with its call) the fight quickens: the breath's fan and cadence, the rend's rings and cadence. */
+  half?: { spread: number; rate: number; rings: number; rendRate: number; chant: string };
+  /** A world boss: it never sets foot on a town's safe ground nor strikes into it, and past `leash` tiles from where it rose it goes back. */
+  bound?: { leash: number };
   /**
    * The type its blows and shots carry (§6). Unset: its creature family's (creature-families.ts creatureHits), or
    * physical for a creature with no profile.
@@ -1232,6 +1242,55 @@ function abbess(c: CanvasRenderingContext2D, f: number): void {
 }
 /** The Ink Abbess as she is fought: her figure grown huge. */
 function paintInkAbbess(c: CanvasRenderingContext2D, f: number): void { grown(1.7, 2, 3, () => abbess(c, f)); }
+
+// ── The Seam Eater's second rising (td-seam.ts): a tear in the world under an eclipse ─────────────────────────────────
+/** Its tones: the corona's pale light, the void, the throat's violet glow, the bone thread its edges are stitched with. */
+const SEAM_TONES = {
+  corona: ['#ffffff', '#f0e0ff', '#c8a8ff', '#8a6ac8'] as Ramp,
+  void: ['#2a1c3a', '#140c1c', '#0c0612', '#060308'] as Ramp,
+  throat: ['#f0e0ff', '#b06bff', '#6b3aa0', '#2a1440'] as Ramp,
+  thread: R.bone as Ramp,
+};
+/**
+ * A dark sun with its corona burning round it, torn top to bottom by a maw: the lips of the tear stitched shut with bone
+ * thread that has given way, teeth along both lips, a violet throat; void drips to the ground under it. Drawn on a
+ * 56×50 grid, grown ×2 (twice a deep boss's size). Frames: the maw breathes open and the corona's rays turn.
+ */
+function seamEater(c: CanvasRenderingContext2D, f: number): void {
+  const T = SEAM_TONES, open = [0, 1, 2, 1][f], turn = f * Math.PI / 12, cx = 28, cy = 24;
+  // The tear's shadow pooled on the ground, and the void running down into it.
+  orb(c, cx, 47, 20, 2.4, T.void);
+  for (let i = 0; i < 6; i++) { const x = 16 + i * 4.8, sway = ((i + f) % 3) - 1; limb(c, [x, 36], [x + sway, 46 - (i % 2)], i % 2 ? 2 : 3, T.void); }
+  // The corona: rays turning frame by frame, then the pale ring, the violet rim, the dark disc.
+  for (let i = 0; i < 12; i++) {
+    const a = turn + i * Math.PI / 6, l = i % 2 ? 3 : 5;
+    limb(c, [cx + Math.cos(a) * 17, cy + Math.sin(a) * 17], [cx + Math.cos(a) * (18 + l), cy + Math.sin(a) * (18 + l)], i % 2 ? 1 : 2, i % 3 ? T.corona : VIOLET);
+  }
+  orb(c, cx, cy, 19, 19, T.corona);
+  orb(c, cx, cy, 17, 17, VIOLET);
+  orb(c, cx, cy, 15.5, 15.5, T.void);
+  // Eyes in the dark either side of the tear, blinking in turn.
+  for (const [ex, ey, k] of [[18, 15, 0], [38, 17, 1], [17, 31, 2], [39, 30, 3]] as const) if ((f + k) % 4 !== 3) glow(c, ex, ey, 1, T.throat);
+  // The tear: a lens from above the disc to the ground, its lips a little further apart each frame.
+  const w = 5 + open, hw = (y: number) => w * Math.pow(Math.max(0, Math.sin(Math.PI * (y - 1) / 45)), .7);
+  poly(c, [[cx, 1], [cx + w * .6, 9], [cx + w, 23], [cx + w * .6, 37], [cx, 46], [cx - w * .6, 37], [cx - w, 23], [cx - w * .6, 9]], T.throat);
+  poly(c, [[cx, 6], [cx + w * .4, 14], [cx + w * .55, 23], [cx + w * .4, 32], [cx, 41], [cx - w * .4, 32], [cx - w * .55, 23], [cx - w * .4, 14]], T.void);
+  glow(c, cx - 1, 22, 2, T.throat);
+  // Teeth along both lips, pointing in.
+  for (let y = 9; y <= 37; y += 4) {
+    const h = Math.round(hw(y));
+    px(c, cx - h, y, 2, 1, T.thread[1]); dot(c, cx - h + 2, y, T.thread[0]);
+    px(c, cx + h - 1, y + 2, 2, 1, T.thread[1]); dot(c, cx + h - 2, y + 2, T.thread[0]);
+  }
+  // The stitches: bone thread crossing each lip, the ones that held and the ones the maw has torn.
+  for (let y = 7; y <= 40; y += 5) {
+    const h = Math.round(hw(y)), torn = (y + f) % 3 === 0;
+    line(c, [cx - h - 3, y - 1], [cx - h + 1, y + 1], T.thread[torn ? 2 : 1]);
+    line(c, [cx + h + 3, y - 1], [cx + h - 1, y + 1], T.thread[torn ? 2 : 1]);
+    if (!torn) { dot(c, cx - h - 3, y - 1, T.thread[0]); dot(c, cx + h + 3, y - 1, T.thread[0]); }
+  }
+}
+function paintSeamEater(c: CanvasRenderingContext2D, f: number): void { grown(2, 0, 0, () => seamEater(c, f)); }
 // ── The Verdant Wilds' deeper places (maps/root-hollows.ts, maps/overgrown-temple.ts −4…−5) ───────────────────────────
 
 /** Their own tones: dark bark, a grub's pale hide and its chitin, a mushroom's cap and stem, a drowned priest's robe and water. */
@@ -1622,6 +1681,20 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     ranged: { range: 140, keep: 0, rate: 3.2, dmg: [24, 36], speed: 120, kind: 'shard', spread: 5 },
     summon: { type: 'drowned-acolyte', count: 2, at: .5 },
   },
+  // The eclipse's world boss (td-seam.ts): it rises at a continent's rift under an eclipse, scaled to the Keeper's level
+  // inside 20–60 as it rises (seamEaterAt). This is its level-20 self, as the Bestiary shows it.
+  'seam-eater-risen': {
+    id: 'seam-eater-risen', name: 'The Seam Eater', hp: 1560, speed: 18, dmg: [18, 26], rate: 1.8, sight: 170, level: 20,
+    lore: 'They sank it in the slag under the Seamworks and posted thanks. Under an eclipse the seam it ate opens again, and it climbs out of the tear with the dark still on it.',
+    drops: [{ material: 'eclipse-glass', qty: 2, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }, { material: 'umbral-sigil', qty: 1, chance: .5 }], paint: paintSeamEater, w: 112, h: 100, rank: 'boss', chant: 'ul nyr sha', hits: 'arcane',
+    // Void Breath: a fan of void after the cone on the ground. Seam Rend: rings round the Keeper that burst after a
+    // second. At half its life two Eclipse-touched shades climb out and both attacks quicken.
+    ranged: { range: 140, keep: 0, rate: 4, dmg: [12, 18], speed: 115, kind: 'ink', spread: 5 },
+    rend: { rate: 6, rings: 3, r: 20, spread: 34, tell: 1, dmg: [20, 28], chant: 'ul dra' },
+    half: { spread: 7, rate: 3.2, rings: 5, rendRate: 4.5, chant: 'ul teth' },
+    summon: { type: 'lantern-wisp', count: 2, at: .5, touched: true },
+    bound: { leash: 14 },
+  },
 };
 
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
@@ -1637,6 +1710,7 @@ export const MOB_FRAMES = 4;
 const RIM: Readonly<Record<string, string>> = {
   'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
   'mossbound-colossus': '#7affd0', 'ink-abbess': '#a48bff', 'elder-rootwyrm': '#7affd0', 'the-uncounted': '#b8e8d8',
+  'seam-eater-risen': '#f0e0ff',
 };
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 /**
@@ -1719,8 +1793,12 @@ export interface Mob {
   /** Doom (Shadow tree): seconds until it bursts, and the burst it carries. */
   doom?: number;
   doomHit?: { min: number; max: number; r: number };
-  /** Seconds its chant still hangs over its head (a boss winding up, CHANT_SECS). */
+  /** Seconds its chant still hangs over its head (a boss winding up, CHANT_SECS), and the words (its def's chant when unset). */
   chantT?: number;
+  chantText?: string;
+  /** A ground attack's cooldown (MobDef.rend), and whether its half-life change has come (MobDef.half). */
+  rendCd?: number;
+  halved?: boolean;
   /** A member of an elite pack (td-elites.ts): its rank, role, affixes and a unique leader's name. */
   elite?: EliteTag;
   /** What it takes of every hit (Stone Skin < 1). */
@@ -1764,7 +1842,11 @@ export function isConstruct(creature: string): boolean {
 }
 
 /** Fire Enchanted's last word: a burst of fire where it fell, `t` seconds after (the ground shows the ring meanwhile). */
-export interface DeathBurst { x: number; y: number; t: number; r: number; dmg: number }
+export interface DeathBurst {
+  x: number; y: number; t: number; r: number; dmg: number;
+  /** A boss's ground warning (the Seam Eater's Rend): its whole tell (FIRE_BURST.delay when unset), its tone and type. */
+  delay?: number; el?: 'ember' | 'shadow'; type?: DamageType;
+}
 
 /**
  * A boss's tell (docs/design/effects-spec.md, fourth pass): the seconds between the wind-up showing on the ground and
@@ -1778,7 +1860,7 @@ export const CHANT_SECS = 1.2;
 /** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
 export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
 /** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
-export interface Call { x: number; y: number; type: string; key: string; t: number }
+export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
 export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
@@ -1995,6 +2077,7 @@ export function tiered(def: MobDef, t: Pick<DifficultyDef, 'hp' | 'damage'>): Mo
   return {
     ...def, hp: Math.max(1, Math.round(def.hp * t.hp)), dmg: def.dmg[1] > 0 ? k(def.dmg) : def.dmg,
     ...(def.ranged ? { ranged: { ...def.ranged, dmg: k(def.ranged.dmg) } } : {}),
+    ...(def.rend ? { rend: { ...def.rend, dmg: k(def.rend.dmg) } } : {}),
   };
 }
 
@@ -2317,14 +2400,15 @@ export class MobSystem {
   place(key: string, def: MobDef, x: number, y: number): Mob { const m = this.spawnMob(key, def, x, y); this.mobs.push(m); return m; }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
     def = tiered(def, this.tier);
-    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null };
+    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
   prune(maxDist: number): void {
     const p = this.host.player();
     for (let i = this.mobs.length - 1; i >= 0; i--) {
       const m = this.mobs[i];
-      if (Math.hypot(m.x - p.x, m.y - p.y) > maxDist && m !== this.target) this.mobs.splice(i, 1);
+      // A world boss (bound to its rift) stays until it leaves or falls; the host owns it.
+      if (Math.hypot(m.x - p.x, m.y - p.y) > maxDist && m !== this.target && !m.def.bound) this.mobs.splice(i, 1);
     }
   }
 
@@ -2479,6 +2563,7 @@ export class MobSystem {
       }
       if (m.blinkCd !== undefined) m.blinkCd -= dt;
       if (m.chantT) m.chantT = Math.max(0, m.chantT - dt);
+      if (m.rendCd !== undefined) m.rendCd -= dt;
       // A boss in its wind-up stands its ground; when the tell runs out the attack leaves for where it aimed.
       if (m.tell > 0) {
         m.tell -= dt;
@@ -2496,7 +2581,9 @@ export class MobSystem {
       const px0 = prey ? prey.x : p.x, py0 = prey ? prey.y : p.y;
       // Rootwalk: the forest closes behind the Keeper — a creature loses his track unless he is at its very side.
       const lost = this.rootwalkT > 0 && !prey && d > MOB_REACH * 2;
-      const hunting = !lost && (taunted || d < m.def.sight), shoot = m.def.ranged;
+      // A world boss (bound): never past its leash from the rift, never after prey standing on a town's safe ground.
+      const bound = m.def.bound, held = !!bound && (Math.hypot(m.x - m.hx, m.y - m.hy) > bound.leash * TILE || !!this.host.safeAt?.(px0, py0));
+      const hunting = !lost && !held && (taunted || d < m.def.sight), shoot = m.def.ranged;
       if (hunting && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
         // Where it will land: a step short of its prey, on its own side; never into a wall.
         const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
@@ -2513,9 +2600,11 @@ export class MobSystem {
         // it aims now and looses when the tell runs out, so the ground warning is where the breath goes.
         if (shoot && d <= shoot.range && m.rcd <= 0 && m.tell <= 0) {
           m.rcd = shoot.rate;
-          if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; if (m.def.chant) m.chantT = CHANT_SECS; }
+          if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; if (m.def.chant) { m.chantT = CHANT_SECS; m.chantText = m.def.chant; } }
           else this.loose(m, px0, py0 - 12);
         }
+        // A ground attack (the Seam Eater's Rend): rings open round its prey, never in the same breath as a wind-up.
+        if (m.def.rend && m.tell <= 0 && (m.rendCd ?? 0) <= 0 && d <= m.def.sight) { m.rendCd = m.def.rend.rate; this.rendAt(m, px0, py0); }
       } else {
         // Roam near home: a short stroll, a pause, another.
         if (!m.wander) {
@@ -2528,8 +2617,8 @@ export class MobSystem {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
         if (len > stop) {
           const step = Math.min(len, m.def.speed * this.paceOf(m) * dt), vx = dx / len * step, vy = dy / len * step;
-          if (this.free(m.x + vx, m.y, m.def.floats)) m.x += vx; else m.wander = null;
-          if (this.free(m.x, m.y + vy, m.def.floats)) m.y += vy; else m.wander = null;
+          if (this.canStep(m, m.x + vx, m.y)) m.x += vx; else m.wander = null;
+          if (this.canStep(m, m.x, m.y + vy)) m.y += vy; else m.wander = null;
           if (!hunting && Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
         }
       }
@@ -2550,15 +2639,16 @@ export class MobSystem {
       b.t -= dt;
       if (b.t > 0) continue;
       this.bursts.splice(i, 1);
-      this.effects.push({ kind: 'wave', el: 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, 'fire');
+      this.effects.push({ kind: 'wave', el: b.el ?? 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
+      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, b.type ?? 'fire');
     }
     for (let i = this.calls.length - 1; i >= 0; i--) {
       const k = this.calls[i];
       k.t -= dt;
       if (k.t > 0) continue;
       this.calls.splice(i, 1);
-      if (MOBS[k.type]) this.mobs.push(this.spawnMob(k.key, MOBS[k.type], k.x, k.y));
+      // Eclipse-touched summons (the Seam Eater's call) climb out as lone touched champions (td-elites touchPack).
+      if (MOBS[k.type]) { if (k.touched) this.spawnPack(k.key, MOBS[k.type], k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, MOBS[k.type], k.x, k.y)); }
       this.effects.push({ kind: 'spark', x: k.x, y: k.y - 6, age: 0, life: .3, dir: 1 });
     }
     this.updateShots(dt);
@@ -2600,6 +2690,8 @@ export class MobSystem {
     }
     // Worn boss uniques: the Hammer bites constructs harder; the Censer's ink makes a stained foe take more, and stains.
     if (this.relics.construct > 0 && isConstruct(foe.def.id)) raw *= 1 + this.relics.construct / 100;
+    // The Seamstitch Grips (the Seam Eater's): every hit harder while the sky is dark (night, or an eclipse's noon).
+    if (this.relics.umbra > 0 && (this.phase === 'night' || this.phase === 'eclipse')) raw *= 1 + this.relics.umbra / 100;
     const ink = this.relics.ink;
     if (ink) {
       if ((foe.inkT ?? 0) > 0) raw *= 1 + ink.pct / 100;
@@ -2627,6 +2719,8 @@ export class MobSystem {
   }
   /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
   smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff'); }
+  /** Test hooks only (the seam specs): one blow of `n` on a creature, through the real path (its call, its half-life change, its fall). */
+  wound(m: Mob, n: number): number { return this.hurtMob(m, Math.max(1, Math.round(n)), '#ffffff'); }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
   private hurtMob(foe: Mob, dmg: number, color: string, crit = false): number {
     if (foe.hp <= 0) return 0;
@@ -2642,8 +2736,20 @@ export class MobSystem {
         const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 10), y = foe.y + 6;
         const at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
         // A sigil first, where it will stand (CALL_TELL); it climbs out when the sigil runs out (update).
-        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL });
+        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, ...(call.touched ? { touched: true } : {}) });
       }
+    }
+    // The half-life change (MobDef.half): a wider, quicker breath, more rings, sooner; its call spoken.
+    const half = foe.def.half;
+    if (half && !foe.halved && foe.hp <= foe.def.hp * .5) {
+      foe.halved = true;
+      foe.def = {
+        ...foe.def,
+        ...(foe.def.ranged ? { ranged: { ...foe.def.ranged, spread: half.spread, rate: half.rate } } : {}),
+        ...(foe.def.rend ? { rend: { ...foe.def.rend, rings: half.rings, rate: half.rendRate } } : {}),
+      };
+      foe.chantT = CHANT_SECS; foe.chantText = half.chant;
+      this.effects.push({ kind: 'wave', el: 'shadow', r: Math.round(foe.def.w * .6), x: foe.x, y: foe.y, age: 0, life: .6, dir: 1 });
     }
     return dmg;
   }
@@ -3562,6 +3668,42 @@ export class MobSystem {
 
   /** Wood chips flying off a struck tree (the host's chopping). */
   chips(x: number, y: number): void { this.effects.push({ kind: 'chips', x, y, age: 0, life: .45, dir: Math.random() < .5 ? -1 : 1 }); }
+
+  /** Can this creature step to (x, y)? Open ground, and for a world boss (bound) never a town's safe ground. */
+  private canStep(m: Mob, x: number, y: number): boolean {
+    return this.free(x, y, m.def.floats) && !(m.def.bound && this.host.safeAt?.(x, y));
+  }
+  /** A ground attack (MobDef.rend): one ring under (x, y), the rest round it; each bursts when its tell runs out. */
+  private rendAt(m: Mob, x: number, y: number): void {
+    const rend = m.def.rend;
+    if (!rend) return;
+    const weak = this.weakOf(m), type = mobHits(m.def), turn = m.t;
+    for (let i = 0; i < rend.rings; i++) {
+      const a = turn + (i - 1) / Math.max(1, rend.rings - 1) * Math.PI * 2, r = i ? rend.spread : 0;
+      let dmg = rnd(rend.dmg[0], rend.dmg[1]);
+      if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
+      this.bursts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r * .6, t: rend.tell, r: rend.r, dmg, delay: rend.tell, el: 'shadow', type });
+    }
+    m.chantT = CHANT_SECS; m.chantText = rend.chant;
+  }
+  /** A creature leaves the world without falling (the Seam Eater when the eclipse ends): no kill, no loot, no respawn wait. */
+  banish(m: Mob): void {
+    const i = this.mobs.indexOf(m);
+    if (i < 0) return;
+    this.mobs.splice(i, 1);
+    if (this.target === m) this.target = null;
+    for (let j = 0; j < 10; j++) this.effects.push({ kind: 'dust', x: m.x + rnd(-m.def.w / 3, m.def.w / 3), y: m.y - rnd(0, Math.round(m.def.h / 2)), age: 0, life: .7, dir: 1 });
+    this.effects.push({ kind: 'wave', el: 'shadow', r: Math.round(m.def.w * .6), x: m.x, y: m.y, age: 0, life: .6, dir: 1 });
+  }
+  /** Test hooks only (td-engine `?fxseam=1`): a boss begins an attack at the Keeper now, as if it had chosen to. */
+  provoke(m: Mob, kind: 'breath' | 'rend'): void {
+    const p = this.host.player();
+    if (kind === 'rend') { this.rendAt(m, p.x, p.y); m.rendCd = m.def.rend?.rate ?? 0; return; }
+    if (!m.def.ranged) return;
+    m.face = p.x < m.x ? -1 : 1;
+    m.rcd = m.def.ranged.rate; m.tell = BOSS_TELL; m.aim = { x: p.x, y: p.y - 12 };
+    if (m.def.chant) { m.chantT = CHANT_SECS; m.chantText = m.def.chant; }
+  }
 
   private free(x: number, y: number, floats = false): boolean {
     const ok = floats && this.host.hover ? (c: number, r: number) => this.host.hover!(c, r) : (c: number, r: number) => this.host.walkable(c, r);

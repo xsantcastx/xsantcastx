@@ -95,6 +95,7 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 import { BOSS_TELL, CALL_TELL, CHANT_SECS, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { FIRE_BURST, makePack, touchPack } from './td-elites';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
+import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { weaponSwing } from './td-melee';
@@ -256,6 +257,23 @@ export class TopDownEngine {
    */
   private readonly fxPhase: 'night' | 'eclipse' | null = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' ? ((/[?&]phase=(night|eclipse)\b/.exec(location.search)?.[1] ?? null) as 'night' | 'eclipse' | null) : null;
   private fxPhaseLaid = false;
+  /**
+   * The Seam Eater (td-seam.ts): the risen one, whether it fell this eclipse, each continent's rift (resolved once), and
+   * what the canvas last said of it (`data-seam`: risen, half, slain, gone).
+   */
+  private seam: Mob | null = null;
+  private seamSlain = false;
+  private seamLast = '';
+  private seamSeen = '';
+  private readonly rifts = new Map<string, { x: number; y: number } | null>();
+  /**
+   * For the seam specs (`?fxseam=1`, only under an automated browser): the world clock jumps into an eclipse
+   * (world-clock.service) and the Eater rises once, calm (no sight), a few steps from the Keeper on open ground;
+   * `window.__tdSeam` makes it attack, wounds it to half, fells it, and holds the world still for a photograph.
+   */
+  private readonly fxSeam = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxseam=1\b/.test(location.search);
+  private fxSeamLaid = false;
+  private fxFrozen = false;
   private pinned: number | null = null;
   private scale = 2;
   private cam = { x: 0, y: 0, w: 0, h: 0 };
@@ -518,7 +536,7 @@ export class TopDownEngine {
       // Schedule first: one bad frame (a host callback throwing) must never stop the world.
       this.raf = requestAnimationFrame(loop);
       try {
-        if (!this.paused) this.update(dt);
+        if (!this.paused && !this.fxFrozen) this.update(dt);
         this.draw();
       } catch (err) {
         if (!this.frameError) { this.frameError = true; console.error('[top-down] frame error', err); }
@@ -2430,15 +2448,99 @@ export class TopDownEngine {
     }
   }
 
+  /**
+   * The Seam Eater (td-seam.ts): under an eclipse, on the surface, it rises at the continent's rift when the Keeper comes
+   * near (unless it already fell this eclipse); it leaves when the eclipse ends; its fall is the kill path's (onKill:
+   * the Bestiary, XP, the tier it opens, its unique). The canvas says where it stands (`data-seam`).
+   */
+  private updateSeam(phase: SkyPhase): void {
+    const m = this.seam;
+    if (m && !this.mobs.mobs.includes(m)) {
+      // It fell (its life gone), or the Keeper left the ground it stood on (it rises again when he comes back).
+      if (m.hp <= 0) { this.seamSlain = true; this.seamLast = 'slain'; this.say('play.seam.slain'); }
+      else this.seamLast = '';
+      this.seam = null;
+    }
+    if (this.seam && seamLeaves(phase)) {
+      this.mobs.banish(this.seam);
+      this.seam = null; this.seamLast = 'gone';
+      this.say('play.seam.gone');
+    }
+    // A new eclipse, a new rising.
+    if (phase !== 'eclipse') this.seamSlain = false;
+    if (!this.fxSeam && !this.seam && this.level === this.world) {
+      const rift = this.riftHere();
+      const dist = rift ? Math.hypot(rift.x - this.player.x, rift.y - this.player.y) / TILE : Infinity;
+      if (rift && seamRises({ phase, surface: true, slain: this.seamSlain, up: false, dist })) this.raiseSeam(rift.x, rift.y, false);
+    }
+    const now = this.seam ? (this.seam.halved ? 'half' : 'risen') : this.seamLast;
+    if (now !== this.seamSeen) { this.seamSeen = now; this.canvas.setAttribute('data-seam', now); }
+  }
+  /** This continent's rift (its standing stones, td-seam riftTile), in world px; null when it has none. */
+  private riftHere(): { x: number; y: number } | null {
+    const id = this.world.continent;
+    if (!this.rifts.has(id)) {
+      const at = riftPlace(this.world.def), t = at ? riftTile(this.world, at) : null;
+      this.rifts.set(id, t ? { x: t.c * TILE + TILE / 2, y: t.r * TILE + TILE } : null);
+    }
+    return this.rifts.get(id) ?? null;
+  }
+  /** The tear opens and the Eater climbs out at (x, y), at the Keeper's level inside its band; Glim warns, the strip says so. */
+  private raiseSeam(x: number, y: number, calm: boolean): Mob {
+    const def = seamEaterAt(MOBS[SEAM_ID], this.mobs.keeperLevel);
+    const m = this.mobs.place(`seam:${this.world.continent}:${Math.round(this.time)}`, calm ? { ...def, sight: 0 } : def, x, y);
+    if (calm) m.wait = 1e9;
+    this.seam = m;
+    this.mobs.effects.push({ kind: 'wave', el: 'shadow', r: 64, x, y, age: 0, life: .8, dir: 1 });
+    this.say('play.seam.rise');
+    this.options.onGlimCue?.({ kind: 'seam' });
+    return m;
+  }
+  /** The seam specs' showcase (`?fxseam=1`): the Keeper a few steps from this continent's rift, the Eater risen calm on it. */
+  private laySeamShowcase(): void {
+    this.fxSeamLaid = true;
+    const p = this.player, rift = this.riftHere();
+    if (!rift) return;
+    // The nearest open, unsafe tile 5–9 tiles south of the tear (the Keeper's own ground), so both stand in one view.
+    const rc = Math.floor(rift.x / TILE), rr = Math.floor(rift.y / TILE);
+    // Close enough that the whole of it fits in the view over him (it stands six tiles tall), else further off.
+    const near: [number, number][] = [[0, 3], [0, 4], [4, 3], [-4, 3], [5, 2], [-5, 2], [6, 3], [-6, 3], [0, 5]];
+    for (let dr = 6; dr <= 10; dr++) for (const dc of [0, 1, -1, 2, -2, 3, -3]) near.push([dc, dr]);
+    for (const [dc, dr] of near) {
+      const c = rc + dc, r = rr + dr;
+      if (this.level.walkable(c, r) && !this.world.safeAt(c, r)) { p.x = c * TILE + TILE / 2; p.y = r * TILE + TILE; break; }
+    }
+    this.path = []; this.arrive = null;
+    this.mobs.mobs.length = 0; this.mobs.target = null;
+    this.raiseSeam(rift.x, rift.y, true);
+    const seam = (): Mob | null => (this.seam && this.mobs.mobs.includes(this.seam) ? this.seam : null);
+    (window as unknown as Record<string, unknown>)['__tdSeam'] = {
+      tell: (kind: 'breath' | 'rend') => { const m = seam(); if (m) this.mobs.provoke(m, kind); return !!m; },
+      half: () => { const m = seam(); if (!m) return false; this.mobs.wound(m, Math.max(1, m.hp - Math.floor(m.def.hp * .5) + 1)); return !!m.halved; },
+      kill: () => { const m = seam(); if (!m) return false; this.mobs.smite(m); return true; },
+      hold: (on: boolean) => { this.fxFrozen = !!on; },
+      // The Keeper steps aside (out of the cone, out of the rings), as a player would in the tell.
+      step: (dx: number, dy: number) => { const p = this.player; if (this.level.walkable(Math.floor((p.x + dx) / TILE), Math.floor((p.y + dy) / TILE))) { p.x += dx; p.y += dy; } this.path = []; return { x: Math.round(p.x), y: Math.round(p.y) }; },
+      hp: () => Math.round(this.hp),
+      // Everything near stands calm (its summons too), so a photograph holds still.
+      calm: () => { for (const o of this.mobs.mobs) { o.def = { ...o.def, sight: 0 }; o.wait = 1e9; o.wander = null; } return this.mobs.mobs.length; },
+      state: () => { const m = seam(); return m ? { up: true, hp: m.hp, max: m.def.hp, level: m.def.level, halved: !!m.halved, x: Math.round(m.x), y: Math.round(m.y), calls: this.mobs.calls.length, touched: this.mobs.mobs.filter(o => o.key.startsWith(`${m.key}:call`) && o.elite?.affixes.includes('eclipse-touched')).length } : { up: false, slain: this.seamSlain }; },
+    };
+  }
+
   private updateFight(dt: number): void {
     // The sky as a rule (td-phases.ts): a pinned `?hour=` stands for its own phase, so a picture never meets the real sky.
     const phase = this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase;
     this.mobs.setPhase(phase, this.level === this.world);
     if (phase !== this.phaseSeen) { this.phaseSeen = phase; this.canvas.setAttribute('data-phase', phase); }
     if (this.fxPhase && !this.fxPhaseLaid && this.time > .5 && this.level === this.world) this.layPhaseShowcase(this.fxPhase);
+    // After Glim's welcome line has had its say, so the warning is not lost under it.
+    if (this.fxSeam && !this.fxSeamLaid && this.time > 6 && this.level === this.world) this.laySeamShowcase();
+    this.updateSeam(phase);
     // The endless surface hands over the spawns round the Keeper as they come into reach, and forgets far ones.
     this.spawnTimer -= dt;
-    if (this.spawnTimer <= 0 && this.level === this.world) {
+    // (The seam specs keep the stage to the Eater and its call, so every photograph and count is its own.)
+    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam) {
       this.spawnTimer = .5;
       const r = 420;
       this.mobs.addSpawns(this.world.spawnsIn(this.player.x - r, this.player.y - r, this.player.x + r, this.player.y + r));
@@ -2974,7 +3076,7 @@ export class TopDownEngine {
   private drawTells(): void {
     const c = this.ctx;
     // For the screenshot spec (e2e/td-fx2-shots.spec.ts): the canvas says when a tell is on the ground.
-    const telling = this.mobs.mobs.some(m => m.tell > 0) ? 'breath' : this.mobs.calls.length ? 'call' : '';
+    const telling = this.mobs.mobs.some(m => m.tell > 0) ? 'breath' : this.mobs.bursts.some(b => b.el === 'shadow') ? 'rend' : this.mobs.calls.length ? 'call' : '';
     if (telling !== this.tellSeen) { this.tellSeen = telling; this.canvas.setAttribute('data-boss-tell', telling); }
     for (const m of this.mobs.mobs) {
       const shoot = m.def.ranged;
@@ -3311,7 +3413,11 @@ export class TopDownEngine {
     }
     c.globalAlpha = 1;
     // Spoken lines: a boss's chant over its head while it winds up, and the Keeper's spell words over his.
-    for (const m of this.mobs.mobs) if (m.chantT && m.def.chant && inView(m.x, m.y)) this.speech(m.def.chant, m.x, m.y - m.def.h - 12, CHANT_SECS - m.chantT, '#ff8a7a');
+    for (const m of this.mobs.mobs) {
+      const words = m.chantText ?? m.def.chant;
+      // The Seam Eater speaks in the eclipse's pale violet; the rest of the bosses in ember.
+      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - m.def.h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID ? '#d8c0ff' : '#ff8a7a');
+    }
     const k = this.cant;
     if (k) this.speech(k.text, this.player.x, this.player.y - 44, k.age, k.color);
     // For the screenshot spec (e2e/td-cant-shots.spec.ts): the canvas says what the Keeper is saying.
@@ -3505,6 +3611,8 @@ export class TopDownEngine {
     if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 30 }); }
     const pl = this.purseHere();
     if (pl) hole(pl.x, pl.y - 10, 30);
+    // The Seam Eater's corona is a light of its own under the eclipse (a fair fight: the whole of it shows, never a silhouette).
+    for (const m of this.mobs.mobs) if (m.def.id === SEAM_ID) hole(m.x, m.y - m.def.h / 2, m.def.w * .9);
     // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
     if (this.mobs.aura) {
       d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 3;
