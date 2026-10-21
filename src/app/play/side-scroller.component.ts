@@ -14,6 +14,7 @@ import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { PROLOGUE_ROWS, PROLOGUE_WALK_TILES, type PrologueStep, guideFor, prologueStep, prologueView, tipKey } from './td/td-prologue';
 import { TD_PROLOGUE_I18N } from './td/td-prologue.i18n';
 import { TD_UX_I18N } from './td/td-ux.i18n';
+import { TradeHudComponent, type TradeCard } from './trade/trade-hud.component';
 import { FitViewportDirective, type FitAnchor } from './fit-viewport.directive';
 import { HudDragDirective, resetHudLayout } from './hud-drag.directive';
 import { TdMapWindowComponent } from './td-map-window.component';
@@ -492,11 +493,13 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
   @ViewChild('worldCanvas') canvas!: ElementRef<HTMLCanvasElement>;
+  /** Trading and ground drops (Hearth protocol 6; play/trade). */
+  @ViewChild(TradeHudComponent) tradeHud?: TradeHudComponent;
   /**
    * Where a place's page is created. Deliberately NOT inside an @if: a
    * ViewChild in control flow is intermittently unresolved for lazily created
@@ -1193,6 +1196,45 @@ export class SideScrollerComponent implements OnDestroy {
   takeCorpse(what: string): void { this.corpseEngine?.takeFromCorpse?.(what); }
   closeCorpse(): void { this.corpseEngine?.closeCorpse?.(); this.corpseView = null; this.focusWorld(); }
   corpseStageLabel(stage: string): string { return this.t('corpse.' + stage); }
+  // ── Trading and ground drops (protocol 6): the window lives in play/trade/trade-hud.component. ──
+  /** The engine, for the trade HUD (where the Keeper stands; the shared ground to draw). */
+  get tradeEngine(): unknown { return this.engine; }
+  get tradeRoom(): SocialRoom | undefined { return this.room; }
+  /** An item's card for the trade window: the satchel's own card, so it reads the same on both screens. */
+  readonly tradeCard = (item: GameItem): TradeCard => {
+    const slip = this.itemSlip(item, false);
+    return { name: slip.name, kicker: slip.kicker, tone: slip.tone ?? null, note: slip.note, stats: slip.stats };
+  };
+  /** A trade line: the message strip (which lands in the Game tab by itself). */
+  tradeSaid(line: string): void { this.message = line; }
+  /** "Trade" on the Keeper's card. */
+  async tradeWithPeer(): Promise<void> {
+    const peer = this.peerCard;
+    if (!peer || !this.tradeHud) return;
+    this.peerCard = null;
+    await this.tradeHud.askTrade(peer);
+  }
+  /** Drop the picked satchel item on the ground at the Keeper's feet (protocol 6: everyone here sees it). */
+  async dropPicked(): Promise<void> {
+    const item = this.selectedGear();
+    if (!item || !this.tradeHud) return;
+    if (await this.tradeHud.drop(item)) this.pick = null;
+  }
+  get pickCanDrop(): boolean { return !!this.tradeHud?.canDrop(this.selectedGear()) && this.topDown; }
+  /** Drag a satchel item out onto the world: it is dropped (desktop; phones use Drop on the card). */
+  dragPocket(ev: DragEvent, pocket: BagPocket): void {
+    if (pocket.kind !== 'item' || !ev.dataTransfer) { ev.preventDefault(); return; }
+    ev.dataTransfer.setData('application/x-eclipse-item', pocket.ref);
+    ev.dataTransfer.effectAllowed = 'move';
+  }
+  overWorld(ev: DragEvent): void { if (ev.dataTransfer?.types.includes('application/x-eclipse-item')) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; } }
+  async dropOnWorld(ev: DragEvent): Promise<void> {
+    const id = ev.dataTransfer?.getData('application/x-eclipse-item');
+    if (!id || !this.tradeHud) return;
+    ev.preventDefault();
+    const item = this.inventory.snapshot.items.find(i => i.id === id && !i.equipped && !i.explorerId);
+    if (item) await this.tradeHud.drop(item);
+  }
   /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
@@ -1444,6 +1486,9 @@ export class SideScrollerComponent implements OnDestroy {
         onCoopSnap: msg => (this.engine as unknown as { coopSnap?: (m: typeof msg) => void } | undefined)?.coopSnap?.(msg),
         onCoopHits: msg => (this.engine as unknown as { coopHits?: (m: typeof msg) => void } | undefined)?.coopHits?.(msg),
         onCoopPals: msg => (this.engine as unknown as { coopPals?: (m: typeof msg) => void } | undefined)?.coopPals?.(msg),
+        // Protocol 6: a trade window closed; a request was declined (play/trade).
+        onTradeEnd: end => this.zone.run(() => { void this.tradeHud?.ended(end); }),
+        onTradeNote: note => this.zone.run(() => this.tradeHud?.declined(note.name)),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -1577,6 +1622,8 @@ export class SideScrollerComponent implements OnDestroy {
       onPeerTap: peer => this.zone.run(() => this.peerTapped(peer)),
       // A corpse opened in the world (td-corpse): the loot still in it, and null once it is shut or gone.
       onCorpse: view => this.zone.run(() => { this.corpseView = view; }),
+      // A shared ground item (protocol 6): the Keeper walked to it; reach for it.
+      onGroundTap: id => this.zone.run(() => { void this.tradeHud?.pickup(id); }),
       // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
       onSexton: event => this.zone.run(() => this.sextonSaw(event.kind === 'stone' ? { kind: 'stone', n: event.n ?? 1 } : event.kind === 'page' ? { kind: 'page', dark: !!event.dark } : { kind: event.kind })),
       // Each player digs their own Delve: seed and dug cells from the save.
@@ -4338,6 +4385,7 @@ export class SideScrollerComponent implements OnDestroy {
    * listener runs before this one. False when nothing was open (Escape then falls through).
    */
   closeTopMenu(): boolean {
+    if (this.tradeHud?.escape()) return true;
     if (this.bagOpen && this.pick) { this.unpick(); return true; }
     if (this.peerCard) { this.closePeerCard(); return true; }
     if (this.corpseView) { this.closeCorpse(); return true; }
@@ -4362,7 +4410,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Any HUD menu over the world (Enter then belongs to it, not the chat). */
   private get anyMenuOpen(): boolean {
     return this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.feedbackOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
-      || !!this.panel || !!this.anchorSheet || !!this.taskTalk || !!this.peerCard || this.map.open;
+      || !!this.panel || !!this.anchorSheet || !!this.taskTalk || !!this.peerCard || this.map.open || !!this.tradeHud?.open;
   }
   /**
    * Enter: show the chat, on the room's tab (joining it when needed, unless chat is set to Ignore), and put the cursor

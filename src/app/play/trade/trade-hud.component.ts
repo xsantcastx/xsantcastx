@@ -1,0 +1,267 @@
+/**
+ * trade-hud.component.ts — the trade window (Tibia / Diablo II: two sides, Accept, then Confirm), the "wants to
+ * trade" toast, and ground drops (Drop on a card, or drag a satchel item onto the world; tap an item on the ground to
+ * pick it up). docs/design/online.md §3.8 and §4c.
+ *
+ * Kept out of the HUD component on purpose: the HUD hands in the room, its snapshot, the engine and a card builder
+ * (its own item cards, so an offered item looks exactly like it does in the satchel), and gets lines back to log.
+ * Everything that moves an item goes through trade-flow.ts → the trade Function; the room only relays.
+ */
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, inject } from '@angular/core';
+import { EconomyService } from '../../shared/economy/economy.service';
+import { InventoryService } from '../../shared/rpg/inventory.service';
+import type { GameItem } from '../../shared/rpg/item.model';
+import { itemArt } from '../../shared/rpg/material-catalog';
+import { TranslationService } from '../../translation.service';
+import type { RoomGround, RoomSnapshot, RoomTrade, RoomTradeAsk, RoomTradeEnd, SocialRoom } from '../social/social-room';
+import { TradeBackendService } from './trade-backend.service';
+import { GroundFlow, TradeFlow } from './trade-flow';
+import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, itemFromOffer, offerItemOf, tradeBlock, type OfferItem } from './trade-items';
+import { TRADE_I18N } from './trade.i18n';
+
+/** An item's card as the HUD draws it in the satchel (name, what it is, its lines, how it compares). */
+export interface TradeCard { name: string; kicker: string; tone?: string | null; note: string; stats: string[]; compare?: { label?: string; text?: string }[]; compareLabel?: string }
+/** The engine's part (td-engine): where the Keeper stands, and the shared ground to draw. */
+interface GroundEngine {
+  peerPresence?: () => { area: string; x: number; y: number };
+  setSharedGround?: (items: readonly RoomGround[]) => void;
+}
+interface Cell { id: string; name: string; art: string; mark: string; tone: string; item: GameItem; block?: string | null }
+
+const tone = (rarity: string) => `var(--cozy-loot-${rarity}, var(--cozy-loot-common))`;
+const mark = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '·';
+
+@Component({
+  selector: 'app-trade-hud',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './trade-hud.component.html',
+  styleUrl: './trade-hud.component.css',
+})
+export class TradeHudComponent implements OnChanges, OnDestroy {
+  @Input() room?: SocialRoom;
+  @Input() social: RoomSnapshot | null = null;
+  @Input() engine: unknown;
+  @Input() cardFor: ((item: GameItem) => TradeCard) | null = null;
+  /** A line for the Game log (and the message strip). */
+  @Output() readonly said = new EventEmitter<string>();
+
+  private readonly i18n = inject(TranslationService);
+  private readonly inventory = inject(InventoryService);
+  private readonly economy = inject(EconomyService);
+  private readonly backend = inject(TradeBackendService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly roomVerbs = {
+    tradeConfirm: (t: string, rev: number, done: boolean) => this.room?.tradeConfirm(t, rev, done) ?? Promise.resolve('offline'),
+    tradeCancel: (t: string, why?: string, outcome?: 'cancelled' | 'void') => this.room?.tradeCancel(t, why, outcome) ?? Promise.resolve('offline'),
+    groundDrop: (g: Parameters<SocialRoom['groundDrop']>[0]) => this.room?.groundDrop(g) ?? Promise.resolve('offline'),
+    groundTake: (area: string, id: string) => this.room?.groundTake(area, id) ?? Promise.resolve('offline'),
+  };
+  readonly flow = new TradeFlow(this.backend, this.roomVerbs, () => this.cdr.markForCheck());
+  readonly groundFlow = new GroundFlow(this.backend, this.roomVerbs);
+  readonly maxItems = TRADE_MAX_ITEMS;
+
+  /** The last trade window the room showed (kept while a closed trade's outcome is on screen). */
+  trade: RoomTrade | null = null;
+  /** The card shown for the item under the pointer (or last tapped). */
+  card: { card: TradeCard; left: number; top: number } | null = null;
+  goldDraft = 0;
+  busy = false;
+  private goldTimer?: ReturnType<typeof setTimeout>;
+  private askTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  constructor() {
+    this.i18n.register(TRADE_I18N);
+    // The satchel and the purse move under the window (a trade settling, a drop): redraw.
+    this.inventory.snapshot$.pipe(takeUntilDestroyed()).subscribe(() => this.cdr.markForCheck());
+    this.economy.snapshot$.pipe(takeUntilDestroyed()).subscribe(() => this.cdr.markForCheck());
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
+  ngOnChanges(): void {
+    const s = this.social;
+    const live = s?.trade ?? null;
+    if (live) {
+      if (live.id !== this.trade?.id) { this.flow.reset(); this.goldDraft = live.offers[live.me].gold; }
+      this.trade = live;
+      this.flow.view(live);
+    }
+    for (const a of s?.tradeAsks ?? []) {
+      if (this.askTimers.has(a.id)) continue;
+      this.askTimers.set(a.id, setTimeout(() => this.room?.forgetTradeAsk(a.id), Math.max(1000, Math.min(30000, a.until - Date.now()))));
+    }
+    // The ground here, for the engine to draw (only the current area's).
+    const e = this.engine as GroundEngine | undefined;
+    const here = e?.peerPresence?.();
+    const g = s?.ground;
+    e?.setSharedGround?.(g && here && g.area === here.area ? g.items : []);
+  }
+  ngOnDestroy(): void { clearTimeout(this.goldTimer); for (const t of this.askTimers.values()) clearTimeout(t); }
+
+  // ── Asking ──
+  get ask(): RoomTradeAsk | null { return this.trade ? null : this.social?.tradeAsks?.[0] ?? null; }
+  /** "Trade" on a Keeper's card: what it should show — the button, a sign-in note, or nothing (an older room). */
+  canAsk(peerId: string): 'yes' | 'guest' | 'later' | 'no' {
+    const s = this.social;
+    if (!s?.connected) return 'no';
+    if ((s.protocol ?? 0) < 6) return 'later';
+    if (s.guest || s.players.find(p => p.id === peerId)?.guest) return 'guest';
+    return this.trade ? 'no' : 'yes';
+  }
+  async askTrade(peer: { id: string; name: string }): Promise<void> {
+    const why = await this.room?.tradeAsk(peer.id) ?? 'offline';
+    this.said.emit(why ? this.t('trade.askFailed', { why }) : this.t('trade.asked', { name: peer.name }));
+  }
+  async answer(ask: RoomTradeAsk, yes: boolean): Promise<void> {
+    clearTimeout(this.askTimers.get(ask.id));
+    const why = await this.room?.tradeAnswer(ask.id, yes) ?? 'offline';
+    if (yes && why) this.said.emit(this.t('trade.askFailed', { why }));
+  }
+  /** The room told us a request was declined. */
+  declined(name: string): void { this.said.emit(this.t('trade.declined', { name })); }
+
+  // ── The window ──
+  get open(): boolean { return !!this.trade; }
+  get other(): 'a' | 'b' { return this.trade?.me === 'a' ? 'b' : 'a'; }
+  get theirName(): string { return this.trade ? this.trade[this.other].name : ''; }
+  get mine(): OfferItem[] { return this.trade ? this.trade.offers[this.trade.me].items : []; }
+  get theirs(): OfferItem[] { return this.trade ? this.trade.offers[this.other].items : []; }
+  get locked(): boolean { const t = this.trade; return !t || t.confirmed.a || t.confirmed.b || !['open', 'confirm'].includes(this.flow.status.stage); }
+  get purse(): number { return Math.floor(this.economy.snapshot.gold); }
+  /** The satchel's loose items, offered ones left out; the ones that cannot be traded say why. */
+  get satchel(): Cell[] {
+    const offered = new Set(this.mine.map(i => i.id));
+    return (this.inventory.snapshot.bag ?? []).filter(i => !offered.has(i.id)).map(i => ({ ...this.cell(i), block: tradeBlock(i) }));
+  }
+  cellsOf(items: OfferItem[]): Cell[] { return items.map(o => this.cell(itemFromOffer(o))); }
+  private cell(item: GameItem): Cell {
+    return { id: item.id, name: (item.upgradeLevel ?? 0) > 0 ? `${item.name} +${item.upgradeLevel}` : item.name, art: itemArt(item)?.src ?? '', mark: mark(item.name), tone: tone(item.rarity), item };
+  }
+  emptySlots(n: number): number[] { return Array.from({ length: Math.max(0, Math.min(TRADE_MAX_ITEMS, 4) - n) }, (_, i) => i); }
+
+  async add(c: Cell): Promise<void> {
+    const t = this.trade;
+    if (!t || this.locked || c.block) return;
+    if (this.mine.length >= TRADE_MAX_ITEMS) { this.said.emit(this.t('trade.full', { n: TRADE_MAX_ITEMS })); return; }
+    await this.sendOffer([...this.mine, offerItemOf(c.item)], this.goldDraft);
+  }
+  async remove(c: Cell): Promise<void> {
+    if (!this.trade || this.locked) return;
+    await this.sendOffer(this.mine.filter(i => i.id !== c.id), this.goldDraft);
+  }
+  setGold(raw: string | number): void {
+    const n = Math.max(0, Math.min(this.purse, TRADE_MAX_GOLD, Math.floor(Number(raw) || 0)));
+    this.goldDraft = n;
+    clearTimeout(this.goldTimer);
+    this.goldTimer = setTimeout(() => { if (this.trade && n !== this.trade.offers[this.trade.me].gold) void this.sendOffer(this.mine, n); }, 350);
+  }
+  private async sendOffer(items: OfferItem[], gold: number): Promise<void> {
+    const t = this.trade;
+    if (!t) return;
+    const why = await this.room?.tradeOffer(t.id, items, gold) ?? 'offline';
+    if (why) this.said.emit(this.t('trade.askFailed', { why }));
+  }
+  async accept(yes = true): Promise<void> {
+    const t = this.trade;
+    if (!t || this.locked) return;
+    const why = await this.room?.tradeAccept(t.id, t.rev, yes) ?? 'offline';
+    if (why) this.said.emit(this.t('trade.askFailed', { why }));
+  }
+  async confirm(): Promise<void> { if (this.trade) await this.flow.confirm(this.trade); }
+  async cancel(): Promise<void> {
+    const t = this.trade;
+    if (!t) return;
+    if (this.flow.status.stage === 'done' || this.flow.status.stage === 'failed') { this.closeResult(); return; }
+    await this.flow.cancel(t);
+    this.trade = null; this.card = null; this.cdr.markForCheck();
+  }
+  /** The room closed the window (done, cancelled, void). */
+  async ended(end: RoomTradeEnd): Promise<void> {
+    const last = this.trade && this.trade.id === end.id ? this.trade : null;
+    await this.flow.ended(end, last);
+    const st = this.flow.status;
+    if (st.stage === 'done') this.said.emit(st.received ? this.t('trade.doneGot', { items: st.received.items.length, gold: st.received.gold }) : this.t('trade.done'));
+    else if (end.outcome !== 'done') this.said.emit(this.t('trade.failed', { why: this.whyText(st.why || end.why || end.outcome) }));
+    if (!last) return;
+    // Keep the window up with its outcome until it is put away (a cancelled one simply closes).
+    if (st.stage !== 'done' && st.stage !== 'failed') { this.trade = null; this.flow.reset(); }
+    this.cdr.markForCheck();
+  }
+  closeResult(): void { this.trade = null; this.card = null; this.flow.reset(); this.cdr.markForCheck(); }
+  get statusLine(): string {
+    const st = this.flow.status, t = this.trade;
+    if (!t) return '';
+    if (st.stage === 'sending') return this.t('trade.stage.sending');
+    if (st.stage === 'waiting') return this.t('trade.stage.waiting', { name: this.theirName });
+    if (st.stage === 'settling') return this.t('trade.stage.settling');
+    if (st.stage === 'done') return st.received ? this.t('trade.doneGot', { items: st.received.items.length, gold: st.received.gold }) : this.t('trade.done');
+    if (st.stage === 'failed') return this.t('trade.failed', { why: this.whyText(st.why) });
+    if (st.why) return this.t('trade.failed', { why: this.whyText(st.why) });
+    return t.stage === 'confirm' ? this.t('trade.hint.confirm') : this.t('trade.hint.offer');
+  }
+  whyText(why: string): string {
+    const key = `trade.why.${why}`, said = this.t(key);
+    return said !== key ? said : why;
+  }
+  /** Esc: the card, then the window (a Cancel), then the toast (Not now). True when something was put away. */
+  escape(): boolean {
+    if (this.card) { this.card = null; this.cdr.markForCheck(); return true; }
+    if (this.trade) { void this.cancel(); return true; }
+    const a = this.ask;
+    if (a) { void this.answer(a, false); return true; }
+    return false;
+  }
+
+  // ── Cards ──
+  showCard(c: Cell, ev: PointerEvent | FocusEvent): void {
+    if (ev instanceof PointerEvent && ev.pointerType !== 'mouse') return;
+    const card = this.cardFor?.(c.item);
+    if (!card) return;
+    const el = ev.currentTarget as HTMLElement | null;
+    const r = el?.getBoundingClientRect?.();
+    const w = typeof window === 'undefined' ? 800 : window.innerWidth, h = typeof window === 'undefined' ? 600 : window.innerHeight;
+    const left = r ? Math.max(8, Math.min(w - 268, r.right + 8 > w - 268 ? r.left - 268 : r.right + 8)) : 16;
+    const top = r ? Math.max(8, Math.min(h - 220, r.top)) : 16;
+    this.card = { card, left, top };
+  }
+  hideCard(): void { this.card = null; }
+  /** A tap on a phone: the card first; a second tap on the same cell acts (offer / take back). */
+  private tapped = '';
+  tap(c: Cell, act: 'add' | 'remove' | 'look', ev: Event): void {
+    const touch = (ev as PointerEvent).pointerType && (ev as PointerEvent).pointerType !== 'mouse';
+    if (touch && this.tapped !== c.id) {
+      this.tapped = c.id;
+      const card = this.cardFor?.(c.item);
+      if (card) this.card = { card, left: 8, top: 8 };
+      return;
+    }
+    this.tapped = ''; this.card = null;
+    if (act === 'add') void this.add(c);
+    if (act === 'remove') void this.remove(c);
+  }
+
+  // ── Ground drops ──
+  /** Put a satchel item on the ground at the Keeper's feet (the card's Drop, or a drag onto the world). */
+  async drop(item: GameItem): Promise<boolean> {
+    if (tradeBlock(item)) return false;
+    const here = (this.engine as GroundEngine | undefined)?.peerPresence?.();
+    if (!here) return false;
+    const out = await this.groundFlow.drop(offerItemOf(item), { area: here.area, x: here.x, y: here.y + 6 });
+    this.said.emit(out.ok ? this.t('trade.dropped', { name: item.name }) : this.t('trade.dropFailed', { why: this.whyText(out.why) }));
+    this.cdr.markForCheck();
+    return out.ok;
+  }
+  /** The engine walked the Keeper to a ground item that was tapped: reach for it. */
+  async pickup(id: string): Promise<void> {
+    const g = this.social?.ground?.items.find(x => x.id === id);
+    if (!g) return;
+    const out = await this.groundFlow.pickup(g);
+    this.said.emit(out.ok ? this.t('trade.picked', { name: g.name }) : this.t('trade.pickFailed', { why: this.whyText(out.why) }));
+    this.cdr.markForCheck();
+  }
+  canDrop(item: GameItem | null | undefined): boolean {
+    return !!item && !tradeBlock(item) && !!this.social?.connected && (this.social.protocol ?? 0) >= 6;
+  }
+}

@@ -589,3 +589,92 @@ test('protocol 5: a town portal travels in presence (td-waygate encodeGate); any
   assert.throws(() => presenceFields({ gate: 7 }), /Invalid presence/);
   assert.equal(presenceFields({}).gate, undefined);
 });
+
+// ── Protocol 6: trading and ground drops (relay only; the trade Function moves things) ──
+async function trading(t) {
+  const ctx = await social(t);
+  const area = { area: 'ember-isle' };
+  const a = await ctx.joinAs('Aster', 'u1', { trade: true, ...area });
+  const b = await ctx.joinAs('Bryn', 'u2', { trade: true, ...area });
+  return { ...ctx, a, b };
+}
+const sword = { id: 's1', def: 'forge:s1', name: 'Ash Blade', type: 'artifact', rarity: 'rare', stats: { strikePower: 12 }, roll: { strikePower: 0.6 }, ilvl: 9 };
+
+test('protocol 6: ask, accept (the room binds both accounts in trades/{id}), offers clear Accepts, confirm, done', async t => {
+  const { a, b, call, store, base } = await trading(t);
+  const evA = await events(t, base, a.token), evB = await events(t, base, b.token);
+  const ask = await call('/trade/ask', a.token, { to: b.id });
+  assert.equal(ask.status, 201);
+  assert.equal((await evB('trade-ask')).ask.name, 'Aster');
+  const opened = await call('/trade/answer', b.token, { ask: ask.body.ask.id, accept: true });
+  assert.equal(opened.status, 200);
+  const id = opened.body.trade.id;
+  // The binding the Function trusts: both uids, server-side only.
+  const bound = store.docs.get(`trades/${id}`);
+  assert.deepEqual([bound.a.uid, bound.b.uid, bound.status], ['u1', 'u2', 'open']);
+  assert.equal(JSON.stringify((await evA('trade')).trade).includes('u1'), false);
+  await evB('trade');
+  // Bryn accepts the empty window, then Aster offers: Bryn's Accept is cleared.
+  assert.equal((await call('/trade/accept', b.token, { trade: id, rev: 1 })).status, 200);
+  await evA('trade');
+  assert.equal((await call('/trade/offer', a.token, { trade: id, items: [sword], gold: 25 })).body.rev, 2);
+  let view = (await evA('trade')).trade;
+  while (view.rev !== 2) view = (await evA('trade')).trade;
+  assert.deepEqual(view.accepted, { a: false, b: false });
+  assert.deepEqual(view.offers.a, { items: [sword], gold: 25 });
+  // A stale Accept is refused; the current one counts; both → the confirm stage.
+  assert.equal((await call('/trade/accept', b.token, { trade: id, rev: 1 })).status, 409);
+  assert.equal((await call('/trade/confirm', a.token, { trade: id, rev: 2 })).status, 409);
+  await call('/trade/accept', a.token, { trade: id, rev: 2 });
+  await call('/trade/accept', b.token, { trade: id, rev: 2 });
+  for (;;) { view = (await evA('trade')).trade; if (view.stage === 'confirm') break; }
+  // After a confirm the offers are frozen.
+  await call('/trade/confirm', a.token, { trade: id, rev: 2 });
+  assert.equal((await call('/trade/offer', b.token, { trade: id, items: [], gold: 5 })).status, 409);
+  assert.equal((await call('/trade/confirm', b.token, { trade: id, rev: 2, done: true })).status, 200);
+  assert.equal((await evA('trade-end')).end.outcome, 'done');
+  assert.equal((await evB('trade-end')).end.outcome, 'done');
+  assert.equal((await call('/trade/accept', a.token, { trade: id, rev: 2 })).status, 404);
+});
+
+test('protocol 6: guests, strangers in another place, blocks and malformed offers are refused; walking away cancels', async t => {
+  const { a, b, call, joinAs, post, base } = await trading(t);
+  const guest = await joinAs('Cora', null, { trade: true, area: 'ember-isle' });
+  assert.equal((await call('/trade/ask', guest.token, { to: a.id })).status, 403);
+  assert.equal((await call('/trade/ask', a.token, { to: guest.id })).status, 409);
+  const far = await joinAs('Dov', 'u4', { trade: true, area: 'drowned-reach' });
+  assert.match((await call('/trade/ask', a.token, { to: far.id })).body.error, /same place/);
+  const old = await joinAs('Eld', 'u5', { area: 'ember-isle' });
+  assert.match((await call('/trade/ask', a.token, { to: old.id })).body.error, /cannot trade/);
+  await call('/block', b.token, { player: far.id });
+  const ask = await call('/trade/ask', a.token, { to: b.id });
+  const id = (await call('/trade/answer', b.token, { ask: ask.body.ask.id, accept: true })).body.trade.id;
+  for (const bad of [{ items: [{ ...sword, id: '<script>' }], gold: 0 }, { items: [sword, sword], gold: 0 }, { items: [], gold: -1 }, { items: [{ ...sword, extra: 1 }], gold: 0 }]) {
+    assert.equal((await call('/trade/offer', a.token, { trade: id, ...bad })).status, 400);
+  }
+  const evB = await events(t, base, b.token);
+  await post('/update', { x: 1, y: 1, zone: 'Drowned Reach', facing: 1, animation: 'idle', area: 'drowned-reach' }, a.token);
+  const end = (await evB('trade-end')).end;
+  assert.equal(end.outcome, 'cancelled');
+  assert.match(end.why, /walked away/);
+});
+
+test('protocol 6: ground items — only what the escrow holds is shown to the area; only a taken one leaves', async t => {
+  const { a, b, call, store, base } = await trading(t);
+  const evB = await events(t, base, b.token);
+  const drop = { id: 'g1', area: 'ember-isle', x: 10, y: 20, name: 'Ash Blade', rarity: 'rare', def: 'forge:s1' };
+  // Not in escrow: refused (a phantom cannot be announced).
+  assert.equal((await call('/ground/drop', a.token, drop)).status, 409);
+  store.docs.set('ground-items/g1', { id: 'g1', area: 'ember-isle', x: 11, y: 21, owner: { uid: 'u1', character: 'c1' }, expiresAt: Date.now() + 60000 });
+  // Someone else's escrow: refused too.
+  assert.equal((await call('/ground/drop', b.token, drop)).status, 409);
+  assert.equal((await call('/ground/drop', a.token, drop)).status, 201);
+  let ev = await evB('ground');
+  while (!ev.add) ev = await evB('ground');
+  assert.deepEqual([ev.add[0].id, ev.add[0].x, ev.add[0].y, ev.add[0].name], ['g1', 11, 21, 'Ash Blade']);
+  // Still in escrow: nobody can clear it from everyone's ground.
+  assert.equal((await call('/ground/take', b.token, { id: 'g1', area: 'ember-isle' })).status, 409);
+  store.docs.delete('ground-items/g1');
+  assert.equal((await call('/ground/take', b.token, { id: 'g1', area: 'ember-isle' })).status, 200);
+  assert.deepEqual((await evB('ground')).gone, ['g1']);
+});

@@ -29,7 +29,14 @@ import { fakeVerifier, firebaseVerifier, firestoreStore, memoryStore } from './s
 // bites and kills. The room only elects the host, validates and relays (never simulates, never stores a creature). A
 // client says `coop: true` on join; an older client never does, so it is never elected, sent or asked anything new.
 // See the "Protocol 5" block below and docs/design/online.md §3.4.
-export const PROTOCOL = 5;
+//
+// Protocol 6 (2026-10-21, trading and shared ground drops; docs/design/online.md §3.8 and §4c): two signed-in Keepers
+// in the same area negotiate a trade here (ask, accept, offers, Accept, Confirm). The room only RELAYS: it binds the
+// two accounts by writing `trades/{id}` (the parties, from the verified ID tokens) and never moves an item or a coin —
+// the trade Function does, in one Firestore transaction, when both Keepers confirm the same terms. Ground drops are
+// escrowed by the same Function; the room only tells everyone in the area what lies there (checked against the
+// escrow document when the store can read it). A client says `trade: true` on join; an older one never does.
+export const PROTOCOL = 6;
 export const FRIENDS_MAX = 200;
 export const BLOCKS_MAX = 100;
 /** How long a friend request stands (ms). */
@@ -196,7 +203,7 @@ export function coopHit(raw) {
  * `verify`: (idToken) => Promise<{uid, anonymous}> (null: nobody is signed in, every Keeper is a guest — the room
  * before its project is configured). `store`: bans, friends, blocks and reports (social-identity.mjs).
  */
-export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {} } = {}) {
+export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {}, extraRoutes = null } = {}) {
   const sessions = new Map();
   const messages = [];
   /** Friend requests by id (in memory; they lapse): from/to uids, the sender's name and player id. */
@@ -279,6 +286,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (s.party) dropMember(s, 'left');
     for (const [id, inv] of invites) if (inv.from === s.player.id || inv.to === s.player.id) invites.delete(id);
     for (const [id, r] of requests) if (r.fromPlayer === s.player.id) requests.delete(id);
+    tradeGone(s, 'left');
     sessions.delete(token);
     s.stream?.end();
     publishPlayers();
@@ -683,6 +691,178 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     sendTo(host.host, { type: 'coop-hits', from: me, area, x: pl.x, y: pl.y, level: Number.isInteger(pl.level) ? pl.level : 1, hits });
     reply(200, { ok: true });
   };
+
+  // ── Protocol 6: trading and ground drops (relay only; functions/src/trade-core.ts moves things). ──
+  /** Open trades by id, and asks waiting on an answer. */
+  const trades = new Map();
+  const asks = new Map();
+  /** Ground items the room has been told about, per area (presence and pictures only: the escrow is the truth). */
+  const ground = new Map();
+  const tradeBad = (why = 'Invalid trade message.') => { throw fail(400, why); };
+  const OFFER_ID = /^[A-Za-z0-9:._~-]{1,96}$/;
+  const OFFER_TEXT = s => typeof s === 'string' && s.length >= 1 && s.length <= 96 && !/[\u0000-\u001f<>]/.test(s);
+  const offerNums = (raw, lo, hi) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) || Object.keys(raw).length > 32) tradeBad();
+    const out = {};
+    for (const [k, v] of Object.entries(raw)) { if (!/^[A-Za-z]{1,32}$/.test(k) || typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi) tradeBad(); out[k] = v; }
+    return out;
+  };
+  /** One offered item: the fields the Function re-checks, and what draws its card. Unknown keys refused. */
+  const offerItem = raw => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) tradeBad();
+    for (const k of Object.keys(raw)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged'].includes(k)) tradeBad();
+    if (typeof raw.id !== 'string' || !OFFER_ID.test(raw.id) || ![raw.def, raw.name, raw.type, raw.rarity].every(OFFER_TEXT)) tradeBad();
+    const out = { id: raw.id, def: raw.def, name: raw.name, type: raw.type, rarity: raw.rarity, stats: offerNums(raw.stats, -1e7, 1e7) };
+    if (raw.roll !== undefined) out.roll = offerNums(raw.roll, 0, 1);
+    for (const [k, lo, hi] of [['ilvl', 1, 99], ['up', 0, 100], ['reforged', 0, 10000]]) if (raw[k] !== undefined) { if (!Number.isInteger(raw[k]) || raw[k] < lo || raw[k] > hi) tradeBad(); out[k] = raw[k]; }
+    if (raw.sockets !== undefined) {
+      if (!Array.isArray(raw.sockets) || raw.sockets.length > 8 || raw.sockets.some(x => x !== null && (typeof x !== 'string' || !OFFER_ID.test(x)))) tradeBad();
+      out.sockets = [...raw.sockets];
+    }
+    return out;
+  };
+  const sideOf = (t, s) => (t.a.id === s.player.id ? 'a' : t.b.id === s.player.id ? 'b' : null);
+  const tradeView = (t, side) => ({
+    id: t.id, me: side, a: { id: t.a.id, name: t.a.name }, b: { id: t.b.id, name: t.b.name },
+    offers: t.offers, accepted: t.accepted, confirmed: t.confirmed, rev: t.rev, stage: t.stage, until: t.until,
+  });
+  const tradePublish = t => { for (const side of ['a', 'b']) sendTo(t[side].id, { type: 'trade', trade: tradeView(t, side) }); };
+  /** A trade ends: both windows hear how (done, cancelled — and by whom — or void with the Function's words). */
+  const tradeEnd = (t, outcome, by = '', why = '') => {
+    trades.delete(t.id);
+    for (const side of ['a', 'b']) { const s = sessionOf(t[side].id); if (s && s.trade === t.id) s.trade = null; sendTo(t[side].id, { type: 'trade-end', end: { id: t.id, outcome, by, why } }); }
+  };
+  /** A Keeper left the room or walked to another area: an open trade with them is off. */
+  function tradeGone(s, why) {
+    for (const [id, a] of asks) if (a.from === s.player.id || a.to === s.player.id) asks.delete(id);
+    const t = s.trade && trades.get(s.trade);
+    if (t) tradeEnd(t, 'cancelled', s.player.name, why);
+    s.trade = null;
+  }
+  const groundIn = area => [...(ground.get(area)?.values() ?? [])].filter(g => g.until > now());
+  const groundTell = (area, value) => { for (const o of sessions.values()) if (o.stream && o.trades && o.player.area === area) send(o.stream, { type: 'ground', area, ...value }); };
+  const groundSnapshot = s => { if (s.trades && s.stream && typeof s.player.area === 'string') send(s.stream, { type: 'ground', area: s.player.area, items: groundIn(s.player.area) }); };
+  const readTradeBody = async req => {
+    if (!req.headers['content-type']?.startsWith('application/json')) throw fail(415, 'JSON required.');
+    let body = '';
+    for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 16384) throw fail(413, 'Request too large.'); }
+    try { const data = JSON.parse(body); if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error(); return data; } catch { throw fail(400, 'Invalid JSON.'); }
+  };
+  /**
+   * The trade and ground verbs. Refused unless this Keeper said `trade: true`. Trades need both Keepers signed in, in
+   * the same area, neither blocking the other. Rate limits per session: asks 5 in 30 s, answers and window changes 30
+   * in 10 s, drops 10 a minute, takes 20 in 10 s. An open trade lapses after ten minutes.
+   */
+  const tradeRequest = async (path, session, req, reply) => {
+    if (!session.trades) throw fail(409, 'Update the game to trade.');
+    const data = await readTradeBody(req);
+    session.lastSeen = now();
+    const me = session.player.id;
+    const area = typeof session.player.area === 'string' ? session.player.area : null;
+    if (path === '/trade/ask') {
+      consume(session, 'trade-ask', 5, 30000);
+      if (!session.uid) throw fail(403, 'Sign in to trade.');
+      const them = typeof data.to === 'string' ? sessionOf(data.to) : null;
+      if (!them || them === session) throw fail(400, 'That Keeper is not here.');
+      if (!them.trades) throw fail(409, 'That Keeper cannot trade yet.');
+      if (!them.uid) throw fail(409, 'That Keeper plays as a guest.');
+      if (blocks(them, session) || blocks(session, them)) throw fail(403, 'That Keeper is not taking trades.');
+      if (!area || them.player.area !== area) throw fail(409, 'Stand in the same place to trade.');
+      if (session.trade || them.trade) throw fail(409, session.trade ? 'Finish your trade first.' : 'That Keeper is already trading.');
+      for (const [id, a] of asks) if (a.until <= now()) asks.delete(id);
+      if ([...asks.values()].some(a => a.from === me && a.to === them.player.id)) throw fail(409, 'Already asked.');
+      const ask = { id: randomUUID(), from: me, name: session.player.name, to: them.player.id, until: now() + 30000 };
+      asks.set(ask.id, ask);
+      sendTo(them.player.id, { type: 'trade-ask', ask });
+      reply(201, { ask }); return;
+    }
+    consume(session, 'trade-verb', 30, 10000);
+    if (path === '/trade/answer') {
+      const ask = typeof data.ask === 'string' ? asks.get(data.ask) : undefined;
+      if (!ask || ask.to !== me) throw fail(404, 'That request is gone.');
+      asks.delete(ask.id);
+      if (ask.until <= now()) throw fail(410, 'That request lapsed.');
+      const them = sessionOf(ask.from);
+      if (data.accept !== true) { if (them) sendTo(ask.from, { type: 'trade-note', note: { kind: 'declined', name: session.player.name } }); reply(200, { ok: true }); return; }
+      if (!them || !them.uid || !session.uid) throw fail(410, 'That Keeper has gone.');
+      if (!area || them.player.area !== area) throw fail(409, 'Stand in the same place to trade.');
+      if (session.trade || them.trade) throw fail(409, 'One of you is already trading.');
+      const t = {
+        id: randomUUID(), a: { id: them.player.id, name: them.player.name }, b: { id: me, name: session.player.name },
+        offers: { a: { items: [], gold: 0 }, b: { items: [], gold: 0 } }, accepted: { a: false, b: false }, confirmed: { a: false, b: false },
+        rev: 1, stage: 'offer', until: now() + 10 * 60000,
+      };
+      // The binding the Function trusts: which two accounts this trade is between (the uids never leave the server).
+      try {
+        await store.openTrade(t.id, { a: { uid: them.uid, player: them.player.id, name: them.player.name }, b: { uid: session.uid, player: me, name: session.player.name }, status: 'open', openedAt: now(), expiresAt: t.until });
+      } catch (e) { log('trade open failed', e); throw fail(503, 'Could not open the trade. Try again.'); }
+      trades.set(t.id, t); them.trade = t.id; session.trade = t.id;
+      tradePublish(t);
+      reply(200, { trade: tradeView(t, 'b') }); return;
+    }
+    if (path.startsWith('/trade/')) {
+      const t = typeof data.trade === 'string' ? trades.get(data.trade) : undefined;
+      const side = t ? sideOf(t, session) : null;
+      if (!t || !side) throw fail(404, 'That trade is not open.');
+      const verb = path.slice('/trade/'.length);
+      if (verb === 'cancel') { tradeEnd(t, typeof data.outcome === 'string' && data.outcome === 'void' ? 'void' : 'cancelled', session.player.name, typeof data.why === 'string' ? data.why.replace(/[\u0000-\u001f<>]/g, ' ').slice(0, 160) : ''); reply(200, { ok: true }); return; }
+      if (verb === 'offer') {
+        if (t.confirmed.a || t.confirmed.b) throw fail(409, 'A Keeper already confirmed. Cancel to change the trade.');
+        if (!Array.isArray(data.items) || data.items.length > 12) tradeBad('Up to 12 items.');
+        const items = data.items.map(offerItem);
+        if (new Set(items.map(i => i.id)).size !== items.length) tradeBad('An item is offered twice.');
+        if (!Number.isInteger(data.gold) || data.gold < 0 || data.gold > 1e9) tradeBad('Invalid Gold.');
+        t.offers[side] = { items, gold: data.gold };
+        // Any change clears both Accepts.
+        t.accepted = { a: false, b: false }; t.rev += 1; t.stage = 'offer';
+        tradePublish(t); reply(200, { rev: t.rev }); return;
+      }
+      if (data.rev !== t.rev) throw fail(409, 'The trade changed. Look again.');
+      if (verb === 'accept') {
+        t.accepted[side] = data.accept !== false;
+        t.stage = t.accepted.a && t.accepted.b ? 'confirm' : 'offer';
+        tradePublish(t); reply(200, { ok: true }); return;
+      }
+      if (verb === 'confirm') {
+        if (t.stage !== 'confirm') throw fail(409, 'Both Keepers accept first.');
+        t.confirmed[side] = true;
+        // The Function answered `done` to this Keeper: the swap happened. Both windows close on it.
+        if (data.done === true) { tradeEnd(t, 'done', session.player.name); reply(200, { ok: true }); return; }
+        tradePublish(t); reply(200, { ok: true }); return;
+      }
+      throw fail(404, 'Not found.');
+    }
+    if (path === '/ground/drop') {
+      consume(session, 'ground-drop', 10, 60000);
+      if (!session.uid) throw fail(403, 'Sign in to drop things.');
+      if (typeof data.id !== 'string' || !OFFER_ID.test(data.id) || !area || data.area !== area) tradeBad('Invalid drop.');
+      if (![data.name, data.rarity, data.def].every(OFFER_TEXT) || !Number.isFinite(data.x) || !Number.isFinite(data.y) || Math.abs(data.x) > 1e6 || Math.abs(data.y) > 1e6) tradeBad('Invalid drop.');
+      // The escrow is the truth: told only what the Function really put on the ground, by this account, here.
+      let held = null;
+      try { held = await store.groundItem(data.id); } catch (e) { log('ground read failed', e); throw fail(503, 'Could not check that. Try again.'); }
+      if (!held || held.area !== area || held.owner?.uid !== session.uid) throw fail(409, 'That is not on the ground.');
+      const list = ground.get(area) ?? new Map();
+      ground.set(area, list);
+      for (const [id, g] of list) if (g.until <= now()) list.delete(id);
+      if (list.size >= 60 && !list.has(data.id)) throw fail(429, 'The ground here is covered.');
+      const g = { id: data.id, area, x: Math.round(held.x ?? data.x), y: Math.round(held.y ?? data.y), name: data.name, rarity: data.rarity, def: data.def, until: Number(held.expiresAt) || now() + 10 * 60000, by: session.player.name };
+      list.set(g.id, g);
+      groundTell(area, { add: [g] });
+      reply(201, { ground: g }); return;
+    }
+    if (path === '/ground/take') {
+      consume(session, 'ground-take', 20, 10000);
+      if (typeof data.id !== 'string' || !OFFER_ID.test(data.id) || typeof data.area !== 'string' || !AREA.test(data.area)) tradeBad('Invalid take.');
+      // Only an item the escrow no longer holds leaves everyone's ground (nobody can hide another's drop).
+      let held = null;
+      try { held = await store.groundItem(data.id); } catch (e) { log('ground read failed', e); throw fail(503, 'Could not check that. Try again.'); }
+      if (held) throw fail(409, 'That is still on the ground.');
+      ground.get(data.area)?.delete(data.id);
+      groundTell(data.area, { gone: [data.id] });
+      reply(200, { ok: true }); return;
+    }
+    throw fail(404, 'Not found.');
+  };
   const coopTimer = setInterval(coopSweep, 1000);
   coopTimer.unref?.();
   const server = createServer(async (req, res) => {
@@ -700,6 +880,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       }
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname.startsWith('/social/')) url.pathname = url.pathname.slice('/social'.length);
+      // The local e2e's stand-in for the trade Function (scripts/trade-fake.mjs; SOCIAL_FAKE_TRADE=1, never on Cloud Run).
+      if (extraRoutes && url.pathname.startsWith('/fake-trade/')) { await extraRoutes(req, res, url); return; }
       if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size, protocol: PROTOCOL }); return; }
       if (req.method === 'POST' && url.pathname === '/join') {
         const ip = req.socket.remoteAddress;
@@ -739,6 +921,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         const session = { player, lastSeen: now(), stream: null, party: null, parties: data.party === true, uid, friends, blocks: blocked, privacy: privacyOf(data.privacy), checkedAt: now(), said: [] };
         // Protocol 5: only a client that says it shares creatures (and knows parties) is ever elected or relayed to.
         session.coop = data.party === true && data.coop === true;
+        // Protocol 6: only a client that says it trades is ever asked to (or told what lies on the ground).
+        session.trades = data.trade === true; session.trade = null;
         sessions.set(token, session);
         reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid });
         publishPlayers();
@@ -768,12 +952,17 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
           for (const inv of invites.values()) if (inv.to === session.player.id && inv.until > now()) send(res, { type: 'invite', invite: inviteView(inv) });
           coopResend(session);
         }
+        // Protocol 6: what lies on the ground here, and the trade window if one is open.
+        groundSnapshot(session);
+        const open = session.trade && trades.get(session.trade);
+        if (open) send(res, { type: 'trade', trade: tradeView(open, sideOf(open, session)) });
         res.on('close', () => { if (session.stream === res) { session.stream = null; session.lastSeen = now(); } });
         return;
       }
       if (req.method !== 'POST') throw fail(404, 'Not found.');
       consume(session, 'requests', 40, 1000);
       if (url.pathname.startsWith('/coop/')) { await coopRequest(url.pathname.slice('/coop/'.length), session, req, reply); return; }
+      if (url.pathname.startsWith('/trade/') || url.pathname.startsWith('/ground/')) { await tradeRequest(url.pathname, session, req, reply); return; }
       const data = await readBody(req);
       session.lastSeen = now();
       if (url.pathname === '/update') {
@@ -787,7 +976,12 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         Object.assign(session.player, { x: Math.round(data.x * 10) / 10, y: Math.round(data.y * 10) / 10, facing: data.facing, animation: data.animation, zone: data.zone }, extra);
         coopMoved(session);
         schedulePublish();
-        if ((session.player.area ?? session.player.zone) !== wasArea) friendsHear(session.uid);
+        if ((session.player.area ?? session.player.zone) !== wasArea) {
+          friendsHear(session.uid);
+          // Protocol 6: a trade needs both Keepers in one place; the new place's ground is sent.
+          if (session.trade) tradeGone(session, 'walked away');
+          groundSnapshot(session);
+        }
         reply(200, { ok: true }); return;
       }
       if (url.pathname === '/chat') {
@@ -832,6 +1026,15 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     for (const [ip, limiter] of joinAttempts) if (now() - limiter.join?.start > 60000) joinAttempts.delete(ip);
     for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
     for (const [id, r] of requests) if (r.until <= now()) requests.delete(id);
+    // Protocol 6: lapsed asks and trades; ground items past their time leave everyone's screen.
+    for (const [id, a] of asks) if (a.until <= now()) asks.delete(id);
+    for (const t of [...trades.values()]) if (t.until <= now()) tradeEnd(t, 'cancelled', '', 'The trade ran out of time.');
+    for (const [area, list] of ground) {
+      const gone = [...list.values()].filter(g => g.until <= now()).map(g => g.id);
+      for (const id of gone) list.delete(id);
+      if (gone.length) groundTell(area, { gone });
+      if (!list.size) ground.delete(area);
+    }
     // A GM ban reaches a Keeper already in the room within BAN_RECHECK_MS.
     for (const [token, session] of sessions) {
       if (!session.uid || now() - session.checkedAt < BAN_RECHECK_MS) continue;
@@ -861,7 +1064,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     : project ? { verify: firebaseVerifier({ projectId: project }), store: firestoreStore({ projectId: project }) }
     : { verify: null, store: memoryStore() };
   const log = (what, e) => console.error(`[hearth] ${what}: ${e?.message ?? e}`);
-  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log });
+  // The local e2e's stand-in for the trade Function: the real trade-core over an in-memory store the room shares.
+  let extraRoutes = null;
+  if (fake && process.env.SOCIAL_FAKE_TRADE === '1' && !process.env.K_SERVICE) {
+    const { fakeTrade } = await import('./trade-fake.mjs');
+    const ft = fakeTrade({ origins: origins ?? [] });
+    identity.store = memoryStore(ft.docs);
+    extraRoutes = ft.handle;
+  }
+  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log, extraRoutes });
   room.server.listen(port, host, () => console.log(`Eclipse Realms social room: http://${host}:${port}`));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void room.dispose(); });
 }
