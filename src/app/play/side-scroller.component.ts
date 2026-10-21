@@ -957,7 +957,7 @@ export class SideScrollerComponent implements OnDestroy {
     const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
     if (!here) return;
     // Shared creatures: the host of this area announcing a kill here was already paid through its shared kill.
-    if (!this.coopRewards.partyKillPays(kill, here, this.coopHostHere(here.area))) { this.canvas?.nativeElement.setAttribute('data-party-share', 'coop'); return; }
+    if (!this.coopRewards.partyKillPays(kill, here, this.coopHostHere(here.area))) return;
     const r = this.partyShare.accept(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
     const el = this.canvas?.nativeElement;
     el?.setAttribute('data-party-share', r.ok ? `+${r.xp}` : r.why);
@@ -984,6 +984,7 @@ export class SideScrollerComponent implements OnDestroy {
       const name = this.social.players.find(p => p.id === kill.from)?.name ?? '';
       const share = this.partyShare.accept({ id: kill.id, from: kill.from, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
         { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
+      el?.setAttribute('data-party-share', share.ok ? `+${share.xp}` : share.why);
       if (share.ok) { this.coopPaid.share++; this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name })); }
     }
     if (r.kind === 'full') this.coopPaid.full++;
@@ -1363,6 +1364,7 @@ export class SideScrollerComponent implements OnDestroy {
         // Protocol 5: straight to the engine (outside Angular: ~8 a second, nothing in the HUD changes).
         onCoopSnap: msg => (this.engine as unknown as { coopSnap?: (m: typeof msg) => void } | undefined)?.coopSnap?.(msg),
         onCoopHits: msg => (this.engine as unknown as { coopHits?: (m: typeof msg) => void } | undefined)?.coopHits?.(msg),
+        onCoopPals: msg => (this.engine as unknown as { coopPals?: (m: typeof msg) => void } | undefined)?.coopPals?.(msg),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -1468,6 +1470,7 @@ export class SideScrollerComponent implements OnDestroy {
       onKill: event => this.zone.run(() => this.hunted(event)),
       onCoopSnap: body => this.room?.coopSnap(body) ?? Promise.resolve(false),
       onCoopHits: body => this.room?.coopHits(body) ?? Promise.resolve(false),
+      onCoopPals: body => this.room?.coopPals(body) ?? Promise.resolve(false),
       onCoopKill: kill => this.zone.run(() => this.coopKilled(kill)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
@@ -1546,12 +1549,12 @@ export class SideScrollerComponent implements OnDestroy {
         this.soundScene(state);
         // Presence: top-down, the area id (a continent or a floor) and the way the Keeper faces; it goes in `zone` too,
         // so a v1 room (no protocol-2 fields) still lines Keepers up by area. Side view: the WORLD, or the area's name.
-        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean } | undefined) : undefined;
+        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string } | undefined) : undefined;
         const here = td?.peerPresence?.();
         if (here) {
           // Life for the party frames, in twentieths of the most (a regenerating Keeper does not send every point).
           const maxHp = Math.max(1, Math.round(this.tdMaxHp)), hp = Math.round(Math.round(Math.max(0, Math.min(1, state.hp / maxHp)) * 20) / 20 * maxHp);
-          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp });
+          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '' });
           if (el) {
             el.setAttribute('data-peers', (td?.peersOnScreen?.() ?? []).map(p => `${p.name}@${p.x},${p.y}${p.waving ? '~' : ''}`).join(';'));
             el.setAttribute('data-self-waving', td?.selfWaving ? 'true' : 'false');

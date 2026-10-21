@@ -106,6 +106,8 @@ export class TdCoop implements CoopLink {
 
   constructor(private readonly mobs: MobSystem, private readonly hooks: CoopHooks) {}
 
+  /** Others of the party share this Keeper's area (its companions go to them). */
+  get sharing(): boolean { return this.present.length > 1 && this.present.includes(this.me); }
   /** The room's election (protocol 4) and who this Keeper is; null against an older room (everything solo). */
   setAreas(areas: CoopAreas | null, me: string, party: readonly string[]): void {
     this.areas = areas ?? {}; this.me = me; this.party = [...party];

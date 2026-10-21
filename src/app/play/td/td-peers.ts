@@ -53,6 +53,8 @@ export class TdPeers {
   }
 
   get drawn(): readonly PeerShown[] { return this.shown; }
+  /** A Keeper's cosmetic companions string (presence `pals`, protocol 5): its pet and Glim beside it. */
+  palsOf(id: string): string { const p = this.raw.find(x => x.id === id); return typeof p?.pals === 'string' ? p.pals : ''; }
   /** Where each party member last said it stood (any area), by the room's list. */
   partyWhere(): { id: string; name: string; area: string; x: number; y: number }[] {
     return this.raw.filter(p => this.party.has(p.id) && Number.isFinite(p.x) && Number.isFinite(p.y))

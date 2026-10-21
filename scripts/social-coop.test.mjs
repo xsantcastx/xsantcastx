@@ -276,3 +276,44 @@ test('protocol 5: a reopened stream learns the election; leaving the party tells
   await post('/party/leave', {}, b.token);
   assert.deepEqual((await again.coop()).areas, {});
 });
+
+test('protocol 5: companions — each owner\'s list reaches the party\'s others in its area, any role; validated; rate limited', async t => {
+  const { join, move, form, stream, post, tick } = await room(t);
+  const a = await join('Arin'), b = await join('Mira'), c = await join('Oskar'), x = await join('Stranger');
+  for (const k of [a, b, c, x]) await move(k, 'ember-isle');
+  await move(c, 'ember-mine-1');
+  await form([a, b, c]);
+  const [sa, sb, sc, sx] = [await stream(a), await stream(b), await stream(c), await stream(x)];
+  const pals = [{ i: 'p', k: 'pet', t: 'spirit-beast', x: 10, y: 12, f: -1, a: true }, { i: 'k1', k: 'skel', x: 4, y: 4, f: 1, h: 30, m: 40 }, { i: 'g', k: 'glim', x: 1, y: -40 }];
+  // A member's companions reach the host (and a host's would reach members): the owner is the authority, any role.
+  assert.equal((await post('/coop/pals', { area: 'ember-isle', pals }, b.token)).status, 200);
+  const got = await sa.next('coop-pals');
+  assert.equal(got.from, b.id);
+  assert.deepEqual(got.pals, [{ i: 'p', k: 'pet', t: 'spirit-beast', x: 10, y: 12, f: -1, a: true }, { i: 'k1', k: 'skel', x: 4, y: 4, f: 1, m: 40, h: 30 }, { i: 'g', k: 'glim', x: 1, y: -40 }]);
+  assert.equal(await sc.next('coop-pals', 200), null, 'another floor');
+  assert.equal(await sx.next('coop-pals', 200), null, 'not in the party');
+  assert.equal(await sb.next('coop-pals', 200), null, 'not echoed');
+  for (const bad of [[{ i: 'p', k: 'dragon', x: 1, y: 1 }], [{ i: 'P', k: 'pet', x: 1, y: 1 }], [{ i: 'p', k: 'pet', x: 2e6, y: 1 }], [{ i: 'p', k: 'pet', t: '<b>', x: 1, y: 1 }],
+    [{ i: 'k', k: 'skel', x: 1, y: 1, h: 50, m: 40 }], [{ i: 'p', k: 'pet', x: 1, y: 1, evil: 1 }], Array.from({ length: COOP.maxPals + 1 }, (_, n) => ({ i: `w${n}`, k: 'wisp', x: 1, y: 1 }))]) {
+    tick(1000);
+    assert.equal((await post('/coop/pals', { area: 'ember-isle', pals: bad }, a.token)).status, 400, JSON.stringify(bad).slice(0, 80));
+  }
+  tick(1000);
+  const codes = [];
+  for (let i = 0; i < COOP.palsPerSec + 1; i++) codes.push((await post('/coop/pals', { area: 'ember-isle', pals: [] }, a.token)).status);
+  assert.equal(codes.filter(s => s === 200).length, COOP.palsPerSec);
+  assert.equal(codes.at(-1), 429);
+  // Not where the room last saw you: refused.
+  tick(1000);
+  assert.equal((await post('/coop/pals', { area: 'ember-mine-1', pals: [] }, a.token)).status, 409);
+});
+
+test('protocol 5: presence carries the cosmetic companions (pet and Glim) to everyone; junk is refused', async t => {
+  const { join, post, stream, tick } = await room(t);
+  const a = await join('Arin', {}), b = await join('Mira', {});
+  const sb = await stream(b);
+  const body = { x: 5, y: 5, facing: 1, animation: 'idle', zone: 'ember-isle', area: 'ember-isle' };
+  assert.equal((await post('/update', { ...body, pals: 'pet:moss-hedgehog:-12:4,glim::-16:-44' }, a.token)).status, 200);
+  for (;;) { const e = await sb.next('players'); const me = e?.players.find(p => p.id === a.id); if (!e || me?.pals) { assert.equal(me.pals, 'pet:moss-hedgehog:-12:4,glim::-16:-44'); break; } }
+  for (const bad of ['<b>', 'x'.repeat(97), 5]) { tick(1000); assert.equal((await post('/update', { ...body, pals: bad }, a.token)).status, 400, String(bad)); }
+});

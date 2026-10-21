@@ -287,6 +287,8 @@ export interface EngineOptions {
   onCoopSnap?: (body: import('../social/coop-protocol').CoopSnapBody) => Promise<boolean>;
   onCoopHits?: (body: { area: string; hits: import('../social/coop-protocol').CoopHit[] }) => Promise<boolean>;
   onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
+  /** Protocol 5: post this Keeper's own companions to the party in its area. */
+  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
   /**
    * A find on the high ground (world/heights.ts) was used: a courier cache, a
    * carving, the look-out or a summit cairn. The host books it once per player

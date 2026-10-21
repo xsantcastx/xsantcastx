@@ -130,7 +130,7 @@ test('shared creatures: one host, the same monsters on every screen, claims, one
     for (const p of [b, c]) {
       await expect(canvas(p)).toHaveAttribute('data-coop-paid', /^full:1,/);
       // Aster's own protocol-3 announcement of the same kill is not paid as a share on top.
-      expect(await canvas(p).getAttribute('data-party-share')).not.toMatch(/^\+/);
+      expect((await canvas(p).getAttribute('data-party-share')) ?? '').not.toMatch(/^\+/);
     }
 
     // ── A shared boss: +60% life for each other member present (three here: ×2.2) ──
@@ -165,6 +165,42 @@ test('shared creatures: one host, the same monsters on every screen, claims, one
     await sideBySide(browser, info, b, c, 'docs/handoff/cozy-ui/coop-handover.jpg', ['Bryn: host now (Aster left the party), the creatures adopted', 'Cora: still a member, the same creatures, now Bryn\'s']);
   } finally {
     await ca.close(); await cb.close(); await cc.close();
+  }
+});
+
+test('companions: a Thornstrider\'s beast and a Warlock\'s skeletons on each other\'s screens; a stranger sees only the beast', async ({ browser }, info) => {
+  test.setTimeout(180_000);
+  type Pals = { __tdCoop: { pals: () => { owner: string; k: string; t: string; x: number; y: number }[]; raise: (n: number) => number; mine: () => { k: string }[] } };
+  const pals = (page: Page) => page.evaluate(() => (window as unknown as Pals).__tdCoop.pals());
+  const ca = await newContext(browser, info, { viewport: { width: 1280, height: 800 } });
+  const ct = await newContext(browser, info, { viewport: { width: 1280, height: 800 } });
+  const cx = await newContext(browser, info, { viewport: { width: 1280, height: 800 } });
+  const a = await ca.newPage(), th = await ct.newPage(), x = await cx.newPage();
+  try {
+    await enterAs(a, hearth.port, 'Aster', 'warlock', keeper(), 'fxparty=1&fxcoop=1');
+    await enterAs(th, hearth.port, 'Tamsin', 'thornstrider', keeper(), 'fxparty=1&fxcoop=1');
+    await enterAs(x, hearth.port, 'Wren', 'ashguard', keeper(), 'fxparty=1&fxcoop=1');
+    await step(th, 'd', 500);
+    for (const p of [a, th, x]) await hide(p);
+    await invite(a, 'Tamsin');
+    await th.locator('[data-party-invite] [data-invite-accept]').click({ timeout: 10000 });
+    await expect(canvas(a)).toHaveAttribute('data-coop-role', 'host', { timeout: 15000 });
+    // Tamsin's spirit beast walks at her side by itself; Aster raises two skeletons.
+    await expect.poll(async () => (await th.evaluate(() => (window as unknown as Pals).__tdCoop.mine())).some(p => p.k === 'pet'), { timeout: 10000 }).toBe(true);
+    await a.evaluate(() => (window as unknown as Pals).__tdCoop.raise(2));
+    // Each sees the other's: Aster the beast (the pet painter, the spirit beast's sheet), Tamsin two skeletons; Glim too.
+    await expect.poll(async () => (await pals(a)).filter(p => p.k === 'pet' && p.t === 'spirit-beast').length, { timeout: 10000 }).toBe(1);
+    await expect.poll(async () => (await pals(th)).filter(p => p.k === 'skel').length, { timeout: 10000 }).toBe(2);
+    expect((await pals(th)).some(p => p.k === 'glim')).toBe(true);
+    // Wren, in the room but not the party: the beast and Glim (presence, cosmetic), never the skeletons. Presence travels
+    // with movement, so Tamsin takes a step.
+    await step(th, 'a', 300);
+    await expect.poll(async () => (await pals(x)).filter(p => p.k === 'pet').length, { timeout: 15000 }).toBeGreaterThanOrEqual(1);
+    expect((await pals(x)).filter(p => p.k === 'skel').length).toBe(0);
+    await calm(a); await calm(th);
+    await sideBySide(browser, info, a, th, 'docs/handoff/cozy-ui/coop-companions.jpg', ['Aster (Warlock): Tamsin\'s spirit beast at her side', 'Tamsin (Thornstrider): Aster\'s two raised skeletons']);
+  } finally {
+    await ca.close(); await ct.close(); await cx.close();
   }
 });
 

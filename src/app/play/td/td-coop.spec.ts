@@ -49,7 +49,7 @@ function rig() {
     for (const w of wire.splice(0)) {
       const host = areas['ember-isle'].host;
       if (w.kind === 'snap') for (const [id, s] of Object.entries(sides)) { if (id !== w.from) s.coop.snap({ ...(w.body as CoopSnapBody), from: w.from, term: areas['ember-isle'].term } as CoopSnapMsg); }
-      else sides[host].coop.hits({ from: w.from, area: 'ember-isle', x: sides[w.from].me.x, y: sides[w.from].me.y, level: 20, hits: (w.body as { hits: CoopHit[] }).hits });
+      else sides[host]?.coop.hits({ from: w.from, area: 'ember-isle', x: sides[w.from].me.x, y: sides[w.from].me.y, level: 20, hits: (w.body as { hits: CoopHit[] }).hits });
     }
   };
   // Each frame lets the posts settle (the room answers between frames, as fetch would).
@@ -174,5 +174,29 @@ describe('td-coop: shared creatures between a host and a member', () => {
     await run(1.5);
     expect(adopted.x).toBeLessThan(x0);
     expect(b.hurt.length).toBeGreaterThan(0);
+  });
+
+  it('the host is only an id in the election: a room-run world ("@room", no player) drives a member unchanged', async () => {
+    const { a, b, elect, run } = rig();
+    elect({ 'ember-isle': { host: '@room', term: 7, members: ['A', 'B'] } });
+    await run(.1);
+    expect([a.coop.role, b.coop.role]).toEqual(['member', 'member']);
+    // A world simulated elsewhere (here: another MobSystem standing in for the room's) streams as '@room'.
+    const world = new MobSystem({ options: {} as EngineOptions, walkable: () => true, levelId: () => 'surface', player: () => ({ x: 1e6, y: 1e6 }), hurtPlayer: () => undefined, healPlayer: () => undefined, swung: () => undefined });
+    world.selfAway = true;
+    const sent: CoopSnapBody[] = [];
+    const room = new TdCoop(world, { send: async body => { sent.push(body); return true; }, claim: async () => true, killed: () => 'none', now: () => 0, phase: () => 'day', still: () => false });
+    room.setAreas({ 'ember-isle': { host: '@room', term: 7, members: ['@room', 'A', 'B'] } }, '@room', ['A', 'B']);
+    const wolf = world.place('w:9,9', calm(), 40, 0); wolf.wait = 1e9;
+    room.before(.2, 'ember-isle', [{ id: 'B', x: 0, y: 0 }]);
+    room.after(.2);
+    await Promise.resolve();
+    b.coop.snap({ ...sent[0], from: '@room', term: 7 });
+    expect(b.sys.mobs.map(m => m.nid)).toEqual([wolf.nid!]);
+    // B's blow becomes a claim addressed to whoever hosts: the room would weigh it exactly as a player host does.
+    b.sys.wound(b.sys.mobs[0], 5);
+    await run(.2);
+    room.hits({ from: 'B', area: 'ember-isle', x: 0, y: 0, level: 20, hits: [{ i: wolf.nid!, d: 5, el: 'physical' }] });
+    expect(wolf.hp).toBe(wolf.def.hp - 5);
   });
 });
