@@ -553,6 +553,8 @@ function check(E) {
   fails.push(...townTasksScenario({ quiet: true }));
   // The hunt (economy-curve HUNT_GOLD): the piles, the bosses, the milestones' fixed Gold (`--hunt` prints it).
   fails.push(...huntScenario({ quiet: true }));
+  // The Cold Hearth (shared/hearth): the Hearth Blessings priced against the hunt and the fall they soften (`--hearth`).
+  fails.push(...hearthScenario({ quiet: true }));
   // Uncapped levels: 1-99 untouched, 99 -> 100 continuous, time to 300 per skill (`--levels` prints it).
   fails.push(...levelsScenario({ quiet: true }));
   fails.push(...levelingScenario({ quiet: true }));
@@ -1607,6 +1609,54 @@ function huntScenario({ quiet = false } = {}) {
   return fails;
 }
 
+// --hearth: the Cold Hearth (design-bible §5.8, shared/hearth/hearth-rules.ts). A fall over the grace level leaves
+// 5% of the carried Gold where the Keeper fell and an Ember debt of 10% of the level's XP; each of five Hearth
+// Blessings takes 20% off both and costs one minute of a steady hunt at the Keeper's level. The honest check:
+//   1. one blessing is 0.5-3 min of the Keeper's own hunt, at every level (a real sink, never a wall);
+//   2. a full set costs 0.3x-2x what an unrecovered fall costs at that level (purse share of an hour's carry + the
+//      debt in hunt time): fair insurance, neither a toy nor a rip-off. The debt grows with a level's length, so
+//      at the top a set is the cheaper side of that band: deliberately, the deeper the Keeper the more it is worth;
+//   3. the debt is paid off in at most 30 min of hunting at the Keeper's level, and never takes a level;
+//   4. an hour's hunt buys at least 6 full sets: blessings never eat the hunt;
+//   5. nothing is sold or taken under the grace level.
+// ───────────────────────────────────────────────────────────────────────────
+
+function hearthScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const H = loadTsTree('src/app/shared/hearth/hearth-rules.ts');
+  const K = loadTs('src/app/shared/skills/keeper-level.ts');
+  const KILLS_PER_HOUR = 240;
+  const mobXp = L => Math.round((30 + 12.5 * Math.max(1, L)) / 5);
+  const mid = L => K.keeperXpForLevel(L) + Math.floor((K.keeperXpForLevel(L + 1) - K.keeperXpForLevel(L)) / 2);
+  say('Cold Hearth scenario · five blessings, one minute of the hunt each\n');
+  say('  level   blessing   full set   purse share   debt (XP)   debt (min)   a fall (min)   set / fall   payoff (min)');
+  for (const L of [20, 30, 40, 60, 100, 300, 1000, 10000]) {
+    const perMin = C.huntGold(L, 60), price = H.blessingPrice(L), set = price * H.BLESSINGS.length;
+    const share = 0.05 * C.huntGold(L, 3600);
+    const debt = H.fallDebt(mid(L), 0), xpPerMin = KILLS_PER_HOUR * mobXp(L) / 60;
+    const debtMin = debt / xpPerMin, fallMin = share / perMin + debtMin, setMin = set / perMin;
+    const payoffMin = debt / (xpPerMin * H.DEBT_PAYOFF);
+    say(`  ${String(L).padEnd(7)} ${fmtN(price).padStart(8)}   ${fmtN(set).padStart(8)}   ${fmtN(Math.round(share)).padStart(11)}   ${fmtN(debt).padStart(9)}   ${debtMin.toFixed(1).padStart(10)}   ${fallMin.toFixed(1).padStart(12)}   ${(setMin / fallMin).toFixed(2).padStart(10)}   ${payoffMin.toFixed(1).padStart(12)}`);
+    const one = price / perMin;
+    if (one < 0.5 || one > 3) fails.push(`hearth: a blessing at level ${L} is ${one.toFixed(2)} min of its hunt (0.5-3)`);
+    if (setMin / fallMin < 0.3 || setMin / fallMin > 2) fails.push(`hearth: a full set at level ${L} is ${(setMin / fallMin).toFixed(2)}x an unrecovered fall (0.3-2)`);
+    if (payoffMin > 30) fails.push(`hearth: the Ember debt at level ${L} takes ${payoffMin.toFixed(1)} min of hunting to pay (max 30)`);
+    if (C.huntGold(L, 3600) / set < 6) fails.push(`hearth: an hour at level ${L} buys only ${(C.huntGold(L, 3600) / set).toFixed(1)} full sets (min 6)`);
+    if (H.fallScale(H.BLESSINGS.length) !== 0) fails.push('hearth: five blessings do not take a fall to nothing');
+  }
+  // Never a level lost: the debt only holds back XP still to come; a level's XP floor is never touched.
+  for (const L of [20, 50, 500]) {
+    const r = H.payDebt(mobXp(L), H.fallDebt(mid(L), 0));
+    if (r.earned + r.paid !== mobXp(L) || r.earned < 0) fails.push(`hearth: a kill's XP at level ${L} is not split between the debt and the Keeper`);
+  }
+  const under = H.HEARTH_GRACE_LEVEL - 1;
+  if (H.fallDebt(mid(under), 0) !== 0 || H.fallCosts(under)) fails.push(`hearth: a fall under level ${H.HEARTH_GRACE_LEVEL} costs something`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim hearth: ${fails.length ? fails.length + ' fail(s)' : `a blessing = 1 min of the hunt, a set ${(H.BLESSING_SECONDS * 5 / 60).toFixed(0)} min; debt and grace ok`}`);
+  return fails;
+}
+
 // --plinko / --mines / --crash: the Croupier's other three games (Rune Drop,
 // Seam Sweeper, Eclipse Ascent). Gold only; RTP must sit in 94–96%.
 //   Each is proven EXACTLY (sums over the binomial board; the multiplier ×
@@ -2035,6 +2085,10 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv.heights && !argv.check) {
   const fails = heightsScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.hearth && !argv.check) {
+  const fails = hearthScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.hunt && !argv.check) {

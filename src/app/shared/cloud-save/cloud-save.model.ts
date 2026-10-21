@@ -66,6 +66,7 @@ import { mergeLoot } from '../loot/loot-save.model';
 import { mergePets } from '../pets/pets-save.model';
 import { mergeTownTasks } from '../town-tasks/town-tasks-save.model';
 import { mergeKeeperMilestones } from '../skills/keeper-milestones-save.model';
+import { mergeHearth } from '../hearth/hearth-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -556,6 +557,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // and the title the Keeper wears (the later pick wins). The level itself is derived from Hunting XP (the activity
     // ledger); points, passives and frames are derived from it. See keeper-milestones-save.model.ts.
     merge: mergeKeeperMilestones,
+  },
+  {
+    key: 'godforge-hearth',
+    collection: 'progress',
+    doc: 'hearth',
+    label: 'The Cold Hearth',
+    // `{ version, lit, wake, wakeAt, debt, blessings, ledgerAt, falls }`: the hearths lit (a union), the wake point
+    // (the later lighting wins), the Ember debt and the Hearth Blessings held (the later fall or purchase wins both,
+    // whole) and the falls counted (the higher). Per character. See hearth-save.model.ts.
+    merge: mergeHearth,
   },
   {
     key: 'godforge-cabinets',

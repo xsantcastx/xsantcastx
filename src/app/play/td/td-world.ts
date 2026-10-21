@@ -117,6 +117,12 @@ export class TdWorld implements TdLevel {
   /** The continent's other towns and villages. */
   private readonly villages: Village[];
   get stalls(): readonly TdStall[] { return this.allStalls; }
+  /** The town and each village, with the tile their map's (0, 0) lies on: where the hearths are placed (td-hearth.ts). */
+  get settlements(): readonly { name: string; map: TdMap; c0: number; r0: number }[] {
+    return [{ name: this.def.townName, map: this.town, c0: 0, r0: 0 }, ...this.villages.map(v => ({ name: v.name, map: v.map, c0: v.c0, r0: v.r0 }))];
+  }
+  /** A stall added after the continent was built (a hearth, a shrine: td-hearth.ts). */
+  addStall(stall: TdStall): void { this.allStalls.push(stall); }
   get spawn(): { x: number; y: number } { return this.town.spawn; }
   /** Every town's and village's own things (the Map draws their roofs). */
   get settlementObjects(): readonly TdObject[] { return [...this.town.objects, ...this.villages.flatMap(v => v.objects)]; }
