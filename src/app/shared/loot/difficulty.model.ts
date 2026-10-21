@@ -54,11 +54,11 @@ export const DIFFICULTIES: Readonly<Record<DifficultyTier, DifficultyDef>> = {
   },
   nightmare: {
     id: 'nightmare', hp: 2.5, damage: 1.6, level: 20, resistPenalty: 40, creatureResist: 15,
-    itemChance: 1.35, rarityShift: 1, runeCap: 'legendary', deathShare: 0.10, gate: GATE_BOSS, color: '#a855f7',
+    itemChance: 1.35, rarityShift: 0.7, runeCap: 'legendary', deathShare: 0.10, gate: GATE_BOSS, color: '#a855f7',
   },
   hell: {
     id: 'hell', hp: 4, damage: 2.2, level: 40, resistPenalty: 100, creatureResist: 30,
-    itemChance: 1.7, rarityShift: 2, runeCap: 'singular', deathShare: 0.15, gate: null, color: '#ff6a3d',
+    itemChance: 1.7, rarityShift: 1.4, runeCap: 'singular', deathShare: 0.15, gate: null, color: '#ff6a3d',
   },
 };
 

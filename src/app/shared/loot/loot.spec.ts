@@ -10,7 +10,7 @@ import { SOCKET_WORDS } from '../enchanting/socket-words';
 import { RARITY_COLORS } from '../../play/engine/loot-fx';
 import { LOOT_TIER_FX, LOOT_TIER_ORDER, shownUnderFilter } from './loot-tiers';
 import {
-  DROP_POOL, RUNG_LEVEL, expectedDropsPerHour, rarityOdds, rollCreatureLoot, runeCeiling, runeOdds, uniquesAt,
+  DROP_POOL, RUNG_LEVEL, expectedDropsPerHour, rarityChances, rarityOdds, rollCreatureLoot, runeCeiling, runeOdds, uniquesAt,
 } from './drop-tables';
 import { AURA_IDS, auraEffect, pickAura, type AuraSource } from './auras';
 import { effectiveResist, isImmune, keeperResist, mitigate } from './damage.model';
@@ -71,6 +71,19 @@ describe('drop tables and rates', () => {
       prev = now;
     }
     expect(at(400).legendary / at(0).legendary).toBeLessThan(2.7);
+  });
+
+  it('the higher the rung, the harder Magic Find is damped (D2: linear, 600, 500, 250, 150), and legendary+ stays an event', () => {
+    const at = (mf: number) => rarityChances(30, mf, 0);
+    const lift = (t: 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic') => at(300)[t] / at(0)[t];
+    expect(at(100).uncommon / at(0).uncommon).toBeCloseTo(2, 9); // linear (the chance caps at 0.9 only far past any gear)
+    expect(lift('rare')).toBeGreaterThan(lift('epic'));
+    expect(lift('epic')).toBeGreaterThan(lift('legendary'));
+    expect(lift('legendary')).toBeGreaterThan(lift('mythic'));
+    expect(lift('mythic')).toBeLessThan(2.1);
+    // An hour of 240 ordinary kills at level 20 and 100% Magic Find: well under one legendary-or-better.
+    const per = expectedDropsPerHour({ creature: 'shadeling', level: 20, tier: 'normal', magicFind: 100, rank: 'normal' }, 240);
+    expect(per.legendary + per.mythic + per.singular).toBeLessThan(0.3);
   });
 
   it('rolls are deterministic for a seed, bosses always drop, and uniques land only at their authored rarity', () => {
