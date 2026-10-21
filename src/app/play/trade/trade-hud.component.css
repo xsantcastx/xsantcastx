@@ -1,0 +1,100 @@
+/* The trade window: a cozy wood frame round a parchment page (docs/design/refs/cozy), every control at least 44px,
+   one scroller inside so a phone reaches the last button (390x844, 360x640, 844x390). Tokens only (_cozy.css). */
+:host { display: contents; }
+
+.trade, .trade-ask, .trade-card {
+  font-family: var(--cozy-font-read, inherit);
+  color: var(--cozy-ink);
+}
+
+.trade-ask {
+  position: fixed; z-index: 9; left: 50%; top: calc(var(--nav-h, 0px) + 72px); transform: translateX(-50%);
+  width: min(360px, calc(100vw - 24px)); padding: 12px 14px;
+  background: var(--cozy-parch); border: 3px solid var(--cozy-wood-2); border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--cozy-wood-4), 0 10px 24px color-mix(in srgb, var(--cozy-wood-4) 60%, transparent);
+}
+.trade-ask p { margin: 0 0 10px; font-weight: 700; }
+
+.trade {
+  position: fixed; z-index: 9; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(620px, calc(100vw - 16px)); max-height: calc(100dvh - 24px);
+  display: flex; flex-direction: column;
+  background: var(--cozy-wood-1); border: 3px solid var(--cozy-wood-3); border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--cozy-wood-4), inset 0 2px 0 var(--cozy-wood-hi), 0 18px 40px color-mix(in srgb, var(--cozy-wood-4) 70%, transparent);
+}
+.trade-head { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; color: var(--cozy-cream); }
+.trade-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trade-x {
+  min-width: 44px; min-height: 44px; border: 2px solid var(--cozy-wood-4); border-radius: 8px;
+  background: var(--cozy-wood-2); color: var(--cozy-cream); font-size: 1.4rem; line-height: 1; cursor: pointer;
+}
+.trade-body {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: 0 8px; padding: 10px; background: var(--cozy-parch); border: 2px solid var(--cozy-parch-edge); border-radius: 8px;
+}
+.trade-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.trade-side { padding: 8px; border-radius: 8px; background: var(--cozy-parch-shade); border: 1px solid var(--cozy-parch-edge); min-width: 0; }
+.trade-side h3, .trade-satchel h3 { margin: 0 0 8px; font-size: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.trade-chip { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: var(--cozy-brass-lo); color: var(--cozy-cream); }
+.trade-chip--ok { background: var(--cozy-leaf); }
+.trade-chip--quiet { background: var(--cozy-ink-soft); }
+
+.trade-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; }
+.trade-grid--bag { max-height: 184px; overflow-y: auto; }
+.trade-cell {
+  position: relative; min-width: 48px; min-height: 48px; aspect-ratio: 1; padding: 4px;
+  display: grid; place-items: center;
+  background: var(--cozy-well); border: 2px solid var(--rim, var(--cozy-wood-3)); border-radius: 6px; cursor: pointer;
+}
+.trade-cell img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.trade-cell em { font-style: normal; font-weight: 700; color: var(--cozy-cream); }
+.trade-cell:disabled { cursor: default; opacity: .55; }
+.trade-cell:focus-visible, .trade-btn:focus-visible, .trade-x:focus-visible { outline: 3px solid var(--cozy-glow); outline-offset: 2px; }
+.trade-cell--empty { cursor: default; background: color-mix(in srgb, var(--cozy-well) 45%, transparent); border-style: dashed; border-color: var(--cozy-parch-edge); }
+.trade-block {
+  position: absolute; left: 2px; right: 2px; bottom: 2px; font-size: .58rem; line-height: 1.1;
+  background: var(--cozy-wood-4); color: var(--cozy-cream); border-radius: 3px; text-align: center;
+}
+.trade-none { margin: 4px 0; font-size: .85rem; color: var(--cozy-ink-soft); grid-column: 1 / -1; }
+
+.trade-gold { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-weight: 700; flex-wrap: wrap; }
+.trade-gold input {
+  width: 7.5em; min-height: 44px; padding: 0 8px; font: inherit;
+  border: 2px solid var(--cozy-wood-3); border-radius: 6px; background: var(--cozy-cream); color: var(--cozy-ink);
+}
+.trade-gold small { font-weight: 400; color: var(--cozy-ink-soft); }
+.trade-coin { width: 14px; height: 14px; border-radius: 50%; background: var(--cozy-brass); box-shadow: inset -2px -2px 0 var(--cozy-brass-lo), inset 2px 2px 0 var(--cozy-brass-hi); display: inline-block; }
+
+.trade-satchel { margin-top: 10px; }
+.trade-status { margin: 10px 0 0; font-size: .9rem; min-height: 1.3em; }
+
+.trade-foot { display: flex; gap: 8px; padding: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.trade-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.trade-btn {
+  min-height: 44px; min-width: 96px; padding: 0 16px; font: inherit; font-weight: 700; cursor: pointer;
+  border: 2px solid var(--cozy-wood-4); border-radius: 8px; background: var(--cozy-wood-2); color: var(--cozy-cream);
+  box-shadow: inset 0 2px 0 var(--cozy-wood-hi);
+}
+.trade-btn--go { background: var(--cozy-leaf); }
+.trade-btn:disabled { opacity: .55; cursor: default; }
+
+.trade-card {
+  position: fixed; z-index: 10; width: 260px; padding: 8px 10px; pointer-events: none;
+  background: var(--cozy-plate); color: var(--cozy-cream); border: 2px solid var(--rim, var(--cozy-plate-seam)); border-radius: 8px;
+}
+.trade-card__name { display: block; color: var(--rim, var(--cozy-cream)); }
+.trade-card__kicker { display: block; font-size: .78rem; opacity: .8; margin-bottom: 4px; }
+.trade-card ul { margin: 0; padding-left: 16px; font-size: .82rem; }
+.trade-card p { margin: 6px 0 0; font-size: .78rem; opacity: .85; }
+
+/* Phones: a sheet along the bottom, the two sides stacked. */
+@media (max-width: 560px) {
+  .trade { top: auto; bottom: 0; transform: translateX(-50%); width: 100vw; max-height: calc(100dvh - 8px); border-radius: 12px 12px 0 0; }
+  .trade-sides { grid-template-columns: 1fr; }
+}
+/* Short landscape phones: the sides side by side, the satchel shorter. */
+@media (max-height: 460px) {
+  .trade { max-height: calc(100dvh - 8px); }
+  .trade-grid--bag { max-height: 112px; }
+}
+@media (prefers-reduced-motion: reduce) { .trade, .trade-ask { transition: none; } }

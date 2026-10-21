@@ -1,0 +1,97 @@
+<!-- A Keeper asks to trade: a cozy toast with the two answers (it lapses by itself). -->
+@if (ask; as a) {
+  <section class="trade-ask" role="alertdialog" aria-labelledby="trade-ask-title" data-trade-ask data-engine-ignore>
+    <p id="trade-ask-title">{{ t('trade.ask.title', { name: a.name }) }}</p>
+    <div class="trade-row">
+      <button type="button" class="trade-btn trade-btn--go" data-trade-ask-yes (click)="answer(a, true)">{{ t('trade.ask.yes') }}</button>
+      <button type="button" class="trade-btn" data-trade-ask-no (click)="answer(a, false)">{{ t('trade.ask.no') }}</button>
+    </div>
+  </section>
+}
+
+<!-- The trade window: what you offer, what they offer, your satchel; Accept, then Confirm (Tibia / Diablo II). -->
+@if (trade; as tr) {
+  <section class="trade" role="dialog" aria-modal="true" aria-labelledby="trade-title" data-trade-window [attr.data-trade-stage]="flow.status.stage" [attr.data-trade-room-stage]="tr.stage" data-engine-ignore>
+    <header class="trade-head">
+      <h2 id="trade-title">{{ t('trade.title', { name: theirName }) }}</h2>
+      <button type="button" class="trade-x" data-trade-cancel-x (click)="cancel()" [attr.aria-label]="t('trade.close')">&times;</button>
+    </header>
+    <div class="trade-body">
+      <div class="trade-sides">
+        <div class="trade-side" data-trade-side="mine">
+          <h3>{{ t('trade.you') }} @if (tr.confirmed[tr.me]) { <b class="trade-chip trade-chip--ok">{{ t('trade.confirmed') }}</b> } @else if (tr.accepted[tr.me]) { <b class="trade-chip">{{ t('trade.accepted') }}</b> }</h3>
+          <div class="trade-grid">
+            @for (c of cellsOf(mine); track c.id) {
+              <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-mine]="c.id" [disabled]="locked"
+                      (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
+                      (click)="tap(c, 'remove', $event)" [attr.aria-label]="t('trade.remove', { name: c.name })">
+                @if (c.art) { <img [src]="c.art" alt=""> } @else { <em>{{ c.mark }}</em> }
+              </button>
+            }
+            @for (n of emptySlots(mine.length); track n) { <span class="trade-cell trade-cell--empty" aria-hidden="true"></span> }
+          </div>
+          <label class="trade-gold">
+            <i class="trade-coin" aria-hidden="true"></i><span>{{ t('trade.gold') }}</span>
+            <input type="number" inputmode="numeric" min="0" [max]="purse" step="1" data-trade-gold [disabled]="locked" [value]="goldDraft" (input)="setGold($any($event.target).value)">
+            <small>{{ t('trade.goldHave', { n: purse.toLocaleString('en-US') }) }}</small>
+          </label>
+        </div>
+        <div class="trade-side trade-side--theirs" data-trade-side="theirs">
+          <h3>{{ t('trade.them', { name: theirName }) }} @if (tr.confirmed[other]) { <b class="trade-chip trade-chip--ok">{{ t('trade.confirmed') }}</b> } @else if (tr.accepted[other]) { <b class="trade-chip">{{ t('trade.accepted') }}</b> } @else { <b class="trade-chip trade-chip--quiet">{{ t('trade.thinking') }}</b> }</h3>
+          <div class="trade-grid">
+            @for (c of cellsOf(theirs); track c.id) {
+              <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-theirs]="c.id"
+                      (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
+                      (click)="tap(c, 'look', $event)" [attr.aria-label]="c.name">
+                @if (c.art) { <img [src]="c.art" alt=""> } @else { <em>{{ c.mark }}</em> }
+              </button>
+            }
+            @if (!theirs.length) { <p class="trade-none">{{ t('trade.nothing') }}</p> }
+          </div>
+          <p class="trade-gold trade-gold--theirs" data-trade-their-gold><i class="trade-coin" aria-hidden="true"></i>{{ tr.offers[other].gold.toLocaleString('en-US') }} {{ t('trade.gold') }}</p>
+        </div>
+      </div>
+      @if (!locked) {
+        <div class="trade-satchel">
+          <h3>{{ t('trade.satchel') }}</h3>
+          @if (!satchel.length) { <p class="trade-none">{{ t('trade.satchelEmpty') }}</p> }
+          <div class="trade-grid trade-grid--bag">
+            @for (c of satchel; track c.id) {
+              <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-bag]="c.id" [disabled]="!!c.block"
+                      (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
+                      (click)="tap(c, 'add', $event)" [attr.aria-label]="c.block ? c.name + ', ' + t('trade.block.' + c.block) : t('trade.add', { name: c.name })">
+                @if (c.art) { <img [src]="c.art" alt=""> } @else { <em>{{ c.mark }}</em> }
+                @if (c.block) { <small class="trade-block">{{ t('trade.block.' + c.block) }}</small> }
+              </button>
+            }
+          </div>
+        </div>
+      }
+      <p class="trade-status" role="status" aria-live="polite" data-trade-status>{{ statusLine }}</p>
+    </div>
+    <footer class="trade-foot">
+      @if (flow.status.stage === 'done' || flow.status.stage === 'failed') {
+        <button type="button" class="trade-btn trade-btn--go" data-trade-close (click)="closeResult()">{{ t('trade.closeDone') }}</button>
+      } @else {
+        @if (tr.stage === 'confirm') {
+          <button type="button" class="trade-btn trade-btn--go" data-trade-confirm [disabled]="tr.confirmed[tr.me] || flow.status.stage === 'sending' || flow.status.stage === 'settling'" (click)="confirm()">{{ t('trade.confirm') }}</button>
+        } @else if (tr.accepted[tr.me]) {
+          <button type="button" class="trade-btn" data-trade-unaccept (click)="accept(false)">{{ t('trade.unaccept') }}</button>
+        } @else {
+          <button type="button" class="trade-btn trade-btn--go" data-trade-accept (click)="accept(true)">{{ t('trade.accept') }}</button>
+        }
+        <button type="button" class="trade-btn" data-trade-cancel (click)="cancel()">{{ t('trade.cancel') }}</button>
+      }
+    </footer>
+  </section>
+}
+
+<!-- An item's real card (the satchel's own), beside the cell under the pointer. -->
+@if (card; as c) {
+  <aside class="trade-card" role="tooltip" data-trade-card [style.left.px]="c.left" [style.top.px]="c.top" [style.--rim]="c.card.tone">
+    <b class="trade-card__name">{{ c.card.name }}</b>
+    <span class="trade-card__kicker">{{ c.card.kicker }}</span>
+    <ul>@for (s of c.card.stats; track $index) { <li>{{ s }}</li> }</ul>
+    @if (c.card.note) { <p>{{ c.card.note }}</p> }
+  </aside>
+}
