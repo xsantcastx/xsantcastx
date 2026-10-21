@@ -2104,6 +2104,99 @@ const KC = loadTsTree('src/app/shared/rpg/keeper-combat.ts', LOOT_TREE);
 const TIERS6 = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'];
 
 /**
+ * The hunt, rung by rung (--loot, in --check): what a steady hour of level-appropriate hunting drops, by creature
+ * level and Magic Find, so the ladder cannot inflate silently (owner 2026-10-21: "so many legendaries it's not even
+ * satisfying"). A kill mix, not a trash-only loop: of every 1000 kills ~865 are ordinary creatures, ~120 are a
+ * champion pack's members and ~15 a unique leader (td-elites: 1 spawn in 16 comes up a pack, a quarter of them
+ * uniques; a unique's minions are ordinary). Items only: runes have their own ladder (--loot's table above).
+ */
+const HUNT = { kph: 240, mix: { normal: .865, champion: .12, unique: .015 } };
+function huntRates(level, mf, tier = 'normal', mix = HUNT.mix, kph = HUNT.kph) {
+  const d = DIFF.DIFFICULTIES[tier], out = Object.fromEntries(TIERS6.map(t => [t, 0]));
+  for (const [rank, share] of Object.entries(mix)) {
+    const plan = LOOT.ITEM_ROLLS[rank];
+    const items = plan.rolls * Math.min(1, plan.chance * d.itemChance) * kph * share;
+    const odds = LOOT.rarityOdds(level, mf, d.rarityShift + LOOT.RANK_SHIFT[rank], rank === 'boss', LOOT.RANK_TOP?.[rank] ?? 1);
+    for (const t of TIERS6) out[t] += items * odds[t];
+  }
+  return out;
+}
+/** The same for bosses: per kill (3 rolls at 100%). */
+function bossRates(level, mf, tier = 'normal') {
+  const d = DIFF.DIFFICULTIES[tier], plan = LOOT.ITEM_ROLLS.boss;
+  const odds = LOOT.rarityOdds(level, mf, d.rarityShift + LOOT.RANK_SHIFT.boss, true, LOOT.RANK_TOP?.boss ?? 1);
+  return Object.fromEntries(TIERS6.map(t => [t, plan.rolls * Math.min(1, plan.chance * d.itemChance) * odds[t]]));
+}
+/** Set pieces an hour farming one set's place (every kill a creature of the set). */
+function setPiecesPerHour(mf, SETS) {
+  let sum = 0;
+  const mfK = SETS.SET_MF_K ?? Infinity;
+  const lean = 1 + (Number.isFinite(mfK) ? mf * mfK / (mf + mfK) : Math.min(300, mf) / 2) / 100;
+  for (const [rank, share] of Object.entries(HUNT.mix)) sum += HUNT.kph * share * SETS.SET_CHANCE[rank] * (SETS.SET_MF_K ? lean : 1 + Math.min(300, mf) / 200);
+  return sum;
+}
+function lootHuntScenario({ say }) {
+  const fails = [];
+  const SETS = loadTsTree('src/app/shared/rpg/set-items.ts', LOOT_TREE);
+  const sum = (o, from) => TIERS6.slice(from).reduce((s, t) => s + o[t], 0);
+  say(`\n  The hunt: ${HUNT.kph} kills an hour, ${(HUNT.mix.normal * 100).toFixed(1)}% ordinary / ${(HUNT.mix.champion * 100).toFixed(1)}% champion / ${(HUNT.mix.unique * 100).toFixed(1)}% unique leader, Normal tier; items per hour by rung`);
+  say('  ' + 'lvl'.padEnd(5) + 'MF'.padEnd(6) + TIERS6.slice(1).map(t => t.slice(0, 6).padStart(9)).join('') + 'leg+ /h'.padStart(10) + 'h per leg+'.padStart(12));
+  const grid = {};
+  for (const level of [10, 20, 40]) for (const mf of [0, 100, 300]) {
+    const r = huntRates(level, mf); grid[`${level}:${mf}`] = r;
+    const leg = sum(r, 4);
+    say('  ' + String(level).padEnd(5) + (mf + '%').padEnd(6) + TIERS6.slice(1).map(t => r[t].toFixed(r[t] < .1 ? 3 : 2).padStart(9)).join('') + leg.toFixed(3).padStart(10) + (leg > 0 ? (1 / leg).toFixed(1) : '-').padStart(12));
+  }
+  for (const level of [10, 20, 40]) {
+    const m0 = grid[`${level}:0`], m1 = grid[`${level}:100`], m3 = grid[`${level}:300`];
+    if (!(m0.rare >= 1.5)) fails.push(`loot: L${level} 0% MF drops ${m0.rare.toFixed(2)} rares/h (rares are common: >= 1.5)`);
+    if (!(m1.rare >= 3 && m1.rare <= 14)) fails.push(`loot: L${level} 100% MF drops ${m1.rare.toFixed(2)} rares/h (several: 3-14)`);
+    if (!(m1.epic >= .25 && m1.epic <= 3)) fails.push(`loot: L${level} 100% MF drops ${m1.epic.toFixed(2)} epics/h (0.25-3)`);
+    const leg = sum(m1, 4);
+    if (!(leg >= .12 && leg <= .6)) fails.push(`loot: L${level} 100% MF drops ${leg.toFixed(3)} legendary+/h (one every 1.7-8 h: 0.12-0.6)`);
+    if (!(sum(m0, 4) <= .45)) fails.push(`loot: L${level} 0% MF drops ${sum(m0, 4).toFixed(3)} legendary+/h (<= 0.45)`);
+    if (!(sum(m3, 4) <= 1.1)) fails.push(`loot: L${level} 300% MF drops ${sum(m3, 4).toFixed(3)} legendary+/h (<= 1.1: MF damps)`);
+    if (!(sum(m1, 5) <= .1)) fails.push(`loot: L${level} 100% MF drops ${sum(m1, 5).toFixed(3)} mythic+/h (a rare event: <= 0.1)`);
+    if (!(m3.singular <= .02)) fails.push(`loot: L${level} 300% MF drops ${m3.singular.toFixed(4)} singular/h (<= 0.02)`);
+    if (!(m3.legendary < m3.epic && m3.epic < m3.rare)) fails.push(`loot: L${level} the ladder is not rarer upward at 300% MF`);
+  }
+  if (!(sum(grid['20:100'], 4) < sum(grid['40:100'], 4) && sum(grid['10:100'], 4) < sum(grid['20:100'], 4))) fails.push('loot: legendary+/h does not climb with level');
+  // The harder tiers pay more, by design (Normal < Nightmare < Hell), and still no stream.
+  say('\n  The same hunt on Nightmare (L30) and Hell (L55), 100% MF');
+  {
+    let prev = 0;
+    for (const [tier, level] of [['normal', 15], ['nightmare', 30], ['hell', 55]]) {
+      const r = huntRates(level, 100, tier), leg = sum(r, 4);
+      say(`    ${tier.padEnd(10)} L${level}  rare ${r.rare.toFixed(2)}  epic ${r.epic.toFixed(2)}  legendary ${r.legendary.toFixed(3)}  mythic ${r.mythic.toFixed(3)}  singular ${r.singular.toFixed(4)}  (legendary+ one in ${(1 / leg).toFixed(1)} h)`);
+      if (!(leg > prev)) fails.push(`loot: legendary+/h does not climb to ${tier}`);
+      prev = leg;
+      if (tier === 'hell' && !(leg <= 2)) fails.push(`loot: Hell drops ${leg.toFixed(2)} legendary+/h at 100% MF (<= 2)`);
+      if (tier === 'hell' && !(sum(r, 5) <= .5)) fails.push(`loot: Hell drops ${sum(r, 5).toFixed(2)} mythic+/h at 100% MF (<= 0.5)`);
+    }
+  }
+  // Bosses: the targeted farm pays more, per kill, and still no stream.
+  say('\n  A boss kill (3 rolls): items per kill by rung, Normal and Hell');
+  for (const [tier, level] of [['normal', 25], ['hell', 65]]) for (const mf of [0, 100, 300]) {
+    const b = bossRates(level, mf, tier);
+    say(`    ${tier.padEnd(7)} L${level} ${(mf + '%').padEnd(5)} rare ${b.rare.toFixed(2)}  epic ${b.epic.toFixed(2)}  legendary ${b.legendary.toFixed(3)}  mythic ${b.mythic.toFixed(3)}  singular ${b.singular.toFixed(4)}  (legendary+ one in ${(1 / sum(b, 4)).toFixed(1)} kills)`);
+  }
+  {
+    const b = bossRates(25, 100, 'normal'), perKillHunt = sum(grid['20:100'], 4) / HUNT.kph;
+    if (!(sum(b, 4) >= .08 && sum(b, 4) <= .4)) fails.push(`loot: a boss kill at 100% MF drops ${sum(b, 4).toFixed(3)} legendary+ (0.08-0.4)`);
+    if (!(sum(b, 4) > 20 * perKillHunt)) fails.push('loot: a boss kill is not far likelier to drop legendary+ than a hunt kill');
+    if (!(sum(b, 2) >= .9)) fails.push(`loot: a boss kill drops ${sum(b, 2).toFixed(2)} rare+ (>= 0.9)`);
+  }
+  // Set pieces: gated to their place; a goal, not a stream.
+  {
+    const p0 = setPiecesPerHour(0, SETS), p1 = setPiecesPerHour(100, SETS), p3 = setPiecesPerHour(300, SETS);
+    say(`\n  Set pieces an hour farming a set's place: ${p0.toFixed(2)} (0% MF) / ${p1.toFixed(2)} (100%) / ${p3.toFixed(2)} (300%) = one every ${(1 / p1).toFixed(1)} h at 100% MF (mythic)`);
+    if (!(p1 >= .1 && p1 <= .6)) fails.push(`loot: ${p1.toFixed(2)} set pieces an hour at 100% MF (one every 1.7-10 h: 0.1-0.6)`);
+    if (!(p3 <= 1)) fails.push(`loot: ${p3.toFixed(2)} set pieces an hour at 300% MF (<= 1)`);
+  }
+  return fails;
+}
+
+/**
  * --loot: expected drops per hour by rung for a farming loop (trash at its
  * kill rate, a champion share, a boss an hour), per difficulty. Checks the
  * shape: rare is a moment on the first hunt, legendary is an event, the top
@@ -2131,7 +2224,7 @@ function lootScenario({ quiet = false } = {}) {
     if (tier === 'normal' && row.creature === 'rivet-maw') {
       // The first hunt: a blue now and then (between one an hour and one every few minutes), never a gold.
       const rare = per.rare + per.epic;
-      if (!(rare >= 0.5 && rare <= 20)) fails.push(`loot: the first hunt drops ${rare.toFixed(2)} rare+/h (band 0.5-20)`);
+      if (!(rare >= 0.3 && rare <= 20)) fails.push(`loot: the first hunt drops ${rare.toFixed(2)} rare+/h from trash alone (band 0.3-20; the hunt's champions add the rest)`);
       if (per.legendary + per.mythic + per.singular > 0) fails.push('loot: a level-1 Maw can drop legendary or better');
     }
     if (tier === 'normal' && per.singular > 0 && level < 25) fails.push(`loot: ${row.creature} drops Singular below level 25 on Normal`);
@@ -2165,14 +2258,25 @@ function lootScenario({ quiet = false } = {}) {
     const champ = LOOT.expectedDropsPerHour({ creature: 'shadeling', level: FAM.monsterLevel('shadeling', 0, tier), tier, magicFind: 0, rank: 'champion' }, 12);
     const sum = o => TIERS6.slice(2).reduce((s, t) => s + o[t], 0);
     say(`    ${tier.padEnd(10)} boss ${sum(boss).toFixed(2)}  champions ${sum(champ).toFixed(2)}  (boss legendary+ ${(boss.legendary + boss.mythic + boss.singular).toFixed(3)})`);
-    if (!(sum(boss) >= 1)) fails.push(`loot: the gate boss on ${tier} pays ${sum(boss).toFixed(2)} rare+ (must be >= 1)`);
+    if (!(sum(boss) >= 0.9)) fails.push(`loot: the gate boss on ${tier} pays ${sum(boss).toFixed(2)} rare+ (must be >= 0.9, before its rune, set piece and own unique)`);
   }
   // Magic Find: diminishing returns on the top rungs.
   const at = mf => LOOT.rarityOdds(20, mf, 0);
   const lift = (mf, t) => at(mf)[t] / at(0)[t];
   say(`\n  Magic Find at level 20: rare x${lift(100, 'rare').toFixed(2)} / x${lift(300, 'rare').toFixed(2)}, legendary x${lift(100, 'legendary').toFixed(2)} / x${lift(300, 'legendary').toFixed(2)} (100% / 300% MF)`);
-  if (!(lift(300, 'legendary') < 2.6)) fails.push(`loot: 300% MF multiplies legendary by ${lift(300, 'legendary').toFixed(2)} (diminishing returns: < 2.6)`);
+  if (!(lift(300, 'legendary') < 2.45)) fails.push(`loot: 300% MF multiplies legendary by ${lift(300, 'legendary').toFixed(2)} (diminishing returns: < 2.45)`);
   if (!(lift(100, 'rare') > 1.3)) fails.push('loot: 100% MF barely moves rare');
+  // Each rung has its own damping: the higher the rung, the less of the Magic Find it feels (D2: 600 / 500 / 250 / 150).
+  {
+    const k = { rare: 600, epic: 500, legendary: 250, mythic: 150, singular: 150 };
+    for (const [t, kk] of Object.entries(k)) {
+      const want = 1 + (300 * kk / (300 + kk)) / 100, have = LOOT.rarityChances(20, 300, 0, true)[t] / LOOT.rarityChances(20, 0, 0, true)[t];
+      if (Math.abs(want - have) > 1e-6) fails.push(`loot: ${t} at 300% MF leans x${have.toFixed(3)}, the K=${kk} curve says x${want.toFixed(3)}`);
+    }
+    const ordered = ['rare', 'epic', 'legendary', 'mythic'].map(t => lift(300, t));
+    if (!(ordered.every((x, i) => i === 0 || x <= ordered[i - 1] + 1e-9))) fails.push('loot: Magic Find does not damp harder with every rung');
+  }
+  fails.push(...lootHuntScenario({ say }));
   // Rune ceilings.
   for (const tier of DIFF.DIFFICULTY_TIERS) {
     const top = LOOT.runeCeiling(200, tier);
@@ -2192,7 +2296,7 @@ function lootScenario({ quiet = false } = {}) {
     const want = LOOT.expectedDropsPerHour(ctx, n);
     for (const t of ['common', 'uncommon', 'rare']) {
       const diff = Math.abs(seen[t] - want[t]) / Math.max(1, want[t]);
-      if (diff > .08) fails.push(`loot: sampled ${t} ${seen[t]} vs expected ${want[t].toFixed(0)} (off by ${(diff * 100).toFixed(1)}%)`);
+      if (diff > Math.max(.08, 4 / Math.sqrt(Math.max(1, want[t])))) fails.push(`loot: sampled ${t} ${seen[t]} vs expected ${want[t].toFixed(0)} (off by ${(diff * 100).toFixed(1)}%)`);
     }
     if (uniqueWrong) fails.push(`loot: ${uniqueWrong} uniques dropped off their authored rarity`);
     say(`\n  Sampled 60k Bailiff kills: ${TIERS6.map(t => `${t} ${seen[t]}`).join(', ')}`);

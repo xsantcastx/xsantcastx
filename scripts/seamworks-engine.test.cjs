@@ -5050,7 +5050,7 @@ test('loot & combat: without rules the fight is the legacy one; with Normal rule
   assert.equal(monster.armed.blow, 12, 'and still hits for 12');
   engine.setCombatRules(RULES({ tier: 'hell' }));
   assert.equal(monster.maxHp, 240, 'Hell: four times the HP');
-  assert.equal(monster.armed.blow, 36, 'Hell: three times the blow');
+  assert.equal(monster.armed.blow, 26, 'Hell: 2.2 times the blow (rounded down)');
   engine.setCombatRules(null);
   assert.equal(monster.maxHp, 60); assert.equal(monster.armed, undefined);
   engine.destroy();

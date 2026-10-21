@@ -21,6 +21,7 @@ import type { UniqueItem } from './unique-items';
 import type { RelicSig } from './boss-uniques';
 import type { ItemStats } from './item.model';
 import type { MonsterRank } from '../loot/champions';
+import { SET_MF_K, effectiveMagicFind } from '../loot/magic-find-curve';
 
 /** One tier of a set: it is on while `at` or more of the set's pieces are worn. */
 export interface SetBonus {
@@ -285,8 +286,11 @@ export function setSigOf(id: string): RelicSig | undefined {
   return m ? SET_BY_ID.get(m[1])?.bonuses.find(b => b.at === +m[2])?.sig : undefined;
 }
 
-/** A piece's chance per kill, by rank, before Magic Find. */
-export const SET_CHANCE: Readonly<Record<MonsterRank, number>> = { normal: .02, champion: .06, unique: .1, boss: .2 };
+/**
+ * A piece's chance per kill, by rank, before Magic Find (which leans it on the epic curve, K 500). A set is a goal,
+ * not a stream: farming its place, about one piece every 3–4 hours (docs/design/loot-and-combat.md §9.2).
+ */
+export const SET_CHANCE: Readonly<Record<MonsterRank, number>> = { normal: .0005, champion: .0025, unique: .01, boss: .07 };
 
 /** The set a creature's kills may drop a piece of, at this level (undefined: none). */
 export function setForKill(creature: string, level: number): ItemSet | undefined {
@@ -297,7 +301,7 @@ export function setForKill(creature: string, level: number): ItemSet | undefined
 export function rollSetPiece(ctx: { creature: string; level: number; rank: MonsterRank; magicFind: number }, rng: () => number): SetPiece | null {
   const set = setForKill(ctx.creature, ctx.level);
   if (!set) return null;
-  const chance = SET_CHANCE[ctx.rank] * (1 + Math.max(0, Math.min(300, ctx.magicFind)) / 200);
+  const chance = SET_CHANCE[ctx.rank] * (1 + effectiveMagicFind(ctx.magicFind, SET_MF_K) / 100);
   if (!(rng() < chance)) return null;
   return PIECE_BY_ID.get(set.pieces[Math.min(set.pieces.length - 1, Math.floor(rng() * set.pieces.length))]) ?? null;
 }

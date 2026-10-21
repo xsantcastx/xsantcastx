@@ -20,10 +20,11 @@ async function freePort(): Promise<number> {
 }
 
 /** `script`: another build of the room (a spec can stand up the deployed v1 server to check the client degrades). */
-export async function startHearth(origin: string, script = path.join(__dirname, '..', 'scripts', 'social-server.mjs')): Promise<Hearth> {
+/** `env`: extra settings for the room (SOCIAL_FAKE_AUTH=1: tokens `fake.<uid>` sign Keepers in, an in-memory store). */
+export async function startHearth(origin: string, script = path.join(__dirname, '..', 'scripts', 'social-server.mjs'), env: Record<string, string> = {}): Promise<Hearth> {
   const port = await freePort();
   const child: ChildProcess = spawn(process.execPath, [script], {
-    env: { ...process.env, PORT: '', SOCIAL_HOST: '127.0.0.1', SOCIAL_PORT: String(port), SOCIAL_ORIGINS: origin },
+    env: { ...process.env, PORT: '', SOCIAL_HOST: '127.0.0.1', SOCIAL_PORT: String(port), SOCIAL_ORIGINS: origin, ...env },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise<void>((resolve, reject) => {

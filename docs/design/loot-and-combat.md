@@ -254,8 +254,8 @@ bottom of the Orrery Wells); stepping down is always allowed.
 | | HP | Blow | Level | Keeper resist | Creature resist | Item chance | Ladder shift | Rune cap | Fall |
 |---|---|---|---|---|---|---|---|---|---|
 | Normal | ×1 | ×1 | +0 | 0 | +0 | ×1 | 0 | Rare | 5% |
-| Nightmare | ×2.5 | ×1.6 | +20 | −40 | +15 | ×1.35 | +1 | Legendary | 10% |
-| Hell | ×4 | ×2.2 | +40 | −100 | +30 | ×1.7 | +2 | Singular | 15% |
+| Nightmare | ×2.5 | ×1.6 | +20 | −40 | +15 | ×1.35 | +0.7 | Legendary | 10% |
+| Hell | ×4 | ×2.2 | +40 | −100 | +30 | ×1.7 | +1.4 | Singular | 15% |
 
 **Decision (2026-10-21, branch `passives`): applied in the top-down fight.** **Gate (2026-10-21, branch `seam`):
 the Seam Eater opens the tiers; the picker is shown.**
@@ -291,9 +291,46 @@ No item, rune or stack is ever lost. The fall card says how much.
 
 - Item rolls per kill: normal 1 × 8%, champion 2 × 45%, unique 3 × 60%, boss 3 × 100% (× the tier's item chance).
 - Rarity: D2's top-down tries — singular, mythic, … uncommon each get a chance; the first success is the rung, none is
-  common. Base per-mille: 280 / 80 / 30 / 8 / 1.8 / 0.2. Level lifts rare+ by (1 + level/30); each ladder step
-  (tier + rank: champion 1, unique/boss 2) ×1.6. Gates: epic from level 5, legendary 8, mythic 15, singular 25
-  (bosses ignore them). Magic Find: full on uncommon, 600/(MF+600) on rare/epic, 250/(MF+250) on legendary+.
+  common. Base per-mille (2026-10-21 retune, owner: "so many legendaries it's not even satisfying"):
+  280 / 50 / 7.5 / 1.5 / 0.25 / 0.04 for uncommon … singular (was 280 / 80 / 30 / 8 / 1.8 / 0.2). Level lifts rare+
+  by (1 + level/60) (was /30); each ladder step (tier + rank: champion 1, unique 2, boss 3; Nightmare 0.7, Hell 1.4)
+  ×1.6. Legendary-and-up is also multiplied by the rank's `RANK_TOP`: unique ×1.5, boss ×2.5 (the targeted farm).
+  Gates: epic from level 5, legendary 8, mythic 15, singular 25 (bosses ignore them).
+- **Magic Find, D2's diminishing returns, one curve per rung** (`shared/loot/magic-find-curve.ts`;
+  effective = MF × K / (MF + K), and the rung's chance is multiplied by 1 + effective/100):
+
+  | Rung | K | MF 100% → | MF 300% → | Never more than |
+  |---|---|---|---|---|
+  | uncommon (magic) | linear | +100% | +300% | — |
+  | rare | 600 | +85.7% | +200% | +600% |
+  | epic (and set pieces) | 500 | +83.3% | +187.5% | +500% |
+  | legendary (unique) | 250 | +71.4% | +136.4% | +250% |
+  | mythic, singular | 150 | +60% | +100% | +150% |
+
+  The C sheet prints both, "Magic Find +N%" and "Magic Find toward uniques +Y%" (the legendary row), and
+  `td-truth-gear.spec.ts` measures each against the real roll. The card's own "+N%" stays exact on uncommon, which is
+  what its truth test reads. The Hush's boon, a worn unique's `mf`, a set's `mf`, the Forge and Luck all add into the
+  one MF before the curve; champion and unique packs help through their item rolls and ladder steps, never by skipping
+  the damping.
+- **Rates (the hunt, `economy-sim --loot`, 240 kills an hour: 86.5% ordinary, 12% champion pack members, 1.5% unique
+  leaders; Normal tier; items an hour):**
+
+  | Level | MF | rare | epic | legendary | mythic | singular | legendary+ one in |
+  |---|---|---|---|---|---|---|---|
+  | 10 | 0% | 4.3 | 0.65 | 0.15 | — | — | 6.9 h |
+  | 10 | 100% | 7.8 | 1.2 | 0.25 | — | — | 4.0 h |
+  | 20 | 0% | 4.9 | 0.74 | 0.17 | 0.028 | — | 5.2 h |
+  | 20 | 100% | 8.9 | 1.4 | 0.28 | 0.044 | — | 3.0 h |
+  | 20 | 300% | 14.1 | 2.1 | 0.39 | 0.055 | — | 2.2 h |
+  | 40 | 100% | 11.0 | 1.7 | 0.35 | 0.055 | 0.009 | 2.4 h |
+
+  Was (same mix): level 20, 100% MF → 14.9 rare, 6.6 epic, 1.7 legendary, 0.38 mythic = a legendary-or-better every 30
+  minutes; a set piece of the Ossuary every 6 minutes. A boss kill at 100% MF pays a legendary-or-better one kill in
+  7.6 (was 4.2) plus its own unique at its 1-in-N. Hell, level 55, 100% MF: a legendary an hour and a half.
+- **Set pieces** (mythic, only from their place's creatures, from their level): per kill normal 0.05%, champion 0.25%,
+  unique 1%, boss 7% (was 2 / 6 / 10 / 20%), leaned by Magic Find on the epic curve (K 500). Farming a set's place ≈ one
+  piece every 3 h at 100% MF (4 pieces to a set); the Lamplighter's chests are unchanged. Boss uniques keep their own
+  1-in-6…10 (targeted farming).
 - Named uniques: 12% (× unique MF, × a worn pull) of a roll on a rung that has them, at their authored rarity — the
   only path (`drop-tables uniqueShare`, capped at ½). In the top-down world this is every creature's kill roll
   (`LootService.rollLoot`), so all 44 ordinary uniques are reachable; their card says "Found in: the loot of any
@@ -308,10 +345,14 @@ No item, rune or stack is ever lost. The fall card says how much.
 - Runes: per kill 2% / 12% / 25% / 60% by rank; tier ladder 1 : .16 : .012 : .002 : .0003 : 4e-5 : 2e-6, capped by
   the tier's rune cap and by level (uncommon 3, rare 8, epic 20, legendary 30, mythic 45, singular 55).
 
-`--loot` (150 trash kills/h, 0% MF): the first hunt (Rivet Maw) ≈ 1 rare an hour and never a legendary; a Normal
-Delve hunt ≈ 1.2 rare, 0.45 epic, 0.12 legendary an hour; Hell trash ≈ 8 rare, 4 epic, 1.1 legendary, 0.26 mythic,
-0.03 singular an hour; a Normal gate boss pays ≥ 1 rare+. Selling an hour of Hell drops is half a minute of 30-minute
-income — gear is for wearing, not a Gold farm.
+`--loot` (150 trash kills/h, 0% MF): the first hunt (Rivet Maw) ≈ 0.6 rare an hour and never a legendary; a Normal
+Delve hunt ≈ 0.7 rare, 0.1 epic, 0.02 legendary an hour; Hell trash ≈ 3.5 rare, 0.55 epic, 0.11 legendary, 0.02 mythic
+an hour; a Normal gate boss pays ≈ 1 rare+. Selling an hour of drops is ≤ 7% of the same hour's Gold piles — gear is
+for wearing, not a Gold farm. **`--check` holds the hunt table** (`lootHuntScenario`): at levels 10/20/40, 0/100/300%
+MF — rares ≥ 1.5 an hour at 0% and 3–14 at 100%, epics 0.25–3, legendary-or-better 0.12–0.6 an hour at 100% MF (≤ 0.45
+at 0%, ≤ 1.1 at 300%), mythic-or-better ≤ 0.1 an hour, singular ≤ 0.02 at 300%; Nightmare and Hell climb but Hell stays
+≤ 2 legendary-or-better and ≤ 0.5 mythic-or-better an hour; a boss kill 0.08–0.4 legendary-or-better and ≥ 20× a hunt
+kill; a set's place 0.1–0.6 pieces an hour; the per-rung K curves are measured against the formula.
 
 ### 9b. Gold from the hunt (owner, 2026-10-21: "monsters drop more gold like in d2")
 
@@ -420,6 +461,16 @@ stood then — so a Keeper who steps aside in the tell is missed. During the win
 not bite. A boss's call at half life now shows a sigil for **0.6 s** (`CALL_TELL`) where each summons will stand
 before it appears; the count, the threshold and the creatures are unchanged. Damage, rates, ranges and life are
 untouched.
+
+**Party bosses (2026-10-21, Hearth protocol 5; play/td/td-coop.ts, play/social/coop-rules.ts).** In a party sharing an
+area, every boss (`rank: 'boss'`) and the Seam Eater is simulated by the area's host, and its life grows **+60% for
+each other member of the party present in that area** (D2-like): ×1, ×1.6, ×2.2, ×2.8 for one to four
+(`coopBossLife`, `BOSS_LIFE_PER_MEMBER = 0.6`). The count is the room's own (members whose presence names the area),
+re-read every frame: a member arriving or leaving mid-fight rescales it **keeping its wounded share** (a boss at 90%
+stays at 90%). Its damage, tells, calls, half-life change and CC rules are unchanged. **XP and loot follow the boss's
+own life, not the party's multiple** (the kill reports the unscaled life), so a bigger party fights a longer fight
+for the same reward each — every member who fought it rolls its own loot and takes full XP; one who only stood by
+takes the 60% party share.
 
 ## 11. API for the world (stable)
 
@@ -553,7 +604,7 @@ shows grey. Co-op: each Keeper reads the gap against his own level — the host 
 MobSystem applies his gap; a member's blows are cut by his gap before they are claimed.
 
 **Sim bands** (`--check`): a level-20 Keeper against a level-40 creature — one blow takes 118–136% of his life, every
-fall comes in 1–2 blows that land, he never wins, and he deals 1–2% of his at-level damage; fifteen minutes' hunting
-among creatures five levels above him falls him in 25–50% of the hunts (the four vocations' mean; each 10–67%; measured
+fall comes in 1–2 blows that land, he never wins (the band allows a run's noise, ≤ 5%), and he deals 1–2% of his at-level damage; fifteen minutes' hunting
+among creatures five levels above him falls him in 25–50% of the hunts (the four vocations' mean; each 5–75%, a run's noise either side; measured
 17–50% at level 20, 25–42% at 30). The at-level bands above are unchanged and green.
 

@@ -35,6 +35,16 @@ export const SOUND_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.sound.chat.ignore': { en: 'Ignore', es: 'Ignorar' },
   'play.sound.chat.on.line': { en: 'Always at the Hearth: other Keepers see you and you see them.', es: 'Siempre en el Hogar: otros Guardianes te ven y tu a ellos.' },
   'play.sound.chat.ignore.line': { en: 'You play alone: no room, no other Keepers, no unread count.', es: 'Juegas a solas: sin sala, sin otros Guardianes, sin mensajes sin leer.' },
+  'play.sound.presence': { en: 'Friends see', es: 'Amigos ven' },
+  'play.sound.presence.online': { en: 'Online', es: 'En línea' },
+  'play.sound.presence.offline': { en: 'Offline', es: 'Desconectado' },
+  'play.sound.presence.online.line': { en: 'Your friends see when you are here, and where.', es: 'Tus amigos ven cuándo estás aquí, y dónde.' },
+  'play.sound.presence.offline.line': { en: 'You appear offline on friends lists. You are still in the world.', es: 'Apareces desconectado en las listas de amigos. Sigues en el mundo.' },
+  'play.sound.invites': { en: 'Invites', es: 'Invitaciones' },
+  'play.sound.invites.everyone': { en: 'Everyone', es: 'Todos' },
+  'play.sound.invites.friends': { en: 'Friends', es: 'Amigos' },
+  'play.sound.invites.everyone.line': { en: 'Any Keeper may invite you to a party.', es: 'Cualquier Guardián puede invitarte a un grupo.' },
+  'play.sound.invites.friends.line': { en: 'Only friends may invite you to a party.', es: 'Solo tus amigos pueden invitarte a un grupo.' },
   'play.sound.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
 
   // ── Catch & craft ──

@@ -13,7 +13,8 @@ import { BOSS_UNIQUES, NO_RELICS, relicTotals, type RelicSig } from '../../share
 import { ITEM_SETS, addSetBonuses, setSigIds, setSigOf } from '../../shared/rpg/set-items';
 import { ITEM_STAT_KEYS, formatStatValue, gearXp, sumStats, totalGoldFind, wornGoldFind, type ItemStats } from '../../shared/rpg/item.model';
 import { goldFindPile } from '../../shared/economy/economy-curve';
-import { rarityChances } from '../../shared/loot/drop-tables';
+import { UNIQUE_SHARE, rarityChances, uniqueShare } from '../../shared/loot/drop-tables';
+import { MF_K, mfTowardUnique } from '../../shared/loot/magic-find-curve';
 import { temperFailChance } from '../../shared/rpg/item-upgrade';
 import { weaponSwing } from './td-melee';
 import { ELEMENTS } from '../../shared/loot/damage.model';
@@ -81,6 +82,32 @@ describe('td-truth gear: one stat, one piece — the card\'s number is what move
   });
   it('a curse that takes resist away is a real price even with none worn (the element bites harder)', () => {
     expect(fightWith({ allResist: -15 }).resists.fire).toBe(-15);
+  });
+});
+
+describe('td-truth gear: Magic Find is a rung-by-rung curve, and the C sheet quotes it', () => {
+  const lift = (tier: 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'singular', mf: number) =>
+    (rarityChances(30, mf, 0, true)[tier] / rarityChances(30, 0, 0, true)[tier] - 1) * 100;
+
+  it('the "toward uniques" line on the sheet is what the roll really does: the legendary rung and the unique share lean by it', () => {
+    for (const mf of [10, 40, 100, 300, 1000]) {
+      const shown = mfTowardUnique(mf);
+      expect(Math.abs(lift('legendary', mf) - shown)).withContext(`legendary @${mf}`).toBeLessThanOrEqual(.06);
+      expect(Math.abs((uniqueShare({ magicFind: mf }) / UNIQUE_SHARE - 1) * 100 - shown)).withContext(`unique share @${mf}`).toBeLessThanOrEqual(.06);
+    }
+    expect(HUD_I18N['play.td.total.mfu']).toBeDefined();
+    expect(mfTowardUnique(0)).toBe(0);
+  });
+
+  it('each rung leans by its own curve: linear magic, then K 600 / 500 / 250 / 150, never past K', () => {
+    for (const mf of [25, 100, 300, 1000]) {
+      if (mf <= 100) expect(lift('uncommon', mf)).withContext(`uncommon @${mf}`).toBeCloseTo(mf, 6); // linear until its chance caps at 0.9
+      for (const tier of ['rare', 'epic', 'legendary', 'mythic', 'singular'] as const) {
+        const k = MF_K[tier];
+        expect(lift(tier, mf)).withContext(`${tier} @${mf}`).toBeCloseTo(mf * k / (mf + k), 6);
+        expect(lift(tier, mf)).toBeLessThan(k);
+      }
+    }
   });
 });
 

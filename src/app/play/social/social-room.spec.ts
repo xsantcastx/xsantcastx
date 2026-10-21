@@ -1,4 +1,4 @@
-import { HEARTBEAT_MS, MOVE_MS, SocialRoom, cleanPresence, hearthEndpoint, roomName, type RoomSnapshot } from './social-room';
+import { HEARTBEAT_MS, MOVE_MS, SOCIAL_PROTOCOL, SocialRoom, cleanPresence, hearthEndpoint, roomName, type RoomSnapshot } from './social-room';
 
 /** A fake room server: records requests, hands out event streams the spec can end, answers join as told. */
 function fakeRoom(join: () => Response = () => Response.json({ token: 'secret', id: 'keeper', players: [], messages: [], protocol: 2 })) {
@@ -141,6 +141,82 @@ describe('SocialRoom (the Hearth room client)', () => {
     // Life still travels in presence (a v2 room ignores it), cleaned: both or neither, whole, never above the most.
     expect(cleanPresence({ hp: 130.4, maxHp: 120 })).toEqual({ hp: 120, maxHp: 120 });
     expect(cleanPresence({ hp: 10 })).toEqual({});
+    r.leave();
+  });
+
+  it('protocol 4: a signed-in join sends the ID token; a refused token joins as a guest; a ban stops the loop', async () => {
+    const auths: (string | null)[] = [];
+    let mode: 'ok' | 'refuse' | 'ban' = 'ok';
+    const fake = fakeRoom(() => Response.json({ token: 'secret', id: 'me', players: [], messages: [], protocol: SOCIAL_PROTOCOL, guest: false }));
+    const transport = async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/join')) {
+        const auth = (init?.headers as Record<string, string> | undefined)?.['Authorization'] ?? null;
+        auths.push(auth);
+        if (mode === 'refuse' && auth) return Response.json({ error: 'Sign in again.' }, { status: 401 });
+        if (mode === 'ban') return Response.json({ error: 'This account is barred from the hearth.' }, { status: 403 });
+      }
+      return fake.transport(url, init);
+    };
+    const mk = () => new SocialRoom(s => { state = s; }, { keepAlive: true, endpoint: 'http://room', fetch: transport, now: () => clock, idToken: async () => 'id-token-123' });
+    let r = mk();
+    await r.join('Arin'); await settle();
+    expect(auths).toEqual(['Firebase id-token-123']);
+    expect(state!.guest).toBeFalse();
+    expect(r.canSocial).toBeTrue();
+    r.leave();
+    mode = 'refuse'; auths.length = 0; r = mk();
+    await r.join('Arin'); await settle();
+    expect(auths).toEqual(['Firebase id-token-123', null]);
+    expect(state!.connected).toBeTrue();
+    r.leave();
+    mode = 'ban'; auths.length = 0; r = mk();
+    await r.join('Arin'); await settle();
+    expect(state!.barred).toBeTrue();
+    expect(r.wants).toBeFalse();
+    jasmine.clock().tick(120000); await settle();
+    expect(auths.length).toBe(1);
+  });
+
+  it('protocol 4: friends, requests, whispers and blocks arrive; verbs post; "replaced" ends the session without a rejoin', async () => {
+    const fake = fakeRoom(() => Response.json({ token: 'secret', id: 'me', players: [], messages: [], protocol: SOCIAL_PROTOCOL, guest: false }));
+    const whispers: unknown[] = [];
+    const r = new SocialRoom(s => { state = s; }, { keepAlive: true, endpoint: 'http://room', fetch: fake.transport, now: () => clock, onWhisper: w => whispers.push(w) });
+    await r.join('Arin'); await settle();
+    const push = async (value: unknown) => { fake.streams[0].enqueue(new TextEncoder().encode(`data: ${JSON.stringify(value)}\n\n`)); await settle(); };
+    await push({ type: 'friends', friends: [{ uid: 'u2', name: 'Mira', online: true, area: 'ember-isle', player: 'p2' }] });
+    expect(state!.friends!.map(f => f.name)).toEqual(['Mira']);
+    await push({ type: 'friend-request', request: { id: 'q1', name: 'Oskar', from: 'p3', until: 9 } });
+    expect(state!.friendRequests!.map(q => q.id)).toEqual(['q1']);
+    expect(await r.friendAnswer('q1', true)).toBe('');
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/friend/accept', body: { request: 'q1' } });
+    expect(state!.friendRequests).toEqual([]);
+    await push({ type: 'whisper', whisper: { id: 'w1', from: 'p2', name: 'Mira', to: 'me', toName: 'Arin', text: 'psst', at: 1 } });
+    expect(whispers.length).toBe(1);
+    expect(state!.whispers!.map(w => w.text)).toEqual(['psst']);
+    await push({ type: 'blocks', blocks: [{ key: 'u9', name: 'Pest' }] });
+    expect(state!.blocks).toEqual([{ key: 'u9', name: 'Pest' }]);
+    expect(await r.whisper('p2', 'hello')).toBe('');
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/whisper', body: { to: 'p2', text: 'hello' } });
+    expect(await r.report('p9', 'spam', 'gold seller')).toBe('');
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/report', body: { player: 'p9', reason: 'spam', note: 'gold seller' } });
+    r.setPrivacy({ offline: true, invites: 'friends' }); await settle();
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/privacy', body: { offline: true, invites: 'friends' } });
+    await push({ type: 'replaced' });
+    expect(state!.connected).toBeFalse();
+    expect(r.wants).toBeFalse();
+    const joins = fake.count('/join');
+    jasmine.clock().tick(120000); await settle();
+    expect(fake.count('/join')).toBe(joins);
+  });
+
+  it('protocol 4 against a v3 room: no social verbs leave the device; the Keeper is a guest there', async () => {
+    const fake = fakeRoom(() => Response.json({ token: 'secret', id: 'me', players: [], messages: [], protocol: 3 }));
+    const r = new SocialRoom(s => { state = s; }, { keepAlive: true, endpoint: 'http://room', fetch: fake.transport, now: () => clock, idToken: async () => 'tok' });
+    await r.join('Arin'); await settle();
+    expect(r.canSocial).toBeFalse();
+    expect(state!.guest).toBeTrue();
+    expect(await r.whisper('p2', 'x')).toBe('offline');
+    expect(fake.requests.some(q => /\/(whisper|friend|block|report|privacy)/.test(q.url))).toBeFalse();
     r.leave();
   });
 });
