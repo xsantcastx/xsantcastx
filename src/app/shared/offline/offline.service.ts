@@ -56,6 +56,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { EconomyService } from '../economy/economy.service';
 import { XpService } from '../gamification/xp.service';
 import { dayKey } from '../quests/quest.model';
+import { activeCharacterKey } from '../save/character-scope';
 import {
   AWAY_HEARTBEAT_MS,
   AWAY_KEY,
@@ -98,7 +99,7 @@ export interface AwayWindow {
 
 function readBlob(key: string): Record<string, unknown> | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(activeCharacterKey(key, localStorage));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null;
@@ -368,7 +369,7 @@ export class OfflineService {
     try {
       const previous = this.readStamp();
       if (previous !== null && previous > at) return;
-      localStorage.setItem(AWAY_KEY, String(at));
+      localStorage.setItem(activeCharacterKey(AWAY_KEY, localStorage), String(at));
     } catch {
       // Quota, or private mode. A stamp that cannot be written means the next
       // return reports no absence, which is the safe direction to fail in.
@@ -378,7 +379,7 @@ export class OfflineService {
   private readStamp(): number | null {
     if (!this.isBrowser) return null;
     try {
-      const raw = localStorage.getItem(AWAY_KEY);
+      const raw = localStorage.getItem(activeCharacterKey(AWAY_KEY, localStorage));
       if (raw === null) return null;
       const at = Number(raw);
       return Number.isFinite(at) && at > 0 ? at : null;

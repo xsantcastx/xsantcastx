@@ -107,10 +107,17 @@
           <span class="win__brand">{{ t('look.kicker') }}</span>
           <h1 class="win__title">{{ t('lobby.create.title') }}</h1>
         </header>
-        <div class="win__body win__body--maker">
+        <!-- "place": the maker's compact game-window layout (the figure, the name and Become on top, the looks in a grid),
+             so a new player sees the whole Glass and its one button without scrolling, on a phone too. -->
+        <div class="win__body win__body--maker place">
           <app-keeper-maker (done)="made()" />
         </div>
-        <footer class="win__foot">
+        <footer class="win__foot create__foot">
+          <!-- Someone who has played before can make a Keeper without the island's tutorial (play/td/td-prologue.ts). -->
+          <label class="create__skip" data-lobby-skip-tut>
+            <input type="checkbox" [checked]="skipTutorial" (change)="skipTutorial = $any($event.target).checked">
+            <span>{{ t('lobby.create.skipTut') }}</span>
+          </label>
           <button type="button" class="btn btn--quiet" data-lobby-back (click)="backFromCreate()" [disabled]="busy">{{ t('lobby.create.back') }}</button>
         </footer>
       </div>

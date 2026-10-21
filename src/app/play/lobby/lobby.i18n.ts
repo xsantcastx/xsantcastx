@@ -43,6 +43,7 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
 
   'lobby.create.title': { en: 'A new Keeper', es: 'Un nuevo Guardian' },
   'lobby.create.back': { en: 'Back to the list', es: 'Volver a la lista' },
+  'lobby.create.skipTut': { en: 'I\'ve played before: skip the tutorial', es: 'Ya he jugado: saltar el tutorial' },
 
   'lobby.menu': { en: 'Character select', es: 'Seleccion de personaje' },
   'lobby.menuBlurb': { en: 'Save and return to your Keepers', es: 'Guardar y volver a tus Guardianes' },

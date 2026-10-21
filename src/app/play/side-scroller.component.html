@@ -408,9 +408,13 @@
           }
         </ol>
       }
-      <p class="guide-text"><b>{{ goal.n ? t('play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span>{{ t(goal.key) }}</span></p>
+      <p class="guide-text"><b>{{ goal.n ? t(topDown ? 'play.pro.label' : 'play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span data-goal-text>{{ t(goal.key, goal.vars) }}</span></p>
       @if (goal.target) {
-        <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key) })">{{ t('play.goal.go') }}</button>
+        <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key, goal.vars) })">{{ t('play.goal.go') }}</button>
+      }
+      <!-- The top-down prologue (td/td-prologue.ts): a player who has been here before can skip it, per Keeper. -->
+      @if (topDown && goal.id.startsWith('pro-')) {
+        <button type="button" class="guide-hide guide-skip" data-prologue-skip (click)="skipPrologue()" [attr.aria-label]="t('play.pro.skipAria')">{{ t('play.pro.skip') }}</button>
       }
       @if (goal.id === 'rune') {
         <button type="button" class="guide-hide" (click)="hideHint()">{{ t('play.goal.hide') }}</button>

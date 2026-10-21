@@ -10,6 +10,9 @@
  *   cards    the act-boundary story cards already shown (ids, sorted)
  *   chapter  the furthest chapter reached
  *   scenes   the Act II scenes played, i.e. whose reward was paid (ids, sorted)
+ *   tut      the top-down prologue's steps a save cannot show by itself (walked, opened the
+ *            Spellbook, opened the Satchel): play/td/td-prologue.ts; per character, like the rest
+ *   skip     the prologue was skipped on this character (an experienced player)
  *
  * Saved through the gateway as `godforge-story` (synced: progress/story).
  * Beats are monotonic (a moment, once lived, cannot be un-lived), so two
@@ -89,6 +92,10 @@ export interface StoryState {
   cards: StoryCardId[];
   /** Scenes played (their rewards paid). Absent in records from before Act II's scenes. */
   scenes: StorySceneId[];
+  /** The prologue's filed steps (td-prologue PROLOGUE_FILED ids). Absent before the top-down prologue. */
+  tut?: string[];
+  /** The prologue was skipped. Absent (false) before the top-down prologue. */
+  skip?: boolean;
 }
 
 export function emptyStory(): StoryState {
@@ -99,6 +106,9 @@ const isBeat = (id: unknown): id is StoryBeatId => typeof id === 'string' && Obj
 const isCard = (id: unknown): id is StoryCardId => typeof id === 'string' && (STORY_CARD_IDS as readonly string[]).includes(id);
 const isScene = (id: unknown): id is StorySceneId => typeof id === 'string' && (STORY_SCENE_IDS as readonly string[]).includes(id);
 const rank = (c: StoryChapterId) => STORY_CHAPTERS.indexOf(c);
+/** The prologue steps a record may file (play/td/td-prologue.ts PROLOGUE_FILED; no import: this file stays eager-safe). */
+export const STORY_TUT_IDS = ['walk', 'book', 'bag'] as const;
+const isTut = (id: unknown): id is string => typeof id === 'string' && (STORY_TUT_IDS as readonly string[]).includes(id);
 
 /** The furthest of two chapters. */
 export function furtherChapter(a: StoryChapterId, b: StoryChapterId): StoryChapterId {
@@ -130,7 +140,12 @@ export function coerceStory(raw: unknown): StoryState {
   // A scene is only ever played for a beat reached; a stray id cannot pay a reward the story never offered.
   const scenes = ids(r.scenes, isScene, STORY_SCENE_IDS).filter(id => beats.includes(id));
   const stored = typeof r.chapter === 'string' && (STORY_CHAPTERS as readonly string[]).includes(r.chapter) ? r.chapter as StoryChapterId : 'prologue';
-  return { version: 1, chapter: furtherChapter(stored, chapterOf(beats)), beats, cards, scenes };
+  const out: StoryState = { version: 1, chapter: furtherChapter(stored, chapterOf(beats)), beats, cards, scenes };
+  // The prologue's own marks ride along only when present, so a record from before them reads back unchanged.
+  const tut = ids(r.tut, isTut, STORY_TUT_IDS);
+  if (tut.length) out.tut = tut;
+  if (r.skip === true) out.skip = true;
+  return out;
 }
 
 /** Two devices' story into one: the union of beats, cards and played scenes, the further chapter. */
@@ -144,5 +159,7 @@ export function mergeStory(remote: unknown, local: unknown): unknown {
     beats: [...l.beats, ...r.beats],
     cards: [...l.cards, ...r.cards],
     scenes: [...l.scenes, ...r.scenes],
+    tut: [...(l.tut ?? []), ...(r.tut ?? [])],
+    skip: !!(l.skip || r.skip),
   }) satisfies StoryState;
 }

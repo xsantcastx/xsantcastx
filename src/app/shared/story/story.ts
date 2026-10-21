@@ -225,7 +225,7 @@ export function advanceStory(current: StoryState, facts: StoryFacts, live: boole
   const beats = STORY_BEAT_IDS.filter(id => have.has(id) || reached.includes(id));
   const cards = new Set(state.cards);
   if (!live) for (const id of reached) { const card = STORY_BOUNDARY[id]; if (card) cards.add(card as StoryCardId); }
-  const next = coerceStory({ version: 1, chapter: furtherChapter(state.chapter, chapterOf(beats)), beats, cards: [...cards], scenes: state.scenes });
+  const next = coerceStory({ ...state, version: 1, chapter: furtherChapter(state.chapter, chapterOf(beats)), beats, cards: [...cards], scenes: state.scenes });
   const lines = live ? reached.flatMap(id => linesOf(STORY_BEATS.find(b => b.id === id)!)) : [];
   return { state: next, reached, lines, changed: true };
 }
