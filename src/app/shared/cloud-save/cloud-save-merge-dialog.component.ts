@@ -1,6 +1,10 @@
 /**
  * cloud-save-merge-dialog.component.ts — what signing in just brought down.
  *
+ * RETIRED 2026-10-21 (owner: "this menu keeps appearing, this needs to be removed"): no longer mounted in
+ * app.component. Merges are silent and safe (levels merge by max, boot wipes never touch the cloud), and its
+ * "use only this device's save" undo could throw progress away. Kept only so old imports compile; delete freely.
+ *
  * This used to be a modal that parked the sign-in until the visitor chose
  * between three saves. It asked far too often — the test behind it counted a
  * device holding Gold it had not spent yet as "progress the cloud has never

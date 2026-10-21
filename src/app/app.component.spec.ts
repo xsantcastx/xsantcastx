@@ -82,7 +82,6 @@ describe('AppComponent', () => {
     // Each of these is position: fixed and full-viewport. Inside <main> the
     // route fade's transform would trap it against the page.
     const overlays = [
-      'app-cloud-save-merge-dialog',
       'app-device-lease-banner',
       'app-site-notice-outlet',
       'app-cookie-banner',
