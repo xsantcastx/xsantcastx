@@ -369,6 +369,19 @@ effects-spec rule 2 if approved).
 S/U/L: *source* trainer Ilsa Fenn in Rootglass (a Thornstrider may start on Ember Isle — Ilsa's apprentice is posted
 at Ashgrove's Woodward's Lodge); *use* ranged play, pet play; *lore* the Canopy Wardens, the Verdant's "shape that returns".
 
+**As built (2026-10-21)** — playable, chosen at the Glass (the fourth card). The pet is the core: whatever pet follows a
+Thornstrider fights beside him whatever its job, bites with the class's bond (+50%), grows with his level and with every
+Wild skill, and bites more often (`td-thorn THORN_PET`); with no pet, a **spirit beast** of rootglass light stands in.
+Twelve skills in three trees (docs/design/skill-trees.md, "The Thornstrider's three pages"): **Thorn** — Thorn Shot
+(*thar sha*, the basic attack: an arrow at 6 tiles that may pierce and knocks back), Barbed Shot (*thar un sha*, a bleed;
+the bible's Blight Arrow words), Volley (*thar orum sha*) and the Heartwood (passive); **Wild** — Command (*thar sha teth*,
+new: sic the beast on a foe), Pack Bond (*thar ka*, now the aura: shared damage reduction and a harder bite), the Call of
+the Wilds (*thar teth*, the bible's Call of the Wild as a second beast), Wild Heart (passive) and the **Stampede**
+(*thar ul teth*, the ultimate, in place of the Wild Hunt: spectral beasts charge through); **Briar** — the Thornroot
+Snare (*thar mur*, the bible's Briar Snare), the Bramble Trap (*thar un*, new) and Rootwalk (*thar vesh*). The Rot tree
+(Spore Cloud, Blight Arrow) and Stag's Calling are left for later. Body: life ×1.05, mana ×0.95, +6% pace under the same
+40% cap. Sky: Thorn and Wild +15% at dawn and dusk (the wild's hunting hour), neutral otherwise; Briar keeps no hour.
+
 ### 4.6 Spells every vocation learns (the Tibia "common spells")
 
 | Spell | Words | Level | Does | S/U/L |

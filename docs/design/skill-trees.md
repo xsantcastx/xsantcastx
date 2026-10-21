@@ -143,3 +143,43 @@ some. *Shutter the Lantern* puts it all out but a worn unique's (and the Light s
 so ("Shutter the Lantern to let your light burn low"). Speaking *lum* again opens the shutters. The Hearth Circle counts
 as a lit hearth for the Hush (it cannot rise inside); a Beacon and a disc of Dawn are fixed lights the dark-born shy from.
 
+## The Thornstrider's three pages (design-bible §4.5, 2026-10-21)
+The fourth vocation: the Canopy Wardens' ranger, the one the wild lets through — a bow, a quiver and a beast. Code:
+`td-thorn-skills.ts` (the book), `td-thorn.ts` (pierce, knock, the bleed, the pet's bite under the bond, Pack Bond's share,
+the spirit beast), `td-mobs.ts` (the arrows, the beasts, the snare and the trap), `td-engine.ts` (the pet as one of the
+pack, the spirit beast), `td-thorn-fx.ts` (the pictures), `td-thorn.i18n.ts` (EN + ES). Same rules as the other three:
+tiers at 1 · 6 · 12 · 18 · 24, one rank in the prerequisite, ranks 1–20, `clampTree` per class, synergies only from bought
+ranks. The basic attack is **Thorn Shot**: an arrow at a foe within 6 tiles every 0.85 s (Agility and cast speed quicken
+it) — further than the Lanternwright's flare (4), short of the Warlock's bolt (7). It seeks its foe, knocks it back a
+quarter tile (a boss a fifth of that; never a rooted one), and may **pierce** (15% + 0.5 a rank): it flies on to the next
+foe in its line at 80% (three foes at most).
+
+**The pet is the core.** Under a Thornstrider every pet fights beside him as well as doing its own job (a fetcher still
+fetches when no foe is near; Stay and Play still rule), and its blow is `(its size + 0.5 a Keeper level) × 1.5 × (1 + the
+Wild %)` with its rests ×0.75 (`td-thorn thornPetBlow / thornPetRest`). The Wild % adds Pack Bond's (while bonded), Wild
+Heart's and Command's (on the commanded foe). A pet never dies; a tired one rests, and Command gets it back up. **With no
+pet** a spirit beast (`SPIRIT_BEAST`, rootglass art in td-pet-art) stands in after a moment's grace: it fights, its level
+is 1, plus one per 8 Keeper levels (to 5), and nothing of it is booked to the pet card; a real pet sends it home.
+
+| Tier (level) | Thorn (the bow) | Wild (the beast) | Briar (the ground) |
+|---|---|---|---|
+| 1 (1) | **Thorn Shot** (passive) *thar sha* 6–10 +2/+3, 6 tiles, pierce 15% +0.5 · **Barbed Shot** *thar un sha* 8–12 +2/+3 and a bleed 4/s (+1) for 5 s · 10 · 4 s · **Volley** *thar orum sha* 5 arrows (+0.1) in a fan, 5–8 each (+1/+2), each strikes the first foe in its line · 14 · 6 s | **Command** *thar sha teth* the beast runs to a foe within 10 tiles for 6 s (+0.2), bites 60% (+6%) harder and more often, a tired beast rises · 8 · 8 s · **Pack Bond** (aura) *thar ka* while the beast is within 4 tiles: you and it take 10% (+0.5) less, every beast bites 15% (+2) harder | **Thornroot Snare** *thar mur* a line of thorns 3 tiles long across a foe's path for 8 s: whatever crosses takes 6–10 (+2/+3) and is rooted 1.5 s (+0.05; bosses ⅕), each creature once · 12 · 9 s |
+| 2 (6) | — | **Call of the Wilds** ← Command *thar teth* a second beast for 20 s (+1), 5–8 a bite (+2/+3), one at a time · 22 · 24 s | **Bramble Trap** ← Snare *thar un* a trap at your feet for 30 s, two at most: the first foe on it springs it — 20–30 (+5/+7) to all within 1.5 tiles, rooted 2 s · 16 · 6 s |
+| 3 (12) | **Heartwood** ← Barbed Shot (passive): every arrow +10% (+3%) and +5% (+1) to pierce | **Wild Heart** ← Pack Bond (passive): every beast +10% (+3%) | **Rootwalk** ← Snare *thar vesh* 4 s (+0.1): you walk 30% (+1) faster and creatures lose your track · 10 · 16 s |
+| 5 (24) | — | **Stampede** ← Call *thar ul teth* 5 (+0.1) spectral beasts charge 7 tiles from behind you toward a foe: 40–60 (+8/+12) to each foe they trample, knocked back a tile (bosses ⅕) · 45 · 40 s | — |
+
+Synergies (a forest, no loops): Volley +4% damage / rank Thorn Shot · Barbed Shot +5% damage / rank Heartwood · Command
++3% duration / rank Wild Heart · Call of the Wilds +5% damage / rank Command, +4% duration / rank Pack Bond · Stampede +5%
+damage / rank Call of the Wilds, +4% / rank Wild Heart · Bramble Trap +5% damage / rank Thornroot Snare · Thornroot Snare
++4% duration / rank Rootwalk.
+
+**Starting kit** (free rank 1): Thorn Shot, Command, Barbed Shot, the Thornroot Snare, Volley, Pack Bond, Light; keys 1–4
+are Command · Barbed Shot · Snare · Volley, Pack Bond runs. **The body**: life ×1.05 and mana ×0.95 of the Warlock's,
+no Defense of its own, and lighter feet — +6% pace added to Agility and worn Move Speed under the same 40% cap, the level's
+own pace on top (`td-skills VOCATION_BODY.speed`). **The look**: a moss-green hood, a bark-brown leather coat, wrapped
+hands, soft boots, the hunting bow (the kit weapon; any worn weapon takes its hand) and the garb's quiver on the back.
+
+**The sky** (`td-phases` PHASE_RULES): the wild hunts at twilight — Thorn and Wild +15% at dawn and at dusk, neutral by
+day, at night and under an eclipse; Briar keeps no hour. On Wild the sky also moves the beasts' bonus % (`skyVars`), so
+Command and Pack Bond show the hour on the Spellbook card.
+

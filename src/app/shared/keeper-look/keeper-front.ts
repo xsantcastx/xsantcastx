@@ -93,6 +93,8 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   if (staff) robe(P, { base: p.tunic, hi: p.tunicHi, lo: p.tunicLo, trim: p.trim }, tt, bw, pose.sway, front, sash, true);
   else tunic(P, p, fig, tt, bw, front);
   if (!staff || (chest && chest.kind !== 'robe' && chest.kind !== 'mantle')) paintChest(P, gear, front, tt, bw, pose.sway);
+  // The quiver's tube on the back, seen from behind (over the coat, under the arms).
+  if (fig.garb?.quiver && !front) quiver(P, fig.garb.quiver, tt, false);
 
   // ── Arms ──
   arms(P, p, tt, bw, pose, front, phone, raise, staff, holding);
@@ -114,6 +116,8 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   }
   if (hooded && staff) mantle(P, hoodCloth, tt, bw, front);
   paintGear(P, M, gear, front, ht, tt, bw, pose, phone);
+  // Its arrows' fletchings: over the shoulder from behind, peeking past the hood's edge from the front.
+  if (fig.garb?.quiver) quiver(P, fig.garb.quiver, tt, true, front);
 
   // ── What is held ──
   if (phone) { slate(P, p, tt); return; }
@@ -608,6 +612,31 @@ function paintGear(P: Px, M: Px, gear: KeeperGear | null, front: boolean, ht: nu
       S(2, y + 4, 5, 6, m.base); S(2, y + 4, 5, 1, m.hi); S(6, y + 5, 1, 5, m.lo); S(3, y + 6, 3, 1, m.trim);
     }
   }
+}
+
+/**
+ * The Thornstrider's quiver. From behind: a leather tube slung from the right shoulder (the viewer's right) toward the
+ * left hip, its mouth at the shoulder. `fletch`: the arrows standing out of it — from behind, three green fletchings over
+ * the shoulder beside the hood; from the front, the tips of two peeking past the hood's edge on the far shoulder.
+ */
+function quiver(P: Px, q: string, tt: number, fletch: boolean, front = false): void {
+  if (!fletch) {
+    for (let i = 0; i < 10; i++) { const x = C + 5 - Math.floor(i / 2); P(x, tt - 2 + i, 3, 1, q); P(x, tt - 2 + i, 1, 1, hi(q, .2)); P(x + 2, tt - 2 + i, 1, 1, lo(q, .35)); }
+    P(C + 4, tt - 2, 4, 1, lo(q, .45)); P(C + 1, tt + 7, 3, 1, lo(q, .4));
+    return;
+  }
+  if (front) {
+    // The far shoulder (the viewer's left): two fletchings and a shaft, outside the hood.
+    P(2, tt - 6, 1, 5, '#a07a4a'); P(1, tt - 8, 2, 2, '#6eae52'); P(1, tt - 8, 1, 1, '#b4e08a');
+    P(3, tt - 5, 1, 4, '#a07a4a'); P(3, tt - 7, 2, 2, '#467a38');
+    return;
+  }
+  for (const [dx, h, col] of [[0, 4, '#6eae52'], [2, 6, '#b4e08a'], [4, 3, '#467a38']] as const) {
+    const x = C + 6 + dx;
+    P(x, tt - 2 - h, 1, h, '#a07a4a');
+    P(x, tt - 4 - h, 2, 2, col); P(x + 1, tt - 4 - h, 1, 1, lo(col, .25));
+  }
+  P(C + 8, tt - 9, 1, 1, '#e8dcc0');
 }
 
 // ───────────────────────── held things ─────────────────────────
