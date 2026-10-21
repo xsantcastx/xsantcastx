@@ -59,6 +59,9 @@ export function outOfFightMend(regen: number, unhurtSecs: number): number { retu
 export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
   'umbral-marches': UMBRAL_MARCHES_DEF };
 
+/** The most creatures the minimap marks at once (owner's player notes 2026-10-21: "cap the count for performance"). */
+const MINI_MOBS = 40;
+
 export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
   'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
@@ -93,7 +96,8 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
 import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
-import { FIRE_BURST, makePack, touchPack } from './td-elites';
+import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
+import { mapSections, zoneLabels, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
@@ -142,7 +146,16 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3],
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
-export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number }
+export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number;
+  /** A task giver's mark ('!' a task to take, '?' one to hand in). */
+  mark?: '!' | '?';
+  /** A way down on the surface: the level it leads to (the Map opens its floors). */
+  to?: string }
+/** The Map window's view of one section (td-engine mapView). `me` is null on a section the Keeper is not on. */
+export interface TdMapView {
+  url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } | null;
+  section: string; here: string; party: { id: string; name: string; u: number; v: number }[]; zones: TdZoneLabel[];
+}
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
@@ -868,9 +881,14 @@ export class TopDownEngine {
    * Keeper is on — a hand-drawn floor whole, or the continent's whole region map — painted once from its own ground,
    * with a pin per place to go and the Keeper's mark. Positions are 0..1 across and down the picture.
    */
-  mapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
+  mapView(section?: string): TdMapView | null {
     if (typeof document === 'undefined') return null;
-    const lv = this.level, onWorld = lv === this.world;
+    // Another section of this continent (owner's player notes 2026-10-21: "show every floor"): its own picture and
+    // pins, no "you are here". An unknown id (or one on another continent) shows where the Keeper is.
+    const here = this.level === this.world ? 'surface' : this.level.id;
+    const want = section && section !== here && (section === 'surface' || this.levelLinks().get(section)?.continent === this.world.continent) ? section : here;
+    const lv: TdLevel = want === here ? this.level : want === 'surface' ? this.world : this.handLevel(want);
+    const onWorld = lv === this.world;
     const key = onWorld ? `world:${this.world.continent}` : lv.id;
     let m = this.mapImages.get(key);
     if (!m) {
@@ -896,6 +914,8 @@ export class TopDownEngine {
     }
     const mm = m;
     const u = (x: number) => (x / TILE - mm.x0) / mm.w, v = (y: number) => (y / TILE - mm.y0) / mm.h;
+    // A way down on the surface knows the level it leads to (the link's anchor stands at it), so the Map can open its floors.
+    const anchors = onWorld ? [...this.levelLinks()].filter(([, l]) => l.continent === this.world.continent) : [];
     const seen = new Set<string>(), pins: TdMapPin[] = [];
     for (const st of lv.stalls) {
       if (seen.has(st.station.id)) continue;
@@ -907,9 +927,23 @@ export class TopDownEngine {
       // Two ships at one harbour (ContinentWay.along) would share a pin's spot and the later one would eat every
       // click on the first: set a second ship's pin beside it.
       if (kind === 'ship') while (pins.some(q => q.kind === 'ship' && Math.abs(q.u - pu) < .03 && Math.abs(q.v - pv) < .03)) pu += .035;
-      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv });
+      const pin: TdMapPin = { id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv };
+      const mark = id.startsWith('giver-') ? this.taskMarks[id.slice(6)] : undefined;
+      if (mark) pin.mark = mark;
+      if (kind === 'way' && onWorld) {
+        let best = 3 * TILE;
+        for (const [to, l] of anchors) { const dd = Math.hypot(l.ax - st.x, l.ay - st.y); if (dd < best) { best = dd; pin.to = to; } }
+      }
+      pins.push(pin);
     }
-    return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
+    const area = onWorld ? this.world.continent : lv.id;
+    const party = this.peers.partyWhere().filter(p => p.area === area).map(p => ({ id: p.id, name: p.name, u: u(p.x), v: v(p.y) }));
+    return { url: mm.url, aspect: mm.w / mm.h, pins, me: want === here ? { u: u(this.player.x), v: v(this.player.y) } : null, section: want, here, party,
+      zones: onWorld ? zoneLabels(this.world.def, MOBS, { block: BLOCK }) : [] };
+  }
+  /** Every section of the continent the Keeper is on, for the Map's area picker (td-map.ts). */
+  mapSections(surfaceName: string): TdMapSection[] {
+    return mapSections(this.world.def, surfaceName, LEVELS, this.levelLinks(), MOBS);
   }
   /** Where the Keeper stands — continent, level (or 'surface'), position — so the HUD can save it and a reload resumes there. */
   get whereabouts(): { continent: string; level: string; x: number; y: number } {
@@ -2348,14 +2382,20 @@ export class TopDownEngine {
   // ── Input ──────────────────────────────────────────────────────────────────
 
   private bindInput(): void {
+    // A field has the keyboard (chat, a whisper, a name, the Map's search): the world hears nothing typed into it
+    // (owner's player notes 2026-10-21: "typing in chat moves the character"). Checked on the event's target AND on
+    // document.activeElement, and while an IME is composing, so every field to come is covered without a list.
+    const editable = (el: EventTarget | Element | null): boolean => el instanceof HTMLElement && (el.matches('input, textarea, select') || el.isContentEditable);
+    const typing = (e: KeyboardEvent): boolean => e.isComposing || editable(e.target) || (typeof document !== 'undefined' && editable(document.activeElement));
     const onKey = (down: boolean) => (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || this.paused) return;
-      // Space, Enter and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
+      // A key let go is always let go (even into a field, even paused): nothing stays held down.
+      if (!down) { this.keys.delete(k); if (k === 'j' || k === ' ') this.mobs.attacking = false; return; }
+      if (typing(e) || this.paused) return;
+      // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
       if ((k === ' ' || k === 'enter' || k === 'e') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
-      // E opens the stall in reach (the side view handled E inside its own engine).
-      if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
+      // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
+      if (down && !e.repeat && k === 'e' && this.nearby) { e.preventDefault(); this.interact(); return; }
       if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
       if (/^[1-4]$/.test(k)) { if (down && !e.repeat) { const why = this.useAbility(k); if (why) this.say(`play.td.ability.${why}`); } return; }
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
@@ -2364,6 +2404,11 @@ export class TopDownEngine {
     const kd = onKey(true), ku = onKey(false);
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
     this.unbind.push(() => window.removeEventListener('keydown', kd), () => window.removeEventListener('keyup', ku));
+    // Focus going into a field, or away from the window, lets go of every held key and the held attack.
+    const release = () => { this.keys.clear(); this.mobs.attacking = false; };
+    const focusIn = (e: FocusEvent) => { if (editable(e.target)) release(); };
+    document.addEventListener('focusin', focusIn); window.addEventListener('blur', release);
+    this.unbind.push(() => document.removeEventListener('focusin', focusIn), () => window.removeEventListener('blur', release));
     const c = this.canvas;
     const down = (e: PointerEvent) => {
       if (this.paused) return;
@@ -2460,6 +2505,7 @@ export class TopDownEngine {
     for (const st of this.level.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
     if (this.level === this.world) for (const kp of this.keepers) if (kp.kid && this.taskMarks[kp.kid]) dot(kp.x, kp.y, Math.max(2, k - 1), this.taskMarks[kp.kid] === '?' ? '#ffd27a' : '#f3e7cf');
     if (this.level === this.world) for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
+    this.miniMobs(dot, reach);
     // Party members (protocol 3): a gold mark where they stand, or a pip on the rim pointing their way.
     const area = this.peerArea();
     for (const m of this.peers.partyWhere()) {
@@ -2469,6 +2515,26 @@ export class TopDownEngine {
       dot(this.player.x + dx * f / k * TILE, this.player.y + dy * f / k * TILE, Math.max(2, k - 1), PARTY_PLATE);
     }
     dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
+  }
+
+  /**
+   * The creatures round the Keeper on the minimap (owner's player notes 2026-10-21): a red dot each, a champion blue and
+   * a unique gold (their aura tones, td-elites ELITE_TONES) and a size bigger, a boss bigger still with a pale heart. In
+   * the dark (a dungeon floor, or night past half) only what the Keeper's own light reaches shows. Capped at MINI_MOBS.
+   */
+  private miniMobs(dot: (x: number, y: number, r: number, fill: string) => void, reach: number): void {
+    const p = this.player, dark = this.level.dark || this.darkness > .5;
+    const sight = dark ? this.ownLight().r * 1.5 : reach;
+    let n = 0;
+    for (const m of this.mobs.mobs) {
+      if (m.hp <= 0 || Math.abs(m.x - p.x) > sight || Math.abs(m.y - p.y) > sight) continue;
+      if (dark && Math.hypot(m.x - p.x, m.y - p.y) > sight) continue;
+      if (++n > MINI_MOBS) break;
+      const boss = m.def.rank === 'boss', elite = m.elite?.rank;
+      if (boss) { dot(m.x, m.y, 3, '#b0283a'); dot(m.x, m.y, 1, '#ffe7e0'); }
+      else if (elite) dot(m.x, m.y, 2, ELITE_TONES[elite].body);
+      else dot(m.x, m.y, 1, '#e0453a');
+    }
   }
 
   // ── Fireflies: dusk and night, round the trees and the flower beds (the references' summer evenings) ──
