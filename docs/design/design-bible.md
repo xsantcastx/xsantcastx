@@ -458,6 +458,23 @@ flee — the core *mystery* mechanic):
 Rule: **dark-born never ambush.** Hostile creatures stay drawn on the spawn tables; dark-born are the *mystery* layer.
 Small Eclipse, Unveil and *Dawn at Noon* are the vocation spells that interact with them.
 
+**As built (2026-10-21, `play/td/td-dark.ts` rules, `td-dark-layer.ts` run time).** *Unrecorded*: on any dark floor, and
+in the open after dark (never in a town's safety), a hooded pixel shape stands just past the edge of every light (the
+Keeper's, Glim's, a lantern-pet's, torches and hearths), at most 2 at once, one every 20–40 s (8–16 s at Hush 60+, when
+they also stand closer). A light coming within 14 px makes it step straight back; light falling on it makes it leave
+and fade (+5 Hush). They never move toward the Keeper, never touch, never block. *Hollow Footsteps*: now and then
+while the Keeper walks in the dark, a 5–9 s spell of pale prints appears on his own trail just past his light (≤ 12,
+4.5 s each). *Shade-bound chests*: five, hand-placed in Ember Mine 2, the Ashen Crypt 2, the Forge of the Four 2, the
+Root Hollows 2 and the Drowned Crypts 2; shown only while the light on them is low (no Light spell or light relic
+burning, no lantern-pet out, no torch reaching it — Glim's own light is low enough). Opening one in light says "Only
+the dark can see it". Each pays three of the floor's Gold piles and a champion-rank roll of the floor's own creature
+(at least one magic-or-better piece, two at most), once a session. *Nightroads*: three on Ember Isle — Ashwater Lake,
+the Hushed Barrow's sea jetty, the steps below the Ember Shrine — plank ways over water, there only at night or under
+an eclipse (a faint trace at dusk; a 2.5 s fade, at once under reduced motion), each to a small stone nook with a
+wet page of lore (EN + ES). A road never vanishes under the Keeper: it stays while he stands on it or its nook.
+Not built: Margin Notes from Unveil (no Unveil yet), following prints back to an alcove, the Lamplighter's lamps,
+torches as placeables, Nightroads on the other continents, persistence of opened chests past the session.
+
 ### 5.4 The Hush† — dread, cozy-safe
 
 A soft **dread meter** (0–100), shown as a thin pale band under Glim's portrait, never a number.
@@ -478,6 +495,18 @@ A soft **dread meter** (0–100), shown as a thin pale band under Glim's portrai
 Rules: the Hush **never** damages, never takes items, never blocks a menu; it is *off* below level 10 and on Ember
 Isle; a setting (*Quiet dark*) caps it at 59 for players who want no omens. S/U/L: *source* depth + phase; *use* a
 risk-for-reward dial the player controls with light; *lore* the erased witnesses lean closer when you are alone.
+
+**As built (2026-10-21).** Session state only (a mood of this outing, never saved). Rises on dark floors at
+0.04 + 0.03 × floor per second (floor 1 ≈ 7 min to 30, floor 6 ≈ 2½ min), ×1.5 at night, ×2 under an eclipse; in the
+open 0.05/s at night, 0.1/s under an eclipse; a raised light halves the rise. Falls 10/s in a town, a lit building or
+a lit hearth's ring, 2/s by a torch or lamp, 0.5/s in daylight. +5 when a shape is unveiled, +3 for a Nightroad's page.
+Pays Magic Find +5/+10/+15 and Hunting XP ×1/×1.1/×1.15 by band (30/60/90); a shy chest's roll takes the MF too.
+Omens, sound and sight only: band 1 a far bell every 45–75 s; band 2 bell, a flicker of the light, a whisper (small
+pixel text at the light's edge, eight lines) every 22–40 s; band 3 adds the cant whispering "Keeper" and the screen's
+edge dithering inward 2 art pixels. HUD: a thin pale band on a timber plate under the minimap's phase plate (desktop
+and phone), notched at 30/60/90, cream → violet, flickering on an omen (a still violet edge under reduced motion),
+never a number. Setting: Menu → Sound → *The Hush*: Full · Quiet (≤ 59, the bell at most) · Off; saved with the sound
+settings through the gateway. Not built: the Hush-walker, Glim's hum and Hearth meals lowering it.
 
 ### 5.5 Seeking (exiva)
 
@@ -820,14 +849,14 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 4 ✓ | **Eclipse phases as rules** (shipped 2026-10-21, §5.2 as built): night spawn tables, Eclipse-touched elites, phase modifiers to spell power/XP/loot | M | `world-clock.model.ts` (`Sky`), `td-engine.setSky`, `td-mobs.ts` spawn tables, `drop-tables.ts` | night feels different; the eclipse is an event you plan for |
 | 5 ✓ | **The Cold Hearth + Hearth Blessings** (shipped 2026-10-21, §5.8): wake at the last lit hearth, fallen purse in top-down, Ember debt, five shrines | M | `td-engine.hurt`, `LootService.fall`, `keeper-level.service` (debt), capital maps (shrine stalls) | a fall *means* something; a Gold sink for the new economy |
 | 6 ✓ | **Lumvesh (Seek) + Light spell** (shipped 2026-10-21, §5.5 as built) | S | `td-skills.ts` (common spells), `td-world.ts` (find a mob/boss by id), Glim flight (`td-engine` glimFlight) | "The Ink Abbess is very far to the south-east, below you." |
-| 7 | **Light as a resource + dark-born**: torches, Unrecorded shapes, Hollow Footsteps, dark-only chests, 3 Nightroads on Ember Isle | M | `td-engine` darkness/light, `td-art.ts`, `maps/*.ts` (night-only tiles), `eclipse.model` items | the first "did I see that?" moment |
+| 7 ✓ | **Light as a resource + dark-born** (shipped 2026-10-21 but torches, §5.3 as built): torches, Unrecorded shapes, Hollow Footsteps, dark-only chests, 3 Nightroads on Ember Isle | M | `td-engine` darkness/light, `td-art.ts`, `maps/*.ts` (night-only tiles), `eclipse.model` items | the first "did I see that?" moment |
 | 8 | **The Sexton's Count** chain + key ring + Margin Notes | M | `shared/town-tasks`, `maps/` Hushed Barrow, a `notes` collection in `collection.model.ts` | a 20-minute spooky quest on the starter island |
 | 9 ✓ | **Boss uniques** (8 named; shipped 2026-10-21, §7.2 as built) | S–M | `rpg/unique-items.ts`, `drop-tables.ts` boss path, item icons | every boss has a reason to farm it |
 | 10 | **Spellstones + Soul** | M | new `shared/spellstones/`, belt (`potions` pattern), mining yield (Basalt Blank), Rune Forge stall | Tibia runes; mines and kills both matter |
 | 11 | **Cursed grave-goods + Sexton cleansing** | S–M | `unique-items.ts` (cursed flag), loot card, Sexton's dialogue | strong-but-strange items with a choice |
 | 12 | **Sets** (4) | M | new `rpg/set-items.ts`, `equippedTotals`, item card band | a mythic chase with goals |
 | 13 | **Kael's Quench** (6 recipes) | M | new `shared/quench/`, Kael's station UI (one button) | deterministic crafting; sockets |
-| 14 | **The Hush** + Hush-walker | M | HUD band under Glim, `td-engine` tick, settings | depth feels deeper; a risk dial |
+| 14 ✓ | **The Hush** (shipped 2026-10-21, §5.4 as built; the Hush-walker still to come) | M | HUD band under Glim, `td-engine` tick, settings | depth feels deeper; a risk dial |
 | 15 | **Second vocation: the Ashguard** (then Lanternwright, Thornstrider) | L | `keeper-look.model.ts` `VOCATIONS`, `vocation-look.ts`, `td-skills.ts` trees, `td-mobs.ts` melee path | a second way to play |
 
 **Also queued (not top 15):** Whispering items (M), Eclipsing items at altars (M), town houses (L), Pyre Watch

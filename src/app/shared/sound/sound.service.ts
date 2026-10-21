@@ -20,7 +20,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { SOUND_KEY, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
+import { HUSH_SETTINGS, SOUND_KEY, type HushSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
 import type { SoundScene } from './sound-palette';
 import type { SfxCue, SfxOptions, SoundDirector } from './sound-director';
 
@@ -64,6 +64,14 @@ export class SoundService {
     const cur = this.subject.value;
     if (cur.muted === muted) return;
     this.save({ ...cur, muted, updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+
+  /** The Hush's cap (Menu → Sound: "The Hush"). */
+  setHush(hush: HushSetting, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (cur.hush === hush || !HUSH_SETTINGS.includes(hush)) return;
+    this.save({ ...cur, hush, updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
   toggleMuted(): boolean {

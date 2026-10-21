@@ -40,7 +40,9 @@ export type SfxCue =
   // Glim speaks up (shared/glim/glim-react.ts): a soft glassy two-note hum; a high five's bright clap.
   | 'glim' | 'five'
   // The cascade machines (shared/cascade): runes landing, a cluster bursting (pitch climbs each tumble), a big win.
-  | 'tumble' | 'cluster' | 'bigwin';
+  | 'tumble' | 'cluster' | 'bigwin'
+  // The Hush's omens (play/td/td-dark.ts): a bell far off, a breath of whispering. Sound only, never a warning of harm.
+  | 'farbell' | 'whisper';
 
 export interface SfxOptions {
   material?: Material;
@@ -54,7 +56,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { farbell: 6, whisper: 3, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -231,6 +233,10 @@ export class SoundDirector {
       // A bright three-note chime; each tumble of a chain climbs a step.
       case 'cluster': return this.arpeggio(t, [76, 79, 84].map(n => n + (opts.pitch ?? 0)), 'bell', .05, .22, true);
       // A rising fanfare of bells, then the top note again: a Big, Mega or Epic win.
+      // A bell far off: one low strike and its fifth, a long dying tail, very soft.
+      case 'farbell': this.tone(t, 'sine', 146.8, .05, 3.2, .02); this.tone(t, 'sine', 220, .025, 2.6, .02); return this.tone(t, 'triangle', 293.7, .012, 1.8, .02);
+      // Something whispers: two breaths of filtered air, the second lower.
+      case 'whisper': this.whoosh(t, 3200, 1900, .7, .03); return this.whoosh(t + .55, 2600, 1500, .8, .025);
       case 'bigwin': this.arpeggio(t, [60, 64, 67, 72, 76, 79, 84, 88], 'bell', .07, .3, true); return this.arpeggio(t + .62, [84, 91], 'bell', .12, .32, true);
     }
   }

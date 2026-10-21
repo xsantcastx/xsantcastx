@@ -176,6 +176,7 @@ import { potionById, potionEffect } from '../shared/potions/potions.model';
 import { WorldClockService } from '../shared/world-clock/world-clock.service';
 import { EclipseService } from '../shared/world-clock/eclipse.service';
 import { WORLD_CLOCK_I18N } from '../shared/world-clock/world-clock.i18n';
+import { DARK_I18N } from './td/td-dark.i18n';
 import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-clock/eclipse.model';
 import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
 import { eclipseWarning, spellMult } from './td/td-phases';
@@ -803,6 +804,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(SLATE_I18N);
     this.i18n.register(REALM_MACHINES_I18N);
     this.i18n.register(WORLD_CLOCK_I18N);
+    this.i18n.register(DARK_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
@@ -1793,6 +1795,30 @@ export class SideScrollerComponent implements OnDestroy {
   tdMana = MAX_MANA;
   /** The running aura (its icon rides the portrait's corner / sits beside the orbs). */
   tdAura: string | null = null;
+  /**
+   * The Hush on the HUD (td-dark.ts, design-bible §5.4): a thin pale band under the minimap, never a number. `fill`
+   * 0–1, `band` 0–3, `omen` true for a moment after an omen (the band flickers). Session state in the engine only.
+   */
+  tdHush: { band: number; fill: number; omen: boolean } | null = null;
+  private hushOmenSeq = 0;
+  private hushOmenAt = 0;
+  private darkWordsKey = '';
+  /** The Hush's HUD line, for its label (words, not a number). */
+  get hushLabel(): string { return this.tdHush ? `${this.t('dark.hud.band.' + this.tdHush.band)}. ${this.t('dark.hud.rule')}` : ''; }
+  /** Each HUD tick: the player's cap and the whispers' words to the engine, the Hush back for the band. */
+  private tickHush(): void {
+    const e = this.engine as unknown as { hushView?: { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null }; setHushCap?: (c: string) => void; setDarkWords?: (w: { whispers: readonly string[]; name: string }) => void } | undefined;
+    if (!e?.hushView) { this.tdHush = null; return; }
+    e.setHushCap?.(this.sound.settings.hush);
+    const first = this.t('dark.whisper.1');
+    if (first !== this.darkWordsKey && e.setDarkWords) {
+      this.darkWordsKey = first;
+      e.setDarkWords({ whispers: [1, 2, 3, 4, 5, 6, 7, 8].map(n => this.t(`dark.whisper.${n}`)), name: this.t('dark.whisper.name') });
+    }
+    const v = e.hushView;
+    if (v.omen && v.omen.seq !== this.hushOmenSeq) { this.hushOmenSeq = v.omen.seq; this.hushOmenAt = performance.now(); }
+    this.tdHush = v.on ? { band: v.band, fill: Math.max(0, Math.min(1, v.level / 100)), omen: performance.now() - this.hushOmenAt < 1400 } : null;
+  }
   tdMaxMana = MAX_MANA;
   tdMaxHp = 100;
   /** The Spellbook (K): every skill of the class, what it does, the bar and the aura chosen there. */
@@ -1830,6 +1856,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.tdBelt = this.potions.belt(performance.now() / 1000);
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
     this.tdAura = e?.aura ?? null;
+    this.tickHush();
     const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
     if (typeof ext?.maxMana === 'number') this.tdMaxMana = ext.maxMana;
     if (typeof ext?.maxHealth === 'number') this.tdMaxHp = ext.maxHealth;

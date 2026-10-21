@@ -18,6 +18,13 @@ export const SOUND_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.sound.unsupported': { en: 'This browser cannot play the world\'s sound.', es: 'Este navegador no puede reproducir el sonido del mundo.' },
   'play.sound.help': { en: 'Help', es: 'Ayuda' },
   'play.sound.close': { en: 'Done', es: 'Listo' },
+  'play.sound.hush': { en: 'The Hush', es: 'El Silencio' },
+  'play.sound.hush.full': { en: 'Full', es: 'Entero' },
+  'play.sound.hush.quiet': { en: 'Quiet', es: 'Tenue' },
+  'play.sound.hush.off': { en: 'Off', es: 'No' },
+  'play.sound.hush.full.line': { en: 'The deep dark leans close and pays for it. It never hurts you.', es: 'La oscuridad honda se acerca y lo paga. Nunca te hace dano.' },
+  'play.sound.hush.quiet.line': { en: 'No deeper than a far bell. No whispers, no shapes leaning in.', es: 'Nada mas hondo que una campana lejana. Sin susurros ni sombras que se acerquen.' },
+  'play.sound.hush.off.line': { en: 'No Hush at all: the dark stays only dark.', es: 'Sin Silencio: la oscuridad es solo oscuridad.' },
   'play.sound.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
 
   // ── Catch & craft ──

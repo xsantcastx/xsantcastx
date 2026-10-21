@@ -81,6 +81,16 @@ before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
   rim; the body tinted dusk-violet (`#6b3aa0`, 30%). Reduced motion: the same ring, the flares still.
 - **The sky**: under an eclipse the darkness pass is violet, not the night's blue, deepening with the eclipse.
 
+## The dark-born (2026-10-21, `td-dark-layer.ts`)
+- Drawn **over** the night pass (they are what only the dark shows), in the shadow palette with the hostile dark: a shape
+  is 12×22 px of `#140c1c` with a `#6b3aa0` rim at 35% and two `#f0e0ff` eye pixels, its foot dithering into the floor;
+  prints are 2-px `#e8e1cf` pairs at 42%; a shy chest is dark wood with violet bands and a dithered violet ring; an open
+  Nightroad shows pale `#f0e0ff` nail pixels at its plank corners so it reads across the water.
+- Budget: ≤ 2 shapes, ≤ 12 prints, one whisper line. Whispers are 7-px pixel text, cream over an ink drop-shadow.
+- The Hush's deepest band dithers the screen edge inward 2 art pixels (≤ 54% ink).
+- Reduced motion: shapes fade where they stand (no stepping back), the whisper holds still, the road appears at once,
+  the edge dither and the HUD band's omen hold still.
+
 ## Order
 1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
 Each step screenshot-checked (e2e/td-fx-shots.spec.ts, e2e/td-fx2-shots.spec.ts → docs/handoff/cozy-ui/fx-*.jpg).

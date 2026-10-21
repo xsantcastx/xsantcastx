@@ -30,8 +30,16 @@ describe('sound settings (godforge-sound)', () => {
     expect(coerceSound(null)).toEqual(defaultSound());
     expect(coerceSound([1, 2])).toEqual(defaultSound());
     const s = coerceSound({ music: 1.7, ambience: -2, effects: .333, muted: 'yes', updatedAt: 'x' });
-    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, updatedAt: 0 });
+    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', updatedAt: 0 });
     expect(clampLevel(NaN, .4)).toBe(.4);
+  });
+
+  it('keeps the Hush cap, and an older save without one reads as the full dial', () => {
+    expect(defaultSound().hush).toBe('full');
+    expect(coerceSound({ music: .5 }).hush).toBe('full');
+    expect(coerceSound({ hush: 'quiet' }).hush).toBe('quiet');
+    expect(coerceSound({ hush: 'off' }).hush).toBe('off');
+    expect(coerceSound({ hush: 'loud' }).hush).toBe('full');
   });
 
   it('merges two devices by the later choice, whole', () => {

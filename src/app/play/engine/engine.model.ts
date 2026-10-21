@@ -145,7 +145,7 @@ export interface SeekAnswer {
 }
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' };
-export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
+export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -203,7 +203,7 @@ export interface EngineOptions {
    * via LootService.rollLoot). Only asked while combat rules are set. Rows are
    * 'item' / 'rune' DropEntry lines; the engine spills and presents them.
    */
-  rollLoot?: (kill: { creature: string; level: number; rank: MonsterRank; killKey: string }) => readonly LootRow[];
+  rollLoot?: (kill: { creature: string; level: number; rank: MonsterRank; killKey: string; mf?: number }) => readonly LootRow[];
   /** The corpse run's purse was walked over (setFallenPurse). The host returns its Gold. */
   onPurse?: () => void;
   /**
@@ -370,7 +370,7 @@ export interface KillEvent {
   name: string;
   /** The creature's full HP: what Hunting XP scales with. */
   hp: number;
-  /** The sky's XP multiplier on this kill (night, an eclipse: td-phases.ts); unset = 1. */
+  /** The sky's XP multiplier on this kill (night, an eclipse: td-phases.ts) times the Hush's (td-dark.ts); unset = 1. */
   xp?: number;
 }
 export interface DiscoverEvent {

@@ -10,7 +10,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, On
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { SoundService } from './sound.service';
-import { SOUND_CHANNELS, type SoundChannel, type SoundSettings } from './sound-settings.model';
+import { HUSH_SETTINGS, SOUND_CHANNELS, type HushSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
 
 @Component({
@@ -38,6 +38,16 @@ import { SOUND_I18N } from './sound.i18n';
           <b class="ss__val">{{ pct(ch) }}%</b>
         </label>
       }
+      <!-- The Hush (play/td/td-dark.ts): how deep the dread may run. Its omens are sound and sight only. -->
+      <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.hush')">
+        <span class="ss__name">{{ t('play.sound.hush') }}</span>
+        <span class="ss__seg">
+          @for (h of hushes; track h) {
+            <button type="button" role="radio" [attr.aria-checked]="s.hush === h" [class.on]="s.hush === h" [attr.data-hush-cap]="h" (click)="setHush(h)">{{ t('play.sound.hush.' + h) }}</button>
+          }
+        </span>
+        <small class="ss__hushline">{{ t('play.sound.hush.' + s.hush + '.line') }}</small>
+      </div>
       <label class="ss__mute">
         <input type="checkbox" [checked]="s.muted" (change)="mute($event)" data-sound-mute>
         <span>{{ t('play.sound.mute') }}</span>
@@ -64,6 +74,12 @@ import { SOUND_I18N } from './sound.i18n';
     .ss__val { font: 600 12px var(--font-game); text-align: right; color: var(--adventure-ember); }
     .ss__row input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--adventure-ember); cursor: pointer; }
     .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
+    .ss__hush { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 4px 10px; }
+    .ss__seg { display: flex; gap: 4px; }
+    .ss__seg button { flex: 1; min-height: 44px; padding: 0 6px; border: 0; cursor: pointer; font: 600 12px var(--font-game); letter-spacing: .06em; text-transform: uppercase;
+      color: var(--adventure-parchment); background: var(--obsidian-2); box-shadow: inset 0 0 0 2px var(--gold-deep); }
+    .ss__seg button.on { color: var(--obsidian-0); background: var(--adventure-ember); }
+    .ss__hushline { grid-column: 2; font: italic 400 13px/1.3 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
     .ss__mute input { width: 22px; height: 22px; accent-color: var(--adventure-ember); }
   `],
 })
@@ -74,6 +90,7 @@ export class SoundSheetComponent implements OnDestroy {
   private readonly subs = new Subscription();
   @Output() readonly done = new EventEmitter<void>();
   readonly channels = SOUND_CHANNELS;
+  readonly hushes = HUSH_SETTINGS;
   s: SoundSettings = this.sound.settings;
   status = this.sound.status;
   /** The question mark: the sentences that used to sit on screen. */
@@ -98,6 +115,8 @@ export class SoundSheetComponent implements OnDestroy {
     // A little tick at the new effects level, so the slider is heard as it moves.
     if (ch === 'effects') this.sound.sfx('tap');
   }
+
+  setHush(h: HushSetting): void { this.sound.setHush(h); this.sound.sfx('tap'); }
 
   mute(event: Event): void {
     this.sound.setMuted((event.target as HTMLInputElement).checked);
