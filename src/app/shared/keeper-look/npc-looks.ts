@@ -188,6 +188,32 @@ export const NPC_LOOKS: Readonly<Record<string, NpcLook>> = {
     gear: gear(piece('chest', 'coat', 'verdant', '#5a4630', SAP), piece('weapon', 'axe', 'verdant', ROOT_HI, SAP)),
     garb: { skin: '#b07a4f', hair: '#3b2619', tunic: '#5a4630', trim: SAP, trousers: ROOTWOOD, apron: LEATHER },
   },
+  // ── The piers (play/td/td-harbour): whoever keeps the sailing board ──
+  'harbourmaster-odd-tarn': {
+    look: look({ body: 'sturdy', hair: 'shaved', face: 'scar', eyes: 'narrow' }),
+    gear: gear(piece('chest', 'coat', 'infernal', '#4b3a36', '#b6683a'), piece('off-hand', 'lantern', 'infernal', IRON, EMBER_HI), piece('feet', 'boots', 'infernal', IRON)),
+    garb: { skin: '#c99272', hair: '#6b4226', tunic: '#4b3a36', trim: '#b6683a', trousers: BASALT, hat: 'cap', hatColor: BASALT_HI, sack: STONE, elder: true },
+  },
+  'harbourmaster-hale-dross': {
+    look: look({ body: 'broad', hair: 'cropped', face: 'beard' }),
+    gear: gear(piece('chest', 'coat', 'infernal', BASALT_HI, EMBER), piece('off-hand', 'scroll', 'infernal', IVORY, EMBER_HI), piece('feet', 'boots', 'infernal', IRON)),
+    garb: { skin: '#e0b08a', hair: '#9aa0ad', tunic: BASALT_HI, trim: EMBER, trousers: BASALT, sash: '#8d4f58' },
+  },
+  'harbourmaster-marit-salt': {
+    look: look({ body: 'slight', hair: 'braid', eyes: 'bright' }),
+    gear: gear(piece('chest', 'coat', 'infernal', '#3f4a58', SILVER), piece('off-hand', 'lantern', 'infernal', BRASS, EMBER_HI)),
+    garb: { skin: '#e0b08a', hair: '#8f3b1f', tunic: '#3f4a58', trim: '#c8d2e6', trousers: BASALT, apron: LEATHER },
+  },
+  'harbourmaster-sunny-pell': {
+    look: look({ body: 'slight', hair: 'curls', face: 'freckles', eyes: 'bright' }),
+    gear: gear(piece('chest', 'coat', 'verdant', MOSS, SAP), piece('off-hand', 'scroll', 'verdant', IVORY, SAP), piece('feet', 'boots', 'verdant', ROOTWOOD)),
+    garb: { skin: '#c99a76', hair: '#c4612b', tunic: MOSS, trim: SAP, trousers: ROOTWOOD, hat: 'cap', hatColor: MOSS_HI },
+  },
+  'harbourmaster-old-corvane': {
+    look: look({ body: 'slight', hair: 'long', face: 'beard' }),
+    gear: gear(piece('head', 'hood', 'umbral', '#2a1d3a', MOON), piece('chest', 'coat', 'umbral', VIOLET, MOON), piece('off-hand', 'lantern', 'umbral', VIOLET_HI, '#d8dcf0')),
+    garb: { skin: '#c6bed2', hair: '#eae4d4', tunic: VIOLET, trim: MOON, trousers: NIGHT, elder: true },
+  },
   // ── The high ground ──
   'hollis-fenn': {
     look: look({ body: 'slight', hair: 'long', face: 'beard' }),

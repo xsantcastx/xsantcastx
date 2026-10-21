@@ -57,6 +57,10 @@ export class TdPeers {
   get drawn(): readonly PeerShown[] { return this.shown; }
   /** A Keeper's cosmetic companions string (presence `pals`, protocol 5): its pet and Glim beside it. */
   palsOf(id: string): string { const p = this.raw.find(x => x.id === id); return typeof p?.pals === 'string' ? p.pals : ''; }
+  /** The party members' town portals (presence `gate`, td-waygate.ts): cosmetic and travel only. */
+  partyGates(): { id: string; gate: string }[] {
+    return this.raw.filter(p => this.party.has(p.id) && typeof p.gate === 'string' && p.gate).map(p => ({ id: p.id, gate: p.gate as string }));
+  }
   /** Where each party member last said it stood (any area), by the room's list. */
   partyWhere(): { id: string; name: string; area: string; x: number; y: number }[] {
     return this.raw.filter(p => this.party.has(p.id) && Number.isFinite(p.x) && Number.isFinite(p.y))

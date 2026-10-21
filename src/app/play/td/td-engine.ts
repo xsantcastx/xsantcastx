@@ -123,6 +123,7 @@ import type { GlimMood } from '../../shared/glim/glim-art';
 import type { LootFilter } from '../../shared/loot/loot-tiers';
 import type { AuraId } from '../../shared/loot/auras';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
+import { isBerth, pierById, pierOfMaster, routesFrom, fareFor, LANDS } from './td-harbour';
 import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
@@ -138,6 +139,7 @@ import { DarkLayer, type DarkFrame } from './td-dark-layer';
 import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, eyeGlow, findEyes, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
 import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
+import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 export const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -151,7 +153,7 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3],
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
-export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number;
+export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc' | 'harbour'; u: number; v: number;
   /** A task giver's mark ('!' a task to take, '?' one to hand in). */
   mark?: '!' | '?';
   /** A way down on the surface: the level it leads to (the Map opens its floors). */
@@ -221,6 +223,9 @@ export class TopDownEngine {
   private readonly levels = new Map<string, HandLevel>();
   /** Monsters, the Keeper's fight and the loot on the ground (td-mobs.ts). */
   private readonly mobs: MobSystem;
+  /** Town portals (td-waygate.ts): the Keeper's own pair and the party's, from presence. */
+  private readonly gates: TdWaygates;
+  private gateSeen = '';
   private hp = 100;
   private maxHp = 100;
   /** Agility's speed of foot (0–0.3). */
@@ -461,8 +466,19 @@ export class TopDownEngine {
       // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
       seek: secs => this.seekNow(secs),
+      waygate: secs => this.gates.open(this.time, secs),
       dash: (x, y) => this.dashTo(x, y),
       say: key => this.say(key),
+    });
+    this.gates = new TdWaygates({
+      here: () => this.whereabouts,
+      hearths: () => this.hearths,
+      inTown: () => this.level === this.world && this.world.inSettlement(Math.floor(this.player.x / TILE), Math.floor(this.player.y / TILE)),
+      bossFight: () => bossFighting(this.player, this.mobs.mobs),
+      seamFight: () => !!this.seam && this.seam.hp > 0,
+      travel: to => { const ok = this.restoreWhereabouts(to); if (ok) { this.path = []; this.arrive = null; this.player.dir = 'down'; } return ok; },
+      say: key => this.say(key),
+      partyGates: () => this.peers.partyGates(),
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
     this.mobs.elites = true; this.mobs.levelGap = true;
@@ -585,6 +601,24 @@ export class TopDownEngine {
         };
       },
     };
+    // The Waygate specs (td-waygate.ts; only under an automated browser): cast it through the real spell, step off and
+    // onto its ends, read where the Keeper stands.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdWaygate'] = {
+      cast: () => this.useAbility('waygate'),
+      /** The scroll's way in (no mana, no cooldown): the same portal and the same refusals. */
+      read: () => this.openWaygate(),
+      where: () => ({ ...this.whereabouts, inTown: this.level === this.world && this.world.inSettlement(Math.floor(this.player.x / TILE), Math.floor(this.player.y / TILE)) }),
+      gate: () => (this.gates.own ? { from: { ...this.gates.own.from }, town: { ...this.gates.own.town }, left: Math.ceil(waygateLeft(this.gates.own, this.time)) } : null),
+      trips: () => this.gates.trips,
+      /** Walk the Keeper `px` south (and `dx` east) of where he stands (on open ground), as a step off the portal would. */
+      stepOff: (px = 24, dx = 0) => { const at = standNear(this.level, this.player.x + dx, this.player.y + px); this.player.x = at.x; this.player.y = at.y; this.path = []; this.player.dir = 'down'; return { x: at.x, y: at.y }; },
+      /** Stand on an end of the Keeper's own portal (the next frame takes him through when it is armed). */
+      stepOn: (side: 'from' | 'town') => { const g = this.gates.own; if (!g) return false; const e = g[side], here = this.whereabouts; if (e.continent !== here.continent || e.level !== here.level) return false; this.player.x = e.x; this.player.y = e.y; this.path = []; return true; },
+      /** Go out of town: the nearest open ground at least `tiles` from every settlement (a field to open a portal in). */
+      field: (tiles = 6) => this.fxField(tiles),
+      /** Age the portal by `secs` (its lifetime, without waiting five minutes). */
+      age: (secs: number) => { if (this.gates.own) this.gates.own.opened -= Math.max(0, secs); },
+    };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
@@ -679,6 +713,7 @@ export class TopDownEngine {
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
+    delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
     if (this.fxPeer) delete (window as unknown as Record<string, unknown>)['__tdPeer'];
     if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
@@ -937,7 +972,7 @@ export class TopDownEngine {
   delveAnchors(): readonly never[] { return []; }
   hasDelveCamp(): boolean { return false; }
   readRiftMap(): boolean { return false; }
-  get places(): readonly StationDef[] { return this.level.stalls.map(s => s.station); }
+  get places(): readonly StationDef[] { return this.level.stalls.filter(s => !isBerth(s.station.id)).map(s => s.station); }
   private readonly mapImages = new Map<string, { url: string; x0: number; y0: number; w: number; h: number }>();
   /**
    * The Map window (owner 2026-10-20: "take that Places UI out, create the map and pin point the stuff"): the level the
@@ -984,13 +1019,15 @@ export class TopDownEngine {
       if (seen.has(st.station.id)) continue;
       seen.add(st.station.id);
       const id = st.station.id;
-      const kind: TdMapPin['kind'] = id.startsWith('ship') ? 'ship' : id.startsWith('giver-') ? 'npc' : st.station.kind === 'passage' ? 'way' : 'stall';
+      if (isBerth(id)) continue;
+      const kind: TdMapPin['kind'] = id.startsWith('giver-harbourmaster-') && pierOfMaster(id.slice(6)) ? 'harbour' : id.startsWith('ship') ? 'ship' : id.startsWith('giver-') ? 'npc' : st.station.kind === 'passage' ? 'way' : 'stall';
       let pu = u(st.x);
       const pv = v(st.y);
       // Two ships at one harbour (ContinentWay.along) would share a pin's spot and the later one would eat every
       // click on the first: set a second ship's pin beside it.
       if (kind === 'ship') while (pins.some(q => q.kind === 'ship' && Math.abs(q.u - pu) < .03 && Math.abs(q.v - pv) < .03)) pu += .035;
-      const pin: TdMapPin = { id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv };
+      const hp = kind === 'harbour' ? pierOfMaster(id.slice(6)) : undefined;
+      const pin: TdMapPin = { id, label: st.station.label, blurb: hp ? this.harbourBlurb(hp.id) : st.station.blurb ?? '', kind, u: pu, v: pv };
       const mark = id.startsWith('giver-') ? this.taskMarks[id.slice(6)] : undefined;
       if (mark) pin.mark = mark;
       if (kind === 'way' && onWorld) {
@@ -1097,8 +1134,15 @@ export class TopDownEngine {
     if (!lv) { lv = new HandLevel(LEVELS[id] ?? EMBER_MINE_1); this.levels.set(id, lv); }
     return lv;
   }
+  /** What a Harbourmaster's map pin says: where the board sails, and from what fare. */
+  private harbourBlurb(pierId: string): string {
+    const routes = routesFrom(pierId, CONTINENTS);
+    const names = routes.map(r => pierById(r.destPier)?.name ?? r.destPier);
+    const low = Math.min(...routes.map(r => fareFor(LANDS[pierById(r.destPier)!.continent]?.entry ?? 1)));
+    return routes.length ? `Sailing board: ${names.join(', ')}. Fares from ${low} gold.` : 'The sailing board.';
+  }
   /** Sail to another continent: its surface becomes the world, its town's people come out, the Keeper steps ashore. */
-  private sail(to: string, arrive: string): void {
+  sail(to: string, arrive: string): void {
     const def = CONTINENTS[to];
     if (!def) { this.say('play.td.soon.place'); return; }
     let next = this.continents.get(to);
@@ -1156,6 +1200,27 @@ export class TopDownEngine {
   peerPresence(): { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean } {
     const p = this.player;
     return { area: this.peerArea(), x: Math.round(p.x), y: Math.round(p.y), face: p.face, dir: p.dir, moving: p.moving };
+  }
+  /** The Keeper's own town portal for presence (td-waygate encodeGate; '' when none stands). */
+  gatePresence(): string { return this.gates.presence(this.time); }
+  /** Read a Waygate Scroll (the HUD spends it on success): the same portal as the spell, no mana. Why not, or null. */
+  openWaygate(): 'waytown' | 'wayboss' | 'wayseam' | null {
+    if (this.paused || this.waking) return 'waytown';
+    const why = this.gates.open(this.time);
+    if (!why) this.cant = { text: SKILLS['waygate'].words ?? '', color: CANT_TONE['common'], age: 0 };
+    return why;
+  }
+  /** The portal's state on the canvas for tests and tools (`data-waygate`: '' | 'open'; seconds left; trips taken). */
+  private markWaygate(): void {
+    const own = this.gates.own, left = own ? Math.ceil(waygateLeft(own, this.time)) : 0;
+    const here = this.whereabouts, where = own ? (own.town.continent === here.continent && here.level === 'surface' && Math.hypot(own.town.x - here.x, own.town.y - here.y) < 120 ? 'town' : 'field') : '';
+    const key = `${own ? 'open' : ''}|${Math.ceil(left / 10)}|${this.gates.trips}|${where}`;
+    if (key === this.gateSeen) return;
+    this.gateSeen = key;
+    this.canvas.setAttribute('data-waygate', own ? 'open' : '');
+    this.canvas.setAttribute('data-waygate-left', String(left));
+    this.canvas.setAttribute('data-waygate-trips', String(this.gates.trips));
+    this.canvas.setAttribute('data-waygate-at', where);
   }
   /** A Wave over a Keeper ('' or null: the local one). */
   peerWave(who: string | null): void { this.peers.wave(who ?? '', this.time); }
@@ -1329,6 +1394,22 @@ export class TopDownEngine {
     this.canvas.setAttribute('data-waking', wk);
     this.canvas.setAttribute('data-hearth-near', nearby);
     this.canvas.setAttribute('data-blessings', blessed);
+  }
+  /** Test hook only (`__tdWaygate.field`): stand on open surface ground clear of every settlement, nearest first. */
+  private fxField(tiles: number): { x: number; y: number } | null {
+    if (this.level !== this.world) this.enter(this.world, '');
+    const c0 = Math.floor(this.player.x / TILE), r0 = Math.floor(this.player.y / TILE);
+    for (let ring = 1; ring < 120; ring++) for (let dr = -ring; dr <= ring; dr++) for (let dc = -ring; dc <= ring; dc++) {
+      if (Math.max(Math.abs(dc), Math.abs(dr)) !== ring) continue;
+      const c = c0 + dc, r = r0 + dr;
+      let clear = this.world.walkable(c, r) && this.world.walkable(c, r + 1) && this.world.walkable(c, r + 2);
+      for (let k = -tiles; clear && k <= tiles; k += 2) for (let j = -tiles; clear && j <= tiles; j += 2) if (this.world.inSettlement(c + k, r + j)) clear = false;
+      if (!clear) continue;
+      this.player.x = c * TILE + TILE / 2; this.player.y = r * TILE + TILE - 2; this.path = [];
+      this.placeCompanions();
+      return { x: this.player.x, y: this.player.y };
+    }
+    return null;
   }
   /** Test hook only (`?fxfall=1`): stand in front of the nearest hearth (or its shrine) on this continent. */
   private fxStandAt(what: 'hearth' | 'shrine'): string | null {
@@ -1997,7 +2078,7 @@ export class TopDownEngine {
     this.mobs.setRelics(relicTotals(ids, relicSigOf));
   }
   /** The weapon in hand (strike + spell damage, or null for bare hands): the Ashguard's swing reads it (td-melee weaponSwing). */
-  setWeapon(w: { strikePower?: number; spellDamage?: number } | null): void { this.mobs.weaponSwing = weaponSwing(w); }
+  setWeapon(w: { strikePower?: number; spellDamage?: number; hands?: number } | null): void { this.mobs.weaponSwing = weaponSwing(w); }
   /** The arrow Glim leaves after a Seek: which way, the floor, and the seconds it still holds. */
   private seekArrow: { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null = null;
   /** A typed "lum vesh <name>": the name the next Seek looks for (null: the nearest). */
@@ -2020,8 +2101,10 @@ export class TopDownEngine {
     return l ? { continent: l.continent, level, x, y, floor: l.floor, ax: l.ax, ay: l.ay } : { continent, level, x, y, floor: 0, ax: x, ay: y };
   }
   /** What the Seek can point at: the fallen purse, every boss in its hall, every task giver with a task to hand in. */
-  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party'; id: string; name: string; place: SeekPlace }[] {
-    const out: { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party'; id: string; name: string; place: SeekPlace }[] = [];
+  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party' | 'harbour'; id: string; name: string; place: SeekPlace }[] {
+    const out: { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party' | 'harbour'; id: string; name: string; place: SeekPlace }[] = [];
+    // The piers of this continent: sought by "harbour" or the Harbourmaster's name, never the nearest-of-anything default.
+    for (const k of this.keepers) if (k.kid && pierOfMaster(k.kid)) out.push({ kind: 'harbour', id: 'harbour', name: k.name ?? k.kid, place: this.seekPlace(this.world.continent, null, k.x, k.y) });
     // Party members (protocol 3), sought by name ("lum vesh Mira"): their area is a continent's surface or a floor's id.
     for (const m of this.peers.partyWhere()) {
       const link = this.levelLinks().get(m.area);
@@ -2061,7 +2144,7 @@ export class TopDownEngine {
       if (!pick) { this.options.onSeek?.({ kind: 'unknown', id: '', name, dir: null, band: 'veryFar', floor: 'here', sea: false }); return false; }
     } else {
       // The purse first (a fall to set right), then the story's next place (the chain under way), then the nearest.
-      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse' && t.kind !== 'party').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
+      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse' && t.kind !== 'party' && t.kind !== 'harbour').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
     }
     if (!pick) return false;
     const r = pick.r;
@@ -2360,6 +2443,8 @@ export class TopDownEngine {
     // The nearest stall within reach (the HUD's prompt and E).
     let best: TdStall | null = null, bestD = REACH;
     for (const s of this.level.stalls) {
+      // A ship's berth is only where the Keeper steps ashore: the Harbourmaster is who you talk to (td-harbour).
+      if (isBerth(s.station.id)) continue;
       if (s.station.id.startsWith('shade:') && this.darkLayer.isOpened(s.station.id.slice(6))) continue;
       // The ledger page is only there in the dark, while the chain is at it.
       if (s.station.id === 'sexton:page' && !pageShown(this.sexton.step, this.phaseNow)) continue;
@@ -2368,6 +2453,9 @@ export class TopDownEngine {
     }
     this.nearby = best;
     this.updateHearth();
+    // Town portals: they fade on time, and an armed one underfoot takes the Keeper through (td-waygate.ts).
+    this.gates.step(this.time);
+    this.markWaygate();
     this.updateDark(dt);
     this.updateSexton(dt);
     this.updateSmoke(dt);
@@ -2535,6 +2623,7 @@ export class TopDownEngine {
     // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
     let hit: TdStall | undefined, best = Infinity;
     for (const s of this.level.stalls) {
+      if (isBerth(s.station.id)) continue;
       if (!(Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16)) continue;
       const d = Math.hypot(wx - s.x, wy - (s.y - 14));
       if (d < best) { best = d; hit = s; }
@@ -3018,6 +3107,8 @@ export class TopDownEngine {
     }
     const fallen = this.purseHere();
     if (fallen && inView(fallen.x, fallen.y)) items.push({ y: fallen.y, draw: () => drawPurse(c, fallen.x, fallen.y, this.time, this.still) });
+    // Town portals on this level: the Keeper's own and the party's (td-waygate.ts).
+    for (const g of this.gates.ends(this.time)) if (inView(g.x, g.y)) items.push({ y: g.y - .5, draw: () => drawWaygate(c, g.x, g.y, this.time, this.still, g.fade, g.party) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     for (const b of this.mobs.beacons) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeacon(c, b, this.time, this.still) });

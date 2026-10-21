@@ -11,7 +11,7 @@
  *
  * Menus: the title, the character list (the campfire), the Glass (New Keeper), the delete confirm; in the world the Spellbook, the
  * Satchel, the character sheet, the Bestiary, the Map, the Hearth Shrine, Sexton Wren's talk window, the settings
- * (sound) sheet and the Sexton's journal.
+ * (sound) sheet, the Sexton's journal and a Harbourmaster's Sailing Board.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { ERA, openMenu, seed } from './play-helpers';
@@ -233,6 +233,14 @@ for (const size of SIZES) {
       await page.locator('#places-list .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).tap();
       await page.locator('.td-talk [data-story-journal]').first().tap();
       await check(page, 'journal', '.place:not([hidden])');
+      await closeAll(page);
+
+      // A Harbourmaster's Sailing Board (play/harbour), from the Map's anchor pin; Esc folds it.
+      await key('m');
+      await page.locator('#places-list .mw__pin[data-cat="harbour"]').first().tap();
+      await check(page, 'Sailing Board', '.td-harbour');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.td-harbour')).toHaveCount(0);
     });
   });
 }

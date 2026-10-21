@@ -26,7 +26,7 @@ export type SkillId =
   | 'corpse-burst' | 'skeleton-mastery' | 'bone-armor' | 'bone-storm'
   | 'weaken' | 'life-tap' | 'doom'
   // The spells every vocation learns (design-bible §4.6, roadmap §10 item 6): Glim's Light and Lumvesh, the Seek.
-  | 'light' | 'seek'
+  | 'light' | 'seek' | 'waygate'
   // The Ashguard's book (td-ashguard-skills.ts, design-bible §4.4).
   | AshSkillId
   // The Lanternwright's book (td-lantern-skills.ts, design-bible §4.3).
@@ -253,6 +253,13 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     icon: I('<rect x="3" y="3" width="10" height="10" fill="#3a2a14"/><rect x="4" y="4" width="8" height="8" fill="#5a4020"/><rect x="2" y="7" width="1" height="2" fill="#b08a55"/><rect x="13" y="7" width="1" height="2" fill="#b08a55"/><rect x="7" y="2" width="2" height="1" fill="#b08a55"/><rect x="7" y="13" width="2" height="1" fill="#b08a55"/><rect x="9" y="4" width="2" height="2" fill="#fffbe8"/><rect x="8" y="6" width="2" height="2" fill="#ffd27a"/><rect x="6" y="8" width="2" height="2" fill="#c99a3e"/><rect x="5" y="10" width="1" height="1" fill="#8a6a3a"/>'),
     words: 'lum vesh',
   },
+  // A town portal (td-waygate.ts, owner 2026-10-21): a gate here, its twin by the nearest hearth. Early: level 2.
+  'waygate': {
+    id: 'waygate', kind: 'active', mana: 25, cd: 10, nameKey: 'skill.waygate', textKey: 'skill.waygate.text',
+    vars: { secs: 300 }, grow: { secs: 15 }, tree: 'common', tier: 0, col: 2, req: null, level: 2,
+    icon: I('<rect x="5" y="1" width="6" height="1" fill="#140c1c"/><rect x="4" y="2" width="8" height="12" fill="#3a1f63"/><rect x="3" y="4" width="10" height="8" fill="#3a1f63"/><rect x="4" y="3" width="1" height="10" fill="#d9b8ff"/><rect x="11" y="3" width="1" height="10" fill="#7b3fc4"/><rect x="6" y="4" width="4" height="8" fill="#ffd27a"/><rect x="7" y="6" width="2" height="4" fill="#fff4c2"/><rect x="5" y="14" width="6" height="1" fill="#140c1c"/><rect x="2" y="15" width="12" height="1" fill="#7b3fc4"/>'),
+    words: 'ul hesk vesh',
+  },
   // ── The Ashguard's three trees (td-ashguard-skills.ts) ──
   ...ASHGUARD_SKILLS,
   // ── The Lanternwright's three trees (td-lantern-skills.ts) ──
@@ -348,11 +355,11 @@ export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   // The first four actives are the default bar; Bone Spear and Raise Skeleton wait in the Spellbook to be put on a key.
   warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'bone-spear', 'raise-skeleton', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest',
     'cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom',
-    // The common page (every vocation's): Light and the Seek.
-    'light', 'seek'],
-  ashguard: [...ASHGUARD_BOOK, 'light', 'seek'],
-  lanternwright: [...LANTERN_BOOK, 'light', 'seek'],
-  thornstrider: [...THORN_BOOK, 'light', 'seek'],
+    // The common page (every vocation's): Light, the Seek and the Waygate.
+    'light', 'seek', 'waygate'],
+  ashguard: [...ASHGUARD_BOOK, 'light', 'seek', 'waygate'],
+  lanternwright: [...LANTERN_BOOK, 'light', 'seek', 'waygate'],
+  thornstrider: [...THORN_BOOK, 'light', 'seek', 'waygate'],
 };
 
 export const MAX_MANA = 60;

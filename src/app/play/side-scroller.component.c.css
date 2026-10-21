@@ -499,6 +499,7 @@
 :is(.td-map__pin, .td-map__key button)[data-kind='ship'] { --pin: var(--cozy-loot-rare); }
 /* A town task giver (shared/town-tasks). */
 :is(.td-map__pin, .td-map__key button)[data-kind='npc'] { --pin: var(--cozy-leaf); }
+.stage .places.td-harbour { width: min(520px, calc(100% - 32px)); height: auto; max-height: calc(100% - 32px); grid-template-rows: auto minmax(0, 1fr); }
 .td-map__me { position: absolute; width: 10px; height: 10px; translate: -50% -50%; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry);
   animation: td-map-me 1.4s ease-in-out infinite; pointer-events: none; }
 @keyframes td-map-me { 50% { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 7px color-mix(in srgb, var(--cozy-berry) 40%, transparent); } }

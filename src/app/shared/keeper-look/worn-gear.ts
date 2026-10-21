@@ -7,6 +7,7 @@
  */
 import type { GameItem, SlotId } from '../rpg/item.model';
 import { definitionFor } from '../rpg/item-definition';
+import { handsOf } from '../rpg/item-hands';
 import { GEAR_SLOTS, KeeperGear, gearPiece } from './keeper-gear';
 
 export function wornGear(equipped: Partial<Record<SlotId, GameItem>>): KeeperGear {
@@ -15,7 +16,10 @@ export function wornGear(equipped: Partial<Record<SlotId, GameItem>>): KeeperGea
     const item = equipped[slot as SlotId];
     if (!item || item.explorerId) continue;
     const def = definitionFor(item);
-    gear[slot] = gearPiece(slot, `${item.name} ${item.definitionId ?? ''}`, def?.style, item.rarity);
+    const piece = gearPiece(slot, `${item.name} ${item.definitionId ?? ''}`, def?.style, item.rarity);
+    // The weapon's hands are the item's own (item-hands.ts), so the painter never draws a shield beside a bow.
+    const hands = slot === 'weapon' ? handsOf(item) : null;
+    gear[slot] = hands ? { ...piece, hands } : piece;
   }
   return gear;
 }

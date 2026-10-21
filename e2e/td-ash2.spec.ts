@@ -48,8 +48,9 @@ for (const armed of [false, true]) {
     });
     await page.goto('/play?td=1&hour=12');
     await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
-    // (3.2 Strike + a quarter of 8% Spell Damage − the starter's 1) × 3 = 13 flat; bare hands swing at 85%.
-    await expect.poll(async () => (await state(page)).swing, { timeout: 10000 }).toEqual(armed ? { flat: 13, mult: 1 } : { flat: 0, mult: .85 });
+    // (3.2 Strike + a quarter of 8% Spell Damage − the starter's 1) × 3 = 13 flat; the Dawnrender is a greatsword, two
+    // hands, so the blow lands ×1.2 (shared/rpg/item-hands.ts); bare hands swing at 85%.
+    await expect.poll(async () => (await state(page)).swing, { timeout: 10000 }).toEqual(armed ? { flat: 13, mult: 1.2 } : { flat: 0, mult: .85 });
 
     if (armed) {
       for (const [key, dir] of [['s', 'down'], ['w', 'up'], ['a', 'left'], ['d', 'right']] as const) {

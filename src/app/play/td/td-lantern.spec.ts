@@ -31,7 +31,7 @@ describe('td-lantern: the book as data', () => {
     expect(CLASS_TREES.lanternwright).toEqual(['lamp', 'hearth', 'moth']);
     expect(bookTrees('lanternwright')).toEqual(['lamp', 'hearth', 'moth', 'common']);
     expect(LAMP.length).toBe(13);
-    expect(CLASS_SKILLS.lanternwright.length).toBe(15);
+    expect(CLASS_SKILLS.lanternwright.length).toBe(16); // + the common page: Light, the Seek, the Waygate
     for (const tr of LAMP_TREES) {
       const ids = treeSkills('lanternwright', tr);
       expect(ids.length).withContext(tr).toBeGreaterThanOrEqual(3);

@@ -5,14 +5,15 @@
  * and jump buttons give way to the drag joystick, and nothing ever drops the Keeper into the old 2D view.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { pickSkill, seed, mapFind } from './play-helpers';
+import { pickSkill, purse, sail, seed, mapFind } from './play-helpers';
+import { activity, xpForLevel } from './play-delve-fixtures';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const px = async (page: Page) => Number(await canvas(page).getAttribute('data-player-x'));
 const py = async (page: Page) => Number(await canvas(page).getAttribute('data-player-y'));
 
-async function openTopDown(page: Page): Promise<void> {
-  await seed(page, { 'eclipse-td': '1' });
+async function openTopDown(page: Page, extra: Record<string, string> = {}): Promise<void> {
+  await seed(page, { 'eclipse-td': '1', ...purse(100_000), ...extra });
   await page.goto('/play?td=1&hour=12');
   // The top-down engine reports a position inside the square (the side view starts on its floor at y 610).
   await expect.poll(() => py(page), { timeout: 20000 }).toBeLessThan(560);
@@ -78,7 +79,10 @@ test('in the Ember Mine a Rivet Maw fights back, falls, and its coins are picked
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 1280, height: 800 });
-  await openTopDown(page);
+  // A level-6 Keeper: the mine's Maws stand at their zone's level (2–3, td-zones), a coin-flip for a level 1 since the
+  // balance pass; this test is about a fight that falls and coins on the floor, not a close one. The era stamp keeps
+  // the seeded ledger (the game wipes a ledger it cannot date).
+  await openTopDown(page, { 'godforge-realm-era': '55', ...activity({ hunting: xpForLevel(6) }) });
   await page.locator('.places-toggle').first().click();
   await mapFind(page, /ember delve/i);
   await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
@@ -171,10 +175,10 @@ test('a ship from Ember Harbour to Pyrehold on the mainland, and back', async ({
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/crafting bench/i, /pyrehold/i);
   await page.keyboard.press('Escape');
-  await go(/ship to ember isle/i, /ember harbour/i);
+  await sail(page, /ember harbour/i, /ember harbour/i);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -211,7 +215,7 @@ test('the Pyre Spire in Pyrehold: in by its door and up all three floors to the 
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the pyre spire/i, /watch hall/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/spire-hall.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs up/i, /study/i);
@@ -236,7 +240,7 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the molten deep/i, /scorched throat/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-floor-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /glass halls/i);
@@ -261,7 +265,7 @@ test('the Molten Deep\'s lower floors: past the Tyrant to the Slag Rivers, the G
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the molten deep/i, /scorched throat/i);
   await go(/stairs down/i, /glass halls/i);
   await go(/stairs down/i, /caldera/i);
@@ -291,7 +295,7 @@ test('the Forge of the Four in the Obsidian Badlands: in by its gate, down to th
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the forge of the four/i, /ash gate/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/forge-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /four smithies/i);
@@ -317,7 +321,7 @@ test('a ship from Cinderport\'s pier back to Ember Isle', async ({ page }) => {
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   // Into Cinderport by its tavern door and out again, so the Keeper stands in the town.
   await go(/the salted ember/i, /^The Salted Ember$/);
   await go(/^door/i, /^Cinderport$/);
@@ -328,7 +332,7 @@ test('a ship from Cinderport\'s pier back to Ember Isle', async ({ page }) => {
   for (let i = 0; i < 120 && await py(page) < pierY; i++) await step('s');
   expect(await py(page)).toBeGreaterThanOrEqual(pierY);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/cinderport-ship.jpg', type: 'jpeg', quality: 72 });
-  await go(/cinderport ship/i, /ember harbour/i);
+  await sail(page, /ember harbour/i, /ember harbour/i, /marit salt/i);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -344,7 +348,7 @@ test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone 
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the ashen crypt/i, /ossuary/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /bone hall/i);
@@ -368,7 +372,7 @@ test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to wa
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the salted ember/i, /^The Salted Ember$/);
   await go(/stairs down/i, /cellar/i);
   await go(/stairs up/i, /^The Salted Ember$/);
@@ -394,8 +398,8 @@ test('the Verdant Wilds: a ship from Pyrehold to Mossharbor, up the Rootglass Bo
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
-  await go(/ship to the verdant wilds/i, /^Mossharbor$/);
+  await sail(page, /pyrehold/i, /pyrehold/i);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-mossharbor.jpg', type: 'jpeg', quality: 72 });
   // The continent's Map: Rootglass, Mossharbor, Thornwick, the temple's gate.
   await canvas(page).focus();
@@ -416,7 +420,7 @@ test('the Verdant Wilds: a ship from Pyrehold to Mossharbor, up the Rootglass Bo
   await go(/stairs down/i, /root hall/i);
   await go(/^door/i, /^Rootglass$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-rootglass.jpg', type: 'jpeg', quality: 72 });
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -432,8 +436,8 @@ test('the Overgrown Temple in the Sunken Courts: in by its gate, down to the Hea
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
-  await go(/ship to the verdant wilds/i, /^Mossharbor$/);
+  await sail(page, /pyrehold/i, /pyrehold/i);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await go(/the overgrown temple/i, /sunken narthex/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-temple-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /hall of roots/i);
@@ -460,8 +464,8 @@ test('the Umbral Marches: a ship from Pyrehold to Mirewatch, up the Lantern Towe
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
-  await go(/ship to the umbral marches/i, /^Mirewatch$/);
+  await sail(page, /pyrehold/i, /pyrehold/i);
+  await sail(page, /mirewatch/i, /^Mirewatch$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-mirewatch.jpg', type: 'jpeg', quality: 72 });
   // The continent's Map: Gloamhaven on its stilts, Mirewatch, Lanternfen, the crypt door in the drowned ruins.
   await canvas(page).focus();
@@ -479,7 +483,7 @@ test('the Umbral Marches: a ship from Pyrehold to Mirewatch, up the Lantern Towe
   await go(/stairs down/i, /keeper's hall/i);
   await go(/^door/i, /^Gloamhaven$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-gloamhaven.jpg', type: 'jpeg', quality: 72 });
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -495,8 +499,8 @@ test('the Drowned Crypts in the Umbral Marches: in by their door, down to the Ab
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
-  await go(/ship to the umbral marches/i, /^Mirewatch$/);
+  await sail(page, /pyrehold/i, /pyrehold/i);
+  await sail(page, /mirewatch/i, /^Mirewatch$/);
   await go(/the drowned crypts/i, /flooded nave/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-crypt-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /sunken cloister/i);
@@ -530,7 +534,7 @@ async function openVerdantTrip(page: Page): Promise<string[]> {
 test('the Verdant villages\' houses: the Net-Mender\'s Loft and its loft, the Herbalist\'s Cottage and its root cellar', async ({ page }) => {
   const errors = await openVerdantTrip(page), go = travel(page);
   // Ember Harbour's second ship sails straight to Mossharbor.
-  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await go(/the net-mender's loft/i, /^The Net-Mender's Loft$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-netloft.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs up/i, /the loft/i);
@@ -549,7 +553,7 @@ test('the Verdant villages\' houses: the Net-Mender\'s Loft and its loft, the He
 
 test('the Overgrown Temple goes deeper: past the Heart Shrine to the Drowned Vault and the Rootcradle, and back up', async ({ page }) => {
   const errors = await openVerdantTrip(page), go = travel(page);
-  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await go(/the overgrown temple/i, /sunken narthex/i);
   await go(/stairs down/i, /hall of roots/i);
   await go(/stairs down/i, /heart shrine/i);
@@ -574,7 +578,7 @@ test('the Overgrown Temple goes deeper: past the Heart Shrine to the Drowned Vau
 
 test('the Root Hollows in the Deep Wilds: in by the root-hole, down three floors to the Heartroot Cellar, and back out', async ({ page }) => {
   const errors = await openVerdantTrip(page), go = travel(page);
-  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await go(/the root hollows/i, /gnawed galleries/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /sporewell/i);
@@ -594,10 +598,10 @@ test('the Root Hollows in the Deep Wilds: in by the root-hole, down three floors
 
 test('a ship from Mossharbor\'s west finger to Ember Isle, and Ember Harbour\'s ship back', async ({ page }) => {
   const errors = await openVerdantTrip(page), go = travel(page);
-  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-mossharbor-ships.jpg', type: 'jpeg', quality: 72 });
-  await go(/ship to ember isle/i, /ember harbour/i);
-  await go(/ship to mossharbor/i, /^Mossharbor$/);
+  await sail(page, /ember harbour/i, /ember harbour/i);
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -626,7 +630,7 @@ test('through every door and stair the Keeper lands free and can walk away (neve
   await go(/stairs up/i, /upstairs/i); await walks('inn upstairs');
   await go(/stairs down/i, /^The Ember Inn$/); await walks('inn tavern from above');
   await go(/^door/i, /basalt seamworks/i); await walks('square from the inn');
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the pyre spire/i, /watch hall/i); await walks('spire hall');
   await go(/stairs up/i, /study/i); await walks('spire study');
   await go(/stairs up/i, /lookout/i); await walks('spire lookout');
@@ -643,7 +647,7 @@ test('a reload resumes where the Keeper stood — another continent, inside a bu
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
-  await go(/ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(/the pyre spire/i, /watch hall/i);
   await page.waitForTimeout(2600);   // the place is saved every two seconds
   await page.reload();
