@@ -22,9 +22,10 @@ import { GameStateGateway } from '../../shared/save/game-state.gateway';
 import { MAX_CHARACTERS, PRIMARY_CHARACTER, newCharacterId } from '../../shared/save/character-scope';
 import { CloudSaveService, hasBoundAccount } from '../../shared/cloud-save/cloud-save.service';
 import { CharacterRosterService } from '../../shared/characters/character-roster.service';
-import { CharacterRow, PortraitLook, confirmsDelete, hasFreeSlot, idForNewCharacter } from '../../shared/characters/character-roster.model';
+import { CharacterRow, PortraitLook, confirmsDelete, hasFreeSlot, idForNewCharacter, portraitOf } from '../../shared/characters/character-roster.model';
 import { KEEPER_LOOK_I18N } from '../../shared/keeper-look/keeper-look.i18n';
 import { type KeeperLook, coerceLook } from '../../shared/keeper-look/keeper-look.model';
+import { KeeperLookService } from '../../shared/keeper-look/keeper-look.service';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { FRONT_H, FRONT_W, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { vocationLook } from '../../shared/keeper-look/vocation-look';
@@ -60,6 +61,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly zone = inject(NgZone);
   private readonly story = inject(StoryService);
+  private readonly looks = inject(KeeperLookService);
 
   mode: LobbyMode = 'boot';
   /** The highlighted row on the character list. */
@@ -146,8 +148,15 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     // A Keeper this page boots into that is on no list: a Glass left by a refresh, the browser's back, a closed tab
     // (the row is written only by Become), or a Keeper deleted while it was the one in play. Nothing of it may stay.
     if (make !== character && character !== PRIMARY_CHARACTER && !this.roster.row(character) && !skip) {
-      await this.discardAndReturn(character);
-      return;
+      // Only a Keeper never made is discarded (an abandoned Glass earns a little XP just by booting, so XP is no
+      // sign). A MADE Keeper whose row is missing here (this device's roster written over by a stale copy, e.g.
+      // another tab) gets its row back instead: deleting it would wipe the whole character, and on a signed-in page
+      // its documents too. A tombstone (deleted on purpose) still discards.
+      if (this.roster.roster.chars[character] || !coerceLook(this.gateway.read('godforge-keeper-look')).made) {
+        await this.discardAndReturn(character);
+        return;
+      }
+      this.roster.put(summarise(this.gateway, { id: character, name: '', vocation: 'warlock', level: 1, area: '', look: null, createdAt: Date.now(), updatedAt: 0 }));
     }
     const signedIn = hasBoundAccount();
     let target = initialLobbyMode({ character, skip, enter, make, signedIn, guest });
@@ -159,6 +168,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.authSettled();
       if (!this.cloud.signedIn && target === 'select' && !guest) target = 'title';
     }
+    if (target === 'game' && !skip && this.unfinished(character)) target = 'create';
     this.zone.run(() => this.go(target));
   }
 
@@ -312,7 +322,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   async enter(id: string | null = this.picked): Promise<void> {
     if (!id || this.busy || !this.roster.row(id)) return;
     if (id === this.gateway.character) {
-      this.go('game');
+      this.go(this.unfinished(id) ? 'create' : 'game');
       return;
     }
     await this.switchTo(id, LOBBY_ENTER_KEY);
@@ -387,6 +397,26 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── The Glass (a new character) ────────────────────────────────────────────
 
+  /**
+   * A Keeper on the list whose look was never made on this device or in the cloud: its Glass was never finished,
+   * or its look never reached the cloud (owner, 2026-10-21: "I created a ranger … when logging back in, the character
+   * looked like a warlock"). Rather than drop it into the world as the default Warlock, the Glass opens on the row's
+   * name, class and portrait (prefilled, never auto-converted) and Become finishes it. Only once this page knows the
+   * cloud's copy (or the device is not bound to an account): a pull still under way may yet bring the look down.
+   * Character #1 without a name is a save from before the Glass, which keeps the in-world offer instead.
+   */
+  private unfinished(id: string): boolean {
+    const row = this.roster.row(id);
+    if (!row || id !== this.gateway.character || (id === PRIMARY_CHARACTER && !row.name)) return false;
+    if (coerceLook(this.gateway.read('godforge-keeper-look')).made) return false;
+    const known = mayUsePrimarySlot({ bound: hasBoundAccount(), signedIn: this.cloud.signedIn, state: this.cloud.status.state, lastSyncedAt: this.cloud.status.lastSyncedAt });
+    if (!known) return false;
+    const vocation = coerceLook({ vocation: row.vocation }).vocation;
+    this.looks.prefill({ ...coerceLook(row.look ?? {}), name: row.name, vocation });
+    this.picked = id;
+    return true;
+  }
+
   /** "I've played before: skip the tutorial" on the Glass (off by default: a new Keeper is taught the island). */
   skipTutorial = false;
 
@@ -396,7 +426,11 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     const made = look ?? coerceLook(this.gateway.read('godforge-keeper-look'));
     const id = this.gateway.character;
     const row = this.roster.row(id);
-    this.roster.put({ id, name: made.name, vocation: made.vocation, level: row?.level ?? 1, area: row?.area ?? '', look: null, createdAt: row?.createdAt || now, updatedAt: now });
+    // The row is the Glass's choice — name, class and portrait — never a later summary's default.
+    this.roster.put({ id, name: made.name, vocation: made.vocation, level: row?.level ?? 1, area: row?.area ?? '', look: portraitOf(made), createdAt: row?.createdAt || now, updatedAt: Math.max(now, (row?.updatedAt ?? 0) + 1) });
+    // The look and the row go up now, not on the debounce: a tab closed (or a phone's browser killed) in the next
+    // few seconds must not leave a Keeper whose class exists only on this device.
+    void this.gateway.pushNow().catch(() => { /* offline: queued, and marked for any later signed-in page */ });
     // The new Keeper's own story record (this page plays it): the prologue is over before it starts.
     if (this.skipTutorial) this.story.skipTut();
     try { sessionStorage.removeItem(LOBBY_FROM_KEY); } catch { /* private mode */ }
@@ -412,7 +446,9 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.mode !== 'create' || this.busy) return;
     const id = this.gateway.character;
     const look = coerceLook(this.gateway.read('godforge-keeper-look'));
-    if (look.made && this.roster.row(id)) { this.leaveGlassHistory(); this.zone.run(() => this.go('select')); return; }
+    // A Keeper that exists (made, or on the list with a name or a save: the recovery Glass) is never discarded here.
+    const row = this.roster.row(id);
+    if (row && (look.made || row.name)) { this.leaveGlassHistory(); this.zone.run(() => this.go('select')); return; }
     if (id === PRIMARY_CHARACTER) {
       // Character #1's slot (the first Keeper on a device): this page plays it, nothing was made; drop any old row
       // an earlier build wrote for it, and show the (unchanged) list.

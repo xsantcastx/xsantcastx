@@ -75,13 +75,17 @@ export function summarise(store: SaveReader, row: CharacterRow, now = Date.now()
   const play = store.readFor(row.id, PLAY_WORLD_KEY);
   // The newer of this device's last place and the character's synced one (whereabouts.model.ts).
   const area = areaName(pickWakePlace(play && typeof play === 'object' ? play as { td?: unknown; tdAt?: unknown } : null, store.readFor(row.id, WHEREABOUTS_KEY)));
+  // Name, class and portrait come only from a MADE look. Owner, 2026-10-21: "I created a ranger … when logging back
+  // in, the character looked like a warlock". A device holding some of a Keeper's blobs but not its look (a fresh
+  // device mid-pull, or a look that never reached the cloud) read the default look — vocation 'warlock' — and stamped
+  // it over the row the Glass wrote, newer, so it won on every device.
   const next: CharacterRow = {
     ...row,
     name: look.made ? look.name : row.name,
-    vocation: look.vocation,
+    vocation: look.made ? look.vocation : row.vocation,
     level: rowLevel(store, row),
     area: area || row.area,
-    look: rawLook ? portraitOf(look) : row.look,
+    look: rawLook && look.made ? portraitOf(look) : row.look,
   };
   if (next.level < row.level) next.levelResetAt = resetStamp(store, row.id);
   const same = next.name === row.name && next.vocation === row.vocation && next.level === row.level && next.area === row.area

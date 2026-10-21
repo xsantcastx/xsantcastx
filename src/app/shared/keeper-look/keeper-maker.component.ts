@@ -46,7 +46,8 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly fields = LOOK_FIELDS;
   readonly nameMax = NAME_MAX;
-  draft: KeeperLook = this.looks.look;
+  /** A recovery Glass opens on the list's summary of the Keeper (KeeperLookService.prefill); otherwise the saved look. */
+  draft: KeeperLook = this.looks.takeDraft() ?? this.looks.look;
   gear: KeeperGear = {};
   saved = false;
   private painter: KeeperPainter | null = null;
