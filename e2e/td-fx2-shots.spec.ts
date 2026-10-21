@@ -7,7 +7,7 @@
  * every rung round the Keeper, a second after each arrival, drawn and never pickable.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { mapFind, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -21,6 +21,7 @@ async function around(page: Page, w: number, h: number, dy = 20): Promise<{ x: n
 /** Travel by the Places list (reduced motion: instant), as play-top-down.spec.ts does. */
 async function go(page: Page, place: RegExp, area: RegExp): Promise<void> {
   await page.locator('.places-toggle').first().click();
+  await mapFind(page, place);
   await page.locator('#places-list button', { hasText: place }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
 }

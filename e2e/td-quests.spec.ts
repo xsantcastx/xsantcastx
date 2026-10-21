@@ -34,6 +34,7 @@ async function travelTo(page: Page, name: RegExp, phone = false): Promise<void> 
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
+  await page.locator('#places-list [data-map-find]').fill(name.source);
   await map.locator('.td-map__key button[data-kind="npc"]', { hasText: name }).click();
 }
 
@@ -97,6 +98,7 @@ test('a task giver of their own in Pyrehold, and the talk window on a phone', as
   await open(page, {});
   // Sail to Pyrehold (the Map's ship pin), then the captain of the Watch.
   await page.locator('.td-dock button').last().click();
+  await page.locator('#places-list [data-map-find]').fill('ship to pyrehold');
   await page.locator('#places-list.td-map .td-map__key button', { hasText: /ship to pyrehold/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 30000 });
   await expect(canvas(page)).toHaveAttribute('data-task-marks', /captain-vey:!/, { timeout: 10000 });
@@ -193,6 +195,7 @@ test('a Verdant keeper: Mossharbor\'s net-mender offers her task with a "!", and
   await open(page, {});
   // Ember Harbour's second ship sails straight to Mossharbor (the Map's ship pin).
   await canvas(page).focus(); await page.keyboard.press('m');
+  await page.locator('#places-list [data-map-find]').fill('ship to mossharbor');
   await page.locator('#places-list.td-map .td-map__key button', { hasText: /ship to mossharbor/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /^Mossharbor$/, { timeout: 30000 });
   await expect(canvas(page)).toHaveAttribute('data-task-marks', /netmender-brisk:!/, { timeout: 10000 });

@@ -1351,3 +1351,17 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
 .px-win { background: var(--px-win-planks), var(--px-win-bg); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); border: 0; border-radius: 0; }
 .px-card { background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); border: 0; border-radius: 0; }
 .px-parch { background: var(--cozy-parch); color: var(--cozy-ink); box-shadow: var(--px-parch-rim); border: 0; border-radius: 0; }
+
+/* ── Draggable HUD pieces (hud-drag.directive, computers only): a small pixel grip in the corner, shown on hover. ── */
+.hud-grip { display: none; }
+@media (hover: hover) and (pointer: fine) and (min-width: 901px) {
+  .stage--td [data-hud-drag] > .hud-grip { position: absolute; z-index: 2; top: -8px; left: -8px; display: block; width: 18px; height: 18px; padding: 0 !important;
+    border: 0 !important; border-radius: 0 !important; cursor: grab; pointer-events: auto; visibility: hidden;
+    background: var(--cozy-wood-1) !important; box-shadow: 0 0 0 2px var(--cozy-wood-0) !important;
+    background-image: radial-gradient(var(--cozy-cream) 1px, transparent 1.5px) !important; background-size: 4px 4px !important; background-position: 3px 3px !important; }
+  .stage--td [data-hud-drag]:hover > .hud-grip, .stage--td [data-hud-drag].is-dragging > .hud-grip, .stage--td .hud-grip:focus-visible { visibility: visible; }
+  /* The minimap is a HUD piece on a computer: it takes the pointer (to show its grip), as every other plate does. */
+  .stage--td .td-mini[data-hud-drag] { pointer-events: auto; }
+  .stage--td [data-hud-drag].is-dragging { z-index: 40; }
+  .stage--td [data-hud-drag].is-dragging > .hud-grip { cursor: grabbing; }
+}

@@ -33,9 +33,10 @@ async function toMoltenDeep(page: Page): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('m');
   const map = page.locator('#places-list.td-map');
-  await map.locator('.td-map__pin[title="Ship To Pyrehold"]').click();
+  await map.locator('.td-map__pin[data-name="Ship To Pyrehold"]').click();
   await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 30000 });
   await page.keyboard.press('m');
+  await page.locator('#places-list [data-map-find]').fill('the molten deep');
   await map.locator('.td-map__key button', { hasText: /the molten deep/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /scorched throat/i, { timeout: 30000 });
   await page.keyboard.press('Escape');

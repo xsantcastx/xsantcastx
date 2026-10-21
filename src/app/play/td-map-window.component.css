@@ -1,0 +1,123 @@
+/* The Map window's body (td-map-window.component.ts): cozy tokens only (src/styles/tokens/_cozy.css). */
+:host { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-height: 0; padding: 10px 12px 4px; box-sizing: border-box; }
+
+/* The bar: the section picker and the search. */
+.mw__bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.mw__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.mw__area { flex: 1 1 260px; min-width: 0; display: flex; }
+.mw__area select, .mw__find input { width: 100%; min-height: 40px; box-sizing: border-box; padding: 0 10px; border: 0; border-radius: 0; -webkit-appearance: none; appearance: none;
+  font: 700 14px var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-1);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam); }
+.mw__area select { padding-right: 28px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--cozy-brass) 50%), linear-gradient(-45deg, transparent 50%, var(--cozy-brass) 50%);
+  background-size: 6px 6px; background-position: calc(100% - 16px) 50%, calc(100% - 10px) 50%; background-repeat: no-repeat; }
+.mw__area select option, .mw__area select optgroup { color: var(--cozy-ink); background: var(--cozy-parch); }
+.mw__find { position: relative; flex: 0 1 240px; min-width: 160px; }
+.mw__find input::placeholder { color: color-mix(in srgb, var(--cozy-cream) 55%, transparent); }
+.mw__area select:focus-visible, .mw__find input:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
+.mw__results { position: absolute; z-index: 6; top: calc(100% + 6px); left: 0; right: 0; max-height: 260px; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; gap: 2px; margin: 0; padding: 4px; list-style: none; background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass), 0 0 0 6px var(--cozy-wood-0); }
+.mw__results button { --pin: var(--cozy-brass); display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 8px; border: 0; cursor: pointer; text-align: left;
+  font: 600 13px/1.2 var(--cozy-font-read); color: var(--cozy-cream); background: transparent; }
+.mw__results button:hover, .mw__results button:focus-visible { background: var(--cozy-wood-3); }
+.mw__results i { flex: none; width: 10px; height: 10px; background: var(--pin); rotate: 45deg; box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.mw__none { padding: 8px; font: 500 12px var(--cozy-font-read); color: var(--cozy-cream); opacity: .8; }
+
+/* The frame: parchment on wood. */
+.mw__frame { min-height: 0; padding: 8px; background: var(--cozy-wood-2);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-hi), inset 0 0 0 4px var(--cozy-wood-3), inset 0 0 0 6px var(--cozy-wood-0); }
+.mw__view { position: relative; width: 100%; height: 100%; min-height: 160px; overflow: hidden; touch-action: none; cursor: grab; user-select: none;
+  background: var(--cozy-parch); box-shadow: inset 0 0 0 2px var(--cozy-parch-edge), inset 0 0 0 4px var(--cozy-parch-shade); }
+.mw__view:active { cursor: grabbing; }
+.mw__img { position: absolute; left: var(--mx, 0); top: var(--my, 0); width: var(--mw, 100%); height: var(--mh, 100%); max-width: none; image-rendering: pixelated;
+  pointer-events: none; opacity: .92; mix-blend-mode: multiply; }
+
+/* Everything on the map sits at (u, v) of the picture, at a fixed screen size whatever the zoom. */
+.mw__zone, .mw__pin, .mw__party, .mw__me { position: absolute; left: calc(var(--mx, 0px) + var(--u) * var(--mw, 0px)); top: calc(var(--my, 0px) + var(--v) * var(--mh, 0px)); }
+.mw__zone { translate: -50% -50%; display: grid; justify-items: center; pointer-events: none; white-space: nowrap;
+  font: 700 12px/1.1 var(--font-pixel); letter-spacing: .04em; color: var(--cozy-ink); text-shadow: 1px 1px 0 var(--cozy-parch), -1px -1px 0 var(--cozy-parch), 1px -1px 0 var(--cozy-parch), -1px 1px 0 var(--cozy-parch); }
+.mw__zone small { font: 700 10px/1.2 var(--cozy-font-read); color: var(--cozy-ink-soft); }
+.mw__zone--town { font-size: 13px; color: var(--cozy-wood-0); }
+
+/* Pins: a 32px target (44px on a phone) round a small pixel mark. Nothing moves on hover; a tooltip shows the name. */
+.mw__pin { --pin: var(--cozy-brass); --hit: 32px; width: var(--hit); height: var(--hit); margin: calc(var(--hit) / -2) 0 0 calc(var(--hit) / -2);
+  display: grid; place-items: center; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; cursor: pointer; z-index: 2; }
+.mw__pin > i { position: relative; display: grid; place-items: center; width: 12px; height: 12px; background: var(--pin); rotate: 45deg; box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.mw__pin > i b { rotate: -45deg; font: 700 10px/1 var(--font-pixel); color: var(--cozy-wood-0); }
+.mw__pin:hover > i, .mw__pin:focus-visible > i { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-cream); }
+.mw__pin:focus-visible { outline: none; }
+.mw__pin:hover, .mw__pin:focus-visible { z-index: 5; }
+.mw__tip { position: absolute; bottom: calc(100% + 2px); left: 50%; translate: -50% 0; display: none; gap: 2px; width: max-content; max-width: 220px; padding: 6px 8px;
+  pointer-events: none; text-align: left; font: 600 12px/1.25 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-1);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass), 0 0 0 6px var(--cozy-wood-0); }
+.mw__tip b { font: 700 13px/1.2 var(--font-pixel); color: var(--cozy-glow); }
+.mw__tip small { font-size: 11px; opacity: .85; }
+.mw__pin--low .mw__tip { bottom: auto; top: calc(100% + 2px); }
+.mw__pin:hover .mw__tip, .mw__pin:focus-visible .mw__tip { display: grid; }
+.mw__view[data-far] .mw__pin:is([data-cat='stall'], [data-cat='npc']) { display: none; }
+.mw__pin[data-cat='npc'] { --pin: var(--cozy-leaf); }
+.mw__pin[data-cat='npc'] > i { rotate: 0deg; border-radius: 50%; }
+.mw__pin[data-cat='quest'] { --pin: var(--cozy-glow); }
+.mw__pin[data-cat='quest'] > i { width: 16px; height: 16px; rotate: 0deg; }
+.mw__pin[data-cat='quest'] > i b { rotate: 0deg; }
+.mw__pin[data-cat='hearth'] { --pin: var(--cozy-loot-legendary); }
+.mw__pin[data-cat='dungeon'] { --pin: var(--cozy-loot-epic); }
+.mw__pin[data-cat='dungeon'] > i { width: 14px; height: 14px; rotate: 0deg; }
+.mw__pin[data-cat='way'] { --pin: var(--cozy-wood-hi); }
+.mw__pin[data-cat='ship'] { --pin: var(--cozy-loot-rare); }
+
+.mw__party { translate: -50% -50%; display: grid; justify-items: center; pointer-events: none; z-index: 3; }
+.mw__party i { width: 10px; height: 10px; background: var(--cozy-leaf); border-radius: 50%; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-cream); }
+.mw__party small, .mw__me small { margin-top: 4px; padding: 1px 4px; white-space: nowrap; font: 700 10px/1.2 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-0); }
+.mw__me { translate: -50% -7px; display: grid; justify-items: center; pointer-events: none; z-index: 4; animation: none; width: auto; height: auto; background: none; box-shadow: none; }
+.mw__me i { width: 12px; height: 12px; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry); animation: mw-me 1.4s ease-in-out infinite; }
+@keyframes mw-me { 50% { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 7px color-mix(in srgb, var(--cozy-berry) 40%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .mw__me i { animation: none; } }
+
+/* Zoom: three square wood buttons in the corner. */
+.mw__zoom { position: absolute; z-index: 6; top: 8px; right: 8px; display: grid; gap: 6px; }
+.mw__zoom button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 0; cursor: pointer;
+  font: 700 20px/1 var(--font-pixel); color: var(--cozy-cream); background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam); }
+.mw__zoom button:hover:not(:disabled) { background: var(--cozy-wood-3); }
+.mw__zoom button:disabled { opacity: .45; cursor: default; }
+.mw__me-btn i { width: 12px; height: 12px; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry); }
+
+/* The key: folded to one small button until asked. */
+.mw__legend { position: absolute; z-index: 6; left: 8px; bottom: 8px; max-width: calc(100% - 16px); max-height: calc(100% - 16px); overflow: auto;
+  background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0); color: var(--cozy-cream); font: 600 12px/1.2 var(--cozy-font-read); }
+.mw__legend summary { display: flex; align-items: center; min-height: 36px; padding: 0 12px; cursor: pointer; list-style: none; font: 700 12px var(--font-pixel); letter-spacing: .06em; }
+.mw__legend summary::-webkit-details-marker { display: none; }
+.mw__legend summary::before { content: '?'; display: grid; place-items: center; width: 16px; height: 16px; margin-right: 8px; color: var(--cozy-wood-0); background: var(--cozy-brass); }
+.mw__legend ul { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 6px 14px; margin: 0; padding: 4px 12px 10px; list-style: none; }
+.mw__legend li { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.mw__swatch { --pin: var(--cozy-brass); width: 10px; height: 10px; flex: none; background: var(--pin); rotate: 45deg; box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.mw__swatch[data-cat='npc'] { --pin: var(--cozy-leaf); rotate: 0deg; border-radius: 50%; }
+.mw__swatch[data-cat='quest'] { --pin: var(--cozy-glow); rotate: 0deg; }
+.mw__swatch[data-cat='hearth'] { --pin: var(--cozy-loot-legendary); }
+.mw__swatch[data-cat='dungeon'] { --pin: var(--cozy-loot-epic); rotate: 0deg; }
+.mw__swatch[data-cat='way'] { --pin: var(--cozy-wood-hi); }
+.mw__swatch[data-cat='ship'] { --pin: var(--cozy-loot-rare); }
+.mw__swatch--party { --pin: var(--cozy-leaf); rotate: 0deg; border-radius: 50%; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 3px var(--cozy-cream); }
+.mw__swatch--you { --pin: var(--cozy-cream); rotate: 0deg; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 3px var(--cozy-berry); }
+/* The minimap's creature dots (td-engine miniMobs): red, champion blue, unique gold, a boss bigger with a pale heart. */
+.mw__dot { width: 6px; height: 6px; flex: none; margin: 0 2px; background: var(--cozy-berry); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.mw__dot--champion { width: 8px; height: 8px; margin: 0 1px; background: var(--cozy-loot-rare); }
+.mw__dot--unique { width: 8px; height: 8px; margin: 0 1px; background: var(--cozy-glow); }
+.mw__dot--boss { width: 10px; height: 10px; margin: 0; background: radial-gradient(var(--cozy-cream) 0 1.5px, var(--cozy-berry) 2px); }
+
+.mw__hint { margin: 0; font: 500 12px/1.3 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+
+/* Phones: 44px targets everywhere; the picker and the search share one row when they fit. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
+  :host { padding: 8px 8px 2px; gap: 6px; }
+  .mw__area select, .mw__find input { min-height: 44px; }
+  .mw__results button { min-height: 44px; }
+  .mw__pin { --hit: 44px; }
+  .mw__zoom button { width: 44px; height: 44px; }
+  .mw__legend summary { min-height: 44px; }
+  .mw__find { flex: 1 1 140px; }
+}
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .mw__hint { display: none; }
+  .mw__zoom { grid-auto-flow: column; }
+}

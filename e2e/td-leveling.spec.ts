@@ -29,6 +29,7 @@ async function open(page: Page): Promise<void> {
 async function handInOre(page: Page, phone: boolean): Promise<void> {
   if (phone) await page.locator('.td-dock button').last().click();
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
+  await page.locator('#places-list [data-map-find]').fill('mara voss');
   await page.locator('#places-list.td-map .td-map__key button[data-kind="npc"]', { hasText: /mara voss/i }).click();
   const talk = page.locator('.td-talk');
   await expect(talk).toHaveAttribute('data-talk', 'bench-smith');

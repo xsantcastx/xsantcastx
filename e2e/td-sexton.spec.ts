@@ -56,6 +56,7 @@ async function talkToWren(page: Page): Promise<void> {
   await page.keyboard.press('m');
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
+  await page.locator('#places-list [data-map-find]').fill('aldous wren');
   await map.locator('.td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).click();
   await expect(page.locator('.td-talk')).toHaveAttribute('data-talk', 'sexton-wren');
 }
@@ -206,6 +207,7 @@ test('the journal mid-chain, and Wren\'s choice on a phone', async ({ page }) =>
   await page.waitForTimeout(400);
   // Wren on a phone: the window fits and its buttons are thumb-sized.
   await page.locator('.td-dock button').last().click();
+  await page.locator('#places-list [data-map-find]').fill('aldous wren');
   await page.locator('#places-list.td-map .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).click();
   const talk = page.locator('.td-talk');
   await expect(talk.locator('[data-story-step]')).toHaveAttribute('data-story-step', 'uncounted');
