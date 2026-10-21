@@ -10,6 +10,7 @@ import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { LEVEL_GROWTH, levelSpeedBonus, levelSteps } from '../../shared/skills/keeper-level';
 import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
+import { ASHGUARD_BOOK, ASHGUARD_SKILLS, ASHGUARD_STARTERS, ASH_TREES, type AshSkillId } from './td-ashguard-skills';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
@@ -21,7 +22,9 @@ export type SkillId =
   | 'corpse-burst' | 'skeleton-mastery' | 'bone-armor' | 'bone-storm'
   | 'weaken' | 'life-tap' | 'doom'
   // The spells every vocation learns (design-bible §4.6, roadmap §10 item 6): Glim's Light and Lumvesh, the Seek.
-  | 'light' | 'seek';
+  | 'light' | 'seek'
+  // The Ashguard's book (td-ashguard-skills.ts, design-bible §4.4).
+  | AshSkillId;
 
 /** The Warlock's three trees (D2's three tabs): fire, necromancy, curses and wards. */
 export const TREES = ['ember', 'bone', 'shadow'] as const;
@@ -30,9 +33,13 @@ export const TREES = ['ember', 'bone', 'shadow'] as const;
  * it carries no element, the sky does not touch it — but its ranks are bought with the same points.
  */
 export const COMMON_TREE = 'common' as const;
-/** The Spellbook's tabs: the class's three trees, then the common page. */
+/** The Spellbook's tabs: the class's three trees, then the common page (the Warlock's; bookTrees(v) for any class). */
 export const BOOK_TREES = [...TREES, COMMON_TREE] as const;
-export type TreeId = typeof BOOK_TREES[number];
+export type TreeId = typeof BOOK_TREES[number] | typeof ASH_TREES[number];
+/** Each class's three trees, in tab order. */
+export const CLASS_TREES: Readonly<Record<Vocation, readonly TreeId[]>> = { warlock: TREES, ashguard: ASH_TREES };
+/** A class's Spellbook tabs: its three trees, then the common page. */
+export function bookTrees(v: Vocation): readonly TreeId[] { return [...(CLASS_TREES[v] ?? TREES), COMMON_TREE]; }
 /** The level each tier opens at (D2: 1, 6, 12, 18, 24 …). */
 export const TIER_LEVELS: readonly number[] = [1, 6, 12, 18, 24];
 /** The most ranks a skill takes. */
@@ -238,6 +245,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     icon: I('<rect x="3" y="3" width="10" height="10" fill="#3a2a14"/><rect x="4" y="4" width="8" height="8" fill="#5a4020"/><rect x="2" y="7" width="1" height="2" fill="#b08a55"/><rect x="13" y="7" width="1" height="2" fill="#b08a55"/><rect x="7" y="2" width="2" height="1" fill="#b08a55"/><rect x="7" y="13" width="2" height="1" fill="#b08a55"/><rect x="9" y="4" width="2" height="2" fill="#fffbe8"/><rect x="8" y="6" width="2" height="2" fill="#ffd27a"/><rect x="6" y="8" width="2" height="2" fill="#c99a3e"/><rect x="5" y="10" width="1" height="1" fill="#8a6a3a"/>'),
     words: 'lum vesh',
   },
+  // ── The Ashguard's three trees (td-ashguard-skills.ts) ──
+  ...ASHGUARD_SKILLS,
 };
 
 /** Vars that count whole things (skeletons, spears): a rank adds a fraction, the fight takes the whole part. */
@@ -273,6 +282,7 @@ export function skillVars(id: SkillId, rank: number, bought: Readonly<Partial<Re
 export const STARTER_RANKS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   // Light is Glim's first word, taught the first night: every Keeper holds it free (design-bible §4.6).
   warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'soul-harvest', 'light'],
+  ashguard: [...ASHGUARD_STARTERS, 'light'],
 };
 
 /** Each class's book: its actives (the order is the default bar), its auras, its passives. */
@@ -282,6 +292,7 @@ export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
     'cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom',
     // The common page (every vocation's): Light and the Seek.
     'light', 'seek'],
+  ashguard: [...ASHGUARD_BOOK, 'light', 'seek'],
 };
 
 export const MAX_MANA = 60;
@@ -292,12 +303,20 @@ export const MAX_MANA = 60;
  * power, of Agility 1% speed of foot and of the staff (to 30%).
  */
 export const ATTR_STEP = { vit: 6, ene: 4, eneRegen: .15, spi: .02, agi: .01, agiCap: .3 } as const;
-export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0, spi: 0, agi: 0 }): { maxHp: number; maxMana: number; power: number; regen: number; haste: number } {
+/**
+ * What a class's body is made of (design-bible §4.4: the Ashguard is Vitality-led): life and mana as shares of the
+ * level's, and Defense it carries before any gear (a base, plus a little each level). The Warlock is the yardstick.
+ */
+export const VOCATION_BODY: Readonly<Record<Vocation, { life: number; mana: number; defense: number; defenseLevel: number }>> = {
+  warlock: { life: 1, mana: 1, defense: 0, defenseLevel: 0 },
+  ashguard: { life: 1.3, mana: .6, defense: 8, defenseLevel: 1 },
+};
+export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0, spi: 0, agi: 0 }, v: Vocation = 'warlock'): { maxHp: number; maxMana: number; power: number; regen: number; haste: number } {
   // Level steps: exactly level − 1 to 100, a gentle log taper past it so 10,000 stays sane (shared/skills/keeper-level.ts).
-  const n = levelSteps(level);
+  const n = levelSteps(level), body = VOCATION_BODY[v] ?? VOCATION_BODY.warlock;
   return {
-    maxHp: Math.round(100 + n * LEVEL_GROWTH.life) + stats.vit * ATTR_STEP.vit,
-    maxMana: Math.round(MAX_MANA + n * LEVEL_GROWTH.mana) + stats.ene * ATTR_STEP.ene,
+    maxHp: Math.round((100 + n * LEVEL_GROWTH.life) * body.life) + stats.vit * ATTR_STEP.vit,
+    maxMana: Math.round((MAX_MANA + n * LEVEL_GROWTH.mana) * body.mana) + stats.ene * ATTR_STEP.ene,
     power: 1 + n * LEVEL_GROWTH.power + stats.spi * ATTR_STEP.spi,
     regen: MANA_REGEN + stats.ene * ATTR_STEP.eneRegen,
     haste: Math.min(ATTR_STEP.agiCap, stats.agi * ATTR_STEP.agi),
@@ -381,8 +400,8 @@ export function wornCombat(inventory: { readonly equippedTotals: Required<ItemSt
 }
 
 /** The level and attributes (levelStats) with the worn gear totals on top. */
-export function fightStats(level: number, stats?: KeeperStats, gear: Partial<ItemStats> = {}): FightStats {
-  const base = levelStats(level, stats);
+export function fightStats(level: number, stats?: KeeperStats, gear: Partial<ItemStats> = {}, v: Vocation = 'warlock'): FightStats {
+  const base = levelStats(level, stats, v), body = VOCATION_BODY[v] ?? VOCATION_BODY.warlock;
   const g = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 0);
   return {
     maxHp: base.maxHp + Math.round(g(gear.life)),
@@ -394,7 +413,8 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
     levelPace: levelSpeedBonus(level),
     castSpeed: Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) / 100,
     crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
-    defense: g(gear.defense),
+    // The class's own Defense (an Ashguard's plate and shield) under the worn gear's.
+    defense: g(gear.defense) + body.defense + Math.round(levelSteps(level) * body.defenseLevel),
     lifeRegen: g(gear.lifeRegen),
     resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + g(gear.allResist))])) as Record<Element, number>,
   };

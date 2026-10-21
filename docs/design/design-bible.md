@@ -330,6 +330,11 @@ the "won't fall" tree). The Ashguard is the vocation that makes melee readable i
 S/U/L: *source* trainer Captain Brannoc Vey in Pyrehold (Ember Isle Ashguards start with a Pyre Watch recruit's
 axe); *use* melee play, tanking for friends; *lore* the Pyre Watch, the Ashen Bastion's fallen garrison were Ashguards.
 
+**As built (2026-10-21)** — playable, chosen at the Glass. Twelve skills in the three trees (docs/design/skill-trees.md,
+"The Ashguard's three pages"): the table above, with the basic swing as **Watch Blade**, Brand Strike as the lasting
+**Ember Brand** (a burning blade), **Shield Bash** (*brann mur*, a stun) added, Cinder Cleave's words *brann vael mur*
+(*vael mur* is Flame Wall's) and the Pyre Banner left for later; the Watchfire (*brann hesk ka*) is his aura.
+
 ### 4.5 The Thornstrider† (proposed vocation 4) — *the one the wild lets through*
 
 Fantasy: ranger / druid of the Verdant, Canopy Warden Ilsa Fenn's line (canon). Bow, traps, beasts, spores. Agility-led.
