@@ -29,7 +29,8 @@ describe('td-tree: the trees themselves', () => {
       // No two skills on one spot of the page.
       expect(new Set(ids.map(id => `${SKILLS[id].tier}:${SKILLS[id].col}`)).size).withContext(tr).toBe(ids.length);
     }
-    expect(CLASS_SKILLS.warlock.length).toBe(21);
+    // 21 in the three trees, and the common page's two (Light, the Seek).
+    expect(CLASS_SKILLS.warlock.length).toBe(23);
   });
 
   it('the starting kit sits in the first tier (a new Warlock fights as before)', () => {

@@ -223,7 +223,21 @@ for (const a of ARENA_SHOP) {
 }
 const boxRarities = new Set(MYSTERY_BOXES.flatMap(b => boxWindow(b)));
 for (const rarity of boxRarities) for (const d of boxPool(rarity)) src(d.id, 'Gambler boxes');
-for (const u of UNIQUE_ITEMS) if (boxRarities.has(u.rarity)) src(u.id, 'Gambler boxes (unique)');
+for (const u of UNIQUE_ITEMS) if (!u.boss && boxRarities.has(u.rarity)) src(u.id, 'Gambler boxes (unique)');
+// A boss's own unique (shared/rpg/boss-uniques.ts): its source is that boss alone, which must be a top-down boss
+// (td-mobs.ts `rank: 'boss'`); its use is its signature, read by the fight; the card must be able to say both.
+{
+  const MOBS_SRC = read('play/td/td-mobs.ts');
+  const HUD_WORDS = read('play/world/hud.i18n.ts');
+  for (const u of UNIQUE_ITEMS) {
+    if (!u.boss) continue;
+    const def = new RegExp(`\\bid: '${u.boss}'[^\\n]*\\n(?:[^\\n]*\\n){0,4}?[^\\n]*rank: 'boss'`).test(MOBS_SRC);
+    if (def) src(u.id, `boss ${u.boss} (1 in ${u.oneIn})`);
+    else violationsLater.push(['item', 'no-source', u.id, `its boss ${u.boss} is not a td-mobs.ts boss`]);
+    if (u.sig && Object.keys(u.sig).length) use(u.id, `signature (td-mobs relics): ${Object.keys(u.sig).join(', ')}`);
+    if (!HUD_WORDS.includes(`'play.relic.sig.${u.id}'`)) violationsLater.push(['item', 'not-visible', u.id, 'no play.relic.sig line for its card']);
+  }
+}
 // The Croupier's Reels: a winning line may hand over one of its symbol's thing.
 const reelRunePrizes = new Set();
 for (const s of REEL_SYMBOLS) if (s.prize) { if (s.prize.kind === 'rune') reelRunePrizes.add(s.prize.id); else src(s.prize.id, 'Reels prize'); }
@@ -454,7 +468,7 @@ const { DROP_POOL } = L('shared/loot/drop-tables.ts');
 const { AURA_IDS } = L('shared/loot/auras.ts');
 const { CREATURE_PROFILES } = L('shared/loot/creature-families.ts');
 for (const d of DROP_POOL) src(d.id, 'creature drops');
-for (const u of UNIQUE_ITEMS) src(u.id, 'creature drops (unique)');
+for (const u of UNIQUE_ITEMS) if (!u.boss) src(u.id, 'creature drops (unique)');
 for (const r of RUNES) if (r.dropRate > 0) node('rune', r.id, r.name).sources.add('creature drops');
 const LOOT_WORDS = read('shared/loot/loot.i18n.ts');
 const CODEX_LOOT = fs.existsSync(path.join(APP, 'codex/codex-loot.component.ts')) ? read('codex/codex-loot.component.ts') : '';

@@ -1,5 +1,5 @@
 /**
- * unique-items.ts — the forty-four named things, and what makes each one named.
+ * unique-items.ts — the fifty-two named things, and what makes each one named.
  *
  * A normal definition is a *kind* of object: there are many Astral Helms and the
  * only thing separating yours from anyone else's is the roll. A unique is a
@@ -46,6 +46,7 @@
 import type { ItemDefinition, ItemStatKey, ItemStyle } from './item-definition';
 import type { ItemRarity, ItemStats, SlotId } from './item.model';
 import type { AuraId } from '../loot/auras';
+import { BOSS_UNIQUES } from './boss-uniques';
 
 /**
  * The machine-readable half of a passive.
@@ -64,7 +65,9 @@ export type UniqueEffect =
   | 'temper-mercy'
   | 'reforge-memory'
   | 'rarity-pull'
-  | 'idle-drift';
+  | 'idle-drift'
+  /** A boss unique's signature (boss-uniques.ts): the top-down fight reads it through `relicTotals`. */
+  | 'relic';
 
 export interface UniquePassive {
   effect: UniqueEffect;
@@ -93,10 +96,16 @@ export interface UniqueItem {
    * the item card and the Keeper walks with its ring.
    */
   aura?: AuraId;
+  /**
+   * The boss it drops from, and from nothing else (boss-uniques.ts). Set only on
+   * the eight boss uniques; the Gambler and every creature's ordinary unique
+   * roll leave these out.
+   */
+  boss?: string;
 }
 
 /**
- * Forty-four named objects across the ladder.
+ * Fifty-two named objects across the ladder (the last eight are the bosses' own).
  *
  * Weighted toward the middle rungs on purpose: a unique the player can actually
  * reach is what teaches them uniques exist, and a table that is all Mythic is a
@@ -410,6 +419,8 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     lore: 'The Eclipse was the event that created the five realms — the moment of division, the original wound in reality.',
     soulbound: true,
   },
+  // ── The bosses' own (boss-uniques.ts): each drops from its boss alone ──
+  ...BOSS_UNIQUES,
 ];
 
 /**
@@ -466,7 +477,11 @@ export function isUnique(item: { definitionId?: string }): boolean {
   return !!item.definitionId && UNIQUE_BY_ID.has(item.definitionId);
 }
 
-/** Every unique that drops at exactly this rarity. */
+/**
+ * Every unique that drops at exactly this rarity from the open pools (the
+ * Gambler, any creature's unique roll). A boss's own unique is never here: it
+ * drops from its boss alone (boss-uniques.ts rollBossUnique).
+ */
 export function uniquesAtRarity(rarity: ItemRarity): UniqueItem[] {
-  return UNIQUE_ITEMS.filter(u => u.rarity === rarity);
+  return UNIQUE_ITEMS.filter(u => u.rarity === rarity && !u.boss);
 }
