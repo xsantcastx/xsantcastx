@@ -1,6 +1,6 @@
 /**
  * trade-flow.ts — the client's half of a trade and of a ground drop: what happens between the window's buttons, the
- * Hearth (which relays) and the trade Function (which commits: functions/src/trade-core.ts). Plain classes, no
+ * Hearth (which relays) and the trade Function (which commits: functions-game/src/trade-core.ts). Plain classes, no
  * Angular: the HUD owns one of each, the karma spec drives them with fakes.
  *
  * A trade, from this Keeper's side:

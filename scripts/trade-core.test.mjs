@@ -1,5 +1,5 @@
 /**
- * trade-core.test.mjs — the server half of trading and ground drops (functions/src/trade-core.ts), run through Node's
+ * trade-core.test.mjs — the server half of trading and ground drops (functions-game/src/trade-core.ts), run through Node's
  * type stripping: the atomic swap, refusal when an item changed, the double-pickup race, expiry going home, and Gold
  * and item conservation across any trade. The client half (the merge honouring these writes) is in karma:
  * src/app/play/trade/trade-merge.spec.ts.
@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import * as core from '../functions/src/trade-core.ts';
+import * as core from '../functions-game/src/trade-core.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const T0 = 1_800_000_000_000;

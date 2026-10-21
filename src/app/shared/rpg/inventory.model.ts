@@ -196,7 +196,7 @@ export interface InventoryLedger {
   legacyBackup: InventoryBlobV1 | null;
   era?: number;
   /**
-   * How many times the trade server wrote this save (functions/src/trade-core.ts: a trade, a ground drop or pickup).
+   * How many times the trade server wrote this save (functions-game/src/trade-core.ts: a trade, a ground drop or pickup).
    * Merged by max; firestore.rules refuses a client write that carries a lower one than the stored document, so a
    * device that read the save just before the server wrote it re-reads and merges instead of overwriting the move.
    * Absent (0) on a save the server never touched.
