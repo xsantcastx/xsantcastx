@@ -15,6 +15,7 @@ import { CharacterRow, portraitOf } from '../../shared/characters/character-rost
 import { CONTINENTS, LEVELS } from '../td/td-engine';
 import { PROGRESS_KEY } from '../../shared/gamification/gamification.model';
 import { WHEREABOUTS_KEY, pickWakePlace } from '../../shared/save/whereabouts.model';
+import { RESET_STAMP_KEY } from '../../shared/save/save-reset';
 
 /** The play view's device-local world blob (side-scroller.component.ts PLAY_KEY): `td` is where the Keeper stands. */
 export const PLAY_WORLD_KEY = 'eclipse-play-world-v1';
@@ -43,6 +44,26 @@ export function huntingLevelOf(activity: unknown): number {
   return keeperLevelView(skillXp(ok ? progress as DisciplineProgress : null, 'hunting')).level;
 }
 
+/** When this device last wiped `id`'s save (save-reset.ts), or 0. */
+function resetStamp(store: SaveReader, id: string): number {
+  const at = Number(store.readFor(id, RESET_STAMP_KEY));
+  return Number.isFinite(at) && at > 0 ? at : 0;
+}
+
+/**
+ * The level a row should show: this device's Hunting level, but never LOWER than the row already says.
+ *
+ * Owner, 2026-10-21: a second device's character screen said level 1. Hunting XP only grows, so a lower number here
+ * means this device's copy is behind — a first visit's empty ledgers, a lobby drawn before the cloud pull landed —
+ * not that the Keeper lost levels, and writing it would stamp a NEWER, lower row that then synced to every device.
+ * The one real way down is a wipe of this character taken on this device after the row was written.
+ */
+function rowLevel(store: SaveReader, row: CharacterRow): number {
+  const here = huntingLevelOf(store.readFor(row.id, ACTIVITY_KEY));
+  if (here >= row.level) return here;
+  return resetStamp(store, row.id) > row.updatedAt ? here : row.level;
+}
+
 /**
  * `row` refreshed from this device's copy of the character's save; unchanged when this device holds none (a Keeper
  * only ever played elsewhere keeps the summary its own device wrote).
@@ -58,10 +79,11 @@ export function summarise(store: SaveReader, row: CharacterRow, now = Date.now()
     ...row,
     name: look.made ? look.name : row.name,
     vocation: look.vocation,
-    level: huntingLevelOf(store.readFor(row.id, ACTIVITY_KEY)),
+    level: rowLevel(store, row),
     area: area || row.area,
     look: rawLook ? portraitOf(look) : row.look,
   };
+  if (next.level < row.level) next.levelResetAt = resetStamp(store, row.id);
   const same = next.name === row.name && next.vocation === row.vocation && next.level === row.level && next.area === row.area
     && JSON.stringify(next.look) === JSON.stringify(row.look);
   return same ? row : { ...next, updatedAt: Math.max(now, row.updatedAt + 1) };

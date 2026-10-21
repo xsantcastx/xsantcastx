@@ -111,6 +111,10 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     this.subs.push(this.lobby.selectRequested$.subscribe(() => void this.leaveWorld()));
     this.subs.push(this.roster.roster$.subscribe(() => this.refreshRows()));
     this.subs.push(this.cloud.status$.subscribe(st => { const now = st.state === 'syncing'; if (now !== this.syncing) this.zone.run(() => { this.syncing = now; }); }));
+    // Summaries wait for the cloud pull (sync fix, 2026-10-21): a list drawn mid-sync re-summarises once it lands.
+    this.subs.push(this.cloud.status$.pipe(filter(s => s.state !== 'syncing')).subscribe(() => {
+      if (this.mode === 'select') this.zone.run(() => this.ensureRoster());
+    }));
     void this.decide();
   }
 
@@ -168,7 +172,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private go(mode: Exclude<LobbyMode, 'boot'>): void {
     if (mode === 'select') {
-      this.ensureRoster();
+      if (this.cloud.status.state !== 'syncing') this.ensureRoster();
       this.refreshRows();
       if (!this.picked || !this.rows.some(r => r.id === this.picked)) {
         this.picked = this.rows.find(r => r.id === this.gateway.character)?.id ?? this.rows[0]?.id ?? null;
