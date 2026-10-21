@@ -6,13 +6,14 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { pickSkill, purse, sail, seed, mapFind } from './play-helpers';
+import { activity, xpForLevel } from './play-delve-fixtures';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const px = async (page: Page) => Number(await canvas(page).getAttribute('data-player-x'));
 const py = async (page: Page) => Number(await canvas(page).getAttribute('data-player-y'));
 
-async function openTopDown(page: Page): Promise<void> {
-  await seed(page, { 'eclipse-td': '1', ...purse(100_000) });
+async function openTopDown(page: Page, extra: Record<string, string> = {}): Promise<void> {
+  await seed(page, { 'eclipse-td': '1', ...purse(100_000), ...extra });
   await page.goto('/play?td=1&hour=12');
   // The top-down engine reports a position inside the square (the side view starts on its floor at y 610).
   await expect.poll(() => py(page), { timeout: 20000 }).toBeLessThan(560);
@@ -78,7 +79,10 @@ test('in the Ember Mine a Rivet Maw fights back, falls, and its coins are picked
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 1280, height: 800 });
-  await openTopDown(page);
+  // A level-6 Keeper: the mine's Maws stand at their zone's level (2–3, td-zones), a coin-flip for a level 1 since the
+  // balance pass; this test is about a fight that falls and coins on the floor, not a close one. The era stamp keeps
+  // the seeded ledger (the game wipes a ledger it cannot date).
+  await openTopDown(page, { 'godforge-realm-era': '55', ...activity({ hunting: xpForLevel(6) }) });
   await page.locator('.places-toggle').first().click();
   await mapFind(page, /ember delve/i);
   await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
