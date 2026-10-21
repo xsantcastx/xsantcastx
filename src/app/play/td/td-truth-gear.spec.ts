@@ -18,7 +18,12 @@ import { temperFailChance } from '../../shared/rpg/item-upgrade';
 import { weaponSwing } from './td-melee';
 import { ELEMENTS } from '../../shared/loot/damage.model';
 import { HUD_I18N } from '../world/hud.i18n';
-import { GEAR_KEYS } from './td-engine';
+import { GEAR_KEYS, MEND_PER_SEC, outOfFightMend } from './td-engine';
+import type { EngineOptions } from '../engine/engine.model';
+import { DIFFICULTIES, DIFFICULTY_TIERS } from '../../shared/loot/difficulty.model';
+import { LOOT_I18N } from '../../shared/loot/loot.i18n';
+import { GRAVE_I18N } from '../../shared/grave-goods/grave-goods.i18n';
+import { MOBS, MobSystem, type MobHost } from './td-mobs';
 import { RESIST_STAT, fightStats, wornCombat } from './td-skills';
 
 /** The number a card prints for a stat (formatStatValue: "+12%", "+0.4"), back to a number. */
@@ -122,5 +127,58 @@ describe('td-truth gear: the sets and the boss uniques say what their data does'
     for (const k of read) expect(GEAR_KEYS).withContext(k).toContain(k);
     // Each resist the fight reads is one of the worn keys.
     for (const el of ELEMENTS) expect(read).toContain(RESIST_STAT[el]);
+  });
+});
+
+describe('td-truth gear: the difficulty tiers do what their blurbs say (docs/design/loot-and-combat.md §8)', () => {
+  const numbers = (s: string) => [...s.matchAll(/\d+(?:\.\d+)?/g)].map(m => Number(m[0]));
+  /** A creature risen on `tier`, and what one bite of `n` takes from a Keeper with no Defense. */
+  function onTier(tier: keyof typeof DIFFICULTIES, n: number) {
+    const keeper = { x: 0, y: 0, face: 1 }, hurt: number[] = [], kills: { hp: number }[] = [];
+    const host: MobHost = {
+      options: { onKill: (e: { hp: number }) => { kills.push(e); } } as unknown as EngineOptions,
+      walkable: () => true, levelId: () => 'truth', player: () => keeper,
+      hurtPlayer: k => { hurt.push(k); }, healPlayer: () => undefined, swung: () => undefined, playerHp: () => 1e6,
+    };
+    const sys = new MobSystem(host);
+    sys.setTier(DIFFICULTIES[tier]); sys.defense = 0; sys.resists = {};
+    const def = { ...MOBS['ash-wolf'], hp: 200, sight: 999, dmg: [n, n] as [number, number], rate: 999, speed: 0 };
+    const m = sys.place('t', def, 10, 0);
+    m.cd = 0; m.wait = 1e9;
+    const life = m.hp;
+    for (let i = 0; i < 50 && !hurt.length; i++) sys.update(.02);
+    sys.smite(m);
+    return { life, bite: hurt[0] ?? 0, xpHp: kills[0]?.hp ?? NaN };
+  }
+
+  for (const tier of DIFFICULTY_TIERS) {
+    const d = DIFFICULTIES[tier];
+    it(`${tier}: creatures rise with ×${d.hp} life and strike ×${d.damage}; XP still follows their own life`, () => {
+      const r = onTier(tier, 20);
+      expect(r.life).toBe(Math.round(200 * d.hp));
+      expect(r.bite).toBe(Math.round(20 * d.damage));
+      expect(r.xpHp).toBe(200);
+    });
+    it(`${tier}: the Keeper's resists lose ${d.resistPenalty} before the 75 cap`, () => {
+      const at = (fire: number) => fightStats(30, undefined, wornCombat({ equippedTotals: sumStats([{ fireResist: fire }]) }), 'warlock', d.resistPenalty).resists.fire;
+      expect(at(50)).toBe(Math.max(-100, Math.min(75, 50 - d.resistPenalty)));
+      expect(at(200)).toBe(Math.min(75, 200 - d.resistPenalty));
+    });
+    it(`${tier}: its blurb (en and es) quotes only its own numbers`, () => {
+      const b = LOOT_I18N['loot.tierBlurb.' + tier];
+      const have = [d.hp, d.damage, d.resistPenalty, Math.round((d.itemChance - 1) * 100)];
+      for (const text of [b.en, b.es]) for (const n of numbers(text)) expect(have).withContext(`${tier}: "${text}" says ${n}`).toContain(n);
+      expect(numbers(b.es)).toEqual(numbers(b.en));
+    });
+  }
+});
+
+describe('td-truth gear: a Grave-cold drain is a real price out of the fight too', () => {
+  it('the out-of-fight mend stops while a drain outweighs regeneration, as the curse card says', () => {
+    expect(outOfFightMend(0, 5)).toBe(MEND_PER_SEC);
+    expect(outOfFightMend(.5, 5)).toBe(MEND_PER_SEC);
+    expect(outOfFightMend(-1.4, 5)).toBe(0);
+    expect(outOfFightMend(0, 3)).toBe(0);
+    expect(GRAVE_I18N['grave.tip.drain'].en).toContain('do not mend out of the fight');
   });
 });
