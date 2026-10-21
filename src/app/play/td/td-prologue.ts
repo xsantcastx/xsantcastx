@@ -85,7 +85,7 @@ export function guideFor(step: PrologueStep | null): GuideKind | null {
 }
 
 /** The classes the prologue has its own words for; any other (a class still to come) reads the plain line. */
-const CLASS_WORDS: ReadonlySet<string> = new Set(['warlock', 'ashguard', 'lanternwright']);
+const CLASS_WORDS: ReadonlySet<string> = new Set(['warlock', 'ashguard', 'lanternwright', 'thornstrider']);
 
 /**
  * The line for a step: its i18n key. `touch` picks the phone's words (drag, tap) over the keyboard's; the fight step
