@@ -15,7 +15,7 @@
 import type { EngineOptions, EngineState, EngineInput } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
-import { vocationLook } from '../../shared/keeper-look/vocation-look';
+import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
@@ -68,7 +68,11 @@ export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBE
   'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 /** The Seam-Cant's tone per tree: each element's body tone (effects-spec rule 2), so the words read as the spell's. */
-const CANT_TONE: Readonly<Record<TreeId, string>> = { ember: FX.ember.body, bone: FX.bone.body, shadow: FX.shadow.body, common: LEVEL_UP.body };
+const CANT_TONE: Readonly<Record<TreeId, string>> = {
+  ember: FX.ember.body, bone: FX.bone.body, shadow: FX.shadow.body, common: LEVEL_UP.body,
+  // The Ashguard's oaths speak in brass, the blade's fire in ember, the endurance in ash (td-ashguard-fx).
+  brand: FX.ember.body, oath: ASH_FX.brass.body, ash: ASH_FX.ash.core,
+};
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
@@ -82,6 +86,7 @@ import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
+import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
@@ -182,6 +187,8 @@ export class TopDownEngine {
   private chaseTimer = 0;
   /** The swing being played (seconds left) and which way it faces. */
   private actT = 0;
+  /** Is a point over a creature's body (an effect there stays ≤ 60%, effects-spec §Budget)? */
+  private readonly overFoe = (x: number, y: number): boolean => this.mobs.mobs.some(m => Math.abs(x - m.x) < m.def.w / 2 && y < m.y && y > m.y - m.def.h);
   /** A tree being cut: hits so far, the next swing's timer. */
   private chop: { c: number; r: number; x: number; y: number; hits: number; t: number } | null = null;
   private shake = 0;
@@ -349,6 +356,7 @@ export class TopDownEngine {
       // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
       seek: secs => this.seekNow(secs),
+      dash: (x, y) => this.dashTo(x, y),
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
     this.mobs.elites = true;
@@ -366,6 +374,13 @@ export class TopDownEngine {
       omen: (kind: 'bell' | 'flicker' | 'whisper' | 'name') => this.darkLayer.fire(kind, 1, { keeper: this.player, own: this.ownLight(), glim: this.glimLight(), still: this.still }),
       hush: (n: number) => { this.darkLayer.pinned = Math.max(0, Math.min(100, n)); },
       state: () => this.darkState(),
+    };
+    // The Ashguard's e2e (webdriver only): a creature at the Keeper's side to swing at, and the blade's count.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdAsh'] = {
+      foe: (type = 'ash-wolf', dx = 22) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-ash:${type}:${Math.round(this.time * 100)}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
+      foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-ash:')).length,
+      swings: () => this.mobs.swings,
+      state: () => ({ vocation: this.mobs.vocation, range: this.mobs.range, hp: this.hp, maxHp: this.maxHp, mana: Math.round(this.mobs.mana), maxMana: this.mobs.maxMana, defense: this.mobs.defense, brand: this.mobs.brandT > 0, block: this.mobs.blockT > 0, vow: this.mobs.vowT > 0 }),
     };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
@@ -399,6 +414,7 @@ export class TopDownEngine {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
+    delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
@@ -422,6 +438,19 @@ export class TopDownEngine {
     // burn violet. Worn gear still shows over it; the hood stands in only when no head piece is worn.
     const v = vocationLook(l.vocation, gear);
     this.player.painter = new KeeperPainter(l, v.gear, v.garb);
+    // The class decides the basic attack (the staff's bolt or the Ashguard's blade) and the body's share of life.
+    if (l.vocation !== this.mobs.vocation) { this.mobs.vocation = l.vocation; this.buildKey = ''; this.bar = defaultBar(l.vocation); }
+  }
+  /** Ash Stride: the Keeper is carried along the line toward (x, y), stopping at the last open step. */
+  private dashTo(x: number, y: number): void {
+    const p = this.player, d = Math.hypot(x - p.x, y - p.y), n = Math.max(1, Math.ceil(d / 4));
+    let ok = { x: p.x, y: p.y };
+    for (let i = 1; i <= n; i++) {
+      const qx = p.x + (x - p.x) * i / n, qy = p.y + (y - p.y) * i / n;
+      if (!this.level.walkable(Math.floor(qx / TILE), Math.floor(qy / TILE))) break;
+      ok = { x: qx, y: qy };
+    }
+    p.x = ok.x; p.y = ok.y; this.path = []; this.arrive = null;
   }
   setInput(action: EngineInput, pressed: boolean): void {
     // The side view's on-screen buttons: left/right walk, down walks south, jump walks north.
@@ -463,10 +492,12 @@ export class TopDownEngine {
    * power, speed — and from the gear (§3 affixes) cast speed, crits, Defense, resists and life back each second.
    */
   setKeeperBuild(level: number, stats: KeeperStats, gear: Partial<ItemStats> = {}): void {
-    const key = `${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}|${GEAR_KEYS.map(k => gear[k] ?? 0).join(',')}`;
+    const voc = this.mobs.vocation;
+    const key = `${voc}|${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}|${GEAR_KEYS.map(k => gear[k] ?? 0).join(',')}`;
     if (key === this.buildKey) return;
     this.buildKey = key;
-    const st = fightStats(level, stats, gear);
+    const st = fightStats(level, stats, gear, voc);
+    this.mobs.keeperMaxHp = st.maxHp;
     this.maxHp = st.maxHp; this.hp = Math.min(this.hp, this.maxHp);
     this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
     this.mobs.power = st.power; this.mobs.regen = st.regen; this.mobs.agility = st.haste;
@@ -2422,8 +2453,8 @@ export class TopDownEngine {
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
-    if (aura === 'aura-embers' || aura === 'aura-siphon') {
-      const tn = aura === 'aura-embers' ? FX.ember : FX.life, turn = this.still ? 0 : this.time / 12;
+    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire') {
+      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
       drawRing(c, X, Y, this.mobs.auraRadius, turn, tn.core, tn.body, 8, 6, tn.edge);
       c.globalAlpha = .6; drawRing(c, X, Y, Math.round(this.mobs.auraRadius * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
@@ -2437,6 +2468,7 @@ export class TopDownEngine {
     for (const b of this.mobs.bursts) if (near(b.x, b.y)) drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still);
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
+      if (drawAshGround(c, e, this.still)) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
       if (e.kind === 'pulse') {
         // A short bright arc of the ring flashes at the foe's side.
@@ -2448,7 +2480,7 @@ export class TopDownEngine {
       } else if (e.kind === 'wave') {
         // Hellfire Nova: a two-tone pixel ring runs out to its 3 tiles in half a second; the ground it crossed stays scorched.
         // The trees' bursts (a Meteor, a Corpse Burst, Weaken, Doom) ride the same ring in their own element; only fire scorches.
-        const R = e.r ?? NOVA_R, tn = FX[e.el && e.el !== 'life' ? e.el : 'ember'];
+        const R = e.r ?? NOVA_R, tn = FX[e.el && e.el !== 'life' && e.el !== 'brass' ? e.el : 'ember'];
         if (t > .2 && !e.el) {
           const f = Math.min(1, (t - .2) / .2) * (t > .5 ? 1 - (t - .5) / .5 : 1);
           c.globalAlpha = .75 * f; c.drawImage(scorchSprite(R), ex - R, ey - R);
@@ -2559,6 +2591,7 @@ export class TopDownEngine {
     const c = this.ctx, p = this.player;
     for (const e of this.mobs.effects) {
       if (e.age < 0 || e.kind === 'pulse' || e.kind === 'wave') continue;
+      if (drawAshAir(c, e, this.still, this.overFoe)) continue;
       // Reduced motion: a burst is one still frame, never no burst.
       const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), bt = this.still ? .5 : t, seed = (X * 7 + Y * 13) | 0;
       c.globalAlpha = Math.max(0, 1 - t);
@@ -2667,6 +2700,7 @@ export class TopDownEngine {
     }
     c.globalAlpha = 1;
     this.drawMotes();
+    if (this.mobs.melee) drawAshState(c, { brandT: this.mobs.brandT, blockT: this.mobs.blockT, vowT: this.mobs.vowT, mobs: this.mobs.mobs }, this.player, this.time, this.still);
     // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).
     for (const m of this.mobs.mobs) if (m.tell > 0 && windsUp(m.def)) {
       const k = this.still ? .7 : 1 - m.tell / BOSS_TELL;
@@ -2858,9 +2892,11 @@ export class TopDownEngine {
     c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
     if (!p.painter) return;
     const acting = p === this.player && this.actT > 0;
-    if (p === this.player && (p.dir !== 'side' || acting)) {
+    const staff = carriesStaff(this.mobs.vocation);
+    // The Ashguard swings from the side (the painter's own blade arc); the Warlock casts facing the camera.
+    if (p === this.player && (p.dir !== 'side' || (acting && staff))) {
       // The Warlock: front/back views with the staff in hand; every cast faces the camera, staff raised.
-      const sheet = frontSheet(p.painter, true), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
+      const sheet = frontSheet(p.painter, staff), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
       const f = acting ? CAST_FRAME : this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
       return;

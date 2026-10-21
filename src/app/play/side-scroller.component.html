@@ -228,14 +228,14 @@
         </div>
         <div class="sbt__tabs" role="tablist" [attr.aria-label]="t('play.td.book')">
           @for (tr of sb.trees; track tr.id) {
-            <button type="button" role="tab" class="sbt__tab" [attr.data-tree]="tr.id" [attr.aria-selected]="bookTree === tr.id" (click)="openTree(tr.id)">
+            <button type="button" role="tab" class="sbt__tab" [attr.data-tree]="tr.id" [attr.aria-selected]="bookTab === tr.id" (click)="openTree(tr.id)">
               {{ t('play.td.tree.' + tr.id) }} <small>{{ tr.ranks }}</small>
             </button>
           }
         </div>
         <div class="sbt__body">
           <div class="sbt__scroll">
-            <div class="sbt__tree" role="tabpanel" [attr.data-tree]="bookTree" [style.--tiers]="sb.tiers.length">
+            <div class="sbt__tree" role="tabpanel" [attr.data-tree]="bookTab" [style.--tiers]="sb.tiers.length">
               <svg class="sbt__lines" [attr.viewBox]="'0 0 3 ' + sb.tiers.length" preserveAspectRatio="none" aria-hidden="true">
                 @for (ln of sb.lines; track $index) {
                   <line [attr.x1]="ln.x1" [attr.y1]="ln.y1" [attr.x2]="ln.x2" [attr.y2]="ln.y2" [class.lit]="ln.lit" vector-effect="non-scaling-stroke"></line>

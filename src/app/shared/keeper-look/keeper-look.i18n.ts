@@ -15,7 +15,13 @@ export const KEEPER_LOOK_I18N: Readonly<Record<string, { en: string; es: string 
     en: 'Ember and shadow from a staff, at range. Drains life, curses foes, calls fire, wards the self.',
     es: 'Brasa y sombra desde un baston, a distancia. Drena vida, maldice, invoca fuego y se protege.',
   },
+  'look.class.ashguard': { en: 'Ashguard', es: 'Guardiceniza' },
+  'look.class.ashguard.blurb': {
+    en: 'Blade and shield of the Pyre Watch, up close. Holds the line, brands foes with fire, will not fall.',
+    es: 'Hoja y escudo de la Guardia de la Pira, cuerpo a cuerpo. Mantiene la linea, marca con fuego y no cae.',
+  },
   'look.class.more': { en: 'More classes will come.', es: 'Llegaran mas clases.' },
+  'look.class.locked': { en: 'A Keeper keeps the calling they were made with.', es: 'Un Guardian conserva la vocacion con la que fue creado.' },
   'look.preview': { en: 'Your Keeper, wearing what you wear now', es: 'Tu Guardian, con lo que llevas puesto' },
   'look.name': { en: 'Name', es: 'Nombre' },
   'look.namePlaceholder': { en: 'Keeper', es: 'Guardian' },
