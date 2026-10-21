@@ -30,6 +30,8 @@
  *  - skill points along PATHS below through buyRank (tiers, prerequisites, points), the bar and aura from what he
  *    holds;
  *  - a belt of 8 health and 8 mana potions of his level's tier; he drinks under 40% life / 20% mana (2 s apart);
+ *  - on Nightmare and Hell he comes geared for the tier (TIER_LEAD levels above the Seam Eater, rare / epic gear with
+ *    resists first, a belt of TIER_BELT + TIER_BELT);
  *  - he steps out of half the telegraphed attacks (a boss's breath tell, a Rend ring, a Fire-Enchanted burst): DODGE;
  *  - a ranged vocation (all but the Ashguard) backs away, circling, from a creature slower than him that comes within
  *    KITE (Tibia's kiting); the Ashguard walks in and stands;
@@ -126,6 +128,8 @@ export const KITE = 36;
 /** Seconds a fall costs on a hunt: the walk back from the hearth to the purse. */
 export const FALL_SECS = 60;
 const BELT = 8;
+/** A Keeper who comes for a Nightmare or Hell boss comes with a full belt (the potion stacks he would carry). */
+const TIER_BELT = 16;
 /** --trace: damage dealt by its floating number's colour (which skill). */
 const TALLY = argv.trace ? {} : null;
 const WALK = 74; // td-engine SPEED, art px a second
@@ -164,16 +168,22 @@ const WANT = {
 const SLOTS = ['weapon', 'head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'];
 const RARE_SLOTS = new Set(['weapon', 'head', 'chest', 'trinket']);
 
-function rollGear(level, seed) {
-  return seeded(`gear|${seed}|${level}`, r => {
+/**
+ * On Nightmare and Hell he gears for the tier, as D2 asks: rare in every well (epic in Hell), each the best of ten
+ * drops, resists weighing heavily and the foe's own element most.
+ */
+const RESIST_WANT = { fireResist: 4, coldResist: 4, lightningResist: 4, arcaneResist: 4, allResist: 8 };
+function rollGear(level, seed, resist = null, tierRarity = 'rare') {
+  const want = resist ? { ...WANT, ...RESIST_WANT, [`${resist}Resist`]: 16 } : WANT;
+  return seeded(`gear|${seed}|${level}|${resist ?? ''}`, r => {
     const total = {}, weapon = {};
     for (const slot of SLOTS) {
-      const rarity = level >= 10 && RARE_SLOTS.has(slot) ? 'rare' : 'uncommon';
+      const rarity = resist === null ? (level >= 10 && RARE_SLOTS.has(slot) ? 'rare' : 'uncommon') : tierRarity;
       let best = null, bestScore = -1;
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < (resist === null ? 3 : 10); k++) {
         const { stats } = AFFIX.rollAffixes({ slot }, rarity, level, r);
         let score = 0;
-        for (const [key, v] of Object.entries(stats)) { const hi = AFFIX.affixRange(key, slot, level, rarity)[1] || 1; score += (WANT[key] ?? 0) * v / hi; }
+        for (const [key, v] of Object.entries(stats)) { const hi = AFFIX.affixRange(key, slot, level, rarity)[1] || 1; score += (want[key] ?? 0) * v / hi; }
         if (score > bestScore) { bestScore = score; best = stats; }
       }
       for (const [key, v] of Object.entries(best)) total[key] = (total[key] ?? 0) + v;
@@ -210,8 +220,8 @@ function skillTree(voc, level) {
   return { ranks, bought, bar, aura: SK.defaultAura(voc), spent: TREE.pointsSpent(tree), earned: PTS.skillPointsEarned(level) };
 }
 
-export function keeper(voc, level, tier = 'normal', seed = 0) {
-  const gear = rollGear(level, `${voc}|${seed}`);
+export function keeper(voc, level, tier = 'normal', seed = 0, resist = null) {
+  const gear = rollGear(level, `${voc}|${seed}`, resist, tier === 'hell' ? 'epic' : 'rare');
   const stats = attributes(voc, level);
   const fight = SK.fightStats(level, stats, gear.total, voc, DIFF.DIFFICULTIES[tier].resistPenalty);
   return { voc, level, tier, gear, stats, fight, tree: skillTree(voc, level), potTier: POT.dropTier(level) };
@@ -227,14 +237,14 @@ const POTION = kind => tier => POT.POTIONS.find(p => p.kind === kind && p.tier =
  */
 function arena(k, state) {
   const keeper = { x: 0, y: 0, face: 1 };
-  const life = { hp: state?.hp ?? k.fight.maxHp, xp: 0, gold: 0, kills: 0 };
+  const life = { hp: state?.hp ?? k.fight.maxHp, xp: 0, gold: 0, kills: 0, taken: 0, struck: 0 };
   const host = {
     options: {
       onKill: e => { life.xp += Math.round(HUNT.huntingXpFor(e.hp) * (e.xp ?? 1)); life.kills++; },
       rollLoot: () => [], onLoot: g => { life.gold += g.coins ?? 0; return true; },
     },
     walkable: () => true, levelId: () => 'sim', player: () => keeper,
-    hurtPlayer: n => { life.hp -= n; if (TALLY) { const who = sys.mobs.filter(m => Math.hypot(m.x - keeper.x, m.y - keeper.y) < 24).map(m => m.def.id).join('+') || 'shot/burst'; TALLY[`taken:${who}`] = (TALLY[`taken:${who}`] ?? 0) + n; } }, healPlayer: n => { life.hp = Math.min(k.fight.maxHp, life.hp + n); },
+    hurtPlayer: n => { life.hp -= n; life.taken += n; if (TALLY) { const who = sys.mobs.filter(m => Math.hypot(m.x - keeper.x, m.y - keeper.y) < 24).map(m => m.def.id).join('+') || 'shot/burst'; TALLY[`taken:${who}`] = (TALLY[`taken:${who}`] ?? 0) + n; } }, healPlayer: n => { life.hp = Math.min(k.fight.maxHp, life.hp + n); },
     swung: () => undefined, playerHp: () => life.hp,
     dash: (x, y) => { keeper.x = x; keeper.y = y; }, seek: () => false, say: () => undefined,
   };
@@ -249,6 +259,9 @@ function arena(k, state) {
   sys.defense = f.defense; sys.keeperLevel = k.level; sys.resists = f.resists; sys.pace = 1 + f.levelPace;
   if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ spellDamage: k.gear.weapon.spellDamage ?? 0 });
   sys.elites = false;
+  // Every blow or shot that reaches him (before a ward or Defense drinks it): a kiting Keeper must still be struck.
+  { const bite = sys.biteKeeper.bind(sys); sys.biteKeeper = (raw, type, from) => { if (raw > 0) life.struck++; return bite(raw, type, from); }; }
+  if (TALLY) { const step = sys.stepDash.bind(sys); sys.stepDash = (m, dt) => { step(m, dt); if (!m.dash) { const d = Math.hypot(m.x - keeper.x, m.y - keeper.y); TALLY[d <= MOBS_M.CHARGE_HIT ? 'charge:landed' : 'charge:missed'] = (TALLY[d <= MOBS_M.CHARGE_HIT ? 'charge:landed' : 'charge:missed'] ?? 0) + 1; } }; }
   if (TALLY) { const hurt = sys.hurtMob.bind(sys); sys.hurtMob = (m, n, c, k) => { if (m.hp > 0) TALLY[c] = (TALLY[c] ?? 0) + Math.min(n, m.hp); return hurt(m, n, c, k); }; }
   return { sys, keeper, life, walk: WALK * (1 + f.moveHaste) * (1 + f.levelPace) };
 }
@@ -270,7 +283,7 @@ const DEFENSIVE = new Set(['dark-ward', 'bone-armor', 'shield-oath', 'lantern-wa
 export function fight(k, enc, seed, state = null, max = 600) {
   return seeded(`fight|${seed}`, rand => {
     const A = arena(k, state), { sys, keeper, life } = A;
-    const belt = state?.belt ?? { hp: BELT, mana: BELT };
+    const belt = state?.belt ?? (k.tier === 'normal' ? { hp: BELT, mana: BELT } : { hp: TIER_BELT, mana: TIER_BELT });
     const used = { hp: 0, mana: 0 };
     const first = spawn(sys, enc, 80);
     const dt = .04, f = k.fight, hpPot = POTION('health')(k.potTier), manaPot = POTION('mana')(k.potTier);
@@ -368,7 +381,7 @@ export function fight(k, enc, seed, state = null, max = 600) {
     for (const g of sys.drops) life.gold += g.coins ?? 0;
     const died = life.hp <= 0, cleared = !sys.mobs.length && !sys.calls.length && !died;
     const dealt = first.reduce((a, m) => a + m.def.hp - Math.max(0, m.hp), 0);
-    return { secs: t, died, cleared, used, dealt, hpLost: Math.max(0, start - life.hp), hp: Math.max(0, life.hp), mana: sys.mana, belt, xp: life.xp, gold: life.gold, kills: life.kills };
+    return { secs: t, died, cleared, used, dealt, taken: life.taken / k.fight.maxHp, struck: life.struck, hpLost: Math.max(0, start - life.hp), hp: Math.max(0, life.hp), mana: sys.mana, belt, xp: life.xp, gold: life.gold, kills: life.kills };
   });
 }
 
@@ -398,10 +411,10 @@ const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
 const median = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
 
 /** Many seeded attempts at one encounter, each with a freshly rolled Keeper (his gear varies run to run). */
-function attempts(voc, level, tier, encOf, runs) {
+function attempts(voc, level, tier, encOf, runs, resist = null) {
   const out = [];
   for (let i = 0; i < runs; i++) {
-    const k = keeper(voc, level, tier, i);
+    const k = keeper(voc, level, tier, i, resist);
     out.push(fight(k, encOf(i), `${voc}|${level}|${tier}|${i}`));
   }
   const won = out.filter(r => r.cleared);
@@ -409,6 +422,10 @@ function attempts(voc, level, tier, encOf, runs) {
     ttk: median(won.map(r => r.secs)), ttkMean: mean(won.map(r => r.secs)),
     death: out.filter(r => r.died).length / out.length, timeout: out.filter(r => !r.died && !r.cleared).length / out.length,
     hpPots: mean(out.map(r => r.used.hp)), manaPots: mean(out.map(r => r.used.mana)),
+    /** Life lost in the fight, in whole bars of his life (a kiting Keeper must still lose some to every boss). */
+    taken: mean(out.map(r => r.taken)),
+    /** Blows and shots that reached him (before his ward), a fight. */
+    struck: mean(out.map(r => r.struck)),
   };
 }
 
@@ -458,9 +475,14 @@ function cell(voc, level, runs) {
 function bossCell(voc, def, runs) {
   return { id: def.id, level: def.level, ...attempts(voc, def.level, 'normal', () => ({ def }), runs) };
 }
+/**
+ * The Seam Eater at `level`, met by a Keeper TIER_LEAD[tier] levels above it (owner 2026-10-21: Nightmare and Hell are
+ * a wall, not impossible — on them he comes higher and in resist gear for its arcane).
+ */
+export const TIER_LEAD = { normal: 0, nightmare: 5, hell: 15 };
 function seamCell(voc, level, tier, runs) {
-  const def = SEAM.seamEaterAt(MOBS[SEAM.SEAM_ID], level);
-  return { level, tier, ...attempts(voc, level, tier, () => ({ def }), runs) };
+  const def = SEAM.seamEaterAt(MOBS[SEAM.SEAM_ID], level), k = level + TIER_LEAD[tier];
+  return { level, keeper: k, tier, ...attempts(voc, k, tier, () => ({ def }), runs, tier === 'normal' ? null : 'arcane') };
 }
 
 // ── The bands (docs/design/loot-and-combat.md §13) ──────────────────────────────────────────────────────────────
@@ -469,10 +491,14 @@ export const BANDS = {
   normal: [2, 5], champion: [15, 40], unique: [30, 75], boss: [60, 150], seam: [120, 240],
   /** Death-rate ceilings: a creature at his level (near never), a pack, a first attempt at a boss / the Seam Eater. */
   normalDeath: .02, packDeath: .1, bossDeath: .3, seamDeath: .3,
+  /** A kiting ranged Keeper is struck at least this many times a boss fight (no boss can be walked away from). */
+  kitedStruck: 4,
+  /** The Seam Eater on Nightmare (a Keeper 5 levels above it) and Hell (15 above), both in resist gear. */
+  seamTierDeath: { nightmare: .35, hell: .5 },
   /** Vocations' time to kill one foe (a creature at level, each boss), each within ±25% of the four's mean. */
   spread: .25,
   /** Hours to reach a level on the hunt, against leveling.md §1 ("content at pace": 0.6 / 5.8 / 14 h): [low, high]. */
-  hours: { 10: [.4, 1], 30: [4, 8], 50: [8, 20] },
+  hours: { 10: [.4, 1], 30: [4, 8], 50: [10, 18] },
 };
 /** The sim's tolerance on a time band (seeded noise; a cell a hair outside is still a pass): ±15%. */
 const SLACK = .15;
@@ -509,8 +535,10 @@ if (argv.dps) {
 if (argv.trace) {
   // --trace=<vocation>,<level>,<creature id>[,<tier>]: one fight, its Keeper and its outcome.
   const [voc, L, id, tier = 'normal'] = String(argv.trace).split(',');
-  const k = keeper(voc, Number(L), tier, 0);
-  const def = id === SEAM.SEAM_ID ? SEAM.seamEaterAt(MOBS[id], Number(L)) : MOBS[id];
+  // The Seam Eater on Nightmare / Hell: <level> is the Eater's; the Keeper comes TIER_LEAD above it in resist gear.
+  const seam = id === SEAM.SEAM_ID, lead = seam ? TIER_LEAD[tier] : 0;
+  const k = keeper(voc, Number(L) + lead, tier, Number(argv.seed ?? 0), seam && tier !== 'normal' ? 'arcane' : null);
+  const def = seam ? SEAM.seamEaterAt(MOBS[id], Number(L)) : MOBS[id];
   console.log(JSON.stringify({ fight: k.fight, stats: k.stats, gear: k.gear.total, bar: k.tree.bar, aura: k.tree.aura, ranks: Object.fromEntries(Object.entries(k.tree.ranks).filter(([, n]) => n)) }));
   console.log(fight(k, { def, pack: argv.pack ? packOf(String(argv.pack), 'trace') : undefined }, 'trace'));
   console.log('damage by colour', TALLY);
@@ -521,12 +549,10 @@ const t0 = Date.now();
 const levels = QUICK ? [5, 10, 20, 30, 40, 60] : LEVELS;
 const table = {};
 for (const voc of VOCATIONS) {
-  table[voc] = { levels: {}, bosses: [], seam: [], seamLate: [] };
+  table[voc] = { levels: {}, bosses: [], seam: [] };
   for (const L of levels) table[voc].levels[L] = cell(voc, L, RUNS);
   for (const b of BOSSES) table[voc].bosses.push(bossCell(voc, b, RUNS));
   for (const L of QUICK ? [20, 40] : [20, 30, 40, 60]) for (const tier of ['normal', 'nightmare', 'hell']) table[voc].seam.push(seamCell(voc, L, tier, RUNS));
-  // Past the band (shown, not banded): Keepers of 80 and 100 meet the level-60 Eater on Nightmare and Hell.
-  if (!QUICK) for (const L of [80, 100]) for (const tier of ['nightmare', 'hell']) table[voc].seamLate.push(seamCell(voc, L, tier, Math.round(RUNS / 2)));
 }
 const secs = (Date.now() - t0) / 1000;
 
@@ -546,19 +572,15 @@ for (const voc of VOCATIONS) for (const L of levels) {
   const row = x => `${fmt(x.ttk).padStart(5)}s ${pct(x.death).padStart(4)} ${fmt(x.hpPots + x.manaPots).padStart(3)}`;
   say(`${voc.padEnd(14)} ${String(L).padStart(2)}  ${c.normal.id.padEnd(18)} ${row(c.normal)}  ${row(c.champion)}  ${row(c.unique)}  ${k1(c.hunt.xph).padStart(8)}  ${k1(c.hunt.goldh).padStart(6)}  ${fmt(c.hunt.killsh, 0).padStart(6)}  ${fmt(c.hunt.deathsh, 2).padStart(6)}`);
 }
-say('\nBosses at their level, Normal: time to kill (median s) · first-attempt death rate · potions');
+say('\nBosses at their level, Normal: time to kill (median s) · first-attempt death rate · potions · life lost (bars) · blows that reached him');
 say(`${'boss'.padEnd(20)} L   ${VOCATIONS.map(v => v.padEnd(22)).join('')}`);
 for (let i = 0; i < BOSSES.length; i++) {
-  say(`${BOSSES[i].id.padEnd(20)} ${String(BOSSES[i].level).padStart(2)}  ${VOCATIONS.map(v => { const b = table[v].bosses[i]; return `${fmt(b.ttk, 0).padStart(4)}s ${pct(b.death).padStart(4)} ${fmt(b.hpPots + b.manaPots).padStart(4)}       `; }).join('')}`);
+  say(`${BOSSES[i].id.padEnd(20)} ${String(BOSSES[i].level).padStart(2)}  ${VOCATIONS.map(v => { const b = table[v].bosses[i]; return `${fmt(b.ttk, 0).padStart(4)}s ${pct(b.death).padStart(4)} ${fmt(b.hpPots + b.manaPots).padStart(3)} ${fmt(b.taken, 1).padStart(3)} ${fmt(b.struck, 0).padStart(3)} `; }).join('')}`);
 }
-say('\nThe Seam Eater (the Keeper at its level): time to kill (median s) · death rate');
+say('\nThe Seam Eater (Normal: the Keeper at its level; Nightmare +5 and Hell +15 levels, in resist gear): time to kill (median s) · death rate');
 for (let i = 0; i < table.warlock.seam.length; i++) {
   const s = table.warlock.seam[i];
-  say(`  L${String(s.level).padEnd(3)} ${s.tier.padEnd(10)} ${VOCATIONS.map(v => { const x = table[v].seam[i]; return `${v.slice(0, 5)} ${fmt(x.ttk, 0).padStart(4)}s ${pct(x.death).padStart(4)}`; }).join('   ')}`);
-}
-for (let i = 0; i < table.warlock.seamLate.length; i++) {
-  const s = table.warlock.seamLate[i];
-  say(`  K${String(s.level).padEnd(3)} ${s.tier.padEnd(10)} ${VOCATIONS.map(v => { const x = table[v].seamLate[i]; return `${v.slice(0, 5)} ${fmt(x.ttk, 0).padStart(4)}s ${pct(x.death).padStart(4)}`; }).join('   ')}   (a level-${s.level} Keeper, the Eater at 60)`);
+  say(`  L${String(s.level).padEnd(3)} K${String(s.keeper).padEnd(3)} ${s.tier.padEnd(10)} ${VOCATIONS.map(v => { const x = table[v].seam[i]; return `${v.slice(0, 5)} ${fmt(x.ttk, 0).padStart(4)}s ${pct(x.death).padStart(4)}`; }).join('   ')}`);
 }
 const xphAt = voc => Object.fromEntries(levels.map(L => [L, table[voc].levels[L].hunt.xph]));
 say('\nHours to reach a level on the hunt (leveling.md §1 "content at pace": 10 → 0.6 h, 30 → 5.8 h, 50 → 14 h)');
@@ -577,15 +599,23 @@ for (const voc of VOCATIONS) table[voc].bosses.forEach(b => {
   if (!inBand(b.ttk, BANDS.boss)) fails.push(`${voc}: ${b.id} (L${b.level}) takes ${fmt(b.ttk, 0)} s (band ${BANDS.boss.join('–')} s)`);
   if (b.death > BANDS.bossDeath) fails.push(`${voc}: ${b.id} (L${b.level}) kills a first attempt ${pct(b.death)} of the time (≤ ${pct(BANDS.bossDeath)})`);
 });
+// No boss can be kited forever: a ranged Keeper who keeps walking away is still struck (owner 2026-10-21; the melee
+// bosses' gap-closers, td-mobs MobDef.charge).
+for (const voc of VOCATIONS.filter(v => v !== 'ashguard')) table[voc].bosses.forEach(b => {
+  if (!(b.struck >= BANDS.kitedStruck)) fails.push(`${voc} kites ${b.id} (L${b.level}): struck ${fmt(b.struck)} times a fight (≥ ${BANDS.kitedStruck})`);
+});
 for (const voc of VOCATIONS) table[voc].seam.forEach(s => {
   if (s.tier !== 'normal') return;
   if (!inBand(s.ttk, BANDS.seam)) fails.push(`${voc}: the Seam Eater L${s.level} on Normal takes ${fmt(s.ttk, 0)} s (band ${BANDS.seam.join('–')} s)`);
   if (s.death > BANDS.seamDeath) fails.push(`${voc}: the Seam Eater L${s.level} on Normal kills ${pct(s.death)} of first attempts (≤ ${pct(BANDS.seamDeath)})`);
 });
-// Nightmare and Hell: harder than Normal at the same level (more falls, or a longer fight).
+// Nightmare and Hell: a wall, not impossible — beaten by a geared Keeper above the Eater's level (TIER_LEAD), and
+// never softer than Normal at the Eater's level.
 for (const voc of VOCATIONS) for (const s of table[voc].seam.filter(x => x.tier !== 'normal')) {
+  const cap = BANDS.seamTierDeath[s.tier];
+  if (!(s.death <= cap)) fails.push(`${voc}: the Seam Eater L${s.level} on ${s.tier} (a level-${s.keeper} Keeper in resist gear) kills ${pct(s.death)} of first attempts (≤ ${pct(cap)})`);
   const n = table[voc].seam.find(x => x.level === s.level && x.tier === 'normal');
-  if (!(s.death > n.death || s.ttk > n.ttk * 1.2)) fails.push(`${voc}: the Seam Eater L${s.level} on ${s.tier} is no harder than on Normal`);
+  if (!(s.death >= n.death || s.ttk > n.ttk)) fails.push(`${voc}: the Seam Eater L${s.level} on ${s.tier} is softer than on Normal`);
 }
 // Vocations within ±25% of each other on a single foe: each one's time against the four's mean, per level and boss.
 const spread = (label, xs) => {

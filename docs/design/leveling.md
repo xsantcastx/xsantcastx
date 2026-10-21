@@ -37,9 +37,11 @@ life of ~30 + 12.5·m (Ash Wolf 45 at 1, Lava Hound 120 at 10, Thorn Weaver 380 
 **monster XP scales with monster level through its authored life**, and new continents must keep that rule. In the
 fight a creature rises with more (`td-life lifeScale`: ×1 at level 1 to ×3 by 6, then +0.06 a level; a boss ×22 —
 loot-and-combat.md §13), but its kill pays on the authored number, so this curve's pace is unchanged. The combat sim
-(`node scripts/combat-sim.mjs`) measures it in the real fight: level 10 in ~0.6 h, 30 in ~4.7 h, 50 in ~9 h — faster
-than the "content at pace" column past 30, because the Umbral Marches' creatures were authored above the rule
-(Drowned Knight 1,200 at 38 against the rule's 505). The first hour also hands in the Seamworks' six tasks (360 XP).
+(`node scripts/combat-sim.mjs`) measures it in the real fight: level 10 in ~0.6 h, 30 in ~4.7 h, 50 in ~12 h; 30 → 50
+takes ~7 h against this column's ~8 (`--check` holds 50 inside 10–18 h). The Umbral Marches' creatures were authored
+above the rule (Drowned Knight 1,200 at 38 against its 505) and paid ~1.5× too fast past 30; since 2026-10-21 their
+`hp` is the rule's and a `tough` factor keeps the life they fight with (`td-mobs MobDef.tough`), so they pay the rule's
+XP and fall no faster. The first hour also hands in the Seamworks' six tasks (360 XP).
 
 - **Town bands fit:** Ember Isle 1–8 in the first hour; the Reach 8–30 over the next five; Verdant 15–40 and the
   Marches 25–50 by ~16 hours.

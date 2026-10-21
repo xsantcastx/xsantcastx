@@ -53,7 +53,7 @@ export const SEAM_LATE = .5;
  * 28, then the shade-kin of the fens.
  */
 export function seamCall(level: number): string {
-  return level < 28 ? 'cinder-wraith' : level < 32 ? 'lantern-wisp' : level < 40 ? 'ink-hound' : 'drowned-knight';
+  return level < 31 ? 'cinder-wraith' : level < 34 ? 'lantern-wisp' : level < 40 ? 'ink-hound' : 'drowned-knight';
 }
 
 /** The Eater's level for a Keeper of `keeperLevel`: his own, held inside the band. */
