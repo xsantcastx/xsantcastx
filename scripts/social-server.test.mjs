@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSocialServer } from './social-server.mjs';
+import { PROTOCOL, createSocialServer } from './social-server.mjs';
 
 const origin = 'http://127.0.0.1:4317';
 async function setup(t, options = {}) {
@@ -112,9 +112,9 @@ async function events(t, base, token) {
 test('protocol 2: presence fields travel on join and update; v1 bodies still work', async t => {
   const { base, post } = await setup(t, { publishMs: 5 });
   const health = await (await fetch(`${base}/health`)).json();
-  assert.equal(health.protocol, 3);
+  assert.equal(health.protocol, PROTOCOL);
   const a = await (await post('/join', { name: 'Arin', vocation: 'warlock', look: '1.0.2.1.2.0.0.0.0.4', level: 7 })).json();
-  assert.equal(a.protocol, 3);
+  assert.equal(a.protocol, PROTOCOL);
   assert.equal(a.players[0].vocation, 'warlock');
   assert.equal(a.players[0].level, 7);
   const b = await (await post('/join', { name: 'Mira' })).json();
@@ -341,4 +341,242 @@ test('protocol 3: invites, answers, party lines and kill announcements are rate 
   for (let i = 0; i < 21; i++) kills.push((await call('kill', c.token, { creature: 'maw', level: 2, hp: 30, area: 'ember-isle' })).status);
   assert.equal(kills.filter(s => s === 201).length, 20);
   assert.equal(kills[20], 429);
+});
+
+// ── Protocol 4: identity, friends, whispers, block, report, privacy, the profanity mask (online.md Phase 3) ──
+import { clean, nameIsRude } from './social-words.mjs';
+import { firebaseVerifier, firestoreStore, memoryStore } from './social-identity.mjs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join as pathJoin } from 'node:path';
+import { createSign } from 'node:crypto';
+
+/** A room whose tokens are `tok-<uid>` (anything else is refused) over an in-memory store. */
+async function social(t, options = {}) {
+  let time = 1000;
+  const store = memoryStore();
+  const verify = async token => { const m = /^tok-(\w+)-padding$/.exec(token); if (!m) throw Object.assign(new Error('bad'), { status: 401 }); return { uid: m[1], anonymous: m[1].startsWith('anon') }; };
+  const ctx = await setup(t, { publishMs: 5, now: () => time, verify, store, ...options });
+  const joinAs = async (name, uid = null, extra = {}) => {
+    const r = await ctx.post('/join', { name, party: true, ...extra }, null, uid ? { Authorization: `Firebase tok-${uid}-padding` } : {});
+    return { status: r.status, ...(await r.json()) };
+  };
+  const call = async (path, token, data = {}) => { const r = await ctx.post(path, data, token); return { status: r.status, body: await r.json() }; };
+  return { ...ctx, store, joinAs, call, tick: ms => { time += ms; } };
+}
+
+test('protocol 4: a token binds the uid; no token is a guest; a bad token is refused; a banned account is barred', async t => {
+  const { joinAs, store, post, base } = await social(t);
+  const a = await joinAs('Arin', 'u1');
+  assert.equal(a.status, 201); assert.equal(a.guest, false); assert.equal(a.protocol, PROTOCOL);
+  const g = await joinAs('Mira');
+  assert.equal(g.guest, true);
+  assert.equal(g.players.find(p => p.id === a.id).guest, false);
+  assert.equal(g.players.find(p => p.id === g.id).guest, true);
+  // The uid never leaves the server.
+  assert.equal(JSON.stringify(g).includes('u1'), false);
+  assert.equal((await post('/join', { name: 'Oskar' }, null, { Authorization: 'Firebase not-a-good-token' })).status, 401);
+  // An anonymous Firebase user is a guest.
+  assert.equal((await joinAs('Anon', 'anon7')).guest, true);
+  store.bans.add('u9');
+  const barred = await joinAs('Wren', 'u9');
+  assert.equal(barred.status, 403);
+  assert.match(barred.error, /barred/);
+  // One account, one Keeper: the second join replaces the first.
+  const again = await joinAs('Arin', 'u1');
+  assert.equal(again.status, 201);
+  assert.equal((await post('/chat', { text: 'old session' }, a.token)).status, 401);
+  assert.equal((await (await fetch(`${base}/health`)).json()).players, 3);
+});
+
+test('protocol 4: without a verifier (no project configured) every token is ignored and every Keeper a guest', async t => {
+  const { post } = await setup(t);
+  const r = await (await post('/join', { name: 'Arin' }, null, { Authorization: 'Firebase tok-u1-padding' })).json();
+  assert.equal(r.guest, true);
+});
+
+test('protocol 4: friends — request, accept (both lists, persisted), online status with area, remove; guests cannot', async t => {
+  const { base, joinAs, call, store, post, tick } = await social(t);
+  const a = await joinAs('Arin', 'u1'), b = await joinAs('Mira', 'u2'), g = await joinAs('Guest');
+  const nextA = await events(t, base, a.token), nextB = await events(t, base, b.token);
+  await nextA('snapshot'); await nextB('snapshot');
+  assert.deepEqual((await nextA('friends')).friends, []);
+  assert.equal((await call('/friend/request', g.token, { to: a.id })).status, 403);
+  assert.equal((await call('/friend/request', a.token, { to: g.id })).status, 409);
+  assert.equal((await call('/friend/request', a.token, { to: a.id })).status, 400);
+  assert.equal((await call('/friend/request', a.token, { to: b.id })).status, 201);
+  assert.equal((await call('/friend/request', a.token, { to: b.id })).status, 409);
+  const { request } = await nextB('friend-request');
+  assert.deepEqual({ name: request.name, from: request.from }, { name: 'Arin', from: a.id });
+  assert.equal((await call('/friend/accept', a.token, { request: request.id })).status, 404);
+  assert.equal((await call('/friend/accept', b.token, { request: request.id })).status, 200);
+  assert.deepEqual((await store.friends('u1')).ids, ['u2']);
+  assert.deepEqual((await store.friends('u2')).names, { u1: 'Arin' });
+  const fa = (await nextA('friends')).friends;
+  assert.deepEqual(fa.map(f => [f.uid, f.name, f.online, f.player]), [['u2', 'Mira', true, b.id]]);
+  // Moving to another area tells friends.
+  await post('/update', { x: 1, y: 1, facing: 1, animation: 'idle', zone: 'ember-mine-1', area: 'ember-mine-1' }, b.token);
+  assert.equal((await nextA('friends')).friends[0].area, 'ember-mine-1');
+  // Mira leaves: offline. Back again: online.
+  await post('/leave', {}, b.token);
+  assert.equal((await nextA('friends')).friends[0].online, false);
+  const b2 = await joinAs('Mira', 'u2');
+  assert.equal((await nextA('friends')).friends[0].online, true);
+  // Remove: both lists, persisted (a fresh half-minute for the friend verbs' limit).
+  tick(30001);
+  assert.equal((await call('/friend/remove', a.token, { uid: 'nobody' })).status, 400);
+  assert.equal((await call('/friend/remove', a.token, { uid: 'u2' })).status, 200);
+  assert.deepEqual((await store.friends('u2')).ids, []);
+  assert.deepEqual((await nextA('friends')).friends, []);
+  assert.ok(b2.token);
+});
+
+test('protocol 4: privacy — appear offline hides from friends; friends-only invites refuse strangers', async t => {
+  const { base, joinAs, call, store } = await social(t);
+  await store.addFriends('u1', 'Arin', 'u2', 'Mira');
+  const a = await joinAs('Arin', 'u1'), b = await joinAs('Mira', 'u2', { privacy: { offline: true, invites: 'friends' } }), c = await joinAs('Oskar', 'u3');
+  const nextA = await events(t, base, a.token);
+  await nextA('snapshot');
+  assert.equal((await nextA('friends')).friends[0].online, false);
+  assert.equal((await call('/party/invite', c.token, { to: b.id })).status, 403);
+  assert.equal((await call('/party/invite', a.token, { to: b.id })).status, 201);
+  assert.equal((await call('/privacy', b.token, { offline: false, invites: 'everyone' })).status, 200);
+  assert.equal((await nextA('friends')).friends[0].online, true);
+  assert.equal((await call('/party/invite', c.token, { to: b.id })).status, 201);
+});
+
+test('protocol 4: whispers reach one Keeper (and echo back), masked; flooding is refused', async t => {
+  const { base, joinAs, call, tick } = await social(t);
+  const a = await joinAs('Arin'), b = await joinAs('Mira'), c = await joinAs('Oskar');
+  const nextA = await events(t, base, a.token), nextB = await events(t, base, b.token), nextC = await events(t, base, c.token);
+  await nextA('snapshot'); await nextB('snapshot'); await nextC('snapshot');
+  assert.equal((await call('/whisper', a.token, { to: b.id, text: 'meet me by the shit forge' })).status, 201);
+  const got = (await nextB('whisper')).whisper;
+  assert.deepEqual({ from: got.from, name: got.name, to: got.to, toName: got.toName, text: got.text }, { from: a.id, name: 'Arin', to: b.id, toName: 'Mira', text: 'meet me by the s*** forge' });
+  assert.equal((await nextA('whisper')).whisper.id, got.id);
+  await call('/chat', c.token, { text: 'public' });
+  assert.equal((await nextC()).type !== 'whisper', true);
+  assert.equal((await call('/whisper', a.token, { to: 'nobody', text: 'x' })).status, 400);
+  assert.equal((await call('/whisper', a.token, { to: b.id, text: '' })).status, 400);
+  // Five in ten seconds (refused ones count too).
+  tick(10001);
+  const codes = [];
+  for (let i = 0; i < 6; i++) codes.push((await call('/whisper', a.token, { to: b.id, text: 'hi' })).status);
+  assert.deepEqual(codes, [201, 201, 201, 201, 201, 429]);
+});
+
+test('protocol 4: block hides their chat, presence, whispers and invites; persisted for an account; unblock restores', async t => {
+  const { base, joinAs, call, store, post } = await social(t);
+  const a = await joinAs('Arin', 'u1'), b = await joinAs('Mira', 'u2');
+  const nextA = await events(t, base, a.token);
+  await nextA('snapshot');
+  assert.equal((await call('/block', a.token, { player: b.id })).status, 200);
+  assert.deepEqual((await nextA('blocks')).blocks, [{ key: 'u2', name: 'Mira' }]);
+  assert.equal((await nextA('players')).players.some(p => p.id === b.id), false);
+  assert.deepEqual((await store.blocks('u1')).ids, ['u2']);
+  // Mira's line, whisper and invite never reach Arin; Mira is not told.
+  assert.equal((await call('/whisper', b.token, { to: a.id, text: 'hello?' })).status, 201);
+  assert.equal((await call('/party/invite', b.token, { to: a.id })).status, 403);
+  assert.equal((await call('/friend/request', b.token, { to: a.id })).status, 201);
+  await post('/chat', { text: 'can you hear me' }, b.token);
+  await post('/chat', { text: 'only mine' }, a.token);
+  const seen = await nextA('chat');
+  assert.equal(seen.message.text, 'only mine');
+  // A fresh join of the same account keeps the block (from the store).
+  const a2 = await joinAs('Arin', 'u1');
+  assert.equal(a2.players.some(p => p.id === b.id), false);
+  const nextA2 = await events(t, base, a2.token);
+  await nextA2('snapshot');
+  assert.deepEqual((await nextA2('blocks')).blocks, [{ key: 'u2', name: 'Mira' }]);
+  assert.equal((await call('/unblock', a2.token, { key: 'u2' })).status, 200);
+  assert.deepEqual((await nextA2('blocks')).blocks, []);
+  assert.equal((await nextA2('players')).players.some(p => p.id === b.id), true);
+  assert.deepEqual((await store.blocks('u1')).ids, []);
+  // A guest's block lasts the session (keyed by the other's session).
+  const g = await joinAs('Guesty');
+  assert.equal((await call('/block', g.token, { player: b.id })).status, 200);
+  assert.equal((await call('/unblock', g.token, { key: 'nope' })).status, 400);
+});
+
+test('protocol 4: a report files a document with the reported Keeper\'s own last lines; reasons and floods refused', async t => {
+  const { joinAs, call, store, post, tick } = await social(t);
+  const a = await joinAs('Arin', 'u1'), b = await joinAs('Mira');
+  await post('/chat', { text: 'buy gold at spam dot example' }, b.token);
+  assert.equal((await call('/report', a.token, { player: b.id, reason: 'bad' })).status, 400);
+  assert.equal((await call('/report', a.token, { player: a.id, reason: 'spam' })).status, 400);
+  const ok = await call('/report', a.token, { player: b.id, reason: 'spam', note: 'gold seller' });
+  assert.equal(ok.status, 201);
+  const r = store.reports[0];
+  assert.deepEqual({ reason: r.reason, note: r.note, status: r.status, from: r.from, about: r.about.name, guest: r.about.guest }, { reason: 'spam', note: 'gold seller', status: 'open', from: { uid: 'u1', name: 'Arin', guest: false }, about: 'Mira', guest: true });
+  assert.deepEqual(r.lines.map(l => l.text), ['buy gold at spam dot example']);
+  // Three in ten minutes (refused ones count too).
+  tick(600001);
+  for (const reason of ['abuse', 'name', 'other']) assert.equal((await call('/report', a.token, { player: b.id, reason })).status, 201);
+  assert.equal((await call('/report', a.token, { player: b.id, reason: 'cheating' })).status, 429);
+});
+
+test('protocol 4: the profanity mask on chat and party lines; rude names shown as Keeper; innocent words untouched', async t => {
+  const { joinAs, call, post } = await social(t);
+  const a = await joinAs('Arin'), b = await joinAs('Big Shit');
+  assert.equal(b.players.find(p => p.id === b.id).name, 'Keeper');
+  const said = (await (await post('/chat', { text: 'what the FUCK, class assumes Scunthorpe' }, a.token)).json()).message.text;
+  assert.equal(said, 'what the F***, class assumes Scunthorpe');
+  const inv = (await call('/party/invite', a.token, { to: b.id })).body.invite;
+  await call('/party/accept', b.token, { invite: inv.id });
+  assert.equal((await call('/party/chat', a.token, { text: 'hijo de puta' })).body.message.text, 'hijo de p***');
+  for (const [raw, out] of [['sh1t', 's***'], ['f u c k off', 'f*** off'], ['you ass', 'you a**'], ['as I said', 'as I said'], ['cockatoo, conocer, Dickens', 'cockatoo, conocer, Dickens']]) assert.equal(clean(raw), out, raw);
+  assert.equal(nameIsRude('Aster'), false); assert.equal(nameIsRude('Fuuuck'), true);
+});
+
+test('protocol 4: firebaseVerifier checks signature, project, issuer, expiry; firestoreStore speaks the REST shapes', async t => {
+  let dir;
+  try {
+    dir = mkdtempSync(pathJoin(tmpdir(), 'hearth-'));
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', pathJoin(dir, 'k.pem'), '-out', pathJoin(dir, 'c.pem'), '-subj', '/CN=test', '-days', '1'], { stdio: 'ignore' });
+  } catch { t.skip('openssl is not available'); return; }
+  const key = readFileSync(pathJoin(dir, 'k.pem'), 'utf8'), cert = readFileSync(pathJoin(dir, 'c.pem'), 'utf8');
+  const nowS = 1_800_000_000;
+  const sign = (claims, kid = 'k1') => {
+    const enc = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+    const head = enc({ alg: 'RS256', kid, typ: 'JWT' }), body = enc(claims);
+    const sig = createSign('RSA-SHA256').update(`${head}.${body}`).sign(key).toString('base64url');
+    return `${head}.${body}.${sig}`;
+  };
+  const good = { aud: 'proj', iss: 'https://securetoken.google.com/proj', sub: 'uidA', iat: nowS - 10, exp: nowS + 3000, auth_time: nowS - 100, firebase: { sign_in_provider: 'google.com' } };
+  let fetched = 0;
+  const v = firebaseVerifier({ projectId: 'proj', now: () => nowS * 1000, fetch: async () => { fetched++; return new Response(JSON.stringify({ k1: cert }), { headers: { 'cache-control': 'public, max-age=3600' } }); } });
+  assert.deepEqual(await v(sign(good)), { uid: 'uidA', anonymous: false });
+  assert.deepEqual(await v(sign({ ...good, firebase: { sign_in_provider: 'anonymous' } })), { uid: 'uidA', anonymous: true });
+  for (const bad of [{ aud: 'other' }, { iss: 'https://evil' }, { exp: nowS - 1 }, { sub: '' }, { iat: nowS + 600 }]) await assert.rejects(v(sign({ ...good, ...bad })), JSON.stringify(bad));
+  await assert.rejects(v(sign(good, 'k2')));
+  const forged = sign(good).split('.'); forged[1] = Buffer.from(JSON.stringify({ ...good, sub: 'someoneElse' })).toString('base64url');
+  await assert.rejects(v(forged.join('.')));
+  await assert.rejects(v('garbage'));
+  assert.equal(fetched, 1, 'the certificates are cached');
+
+  const calls = [];
+  const fs = firestoreStore({ projectId: 'proj', now: () => 0, token: async () => 'sa-token', fetch: async (url, init = {}) => {
+    calls.push({ url, method: init.method ?? 'GET', body: init.body ? JSON.parse(init.body) : null, auth: init.headers?.Authorization });
+    if (url.endsWith('/users/u1/meta/ban')) return Response.json({ fields: { banned: { booleanValue: true } } });
+    if (url.endsWith('/users/u2/meta/ban')) return new Response('', { status: 404 });
+    if (url.endsWith('/users/u1/social/friends')) return Response.json({ fields: { ids: { arrayValue: { values: [{ stringValue: 'u2' }] } }, names: { mapValue: { fields: { u2: { stringValue: 'Mira' } } } } } });
+    if (url.endsWith('/player-reports')) return Response.json({ name: 'projects/proj/databases/(default)/documents/player-reports/abc' });
+    return Response.json({});
+  } });
+  assert.equal(await fs.banned('u1'), true);
+  assert.equal(await fs.banned('u2'), false);
+  assert.deepEqual(await fs.friends('u1'), { ids: ['u2'], names: { u2: 'Mira' } });
+  await fs.addFriends('u1', 'Arin', 'u2', 'Mira');
+  const commit = calls.at(-1);
+  assert.match(commit.url, /documents:commit$/);
+  assert.equal(commit.auth, 'Bearer sa-token');
+  assert.deepEqual(commit.body.writes.map(w => [w.update.name.split('/documents/')[1], w.updateMask.fieldPaths[0], w.updateTransforms[0].appendMissingElements.values[0].stringValue]),
+    [['users/u1/social/friends', 'names.`u2`', 'u2'], ['users/u2/social/friends', 'names.`u1`', 'u1']]);
+  await fs.removeFriends('u1', 'u2');
+  assert.equal(calls.at(-1).body.writes[0].updateTransforms[0].removeAllFromArray.values[0].stringValue, 'u2');
+  assert.equal(calls.at(-1).body.writes[0].update.fields.names, undefined);
+  assert.equal(await fs.report({ at: 0, reason: 'spam', status: 'open', from: { uid: null, name: 'A', guest: true }, about: { uid: 'u2', name: 'M', guest: false }, lines: [] }), 'abc');
+  assert.equal(calls.at(-1).body.fields.reason.stringValue, 'spam');
+  assert.ok(calls.at(-1).body.fields.at.timestampValue);
 });
