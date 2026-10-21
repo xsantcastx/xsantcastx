@@ -3534,7 +3534,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 }
 /* Landscape phones: no room under the spells (the chat runs along the bottom), so the two stand beside the spells'
    lower half, still well left of the centre. */
-@media (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-belt { left: 66px; top: 50%; } }
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-belt { left: 66px; top: 50%; display: grid; grid-template-columns: repeat(2, 46px); } }
 
 /* Skills: a slot dims without mana; the book button sits at the bar's end. */
 .td-skill--dry { filter: grayscale(.7) brightness(.7); }
@@ -3554,10 +3554,10 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .sb__body small { display: block; margin-top: 2px; font: 13px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
 .sb__body em { display: block; margin-top: 2px; font: 600 11px var(--font-pixel); font-style: normal; color: var(--cozy-mana-text); }
 .sb__keys { display: grid; grid-template-columns: repeat(2, 30px); gap: 4px; }
-.sb__keys button, .sb__aura { min-width: 30px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
+.sb__keys button, .sb__aura, .sbt__belt { min-width: 30px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
   box-shadow: var(--cozy-chip); font: 700 12px/1 var(--font-pixel); cursor: pointer; }
-.sb__keys button.on, .sb__aura[aria-pressed="true"] { background: var(--cozy-brass); color: var(--cozy-wood-0); }
-.sb__aura { min-height: 44px; min-width: 56px; }
+.sb__keys button.on, .sb__aura[aria-pressed="true"], .sbt__belt[aria-pressed="true"] { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.sb__aura, .sbt__belt { min-height: 44px; min-width: 56px; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .spellbook { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 72%; }
   .sb__keys { grid-template-columns: repeat(4, 34px); }
@@ -3623,9 +3623,9 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .sbt__syn small { font: 12px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
 .sbt__syn small.on { color: var(--cozy-leaf); }
 .sbt__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.sbt__learn { min-height: 44px; min-width: 96px; padding: 0 14px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0);
+.sbt__learn, .sbt__inscribe { min-height: 44px; min-width: 96px; padding: 0 14px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0);
   box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
-.sbt__learn:disabled { background: var(--cozy-wood-2); color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); cursor: default; }
+.sbt__learn:disabled, .sbt__inscribe:disabled { background: var(--cozy-wood-2); color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); cursor: default; }
 .sbt__why { flex: 1 1 100%; font: 600 11px/1.2 var(--font-pixel); color: var(--cozy-berry); }
 .sbt .sb__keys { grid-template-columns: repeat(4, 44px); }
 .sbt .sb__keys button { min-width: 44px; min-height: 44px; }
@@ -4127,3 +4127,44 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .stage--td .td-pet__face img { width: 32px; height: 32px; }
   .stage--td .td-pet__txt b { font-size: 12px; }
 }
+
+/* ── Spellstones and Soul (shared/spellstones) ── */
+/* The belt's Spellstone slot: basalt-rimmed; a bare blank, dimmed, while no stone sits there. */
+.td-pot[data-kind='stone'] { --pot: color-mix(in srgb, var(--cozy-brass) 60%, var(--cozy-wood-1)); }
+.td-stone.td-pot--empty img { opacity: .45; filter: grayscale(.6); }
+/* Soul: a pale-flame pip and its count beside the mana number (desktop), a small chip under the orbs (phone). */
+.soul-pip { display: inline-block; width: 4px; height: 4px; margin-right: 3px; vertical-align: middle; image-rendering: pixelated;
+  background: var(--cozy-cream);
+  box-shadow: 0 -4px 0 color-mix(in srgb, var(--cozy-mana-hi) 80%, var(--cozy-cream)), 0 4px 0 var(--cozy-mana-lo), -4px 4px 0 var(--cozy-mana-lo), 4px 4px 0 var(--cozy-mana-lo); }
+.vital__soul { margin-left: 10px; font: 700 12px/1 var(--cozy-font-read); color: var(--cozy-cream); white-space: nowrap; }
+.td-soul { display: none; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage--td .td-soul { display: block; justify-self: center; padding: 2px 4px 2px 6px; font: 700 10px/1.1 var(--font-pixel); font-style: normal;
+    color: var(--cozy-cream); background: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-mana-lo); }
+  .stage--td .td-soul .soul-pip { width: 2px; height: 2px; box-shadow: 0 -2px 0 var(--cozy-mana-hi), 0 2px 0 var(--cozy-mana-lo); }
+}
+/* The Spellbook's inscribing row. */
+.sbt__stone { display: grid; gap: 3px; margin: 6px 0 0; padding: 6px 8px; background: color-mix(in srgb, var(--cozy-wood-0) 55%, transparent); box-shadow: inset 0 0 0 1px var(--cozy-brass-lo); }
+.sbt__stone > b { display: flex; align-items: center; gap: 6px; font: 700 12px var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.sbt__stone > b img { image-rendering: pixelated; }
+.sbt__stone small { font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
+.sbt__stone-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Grave-goods on the item card (shared/grave-goods) ── */
+/* A curse: berry red, its gift and its price; laid to rest, it greys to brass. */
+.d2tip__curse { display: grid; gap: 2px; padding: 6px 6px 5px; border-top: 1px solid color-mix(in srgb, var(--cozy-berry) 55%, transparent);
+  background: color-mix(in srgb, var(--cozy-berry) 14%, transparent); }
+.d2tip__curse b { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-berry); }
+.d2tip__curse p { margin: 0; font-size: 11px; color: var(--cozy-cream); }
+.d2tip__curse p:nth-of-type(2) { color: color-mix(in srgb, var(--cozy-berry) 75%, var(--cozy-cream)); }
+.d2tip__curse--rest { background: transparent; border-top-color: color-mix(in srgb, var(--cozy-brass) 50%, transparent); }
+.d2tip__curse--rest b { color: var(--cozy-brass-hi); text-decoration: line-through; }
+.d2tip__curse--rest p:nth-of-type(2) { color: var(--cozy-brass-hi); }
+.d2tip__lore { font-style: italic; opacity: .75; }
+/* A whisper: a faint violet edge and the words woken so far, the rest left as dots. */
+.d2tip__whisper { display: grid; gap: 2px; padding: 6px 6px 5px; border-top: 1px solid color-mix(in srgb, var(--cozy-loot-epic) 55%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cozy-loot-epic) 70%, transparent); }
+.d2tip__whisper b { font-size: 11px; font-style: italic; color: var(--cozy-loot-epic); }
+.d2tip__whisper q { font: italic 13px/1.3 var(--font-lore, Georgia, serif); color: var(--cozy-cream); }
+.d2tip__whisper p { margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.d2tip__whisper--silent { box-shadow: none; opacity: .85; }

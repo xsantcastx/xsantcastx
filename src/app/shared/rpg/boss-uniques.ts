@@ -162,6 +162,7 @@ export function relicTotals(ids: readonly string[]): RelicTotals {
 
 /** Life back a second: the worn regeneration plus the relics', × the Mossbound Heart's while the Keeper stands still. */
 export function relicRegen(base: number, r: RelicTotals, still: boolean): number {
-  const n = Math.max(0, base) + r.regen;
-  return still ? n * r.stillRegen : n;
+  // A curse's drain (a negative base, shared/grave-goods) is not doubled by standing still; regeneration is.
+  const n = base + r.regen;
+  return still && n > 0 ? n * r.stillRegen : n;
 }

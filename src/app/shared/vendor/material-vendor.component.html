@@ -13,17 +13,17 @@
   <app-station-tabs stationTabs [tabs]="tabs" [active]="tab" (activeChange)="setTab($event)" [label]="t('vendor.tabs')" />
 
   @if (tab === 'potions') {
-  <!-- Edrin Kade's potion shelf (shared/potions): pick a potion → [− n +] Buy for N Gold. -->
+  <!-- Edrin Kade's shelf (shared/potions, and the Basalt Blank of shared/spellstones): pick one → [− n +] Buy for N Gold. -->
   <div stationHero class="mv-hero" data-shelf="potions">
     <app-reward-pop [reward]="reward" (dismissed)="reward = null" />
     <app-station-journal>
       <app-journal-list journalList [rows]="potionRows" [selected]="potionId"
                         [label]="t('vendor.potions.list')" (pick)="pickPotion($event)" />
       <div journalDetail class="mv-detail">
-        <app-detail-head [art]="potionArt" [name]="potion.name" />
+        <app-detail-head [art]="potionArt" [name]="shelf.name" />
         <p class="mv-hint">{{ potionDoes }} {{ t('vendor.potions.hold', { n: potionHeld }) }}</p>
         <app-action-button
-          [label]="t('vendor.buy', { n: fmt(potion.price * potionQty) })"
+          [label]="t('vendor.buy', { n: fmt(shelf.price * potionQty) })"
           [costs]="potionCosts"
           [pending]="!hydrated"
           [stepper]="true"

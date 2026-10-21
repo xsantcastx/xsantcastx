@@ -171,6 +171,8 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'lesser-mana-potion': 'Lesser Mana Potion',
   'greater-mana-potion': 'Greater Mana Potion',
   'rejuvenation-potion': 'Rejuvenation Potion',
+  // Spellstones (shared/spellstones): the blank they are cut from (a satchel stack; the stones live in their pouch).
+  'basalt-blank': 'Basalt Blank',
   // The Lost Cabinets (shared/cabinets/cabinets.model.ts CABINET_ITEMS; cabinets.spec pins the names together).
   'curio-unstruck-bell': 'The Unstruck Bell',
   'curio-jar-of-noon': 'A Jar of Noon',

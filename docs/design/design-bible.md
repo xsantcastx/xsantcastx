@@ -402,6 +402,15 @@ the Forge's 22 runes.
 S/U/L: *source* Soul from kills, Blanks from mining (gives the mine a reason past ore); *use* cross-vocation utility,
 a Gold sink, a reason to kill near your level; *lore* the cant on basalt.
 
+**As built (2026-10-21, `shared/spellstones/`).** Soul 0–100 (+1 per 20 levels, to 200), +1 a kill of a creature no
+more than 10 levels below (+1 per 5 Soul Harvest ranks), a pale-flame pip by the mana number. Basalt Blanks drop from
+creatures (1 in 20, champions 15%, uniques 25%, bosses 2 at 50%) and sell at Edrin Kade's counter for 20 s of a hunt at
+the Keeper's level (min 5 Gold); mining basalt is not a source yet. Inscribing is in the Spellbook (any active spell
+with a rank): 1 blank + ceil(mana ÷ 5) Soul (1–12) → round(100 ÷ mana) charges (2–10) at the rank held now, kept in a
+stone pouch per character. The belt's Spellstone slot (F) casts at the stone's rank, no mana, no cooldown of the
+spell's own, one stone a second; any vocation can use one. Every active spell has a stone (the table above is the
+flavour, not a whitelist); four icons, by family.
+
 ### 5.2 Eclipse phases (the world clock as a game rule)
 
 The world day is 24 real minutes (`world-clock.model.ts`: 1 s = 1 world minute). Every fifth day an eclipse runs 8 world
@@ -638,6 +647,12 @@ there. A cursed item is strong and costs something:
 A cursed item **can be worn, taken off and sold** freely (cozy: no trapped slot). Sexton Aldous Wren will **cleanse**
 one for Gold: the curse goes, the bonus halves, and the item gains the line "*Laid to rest.*" — a choice, not a fix.
 
+**As built (2026-10-21, `shared/grave-goods/`).** 1 in 12 rare+ (non-unique) drops on any floor of the Ashen Crypt or
+the Drowned Crypts is Cursed with one of three, its numbers frozen at the drop: *Grave-cold* (+8 + 0.3·iL% spell damage;
+drains 1 + iL/25 life a second, never the last point), *Hollow Ward* (+15 + 2·iL life; −15 All Resist), *Leaden Step*
+(+4 + 0.1·iL% crit; −12% move speed). Sexton Wren (Seamworks, west lane; "Grave-goods" in his talk window) lays one to
+rest for 3 minutes of a hunt at the Keeper's level. The named examples above are not built yet.
+
 ---
 
 ## 7. Items
@@ -746,6 +761,13 @@ here was somebody's bad week made useful."
 The cost: while a Whispering item is worn the Hush rises 25% faster. The Archivist will **silence** it (the item stops
 growing, stays at its stage, the Hush cost goes). S/U/L: *source* drops; *use* an item that grows with you (D2's
 "Hellfire Torch" feeling); *lore* the erased witnesses speaking through what they touched.
+
+**As built (2026-10-21, light first version, `shared/grave-goods/`).** 1 in 40 rare+ (non-unique) drops anywhere
+whispers in one of four erased voices (a Bastion watchman, a drowned sister, the fourth Keeper's tally, a struck scribe):
+four pieces of one sentence, the first at the drop, the next at 25, 75 and 150 kills made with it worn; each woken piece
+adds a little of its stat, and the whole sentence names who it was. Until the Hush lands, the cost is −5 All Resist
+while it whispers. The Archivist (new on the Seamworks' east lane) silences one for 2 minutes of a hunt: it keeps its
+words and stat, stops growing, and the cost goes.
 
 ### 7.8 Trophy drops† (Tibia rare creature drops)
 

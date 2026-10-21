@@ -117,6 +117,8 @@ export function buildSeamworksSquare(): TdMap {
   stallAt('vendor', 22, 22, 4, 4, 'bread');
   // The sexton of the Hushed Barrow, come into town on the west lane toward his graves (a town task giver, shared/town-tasks).
   stalls.push(giverStall('sexton-wren', 'Sexton Aldous Wren', 'He sweeps the Hushed Barrow and counts its graves twice.', tx(9), ty(13)));
+  // The Archivist, down from the Archive, on the east lane with his notes: he silences whispering items (shared/grave-goods).
+  stalls.push(giverStall('archivist', 'The Archivist', 'Keeper of fragments. He silences what whispers.', tx(35), ty(13)));
   // The forge quest and the waystone stand on their own.
   const forge = station('forge');
   if (forge) { add(forgeHearth, tx(18), ty(8), { w: 2, h: 1 }); stalls.push({ station: forge, x: tx(18), y: ty(8) + 6 }); }
