@@ -118,6 +118,9 @@ import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, se
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
 import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
+import { TdCoop, type CoopRole } from './td-coop';
+import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
+import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
 import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
@@ -262,6 +265,18 @@ export class TopDownEngine {
    * what the canvas last said of it (`data-seam`: risen, half, slain, gone).
    */
   private seam: Mob | null = null;
+  /** Shared creatures in a party (Hearth protocol 4; td-coop.ts): host, member, or solo as before. */
+  private coop!: TdCoop;
+  /** `?fxcoop=1` (automated browsers only): `window.__tdCoop` lays calm creatures, wounds them, reads the shared set. */
+  private readonly fxCoop = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxcoop=1\b/.test(location.search);
+  /** The co-op spec's quiet: no wild spawns (only what it lays). */
+  private fxCoopQuiet = false;
+  private coopRoleSeen = '';
+  /** Other Keepers' companions (coop-pals.ts): the party's from its channel, everyone's pet and Glim from presence. */
+  private readonly palBook = new PalBook();
+  private palAcc = 0;
+  private palKey = '';
+  private palAt = -1e9;
   private seamSlain = false;
   private seamLast = '';
   private seamSeen = '';
@@ -431,6 +446,15 @@ export class TopDownEngine {
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
     this.mobs.elites = true;
+    this.coop = new TdCoop(this.mobs, {
+      send: body => this.options.onCoopSnap?.(body) ?? Promise.resolve(false),
+      claim: body => this.options.onCoopHits?.(body) ?? Promise.resolve(false),
+      killed: kill => this.options.onCoopKill?.(kill) ?? 'none',
+      now: () => performance.now(),
+      phase: () => (this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase),
+      still: () => this.still,
+      role: role => this.coopRole(role),
+    });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.placeCompanions();
@@ -534,6 +558,28 @@ export class TopDownEngine {
       },
       hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); this.lastHurt = this.time; },
     };
+    if (this.fxCoop) (window as unknown as Record<string, unknown>)['__tdCoop'] = {
+      view: () => this.coop.view(),
+      stats: () => ({ ...this.coop.stats }),
+      // No wild spawns from now on, and none standing: only what the spec lays (a calm stage for comparing screens).
+      quiet: () => { this.fxCoopQuiet = true; if (this.coop.role !== 'member') { this.mobs.mobs.length = 0; this.mobs.target = null; } return true; },
+      // A calm creature `dx, dy` from the Keeper (the host's), given its wire id at once.
+      lay: (type = 'ash-wolf', dx = 40, dy = 0, calm = true) => {
+        const def = MOBS[type]; if (!def || this.coop.role === 'member') return null;
+        const p = this.player, m = this.mobs.place(`fx-coop:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, calm ? { ...def, sight: 0 } : def, p.x + dx, p.y + dy);
+        if (calm) m.wait = 1e9;
+        return this.coop.name(m);
+      },
+      // A blow of `n` on the creature with this wire id, through the real path (a member's becomes a claim).
+      hit: (id: string, n: number) => { const m = this.mobs.mobs.find(x => x.nid === id); if (!m) return false; this.mobs.wound(m, n); return true; },
+      // Point the Keeper's own attack at it (its staff, its blade): the real auto-attack path.
+      target: (id: string) => { const m = this.mobs.mobs.find(x => x.nid === id); this.mobs.target = m ?? null; return !!m; },
+      hp: () => Math.round(this.hp),
+      // Companions: the other Keepers' drawn here, this Keeper's own as sent, and `n` raised skeletons at his side.
+      pals: () => this.palsShown(),
+      mine: () => this.myPals(),
+      raise: (n = 2) => { for (let i = 0; i < n; i++) this.mobs.minions.push({ id: 9000 + i, x: this.player.x + (i ? -16 : 16), y: this.player.y + 6, hp: 40, maxHp: 40, dmg: [3, 5], cd: .6, t: 1, face: 1, life: Infinity, hit: 0, target: null }); return this.mobs.minions.length; },
+    };
   }
 
   // ── Lifecycle (the component's contract) ───────────────────────────────────
@@ -549,6 +595,8 @@ export class TopDownEngine {
       this.raf = requestAnimationFrame(loop);
       try {
         if (!this.paused && !this.fxFrozen) this.update(dt);
+        // A host in a menu still keeps the party's creatures alive for the others (they are not paused); it is no prey meanwhile.
+        else if (this.paused && !this.fxFrozen && this.coop.role === 'host') this.updateShared(dt);
         this.draw();
       } catch (err) {
         if (!this.frameError) { this.frameError = true; console.error('[top-down] frame error', err); }
@@ -560,6 +608,7 @@ export class TopDownEngine {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
+    if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
@@ -1006,6 +1055,78 @@ export class TopDownEngine {
   }
   /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
   setParty(ids: readonly string[]): void { this.peers.party = new Set(ids); }
+  /** Protocol 4: the room's election (null against an older room), this Keeper's id, the whole party's ids. */
+  setCoop(areas: CoopAreas | null, me: string, party: readonly string[]): void { this.coop.setAreas(areas, me, party); }
+  /** Protocol 4: a host's snapshot reached this member. */
+  coopSnap(msg: CoopSnapMsg): void { this.coop.snap(msg); }
+  /** Protocol 4: members' claims reached this host. */
+  coopHits(msg: CoopHitsMsg): void { this.coop.hits(msg); }
+  /** Protocol 5: a party member's own companions (pet, beasts, skeletons, wisps, beacon, Glim) reached this screen. */
+  coopPals(msg: { from: string; area: string; pals: CoopPal[] }): void {
+    if (msg.area === this.peerArea()) this.palBook.take(msg.from, msg.pals, performance.now(), this.still);
+  }
+  /** Presence's cosmetic companions (the pet and Glim as offsets: everyone sees them, party or not). */
+  palsPresence(): string { return encodePresencePals(this.player, this.myPals()); }
+  /** This Keeper's own companions as the party sees them: each owner is the authority for its own. */
+  private myPals(): CoopPal[] {
+    const out: CoopPal[] = [];
+    const b = this.pet;
+    if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
+    this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
+    for (const k of this.mobs.minions) out.push({ i: `k${k.id % 1e6}`, k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
+    this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
+    if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
+    return cleanPals(out);
+  }
+  /** Five times a second while others of the party share the area: this Keeper's companions, when they changed (a heartbeat a second). */
+  private tickPals(dt: number): void {
+    if (!this.coop.sharing) return;
+    this.palAcc += dt * 1000;
+    if (this.palAcc < PAL_MS) return;
+    this.palAcc = 0;
+    const pals = this.myPals(), key = JSON.stringify(pals), now = performance.now();
+    if (key === this.palKey && now - this.palAt < PAL_HEARTBEAT_MS) return;
+    this.palKey = key; this.palAt = now;
+    void this.options.onCoopPals?.({ area: this.peerArea(), pals });
+  }
+  /** Another Keeper's companion, with the painter its own owner uses. */
+  private drawPal(p: CoopPal, x: number, y: number, moving: boolean): void {
+    const c = this.ctx, time = this.time + (p.i.charCodeAt(0) % 5) * .3;
+    if (p.k === 'pet') {
+      if (!p.t) return;
+      const body = { id: p.t, x, y, face: p.f, t: time, doing: p.a ? 'fight' : 'follow', moving, carried: null, feel: null, feelT: 0, hopT: 0, hurtT: 0, cd: 0 } as unknown as PetBody;
+      this.drawPet(body);
+    } else if (p.k === 'beast' || p.k === 'stampede') drawBeast(c, { x, y, face: p.f, age: 1, kind: p.k === 'stampede' ? 'stampede' : 'called' }, time, this.still);
+    else if (p.k === 'skel') this.drawRaised({ x, y, face: p.f, t: time + 1, life: Infinity, hit: 0, hp: p.h ?? 1, maxHp: p.m ?? 1 } as unknown as Minion);
+    else if (p.k === 'wisp') drawLampState(c, { ward: 0, lastLight: 0, wisps: [{ x, y }], mobs: [] }, { x, y }, time, this.still);
+    else if (p.k === 'beacon') drawBeacon(c, { x, y, t: 1 }, time, this.still);
+    else if (p.k === 'glim') {
+      const gx = Math.round(x), gy = Math.round(y);
+      c.globalCompositeOperation = 'lighter';
+      glowSquare(c, gx, gy, 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, .32);
+      c.globalCompositeOperation = 'source-over';
+      const sprite = glimFrame(this.still ? 'mid' : GLIM_FLAP[Math.floor(time * 8) % 4], 'calm');
+      if (sprite) c.drawImage(sprite, gx - Math.floor((GLIM_W + 2) / 2), gy - Math.floor((GLIM_H + 2) / 2));
+    }
+  }
+  /** The other Keepers' companions drawn now (the e2e reads it): the party's whole list, everyone else's pet and Glim. */
+  palsShown(): { owner: string; k: string; t: string; x: number; y: number }[] {
+    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number }[] = [];
+    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y) });
+    for (const p of this.peers.drawn) {
+      if (this.palBook.fresh(p.id, now)) continue;
+      for (const q of decodePresencePals(this.peers.palsOf(p.id))) out.push({ owner: p.id, k: q.k, t: q.t, x: Math.round(p.x + q.dx), y: Math.round(p.y + q.dy) });
+    }
+    return out;
+  }
+  /** Protocol 4: this Keeper's part in its area ('solo', 'host' or 'member'). */
+  get coopRoleNow(): CoopRole { return this.coop.role; }
+  /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
+  private coopRole(role: CoopRole): void {
+    if (role === 'member') this.seam = null;
+    if (role !== this.coopRoleSeen) { this.coopRoleSeen = role; this.canvas.setAttribute('data-coop-role', role); }
+  }
   /** The local Keeper is waving. */
   get selfWaving(): boolean { return this.peers.waving('', this.time); }
   setHearths(s: { lit: readonly string[]; wake: string | null; blessings: number }): void {
@@ -2134,6 +2255,7 @@ export class TopDownEngine {
     this.updateSexton(dt);
     this.updateSmoke(dt);
     this.updateFight(dt);
+    this.tickPals(dt);
     this.updatePet(dt);
     this.updateGlim(dt);
     this.updateGuide(dt);
@@ -2557,6 +2679,16 @@ export class TopDownEngine {
     };
   }
 
+  /** The shared creatures alone (a host with a menu open): they move, fight the others and stream; this Keeper is away. */
+  private updateShared(dt: number): void {
+    this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
+    this.peers.step(dt, this.peerArea(), this.player, this.still);
+    this.mobs.selfAway = true;
+    try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
+    this.coop.after(dt);
+    this.tickPals(dt);
+  }
+
   private updateFight(dt: number): void {
     // The sky as a rule (td-phases.ts): a pinned `?hour=` stands for its own phase, so a picture never meets the real sky.
     const phase = this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase;
@@ -2565,14 +2697,20 @@ export class TopDownEngine {
     if (this.fxPhase && !this.fxPhaseLaid && this.time > .5 && this.level === this.world) this.layPhaseShowcase(this.fxPhase);
     // After Glim's welcome line has had its say, so the warning is not lost under it.
     if (this.fxSeam && !this.fxSeamLaid && this.time > 6 && this.level === this.world) this.laySeamShowcase();
-    this.updateSeam(phase);
+    // Shared creatures (td-coop.ts): this Keeper's part in its area now, the others of the party as prey on the host,
+    // the host's creatures placed on a member. A member raises nothing of its own (no spawns, no Seam Eater).
+    this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
+    const member = this.coop.role === 'member';
+    if (!member) this.updateSeam(phase);
     // The endless surface hands over the spawns round the Keeper as they come into reach, and forgets far ones.
     this.spawnTimer -= dt;
     // (The seam specs keep the stage to the Eater and its call, so every photograph and count is its own.)
-    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam) {
+    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam && !member && !this.fxCoopQuiet) {
       this.spawnTimer = .5;
       const r = 420;
       this.mobs.addSpawns(this.world.spawnsIn(this.player.x - r, this.player.y - r, this.player.x + r, this.player.y + r));
+      // A host raises the ground round the others too (they hunt where they stand, not only where the host does).
+      for (const o of this.mobs.others) this.mobs.addSpawns(this.world.spawnsIn(o.x - r, o.y - r, o.x + r, o.y + r));
       this.mobs.prune(900);
     }
     // Chasing a target (Tibia): walk into reach of it, re-aimed as it moves.
@@ -2585,6 +2723,7 @@ export class TopDownEngine {
       else this.path = [];
     }
     this.mobs.update(dt);
+    this.coop.after(dt);
     // A potion pouring in: its share of what is left this frame.
     if (this.sip.t > 0) {
       const f = Math.min(1, dt / this.sip.t), h = this.sip.hp * f, m = this.sip.mana * f;
@@ -2713,6 +2852,18 @@ export class TopDownEngine {
     for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeast(c, b, this.time, this.still) });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
+    // Other Keepers' companions (coop-pals.ts), each with its owner's painter.
+    {
+      const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id));
+      for (const sp of this.palBook.shown(now)) if (drawn.has(sp.owner) && inView(sp.x, sp.y)) items.push({ y: sp.y, draw: () => this.drawPal(sp.pal, sp.x, sp.y, sp.moving) });
+      for (const peer of this.peers.drawn) {
+        if (this.palBook.fresh(peer.id, now)) continue;
+        for (const q of decodePresencePals(this.peers.palsOf(peer.id))) {
+          const x = peer.x + q.dx, y = peer.y + q.dy;
+          if (inView(x, y)) items.push({ y, draw: () => this.drawPal({ i: q.k, k: q.k, ...(q.t ? { t: q.t } : {}), x, y, f: q.dx > 0 ? -1 : 1 }, x, y, peer.moving) });
+        }
+      }
+    }
     // Other Keepers (the Hearth room): y-sorted with the world, but always under the local Keeper where they overlap.
     const view = { scale: s, camX: cam.x, camY: cam.y, time: this.time };
     for (const p of this.peers.drawn) {
