@@ -3650,7 +3650,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .d2tip__affixes li[data-stat='ward'] { --pip: var(--cozy-loot-rare); }
 .d2tip__affixes li[data-stat='magicFind'] { --pip: var(--cozy-loot-epic); }
 .d2tip__affixes li[data-stat='xpBonus'] { --pip: var(--cozy-loot-uncommon); }
-.d2tip__affixes li[data-stat='goldPerSec'] { --pip: var(--cozy-loot-mythic); }
+.d2tip__affixes li[data-stat='goldFind'], .d2tip__affixes li[data-stat='goldPerSec'] { --pip: var(--cozy-loot-mythic); }
 .d2tip__affixes li[data-stat='life'] { --pip: var(--cozy-berry); }
 .d2tip__affixes li[data-stat='lifeRegen'] { --pip: var(--cozy-leaf); }
 .d2tip__affixes li[data-stat='mana'] { --pip: var(--cozy-mana-hi); }

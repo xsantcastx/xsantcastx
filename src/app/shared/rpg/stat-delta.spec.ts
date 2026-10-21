@@ -9,7 +9,7 @@ import {
 } from './stat-delta';
 import { keeperCombatStats } from './keeper-combat';
 
-const ZERO = { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 };
+const ZERO = { goldFind: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 };
 
 describe('stat-delta', () => {
   describe('compareStats', () => {
@@ -29,25 +29,25 @@ describe('stat-delta', () => {
     });
 
     it('lists a stat the candidate would drop as a negative', () => {
-      const rows = compareStats({ magicFind: 7 }, { goldPerSec: 4, magicFind: 5 });
-      expect(rows.map(r => [r.key, r.delta])).toEqual([['goldPerSec', -4], ['magicFind', 2]]);
+      const rows = compareStats({ magicFind: 7 }, { goldFind: 4, magicFind: 5 });
+      expect(rows.map(r => [r.key, r.delta])).toEqual([['goldFind', -4], ['magicFind', 2]]);
     });
 
     it('treats an empty slot as zero, so every stat is a gain', () => {
-      const rows = compareStats({ goldPerSec: 2, strikePower: 1 }, undefined);
+      const rows = compareStats({ goldFind: 2, strikePower: 1 }, undefined);
       expect(rows.map(r => r.direction)).toEqual(['up', 'up']);
       expect(rows.map(r => r.before)).toEqual([0, 0]);
     });
 
     it('drops unchanged stats by default and keeps them dimmed on request', () => {
-      const worn = { goldPerSec: 4, magicFind: 5 };
-      const cand = { goldPerSec: 4, magicFind: 8 };
+      const worn = { goldFind: 4, magicFind: 5 };
+      const cand = { goldFind: 4, magicFind: 8 };
       expect(compareStats(cand, worn).map(r => r.key)).toEqual(['magicFind']);
 
       const all = compareStats(cand, worn, { includeUnchanged: true });
-      expect(all.map(r => r.key)).toEqual(['goldPerSec', 'magicFind']);
+      expect(all.map(r => r.key)).toEqual(['goldFind', 'magicFind']);
       expect(all[0].direction).toBe('same');
-      expect(all[0].text).toBe('Gold/sec ±0');
+      expect(all[0].text).toBe('Gold Find ±0%');
     });
 
     it('never lists a stat neither item touches', () => {
@@ -56,21 +56,21 @@ describe('stat-delta', () => {
     });
 
     it('rounds float drift out of the delta', () => {
-      const [row] = compareStats({ goldPerSec: 0.4 }, { goldPerSec: 0.1 });
+      const [row] = compareStats({ goldFind: 0.4 }, { goldFind: 0.1 });
       expect(row.delta).toBe(0.3);
-      expect(row.text).toBe('Gold/sec +0.3');
+      expect(row.text).toBe('Gold Find +0.3%');
     });
 
     it('returns rows in the canonical stat order', () => {
-      const rows = compareStats({ ward: 1, goldPerSec: 1, xpBonus: 1 }, null);
-      expect(rows.map(r => r.key)).toEqual(['goldPerSec', 'xpBonus', 'ward']);
+      const rows = compareStats({ ward: 1, goldFind: 1, xpBonus: 1 }, null);
+      expect(rows.map(r => r.key)).toEqual(['goldFind', 'xpBonus', 'ward']);
     });
   });
 
   describe('totalsDelta', () => {
     it('lists only what moved between two loadouts', () => {
-      const before = { ...ZERO, goldPerSec: 2, strikePower: 1 };
-      const after = { ...ZERO, goldPerSec: 2, strikePower: 2.3, ward: 0.5 };
+      const before = { ...ZERO, goldFind: 2, strikePower: 1 };
+      const after = { ...ZERO, goldFind: 2, strikePower: 2.3, ward: 0.5 };
       const rows = totalsDelta(before, after);
       expect(rows.map(r => [r.key, r.delta, r.direction])).toEqual([
         ['strikePower', 1.3, 'up'],
@@ -105,7 +105,7 @@ describe('stat-delta', () => {
     });
 
     it('nets the signed deltas', () => {
-      expect(netDelta(compareStats({ goldPerSec: 3, magicFind: 9 }, { goldPerSec: 4, magicFind: 5 }))).toBe(3);
+      expect(netDelta(compareStats({ goldFind: 3, magicFind: 9 }, { goldFind: 4, magicFind: 5 }))).toBe(3);
       expect(netDelta([])).toBe(0);
     });
   });

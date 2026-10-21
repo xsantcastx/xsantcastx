@@ -98,8 +98,17 @@ export type SlotId = EquipmentSlotId;
  * needs handling.
  */
 export interface ItemStats {
-  /** Flat Gold per second while equipped. */
+  /**
+   * RETIRED forge income (flat Gold per second while equipped). The forge no longer pays by the second (economy-curve
+   * IDLE_INCOME), so nothing mints or rolls this any more; items minted before still carry it and keep loading, and
+   * `legacyGoldFind` reads it as Gold Find (the tooltip and `sumStats` both do), so the old line still means something.
+   */
   goldPerSec?: number;
+  /**
+   * Gold Find: percent more Gold from every pile picked up off the hunt (D2's "extra gold from monsters"). Added up
+   * with Forge Power and the Gold runes, capped at `GOLD_FIND_CAP`, applied in `EconomyService.earnHuntGold`.
+   */
+  goldFind?: number;
   /** Percentage points of Magic Find. */
   magicFind?: number;
   /** Percentage XP bonus. */
@@ -152,20 +161,31 @@ export interface ItemStats {
 }
 
 export const ITEM_STAT_KEYS: (keyof ItemStats)[] = [
-  'goldPerSec', 'magicFind', 'xpBonus', 'strikePower', 'ward',
+  'goldPerSec', 'goldFind', 'magicFind', 'xpBonus', 'strikePower', 'ward',
   'life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
   'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist',
 ];
 
-/** The five stats that predate the combat affixes. New mints roll only magicFind / xpBonus of these. */
-export type LegacyStatKey = 'goldPerSec' | 'magicFind' | 'xpBonus' | 'strikePower' | 'ward';
+/** The five stats that predate the combat affixes (Gold Find took the retired Gold/sec's place). */
+export type LegacyStatKey = 'goldFind' | 'magicFind' | 'xpBonus' | 'strikePower' | 'ward';
 export const LEGACY_STAT_KEYS: readonly LegacyStatKey[] = [
-  'goldPerSec', 'magicFind', 'xpBonus', 'strikePower', 'ward',
+  'goldFind', 'magicFind', 'xpBonus', 'strikePower', 'ward',
 ];
+
+/**
+ * What a retired `goldPerSec` roll is worth as Gold Find, in percent: 8 × ln(1 + n), to a tenth. The old values spanned
+ * 0.2 (Common) to 1,400 (Singular) on a log-ish ladder, so a log maps them to about 2% … 58% without ever recomputing
+ * or rewriting the stored roll (the roll's frozen grade stays true).
+ */
+export function legacyGoldFind(goldPerSec: number | undefined): number {
+  if (!(typeof goldPerSec === 'number') || !(goldPerSec > 0)) return 0;
+  return Math.round(8 * Math.log(1 + goldPerSec) * 10) / 10;
+}
 
 /** How each stat is written on a tooltip. */
 export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
-  goldPerSec: 'Gold/sec',
+  goldPerSec: 'Gold Find',
+  goldFind: 'Gold Find',
   magicFind: 'Magic Find',
   xpBonus: 'XP',
   strikePower: 'Strike',
@@ -188,7 +208,8 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
 
 /** True for the stats written as a percentage. */
 export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
-  goldPerSec: false,
+  goldPerSec: true,
+  goldFind: true,
   magicFind: true,
   xpBonus: true,
   strikePower: false,
@@ -214,31 +235,18 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
  *
  * Split out of `formatItemMod` for the Reforge panel, whose before/after rows
  * already carry the stat name in their own column; the composed line would
- * have printed "Gold/sec  Gold/sec +0.6".
+ * have printed "Gold Find  Gold Find +6%".
  */
 export function formatStatValue(key: keyof ItemStats, value: number): string {
   const sign = value >= 0 ? '+' : '';
   const suffix = ITEM_STAT_IS_PERCENT[key] ? '%' : '';
-  const shown = key === 'goldPerSec' ? compactStat(value) : String(value);
+  const shown = key === 'goldPerSec' ? String(legacyGoldFind(value)) : String(value);
   return `${sign}${shown}${suffix}`;
 }
 
-/** Diablo-style mod line: `Gold/sec +2.4` or `Gold/sec +1.2K`. */
+/** Diablo-style mod line: `Gold Find +12%`. */
 export function formatItemMod(key: keyof ItemStats, value: number): string {
   return `${ITEM_STAT_LABELS[key]} ${formatStatValue(key, value)}`;
-}
-
-function compactStat(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return trimStat(n / 1_000_000_000) + 'B';
-  if (abs >= 1_000_000) return trimStat(n / 1_000_000) + 'M';
-  if (abs >= 1_000) return trimStat(n / 1_000) + 'K';
-  return String(n);
-}
-
-function trimStat(n: number): string {
-  const fixed = n.toFixed(1);
-  return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
 }
 
 export interface GameItem {
@@ -588,25 +596,19 @@ export const MF_CHARMS: CharmSeed[] = [
 ];
 
 /**
- * Gold charms. The same ladder, paying flat Gold per second.
+ * Gold charms. The same ladder, paying Gold Find (percent on every pile the hunt drops, capped at GOLD_FIND_CAP across
+ * everything worn). They used to pay the forge's flat Gold per second, which the forge no longer makes (IDLE_INCOME);
+ * a charm minted then keeps its stored roll and reads as Gold Find (`legacyGoldFind`).
  *
- * Flat rather than a percentage, deliberately: `goldPerSec` is the one stat the
- * economy already mirrors as a flat number (`rpgFlatGold`), and a percentage
- * charm would compound with every upgrade on the Market ladder — a Void-tier
- * multiplier late in the game is worth more than every other charm in the
- * table put together, which is exactly the item that makes the other two
- * families unwearable.
- *
- * The numbers are pitched against the Market's own ladder rather than against
- * the MF charms, because that is what they compete with: a Mythic here is
- * roughly a mid-ladder bellows you do not have to buy.
+ * The numbers sit below the Magic Find charms' (5 … 100) at every rung, because Gold Find is a straight multiplier on
+ * the hunt's income while Magic Find only changes what falls.
  */
 export const GOLD_CHARMS: CharmSeed[] = [
   {
     id: 'charm-copper-knot',
     name: 'Copper Knot',
     rarity: 'common',
-    stats: { goldPerSec: 2 },
+    stats: { goldFind: 4 },
     weight: 0.9996,
     lore: 'Tied by somebody who was owed money and never collected. It has been earning quietly since.',
   },
@@ -614,7 +616,7 @@ export const GOLD_CHARMS: CharmSeed[] = [
     id: 'charm-tollkeepers-mark',
     name: 'Tollkeeper’s Mark',
     rarity: 'rare',
-    stats: { goldPerSec: 8 },
+    stats: { goldFind: 10 },
     weight: 0.00025,
     lore: 'Every road out of the Archivum had one of these at the end of it. The roads are gone.',
   },
@@ -622,7 +624,7 @@ export const GOLD_CHARMS: CharmSeed[] = [
     id: 'charm-counting-stone',
     name: 'Counting Stone',
     rarity: 'epic',
-    stats: { goldPerSec: 20 },
+    stats: { goldFind: 18 },
     weight: 0.00011,
     lore: 'It counts. Nobody has established what, only that the number goes up and has never gone down.',
   },
@@ -630,7 +632,7 @@ export const GOLD_CHARMS: CharmSeed[] = [
     id: 'charm-first-coin',
     name: 'The First Coin',
     rarity: 'legendary',
-    stats: { goldPerSec: 45 },
+    stats: { goldFind: 28 },
     weight: 0.000035,
     lore: 'Struck before there was anything to buy, by someone who correctly assumed there would be.',
   },
@@ -638,7 +640,7 @@ export const GOLD_CHARMS: CharmSeed[] = [
     id: 'charm-unspent-hoard',
     name: 'The Unspent Hoard',
     rarity: 'mythic',
-    stats: { goldPerSec: 140 },
+    stats: { goldFind: 60 },
     weight: 0.000005,
     lore: 'A whole vault, folded small enough to carry. The folding is the valuable part.',
   },
@@ -798,10 +800,15 @@ export function mintCharm(
   };
 }
 
+/** The Gold Find of a worn total: its `goldFind` plus the retired `goldPerSec` of older items read as Gold Find. */
+export function totalGoldFind(totals: Pick<ItemStats, 'goldFind' | 'goldPerSec'>): number {
+  return Math.round(((totals.goldFind ?? 0) + legacyGoldFind(totals.goldPerSec)) * 10) / 10;
+}
+
 /** Sum a set of stat blocks. Used for equipped totals on both player and explorer. */
 export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   const total: Required<ItemStats> = {
-    goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
+    goldPerSec: 0, goldFind: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
     life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0,
     fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0,
   };
@@ -810,8 +817,9 @@ export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
       total[key] += block[key] ?? 0;
     }
   }
-  // Gold/sec accumulates one-decimal rolls, so float drift shows up in the
-  // headline number within a dozen items. Round once, here.
+  // The retired Gold/sec rolls on older items add up raw; `totalGoldFind` reads them as Gold Find. One-decimal rolls
+  // drift in float; round once, here.
   total.goldPerSec = Math.round(total.goldPerSec * 10) / 10;
+  total.goldFind = Math.round(total.goldFind * 10) / 10;
   return total;
 }

@@ -233,8 +233,10 @@ export function applyTemperBonus(
 ): ItemStats {
   const def = definitionFor(item);
   // An affix item (§3) tempers what it carries; its definition's rollKeys are legacy.
+  // A catalogue item also tempers the stats it carries beyond its definition's keys (the retired Gold/sec of one
+  // minted before Gold Find), so an older piece's temper still shows.
   const keys: ItemStatKey[] = item.itemLevel == null && def?.rollKeys?.length
-    ? [...def.rollKeys]
+    ? [...new Set<ItemStatKey>([...def.rollKeys, ...(Object.keys(item.stats) as ItemStatKey[])])]
     : (Object.keys(item.stats) as ItemStatKey[]);
   if (!keys.length) return { ...item.stats };
   const scale = RARITY_TEMPER_SCALE[item.rarity] ?? 1;
@@ -247,7 +249,7 @@ export function applyTemperBonus(
     let value = Math.round(raw * 100) / 100;
     // A success must always be visible. Rounding to one decimal used to erase
     // roughly 30% of successful tempers on a common Basalt Edge (~1.3
-    // goldPerSec): a 3-8% gain on that value is 0.04-0.10, and anything under
+    // of its primary stat): a 3-8% gain on that value is 0.04-0.10, and anything under
     // 0.05 rounded straight back to the number the player started with — a
     // "success" that charged 40,000+ gold and changed nothing on screen. Two
     // decimals shrinks that dead zone to almost nothing; this guarantees it

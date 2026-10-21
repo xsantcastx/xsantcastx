@@ -82,7 +82,7 @@ export interface StatsSnapshot {
   spent: number;
   /** Spent plus banked. */
   total: number;
-  /** Flat Gold/sec from Forge Power. */
+  /** Gold Find (percent) from Forge Power. */
   goldPerSec: number;
   /** Magic Find from Luck alone. */
   magicFind: number;

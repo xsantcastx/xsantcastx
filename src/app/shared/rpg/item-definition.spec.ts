@@ -7,12 +7,12 @@ describe('item definition rolls', () => {
     const def = itemDefinitionById('eclipse-longblade')!;
     const a = rollItemStats(def, 'rare', () => 0);
     const b = rollItemStats(def, 'rare', () => 1);
-    expect(a.goldPerSec).toBeTruthy();
-    expect(b.goldPerSec).toBeGreaterThan(a.goldPerSec ?? 0);
+    expect(a.goldFind).toBeTruthy();
+    expect(b.goldFind).toBeGreaterThan(a.goldFind ?? 0);
     const first = mintEquipment('eclipse-longblade', 'rare', () => 0, '2026-08-01T00:00:00.000Z', 'a');
     const second = mintEquipment('eclipse-longblade', 'rare', () => 1, '2026-08-01T00:00:00.000Z', 'b');
-    // New mints roll the slot's implicit (Spell Damage on a weapon), not Gold/sec (§3).
-    expect(first?.stats.goldPerSec).toBeUndefined();
+    // New mints roll the slot's implicit (Spell Damage on a weapon), not Gold Find (§3).
+    expect(first?.stats.goldFind).toBeUndefined();
     expect(first?.stats.spellDamage).not.toBe(second?.stats.spellDamage);
     expect(first?.definitionId).toBe('eclipse-longblade');
   });
@@ -21,7 +21,7 @@ describe('item definition rolls', () => {
     const def = itemDefinitionById('astral-helm')!;
     const stats = rollItemStats(def, 'epic', () => 0.5);
     expect(stats.xpBonus).toBeTruthy();
-    expect(stats.goldPerSec).toBeUndefined();
+    expect(stats.goldFind).toBeUndefined();
     expect(stats.strikePower).toBeUndefined();
   });
 
@@ -31,28 +31,28 @@ describe('item definition rolls', () => {
 
   it('freezes the rolled block on the instance', () => {
     const item = mintEquipment('basalt-edge', 'uncommon', () => 0.2, '2026-08-01T00:00:00.000Z', 'edge')!;
-    const rolled = item.stats.goldPerSec;
+    const rolled = item.stats.goldFind;
     const again = rollItemStats(itemDefinitionById('basalt-edge')!, 'mythic', () => 1);
-    expect(item.stats.goldPerSec).toBe(rolled);
-    expect(again.goldPerSec).not.toBe(rolled);
+    expect(item.stats.goldFind).toBe(rolled);
+    expect(again.goldFind).not.toBe(rolled);
   });
 
   it('mints the Basalt Edge with strikePower — the one craftable weapon has to feed the Seamworks and the Forge', () => {
     // B2 scope deviation, accepted: `mintEquipment` is only ever called from
     // forge-recipes.ts (Basalt Edge). Without strikePower on this def neither
     // strikePower consumer — mining recovery, forge yield — could fire in real
-    // play. goldPerSec stays the primary key; the strikePower base is the
+    // play. goldFind stays the primary key; the strikePower base is the
     // Eclipse Longblade anchor. Only *newly* crafted Edges carry it: an
     // instance's rolled block is frozen at mint (see the spec above), so an
     // Edge minted before this change never gains the stat.
     const edge = itemDefinitionById('basalt-edge')!;
-    expect(edge.rollKeys[0]).toBe('goldPerSec');
+    expect(edge.rollKeys[0]).toBe('goldFind');
     expect(edge.rollKeys).toContain('strikePower');
     expect(edge.base.strikePower).toBe(itemDefinitionById('eclipse-longblade')!.base.strikePower);
     for (const roll of [0, 0.5, 1]) {
       const minted = mintEquipment('basalt-edge', 'uncommon', () => roll, '2026-08-01T00:00:00.000Z', `edge-${roll}`)!;
       expect(minted.stats.strikePower).toBeGreaterThan(0);
-      expect(minted.stats.goldPerSec).toBeGreaterThan(0);
+      expect(minted.stats.goldFind).toBeGreaterThan(0);
     }
   });
 
@@ -60,30 +60,30 @@ describe('item definition rolls', () => {
     const edge = itemDefinitionById('basalt-edge')!;
     const cuirass = itemDefinitionById('infernal-cuirass')!;
     expect(edge.temperGoldBase).toBe(40_000);
-    expect(cuirass.base.goldPerSec).toBe(0.45);
+    expect(cuirass.base.goldFind).toBe(1.8);
     // The band this samples moved when roll grades landed: `rollItemStats` now
     // multiplies the tier *ceiling* by a grade drawn from `QUALITY_BAND`, so a
     // mid-band Uncommon sits lower than it did under the old floor-to-ceiling
     // sample. The ceiling itself is unchanged — see RARITY_MULT's header.
     const uncommon = rollItemStats(cuirass, 'uncommon', () => 0.5);
-    expect(uncommon.goldPerSec).toBeGreaterThan(0.2);
-    expect(uncommon.goldPerSec).toBeLessThan(0.5);
+    expect(uncommon.goldFind).toBeGreaterThan(0.8);
+    expect(uncommon.goldFind).toBeLessThan(2);
     const best = rollItemStats(cuirass, 'uncommon', () => 1);
-    expect(best.goldPerSec).toBeGreaterThan(uncommon.goldPerSec!);
+    expect(best.goldFind).toBeGreaterThan(uncommon.goldFind!);
   });
 
   it('authors the Keeper kit to the roll/temper spec table', () => {
     const kit = [
-      ['eclipse-longblade', 'weapon', 'neutral', 'goldPerSec', 0.4],
+      ['eclipse-longblade', 'weapon', 'neutral', 'goldFind', 1.6],
       ['keeper-staff', 'weapon', 'neutral', 'xpBonus', 2],
       ['void-buckler', 'off-hand', 'void-touched', 'ward', 1],
       ['keepers-cowl', 'head', 'neutral', 'magicFind', 1.5],
-      ['keepers-mantle', 'chest', 'neutral', 'goldPerSec', 0.25],
+      ['keepers-mantle', 'chest', 'neutral', 'goldFind', 1],
       ['godforge-gauntlets', 'hands', 'neutral', 'strikePower', 1.2],
       ['astral-pendant', 'trinket', 'celestial', 'magicFind', 2],
       ['anchor-ring', 'trinket', 'celestial', 'ward', 0.5],
       ['astral-helm', 'head', 'celestial', 'xpBonus', 2.5],
-      ['infernal-cuirass', 'chest', 'infernal', 'goldPerSec', 0.45],
+      ['infernal-cuirass', 'chest', 'infernal', 'goldFind', 1.8],
       ['luminous-greaves', 'legs', 'luminous', 'magicFind', 2],
       ['verdant-bracers', 'hands', 'verdant', 'xpBonus', 1.5],
     ] as const;

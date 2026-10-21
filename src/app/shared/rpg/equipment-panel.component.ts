@@ -29,6 +29,7 @@ import {
   rarityGlow,
   rarityLabel,
   sumStats,
+  totalGoldFind,
   type ItemRarity,
   type SlotId,
 } from './item.model';
@@ -216,6 +217,9 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   label(item: GameItem): string { return rarityLabel(item.rarity); }
   initialsOf(item: GameItem): string { return item.name.slice(0, 2).toUpperCase(); }
   trackItem(_: number, item: GameItem): string { return item.id; }
+
+  /** Worn Gold Find, the retired Gold/sec of older items read in (item.model totalGoldFind). */
+  get goldFind(): number { return totalGoldFind(this.snap.totals); }
 
   hasTotals(): boolean {
     const t = this.snap.totals;

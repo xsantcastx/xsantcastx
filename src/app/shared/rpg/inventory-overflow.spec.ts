@@ -166,7 +166,8 @@ describe('StorageService: satchel rows and Vault tabs', () => {
     memory = new MemoryGateway();
     ({ inventory, economy } = configure(memory));
     storage = TestBed.inject(StorageService);
-    economy.earnGold(300_000_000, 'test');
+    // Enough for rows and the first tabs, short of General IV (8.7M, twelve hours of a level-300 hunt).
+    economy.earnGold(3_000_000, 'test');
   });
 
   it('prices from STORAGE_CURVE and is idempotent per mutation id', () => {

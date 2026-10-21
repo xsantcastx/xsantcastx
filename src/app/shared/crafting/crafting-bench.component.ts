@@ -788,7 +788,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 }
 
 const STAT_LABELS: Readonly<Partial<Record<ItemStatKey, string>>> = {
-  goldPerSec: 'Gold / sec',
+  goldPerSec: 'Gold Find',
+  goldFind: 'Gold Find',
   xpBonus: 'XP bonus',
   magicFind: 'Magic Find',
   ward: 'Ward',

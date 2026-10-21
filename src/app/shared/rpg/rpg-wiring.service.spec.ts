@@ -6,6 +6,7 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { coerceInventoryLedger, mergeInventoryLedgers, restoreCharms } from './inventory-ops';
 import { INVENTORY_KEY, InventoryService } from './inventory.service';
+import { totalGoldFind } from './item.model';
 import { RpgWiringService } from './rpg-wiring.service';
 
 class MemoryGateway {
@@ -68,7 +69,11 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     // Helm 2 + charm 4. The charm is in `charm1`, which is a real slot now, so
     // it is worn rather than bagged and its Gold is in the total.
     expect(inventory.snapshot.totals.goldPerSec).toBe(6);
-    expect(economy.snapshot.breakdown.rpg).toBe(6);
+    // The forge pays nothing by the second: no flat Gold is mirrored. The gear's retired Gold/sec (helm 2 + charm 4)
+    // reads as Gold Find on the hunt's piles instead.
+    expect(economy.snapshot.breakdown.rpg).toBe(0);
+    expect(economy.goldFind).toBe(totalGoldFind(inventory.snapshot.totals));
+    expect(economy.goldFind).toBeGreaterThan(0);
     registry.flush(ECONOMY_KEY);
 
     const blob = JSON.parse(memory.readRaw(ECONOMY_KEY)!);
@@ -77,7 +82,8 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     registry.rehydrate(ECONOMY_KEY);
     await Promise.resolve();
 
-    expect(economy.snapshot.breakdown.rpg).toBe(6);
+    expect(economy.snapshot.breakdown.rpg).toBe(0);
+    expect(economy.goldFind).toBe(totalGoldFind(inventory.snapshot.totals));
     expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(false);
     expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
   });
@@ -129,7 +135,8 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     await Promise.resolve();
 
     expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
-    expect(economy.snapshot.breakdown.rpg).toBe(6);
+    expect(economy.snapshot.breakdown.rpg).toBe(0);
+    expect(economy.goldFind).toBeGreaterThan(0);
   });
 
   it('two-device economy max then remirror survives the charm un-retirement', async () => {
@@ -186,13 +193,13 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     TestBed.inject(RpgWiringService).init();
     await Promise.resolve();
     // Still bagged — the migration strips the tag and does not guess a well —
-    // so the flat-Gold mirror is corrected back to the helm's 2, not the
-    // merged-in 6.
+    // so the mirror is corrected back to the helm's 2 (a Gold Find of one roll), not the merged-in 6.
     expect(TestBed.inject(InventoryService).snapshot.bag.some(row => row.id === 'worn')).toBe(true);
-    expect(TestBed.inject(EconomyService).snapshot.breakdown.rpg).toBe(2);
+    expect(TestBed.inject(EconomyService).snapshot.breakdown.rpg).toBe(0);
+    expect(TestBed.inject(EconomyService).goldFind).toBe(totalGoldFind({ goldPerSec: 2 }));
   });
 
-  it('does not advance rpgFlatGold when equip save rolls back', async () => {
+  it('does not advance Gold Find when equip save rolls back', async () => {
     const memory = new MemoryGateway();
     TestBed.configureTestingModule({
       providers: [
@@ -214,11 +221,32 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     };
     expect(inventory.add(helm)).toBeTruthy();
     await Promise.resolve();
-    const rpg = economy.snapshot.breakdown.rpg;
+    const found = economy.goldFind;
     memory.write = () => { /* swallow */ };
     expect(inventory.equip('fail-helm', 'off-hand')).toBe(false);
     await Promise.resolve();
-    expect(economy.snapshot.breakdown.rpg).toBe(rpg);
+    expect(economy.goldFind).toBe(found);
     expect(inventory.snapshot.equipped['off-hand']).toBeUndefined();
+  });
+});
+
+describe('Gold Find on the hunt', () => {
+  it('raises a pile on its way in, capped, and a Gold potion rides on top', () => {
+    TestBed.configureTestingModule({ providers: [EconomyService, LocalSaveRegistry, { provide: GameStateGateway, useValue: new MemoryGateway() }] });
+    const economy = TestBed.inject(EconomyService);
+    expect(economy.goldFind).toBe(0);
+    const base = economy.snapshot.gold;
+    expect(economy.earnHuntGold(100)).toBe(100);
+    economy.setGoldFind(50);
+    expect(economy.earnHuntGold(100)).toBe(150);
+    economy.setGoldFind(10_000);
+    expect(economy.goldFind).toBe(150);
+    expect(economy.earnHuntGold(100)).toBe(250);
+    economy.setGoldFind(-5);
+    expect(economy.earnHuntGold(0)).toBe(0);
+    expect(economy.earnHuntGold(40)).toBe(40);
+    economy.setInfusionGold(1.1);
+    expect(economy.earnHuntGold(100)).toBe(110);
+    expect(economy.snapshot.gold).toBeGreaterThan(base);
   });
 });

@@ -151,7 +151,7 @@
       <h2 class="eb-panel__title" id="eb-potions-title">{{ t('enchant.potions.title') }}</h2>
       <p class="eb-panel__hint">{{ t('enchant.potions.hint') }}
         <span class="eb-live">{{ maxActive - freeSlots }} / {{ maxActive }}</span>
-        @if (live.gold) { <span class="eb-live">+{{ live.gold }}% Gold/sec</span> }
+        @if (live.gold) { <span class="eb-live">+{{ live.gold }}% Gold from the hunt</span> }
         @if (live.xp) { <span class="eb-live">+{{ live.xp }}% XP</span> }
         @if (live.magicFind) { <span class="eb-live">+{{ live.magicFind }}% Magic Find</span> }
       </p>

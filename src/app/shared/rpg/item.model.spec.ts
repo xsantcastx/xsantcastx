@@ -7,7 +7,10 @@ import {
   XP_CHARMS,
   charmFamily,
   formatItemMod,
+  legacyGoldFind,
   mintCharm,
+  sumStats,
+  totalGoldFind,
   rollCharmSeed,
   type ItemRarity,
 } from './item.model';
@@ -24,10 +27,10 @@ describe('rollItemStats', () => {
     // Rolled stats are rounded to one decimal at mint, so the expectations are
     // rounded the same way rather than compared at full precision.
     const round = (n: number) => Math.round(n * 10) / 10;
-    const ceiling = 0.4 * 1.15;
-    expect(high.goldPerSec).toBe(round(ceiling * QUALITY_BAND.uncommon.max));
-    expect(low.goldPerSec).toBe(round(ceiling * QUALITY_BAND.uncommon.min));
-    expect(high.goldPerSec).toBeGreaterThan(low.goldPerSec ?? 0);
+    const ceiling = 1.6 * 1.15;
+    expect(high.goldFind).toBe(round(ceiling * QUALITY_BAND.uncommon.max));
+    expect(low.goldFind).toBe(round(ceiling * QUALITY_BAND.uncommon.min));
+    expect(high.goldFind).toBeGreaterThan(low.goldFind ?? 0);
   });
 });
 
@@ -52,8 +55,10 @@ describe('mintCharm', () => {
     expect(dud.rollQuality?.magicFind).toBe(0);
     expect(charm.definitionId).toBeUndefined();
     expect(formatItemMod('magicFind', 5)).toBe('Magic Find +5%');
-    expect(formatItemMod('goldPerSec', 2.4)).toBe('Gold/sec +2.4');
-    expect(formatItemMod('goldPerSec', 1_250)).toBe('Gold/sec +1.3K');
+    expect(formatItemMod('goldFind', 12)).toBe('Gold Find +12%');
+    // The retired Gold/sec of older items reads as Gold Find, never as the forge income it was.
+    expect(formatItemMod('goldPerSec', 2.4)).toBe('Gold Find +9.8%');
+    expect(formatItemMod('goldPerSec', 1_250)).toBe('Gold Find +57.1%');
   });
 
   it('copies the stat block rather than aliasing the seed', () => {
@@ -148,5 +153,30 @@ describe('the charm table', () => {
       [0.1, 0.45, 0.8].map(r => charmFamily(rollCharmSeed(() => r).id)),
     );
     expect(families.size).toBe(3);
+  });
+});
+
+describe('Gold Find and the retired Gold/sec', () => {
+  it('reads an old Gold/sec roll as Gold Find on a climbing, bounded ladder', () => {
+    expect(legacyGoldFind(undefined)).toBe(0);
+    expect(legacyGoldFind(0)).toBe(0);
+    expect(legacyGoldFind(0.2)).toBeGreaterThan(1);
+    expect(legacyGoldFind(4)).toBeLessThan(legacyGoldFind(45));
+    expect(legacyGoldFind(45)).toBeLessThan(legacyGoldFind(1_400));
+    expect(legacyGoldFind(1_400)).toBeLessThan(60);
+  });
+
+  it('adds the old roll to a new one in the worn total without touching either stored number', () => {
+    const totals = sumStats([{ goldFind: 10 }, { goldPerSec: 4 }]);
+    expect(totals.goldFind).toBe(10);
+    expect(totals.goldPerSec).toBe(4);
+    expect(totalGoldFind(totals)).toBe(Math.round((10 + legacyGoldFind(4)) * 10) / 10);
+  });
+
+  it('no Gold charm pays the forge any more: each rolls Gold Find', () => {
+    for (const seed of GOLD_CHARMS) {
+      expect(seed.stats.goldPerSec).toBeUndefined();
+      expect(seed.stats.goldFind).toBeGreaterThan(0);
+    }
   });
 });

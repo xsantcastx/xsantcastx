@@ -134,6 +134,22 @@ export function huntRate(level: number): number {
   return huntGoldMean(level) * HUNT_GOLD.killsPerHour / 3600;
 }
 
+/**
+ * Gold Find (D2's "extra gold from monsters"): a worn `goldFind` total, Forge Power points and the Void rune add up as
+ * a percentage on every pile picked up off the hunt. Capped, so a full kit of uniques cannot double a hunt on its own.
+ * `economy-sim --check` grades the bands with a full kit at the cap.
+ */
+export const GOLD_FIND_CAP = 150;
+/** The multiplier a Gold Find total gives a pile (1 for none; never past the cap). */
+export function goldFindMultiplier(percent: number): number {
+  const p = Number.isFinite(percent) ? Math.min(GOLD_FIND_CAP, Math.max(0, percent)) : 0;
+  return 1 + p / 100;
+}
+/** A pile after Gold Find, whole Gold, at least the pile itself. */
+export function goldFindPile(pile: number, percent: number): number {
+  return Math.max(Math.round(pile), Math.round(pile * goldFindMultiplier(percent)));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The Gold ladders (ids kept from v2, so saves keep their levels)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,10 +208,13 @@ export const AUTOMATON_CURVE: readonly AutomatonRung[] = [
   { id: 'eclipse-automaton', baseCost: 250_000, clicksPerSecond: 20 },
 ];
 
-/** Hire an Explorer: about 18 minutes of income when met. ×1.15 a level, cap 4. */
-export const EXPLORER_SLOT_COST = 50_000;
-/** Lengthen the Shift: about 50 minutes of income when met. */
-export const THRALL_SLOT_COST = 2_000_000;
+/**
+ * Hire an Explorer: half an hour of a level-10 hunt (`SLOT_HUNT`). ×1.15 a level, cap 4, so the fourth costs ~1.5×.
+ * (Forge era: 50,000, ~18 minutes of income that no longer exists.)
+ */
+export const EXPLORER_SLOT_COST = slotPrice(10, 30 * 60);
+/** Lengthen the Shift: two hours of a level-40 hunt. ×1.15 a level, five levels. (Forge era: 2,000,000.) */
+export const THRALL_SLOT_COST = slotPrice(40, 2 * 3600);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Prestige — the Eclipse
@@ -395,6 +414,11 @@ export const CRAFT_FEE_HUNT: Readonly<Record<string, readonly [level: number, se
   mythic: [60, 4 * 3600],
 };
 
+/** What `seconds` of a steady level-`level` hunt pays, to two significant figures: the shape of every sink price. */
+function slotPrice(level: number, seconds: number): number {
+  return twoSig(huntGold(level, seconds));
+}
+
 /** Two significant figures (3,409 → 3,400), never below 1. */
 function twoSig(n: number): number {
   if (!(n > 0)) return 0;
@@ -407,34 +431,54 @@ export const CRAFT_FEE_FLOOR: Readonly<Record<string, number>> = Object.fromEntr
 );
 
 /**
- * The Homestead's own Anvil and Enchanting Circle: Gold to reach tiers II, III
- * and IV (home-forge.model.ts reads this). Placed with the simulator
- * (`node scripts/economy-sim.mjs`, "first affordable" lines, default player):
- *   II  5M  — affordable on the first return (~8 h in): early-mid game;
- *   III 1B  — ~13 h in, by the end of day one;
- *   IV  1T  — ~2.4 d in: late game, just before the first Eclipse (10T, ~3.4 d).
+ * The Homestead's own Anvil and Enchanting Circle: Gold to reach tiers II, III and IV (home-forge.model.ts reads
+ * this). Hours of a steady hunt at the level a Keeper first wants the tier (the forge's income is off, IDLE_INCOME):
+ *   II  one hour at level 20 (~15k);
+ *   III three hours at level 100 (~360k);
+ *   IV  ten hours at level 300 (~7.2M): the long road.
+ * (Forge era: 5M / 1B / 1T. `economy-sim --check` grades each against its band.)
  */
-export const HOME_FORGE_PRICES: readonly number[] = [5_000_000, 1_000_000_000, 1_000_000_000_000];
+export const HOME_FORGE_PRICES: readonly number[] = [slotPrice(20, 3600), slotPrice(100, 3 * 3600), slotPrice(300, 10 * 3600)];
 
 /**
- * Satchel rows and Vault tabs (docs/inventory/inventory-spec.md §3), each N
- * seconds of income at the stage that first needs it — `node
- * scripts/economy-sim.mjs --inventory`. Permanent: they live in the inventory
- * ledger as `storage:*` entitlements, so the Eclipse does not clear them.
+ * Satchel rows and Vault tabs (docs/inventory/inventory-spec.md §3), each N hours of a steady hunt at the level that
+ * first needs the room (re-based when the forge's income went, IDLE_INCOME; forge era: 200k to 25T). Permanent: they
+ * live in the inventory ledger as `storage:*` entitlements, so the Eclipse does not clear them.
+ *
+ *   row 1  15 min  L10     row 2  45 min  L20     row 3  2 h  L40     row 4  4 h  L100     row 5  8 h  L300
+ *   Materials 20 min L10 · Supplies 45 min L20 · Gear 90 min L40 · General II 3 h L60 · III 6 h L100 · IV 12 h L300
  */
 export const STORAGE_CURVE = {
   /** +8 satchel slots each, in purchase order (41–48 … 73–80). */
-  satchelRows: [200_000, 5_000_000, 1_000_000_000, 100_000_000_000, 5_000_000_000_000] as readonly number[],
+  satchelRows: [
+    slotPrice(10, 15 * 60), slotPrice(20, 45 * 60), slotPrice(40, 2 * 3600), slotPrice(100, 4 * 3600), slotPrice(300, 8 * 3600),
+  ] as readonly number[],
   /** Vault tabs by id. General I and Overflow are free. */
   tabs: {
-    materials: 1_000_000,
-    supplies: 25_000_000,
-    gear: 250_000_000,
-    'general-2': 2_500_000_000,
-    'general-3': 250_000_000_000,
-    'general-4': 25_000_000_000_000,
+    materials: slotPrice(10, 20 * 60),
+    supplies: slotPrice(20, 45 * 60),
+    gear: slotPrice(40, 90 * 60),
+    'general-2': slotPrice(60, 3 * 3600),
+    'general-3': slotPrice(100, 6 * 3600),
+    'general-4': slotPrice(300, 12 * 3600),
   } as Readonly<Record<string, number>>,
 };
+
+/**
+ * The Gambler's boxes, each priced as minutes of a steady hunt at the level its top rarity starts to drop
+ * (`MYSTERY_BOX_HUNT`; forge era 300 / 1.5k / 6k / 30k / 300k). A box is a chance, never a profit: the spec holds each
+ * under the scrap value of what it can pay (`boxScrapExpectation`).
+ */
+export const MYSTERY_BOX_HUNT: Readonly<Record<string, readonly [level: number, seconds: number]>> = {
+  'iron-chest': [3, 10 * 60],
+  'silver-coffer': [10, 15 * 60],
+  'golden-reliquary': [20, 30 * 60],
+  'eclipse-vault': [40, 60 * 60],
+  'void-cache': [100, 3 * 3600],
+};
+export const MYSTERY_BOX_COST: Readonly<Record<string, number>> = Object.fromEntries(
+  Object.entries(MYSTERY_BOX_HUNT).map(([id, [level, seconds]]) => [id, slotPrice(level, seconds)]),
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Games of chance (the Croupier's Reels and its siblings): Gold only, a sink

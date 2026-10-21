@@ -100,7 +100,7 @@ const STYLE_WARD: Partial<Record<ItemStyle, number>> = {
 };
 
 function styleBias(style: ItemStyle, key: ItemStatKey): number {
-  if (key === 'goldPerSec') return STYLE_GOLD[style] ?? 1;
+  if (key === 'goldFind') return STYLE_GOLD[style] ?? 1;
   if (key === 'xpBonus') return STYLE_XP[style] ?? 1;
   if (key === 'magicFind') return STYLE_MF[style] ?? 1;
   if (key === 'ward') return STYLE_WARD[style] ?? 1;
@@ -108,7 +108,7 @@ function styleBias(style: ItemStyle, key: ItemStatKey): number {
 }
 
 function roundStat(key: ItemStatKey, value: number): number {
-  if (key === 'goldPerSec') return Math.round(value * 10) / 10;
+  if (key === 'goldFind') return Math.round(value * 10) / 10;
   return Math.round(value * 10) / 10;
 }
 
@@ -300,10 +300,10 @@ function eq(
 
 const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
   eq('eclipse-longblade', 'Eclipse Longblade', 'weapon', 'neutral',
-    ['goldPerSec', 'strikePower'], { goldPerSec: 0.4, strikePower: 1 },
+    ['goldFind', 'strikePower'], { goldFind: 1.6, strikePower: 1 },
     'A neutral blade with a violet eclipse seam; it is carried to make a boundary visible before it is crossed.'),
   eq('keeper-staff', 'Keeper Staff', 'weapon', 'neutral',
-    ['xpBonus', 'goldPerSec'], { xpBonus: 2, goldPerSec: 0.15 },
+    ['xpBonus', 'goldFind'], { xpBonus: 2, goldFind: 0.6 },
     'A grounded conduit for reading unstable runes without claiming they belong to the bearer.'),
   eq('void-buckler', 'Void Buckler', 'off-hand', 'void-touched',
     ['ward', 'magicFind'], { ward: 1, magicFind: 1 },
@@ -312,10 +312,10 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     ['magicFind', 'xpBonus'], { magicFind: 1.5, xpBonus: 1 },
     'A practical mantle hood that protects a witness from spectacle while leaving their actions accountable.'),
   eq('keepers-mantle', "Keeper's Mantle", 'chest', 'neutral',
-    ['goldPerSec', 'ward'], { goldPerSec: 0.25, ward: 0.5 },
+    ['goldFind', 'ward'], { goldFind: 1, ward: 0.5 },
     'Woven with repairable seams so every field repair remains legible to the next Keeper.'),
   eq('godforge-gauntlets', 'Godforge Gauntlets', 'hands', 'neutral',
-    ['strikePower', 'goldPerSec'], { strikePower: 1.2, goldPerSec: 0.1 },
+    ['strikePower', 'goldFind'], { strikePower: 1.2, goldFind: 0.4 },
     'Insulated hands for handling fragments whose effects must be felt before they are controlled.'),
   eq('astral-pendant', 'Astral Pendant', 'trinket', 'celestial',
     ['magicFind', 'xpBonus'], { magicFind: 2, xpBonus: 1.5 },
@@ -327,10 +327,10 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     ['xpBonus', 'magicFind'], { xpBonus: 2.5, magicFind: 1 },
     'A Celestial field helm that makes shifting trajectories visible as light across its surface.'),
   eq('infernal-cuirass', 'Infernal Cuirass', 'chest', 'infernal',
-    ['goldPerSec', 'ward'], { goldPerSec: 0.45, ward: 0.8 },
+    ['goldFind', 'ward'], { goldFind: 1.8, ward: 0.8 },
     'An iron-black chest piece whose ember seams show where its bearer is carrying heat for someone else.'),
   eq('luminous-greaves', 'Luminous Greaves', 'legs', 'luminous',
-    ['magicFind', 'goldPerSec'], { magicFind: 2, goldPerSec: 0.12 },
+    ['magicFind', 'goldFind'], { magicFind: 2, goldFind: 0.5 },
     'Ivory-and-gold leg armor that leaves a faint trail only when the wearer\'s path can be honestly described.'),
   eq('verdant-bracers', 'Verdant Bracers', 'hands', 'verdant',
     ['xpBonus', 'ward'], { xpBonus: 1.5, ward: 0.4 },
@@ -345,9 +345,9 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     // strikePower is what the Seamworks' recovery and the Forge's yield read
     // off the weapon slot, and this is the only weapon a Keeper can craft —
     // without it both consumers stayed dead for everyone. Same base as the
-    // spec's Eclipse Longblade anchor; goldPerSec stays the primary key.
-    rollKeys: ['goldPerSec', 'strikePower'],
-    base: { goldPerSec: 2, strikePower: 1 },
+    // spec's Eclipse Longblade anchor; goldFind stays the primary key.
+    rollKeys: ['goldFind', 'strikePower'],
+    base: { goldFind: 5, strikePower: 1 },
     temperable: true,
     maxTemper: 10,
     temperGoldBase: 40_000,
@@ -408,8 +408,8 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     type: 'artifact',
     slot: 'trinket',
     style: 'neutral',
-    rollKeys: ['magicFind', 'xpBonus', 'goldPerSec'],
-    base: { magicFind: 8, xpBonus: 6, goldPerSec: 1.5 },
+    rollKeys: ['magicFind', 'xpBonus', 'goldFind'],
+    base: { magicFind: 8, xpBonus: 6, goldFind: 4 },
     temperable: true,
     maxTemper: 5,
     temperGoldBase: 90_000,

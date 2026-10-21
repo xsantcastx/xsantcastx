@@ -706,7 +706,7 @@ describe('InventoryService C9 Basalt Edge craft', () => {
       expect(first.item.name).toBe('Basalt Edge');
       expect(first.item.equipped).toBe(false);
       expect(first.item.definitionId).toBe('basalt-edge');
-      expect(first.item.stats.goldPerSec).toBeGreaterThan(0);
+      expect(first.item.stats.goldFind).toBeGreaterThan(0);
     }
     expect(inventory.stackOf('cinder-ore')).toBe(0);
     expect(inventory.stackOf('ember-residue')).toBe(0);
