@@ -13,7 +13,13 @@ import { pathToFileURL } from 'node:url';
 // and announce a kill to the party (each member's own client decides whether to share its XP: docs/design/online.md).
 // Parties live here, in memory, like the room. A v2 client never sees a party event and is never invited (it does not
 // say `party: true` on join), so nothing it does changes.
-export const PROTOCOL = 3;
+//
+// Protocol 4 (2026-10-21, shared creatures): within a party, for each area, one member (the host) simulates the wild
+// creatures and streams compact snapshots to the others in that area; members send damage claims back; the host sends
+// bites and kills. The room only elects the host, validates and relays (never simulates, never stores a creature). A
+// client says `coop: true` on join; a v3 client never does, so it is never elected, sent or asked anything new.
+// See the "Protocol 4" block below and docs/design/online.md §3.4.
+export const PROTOCOL = 4;
 export const PARTY_MAX = 4;
 /** How long an invite stands before it lapses (ms). */
 export const INVITE_MS = 60000;
@@ -42,6 +48,108 @@ export function presenceFields(data) {
     if (!Number.isInteger(data.hp) || !Number.isInteger(data.maxHp) || data.maxHp < 1 || data.maxHp > 1e6 || data.hp < 0 || data.hp > data.maxHp) bad();
     out.hp = data.hp; out.maxHp = data.maxHp;
   }
+  return out;
+}
+
+// ── Protocol 4: shared creatures (co-op) — validators. Pure; every field absent-or-valid, unknown keys refused. ──
+/** The room's hard caps for co-op traffic (per message, per session, per party). */
+export const COOP = Object.freeze({
+  /** Creatures in one snapshot, events in one snapshot, ids in one `gone` list, claims in one batch. */
+  maxMobs: 48, maxEvents: 24, maxGone: 64, maxHits: 24,
+  /** Bytes in one co-op request body. */
+  maxBytes: 8192,
+  /** Snapshots a host may send a second; claim batches a member may send a second; all co-op requests of one party a second. */
+  snapsPerSec: 12, hitsPerSec: 12, partyPerSec: 40,
+  /** A host silent this long while others share its area is replaced (a hidden tab stops simulating). */
+  staleMs: 3000,
+});
+const COOP_ID = /^[a-z0-9]{1,10}$/;
+const COOP_KEY = /^[a-z0-9:,~._-]{1,80}$/;
+const COOP_AFFIX = /^[a-z-]{1,24}$/;
+const COOP_SKILL = /^[a-z0-9-]{1,32}$/;
+const COOP_FX = /^[a-z]{1,12}$/;
+const COOP_NAME = /^[\p{L}\p{N} '-]{1,40}$/u;
+const COOP_SHOTS = new Set(['arrow', 'fire', 'breath', 'ink', 'shard', 'spore']);
+const COOP_TYPES = new Set(['physical', 'fire', 'cold', 'lightning', 'arcane']);
+const coopBad = () => { throw Object.assign(new Error('Invalid co-op message.'), { status: 400 }); };
+const coopKeys = (o, allowed) => { if (!o || typeof o !== 'object' || Array.isArray(o)) coopBad(); for (const k of Object.keys(o)) if (!allowed.includes(k)) coopBad(); };
+const coopInt = (v, lo, hi) => { if (!Number.isInteger(v) || v < lo || v > hi) coopBad(); return v; };
+const coopNum = (v, bound) => { if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) > bound) coopBad(); return Math.round(v * 10) / 10; };
+/** An elite's tag: rank, role, affixes, a unique leader's name. */
+export function coopElite(raw) {
+  coopKeys(raw, ['r', 'o', 'a', 'n']);
+  if (raw.r !== 'champion' && raw.r !== 'unique') coopBad();
+  if (!['leader', 'champion', 'minion'].includes(raw.o)) coopBad();
+  if (!Array.isArray(raw.a) || raw.a.length > 6 || raw.a.some(a => typeof a !== 'string' || !COOP_AFFIX.test(a))) coopBad();
+  const out = { r: raw.r, o: raw.o, a: [...raw.a] };
+  if (raw.n !== undefined && raw.n !== null) { if (typeof raw.n !== 'string' || !COOP_NAME.test(raw.n)) coopBad(); out.n = raw.n; }
+  return out;
+}
+/** One creature in a snapshot: the id is required; every other field is a change (or, in a keyframe, the whole). */
+export function coopMob(raw) {
+  coopKeys(raw, ['i', 't', 'k', 'x', 'y', 'f', 'h', 'm', 'l', 'e', 'tl', 'ax', 'ay', 'fl']);
+  if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
+  const out = { i: raw.i };
+  if (raw.t !== undefined) { if (typeof raw.t !== 'string' || !CREATURE.test(raw.t)) coopBad(); out.t = raw.t; }
+  if (raw.k !== undefined) { if (typeof raw.k !== 'string' || !COOP_KEY.test(raw.k)) coopBad(); out.k = raw.k; }
+  if (raw.x !== undefined) out.x = coopNum(raw.x, 1e6);
+  if (raw.y !== undefined) out.y = coopNum(raw.y, 1e6);
+  if (raw.f !== undefined) { if (raw.f !== 1 && raw.f !== -1) coopBad(); out.f = raw.f; }
+  if (raw.h !== undefined) out.h = coopInt(raw.h, 0, 1e7);
+  if (raw.m !== undefined) out.m = coopInt(raw.m, 1, 1e7);
+  if (out.h !== undefined && out.m !== undefined && out.h > out.m) coopBad();
+  if (raw.l !== undefined) out.l = coopInt(raw.l, 1, 999);
+  if (raw.e !== undefined) out.e = raw.e === null ? null : coopElite(raw.e);
+  if (raw.tl !== undefined) out.tl = coopInt(raw.tl, 0, 100);
+  if (raw.ax !== undefined) out.ax = coopNum(raw.ax, 1e6);
+  if (raw.ay !== undefined) out.ay = coopNum(raw.ay, 1e6);
+  if (raw.fl !== undefined) out.fl = coopInt(raw.fl, 0, 255);
+  return out;
+}
+/** One event in a snapshot: a kill, a bite on a member, a shot or a ground burst (the last two are pictures only). */
+export function coopEvent(raw, members, host) {
+  if (!raw || typeof raw !== 'object') coopBad();
+  const member = id => typeof id === 'string' && members.includes(id);
+  if (raw.k === 'kill') {
+    coopKeys(raw, ['k', 'i', 't', 'l', 'h', 'xp', 'by', 'x', 'y', 'e', 'key']);
+    if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i) || typeof raw.t !== 'string' || !CREATURE.test(raw.t)) coopBad();
+    const out = { k: 'kill', i: raw.i, t: raw.t, l: coopInt(raw.l, 1, 999), h: coopInt(raw.h, 1, 100000), x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6) };
+    if (raw.xp !== undefined) { if (typeof raw.xp !== 'number' || !Number.isFinite(raw.xp) || raw.xp <= 0 || raw.xp > 5) coopBad(); out.xp = Math.round(raw.xp * 1000) / 1000; }
+    if (!Array.isArray(raw.by) || raw.by.length > 4 || raw.by.some(id => !member(id) || id === host)) coopBad();
+    out.by = [...new Set(raw.by)];
+    if (raw.e !== undefined && raw.e !== null) out.e = coopElite(raw.e);
+    if (raw.key !== undefined) { if (typeof raw.key !== 'string' || !COOP_KEY.test(raw.key)) coopBad(); out.key = raw.key; }
+    return out;
+  }
+  if (raw.k === 'bite') {
+    coopKeys(raw, ['k', 'to', 'i', 'd', 'ty', 'b', 'c']);
+    if (!member(raw.to) || raw.to === host) coopBad();
+    const out = { k: 'bite', to: raw.to, d: coopInt(raw.d, 1, 100000), ty: COOP_TYPES.has(raw.ty) ? raw.ty : coopBad() };
+    if (raw.i !== undefined) { if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad(); out.i = raw.i; }
+    if (raw.b !== undefined) { if (typeof raw.b !== 'boolean') coopBad(); if (raw.b) out.b = true; }
+    if (raw.c !== undefined) { if (typeof raw.c !== 'boolean') coopBad(); if (raw.c) out.c = true; }
+    return out;
+  }
+  if (raw.k === 'shot') {
+    coopKeys(raw, ['k', 'x', 'y', 'vx', 'vy', 's', 'l']);
+    if (!COOP_SHOTS.has(raw.s)) coopBad();
+    return { k: 'shot', x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6), vx: coopNum(raw.vx, 2000), vy: coopNum(raw.vy, 2000), s: raw.s, l: Math.max(0, coopNum(raw.l, 10)) };
+  }
+  if (raw.k === 'burst') {
+    coopKeys(raw, ['k', 'x', 'y', 'r', 't', 'el']);
+    const out = { k: 'burst', x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6), r: coopInt(raw.r, 1, 400), t: Math.max(0, coopNum(raw.t, 10)) };
+    if (raw.el !== undefined) { if (typeof raw.el !== 'string' || !COOP_FX.test(raw.el)) coopBad(); out.el = raw.el; }
+    return out;
+  }
+  coopBad();
+}
+/** One damage claim: the creature's id, how much, its element, a crit, the skill it came from. */
+export function coopHit(raw) {
+  coopKeys(raw, ['i', 'd', 'el', 'c', 's']);
+  if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
+  const out = { i: raw.i, d: coopInt(raw.d, 1, 100000), el: COOP_TYPES.has(raw.el) ? raw.el : coopBad() };
+  if (raw.c !== undefined) { if (typeof raw.c !== 'boolean') coopBad(); if (raw.c) out.c = true; }
+  if (raw.s !== undefined) { if (typeof raw.s !== 'string' || !COOP_SKILL.test(raw.s)) coopBad(); out.s = raw.s; }
   return out;
 }
 
@@ -78,6 +186,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   const publishParty = (p, also = []) => {
     for (const id of p ? p.members : []) sendTo(id, { type: 'party', party: partyView(p) });
     for (const id of also) sendTo(id, { type: 'party', party: null });
+    coopOnParty(p, also);
   };
   /** A member goes (left, kicked, gone from the room): a new leader if it led; under two, the party is no more. */
   const dropMember = (s, why) => {
@@ -227,6 +336,151 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     }
     throw fail(404, 'Not found.');
   };
+  // ── Protocol 4: shared creatures (co-op). Kept apart from the party verbs above. ──
+  /** Per party: per area, the host (sticky while it stays) and a term that grows with every change of host. */
+  const coopHosts = new Map();
+  /** What each party was last told (so an unchanged election sends nothing). */
+  const coopTold = new Map();
+  const coopSessions = p => p.members.map(sessionOf).filter(s => s && s.coop);
+  const coopAreaOf = s => (typeof s.player.area === 'string' ? s.player.area : null);
+  /** The election: per area, the host stays while present and not stale; else the earliest-joined present member. */
+  const coopElect = p => {
+    if (!p) return;
+    const hosts = coopHosts.get(p.id) ?? new Map();
+    coopHosts.set(p.id, hosts);
+    const byArea = new Map();
+    for (const s of coopSessions(p)) {
+      const area = coopAreaOf(s);
+      if (!area) continue;
+      if (!byArea.has(area)) byArea.set(area, []);
+      byArea.get(area).push(s);
+    }
+    for (const area of [...hosts.keys()]) if (!byArea.has(area)) hosts.delete(area);
+    for (const [area, present] of byArea) {
+      const fresh = present.filter(s => !s.coopStale);
+      const pool = fresh.length ? fresh : present;
+      const cur = hosts.get(area);
+      if (cur && pool.some(s => s.player.id === cur.host)) {
+        // Someone came or went: the host gets a fresh grace to start (or stop) streaming before it can go stale.
+        if (cur.n !== present.length) { cur.n = present.length; cur.since = now(); }
+        continue;
+      }
+      const next = pool[0];
+      hosts.set(area, { host: next.player.id, term: (cur?.term ?? 0) + 1, since: now(), n: present.length });
+      next.coopSnapAt = now();
+    }
+    coopPublish(p);
+  };
+  const coopView = p => {
+    const hosts = coopHosts.get(p.id) ?? new Map();
+    const areas = {};
+    for (const [area, h] of hosts) {
+      areas[area] = { host: h.host, term: h.term, members: coopSessions(p).filter(s => coopAreaOf(s) === area).map(s => s.player.id) };
+    }
+    return areas;
+  };
+  const coopPublish = (p, force = false) => {
+    const areas = coopView(p), key = JSON.stringify(areas);
+    if (!force && coopTold.get(p.id) === key) return;
+    coopTold.set(p.id, key);
+    for (const s of coopSessions(p)) if (s.stream) send(s.stream, { type: 'coop', areas });
+  };
+  /** The party changed (formed, joined, left, disbanded): elect again; anyone dropped hears there is no host. */
+  function coopOnParty(p, also = []) {
+    for (const id of also) { const s = sessionOf(id); if (s?.coop) sendTo(id, { type: 'coop', areas: {} }); }
+    if (p) coopElect(p);
+  }
+  /** A Keeper moved (maybe to another area): elect again; a host heard from is not stale any more. */
+  const coopMoved = s => {
+    if (!s.coop || !s.party) return;
+    s.coopStale = false;
+    const p = parties.get(s.party);
+    if (p) coopElect(p);
+  };
+  /** A reopened stream learns who hosts where. */
+  const coopResend = s => {
+    if (!s.coop || !s.party || !s.stream) return;
+    const p = parties.get(s.party);
+    if (p) send(s.stream, { type: 'coop', areas: coopView(p) });
+  };
+  /** Once a second: a host that has gone quiet while others share its area is replaced; forgotten parties are dropped. */
+  const coopSweep = () => {
+    for (const id of [...coopHosts.keys()]) if (!parties.has(id)) { coopHosts.delete(id); coopTold.delete(id); }
+    for (const [id, hosts] of coopHosts) {
+      const p = parties.get(id);
+      let changed = false;
+      for (const [area, h] of hosts) {
+        const s = sessionOf(h.host);
+        const others = coopSessions(p).filter(o => o !== s && coopAreaOf(o) === area && !o.coopStale).length;
+        if (!s || !others || now() - Math.max(s.coopSnapAt ?? 0, h.since) <= COOP.staleMs) continue;
+        s.coopStale = true; changed = true;
+      }
+      if (changed) coopElect(p);
+    }
+  };
+  const readCoopBody = async req => {
+    if (!req.headers['content-type']?.startsWith('application/json')) throw fail(415, 'JSON required.');
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+      if (Buffer.byteLength(body) > COOP.maxBytes) throw fail(413, 'Request too large.');
+    }
+    try {
+      const data = JSON.parse(body);
+      if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error();
+      return data;
+    } catch { throw fail(400, 'Invalid JSON.'); }
+  };
+  /**
+   * The co-op verbs. `snap` (host → the others in its area): creatures, gone ids, events; `hits` (member → its area's
+   * host): damage claims, with the room's own record of where the member stands and its level. Refused unless the
+   * session said `coop: true`, is in a party, and (snap) hosts that area or (hits) has a host there that is not itself.
+   */
+  const coopRequest = async (verb, session, req, reply) => {
+    if (verb !== 'snap' && verb !== 'hits') throw fail(404, 'Not found.');
+    if (!session.coop) throw fail(409, 'Update the game to share creatures.');
+    consume(session, verb === 'snap' ? 'coopSnap' : 'coopHits', verb === 'snap' ? COOP.snapsPerSec : COOP.hitsPerSec, 1000);
+    const data = await readCoopBody(req);
+    session.lastSeen = now();
+    const me = session.player.id;
+    const p = session.party ? parties.get(session.party) : null;
+    if (!p) throw fail(409, 'You are not in a party.');
+    consume(p, 'coop', COOP.partyPerSec, 1000);
+    const area = coopAreaOf(session);
+    if (typeof data.area !== 'string' || !AREA.test(data.area)) throw fail(400, 'Invalid co-op message.');
+    if (data.area !== area) throw fail(409, 'Not in that place.');
+    const host = coopHosts.get(p.id)?.get(area);
+    const others = coopSessions(p).filter(s => s.player.id !== me && coopAreaOf(s) === area);
+    if (verb === 'snap') {
+      if (!host || host.host !== me) throw fail(409, 'Not the host here.');
+      coopKeys(data, ['area', 'seq', 'kf', 'mobs', 'gone', 'ev', 'tier']);
+      const seq = coopInt(data.seq, 0, 2 ** 31);
+      if (typeof data.kf !== 'boolean') coopBad();
+      if (!Array.isArray(data.mobs) || data.mobs.length > COOP.maxMobs) coopBad();
+      const mobs = data.mobs.map(coopMob);
+      if (new Set(mobs.map(m => m.i)).size !== mobs.length) coopBad();
+      const gone = data.gone === undefined ? [] : data.gone;
+      if (!Array.isArray(gone) || gone.length > COOP.maxGone || gone.some(id => typeof id !== 'string' || !COOP_ID.test(id))) coopBad();
+      const evRaw = data.ev === undefined ? [] : data.ev;
+      if (!Array.isArray(evRaw) || evRaw.length > COOP.maxEvents) coopBad();
+      const ev = evRaw.map(e => coopEvent(e, p.members, me));
+      let tier;
+      if (data.tier !== undefined) { if (typeof data.tier !== 'string' || !COOP_FX.test(data.tier)) coopBad(); tier = data.tier; }
+      session.coopSnapAt = now(); session.coopStale = false;
+      const msg = { type: 'coop-snap', from: me, area, term: host.term, seq, kf: data.kf, mobs, gone, ev, ...(tier ? { tier } : {}) };
+      for (const s of others) if (s.stream) send(s.stream, msg);
+      reply(200, { ok: true, to: others.length }); return;
+    }
+    if (!host || host.host === me) throw fail(409, 'Nobody hosts here.');
+    coopKeys(data, ['area', 'hits']);
+    if (!Array.isArray(data.hits) || !data.hits.length || data.hits.length > COOP.maxHits) coopBad();
+    const hits = data.hits.map(coopHit);
+    const pl = session.player;
+    sendTo(host.host, { type: 'coop-hits', from: me, area, x: pl.x, y: pl.y, level: Number.isInteger(pl.level) ? pl.level : 1, hits });
+    reply(200, { ok: true });
+  };
+  const coopTimer = setInterval(coopSweep, 1000);
+  coopTimer.unref?.();
   const server = createServer(async (req, res) => {
     const reply = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
     res.setHeader('Cache-Control', 'no-store');
@@ -257,6 +511,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         const player = { id: randomUUID(), name, x: 160, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks', ...profile };
         // Protocol 3: only a client that says it knows parties can be invited to one (a v2 client never is).
         sessions.set(token, { player, lastSeen: now(), stream: null, party: null, parties: data.party === true });
+        // Protocol 4: only a client that says it shares creatures (and knows parties) is ever elected or relayed to.
+        sessions.get(token).coop = data.party === true && data.coop === true;
         reply(201, { id: player.id, token, players: players(), messages, protocol: PROTOCOL });
         publishPlayers(); return;
       }
@@ -276,12 +532,14 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
           const p = session.party && parties.get(session.party);
           if (p) send(res, { type: 'party', party: partyView(p), messages: p.messages });
           for (const inv of invites.values()) if (inv.to === session.player.id && inv.until > now()) send(res, { type: 'invite', invite: inviteView(inv) });
+          coopResend(session);
         }
         res.on('close', () => { if (session.stream === res) { session.stream = null; session.lastSeen = now(); } });
         return;
       }
       if (req.method !== 'POST') throw fail(404, 'Not found.');
       consume(session, 'requests', 40, 1000);
+      if (url.pathname.startsWith('/coop/')) { await coopRequest(url.pathname.slice('/coop/'.length), session, req, reply); return; }
       const data = await readBody(req);
       session.lastSeen = now();
       if (url.pathname === '/update') {
@@ -292,6 +550,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         if (!Number.isFinite(data.x) || Math.abs(data.x) > 1e6 || !Number.isFinite(data.y) || Math.abs(data.y) > 1e6 || ![-1, 1].includes(data.facing) || !animations.has(data.animation) || !zoneOk) throw fail(400, 'Invalid position.');
         const extra = presenceFields(data);
         Object.assign(session.player, { x: Math.round(data.x * 10) / 10, y: Math.round(data.y * 10) / 10, facing: data.facing, animation: data.animation, zone: data.zone }, extra);
+        coopMoved(session);
         schedulePublish(); reply(200, { ok: true }); return;
       }
       if (url.pathname === '/chat') {
@@ -334,8 +593,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
   }, Math.min(10000, idleMs));
   cleanup.unref();
-  const dispose = () => { clearInterval(cleanup); clearTimeout(publishTimer); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
-  return { server, dispose };
+  const dispose = () => { clearInterval(cleanup); clearInterval(coopTimer); clearTimeout(publishTimer); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
+  return { server, dispose, coopSweep };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

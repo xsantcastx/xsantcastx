@@ -1,3 +1,5 @@
+import type { CoopAreas, CoopHit, CoopHitsMsg, CoopSnapBody, CoopSnapMsg } from './coop-protocol';
+
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
  * A Keeper in the room. v1 servers send id/name/x/y/zone/facing/animation; protocol 2 (scripts/social-server.mjs)
@@ -24,6 +26,8 @@ export interface RoomSnapshot {
   status: string; connected: boolean; players: RoomPlayer[]; messages: RoomMessage[]; id: string; protocol?: number;
   /** Protocol 3 (absent or empty against an older room). */
   party?: RoomParty | null; invites?: RoomInvite[]; partyMessages?: RoomMessage[];
+  /** Protocol 4: who hosts the party's creatures in each area (absent against an older room). */
+  coop?: CoopAreas | null;
 }
 /** The room's party verbs (protocol 3). */
 export const PARTY_PROTOCOL = 3;
@@ -49,7 +53,13 @@ export interface RoomOptions {
   onPartyKill?: (kill: RoomPartyKill) => void;
   /** Protocol 3: someone joined, left or was sent away; an invite was declined. */
   onPartyNote?: (note: RoomPartyNote) => void;
+  /** Protocol 4: a host's creature snapshot reached this member. */
+  onCoopSnap?: (msg: CoopSnapMsg) => void;
+  /** Protocol 4: members' damage claims reached this host. */
+  onCoopHits?: (msg: CoopHitsMsg) => void;
 }
+/** The room's shared creatures (protocol 4). */
+export const COOP_ROOM_PROTOCOL = 4;
 
 /** The Hearth room's service (scripts/social-deployment.md). */
 export const HEARTH_URL = 'https://eclipse-hearth-773269119730.us-central1.run.app';
@@ -61,6 +71,8 @@ export const HEARTH_PORT_KEY = 'eclipse-hearth-port';
  */
 export const MOVE_MS = 250;
 export const HEARTBEAT_MS = 10000;
+/** In a party on a protocol-4 room: one presence update per COOP_MOVE_MS while moving (the room allows 8 a second). */
+export const COOP_MOVE_MS = 150;
 /** Stream retries before the session is dropped (and, always-on, joined afresh). */
 const STREAM_RETRIES = 5;
 /** Rejoin backoff (always-on): 2s, 4s, 8s … capped. */
@@ -157,7 +169,7 @@ export class SocialRoom {
     this.publish({ status: 'Joining the hearth…' });
     try {
       const response = await this.send(`${this.endpoint}/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true }), signal: AbortSignal.timeout(8000),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true }), signal: AbortSignal.timeout(8000),
       });
       if (!response.ok) throw new Error('Join failed');
       const result = await response.json();
@@ -190,7 +202,7 @@ export class SocialRoom {
     this.reconnectAttempts = 0; this.updating = false; this.lastUpdate = -Infinity; this.lastBody = '';
     const token = this.token; this.token = '';
     if (token) void this.post('leave', {}, token).catch(() => {});
-    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [] });
+    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [], coop: null });
   }
   private async listen(generation: number, signal: AbortSignal): Promise<void> {
     let openedAt: number | undefined;
@@ -231,6 +243,7 @@ export class SocialRoom {
           }
           if (data.type === 'emote' && data.emote?.kind === 'wave') this.options.onEmote?.(data.emote);
           this.partyEvent(data);
+          this.coopEvent(data as Record<string, unknown>);
         }
       }
       if (!signal.aborted) throw new Error('Stream ended');
@@ -274,6 +287,32 @@ export class SocialRoom {
     }
     if (data.type === 'party-kill' && data.kill) this.options.onPartyKill?.(data.kill);
     if (data.type === 'party-note' && data.note) this.options.onPartyNote?.(data.note);
+  }
+  // ── Protocol 4: shared creatures (play/td/td-coop.ts). Kept apart from the party verbs. ──
+  /** The election, a host's snapshot, members' claims. A malformed event is dropped whole. */
+  private coopEvent(data: Record<string, unknown>): void {
+    if (data['type'] === 'coop') {
+      const areas = data['areas'];
+      this.publish({ coop: areas && typeof areas === 'object' && !Array.isArray(areas) ? areas as CoopAreas : {} });
+    }
+    if (data['type'] === 'coop-snap' && typeof data['from'] === 'string' && Array.isArray(data['mobs'])) this.options.onCoopSnap?.(data as unknown as CoopSnapMsg);
+    if (data['type'] === 'coop-hits' && typeof data['from'] === 'string' && Array.isArray(data['hits'])) this.options.onCoopHits?.(data as unknown as CoopHitsMsg);
+  }
+  /** The room shares creatures (protocol 4) and the Keeper is in it. */
+  get canCoop(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && !!this.snapshot.party; }
+  /** Post this host's snapshot; false when it did not go (the caller sends a keyframe next). */
+  coopSnap(body: CoopSnapBody): Promise<boolean> { return this.coopPost('snap', body); }
+  /** Post this member's damage claims. */
+  coopHits(body: { area: string; hits: CoopHit[] }): Promise<boolean> { return this.coopPost('hits', body); }
+  private async coopPost(verb: 'snap' | 'hits', body: unknown): Promise<boolean> {
+    if (!this.canCoop || !this.token || this.paused) return false;
+    try {
+      const response = await this.send(`${this.endpoint}/coop/${verb}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(4000),
+      });
+      return response.ok;
+    } catch { return false; }
   }
   /** The room knows parties (protocol 3) and the Keeper is in it. */
   get canParty(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= PARTY_PROTOCOL; }
@@ -355,7 +394,8 @@ export class SocialRoom {
     const extra = presence ? cleanPresence({ ...(this.wanted?.profile ?? {}), ...presence }) : {};
     const body = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, zone, facing: facing === -1 ? -1 : 1, animation: KEEPER_ANIMATIONS.has(animation) ? animation : 'idle', ...extra };
     const key = JSON.stringify(body), t = this.now(), since = t - this.lastUpdate;
-    if (since < MOVE_MS) return;
+    // Sharing creatures (protocol 4), the host aims at where members stand: their presence goes a little oftener.
+    if (since < (this.canCoop ? COOP_MOVE_MS : MOVE_MS)) return;
     if (key === this.lastBody && since < HEARTBEAT_MS) return;
     const generation = this.generation;
     this.updating = true; this.lastUpdate = t; this.lastBody = key;

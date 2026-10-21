@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSocialServer } from './social-server.mjs';
+import { PROTOCOL, createSocialServer } from './social-server.mjs';
 
 const origin = 'http://127.0.0.1:4317';
 async function setup(t, options = {}) {
@@ -112,9 +112,9 @@ async function events(t, base, token) {
 test('protocol 2: presence fields travel on join and update; v1 bodies still work', async t => {
   const { base, post } = await setup(t, { publishMs: 5 });
   const health = await (await fetch(`${base}/health`)).json();
-  assert.equal(health.protocol, 3);
+  assert.equal(health.protocol, PROTOCOL);
   const a = await (await post('/join', { name: 'Arin', vocation: 'warlock', look: '1.0.2.1.2.0.0.0.0.4', level: 7 })).json();
-  assert.equal(a.protocol, 3);
+  assert.equal(a.protocol, PROTOCOL);
   assert.equal(a.players[0].vocation, 'warlock');
   assert.equal(a.players[0].level, 7);
   const b = await (await post('/join', { name: 'Mira' })).json();

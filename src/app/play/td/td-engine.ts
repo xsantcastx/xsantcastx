@@ -118,6 +118,8 @@ import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, se
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
 import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
+import { TdCoop, type CoopRole } from './td-coop';
+import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
 import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
@@ -262,6 +264,13 @@ export class TopDownEngine {
    * what the canvas last said of it (`data-seam`: risen, half, slain, gone).
    */
   private seam: Mob | null = null;
+  /** Shared creatures in a party (Hearth protocol 4; td-coop.ts): host, member, or solo as before. */
+  private coop!: TdCoop;
+  /** `?fxcoop=1` (automated browsers only): `window.__tdCoop` lays calm creatures, wounds them, reads the shared set. */
+  private readonly fxCoop = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxcoop=1\b/.test(location.search);
+  /** The co-op spec's quiet: no wild spawns (only what it lays). */
+  private fxCoopQuiet = false;
+  private coopRoleSeen = '';
   private seamSlain = false;
   private seamLast = '';
   private seamSeen = '';
@@ -431,6 +440,15 @@ export class TopDownEngine {
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
     this.mobs.elites = true;
+    this.coop = new TdCoop(this.mobs, {
+      send: body => this.options.onCoopSnap?.(body) ?? Promise.resolve(false),
+      claim: body => this.options.onCoopHits?.(body) ?? Promise.resolve(false),
+      killed: kill => this.options.onCoopKill?.(kill) ?? 'none',
+      now: () => performance.now(),
+      phase: () => (this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase),
+      still: () => this.still,
+      role: role => this.coopRole(role),
+    });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.placeCompanions();
@@ -534,6 +552,24 @@ export class TopDownEngine {
       },
       hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); this.lastHurt = this.time; },
     };
+    if (this.fxCoop) (window as unknown as Record<string, unknown>)['__tdCoop'] = {
+      view: () => this.coop.view(),
+      stats: () => ({ ...this.coop.stats }),
+      // No wild spawns from now on, and none standing: only what the spec lays (a calm stage for comparing screens).
+      quiet: () => { this.fxCoopQuiet = true; if (this.coop.role !== 'member') { this.mobs.mobs.length = 0; this.mobs.target = null; } return true; },
+      // A calm creature `dx, dy` from the Keeper (the host's), given its wire id at once.
+      lay: (type = 'ash-wolf', dx = 40, dy = 0, calm = true) => {
+        const def = MOBS[type]; if (!def || this.coop.role === 'member') return null;
+        const p = this.player, m = this.mobs.place(`fx-coop:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, calm ? { ...def, sight: 0 } : def, p.x + dx, p.y + dy);
+        if (calm) m.wait = 1e9;
+        return this.coop.name(m);
+      },
+      // A blow of `n` on the creature with this wire id, through the real path (a member's becomes a claim).
+      hit: (id: string, n: number) => { const m = this.mobs.mobs.find(x => x.nid === id); if (!m) return false; this.mobs.wound(m, n); return true; },
+      // Point the Keeper's own attack at it (its staff, its blade): the real auto-attack path.
+      target: (id: string) => { const m = this.mobs.mobs.find(x => x.nid === id); this.mobs.target = m ?? null; return !!m; },
+      hp: () => Math.round(this.hp),
+    };
   }
 
   // ── Lifecycle (the component's contract) ───────────────────────────────────
@@ -549,6 +585,8 @@ export class TopDownEngine {
       this.raf = requestAnimationFrame(loop);
       try {
         if (!this.paused && !this.fxFrozen) this.update(dt);
+        // A host in a menu still keeps the party's creatures alive for the others (they are not paused); it is no prey meanwhile.
+        else if (this.paused && !this.fxFrozen && this.coop.role === 'host') this.updateShared(dt);
         this.draw();
       } catch (err) {
         if (!this.frameError) { this.frameError = true; console.error('[top-down] frame error', err); }
@@ -560,6 +598,7 @@ export class TopDownEngine {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
+    if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
@@ -1006,6 +1045,19 @@ export class TopDownEngine {
   }
   /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
   setParty(ids: readonly string[]): void { this.peers.party = new Set(ids); }
+  /** Protocol 4: the room's election (null against an older room), this Keeper's id, the whole party's ids. */
+  setCoop(areas: CoopAreas | null, me: string, party: readonly string[]): void { this.coop.setAreas(areas, me, party); }
+  /** Protocol 4: a host's snapshot reached this member. */
+  coopSnap(msg: CoopSnapMsg): void { this.coop.snap(msg); }
+  /** Protocol 4: members' claims reached this host. */
+  coopHits(msg: CoopHitsMsg): void { this.coop.hits(msg); }
+  /** Protocol 4: this Keeper's part in its area ('solo', 'host' or 'member'). */
+  get coopRoleNow(): CoopRole { return this.coop.role; }
+  /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
+  private coopRole(role: CoopRole): void {
+    if (role === 'member') this.seam = null;
+    if (role !== this.coopRoleSeen) { this.coopRoleSeen = role; this.canvas.setAttribute('data-coop-role', role); }
+  }
   /** The local Keeper is waving. */
   get selfWaving(): boolean { return this.peers.waving('', this.time); }
   setHearths(s: { lit: readonly string[]; wake: string | null; blessings: number }): void {
@@ -2557,6 +2609,15 @@ export class TopDownEngine {
     };
   }
 
+  /** The shared creatures alone (a host with a menu open): they move, fight the others and stream; this Keeper is away. */
+  private updateShared(dt: number): void {
+    this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
+    this.peers.step(dt, this.peerArea(), this.player, this.still);
+    this.mobs.selfAway = true;
+    try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
+    this.coop.after(dt);
+  }
+
   private updateFight(dt: number): void {
     // The sky as a rule (td-phases.ts): a pinned `?hour=` stands for its own phase, so a picture never meets the real sky.
     const phase = this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase;
@@ -2565,14 +2626,20 @@ export class TopDownEngine {
     if (this.fxPhase && !this.fxPhaseLaid && this.time > .5 && this.level === this.world) this.layPhaseShowcase(this.fxPhase);
     // After Glim's welcome line has had its say, so the warning is not lost under it.
     if (this.fxSeam && !this.fxSeamLaid && this.time > 6 && this.level === this.world) this.laySeamShowcase();
-    this.updateSeam(phase);
+    // Shared creatures (td-coop.ts): this Keeper's part in its area now, the others of the party as prey on the host,
+    // the host's creatures placed on a member. A member raises nothing of its own (no spawns, no Seam Eater).
+    this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
+    const member = this.coop.role === 'member';
+    if (!member) this.updateSeam(phase);
     // The endless surface hands over the spawns round the Keeper as they come into reach, and forgets far ones.
     this.spawnTimer -= dt;
     // (The seam specs keep the stage to the Eater and its call, so every photograph and count is its own.)
-    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam) {
+    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam && !member && !this.fxCoopQuiet) {
       this.spawnTimer = .5;
       const r = 420;
       this.mobs.addSpawns(this.world.spawnsIn(this.player.x - r, this.player.y - r, this.player.x + r, this.player.y + r));
+      // A host raises the ground round the others too (they hunt where they stand, not only where the host does).
+      for (const o of this.mobs.others) this.mobs.addSpawns(this.world.spawnsIn(o.x - r, o.y - r, o.x + r, o.y + r));
       this.mobs.prune(900);
     }
     // Chasing a target (Tibia): walk into reach of it, re-aimed as it moves.
@@ -2585,6 +2652,7 @@ export class TopDownEngine {
       else this.path = [];
     }
     this.mobs.update(dt);
+    this.coop.after(dt);
     // A potion pouring in: its share of what is left this frame.
     if (this.sip.t > 0) {
       const f = Math.min(1, dt / this.sip.t), h = this.sip.hp * f, m = this.sip.mana * f;
