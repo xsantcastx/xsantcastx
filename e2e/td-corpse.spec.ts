@@ -72,9 +72,10 @@ test('E opens the corpse, the loot can be taken out of it, and the walk-over pic
   const take = win.locator('[data-corpse-take]', { hasText: /ember residue/i });
   await expect(take).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/corpse-open.jpg', type: 'jpeg', quality: 88 });
+  const lootBefore = (await corpses(page))[0].loot;
   await take.click();
   await expect(win.locator('[data-corpse-take]', { hasText: /ember residue/i })).toHaveCount(0);
-  await expect.poll(async () => (await corpses(page))[0].loot).toBe(0);
+  await expect.poll(async () => (await corpses(page))[0].loot).toBe(lootBefore - 1);
   // Closing it with Escape, and the corpse stays lying there.
   await page.keyboard.press('Escape');
   await expect(win).toHaveCount(0);
