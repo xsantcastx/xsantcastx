@@ -69,7 +69,11 @@ export function fakeVerifier() {
 /** The contract both stores keep. Lists are `{ids: string[], names: Record<uid, name>}`. */
 const emptyList = () => ({ ids: [], names: {} });
 
-export function memoryStore() {
+/**
+ * `docs`: protocol 6's trade bindings and ground escrow, as path → document (the local e2e hands in the fake trade
+ * Function's own map, so the room and the "Function" see one store: scripts/trade-fake.mjs).
+ */
+export function memoryStore(docs = new Map()) {
   const bans = new Set(), friends = new Map(), blocks = new Map(), reports = [];
   const list = (map, uid) => { if (!map.has(uid)) map.set(uid, emptyList()); return map.get(uid); };
   const add = (l, uid, name) => { if (!l.ids.includes(uid)) l.ids.push(uid); l.names[uid] = name; };
@@ -84,6 +88,10 @@ export function memoryStore() {
     async removeFriends(a, b) { drop(list(friends, a), b); drop(list(friends, b), a); },
     async saveBlocks(uid, l) { blocks.set(uid, copy(l)); },
     async report(doc) { reports.push(doc); return `r${reports.length}`; },
+    docs,
+    // Protocol 6: a trade's binding (create only), and a ground item as the escrow holds it.
+    async openTrade(id, doc) { if (docs.has(`trades/${id}`)) throw new Error('exists'); docs.set(`trades/${id}`, JSON.parse(JSON.stringify(doc))); },
+    async groundItem(id) { const d = docs.get(`ground-items/${id}`); return d ? JSON.parse(JSON.stringify(d)) : null; },
   };
 }
 
@@ -167,6 +175,15 @@ export function firestoreStore({ projectId, fetch: get = fetch, now = Date.now, 
     async report(doc) {
       const res = await call(`${api}/player-reports`, { method: 'POST', body: JSON.stringify({ fields: toValue({ ...doc, at: new Date(doc.at) }).mapValue.fields }) });
       return String(res?.name ?? '').split('/').pop();
+    },
+    // Protocol 6: the binding the trade Function trusts — which two accounts a trade is between. Create only: a
+    // retried open of the same id fails rather than rewriting the parties.
+    async openTrade(id, doc) {
+      await call(`${api}/trades/${encodeURIComponent(id)}?currentDocument.exists=false`, { method: 'PATCH', body: JSON.stringify({ fields: toValue(doc).mapValue.fields }) });
+    },
+    async groundItem(id) {
+      const doc = await call(`${api}/ground-items/${encodeURIComponent(id)}`);
+      return doc ? fromValue({ mapValue: { fields: doc.fields ?? {} } }) : null;
     },
   };
 }

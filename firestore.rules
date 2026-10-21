@@ -106,7 +106,25 @@ service cloud.firestore {
                       || !('xp' in resource.data)
                       || !('xp' in request.resource.data)
                       || request.resource.data.xp >= resource.data.xp
-                    );
+                    )
+                    && serverSeqHolds(docId);
+    }
+
+    // ── Trades and ground drops: the inventory guard ─────────────────────────
+    // The trade Function (functions/src/trade-core.ts) writes a player's
+    // inventory document when an item changes hands or lands on the ground, and
+    // bumps `v.serverSeq`. The gateway pushes the inventory with a plain
+    // read-merge-setDoc (not a transaction), so a push that read the document a
+    // moment before the Function wrote it would put the traded item back — a
+    // dupe. This refuses any client write whose merged `serverSeq` is lower than
+    // the stored one; the gateway treats the refusal as "re-read and merge",
+    // which lands the Function's move. The merge keeps the max, so an honest
+    // device always carries it forward. (The economy document needs no guard:
+    // the client already writes it inside a transaction.)
+    function serverSeqHolds(docId) {
+      return docId != 'inventory'
+             || request.resource.data.get('v', {}).get('serverSeq', 0)
+                  >= resource.data.get('v', {}).get('serverSeq', 0);
     }
 
     // ── Cloud save: the Godforge ledger ───────────────────────────────────────
@@ -143,7 +161,8 @@ service cloud.firestore {
                       || !('xp' in resource.data)
                       || !('xp' in request.resource.data)
                       || request.resource.data.xp >= resource.data.xp
-                    );
+                    )
+                    && (coll != 'progress' || serverSeqHolds(docId));
     }
 
     // ── Cloud save: device coordination ──────────────────────────────────────
@@ -455,6 +474,43 @@ service cloud.firestore {
                     && request.resource.data.count is number
                     && request.resource.data.count == resource.data.count + 1;
       allow delete: if false;
+    }
+
+    // ── Trades and ground drops (docs/design/online.md §3.8, §4c) ─────────────
+    // Written ONLY by the trade Function and the Hearth (Admin SDK / service
+    // account: IAM, not these rules). No client may write any of them — a
+    // client that could write `trades/{id}` could confirm for the other side, one
+    // that could write `ground-items` could mint an item out of thin air.
+    //   trades/{id}       the two parties (bound by the Hearth from verified ID
+    //                     tokens), their confirmations, the outcome. Readable by
+    //                     its two parties only.
+    //   ground-items/{id} an item escrowed on the ground: readable by any
+    //                     signed-in Keeper (anyone may see and pick it up; the
+    //                     pickup itself is the Function's transaction).
+    //   ground/{area}     the per-area count (the cap). Signed-in read.
+    //   ground-rate/{uid} a Keeper's drop window. Their own read.
+    //   trade-audit/{id}  every trade, drop, pickup and return. Owner only.
+    match /trades/{tradeId} {
+      allow read: if isOwner()
+                  || (request.auth != null
+                      && (resource.data.a.uid == request.auth.uid || resource.data.b.uid == request.auth.uid));
+      allow write: if false;
+    }
+    match /ground-items/{groundId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /ground/{areaId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /ground-rate/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    match /trade-audit/{auditId} {
+      allow read: if isOwner();
+      allow write: if false;
     }
 
     // ── Deny everything else ─────────────────────────────────────────────────
