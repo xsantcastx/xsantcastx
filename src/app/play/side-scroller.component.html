@@ -7,7 +7,7 @@
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
-<section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || bestiaryOpen || soundOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || bestiaryOpen || soundOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -129,7 +129,10 @@
             @for (m of (social.partyMessages ?? []).slice(-7); track m.id) { <li class="td-chat__party" data-party-line><b>{{ m.name }}:</b> {{ m.text }}</li> }
             @empty { <li class="td-chat__empty">{{ t('play.party.quiet') }}</li> }
           } @else {
-            @for (m of social.messages.slice(-7); track m.id) { <li><b>{{ m.name }}:</b> {{ m.text }}</li> }
+            @for (m of publicLines; track m.id) {
+              @if (m.kind === 'say') { <li [attr.data-guest]="m.guest || null"><b>{{ m.name }}:</b> {{ m.text }}</li> }
+              @else { <li class="td-chat__whisper" data-whisper-line [attr.data-whisper]="m.kind"><b>{{ t(m.kind === 'from' ? 'play.social.whisperFrom' : 'play.social.whisperTo', { name: m.name }) }}</b> {{ m.text }}</li> }
+            }
             @empty { <li class="td-chat__empty">{{ social.connected ? t('play.chat.quiet') : chatSetting === 'ignore' && !hearthWanted ? t('play.chat.ignored') : (joining ? t('play.chat.joining') : social.status) }}</li> }
           }
         </ol>
@@ -160,7 +163,8 @@
         <button type="button" class="td-peer__x" (click)="closePeerCard()" [attr.aria-label]="t('play.peer.close')">&times;</button>
       </header>
       <h2 id="td-peer-name">{{ pc.name }}</h2>
-      <p class="td-peer__line">{{ peerClass(pc.vocation) }}@if (pc.level) { · {{ t('play.peer.level', { n: pc.level }) }} }</p>
+      <p class="td-peer__line">{{ peerClass(pc.vocation) }}@if (pc.level) { · {{ t('play.peer.level', { n: pc.level }) }} }@if (socialReady && isGuest(pc.id)) { <span class="td-peer__guest" data-peer-guest>{{ t('play.social.guest') }}</span> }</p>
+      @if (peerFriend) { <p class="td-peer__line td-peer__mate" data-peer-is-friend>{{ t('play.social.isFriend') }}</p> }
       <button type="button" class="td-peer__wave" data-peer-wave (click)="waveAt()">{{ t('play.peer.wave') }}</button>
       @if (canInvitePeer) {
         <button type="button" class="td-peer__wave td-peer__invite" data-peer-invite [disabled]="partyBusy" (click)="inviteToParty()">{{ t('play.peer.invite') }}</button>
@@ -170,6 +174,33 @@
       } @else if (social.connected && !partyReady) {
         <p class="td-peer__line td-peer__later" data-party-later>{{ t('play.peer.partyLater') }}</p>
       }
+      <!-- Protocol 4: the quieter verbs, two to a row. -->
+      @if (socialReady) {
+        <div class="td-peer__more" data-peer-social>
+          <button type="button" class="td-peer__quiet" data-peer-whisper (click)="whisperTo(pc.name)">{{ t('play.social.whisper') }}</button>
+          @if (canBefriendPeer) { <button type="button" class="td-peer__quiet" data-peer-friend [disabled]="socialBusy" (click)="befriendPeer()">{{ t('play.social.addFriend') }}</button> }
+          <button type="button" class="td-peer__quiet" data-peer-mute [attr.aria-pressed]="muted.has(pc.id)" (click)="toggleMutePeer()">{{ t(muted.has(pc.id) ? 'play.social.unmute' : 'play.social.mute') }}</button>
+          <button type="button" class="td-peer__quiet" data-peer-block [disabled]="socialBusy" (click)="blockPeer()">{{ t('play.social.block') }}</button>
+          <button type="button" class="td-peer__quiet" data-peer-report [attr.aria-expanded]="reportOpen" (click)="reportOpen = !reportOpen">{{ t('play.social.report') }}</button>
+        </div>
+        @if (reportOpen) {
+          <div class="td-peer__report" role="group" [attr.aria-label]="t('play.social.reportWhy')" data-peer-report-reasons>
+            <small>{{ t('play.social.reportWhy') }}</small>
+            @for (r of reportReasons; track r) { <button type="button" class="td-peer__quiet" [attr.data-report-reason]="r" [disabled]="socialBusy" (click)="reportPeer(r)">{{ t('play.social.reason.' + r) }}</button> }
+          </div>
+        }
+      }
+    </section>
+  }
+  <!-- A friend request (protocol 4): the same cozy toast as an invite; it lets itself go after a minute. -->
+  @if (topDown && friendRequest; as fr) {
+    <section class="td-invite" role="alertdialog" aria-labelledby="td-friend-line" data-friend-request [attr.data-request-from]="fr.from" data-engine-ignore>
+      <p id="td-friend-line" class="td-invite__line">{{ t('play.social.requestLine', { name: fr.name }) }}</p>
+      <p class="td-invite__why">{{ t('play.social.requestWhy') }}</p>
+      <div class="td-invite__row">
+        <button type="button" class="td-invite__yes" data-friend-accept [disabled]="socialBusy" (click)="answerFriend(fr, true)">{{ t('play.party.accept') }}</button>
+        <button type="button" class="td-invite__no" data-friend-decline [disabled]="socialBusy" (click)="answerFriend(fr, false)">{{ t('play.party.decline') }}</button>
+      </div>
     </section>
   }
   <!-- An invite to a party (protocol 3): a cozy toast with Accept and Decline; it lets itself go after a minute. -->
@@ -624,6 +655,7 @@
         <button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()">{{ t('look.places') }}</button>
         <button type="button" data-open="character" (click)="placesOpen = false; openCharacter()">{{ t('play.hud.character') }}</button>
         <button type="button" data-open="sound" (click)="openSound()">{{ t('play.sound.menu') }}</button>
+        <button type="button" data-open="friends" (click)="openFriends()">{{ t('play.friends.menu') }}</button>
         <button type="button" data-open="loot" (click)="openLoot()">{{ t('loot.menu') }}</button>
         <button type="button" data-open="account" (click)="placesOpen = false; openAccount()">{{ t('account.menu') }}</button>
         <button type="button" data-open="bestiary" (click)="toggleBestiary()">{{ t('play.best.menu') }}</button>
@@ -650,6 +682,7 @@
         <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
         <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+        <li><button type="button" data-open="friends" (click)="openFriends()" aria-describedby="place-blurb-friends"><strong>{{ t('play.friends.menu') }}</strong><small id="place-blurb-friends">{{ t('play.friends.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="loot" (click)="openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
         <!-- One World (preview): this device only; a flip reloads the world. -->
@@ -863,6 +896,45 @@
   }
 
   <!-- Menu → Sound: the three sliders and the mute (shared/sound). -->
+  <!-- Menu → Friends (protocol 4): who is online and where, Whisper and Remove; the block list with Unblock. -->
+  @if (friendsOpen) {
+    <div class="sound-host win-host friends-host" data-engine-ignore (keydown.escape)="closeFriends()" appSheetDrag (sheetDismiss)="closeFriends()">
+      <section class="fs" role="dialog" aria-modal="false" aria-labelledby="fs-title" data-friends-sheet [attr.data-friends-count]="(social.friends ?? []).length">
+        <header class="fs__head">
+          <h2 id="fs-title">{{ t('play.friends.title') }}</h2>
+          <button type="button" class="px-x fs__done" (click)="closeFriends()" [attr.aria-label]="t('play.friends.close')"><i aria-hidden="true">&times;</i></button>
+        </header>
+        @if (!socialReady) {
+          <p class="fs__note" data-friends-later>{{ social.connected ? t('play.friends.later') : t('play.friends.offlineRoom') }}</p>
+        } @else if (social.guest) {
+          <p class="fs__note" data-friends-guest>{{ t('play.friends.guest') }}</p>
+        } @else {
+          <ul class="fs__list">
+            @for (f of social.friends ?? []; track f.uid) {
+              <li class="fs__row" data-friend [attr.data-friend-name]="f.name" [attr.data-online]="f.online">
+                <i class="fs__dot" [class.fs__dot--on]="f.online" aria-hidden="true"></i>
+                <span class="fs__who"><b>{{ f.name }}</b><small data-friend-where>{{ friendWhere(f) }}</small></span>
+                @if (f.online) { <button type="button" class="fs__btn" data-friend-whisper (click)="whisperTo(f.name)">{{ t('play.social.whisper') }}</button> }
+                <button type="button" class="fs__btn fs__btn--quiet" data-friend-remove [disabled]="socialBusy" (click)="removeFriend(f)" [attr.aria-label]="t('play.friends.removeAria', { name: f.name })">{{ t('play.friends.remove') }}</button>
+              </li>
+            } @empty { <li class="fs__note">{{ t('play.friends.none') }}</li> }
+          </ul>
+        }
+        @if (socialReady && (social.blocks ?? []).length) {
+          <h3 class="fs__sub">{{ t('play.friends.blocked') }}</h3>
+          <ul class="fs__list">
+            @for (b of social.blocks ?? []; track b.key) {
+              <li class="fs__row" data-blocked [attr.data-blocked-name]="b.name">
+                <span class="fs__who"><b>{{ b.name }}</b></span>
+                <button type="button" class="fs__btn fs__btn--quiet" data-unblock [disabled]="socialBusy" (click)="unblock(b.key, b.name)">{{ t('play.friends.unblock') }}</button>
+              </li>
+            }
+          </ul>
+        }
+        <p class="fs__note fs__note--small">{{ t('play.friends.privacy') }}</p>
+      </section>
+    </div>
+  }
   @if (soundOpen) {
     <div class="sound-host win-host" data-engine-ignore (keydown.escape)="soundOpen = false" appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
   }

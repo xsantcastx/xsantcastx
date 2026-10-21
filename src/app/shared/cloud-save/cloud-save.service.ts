@@ -566,6 +566,19 @@ export class CloudSaveService {
   }
 
   /** Dismiss the "we combined them" notice without changing anything. */
+  /**
+   * The signed-in player's Firebase ID token, for the Hearth room (protocol 4: it binds the room's identity to this
+   * uid). Null signed out, or when the token cannot be had (the room then takes the Keeper as a guest).
+   */
+  async idToken(): Promise<string | null> {
+    if (!this.isBrowser || !this.signedIn) return null;
+    try {
+      const { getAuth } = await this.auth();
+      const user = getAuth(firebaseApp()).currentUser as { getIdToken?: () => Promise<string> } | null;
+      return user?.getIdToken ? await user.getIdToken() : null;
+    } catch { return null; }
+  }
+
   dismissMerged(): void {
     this.merged$$.next(null);
   }
