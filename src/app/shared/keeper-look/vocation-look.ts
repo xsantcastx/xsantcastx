@@ -19,7 +19,7 @@ export const ASHGUARD_GARB: KeeperGarb = { tunic: '#8f3a3a', trim: '#c99a3e', tr
 /** The Pyre Watch kit, in the infernal realm's iron with its ember accent (keeper-gear STYLE_COLORS). */
 const piece = (slot: GearSlot, kind: GearPiece['kind']): GearPiece => ({ slot, kind, style: 'infernal', rarity: 'common' });
 export const ASHGUARD_KIT: Readonly<KeeperGear> = {
-  head: piece('head', 'helm'), chest: piece('chest', 'plate'), hands: piece('hands', 'gauntlet'), legs: piece('legs', 'greaves'),
+  head: { ...piece('head', 'helm'), color: '#8a94a4', accent: '#ff7a2e', variant: 'pyre' }, chest: piece('chest', 'plate'), hands: piece('hands', 'gauntlet'), legs: piece('legs', 'greaves'),
   feet: piece('feet', 'boots'), weapon: piece('weapon', 'sword'), 'off-hand': { ...piece('off-hand', 'shield'), color: '#8a6a2a', accent: '#ff7a2e' },
 };
 

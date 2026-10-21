@@ -12,6 +12,10 @@
  *  |              | one), 2 in 5 bring a second, every creature ×1.2 life ×1.1 blow |                   |            |
  *  | Eclipse      | as night, and 1 in 8 creatures is **Eclipse-touched**      | Shadow +25%, Ember −15%  | +20% · +25%|
  *
+ * The Ashguard's pages follow the same sky: **Brand** is fire on the blade and keeps Ember's hours (+10% by day, −10%
+ * at night, −15% under an eclipse); **Ash** is the dark, endurance side and gains a little after dark (+5% night, +10%
+ * eclipse); **Oath** is the shield and keeps no hour (neutral). Only skills with a damage number show it.
+ *
  * "Ember" is the light side (the Warlock's fire; the Lanternwright's Lamp spells join it when that vocation lands),
  * "Shadow" the dark side (curses, wards, Drain Life, Doom). Bone is the dead's own and keeps no hour.
  *
@@ -42,15 +46,15 @@ export interface PhaseRules {
   spell: Readonly<Partial<Record<TreeId, number>>>;
 }
 
-const SPELL_NONE = { ember: 1, bone: 1, shadow: 1 } as const;
+const SPELL_NONE = { ember: 1, bone: 1, shadow: 1, brand: 1, oath: 1, ash: 1 } as const;
 const DUSK: PhaseRules = { extra: .25, hp: 1, dmg: 1, xp: 1, gold: 1, night: false, touched: 0, spell: SPELL_NONE };
 
 export const PHASE_RULES: Readonly<Record<SkyPhase, PhaseRules>> = {
-  day: { extra: 0, hp: 1, dmg: 1, xp: 1, gold: 1, night: false, touched: 0, spell: { ember: 1.1, bone: 1, shadow: 1 } },
+  day: { extra: 0, hp: 1, dmg: 1, xp: 1, gold: 1, night: false, touched: 0, spell: { ember: 1.1, bone: 1, shadow: 1, brand: 1.1, oath: 1, ash: 1 } },
   dawn: DUSK,
   dusk: DUSK,
-  night: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.1, gold: 1.1, night: true, touched: 0, spell: { ember: .9, bone: 1, shadow: 1.1 } },
-  eclipse: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.2, gold: 1.25, night: true, touched: 1 / 8, spell: { ember: .85, bone: 1, shadow: 1.25 } },
+  night: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.1, gold: 1.1, night: true, touched: 0, spell: { ember: .9, bone: 1, shadow: 1.1, brand: .9, oath: 1, ash: 1.05 } },
+  eclipse: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.2, gold: 1.25, night: true, touched: 1 / 8, spell: { ember: .85, bone: 1, shadow: 1.25, brand: .85, oath: 1, ash: 1.1 } },
 };
 
 /** Of the spawns of a creature with a night table, this share are the night creature instead. */

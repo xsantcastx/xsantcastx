@@ -204,6 +204,29 @@ describe('td-phases: the Eclipse-touched roll', () => {
     for (const m of touched) { expect(m.def.rank).toBe('unique'); expect(m.def.hp).toBeGreaterThan(MOBS['rivet-maw'].hp); }
   });
 
+  it('turns the Ashguard\'s pages by the sky: Brand keeps Ember\'s hours, Ash gains a little after dark, Oath keeps none', () => {
+    for (const p of ['day', 'dawn', 'dusk', 'night', 'eclipse'] as const) {
+      expect(spellMult('brand', p)).toBe(spellMult('ember', p));
+      expect(spellMult('oath', p)).toBe(1);
+    }
+    expect(spellMult('ash', 'day')).toBe(1);
+    expect(spellMult('ash', 'dusk')).toBe(1);
+    expect(spellMult('ash', 'night')).toBeCloseTo(1.05);
+    expect(spellMult('ash', 'eclipse')).toBeCloseTo(1.1);
+  });
+
+  it('the Watch Blade\'s numbers follow Brand\'s hour through the fight', () => {
+    const sys = world(), blade = () => sys.v('watch-blade')['min'];
+    sys.vocation = 'ashguard';
+    sys.setRanks({ 'watch-blade': 10 });
+    sys.setPhase('dusk', true);
+    const dusk = blade();
+    sys.setPhase('day', true);
+    expect(blade()).toBe(Math.round(dusk * 1.1));
+    sys.setPhase('night', true);
+    expect(blade()).toBe(Math.round(dusk * .9));
+  });
+
   it('turns the Warlock\'s spells by the sky through the fight\'s own numbers', () => {
     const sys = world();
     const dayMin = sys.v('drain-life')['min'];

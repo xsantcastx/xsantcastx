@@ -82,6 +82,21 @@ rank Shield Oath · the Vow +5% duration / rank Hold the Line.
 keys 1–4 are Bash · Brand · Stride · Oath, the Watchfire runs. **The body**: life ×1.3 and mana ×0.6 of the Warlock's
 at every level, and Defense of his own (8 + 1 a level) under the gear's (`td-skills VOCATION_BODY`).
 **Gear**: items ask for a level and an attribute, never a class, so everything is wearable; the Ashguard keeps the
-existing weapon slot — whatever is in hand is drawn in it, and the blow is the Watch Blade's (ranks × spell power).
+existing weapon slot — whatever is in hand is drawn in it, and it lends the swing its damage (below).
+
+**The weapon in the swing** (2026-10-21, `td-melee weaponSwing`). A blow is `(Watch Blade roll min..max + weapon flat) × mult × pct%`,
+then the Brand's %, then spell power (level, Spell Damage worn). The weapon's *power* is its Strike (the legacy head stat)
+plus a quarter of its Spell Damage % (the affixed head stat): `flat = round(3 × max(0, power − 1))`, `mult = 1`.
+The starter Basalt Edge (Strike 1) is power 1, so it adds nothing and swings exactly the numbers the book shows. With
+**nothing in hand** the Keeper fights bare-handed: `flat = 0`, `mult = 0.85` (a fifth lighter, still a swing).
+Examples, Watch Blade rank 5 (17–26 base, power ×1): bare hands 14–22 · Basalt Edge 17–26 · Dawnrender (Strike 1.7)
+19–28 · a rare with 12% Spell Damage (power 3, flat +6) 23–32, and its 12% lifts the spell power on top. Cinder Cleave,
+the Whirl and Ash Stride roll the same blow (their % of it), so the weapon counts in all of them. Shield Bash is the shield's
+and keeps its own roll.
+
+**The sky** (`td-phases` PHASE_RULES): Brand keeps Ember's hours (+10% day, −10% night, −15% eclipse), Ash gains a little
+after dark (+5% night, +10% eclipse), Oath is neutral (the shield keeps no hour). It scales the tree's damage numbers (the
+Watch Blade's roll, hence every blow built on it) and the Spellbook card's phase line shows it like the Warlock's
+("Eclipse now: −15% power") on any skill that has a damage number.
 **Saves**: a look with no `vocation` (every Keeper made before) is a Warlock; a made Keeper keeps the calling he was
 made with (the Glass locks the other card).

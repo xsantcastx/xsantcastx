@@ -51,6 +51,8 @@ export interface GearPiece {
    */
   color?: string;
   accent?: string;
+  /** A helm painted as the Pyre Watch's iron helm (nasal, visor slit, ember-lit rim) rather than the round cap. */
+  variant?: 'pyre';
 }
 export type KeeperGear = Partial<Record<GearSlot, GearPiece>>;
 
@@ -150,7 +152,7 @@ export function gearPiece(slot: GearSlot, text: string, style: unknown, rarity: 
 /** A stable key for a gear set (the painter rebuilds its layers when it changes). */
 export function gearKey(gear: KeeperGear | null | undefined): string {
   if (!gear) return '';
-  return GEAR_SLOTS.map(slot => { const p = gear[slot]; return p ? `${slot}:${p.kind}:${p.style}:${p.rarity}${p.color ? `:${p.color}${p.accent ?? ''}` : ''}` : ''; }).filter(Boolean).join('|');
+  return GEAR_SLOTS.map(slot => { const p = gear[slot]; return p ? `${slot}:${p.kind}:${p.style}:${p.rarity}${p.color ? `:${p.color}${p.accent ?? ''}` : ''}${p.variant ? `:${p.variant}` : ''}` : ''; }).filter(Boolean).join('|');
 }
 
 // ── Held weapons: sprite size, grip and swing ──────────────────────────────
