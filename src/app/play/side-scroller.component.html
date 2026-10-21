@@ -100,11 +100,20 @@
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
         <span>{{ t('play.td.dock.sheet') }}</span><kbd>C</kbd>
       </button>
-      <button type="button" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" [title]="t('play.td.dock.places')">
+      <button type="button" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" [title]="t('play.td.dock.places') + ' (M)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
-        <span>{{ t('play.td.dock.places') }}</span>
+        <span>{{ t('play.td.dock.places') }}</span><kbd>M</kbd>
       </button>
     </nav>
+    <!-- The experience bar (Diablo II, owner's player notes 2026-10-21): the whole width of the HUD's foot, how far into
+         this Keeper level; a hover (or a tap) shows the XP in the level, the level's span and the percent. -->
+    @if (xpBar; as xb) {
+      <div class="td-xp" data-xp-bar [attr.data-xp-pct]="xb.pct" role="meter" tabindex="0" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="xb.pct" [attr.aria-label]="xb.aria"
+           [class.is-tip]="xpTip" (click)="xpTip = !xpTip" (blur)="xpTip = false" (mouseleave)="xpTip = false" data-engine-ignore>
+        <i class="td-xp__fill" [style.width.%]="xb.pct"></i>
+        <span class="td-xp__tip" role="tooltip" data-xp-tip><b>{{ xb.tip }}</b>@if (xb.left) { <small>{{ xb.left }}</small> }</span>
+      </div>
+    }
   }
   <!-- The chat box (owner 2026-10-20: "chat like OSRS, a little box left side, vanishes if needed"): Game (this device's
        own lines) and Chat (the Hearth room); it fades when quiet, wakes on a new line or a hover, and hides to a tab. -->
@@ -112,7 +121,7 @@
     @if (chatHidden) {
       <button type="button" class="td-chat-tab" (click)="chatHidden = false; chatLastAt = 0; chatTab === 'public' && (chatUnread = 0)" [attr.aria-label]="t('play.chat.show') + (chatUnread && chatSetting === 'on' ? ' (' + t('play.chat.unread', { n: chatUnread }) + ')' : '')" data-engine-ignore>{{ t('play.chat.label') }}@if (chatUnread && chatSetting === 'on') { <span class="td-chat__unread" data-chat-unread aria-hidden="true">{{ chatUnread }}</span> }</button>
     } @else {
-      <section class="td-chat" [class.td-chat--quiet]="chatQuiet && chatTab === 'game'" [attr.aria-label]="t('play.chat.label')" data-engine-ignore [attr.data-chat]="chatSetting" [attr.data-chat-connected]="social.connected">
+      <section class="td-chat" appHudDrag="chat" [hudDragLabel]="t('ux.hud.drag')" [class.td-chat--quiet]="chatQuiet && chatTab === 'game'" [attr.aria-label]="t('play.chat.label')" data-engine-ignore [attr.data-chat]="chatSetting" [attr.data-chat-connected]="social.connected">
         <header class="td-chat__tabs" role="tablist">
           <button type="button" role="tab" [attr.aria-selected]="chatTab === 'game'" (click)="chatTab = 'game'; chatLastAt = 0">{{ t('play.chat.game') }}</button>
           <button type="button" role="tab" [attr.aria-selected]="chatTab === 'public'" (click)="openPublicChat()">{{ t('play.chat.public') }}@if (social.connected) { <small><span class="td-chat__online">{{ t('play.chat.online', { n: social.players.length }) }}</span><span class="td-chat__count" aria-hidden="true">{{ social.players.length }}</span></small> }@if (chatUnread && chatSetting === 'on') { <span class="td-chat__unread" data-chat-unread [attr.aria-label]="t('play.chat.unread', { n: chatUnread })">{{ chatUnread }}</span> }</button>
@@ -154,7 +163,7 @@
   }
   <!-- Another Keeper, tapped in the world (td-peers): who they are, and a Wave that shows over both of you. -->
   @if (topDown && peerCard; as pc) {
-    <section class="td-peer" role="dialog" aria-modal="false" aria-labelledby="td-peer-name" data-peer-card [attr.data-peer-id]="pc.id" data-engine-ignore (keydown.escape)="closePeerCard()">
+    <section class="td-peer" role="dialog" aria-modal="false" aria-labelledby="td-peer-name" data-peer-card [attr.data-peer-id]="pc.id" data-engine-ignore>
       <header class="td-peer__head">
         <small>{{ t('play.peer.card') }}</small>
         <button type="button" class="td-peer__x" (click)="closePeerCard()" [attr.aria-label]="t('play.peer.close')">&times;</button>
@@ -185,7 +194,7 @@
   }
   <!-- The party frames (protocol 3): each other member's name, class and level, life, and which way they are. -->
   @if (topDown && !panel && social.party) {
-    <aside class="td-party" [attr.aria-label]="t('play.party.title')" data-party-frames [attr.data-party-size]="social.party.members.length" data-engine-ignore>
+    <aside class="td-party" appHudDrag="party" [hudDragLabel]="t('ux.hud.drag')" [attr.aria-label]="t('play.party.title')" data-party-frames [attr.data-party-size]="social.party.members.length" data-engine-ignore>
       <header class="td-party__head"><b>{{ t('play.party.title') }}</b>
         <button type="button" class="td-party__leave" data-party-leave [disabled]="partyBusy" (click)="leaveParty()">{{ t('play.party.leave') }}</button>
       </header>
@@ -220,7 +229,7 @@
   <!-- The character sheet (C), D2's attributes page made cozy: level, points to spend, what each point gives. -->
   @if (topDown && sheetOpen && !panel) {
     @if (sheet; as sh) {
-      <section class="spellbook ksheet win-host" role="dialog" aria-labelledby="ksheet-title" data-engine-ignore (keydown.escape)="sheetOpen = false">
+      <section class="spellbook ksheet win-host" role="dialog" aria-labelledby="ksheet-title" data-engine-ignore>
         <header class="win-head">
           <h2 id="ksheet-title">{{ keeperName || t('play.hud.keeper') }} · {{ t('look.class.' + vocation) }}</h2>
           <button type="button" class="win-x" (click)="sheetOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
@@ -230,10 +239,25 @@
         @if (sh.next; as nx) { <p class="ks__next" data-sheet-next>{{ t('play.lvl.next', { n: nx.level }) }} <small>{{ milestoneLines(nx).join(' · ') }}</small></p> }
         <div class="ks__tabs" role="tablist">
           <button type="button" role="tab" [attr.aria-selected]="sheetTab === 'attrs'" (click)="sheetTab = 'attrs'">{{ t('play.lvl.tab.attrs') }}</button>
+          <button type="button" role="tab" data-sheet-skills [attr.aria-selected]="sheetTab === 'skills'" (click)="sheetTab = 'skills'">{{ t('ux.skills.tab') }}</button>
           <button type="button" role="tab" data-sheet-milestones [attr.aria-selected]="sheetTab === 'milestones'" (click)="sheetTab = 'milestones'; milestonePage = -1">{{ t('play.lvl.tab.milestones') }}</button>
           <button type="button" role="tab" data-sheet-lore [attr.aria-selected]="sheetTab === 'lore'" (click)="sheetTab = 'lore'">{{ t('lore.tab') }}</button>
         </div>
-        @if (sheetTab === 'milestones') {
+        @if (sheetTab === 'skills') {
+          <!-- Skills (RuneScape's skills tab): each skill its own level, bar and XP to the next; they level by doing. -->
+          <p class="ks__lore-lead">{{ t('ux.skills.lead') }} <b data-skill-total>{{ t('ux.skills.total', { n: skillTotal }) }}</b></p>
+          <ul class="ks__skills" data-skills>
+            @for (r of skillRows; track r.id) {
+              <li class="ks__skill" [attr.data-skill]="r.id" [attr.data-skill-level]="r.level">
+                <span class="ks__skill-ico" aria-hidden="true">@if (r.art) { <img [src]="r.art" alt="" width="24" height="24"> }</span>
+                <b class="ks__skill-name">{{ r.name }}</b>
+                <b class="ks__val ks__skill-lv">{{ r.level }}</b>
+                <span class="ks__skill-bar" role="meter" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="r.pct" [attr.aria-label]="r.name + ' ' + r.toNext"><i [style.width.%]="r.pct"></i></span>
+                <small class="ks__skill-xp">{{ r.xp }} · {{ r.toNext }}</small>
+              </li>
+            }
+          </ul>
+        } @else if (sheetTab === 'milestones') {
           @if (milestoneView; as mv) {
             <p class="ks__title-pick">
               <span>{{ t('play.lvl.titleWorn') }}</span>
@@ -290,7 +314,7 @@
        prerequisite arrows and rank badges, the picked skill's card (this rank, the next, Learn, keys 1–4, the aura). -->
   @if (topDown && spellbookOpen && !panel) {
     @if (spellbook; as sb) {
-      <section class="spellbook sbt win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore (keydown.escape)="spellbookOpen = false">
+      <section class="spellbook sbt win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore>
         <header class="win-head">
           <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
           <button type="button" class="win-x" (click)="spellbookOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
@@ -308,7 +332,7 @@
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
-    <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
+    <div class="td-mini" aria-hidden="true" data-engine-ignore appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
       <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
       @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}</span> }
     </div>
@@ -373,7 +397,7 @@
 
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
-    <div class="guide" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
+    <div class="guide" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
       <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
       <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
       <!-- Glim voices the goal; a press opens its hint ladder one step at a time (shared/glim/glim.ts). -->
@@ -384,9 +408,19 @@
       @if (topDown && goal.n) {
         <ol class="guide-list" [attr.aria-label]="t('play.goal.quests')">
           @for (q of questRows; track q.n) {
-            <li [class.is-done]="q.n < goal.n" [class.is-now]="q.n === goal.n"><i aria-hidden="true"></i><span>{{ t(q.key) }}</span></li>
+            <li [class.is-done]="q.n < goal.n" [class.is-now]="q.n === goal.n"><i aria-hidden="true"></i><span>{{ t(q.key) }}</span>@if (keyCaps && proKeys[q.key]; as ks) {<span class="guide-caps" data-pro-keys aria-hidden="true">@for (k of ks; track k) {<kbd class="px-key">{{ k }}</kbd>}</span>}</li>
           }
         </ol>
+        @if (goal.id.startsWith('pro-')) {
+          <!-- The keys (owner's player notes 2026-10-21): pixel key caps on a computer, the tap words on a phone. -->
+          @if (keyCaps) {
+            <ul class="guide-keys" data-guide-keys [attr.aria-label]="t('ux.keys.title')">
+              @for (hk of hudKeys; track hk.k) { <li><kbd class="px-key">{{ hk.k }}</kbd><span>{{ t(hk.key) }}</span></li> }
+            </ul>
+          } @else {
+            <p class="guide-taps" data-guide-taps>{{ t('ux.taps') }}</p>
+          }
+        }
       }
       <p class="guide-text"><b>{{ goal.n ? t(topDown ? 'play.pro.label' : 'play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span data-goal-text>{{ t(goal.key, goal.vars) }}</span></p>
       @if (goal.target) {
@@ -410,7 +444,7 @@
     </div>
   } @else if (topDown && taskRows.length) {
     <!-- The first goals done: the scroll keeps only the town tasks under way. -->
-    <div class="guide guide--list guide--tasks" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+    <div class="guide guide--list guide--tasks" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
       <p class="guide-text"><b>{{ t('play.task.tasks') }}</b></p>
       <!-- Town tasks under way (shared/town-tasks): one row each, its count, a tick when it is ready to hand in. -->
       @if (topDown && taskRows.length) {
@@ -547,7 +581,7 @@
 
   @if (bestiaryOpen && bestiary; as bs) {
     <!-- The Bestiary: a card per creature. Undefeated ones are a dark silhouette and "???" (level and haunts still shown: a hunting guide). -->
-    <section class="places win td-map td-best" [attr.aria-label]="t('play.best.title')" data-engine-ignore (keydown.escape)="closeBestiary()">
+    <section class="places win td-map td-best" [attr.aria-label]="t('play.best.title')" data-engine-ignore>
       <header class="win-head">
         <h2>{{ t('play.best.title') }}</h2>
         <button type="button" class="win-x places-close" (click)="closeBestiary()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
@@ -598,28 +632,13 @@
   @if (placesOpen && tdMapView; as mv) {
     <!-- The Map (owner 2026-10-20: "take that Places UI out, create the map and pin point the stuff"): the floor or the
          continent you stand on, painted from its own ground, a pin per place (tap it to go), your mark, and a small key. -->
-    <nav id="places-list" class="places win td-map" [attr.aria-label]="t('play.map.title', { area: state.area || town.name })" data-engine-ignore (keydown.escape)="placesOpen = false">
+    <nav id="places-list" class="places win td-map td-map--world" [attr.aria-label]="t('play.map.title', { area: state.area || town.name })" data-engine-ignore>
       <header class="win-head">
         <h2>{{ t('play.map.title', { area: state.area || town.name }) }}</h2>
         <button type="button" class="win-x places-close" (click)="placesOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </header>
-      <div class="td-map__body">
-        <div class="td-map__view" [style.aspect-ratio]="mv.aspect">
-          <img [src]="mv.url" alt="" draggable="false">
-          @for (pin of mv.pins; track pin.id) {
-            <button type="button" class="td-map__pin" tabindex="-1" aria-hidden="true" [attr.data-kind]="pin.kind" [style.left.%]="pin.u * 100" [style.top.%]="pin.v * 100" [title]="pinName(pin)" (click)="goPin(pin)"><i></i></button>
-          }
-          <i class="td-map__me" aria-hidden="true" [style.left.%]="mv.me.u * 100" [style.top.%]="mv.me.v * 100" [title]="t('play.map.you')"></i>
-        </div>
-        <aside class="td-map__key">
-          <p class="td-map__hint">{{ t('play.map.hint') }}</p>
-          <ul>
-            @for (pin of mv.pins; track pin.id) {
-              <li><button type="button" [attr.data-kind]="pin.kind" (click)="goPin(pin)" [title]="pin.blurb"><i aria-hidden="true"></i><span>{{ pinName(pin) }}</span></button></li>
-            }
-          </ul>
-        </aside>
-      </div>
+      <!-- The map itself (owner's player notes 2026-10-21): every section, zoom and pan, pins that never move, a key. -->
+      <app-td-map-window class="td-map__win" [view]="mv" [sections]="tdMapSections" [touch]="!keyCaps" (goPin)="goPin($event)" (section)="mapSection = $event" />
       <footer class="td-map__menu">
         <button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()">{{ t('look.places') }}</button>
         <button type="button" data-open="character" (click)="placesOpen = false; openCharacter()">{{ t('play.hud.character') }}</button>
@@ -666,7 +685,7 @@
     </nav>
   }
 
-  <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+  <div class="vitals" appHudDrag="plate" [hudDragLabel]="t('ux.hud.drag')" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     @if (topDown) {
       <!-- The portrait (docs/design/ui-pass-top-heroes.md): the Keeper's face in a frame, the level on its corner. -->
       <div class="hero-face" aria-hidden="true" [attr.data-frame]="keeperFrame">
@@ -864,17 +883,17 @@
 
   <!-- Menu → Sound: the three sliders and the mute (shared/sound). -->
   @if (soundOpen) {
-    <div class="sound-host win-host" data-engine-ignore (keydown.escape)="soundOpen = false" appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
+    <div class="sound-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false">@if (keyCaps) { <button type="button" class="hud-reset" data-hud-reset (click)="resetHud()">{{ t('ux.hud.reset') }}</button> }</app-sound-sheet></div>
   }
 
   <!-- Menu → Loot & Combat: the loot filter, the aura, the difficulty, the resists (shared/loot). -->
   @if (lootOpen) {
-    <div class="sound-host win-host" data-engine-ignore (keydown.escape)="lootOpen = false" appSheetDrag (sheetDismiss)="lootOpen = false"><app-loot-sheet (done)="lootOpen = false" /></div>
+    <div class="sound-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="lootOpen = false"><app-loot-sheet (done)="lootOpen = false" /></div>
   }
 
   <!-- The Satchel's pet well, opened (shared/pets): your pets, one card, one primary action. -->
   @if (petsOpen) {
-    <div class="pet-host win-host" data-engine-ignore (keydown.escape)="closePets()" appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" (commanded)="petCommanded()" /></div>
+    <div class="pet-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" (commanded)="petCommanded()" /></div>
   }
 
   @if (bagOpen) {
@@ -1061,13 +1080,13 @@
       </ng-template>
       @if (hoverTip && !(topDown && slip); as tip) {
         <!-- The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): framed in its rarity; nothing to press. -->
-        <div class="d2tip" role="tooltip" [style.left.px]="hoverTip.x + 16" [style.top.px]="hoverTip.y + 12" [attr.data-rarity]="hoverTip.row.tip?.rarity ?? 'material'">
+        <div class="d2tip" role="tooltip" [appFitViewport]="hoverTip.at" fitMode="cursor" [attr.data-rarity]="hoverTip.row.tip?.rarity ?? 'material'">
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: hoverTip.row }" />
         </div>
       }
       @if (topDown && slip; as row) {
         <!-- A click pins the same card beside the item, with its actions under it. -->
-        <div class="d2tip d2tip--pinned" role="dialog" [attr.aria-label]="row.name" [style.left.px]="pickAt.x" [style.top.px]="pickAt.y" [attr.data-rarity]="row.tip?.rarity ?? 'material'" (keydown.escape)="unpick()">
+        <div class="d2tip d2tip--pinned" role="dialog" [attr.aria-label]="row.name" [appFitViewport]="pickAt" fitMode="side" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }

@@ -23,12 +23,13 @@ test('the Map: M opens it, pins and the key go places, on an island, a continent
   await expect(map.locator('.td-map__me')).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/map-ember-isle.jpg', type: 'jpeg', quality: 78 });
   // A pin itself travels (the ship to Pyrehold).
-  await map.locator('.td-map__pin[title="Ship To Pyrehold"]').click();
+  await map.locator('.td-map__pin[data-name="Ship To Pyrehold"]').click();
   await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 30000 });
   await page.keyboard.press('m');
   await expect(map).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/map-infernal-reach.jpg', type: 'jpeg', quality: 78 });
   // The key travels too: into the Molten Deep, whose floor is a map of its own.
+  await page.locator('#places-list [data-map-find]').fill('the molten deep');
   await map.locator('.td-map__key button', { hasText: /the molten deep/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /scorched throat/i, { timeout: 30000 });
   await page.keyboard.press('m');

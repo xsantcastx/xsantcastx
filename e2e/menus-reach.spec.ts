@@ -196,11 +196,13 @@ for (const size of SIZES) {
       // Sexton Wren's talk window (from the Map's key), then his journal once the Count is taken.
       await page.evaluate(() => (window as unknown as { __tdSexton: { to: (w: string) => unknown } }).__tdSexton.to('square'));
       await key('m');
+      await page.locator('#places-list [data-map-find]').fill('aldous wren');
       await page.locator('#places-list .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).tap();
       await check(page, "Wren's talk", '.td-talk');
       await page.locator('.td-talk [data-story-accept]').tap();
       await closeAll(page);
       await key('m');
+      await page.locator('#places-list [data-map-find]').fill('aldous wren');
       await page.locator('#places-list .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).tap();
       await page.locator('.td-talk [data-story-journal]').first().tap();
       await check(page, 'journal', '.place:not([hidden])');
