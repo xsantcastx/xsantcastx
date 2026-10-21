@@ -308,6 +308,17 @@ Element palette: *Lamp* — proposal, reuses the shipped `LEVEL_UP` tones (cream
 S/U/L: *source* the vocation pick in the Keeper maker (`VOCATIONS`), trainer at Tomas Rill; *use* the support fantasy
 and duo play; *lore* the Archive's lamp-keepers, Glim's own order.
 
+**As built (2026-10-21)** — playable, chosen at the Glass (the third card). Thirteen skills in the three trees
+(docs/design/skill-trees.md, "The Lanternwright's three pages"): **Lamp** — Kindle (*lum sha*, the basic attack: a flare
+at 4 tiles), Blinding Flash (*lum orum*, a new spell: light all round, the dead and the dark-born stunned), the Lantern
+Aura (*lum ka*), **Shutter the Lantern** (*lum un ka*, new: the toggle that lets a shy chest show), Banish (*lum un*) and
+Dawn at Noon (*lum ul orum*); **Hearth** — Hearthlight (*hesk ka*), Hearth Circle (*hesk orum*), Lantern Ward
+(*lum hesk ka*) and Last Light (passive); **Moth** — the Lamp-Wisp (*lum teth*, the bible's Moth Swarm as one companion
+at the shoulder), Moth-Kin (passive, new) and the **Beacon** (*lum dra*, new: a lantern on a pole that throws motes).
+Unveil is left for later (*lum vesh* is the Seek's) and so is Glim's Errand. Light on the dead and the dark-born (the bone
+and shade families, the night's wraiths, ghouls, wisps and drowned) lands ×1.5. The lantern itself is light: +2 tiles
+the Keeper carries (`td-lantern VOCATION_LIGHT`), more with the aura, none with the shutters closed.
+
 ### 4.4 The Ashguard† (proposed vocation 3) — *the watch that holds the gate*
 
 Fantasy: melee knight of the **Pyre Watch** (Captain Brannoc Vey's order, canon). Shield, axe or sword, and oaths

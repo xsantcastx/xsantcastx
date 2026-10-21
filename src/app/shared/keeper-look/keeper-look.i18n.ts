@@ -20,6 +20,11 @@ export const KEEPER_LOOK_I18N: Readonly<Record<string, { en: string; es: string 
     en: 'Blade and shield of the Pyre Watch, up close. Holds the line, brands foes with fire, will not fall.',
     es: 'Hoja y escudo de la Guardia de la Pira, cuerpo a cuerpo. Mantiene la linea, marca con fuego y no cae.',
   },
+  'look.class.lanternwright': { en: 'Lanternwright', es: 'Farolero' },
+  'look.class.lanternwright.blurb': {
+    en: 'A lantern on a pole and the hearth\'s warmth. Mends the hurt, blinds and banishes the dead, carries daylight into the dark.',
+    es: 'Un farol en un baston y el calor del hogar. Cura a los heridos, ciega y destierra a los muertos, lleva la luz del dia a la oscuridad.',
+  },
   'look.class.more': { en: 'More classes will come.', es: 'Llegaran mas clases.' },
   'look.class.locked': { en: 'A Keeper keeps the calling they were made with.', es: 'Un Guardian conserva la vocacion con la que fue creado.' },
   'look.preview': { en: 'Your Keeper, wearing what you wear now', es: 'Tu Guardian, con lo que llevas puesto' },

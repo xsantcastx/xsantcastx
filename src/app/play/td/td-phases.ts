@@ -16,8 +16,12 @@
  * at night, −15% under an eclipse); **Ash** is the dark, endurance side and gains a little after dark (+5% night, +10%
  * eclipse); **Oath** is the shield and keeps no hour (neutral). Only skills with a damage number show it.
  *
- * "Ember" is the light side (the Warlock's fire; the Lanternwright's Lamp spells join it when that vocation lands),
- * "Shadow" the dark side (curses, wards, Drain Life, Doom). Bone is the dead's own and keeps no hour.
+ * The Lanternwright's light is needed most when it is darkest: **Lamp** is mild by day (−5%), +15% at night and +30%
+ * under an eclipse; **Moth** (the wisps and the beacon) +10% at night, +15% under an eclipse; **Hearth** mends a little
+ * more after dark (+5% night, +10% eclipse) — and for Hearth the sky moves the heal, not a damage number (skyVars).
+ *
+ * "Ember" is the warm side (the Warlock's fire), "Shadow" the dark side (curses, wards, Drain Life, Doom). Bone is the
+ * dead's own and keeps no hour.
  *
  * Towns stay safe: none of this happens in a town, a village or the clear ground round them (TdWorld.safeAt), nor to a
  * boss or an authored champion. Spawn rules hold only under the open sky (the surface); spell strength follows the
@@ -46,15 +50,15 @@ export interface PhaseRules {
   spell: Readonly<Partial<Record<TreeId, number>>>;
 }
 
-const SPELL_NONE = { ember: 1, bone: 1, shadow: 1, brand: 1, oath: 1, ash: 1 } as const;
+const SPELL_NONE = { ember: 1, bone: 1, shadow: 1, brand: 1, oath: 1, ash: 1, lamp: 1, hearth: 1, moth: 1 } as const;
 const DUSK: PhaseRules = { extra: .25, hp: 1, dmg: 1, xp: 1, gold: 1, night: false, touched: 0, spell: SPELL_NONE };
 
 export const PHASE_RULES: Readonly<Record<SkyPhase, PhaseRules>> = {
-  day: { extra: 0, hp: 1, dmg: 1, xp: 1, gold: 1, night: false, touched: 0, spell: { ember: 1.1, bone: 1, shadow: 1, brand: 1.1, oath: 1, ash: 1 } },
+  day: { extra: 0, hp: 1, dmg: 1, xp: 1, gold: 1, night: false, touched: 0, spell: { ember: 1.1, bone: 1, shadow: 1, brand: 1.1, oath: 1, ash: 1, lamp: .95, hearth: 1, moth: 1 } },
   dawn: DUSK,
   dusk: DUSK,
-  night: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.1, gold: 1.1, night: true, touched: 0, spell: { ember: .9, bone: 1, shadow: 1.1, brand: .9, oath: 1, ash: 1.05 } },
-  eclipse: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.2, gold: 1.25, night: true, touched: 1 / 8, spell: { ember: .85, bone: 1, shadow: 1.25, brand: .85, oath: 1, ash: 1.1 } },
+  night: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.1, gold: 1.1, night: true, touched: 0, spell: { ember: .9, bone: 1, shadow: 1.1, brand: .9, oath: 1, ash: 1.05, lamp: 1.15, hearth: 1.05, moth: 1.1 } },
+  eclipse: { extra: .4, hp: 1.2, dmg: 1.1, xp: 1.2, gold: 1.25, night: true, touched: 1 / 8, spell: { ember: .85, bone: 1, shadow: 1.25, brand: .85, oath: 1, ash: 1.1, lamp: 1.3, hearth: 1.1, moth: 1.15 } },
 };
 
 /** Of the spawns of a creature with a night table, this share are the night creature instead. */
@@ -120,6 +124,12 @@ export function hardened<T extends { hp: number; dmg: readonly [number, number] 
 
 /** A spell tree's damage under `phase` (1 = as written). */
 export function spellMult(tree: TreeId, phase: SkyPhase): number { return rulesOf(phase).spell[tree] ?? 1; }
+
+/**
+ * The vars the sky moves on a tree's skill: its damage (min/max, dps) — and on the Hearth, which deals none, its heal.
+ * The fight (td-mobs v()) and the Spellbook's phase line read this one list, so they never disagree.
+ */
+export function skyVars(tree: TreeId): readonly string[] { return tree === 'hearth' ? ['heal'] : ['min', 'max', 'dps']; }
 
 /** In-game minutes until the next eclipse when it is within WARN_MINUTES (and not yet on), else null. */
 export function eclipseWarning(ms: number): number | null {
