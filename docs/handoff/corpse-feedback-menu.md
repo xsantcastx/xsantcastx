@@ -4,3 +4,5 @@
 - **Send feedback** (`shared/feedback/`): Firestore `player-feedback` (signed-in only), one per minute via `player-feedback-limits/{uid}` stamp in the same batch. Rules need deploying. GM console: Logs view, next to Player reports.
 - **Game Menu** (Esc / Menu button): replaces the Map's footer; the Map shows only the map. `e2e/play-helpers.ts openMenu(page)`.
 - **Tap fix**: the HUD's click handler ran the side view's station pick after the top-down engine had already handled the tap; it now skips top-down. The engine weighs Keeper / corpse / stall by distance.
+
+_Rules for `player-feedback` and `player-feedback-limits` deployed by hand on 2026-10-21; live rules matched main first._
