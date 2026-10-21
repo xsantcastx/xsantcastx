@@ -10,7 +10,7 @@
  * from the Places list, or from the one gentle nudge. Phone-first: one column,
  * every control 44px.
  */
-import { AfterViewInit, Component, ElementRef, EventEmitter, NgZone, OnDestroy, OnInit, Output, PLATFORM_ID, ViewChild, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostBinding, Input, NgZone, OnDestroy, OnInit, Output, PLATFORM_ID, ViewChild, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
@@ -42,6 +42,11 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Fired after "Become this Keeper" saved: the host closes the place. */
   @Output() readonly done = new EventEmitter<KeeperLook>();
+  /**
+   * By the fire (the lobby's Glass, play/lobby/camp-art.ts): the campfire scene already shows the Keeper being made,
+   * stepping forward live, so the maker drops its own preview and keeps Become in reach (sticky) as the looks scroll.
+   */
+  @Input() @HostBinding('class.km--fire') fire = false;
   @ViewChild('preview') preview?: ElementRef<HTMLCanvasElement>;
 
   readonly fields = LOOK_FIELDS;
@@ -93,7 +98,7 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
   fieldLabel(field: LookField): string { return this.t(`look.field.${field}`); }
   valueLabel(field: LookField): string {
     const value = this.draft[field];
-    if (typeof value === 'string') return this.t(`look.${field === 'body' ? 'body' : field === 'hair' ? 'hair' : field === 'eyes' ? 'eyes' : 'face'}.${value}`);
+    if (typeof value === 'string') return this.t(`look.${field === 'form' ? 'form' : field === 'body' ? 'body' : field === 'hair' ? 'hair' : field === 'eyes' ? 'eyes' : 'face'}.${value}`);
     return this.t('look.swatch', { n: value + 1, total: fieldOptions(field).length });
   }
   swatch(field: LookField): string | null { return fieldSwatch(field, this.draft[field]); }
@@ -104,7 +109,10 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.repaintStill();
   }
   surprise(): void {
-    this.draft = randomLook(Math.random, this.draft);
+    // Surprise me rolls the look, never the figure the player chose (feminine stays feminine).
+    const form = this.draft.form;
+    const next = randomLook(Math.random, this.draft);
+    this.draft = { ...next, form, face: form === 'fem' && next.face === 'beard' ? 'rosy' : next.face };
     this.saved = false;
     this.repaintStill();
   }
@@ -126,6 +134,7 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private paint(seconds: number): void {
+    if (this.fire) return;
     const el = this.preview?.nativeElement;
     const c = el?.getContext('2d');
     if (!el || !c) return;
