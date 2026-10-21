@@ -8,7 +8,7 @@ import type { TdMapPin, TdMapView } from './td/td-engine';
 import type { TdMapSection } from './td/td-map';
 
 /** What a pin is, for its colour and the key (owner's player notes 2026-10-21: towns, hearths, dungeons, tasks, party). */
-export type PinCat = 'stall' | 'npc' | 'quest' | 'hearth' | 'dungeon' | 'way' | 'ship';
+export type PinCat = 'stall' | 'npc' | 'quest' | 'hearth' | 'dungeon' | 'way' | 'ship' | 'harbour';
 export function pinCat(pin: TdMapPin): PinCat {
   if (pin.mark) return 'quest';
   if (/hearth|shrine/.test(pin.id)) return 'hearth';
@@ -19,7 +19,7 @@ export function pinCat(pin: TdMapPin): PinCat {
 function titleCase(label: string): string { return label.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
 
 const MAX_ZOOM = 8;
-const LEGEND: readonly PinCat[] = ['stall', 'npc', 'quest', 'hearth', 'dungeon', 'way', 'ship'];
+const LEGEND: readonly PinCat[] = ['stall', 'npc', 'quest', 'hearth', 'dungeon', 'way', 'ship', 'harbour'];
 
 /**
  * The Map window's body (M), redrawn in the cozy style (owner's player notes 2026-10-21): the section picker (the

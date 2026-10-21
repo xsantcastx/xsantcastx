@@ -249,6 +249,9 @@ import { BLANK_ID, parseStoneKey, soulCap, stoneIcon, stoneRecipe } from '../sha
 import { GraveGoodsService } from '../shared/grave-goods/grave-goods.service';
 import { GRAVE_I18N } from '../shared/grave-goods/grave-goods.i18n';
 import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
+import { SailingBoardComponent } from './harbour/sailing-board.component';
+import { VoyageComponent } from './harbour/voyage.component';
+import { pierById, pierOfMaster, type BoardRow } from './td/td-harbour';
 import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
 import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
 import { RUNG_LEVEL, lootEntry } from '../shared/loot/drop-tables';
@@ -485,7 +488,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -3100,6 +3103,8 @@ export class SideScrollerComponent implements OnDestroy {
   private talkTo(keeperId: string): boolean {
     // The Archivist (shared/grave-goods): no tasks; speaking to him opens his desk, where whispers are silenced.
     if (this.topDown && keeperId === 'archivist') { this.openGraveDesk('archivist'); return true; }
+    // A Harbourmaster (td-harbour): the Sailing Board for their pier.
+    if (this.topDown && pierOfMaster(keeperId)) { this.openHarbour(pierOfMaster(keeperId)!.id); return true; }
     if (!this.topDown || !this.townTasks.isGiver(keeperId)) return false;
     const view = this.townTasks.talk(keeperId);
     const stall = this.engine?.places.find(p => TOWN_KEEPERS.infernal.some(k => k.id === keeperId && (k.station === p.id || (k.serves ?? []).includes(p.id)))) ?? null;
@@ -3109,6 +3114,44 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setPaused(true);
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-talk__acts button')?.focus());
     return true;
+  }
+  // ── The Harbourmasters (play/td/td-harbour, play/harbour): the Sailing Board, the crossing, the arrival ──
+
+  /** The open Sailing Board (the pier's id), or null. */
+  harbourBoard: string | null = null;
+  /** The crossing under way, or null. */
+  voyage: { row: BoardRow; portrait: string; phase: SkyPhase; still: boolean } | null = null;
+  pierName(id: string): string { return this.t('harbour.pier.' + id); }
+  openHarbour(pier: string): void {
+    this.harbourBoard = pier;
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-harbour [data-harbour-row][aria-checked="true"], .td-harbour .places-close')?.focus());
+  }
+  closeHarbour(): void {
+    if (!this.harbourBoard) return;
+    this.harbourBoard = null;
+    if (!this.voyage && !this.panel && !this.map.open && !this.storyCard && !this.storyScene && !this.taskTalk) this.engine?.setPaused(false);
+    this.focusWorld();
+  }
+  /** The Keeper chose a ship and paid (the board took the fare): the crossing begins. */
+  sailFrom(e: { row: BoardRow; fare: number }): void {
+    const eng = this.engine as unknown as { heroPortrait?: () => string } | undefined;
+    this.harbourBoard = null;
+    this.voyage = { row: e.row, portrait: eng?.heroPortrait?.() ?? '', phase: this.skyPhase, still: this.reducedMotion };
+    this.sound.sfx('coin');
+  }
+  /** The fade is full: the engine moves the Keeper to the far pier, and its Harbourmaster greets them. */
+  voyageDeparted(): void {
+    const v = this.voyage;
+    if (!v) return;
+    (this.engine as unknown as { sail?: (to: string, arrive: string) => void } | undefined)?.sail?.(v.row.to, v.row.arrive);
+    const dest = pierById(v.row.destPier);
+    if (dest) this.message = this.t('harbour.arrive', { name: dest.master.name, pier: this.pierName(dest.id) });
+  }
+  voyageDone(): void {
+    this.voyage = null;
+    if (!this.harbourBoard && !this.panel && !this.map.open && !this.storyCard && !this.storyScene && !this.taskTalk) this.engine?.setPaused(false);
+    this.focusWorld();
   }
   closeTalk(): void {
     if (!this.taskTalk) return;
@@ -4061,6 +4104,9 @@ export class SideScrollerComponent implements OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onBagKey(event: KeyboardEvent): void {
     if (!this.browser || event.repeat) return;
+    // The crossing owns the keyboard: Escape skips it. The Sailing Board folds on Escape too.
+    if (this.voyage) { if (event.key === 'Escape') event.preventDefault(); return; }
+    if (this.harbourBoard) { if (event.key === 'Escape') { event.preventDefault(); this.closeHarbour(); } return; }
     // A story card owns the keyboard: Escape (or Enter on Continue) closes it.
     if (this.storyCard) {
       if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
@@ -5825,10 +5871,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return !!this.taskTalk || this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return !!this.taskTalk || !!this.harbourBoard || this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
-    if (this.taskTalk) this.closeTalk();
+    if (this.harbourBoard) this.closeHarbour();
+    else if (this.taskTalk) this.closeTalk();
     else if (this.petsOpen) this.closePets();
     else if (this.bestiaryOpen) this.closeBestiary();
     else if (this.soundOpen) this.soundOpen = false;

@@ -67,6 +67,9 @@
 .mw__pin[data-cat='dungeon'] > i { width: 14px; height: 14px; rotate: 0deg; }
 .mw__pin[data-cat='way'] { --pin: var(--cozy-wood-hi); }
 .mw__pin[data-cat='ship'] { --pin: var(--cozy-loot-rare); }
+/* A Harbourmaster's pier (td-harbour): an anchor, drawn as a mask, never a glyph. */
+.mw__pin[data-cat='harbour'] { --pin: var(--cozy-loot-rare); }
+.mw__pin[data-cat='harbour'] > i, .mw__swatch[data-cat='harbour'] { rotate: 0deg; width: 16px; height: 16px; background: var(--pin); box-shadow: none; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 .mw__party { translate: -50% -50%; display: grid; justify-items: center; pointer-events: none; z-index: 3; }
 .mw__party i { width: 10px; height: 10px; background: var(--cozy-leaf); border-radius: 50%; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-cream); }
