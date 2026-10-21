@@ -142,8 +142,50 @@ export function idForNewCharacter(roster: CharacterRoster, primaryHasSave: boole
   return !roster.chars[PRIMARY_CHARACTER] && !primaryHasSave ? PRIMARY_CHARACTER : fresh;
 }
 
-/** Does `typed` confirm deleting `row`? Its name, case and outer spaces aside ("Delete" for an unnamed Keeper). */
-export function confirmsDelete(row: Pick<CharacterRow, 'name'>, typed: string, fallback: string): boolean {
-  const want = (row.name || fallback).trim().toLocaleLowerCase();
+/** Does deleting `row` ask for its name to be typed? Only a named Keeper's: a nameless one has nothing to type. */
+export function needsTypedName(row: Pick<CharacterRow, 'name'>): boolean {
+  return row.name.trim().length > 0;
+}
+
+/**
+ * Does `typed` confirm deleting `row`? Its name, case and outer spaces aside. A nameless Keeper is confirmed by the
+ * dialog's own button (owner, 2026-10-21: junk rows with an empty name could not be deleted at all).
+ */
+export function confirmsDelete(row: Pick<CharacterRow, 'name'>, typed: string): boolean {
+  if (!needsTypedName(row)) return true;
+  const want = row.name.trim().toLocaleLowerCase();
   return want.length > 0 && typed.trim().toLocaleLowerCase() === want;
+}
+
+/**
+ * Junk rows (owner, 2026-10-21): the old "leaving New Keeper still creates a Keeper" bug (fixed in 143fbe72) wrote a
+ * row the moment New Keeper was pressed — no name, a level-1 Warlock, nowhere — and the account roster kept four of
+ * them. Their names are empty, so the typed-name delete could not reach them. Only rows created before this date are
+ * candidates: a nameless Keeper made today with Become is real, whatever it looks like.
+ */
+export const JUNK_ROWS_BEFORE = Date.UTC(2026, 9, 23);
+
+/**
+ * Is `row` one of those junk rows, safe to drop? Every condition must hold: no name, level 1 or less, no place, not
+ * character #1's slot, not the Keeper this page plays, created before {@link JUNK_ROWS_BEFORE}, and no meaningful save
+ * for it on this device (`hasSave`: a made look, any skill or lifetime XP).
+ */
+export function isJunkRow(row: CharacterRow, ctx: { active: string; hasSave: (id: string) => boolean }): boolean {
+  return !row.deletedAt
+    && !row.name.trim()
+    && row.level <= 1
+    && !row.area.trim()
+    && row.id !== PRIMARY_CHARACTER
+    && row.id !== ctx.active
+    && row.createdAt < JUNK_ROWS_BEFORE
+    && !ctx.hasSave(row.id);
+}
+
+/**
+ * The ids of {@link isJunkRow} rows to prune — none at all until the cloud has settled (`settled`: not syncing, and a
+ * bound account's pull has landed), so a list still being merged is never judged.
+ */
+export function junkRowIds(roster: CharacterRoster, ctx: { settled: boolean; active: string; hasSave: (id: string) => boolean }): string[] {
+  if (!ctx.settled) return [];
+  return liveCharacters(roster).filter(row => isJunkRow(row, ctx)).map(row => row.id);
 }

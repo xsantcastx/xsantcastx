@@ -36,53 +36,65 @@
     }
 
     @if (mode === 'select') {
-      <div class="win select" role="region" [attr.aria-label]="t('lobby.select.title')" data-character-select>
-        <header class="win__head">
-          <span class="win__brand">{{ t('lobby.title') }}</span>
-          <h1 class="win__title">{{ t('lobby.select.title') }}</h1>
-          <span class="win__slots" data-slots>{{ t('lobby.select.slots', { n: rows.length, max: max }) }}</span>
+      <!-- The campfire (camp-art.ts): the Keepers stand round the fire on the canvas; these buttons sit over them. -->
+      <div class="camp" role="region" [attr.aria-label]="t('lobby.select.title')" data-character-select>
+        <header class="camp__head">
+          <span class="camp__brand">{{ t('lobby.title') }}</span>
+          <h1 class="camp__title">{{ t('lobby.select.title') }}</h1>
+          <span class="camp__slots" data-slots>{{ t('lobby.select.slots', { n: rows.length, max: max }) }}</span>
         </header>
-        <div class="win__body">
-          @if (rows.length) {
-            <ul class="chars" [attr.aria-label]="t('lobby.select.list')" (keydown)="onListKey($event)">
-              @for (row of rows; track row.id) {
-                <li>
-                  <button type="button" class="char" [attr.aria-pressed]="row.id === picked" [attr.data-character]="row.id"
-                          [attr.data-name]="row.name" [attr.data-level]="row.level" (click)="pick(row.id)" (dblclick)="enter(row.id)">
-                    <span class="char__face"><img [src]="portrait(row)" alt="" width="28" height="40"></span>
-                    <span class="char__text">
-                      <b class="char__name">{{ nameOf(row) }}</b>
-                      <small class="char__line">{{ vocationOf(row) }} &middot; <span data-char-level>{{ t('lobby.select.level', { n: row.level }) }}</span></small>
-                      <small class="char__line char__where" data-char-where>{{ whereOf(row) }}</small>
-                      @if (remote(row)) { <small class="char__line char__cloud">{{ t('lobby.select.elsewhere') }}</small> }
-                    </span>
-                  </button>
-                </li>
-              }
-            </ul>
-          } @else {
-            <p class="select__empty" data-select-empty>{{ t('lobby.select.empty') }}</p>
+        <div #stage class="camp__stage" data-camp-stage role="group" [attr.aria-label]="t('lobby.select.list')">
+          @for (row of rows.slice(0, max); track row.id; let i = $index) {
+            <button type="button" class="keeper" [class.is-placed]="!!boxes[i]" [attr.aria-pressed]="row.id === picked" [attr.data-character]="row.id"
+                    [attr.data-name]="row.name" [attr.data-level]="row.level" [attr.data-spot]="i"
+                    [style.left.px]="boxes[i]?.x ?? 0" [style.top.px]="boxes[i]?.y ?? 0" [style.width.px]="boxes[i]?.w ?? 56" [style.height.px]="boxes[i]?.h ?? 80"
+                    (click)="pick(row.id)" (dblclick)="enter(row.id)">
+              <span class="keeper__tag">{{ nameOf(row) }}</span>
+              <span class="sr-only"><span class="char__line">{{ vocationOf(row) }}</span>, <span data-char-level>{{ t('lobby.select.level', { n: row.level }) }}</span>, <span data-char-where>{{ whereOf(row) }}</span></span>
+            </button>
           }
-          @if (notice) { <p class="select__notice" role="status">{{ notice }}</p> }
+          @if (emptySpot !== null) {
+            <button type="button" class="keeper keeper--new" [class.is-placed]="!!boxes[emptySpot]" data-camp-new
+                    [style.left.px]="boxes[emptySpot]?.x ?? 0" [style.top.px]="boxes[emptySpot]?.y ?? 0" [style.width.px]="boxes[emptySpot]?.w ?? 56" [style.height.px]="boxes[emptySpot]?.h ?? 80"
+                    (click)="newCharacter()" [disabled]="busy || syncing" [attr.aria-busy]="syncing">
+              <span class="keeper__plus" aria-hidden="true">+</span>
+              <span class="keeper__tag keeper__tag--new">{{ syncing ? t('lobby.select.syncing') : t('lobby.select.new') }}</span>
+            </button>
+          }
         </div>
-        <footer class="win__foot">
-          <button type="button" class="btn btn--brass" data-lobby-enter (click)="enter()" [disabled]="!picked || busy">{{ t('lobby.select.enter') }}</button>
-          <div class="win__row">
-            <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy || syncing" [attr.aria-busy]="syncing" [attr.title]="full ? t('lobby.select.full') : null">{{ syncing ? t('lobby.select.syncing') : t('lobby.select.new') }}</button>
-            <button type="button" class="btn btn--quiet" data-lobby-delete (click)="askDelete()" [disabled]="!picked || busy">{{ t('lobby.select.delete') }}</button>
-          </div>
-          @if (full) { <small class="select__full">{{ t('lobby.select.full') }}</small> }
-          <p class="select__account">
-            @if (signedIn) {
-              <span>{{ t('lobby.select.signedIn', { who: account }) }}</span>
-              <button type="button" class="link" data-lobby-signout (click)="signOut()" [disabled]="busy">{{ t('lobby.select.signOut') }}</button>
+        <div class="camp__side">
+          <div class="plate" data-camp-plate aria-live="polite">
+            @if (pickedRow; as row) {
+              <b class="plate__name" data-plate-name>{{ nameOf(row) }}</b>
+              <span class="plate__line">{{ vocationOf(row) }} &middot; {{ t('lobby.select.level', { n: row.level }) }}</span>
+              <span class="plate__line plate__where">{{ whereOf(row) }}</span>
+              @if (remote(row)) { <span class="plate__line plate__cloud">{{ t('lobby.select.elsewhere') }}</span> }
+            } @else if (!rows.length) {
+              <p class="select__empty" data-select-empty>{{ t('lobby.select.empty') }}</p>
             } @else {
-              <span>{{ t('lobby.select.offline') }}</span>
-              <button type="button" class="link" data-lobby-signin (click)="signIn()" [disabled]="busy || signingIn">{{ t('lobby.select.signIn') }}</button>
+              <span class="plate__line">{{ t('lobby.camp.hint') }}</span>
             }
-          </p>
-          @if (error) { <p class="title__error" role="alert">{{ error }}</p> }
-        </footer>
+          </div>
+          @if (notice) { <p class="select__notice" role="status">{{ notice }}</p> }
+          <footer class="camp__foot">
+            <button type="button" class="btn btn--brass" data-lobby-enter (click)="enter()" [disabled]="!picked || busy">{{ t('lobby.select.enter') }}</button>
+            <div class="camp__row">
+              <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy || syncing" [attr.aria-busy]="syncing" [attr.title]="full ? t('lobby.select.full') : null">{{ syncing ? t('lobby.select.syncing') : t('lobby.select.new') }}</button>
+              <button type="button" class="btn btn--quiet" data-lobby-delete (click)="askDelete()" [disabled]="!picked || busy">{{ t('lobby.select.delete') }}</button>
+            </div>
+            @if (full) { <small class="select__full">{{ t('lobby.select.full') }}</small> }
+            <p class="select__account">
+              @if (signedIn) {
+                <span>{{ t('lobby.select.signedIn', { who: account }) }}</span>
+                <button type="button" class="link" data-lobby-signout (click)="signOut()" [disabled]="busy">{{ t('lobby.select.signOut') }}</button>
+              } @else {
+                <span>{{ t('lobby.select.offline') }}</span>
+                <button type="button" class="link" data-lobby-signin (click)="signIn()" [disabled]="busy || signingIn">{{ t('lobby.select.signIn') }}</button>
+              }
+            </p>
+            @if (error) { <p class="title__error" role="alert">{{ error }}</p> }
+          </footer>
+        </div>
       </div>
 
       @if (deleting) {
@@ -90,18 +102,35 @@
         <form class="parch confirm" role="alertdialog" aria-modal="true" aria-labelledby="del-title" aria-describedby="del-body" data-delete-confirm
               (submit)="$event.preventDefault(); confirmDelete()" (keydown.escape)="cancelDelete()">
           <h2 id="del-title">{{ t('lobby.delete.title', { name: deleteName }) }}</h2>
-          <p id="del-body">{{ t('lobby.delete.body') }}</p>
-          <input #deleteInput type="text" autocomplete="off" spellcheck="false" [value]="typed" (input)="typed = $any($event.target).value"
-                 [placeholder]="t('lobby.delete.typeHint', { name: deleteName })" [attr.aria-label]="t('lobby.delete.typeHint', { name: deleteName })">
+          @if (deleteTyped) {
+            <p id="del-body">{{ t('lobby.delete.body') }}</p>
+            <input #deleteInput type="text" autocomplete="off" spellcheck="false" [value]="typed" (input)="typed = $any($event.target).value"
+                   [placeholder]="t('lobby.delete.typeHint', { name: deleteName })" [attr.aria-label]="t('lobby.delete.typeHint', { name: deleteName })">
+          } @else {
+            <!-- A nameless Keeper (the old New Keeper bug's leftovers among them) has no name to type: a plain confirm. -->
+            <p id="del-body" data-delete-plain>{{ t('lobby.delete.bodyNameless') }}</p>
+          }
           <div class="confirm__row">
             <button type="button" class="btn" (click)="cancelDelete()">{{ t('lobby.delete.cancel') }}</button>
-            <button type="submit" class="btn btn--berry" data-delete-go [disabled]="!deleteReady || busy">{{ t('lobby.delete.confirm') }}</button>
+            <button #deleteGo type="submit" class="btn btn--berry" data-delete-go [disabled]="!deleteReady || busy">{{ t('lobby.delete.confirm') }}</button>
           </div>
         </form>
       }
     }
 
     @if (mode === 'create') {
+      <!-- The Glass by the fire: the four callings stand there (camp-art.ts) and the chosen one steps forward. On a wide
+           screen the fire has its own column; on a phone it glows behind the window. Clicking a figure chooses it, as
+           the maker's own class cards do (those stay the control for keyboards and screen readers). -->
+      <div #stage class="camp__stage camp__stage--glass" aria-hidden="true">
+        @if (boxes.length) {
+          @for (v of classes; track v; let i = $index) {
+            <button type="button" class="keeper keeper--class is-placed" tabindex="-1" [attr.data-camp-class]="v"
+                    [style.left.px]="boxes[i].x" [style.top.px]="boxes[i].y" [style.width.px]="boxes[i].w" [style.height.px]="boxes[i].h"
+                    (click)="chooseClass(v)"><span class="sr-only">{{ t('look.class.' + v) }}</span></button>
+          }
+        }
+      </div>
       <div class="win create" role="region" [attr.aria-label]="t('lobby.create.title')" data-character-create>
         <header class="win__head">
           <span class="win__brand">{{ t('look.kicker') }}</span>

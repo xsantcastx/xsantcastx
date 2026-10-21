@@ -5,7 +5,8 @@
  * or make a new one, enter the world) — and "if I'm already logged in, it should go to character screen".
  *
  *   signed out, never chose        → title (Sign in with Google · Play offline)
- *   signed in, or chose offline    → character list (a quiet "waking" screen while a signed-in session resumes)
+ *   signed in, or chose offline    → character list (a quiet "waking" screen while a signed-in session resumes): the
+ *                                    Keepers round a campfire, Diablo II style (camp-art.ts; owner, 2026-10-21)
  *   Enter world                    → the world (SideScrollerComponent, mounted only now: nothing runs behind the title)
  *   the world's menu → Character select → saved, then back to the list
  *
@@ -22,17 +23,15 @@ import { GameStateGateway } from '../../shared/save/game-state.gateway';
 import { MAX_CHARACTERS, PRIMARY_CHARACTER, newCharacterId } from '../../shared/save/character-scope';
 import { CloudSaveService, hasBoundAccount } from '../../shared/cloud-save/cloud-save.service';
 import { CharacterRosterService } from '../../shared/characters/character-roster.service';
-import { CharacterRow, PortraitLook, confirmsDelete, hasFreeSlot, idForNewCharacter } from '../../shared/characters/character-roster.model';
+import { CharacterRow, confirmsDelete, hasFreeSlot, idForNewCharacter, junkRowIds, needsTypedName } from '../../shared/characters/character-roster.model';
 import { KEEPER_LOOK_I18N } from '../../shared/keeper-look/keeper-look.i18n';
-import { type KeeperLook, coerceLook } from '../../shared/keeper-look/keeper-look.model';
-import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
-import { FRONT_H, FRONT_W, frontSheet } from '../../shared/keeper-look/keeper-front';
-import { vocationLook } from '../../shared/keeper-look/vocation-look';
+import { type KeeperLook, type Vocation, VOCATIONS, coerceLook } from '../../shared/keeper-look/keeper-look.model';
 import { KeeperMakerComponent } from '../../shared/keeper-look/keeper-maker.component';
 import { SideScrollerComponent } from '../side-scroller.component';
 import { StoryService } from '../../shared/story/story.service';
 import { LOBBY_I18N } from './lobby.i18n';
 import { paintTitleArt, titleArtSize } from './title-art';
+import { CAMP_SLOTS, CampArt, type CampFigure, type CampLayout, type Rect, campLayout, spotBox } from './camp-art';
 import { hasMeaningfulSave, summarise } from './character-summary';
 import {
   LOBBY_ENTER_KEY, LOBBY_FROM_KEY, LOBBY_GUEST_KEY, LOBBY_MAKE_KEY, LOBBY_SKIP_KEY, LobbyMode, PlayLobbyService, initialLobbyMode, mayUsePrimarySlot,
@@ -42,6 +41,12 @@ import {
 const ART_FPS = 12;
 /** How long a resuming sign-in may hold the quiet "waking" screen before the list shows anyway. */
 const AUTH_WAIT_MS = 8000;
+
+/** The four callings by the fire on the Glass, each with a look of its own so they read as four people. */
+const CLASS_FIGURES: ReadonlyArray<{ vocation: Vocation; look: KeeperLook }> = VOCATIONS.map((vocation, i) => ({
+  vocation,
+  look: coerceLook({ made: true, vocation, ...[{}, { body: 'broad', hair: 'cropped', hairColor: 1 }, { body: 'slight', hair: 'braid', hairColor: 3 }, { hair: 'swept', hairColor: 2, skin: 2 }][i] }),
+}));
 
 @Component({
   selector: 'app-play-shell',
@@ -81,12 +86,42 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.artEl) this.startArt();
   }
   @ViewChild('deleteInput') deleteInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('deleteGo') deleteGo?: ElementRef<HTMLButtonElement>;
+  /** The Glass's maker: its chosen calling steps forward by the fire. */
+  @ViewChild(KeeperMakerComponent) maker?: KeeperMakerComponent;
+
+  /** The campfire's stage (the box the group is centred in); watched, so the scene follows the page's layout. */
+  private stageEl: HTMLElement | null = null;
+  private stageObserver: ResizeObserver | null = null;
+  @ViewChild('stage') set stage(ref: ElementRef<HTMLElement> | undefined) {
+    const el = ref?.nativeElement ?? null;
+    if (el === this.stageEl) return;
+    this.stageObserver?.disconnect();
+    this.stageObserver = null;
+    this.stageEl = el;
+    if (!el || !this.browser) return;
+    if (typeof ResizeObserver === 'function') {
+      this.stageObserver = new ResizeObserver(() => this.zone.run(() => this.relayout()));
+      this.stageObserver.observe(el);
+    } else {
+      setTimeout(() => this.relayout());
+    }
+  }
+  /** Each place's box over the stage (CSS px), where the Keepers' buttons sit; empty until the stage is measured. */
+  boxes: Rect[] = [];
+  readonly classes = CLASS_FIGURES.map(f => f.vocation);
+  private readonly camp = new CampArt();
+  private layout: CampLayout | null = null;
+  /** Something the scene shows changed: paint again (with reduced motion, the only reason to paint). */
+  private dirty = true;
+  /** The Glass's look as last painted (its calling and painting fields): a change paints again. */
+  private lastDraft = '';
+  private readonly rowLooks = new Map<string, KeeperLook>();
 
   private raf = 0;
   private lastFrame = 0;
   private artStart = 0;
   private reduced = false;
-  private readonly portraits = new Map<string, string>();
   private subs: Subscription[] = [];
 
   constructor() {
@@ -103,7 +138,9 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   get full(): boolean { return !hasFreeSlot(this.roster.roster); }
   get pickedRow(): CharacterRow | null { return this.rows.find(r => r.id === this.picked) ?? null; }
   get deleteName(): string { return this.deleting ? this.nameOf(this.deleting) : ''; }
-  get deleteReady(): boolean { return !!this.deleting && confirmsDelete(this.deleting, this.typed, this.t('lobby.select.unnamed')); }
+  get deleteReady(): boolean { return !!this.deleting && confirmsDelete(this.deleting, this.typed); }
+  /** A named Keeper's delete asks for the name; a nameless one's is a plain confirm. */
+  get deleteTyped(): boolean { return !!this.deleting && needsTypedName(this.deleting); }
 
   ngOnInit(): void {
     if (!this.browser) return;
@@ -124,6 +161,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopArt();
+    this.stageObserver?.disconnect();
     for (const sub of this.subs) sub.unsubscribe();
   }
 
@@ -184,6 +222,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     if (mode === 'game') this.noteActive();
     if (mode === 'game') this.stopArt();
     this.mode = mode;
+    this.dirty = true;
   }
 
   // ── The title screen ───────────────────────────────────────────────────────
@@ -238,6 +277,20 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
       const next = summarise(this.gateway, row, now);
       if (next !== row) this.roster.put(next);
     }
+    this.pruneJunk();
+  }
+
+  /**
+   * Drop the junk rows the old "leaving New Keeper still creates a Keeper" bug wrote (character-roster.model.ts
+   * isJunkRow: nameless, level 1, nowhere, never c1 or the Keeper in play, nothing meaningful saved here), once the
+   * cloud has settled. A tombstone, as Delete leaves, so the removal syncs; no save is touched (boot-time cleanup never
+   * deletes in the cloud).
+   */
+  private pruneJunk(): void {
+    const settled = this.cloud.status.state !== 'syncing'
+      && mayUsePrimarySlot({ bound: hasBoundAccount(), signedIn: this.cloud.signedIn, state: this.cloud.status.state, lastSyncedAt: this.cloud.status.lastSyncedAt });
+    const junk = junkRowIds(this.roster.roster, { settled, active: this.gateway.character, hasSave: id => hasMeaningfulSave(this.gateway, id) });
+    for (const id of junk) this.roster.tombstone(id);
   }
 
   /** The playing character's row, refreshed (on entering and leaving the world). */
@@ -251,6 +304,8 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private refreshRows(): void {
     this.rows = this.roster.characters;
+    if (this.picked && !this.rows.some(r => r.id === this.picked) && this.mode === 'select') this.picked = this.rows[0]?.id ?? null;
+    this.dirty = true;
   }
 
   nameOf(row: CharacterRow): string { return row.name || this.t('lobby.select.unnamed'); }
@@ -265,47 +320,58 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   /** True for a Keeper this device has never held (played on another device; fetched on entering). */
   remote(row: CharacterRow): boolean { return !this.gateway.hasLocalSave(row.id); }
 
-  /** The row's Keeper, painted with the world's own front sprite (first frame), as a data URL. */
-  portrait(row: CharacterRow): string {
-    const look = row.look;
-    const key = JSON.stringify(look);
-    const held = this.portraits.get(key);
-    if (held !== undefined) return held;
-    let url = '';
-    if (this.browser) {
-      try {
-        const full = coerceLook(look as PortraitLook | null);
-        const v = vocationLook(full.vocation, null);
-        const sheet = frontSheet(new KeeperPainter(full, v.gear, v.garb), full.vocation === 'warlock');
-        const el = document.createElement('canvas');
-        el.width = FRONT_W; el.height = FRONT_H;
-        const c = el.getContext('2d');
-        if (c) {
-          c.imageSmoothingEnabled = false;
-          c.drawImage(sheet, 0, 0, FRONT_W, FRONT_H, 0, 0, FRONT_W, FRONT_H);
-          url = el.toDataURL('image/png');
-        }
-      } catch { /* no 2D canvas: the frame stays empty */ }
-    }
-    this.portraits.set(key, url);
-    return url;
-  }
-
   pick(id: string): void {
     if (this.busy) return;
     this.picked = id;
     this.notice = '';
+    this.dirty = true;
   }
 
-  onListKey(event: KeyboardEvent): void {
-    if (this.busy || this.deleting || !this.rows.length) return;
-    const at = this.rows.findIndex(r => r.id === this.picked);
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+  /**
+   * The campfire's keys: arrows cycle the Keepers round the fire, Enter enters the world as the chosen one. Only on
+   * the list with nothing over it, and never from a field (or Enter from another button, which presses that button).
+   */
+  @HostListener('document:keydown', ['$event'])
+  onCampKey(event: KeyboardEvent): void {
+    if (this.mode !== 'select' || this.busy || this.deleting || !this.rows.length || event.defaultPrevented) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+    // Enter is the world's from the page itself or a Keeper by the fire (the free place's Enter opens the Glass).
+    const inCamp = !target || target === document.body || (!!target.closest('[data-camp-stage]') && !target.closest('[data-camp-new]'));
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    if (step) {
       event.preventDefault();
-      const next = this.rows[(Math.max(0, at) + (event.key === 'ArrowDown' ? 1 : this.rows.length - 1)) % this.rows.length];
-      this.picked = next.id;
+      const at = this.rows.findIndex(r => r.id === this.picked);
+      const next = this.rows[((at < 0 ? (step > 0 ? -1 : 0) : at) + step + this.rows.length) % this.rows.length];
+      this.pick(next.id);
       setTimeout(() => document.querySelector<HTMLElement>(`[data-character="${next.id}"]`)?.focus());
+    } else if (event.key === 'Enter' && inCamp && this.picked) {
+      event.preventDefault();
+      void this.enter();
     }
+  }
+
+  /** The look a row's Keeper is painted with by the fire (its class from the row, whatever the look says). */
+  rowLook(row: CharacterRow): KeeperLook {
+    const key = row.vocation + '#' + JSON.stringify(row.look);
+    let look = this.rowLooks.get(key);
+    if (!look) {
+      look = coerceLook({ ...(row.look ?? {}), made: true, vocation: row.vocation });
+      this.rowLooks.set(key, look);
+    }
+    return look;
+  }
+
+  /** The free place by the fire ("New Keeper"), or null when there is none. */
+  get emptySpot(): number | null {
+    return this.mode === 'select' && !this.full && this.rows.length < CAMP_SLOTS.length ? this.rows.length : null;
+  }
+
+  /** On the Glass: a calling by the fire was clicked (the maker's own cards do the same, and say which is chosen). */
+  chooseClass(v: Vocation): void {
+    this.maker?.setVocation(v);
+    this.dirty = true;
   }
 
   /** Enter the world as `id`: at once when it is the character this page plays, else save, switch and reload. */
@@ -357,7 +423,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!row || this.busy) return;
     this.deleting = row;
     this.typed = '';
-    setTimeout(() => this.deleteInput?.nativeElement.focus());
+    setTimeout(() => (this.deleteInput ?? this.deleteGo)?.nativeElement.focus());
   }
 
   cancelDelete(): void {
@@ -472,35 +538,81 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // ── The title art ──────────────────────────────────────────────────────────
+  // ── The painting: the title's night, or the campfire ───────────────────────
+
+  /** Measure the lobby and the stage, lay the campfire out, and place the Keepers' buttons over it. */
+  private relayout(): void {
+    const m = this.measure();
+    this.layout = m?.layout ?? null;
+    const stage = m?.stage ?? null;
+    const layout = this.layout;
+    this.boxes = layout && stage ? CAMP_SLOTS.map((_, i) => spotBox(layout, i, stage)) : [];
+    this.dirty = true;
+  }
+
+  private measure(): { layout: CampLayout; stage: Rect | null } | null {
+    const lobby = this.artEl?.parentElement;
+    if (!lobby) return null;
+    const lr = lobby.getBoundingClientRect();
+    const sr = this.stageEl?.getBoundingClientRect();
+    const stage = sr && sr.width >= 40 && sr.height >= 40 ? { x: sr.left - lr.left, y: sr.top - lr.top, w: sr.width, h: sr.height } : null;
+    return { layout: campLayout(lr.width, lr.height, stage), stage };
+  }
+
+  /** Who stands by the fire: the roster's Keepers (the chosen one forward), or on the Glass the four callings. */
+  private figures(): CampFigure[] {
+    if (this.mode === 'create') {
+      // The chosen calling steps forward wearing the look being made (its hair, its colours), the others stand by.
+      const draft = this.maker?.draft;
+      return CLASS_FIGURES.map(f => f.vocation === draft?.vocation
+        ? { key: this.draftKey(), look: draft, chosen: true }
+        : { key: 'class:' + f.vocation, look: f.look, chosen: false });
+    }
+    return this.rows.slice(0, CAMP_SLOTS.length).map(row => ({ key: row.vocation + '#' + JSON.stringify(row.look), look: this.rowLook(row), chosen: row.id === this.picked }));
+  }
+
+  private draftKey(): string {
+    const d = this.maker?.draft;
+    return d ? 'draft:' + JSON.stringify([d.vocation, d.body, d.skin, d.hair, d.hairColor, d.eyes, d.eyeColor, d.face, d.outfit, d.trim]) : '';
+  }
 
   private startArt(): void {
     if (!this.browser || !this.artEl || this.raf) return;
     const el = this.artEl;
-    const size = (): void => {
-      const { w, h } = titleArtSize(window.innerWidth, window.innerHeight);
-      if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
-    };
     const draw = (seconds: number): void => {
       const c = el.getContext('2d');
       if (!c) return;
-      size();
-      paintTitleArt(c, el.width, el.height, seconds);
+      if (this.mode === 'select' || this.mode === 'create') {
+        if (!this.layout) this.layout = this.measure()?.layout ?? null;
+        const l = this.layout;
+        if (!l) return;
+        if (el.width !== l.w || el.height !== l.h) { el.width = l.w; el.height = l.h; }
+        const cw = `${l.w * l.s}px`, ch = `${l.h * l.s}px`;
+        if (el.style.width !== cw || el.style.height !== ch) { el.style.width = cw; el.style.height = ch; }
+        this.camp.paint(c, l, this.figures(), this.emptySpot, seconds, this.reduced);
+        return;
+      }
+      if (el.style.width) { el.style.width = ''; el.style.height = ''; }
+      const { w, h } = titleArtSize(window.innerWidth, window.innerHeight);
+      if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
+      paintTitleArt(c, el.width, el.height, this.reduced ? 0 : seconds);
     };
-    if (this.reduced) {
-      this.stopStill?.();
-      draw(0);
-      const still = (): void => draw(0);
-      window.addEventListener('resize', still, { passive: true });
-      this.stopStill = () => window.removeEventListener('resize', still);
-      return;
-    }
+    const resized = (): void => this.zone.run(() => this.relayout());
+    window.addEventListener('resize', resized, { passive: true });
+    this.stopResize = () => window.removeEventListener('resize', resized);
     this.artStart = performance.now();
+    this.dirty = true;
+    // One loop for both: moving, it paints ART_FPS frames a second; with reduced motion, only when something changed
+    // (a pick, the list, the layout, the Glass's calling) — each of those a still frame.
     this.zone.runOutsideAngular(() => {
       const tick = (now: number): void => {
         if (!this.artEl) { this.raf = 0; return; }
-        if (now - this.lastFrame >= 1000 / ART_FPS && document.visibilityState !== 'hidden') {
+        const draft = this.mode === 'create' ? this.draftKey() : '';
+        if (draft !== this.lastDraft) { this.lastDraft = draft; this.dirty = true; }
+        const due = this.reduced ? this.dirty || this.camp.moving : now - this.lastFrame >= 1000 / ART_FPS;
+        if (due && document.visibilityState !== 'hidden') {
           this.lastFrame = now;
+          this.dirty = false;
           draw((now - this.artStart) / 1000);
         }
         this.raf = requestAnimationFrame(tick);
@@ -509,12 +621,12 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private stopStill: (() => void) | null = null;
+  private stopResize: (() => void) | null = null;
 
   private stopArt(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
-    this.stopStill?.();
-    this.stopStill = null;
+    this.stopResize?.();
+    this.stopResize = null;
   }
 }

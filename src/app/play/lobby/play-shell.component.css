@@ -173,46 +173,133 @@
 .win__foot { display: grid; gap: 8px; padding: 10px 6px 4px; border-top: 2px solid var(--cozy-plate-seam); }
 .win__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-/* ── The character list ────────────────────────────────────────────────── */
-.chars { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.char {
+/* ── The campfire character select (camp-art.ts paints it; these sit over it) ── */
+.lobby[data-lobby="select"] { place-items: stretch; }
+.camp {
   display: grid;
-  grid-template-columns: 64px 1fr;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 76px;
-  padding: 6px 10px 6px 6px;
+  grid-template-areas: "head" "stage" "side";
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+.camp__head { grid-area: head; display: grid; justify-items: center; gap: 2px; text-align: center; }
+.camp__brand { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--cozy-brass); text-shadow: 0 2px 0 var(--cozy-wood-0); }
+.camp__title {
+  margin: 0;
+  font-size: clamp(1.3rem, 5vw, 1.9rem);
+  font-weight: 700;
+  color: var(--cozy-glow);
+  text-shadow: 0 3px 0 var(--cozy-wood-0), 0 0 14px color-mix(in srgb, var(--cozy-glow) 35%, transparent);
+}
+.camp__slots { font-family: var(--cozy-font-read); font-size: .8rem; color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); text-shadow: 0 1px 0 var(--cozy-wood-0); }
+.camp__stage { grid-area: stage; position: relative; min-height: 0; min-width: 0; }
+.camp__side {
+  grid-area: side;
+  justify-self: center;
+  display: grid;
+  gap: 6px;
+  width: min(520px, 100%);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.camp__foot { display: grid; gap: 8px; }
+.camp__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* A Keeper by the fire: an invisible button over the sprite, with its name on a small plate at its feet. */
+.keeper {
+  position: absolute;
+  display: block;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
   font: inherit;
-  text-align: left;
   color: var(--cozy-cream);
-  background: var(--cozy-well);
-  border: 2px solid var(--cozy-wood-1);
+  background: none;
+  border: 0;
   cursor: pointer;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-.char:hover { border-color: var(--cozy-wood-3); }
-.char:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 1px; }
-.char[aria-pressed="true"] {
-  border-color: var(--cozy-glow);
-  background: color-mix(in srgb, var(--cozy-glow) 12%, var(--cozy-well));
-  box-shadow: 0 0 0 1px var(--cozy-brass-lo), 0 0 14px color-mix(in srgb, var(--cozy-glow) 30%, transparent);
-}
-.char__face {
-  display: grid;
-  place-items: end center;
-  width: 64px;
-  height: 64px;
+.keeper:not(.is-placed) { visibility: hidden; }
+.keeper:focus-visible { outline: 2px dashed var(--cozy-glow); outline-offset: 2px; }
+.keeper__tag {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, 4px);
+  max-width: 112px;
+  padding: 1px 6px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 70%, color-mix(in srgb, var(--cozy-glow) 22%, transparent), transparent 70%), var(--cozy-plate-seam);
-  border: 2px solid var(--cozy-wood-0);
+  font-size: .75rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--cozy-cream) 85%, transparent);
+  background: color-mix(in srgb, var(--cozy-wood-0) 80%, transparent);
+  border: 1px solid var(--cozy-wood-1);
+  pointer-events: none;
 }
-.char__face img { width: 56px; height: 80px; margin-bottom: -18px; image-rendering: pixelated; }
-.char__text { display: grid; gap: 2px; min-width: 0; }
-.char__name { font-size: 1.1rem; color: var(--cozy-glow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.char__line { font-family: var(--cozy-font-read); font-size: .8rem; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
-.char__where { color: color-mix(in srgb, var(--cozy-cream) 65%, transparent); }
-.char__cloud { color: var(--cozy-mana-text); }
+.keeper[aria-pressed="true"] .keeper__tag { color: var(--cozy-ink); background: var(--cozy-brass); border-color: var(--cozy-brass-lo); }
+.keeper:hover .keeper__tag { border-color: var(--cozy-wood-3); }
+.keeper--new { display: grid; place-items: center; }
+.keeper--new:disabled { cursor: default; opacity: .6; }
+.keeper__plus {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font: 700 1.6rem/1 var(--font-game);
+  color: var(--cozy-glow);
+  background: color-mix(in srgb, var(--cozy-wood-0) 55%, transparent);
+  border: 2px dashed color-mix(in srgb, var(--cozy-glow) 55%, transparent);
+}
+.keeper--new:hover:not(:disabled) .keeper__plus { background: color-mix(in srgb, var(--cozy-wood-2) 70%, transparent); }
+.keeper__tag--new { color: var(--cozy-glow); }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* The chosen Keeper's plate: name, calling and level, last place. */
+.plate {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-height: 44px;
+  padding: 6px 10px;
+  text-align: center;
+  background: var(--cozy-plate);
+  border: 3px solid var(--cozy-wood-0);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-3);
+}
+.plate__name { max-width: 100%; overflow: hidden; font-size: 1.2rem; color: var(--cozy-glow); white-space: nowrap; text-overflow: ellipsis; }
+.plate__line { font-family: var(--cozy-font-read); font-size: .82rem; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
+.plate__where { color: color-mix(in srgb, var(--cozy-cream) 65%, transparent); }
+.plate__cloud { color: var(--cozy-mana-text); }
+.plate .select__empty { margin: 0; }
+
+/* The Glass by the fire: on a wide screen the fire takes the left, the window the right; narrower, it glows behind. */
+.camp__stage--glass { display: none; grid-area: auto; }
+@media (min-width: 900px) and (min-height: 560px) {
+  .lobby[data-lobby="create"] { grid-template-columns: minmax(0, 1fr) minmax(0, 680px); gap: 16px; }
+  .lobby[data-lobby="create"] .camp__stage--glass { display: block; align-self: stretch; justify-self: stretch; }
+}
+.keeper--class { background: none; }
+.keeper--class:hover { outline: 2px dashed color-mix(in srgb, var(--cozy-glow) 50%, transparent); outline-offset: 2px; }
+
+/* A phone held sideways: the fire on the left, the plate and buttons beside it. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .camp {
+    grid-template-areas: "head side" "stage side";
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    column-gap: 12px;
+  }
+  .camp__side { align-self: center; max-height: 100%; }
+  .camp__head { gap: 0; }
+  .camp__title { font-size: 1.15rem; }
+}
 
 .select__empty, .select__notice {
   margin: 8px 4px;
