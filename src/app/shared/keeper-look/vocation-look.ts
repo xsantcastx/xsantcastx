@@ -14,7 +14,7 @@
  * brown leather coat, wrapped hands, soft boots, a hunting bow in hand and a quiver of green-fletched arrows on the back
  * (the garb's `quiver`: it shows whatever is worn, so a worn weapon takes the bow's hand and the quiver stays).
  */
-import type { GearPiece, GearSlot, KeeperGear } from './keeper-gear';
+import { pieceTwoHanded, type GearPiece, type GearSlot, type KeeperGear } from './keeper-gear';
 import type { Vocation } from './keeper-look.model';
 import type { KeeperGarb } from './npc-looks';
 
@@ -58,14 +58,38 @@ export const THORN_KIT: Readonly<KeeperGear> = {
   weapon: wild('weapon', 'bow', '#7a5a32', '#6eae52'),
 };
 
+/**
+ * The hands each class's own kit weapon takes while nothing is worn in the weapon slot (shared/rpg/item-hands.ts): the
+ * Thornstrider's hunting bow and the Lanternwright's lamp-staff take both, so their off-hand is blocked by default; the
+ * Ashguard's blade leaves the shield arm free; the Warlock casts from a bare hand (his staff is a worn one).
+ */
+export const KIT_HANDS: Readonly<Record<Vocation, 1 | 2>> = { warlock: 1, ashguard: 1, lanternwright: 2, thornstrider: 2 };
+
+/** A worn quiver rides on the back (the garb's quiver), never in the hand. */
+const QUIVER_LEATHER = '#6b4a2a';
+
 /** The class's garb and its gear with the class's own pieces standing in where nothing is worn. */
 export function vocationLook(v: Vocation, gear: KeeperGear | null): { garb: KeeperGarb | null; gear: KeeperGear | null } {
+  const look = classLook(v, gear);
+  const out = look.gear;
+  if (!out) return look;
+  const garb = look.garb;
+  const bare = (): KeeperGear => { const rest = { ...out }; delete rest['off-hand']; return rest; };
+  // A worn quiver goes on the back, whoever wears it.
+  if (out['off-hand']?.kind === 'quiver') return { garb: garb ? { ...garb, quiver: garb.quiver ?? QUIVER_LEATHER } : garb, gear: bare() };
+  // Two hands on the weapon (worn, or the kit's): nothing is drawn in the off-hand — never a shield beside a bow.
+  if (pieceTwoHanded(out.weapon) && out['off-hand']) return { garb, gear: bare() };
+  return look;
+}
+
+function classLook(v: Vocation, gear: KeeperGear | null): { garb: KeeperGarb | null; gear: KeeperGear | null } {
   if (v === 'ashguard') return { garb: ASHGUARD_GARB, gear: { ...ASHGUARD_KIT, ...(gear ?? {}) } };
   if (v === 'lanternwright') {
     const out: KeeperGear = { ...LANTERN_KIT, ...(gear ?? {}) };
-    // A worn staff carries the lantern at its crook; any other weapon leaves the lantern to the off-hand.
+    // A worn staff carries the lantern at its crook; a one-handed weapon leaves the lantern to the off-hand; a
+    // two-handed one that is not a staff leaves no hand for it.
     if (gear?.weapon?.kind === 'staff') out.weapon = { ...gear.weapon, variant: 'lamp' };
-    else if (gear?.weapon && !gear['off-hand']) out['off-hand'] = LANTERN_OFFHAND;
+    else if (gear?.weapon && !gear['off-hand'] && !pieceTwoHanded(gear.weapon)) out['off-hand'] = LANTERN_OFFHAND;
     return { garb: LANTERN_GARB, gear: out };
   }
   if (v === 'thornstrider') return { garb: THORN_GARB, gear: { ...THORN_KIT, ...(gear ?? {}) } };

@@ -26,7 +26,7 @@ export type WeaponKind =
   | 'staff' | 'wand' | 'bow' | 'crossbow' | 'spear' | 'halberd' | 'sickle' | 'tongs'
   /** A fishing rod: never read from an item name (a "Rod" weapon is a staff), only put in hand by held-tool.ts. */
   | 'rod';
-export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | 'cards' | 'scales' | WeaponKind;
+export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | 'cards' | 'scales' | 'quiver' | WeaponKind;
 export type HeadKind = 'helm' | 'hood' | 'crown' | 'circlet';
 export type ChestKind = 'plate' | 'coat' | 'robe' | 'mantle';
 export type HandsKind = 'gauntlet' | 'wrap';
@@ -56,6 +56,22 @@ export interface GearPiece {
    * painted as the Lanternwright's lamp-staff (a brass crook with a lit lantern hung from it) rather than an orb's.
    */
   variant?: 'pyre' | 'lamp';
+  /**
+   * The hands a worn weapon takes, from the item's own base (shared/rpg/item-hands.ts: the card's word and the equip
+   * rule). Unset on a kit piece and a townsperson's: KIND_HANDS reads it off the kind then.
+   */
+  hands?: 1 | 2;
+}
+
+/** The hands each weapon kind takes when the piece carries no word of its own (a class's kit, an NPC's prop). */
+export const KIND_HANDS: Readonly<Record<WeaponKind, 1 | 2>> = {
+  bow: 2, staff: 2, greatsword: 2, hammer: 2, spear: 2, halberd: 2, rod: 2,
+  crossbow: 1, sword: 1, dagger: 1, axe: 1, mace: 1, wand: 1, pickaxe: 1, sickle: 1, tongs: 1,
+};
+/** Does this held piece take both hands? */
+export function pieceTwoHanded(p: GearPiece | null | undefined): boolean {
+  if (!p) return false;
+  return (p.hands ?? KIND_HANDS[p.kind as WeaponKind]) === 2;
 }
 export type KeeperGear = Partial<Record<GearSlot, GearPiece>>;
 
@@ -92,6 +108,7 @@ const WEAPON_WORDS: readonly [RegExp, WeaponKind][] = [
   [/greatsword|render|worldsplitter|requiem|claymore/, 'greatsword'],
 ];
 const OFFHAND_WORDS: readonly [RegExp, OffhandKind][] = [
+  [/quiver/, 'quiver'],
   [/shield|aegis|ward\b|lastwarden|bulwark|buckler/, 'shield'],
   [/ledger|codex|tome|book|primer|grimoire/, 'tome'],
   [/mirror|orb|lens|sphere|eye\b/, 'orb'],

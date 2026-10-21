@@ -47,6 +47,8 @@ const VOCATION = /^[a-z]{1,16}$/;
 const DIRS = new Set(['side', 'down', 'up']);
 /** Protocol 5: the cosmetic companions in presence (a pet and Glim as offsets from the Keeper: play/social/coop-pals.ts). */
 const PALS = /^[a-z0-9:,-]{0,96}$/;
+/** Protocol 5: a town portal in presence (play/td/td-waygate.ts encodeGate: continent:level:x:y:townX:townY:secondsLeft). */
+const GATE = /^[a-z0-9:-]{0,96}$/;
 const EMOTES = new Set(['wave']);
 
 /**
@@ -69,6 +71,8 @@ export function presenceFields(data) {
   }
   // Protocol 5: the pet and Glim beside the Keeper, for everyone's screen (cosmetic; '' when none).
   if (data.pals !== undefined) { if (typeof data.pals !== 'string' || !PALS.test(data.pals)) bad(); out.pals = data.pals; }
+  // Protocol 5: the Keeper's town portal, for the party to step through (travel only; '' when none stands).
+  if (data.gate !== undefined) { if (typeof data.gate !== 'string' || !GATE.test(data.gate)) bad(); out.gate = data.gate; }
   return out;
 }
 

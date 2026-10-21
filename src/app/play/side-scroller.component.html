@@ -999,7 +999,7 @@
               <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
               <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
               @for (well of wells; track well.id) {
-                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
+                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.blocked]="!!well.blocked" [attr.data-blocked]="well.blocked ? '1' : null" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.blocked ? well.label : well.name">
                   @if (well.filled && well.art) {
                     <img [src]="well.art" alt="">
                   } @else if (well.filled) {
@@ -1165,9 +1165,10 @@
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }
-          @if (row.canWear || row.canStow || row.canSend || pickIsCrate) {
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead) {
             <div class="d2tip__actions">
               @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
+              @if (row.canRead) { <button type="button" class="wear" data-read-scroll (click)="readScroll()">{{ t('play.waygate.read') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
               @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }

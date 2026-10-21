@@ -56,6 +56,14 @@ touch them). **Light** (*lum*, level 1, free in the starting kit): +3 tiles of t
 +0.1 tile and +15 s a rank; 10 mana · 3 s. **Seek** (*lum vesh*, level 8 — `SkillDef.level` overrides the tier's): Glim
 points at the fallen purse, the nearest boss or a task to hand in (`td-seek.ts`); the arrows hold 6 s, +0.5 s a rank;
 20 mana · 8 s; nothing to seek spends nothing. Typed with a name (`lum vesh ember warden`) it seeks that one.
+**Waygate** (*ul hesk vesh* — through the seam, find the hearth; level 2; 2026-10-21, `td-waygate.ts`): a town portal,
+D2-style. It opens where the Keeper stands; stepping in brings him out beside the nearest town hearth of the continent
+he is on (from a floor or a cave: the capital's), where its twin stands; stepping back through returns him to the exact
+spot and closes both. Left alone they stand 300 s, +15 s a rank; 25 mana · 10 s. Not inside a town or village, not while
+a boss fights near (its sight + 2 tiles, or hurt within twice that), not while the Seam Eater stands. A new one replaces
+the last. Party members in the area may use it both ways (presence `gate`, cosmetic and travel only). The **Waygate
+Scroll** (`shared/waygate`, a satchel stack, Edrin Kade's Potions tab, priced at 15 s of a hunt at the Keeper's level)
+opens the same portal for no mana — Read on its card — and is spent only when the portal opened.
 
 ## Saves
 The tree lives on the Keeper look (`godforge-keeper-look`, synced): `tree: { spent, free, at }`. It merges on its own

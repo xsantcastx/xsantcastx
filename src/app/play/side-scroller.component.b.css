@@ -929,6 +929,10 @@
 }
 .book .well.prime { box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
 .book .well.picked, .book .pocket.picked { border: 0; background: color-mix(in srgb, var(--gold) 20%, var(--px-cell-bg)); box-shadow: var(--px-on-rim); }
+/* The off-hand while a two-handed weapon is worn (item-hands.ts): greyed, and a bar across it — nothing goes there. */
+.book .well.blocked { background: repeating-linear-gradient(135deg, var(--cozy-wood-1) 0 4px, var(--cozy-wood-0) 4px 8px); }
+.book .well.blocked .well-ghost { opacity: .22; filter: grayscale(1); }
+.book .well.blocked::after { content: ''; position: absolute; left: 14%; right: 14%; top: 50%; height: 3px; transform: rotate(-45deg); background: var(--cozy-berry); box-shadow: 0 0 0 1px var(--cozy-wood-0); pointer-events: none; }
 .book .cell-empty { border: 0; background: color-mix(in srgb, var(--px-cell-bg) 55%, transparent); box-shadow: 0 -2px 0 0 var(--obsidian-3), 0 2px 0 0 var(--obsidian-3), -2px 0 0 0 var(--obsidian-3), 2px 0 0 0 var(--obsidian-3); }
 .book .pocket b {
   right: 3px;

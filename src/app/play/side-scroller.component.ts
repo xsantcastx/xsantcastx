@@ -213,6 +213,8 @@ import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-cl
 import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
 import { eclipseWarning, skyVars, spellMult } from './td/td-phases';
 import { weaponSwing } from './td/td-melee';
+import { TWO_HAND_MULT, handsOf, isTwoHanded } from '../shared/rpg/item-hands';
+import { itemBase } from '../shared/rpg/item-base';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
@@ -223,7 +225,9 @@ import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
 import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
 import { FRONT_H, FRONT_W, frontSheet } from '../shared/keeper-look/keeper-front';
-import { vocationLook } from '../shared/keeper-look/vocation-look';
+import { KIT_HANDS, vocationLook } from '../shared/keeper-look/vocation-look';
+import { WaygateScrollService } from '../shared/waygate/waygate-scroll.service';
+import { WAYGATE_SCROLL_ID, WAYGATE_SCROLL_MEANING } from '../shared/waygate/waygate-scroll';
 import { LevelUpService } from '../shared/activity/level-up.service';
 import { npcPortrait } from '../shared/keeper-look/npc-portrait';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
@@ -309,6 +313,11 @@ export function provisionalToolTiers(snapshot: Pick<InventorySnapshot, 'equipped
   return { blade: weapon && !weapon.explorerId ? 1 : 0, staff: staff ? 1 : 0 };
 }
 
+/** Why a class kit keeps the off-hand shut (vocation-look KIT_HANDS), spelt out so the HUD key checks can read them. */
+const HANDS_KIT_KEY: Readonly<Record<string, string>> = {
+  thornstrider: 'play.hud.hands.kit.thornstrider', lanternwright: 'play.hud.hands.kit.lanternwright',
+  warlock: 'play.hud.hands.kit.warlock', ashguard: 'play.hud.hands.kit.ashguard',
+};
 /** On <body> while the world is mounted. styles.css and cosmic-engine.js key the backdrop off it. */
 const WORLD_ROUTE_CLASS = 'gf-world-route';
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
@@ -350,7 +359,7 @@ const WELL_GHOST: Record<string, IconKind> = {
   trinket: 'ring', charm1: 'coin', charm2: 'coin', charm3: 'coin', pet: 'heart',
 };
 const ghostOf = (slot: string): string => iconOf(WELL_GHOST[slot] ?? 'orb', 'grey').src;
-interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The faint picture an empty well shows. */ ghost: string; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
+interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The faint picture an empty well shows. */ ghost: string; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; /** The off-hand while a two-handed weapon is worn (item-hands.ts): greyed, nothing goes there. */ blocked?: boolean; }
 /** A rarity's loot colour (the D2/D4 ladder, _cozy.css --cozy-loot-*): cells, cards and the hover card agree. */
 const lootColor = (rarity: string): string => `var(--cozy-loot-${rarity}, var(--cozy-loot-common))`;
 
@@ -362,6 +371,8 @@ interface BagSlip {
   canSend?: boolean;
   /** Why Equip is shut (an unmet requirement), or absent when it can be worn. */
   wearBlocked?: string;
+  /** A Waygate Scroll: Read opens a town portal (shared/waygate). */
+  canRead?: boolean;
   /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
   count?: number;
   /** Wearing it, against what that place holds now. Empty for worn items and materials. */
@@ -461,9 +472,10 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
 /** A grave-good's number as its card writes it: "12%" on a percent stat (Spell Damage, Move Speed, All Resist …), else "12". */
 function pctOf(key: keyof ItemStats, n: number): string { return `${n}${ITEM_STAT_IS_PERCENT[key] ? '%' : ''}`; }
 
-function heldSwing(held: GameItem): { strikePower?: number; spellDamage?: number } {
+function heldSwing(held: GameItem): { strikePower?: number; spellDamage?: number; hands?: number } {
   const st = wornStats(held);
-  return { strikePower: st.strikePower, spellDamage: st.spellDamage };
+  // Two hands (item-hands.ts) land the basic attack harder (td-melee weaponSwing's mult).
+  return { strikePower: st.strikePower, spellDamage: st.spellDamage, hands: handsOf(held) ?? 1 };
 }
 
 /** Where the fight stops a worn total (the item card says it): td-skills GEAR_CAPS, the resist cap, Gold Find's. */
@@ -1599,12 +1611,12 @@ export class SideScrollerComponent implements OnDestroy {
         this.soundScene(state);
         // Presence: top-down, the area id (a continent or a floor) and the way the Keeper faces; it goes in `zone` too,
         // so a v1 room (no protocol-2 fields) still lines Keepers up by area. Side view: the WORLD, or the area's name.
-        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string } | undefined) : undefined;
+        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string; gatePresence?: () => string } | undefined) : undefined;
         const here = td?.peerPresence?.();
         if (here) {
           // Life for the party frames, in twentieths of the most (a regenerating Keeper does not send every point).
           const maxHp = Math.max(1, Math.round(this.tdMaxHp)), hp = Math.round(Math.round(Math.max(0, Math.min(1, state.hp / maxHp)) * 20) / 20 * maxHp);
-          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '' });
+          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '', gate: td?.gatePresence?.() ?? '' });
           if (el) {
             el.setAttribute('data-peers', (td?.peersOnScreen?.() ?? []).map(p => `${p.name}@${p.x},${p.y}${p.waving ? '~' : ''}`).join(';'));
             el.setAttribute('data-self-waving', td?.selfWaving ? 'true' : 'false');
@@ -2105,6 +2117,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.unStonesHook();
     this.inventory.setWearCheck(null);
+    this.inventory.setKitHands(1);
     this.companions.flush();
     this.unbindHearth?.(); this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
@@ -2425,9 +2438,12 @@ export class SideScrollerComponent implements OnDestroy {
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
     // The worn gear's combat affixes (§3) ride along; the engine re-applies only when a number changed.
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
+    // The class kit's hands (vocation-look KIT_HANDS): the hunting bow and the lamp-staff keep the off-hand shut.
+    const kit = KIT_HANDS[this.looks.look.vocation] ?? 1;
+    if (kit !== this.kitHandsSet) { this.kitHandsSet = kit; this.inventory.setKitHands(kit); }
     // The weapon in hand: its Strike and Spell Damage lift the Ashguard's swing (td-melee weaponSwing).
     const held = this.inventory.snapshot.equipped['weapon'];
-    (this.engine as unknown as { setWeapon?: (w: { strikePower?: number; spellDamage?: number } | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? heldSwing(held) : null);
+    (this.engine as unknown as { setWeapon?: (w: { strikePower?: number; spellDamage?: number; hands?: number } | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? heldSwing(held) : null);
     // The worn boss uniques' signatures (shared/rpg/boss-uniques.ts): the engine re-applies only when the set changed.
     (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
@@ -2460,6 +2476,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   // ── Spellstones (shared/spellstones) ──
   private readonly spellstones = inject(SpellstoneService);
+  private readonly scrolls = inject(WaygateScrollService);
   private readonly graveGoods = inject(GraveGoodsService);
   /** The stone on the belt's Spellstone slot (F), or null; and the Soul held (by the mana bar). */
   tdStone: { key: string; skill: string; rank: number; charges: number; left: number } | null = null;
@@ -2902,7 +2919,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.looks.look.vocation === 'ashguard' && (id === 'watch-blade' || BLADE_SHARE.has(id))) {
       const w = weaponSwing(held && !held.explorerId ? heldSwing(held) : null);
       if (w.flat > 0) parts.push(this.t('play.td.tree.power.weapon', { n: w.flat }));
-      if (w.mult !== 1) parts.push(this.t('play.td.tree.power.fists', { pct: Math.round((1 - w.mult) * 100) }));
+      if (w.mult < 1) parts.push(this.t('play.td.tree.power.fists', { pct: Math.round((1 - w.mult) * 100) }));
+      if (w.mult > 1) parts.push(this.t('play.td.tree.power.hands', { pct: Math.round((w.mult - 1) * 100) }));
+    } else if ((id === 'thorn-shot' || id === 'ember-bolt' || id === 'kindle') && held && !held.explorerId) {
+      // The basic attack of the other three: a two-handed weapon lifts it too (td-mobs shotBlow / handMult).
+      const w = weaponSwing(heldSwing(held));
+      if (w.mult > 1) parts.push(this.t('play.td.tree.power.hands', { pct: Math.round((w.mult - 1) * 100) }));
     }
     if (f.crit > 0) parts.push(this.t('play.td.tree.power.crit', { pct: Math.round(f.crit * 100), k: CRIT_MULT }));
     return parts.length ? this.t('play.td.tree.power', { parts: parts.join(' · ') }) : null;
@@ -4778,7 +4800,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
   chooseWell(well: BagWell, ev?: Event): void {
-    this.pick = !well.filled || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
+    this.pick = (!well.filled && !well.blocked) || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
     this.placePick(ev);
   }
   /** Where a click pins the item card: beside the cell, kept on screen (it flips to the cell's left at the right edge). */
@@ -4860,22 +4882,34 @@ export class SideScrollerComponent implements OnDestroy {
     this.message = first;
     this.bump('.satchel .clasp');
   }
+  /** The kit hands last handed to the inventory (pushStats re-hands them only when the class changes). */
+  private kitHandsSet: 1 | 2 | 0 = 0;
+  /** Why the off-hand is shut, in one line: a two-handed weapon worn, or the class kit's (null: open). */
+  private offHandShut(): string | null {
+    if (!this.inventory.offHandBlocked) return null;
+    const held = this.inventory.snapshot.equipped['weapon'];
+    if (held && !held.explorerId) return this.t('play.hud.hands.blocked', { name: held.name });
+    return this.t(HANDS_KIT_KEY[this.looks.look.vocation] ?? HANDS_KIT_KEY['warlock']);
+  }
   get wells(): BagWell[] {
     const snap = this.inventory.snapshot;
     const charms = snap.items.some(item => item.type === 'charm' && !item.explorerId);
     const slots = charms ? [...BELT, ...CHARM_SLOT_IDS] : BELT;
+    const shut = this.offHandShut();
     return slots.map(id => {
       const worn = snap.equipped[id];
       const item = worn && !worn.explorerId ? worn : undefined;
       const name = SLOT_BY_ID.get(id)?.name ?? id;
+      const blocked = id === 'off-hand' && !item && !!shut;
       return {
         id, name,
         art: item ? (itemArt(item)?.src ?? '') : '',
         mark: monogram(item?.name ?? name),
-        label: item?.name ?? 'Empty',
+        label: blocked ? shut! : item?.name ?? 'Empty',
         filled: !!item,
         ghost: ghostOf(id),
         tone: item ? lootColor(item.rarity) : null,
+        ...(blocked ? { blocked } : {}),
       };
     });
   }
@@ -4971,13 +5005,31 @@ export class SideScrollerComponent implements OnDestroy {
     if (!item || item.equipped) return;
     const blocked = this.wearBlockedReason(item);
     if (blocked) { this.message = blocked; return; }
+    // Hands (item-hands.ts): what the swap sends back to the satchel, to say so.
+    const before = this.inventory.snapshot.equipped, off = before['off-hand'], weapon = before['weapon'];
     const ok = isBasaltEdge(item) ? this.inventory.equip(item.id, 'weapon') : this.inventory.equip(item.id);
-    this.message = this.t(ok ? 'play.hud.msg.worn' : 'play.hud.msg.wearFailed', { name: item.name });
+    const into = ok ? this.inventory.itemById(item.id)?.slot : undefined;
+    const handsOut = ok ? [off, weapon].find(w => w && w.id !== item.id && !w.explorerId && w.slot !== into && !this.inventory.itemById(w.id)?.equipped) : undefined;
+    this.message = !ok && this.inventory.equipRefusal === 'hands-full' ? this.t('play.hud.hands.full', { name: item.name })
+      : !ok && this.inventory.equipRefusal === 'kit-hands' ? this.t(HANDS_KIT_KEY[this.looks.look.vocation] ?? HANDS_KIT_KEY['warlock'])
+      : handsOut ? this.t('play.hud.hands.moved', { name: item.name, other: handsOut.name })
+      : this.t(ok ? 'play.hud.msg.worn' : 'play.hud.msg.wearFailed', { name: item.name });
     if (!ok) return;
     this.sound.sfx('equip');
     this.sync();
     const slot = this.inventory.snapshot.items.find(row => row.id === item.id)?.slot;
     if (slot) this.pick = { kind: 'slot', ref: slot };
+  }
+  /** Read the picked Waygate Scroll: the engine opens the portal, the scroll is spent only when it did. */
+  readScroll(): void {
+    const open = (this.engine as unknown as { openWaygate?: () => 'waytown' | 'wayboss' | 'wayseam' | null } | undefined)?.openWaygate;
+    if (!open) return;
+    const why = this.scrolls.read(() => open.call(this.engine));
+    if (why === 'none') return;
+    if (why) { this.message = this.t(`play.td.ability.${why}`); return; }
+    this.sound.sfx('equip');
+    this.pick = null;
+    this.closeBag();
   }
   stow(): void {
     const item = this.selectedGear();
@@ -5011,6 +5063,21 @@ export class SideScrollerComponent implements OnDestroy {
     // A catch says what it is and what it is for (the Catalogue's lines); a Lodge charm, what it does.
     const fish = catchById(stackKey), charm = LODGE_CHARMS.find(c => c.id === stackKey);
     const potion = potionById(stackKey);
+    if (stackKey === WAYGATE_SCROLL_ID) {
+      // The Town Portal scroll: what it does, its lore, and Read (top-down only: the portal is the world's).
+      const kicker = this.t('play.waygate.kicker'), does = this.t('play.waygate.does');
+      return {
+        name, art: display?.art ?? '', mark: monogram(name), kicker,
+        note: `${does} ${WAYGATE_SCROLL_MEANING.lore}`,
+        stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
+        canWear: false, canStow: false, compare: [], compareLabel: '', canRead: this.topDown,
+        tip: {
+          rarity: 'material', typeLine: kicker, rarityWord: '', head: null, affixes: [],
+          specials: [does, WAYGATE_SCROLL_MEANING.lore],
+          sockets: [], value: 0, bound: false, tempered: 0, itemLevel: 0, tag: null,
+        },
+      };
+    }
     if (potion) {
       const does = this.potionLine(potion.id);
       const key = potion.kind === 'rejuv' ? 'Q · R' : potion.kind === 'health' ? 'Q' : 'R';
@@ -5053,7 +5120,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private emptyWell(slot: SlotId): BagSlip {
     const name = SLOT_BY_ID.get(slot)?.name ?? 'Place';
-    return { name, art: '', mark: monogram(name), kicker: this.t('play.hud.book.worn'), note: this.t('play.hud.slip.emptyWell'), stats: [], canWear: false, canStow: false, compare: [], compareLabel: '' };
+    const shut = slot === 'off-hand' ? this.offHandShut() : null;
+    const note = shut ?? this.t('play.hud.slip.emptyWell');
+    return { name, art: '', mark: monogram(name), kicker: this.t('play.hud.book.worn'), note, stats: shut ? [shut] : [], canWear: false, canStow: false, compare: [], compareLabel: '' };
   }
   private itemSlip(item: GameItem, worn: boolean): BagSlip {
     const def = definitionFor(item);
@@ -5115,13 +5184,15 @@ export class SideScrollerComponent implements OnDestroy {
     const sockets = Array.from({ length: wells }, (_, i) => item.sockets?.[i] ?? null).map(id => (id ? materialDisplay(id)?.name ?? id : null));
     return {
       rarity: item.rarity,
-      typeLine: item.type === 'charm' ? this.t('play.tip.charm') : (slot ? SLOT_BY_ID.get(slot)?.name ?? '' : ''),
+      typeLine: item.type === 'charm' ? this.t('play.tip.charm') : this.handsLine(item) ?? (slot ? SLOT_BY_ID.get(slot)?.name ?? '' : ''),
       rarityWord: rarityLabel(item.rarity),
       head,
       affixes: held.filter(key => key !== head?.key).map(line),
       itemLevel: item.itemLevel ?? 0,
       tag: qualityTagOf(item),
       specials: [
+        // A two-handed weapon's price and its pay (item-hands.ts TWO_HAND_MULT, read by td-melee weaponSwing).
+        ...(isTwoHanded(item) ? [this.t('play.tip.hands.twoNote', { pct: Math.round((TWO_HAND_MULT - 1) * 100) })] : []),
         ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
         ...(bossUniqueById(item.definitionId) ? this.relicLines(bossUniqueById(item.definitionId)!) : this.uniqueLines(uniqueById(item.definitionId))),
       ],
@@ -5130,6 +5201,12 @@ export class SideScrollerComponent implements OnDestroy {
       set: this.setTip(item),
       ...this.graveTip(item),
     };
+  }
+  /** A weapon's kind and its hands, for the card ("Two-handed bow", "One-handed crossbow"); null for anything else. */
+  private handsLine(item: GameItem): string | null {
+    const hands = handsOf(item), base = itemBase(item);
+    if (!hands || !base) return null;
+    return this.t(hands === 2 ? 'play.tip.hands.two' : 'play.tip.hands.one', { base: this.t('play.tip.base.' + base) });
   }
   /** The card's requirement lines; a level of 1 with no attribute says nothing. */
   private reqLines(item: GameItem): { text: string; met: boolean }[] {

@@ -580,3 +580,12 @@ test('protocol 4: firebaseVerifier checks signature, project, issuer, expiry; fi
   assert.equal(calls.at(-1).body.fields.reason.stringValue, 'spam');
   assert.ok(calls.at(-1).body.fields.at.timestampValue);
 });
+
+test('protocol 5: a town portal travels in presence (td-waygate encodeGate); anything else in it is refused', async () => {
+  const { presenceFields } = await import('./social-server.mjs');
+  assert.equal(presenceFields({ gate: 'ember:surface:1200:-40:900:300:290' }).gate, 'ember:surface:1200:-40:900:300:290');
+  assert.equal(presenceFields({ gate: '' }).gate, '');
+  assert.throws(() => presenceFields({ gate: '<b>' }), /Invalid presence/);
+  assert.throws(() => presenceFields({ gate: 7 }), /Invalid presence/);
+  assert.equal(presenceFields({}).gate, undefined);
+});
