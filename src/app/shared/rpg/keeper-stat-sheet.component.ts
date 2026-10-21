@@ -30,7 +30,7 @@ import {
 import { Subscription } from 'rxjs';
 
 import { InventoryService } from './inventory.service';
-import { ITEM_STAT_IS_PERCENT, ITEM_STAT_KEYS, ITEM_STAT_LABELS, type ItemStats } from './item.model';
+import { ITEM_STAT_IS_PERCENT, ITEM_STAT_KEYS, ITEM_STAT_LABELS, totalGoldFind, type ItemStats } from './item.model';
 import { keeperCombatStats } from './keeper-combat';
 import { formatDeltaChip, round2, totalsDelta, type DeltaDirection, type StatKey } from './stat-delta';
 
@@ -43,7 +43,7 @@ const CHIP_MS = 1800;
 const FLASH_MS = 1100;
 
 const ZERO: Totals = {
-  goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
+  goldPerSec: 0, goldFind: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
   life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0,
   fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0,
 };
@@ -78,7 +78,8 @@ export class KeeperStatSheetComponent implements OnInit, OnDestroy {
   /** Hide stats at zero (and never changed), to keep the compact sheet short. */
   @Input() hideZero = false;
 
-  readonly keys = ITEM_STAT_KEYS;
+  /** The retired Gold/sec has no row: older items' rolls are folded into Gold Find (`totalGoldFind`). */
+  readonly keys = ITEM_STAT_KEYS.filter(key => key !== 'goldPerSec');
   readonly labels = ITEM_STAT_LABELS;
 
   /** What the sheet is currently showing — mid-count during an animation. */
@@ -124,7 +125,7 @@ export class KeeperStatSheetComponent implements OnInit, OnDestroy {
   trackChip(_: number, chip: Chip): number { return chip.id; }
 
   private apply(next: Totals): void {
-    const to: Totals = { ...ZERO, ...next };
+    const to: Totals = { ...ZERO, ...next, goldPerSec: 0, goldFind: totalGoldFind(next) };
     const from = this.target;
     this.target = to;
     // First value: the baseline. Counting up from zero on every page load would

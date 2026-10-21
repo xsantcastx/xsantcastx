@@ -39,7 +39,7 @@ function item(id: string, stats: ItemStats, over: Partial<GameItem> = {}): GameI
 function snapshotWith(equipped: Partial<Record<SlotId, GameItem>>): InventorySnapshot {
   return {
     items: [], bag: [], stacks: [], equipped,
-    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0, life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0, fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0 },
+    totals: { goldPerSec: 0, goldFind: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0, life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0, fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0 },
     goldFromSales: 0, sold: 0, usedRows: 0, satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false,
   };
 }
@@ -103,12 +103,12 @@ describe('EquipmentPanelComponent comparison', () => {
   });
 
   it('shows a stat the candidate drops entirely as a negative', () => {
-    // Losing Gold/sec +4 to gain Magic Find +2 is a real trade, and a panel that
+    // Losing Gold Find +4 to gain Magic Find +2 is a real trade, and a panel that
     // only listed the gain would be hiding half of it.
-    const panel = panelWith({ head: item('worn', { goldPerSec: 4, magicFind: 5 }) });
+    const panel = panelWith({ head: item('worn', { goldFind: 4, magicFind: 5 }) });
     const rows = panel.comparison(HEAD, item('trade', { magicFind: 7 }));
 
-    const gold = rows.find(r => r.key === 'goldPerSec');
+    const gold = rows.find(r => r.key === 'goldFind');
     expect(gold).toBeDefined();
     expect(gold!.delta).toBe(-4);
     expect(gold!.better).toBeFalse();
@@ -116,8 +116,8 @@ describe('EquipmentPanelComponent comparison', () => {
   });
 
   it('omits stats that did not move', () => {
-    const panel = panelWith({ head: item('worn', { goldPerSec: 4, magicFind: 5 }) });
-    const rows = panel.comparison(HEAD, item('same-gold', { goldPerSec: 4, magicFind: 8 }));
+    const panel = panelWith({ head: item('worn', { goldFind: 4, magicFind: 5 }) });
+    const rows = panel.comparison(HEAD, item('same-gold', { goldFind: 4, magicFind: 8 }));
 
     expect(rows.map(r => r.key)).toEqual(['magicFind']);
   });
@@ -128,13 +128,13 @@ describe('EquipmentPanelComponent comparison', () => {
     expect(panel.comparison(HEAD, worn)).toEqual([]);
   });
 
-  it('rounds a fractional Gold/sec delta to something printable', () => {
+  it('rounds a fractional Gold Find delta to something printable', () => {
     // 0.4 - 0.1 is 0.30000000000000004 in IEEE 754, and a delta chip reading
     // that is worse than no chip at all.
-    const panel = panelWith({ head: item('worn', { goldPerSec: 0.1 }) });
-    const rows = panel.comparison(HEAD, item('next', { goldPerSec: 0.4 }));
+    const panel = panelWith({ head: item('worn', { goldFind: 0.1 }) });
+    const rows = panel.comparison(HEAD, item('next', { goldFind: 0.4 }));
     expect(rows[0].delta).toBe(0.3);
-    expect(rows[0].text).toBe('Gold/sec +0.3');
+    expect(rows[0].text).toBe('Gold Find +0.3%');
   });
 
   it('reports nothing for a slot the doll cannot fill', () => {
@@ -143,9 +143,9 @@ describe('EquipmentPanelComponent comparison', () => {
   });
 
   it('calls a net-positive trade an upgrade and a net-negative one not', () => {
-    const panel = panelWith({ head: item('worn', { goldPerSec: 4, magicFind: 5 }) });
-    expect(panel.isUpgrade(HEAD, item('up', { goldPerSec: 3, magicFind: 9 }))).toBeTrue();
-    expect(panel.isUpgrade(HEAD, item('down', { goldPerSec: 1, magicFind: 4 }))).toBeFalse();
+    const panel = panelWith({ head: item('worn', { goldFind: 4, magicFind: 5 }) });
+    expect(panel.isUpgrade(HEAD, item('up', { goldFind: 3, magicFind: 9 }))).toBeTrue();
+    expect(panel.isUpgrade(HEAD, item('down', { goldFind: 1, magicFind: 4 }))).toBeFalse();
   });
 
   it('reports what is worn in a slot, and nothing for a locked one', () => {
@@ -161,11 +161,11 @@ describe('EquipmentPanelComponent tooltip', () => {
 
   it('names the item, its rarity, its mods and its price', () => {
     const panel = panelWith({});
-    const text = panel.itemTooltip(item('Bright Sigil', { goldPerSec: 4, magicFind: 9 }));
+    const text = panel.itemTooltip(item('Bright Sigil', { goldFind: 4, magicFind: 9 }));
 
     expect(text).toContain('Bright Sigil');
     expect(text).toContain('Rare');
-    expect(text).toContain('Gold/sec +4');
+    expect(text).toContain('Gold Find +4%');
     expect(text).toContain('Magic Find +9%');
     expect(text).toContain('Sells for');
   });

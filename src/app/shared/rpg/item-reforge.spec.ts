@@ -189,9 +189,9 @@ describe('item-reforge', () => {
 
   it('reports every rerolled key, including the ones that did not move', () => {
     const keys = reforgeKeys(item('eclipse-longblade', 'rare'));
-    const rows = reforgeDeltas({ goldPerSec: 1, strikePower: 2 }, { goldPerSec: 1, strikePower: 3 }, keys);
+    const rows = reforgeDeltas({ goldFind: 1, strikePower: 2 }, { goldFind: 1, strikePower: 3 }, keys);
     expect(rows.length).toBe(keys.length);
-    const flat = rows.find(r => r.key === 'goldPerSec')!;
+    const flat = rows.find(r => r.key === 'goldFind')!;
     expect(flat.delta).toBe(0);
     const moved = rows.find(r => r.key === 'strikePower')!;
     expect(moved.delta).toBe(1);
@@ -199,26 +199,26 @@ describe('item-reforge', () => {
 
   it('flags the locked row rather than hiding it', () => {
     const keys = reforgeKeys(item('eclipse-longblade', 'rare'));
-    const rows = reforgeDeltas({ goldPerSec: 1, strikePower: 2 }, { goldPerSec: 1, strikePower: 3 }, keys, 'goldPerSec');
-    expect(rows.find(r => r.key === 'goldPerSec')!.locked).toBe(true);
+    const rows = reforgeDeltas({ goldFind: 1, strikePower: 2 }, { goldFind: 1, strikePower: 3 }, keys, 'goldFind');
+    expect(rows.find(r => r.key === 'goldFind')!.locked).toBe(true);
     expect(rows.find(r => r.key === 'strikePower')!.locked).toBe(false);
   });
 
   it('votes per key rather than summing, so one big-scale stat cannot drown the rest', () => {
-    // goldPerSec down a whole point, magicFind and xpBonus each up a hundredth:
+    // goldFind down a whole point, magicFind and xpBonus each up a hundredth:
     // a raw sum would call this a loss; two keys out of three improved.
     const rows = reforgeDeltas(
-      { goldPerSec: 2, magicFind: 0.02, xpBonus: 0.02 },
-      { goldPerSec: 1, magicFind: 0.03, xpBonus: 0.03 },
-      ['goldPerSec', 'magicFind', 'xpBonus'],
+      { goldFind: 2, magicFind: 0.02, xpBonus: 0.02 },
+      { goldFind: 1, magicFind: 0.03, xpBonus: 0.03 },
+      ['goldFind', 'magicFind', 'xpBonus'],
     );
     expect(reforgeVerdict(rows)).toBe('better');
   });
 
   it('calls an all-locked or all-flat reroll even, not better', () => {
-    const flat = reforgeDeltas({ goldPerSec: 1 }, { goldPerSec: 1 }, ['goldPerSec']);
+    const flat = reforgeDeltas({ goldFind: 1 }, { goldFind: 1 }, ['goldFind']);
     expect(reforgeVerdict(flat)).toBe('even');
-    const locked = reforgeDeltas({ goldPerSec: 1 }, { goldPerSec: 1 }, ['goldPerSec'], 'goldPerSec');
+    const locked = reforgeDeltas({ goldFind: 1 }, { goldFind: 1 }, ['goldFind'], 'goldFind');
     expect(reforgeVerdict(locked)).toBe('even');
   });
 });

@@ -29,7 +29,7 @@ export type StatId =
   | 'charisma';
 
 export interface PlayerStats {
-  /** +0.5% Gold/sec per point (economy v3: a share of the forge, not a flat rate). */
+  /** +0.5% Gold Find per point (the forge no longer pays by the second: it raises every pile the hunt drops). */
   forgePower: number;
   /** +2% Magic Find per point. */
   luck: number;
@@ -57,7 +57,7 @@ export interface StatDefinition {
   glow: string;
   /** The effect of `points` points. Linear today; see the note above. */
   effectOf: (points: number) => number;
-  /** How that effect is written out, e.g. "+4.5 Gold/sec". */
+  /** How that effect is written out, e.g. "+4.5% Gold Find". */
   format: (points: number) => string;
 }
 
@@ -70,13 +70,13 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
   {
     id: 'forgePower',
     name: 'Forge Power',
-    unit: '% Gold/sec',
+    unit: '% Gold Find',
     per: 0.5,
-    flavour: 'The arm behind the hammer. Every point is another half-second of someone else’s work, done for you, forever.',
+    flavour: 'The arm behind the hammer. Every point shakes a little more out of whatever falls, and the piles come up fatter.',
     color: '#e8c898',
     glow: 'rgba(255, 180, 80, 0.6)',
     effectOf: p => p * 0.5,
-    format: p => `+${trim(p * 0.5)}% Gold/sec`,
+    format: p => `+${trim(p * 0.5)}% Gold Find`,
   },
   {
     id: 'luck',
@@ -184,7 +184,7 @@ export function totalPoints(stats: PlayerStats): number {
 // Derived effects
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Forge Power's income bonus, in percent of the furnace + automaton rate (economy v3). */
+/** Forge Power's Gold Find, in percent on every pile the hunt drops. */
 export function forgePowerGold(stats: PlayerStats): number {
   return STAT_BY_ID.get('forgePower')!.effectOf(stats.forgePower);
 }

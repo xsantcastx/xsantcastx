@@ -43,7 +43,7 @@ describe('RuneForgeComponent reveal', () => {
     ...over,
   });
   const item = (over: Record<string, unknown> = {}) => ({
-    id: 'i1', name: 'Ash Sigil', type: 'artifact', rarity: 'rare', stats: { goldPerSec: 1.3 },
+    id: 'i1', name: 'Ash Sigil', type: 'artifact', rarity: 'rare', stats: { goldFind: 1.3 },
     sellValue: 0, equipped: false, foundAt: '2026-01-01T00:00:00.000Z', soulbound: false, ...over,
   });
   const scroll = () => ({
@@ -168,7 +168,7 @@ describe('RuneForgeComponent reveal', () => {
     expect(lines.length).toBe(3);
     expect(lines[0].textContent).toContain('Equippable');
     expect(lines[0].textContent).toContain('Ash Sigil');
-    expect(lines[0].textContent).toContain('Gold/sec +1.3');
+    expect(lines[0].textContent).toContain('Gold Find +1.3%');
     expect((lines[0] as HTMLElement).style.getPropertyValue('--star')).toBe(RUNE_TIERS.rare.color);
     expect(lines[1].textContent).toContain('Lore scroll');
     expect(lines[1].textContent).toContain('The Sun That Dreamed');

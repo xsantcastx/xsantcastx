@@ -75,7 +75,7 @@ export const INFUSIONS: readonly Infusion[] = [
   {
     id: 'ember-infusion',
     name: 'Ember Infusion',
-    effect: '+10% Gold/sec for 2 hours',
+    effect: '+10% Gold from the hunt for 2 hours',
     flavour: 'Still warm. It has been still warm for four thousand years, and for the next two hours it is warm for you.',
     icon: '🔥',
     inputs: [{ materialId: 'ember-residue', count: 3 }],
@@ -108,7 +108,7 @@ export const INFUSIONS: readonly Infusion[] = [
   {
     id: 'heartstone-infusion',
     name: 'Heartstone Infusion',
-    effect: '+20% Gold/sec for 1 hour',
+    effect: '+20% Gold from the hunt for 1 hour',
     flavour: 'One Heartstone, one hour, and a furnace that behaves as though the Shattering had gone better.',
     icon: '❤️‍🔥',
     inputs: [{ materialId: 'infernal-heartstone', count: 1 }],

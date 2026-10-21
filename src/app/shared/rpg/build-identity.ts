@@ -43,6 +43,7 @@ export type BuildAxis = 'strike' | 'treasure' | 'gold' | 'ward' | 'lore';
 /** One Common-tier piece's worth of each stat. See the header. */
 export const STAT_UNIT: Readonly<Record<StatKey, number>> = {
   goldPerSec: 2,
+  goldFind: 5,
   magicFind: 5,
   xpBonus: 3,
   strikePower: 1,
@@ -66,6 +67,7 @@ export const STAT_UNIT: Readonly<Record<StatKey, number>> = {
 
 export const STAT_AXIS: Readonly<Record<StatKey, BuildAxis>> = {
   goldPerSec: 'gold',
+  goldFind: 'gold',
   magicFind: 'treasure',
   xpBonus: 'lore',
   strikePower: 'strike',

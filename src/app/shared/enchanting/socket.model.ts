@@ -150,31 +150,31 @@ export function isFullySocketed(item: GameItem): boolean {
  */
 export const SOCKET_CHANNEL: Readonly<Record<string, LegacyStatKey>> = {
   // Common — the floor of the world, one rune per stat.
-  ash: 'goldPerSec',
+  ash: 'goldFind',
   ember: 'strikePower',
   drift: 'magicFind',
   shade: 'ward',
   // Uncommon — the realms, each leaving one mark.
   glint: 'magicFind',
   veil: 'ward',
-  pulse: 'goldPerSec',
+  pulse: 'goldFind',
   thorn: 'strikePower',
   scorch: 'strikePower',
   // Rare — things that were made on purpose.
-  nexus: 'goldPerSec',
+  nexus: 'goldFind',
   sigil: 'xpBonus',
   rift: 'magicFind',
   hollow: 'ward',
   // Epic — the Shattering, in three pieces.
   fracture: 'strikePower',
   eclipse: 'magicFind',
-  forge: 'goldPerSec',
+  forge: 'goldFind',
   // Legendary — the two energies and the book that named them.
   aether: 'xpBonus',
   nox: 'magicFind',
   codex: 'magicFind',
   // Mythic — the two halves of the thing that broke.
-  convergence: 'goldPerSec',
+  convergence: 'goldFind',
   godstone: 'strikePower',
   // Singular — the Void feeds every channel at once. See `socketEffectOf`.
 };
@@ -182,16 +182,16 @@ export const SOCKET_CHANNEL: Readonly<Record<string, LegacyStatKey>> = {
 /**
  * How much one rune of each tier is worth, per stat.
  *
- * Gold/sec climbs steeply because it is unbounded and competes with a furnace
- * that multiplies. The percentages climb gently because they compete with item
+ * Gold Find climbs like Magic Find (percentages on the hunt's piles; the forge's
+ * Gold/sec this row used to feed is retired). The percentages climb gently because they compete with item
  * rolls that top out in the tens. Strike and Ward climb most gently of all:
  * both are consumed by systems with hard caps (25% second-rune chance, 30% of
  * the temper fail chance), so a rune worth thirty points would buy nothing.
  */
 // Runes channel the five legacy stats only; the combat affixes roll on gear.
 export const SOCKET_LADDER: Readonly<Record<LegacyStatKey, Record<RuneTier, number>>> = {
-  goldPerSec: {
-    common: 1, uncommon: 4, rare: 14, epic: 45, legendary: 140, mythic: 420, singular: 1200,
+  goldFind: {
+    common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12, mythic: 20, singular: 32,
   },
   magicFind: {
     common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12, mythic: 20, singular: 32,

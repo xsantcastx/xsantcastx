@@ -137,9 +137,9 @@ describe('matching', () => {
 
 describe('effective stats', () => {
   it('adds the runes to the base roll', () => {
-    const sword = item({ rarity: 'rare', stats: { goldPerSec: 10 }, sockets: ['ash', null] });
-    // Ash is +1 Gold/sec at Common. No word — one well is empty.
-    expect(wornStats(sword).goldPerSec).toBe(11);
+    const sword = item({ rarity: 'rare', stats: { goldFind: 10 }, sockets: ['ash', null] });
+    // Ash is +1% Gold Find at Common. No word — one well is empty.
+    expect(wornStats(sword).goldFind).toBe(11);
   });
 
   it('multiplies the whole sum, not just the base roll', () => {
@@ -148,12 +148,12 @@ describe('effective stats', () => {
     // and Strike (Fracture, epic 3).
     const sword = item({
       rarity: 'legendary',
-      stats: { goldPerSec: 100, magicFind: 10 },
+      stats: { goldFind: 100, magicFind: 10 },
       sockets: ['eclipse', 'nox', 'fracture'],
     });
     const worn = wornStats(sword);
     expect(matchSocketWord(sword)?.id).toBe('eclipse-blade');
-    expect(worn.goldPerSec).toBe(150);
+    expect(worn.goldFind).toBe(150);
     expect(worn.magicFind).toBe((10 + 7 + 12) * 1.5);
     expect(worn.strikePower).toBe(3 * 1.5);
   });
