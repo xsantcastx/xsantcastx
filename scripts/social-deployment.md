@@ -117,6 +117,25 @@ A reopened stream gets its party (with its lines) and any standing invite after 
 Leaving the room (or idling out) leaves the party. Shared XP is decided by each
 recipient's client (src/app/play/social/party-share.ts) and is trust-based.
 
+### Protocol 4 (shared creatures, 2026-10-21 — built, NOT deployed)
+
+`/health` and `/join` report `protocol: 4`. A client that shares creatures says `coop: true` (with `party: true`) on
+`/join`; only such sessions are elected, sent co-op events or allowed the co-op verbs, so a v3 client sees nothing new.
+Per party and per area (presence `area`), the room elects a host: the earliest-joined co-op member present, sticky
+while it stays; re-elected when it changes area, leaves the party or the room, or sends no snapshot for 3 s while
+others share its area. It announces `{type:'coop', areas:{[area]:{host, term, members}}}` to the party's co-op members
+on every change (and to a reopened stream); one dropped from the party hears `areas: {}`.
+
+| verb | who | body | relayed |
+|---|---|---|---|
+| POST `/coop/snap` | that area's host | `{area, seq, kf, mobs[≤48], gone[≤64]?, ev[≤24]?, tier?}` | `{type:'coop-snap', from, area, term, seq, kf, mobs, gone, ev}` to the party's other co-op members in that area |
+| POST `/coop/hits` | a member with a host there | `{area, hits[1–24]:{i, d, el, c?, s?}}` | `{type:'coop-hits', from, area, x, y, level, hits}` (x/y/level: the room's own presence record) to that host only |
+
+Every creature, event and claim field is validated (unknown keys refused; ids `[a-z0-9]{1,10}`, keys
+`[a-z0-9:,~._-]{1,80}`, creature ids as `/party/kill`, whole numbers in bounds, a `bite`/`kill` may only name party
+members other than the host). Caps: 8 KB a body (413), 12 snapshots and 12 claim batches a second per session, 40 co-op
+requests a second per party (429). Never stored; the room never simulates. See docs/design/online.md §3.4.
+
 **Deploy (the owner's call — not executed).** Read the live origins first and
 keep all four (the values contain commas, hence the `^|^` delimiter):
 
@@ -134,7 +153,7 @@ gcloud run deploy eclipse-hearth \
   --timeout 3600 \
   --session-affinity \
   --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com'
-curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":3
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":4
 ```
 
 The redeploy restarts the room: everyone online is dropped and rejoins on their

@@ -1,5 +1,7 @@
 import { HEARTH_PORT_KEY, PARTY_PROTOCOL, SocialRoom, roomName, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
-import { PartyShare } from './social/party-share';
+import { PartyShare, SHARE } from './social/party-share';
+import { CoopRewards } from './social/coop-rules';
+import type { CoopKill } from './td/td-coop';
 import { compass as compassOf, bandOf } from './td/td-seek';
 import { packLook } from './social/peer-look';
 import {
@@ -717,6 +719,10 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly seenPartyLines = new Set<string>();
   /** Shared XP: each kill a party member announces is checked here, on this device, and paid through hunted(). */
   private readonly partyShare = new PartyShare(id => MOBS[id] ? { level: MOBS[id].level, hp: MOBS[id].hp } : null);
+  /** Shared creatures (protocol 4): each host kill pays this Keeper once, in full or as the share (coop-rules.ts). */
+  private readonly coopRewards = new CoopRewards();
+  /** What shared kills have paid here (the canvas's data-coop-paid, for the e2e). */
+  private readonly coopPaid = { full: 0, share: 0 };
   /** Invites already given their lapse timer. */
   private readonly inviteTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** A party verb in flight (the buttons wait on it). */
@@ -817,6 +823,9 @@ export class SideScrollerComponent implements OnDestroy {
     // The party: the engine marks the others (gold plates, the minimap, the Seek); lines out of view count as unread.
     const party = snapshot.party?.members.filter(id => id !== snapshot.id) ?? [];
     (this.engine as unknown as { setParty?: (ids: readonly string[]) => void } | undefined)?.setParty?.(party);
+    // Shared creatures (protocol 4): the room's election, or nothing (an older room, no party: solo as before).
+    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[]) => void } | undefined)
+      ?.setCoop?.((snapshot.protocol ?? 0) >= 4 && snapshot.party ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -910,6 +919,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser || !this.topDown || !this.social.party) return;
     const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
     if (!here) return;
+    // Shared creatures: the host of this area announcing a kill here was already paid through its shared kill.
+    if (!this.coopRewards.partyKillPays(kill, here, this.coopHostHere(here.area))) { this.canvas?.nativeElement.setAttribute('data-party-share', 'coop'); return; }
     const r = this.partyShare.accept(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
     const el = this.canvas?.nativeElement;
     el?.setAttribute('data-party-share', r.ok ? `+${r.xp}` : r.why);
@@ -917,6 +928,30 @@ export class SideScrollerComponent implements OnDestroy {
     // Through the same door as a kill of one's own (payHunt): the debt, the ledger's replay check, the toast.
     // (The toast lands in the Game tab by itself.)
     this.payHunt(`party:${kill.id}`, `party:${kill.id}`, r.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name: kill.name }));
+  }
+  /** Who hosts the party's creatures in `area` (not this Keeper), or null. */
+  private coopHostHere(area: string): string | null {
+    const a = (this.social.protocol ?? 0) >= 4 && this.social.party ? this.social.coop?.[area] : undefined;
+    return a && a.host !== this.social.id && a.members.includes(this.social.id) ? a.host : null;
+  }
+  /**
+   * A shared creature fell on the host (protocol 4). Fought it: full Hunting XP and personal loot, as if this Keeper had
+   * felled it (the engine lays the spoils and pays through hunted()). Only stood by: the party share. Each kill once.
+   */
+  private coopKilled(kill: CoopKill): 'full' | 'share' | 'none' {
+    const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
+    if (!here || !this.social.party) return 'none';
+    const r = this.coopRewards.decide(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y });
+    const el = this.canvas?.nativeElement;
+    if (r.kind === 'share') {
+      const name = this.social.players.find(p => p.id === kill.from)?.name ?? '';
+      const share = this.partyShare.accept({ id: kill.id, from: kill.from, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
+        { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
+      if (share.ok) { this.coopPaid.share++; this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name })); }
+    }
+    if (r.kind === 'full') this.coopPaid.full++;
+    el?.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
+    return r.kind === 'none' ? 'none' : r.kind;
   }
   private partyNoted(note: RoomPartyNote): void {
     if (note.id === this.social.id && note.kind === 'kicked') { this.logGame(this.t('play.party.youKicked')); this.message = this.t('play.party.youKicked'); return; }
@@ -1194,6 +1229,9 @@ export class SideScrollerComponent implements OnDestroy {
         keepAlive: true, onEmote: emote => this.zone.run(() => this.roomEmote(emote)),
         onPartyKill: kill => this.zone.run(() => this.partyKilled(kill)),
         onPartyNote: note => this.zone.run(() => this.partyNoted(note)),
+        // Protocol 4: straight to the engine (outside Angular: ~8 a second, nothing in the HUD changes).
+        onCoopSnap: msg => (this.engine as unknown as { coopSnap?: (m: typeof msg) => void } | undefined)?.coopSnap?.(msg),
+        onCoopHits: msg => (this.engine as unknown as { coopHits?: (m: typeof msg) => void } | undefined)?.coopHits?.(msg),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -1297,6 +1335,9 @@ export class SideScrollerComponent implements OnDestroy {
       onBucket: event => this.zone.run(() => this.bucketSwap(event)),
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
+      onCoopSnap: body => this.room?.coopSnap(body) ?? Promise.resolve(false),
+      onCoopHits: body => this.room?.coopHits(body) ?? Promise.resolve(false),
+      onCoopKill: kill => this.zone.run(() => this.coopKilled(kill)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
       // A realm machine (the Orrery Tumbler): found once, then played in the place panel.
@@ -5641,13 +5682,20 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Tell the party (protocol 3) a creature fell here: each member near enough pays itself a share (party-share.ts). */
   private announceKill(event: KillEvent): void {
-    if (!this.topDown || !this.inParty || (this.social.party?.members.length ?? 0) < 2) return;
+    if (!this.topDown || !this.inParty || (this.social.party?.members.length ?? 0) < 2 || event.coop || event.share) return;
     const def = MOBS[event.creature], area = (this.engine as unknown as { peerArea?: () => string } | undefined)?.peerArea?.();
     if (!def || !area) return;
     this.room?.partyKill({ creature: event.creature, level: def.level, hp: Math.max(1, Math.round(event.hp)), ...(event.xp && event.xp !== 1 ? { xp: Math.round(event.xp * 1000) / 1000 } : {}), area });
   }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
+    // The host's own creature, felled by the others only (protocol 4): the party share, nothing else.
+    if (event.share) {
+      this.coopPaid.share++;
+      this.canvas?.nativeElement.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
+      this.payHunt(`hunt:${event.id}`, event.id, Math.max(1, Math.round(huntingXpFor(event.hp) * (event.xp ?? 1) * SHARE)), event.areaId, n => this.t('play.hunt.xp', { n }));
+      return;
+    }
     // The Bestiary counts every top-down kill (account progress: a read-modify-write, so no copy goes stale).
     if (this.topDown) { const blob = withKill(this.store.read(BESTIARY_KEY), event.creature); if (blob) this.store.write(BESTIARY_KEY, blob); }
     // A town task's hunt counts it (only once taken: shared/town-tasks).
