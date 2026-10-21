@@ -63,6 +63,7 @@ world — and every system visible while it works.
 - [x] Mesh-deformation rig for the Keeper and Rivet Maw (`729dd9e`)
 - [x] Keeper painting solid instead of ghostly (`05e3910`)
 - [x] Character build: worn gear in sockets on the doll (hood, hands), equip fly-in / unequip drop animation, Build archetype card (Vanguard, Treasure Seeker, Forgewright, Bulwark, Lorekeeper, Wanderer) (`b8ced0b`)
+- [x] Eclipse phases as rules (2026-10-21, design-bible §10 item 4): night spawn tables, more and tougher creatures after dusk, Shadow/Ember spell strength by phase (Spellbook phase line), Eclipse-touched elites (1 in 8 under an eclipse), XP/Gold up at night and under the eclipse, the HUD's phase plate and eclipse warning ribbon (`play/td/td-phases.ts`; test hook `?phase=`)
 - [x] A surface with height (2026-10-14): the High Roads in all five hunts: ledge-grab, mantle, climbing, wall-jump, once-only caches, summit titles, perched creatures, Hollis Fenn ([`docs/handoff/surface-height.md`](../handoff/surface-height.md))
 
 ---

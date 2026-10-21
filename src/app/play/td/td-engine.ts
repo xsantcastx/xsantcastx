@@ -77,7 +77,9 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
 import { BOSS_TELL, CALL_TELL, CHANT_SECS, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
-import { FIRE_BURST, makePack } from './td-elites';
+import { FIRE_BURST, makePack, touchPack } from './td-elites';
+import { hardened, phaseOfHour, touchedRandom } from './td-phases';
+import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
@@ -192,6 +194,16 @@ export class TopDownEngine {
   /** 0 day … 1 full night, from the world clock (setSky); `?hour=` pins it for screenshots and tests. */
   private darkness = 0;
   private dusk = 0;
+  /** The sky's phase (setSky) and the eclipse's depth: the world clock as a rule (td-phases.ts) and the eclipse's tint. */
+  private skyPhase: SkyPhase = 'day';
+  private eclipseDepth = 0;
+  private phaseSeen = '';
+  /**
+   * For the phase specs (`?phase=night|dusk|eclipse`, only under an automated browser; the world clock jumps there):
+   * a few of that sky's creatures laid round the Keeper once, standing calm — night creatures, or Eclipse-touched ones.
+   */
+  private readonly fxPhase: 'night' | 'eclipse' | null = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' ? ((/[?&]phase=(night|eclipse)\b/.exec(location.search)?.[1] ?? null) as 'night' | 'eclipse' | null) : null;
+  private fxPhaseLaid = false;
   private pinned: number | null = null;
   private scale = 2;
   private cam = { x: 0, y: 0, w: 0, h: 0 };
@@ -335,8 +347,10 @@ export class TopDownEngine {
   }
   setWorldHour(hour: number): void { this.hour = ((hour % 24) + 24) % 24; }
   /** The world clock's sky (world-clock.model.ts Sky): light 1 = day, 0 = dark; glow = dawn/dusk gold. */
-  setSky(sky: { light: number; glow: number; eclipse: number }): void {
+  setSky(sky: { light: number; glow: number; eclipse: number; phase?: SkyPhase }): void {
     if (this.pinned !== null) return;
+    this.skyPhase = sky.phase ?? 'day';
+    this.eclipseDepth = sky.eclipse;
     this.darkness = Math.max(0, Math.min(1, 1 - sky.light));
     this.dusk = sky.glow;
   }
@@ -1499,7 +1513,46 @@ export class TopDownEngine {
 
   // ── The fight ──────────────────────────────────────────────────────────────
 
+  /**
+   * The phase specs' showcase (`?phase=night|eclipse`): the Keeper steps onto open grass outside the square and a few
+   * of that sky's creatures stand calm round him — real MobSystem creatures, night-hardened or Eclipse-touched.
+   */
+  private layPhaseShowcase(kind: 'night' | 'eclipse'): void {
+    this.fxPhaseLaid = true;
+    const p = this.player, pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
+    const open = (c0: number, r0: number) => { for (let dr = -6; dr <= 4; dr++) for (let dc = -11; dc <= 11; dc++) if (!this.level.walkable(c0 + dc, r0 + dr)) return false; return true; };
+    search: for (let rad = 6; rad <= 44; rad += 2) for (let k = 0; k < 24; k++) {
+      const c = pc + Math.round(Math.cos(k / 24 * Math.PI * 2) * rad), r = pr + Math.round(Math.sin(k / 24 * Math.PI * 2) * rad);
+      if (this.world.inTown(c, r)) continue;
+      if (open(c, r)) { p.x = c * TILE + TILE / 2; p.y = r * TILE + TILE; break search; }
+    }
+    const wide = this.cam.w >= 320, calm = (m: Mob) => { m.def = { ...m.def, sight: 0 }; m.wait = 1e9; };
+    const lay = (type: string, dx: number, dy: number, touched: 'lone' | 'unique' | null) => {
+      const def = MOBS[type];
+      if (!def) return;
+      const night = hardened({ ...def, sight: 0 }, kind);
+      if (!touched) { calm(this.mobs.place(`fx-phase:${type}:${dx}`, night, p.x + dx, p.y + dy)); return; }
+      const pack = touched === 'lone' ? touchPack(null, touchedRandom(`fx|${type}`)) : touchPack(makePack('unique', ['cursed'], 'Duskclaw the Unlit', 2), touchedRandom(`fx|${type}`));
+      this.mobs.spawnPack(`fx-phase:${type}:${dx}`, night, p.x + dx, p.y + dy, pack).forEach(calm);
+    };
+    if (kind === 'night') {
+      // The night table's creatures: the dead walk the Emberwood, beside a night-hardened wolf.
+      lay('bone-walker', wide ? 70 : 0, wide ? -4 : 80, null);
+      lay('ash-wolf', wide ? -70 : -40, wide ? -4 : -70, null);
+      lay('bone-walker', wide ? -30 : 40, wide ? 40 : -70, null);
+    } else {
+      // Eclipse-touched: a lone champion with its dark corona, and a touched unique leading its minions.
+      lay('ash-wolf', wide ? 84 : 0, wide ? -4 : 92, 'lone');
+      lay('bone-walker', wide ? -84 : 0, wide ? -4 : -80, 'unique');
+    }
+  }
+
   private updateFight(dt: number): void {
+    // The sky as a rule (td-phases.ts): a pinned `?hour=` stands for its own phase, so a picture never meets the real sky.
+    const phase = this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase;
+    this.mobs.setPhase(phase, this.level === this.world);
+    if (phase !== this.phaseSeen) { this.phaseSeen = phase; this.canvas.setAttribute('data-phase', phase); }
+    if (this.fxPhase && !this.fxPhaseLaid && this.time > .5 && this.level === this.world) this.layPhaseShowcase(this.fxPhase);
     // The endless surface hands over the spawns round the Keeper as they come into reach, and forgets far ones.
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.level === this.world) {
@@ -2447,7 +2500,9 @@ export class TopDownEngine {
     const d = this.dark.getContext('2d')!;
     d.globalCompositeOperation = 'source-over';
     d.clearRect(0, 0, hw, hh);
-    d.fillStyle = `rgba(18,20,52,${(.62 * night).toFixed(3)})`;
+    // Under an eclipse the dark is the seam's own: a deep violet instead of the night's blue (design-bible §5.2).
+    const ec = this.level.dark ? 0 : this.eclipseDepth;
+    d.fillStyle = ec > .02 ? `rgba(${Math.round(18 + 30 * ec)},${Math.round(20 - 10 * ec)},${Math.round(52 + 10 * ec)},${(.62 * night + .1 * ec).toFixed(3)})` : `rgba(18,20,52,${(.62 * night).toFixed(3)})`;
     d.fillRect(0, 0, hw, hh);
     d.globalCompositeOperation = 'destination-out';
     const hole = (x: number, y: number, r: number) => d.drawImage(this.lightSprite!, (x - cam.x - r) / 2, (y - cam.y - r) / 2, r, r);

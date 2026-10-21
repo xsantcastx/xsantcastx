@@ -10,7 +10,7 @@
  *    (a champion's blue frame, a unique's gold frame with corner studs) — ordinary creatures keep the plain bar.
  * Reduced motion: the same shapes, still.
  */
-import { AFFIX_DEFS, COLD_AURA_R, ELITE_TONES, TELEPORT, affixLine, type EliteAffix } from './td-elites';
+import { AFFIX_DEFS, COLD_AURA_R, ELITE_TONES, TELEPORT, TOUCHED_TONES, affixLine, isTouched, type EliteAffix } from './td-elites';
 import type { DeathBurst, Mob } from './td-mobs';
 import { FX, HOSTILE_EDGE, circlePixels, groundRing, ringDash } from './td-fx';
 
@@ -60,6 +60,8 @@ export function drawBurstTell(c: Ctx, b: DeathBurst, delay: number, time: number
 export function eliteTint(m: Mob): { color: string; alpha: number } | null {
   const tag = m.elite;
   if (!tag || tag.role === 'minion') return null;
+  // Eclipse-touched: the body goes dusk-violet, as if the eclipse stood in front of it too.
+  if (isTouched(tag)) return { color: TOUCHED_TONES.edge, alpha: .3 };
   return tag.rank === 'champion' ? { color: ELITE_TONES.champion.body, alpha: .22 } : { color: ELITE_TONES.unique.body, alpha: .12 };
 }
 
@@ -129,6 +131,21 @@ export function drawAffixTells(c: Ctx, m: Mob, time: number, still: boolean): vo
           for (let y = 0; y < m.def.h; y += 2) if ((y + Math.floor(t * 20)) % 4 < 2 || still) hpx(c, X + ((y >> 1) % 2 ? -1 : 1) * Math.round(w * .3 * (1 - k)), top + y, y % 4 ? col : FX.shadow.core);
           if (m.blinkTo) { const bx = Math.round(m.blinkTo.x), by = Math.round(m.blinkTo.y); for (const q of groundRing(5)) if ((q.x + q.y) % 2 === 0) hpx(c, bx + q.x, by + q.y, col); }
         } else if (still || Math.sin(t * 7 + seed) > .5) hpx(c, X + (Math.floor(t * 3) % 2 ? -1 : 1) * Math.round(w / 2), mid - 2, col);
+        break;
+      }
+      case 'eclipse-touched': {
+        // The dark corona (design-bible §5.7): a ring of eclipse-dark pixels round its body, a pale 1-pixel corona just
+        // outside it, a few violet flares turning slowly round the rim. Reduced motion: the same ring, still.
+        const cy = mid, r = Math.max(8, Math.round(Math.max(w, m.def.h) * .5) + 2), turn = still ? 0 : t * .5;
+        c.globalAlpha = .55; c.fillStyle = TOUCHED_TONES.dark;
+        for (const q of circlePixels(r)) c.fillRect(X + q.x, cy + q.y, 1, 1);
+        c.globalAlpha = .85;
+        circlePixels(r + 1).forEach((q, i) => { if (i % 2) return; c.fillStyle = col; c.fillRect(X + q.x, cy + q.y, 1, 1); });
+        for (let i = 0; i < 4; i++) {
+          const a2 = turn + i * Math.PI / 2, fx = X + Math.round(Math.cos(a2) * (r + 2)), fy = cy + Math.round(Math.sin(a2) * (r + 2));
+          hpx(c, fx, fy, TOUCHED_TONES.glow);
+        }
+        c.globalAlpha = .9;
         break;
       }
       case 'lightning-enchanted': {

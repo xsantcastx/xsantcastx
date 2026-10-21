@@ -175,6 +175,7 @@ import { EclipseService } from '../shared/world-clock/eclipse.service';
 import { WORLD_CLOCK_I18N } from '../shared/world-clock/world-clock.i18n';
 import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-clock/eclipse.model';
 import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
+import { eclipseWarning, spellMult } from './td/td-phases';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
@@ -712,6 +713,9 @@ export class SideScrollerComponent implements OnDestroy {
   skyNow: Sky | null = null;
   /** The sky's phase ('dawn' … 'eclipse'), for the canvas, the keepers and the sound. */
   skyPhase: SkyPhase = 'day';
+  /** The HUD's phase plate under the minimap ("22:14"), and the eclipse warning's minutes left (null: no warning). */
+  skyClock = '';
+  eclipseWarn: number | null = null;
   /** Announcements already made this session (an eclipse's "soon", "near", "start"; a night's fall). */
   private readonly clockTold = new Set<string>();
   // ── Make your Keeper ──
@@ -1972,7 +1976,7 @@ export class SideScrollerComponent implements OnDestroy {
     nodes: { id: SkillId; name: string; tier: number; col: number; rank: number; need: number; open: boolean; picked: boolean; buyable: boolean; slot: number; on: boolean }[];
     lines: { x1: number; y1: number; x2: number; y2: number; lit: boolean }[];
     pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean;
-      words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[] };
+      words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[]; phase: { text: string; up: boolean } | null };
   } {
     const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
     const ids = treeSkills(v, this.bookTree);
@@ -2009,7 +2013,15 @@ export class SideScrollerComponent implements OnDestroy {
         from: s.from, name: this.t(TD_SKILLS[s.from].nameKey), ranks: s.ranks, live: s.pct > 0,
         text: this.t('play.td.tree.syn.line', { pct: s.pct, per: s.per, what: this.t('play.td.tree.syn.' + s.what) }),
       })),
+      phase: this.spellPhase(id),
     };
+  }
+  /** The sky's hand on a damage spell (td-phases.ts): "Eclipse now: +25% power", or null when the hour changes nothing. */
+  private spellPhase(id: SkillId): { text: string; up: boolean } | null {
+    const vars = TD_SKILLS[id].vars, k = spellMult(TD_SKILLS[id].tree, this.skyPhase);
+    if (k === 1 || !('min' in vars || 'dps' in vars)) return null;
+    const pct = Math.round((k - 1) * 100);
+    return { up: pct > 0, text: this.t('clock.spell.now', { phase: this.t('clock.phase.' + this.skyPhase), pct: `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%` }) };
   }
   /** Open a tree's tab (the first skill on it is picked). */
   openTree(id: TreeId): void { this.bookTree = id; this.bookPick = null; this.respecAsk = false; }
@@ -3005,6 +3017,8 @@ export class SideScrollerComponent implements OnDestroy {
     const was = this.skyNow;
     this.skyNow = sky;
     this.skyPhase = sky.phase;
+    this.skyClock = clockText(time.minute);
+    this.eclipseWarn = eclipseWarning(ms);
     this.engine?.setSky({ ...sky, alignedHunt: eclipse ? REALM_HUNT[eclipse.realm] ?? null : null });
     const el = this.canvas?.nativeElement;
     if (el) {
@@ -4803,7 +4817,7 @@ export class SideScrollerComponent implements OnDestroy {
     // A gate boss on this tier opens the next one (shared/loot/difficulty.model.ts).
     const opened = this.loot.killed(event.creature);
     if (opened) this.message = this.t('play.loot.unlocked', { tier: this.t('loot.tier.' + opened) });
-    const base = huntingXpFor(event.hp);
+    const base = Math.round(huntingXpFor(event.hp) * (event.xp ?? 1));
     const xp = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
     const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });
     if (result.ok && !result.replayed) this.toastLoot(this.t('play.hunt.xp', { n: xp }));

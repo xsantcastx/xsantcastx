@@ -191,6 +191,13 @@ never two element affixes on one creature. Loot: the rank goes to `rollHuntGold`
 2×45% / 3×60% item rolls, +1/+2 ladder steps); an elite's ordinary gear never drops common (floored to magic); a unique
 leader always leaves at least one magic-or-better piece. A unique's minions drop as normal creatures.
 
+**Eclipse-touched (2026-10-21, design-bible §5.2, `td-phases.ts`).** Under an eclipse, in the open wilds, 1 in 8 wild
+spawns comes up Eclipse-touched: a lone creature becomes a champion (×2.5 life, ×1.3 blow, no followers) with the
+`eclipse-touched` affix (×1.1 blow) and one ordinary affix; a pack it already leads gains the affix. Its drops climb one
+ladder step (`lootRank`: a touched champion drops as a unique — Gold ×6, 3 rolls at 60%; never a boss). Night and the
+eclipse also raise every kill's Hunting XP (×1.1 / ×1.2) and Gold pile (×1.1 / ×1.25) in the wilds; the economy sim's
+bands are the day's.
+
 ## 6. Damage types and resistances
 
 `shared/loot/damage.model.ts`. Types: physical (the swing), fire, cold, lightning, arcane (the staff blast's light).

@@ -22,7 +22,9 @@ import type { DamageType } from '../../shared/loot/damage.model';
 
 export type EliteAffix =
   | 'extra-strong' | 'extra-fast' | 'stone-skin' | 'cursed' | 'fire-enchanted'
-  | 'cold-aura' | 'spectral-hit' | 'mana-burn' | 'teleport' | 'lightning-enchanted';
+  | 'cold-aura' | 'spectral-hit' | 'mana-burn' | 'teleport' | 'lightning-enchanted'
+  // Eclipse only (td-phases.ts): never in the random pool below.
+  | 'eclipse-touched';
 
 export const ELITE_AFFIXES: readonly EliteAffix[] = [
   'extra-strong', 'extra-fast', 'stone-skin', 'cursed', 'fire-enchanted',
@@ -66,7 +68,25 @@ export const AFFIX_DEFS: Readonly<Record<EliteAffix, EliteAffixDef>> = {
   // When its prey stands off (TELEPORT.min) it blinks to his side after a TELEPORT.tell wind-up, every TELEPORT.cd s.
   teleport: { id: 'teleport', name: 'Teleport', color: '#c78bff' },
   'lightning-enchanted': { id: 'lightning-enchanted', name: 'Lightning Enchanted', color: '#ffe36d', damage: 1.2, hits: 'lightning', group: 'element' },
+  // Under an eclipse only (design-bible §5.7): the seam breathes through it. A dark corona round its body, a pale ring
+  // at the edge; a little harder, and its drops climb one ladder step (lootRank).
+  'eclipse-touched': { id: 'eclipse-touched', name: 'Eclipse-touched', color: '#f0e0ff', damage: 1.1 },
 };
+
+/** The Eclipse-touched tones: the corona's dark disc, its pale ring and the body's dusk (effects-spec Shadow ramp). */
+export const TOUCHED_TONES = { dark: '#140c1c', ring: '#f0e0ff', glow: '#b06bff', edge: '#6b3aa0' } as const;
+
+/**
+ * Make a spawn Eclipse-touched (td-phases.ts rollTouched): a pack it already leads gains the affix; a lone creature
+ * becomes a champion with the affix and one more (design-bible §5.7: "+1 affix"), and no followers.
+ */
+export function touchPack(pack: ElitePack | null, r: () => number): ElitePack {
+  if (pack) return pack.affixes.includes('eclipse-touched') ? pack : { ...pack, affixes: ['eclipse-touched', ...pack.affixes] };
+  return { rank: 'champion', affixes: ['eclipse-touched', ...rollAffixes(r, 1)], name: null, followers: 0 };
+}
+
+/** Is this creature Eclipse-touched? */
+export function isTouched(tag: Pick<EliteTag, 'affixes'> | undefined): boolean { return !!tag?.affixes.includes('eclipse-touched'); }
 
 /** About one pack per 16 eligible spawns (the brief: 1 in 12–20), a quarter of them uniques. */
 export const ELITE_CHANCE = 1 / 16;
@@ -185,9 +205,14 @@ export function eliteStats(base: { hp: number; dmg: readonly [number, number]; s
   return { hp: Math.round(base.hp * RANK_HP[tag.rank]), dmg: [lo, hi], speed: base.speed * speed, rate: base.rate / rate, hits, take };
 }
 
-/** The rank a pack member drops as: its pack's for the leader and champion copies; a unique's minions are ordinary. */
-export function lootRank(tag: Pick<EliteTag, 'rank' | 'role'> | undefined): MonsterRank {
+/**
+ * The rank a pack member drops as: its pack's for the leader and champion copies; a unique's minions are ordinary.
+ * Eclipse-touched climbs one ladder step (a champion drops as a unique; a unique stays one — never a boss, whose rank
+ * also changes how it fights).
+ */
+export function lootRank(tag: Pick<EliteTag, 'rank' | 'role'> & { affixes?: readonly EliteAffix[] } | undefined): MonsterRank {
   if (!tag || tag.role === 'minion') return 'normal';
+  if (tag.affixes?.includes('eclipse-touched')) return 'unique';
   return tag.rank;
 }
 

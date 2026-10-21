@@ -244,6 +244,7 @@
                 <span><b>{{ pk.name }}</b><small>{{ t('play.td.tree.kind.' + pk.kind) }} · <span class="sbt__rank">{{ t('play.td.tree.rank', { n: pk.rank, max: pk.max }) }}</span></small></span>
               </header>
               @if (pk.words) { <p class="sbt__cant" [attr.aria-label]="t('play.td.tree.words') + ': ' + pk.words"><small>{{ t('play.td.tree.words') }}</small> <q lang="und">{{ pk.words }}</q></p> }
+              @if (pk.phase; as ph) { <p class="sbt__phase" [class.sbt__phase--up]="ph.up" [attr.data-spell-phase]="skyPhase">{{ ph.text }}</p> }
               <p class="sbt__now">@if (pk.rank < 1) { <em>{{ t('play.td.tree.atRank', { n: 1 }) }}</em> }{{ pk.now }}</p>
               @if (pk.kind === 'active') { <p class="sbt__cost">{{ pk.mana }} {{ t('play.td.mana') }} · {{ pk.cd }}s</p> }
               @if (pk.next.length) {
@@ -287,7 +288,14 @@
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
-    <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
+    <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
+      <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
+      @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}</span> }
+    </div>
+    <!-- The eclipse is coming: a short ominous ribbon a little before it starts (td-phases.ts WARN_MINUTES). -->
+    @if (eclipseWarn !== null && !panel) {
+      <p class="td-omen" role="status" data-eclipse-warn data-engine-ignore><b>{{ t('clock.warn.title') }}</b><span class="td-omen__long">{{ t('clock.warn.line', { m: eclipseWarn }) }}</span><span class="td-omen__short">{{ t('clock.warn.short', { m: eclipseWarn }) }}</span></p>
+    }
     <!-- Phones (OSRS mobile): life and mana as round orbs beside the minimap; the plates are desktop's. -->
     <div class="td-orbs" aria-hidden="true" data-engine-ignore>
       <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
