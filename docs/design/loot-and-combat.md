@@ -180,7 +180,7 @@ ground band still show — every blow is telegraphed.
 **Top-down elite packs (2026-10-21, roadmap §10 item 3, `play/td/td-elites.ts`).** In the top-down world a spawn
 rolls on its own key, deaths and a session salt: 1 in 16 eligible spawns comes up a pack, a quarter of them uniques.
 Never in a town or the clear ground round one (`TdWorld.safeAt`), never a boss or an authored champion, never under
-level 3, and only within the Keeper's level −10 … +6. A **champion pack** is 2–4 copies (×3.25 life, ×1.3 blow, one
+level 3 — and the zone decides, never the Keeper's level (since 2026-10-21, D2's fixed zone levels: §14). A **champion pack** is 2–4 copies (×3.25 life, ×1.3 blow, one
 shared affix, a blue aura and tint, blue framed bars); a **unique** is a named leader ("Grimfang the Hollow", from
 lore name parts) with 1–3 affixes (×9 life, ×1.5 blow, gold aura and framed bar with studs) and 2–4 ordinary minions.
 The top-down lives are `td-elites TD_RANK_HP` (the table above, ×2.5 / ×3.5, stays the side view's): the combat sim
@@ -363,7 +363,7 @@ continent's rift — its standing stones (Ember Isle's Ninefold Stones, just sou
 outskirts; the Ring of Pyres, the Ring of Thorns, the Lantern Ring) — it rises when the Keeper comes within 30 tiles,
 once per eclipse; the strip says so and Glim warns ("Stay out of the rings"). It never stands on, steps onto or strikes
 into a town's or village's safe ground, never chases past 14 tiles from its rift, and leaves (no kill, no loot) when the
-eclipse ends. *Level:* the Keeper's, held inside **20–60**. *Numbers at level L:* life 1.3 × (200L − 2800) ×
+eclipse ends. *Level:* its rift's, fixed (`td-zones SEAM_LEVELS`: Ember Isle 20 — the one a starter runs from — the Reach 30, the Verdant Wilds 40, the Umbral Marches 55; §14); the curve below is drawn for **20–60**. *Numbers at level L:* life 1.3 × (200L − 2800) ×
 CREATURE_LIFE.boss (22) × SEAM_LIFE (1.25), and past 40 a further half by 60 (SEAM_LATE): 42,900 at 20, 114,400 at 30,
 185,900 at 40, 321,750 at 50, 493,350 at 60 — above the Ashbone Dragon and the Ink Abbess at their levels, a fight of
 two to four minutes (§13); bite 0.75L–1.1L every 1.8 s, walks 18 px/s, sight 170 px, hits arcane.
@@ -470,10 +470,10 @@ pack 1 in 16), life and mana carried over, 12 s between pulls (leveling.md's 240
 
 | What | Band |
 |---|---|
-| A creature at his level (three below to two above) | 2–5 s; falls ≤ 2% |
+| A creature at his level (every kind of every zone whose band holds his level, raised to it: §14) | 2–5 s; falls ≤ 2% |
 | A champion pack / a unique pack | 15–40 s / 30–75 s; falls ≤ 10% |
 | A floor boss at its level, first attempt | 60–150 s; falls ≤ 30% |
-| The Seam Eater on Normal (20, 30, 40, 60) | 2–4 min; falls ≤ 30% |
+| The Seam Eater on Normal (its rifts: 20, 30, 40, 55) | 2–4 min; falls ≤ 30% |
 | The Seam Eater on Nightmare / Hell: a Keeper 5 / 15 levels above it, in resist gear (rares / epics, its arcane first, a belt of 16 + 16) | falls ≤ 35% / ≤ 50%; never softer than Normal |
 | Every boss against a kiting ranged Keeper | he is struck ≥ 4 times a fight |
 | Vocations on one foe (a creature at level, each boss) | each within ±25% of the four's mean |
@@ -516,3 +516,44 @@ outlevels everything he hunts.
    Ember Bolt grows +4/+6 a rank, so the Warlock keeps within ±25% at 30 as kiting the gap-closers costs him time.
    The Seam Eater's half-life call is the Cinder Wraith up to its level 30 (the level-28 Lantern Wisps it called at 30
    felled a quarter of the Keepers on Normal and half on Nightmare).
+
+## 14. Zone levels and the level gap (2026-10-21, branch `zones`)
+
+Owner, relaying a player (marked "extremely important"): *"leveling character to the zone! has to be like d2, zones
+mobs are harder, each zone should not scale with the player, each zone should have a level of difficulty"*; and later:
+*"we need to make monsters hard! … If I'm level 20 vs a 40 I should get one-shot."*
+
+**Fixed zone levels** (`play/td/td-zones.ts`, the one table; world-map.md "Zone levels" lists it). Every region of
+every continent, every graveyard plot, every dungeon floor and every house has a band. A spawn's level is picked in its
+zone's band from its own key (`zoneLevel`, a hash: the same on every device, so a co-op host and its party agree) and
+the creature is re-made at that level (`atZoneLevel`): leveling.md's rule for that level (life 30 + 12.5·L, blow
+4 + 0.7·L), leaning half-way (in log terms) as its kind leans from the rule at its own authored level, then risen by
+td-life `lifeScale`; its shots, charge and Rend move with its blow. Bosses keep their authored level (each floor's band
+ends on it); a boss's call comes at the boss's level − 2 (never under its kind's own). Night swaps keep the spawn's
+level. The tiers (§8) multiply on top. Nothing reads the Keeper's level to make a creature any more: the Seam Eater is
+fixed per rift (§10), elite packs are zone-gated (§5), and Defense is read against the attacker's level (D2's way).
+The Cinder Imp (its level 2 never spawns now: its zones start at 3) was re-authored to the rule's blow (4–7, life 65):
+as a level-5 unique pack it felled a starter a third of the time.
+
+**The level gap** (`LEVEL_GAP`; one way only — a creature below the Keeper is never softer than its zone made it, and the
+XP falloff, leveling.md §1b, answers farming low zones):
+
+| Gap (creature above Keeper) | Its blow on him (`gapHurt`) | His blow on it (`gapDealt`) | He misses (`gapMiss`) | Its step (`gapPace`) | Name plate |
+|---|---|---|---|---|---|
+| 0 | ×1 | ×1 | 0% | ×1 | cream |
+| +3 | ×1.9 | ×0.78 | 22.5% | ×1.09 | yellow |
+| +5 | ×2.5 | ×0.63 | 37.5% | ×1.15 | yellow |
+| +6 | ×2.8 | ×0.55 | 45% | ×1.18 | orange |
+| +10 | ×4 | ×0.25 | 75% | ×1.3 | red, skull |
+| +20 | ×24.8 | ×0.05 | 80% | ×1.6 | red, skull |
+
+×(1 + 0.3·gap) to 10, then ×1.2 a level; −7.5% damage and +7.5% miss a level to 10, then ×0.85 and +2% a level (floor
+5%, cap 80%); +3% speed a level (cap +60%, so he cannot walk away for ever). A trivial creature (more than five below)
+shows grey. Co-op: each Keeper reads the gap against his own level — the host sends the raw bite, the member's own
+MobSystem applies his gap; a member's blows are cut by his gap before they are claimed.
+
+**Sim bands** (`--check`): a level-20 Keeper against a level-40 creature — one blow takes 118–136% of his life, every
+fall comes in 1–2 blows that land, he never wins, and he deals 1–2% of his at-level damage; fifteen minutes' hunting
+among creatures five levels above him falls him in 25–50% of the hunts (the four vocations' mean; each 10–67%; measured
+17–50% at level 20, 25–42% at 30). The at-level bands above are unchanged and green.
+

@@ -18,7 +18,7 @@ import type { StationDef } from '../../world/world.model';
 import type { LegendEntry, TdMapDef } from '../td-level';
 
 /** The way in, a root-hole in the Deep Wilds (td-world stamps a cave mouth there). */
-export const HOLLOWS_IN: StationDef = { id: 'root-hollows', x: 0, label: 'THE ROOT HOLLOWS', kind: 'passage', blurb: 'Tunnels a dead giant tree left in the earth, west of Rootglass. Dangerous below level 18.' };
+export const HOLLOWS_IN: StationDef = { id: 'root-hollows', x: 0, label: 'THE ROOT HOLLOWS', kind: 'passage', blurb: 'Tunnels a dead giant tree left in the earth, west of Rootglass. Dangerous below level 19.' };
 const HOLLOWS_OUT: StationDef = { id: 'hollows-out', x: 0, label: 'ROOT-HOLE', kind: 'passage', blurb: 'Back up into the Deep Wilds.' };
 const H1_DOWN: StationDef = { id: 'hollows1-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Sporewell (floor 2).' };
 const H2_UP: StationDef = { id: 'hollows2-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Gnawed Galleries (floor 1).' };

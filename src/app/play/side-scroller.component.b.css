@@ -1292,3 +1292,9 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 @media (prefers-reduced-motion: reduce) { .area-card { animation: area-card-still 3.4s steps(1, end) both; } }
 @keyframes area-card-still { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
 .stage--menu .area-card { display: none; }
+/* The zone's fixed level under the name (td-zones.ts); berry, with a warning line, when it is well above the Keeper. */
+.area-card__lv { font: 700 15px/1 var(--font-pixel); font-style: normal; letter-spacing: .12em; color: var(--cozy-brass-hi); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.area-card__danger { font: 700 13px/1 var(--font-pixel); letter-spacing: .08em; color: var(--cozy-berry); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.area-card--danger strong { color: color-mix(in srgb, var(--cozy-cream) 70%, var(--cozy-berry)); }
+.area-card--danger .area-card__lv { color: var(--cozy-berry); }
+.area-card--danger i { background: linear-gradient(90deg, transparent, var(--cozy-berry) 18% 82%, transparent); }

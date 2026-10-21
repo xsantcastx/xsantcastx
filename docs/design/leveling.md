@@ -52,6 +52,29 @@ XP and fall no faster. The first hour also hands in the Seamworks' six tasks (36
 - **The kill cap:** the gateway caps one action at 500 XP (`WORLD_ACTION_MAX_XP`); a creature past level ~160 would
   hit it. Content past 160 must chunk its grant like the town tasks' `xpGrantChunks` (or the cap is raised).
 
+## 1b. Zone levels and the XP falloff (2026-10-21, D2)
+
+Creatures no longer come "at pace": every zone has a **fixed level band** (`play/td/td-zones.ts`; world-map.md "Zone
+levels"), and its creatures spawn inside it whatever the Keeper's level — a level-1 and a level-50 Keeper meet the same
+level-11 wolf in the Charwood. Leveling means moving on to the next zone, D2's acts in a row: Ember Isle 1–10, the Reach
+8–30, the Verdant Wilds 15–40, the Umbral Marches 26–50. A kill still pays the rule's XP for its level (a wolf raised to
+11 pays as an 11), times the **falloff** by the gap between the Keeper and the creature (`zoneXp`, `XP_FALLOFF`):
+
+| Creature vs Keeper | XP |
+|---|---|
+| 5 or fewer levels below, or level | 100% |
+| 6 below | 95% |
+| 10 below | 75% |
+| 15 below | 50% |
+| 23 or more below | 10% (the floor) |
+| 1 above | 102% |
+| 5 or more above | 110% (the cap) |
+
+−5% a level past five below, floored at 10%; +2% a level above, capped at +10%. It multiplies the night's, the Hush's
+and a worn unique's XP; the combat sim's hunts read it (each hunts in the zones whose band holds his level, so the pace
+column above holds: level 10 in ~0.5 h, 30 in ~4.5 h, 50 in ~11 h). Creatures above the Keeper also hit far harder and
+are hard to hurt (loot-and-combat.md §14, the level gap), so the bonus is never worth a fall.
+
 **Saves never drop.** Every level of this curve costs less XP than the same level on the skill curve (max ratio 0.71,
 at 114), so any stored total reads as the **same or a higher** level than the Hunting level it showed before
 (`keeper-level.spec.ts` walks all 10,000 levels; the sim checks it too). A Hunting-10 Keeper (12.6k XP) wakes at 15.

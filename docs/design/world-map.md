@@ -11,12 +11,28 @@ and dungeons that go down floor by floor. Ships link the harbours (a ship is a s
 
 | Where | What it is | Towns | Levels | Dungeons (floors) |
 |---|---|---|---|---|
-| **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–8 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
+| **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–10 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
 | **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport + its ship, Ashgrove, regions, the Molten Deep −1…−6, the Ashen Crypt −1…−2, the Forge of the Four −1…−3) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
 | **Verdant Wilds** (built so far: Rootglass + the Rootglass Bole 0…+3, Mossharbor + its two ships and the Net-Mender's Loft, Thornwick + the Herbalist's Cottage, regions, the Overgrown Temple −1…−5, the Root Hollows −1…−3, four task givers) | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−3) |
-| **Umbral Marches** (built so far: Gloamhaven + the Lantern Tower 0…+2, Mirewatch + its ship, Lanternfen, regions, the Drowned Crypts −1…−3) | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
+| **Umbral Marches** (built so far: Gloamhaven + the Lantern Tower 0…+2, Mirewatch + its ship, Lanternfen, regions, the Drowned Crypts −1…−3) | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 26–50 | Drowned Crypts (−1…−6), the Ink Deeps |
 | **Celestial Peaks** | Snow and stone: high passes, observatories, ice caves | **Meridian** (capital, terraced: floors +1…+4), Frostgate, Starhollow | 35–60 | Frostfang Caverns (−1…−5), the Orrery Vault |
 | **Luminous Expanse** | Glass desert: dunes, mirror oases, sunken palaces | **Dawnspire** (capital), Prism Oasis, Saltglass | 45–70 | The Sunken Palace (−1…−6), Mirror Labyrinth |
+
+## Zone levels (D2; owner 2026-10-21: "each zone should not scale with the player")
+Every zone has a **fixed level band** — `src/app/play/td/td-zones.ts` `ZONES` is the one table, this is its reading.
+Creatures spawn inside the band whatever the Keeper's level; the land grows harder away from each capital and each
+dungeon floor deeper down is harder, its bottom floor ending on its boss. The area card, the Map and the Bestiary show
+the bands; a zone whose low end is 5+ levels over the Keeper reads "Dangerous for your level" in berry.
+
+| Continent | Zone → band |
+|---|---|
+| **Ember Isle 1–10** | Basalt Seamworks (safe), Cinder Meadows, Ember Coast, Ashwater Lake 1–2 · the Emberwood 2–4 · Slagstone Hills 3–5 · the Deep Emberwood 4–6 · the Hushed Barrow's plot 5–6 · the Ashfields 7–10 · Ember Mine −1 2–3, −2 4–6, −3 7–8 (Ember Warden 8) · Slagstone Cave 3–5 · the Hushed Barrow vault 6–7 (the Uncounted 7) |
+| **Infernal Reach 8–30** | Pyrehold (safe), Ashen Shore, Glasswater 8–10 · Cinder Steppe 8–11 · the Charwood 10–13 · the Deep Charwood 13–16 · Obsidian Badlands 15–18 · Molten Fields 18–21 · Pyre Peaks 19–22 · Forge of the Four −1 12–14, −2 14–16, −3 16–18 (Anvil-Warden 18) · Ashen Crypt −1 14–17, −2 22–25 (Ashbone Dragon 25) · Molten Deep −1 12–14, −2 15–17, −3 18–20 (Magma Tyrant 20), −4 21–23, −5 24–26, −6 27–30 (Cinder Sovereign 30) |
+| **Verdant Wilds 15–40** | Rootglass (safe), the Fernglades, the Mossy Shore 15–17 · the Rootwater, the Glassmere 16–18 · the Greenwood 17–20 · the Deep Wilds 21–25 · the Sunken Courts 24–28 · Root Hollows −1 19–21, −2 21–23, −3 23–25 · Overgrown Temple −1 24–26, −2 27–29, −3 30–34 (Mossbound Colossus 34), −4 33–36, −5 36–40 (Elder Rootwyrm 40) |
+| **Umbral Marches 26–50** | Gloamhaven (safe), the Gloaming Shore 26–28 · the Gloaming Fen 26–29 · the Black Meres 29–32 · the Deep Fen 32–36 · the Drowned Ruins 37–41 · Drowned Crypts −1 41–43, −2 43–46, −3 46–50 (Ink Abbess 50) |
+| **The Seam Eater** (eclipse, each rift) | Ember Isle 20 (the one a starter runs from) · the Reach 30 · the Verdant Wilds 40 · the Umbral Marches 55 |
+
+Houses and towers take their town's band and are safe. The tiers (Nightmare, Hell) multiply on top of these levels.
 
 ## Floors (Tibia's layers)
 Every level of the world is a hand-drawn map with a floor number. **Up**: house upstairs, towers, city walls,

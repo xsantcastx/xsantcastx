@@ -510,6 +510,17 @@
 .td-map__key button { --pin: var(--cozy-brass); display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 0 8px !important;
   text-align: left; font: 600 12px/1.2 var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
 .td-map__key button i { flex: none; margin: 0; width: 10px; height: 10px; }
+/* The Bestiary's level where found (td-zones.ts). */
+.td-best__lv { font-style: normal; color: var(--cozy-brass-hi); }
+.td-best__lv--danger { color: var(--cozy-berry); }
+/* Zone levels (td-zones.ts): a band beside each way and region, berry where it is well above the Keeper. */
+.places .td-map__lv { display: inline-block; }
+.td-map__lv { margin-left: auto; flex: none; font: 600 11px/1 var(--font-pixel); color: var(--cozy-brass-hi); white-space: nowrap; }
+.td-map__lv--danger { color: var(--cozy-berry); }
+.td-map__zones-head { margin: 10px 0 4px; font: 600 11px/1 var(--font-pixel); letter-spacing: .2em; text-transform: uppercase; color: var(--cozy-brass-hi); }
+.td-map__key ul.td-map__zones { grid-template-columns: 1fr; }
+.td-map__key .td-map__zones li { display: flex; align-items: center; gap: 8px; min-height: 26px; padding: 0 8px; font: 600 12px/1.2 var(--cozy-font-read); color: var(--cozy-cream); }
+.td-map__key .td-map__zones li.td-map__zone--danger { background: color-mix(in srgb, var(--cozy-berry) 18%, transparent); box-shadow: inset 2px 0 0 var(--cozy-berry); }
 .td-map__menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 35%, transparent); }
 .td-map__menu button { min-height: 34px; padding: 0 12px !important; font: 600 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {

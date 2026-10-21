@@ -18,6 +18,8 @@ export interface EngineState {
   /** Id of the town or hunt the Keeper stands in. */
   areaId?: string;
   coins?: number; kills?: number; area?: string;
+  /** Top-down: the zone the Keeper stands in (play/td/td-zones.ts): its fixed level band, and whether it is safe ground. */
+  zone?: { id: string; band: readonly [number, number]; safe: boolean } | null;
   facing?: number; animation?: KeeperAnimation;
   /** True in an area with diggable terrain. `depth`: terrain rows below the surface the Keeper stands at. */
   delve?: boolean; depth?: number;

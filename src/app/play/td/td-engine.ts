@@ -96,6 +96,7 @@ import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_S
 import { FIRE_BURST, makePack, touchPack } from './td-elites';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
+import { CONTINENT_BANDS, GAP_TONES, atZoneLevel, gapTone, seamLevelFor, zoneOf } from './td-zones';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { weaponSwing } from './td-melee';
@@ -139,7 +140,13 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3],
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
-export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number }
+export interface TdMapPin {
+  id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number;
+  /** Where a way or a ship leads: that floor's or continent's fixed level band (td-zones.ts). */
+  band?: readonly [number, number];
+}
+/** The Map's zone list (td-zones.ts): each wild region of the continent, or the floor, with its fixed level band. */
+export interface TdMapZone { id: string; name: string; band: readonly [number, number] }
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
@@ -430,7 +437,7 @@ export class TopDownEngine {
       say: key => this.say(key),
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
-    this.mobs.elites = true;
+    this.mobs.elites = true; this.mobs.levelGap = true;
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.placeCompanions();
@@ -445,6 +452,27 @@ export class TopDownEngine {
       omen: (kind: 'bell' | 'flicker' | 'whisper' | 'name') => this.darkLayer.fire(kind, 1, { keeper: this.player, own: this.ownLight(), glim: this.glimLight(), still: this.still }),
       hush: (n: number) => { this.darkLayer.pinned = Math.max(0, Math.min(100, n)); },
       state: () => this.darkState(),
+    };
+    // The zone specs (webdriver only): stand the Keeper on a tile of the world (the nearest walkable), lay a creature
+    // at a zone's level beside him, and read the zone underfoot (td-zones.ts).
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdZones'] = {
+      to: (c: number, r: number) => {
+        for (let d = 0; d <= 12; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
+          if (Math.max(Math.abs(x), Math.abs(y)) !== d || !footFree(this.level, (c + x) * TILE + TILE / 2, (r + y) * TILE + TILE - 2)) continue;
+          this.player.x = (c + x) * TILE + TILE / 2; this.player.y = (r + y) * TILE + TILE - 2; this.path = [];
+          this.placeCompanions();
+          return true;
+        }
+        return false;
+      },
+      foe: (type: string, level: number, dx = 40, dy = 0) => {
+        const def = MOBS[type]; if (!def) return null;
+        const p = this.player, m = this.mobs.place(`fx-zone:${type}:${level}:${this.mobs.mobs.length}`, { ...atZoneLevel(def, level), sight: 0 }, p.x + dx, p.y + dy);
+        m.wait = 1e9;
+        return m.def.level;
+      },
+      zone: () => this.zoneHere(),
+      keeperLevel: () => this.mobs.keeperLevel,
     };
     // The Ashguard's e2e (webdriver only): a creature at the Keeper's side to swing at, and the blade's count.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdAsh'] = {
@@ -464,9 +492,10 @@ export class TopDownEngine {
       },
       state: () => ({ step: this.sexton.step, level: this.level.id, near: this.nearby?.station.id ?? null, mobs: this.mobs.mobs.map(m => m.key), phase: this.phaseNow }),
     };
-    // The Lanternwright's e2e (webdriver only): a creature at the Keeper's side, a wound to mend, the lantern's count.
+    // The Lanternwright's e2e (webdriver only): a creature at the Keeper's side (at his level or its own, the lower: no
+    // level gap in the way of the spells it tests), a wound to mend, the lantern's count.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdLamp'] = {
-      foe: (type = 'bone-walker', dx = 40) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
+      foe: (type = 'bone-walker', dx = 40) => { const def = MOBS[type] && atZoneLevel(MOBS[type], Math.min(MOBS[type].level, this.mobs.keeperLevel)); if (!def) return null; const p = this.player; this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
       foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-lamp:')).length,
       calm: () => { for (const m of this.mobs.mobs) if (m.key.startsWith('fx-lamp:')) { m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 1e9; } },
       wound: (n: number) => { this.hp = Math.max(1, this.hp - n); return this.hp; },
@@ -819,7 +848,7 @@ export class TopDownEngine {
    * Keeper is on — a hand-drawn floor whole, or the continent's whole region map — painted once from its own ground,
    * with a pin per place to go and the Keeper's mark. Positions are 0..1 across and down the picture.
    */
-  mapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
+  mapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number }; zones: TdMapZone[] } | null {
     if (typeof document === 'undefined') return null;
     const lv = this.level, onWorld = lv === this.world;
     const key = onWorld ? `world:${this.world.continent}` : lv.id;
@@ -858,9 +887,29 @@ export class TopDownEngine {
       // Two ships at one harbour (ContinentWay.along) would share a pin's spot and the later one would eat every
       // click on the first: set a second ship's pin beside it.
       if (kind === 'ship') while (pins.some(q => q.kind === 'ship' && Math.abs(q.u - pu) < .03 && Math.abs(q.v - pv) < .03)) pu += .035;
-      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv });
+      // Where it leads, and that place's level (a floor's band; a ship's continent's).
+      const ship = onWorld && kind === 'ship' ? this.world.ways.get(id) : undefined;
+      const to = ship ? null : this.wayTo(id), dest = zoneOf(to);
+      const band = ship ? CONTINENT_BANDS[ship.to] : dest && !dest.safe ? dest.band : undefined;
+      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv, ...(band ? { band } : {}) });
     }
-    return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
+    return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) }, zones: this.mapZones() };
+  }
+  /** The Map's zone list: the continent's wild regions by their bands (lowest first), or the floor's own band. */
+  private mapZones(): TdMapZone[] {
+    if (this.level !== this.world) {
+      const z = zoneOf(this.level.id);
+      return z && !z.safe ? [{ id: this.level.id, name: this.level.placeName(this.player.x, this.player.y), band: z.band }] : [];
+    }
+    const d = this.world.def, out: TdMapZone[] = [], seen = new Set<string>();
+    for (const [region, name] of Object.entries(d.names)) {
+      const id = `${d.id}:${region}`, z = zoneOf(id);
+      if (!z || z.safe || !name || region === '~' || seen.has(name) || !d.mobs[region as keyof typeof d.mobs]) continue;
+      seen.add(name);
+      out.push({ id, name, band: z.band });
+    }
+    for (const p of d.places) if (p.kind === 'graveyard') { const z = zoneOf(`${d.id}:graveyard`); if (z) out.push({ id: `${d.id}:graveyard`, name: p.name, band: z.band }); }
+    return out.sort((a, b) => a.band[0] - b.band[0] || a.band[1] - b.band[1]);
   }
   /** Where the Keeper stands — continent, level (or 'surface'), position — so the HUD can save it and a reload resumes there. */
   get whereabouts(): { continent: string; level: string; x: number; y: number } {
@@ -1187,9 +1236,11 @@ export class TopDownEngine {
     this.darkLayer.markOpened(id);
     const x = ch.c * TILE + TILE / 2, y = ch.r * TILE + TILE;
     // What the floor's own creatures carry: its first spawn names the drop table and the level.
-    const type = this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6)[0]?.type ?? 'ash-wolf', def = MOBS[type] ?? MOBS['ash-wolf'];
+    const first = this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6)[0], type = first?.type ?? 'ash-wolf', def = MOBS[type] ?? MOBS['ash-wolf'];
+    // …at the floor's own level (td-zones.ts), not the kind's.
+    const lootLevel = first?.level ?? def.level;
     const key = `shade:${id}:${Date.now().toString(36)}`;
-    const roll = (k: string) => { try { return this.options.rollLoot?.({ creature: def.id, level: def.level, rank: 'champion', killKey: k, mf: this.mobs.darkBoon.mf }) ?? []; } catch { return []; } };
+    const roll = (k: string) => { try { return this.options.rollLoot?.({ creature: def.id, level: lootLevel, rank: 'champion', killKey: k, mf: this.mobs.darkBoon.mf }) ?? []; } catch { return []; } };
     let n = 0;
     const rows: LootRow[] = guaranteeMagic(floorEliteRows(roll(key), 'champion'), () => roll(`${key}:x${n++}`)).slice(0, 2);
     // The Lamplighter's Things (set-items.ts): each shy chest holds a piece of the set, as well as what is above.
@@ -2160,13 +2211,18 @@ export class TopDownEngine {
   }
   private free(x: number, y: number): boolean { return footFree(this.level, x, y); }
 
+  /** The zone under the Keeper (td-zones.ts): its fixed band, whether it is safe ground; null where none is written. */
+  private zoneHere(): { id: string; band: readonly [number, number]; safe: boolean } | null {
+    const id = this.level.zoneAt(this.player.x, this.player.y), z = zoneOf(id);
+    return z ? { id, band: z.band, safe: !!z.safe } : null;
+  }
   private report(): void {
     const s = this.nearby;
     const state: EngineState = {
       hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : this.treeNear() ? 'td-tree' : null,
       nearbyLabel: s ? s.station.label : this.treeNear() ? 'CHOP TREE' : undefined, nearbyKind: s?.station.kind ?? (this.treeNear() ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
-      area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
+      area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
       paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message, ...(this.messageKey ? { messageKey: this.messageKey } : {}),
     };
@@ -2514,9 +2570,10 @@ export class TopDownEngine {
     }
     return this.rifts.get(id) ?? null;
   }
-  /** The tear opens and the Eater climbs out at (x, y), at the Keeper's level inside its band; Glim warns, the strip says so. */
+  /** The tear opens and the Eater climbs out at (x, y), at its continent's fixed level (td-zones SEAM_LEVELS); Glim warns, the strip says so. */
   private raiseSeam(x: number, y: number, calm: boolean): Mob {
-    const def = seamEaterAt(MOBS[SEAM_ID], this.mobs.keeperLevel);
+    // Its rift's fixed level (td-zones SEAM_LEVELS), never the Keeper's: Ember Isle's is the one a starter runs from.
+    const def = seamEaterAt(MOBS[SEAM_ID], seamLevelFor(this.world.continent));
     const m = this.mobs.place(`seam:${this.world.continent}:${Math.round(this.time)}`, calm ? { ...def, sight: 0 } : def, x, y);
     if (calm) m.wait = 1e9;
     this.seam = m;
@@ -3446,8 +3503,18 @@ export class TopDownEngine {
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
       // A unique's minions follow its name: a bar each, no name of their own.
       if (m.elite?.role === 'minion') continue;
-      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(m.def.name, Math.round(m.x) + 1, Math.round(top) - 1);
-      c.fillStyle = m === this.mobs.target ? '#ff8a7a' : '#f3e7cf'; c.fillText(m.def.name, Math.round(m.x), Math.round(top) - 2);
+      // Its name in the colour of its level against the Keeper's (td-zones gapTone, Tibia): grey trivial, cream even,
+      // yellow +3, orange +6, red with a skull from +10 — the one-shot range.
+      const tone = gapTone(this.mobs.keeperLevel, m.def.level), label = `${m.def.name} ${m.def.level}`;
+      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(label, Math.round(m.x) + 1, Math.round(top) - 1);
+      c.fillStyle = m === this.mobs.target && tone === 'even' ? '#ff8a7a' : GAP_TONES[tone]; c.fillText(label, Math.round(m.x), Math.round(top) - 2);
+      if (tone === 'deadly') {
+        // A skull, 5×5 pixels, left of the name.
+        const sx = Math.round(m.x - c.measureText(label).width / 2) - 8, sy = Math.round(top) - 8;
+        c.fillStyle = '#1a1014'; c.fillRect(sx, sy, 6, 6);
+        c.fillStyle = GAP_TONES.deadly; c.fillRect(sx + 1, sy, 4, 3); c.fillRect(sx, sy + 1, 6, 2); c.fillRect(sx + 1, sy + 3, 4, 1); c.fillRect(sx + 1, sy + 4, 1, 1); c.fillRect(sx + 3, sy + 4, 1, 1);
+        c.fillStyle = '#1a1014'; c.fillRect(sx + 1, sy + 1, 1, 1); c.fillRect(sx + 4, sy + 1, 1, 1);
+      }
     }
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r && inView(g.x, g.y) && (Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110 || this.showcase.includes(g))) this.plate(g.label, g.x, this.dropTop(g), LOOT[r].body); }
     // A Gold pile names its sum while it lies there (Diablo II's "38 Gold"), in the pile's own gold.
