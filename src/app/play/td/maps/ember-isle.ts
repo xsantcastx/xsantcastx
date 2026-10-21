@@ -1,6 +1,7 @@
 import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildSeamworksSquare } from '../seamworks-square';
 import { CAVE_IN } from './slagstone-cave';
+import { BARROW_IN } from './hushed-barrow';
 import type { StationDef } from '../../world/world.model';
 
 /**
@@ -96,6 +97,8 @@ export const EMBER_ISLE_DEF: ContinentDef = {
   town: buildSeamworksSquare, townName: 'Basalt Seamworks', streets: { row: 15, col: 22 }, river: true,
   ways: [
     { place: 'cave', station: CAVE_IN, to: 'slagstone-cave', arrive: 'cave-out' },
+    // Down under the Hushed Barrow's plot to its vault (the Sexton's Count): the door stands where the plot's stone did.
+    { place: 'graveyard', station: BARROW_IN, to: 'hushed-barrow-1', arrive: 'barrow-up', at: [0, -4] },
     { place: 'harbour', station: SHIP_TO_REACH, to: 'infernal-reach', arrive: 'ship-isle', ship: true },
     { place: 'harbour', station: SHIP_TO_MOSSHARBOR, to: 'verdant-wilds', arrive: 'ship-mossharbor-isle', ship: true, along: -3 },
   ],

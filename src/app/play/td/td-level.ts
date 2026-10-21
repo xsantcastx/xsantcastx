@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { anvil, bed, bones, boulder, chest, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
+import { anvil, barrowDoor, bed, bones, boulder, chest, gravestone, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 
@@ -34,9 +34,9 @@ export interface TdExit {
   arrive: string;
 }
 
-export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp' | 'lantern' | 'great-lantern';
-const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp, lantern: lanternPost, 'great-lantern': greatLantern };
-const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true, lantern: true, 'great-lantern': true };
+export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp' | 'lantern' | 'great-lantern' | 'grave';
+const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp, lantern: lanternPost, 'great-lantern': greatLantern, grave: () => gravestone(1) };
+const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true, lantern: true, 'great-lantern': true, grave: true };
 /** Objects wider than their tile block the tiles either side too (a forge is three tiles of stone). */
 const WIDE: Partial<Record<MapObject, number>> = { forge: 1, 'great-lantern': 1 };
 
@@ -48,6 +48,11 @@ export interface LegendEntry {
   exit?: TdExit;
   /** A creature spawns here (td-mobs MOBS id). */
   mob?: string;
+  /**
+   * A locked door (Tibia): this tile is shut until the door with this id is opened (HandLevel.open, the key's holder),
+   * then it is floor. Shut, it blocks the Keeper and every creature alike.
+   */
+  door?: string;
 }
 
 /** A hand-made map: rows of characters, one per tile, read through the legend. */
@@ -97,6 +102,9 @@ export class HandLevel implements TdLevel {
   private readonly grid: Ground[] = [];
   private readonly blocked = new Set<number>();
   private readonly spawns: MobSpawn[] = [];
+  /** Door tiles (packed index → door id) and the doors opened (the engine opens one when its key is held). */
+  private readonly doorTiles = new Map<number, string>();
+  readonly opened = new Set<string>();
   readonly cols: number;
   readonly rows: number;
 
@@ -117,6 +125,11 @@ export class HandLevel implements TdLevel {
         if (e.station) this.stalls.push({ station: e.station, x, y: y + 6 });
         if (e.exit) this.exits.set(e.station?.id ?? `exit-${c},${r}`, e.exit);
         if (e.mob) this.spawns.push({ key: `${def.id}:${c},${r}`, type: e.mob, x, y });
+        if (e.door) {
+          const id = e.door;
+          this.doorTiles.set(r * this.cols + c, id);
+          this.objects.push({ sprite: () => barrowDoor(this.opened.has(id)), x, y, kind: 'prop' });
+        }
       }
     });
   }
@@ -128,7 +141,18 @@ export class HandLevel implements TdLevel {
   walkable(c: number, r: number): boolean {
     const g = this.ground(c, r);
     if (SOLID_GROUND.has(g) || g === 'water' || g === 'ember') return false;
-    return !(c >= 0 && r >= 0 && c < this.cols && r < this.rows && this.blocked.has(r * this.cols + c));
+    if (c < 0 || r < 0 || c >= this.cols || r >= this.rows) return true;
+    const door = this.doorTiles.get(r * this.cols + c);
+    if (door !== undefined && !this.opened.has(door)) return false;
+    return !this.blocked.has(r * this.cols + c);
+  }
+  /** The doors drawn on this level (ids). */
+  get doors(): string[] { return [...new Set(this.doorTiles.values())]; }
+  /** Open a door for good (this session; the host re-opens it from the save on the way in). */
+  open(id: string): boolean {
+    if (!this.doors.includes(id) || this.opened.has(id)) return false;
+    this.opened.add(id);
+    return true;
   }
   objectsIn(x0: number, y0: number, x1: number, y1: number): TdObject[] {
     return this.objects.filter(o => o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1);

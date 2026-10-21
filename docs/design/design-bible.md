@@ -858,6 +858,21 @@ to a sealed vault → take *Barrow Key 1* from a Bone Walker elite → the vault
 mark → reward: *Sexton's Lost Cowl* (cursed, §6.2) **or**, if you bring it back, he cleanses it free and gives you the
 Barrow's lantern (+1 light, a house decoration). Teaches night, dark-born, keys, curses and choice in 20 minutes.
 
+**As built (2026-10-21, `shared/sexton/`, `play/td/td-sexton.ts`, `maps/hushed-barrow.ts`).** Six journal steps, the
+step derived from a set of facts saved in the town tasks blob (v3 `chains`, a union merge, per character):
+(1) Wren offers it ("!" over him); read three chalk-marked stones in the Hushed Barrow — the third an open grave whose
+earth was pushed *up*, pale prints to the sea; (2) at night, on the barrow's Nightroad nook, a page of Wren's own ledger
+that is only there in the dark ("Forty. Forty. Forty-one."); (3) *Hollis the Row-Walker*, a unique Bone Walker, rises
+at the plot and gives up **Barrow Key 1**; (4) the Barrow Steps (a crypt door where the plot's stone stood) go down to a
+new vault floor, where **Barrow Door 1** is rock to everyone until the key opens it (a Tibia door: `door` on a map
+legend, `HandLevel.open`); (5) **The Uncounted** (a new level-7 boss, a hooded skeleton with a cold lantern, calls two
+Bone Walkers at half life) stands over the forty-first grave — no name, a tally mark — and the grave hands over the
+**Sexton's Lost Cowl** (a boss unique of the Uncounted, 1 in 6 afterwards; +2 light) cursed with a frozen Hollow Ward;
+(6) back at Wren ("?"): *lay it to rest* (cleansed for nothing, his ferry coppers added) or *keep it as it is*. Pay:
+12 min of a level-8 hunt in Gold (+5 min for laying it to rest) and 600 Hunting XP. Lumvesh points at each step's place
+first (after a fallen purse). Not built: the Hollow Footsteps leading back, a key ring item (the key is a chain fact),
+the Barrow's lantern as a house decoration.
+
 ### 9.4 Houses
 
 - **Town houses**†: every capital has 4–8 drawn houses for rent (Gold per week, paid from the Vault automatically; if
@@ -896,7 +911,7 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 5 ✓ | **The Cold Hearth + Hearth Blessings** (shipped 2026-10-21, §5.8): wake at the last lit hearth, fallen purse in top-down, Ember debt, five shrines | M | `td-engine.hurt`, `LootService.fall`, `keeper-level.service` (debt), capital maps (shrine stalls) | a fall *means* something; a Gold sink for the new economy |
 | 6 ✓ | **Lumvesh (Seek) + Light spell** (shipped 2026-10-21, §5.5 as built) | S | `td-skills.ts` (common spells), `td-world.ts` (find a mob/boss by id), Glim flight (`td-engine` glimFlight) | "The Ink Abbess is very far to the south-east, below you." |
 | 7 ✓ | **Light as a resource + dark-born** (shipped 2026-10-21 but torches, §5.3 as built): torches, Unrecorded shapes, Hollow Footsteps, dark-only chests, 3 Nightroads on Ember Isle | M | `td-engine` darkness/light, `td-art.ts`, `maps/*.ts` (night-only tiles), `eclipse.model` items | the first "did I see that?" moment |
-| 8 | **The Sexton's Count** chain + key ring + Margin Notes | M | `shared/town-tasks`, `maps/` Hushed Barrow, a `notes` collection in `collection.model.ts` | a 20-minute spooky quest on the starter island |
+| 8 ✓ | **The Sexton's Count** chain + key ring + Margin Notes (chain shipped 2026-10-21, §9.3 as built; key ring and Margin Notes not yet) | M | `shared/town-tasks`, `maps/` Hushed Barrow, a `notes` collection in `collection.model.ts` | a 20-minute spooky quest on the starter island |
 | 9 ✓ | **Boss uniques** (8 named; shipped 2026-10-21, §7.2 as built) | S–M | `rpg/unique-items.ts`, `drop-tables.ts` boss path, item icons | every boss has a reason to farm it |
 | 10 | **Spellstones + Soul** | M | new `shared/spellstones/`, belt (`potions` pattern), mining yield (Basalt Blank), Rune Forge stall | Tibia runes; mines and kills both matter |
 | 11 | **Cursed grave-goods + Sexton cleansing** | S–M | `unique-items.ts` (cursed flag), loot card, Sexton's dialogue | strong-but-strange items with a choice |

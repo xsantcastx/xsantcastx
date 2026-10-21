@@ -26,6 +26,8 @@ export interface ContinentWay {
   ship?: boolean;
   /** Tiles along the pier from the usual boarding spot (a second ship at the same harbour). */
   along?: number;
+  /** Where the way in stands, in tiles from the place's centre (default: the centre; the Hushed Barrow's is its door). */
+  at?: readonly [number, number];
 }
 
 export interface ContinentDef {

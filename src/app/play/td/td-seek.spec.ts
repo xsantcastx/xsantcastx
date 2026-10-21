@@ -85,7 +85,7 @@ describe('td-seek: the world it reads', () => {
   it('every boss stands in a hall reachable from its continent, on the floor its stairs say', () => {
     const bosses = levelSpawns(LEVELS, id => MOBS[id]?.rank === 'boss');
     const ids = bosses.map(b => b.mob).sort();
-    expect(ids).toEqual(['anvil-warden', 'bone-dragon', 'cinder-sovereign', 'elder-rootwyrm', 'ember-warden', 'ink-abbess', 'magma-tyrant', 'mossbound-colossus']);
+    expect(ids).toEqual(['anvil-warden', 'bone-dragon', 'cinder-sovereign', 'elder-rootwyrm', 'ember-warden', 'ink-abbess', 'magma-tyrant', 'mossbound-colossus', 'the-uncounted']);
     for (const b of bosses) {
       const l = links.get(b.level);
       expect(l).withContext(b.level).toBeDefined();
@@ -97,6 +97,8 @@ describe('td-seek: the world it reads', () => {
     expect(links.get('molten-deep-6')?.continent).toBe('infernal-reach');
     // Every floor of one dungeon shares its way in.
     expect(links.get('molten-deep-6')?.ax).toBe(links.get('molten-deep-1')?.ax);
+    // The Hushed Barrow's vault: under the plot's door, one floor down, on Ember Isle.
+    expect(links.get('hushed-barrow-1')).toEqual(jasmine.objectContaining({ continent: 'ember-isle', floor: -1 }));
   });
 
   it('a tower climbs: through its door at the ground floor, up its stairs above it', () => {

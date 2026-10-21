@@ -546,7 +546,8 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // `{ version, accepted: { id: takenAt }, progress: { id: count }, claimed: [id] }`: the town keepers' tasks.
     // `claimed` is the receipt, written before any pay and unioned, so a merge can never re-open a paid task;
     // counts take the higher, a task taken on either device is taken (the earlier time). Hand-written so junk ids
-    // are dropped. See town-tasks-save.model.ts.
+    // are dropped. Version 3 adds `chains: { chainId: { fact: firstReachedAt } }` (the Sexton's Count): unioned, the
+    // earlier time kept, so a merge can never send a Keeper back a step. See town-tasks-save.model.ts.
     merge: mergeTownTasks,
   },
   {

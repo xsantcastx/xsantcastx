@@ -336,6 +336,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.relic.used': { en: 'Used for: {{text}}', es: 'Sirve para: {{text}}' },
   'play.relic.found': { en: 'Found in: {{boss}}, {{where}} (1 in {{n}})', es: 'Se encuentra en: {{boss}}, {{where}} (1 de cada {{n}})' },
   'play.relic.sig.unique-wardens-last-ember': { en: 'your own light reaches 2 tiles further, and Ember Bolt holds 1 rank more.', es: 'tu propia luz llega 2 casillas mas lejos, y la Saeta de brasa tiene 1 rango mas.' },
+  'play.relic.sig.unique-sextons-lost-cowl': { en: 'your own light reaches 2 tiles further.', es: 'tu propia luz llega 2 casillas mas lejos.' },
   'play.relic.sig.unique-tyrants-crucible': { en: 'Meteor cools 2 seconds sooner.', es: 'el Meteoro se enfria 2 segundos antes.' },
   'play.relic.sig.unique-hammer-first-watch': { en: 'Hellfire Nova holds 2 ranks more, and every hit lands 20% harder on constructs.', es: 'la Nova infernal tiene 2 rangos mas, y cada golpe da un 20% mas fuerte a los constructos.' },
   'play.relic.sig.unique-ashbone-phylactery': { en: 'one more skeleton may stand at once, and each one\'s first blow is a breath of fire (3x its blow).', es: 'puede haber un esqueleto mas a la vez, y el primer golpe de cada uno es un aliento de fuego (3x su golpe).' },

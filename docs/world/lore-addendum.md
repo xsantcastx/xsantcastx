@@ -1739,3 +1739,21 @@ Marches* (75). *The Hundredfold* (100): a gold frame; the Archive says a hundred
 *Emberbound* (300), *Lantern-Bearer* (500), *the Thousandfold* (1,000, the eclipse frame), *Starwright* (2,000), *Who
 Walks the Eclipse* (5,000), and *Keeper of the Long Night* (10,000, the starlit frame) — the Archive's last line, never
 yet written beside a name. Lines live in `play/world/hud.i18n.ts` (`play.lvl.title.*`).
+
+## The Sexton's Count (2026-10-21) — shipped, owner reviews in play
+
+Sexton Aldous Wren has swept the Hushed Barrow for forty years. Forty graves. Every night he counts them twice, and
+the second count is one higher. He chalks three stones for the Keeper to read: **Maren Cole, who rang the bell**;
+**Tobias Vane, and his dog** (a fresh lamp-wick left on the stone — the Lamplighter thread); and a grave with no name
+whose earth is pushed *up*, bare pale prints going west to the sea. Out on the barrow's own jetty, only there at night,
+lies a page of Wren's ledger in his own hand that he does not remember writing: *"Forty. Forty. Forty-one. I buried
+him myself and I do not remember his face. The key went with the one who walks the rows."* **Hollis the Row-Walker**,
+the one of the barrow's dead who never lies down, carries **Barrow Key 1**. Under the plot, behind **Barrow Door 1**
+(unopened for forty years), two lanterns somebody keeps lit, eight graves, and the forty-first: no name, only a tally
+mark cut the way the Seamworks' tally-books cut theirs (the sixth-mark thread). **The Uncounted** stands over it — it
+does not fight like it hates you; it fights like it wants to be counted (the erased witnesses, §3.4). On the grave,
+folded like a shroud: **Sexton's Lost Cowl**, lost the night Wren first counted forty-one; it has lain with the dead so
+long it has learned to want things. Wren lays it to rest for nothing ("the dead have paid enough") and gives the ferry
+coppers he was saving for himself — "I find I am in no hurry" — or the Keeper keeps it, and Wren counts the Keeper
+instead, every night, twice. Afterwards: "Forty-one. It comes out right now. Mostly." Lines live in
+`shared/sexton/sexton-count.i18n.ts`; the Uncounted's Bestiary line in `play/td/td-mobs.ts`.

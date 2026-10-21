@@ -112,6 +112,8 @@ test('a cursed grave-good: its card shows the curse, and Sexton Aldous Wren lays
   await map.locator('.td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).click();
   const talk = page.locator('.td-talk');
   await expect(talk).toBeVisible({ timeout: 10000 });
+  // He speaks of the Sexton's Count first (shared/sexton); his Grave-goods desk is a "Something else" away.
+  await talk.locator('[data-story-else]').click();
   await talk.locator('[data-talk-grave]').click();
   const desk = page.locator('[data-grave-desk="sexton"]');
   await expect(desk).toBeVisible();

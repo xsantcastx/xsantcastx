@@ -14,6 +14,8 @@
  *              the economy, the material through an idempotent stack grant, Hunting XP through the skill gateway
  *              keyed `town-task:<id>:xp`, and the gear piece minted under a fixed instance id (a second device's copy
  *              of the same pay is one item, not two).
+ *   chain()    a story chain's facts (shared/sexton: the Sexton's Count); markChain() records new ones, never
+ *              un-records one. The chain's own service derives its step and pays its reward (receipt first, here).
  */
 import { Injectable, Injector, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -210,6 +212,25 @@ export class TownTaskService {
     if (moved) this.save({ ...this.current, progress, dProgress });
     return finished;
   }
+
+  /** A story chain's facts reached so far (fact → when first reached). Empty on the server. */
+  chain(id: string): Readonly<Record<string, number>> {
+    if (!this.isBrowser) return {};
+    this.hydrate();
+    return this.current.chains[id] ?? {};
+  }
+  /** Record facts of a story chain (the earliest time is kept). Returns the facts that were new. */
+  markChain(id: string, facts: readonly string[], now = Date.now()): string[] {
+    if (!this.isBrowser) return [];
+    this.hydrate();
+    const had = this.current.chains[id] ?? {};
+    const fresh = [...new Set(facts)].filter(f => !(f in had));
+    if (!fresh.length) return [];
+    this.save({ ...this.current, chains: { ...this.current.chains, [id]: { ...had, ...Object.fromEntries(fresh.map(f => [f, now])) } } });
+    return fresh;
+  }
+  /** Hunting XP under a fixed key (a retry or a second device books it once): a task's, or a story chain's pay. */
+  grantHuntingXp(key: string, xp: number): void { this.grantXp(key, xp); }
 
   private grantXp(id: string, xp: number): void {
     const grants = xpGrantChunks(xp).map((n, i) => ({ mutationId: i ? `town-task:${id}:xp:${i + 1}` : `town-task:${id}:xp`, xp: n }));
