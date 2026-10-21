@@ -174,6 +174,7 @@ import { SEXTON_FACTS, SEXTON_GIVER, SEXTON_LEVEL, SEXTON_REWARD, sextonGold, ty
 import { SextonJournalComponent } from '../shared/sexton/sexton-journal.component';
 import { LORE_PAGES } from '../shared/lore/lore';
 import { LORE_I18N } from '../shared/lore/lore.i18n';
+import { SEAM_I18N } from './td/td-seam.i18n';
 import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
@@ -1007,6 +1008,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(REALM_MACHINES_I18N);
     this.i18n.register(WORLD_CLOCK_I18N);
     this.i18n.register(DARK_I18N);
+    this.i18n.register(SEAM_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);

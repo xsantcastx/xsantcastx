@@ -172,11 +172,11 @@ describe('item sets: tiers count the pieces worn', () => {
 });
 
 describe('item sets: old items still load', () => {
-  it('the fifty-two uniques before the sets (and the Sexton\'s cowl since) are all still there with no set tag, and no set piece appears in a legacy id list', () => {
+  it('the fifty-two uniques before the sets (and the Sexton\'s cowl and the Seamstitch Grips since) are all still there with no set tag, and no set piece appears in a legacy id list', () => {
     const before = UNIQUE_ITEMS.filter(u => !u.set);
-    expect(before.length).toBe(53);
+    expect(before.length).toBe(54);
     expect(before.every(u => !u.set)).toBeTrue();
-    expect(UNIQUE_ITEMS.length).toBe(53 + SET_PIECES.length);
+    expect(UNIQUE_ITEMS.length).toBe(54 + SET_PIECES.length);
     expect(isSetPiece('unique-tinders-due')).toBeFalse();
     expect(isSetPiece(undefined)).toBeFalse();
     expect(setOfPiece('ember-helm')).toBeUndefined();

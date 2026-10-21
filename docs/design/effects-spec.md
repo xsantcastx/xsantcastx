@@ -81,6 +81,18 @@ before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
   rim; the body tinted dusk-violet (`#6b3aa0`, 30%). Reduced motion: the same ring, the flares still.
 - **The sky**: under an eclipse the darkness pass is violet, not the night's blue, deepening with the eclipse.
 
+## The Seam Eater (2026-10-21, `td-seam.ts`, `td-mobs.ts` paintSeamEater)
+- **The body**: a dark sun torn top to bottom — a 56×50 grid grown ×2 (112×100, twice a deep boss). The corona's pale
+  ring (`#ffffff` · `#f0e0ff` · `#c8a8ff` · `#8a6ac8`) with twelve rays turning a step each frame, a violet rim (the
+  shadow ramp), the void disc (`#140c1c`); down its middle a lens-shaped maw opening a pixel each frame, its throat the
+  shadow ramp, bone teeth along both lips, bone-thread stitches across each lip (every third one torn, by frame), four
+  violet eyes blinking in turn, void running down to a pool on the ground. Rim: `#f0e0ff`.
+- **Void Breath**: the boss tell above (the cone and the jaw glow in the shadow tones); its gouts are ink.
+- **Seam Rend**: each ring is the Fire Enchanted burst ring (`drawBurstTell`) in the shadow tones with its own 1 s
+  front closing in; it goes off as a shadow wave. The canvas says `data-boss-tell="rend"` while any is on the ground.
+- **Its words** hang over it in `#d8c0ff` (the other bosses' are ember): `ul nyr sha`, `ul dra`, `ul teth`.
+- **Rising and leaving**: a shadow wave as the tear opens; when the eclipse ends it comes apart in dust and a wave.
+
 ## The night (2026-10-21, `td-night.ts`, `td-engine.ts` drawLight / drawNightEyes)
 - **The pass**: one colour over the world, never pure black. Night `#100e2c` at 86%, the eclipse `#220c3a` at 93%
   (blended in by its depth), a dark floor `#0a081a` at 90% at any hour. Outdoors its opacity is tone × max(darkness,

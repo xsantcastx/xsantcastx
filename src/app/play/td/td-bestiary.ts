@@ -10,6 +10,7 @@ import { MOBS, mobHits } from './td-mobs';
 import { huntGoldRange } from '../../shared/economy/economy-curve';
 import { MIN_PACK_LEVEL } from '../../shared/loot/champions';
 import { NIGHT_TABLES } from './td-phases';
+import { SEAM_ID, riftPlace } from './td-seam';
 import { bossUniqueFor } from '../../shared/rpg/boss-uniques';
 import { ITEM_SETS } from '../../shared/rpg/set-items';
 
@@ -64,6 +65,9 @@ export function creatureHaunts(): Map<string, string[]> {
     }
     // A graveyard's own dead are Bone Walkers (td-world.ts).
     for (const p of c.places) if (p.kind === 'graveyard') add('bone-walker', `${p.name}, ${land}`);
+    // The Seam Eater rises at each continent's rift, its standing stones, under an eclipse (td-seam.ts).
+    const rift = riftPlace(c);
+    if (rift) add(SEAM_ID, `${rift.name}, ${land} (under an eclipse)`);
   }
   for (const level of Object.values(LEVELS)) {
     for (const [ch, entry] of Object.entries(level.legend)) {

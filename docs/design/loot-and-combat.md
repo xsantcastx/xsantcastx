@@ -245,8 +245,8 @@ Reduced motion: the ring stands still, no motes.
 
 ## 8. Difficulty — Normal → Nightmare → Hell
 
-`shared/loot/difficulty.model.ts`. Picked on Menu → Loot & Combat; a tier opens when the **Fallen Ephemeris** (the
-bottom of the Orrery Wells) falls on the tier below; stepping down is always allowed.
+`shared/loot/difficulty.model.ts`. Picked on Menu → Loot & Combat; a tier opens when its gate boss falls on the tier below — in the top-down world the **Seam Eater** (§10), in the side view the **Fallen Ephemeris** (the
+bottom of the Orrery Wells); stepping down is always allowed.
 
 | | HP | Blow | Level | Keeper resist | Creature resist | Item chance | Ladder shift | Rune cap | Fall |
 |---|---|---|---|---|---|---|---|---|---|
@@ -254,21 +254,24 @@ bottom of the Orrery Wells) falls on the tier below; stepping down is always all
 | Nightmare | ×2.5 | ×2 | +20 | −40 | +15 | ×1.35 | +1 | Legendary | 10% |
 | Hell | ×4 | ×3 | +40 | −100 | +30 | ×1.7 | +2 | Singular | 15% |
 
-**Decision (2026-10-21, branch `passives`): applied in the top-down fight, hidden until reachable.**
+**Decision (2026-10-21, branch `passives`): applied in the top-down fight.** **Gate (2026-10-21, branch `seam`):
+the Seam Eater opens the tiers; the picker is shown.**
 
 - *Applied:* the tier's life and blow multiply every creature as it rises (`td-mobs` `tiered`/`setTier`, an elite's
-  own numbers first), and the Keeper's resist penalty comes off his worn resists **before** the 75 cap
-  (`td-skills fightStats(…, resistPenalty)`, D2's order), so the fight, the C sheet and the Loot sheet's rows all show
-  the penalised number. Hunting XP still follows the creature's own life (the tier pays in drops, as its blurb says).
-  Drops, the rune cap and the fall share already followed the tier. The blurbs quote the table's numbers exactly
-  ("2.5× life, 2× as hard, −40, 35% more often"), and `td-truth-gear.spec.ts` measures each one in a real MobSystem.
-- *Hidden:* the gate boss (the Fallen Ephemeris) is not in the top-down world, so no new Keeper can open a tier. The
-  Loot sheet shows the Difficulty picker only when a save already holds more than Normal (legacy saves), and then only
-  the opened tiers, each with its blurb; the old "Fell the Fallen Ephemeris on … to open it" line is gone.
+  own numbers first; a boss's breath and ground rings too), and the Keeper's resist penalty comes off his worn resists
+  **before** the 75 cap (`td-skills fightStats(…, resistPenalty)`, D2's order), so the fight, the C sheet and the Loot
+  sheet's rows all show the penalised number. Hunting XP still follows the creature's own life (the tier pays in
+  drops, as its blurb says). Drops, the rune cap and the fall share already followed the tier. The blurbs quote the
+  table's numbers exactly ("2.5× life, 2× as hard, −40, 35% more often"), and `td-truth-gear.spec.ts` measures each one
+  in a real MobSystem.
+- *The top-down gate:* **the Seam Eater** (`play/td/td-seam.ts`, `seam-eater-risen`; §10), the eclipse's world boss.
+  Its first fall on Normal opens Nightmare; a fall on Nightmare (where it rises 2.5× the life and strikes 2× as hard)
+  opens Hell (`difficulty.model` `TD_GATE_BOSS`, `unlockedBy`; the kill path's `LootService.killed`). The Fallen
+  Ephemeris stays the side view's gate.
+- *Shown:* the Loot sheet's Difficulty picker always shows the opened tiers (Normal alone for a new Keeper) and, under
+  them, how the next opens: "Fell the Seam Eater on Normal to open Nightmare. It rises at the rifts under an eclipse."
 - *Not applied:* the level offset (+20/+40) and the creature resist (+15/+30) are the side-view's; td creatures keep
   their own level and resists. The blurbs do not claim them.
-- *To open the tiers:* put a gate boss in the top-down world, have its kill call `LootService.killed`, and drop the
-  `openTiers.length > 1` guard in `loot-sheet.component.ts`.
 
 **Death (the corpse run):** a fall takes the tier's share of the purse and leaves it, glowing gold with a plate, where
 the Keeper fell (`LootService.fall`). Walk back and it comes home. Fall again first and the earlier purse is lost.
@@ -345,6 +348,29 @@ The top-down Warlock's book (`play/td/td-skills.ts`, the Spellbook reads it) add
   within 6 tiles that is also within 9 of him, never strike the Keeper, crumble after 40 s or when killed — and
   creatures turn on them when they stand closer than the Keeper.
 `--combat` prints time-to-kill / time-to-die per creature, tier and Keeper stage (half of the blows dodged).
+
+**The Seam Eater (2026-10-21, branch `seam`, `play/td/td-seam.ts`; design-bible §3.3 "a recurring eclipse event").**
+The eclipse's world boss and the top-down gate (§8). *When and where:* under an eclipse, on the surface, at each
+continent's rift — its standing stones (Ember Isle's Ninefold Stones, just south of the square: the starter town's
+outskirts; the Ring of Pyres, the Ring of Thorns, the Lantern Ring) — it rises when the Keeper comes within 30 tiles,
+once per eclipse; the strip says so and Glim warns ("Stay out of the rings"). It never stands on, steps onto or strikes
+into a town's or village's safe ground, never chases past 14 tiles from its rift, and leaves (no kill, no loot) when the
+eclipse ends. *Level:* the Keeper's, held inside **20–60**. *Numbers at level L:* life 1.3 × (200L − 2800) (1560 at 20,
+4160 at 30, 6760 at 40, 9360 at 50, 11960 at 60: above the Ashbone Dragon and the Ink Abbess at their levels), bite
+0.9L–1.3L every 1.8 s, walks 18 px/s, sight 170 px, hits arcane.
+- **Void Breath** (`ul nyr sha`): `BOSS_TELL` 0.6 s wind-up with the stepped cone (shadow tones), then a fan of **5**
+  void gouts, 0.6L–0.9L each, every **4 s**, range 140 px; a step aside in the tell and it misses.
+- **Seam Rend** (`ul dra`): **3** rings (one under the Keeper, two 34 px round him) of 20 px, shown for **1 s**, then
+  each bursts for 1.0L–1.4L arcane; every **6 s**. A step out of the ring and nothing lands.
+- **At half life** (`ul teth`): two **Eclipse-touched** creatures climb out after the 0.6 s call sigil (lone touched
+  champions of a shade-kin by its level: Lantern Wisp under 30, Ink Hound under 40, Drowned Knight above), and the
+  fight quickens: a fan of **7** every **3.2 s**, **5** rings every **4.5 s**.
+- *Rewards:* boss rank (3 item rolls with the 2-step shift, Hunt Gold at the boss band, the boss's potion and Blank
+  odds), Hunting XP by its life, Eclipse Glass ×2, Nightglass ×2, an Umbral Sigil at 50%; and its unique, the
+  **Seamstitch Grips** (hands, 1 in 8): "While the sky is dark (night or an eclipse), every hit you land is 20% harder"
+  (`RelicSig.umbra`, measured in `td-seam.spec.ts`).
+- *Balance:* for a well-geared solo Keeper at its level. A level-1 Keeper on Ember Isle meets the level-20 one: a
+  world boss to run from — it will not follow him into town.
 
 **Skill trees (2026-10-21, `docs/design/skill-trees.md`).** The Warlock's 21 skills now sit in three D2 trees —
 **Ember** (fire), **Bone** (necromancy), **Shadow** (curses and wards) — in tiers that open at levels 1, 6, 12, 18 and
