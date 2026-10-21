@@ -51,8 +51,10 @@ test('a Spellstone: inscribed in the Spellbook from a blank and Soul, cast from 
   await expect(book).toBeVisible();
   await book.locator('.sbt__tab[data-tree="ember"]').click();
   await book.locator('.sbt__node[data-skill="hellfire-nova"]').click();
+  // The Spellstone is folded under the card ("Details" style): unfold it.
   const row = book.locator('[data-inscribe]');
   await expect(row).toBeVisible();
+  await row.locator('summary').click();
   await expect(row.locator('[data-inscribe-btn]')).toContainText('5 Soul');
   await row.locator('[data-inscribe-btn]').click();
   await expect(row).toHaveAttribute('data-stone-held', '4');

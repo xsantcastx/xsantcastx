@@ -212,8 +212,8 @@
       </section>
     }
   }
-  <!-- The Spellbook (K), D2's skill page made cozy: three trees as tabs, tiers top to bottom with their prerequisite
-       lines, a rank badge on every skill, the picked skill's card (this rank, the next), keys 1–4 and the aura switch. -->
+  <!-- The Spellbook (K), D2's skill page made cozy (play/spellbook): the points, the tree tabs, the tree board with its
+       prerequisite arrows and rank badges, the picked skill's card (this rank, the next, Learn, keys 1–4, the aura). -->
   @if (topDown && spellbookOpen && !panel) {
     @if (spellbook; as sb) {
       <section class="spellbook sbt win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore (keydown.escape)="spellbookOpen = false">
@@ -221,104 +221,10 @@
           <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
           <button type="button" class="win-x" (click)="spellbookOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
         </header>
-        <div class="sbt__top">
-          <p class="sbt__pts" [class.sbt__pts--has]="sb.left > 0">{{ t('play.td.tree.points', { n: sb.left }) }}</p>
-          @if (respecAsk) {
-            <span class="sbt__ask" role="group" [attr.aria-label]="t('play.td.tree.resetAsk')">
-              <small>{{ t('play.td.tree.resetAsk') }}</small>
-              <button type="button" class="sbt__yes" (click)="respecTree()">{{ t('play.td.tree.resetYes') }}</button>
-              <button type="button" (click)="respecAsk = false">{{ t('play.td.tree.resetNo') }}</button>
-            </span>
-          } @else {
-            <button type="button" class="sbt__reset" (click)="respecTree()">{{ t('play.td.tree.resetBtn') }}</button>
-          }
-        </div>
-        <div class="sbt__tabs" role="tablist" [attr.aria-label]="t('play.td.book')">
-          @for (tr of sb.trees; track tr.id) {
-            <button type="button" role="tab" class="sbt__tab" [attr.data-tree]="tr.id" [attr.aria-selected]="bookTab === tr.id" (click)="openTree(tr.id)">
-              {{ t('play.td.tree.' + tr.id) }} <small>{{ tr.ranks }}</small>
-            </button>
-          }
-        </div>
-        <div class="sbt__body">
-          <div class="sbt__scroll">
-            <div class="sbt__tree" role="tabpanel" [attr.data-tree]="bookTab" [style.--tiers]="sb.tiers.length">
-              <svg class="sbt__lines" [attr.viewBox]="'0 0 3 ' + sb.tiers.length" preserveAspectRatio="none" aria-hidden="true">
-                @for (ln of sb.lines; track $index) {
-                  <line [attr.x1]="ln.x1" [attr.y1]="ln.y1" [attr.x2]="ln.x2" [attr.y2]="ln.y2" [class.lit]="ln.lit" vector-effect="non-scaling-stroke"></line>
-                }
-              </svg>
-              @for (tier of sb.tiers; track $index) {
-                <span class="sbt__lv" [class.sbt__lv--open]="tier.open" [style.grid-row]="$index + 1">{{ t('play.td.level', { n: tier.level }) }}</span>
-              }
-              @for (n of sb.nodes; track n.id) {
-                <button type="button" class="sbt__node" [attr.data-skill]="n.id" [style.grid-row]="n.tier + 1" [style.grid-column]="n.col + 2"
-                  [class.sbt__node--locked]="!n.open" [class.sbt__node--learned]="n.rank > 0" [class.sbt__node--buy]="n.buyable" [class.sbt__node--on]="n.slot > 0 || n.on"
-                  [attr.aria-pressed]="n.picked" [attr.aria-label]="n.name + ' · ' + t('play.td.tree.rank', { n: n.rank, max: 20 })" (click)="pickSkill(n.id)">
-                  <span class="sbt__icon" [innerHTML]="skillIcon(n.id, 36)"></span>
-                  <b class="sbt__badge">{{ n.rank }}</b>
-                  @if (!n.open) { <small class="sbt__need">{{ t('play.td.level', { n: n.need }) }}</small> }
-                </button>
-              }
-            </div>
-          </div>
-          @if (sb.pick; as pk) {
-            <article class="sbt__detail" [attr.data-skill]="pk.id" aria-live="polite">
-              <header class="sbt__dh">
-                <span class="sb__icon" [innerHTML]="skillIcon(pk.id)"></span>
-                <span><b>{{ pk.name }}</b><small>{{ t('play.td.tree.kind.' + pk.kind) }} · <span class="sbt__rank">{{ t('play.td.tree.rank', { n: pk.rank, max: pk.max }) }}</span></small></span>
-              </header>
-              @if (pk.words) { <p class="sbt__cant" [attr.aria-label]="t('play.td.tree.words') + ': ' + pk.words"><small>{{ t('play.td.tree.words') }}</small> <q lang="und">{{ pk.words }}</q></p> }
-              @if (pk.phase; as ph) { <p class="sbt__phase" [class.sbt__phase--up]="ph.up" [attr.data-spell-phase]="skyPhase">{{ ph.text }}</p> }
-              <p class="sbt__now">@if (pk.rank < 1) { <em>{{ t('play.td.tree.atRank', { n: 1 }) }}</em> }{{ pk.now }}</p>
-              @if (pk.kind === 'active') { <p class="sbt__cost">{{ pk.mana }} {{ t('play.td.mana') }} · {{ pk.cd }}s</p> }
-              @if (pk.next.length) {
-                <div class="sbt__next">
-                  <b>{{ t('play.td.tree.next', { a: pk.rank, b: pk.rank + 1 }) }}</b>
-                  @for (line of pk.next; track $index) { <small>{{ line }}</small> }
-                </div>
-              }
-              @if (pk.syn.length) {
-                <div class="sbt__syn">
-                  <b>{{ t('play.td.tree.syn') }}</b>
-                  @for (sy of pk.syn; track sy.from) {
-                    <small [attr.data-syn]="sy.from" [class.on]="sy.live">{{ sy.name }} · {{ t('play.td.tree.syn.rank', { n: sy.ranks }) }} · {{ sy.text }}</small>
-                  }
-                </div>
-              }
-              @if (stoneView(pk.id); as sv) {
-                <!-- Inscribe a Spellstone (shared/spellstones): 1 Basalt Blank + Soul → charges at the rank held now. -->
-                <div class="sbt__stone" data-inscribe [attr.data-stone-held]="sv.held">
-                  <b><img [src]="stoneArt(pk.id)" alt="" width="20" height="20"> {{ t('play.stone.title') }}</b>
-                  <small>{{ t('play.stone.gives', { n: sv.charges, rank: sv.rank }) }}</small>
-                  <small>{{ t('play.stone.have', { blanks: sv.blanks, soul: tdSoul, held: sv.held }) }}</small>
-                  <span class="sbt__stone-acts">
-                    <button type="button" class="sbt__inscribe" data-inscribe-btn [disabled]="!!sv.why" [title]="sv.why || t('play.stone.lore')" (click)="inscribeStone(pk.id)">{{ t('play.stone.inscribe', { soul: sv.soul }) }}</button>
-                    @if (sv.held > 0) {
-                      <button type="button" class="sbt__belt" data-stone-belt [attr.aria-pressed]="sv.onBelt" (click)="beltStone(pk.id)">{{ t(sv.onBelt ? 'play.stone.onBelt' : 'play.stone.belt') }}</button>
-                    }
-                  </span>
-                  @if (sv.why) { <small class="sbt__why">{{ sv.why }}</small> }
-                </div>
-              }
-              <div class="sbt__acts">
-                <button type="button" class="sbt__learn" [disabled]="!!pk.block" (click)="learnSkill(pk.id)">
-                  {{ pk.rank > 0 ? t('play.td.tree.rankUp') : t('play.td.tree.learn') }}
-                </button>
-                @if (pk.need) { <small class="sbt__why">{{ pk.need }}</small> }
-                @if (pk.rank > 0 && pk.kind === 'active') {
-                  <span class="sb__keys" role="group" [attr.aria-label]="t('play.td.book.assign', { name: pk.name })">
-                    @for (k of [1, 2, 3, 4]; track k) {
-                      <button type="button" [class.on]="pk.slot === k" [attr.aria-pressed]="pk.slot === k" (click)="assignSkill(pk.id, k)">{{ k }}</button>
-                    }
-                  </span>
-                } @else if (pk.rank > 0 && pk.kind === 'aura') {
-                  <button type="button" class="sb__aura" [attr.aria-pressed]="pk.on" (click)="toggleAura(pk.id)">{{ t(pk.on ? 'play.td.book.auraOn' : 'play.td.book.auraOff') }}</button>
-                }
-              </div>
-            </article>
-          }
-        </div>
+        <app-spellbook-page class="sbt__page" [book]="sb" [tab]="bookTab" [vocation]="vocation" [respecAsk]="respecAsk" [skyPhase]="skyPhase"
+          [stone]="sb.pick ? stoneView(sb.pick.id) : null" [stoneArt]="sb.pick ? stoneArt(sb.pick.id) : ''" [soul]="tdSoul"
+          (pick)="pickSkill($event)" (learn)="learnSkill($event)" (openTree)="openTree($event)" (respec)="respecTree()" (respecCancel)="respecAsk = false"
+          (assign)="assignSkill($event.id, $event.slot)" (aura)="toggleAura($event)" (inscribe)="inscribeStone($event)" (belt)="beltStone($event)" />
       </section>
     }
   }
