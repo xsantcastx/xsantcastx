@@ -226,6 +226,24 @@ export const SHAPES = {
     '......vvww',
     '......wwww',
   ],
+  // A quiver of green-fletched arrows (the Canopy Warden's): a leather tube with two bands, the shafts and fletchings
+  // standing out of its mouth.
+  quiver: [
+    '....a..A..a',
+    '...aA.aA.aA',
+    '....v..v..v',
+    '...hllllllb',
+    '...lbbbbbbd',
+    '...lbaaaabd',
+    '...lbbbbbbd',
+    '...lbbbbbbd',
+    '...lbbbbbbd',
+    '...lbbbbbbd',
+    '...lbaaaabd',
+    '...lbbbbbbd',
+    '...dbbbbbbd',
+    '....dddddd',
+  ],
   tongs: [
     '.........hl',
     '........hlb.hl',

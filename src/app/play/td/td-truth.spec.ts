@@ -27,6 +27,7 @@ import { THORN_I18N } from './td-thorn.i18n';
 import { TILE } from './td-art';
 import { brandedBlow, meleeBlow } from './td-melee';
 import { ITEM_AURA_REACH, MOBS, MobSystem, type Mob, type MobDef, type MobHost } from './td-mobs';
+import { TdWaygates } from './td-waygate';
 import { auraEffect, type AuraId } from '../../shared/loot/auras';
 import { skyVars, spellMult } from './td-phases';
 import { BLADE_SHARE, CLASS_SKILLS, MAX_RANK, SKILLS, castRank, castVars, type SkillId } from './td-skills';
@@ -332,6 +333,21 @@ const PROBES: Record<SkillId, Probe> = {
     return { radius, secs: timeUntil(w, () => w.sys.lightBonus - (o.relics ? GEAR.light : 0) === before, 2000, .25) };
   },
   'seek': (r, o) => { const w = world('warlock', { 'seek': r }, o); cast(w, 'seek'); return { secs: w.seek[0] }; },
+  // The Waygate (td-waygate.ts): the spell asks the host to open a portal; the card's seconds are how long the real
+  // portal (TdWaygates, the engine's) stands before it fades — stepped a second at a time until it is gone.
+  'waygate': (r, o) => {
+    const w = world('warlock', { 'waygate': r }, o);
+    let asked = 0;
+    let life = NaN;
+    (w.sys as unknown as { host: MobHost }).host.waygate = secs => { asked++; life = secs; return null; };
+    if (cast(w, 'waygate') !== null || asked !== 1) return { secs: NaN };
+    const here = { continent: 'truth', level: 'surface', x: 0, y: 0 };
+    const gates = new TdWaygates({ here: () => here, hearths: () => [{ id: 'hearth:truth:town', x: 400, y: 0 }], inTown: () => false, bossFight: () => false, seamFight: () => false, travel: () => true, say: () => undefined, partyGates: () => [] });
+    if (gates.open(0, life) !== null) return { secs: NaN };
+    let t = 0;
+    while (gates.own && t < 3600) { t += 1; gates.step(t); }
+    return { secs: t };
+  },
 
   // ── The Ashguard ──
   'watch-blade': (r, o) => {

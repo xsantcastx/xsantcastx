@@ -11,6 +11,7 @@ export const VENDOR_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'vendor.tab.potions': { en: 'Potions', es: 'Pociones' },
   'vendor.potions.list': { en: 'Potions for the road', es: 'Pociones para el camino' },
   'vendor.potions.rowSub': { en: '{{held}} held · {{price}} Gold', es: '{{held}} en mano · {{price}} de oro' },
+  'vendor.scroll.does': { en: 'Read it from the satchel: a Waygate opens where you stand, to the nearest town hearth and back. No mana.', es: 'Leelo desde el morral: se abre un Portal del Hogar donde estas, hasta el hogar del pueblo mas cercano y de vuelta. Sin mana.' },
   'vendor.potions.health': { en: 'Mends {{n}} life over a second (Q).', es: 'Cura {{n}} de vida en un segundo (Q).' },
   'vendor.potions.mana': { en: 'Pours back {{n}} mana over a second (R).', es: 'Devuelve {{n}} de mana en un segundo (R).' },
   'vendor.potions.hold': { en: 'You carry {{n}}.', es: 'Llevas {{n}}.' },

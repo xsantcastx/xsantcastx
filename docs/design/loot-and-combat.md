@@ -128,6 +128,30 @@ refuses too: the play screen hands `InventoryService.setWearCheck` the Keeper's 
 **Already-worn pieces are never stripped** — the check gates putting a piece *on*, not keeping it. Compare rows are
 unchanged.
 
+### 3.5 One and two hands (owner 2026-10-21, relaying the players: "bows should be 2h, crossbows could be 1 handed")
+
+One table, `src/app/shared/rpg/item-hands.ts`, keyed on the base (`item-base.ts`, the icon painter's and the requirements'):
+
+| Hands | Bases (weapon families) |
+|---|---|
+| Two | bow, staff, greatsword (Dawnrender, the longblades), war-hammer (mauls), polearm (halberd, glaive) |
+| One | crossbow, sword, axe, mace, wand, dagger (and the held tools, the tongs) |
+
+**Equipping** (`InventoryService.equip`, which every path goes through — the satchel's Equip, the compare card, the paper
+doll's drag and picker, a Vault piece taken out first): a two-handed weapon sends the worn off-hand to the satchel; an
+off-hand put on beside one sends the weapon back. Never to the Vault: a full satchel refuses with "takes both hands, and
+the satchel has no room…". The off-hand well is greyed and barred while two hands are full. **Class kits**
+(`vocation-look KIT_HANDS`): the Thornstrider's hunting bow and the Lanternwright's lamp-staff take both hands, so their
+off-hand is shut until a one-handed weapon is worn (a crossbow and a quiver; a wand and the lantern); the Ashguard's blade
+leaves the shield arm free (a greatsword drops the shield); the Warlock casts from a bare hand (a staff, or a wand and an
+off-hand). The painter never draws an off-hand beside a two-handed weapon; a worn quiver rides on the back.
+**The fight**: a two-handed weapon lands the basic attack ×1.2 (`TWO_HAND_MULT`: the Watch Blade's swing and the blade
+skills, the Thorn Shot, the Ember Bolt, the Kindle) — the price is the off-hand's affixes. The card says "Two-handed bow"
+and "Takes both hands: … 20% harder". **Old saves** wearing both are mended on load through the save gateway (the
+off-hand to the satchel, else the Vault). The crossbow family: Canopy Warden's Crossbow, Spinerift, Cinderlatch
+(`ranger-items.ts`), and the Canopy Warden's Quiver (off-hand); they drop from every hunt at the creature's level.
+The combat sim's bands are checked on the one-handed build every class can wear.
+
 ## 4. Monster families and roles
 
 `shared/loot/creature-families.ts`: one profile per creature key — family (shared resists, blow type), role, level.

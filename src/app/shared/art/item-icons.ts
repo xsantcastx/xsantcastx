@@ -87,7 +87,7 @@ const SHINE = '#fffaf0';
 /** Sensible second materials per kind when an entry names none. */
 const SUB: Partial<Record<IconKind | 'rune', Material>> = {
   sword: 'leather', dagger: 'leather', knives: 'leather', staff: 'wood', wand: 'wood', polearm: 'wood', axe: 'wood',
-  pickaxe: 'wood', sickle: 'wood', hammer: 'wood', maul: 'wood', mace: 'wood', bow: 'wood', crossbow: 'wood', tongs: 'iron',
+  pickaxe: 'wood', sickle: 'wood', hammer: 'wood', maul: 'wood', mace: 'wood', bow: 'wood', crossbow: 'wood', tongs: 'iron', quiver: 'rootwood',
   potion: 'wood', vial: 'wood', flask: 'wood', scroll: 'wood', book: 'paper', compass: 'paper', hourglass: 'wood',
   lens: 'wood', mirror: 'wood', shuttle: 'wood', herb: 'moss', flower: 'moss', spool: 'wood', pendant: 'gold', scale: 'brass',
   torch: 'wood', ladder: 'wood', plank: 'wood', support: 'wood', seedpod: 'rootwood', banner: 'wood', bellows: 'wood',
@@ -130,6 +130,11 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'rootbreaker-mace': I('mace', 'rootwood', 'amber', 'wood'),
   'meridian-longbow': I('bow', 'brass', 'orbit', 'midnight'),
   'spinerift-crossbow': I('crossbow', 'rootwood', 'moss'),
+  'warden-crossbow': I('crossbow', 'rootwood', 'moss', 'leather'),
+  'cinderlatch-crossbow': I('crossbow', 'basalt', 'ember', 'iron'),
+  'warden-quiver': I('quiver', 'leather', 'moss', 'rootwood'),
+  // The Town Portal scroll (shared/waygate): rag paper sealed in the seam's violet.
+  'waygate-scroll': I('scroll', 'paper', 'eclipse', 'obsidian'),
   'godforge-tongs': I('tongs', 'iron', 'eclipse'),
   'kaels-hammer': I('hammer', 'iron', 'ember'),
 

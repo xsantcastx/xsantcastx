@@ -39,6 +39,7 @@ import {
 import { ITEM_DEFINITIONS, type ItemDefinition } from '../rpg/item-definition';
 import { CRAFTING_RECIPES, recipeCollectionId } from '../crafting/crafting.model';
 import { ARTBIBLE_RARITY } from '../rpg/artbible-items';
+import { RANGER_RARITY } from '../rpg/ranger-items';
 import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { RUNES, RUNEWORDS, RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import { ARTIFACTS } from '../economy/economy.model';
@@ -240,6 +241,8 @@ const EQUIPMENT_RARITY: Readonly<Record<string, ItemRarity>> = {
   'luminous-greaves': 'rare',
   'verdant-bracers': 'rare',
   'keeper-signet': 'legendary',
+  // The crossbows and the quiver (rpg/ranger-items.ts).
+  ...RANGER_RARITY,
 };
 
 /** Every named object's authored rarity, which is the one it drops at. */

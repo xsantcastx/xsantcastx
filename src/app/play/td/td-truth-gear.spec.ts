@@ -16,7 +16,8 @@ import { goldFindPile } from '../../shared/economy/economy-curve';
 import { UNIQUE_SHARE, rarityChances, uniqueShare } from '../../shared/loot/drop-tables';
 import { MF_K, mfTowardUnique } from '../../shared/loot/magic-find-curve';
 import { temperFailChance } from '../../shared/rpg/item-upgrade';
-import { weaponSwing } from './td-melee';
+import { meleeBlow, weaponSwing } from './td-melee';
+import { TWO_HAND_MULT } from '../../shared/rpg/item-hands';
 import { ELEMENTS } from '../../shared/loot/damage.model';
 import { HUD_I18N } from '../world/hud.i18n';
 import { GEAR_KEYS, MEND_PER_SEC, outOfFightMend } from './td-engine';
@@ -207,5 +208,44 @@ describe('td-truth gear: a Grave-cold drain is a real price out of the fight too
     expect(outOfFightMend(-1.4, 5)).toBe(0);
     expect(outOfFightMend(0, 3)).toBe(0);
     expect(GRAVE_I18N['grave.tip.drain'].en).toContain('do not mend out of the fight');
+  });
+});
+
+describe('td-truth gear: two hands — the card\'s "% harder" is what the basic attack does (shared/rpg/item-hands.ts)', () => {
+  const pct = Math.round((TWO_HAND_MULT - 1) * 100);
+  const sysWith = (w: { strikePower?: number; hands?: number } | null) => {
+    const keeper = { x: 0, y: 0, face: 1 };
+    const host: MobHost = {
+      options: { onKill: () => undefined } as unknown as EngineOptions,
+      walkable: () => true, levelId: () => 'truth', player: () => keeper,
+      hurtPlayer: () => undefined, healPlayer: () => undefined, swung: () => undefined, playerHp: () => 1e6,
+    };
+    const sys = new MobSystem(host);
+    sys.weaponSwing = weaponSwing(w);
+    return sys;
+  };
+  it('the card names the multiplier the fight uses, in both languages', () => {
+    const line = HUD_I18N['play.tip.hands.twoNote'];
+    expect(line.en).toContain('{{pct}}%');
+    expect(line.es).toContain('{{pct}}%');
+    expect(HUD_I18N['play.td.tree.power.hands'].en).toContain('{{pct}}%');
+    expect(pct).toBe(20);
+  });
+  it('the Watch Blade\'s swing: a two-handed weapon lands it that much harder, a one-handed one not at all', () => {
+    const roll = () => 0;
+    expect(meleeBlow(50, 50, 100, roll, weaponSwing({ strikePower: 1, hands: 2 }))).toBe(Math.round(50 * (1 + pct / 100)));
+    expect(meleeBlow(50, 50, 100, roll, weaponSwing({ strikePower: 1, hands: 1 }))).toBe(50);
+  });
+  it('the Thorn Shot: a two-handed bow that much harder, a crossbow plain, the kit bow (nothing worn) as the book shows', () => {
+    expect(sysWith({ strikePower: 1, hands: 2 }).shotBlow(50, 50, () => 0)).toBe(Math.round(50 * (1 + pct / 100)));
+    expect(sysWith({ strikePower: 1, hands: 1 }).shotBlow(50, 50, () => 0)).toBe(50);
+    expect(sysWith(null).shotBlow(50, 50, () => 0)).toBe(50);
+    // The weapon's flat is the blade's alone: a heavier crossbow lifts the arrow through spell power, not a flat.
+    expect(sysWith({ strikePower: 3, hands: 1 }).shotBlow(50, 50, () => 0)).toBe(50);
+  });
+  it('the Ember Bolt and the Kindle: a two-handed staff lifts them that much; bare hands never weaken a spell', () => {
+    expect(sysWith({ strikePower: 1, hands: 2 }).handMult).toBe(1 + pct / 100);
+    expect(sysWith({ strikePower: 1, hands: 1 }).handMult).toBe(1);
+    expect(sysWith(null).handMult).toBe(1);
   });
 });
