@@ -45,6 +45,8 @@ const AREA = /^[a-z0-9_-]{1,40}$/;
 const LOOK = /^[a-z0-9.]{1,48}$/;
 const VOCATION = /^[a-z]{1,16}$/;
 const DIRS = new Set(['side', 'down', 'up']);
+/** Protocol 5: the cosmetic companions in presence (a pet and Glim as offsets from the Keeper: play/social/coop-pals.ts). */
+const PALS = /^[a-z0-9:,-]{0,96}$/;
 const EMOTES = new Set(['wave']);
 
 /**
@@ -65,6 +67,8 @@ export function presenceFields(data) {
     if (!Number.isInteger(data.hp) || !Number.isInteger(data.maxHp) || data.maxHp < 1 || data.maxHp > 1e6 || data.hp < 0 || data.hp > data.maxHp) bad();
     out.hp = data.hp; out.maxHp = data.maxHp;
   }
+  // Protocol 5: the pet and Glim beside the Keeper, for everyone's screen (cosmetic; '' when none).
+  if (data.pals !== undefined) { if (typeof data.pals !== 'string' || !PALS.test(data.pals)) bad(); out.pals = data.pals; }
   return out;
 }
 
@@ -77,6 +81,8 @@ export const COOP = Object.freeze({
   maxBytes: 8192,
   /** Snapshots a host may send a second; claim batches a member may send a second; all co-op requests of one party a second. */
   snapsPerSec: 12, hitsPerSec: 12, partyPerSec: 40,
+  /** Companions (each owner's own, to the party in its area): lists a session may send a second, companions in one list. */
+  palsPerSec: 6, maxPals: 16,
   /** A host silent this long while others share its area is replaced (a hidden tab stops simulating). */
   staleMs: 3000,
 });
@@ -159,6 +165,18 @@ export function coopEvent(raw, members, host) {
     return out;
   }
   coopBad();
+}
+const COOP_PAL_KINDS = new Set(['pet', 'beast', 'stampede', 'skel', 'wisp', 'beacon', 'glim']);
+/** One companion: its owner-scoped id, kind, type (a pet's id), place, facing, life, and whether it fights. */
+export function coopPal(raw) {
+  coopKeys(raw, ['i', 'k', 't', 'x', 'y', 'f', 'h', 'm', 'a']);
+  if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i) || !COOP_PAL_KINDS.has(raw.k)) coopBad();
+  const out = { i: raw.i, k: raw.k, x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6) };
+  if (raw.t !== undefined) { if (typeof raw.t !== 'string' || !CREATURE.test(raw.t)) coopBad(); out.t = raw.t; }
+  if (raw.f !== undefined) { if (raw.f !== 1 && raw.f !== -1) coopBad(); out.f = raw.f; }
+  if (raw.h !== undefined || raw.m !== undefined) { out.m = coopInt(raw.m, 1, 1e6); out.h = coopInt(raw.h, 0, out.m); }
+  if (raw.a !== undefined) { if (typeof raw.a !== 'boolean') coopBad(); if (raw.a) out.a = true; }
+  return out;
 }
 /** One damage claim: the creature's id, how much, its element, a crit, the skill it came from. */
 export function coopHit(raw) {
@@ -604,15 +622,16 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
    * session said `coop: true`, is in a party, and (snap) hosts that area or (hits) has a host there that is not itself.
    */
   const coopRequest = async (verb, session, req, reply) => {
-    if (verb !== 'snap' && verb !== 'hits') throw fail(404, 'Not found.');
+    if (verb !== 'snap' && verb !== 'hits' && verb !== 'pals') throw fail(404, 'Not found.');
     if (!session.coop) throw fail(409, 'Update the game to share creatures.');
-    consume(session, verb === 'snap' ? 'coopSnap' : 'coopHits', verb === 'snap' ? COOP.snapsPerSec : COOP.hitsPerSec, 1000);
+    consume(session, `coop-${verb}`, verb === 'snap' ? COOP.snapsPerSec : verb === 'hits' ? COOP.hitsPerSec : COOP.palsPerSec, 1000);
     const data = await readCoopBody(req);
     session.lastSeen = now();
     const me = session.player.id;
     const p = session.party ? parties.get(session.party) : null;
     if (!p) throw fail(409, 'You are not in a party.');
-    consume(p, 'coop', COOP.partyPerSec, 1000);
+    // Companions are each owner's own and light: they do not spend the party's creature budget.
+    if (verb !== 'pals') consume(p, 'coop', COOP.partyPerSec, 1000);
     const area = coopAreaOf(session);
     if (typeof data.area !== 'string' || !AREA.test(data.area)) throw fail(400, 'Invalid co-op message.');
     if (data.area !== area) throw fail(409, 'Not in that place.');
@@ -621,6 +640,15 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     // sends them to one who blocked it (a party should never hold such a pair, but the relay does not rely on that).
     const apart = o => blocks(o, session) || blocks(session, o);
     const others = coopSessions(p).filter(s => s.player.id !== me && coopAreaOf(s) === area && !apart(s));
+    if (verb === 'pals') {
+      // Each owner is the authority for its own companions: relayed to the party's others in its area, any role.
+      coopKeys(data, ['area', 'pals']);
+      if (!Array.isArray(data.pals) || data.pals.length > COOP.maxPals) coopBad();
+      const pals = data.pals.map(coopPal);
+      const msg = { type: 'coop-pals', from: me, area, pals };
+      for (const s of others) if (s.stream) send(s.stream, msg);
+      reply(200, { ok: true, to: others.length }); return;
+    }
     if (verb === 'snap') {
       if (!host || host.host !== me) throw fail(409, 'Not the host here.');
       coopKeys(data, ['area', 'seq', 'kf', 'mobs', 'gone', 'ev', 'tier']);

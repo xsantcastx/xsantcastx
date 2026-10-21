@@ -1,4 +1,5 @@
 import type { CoopAreas, CoopHit, CoopHitsMsg, CoopSnapBody, CoopSnapMsg } from './coop-protocol';
+import type { CoopPal } from './coop-pals';
 
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
@@ -12,6 +13,8 @@ export interface RoomPlayer {
   hp?: number; maxHp?: number;
   /** Protocol 4: not signed in (a guest name, no friends). Absent from an older room. */
   guest?: boolean;
+  /** Protocol 5: the pet and Glim beside it, cosmetic (play/social/coop-pals.ts). */
+  pals?: string;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
@@ -53,7 +56,7 @@ export type ReportReason = 'spam' | 'abuse' | 'cheating' | 'name' | 'other';
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
 export interface RoomProfile { vocation?: string; look?: string; level?: number }
 /** The top-down presence beyond x/y/zone/facing/animation. */
-export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number }
+export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string }
 export interface RoomOptions {
   /**
    * Always on (owner 2026-10-21: "the chat should always be connected"): a dropped stream, an expired session or a
@@ -85,6 +88,8 @@ export interface RoomOptions {
   onCoopSnap?: (msg: CoopSnapMsg) => void;
   /** Protocol 5: members' damage claims reached this host. */
   onCoopHits?: (msg: CoopHitsMsg) => void;
+  /** Protocol 5: a party member's companions (in this area) arrived. */
+  onCoopPals?: (msg: { from: string; area: string; pals: CoopPal[] }) => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
@@ -141,6 +146,8 @@ export function cleanPresence(p: RoomPresence): RoomPresence {
     const max = Math.min(1e6, Math.round(p.maxHp as number));
     out.maxHp = max; out.hp = Math.max(0, Math.min(max, Math.round(p.hp as number)));
   }
+  // Companions (protocol 5): the cosmetic offsets string, as the room accepts it (an older room ignores it).
+  if (typeof p.pals === 'string' && /^[a-z0-9:,-]{0,96}$/.test(p.pals)) out.pals = p.pals;
   return out;
 }
 
@@ -343,6 +350,7 @@ export class SocialRoom {
     }
     if (data['type'] === 'coop-snap' && typeof data['from'] === 'string' && Array.isArray(data['mobs'])) this.options.onCoopSnap?.(data as unknown as CoopSnapMsg);
     if (data['type'] === 'coop-hits' && typeof data['from'] === 'string' && Array.isArray(data['hits'])) this.options.onCoopHits?.(data as unknown as CoopHitsMsg);
+    if (data['type'] === 'coop-pals' && typeof data['from'] === 'string' && typeof data['area'] === 'string' && Array.isArray(data['pals'])) this.options.onCoopPals?.(data as unknown as { from: string; area: string; pals: CoopPal[] });
   }
   /** The room shares creatures (protocol 5) and the Keeper is in it. */
   get canCoop(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && !!this.snapshot.party; }
@@ -350,7 +358,9 @@ export class SocialRoom {
   coopSnap(body: CoopSnapBody): Promise<boolean> { return this.coopPost('snap', body); }
   /** Post this member's damage claims. */
   coopHits(body: { area: string; hits: CoopHit[] }): Promise<boolean> { return this.coopPost('hits', body); }
-  private async coopPost(verb: 'snap' | 'hits', body: unknown): Promise<boolean> {
+  /** Post this Keeper's own companions to the party in its area. */
+  coopPals(body: { area: string; pals: CoopPal[] }): Promise<boolean> { return this.coopPost('pals', body); }
+  private async coopPost(verb: 'snap' | 'hits' | 'pals', body: unknown): Promise<boolean> {
     if (!this.canCoop || !this.token || this.paused) return false;
     try {
       const response = await this.send(`${this.endpoint}/coop/${verb}`, {
@@ -500,7 +510,9 @@ export class SocialRoom {
     if (!this.token || this.paused || this.updating) return;
     const extra = presence ? cleanPresence({ ...(this.wanted?.profile ?? {}), ...presence }) : {};
     const body = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, zone, facing: facing === -1 ? -1 : 1, animation: KEEPER_ANIMATIONS.has(animation) ? animation : 'idle', ...extra };
-    const key = JSON.stringify(body), t = this.now(), since = t - this.lastUpdate;
+    // The cosmetic companions (protocol 5) ride along on updates that go anyway; they never cause one on their own.
+    const { pals: _pals, ...moved } = body as typeof body & { pals?: string };
+    const key = JSON.stringify(moved), t = this.now(), since = t - this.lastUpdate;
     // Sharing creatures (protocol 4), the host aims at where members stand: their presence goes a little oftener.
     if (since < (this.canCoop ? COOP_MOVE_MS : MOVE_MS)) return;
     if (key === this.lastBody && since < HEARTBEAT_MS) return;

@@ -120,6 +120,7 @@ import { chestSetPiece } from '../../shared/rpg/set-items';
 import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
 import { TdCoop, type CoopRole } from './td-coop';
 import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
+import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
 import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
@@ -271,6 +272,11 @@ export class TopDownEngine {
   /** The co-op spec's quiet: no wild spawns (only what it lays). */
   private fxCoopQuiet = false;
   private coopRoleSeen = '';
+  /** Other Keepers' companions (coop-pals.ts): the party's from its channel, everyone's pet and Glim from presence. */
+  private readonly palBook = new PalBook();
+  private palAcc = 0;
+  private palKey = '';
+  private palAt = -1e9;
   private seamSlain = false;
   private seamLast = '';
   private seamSeen = '';
@@ -569,6 +575,10 @@ export class TopDownEngine {
       // Point the Keeper's own attack at it (its staff, its blade): the real auto-attack path.
       target: (id: string) => { const m = this.mobs.mobs.find(x => x.nid === id); this.mobs.target = m ?? null; return !!m; },
       hp: () => Math.round(this.hp),
+      // Companions: the other Keepers' drawn here, this Keeper's own as sent, and `n` raised skeletons at his side.
+      pals: () => this.palsShown(),
+      mine: () => this.myPals(),
+      raise: (n = 2) => { for (let i = 0; i < n; i++) this.mobs.minions.push({ id: 9000 + i, x: this.player.x + (i ? -16 : 16), y: this.player.y + 6, hp: 40, maxHp: 40, dmg: [3, 5], cd: .6, t: 1, face: 1, life: Infinity, hit: 0, target: null }); return this.mobs.minions.length; },
     };
   }
 
@@ -1051,6 +1061,65 @@ export class TopDownEngine {
   coopSnap(msg: CoopSnapMsg): void { this.coop.snap(msg); }
   /** Protocol 4: members' claims reached this host. */
   coopHits(msg: CoopHitsMsg): void { this.coop.hits(msg); }
+  /** Protocol 5: a party member's own companions (pet, beasts, skeletons, wisps, beacon, Glim) reached this screen. */
+  coopPals(msg: { from: string; area: string; pals: CoopPal[] }): void {
+    if (msg.area === this.peerArea()) this.palBook.take(msg.from, msg.pals, performance.now(), this.still);
+  }
+  /** Presence's cosmetic companions (the pet and Glim as offsets: everyone sees them, party or not). */
+  palsPresence(): string { return encodePresencePals(this.player, this.myPals()); }
+  /** This Keeper's own companions as the party sees them: each owner is the authority for its own. */
+  private myPals(): CoopPal[] {
+    const out: CoopPal[] = [];
+    const b = this.pet;
+    if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
+    this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
+    for (const k of this.mobs.minions) out.push({ i: `k${k.id % 1e6}`, k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
+    this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
+    if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
+    return cleanPals(out);
+  }
+  /** Five times a second while others of the party share the area: this Keeper's companions, when they changed (a heartbeat a second). */
+  private tickPals(dt: number): void {
+    if (!this.coop.sharing) return;
+    this.palAcc += dt * 1000;
+    if (this.palAcc < PAL_MS) return;
+    this.palAcc = 0;
+    const pals = this.myPals(), key = JSON.stringify(pals), now = performance.now();
+    if (key === this.palKey && now - this.palAt < PAL_HEARTBEAT_MS) return;
+    this.palKey = key; this.palAt = now;
+    void this.options.onCoopPals?.({ area: this.peerArea(), pals });
+  }
+  /** Another Keeper's companion, with the painter its own owner uses. */
+  private drawPal(p: CoopPal, x: number, y: number, moving: boolean): void {
+    const c = this.ctx, time = this.time + (p.i.charCodeAt(0) % 5) * .3;
+    if (p.k === 'pet') {
+      if (!p.t) return;
+      const body = { id: p.t, x, y, face: p.f, t: time, doing: p.a ? 'fight' : 'follow', moving, carried: null, feel: null, feelT: 0, hopT: 0, hurtT: 0, cd: 0 } as unknown as PetBody;
+      this.drawPet(body);
+    } else if (p.k === 'beast' || p.k === 'stampede') drawBeast(c, { x, y, face: p.f, age: 1, kind: p.k === 'stampede' ? 'stampede' : 'called' }, time, this.still);
+    else if (p.k === 'skel') this.drawRaised({ x, y, face: p.f, t: time + 1, life: Infinity, hit: 0, hp: p.h ?? 1, maxHp: p.m ?? 1 } as unknown as Minion);
+    else if (p.k === 'wisp') drawLampState(c, { ward: 0, lastLight: 0, wisps: [{ x, y }], mobs: [] }, { x, y }, time, this.still);
+    else if (p.k === 'beacon') drawBeacon(c, { x, y, t: 1 }, time, this.still);
+    else if (p.k === 'glim') {
+      const gx = Math.round(x), gy = Math.round(y);
+      c.globalCompositeOperation = 'lighter';
+      glowSquare(c, gx, gy, 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, .32);
+      c.globalCompositeOperation = 'source-over';
+      const sprite = glimFrame(this.still ? 'mid' : GLIM_FLAP[Math.floor(time * 8) % 4], 'calm');
+      if (sprite) c.drawImage(sprite, gx - Math.floor((GLIM_W + 2) / 2), gy - Math.floor((GLIM_H + 2) / 2));
+    }
+  }
+  /** The other Keepers' companions drawn now (the e2e reads it): the party's whole list, everyone else's pet and Glim. */
+  palsShown(): { owner: string; k: string; t: string; x: number; y: number }[] {
+    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number }[] = [];
+    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y) });
+    for (const p of this.peers.drawn) {
+      if (this.palBook.fresh(p.id, now)) continue;
+      for (const q of decodePresencePals(this.peers.palsOf(p.id))) out.push({ owner: p.id, k: q.k, t: q.t, x: Math.round(p.x + q.dx), y: Math.round(p.y + q.dy) });
+    }
+    return out;
+  }
   /** Protocol 4: this Keeper's part in its area ('solo', 'host' or 'member'). */
   get coopRoleNow(): CoopRole { return this.coop.role; }
   /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
@@ -2186,6 +2255,7 @@ export class TopDownEngine {
     this.updateSexton(dt);
     this.updateSmoke(dt);
     this.updateFight(dt);
+    this.tickPals(dt);
     this.updatePet(dt);
     this.updateGlim(dt);
     this.updateGuide(dt);
@@ -2616,6 +2686,7 @@ export class TopDownEngine {
     this.mobs.selfAway = true;
     try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
     this.coop.after(dt);
+    this.tickPals(dt);
   }
 
   private updateFight(dt: number): void {
@@ -2781,6 +2852,18 @@ export class TopDownEngine {
     for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeast(c, b, this.time, this.still) });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
+    // Other Keepers' companions (coop-pals.ts), each with its owner's painter.
+    {
+      const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id));
+      for (const sp of this.palBook.shown(now)) if (drawn.has(sp.owner) && inView(sp.x, sp.y)) items.push({ y: sp.y, draw: () => this.drawPal(sp.pal, sp.x, sp.y, sp.moving) });
+      for (const peer of this.peers.drawn) {
+        if (this.palBook.fresh(peer.id, now)) continue;
+        for (const q of decodePresencePals(this.peers.palsOf(peer.id))) {
+          const x = peer.x + q.dx, y = peer.y + q.dy;
+          if (inView(x, y)) items.push({ y, draw: () => this.drawPal({ i: q.k, k: q.k, ...(q.t ? { t: q.t } : {}), x, y, f: q.dx > 0 ? -1 : 1 }, x, y, peer.moving) });
+        }
+      }
+    }
     // Other Keepers (the Hearth room): y-sorted with the world, but always under the local Keeper where they overlap.
     const view = { scale: s, camX: cam.x, camY: cam.y, time: this.time };
     for (const p of this.peers.drawn) {

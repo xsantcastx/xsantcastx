@@ -392,7 +392,7 @@ not bite. A boss's call at half life now shows a sigil for **0.6 s** (`CALL_TELL
 before it appears; the count, the threshold and the creatures are unchanged. Damage, rates, ranges and life are
 untouched.
 
-**Party bosses (2026-10-21, Hearth protocol 4; play/td/td-coop.ts, play/social/coop-rules.ts).** In a party sharing an
+**Party bosses (2026-10-21, Hearth protocol 5; play/td/td-coop.ts, play/social/coop-rules.ts).** In a party sharing an
 area, every boss (`rank: 'boss'`) and the Seam Eater is simulated by the area's host, and its life grows **+60% for
 each other member of the party present in that area** (D2-like): ×1, ×1.6, ×2.2, ×2.8 for one to four
 (`coopBossLife`, `BOSS_LIFE_PER_MEMBER = 0.6`). The count is the room's own (members whose presence names the area),
