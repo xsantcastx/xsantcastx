@@ -31,6 +31,15 @@ export class KeeperLookService {
     return this.subject.asObservable();
   }
 
+  /**
+   * What the next Glass opens on, without saving anything: the character list's summary of a Keeper whose look never
+   * reached this device or the cloud (play-shell's recovery Glass). Held in memory only — a stored, unmade look would
+   * merge over the real one on a device that still has it. {@link takeDraft} hands it to the Glass once.
+   */
+  private seed: KeeperLook | null = null;
+  prefill(look: KeeperLook | null): void { this.seed = look ? coerceLook(look) : null; }
+  takeDraft(): KeeperLook | null { const seed = this.seed; this.seed = null; return seed; }
+
   /** Keep a look chosen at the Glass (marks it made). */
   choose(look: KeeperLook, at = Date.now()): void {
     this.hydrate();

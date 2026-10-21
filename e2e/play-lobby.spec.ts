@@ -143,6 +143,44 @@ test.describe('login and character select', () => {
     await expect(lobby(page, 'select').locator('[data-character]')).toHaveCount(2);
   });
 
+  test('a Thornstrider made at the Glass is still a Thornstrider after a reload, on the list and in the world', async ({ page }) => {
+    // Owner, 2026-10-21: "I created a ranger … when logging back in, the character looked like a warlock".
+    test.setTimeout(120_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await legacySave(page);
+    await page.evaluate(() => localStorage.setItem('eclipse-lobby-guest', '1'));
+    await page.goto('/play?td=1&hour=12');
+    const list = lobby(page, 'select');
+    await expect(list).toBeVisible({ timeout: 30000 });
+    await list.locator('[data-lobby-new]').click();
+    const glass = lobby(page, 'create');
+    await expect(glass).toBeVisible({ timeout: 20000 });
+    await glass.locator('[data-vocation="thornstrider"]').click();
+    await glass.locator('.km__name input').fill('Rue');
+    await glass.locator('.km__keep').click();
+    await inWorld(page);
+    const id = await page.evaluate(() => localStorage.getItem('eclipse-active-character'));
+    expect(id).toMatch(/^k[a-z0-9]{7}$/);
+    const saved = () => page.evaluate(k => ({
+      look: JSON.parse(localStorage.getItem(`godforge-keeper-look@${k}`) || '{}').vocation,
+      row: JSON.parse(localStorage.getItem('eclipse-characters') || '{"chars":{}}').chars[k as string]?.vocation,
+    }), id);
+    expect(await saved()).toEqual({ look: 'thornstrider', row: 'thornstrider' });
+
+    await page.reload();
+    await expect(list).toBeVisible({ timeout: 30000 });
+    const rue = list.locator(`[data-character="${id}"]`);
+    await expect(rue).toHaveAttribute('data-name', 'Rue');
+    await expect(rue.locator('.char__line').first()).toContainText('Thornstrider');
+    await rue.click();
+    await list.locator('[data-lobby-enter]').click();
+    await inWorld(page);
+    expect(await saved()).toEqual({ look: 'thornstrider', row: 'thornstrider' });
+    await canvas(page).focus();
+    await page.keyboard.press('c');
+    await expect(page.locator('#ksheet-title')).toContainText('Rue · Thornstrider', { timeout: 10000 });
+  });
+
   test('delete needs the typed name, and the other Keeper stays', async ({ page }) => {
     test.setTimeout(120_000);
     await page.emulateMedia({ reducedMotion: 'reduce' });

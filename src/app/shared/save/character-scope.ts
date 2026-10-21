@@ -60,12 +60,18 @@ export const LOCAL_CHARACTER_KEYS: ReadonlySet<string> = new Set([
   'godforge-reset-at',
   'godforge-realm-era',
   'godforge-save-backup',
+  // Set by the gateway when this character holds writes the cloud may not have seen (written signed out, behind
+  // another device's lease, or not yet flushed when the page left). Any signed-in page pushes such a character.
+  'godforge-cloud-pending',
   // Read and written by their own services through activeCharacterKey (not the gateway), listed so deleting a
   // character takes them too: the "while you were away" stamp, the worn title, the tracked map pin.
   'godforge-away',
   'godforge-worn-title',
   'eclipse-delve-track',
 ]);
+
+/** Device-local, per character: "this character may hold writes the cloud has not seen" (see the gateway). */
+export const CLOUD_PENDING_KEY = 'godforge-cloud-pending';
 
 /** A character id: short, lowercase, safe in a localStorage key and a Firestore path segment. */
 export function isCharacterId(id: unknown): id is string {

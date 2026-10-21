@@ -108,6 +108,7 @@ import {
 import {
   ACTIVE_CHARACTER_KEY,
   CHARACTER_ROSTER_KEY,
+  CLOUD_PENDING_KEY,
   LOCAL_CHARACTER_KEYS,
   PRIMARY_CHARACTER,
   characterDbName,
@@ -191,6 +192,12 @@ export const SAVE_BACKUP_KEY = 'godforge-save-backup';
  * See `remove()` for why this is on disk rather than in memory.
  */
 const PENDING_DELETE_KEY = 'godforge-pending-deletes';
+
+/**
+ * Device-local, account-wide: the uid this browser last swept EVERY character it holds for (see
+ * {@link GameStateGateway.pushOtherCharacters}). Saves older than the per-character pending mark are pushed once.
+ */
+export const SEED_SWEEP_KEY = 'godforge-seed-sweep';
 
 export const STATE_ENTRIES: readonly StateEntry[] = [
   ...SYNCED_BLOBS.map((b: SyncedBlob): StateEntry => ({
@@ -614,6 +621,29 @@ export class GameStateGateway {
     // deletion has to go, or the next attach would delete what was just written.
     this.clearPendingDelete(key);
     this.markDirty(key);
+    this.notePending(key);
+  }
+
+  /** Set once this page has marked its character as holding writes the cloud may not have (see CLOUD_PENDING_KEY). */
+  private pendingNoted = false;
+
+  /**
+   * Mark this page's character "the cloud may not have this" on its first saved write (one localStorage write per
+   * page, not per write). Cleared only once a push lands with nothing left queued, so a character written signed
+   * out, behind another device's lease, or by a page that reloaded before its flush keeps the mark — and any later
+   * signed-in page, whichever character it plays, pushes it ({@link pushOtherCharacters}).
+   */
+  private notePending(key: string): void {
+    if (this.pendingNoted || this.retired || !BY_KEY.has(key) || !isCharacterScoped(key, STATE_KEYS)) return;
+    this.pendingNoted = true;
+    try { localStorage.setItem(this.sk(CLOUD_PENDING_KEY), '1'); } catch { /* private mode: the attach diff still pushes */ }
+  }
+
+  /** Everything this page wrote is in the cloud: lift the mark. */
+  private clearPendingMark(): void {
+    if (!this.attached || this.dirty.size > 0 || this.retired) return;
+    this.pendingNoted = false;
+    try { localStorage.removeItem(this.sk(CLOUD_PENDING_KEY)); } catch { /* private mode */ }
   }
 
   /**
@@ -1077,8 +1107,112 @@ export class GameStateGateway {
       });
     } else {
       this.setLink('synced');
+      this.clearPendingMark();
     }
+    // Every OTHER character this device holds that the cloud may be missing (made or played signed out, behind the
+    // lease, or a page that reloaded before its flush). Before this, a character's documents went up only from a
+    // page playing it while signed in, so a Keeper made on one page and opened next on another device had a roster
+    // row and nothing else (owner, 2026-10-21: the Ashguard `kzxyxtrw` had no documents at all).
+    await this.pushOtherCharacters(uid, fs);
     return { adopted, seeded };
+  }
+
+  /**
+   * Push the local save of every other character this device holds and the cloud may be missing. Never adopts
+   * anything locally (nothing is ever written into a character the page is not playing); writes only what the cloud
+   * lacks or would gain by the merge, and the ledger only when the cloud has none (its op log merges in a
+   * transaction on the character's own page). Characters with the pending mark, plus — once per account per browser —
+   * every character, for saves written before the mark existed.
+   */
+  private async pushOtherCharacters(uid: string, fs: FirestoreHandle): Promise<void> {
+    if (!this.isBrowser || !this.leases.mayWrite) return;
+    let ids: string[] = [];
+    let sweep = false;
+    try {
+      sweep = localStorage.getItem(SEED_SWEEP_KEY) !== uid;
+      const roster = this.read(CHARACTER_ROSTER_KEY);
+      const chars = isRecord(roster) && isRecord(roster['chars']) ? roster['chars'] : {};
+      const known = new Set<string>([PRIMARY_CHARACTER, ...Object.keys(chars)]);
+      for (const id of known) {
+        if (id === this.character || !isCharacterId(id)) continue;
+        const row = chars[id];
+        if (isRecord(row) && typeof row['deletedAt'] === 'number' && row['deletedAt'] > 0) continue;
+        if (!this.hasLocalSave(id)) continue;
+        if (sweep || localStorage.getItem(characterStorageKey(CLOUD_PENDING_KEY, id)) !== null) ids.push(id);
+      }
+    } catch {
+      return;
+    }
+    let ok = true;
+    for (const id of ids) {
+      if (this.fs !== fs || this.uid !== uid) return;
+      try {
+        await this.zone.runOutsideAngular(() => this.pushCharacter(uid, fs, id));
+        try { localStorage.removeItem(characterStorageKey(CLOUD_PENDING_KEY, id)); } catch { /* private mode */ }
+      } catch {
+        ok = false; // Offline or refused: the mark stays, the next attach tries again.
+      }
+    }
+    if (ok && sweep) {
+      try { localStorage.setItem(SEED_SWEEP_KEY, uid); } catch { /* private mode: swept again next time */ }
+    }
+  }
+
+  /** One other character's local save into its own documents (see {@link pushOtherCharacters}). */
+  private async pushCharacter(uid: string, fs: FirestoreHandle, id: string): Promise<void> {
+    const entries = STATE_ENTRIES.filter(e => isCharacterScoped(e.key, STATE_KEYS));
+    const byPath = new Map<string, StateEntry>(entries.map(e => [`${e.collection}/${e.doc}`, e]));
+    const cloud = new Map<string, unknown>();
+    let resetAt = 0;
+    for (const collection of [...new Set(entries.map(e => e.collection))]) {
+      const snap = await fs.api.getDocs(fs.api.collection(fs.db, 'users', uid, ...characterDocPath(id, collection, '').slice(0, -1)));
+      snap.forEach(doc => {
+        if (collection === RESET_COLLECTION && doc.id === RESET_DOC) { resetAt = coerceResetStamp(doc.data()).at; return; }
+        const entry = byPath.get(`${collection}/${doc.id}`);
+        if (entry) cloud.set(entry.key, entry.enveloped ? unwrapBlob(doc.data()) : doc.data());
+      });
+    }
+    // Wiped on another device after this device's copy: the character's own page adopts the wipe; pushing would undo it.
+    const localAt = Number(localStorage.getItem(characterStorageKey(RESET_STAMP_KEY, id)));
+    if (resetAt > (Number.isFinite(localAt) ? localAt : 0)) return;
+
+    const writes: { path: string[]; body: Record<string, unknown> }[] = [];
+    for (const entry of entries) {
+      const raw = localStorage.getItem(characterStorageKey(entry.key, id));
+      const local = raw === null ? null : safeParse(raw);
+      if (local === null) continue;
+      const held = cloud.get(entry.key) ?? null;
+      if (held !== null && entry.key === ECONOMY_STATE_KEY) continue;
+      const merged = applyStrategy(entry, held, local, 'merge');
+      const resolved = entry.identify ? entry.identify(merged, uid) : merged;
+      if (resolved === null || resolved === undefined) continue;
+      if (held !== null && stable(entry, resolved) === stable(entry, held)) continue;
+      writes.push({ path: characterDocPath(id, entry.collection, entry.doc), body: envelope(entry, resolved) });
+    }
+    if (writes.length === 0) return;
+    const batch = fs.api.writeBatch(fs.db);
+    for (const w of writes) batch.set(fs.api.doc(fs.db, 'users', uid, ...w.path), w.body);
+    try {
+      await batch.commit();
+    } catch {
+      // Atomic: one refused document (the XP rule) fails them all. One at a time, so only that one is lost.
+      let failure: unknown = null;
+      for (const w of writes) {
+        try { await fs.api.setDoc(fs.api.doc(fs.db, 'users', uid, ...w.path), w.body); } catch (err) { failure ??= err; }
+      }
+      if (failure) throw failure;
+    }
+  }
+
+  /**
+   * Push what is queued now rather than on the debounce — for a moment that must not be lost to a closed tab (a new
+   * Keeper made at the Glass). A no-op while signed out or while an attach is still deciding (its own push carries
+   * everything then).
+   */
+  async pushNow(): Promise<void> {
+    if (!this.attached || this.decisionPending || this.dirty.size === 0) return;
+    this.cancelFlush();
+    await this.pushDirty({ batched: true });
   }
 
   /**
@@ -1491,6 +1625,7 @@ export class GameStateGateway {
 
       this.retryMs = RETRY_BASE_MS;
       this.setLink('synced');
+      this.clearPendingMark();
     } catch (err) {
       // Put them back and try again later. Re-adding rather than restoring the
       // old set on purpose: anything written during the attempt is already in
