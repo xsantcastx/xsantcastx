@@ -135,7 +135,8 @@ describe('td-seek: Light and the Seek as spells', () => {
   }
 
   it('they sit on the common page with their words; Light is free from the start, the Seek opens at level 8', () => {
-    expect(treeSkills('warlock', COMMON_TREE)).toEqual(['light', 'seek']);
+    // The Waygate (td-waygate.ts) shares the page: a town portal, early.
+    expect(treeSkills('warlock', COMMON_TREE)).toEqual(['light', 'waygate', 'seek']);
     expect(CLASS_SKILLS.warlock).toContain('light');
     expect(CLASS_SKILLS.warlock).toContain('seek');
     expect(SKILLS.light.words).toBe('lum');

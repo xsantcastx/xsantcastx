@@ -19,6 +19,12 @@ the hub stays the **Waystone Hall**; only the destinations are Realms. See "Nami
 
 ## 1. Harbourmasters (build-now spec — the first build)
 
+**Built (Phase 1, branch harbour).** `play/td/td-harbour.ts` (piers, board builder, fares, the story-lock data hook, off by
+default), `play/harbour/` (the Sailing Board body and the voyage), a Harbourmaster stood on each pier by `TdWorld`, the
+anchor pin on the Map, Seek by "harbour" or the master's name. Fares are the formula's (Ember Harbour is 70, not the table's
+20: `huntGold(1, 150)` is 65). Cinderport already had a task giver titled Harbourmaster (Tamsin Coyle): Marit Salt keeps the
+board beside her.
+
 ### 1.1 What exists
 Ships are `ContinentWay { ship: true, to, arrive, along? }` on a continent or village (`play/td/continent.ts`). Each is a
 bare place entry reading "ship to X": no list, no price, no reasons. Today: Ember Harbour ↔ Pyrehold/Cinderport,

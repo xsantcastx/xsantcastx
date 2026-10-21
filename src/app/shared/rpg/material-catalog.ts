@@ -173,6 +173,8 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'rejuvenation-potion': 'Rejuvenation Potion',
   // Spellstones (shared/spellstones): the blank they are cut from (a satchel stack; the stones live in their pouch).
   'basalt-blank': 'Basalt Blank',
+  // The Town Portal scroll (shared/waygate/waygate-scroll.ts): read from the satchel, it opens a Waygate.
+  'waygate-scroll': 'Waygate Scroll',
   // The Lost Cabinets (shared/cabinets/cabinets.model.ts CABINET_ITEMS; cabinets.spec pins the names together).
   'curio-unstruck-bell': 'The Unstruck Bell',
   'curio-jar-of-noon': 'A Jar of Noon',

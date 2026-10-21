@@ -7,6 +7,8 @@
  * 100%, the Whirl's 60% a turn) and by the Ember Brand while it burns. Crowd control on a boss lasts a fifth as long.
  */
 
+import { handsMult } from '../../shared/rpg/hands-rules';
+
 /** Bosses take this share of a stun or a taunt (design-bible §4.7: "bosses take 20% of root/slow/blind duration"). */
 export const BOSS_CC = .2;
 /** How much of a creature's half-width the reach forgives (a broad body is reached at its flank, not its middle). */
@@ -48,14 +50,16 @@ export const WEAPON_SD_PER_POINT = .25;
 
 /**
  * A held weapon's swing: weapon power = its Strike (the legacy head stat) + a quarter of its Spell Damage % (the
- * affixed head stat); the flat is WEAPON_FLAT_PER_POINT × what that has over the starter edge's 1. `null` is no weapon.
+ * affixed head stat); the flat is WEAPON_FLAT_PER_POINT × what that has over the starter edge's 1; `hands: 2` (a bow, a
+ * staff, a greatsword, a maul, a polearm) multiplies the blow by TWO_HAND_MULT. `null` is no weapon.
  */
-export function weaponSwing(w: { strikePower?: number; spellDamage?: number } | null): WeaponSwing {
+export function weaponSwing(w: { strikePower?: number; spellDamage?: number; hands?: number } | null): WeaponSwing {
   if (!w) return FISTS;
   const sp = Number.isFinite(w.strikePower) ? Math.max(0, w.strikePower as number) : 0;
   const sd = Number.isFinite(w.spellDamage) ? Math.max(0, w.spellDamage as number) : 0;
   const power = sp + sd * WEAPON_SD_PER_POINT;
-  return { flat: Math.round(Math.max(0, power - STARTER_WEAPON_POWER) * WEAPON_FLAT_PER_POINT), mult: 1 };
+  // Two hands (shared/rpg/item-hands.ts): the whole blow lands TWO_HAND_MULT harder — the price is the empty off-hand.
+  return { flat: Math.round(Math.max(0, power - STARTER_WEAPON_POWER) * WEAPON_FLAT_PER_POINT), mult: handsMult(w.hands) };
 }
 
 /**

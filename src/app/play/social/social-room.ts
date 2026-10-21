@@ -15,6 +15,8 @@ export interface RoomPlayer {
   guest?: boolean;
   /** Protocol 5: the pet and Glim beside it, cosmetic (play/social/coop-pals.ts). */
   pals?: string;
+  /** Protocol 5: its town portal, if one stands (play/td/td-waygate.ts encodeGate): party members may step through. */
+  gate?: string;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
@@ -56,7 +58,7 @@ export type ReportReason = 'spam' | 'abuse' | 'cheating' | 'name' | 'other';
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
 export interface RoomProfile { vocation?: string; look?: string; level?: number }
 /** The top-down presence beyond x/y/zone/facing/animation. */
-export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string }
+export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string; gate?: string }
 export interface RoomOptions {
   /**
    * Always on (owner 2026-10-21: "the chat should always be connected"): a dropped stream, an expired session or a
@@ -148,6 +150,8 @@ export function cleanPresence(p: RoomPresence): RoomPresence {
   }
   // Companions (protocol 5): the cosmetic offsets string, as the room accepts it (an older room ignores it).
   if (typeof p.pals === 'string' && /^[a-z0-9:,-]{0,96}$/.test(p.pals)) out.pals = p.pals;
+  // A town portal (protocol 5, td-waygate encodeGate): the same plain characters ('' when none stands).
+  if (typeof p.gate === 'string' && /^[a-z0-9:-]{0,96}$/.test(p.gate)) out.gate = p.gate;
   return out;
 }
 

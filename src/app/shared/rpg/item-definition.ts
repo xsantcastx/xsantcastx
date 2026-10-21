@@ -15,6 +15,7 @@ import {
 } from './item.model';
 import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { UNIQUE_DEFINITIONS } from './unique-items';
+import { RANGER_DEFINITIONS } from './ranger-items';
 import { STARTER_TOOL_DEFINITIONS, TOOL_DEFINITIONS } from '../skills/tool-items';
 import {
   bandFor,
@@ -462,6 +463,8 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
   ...KEEPER_DEFINITIONS,
   ...ARTBIBLE_DEFINITIONS,
+  // The one-handed crossbows and the quiver (ranger-items.ts; item-hands.ts).
+  ...RANGER_DEFINITIONS,
   ...UNIQUE_DEFINITIONS,
   // Pickaxe / axe / sickle / staff, tiers I-IV — forged at the bench, read by
   // the skills module's toolTiers. Soulbound, no rolls.

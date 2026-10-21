@@ -16,6 +16,7 @@ import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
 import { graveyardZone, regionZone, zoneLevel, zoneOf } from './td-zones';
 import { onNightroad, onNook } from './td-dark';
+import { PIERS } from './td-harbour';
 
 export const WORLD_CHUNK = 16;
 /** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
@@ -97,6 +98,15 @@ export class TdWorld implements TdLevel {
       this.allStalls.push({ station: w.station, x: (v.c + w.c) * TILE + TILE / 2, y: (v.r + w.r) * TILE + TILE });
       this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
     }
+    // The Harbourmaster of each pier on this continent (td-harbour): beside the pier's head, talked to like a task giver.
+    for (const pier of PIERS) {
+      if (pier.continent !== def.id) continue;
+      const v = pier.village ? (def.villages ?? []).find(x => x.name === pier.village) : null, p = pier.village ? null : def.places.find(pl => pl.kind === 'harbour');
+      const c0 = v ? v.c : p ? p.c : null, r0 = v ? v.r : p ? p.r : null;
+      if (c0 === null || r0 === null) continue;
+      const x = (c0 + pier.at.c) * TILE + TILE / 2, y = (r0 + pier.at.r) * TILE + TILE, who = pier.master;
+      this.allStalls.push({ station: { id: `giver-${who.id}`, x: 0, label: who.name.toUpperCase(), kind: 'quest', blurb: `${who.name} keeps the sailing board.` }, x, y: y + 8, keeper: { id: who.id, name: who.name, x, y } });
+    }
     for (const way of def.roads) {
       for (let i = 1; i < way.length; i++) {
         const [x0, y0] = way[i - 1], [x1, y1] = way[i], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
@@ -138,6 +148,8 @@ export class TdWorld implements TdLevel {
 
   /** Inside the stamped town (tiles). */
   inTown(c: number, r: number): boolean { return c >= 0 && r >= 0 && c < this.town.cols && r < this.town.rows; }
+  /** Inside the town or a village (tiles), not the clear ground round them: where a Waygate will not open (td-waygate). */
+  inSettlement(c: number, r: number): boolean { return this.inTown(c, r) || !!this.villageAt(c, r); }
   private villageAt(c: number, r: number, margin = 0): Village | undefined {
     for (const v of this.villages) if (c >= v.c0 - margin && r >= v.r0 - margin && c < v.c0 + v.map.cols + margin && r < v.r0 + v.map.rows + margin) return v;
     return undefined;

@@ -258,7 +258,11 @@ function arena(k, state) {
   sys.keeperMaxHp = f.maxHp; sys.maxMana = f.maxMana; sys.mana = state?.mana ?? f.maxMana;
   sys.power = f.power; sys.regen = f.regen; sys.agility = f.haste; sys.castSpeed = f.castSpeed; sys.crit = f.crit;
   sys.defense = f.defense; sys.keeperLevel = k.level; sys.resists = f.resists; sys.pace = 1 + f.levelPace;
-  if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ spellDamage: k.gear.weapon.spellDamage ?? 0 });
+  // Hands (shared/rpg/item-hands.ts): every Keeper here wears the one-handed build every class can — a weapon beside an
+  // off-hand (rollGear rolls all eight wells): the Ashguard's blade and shield, the Warlock's wand, the Lanternwright's
+  // wand and lantern, the Thornstrider's crossbow and quiver. The two-handed path trades the off-hand's affixes for
+  // TWO_HAND_MULT on the basic attack; only the Ashguard's blade adds the weapon's own flat (td-melee weaponSwing).
+  if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ spellDamage: k.gear.weapon.spellDamage ?? 0, hands: 1 });
   sys.elites = false; sys.levelGap = true;
   // Every blow or shot that reaches him (before a ward or Defense drinks it): a kiting Keeper must still be struck.
   { const bite = sys.biteKeeper.bind(sys); sys.biteKeeper = (raw, ...rest) => { if (raw > 0) life.struck++; return bite(raw, ...rest); }; }
