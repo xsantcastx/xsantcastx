@@ -217,14 +217,15 @@ describe('td-seam: the gate, the tiers', () => {
     expect(unlockedBy('ink-abbess', 'normal')).toBeNull();
   });
 
-  it('on Nightmare it rises 2.5× the life and strikes 2× as hard — breath and rings too', () => {
+  it('on Nightmare it rises with the tier\'s life and strikes as hard as the tier says — breath and rings too', () => {
     const w = world();
     w.sys.setTier(DIFFICULTIES.nightmare);
     const m = eater(w, 30, 0, -100, true), base = seamEaterAt(MOBS[SEAM_ID], 30), t = tiered(base, DIFFICULTIES.nightmare);
-    expect(m.def.hp).toBe(Math.round(base.hp * 2.5));
+    const nm = DIFFICULTIES.nightmare;
+    expect(m.def.hp).toBe(Math.round(base.hp * nm.hp));
     expect(m.def.rend!.dmg).toEqual(t.rend!.dmg);
-    expect(m.def.rend!.dmg[0]).toBe(base.rend!.dmg[0] * 2);
-    expect(m.def.ranged!.dmg[1]).toBe(base.ranged!.dmg[1] * 2);
+    expect(m.def.rend!.dmg[0]).toBe(Math.round(base.rend!.dmg[0] * nm.damage));
+    expect(m.def.ranged!.dmg[1]).toBe(Math.round(base.ranged!.dmg[1] * nm.damage));
   });
 });
 

@@ -331,7 +331,7 @@ the "won't fall" tree). The Ashguard is the vocation that makes melee readable i
 | 1 | **Shield Oath** | *brann ka* | 6 s: block 30% (+1%) of blows from the front; blocked blows feed **Resolve** | a brass square rim on the shield | +5% / rank Hold the Line | — |
 | 1 | **Ash Stride** | *brann sha* | dash 3 tiles to a target, knock back 1 tile | three afterimage frames in ash grey | — | the mobility a melee needs against ranged creatures |
 | 2 | **Watch Cry** | *brann orum* | taunt all within 4 tiles for 3 s; you take −15% for 3 s | a ring of brass dashes, a pixel "!" over each taunted head | +6% / rank Shield Oath | protecting the pet and Glim matters |
-| 2 | **Cinder Cleave** | *vael mur* | a 3-tile arc, 120% weapon dmg as fire | a stepped ember crescent | +5% / rank Brand Strike | — |
+| 2 | **Cinder Cleave** | *vael mur* | a 3-tile arc, 100% weapon dmg as fire | a stepped ember crescent | +5% / rank Brand Strike | — |
 | 3 | **Hold the Line** (passive) | — | below 40% life: +20% Defense (+2%) | the outline thickens 1 px | — | the watch doesn't step back |
 | 3 | **Pyre Banner** | *brann teth* | plant a banner 15 s: allies (pet, sworn-sword, minions) within 4 tiles +15% dmg (+1%), creatures are drawn to it | a pixel banner with the Pyre Watch's flame | +4% / rank Watch Cry | a *place* you claim in the dark |
 | 4 | **Ember Blood** (passive) | — | 3% (+0.2%) of damage dealt heals you | — | — | — |
@@ -863,7 +863,8 @@ house decorating, bragging on the Hearth chat; *lore* each has a one-line Bestia
 | 35–60 | Celestial Peaks (unbuilt) | high passes; Frostfang Caverns; Orrery Vault | †Frost Lynx, †Star-Eater Owls, †Orrery Sentinels | †Frostfang Matriarch; Perihelion Engine — *Act IV* |
 | 45–70 | Luminous Expanse (unbuilt) | dunes, mirror oases; Sunken Palace; Mirror Labyrinth | Prism Foragers, Afterimage Moths (eclipse), †Glass Jackals | Pale Refrain — *Act V* |
 
-Rule (from `leveling.md`): monster XP scales with level through HP; a new ground must keep `HP ≈ 30 + 12.5·level`.
+Rule (from `leveling.md`): monster XP scales with level through its authored HP; a new ground must keep `HP ≈ 30 + 12.5·level`
+(authored — the fight raises it by `td-life lifeScale`, loot-and-combat.md §13; `node scripts/combat-sim.mjs --check` holds the bands).
 
 ### 9.2 Dungeon floors — the shape every dungeon follows
 

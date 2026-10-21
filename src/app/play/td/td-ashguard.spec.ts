@@ -232,7 +232,7 @@ describe('td-ashguard: the fight', () => {
     expect(front.hp).toBeLessThan(hp0);
     expect(side.hp).toBeLessThan(hp0);
     expect(back.hp).toBe(hp0);
-    // Watch Blade at rank 5: 17–26, no crit, power 1.
+    // Watch Blade at rank 5: 13–22, no crit, power 1.
     const v = sys.v('watch-blade');
     expect(hp0 - front.hp).toBeGreaterThanOrEqual(v['min']);
     expect(hp0 - front.hp).toBeLessThanOrEqual(v['max']);

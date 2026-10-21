@@ -92,7 +92,7 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { FIRE_BURST, makePack, touchPack } from './td-elites';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
@@ -3105,9 +3105,27 @@ export class TopDownEngine {
   private drawTells(): void {
     const c = this.ctx;
     // For the screenshot spec (e2e/td-fx2-shots.spec.ts): the canvas says when a tell is on the ground.
-    const telling = this.mobs.mobs.some(m => m.tell > 0) ? 'breath' : this.mobs.bursts.some(b => b.el === 'shadow') ? 'rend' : this.mobs.calls.length ? 'call' : '';
+    const telling = this.mobs.mobs.some(m => m.tell > 0 && m.charging) ? 'charge' : this.mobs.mobs.some(m => m.tell > 0) ? 'breath' : this.mobs.bursts.some(b => b.el === 'shadow') ? 'rend' : this.mobs.calls.length ? 'call' : '';
     if (telling !== this.tellSeen) { this.tellSeen = telling; this.canvas.setAttribute('data-boss-tell', telling); }
     for (const m of this.mobs.mobs) {
+      // A gap-closer winding up (MobDef.charge): a lane on the floor from its feet to where the prey stood, filling as
+      // the tell runs down, and the ring it will come down in — step out of the lane's end and it lands on nothing.
+      if (m.tell > 0 && m.charging && m.aim) {
+        const k = this.still ? .7 : 1 - m.tell / BOSS_TELL, tn = FX.ember, beat = this.still ? 1 : Math.floor(this.time * 8) % 2 ? 1 : .7;
+        const ox = Math.round(m.x), oy = Math.round(m.y), ax = Math.round(m.aim.x), ay = Math.round(m.aim.y + 12);
+        const lane = linePixels(ox, oy, ax, ay), front = Math.max(1, Math.round(k * lane.length));
+        lane.forEach((q, i) => {
+          for (const o of [-1, 0, 1]) {
+            if (o && i % 2) continue;
+            c.globalAlpha = (i < front ? .6 : .3) * beat; c.fillStyle = i < front ? tn.body : tn.edge;
+            c.fillRect(q.x + (Math.abs(ay - oy) > Math.abs(ax - ox) ? o : 0), q.y + (Math.abs(ay - oy) > Math.abs(ax - ox) ? 0 : o), 1, 1);
+          }
+        });
+        c.globalAlpha = .9 * beat;
+        c.fillStyle = HOSTILE_EDGE; for (const q of groundRing(CHARGE_HIT)) c.fillRect(ax + q.x, ay + q.y + 1, 1, 1);
+        groundRing(CHARGE_HIT).forEach((q, i) => { c.fillStyle = i % 3 ? tn.edge : tn.body; c.fillRect(ax + q.x, ay + q.y, 1, 1); });
+        continue;
+      }
       const shoot = m.def.ranged;
       if (!(m.tell > 0) || !m.aim || !shoot || !windsUp(m.def)) continue;
       const k = 1 - m.tell / BOSS_TELL, ox = Math.round(m.x + m.face * m.def.w * .3), oy = Math.round(m.y - 2);

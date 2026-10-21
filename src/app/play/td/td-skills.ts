@@ -102,7 +102,7 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   // ── Ember: fire ──
   'ember-bolt': {
     id: 'ember-bolt', kind: 'passive', mana: 0, cd: .9, nameKey: 'skill.ember-bolt', textKey: 'skill.ember-bolt.text',
-    vars: { min: 8, max: 13, range: 7 }, grow: { min: 2, max: 3 }, tree: 'ember', tier: 0, col: 0, req: null,
+    vars: { min: 8, max: 13, range: 7 }, grow: { min: 4, max: 6 }, tree: 'ember', tier: 0, col: 0, req: null,
     icon: I('<rect x="9" y="2" width="5" height="5" fill="#ffd25a"/><rect x="7" y="5" width="5" height="4" fill="#ff8a2e"/><rect x="3" y="9" width="5" height="4" fill="#b06bff"/><rect x="1" y="12" width="3" height="3" fill="#6b3aa0"/>'),
     words: 'vael sha',
   },
