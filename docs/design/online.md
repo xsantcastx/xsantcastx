@@ -58,7 +58,7 @@ per session and pushed by the room, never polled.
 | 3 | **Social graph** — hearth auth, friends list, whispers, block/mute/report, privacy settings, profanity filter | M (live 2026-10-21: hearth protocol 4, rules deployed) | done |
 | 4 | **Guilds** — create/join, ranks, guild chat, tag over the head; guild hall later | L | ⚑ rules + ⚑ Functions |
 | 5 | **Co-op encounters** — party quests/dailies, group bosses (Seam Eater) with scaling, personal loot, host-authority dungeons | L | ⚑ hearth redeploy |
-| 6 | **Trading** — two-sided confirm window, atomic Gold/item swap | M–L | ⚑ Functions + ⚑ rules |
+| 6 | **Trading** + **shared ground drops** — two-sided confirm window, atomic Gold/item swap; Tibia drops everyone sees | M–L (built, §4c) | ⚑ Functions + ⚑ rules + ⚑ hearth (protocol 6) |
 | 7 | **Leaderboards** | S–M | ⚑ rules + ⚑ Functions (scheduled) |
 | 8 | **Scale-out** — WebSocket, per-area rooms/shards, persistence, moderation tooling | L | ⚑ Cloud Run config, maybe a new host |
 
@@ -153,6 +153,7 @@ player count justifies it.
 - **Anti-dupe**: item instance ids (not counts) for gear; the transaction fails if any id is missing; a `trades/{id}` doc is the idempotency key (a retry finds `done`); both clients re-pull their blobs from Firestore after the trade (the gateway's merge must treat the server copy as winning for these two blobs — "admin writes must speak the merge"). Untradeable: quest items, soulbound uniques.
 - **Gold only, never real money.** The player market (async listings) is **owner-only** and not planned here.
 - **Rules ⚑ + Functions ⚑**. **Risk**: **high** — dupes destroy the economy; ship behind a flag with an /admin audit view. **Size**: M–L.
+- **Built 2026-10-21** (branch `trade`), with shared ground drops: see §4c for how it really works.
 
 ### 3.9 Moderation (every phase)
 - **Now (built)**: validation (names, markup, lengths), per-session and per-IP rate limits, room cap, idle drop.
@@ -207,6 +208,116 @@ Built 2026-10-21 in branch `friends`. **Not deployed** (⚑ below).
 | **Tests** | `scripts/social-server.test.mjs` (9 new: identity, ban, friends, privacy, whispers, block, report, profanity, the verifier with a real RSA cert + the REST shapes); karma `social-room.spec` (3 new), `gm-reports.spec`; e2e `e2e/td-friends.spec.ts` (three browsers, fake tokens on localhost only: `SOCIAL_FAKE_AUTH=1`, refused on Cloud Run). |
 
 ⚑ **Owner steps** (scripts/social-deployment.md § Protocol 4): rebuild and redeploy the hearth with `SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b` added **beside** the four origins; deploy the two new rules blocks (`users/{uid}/social/*` read-own/no-write, `player-reports` owner-only) by hand — CI's rules step 403s. IAM: none needed today — the service runs as the default compute service account, which holds `roles/editor` (includes Firestore read/write). Optional hardening: a dedicated service account with only `roles/datastore.user`.
+
+## 4c. Phase 6 as built (trading and shared ground drops, protocol 6) — the reference
+
+Built 2026-10-21 in branch `trade`. **Not deployed** (⚑ scripts/social-deployment.md § Protocol 6: Functions, rules,
+hearth, Hosting — in that order). Owner's notes: *"trading needs to be included"*; *"drag and drop items to drop items
+should appear for everybody like in tibia"*. Both dupe-proof.
+
+**Who is the authority.**
+
+| Piece | Owns | Never does |
+|---|---|---|
+| Hearth (protocol 6) | who trades with whom: it verified both ID tokens, so it writes `trades/{id}` `{a:{uid,player,name}, b:{…}, status:'open', expiresAt}` (create-only); relays offers, Accepts, confirms; tells an area what lies on its ground — after reading `ground-items/{id}` | move an item or a coin; show a ground item the escrow does not hold; hide one it still holds |
+| `tradeApi` Function (functions/src/trade.ts → trade-core.ts) | every move, each in **one Firestore transaction**: `execute`, `cancel`, `drop`, `pickup`; `groundSweep` every 5 min | trust the client's word on what it holds (it re-reads the save) |
+| The client (play/trade) | the window and the flows; pushing its save before (`gateway.syncNow()`) and adopting the server's write after (`gateway.pullKeys()`) | write `trades`, `ground*` or the audit (rules: no client writes) |
+
+**A trade.** Card → **Trade** → the other's toast → **Trade** → one window on both screens (Tibia / D2): what you offer,
+what they offer, your satchel (tap to offer, tap again to take back; worn, soulbound, quest and starter pieces are
+greyed with why), a Gold field. Any change clears both **Accept**s (`rev`). Both accepted the same `rev` → **Confirm**.
+Each Confirm pushes the save, then calls `execute {trade, character, terms}` with the exact terms that window shows.
+The first records `confirms[side] = {key: canonical(terms), character}` and answers `waiting`; the second, if its key is
+the same, reads both inventories and (if Gold moves) both ledgers, re-checks everything, and swaps it all in the same
+transaction, writing both saves, `trades/{id}` `status:'done'` with the terms, and `trade-audit/trade-{id}`. Then it
+tells the room `done`; the room closes both windows; the first Keeper's client calls `execute` again (idempotent: it
+answers `done` and what arrived) and adopts the write. Refused (→ `void`, nothing moved, the reason in both windows):
+an item gone, moved off the satchel, bound, quest or starter, **changed since it was offered** (id, definition, stats,
+roll grade, item level, upgrade, sockets, reforges), Gold the purse or its replay cannot cover, the receiver at the
+700-record budget, a save from another era/version (open the game once), different terms in the two calls, the trade
+expired (10 min), or both sides the same account. A window closed after its Keeper confirmed calls `cancel`, so that
+confirmation can never complete later. Guests cannot trade (the room refuses the ask; the Function refuses anonymous
+tokens), banned accounts cannot (the Function reads `meta/ban`; the room already bars them), blocked pairs cannot
+(either direction, the same words as a busy Keeper).
+
+**A ground drop.** In the satchel, an item's card has **Drop** (phones), or drag the item out of the satchel onto the
+world (desktop). `drop` takes it out of the save into `ground-items/{gid}` `{item record, area, x, y, owner
+{uid, character}, expiresAt: +10 min}` and bumps `ground/{area}.count`; then the room is told and checks that document
+before showing it to **everyone in the area** (not just the party), drawn like loot — the rung's light column, a plate
+in its rarity colour (td-engine `setSharedGround`). A tap walks there and calls `pickup`: one transaction reads the
+ground document, so **only one picker can win**; the other is told "Someone else picked that up". After 10 minutes the
+sweep (or the next reach for it, lazily) returns it to its dropper's save. Caps: 60 items per area (`ground/{area}`
+count, in the transaction), 10 drops a minute per account (`ground-rate/{uid}`, in the transaction), plus the room's
+own per-session limits.
+
+**How the server's writes speak the merge** (memory *"Admin writes must speak the merge"*; trade-core's header):
+- An item **leaves** a save as a tombstone at `hlc = Number.MAX_SAFE_INTEGER` (device `trade`). The merge drops any
+  record its tombstone outranks, and nothing a device stamps later can outrank it — a stale phone that still holds the
+  record, even one that re-equips or tempers it after the trade, loses it on its next merge (trade-merge.spec). The
+  ledger's own `hlc` is not raised (the merge computes it from records and folds), so device clocks are untouched.
+- An item **arrives** as a new record under a **new id** derived from the trade or ground id (a retry writes the same
+  id), at `max(now, hlc+1)`, in the satchel, with its frozen roll grade (memory *"Item rolls carry a frozen grade"*).
+  The new id is what lets an item come back to a Keeper who once gave it away (the old id's MAX tombstone would eat it).
+- **Gold** leaves as `spend-gold` and arrives as the new `receive-gold` op (a credit that is not "earned": passing Gold
+  back and forth must not farm `totalGoldEarned`), ids `trade:<seq>` above every `trade` op and watermark the ledger has,
+  at `nextHlc(ledger.hlc)`, the snapshot moved in step, and the first op on a ledger freezes its `origin` (as a device
+  does). Ops union by id, so each lands exactly once everywhere. The debit is checked against the **replayed** balance
+  (`replayGold`: origin + ops, a debit skipped when unaffordable), because that is what every device will compute — a
+  debit the replay skips would mint Gold.
+- **`serverSeq`** on the inventory ledger goes up on every server write; the merge keeps the max; firestore.rules
+  refuses a client write of `progress/inventory` (root and per character) whose `v.serverSeq` is lower than the stored
+  one. That closes the one real race: the gateway pushes the inventory with read-merge-`setDoc` (not a transaction), so
+  a push that read the document a moment before the Function wrote it would put the traded item back. Refused, the
+  gateway keeps the key dirty and retries with a fresh read, which merges the move in. The economy document needs no
+  guard: the client already writes it in a transaction, which Firestore retries on contention.
+- After a move, `gateway.pullKeys([inventory, economy])` reads those two documents at once (owners flushed first),
+  merges, caches and rehydrates the owners in the same tick, and re-queues anything the cloud lacks.
+
+**Anti-dupe guarantees.** One transaction per move (all reads before writes); idempotent retries (stable ids for
+everything written: trade results, received ids, ground ids, picked ids); both players' consent bound to the exact
+terms (`canonical` JSON compared server-side); items re-checked unchanged by id and roll; Gold checked against the
+replay; the trade and drop paths both refuse what is not loose in the satchel; one pickup wins; the room cannot invent
+or hide ground items (it reads the escrow); clients cannot write any of the documents involved. Node tests prove the
+swap, the refusal on a changed item, the double-pickup race (optimistic-concurrency retry in the in-memory Db), expiry
+returning home, and **conservation of Gold and item count across 60 random trades** (some sabotaged); karma proves the
+client merges honour every server write (trade-merge.spec) and drives the client flows against the real core.
+
+**Limits, stated.**
+- A device holding unsynced **Gold spends with an earlier clock** than the trade's debit (another device of the same
+  account, offline, behind the lease) can make the trade's debit replay as unaffordable on merge — the receiver keeps
+  the Gold, the giver keeps it too. The window is small (the trading device pushes right before it confirms; the device
+  lease means one device writes at a time), but it is not zero. Fix if it matters: fold the debit into the ledger's
+  `origin` under a watermark instead of an op (the Gold-era technique).
+- Tombstones are capped at 512 and age out after 30 days (inventory-ops). A device that has not synced for longer than
+  that and still holds a traded item could bring it back. The same limit applies to every deletion in the save today.
+- Rules need deploying with the Functions; until then the inventory guard is absent and the gateway's push could, in
+  the read→write window, overwrite a trade (the trading device pushes before and pulls after, so the window is its own
+  4-second debounce).
+- The ground list in the room is memory: a hearth restart forgets what is drawn (the escrow still returns every item
+  home on time). A late joiner sees the area's ground from the room, never from Firestore (no per-player reads).
+- Crowd behaviour of Firestore transactions (contention on `ground/{area}` in a busy area) is untested — the area doc
+  serialises drops and pickups there by design.
+
+**Not testable without real Firebase** (no Java here, so no emulator): the rules themselves (only the serverSeq guard is
+mirrored by the fake), `verifyIdToken` / anonymous / ban refusals in trade.ts, the Admin SDK transaction's own retry
+behaviour, the scheduled sweep's Cloud Scheduler trigger, and the hearth's REST writes of `trades/{id}` (the REST shape
+mirrors the existing friends writes). The e2e (e2e/td-trade.spec.ts) runs the real core behind a fake endpoint on the
+local hearth: two browsers (one a phone) trade, then drop and pick up.
+
+**Rules reasoning** (firestore.rules, "Trades and ground drops"): `trades`, `ground-items`, `ground`, `ground-rate`,
+`trade-audit` are `write: if false` for every client — a client that could write `trades/{id}` could confirm for the
+other side; one that could write `ground-items` could mint an item. Reads: a trade by its two parties only; ground
+items and area counts by any signed-in Keeper (anyone may see and pick up — the pickup is the Function's); a drop
+window by its owner; the audit by the owner only. The inventory update rule gains `serverSeqHolds(docId)`
+(`v.serverSeq` may not go down), which an honest client always satisfies because the merge keeps the max; the
+monotonic-XP guard on `progress/state` is unchanged.
+
+| Code | Where |
+|---|---|
+| Server core (pure) | `functions/src/trade-core.ts`; Functions `functions/src/trade.ts` (`tradeApi`, `groundSweep`) |
+| Hearth | `scripts/social-server.mjs` protocol 6; `social-identity.mjs` `openTrade`/`groundItem`; fake: `scripts/trade-fake.mjs` |
+| Client | `play/trade/` (`trade-items`, `trade-flow`, `trade-backend.service`, `trade-hud.component`, `trade.i18n`); `social-room.ts` verbs; td-engine `setSharedGround`; gateway `syncNow`/`pullKeys`; inventory `serverSeq`; economy `receive-gold` |
+| Tests | `scripts/trade-core.test.mjs` (13), `social-server.test.mjs` (3 new), karma `trade-merge.spec` (5) + `trade-flow.spec` (5), e2e `e2e/td-trade.spec.ts` |
 
 ## 5. Next phase recommended
 

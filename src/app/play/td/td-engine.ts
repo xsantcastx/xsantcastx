@@ -398,6 +398,9 @@ export class TopDownEngine {
   private eliteSeen = '';
   private goldSeen = -1;
   private showcase: Drop[] = [];
+  /** Items other Keepers (or this one) left on the ground, as the Hearth relays them (protocol 6; play/trade). */
+  private shared: Drop[] = [];
+  private groundSeen = '';
   private tellSeen = '';
   /** The Seam-Cant line over the Keeper (design-bible §4.0): the last spell's words, their tone, and how long they have hung. */
   private cant: { text: string; color: string; age: number } | null = null;
@@ -2594,6 +2597,10 @@ export class TopDownEngine {
     if (foe) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
     // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
+    // A shared ground item (protocol 6) under the finger — before the Keepers, it is the smaller target and often lies
+    // at one's feet: walk to it, then the HUD reaches for it.
+    const lying = this.shared.find(g => Math.abs(wx - g.x) < 9 && wy > g.y - 12 && wy < g.y + 5);
+    if (lying && this.options.onGroundTap) { const id = lying.id.slice('shared:'.length); this.walkTo(lying.x, lying.y + 2, () => this.options.onGroundTap?.(id)); return; }
     const peer = this.peers.at(wx, wy);
     if (peer && this.options.onPeerTap) { this.options.onPeerTap(peer); return; }
     if (this.level === this.world) {
@@ -3136,6 +3143,11 @@ export class TopDownEngine {
       if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - 52, this.time, this.still);
     }
     if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - 46, this.time, this.still);
+    // Shared ground items (protocol 6): where they are on the page, for the HUD's tests and tools (only while any lie here).
+    if (this.shared.length || this.groundSeen) {
+      const at = this.groundOnScreen().map(g => `${g.id}@${g.x},${g.y}`).join(';');
+      if (at !== this.groundSeen) { this.groundSeen = at; this.canvas.setAttribute('data-ground-at', at); }
+    }
     // A task giver's head mark: '!' a task on offer, '?' one to hand in (MapleStory), seen from across the square.
     for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? 54 : 44)); }
     this.drawEffects();
@@ -3202,7 +3214,25 @@ export class TopDownEngine {
     c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - d.h - 4), Math.round(w * frac), 1);
   }
   /** The loot on the ground: the fight's drops, and the screenshot showcase when it is on. */
-  private groundLoot(): readonly Drop[] { return this.showcase.length ? [...this.mobs.drops, ...this.showcase] : this.mobs.drops; }
+  private groundLoot(): readonly Drop[] {
+    if (!this.showcase.length && !this.shared.length) return this.mobs.drops;
+    return [...this.mobs.drops, ...this.shared, ...this.showcase];
+  }
+  /**
+   * Protocol 6: the items on the ground in this area that the room told of — drawn like loot (the rung's light column,
+   * a plate in its rarity colour), but never taken by walking over them: a tap walks there and the HUD asks the trade
+   * Function, which gives it to whoever reaches it first.
+   */
+  setSharedGround(items: readonly { id: string; x: number; y: number; name: string; rarity: string; def: string }[]): void {
+    const rung = (r: string): LootRung => (r in LOOT ? r as LootRung : 'common');
+    this.shared = items.map(g => ({ id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: 1, item: { definitionId: g.def, rarity: rung(g.rarity), unique: false }, rarity: rung(g.rarity), label: g.name, color: LOOT[rung(g.rarity)].body, age: 99 }));
+    this.canvas.setAttribute('data-ground', items.map(g => g.id).join(','));
+  }
+  /** Where shared ground items are drawn, in CSS pixels on the page (the e2e's tap target). */
+  groundOnScreen(): { id: string; x: number; y: number }[] {
+    const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
+    return this.shared.map(g => ({ id: g.id.slice('shared:'.length), x: Math.round(r.left + (g.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (g.y - 4 - this.cam.y) * this.scale / k) }));
+  }
   /**
    * A drop on the ground: a coin pile, a sack, or gear standing in a pixel light column of its rung (spec §Loot) —
    * the rarer the taller, stepped bands (never a gradient), at most 55% over whatever stands behind it; legendary and

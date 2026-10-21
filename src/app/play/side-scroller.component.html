@@ -9,7 +9,7 @@
 </noscript>
 <section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || bestiaryOpen || soundOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" (dragover)="overWorld($event)" (drop)="dropOnWorld($event)" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -167,6 +167,8 @@
       </section>
     }
   }
+  <!-- Trading and ground drops (Hearth protocol 6): the window, the "wants to trade" toast, the ground's pictures. -->
+  @if (topDown) { <app-trade-hud [room]="tradeRoom" [social]="social" [engine]="tradeEngine" [cardFor]="tradeCard" (said)="tradeSaid($event)" /> }
   <!-- Another Keeper, tapped in the world (td-peers): who they are, and a Wave that shows over both of you. -->
   @if (topDown && peerCard; as pc) {
     <section class="td-peer" role="dialog" aria-modal="false" aria-labelledby="td-peer-name" data-peer-card [attr.data-peer-id]="pc.id" data-engine-ignore>
@@ -178,6 +180,12 @@
       <p class="td-peer__line">{{ peerClass(pc.vocation) }}@if (pc.level) { · {{ t('play.peer.level', { n: pc.level }) }} }@if (socialReady && isGuest(pc.id)) { <span class="td-peer__guest" data-peer-guest>{{ t('play.social.guest') }}</span> }</p>
       @if (peerFriend) { <p class="td-peer__line td-peer__mate" data-peer-is-friend>{{ t('play.social.isFriend') }}</p> }
       <button type="button" class="td-peer__wave" data-peer-wave (click)="waveAt()">{{ t('play.peer.wave') }}</button>
+      <!-- Protocol 6: trade (both signed in, the same place); the window is play/trade's. -->
+      @switch (tradeHud?.canAsk(pc.id)) {
+        @case ('yes') { <button type="button" class="td-peer__wave" data-peer-trade (click)="tradeWithPeer()">{{ t('trade.peer.trade') }}</button> }
+        @case ('guest') { <p class="td-peer__line td-peer__later" data-trade-guest>{{ t('trade.peer.guest') }}</p> }
+        @case ('later') { <p class="td-peer__line td-peer__later" data-trade-later>{{ t('trade.peer.later') }}</p> }
+      }
       @if (canInvitePeer) {
         <button type="button" class="td-peer__wave td-peer__invite" data-peer-invite [disabled]="partyBusy" (click)="inviteToParty()">{{ t('play.peer.invite') }}</button>
       } @else if (peerInParty) {
@@ -1049,7 +1057,7 @@
         } @else {
           <div class="pockets">
             @for (pocket of shownPockets; track pocket.key) {
-              <button type="button" class="pocket" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket, $event)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+              <button type="button" class="pocket" [attr.draggable]="pocket.kind === 'item' && topDown ? 'true' : null" (dragstart)="dragPocket($event, pocket)" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket, $event)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
                 } @else {
@@ -1188,6 +1196,7 @@
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
               @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
+              @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }
         </div>
@@ -1224,6 +1233,7 @@
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
               @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
+              @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }
         </footer>
