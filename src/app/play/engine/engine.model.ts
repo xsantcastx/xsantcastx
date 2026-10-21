@@ -203,7 +203,7 @@ export interface EngineOptions {
    * via LootService.rollLoot). Only asked while combat rules are set. Rows are
    * 'item' / 'rune' DropEntry lines; the engine spills and presents them.
    */
-  rollLoot?: (kill: { creature: string; level: number; rank: MonsterRank; killKey: string; mf?: number }) => readonly LootRow[];
+  rollLoot?: (kill: { creature: string; level: number; rank: MonsterRank; killKey: string; mf?: number; named?: number }) => readonly LootRow[];
   /** The corpse run's purse was walked over (setFallenPurse). The host returns its Gold. */
   onPurse?: () => void;
   /**

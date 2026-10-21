@@ -50,6 +50,8 @@ export interface LootContext {
   /** Percentage points (the satchel's worn Magic Find). */
   magicFind: number;
   rank: MonsterRank;
+  /** % likelier that a roll landing on a rung with named uniques is one of them (a worn unique's rarity-pull). */
+  named?: number;
 }
 
 export type LootDrop =
@@ -198,6 +200,11 @@ function rollRuneTier(level: number, tier: DifficultyTier, rng: () => number): R
   return 'common';
 }
 
+/** The chance a roll that lands on a rung with named uniques is one of them: Magic Find's and a worn pull's lift, ≤ ½. */
+export function uniqueShare(ctx: Pick<LootContext, 'magicFind' | 'named'>): number {
+  return Math.min(0.5, UNIQUE_SHARE * (1 + effectiveMagicFind(ctx.magicFind, 250) / 100) * (1 + Math.max(0, ctx.named ?? 0) / 100));
+}
+
 /** One kill's gear and runes. See the header for the contract. */
 export function rollCreatureLoot(ctx: LootContext, rng: () => number): LootDrop[] {
   const out: LootDrop[] = [];
@@ -206,12 +213,11 @@ export function rollCreatureLoot(ctx: LootContext, rng: () => number): LootDrop[
   const shift = diff.rarityShift + RANK_SHIFT[ctx.rank];
   const plan = ITEM_ROLLS[ctx.rank];
   const chance = Math.min(1, plan.chance * diff.itemChance);
-  const uniqueBoost = 1 + effectiveMagicFind(ctx.magicFind, 250) / 100;
   for (let i = 0; i < plan.rolls; i++) {
     if (rng() >= chance) continue;
     const rarity = rollRarity(ctx.level, ctx.magicFind, shift, boss, rng);
     const named = uniquesAt(rarity);
-    if (named.length && rng() < Math.min(0.5, UNIQUE_SHARE * uniqueBoost)) {
+    if (named.length && rng() < uniqueShare(ctx)) {
       const u = pick(named, rng);
       out.push({ kind: 'item', definitionId: u.id, rarity: u.rarity, unique: true, name: u.name, level: ctx.level });
       continue;

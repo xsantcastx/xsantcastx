@@ -9,7 +9,7 @@ import { PROLOGUE_ROWS, PROLOGUE_WALK_TILES, type PrologueStep, guideFor, prolog
 import { TD_PROLOGUE_I18N } from './td/td-prologue.i18n';
 import { activeCharacterKey } from '../shared/save/character-scope';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
-import { ATTR_STEP, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
+import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import { wornResists } from '../shared/loot/aura-sources';
 import { auraEffect } from '../shared/loot/auras';
 import type { ItemStats } from '../shared/rpg/item.model';
@@ -53,11 +53,13 @@ import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { PlayLobbyService } from './lobby/play-lobby.service';
 import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
-import { ELEMENTS, type Element as DamageElement } from '../shared/loot/damage.model';
+import { ELEMENTS, MAX_KEEPER_RESIST, type Element as DamageElement } from '../shared/loot/damage.model';
+import { GOLD_FIND_CAP } from '../shared/economy/economy-curve';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
 import { MOBS, mobSheet } from './td/td-mobs';
 import { bossUniqueById, relicTotals, type BossUnique, type RelicTotals } from '../shared/rpg/boss-uniques';
-import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, setSigOf, tierWord } from '../shared/rpg/set-items';
+import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
+import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/unique-items';
 import type { SeekAnswer } from './engine/engine.model';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
@@ -230,7 +232,8 @@ import { GRAVE_I18N } from '../shared/grave-goods/grave-goods.i18n';
 import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
 import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
 import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
-import { lootEntry } from '../shared/loot/drop-tables';
+import { RUNG_LEVEL, lootEntry } from '../shared/loot/drop-tables';
+import { DIFFICULTIES } from '../shared/loot/difficulty.model';
 import { itemAuras } from '../shared/loot/aura-sources';
 import { socketCountFor, socketStats } from '../shared/enchanting/socket.model';
 import { effectiveStats, wornStats } from '../shared/enchanting/socket-words';
@@ -444,6 +447,12 @@ function heldSwing(held: GameItem): { strikePower?: number; spellDamage?: number
   const st = wornStats(held);
   return { strikePower: st.strikePower, spellDamage: st.spellDamage };
 }
+
+/** Where the fight stops a worn total (the item card says it): td-skills GEAR_CAPS, the resist cap, Gold Find's. */
+const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
+  ...GEAR_CAPS, goldFind: GOLD_FIND_CAP,
+  fireResist: MAX_KEEPER_RESIST, coldResist: MAX_KEEPER_RESIST, lightningResist: MAX_KEEPER_RESIST, arcaneResist: MAX_KEEPER_RESIST, allResist: MAX_KEEPER_RESIST,
+};
 
 @Component({
   selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent],
@@ -2101,10 +2110,10 @@ export class SideScrollerComponent implements OnDestroy {
   get vocation(): string { return this.looks.look.vocation; }
   /** The character sheet (C): D2's attributes page made cozy — level, points to spend, what each gives. */
   sheetOpen = false;
-  /** The boss uniques the Keeper wears (their ids): each one's signature is applied by the fight (td-mobs relics). */
+  /** The uniques the Keeper wears (their ids): each one's passive is applied by the fight (td-mobs relics). */
   private get wornRelics(): string[] {
     // ...and the signatures of the item-set tiers they wake (rpg/set-items.ts), as `set:<set>:<pieces>` ids.
-    return [...this.wornIds.filter(id => !!bossUniqueById(id)), ...setSigIds(this.wornIds)];
+    return [...sigIds(this.wornIds), ...setSigIds(this.wornIds)];
   }
   /** The definition ids the Keeper wears (not an explorer's): what the item sets count. */
   private get wornIds(): string[] {
@@ -2143,6 +2152,18 @@ export class SideScrollerComponent implements OnDestroy {
       this.t('play.relic.found', { boss: MOBS[u.boss]?.name ?? u.boss, where: u.lair, n: u.oneIn }),
     ];
   }
+  /**
+   * An ordinary unique's card lines (unique-items.ts): what its passive does in the fight (Used for, the same line the
+   * truth harness measures) and where it falls (Found in: any creature's open loot roll at its authored rarity, from
+   * that rung's level, drop-tables RUNG_LEVEL). A set piece has its own block (setTip); anything else: none.
+   */
+  private uniqueLines(u: UniqueItem | undefined): string[] {
+    if (!u?.sig || u.set) return [];
+    return [
+      this.t('play.relic.used', { text: this.t('play.relic.sig.' + u.id) }),
+      this.t('play.unique.found', { rarity: rarityLabel(u.rarity), level: Math.max(1, RUNG_LEVEL[u.rarity]) }),
+    ];
+  }
   /** The worn gear's combat totals (docs/design/loot-and-combat.md §3), read off the inventory by td-skills. */
   private get gearCombat(): Partial<ItemStats> {
     // The milestones' passives (shared/skills/keeper-milestones.ts) ride on the worn totals, under the same caps.
@@ -2156,11 +2177,15 @@ export class SideScrollerComponent implements OnDestroy {
   get sheet(): { level: number; into: number; span: number; toNext: number; left: number; skillPoints: number; next: Milestone | null; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
     const view = this.keeperView, st = this.looks.look.stats, lv = view.level;
     const gear = this.gearCombat;
-    const derived = fightStats(lv, st, gear, this.looks.look.vocation), sig = this.gearSig;
+    // The difficulty's resist penalty (shared/loot/difficulty.model), as the fight takes it (td-engine setKeeperBuild).
+    const derived = fightStats(lv, st, gear, this.looks.look.vocation, DIFFICULTIES[this.loot.combatRules().tier]?.resistPenalty ?? 0), sig = this.gearSig;
     // The worn aura the Loot sheet runs (td-mobs setItemAura): Prayer's life back, Vigor's quicker feet.
     const aura = this.loot.combatRules().aura, fx = aura ? auraEffect(aura.id, aura.level) : null, vigor = fx?.moveSpeed ?? 1;
     const lifeBack = Math.round((derived.lifeRegen + sig.regen + (fx?.regen ?? 0)) * 10) / 10;
-    const mf = Math.round((this.inventory.equippedMagicFind + sig.mf) * 10) / 10, xp = Math.round(this.inventory.equippedTotals.xpBonus * 10) / 10;
+    // Worn XP and a worn unique's (xp-echo) multiply; so do Gold Find and a unique's bigger pile (gold-surge).
+    const both = (a: number, b: number) => Math.round(((1 + a / 100) * (1 + b / 100) - 1) * 1000) / 10;
+    const mf = Math.round((this.inventory.equippedMagicFind + sig.mf) * 10) / 10, xp = both(this.inventory.equippedTotals.xpBonus ?? 0, sig.xp);
+    const gf = both(this.economy.goldFind, sig.gold);
     const pct = (n: number) => `${Math.round(n * 100)}%`;
     const text: Record<Attribute, string> = {
       vit: this.t('play.td.attr.vit.text', { n: ATTR_STEP.vit }),
@@ -2190,7 +2215,7 @@ export class SideScrollerComponent implements OnDestroy {
         ...ELEMENTS.filter(el => derived.resists[el] !== 0).map(el => ({ key: RESIST_TOTAL_KEY[el], value: `${Math.round(derived.resists[el])}%` })),
         // The finds (they change the loot, the piles and the XP, not the fight): what each kill is rolled and paid at.
         ...(mf !== 0 ? [{ key: 'play.td.total.mf', value: `+${mf}%` }] : []),
-        ...(this.economy.goldFind > 0 ? [{ key: 'play.td.total.gf', value: `+${Math.round(this.economy.goldFind * 10) / 10}%` }] : []),
+        ...(gf > 0 ? [{ key: 'play.td.total.gf', value: `+${gf}%` }] : []),
         ...(xp > 0 ? [{ key: 'play.td.total.xp', value: `+${xp}%` }] : []),
       ],
     };
@@ -2308,7 +2333,7 @@ export class SideScrollerComponent implements OnDestroy {
   private sigCache: { key: string; sig: RelicTotals } | null = null;
   private get gearSig(): RelicTotals {
     const ids = this.wornRelics, key = [...ids].sort().join(',');
-    if (!this.sigCache || this.sigCache.key !== key) this.sigCache = { key, sig: relicTotals(ids, setSigOf) };
+    if (!this.sigCache || this.sigCache.key !== key) this.sigCache = { key, sig: relicTotals(ids, relicSigOf) };
     return this.sigCache.sig;
   }
   /** A skill's line at a tree rank (rank 0 reads as rank 1): the numbers the fight uses (td-skills castVars). */
@@ -4478,7 +4503,10 @@ export class SideScrollerComponent implements OnDestroy {
     const paid = effectiveStats(item, socketStats(item));
     // Strike and Ward are not fight stats: the card says what they do (td-melee weaponSwing; item-upgrade temperFailChance).
     const what = (key: keyof GameItem['stats']) => key === 'strikePower' || key === 'ward' ? ' ' + this.t('play.tip.what.' + key) : '';
-    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, paid[key]!)} ${ITEM_STAT_LABELS[key]}${what(key)}`, range: paid[key] === item.stats[key] ? range(key) : '' });
+    // A stat whose worn total the fight caps says so (td-skills GEAR_CAPS, the 75 resist cap, Gold Find's 150): the C
+    // sheet shows the capped total, the card says where it stops.
+    const cap = (key: keyof GameItem['stats']) => { const n = WORN_CAP[key]; return n ? ' ' + this.t('play.tip.cap', { n }) : ''; };
+    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, paid[key]!)} ${ITEM_STAT_LABELS[key]}${what(key)}${cap(key)}`, range: paid[key] === item.stats[key] ? range(key) : '' });
     const held = ITEM_STAT_KEYS.filter(key => (paid[key] ?? 0) !== 0);
     const head = held.includes(headKey) ? line(headKey) : null;
     const wells = socketCountFor(item);
@@ -4493,7 +4521,7 @@ export class SideScrollerComponent implements OnDestroy {
       tag: qualityTagOf(item),
       specials: [
         ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
-        ...(bossUniqueById(item.definitionId) ? this.relicLines(bossUniqueById(item.definitionId)!) : []),
+        ...(bossUniqueById(item.definitionId) ? this.relicLines(bossUniqueById(item.definitionId)!) : this.uniqueLines(uniqueById(item.definitionId))),
       ],
       sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
       reqs: this.reqLines(item),

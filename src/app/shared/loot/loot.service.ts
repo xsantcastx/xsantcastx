@@ -92,13 +92,13 @@ export class LootService {
    * the save's kill count (`rolls`, advanced per kill): reproducible from the
    * save, and a reload continues the sequence rather than replaying a kill.
    */
-  rollLoot(ctx: { creature: string; level: number; rank: MonsterRank; killKey?: string; mf?: number }): LootDrop[] {
+  rollLoot(ctx: { creature: string; level: number; rank: MonsterRank; killKey?: string; mf?: number; named?: number }): LootDrop[] {
     const seed = this.seed();
     const s = this.state;
     const n = s.rolls + 1;
     if (this.isBrowser) this.write({ ...s, rolls: n });
     const rng = seededRandom(hashSeed(`${seed}|kill|${n}`));
-    return rollCreatureLoot({ creature: ctx.creature, level: ctx.level, tier: s.tier, magicFind: this.inventory.equippedMagicFind + Math.max(0, ctx.mf ?? 0), rank: ctx.rank }, rng);
+    return rollCreatureLoot({ creature: ctx.creature, level: ctx.level, tier: s.tier, magicFind: this.inventory.equippedMagicFind + Math.max(0, ctx.mf ?? 0), rank: ctx.rank, ...(ctx.named ? { named: ctx.named } : {}) }, rng);
   }
 
   /**
