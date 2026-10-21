@@ -1,4 +1,4 @@
-import { initialLobbyMode } from './play-lobby.service';
+import { initialLobbyMode, mayUsePrimarySlot } from './play-lobby.service';
 import { areaName, hasMeaningfulSave, huntingLevelOf, summarise } from './character-summary';
 import { CharacterRow } from '../../shared/characters/character-roster.model';
 
@@ -62,5 +62,22 @@ describe('a character row from its save', () => {
     expect(hasMeaningfulSave(store, 'c1')).toBe(true);
     expect(hasMeaningfulSave(store, 'k2abc')).toBe(false);
     expect(hasMeaningfulSave(store, 'k9abc')).toBe(false);
+  });
+});
+
+describe('New Keeper and character #1\'s slot', () => {
+  it('hands it out on a device never bound to an account', () => {
+    expect(mayUsePrimarySlot({ bound: false, signedIn: false, state: 'off', lastSyncedAt: null })).toBe(true);
+  });
+
+  it('never before the cloud has settled: still syncing, not yet synced once, or the session not back', () => {
+    expect(mayUsePrimarySlot({ bound: true, signedIn: true, state: 'syncing', lastSyncedAt: null })).toBe(false);
+    expect(mayUsePrimarySlot({ bound: true, signedIn: true, state: 'syncing', lastSyncedAt: 5 })).toBe(false);
+    expect(mayUsePrimarySlot({ bound: true, signedIn: true, state: 'synced', lastSyncedAt: null })).toBe(false);
+    expect(mayUsePrimarySlot({ bound: true, signedIn: false, state: 'off', lastSyncedAt: null })).toBe(false);
+  });
+
+  it('once the account\'s save has landed', () => {
+    expect(mayUsePrimarySlot({ bound: true, signedIn: true, state: 'synced', lastSyncedAt: 5 })).toBe(true);
   });
 });

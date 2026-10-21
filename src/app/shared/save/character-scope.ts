@@ -60,6 +60,11 @@ export const LOCAL_CHARACTER_KEYS: ReadonlySet<string> = new Set([
   'godforge-reset-at',
   'godforge-realm-era',
   'godforge-save-backup',
+  // Read and written by their own services through activeCharacterKey (not the gateway), listed so deleting a
+  // character takes them too: the "while you were away" stamp, the worn title, the tracked map pin.
+  'godforge-away',
+  'godforge-worn-title',
+  'eclipse-delve-track',
 ]);
 
 /** A character id: short, lowercase, safe in a localStorage key and a Firestore path segment. */
@@ -96,6 +101,15 @@ export function readActiveCharacter(storage: Pick<Storage, 'getItem'> | null): s
   } catch {
     return PRIMARY_CHARACTER;
   }
+}
+
+/**
+ * The localStorage key for a per-character DEVICE value that lives outside the gateway (a service that reads
+ * localStorage itself: the "while you were away" stamp, the worn title, the tracked map pin). Read at page boot like
+ * the gateway's own namespace, so it never changes inside a page. Character #1 keeps the old key.
+ */
+export function activeCharacterKey(key: string, storage: Pick<Storage, 'getItem'> | null): string {
+  return characterStorageKey(key, readActiveCharacter(storage));
 }
 
 /** A fresh id for a new character (never `c1`, which is reserved for the save that predates characters). */

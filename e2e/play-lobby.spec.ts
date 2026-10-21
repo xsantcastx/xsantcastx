@@ -106,6 +106,9 @@ test.describe('login and character select', () => {
     const second = await page.evaluate(() => localStorage.getItem('eclipse-active-character'));
     expect(second).toMatch(/^k[a-z0-9]{7}$/);
     expect(await page.evaluate(id => localStorage.getItem(`godforge-keeper-look@${id}`), second)).toContain('Bryn');
+    // The new Keeper is taught the island from step 1 (td/td-prologue.ts); none of Aster's progress came along.
+    await expect.poll(() => page.evaluate(() => document.querySelector<HTMLElement>('.guide')?.dataset['goal'] ?? null), { timeout: 15000 }).toBe('pro-walk');
+    expect(await page.evaluate(id => localStorage.getItem(`godforge-activity@${id}`)?.includes('"hunting"') ?? false, second)).toBe(false);
 
     // Both on the list now; back into Aster.
     await toCharacterSelect(page);
@@ -127,6 +130,8 @@ test.describe('login and character select', () => {
     await inWorld(page);
     expect(await page.evaluate(() => localStorage.getItem('eclipse-active-character'))).toBe('c1');
     await expect(page.locator('[data-keeper-level]')).toHaveText('7');
+    // A level-7 Keeper has played: no prologue for Aster.
+    expect(await page.evaluate(() => document.querySelector<HTMLElement>('.guide')?.dataset['goal'] ?? '')).not.toMatch(/^pro-/);
     await expect.poll(async () => {
       const now = await where(page);
       return Math.hypot(now.x - asterAt.x, now.y - asterAt.y);

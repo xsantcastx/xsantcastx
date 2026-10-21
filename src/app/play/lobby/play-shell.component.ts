@@ -13,7 +13,7 @@
  * entering a character other than the one this page booted with saves and reloads into it. See play-lobby.service.ts
  * for the device-local flags (and the e2e skip).
  */
-import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, PLATFORM_ID, ViewChild, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, PLATFORM_ID, ViewChild, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription, filter, firstValueFrom, race, timer } from 'rxjs';
@@ -24,17 +24,18 @@ import { CloudSaveService, hasBoundAccount } from '../../shared/cloud-save/cloud
 import { CharacterRosterService } from '../../shared/characters/character-roster.service';
 import { CharacterRow, PortraitLook, confirmsDelete, hasFreeSlot, idForNewCharacter } from '../../shared/characters/character-roster.model';
 import { KEEPER_LOOK_I18N } from '../../shared/keeper-look/keeper-look.i18n';
-import { coerceLook } from '../../shared/keeper-look/keeper-look.model';
+import { type KeeperLook, coerceLook } from '../../shared/keeper-look/keeper-look.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { FRONT_H, FRONT_W, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { vocationLook } from '../../shared/keeper-look/vocation-look';
 import { KeeperMakerComponent } from '../../shared/keeper-look/keeper-maker.component';
 import { SideScrollerComponent } from '../side-scroller.component';
+import { StoryService } from '../../shared/story/story.service';
 import { LOBBY_I18N } from './lobby.i18n';
 import { paintTitleArt, titleArtSize } from './title-art';
 import { hasMeaningfulSave, summarise } from './character-summary';
 import {
-  LOBBY_ENTER_KEY, LOBBY_GUEST_KEY, LOBBY_MAKE_KEY, LOBBY_SKIP_KEY, LobbyMode, PlayLobbyService, initialLobbyMode,
+  LOBBY_ENTER_KEY, LOBBY_FROM_KEY, LOBBY_GUEST_KEY, LOBBY_MAKE_KEY, LOBBY_SKIP_KEY, LobbyMode, PlayLobbyService, initialLobbyMode, mayUsePrimarySlot,
 } from './play-lobby.service';
 
 /** The title art's frame rate: slow motion needs few frames, and a phone on the title screen should stay cool. */
@@ -58,6 +59,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly lobby = inject(PlayLobbyService);
   private readonly route = inject(ActivatedRoute);
   private readonly zone = inject(NgZone);
+  private readonly story = inject(StoryService);
 
   mode: LobbyMode = 'boot';
   /** The highlighted row on the character list. */
@@ -95,6 +97,8 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
   get signedIn(): boolean { return this.cloud.signedIn; }
+  /** The cloud is pulling this account's save (the roster among it): New Keeper waits, so it cannot land on a slot it has not seen. */
+  syncing = false;
   get account(): string { return this.cloud.status.displayName || this.cloud.status.email || ''; }
   get full(): boolean { return !hasFreeSlot(this.roster.roster); }
   get pickedRow(): CharacterRow | null { return this.rows.find(r => r.id === this.picked) ?? null; }
@@ -106,6 +110,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.subs.push(this.lobby.selectRequested$.subscribe(() => void this.leaveWorld()));
     this.subs.push(this.roster.roster$.subscribe(() => this.refreshRows()));
+    this.subs.push(this.cloud.status$.subscribe(st => { const now = st.state === 'syncing'; if (now !== this.syncing) this.zone.run(() => { this.syncing = now; }); }));
     // Summaries wait for the cloud pull (sync fix, 2026-10-21): a list drawn mid-sync re-summarises once it lands.
     this.subs.push(this.cloud.status$.pipe(filter(s => s.state !== 'syncing')).subscribe(() => {
       if (this.mode === 'select') this.zone.run(() => this.ensureRoster());
@@ -138,6 +143,12 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
       skip = localStorage.getItem(LOBBY_SKIP_KEY) === 'skip';
     } catch { /* private mode */ }
     if (this.route.snapshot.queryParamMap.get('lobby') === 'skip') skip = true;
+    // A Keeper this page boots into that is on no list: a Glass left by a refresh, the browser's back, a closed tab
+    // (the row is written only by Become), or a Keeper deleted while it was the one in play. Nothing of it may stay.
+    if (make !== character && character !== PRIMARY_CHARACTER && !this.roster.row(character) && !skip) {
+      await this.discardAndReturn(character);
+      return;
+    }
     const signedIn = hasBoundAccount();
     let target = initialLobbyMode({ character, skip, enter, make, signedIn, guest });
 
@@ -166,6 +177,9 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.picked || !this.rows.some(r => r.id === this.picked)) {
         this.picked = this.rows.find(r => r.id === this.gateway.character)?.id ?? this.rows[0]?.id ?? null;
       }
+    }
+    if (mode === 'create' && this.browser && !this.glassEntry) {
+      try { history.pushState({ ...(history.state ?? {}), glass: 1 }, ''); this.glassEntry = true; } catch { /* no history */ }
     }
     if (mode === 'game') this.noteActive();
     if (mode === 'game') this.stopArt();
@@ -305,11 +319,17 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async newCharacter(): Promise<void> {
-    if (this.busy || this.full) return;
-    const now = Date.now();
+    if (this.busy || this.full || this.syncing) return;
     const roster = this.roster.roster;
-    const id = idForNewCharacter(roster, hasMeaningfulSave(this.gateway, PRIMARY_CHARACTER), newCharacterId(Math.random, new Set(Object.keys(roster.chars))));
-    this.roster.put({ id, name: '', vocation: 'warlock', level: 1, area: '', look: null, createdAt: now, updatedAt: now });
+    // Character #1's slot is handed out only when this device knows the account's whole list: a device that was
+    // never bound to an account, or one whose cloud pull has completed. Before that (a new device, the cloud roster
+    // not landed yet) a fresh id, never c1 — a c1 created here would merge its look and name over the account's c1.
+    const settled = mayUsePrimarySlot({ bound: hasBoundAccount(), signedIn: this.cloud.signedIn, state: this.cloud.status.state, lastSyncedAt: this.cloud.status.lastSyncedAt });
+    const fresh = newCharacterId(Math.random, new Set(Object.keys(roster.chars)));
+    const id = settled ? idForNewCharacter(roster, hasMeaningfulSave(this.gateway, PRIMARY_CHARACTER), fresh) : fresh;
+    // No row yet: a Keeper exists only once Become is pressed (made()). Leaving the Glass any other way leaves the
+    // list as it was. The Keeper we came from is remembered, to go back to.
+    try { sessionStorage.setItem(LOBBY_FROM_KEY, this.gateway.character); } catch { /* private mode: the list's first */ }
     if (id === this.gateway.character) {
       this.picked = id;
       this.go('create');
@@ -367,26 +387,77 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── The Glass (a new character) ────────────────────────────────────────────
 
-  made(): void {
+  /** "I've played before: skip the tutorial" on the Glass (off by default: a new Keeper is taught the island). */
+  skipTutorial = false;
+
+  made(look?: KeeperLook): void {
+    // Become was pressed: NOW the Keeper exists, and goes on the list.
+    const now = Date.now();
+    const made = look ?? coerceLook(this.gateway.read('godforge-keeper-look'));
+    const id = this.gateway.character;
+    const row = this.roster.row(id);
+    this.roster.put({ id, name: made.name, vocation: made.vocation, level: row?.level ?? 1, area: row?.area ?? '', look: null, createdAt: row?.createdAt || now, updatedAt: now });
+    // The new Keeper's own story record (this page plays it): the prologue is over before it starts.
+    if (this.skipTutorial) this.story.skipTut();
+    try { sessionStorage.removeItem(LOBBY_FROM_KEY); } catch { /* private mode */ }
+    this.leaveGlassHistory();
     this.go('game');
   }
 
-  /** Back out of a brand-new character before it was made: it never existed. */
+  /**
+   * Leave the Glass without Become (its ×, Back, Escape, the phone's back): the Keeper never existed. No row, and
+   * none of the save this page began for it: back to the list as it was.
+   */
   async backFromCreate(): Promise<void> {
+    if (this.mode !== 'create' || this.busy) return;
     const id = this.gateway.character;
-    const row = this.roster.row(id);
     const look = coerceLook(this.gateway.read('godforge-keeper-look'));
-    if (row && !look.made) {
-      if (id === PRIMARY_CHARACTER) {
-        // Character #1's slot is the legacy save's: forget the row and leave the (empty) slot reusable.
-        this.roster.forget(id);
-      } else {
-        this.roster.tombstone(id);
-        this.gateway.retireCharacter();
-        await this.gateway.deleteCharacterSave(id);
-      }
+    if (look.made && this.roster.row(id)) { this.leaveGlassHistory(); this.zone.run(() => this.go('select')); return; }
+    if (id === PRIMARY_CHARACTER) {
+      // Character #1's slot (the first Keeper on a device): this page plays it, nothing was made; drop any old row
+      // an earlier build wrote for it, and show the (unchanged) list.
+      if (this.roster.row(id)) this.roster.forget(id);
+      this.leaveGlassHistory();
+      this.zone.run(() => this.go('select'));
+      return;
     }
-    this.zone.run(() => this.go('select'));
+    await this.discardAndReturn(id);
+  }
+
+  /** Throw away a Keeper this page plays that was never made (or is on no list), and reload onto the list. */
+  private async discardAndReturn(id: string): Promise<void> {
+    this.busy = true;
+    this.stopArt();
+    if (this.roster.roster.chars[id] && !this.roster.row(id)) { /* already a tombstone: leave it */ }
+    else if (this.roster.row(id)) this.roster.forget(id);
+    this.gateway.retireCharacter();
+    await this.gateway.deleteCharacterSave(id);
+    let from: string | null = null;
+    try { from = sessionStorage.getItem(LOBBY_FROM_KEY); sessionStorage.removeItem(LOBBY_FROM_KEY); sessionStorage.removeItem(LOBBY_MAKE_KEY); } catch { /* private mode */ }
+    const back = from && from !== id && (from === PRIMARY_CHARACTER || this.roster.row(from)) ? from : this.roster.characters[0]?.id ?? PRIMARY_CHARACTER;
+    this.gateway.selectCharacter(back);
+    location.reload();
+  }
+
+  /** The Glass took one history entry (so a phone's back closes it); a Keeper made gives it back. */
+  private glassEntry = false;
+  private leaveGlassHistory(): void {
+    if (!this.glassEntry) return;
+    this.glassEntry = false;
+    this.ignorePop = true;
+    try { history.back(); } catch { this.ignorePop = false; }
+  }
+  private ignorePop = false;
+
+  @HostListener('window:popstate')
+  onPop(): void {
+    if (this.ignorePop) { this.ignorePop = false; return; }
+    if (this.mode === 'create' && this.glassEntry) { this.glassEntry = false; void this.backFromCreate(); }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.mode === 'create' && !this.busy) void this.backFromCreate();
   }
 
   // ── Back from the world ────────────────────────────────────────────────────

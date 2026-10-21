@@ -87,6 +87,21 @@ export class StoryService {
     return reward;
   }
 
+  /** File a prologue step the save cannot show by itself (play/td/td-prologue.ts: walk, book, bag). Once each. */
+  fileTut(step: string): void {
+    this.hydrate();
+    if (!this.isBrowser || this.current.tut?.includes(step)) return;
+    const next = coerceStory({ ...this.current, tut: [...(this.current.tut ?? []), step] });
+    if (next.tut?.includes(step)) this.save(next);
+  }
+
+  /** Skip the prologue on this character (an experienced player). */
+  skipTut(): void {
+    this.hydrate();
+    if (!this.isBrowser || this.current.skip) return;
+    this.save(coerceStory({ ...this.current, skip: true }));
+  }
+
   private save(next: StoryState): void {
     this.current = next;
     this.state$$.next(next);

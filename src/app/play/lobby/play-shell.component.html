@@ -68,7 +68,7 @@
         <footer class="win__foot">
           <button type="button" class="btn btn--brass" data-lobby-enter (click)="enter()" [disabled]="!picked || busy">{{ t('lobby.select.enter') }}</button>
           <div class="win__row">
-            <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy" [attr.title]="full ? t('lobby.select.full') : null">{{ t('lobby.select.new') }}</button>
+            <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy || syncing" [attr.aria-busy]="syncing" [attr.title]="full ? t('lobby.select.full') : null">{{ syncing ? t('lobby.select.syncing') : t('lobby.select.new') }}</button>
             <button type="button" class="btn btn--quiet" data-lobby-delete (click)="askDelete()" [disabled]="!picked || busy">{{ t('lobby.select.delete') }}</button>
           </div>
           @if (full) { <small class="select__full">{{ t('lobby.select.full') }}</small> }
@@ -106,11 +106,20 @@
         <header class="win__head">
           <span class="win__brand">{{ t('look.kicker') }}</span>
           <h1 class="win__title">{{ t('lobby.create.title') }}</h1>
+          <!-- Leaving the Glass any way but Become makes nothing (backFromCreate). -->
+          <button type="button" class="win__x" data-lobby-close (click)="backFromCreate()" [disabled]="busy" [attr.aria-label]="t('lobby.create.close')"><i aria-hidden="true">&times;</i></button>
         </header>
-        <div class="win__body win__body--maker">
-          <app-keeper-maker (done)="made()" />
+        <!-- "place": the maker's compact game-window layout (the figure, the name and Become on top, the looks in a grid),
+             so a new player sees the whole Glass and its one button without scrolling, on a phone too. -->
+        <div class="win__body win__body--maker place">
+          <app-keeper-maker (done)="made($event)" />
         </div>
-        <footer class="win__foot">
+        <footer class="win__foot create__foot">
+          <!-- Someone who has played before can make a Keeper without the island's tutorial (play/td/td-prologue.ts). -->
+          <label class="create__skip" data-lobby-skip-tut>
+            <input type="checkbox" [checked]="skipTutorial" (change)="skipTutorial = $any($event.target).checked">
+            <span>{{ t('lobby.create.skipTut') }}</span>
+          </label>
           <button type="button" class="btn btn--quiet" data-lobby-back (click)="backFromCreate()" [disabled]="busy">{{ t('lobby.create.back') }}</button>
         </footer>
       </div>
