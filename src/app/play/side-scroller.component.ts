@@ -164,6 +164,7 @@ import { SextonCountService, type SextonView } from '../shared/sexton/sexton-cou
 import { SEXTON_I18N } from '../shared/sexton/sexton-count.i18n';
 import { SEXTON_FACTS, SEXTON_GIVER, SEXTON_LEVEL, SEXTON_REWARD, sextonGold, type SextonEvent } from '../shared/sexton/sexton-count.model';
 import { SextonJournalComponent } from '../shared/sexton/sexton-journal.component';
+import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
 import { itemDefinitionById } from '../shared/rpg/item-definition';
@@ -424,7 +425,7 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
   fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
 };
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
