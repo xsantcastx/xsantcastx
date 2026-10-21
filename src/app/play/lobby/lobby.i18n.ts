@@ -31,11 +31,16 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'lobby.select.signIn': { en: 'Sign in to keep them safe', es: 'Entra para guardarlos' },
   'lobby.select.loading': { en: 'Opening the gate...', es: 'Abriendo la puerta...' },
   'lobby.select.list': { en: 'Your Keepers', es: 'Tus Guardianes' },
+  'lobby.camp.hint': { en: 'Choose a Keeper by the fire.', es: 'Elige un Guardian junto al fuego.' },
 
   'lobby.delete.title': { en: 'Let {{name}} go?', es: 'Dejar ir a {{name}}?' },
   'lobby.delete.body': {
     en: 'Their bag, gear, Gold, levels and every place they have been are gone for good, on every device. Type the name to be sure.',
     es: 'Su bolsa, equipo, Oro, niveles y cada lugar visitado se pierden para siempre, en todos los dispositivos. Escribe el nombre para confirmar.',
+  },
+  'lobby.delete.bodyNameless': {
+    en: 'This Keeper never took a name. Whatever they carried is gone for good, on every device.',
+    es: 'Este Guardian nunca tuvo nombre. Lo que llevaba se pierde para siempre, en todos los dispositivos.',
   },
   'lobby.delete.typeHint': { en: 'Type "{{name}}"', es: 'Escribe "{{name}}"' },
   'lobby.delete.confirm': { en: 'Delete forever', es: 'Borrar para siempre' },
