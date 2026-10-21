@@ -9,6 +9,10 @@
  * The Lanternwright (design-bible §4.3) is the lamp-keepers' own: the Keeper's face under a cream wool hood, a long
  * brass-buttoned coat, and a lantern hung from the crook of a pole — it glows, and its light is the Keeper's (td-lantern
  * VOCATION_LIGHT). A worn weapon takes the pole's hand; the lantern then hangs from the off-hand, unless that is worn too.
+ *
+ * The Thornstrider (design-bible §4.5) is the Canopy Wardens' ranger: the Keeper's face under a moss-green hood, a bark
+ * brown leather coat, wrapped hands, soft boots, a hunting bow in hand and a quiver of green-fletched arrows on the back
+ * (the garb's `quiver`: it shows whatever is worn, so a worn weapon takes the bow's hand and the quiver stays).
  */
 import type { GearPiece, GearSlot, KeeperGear } from './keeper-gear';
 import type { Vocation } from './keeper-look.model';
@@ -41,6 +45,19 @@ export const LANTERN_KIT: Readonly<KeeperGear> = {
 /** The lantern on its own, for the off-hand when the pole's hand holds a worn weapon. */
 export const LANTERN_OFFHAND: GearPiece = lamp('off-hand', 'lantern', '#8a6a3a', '#ffd27a');
 
+/** The Thornstrider's undercoat: moss green, bark trim, dark breeches, a leather quiver strap; the quiver on the back. */
+export const THORN_GARB: KeeperGarb = { tunic: '#4f6b34', trim: '#7a5a32', trousers: '#3e2a18', sash: '#5a3a24', quiver: '#6b4a2a' };
+
+/** The ranger's kit: the hood, the leather coat, wrapped hands, soft boots and the hunting bow (the kit weapon). */
+const wild = (slot: GearSlot, kind: GearPiece['kind'], color: string, accent: string): GearPiece => ({ slot, kind, style: 'verdant', rarity: 'common', color, accent });
+export const THORN_KIT: Readonly<KeeperGear> = {
+  head: wild('head', 'hood', '#4f6b34', '#7a5a32'),
+  chest: wild('chest', 'coat', '#6b4a2b', '#6eae52'),
+  hands: wild('hands', 'wrap', '#5a3a24', '#7a5a32'),
+  feet: wild('feet', 'boots', '#4a3420', '#6eae52'),
+  weapon: wild('weapon', 'bow', '#7a5a32', '#6eae52'),
+};
+
 /** The class's garb and its gear with the class's own pieces standing in where nothing is worn. */
 export function vocationLook(v: Vocation, gear: KeeperGear | null): { garb: KeeperGarb | null; gear: KeeperGear | null } {
   if (v === 'ashguard') return { garb: ASHGUARD_GARB, gear: { ...ASHGUARD_KIT, ...(gear ?? {}) } };
@@ -51,6 +68,7 @@ export function vocationLook(v: Vocation, gear: KeeperGear | null): { garb: Keep
     else if (gear?.weapon && !gear['off-hand']) out['off-hand'] = LANTERN_OFFHAND;
     return { garb: LANTERN_GARB, gear: out };
   }
+  if (v === 'thornstrider') return { garb: THORN_GARB, gear: { ...THORN_KIT, ...(gear ?? {}) } };
   if (v !== 'warlock') return { garb: null, gear };
   return {
     garb: WARLOCK_GARB,

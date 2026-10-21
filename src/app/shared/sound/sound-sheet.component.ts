@@ -4,13 +4,14 @@
  * One plain screen (the station rule: nothing to learn). Every move is saved at
  * once through SoundService (the save gateway), so it is the same on the
  * player's other devices. Sliders are native range inputs: keyboard, screen
- * readers and a thumb all work, and each row is 44px tall on a phone.
+ * readers and a thumb all work, and each row is 44px tall on a phone. The Hush and
+ * Night darkness (Full / Softer) sit here too: both are how the dark is felt.
  */
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { SoundService } from './sound.service';
-import { HUSH_SETTINGS, SOUND_CHANNELS, type HushSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
+import { HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_CHANNELS, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
 
 @Component({
@@ -47,6 +48,16 @@ import { SOUND_I18N } from './sound.i18n';
           }
         </span>
         <small class="ss__hushline">{{ t('play.sound.hush.' + s.hush + '.line') }}</small>
+      </div>
+      <!-- Night darkness (play/td/td-night.ts): an accessibility choice, saved with the Hush. -->
+      <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.night')">
+        <span class="ss__name">{{ t('play.sound.night') }}</span>
+        <span class="ss__seg">
+          @for (n of nights; track n) {
+            <button type="button" role="radio" [attr.aria-checked]="s.night === n" [class.on]="s.night === n" [attr.data-night-setting]="n" (click)="setNight(n)">{{ t('play.sound.night.' + n) }}</button>
+          }
+        </span>
+        <small class="ss__hushline">{{ t('play.sound.night.' + s.night + '.line') }}</small>
       </div>
       <label class="ss__mute">
         <input type="checkbox" [checked]="s.muted" (change)="mute($event)" data-sound-mute>
@@ -91,6 +102,7 @@ export class SoundSheetComponent implements OnDestroy {
   @Output() readonly done = new EventEmitter<void>();
   readonly channels = SOUND_CHANNELS;
   readonly hushes = HUSH_SETTINGS;
+  readonly nights = NIGHT_SETTINGS;
   s: SoundSettings = this.sound.settings;
   status = this.sound.status;
   /** The question mark: the sentences that used to sit on screen. */
@@ -117,6 +129,8 @@ export class SoundSheetComponent implements OnDestroy {
   }
 
   setHush(h: HushSetting): void { this.sound.setHush(h); this.sound.sfx('tap'); }
+
+  setNight(n: NightSetting): void { this.sound.setNight(n); this.sound.sfx('tap'); }
 
   mute(event: Event): void {
     this.sound.setMuted((event.target as HTMLInputElement).checked);

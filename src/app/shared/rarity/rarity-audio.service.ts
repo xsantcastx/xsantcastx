@@ -14,6 +14,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RarityDefinition } from './rarity.model';
+import { audioHidden, guardAudioContext } from '../sound/audio-visibility';
 
 type Cue = RarityDefinition['sound'];
 
@@ -48,12 +49,14 @@ export class RarityAudioService {
   }
 
   private context(): AudioContext | null {
+    // A hidden page (another app, a locked phone) plays nothing and wakes nothing (shared/sound/audio-visibility).
+    if (audioHidden()) return null;
     if (this.ctx) return this.ctx;
     try {
       const Ctor = window.AudioContext
         ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return null;
-      this.ctx = new Ctor();
+      this.ctx = guardAudioContext(new Ctor());
       return this.ctx;
     } catch {
       return null;

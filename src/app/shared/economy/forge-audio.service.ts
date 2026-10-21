@@ -12,6 +12,7 @@
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { audioHidden, guardAudioContext } from '../sound/audio-visibility';
 
 type Ctor = typeof AudioContext;
 
@@ -355,12 +356,14 @@ export class ForgeAudioService {
 
   private context(): AudioContext | null {
     if (!this.isBrowser) return null;
+    // A hidden page (another app, a locked phone) plays nothing and wakes nothing (shared/sound/audio-visibility).
+    if (audioHidden()) return null;
     if (this.ctx) return this.ctx;
     const Ctor: Ctor | undefined =
       window.AudioContext ?? (window as unknown as { webkitAudioContext?: Ctor }).webkitAudioContext;
     if (!Ctor) return null;
     try {
-      this.ctx = new Ctor();
+      this.ctx = guardAudioContext(new Ctor());
     } catch {
       return null;
     }

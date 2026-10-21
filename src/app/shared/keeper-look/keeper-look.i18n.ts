@@ -25,6 +25,11 @@ export const KEEPER_LOOK_I18N: Readonly<Record<string, { en: string; es: string 
     en: 'A lantern on a pole and the hearth\'s warmth. Mends the hurt, blinds and banishes the dead, carries daylight into the dark.',
     es: 'Un farol en un baston y el calor del hogar. Cura a los heridos, ciega y destierra a los muertos, lleva la luz del dia a la oscuridad.',
   },
+  'look.class.thornstrider': { en: 'Thornstrider', es: 'Caminaespinas' },
+  'look.class.thornstrider.blurb': {
+    en: 'A bow, a quiver and a beast at your side. Arrows from afar, snares and traps underfoot, and your pet fights as one of the pack.',
+    es: 'Un arco, un carcaj y una bestia a tu lado. Flechas desde lejos, lazos y trampas bajo los pies, y tu mascota lucha como parte de la manada.',
+  },
   'look.class.more': { en: 'More classes will come.', es: 'Llegaran mas clases.' },
   'look.class.locked': { en: 'A Keeper keeps the calling they were made with.', es: 'Un Guardian conserva la vocacion con la que fue creado.' },
   'look.preview': { en: 'Your Keeper, wearing what you wear now', es: 'Tu Guardian, con lo que llevas puesto' },

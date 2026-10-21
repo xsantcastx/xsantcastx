@@ -77,6 +77,8 @@ const CANT_TONE: Readonly<Record<TreeId, string>> = {
   brand: FX.ember.body, oath: ASH_FX.brass.body, ash: ASH_FX.ash.core,
   // The Lanternwright speaks in the lantern's glow, the hearth's fire and the kin's pale wings (td-lantern-fx).
   lamp: LAMP_FX.lamp.body, hearth: LAMP_FX.hearth.body, moth: LAMP_FX.moth.body,
+  // The Thornstrider speaks in the bow's green, the wild beasts' spirit light and the briar's bark (td-thorn-fx).
+  thorn: THORN_FX.thorn.body, wild: THORN_FX.wild.body, briar: THORN_FX.briar.core,
 };
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
@@ -94,6 +96,8 @@ import { weaponSwing } from './td-melee';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
+import { THORN_FX, drawArrow, drawBeast, drawThornAir, drawThornGround, drawThornState, drawThornZones } from './td-thorn-fx';
+import { SPIRIT_BEAST, THORN_PET, bondShare, spiritLevel, thornPetRest } from './td-thorn';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
@@ -108,6 +112,7 @@ import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece, setSigOf } from '../../shared/rpg/set-items';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
 import { DarkLayer, type DarkFrame } from './td-dark-layer';
+import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, eyeGlow, findEyes, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
 import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
 
@@ -158,6 +163,8 @@ interface PetBody {
   feel: 'happy' | 'love' | 'trick' | 'alert' | null; feelT: number; hopT: number; stuckT: number; hurtT: number;
   idleT: number; lookT: number; way: { x: number; y: number } | null; wayT: number;
   hits: number; gathers: number; heals: number;
+  /** The spirit beast standing in for a Thornstrider with no pet (td-thorn SPIRIT_BEAST): nothing of it is booked. */
+  spirit?: boolean;
 }
 /** A spark Glim sheds (a find, a cheer): one pixel, a short arc. */
 interface Spark { x: number; y: number; vx: number; vy: number; age: number; life: number; col: string }
@@ -269,8 +276,15 @@ export class TopDownEngine {
   private readonly petFetchTest = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]petfetch=1\b/.test(location.search);
   private petFetchLaid: unknown = null;
   private dark: HTMLCanvasElement | null = null;
-  private lightSprite: HTMLCanvasElement | null = null;
-  private glowSprite: HTMLCanvasElement | null = null;
+  /** The darkness pass (td-night.ts): the player's setting, this frame's pass and lights, the stepped sprites by radius. */
+  private nightSetting: NightSetting = 'full';
+  private night: NightPass = { rgb: [0, 0, 0], alpha: 0, warm: 0, amount: 0 };
+  private nightLights: NightLight[] = [];
+  private nightSeen = '';
+  private readonly holeSprites = new Map<number, HTMLCanvasElement>();
+  private readonly warmSprites = new Map<number, HTMLCanvasElement>();
+  private readonly mobEyes = new Map<string, EyeSpot[][]>();
+  private readonly mobShades = new Map<string, HTMLCanvasElement>();
   /** The fog pass: one tileable bank of mist, the half-resolution layer it is laid into, the clear patch round the Keeper. */
   private fogTile: HTMLCanvasElement | null = null;
   private fogLayer: HTMLCanvasElement | null = null;
@@ -390,7 +404,7 @@ export class TopDownEngine {
     this.placeCompanions();
     this.populate();
     this.bindInput();
-    try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
+    try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); const k = skyOfHour(this.pinned); this.darkness = k.darkness; this.dusk = k.glow; } } catch { /* no URL */ }
     this.darkLayer.pinned = this.fxHush;
     if (this.fxDark || this.fxHush !== null) (window as unknown as Record<string, unknown>)['__tdDark'] = {
       chest: (id?: string) => this.fxToChest(id),
@@ -430,13 +444,55 @@ export class TopDownEngine {
         ward: this.mobs.lampWard, dawns: this.mobs.dawns.length, hearth: this.mobs.zones.filter(z => z.kind === 'hearth').length, phase: this.mobs.phase,
       }),
     };
+    // The Thornstrider's e2e (webdriver only): a creature to shoot, the bow's and the beasts' counts.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdThorn'] = {
+      // At (dx, dy) from the Keeper — or, if a wall or a fence stands there or between, the first open spot the same
+      // distance off that he (and his beast) can see straight to.
+      foe: (type = 'ash-wolf', dx = 70, dy = 0) => {
+        const def = MOBS[type]; if (!def) return null;
+        const p = this.player, d = Math.hypot(dx, dy) || 1;
+        const tries: [number, number][] = [[dx, dy], [-dx, -dy], [-dy, dx], [dy, -dx], [d * .7, d * .7], [-d * .7, d * .7], [d * .7, -d * .7], [-d * .7, -d * .7]];
+        const at = tries.find(([x, y]) => footFree(this.level, p.x + x, p.y + y) && this.petSees(p.x, p.y, p.x + x, p.y + y)) ?? [dx, dy];
+        this.mobs.place(`fx-thorn:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + at[0], p.y + at[1]);
+        return this.mobs.mobs.length;
+      },
+      foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-thorn:')).length,
+      calm: () => { for (const m of this.mobs.mobs) if (m.key.startsWith('fx-thorn:')) { m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 1e9; } },
+      tough: (hp = 4000) => { for (const m of this.mobs.mobs) if (m.key.startsWith('fx-thorn:')) { m.def = { ...m.def, hp }; m.hp = hp; } },
+      target: () => { const f = this.mobs.mobs.find(m => m.key.startsWith('fx-thorn:')); this.mobs.target = f ?? null; return !!f; },
+      // The nearest open meadow (a 13 × 9 block of walkable grass): the Keeper and his beast stand in the middle of it.
+      clearing: () => {
+        if (this.level !== this.world) return false;
+        const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE);
+        const open = (c: number, r: number) => { for (let y = -4; y <= 4; y++) for (let x = -6; x <= 6; x++) { if (!this.level.walkable(c + x, r + y) || this.level.ground(c + x, r + y) !== 'grass') return false; } return true; };
+        for (let d = 0; d <= 48; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
+          if (Math.max(Math.abs(x), Math.abs(y)) !== d || !open(pc + x, pr + y)) continue;
+          this.player.x = (pc + x) * TILE + TILE / 2; this.player.y = (pr + y) * TILE + TILE - 2; this.player.dir = 'down'; this.path = [];
+          this.placeCompanions();
+          return true;
+        }
+        return false;
+      },
+      state: () => {
+        const pb = this.pet;
+        return {
+          vocation: this.mobs.vocation, range: this.mobs.range, hp: this.hp, maxHp: this.maxHp, mana: Math.round(this.mobs.mana), maxMana: this.mobs.maxMana,
+          speed: Math.round(this.walkSpeed * 10) / 10, loosed: this.mobs.loosed, arrows: this.mobs.arrows.length, phase: this.mobs.phase,
+          pet: pb ? { id: pb.id, spirit: !!pb.spirit, doing: pb.doing, hits: pb.hits, x: Math.round(pb.x), y: Math.round(pb.y) } : null,
+          commanded: !!this.mobs.commanded, commands: this.mobs.commands, bonded: this.mobs.bonded,
+          called: this.mobs.beasts.filter(b => b.kind === 'called').length, stampede: this.mobs.beasts.filter(b => b.kind === 'stampede').length,
+          snares: this.mobs.zones.filter(z => z.kind === 'snare').length, traps: this.mobs.zones.filter(z => z.kind === 'trap').length,
+          rooted: this.mobs.mobs.filter(m => (m.rootT ?? 0) > 0).length, bleeding: this.mobs.mobs.filter(m => (m.bleedT ?? 0) > 0).length,
+          rootwalk: this.mobs.rootwalkT > 0, foeHp: this.mobs.mobs.filter(m => m.key.startsWith('fx-thorn:')).map(m => m.hp),
+        };
+      },
+    };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
       hearths: () => this.hearths.map(h => h.id),
     };
   }
-  private static darknessAt(h: number): number { return h >= 21 || h < 5 ? 1 : h >= 18 ? (h - 18) / 3 : h < 7 ? (7 - h) / 2 : 0; }
 
   // ── Lifecycle (the component's contract) ───────────────────────────────────
 
@@ -465,6 +521,7 @@ export class TopDownEngine {
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
     delete (window as unknown as Record<string, unknown>)['__tdLamp'];
+    delete (window as unknown as Record<string, unknown>)['__tdThorn'];
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
@@ -482,6 +539,8 @@ export class TopDownEngine {
     this.darkness = Math.max(0, Math.min(1, 1 - sky.light));
     this.dusk = sky.glow;
   }
+  /** Night darkness (Menu → Sound): 'full' or 'softer' (td-night.ts). */
+  setNight(n: string): void { if (n === 'full' || n === 'softer') this.nightSetting = n; }
   setKeeperLook(look: KeeperLook | null, gear: KeeperGear | null = null): void {
     const l = look ?? defaultLook();
     // The Warlock is undead (owner, 2026-10-20): grey-green skin, a dark violet robe with bone trim, a hood, eyes that
@@ -543,7 +602,11 @@ export class TopDownEngine {
   get maxMana(): number { return this.mobs.maxMana; }
   get maxHealth(): number { return this.maxHp; }
   /** The Keeper's pace now, art px a second: the base, the level's pace, Agility and worn Move Speed, Haste. */
-  get walkSpeed(): number { return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill); }
+  get walkSpeed(): number {
+    // Rootwalk (the Thornstrider): the forest opens in front of him while it lasts.
+    const root = this.mobs.rootwalkT > 0 ? 1 + this.mobs.rootwalkPct / 100 : 1;
+    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root;
+  }
   private buildKey = '';
   /**
    * The Keeper's level, spent points and worn gear totals (the HUD hands them in): life, mana, regeneration, spell
@@ -995,10 +1058,10 @@ export class TopDownEngine {
     const p = this.player, dx = p.dir === 'down' ? 9 : p.dir === 'up' ? -9 : p.face * 6;
     return { x: p.x + dx, y: p.y - 32 };
   }
-  private ownLight(): LightSpot { return { x: this.player.x, y: this.player.y - 18, r: 70 + this.mobs.lightBonus * TILE }; }
+  private ownLight(): LightSpot { return { x: this.player.x, y: this.player.y - 18, r: KEEPER_LIGHT + this.mobs.lightBonus * TILE }; }
   private glimLight(): LightSpot | null {
     if (!this.glim.shown) return null;
-    return { x: this.glim.x, y: this.glim.y, r: (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80) + this.mobs.lightBonus * TILE };
+    return { x: this.glim.x, y: this.glim.y, r: (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : GLIM_OPEN_LIGHT) + this.mobs.lightBonus * TILE };
   }
   /** The fixed lights the dark-born and the Hush read: lamp sprites in view and lit hearths. */
   private fixedLights(): LightSpot[] {
@@ -1225,16 +1288,13 @@ export class TopDownEngine {
 
   /** The pet following the Keeper, or null (none, or it rests at home). */
   setPet(pet: { id: string; name: string; hat: boolean; ability: PetAbility; role?: PetRole; move?: PetMove; second?: PetSecond | null; level?: number; command?: PetCommand } | null): void {
-    if (!pet) { if (this.pet) this.dropCarried(this.pet); this.pet = null; return; }
+    // No pet: none follows — but a Thornstrider's spirit beast stays (it is his, not the pet card's).
+    if (!pet) { if (this.pet?.spirit) return; if (this.pet) this.dropCarried(this.pet); this.pet = null; return; }
     const roles = petRole(pet.id);
     let b = this.pet && this.pet.id === pet.id ? this.pet : null;
     if (!b) {
       if (this.pet) this.dropCarried(this.pet);
-      b = {
-        id: pet.id, role: 'combat', move: 'bite', level: 1, command: 'follow', x: this.player.x, y: this.player.y, face: this.player.face, t: Math.random() * 3,
-        doing: 'follow', moving: false, carried: null, goal: null, goalT: 0, skip: new Set(), cd: 0, nips: 0, stamina: PET_ACT.stamina, restT: 0, mendCd: 0, mendT: 0,
-        feel: null, feelT: 0, hopT: 0, stuckT: 0, hurtT: 0, idleT: 0, lookT: 2, way: null, wayT: 0, hits: 0, gathers: 0, heals: 0,
-      };
+      b = this.newPetBody(pet.id);
       this.pet = b;
       this.petBeside(b);
     }
@@ -1243,6 +1303,36 @@ export class TopDownEngine {
     b.level = Math.max(1, pet.level ?? 1);
     b.command = pet.command ?? 'follow';
   }
+  private newPetBody(id: string): PetBody {
+    return {
+      id, role: 'combat', move: 'bite', level: 1, command: 'follow', x: this.player.x, y: this.player.y, face: this.player.face, t: Math.random() * 3,
+      doing: 'follow', moving: false, carried: null, goal: null, goalT: 0, skip: new Set(), cd: 0, nips: 0, stamina: PET_ACT.stamina, restT: 0, mendCd: 0, mendT: 0,
+      feel: null, feelT: 0, hopT: 0, stuckT: 0, hurtT: 0, idleT: 0, lookT: 2, way: null, wayT: 0, hits: 0, gathers: 0, heals: 0,
+    };
+  }
+  /**
+   * The Thornstrider's beast (td-thorn.ts): with no pet following, a spirit beast of the wild stands in at his side — it
+   * fights, nothing of it is booked to the pet card — and it goes back to the green when a real pet comes (or the class
+   * is not his). Its level grows with the Keeper's.
+   */
+  private spiritBeast(): void {
+    const thorn = this.mobs.thorn;
+    // A moment's grace first: the host hands in the pet that follows just after the world comes up.
+    if (thorn && !this.pet && this.time > 1.5) {
+      const b = this.newPetBody(SPIRIT_BEAST);
+      b.spirit = true; b.command = 'fight';
+      this.pet = b;
+      this.petBeside(b);
+      this.mobs.effects.push({ kind: 'wild-call', x: b.x, y: b.y, age: 0, life: .7, dir: 1 });
+      if (!this.spiritSaid) { this.spiritSaid = true; this.say('thorn.spirit'); }
+    } else if (!thorn && this.pet?.spirit) this.pet = null;
+    if (this.pet?.spirit) this.pet.level = spiritLevel(this.mobs.keeperLevel);
+  }
+  private spiritSaid = false;
+  /** The Command count last seen: a new Command rouses a tired beast. */
+  private commandSeen = 0;
+  /** A pet's deed for the pet card (its XP, its lines) — never the spirit beast's. */
+  private bookPet(b: PetBody, ev: Parameters<NonNullable<EngineOptions['onPet']>>[0]): void { if (!b.spirit) this.options.onPet?.(ev); }
   /** A feeling for the pet: a meal or a pat (a hop), love (hearts), its trick (a spin), a start. */
   petFeel(kind: 'happy' | 'love' | 'trick' | 'alert'): void {
     const b = this.pet;
@@ -1358,7 +1448,10 @@ export class TopDownEngine {
 
   /** The pet's step: lost → at his side; then its job (fight, fetch, mend), else following and idling cute. */
   private updatePet(dt: number): void {
+    this.spiritBeast();
     const b = this.pet;
+    // Pack Bond reads where the beast stands.
+    this.mobs.beast = b ? { x: b.x, y: b.y } : null;
     if (!b) return;
     const k = this.player;
     b.t += dt; b.cd -= dt; b.mendCd -= dt;
@@ -1366,7 +1459,11 @@ export class TopDownEngine {
     if (!b.feelT) b.feel = null;
     b.moving = false;
     this.layPetFetchTest();
-    const job = tdPetJob(b.id, b.command);
+    // A Thornstrider's beast: the spirit beast fights; Command sends any pet in, even one told to Stay or Play, and
+    // rouses a tired one; otherwise every pet keeps its own job and fights beside him as well.
+    const thorn = this.mobs.thorn, sent = thorn ? this.mobs.commanded : null;
+    if (thorn && this.mobs.commands !== this.commandSeen) { this.commandSeen = this.mobs.commands; b.restT = 0; b.stamina = PET_ACT.stamina; b.hopT = .3; }
+    const own = b.spirit ? 'fight' : tdPetJob(b.id, b.command), job = sent && (own === 'stay' || own === 'play') ? 'fight' : own;
     // Lost (a wall between, a long run): it steps out at his side, as the raised do. Told to Stay, it stays.
     if (job !== 'stay' && (pastLeash(b, k) || (b.stuckT > 1.2 && Math.hypot(b.x - k.x, b.y - k.y) > 3 * TILE))) {
       this.dropCarried(b); this.petBeside(b);
@@ -1386,7 +1483,7 @@ export class TopDownEngine {
         b.mendCd = PET_ACT.pulseRest; b.mendT = .9; b.heals++;
         this.mobs.effects.push({ kind: 'heal', x: k.x, y: k.y, age: 0, life: .7, dir: 1 });
         this.mobs.floaters.push({ x: k.x, y: k.y - 34, text: `+${heal}`, color: '#7fe08a', age: 0 });
-        this.options.onPet?.({ kind: 'heal' });
+        this.bookPet(b, { kind: 'heal' });
       }
     }
     // Tired: it rests behind him a moment, then comes back to it (a pet never dies).
@@ -1398,7 +1495,7 @@ export class TopDownEngine {
     }
     if (job === 'stay') { b.idleT += dt; b.doing = b.idleT > TD_PET.sleepAfter ? 'sleep' : 'stay'; return; }
     const tell = bossTelling(k, this.mobs.mobs);
-    if (job === 'fight' && !tell && this.petFight(b, run, dt)) return;
+    if ((job === 'fight' || (thorn && job !== 'play')) && !tell && this.petFight(b, run, dt)) return;
     if (job === 'fetch' && !tell && this.petFetch(b, run, dt)) return;
     if (b.carried) { this.dropCarried(b); }
     // Following: at his side — behind him, away from a boss winding up — and idling cute when he stands still.
@@ -1434,7 +1531,9 @@ export class TopDownEngine {
   }
   /** fight: nip the foe at the Keeper's side; true while it is in a fight. */
   private petFight(b: PetBody, run: number, dt: number): boolean {
-    const foe = pickNipTarget(this.player, this.mobs.target, this.mobs.mobs);
+    // A Thornstrider's commanded foe first, wherever it is within the command's reach; else the nearest at his side.
+    const sent = this.mobs.thorn ? this.mobs.commanded : null;
+    const foe = sent && Math.hypot(sent.x - this.player.x, sent.y - this.player.y) <= THORN_PET.commandReach ? sent : pickNipTarget(this.player, this.mobs.target, this.mobs.mobs);
     if (!foe) return false;
     b.doing = 'fight'; b.idleT = 0;
     const side = b.x < foe.x ? -1 : 1, reach = TD_PET.reach + foe.def.w / 4;
@@ -1443,14 +1542,15 @@ export class TopDownEngine {
     if (b.cd > 0) return true;
     const blow = petBlow(b.move, b.role === 'combat', b.level);
     const hit = this.mobs.petBite(foe, blow.dmg, b.face);
-    b.cd = blow.rest;
+    b.cd = this.mobs.thorn ? thornPetRest(blow.rest, foe === sent) : blow.rest;
     if (!hit.landed) return true;
     b.hits++; b.nips++; b.hopT = .25;
-    this.options.onPet?.({ kind: 'hit', move: b.role === 'combat' ? b.move : 'bite', killed: hit.killed });
+    this.bookPet(b, { kind: 'hit', move: b.role === 'combat' ? b.move : 'bite', killed: hit.killed });
     // Every few nips the foe snaps back: it costs the pet stamina, never life; tired, it rests behind the Keeper.
     if (!hit.killed && b.nips % PET_ACT.aggroEvery === 0) {
-      b.stamina -= PET_ACT.blowCost; b.hurtT = .3;
-      if (b.stamina < PET_ACT.tiredAt) { b.stamina = PET_ACT.stamina; b.restT = TD_PET.restFor; this.options.onPet?.({ kind: 'tired' }); }
+      // Pack Bond shares the blow: the beast tires less while it holds.
+      b.stamina -= this.mobs.bonded ? bondShare(PET_ACT.blowCost, this.mobs.v('pack-bond')['guard']) : PET_ACT.blowCost; b.hurtT = .3;
+      if (b.stamina < PET_ACT.tiredAt) { b.stamina = PET_ACT.stamina; b.restT = TD_PET.restFor; this.bookPet(b, { kind: 'tired' }); }
     }
     return true;
   }
@@ -1485,7 +1585,7 @@ export class TopDownEngine {
   /** A fetch delivered: pet XP (as a gather), a happy hop. */
   private petBrought(b: PetBody): void {
     b.gathers++;
-    this.options.onPet?.({ kind: 'gather' });
+    this.bookPet(b, { kind: 'gather' });
     this.petFeel('happy');
   }
   /** E2E only: two real materials a few steps off the Keeper, once per level, for the pet to fetch. */
@@ -2247,6 +2347,8 @@ export class TopDownEngine {
       lay('bone-walker', wide ? 70 : 0, wide ? -4 : 80, null);
       lay('ash-wolf', wide ? -70 : -40, wide ? -4 : -70, null);
       lay('bone-walker', wide ? -30 : 40, wide ? 40 : -70, null);
+      // One out past the light: a silhouette and two lit eyes (the darkness pass's fair-fight rule).
+      lay('ash-wolf', wide ? 190 : -30, wide ? 70 : 190, null);
     } else {
       // Eclipse-touched: a lone champion with its dark corona, and a touched unique leading its minions.
       lay('ash-wolf', wide ? 84 : 0, wide ? -4 : 92, 'lone');
@@ -2401,6 +2503,7 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     for (const b of this.mobs.beacons) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeacon(c, b, this.time, this.still) });
+    for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeast(c, b, this.time, this.still) });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
@@ -2429,6 +2532,7 @@ export class TopDownEngine {
     // Mist (the Umbral Marches), then night over it.
     this.drawFog();
     this.drawLight();
+    this.drawNightEyes(inView);
     // What only the dark shows: the shapes at the light's edge, the prints behind, a shy chest, a road's pale nails.
     // The ledger page on the barrow's jetty: only the dark shows it (over the night pass, faintly lit).
     if (this.level === this.world && this.world.continent === SEXTON_CONTINENT && pageShown(this.sexton.step, this.phaseNow)) {
@@ -2694,8 +2798,8 @@ export class TopDownEngine {
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
-    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura') {
-      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : FX.life, turn = this.still ? 0 : this.time / 12;
+    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
+      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
       drawRing(c, X, Y, this.mobs.auraRadius, turn, tn.core, tn.body, 8, 6, tn.edge);
       c.globalAlpha = .6; drawRing(c, X, Y, Math.round(this.mobs.auraRadius * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
@@ -2709,10 +2813,13 @@ export class TopDownEngine {
     for (const b of this.mobs.bursts) if (near(b.x, b.y)) drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still);
     // The Lanternwright's circles on the floor: the Hearth Circle, the disc of Dawn at Noon.
     if (this.mobs.zones.length) drawLampZones(c, this.mobs.zones, this.time, this.still);
+    // The Thornstrider's on the floor: the snare's thorns, a hidden trap.
+    if (this.mobs.zones.length) drawThornZones(c, this.mobs.zones, this.time, this.still);
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
       if (drawAshGround(c, e, this.still)) continue;
       if (drawLampGround(c, e, this.still)) continue;
+      if (drawThornGround(c, e, this.still)) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
       if (e.kind === 'pulse') {
         // A short bright arc of the ring flashes at the foe's side.
@@ -2837,6 +2944,7 @@ export class TopDownEngine {
       if (e.age < 0 || e.kind === 'pulse' || e.kind === 'wave') continue;
       if (drawAshAir(c, e, this.still, this.overFoe)) continue;
       if (drawLampAir(c, e, this.still, this.overFoe)) continue;
+      if (drawThornAir(c, e, this.still, this.overFoe)) continue;
       // Reduced motion: a burst is one still frame, never no burst.
       const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), bt = this.still ? .5 : t, seed = (X * 7 + Y * 13) | 0;
       c.globalAlpha = Math.max(0, 1 - t);
@@ -2947,6 +3055,12 @@ export class TopDownEngine {
     this.drawMotes();
     if (this.mobs.melee) drawAshState(c, { brandT: this.mobs.brandT, blockT: this.mobs.blockT, vowT: this.mobs.vowT, mobs: this.mobs.mobs }, this.player, this.time, this.still);
     if (this.mobs.lamp) drawLampState(c, { ward: this.mobs.lampWard, lastLight: this.mobs.lastLightT, wisps: this.mobs.wisps, mobs: this.mobs.mobs }, this.player, this.time, this.still);
+    if (this.mobs.thorn || this.mobs.mobs.some(m => (m.rootT ?? 0) > 0 || (m.bleedT ?? 0) > 0)) {
+      const pb = this.pet;
+      drawThornState(c, { mobs: this.mobs.mobs, commanded: this.mobs.commanded, bond: this.mobs.bonded && pb ? { x: pb.x, y: pb.y } : null, keeper: this.player }, this.time, this.still);
+    }
+    // The Thornstrider's arrows in flight.
+    for (const a of this.mobs.arrows) drawArrow(c, a.x, a.y, a.vx, a.vy);
     // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).
     for (const m of this.mobs.mobs) if (m.tell > 0 && windsUp(m.def)) {
       const k = this.still ? .7 : 1 - m.tell / BOSS_TELL;
@@ -3140,7 +3254,8 @@ export class TopDownEngine {
     c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
     if (!p.painter) return;
     const acting = p === this.player && this.actT > 0;
-    const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard';
+    // The Thornstrider draws his bow from the side too (the painter's own draw pose), like the Ashguard's swing.
+    const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard' && this.mobs.vocation !== 'thornstrider';
     // The Ashguard swings from the side (the painter's own blade arc); the Warlock and the Lanternwright cast facing the
     // camera, staff raised (the Lanternwright's lamp-staff is a worn piece the front sheet paints, not the Warlock's).
     if (p === this.player && (p.dir !== 'side' || (acting && faces))) {
@@ -3233,43 +3348,59 @@ export class TopDownEngine {
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
   }
 
-  /** Darkness by the hour (day clear → dusk amber → night blue), holes for every light. */
+  /**
+   * The darkness pass (td-night.ts; effects-spec "The night"): a deep blue-violet night (violet under an eclipse, near
+   * black on a dark floor) laid in a low-resolution buffer — one buffer pixel is 2×2 art pixels, pinned to the world
+   * grid so it never crawls as the camera moves — and scaled up with pixelated sampling. Every light is a hole with a
+   * stepped falloff (a clear core, two steps, a dithered rim), and lamps, hearths and windows lay a warm wash inside
+   * theirs. Drawn under the fight's bars and names; the HUD is DOM over the canvas and is never darkened.
+   */
   private drawLight(): void {
-    const night = this.level.dark ? .9 : this.darkness;
-    if (!this.level.dark && this.dusk > .05 && night < .5) {
+    const dungeon = !!this.level.dark;
+    this.night = nightPass({ darkness: this.darkness, eclipse: dungeon ? 0 : this.eclipseDepth, dungeon, setting: this.nightSetting });
+    const tag = `${this.nightSetting}:${this.night.alpha.toFixed(2)}`;
+    if (tag !== this.nightSeen) { this.nightSeen = tag; this.canvas.setAttribute('data-night', tag); }
+    this.nightLights = [];
+    if (!dungeon && this.dusk > .05 && this.night.amount < .5) {
       // Dawn and dusk: a warm wash before the dark.
       const c0 = this.ctx; c0.setTransform(1, 0, 0, 1, 0, 0); c0.globalAlpha = .16 * this.dusk; c0.fillStyle = '#ff9a4a';
       c0.fillRect(0, 0, this.canvas.width, this.canvas.height); c0.globalAlpha = 1;
     }
-    if (night <= .02) return;
+    if (this.night.alpha <= .02) return;
     const cam = this.cam, s = this.scale;
-    const hw = Math.max(1, Math.ceil(cam.w / 2)), hh = Math.max(1, Math.ceil(cam.h / 2));
-    if (!this.dark || this.dark.width !== hw || this.dark.height !== hh) { this.dark = document.createElement('canvas'); this.dark.width = hw; this.dark.height = hh; }
-    if (!this.lightSprite) {
-      const l = document.createElement('canvas'); l.width = l.height = 64;
-      const g = l.getContext('2d')!, grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, 'rgba(0,0,0,1)'); grad.addColorStop(.55, 'rgba(0,0,0,.6)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
-      this.lightSprite = l;
-    }
+    // The buffer's origin sits on an even art pixel, so its 2×2 cells (and the rim's dither) stay put on the ground.
+    const ox = Math.floor(cam.x / 2) * 2, oy = Math.floor(cam.y / 2) * 2;
+    const bw = Math.max(1, Math.ceil(cam.w / 2) + 2), bh = Math.max(1, Math.ceil(cam.h / 2) + 2);
+    if (!this.dark || this.dark.width !== bw || this.dark.height !== bh) { this.dark = document.createElement('canvas'); this.dark.width = bw; this.dark.height = bh; }
     const d = this.dark.getContext('2d')!;
-    d.globalCompositeOperation = 'source-over';
-    d.clearRect(0, 0, hw, hh);
-    // Under an eclipse the dark is the seam's own: a deep violet instead of the night's blue (design-bible §5.2).
-    const ec = this.level.dark ? 0 : this.eclipseDepth;
-    d.fillStyle = ec > .02 ? `rgba(${Math.round(18 + 30 * ec)},${Math.round(20 - 10 * ec)},${Math.round(52 + 10 * ec)},${(.62 * night + .1 * ec).toFixed(3)})` : `rgba(18,20,52,${(.62 * night).toFixed(3)})`;
-    d.fillRect(0, 0, hw, hh);
+    d.imageSmoothingEnabled = false;
+    d.globalCompositeOperation = 'source-over'; d.globalAlpha = 1;
+    d.clearRect(0, 0, bw, bh);
+    const [r0, g0, b0] = this.night.rgb;
+    d.fillStyle = `rgba(${r0},${g0},${b0},${this.night.alpha.toFixed(3)})`;
+    d.fillRect(0, 0, bw, bh);
     d.globalCompositeOperation = 'destination-out';
-    const hole = (x: number, y: number, r: number) => d.drawImage(this.lightSprite!, (x - cam.x - r) / 2, (y - cam.y - r) / 2, r, r);
+    const bx = (x: number) => Math.round((x - ox) / 2), by = (y: number) => Math.round((y - oy) / 2);
+    const onBuf = (x: number, y: number, r: number) => x + r > ox && x - r < ox + bw * 2 && y + r > oy && y - r < oy + bh * 2;
+    // A hole of radius r (art px): the stepped sprite at its own size, never scaled (no blur, no resampling).
+    const hole = (x: number, y: number, r: number, w = 1) => {
+      if (r < 2) return;
+      this.nightLights.push({ x, y, r, w });
+      if (!onBuf(x, y, r)) return;
+      const R = Math.max(1, Math.round(r / 2)), cx = bx(x), cy = by(y);
+      d.globalAlpha = w;
+      d.drawImage(this.holeSprite(R, (cx + cy) & 1), cx - R, cy - R);
+    };
     const glows: { x: number; y: number; r: number }[] = [];
     for (const o of this.visible) {
       const sp = o.sprite();
       for (const l of sp.lights ?? []) { hole(o.x + l.x, o.y + l.y, l.r * 2); if (l.warm) glows.push({ x: o.x + l.x, y: o.y + l.y, r: l.r }); }
     }
-    // The Keeper's own light: wider while the Light spell burns, and with a boss unique's (the Warden's Last Ember).
+    // The Keeper's own light: a modest circle, wider while the Light spell burns and with a boss unique's (the Warden's
+    // Last Ember). An omen's flicker shrinks every light a moment; under reduced motion it dims once and holds still.
     const lit = this.mobs.lightBonus * TILE;
-    const fl = this.darkLayer.flicker;
-    hole(this.player.x, this.player.y - 18, (70 + lit) * fl);
+    const fl = this.still ? (this.darkLayer.flicker < 1 ? .9 : 1) : this.darkLayer.flicker;
+    hole(this.player.x, this.player.y - 18, (KEEPER_LIGHT + lit) * fl);
     if (lit > 0) glows.push({ x: this.player.x, y: this.player.y - 18, r: 14 + lit / 6 });
     // The Lanternwright's lantern on its pole glows where it hangs (unless shuttered); the kin and the dawn are lights too.
     if (this.mobs.lamp) {
@@ -3278,25 +3409,25 @@ export class TopDownEngine {
       for (const w of this.mobs.wisps) { hole(w.x, w.y, 40); glows.push({ x: w.x, y: w.y, r: 9 }); }
     }
     for (const b of this.mobs.beacons) { hole(b.x, b.y - 30, BEACON_LIGHT * 2); glows.push({ x: b.x, y: b.y - 30, r: 18 }); }
-    // Dawn at Noon: the night opens over the disc (the light sprite fades, so a little past its rim, twice for a bright core).
+    // Dawn at Noon: the night opens over the disc (a little past its rim, twice for a clear core).
     for (const z of this.mobs.dawns) { hole(z.x, z.y, z.r * 1.7); hole(z.x, z.y, z.r * 1.25); glows.push({ x: z.x, y: z.y, r: z.r * .8 }); }
     // A lit hearth is a light of its own; the fallen purse's beam a faint one.
-    if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 22 }); }
+    if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 30 }); }
     const pl = this.purseHere();
     if (pl) hole(pl.x, pl.y - 10, 30);
     // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
     if (this.mobs.aura) {
-      d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 6;
-      d.beginPath(); d.arc((this.player.x - cam.x) / 2, (this.player.y - cam.y) / 2, this.mobs.auraRadius / 2, 0, Math.PI * 2); d.stroke();
-      d.globalAlpha = .2; hole(this.player.x, this.player.y, this.mobs.auraRadius * 2 + 16); d.globalAlpha = 1;
+      d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 3;
+      d.beginPath(); d.arc(bx(this.player.x), by(this.player.y), this.mobs.auraRadius / 2, 0, Math.PI * 2); d.stroke();
+      hole(this.player.x, this.player.y, this.mobs.auraRadius * 2 + 16, .2);
     }
     // Spells are their own light: the nova's running ring, a bolt's ember, a burst as it breaks.
     for (const e of this.mobs.effects) {
       const t = e.age / e.life;
       if (e.kind === 'wave' && t < .5) {
         const k = t / .5, r = 6 + ((e.r ?? NOVA_R) - 6) * (1 - (1 - k) * (1 - k));
-        d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 5;
-        d.beginPath(); d.arc((e.x - cam.x) / 2, (e.y - cam.y) / 2, r / 2, 0, Math.PI * 2); d.stroke(); d.globalAlpha = 1;
+        d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 3;
+        d.beginPath(); d.arc(bx(e.x), by(e.y), r / 2, 0, Math.PI * 2); d.stroke();
       } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash' || e.kind === 'flame' || e.kind === 'kindle-hit' || e.kind === 'banish') hole(e.x, e.y, 28);
       else if ((e.kind === 'lamp-flash' || e.kind === 'lward-break') && t < .6) hole(e.x, e.y, (e.r ?? 48) * 2 * (1 - t));
       else if (e.kind === 'pillar' && t < .8) hole(this.player.x, this.player.y - 30, 56);
@@ -3306,35 +3437,115 @@ export class TopDownEngine {
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r) { const b = lootBeam(r); hole(g.x, g.y - 3 - b.h / 2, b.light + b.h / 2); } }
     for (const m of this.mobs.mobs) if (m.tell > 0 && m.aim && windsUp(m.def)) { hole(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, 40); hole((m.x + m.aim.x) / 2, (m.y + m.aim.y + 12) / 2, 70); }
     for (const k of this.mobs.calls) hole(k.x, k.y, 30);
-    // Glim lights the dark wider than the Keeper's own (and wider still with its lamp while he rests); a light pet its own.
+    // Glim lights the dark a little wider than the Keeper's own (much wider below ground, wider still with its lamp
+    // while he rests); a light pet its own.
     if (this.glim.shown) {
-      const r = (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80) + lit;
+      const r = (dungeon ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : GLIM_OPEN_LIGHT) + lit;
       hole(this.glim.x, this.glim.y, r * fl);
-      glows.push({ x: this.glim.x, y: this.glim.y, r: this.level.dark ? 22 : 14 });
+      glows.push({ x: this.glim.x, y: this.glim.y, r: dungeon ? 22 : 12 });
     }
     const pb = this.pet;
     if (pb && tdPetJob(pb.id, 'follow') === 'light') { hole(pb.x, pb.y - 8, TD_PET.light); glows.push({ x: pb.x, y: pb.y - 8, r: 12 }); }
+    // The warm wash: lamplight, hearths and windows tint the ground they open (stepped, the Hearth palette).
+    d.globalCompositeOperation = 'source-over';
+    d.globalAlpha = Math.min(1, this.night.warm);
+    for (const g of glows) {
+      const r = g.r * 1.8;
+      if (!onBuf(g.x, g.y, r)) continue;
+      const R = Math.max(1, Math.round(r / 2));
+      d.drawImage(this.warmSprite(R), bx(g.x) - R, by(g.y) - R);
+    }
+    d.globalAlpha = 1;
     const c = this.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);
-    c.imageSmoothingEnabled = true;
-    c.drawImage(this.dark, 0, 0, hw * 2 * s, hh * 2 * s);
     c.imageSmoothingEnabled = false;
-    // Warm glow added on top for windows and lamps: a soft round sprite, never squares.
-    if (!this.glowSprite) {
-      const l = document.createElement('canvas'); l.width = l.height = 64;
-      const g = l.getContext('2d')!, grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, 'rgba(255,190,96,1)'); grad.addColorStop(.4, 'rgba(255,150,60,.45)'); grad.addColorStop(1, 'rgba(255,120,40,0)');
-      g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
-      this.glowSprite = l;
-    }
+    c.drawImage(this.dark, Math.round((ox - cam.x) * s), Math.round((oy - cam.y) * s), bw * 2 * s, bh * 2 * s);
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
-    c.imageSmoothingEnabled = true;
-    c.globalCompositeOperation = 'lighter';
-    c.globalAlpha = .38 * night;
-    for (const g of glows) if (g.x > cam.x - 60 && g.x < cam.x + cam.w + 60 && g.y > cam.y - 60 && g.y < cam.y + cam.h + 60) c.drawImage(this.glowSprite, g.x - g.r, g.y - g.r, g.r * 2, g.r * 2);
-    c.globalAlpha = 1;
-    c.imageSmoothingEnabled = false;
-    c.globalCompositeOperation = 'source-over';
+  }
+
+  /** A light's hole at buffer radius R: the stepped falloff (td-night lightOpen), the rim dithered on the world checker. */
+  private holeSprite(R: number, parity: number): HTMLCanvasElement {
+    const key = R * 2 + parity;
+    let sp = this.holeSprites.get(key);
+    if (sp) return sp;
+    if (this.holeSprites.size > 160) this.holeSprites.clear();
+    sp = this.stepSprite(R, (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)]);
+    this.holeSprites.set(key, sp);
+    return sp;
+  }
+  /** A warm wash at buffer radius R: stepped bands of the Hearth palette, a brass-cream heart (td-night warmAt). */
+  private warmSprite(R: number): HTMLCanvasElement {
+    let sp = this.warmSprites.get(R);
+    if (sp) return sp;
+    if (this.warmSprites.size > 80) this.warmSprites.clear();
+    sp = this.stepSprite(R, f => f <= .35 ? [255, 210, 122, warmAt(f)] : [255, 179, 71, warmAt(f)]);
+    this.warmSprites.set(R, sp);
+    return sp;
+  }
+  private stepSprite(R: number, px: (f: number, x: number, y: number) => readonly [number, number, number, number]): HTMLCanvasElement {
+    const n = R * 2 + 1, el = document.createElement('canvas');
+    el.width = el.height = n;
+    const g = el.getContext('2d')!, img = g.createImageData(n, n);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const f = Math.hypot(x - R, y - R) / (R + .5);
+      if (f > 1) continue;
+      const [r, gg, b, a] = px(f, x, y), i = (y * n + x) * 4;
+      img.data[i] = r; img.data[i + 1] = gg; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);
+    }
+    g.putImageData(img, 0, 0);
+    return el;
+  }
+
+  /**
+   * The fight stays fair in the dark: a creature past the light shows as a faint night-blue silhouette with its own
+   * eyes lit (one pixel each, the colour it was painted with), fading as a light reaches it. Drawn over the pass and
+   * under the bars and names, which stay readable. Still under reduced motion (nothing here moves on its own).
+   */
+  private drawNightEyes(inView: (x: number, y: number, pad?: number) => boolean): void {
+    if (this.night.alpha <= .3) return;
+    const c = this.ctx;
+    for (const m of this.mobs.mobs) {
+      if (!inView(m.x, m.y, 20)) continue;
+      const k = eyeGlow(this.night.alpha, litAt(this.nightLights, m.x, m.y - m.def.h / 2));
+      if (k <= .02) continue;
+      const d = m.def, sheet = mobSheet(d), frames = Math.max(1, Math.round(sheet.width / d.w)), f = Math.floor(m.t * 6) % frames;
+      const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
+      const X = Math.round(m.x), Y = Math.round(m.y - d.h - lift), left = -Math.floor(d.w / 2);
+      // The silhouette: the body's shape in a pale night tone, a little lighter than the dark round it.
+      c.save();
+      c.translate(X, Y);
+      if (m.face < 0) c.scale(-1, 1);
+      c.globalAlpha = .28 * k * (d.ghost ? .6 : 1);
+      c.drawImage(this.mobShade(d, sheet), f * d.w, 0, d.w, d.h, left, 0, d.w, d.h);
+      c.restore();
+      // The eyes: whole pixels, mirrored with the body.
+      c.globalAlpha = Math.min(1, .35 + k);
+      for (const e of this.eyesOf(d, sheet)[f] ?? []) {
+        const ex = m.face < 0 ? X - (left + e.x) - 1 : X + left + e.x;
+        c.fillStyle = `rgb(${Math.min(255, e.rgb[0] + 40)},${Math.min(255, e.rgb[1] + 40)},${Math.min(255, e.rgb[2] + 40)})`;
+        c.fillRect(ex, Y + e.y, 1, 1);
+      }
+      c.globalAlpha = 1;
+    }
+  }
+  private eyesOf(def: Mob['def'], sheet: HTMLCanvasElement): EyeSpot[][] {
+    let eyes = this.mobEyes.get(def.id);
+    if (eyes) return eyes;
+    const frames = Math.max(1, Math.round(sheet.width / def.w)), g = sheet.getContext('2d')!;
+    eyes = [];
+    for (let f = 0; f < frames; f++) eyes.push(findEyes(g.getImageData(f * def.w, 0, def.w, def.h).data, def.w, def.h));
+    this.mobEyes.set(def.id, eyes);
+    return eyes;
+  }
+  private mobShade(def: Mob['def'], sheet: HTMLCanvasElement): HTMLCanvasElement {
+    let sh = this.mobShades.get(def.id);
+    if (sh) return sh;
+    sh = document.createElement('canvas'); sh.width = sheet.width; sh.height = sheet.height;
+    const g = sh.getContext('2d')!;
+    g.drawImage(sheet, 0, 0);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = '#4a4480'; g.fillRect(0, 0, sh.width, sh.height);
+    this.mobShades.set(def.id, sh);
+    return sh;
   }
 }
 

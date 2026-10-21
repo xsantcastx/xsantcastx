@@ -25,6 +25,11 @@ export const SOUND_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.sound.hush.full.line': { en: 'The deep dark leans close and pays for it. It never hurts you.', es: 'La oscuridad honda se acerca y lo paga. Nunca te hace dano.' },
   'play.sound.hush.quiet.line': { en: 'No deeper than a far bell. No whispers, no shapes leaning in.', es: 'Nada mas hondo que una campana lejana. Sin susurros ni sombras que se acerquen.' },
   'play.sound.hush.off.line': { en: 'No Hush at all: the dark stays only dark.', es: 'Sin Silencio: la oscuridad es solo oscuridad.' },
+  'play.sound.night': { en: 'Night darkness', es: 'Oscuridad nocturna' },
+  'play.sound.night.full': { en: 'Full', es: 'Entera' },
+  'play.sound.night.softer': { en: 'Softer', es: 'Suave' },
+  'play.sound.night.full.line': { en: 'The night as it is: your light is a small island and the dark is deep.', es: 'La noche tal cual: tu luz es una isla pequena y la oscuridad es honda.' },
+  'play.sound.night.softer.line': { en: 'A lighter night: shapes and ground stay easier to see past your light.', es: 'Una noche mas clara: formas y suelo se ven mejor mas alla de tu luz.' },
   'play.sound.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
 
   // ── Catch & craft ──

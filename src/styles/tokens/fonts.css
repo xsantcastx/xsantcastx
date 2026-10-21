@@ -72,6 +72,24 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* ---- Pixelify Sans: the glyphs it draws wrong at small sizes come from Inter instead ----
+   Pixelify draws 2 and 5 like 8 ("Lv 24" read "Lv 84", "0/20" read "0/80", "45s" read "48s") and a capital C like O
+   ("Common" read "Oommon"). These faces share the family name and the three weights, declare ONLY those glyphs
+   (U+0030-0039 digits, U+0043 C) and come later in the file, so they win the overlap: every place the game sets
+   text in the pixel face (HTML and canvas alike: canvas looks fonts up by family name) gets Inter's digits and C
+   with no template touched. Same /assets/fonts/inter-latin-var.woff2 as the UI face (already 'self' for the CSP and
+   already downloaded), so nothing new goes over the wire.
+   The "fi" ligature (it draws a capital A: "Hellfire" read "HellAre") and the 5/8 fraction ligatures are switched off
+   for HTML in styles.css. Canvas cannot set font-variant-ligatures (its `font` shorthand resets it), so the i and l
+   faces below are Pixelify itself, unchanged: f in one face and the letter after it in another are shaped as separate
+   runs, which is all it takes for the fi / fl / ffi ligature not to form, in any browser. (ff alone still ligates.) */
+@font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/inter-latin-var.woff2') format('woff2'); unicode-range: U+0030-0039, U+0043; }
+@font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('/assets/fonts/inter-latin-var.woff2') format('woff2'); unicode-range: U+0030-0039, U+0043; }
+@font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/assets/fonts/inter-latin-var.woff2') format('woff2'); unicode-range: U+0030-0039, U+0043; }
+@font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/pixelify-sans-400-latin.woff2') format('woff2'); unicode-range: U+0069, U+006C; }
+@font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('/assets/fonts/pixelify-sans-600-latin.woff2') format('woff2'); unicode-range: U+0069, U+006C; }
+@font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/assets/fonts/pixelify-sans-700-latin.woff2') format('woff2'); unicode-range: U+0069, U+006C; }
+
 /* ---- Cinzel Decorative — realm names, boss moments, major page titles ---- */
 @font-face {
   font-family: 'Cinzel Decorative';

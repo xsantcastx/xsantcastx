@@ -30,7 +30,7 @@ describe('sound settings (godforge-sound)', () => {
     expect(coerceSound(null)).toEqual(defaultSound());
     expect(coerceSound([1, 2])).toEqual(defaultSound());
     const s = coerceSound({ music: 1.7, ambience: -2, effects: .333, muted: 'yes', updatedAt: 'x' });
-    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', updatedAt: 0 });
+    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', updatedAt: 0 });
     expect(clampLevel(NaN, .4)).toBe(.4);
   });
 
@@ -40,6 +40,15 @@ describe('sound settings (godforge-sound)', () => {
     expect(coerceSound({ hush: 'quiet' }).hush).toBe('quiet');
     expect(coerceSound({ hush: 'off' }).hush).toBe('off');
     expect(coerceSound({ hush: 'loud' }).hush).toBe('full');
+  });
+
+  it('keeps Night darkness, and an older save without it reads as the full night', () => {
+    expect(defaultSound().night).toBe('full');
+    expect(coerceSound({ music: .5 }).night).toBe('full');
+    expect(coerceSound({ night: 'softer' }).night).toBe('softer');
+    expect(coerceSound({ night: 'pitch' }).night).toBe('full');
+    // The later choice wins whole, so a softer night chosen on the phone follows the Keeper to the PC.
+    expect((mergeSound({ night: 'softer', updatedAt: 9 }, { night: 'full', updatedAt: 3 }) as { night: string }).night).toBe('softer');
   });
 
   it('merges two devices by the later choice, whole', () => {

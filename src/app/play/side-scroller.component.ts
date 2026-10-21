@@ -98,6 +98,7 @@ import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
 import { LANTERN_I18N } from './td/td-lantern.i18n';
+import { THORN_I18N } from './td/td-thorn.i18n';
 import { ACCOUNT_I18N } from '../shared/account/account.i18n';
 import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
 import { GLIM_I18N } from '../shared/glim/glim.i18n';
@@ -166,6 +167,7 @@ import { SextonCountService, type SextonView } from '../shared/sexton/sexton-cou
 import { SEXTON_I18N } from '../shared/sexton/sexton-count.i18n';
 import { SEXTON_FACTS, SEXTON_GIVER, SEXTON_LEVEL, SEXTON_REWARD, sextonGold, type SextonEvent } from '../shared/sexton/sexton-count.model';
 import { SextonJournalComponent } from '../shared/sexton/sexton-journal.component';
+import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
 import { itemDefinitionById } from '../shared/rpg/item-definition';
@@ -426,7 +428,7 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
   fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
 };
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -855,6 +857,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HUD_I18N);
     this.i18n.register(ASHGUARD_I18N);
     this.i18n.register(LANTERN_I18N);
+    this.i18n.register(THORN_I18N);
     this.i18n.register(TOWN_TASKS_I18N);
     this.i18n.register(ACCOUNT_I18N);
     this.i18n.register(TOOLS_I18N);
@@ -1877,9 +1880,10 @@ export class SideScrollerComponent implements OnDestroy {
   get hushLabel(): string { return this.tdHush ? `${this.t('dark.hud.band.' + this.tdHush.band)}. ${this.t('dark.hud.rule')}` : ''; }
   /** Each HUD tick: the player's cap and the whispers' words to the engine, the Hush back for the band. */
   private tickHush(): void {
-    const e = this.engine as unknown as { hushView?: { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null }; setHushCap?: (c: string) => void; setDarkWords?: (w: { whispers: readonly string[]; name: string }) => void } | undefined;
+    const e = this.engine as unknown as { hushView?: { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null }; setHushCap?: (c: string) => void; setNight?: (n: string) => void; setDarkWords?: (w: { whispers: readonly string[]; name: string }) => void } | undefined;
     if (!e?.hushView) { this.tdHush = null; return; }
     e.setHushCap?.(this.sound.settings.hush);
+    e.setNight?.(this.sound.settings.night);
     const first = this.t('dark.whisper.1');
     if (first !== this.darkWordsKey && e.setDarkWords) {
       this.darkWordsKey = first;
