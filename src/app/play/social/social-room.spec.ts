@@ -100,4 +100,47 @@ describe('SocialRoom (the Hearth room client)', () => {
     expect(hearthEndpoint({ hostname: 'localhost', protocol: 'http:' }, 'evil.example')).toBe('http://localhost:4320');
     expect(hearthEndpoint({ hostname: 'xsantcastx.com', protocol: 'https:' }, '4777')).toMatch(/^https:\/\/eclipse-hearth/);
   });
+
+  it('protocol 3: says it knows parties on join; party, invite, party lines, kills and notes arrive; verbs post', async () => {
+    const fake = fakeRoom(() => Response.json({ token: 'secret', id: 'me', players: [], messages: [], protocol: 3 }));
+    const kills: unknown[] = [], notes: unknown[] = [];
+    const r = new SocialRoom(s => { state = s; }, { keepAlive: true, endpoint: 'http://room', fetch: fake.transport, now: () => clock, onPartyKill: k => kills.push(k), onPartyNote: n => notes.push(n) });
+    await r.join('Arin'); await settle();
+    expect(fake.requests[0].body).toEqual(jasmine.objectContaining({ name: 'Arin', party: true }));
+    expect(r.canParty).toBeTrue();
+    const push = async (value: unknown) => { fake.streams[0].enqueue(new TextEncoder().encode(`data: ${JSON.stringify(value)}\n\n`)); await settle(); };
+    await push({ type: 'invite', invite: { id: 'i1', from: 'ally', name: 'Mira', to: 'me', until: 99 } });
+    expect(state!.invites!.map(i => i.id)).toEqual(['i1']);
+    expect(await r.answer('i1', true)).toBe('');
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/party/accept', body: { invite: 'i1' } });
+    expect(state!.invites).toEqual([]);
+    await push({ type: 'party', party: { id: 'p', leader: 'ally', members: ['ally', 'me'] } });
+    expect(state!.party).toEqual({ id: 'p', leader: 'ally', members: ['ally', 'me'] });
+    await push({ type: 'party-chat', message: { id: 'm1', playerId: 'ally', name: 'Mira', text: 'hi', at: 1 } });
+    expect(state!.partyMessages!.map(m => m.text)).toEqual(['hi']);
+    await push({ type: 'party-kill', kill: { id: 'k', from: 'ally', creature: 'rivet-maw', level: 4, hp: 60, area: 'ember-isle', x: 1, y: 2, at: 3 } });
+    await push({ type: 'party-note', note: { kind: 'joined', name: 'Oskar', id: 'o' } });
+    expect(kills.length).toBe(1); expect(notes.length).toBe(1);
+    r.partyKill({ creature: 'rivet-maw', level: 4, hp: 60, area: 'ember-isle' }); await settle();
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/party/kill', body: { creature: 'rivet-maw', level: 4, hp: 60, area: 'ember-isle' } });
+    expect(await r.partyChat('on my way')).toBeTrue();
+    expect(fake.requests.pop()!.url).toBe('http://room/party/chat');
+    await push({ type: 'party', party: null });
+    expect(state!.party).toBeNull();
+    expect(state!.partyMessages).toEqual([]);
+    r.leave();
+  });
+
+  it('protocol 3 against a v2 room: no party verbs leave the device', async () => {
+    const fake = fakeRoom(), r = room(fake);
+    await r.join('Arin'); await settle();
+    expect(r.canParty).toBeFalse();
+    expect(await r.invite('ally')).toBe('offline');
+    r.partyKill({ creature: 'rivet-maw', level: 4, hp: 60, area: 'ember-isle' }); await settle();
+    expect(fake.requests.some(q => q.url.includes('/party/'))).toBeFalse();
+    // Life still travels in presence (a v2 room ignores it), cleaned: both or neither, whole, never above the most.
+    expect(cleanPresence({ hp: 130.4, maxHp: 120 })).toEqual({ hp: 120, maxHp: 120 });
+    expect(cleanPresence({ hp: 10 })).toEqual({});
+    r.leave();
+  });
 });

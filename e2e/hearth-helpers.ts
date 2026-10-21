@@ -43,7 +43,7 @@ export async function startHearth(origin: string, script = path.join(__dirname, 
 }
 
 /** A Keeper in the top-down world, in the room on `port`. */
-export async function enterAs(page: Page, port: number, name: string, vocation: string, extra: Record<string, unknown> = {}): Promise<void> {
+export async function enterAs(page: Page, port: number, name: string, vocation: string, extra: Record<string, unknown> = {}, query = ''): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
   await seed(page, {
@@ -51,7 +51,7 @@ export async function enterAs(page: Page, port: number, name: string, vocation: 
     'godforge-keeper-look': { version: 1, made: true, prompted: true, name, vocation, updatedAt: 1 },
     ...extra,
   });
-  await page.goto('/play?td=1&hour=12');
+  await page.goto(`/play?td=1&hour=12${query ? `&${query}` : ''}`);
   await expect(page.locator('.viewport canvas')).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
   await expect(page.locator('.td-chat')).toHaveAttribute('data-chat-connected', 'true', { timeout: 20000 });
 }

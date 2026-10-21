@@ -136,7 +136,7 @@ export type LootRow =
 /** A world sound (EngineOptions.onSfx). */
 /** What the Seek found (EngineOptions.onSeek): its kind and id, the name the engine knows, and Glim's reading. */
 export interface SeekAnswer {
-  kind: 'boss' | 'quest' | 'purse' | 'story' | 'unknown';
+  kind: 'boss' | 'quest' | 'purse' | 'story' | 'party' | 'unknown';
   id: string; name: string;
   dir: 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | null;
   band: 'beside' | 'near' | 'far' | 'veryFar';
