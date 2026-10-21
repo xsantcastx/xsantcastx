@@ -71,7 +71,9 @@ import { MOBS, mobSheet } from './td/td-mobs';
 import { bossUniqueById, relicTotals, type BossUnique, type RelicTotals } from '../shared/rpg/boss-uniques';
 import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
 import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/unique-items';
-import type { SeekAnswer } from './engine/engine.model';
+import type { CorpseView, SeekAnswer } from './engine/engine.model';
+import { CORPSE_I18N } from './td/td-corpse.i18n';
+import { GAME_MENU_I18N } from './world/game-menu.i18n';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
@@ -231,6 +233,8 @@ import { CROUPIER_STATIONS, KAEL_STATION, slateRefusal, type SlateTier } from '.
 import type { PanelEntry } from './world/panel-registry';
 import { SoundService } from '../shared/sound/sound.service';
 import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
+import { FeedbackSheetComponent } from '../shared/feedback/feedback-sheet.component';
+import { FEEDBACK_I18N } from '../shared/feedback/feedback.i18n';
 // Loot & combat (docs/design/loot-and-combat.md): drops, auras, difficulty, the corpse run.
 import { LootService } from '../shared/loot/loot.service';
 import { LootSheetComponent } from '../shared/loot/loot-sheet.component';
@@ -473,7 +477,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -553,6 +557,10 @@ export class SideScrollerComponent implements OnDestroy {
   private soundSub?: Subscription;
   /** Menu → Sound is open. */
   soundOpen = false;
+  /** Menu → Send feedback (shared/feedback). */
+  feedbackOpen = false;
+  /** The Game Menu (Esc, or the Menu button): the Keeper's own things and the settings. */
+  gameMenuOpen = false;
   /** Menu → Loot & Combat (shared/loot/loot-sheet.component.ts). */
   lootOpen = false;
   /** The Satchel's pet well, opened (shared/pets/pet-sheet.component.ts). */
@@ -780,6 +788,8 @@ export class SideScrollerComponent implements OnDestroy {
   partyBusy = false;
   /** Another Keeper's card (tapped in the world): name, class, level and Wave. */
   peerCard: { id: string; name: string; vocation: string; level: number } | null = null;
+  /** A corpse opened in the world (E, or a tap): its loot to take (td-corpse.ts). */
+  corpseView: CorpseView | null = null;
   // ── The social graph (protocol 4; docs/design/online.md Phase 3) ──
   /** Menu → Friends: friends (online, where), requests, the block list. */
   friendsOpen = false;
@@ -1163,6 +1173,11 @@ export class SideScrollerComponent implements OnDestroy {
     void this.room?.wave(peer.id);
   }
   closePeerCard(): void { this.peerCard = null; this.focusWorld(); }
+  private get corpseEngine(): { takeFromCorpse?: (what: string) => number; closeCorpse?: () => void } | undefined { return this.engine as unknown as { takeFromCorpse?: (what: string) => number; closeCorpse?: () => void } | undefined; }
+  /** Take one piece of the open corpse's loot, or all of it. */
+  takeCorpse(what: string): void { this.corpseEngine?.takeFromCorpse?.(what); }
+  closeCorpse(): void { this.corpseEngine?.closeCorpse?.(); this.corpseView = null; this.focusWorld(); }
+  corpseStageLabel(stage: string): string { return this.t('corpse.' + stage); }
   /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
@@ -1451,6 +1466,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(TD_PROLOGUE_I18N);
     this.i18n.register(TD_UX_I18N);
+    this.i18n.register(CORPSE_I18N);
+    this.i18n.register(GAME_MENU_I18N);
+    this.i18n.register(FEEDBACK_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
@@ -1542,6 +1560,8 @@ export class SideScrollerComponent implements OnDestroy {
       onSeek: answer => this.zone.run(() => { this.message = this.seekLine(answer); }),
       // Another Keeper tapped in the world (top-down, td-peers): their card.
       onPeerTap: peer => this.zone.run(() => this.peerTapped(peer)),
+      // A corpse opened in the world (td-corpse): the loot still in it, and null once it is shut or gone.
+      onCorpse: view => this.zone.run(() => { this.corpseView = view; }),
       // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
       onSexton: event => this.zone.run(() => this.sextonSaw(event.kind === 'stone' ? { kind: 'stone', n: event.n ?? 1 } : event.kind === 'page' ? { kind: 'page', dark: !!event.dark } : { kind: event.kind })),
       // Each player digs their own Delve: seed and dug cells from the save.
@@ -1705,6 +1725,11 @@ export class SideScrollerComponent implements OnDestroy {
       const note = (event: PointerEvent): void => { tapped = event.pointerType !== 'mouse'; };
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
+        // The top-down world takes its own taps (td-engine tap(): a creature, another Keeper, a corpse, a tree, the
+        // nearest stall, else a walk). This handler is the side view's: left running it walked the Keeper to a stall
+        // under the finger AFTER the engine had opened a Keeper's card (the bug "tapping another Keeper walks me into an
+        // NPC's dialogue"), and cut a corpse tap's walk short.
+        if (this.topDown) return;
         // The press already mined, placed or took back: the click does not do it twice.
         if (acted) { acted = false; return; }
         // A tap with a placeable chosen places it on that cell (or takes back what is there);
@@ -2100,6 +2125,12 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Menu → Sound. */
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
+  closeGameMenu(): void { this.gameMenuOpen = false; this.focusWorld(); }
+  closeFeedback(): void { this.feedbackOpen = false; this.focusWorld(); }
+  openFeedback(): void { this.placesOpen = false; this.feedbackOpen = true; }
+  /** What the feedback form sends along beside the note, and the canvas it may take a picture of. */
+  get feedbackContext(): { area: string; vocation: string; level: number } { return { area: this.state.area || '', vocation: this.looks.look.vocation, level: Math.max(1, this.huntingLevel || 1) }; }
+  get feedbackCanvas(): HTMLCanvasElement | null { return this.canvas?.nativeElement ?? null; }
   /** Menu → Loot & Combat. */
   openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
@@ -2244,7 +2275,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.showTip(null, 0, 0);
     // A place takes the screen: the sheets that float over the world fold (the settings sheet stayed up over the
     // Hearth Shrine and took its taps on a phone).
-    this.soundOpen = false; this.bestiaryOpen = false;
+    this.soundOpen = false; this.feedbackOpen = false; this.bestiaryOpen = false;
     // Remember a keyboard opener (not one place replacing another: keep the first).
     if (!this.panel) { this.panelOpener = this.keyboardOpener(); this.sound.sfx('open'); }
     this.panelSeq++;
@@ -3023,8 +3054,15 @@ export class SideScrollerComponent implements OnDestroy {
     }
     return this.placesCache.rows;
   }
+  toggleGameMenu(): void {
+    this.bestiaryOpen = false; this.placesOpen = false;
+    this.gameMenuOpen = !this.gameMenuOpen;
+    if (this.gameMenuOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#game-menu li button')?.focus());
+  }
+  /** Menu → Lore: the character sheet's lore page. */
+  openLore(): void { this.openCharacter(); this.sheetTab = 'lore'; }
   togglePlaces(): void {
-    this.bestiaryOpen = false;
+    this.bestiaryOpen = false; this.gameMenuOpen = false;
     this.placesOpen = !this.placesOpen;
     this.mapSection = null;
     // The nudge is a one-time thing: seen once the list is open (the entry stays).
@@ -4089,6 +4127,8 @@ export class SideScrollerComponent implements OnDestroy {
     }
     // A field has the keyboard (its target, or whatever holds focus, or an IME composing): no hotkey fires.
     if (this.typing(event)) return;
+    // Nothing open: Escape opens the Game Menu (the usual game's pause menu).
+    if (event.key === 'Escape' && !this.anyMenuOpen && !event.repeat) { event.preventDefault(); this.toggleGameMenu(); return; }
     // Enter opens the chat and puts the cursor in its line (never over a menu, never on a focused button or link).
     if (event.key === 'Enter' && this.topDown && !this.anyMenuOpen && !(event.target as HTMLElement | null)?.closest?.('button, a, [role="button"], summary')) {
       event.preventDefault(); this.openChatLine(); return;
@@ -4232,7 +4272,10 @@ export class SideScrollerComponent implements OnDestroy {
   closeTopMenu(): boolean {
     if (this.bagOpen && this.pick) { this.unpick(); return true; }
     if (this.peerCard) { this.closePeerCard(); return true; }
+    if (this.corpseView) { this.closeCorpse(); return true; }
     if (this.lootOpen) { this.lootOpen = false; this.focusWorld(); return true; }
+    if (this.gameMenuOpen) { this.gameMenuOpen = false; this.focusWorld(); return true; }
+    if (this.feedbackOpen) { this.feedbackOpen = false; this.focusWorld(); return true; }
     if (this.soundOpen) { this.soundOpen = false; this.focusWorld(); return true; }
     if (this.friendsOpen) { this.closeFriends(); return true; }
     if (this.petsOpen) { this.closePets(); return true; }
@@ -4250,7 +4293,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Any HUD menu over the world (Enter then belongs to it, not the chat). */
   private get anyMenuOpen(): boolean {
-    return this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
+    return this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.feedbackOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
       || !!this.panel || !!this.anchorSheet || !!this.taskTalk || !!this.peerCard || this.map.open;
   }
   /**
@@ -5748,12 +5791,14 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return !!this.taskTalk || this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return !!this.taskTalk || this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.feedbackOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
     if (this.taskTalk) this.closeTalk();
     else if (this.petsOpen) this.closePets();
     else if (this.bestiaryOpen) this.closeBestiary();
+    else if (this.gameMenuOpen) this.gameMenuOpen = false;
+    else if (this.feedbackOpen) this.feedbackOpen = false;
     else if (this.soundOpen) this.soundOpen = false;
     else if (this.friendsOpen) this.closeFriends();
     else if (this.anchorSheet) this.closeAnchors();

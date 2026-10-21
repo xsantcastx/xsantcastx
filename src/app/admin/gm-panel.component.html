@@ -338,6 +338,37 @@
         </div>
       }
     </section>
+    <section class="gm-sec" aria-labelledby="gm-fb-h" data-gm-feedback>
+      <header class="gm-sec__head">
+        <h2 class="gm-sec__title" id="gm-fb-h">Player feedback ({{ openFeedback }} open)</h2>
+        <p class="gm-sec__sub">
+          Sent from the game's Send feedback form by a signed-in Keeper: the note, the device facts that came with it and,
+          when they attached one, the picture of their screen. Open notes first.
+        </p>
+      </header>
+      @if (!feedback.length) {
+        <p class="gm-empty">No feedback.</p>
+      } @else {
+        <div class="gm-scroll">
+          <table class="gm-table">
+            <caption class="gm-sr">Player feedback, newest first</caption>
+            <thead><tr><th scope="col">When</th><th scope="col">Type</th><th scope="col">Note</th><th scope="col">Device</th><th scope="col">Picture</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              @for (f of feedback; track f.id) {
+                <tr [attr.data-feedback]="f.id" [attr.data-status]="f.status">
+                  <td [title]="f.at ? (f.at | date: 'medium') : ''">{{ ago(f.at) }}</td>
+                  <td><code class="gm-action">{{ f.type }}</code></td>
+                  <td class="gm-detail">{{ f.message }}<br><code class="gm-action">{{ f.uid }}</code></td>
+                  <td class="gm-detail">v{{ f.device.version }} · {{ f.device.vocation }} {{ f.device.level }} · {{ f.device.area }}<br>{{ f.device.viewport }}<br><small>{{ f.device.ua }}</small></td>
+                  <td>@if (f.shot) { <a [href]="shotSrc(f)" target="_blank" rel="noopener"><img class="gm-shot" [src]="shotSrc(f)" alt="The player's screenshot"></a> } @else { — }</td>
+                  <td>@if (f.status === 'open') { <button type="button" class="gm-btn" data-feedback-resolve (click)="resolveFeedback(f)">Resolve</button> } @else { resolved }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
     <section class="gm-sec" aria-labelledby="gm-log-h">
       <header class="gm-sec__head">
         <h2 class="gm-sec__title" id="gm-log-h">Audit trail</h2>

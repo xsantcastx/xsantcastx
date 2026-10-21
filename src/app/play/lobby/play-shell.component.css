@@ -388,6 +388,23 @@
 .parch input:focus-visible { outline: 2px solid var(--cozy-berry); }
 .confirm__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
+/* Send feedback over the title or the campfire: the sheet scrolls inside its own box, capped at the screen. */
+.fbhost {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  background: var(--cozy-wood-0);
+  border: 3px solid var(--cozy-wood-3);
+  box-shadow: inset 0 0 0 3px var(--cozy-wood-1), 0 10px 0 color-mix(in srgb, var(--cozy-wood-0) 60%, transparent);
+}
+
 /* ── The Glass ─────────────────────────────────────────────────────────── */
 .create { width: min(680px, 100%); }
 .create__skip {

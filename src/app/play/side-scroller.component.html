@@ -7,7 +7,7 @@
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
-<section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || bestiaryOpen || soundOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -102,6 +102,10 @@
       <button type="button" (click)="sheetOpen = !sheetOpen; spellbookOpen = false" [attr.aria-expanded]="sheetOpen" [title]="t('play.td.dock.sheet') + ' (C)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
         <span>{{ t('play.td.dock.sheet') }}</span><kbd>C</kbd>
+      </button>
+      <button type="button" data-game-menu-toggle (click)="toggleGameMenu()" [attr.aria-expanded]="gameMenuOpen" [title]="t('menu.title') + ' (Esc)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="3" width="10" height="2" fill="#e9dcae"/><rect x="3" y="7" width="10" height="2" fill="#e9dcae"/><rect x="3" y="11" width="10" height="2" fill="#e9dcae"/></svg>
+        <span>{{ t('menu.title') }}</span><kbd>Esc</kbd>
       </button>
       <button type="button" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" [title]="t('play.td.dock.places') + ' (M)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
@@ -201,6 +205,28 @@
             @for (r of reportReasons; track r) { <button type="button" class="td-peer__quiet" [attr.data-report-reason]="r" [disabled]="socialBusy" (click)="reportPeer(r)">{{ t('play.social.reason.' + r) }}</button> }
           </div>
         }
+      }
+    </section>
+  }
+  <!-- A corpse, opened in the world (E, or a tap on it): what it still holds. Walking over a drop still picks it up. -->
+  @if (topDown && corpseView; as cv) {
+    <section class="td-peer td-corpse" role="dialog" aria-modal="false" aria-labelledby="td-corpse-name" data-corpse-window [attr.data-corpse-stage]="cv.stage" data-engine-ignore>
+      <header class="td-peer__head">
+        <small>{{ corpseStageLabel(cv.stage) }}</small>
+        <button type="button" class="td-peer__x" data-corpse-close (click)="closeCorpse()" [attr.aria-label]="t('corpse.close')">&times;</button>
+      </header>
+      <h2 id="td-corpse-name">{{ t('corpse.title', { name: cv.name }) }}</h2>
+      @if (cv.rows.length) {
+        <ul class="td-corpse__list">
+          @for (row of cv.rows; track row.id) {
+            <li><button type="button" class="td-peer__quiet td-corpse__row" data-corpse-take [attr.data-drop]="row.id" (click)="takeCorpse(row.id)">
+              <span [style.color]="row.color">{{ row.label }}@if (row.qty > 1 && !row.coins) { &times;{{ row.qty }} }</span><small>{{ t('corpse.take') }}</small>
+            </button></li>
+          }
+        </ul>
+        @if (cv.rows.length > 1) { <button type="button" class="td-peer__wave" data-corpse-all (click)="takeCorpse('all')">{{ t('corpse.takeAll') }}</button> }
+      } @else {
+        <p class="td-peer__line" data-corpse-empty>{{ t('corpse.empty') }}</p>
       }
     </section>
   }
@@ -415,7 +441,15 @@
               [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')"><app-glim-icon [mood]="glimIconMood" /><i class="glim-hud__dot" aria-hidden="true"></i></button>
     }
     <div class="top-actions">
-      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
+      @if (topDown && !keyCaps) {
+        <!-- A phone: the menu icon is the Menu (the Map is the dock's Places). -->
+        <button type="button" class="places-toggle" data-game-menu-toggle (click)="toggleGameMenu()" [attr.aria-expanded]="gameMenuOpen" aria-controls="game-menu"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('menu.title') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
+      } @else {
+        <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
+        @if (topDown) {
+          <button type="button" class="menu-toggle" data-game-menu-toggle (click)="toggleGameMenu()" [attr.aria-expanded]="gameMenuOpen" aria-controls="game-menu">{{ t('menu.title') }}</button>
+        }
+      }
       <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
       @if (slateTier > 0) {
         <!-- While the glass is held up (the Lost Cabinets' Scan) the button IS the reading: it glows and pulses with the warmth. -->
@@ -663,6 +697,48 @@
     </section>
   }
 
+  @if (gameMenuOpen) {
+    <!-- The Game Menu (owner 2026-10-21: "why is it in the map"): the Keeper's own things and the settings, grouped, big rows with a line each. The Map shows only the map. -->
+    <nav id="game-menu" class="places win game-menu" role="dialog" aria-modal="false" aria-labelledby="game-menu-title" data-engine-ignore data-game-menu appSheetDrag (sheetDismiss)="gameMenuOpen = false">
+      <header class="win-head">
+        <h2 id="game-menu-title">{{ t('menu.title') }}</h2>
+        <button type="button" class="win-x places-close" data-game-menu-close (click)="closeGameMenu()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
+      </header>
+      <div class="win-body">
+        <h3 class="game-menu__group">{{ t('menu.group.world') }}</h3>
+        <ul>
+          <li><button type="button" data-open="map" (click)="gameMenuOpen = false; togglePlaces()" aria-describedby="place-blurb-map"><strong>{{ t('menu.map') }}</strong><small id="place-blurb-map">{{ t('menu.mapBlurb') }}</small></button></li>
+        </ul>
+        <h3 class="game-menu__group">{{ t('menu.group.character') }}</h3>
+        <ul>
+          <li><button type="button" data-open="character" (click)="gameMenuOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
+          <li><button type="button" data-open="glass" (click)="gameMenuOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
+          <li><button type="button" data-open="bestiary" (click)="gameMenuOpen = false; toggleBestiary()" aria-describedby="place-blurb-bestiary"><strong>{{ t('play.best.menu') }}</strong><small id="place-blurb-bestiary">{{ t('menu.bestiaryBlurb') }}</small></button></li>
+          <li><button type="button" data-open="lore" (click)="gameMenuOpen = false; openLore()" aria-describedby="place-blurb-lore"><strong>{{ t('lore.tab') }}</strong><small id="place-blurb-lore">{{ t('menu.loreBlurb') }}</small></button></li>
+        </ul>
+        <h3 class="game-menu__group">{{ t('menu.group.social') }}</h3>
+        <ul>
+          <li><button type="button" data-open="friends" (click)="gameMenuOpen = false; openFriends()" aria-describedby="place-blurb-friends"><strong>{{ t('play.friends.menu') }}</strong><small id="place-blurb-friends">{{ t('play.friends.menuBlurb') }}</small></button></li>
+        </ul>
+        <h3 class="game-menu__group">{{ t('menu.group.settings') }}</h3>
+        <ul>
+          <li><button type="button" data-open="sound" (click)="gameMenuOpen = false; openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+          <li><button type="button" data-open="loot" (click)="gameMenuOpen = false; openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
+          <li><button type="button" data-open="account" (click)="gameMenuOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
+          @if (keyCaps) {
+            <li><button type="button" data-open="hud-reset" (click)="resetHud()" aria-describedby="place-blurb-hud-reset"><strong>{{ t('ux.hud.reset') }}</strong><small id="place-blurb-hud-reset">{{ t('menu.resetHudBlurb') }}</small></button></li>
+          }
+          <li><button type="button" data-open="feedback" (click)="gameMenuOpen = false; openFeedback()" aria-describedby="place-blurb-feedback"><strong>{{ t('feedback.menu') }}</strong><small id="place-blurb-feedback">{{ t('feedback.menuBlurb') }}</small></button></li>
+          <!-- One World (preview): this device only; a flip reloads the world. -->
+          <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
+        </ul>
+        <ul class="game-menu__end">
+          <li><button type="button" data-open="characters" (click)="gameMenuOpen = false; toCharacterSelect()" aria-describedby="place-blurb-characters"><strong>{{ t('lobby.menu') }}</strong><small id="place-blurb-characters">{{ t('lobby.menuBlurb') }}</small></button></li>
+        </ul>
+      </div>
+    </nav>
+  }
+
   @if (placesOpen && tdMapView; as mv) {
     <!-- The Map (owner 2026-10-20: "take that Places UI out, create the map and pin point the stuff"): the floor or the
          continent you stand on, painted from its own ground, a pin per place (tap it to go), your mark, and a small key. -->
@@ -673,16 +749,6 @@
       </header>
       <!-- The map itself (owner's player notes 2026-10-21): every section, zoom and pan, pins that never move, a key. -->
       <app-td-map-window class="td-map__win" [view]="mv" [sections]="tdMapSections" [keeperLevel]="huntingLevel" [touch]="!keyCaps" (goPin)="goPin($event)" (section)="mapSection = $event" />
-      <footer class="td-map__menu">
-        <button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()">{{ t('look.places') }}</button>
-        <button type="button" data-open="character" (click)="placesOpen = false; openCharacter()">{{ t('play.hud.character') }}</button>
-        <button type="button" data-open="sound" (click)="openSound()">{{ t('play.sound.menu') }}</button>
-        <button type="button" data-open="friends" (click)="openFriends()">{{ t('play.friends.menu') }}</button>
-        <button type="button" data-open="loot" (click)="openLoot()">{{ t('loot.menu') }}</button>
-        <button type="button" data-open="account" (click)="placesOpen = false; openAccount()">{{ t('account.menu') }}</button>
-        <button type="button" data-open="bestiary" (click)="toggleBestiary()">{{ t('play.best.menu') }}</button>
-        <button type="button" data-open="characters" (click)="placesOpen = false; toCharacterSelect()">{{ t('lobby.menu') }}</button>
-      </footer>
     </nav>
   } @else if (placesOpen) {
     <nav id="places-list" class="places win" [attr.aria-label]="t('play.hud.placesIn', { area: state.area || town.name })" data-engine-ignore appSheetDrag (sheetDismiss)="placesOpen = false">
@@ -701,15 +767,6 @@
             </button>
           </li>
         }
-        <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
-        <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
-        <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
-        <li><button type="button" data-open="friends" (click)="openFriends()" aria-describedby="place-blurb-friends"><strong>{{ t('play.friends.menu') }}</strong><small id="place-blurb-friends">{{ t('play.friends.menuBlurb') }}</small></button></li>
-        <li><button type="button" data-open="loot" (click)="openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
-        <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
-        <!-- One World (preview): this device only; a flip reloads the world. -->
-        <li><button type="button" data-open="characters" (click)="placesOpen = false; toCharacterSelect()" aria-describedby="place-blurb-characters"><strong>{{ t('lobby.menu') }}</strong><small id="place-blurb-characters">{{ t('lobby.menuBlurb') }}</small></button></li>
-        <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
       <div class="menu-extra">
@@ -956,6 +1013,9 @@
         <p class="fs__note fs__note--small">{{ t('play.friends.privacy') }}</p>
       </section>
     </div>
+  }
+  @if (feedbackOpen) {
+    <div class="sound-host win-host feedback-host" data-engine-ignore appSheetDrag (sheetDismiss)="feedbackOpen = false"><app-feedback-sheet [canvas]="feedbackCanvas" [context]="feedbackContext" (done)="closeFeedback()" /></div>
   }
   @if (soundOpen) {
     <div class="sound-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false">@if (keyCaps) { <button type="button" class="hud-reset" data-hud-reset (click)="resetHud()">{{ t('ux.hud.reset') }}</button> }</app-sound-sheet></div>

@@ -168,6 +168,12 @@ export interface BucketEvent {
   liquid: LiquidKind;
 }
 export type BucketId = 'seam-bucket' | 'seam-bucket-water' | 'seam-bucket-lava';
+/** The corpse window (td-corpse.ts): whose remains, how far gone, and the loot still lying in them. */
+export interface CorpseView {
+  id: string; name: string; stage: 'fresh' | 'rotting' | 'bones';
+  rows: { id: string; label: string; color: string; coins: number; qty: number }[];
+}
+
 export interface EngineOptions {
   /**
    * Force the render budget (engine/render-budget.ts): true = phone tier, false
@@ -350,6 +356,8 @@ export interface EngineOptions {
    * Glim's words ("The Ink Abbess is very far to the south-east, below you."). `kind: 'unknown'` — no such name.
    */
   onSeek?: (answer: SeekAnswer) => void;
+  /** Top-down: the corpse window's contents changed (opened, a piece taken, rotted a stage); null when it is shut. */
+  onCorpse?: (view: CorpseView | null) => void;
   /** Top-down: another Keeper (the Hearth room) was tapped — the HUD shows their card. */
   onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
   /**

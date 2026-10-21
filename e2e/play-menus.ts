@@ -4,7 +4,7 @@
  * every control inside the window, none overlapping, the primary in view at scrollTop 0).
  */
 import { expect, type Page } from '@playwright/test';
-import { ERA, ledger, openPlay, purse, seed, walkTo } from './play-helpers';
+import { ERA, ledger, openPlay, purse, seed, walkTo, openMenu as openGameMenu } from './play-helpers';
 
 export interface Size { tag: string; width: number; height: number; touch: boolean; mobile: boolean }
 export const ALL_SIZES: Size[] = [
@@ -57,7 +57,8 @@ export function satchel(stacks: Record<string, number>): Record<string, unknown>
 export const STASH = { ...satchel({ 'cinder-ore': 24, 'ember-residue': 6, 'pyrite-dust': 3 }), ...purse(5000), 'preferred-language': 'en' };
 const placesItem = (key: string) => async (page: Page) => {
   await page.locator('.places-toggle').first().click();
-  await page.locator(`#places-list button[data-open="${key}"]`).click();
+  await openGameMenu(page);
+  await page.locator(`#game-menu [data-open="${key}"]`).click();
 };
 const station = (at: string, primary = '.place .ab__btn'): Menu => ({ id: at, query: `?at=${at}`, root: '.place', close: '.place-close', primary });
 const openSlate = async (page: Page) => { await page.locator('.slate-btn').click(); };

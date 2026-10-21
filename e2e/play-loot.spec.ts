@@ -14,7 +14,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import * as fs from 'fs';
-import { blob, canvas, ERA, focusWorld, openPlay, playerX, seed, walkTo } from './play-helpers';
+import { blob, canvas, ERA, focusWorld, openPlay, playerX, seed, walkTo, openMenu } from './play-helpers';
 import { INVENTORY_ERA } from '../src/app/shared/rpg/inventory.model';
 import { rollCreatureLoot, type LootDrop } from '../src/app/shared/loot/drop-tables';
 import { hashSeed, seededRandom } from '../src/app/shared/loot/champions';
@@ -141,7 +141,8 @@ for (const size of ['desktop', 'phone'] as const) {
       const s = seedFor(d => d.length === 0);
       await toQuarry(page, lootBlob(s));
       await page.getByRole('button', { name: 'Places' }).first().click();
-      await page.locator('[data-open="loot"]').click();
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="loot"]').click();
       await page.locator('.ls [data-filter="hide-common"]').click();
       await expect(page.locator('.ls')).toHaveAttribute('data-loot-filter', 'hide-common');
       await page.locator('.ls__done').click();

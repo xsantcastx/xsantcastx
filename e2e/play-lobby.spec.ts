@@ -11,7 +11,7 @@
  * Screenshots: docs/handoff/cozy-ui/login-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, seed } from './play-helpers';
+import { ERA, seed, openMenu } from './play-helpers';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
 
@@ -46,7 +46,8 @@ async function where(page: Page): Promise<{ x: number; y: number }> {
 async function toCharacterSelect(page: Page): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('m');
-  await page.locator('#places-list [data-open="characters"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="characters"]').click();
   await expect(lobby(page, 'select')).toBeVisible({ timeout: 15000 });
 }
 

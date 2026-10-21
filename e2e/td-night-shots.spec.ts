@@ -14,7 +14,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { seed } from './play-helpers';
+import { seed, openMenu } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const DESKTOP = { width: 1400, height: 900 }, PHONE = { width: 390, height: 844 };
@@ -55,7 +55,8 @@ test('Night darkness: Full and Softer reach the night pass; noon stays clear', a
   await expect(canvas(page)).toHaveAttribute('data-night', /^softer:0\.7\d$/, { timeout: 15000 });
   // The row lives in Menu → Sound beside the Hush: choosing Full turns the pass back up at once.
   await page.locator('.places-toggle').click();
-  await page.locator('[data-open="sound"]').first().click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="sound"]').first().click();
   const sheet = page.locator('app-sound-sheet');
   await expect(sheet.locator('[data-night-setting="softer"]')).toHaveAttribute('aria-checked', 'true', { timeout: 5000 });
   await sheet.locator('[data-night-setting="full"]').click();

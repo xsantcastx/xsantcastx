@@ -48,8 +48,10 @@ export class TdPeers {
     for (const id of [...this.painters.keys()]) if (!keep.has(id)) this.painters.delete(id);
   }
 
+  /** Test hook only (?fxpeer=1): Keepers stood in the world without a room behind them. */
+  readonly pinned: PeerShown[] = [];
   step(dt: number, area: string, me: { x: number; y: number }, still: boolean): void {
-    this.shown = this.tracker.step(dt, area, me, still);
+    this.shown = this.pinned.length ? [...this.tracker.step(dt, area, me, still), ...this.pinned] : this.tracker.step(dt, area, me, still);
   }
 
   get drawn(): readonly PeerShown[] { return this.shown; }
@@ -70,6 +72,20 @@ export class TdPeers {
       if (d < bestD) { best = p; bestD = d; }
     }
     return best ? { id: best.id, name: best.name, vocation: best.vocation, level: best.level } : null;
+  }
+
+  /**
+   * The Keeper nearest a point in the world, with `slop` art px of give all round their body for a thumb. `on`: the
+   * point is on their body itself; `d`: how far it is from the middle of the body.
+   */
+  nearest(wx: number, wy: number, slop: number): { card: PeerCard; on: boolean; d: number } | null {
+    let best: PeerShown | null = null, bestD = Infinity, on = false;
+    for (const p of this.shown) {
+      if (Math.abs(wx - p.x) > 10 + slop || wy < p.y - 36 - slop || wy > p.y + 4 + slop) continue;
+      const d = Math.hypot(wx - p.x, wy - (p.y - 16));
+      if (d < bestD) { best = p; bestD = d; on = Math.abs(wx - p.x) <= 10 && wy >= p.y - 36 && wy <= p.y + 4; }
+    }
+    return best ? { card: { id: best.id, name: best.name, vocation: best.vocation, level: best.level }, on, d: bestD } : null;
   }
 
   /** A Wave over `who` ('' the local Keeper) until `now + WAVE_SECS`. */

@@ -10,7 +10,7 @@
  * Screenshots go to output/world-feel/ when FEEL_SHOTS is set (not committed).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, openPlay, placePanel, purse, seed, walk, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, openPlay, placePanel, purse, seed, walk, walkTo, openMenu } from './play-helpers';
 import { CELL, DelveFixture } from './play-delve-fixtures';
 
 const SHOTS = process.env['FEEL_SHOTS'];
@@ -27,7 +27,8 @@ function mereShore(): DelveFixture {
 
 async function openSound(page: Page): Promise<void> {
   await page.locator('.places-toggle').click();
-  await page.locator('[data-open="sound"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="sound"]').click();
   await expect(page.locator('app-sound-sheet .ss')).toBeVisible();
 }
 

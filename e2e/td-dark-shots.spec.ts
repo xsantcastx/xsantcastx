@@ -7,7 +7,7 @@
  * `.road(id)` walk the Keeper there; `.omen(kind)` fires an omen. Screenshots: docs/handoff/cozy-ui/dark-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { seed, openMenu } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const SIZES = { desktop: { width: 1400, height: 900 }, phone: { width: 390, height: 844 } } as const;
@@ -126,7 +126,8 @@ test('the Hush cap lives in Menu → Sound, and Off hides the band', async ({ pa
   await open(page, 'fxdark=1&hush=80', SIZES.desktop);
   await expect(page.locator('.td-hush')).toBeVisible({ timeout: 5000 });
   await page.locator('.places-toggle').click();
-  await page.locator('[data-open="sound"]').first().click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="sound"]').first().click();
   const sheet = page.locator('app-sound-sheet');
   await expect(sheet.locator('[data-hush-cap="quiet"]')).toBeVisible({ timeout: 5000 });
   await sheet.locator('[data-hush-cap="quiet"]').click();

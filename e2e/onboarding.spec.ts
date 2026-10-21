@@ -15,6 +15,7 @@
  * Screenshots: docs/handoff/onboarding/*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { openMenu } from './play-helpers';
 
 const SHOTS = 'docs/handoff/onboarding';
 const canvas = (page: Page) => page.locator('.viewport canvas');
@@ -59,7 +60,8 @@ async function make(page: Page, vocation: string, name: string, opts: { skip?: b
 async function toSelect(page: Page): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('m');
-  await page.locator('#places-list [data-open="characters"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="characters"]').click();
   await expect(lobby(page, 'select')).toBeVisible({ timeout: 15000 });
 }
 

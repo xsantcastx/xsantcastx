@@ -13,7 +13,7 @@
  * play-helpers), never from inside the app.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { blob, canvas, openPlay, seed } from './play-helpers';
+import { blob, canvas, openPlay, seed, openMenu } from './play-helpers';
 import { INVENTORY_ERA } from '../src/app/shared/rpg/inventory.model';
 import { REALM_ERA_KEY } from '../src/app/shared/save/realm-era';
 
@@ -43,7 +43,8 @@ const preview = (page: Page) => maker(page).locator('canvas.km__preview');
 
 async function openGlass(page: Page): Promise<void> {
   await page.locator('.places-toggle').click();
-  await page.locator('#places-list [data-open="glass"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="glass"]').click();
   await expect(maker(page)).toBeVisible({ timeout: 15000 });
   await expect(preview(page)).toHaveAttribute('data-look-key', /./);
 }

@@ -28,6 +28,8 @@ import { KEEPER_LOOK_I18N } from '../../shared/keeper-look/keeper-look.i18n';
 import { type KeeperLook, type Vocation, VOCATIONS, coerceLook } from '../../shared/keeper-look/keeper-look.model';
 import { KeeperLookService } from '../../shared/keeper-look/keeper-look.service';
 import { KeeperMakerComponent } from '../../shared/keeper-look/keeper-maker.component';
+import { FeedbackSheetComponent } from '../../shared/feedback/feedback-sheet.component';
+import { FEEDBACK_I18N } from '../../shared/feedback/feedback.i18n';
 import { SideScrollerComponent } from '../side-scroller.component';
 import { StoryService } from '../../shared/story/story.service';
 import { LOBBY_I18N } from './lobby.i18n';
@@ -57,7 +59,7 @@ const CLASS_FIGURES: ReadonlyArray<{ vocation: Vocation; look: KeeperLook }> = V
 @Component({
   selector: 'app-play-shell',
   standalone: true,
-  imports: [SideScrollerComponent, KeeperMakerComponent],
+  imports: [SideScrollerComponent, KeeperMakerComponent, FeedbackSheetComponent],
   templateUrl: './play-shell.component.html',
   styleUrls: ['./play-shell.component.css'],
 })
@@ -84,6 +86,8 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   notice = '';
   /** The row whose deletion is being confirmed, and what has been typed so far. */
   deleting: CharacterRow | null = null;
+  /** The Send feedback form over the title or the campfire. */
+  feedbackOpen = false;
   typed = '';
   readonly max = MAX_CHARACTERS;
 
@@ -133,6 +137,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor() {
     this.i18n.register(LOBBY_I18N);
+    this.i18n.register(FEEDBACK_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(LORE_I18N);
   }

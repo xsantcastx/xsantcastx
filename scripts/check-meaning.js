@@ -837,7 +837,7 @@ for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) 
 //  - the activity sites (Seamworks, Canopy, Orrery) the Skills panel's Go
 //    buttons open — their old URLs live in `*_HREF` constants the panel binds,
 //    and the side-scroller opens the panel whose `route` is that URL.
-const menuBlock = (read('play/side-scroller.component.html').match(/<nav id="places-list"[\s\S]*?<\/nav>/) || [''])[0];
+const menuBlock = (read('play/side-scroller.component.html').match(/<nav id="(?:game-menu|places-list)"[\s\S]*?<\/nav>/g) || ['']).join('\n');
 for (const m of menuBlock.matchAll(/data-open="([\w-]+)"/g)) if (PANEL_IDS.includes(m[1])) placedPanels.add(m[1]);
 const skillsPanel = read('shared/skills/skills-panel.component.ts');
 for (const p of PANEL_IDS) {

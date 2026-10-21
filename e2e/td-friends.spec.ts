@@ -16,6 +16,7 @@ import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import { expect, test, type Page } from '@playwright/test';
 import { enterAs, newContext, startHearth, type Hearth } from './hearth-helpers';
+import { openMenu } from './play-helpers';
 
 // A blocked click names its blocker in ten seconds instead of eating the whole test's budget.
 test.use({ actionTimeout: 10000 });
@@ -71,12 +72,14 @@ const toChat = async (page: Page) => { await page.locator('.td-chat__tabs [role=
 async function openFriends(page: Page) {
   await calm(page);
   await key(page, 'm');
-  await page.locator('#places-list [data-open="friends"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="friends"]').click();
   await expect(page.locator('[data-friends-sheet]')).toBeVisible();
 }
 async function settings(page: Page) {
   await key(page, 'm');
-  await page.locator('#places-list [data-open="sound"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="sound"]').click();
   await expect(page.locator('.sound-host')).toBeVisible();
 }
 

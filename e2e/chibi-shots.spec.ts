@@ -10,7 +10,7 @@
  * A camera, not a test: nothing is asserted beyond reaching the scene.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, ERA, focusWorld, openPlay, seed, walk, mapFind } from './play-helpers';
+import { canvas, ERA, focusWorld, openPlay, seed, walk, mapFind, openMenu } from './play-helpers';
 import { DelveFixture } from './play-delve-fixtures';
 import { TOWNS, type RealmTownId } from '../src/app/play/world/world.model';
 import { TOWN_KEEPERS } from '../src/app/play/world/life';
@@ -79,7 +79,8 @@ for (const size of SIZES) {
       await seed(page, { ...RESTORED, 'preferred-language': 'en' });
       await openPlay(page);
       await page.locator('.places-toggle').click();
-      await page.locator('#places-list [data-open="glass"]').click();
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="glass"]').click();
       await expect(page.locator('section.place .km canvas.km__preview')).toHaveAttribute('data-look-key', /./, { timeout: 15000 });
       await shot(page, 'creator', size.name);
     });

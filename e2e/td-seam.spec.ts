@@ -9,7 +9,7 @@
  * Screenshots: docs/handoff/cozy-ui/seam-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { seed, openMenu } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const SHOTS = 'docs/handoff/cozy-ui';
@@ -111,7 +111,8 @@ test('the Seam Eater: the rise, both tells, the half-life call, the fall and the
 
   // The Loot sheet's Difficulty picker now offers Nightmare, and says how Hell opens.
   await page.locator('.places-toggle').first().click();
-  await page.locator('#places-list button[data-open="loot"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="loot"]').click();
   const ls = page.locator('.ls');
   await expect(ls.locator('[data-tier="normal"]')).toBeVisible();
   await expect(ls.locator('[data-tier="nightmare"]')).toBeVisible();

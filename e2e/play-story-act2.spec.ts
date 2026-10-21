@@ -16,7 +16,7 @@
  * At 1280×800 and 390×844 (the scene fits the phone, its buttons ≥ 44 px).
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { blob, openPlay, seed, stackQty } from './play-helpers';
+import { blob, openPlay, seed, stackQty, openMenu } from './play-helpers';
 
 /** Every beat of the Prologue and Act I (the act break crossed, both cards shown). */
 const ACT1_BEATS = [
@@ -73,7 +73,8 @@ async function take(page: Page): Promise<void> {
 
 async function openJournal(page: Page): Promise<Locator> {
   await page.locator('.places-toggle').first().click();
-  await page.locator('#places-list button[data-open="character"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="character"]').click();
   await page.locator('#ch-tab-story').click();
   const journal = page.locator('app-hub-story .hs');
   await expect(journal).toBeVisible({ timeout: 15000 });
