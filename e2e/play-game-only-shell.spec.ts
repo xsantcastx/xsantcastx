@@ -11,7 +11,7 @@
  *   - No two fixed widgets overlap (bounding boxes), at desktop and phone size.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, openPlay, placePanel, seed } from './play-helpers';
+import { canvas, openPlay, placePanel, seed, openMenu } from './play-helpers';
 
 const SIZES = [
   { name: 'desktop', width: 1280, height: 800 },
@@ -86,13 +86,15 @@ for (const size of SIZES) {
       await seed(page);
       await openPlay(page);
       await openMenu(page);
-      await page.locator('#places-list [data-open="character"]').click();
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="character"]').click();
       await expect(placePanel(page)).toBeVisible();
       await expect(page).toHaveURL(/\/play/);
       await page.keyboard.press('Escape');
 
       await openMenu(page);
-      await page.locator('#places-list [data-open="account"]').click();
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="account"]').click();
       const account = page.locator('[data-account-panel]');
       await expect(account).toBeVisible({ timeout: 15000 });
       await expect(account.locator('app-cloud-save-button')).toBeVisible();

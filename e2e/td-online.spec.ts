@@ -9,6 +9,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { enterAs, newContext, startHearth, type Hearth } from './hearth-helpers';
+import { openMenu } from './play-helpers';
 
 let hearth: Hearth;
 test.beforeAll(async ({}, info) => { hearth = await startHearth(String(info.project.use.baseURL)); });
@@ -70,7 +71,8 @@ test('two Keepers see each other, chat, and wave', async ({ browser }, info) => 
     // Settings → Chat → Ignore: Bryn leaves the room, and Aster stops drawing Bryn.
     await b.locator('.viewport canvas').evaluate(c => (c as HTMLCanvasElement).focus({ preventScroll: true }));
     await b.keyboard.press('m');
-    await b.locator('#places-list [data-open="sound"]').click();
+    await openMenu(b);
+    await b.locator('#game-menu [data-open="sound"]').click();
     await b.locator('[data-chat-setting="ignore"]').click();
     await expect.poll(() => peers(a), { timeout: 15000 }).not.toContain('Bryn@');
     await expect(a.locator('.td-chat__tabs .td-chat__online')).toHaveText('1 online');

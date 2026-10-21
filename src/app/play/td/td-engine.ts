@@ -12,7 +12,7 @@
  * the same setters), so the play component keeps all its wiring; members the
  * top-down world has no use for yet are no-ops (see createTopDownEngine).
  */
-import type { EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
+import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
@@ -61,6 +61,8 @@ export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle'
 
 /** The most creatures the minimap marks at once (owner's player notes 2026-10-21: "cap the count for performance"). */
 const MINI_MOBS = 40;
+/** How far a thumb may miss a Keeper standing in the open and still tap them (art px sideways, up and down). */
+const PEER_SLOP = 9;
 
 export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
@@ -95,6 +97,8 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
+import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
+import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
 import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
 import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
@@ -281,6 +285,8 @@ export class TopDownEngine {
   private seam: Mob | null = null;
   /** Shared creatures in a party (Hearth protocol 4; td-coop.ts): host, member, or solo as before. */
   private coop!: TdCoop;
+  /** `?fxpeer=1` (automated browsers only): `window.__tdPeer` stands a Keeper beside a task giver, to tap. */
+  private readonly fxPeer = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxpeer=1\b/.test(location.search);
   /** `?fxcoop=1` (automated browsers only): `window.__tdCoop` lays calm creatures, wounds them, reads the shared set. */
   private readonly fxCoop = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxcoop=1\b/.test(location.search);
   /** The co-op spec's quiet: no wild spawns (only what it lays). */
@@ -584,15 +590,45 @@ export class TopDownEngine {
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
       hearths: () => this.hearths.map(h => h.id),
     };
+    if (this.fxPeer) (window as unknown as Record<string, unknown>)['__tdPeer'] = {
+      // The Keeper walks up to the first task giver here, and a Keeper named `name` stands `dx` px to the giver's right.
+      lay: (name = 'Wick', dx = 14) => {
+        const g = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-'));
+        if (!g?.keeper) return null;
+        this.player.x = g.keeper.x - 70; this.player.y = g.keeper.y + 8; this.path = [];
+        this.peers.pinned.length = 0;
+        this.peers.pinned.push({ id: `fx-${name}`, name, x: g.keeper.x + dx, y: g.keeper.y + 8, face: -1, dir: 'down', moving: false, vocation: 'warlock', level: 7, look: '', area: this.peerArea() });
+        return { giver: g.keeper.name, gx: g.keeper.x, gy: g.keeper.y };
+      },
+      shown: () => this.peersOnScreen(),
+      /** Where on the page a point `dx` px right of the Keeper's middle (world px) is. */
+      page: (name: string, dx: number) => {
+        const p = this.peers.drawn.find(q => q.name === name); if (!p) return null;
+        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
+        return { x: Math.round(r.left + (p.x + dx - this.cam.x) * this.scale / k), y: Math.round(r.top + (p.y - 16 - this.cam.y) * this.scale / k) };
+      },
+    };
     if (this.fxParty) (window as unknown as Record<string, unknown>)['__tdParty'] = {
       // A Rivet Maw laid beside the Keeper and felled at once, through the real kill (onKill: XP, the party's share).
-      smite: (type = 'rivet-maw') => {
+      smite: (type = 'rivet-maw', dx = 24) => {
         const def = MOBS[type]; if (!def) return null;
-        const p = this.player, m = this.mobs.place(`fx-party:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + 24, p.y);
+        const p = this.player, m = this.mobs.place(`fx-party:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y);
         this.mobs.smite(m);
         return m.def.id;
       },
       hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); this.lastHurt = this.time; },
+      // The corpses lying here (stage, loot in them), and a jump forward in their clock (the decay timeline in a second).
+      corpses: () => {
+        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
+        return this.mobs.remains.map(c => ({
+          id: c.id, kind: c.kind.id, stage: corpseStage(this.mobs.age - c.born, c.boss), loot: this.mobs.corpseLoot(c.id).length, x: Math.round(c.x), y: Math.round(c.y),
+          px: Math.round(r.left + (c.x - this.cam.x) * this.scale / k), py: Math.round(r.top + (c.y - 6 - this.cam.y) * this.scale / k), scale: this.scale / k,
+        }));
+      },
+      // A heap of ember residue laid in the nearest corpse (the loot a walk-over would not reach).
+      stock: () => { const c = this.mobs.remains[this.mobs.remains.length - 1]; if (!c) return false; this.mobs.drops.push({ id: `fx-stock:${this.mobs.drops.length}`, x: c.x + 8, y: c.y + 2, coins: 0, material: 'ember-residue', qty: 2, label: 'ember residue', color: '#c8c0b0', age: 1, corpse: c.id }); return true; },
+      age: (secs: number) => { for (const c of this.mobs.remains) c.born -= secs; return this.mobs.remains.length; },
+      openNearest: () => { const c = this.mobs.corpseNear(this.player.x, this.player.y, 400); return c ? this.openCorpse(c.id) : false; },
     };
     if (this.fxCoop) (window as unknown as Record<string, unknown>)['__tdCoop'] = {
       view: () => this.coop.view(),
@@ -644,6 +680,7 @@ export class TopDownEngine {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
+    if (this.fxPeer) delete (window as unknown as Record<string, unknown>)['__tdPeer'];
     if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
@@ -697,6 +734,9 @@ export class TopDownEngine {
     if (pressed) { this.keys.add(key); this.path = []; } else this.keys.delete(key);
   }
   interact(): void {
+    // A corpse with loot in reach beats a stall that is farther than it (the nearest thing wins).
+    const cp = this.mobs.corpseNear(this.player.x, this.player.y);
+    if (cp && (!this.nearby || Math.hypot(cp.x - this.player.x, cp.y - this.player.y) < Math.hypot(this.nearby.x - this.player.x, this.nearby.y - this.player.y))) { this.openCorpse(cp.id); return; }
     if (this.nearby) { this.use(this.nearby); return; }
     const t = this.treeNear();
     if (t) this.startChop(t.c, t.r, t.x, t.y);
@@ -2274,6 +2314,7 @@ export class TopDownEngine {
   private update(dt: number): void {
     this.time += dt;
     this.peers.step(dt, this.peerArea(), this.player, this.still);
+    this.stepCorpse();
     if (this.cant && (this.cant.age += dt) >= CHANT_SECS) this.cant = null;
     // The continent's hearths stand from the first frame (placed once: their stalls join the town's).
     hearthsOf(this.world);
@@ -2442,7 +2483,7 @@ export class TopDownEngine {
       // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
       if ((k === ' ' || k === 'enter' || k === 'e') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
       // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
-      if (down && !e.repeat && k === 'e' && this.nearby) { e.preventDefault(); this.interact(); return; }
+      if (down && !e.repeat && k === 'e' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y))) { e.preventDefault(); this.interact(); return; }
       if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
       if (/^[1-4]$/.test(k)) { if (down && !e.repeat) { const why = this.useAbility(k); if (why) this.say(`play.td.ability.${why}`); } return; }
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
@@ -2485,10 +2526,12 @@ export class TopDownEngine {
       y: this.cam.y + (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height)) / this.scale,
     };
   }
-  private stallAt(wx: number, wy: number): TdStall | undefined {
+  private stallAt(wx: number, wy: number): TdStall | undefined { return this.stallHit(wx, wy)?.s; }
+  /** The stall under a point and how far the point is from its body (a giver's body, else the stall's foot): for comparing with a Keeper or a corpse under the same finger. */
+  private stallHit(wx: number, wy: number): { s: TdStall; d: number } | undefined {
     // A tap on a task giver's body talks to them (a stall keeper's counter still opens the stall).
     const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < 10 && wy > s.keeper.y - 34 && wy < s.keeper.y + 2);
-    if (giver) return giver;
+    if (giver) return { s: giver, d: Math.hypot(wx - giver.keeper!.x, wy - (giver.keeper!.y - 17)) };
     // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
     let hit: TdStall | undefined, best = Infinity;
     for (const s of this.level.stalls) {
@@ -2496,7 +2539,7 @@ export class TopDownEngine {
       const d = Math.hypot(wx - s.x, wy - (s.y - 14));
       if (d < best) { best = d; hit = s; }
     }
-    return hit;
+    return hit ? { s: hit, d: best } : undefined;
   }
   private tap(clientX: number, clientY: number): void {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);
@@ -2505,8 +2548,22 @@ export class TopDownEngine {
     if (foe) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
     // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
-    const peer = this.peers.at(wx, wy);
-    if (peer && this.options.onPeerTap) { this.options.onPeerTap(peer); return; }
+    // Several things can lie under one finger (a Keeper standing at a giver's side, a corpse by a stall): the nearest to
+    // the point wins, the way stallAt picks the nearest foot. A Keeper tapped on their own body always wins; one the
+    // finger only just missed (they glide between packets, and a thumb is wide) wins when nearer than the stall.
+    const stall = this.stallHit(wx, wy);
+    const peer = this.peers.nearest(wx, wy, PEER_SLOP);
+    if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d)) { this.options.onPeerTap(peer.card); return; }
+    const cp = this.mobs.corpseAt(wx, wy);
+    if (cp) {
+      const { body } = corpseSize(cp);
+      if (!stall || Math.hypot(wx - cp.x, wy - (cp.y - body / 2)) <= stall.d) {
+        const open = () => { this.openCorpse(cp.id); };
+        // No way to its side (a wall): open it from where the Keeper stands if that is close, else walk as near as can be.
+        if (!this.walkTo(cp.x, cp.y + 6, open)) { if (Math.hypot(cp.x - this.player.x, cp.y - this.player.y) <= CORPSE_REACH * 2) open(); else this.walkTo(cp.x, cp.y); }
+        return;
+      }
+    }
     if (this.level === this.world) {
       const tc = Math.floor(wx / TILE), tr = Math.floor((wy + 6) / TILE);
       for (const [c, r] of [[tc, tr], [tc, tr + 1], [tc, tr + 2]]) {
@@ -2514,7 +2571,7 @@ export class TopDownEngine {
         if (o) { this.walkTo(o.x, o.y + 12, () => this.startChop(c, r, o.x, o.y)); return; }
       }
     }
-    const hit = this.stallAt(wx, wy);
+    const hit = stall?.s;
     if (hit) { this.walkTo(hit.x, hit.y + 10, () => this.use(hit)); return; }
     this.walkTo(wx, wy);
   }
@@ -2946,6 +3003,7 @@ export class TopDownEngine {
     const surface = this.level === this.world;
     for (const k of this.keepers) if (surface && inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
     for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
+    for (const cp of this.mobs.remains) if (inView(cp.x, cp.y)) items.push({ y: cp.y - 9, draw: () => this.drawCorpse(cp) });
     for (const g of this.groundLoot()) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g) });
     // The Cold Hearth: each settlement's hearth (cold until lit), a capital's shrine, the fallen purse.
     if (surface) for (const h of this.hearths) {
@@ -3109,6 +3167,74 @@ export class TopDownEngine {
     const w = 14, frac = Math.max(0, k.hp / k.maxHp);
     c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - d.h - 5), w + 2, 3);
     c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - d.h - 4), Math.round(w * frac), 1);
+  }
+  // ── Corpses (td-corpse.ts): the fallen lie where they fell and rot; E or a tap opens one ──
+  private corpseOpen: string | null = null;
+  private corpseSig = '';
+  /** The corpse window's view (what is still in it), or null when it is shut. */
+  corpseView(): CorpseView | null {
+    const cp = this.corpseOpen ? this.mobs.remains.find(c => c.id === this.corpseOpen) : undefined;
+    if (!cp) return null;
+    const stage = corpseStage(this.mobs.age - cp.born, cp.boss);
+    return {
+      id: cp.id, name: cp.kind.name, stage: stage === 'gone' ? 'bones' : stage,
+      rows: this.mobs.corpseLoot(cp.id).map(g => ({ id: g.id, label: g.label, color: g.color, coins: g.coins, qty: g.qty })),
+    };
+  }
+  openCorpse(id: string): boolean {
+    if (!this.mobs.remains.some(c => c.id === id)) return false;
+    this.corpseOpen = id; this.corpseSig = '';
+    this.stepCorpse();
+    return true;
+  }
+  closeCorpse(): void { if (!this.corpseOpen) return; this.corpseOpen = null; this.corpseSig = ''; this.options.onCorpse?.(null); }
+  get corpseIsOpen(): boolean { return !!this.corpseOpen; }
+  /** Take one piece (a drop id) or everything ('all') from the open corpse. Returns how many went into the satchel. */
+  takeFromCorpse(what: string): number {
+    const v = this.corpseView();
+    if (!v) return 0;
+    let n = 0;
+    for (const row of v.rows) {
+      if (what !== 'all' && row.id !== what) continue;
+      if (this.mobs.takeDrop(row.id)) n++; else { this.say('corpse.full'); break; }
+    }
+    this.stepCorpse();
+    return n;
+  }
+  /** Keep the window honest: shut when the Keeper walks off or the corpse is gone; tell the HUD when its contents change. */
+  private stepCorpse(): void {
+    if (!this.corpseOpen) return;
+    const cp = this.mobs.remains.find(c => c.id === this.corpseOpen);
+    if (!cp || Math.hypot(cp.x - this.player.x, cp.y - this.player.y) > CORPSE_REACH * 2.4) { this.closeCorpse(); return; }
+    const v = this.corpseView();
+    const sig = v ? `${v.stage}|${v.rows.map(r => r.id).join(',')}` : '';
+    if (sig !== this.corpseSig) { this.corpseSig = sig; this.options.onCorpse?.(v); }
+  }
+  /** A corpse: its stage's sprite (flipped to the way it fell), the flies over a rotting one, a bag pip when there is loot in reach. */
+  private drawCorpse(cp: Corpse): void {
+    const age = this.mobs.age - cp.born, stage = corpseStage(age, cp.boss);
+    if (stage === 'gone') return;
+    const c = this.ctx, sprite = corpseSprite(cp, stage), x = Math.round(cp.x), y = Math.round(cp.y);
+    c.globalAlpha = corpseAlpha(age, cp.boss);
+    c.save();
+    c.translate(x, y + 2 - sprite.height);
+    if (cp.face < 0) c.scale(-1, 1);
+    c.drawImage(sprite, -Math.floor(sprite.width / 2), 0);
+    c.restore();
+    c.globalAlpha = 1;
+    // Flies over the rotting (a few dark pixels with a flicker of wing); none under reduced motion.
+    if (stage === 'rotting' && !this.still) for (const f of flyDots(cp, this.time)) {
+      c.fillStyle = '#1a1218'; c.fillRect(f.x, f.y, 1, 1);
+      if (f.wing) { c.globalAlpha = .55; c.fillStyle = '#c8c8d8'; c.fillRect(f.x - 1, f.y - 1, 1, 1); c.globalAlpha = 1; }
+    }
+    // Loot in it and the Keeper close: a small bag over it ("E, or tap, to open").
+    if (this.mobs.corpseNear(this.player.x, this.player.y)?.id === cp.id && this.corpseOpen !== cp.id) {
+      const bob = this.still ? 0 : Math.round(Math.sin(this.time * 3.2));
+      const bx = x - 3, by = y - corpseSize(cp).body - 11 + bob;
+      c.fillStyle = '#2a1a24'; c.fillRect(bx - 1, by - 1, 8, 8);
+      c.fillStyle = '#a8743f'; c.fillRect(bx, by + 1, 6, 5); c.fillStyle = '#c99657'; c.fillRect(bx + 1, by, 4, 2);
+      c.fillStyle = '#ffd25a'; c.fillRect(bx + 2, by + 3, 2, 1);
+    }
   }
   /** The loot on the ground: the fight's drops, and the screenshot showcase when it is on. */
   private groundLoot(): readonly Drop[] { return this.showcase.length ? [...this.mobs.drops, ...this.showcase] : this.mobs.drops; }

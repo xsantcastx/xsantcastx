@@ -17,7 +17,7 @@
  * the carving (play-delve-fixtures), the shaft's "Descend to your camp".
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { blob, canvas, focusWorld, openPlay, seed, settleBetween, walkTo } from './play-helpers';
+import { blob, canvas, focusWorld, openPlay, seed, settleBetween, walkTo, openMenu } from './play-helpers';
 import { DelveFixture, colX } from './play-delve-fixtures';
 
 /** The fresh mark's camp: the Keeper's body reaches the carving at (102, 50). */
@@ -32,7 +32,8 @@ const lore = async (page: Page) => (await blob<{ inscriptions?: string[] }>(page
 /** Character → Story, from the world's menu (it works the same on a phone). */
 async function openJournal(page: Page): Promise<Locator> {
   await page.locator('.places-toggle').first().click();
-  await page.locator('#places-list button[data-open="character"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="character"]').click();
   await page.locator('#ch-tab-story').click();
   const journal = page.locator('app-hub-story .hs');
   await expect(journal).toBeVisible({ timeout: 15000 });

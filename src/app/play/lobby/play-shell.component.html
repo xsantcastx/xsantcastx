@@ -30,6 +30,7 @@
           <small class="title__blurb">{{ t('lobby.signInBlurb') }}</small>
           <button type="button" class="btn" data-lobby-guest (click)="playOffline()" [disabled]="signingIn">{{ t('lobby.guest') }}</button>
           <small class="title__blurb">{{ t('lobby.guestBlurb') }}</small>
+          <button type="button" class="link" data-lobby-feedback (click)="feedbackOpen = true">{{ t('feedback.link') }}</button>
           @if (error) { <p class="title__error" role="alert">{{ error }}</p> }
         </div>
       </div>
@@ -91,6 +92,7 @@
                 <span>{{ t('lobby.select.offline') }}</span>
                 <button type="button" class="link" data-lobby-signin (click)="signIn()" [disabled]="busy || signingIn">{{ t('lobby.select.signIn') }}</button>
               }
+              <button type="button" class="link" data-lobby-feedback (click)="feedbackOpen = true">{{ t('feedback.link') }}</button>
             </p>
             @if (error) { <p class="title__error" role="alert">{{ error }}</p> }
           </footer>
@@ -163,6 +165,11 @@
           <button type="button" class="btn btn--quiet" data-lobby-back (click)="backFromCreate()" [disabled]="busy">{{ t('lobby.create.back') }}</button>
         </footer>
       </div>
+    }
+
+    @if (feedbackOpen) {
+      <div class="veil" (click)="feedbackOpen = false" aria-hidden="true"></div>
+      <div class="fbhost" data-feedback-host><app-feedback-sheet (done)="feedbackOpen = false" /></div>
     }
   </section>
 }

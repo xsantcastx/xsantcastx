@@ -36,6 +36,7 @@ import { THORN_SKILLS } from './td-thorn-skills';
 import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
 import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
+import { CORPSE_REACH, corpseSeed, layCorpse, weatherCorpses, type Corpse } from './td-corpse';
 import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 
 export interface MobDef {
@@ -1998,6 +1999,8 @@ export interface Drop {
   label: string;
   color: string;
   age: number;
+  /** The corpse it lies beside (td-corpse.ts): the corpse window lists the drops that carry its id. */
+  corpse?: string;
 }
 
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
@@ -2175,6 +2178,9 @@ export class MobSystem {
   readonly spears: Spear[] = [];
   readonly minions: Minion[] = [];
   readonly corpses: { x: number; y: number; at: number }[] = [];
+  /** What the fallen leave behind (td-corpse.ts): rotting where they lay, at most CORPSE_CAP. */
+  readonly remains: Corpse[] = [];
+  private remainsSeq = 0;
   /** Spells lying on the ground (Cinder Rain, Flame Wall, a Meteor coming down). */
   readonly zones: Zone[] = [];
   /** The Lanternwright's kin: the wisps at his shoulder (they follow him anywhere) and a beacon on its pole (its place's). */
@@ -2382,6 +2388,8 @@ export class MobSystem {
   private kills = 0;
   private readonly deadUntil = new Map<string, number>();
   private clock = 0;
+  /** Seconds this system has run (the corpses' clock). */
+  get age(): number { return this.clock; }
   /**
    * Elite packs (td-elites.ts): off until the host turns them on (the engine does; the specs choose), so a fixed spawn
    * list stays exactly itself. `eliteSalt` varies the rolls between sessions; `fallen` counts each spawn's deaths, so a
@@ -2408,7 +2416,7 @@ export class MobSystem {
     // Shots and the dead belong to the place they were in; the raised follow the Keeper (owner 2026-10-20: "summons
     // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
     // them down at his side on the new ground.
-    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0; this.zones.length = 0; this.bursts.length = 0;
+    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.remains.length = 0; this.calls.length = 0; this.zones.length = 0; this.bursts.length = 0;
     this.beacons.length = 0; this.arrows.length = 0;
     for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
     // A called beast follows the Keeper through any door (the leash sets it down at his side); a stampede stays behind.
@@ -2775,6 +2783,7 @@ export class MobSystem {
     this.updateShots(dt);
     this.updateMinions(dt);
     for (let i = this.corpses.length - 1; i >= 0; i--) if (this.clock - this.corpses[i].at > CORPSE_SECS) this.corpses.splice(i, 1);
+    weatherCorpses(this.remains, this.clock);
     // Walk over loot to pick it up.
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const g = this.drops[i];
@@ -3925,14 +3934,14 @@ export class MobSystem {
     const by = m.coopBy ? [...m.coopBy].filter(i => i) : [];
     const fought = !this.coop || !m.coopBy || m.coopBy.has('');
     if (this.coop) this.coop.killed(m, by);
-    this.spoils(m, fought ? 'own' : 'share');
+    this.spoils(m, fought ? 'own' : 'share', undefined, this.leaveCorpse(m).id);
   }
   /**
    * What a fall pays this Keeper (onKill: Hunting XP, the Bestiary, the tasks) and leaves on the ground (Gold, materials,
    * gear: personal loot). `own`: a kill of its own; `coop`: a shared creature it fought, felled on the host (never
    * announced again to the party); `share`: it was there but did not fight (the party share, no loot).
    */
-  private spoils(m: Mob, mode: 'own' | 'coop' | 'share', baseHp = m.coopBase ?? m.def.hp): void {
+  private spoils(m: Mob, mode: 'own' | 'coop' | 'share', baseHp = m.coopBase ?? m.def.hp, corpseId = ''): void {
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
     // Night and the eclipse pay a little more (td-phases.ts): Hunting XP and the Gold pile, in the open wilds.
@@ -3945,6 +3954,7 @@ export class MobSystem {
     // so), nor td-life's (the life a creature rises with is the fight's), nor a shared boss's party scaling (baseHp).
     this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(baseHp / this.tier.hp / lifeScale(m.def.level, m.def.rank) / (m.def.tough ?? 1)), ...(xpK !== 1 ? { xp: xpK } : {}), ...(mode === 'coop' ? { coop: true } : {}), ...(mode === 'share' ? { share: true } : {}) });
     if (mode === 'share') return;
+    const firstDrop = this.drops.length;
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
@@ -3976,6 +3986,8 @@ export class MobSystem {
       if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique, level: row.level ?? m.def.level }, rarity: row.rarity, label: row.label, color, age: 0 });
       else this.drops.push({ id: `${id}:r${i}`, ...spot(n++), coins: 0, qty: 0, rune: row.rune, rarity: row.rarity, label: row.label, color, age: 0 });
     });
+    // All of it lies beside the corpse, and the corpse window lists it.
+    if (corpseId) for (let i = firstDrop; i < this.drops.length; i++) this.drops[i].corpse = corpseId;
   }
 
   // ── Shared creatures (protocol 4; td-coop.ts) ──
@@ -4006,10 +4018,11 @@ export class MobSystem {
     this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
     this.corpses.push({ x: m.x, y: m.y, at: this.clock });
     if (this.corpses.length > 12) this.corpses.shift();
+    const corpseId = this.leaveCorpse(m).id;
     if (!full) return;
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
-    this.spoils(m, 'coop', baseHp);
+    this.spoils(m, 'coop', baseHp, corpseId);
   }
   /** The host: a boss's life for `present` Keepers of the party here (keeping its wounded share). */
   scaleBoss(m: Mob, max: number, present: number): void {
@@ -4033,6 +4046,49 @@ export class MobSystem {
   }
   /** Is a spawn resting after a fall (a new host must not raise it again at once)? */
   resting(key: string): boolean { return (this.deadUntil.get(key) ?? 0) > this.clock; }
+
+  // ── Corpses (td-corpse.ts) ──
+  /** Lay the fallen creature where it fell. Every Keeper of a party sees the host's kill, so each lays the same corpse. */
+  private leaveCorpse(m: Mob): Corpse {
+    const c: Corpse = {
+      id: `corpse:${this.remainsSeq++}`, x: m.x, y: m.y,
+      kind: { id: m.def.id, name: m.def.name, w: m.def.w, h: m.def.h, ...(m.def.ghost ? { ghost: true } : {}) },
+      def: m.def, face: m.face, born: this.clock, boss: m.def.rank === 'boss',
+      seed: corpseSeed(`${m.key}:${this.remainsSeq}`),
+    };
+    layCorpse(this.remains, c);
+    return c;
+  }
+  /** The loot still lying beside a corpse (this Keeper's own: loot is personal). */
+  corpseLoot(id: string): Drop[] { return this.drops.filter(d => d.corpse === id); }
+  /** The corpse under a point in the world (its flattened body, a little generous for a thumb), nearest first. */
+  corpseAt(wx: number, wy: number): Corpse | null {
+    let best: Corpse | null = null, bd = Infinity;
+    for (const c of this.remains) {
+      const hh = Math.max(6, Math.round(c.kind.h * .38)) + 6;
+      if (Math.abs(wx - c.x) > c.kind.w / 2 + 6 || wy < c.y - hh - 2 || wy > c.y + 8) continue;
+      const d = Math.hypot(wx - c.x, wy - c.y + hh / 2);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  }
+  /** The nearest corpse within the Keeper's reach that still has loot in it (E opens it). */
+  corpseNear(x: number, y: number, reach = CORPSE_REACH): Corpse | null {
+    let best: Corpse | null = null, bd = reach;
+    for (const c of this.remains) {
+      const d = Math.hypot(c.x - x, c.y - y);
+      if (d <= bd && this.drops.some(g => g.corpse === c.id)) { bd = d; best = c; }
+    }
+    return best;
+  }
+  /** Take one piece of a corpse's loot into the satchel; false when the satchel is full (it stays). */
+  takeDrop(dropId: string): boolean {
+    const i = this.drops.findIndex(g => g.id === dropId);
+    if (i < 0) return false;
+    const before = this.drops.length;
+    this.pick(this.drops[i], i);
+    return this.drops.length < before;
+  }
 
   private pick(g: Drop, i: number): void {
     const ok = this.host.options.onLoot?.({

@@ -38,7 +38,7 @@ import {
   AuditEntry, BanRecord, PlayerDirectoryEntry, SiteNotice,
 } from '../shared/cloud-save/gm.model';
 import {
-  EconomySnapshotView, GmDataService, PlayerProfile, PlayerReport,
+  EconomySnapshotView, GmDataService, PlayerFeedback, PlayerProfile, PlayerReport,
 } from './gm-data.service';
 
 /** Which sub-view of the console is on screen. Set by the parent's sidebar. */
@@ -95,6 +95,8 @@ export class GmPanelComponent implements OnInit {
   audit: AuditEntry[] = [];
   /** Player reports from the Hearth (newest first); empty when none, or when the read is refused (rules not live). */
   reports: PlayerReport[] = [];
+  /** Player feedback (newest first); empty when none, or when the read is refused (rules not live). */
+  feedback: PlayerFeedback[] = [];
   notice: SiteNotice | null = null;
 
   // ── User table state ──────────────────────────────────────────────────
@@ -145,15 +147,19 @@ export class GmPanelComponent implements OnInit {
     this.loadError = '';
     this.cdr.markForCheck();
     try {
-      const [players, bans, audit, notice, reports] = await Promise.all([
+      const [players, bans, audit, notice, reports, feedback] = await Promise.all([
         this.gm.players(),
         this.gm.bannedUids(),
         this.gm.auditLog(),
         this.gm.notice(),
         // A refused read (the player-reports rule not yet deployed) must not take the console down with it.
         this.gm.reports().catch(() => [] as PlayerReport[]),
+        // Same for the player-feedback rule.
+        this.gm.feedback().catch(() => [] as PlayerFeedback[]),
       ]);
       this.reports = reports;
+      // Open notes first, newest first within each.
+      this.feedback = [...feedback].sort((a, b) => Number(a.status !== 'open') - Number(b.status !== 'open'));
       this.players = players;
       this.bans = bans;
       this.audit = audit;
@@ -496,6 +502,15 @@ export class GmPanelComponent implements OnInit {
     this.cdr.markForCheck();
   }
   get openReports(): number { return this.reports.filter(r => r.status === 'open').length; }
+
+  /** Mark a feedback note resolved. */
+  async resolveFeedback(f: PlayerFeedback): Promise<void> {
+    try { await this.gm.resolveFeedback(f.id); f.status = 'resolved'; } catch (err) { this.loadError = describe(err); }
+    this.cdr.markForCheck();
+  }
+  get openFeedback(): number { return this.feedback.filter(f => f.status === 'open').length; }
+  /** A note's screenshot as an image source (raw base64 of a JPEG the player's browser made). */
+  shotSrc(f: PlayerFeedback): string { return f.shot ? `data:image/jpeg;base64,${f.shot}` : ''; }
 
   ago(ms: number | null | undefined): string {
     if (!ms) return '—';

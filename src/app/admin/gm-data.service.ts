@@ -103,6 +103,28 @@ export function coerceReport(id: string, raw: Record<string, unknown>): PlayerRe
   return { id, at: millis(raw['at']), status: raw['status'] === 'resolved' ? 'resolved' : 'open', reason: str(raw['reason'], 20) || 'other', note: str(raw['note']), from: who(raw['from']), about: { ...about, area }, lines };
 }
 
+/**
+ * Player feedback ("Send feedback" in the game: a bug, an idea, anything), created by the signed-in player and read only
+ * here. Owner-read; the console marks a note resolved (the only change the rule allows) or deletes it.
+ */
+export const FEEDBACK_COLLECTION = 'player-feedback';
+export interface PlayerFeedback {
+  id: string; at: number | null; status: 'open' | 'resolved'; type: 'bug' | 'idea' | 'other'; message: string; uid: string;
+  /** Raw base64 of a JPEG, or ''. */
+  shot: string;
+  device: { ua: string; viewport: string; version: string; area: string; vocation: string; level: number };
+}
+export function coerceFeedback(id: string, raw: Record<string, unknown>): PlayerFeedback {
+  const d = (raw['device'] && typeof raw['device'] === 'object' ? raw['device'] : {}) as Record<string, unknown>;
+  const t = raw['type'];
+  return {
+    id, at: millis(raw['at']), status: raw['status'] === 'resolved' ? 'resolved' : 'open',
+    type: t === 'bug' || t === 'idea' ? t : 'other', message: str(raw['message'], 1000), uid: str(raw['uid'], 128),
+    shot: typeof raw['shot'] === 'string' && raw['shot'].length <= 204800 ? raw['shot'] : '',
+    device: { ua: str(d['ua'], 300), viewport: str(d['viewport'], 40), version: str(d['version'], 20), area: str(d['area'], 60), vocation: str(d['vocation'], 20), level: Number(d['level']) || 0 },
+  };
+}
+
 /** Flat, owner-only index of who is banned. See the rule for why it is separate. */
 const BAN_INDEX_COLLECTION = 'admin-bans';
 
@@ -291,6 +313,17 @@ export class GmDataService {
     const rows: PlayerReport[] = [];
     snap.forEach(d => rows.push(coerceReport(d.id, d.data())));
     return rows;
+  }
+  /** Player feedback, newest first (see FEEDBACK_COLLECTION). */
+  async feedback(max = 50): Promise<PlayerFeedback[]> {
+    const snap = await getDocs(query(collection(this.firestore, FEEDBACK_COLLECTION), orderBy('at', 'desc'), limit(max)));
+    const rows: PlayerFeedback[] = [];
+    snap.forEach(d => rows.push(coerceFeedback(d.id, d.data())));
+    return rows;
+  }
+  /** Mark a note dealt with (the rule allows exactly this change). */
+  async resolveFeedback(id: string): Promise<void> {
+    await updateDoc(doc(this.firestore, FEEDBACK_COLLECTION, id), { status: 'resolved', resolvedAt: Date.now() });
   }
   /** Mark a report dealt with (the rule allows exactly this change). */
   async resolveReport(id: string): Promise<void> {

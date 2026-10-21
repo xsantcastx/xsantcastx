@@ -14,7 +14,7 @@
  * (sound) sheet and the Sexton's journal.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, seed } from './play-helpers';
+import { ERA, openMenu, seed } from './play-helpers';
 
 const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36';
 const SIZES = [
@@ -108,7 +108,11 @@ async function check(page: Page, name: string, sel: string): Promise<void> {
 
 /** Close whatever is open (Escape), and make sure the world is back. */
 async function closeAll(page: Page): Promise<void> {
-  for (let i = 0; i < 3; i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(150); }
+  // Escape also opens the Game Menu when nothing is up: fold that too, so the world is what is left.
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+    if (await page.locator('#game-menu').isVisible()) { await page.keyboard.press('Escape'); await page.waitForTimeout(150); }
+  }
 }
 
 for (const size of SIZES) {
@@ -137,6 +141,10 @@ for (const size of SIZES) {
       });
       await page.goto('/play?td=1&hour=12');
       await check(page, 'title', '.lobby[data-lobby="title"]');
+      await lobby(page, 'title').locator('[data-lobby-feedback]').tap();
+      await check(page, 'feedback form (title)', '.fbhost');
+      await page.keyboard.press('Escape');
+      await page.locator('.fbhost [data-feedback-close]').tap();
       await lobby(page, 'title').locator('[data-lobby-guest]').tap();
       await check(page, 'character list (the campfire)', '.lobby[data-lobby="select"] [data-character-select]');
       await lobby(page, 'select').locator('[data-character="k2dara00"]').tap();
@@ -159,7 +167,7 @@ for (const size of SIZES) {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
       await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA) });
-      await page.goto('/play?td=1&hour=12&fxfall=1&fxsexton=1');
+      await page.goto('/play?td=1&hour=12&fxfall=1&fxsexton=1&fxparty=1');
       await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
       await page.waitForFunction(() => !!(window as unknown as { __tdHearth?: unknown; __tdSexton?: unknown }).__tdHearth && !!(window as unknown as { __tdSexton?: unknown }).__tdSexton);
       await page.addStyleTag({ content: '.lvl-banner, .glim-say { visibility: hidden !important; }' });
@@ -176,16 +184,31 @@ for (const size of SIZES) {
       await closeAll(page);
       await key('m');
       await check(page, 'Map', '#places-list');
-      await page.locator('#places-list [data-open="bestiary"]').tap();
+      await openMenu(page);
+      await check(page, 'Game Menu', '#game-menu');
+      await page.locator('#game-menu [data-open="bestiary"]').tap();
       await check(page, 'Bestiary', '.td-best');
       await closeAll(page);
-      await key('m');
-      await page.locator('#places-list [data-open="sound"]').tap();
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="sound"]').tap();
       await check(page, 'settings sheet', '.sound-host');
       await closeAll(page);
-      await key('m');
-      await page.locator('#places-list [data-open="friends"]').tap();
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="friends"]').tap();
       await check(page, 'friends sheet', '.friends-host');
+      await closeAll(page);
+      await openMenu(page);
+      await page.locator('#game-menu [data-open="feedback"]').tap();
+      await check(page, 'feedback form', '.feedback-host');
+      await page.locator('.feedback-host [data-feedback-message]').fill('A long enough note about the menus, written on a phone.');
+      await check(page, 'feedback form, typed in', '.feedback-host');
+      await closeAll(page);
+
+      // A corpse opened in the world (E): its window reaches its last control too.
+      await page.evaluate(() => { const h = (window as unknown as { __tdParty: { smite: (t: string, dx: number) => unknown; stock: () => unknown } }).__tdParty; h.smite('ash-wolf', 24); h.stock(); });
+      await page.waitForTimeout(900);
+      await key('e');
+      await check(page, 'corpse window', '[data-corpse-window]');
       await closeAll(page);
 
       // The Hearth Shrine, stood at.

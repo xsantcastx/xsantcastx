@@ -11,7 +11,7 @@
  * Screenshots: docs/handoff/cozy-ui/ux-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, ledger, seed } from './play-helpers';
+import { ERA, ledger, seed, openMenu } from './play-helpers';
 import { enterAs, newContext, startHearth, type Hearth } from './hearth-helpers';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
@@ -160,7 +160,8 @@ test('HUD pieces drag on a computer, are remembered, and Reset HUD layout puts t
   // Settings → Reset HUD layout.
   await focusWorld(page);
   await page.keyboard.press('m');
-  await page.locator('#places-list [data-open="sound"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="sound"]').click();
   await page.locator('[data-hud-reset]').click();
   await page.keyboard.press('Escape');
   await expect.poll(async () => Math.round((await page.locator('.guide[data-hud-drag="guide"]').boundingBox())!.x)).toBe(Math.round(before.x));

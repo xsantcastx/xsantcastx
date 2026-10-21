@@ -10,7 +10,7 @@
  * and the talk as heard — and Glim does not say the stage line again.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { blob, openPlay, seed } from './play-helpers';
+import { blob, openPlay, seed, openMenu } from './play-helpers';
 
 interface Bond { moments: string[]; answers: Record<string, { a: string; at: number }>; peak: number }
 
@@ -30,7 +30,8 @@ const shot = (page: Page, name: string) => page.screenshot({ path: `output/glim-
 
 async function openJournal(page: Page) {
   await page.locator('.places-toggle').first().click();
-  await page.locator('#places-list button[data-open="character"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="character"]').click();
   await page.locator('#ch-tab-story').click();
   const bond = page.locator('app-hub-glim-bond .gb');
   await expect(bond).toBeVisible({ timeout: 15000 });

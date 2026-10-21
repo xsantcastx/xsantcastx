@@ -265,6 +265,60 @@ service cloud.firestore {
       allow create: if false;
     }
 
+    // ── Player feedback ("Send feedback" in the game's Menu and on the title screen) ──
+    // A signed-in player creates one note (bug / idea / other, 10–1000 characters, an optional screenshot as base64 of a
+    // JPEG ≤ 200 KiB, and a few bounded device facts). NO client may read any of it back: only the owner's GM console
+    // reads the notes, and may change their status (open / resolved) or delete them. Guests cannot file one — an
+    // unauthenticated create cannot be rate-limited or attributed, so the form asks them to sign in first.
+    //
+    // The rate limit (one note a minute per player) is the server's: a note is accepted only in the same batch as a
+    // stamp at `player-feedback-limits/{uid}` whose `last` is this request's time, and that stamp itself can be replaced
+    // only when the previous one is over a minute old. A client that skips the stamp has its note refused, and one that
+    // forges the stamp is refused by the stamp's own rule. (`getAfter` is billed as one read per note.)
+    function feedbackDeviceOk(d) {
+      return d is map
+             && d.keys().hasOnly(['ua', 'viewport', 'version', 'area', 'vocation', 'level'])
+             && d.keys().hasAll(['ua', 'viewport', 'version', 'area', 'vocation', 'level'])
+             && d.ua is string && d.ua.size() <= 300
+             && d.viewport is string && d.viewport.size() <= 40
+             && d.version is string && d.version.size() <= 20
+             && d.area is string && d.area.size() <= 60
+             && d.vocation is string && d.vocation.size() <= 20
+             && d.level is int && d.level >= 0 && d.level <= 999;
+    }
+
+    match /player-feedback-limits/{uid} {
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['last'])
+                    && request.resource.data.last == request.time;
+      allow update: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['last'])
+                    && request.resource.data.last == request.time
+                    && request.time > resource.data.last + duration.value(1, 'm');
+      allow read, delete: if false;
+    }
+
+    match /player-feedback/{noteId} {
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['uid', 'type', 'message', 'device', 'status', 'at', 'shot'])
+                    && request.resource.data.keys().hasAll(['uid', 'type', 'message', 'device', 'status', 'at'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.type in ['bug', 'idea', 'other']
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() >= 10
+                    && request.resource.data.message.size() <= 1000
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.at == request.time
+                    && (!('shot' in request.resource.data)
+                        || (request.resource.data.shot is string && request.resource.data.shot.size() <= 204800))
+                    && feedbackDeviceOk(request.resource.data.device)
+                    && getAfter(/databases/$(database)/documents/player-feedback-limits/$(request.auth.uid)).data.last == request.time;
+      allow read, delete: if isOwner();
+      allow update: if isOwner()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt'])
+                    && request.resource.data.status in ['open', 'resolved'];
+    }
+
     // ── Admin audit trail ────────────────────────────────────────────────────
     // Every destructive action the console takes writes one of these first.
     // Owner-only in both directions, and deliberately create-only: an audit log

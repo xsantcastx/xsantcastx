@@ -253,3 +253,18 @@ export async function mapFind(page: Page, name: string | RegExp): Promise<void> 
   const find = page.locator('#places-list [data-map-find]');
   if (await find.count()) await find.fill(typeof name === 'string' ? name : name.source.replace(/[\\^$.*+?()[\]{}|]/g, ''));
 }
+
+/**
+ * Open the Game Menu (the ☰ Menu: Character, Glass, Bestiary, Lore, Friends, Sound, Loot, Account, Feedback, Character
+ * select). Escape opens it when nothing else is up and folds whatever is, so a few presses always get there; the Map
+ * (Places) holds only the map.
+ */
+export async function openMenu(page: Page): Promise<void> {
+  const menu = page.locator('#game-menu');
+  for (let i = 0; i < 5 && !(await menu.isVisible()); i++) {
+    await focusWorld(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+  }
+  await expect(menu).toBeVisible();
+}

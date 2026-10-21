@@ -576,3 +576,5 @@
   .gm-drawer__panel { width: 100%; }
   .gm-grant { flex-direction: column; align-items: stretch; }
 }
+
+.gm-shot { display: block; width: 96px; max-height: 64px; object-fit: contain; }

@@ -14,7 +14,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, existsSync, readFileSync, readdirSync } from 'node:fs';
-import { ERA, ledger, seed } from './play-helpers';
+import { ERA, ledger, seed, openMenu } from './play-helpers';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
 import { activity, xpForLevel } from './play-delve-fixtures';
@@ -58,7 +58,8 @@ async function enterWorld(page: Page, query = '', blobs: Record<string, unknown>
 async function openMapItem(page: Page, size: (typeof SIZES)[number], key: string): Promise<void> {
   if (size.phone) await page.locator('.td-dock button').last().click();
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
-  await page.locator(`.td-map__menu [data-open="${key}"]`).click();
+  await openMenu(page);
+  await page.locator(`#game-menu [data-open="${key}"]`).click();
   await page.waitForTimeout(500);
 }
 

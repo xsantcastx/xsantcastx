@@ -153,7 +153,8 @@ for (const [f, targets] of linksIn) {
 
 // ── 3. Every panel is reachable in-game ────────────────────────────────────
 const menuHtml = fs.readFileSync(path.join(APP, 'play/side-scroller.component.html'), 'utf8');
-const menuBlock = (menuHtml.match(/<nav id="places-list"[\s\S]*?<\/nav>/) || [''])[0];
+// The Game Menu (Esc / ☰ Menu) holds the openers; the Map's own window holds none. Either may carry data-open.
+const menuBlock = (menuHtml.match(/<nav id="(?:game-menu|places-list)"[\s\S]*?<\/nav>/g) || ['']).join('\n');
 const menuOpens = new Set([...menuBlock.matchAll(/data-open="([\w-]+)"/g)].map(m => m[1]));
 const reach = new Map(); // panel -> how
 for (const [id, where] of hostedByStation) reach.set(id, `station ${where}`);

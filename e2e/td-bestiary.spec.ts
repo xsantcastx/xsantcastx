@@ -4,7 +4,7 @@
  * Screenshots: docs/handoff/cozy-ui/bestiary*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { seed, openMenu } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 const KILLS = { version: 1, kills: { 'ash-wolf': 12, 'rivet-maw': 3 } };
@@ -22,7 +22,8 @@ test('the Bestiary: Map menu opens it; known cards show name and count, the rest
   await canvas(page).focus();
   await page.keyboard.press('m');
   await expect(page.locator('#places-list.td-map')).toBeVisible();
-  await page.locator('.td-map__menu [data-open="bestiary"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="bestiary"]').click();
   const best = page.locator('.td-best');
   await expect(best).toBeVisible();
   const total = await best.locator('.td-best__card').count();
@@ -57,7 +58,8 @@ test('the Bestiary on a phone: two columns, scrolls inside, nothing wider than t
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
   await page.locator('.td-dock button').last().click();
-  await page.locator('.td-map__menu [data-open="bestiary"]').click();
+  await openMenu(page);
+  await page.locator('#game-menu [data-open="bestiary"]').click();
   const best = page.locator('.td-best');
   await expect(best).toBeVisible();
   await page.waitForTimeout(400);

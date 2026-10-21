@@ -9,7 +9,7 @@
  * value the engine is handed) — the production build has no `ng` global.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, canvas, focusWorld, openPlay, placePanel, purse, seed } from './play-helpers';
+import { bag, canvas, focusWorld, openPlay, placePanel, purse, seed, openMenu } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 
 const exactName = (name: string) => new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`);
@@ -74,7 +74,8 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
 
     // Character & stats from the top bar's Places menu → the Tools block.
     await page.locator('.places-toggle').first().click();
-    await page.locator('#places-list button[data-open="character"]').click();
+    await openMenu(page);
+    await page.locator('#game-menu [data-open="character"]').click();
     const tools = placePanel(page).locator('app-tool-stats');
     await expect(tools).toBeVisible({ timeout: 15000 });
     await expect(tools).toContainText('Tools work from your satchel — no need to equip.');
@@ -95,7 +96,8 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     await expect(worn).toContainText('Power ×1.21 (tool ×1 · Mining 42 +21%)');
     await page.keyboard.press('Escape');
     await page.locator('.places-toggle').first().click();
-    await page.locator('#places-list button[data-open="character"]').click();
+    await openMenu(page);
+    await page.locator('#game-menu [data-open="character"]').click();
     const tools = placePanel(page).locator('app-tool-stats');
     await expect(tools).toBeVisible({ timeout: 15000 });
     await expect(tools.locator('.tst__row[data-family="pickaxe"]')).toContainText('Swing 0.47 s (tool 0.52 · Mining 42 −10%)');
@@ -113,7 +115,8 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     const swing = Number(await canvas(page).getAttribute('data-swing-pickaxe'));
     expect(swing).toBeGreaterThanOrEqual(0.25);
     await page.locator('.places-toggle').first().click();
-    await page.locator('#places-list button[data-open="character"]').click();
+    await openMenu(page);
+    await page.locator('#game-menu [data-open="character"]').click();
     const titles = placePanel(page).locator('app-skill-titles');
     await expect(titles).toBeVisible({ timeout: 15000 });
     const row = titles.locator('.stt__row[data-skill="mining"]');
@@ -133,7 +136,8 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     await seed(page, { ...bag({}), ...activity({ mining: xpForLevel(300) + 1234 }) });
     await openPlay(page);
     await page.locator('.places-toggle').first().click();
-    await page.locator('#places-list button[data-open="character"]').click();
+    await openMenu(page);
+    await page.locator('#game-menu [data-open="character"]').click();
     await placePanel(page).locator('#ch-tab-skills').click();
     const card = placePanel(page).locator('.sk__card').filter({ hasText: 'Eclipse Hewer' }).first();
     await expect(card).toBeVisible({ timeout: 15000 });
@@ -150,7 +154,8 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     await seed(page);
     await openPlay(page);
     await page.locator('.places-toggle').first().click();
-    const entry = page.locator('#places-list button[data-open="character"]');
+    await openMenu(page);
+    const entry = page.locator('#game-menu [data-open="character"]');
     await expect(entry).toContainText('Character & stats');
     await expect(entry).toBeVisible();
     const box = await entry.boundingBox();
