@@ -241,6 +241,30 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
+    // ── The Hearth's social graph (protocol 4; docs/design/online.md Phase 3) ──
+    // users/{uid}/social/friends and …/blocks: written ONLY by the Hearth room
+    // server, through its service account (IAM-authorised REST requests do not
+    // pass through these rules at all). A friendship is two documents written
+    // in one commit, so a client that could write its own list could add itself
+    // to anyone's without their yes; hence no client write, ever. The player may
+    // read their own (nothing in the client does today; it is theirs to see).
+    match /users/{uid}/social/{docId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Player reports: filed by the Hearth (service account) with the reported
+    // Keeper's own last lines as the room heard them. The GM console reads them
+    // and resolves them (status, or delete). No client may file one directly —
+    // a forged report could put words in somebody's mouth.
+    match /player-reports/{reportId} {
+      allow read, delete: if isOwner();
+      allow update: if isOwner()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt'])
+                    && request.resource.data.status in ['open', 'resolved'];
+      allow create: if false;
+    }
+
     // ── Admin audit trail ────────────────────────────────────────────────────
     // Every destructive action the console takes writes one of these first.
     // Owner-only in both directions, and deliberately create-only: an audit log

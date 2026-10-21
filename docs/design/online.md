@@ -55,7 +55,7 @@ per session and pushed by the room, never polled.
 |---|---|---|---|
 | 1 ✓ | **Presence** — see each other, public chat, Wave | done | (live) |
 | 2 | **Parties** — invite, frames, party chat, shared XP near a kill, Seek/minimap | M (built) | ⚑ redeploy the hearth (protocol 3) |
-| 3 | **Social graph** — friends list, whispers/DMs, block/mute/report, privacy settings, profanity filter | M | ⚑ rules; ⚑ hearth redeploy (ID-token auth) |
+| 3 | **Social graph** — hearth auth, friends list, whispers, block/mute/report, privacy settings, profanity filter | M (built, §4b) | ⚑ hearth redeploy with the project env; ⚑ rules (reports, social) |
 | 4 | **Guilds** — create/join, ranks, guild chat, tag over the head; guild hall later | L | ⚑ rules + ⚑ Functions |
 | 5 | **Co-op encounters** — party quests/dailies, group bosses (Seam Eater) with scaling, personal loot, host-authority dungeons | L | ⚑ hearth redeploy |
 | 6 | **Trading** — two-sided confirm window, atomic Gold/item swap | M–L | ⚑ Functions + ⚑ rules |
@@ -186,9 +186,29 @@ player count justifies it.
 | e2e | `e2e/td-party.spec.ts` — three browsers (one a phone): invite, accept, frames, life, party chat, shared XP, leave; and a v2-room degrade check |
 | Deploy ⚑ | `scripts/social-deployment.md` § Protocol 3 — the owner's command, all four origins |
 
+## 4b. Phase 3 as built (the social graph, protocol 4) — the reference
+
+Built 2026-10-21 in branch `friends`. **Not deployed** (⚑ below).
+
+| Piece | How it works |
+|---|---|
+| **Identity** | The client sends `Authorization: Firebase <ID token>` on `/join` when signed in (`CloudSaveService.idToken()`). The room verifies it with **no dependencies** (`scripts/social-identity.mjs`: RS256 against Google's securetoken certificates, cached; `aud`/`iss` = the project; expiry; subject). Anonymous Firebase users and anyone without a token are **guests** (`guest: true` on the player; the card shows a Guest tag). The uid never leaves the server. One account = one Keeper in the room (a second join replaces the first; the first window is told and stops rejoining). A refused token joins as a guest rather than not at all. |
+| **Bans** | The room reads `users/{uid}/meta/ban` (the same doc `isBanned()` in firestore.rules reads, written by the GM console) on every signed-in join and again every 10 minutes for Keepers already in; a banned account gets 403 and the client stops its always-on loop. |
+| **Friends** | Both Keepers signed in. Peer card → **Add friend** → the other gets a toast (Accept/Decline; requests live 5 min in memory). Accepting writes **both** `users/{uid}/social/friends` docs in **one Firestore commit** (`{ids, names, updatedAt}`; `appendMissingElements` / `removeAllFromArray`), via the service account. **Menu → Friends**: each friend online/offline, "in your area", Whisper, Remove; the block list with Unblock. Status is pushed by the room (on join/leave/area change/privacy), never polled — 2 Firestore reads per signed-in join (friends + blocks) and 1 ban read; writes only on accept/remove/block. Max 200. |
+| **Whispers** | `/w Name text` (or `/w "Two Words" text`) in Chat, or Whisper on a card / in the Friends list (prefills `/w Name `). Relayed to one session and echoed to the sender, never stored; violet lines in the Chat tab. 5 / 10 s. |
+| **Block** | Server-side: the blocker's stream stops receiving the blocked Keeper's presence (they vanish from the world), public and party lines, whispers, party invites and friend requests (the blocked one is never told). Persisted per account in `users/{uid}/social/blocks`; a guest's block lasts the session. |
+| **Mute** | Client-only, this session: hides a Keeper's lines (card → Mute / Unmute). |
+| **Report** | Card → Report → one reason (spam, abuse, cheating, bad name, other). The room files `player-reports/{id}` with the reported Keeper's **own last 10 public lines as the room heard them** (raw), who reported, the area, and `status: 'open'`. 3 per 10 min. The **GM console → Logs** now lists reports (open count, Resolve). |
+| **Privacy** | Settings → Friends see: Online / Offline (appear offline to friends); Invites: Everyone / Friends. Saved with the other settings (synced through the gateway as part of `godforge-sound`), sent on join and on change. Friends-only refuses party invites from non-friends with the same words as a block. |
+| **Profanity** | `scripts/social-words.mjs`, server-side: masks a short EN+ES list (first letter kept) through case, accents, l33t, repeated letters and spaced letters, in public chat, party chat and whispers; a rude name is shown as "Keeper". Innocent words (class, assume, Scunthorpe, cockatoo, conocer) pass. |
+| **Compatibility** | v3 and older clients send no token: guests, everything else unchanged. This client against the live v3 room: no social buttons on the card, the Friends sheet says "Friends open when the hearth updates", parties/presence/chat unchanged. Before `SOCIAL_FIREBASE_PROJECT` is set, a v4 room treats every Keeper as a guest (friends need sign-in; whispers/block/report/privacy/filter all work). |
+| **Tests** | `scripts/social-server.test.mjs` (9 new: identity, ban, friends, privacy, whispers, block, report, profanity, the verifier with a real RSA cert + the REST shapes); karma `social-room.spec` (3 new), `gm-reports.spec`; e2e `e2e/td-friends.spec.ts` (three browsers, fake tokens on localhost only: `SOCIAL_FAKE_AUTH=1`, refused on Cloud Run). |
+
+⚑ **Owner steps** (scripts/social-deployment.md § Protocol 4): rebuild and redeploy the hearth with `SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b` added **beside** the four origins; deploy the two new rules blocks (`users/{uid}/social/*` read-own/no-write, `player-reports` owner-only) by hand — CI's rules step 403s. IAM: none needed today — the service runs as the default compute service account, which holds `roles/editor` (includes Firestore read/write). Optional hardening: a dedicated service account with only `roles/datastore.user`.
+
 ## 5. Next phase recommended
 
-**Phase 3, with auth first**: verify Firebase ID tokens on the hearth (one ⚑ redeploy), then friends + whispers +
+*(Superseded: Phase 3 is built, §4b.)* **Phase 3, with auth first**: verify Firebase ID tokens on the hearth (one ⚑ redeploy), then friends + whispers +
 block/mute/report + privacy together. Auth unlocks everything after it (guilds, trading, bans), and moderation must
 land before the room is promoted publicly. In parallel, a small Phase 5 slice — **server-seeded spawns** — would make
 party hunting look shared for very little code.

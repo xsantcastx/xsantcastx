@@ -158,3 +158,83 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 
 The redeploy restarts the room: everyone online is dropped and rejoins on their
 own within seconds (always-on); chat history (in memory) is cleared.
+
+### Protocol 4 (the social graph, 2026-10-21 — built, NOT deployed)
+
+The image now holds three files: `social-server.mjs`, `social-identity.mjs`
+(ID-token verification and Firestore over REST, no npm dependencies) and
+`social-words.mjs` (the profanity mask). Dockerfile.social, its dockerignore and
+scripts/social-gcloudignore list all three.
+
+`/join` takes an optional `Authorization: Firebase <idToken>`. With
+`SOCIAL_FIREBASE_PROJECT` set, the room verifies it (RS256, Google's securetoken
+certificates, `aud`/`iss` = the project), binds the session to the uid, and
+refuses a banned account (`users/{uid}/meta/ban` with `banned: true`) with 403;
+every other Keeper is a guest (`guest: true` on the player). Without the env var
+every Keeper is a guest and Firestore is never touched. `SOCIAL_FAKE_AUTH=1`
+(tokens `fake.<uid>`, in-memory store) is for the local e2e and refuses to start
+on Cloud Run.
+
+| verb | body | effect |
+|---|---|---|
+| POST `/friend/request` | `{to: playerId}` | both signed in; the other gets `friend-request`; lapses in 5 min; 6 / 30 s |
+| POST `/friend/accept` · `/friend/decline` | `{request}` | accept writes both `users/{uid}/social/friends` docs in one commit |
+| POST `/friend/remove` | `{uid}` | both sides, one commit |
+| POST `/whisper` | `{to: playerId, text}` | to that session and back to the sender, masked; never stored; 5 / 10 s |
+| POST `/block` · `/unblock` | `{player}` · `{key}` | hides presence, lines, whispers, invites and requests from the blocked; kept in `users/{uid}/social/blocks` for an account; 10 / min |
+| POST `/report` | `{player, reason, note?}` | files `player-reports/{id}` with the reported Keeper's last 10 public lines; 3 / 10 min |
+| POST `/privacy` | `{offline, invites}` | also accepted as `privacy` on `/join` |
+
+Events: `friends`, `friend-request`, `whisper`, `blocks`, `social-note`,
+`banned` and `replaced` (this account joined from another window: the client
+stops rejoining). Public chat, party chat and whispers pass the mask.
+
+**IAM.** Firestore is reached with the service's own identity from the metadata
+server. The service runs as `773269119730-compute@developer.gserviceaccount.com`,
+which holds `roles/editor` today (checked 2026-10-21), so nothing needs granting.
+Optional hardening, the owner's call:
+
+```sh
+gcloud iam service-accounts create eclipse-hearth --project xsantcastx-1694b --display-name "Eclipse Hearth room"
+gcloud projects add-iam-policy-binding xsantcastx-1694b \
+  --member serviceAccount:eclipse-hearth@xsantcastx-1694b.iam.gserviceaccount.com --role roles/datastore.user
+# then add --service-account eclipse-hearth@xsantcastx-1694b.iam.gserviceaccount.com to the deploy below
+```
+
+**Rules (owner, by hand — CI's rules step 403s).** firestore.rules adds
+`users/{uid}/social/{doc}` (read own, no client write) and `player-reports/{id}`
+(owner read/delete, owner may only flip `status`/`resolvedAt`, no client
+create). The room's writes do not depend on them (service-account requests skip
+the rules); the GM console's report list does. Diff the live ruleset first
+(memory: "Live rules drift from the repo"), then:
+
+```sh
+firebase deploy --only firestore:rules --project xsantcastx-1694b
+```
+
+**Deploy (the owner's call — not executed).** `--set-env-vars` replaces every
+variable, so the four origins and the project go in one `^|^` string:
+
+```sh
+gcloud run services describe eclipse-hearth --project xsantcastx-1694b --region us-central1 \
+  --format='value(spec.template.spec.containers[0].env)'
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b \
+  --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated \
+  --max-instances 1 \
+  --concurrency 80 \
+  --timeout 3600 \
+  --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":4
+```
+
+To check the identity path after the deploy: two browsers, both signed in with
+Google, one taps the other → Add friend → Accept; Menu → Friends shows the other
+online. `gcloud run services logs read eclipse-hearth --region us-central1` shows
+`[hearth] … failed` lines if Firestore or the certificates are unreachable (the
+room then degrades: a failed ban read lets the Keeper in, a failed friends read
+starts an empty list, a failed write is refused with "Could not save that").

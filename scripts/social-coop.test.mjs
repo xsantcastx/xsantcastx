@@ -1,4 +1,4 @@
-// Protocol 4: shared creatures for parties (docs/design/online.md §3.4). The room elects one host per party per area,
+// Protocol 5: shared creatures for parties (docs/design/online.md §3.4). The room elects one host per party per area,
 // validates and relays the host's snapshots to the others there, and the members' damage claims to the host; it never
 // simulates or stores a creature. A v3 client (no `coop: true`) is never elected, sent or asked anything new.
 import { test } from 'node:test';
@@ -67,14 +67,14 @@ async function room(t, options = {}) {
 const snap = (area, mobs = [], extra = {}) => ({ area, seq: 1, kf: true, mobs, ...extra });
 const wolf = (i = 'a1', more = {}) => ({ i, t: 'ash-wolf', k: 'w:3,4', x: 120, y: 140, f: 1, h: 30, m: 40, l: 6, ...more });
 
-test('protocol 4: the health check and the join reply say 4', async t => {
+test('protocol 5: the health check and the join reply say 5', async t => {
   const { base, join } = await room(t);
-  assert.equal(PROTOCOL, 4);
-  assert.equal((await (await fetch(`${base}/health`)).json()).protocol, 4);
-  assert.equal((await join('Arin')).protocol, 4);
+  assert.equal(PROTOCOL, 5);
+  assert.equal((await (await fetch(`${base}/health`)).json()).protocol, 5);
+  assert.equal((await join('Arin')).protocol, 5);
 });
 
-test('protocol 4: the earliest-joined member present hosts each area; it stays host while it stays (sticky)', async t => {
+test('protocol 5: the earliest-joined member present hosts each area; it stays host while it stays (sticky)', async t => {
   const { join, move, form, stream } = await room(t);
   const a = await join('Arin'), b = await join('Mira'), c = await join('Oskar');
   const sa = await stream(a), sb = await stream(b), sc = await stream(c);
@@ -97,7 +97,7 @@ test('protocol 4: the earliest-joined member present hosts each area; it stays h
   assert.deepEqual((await sa.coop()).areas, view);
 });
 
-test('protocol 4: re-election when the host changes area, leaves the party, leaves the room or goes quiet', async t => {
+test('protocol 5: re-election when the host changes area, leaves the party, leaves the room or goes quiet', async t => {
   const { join, move, form, stream, post, tick, r } = await room(t);
   const a = await join('Arin'), b = await join('Mira'), c = await join('Oskar');
   for (const k of [a, b, c]) await move(k, 'ember-isle');
@@ -130,7 +130,7 @@ test('protocol 4: re-election when the host changes area, leaves the party, leav
   // (A party of one is no party: Arin hears there is nothing to host.)
 });
 
-test('protocol 4: snapshots reach only the party\'s others in that area; claims reach only that area\'s host', async t => {
+test('protocol 5: snapshots reach only the party\'s others in that area; claims reach only that area\'s host', async t => {
   const { join, move, form, stream, post } = await room(t);
   const a = await join('Arin'), b = await join('Mira'), c = await join('Oskar');
   const old = await join('Oldtimer', { party: true });            // a v3 client: parties, no co-op
@@ -168,7 +168,7 @@ test('protocol 4: snapshots reach only the party\'s others in that area; claims 
   assert.equal((await post('/coop/hits', { area: 'ember-mine-1', hits: [{ i: 'a1', d: 1, el: 'physical' }] }, b.token)).status, 409);
 });
 
-test('protocol 4: every field is validated; caps on creatures, events, ids and bytes', async t => {
+test('protocol 5: every field is validated; caps on creatures, events, ids and bytes', async t => {
   const { join, move, form, post, raw, tick } = await room(t);
   const a = await join('Arin'), b = await join('Mira');
   for (const k of [a, b]) await move(k, 'ember-isle');
@@ -217,7 +217,7 @@ test('protocol 4: every field is validated; caps on creatures, events, ids and b
   assert.throws(() => coopEvent({ k: 'bite', to: 'x', d: 1, ty: 'fire' }, ['y'], 'y'));
 });
 
-test('protocol 4: snapshots, claims and the party\'s co-op traffic are rate limited', async t => {
+test('protocol 5: snapshots, claims and the party\'s co-op traffic are rate limited', async t => {
   const { join, move, form, post, tick } = await room(t);
   const ks = [];
   for (const n of ['Arin', 'Mira', 'Oskar', 'Wren']) ks.push(await join(n));
@@ -241,7 +241,7 @@ test('protocol 4: snapshots, claims and the party\'s co-op traffic are rate limi
   assert.equal(okCount, COOP.partyPerSec);
 });
 
-test('protocol 4: a v3 client is never elected, never relayed to, and the v3 verbs work exactly as before', async t => {
+test('protocol 5: a v3 client is never elected, never relayed to, and the v3 verbs work exactly as before', async t => {
   const { join, move, form, stream, post } = await room(t);
   const old = await join('Oldtimer', { party: true }), a = await join('Arin');
   for (const k of [old, a]) await move(k, 'ember-isle');
@@ -264,7 +264,7 @@ test('protocol 4: a v3 client is never elected, never relayed to, and the v3 ver
   assert.equal((await post('/coop/hits', { area: 'ember-isle', hits: [{ i: 'a', d: 1, el: 'fire' }] }, lone.token)).status, 409);
 });
 
-test('protocol 4: a reopened stream learns the election; leaving the party tells the leaver there is no host', async t => {
+test('protocol 5: a reopened stream learns the election; leaving the party tells the leaver there is no host', async t => {
   const { join, move, form, stream, post } = await room(t);
   const a = await join('Arin'), b = await join('Mira'), c = await join('Oskar');
   for (const k of [a, b, c]) await move(k, 'ember-isle');
