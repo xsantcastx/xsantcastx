@@ -21,6 +21,7 @@
  */
 import type { ContinentDef } from './continent';
 import type { MobDef } from './td-mobs';
+import { CREATURE_LIFE } from './td-life';
 
 /** The creature's id (the side view's Act I warden keeps 'seam-eater'; this is its second rising). */
 export const SEAM_ID = 'seam-eater-risen';
@@ -42,9 +43,17 @@ export const SEAM_PHASES = {
   one: { spread: 5, rate: 4, rings: 3, rendRate: 6 },
   two: { spread: 7, rate: 3.2, rings: 5, rendRate: 4.5 },
 } as const;
-/** The two Eclipse-touched creatures it calls at half life, by its level: the shade-kin of the fens. */
+/** The world boss's life over a floor boss's (td-life CREATURE_LIFE.boss): its fight is minutes, a floor boss's one or two. */
+export const SEAM_LIFE = 1.25;
+/** How much more life the Eater takes on from 40 to 60 (on top of its curve). */
+export const SEAM_LATE = .5;
+/**
+ * The two Eclipse-touched creatures it calls at half life, by its level: never above it (combat-sim: a level-20 Eater
+ * calling two level-28 Lantern Wisps as champions felled half the Keepers who met it) — the Cinder Wraith (12) under
+ * 28, then the shade-kin of the fens.
+ */
 export function seamCall(level: number): string {
-  return level < 30 ? 'lantern-wisp' : level < 40 ? 'ink-hound' : 'drowned-knight';
+  return level < 28 ? 'cinder-wraith' : level < 32 ? 'lantern-wisp' : level < 40 ? 'ink-hound' : 'drowned-knight';
 }
 
 /** The Eater's level for a Keeper of `keeperLevel`: his own, held inside the band. */
@@ -58,13 +67,18 @@ export function seamStats(level: number): {
   hp: number; dmg: [number, number]; breath: [number, number]; rend: [number, number];
 } {
   const L = seamLevel(level);
-  // 1.3× the deep bosses' life curve (the Ashbone Dragon 2200 at 25 … the Ink Abbess 7200 at 50): a world boss.
-  const hp = Math.round(1.3 * (200 * L - 2800) / 10) * 10;
+  // 1.3× the deep bosses' authored life curve (the Ashbone Dragon 2200 at 25 … the Ink Abbess 7200 at 50), risen as
+  // every boss rises (td-life CREATURE_LIFE.boss) and SEAM_LIFE again: a world boss, a few minutes' fight. Past 40 it
+  // climbs a further half by 60 (SEAM_LATE): the Keeper's damage outgrows a straight line, the Eater's must too.
+  const late = 1 + SEAM_LATE * Math.max(0, L - 40) / 20;
+  const hp = Math.round(1.3 * (200 * L - 2800) * CREATURE_LIFE.boss * SEAM_LIFE * late / 10) * 10;
   return {
     hp,
-    dmg: [Math.round(.9 * L), Math.round(1.3 * L)],
-    breath: [Math.round(.6 * L), Math.round(.9 * L)],
-    rend: [Math.round(1 * L), Math.round(1.4 * L)],
+    // Its blows were 0.9L–1.3L, its breath 0.6L–0.9L and its Rend 1.0L–1.4L; at a few minutes' fight that felled half
+    // the ranged Keepers at 20–30 (combat-sim), so each is a sixth softer.
+    dmg: [Math.round(.75 * L), Math.round(1.1 * L)],
+    breath: [Math.round(.5 * L), Math.round(.75 * L)],
+    rend: [Math.round(.85 * L), Math.round(1.15 * L)],
   };
 }
 

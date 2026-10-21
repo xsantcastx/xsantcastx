@@ -33,6 +33,8 @@ import { LANTERN_SKILLS } from './td-lantern-skills';
 import { BANISH_BOSS, carriedLight, healOverTime, inDisc, lastLightClamp, lightBlow, shadowBorn, stepHeal, unmakes, type HealOverTime } from './td-lantern';
 import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, type WeaponSwing } from './td-melee';
 import { THORN_SKILLS } from './td-thorn-skills';
+import { livedHp, lifeScale } from './td-life';
+import { SEAM_ID, seamStats } from './td-seam';
 import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 
 export interface MobDef {
@@ -1460,7 +1462,8 @@ function rootwyrm(c: CanvasRenderingContext2D, f: number): void {
 /** The Elder Rootwyrm as the world draws it: its shapes grown a quarter again, set down a little so the crown has room. */
 function paintRootwyrm(c: CanvasRenderingContext2D, f: number): void { grown(1.25, 0, 4, () => rootwyrm(c, f)); }
 
-export const MOBS: Readonly<Record<string, MobDef>> = {
+/** Every creature as written, with its authored life (MOBS below is what rises: td-life lifeScale). */
+const AUTHORED: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10, hits: 'fire',
     lore: 'Born in a kiln that was never lit by hand, it tracks a warm boot-print for miles and sleeps in the cracks that still glow.',
@@ -1684,18 +1687,26 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   // The eclipse's world boss (td-seam.ts): it rises at a continent's rift under an eclipse, scaled to the Keeper's level
   // inside 20–60 as it rises (seamEaterAt). This is its level-20 self, as the Bestiary shows it.
   'seam-eater-risen': {
-    id: 'seam-eater-risen', name: 'The Seam Eater', hp: 1560, speed: 18, dmg: [18, 26], rate: 1.8, sight: 170, level: 20,
+    id: 'seam-eater-risen', name: 'The Seam Eater', hp: seamStats(20).hp, speed: 18, dmg: [15, 22], rate: 1.8, sight: 170, level: 20,
     lore: 'They sank it in the slag under the Seamworks and posted thanks. Under an eclipse the seam it ate opens again, and it climbs out of the tear with the dark still on it.',
     drops: [{ material: 'eclipse-glass', qty: 2, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }, { material: 'umbral-sigil', qty: 1, chance: .5 }], paint: paintSeamEater, w: 112, h: 100, rank: 'boss', chant: 'ul nyr sha', hits: 'arcane',
     // Void Breath: a fan of void after the cone on the ground. Seam Rend: rings round the Keeper that burst after a
     // second. At half its life two Eclipse-touched shades climb out and both attacks quicken.
-    ranged: { range: 140, keep: 0, rate: 4, dmg: [12, 18], speed: 115, kind: 'ink', spread: 5 },
-    rend: { rate: 6, rings: 3, r: 20, spread: 34, tell: 1, dmg: [20, 28], chant: 'ul dra' },
+    ranged: { range: 140, keep: 0, rate: 4, dmg: [10, 15], speed: 115, kind: 'ink', spread: 5 },
+    rend: { rate: 6, rings: 3, r: 20, spread: 34, tell: 1, dmg: [17, 23], chant: 'ul dra' },
     half: { spread: 7, rate: 3.2, rings: 5, rendRate: 4.5, chant: 'ul teth' },
-    summon: { type: 'lantern-wisp', count: 2, at: .5, touched: true },
+    summon: { type: 'cinder-wraith', count: 2, at: .5, touched: true },
     bound: { leash: 14 },
   },
 };
+/**
+ * Every creature as it rises (docs/design/loot-and-combat.md §13): its authored life × td-life lifeScale — an
+ * ordinary creature ×1 at level 1 climbing to ×3 by level 6, a boss ×22 — so a Keeper at level takes a few seconds over
+ * a creature and a minute or two over a boss (scripts/combat-sim.mjs holds the bands). The Seam Eater's life is its
+ * own curve (td-seam seamStats, the same boss factor in it). Hunting XP still follows the authored life (kill).
+ */
+export const MOBS: Readonly<Record<string, MobDef>> = Object.fromEntries(Object.entries(AUTHORED)
+  .map(([key, def]) => [key, key === SEAM_ID ? def : { ...def, hp: livedHp(def.hp, def.level, def.rank) }]));
 
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
 export const RAISED_SKELETON: MobDef = {
@@ -3753,8 +3764,9 @@ export class MobSystem {
     // The Hush pays too (td-dark.ts): a little more XP the deeper it runs, capped.
     // A worn unique (unique-items.ts xp-echo): more Hunting XP from every kill.
     const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100);
-    // XP follows the creature's own life, not the tier's multiple of it (the tier pays in drops, its blurb says so).
-    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp), ...(xpK !== 1 ? { xp: xpK } : {}) });
+    // XP follows the creature's own authored life: not the tier's multiple of it (the tier pays in drops, its blurb says
+    // so), nor td-life's (the life a creature rises with is the fight's; the authored life is leveling.md's pace).
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp / lifeScale(m.def.level, m.def.rank)), ...(xpK !== 1 ? { xp: xpK } : {}) });
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });

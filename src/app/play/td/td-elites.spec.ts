@@ -7,8 +7,9 @@ import { MOBS, MobSystem, type MobHost } from './td-mobs';
 import {
   AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_SECONDS, ELITE_AFFIXES, ELITE_CHANCE, MANA_BURN, NAME_FIRST, NAME_TITLE,
   eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, hasMagicItem, lootRank, makePack, rollAffixes, rollElite,
+  TD_RANK_HP,
 } from './td-elites';
-import { RANK_DAMAGE, RANK_HP, seededRandom } from '../../shared/loot/champions';
+import { RANK_DAMAGE, seededRandom } from '../../shared/loot/champions';
 import { TdWorld } from './td-world';
 import { CONTINENTS } from './td-engine';
 import { TILE } from './td-art';
@@ -91,7 +92,7 @@ describe('td-elites: the stat math', () => {
 
   it('a champion takes its rank and its affix', () => {
     const st = eliteStats(base, { rank: 'champion', role: 'leader', affixes: ['extra-strong'] });
-    expect(st.hp).toBe(Math.round(100 * RANK_HP.champion));
+    expect(st.hp).toBe(Math.round(100 * TD_RANK_HP.champion));
     expect(st.dmg).toEqual([Math.round(10 * RANK_DAMAGE.champion * 1.5), Math.round(20 * RANK_DAMAGE.champion * 1.5)]);
     expect(st.speed).toBe(30);
     expect(st.take).toBe(1);
@@ -99,7 +100,7 @@ describe('td-elites: the stat math', () => {
 
   it('a unique leader stacks its affixes; its minions keep their own numbers', () => {
     const st = eliteStats(base, { rank: 'unique', role: 'leader', affixes: ['extra-fast', 'stone-skin', 'fire-enchanted'] });
-    expect(st.hp).toBe(Math.round(100 * RANK_HP.unique));
+    expect(st.hp).toBe(Math.round(100 * TD_RANK_HP.unique));
     expect(st.speed).toBeCloseTo(30 * 1.6, 5);
     expect(st.rate).toBeCloseTo(1.2 / 1.3, 5);
     expect(st.take).toBeCloseTo(.6, 5);
@@ -115,7 +116,7 @@ describe('td-elites: the stat math', () => {
     const pack = sys.spawnPack('p', def, 100, 100, makePack('champion', ['stone-skin'], null, 2));
     expect(pack.length).toBe(3);
     for (const m of pack) {
-      expect(m.def.hp).toBe(Math.round(def.hp * RANK_HP.champion));
+      expect(m.def.hp).toBe(Math.round(def.hp * TD_RANK_HP.champion));
       expect(m.hp).toBe(m.def.hp);
       expect(m.def.rank).toBe('champion');
       expect(m.elite?.affixes).toEqual(['stone-skin']);

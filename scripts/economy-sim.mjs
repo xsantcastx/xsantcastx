@@ -535,7 +535,8 @@ function check(E) {
   {
     const P = loadTs('src/app/shared/potions/potions.model.ts');
     const mobText = readFileSync(resolve(here, '..', 'src/app/play/td/td-mobs.ts'), 'utf8');
-    const mobs = mobText.slice(mobText.indexOf('export const MOBS')).split(/\n  '[a-z-]+': \{/).slice(1).map(b => {
+    // The authored table (td-mobs AUTHORED; MOBS is it risen by td-life, and level and rank are all this reads).
+    const mobs = mobText.slice(mobText.indexOf('const AUTHORED')).split(/\n  '[a-z-]+': \{/).slice(1).map(b => {
       const level = /level: (\d+)/.exec(b), rank = /rank: '(\w+)'/.exec(b);
       return level ? { level: +level[1], avg: C.huntGoldMean(+level[1], rank ? rank[1] : 'normal'), rank: rank ? rank[1] : 'normal' } : null;
     }).filter(Boolean);

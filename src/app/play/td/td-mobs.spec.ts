@@ -98,6 +98,8 @@ describe('td-mobs: Raise Skeleton', () => {
     const { sys, hurt } = world();
     sys.useAbility('raise-skeleton');
     const foe = mobAt(sys, 'bone-walker', 44, 0);
+    // Its authored life: the level-1 skeletons against a Bone Walker as written (MOBS raises it ×3, td-life).
+    foe.hp = 80;
     let bitten = false;
     for (let t = 0; t < 20 && sys.mobs.includes(foe); t += .02) {
       sys.update(.02);

@@ -32,10 +32,14 @@ levels 50+    xp(L) = xp(50) + floor(A · ((L−1)^2.4 − 49^2.4)),  A = 13 · 
 | 5,000 | 21B | — | 12k | 3.4 |
 | 10,000 | 113B | — | 32k | 4.5 |
 
-Model (sim): 240 kills an hour including walking and looting; a top-down creature of level *m* has ~30 + 12.5·m HP
-(Ash Wolf 45 at 1, Lava Hound 120 at 10, Thorn Weaver 380 at 28), so it pays ~6 + 2.5·m XP — **monster XP scales
-with monster level through its HP**, and new continents must keep that rule. The first hour also hands in the
-Seamworks' six tasks (360 XP).
+Model (sim): 240 kills an hour including walking and looting; a top-down creature of level *m* has an **authored**
+life of ~30 + 12.5·m (Ash Wolf 45 at 1, Lava Hound 120 at 10, Thorn Weaver 380 at 28), so it pays ~6 + 2.5·m XP —
+**monster XP scales with monster level through its authored life**, and new continents must keep that rule. In the
+fight a creature rises with more (`td-life lifeScale`: ×1 at level 1 to ×3 by 6, then +0.06 a level; a boss ×22 —
+loot-and-combat.md §13), but its kill pays on the authored number, so this curve's pace is unchanged. The combat sim
+(`node scripts/combat-sim.mjs`) measures it in the real fight: level 10 in ~0.6 h, 30 in ~4.7 h, 50 in ~9 h — faster
+than the "content at pace" column past 30, because the Umbral Marches' creatures were authored above the rule
+(Drowned Knight 1,200 at 38 against the rule's 505). The first hour also hands in the Seamworks' six tasks (360 XP).
 
 - **Town bands fit:** Ember Isle 1–8 in the first hour; the Reach 8–30 over the next five; Verdant 15–40 and the
   Marches 25–50 by ~16 hours.
