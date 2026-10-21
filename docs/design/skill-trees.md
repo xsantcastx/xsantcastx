@@ -57,3 +57,31 @@ tongues. Meteor: a ground ring at the landing spot and a stone with a stepped fi
 then the nova's ring and scorch at its radius. Corpse Burst: a bone-toned ring, a flash and bone chips. Bone Storm:
 the Bone Spear's shafts. Bone Armor: four bone shards circling the chest. Weaken / Doom: the shadow ring; Doom marks
 its target with a ticking pale skull.
+
+## The Ashguard's three pages (design-bible §4.4, 2026-10-21)
+The second vocation: the Pyre Watch's melee knight. Code: `td-ashguard-skills.ts` (the book), `td-melee.ts` (the arc,
+the blow, crowd control on bosses, the guard, the vow), `td-mobs.ts` (the blade and the spells), `td-ashguard-fx.ts`
+(the pictures), `td-ashguard.i18n.ts` (EN + ES). Same rules as the Warlock's: tiers at 1 · 6 · 12 · 18 · 24, one rank
+in the prerequisite, ranks 1–20, `clampTree` per class (another class's points never count), synergies only from
+bought ranks. The basic attack is the **Watch Blade**: a swing in a 110° arc in front, 1.6 tiles deep, every 0.8 s
+(Agility and cast speed quicken it), striking every creature in the arc — it replaces the staff's bolt.
+
+| Tier (level) | Brand (fire on the blade) | Oath (shield, taunt, guard) | Ash (endurance) |
+|---|---|---|---|
+| 1 (1) | **Watch Blade** (passive swing) 9–14 +2/+3 · **Ember Brand** *brann vael sha* 8 s: blows +40% as fire and a 6 burn over 3 s; +5%, +1, +0.3 s · 12 · 12 s | **Shield Bash** *brann mur* 10–16 and a 1.2 s stun (bosses ⅕); +2/+3, +0.05 s · 8 · 6 s · **Shield Oath** *brann ka* 6 s: blocks 30% of blows whole; +1%, +0.2 s · 12 · 16 s | **Ash Stride** *brann sha* charge 3 tiles, 80% of a blow, knock back 1 tile (not bosses); +5%, +0.05 tile · 10 · 7 s · **Watchfire** (aura) *brann hesk ka* +10 Defense, 1 life/s; +3, +0.2 |
+| 2 (6) | **Cinder Cleave** ← Brand *brann vael mur*: a 160° arc 2 tiles deep, 120% as fire; +6% · 14 · 5 s | **Watch Cry** ← Bash *brann orum*: taunts all within 4 tiles 3 s (bosses ⅕), you take 15% less; +0.1 s, +0.5% · 10 · 10 s | — |
+| 3 (12) | — | **Hold the Line** ← Oath (passive): below 40% life, +20% Defense; +2% | **Ember Blood** ← Watchfire (passive): 3% of damage dealt heals; +0.2% |
+| 4 (18) | **Whirl of Cinders** ← Cleave *vael orum brann*: 4 turns in 2 s, each 60% as fire in r2; +4%, r+0.05 · 26 · 10 s | — | — |
+| 5 (24) | — | — | **Vow of the Last Watch** ← Ember Blood *brann ul ka*: 8 s you cannot fall below 1 life, then 25% of what it held heals; +0.2 s, +1% · 30 · 60 s |
+
+Synergies (a tree, no loops): Ember Brand +4% duration / rank Ember Blood · Cinder Cleave +5% damage / rank Ember Brand
+· Whirl +5% damage / rank Cinder Cleave · Shield Oath +5% duration / rank Hold the Line · Watch Cry +6% duration /
+rank Shield Oath · the Vow +5% duration / rank Hold the Line.
+
+**Starting kit** (free rank 1): Watch Blade, Shield Bash, Ember Brand, Ash Stride, Shield Oath, the Watchfire, Light;
+keys 1–4 are Bash · Brand · Stride · Oath, the Watchfire runs. **The body**: life ×1.3 and mana ×0.6 of the Warlock's
+at every level, and Defense of his own (8 + 1 a level) under the gear's (`td-skills VOCATION_BODY`).
+**Gear**: items ask for a level and an attribute, never a class, so everything is wearable; the Ashguard keeps the
+existing weapon slot — whatever is in hand is drawn in it, and the blow is the Watch Blade's (ranks × spell power).
+**Saves**: a look with no `vocation` (every Keeper made before) is a Warlock; a made Keeper keeps the calling he was
+made with (the Glass locks the other card).

@@ -91,6 +91,26 @@ before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
 - Reduced motion: shapes fade where they stand (no stepping back), the whisper holds still, the road appears at once,
   the edge dither and the HUD band's omen hold still.
 
+## The Ashguard (2026-10-21, `td-ashguard-fx.ts`)
+Two palettes join rule 2 for the second vocation (design-bible §4.4); the blade's fire stays the shipped Ember.
+| Element | Core | Body | Edge | Used by |
+|---|---|---|---|---|
+| Brass (the Pyre Watch's oaths) | `#fff2c8` | `#e0b25a` | `#8a6a2a` | a plain swing's arc, Shield Bash, Shield Oath, Watch Cry, the Vow, the Watchfire ring |
+| Ash (endurance) | `#efe6dc` | `#a89a90` | `#5e5450` | Ash Stride's afterimages and dust |
+- **The swing** (air, ≤ 60% over a body): a three-ring pixel crescent at the blade's reach, sweeping across its arc in
+  the first 60% of 0.24 s with three white-hot pixels at the leading edge; brass for a plain swing, ember while the Ember
+  Brand burns or the blow is fire (Cinder Cleave's 160° arc, the Whirl's full ring each half second). Each foe struck
+  gets the shipped slash strokes — the hit tell.
+- **Ember Brand**: an ember burst at the hand and a short climb of fire up the steel; while it burns, three ember pixels
+  climb the blade. **Shield Bash**: a brass flash and burst on the struck foe, impact lines thrown back; the stunned wear
+  three brass stars circling over the head (the CC pip). **Shield Oath**: a dashed brass square rim springs out round the
+  Keeper and stays (its dashes running) while the oath holds; a blocked blow flashes the rim and floats a brass "0".
+- **Watch Cry** (ground): a ring of brass dashes running out to the cry's reach; each taunted creature wears a brass
+  "!" edged in the hostile dark. **Ash Stride**: three ash afterimages along the charge, dust where it began.
+- **Vow of the Last Watch**: a brass bell over the head tolls once (it swings) and a brass ring runs out at the feet;
+  while the vow holds, brass corners frame the Keeper. **Watchfire** (aura): the aura rules' ring and floor in brass.
+- Reduced motion: the crescent is drawn whole, the ring at its full reach, the bell and the stars still.
+
 ## Order
 1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
 Each step screenshot-checked (e2e/td-fx-shots.spec.ts, e2e/td-fx2-shots.spec.ts → docs/handoff/cozy-ui/fx-*.jpg).
