@@ -10,6 +10,7 @@
  * The host does the bookkeeping exactly as the side view did: onKill (Hunting XP, quests), rollLoot (gear) and onLoot
  * (into the satchel). Nothing here touches a save.
  */
+import { DIFFICULTIES, type DifficultyDef } from '../../shared/loot/difficulty.model';
 import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
@@ -1987,6 +1988,16 @@ export interface MobHost {
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
 
+/** A creature as it rises on a difficulty tier: life × `hp`, its blow and its shot × `damage` (Normal: itself). */
+export function tiered(def: MobDef, t: Pick<DifficultyDef, 'hp' | 'damage'>): MobDef {
+  if (t.hp === 1 && t.damage === 1) return def;
+  const k = (r: readonly [number, number]): [number, number] => [Math.max(1, Math.round(r[0] * t.damage)), Math.max(1, Math.round(r[1] * t.damage))];
+  return {
+    ...def, hp: Math.max(1, Math.round(def.hp * t.hp)), dmg: def.dmg[1] > 0 ? k(def.dmg) : def.dmg,
+    ...(def.ranged ? { ranged: { ...def.ranged, dmg: k(def.ranged.dmg) } } : {}),
+  };
+}
+
 /** The Gold pile a creature leaves (economy-curve HUNT_GOLD): its level and rank, ± the spread. */
 export function goldDropFor(def: Pick<MobDef, 'level' | 'rank'>, rng: () => number = Math.random): number {
   return rollHuntGold(def.level, def.rank ?? 'normal', rng);
@@ -2037,6 +2048,17 @@ export class MobSystem {
    */
   relics: RelicTotals = NO_RELICS;
   setRelics(r: RelicTotals): void { this.relics = r; this.varsAt.clear(); }
+  /** Hits the Keeper has landed (hitFoe), for a worn unique's echo ("every third hit lands harder"). */
+  private hitCount = 0;
+  /** Seconds until a worn unique's mercy can spare the Keeper again (0: ready). */
+  mercyT = 0;
+  /**
+   * The difficulty tier (shared/loot/difficulty.model; the host hands it in): every creature that rises from now on
+   * has its life × `hp` and its blows and shots × `damage` (an elite's own numbers first, then the tier's). The resist
+   * penalty is the Keeper's side (td-skills fightStats). Normal: × 1.
+   */
+  tier: Pick<DifficultyDef, 'id' | 'hp' | 'damage'> = DIFFICULTIES.normal;
+  setTier(t: Pick<DifficultyDef, 'id' | 'hp' | 'damage'>): void { this.tier = t; }
   /**
    * The aura a worn Socket Word or named unique grants (shared/loot/auras; the Loot sheet picks which one runs), as
    * the top-down fight carries it out: Might lifts every hit; Conviction strips resistance off foes near the Keeper
@@ -2294,6 +2316,7 @@ export class MobSystem {
   /** One ordinary creature, placed on purpose (the phase specs' showcase). */
   place(key: string, def: MobDef, x: number, y: number): Mob { const m = this.spawnMob(key, def, x, y); this.mobs.push(m); return m; }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
+    def = tiered(def, this.tier);
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null };
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
@@ -2518,7 +2541,7 @@ export class MobSystem {
         const weak = this.weakOf(m);
         if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
         if (prey) this.hurtMinion(prey, n);
-        else { this.biteKeeper(n, this.blowType(m)); this.eliteBlow(m); }
+        else { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
       }
     }
     // Fire Enchanted's last word: the burst leaves when its ring has shown its reach.
@@ -2558,6 +2581,7 @@ export class MobSystem {
     for (const k of Object.keys(this.cooldowns) as SkillId[]) this.cooldowns[k] = Math.max(0, (this.cooldowns[k] ?? 0) - dt);
     this.mana = Math.min(this.maxMana, this.mana + this.regen * dt);
     if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
+    if (this.mercyT > 0) this.mercyT = Math.max(0, this.mercyT - dt);
     if (this.melee) this.tickOaths(dt);
     if (this.boneT > 0) { this.boneT -= dt; if (this.boneT <= 0) this.bone = 0; }
     if (this.lightT > 0) this.lightT = Math.max(0, this.lightT - dt);
@@ -2569,6 +2593,11 @@ export class MobSystem {
 
   /** Returns the life the blow took (after spell power, a crit and a Stone Skin), 0 on a foe already down. */
   private hitFoe(foe: Mob, raw: number, color: string): number {
+    // A worn unique's echo (unique-items.ts strike-double): every n-th hit the Keeper lands, each piece on its own beat.
+    if (this.relics.echo.length && foe.hp > 0) {
+      this.hitCount++;
+      for (const e of this.relics.echo) if (this.hitCount % e.every === 0) raw *= 1 + e.pct / 100;
+    }
     // Worn boss uniques: the Hammer bites constructs harder; the Censer's ink makes a stained foe take more, and stains.
     if (this.relics.construct > 0 && isConstruct(foe.def.id)) raw *= 1 + this.relics.construct / 100;
     const ink = this.relics.ink;
@@ -2622,8 +2651,10 @@ export class MobSystem {
    * A blow or a shot landing on the Keeper (§6): worn Defense turns a share of a physical one aside, a worn resist
    * of an element's; the Dark Ward drinks what it can. The number floats in the type's colour (physical stays red).
    */
-  private biteKeeper(raw: number, type: DamageType = 'physical'): void {
+  private biteKeeper(raw: number, type: DamageType = 'physical', from?: Mob): void {
     const p = this.host.player();
+    // A worn unique's thorns (unique-items.ts ward-mirror): a creature striking in melee takes a share of its blow back.
+    if (from && from.hp > 0 && this.relics.thorns > 0 && raw > 0) this.hurtMob(from, Math.max(1, Math.round(raw * this.relics.thorns / 100)), '#e0b25a');
     // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
     const cursed = this.curseT > 0;
     const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
@@ -2644,6 +2675,13 @@ export class MobSystem {
     if (this.lamp && n > 0) n = this.lampGuard(n);
     // Pack Bond: the Keeper and his beast share the blows while it is near.
     if (this.thorn && n > 0 && this.bonded) n = bondShare(n, this.v('pack-bond')['guard']);
+    // A worn unique's mercy (unique-items.ts temper-mercy): a blow that would fell him leaves him one point of life, once
+    // every so many seconds.
+    const life = this.host.playerHp?.() ?? Infinity;
+    if (n > 0 && this.relics.mercy > 0 && this.mercyT <= 0 && n >= life && life > 1) {
+      n = life - 1; this.mercyT = this.relics.mercy;
+      this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .5, dir: 2 });
+    }
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
   }
   /** The Defense a blow meets on the Ashguard: his own, the Watchfire's, Hold the Line's lift when his life runs low. */
@@ -3559,6 +3597,8 @@ export class MobSystem {
     if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.host.healPlayer(this.itemAura.fx.healPerCorpse);
     // Soul Harvest (passive): every kill gives back mana.
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
+    // A worn unique (unique-items.ts reforge-memory): every kill gives back mana.
+    if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
     if (this.target === m) this.target = null;
     this.deadUntil.set(m.key, this.clock + RESPAWN);
     // Fresh dead, for Raise Skeleton.
@@ -3569,13 +3609,16 @@ export class MobSystem {
     // Night and the eclipse pay a little more (td-phases.ts): Hunting XP and the Gold pile, in the open wilds.
     const sky = this.wildRules;
     // The Hush pays too (td-dark.ts): a little more XP the deeper it runs, capped.
-    const xpK = sky.xp * this.darkBoon.xp;
-    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp, ...(xpK !== 1 ? { xp: xpK } : {}) });
+    // A worn unique (unique-items.ts xp-echo): more Hunting XP from every kill.
+    const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100);
+    // XP follows the creature's own life, not the tier's multiple of it (the tier pays in drops, its blurb says so).
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp), ...(xpK !== 1 ? { xp: xpK } : {}) });
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
     let n = 0;
-    const coins = Math.max(1, Math.round(goldDropFor(m.def) * sky.gold));
+    // A worn unique (unique-items.ts gold-surge): a bigger pile (Gold Find lifts it again at pickup).
+    const coins = Math.max(1, Math.round(goldDropFor(m.def) * sky.gold * (1 + this.relics.gold / 100)));
     for (const d of m.def.drops) {
       if (Math.random() >= d.chance) continue;
       this.drops.push({ id: `${id}:m${n}`, ...spot(n++), coins: 0, material: d.material, qty: d.qty, label: d.material.replace(/-/g, ' '), color: RARITY_COLOR.common, age: 0 });
@@ -3589,7 +3632,7 @@ export class MobSystem {
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
     const rank = m.def.rank ?? 'normal';
-    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k, ...(this.darkBoon.mf + this.relics.mf ? { mf: this.darkBoon.mf + this.relics.mf } : {}) }) ?? []; } catch { return []; } };
+    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k, ...(this.darkBoon.mf + this.relics.mf ? { mf: this.darkBoon.mf + this.relics.mf } : {}), ...(this.relics.named ? { named: this.relics.named } : {}) }) ?? []; } catch { return []; } };
     rows = roll(id);
     // Elites (td-elites.ts): their gear never drops common, and a unique leader always leaves a magic-or-better piece.
     if (m.elite) {

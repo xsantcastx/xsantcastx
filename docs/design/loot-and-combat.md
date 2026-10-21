@@ -17,7 +17,7 @@ code; when they disagree, the code and `node scripts/economy-sim.mjs --loot --co
 |---|---|---|
 | Rarity | One 7-rung ladder (`RuneTier`: common…singular) shared by runes, items, charms, achievements | Good; kept, not forked |
 | Item rolls | Per-rarity bands, frozen `stats` + per-stat `rollQuality` grade at mint (`item-definition.ts`, `item-quality.ts`) | Good; drops mint through it |
-| Uniques | 44 named objects (`unique-items.ts`) at authored rarity, with a passive tag nothing read | Good; 4 now carry auras |
+| Uniques | 44 named objects (`unique-items.ts`) at authored rarity, with a passive tag nothing read | Good; 4 now carry auras; since 2026-10-21 every passive is real (`sig`, below) |
 | Runes | 22 Forge runes, drop budget per tier, MF curve (`rune.model.ts`) | Forge-only source; now creatures drop them too |
 | Runewords | Two kinds: Forge Runewords (consumed, account bonus) and **Socket Words** (ordered runes in an item's wells, `socket-words.ts`) | Socket Words are D2 runewords; now they carry auras |
 | Creatures | 21 creature keys, `MonsterDef` = HP + drop table; every creature walked, wound up 0.85 s, hit for a flat **12** | No levels, no types, no resists, no packs |
@@ -254,6 +254,22 @@ bottom of the Orrery Wells) falls on the tier below; stepping down is always all
 | Nightmare | ×2.5 | ×2 | +20 | −40 | +15 | ×1.35 | +1 | Legendary | 10% |
 | Hell | ×4 | ×3 | +40 | −100 | +30 | ×1.7 | +2 | Singular | 15% |
 
+**Decision (2026-10-21, branch `passives`): applied in the top-down fight, hidden until reachable.**
+
+- *Applied:* the tier's life and blow multiply every creature as it rises (`td-mobs` `tiered`/`setTier`, an elite's
+  own numbers first), and the Keeper's resist penalty comes off his worn resists **before** the 75 cap
+  (`td-skills fightStats(…, resistPenalty)`, D2's order), so the fight, the C sheet and the Loot sheet's rows all show
+  the penalised number. Hunting XP still follows the creature's own life (the tier pays in drops, as its blurb says).
+  Drops, the rune cap and the fall share already followed the tier. The blurbs quote the table's numbers exactly
+  ("2.5× life, 2× as hard, −40, 35% more often"), and `td-truth-gear.spec.ts` measures each one in a real MobSystem.
+- *Hidden:* the gate boss (the Fallen Ephemeris) is not in the top-down world, so no new Keeper can open a tier. The
+  Loot sheet shows the Difficulty picker only when a save already holds more than Normal (legacy saves), and then only
+  the opened tiers, each with its blurb; the old "Fell the Fallen Ephemeris on … to open it" line is gone.
+- *Not applied:* the level offset (+20/+40) and the creature resist (+15/+30) are the side-view's; td creatures keep
+  their own level and resists. The blurbs do not claim them.
+- *To open the tiers:* put a gate boss in the top-down world, have its kill call `LootService.killed`, and drop the
+  `openTiers.length > 1` guard in `loot-sheet.component.ts`.
+
 **Death (the corpse run):** a fall takes the tier's share of the purse and leaves it, glowing gold with a plate, where
 the Keeper fell (`LootService.fall`). Walk back and it comes home. Fall again first and the earlier purse is lost.
 No item, rune or stack is ever lost. The fall card says how much.
@@ -267,7 +283,16 @@ No item, rune or stack is ever lost. The fall card says how much.
   common. Base per-mille: 280 / 80 / 30 / 8 / 1.8 / 0.2. Level lifts rare+ by (1 + level/30); each ladder step
   (tier + rank: champion 1, unique/boss 2) ×1.6. Gates: epic from level 5, legendary 8, mythic 15, singular 25
   (bosses ignore them). Magic Find: full on uncommon, 600/(MF+600) on rare/epic, 250/(MF+250) on legendary+.
-- Named uniques: 12% (× unique MF) of a roll on a rung that has them, at their authored rarity — the only path.
+- Named uniques: 12% (× unique MF, × a worn pull) of a roll on a rung that has them, at their authored rarity — the
+  only path (`drop-tables uniqueShare`, capped at ½). In the top-down world this is every creature's kill roll
+  (`LootService.rollLoot`), so all 44 ordinary uniques are reachable; their card says "Found in: the loot of any
+  creature of level N or more (and any boss), as a named <rarity>" (N = the rung's gate).
+- **Unique passives (2026-10-21):** each ordinary unique carries a `sig` (the boss uniques' `RelicSig`), summed by
+  `relicTotals` and applied by `td-mobs`: `mf` (Magic Find on the kill's roll), `xp` (% Hunting XP a kill), `gold`
+  (% bigger pile, before Gold Find), `thorns` (% of a melee blow turned back), `echo` (every n-th hit lands p% harder),
+  `mercy` (once every n s a felling blow leaves one point of life), `manaKill`, `named` (% likelier named uniques),
+  `regen` (life a second). The line and the card say exactly that; `td-truth-passives.spec.ts` measures each in a
+  real MobSystem and fails on a unique without a sig or a field without a probe.
 - Base pool: the Gambler's (equipment and charms that roll, not soulbound, uniques excluded wholesale).
 - Runes: per kill 2% / 12% / 25% / 60% by rank; tier ladder 1 : .16 : .012 : .002 : .0003 : 4e-5 : 2e-6, capped by
   the tier's rune cap and by level (uncommon 3, rare 8, epic 20, legendary 30, mythic 45, singular 55).

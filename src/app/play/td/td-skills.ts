@@ -467,7 +467,11 @@ export function wornCombat(inventory: { readonly equippedTotals: Required<ItemSt
 }
 
 /** The level and attributes (levelStats) with the worn gear totals on top. */
-export function fightStats(level: number, stats?: KeeperStats, gear: Partial<ItemStats> = {}, v: Vocation = 'warlock'): FightStats {
+/**
+ * `resistPenalty`: the difficulty tier's (shared/loot/difficulty.model: Nightmare 40, Hell 100), taken off every worn
+ * resist before the 75 cap — D2's order, so resist piled past 75 is what holds the cap under a penalty.
+ */
+export function fightStats(level: number, stats?: KeeperStats, gear: Partial<ItemStats> = {}, v: Vocation = 'warlock', resistPenalty = 0): FightStats {
   const base = levelStats(level, stats, v), body = VOCATION_BODY[v] ?? VOCATION_BODY.warlock;
   const g = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 0);
   const signed = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
@@ -488,7 +492,7 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
     lifeRegen: signed(gear.lifeRegen),
     // All Resist is signed (a Hollow Ward curse or a whispering item takes some away), so a resist can fall below zero
     // and that element then bites harder — the curse's "−15% All Resist" is a real price even with no resist worn.
-    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.max(MIN_RESIST, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + signed(gear.allResist)))])) as Record<Element, number>,
+    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.max(MIN_RESIST, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + signed(gear.allResist) - Math.max(0, resistPenalty)))])) as Record<Element, number>,
   };
 }
 

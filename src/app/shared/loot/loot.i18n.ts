@@ -49,8 +49,8 @@ export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'loot.tier.nightmare': { en: 'Nightmare', es: 'Pesadilla' },
   'loot.tier.hell': { en: 'Hell', es: 'Infierno' },
   'loot.tierBlurb.normal': { en: 'The world as it is. Runes up to Rare.', es: 'El mundo tal cual. Runas hasta Raras.' },
-  'loot.tierBlurb.nightmare': { en: 'Creatures twice as tough and hitting harder; your resistances -40. More and better drops, runes up to Legendary.', es: 'Criaturas el doble de duras y golpean mas fuerte; tus resistencias -40. Mas y mejor botin, runas hasta Legendarias.' },
-  'loot.tierBlurb.hell': { en: 'Three times as tough and hitting over twice as hard; your resistances -100. The best drops, and every rune.', es: 'Tres veces mas duras y golpean mas del doble; tus resistencias -100. El mejor botin y todas las runas.' },
+  'loot.tierBlurb.nightmare': { en: 'Creatures rise with 2.5× life and strike 2× as hard; your resistances −40. Items fall 35% more often, and rarer; runes up to Legendary from creatures deep enough.', es: 'Las criaturas surgen con 2.5× de vida y golpean 2× mas fuerte; tus resistencias −40. Los objetos caen un 35% mas a menudo, y mas raros; runas hasta Legendarias de criaturas lo bastante profundas.' },
+  'loot.tierBlurb.hell': { en: 'Creatures rise with 4× life and strike 3× as hard; your resistances −100. Items fall 70% more often, and rarer still; every rune from creatures deep enough.', es: 'Las criaturas surgen con 4× de vida y golpean 3× mas fuerte; tus resistencias −100. Los objetos caen un 70% mas a menudo, y aun mas raros; todas las runas de criaturas lo bastante profundas.' },
   'loot.tier.locked': { en: 'Fell the Fallen Ephemeris on {{tier}} to open it.', es: 'Derrota a la Efemeride Caida en {{tier}} para abrirla.' },
   'loot.tier.falls': { en: 'A fall leaves {{n}}% of your purse where you fell.', es: 'Una caida deja el {{n}}% de tu bolsa donde caiste.' },
 

@@ -39,6 +39,21 @@ export interface RelicSig {
   ink?: { pct: number; secs: number };
   /** Percentage points of Magic Find on every kill's loot roll (the item sets' tiers, set-items.ts). */
   mf?: number;
+  // ── The ordinary uniques' passives (unique-items.ts `sig`) ──
+  /** % more Hunting XP from every kill. */
+  xp?: number;
+  /** % more Gold in every kill's pile (before Gold Find, which lifts it at pickup). */
+  gold?: number;
+  /** % of every creature's melee blow (as it swings, before the Keeper's guards) turned back on it. */
+  thorns?: number;
+  /** Every `every`-th hit the Keeper lands (spells, bolts, swings, their burns) lands `pct`% harder. */
+  echo?: { every: number; pct: number };
+  /** Once every `mercy` seconds, a blow that would fell the Keeper leaves him at 1 life. */
+  mercy?: number;
+  /** Mana back on every kill. */
+  manaKill?: number;
+  /** % likelier that a loot roll landing on a rung with named uniques is one of them (drop-tables UNIQUE_SHARE). */
+  named?: number;
 }
 
 /** A boss unique: a UniqueItem with the boss it drops from, its chance (1 in `oneIn`), where it is and its signature. */
@@ -143,14 +158,15 @@ export interface RelicTotals {
   light: number; ranks: Record<string, number>; cdCut: Record<string, number>; construct: number; raisedMax: number;
   breath: number; fire: number; singe: { dps: number; secs: number } | null; regen: number; stillRegen: number;
   spears: number; spearRange: number; ink: { pct: number; secs: number } | null; mf: number;
+  xp: number; gold: number; thorns: number; echo: readonly { every: number; pct: number }[]; mercy: number; manaKill: number; named: number;
 }
 export const NO_RELICS: RelicTotals = Object.freeze({
   light: 0, ranks: {}, cdCut: {}, construct: 0, raisedMax: 0, breath: 0, fire: 0, singe: null, regen: 0, stillRegen: 1,
-  spears: 0, spearRange: 0, ink: null, mf: 0,
+  spears: 0, spearRange: 0, ink: null, mf: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0,
 }) as RelicTotals;
 
 export function relicTotals(ids: readonly string[], extra?: (id: string) => RelicSig | undefined): RelicTotals {
-  const out: RelicTotals = { ...NO_RELICS, ranks: {}, cdCut: {} };
+  const out: RelicTotals = { ...NO_RELICS, ranks: {}, cdCut: {}, echo: [] };
   for (const id of new Set(ids)) {
     // `extra` names signatures that are not a boss unique's (the item sets' tiers, set-items.ts setSigOf).
     const s = BY_ID.get(id)?.sig ?? extra?.(id);
@@ -169,6 +185,15 @@ export function relicTotals(ids: readonly string[], extra?: (id: string) => Reli
     out.spearRange += s.spearRange ?? 0;
     out.mf += s.mf ?? 0;
     if (s.ink) out.ink = { pct: (out.ink?.pct ?? 0) + s.ink.pct, secs: Math.max(out.ink?.secs ?? 0, s.ink.secs) };
+    out.xp += s.xp ?? 0;
+    out.gold += s.gold ?? 0;
+    out.thorns += s.thorns ?? 0;
+    // Each worn echo keeps its own beat (two pieces: both, on their own counts).
+    if (s.echo) out.echo = [...out.echo, s.echo];
+    // The quickest mercy wins (it is one reprieve, not two).
+    if (s.mercy) out.mercy = out.mercy > 0 ? Math.min(out.mercy, s.mercy) : s.mercy;
+    out.manaKill += s.manaKill ?? 0;
+    out.named += s.named ?? 0;
   }
   return out;
 }

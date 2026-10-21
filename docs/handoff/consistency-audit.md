@@ -114,21 +114,33 @@ By resolution: code fixed 12, text fixed 21, data fixed 1 (#9), stat retired 0.
 The card and the fight share one call: `td-skills castRank / castVars / castCd / cooldownNow` (gear signatures in),
 used by both `MobSystem.v` and the Spellbook.
 
+## Follow-up (branch `passives`, 2026-10-21): the leftovers
+
+- **Ordinary unique passives — resolved.** All 44 ordinary uniques (`unique-items.ts`) were reachable all along
+  (every top-down kill's loot roll, `drop-tables` `uniquesAt`, at authored rarity) but their passive was flavour no
+  code read, and the card did not show it. Each now carries a `sig` the fight applies (`relicTotals` → `td-mobs`), its
+  passive line says exactly that, and the item card shows it ("Used for") with where it falls ("Found in: the loot of
+  any creature of level N or more"). Ten families: Magic Find, Hunting XP, a bigger Gold pile, thorns, an echoing hit,
+  a reprieve from a felling blow, mana per kill, a pull toward named uniques, life a second. Harness:
+  `td-truth-passives.spec.ts` (a unique without a sig, or a field without a probe, fails; each probe measures the
+  field in a real MobSystem; lines quote only sig numbers, en = es).
+- **Difficulty tiers — applied and hidden.** The tier's life/blow multiply each creature as it rises and its resist
+  penalty comes off before the 75 cap (fight, C sheet, Loot sheet agree); the blurbs quote the exact numbers and are
+  measured. No new Keeper can reach a tier (the gate boss is not in the top-down world), so the picker shows only when
+  a save already holds more than Normal. Decision recorded in `docs/design/loot-and-combat.md` §8.
+- **Caps on item cards — resolved.** A capped stat's line says "(worn total caps at N%)": Spell Damage 150, Cast /
+  Crit / Move 40, resists and All Resist 75, Gold Find 150.
+- **Grave-cold vs the mend — resolved.** While a drain outweighs regeneration the out-of-fight mend (6/s after 4 s
+  unhurt) stops; the curse's card line says so (`td-engine outOfFightMend`, measured in `td-truth-gear.spec.ts`).
+
 ## Not resolved (left on purpose, for the owner)
 
-- **Ordinary unique passives** (`unique-items.ts`, 10 effect kinds on ~44 uniques: strike-double, gold-surge, …):
-  no code reads them, but nothing in the reachable game shows them either (the Gambler page is unrouted). Wire or
-  delete when uniques come back to a page.
-- **Difficulty tiers**: the Nightmare/Hell blurbs ("twice as tough", "resistances −40/−100") are not applied by the
-  top-down fight, and the gate boss (the Fallen Ephemeris) is not in the top-down world, so only legacy saves hold
-  those tiers. Drops and the fall share do follow the tier.
 - **The Ashguard's weapon Spell Damage counts twice** (a quarter of it in the swing's flat, all of it in spell
-  power) — deliberate in `td-melee`, now visible on the card's power line.
-- **Caps** (Spell Damage 150, Cast/Crit/Move 40, resists 75, Gold Find 150) are not printed on item cards; the C
-  sheet shows the capped totals.
+  power) — deliberate in `td-melee`, visible on the card's power line.
 - **Wild sky line** (+15% at twilight) lifts Command's, Pack Bond's and Wild Heart's own % by 15% (60% → 69%), which is
   what the line says of that card's number; kept.
-- **Grave-cold's drain** is real but the out-of-combat mend (+6/s after 4 s unhurt) outruns it.
 - **Small numbers under the sky** round (Kindle 7–11 at −5% stays 7–10).
 - **`/character`** equips without the requirement check, but the route is unreachable.
-- Pet strings `play.pet.move.*` / `play.pet.second.*` are now unreferenced (the i18n check lists them, not an error).
+- Pet strings `play.pet.move.*` / `play.pet.second.*` and `loot.tier.locked` are unreferenced (the i18n check lists
+  them, not an error).
+- The tiers' level offset (+20/+40) and creature resist (+15/+30) are side-view only; the blurbs no longer claim them.

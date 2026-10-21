@@ -49,6 +49,11 @@ import { SEXTON_CONTINENT, SEXTON_PAGE, SEXTON_STONES, SEXTON_VAULT, VAULT_GRAVE
 import type { ContinentDef } from './continent';
 import type { TdMapDef } from './td-level';
 
+/** Out of the fight (4 s unhurt) the Keeper mends this much life a second, unless a curse's drain outweighs his regeneration. */
+export const MEND_PER_SEC = 6;
+/** The out-of-fight mend now (life a second): 6 after 4 s unhurt, none while a curse's drain outweighs regeneration. */
+export function outOfFightMend(regen: number, unhurtSecs: number): number { return regen >= 0 && unhurtSecs > 4 ? MEND_PER_SEC : 0; }
+
 /** Every hand-drawn level under (or over) the surface, by id. */
 /** Every continent, by id (ships sail between them). */
 export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
@@ -110,7 +115,9 @@ import type { AuraId } from '../../shared/loot/auras';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
 import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
-import { chestSetPiece, setSigOf } from '../../shared/rpg/set-items';
+import { chestSetPiece } from '../../shared/rpg/set-items';
+import { relicSigOf } from '../../shared/rpg/unique-items';
+import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
 import { DarkLayer, type DarkFrame } from './td-dark-layer';
 import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, eyeGlow, findEyes, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
@@ -617,10 +624,11 @@ export class TopDownEngine {
    */
   setKeeperBuild(level: number, stats: KeeperStats, gear: Partial<ItemStats> = {}): void {
     const voc = this.mobs.vocation;
-    const key = `${voc}|${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}|${GEAR_KEYS.map(k => gear[k] ?? 0).join(',')}`;
+    const key = `${voc}|${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}|${GEAR_KEYS.map(k => gear[k] ?? 0).join(',')}|${this.tier}`;
     if (key === this.buildKey) return;
     this.buildKey = key;
-    const st = fightStats(level, stats, gear, voc);
+    // The difficulty's resist penalty (Nightmare −40, Hell −100) comes off before the cap (td-skills fightStats).
+    const st = fightStats(level, stats, gear, voc, DIFFICULTIES[this.tier].resistPenalty);
     this.mobs.keeperMaxHp = st.maxHp;
     this.maxHp = st.maxHp; this.hp = Math.min(this.hp, this.maxHp);
     this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
@@ -1343,13 +1351,18 @@ export class TopDownEngine {
     b.feel = kind; b.feelT = kind === 'trick' ? 1 : 1.2; b.hopT = .4; b.idleT = 0;
   }
   /**
-   * The loot & combat rules (shared/loot): the filter (a pet fetches the gear it shows) and the worn aura the Loot sheet
-   * runs (td-mobs setItemAura: what its card says, in this fight). The armour runes' resists reach the fight through
-   * the worn totals (side-scroller gearCombat), the difficulty's resist penalty is the old side-view's and not applied.
+   * The loot & combat rules (shared/loot): the filter (a pet fetches the gear it shows), the worn aura the Loot sheet
+   * runs (td-mobs setItemAura: what its card says, in this fight) and the difficulty tier (shared/loot/difficulty.model):
+   * creatures rise with the tier's life and blow (td-mobs setTier), and its resist penalty comes off the Keeper's worn
+   * resists before the cap (setKeeperBuild → fightStats). The armour runes' resists reach the fight through the worn
+   * totals (side-scroller gearCombat). See docs/design/loot-and-combat.md §8.
    */
-  setCombatRules(rules: { filter: LootFilter; aura?: { id: AuraId; level: number } | null } | null): void {
+  private tier: DifficultyTier = 'normal';
+  setCombatRules(rules: { filter: LootFilter; aura?: { id: AuraId; level: number } | null; tier?: DifficultyTier } | null): void {
     this.lootFilter = rules?.filter ?? 'all';
     this.mobs.setItemAura(rules?.aura ?? null);
+    const tier = rules?.tier && DIFFICULTIES[rules.tier] ? rules.tier : 'normal';
+    if (tier !== this.tier) { this.tier = tier; this.mobs.setTier(DIFFICULTIES[tier]); this.buildKey = ''; }
   }
 
   /** Glim (shown once the Keeper has met it); `arrive` flies it in from above, once. */
@@ -1679,13 +1692,13 @@ export class TopDownEngine {
   }
   // ── Lumvesh, the Seek (design-bible §4.6, §5.5; td-seek.ts) ────────────────────────────────────────────────────
 
-  /** The worn boss uniques (the host hands in their ids): their signatures reach the fight (boss-uniques.ts). */
+  /** The worn uniques and set tiers (the host hands in their ids): their signatures reach the fight (boss-uniques.ts, unique-items.ts). */
   private relicKey = '';
   setRelics(ids: readonly string[]): void {
     const key = [...ids].sort().join(',');
     if (key === this.relicKey) return;
     this.relicKey = key;
-    this.mobs.setRelics(relicTotals(ids, setSigOf));
+    this.mobs.setRelics(relicTotals(ids, relicSigOf));
   }
   /** The weapon in hand (strike + spell damage, or null for bare hands): the Ashguard's swing reads it (td-melee weaponSwing). */
   setWeapon(w: { strikePower?: number; spellDamage?: number } | null): void { this.mobs.weaponSwing = weaponSwing(w); }
@@ -2396,10 +2409,12 @@ export class TopDownEngine {
       this.pour(h, m);
       this.sip = f >= 1 ? { hp: 0, mana: 0, t: 0 } : { hp: this.sip.hp - h, mana: this.sip.mana - m, t: this.sip.t - dt };
     }
-    // Out of the fight a while: the Keeper mends.
-    if (this.hp < this.maxHp && this.time - this.lastHurt > 4) this.hp = Math.min(this.maxHp, this.hp + 6 * dt);
     // Worn regeneration, with the boss uniques' (the Mossbound Heart: more, and twice it standing still).
     const regen = relicRegen(this.lifeRegen, this.mobs.relics, this.stillT > .5);
+    // Out of the fight a while: the Keeper mends — unless a Grave-cold drain outweighs his regeneration (its card says
+    // so): the mend (6 a second) would otherwise outrun the drain, and the curse's price would be paid only mid-fight.
+    const mend = outOfFightMend(regen, this.time - this.lastHurt);
+    if (mend > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + mend * dt);
     if (regen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + regen * dt);
     // A Grave-cold curse (shared/grave-goods) drains slowly: never the last point of life.
     else if (regen < 0 && this.hp > 1) this.hp = Math.max(1, this.hp + regen * dt);

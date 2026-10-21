@@ -15,7 +15,7 @@ export const GRAVE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'grave.tip.cursed': { en: 'Cursed · {{name}}', es: 'Maldito · {{name}}' },
   'grave.tip.gift': { en: '+{{n}} {{stat}} (the grave\'s gift)', es: '+{{n}} {{stat}} (el regalo de la tumba)' },
   'grave.tip.price': { en: '−{{n}} {{stat}} (the grave\'s price)', es: '−{{n}} {{stat}} (el precio de la tumba)' },
-  'grave.tip.drain': { en: 'Drains {{n}} life a second (never the last)', es: 'Drena {{n}} de vida por segundo (nunca la ultima)' },
+  'grave.tip.drain': { en: 'Drains {{n}} life a second (never the last), and you do not mend out of the fight while it drains', es: 'Drena {{n}} de vida por segundo (nunca la ultima), y no te recuperas fuera del combate mientras drena' },
   'grave.tip.rest': { en: 'Laid to rest.', es: 'Descansa en paz.' },
   'grave.tip.sexton': { en: 'Sexton Aldous Wren lays curses to rest, for Gold.', es: 'El sacristan Aldous Wren da descanso a las maldiciones, por Oro.' },
   'grave.tip.found': { en: 'Found in the crypts: the Ashen Crypt, the Drowned Crypts.', es: 'Se encuentra en las criptas: la Cripta Cenicienta, las Criptas Ahogadas.' },
