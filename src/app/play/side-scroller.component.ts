@@ -1739,6 +1739,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = undefined; }
     this.closing = false;
     this.showTip(null, 0, 0);
+    // A place takes the screen: the sheets that float over the world fold (the settings sheet stayed up over the
+    // Hearth Shrine and took its taps on a phone).
+    this.soundOpen = false; this.bestiaryOpen = false;
     // Remember a keyboard opener (not one place replacing another: keep the first).
     if (!this.panel) { this.panelOpener = this.keyboardOpener(); this.sound.sfx('open'); }
     this.panelSeq++;
@@ -3414,6 +3417,9 @@ export class SideScrollerComponent implements OnDestroy {
     }
     if (this.taskTalk) { if (event.key === 'Escape') { event.preventDefault(); this.closeTalk(); } return; }
     if (this.bestiaryOpen && event.key === 'Escape') { event.preventDefault(); this.closeBestiary(); return; }
+    // The settings and pet sheets fold on Escape too, wherever the focus is (their own handlers need it inside them).
+    if (this.soundOpen && event.key === 'Escape') { event.preventDefault(); this.soundOpen = false; this.focusWorld(); return; }
+    if (this.petsOpen && event.key === 'Escape') { event.preventDefault(); this.closePets(); return; }
     if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
     if (this.hearthOpen && event.key === 'Escape' && (event.target as HTMLElement | null)?.closest?.('.dock')) {

@@ -106,11 +106,13 @@
         <header class="win__head">
           <span class="win__brand">{{ t('look.kicker') }}</span>
           <h1 class="win__title">{{ t('lobby.create.title') }}</h1>
+          <!-- Leaving the Glass any way but Become makes nothing (backFromCreate). -->
+          <button type="button" class="win__x" data-lobby-close (click)="backFromCreate()" [disabled]="busy" [attr.aria-label]="t('lobby.create.close')"><i aria-hidden="true">&times;</i></button>
         </header>
         <!-- "place": the maker's compact game-window layout (the figure, the name and Become on top, the looks in a grid),
              so a new player sees the whole Glass and its one button without scrolling, on a phone too. -->
         <div class="win__body win__body--maker place">
-          <app-keeper-maker (done)="made()" />
+          <app-keeper-maker (done)="made($event)" />
         </div>
         <footer class="win__foot create__foot">
           <!-- Someone who has played before can make a Keeper without the island's tutorial (play/td/td-prologue.ts). -->

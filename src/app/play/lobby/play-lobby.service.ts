@@ -18,6 +18,8 @@ export const LOBBY_GUEST_KEY = 'eclipse-lobby-guest';
 export const LOBBY_SKIP_KEY = 'eclipse-lobby';
 export const LOBBY_ENTER_KEY = 'eclipse-enter';
 export const LOBBY_MAKE_KEY = 'eclipse-make';
+/** sessionStorage: the Keeper a New Keeper was started from, to go back to when the Glass is left without Become. */
+export const LOBBY_FROM_KEY = 'eclipse-make-from';
 
 /** Where /play opens, from the flags above (pure, so it is specced). */
 export function initialLobbyMode(input: {
