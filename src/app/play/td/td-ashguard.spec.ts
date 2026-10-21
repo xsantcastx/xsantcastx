@@ -6,10 +6,11 @@
  */
 import type { EngineOptions } from '../engine/engine.model';
 import { VOCATIONS, coerceLook, defaultLook, mergeKeeperLook, type KeeperSkillTree } from '../../shared/keeper-look/keeper-look.model';
+import { gearKey } from '../../shared/keeper-look/keeper-gear';
 import { ASHGUARD_KIT, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { ASHGUARD_SKILLS, ASH_TREES, type AshSkillId } from './td-ashguard-skills';
 import { ASHGUARD_I18N } from './td-ashguard.i18n';
-import { BOSS_CC, angleGap, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp } from './td-melee';
+import { BOSS_CC, angleGap, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, weaponSwing, FISTS } from './td-melee';
 import { MOBS, MobSystem, type MobHost } from './td-mobs';
 import { CLASS_SKILLS, CLASS_TREES, MAX_RANK, SKILLS, STARTER_RANKS, bookTrees, defaultAura, defaultBar, fightStats, skillVars, type SkillId } from './td-skills';
 import { boughtRanks, buyRank, clampTree, effectiveRanks, pointsSpent, rankBlock, rankOf, treeSkills } from './td-tree';
@@ -136,6 +137,31 @@ describe('td-ashguard: the melee arithmetic', () => {
     expect(brandedBlow(10, 0)).toBe(10);
   });
 
+  it('the weapon in hand lifts the swing: the starter edge is today\'s blow, fists a fifth lighter, a better weapon adds flat damage', () => {
+    // Starter Basalt Edge (Strike 1): exactly the kit blade's numbers.
+    expect(weaponSwing({ strikePower: 1 })).toEqual({ flat: 0, mult: 1 });
+    expect(meleeBlow(9, 14, 100, () => 0, weaponSwing({ strikePower: 1 }))).toBe(9);
+    // No weapon at all: the swing still lands, at 85%.
+    expect(weaponSwing(null)).toEqual(FISTS);
+    expect(meleeBlow(9, 14, 100, () => 0, FISTS)).toBe(8);
+    expect(meleeBlow(9, 14, 100, () => .9999, FISTS)).toBe(12);
+    // Dawnrender (Strike 1.7): +2 flat. An affixed rare with 12% Spell Damage counts 3 points: +6. Both ride % and power.
+    expect(weaponSwing({ strikePower: 1.7 }).flat).toBe(2);
+    expect(weaponSwing({ spellDamage: 12 }).flat).toBe(6);
+    expect(meleeBlow(9, 14, 100, () => 0, weaponSwing({ spellDamage: 12 }))).toBe(15);
+    expect(meleeBlow(9, 14, 120, () => 0, weaponSwing({ spellDamage: 12 }))).toBe(18);
+    expect(weaponSwing({ strikePower: .4 }).flat).toBe(0);
+    expect(weaponSwing({ strikePower: NaN, spellDamage: -5 }).flat).toBe(0);
+  });
+
+  it('the kit helm is the Pyre Watch\'s iron helm (its own variant, iron-coloured, ember-lit), distinct from a worn round helm', () => {
+    const kit = ASHGUARD_KIT.head!;
+    expect(kit.kind).toBe('helm');
+    expect(kit.variant).toBe('pyre');
+    expect(kit.accent).toBe('#ff7a2e');
+    expect(gearKey({ head: kit })).not.toBe(gearKey({ head: { ...kit, variant: undefined } }));
+  });
+
   it('crowd control on a boss lasts a fifth; the guard, Hold the Line and the vow', () => {
     expect(BOSS_CC).toBe(.2);
     expect(ccSecs(1.5, 'boss')).toBeCloseTo(.3, 5);
@@ -213,6 +239,24 @@ describe('td-ashguard: the fight', () => {
     expect(sys.effects.some(e => e.kind === 'arc')).toBeTrue();
     expect(sys.effects.filter(e => e.kind === 'slash').length).toBe(2);
     expect(sys.bolts.length).toBe(0);
+  });
+
+  it('a held weapon hits harder than bare hands in the fight itself', () => {
+    const hit = (w: Parameters<typeof weaponSwing>[0]): number => {
+      const { sys } = world();
+      sys.weaponSwing = weaponSwing(w);
+      sys.place('f', MOBS['bone-walker'], 18, 0);
+      calm(sys); sys.target = sys.mobs[0]; sys.update(.02);
+      return MOBS['bone-walker'].hp - sys.mobs[0].hp;
+    };
+    const v = world().sys.v('watch-blade');
+    const fist = Array.from({ length: 30 }, () => hit(null)), edge = Array.from({ length: 30 }, () => hit({ strikePower: 1 })), big = Array.from({ length: 30 }, () => hit({ spellDamage: 12 }));
+    expect(Math.max(...fist)).toBeLessThanOrEqual(Math.round(v['max'] * .85));
+    expect(Math.min(...edge)).toBeGreaterThanOrEqual(v['min']);
+    expect(Math.min(...big)).toBeGreaterThanOrEqual(v['min'] + 6);
+    const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+    expect(mean(big)).toBeGreaterThan(mean(edge) + 4);
+    expect(mean(edge)).toBeGreaterThan(mean(fist));
   });
 
   it('swings on its own pace until the creature falls, and the kill is told to the host', () => {

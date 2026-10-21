@@ -30,10 +30,41 @@ export function inArc(ox: number, oy: number, aim: number, reach: number, arcDeg
   return angleGap(Math.atan2(my - oy, mx - ox), aim) <= (arcDeg / 2) * Math.PI / 180;
 }
 
-/** A blow: a roll between the blade's min and max (both whole), times `pct` % of it. Never below 1. */
-export function meleeBlow(min: number, max: number, pct = 100, roll: () => number = Math.random): number {
+/**
+ * The weapon in hand as the swing sees it: `flat` is added to the Watch Blade's roll (before any %), `mult` scales the
+ * whole roll. D2-style: the kit blade is the base, the weapon's own damage rides on it.
+ */
+export interface WeaponSwing { flat: number; mult: number }
+/** Bare hands: the blade still swings, a fifth less hard (the kit sword with nothing to hold). */
+export const FISTS: WeaponSwing = { flat: 0, mult: .85 };
+/** A weapon with no extra damage over the starter edge swings exactly as the kit blade does. */
+export const NO_WEAPON_BONUS: WeaponSwing = { flat: 0, mult: 1 };
+/** Weapon power of the starter Basalt Edge (strikePower 1): the point past which a weapon adds damage. */
+export const STARTER_WEAPON_POWER = 1;
+/** Flat swing damage per point of weapon power above the starter's. */
+export const WEAPON_FLAT_PER_POINT = 3;
+/** A weapon's Spell Damage % counts as this share of a point of weapon power per % (it also lifts all spell power). */
+export const WEAPON_SD_PER_POINT = .25;
+
+/**
+ * A held weapon's swing: weapon power = its Strike (the legacy head stat) + a quarter of its Spell Damage % (the
+ * affixed head stat); the flat is WEAPON_FLAT_PER_POINT × what that has over the starter edge's 1. `null` is no weapon.
+ */
+export function weaponSwing(w: { strikePower?: number; spellDamage?: number } | null): WeaponSwing {
+  if (!w) return FISTS;
+  const sp = Number.isFinite(w.strikePower) ? Math.max(0, w.strikePower as number) : 0;
+  const sd = Number.isFinite(w.spellDamage) ? Math.max(0, w.spellDamage as number) : 0;
+  const power = sp + sd * WEAPON_SD_PER_POINT;
+  return { flat: Math.round(Math.max(0, power - STARTER_WEAPON_POWER) * WEAPON_FLAT_PER_POINT), mult: 1 };
+}
+
+/**
+ * A blow: a roll between the blade's min and max (both whole), plus the weapon's flat damage, times `pct` % of it.
+ * Never below 1.
+ */
+export function meleeBlow(min: number, max: number, pct = 100, roll: () => number = Math.random, weapon: WeaponSwing = NO_WEAPON_BONUS): number {
   const lo = Math.min(min, max), hi = Math.max(min, max);
-  const base = lo + Math.floor(roll() * (hi - lo + 1));
+  const base = (lo + Math.floor(roll() * (hi - lo + 1)) + weapon.flat) * weapon.mult;
   return Math.max(1, Math.round(base * pct / 100));
 }
 
