@@ -88,6 +88,9 @@ const RP = {
   wingB: ['#fff0fa', '#ffb8e4', '#d47ab8', '#8a4a80'],
   sun: ['#fffbd0', '#ffd860', '#e8a030', '#a86414'],
   ray: ['#fff4a8', '#ffc84a', '#e89a2a', '#a8641a'],
+  // The spirit beast: the Verdant's rootglass light (td-mobs R.rootglass), and a shade deeper for its far side.
+  spirit: ['#f0fff8', '#9af0d0', '#4cb898', '#2a7a64'],
+  spiritDk: ['#9af0d0', '#4cb898', '#2a7a64', '#1a4a3c'],
 } satisfies Record<string, TdRamp>;
 const EMBER: TdRamp = ['#fff2a8', '#ffb347', '#e2552a', '#9e2e1c'];
 const VIOLET: TdRamp = ['#f0e0ff', '#c88bff', '#8a52c8', '#5a2e8a'];
@@ -277,9 +280,39 @@ function sunling(c: C, q: Pose): void {
   if (q.eyes !== 'shut') px(c, cx - 1, cy + 2, 2, 1, MOUTH);
 }
 
+/**
+ * The spirit beast (td-thorn.ts SPIRIT_BEAST): what stands in at a Thornstrider's side when no pet walks with him — a
+ * fox-wolf of the wild's rootglass light, a long brush of a tail with a wisp at its tip, tall ears and a sprig of
+ * leaves between them. The engine draws it half-seen (a spirit), and the called beasts and the stampede are its kin.
+ */
+function spiritBeast(c: C, q: Pose): void {
+  const b = q.bob - q.lift;
+  if (q.legs === 'curl') {
+    orb(c, 10, 16, 7, 3.4, RP.spirit); limb(c, [3, 16], [9, 18.5], 2, RP.spiritDk); dot(c, 3, 15, '#e8f5b0');
+    orb(c, 15, 14.5, 4.6, 3.8, RP.spirit); poly(c, [[13, 10], [14.5, 13], [16, 11]], RP.spiritDk);
+    eyes(c, 14, 17, 14, 'shut', '#1a4a3c', false); dot(c, 19.5, 15.5, INK);
+    return;
+  }
+  // The tail: a long brush streaming back, its tip a wisp of light.
+  limb(c, [5, 12 + b], [1 + q.wag, 9 + b], 2, RP.spirit); dot(c, 1 + q.wag, 8 + b, RP.spirit[0]); dot(c, q.wag, 7 + b, '#e8f5b0');
+  paws(c, q, 6, 12, 15 + b, RP.spiritDk, RP.spirit);
+  const sit = q.legs === 'sit';
+  orb(c, 9.5, sit ? 12.5 + b : 12.8 + b, sit ? 4.6 : 6, sit ? 4.4 : 3.4, RP.spirit);
+  px(c, 12, 13 + b, 3, 2, '#f0fff8');
+  // The head: a fox's long muzzle, two tall pointed ears, a sprig of leaves between them.
+  orb(c, 15.5, 8.5 + b, 4.8, 4.2, RP.spirit);
+  poly(c, [[12.5, 6 + b], [13, 1.5 + b], [15, 5 + b]], RP.spiritDk);
+  poly(c, [[16, 5 + b], [18, 1.5 + b], [18.5, 6 + b]], RP.spirit);
+  poly(c, [[18, 8 + b], [22.5, 10 + b], [18, 11.5 + b]], RP.spirit); dot(c, 22, 10 + b, INK);
+  px(c, 15, 3 + b, 1, 1, '#6eae52'); px(c, 16, 2 + b, 1, 1, '#b4e08a');
+  eyes(c, 14, 17, 7 + b, q.eyes, '#1a4a3c', false);
+  if (q.eyes === 'smile') px(c, 19, 11 + b, 2, 1, MOUTH);
+}
+
 const PAINT: Readonly<Record<string, (c: C, q: Pose) => void>> = {
   'ink-pup': inkPup, 'shade-kit': shadeKit, 'rivet-hatchling': rivetHatchling, 'moss-hedgehog': mossHedgehog,
   'ember-newt': emberNewt, 'star-owlet': starOwlet, 'prism-mothkit': prismMothkit, 'sunling': sunling,
+  'spirit-beast': spiritBeast,
 };
 export const hasTdPetArt = (id: string): boolean => id in PAINT;
 

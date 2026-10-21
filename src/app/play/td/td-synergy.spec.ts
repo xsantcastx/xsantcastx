@@ -16,7 +16,7 @@ describe('td-skills: the Seam-Cant', () => {
     for (const id of ALL) {
       const sk = SKILLS[id];
       // The basic attacks thrown from a staff speak their words (the Warlock's bolt, the Lanternwright's flare); other passives none.
-      if (sk.kind === 'passive' && id !== 'ember-bolt' && id !== 'kindle') { expect(sk.words).withContext(id).toBeUndefined(); continue; }
+      if (sk.kind === 'passive' && id !== 'ember-bolt' && id !== 'kindle' && id !== 'thorn-shot') { expect(sk.words).withContext(id).toBeUndefined(); continue; }
       expect(sk.words).withContext(id).toMatch(/^[a-z]+( [a-z]+)*$/);
       const parts = sk.words!.split(' ');
       expect(ROOTS).withContext(id).toContain(parts[0]);

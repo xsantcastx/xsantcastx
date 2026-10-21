@@ -29,6 +29,8 @@ export interface KeeperGarb {
   apron?: string;
   /** A sash from the back shoulder to the front hip. */
   sash?: string;
+  /** A quiver of green-fletched arrows on the back, in this leather (the Thornstrider). */
+  quiver?: string;
   /** A hat when no head gear is worn. */
   hat?: 'brim' | 'cap';
   hatColor?: string;

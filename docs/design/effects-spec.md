@@ -135,6 +135,36 @@ Three palettes join rule 2 for the third vocation (design-bible §4.3 asked to r
   night pass and a warm glow) unless shuttered — the shutters swing shut over it as two dark slats.
 - Reduced motion: the rings drawn at full reach, the column and the motes still, the wings not beating.
 
+## The Thornstrider (2026-10-21, `td-thorn-fx.ts`)
+Three palettes join rule 2 for the fourth vocation (design-bible §4.5 asked for Life tones with a rot edge; the bow and
+the briar wanted their own green and bark, the beasts the Verdant's rootglass light, which already ships in td-mobs).
+| Element | Core | Body | Edge | Used by |
+|---|---|---|---|---|
+| Thorn (the bow's green) | `#e8f5b0` | `#8fc25a` | `#4a6b2a` | an arrow's tip, its hit tell, the bow's twang |
+| Wild (the beasts' spirit light) | `#f0fff8` | `#9af0d0` | `#4cb898` | the spirit beast, a called beast, the Stampede, Pack Bond's ring and thread |
+| Briar (bark and thorn) | `#c9a66b` | `#7a5a32` | `#3e2a18` | the Thornroot Snare, a Bramble Trap, the roots at a rooted creature's feet |
+| Blood (a barb's bleed) | `#f08070` | `#c43a3a` | `#6a1a1a` | Barbed Shot's drops, a bleeding creature's pip |
+- **Thorn Shot** (air): an arrow in flight — a pale-green tip, a bark shaft, a pale nock, a green fletch either side of the
+  tail and a dark line under it so it reads on grass and stone. It strikes with splinters thrown back along the flight
+  and a white pixel where it bit (≤ 60% over a body); the creature is knocked a quarter tile back (a boss a fifth of it).
+  The bow's twang is three pale pixels of string snapping back. **Volley**: five (+) of the same arrows in a fan.
+- **Barbed Shot**: the same arrow; the barb leaves blood drops falling and a red pip by the creature while it bleeds.
+- **Command** (lasts while sent): a green chevron over the sent-at foe, bobbing; the beast runs to it.
+- **Pack Bond** (aura): the floor ring in the wild's tones; while the beast is near, a dotted thread of spirit light runs
+  from the Keeper to it.
+- **The spirit beast** (y-sorted, lasts): a fox-wolf of rootglass light (td-pet-art `spiritBeast`), drawn as a pet. A
+  **called beast** and the **Stampede** are its kin, drawn half-seen (78% / 62%) with a mint shadow; the stampede raises
+  hoof-dust behind it; a beast steps in and out of the green in a spiral of leaf pixels.
+- **Thornroot Snare** (ground, lasts): one clump a tile — thorned roots out of torn earth, their tips stepping between
+  two heights; rising, they push up two steps. A rooted creature wears a fringe of thorns at its feet.
+- **Bramble Trap** (ground, lasts): a closed jaw of bramble on a dark mat, a faint ring of its reach; springing, a ring of
+  thorns snaps out to it. Leaves settle over it as it is hidden. **Rootwalk**: moss filling in the footprints behind.
+- **The look**: a moss-green hood, a bark-brown leather coat, wrapped hands, the hunting bow (the kit weapon, the
+  painter's own `bow`) and a leather quiver on the back with three green fletchings over the shoulder — on the back from
+  behind, peeking past the hood from the front, behind the head from the side.
+- Reduced motion: the arrows and the beasts still move (they are the game), but every burst is one still frame, the
+  thorns stand at full height, the thread does not crawl.
+
 ## Order
 1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
 Each step screenshot-checked (e2e/td-fx-shots.spec.ts, e2e/td-fx2-shots.spec.ts → docs/handoff/cozy-ui/fx-*.jpg).
