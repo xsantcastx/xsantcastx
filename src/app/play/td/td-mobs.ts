@@ -16,7 +16,9 @@ import { TILE } from './td-art';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { rollHuntGold } from '../../shared/economy/economy-curve';
 import { LOOT } from './td-fx';
-import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
+import { CRIT_MULT, MANA_REGEN, MAX_MANA, MAX_RANK, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
+import { NO_RELICS, type RelicTotals } from '../../shared/rpg/boss-uniques';
+import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
 import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
@@ -1687,6 +1689,22 @@ export interface Mob {
   blinkCd?: number;
   blinkT?: number;
   blinkTo?: { x: number; y: number } | null;
+  /** The Crown of the Banked Coal: seconds it still smoulders, and the tick timer. */
+  singeT?: number;
+  singeTick?: number;
+  /** The Abbess's Censer: seconds its ink stain lasts (it takes more from every hit meanwhile). */
+  inkT?: number;
+}
+
+/**
+ * A construct (the Hammer of the First Watch hits these harder): the riveted and the glass — the maw and prism
+ * families (creature-families.ts: the Seamworks' maws, the bailiffs, the Anvil-Warden, the Glass Sentinel) and the
+ * golems.
+ */
+export function isConstruct(creature: string): boolean {
+  if (/golem/.test(creature)) return true;
+  const f = creatureProfile(creature).family;
+  return f === 'maw' || f === 'prism';
 }
 
 /** Fire Enchanted's last word: a burst of fire where it fell, `t` seconds after (the ground shows the ring meanwhile). */
@@ -1731,6 +1749,8 @@ export interface Minion {
   life: number;
   hit: number;
   target: Mob | null;
+  /** The Ashbone Phylactery: its first blow (a breath of fire) is spent. */
+  breathed?: boolean;
 }
 
 /** A raised skeleton's life and blow: Raise Skeleton's numbers grown with the Keeper's level and spell power. */
@@ -1846,6 +1866,11 @@ export interface MobHost {
   swung(at: { x: number; y: number } | null): void;
   /** Is (x, y) a town or a safe square (no elite pack ever spawns there)? Default: nowhere is. */
   safeAt?(x: number, y: number): boolean;
+  /**
+   * Lumvesh, the Seek (design-bible §5.5): the host finds what to point at and shows the arrow for `secs` seconds.
+   * False when there is nothing to seek (the spell is not spent). Absent: nothing can be sought.
+   */
+  seek?(secs: number): boolean;
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -1882,7 +1907,24 @@ export class MobSystem {
   setRanks(ranks: Partial<Record<SkillId, number>> | null, bought: Partial<Record<SkillId, number>> | null = null): void {
     this.ranks = ranks ? { ...ranks } : null; this.bought = bought ? { ...bought } : null; this.varsAt.clear();
   }
-  rank(id: SkillId): number { return this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1; }
+  /** A skill's rank: the tree's, plus what worn boss uniques add to a skill already learnt (never past MAX_RANK). */
+  rank(id: SkillId): number {
+    const base = this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1;
+    return base > 0 ? Math.min(MAX_RANK, base + (this.relics.ranks[id] ?? 0)) : 0;
+  }
+  /**
+   * The worn boss uniques' signatures (shared/rpg/boss-uniques.ts relicTotals; the host hands them in): extra ranks,
+   * a shorter Meteor, harder hits on constructs, more skeletons, more fire, ink, smoulder, more spears, more light.
+   */
+  relics: RelicTotals = NO_RELICS;
+  setRelics(r: RelicTotals): void { this.relics = r; this.varsAt.clear(); }
+  /** A spell's cooldown now (before cast speed): its own, less what a boss unique cuts from it. */
+  cdOf(id: SkillId): number { return Math.max(.5, SKILLS[id].cd - (this.relics.cdCut[id] ?? 0)); }
+  /** The Light spell: seconds it still burns, and how many tiles it adds to the Keeper's light. */
+  lightT = 0;
+  lightTiles = 0;
+  /** Tiles the Keeper's own light reaches past its usual: the Light spell while it burns, plus the worn uniques'. */
+  get lightBonus(): number { return (this.lightT > 0 ? this.lightTiles : 0) + this.relics.light; }
   /** A skill's numbers at its rank. */
   v(id: SkillId): Record<string, number> {
     let got = this.varsAt.get(id);
@@ -1912,7 +1954,7 @@ export class MobSystem {
   /** The spawn rules in force here and now (the open wilds only; day's under a roof). */
   private get wildRules() { return rulesOf(this.open ? this.phase : 'day'); }
   /** Ember Mastery: what fire's damage is multiplied by. */
-  get fireMult(): number { return this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1; }
+  get fireMult(): number { return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100); }
   /** The running aura's ring (art px). */
   get auraRadius(): number { return Math.round((this.aura ? this.v(this.aura)['radius'] ?? 3 : this.v('aura-embers')['radius']) * TILE); }
   /** How much weaker a creature bites (%): the Ember Curse's and Weaken's, the stronger of the two. */
@@ -2091,6 +2133,8 @@ export class MobSystem {
         this.bolts.splice(i, 1);
         this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
         this.hitFoe(b.to, b.dmg, '#ffd25a');
+        // The Crown of the Banked Coal: the bolt leaves its foe smouldering.
+        if (this.relics.singe && b.to.hp > 0) { b.to.singeT = this.relics.singe.secs; b.to.singeTick = b.to.singeTick && b.to.singeTick > 0 ? b.to.singeTick : 1; }
       } else { b.x += dx / len * step; b.y += dy / len * step; }
     }
     // The aura (D2): it works on everything near, every second, while it is chosen.
@@ -2103,6 +2147,16 @@ export class MobSystem {
         if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, this.v('ember-curse')['dps'] * this.fireMult, '#ff9a4a'); if (m.hp <= 0) continue; }
       }
       if ((m.weak ?? 0) > 0) m.weak = Math.max(0, (m.weak ?? 0) - dt);
+      if ((m.inkT ?? 0) > 0) m.inkT = Math.max(0, (m.inkT ?? 0) - dt);
+      if ((m.singeT ?? 0) > 0 && this.relics.singe) {
+        m.singeT = (m.singeT ?? 0) - dt; m.singeTick = (m.singeTick ?? 1) - dt;
+        if (m.singeTick <= 0) {
+          m.singeTick = 1;
+          this.effects.push({ kind: 'flame', x: m.x + rnd(-3, 3), y: m.y - 2, age: 0, life: .4, dir: 1 });
+          this.hitFoe(m, this.relics.singe.dps * this.fireMult, '#ff9a4a');
+          if (m.hp <= 0) continue;
+        }
+      }
       if ((m.doom ?? 0) > 0) {
         m.doom = (m.doom ?? 0) - dt;
         if (m.doom <= 0) { m.doom = 0; this.doomBurst(m); if (m.hp <= 0) continue; }
@@ -2223,6 +2277,7 @@ export class MobSystem {
     this.mana = Math.min(this.maxMana, this.mana + this.regen * dt);
     if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
     if (this.boneT > 0) { this.boneT -= dt; if (this.boneT <= 0) this.bone = 0; }
+    if (this.lightT > 0) this.lightT = Math.max(0, this.lightT - dt);
     if (this.haste > 0) {
       this.haste = Math.max(0, this.haste - dt);
       if (Math.random() < dt * 8) this.effects.push({ kind: 'dust', x: p.x + rnd(-4, 4), y: p.y, age: 0, life: .4, dir: 1 });
@@ -2230,6 +2285,14 @@ export class MobSystem {
   }
 
   private hitFoe(foe: Mob, raw: number, color: string): void {
+    // Worn boss uniques: the Hammer bites constructs harder; the Censer's ink makes a stained foe take more, and stains.
+    if (this.relics.construct > 0 && isConstruct(foe.def.id)) raw *= 1 + this.relics.construct / 100;
+    const ink = this.relics.ink;
+    if (ink) {
+      if ((foe.inkT ?? 0) > 0) raw *= 1 + ink.pct / 100;
+      else this.effects.push({ kind: 'pulse', el: 'shadow', x: foe.x, y: foe.y, age: 0, life: .25, dir: 1 });
+      foe.inkT = ink.secs;
+    }
     const crit = this.crit > 0 && Math.random() < this.crit;
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
@@ -2366,13 +2429,16 @@ export class MobSystem {
       if (foe && Math.hypot(foe.x - k.x, foe.y - k.y) <= MOB_REACH && k.cd <= 0) {
         k.cd = RAISED_SKELETON.rate;
         this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .2, dir: k.face });
-        this.hurtMob(foe, rnd(k.dmg[0], k.dmg[1]), '#c88bff');
+        // The Ashbone Phylactery: each skeleton's first blow is a breath of fire.
+        const breath = this.relics.breath > 0 && !k.breathed;
+        if (breath) { k.breathed = true; for (let j = 0; j < 3; j++) this.effects.push({ kind: 'flame', x: (k.x + foe.x) / 2 + (j - 1) * 4, y: (k.y + foe.y) / 2, age: 0, life: .45, dir: 1 }); }
+        this.hurtMob(foe, Math.round(rnd(k.dmg[0], k.dmg[1]) * (breath ? this.relics.breath : 1)), breath ? '#ff9a4a' : '#c88bff');
       }
     }
   }
 
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
-  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | null {
+  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | null {
     const sk = SKILLS[id];
     if (!sk || sk.kind !== 'active') return null;
     if (this.rank(id) < 1) return 'locked';
@@ -2411,7 +2477,7 @@ export class MobSystem {
       if (!foe) return 'nofoe';
       const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
       this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .15, dir: 1 });
-      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [] });
+      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: (v['range'] + this.relics.spearRange) * TILE / SPEAR_SPEED, hit: [] });
       this.host.swung(foe);
     } else if (id === 'raise-skeleton') {
       // From the fresh dead nearest the Keeper first; with none, out of the ground at his side.
@@ -2432,18 +2498,25 @@ export class MobSystem {
         this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null });
         this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
       }
-      capMinions(this.minions, v['max']);
+      capMinions(this.minions, v['max'] + this.relics.raisedMax);
       this.host.swung(null);
     } else if (id === 'dark-ward') {
       this.ward = v['absorb']; this.wardT = v['secs'];
       this.effects.push({ kind: 'ward', x: p.x, y: p.y - 14, age: 0, life: .6, dir: 1 });
       this.host.swung(null);
+    } else if (id === 'light') {
+      // Light (design-bible §4.6): the Keeper's own light reaches further while it burns; spoken again it starts over.
+      this.lightT = v['secs']; this.lightTiles = v['radius'];
+      this.effects.push({ kind: 'pillar', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
+    } else if (id === 'seek') {
+      // Lumvesh (design-bible §5.5): the host finds what to point at; nothing to seek spends nothing.
+      if (!this.host.seek?.(v['secs'])) return 'noseek';
     } else {
       const why = this.useTreeSkill(id, v, foeInRange);
       if (why) return why;
     }
     this.mana -= sk.mana;
-    this.cooldowns[id] = sk.cd / (1 + this.castSpeed);
+    this.cooldowns[id] = this.cdOf(id) / (1 + this.castSpeed);
     return null;
   }
 
@@ -2485,7 +2558,7 @@ export class MobSystem {
       this.host.swung(null);
     } else if (id === 'bone-storm') {
       // A fan of spears at the foe; with none in reach, a ring of them all round.
-      const foe = foeInRange(), n = Math.max(1, v['count']), sx = p.x, sy = p.y - 16;
+      const foe = foeInRange(), n = Math.max(1, v['count'] + this.relics.spears), sx = p.x, sy = p.y - 16;
       const base = foe ? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx) : 0;
       for (let i = 0; i < n; i++) {
         const a = foe ? base + (i - (n - 1) / 2) * .22 : i / n * Math.PI * 2;

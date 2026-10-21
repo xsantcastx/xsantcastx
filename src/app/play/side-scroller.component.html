@@ -527,6 +527,10 @@
                   <span>{{ e.coins[0] }}-{{ e.coins[1] }} {{ t('play.best.gold') }}</span>
                   @for (d of e.drops; track d.name) { <span>{{ d.qty > 1 ? d.qty + ' ' : '' }}{{ d.name }}</span> }
                 </p>
+                @if (e.relic; as r) {
+                  <!-- A boss's own unique (boss-uniques.ts): named, gold, and the odds of each kill. -->
+                  <p class="td-best__relic" [attr.data-relic]="r.id"><small>{{ t('play.best.relic') }}</small> <b>{{ r.name }}</b> <span>{{ t('play.best.relicOdds', { n: r.oneIn }) }}</span></p>
+                }
                 <p class="td-best__lore">{{ e.lore }}</p>
               } @else {
                 <p class="td-best__lore td-best__lore--hidden">{{ t('play.best.unknown') }}</p>

@@ -68,7 +68,7 @@ export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBE
   'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 /** The Seam-Cant's tone per tree: each element's body tone (effects-spec rule 2), so the words read as the spell's. */
-const CANT_TONE: Readonly<Record<TreeId, string>> = { ember: FX.ember.body, bone: FX.bone.body, shadow: FX.shadow.body };
+const CANT_TONE: Readonly<Record<TreeId, string>> = { ember: FX.ember.body, bone: FX.bone.body, shadow: FX.shadow.body, common: LEVEL_UP.body };
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
@@ -91,6 +91,8 @@ import type { PetAbility } from '../../shared/pets/pets.model';
 import type { GlimMood } from '../../shared/glim/glim-art';
 import type { LootFilter } from '../../shared/loot/loot-tiers';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
+import { levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
+import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -139,6 +141,14 @@ interface PetBody {
 /** A spark Glim sheds (a find, a cheer): one pixel, a short arc. */
 interface Spark { x: number; y: number; vx: number; vy: number; age: number; life: number; col: string }
 const GLIM_FLAP = ['up', 'mid', 'down', 'mid'] as const;
+/** A compass point as a unit step on the map (y grows south); null for none. */
+function seekVector(dir: SeekReading['dir']): { x: number; y: number } | null {
+  if (!dir) return null;
+  const s = Math.SQRT1_2, V: Record<string, { x: number; y: number }> = {
+    n: { x: 0, y: -1 }, ne: { x: s, y: -s }, e: { x: 1, y: 0 }, se: { x: s, y: s }, s: { x: 0, y: 1 }, sw: { x: -s, y: s }, w: { x: -1, y: 0 }, nw: { x: -s, y: -s },
+  };
+  return V[dir];
+}
 
 export class TopDownEngine {
   private readonly ctx: CanvasRenderingContext2D;
@@ -316,6 +326,7 @@ export class TopDownEngine {
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
       // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
+      seek: secs => this.seekNow(secs),
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
     this.mobs.elites = true;
@@ -407,7 +418,7 @@ export class TopDownEngine {
   }
   /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
   get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
-    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / SKILLS[id].cd) : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
+    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / this.mobs.cdOf(id)) : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
   }
   get mana(): number { return this.mobs.mana; }
   get maxMana(): number { return this.mobs.maxMana; }
@@ -1131,6 +1142,7 @@ export class TopDownEngine {
     for (const s of this.sparks) { s.age += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 40 * dt; }
     this.sparks = this.sparks.filter(s => s.age < s.life);
     if (this.glimTrail && (this.glimTrail.t -= dt) <= 0) this.glimTrail = null;
+    if (this.seekArrow && (this.seekArrow.t -= dt) <= 0) this.seekArrow = null;
     if (!g.shown) return;
     // A boss winding up: a quick flash and a gasp, once per tell (bosses' tells win over every flourish: no find now).
     const tell = bossTelling(k, this.mobs.mobs, GLIM_TD.pointReach * 1.3);
@@ -1184,6 +1196,119 @@ export class TopDownEngine {
     if (this.still) { g.x = tx; g.y = ty; return; }
     g.x += (tx - g.x) * Math.min(1, dt * rate);
     g.y += (ty - g.y) * Math.min(1, dt * rate);
+  }
+  // ── Lumvesh, the Seek (design-bible §4.6, §5.5; td-seek.ts) ────────────────────────────────────────────────────
+
+  /** The worn boss uniques (the host hands in their ids): their signatures reach the fight (boss-uniques.ts). */
+  private relicKey = '';
+  setRelics(ids: readonly string[]): void {
+    const key = [...ids].sort().join(',');
+    if (key === this.relicKey) return;
+    this.relicKey = key;
+    this.mobs.setRelics(relicTotals(ids));
+  }
+  /** The arrow Glim leaves after a Seek: which way, the floor, and the seconds it still holds. */
+  private seekArrow: { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null = null;
+  /** A typed "lum vesh <name>": the name the next Seek looks for (null: the nearest). */
+  private seekName: string | null = null;
+  private seekLinks: Map<string, LevelLink> | null = null;
+  /** Seek a named one (a boss, a task giver, "purse"), or the nearest with null: the spell, its mana and cooldown. */
+  seekFor(name: string | null): ReturnType<MobSystem['useAbility']> {
+    this.seekName = name && name.trim() ? name.trim().toLowerCase() : null;
+    try { return this.useAbility('seek'); } finally { this.seekName = null; }
+  }
+  /** Every hand-drawn level's way in and floor: every continent's caves, mine shaft and doors (td-seek.ts), once. */
+  private levelLinks(): Map<string, LevelLink> {
+    this.seekLinks ??= levelLinks([...wayEntries(CONTINENTS, LEVELS), ...townEntries(CONTINENTS, LEVELS, DOORS)], LEVELS);
+    return this.seekLinks;
+  }
+  /** Where a point of a level (or the surface, `level` null) lies for the Seek. */
+  private seekPlace(continent: string, level: string | null, x: number, y: number): SeekPlace {
+    if (!level) return { continent, level: null, x, y, floor: 0, ax: x, ay: y };
+    const l = this.levelLinks().get(level);
+    return l ? { continent: l.continent, level, x, y, floor: l.floor, ax: l.ax, ay: l.ay } : { continent, level, x, y, floor: 0, ax: x, ay: y };
+  }
+  /** What the Seek can point at: the fallen purse, every boss in its hall, every task giver with a task to hand in. */
+  private seekTargets(): { kind: 'boss' | 'quest' | 'purse'; id: string; name: string; place: SeekPlace }[] {
+    const out: { kind: 'boss' | 'quest' | 'purse'; id: string; name: string; place: SeekPlace }[] = [];
+    const pu = this.purse, m = pu ? /^td:([^|]+)\|(.+)$/.exec(pu.area) : null;
+    if (pu && m) out.push({ kind: 'purse', id: 'purse', name: 'purse', place: this.seekPlace(m[1], m[2] === 'surface' ? null : m[2], pu.x, pu.y) });
+    for (const b of levelSpawns(LEVELS, id => MOBS[id]?.rank === 'boss')) {
+      if (!this.levelLinks().has(b.level)) continue;
+      out.push({ kind: 'boss', id: b.mob, name: MOBS[b.mob].name, place: this.seekPlace(this.world.continent, b.level, b.x, b.y) });
+    }
+    for (const k of this.keepers) if (k.kid && this.taskMarks[k.kid] === '?') out.push({ kind: 'quest', id: k.kid, name: k.name ?? k.kid, place: this.seekPlace(this.world.continent, null, k.x, k.y) });
+    return out;
+  }
+  /**
+   * The Seek goes off: the purse first (a fall is the thing to set right), else the nearest boss or task, or the one
+   * named. Glim flies a short leg that way and leaves pixel arrows; the host says the words. False: nothing to seek.
+   */
+  private seekNow(secs: number): boolean {
+    const here = this.seekPlace(this.world.continent, this.level === this.world ? null : this.level.id, this.player.x, this.player.y);
+    const all = this.seekTargets().map(t => ({ ...t, r: seekReading(here, t.place) }));
+    const name = this.seekName;
+    let pick: (typeof all)[number] | undefined;
+    if (name) {
+      const bare = (s: string) => s.toLowerCase().replace(/^the\s+/, '').replace(/['’]/g, '');
+      const want = bare(name);
+      const named = /^(purse|bolsa|monedero)$/.test(want) ? all.filter(t => t.kind === 'purse') : all.filter(t => t.kind !== 'purse' && (bare(t.name).includes(want) || t.id === want));
+      pick = named.sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
+      if (!pick) { this.options.onSeek?.({ kind: 'unknown', id: '', name, dir: null, band: 'veryFar', floor: 'here', sea: false }); return false; }
+    } else {
+      pick = all.find(t => t.kind === 'purse') ?? all.filter(t => t.kind !== 'purse').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
+    }
+    if (!pick) return false;
+    const r = pick.r;
+    this.seekArrow = { dir: r.dir, floor: r.floor, t: secs, life: secs };
+    // Glim flies a short leg that way (design-bible §5.5), a hop over the spot, and back.
+    const v = seekVector(r.dir), p = this.player;
+    if (v) this.glimPoint(p.x + v.x * 46, p.y - 26 + v.y * 34, 1.2, true);
+    else this.glimBurst(p.x, p.y - 30, 8);
+    this.glimMood('curious', 2.5);
+    this.options.onSeek?.({ kind: pick.kind, id: pick.id, name: pick.name, dir: r.dir, band: r.band, floor: r.floor, sea: r.sea });
+    return true;
+  }
+  /** The Seek's arrows (air layer, over the dark): a lamp-toned chevron walking out from the Keeper, a floor mark. */
+  private drawSeek(): void {
+    const a = this.seekArrow;
+    if (!a || a.t <= 0) return;
+    const c = this.ctx, p = this.player, cx = Math.round(p.x), cy = Math.round(p.y - 16);
+    const fade = Math.min(1, a.t / .6, (a.life - a.t) / .2 + .2);
+    const v = seekVector(a.dir);
+    const dot = (x: number, y: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), 1, 1); };
+    c.globalAlpha = fade;
+    if (v) {
+      // Three chevrons stepping outward along the way, each arm a line of 2-px blocks with a dark edge under it
+      // (still under reduced motion: all three at rest).
+      const k = this.still ? 0 : (this.time * 1.4) % 1, nx = -v.y, ny = v.x;
+      const block = (x: number, y: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); };
+      for (let i = 0; i < 3; i++) {
+        const d = 24 + i * 12 + k * 12, x = cx + v.x * d, y = cy + v.y * d, tone = i === 0 ? LEVEL_UP.core : i === 1 ? LEVEL_UP.body : LEVEL_UP.edge;
+        c.globalAlpha = fade * (i === 2 ? 1 - k * .6 : 1);
+        for (const pass of [0, 1]) for (let j = 0; j <= 5; j++) {
+          const ox = pass ? 0 : 1, oy = pass ? 0 : 1, col = pass ? tone : HOSTILE_EDGE;
+          block(x - v.x * j * 1.4 + nx * j * 1.4 + ox, y - v.y * j * 1.4 + ny * j * 1.4 + oy, col);
+          block(x - v.x * j * 1.4 - nx * j * 1.4 + ox, y - v.y * j * 1.4 - ny * j * 1.4 + oy, col);
+        }
+      }
+      c.globalAlpha = fade;
+    } else {
+      // Beside you (or across the sea): a ring of lamp pixels round the Keeper's feet.
+      for (const q of circlePixels(14)) if ((q.x + q.y) % 3 === 0) dot(cx + q.x, p.y + q.y * .5, LEVEL_UP.body);
+    }
+    // The floor: a small stair mark over the head, pointing down (below) or up (above).
+    if (a.floor !== 'here') {
+      // A stepped triangle of 2-px blocks, a dark edge under it.
+      // Beside the first chevron, off its side (above the head when there is no way to point).
+      const up = a.floor === 'above', hx = Math.round(v ? cx + v.x * 28 + v.y * 15 : cx), hy = Math.round(v ? cy + v.y * 28 - v.x * 15 - 3 : cy - 38);
+      for (const pass of [0, 1]) for (let row = 0; row < 3; row++) for (let col = -row; col <= row; col++) {
+        const y = up ? hy + row * 2 : hy + (2 - row) * 2;
+        c.fillStyle = pass ? (row === 0 ? LEVEL_UP.core : LEVEL_UP.body) : HOSTILE_EDGE;
+        c.fillRect(hx + col * 2 - 1 + (pass ? 0 : 1), y + (pass ? 0 : 1), 2, 2);
+      }
+    }
+    c.globalAlpha = 1;
   }
   /** Glim flies to (x, y), hovers `hold` seconds, and comes back; `trail` runs a short line of light there. */
   private glimPoint(x: number, y: number, hold: number, trail: boolean): void {
@@ -1718,7 +1843,9 @@ export class TopDownEngine {
     }
     // Out of the fight a while: the Keeper mends.
     if (this.hp < this.maxHp && this.time - this.lastHurt > 4) this.hp = Math.min(this.maxHp, this.hp + 6 * dt);
-    if (this.lifeRegen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.lifeRegen * dt);
+    // Worn regeneration, with the boss uniques' (the Mossbound Heart: more, and twice it standing still).
+    const regen = relicRegen(this.lifeRegen, this.mobs.relics, this.stillT > .5);
+    if (regen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + regen * dt);
   }
 
   // ── Smoke ──────────────────────────────────────────────────────────────────
@@ -1871,6 +1998,7 @@ export class TopDownEngine {
     // A task giver's head mark: '!' a task on offer, '?' one to hand in (MapleStory), seen from across the square.
     for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? 54 : 44)); }
     this.drawEffects();
+    this.drawSeek();
     this.drawFightUi(inView);
     // A giver standing on their own already wears their name: no second plate.
     if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 62 : 36), '#ffd27a');
@@ -2663,7 +2791,10 @@ export class TopDownEngine {
       const sp = o.sprite();
       for (const l of sp.lights ?? []) { hole(o.x + l.x, o.y + l.y, l.r * 2); if (l.warm) glows.push({ x: o.x + l.x, y: o.y + l.y, r: l.r }); }
     }
-    hole(this.player.x, this.player.y - 18, 70);
+    // The Keeper's own light: wider while the Light spell burns, and with a boss unique's (the Warden's Last Ember).
+    const lit = this.mobs.lightBonus * TILE;
+    hole(this.player.x, this.player.y - 18, 70 + lit);
+    if (lit > 0) glows.push({ x: this.player.x, y: this.player.y - 18, r: 14 + lit / 6 });
     // A lit hearth is a light of its own; the fallen purse's beam a faint one.
     if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 22 }); }
     const pl = this.purseHere();
@@ -2691,7 +2822,7 @@ export class TopDownEngine {
     for (const k of this.mobs.calls) hole(k.x, k.y, 30);
     // Glim lights the dark wider than the Keeper's own (and wider still with its lamp while he rests); a light pet its own.
     if (this.glim.shown) {
-      const r = this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80;
+      const r = (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80) + lit;
       hole(this.glim.x, this.glim.y, r);
       glows.push({ x: this.glim.x, y: this.glim.y, r: this.level.dark ? 22 : 14 });
     }

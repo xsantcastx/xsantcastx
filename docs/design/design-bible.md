@@ -485,6 +485,16 @@ risk-for-reward dial the player controls with light; *lore* the erased witnesses
 points; floor *above / below / here*. Glim flies a short leg in that direction. It names nothing it hasn't seen. S/U/L:
 the Atlas compass · finding rare spawns and friends · Glim's needle points at the nearest omitted fact (canon Codex).
 
+**As built (2026-10-21, `play/td/td-seek.ts`).** Light and Seek sit on a fourth Spellbook tab, **Common** (every
+vocation's page; ranks bought with the same points). *Light* (`lum`, level 1, free in the kit): +3 tiles (+0.1 a rank) to
+the Keeper's own light and Glim's for 300 s (+15 a rank); spoken again it starts over. *Seek* (`lum vesh`, level 8): the
+fallen purse first, else the nearest boss (every boss in its hall, by the maps' own stairs: the Ember Warden is three
+floors under the Seamworks) or a task giver with a task to hand in; `lum vesh <name>` typed seeks that one (or
+"purse"). Glim flies a leg that way, three lamp-toned chevrons walk out from the Keeper with a stair mark for the floor,
+and Glim says it: "Glim: Something great is far to the north-west, below you." (a boss not yet in the Bestiary is
+*something great*); another continent is "across the sea". Not built: rare spawns and friends as targets, the
+Broken Astral Compass, a minimap mark.
+
 ### 5.6 Curses and blessings
 
 | | Curse (on the Keeper) | Blessing |
@@ -632,6 +642,17 @@ Each act and mid boss gets **one** named unique at a 1-in-6 (normal) chance, onl
 | The Mossbound Colossus | **Mossbound Heart** | chest | +life regen ×2 standing still | "It stood so long the moss gave it a heartbeat." |
 | The Elder Rootwyrm | **Splinterbow of the Rootcradle** | weapon (bow) | Volley +2 arrows | splinters of rootglass that remember the tree |
 | The Ink Abbess | **The Abbess's Censer** | off-hand | each spell cast trails ink: −10 resist on hit, 3 s | she swung it over the drowned for a hundred years |
+
+**As built (2026-10-21, `shared/rpg/boss-uniques.ts`, fight in `td-mobs.ts` relics).** All eight gold, rolled as any gear
+of their slot at the boss's level; each drops from its boss alone (never the Gambler, never an open unique roll), and
+shows on the card (*Used for* / *Found in · 1 in N*) and the boss's Bestiary card (*Keeps*). Signatures as shipped,
+fitted to the Warlock's real spells: Warden's Last Ember (1 in 6) +2 light, Ember Bolt +1 rank · Tyrant's Crucible (1 in
+7) Meteor −2 s · Hammer of the First Watch (1 in 7) Hellfire Nova +2 ranks, +20% on constructs (maw/prism families,
+golems) · Ashbone Phylactery (1 in 8) +1 skeleton at once, each skeleton's first blow a breath of fire (3×) · Crown of
+the Banked Coal (1 in 10) +15% fire, the staff's bolts leave their foe smouldering 5/s for 3 s · Mossbound Heart (1 in 8)
++2 life/s, all regeneration ×2 standing still · Splinterbow of the Rootcradle (1 in 9) Bone Storm +2 spears, Bone Spear
++3 tiles · The Abbess's Censer (1 in 10) every hit stains with ink: +10% from every hit for 3 s (creatures have no
+resists in the fight yet). Gear's extra ranks stop at rank 20.
 
 ### 7.3 Socket Words (runewords — shipped, extended)
 
@@ -798,10 +819,10 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 3 | **Elite packs in the top-down world**: port `rollPack` + mods, packs of 3–5, the new affixes (Lightless, Grave-called, Brutal, Mirrored) | M | `shared/loot/champions.ts`, `td-mobs.ts` spawn + draw (name pips), `td-fx.ts` | blue/gold named packs with pips; better drops |
 | 4 ✓ | **Eclipse phases as rules** (shipped 2026-10-21, §5.2 as built): night spawn tables, Eclipse-touched elites, phase modifiers to spell power/XP/loot | M | `world-clock.model.ts` (`Sky`), `td-engine.setSky`, `td-mobs.ts` spawn tables, `drop-tables.ts` | night feels different; the eclipse is an event you plan for |
 | 5 ✓ | **The Cold Hearth + Hearth Blessings** (shipped 2026-10-21, §5.8): wake at the last lit hearth, fallen purse in top-down, Ember debt, five shrines | M | `td-engine.hurt`, `LootService.fall`, `keeper-level.service` (debt), capital maps (shrine stalls) | a fall *means* something; a Gold sink for the new economy |
-| 6 ★ | **Lumvesh (Seek) + Light spell** | S | `td-skills.ts` (common spells), `td-world.ts` (find a mob/boss by id), Glim flight (`td-engine` glimFlight) | "The Ink Abbess is very far to the south-east, below you." |
+| 6 ✓ | **Lumvesh (Seek) + Light spell** (shipped 2026-10-21, §5.5 as built) | S | `td-skills.ts` (common spells), `td-world.ts` (find a mob/boss by id), Glim flight (`td-engine` glimFlight) | "The Ink Abbess is very far to the south-east, below you." |
 | 7 | **Light as a resource + dark-born**: torches, Unrecorded shapes, Hollow Footsteps, dark-only chests, 3 Nightroads on Ember Isle | M | `td-engine` darkness/light, `td-art.ts`, `maps/*.ts` (night-only tiles), `eclipse.model` items | the first "did I see that?" moment |
 | 8 | **The Sexton's Count** chain + key ring + Margin Notes | M | `shared/town-tasks`, `maps/` Hushed Barrow, a `notes` collection in `collection.model.ts` | a 20-minute spooky quest on the starter island |
-| 9 | **Boss uniques** (8 named) | S–M | `rpg/unique-items.ts`, `drop-tables.ts` boss path, item icons | every boss has a reason to farm it |
+| 9 ✓ | **Boss uniques** (8 named; shipped 2026-10-21, §7.2 as built) | S–M | `rpg/unique-items.ts`, `drop-tables.ts` boss path, item icons | every boss has a reason to farm it |
 | 10 | **Spellstones + Soul** | M | new `shared/spellstones/`, belt (`potions` pattern), mining yield (Basalt Blank), Rune Forge stall | Tibia runes; mines and kills both matter |
 | 11 | **Cursed grave-goods + Sexton cleansing** | S–M | `unique-items.ts` (cursed flag), loot card, Sexton's dialogue | strong-but-strange items with a choice |
 | 12 | **Sets** (4) | M | new `rpg/set-items.ts`, `equippedTotals`, item card band | a mythic chase with goals |
