@@ -667,6 +667,30 @@ export class GameStateGateway {
   }
 
   /**
+   * Drop this device's copy of `key` and nothing else: no cloud delete, now or queued.
+   *
+   * For housekeeping that is about what *this browser* holds (the realm-era wipe), as opposed to a player resetting
+   * their save. Routing that through {@link remove} queued a cloud delete on every browser that had never stamped the
+   * era — a new phone, or a character opened here for the first time — and the first sign-in then drained it,
+   * deleting the account's real activity ledger (all Hunting XP, i.e. the Keeper's level) before the merge ran. A
+   * prior-era cloud copy needs no delete: the owners drop prior-era ledgers on load.
+   */
+  discardLocal(key: string): void {
+    if (!this.isBrowser) return;
+    this.unspill(key);
+    try {
+      localStorage.removeItem(this.sk(key));
+    } catch { /* private mode */ }
+    this.dirty.delete(key);
+  }
+
+  /** Forget a queued cloud delete of `key` (one a build no longer means to send). */
+  cancelPendingDelete(key: string): void {
+    if (!this.isBrowser) return;
+    this.clearPendingDelete(key);
+  }
+
+  /**
    * Keys whose local copy has been deleted but whose cloud copy may not have.
    *
    * Persisted rather than held in memory: the case this is built for is a

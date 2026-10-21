@@ -29,6 +29,11 @@ export interface CharacterRow {
   updatedAt: number;
   /** Set when deleted: a tombstone that outranks every older copy of the row. */
   deletedAt?: number;
+  /**
+   * Set when a wipe of this character lowered `level` (character-summary.ts): the one case a merge may take the lower
+   * level. Otherwise level merges as the higher of the two rows, because Hunting XP only grows.
+   */
+  levelResetAt?: number;
 }
 
 export interface CharacterRoster {
@@ -64,6 +69,8 @@ function coerceRow(id: string, raw: unknown): CharacterRow | null {
   };
   const deletedAt = num(r['deletedAt']);
   if (deletedAt > 0) row.deletedAt = deletedAt;
+  const levelResetAt = num(r['levelResetAt']);
+  if (levelResetAt > 0) row.levelResetAt = levelResetAt;
   return row;
 }
 
@@ -86,8 +93,22 @@ function stamp(row: CharacterRow): number {
 }
 
 /**
- * Two devices' rosters into one: every id either side knows; per id the row with the newer stamp wins whole (a
- * tombstone written after the last summary therefore stays deleted). Never drops a character.
+ * Two rows of one character: the newer wins (a rename, a new place, a tombstone), except `level`, which is the higher
+ * of the two. Owner, 2026-10-21: a device whose copy was behind summarised level 1 with a newer stamp and that row
+ * won on every device. Hunting XP only grows, so the lower level is only taken from a newer row that records a wipe
+ * after the older row was written.
+ */
+export function mergeRow(a: CharacterRow, b: CharacterRow): CharacterRow {
+  const [newer, older] = stamp(a) > stamp(b) ? [a, b] : [b, a];
+  if (newer.deletedAt) return newer;
+  const wiped = (newer.levelResetAt ?? 0) > stamp(older);
+  const level = wiped ? newer.level : Math.max(newer.level, older.level);
+  return level === newer.level ? newer : { ...newer, level };
+}
+
+/**
+ * Two devices' rosters into one: every id either side knows; per id {@link mergeRow} (a tombstone written after the
+ * last summary therefore stays deleted, and a level never goes down). Never drops a character.
  */
 export function mergeCharacterRoster(remote: unknown, local: unknown): unknown {
   if (remote == null) return local;
@@ -96,7 +117,7 @@ export function mergeCharacterRoster(remote: unknown, local: unknown): unknown {
   const out = emptyRoster();
   for (const id of new Set([...Object.keys(r.chars), ...Object.keys(l.chars)])) {
     const a = r.chars[id], b = l.chars[id];
-    out.chars[id] = !a ? b : !b ? a : stamp(a) > stamp(b) ? a : b;
+    out.chars[id] = !a ? b : !b ? a : mergeRow(a, b);
   }
   return out;
 }
