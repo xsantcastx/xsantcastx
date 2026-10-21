@@ -30,7 +30,7 @@ describe('sound settings (godforge-sound)', () => {
     expect(coerceSound(null)).toEqual(defaultSound());
     expect(coerceSound([1, 2])).toEqual(defaultSound());
     const s = coerceSound({ music: 1.7, ambience: -2, effects: .333, muted: 'yes', updatedAt: 'x' });
-    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', updatedAt: 0 });
+    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', chat: 'on', updatedAt: 0 });
     expect(clampLevel(NaN, .4)).toBe(.4);
   });
 
@@ -183,6 +183,19 @@ describe('SoundService (levels through the gateway)', () => {
     expect(saved.updatedAt).toBeGreaterThanOrEqual(2000);
     expect(sound.toggleMuted()).toBeFalse();
     expect(JSON.parse(store.get(SOUND_KEY)!).muted).toBeFalse();
+  });
+
+  it('the chat setting: on by default, Ignore saved through the gateway and kept by the later edit', () => {
+    expect(sound.settings.chat).toBe('on');
+    expect(coerceSound({ music: .5 }).chat).toBe('on');
+    expect(coerceSound({ chat: 'shout' }).chat).toBe('on');
+    sound.setChat('ignore', 3000);
+    expect(JSON.parse(store.get(SOUND_KEY)!).chat).toBe('ignore');
+    expect(sound.settings.chat).toBe('ignore');
+    // The phone's Ignore follows the Keeper to the PC (the later choice wins whole).
+    expect((mergeSound({ chat: 'ignore', updatedAt: 9 }, { chat: 'on', updatedAt: 3 }) as { chat: string }).chat).toBe('ignore');
+    sound.setChat('on', 4000);
+    expect(sound.settings.chat).toBe('on');
   });
 
   it('a cloud merge lands in memory (rehydrate)', () => {

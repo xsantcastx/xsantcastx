@@ -11,7 +11,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, On
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { SoundService } from './sound.service';
-import { HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_CHANNELS, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
+import { CHAT_SETTINGS, HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_CHANNELS, type ChatSetting, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
 
 @Component({
@@ -59,6 +59,16 @@ import { SOUND_I18N } from './sound.i18n';
         </span>
         <small class="ss__hushline">{{ t('play.sound.night.' + s.night + '.line') }}</small>
       </div>
+      <!-- The Hearth chat: always connected, or ignored (no joining, no unread count). Saved with the rest. -->
+      <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.chat')">
+        <span class="ss__name">{{ t('play.sound.chat') }}</span>
+        <span class="ss__seg">
+          @for (c of chats; track c) {
+            <button type="button" role="radio" [attr.aria-checked]="s.chat === c" [class.on]="s.chat === c" [attr.data-chat-setting]="c" (click)="setChat(c)">{{ t('play.sound.chat.' + c) }}</button>
+          }
+        </span>
+        <small class="ss__hushline">{{ t('play.sound.chat.' + s.chat + '.line') }}</small>
+      </div>
       <label class="ss__mute">
         <input type="checkbox" [checked]="s.muted" (change)="mute($event)" data-sound-mute>
         <span>{{ t('play.sound.mute') }}</span>
@@ -103,6 +113,7 @@ export class SoundSheetComponent implements OnDestroy {
   readonly channels = SOUND_CHANNELS;
   readonly hushes = HUSH_SETTINGS;
   readonly nights = NIGHT_SETTINGS;
+  readonly chats = CHAT_SETTINGS;
   s: SoundSettings = this.sound.settings;
   status = this.sound.status;
   /** The question mark: the sentences that used to sit on screen. */
@@ -131,6 +142,8 @@ export class SoundSheetComponent implements OnDestroy {
   setHush(h: HushSetting): void { this.sound.setHush(h); this.sound.sfx('tap'); }
 
   setNight(n: NightSetting): void { this.sound.setNight(n); this.sound.sfx('tap'); }
+
+  setChat(c: ChatSetting): void { this.sound.setChat(c); this.sound.sfx('tap'); }
 
   mute(event: Event): void {
     this.sound.setMuted((event.target as HTMLInputElement).checked);
