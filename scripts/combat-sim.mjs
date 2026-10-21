@@ -678,7 +678,7 @@ const xphAt = voc => Object.fromEntries(levels.map(L => [L, table[voc].levels[L]
 say('\nHours to reach a level on the hunt (leveling.md §1 "content at pace": 10 → 0.6 h, 30 → 5.8 h, 50 → 14 h)');
 for (const voc of VOCATIONS) say(`  ${voc.padEnd(14)} ${[10, 30, 50].map(L => `L${L} ${fmt(hoursTo(xphAt(voc), L), 1)} h`).join('   ')}`);
 
-say('\nThe level gap: a level-20 Keeper vs a level-40 creature (falls · blows taken · wins · his damage vs at level), and hunting five levels up (share of 10-minute hunts with a fall)');
+say(`\nThe level gap: a level-20 Keeper vs a level-40 creature (falls · blows taken · wins · his damage vs at level), and hunting five levels up (share of ${GAP_HUNT.secs / 60}-minute hunts with a fall)`);
 for (const voc of VOCATIONS) {
   const g = table[voc].gap;
   say(`  ${voc.padEnd(14)} L20 vs L40: a blow ${pct(g.oneShot.blow)} of his life · falls ${pct(g.oneShot.death)} in ${fmt(g.oneShot.blows, 0)} blow(s) · wins ${pct(g.oneShot.won)} · deals ${pct(g.oneShot.dealt)}   ${g.plus5.map(p => `L${p.level} hunting L${p.level + GAP_HUNT.lift}: falls in ${pct(p.death)} of hunts`).join('   ')}`);
