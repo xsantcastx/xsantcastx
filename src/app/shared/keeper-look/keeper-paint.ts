@@ -408,7 +408,7 @@ export interface PaintState {
 export class KeeperPainter {
   readonly key: string;
   private readonly pal: Palette;
-  private readonly body: typeof BODY[keyof typeof BODY];
+  private readonly body: { readonly sw: number; readonly hw: number; readonly leg: number };
   /**
    * Every body frame this Keeper has shown, baked into ONE sheet canvas
    * (SHEET_COLS slots of CELL per row; it grows by whole rows, copying itself,
@@ -435,7 +435,9 @@ export class KeeperPainter {
   constructor(readonly look: KeeperLook, readonly gear: KeeperGear | null = null, readonly garb: KeeperGarb | null = null) {
     this.key = `${lookKey(look)}#${gearKey(gear)}#${garbKey(garb)}`;
     this.pal = paletteOf(look, garb);
-    this.body = BODY[look.body] ?? BODY.sturdy;
+    const build = BODY[look.body] ?? BODY.sturdy;
+    // A feminine figure (owner 2026-10-21): a pixel narrower at the shoulders, a pixel wider at the hips.
+    this.body = look.form === 'fem' ? { sw: build.sw - 1, hw: build.hw + 1, leg: build.leg } : build;
     const weapon = gear?.weapon;
     this.weaponKind = weapon && weapon.kind in WEAPON_SPECS ? weapon.kind as WeaponKind : null;
     let hash = 0;
@@ -474,6 +476,7 @@ export class KeeperPainter {
     else if (garb?.hat) rise = garb.hat === 'brim' ? 8 : 5;
     if (head?.kind !== 'helm' && head?.kind !== 'hood' && !garb?.hat) {
       if (hair === 'topknot') rise = Math.max(rise, 6);
+      else if (hair === 'bun') rise = Math.max(rise, 6);
       else if (hair === 'mohawk') rise = Math.max(rise, 5);
       else if (hair === 'curls') rise = Math.max(rise, 4);
     }
@@ -813,6 +816,17 @@ export class KeeperPainter {
       for (let r = 8; r <= 19; r += 2) px(c, x - 1 + ((r >> 1) & 1), y + r, 2, 2, (r >> 1) & 1 ? pal.hairLo : pal.hair);
       px(c, x - 1, y + 21, 2, 1, pal.trim);
     }
+    // A ponytail from the crown's back, and the far pigtail, hang behind the head. Under a helm, her hair still falls
+    // out below the neck guard as a tail.
+    const covered = head?.kind === 'hood' || head?.kind === 'helm';
+    if ((look.hair === 'ponytail' && !covered) || (look.form === 'fem' && head?.kind === 'helm')) {
+      px(c, x - 1, y + 2, 3, 2, pal.trim);
+      for (let r = 4; r <= 15; r++) px(c, x - 2 - (r > 9 ? 1 : 0), y + r, r > 12 ? 2 : 3, 1, r % 3 === 0 ? pal.hairLo : pal.hair);
+    }
+    if (look.hair === 'pigtails' && !covered) {
+      px(c, x - 1, y + 5, 3, 1, pal.trim);
+      for (let r = 6; r <= 14; r++) px(c, x - 2, y + r, 3, 1, r % 3 === 0 ? pal.hairLo : pal.hair);
+    }
     if (garb?.shards) {
       // Dawn-glass rising behind the head: four shards, lit on their left edges. Never a halo.
       for (const [sx, tall] of [[-1, 7], [2, 11], [6, 13], [10, 9]] as const) {
@@ -822,7 +836,8 @@ export class KeeperPainter {
     }
     // The skull: a soft 15×14 round, shaded at the back and under the chin.
     for (let r = 0; r < HH; r++) {
-      const inset = r === 0 ? 4 : r === 1 ? 2 : r === 2 || r === HH - 2 ? 1 : r === HH - 1 ? 3 : 0;
+      const soft = look.form === 'fem' ? 1 : 0;
+      const inset = r === 0 ? 4 : r === 1 ? 2 : r === 2 ? 1 : r === HH - 2 ? 1 + soft : r === HH - 1 ? 3 + soft : 0;
       px(c, x + inset, y + r, HW - inset * 2, 1, pal.skin);
     }
     px(c, x, y + 3, 1, HH - 6, pal.skinLo);
@@ -855,9 +870,11 @@ export class KeeperPainter {
       px(c, x + 5, y + 10, 2, 1, pal.blush); px(c, x + 12, y + 10, 2, 1, pal.blush);
     }
     // The mouth: small; open in joy, a round "o" in surprise.
-    if (face === 'happy') { px(c, x + 10, y + 11, 3, 1, pal.mouth); px(c, x + 11, y + 12, 1, 1, '#e86a7a'); }
-    else if (face === 'surprised') px(c, x + 10, y + 11, 2, 2, pal.mouth);
-    else px(c, x + 10, y + 11, 2, 1, pal.mouth);
+    const lip = look.form === 'fem' ? mix(pal.mouth, '#e0607a', .55) : pal.mouth;
+    if (face === 'happy') { px(c, x + 10, y + 11, 3, 1, lip); px(c, x + 11, y + 12, 1, 1, '#e86a7a'); }
+    else if (face === 'surprised') px(c, x + 10, y + 11, 2, 2, lip);
+    else px(c, x + 10, y + 11, 2, 1, lip);
+    if (look.form === 'fem' && look.face !== 'rosy' && look.face !== 'freckles') { px(c, x + 12, y + 10, 2, 1, pal.blush); }
     switch (look.face) {
       case 'freckles': px(c, x + 6, y + 9, 1, 1, pal.skinLo); px(c, x + 8, y + 10, 1, 1, pal.skinLo); px(c, x + 13, y + 9, 1, 1, pal.skinLo); break;
       case 'beard': {
@@ -885,6 +902,8 @@ export class KeeperPainter {
       case 'surprised':
         px(c, ex, ey - 1, 2, 4, dk); px(c, ex + 1, ey + 1, 1, 2, pal.eye); px(c, ex, ey - 1, 1, 1, '#ffffff'); return;
     }
+    // Her lashes: flicked out past the nearer eye's outer corner.
+    if (this.look.form === 'fem' && front) { px(c, ex + 2, ey, 1, 1, dk); px(c, ex + 3, ey - 1, 1, 1, dk); }
     if (this.look.eyes === 'narrow') {
       // Calm half-lidded eyes: the lid, then the iris under it.
       px(c, ex, ey + 1, 2, 1, dk); px(c, ex, ey + 2, 2, 1, pal.eye); px(c, ex + 1, ey + 2, 1, 1, pal.eyeHi);
@@ -948,6 +967,15 @@ export class KeeperPainter {
         px(c, x + 4, y - 3, 6, 4, pal.hair); px(c, x + 5, y - 5, 4, 2, pal.hair); px(c, x + 6, y - 5, 2, 1, pal.hairHi);
         break;
       case 'shaved': px(c, x + 2, y, HW - 4, 2, mix(pal.skin, pal.hair, .35)); px(c, x + 1, y + 1, 1, 3, mix(pal.skin, pal.hair, .35)); break;
+      case 'bun':
+        cap(8); px(c, x - 1, y - 4, 5, 4, pal.hair); px(c, x, y - 5, 3, 1, pal.hair); px(c, x, y - 4, 2, 1, pal.hairHi);
+        px(c, x + 3, y - 2, 2, 2, pal.trim);
+        break;
+      case 'ponytail': cap(8); px(c, x + 13, y - 1, 2, 1, pal.hairHi); break;
+      case 'pigtails': cap(8); break;
+      case 'bob':
+        cap(11); px(c, x + 12, y + 5, 3, 5, pal.hair); px(c, x + 14, y + 5, 1, 5, pal.hairLo); px(c, x + 6, y + 5, 6, 1, pal.hair);
+        break;
     }
   }
 

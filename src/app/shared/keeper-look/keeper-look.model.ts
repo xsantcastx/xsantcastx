@@ -20,7 +20,16 @@ export const KEEPER_LOOK_KEY = 'godforge-keeper-look';
 export const BODY_TYPES = ['slight', 'sturdy', 'broad'] as const;
 export type BodyType = typeof BODY_TYPES[number];
 
-export const HAIR_STYLES = ['cropped', 'swept', 'long', 'braid', 'topknot', 'curls', 'mohawk', 'shaved'] as const;
+/**
+ * The figure (owner, 2026-10-21: "What about females?"): a feminine or a masculine Keeper — the silhouette (shoulders,
+ * waist, hips), the jaw, lashes and lips. Separate from `body` (the build) and from the hair, so every pairing exists.
+ * A save from before it has none and stays 'masc' (exactly the figure it always was).
+ */
+export const FORMS = ['masc', 'fem'] as const;
+export type Form = typeof FORMS[number];
+
+/** Hair styles; new ones are only ever appended (a saved style is its id, so nothing old changes). */
+export const HAIR_STYLES = ['cropped', 'swept', 'long', 'braid', 'topknot', 'curls', 'mohawk', 'shaved', 'bun', 'ponytail', 'pigtails', 'bob'] as const;
 export type HairStyle = typeof HAIR_STYLES[number];
 
 export const EYE_STYLES = ['round', 'narrow', 'bright'] as const;
@@ -82,6 +91,8 @@ export interface KeeperLook {
   /** The one gentle "make your Keeper" nudge was shown (existing saves). */
   prompted: boolean;
   body: BodyType;
+  /** Feminine or masculine (FORMS); 'masc' for every save from before the choice existed. */
+  form: Form;
   skin: number;
   hair: HairStyle;
   hairColor: number;
@@ -107,7 +118,7 @@ export interface KeeperLook {
 export function defaultLook(): KeeperLook {
   return {
     version: 1, made: false, prompted: false,
-    body: 'sturdy', skin: 2, hair: 'swept', hairColor: 2, eyes: 'round', eyeColor: 0, face: 'none',
+    body: 'sturdy', form: 'masc', skin: 2, hair: 'swept', hairColor: 2, eyes: 'round', eyeColor: 0, face: 'none',
     outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', stats: { vit: 0, ene: 0, spi: 0, agi: 0 }, tree: { spent: {}, free: [], at: 0 }, updatedAt: 0,
   };
 }
@@ -173,6 +184,7 @@ export function coerceLook(raw: unknown): KeeperLook {
     made: r['made'] === true,
     prompted: r['prompted'] === true,
     body: pick(BODY_TYPES, r['body'], d.body),
+    form: pick(FORMS, r['form'], d.form),
     skin: index(SKIN_TONES, r['skin'], d.skin),
     hair: pick(HAIR_STYLES, r['hair'], d.hair),
     hairColor: index(HAIR_COLORS, r['hairColor'], d.hairColor),
@@ -206,7 +218,7 @@ export function mergeKeeperLook(remote: unknown, local: unknown): unknown {
 
 /** The parts that change the painting (not the name or the flags), as a short stable key. */
 export function lookKey(look: KeeperLook): string {
-  return [look.body, look.skin, look.hair, look.hairColor, look.eyes, look.eyeColor, look.face, look.outfit, look.trim].join('.');
+  return [look.body, look.skin, look.hair, look.hairColor, look.eyes, look.eyeColor, look.face, look.outfit, look.trim, look.form].join('.');
 }
 
 /** A small deterministic generator (mulberry32). */
@@ -228,11 +240,15 @@ export function randomLook(rand: () => number, base: KeeperLook = defaultLook())
   const outfit = at(OUTFIT_COLORS);
   let trim = at(OUTFIT_COLORS);
   if (trim === outfit) trim = (trim + 3) % OUTFIT_COLORS.length;
-  return {
+  const look: KeeperLook = {
     ...base,
     body: of(BODY_TYPES), skin: at(SKIN_TONES), hair: of(HAIR_STYLES), hairColor: at(HAIR_COLORS),
     eyes: of(EYE_STYLES), eyeColor: at(EYE_COLORS), face: of(FACE_MARKS), outfit, trim,
   };
+  // The figure from what was already drawn (no extra draw: every seeded townsfolk and Keeper keeps the rest of its look),
+  // and no beard on a feminine face.
+  const form: Form = (look.skin + look.hairColor + outfit) % 2 ? 'fem' : 'masc';
+  return { ...look, form, face: form === 'fem' && look.face === 'beard' ? 'rosy' : look.face };
 }
 
 /** A stable look for another Keeper seen in the world (by their id), so nobody looks the same. */
@@ -243,11 +259,12 @@ export function lookFromSeed(id: string): KeeperLook {
 }
 
 /** One field of the creator stepped by ±1 (wrapping). */
-export type LookField = 'body' | 'skin' | 'hair' | 'hairColor' | 'eyes' | 'eyeColor' | 'face' | 'outfit' | 'trim';
-export const LOOK_FIELDS: readonly LookField[] = ['body', 'skin', 'hair', 'hairColor', 'eyes', 'eyeColor', 'face', 'outfit', 'trim'];
+export type LookField = 'form' | 'body' | 'skin' | 'hair' | 'hairColor' | 'eyes' | 'eyeColor' | 'face' | 'outfit' | 'trim';
+export const LOOK_FIELDS: readonly LookField[] = ['form', 'body', 'skin', 'hair', 'hairColor', 'eyes', 'eyeColor', 'face', 'outfit', 'trim'];
 
 export function fieldOptions(field: LookField): readonly (string | number)[] {
   switch (field) {
+    case 'form': return FORMS;
     case 'body': return BODY_TYPES;
     case 'hair': return HAIR_STYLES;
     case 'eyes': return EYE_STYLES;
