@@ -548,7 +548,28 @@ function paintGear(P: Px, M: Px, gear: KeeperGear | null, front: boolean, ht: nu
   if (hd && hd.kind !== 'hood') {
     const m = matOf(hd);
     const at = (x: number, y: number, w: number, col: string) => P(HX + x, ht + y, w, 1, col);
-    if (hd.kind === 'helm') {
+    if (hd.kind === 'helm' && hd.variant === 'pyre') {
+      // The Pyre Watch's iron helm: a combed dome, an ember-lit rim, a dark visor slit over the eyes and a nasal guard.
+      const slit = '#150f14', glow = m.accent;
+      ([[4, 10], [2, 14], [0, 18], [-1, 20], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 2, w, m.base));
+      at(4, -2, 5, m.hi); at(2, -1, 3, m.hi); at(0, 0, 2, m.hi); at(-1, 1, 1, m.hi);
+      for (let y = -1; y < 5; y++) at(15, y, 3, m.lo);
+      // The comb: a raised ridge front to back over the crown, lit on its left.
+      for (let y = -3; y < 4; y++) { at(7, y, 1, m.hi); at(8, y, 2, y === -3 ? m.hi : m.base); at(10, y, 1, m.lo); }
+      // The ember-lit rim and the brow plate under it.
+      at(-1, 3, 20, glow); at(-1, 3, 4, hi(glow, .4)); at(14, 3, 5, lo(glow, .35));
+      at(-1, 4, 20, lo(m.base, .3)); at(0, 5, 18, m.base); at(0, 5, 18, m.base); at(16, 5, 2, m.lo);
+      // The visor slit, an ember catching in it from either side of the nasal.
+      if (front) { at(2, 6, 14, slit); at(4, 6, 2, glow); at(12, 6, 2, glow); }
+      // Cheek guards with an ember rivet, the nasal (front); the neck guard (back).
+      for (let y = 5; y < 12; y++) { at(-1, y, 3, m.base); at(16, y, 3, m.lo); }
+      at(-1, 5, 1, m.hi); at(0, 10, 1, glow); at(17, 10, 1, glow);
+      if (front) { for (let y = 5; y < 11; y++) { at(8, y, 2, y === 5 ? m.trim : m.hi); at(9, y, 1, m.base); } at(8, 10, 2, lo(m.base, .3)); }
+      else {
+        for (let y = 5; y < 13; y++) at(-1, y, 20, y === 12 ? m.trim : y % 3 ? m.base : m.lo);
+        at(1, 6, 16, slit); at(1, 6, 16, lo(m.base, .5)); at(8, 8, 2, glow);
+      }
+    } else if (hd.kind === 'helm') {
       ([[4, 10], [2, 14], [0, 18], [-1, 20], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 2, w, m.base));
       at(4, -2, 5, m.hi); at(2, -1, 3, m.hi); at(0, 0, 2, m.hi); at(-1, 1, 1, m.hi);
       for (let y = -1; y < 5; y++) at(15, y, 3, m.lo);

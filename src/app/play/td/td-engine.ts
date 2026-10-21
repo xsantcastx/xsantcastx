@@ -85,6 +85,7 @@ import { FIRE_BURST, makePack, touchPack } from './td-elites';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
+import { weaponSwing } from './td-melee';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
@@ -381,7 +382,7 @@ export class TopDownEngine {
       foe: (type = 'ash-wolf', dx = 22) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-ash:${type}:${Math.round(this.time * 100)}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
       foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-ash:')).length,
       swings: () => this.mobs.swings,
-      state: () => ({ vocation: this.mobs.vocation, range: this.mobs.range, hp: this.hp, maxHp: this.maxHp, mana: Math.round(this.mobs.mana), maxMana: this.mobs.maxMana, defense: this.mobs.defense, brand: this.mobs.brandT > 0, block: this.mobs.blockT > 0, vow: this.mobs.vowT > 0 }),
+      state: () => ({ vocation: this.mobs.vocation, range: this.mobs.range, hp: this.hp, maxHp: this.maxHp, mana: Math.round(this.mobs.mana), maxMana: this.mobs.maxMana, defense: this.mobs.defense, brand: this.mobs.brandT > 0, block: this.mobs.blockT > 0, vow: this.mobs.vowT > 0, swing: this.mobs.weaponSwing }),
     };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
@@ -1432,6 +1433,8 @@ export class TopDownEngine {
     this.relicKey = key;
     this.mobs.setRelics(relicTotals(ids, setSigOf));
   }
+  /** The weapon in hand (strike + spell damage, or null for bare hands): the Ashguard's swing reads it (td-melee weaponSwing). */
+  setWeapon(w: { strikePower?: number; spellDamage?: number } | null): void { this.mobs.weaponSwing = weaponSwing(w); }
   /** The arrow Glim leaves after a Seek: which way, the floor, and the seconds it still holds. */
   private seekArrow: { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null = null;
   /** A typed "lum vesh <name>": the name the next Seek looks for (null: the nearest). */
