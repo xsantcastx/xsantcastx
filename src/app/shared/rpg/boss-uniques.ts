@@ -37,6 +37,8 @@ export interface RelicSig {
   spearRange?: number;
   /** Every spell hit stains its foe with ink: it takes `pct`% more from every hit for `secs` seconds. */
   ink?: { pct: number; secs: number };
+  /** Percentage points of Magic Find on every kill's loot roll (the item sets' tiers, set-items.ts). */
+  mf?: number;
 }
 
 /** A boss unique: a UniqueItem with the boss it drops from, its chance (1 in `oneIn`), where it is and its signature. */
@@ -131,17 +133,18 @@ export function rollBossUnique(creature: string, rng: () => number): BossUnique 
 export interface RelicTotals {
   light: number; ranks: Record<string, number>; cdCut: Record<string, number>; construct: number; raisedMax: number;
   breath: number; fire: number; singe: { dps: number; secs: number } | null; regen: number; stillRegen: number;
-  spears: number; spearRange: number; ink: { pct: number; secs: number } | null;
+  spears: number; spearRange: number; ink: { pct: number; secs: number } | null; mf: number;
 }
 export const NO_RELICS: RelicTotals = Object.freeze({
   light: 0, ranks: {}, cdCut: {}, construct: 0, raisedMax: 0, breath: 0, fire: 0, singe: null, regen: 0, stillRegen: 1,
-  spears: 0, spearRange: 0, ink: null,
+  spears: 0, spearRange: 0, ink: null, mf: 0,
 }) as RelicTotals;
 
-export function relicTotals(ids: readonly string[]): RelicTotals {
+export function relicTotals(ids: readonly string[], extra?: (id: string) => RelicSig | undefined): RelicTotals {
   const out: RelicTotals = { ...NO_RELICS, ranks: {}, cdCut: {} };
   for (const id of new Set(ids)) {
-    const s = BY_ID.get(id)?.sig;
+    // `extra` names signatures that are not a boss unique's (the item sets' tiers, set-items.ts setSigOf).
+    const s = BY_ID.get(id)?.sig ?? extra?.(id);
     if (!s) continue;
     out.light += s.light ?? 0;
     for (const [k, n] of Object.entries(s.ranks ?? {})) out.ranks[k] = (out.ranks[k] ?? 0) + n;
@@ -155,6 +158,7 @@ export function relicTotals(ids: readonly string[]): RelicTotals {
     out.stillRegen = Math.max(out.stillRegen, s.stillRegen ?? 1);
     out.spears += s.spears ?? 0;
     out.spearRange += s.spearRange ?? 0;
+    out.mf += s.mf ?? 0;
     if (s.ink) out.ink = { pct: (out.ink?.pct ?? 0) + s.ink.pct, secs: Math.max(out.ink?.secs ?? 0, s.ink.secs) };
   }
   return out;

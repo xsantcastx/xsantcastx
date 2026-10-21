@@ -234,6 +234,23 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-mossbound-heart': I('cuirass', 'moss', 'amber', 'rootwood'),
   'unique-splinterbow-rootcradle': I('bow', 'rootwood', 'amber', 'moss'),
   'unique-abbess-censer': I('orb', 'umbral', 'amethyst', 'brass'),
+  // ── The item sets' pieces (rpg/set-items.ts): each set in its own place's materials, the four in one palette ──
+  'set-ossuary-helm': I('helm', 'ash', 'ember', 'iron'),
+  'set-ossuary-hauberk': I('cuirass', 'ash', 'ember', 'iron'),
+  'set-ossuary-bulwark': I('shield', 'ash', 'ember', 'iron'),
+  'set-ossuary-boots': I('boots', 'ash', 'ember', 'iron'),
+  'set-abbey-hood': I('hood', 'umbral', 'eclipse', 'brass'),
+  'set-abbey-robe': I('robe', 'umbral', 'amethyst', 'brass'),
+  'set-abbey-censer-chain': I('pendant', 'brass', 'amethyst', 'umbral'),
+  'set-abbey-sandals': I('boots', 'umbral', 'amethyst', 'brass'),
+  'set-rootcradle-circlet': I('crown', 'moss', 'amber', 'rootwood'),
+  'set-rootcradle-wrap': I('mantle', 'moss', 'rootwood', 'amber'),
+  'set-rootcradle-bracers': I('bracer', 'moss', 'amber', 'rootwood'),
+  'set-rootcradle-greaves': I('greaves', 'moss', 'amber', 'rootwood'),
+  'set-lamplighter-lantern': I('torch', 'brass', 'sungold', 'iron'),
+  'set-lamplighter-coat': I('cuirass', 'leather', 'sungold', 'brass'),
+  'set-lamplighter-gloves': I('gauntlet', 'leather', 'sungold', 'brass'),
+  'set-lamplighter-signet': I('ring', 'sungold', 'dawn', 'brass'),
 
   // ── Charms (rpg/item.model.ts ALL_CHARMS; minted ids carry the seed id as a prefix, see charmSeedId) ──
   // Find: luck, worn smooth. Fortune: coins and marks. Insight: thread, ink and glass.

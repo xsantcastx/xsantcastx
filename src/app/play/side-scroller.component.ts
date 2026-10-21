@@ -53,6 +53,7 @@ import { ELEMENTS, type Element as DamageElement } from '../shared/loot/damage.m
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
 import { MOBS, mobSheet } from './td/td-mobs';
 import { bossUniqueById, type BossUnique } from '../shared/rpg/boss-uniques';
+import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
 import type { SeekAnswer } from './engine/engine.model';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
@@ -326,6 +327,13 @@ interface BagSlip {
   /** The hover card's layout (owner 2026-10-20: the Top Heroes item cards, docs/design/refs/cozy/top-heroes-items.jpg). */
   tip?: ItemTip;
 }
+/** A set piece's card block: how many of the set are worn, each piece (greyed when not), each tier (lit when on). */
+interface ItemSetTip {
+  name: string; count: number; total: number;
+  pieces: { id: string; name: string; worn: boolean; here: boolean }[];
+  tiers: { word: string; n: number; text: string; on: boolean }[];
+  found: string[];
+}
 /** What the hover card shows beyond name and kicker: the frame's rarity, the headline stat, the affixes, wells, worth. */
 interface ItemTip {
   rarity: string;
@@ -340,6 +348,8 @@ interface ItemTip {
   tag: 'perfect' | 'flawless' | null;
   /** Blue lines: auras the piece carries, or a material's use. */
   specials: string[];
+  /** A set piece's block (rpg/set-items.ts): the set's name, its pieces and its tiers, and where the piece is found. */
+  set?: ItemSetTip;
   /** A cursed grave-good's block (shared/grave-goods): its name, the gift, the price, and who lays it to rest. */
   curse?: { name: string; lines: string[]; rest: boolean; lore: string };
   /** A whispering item's block: the words woken so far, how awake, the cost, and whether it was silenced. */
@@ -2025,7 +2035,27 @@ export class SideScrollerComponent implements OnDestroy {
   sheetOpen = false;
   /** The boss uniques the Keeper wears (their ids): each one's signature is applied by the fight (td-mobs relics). */
   private get wornRelics(): string[] {
-    return this.inventory.snapshot.items.filter(it => it.equipped && !it.explorerId && !!bossUniqueById(it.definitionId)).map(it => it.definitionId!);
+    // ...and the signatures of the item-set tiers they wake (rpg/set-items.ts), as `set:<set>:<pieces>` ids.
+    return [...this.wornIds.filter(id => !!bossUniqueById(id)), ...setSigIds(this.wornIds)];
+  }
+  /** The definition ids the Keeper wears (not an explorer's): what the item sets count. */
+  private get wornIds(): string[] {
+    return this.inventory.snapshot.items.filter(it => it.equipped && !it.explorerId && !!it.definitionId).map(it => it.definitionId!);
+  }
+  /** A set piece's card block (design-bible §7.4): the set, each piece (greyed when not worn), each tier (lit when on). */
+  private setTip(item: GameItem): ItemSetTip | undefined {
+    const piece = setPieceById(item.definitionId), set = setOfPiece(item.definitionId);
+    if (!piece || !set) return undefined;
+    const worn = this.wornIds, n = setCounts(worn).get(set.id) ?? 0;
+    const place = piece && set.source.chests
+      ? this.t('play.set.foundChest', { place: chestsHolding(piece).map(c => this.t('play.set.chest.' + c)).join(' · ') })
+      : this.t('play.set.foundKills', { where: set.where, who: set.source.creatures.map(c => MOBS[c]?.name ?? c).join(', '), level: set.source.minLevel });
+    return {
+      name: this.t('play.set.name.' + set.id), count: n, total: set.pieces.length,
+      pieces: set.pieces.map(id => ({ id, name: setPieceById(id)?.name ?? id, worn: worn.includes(id), here: id === item.definitionId })),
+      tiers: set.bonuses.map(b => ({ word: this.t('play.set.tier.' + tierWord(set, b)), n: b.at, text: this.t(`play.set.bonus.${set.id}.${b.at}`), on: n >= b.at })),
+      found: [this.t('play.set.used', { set: this.t('play.set.name.' + set.id) }), place],
+    };
   }
   /** Glim's words for a Seek (td-seek.ts): "The Ink Abbess is very far to the south-east, below you." */
   private seekLine(a: SeekAnswer): string {
@@ -2048,7 +2078,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** The worn gear's combat totals (docs/design/loot-and-combat.md §3), read off the inventory by td-skills. */
   private get gearCombat(): Partial<ItemStats> {
     // The milestones' passives (shared/skills/keeper-milestones.ts) ride on the worn totals, under the same caps.
-    const g: Partial<ItemStats> = { ...wornCombat(this.inventory) };
+    const g: Partial<ItemStats> = { ...wornCombat(this.inventory, this.wornIds) };
     for (const [stat, n] of Object.entries(passiveBonus(this.huntingLevel)) as [keyof ItemStats, number][]) g[stat] = ((g[stat] as number | undefined) ?? 0) + n;
     return g;
   }
@@ -4208,6 +4238,7 @@ export class SideScrollerComponent implements OnDestroy {
       ],
       sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
       reqs: this.reqLines(item),
+      set: this.setTip(item),
       ...this.graveTip(item),
     };
   }

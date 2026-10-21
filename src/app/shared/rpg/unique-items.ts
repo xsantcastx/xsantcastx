@@ -47,6 +47,7 @@ import type { ItemDefinition, ItemStatKey, ItemStyle } from './item-definition';
 import type { ItemRarity, ItemStats, SlotId } from './item.model';
 import type { AuraId } from '../loot/auras';
 import { BOSS_UNIQUES } from './boss-uniques';
+import { SET_PIECES } from './set-items';
 
 /**
  * The machine-readable half of a passive.
@@ -102,6 +103,11 @@ export interface UniqueItem {
    * roll leave these out.
    */
   boss?: string;
+  /**
+   * The item set it belongs to (set-items.ts). Set only on the sixteen set pieces: like a boss unique, a piece reaches
+   * the player by its own path (a creature of its place, a shade chest), never the Gambler or an open unique roll.
+   */
+  set?: string;
 }
 
 /**
@@ -421,6 +427,8 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   // ── The bosses' own (boss-uniques.ts): each drops from its boss alone ──
   ...BOSS_UNIQUES,
+  // ── The item sets' pieces (set-items.ts): mythic, each from its own place ──
+  ...SET_PIECES,
 ];
 
 /**
@@ -483,5 +491,5 @@ export function isUnique(item: { definitionId?: string }): boolean {
  * drops from its boss alone (boss-uniques.ts rollBossUnique).
  */
 export function uniquesAtRarity(rarity: ItemRarity): UniqueItem[] {
-  return UNIQUE_ITEMS.filter(u => u.rarity === rarity && !u.boss);
+  return UNIQUE_ITEMS.filter(u => u.rarity === rarity && !u.boss && !u.set);
 }

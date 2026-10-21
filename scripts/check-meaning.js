@@ -223,7 +223,7 @@ for (const a of ARENA_SHOP) {
 }
 const boxRarities = new Set(MYSTERY_BOXES.flatMap(b => boxWindow(b)));
 for (const rarity of boxRarities) for (const d of boxPool(rarity)) src(d.id, 'Gambler boxes');
-for (const u of UNIQUE_ITEMS) if (!u.boss && boxRarities.has(u.rarity)) src(u.id, 'Gambler boxes (unique)');
+for (const u of UNIQUE_ITEMS) if (!u.boss && !u.set && boxRarities.has(u.rarity)) src(u.id, 'Gambler boxes (unique)');
 // A boss's own unique (shared/rpg/boss-uniques.ts): its source is that boss alone, which must be a top-down boss
 // (td-mobs.ts `rank: 'boss'`); its use is its signature, read by the fight; the card must be able to say both.
 {
@@ -236,6 +236,35 @@ for (const u of UNIQUE_ITEMS) if (!u.boss && boxRarities.has(u.rarity)) src(u.id
     else violationsLater.push(['item', 'no-source', u.id, `its boss ${u.boss} is not a td-mobs.ts boss`]);
     if (u.sig && Object.keys(u.sig).length) use(u.id, `signature (td-mobs relics): ${Object.keys(u.sig).join(', ')}`);
     if (!HUD_WORDS.includes(`'play.relic.sig.${u.id}'`)) violationsLater.push(['item', 'not-visible', u.id, 'no play.relic.sig line for its card']);
+  }
+}
+// An item set's piece (shared/rpg/set-items.ts): its source is its set's creatures (each a td-mobs.ts creature) or a shade
+// chest (td-dark.ts SHADE_CHESTS); its use is the set's tiers, which the fight reads; the card must be able to say both.
+{
+  const MOBS_SRC = read('play/td/td-mobs.ts');
+  const DARK_SRC = read('play/td/td-dark.ts');
+  const HUD_WORDS = read('play/world/hud.i18n.ts');
+  const { ITEM_SETS, SET_PIECES } = L('shared/rpg/set-items.ts');
+  for (const set of ITEM_SETS) {
+    if (!HUD_WORDS.includes(`'play.set.name.${set.id}'`)) violationsLater.push(['item', 'not-visible', set.id, 'no play.set.name line for its card']);
+    for (const b of set.bonuses) {
+      if (!HUD_WORDS.includes(`'play.set.bonus.${set.id}.${b.at}'`)) violationsLater.push(['item', 'not-visible', set.id, `no play.set.bonus line for its ${b.at}-piece tier`]);
+      if (!(b.stats || b.defensePct || b.sig)) violationsLater.push(['item', 'no-use', set.id, `its ${b.at}-piece tier does nothing`]);
+    }
+    for (const id of set.pieces) {
+      const piece = SET_PIECES.find(p => p.id === id);
+      if (!piece) { violationsLater.push(['item', 'no-source', id, `set ${set.id} names a piece that is not defined`]); continue; }
+      for (const c of set.source.creatures) {
+        if (new RegExp(`\\bid: '${c}'`).test(MOBS_SRC)) src(id, `${c} (set ${set.id})`);
+        else violationsLater.push(['item', 'no-source', id, `its creature ${c} is not a td-mobs.ts creature`]);
+      }
+      for (const [chest, held] of Object.entries(set.source.chests ?? {})) {
+        if (held !== id && held !== null) continue;
+        if (new RegExp(`id: '${chest}'`).test(DARK_SRC)) src(id, `shade chest ${chest} (set ${set.id})`);
+        else violationsLater.push(['item', 'no-source', id, `its shade chest ${chest} is not in td-dark.ts`]);
+      }
+      use(id, `${set.name} tiers (wornCombat / relicTotals): ${set.bonuses.map(b => b.at).join(', ')}`);
+    }
   }
 }
 // The Croupier's Reels: a winning line may hand over one of its symbol's thing.
@@ -520,7 +549,7 @@ const { DROP_POOL } = L('shared/loot/drop-tables.ts');
 const { AURA_IDS } = L('shared/loot/auras.ts');
 const { CREATURE_PROFILES } = L('shared/loot/creature-families.ts');
 for (const d of DROP_POOL) src(d.id, 'creature drops');
-for (const u of UNIQUE_ITEMS) if (!u.boss) src(u.id, 'creature drops (unique)');
+for (const u of UNIQUE_ITEMS) if (!u.boss && !u.set) src(u.id, 'creature drops (unique)');
 for (const r of RUNES) if (r.dropRate > 0) node('rune', r.id, r.name).sources.add('creature drops');
 const LOOT_WORDS = read('shared/loot/loot.i18n.ts');
 const CODEX_LOOT = fs.existsSync(path.join(APP, 'codex/codex-loot.component.ts')) ? read('codex/codex-loot.component.ts') : '';

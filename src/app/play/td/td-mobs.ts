@@ -2733,7 +2733,7 @@ export class MobSystem {
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
     const rank = m.def.rank ?? 'normal';
-    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k, ...(this.darkBoon.mf ? { mf: this.darkBoon.mf } : {}) }) ?? []; } catch { return []; } };
+    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k, ...(this.darkBoon.mf + this.relics.mf ? { mf: this.darkBoon.mf + this.relics.mf } : {}) }) ?? []; } catch { return []; } };
     rows = roll(id);
     // Elites (td-elites.ts): their gear never drops common, and a unique leader always leaves a magic-or-better piece.
     if (m.elite) {
