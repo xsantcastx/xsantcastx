@@ -1870,6 +1870,9 @@ export class SideScrollerComponent implements OnDestroy {
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
     // The worn gear's combat affixes (§3) ride along; the engine re-applies only when a number changed.
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
+    // The weapon in hand: its Strike and Spell Damage lift the Ashguard's swing (td-melee weaponSwing).
+    const held = this.inventory.snapshot.equipped['weapon'];
+    (this.engine as unknown as { setWeapon?: (w: { strikePower?: number; spellDamage?: number } | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? { strikePower: held.stats.strikePower, spellDamage: held.stats.spellDamage } : null);
     // The worn boss uniques' signatures (shared/rpg/boss-uniques.ts): the engine re-applies only when the set changed.
     (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));

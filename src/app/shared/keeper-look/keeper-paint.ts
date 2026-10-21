@@ -460,7 +460,7 @@ export class KeeperPainter {
   get top(): number {
     const head = this.gear?.head, garb = this.garb, hair = this.look.hair;
     let rise = 2;
-    if (head?.kind === 'helm') rise = head.rarity === 'common' || head.rarity === 'uncommon' ? 4 : 7;
+    if (head?.kind === 'helm') rise = head.variant === 'pyre' ? 5 : head.rarity === 'common' || head.rarity === 'uncommon' ? 4 : 7;
     else if (head?.kind === 'hood') rise = 4;
     else if (head?.kind === 'crown') rise = 5;
     else if (garb?.hat) rise = garb.hat === 'brim' ? 8 : 5;
@@ -933,6 +933,21 @@ export class KeeperPainter {
     const m = matOf(head);
     switch (head.kind) {
       case 'helm':
+        if (head.variant === 'pyre') {
+          // The Pyre Watch's iron helm in profile: a combed dome, an ember-lit rim, a dark visor slit and a nasal guard.
+          const slit = '#150f14';
+          px(c, x + 3, y - 4, HW - 6, 1, m.base); px(c, x + 1, y - 3, HW - 2, 1, m.base); px(c, x, y - 2, HW, 1, m.base);
+          px(c, x - 1, y - 1, HW + 2, 4, m.base);
+          px(c, x + 3, y - 3, 6, 1, m.baseHi); px(c, x + 1, y - 2, 2, 2, m.baseHi);
+          px(c, x + 4, y - 5, 7, 1, m.baseHi);   // the comb along the crown
+          px(c, x + 10, y - 3, 4, 3, m.baseLo);                                      // the shaded front of the dome
+          px(c, x - 1, y + 3, HW + 2, 1, m.accent); px(c, x, y + 3, 4, 1, light(m.accent, .4)); // the ember-lit rim
+          px(c, x - 1, y + 4, HW + 1, 1, m.baseLo);                                  // the brow plate
+          px(c, x + 6, y + 5, HW - 5, 1, slit); px(c, x + 6, y + 5, 2, 1, m.accent);  // the visor slit, an ember in it
+          px(c, x + HW - 2, y + 5, 2, 5, m.baseHi); px(c, x + HW - 1, y + 5, 1, 5, m.base); // the nasal guard
+          px(c, x - 1, y + 6, 5, 6, m.base); px(c, x - 1, y + 6, 1, 6, m.baseLo); px(c, x + 1, y + 10, 1, 1, m.accent); // cheek and neck guard
+          break;
+        }
         // A round cap of a helm on the big head: the eyes stay clear under the brim.
         px(c, x + 3, y - 4, HW - 6, 1, m.base); px(c, x + 1, y - 3, HW - 2, 1, m.base); px(c, x, y - 2, HW, 1, m.base);
         px(c, x - 1, y - 1, HW + 2, 5, m.base);

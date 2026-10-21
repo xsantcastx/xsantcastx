@@ -27,7 +27,7 @@ import { extraSpawn, hardened, nightType, rollTouched, rulesOf, spellMult, touch
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
 import { ASHGUARD_SKILLS } from './td-ashguard-skills';
-import { brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp } from './td-melee';
+import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, type WeaponSwing } from './td-melee';
 
 export interface MobDef {
   id: string;
@@ -2715,6 +2715,9 @@ export class MobSystem {
 
   // ── The Ashguard (td-ashguard-skills.ts, design-bible §4.4) ──
 
+  /** The weapon in hand as the swing sees it (td-melee weaponSwing; the host hands it in). The starter edge's swing until the host says what is held (setWeapon: null is bare hands). */
+  weaponSwing: WeaponSwing = NO_WEAPON_BONUS;
+
   /** The basic attack: one swing of the Watch Blade in an arc toward the foe (the Ember Brand lights it while it burns). */
   private swingBlade(foe: Mob): void {
     const p = this.host.player(), v = this.v('watch-blade');
@@ -2736,7 +2739,7 @@ export class MobSystem {
     let n = 0;
     for (const m of [...this.mobs]) {
       if (m !== must && !inArc(p.x, p.y, aim, reach, arc, m.x, m.y, m.def.w / 2)) continue;
-      let blow = meleeBlow(blade['min'], blade['max'], pct);
+      let blow = meleeBlow(blade['min'], blade['max'], pct, Math.random, this.weaponSwing);
       if (brand) blow = brandedBlow(blow, brand['pct']);
       if (lit) blow *= this.fireMult;
       this.effects.push({ kind: 'slash', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .2, dir: m.x < p.x ? -1 : 1 });
@@ -2793,7 +2796,7 @@ export class MobSystem {
       this.host.dash?.(to.x, to.y);
       const at = this.host.player();
       this.effects.push({ kind: 'stride', x: at.x, y: at.y, tx: from.x, ty: from.y, age: 0, life: .4, dir: foe.x < from.x ? -1 : 1 });
-      this.hitFoe(foe, meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], v['pct']), '#efe6dc');
+      this.hitFoe(foe, meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], v['pct'], Math.random, this.weaponSwing), '#efe6dc');
       // The knock: a tile back along the charge, if the ground behind it is open (never for a boss).
       if (foe.hp > 0 && foe.def.rank !== 'boss') {
         const d = Math.hypot(foe.x - at.x, foe.y - at.y) || 1, k = v['knock'] * TILE / d, kx = foe.x + (foe.x - at.x) * k, ky = foe.y + (foe.y - at.y) * k;
