@@ -29,7 +29,7 @@ describe('td-ashguard: the book as data', () => {
     expect(bookTrees('ashguard')).toEqual(['brand', 'oath', 'ash', 'common']);
     expect(bookTrees('warlock')).toEqual(['ember', 'bone', 'shadow', 'common']);
     expect(ASH.length).toBe(12);
-    expect(CLASS_SKILLS.ashguard.length).toBe(14);
+    expect(CLASS_SKILLS.ashguard.length).toBe(15); // + the common page: Light, the Seek, the Waygate
     for (const tr of ASH_TREES) {
       const ids = treeSkills('ashguard', tr);
       expect(ids.length).withContext(tr).toBe(4);

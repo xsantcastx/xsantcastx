@@ -395,6 +395,17 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
   soul.lore = !!SS.SPELLSTONE_MEANING.soul.lore;
   if (!HUD.includes('data-soul')) { soul.visible = false; soul.notes.push('no Soul on the HUD'); }
 }
+// The Waygate Scroll (shared/waygate/waygate-scroll.ts): Edrin Kade's counter; read from the satchel's item card
+// (side-scroller readScroll → engine openWaygate). Lore on its meaning table.
+{
+  const WS = L('shared/waygate/waygate-scroll.ts');
+  const HUD = read('play/side-scroller.component.html') + read('play/side-scroller.component.ts');
+  const VENDOR = read('shared/vendor/material-vendor.component.ts');
+  const n = thing(WS.WAYGATE_SCROLL_ID);
+  if (VENDOR.includes('buyWaygateScrolls(')) for (const s of WS.WAYGATE_SCROLL_MEANING.sources) src(WS.WAYGATE_SCROLL_ID, s);
+  if (HUD.includes('readScroll(') && HUD.includes('openWaygate')) for (const u of WS.WAYGATE_SCROLL_MEANING.uses) use(WS.WAYGATE_SCROLL_ID, u);
+  n.lore = !!WS.WAYGATE_SCROLL_MEANING.lore;
+}
 // Grave-goods (shared/grave-goods/grave-goods.model.ts): cursed pieces (crypt drops, Sexton Wren cleanses) and
 // whispering pieces (any rare+ drop, the Archivist silences). Each curse and voice needs its words on the card.
 {

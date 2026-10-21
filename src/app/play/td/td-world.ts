@@ -137,6 +137,8 @@ export class TdWorld implements TdLevel {
 
   /** Inside the stamped town (tiles). */
   inTown(c: number, r: number): boolean { return c >= 0 && r >= 0 && c < this.town.cols && r < this.town.rows; }
+  /** Inside the town or a village (tiles), not the clear ground round them: where a Waygate will not open (td-waygate). */
+  inSettlement(c: number, r: number): boolean { return this.inTown(c, r) || !!this.villageAt(c, r); }
   private villageAt(c: number, r: number, margin = 0): Village | undefined {
     for (const v of this.villages) if (c >= v.c0 - margin && r >= v.r0 - margin && c < v.c0 + v.map.cols + margin && r < v.r0 + v.map.rows + margin) return v;
     return undefined;

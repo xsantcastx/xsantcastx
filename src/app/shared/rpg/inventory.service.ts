@@ -75,6 +75,7 @@ import {
   mintBasaltEdge,
 } from './forge-recipes';
 import { isBasaltEdge } from './material-catalog';
+import { handsDisplaced, isTwoHanded, mendHands } from './item-hands';
 import { refineOpIds, refinePreview, refineRecipeFor } from './refine-ops';
 import { INVENTORY_ERA } from './inventory.model';
 import { eraIsCurrent, ledgerFromPriorEra } from '../save/realm-era';
@@ -1314,7 +1315,39 @@ export class InventoryService {
   private wearCheck: ((item: GameItem) => boolean) | null = null;
   setWearCheck(check: ((item: GameItem) => boolean) | null): void { this.wearCheck = check; }
 
+  /**
+   * Why the last `equip` was refused, when hands were the reason (item-hands.ts): `hands-full` — a two-handed weapon
+   * (or an off-hand beside one) would have sent the other piece to a satchel with no room for it. Null otherwise.
+   */
+  equipRefusal: 'hands-full' | 'kit-hands' | null = null;
+
+  /**
+   * The hands the Keeper's class kit weapon takes while the weapon slot is empty (keeper-look vocation-look KIT_HANDS:
+   * the Thornstrider's hunting bow and the Lanternwright's lamp-staff take both). The play screen hands it in, as it
+   * does the requirement check. Two: the off-hand stays empty until a one-handed weapon is worn; a save wearing an
+   * off-hand with an empty weapon slot is mended the moment it is set (the off-hand to the satchel, else the Vault).
+   */
+  private kitHands: 1 | 2 = 1;
+  setKitHands(hands: 1 | 2): void {
+    this.kitHands = hands === 2 ? 2 : 1;
+    if (!this.isBrowser || this.kitHands !== 2) return;
+    const worn = this.items.filter(i => i.equipped && !i.explorerId);
+    const off = worn.find(i => i.slot === 'off-hand');
+    if (!off || worn.some(i => i.slot === 'weapon')) return;
+    const previous = this.ledger;
+    this.ledger = this.settled(this.mapInstances(row => row.id === off.id ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row));
+    if (!this.save()) { this.ledger = previous; return; }
+    this.publish();
+  }
+  /** Is the off-hand shut: a two-handed weapon worn, or nothing worn and the kit's weapon takes both hands? */
+  get offHandBlocked(): boolean {
+    const weapon = this.snapshot.equipped['weapon'];
+    const held = weapon && !weapon.explorerId ? weapon : undefined;
+    return held ? isTwoHanded(held) : this.kitHands === 2;
+  }
+
   equip(itemId: string, slot?: SlotId): boolean {
+    this.equipRefusal = null;
     if (!this.isBrowser) return false;
     const item = this.itemById(itemId);
     if (!item) return false;
@@ -1339,6 +1372,16 @@ export class InventoryService {
     const occupant = this.items.find(row =>
       row.equipped && row.slot === target && row.id !== itemId,
     );
+    // Hands (item-hands.ts): a two-handed weapon empties the off-hand; an off-hand put on beside one sends the weapon
+    // back. Whatever moves goes to the satchel — never the Vault — so a full satchel refuses the swap with a reason.
+    const worn: Partial<Record<string, GameItem>> = {};
+    for (const row of this.items) if (row.equipped && row.slot && !row.explorerId && row.id !== itemId) worn[row.slot] = row;
+    const handsOut = new Set(handsDisplaced(item, target, worn).map(row => row.id));
+    // The kit's two-handed weapon (the hunting bow, the lamp-staff) holds both hands until a weapon is worn.
+    if (target === 'off-hand' && !worn['weapon'] && this.kitHands === 2) {
+      this.equipRefusal = 'kit-hands';
+      return false;
+    }
     const previous = this.ledger;
     this.ledger = this.mapInstances(row => {
       if (row.id === itemId) {
@@ -1347,7 +1390,7 @@ export class InventoryService {
           location: { kind: 'equipped', slotId: target! },
         });
       }
-      if (row.location.kind === 'equipped' && row.location.slotId === target) {
+      if (row.location.kind === 'equipped' && (row.location.slotId === target || handsOut.has(row.id))) {
         return this.withRevision({ ...row, location: { kind: 'bag' } });
       }
       return row;
@@ -1358,6 +1401,11 @@ export class InventoryService {
         this.ledger = previous;
         return false;
       }
+    }
+    if (handsOut.size && occupancyOf(this.ledger).slots.bag > this.capacity().satchel) {
+      this.ledger = previous;
+      this.equipRefusal = 'hands-full';
+      return false;
     }
     // A displaced occupant that grows a full satchel goes to the Vault.
     this.ledger = this.settled(this.ledger);
@@ -1377,9 +1425,12 @@ export class InventoryService {
     const item = this.itemById(itemId);
     if (!item || (!item.equipped && !item.explorerId)) return false;
 
+    // Taking the weapon off puts the kit's back in hand: a two-handed kit (the hunting bow) takes the off-hand too.
+    const off = item.equipped && item.slot === 'weapon' && this.kitHands === 2
+      ? this.items.find(i => i.equipped && i.slot === 'off-hand' && !i.explorerId) : undefined;
     const previous = this.ledger;
     this.ledger = this.settled(this.mapInstances(row =>
-      row.id === itemId ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row,
+      row.id === itemId || row.id === off?.id ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row,
     ));
     if (!this.save()) {
       this.ledger = previous;
@@ -1828,9 +1879,11 @@ export class InventoryService {
     return this.capacityFor(this.ledger);
   }
 
-  /** Load-time pass: delete legacy Sigil records, then settle. Quiet: nothing just arrived. */
+  /** Load-time pass: delete legacy Sigil records, mend hands, then settle. Quiet: nothing just arrived. */
   private normalised(ledger: InventoryLedger): InventoryLedger {
-    return this.settled(dropLegacySigils(ledger, this.deviceId, Date.now()), false);
+    // A two-handed weapon worn beside an off-hand (a save from before hands, item-hands.ts): the off-hand comes off.
+    const now = Date.now();
+    return this.settled(mendHands(dropLegacySigils(ledger, this.deviceId, now), this.deviceId, now), false);
   }
 
   /**
