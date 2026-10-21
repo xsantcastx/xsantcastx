@@ -7,7 +7,7 @@ import {
 /** Untyped literals: the shapes the service writes, minus what the haul never reads. */
 const item = (over: Record<string, unknown> = {}) => ({
   id: 'i1', name: 'Ash Sigil', type: 'artifact', rarity: 'rare',
-  stats: { goldPerSec: 1.3, strikePower: 2 },
+  stats: { goldFind: 1.3, strikePower: 2 },
   sellValue: 0, equipped: false, foundAt: '2026-01-01T00:00:00.000Z', soulbound: false,
   ...over,
 }) as any;
@@ -37,8 +37,8 @@ describe('haulOf', () => {
     expect(lines[0].kind).toBe('item');
     expect(lines[0].name).toBe('Ash Sigil');
     expect(lines[0].color).toBe(RUNE_TIERS.rare.color);
-    // goldPerSec is first in ITEM_STAT_KEYS, so it wins over strikePower.
-    expect(lines[0].detail).toBe('Gold/sec +1.3');
+    // goldFind is first in ITEM_STAT_KEYS, so it wins over strikePower.
+    expect(lines[0].detail).toBe('Gold Find +1.3%');
   });
 
   it('falls back to the rarity label when the item rolled no stats', () => {

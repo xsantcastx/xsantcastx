@@ -27,6 +27,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { EconomyService } from '../economy/economy.service';
 import { InfusionService } from '../enchanting/infusion.service';
 import { InventoryService } from './inventory.service';
+import { totalGoldFind } from './item.model';
 import { PlayerStatsService } from './player-stats.service';
 import { ExplorerRosterService } from './explorer-roster.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
@@ -82,22 +83,25 @@ export class RpgWiringService {
   }
 
   /**
-   * Push the flat Gold/sec and the Market discount into the ledger.
+   * Push Gold Find and the Market discount into the ledger.
    *
-   * Gold/sec is the sum of Forge Power's half-a-point and every `goldPerSec` on
-   * a worn item. Explorer-worn items are excluded — they pay their wearer's
-   * expedition rolls, not the furnace, and counting them here would pay the same
-   * item on both sides.
+   * Gold Find is the sum of Forge Power's half-a-point and every `goldFind` on a worn item. Explorer-worn items are
+   * excluded — they pay their wearer's expedition rolls, not the Keeper's hunt, and counting them here would pay the
+   * same item on both sides.
    */
   private mirror(): void {
-    // Economy v3: gear stays a flat Gold/s addend; Forge Power is a percentage
-    // of the forge (economy-curve.ts, FORGE_POWER_PERCENT_PER_POINT).
-    const fromGear = this.inventory.equippedTotals.goldPerSec;
-    this.economy.setRpgFlatGold(fromGear);
-    this.economy.setRpgForgePercent(this.stats.goldPerSec);
+    // The forge pays nothing by the second (economy-curve IDLE_INCOME), so neither the gear's old Gold/sec nor Forge
+    // Power's share of the forge pays anything either. Both are Gold Find now: worn `goldFind` (older items' retired
+    // `goldPerSec` read in as Gold Find) plus Forge Power's half a percent a point, on every pile the hunt drops.
+    this.economy.setRpgFlatGold(0);
+    this.economy.setRpgForgePercent(0);
+    this.economy.setGoldFind(totalGoldFind({
+      goldFind: this.inventory.equippedTotals.goldFind,
+      goldPerSec: this.inventory.equippedTotals.goldPerSec,
+    }) + this.stats.goldPerSec);
     this.economy.setPriceMultiplier(this.stats.priceMultiplier);
     // A multiplier on the whole rate rather than on the RPG line: the card says
-    // "+10% Gold/sec", and a visitor whose Gold comes almost entirely from the
+    // "+10% Gold from the hunt", and a visitor whose Gold comes almost entirely from the
     // furnace would otherwise see a buff worth a rounding error.
     this.economy.setInfusionGold(this.infusions.multiplierOn('gold'));
   }

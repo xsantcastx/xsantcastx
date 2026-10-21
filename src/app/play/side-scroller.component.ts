@@ -1241,8 +1241,10 @@ export class SideScrollerComponent implements OnDestroy {
   private collectCoins(dropId: string, coins: number): boolean {
     if (this.creditedDrops.has(dropId)) return true;
     this.creditedDrops.add(dropId);
-    this.economy.earnGold(coins, 'hunt');
-    this.coinsKept += coins;
+    // Gold Find (worn gear, Forge Power, a Gold potion) raises the pile on the way in; the satchel's count keeps what
+    // the purse actually took.
+    const paid = this.economy.earnHuntGold(coins);
+    this.coinsKept += paid || coins;
     this.writePlay({ coins: this.coinsKept });
     this.bump('.coin-count');
     this.sound.sfx('coin');

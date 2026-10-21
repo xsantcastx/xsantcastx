@@ -117,7 +117,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   // ── Uncommon: the ones you meet first ────────────────────────────────────
   {
     id: 'unique-tinders-due', name: "Tinder's Due", rarity: 'uncommon', slot: 'hands', style: 'infernal',
-    rollKeys: ['strikePower', 'goldPerSec'], base: { strikePower: 1.4, goldPerSec: 0.2 },
+    rollKeys: ['strikePower', 'goldFind'], base: { strikePower: 1.4, goldFind: 0.2 },
     passive: { effect: 'strike-double', text: 'The second strike of any pair lands warmer than the first.' },
     lore: 'A smith left these on the anvil for a apprentice who never came back for them. They were still warm a year later.',
   },
@@ -129,7 +129,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-ashfall-wrap', name: 'Ashfall Wrap', rarity: 'uncommon', slot: 'chest', style: 'infernal',
-    rollKeys: ['ward', 'goldPerSec'], base: { ward: 0.9, goldPerSec: 0.3 },
+    rollKeys: ['ward', 'goldFind'], base: { ward: 0.9, goldFind: 0.3 },
     passive: { effect: 'ward-mirror', text: 'Heat turned aside by this cloth is heat someone else does not have to carry.' },
     lore: 'Sewn from the drop-cloth of a forge that burned down twice and was rebuilt in the same place both times.',
   },
@@ -149,7 +149,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-cinderwake', name: 'Cinderwake', rarity: 'rare', slot: 'weapon', style: 'infernal',
-    rollKeys: ['goldPerSec', 'strikePower'], base: { goldPerSec: 0.7, strikePower: 1.3 },
+    rollKeys: ['goldFind', 'strikePower'], base: { goldFind: 0.7, strikePower: 1.3 },
     passive: { effect: 'gold-surge', text: 'The furnace runs hotter for a moment after every find.' },
     lore: 'The edge cooled crooked and nobody straightened it, because crooked is how it caught the seam in the first place.',
     aura: 'holy-fire',
@@ -168,7 +168,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-tally-of-hands', name: 'The Tally of Hands', rarity: 'rare', style: 'neutral', charm: true,
-    rollKeys: ['goldPerSec'], base: { goldPerSec: 2.4 },
+    rollKeys: ['goldFind'], base: { goldFind: 2.4 },
     passive: { effect: 'idle-drift', text: 'It keeps counting while you are not looking.' },
     lore: 'Every Keeper who held it added one mark. There are four hundred and eleven marks and eleven known Keepers.',
   },
@@ -188,25 +188,25 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-anvil-of-small-hours', name: 'Anvil of Small Hours', rarity: 'epic', slot: 'hands', style: 'infernal',
-    rollKeys: ['strikePower', 'goldPerSec'], base: { strikePower: 2.8, goldPerSec: 0.5 },
+    rollKeys: ['strikePower', 'goldFind'], base: { strikePower: 2.8, goldFind: 0.5 },
     passive: { effect: 'strike-double', text: 'Work done when nobody is watching counts twice.' },
     lore: 'Portable, barely. Its owner carried it up the Verge stair one step at a time over three days and never explained why.',
   },
   {
     id: 'unique-quiet-cuirass', name: 'The Quiet Cuirass', rarity: 'epic', slot: 'chest', style: 'umbral',
-    rollKeys: ['ward', 'goldPerSec'], base: { ward: 2.6, goldPerSec: 0.6 },
+    rollKeys: ['ward', 'goldFind'], base: { ward: 2.6, goldFind: 0.6 },
     passive: { effect: 'ward-mirror', text: 'It turns a blow aside rather than pretending the blow did not land.' },
     lore: 'Obsidian scale over mirror-backing. The mirror is not decorative; it is so the wearer has to see what they are absorbing.',
   },
   {
     id: 'unique-hollowmark', name: 'Hollowmark', rarity: 'epic', slot: 'weapon', style: 'void', charm: false,
-    rollKeys: ['goldPerSec', 'xpBonus'], base: { goldPerSec: 1.6, xpBonus: 3.4 },
+    rollKeys: ['goldFind', 'xpBonus'], base: { goldFind: 1.6, xpBonus: 3.4 },
     passive: { effect: 'rarity-pull', text: 'It cuts toward what is rare, which is not always what is useful.' },
     lore: 'The blade is fine. It is the absence running down the centre of it that people ask about, and it has no answer.',
   },
   {
     id: 'unique-verdant-accord', name: 'The Verdant Accord', rarity: 'epic', style: 'verdant', charm: true,
-    rollKeys: ['xpBonus', 'goldPerSec'], base: { xpBonus: 7, goldPerSec: 1.2 },
+    rollKeys: ['xpBonus', 'goldFind'], base: { xpBonus: 7, goldFind: 1.2 },
     passive: { effect: 'idle-drift', text: 'Growth continues in your absence, which is the only kind that lasts.' },
     lore: 'Two realms signed it. Neither has enforced a clause in two hundred years and both consider it their finest work.',
   },
@@ -227,7 +227,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-goldmouth', name: 'Goldmouth', rarity: 'legendary', slot: 'weapon', style: 'infernal',
-    rollKeys: ['goldPerSec', 'strikePower'], base: { goldPerSec: 4.2, strikePower: 3 },
+    rollKeys: ['goldFind', 'strikePower'], base: { goldFind: 4.2, strikePower: 3 },
     passive: { effect: 'gold-surge', text: 'It has never once been described as subtle.' },
     lore: 'A blade that pays. The Archivum has four separate rulings on whether that sentence is metaphor and they disagree.',
   },
@@ -239,7 +239,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-long-account', name: 'The Long Account', rarity: 'legendary', style: 'neutral', charm: true,
-    rollKeys: ['xpBonus', 'goldPerSec', 'magicFind'], base: { xpBonus: 14, goldPerSec: 2.5, magicFind: 5 },
+    rollKeys: ['xpBonus', 'goldFind', 'magicFind'], base: { xpBonus: 14, goldFind: 2.5, magicFind: 5 },
     passive: { effect: 'reforge-memory', text: 'Everything you have rerolled away is written down in here somewhere.' },
     lore: 'Not the whole account. The long one, which is a different document, and the only one anybody finished.',
   },
@@ -247,7 +247,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   // ── Mythic: two, and they are meant to be talked about ───────────────────
   {
     id: 'unique-heartwood-of-the-verge', name: 'Heartwood of the Verge', rarity: 'mythic', slot: 'chest', style: 'verdant',
-    rollKeys: ['ward', 'goldPerSec', 'xpBonus'], base: { ward: 9, goldPerSec: 5, xpBonus: 10 },
+    rollKeys: ['ward', 'goldFind', 'xpBonus'], base: { ward: 9, goldFind: 5, xpBonus: 10 },
     passive: { effect: 'idle-drift', text: 'It grows toward whichever realm you have neglected longest.' },
     lore: 'Cut from the one tree that was standing on both sides of the Shattering and did not appear to notice.',
     aura: 'prayer',
@@ -262,14 +262,14 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   // ── Singular: one each, unsellable. See the header. ──────────────────────
   {
     id: 'unique-the-unstruck-hour', name: 'The Unstruck Hour', rarity: 'singular', slot: 'trinket', style: 'void',
-    rollKeys: ['goldPerSec', 'xpBonus', 'magicFind'], base: { goldPerSec: 9, xpBonus: 18, magicFind: 12 },
+    rollKeys: ['goldFind', 'xpBonus', 'magicFind'], base: { goldFind: 9, xpBonus: 18, magicFind: 12 },
     passive: { effect: 'rarity-pull', text: 'The hour that was never struck is still, technically, available.' },
     lore: 'Every bell in the five realms rang at the Shattering except one, and nobody has ever agreed on which.',
     soulbound: true,
   },
   {
     id: 'unique-keepers-second-name', name: "The Keeper's Second Name", rarity: 'singular', style: 'neutral', charm: true,
-    rollKeys: ['xpBonus', 'magicFind', 'goldPerSec'], base: { xpBonus: 24, magicFind: 14, goldPerSec: 7 },
+    rollKeys: ['xpBonus', 'magicFind', 'goldFind'], base: { xpBonus: 24, magicFind: 14, goldFind: 7 },
     passive: { effect: 'guaranteed-mf', text: 'It answers to you, which is not the same as belonging to you.' },
     lore: 'A Keeper is issued one name. This is the other one, and reading it aloud is how the Archivum defines a bad afternoon.',
     soulbound: true,
@@ -313,7 +313,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-merchants-scale', name: 'The Merchant\'s Scale', rarity: 'epic', charm: true, style: 'neutral',
-    rollKeys: ['magicFind', 'xpBonus', 'goldPerSec'], base: { magicFind: 14, xpBonus: 12, goldPerSec: 4 },
+    rollKeys: ['magicFind', 'xpBonus', 'goldFind'], base: { magicFind: 14, xpBonus: 12, goldFind: 4 },
     passive: { effect: 'gold-surge', text: 'It weighs the offer and the offerer, and only reports one of the two.' },
     lore: 'The Merchant does not haggle. They weigh. This scale measures not mass but value — a concept that incorporates rarity, craftsmanship, desire, and destiny.',
   },
@@ -350,14 +350,14 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-aureths-mantle', name: 'Aureth\'s Mantle', rarity: 'singular', slot: 'chest', style: 'luminous',
-    rollKeys: ['ward', 'goldPerSec', 'magicFind'], base: { ward: 6.72, goldPerSec: 2.52, magicFind: 10.08 },
+    rollKeys: ['ward', 'goldFind', 'magicFind'], base: { ward: 6.72, goldFind: 2.52, magicFind: 10.08 },
     passive: { effect: 'gold-surge', text: 'It carries a sunrise that has not been overhead for four thousand years.' },
     lore: 'Aureth the Radiant wore this mantle during every significant event in the Luminous Realm\'s history: the First Dawn, the Shattering, the Reconstruction, and the Forging of the Treaties.',
     soulbound: true,
   },
   {
     id: 'unique-verrins-requiem', name: 'Verrin\'s Requiem', rarity: 'singular', slot: 'weapon', style: 'umbral',
-    rollKeys: ['strikePower', 'goldPerSec', 'magicFind'], base: { strikePower: 8.4, goldPerSec: 3.36, magicFind: 10.08 },
+    rollKeys: ['strikePower', 'goldFind', 'magicFind'], base: { strikePower: 8.4, goldFind: 3.36, magicFind: 10.08 },
     passive: { effect: 'strike-double', text: 'What it cuts is not wounded. It is asked whether it was ever there.' },
     lore: 'Verrin the Hollow forged this blade to answer a question: \'What happens when you cut something with nothing?',
     soulbound: true,
@@ -385,7 +385,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-worldsplitter', name: 'Worldsplitter', rarity: 'singular', slot: 'weapon', style: 'neutral',
-    rollKeys: ['strikePower', 'goldPerSec', 'magicFind'], base: { strikePower: 8.4, goldPerSec: 3.36, magicFind: 10.08 },
+    rollKeys: ['strikePower', 'goldFind', 'magicFind'], base: { strikePower: 8.4, goldFind: 3.36, magicFind: 10.08 },
     passive: { effect: 'strike-double', text: 'The axe that made five realms out of one, and has not been put down since.' },
     lore: 'The Nameless used Worldsplitter to perform the Eclipse — the act that divided one world into five realms.',
     aura: 'might',
@@ -400,21 +400,21 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
   {
     id: 'unique-rootmothers-embrace', name: 'Rootmother\'s Embrace', rarity: 'singular', slot: 'chest', style: 'verdant',
-    rollKeys: ['ward', 'goldPerSec', 'magicFind'], base: { ward: 6.72, goldPerSec: 2.52, magicFind: 10.08 },
+    rollKeys: ['ward', 'goldFind', 'magicFind'], base: { ward: 6.72, goldFind: 2.52, magicFind: 10.08 },
     passive: { effect: 'ward-mirror', text: 'It is alive, it is armour, and it has opinions about which of those comes first.' },
     lore: 'The Rootmother is the oldest consciousness in the Verdant Realm — not a person but the collective awareness of the World-Root\'s primary root system.',
     soulbound: true,
   },
   {
     id: 'unique-forges-memory', name: 'The Forge\'s Memory', rarity: 'singular', slot: 'weapon', style: 'neutral',
-    rollKeys: ['strikePower', 'goldPerSec', 'magicFind'], base: { strikePower: 8.4, goldPerSec: 3.36, magicFind: 10.08 },
+    rollKeys: ['strikePower', 'goldFind', 'magicFind'], base: { strikePower: 8.4, goldFind: 3.36, magicFind: 10.08 },
     passive: { effect: 'reforge-memory', text: 'It remembers every strike ever made with it, and repeats the good ones.' },
     lore: 'This is the hammer that was shaped on the First Anvil using the Godforge Tongs — the third tool in the Trinity of Creation.',
     soulbound: true,
   },
   {
     id: 'unique-eclipse-manifest', name: 'Eclipse', rarity: 'singular', charm: true, style: 'neutral',
-    rollKeys: ['magicFind', 'xpBonus', 'goldPerSec'], base: { magicFind: 29.4, xpBonus: 25.2, goldPerSec: 8.4 },
+    rollKeys: ['magicFind', 'xpBonus', 'goldFind'], base: { magicFind: 29.4, xpBonus: 25.2, goldFind: 8.4 },
     passive: { effect: 'guaranteed-mf', text: 'Not an object. The Eclipse itself, folded small enough to carry.' },
     lore: 'The Eclipse was the event that created the five realms — the moment of division, the original wound in reality.',
     soulbound: true,

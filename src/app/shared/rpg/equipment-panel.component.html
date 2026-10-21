@@ -294,7 +294,7 @@
       <summary class="ld__more-label">{{ t('loadout.sheet.title') }}</summary>
       <div class="ld__stats-after">
       <p class="ld__totals" *ngIf="hasTotals(); else emptyTotals">
-        <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
+        <span *ngIf="goldFind">{{ t('loadout.stat.gold') }} <b>+{{ goldFind }}%</b></span>
         <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
         <span *ngIf="snap.totals.xpBonus">{{ t('loadout.stat.xp') }} <b>+{{ snap.totals.xpBonus }}%</b></span>
         <span *ngIf="strikePct">{{ t('loadout.stat.strike') }} <b>+{{ strikePct }}%</b></span>

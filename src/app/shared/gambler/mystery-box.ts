@@ -42,6 +42,7 @@ import {
 import { UNIQUE_ITEMS, uniquesAtRarity } from '../rpg/unique-items';
 import { SELL_QUALITY_FLOOR, SELL_QUALITY_SPAN } from '../rpg/item-quality';
 import type { ItemRarity } from '../rpg/item.model';
+import { MYSTERY_BOX_COST } from '../economy/economy-curve';
 
 /** The ladder, low to high. Index order is the only place it is written down. */
 export const RARITY_LADDER: readonly ItemRarity[] = [
@@ -77,31 +78,31 @@ export interface MysteryBox {
  */
 export const MYSTERY_BOXES: readonly MysteryBox[] = [
   {
-    id: 'iron-chest', name: 'Iron Chest', cost: 300,
+    id: 'iron-chest', name: 'Iron Chest', cost: MYSTERY_BOX_COST['iron-chest'],
     minRarity: 'common', maxRarity: 'uncommon',
     blurb: 'Banded iron, unlovely, honest about what it is.',
     accent: '#8f98a8', glow: 'rgba(143, 152, 168, 0.5)',
   },
   {
-    id: 'silver-coffer', name: 'Silver Coffer', cost: 1_500,
+    id: 'silver-coffer', name: 'Silver Coffer', cost: MYSTERY_BOX_COST['silver-coffer'],
     minRarity: 'uncommon', maxRarity: 'rare',
     blurb: 'Tarnished at the hinges. Whatever is inside has been inside a while.',
     accent: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)',
   },
   {
-    id: 'golden-reliquary', name: 'Golden Reliquary', cost: 6_000,
+    id: 'golden-reliquary', name: 'Golden Reliquary', cost: MYSTERY_BOX_COST['golden-reliquary'],
     minRarity: 'rare', maxRarity: 'epic',
     blurb: 'Built to hold one thing reverently. It is not fussy about which.',
     accent: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)',
   },
   {
-    id: 'eclipse-vault', name: 'Eclipse Vault', cost: 30_000,
+    id: 'eclipse-vault', name: 'Eclipse Vault', cost: MYSTERY_BOX_COST['eclipse-vault'],
     minRarity: 'epic', maxRarity: 'legendary',
     blurb: 'Sealed during the Shattering. Nobody recorded by whom, or against what.',
     accent: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)',
   },
   {
-    id: 'void-cache', name: 'Void Cache', cost: 300_000,
+    id: 'void-cache', name: 'Void Cache', cost: MYSTERY_BOX_COST['void-cache'],
     minRarity: 'legendary', maxRarity: 'singular',
     blurb: 'It is not a container. It is a place the realms forgot to finish, and things collect there.',
     accent: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)',

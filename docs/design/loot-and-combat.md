@@ -300,7 +300,8 @@ Fixed rewards that used to be "N minutes of income" are now N minutes of a stead
 (`huntGold(level, seconds)`): town tasks and dailies, the level milestones. Rewards written as max(floor, seconds of
 income) (bounties, heights, cabinets, eclipse marks, fishing lodge, expeditions, collection, challenges) read those
 seconds in the hunt at the Keeper's level (`huntRate`, `EconomyService.setHuntLevel`); the bet cap, the respec and the
-craft fees too (`economy-sim --reprice`; docs/handoff/gold-from-the-hunt.md).
+craft fees too (`economy-sim --reprice`; docs/handoff/gold-from-the-hunt.md). The storage, Home Forge, slot and box prices
+are hunt hours too (`--sinks`), and the gear's old Gold/sec is **Gold Find**: `+N%` on every pile picked up, capped at 150%.
 `economy-sim --hunt` prints it; `--check` holds the bands. The Gold wipe (`GOLD_ERA`): see economy-ops `enterGoldEra`.
 
 ## 10. Bosses and spells

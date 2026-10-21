@@ -24,6 +24,7 @@
  *   node scripts/economy-sim.mjs --combat        # time to kill / time to die per creature, tier and Keeper stage (in --check too)
  *   node scripts/economy-sim.mjs --living        # the Living World: mysteries, critter catches, strongboxes (in --check too)
  *   node scripts/economy-sim.mjs --reprice      # every income-priced reward and price read in the hunt at L10/40/100 (in --check too)
+ *   node scripts/economy-sim.mjs --sinks        # satchel rows, Vault tabs, Home Forge, slots, boxes and Gold Find in hunt hours (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when any band below fails (the hunt is the yardstick:
  *                                                # economy-curve huntRate / huntGold; the forge pays nothing by the second)
  *   node scripts/economy-sim.mjs                 # both economies, default player
@@ -189,7 +190,7 @@ const PROPOSED = {
   prestige: { threshold: C.PRESTIGE_GOLD_THRESHOLD, shards: (t) => C.shardsForTotal(t) },
   sinks: {
     'rune strike (Common)': 600,                     // rune.model.ts RUNE_TIERS.common.worth
-    'gambler Iron Chest': 300,                       // gambler/mystery-box.ts
+    'gambler Iron Chest': C.MYSTERY_BOX_COST['iron-chest'], // gambler/mystery-box.ts
     'cheapest craft fee': C.CRAFT_FEE_FLOOR.uncommon,
     'Delve fee': C.EXPEDITION_CURVE.find(m => m.id === 'delve').fee,
     'reforge Common': 150,                           // rpg/item-reforge.ts REFORGE_GOLD
@@ -553,6 +554,8 @@ function check(E) {
   // Everything that was priced as "N seconds of income" (bet cap, respec, expeditions, collection, challenges, the
   // item economy): read in the hunt at the Keeper's level (`--reprice` prints the table).
   fails.push(...repriceScenario({ quiet: true }));
+  // The sinks the forge's income used to size (storage, Home Forge, slots, boxes) and Gold Find: hunt hours (`--sinks`).
+  fails.push(...sinksScenario({ quiet: true }));
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // The cascade machines (Eclipse Cascade, Orrery Tumbler): a quick stratified proof, autoplay at the cap (`--cascade` runs the full one).
@@ -1664,6 +1667,118 @@ function repriceScenario({ quiet = false } = {}) {
   return fails;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// --sinks: the permanent and repeatable Gold sinks that were sized as "N seconds of the forge's income" (satchel rows,
+// Vault tabs, the Home Forge, the Explorer and Thrall slots, the Gambler's boxes), re-based on the hunt, and Gold Find
+// (the stat that replaced the gear's Gold/sec). Each price is read as MINUTES OF A STEADY HUNT at the level a Keeper
+// first wants it, against a band: early tiers 10-60 min, the late ones hours (the sim's bands are its own, not the
+// curve's table, so moving a price out of its band fails here). The checks:
+//   1. every price sits in its band, and the ladders climb (rows, tabs, Home Forge tiers, boxes);
+//   2. the fresh Keeper (level 1) can still afford the first row, Materials tab and Iron Chest inside three hours;
+//   3. the whole storage set (5 rows + 6 tabs) is at most 60 hours of hunting, each bought at its own level;
+//   4. a box is a sink: the scrap of what it can pay is under its price, and a box is not out of reach (<= 6 h at L100);
+//   5. Gold Find: the cap, the pile maths, no single item over 60%, the old Gold/sec rolls read as 2-60%, a Gold
+//      potion on top, and a full kit at the cap leaves the hour of piles under the 5 hour sink bands' reach.
+// ───────────────────────────────────────────────────────────────────────────
+
+const itemsForFind = () => {
+  const T = loadTsTree('src/app/shared/rpg/item.model.ts');
+  const D = loadTsTree('src/app/shared/rpg/item-definition.ts', LOOT_TREE);
+  const U = loadTsTree('src/app/shared/rpg/unique-items.ts', LOOT_TREE);
+  return { T, D, U };
+};
+/** FORGE-era prices of the sinks (before the hunt re-base), for the table. */
+const SINK_FORGE_ERA = {
+  satchelRows: [200_000, 5_000_000, 1_000_000_000, 100_000_000_000, 5_000_000_000_000],
+  tabs: { materials: 1_000_000, supplies: 25_000_000, gear: 250_000_000, 'general-2': 2_500_000_000, 'general-3': 250_000_000_000, 'general-4': 25_000_000_000_000 },
+  homeForge: [5_000_000, 1_000_000_000, 1_000_000_000_000],
+  explorerSlot: 50_000, thrallSlot: 2_000_000,
+  boxes: { 'iron-chest': 300, 'silver-coffer': 1_500, 'golden-reliquary': 6_000, 'eclipse-vault': 30_000, 'void-cache': 300_000 },
+};
+
+function sinksScenario({ quiet = false } = {}) {
+  const fails = [];
+  const BOXES = loadTsTree('src/app/shared/gambler/mystery-box.ts', LOOT_TREE);
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  // [name, price, forge-era price, level a Keeper first wants it, band minutes [lo, hi]]
+  const SC = C.STORAGE_CURVE;
+  const rows = [
+    ...SC.satchelRows.map((p, i) => [`Satchel row ${i + 1}`, p, SINK_FORGE_ERA.satchelRows[i], [10, 20, 40, 100, 300][i], [[10, 60], [20, 90], [60, 240], [120, 480], [240, 1200]][i]]),
+    ['Vault: Materials', SC.tabs.materials, SINK_FORGE_ERA.tabs.materials, 10, [10, 60]],
+    ['Vault: Supplies', SC.tabs.supplies, SINK_FORGE_ERA.tabs.supplies, 20, [20, 90]],
+    ['Vault: Gear', SC.tabs.gear, SINK_FORGE_ERA.tabs.gear, 40, [30, 180]],
+    ['Vault: General II', SC.tabs['general-2'], SINK_FORGE_ERA.tabs['general-2'], 60, [60, 360]],
+    ['Vault: General III', SC.tabs['general-3'], SINK_FORGE_ERA.tabs['general-3'], 100, [180, 720]],
+    ['Vault: General IV', SC.tabs['general-4'], SINK_FORGE_ERA.tabs['general-4'], 300, [360, 1440]],
+    ['Home Forge tier II', C.HOME_FORGE_PRICES[0], SINK_FORGE_ERA.homeForge[0], 20, [30, 120]],
+    ['Home Forge tier III', C.HOME_FORGE_PRICES[1], SINK_FORGE_ERA.homeForge[1], 100, [90, 480]],
+    ['Home Forge tier IV', C.HOME_FORGE_PRICES[2], SINK_FORGE_ERA.homeForge[2], 300, [300, 1440]],
+    ['Explorer slot (1st hire)', C.EXPLORER_SLOT_COST, SINK_FORGE_ERA.explorerSlot, 10, [10, 60]],
+    ['Explorer slot (4th, x1.15^3)', Math.ceil(C.EXPLORER_SLOT_COST * C.PRICE_SCALE ** 3), Math.ceil(SINK_FORGE_ERA.explorerSlot * C.PRICE_SCALE ** 3), 20, [10, 90]],
+    ['Thrall slot (1st)', C.THRALL_SLOT_COST, SINK_FORGE_ERA.thrallSlot, 40, [60, 240]],
+    ['Thrall slot (5th, x1.15^4)', Math.ceil(C.THRALL_SLOT_COST * C.PRICE_SCALE ** 4), Math.ceil(SINK_FORGE_ERA.thrallSlot * C.PRICE_SCALE ** 4), 60, [30, 300]],
+    ...BOXES.MYSTERY_BOXES.map((b, i) => [`Box: ${b.name}`, b.cost, SINK_FORGE_ERA.boxes[b.id], [3, 10, 20, 40, 100][i], [[5, 30], [10, 60], [15, 90], [30, 180], [60, 360]][i]]),
+  ];
+  say('Sinks priced in the hunt (minutes of a steady hunt at the level a Keeper first wants it)');
+  say('  ' + 'sink'.padEnd(30) + 'forge era'.padStart(16) + 'now'.padStart(12) + '  level  minutes  band');
+  for (const [name, price, old, L, [lo, hi]] of rows) {
+    const min = price / huntRate(L) / 60;
+    say('  ' + name.padEnd(30) + fmtN(old).padStart(16) + fmtN(price).padStart(12) + `  L${String(L).padEnd(5)}${min.toFixed(0).padStart(6)}  ${lo}-${hi}`);
+    if (!(min >= lo && min <= hi)) fails.push(`sinks: ${name} (${fmtN(price)}) is ${min.toFixed(1)} min of a level-${L} hunt (band ${lo}-${hi})`);
+  }
+  // 1. ladders climb.
+  const climbs = (name, list) => { for (let i = 1; i < list.length; i++) if (!(list[i] > list[i - 1])) fails.push(`sinks: ${name} does not climb at step ${i + 1}`); };
+  climbs('the satchel rows', SC.satchelRows);
+  climbs('the Home Forge tiers', C.HOME_FORGE_PRICES);
+  climbs('the boxes', BOXES.MYSTERY_BOXES.map(b => b.cost));
+  climbs('the General tabs', [SC.tabs['general-2'], SC.tabs['general-3'], SC.tabs['general-4']]);
+  // 2. a fresh Keeper: the first row, Materials tab and Iron Chest are reachable at level 1 inside three hours.
+  for (const [name, price] of [['the first satchel row', SC.satchelRows[0]], ['the Materials tab', SC.tabs.materials], ['an Iron Chest', C.MYSTERY_BOX_COST['iron-chest']]]) {
+    const h = price / huntRate(1) / 3600;
+    if (h > 3) fails.push(`sinks: ${name} is ${h.toFixed(1)} h of a level-1 hunt (must be <= 3)`);
+  }
+  // 3. the whole storage set, each bought at its own level.
+  const levelsFor = [10, 20, 40, 100, 300];
+  const setHours = SC.satchelRows.reduce((t, p, i) => t + p / huntRate(levelsFor[i]) / 3600, 0)
+    + [['materials', 10], ['supplies', 20], ['gear', 40], ['general-2', 60], ['general-3', 100], ['general-4', 300]].reduce((t, [id, L]) => t + SC.tabs[id] / huntRate(L) / 3600, 0);
+  say(`  The whole storage set (5 rows + 6 tabs), each at its own level: ${setHours.toFixed(1)} h of hunting`);
+  if (setHours > 60) fails.push(`sinks: the storage set is ${setHours.toFixed(1)} h of hunting (must be <= 60)`);
+  // 4. boxes are a sink and in reach.
+  for (const b of BOXES.MYSTERY_BOXES) {
+    const ev = BOXES.boxScrapExpectation(b);
+    say(`    ${b.name.padEnd(18)} price ${fmtN(b.cost).padStart(8)}   scrap of what it pays ~${fmtN(Math.round(ev)).padStart(7)}`);
+    if (!(ev < b.cost)) fails.push(`sinks: the ${b.name} pays ${Math.round(ev)} in scrap, not under its price ${b.cost}`);
+  }
+  if (BOXES.MYSTERY_BOXES.at(-1).cost / huntRate(100) / 3600 > 6) fails.push('sinks: the Void Cache is over six hours of a level-100 hunt');
+  // 5. Gold Find.
+  const { T, D, U } = itemsForFind();
+  if (C.GOLD_FIND_CAP !== 150) fails.push(`sinks: the Gold Find cap is ${C.GOLD_FIND_CAP}, not 150`);
+  if (C.goldFindPile(100, 0) !== 100 || C.goldFindPile(100, 50) !== 150 || C.goldFindPile(100, 9999) !== 250 || C.goldFindPile(100, -10) !== 100 || C.goldFindPile(100, NaN) !== 100) fails.push('sinks: goldFindPile is not pile x (1 + percent, capped)');
+  let bestItem = { name: '', find: 0 };
+  const RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'];
+  for (const d of D.ITEM_DEFINITIONS) {
+    if (!d.rollKeys.includes('goldFind')) continue;
+    for (const r of RARITIES) { const c = D.statCeiling(d, r, 'goldFind'); if (c > bestItem.find) bestItem = { name: `${d.name} (${r})`, find: c }; }
+  }
+  for (const u of U.UNIQUE_ITEMS) if (u.rollKeys.includes('goldFind')) { const c = (u.base.goldFind ?? 0) * (D.RARITY_MULT[u.rarity]?.[1] ?? 1); if (c > bestItem.find) bestItem = { name: u.name, find: c }; }
+  for (const c of T.GOLD_CHARMS) if ((c.stats.goldFind ?? 0) > bestItem.find) bestItem = { name: c.name, find: c.stats.goldFind };
+  say(`  Gold Find: the best single item is ${bestItem.name} at +${bestItem.find.toFixed(1)}%; cap ${C.GOLD_FIND_CAP}% (x${C.goldFindMultiplier(C.GOLD_FIND_CAP)})`);
+  if (bestItem.find > 60) fails.push(`sinks: ${bestItem.name} rolls +${bestItem.find.toFixed(1)}% Gold Find (must be <= 60 on one item)`);
+  if (!(bestItem.find > 0)) fails.push('sinks: no item rolls Gold Find');
+  const lg = n => T.legacyGoldFind(n);
+  if (!(lg(0.2) >= 1 && lg(0.2) <= 3 && lg(1400) >= 50 && lg(1400) <= 60 && lg(0) === 0 && lg(undefined) === 0 && lg(4) < lg(45) && lg(45) < lg(1400))) fails.push('sinks: the retired Gold/sec rolls do not read as 2-60% Gold Find on a climbing ladder');
+  if (T.totalGoldFind({ goldFind: 10, goldPerSec: 4 }) !== Math.round((10 + lg(4)) * 10) / 10) fails.push('sinks: totalGoldFind does not add the retired Gold/sec');
+  // Gold Find must not make the hunt outrun the sinks: a full kit at the cap (x2.5) turns a level-100 hour (121k) into
+  // ~300k, so the dearest permanent sink at that level (General IV, 8.7M) is still a day-and-a-half of hunting.
+  const capped = huntRate(100) * 3600 * C.goldFindMultiplier(C.GOLD_FIND_CAP);
+  const dearest = SC.tabs['general-4'] / (huntRate(300) * 3600 * C.goldFindMultiplier(C.GOLD_FIND_CAP));
+  say(`  A level-100 hour with the Gold Find cap: ${fmtN(Math.round(capped))} (x${C.goldFindMultiplier(C.GOLD_FIND_CAP)}); General IV at L300 with the cap: ${dearest.toFixed(1)} h`);
+  if (dearest < 2) fails.push(`sinks: with the Gold Find cap General IV is ${dearest.toFixed(1)} h of a level-300 hunt (must stay >= 2)`);
+  if (quiet) console.log(`economy-sim sinks: ${fails.length ? fails.length + ' fail(s)' : 'storage, Home Forge, slots and boxes in hunt hours; Gold Find capped and read'}`);
+  else for (const f of fails) console.error(`  FAIL ${f}`);
+  return fails;
+}
+
 // --town-tasks: the town keepers' tasks (src/app/shared/town-tasks/town-tasks.model.ts). Paid once each, ever:
 //   1. every task pays 2-20 min of income (rule I: an NPC step), with a floor no bigger than the bounties' rate;
 //   2. all of them together are at most 4 h of income, once;
@@ -2270,6 +2385,10 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv.reprice && !argv.check) {
   const fails = repriceScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.sinks && !argv.check) {
+  const fails = sinksScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.bounties && !argv.check) {

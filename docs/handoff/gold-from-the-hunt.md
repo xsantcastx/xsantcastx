@@ -51,6 +51,32 @@ Golden Spark). So a reward of N seconds pays max(floor, huntGold(level, N)).
 - `economy-sim --reprice` prints forge-era vs now at L10/40/100; `--check` runs it, and every side-line band
   (fishing, living, pets, heights, cabinets, eclipse, bounties, loot, reels/cascade caps) is graded against the hunt.
 
+## Sinks and Gold Find (2026-10-21, third pass)
+The last forge-era prices and the last forge-era stat, re-based on the hunt. `economy-sim --sinks` prints the table
+(in `--check` too); each price is minutes of a steady hunt at the level a Keeper first wants it, inside its own band.
+| Sink | Forge era | Now | Hunt time |
+|---|---|---|---|
+| Satchel rows 1-5 | 200k / 5M / 1B / 100B / 5T | 1.9k / 12k / 69k / 480k / 5.8M | 15 min L10 · 47 min L20 · 2 h L40 · 4 h L100 · 8 h L300 |
+| Vault Materials / Supplies / Gear | 1M / 25M / 250M | 2.5k / 12k / 52k | 20 min L10 · 47 min L20 · 90 min L40 |
+| Vault General II / III / IV | 2.5B / 250B / 25T | 180k / 730k / 8.7M | 3 h L60 · 6 h L100 · 12 h L300 |
+| Home Forge II / III / IV | 5M / 1B / 1T | 15k / 360k / 7.2M | 1 h L20 · 3 h L100 · 10 h L300 |
+| Explorer slot (x1.15 a level, cap 4) | 50k | 3.8k | 30 min L10 |
+| Thrall slot (x1.15 a level) | 2M | 69k | 2 h L40 |
+| Boxes: Iron / Silver / Golden / Eclipse / Void | 300 / 1.5k / 6k / 30k / 300k | 470 / 1.9k / 7.7k / 35k / 360k | 10 min L3 · 15 min L10 · 30 min L20 · 1 h L40 · 3 h L100 |
+All come from `slotPrice(level, seconds)` in economy-curve (two significant figures of `huntGold`); the whole storage set
+is ~39 h of hunting, each piece bought at its own level. Every box stays under the scrap of what it can pay.
+
+**`goldPerSec` is Gold Find now.** The gear stat that paid the forge's flat Gold a second is retired: nothing mints or
+rolls it any more (every definition, unique, art-bible piece, Gold charm, Runeword and the Gold-channel runes now roll
+`goldFind`, percent more Gold on every pile the hunt drops). `EconomyService.earnHuntGold(pile)` is the pickup path
+(`side-scroller collectCoins`): `pile x (1 + Gold Find%)`, Gold Find capped at `GOLD_FIND_CAP` 150, then a running Gold
+potion on top. `RpgWiringService.mirror` pushes worn `goldFind` + Forge Power (now +0.5% Gold Find a point) through
+`setGoldFind` (not persisted). Items minted before keep their stored `goldPerSec` roll untouched (the frozen grade stays
+true): `legacyGoldFind(n) = 8 ln(1 + n)` reads it as 2-58% Gold Find in `totalGoldFind`, the tooltip and the sheet, and a
+temper still tempers it; a reforge drops it (the panel lists the loss). The "Forgewright" build reads "Built on Gold
+Find. Every pile the hunt drops comes up fatter." (EN + ES). The flat-Gold and forge-percent mirrors into the ledger are
+pinned at 0.
+
 ## Not done / follow-ups
-- Still forge-era prices, not re-based: STORAGE_CURVE (satchel rows / vault tabs, 200k–25T), HOME_FORGE_PRICES
-  (5M/1B/1T), THRALL_SLOT_COST, mystery-box prices, gear `goldPerSec` stats (a dead Forge Power line).
+- Still forge-era: the Runeword `income` bonus (First Light +25%, Godforge Mastery +100%) and the shard/artifact income
+  multipliers, which multiply a rate that is 0. The Thrall's own price tiers (25k cheapest) were not re-based.
