@@ -21,6 +21,7 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'lobby.select.unnamed': { en: 'Unnamed Keeper', es: 'Guardian sin nombre' },
   'lobby.select.elsewhere': { en: 'Saved in the cloud', es: 'Guardado en la nube' },
   'lobby.select.enter': { en: 'Enter world', es: 'Entrar al mundo' },
+  'lobby.select.syncing': { en: 'Syncing…', es: 'Sincronizando…' },
   'lobby.select.new': { en: 'New Keeper', es: 'Nuevo Guardian' },
   'lobby.select.delete': { en: 'Delete', es: 'Borrar' },
   'lobby.select.full': { en: 'All five places by the hearth are taken.', es: 'Los cinco sitios junto al hogar estan ocupados.' },

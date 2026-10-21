@@ -128,5 +128,11 @@ into a Keeper on no list (a Glass left by refresh/back/close, or a deleted Keepe
 Spec: `e2e/lobby-glass-exit.spec.ts` (×, Back, Escape, browser back, leaving the page, a first Keeper, phone tap
 and phone back): the list is unchanged and no `@` keys remain.
 
+**New Keeper before the cloud lands.** `idForNewCharacter` handed out character #1's slot whenever the roster had
+no c1 row and the device no c1 save — on a new device that is also true before the account's cloud roster arrives,
+so the new Keeper would be made inside the account's own #1 save. Now New Keeper is disabled and reads "Syncing…"
+while the cloud is syncing, and #1's slot is given only when the device was never bound to an account or its cloud
+pull has completed (`mayUsePrimarySlot`, Karma in play-lobby.spec.ts); otherwise a fresh id.
+
 Not fixed: an abandoned Glass while signed in can leave its documents under `users/{uid}/characters/{id}` if the
 cloud was not attached yet when it was discarded (no roster row points at them, so nothing shows them).
