@@ -23,13 +23,13 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.found.sunling': { en: 'The Luminous Prism Mines: the warm egg at the Hollow Sun\'s heart. Yours when it falls.', es: 'Las Minas de Prisma Luminosas: el huevo tibio en el corazon del Sol Hueco. Tuyo cuando caiga.' },
   'play.pet.found.shade-kit': { en: 'The Ink Deeps: the egg the Gloam Warden guarded. Yours when it falls.', es: 'Las Honduras de Tinta: el huevo que guardaba el Guardian del Ocaso. Tuyo cuando caiga.' },
   // ── Helps with ──
-  'play.pet.use.ember-newt': { en: 'Its tail is a little lamp: a warm light of its own in the Delve.', es: 'Su cola es una lamparita: una luz calida propia en la Sima.' },
+  'play.pet.use.ember-newt': { en: 'Its tail is a little lamp: a warm light of its own wherever it is dark.', es: 'Su cola es una lamparita: una luz calida propia dondequiera que este oscuro.' },
   'play.pet.use.prism-mothkit': { en: 'It hums while you work: +10% skill XP in the Luminous.', es: 'Zumba mientras trabajas: +10% de XP de habilidad en el Luminoso.' },
-  'play.pet.use.ink-pup': { en: 'It barks when something winds up behind you, or a shade is near.', es: 'Ladra cuando algo se prepara a tu espalda, o hay una sombra cerca.' },
-  'play.pet.use.star-owlet': { en: 'It hoots at ore: veins within 16 cells show on the Delve map.', es: 'Ulula al mineral: las vetas a 16 casillas o menos salen en el mapa de la Sima.' },
+  'play.pet.use.ink-pup': { en: 'It fights at your side: it nips whatever you are fighting, and keeps behind you when a boss winds up.', es: 'Pelea a tu lado: muerde a lo que estes combatiendo, y se queda detras de ti cuando un jefe se prepara.' },
+  'play.pet.use.star-owlet': { en: 'It fetches: drops left lying near you are carried back to your feet.', es: 'Te trae cosas: lo que quede tirado cerca te lo lleva a los pies.' },
   'play.pet.use.moss-hedgehog': { en: 'It noses through what you cut: a Verdant harvest sometimes yields one more.', es: 'Husmea lo que cortas: una cosecha del Verdante a veces da uno mas.' },
   'play.pet.use.rivet-hatchling': { en: 'It scavenges: loose drops are carried back to you.', es: 'Carronea: te trae los botines sueltos.' },
-  'play.pet.use.sunling': { en: 'It shines on you: after a few quiet seconds your wounds close slowly.', es: 'Brilla sobre ti: tras unos segundos tranquilos tus heridas se cierran despacio.' },
+  'play.pet.use.sunling': { en: 'It shines on you in a fight: when you run low, a pulse of warm light closes your wounds.', es: 'Brilla sobre ti en combate: cuando te queda poca vida, un pulso de luz calida cierra tus heridas.' },
   'play.pet.use.shade-kit': { en: 'It watches the water: a bite comes sooner when you fish.', es: 'Vigila el agua: cuando pescas, pican antes.' },
   // ── Lore (the Codex) ──
   'play.pet.lore.ember-newt': { en: 'Seam newts lay their eggs where the Delve keeps its heat. A crate left long in warm water is the warmest place they know.', es: 'Los tritones de veta ponen sus huevos donde la Sima guarda el calor. Una caja olvidada en agua tibia es lo mas calido que conocen.' },
@@ -103,6 +103,15 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.gather': { en: '{{name}} found one more {{item}}.', es: '{{name}} encontro un {{item}} mas.' },
   // ── Roles, moves, levels and commands (pet-roles.ts) ──
   'play.pet.role.combat': { en: 'Fights beside you', es: 'Pelea a tu lado' },
+  // Its one job in the top-down world (play/td/td-pets TD_PET_JOB), with the world's numbers (the pet card).
+  'play.pet.job.fight.name': { en: 'Fights beside you', es: 'Pelea a tu lado' },
+  'play.pet.job.fetch.name': { en: 'Fetches for you', es: 'Te trae cosas' },
+  'play.pet.job.mend.name': { en: 'Mends you', es: 'Te cura' },
+  'play.pet.job.light.name': { en: 'Lights your way', es: 'Ilumina tu camino' },
+  'play.pet.job.fight': { en: 'Nips the foe you fight: {{n}} a blow every {{s}} s, harder each level. A snap back tires it and it rests behind you {{rest}} s; it never falls.', es: 'Muerde al enemigo con el que luchas: {{n}} por golpe cada {{s}} s, mas fuerte cada nivel. Un contragolpe lo cansa y descansa detras de ti {{rest}} s; nunca cae.' },
+  'play.pet.job.fetch': { en: 'Carries gear, potions and materials lying within {{n}} tiles back to your feet (your loot filter applies).', es: 'Trae a tus pies el equipo, las pociones y los materiales que haya a {{n}} casillas (se aplica tu filtro de botin).' },
+  'play.pet.job.mend': { en: 'In a fight, while you are under {{below}}% life: a pulse of warm light gives back {{pct}}% of your life every {{s}} s.', es: 'En combate, mientras tengas menos del {{below}}% de vida: un pulso de luz calida te devuelve el {{pct}}% de la vida cada {{s}} s.' },
+  'play.pet.job.light': { en: 'A small light of its own wherever it is dark.', es: 'Una lucecita propia dondequiera que este oscuro.' },
   'play.pet.role.skilling': { en: 'Works beside you', es: 'Trabaja a tu lado' },
   'play.pet.move.bite': { en: 'Bite: nips a foe near you; every third bite stuns it a moment.', es: 'Mordisco: muerde a un enemigo cercano; cada tercer mordisco lo aturde un momento.' },
   'play.pet.move.dash': { en: 'Dash: darts through every foe in its path.', es: 'Embestida: atraviesa a todos los enemigos de su camino.' },

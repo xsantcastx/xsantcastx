@@ -55,7 +55,7 @@ export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'loot.tier.falls': { en: 'A fall leaves {{n}}% of your purse where you fell.', es: 'Una caida deja el {{n}}% de tu bolsa donde caiste.' },
 
   'loot.resist.title': { en: 'Resistances', es: 'Resistencias' },
-  'loot.resist.note': { en: 'Runes set in armour ward against their realm\'s element. Capped at 75.', es: 'Las runas engastadas en armadura protegen del elemento de su reino. Maximo 75.' },
+  'loot.resist.note': { en: 'Runes set in armour add resistance against their realm\'s element, on top of your gear\'s (the C sheet shows the total, capped at 75).', es: 'Las runas engastadas en armadura suman resistencia contra el elemento de su reino, ademas de la de tu equipo (la hoja C muestra el total, maximo 75).' },
   'loot.resist.physical': { en: 'Physical', es: 'Fisico' },
   'loot.resist.fire': { en: 'Fire', es: 'Fuego' },
   'loot.resist.cold': { en: 'Cold', es: 'Frio' },

@@ -125,7 +125,8 @@ export class KeeperStatSheetComponent implements OnInit, OnDestroy {
   trackChip(_: number, chip: Chip): number { return chip.id; }
 
   private apply(next: Totals): void {
-    const to: Totals = { ...ZERO, ...next, goldPerSec: 0, goldFind: totalGoldFind(next) };
+    // Gold Find piece by piece, as each card prints it (InventoryService.equippedGoldFind; item.model wornGoldFind).
+    const to: Totals = { ...ZERO, ...next, goldPerSec: 0, goldFind: next.goldPerSec ? this.inventory.equippedGoldFind : totalGoldFind(next) };
     const from = this.target;
     this.target = to;
     // First value: the baseline. Counting up from zero on every page load would

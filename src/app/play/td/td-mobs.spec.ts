@@ -44,7 +44,7 @@ describe('td-mobs: Raise Skeleton', () => {
     const first = sys.minions.map(k => k.id);
     sys.cooldowns['raise-skeleton'] = 0; sys.mana = sys.maxMana;
     expect(sys.useAbility('raise-skeleton')).toBeNull();
-    expect(sys.minions.length).toBe(v['max']);
+    expect(sys.minions.length).toBe(v['cap']);
     expect(sys.minions.some(k => first.includes(k.id))).toBeFalse();
   });
 
