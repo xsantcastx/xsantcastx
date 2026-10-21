@@ -662,6 +662,7 @@ describe('the registry', () => {
       'godforge-games',
       'godforge-gathering',
       'godforge-glim',
+      'godforge-hearth',
       'godforge-heights',
       'godforge-home-forge',
       'godforge-infusions',

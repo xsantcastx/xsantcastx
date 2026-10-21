@@ -517,6 +517,20 @@ consumes them all. S/U/L: *source* shrines in Pyrehold, Rootglass, Gloamhaven, M
 *use* the Gold sink that the new monster-Gold economy needs, tension without loss; *lore* "each realm keeps a fire for
 the Keeper — the first five didn't come home, so the realms decided the sixth would."
 
+**Shipped (2026-10-21, top-down).** `shared/hearth/` (rules, save `godforge-hearth` per character, service, shrine)
+and `play/td/td-hearth.ts`. A hearth stands in every capital and village (10 across the four continents), placed on
+open ground beside the arrival square; E lights it (pixel fire, Glim's sparks, "the hearth at Pyrehold takes your
+flame") and the last one lit is the wake point. A fall goes dark, wakes the Keeper beside that hearth (life and mana
+full) and shows what it cost: the tier's share of the purse lies where they fell as a leather pouch with an ember
+beam (`LootService.fall`, `td:<continent>|<level>`; walk over it and it comes home), and an Ember debt of 10% of the
+level's XP (capped at one level's worth) that half of each kill pays off, shown under the mana plate (a tag under the
+orbs on a phone) and on the sheet. Under level 20 a fall costs only the walk. The four capitals have a Hearth Shrine
+beside the hearth selling all five blessings (Pyre Ember, Rootglass Sap, Gloam Lantern-wick, Meridian Star-salt,
+Dawnspire Morning) until Meridian and Dawnspire are built: one minute of a hunt at the Keeper's level each
+(`huntGold(level, 60)`: 256 Gold at 20, 576 at 40, 2,016 at 100), 20% off the purse share and the debt each, all
+consumed by a fall that costs anything. `economy-sim --hearth` holds the bands. Not yet: the 3-minute *Chilled*
+welcome and the innkeeper's line (the wake card says "Sit. Soup first."), Hearthstones in dungeon safe rooms.
+
 ### 5.9 Companions — the fourth pillar
 
 | Companion | Role | Shipped? | Grows by | Dread/cozy |
@@ -771,7 +785,7 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 2 ★ | **Synergies**: `SkillDef.syn`, read in `skillVars`, shown on the Spellbook card | S | `td-skills.ts`, `td-tree.ts`, Spellbook | "+18% from Hellfire Nova" on cards; points feel connected |
 | 3 | **Elite packs in the top-down world**: port `rollPack` + mods, packs of 3–5, the new affixes (Lightless, Grave-called, Brutal, Mirrored) | M | `shared/loot/champions.ts`, `td-mobs.ts` spawn + draw (name pips), `td-fx.ts` | blue/gold named packs with pips; better drops |
 | 4 | **Eclipse phases as rules**: night spawn tables, Eclipse-touched elites, phase modifiers to spell power/XP/loot | M | `world-clock.model.ts` (`Sky`), `td-engine.setSky`, `td-mobs.ts` spawn tables, `drop-tables.ts` | night feels different; the eclipse is an event you plan for |
-| 5 | **The Cold Hearth + Hearth Blessings**: wake at the last lit hearth, fallen purse in top-down, Ember debt, five shrines | M | `td-engine.hurt`, `LootService.fall`, `keeper-level.service` (debt), capital maps (shrine stalls) | a fall *means* something; a Gold sink for the new economy |
+| 5 ✓ | **The Cold Hearth + Hearth Blessings** (shipped 2026-10-21, §5.8): wake at the last lit hearth, fallen purse in top-down, Ember debt, five shrines | M | `td-engine.hurt`, `LootService.fall`, `keeper-level.service` (debt), capital maps (shrine stalls) | a fall *means* something; a Gold sink for the new economy |
 | 6 ★ | **Lumvesh (Seek) + Light spell** | S | `td-skills.ts` (common spells), `td-world.ts` (find a mob/boss by id), Glim flight (`td-engine` glimFlight) | "The Ink Abbess is very far to the south-east, below you." |
 | 7 | **Light as a resource + dark-born**: torches, Unrecorded shapes, Hollow Footsteps, dark-only chests, 3 Nightroads on Ember Isle | M | `td-engine` darkness/light, `td-art.ts`, `maps/*.ts` (night-only tiles), `eclipse.model` items | the first "did I see that?" moment |
 | 8 | **The Sexton's Count** chain + key ring + Margin Notes | M | `shared/town-tasks`, `maps/` Hushed Barrow, a `notes` collection in `collection.model.ts` | a 20-minute spooky quest on the starter island |

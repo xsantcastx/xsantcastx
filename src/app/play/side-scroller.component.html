@@ -20,6 +20,23 @@
       </div>
     }
   </div>
+  <!-- The Cold Hearth (shared/hearth): after a fall, where the Keeper woke and what it cost. Nothing else is ever lost. -->
+  @if (wakeCard; as wc) {
+    <section class="wake-card" role="status" aria-live="polite" data-wake-card [attr.data-wake-hearth]="wc.hearth" data-engine-ignore>
+      <h2>{{ t('play.coldHearth.wake.title') }}</h2>
+      <ul>
+        <li>{{ wc.hearth ? t('play.coldHearth.wake.where', { town: wc.town }) : t('play.coldHearth.wake.square') }}</li>
+        @if (wc.fall.grace) {
+          <li>{{ t('play.coldHearth.wake.grace', { n: graceLevel }) }}</li>
+        } @else {
+          <li data-wake-purse>{{ wc.fall.gold > 0 ? t('play.coldHearth.wake.purse', { n: wc.fall.gold }) : t('play.coldHearth.wake.noPurse') }}</li>
+          @if (wc.fall.debt > 0) { <li data-wake-debt>{{ t('play.coldHearth.wake.debt', { n: xpText(wc.fall.debtTotal) }) }}</li> }
+          @if (wc.fall.blessed > 0) { <li data-wake-blessed>{{ t('play.coldHearth.wake.blessed', { n: wc.fall.blessed }) }}</li> }
+        }
+      </ul>
+      <button type="button" (click)="wakeCard = null">{{ t('play.coldHearth.wake.ok') }}</button>
+    </section>
+  }
 
   <!-- The place-name card: rises in the middle on arrival, then fades (the corner title is for screen readers only). -->
   @if (areaCard; as card) {
@@ -141,6 +158,7 @@
           <button type="button" class="win-x" (click)="sheetOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
         </header>
         <p class="ks__level">{{ t('play.td.level', { n: sh.level }) }} <span class="ks__xp"><i [style.width.%]="sh.span ? sh.into / sh.span * 100 : 100"></i></span> <small data-sheet-xp>{{ sh.span ? t('play.lvl.toNext', { n: xpText(sh.toNext), level: sh.level + 1 }) : t('play.lvl.top') }}</small></p>
+        @if (emberDebt > 0) { <p class="ks__debt" data-sheet-debt>{{ t('play.coldHearth.debt.sheet', { n: xpText(emberDebt) }) }}</p> }
         @if (sh.next; as nx) { <p class="ks__next" data-sheet-next>{{ t('play.lvl.next', { n: nx.level }) }} <small>{{ milestoneLines(nx).join(' · ') }}</small></p> }
         <div class="ks__tabs" role="tablist">
           <button type="button" role="tab" [attr.aria-selected]="sheetTab === 'attrs'" (click)="sheetTab = 'attrs'">{{ t('play.lvl.tab.attrs') }}</button>
@@ -293,6 +311,8 @@
       <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
       <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana"><b>{{ tdMana }}</b></i>
       @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura)"></i> }
+      <!-- The Ember debt on a phone (the plates are hidden there): a small brass tag under the orbs while it is owed. -->
+      @if (emberDebt > 0) { <i class="td-debt" data-ember-debt-orb>{{ t('play.coldHearth.debt.hud') }} {{ xpText(emberDebt) }}</i> }
     </div>
     <!-- The pet following: its face, its name and what it is doing (td-pets.ts); a tap opens the pet sheet. -->
     @if (!panel && tdPet; as pet) {
@@ -599,6 +619,12 @@
         <label>{{ t('play.td.mana') }} <b>{{ tdMana }}</b></label>
         <div class="meter mana"><i [style.--fill]="tdMana / tdMaxMana"></i></div>
       </div>
+      <!-- The Ember debt (shared/hearth): shown while owed; kills pay it off. Never a level lost. -->
+      @if (emberDebt > 0) {
+        <div class="vital vital--debt" data-ember-debt [attr.data-debt]="emberDebt" [attr.aria-label]="t('play.coldHearth.debt.aria', { n: emberDebt })">
+          <label>{{ t('play.coldHearth.debt.hud') }} <b>{{ xpText(emberDebt) }}</b></label>
+        </div>
+      }
     }
     @if (state.enemyHp > 0) {
       <div class="vital">
@@ -1171,6 +1197,9 @@
       </div>
     </header>
     <div class="place-body">
+      @if (panel?.kind === 'shrine') {
+        <app-hearth-shrine [level]="huntingLevel" />
+      }
       @if (panel?.kind === 'waystone') {
         <p class="place-note">{{ t('play.hud.way.note') }}</p>
         <ul class="waystone">

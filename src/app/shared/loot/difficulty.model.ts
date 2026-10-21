@@ -82,7 +82,9 @@ export function unlockedBy(creature: string, tier: DifficultyTier): DifficultyTi
  * Gold a fall leaves where the Keeper fell (the corpse run): the tier's share of
  * the purse, floored. Nothing else is ever lost: no item, no rune, no stack.
  */
-export function deathCost(purse: number, tier: DifficultyTier): number {
+export function deathCost(purse: number, tier: DifficultyTier, scale = 1): number {
   if (!(purse > 0)) return 0;
-  return Math.floor(purse * DIFFICULTIES[tier].deathShare);
+  // `scale`: what the Hearth Blessings leave of it (shared/hearth/hearth-rules.ts fallScale), 1 with none.
+  const k = Number.isFinite(scale) ? Math.max(0, Math.min(1, scale)) : 1;
+  return Math.floor(purse * DIFFICULTIES[tier].deathShare * k);
 }
