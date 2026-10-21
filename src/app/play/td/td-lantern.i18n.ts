@@ -18,8 +18,8 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
   },
   'skill.blinding-flash': { en: 'Blinding Flash', es: 'Destello cegador' },
   'skill.blinding-flash.text': {
-    en: 'The lantern flares all at once: {{min}}–{{max}} light damage to every foe within {{radius}} tiles, and the dead and the dark-born stand stunned for {{stun}} seconds (a boss, a fifth of that).',
-    es: 'El farol estalla de golpe: {{min}}–{{max}} de dano de luz a cada enemigo a {{radius}} casillas, y los muertos y los nacidos de la oscuridad quedan aturdidos {{stun}} segundos (un jefe, una quinta parte).',
+    en: 'The lantern flares all at once: {{min}}–{{max}} light damage to every foe within {{radius}} tiles (half again on the dead and the dark-born), and the dead and the dark-born stand stunned for {{stun}} seconds (a boss, a fifth of that).',
+    es: 'El farol estalla de golpe: {{min}}–{{max}} de dano de luz a cada enemigo a {{radius}} casillas (la mitad mas contra los muertos y los nacidos de la oscuridad), y los muertos y los nacidos de la oscuridad quedan aturdidos {{stun}} segundos (un jefe, una quinta parte).',
   },
   'skill.lantern-aura': { en: 'Lantern Aura', es: 'Aura del farol' },
   'skill.lantern-aura.text': {
@@ -33,8 +33,8 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
   },
   'skill.banish': { en: 'Banish', es: 'Desterrar' },
   'skill.banish.text': {
-    en: 'A white-hot column on one foe within {{reach}} tiles: {{min}}–{{max}} light damage. One of the dead or the dark-born left at {{below}}% life or less is unmade outright (a boss takes half again instead).',
-    es: 'Una columna al rojo blanco sobre un enemigo a {{reach}} casillas: {{min}}–{{max}} de dano de luz. Un muerto o un nacido de la oscuridad que quede con el {{below}}% de vida o menos se deshace del todo (un jefe recibe la mitad mas).',
+    en: 'A white-hot column on one foe within {{reach}} tiles: {{min}}–{{max}} light damage, half again on the dead and the dark-born. One of the dead or the dark-born left at {{below}}% life or less is unmade outright (a boss of the dead is not: it takes half again on top instead).',
+    es: 'Una columna al rojo blanco sobre un enemigo a {{reach}} casillas: {{min}}–{{max}} de dano de luz, la mitad mas contra los muertos y los nacidos de la oscuridad. Un muerto o un nacido de la oscuridad que quede con el {{below}}% de vida o menos se deshace del todo (un jefe de los muertos no: recibe ademas la mitad mas).',
   },
   'skill.dawn-at-noon': { en: 'Dawn at Noon', es: 'Alba a mediodia' },
   'skill.dawn-at-noon.text': {
@@ -63,8 +63,8 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
   },
   'skill.lamp-wisp': { en: 'Lamp-Wisp', es: 'Fuego fatuo del farol' },
   'skill.lamp-wisp.text': {
-    en: 'Call {{count}} lamp-wisp to your shoulder for {{secs}} seconds: it lights the dark round you and flicks a mote at a foe within {{range}} tiles each second, {{min}}–{{max}} light damage.',
-    es: 'Llama a {{count}} fuego fatuo a tu hombro durante {{secs}} segundos: ilumina la oscuridad a tu alrededor y lanza una chispa a un enemigo a {{range}} casillas cada segundo, {{min}}–{{max}} de dano de luz.',
+    en: 'Call {{count}} lamp-wisp(s) to your shoulder for {{secs}} seconds: each lights the dark round you and flicks a mote at a foe within {{range}} tiles each second, {{min}}–{{max}} light damage (half again on the dead and the dark-born).',
+    es: 'Llama a {{count}} fuego(s) fatuo(s) a tu hombro durante {{secs}} segundos: cada uno ilumina la oscuridad a tu alrededor y lanza una chispa a un enemigo a {{range}} casillas cada segundo, {{min}}–{{max}} de dano de luz (la mitad mas contra los muertos y los nacidos de la oscuridad).',
   },
   'skill.moth-kin': { en: 'Moth-Kin', es: 'Parentela de polillas' },
   'skill.moth-kin.text': {
@@ -73,8 +73,8 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
   },
   'skill.beacon': { en: 'Beacon', es: 'Faro' },
   'skill.beacon.text': {
-    en: 'Plant a lantern on a pole at your feet for {{secs}} seconds: it lights the ground round it and drops a mote on a foe within {{range}} tiles each second, {{min}}–{{max}} light damage.',
-    es: 'Planta un farol en un poste a tus pies durante {{secs}} segundos: ilumina el suelo a su alrededor y deja caer una chispa sobre un enemigo a {{range}} casillas cada segundo, {{min}}–{{max}} de dano de luz.',
+    en: 'Plant a lantern on a pole at your feet for {{secs}} seconds: it lights the ground round it and drops a mote on a foe within {{range}} tiles each second, {{min}}–{{max}} light damage (half again on the dead and the dark-born).',
+    es: 'Planta un farol en un poste a tus pies durante {{secs}} segundos: ilumina el suelo a su alrededor y deja caer una chispa sobre un enemigo a {{range}} casillas cada segundo, {{min}}–{{max}} de dano de luz (la mitad mas contra los muertos y los nacidos de la oscuridad).',
   },
 
   'lamp.shut': { en: 'The lantern is shuttered. Your light burns low.', es: 'El farol esta cerrado. Tu luz arde baja.' },

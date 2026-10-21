@@ -6,7 +6,7 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { coerceInventoryLedger, mergeInventoryLedgers, restoreCharms } from './inventory-ops';
 import { INVENTORY_KEY, InventoryService } from './inventory.service';
-import { totalGoldFind } from './item.model';
+import { legacyGoldFind, totalGoldFind } from './item.model';
 import { RpgWiringService } from './rpg-wiring.service';
 
 class MemoryGateway {
@@ -72,7 +72,8 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     // The forge pays nothing by the second: no flat Gold is mirrored. The gear's retired Gold/sec (helm 2 + charm 4)
     // reads as Gold Find on the hunt's piles instead.
     expect(economy.snapshot.breakdown.rpg).toBe(0);
-    expect(economy.goldFind).toBe(totalGoldFind(inventory.snapshot.totals));
+    // Each old piece read as its own card shows it (8·ln(1+2) + 8·ln(1+4)), not the summed raw roll's 8·ln(1+6).
+    expect(economy.goldFind).toBe(Math.round((legacyGoldFind(2) + legacyGoldFind(4)) * 10) / 10);
     expect(economy.goldFind).toBeGreaterThan(0);
     registry.flush(ECONOMY_KEY);
 
@@ -83,7 +84,8 @@ describe('RpgWiringService C5 rpgFlatGold', () => {
     await Promise.resolve();
 
     expect(economy.snapshot.breakdown.rpg).toBe(0);
-    expect(economy.goldFind).toBe(totalGoldFind(inventory.snapshot.totals));
+    // Each old piece read as its own card shows it (8·ln(1+2) + 8·ln(1+4)), not the summed raw roll's 8·ln(1+6).
+    expect(economy.goldFind).toBe(Math.round((legacyGoldFind(2) + legacyGoldFind(4)) * 10) / 10);
     expect(inventory.snapshot.bag.some(row => row.id === 'worn')).toBe(false);
     expect(inventory.snapshot.equipped['charm1']?.id).toBe('worn');
   });

@@ -21,7 +21,9 @@ import { HAT_AT, LOVE_MAX, PETS, PET_TREAT, TRICK_AT, dayKey, hasHat, isHatched,
 import { CabinetsService } from '../cabinets/cabinets.service';
 import type { PetRecord } from './pets-save.model';
 import { eggPortrait, petPortrait } from './pet-art';
-import { PET_COMMANDS, SECOND_AT, levelProgress, petRole, type PetCommand, type PetRoleDef } from './pet-roles';
+import { PET_ACT, PET_COMMANDS, SECOND_AT, levelProgress, petRole, type PetCommand, type PetRoleDef } from './pet-roles';
+import { TD_PET, TD_PET_JOB, petBlow, type TdPetJob } from '../../play/td/td-pets';
+import { TILE } from '../../play/td/td-art';
 
 interface WellRow { def: PetDef; rec: PetRecord; art: string; label: string }
 interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
@@ -96,12 +98,12 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
               @if (roleOf(c.def.id); as r) {
                 <div class="ps__role" [attr.data-pet-role]="r.role" [attr.data-pet-level]="level(c.rec.xp).level">
                   <p class="ps__love">
-                    <span>{{ t('play.pet.role.' + r.role) }} · {{ level(c.rec.xp).span ? t('play.pet.levelBar', { n: level(c.rec.xp).level, into: level(c.rec.xp).into, span: level(c.rec.xp).span }) : t('play.pet.levelTop', { n: level(c.rec.xp).level }) }}</span>
+                    <span>{{ t('play.pet.job.' + jobOf(c.def.id) + '.name') }} · {{ level(c.rec.xp).span ? t('play.pet.levelBar', { n: level(c.rec.xp).level, into: level(c.rec.xp).into, span: level(c.rec.xp).span }) : t('play.pet.levelTop', { n: level(c.rec.xp).level }) }}</span>
                     <i aria-hidden="true"><em class="ps__xp" [style.width.%]="level(c.rec.xp).span ? level(c.rec.xp).into / level(c.rec.xp).span * 100 : 100"></em></i>
                   </p>
-                  <p class="ps__small">{{ t('play.pet.move.' + r.move) }}</p>
-                  <p class="ps__small">{{ level(c.rec.xp).level >= secondAt ? t('play.pet.secondHas', { what: t('play.pet.second.' + r.second) }) : t('play.pet.secondAt', { n: secondAt, what: t('play.pet.second.' + r.second) }) }}</p>
-                  @if (level(c.rec.xp).level < secondAt) { <p class="ps__small">{{ t('play.pet.levelHow') }}</p> }
+                  <!-- Its one job in this world (play/td/td-pets TD_PET_JOB), with the numbers the world uses. -->
+                  <p class="ps__small" data-pet-job>{{ jobLine(c.def.id, c.rec.xp) }}</p>
+                  <p class="ps__small">{{ t('play.pet.levelHow') }}</p>
                 </div>
               }
               @if (active === c.def.id) {
@@ -204,6 +206,16 @@ export class PetSheetComponent implements OnInit, OnDestroy {
   readonly secondAt = SECOND_AT;
   command: PetCommand = 'follow';
   roleOf(id: string): PetRoleDef | undefined { return petRole(id); }
+  /** Its job in the top-down world (td-pets TD_PET_JOB); light when unknown. */
+  jobOf(id: string): TdPetJob { return TD_PET_JOB[id as PetId] ?? 'light'; }
+  /** The job in one line with the world's own numbers (td-pets petBlow, mendPulse, TD_PET; pet-roles PET_ACT). */
+  jobLine(id: string, xp: number): string {
+    const job = this.jobOf(id), r = petRole(id), lv = levelProgress(xp).level;
+    if (job === 'fight' && r) { const b = petBlow(r.move, r.role === 'combat', lv); return this.t('play.pet.job.fight', { n: b.dmg, s: b.rest, rest: TD_PET.restFor }); }
+    if (job === 'mend') return this.t('play.pet.job.mend', { below: Math.round(PET_ACT.pulseBelow * 100), pct: Math.round(PET_ACT.pulseShare * 100), s: PET_ACT.pulseRest });
+    if (job === 'fetch') return this.t('play.pet.job.fetch', { n: TD_PET.fetchReach / TILE });
+    return this.t('play.pet.job.light');
+  }
   level(xp: number): { level: number; into: number; span: number } { return levelProgress(xp); }
   tell(cmd: PetCommand): void {
     if (!this.pets.setCommand(cmd)) return;

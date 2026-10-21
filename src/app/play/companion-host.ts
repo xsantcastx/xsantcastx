@@ -23,7 +23,7 @@ import type { GlimService } from '../shared/glim/glim.service';
 import type { GlimVoice } from '../shared/glim/glim-voice';
 import type { SfxCue } from '../shared/sound/sound-director';
 import { dayKey, followingPet, type PetDef } from '../shared/pets/pets.model';
-import { PET_ROLES, SECOND_AT, hasSecond, petLevel, type PetXpKind } from '../shared/pets/pet-roles';
+import { hasSecond, petLevel, type PetXpKind } from '../shared/pets/pet-roles';
 import {
   GLIM_REACT_MS, LIGHT_GAME, chatTopics, emptyReactMemory, glimPowers, lightGameKey, lightGameMotes, nextStory, nextTip, react, storyKey,
   type ChatTopic, type GlimMoment, type ReactMemory, type TipContext,
@@ -121,7 +121,7 @@ export class CompanionHost {
   private xp(kind: PetXpKind): void {
     this.pendingXp[kind] = (this.pendingXp[kind] ?? 0) + 1;
   }
-  /** Book the pending pet XP; a new level is a toast, Glim's word and (at SECOND_AT) its second move. */
+  /** Book the pending pet XP; a new level is a toast and Glim's word. */
   private flushXp(now: number, force = false): void {
     const def = this.petDef;
     if (!def || (!force && now - this.xpFlushAt < XP_FLUSH_MS)) return;
@@ -132,10 +132,7 @@ export class CompanionHost {
     for (const [kind, n] of Object.entries(pending) as [PetXpKind, number][]) reached = Math.max(reached, this.d.pets.train(def.id, kind, n));
     if (!reached) return;
     this.d.toast(this.d.t('play.pet.levelUp', { name: this.petName, n: reached }));
-    if (reached === SECOND_AT) {
-      const second = PET_ROLES[def.id].second;
-      this.d.toast(this.d.t('play.pet.secondLearned', { name: this.petName, what: this.d.t('play.pet.second.' + second) }));
-    }
+    // (The side view's "second moves" are not part of the top-down world, so a level says only what it does: harder blows.)
     this.d.sfx('levelup');
     this.d.engine()?.petFeel('love');
     this.moment('petLevel', { n: reached });

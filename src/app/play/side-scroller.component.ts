@@ -7,9 +7,11 @@ import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
-import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
+import { ATTR_STEP, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
+import { wornResists } from '../shared/loot/aura-sources';
+import { auraEffect } from '../shared/loot/auras';
 import type { ItemStats } from '../shared/rpg/item.model';
-import { CLASS_SKILLS as TD_CLASS_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, bookTrees, defaultAura, defaultBar, skillVars, synergies, type SkillId, type TreeId } from './td/td-skills';
+import { BLADE_SHARE, CLASS_SKILLS as TD_CLASS_SKILLS, CRIT_MULT, FIRE_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, bookTrees, castRank, castVars, cooldownNow, dealsDamage, defaultAura, defaultBar, synergies, type SkillId, type TreeId } from './td/td-skills';
 import { boughtRanks, buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
@@ -38,7 +40,7 @@ import { IMPLICIT_BY_SLOT, affixRange, isAffixKey, isAffixSlot } from '../shared
 import { qualityTagOf } from '../shared/rpg/item-quality';
 import {
   CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
-  formatItemMod, formatStatValue, ITEM_STAT_LABELS, rarityLabel,
+  formatItemMod, formatStatValue, gearXp, ITEM_STAT_IS_PERCENT, ITEM_STAT_LABELS, rarityLabel,
 } from '../shared/rpg/item.model';
 import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-combat';
 import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
@@ -52,8 +54,8 @@ import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } f
 import { ELEMENTS, type Element as DamageElement } from '../shared/loot/damage.model';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
 import { MOBS, mobSheet } from './td/td-mobs';
-import { bossUniqueById, type BossUnique } from '../shared/rpg/boss-uniques';
-import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
+import { bossUniqueById, relicTotals, type BossUnique, type RelicTotals } from '../shared/rpg/boss-uniques';
+import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, setSigOf, tierWord } from '../shared/rpg/set-items';
 import type { SeekAnswer } from './engine/engine.model';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
@@ -189,6 +191,7 @@ import { DARK_I18N } from './td/td-dark.i18n';
 import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-clock/eclipse.model';
 import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
 import { eclipseWarning, skyVars, spellMult } from './td/td-phases';
+import { weaponSwing } from './td/td-melee';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
@@ -225,7 +228,8 @@ import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, 
 import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
 import { lootEntry } from '../shared/loot/drop-tables';
 import { itemAuras } from '../shared/loot/aura-sources';
-import { socketCountFor } from '../shared/enchanting/socket.model';
+import { socketCountFor, socketStats } from '../shared/enchanting/socket.model';
+import { effectiveStats, wornStats } from '../shared/enchanting/socket-words';
 import { PetSheetComponent } from '../shared/pets/pet-sheet.component';
 import { PetsService } from '../shared/pets/pets.service';
 import { PETS_I18N } from '../shared/pets/pets.i18n';
@@ -425,6 +429,18 @@ const TRACK_KEY = 'eclipse-delve-track';
 const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
   fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
 };
+/**
+ * The held weapon as the Ashguard's swing reads it (td-melee weaponSwing): its Strike and Spell Damage as worn — the
+ * socketed runes, a Socket Word and a grave-good's gift in — exactly what the weapon's card totals.
+ */
+/** A grave-good's number as its card writes it: "12%" on a percent stat (Spell Damage, Move Speed, All Resist …), else "12". */
+function pctOf(key: keyof ItemStats, n: number): string { return `${n}${ITEM_STAT_IS_PERCENT[key] ? '%' : ''}`; }
+
+function heldSwing(held: GameItem): { strikePower?: number; spellDamage?: number } {
+  const st = wornStats(held);
+  return { strikePower: st.strikePower, spellDamage: st.spellDamage };
+}
+
 @Component({
   selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent, SpellbookPageComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
@@ -1907,7 +1923,7 @@ export class SideScrollerComponent implements OnDestroy {
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
     // The weapon in hand: its Strike and Spell Damage lift the Ashguard's swing (td-melee weaponSwing).
     const held = this.inventory.snapshot.equipped['weapon'];
-    (this.engine as unknown as { setWeapon?: (w: { strikePower?: number; spellDamage?: number } | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? { strikePower: held.stats.strikePower, spellDamage: held.stats.spellDamage } : null);
+    (this.engine as unknown as { setWeapon?: (w: { strikePower?: number; spellDamage?: number } | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? heldSwing(held) : null);
     // The worn boss uniques' signatures (shared/rpg/boss-uniques.ts): the engine re-applies only when the set changed.
     (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
@@ -2006,8 +2022,8 @@ export class SideScrollerComponent implements OnDestroy {
     const c = item.curse;
     if (c && isCurseId(c.id)) {
       const def = CURSES[c.id as CurseId], lines: string[] = [];
-      lines.push(this.t('grave.tip.gift', { n: c.cleansed ? Math.round(c.bonus * 5) / 10 : c.bonus, stat: ITEM_STAT_LABELS[def.bonus] }));
-      if (!c.cleansed) lines.push(def.cost === 'lifeRegen' ? this.t('grave.tip.drain', { n: c.cost }) : this.t('grave.tip.price', { n: c.cost, stat: ITEM_STAT_LABELS[def.cost] }));
+      lines.push(this.t('grave.tip.gift', { n: pctOf(def.bonus, c.cleansed ? Math.round(c.bonus * 5) / 10 : c.bonus), stat: ITEM_STAT_LABELS[def.bonus] }));
+      if (!c.cleansed) lines.push(def.cost === 'lifeRegen' ? this.t('grave.tip.drain', { n: c.cost }) : this.t('grave.tip.price', { n: pctOf(def.cost, c.cost), stat: ITEM_STAT_LABELS[def.cost] }));
       lines.push(this.t(c.cleansed ? 'grave.tip.rest' : 'grave.tip.sexton'));
       out.curse = { name: this.t('grave.tip.cursed', { name: this.t(`grave.curse.${c.id}.name`) }), lines, rest: !!c.cleansed, lore: this.t(`grave.curse.${c.id}.lore`) };
     }
@@ -2015,10 +2031,10 @@ export class SideScrollerComponent implements OnDestroy {
     if (w && isWhisperId(w.id)) {
       const def = WHISPERS[w.id as WhisperId], stage = whisperStage(w), next = nextWhisperAt({ ...w, id: w.id as WhisperId });
       const words = Array.from({ length: 4 }, (_, i) => (i <= stage ? this.t(`grave.whisper.${w.id}.${i}`) : '…')).join(' ');
-      const lines = [this.t('grave.tip.awake', { n: stage + 1, v: Math.round(def.per * stage * 10) / 10, stat: ITEM_STAT_LABELS[def.stat] })];
+      const lines = [this.t('grave.tip.awake', { n: stage + 1, v: pctOf(def.stat, Math.round(def.per * stage * 10) / 10), stat: ITEM_STAT_LABELS[def.stat] })];
       if (stage >= 3) lines.push(this.t('grave.tip.full', { who: this.t(`grave.whisper.${w.id}.who`) }));
       else if (next !== null) lines.push(this.t('grave.tip.next', { k: next, have: w.kills }));
-      lines.push(w.silenced ? this.t('grave.tip.silenced') : this.t('grave.tip.listening', { n: WHISPER_COST }));
+      lines.push(w.silenced ? this.t('grave.tip.silenced') : this.t('grave.tip.listening', { n: pctOf('allResist', WHISPER_COST) }));
       if (!w.silenced) lines.push(this.t('grave.tip.archivist'));
       out.whisper = { words, lines, silenced: !!w.silenced };
     }
@@ -2109,13 +2125,20 @@ export class SideScrollerComponent implements OnDestroy {
   private get gearCombat(): Partial<ItemStats> {
     // The milestones' passives (shared/skills/keeper-milestones.ts) ride on the worn totals, under the same caps.
     const g: Partial<ItemStats> = { ...wornCombat(this.inventory, this.wornIds) };
+    // Runes set in armour wells ward against their realm's element (shared/loot/aura-sources wornResists; the Loot sheet's rows).
+    const runes = wornResists(this.inventory.snapshot.items);
+    for (const el of ELEMENTS) if (runes[el]) g[RESIST_STAT[el]] = (g[RESIST_STAT[el]] ?? 0) + (runes[el] ?? 0);
     for (const [stat, n] of Object.entries(passiveBonus(this.huntingLevel)) as [keyof ItemStats, number][]) g[stat] = ((g[stat] as number | undefined) ?? 0) + n;
     return g;
   }
   get sheet(): { level: number; into: number; span: number; toNext: number; left: number; skillPoints: number; next: Milestone | null; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
     const view = this.keeperView, st = this.looks.look.stats, lv = view.level;
     const gear = this.gearCombat;
-    const derived = fightStats(lv, st, gear, this.looks.look.vocation);
+    const derived = fightStats(lv, st, gear, this.looks.look.vocation), sig = this.gearSig;
+    // The worn aura the Loot sheet runs (td-mobs setItemAura): Prayer's life back, Vigor's quicker feet.
+    const aura = this.loot.combatRules().aura, fx = aura ? auraEffect(aura.id, aura.level) : null, vigor = fx?.moveSpeed ?? 1;
+    const lifeBack = Math.round((derived.lifeRegen + sig.regen + (fx?.regen ?? 0)) * 10) / 10;
+    const mf = Math.round((this.inventory.equippedMagicFind + sig.mf) * 10) / 10, xp = Math.round(this.inventory.equippedTotals.xpBonus * 10) / 10;
     const pct = (n: number) => `${Math.round(n * 100)}%`;
     const text: Record<Attribute, string> = {
       vit: this.t('play.td.attr.vit.text', { n: ATTR_STEP.vit }),
@@ -2133,14 +2156,20 @@ export class SideScrollerComponent implements OnDestroy {
         { key: 'play.td.total.regen', value: `${derived.regen.toFixed(1)}/s` },
         { key: 'play.td.total.power', value: pct(derived.power) },
         // Speed: the level's own pace (Tibia) times Agility and worn Move Speed (td-engine walkSpeed).
-        { key: 'play.td.total.speed', value: `+${pct((1 + derived.levelPace) * (1 + derived.moveHaste) - 1)}` },
+        { key: 'play.td.total.speed', value: `+${pct((1 + derived.levelPace) * (1 + derived.moveHaste) * vigor - 1)}` },
         // What the worn gear adds (§3 affixes); a row shows once a piece carries it.
         ...(derived.defense > 0 ? [{ key: 'play.td.total.defense', value: `${Math.round(derived.defense)} (−${pct(defenseReduction(derived.defense, lv))})` }] : []),
         ...(derived.castSpeed > 0 ? [{ key: 'play.td.total.cast', value: `+${pct(derived.castSpeed)}` }] : []),
         ...(derived.crit > 0 ? [{ key: 'play.td.total.crit', value: pct(derived.crit) }] : []),
-        ...(derived.lifeRegen > 0 ? [{ key: 'play.td.total.lifeRegen', value: `${derived.lifeRegen.toFixed(1)}/s` }] : []),
+        // Life back a second as the fight pays it (td-engine relicRegen): worn, plus the boss uniques' and the sets'; a
+        // curse's drain shows as a negative; "×2 standing still" when a Mossbound Heart or the Rootcradle doubles it.
+        ...(lifeBack !== 0 ? [{ key: 'play.td.total.lifeRegen', value: `${lifeBack.toFixed(1)}/s` + (lifeBack > 0 && sig.stillRegen > 1 ? ' ' + this.t('play.td.total.still', { n: sig.stillRegen }) : '') }] : []),
         // Resists (§6): each element's worn total (its own + All Resist), capped at 75.
-        ...ELEMENTS.filter(el => derived.resists[el] > 0).map(el => ({ key: RESIST_TOTAL_KEY[el], value: `${Math.round(derived.resists[el])}%` })),
+        ...ELEMENTS.filter(el => derived.resists[el] !== 0).map(el => ({ key: RESIST_TOTAL_KEY[el], value: `${Math.round(derived.resists[el])}%` })),
+        // The finds (they change the loot, the piles and the XP, not the fight): what each kill is rolled and paid at.
+        ...(mf !== 0 ? [{ key: 'play.td.total.mf', value: `+${mf}%` }] : []),
+        ...(this.economy.goldFind > 0 ? [{ key: 'play.td.total.gf', value: `+${Math.round(this.economy.goldFind * 10) / 10}%` }] : []),
+        ...(xp > 0 ? [{ key: 'play.td.total.xp', value: `+${xp}%` }] : []),
       ],
     };
   }
@@ -2248,15 +2277,26 @@ export class SideScrollerComponent implements OnDestroy {
     const a = this.looks.look.aura, id = a === 'none' ? null : a || defaultAura(this.looks.look.vocation);
     return id && this.ranked(id) ? id : null;
   }
-  /** A skill's line at a rank (rank 0 reads as rank 1). */
-  private skillLine(id: SkillId, rank: number): string {
-    const sk = TD_SKILLS[id], v = skillVars(id, rank, this.skillTree.bought);
+  /**
+   * What the worn gear adds to the skills (the boss uniques' and the item sets' signatures): the same totals the fight
+   * is handed (td-engine setRelics), so the card's ranks, counts, reach and cooldowns are the fight's. Cached per set.
+   */
+  private sigCache: { key: string; sig: RelicTotals } | null = null;
+  private get gearSig(): RelicTotals {
+    const ids = this.wornRelics, key = [...ids].sort().join(',');
+    if (!this.sigCache || this.sigCache.key !== key) this.sigCache = { key, sig: relicTotals(ids, setSigOf) };
+    return this.sigCache.sig;
+  }
+  /** A skill's line at a tree rank (rank 0 reads as rank 1): the numbers the fight uses (td-skills castVars). */
+  private skillLine(id: SkillId, treeRank: number): string {
+    const sk = TD_SKILLS[id], sig = this.gearSig, v = castVars(id, castRank(id, Math.max(1, treeRank), sig), this.skillTree.bought, sig);
     return this.t(sk.textKey, { ...v, mana: v['mana'] ?? sk.mana, cd: sk.cd });
   }
-  /** What the next rank changes, var by var ("Damage: 24–36 → 28–42"); a min/max pair reads as one range. */
+  /** What the next tree rank changes, var by var ("Damage: 24–36 → 28–42"); a min/max pair reads as one range. */
   private rankDiff(id: SkillId, rank: number): string[] {
-    const syn = this.skillTree.bought, a = skillVars(id, rank, syn), b = skillVars(id, rank + 1, syn), out: string[] = [];
-    const pair = 'min' in a && 'max' in a && !('count' in a && 'reach' in a);
+    const syn = this.skillTree.bought, sig = this.gearSig;
+    const a = castVars(id, castRank(id, rank, sig), syn, sig), b = castVars(id, castRank(id, rank + 1, sig), syn, sig), out: string[] = [];
+    const pair = 'min' in a && 'max' in a;
     if (pair && (a['min'] !== b['min'] || a['max'] !== b['max'])) out.push(`${this.t('play.td.tree.var.damage')}: ${a['min']}–${a['max']} → ${b['min']}–${b['max']}`);
     for (const k of Object.keys(a)) {
       if (pair && (k === 'min' || k === 'max')) continue;
@@ -2271,8 +2311,8 @@ export class SideScrollerComponent implements OnDestroy {
     tiers: { level: number; open: boolean }[];
     nodes: { id: SkillId; name: string; tier: number; col: number; rank: number; need: number; open: boolean; picked: boolean; buyable: boolean; slot: number; on: boolean }[];
     lines: { x1: number; y1: number; x2: number; y2: number; lit: boolean }[];
-    pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean;
-      words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[]; phase: { text: string; up: boolean } | null };
+    pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; gear: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean;
+      words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[]; phase: { text: string; up: boolean } | null; power: string | null };
   } {
     const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
     const ids = treeSkills(v, this.bookTab);
@@ -2303,9 +2343,12 @@ export class SideScrollerComponent implements OnDestroy {
     const need = block === 'level' ? this.t('play.td.tree.needLevel', { n: levelFor(id) })
       : block === 'req' && req ? this.t('play.td.tree.needSkill', { name: this.t(TD_SKILLS[req].nameKey) })
       : block === 'max' ? this.t('play.td.tree.maxed') : block === 'points' ? this.t('play.td.tree.noPoints') : '';
+    // The rank the fight casts at: the tree's, plus what worn gear adds to a learnt skill (td-skills castRank).
+    const sig = this.gearSig, nowRank = castRank(id, Math.max(1, rank), sig);
     return {
-      id, name: this.t(sk.nameKey), kind: sk.kind, rank, max: MAX_RANK, now: this.skillLine(id, Math.max(1, rank)), nowRank: Math.max(1, rank),
-      next: rank >= MAX_RANK ? [] : rank < 1 ? [] : this.rankDiff(id, rank), mana: sk.mana, cd: sk.cd, block, need,
+      id, name: this.t(sk.nameKey), kind: sk.kind, rank, max: MAX_RANK, now: this.skillLine(id, Math.max(1, rank)), nowRank, gear: rank > 0 ? nowRank - rank : 0,
+      // The cooldown the Keeper really waits: less what worn gear cuts, over worn cast speed (td-mobs cdOf ÷ 1 + cast).
+      next: rank >= MAX_RANK ? [] : rank < 1 ? [] : this.rankDiff(id, rank), mana: sk.mana, cd: cooldownNow(id, this.fightNow.castSpeed, sig), block, need,
       slot: bar.indexOf(id) + 1, on: aura === id,
       // The Seam-Cant (never translated) and the synergies with live numbers: each source, its bought ranks, the % now.
       words: sk.words ?? '',
@@ -2314,13 +2357,41 @@ export class SideScrollerComponent implements OnDestroy {
         text: this.t('play.td.tree.syn.line', { pct: s.pct, per: s.per, what: this.t('play.td.tree.syn.' + s.what) }),
       })),
       phase: this.spellPhase(id),
+      power: this.spellPower(id),
     };
+  }
+  /** The Keeper's fight numbers now (td-skills fightStats): the level, the attributes and the worn gear, as the engine is handed them. */
+  private get fightNow(): ReturnType<typeof fightStats> {
+    return fightStats(this.huntingLevel, this.looks.look.stats, this.gearCombat, this.looks.look.vocation);
+  }
+  /**
+   * What lifts the card's damage in the fight (td-mobs hitFoe): spell power (level, Spirit, worn Spell Damage), fire's
+   * lift (Ember Mastery, worn fire) on a fire skill, the weapon's flat on a blade's blow, and the crit chance. Null on
+   * a skill that deals no damage, or when nothing lifts it.
+   */
+  private spellPower(id: SkillId): string | null {
+    if (!dealsDamage(id)) return null;
+    const f = this.fightNow, sig = this.gearSig, mastery = castRank('ember-mastery', this.skillRanks['ember-mastery'] ?? 0, sig);
+    const fire = FIRE_SKILLS.has(id) ? (mastery > 0 ? 1 + castVars('ember-mastery', mastery, this.skillTree.bought, sig)['pct'] / 100 : 1) * (1 + sig.fire / 100) : 1;
+    const k = Math.round(f.power * fire * 100) / 100;
+    const parts: string[] = [];
+    if (k !== 1) parts.push(this.t('play.td.tree.power.mult', { k: k.toFixed(2) }));
+    const held = this.inventory.snapshot.equipped['weapon'];
+    if (this.looks.look.vocation === 'ashguard' && (id === 'watch-blade' || BLADE_SHARE.has(id))) {
+      const w = weaponSwing(held && !held.explorerId ? heldSwing(held) : null);
+      if (w.flat > 0) parts.push(this.t('play.td.tree.power.weapon', { n: w.flat }));
+      if (w.mult !== 1) parts.push(this.t('play.td.tree.power.fists', { pct: Math.round((1 - w.mult) * 100) }));
+    }
+    if (f.crit > 0) parts.push(this.t('play.td.tree.power.crit', { pct: Math.round(f.crit * 100), k: CRIT_MULT }));
+    return parts.length ? this.t('play.td.tree.power', { parts: parts.join(' · ') }) : null;
   }
   /** The sky's hand on a damage spell (td-phases.ts): "Eclipse now: +25% power", or null when the hour changes nothing. */
   private spellPhase(id: SkillId): { text: string; up: boolean } | null {
-    const vars = TD_SKILLS[id].vars, k = spellMult(TD_SKILLS[id].tree, this.skyPhase);
-    // The sky moves damage (and the Hearth's heal): a skill with none of those keeps no hour (td-phases skyVars).
-    if (k === 1 || !skyVars(TD_SKILLS[id].tree).some(v => v in vars)) return null;
+    // A blade-borne skill strikes with the Watch Blade's blow, so it feels the blade's (the Brand's) hour.
+    const blade = BLADE_SHARE.has(id), tree = blade ? TD_SKILLS['watch-blade'].tree : TD_SKILLS[id].tree;
+    const vars = TD_SKILLS[blade ? 'watch-blade' : id].vars, k = spellMult(tree, this.skyPhase);
+    // The sky moves damage (and the Hearth's heal, the Watchfire): a skill with none of those keeps no hour (td-phases skyVars).
+    if (k === 1 || !skyVars(tree).some(v => v in vars)) return null;
     const pct = Math.round((k - 1) * 100);
     return { up: pct > 0, text: this.t('clock.spell.now', { phase: this.t('clock.phase.' + this.skyPhase), pct: `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%` }) };
   }
@@ -4315,8 +4386,14 @@ export class SideScrollerComponent implements OnDestroy {
       const [lo, hi] = affixRange(key, slot, item.itemLevel!, item.rarity);
       return lo || hi ? `[${lo}–${hi}]` : '';
     };
-    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, item.stats[key]!)} ${ITEM_STAT_LABELS[key]}`, range: range(key) });
-    const held = ITEM_STAT_KEYS.filter(key => (item.stats[key] ?? 0) !== 0);
+    // What the piece pays when worn (its runes and a seated Socket Word in, as the worn totals count it), not the bare
+    // roll: a Voidmark word's ×2.5 used to sit only in the totals. The roll's range shows only beside an unmoved roll;
+    // a grave-good's gift and price have their own block (graveTip).
+    const paid = effectiveStats(item, socketStats(item));
+    // Strike and Ward are not fight stats: the card says what they do (td-melee weaponSwing; item-upgrade temperFailChance).
+    const what = (key: keyof GameItem['stats']) => key === 'strikePower' || key === 'ward' ? ' ' + this.t('play.tip.what.' + key) : '';
+    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, paid[key]!)} ${ITEM_STAT_LABELS[key]}${what(key)}`, range: paid[key] === item.stats[key] ? range(key) : '' });
+    const held = ITEM_STAT_KEYS.filter(key => (paid[key] ?? 0) !== 0);
     const head = held.includes(headKey) ? line(headKey) : null;
     const wells = socketCountFor(item);
     const sockets = Array.from({ length: wells }, (_, i) => item.sockets?.[i] ?? null).map(id => (id ? materialDisplay(id)?.name ?? id : null));
@@ -4370,7 +4447,8 @@ export class SideScrollerComponent implements OnDestroy {
     const there = current && !current.explorerId ? current : undefined;
     const place = SLOT_BY_ID.get(target)?.name ?? target;
     return {
-      compare: compareStats(item.stats, there?.stats, { includeUnchanged: true }),
+      // As worn (runes, a Socket Word, a grave-good's gift and price): what equipping it really changes.
+      compare: compareStats(wornStats(item), there ? wornStats(there) : null, { includeUnchanged: true }),
       compareLabel: there ? this.t('play.hud.slip.against', { name: there.name }) : this.t('play.hud.slip.againstEmpty', { place }),
     };
   }
@@ -5210,7 +5288,8 @@ export class SideScrollerComponent implements OnDestroy {
     const opened = this.loot.killed(event.creature);
     if (opened) this.message = this.t('play.loot.unlocked', { tier: this.t('loot.tier.' + opened) });
     const base = Math.round(huntingXpFor(event.hp) * (event.xp ?? 1));
-    const gross = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
+    // Worn XP (the "+X% XP" affix, rpg/item.model gearXp) lifts every kill's Hunting XP, as its card says.
+    const gross = base + gearXp(base, this.inventory.equippedTotals.xpBonus) + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
     // The Ember debt (shared/hearth): while one is owed, half of each kill's XP pays it off. Once per kill.
     const owed = this.topDown && this.hearth.state.debt > 0 && !this.debtKills.has(event.id);
     const pay = owed ? this.hearth.earn(gross) : { earned: gross, paid: 0 };

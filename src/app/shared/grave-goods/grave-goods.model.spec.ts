@@ -44,12 +44,12 @@ describe('grave-goods.model: cursed grave-goods', () => {
     expect(graveStats({ curse: curseFor('leaden-step', 10) })).toEqual({ critChance: 5, moveSpeed: -12 });
   });
 
-  it('the fight reads the costs: a drain, resists that fall (never below 0), slower feet', () => {
+  it('the fight reads the costs: a drain, resists that fall (below 0 too: the element then bites harder), slower feet', () => {
     const drained = fightStats(20, undefined, { lifeRegen: -2 });
     expect(drained.lifeRegen).toBe(-2);
     const hollow = fightStats(20, undefined, { fireResist: 30, allResist: -15 });
     expect(hollow.resists.fire).toBe(15);
-    expect(hollow.resists.cold).toBe(0);
+    expect(hollow.resists.cold).toBe(-15);
     const leaden = fightStats(20, undefined, { moveSpeed: -12 });
     expect(leaden.moveHaste).toBeCloseTo(-0.12, 5);
     expect(fightStats(20, undefined, { moveSpeed: -500 }).moveHaste).toBeCloseTo(-0.3, 5);

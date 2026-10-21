@@ -154,9 +154,10 @@ export class LootSheetComponent implements OnDestroy {
     const items = this.inventory.snapshot.items;
     this.sources = this.loot.auraSources(items);
     this.active = this.loot.activeAura(items);
+    // What the armour's runes add, as the fight adds them (side-scroller gearCombat → td-skills fightStats): no
+    // difficulty penalty (the top-down fight has none), the 75 cap applied to the whole total on the C sheet.
     const gear = this.loot.combatRules().resists;
-    const penalty = DIFFICULTIES[this.s.tier].resistPenalty;
-    this.resists = ELEMENTS.map(id => ({ id, value: Math.min(MAX_KEEPER_RESIST, keeperResist(gear[id], penalty)) }));
+    this.resists = ELEMENTS.map(id => ({ id, value: Math.min(MAX_KEEPER_RESIST, keeperResist(gear[id], 0)) }));
   }
 
   setFilter(f: LootFilter): void { this.loot.setFilter(f); }
