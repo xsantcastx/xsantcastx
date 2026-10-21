@@ -1,6 +1,8 @@
 import { createServer } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { clean, nameIsRude } from './social-words.mjs';
+import { fakeVerifier, firebaseVerifier, firestoreStore, memoryStore } from './social-identity.mjs';
 
 // Social presence only. Combat, inventory, and rewards remain local to each game.
 //
@@ -14,12 +16,27 @@ import { pathToFileURL } from 'node:url';
 // Parties live here, in memory, like the room. A v2 client never sees a party event and is never invited (it does not
 // say `party: true` on join), so nothing it does changes.
 //
-// Protocol 4 (2026-10-21, shared creatures): within a party, for each area, one member (the host) simulates the wild
+// Protocol 4 (2026-10-21, the social graph; docs/design/online.md Phase 3): a signed-in Keeper sends its Firebase ID
+// token on /join (`Authorization: Firebase <token>`); the room verifies it (social-identity.mjs), binds the session to
+// the uid, refuses a banned account, and shows everyone else as a guest (`guest: true` on the player). Signed-in
+// Keepers keep friends (users/{uid}/social/friends, written by the room only) and blocks; anyone may whisper, block,
+// mute (client-side) and report; privacy (appear offline, friends-only invites) travels on join and /privacy; every
+// relayed line passes a profanity mask (social-words.mjs). Older clients send no token and are guests; nothing else
+// they do changes.
+//
+// Protocol 5 (2026-10-21, shared creatures): within a party, for each area, one member (the host) simulates the wild
 // creatures and streams compact snapshots to the others in that area; members send damage claims back; the host sends
 // bites and kills. The room only elects the host, validates and relays (never simulates, never stores a creature). A
-// client says `coop: true` on join; a v3 client never does, so it is never elected, sent or asked anything new.
-// See the "Protocol 4" block below and docs/design/online.md §3.4.
-export const PROTOCOL = 4;
+// client says `coop: true` on join; an older client never does, so it is never elected, sent or asked anything new.
+// See the "Protocol 5" block below and docs/design/online.md §3.4.
+export const PROTOCOL = 5;
+export const FRIENDS_MAX = 200;
+export const BLOCKS_MAX = 100;
+/** How long a friend request stands (ms). */
+export const REQUEST_MS = 5 * 60000;
+/** How often a signed-in session's ban is looked up again (ms): a GM ban reaches the room within this. */
+export const BAN_RECHECK_MS = 10 * 60000;
+export const REPORT_REASONS = new Set(['spam', 'abuse', 'cheating', 'name', 'other']);
 export const PARTY_MAX = 4;
 /** How long an invite stands before it lapses (ms). */
 export const INVITE_MS = 60000;
@@ -51,7 +68,7 @@ export function presenceFields(data) {
   return out;
 }
 
-// ── Protocol 4: shared creatures (co-op) — validators. Pure; every field absent-or-valid, unknown keys refused. ──
+// ── Protocol 5: shared creatures (co-op) — validators. Pure; every field absent-or-valid, unknown keys refused. ──
 /** The room's hard caps for co-op traffic (per message, per session, per party). */
 export const COOP = Object.freeze({
   /** Creatures in one snapshot, events in one snapshot, ids in one `gone` list, claims in one batch. */
@@ -153,9 +170,15 @@ export function coopHit(raw) {
   return out;
 }
 
-export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now } = {}) {
+/**
+ * `verify`: (idToken) => Promise<{uid, anonymous}> (null: nobody is signed in, every Keeper is a guest — the room
+ * before its project is configured). `store`: bans, friends, blocks and reports (social-identity.mjs).
+ */
+export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {} } = {}) {
   const sessions = new Map();
   const messages = [];
+  /** Friend requests by id (in memory; they lapse): from/to uids, the sender's name and player id. */
+  const requests = new Map();
   /** Parties by id: the leader's player id, the members' (leader first), the last 30 party lines. */
   const parties = new Map();
   /** Open invites by id: from and to (player ids), when it lapses. */
@@ -169,8 +192,18 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (res.writableLength > 65536) { res.destroy(); return; }
     res.write(`data: ${JSON.stringify(value)}\n\n`);
   };
-  const broadcast = value => { for (const s of sessions.values()) if (s.stream) send(s.stream, value); };
-  const publishPlayers = () => { clearTimeout(publishTimer); publishTimer = undefined; broadcast({ type: 'players', players: players() }); };
+  /** `viewer` blocked `other` (by account when the other is signed in, else by this session). */
+  const blocks = (viewer, other) => !!viewer.blocks && (other.uid ? viewer.blocks.ids.includes(other.uid) : viewer.blocks.ids.includes(`p:${other.player.id}`));
+  /** Everyone, or (with `from`) everyone who has not blocked `from`. */
+  const broadcast = (value, from = null) => { for (const s of sessions.values()) if (s.stream && !(from && blocks(s, from))) send(s.stream, value); };
+  /** The room's list as `viewer` sees it: the Keepers it blocked are not in it. */
+  const messagesFor = viewer => (viewer.blocks?.ids.length ? messages.filter(m => { const o = sessionOf(m.playerId); return !(o && blocks(viewer, o)); }) : messages);
+  const playersFor = viewer => { const all = [...sessions.values()]; return all.filter(o => !blocks(viewer, o)).map(o => o.player); };
+  const publishPlayers = () => {
+    clearTimeout(publishTimer); publishTimer = undefined;
+    const all = players();
+    for (const s of sessions.values()) if (s.stream) send(s.stream, { type: 'players', players: s.blocks?.ids.length ? playersFor(s) : all });
+  };
   // Movement is coalesced: at most one players list per `publishMs`, however many Keepers walk (a v1 client gets the
   // same 'players' event it always did, a little less often).
   let publishTimer;
@@ -208,14 +241,26 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     for (const id of p.members) sendTo(id, { type: 'party-note', note });
     if (why === 'kicked') sendTo(s.player.id, { type: 'party-note', note });
   };
+  const sessionOfUid = uid => { for (const s of sessions.values()) if (s.uid === uid) return s; return null; };
+  /** A signed-in session's friends as it sees them: online (unless they appear offline), their area and player id. */
+  const friendsView = s => (s.friends?.ids ?? []).map(uid => {
+    const o = sessionOfUid(uid), on = !!o && !o.privacy.offline;
+    return { uid, name: s.friends.names[uid] ?? 'Keeper', online: on, ...(on ? { area: String(o.player.area ?? o.player.zone ?? ''), player: o.player.id } : {}) };
+  });
+  const pushFriends = s => { if (s.uid && s.stream) send(s.stream, { type: 'friends', friends: friendsView(s) }); };
+  /** Everyone who counts `uid` a friend hears its status again (joined, left, moved area, privacy). */
+  const friendsHear = uid => { if (uid) for (const s of sessions.values()) if (s.friends?.ids.includes(uid)) pushFriends(s); };
+  const blocksView = s => (s.blocks?.ids ?? []).map(key => ({ key, name: s.blocks.names[key] ?? 'Keeper' }));
   const remove = token => {
     const s = sessions.get(token);
     if (!s) return;
     if (s.party) dropMember(s, 'left');
     for (const [id, inv] of invites) if (inv.from === s.player.id || inv.to === s.player.id) invites.delete(id);
+    for (const [id, r] of requests) if (r.fromPlayer === s.player.id) requests.delete(id);
     sessions.delete(token);
     s.stream?.end();
     publishPlayers();
+    friendsHear(s.uid);
   };
   const fail = (status, message) => Object.assign(new Error(message), { status });
   const consume = (s, bucket, limit, windowMs) => {
@@ -254,6 +299,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (!them) throw fail(400, 'That Keeper is not here.');
       if (!them.parties) throw fail(409, 'That Keeper cannot join parties yet.');
       if (mine && mine.leader !== me) throw fail(403, 'Only the party leader can invite.');
+      // Protocol 4: a Keeper who blocked this one, or takes invites from friends only, is not asked (the same words
+      // either way, so a block is never revealed).
+      if (blocks(them, session) || (them.privacy.invites === 'friends' && !(session.uid && them.friends?.ids.includes(session.uid)))) throw fail(403, 'That Keeper is not taking invites.');
       if (them.party) throw fail(409, mine && them.party === mine.id ? 'Already in your party.' : 'That Keeper is already in a party.');
       if (mine && mine.members.length >= PARTY_MAX) throw fail(409, 'The party is full.');
       for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
@@ -312,10 +360,10 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (!mine) throw fail(409, 'You are not in a party.');
       const line = text(data.text);
       if (!line || line.length > 240) throw fail(400, 'Messages must be 1–240 characters.');
-      const message = { id: randomUUID(), playerId: me, name: session.player.name, text: line, at: now() };
+      const message = { id: randomUUID(), playerId: me, name: session.player.name, text: clean(line), at: now() };
       mine.messages.push(message);
       if (mine.messages.length > 30) mine.messages.shift();
-      for (const id of mine.members) sendTo(id, { type: 'party-chat', message });
+      for (const id of mine.members) { const m = sessionOf(id); if (m?.stream && !blocks(m, session)) send(m.stream, { type: 'party-chat', message }); }
       reply(201, { message }); return;
     }
     if (verb === 'kill') {
@@ -336,7 +384,126 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     }
     throw fail(404, 'Not found.');
   };
-  // ── Protocol 4: shared creatures (co-op). Kept apart from the party verbs above. ──
+  const privacyOf = raw => ({
+    offline: !!raw && typeof raw === 'object' && raw.offline === true,
+    invites: !!raw && typeof raw === 'object' && raw.invites === 'friends' ? 'friends' : 'everyone',
+  });
+  const signedIn = session => { if (!session.uid) throw fail(403, 'Sign in to keep friends.'); };
+  const requestView = r => ({ id: r.id, name: r.fromName, from: r.fromPlayer, until: r.until });
+  /**
+   * Protocol 4, the social verbs. Friends need both Keepers signed in; whispers, blocks and reports do not. Rate
+   * limits per session: friend verbs 6 in 30 s, whispers 5 in 10 s, blocks 10 in 60 s, reports 3 in 10 minutes.
+   */
+  const socialRequest = async (path, session, data, reply) => {
+    const me = session.player.id;
+    if (path === '/friend/request') {
+      signedIn(session);
+      consume(session, 'friend', 6, 30000);
+      const them = typeof data.to === 'string' ? sessionOf(data.to) : null;
+      if (!them || them === session) throw fail(400, 'That Keeper is not here.');
+      if (!them.uid) throw fail(409, 'That Keeper plays as a guest.');
+      if (session.friends.ids.includes(them.uid)) throw fail(409, 'Already friends.');
+      if (session.friends.ids.length >= FRIENDS_MAX) throw fail(409, 'Your friends list is full.');
+      for (const [id, r] of requests) if (r.until <= now()) requests.delete(id);
+      if ([...requests.values()].some(r => r.from === session.uid && r.to === them.uid)) throw fail(409, 'Already asked.');
+      const r = { id: randomUUID(), from: session.uid, fromName: session.player.name, fromPlayer: me, to: them.uid, until: now() + REQUEST_MS };
+      // A Keeper who blocked this one never hears the request; the sender is told it went (a block is never revealed).
+      if (!blocks(them, session)) { requests.set(r.id, r); if (them.stream) send(them.stream, { type: 'friend-request', request: requestView(r) }); }
+      reply(201, { ok: true }); return;
+    }
+    if (path === '/friend/accept' || path === '/friend/decline') {
+      signedIn(session);
+      consume(session, 'friend', 6, 30000);
+      const r = typeof data.request === 'string' ? requests.get(data.request) : undefined;
+      if (!r || r.to !== session.uid) throw fail(404, 'That request is gone.');
+      requests.delete(r.id);
+      if (r.until <= now()) throw fail(410, 'That request lapsed.');
+      if (path === '/friend/decline') { reply(200, { ok: true }); return; }
+      if (session.friends.ids.length >= FRIENDS_MAX) throw fail(409, 'Your friends list is full.');
+      try { await store.addFriends(session.uid, session.player.name, r.from, r.fromName); } catch (e) { log('friends write failed', e); throw fail(503, 'Could not save that. Try again.'); }
+      const add = (s, uid, name) => { if (s && !s.friends.ids.includes(uid)) s.friends.ids.push(uid); if (s) s.friends.names[uid] = name; };
+      const them = sessionOfUid(r.from);
+      add(session, r.from, r.fromName); add(them, session.uid, session.player.name);
+      pushFriends(session); if (them) { pushFriends(them); if (them.stream) send(them.stream, { type: 'social-note', note: { kind: 'friend-added', name: session.player.name } }); }
+      reply(200, { ok: true }); return;
+    }
+    if (path === '/friend/remove') {
+      signedIn(session);
+      consume(session, 'friend', 6, 30000);
+      if (typeof data.uid !== 'string' || !session.friends.ids.includes(data.uid)) throw fail(400, 'Not on your list.');
+      try { await store.removeFriends(session.uid, data.uid); } catch (e) { log('friends write failed', e); throw fail(503, 'Could not save that. Try again.'); }
+      const drop = (s, uid) => { if (!s) return; s.friends.ids = s.friends.ids.filter(x => x !== uid); delete s.friends.names[uid]; };
+      const them = sessionOfUid(data.uid);
+      drop(session, data.uid); drop(them, session.uid);
+      pushFriends(session); if (them) pushFriends(them);
+      reply(200, { ok: true }); return;
+    }
+    if (path === '/whisper') {
+      consume(session, 'whisper', 5, 10000);
+      const them = typeof data.to === 'string' ? sessionOf(data.to) : null;
+      if (!them || them === session) throw fail(400, 'That Keeper is not here.');
+      const line = typeof data.text === 'string' ? data.text.replace(/[\u0000-\u001f\u007f]/g, ' ').trim() : '';
+      if (!line || line.length > 240) throw fail(400, 'Messages must be 1–240 characters.');
+      const whisper = { id: randomUUID(), from: me, name: session.player.name, to: them.player.id, toName: them.player.name, text: clean(line), at: now() };
+      // Sent back to the whisperer always; to a Keeper who blocked them, never (and nothing says so).
+      if (session.stream) send(session.stream, { type: 'whisper', whisper });
+      if (them.stream && !blocks(them, session)) send(them.stream, { type: 'whisper', whisper });
+      reply(201, { whisper }); return;
+    }
+    if (path === '/block' || path === '/unblock') {
+      consume(session, 'block', 10, 60000);
+      session.blocks ??= { ids: [], names: {} };
+      if (path === '/block') {
+        const them = typeof data.player === 'string' ? sessionOf(data.player) : null;
+        if (!them || them === session) throw fail(400, 'That Keeper is not here.');
+        const key = them.uid ?? `p:${them.player.id}`;
+        if (!session.blocks.ids.includes(key)) {
+          if (session.blocks.ids.length >= BLOCKS_MAX) throw fail(409, 'Your block list is full.');
+          session.blocks.ids.push(key);
+        }
+        session.blocks.names[key] = them.player.name;
+        // Whatever the blocked one had asked of this Keeper goes.
+        for (const [id, inv] of invites) if (inv.from === them.player.id && inv.to === me) invites.delete(id);
+        for (const [id, r] of requests) if (r.fromPlayer === them.player.id && r.to === session.uid) requests.delete(id);
+      } else {
+        if (typeof data.key !== 'string' || !session.blocks.ids.includes(data.key)) throw fail(400, 'Not on your list.');
+        session.blocks.ids = session.blocks.ids.filter(k => k !== data.key); delete session.blocks.names[data.key];
+      }
+      // Kept for a signed-in Keeper (account blocks only; a guest's block lasts the session).
+      if (session.uid) {
+        const kept = session.blocks.ids.filter(k => !k.startsWith('p:'));
+        try { await store.saveBlocks(session.uid, { ids: kept, names: Object.fromEntries(kept.map(k => [k, session.blocks.names[k]])) }); } catch (e) { log('blocks write failed', e); }
+      }
+      if (session.stream) { send(session.stream, { type: 'blocks', blocks: blocksView(session) }); send(session.stream, { type: 'players', players: playersFor(session) }); }
+      reply(200, { ok: true }); return;
+    }
+    if (path === '/report') {
+      consume(session, 'report', 3, 10 * 60000);
+      const them = typeof data.player === 'string' ? sessionOf(data.player) : null;
+      if (!them || them === session) throw fail(400, 'That Keeper is not here.');
+      if (!REPORT_REASONS.has(data.reason)) throw fail(400, 'Pick a reason.');
+      const note = typeof data.note === 'string' ? data.note.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200) : '';
+      // The reported Keeper's own last public lines, as the room heard them (raw, unmasked: the owner judges).
+      const lines = (them.said ?? []).slice(-10);
+      const doc = {
+        at: now(), status: 'open', reason: data.reason, note,
+        from: { uid: session.uid ?? null, name: session.player.name, guest: !session.uid },
+        about: { uid: them.uid ?? null, name: them.player.name, guest: !them.uid, area: String(them.player.area ?? them.player.zone ?? '') },
+        lines,
+      };
+      let id;
+      try { id = await store.report(doc); } catch (e) { log('report write failed', e); throw fail(503, 'Could not file the report. Try again.'); }
+      reply(201, { ok: true, id }); return;
+    }
+    if (path === '/privacy') {
+      consume(session, 'privacy', 6, 30000);
+      session.privacy = privacyOf(data);
+      friendsHear(session.uid);
+      reply(200, { privacy: session.privacy }); return;
+    }
+    throw fail(404, 'Not found.');
+  };
+  // ── Protocol 5: shared creatures (co-op). Kept apart from the party and friends verbs above. ──
   /** Per party: per area, the host (sticky while it stays) and a term that grows with every change of host. */
   const coopHosts = new Map();
   /** What each party was last told (so an unchanged election sends nothing). */
@@ -450,7 +617,10 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (typeof data.area !== 'string' || !AREA.test(data.area)) throw fail(400, 'Invalid co-op message.');
     if (data.area !== area) throw fail(409, 'Not in that place.');
     const host = coopHosts.get(p.id)?.get(area);
-    const others = coopSessions(p).filter(s => s.player.id !== me && coopAreaOf(s) === area);
+    // Blocks (protocol 4) are honoured both ways: a Keeper never receives a blocked Keeper's creatures or claims, nor
+    // sends them to one who blocked it (a party should never hold such a pair, but the relay does not rely on that).
+    const apart = o => blocks(o, session) || blocks(session, o);
+    const others = coopSessions(p).filter(s => s.player.id !== me && coopAreaOf(s) === area && !apart(s));
     if (verb === 'snap') {
       if (!host || host.host !== me) throw fail(409, 'Not the host here.');
       coopKeys(data, ['area', 'seq', 'kf', 'mobs', 'gone', 'ev', 'tier']);
@@ -476,6 +646,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (!Array.isArray(data.hits) || !data.hits.length || data.hits.length > COOP.maxHits) coopBad();
     const hits = data.hits.map(coopHit);
     const pl = session.player;
+    const hostS = sessionOf(host.host);
+    if (!hostS || apart(hostS)) throw fail(409, 'Nobody hosts here.');
     sendTo(host.host, { type: 'coop-hits', from: me, area, x: pl.x, y: pl.y, level: Number.isInteger(pl.level) ? pl.level : 1, hits });
     reply(200, { ok: true });
   };
@@ -503,18 +675,42 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         joinAttempts.set(ip, limiter);
         consume(limiter, 'join', 20, 60000);
         const data = await readBody(req);
-        const name = typeof data.name === 'string' ? data.name.trim().replace(/\s+/g, ' ') : '';
-        if (!/^[\p{L}\p{N} _'-]{2,20}$/u.test(name)) throw fail(400, 'Use a name of 2–20 letters, numbers, spaces, or simple punctuation.');
+        const raw = typeof data.name === 'string' ? data.name.trim().replace(/\s+/g, ' ') : '';
+        if (!/^[\p{L}\p{N} _'-]{2,20}$/u.test(raw)) throw fail(400, 'Use a name of 2–20 letters, numbers, spaces, or simple punctuation.');
+        // A rude name is not refused (the always-on client would retry it for ever): it is simply not shown.
+        const name = nameIsRude(raw) ? 'Keeper' : raw;
         const profile = presenceFields(data);
+        // Protocol 4: who this is. No token, or a room with no project configured: a guest.
+        const idToken = /^Firebase ([A-Za-z0-9._-]{10,4096})$/.exec(req.headers.authorization ?? '')?.[1];
+        let uid = null;
+        if (idToken && verify) {
+          let who;
+          try { who = await verify(idToken); } catch (e) { throw fail(401, e?.status === 401 ? 'Sign in again.' : 'Could not check your sign-in.'); }
+          if (!who.anonymous) uid = who.uid;
+        }
+        if (uid) {
+          let barred = false;
+          try { barred = await store.banned(uid); } catch (e) { log('ban lookup failed', e); }
+          if (barred) throw fail(403, 'This account is barred from the hearth.');
+        }
+        // One account, one Keeper in the room: a second join replaces the first.
+        const twin = uid ? [...sessions.entries()].find(([, s]) => s.uid === uid) : null;
+        if (twin) { if (twin[1].stream) send(twin[1].stream, { type: 'replaced' }); remove(twin[0]); }
         if (sessions.size >= maxClients) throw fail(503, 'The hearth is full. Try again shortly.');
+        let friends = { ids: [], names: {} }, blocked = { ids: [], names: {} };
+        if (uid) {
+          try { [friends, blocked] = await Promise.all([store.friends(uid), store.blocks(uid)]); } catch (e) { log('social read failed', e); }
+        }
         const token = randomBytes(32).toString('hex');
-        const player = { id: randomUUID(), name, x: 160, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks', ...profile };
+        const player = { id: randomUUID(), name, x: 160, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks', ...profile, guest: !uid };
         // Protocol 3: only a client that says it knows parties can be invited to one (a v2 client never is).
-        sessions.set(token, { player, lastSeen: now(), stream: null, party: null, parties: data.party === true });
-        // Protocol 4: only a client that says it shares creatures (and knows parties) is ever elected or relayed to.
-        sessions.get(token).coop = data.party === true && data.coop === true;
-        reply(201, { id: player.id, token, players: players(), messages, protocol: PROTOCOL });
-        publishPlayers(); return;
+        const session = { player, lastSeen: now(), stream: null, party: null, parties: data.party === true, uid, friends, blocks: blocked, privacy: privacyOf(data.privacy), checkedAt: now(), said: [] };
+        // Protocol 5: only a client that says it shares creatures (and knows parties) is ever elected or relayed to.
+        session.coop = data.party === true && data.coop === true;
+        sessions.set(token, session);
+        reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid });
+        publishPlayers();
+        friendsHear(uid); return;
       }
       const token = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization ?? '')?.[1];
       const session = sessions.get(token);
@@ -526,7 +722,13 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         session.lastSeen = now();
         res.writeHead(200, { 'Content-Type': 'text/event-stream', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
         res.flushHeaders();
-        send(res, { type: 'snapshot', players: players(), messages });
+        send(res, { type: 'snapshot', players: playersFor(session), messages: messagesFor(session) });
+        // Protocol 4: the friends list, the block list, and requests still standing.
+        if (session.uid) {
+          pushFriends(session);
+          for (const r of requests.values()) if (r.to === session.uid && r.until > now()) send(res, { type: 'friend-request', request: requestView(r) });
+        }
+        if (session.blocks.ids.length) send(res, { type: 'blocks', blocks: blocksView(session) });
         // A reopened stream learns its party (and its lines) and any invite still standing.
         if (session.parties) {
           const p = session.party && parties.get(session.party);
@@ -549,18 +751,23 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         consume(session, 'update', 8, 1000);
         if (!Number.isFinite(data.x) || Math.abs(data.x) > 1e6 || !Number.isFinite(data.y) || Math.abs(data.y) > 1e6 || ![-1, 1].includes(data.facing) || !animations.has(data.animation) || !zoneOk) throw fail(400, 'Invalid position.');
         const extra = presenceFields(data);
+        const wasArea = session.player.area ?? session.player.zone;
         Object.assign(session.player, { x: Math.round(data.x * 10) / 10, y: Math.round(data.y * 10) / 10, facing: data.facing, animation: data.animation, zone: data.zone }, extra);
         coopMoved(session);
-        schedulePublish(); reply(200, { ok: true }); return;
+        schedulePublish();
+        if ((session.player.area ?? session.player.zone) !== wasArea) friendsHear(session.uid);
+        reply(200, { ok: true }); return;
       }
       if (url.pathname === '/chat') {
         consume(session, 'chat', 5, 10000);
         const text = typeof data.text === 'string' ? data.text.replace(/[\u0000-\u001f\u007f]/g, ' ').trim() : '';
         if (!text || text.length > 240) throw fail(400, 'Messages must be 1–240 characters.');
-        const message = { id: randomUUID(), playerId: session.player.id, name: session.player.name, text, at: now() };
+        const message = { id: randomUUID(), playerId: session.player.id, name: session.player.name, text: clean(text), at: now() };
         messages.push(message);
         if (messages.length > 50) messages.shift();
-        broadcast({ type: 'chat', message }); reply(201, { message }); return;
+        // What this Keeper said, raw, for a report about them (the last ten).
+        session.said.push({ text, at: message.at }); if (session.said.length > 10) session.said.shift();
+        broadcast({ type: 'chat', message }, session); reply(201, { message }); return;
       }
       if (url.pathname === '/emote') {
         // A Wave (protocol 2): from this Keeper, optionally at another one still in the room. Relayed, never stored.
@@ -572,8 +779,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
           to = data.to;
         }
         const emote = { id: randomUUID(), from: session.player.id, name: session.player.name, to, kind: data.kind, at: now() };
-        broadcast({ type: 'emote', emote }); reply(201, { emote }); return;
+        broadcast({ type: 'emote', emote }, session); reply(201, { emote }); return;
       }
+      if (/^\/(friend\/(request|accept|decline|remove)|whisper|block|unblock|report|privacy)$/.test(url.pathname)) { await socialRequest(url.pathname, session, data, reply); return; }
       if (url.pathname.startsWith('/party/')) { partyRequest(url.pathname.slice('/party/'.length), session, data, reply); return; }
       if (url.pathname === '/leave') { remove(token); reply(200, { ok: true }); return; }
       throw fail(404, 'Not found.');
@@ -591,6 +799,17 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     }
     for (const [ip, limiter] of joinAttempts) if (now() - limiter.join?.start > 60000) joinAttempts.delete(ip);
     for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
+    for (const [id, r] of requests) if (r.until <= now()) requests.delete(id);
+    // A GM ban reaches a Keeper already in the room within BAN_RECHECK_MS.
+    for (const [token, session] of sessions) {
+      if (!session.uid || now() - session.checkedAt < BAN_RECHECK_MS) continue;
+      session.checkedAt = now();
+      store.banned(session.uid).then(barred => {
+        if (!barred || sessions.get(token) !== session) return;
+        if (session.stream) send(session.stream, { type: 'banned' });
+        remove(token);
+      }, e => log('ban recheck failed', e));
+    }
   }, Math.min(10000, idleMs));
   cleanup.unref();
   const dispose = () => { clearInterval(cleanup); clearInterval(coopTimer); clearTimeout(publishTimer); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
@@ -601,7 +820,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const host = process.env.SOCIAL_HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
   const port = Number(process.env.PORT || process.env.SOCIAL_PORT || 4320);
   const origins = process.env.SOCIAL_ORIGINS?.split(',').map(s => s.trim()).filter(Boolean);
-  const room = createSocialServer({ ...(origins ? { origins } : {}) });
+  // Identity (protocol 4): SOCIAL_FIREBASE_PROJECT turns on ID-token checks and Firestore (bans, friends, blocks,
+  // reports) through the service account. Without it every Keeper is a guest. SOCIAL_FAKE_AUTH=1 is the local e2e's
+  // stand-in (tokens `fake.<uid>`, an in-memory store; refused on Cloud Run).
+  const project = process.env.SOCIAL_FIREBASE_PROJECT;
+  const fake = process.env.SOCIAL_FAKE_AUTH === '1';
+  const identity = fake ? { verify: fakeVerifier(), store: memoryStore() }
+    : project ? { verify: firebaseVerifier({ projectId: project }), store: firestoreStore({ projectId: project }) }
+    : { verify: null, store: memoryStore() };
+  const log = (what, e) => console.error(`[hearth] ${what}: ${e?.message ?? e}`);
+  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log });
   room.server.listen(port, host, () => console.log(`Eclipse Realms social room: http://${host}:${port}`));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void room.dispose(); });
 }
