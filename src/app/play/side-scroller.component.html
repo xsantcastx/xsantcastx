@@ -576,6 +576,22 @@
     </section>
   }
 
+  @if (harbourBoard; as hb) {
+    <!-- A Harbourmaster's Sailing Board (play/harbour/sailing-board.component.ts): every ship out of the pier, its fare, its band, its state. -->
+    <section class="places win td-map td-harbour" role="dialog" aria-modal="true" [attr.aria-label]="t('harbour.aria', { name: pierName(hb) })" data-harbour [attr.data-pier]="hb" data-engine-ignore (keydown.escape)="closeHarbour()">
+      <header class="win-head">
+        <h2>{{ t('harbour.title', { pier: pierName(hb) }) }}</h2>
+        <button type="button" class="win-x places-close" (click)="closeHarbour()" [attr.aria-label]="t('harbour.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('harbour.close') }}</span></button>
+      </header>
+      <app-sailing-board [pier]="hb" [level]="huntingLevel" (sail)="sailFrom($event)" />
+    </section>
+  }
+
+  @if (voyage; as vy) {
+    <!-- The crossing (play/harbour/voyage.component.ts): a fade, a short deck scene, a fade; tap or Esc skips. -->
+    <app-voyage [dest]="vy.row.destPier" [land]="vy.row.continent" [phase]="vy.phase" [portrait]="vy.portrait" [still]="vy.still" (depart)="voyageDeparted()" (done)="voyageDone()" data-engine-ignore />
+  }
+
   @if (bestiaryOpen && bestiary; as bs) {
     <!-- The Bestiary: a card per creature. Undefeated ones are a dark silhouette and "???" (level and haunts still shown: a hunting guide). -->
     <section class="places win td-map td-best" [attr.aria-label]="t('play.best.title')" data-engine-ignore (keydown.escape)="closeBestiary()">

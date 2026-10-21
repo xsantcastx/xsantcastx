@@ -5,7 +5,7 @@
  * docs/handoff/cozy-ui/fx-*.jpg. Nothing here asserts on a fight's outcome.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { SKILLS_LEARNED, pickSkill, seed } from './play-helpers';
+import { SKILLS_LEARNED, pickSkill, purse, sail, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -27,14 +27,13 @@ async function shot(page: Page, name: string, size?: number): Promise<void> {
 async function toMoltenDeep(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await seed(page, { 'eclipse-td': '1', ...SKILLS_LEARNED });
+  await seed(page, { 'eclipse-td': '1', ...purse(100_000), ...SKILLS_LEARNED });
   await page.goto('/play?td=1&hour=21');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
   await canvas(page).focus();
   await page.keyboard.press('m');
   const map = page.locator('#places-list.td-map');
-  await map.locator('.td-map__pin[title="Ship To Pyrehold"]').click();
-  await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 30000 });
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await page.keyboard.press('m');
   await map.locator('.td-map__key button', { hasText: /the molten deep/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /scorched throat/i, { timeout: 30000 });

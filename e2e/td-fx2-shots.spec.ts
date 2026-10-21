@@ -7,7 +7,7 @@
  * every rung round the Keeper, a second after each arrival, drawn and never pickable.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { purse, sail, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -28,7 +28,7 @@ async function go(page: Page, place: RegExp, area: RegExp): Promise<void> {
 async function open(page: Page, query: string): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await seed(page, { 'eclipse-td': '1' });
+  await seed(page, { 'eclipse-td': '1', ...purse(100_000) });
   await page.goto(`/play?td=1&${query}`);
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
 }
@@ -54,7 +54,7 @@ test('loot on the ground: every rung of the ladder, by day in town and on a dark
   await page.screenshot({ path: 'docs/handoff/cozy-ui/fx-loot-day.jpg', type: 'jpeg', quality: 85, clip: await around(page, 760, 620, 130) });
   // A dark floor: the Ashen Crypt's first (no creatures by its stair).
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await go(page, /ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(page, /the ashen crypt/i, /ossuary/i);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   // Each drop lands a second after the arrival, popping in its colour.
@@ -70,7 +70,7 @@ test('loot on the ground: every rung of the ladder, by day in town and on a dark
 test('a boss\'s tell: the Ashbone Dragon winds up before its breath', async ({ page }) => {
   test.setTimeout(120000);
   await open(page, 'hour=12');
-  await go(page, /ship to pyrehold/i, /pyrehold/i);
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await go(page, /the ashen crypt/i, /ossuary/i);
   await go(page, /stairs down/i, /bone hall/i);
   await page.emulateMedia({ reducedMotion: 'no-preference' });

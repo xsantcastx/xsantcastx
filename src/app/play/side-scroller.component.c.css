@@ -500,6 +500,13 @@
 :is(.td-map__pin, .td-map__key button)[data-kind='ship'] { --pin: var(--cozy-loot-rare); }
 /* A town task giver (shared/town-tasks). */
 :is(.td-map__pin, .td-map__key button)[data-kind='npc'] { --pin: var(--cozy-leaf); }
+/* A Harbourmaster's pier (td-harbour): an anchor, drawn (a masked shape), never a glyph. */
+:is(.td-map__pin, .td-map__key button)[data-kind='harbour'] { --pin: var(--cozy-loot-rare); }
+:is(.td-map__pin, .td-map__key) [data-kind='harbour'] i, .td-map__pin[data-kind='harbour'] i { rotate: none; box-shadow: none; width: 16px; height: 16px; background: var(--pin);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.td-map__key button[data-kind='harbour'] i { width: 14px; height: 14px; }
+.stage .places.td-harbour { width: min(520px, calc(100% - 32px)); height: auto; max-height: calc(100% - 32px); grid-template-rows: auto minmax(0, 1fr); }
 .td-map__me { position: absolute; width: 10px; height: 10px; translate: -50% -50%; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry);
   animation: td-map-me 1.4s ease-in-out infinite; pointer-events: none; }
 @keyframes td-map-me { 50% { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 7px color-mix(in srgb, var(--cozy-berry) 40%, transparent); } }
