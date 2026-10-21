@@ -325,3 +325,5 @@ monotonic-XP guard on `progress/state` is unchanged.
 block/mute/report + privacy together. Auth unlocks everything after it (guilds, trading, bans), and moderation must
 land before the room is promoted publicly. In parallel, a small Phase 5 slice — **server-seeded spawns** — would make
 party hunting look shared for very little code.
+
+_2026-10-22: Phase 6 trading and ground drops are live: game:tradeApi + game:groundSweep (functions-game), rules with the serverSeq guard, hearth protocol 6._
