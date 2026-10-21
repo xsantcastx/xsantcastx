@@ -141,7 +141,8 @@ test('always-on: join carries the profile; a failed join retries with growing ba
   let fail = 2;
   const x = setupOn(t, { join: () => (fail-- > 0 ? new Response('{}', { status: 503 }) : Response.json({ token: 'secret', id: 'keeper', players: [], messages: [], protocol: 2 })) });
   await x.room.join('Arin', { vocation: 'warlock', look: '1.0.2', level: 7 }); await flush();
-  assert.deepEqual(JSON.parse(x.requests[0].options.body), { name: 'Arin', vocation: 'warlock', look: '1.0.2', level: 7 });
+  // Protocol 3: the client says it knows parties (a v2 room ignores the field).
+  assert.deepEqual(JSON.parse(x.requests[0].options.body), { name: 'Arin', vocation: 'warlock', look: '1.0.2', level: 7, party: true });
   assert.equal(x.timers.at(-1).delay, 2000);
   x.timers.at(-1).callback(); await flush();
   assert.equal(x.timers.at(-1).delay, 4000);

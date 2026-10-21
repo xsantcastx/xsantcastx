@@ -7,7 +7,17 @@ import { pathToFileURL } from 'node:url';
 // Protocol 2 (2026-10-21, the top-down world): a Keeper's presence also carries its area id, the way it faces
 // (side/down/up), whether it walks, its class, a compact look and its level, all optional and validated below; a
 // Wave travels as an `emote` event. Every v1 field and event is unchanged, so a client from before ignores the rest.
-export const PROTOCOL = 2;
+//
+// Protocol 3 (2026-10-21, parties): presence also carries `hp`/`maxHp` (the party frames' bars), and a Keeper can
+// invite another to a party of up to PARTY_MAX, accept or decline, leave, kick (the leader), speak on the party channel
+// and announce a kill to the party (each member's own client decides whether to share its XP: docs/design/online.md).
+// Parties live here, in memory, like the room. A v2 client never sees a party event and is never invited (it does not
+// say `party: true` on join), so nothing it does changes.
+export const PROTOCOL = 3;
+export const PARTY_MAX = 4;
+/** How long an invite stands before it lapses (ms). */
+export const INVITE_MS = 60000;
+const CREATURE = /^[a-z0-9-]{1,40}$/;
 const AREA = /^[a-z0-9_-]{1,40}$/;
 const LOOK = /^[a-z0-9.]{1,48}$/;
 const VOCATION = /^[a-z]{1,16}$/;
@@ -27,12 +37,21 @@ export function presenceFields(data) {
   if (data.vocation !== undefined) { if (typeof data.vocation !== 'string' || !VOCATION.test(data.vocation)) bad(); out.vocation = data.vocation; }
   if (data.look !== undefined) { if (typeof data.look !== 'string' || !LOOK.test(data.look)) bad(); out.look = data.look; }
   if (data.level !== undefined) { if (!Number.isInteger(data.level) || data.level < 1 || data.level > 999) bad(); out.level = data.level; }
+  // Protocol 3: life for the party frames (both or neither; whole numbers; never more than the most).
+  if (data.hp !== undefined || data.maxHp !== undefined) {
+    if (!Number.isInteger(data.hp) || !Number.isInteger(data.maxHp) || data.maxHp < 1 || data.maxHp > 1e6 || data.hp < 0 || data.hp > data.maxHp) bad();
+    out.hp = data.hp; out.maxHp = data.maxHp;
+  }
   return out;
 }
 
 export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now } = {}) {
   const sessions = new Map();
   const messages = [];
+  /** Parties by id: the leader's player id, the members' (leader first), the last 30 party lines. */
+  const parties = new Map();
+  /** Open invites by id: from and to (player ids), when it lapses. */
+  const invites = new Map();
   const joinAttempts = new Map();
   const allowedOrigins = new Set(origins);
   const animations = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
@@ -52,9 +71,39 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     publishTimer = setTimeout(publishPlayers, publishMs);
     publishTimer.unref?.();
   };
+  const sessionOf = playerId => { for (const s of sessions.values()) if (s.player.id === playerId) return s; return null; };
+  const sendTo = (playerId, value) => { const s = sessionOf(playerId); if (s?.stream) send(s.stream, value); };
+  const partyView = p => p ? { id: p.id, leader: p.leader, members: [...p.members] } : null;
+  /** Tell every member (and anyone just dropped, with `also`) where the party stands now. */
+  const publishParty = (p, also = []) => {
+    for (const id of p ? p.members : []) sendTo(id, { type: 'party', party: partyView(p) });
+    for (const id of also) sendTo(id, { type: 'party', party: null });
+  };
+  /** A member goes (left, kicked, gone from the room): a new leader if it led; under two, the party is no more. */
+  const dropMember = (s, why) => {
+    const p = s.party && parties.get(s.party);
+    s.party = null;
+    if (!p) return;
+    p.members = p.members.filter(id => id !== s.player.id);
+    for (const [id, inv] of invites) if (inv.from === s.player.id) invites.delete(id);
+    if (p.members.length < 2) {
+      parties.delete(p.id);
+      for (const id of p.members) { const m = sessionOf(id); if (m) m.party = null; }
+      for (const [id, inv] of invites) if (inv.party === p.id) invites.delete(id);
+      publishParty(null, [...p.members, s.player.id]);
+    } else {
+      if (p.leader === s.player.id) p.leader = p.members[0];
+      publishParty(p, [s.player.id]);
+    }
+    const note = { kind: why, name: s.player.name, id: s.player.id };
+    for (const id of p.members) sendTo(id, { type: 'party-note', note });
+    if (why === 'kicked') sendTo(s.player.id, { type: 'party-note', note });
+  };
   const remove = token => {
     const s = sessions.get(token);
     if (!s) return;
+    if (s.party) dropMember(s, 'left');
+    for (const [id, inv] of invites) if (inv.from === s.player.id || inv.to === s.player.id) invites.delete(id);
     sessions.delete(token);
     s.stream?.end();
     publishPlayers();
@@ -77,6 +126,106 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error();
       return data;
     } catch { throw fail(400, 'Invalid JSON.'); }
+  };
+  const inviteView = inv => ({ id: inv.id, from: inv.from, name: inv.name, to: inv.to, until: inv.until });
+  const text = raw => typeof raw === 'string' ? raw.replace(/[\u0000-\u001f\u007f]/g, ' ').trim() : '';
+  /**
+   * Protocol 3, the party verbs. Every one is refused unless both ends said they know parties; every refusal is a 4xx
+   * with a plain message and changes nothing. The same per-session buckets as the room (consume): invites 5 in 30 s,
+   * answers 10 in 10 s, party lines 5 in 10 s, kill announcements 20 in 5 s.
+   */
+  const partyRequest = (verb, session, data, reply) => {
+    if (!session.parties) throw fail(409, 'Update the game to join parties.');
+    const me = session.player.id;
+    const mine = session.party ? parties.get(session.party) : null;
+    if (verb === 'invite') {
+      consume(session, 'invite', 5, 30000);
+      if (typeof data.to !== 'string' || data.to === me) throw fail(400, 'Invite another Keeper.');
+      const them = sessionOf(data.to);
+      if (!them) throw fail(400, 'That Keeper is not here.');
+      if (!them.parties) throw fail(409, 'That Keeper cannot join parties yet.');
+      if (mine && mine.leader !== me) throw fail(403, 'Only the party leader can invite.');
+      if (them.party) throw fail(409, mine && them.party === mine.id ? 'Already in your party.' : 'That Keeper is already in a party.');
+      if (mine && mine.members.length >= PARTY_MAX) throw fail(409, 'The party is full.');
+      for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
+      if ([...invites.values()].some(inv => inv.from === me && inv.to === them.player.id)) throw fail(409, 'Already invited.');
+      if ([...invites.values()].filter(inv => inv.from === me).length >= PARTY_MAX - 1) throw fail(429, 'Too many open invites.');
+      const inv = { id: randomUUID(), from: me, name: session.player.name, to: them.player.id, party: mine?.id ?? null, until: now() + INVITE_MS };
+      invites.set(inv.id, inv);
+      sendTo(them.player.id, { type: 'invite', invite: inviteView(inv) });
+      reply(201, { invite: inviteView(inv) }); return;
+    }
+    if (verb === 'accept' || verb === 'decline') {
+      consume(session, 'answer', 10, 10000);
+      const inv = typeof data.invite === 'string' ? invites.get(data.invite) : undefined;
+      if (!inv || inv.to !== me) throw fail(404, 'That invite is gone.');
+      invites.delete(inv.id);
+      if (inv.until <= now()) throw fail(410, 'That invite lapsed.');
+      const host = sessionOf(inv.from);
+      if (verb === 'decline') {
+        if (host) sendTo(inv.from, { type: 'party-note', note: { kind: 'declined', name: session.player.name, id: me } });
+        reply(200, { ok: true }); return;
+      }
+      if (session.party) throw fail(409, 'Leave your party first.');
+      if (!host) throw fail(410, 'That Keeper has gone.');
+      let p = host.party ? parties.get(host.party) : null;
+      if (p && p.leader !== inv.from) throw fail(410, 'That invite lapsed.');
+      if (!p && inv.party) throw fail(410, 'That party is gone.');
+      if (p && p.members.length >= PARTY_MAX) throw fail(409, 'The party is full.');
+      if (!p) {
+        p = { id: randomUUID(), leader: inv.from, members: [inv.from], messages: [] };
+        parties.set(p.id, p); host.party = p.id;
+      }
+      p.members.push(me); session.party = p.id;
+      for (const [id, other] of invites) if (other.to === me) invites.delete(id);
+      publishParty(p);
+      for (const id of p.members) if (id !== me) sendTo(id, { type: 'party-note', note: { kind: 'joined', name: session.player.name, id: me } });
+      reply(200, { party: partyView(p) }); return;
+    }
+    if (verb === 'leave') {
+      consume(session, 'answer', 10, 10000);
+      if (!mine) throw fail(409, 'You are not in a party.');
+      dropMember(session, 'left');
+      reply(200, { ok: true }); return;
+    }
+    if (verb === 'kick') {
+      consume(session, 'answer', 10, 10000);
+      if (!mine) throw fail(409, 'You are not in a party.');
+      if (mine.leader !== me) throw fail(403, 'Only the party leader can do that.');
+      if (typeof data.member !== 'string' || data.member === me || !mine.members.includes(data.member)) throw fail(400, 'That Keeper is not in your party.');
+      const them = sessionOf(data.member);
+      if (!them) throw fail(400, 'That Keeper is not here.');
+      dropMember(them, 'kicked');
+      reply(200, { ok: true }); return;
+    }
+    if (verb === 'chat') {
+      consume(session, 'pchat', 5, 10000);
+      if (!mine) throw fail(409, 'You are not in a party.');
+      const line = text(data.text);
+      if (!line || line.length > 240) throw fail(400, 'Messages must be 1–240 characters.');
+      const message = { id: randomUUID(), playerId: me, name: session.player.name, text: line, at: now() };
+      mine.messages.push(message);
+      if (mine.messages.length > 30) mine.messages.shift();
+      for (const id of mine.members) sendTo(id, { type: 'party-chat', message });
+      reply(201, { message }); return;
+    }
+    if (verb === 'kill') {
+      // A creature fell to this member: relayed to the others, never stored, never paid here. Each recipient's own
+      // client checks it (same area, close, its level band, its per-minute cap) and pays itself (party-share.ts).
+      consume(session, 'kill', 20, 5000);
+      if (!mine) throw fail(409, 'You are not in a party.');
+      if (typeof data.creature !== 'string' || !CREATURE.test(data.creature)) throw fail(400, 'Invalid kill.');
+      if (!Number.isInteger(data.level) || data.level < 1 || data.level > 999) throw fail(400, 'Invalid kill.');
+      if (!Number.isInteger(data.hp) || data.hp < 1 || data.hp > 100000) throw fail(400, 'Invalid kill.');
+      if (data.xp !== undefined && (typeof data.xp !== 'number' || !Number.isFinite(data.xp) || data.xp <= 0 || data.xp > 5)) throw fail(400, 'Invalid kill.');
+      if (typeof data.area !== 'string' || !AREA.test(data.area)) throw fail(400, 'Invalid kill.');
+      // Where the killer stood is the room's own record of it (its last presence), not a field the announcement sets.
+      const pl = session.player;
+      const kill = { id: randomUUID(), from: me, name: pl.name, creature: data.creature, level: data.level, hp: data.hp, ...(data.xp !== undefined ? { xp: Math.round(data.xp * 1000) / 1000 } : {}), area: data.area, x: pl.x, y: pl.y, at: now() };
+      for (const id of mine.members) if (id !== me) sendTo(id, { type: 'party-kill', kill });
+      reply(201, { kill }); return;
+    }
+    throw fail(404, 'Not found.');
   };
   const server = createServer(async (req, res) => {
     const reply = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
@@ -106,7 +255,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         if (sessions.size >= maxClients) throw fail(503, 'The hearth is full. Try again shortly.');
         const token = randomBytes(32).toString('hex');
         const player = { id: randomUUID(), name, x: 160, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks', ...profile };
-        sessions.set(token, { player, lastSeen: now(), stream: null });
+        // Protocol 3: only a client that says it knows parties can be invited to one (a v2 client never is).
+        sessions.set(token, { player, lastSeen: now(), stream: null, party: null, parties: data.party === true });
         reply(201, { id: player.id, token, players: players(), messages, protocol: PROTOCOL });
         publishPlayers(); return;
       }
@@ -121,6 +271,12 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         res.writeHead(200, { 'Content-Type': 'text/event-stream', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
         res.flushHeaders();
         send(res, { type: 'snapshot', players: players(), messages });
+        // A reopened stream learns its party (and its lines) and any invite still standing.
+        if (session.parties) {
+          const p = session.party && parties.get(session.party);
+          if (p) send(res, { type: 'party', party: partyView(p), messages: p.messages });
+          for (const inv of invites.values()) if (inv.to === session.player.id && inv.until > now()) send(res, { type: 'invite', invite: inviteView(inv) });
+        }
         res.on('close', () => { if (session.stream === res) { session.stream = null; session.lastSeen = now(); } });
         return;
       }
@@ -159,6 +315,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         const emote = { id: randomUUID(), from: session.player.id, name: session.player.name, to, kind: data.kind, at: now() };
         broadcast({ type: 'emote', emote }); reply(201, { emote }); return;
       }
+      if (url.pathname.startsWith('/party/')) { partyRequest(url.pathname.slice('/party/'.length), session, data, reply); return; }
       if (url.pathname === '/leave') { remove(token); reply(200, { ok: true }); return; }
       throw fail(404, 'Not found.');
     } catch (error) {
@@ -174,6 +331,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       else if (session.stream) session.stream.write(': heartbeat\n\n');
     }
     for (const [ip, limiter] of joinAttempts) if (now() - limiter.join?.start > 60000) joinAttempts.delete(ip);
+    for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
   }, Math.min(10000, idleMs));
   cleanup.unref();
   const dispose = () => { clearInterval(cleanup); clearTimeout(publishTimer); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };

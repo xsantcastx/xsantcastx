@@ -951,6 +951,20 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 14 ✓ | **The Hush** (shipped 2026-10-21, §5.4 as built; the Hush-walker still to come) | M | HUD band under Glim, `td-engine` tick, settings | depth feels deeper; a risk dial |
 | 15 | **Second vocation: the Ashguard** (then Lanternwright, Thornstrider) | L | `keeper-look.model.ts` `VOCATIONS`, `vocation-look.ts`, `td-skills.ts` trees, `td-mobs.ts` melee path | a second way to play |
 
+**Online (owner 2026-10-21: "coop play, leveling activities, joining parties, guilds, all online things").** The full
+plan lives in [`online.md`](online.md); every ⚑ deploy there is the owner's call.
+
+| Phase | What | Size | State |
+|---|---|---|---|
+| 1 | Presence: see each other, public chat, Wave | — | ✓ live (hearth protocol 2) |
+| 2 | Parties: invite, frames, party chat, shared XP near a kill, Seek/minimap | M | built (branch `party`), ⚑ hearth redeploy to protocol 3 |
+| 3 | Social graph: Firebase-token auth on the hearth, friends, whispers, block/mute/report, privacy | M | next |
+| 4 | Guilds: ranks, guild chat, tag over the head; hall later | L | |
+| 5 | Co-op encounters: server-seeded spawns, party dailies, group bosses (Seam Eater) with scaling, personal loot | L | |
+| 6 | Trading: two-sided confirm, atomic Function transaction, anti-dupe | M–L | |
+| 7 | Leaderboards (scheduled Function, one doc per board) | S–M | |
+| 8 | Scale-out: WebSocket, per-area rooms/shards, persistence | L | |
+
 **Also queued (not top 15):** Whispering items (M), Eclipsing items at altars (M), town houses (L), Pyre Watch
 sworn-swords (M), Hearth meals / cooking (M), Hearthwarmth (S), trophy drops (S), the two Warlock tier-5 spells (S each),
 the Seam Eater eclipse event (L), Eclipse Words (S once eclipses are rules).

@@ -22,6 +22,8 @@ import type { RoomPlayer } from '../social/social-room';
 export const WAVE_SECS = 3;
 /** Name plates: a cool mint, apart from the townsfolk's cream and the stalls' gold. */
 export const PEER_PLATE = '#a8e6c4';
+/** Party members' plates: the hearth's warm gold, so a friend stands out from the room's mint. */
+export const PARTY_PLATE = '#ffd27a';
 /** The world's own outline (td-art PAL.outline), for the Wave's bubble. */
 const OUTLINE = '#1e1420';
 
@@ -34,7 +36,13 @@ export class TdPeers {
   /** Waves by who ('' = the local Keeper): when they end (engine seconds). */
   private readonly waves = new Map<string, number>();
 
+  /** The room's last list, raw (the Seek and the party read where members are, in any area). */
+  private raw: readonly RoomPlayer[] = [];
+  /** The party's other members (protocol 3): their plates turn gold, the minimap and the Seek know them. */
+  party = new Set<string>();
+
   set(players: readonly RoomPlayer[], selfId = ''): void {
+    this.raw = players.filter(p => p && p.id !== selfId);
     this.tracker.set(players, selfId);
     const keep = new Set(players.map(p => p.id));
     for (const id of [...this.painters.keys()]) if (!keep.has(id)) this.painters.delete(id);
@@ -45,6 +53,11 @@ export class TdPeers {
   }
 
   get drawn(): readonly PeerShown[] { return this.shown; }
+  /** Where each party member last said it stood (any area), by the room's list. */
+  partyWhere(): { id: string; name: string; area: string; x: number; y: number }[] {
+    return this.raw.filter(p => this.party.has(p.id) && Number.isFinite(p.x) && Number.isFinite(p.y))
+      .map(p => ({ id: p.id, name: p.name, area: String(p.area ?? p.zone ?? ''), x: p.x, y: p.y }));
+  }
 
   /** The Keeper under a point in the world (feet to head, a sprite's width), nearest the feet first. */
   at(wx: number, wy: number): PeerCard | null {
