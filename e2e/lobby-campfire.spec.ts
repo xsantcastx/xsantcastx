@@ -175,6 +175,104 @@ test.describe('the campfire character select (1280×800)', () => {
   });
 });
 
+const FIGURES = [
+  { vocation: 'warlock', hair: 'long', hairColor: 4 },
+  { vocation: 'ashguard', hair: 'ponytail', hairColor: 3 },
+  { vocation: 'lanternwright', hair: 'bun', hairColor: 5 },
+  { vocation: 'thornstrider', hair: 'pigtails', hairColor: 1 },
+] as const;
+
+/** Five Keepers of one figure: the four callings (plus a bare-headed fifth to show the hair), every class's kit over the body. */
+async function lineup(page: Page, form: 'fem' | 'masc'): Promise<void> {
+  const now = Date.now();
+  const chars: Record<string, unknown> = {};
+  FIGURES.forEach((f, i) => {
+    const id = `k${i + 2}${form}${f.vocation.slice(0, 3)}`;
+    chars[id] = { id, name: `${form === 'fem' ? 'She' : 'He'} ${f.vocation.slice(0, 5)}`, vocation: f.vocation, level: 3 + i, area: 'Ember Isle',
+      look: { form, hair: form === 'fem' ? f.hair : 'cropped', hairColor: f.hairColor, skin: i * 2, outfit: i + 1, vocation: f.vocation }, createdAt: 10 + i, updatedAt: now };
+  });
+  await camp(page, 1, chars);
+}
+
+test.describe('feminine and masculine Keepers by the fire (1280×800)', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
+  for (const form of ['fem', 'masc'] as const) {
+    test(`the four callings, ${form}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await lineup(page, form);
+      await open(page);
+      await expect(lobby(page, 'select').locator('[data-character]')).toHaveCount(5);
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: `${SHOTS}/camp-figures-${form}.jpg`, type: 'jpeg', quality: 86, clip: { x: 240, y: 120, width: 800, height: 360 } });
+    });
+  }
+});
+
+/** The Glass, opened from the free place by the fire. */
+async function glassByFire(page: Page): Promise<void> {
+  await camp(page, 2);
+  await open(page);
+  await lobby(page, 'select').locator('[data-camp-new]').click();
+  await expect(lobby(page, 'create')).toBeVisible({ timeout: 30000 });
+  await expect(lobby(page, 'create').locator('[data-camp-class]')).toHaveCount(4);
+}
+
+const GLASS_SIZES = [
+  { name: 'desktop', width: 1280, height: 800, touch: false },
+  { name: 'phone', width: 390, height: 844, touch: true },
+  { name: 'small', width: 360, height: 640, touch: true },
+  { name: 'landscape', width: 844, height: 390, touch: true },
+];
+for (const size of GLASS_SIZES) {
+  test.describe(`the Glass by the fire (${size.width}×${size.height})`, () => {
+    test.use({ viewport: { width: size.width, height: size.height }, hasTouch: size.touch, isMobile: size.touch });
+
+    test('the callings stand round the fire; the chosen one changes live; the fifth is locked and quotes the lore', async ({ page }) => {
+      test.setTimeout(120_000);
+      await glassByFire(page);
+      const glass = lobby(page, 'create');
+      // Choosing on the maker's cards and on the figures by the fire agree.
+      await glass.locator('[data-vocation="thornstrider"]').click();
+      await expect(glass.locator('[data-vocation="thornstrider"]')).toHaveAttribute('aria-checked', 'true');
+      await glass.locator('[data-camp-class="lanternwright"]').click();
+      await expect(glass.locator('[data-vocation="lanternwright"]')).toHaveAttribute('aria-checked', 'true');
+      // Become is on screen without scrolling, and a 44px target.
+      const keep = (await glass.locator('.km__keep').boundingBox())!;
+      expect(keep.y + keep.height).toBeLessThanOrEqual(size.height);
+      expect(keep.height).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: `${SHOTS}/camp-glass-${size.name}.jpg`, type: 'jpeg', quality: 82 });
+      // The fifth, locked figure: its note quotes the lore log.
+      await glass.locator('[data-camp-locked]').click();
+      await expect(glass.locator('[data-camp-tip]')).toContainText('Wanewalkers');
+      if (size.name === 'desktop') await page.screenshot({ path: `${SHOTS}/camp-glass-locked.jpg`, type: 'jpeg', quality: 82 });
+    });
+  });
+}
+
+test.describe('the lore log', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  test('the character sheet\'s Lore tab holds the Wanewalkers', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+    await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA),
+      'godforge-keeper-look': { version: 1, made: true, prompted: true, name: 'Aster', vocation: 'ashguard', form: 'fem', hair: 'ponytail', updatedAt: 1 } });
+    await page.goto('/play?td=1&hour=12');
+    const canvas = page.locator('.viewport canvas');
+    await expect(canvas).toHaveAttribute('data-player-x', /\d/, { timeout: 30000 });
+    await canvas.evaluate(c => (c as HTMLCanvasElement).focus({ preventScroll: true }));
+    await page.keyboard.press('c');
+    await page.locator('.ksheet [data-sheet-lore]').click();
+    await expect(page.locator('.ksheet [data-lore-page="wanewalkers"]')).toContainText('The Wanewalkers');
+    await page.screenshot({ path: `${SHOTS}/lore-wanewalkers.jpg`, type: 'jpeg', quality: 82 });
+    // The same Keeper in the world, feminine, walking left and right (the side painter) and down (the front sheet).
+    await page.keyboard.press('Escape');
+    await page.screenshot({ path: `${SHOTS}/fem-world.jpg`, type: 'jpeg', quality: 82 });
+  });
+});
+
 const PHONE_SIZES = [
   { name: 'phone', width: 390, height: 844 },
   { name: 'landscape', width: 844, height: 390 },

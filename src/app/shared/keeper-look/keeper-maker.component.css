@@ -115,3 +115,12 @@
   :host-context(.place) .km__classcard[aria-checked="false"] small { display: none; }
   :host-context(.place) .km__classcard[aria-checked="true"] { grid-column: 1 / -1; }
 }
+
+/* ── By the fire (the lobby's Glass): the campfire paints the Keeper being made, so no preview here; the name and
+   Become sit straight under the class, and Become stays in reach (sticky) while the looks below scroll. ── */
+:host(.km--fire) .km__stage { display: none; }
+:host(.km--fire) .km { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "class class" "name name" "actions actions" "fields fields"; }
+:host(.km--fire) .km__actions { position: sticky; bottom: 0; z-index: 1; padding: 4px 2px; background: var(--cozy-plate, var(--obsidian-1)); }
+@media (min-width: 560px) {
+  :host(.km--fire) .km { grid-template-areas: "class class" "name actions" "fields fields"; }
+}

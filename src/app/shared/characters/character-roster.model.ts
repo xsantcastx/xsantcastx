@@ -13,7 +13,7 @@ import { coerceLook, type KeeperLook } from '../keeper-look/keeper-look.model';
 import { MAX_CHARACTERS, PRIMARY_CHARACTER, isCharacterId } from '../save/character-scope';
 
 /** The look fields that change the portrait (kept on the row so another device can paint it). */
-export const PORTRAIT_FIELDS = ['body', 'skin', 'hair', 'hairColor', 'eyes', 'eyeColor', 'face', 'outfit', 'trim', 'vocation'] as const;
+export const PORTRAIT_FIELDS = ['body', 'form', 'skin', 'hair', 'hairColor', 'eyes', 'eyeColor', 'face', 'outfit', 'trim', 'vocation'] as const;
 export type PortraitLook = Pick<KeeperLook, typeof PORTRAIT_FIELDS[number]>;
 
 export interface CharacterRow {
