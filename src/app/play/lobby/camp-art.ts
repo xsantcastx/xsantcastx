@@ -84,7 +84,13 @@ export function spotBox(l: CampLayout, i: number, stage: Rect): Rect {
 }
 
 /** One figure by the fire: a Keeper on the roster, or a calling on the Glass. */
-export interface CampFigure { key: string; look: KeeperLook; chosen: boolean }
+export interface CampFigure {
+  key: string;
+  look: KeeperLook;
+  chosen: boolean;
+  /** A calling not yet open (the Wanewalkers, shared/lore): a faint, cold silhouette that drifts, never steps forward. */
+  ghost?: boolean;
+}
 
 const CLEARING = '#170e1c';
 const LIGHT = ['#5c3420', '#4a2a1c', '#36201c', '#26161c'];
@@ -107,7 +113,8 @@ function rng(seed: number): () => number {
   };
 }
 
-interface Sprite { sheet: HTMLCanvasElement; lit: HTMLCanvasElement }
+interface Sprite { sheet: HTMLCanvasElement; lit: HTMLCanvasElement; ghost: HTMLCanvasElement }
+const GHOST = '#b8d0f0';
 
 /** The campfire painter. One per lobby: it holds the baked sprites and each place's step toward the fire. */
 export class CampArt {
@@ -211,6 +218,14 @@ export class CampArt {
       }
       const sprite = this.sprite(f);
       if (!sprite) continue;
+      if (f.ghost) {
+        // The thin one: a pale silhouette, half there, drifting a pixel up and down and fading in and out.
+        const drift = still ? 0 : Math.round(Math.sin(t * 0.9) * 1.5);
+        c.globalAlpha = still ? 0.38 : 0.3 + 0.12 * Math.sin(t * 1.3);
+        c.drawImage(sprite.ghost, 0, 0, FRONT_W, FRONT_H, ax - FRONT_AX, ay - FRONT_AY - 2 + drift, FRONT_W, FRONT_H);
+        c.globalAlpha = 1;
+        continue;
+      }
       const frame = still ? 0 : (Math.sin(t * 1.5 + i * 1.7) > 0.55 ? 1 : 0);
       const ox = ax - FRONT_AX, oy = ay - FRONT_AY;
       c.drawImage(sprite.sheet, frame * FRONT_W, 0, FRONT_W, FRONT_H, ox, oy, FRONT_W, FRONT_H);
@@ -273,7 +288,22 @@ export class CampArt {
       c.globalCompositeOperation = 'source-atop';
       c.fillStyle = WARM;
       c.fillRect(0, 0, FRONT_W * 2, FRONT_H);
-      const sprite = { sheet, lit };
+      const ghost = document.createElement('canvas');
+      ghost.width = FRONT_W; ghost.height = FRONT_H;
+      const g = ghost.getContext('2d');
+      if (g) {
+        g.imageSmoothingEnabled = false;
+        g.drawImage(sheet, 0, 0, FRONT_W, FRONT_H, 0, 0, FRONT_W, FRONT_H);
+        g.globalCompositeOperation = 'source-atop';
+        g.fillStyle = GHOST;
+        g.fillRect(0, 0, FRONT_W, FRONT_H);
+        // Two cold eyes where the face would be, and the hem fraying into the air.
+        g.fillStyle = '#4a5a84'; g.fillRect(10, 13, 2, 2); g.fillRect(16, 13, 2, 2);
+        g.fillStyle = '#e8f2ff'; g.fillRect(10, 13, 1, 1); g.fillRect(16, 13, 1, 1);
+        g.globalCompositeOperation = 'destination-out';
+        for (let x = 0; x < FRONT_W; x += 2) g.fillRect(x, FRONT_H - 4 + (x % 4 ? 1 : 0), 1, 4);
+      }
+      const sprite = { sheet, lit, ghost };
       // The Glass bakes one per look tried on: keep the cache small.
       if (this.sprites.size > 48) this.sprites.clear();
       this.sprites.set(f.key, sprite);

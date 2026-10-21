@@ -119,15 +119,26 @@
     }
 
     @if (mode === 'create') {
-      <!-- The Glass by the fire: the four callings stand there (camp-art.ts) and the chosen one steps forward. On a wide
-           screen the fire has its own column; on a phone it glows behind the window. Clicking a figure chooses it, as
-           the maker's own class cards do (those stay the control for keyboards and screen readers). -->
-      <div #stage class="camp__stage camp__stage--glass" aria-hidden="true">
+      <!-- The Glass by the fire, on every screen: the four callings stand round it (camp-art.ts) and the chosen one steps
+           forward in the look being made, live. Above the window on a phone, beside it sideways and on a wide screen.
+           Clicking a figure chooses it, as the maker's own class cards do (those stay the control for keyboards and
+           screen readers). The fifth, faint figure is a calling not yet open (the lore log's Wanewalkers). -->
+      <div #stage class="camp__stage camp__stage--glass" data-camp-glass>
         @if (boxes.length) {
           @for (v of classes; track v; let i = $index) {
-            <button type="button" class="keeper keeper--class is-placed" tabindex="-1" [attr.data-camp-class]="v"
+            <button type="button" class="keeper keeper--class is-placed" tabindex="-1" aria-hidden="true" [attr.data-camp-class]="v"
                     [style.left.px]="boxes[i].x" [style.top.px]="boxes[i].y" [style.width.px]="boxes[i].w" [style.height.px]="boxes[i].h"
                     (click)="chooseClass(v)"><span class="sr-only">{{ t('look.class.' + v) }}</span></button>
+          }
+          @if (boxes[4]; as gb) {
+            <button type="button" class="keeper keeper--locked is-placed" data-camp-locked [attr.title]="ghostQuote" [attr.aria-label]="t('lore.locked')"
+                    [attr.aria-expanded]="lockedTip" [style.left.px]="gb.x" [style.top.px]="gb.y" [style.width.px]="gb.w" [style.height.px]="gb.h"
+                    (click)="lockedTip = !lockedTip"></button>
+            @if (lockedTip) {
+              <p class="camp__tip" role="note" data-camp-tip>
+                <b>{{ t('lore.locked') }}</b> {{ ghostQuote }}
+              </p>
+            }
           }
         }
       </div>
@@ -141,7 +152,7 @@
         <!-- "place": the maker's compact game-window layout (the figure, the name and Become on top, the looks in a grid),
              so a new player sees the whole Glass and its one button without scrolling, on a phone too. -->
         <div class="win__body win__body--maker place">
-          <app-keeper-maker (done)="made($event)" />
+          <app-keeper-maker [fire]="true" (done)="made($event)" />
         </div>
         <footer class="win__foot create__foot">
           <!-- Someone who has played before can make a Keeper without the island's tutorial (play/td/td-prologue.ts). -->

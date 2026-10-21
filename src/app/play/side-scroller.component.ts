@@ -169,6 +169,8 @@ import { SextonCountService, type SextonView } from '../shared/sexton/sexton-cou
 import { SEXTON_I18N } from '../shared/sexton/sexton-count.i18n';
 import { SEXTON_FACTS, SEXTON_GIVER, SEXTON_LEVEL, SEXTON_REWARD, sextonGold, type SextonEvent } from '../shared/sexton/sexton-count.model';
 import { SextonJournalComponent } from '../shared/sexton/sexton-journal.component';
+import { LORE_PAGES } from '../shared/lore/lore';
+import { LORE_I18N } from '../shared/lore/lore.i18n';
 import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
@@ -870,6 +872,7 @@ export class SideScrollerComponent implements OnDestroy {
     afterNextRender(() => this.startWorld());
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
+    this.i18n.register(LORE_I18N);
     this.i18n.register(HUD_I18N);
     this.i18n.register(ASHGUARD_I18N);
     this.i18n.register(LANTERN_I18N);
@@ -2195,7 +2198,9 @@ export class SideScrollerComponent implements OnDestroy {
   spendPoint(attr: Attribute): void { const lv = this.huntingLevel; this.looks.spendPoint(attr, lv, Date.now(), keeperAttributePoints(lv)); this.tickAbilities(); }
   // ── The Keeper's level (docs/design/leveling.md): the fanfare, the milestones tab, the title, the frame ──
   /** The character sheet's tab: the attributes, or the level milestones. */
-  sheetTab: 'attrs' | 'milestones' = 'attrs';
+  sheetTab: 'attrs' | 'milestones' | 'lore' = 'attrs';
+  /** The character sheet's Lore tab: the lore log's pages (shared/lore). */
+  readonly lorePages = LORE_PAGES;
   /** The milestones tab's page (5 a page); -1 = the page holding the next milestone. */
   milestonePage = -1;
   /** The level-up banner while it shows. */
