@@ -750,3 +750,30 @@
   .stage--td .td-party { top: calc(var(--hud-safe-t, 0px) + 12px); left: 180px; max-height: calc(100dvh - var(--hud-safe-t, 0px) - 120px); }
   .stage--td .td-invite { top: calc(var(--hud-safe-t, 0px) + 12px); }
 }
+/* ── The social graph (protocol 4; docs/design/online.md Phase 3) ── */
+.td-peer { max-height: calc(100dvh - var(--hud-top, 0px) - 96px); overflow-y: auto; overscroll-behavior: contain; }
+.td-peer__guest { display: inline-block; margin-left: 6px; padding: 1px 5px; font: 700 10px/1.2 var(--cozy-font-read); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: 0 0 0 1px var(--cozy-wood-0); vertical-align: 1px; }
+.td-peer__more { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.td-peer__report { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.td-peer__report small { grid-column: 1 / -1; font: 700 11px/1 var(--cozy-font-read); letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.td-chat__whisper { color: var(--cozy-loot-epic); font-style: italic; }
+.td-chat__whisper b { color: var(--cozy-loot-epic) !important; }
+/* Menu → Friends: the settings sheet's frame (sound-host win-host), its own rows. */
+.friends-host { width: min(380px, calc(100% - 32px)); }
+.fs { display: grid; align-content: start; gap: 8px; padding: 8px 12px calc(12px + var(--sheet-pad-b, 0px)); color: var(--adventure-parchment); }
+.fs__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; box-shadow: var(--px-groove); }
+.fs__head h2 { margin: 0; font: 700 15px/1.1 var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-beacon-text); text-shadow: 2px 2px 0 var(--obsidian-0); }
+.fs__sub { margin: 6px 0 0; font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-ember); }
+.fs__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.fs__row { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; background: var(--obsidian-2); box-shadow: inset 0 0 0 1px var(--gold-deep); }
+.fs__dot { flex: none; width: 10px; height: 10px; background: var(--obsidian-0); box-shadow: 0 0 0 2px var(--gold-deep); }
+.fs__dot--on { background: var(--cozy-glow); }
+.fs__who { flex: 1; min-width: 0; display: grid; }
+.fs__who b { font: 700 13px/1.2 var(--font-pixel); color: var(--cozy-glow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fs__who small { font: 500 11px/1.2 var(--cozy-font-read); opacity: .8; }
+.fs__btn { flex: none; min-height: 44px; min-width: 44px; padding: 0 10px; border: 0; cursor: pointer; font: 600 12px var(--font-game); letter-spacing: .04em;
+  color: var(--obsidian-0); background: var(--adventure-ember); }
+.fs__btn--quiet { color: var(--adventure-parchment); background: var(--obsidian-0); box-shadow: inset 0 0 0 2px var(--gold-deep); }
+.fs__note { margin: 0; font: italic 400 14px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
+.fs__note--small { font-size: 12px; opacity: .8; }

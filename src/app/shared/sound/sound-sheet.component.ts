@@ -11,7 +11,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, On
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { SoundService } from './sound.service';
-import { CHAT_SETTINGS, HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_CHANNELS, type ChatSetting, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
+import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, SOUND_CHANNELS, type ChatSetting, type HushSetting, type InviteSetting, type NightSetting, type PresenceSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
 
 @Component({
@@ -69,6 +69,27 @@ import { SOUND_I18N } from './sound.i18n';
         </span>
         <small class="ss__hushline">{{ t('play.sound.chat.' + s.chat + '.line') }}</small>
       </div>
+      <!-- Privacy at the Hearth (protocol 4): appear offline to friends; party invites from friends only. -->
+      @if (s.chat === 'on') {
+        <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.presence')">
+          <span class="ss__name">{{ t('play.sound.presence') }}</span>
+          <span class="ss__seg">
+            @for (p of presences; track p) {
+              <button type="button" role="radio" [attr.aria-checked]="s.presence === p" [class.on]="s.presence === p" [attr.data-presence-setting]="p" (click)="setPresence(p)">{{ t('play.sound.presence.' + p) }}</button>
+            }
+          </span>
+          <small class="ss__hushline">{{ t('play.sound.presence.' + s.presence + '.line') }}</small>
+        </div>
+        <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.invites')">
+          <span class="ss__name">{{ t('play.sound.invites') }}</span>
+          <span class="ss__seg">
+            @for (i of inviteChoices; track i) {
+              <button type="button" role="radio" [attr.aria-checked]="s.invites === i" [class.on]="s.invites === i" [attr.data-invites-setting]="i" (click)="setInvites(i)">{{ t('play.sound.invites.' + i) }}</button>
+            }
+          </span>
+          <small class="ss__hushline">{{ t('play.sound.invites.' + s.invites + '.line') }}</small>
+        </div>
+      }
       <label class="ss__mute">
         <input type="checkbox" [checked]="s.muted" (change)="mute($event)" data-sound-mute>
         <span>{{ t('play.sound.mute') }}</span>
@@ -114,6 +135,8 @@ export class SoundSheetComponent implements OnDestroy {
   readonly hushes = HUSH_SETTINGS;
   readonly nights = NIGHT_SETTINGS;
   readonly chats = CHAT_SETTINGS;
+  readonly presences = PRESENCE_SETTINGS;
+  readonly inviteChoices = INVITE_SETTINGS;
   s: SoundSettings = this.sound.settings;
   status = this.sound.status;
   /** The question mark: the sentences that used to sit on screen. */
@@ -144,6 +167,10 @@ export class SoundSheetComponent implements OnDestroy {
   setNight(n: NightSetting): void { this.sound.setNight(n); this.sound.sfx('tap'); }
 
   setChat(c: ChatSetting): void { this.sound.setChat(c); this.sound.sfx('tap'); }
+
+  setPresence(p: PresenceSetting): void { this.sound.setPresence(p); this.sound.sfx('tap'); }
+
+  setInvites(i: InviteSetting): void { this.sound.setInvites(i); this.sound.sfx('tap'); }
 
   mute(event: Event): void {
     this.sound.setMuted((event.target as HTMLInputElement).checked);
