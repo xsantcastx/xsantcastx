@@ -3,7 +3,34 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 // Social presence only. Combat, inventory, and rewards remain local to each game.
-export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, now = Date.now } = {}) {
+//
+// Protocol 2 (2026-10-21, the top-down world): a Keeper's presence also carries its area id, the way it faces
+// (side/down/up), whether it walks, its class, a compact look and its level, all optional and validated below; a
+// Wave travels as an `emote` event. Every v1 field and event is unchanged, so a client from before ignores the rest.
+export const PROTOCOL = 2;
+const AREA = /^[a-z0-9_-]{1,40}$/;
+const LOOK = /^[a-z0-9.]{1,48}$/;
+const VOCATION = /^[a-z]{1,16}$/;
+const DIRS = new Set(['side', 'down', 'up']);
+const EMOTES = new Set(['wave']);
+
+/**
+ * The optional v2 presence fields of a body: each one absent, or valid, or the request is refused (never stored
+ * half-checked). Only plain lowercase ids and digits get through, so nothing a client renders can carry markup.
+ */
+export function presenceFields(data) {
+  const out = {};
+  const bad = () => { throw Object.assign(new Error('Invalid presence.'), { status: 400 }); };
+  if (data.area !== undefined) { if (typeof data.area !== 'string' || !AREA.test(data.area)) bad(); out.area = data.area; }
+  if (data.dir !== undefined) { if (!DIRS.has(data.dir)) bad(); out.dir = data.dir; }
+  if (data.moving !== undefined) { if (typeof data.moving !== 'boolean') bad(); out.moving = data.moving; }
+  if (data.vocation !== undefined) { if (typeof data.vocation !== 'string' || !VOCATION.test(data.vocation)) bad(); out.vocation = data.vocation; }
+  if (data.look !== undefined) { if (typeof data.look !== 'string' || !LOOK.test(data.look)) bad(); out.look = data.look; }
+  if (data.level !== undefined) { if (!Number.isInteger(data.level) || data.level < 1 || data.level > 999) bad(); out.level = data.level; }
+  return out;
+}
+
+export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now } = {}) {
   const sessions = new Map();
   const messages = [];
   const joinAttempts = new Map();
@@ -16,7 +43,15 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     res.write(`data: ${JSON.stringify(value)}\n\n`);
   };
   const broadcast = value => { for (const s of sessions.values()) if (s.stream) send(s.stream, value); };
-  const publishPlayers = () => broadcast({ type: 'players', players: players() });
+  const publishPlayers = () => { clearTimeout(publishTimer); publishTimer = undefined; broadcast({ type: 'players', players: players() }); };
+  // Movement is coalesced: at most one players list per `publishMs`, however many Keepers walk (a v1 client gets the
+  // same 'players' event it always did, a little less often).
+  let publishTimer;
+  const schedulePublish = () => {
+    if (publishTimer) return;
+    publishTimer = setTimeout(publishPlayers, publishMs);
+    publishTimer.unref?.();
+  };
   const remove = token => {
     const s = sessions.get(token);
     if (!s) return;
@@ -58,7 +93,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       }
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname.startsWith('/social/')) url.pathname = url.pathname.slice('/social'.length);
-      if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size }); return; }
+      if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size, protocol: PROTOCOL }); return; }
       if (req.method === 'POST' && url.pathname === '/join') {
         const ip = req.socket.remoteAddress;
         const limiter = joinAttempts.get(ip) ?? {};
@@ -67,11 +102,12 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         const data = await readBody(req);
         const name = typeof data.name === 'string' ? data.name.trim().replace(/\s+/g, ' ') : '';
         if (!/^[\p{L}\p{N} _'-]{2,20}$/u.test(name)) throw fail(400, 'Use a name of 2–20 letters, numbers, spaces, or simple punctuation.');
+        const profile = presenceFields(data);
         if (sessions.size >= maxClients) throw fail(503, 'The hearth is full. Try again shortly.');
         const token = randomBytes(32).toString('hex');
-        const player = { id: randomUUID(), name, x: 160, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks' };
+        const player = { id: randomUUID(), name, x: 160, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks', ...profile };
         sessions.set(token, { player, lastSeen: now(), stream: null });
-        reply(201, { id: player.id, token, players: players(), messages });
+        reply(201, { id: player.id, token, players: players(), messages, protocol: PROTOCOL });
         publishPlayers(); return;
       }
       const token = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization ?? '')?.[1];
@@ -96,9 +132,11 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         // The top-down world has no edge (owner 2026-10-20): any finite position within a generous bound, and any short
         // area name (a town, a region, a floor) — rendered as text by every client, never as HTML.
         const zoneOk = typeof data.zone === 'string' && data.zone.length >= 1 && data.zone.length <= 60 && !/[<>\u0000-\u001f]/.test(data.zone);
+        consume(session, 'update', 8, 1000);
         if (!Number.isFinite(data.x) || Math.abs(data.x) > 1e6 || !Number.isFinite(data.y) || Math.abs(data.y) > 1e6 || ![-1, 1].includes(data.facing) || !animations.has(data.animation) || !zoneOk) throw fail(400, 'Invalid position.');
-        Object.assign(session.player, { x: data.x, y: data.y, facing: data.facing, animation: data.animation, zone: data.zone });
-        publishPlayers(); reply(200, { ok: true }); return;
+        const extra = presenceFields(data);
+        Object.assign(session.player, { x: Math.round(data.x * 10) / 10, y: Math.round(data.y * 10) / 10, facing: data.facing, animation: data.animation, zone: data.zone }, extra);
+        schedulePublish(); reply(200, { ok: true }); return;
       }
       if (url.pathname === '/chat') {
         consume(session, 'chat', 5, 10000);
@@ -108,6 +146,18 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         messages.push(message);
         if (messages.length > 50) messages.shift();
         broadcast({ type: 'chat', message }); reply(201, { message }); return;
+      }
+      if (url.pathname === '/emote') {
+        // A Wave (protocol 2): from this Keeper, optionally at another one still in the room. Relayed, never stored.
+        consume(session, 'emote', 4, 5000);
+        if (!EMOTES.has(data.kind)) throw fail(400, 'Unknown emote.');
+        let to = null;
+        if (data.to !== undefined && data.to !== null) {
+          if (typeof data.to !== 'string' || ![...sessions.values()].some(s => s.player.id === data.to)) throw fail(400, 'That Keeper is not here.');
+          to = data.to;
+        }
+        const emote = { id: randomUUID(), from: session.player.id, name: session.player.name, to, kind: data.kind, at: now() };
+        broadcast({ type: 'emote', emote }); reply(201, { emote }); return;
       }
       if (url.pathname === '/leave') { remove(token); reply(200, { ok: true }); return; }
       throw fail(404, 'Not found.');
@@ -126,7 +176,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     for (const [ip, limiter] of joinAttempts) if (now() - limiter.join?.start > 60000) joinAttempts.delete(ip);
   }, Math.min(10000, idleMs));
   cleanup.unref();
-  const dispose = () => { clearInterval(cleanup); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
+  const dispose = () => { clearInterval(cleanup); clearTimeout(publishTimer); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
   return { server, dispose };
 }
 

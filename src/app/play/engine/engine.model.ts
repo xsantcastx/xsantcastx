@@ -337,6 +337,8 @@ export interface EngineOptions {
    * Glim's words ("The Ink Abbess is very far to the south-east, below you."). `kind: 'unknown'` — no such name.
    */
   onSeek?: (answer: SeekAnswer) => void;
+  /** Top-down: another Keeper (the Hearth room) was tapped — the HUD shows their card. */
+  onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
   /**
    * The Sexton's Count (top-down; shared/sexton): the Keeper read a chalk-marked stone, the ledger page on the barrow's
    * jetty (`dark`: the night or an eclipse is on it), tried Barrow Door 1, or read the forty-first grave. The host

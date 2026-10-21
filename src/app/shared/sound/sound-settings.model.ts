@@ -35,6 +35,14 @@ export const HUSH_SETTINGS: readonly HushSetting[] = ['full', 'quiet', 'off'];
 export type NightSetting = 'full' | 'softer';
 export const NIGHT_SETTINGS: readonly NightSetting[] = ['full', 'softer'];
 
+/**
+ * The Hearth chat (owner 2026-10-21: "the chat should always be connected to online, unless they decide to ignore
+ * the chat"): 'on' joins the room on entering the world and stays in it; 'ignore' never joins and shows no unread
+ * count. Saved here with the other per-player choices, so it follows the Keeper to every device.
+ */
+export type ChatSetting = 'on' | 'ignore';
+export const CHAT_SETTINGS: readonly ChatSetting[] = ['on', 'ignore'];
+
 export interface SoundSettings {
   version: 1;
   music: number;
@@ -45,6 +53,8 @@ export interface SoundSettings {
   hush: HushSetting;
   /** How dark the night is drawn (an older save without it: full). */
   night: NightSetting;
+  /** The Hearth chat: on (always connected) or ignored (an older save without it: on). */
+  chat: ChatSetting;
   /** When this choice was made (ms); the later one wins a merge. 0 = never touched. */
   updatedAt: number;
 }
@@ -53,7 +63,7 @@ export interface SoundSettings {
 export const QUIET_LEVELS: Readonly<Record<SoundChannel, number>> = { music: .35, ambience: .4, effects: .5 };
 
 export function defaultSound(): SoundSettings {
-  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', updatedAt: 0 };
+  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', updatedAt: 0 };
 }
 
 /** A level is 0..1 on a 5% grid (a slider step), so two devices never disagree by a hair. */
@@ -75,6 +85,7 @@ export function coerceSound(raw: unknown): SoundSettings {
     muted: r.muted === true,
     hush: HUSH_SETTINGS.includes(r.hush as HushSetting) ? r.hush as HushSetting : 'full',
     night: NIGHT_SETTINGS.includes(r.night as NightSetting) ? r.night as NightSetting : 'full',
+    chat: CHAT_SETTINGS.includes(r.chat as ChatSetting) ? r.chat as ChatSetting : 'on',
     updatedAt: at,
   };
 }
