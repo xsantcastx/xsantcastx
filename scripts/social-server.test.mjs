@@ -112,9 +112,9 @@ async function events(t, base, token) {
 test('protocol 2: presence fields travel on join and update; v1 bodies still work', async t => {
   const { base, post } = await setup(t, { publishMs: 5 });
   const health = await (await fetch(`${base}/health`)).json();
-  assert.equal(health.protocol, 2);
+  assert.equal(health.protocol, 3);
   const a = await (await post('/join', { name: 'Arin', vocation: 'warlock', look: '1.0.2.1.2.0.0.0.0.4', level: 7 })).json();
-  assert.equal(a.protocol, 2);
+  assert.equal(a.protocol, 3);
   assert.equal(a.players[0].vocation, 'warlock');
   assert.equal(a.players[0].level, 7);
   const b = await (await post('/join', { name: 'Mira' })).json();
@@ -177,4 +177,168 @@ test('position updates are rate limited and coalesced into one players list', as
   seen.push(await next('players'));
   // One list for the burst, carrying the last accepted spot.
   assert.equal(seen[0].players.find(p => p.id === a.id).x, 7);
+});
+
+// ── Protocol 3: parties (docs/design/online.md Phase 2) ──
+async function party(t, options = {}) {
+  let time = 1000;
+  const ctx = await setup(t, { publishMs: 5, now: () => time, ...options });
+  const joinP = async (name, extra = { party: true }) => (await ctx.post('/join', { name, ...extra })).json();
+  const call = async (verb, token, data = {}) => { const r = await ctx.post(`/party/${verb}`, data, token); return { status: r.status, body: await r.json() }; };
+  return { ...ctx, joinP, call, tick: ms => { time += ms; } };
+}
+
+test('protocol 3: invite, accept, party chat, the frames\' life in presence, and a kill relayed to the others only', async t => {
+  const { base, post, joinP, call } = await party(t);
+  const a = await joinP('Arin'), b = await joinP('Mira'), c = await joinP('Oskar');
+  const nextA = await events(t, base, a.token), nextB = await events(t, base, b.token), nextC = await events(t, base, c.token);
+  await nextA('snapshot'); await nextB('snapshot'); await nextC('snapshot');
+  const sent = await call('invite', a.token, { to: b.id });
+  assert.equal(sent.status, 201);
+  const { invite } = await nextB('invite');
+  assert.deepEqual({ from: invite.from, name: invite.name, to: invite.to }, { from: a.id, name: 'Arin', to: b.id });
+  assert.equal(invite.id, sent.body.invite.id);
+  const ok = await call('accept', b.token, { invite: invite.id });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.body.party.members, [a.id, b.id]);
+  assert.equal(ok.body.party.leader, a.id);
+  assert.deepEqual((await nextA('party')).party.members, [a.id, b.id]);
+  assert.equal((await nextA('party-note')).note.kind, 'joined');
+  // The party channel reaches members only.
+  assert.equal((await call('chat', b.token, { text: 'Stay close <3' })).status, 201);
+  const line = await nextA('party-chat');
+  assert.equal(line.message.text, 'Stay close <3');
+  assert.equal(line.message.name, 'Mira');
+  // Life travels in presence, both or neither, never above the most.
+  assert.equal((await post('/update', { x: 5, y: 5, facing: 1, animation: 'idle', zone: 'ember-isle', area: 'ember-isle', hp: 40, maxHp: 120 }, b.token)).status, 200);
+  const life = (await nextA('players')).players.find(p => p.id === b.id);
+  assert.deepEqual([life.hp, life.maxHp], [40, 120]);
+  for (const bad of [{ hp: 10 }, { hp: 130, maxHp: 120 }, { hp: -1, maxHp: 5 }, { hp: 1.5, maxHp: 5 }, { hp: 1, maxHp: 0 }]) {
+    assert.equal((await post('/update', { x: 5, y: 5, facing: 1, animation: 'idle', zone: 'ember-isle', ...bad }, a.token)).status, 400, JSON.stringify(bad));
+  }
+  // A kill: relayed to Mira with Arin's own last spot, never to Oskar outside the party.
+  const killed = await call('kill', a.token, { creature: 'rivet-maw', level: 4, hp: 60, xp: 1.2, area: 'ember-isle' });
+  assert.equal(killed.status, 201);
+  const { kill } = await nextB('party-kill');
+  assert.deepEqual({ from: kill.from, creature: kill.creature, level: kill.level, hp: kill.hp, xp: kill.xp, area: kill.area, x: kill.x }, { from: a.id, creature: 'rivet-maw', level: 4, hp: 60, xp: 1.2, area: 'ember-isle', x: 160 });
+  await post('/chat', { text: 'public line' }, c.token);
+  const first = await nextC();
+  assert.notEqual(first.type, 'party-kill');
+  assert.notEqual(first.type, 'party-chat');
+});
+
+test('protocol 3: four at most; leave hands the lead on; kick is the leader\'s; under two the party disbands', async t => {
+  const { base, joinP, call, tick } = await party(t);
+  const ks = [];
+  for (const name of ['Arin', 'Mira', 'Oskar', 'Wren', 'Tamsin']) ks.push(await joinP(name));
+  const [a, b, c, d, e] = ks;
+  for (const k of [b, c, d]) {
+    const { body } = await call('invite', a.token, { to: k.id });
+    assert.equal((await call('accept', k.token, { invite: body.invite.id })).status, 200);
+  }
+  // The fifth: refused at the invite (full), and an invite made before it filled is refused at the accept.
+  assert.equal((await call('invite', a.token, { to: e.id })).status, 409);
+  // Only the leader invites; nobody invites a member twice.
+  assert.equal((await call('invite', b.token, { to: e.id })).status, 403);
+  assert.equal((await call('invite', a.token, { to: b.id })).status, 409);
+  // Kick: the leader only, never itself, only a member.
+  assert.equal((await call('kick', b.token, { member: c.id })).status, 403);
+  assert.equal((await call('kick', a.token, { member: a.id })).status, 400);
+  assert.equal((await call('kick', a.token, { member: e.id })).status, 400);
+  const nextD = await events(t, base, d.token);
+  await nextD('snapshot');
+  const partyAtD = await nextD('party');
+  assert.equal(partyAtD.party.members.length, 4);
+  assert.equal((await call('kick', a.token, { member: d.id })).status, 200);
+  assert.equal((await nextD('party')).party, null);
+  assert.equal((await nextD('party-note')).note.kind, 'kicked');
+  // The leader leaves: the next member leads.
+  const nextB = await events(t, base, b.token);
+  await nextB('snapshot'); await nextB('party');
+  assert.equal((await call('leave', a.token)).status, 200);
+  const handed = await nextB('party');
+  assert.deepEqual(handed.party.members, [b.id, c.id]);
+  assert.equal(handed.party.leader, b.id);
+  // Down to one: disbanded for the one left too.
+  assert.equal((await call('leave', c.token)).status, 200);
+  assert.equal((await nextB('party')).party, null);
+  assert.equal((await call('leave', b.token)).status, 409);
+  assert.equal((await call('chat', b.token, { text: 'hello?' })).status, 409);
+  // A full party refuses an invite accepted after it filled (a fresh half-minute for the invite limit).
+  tick(31000);
+  const ask = async k => (await call('invite', a.token, { to: k.id })).body.invite.id;
+  const [ib, ic, late] = [await ask(b), await ask(c), { body: { invite: { id: await ask(e) } } }];
+  assert.equal((await call('accept', b.token, { invite: ib })).status, 200);
+  assert.equal((await call('accept', c.token, { invite: ic })).status, 200);
+  assert.equal((await call('accept', d.token, { invite: await ask(d) })).status, 200);
+  assert.equal((await call('accept', e.token, { invite: late.body.invite.id })).status, 409);
+});
+
+test('protocol 3: decline, lapse, leaving the room, and validation of every party verb', async t => {
+  const { base, joinP, call, tick, post } = await party(t);
+  const a = await joinP('Arin'), b = await joinP('Mira'), old = await joinP('Oldtimer', {});
+  const nextA = await events(t, base, a.token);
+  await nextA('snapshot');
+  // A v2 client (no `party: true`) can neither be invited nor invite.
+  assert.equal((await call('invite', a.token, { to: old.id })).status, 409);
+  assert.equal((await call('invite', old.token, { to: a.id })).status, 409);
+  assert.equal((await call('invite', a.token, { to: a.id })).status, 400);
+  assert.equal((await call('invite', a.token, { to: 'nobody' })).status, 400);
+  assert.equal((await call('invite', a.token, { to: 5 })).status, 400);
+  // Decline: the inviter hears it; the invite is spent (a fresh half-minute for the invite limit).
+  tick(31000);
+  let inv = (await call('invite', a.token, { to: b.id })).body.invite;
+  assert.equal((await call('invite', a.token, { to: b.id })).status, 409);
+  assert.equal((await call('decline', b.token, { invite: inv.id })).status, 200);
+  assert.equal((await nextA('party-note')).note.kind, 'declined');
+  assert.equal((await call('accept', b.token, { invite: inv.id })).status, 404);
+  // Lapse: a minute later it is gone.
+  inv = (await call('invite', a.token, { to: b.id })).body.invite;
+  tick(61000);
+  assert.equal((await call('accept', b.token, { invite: inv.id })).status, 410);
+  // Someone else's invite is not yours to answer.
+  tick(31000);
+  inv = (await call('invite', a.token, { to: b.id })).body.invite;
+  assert.equal((await call('accept', a.token, { invite: inv.id })).status, 404);
+  assert.equal((await call('accept', b.token, { invite: inv.id })).status, 200);
+  // Bad kills and bad lines change nothing.
+  for (const bad of [{}, { creature: '<b>', level: 1, hp: 1, area: 'x' }, { creature: 'maw', level: 0, hp: 1, area: 'x' }, { creature: 'maw', level: 1, hp: 0, area: 'x' },
+    { creature: 'maw', level: 1, hp: 1, area: 'X Y' }, { creature: 'maw', level: 1, hp: 1, area: 'x', xp: 9 }, { creature: 'maw', level: 1, hp: 2e5, area: 'x' }]) {
+    tick(400);
+    assert.equal((await call('kill', a.token, bad)).status, 400, JSON.stringify(bad));
+  }
+  assert.equal((await call('chat', a.token, { text: '' })).status, 400);
+  assert.equal((await call('chat', a.token, { text: 'x'.repeat(241) })).status, 400);
+  assert.equal((await call('dance', a.token)).status, 404);
+  // Leaving the room leaves the party: a party of one is no party.
+  const nextB = await events(t, base, b.token);
+  await nextB('snapshot'); await nextB('party');
+  await post('/leave', {}, a.token);
+  assert.equal((await nextB('party')).party, null);
+});
+
+test('protocol 3: invites, answers, party lines and kill announcements are rate limited', async t => {
+  const { joinP, call } = await party(t);
+  const a = await joinP('Arin');
+  const others = [];
+  for (const n of ['Mira', 'Oskar', 'Wren', 'Tamsin', 'Ivo', 'Nell']) others.push(await joinP(n));
+  // Three open invites at most (a party of four), then 429; five invites in thirty seconds, then 429 whatever.
+  const codes = [];
+  for (const k of others) codes.push((await call('invite', a.token, { to: k.id })).status);
+  assert.deepEqual(codes, [201, 201, 201, 429, 429, 429]);
+  const b = others[0];
+  const inv = (await call('invite', a.token, { to: b.id }));
+  assert.equal(inv.status, 429);
+  // Into a party by an earlier invite, then flood the channel and the kill relay.
+  const c = others[1];
+  const c2 = await joinP('Pell');
+  const firstInv = (await call('invite', c.token, { to: c2.id })).body.invite;
+  assert.equal((await call('accept', c2.token, { invite: firstInv.id })).status, 200);
+  const chat = [];
+  for (let i = 0; i < 6; i++) chat.push((await call('chat', c.token, { text: 'hi ' + i })).status);
+  assert.deepEqual(chat, [201, 201, 201, 201, 201, 429]);
+  const kills = [];
+  for (let i = 0; i < 21; i++) kills.push((await call('kill', c.token, { creature: 'maw', level: 2, hp: 30, area: 'ember-isle' })).status);
+  assert.equal(kills.filter(s => s === 201).length, 20);
+  assert.equal(kills[20], 429);
 });

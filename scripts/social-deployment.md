@@ -93,3 +93,49 @@ screen).
 Sessions expire after 45 seconds without a client request. Render names and
 messages as text, never HTML. Chat is limited to 240 characters and five sends
 per ten seconds. The server limits request bodies, room size, updates and joins.
+
+### Protocol 3 (parties, 2026-10-21 — built, NOT deployed)
+
+`/health` and `/join` report `protocol: 3`. A client that knows parties says
+`party: true` on `/join`; only such sessions can invite or be invited, so a v2
+client never sees a party event and nothing it does changes. Presence also
+accepts `hp` and `maxHp` (integers, both or neither, `0 ≤ hp ≤ maxHp ≤ 1e6`).
+
+| verb | body | effect |
+|---|---|---|
+| POST `/party/invite` | `{to}` | leader (or no party yet) invites a Keeper not in a party; lapses after 60 s; ≤ 3 open; 5 / 30 s |
+| POST `/party/accept` · `/party/decline` | `{invite}` | accept joins (creating the party on the first yes); refused when full (4), lapsed, or the host has gone; 10 / 10 s |
+| POST `/party/leave` | `{}` | leaves; the lead passes on; under two members the party disbands |
+| POST `/party/kick` | `{member}` | leader only |
+| POST `/party/chat` | `{text}` | 1–240 chars to members only; last 30 kept with the party; 5 / 10 s |
+| POST `/party/kill` | `{creature, level, hp, xp?, area}` | relayed to the other members with the killer's last presence x/y; never stored or paid by the server; 20 / 5 s |
+
+Events: `{type:'party', party:{id,leader,members}|null, messages?}`,
+`{type:'invite', invite:{id,from,name,to,until}}`, `{type:'party-chat', message}`,
+`{type:'party-kill', kill}`, `{type:'party-note', note:{kind:'joined'|'left'|'kicked'|'declined', name, id}}`.
+A reopened stream gets its party (with its lines) and any standing invite after the snapshot.
+Leaving the room (or idling out) leaves the party. Shared XP is decided by each
+recipient's client (src/app/play/social/party-share.ts) and is trust-based.
+
+**Deploy (the owner's call — not executed).** Read the live origins first and
+keep all four (the values contain commas, hence the `^|^` delimiter):
+
+```sh
+gcloud run services describe eclipse-hearth --project xsantcastx-1694b --region us-central1 \
+  --format='value(spec.template.spec.containers[0].env)'
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b \
+  --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated \
+  --max-instances 1 \
+  --concurrency 80 \
+  --timeout 3600 \
+  --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":3
+```
+
+The redeploy restarts the room: everyone online is dropped and rejoins on their
+own within seconds (always-on); chat history (in memory) is cleared.

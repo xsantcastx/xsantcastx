@@ -116,17 +116,29 @@
         <header class="td-chat__tabs" role="tablist">
           <button type="button" role="tab" [attr.aria-selected]="chatTab === 'game'" (click)="chatTab = 'game'; chatLastAt = 0">{{ t('play.chat.game') }}</button>
           <button type="button" role="tab" [attr.aria-selected]="chatTab === 'public'" (click)="openPublicChat()">{{ t('play.chat.public') }}@if (social.connected) { <small><span class="td-chat__online">{{ t('play.chat.online', { n: social.players.length }) }}</span><span class="td-chat__count" aria-hidden="true">{{ social.players.length }}</span></small> }@if (chatUnread && chatSetting === 'on') { <span class="td-chat__unread" data-chat-unread [attr.aria-label]="t('play.chat.unread', { n: chatUnread })">{{ chatUnread }}</span> }</button>
+          @if (social.party) {
+            <button type="button" role="tab" data-party-tab [attr.aria-selected]="chatTab === 'party'" (click)="openPartyChat()">{{ t('play.party.tab') }}@if (partyUnread) { <span class="td-chat__unread" data-party-unread [attr.aria-label]="t('play.chat.unread', { n: partyUnread })">{{ partyUnread }}</span> }</button>
+          }
           <button type="button" class="td-chat__x" (click)="chatHidden = true" [attr.aria-label]="t('play.chat.hide')">&minus;</button>
         </header>
         <ol class="td-chat__log" aria-live="polite">
           @if (chatTab === 'game') {
             @for (line of gameLog.slice(-7); track line.key) { <li class="td-chat__game">{{ line.text }}</li> }
             @empty { <li class="td-chat__empty">{{ t('play.chat.empty') }}</li> }
+          } @else if (chatTab === 'party') {
+            @for (m of (social.partyMessages ?? []).slice(-7); track m.id) { <li class="td-chat__party" data-party-line><b>{{ m.name }}:</b> {{ m.text }}</li> }
+            @empty { <li class="td-chat__empty">{{ t('play.party.quiet') }}</li> }
           } @else {
             @for (m of social.messages.slice(-7); track m.id) { <li><b>{{ m.name }}:</b> {{ m.text }}</li> }
             @empty { <li class="td-chat__empty">{{ social.connected ? t('play.chat.quiet') : chatSetting === 'ignore' && !hearthWanted ? t('play.chat.ignored') : (joining ? t('play.chat.joining') : social.status) }}</li> }
           }
         </ol>
+        @if (chatTab === 'party' && social.party) {
+          <form class="td-chat__say" data-party-say (submit)="$event.preventDefault(); sendPartyChat(partyInput)">
+            <input #partyInput type="text" maxlength="240" autocomplete="off" enterkeyhint="send" [placeholder]="t('play.party.say')" [attr.aria-label]="t('play.party.say')" [disabled]="sending">
+            <button type="submit" [disabled]="sending">{{ t('play.chat.send') }}</button>
+          </form>
+        }
         @if (chatTab === 'public') {
           @if (social.connected) {
             <form class="td-chat__say" (submit)="$event.preventDefault(); sendChat(chatInput)">
@@ -150,7 +162,44 @@
       <h2 id="td-peer-name">{{ pc.name }}</h2>
       <p class="td-peer__line">{{ peerClass(pc.vocation) }}@if (pc.level) { · {{ t('play.peer.level', { n: pc.level }) }} }</p>
       <button type="button" class="td-peer__wave" data-peer-wave (click)="waveAt()">{{ t('play.peer.wave') }}</button>
+      @if (canInvitePeer) {
+        <button type="button" class="td-peer__wave td-peer__invite" data-peer-invite [disabled]="partyBusy" (click)="inviteToParty()">{{ t('play.peer.invite') }}</button>
+      } @else if (peerInParty) {
+        <p class="td-peer__line td-peer__mate">{{ t('play.peer.inParty') }}</p>
+        @if (partyLeader) { <button type="button" class="td-peer__quiet" data-peer-kick [disabled]="partyBusy" (click)="kickMember(pc.id)">{{ t('play.peer.kick') }}</button> }
+      } @else if (social.connected && !partyReady) {
+        <p class="td-peer__line td-peer__later" data-party-later>{{ t('play.peer.partyLater') }}</p>
+      }
     </section>
+  }
+  <!-- An invite to a party (protocol 3): a cozy toast with Accept and Decline; it lets itself go after a minute. -->
+  @if (topDown && invite; as inv) {
+    <section class="td-invite" role="alertdialog" aria-labelledby="td-invite-line" aria-describedby="td-invite-why" data-party-invite [attr.data-invite-from]="inv.from" data-engine-ignore>
+      <p id="td-invite-line" class="td-invite__line">{{ t('play.party.invite.line', { name: inv.name }) }}</p>
+      <p id="td-invite-why" class="td-invite__why">{{ t('play.party.invite.why') }}</p>
+      <div class="td-invite__row">
+        <button type="button" class="td-invite__yes" data-invite-accept [disabled]="partyBusy" (click)="answerInvite(inv, true)">{{ t('play.party.accept') }}</button>
+        <button type="button" class="td-invite__no" data-invite-decline [disabled]="partyBusy" (click)="answerInvite(inv, false)">{{ t('play.party.decline') }}</button>
+      </div>
+    </section>
+  }
+  <!-- The party frames (protocol 3): each other member's name, class and level, life, and which way they are. -->
+  @if (topDown && !panel && social.party) {
+    <aside class="td-party" [attr.aria-label]="t('play.party.title')" data-party-frames [attr.data-party-size]="social.party.members.length" data-engine-ignore>
+      <header class="td-party__head"><b>{{ t('play.party.title') }}</b>
+        <button type="button" class="td-party__leave" data-party-leave [disabled]="partyBusy" (click)="leaveParty()">{{ t('play.party.leave') }}</button>
+      </header>
+      <ol class="td-party__list">
+        @for (m of partyFrames; track m.id) {
+          <li class="td-party__frame" data-party-frame [attr.data-member]="m.name" [attr.data-hp]="(m.hp * 100).toFixed(0)">
+            <span class="td-party__name">@if (m.leader) { <i class="td-party__crown" [attr.aria-label]="t('play.party.leader')" [title]="t('play.party.leader')"></i> }{{ m.name }}</span>
+            <small class="td-party__line">{{ peerClass(m.vocation) }}@if (m.level) { · {{ m.level }} }</small>
+            <span class="td-party__bar" role="meter" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="(m.hp * 100).toFixed(0)" [attr.aria-label]="t('play.party.hp', { n: (m.hp * 100).toFixed(0) })"><i [style.--hp]="m.hp"></i></span>
+            <small class="td-party__where" data-party-where>{{ m.where }}</small>
+          </li>
+        }
+      </ol>
+    </aside>
   }
   <!-- The level-up fanfare (docs/design/leveling.md §4): what the level gave, exactly, and where to spend it. -->
   @if (levelBanner; as lb) {
