@@ -72,7 +72,8 @@ export class WorldClockService {
     // The phase specs (`?phase=day|dusk|night|warn|eclipse`, automation only): the clock jumps to that sky on load, so
     // the engine's rules, the HUD's phase plate and the eclipse warning all agree. `warn` stands 25 minutes before an
     // eclipse (the banner), `eclipse` an hour and a half into one.
-    const want = automated ? /[?&]phase=(day|dusk|night|warn|eclipse)\b/.exec(location.search)?.[1] : undefined;
+    // The seam specs (`?fxseam=1`) stand inside an eclipse too: the Seam Eater only rises under one (play/td/td-seam.ts).
+    const want = automated ? /[?&]phase=(day|dusk|night|warn|eclipse)\b/.exec(location.search)?.[1] ?? (/[?&]fxseam=1\b/.test(location.search) ? 'eclipse' : undefined) : undefined;
     if (want) {
       const { day } = worldTime(Date.now() + this.skewMs);
       let d = day;

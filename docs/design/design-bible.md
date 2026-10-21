@@ -460,7 +460,7 @@ Drowned Acolyte; 1 in 3 of those spawns), 2 in 5 spawns bring a second, every wi
 champion's numbers, drops one ladder step up, the dark corona); Shadow +25%, Ember −15%; XP +20%, Gold +25%; the dark
 turns violet. Spawn rules hold only in the open wilds (never a town's safety, a boss, or a dungeon floor); spell strength
 follows the sky everywhere. HUD: a phase plate at the minimap's foot, a warning ribbon 30 minutes before an eclipse, the
-Spellbook card's phase line. Not built yet: the Seam Eater's rising (still the L-sized event below), the eclipse-only
+Spellbook card's phase line. The Seam Eater's rising is built (2026-10-21, `td-seam.ts`: at each continent's standing stones, not the Seamworks' lower yard; loot-and-combat §10). Not built yet: the eclipse-only
 graveyard rising, Small Eclipse's doubled radius (no such spell yet), and the leaning realm (the boosts hold everywhere).
 The "Lamp" column is the Ember tree until the Lanternwright brings real Lamp spells.
 

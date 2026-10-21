@@ -68,19 +68,20 @@ interface ResistRow { id: Element; value: number }
 
       </div>
       <div class="ls__col">
-      <!-- The tiers (difficulty.model): shown only once a save holds more than Normal. Their gate boss, the Fallen
-           Ephemeris, is not in the top-down world yet, so a new Keeper has nothing to open (docs/design/loot-and-combat.md §8). -->
-      @if (openTiers.length > 1) {
-        <h3 class="ls__h">{{ t('loot.tier.title') }}</h3>
-        <div class="ls__tiers" role="radiogroup" [attr.aria-label]="t('loot.tier.title')">
-          @for (tier of openTiers; track tier) {
-            <button type="button" role="radio" class="ls__tier" [class.ls__pick--on]="s.tier === tier" [attr.aria-checked]="s.tier === tier"
-                    [attr.data-tier]="tier" (click)="setTier(tier)">
-              <strong [style.color]="tierColor(tier)">{{ t('loot.tier.' + tier) }}</strong>
-              <small>{{ t('loot.tierBlurb.' + tier) }}</small>
-            </button>
-          }
-        </div>
+      <!-- The tiers (difficulty.model): the ones this save has opened, and how the next one opens — its gate boss in the
+           top-down world is the Seam Eater, risen under an eclipse (play/td/td-seam.ts; docs/design/loot-and-combat.md §8). -->
+      <h3 class="ls__h">{{ t('loot.tier.title') }}</h3>
+      <div class="ls__tiers" role="radiogroup" [attr.aria-label]="t('loot.tier.title')">
+        @for (tier of openTiers; track tier) {
+          <button type="button" role="radio" class="ls__tier" [class.ls__pick--on]="s.tier === tier" [attr.aria-checked]="s.tier === tier"
+                  [attr.data-tier]="tier" (click)="setTier(tier)">
+            <strong [style.color]="tierColor(tier)">{{ t('loot.tier.' + tier) }}</strong>
+            <small>{{ t('loot.tierBlurb.' + tier) }}</small>
+          </button>
+        }
+      </div>
+      @if (nextLocked; as nx) {
+        <p class="ls__note" data-tier-next [attr.data-next]="nx.next">{{ t('loot.tier.locked', { tier: t('loot.tier.' + nx.from), next: t('loot.tier.' + nx.next) }) }}</p>
       }
 
       <h3 class="ls__h">{{ t('loot.resist.title') }}</h3>
@@ -169,6 +170,12 @@ export class LootSheetComponent implements OnDestroy {
   setTier(tier: DifficultyTier): void { this.loot.setTier(tier); }
   /** The tiers this save has opened, in order (the picker shows only these). */
   get openTiers(): DifficultyTier[] { return this.tiers.filter(t => this.s.unlocked.includes(t)); }
+  /** The first tier not yet opened, and the one below it whose gate opens it (null once Hell is open). */
+  get nextLocked(): { from: DifficultyTier; next: DifficultyTier } | null {
+    const next = this.tiers.find(t => !this.s.unlocked.includes(t));
+    const i = next ? this.tiers.indexOf(next) : -1;
+    return next && i > 0 ? { from: this.tiers[i - 1], next } : null;
+  }
   color(a: AuraId): string { return AURAS[a].color; }
   tierColor(tier: DifficultyTier): string { return DIFFICULTIES[tier].color; }
 
