@@ -5,7 +5,7 @@
  * material, Hunting XP) once, and the receipt is saved. Screenshots: docs/handoff/cozy-ui/quests-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, ledger, seed } from './play-helpers';
+import { ERA, ledger, purse, sail, seed } from './play-helpers';
 import { dailyDay, dailyKey, dailyOf } from '../src/app/shared/town-tasks/town-tasks.model';
 
 const canvas = (page: Page) => page.locator('canvas').first();
@@ -24,7 +24,7 @@ const stackOps = (page: Page) => page.evaluate(() => {
 async function open(page: Page, stacks: Record<string, number>, extra: Record<string, unknown> = {}): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
-  await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'godforge-inventory': ledger(stacks), ...extra });
+  await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'godforge-inventory': ledger(stacks), ...purse(100_000), ...extra });
   await page.goto('/play?td=1&hour=12');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
 }
@@ -97,8 +97,7 @@ test('a task giver of their own in Pyrehold, and the talk window on a phone', as
   await open(page, {});
   // Sail to Pyrehold (the Map's ship pin), then the captain of the Watch.
   await page.locator('.td-dock button').last().click();
-  await page.locator('#places-list.td-map .td-map__key button', { hasText: /ship to pyrehold/i }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 30000 });
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await expect(canvas(page)).toHaveAttribute('data-task-marks', /captain-vey:!/, { timeout: 10000 });
   await travelTo(page, /brannoc vey/i, true);
   const talk = page.locator('.td-talk');
@@ -193,8 +192,7 @@ test('a Verdant keeper: Mossharbor\'s net-mender offers her task with a "!", and
   await open(page, {});
   // Ember Harbour's second ship sails straight to Mossharbor (the Map's ship pin).
   await canvas(page).focus(); await page.keyboard.press('m');
-  await page.locator('#places-list.td-map .td-map__key button', { hasText: /ship to mossharbor/i }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', /^Mossharbor$/, { timeout: 30000 });
+  await sail(page, /mossharbor/i, /^Mossharbor$/);
   await expect(canvas(page)).toHaveAttribute('data-task-marks', /netmender-brisk:!/, { timeout: 10000 });
   await travelTo(page, /wenna brisk/i);
   const talk = page.locator('.td-talk');

@@ -244,3 +244,23 @@ export async function pickSkill(page: Page, id: string): Promise<void> {
   await node.click();
   await expect(page.locator(`.sbt__detail[data-skill="${id}"]`)).toBeVisible();
 }
+
+/**
+ * Sail from the pier the Keeper is on (docs/design/realms-endgame.md §1): open the Map, go to the Harbourmaster's pin
+ * (`master`, else the first), pick the board row for `dest`, pay the fare, skip the crossing, and wait for the arrival
+ * (`area`, matched against the canvas's data-area). The Keeper needs the fare in their purse (`purse`).
+ */
+export async function sail(page: Page, dest: RegExp, area: RegExp, master?: RegExp): Promise<void> {
+  const cv = page.locator('canvas').first();
+  const map = page.locator('#places-list.td-map');
+  if (!(await map.isVisible())) { await cv.focus(); await page.keyboard.press('m'); }
+  const pin = map.locator('.td-map__key button[data-kind="harbour"]', master ? { hasText: master } : {}).first();
+  await pin.click();
+  const board = page.locator('.td-harbour');
+  await expect(board).toBeVisible({ timeout: 30000 });
+  await board.locator('[data-harbour-row]', { hasText: dest }).first().click();
+  await board.locator('[data-harbour-go]').click();
+  await page.locator('[data-harbour-skip]').click();
+  await expect(page.locator('[data-harbour-voyage]')).toHaveCount(0, { timeout: 10000 });
+  await expect(cv).toHaveAttribute('data-area', area, { timeout: 30000 });
+}

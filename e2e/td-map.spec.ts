@@ -4,14 +4,14 @@
  * small key; a pin travels. Screenshots: docs/handoff/cozy-ui/map-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { purse, sail, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
 test('the Map: M opens it, pins and the key go places, on an island, a continent and a dungeon floor', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await seed(page, { 'eclipse-td': '1' });
+  await seed(page, { 'eclipse-td': '1', ...purse(100_000) });
   await page.goto('/play?td=1&hour=12');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
   await canvas(page).focus();
@@ -23,8 +23,7 @@ test('the Map: M opens it, pins and the key go places, on an island, a continent
   await expect(map.locator('.td-map__me')).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/map-ember-isle.jpg', type: 'jpeg', quality: 78 });
   // A pin itself travels (the ship to Pyrehold).
-  await map.locator('.td-map__pin[title="Ship To Pyrehold"]').click();
-  await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 30000 });
+  await sail(page, /pyrehold/i, /pyrehold/i);
   await page.keyboard.press('m');
   await expect(map).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/map-infernal-reach.jpg', type: 'jpeg', quality: 78 });

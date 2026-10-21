@@ -15,6 +15,7 @@ import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
 import { onNightroad, onNook } from './td-dark';
+import { PIERS } from './td-harbour';
 
 export const WORLD_CHUNK = 16;
 /** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
@@ -95,6 +96,15 @@ export class TdWorld implements TdLevel {
     for (const v of def.villages ?? []) for (const w of v.ways ?? []) {
       this.allStalls.push({ station: w.station, x: (v.c + w.c) * TILE + TILE / 2, y: (v.r + w.r) * TILE + TILE });
       this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
+    }
+    // The Harbourmaster of each pier on this continent (td-harbour): beside the pier's head, talked to like a task giver.
+    for (const pier of PIERS) {
+      if (pier.continent !== def.id) continue;
+      const v = pier.village ? (def.villages ?? []).find(x => x.name === pier.village) : null, p = pier.village ? null : def.places.find(pl => pl.kind === 'harbour');
+      const c0 = v ? v.c : p ? p.c : null, r0 = v ? v.r : p ? p.r : null;
+      if (c0 === null || r0 === null) continue;
+      const x = (c0 + pier.at.c) * TILE + TILE / 2, y = (r0 + pier.at.r) * TILE + TILE, who = pier.master;
+      this.allStalls.push({ station: { id: `giver-${who.id}`, x: 0, label: who.name.toUpperCase(), kind: 'quest', blurb: `${who.name} keeps the sailing board.` }, x, y: y + 8, keeper: { id: who.id, name: who.name, x, y } });
     }
     for (const way of def.roads) {
       for (let i = 1; i < way.length; i++) {

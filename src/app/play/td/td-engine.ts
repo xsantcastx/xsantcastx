@@ -114,6 +114,7 @@ import type { GlimMood } from '../../shared/glim/glim-art';
 import type { LootFilter } from '../../shared/loot/loot-tiers';
 import type { AuraId } from '../../shared/loot/auras';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
+import { isBerth, pierById, pierOfMaster, routesFrom, fareFor, LANDS } from './td-harbour';
 import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
@@ -139,7 +140,7 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3],
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
-export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number }
+export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc' | 'harbour'; u: number; v: number }
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
@@ -812,7 +813,7 @@ export class TopDownEngine {
   delveAnchors(): readonly never[] { return []; }
   hasDelveCamp(): boolean { return false; }
   readRiftMap(): boolean { return false; }
-  get places(): readonly StationDef[] { return this.level.stalls.map(s => s.station); }
+  get places(): readonly StationDef[] { return this.level.stalls.filter(s => !isBerth(s.station.id)).map(s => s.station); }
   private readonly mapImages = new Map<string, { url: string; x0: number; y0: number; w: number; h: number }>();
   /**
    * The Map window (owner 2026-10-20: "take that Places UI out, create the map and pin point the stuff"): the level the
@@ -852,13 +853,15 @@ export class TopDownEngine {
       if (seen.has(st.station.id)) continue;
       seen.add(st.station.id);
       const id = st.station.id;
-      const kind: TdMapPin['kind'] = id.startsWith('ship') ? 'ship' : id.startsWith('giver-') ? 'npc' : st.station.kind === 'passage' ? 'way' : 'stall';
+      if (isBerth(id)) continue;
+      const kind: TdMapPin['kind'] = id.startsWith('giver-harbourmaster-') && pierOfMaster(id.slice(6)) ? 'harbour' : id.startsWith('ship') ? 'ship' : id.startsWith('giver-') ? 'npc' : st.station.kind === 'passage' ? 'way' : 'stall';
       let pu = u(st.x);
       const pv = v(st.y);
       // Two ships at one harbour (ContinentWay.along) would share a pin's spot and the later one would eat every
       // click on the first: set a second ship's pin beside it.
       if (kind === 'ship') while (pins.some(q => q.kind === 'ship' && Math.abs(q.u - pu) < .03 && Math.abs(q.v - pv) < .03)) pu += .035;
-      pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: pu, v: pv });
+      const pier = kind === 'harbour' ? pierOfMaster(id.slice(6)) : undefined;
+      pins.push({ id, label: st.station.label, blurb: pier ? this.harbourBlurb(pier.id) : st.station.blurb ?? '', kind, u: pu, v: pv });
     }
     return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
   }
@@ -934,8 +937,15 @@ export class TopDownEngine {
     if (!lv) { lv = new HandLevel(LEVELS[id] ?? EMBER_MINE_1); this.levels.set(id, lv); }
     return lv;
   }
+  /** What a Harbourmaster's map pin says: where the board sails, and from what fare. */
+  private harbourBlurb(pierId: string): string {
+    const routes = routesFrom(pierId, CONTINENTS);
+    const names = routes.map(r => pierById(r.destPier)?.name ?? r.destPier);
+    const low = Math.min(...routes.map(r => fareFor(LANDS[pierById(r.destPier)!.continent]?.entry ?? 1)));
+    return routes.length ? `Sailing board: ${names.join(', ')}. Fares from ${low} gold.` : 'The sailing board.';
+  }
   /** Sail to another continent: its surface becomes the world, its town's people come out, the Keeper steps ashore. */
-  private sail(to: string, arrive: string): void {
+  sail(to: string, arrive: string): void {
     const def = CONTINENTS[to];
     if (!def) { this.say('play.td.soon.place'); return; }
     let next = this.continents.get(to);
@@ -1783,8 +1793,10 @@ export class TopDownEngine {
     return l ? { continent: l.continent, level, x, y, floor: l.floor, ax: l.ax, ay: l.ay } : { continent, level, x, y, floor: 0, ax: x, ay: y };
   }
   /** What the Seek can point at: the fallen purse, every boss in its hall, every task giver with a task to hand in. */
-  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party'; id: string; name: string; place: SeekPlace }[] {
-    const out: { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party'; id: string; name: string; place: SeekPlace }[] = [];
+  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party' | 'harbour'; id: string; name: string; place: SeekPlace }[] {
+    const out: { kind: 'boss' | 'quest' | 'purse' | 'story' | 'party' | 'harbour'; id: string; name: string; place: SeekPlace }[] = [];
+    // The piers of this continent: sought by "harbour" or the Harbourmaster's name, never the nearest-of-anything default.
+    for (const k of this.keepers) if (k.kid && pierOfMaster(k.kid)) out.push({ kind: 'harbour', id: 'harbour', name: k.name ?? k.kid, place: this.seekPlace(this.world.continent, null, k.x, k.y) });
     // Party members (protocol 3), sought by name ("lum vesh Mira"): their area is a continent's surface or a floor's id.
     for (const m of this.peers.partyWhere()) {
       const link = this.levelLinks().get(m.area);
@@ -1824,7 +1836,7 @@ export class TopDownEngine {
       if (!pick) { this.options.onSeek?.({ kind: 'unknown', id: '', name, dir: null, band: 'veryFar', floor: 'here', sea: false }); return false; }
     } else {
       // The purse first (a fall to set right), then the story's next place (the chain under way), then the nearest.
-      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse' && t.kind !== 'party').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
+      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse' && t.kind !== 'party' && t.kind !== 'harbour').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
     }
     if (!pick) return false;
     const r = pick.r;
@@ -2122,6 +2134,8 @@ export class TopDownEngine {
     // The nearest stall within reach (the HUD's prompt and E).
     let best: TdStall | null = null, bestD = REACH;
     for (const s of this.level.stalls) {
+      // A ship's berth is only where the Keeper steps ashore: the Harbourmaster is who you talk to (td-harbour).
+      if (isBerth(s.station.id)) continue;
       if (s.station.id.startsWith('shade:') && this.darkLayer.isOpened(s.station.id.slice(6))) continue;
       // The ledger page is only there in the dark, while the chain is at it.
       if (s.station.id === 'sexton:page' && !pageShown(this.sexton.step, this.phaseNow)) continue;
@@ -2278,6 +2292,7 @@ export class TopDownEngine {
     // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
     let hit: TdStall | undefined, best = Infinity;
     for (const s of this.level.stalls) {
+      if (isBerth(s.station.id)) continue;
       if (!(Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16)) continue;
       const d = Math.hypot(wx - s.x, wy - (s.y - 14));
       if (d < best) { best = d; hit = s; }
