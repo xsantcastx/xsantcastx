@@ -121,6 +121,7 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   const H = front ? P : M;
   const handY = raise ? tt - 5 : tt + 8 + (staff ? 1 : 0) + (front ? pose.rArm : pose.lArm);
   if (held) paintHeld(H, held, handY);
+  else if (weapon?.variant === 'lamp') paintLampStaff(H, cast, handY, front);
   else paintStaff(H, cast, handY, weapon?.kind === 'wand' ? weapon : null);
   // The hand closed round the grip, over the shaft.
   const g = gear?.hands ? matOf(gear.hands) : null;
@@ -685,6 +686,30 @@ function paintStaff(P: Px, cast: boolean, hy: number, wand: GearPiece | null): v
   P(x, y0 + 2, 2, 3, cast ? '#fff1b8' : '#ff9a3a');
   P(x, y0 + 2, 1, 1, cast ? '#ffffff' : '#ffe08a');
   if (cast) for (const [dx, dy] of [[-3, 3], [-2, 1], [3, 0], [3, 4], [-3, 6], [1, -1]] as const) P(x + dx, y0 + dy, 1, 1, dy % 2 ? '#ffd25a' : '#e2c6ff');
+}
+
+/**
+ * The Lanternwright's lamp-staff: a dark pole banded in brass with a lantern set on its head — a brass ring and cap, cream
+ * glass with a white heart between brass posts, a brass base. Raised to cast, the lantern flares and throws eight
+ * sparks. From behind, the glass is the lantern's back: a dimmer glow through the frame.
+ */
+function paintLampStaff(P: Px, cast: boolean, hy: number, front: boolean): void {
+  const x = 23, brass = '#c99a3e', brassLo = '#8a6a3a', glass = '#ffd27a', heart = '#fffbe8';
+  const y0 = cast ? 1 : 3, bottom = cast ? FEET - 4 : FEET;
+  // The pole, lit on the left, two brass bands, an iron foot.
+  P(x, y0 + 9, 2, bottom - y0 - 9, WOOD); P(x, y0 + 9, 1, bottom - y0 - 9, WOOD_HI); P(x + 1, y0 + 9, 1, bottom - y0 - 9, WOOD_LO);
+  for (const y of [y0 + 16, y0 + 24]) { P(x, y, 2, 1, brass); P(x + 1, y, 1, 1, brassLo); }
+  P(x, bottom - 2, 2, 2, '#5a5560');
+  // The lantern on the pole's head: ring, cap, two posts round the glass, the base.
+  const lx = x - 2;
+  P(lx + 2, y0 - 1, 2, 1, brassLo);
+  P(lx + 1, y0, 4, 1, brass); P(lx + 1, y0, 1, 1, '#e0b25a');
+  P(lx, y0 + 1, 1, 6, brass); P(lx + 5, y0 + 1, 1, 6, brassLo);
+  P(lx + 1, y0 + 1, 4, 6, cast ? heart : front ? glass : mix(glass, brassLo, .35));
+  P(lx + 2, y0 + 2, 2, 4, cast ? '#ffffff' : front ? heart : glass);
+  if (front) P(lx + 2, y0 + 2, 1, 1, '#ffffff');
+  P(lx, y0 + 7, 6, 1, brass); P(lx + 1, y0 + 8, 4, 1, brassLo);
+  if (cast) for (const [dx, dy] of [[-2, 1], [-1, -2], [6, -1], [7, 3], [-2, 6], [3, -3], [7, 7], [-1, 9]] as const) P(lx + dx, y0 + dy, 1, 1, dy % 2 ? glass : heart);
 }
 
 // ───────────────────────── the sheet ─────────────────────────

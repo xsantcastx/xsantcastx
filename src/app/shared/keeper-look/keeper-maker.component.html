@@ -1,7 +1,8 @@
 <section class="km" [attr.data-saved]="saved ? '1' : '0'">
   <p class="km__lore">{{ t('look.lore') }}</p>
 
-  <!-- The class (owner 2026-10-20: one class first, done right; design-bible §4.4: the Ashguard second). Chosen once:
+  <!-- The class (owner 2026-10-20: one class first, done right; design-bible §4.4: the Ashguard second; §4.3: the
+       Lanternwright third). Chosen once:
        a made Keeper keeps the calling they were made with. -->
   <div class="km__class" role="radiogroup" [attr.aria-label]="t('look.class')">
     <span class="km__label">{{ t('look.class') }}</span>
@@ -22,6 +23,17 @@
           <rect x="13" y="3" width="1" height="1" fill="#ffb347"/><rect x="10" y="5" width="1" height="1" fill="#e2552a"/>
         </svg>
         <span><b>{{ t('look.class.ashguard') }}</b><small>{{ t('look.class.ashguard.blurb') }}</small></span>
+      </button>
+      <button type="button" class="km__classcard" role="radio" [attr.aria-checked]="draft.vocation === 'lanternwright'" data-vocation="lanternwright"
+              [disabled]="locked && draft.vocation !== 'lanternwright'" (click)="setVocation('lanternwright')">
+        <svg viewBox="0 0 16 16" width="36" height="36" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="7" y="7" width="2" height="9" fill="#6e4526"/><rect x="7" y="7" width="1" height="9" fill="#a06a3b"/><rect x="7" y="11" width="2" height="1" fill="#c99a3e"/>
+          <rect x="7" y="0" width="2" height="1" fill="#8a6a3a"/><rect x="5" y="1" width="6" height="1" fill="#c99a3e"/>
+          <rect x="4" y="2" width="1" height="4" fill="#c99a3e"/><rect x="11" y="2" width="1" height="4" fill="#8a6a3a"/><rect x="5" y="2" width="6" height="4" fill="#ffd27a"/>
+          <rect x="6" y="3" width="4" height="2" fill="#fffbe8"/><rect x="7" y="3" width="1" height="1" fill="#ffffff"/><rect x="4" y="6" width="8" height="1" fill="#c99a3e"/>
+          <rect x="2" y="2" width="1" height="1" fill="#fff2a8"/><rect x="13" y="3" width="1" height="1" fill="#fff2a8"/><rect x="1" y="5" width="1" height="1" fill="#ffd27a"/><rect x="14" y="6" width="1" height="1" fill="#ffd27a"/>
+        </svg>
+        <span><b>{{ t('look.class.lanternwright') }}</b><small>{{ t('look.class.lanternwright.blurb') }}</small></span>
       </button>
     </div>
     <small class="km__more">{{ t(locked ? 'look.class.locked' : 'look.class.more') }}</small>

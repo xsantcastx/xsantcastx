@@ -75,6 +75,8 @@ const CANT_TONE: Readonly<Record<TreeId, string>> = {
   ember: FX.ember.body, bone: FX.bone.body, shadow: FX.shadow.body, common: LEVEL_UP.body,
   // The Ashguard's oaths speak in brass, the blade's fire in ember, the endurance in ash (td-ashguard-fx).
   brand: FX.ember.body, oath: ASH_FX.brass.body, ash: ASH_FX.ash.core,
+  // The Lanternwright speaks in the lantern's glow, the hearth's fire and the kin's pale wings (td-lantern-fx).
+  lamp: LAMP_FX.lamp.body, hearth: LAMP_FX.hearth.body, moth: LAMP_FX.moth.body,
 };
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
@@ -91,6 +93,7 @@ import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTi
 import { weaponSwing } from './td-melee';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
+import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
@@ -138,6 +141,8 @@ interface Puff { x: number; y: number; age: number; life: number; r: number }
 /** A visual-only pixel of the effects pass: an aura's mote, a shard the Dark Ward sheds (docs/design/effects-spec.md). */
 interface Mote { x: number; y: number; sx: number; sy: number; age: number; life: number; kind: 'ember' | 'life' | 'shard'; seed: number }
 const NOVA_R = SKILLS['hellfire-nova'].vars['radius'] * TILE;
+/** A Beacon's own light (art px): the dark layer's fixed light, half the night pass's hole. */
+const BEACON_LIGHT = 60;
 const MOTES = 10;              // an aura's motes alive at once (spec: ≤ 10)
 const SHARDS = 8;
 /** A loot pop: the small burst when gear lands on the ground or goes into the satchel (spec §Loot). */
@@ -376,6 +381,7 @@ export class TopDownEngine {
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
       seek: secs => this.seekNow(secs),
       dash: (x, y) => this.dashTo(x, y),
+      say: key => this.say(key),
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
     this.mobs.elites = true;
@@ -412,6 +418,18 @@ export class TopDownEngine {
       },
       state: () => ({ step: this.sexton.step, level: this.level.id, near: this.nearby?.station.id ?? null, mobs: this.mobs.mobs.map(m => m.key), phase: this.phaseNow }),
     };
+    // The Lanternwright's e2e (webdriver only): a creature at the Keeper's side, a wound to mend, the lantern's count.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdLamp'] = {
+      foe: (type = 'bone-walker', dx = 40) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
+      foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-lamp:')).length,
+      calm: () => { for (const m of this.mobs.mobs) if (m.key.startsWith('fx-lamp:')) { m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 1e9; } },
+      wound: (n: number) => { this.hp = Math.max(1, this.hp - n); return this.hp; },
+      state: () => ({
+        vocation: this.mobs.vocation, range: this.mobs.range, hp: this.hp, maxHp: this.maxHp, mana: Math.round(this.mobs.mana), maxMana: this.mobs.maxMana,
+        light: this.mobs.lightBonus, shuttered: this.mobs.shuttered, flares: this.mobs.flares, wisps: this.mobs.wisps.length, beacons: this.mobs.beacons.length,
+        ward: this.mobs.lampWard, dawns: this.mobs.dawns.length, hearth: this.mobs.zones.filter(z => z.kind === 'hearth').length, phase: this.mobs.phase,
+      }),
+    };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
@@ -446,6 +464,7 @@ export class TopDownEngine {
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
+    delete (window as unknown as Record<string, unknown>)['__tdLamp'];
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
@@ -971,6 +990,11 @@ export class TopDownEngine {
     const on = this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent });
     return { on, level: Math.round(this.darkLayer.hush), band: on ? this.darkLayer.band : 0, omen: this.darkLayer.omen };
   }
+  /** Where the Lanternwright's lantern hangs (the head of the lamp-staff): right of him facing down, left facing up. */
+  private lanternAt(): { x: number; y: number } {
+    const p = this.player, dx = p.dir === 'down' ? 9 : p.dir === 'up' ? -9 : p.face * 6;
+    return { x: p.x + dx, y: p.y - 32 };
+  }
   private ownLight(): LightSpot { return { x: this.player.x, y: this.player.y - 18, r: 70 + this.mobs.lightBonus * TILE }; }
   private glimLight(): LightSpot | null {
     if (!this.glim.shown) return null;
@@ -981,6 +1005,9 @@ export class TopDownEngine {
     const out: LightSpot[] = [];
     for (const o of this.visible) for (const l of o.sprite().lights ?? []) out.push({ x: o.x + l.x, y: o.y + l.y, r: l.r * 2 });
     if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) out.push({ x: h.x, y: h.y - 8, r: 90 });
+    // The Lanternwright's: a Beacon on its pole, a disc of Dawn at Noon.
+    for (const b of this.mobs.beacons) out.push({ x: b.x, y: b.y - 30, r: BEACON_LIGHT });
+    for (const d of this.mobs.dawns) out.push({ x: d.x, y: d.y, r: d.r * 1.4 });
     return out;
   }
   private darkFrame(dt: number): DarkFrame {
@@ -989,7 +1016,8 @@ export class TopDownEngine {
     return {
       dt, time: this.time, still: this.still, levelId: this.level.id, dark: this.level.dark, continent: this.world.continent, surface,
       phase: this.skyPhase, safe: surface ? this.world.safeAt(tc, tr) : !this.level.dark,
-      hearth: surface && this.hearths.some(h => this.hearthLit.has(h.id) && Math.hypot(h.x - k.x, h.y - k.y) < 90),
+      // A lit hearth near, or the Lanternwright's own Hearth Circle round him: the Hush cannot rise there.
+      hearth: (surface && this.hearths.some(h => this.hearthLit.has(h.id) && Math.hypot(h.x - k.x, h.y - k.y) < 90)) || this.mobs.inHearth,
       keeper: { x: k.x, y: k.y, moving: k.moving }, keeperLevel: this.mobs.keeperLevel,
       own: this.ownLight(), glim: this.glimLight(),
       pet: pb && tdPetJob(pb.id, 'follow') === 'light' ? { x: pb.x, y: pb.y - 8, r: TD_PET.light } : null,
@@ -1010,6 +1038,8 @@ export class TopDownEngine {
     }
     const f = this.darkFrame(dt);
     this.darkLayer.update(f);
+    // Dawn at Noon unveils what stands in the dark inside it: the shapes caught in the daylight leave.
+    for (const d of this.mobs.dawns) for (const sh of this.darkLayer.shapes) if (Math.hypot(sh.x - d.x, sh.y - d.y) <= d.r * 1.4) sh.state = 'gone';
     // A Nightroad is walkable while it is there (night, an eclipse, or the Keeper still on it).
     this.world.nightOpen = this.darkLayer.roadsOpen(this.world.continent, this.skyPhase, this.player.x, this.player.y);
     // The dark pays (the Hush's boon): read by the kill (XP) and the loot roll (Magic Find).
@@ -1020,7 +1050,7 @@ export class TopDownEngine {
   private openShade(id: string): void {
     const ch = SHADE_CHESTS.find(x => x.id === id);
     if (!ch || this.level.id !== ch.level || this.darkLayer.isOpened(id)) return;
-    if (!this.darkLayer.chestShown(ch, this.darkFrame(0))) { this.say('dark.chest.lit'); return; }
+    if (!this.darkLayer.chestShown(ch, this.darkFrame(0))) { this.say(this.mobs.lamp && !this.mobs.shuttered ? 'dark.chest.shutter' : 'dark.chest.lit'); return; }
     this.darkLayer.markOpened(id);
     const x = ch.c * TILE + TILE / 2, y = ch.r * TILE + TILE;
     // What the floor's own creatures carry: its first spawn names the drop table and the level.
@@ -2312,6 +2342,7 @@ export class TopDownEngine {
     if (fallen && inView(fallen.x, fallen.y)) items.push({ y: fallen.y, draw: () => drawPurse(c, fallen.x, fallen.y, this.time, this.still) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
+    for (const b of this.mobs.beacons) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeacon(c, b, this.time, this.still) });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
@@ -2605,8 +2636,8 @@ export class TopDownEngine {
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
-    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire') {
-      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : FX.life, turn = this.still ? 0 : this.time / 12;
+    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura') {
+      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
       drawRing(c, X, Y, this.mobs.auraRadius, turn, tn.core, tn.body, 8, 6, tn.edge);
       c.globalAlpha = .6; drawRing(c, X, Y, Math.round(this.mobs.auraRadius * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
@@ -2618,9 +2649,12 @@ export class TopDownEngine {
     const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80;
     for (const m of this.mobs.mobs) if (m.elite && near(m.x, m.y)) drawEliteGround(c, m, this.time, this.still);
     for (const b of this.mobs.bursts) if (near(b.x, b.y)) drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still);
+    // The Lanternwright's circles on the floor: the Hearth Circle, the disc of Dawn at Noon.
+    if (this.mobs.zones.length) drawLampZones(c, this.mobs.zones, this.time, this.still);
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
       if (drawAshGround(c, e, this.still)) continue;
+      if (drawLampGround(c, e, this.still)) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
       if (e.kind === 'pulse') {
         // A short bright arc of the ring flashes at the foe's side.
@@ -2632,7 +2666,7 @@ export class TopDownEngine {
       } else if (e.kind === 'wave') {
         // Hellfire Nova: a two-tone pixel ring runs out to its 3 tiles in half a second; the ground it crossed stays scorched.
         // The trees' bursts (a Meteor, a Corpse Burst, Weaken, Doom) ride the same ring in their own element; only fire scorches.
-        const R = e.r ?? NOVA_R, tn = FX[e.el && e.el !== 'life' && e.el !== 'brass' ? e.el : 'ember'];
+        const R = e.r ?? NOVA_R, tn = FX[e.el && e.el !== 'life' && e.el !== 'brass' && e.el !== 'lamp' ? e.el : 'ember'];
         if (t > .2 && !e.el) {
           const f = Math.min(1, (t - .2) / .2) * (t > .5 ? 1 - (t - .5) / .5 : 1);
           c.globalAlpha = .75 * f; c.drawImage(scorchSprite(R), ex - R, ey - R);
@@ -2744,6 +2778,7 @@ export class TopDownEngine {
     for (const e of this.mobs.effects) {
       if (e.age < 0 || e.kind === 'pulse' || e.kind === 'wave') continue;
       if (drawAshAir(c, e, this.still, this.overFoe)) continue;
+      if (drawLampAir(c, e, this.still, this.overFoe)) continue;
       // Reduced motion: a burst is one still frame, never no burst.
       const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), bt = this.still ? .5 : t, seed = (X * 7 + Y * 13) | 0;
       c.globalAlpha = Math.max(0, 1 - t);
@@ -2853,6 +2888,7 @@ export class TopDownEngine {
     c.globalAlpha = 1;
     this.drawMotes();
     if (this.mobs.melee) drawAshState(c, { brandT: this.mobs.brandT, blockT: this.mobs.blockT, vowT: this.mobs.vowT, mobs: this.mobs.mobs }, this.player, this.time, this.still);
+    if (this.mobs.lamp) drawLampState(c, { ward: this.mobs.lampWard, lastLight: this.mobs.lastLightT, wisps: this.mobs.wisps, mobs: this.mobs.mobs }, this.player, this.time, this.still);
     // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).
     for (const m of this.mobs.mobs) if (m.tell > 0 && windsUp(m.def)) {
       const k = this.still ? .7 : 1 - m.tell / BOSS_TELL;
@@ -2879,6 +2915,8 @@ export class TopDownEngine {
     // Ember Bolts in flight: a stepped violet halo, an ember core, a three-pixel trail fading in steps.
     for (const b of this.mobs.bolts) {
       const X = Math.round(b.x), Y = Math.round(b.y), dx = b.to.x - b.x, dy = b.to.y - b.to.def.h / 2 - b.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
+      // The Lanternwright's flares (Kindle, a wisp's or a beacon's mote): cream with a brass tail.
+      if (b.lamp) { drawKindle(c, X, Y, ux, uy); continue; }
       const trail: [string, number][] = [[FX.ember.body, .8], [FX.ember.edge, .5], [FX.shadow.body, .25]];
       trail.forEach(([col, a], i) => { c.globalAlpha = a; c.fillStyle = col; c.fillRect(Math.round(X - ux * (i + 1) * 3) - 1, Math.round(Y - uy * (i + 1) * 3) - 1, 2, 2); });
       c.globalAlpha = 1;
@@ -3044,9 +3082,10 @@ export class TopDownEngine {
     c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
     if (!p.painter) return;
     const acting = p === this.player && this.actT > 0;
-    const staff = carriesStaff(this.mobs.vocation);
-    // The Ashguard swings from the side (the painter's own blade arc); the Warlock casts facing the camera.
-    if (p === this.player && (p.dir !== 'side' || (acting && staff))) {
+    const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard';
+    // The Ashguard swings from the side (the painter's own blade arc); the Warlock and the Lanternwright cast facing the
+    // camera, staff raised (the Lanternwright's lamp-staff is a worn piece the front sheet paints, not the Warlock's).
+    if (p === this.player && (p.dir !== 'side' || (acting && faces))) {
       // The Warlock: front/back views with the staff in hand; every cast faces the camera, staff raised.
       const sheet = frontSheet(p.painter, staff), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
       const f = acting ? CAST_FRAME : this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
@@ -3174,6 +3213,15 @@ export class TopDownEngine {
     const fl = this.darkLayer.flicker;
     hole(this.player.x, this.player.y - 18, (70 + lit) * fl);
     if (lit > 0) glows.push({ x: this.player.x, y: this.player.y - 18, r: 14 + lit / 6 });
+    // The Lanternwright's lantern on its pole glows where it hangs (unless shuttered); the kin and the dawn are lights too.
+    if (this.mobs.lamp) {
+      const at = this.lanternAt();
+      if (!this.mobs.shuttered) { hole(at.x, at.y, 46 * fl); glows.push({ x: at.x, y: at.y, r: 16 }); }
+      for (const w of this.mobs.wisps) { hole(w.x, w.y, 40); glows.push({ x: w.x, y: w.y, r: 9 }); }
+    }
+    for (const b of this.mobs.beacons) { hole(b.x, b.y - 30, BEACON_LIGHT * 2); glows.push({ x: b.x, y: b.y - 30, r: 18 }); }
+    // Dawn at Noon: the night opens over the disc (the light sprite fades, so a little past its rim, twice for a bright core).
+    for (const z of this.mobs.dawns) { hole(z.x, z.y, z.r * 1.7); hole(z.x, z.y, z.r * 1.25); glows.push({ x: z.x, y: z.y, r: z.r * .8 }); }
     // A lit hearth is a light of its own; the fallen purse's beam a faint one.
     if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 22 }); }
     const pl = this.purseHere();
@@ -3191,7 +3239,8 @@ export class TopDownEngine {
         const k = t / .5, r = 6 + ((e.r ?? NOVA_R) - 6) * (1 - (1 - k) * (1 - k));
         d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 5;
         d.beginPath(); d.arc((e.x - cam.x) / 2, (e.y - cam.y) / 2, r / 2, 0, Math.PI * 2); d.stroke(); d.globalAlpha = 1;
-      } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash' || e.kind === 'flame') hole(e.x, e.y, 28);
+      } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash' || e.kind === 'flame' || e.kind === 'kindle-hit' || e.kind === 'banish') hole(e.x, e.y, 28);
+      else if ((e.kind === 'lamp-flash' || e.kind === 'lward-break') && t < .6) hole(e.x, e.y, (e.r ?? 48) * 2 * (1 - t));
       else if (e.kind === 'pillar' && t < .8) hole(this.player.x, this.player.y - 30, 56);
     }
     for (const b of this.mobs.bolts) hole(b.x, b.y, 24);

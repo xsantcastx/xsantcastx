@@ -111,6 +111,30 @@ Two palettes join rule 2 for the second vocation (design-bible §4.4); the blade
   while the vow holds, brass corners frame the Keeper. **Watchfire** (aura): the aura rules' ring and floor in brass.
 - Reduced motion: the crescent is drawn whole, the ring at its full reach, the bell and the stars still.
 
+## The Lanternwright (2026-10-21, `td-lantern-fx.ts`)
+Three palettes join rule 2 for the third vocation (design-bible §4.3 asked to reuse the level-up light for the Lamp).
+| Element | Core | Body | Edge | Used by |
+|---|---|---|---|---|
+| Lamp (the lamp-keepers' light) | `#fffbe8` | `#ffd27a` | `#c99a3e` | Kindle's flare, Blinding Flash, Banish, the Lantern Ward, Last Light, the dawn |
+| Hearth (the warm stones' fire) | `#fff2c8` | `#ffb347` | `#8a5a34` | Hearthlight's glow, the Hearth Circle's fire |
+| Moth (the kin's pale wings) | `#fffbe8` | `#e8dcc0` | `#8a6a3a` | the Lamp-Wisp, the wisp's call |
+- **Kindle** (air): a cream mote with a stepped brass tail and a white heart; a small cream burst where it lands (≤ 60%
+  over a body). The wisps' and the beacon's motes are the same flare.
+- **Blinding Flash**: a white-hot square at the lantern and eight rays thrown out (air), a cream ring running out on the
+  floor (ground); the stunned wear three cream stars over the head. **Banish**: a white-hot column three pixels wide on
+  the foe, its pixels falling up.
+- **Hearthlight**: warm stepped squares rising from the feet and a pale green cross. **Hearth Circle** (ground, lasts):
+  a faint warm floor, grey stones round the rim, a small campfire whose flame steps between two heights.
+- **Lantern Ward** (lasts): a dashed brass frame with a lit lamp at each corner; it breaks in a cream burst and a ring.
+  **Last Light**: a cream flare and a rising ring; while untouchable, cream corners frame the Keeper.
+- **Lamp-Wisp** (lasts): a pale moth round a little lamp, two-frame wings, circling the shoulders. **Beacon** (y-sorted,
+  lasts): a dark pole, a brass cap, a lantern that breathes.
+- **Dawn at Noon** (ground, lasts): the disc steps up to near-white at its core (three stepped discs), a sun-ring of twelve
+  brass-and-cream pixels turns at its rim, and the night pass is opened over the whole disc (it is day inside).
+- **The lantern itself**: the lamp-staff's glass is cream with a white heart; at night it is its own light (a hole in the
+  night pass and a warm glow) unless shuttered — the shutters swing shut over it as two dark slats.
+- Reduced motion: the rings drawn at full reach, the column and the motes still, the wings not beating.
+
 ## Order
 1. Auras (this spec's first pass) — done. 2. Spells — done. 3. Loot — done. 4. Monsters' tells and bosses — done.
 Each step screenshot-checked (e2e/td-fx-shots.spec.ts, e2e/td-fx2-shots.spec.ts → docs/handoff/cozy-ui/fx-*.jpg).

@@ -100,3 +100,46 @@ Watch Blade's roll, hence every blow built on it) and the Spellbook card's phase
 ("Eclipse now: −15% power") on any skill that has a damage number.
 **Saves**: a look with no `vocation` (every Keeper made before) is a Warlock; a made Keeper keeps the calling he was
 made with (the Glass locks the other card).
+
+## The Lanternwright's three pages (design-bible §4.3, 2026-10-21)
+The third vocation: the lamp-keepers' own, Glim's order — support, healer, the undoing of the dead. Code:
+`td-lantern-skills.ts` (the book), `td-lantern.ts` (light on the dead, heals in whole ticks, Banish's unmaking, Last Light,
+the carried light and its shutters), `td-mobs.ts` (the flare and the spells), `td-lantern-fx.ts` (the pictures),
+`td-lantern.i18n.ts` (EN + ES). Same rules as the other two: tiers at 1 · 6 · 12 · 18 · 24, one rank in the prerequisite,
+ranks 1–20, `clampTree` per class, synergies only from bought ranks. The basic attack is **Kindle**: a flare of light
+thrown at a foe within 4 tiles every second (Agility and cast speed quicken it) — shorter than the Warlock's 7-tile bolt.
+
+**Light on the dead.** Every light blow (Kindle, the Flash, Banish, the wisps' and the beacon's motes, the dawn) lands
+×1.5 on the dead and the dark-born: the `bone` and `shade` families (creature-families.ts) and the night's wraiths,
+ghouls, wisps and drowned (`td-lantern shadowBorn`).
+
+| Tier (level) | Lamp (light as a weapon) | Hearth (mending, wards) | Moth (the lantern's kin) |
+|---|---|---|---|
+| 1 (1) | **Kindle** (passive flare) *lum sha* 7–11 +2/+3, 4 tiles · **Blinding Flash** *lum orum* 8–12 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, a 4–7 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
+| 2 (6; the shutters at 1) | **Shutter the Lantern** *lum un ka* (level 1): shut, the lantern's and the aura's light go and the Light spell goes out; again, open · 0 · 1 s | **Hearth Circle** ← Hearthlight *hesk orum* r3 for 10 s: you mend 4/s inside, foes walk 20% slower, the Hush cannot rise; +1/s, r+0.05 · 24 · 14 s | **Moth-Kin** ← Wisp (passive): the kin's motes +10%; +3% |
+| 3 (12) | **Banish** ← Flash *lum un* 30–46 to one within 6 tiles; one of the dead at ≤ 25% life after it is unmade (a boss of the dead takes ×1.5 instead); +6/+9 · 22 · 6 s | **Lantern Ward** ← Hearthlight *lum hesk ka* absorbs 50 for 12 s; breaking, it blinds all within 3 tiles 2 s (bosses ⅕); +10, +0.3 s · 20 · 18 s | **Beacon** ← Wisp *lum dra* a lantern on a pole 12 s, a 6–10 mote each second at 5 tiles, a fixed light; +2/+3, +0.3 s · 26 · 16 s |
+| 4 (18) | — | **Last Light** ← Hearth Circle (passive): once every 600 s a fatal blow leaves you at 1 life, 3 s untouchable; +0.1 s | — |
+| 5 (24) | **Dawn at Noon** ← Banish *lum ul orum* a disc of daylight r4 for 8 s where you stand: the night opens over it, the dead and the dark-born inside burn 14/s, the dark layer's shapes inside are unveiled and leave, every foe inside takes +15%; r+0.05, +0.2 s, +3/s · 40 · 45 s | — | — |
+
+Synergies (a forest, no loops): Lantern Aura +2% radius / rank Kindle · Blinding Flash +4% radius / rank Lantern Aura ·
+Banish +6% damage / rank Kindle · Dawn at Noon +5% damage / rank Banish, +4% radius / rank Blinding Flash · Hearth
+Circle +4% heal / rank Hearthlight · Lantern Ward +5% absorb / rank Hearth Circle · Lamp-Wisp +6% damage / rank Moth-Kin
+· Beacon +5% duration / rank Lamp-Wisp.
+
+**Starting kit** (free rank 1): Kindle, Hearthlight, Blinding Flash, Lamp-Wisp, Shutter the Lantern, the Lantern Aura,
+Light; keys 1–4 are Hearthlight · Flash · Wisp · Shutter, the Lantern Aura runs. **The body**: life ×0.9 and mana ×1.4 of
+the Warlock's at every level, no Defense of its own (`td-skills VOCATION_BODY`). **The light**: the lantern on its pole is
++2 tiles of the Keeper's own light (`td-lantern VOCATION_LIGHT`), the aura adds its own, the Light spell stacks on top.
+**The look**: a cream wool hood, a brass-buttoned coat, soft boots and the lamp-staff (a pole with a lit lantern on its
+head, `GearPiece.variant 'lamp'`); a worn staff becomes a lamp-staff, any other worn weapon leaves the lantern to the
+off-hand.
+
+**The sky** (`td-phases` PHASE_RULES): the light is needed most when it is darkest — Lamp −5% by day, +15% at night, +30%
+under an eclipse; Moth +10% / +15%; Hearth +5% / +10%, and on the Hearth the sky moves the **heal** (`skyVars`), so the
+Spellbook card's phase line shows on Hearthlight and the Hearth Circle too.
+
+**The dark** (td-dark): a shy chest shows only while the Keeper's raised light is none, and a Lanternwright always carries
+some. *Shutter the Lantern* puts it all out but a worn unique's (and the Light spell with it); a closed chest tells him
+so ("Shutter the Lantern to let your light burn low"). Speaking *lum* again opens the shutters. The Hearth Circle counts
+as a lit hearth for the Hush (it cannot rise inside); a Beacon and a disc of Dawn are fixed lights the dark-born shy from.
+
