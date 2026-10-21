@@ -31,7 +31,7 @@ gcloud run deploy eclipse-hearth \
   --concurrency 80 \
   --timeout 3600 \
   --session-affinity \
-  --set-env-vars 'SOCIAL_ORIGINS=https://xsantcastx.com'
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com'
 ```
 
 These commands publish a guest endpoint and may incur Google Cloud charges;
