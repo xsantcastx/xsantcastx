@@ -9,7 +9,7 @@
  * container inside it is taken to its end, and the menu's LAST interactive control must be inside the screen and be
  * what a tap there would hit (document.elementFromPoint at its centre).
  *
- * Menus: the title, the character list, the Glass (New Keeper), the delete confirm; in the world the Spellbook, the
+ * Menus: the title, the character list (the campfire), the Glass (New Keeper), the delete confirm; in the world the Spellbook, the
  * Satchel, the character sheet, the Bestiary, the Map, the Hearth Shrine, Sexton Wren's talk window, the settings
  * (sound) sheet and the Sexton's journal.
  */
@@ -138,7 +138,7 @@ for (const size of SIZES) {
       await page.goto('/play?td=1&hour=12');
       await check(page, 'title', '.lobby[data-lobby="title"]');
       await lobby(page, 'title').locator('[data-lobby-guest]').tap();
-      await check(page, 'character list', '.lobby[data-lobby="select"] .win');
+      await check(page, 'character list (the campfire)', '.lobby[data-lobby="select"] [data-character-select]');
       await lobby(page, 'select').locator('[data-character="k2dara00"]').tap();
       await lobby(page, 'select').locator('[data-lobby-delete]').tap();
       await check(page, 'delete confirm', '[data-delete-confirm]');

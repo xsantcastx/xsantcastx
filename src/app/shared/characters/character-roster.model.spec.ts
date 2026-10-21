@@ -1,5 +1,6 @@
 import {
-  CharacterRow, coerceRoster, confirmsDelete, emptyRoster, hasFreeSlot, idForNewCharacter, liveCharacters, mergeCharacterRoster,
+  CharacterRow, JUNK_ROWS_BEFORE, coerceRoster, confirmsDelete, emptyRoster, hasFreeSlot, idForNewCharacter, isJunkRow, junkRowIds, liveCharacters,
+  mergeCharacterRoster, needsTypedName,
 } from './character-roster.model';
 import { MAX_CHARACTERS, PRIMARY_CHARACTER } from '../save/character-scope';
 
@@ -47,9 +48,60 @@ describe('character roster', () => {
   });
 
   it('confirms a delete only with the typed name', () => {
-    expect(confirmsDelete({ name: 'Wren Ashby' }, ' wren ashby ', 'Unnamed')).toBe(true);
-    expect(confirmsDelete({ name: 'Wren Ashby' }, 'Wren', 'Unnamed')).toBe(false);
-    expect(confirmsDelete({ name: '' }, 'unnamed', 'Unnamed')).toBe(true);
-    expect(confirmsDelete({ name: '' }, '', '')).toBe(false);
+    expect(confirmsDelete({ name: 'Wren Ashby' }, ' wren ashby ')).toBe(true);
+    expect(confirmsDelete({ name: 'Wren Ashby' }, 'Wren')).toBe(false);
+    expect(confirmsDelete({ name: 'Wren Ashby' }, '')).toBe(false);
+    expect(needsTypedName({ name: 'Wren Ashby' })).toBe(true);
+  });
+
+  it('deletes a nameless Keeper with a plain confirm (nothing to type)', () => {
+    expect(needsTypedName({ name: '' })).toBe(false);
+    expect(needsTypedName({ name: '   ' })).toBe(false);
+    expect(confirmsDelete({ name: '' }, '')).toBe(true);
+  });
+});
+
+describe('junk rows from the old New Keeper bug', () => {
+  const OLD = Date.UTC(2026, 9, 20);
+  const junk = (id: string, extra: Partial<CharacterRow> = {}): CharacterRow =>
+    row(id, { name: '', level: 1, area: '', createdAt: OLD, updatedAt: OLD, ...extra });
+  const ctx = { active: 'c1', hasSave: () => false };
+
+  it('prunes a nameless, level-1, placeless row this device holds nothing for', () => {
+    expect(isJunkRow(junk('k2junk00'), ctx)).toBe(true);
+  });
+
+  it('never prunes character #1, whatever it holds', () => {
+    expect(isJunkRow(junk(PRIMARY_CHARACTER), { ...ctx, active: 'k9other0' })).toBe(false);
+  });
+
+  it('never prunes a real Keeper: a name, any level above 1, or a place', () => {
+    expect(isJunkRow(junk('k2junk00', { name: 'Bryn' }), ctx)).toBe(false);
+    expect(isJunkRow(junk('k2junk00', { level: 2 }), ctx)).toBe(false);
+    expect(isJunkRow(junk('k2junk00', { level: 40 }), ctx)).toBe(false);
+    expect(isJunkRow(junk('k2junk00', { area: 'Ember Isle' }), ctx)).toBe(false);
+  });
+
+  it('never prunes a row this device holds a meaningful save for, nor the Keeper this page plays', () => {
+    expect(isJunkRow(junk('k2junk00'), { ...ctx, hasSave: id => id === 'k2junk00' })).toBe(false);
+    expect(isJunkRow(junk('k2junk00'), { ...ctx, active: 'k2junk00' })).toBe(false);
+  });
+
+  it('never prunes a nameless Keeper made after the bug was fixed (Become with an empty name is real)', () => {
+    expect(isJunkRow(junk('k2junk00', { createdAt: JUNK_ROWS_BEFORE }), ctx)).toBe(false);
+    expect(isJunkRow(junk('k2junk00', { createdAt: JUNK_ROWS_BEFORE + 86_400_000 }), ctx)).toBe(false);
+  });
+
+  it('lists the junk among real Keepers, only once the cloud has settled, and skips tombstones', () => {
+    const roster = { v: 1 as const, chars: {
+      c1: junk('c1'),
+      k2aster0: row('k2aster0', { name: 'Aster', level: 7, area: 'Ember Isle' }),
+      k3nameles: junk('k3nameles'),
+      k4junk000: junk('k4junk000'),
+      k5bryn000: row('k5bryn000', { name: 'Bryn', level: 1, area: '' }),
+      k6gone000: junk('k6gone000', { deletedAt: OLD + 1 }),
+    } };
+    expect(junkRowIds(roster, { ...ctx, settled: false })).toEqual([]);
+    expect(junkRowIds(roster, { ...ctx, settled: true }).sort()).toEqual(['k3nameles', 'k4junk000']);
   });
 });
