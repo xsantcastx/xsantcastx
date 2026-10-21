@@ -1,0 +1,718 @@
+/* Desktop: the checklist scroll is a fixed comfortable width (the line and Show me share a row), and Glim's line hangs
+   below the taller scroll, not over it. */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .guide--list { width: min(600px, calc(100% - 480px)); flex-wrap: wrap; }
+  .guide--list .guide-text { flex: 1 1 0; min-width: 0; }
+  .stage--td.stage--guide { --glim-top: 200px; }
+}
+.area-card { top: 40%; }
+
+/* ── The Slate on a PC: a phone in the hand, GTA-style (owner 2026-10-19) — it rises from the bottom-left corner,
+   smaller, the world in plain sight behind it (no blur, no dim). A click outside still puts it away. ── */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .place.place--slate {
+    background: none; backdrop-filter: none;
+    align-items: flex-start; justify-content: flex-end;
+    padding: 0 0 18px 28px;
+    /* Full height (the tables inside need every pixel for 44px targets); the corner and the clear world make it a phone in the hand. */
+  }
+}
+
+/* Top-down: the message line as a toast — a parchment slip above the prompt, gone after a few seconds. */
+.td-toast {
+  position: absolute; z-index: 5; left: 50%; bottom: 84px; translate: -50% 0; max-width: min(520px, calc(100% - 24px));
+  margin: 0; padding: 8px 14px; pointer-events: none; text-align: center;
+  font: 600 14px/1.3 var(--font-pixel); color: var(--cozy-ink); background: var(--cozy-parch); box-shadow: var(--px-parch-rim), 0 0 0 2px var(--cozy-wood-0);
+  animation: td-toast 4.2s ease both;
+}
+@keyframes td-toast { 0% { opacity: 0; transform: translateY(6px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-toast { bottom: calc(var(--hud-bottom, 96px) + 10px); } }
+.stage--menu .td-toast { display: none; }
+
+/* ── The ability bar (top-down): four wooden slots, the key in a corner, a dark sweep while it cools ── */
+.td-skills { position: absolute; z-index: 5; left: 50%; bottom: 84px; translate: -50% 0; display: flex; gap: 8px; padding: 6px;
+  background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); pointer-events: auto; }
+.td-skill { position: relative; display: grid; place-items: center; width: 48px; height: 48px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: var(--cozy-well) !important; box-shadow: inset 0 0 0 2px var(--cozy-wood-1), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent) !important; cursor: pointer; }
+.td-skill:hover { box-shadow: inset 0 0 0 2px var(--cozy-glow) !important; }
+.td-skill::after { content: ""; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.td-skill kbd { position: absolute; right: 2px; bottom: 1px; font: 700 10px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-skill:active { translate: 0 2px; }
+.td-toast { bottom: 148px; }
+/* Phones: the bar stands up the right edge, above the attack button, where the right thumb already is. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-skills { left: auto; right: 8px; translate: none; bottom: auto; top: 46%; flex-direction: column; gap: 6px; padding: 4px; }
+  .td-skill { width: 46px; height: 46px; }
+  .td-toast { bottom: calc(var(--hud-bottom, 96px) + 10px); }
+}
+
+/* ── The potion belt (top-down, shared/potions): two glass slots beside the skill bar, Q and R, the count on the glass ── */
+.td-belt { position: absolute; z-index: 5; left: calc(50% + 126px); bottom: 84px; display: flex; gap: 6px; padding: 6px;
+  background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); pointer-events: auto; }
+.td-pot { position: relative; display: grid; place-items: center; width: 48px; height: 48px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: var(--cozy-well) !important; box-shadow: inset 0 0 0 2px var(--pot, var(--cozy-wood-1)), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent) !important; cursor: pointer; }
+.td-pot[data-kind='health'] { --pot: color-mix(in srgb, var(--cozy-berry) 70%, var(--cozy-wood-1)); }
+.td-pot[data-kind='mana'] { --pot: color-mix(in srgb, var(--cozy-mana) 70%, var(--cozy-wood-1)); }
+.td-pot:hover { box-shadow: inset 0 0 0 2px var(--cozy-glow) !important; }
+.td-pot img { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
+.td-pot::after { content: ""; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.td-pot__n { position: absolute; left: 2px; top: 2px; min-width: 14px; padding: 1px 2px; font: 700 12px/1 var(--cozy-font-read); font-style: normal; text-align: center; color: var(--cozy-cream); background: var(--cozy-wood-0); }
+.td-pot kbd { position: absolute; right: 2px; bottom: 1px; font: 700 10px/1 var(--font-pixel); color: var(--cozy-brass-hi); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-pot--empty svg, .td-pot--empty .td-pot__n { opacity: .55; }
+.td-pot:active { translate: 0 2px; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-belt { left: 8px; bottom: auto; top: calc(50% + 113px); padding: 4px; flex-direction: column; }
+  .td-pot { width: 46px; height: 46px; }
+  .td-pot kbd { display: none; }
+}
+/* Landscape phones: no room under the spells (the chat runs along the bottom), so the two stand beside the spells'
+   lower half, still well left of the centre. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-belt { left: 66px; top: 50%; display: grid; grid-template-columns: repeat(2, 46px); } }
+
+/* Skills: a slot dims without mana; the book button sits at the bar's end. */
+.td-skill--dry { filter: grayscale(.7) brightness(.7); }
+.td-skill--book { width: 40px; }
+.vital--mana .meter.mana i { background: linear-gradient(90deg, var(--cozy-mana-lo), var(--cozy-mana) 80%, var(--cozy-mana-hi)); }
+
+/* ── The Spellbook (K): a cozy window, D2's skill page as one readable list ── */
+.spellbook { position: absolute; z-index: 7; right: 16px; top: 120px; width: min(420px, calc(100% - 32px)); max-height: calc(100% - 140px); padding: 8px 16px 16px; }
+.spellbook h2 { margin: 0; font: 700 20px/1.1 var(--font-pixel); color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.sb__mana { margin: 4px 0 0; font: 600 13px var(--font-pixel); color: var(--cozy-mana-text); }
+.sb__kind { margin: 12px 0 6px; font: 700 13px/1 var(--font-pixel); letter-spacing: .04em; color: var(--cozy-brass-hi); }
+.sb__list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sb__row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
+.sb__row--on { box-shadow: var(--px-on-rim); }
+.sb__icon { display: grid; place-items: center; width: 40px; height: 40px; background: var(--cozy-well); }
+.sb__body b { display: block; font: 700 14px/1.1 var(--font-pixel); color: var(--cozy-cream); }
+.sb__body small { display: block; margin-top: 2px; font: 13px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
+.sb__body em { display: block; margin-top: 2px; font: 600 11px var(--font-pixel); font-style: normal; color: var(--cozy-mana-text); }
+.sb__keys { display: grid; grid-template-columns: repeat(2, 30px); gap: 4px; }
+.sb__keys button, .sb__aura, .sbt__belt { min-width: 30px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
+  box-shadow: var(--cozy-chip); font: 700 12px/1 var(--font-pixel); cursor: pointer; }
+.sb__keys button.on, .sb__aura[aria-pressed="true"], .sbt__belt[aria-pressed="true"] { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.sb__aura, .sbt__belt { min-height: 44px; min-width: 56px; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .spellbook { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 72%; }
+  .sb__keys { grid-template-columns: repeat(4, 34px); }
+  .sb__keys button { min-height: 44px; min-width: 34px; }
+}
+
+/* ── The skill trees (K, docs/design/skill-trees.md): D2's skill page in the cozy frame — three tabs, tiers top to bottom
+   with the level they open at, prerequisite lines, a rank badge on each skill, the picked skill's card beside it ── */
+.spellbook.sbt { width: min(640px, calc(100% - 32px)); overflow: hidden; }
+.sbt > * { flex: none; }
+.sbt__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.sbt__pts { margin: 0; font: 700 14px/1.1 var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.sbt__pts--has { color: var(--cozy-glow); }
+.sbt__reset, .sbt__ask button { min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream);
+  box-shadow: var(--cozy-chip); font: 700 12px/1 var(--font-pixel); cursor: pointer; }
+.sbt__ask { display: flex; align-items: center; gap: 6px; }
+.sbt__ask small { font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-cream); }
+.sbt__ask .sbt__yes { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.sbt__tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 4px 0 8px; }
+.sbt__tab { min-height: 44px; border: 0; border-radius: 0; background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent);
+  box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.sbt__tab small { margin-left: 4px; font-size: 11px; color: var(--cozy-brass-hi); }
+.sbt__tab[aria-selected="true"] { background: var(--cozy-wood-3); color: var(--cozy-glow); box-shadow: var(--cozy-chip), inset 0 -3px 0 0 var(--cozy-brass); }
+/* Four tabs (the three trees and the common page) in one row on a phone. */
+@media (max-width: 480px) { .sbt__tab { font-size: 11px; padding: 0 2px; } .sbt__tab small { margin-left: 2px; } }
+.sbt__body { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 12px; min-height: 0; flex: 1 1 auto; }
+.sbt__scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px; background: var(--cozy-well); box-shadow: var(--px-cell-rim); }
+.sbt__tree { position: relative; padding-bottom: 10px; display: grid; grid-template-columns: 34px repeat(3, 1fr); grid-template-rows: repeat(var(--tiers, 5), 70px); align-items: center; justify-items: center; }
+.sbt__lines { position: absolute; top: 0; left: 34px; width: calc(100% - 34px); height: calc(100% - 10px); pointer-events: none; }
+.sbt__lines line { stroke: var(--cozy-wood-3); stroke-width: 4; }
+.sbt__lines line.lit { stroke: var(--cozy-brass); }
+.sbt__lv { grid-column: 1; align-self: center; font: 700 11px/1 var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 45%, transparent); writing-mode: horizontal-tb; }
+.sbt__lv--open { color: var(--cozy-brass-hi); }
+.sbt__node { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 0;
+  background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-3); cursor: pointer; }
+.sbt__node .sbt__icon { display: grid; place-items: center; filter: grayscale(.85) brightness(.75); }
+.sbt__node--learned { background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass-lo); }
+.sbt__node--learned .sbt__icon { filter: none; }
+.sbt__node--buy::after { content: '+'; position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 16px; height: 16px;
+  background: var(--cozy-leaf); color: var(--cozy-wood-0); font: 700 13px/1 var(--font-pixel); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.sbt__node--on { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-glow); }
+.sbt__node[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--cozy-glow), 0 0 0 4px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass); }
+.sbt__node--locked { opacity: .55; }
+.sbt__badge { position: absolute; right: -4px; bottom: -4px; min-width: 18px; height: 18px; padding: 0 3px; display: grid; place-items: center;
+  background: var(--cozy-wood-0); color: var(--cozy-cream); font: 700 11px/1 var(--font-pixel); box-shadow: 0 0 0 1px var(--cozy-wood-3); }
+.sbt__node--learned .sbt__badge { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.sbt__need { position: absolute; left: 50%; bottom: -15px; translate: -50% 0; white-space: nowrap; font: 700 10px/1 var(--font-pixel); color: var(--cozy-berry);
+  text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.sbt__detail { display: grid; align-content: start; gap: 8px; min-height: 0; overflow: auto; padding: 10px 12px; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
+.sbt__dh { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; }
+.sbt__dh b { display: block; font: 700 16px/1.1 var(--font-pixel); color: var(--cozy-glow); }
+.sbt__dh small { display: block; margin-top: 3px; font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); }
+.sbt__now { margin: 0; font: 13px/1.35 var(--font-ui); color: var(--cozy-cream); }
+.sbt__now em { font-style: normal; color: var(--cozy-brass-hi); }
+.sbt__cost { margin: 0; font: 600 11px var(--font-pixel); color: var(--cozy-mana-text); }
+.sbt__next { display: grid; gap: 2px; padding: 6px 8px; background: color-mix(in srgb, var(--cozy-wood-0) 45%, transparent); }
+.sbt__next b { font: 700 12px/1.2 var(--font-pixel); color: var(--cozy-leaf); }
+.sbt__next small { font: 12px/1.3 var(--font-ui); color: var(--cozy-cream); }
+.sbt__cant { margin: 0; font: 600 11px var(--font-pixel); color: var(--cozy-brass-hi); }
+.sbt__cant q { margin-left: 6px; font: 700 15px var(--font-pixel); color: var(--cozy-glow); quotes: none; }
+.sbt__syn { display: grid; gap: 2px; padding: 6px 8px; box-shadow: var(--px-cell-rim); }
+.sbt__syn b { font: 700 12px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); }
+.sbt__syn small { font: 12px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
+.sbt__syn small.on { color: var(--cozy-leaf); }
+.sbt__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sbt__learn, .sbt__inscribe { min-height: 44px; min-width: 96px; padding: 0 14px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0);
+  box-shadow: var(--cozy-chip); font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.sbt__learn:disabled, .sbt__inscribe:disabled { background: var(--cozy-wood-2); color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); cursor: default; }
+.sbt__why { flex: 1 1 100%; font: 600 11px/1.2 var(--font-pixel); color: var(--cozy-berry); }
+.sbt .sb__keys { grid-template-columns: repeat(4, 44px); }
+.sbt .sb__keys button { min-width: 44px; min-height: 44px; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .spellbook.sbt { left: 8px; right: 8px; width: auto; max-height: calc(100% - 96px); padding: 4px 10px 10px; }
+  .sbt__body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .sbt__tree { grid-template-rows: repeat(var(--tiers, 5), 66px); }
+  .sbt__detail { max-height: 46vh; }
+}
+/* Landscape phones: the page and the card side by side again, the window as tall as the screen. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .spellbook.sbt { top: 8px; bottom: 8px; left: auto; width: min(620px, calc(100% - 140px)); max-height: none; }
+  .sbt__body { grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: none; }
+  .sbt__detail { max-height: none; }
+}
+
+/* ── The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): a dark plate framed in its rarity,
+   a big icon, the headline stat, coloured affixes with pips, blue specials, wells, worth along the foot ── */
+.d2tip { --loot: var(--cozy-loot-material); position: fixed; z-index: 30; display: grid; gap: 6px; width: 264px; padding: 10px 12px 9px;
+  pointer-events: none; text-align: left; font: 12px/1.35 var(--font-pixel); color: var(--cozy-cream);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--loot) 22%, var(--cozy-wood-0)) 0, color-mix(in srgb, var(--loot) 6%, var(--cozy-wood-0)) 64px, color-mix(in srgb, var(--cozy-wood-0) 96%, transparent) 100%);
+  border: 2px solid var(--loot); border-radius: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loot) 35%, transparent), inset 0 0 0 3px color-mix(in srgb, var(--cozy-wood-0) 80%, transparent),
+    0 0 18px -2px color-mix(in srgb, var(--loot) 55%, transparent), 0 6px 18px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
+.d2tip::before, .d2tip::after { content: ''; position: absolute; width: 8px; height: 8px; background: var(--loot); transform: rotate(45deg); }
+.d2tip::before { top: -5px; left: calc(50% - 4px); }
+.d2tip::after { bottom: -5px; left: calc(50% - 4px); }
+.d2tip[data-rarity='common'] { --loot: var(--cozy-loot-common); }
+.d2tip[data-rarity='uncommon'] { --loot: var(--cozy-loot-uncommon); }
+.d2tip[data-rarity='rare'] { --loot: var(--cozy-loot-rare); }
+.d2tip[data-rarity='epic'] { --loot: var(--cozy-loot-epic); }
+.d2tip[data-rarity='legendary'] { --loot: var(--cozy-loot-legendary); }
+.d2tip[data-rarity='mythic'] { --loot: var(--cozy-loot-mythic); }
+.d2tip__head { display: grid; grid-template-columns: 68px 1fr; gap: 10px; align-items: start; }
+.d2tip__icon { display: grid; place-items: center; width: 68px; height: 68px; border: 2px solid var(--loot); border-radius: 3px;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--loot) 55%, transparent), color-mix(in srgb, var(--loot) 12%, var(--cozy-wood-0)) 70%);
+  box-shadow: 0 0 10px -1px color-mix(in srgb, var(--loot) 60%, transparent); }
+/* Gear icons are 32 art px (art/gear-icons.ts): shown at exactly 2×, whole pixels. */
+.d2tip__icon img { width: 64px; height: 64px; image-rendering: pixelated; object-fit: contain; }
+.d2tip__icon em { font: 700 16px var(--font-pixel); font-style: normal; color: var(--cozy-cream); }
+.d2tip__title { display: grid; gap: 1px; min-width: 0; }
+.d2tip__title b { font-size: 15px; line-height: 1.15; color: var(--loot); text-shadow: 0 1px 0 var(--cozy-wood-0); }
+.d2tip__title span { font-size: 11px; color: color-mix(in srgb, var(--loot) 70%, var(--cozy-cream)); }
+.d2tip__title .d2tip__rarity { color: var(--loot); opacity: .85; }
+.d2tip__worth { display: inline-flex; align-items: center; gap: 4px; color: var(--cozy-cream) !important; }
+.d2tip .coin { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--cozy-brass); box-shadow: inset -1px -1px 0 color-mix(in srgb, var(--cozy-wood-0) 40%, transparent); }
+.d2tip__headline { margin: 0; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--loot) 45%, transparent); font-size: 14px; font-weight: 700; color: var(--cozy-cream); }
+.d2tip__affixes { display: grid; gap: 2px; margin: 0; padding: 6px 0 0; list-style: none; border-top: 1px solid color-mix(in srgb, var(--loot) 30%, transparent); }
+.d2tip__affixes li { display: flex; align-items: center; gap: 6px; color: var(--cozy-mana-text); }
+.d2tip__affixes li::before { content: ''; flex: none; width: 7px; height: 7px; transform: rotate(45deg); background: var(--pip, var(--cozy-mana)); }
+.d2tip__affixes li[data-stat='strikePower'] { --pip: var(--cozy-loot-legendary); }
+.d2tip__affixes li[data-stat='ward'] { --pip: var(--cozy-loot-rare); }
+.d2tip__affixes li[data-stat='magicFind'] { --pip: var(--cozy-loot-epic); }
+.d2tip__affixes li[data-stat='xpBonus'] { --pip: var(--cozy-loot-uncommon); }
+.d2tip__affixes li[data-stat='goldFind'], .d2tip__affixes li[data-stat='goldPerSec'] { --pip: var(--cozy-loot-mythic); }
+.d2tip__affixes li[data-stat='life'] { --pip: var(--cozy-berry); }
+.d2tip__affixes li[data-stat='lifeRegen'] { --pip: var(--cozy-leaf); }
+.d2tip__affixes li[data-stat='mana'] { --pip: var(--cozy-mana-hi); }
+.d2tip__affixes li[data-stat='manaRegen'] { --pip: var(--cozy-river); }
+.d2tip__affixes li[data-stat='defense'] { --pip: var(--cozy-brass); }
+.d2tip__affixes li[data-stat='spellDamage'] { --pip: var(--cozy-glow); }
+.d2tip__affixes li[data-stat='castSpeed'] { --pip: var(--cozy-loot-epic); }
+.d2tip__affixes li[data-stat='moveSpeed'] { --pip: var(--cozy-loot-uncommon); }
+.d2tip__affixes li[data-stat='critChance'] { --pip: var(--cozy-loot-legendary); }
+/* Resists (§6) wear their element: fire orange, cold blue, arcane violet, lightning pink; All Resist brass-bright. */
+.d2tip__affixes li[data-stat='fireResist'] { --pip: var(--cozy-loot-legendary); }
+.d2tip__affixes li[data-stat='coldResist'] { --pip: var(--cozy-loot-rare); }
+.d2tip__affixes li[data-stat='arcaneResist'] { --pip: var(--cozy-loot-epic); }
+.d2tip__affixes li[data-stat='lightningResist'] { --pip: var(--cozy-loot-mythic); }
+.d2tip__affixes li[data-stat='allResist'] { --pip: var(--cozy-brass-hi); }
+/* The range the roll could have landed in (§3), dimmer than the roll itself. */
+.d2tip__range { margin-left: 4px; font-size: 11px; font-weight: 400; color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); }
+.d2tip__meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.d2tip__tag { color: var(--cozy-brass-hi); letter-spacing: .04em; text-transform: uppercase; }
+.d2tip__tag[data-tag='flawless'] { color: var(--cozy-loot-mythic); }
+.d2tip__special { display: grid; gap: 3px; padding: 6px 0 0; border-top: 1px solid color-mix(in srgb, var(--loot) 30%, transparent); }
+.d2tip__special p { margin: 0; font-size: 11px; color: var(--cozy-loot-rare); }
+/* An item set (rpg/set-items.ts): the green-brass band; pieces grey until worn, tiers dim until the set wakes them. */
+.d2tip__set { display: grid; gap: 4px; padding: 6px 6px 6px 8px; border-top: 1px solid color-mix(in srgb, var(--cozy-leaf) 55%, transparent);
+  border-left: 3px solid var(--cozy-brass); background: color-mix(in srgb, var(--cozy-leaf) 12%, transparent); }
+.d2tip__set-name { font-size: 12px; color: var(--cozy-leaf); }
+.d2tip__set-name small { font-size: 11px; font-weight: 400; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.d2tip__set-pieces, .d2tip__set-tiers { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; font-size: 11px; }
+.d2tip__set-pieces li { padding-left: 10px; color: color-mix(in srgb, var(--cozy-cream) 38%, transparent); }
+.d2tip__set-pieces li.on { color: var(--cozy-leaf); }
+.d2tip__set-tiers li { color: color-mix(in srgb, var(--cozy-cream) 38%, transparent); }
+.d2tip__set-tiers li i { font-style: normal; font-weight: 700; margin-right: 4px; color: inherit; }
+.d2tip__set-tiers li.on { color: var(--cozy-brass-hi); }
+.d2tip__set-found { margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.d2tip[data-rarity='material'] .d2tip__special p { color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.d2tip__sockets { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.d2tip__sockets li { display: flex; align-items: center; gap: 6px; font-size: 11px; opacity: .75; }
+.d2tip__sockets li::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--cozy-cream); }
+.d2tip__sockets li.full { opacity: 1; color: var(--loot); }
+.d2tip__sockets li.full::before { background: var(--loot); border-color: var(--loot); }
+.d2tip__line { margin: 0; color: var(--cozy-mana-text); }
+.d2tip__compare { display: grid; gap: 1px; padding-top: 5px; border-top: 1px dashed color-mix(in srgb, var(--cozy-cream) 25%, transparent); }
+.d2tip__compare small { font-size: 10px; opacity: .65; }
+.d2tip__compare i { font-style: normal; color: var(--cozy-mana-text); }
+.d2tip__compare i.up { color: var(--cozy-leaf); }
+.d2tip__compare i.down { color: var(--cozy-berry); }
+/* Requirements (item-requirements.ts): plain when met, berry red when not — the reference's "Requires Level 72". */
+.d2tip__reqs { display: grid; justify-items: end; gap: 1px; padding-top: 4px; }
+.d2tip__reqs p { margin: 0; font-size: 12px; color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.d2tip__reqs p.unmet { color: color-mix(in srgb, var(--cozy-berry) 72%, var(--cozy-cream)); font-weight: 700; }
+.d2tip__why { margin: 6px 0 0; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--cozy-berry) 72%, var(--cozy-cream)); }
+.d2tip__actions button:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.6); }
+.d2tip__foot { display: grid; justify-items: end; gap: 1px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--loot) 45%, transparent); font-size: 11px; }
+.d2tip__foot span { display: inline-flex; align-items: center; gap: 4px; color: color-mix(in srgb, var(--loot) 60%, var(--cozy-cream)); }
+
+.vital__lv { margin-left: 4px; padding: 0 4px; font: 700 10px/1.4 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); }
+
+/* ── The character sheet (C) ── */
+.ks__level { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font: 700 14px var(--font-pixel); color: var(--cozy-cream); }
+.ks__xp { flex: 1; height: 6px; background: var(--cozy-well); box-shadow: 0 0 0 1px var(--cozy-wood-1); }
+.ks__xp i { display: block; height: 100%; background: var(--cozy-brass); }
+.ks__level small { font: 600 11px var(--cozy-font-read); opacity: .8; }
+.ks__left { margin: 6px 0 8px; font: 600 13px var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
+.ks__left--has { color: var(--cozy-glow); }
+.ks__row { grid-template-columns: 40px minmax(0, 1fr) 44px; }
+.ks__val { display: grid; place-items: center; width: 40px; height: 40px; font: 700 18px var(--font-pixel); color: var(--cozy-glow); background: var(--cozy-well); }
+.ks__plus { width: 44px; height: 44px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); font: 700 20px/1 var(--font-pixel); cursor: pointer; }
+.ks__plus:disabled { background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 40%, transparent); box-shadow: var(--cozy-chip); cursor: default; }
+.ks__totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font: 13px var(--font-pixel); }
+.ks__totals dt { color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.ks__totals dd { margin: 0; text-align: right; color: var(--cozy-glow); }
+/* The Keeper's level (docs/design/leveling.md §4): the next milestone, the two tabs, the milestones list, the title. */
+.ks__next { margin: 4px 0 0; font: 700 12px/1.3 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.ks__next small { display: block; font: 12px/1.3 var(--font-ui); color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.ks__left small { display: block; margin-top: 2px; font: 12px var(--font-pixel); color: var(--cozy-mana-text); }
+.ks__tabs { display: flex; gap: 6px; margin: 8px 0 4px; }
+.ks__tabs button { flex: 1; min-height: 44px; border: 0; border-radius: 0; background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: var(--cozy-chip); font: 700 13px/1 var(--font-pixel); cursor: pointer; }
+.ks__tabs button[aria-selected="true"] { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); }
+.ks__title-pick { display: flex; align-items: center; gap: 4px; margin: 4px 0 6px; font: 600 13px var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.ks__title-pick > span { margin-right: auto; }
+.ks__title-pick b { min-width: 0; flex: 0 1 auto; text-align: center; color: var(--cozy-glow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks__title-pick .px-arrow--prev::before, .ks__pager .px-arrow--prev::before { border-right-color: var(--cozy-brass-hi); }
+.ks__title-pick .px-arrow--next::before, .ks__pager .px-arrow--next::before { border-left-color: var(--cozy-brass-hi); }
+.ks__mile { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 10px; padding: 5px 8px; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
+/* Numbers in the read face: the pixel face draws 5 like S and 2 like 8 at this size. */
+.ks__mile .ks__val { width: 52px; font: 800 15px var(--cozy-font-read); }
+.ks__mile .sb__body small, .ks__next small { font-family: var(--cozy-font-read); }
+.ks__mile[data-state="claimed"] .ks__val { color: var(--cozy-wood-0); background: var(--cozy-brass); }
+.ks__mile[data-state="next"] { box-shadow: var(--px-on-rim); }
+.ks__mile[data-state="later"] { opacity: .62; }
+.ks__mile--big .ks__val { color: var(--cozy-loot-mythic); }
+.ks__mile--big[data-state="claimed"] .ks__val { color: var(--cozy-wood-0); background: var(--cozy-glow); }
+.ks__pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 0; font: 700 13px var(--font-pixel); color: var(--cozy-cream); }
+.vital__title { margin-left: 4px; font: 600 10px/1.4 var(--font-pixel); color: var(--cozy-brass-hi); }
+/* The portrait's frame metal, earned at the milestones (copper 10 … starlit 10,000). */
+.hero-face[data-frame="copper"] { --frame: var(--cozy-wood-hi); }
+.hero-face[data-frame="bronze"] { --frame: var(--cozy-brass-lo); }
+.hero-face[data-frame="silver"] { --frame: var(--cozy-loot-common); }
+.hero-face[data-frame="gold"] { --frame: var(--cozy-brass-hi); }
+.hero-face[data-frame="eclipse"] { --frame: var(--cozy-loot-epic); }
+.hero-face[data-frame="starlit"] { --frame: var(--cozy-loot-mythic); }
+/* The badge hops when a level lands (steps, no blur); still under reduced motion. */
+@keyframes lv-hop { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+/* The level-up banner: a cozy window at the top centre, under the HUD strip; the big milestones get a brass rim. */
+.lvl-banner { position: absolute; z-index: 9; left: 50%; top: 84px; translate: -50% 0; width: min(380px, calc(100% - 32px)); padding: 6px 14px 12px;
+  background: var(--px-win-planks), var(--px-win-bg); color: var(--cozy-cream); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); animation: slip-in .35s steps(4); }
+.lvl-banner .win-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lvl-banner h2 { margin: 0; font: 700 22px/1.1 var(--font-pixel); color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.lvl-banner--big h2 { color: var(--cozy-loot-mythic); }
+.lvl-banner--big { outline: 2px solid var(--cozy-brass-hi); outline-offset: -6px; }
+.lvl-banner__lines { display: grid; gap: 3px; margin: 6px 0 8px; padding: 0; list-style: none; font: 13px/1.35 var(--cozy-font-read); color: var(--cozy-cream); }
+.lvl-banner__lines li:first-child { font-weight: 700; color: var(--cozy-brass-hi); }
+.lvl-banner__acts { display: flex; gap: 8px; }
+.lvl-banner__acts button { flex: 1; min-height: 44px; border: 0; border-radius: 0; font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.lvl-banner__go { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); }
+.lvl-banner__alt { background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: var(--cozy-chip); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .lvl-banner { top: calc(64px + env(safe-area-inset-top, 0px)); width: auto; left: 8px; right: 8px; translate: none; padding: 4px 10px 8px; }
+  .lvl-banner h2 { font-size: 18px; }
+  .lvl-banner__lines { margin: 4px 0 6px; font-size: 12px; gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) { .lvl-banner, .stage--td .hero-face .hero-lv--up { animation: none; } }
+/* The Cold Hearth (shared/hearth): the wake card after a fall, the Ember debt in the vitals and on the sheet. */
+.wake-card { position: absolute; z-index: 9; left: 50%; top: 84px; translate: -50% 0; width: min(400px, calc(100% - 32px)); padding: 8px 14px 12px;
+  background: var(--px-win-planks), var(--px-win-bg); color: var(--cozy-cream); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
+  pointer-events: auto; animation: slip-in .35s steps(4); }
+.wake-card h2 { margin: 0; font: 700 20px/1.1 var(--font-pixel); color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.wake-card ul { display: grid; gap: 3px; margin: 6px 0 8px; padding: 0; list-style: none; font: 13px/1.35 var(--cozy-font-read); color: var(--cozy-cream); }
+.wake-card li:first-child { font-weight: 700; color: var(--cozy-brass-hi); }
+.wake-card button { width: 100%; min-height: 44px; border: 0; border-radius: 0; font: 700 14px/1 var(--font-pixel); cursor: pointer; background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); }
+.vital--debt label { color: var(--cozy-brass-hi); }
+.ks__debt { margin: 4px 0 0; font: 600 12px/1.3 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .wake-card { top: calc(64px + env(safe-area-inset-top, 0px)); width: auto; left: 8px; right: 8px; translate: none; padding: 4px 10px 8px; }
+  .wake-card h2 { font-size: 17px; }
+  .wake-card ul { margin: 4px 0 6px; font-size: 12px; gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) { .wake-card { animation: none; } }
+/* The whole card reads in a clean sans, like the reference: the pixel face draws 2 like 8 at card sizes. */
+.d2tip, .d2tip__title span, .d2tip__affixes, .d2tip__special, .d2tip__sockets, .d2tip__compare, .d2tip__foot, .d2tip__line {
+  font-family: var(--cozy-font-read); font-size: 12px; letter-spacing: 0; }
+.d2tip__affixes li, .d2tip__compare i { font-weight: 600; }
+.d2tip__range { font-family: var(--cozy-font-read); }
+.d2tip__title b { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; letter-spacing: .01em; }
+.d2tip__headline { font-family: var(--cozy-font-read); font-weight: 800; font-size: 15px; }
+
+/* ── The HUD pass, step 1 (docs/design/ui-pass-top-heroes.md, after docs/design/refs/cozy/top-heroes-items.jpg) ──
+   Top-left: the Keeper's face in a wood frame with the level on its corner, life and mana beside it.
+   Top-right: one slim strip — the bag and its count, then coins, ore and ember as icon + number. */
+.hero-face { display: none; }
+.tally-coin, .tally-ico { display: none; }
+/* Desktop only for now: phones keep their own compact HUD until the goal list moves (step 2). */
+@media (min-width: 901px) and (min-height: 501px) {
+.stage--td .vitals { grid-template-columns: 50px minmax(0, 1fr); column-gap: 10px; row-gap: 5px; align-items: center; width: 216px; padding: 7px 10px 7px 7px; }
+.stage--td .vitals > .vital { grid-column: 2; }
+.stage--td .hero-face { display: block; position: relative; grid-column: 1; grid-row: 1 / span 2; width: 50px; height: 50px;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--cozy-mana) 30%, var(--cozy-wood-1)), var(--cozy-wood-0) 75%);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass), inset 0 0 0 4px var(--cozy-wood-0); overflow: hidden; }
+.stage--td .hero-face img { position: absolute; left: 50%; top: 2px; width: 44px; height: 44px; transform: translateX(-50%); image-rendering: pixelated; object-fit: contain; object-position: center top; }
+.stage--td .hero-lv { position: absolute; left: -2px; bottom: -2px; min-width: 22px; padding: 2px 4px; text-align: center;
+  font: 700 12px/1 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.stage--td .vital__lv { display: none; }
+.stage--td .hero-face[data-frame] { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--frame), inset 0 0 0 4px var(--cozy-wood-0); }
+.stage--td .hero-face[data-frame] .hero-lv { background: var(--frame); }
+.stage--td .hero-lv--up { animation: lv-hop .8s steps(4) 2; }
+/* The running aura's icon on the portrait's corner (docs/design/effects-spec.md §Auras HUD). */
+.stage--td .hero-face { overflow: visible; }
+.stage--td .hero-aura { position: absolute; right: -6px; top: -6px; }
+.stage--td .satchel { width: auto; display: flex; align-items: center; gap: 14px; padding: 6px 14px 6px 8px; }
+.stage--td .satchel .clasp { width: auto; margin: 0; padding: 0 12px 0 0; border-bottom: 0; border-right: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent); gap: 8px; }
+.stage--td .satchel .clasp > span:first-child { display: none; }
+.stage--td .tally { display: flex; align-items: center; gap: 14px; }
+.stage--td .tally p { display: flex; align-items: center; gap: 6px; margin: 0; }
+.stage--td .tally p span, .stage--td .tally .tally-quiet { display: none; }
+.stage--td .tally b { font: 700 15px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.stage--td .tally-coin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--cozy-glow), var(--cozy-brass) 60%, var(--cozy-brass-lo));
+  box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.stage--td .tally-ico { display: inline-block; width: 18px; height: 18px; image-rendering: pixelated; }
+  /* Step 2: the goal list leaves the top centre for a compact panel under the minimap (the reference's quest list),
+     so the world's middle stays clear; Glim's line rises into the freed band. */
+  .stage--td .guide, .stage--td .guide--list { left: auto; right: 16px; top: 310px; margin: 0; width: 264px; max-width: 264px;
+    flex-wrap: wrap; gap: 6px; padding: 8px 10px 8px 12px; }
+  .stage--td .guide-list { grid-template-columns: 1fr; gap: 3px; padding: 0 0 4px; font-size: 13px; }
+  .stage--td .guide--list .guide-text, .stage--td .guide-text { flex: 1 1 100%; font-size: 12px; line-height: 1.3; }
+  .stage--td .guide-text b { display: block; font-size: 11px; }
+  .stage--td .guide-go { min-height: 30px; padding: 0 10px; font-size: 12px; margin-left: auto; }
+  .stage--td.stage--guide { --glim-top: 72px; }
+  .stage--td .guide-text { flex: 1 1 160px; }
+}
+/* The menu toolbar (step 2): framed square buttons with their names under them, the key in the corner. */
+.td-dock { position: absolute; z-index: 5; left: 16px; bottom: 16px; display: flex; gap: 6px; padding: 6px;
+  background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); pointer-events: auto; }
+.td-dock button { position: relative; display: grid; justify-items: center; align-content: center; gap: 3px; width: 68px; height: 64px; padding: 4px 2px 3px !important; text-transform: none !important;
+  border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-2) !important; color: var(--cozy-cream);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-1), 0 0 0 2px var(--cozy-wood-0) !important; cursor: pointer; }
+.td-dock button:hover, .td-dock button[aria-expanded='true'] { background: var(--cozy-wood-3) !important; box-shadow: inset 0 0 0 2px var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0) !important; }
+.td-dock svg { image-rendering: pixelated; }
+.td-dock span { font: 600 11px/1 var(--cozy-font-read); letter-spacing: 0; text-transform: none; white-space: nowrap; color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-dock kbd { position: absolute; top: 2px; right: 3px; font: 700 9px/1 var(--font-pixel); color: var(--cozy-brass-hi); opacity: 0; transition: opacity .15s; }
+.td-dock button:hover kbd, .td-dock button:focus-visible kbd { opacity: 1; }
+/* Phones: the toolbar folds to icons only, above the touch controls' row. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-dock { left: 8px; bottom: 64px; flex-direction: column; padding: 4px; gap: 4px; }
+  .td-dock button { width: 44px; height: 44px; }
+  .td-dock span, .td-dock kbd { display: none; }
+}
+/* ── The chat box (OSRS): a small translucent box above the toolbar, Game and Chat tabs; fades when quiet ── */
+.td-chat { position: absolute; z-index: 5; left: 16px; bottom: 104px; width: 360px; display: grid; gap: 4px; padding: 6px 8px 8px;
+  background: color-mix(in srgb, var(--cozy-wood-0) 78%, transparent); box-shadow: 0 0 0 2px var(--cozy-wood-1), 0 0 0 4px var(--cozy-wood-0);
+  font: 500 12px/1.35 var(--cozy-font-read); color: var(--cozy-cream); pointer-events: auto; transition: opacity .6s ease; }
+.td-chat--quiet { opacity: .35; }
+.td-chat:hover, .td-chat:focus-within { opacity: 1; }
+.td-chat__tabs { display: flex; gap: 4px; align-items: center; }
+.td-chat__tabs button { min-height: 26px; padding: 0 10px !important; border: 0 !important; border-radius: 0 !important; font: 700 11px/1 var(--cozy-font-read) !important;
+  text-transform: none !important; letter-spacing: 0 !important; color: var(--cozy-cream) !important; background: var(--cozy-wood-2) !important; box-shadow: 0 0 0 1px var(--cozy-wood-0) !important; cursor: pointer; }
+.td-chat__tabs button[aria-selected='true'] { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.td-chat__tabs small { margin-left: 6px; font-weight: 500; opacity: .8; }
+.td-chat__tabs .td-chat__x { margin-left: auto; min-width: 26px; padding: 0 !important; }
+.td-chat__log { display: grid; gap: 1px; min-height: 64px; max-height: 128px; margin: 0; padding: 2px 2px 0; list-style: none; overflow: hidden; align-content: end; }
+.td-chat__log li { overflow-wrap: anywhere; text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-chat__log b { color: var(--cozy-glow); font-weight: 700; }
+.td-chat__game { color: var(--cozy-mana-text); }
+.td-chat__empty { opacity: .6; font-style: italic; }
+.td-chat__say { display: flex; gap: 4px; }
+.td-chat__say input { flex: 1; min-width: 0; min-height: 30px; padding: 0 8px; border: 0; font: 500 12px var(--cozy-font-read); color: var(--cozy-cream);
+  background: color-mix(in srgb, var(--cozy-wood-0) 85%, transparent); box-shadow: inset 0 0 0 1px var(--cozy-wood-2); }
+.td-chat__say button, .td-chat__join { min-height: 30px; padding: 0 10px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; }
+.td-chat-tab { position: absolute; z-index: 5; left: 16px; bottom: 104px; min-height: 30px; padding: 0 12px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-chat { left: 62px; bottom: 64px; width: min(300px, calc(100% - 140px)); }
+  .td-chat__log { min-height: 0; max-height: 70px; }
+  .td-chat-tab { left: 62px; bottom: 64px; }
+}
+/* A click pins the item card beside its cell (the hover card's twin) with its actions under it — never the big panel. */
+.d2tip--pinned { z-index: 31; pointer-events: auto; }
+.d2tip__close { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); font: 700 18px/1 var(--cozy-font-read); cursor: pointer; }
+.d2tip__close:hover { color: var(--cozy-cream); }
+.d2tip__actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--loot) 45%, transparent); }
+.d2tip__actions button { flex: 1 1 auto; min-height: 34px; padding: 0 10px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer; }
+.stage--td .book .slip { display: none; }
+
+.d2tip__actions button { border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important;
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam) !important; }
+.d2tip__actions button::before, .d2tip__actions button::after { display: none !important; }
+.d2tip__actions .wear { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.d2tip__actions button:hover { filter: brightness(1.12); }
+/* ── Phones, OSRS mobile (owner 2026-10-20: "fix the top overlay, remove the padding in the top, make menus like OSRS
+   mobile"): the world fills the screen; the minimap top-right with life and mana orbs beside it; the goal a chip
+   top-left; spells down the left; the chat bottom-left; the menu tabs a 2×2 grid bottom-right with Interact above. ── */
+.td-orbs { display: none; }
+/* The icon is the skill bar's 28px svg (innerHTML, so unscoped): the badge zooms it down whole rather than styling it. */
+.td-aura-badge { display: grid; place-items: center; width: 30px; height: 30px; zoom: .7; font-style: normal; background: var(--cozy-wood-0);
+  box-shadow: 0 0 0 3px var(--cozy-brass), 0 0 0 5px var(--cozy-wood-0); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage--td { --hud-top: var(--hud-safe-t); --dock-h: 0px; --ctx-h: 0px; --guide-h: 0px; --tab: 50px; }
+  .stage--td .viewport { inset: 0; }
+  .stage--td .topbar { height: 0; padding: 0; background: none; border-bottom: 0; }
+  .stage--td .title-block, .stage--td .vitals, .stage--td .satchel { display: none; }
+  .stage--td .td-mini { top: calc(var(--hud-safe-t) + 8px); right: 8px; width: 104px; height: 104px; }
+  .stage--td .top-actions { top: calc(var(--hud-safe-t) + 118px); right: 8px; }
+  .stage--td .td-orbs { display: grid; gap: 6px; position: absolute; z-index: 5; top: calc(var(--hud-safe-t) + 10px); right: 118px; pointer-events: none; }
+  .stage--td .td-orb { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(to top, var(--orb) calc(var(--fill, 1) * 100%), color-mix(in srgb, var(--cozy-wood-0) 85%, transparent) 0);
+    box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass), inset 0 6px 8px color-mix(in srgb, var(--cozy-cream) 25%, transparent); }
+  .stage--td .td-orb--hp { --orb: var(--cozy-berry); }
+  .stage--td .td-orb--mana { --orb: var(--cozy-mana); }
+  .stage--td .td-orbs .td-aura-badge { justify-self: center; }
+  .stage--td .td-debt { justify-self: center; max-width: 64px; padding: 2px 4px; font: 700 9px/1.1 var(--font-pixel); font-style: normal; text-align: center;
+    color: var(--cozy-brass-hi); background: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-brass); }
+  .stage--td .td-orb b { font: 700 13px/1 var(--font-pixel); font-style: normal; color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0), -1px -1px 0 var(--cozy-wood-0); }
+  .stage--td .guide, .stage--td .guide--list { top: calc(var(--hud-safe-t) + 8px); left: 8px; right: 172px; width: auto; max-width: none; margin: 0; padding: 6px 8px; gap: 4px; }
+  .stage--td .guide-list { display: none; }
+  .stage--td .guide-text { font-size: 12px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .stage--td .guide-go { min-height: 36px; padding: 0 8px; font-size: 12px; }
+  .stage--td .td-dock { left: auto; right: 8px; top: auto; bottom: calc(var(--hud-safe-b) + 8px); display: grid; grid-template-columns: repeat(2, var(--tab)); flex-direction: row; gap: 4px; padding: 4px; }
+  .stage--td .td-dock button { width: var(--tab); height: var(--tab); }
+  .stage--td .prompt { left: auto; right: 8px; bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 22px); max-width: calc(100% - 16px); }
+  .stage--td .td-skills { left: 8px; right: auto; top: 50%; bottom: auto; translate: 0 -50%; flex-direction: column; }
+  .stage--td .td-chat, .stage--td .td-chat-tab { left: 8px; bottom: calc(var(--hud-safe-b) + 8px); }
+  .stage--td .td-chat { width: calc(100% - 2 * var(--tab) - 40px); }
+  /* Glim's line hangs below the minimap row, clear of the orbs and the goal chip. */
+  .stage--td, .stage--td.stage--guide { --glim-top: calc(var(--hud-safe-t) + 124px); }
+  .stage.stage--td .glim-say { top: calc(var(--hud-safe-t) + 172px); left: 8px; right: 8px; max-width: none; }
+  .stage--td .guide-glim, .stage--td .guide-fold { display: none; }
+  .stage--td .guide-text b { display: block; font-size: 10px; }
+  /* Touch phones: the attack button stands above the menu grid (it sat under it), Interact above that. */
+  .stage--td .touch-act { left: auto; right: 8px; bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 20px); }
+  .stage--td:has(.touch-act button) .prompt { bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 84px); }
+}
+
+
+/* ── The Map (owner 2026-10-20): the floor or continent under you, pins to go, your mark, a small key ── */
+.places.td-map { position: absolute; z-index: 40; left: 50%; top: 50%; translate: -50% -50%; right: auto; bottom: auto;
+  width: min(1040px, calc(100% - 32px)); max-height: calc(100% - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.td-map__body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 12px; min-height: 0; padding: 10px 12px; overflow: hidden; }
+.td-map__view { position: relative; align-self: start; width: 100%; max-height: 100%; background: var(--cozy-wood-0);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-2); }
+.td-map__view img { display: block; width: 100%; height: 100%; image-rendering: pixelated; user-select: none; }
+.td-map__pin { --pin: var(--cozy-brass); position: absolute; width: 18px; height: 18px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  translate: -50% -100%; background: transparent !important; box-shadow: none !important; cursor: pointer; }
+.td-map__pin i, .td-map__key i { display: block; width: 12px; height: 12px; margin: 0 auto; background: var(--pin); rotate: 45deg; box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.td-map__pin:hover i { scale: 1.35; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 8px var(--pin); }
+:is(.td-map__pin, .td-map__key button)[data-kind='way'] { --pin: var(--cozy-loot-epic); }
+:is(.td-map__pin, .td-map__key button)[data-kind='ship'] { --pin: var(--cozy-loot-rare); }
+/* A town task giver (shared/town-tasks). */
+:is(.td-map__pin, .td-map__key button)[data-kind='npc'] { --pin: var(--cozy-leaf); }
+.td-map__me { position: absolute; width: 10px; height: 10px; translate: -50% -50%; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry);
+  animation: td-map-me 1.4s ease-in-out infinite; pointer-events: none; }
+@keyframes td-map-me { 50% { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 7px color-mix(in srgb, var(--cozy-berry) 40%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .td-map__me { animation: none; } }
+.td-map__key { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.td-map__hint { margin: 0 0 6px; font: 500 12px/1.3 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.td-map__key ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.td-map__key button { --pin: var(--cozy-brass); display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 0 8px !important;
+  text-align: left; font: 600 12px/1.2 var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
+.td-map__key button i { flex: none; margin: 0; width: 10px; height: 10px; }
+.td-map__menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 35%, transparent); }
+.td-map__menu button { min-height: 34px; padding: 0 12px !important; font: 600 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage .places.td-map { inset: calc(var(--hud-safe-t, 0px) + 8px) 8px calc(var(--hud-safe-b, 0px) + 8px) 8px; width: auto; max-height: none; height: auto; translate: none; transform: none; animation: none; opacity: 1; }
+  .td-map__body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .td-map__key ul { grid-template-columns: 1fr 1fr; }
+  .td-map__key button { min-height: 44px; }
+  .td-map__menu button { min-height: 44px; }
+}
+
+/* ── The Bestiary: a card per creature; the undefeated are a dark silhouette and "???" ── */
+.td-best { height: min(720px, calc(100% - 32px)); grid-template-rows: auto minmax(0, 1fr); }
+.td-best__body { min-height: 0; padding: 10px 12px 12px; overflow-y: auto; overscroll-behavior: contain; }
+.td-best__sum { margin: 0 0 2px; font: 700 15px/1.3 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.td-best .td-best__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+.td-best__card { --rank: var(--cozy-brass); display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 8px 9px 10px; background: var(--cozy-wood-1);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-2); }
+.td-best__card[data-rank='champion'] { --rank: var(--cozy-loot-rare); }
+.td-best__card[data-rank='boss'] { --rank: var(--cozy-loot-legendary); }
+.td-best__card[data-known='true'][data-rank='boss'], .td-best__card[data-known='true'][data-rank='champion'] { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--rank); }
+.td-best__art { --art-h: 96px; display: grid; place-items: center; height: var(--art-h); overflow: hidden; background: var(--cozy-wood-0); box-shadow: inset 0 0 0 2px var(--cozy-wood-2); }
+.td-best__art img { max-width: 88%; max-height: calc(var(--art-h) - 12px); image-rendering: pixelated; user-select: none; }
+.td-best__card[data-known='false'] .td-best__art img { opacity: .9; }
+.td-best__card h3 { margin: 2px 0 0; font: 700 14px/1.2 var(--cozy-font-read); color: var(--cozy-cream); text-transform: none; letter-spacing: 0; }
+.td-best__card[data-known='false'] h3 { color: color-mix(in srgb, var(--cozy-cream) 55%, transparent); }
+.td-best__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font: 600 12px/1.3 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.td-best__rank { padding: 0 5px; font: 700 11px/1.5 var(--cozy-font-read); color: var(--cozy-wood-0); background: var(--rank); }
+.td-best__count { margin-left: auto; color: var(--cozy-leaf); }
+.td-best__card[data-known='false'] .td-best__count { color: color-mix(in srgb, var(--cozy-cream) 55%, transparent); }
+.td-best__where, .td-best__drops { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0; font: 500 12px/1.3 var(--cozy-font-read); color: var(--cozy-cream); }
+.td-best__where small, .td-best__drops small { font: 700 10px/1.3 var(--cozy-font-read); letter-spacing: .08em; text-transform: uppercase; color: var(--cozy-brass); }
+/* A boss's own unique (boss-uniques.ts): its name in the unique gold, the odds of a kill beside it. */
+.td-best__relic { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin: 2px 0 0; font: 500 12px/1.3 var(--cozy-font-read); color: var(--cozy-cream); }
+.td-best__relic small { flex-basis: 100%; font: 700 10px/1.3 var(--cozy-font-read); letter-spacing: .08em; text-transform: uppercase; color: var(--cozy-brass); }
+.td-best__relic b { color: var(--cozy-loot-legendary); font-weight: 700; }
+.td-best__relic[data-set] b { color: var(--cozy-leaf); }
+.td-best__more { color: color-mix(in srgb, var(--cozy-cream) 65%, transparent); }
+.td-best__hits { --hit: var(--cozy-cream); display: flex; align-items: center; gap: 6px; margin: 0; font: 700 12px/1.3 var(--cozy-font-read); color: var(--hit); }
+.td-best__hits::before { content: ''; flex: none; width: 7px; height: 7px; transform: rotate(45deg); background: var(--hit); }
+.td-best__hits[data-hits='fire'] { --hit: var(--cozy-loot-legendary); }
+.td-best__hits[data-hits='cold'] { --hit: var(--cozy-loot-rare); }
+.td-best__hits[data-hits='arcane'] { --hit: var(--cozy-loot-epic); }
+.td-best__hits[data-hits='lightning'] { --hit: var(--cozy-loot-mythic); }
+.td-best__lore { margin: 4px 0 0; font: italic 500 12px/1.4 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
+.td-best__lore--hidden { font-style: normal; letter-spacing: .2em; color: color-mix(in srgb, var(--cozy-cream) 40%, transparent); }
+@media (max-width: 1100px) { .td-best .td-best__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage .places.td-best { height: auto; }
+  .td-best .td-best__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .td-best__art { --art-h: 76px; }
+}
+
+/* Release the raised: a small chip above the skill bar, only while skeletons walk with the Keeper. */
+.td-release { position: absolute; z-index: 5; left: 50%; bottom: 148px; translate: -50% 0; display: inline-flex; align-items: center; gap: 6px; min-height: 30px;
+  padding: 0 10px !important; border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-1) !important; color: var(--cozy-cream) !important;
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 1px var(--cozy-loot-epic) !important; font: 600 12px var(--cozy-font-read) !important; text-transform: none !important; cursor: pointer; }
+.td-release:hover { background: var(--cozy-wood-2) !important; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-release { left: 8px; translate: none; bottom: auto; top: calc(50% + 130px); min-height: 44px; }
+}
+
+/* ── Town tasks (shared/town-tasks): the Tasks rows on the quest scroll, and the talk window ── */
+.td-tasks { flex: 1 0 100%; display: grid; gap: 3px; margin: 0; padding: 4px 0 2px; list-style: none; order: 9;
+  box-shadow: 0 -2px 0 0 color-mix(in srgb, var(--cozy-parch-edge) 55%, transparent); font: 600 13px/1.25 var(--font-pixel); color: var(--cozy-ink); }
+.td-tasks li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.td-tasks li span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-tasks li b { flex: none; font: 700 12px/1 var(--font-pixel); color: var(--cozy-ink-soft); }
+/* A task's mark: a small brass diamond; ready to hand in, it lights and the count becomes a "?". */
+.td-tasks i { flex: none; width: 8px; height: 8px; margin: 0 2px; rotate: 45deg; background: var(--cozy-parch); box-shadow: 0 0 0 2px var(--cozy-ink-soft); }
+.td-tasks li.is-ready i { background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-ink); }
+.td-tasks li.is-ready b { color: var(--cozy-ink); }
+.guide--tasks .guide-text { flex: 1 1 100%; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* Phones: the chip keeps one task (the oldest), small. */
+  .td-tasks { padding: 2px 0 0; font-size: 11px; box-shadow: none; }
+  .td-tasks li:nth-child(n + 2) { display: none; }
+  .guide--folded .td-tasks { display: none; }
+  .guide--tasks .guide-text b { font-size: 10px; }
+  /* The chip grows by the one task row instead of spilling it over the world. */
+  .stage--td .guide:has(.td-tasks) { height: auto; min-height: 46px; }
+}
+
+/* The talk window: one small wooden window, the ask on a parchment scroll, one brass button. */
+.stage .places.td-talk { width: min(480px, calc(100% - 32px)); height: auto; max-height: calc(100% - 32px); grid-template-rows: auto auto auto; }
+.td-talk__body { display: grid; gap: 8px; padding: 10px 14px 4px; }
+.td-talk__who { margin: 0; font: italic 500 13px/1.4 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
+.td-talk__scroll { display: grid; gap: 6px; padding: 10px 12px; background: var(--cozy-parch); color: var(--cozy-ink);
+  box-shadow: 0 -4px 0 0 var(--cozy-wood-3), 0 4px 0 0 var(--cozy-wood-3), 0 -6px 0 0 var(--cozy-wood-0), 0 6px 0 0 var(--cozy-wood-0), inset 0 -3px 0 0 var(--cozy-parch-shade); }
+.td-talk__scroll h3 { display: flex; align-items: baseline; gap: 8px; margin: 0; font: 700 17px/1.2 var(--font-pixel); color: var(--cozy-ink); text-transform: none; letter-spacing: 0; }
+.td-talk__scroll h3 small { margin-left: auto; font: 700 11px/1 var(--font-pixel); color: var(--cozy-ink-soft); }
+.td-talk__say { margin: 0; font: 500 14px/1.45 var(--cozy-font-read); color: var(--cozy-ink); }
+.td-talk__say--plain { color: var(--cozy-cream); }
+.td-talk__daily { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; font: 600 12px/1.4 var(--cozy-font-read); color: var(--cozy-ink-soft); }
+.td-talk__daily b { font: 700 11px/1.6 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-ink); }
+.td-talk__row { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; margin: 0; font: 600 13px/1.35 var(--cozy-font-read); }
+.td-talk__row b { font: 700 11px/1.6 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-ink-soft); }
+.td-talk__row em { margin-left: 6px; font-style: normal; font-weight: 700; color: var(--cozy-ink-soft); }
+.td-talk__acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px 12px; }
+.td-talk__acts button { min-height: 44px; padding: 0 16px !important; font: 700 14px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer; }
+.td-talk__acts .td-talk__go { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.td-talk__acts .td-talk__trade { margin-left: auto; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* Phones: a bottom sheet over the touch row, never the whole screen; the buttons share the width. */
+  .stage .places.td-map.td-talk { top: auto; bottom: calc(var(--hud-safe-b, 0px) + 8px); max-height: calc(100% - 140px); overflow-y: auto; }
+  .td-talk__acts button { flex: 1 1 0; }
+  .td-talk__acts .td-talk__trade { margin-left: 0; }
+}
+
+/* Phones (owner 2026-10-20: "on phone sometimes the text is so much I can't see the buttons to equip"): the pinned
+   item card is a bottom sheet that scrolls inside itself, its actions stuck to its foot so they are always in reach. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .d2tip.d2tip--pinned { left: 8px !important; right: 8px; top: auto !important; bottom: calc(var(--hud-safe-b, 0px) + 8px); width: auto;
+    max-height: min(72dvh, calc(100% - 96px)); overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0; }
+  .d2tip--pinned .d2tip__actions { position: sticky; bottom: 0; z-index: 1; margin: 0 -12px; padding: 8px 12px calc(10px + var(--hud-safe-b, 0px));
+    background: var(--cozy-wood-0); box-shadow: 0 -2px 0 0 color-mix(in srgb, var(--loot) 45%, transparent); }
+  .d2tip--pinned .d2tip__actions button { min-height: 44px; }
+  .d2tip--pinned::before, .d2tip--pinned::after { display: none; }
+}
+
+/* ── The pet chip (td-pets.ts): the pet following, its face, its name and what it is doing; a tap opens the pets.
+   Desktop: under the portrait. Phones (OSRS layout): under the goal chip on the left, clear of the orbs, the minimap,
+   the spells and Glim's line. ── */
+.td-pet { position: absolute; z-index: 4; top: 140px; left: 16px; display: flex; align-items: center; gap: 8px; min-height: 44px; max-width: 216px;
+  padding: 3px 12px 3px 3px !important; border: 0 !important; border-radius: 0 !important; text-align: left; text-transform: none !important; letter-spacing: 0 !important;
+  background: var(--px-win-planks), var(--cozy-plate) !important; box-shadow: var(--cozy-chip) !important; color: var(--cozy-cream); cursor: pointer; pointer-events: auto; }
+.td-pet:hover, .td-pet:focus-visible { filter: brightness(1.1); }
+.td-pet__face { display: grid; place-items: center; flex: none; width: 38px; height: 38px; font-style: normal;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--cozy-leaf) 28%, var(--cozy-wood-1)), var(--cozy-wood-0) 75%);
+  box-shadow: inset 0 0 0 2px var(--cozy-brass), inset 0 0 0 4px var(--cozy-wood-0); }
+.td-pet__face img { width: 36px; height: 36px; image-rendering: pixelated; }
+.td-pet__txt { display: grid; gap: 2px; min-width: 0; }
+.td-pet__txt b { font: 700 13px/1.1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-pet__txt small { font: 600 11px/1.1 var(--cozy-font-read); color: var(--cozy-glow); text-shadow: 1px 1px 0 var(--cozy-wood-0); white-space: nowrap; }
+.td-pet[data-pet-doing='fight'] .td-pet__txt small { color: var(--cozy-berry); }
+.td-pet[data-pet-doing='sleep'] .td-pet__txt small, .td-pet[data-pet-doing='rest'] .td-pet__txt small { color: var(--cozy-mana-text); }
+.stage--menu .td-pet { visibility: hidden; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage--td .td-pet { top: calc(var(--hud-safe-t) + 66px); left: 8px; max-width: 150px; min-height: 44px; padding-right: 8px !important; gap: 6px; }
+  .stage--td .td-pet__face { width: 34px; height: 34px; }
+  .stage--td .td-pet__face img { width: 32px; height: 32px; }
+  .stage--td .td-pet__txt b { font-size: 12px; }
+}
+
+/* ── Spellstones and Soul (shared/spellstones) ── */
+/* The belt's Spellstone slot: basalt-rimmed; a bare blank, dimmed, while no stone sits there. */
+.td-pot[data-kind='stone'] { --pot: color-mix(in srgb, var(--cozy-brass) 60%, var(--cozy-wood-1)); }
+.td-stone.td-pot--empty img { opacity: .45; filter: grayscale(.6); }
+/* Soul: a pale-flame pip and its count beside the mana number (desktop), a small chip under the orbs (phone). */
+.soul-pip { display: inline-block; width: 4px; height: 4px; margin-right: 3px; vertical-align: middle; image-rendering: pixelated;
+  background: var(--cozy-cream);
+  box-shadow: 0 -4px 0 color-mix(in srgb, var(--cozy-mana-hi) 80%, var(--cozy-cream)), 0 4px 0 var(--cozy-mana-lo), -4px 4px 0 var(--cozy-mana-lo), 4px 4px 0 var(--cozy-mana-lo); }
+.vital__soul { margin-left: 10px; font: 700 12px/1 var(--cozy-font-read); color: var(--cozy-cream); white-space: nowrap; }
+.td-soul { display: none; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage--td .td-soul { display: block; justify-self: center; padding: 2px 4px 2px 6px; font: 700 10px/1.1 var(--font-pixel); font-style: normal;
+    color: var(--cozy-cream); background: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-mana-lo); }
+  .stage--td .td-soul .soul-pip { width: 2px; height: 2px; box-shadow: 0 -2px 0 var(--cozy-mana-hi), 0 2px 0 var(--cozy-mana-lo); }
+}
+/* The Spellbook's inscribing row. */
+.sbt__stone { display: grid; gap: 3px; margin: 6px 0 0; padding: 6px 8px; background: color-mix(in srgb, var(--cozy-wood-0) 55%, transparent); box-shadow: inset 0 0 0 1px var(--cozy-brass-lo); }
+.sbt__stone > b { display: flex; align-items: center; gap: 6px; font: 700 12px var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.sbt__stone > b img { image-rendering: pixelated; }
+.sbt__stone small { font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
+.sbt__stone-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Grave-goods on the item card (shared/grave-goods) ── */
+/* A curse: berry red, its gift and its price; laid to rest, it greys to brass. */
+.d2tip__curse { display: grid; gap: 2px; padding: 6px 6px 5px; border-top: 1px solid color-mix(in srgb, var(--cozy-berry) 55%, transparent);
+  background: color-mix(in srgb, var(--cozy-berry) 14%, transparent); }
+.d2tip__curse b { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-berry); }
+.d2tip__curse p { margin: 0; font-size: 11px; color: var(--cozy-cream); }
+.d2tip__curse p:nth-of-type(2) { color: color-mix(in srgb, var(--cozy-berry) 75%, var(--cozy-cream)); }
+.d2tip__curse--rest { background: transparent; border-top-color: color-mix(in srgb, var(--cozy-brass) 50%, transparent); }
+.d2tip__curse--rest b { color: var(--cozy-brass-hi); text-decoration: line-through; }
+.d2tip__curse--rest p:nth-of-type(2) { color: var(--cozy-brass-hi); }
+.d2tip__lore { font-style: italic; opacity: .75; }
+/* A whisper: a faint violet edge and the words woken so far, the rest left as dots. */
+.d2tip__whisper { display: grid; gap: 2px; padding: 6px 6px 5px; border-top: 1px solid color-mix(in srgb, var(--cozy-loot-epic) 55%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cozy-loot-epic) 70%, transparent); }
+.d2tip__whisper b { font-size: 11px; font-style: italic; color: var(--cozy-loot-epic); }
+.d2tip__whisper q { font: italic 13px/1.3 var(--font-lore, Georgia, serif); color: var(--cozy-cream); }
+.d2tip__whisper p { margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }
+.d2tip__whisper--silent { box-shadow: none; opacity: .85; }
