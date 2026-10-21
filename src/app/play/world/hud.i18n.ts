@@ -161,6 +161,8 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.td.total.lifeRegen': { en: 'Life back', es: 'Vida que vuelve' },
   'play.td.total.still': { en: '(×{{n}} standing still)', es: '(×{{n}} quieto)' },
   'play.td.total.mf': { en: 'Magic Find', es: 'Hallazgo magico' },
+  // What the Magic Find above is worth at the top of the ladder (shared/loot/magic-find-curve.ts: D2's diminishing returns, K 250).
+  'play.td.total.mfu': { en: 'Magic Find toward uniques', es: 'Hallazgo magico hacia unicos' },
   'play.td.total.gf': { en: 'Gold Find', es: 'Hallazgo de oro' },
   'play.td.total.xp': { en: 'Hunting XP', es: 'XP de caza' },
   'play.td.total.res.fire': { en: 'Fire resist', es: 'Resistencia al fuego' },
