@@ -229,8 +229,28 @@
   outline-offset: 2px;
 }
 
+/* "Not now": closes the bar for this visit without answering. */
+.cookie-banner--world .cookie-content { position: relative; }
+.cookie-later {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--adventure-dialogue);
+  font: 400 24px/1 sans-serif;
+  cursor: pointer;
+}
+.cookie-later:focus-visible { outline: 2px solid var(--adventure-beacon-text); outline-offset: 2px; }
+
 @media (max-width: 600px) {
-  .cookie-banner--world { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
-  .cookie-line { flex-basis: 100%; font-size: 13px; }
-  .cookie-banner--world .cookie-actions { flex: 1 1 100%; }
+  .cookie-banner--world { padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .cookie-banner--world .cookie-content { gap: 0 4px; }
+  /* Slim: the title and one line of why; the longer reassurance is left for the policy page. */
+  .cookie-line { flex: 1 1 calc(100% - 52px); font-size: 12px; line-height: 1.3; }
+  .cookie-line small { display: none; }
+  .cookie-later { order: 2; margin-top: -2px; }
+  .cookie-banner--world .cookie-actions { order: 3; flex: 1 1 100%; }
+  .cookie-banner--world .btn-accept,
+  .cookie-banner--world .btn-deny { padding: 0 6px; }
 }

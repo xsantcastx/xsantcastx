@@ -82,7 +82,10 @@
    The "fi" ligature (it draws a capital A: "Hellfire" read "HellAre") and the 5/8 fraction ligatures are switched off
    for HTML in styles.css. Canvas cannot set font-variant-ligatures (its `font` shorthand resets it), so the i and l
    faces below are Pixelify itself, unchanged: f in one face and the letter after it in another are shaped as separate
-   runs, which is all it takes for the fi / fl / ffi ligature not to form, in any browser. (ff alone still ligates.) */
+   runs, which is all it takes for the fi / fl / ffi ligature not to form, in any browser.
+   "ff" is two of the same letter, so no face split can part it: the three pixelify-sans-*-latin.woff2 files are
+   shipped with their GSUB `liga` feature emptied (fontTools: the feature's lookup list cleared, glyphs untouched),
+   so "ff" measures as two f's in canvas and HTML alike. */
 @font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('/assets/fonts/inter-latin-var.woff2') format('woff2'); unicode-range: U+0030-0039, U+0043; }
 @font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('/assets/fonts/inter-latin-var.woff2') format('woff2'); unicode-range: U+0030-0039, U+0043; }
 @font-face { font-family: 'Pixelify Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/assets/fonts/inter-latin-var.woff2') format('woff2'); unicode-range: U+0030-0039, U+0043; }

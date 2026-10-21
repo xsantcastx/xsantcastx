@@ -26,6 +26,12 @@
             {{ translate('cookies.deny') }}
           </button>
         </div>
+        <button
+          type="button"
+          class="cookie-later"
+          (click)="dismissForNow()"
+          [attr.aria-label]="translate('cookies.later.aria')"
+          [title]="translate('cookies.later.aria')">&times;</button>
       </div>
     </div>
   } @else {

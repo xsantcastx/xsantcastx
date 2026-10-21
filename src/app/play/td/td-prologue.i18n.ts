@@ -8,6 +8,7 @@ export const TD_PROLOGUE_I18N: Readonly<Record<string, { en: string; es: string 
   'play.pro.skip': { en: 'Skip tutorial', es: 'Saltar tutorial' },
   'play.pro.skipAria': { en: 'Skip the tutorial for this Keeper', es: 'Saltar el tutorial con este Guardian' },
   'play.pro.skipped': { en: 'Tutorial skipped. Glim is still on your shoulder if you need a hint.', es: 'Tutorial saltado. Glim sigue en tu hombro si necesitas una pista.' },
+  'play.pro.far': { en: 'It is about {{n}} tiles away: follow Glim\'s little arrows, and press Show me again when you are close.', es: 'Esta a unos {{n}} pasos: sigue las flechitas de Glim y pulsa Llevame de nuevo cuando estes cerca.' },
   'play.pro.none': { en: 'Nothing to find right here yet: walk on, and follow Glim\'s little arrows.', es: 'Aqui no hay nada todavia: sigue andando y sigue las flechitas de Glim.' },
   'play.pro.done': { en: 'Prologue done. The Sexton\'s Count is your story now: its row is on the scroll.', es: 'Prologo terminado. La Cuenta del Sacristan es tu historia ahora: su fila esta en el pergamino.' },
 

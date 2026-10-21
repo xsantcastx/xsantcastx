@@ -12,6 +12,7 @@ import { AnalyticsService } from '../analytics.service';
  * and move up with it. A notice never covers gameplay.
  */
 export const CONSENT_DOCK_VAR = '--gf-consent-h';
+const LATER_KEY = 'consent-later';
 
 @Component({
   selector: 'app-cookie-banner',
@@ -57,6 +58,18 @@ export class CookieBannerComponent implements OnDestroy {
   ngOnInit(): void {
     // Show banner if no consent decision has been made
     this.showBanner = !this.consentService.hasConsentDecision();
+    // "Not now" hides the bar for this tab session only: no answer is stored, nothing optional loads,
+    // and the question comes back on the next visit.
+    if (this.showBanner && this.browser) {
+      try { if (sessionStorage.getItem(LATER_KEY) === '1') this.showBanner = false; } catch { /* private mode */ }
+    }
+  }
+
+  /** Close the bar without answering (consent stays undecided, so analytics stay off). */
+  dismissForNow(): void {
+    try { sessionStorage.setItem(LATER_KEY, '1'); } catch { /* private mode */ }
+    this.showBanner = false;
+    this.setDock(0);
   }
 
   ngOnDestroy(): void {

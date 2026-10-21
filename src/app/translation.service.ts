@@ -214,6 +214,7 @@ export class TranslationService {
     'cookies.banner.details': { en: 'No personal data is sold or shared — we just count footsteps in the cosmos.', es: 'No se vende ni se comparte ningun dato personal — solo contamos pisadas en el cosmos.' },
     'cookies.accept': { en: 'Accept Analytics', es: 'Aceptar Analytics' },
     'cookies.deny': { en: 'Essential Only', es: 'Solo Esenciales' },
+    'cookies.later.aria': { en: 'Not now — ask me next visit', es: 'Ahora no — preguntame en la proxima visita' },
     'cookies.banner.aria': { en: 'Cookie consent banner', es: 'Banner de consentimiento de cookies' },
     'cookies.accept.aria': { en: 'Accept analytics cookies', es: 'Aceptar cookies de analytics' },
     'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' },

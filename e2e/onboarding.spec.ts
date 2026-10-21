@@ -247,8 +247,11 @@ test.describe('onboarding on a 390×844 phone', () => {
     // A tap on open ground walks (the walk step counts it).
     const c = (await canvas(page).boundingBox())!;
     await expect.poll(async () => {
-      for (const [fx, fy] of [[0.5, 0.3], [0.7, 0.4], [0.3, 0.45]]) {
+      for (const [fx, fy] of [[0.5, 0.3], [0.7, 0.4], [0.3, 0.45], [0.6, 0.55], [0.4, 0.6]]) {
         if ((await step(page)) !== 'pro-walk') break;
+        // A tap that landed on a stall opened its panel (and paused the world): close it before the next one.
+        const open = page.locator('.place .win-x:visible');
+        if (await open.count()) await open.first().tap();
         await page.touchscreen.tap(c.x + c.width * fx, c.y + c.height * fy);
         await page.waitForTimeout(1500);
       }
