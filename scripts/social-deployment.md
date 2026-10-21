@@ -246,7 +246,7 @@ starts an empty list, a failed write is refused with "Could not save that").
 
 `/health` and `/join` report `protocol: 6`. A client that trades says `trade: true` on `/join`; only such sessions are
 asked to trade or told what lies on the ground. The room **relays only**: the `tradeApi` Cloud Function
-(functions/src/trade.ts → trade-core.ts) is the only thing that moves an item or Gold. Full design:
+(functions-game/src/trade.ts → trade-core.ts) is the only thing that moves an item or Gold. Full design:
 docs/design/online.md §4c.
 
 | verb | body | effect |

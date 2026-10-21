@@ -1,6 +1,6 @@
 /**
  * trade-items.ts — an item as it travels in a trade window or onto the ground (the client half of
- * functions/src/trade-core.ts OfferItem; trade-merge.spec pins the two to each other).
+ * functions-game/src/trade-core.ts OfferItem; trade-merge.spec pins the two to each other).
  *
  * The offer carries exactly the fields the server re-checks against the save ("unchanged, by id and roll") and
  * enough to draw the item's real card on the other Keeper's screen. Short keys: it rides the Hearth.

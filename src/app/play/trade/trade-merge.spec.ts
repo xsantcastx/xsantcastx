@@ -1,10 +1,10 @@
 /**
- * trade-merge.spec.ts — the interplay that makes trades dupe-proof: the server's writes (functions/src/trade-core.ts,
+ * trade-merge.spec.ts — the interplay that makes trades dupe-proof: the server's writes (functions-game/src/trade-core.ts,
  * the real file, run here) against the client's own merges (inventory-ops mergeInventoryLedgers, economy-ops
  * mergeEconomyLedgers). A device that still holds its pre-trade copy — even one that touched the traded item since —
  * must end up with what the server decided, never with the item back or the Gold twice.
  */
-import * as core from '../../../../functions/src/trade-core';
+import * as core from '../../../../functions-game/src/trade-core';
 import { emptyLedger, mergeEconomyLedgers } from '../../shared/economy/economy-ops';
 import { emptyInventoryLedger, itemToRecord, itemsFromLedger, mergeInventoryLedgers, recordToItem } from '../../shared/rpg/inventory-ops';
 import type { InventoryLedger, OwnedItemInstance } from '../../shared/rpg/inventory.model';
