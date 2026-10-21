@@ -424,7 +424,7 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
 };
 @Component({
   selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent],
-  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
+  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
   @ViewChild('worldCanvas') canvas!: ElementRef<HTMLCanvasElement>;
