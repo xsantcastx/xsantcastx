@@ -182,6 +182,11 @@ export function legacyGoldFind(goldPerSec: number | undefined): number {
   return Math.round(8 * Math.log(1 + goldPerSec) * 10) / 10;
 }
 
+/** The Hunting XP worn "+X% XP" adds to a kill worth `base` (whole, never negative). */
+export function gearXp(base: number, pct: number | undefined): number {
+  return base > 0 && typeof pct === 'number' && pct > 0 ? Math.round(base * pct / 100) : 0;
+}
+
 /** How each stat is written on a tooltip. */
 export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   goldPerSec: 'Gold Find',
@@ -197,8 +202,8 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   castSpeed: 'Cast Speed',
   moveSpeed: 'Movement Speed',
   critChance: 'Critical Chance',
-  lifeRegen: 'Life Regen',
-  manaRegen: 'Mana Regen',
+  lifeRegen: 'Life a second',
+  manaRegen: 'Mana a second',
   fireResist: 'Fire Resist',
   coldResist: 'Cold Resist',
   lightningResist: 'Lightning Resist',
@@ -812,6 +817,15 @@ export function mintCharm(
   };
 }
 
+/**
+ * The Gold Find a set of worn pieces pays: each piece's `goldFind` plus its own retired `goldPerSec` read as Gold Find,
+ * piece by piece — exactly what each card prints ("+36.9% Gold Find"). (totalGoldFind of the summed raw roll paid two
+ * such cards 42.4% together, not their 73.8%: the log is not additive.)
+ */
+export function wornGoldFind(blocks: readonly ItemStats[]): number {
+  return Math.round(blocks.reduce((a, b) => a + (b.goldFind ?? 0) + legacyGoldFind(b.goldPerSec), 0) * 10) / 10;
+}
+
 /** The Gold Find of a worn total: its `goldFind` plus the retired `goldPerSec` of older items read as Gold Find. */
 export function totalGoldFind(totals: Pick<ItemStats, 'goldFind' | 'goldPerSec'>): number {
   return Math.round(((totals.goldFind ?? 0) + legacyGoldFind(totals.goldPerSec)) * 10) / 10;
@@ -829,8 +843,8 @@ export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
       total[key] += block[key] ?? 0;
     }
   }
-  // The retired Gold/sec rolls on older items add up raw; `totalGoldFind` reads them as Gold Find. One-decimal rolls
-  // drift in float; round once, here.
+  // The retired Gold/sec rolls on older items add up raw (what pays them is wornGoldFind, item by item). One-decimal
+  // rolls drift in float; round once, here.
   total.goldPerSec = Math.round(total.goldPerSec * 10) / 10;
   total.goldFind = Math.round(total.goldFind * 10) / 10;
   return total;

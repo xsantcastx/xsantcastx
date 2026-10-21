@@ -27,7 +27,6 @@ import { isPlatformBrowser } from '@angular/common';
 import { EconomyService } from '../economy/economy.service';
 import { InfusionService } from '../enchanting/infusion.service';
 import { InventoryService } from './inventory.service';
-import { totalGoldFind } from './item.model';
 import { PlayerStatsService } from './player-stats.service';
 import { ExplorerRosterService } from './explorer-roster.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
@@ -95,10 +94,8 @@ export class RpgWiringService {
     // `goldPerSec` read in as Gold Find) plus Forge Power's half a percent a point, on every pile the hunt drops.
     this.economy.setRpgFlatGold(0);
     this.economy.setRpgForgePercent(0);
-    this.economy.setGoldFind(totalGoldFind({
-      goldFind: this.inventory.equippedTotals.goldFind,
-      goldPerSec: this.inventory.equippedTotals.goldPerSec,
-    }) + this.stats.goldPerSec);
+    // Piece by piece, as each card prints it (item.model wornGoldFind).
+    this.economy.setGoldFind(this.inventory.equippedGoldFind + this.stats.goldPerSec);
     this.economy.setPriceMultiplier(this.stats.priceMultiplier);
     // A multiplier on the whole rate rather than on the RPG line: the card says
     // "+10% Gold from the hunt", and a visitor whose Gold comes almost entirely from the

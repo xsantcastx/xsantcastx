@@ -137,6 +137,9 @@ export function spellMult(tree: TreeId, phase: SkyPhase): number { return rulesO
  */
 export function skyVars(tree: TreeId): readonly string[] {
   if (tree === 'hearth') return ['heal'];
+  // The Ash (the endurance tree) deals no damage of its own: the sky lifts the Watchfire that keeps the Keeper. (Its
+  // blade-borne skills strike with the Watch Blade's blow, so they feel the Brand's hour, td-skills BLADE_SHARE.)
+  if (tree === 'ash') return ['def', 'regen'];
   // The Wild: the beasts' blows, and the bonus Command and Pack Bond lend the pet.
   if (tree === 'wild') return ['min', 'max', 'dps', 'pct'];
   return ['min', 'max', 'dps'];

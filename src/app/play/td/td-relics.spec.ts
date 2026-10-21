@@ -78,7 +78,7 @@ describe('td-relics: the signatures the fight applies', () => {
   it('Ashbone Phylactery: one more skeleton at once, and each first blow is a breath of fire (3×)', () => {
     const plain = world().sys, worn = world().sys;
     wear(worn, 'unique-ashbone-phylactery');
-    const max = SKILLS['raise-skeleton'].vars['max'];
+    const max = SKILLS['raise-skeleton'].vars['cap'];
     for (const s of [plain, worn]) { s.setRanks({ 'raise-skeleton': 1 }); for (let i = 0; i < 3; i++) { s.cooldowns['raise-skeleton'] = 0; s.useAbility('raise-skeleton'); } }
     expect(plain.minions.length).toBe(max);
     expect(worn.minions.length).toBe(max + 1);

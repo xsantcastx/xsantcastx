@@ -125,7 +125,8 @@ export class DarkLayer {
       if (f.still) { s.x = x; s.y = y; }
     }
     this.shapes = this.shapes.filter(s => !shapeDone(s));
-    if (this.hold || !darkBornHere(f.dark, f.phase, f.safe)) { if (!this.hold) this.shapes.forEach(s => { s.state = 'gone'; }); return; }
+    // The Hush set to Off (the Sound menu: "the dark stays only dark"): no shapes at the light's edge either.
+    if (this.hold || this.cap === 'off' || !darkBornHere(f.dark, f.phase, f.safe)) { if (!this.hold) this.shapes.forEach(s => { s.state = 'gone'; }); return; }
     if ((this.shapeT -= f.dt) > 0 || this.shapes.length >= SHAPE.max) return;
     this.shapeT = shapeGap(band, this.rnd);
     const s = this.placeShape(f, lights, band >= 2, this.rnd() * Math.PI * 2);
@@ -151,7 +152,7 @@ export class DarkLayer {
   private updatePrints(f: DarkFrame, band: HushBand): void {
     if (!this.hold) for (const p of this.prints) p.age += f.dt;
     this.prints = this.prints.filter(p => p.age < STEPS.life);
-    if (!darkBornHere(f.dark, f.phase, f.safe)) { this.stepSpell = 0; return; }
+    if (this.cap === 'off' || !darkBornHere(f.dark, f.phase, f.safe)) { this.stepSpell = 0; return; }
     if (this.stepSpell > 0) {
       this.stepSpell -= f.dt;
       if (!f.keeper.moving || (this.stepEvery -= f.dt) > 0 || this.prints.length >= STEPS.max) return;
