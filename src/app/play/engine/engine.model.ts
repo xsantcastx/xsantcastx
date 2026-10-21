@@ -197,6 +197,17 @@ export interface EngineOptions {
   rollLoot?: (kill: { creature: string; level: number; rank: MonsterRank; killKey: string }) => readonly LootRow[];
   /** The corpse run's purse was walked over (setFallenPurse). The host returns its Gold. */
   onPurse?: () => void;
+  /**
+   * Top-down only, the Cold Hearth (design-bible §5.8): the Keeper fell at (x, y) in `area` (`td:<continent>|<level>`).
+   * The host takes the fall's cost (shared/hearth) and hands the engine the purse; the engine wakes them at the hearth.
+   */
+  onFall?: (event: { area: string; x: number; y: number }) => void;
+  /** Top-down only: the Keeper woke after a fall, at this hearth (null: the square, none lit yet). */
+  onWoke?: (event: { hearth: string | null; town: string }) => void;
+  /** Top-down only: a hearth was lit by the Keeper's hand (it becomes the wake point). */
+  onHearth?: (event: { id: string; town: string; capital: boolean }) => void;
+  /** Top-down only: a capital's Hearth Shrine was used (the host opens the blessings). */
+  onShrine?: (event: { id: string; town: string }) => void;
   onInteract: (target: InteractionTarget) => void;
   /** A panel or waystone station was interacted with. The host opens its panel. */
   onStation?: (station: StationDef) => void;
