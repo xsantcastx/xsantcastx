@@ -244,3 +244,38 @@ for (const size of SIZES) {
     });
   });
 }
+
+// A sideways phone: the ☰ Menu and every touch control take their own tap (nothing stacked over another — the Menu was
+// once covered by the touch attack button at 844×390, which left the Menu unreachable).
+for (const size of [{ width: 844, height: 390 }, { width: 915, height: 412 }]) {
+  test.describe(`the HUD's touch controls at ${size.width}x${size.height} (Android, sideways)`, () => {
+    test.use({ viewport: size, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
+    test('the Menu button and every touch control take their own tap', async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+      await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA) });
+      await page.goto('/play?td=1&hour=12');
+      await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
+      await page.waitForTimeout(600);
+      const bad = await page.evaluate(() => {
+        const sels = ['.places-toggle', '.td-dock button', '.touch-act button', '.touch-move button', '.td-skills button', '.td-belt button', '.td-chat-tab'];
+        const out: string[] = [];
+        for (const s of sels) for (const el of document.querySelectorAll(s)) {
+          const r = el.getBoundingClientRect();
+          if (r.width < 2 || r.height < 2 || getComputedStyle(el).visibility === 'hidden') continue;
+          // Every corner-in point and the centre: whatever sits on top must be the control itself.
+          for (const [fx, fy] of [[.5, .5], [.2, .2], [.8, .2], [.2, .8], [.8, .8]]) {
+            const hit = document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy);
+            if (!hit || !(hit === el || el.contains(hit) || hit.contains(el) && hit.tagName !== 'SECTION' && !hit.matches('.stage, .viewport, .touch-act, .touch-move, .td-dock, .top-actions'))) { out.push(`${s} (${Math.round(r.left)},${Math.round(r.top)}) under ${hit?.tagName}.${String((hit as HTMLElement | null)?.className ?? '').slice(0, 30)}`); break; }
+          }
+        }
+        return out;
+      });
+      expect(bad, bad.join('; ')).toEqual([]);
+      // And the Menu really opens from a tap.
+      await page.locator('.places-toggle').tap();
+      await expect(page.locator('#game-menu')).toBeVisible();
+    });
+  });
+}
