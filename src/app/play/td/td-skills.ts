@@ -9,8 +9,9 @@
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { addSetBonuses } from '../../shared/rpg/set-items';
+import type { RelicTotals } from '../../shared/rpg/boss-uniques';
 import { LEVEL_GROWTH, levelSpeedBonus, levelSteps } from '../../shared/skills/keeper-level';
-import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
+import { ELEMENTS, MAX_KEEPER_RESIST, MIN_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { ASHGUARD_BOOK, ASHGUARD_SKILLS, ASHGUARD_STARTERS, ASH_TREES, type AshSkillId } from './td-ashguard-skills';
 import { LAMP_TREES, LANTERN_BOOK, LANTERN_SKILLS, LANTERN_STARTERS, type LampSkillId } from './td-lantern-skills';
 import { THORN_BOOK, THORN_SKILLS, THORN_STARTERS, THORN_TREES, type ThornSkillId } from './td-thorn-skills';
@@ -155,13 +156,13 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   },
   'raise-skeleton': {
     id: 'raise-skeleton', kind: 'active', mana: 30, cd: 12, nameKey: 'skill.raise-skeleton', textKey: 'skill.raise-skeleton.text',
-    vars: { count: 2, max: 2, reach: 5, hp: 50, dmg: 7 }, grow: { count: .15, max: .25, hp: 10, dmg: 1 }, tree: 'bone', tier: 0, col: 1, req: null,
+    vars: { count: 2, cap: 2, reach: 5, hp: 50, dmg: 7 }, grow: { count: .15, cap: .25, hp: 10, dmg: 1 }, tree: 'bone', tier: 0, col: 1, req: null,
     icon: I('<rect x="5" y="1" width="6" height="5" fill="#ddd2ea"/><rect x="6" y="3" width="1" height="1" fill="#b06bff"/><rect x="9" y="3" width="1" height="1" fill="#b06bff"/><rect x="6" y="6" width="4" height="1" fill="#a99bc0"/><rect x="4" y="7" width="8" height="1" fill="#ddd2ea"/><rect x="5" y="9" width="6" height="1" fill="#ddd2ea"/><rect x="7" y="7" width="2" height="5" fill="#a99bc0"/><rect x="2" y="12" width="12" height="3" fill="#3b2140"/><rect x="3" y="12" width="10" height="1" fill="#6b3aa0"/>'),
     words: 'osk teth',
   },
   'soul-harvest': {
     id: 'soul-harvest', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.soul-harvest', textKey: 'skill.soul-harvest.text',
-    vars: { mana: 8 }, grow: { mana: 1 }, tree: 'bone', tier: 0, col: 2, req: null,
+    vars: { mana: 8, soul: .2 }, grow: { mana: 1, soul: .2 }, tree: 'bone', tier: 0, col: 2, req: null,
     icon: I('<rect x="5" y="2" width="6" height="6" fill="#e9e4f0"/><rect x="6" y="4" width="1" height="2" fill="#2a1a24"/><rect x="9" y="4" width="1" height="2" fill="#2a1a24"/><rect x="4" y="9" width="8" height="5" fill="#5f8bff"/><rect x="6" y="10" width="4" height="3" fill="#c8dcff"/>'),
   },
   'corpse-burst': {
@@ -260,8 +261,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   ...THORN_SKILLS,
 };
 
-/** Vars that count whole things (skeletons, spears): a rank adds a fraction, the fight takes the whole part. */
-const WHOLE_VARS = new Set(['count', 'max']);
+/** Vars that count whole things (skeletons, spears, the most raised at once): a rank adds a fraction, the fight takes the whole part. */
+const WHOLE_VARS = new Set(['count', 'cap', 'length', 'soul']);
 /** The synergies a skill gets now: each source, its bought ranks, and the % it adds (0 when none are bought). */
 export function synergies(id: SkillId, bought: Readonly<Partial<Record<SkillId, number>>> | null = null): { from: SkillId; per: number; what: SynergyVar; ranks: number; pct: number }[] {
   return (SKILLS[id].syn ?? []).map(s => {
@@ -287,6 +288,50 @@ export function skillVars(id: SkillId, rank: number, bought: Readonly<Partial<Re
     out[k] = Number.isInteger(base) && Number.isInteger(g) ? Math.round(v) : WHOLE_VARS.has(k) ? Math.floor(v + 1e-9) : Math.round(v * 10) / 10;
   }
   return out;
+}
+
+/**
+ * What worn gear adds to a skill (the boss uniques' and the item sets' signatures, rpg/boss-uniques relicTotals) — the
+ * one place both the fight (td-mobs MobSystem) and the Spellbook's card read, so the card's numbers are the fight's.
+ */
+export type GearSig = Pick<RelicTotals, 'ranks' | 'cdCut' | 'raisedMax' | 'spears' | 'spearRange'>;
+export const NO_GEAR_SIG: GearSig = { ranks: {}, cdCut: {}, raisedMax: 0, spears: 0, spearRange: 0 };
+/** A skill's rank in the fight: the tree's, plus the ranks worn gear adds to a skill already learnt (never past MAX_RANK). */
+export function castRank(id: SkillId, treeRank: number, sig: GearSig = NO_GEAR_SIG): number {
+  const base = Math.max(0, Math.floor(treeRank) || 0);
+  return base > 0 ? Math.min(MAX_RANK, base + Math.max(0, sig.ranks[id] ?? 0)) : 0;
+}
+/**
+ * A skill's numbers in the fight (before the sky's hand, td-phases): its rank's and synergies' (skillVars), plus what
+ * worn gear adds — more skeletons at once, more spears in a storm, a spear that flies further.
+ */
+export function castVars(id: SkillId, rank: number, bought: Readonly<Partial<Record<SkillId, number>>> | null = null, sig: GearSig = NO_GEAR_SIG): Record<string, number> {
+  const out = skillVars(id, rank, bought);
+  if (id === 'raise-skeleton') out['cap'] += Math.max(0, sig.raisedMax);
+  if (id === 'bone-storm') out['count'] = Math.max(1, out['count'] + Math.max(0, sig.spears));
+  if (id === 'bone-spear') out['range'] += Math.max(0, sig.spearRange);
+  return out;
+}
+/** A spell's cooldown (seconds, before cast speed): its own, less what worn gear cuts from it, never under half a second. */
+export function castCd(id: SkillId, sig: GearSig = NO_GEAR_SIG): number {
+  return Math.max(.5, SKILLS[id].cd - Math.max(0, sig.cdCut[id] ?? 0));
+}
+/** The cooldown the Keeper actually waits: castCd ÷ (1 + worn cast speed), to a tenth. */
+export function cooldownNow(id: SkillId, castSpeed: number, sig: GearSig = NO_GEAR_SIG): number {
+  return Math.round(castCd(id, sig) / (1 + Math.max(0, castSpeed)) * 10) / 10;
+}
+
+/** The Ashguard's skills that strike with a share of the Watch Blade's blow (their damage is the blade's, td-mobs strike). */
+export const BLADE_SHARE: ReadonlySet<SkillId> = new Set<SkillId>(['ember-brand', 'cinder-cleave', 'whirl-of-cinders', 'ash-stride']);
+/** The skills whose damage is fire (td-mobs fireMult: Ember Mastery and worn fire lift them). */
+export const FIRE_SKILLS: ReadonlySet<SkillId> = new Set<SkillId>(['ember-bolt', 'hellfire-nova', 'aura-embers', 'cinder-rain', 'flame-wall', 'meteor', 'ember-curse', 'ember-brand', 'cinder-cleave', 'whirl-of-cinders']);
+/**
+ * Does the skill's damage land through the fight's hit (td-mobs hitFoe), so spell power and crits lift it? Anything
+ * with damage numbers on its card, and the blade's shares. (A raised skeleton's blow has the power baked in already.)
+ */
+export function dealsDamage(id: SkillId): boolean {
+  const v = SKILLS[id].vars;
+  return 'min' in v || 'dps' in v || BLADE_SHARE.has(id);
 }
 
 /** The skills a new Keeper of the class starts with at rank 1, free (a new Warlock fights as before the trees). */
@@ -392,7 +437,8 @@ export const RESIST_STAT: Readonly<Record<Element, 'fireResist' | 'coldResist' |
 export function incomingDamage(raw: number, type: DamageType, defense: number, level: number, resists: Partial<Record<Element, number>> = {}): number {
   if (!(raw > 0)) return 0;
   if (type === 'physical') return defense > 0 ? Math.max(1, Math.round(raw * (1 - defenseReduction(defense, level)))) : Math.round(raw);
-  const r = Math.max(0, Math.min(MAX_KEEPER_RESIST, resists[type] ?? 0));
+  // A curse can take a resist below zero (Hollow Ward, a whisper): then the element bites harder, as D2's does.
+  const r = Math.max(MIN_RESIST, Math.min(MAX_KEEPER_RESIST, resists[type] ?? 0));
   return Math.max(1, Math.round(raw * (1 - r / 100)));
 }
 
@@ -440,8 +486,9 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
     defense: g(gear.defense) + body.defense + Math.round(levelSteps(level) * body.defenseLevel),
     // Signed: a Grave-cold curse (shared/grave-goods) drains life slowly; the engine never lets it take the last point.
     lifeRegen: signed(gear.lifeRegen),
-    // All Resist is signed (a Hollow Ward curse or a whispering item takes some away); each resist floors at 0.
-    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.max(0, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + signed(gear.allResist)))])) as Record<Element, number>,
+    // All Resist is signed (a Hollow Ward curse or a whispering item takes some away), so a resist can fall below zero
+    // and that element then bites harder — the curse's "−15% All Resist" is a real price even with no resist worn.
+    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.max(MIN_RESIST, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + signed(gear.allResist)))])) as Record<Element, number>,
   };
 }
 

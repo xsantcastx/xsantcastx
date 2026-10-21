@@ -17,8 +17,9 @@ import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { BLANK_ID, BLANK_NAME, rollBlankDrop } from '../../shared/spellstones/spellstones.model';
 import { rollHuntGold } from '../../shared/economy/economy-curve';
 import { LOOT } from './td-fx';
-import { CRIT_MULT, MANA_REGEN, MAX_MANA, MAX_RANK, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
+import { CRIT_MULT, MANA_REGEN, MAX_MANA, MAX_RANK, SKILLS, castCd, castRank, castVars, incomingDamage, type SkillId } from './td-skills';
 import { NO_RELICS, type RelicTotals } from '../../shared/rpg/boss-uniques';
+import { AURA_PULSE, auraEffect, type AuraEffect, type AuraId } from '../../shared/loot/auras';
 import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
@@ -1735,10 +1736,11 @@ export interface Mob {
   /** The Ashguard (td-ashguard-skills): stunned by a Shield Bash, taunted by a Watch Cry (seconds left). */
   stun?: number;
   taunt?: number;
-  /** The Ember Brand's burn on it: seconds left, the tick timer, the damage each tick. */
+  /** The Ember Brand's burn on it: seconds left, the tick timer, the burn still owed and the ticks left to pay it (so the whole burn the card names lands). */
   brandT?: number;
   brandTick?: number;
   brandDps?: number;
+  brandTicks?: number;
   /** The Lanternwright's Dawn at Noon: seconds it stays unveiled (it takes more from every hit meanwhile). */
   revealT?: number;
   /** The Thornstrider (td-thorn-skills): rooted by a snare or a trap (seconds left: it stands, it still bites). */
@@ -1946,7 +1948,9 @@ export const DAWN_REVEAL = 15;
 const MOB_REACH = 18;      // a creature's bite
 const RESPAWN = 75;        // seconds until a spawn comes back
 const DESPAWN = 300;       // seconds a drop lies on the ground
-const CORPSE_SECS = 20;    // a kill's corpse stays fresh for Raise Skeleton this long
+const CORPSE_SECS = 20;
+/** How near the Keeper a worn aura reaches (art px): 4 tiles, the skill auras' size (the Loot sheet says "near you"). */
+export const ITEM_AURA_REACH = 4 * TILE;    // a kill's corpse stays fresh for Raise Skeleton this long
 const MINION_SIGHT = 6 * TILE;
 const MINION_LEASH = 9 * TILE;
 const MINION_SPEED = 52;
@@ -2025,8 +2029,7 @@ export class MobSystem {
   rank(id: SkillId): number {
     // A Spellstone going off (useStone): the spell at the stone's own rank, whatever the trees hold.
     if (this.stone?.id === id) return this.stone.rank;
-    const base = this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1;
-    return base > 0 ? Math.min(MAX_RANK, base + (this.relics.ranks[id] ?? 0)) : 0;
+    return castRank(id, this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1, this.relics);
   }
   /**
    * The worn boss uniques' signatures (shared/rpg/boss-uniques.ts relicTotals; the host hands them in): extra ranks,
@@ -2034,8 +2037,23 @@ export class MobSystem {
    */
   relics: RelicTotals = NO_RELICS;
   setRelics(r: RelicTotals): void { this.relics = r; this.varsAt.clear(); }
+  /**
+   * The aura a worn Socket Word or named unique grants (shared/loot/auras; the Loot sheet picks which one runs), as
+   * the top-down fight carries it out: Might lifts every hit; Conviction strips resistance off foes near the Keeper
+   * (they have none to spare, so each point is a point more damage, D2's negative resist); Redemption heals on a death
+   * near him; the Holy auras pulse every AURA_PULSE seconds on everything near (Freeze slows it too); Fanaticism
+   * quickens the basic attack; Prayer heals each second; Vigor quickens the feet (td-engine walkSpeed).
+   */
+  itemAura: { id: AuraId; level: number; fx: AuraEffect } | null = null;
+  setItemAura(a: { id: AuraId; level: number } | null): void { this.itemAura = a ? { id: a.id, level: a.level, fx: auraEffect(a.id, a.level) } : null; }
+  private itemAuraT = 0;
+  private prayerOwed = 0;
+  /** Fanaticism's quicker basic attack (1 without it). */
+  get fanaticism(): number { return this.itemAura?.fx.attackSpeed ?? 1; }
+  /** Is a creature inside the worn aura's reach? */
+  private inItemAura(m: { x: number; y: number }): boolean { const p = this.host.player(); return !!this.itemAura && Math.hypot(m.x - p.x, m.y - p.y) <= ITEM_AURA_REACH; }
   /** A spell's cooldown now (before cast speed): its own, less what a boss unique cuts from it. */
-  cdOf(id: SkillId): number { return Math.max(.5, SKILLS[id].cd - (this.relics.cdCut[id] ?? 0)); }
+  cdOf(id: SkillId): number { return castCd(id, this.relics); }
   /** The Light spell: seconds it still burns, and how many tiles it adds to the Keeper's light. */
   lightT = 0;
   lightTiles = 0;
@@ -2051,13 +2069,14 @@ export class MobSystem {
   v(id: SkillId): Record<string, number> {
     let got = this.varsAt.get(id);
     if (!got) {
-      got = skillVars(id, this.rank(id), this.bought);
+      // The card's numbers exactly (td-skills castVars: rank, synergies, what worn gear adds), then the sky's hand.
+      got = castVars(id, this.rank(id), this.bought, this.relics);
       // The sky's hand on the spell (td-phases.ts): Shadow stronger after dark and under an eclipse, Ember by day.
       const k = spellMult(SKILLS[id].tree, this.phase);
       if (k !== 1) {
         got = { ...got };
         // Damage (and the Hearth's heal) by the sky's hand: whole blows stay whole, a rate keeps a tenth.
-        for (const key of skyVars(SKILLS[id].tree)) if (key in got) got[key] = key === 'dps' || key === 'heal' ? Math.round(got[key] * k * 10) / 10 : Math.max(1, Math.round(got[key] * k));
+        for (const key of skyVars(SKILLS[id].tree)) if (key in got) got[key] = key === 'dps' || key === 'heal' || key === 'regen' ? Math.round(got[key] * k * 10) / 10 : Math.max(1, Math.round(got[key] * k));
       }
       this.varsAt.set(id, got);
     }
@@ -2313,7 +2332,7 @@ export class MobSystem {
     if (this.lamp) {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const kv = this.v('kindle');
-        this.swing = SKILLS['kindle'].cd / (1 + this.agility) / (1 + this.castSpeed);
+        this.swing = SKILLS['kindle'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
         this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']), age: 0, lamp: true });
         this.flares++;
         this.host.swung(foe);
@@ -2324,7 +2343,7 @@ export class MobSystem {
     if (this.thorn) {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const tv = this.v('thorn-shot');
-        this.swing = SKILLS['thorn-shot'].cd / (1 + this.agility) / (1 + this.castSpeed);
+        this.swing = SKILLS['thorn-shot'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
         this.looseArrow(foe, rnd(tv['min'], tv['max']));
         this.host.swung(foe);
       }
@@ -2333,7 +2352,7 @@ export class MobSystem {
     // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
-      this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed);
+      this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
       const bv = this.v('ember-bolt');
       this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult, age: 0 });
       this.host.swung(foe);
@@ -2364,14 +2383,19 @@ export class MobSystem {
     for (const m of [...this.mobs]) {
       if (m.cursed > 0) {
         m.cursed -= dt; m.burnT -= dt;
-        if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, this.v('ember-curse')['dps'] * this.fireMult, '#ff9a4a'); if (m.hp <= 0) continue; }
+        // A whole second's burn each tick; when the curse runs out between ticks, the part of a second it still held
+        // burns too, so "{{dps}} a second for {{secs}} seconds" is all of it (9.6 s is 9.6 seconds' burn, not 9).
+        const part = m.burnT <= 0 ? 1 : m.cursed <= 0 ? 1 - m.burnT : 0;
+        if (part > 0) { m.burnT = 1; this.hitFoe(m, this.v('ember-curse')['dps'] * this.fireMult * part, '#ff9a4a'); if (m.hp <= 0) continue; }
       }
       if ((m.brandT ?? 0) > 0) {
         m.brandT = (m.brandT ?? 0) - dt; m.brandTick = (m.brandTick ?? 1) - dt;
         if (m.brandTick <= 0) {
           m.brandTick = 1;
           this.effects.push({ kind: 'flame', x: m.x + rnd(-3, 3), y: m.y - 2, age: 0, life: .4, dir: 1 });
-          this.hitFoe(m, (m.brandDps ?? 0) * this.fireMult, '#ff9a4a');
+          const left = Math.max(1, m.brandTicks ?? 1), pay = left <= 1 ? m.brandDps ?? 0 : Math.round((m.brandDps ?? 0) / left);
+          m.brandDps = (m.brandDps ?? 0) - pay; m.brandTicks = left - 1;
+          if (pay > 0) this.hitFoe(m, pay * this.fireMult, '#ff9a4a');
           if (m.hp <= 0) continue;
         }
       }
@@ -2411,6 +2435,7 @@ export class MobSystem {
       const whole = Math.floor(this.regenOwed);
       if (whole > 0) { this.regenOwed -= whole; this.host.healPlayer(whole); }
     }
+    this.tickItemAura(dt);
     if (this.lamp) this.tickLamp(dt);
     this.updateArrows(dt);
     if (this.thorn || this.beasts.length) this.tickThorn(dt);
@@ -2542,7 +2567,8 @@ export class MobSystem {
     }
   }
 
-  private hitFoe(foe: Mob, raw: number, color: string): void {
+  /** Returns the life the blow took (after spell power, a crit and a Stone Skin), 0 on a foe already down. */
+  private hitFoe(foe: Mob, raw: number, color: string): number {
     // Worn boss uniques: the Hammer bites constructs harder; the Censer's ink makes a stained foe take more, and stains.
     if (this.relics.construct > 0 && isConstruct(foe.def.id)) raw *= 1 + this.relics.construct / 100;
     const ink = this.relics.ink;
@@ -2553,6 +2579,8 @@ export class MobSystem {
     }
     // Unveiled by Dawn at Noon: it takes more from every hit while the daylight holds it.
     if ((foe.revealT ?? 0) > 0) raw *= 1 + DAWN_REVEAL / 100;
+    // The worn aura: Might lifts every hit; Conviction's lost resistance is that much more damage on a foe near.
+    if (this.itemAura) { raw *= this.itemAura.fx.damage; if (this.itemAura.fx.resistLower > 0 && this.inItemAura(foe)) raw *= 1 + this.itemAura.fx.resistLower / 100; }
     const crit = this.crit > 0 && Math.random() < this.crit;
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
@@ -2566,18 +2594,18 @@ export class MobSystem {
       const whole = Math.floor(this.bloodOwed);
       if (whole > 0) { this.bloodOwed -= whole; this.host.healPlayer(whole); }
     }
-    this.hurtMob(foe, dmg, color, crit);
+    return this.hurtMob(foe, dmg, color, crit);
   }
   /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
   smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff'); }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
-  private hurtMob(foe: Mob, dmg: number, color: string, crit = false): void {
-    if (foe.hp <= 0) return;
+  private hurtMob(foe: Mob, dmg: number, color: string, crit = false): number {
+    if (foe.hp <= 0) return 0;
     // Stone Skin turns part of every hit aside.
     if (foe.take !== undefined && foe.take < 1) dmg = Math.max(1, Math.round(dmg * foe.take));
     foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
-    if (foe.hp <= 0) { this.kill(foe); return; }
+    if (foe.hp <= 0) { this.kill(foe); return dmg; }
     const call = foe.def.summon;
     if (call && !foe.summoned && foe.hp <= foe.def.hp * call.at && MOBS[call.type]) {
       foe.summoned = true;
@@ -2588,6 +2616,7 @@ export class MobSystem {
         this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL });
       }
     }
+    return dmg;
   }
   /**
    * A blow or a shot landing on the Keeper (§6): worn Defense turns a share of a physical one aside, a worn resist
@@ -2727,6 +2756,25 @@ export class MobSystem {
     }
   }
 
+  /** The worn aura each frame: the Holy pulses on everything near, Prayer's life back each second. */
+  private tickItemAura(dt: number): void {
+    const a = this.itemAura;
+    if (!a) return;
+    if (a.fx.regen > 0) {
+      this.prayerOwed += a.fx.regen * dt;
+      const whole = Math.floor(this.prayerOwed);
+      if (whole > 0) { this.prayerOwed -= whole; this.host.healPlayer(whole); }
+    }
+    if (!(a.fx.pulseDamage > 0)) return;
+    this.itemAuraT -= dt;
+    if (this.itemAuraT > 0) return;
+    this.itemAuraT = AURA_PULSE;
+    const p = this.host.player(), el = a.id === 'holy-fire' ? 'ember' as const : a.id === 'holy-freeze' ? 'life' as const : 'lamp' as const;
+    this.effects.push({ kind: 'wave', el, x: p.x, y: p.y, age: 0, life: .5, dir: 1, r: ITEM_AURA_REACH });
+    // The card's number exactly ("{{n}} fire damage every 1.5 s"): not the Keeper's spell power, not a crit.
+    for (const m of [...this.mobs]) if (this.inItemAura(m)) this.hurtMob(m, a.fx.pulseDamage, a.id === 'holy-freeze' ? '#8fd8ff' : a.id === 'holy-shock' ? '#ffe36d' : '#ff8a3d');
+  }
+
   /** The Spellstone going off now (useStone), or null. */
   private stone: { id: SkillId; rank: number } | null = null;
   /**
@@ -2765,10 +2813,10 @@ export class MobSystem {
     if (id === 'drain-life') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
-      const dmg = rnd(v['min'], v['max']);
       this.effects.push({ kind: 'drain', x: foe.x, y: foe.y - foe.def.h / 2, tx: p.x, ty: p.y - 20, age: 0, life: .65, dir: 1 });
-      this.hitFoe(foe, dmg, '#ff7a6a');
-      const heal = Math.round(dmg * v['heal'] / 100);
+      // "Heals you for {{heal}}% of it": of the life it really pulled (spell power, a crit and all), not of the bare roll.
+      const pulled = this.hitFoe(foe, rnd(v['min'], v['max']), '#ff7a6a');
+      const heal = Math.round(pulled * v['heal'] / 100);
       this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a');
       this.host.swung(foe);
     } else if (id === 'ember-curse') {
@@ -2787,7 +2835,7 @@ export class MobSystem {
       if (!foe) return 'nofoe';
       const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
       this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .15, dir: 1 });
-      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: (v['range'] + this.relics.spearRange) * TILE / SPEAR_SPEED, hit: [] });
+      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [] });
       this.host.swung(foe);
     } else if (id === 'raise-skeleton') {
       // From the fresh dead nearest the Keeper first; with none, out of the ground at his side.
@@ -2808,7 +2856,7 @@ export class MobSystem {
         this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null });
         this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
       }
-      capMinions(this.minions, v['max'] + this.relics.raisedMax);
+      capMinions(this.minions, v['cap']);
       this.host.swung(null);
     } else if (id === 'dark-ward') {
       this.ward = v['absorb']; this.wardT = v['secs'];
@@ -2873,7 +2921,7 @@ export class MobSystem {
       this.host.swung(null);
     } else if (id === 'bone-storm') {
       // A fan of spears at the foe; with none in reach, a ring of them all round.
-      const foe = foeInRange(), n = Math.max(1, v['count'] + this.relics.spears), sx = p.x, sy = p.y - 16;
+      const foe = foeInRange(), n = Math.max(1, v['count']), sx = p.x, sy = p.y - 16;
       const base = foe ? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx) : 0;
       for (let i = 0; i < n; i++) {
         const a = foe ? base + (i - (n - 1) / 2) * .22 : i / n * Math.PI * 2;
@@ -2921,7 +2969,7 @@ export class MobSystem {
   /** The basic attack: one swing of the Watch Blade in an arc toward the foe (the Ember Brand lights it while it burns). */
   private swingBlade(foe: Mob): void {
     const p = this.host.player(), v = this.v('watch-blade');
-    this.swing = SKILLS['watch-blade'].cd / (1 + this.agility) / (1 + this.castSpeed);
+    this.swing = SKILLS['watch-blade'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
     this.strike(Math.atan2(foe.y - p.y, foe.x - p.x), v['reach'] * TILE, v['arc'], 100, false, foe);
     this.swings++;
     this.host.swung(foe);
@@ -2944,7 +2992,7 @@ export class MobSystem {
       if (lit) blow *= this.fireMult;
       this.effects.push({ kind: 'slash', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .2, dir: m.x < p.x ? -1 : 1 });
       this.hitFoe(m, blow, lit ? '#ffb347' : '#f3e7cf');
-      if (brand && m.hp > 0) { m.brandT = 3; m.brandTick = 1; m.brandDps = Math.max(1, Math.round(brand['burn'] / 3)); }
+      if (brand && m.hp > 0) { m.brandT = 3; m.brandTick = 1; m.brandDps = brand['burn']; m.brandTicks = 3; }
       n++;
     }
     return n;
@@ -3031,8 +3079,10 @@ export class MobSystem {
 
   /** A creature's pace: a Hearth Circle's ground slows whatever walks in it. */
   private paceOf(m: Mob): number {
-    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return 1 - z.max / 100;
-    return 1;
+    // Holy Freeze (a worn aura) slows whatever walks near the Keeper.
+    const frozen = this.itemAura && this.itemAura.fx.slow > 0 && this.inItemAura(m) ? 1 - this.itemAura.fx.slow : 1;
+    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return (1 - z.max / 100) * frozen;
+    return frozen;
   }
   /** Is the Keeper standing in his own Hearth Circle (the Hush cannot rise there)? */
   get inHearth(): boolean { const p = this.host.player(); return this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r)); }
@@ -3505,6 +3555,8 @@ export class MobSystem {
     if (m.elite?.role === 'leader' || !m.elite) this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
     // Fire Enchanted: it bursts where it fell, after its ring has shown the reach.
     if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share) });
+    // Redemption (a worn aura): a creature that falls near the Keeper heals him.
+    if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.host.healPlayer(this.itemAura.fx.healPerCorpse);
     // Soul Harvest (passive): every kill gives back mana.
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     if (this.target === m) this.target = null;

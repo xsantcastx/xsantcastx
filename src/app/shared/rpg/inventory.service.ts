@@ -43,6 +43,7 @@ import {
   SLOT_IDS,
   slotAccepts,
   sumStats,
+  wornGoldFind,
 } from './item.model';
 import { wornStats } from '../enchanting/socket-words';
 import {
@@ -294,6 +295,14 @@ export class InventoryService {
   /** Summed stats of what the player wears. Excludes anything on an explorer. */
   get equippedTotals(): Required<ItemStats> {
     return this.snapshot.totals;
+  }
+
+  /**
+   * Gold Find from the player's own equipped items, each read as its card shows it (item.model wornGoldFind: an old
+   * piece's retired Gold/sec converted piece by piece, its runes and Socket Word in).
+   */
+  get equippedGoldFind(): number {
+    return wornGoldFind(this.snapshot.items.filter(i => i.equipped && !i.explorerId).map(wornStats));
   }
 
   /** Magic Find from the player's own equipped items. */
