@@ -56,7 +56,7 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Firestore, collection, deleteDoc, doc, getDoc, getDocs,
-  limit, orderBy, query, setDoc,
+  limit, orderBy, query, setDoc, updateDoc,
 } from '@angular/fire/firestore';
 
 import {
@@ -74,6 +74,34 @@ import {
   SITE_CONFIG_COLLECTION, SiteNotice,
   coerceAuditEntry, coerceBan, coerceDirectoryEntry, coerceNotice,
 } from '../shared/cloud-save/gm.model';
+
+/**
+ * Player reports, filed by the Hearth room server (protocol 4; docs/design/online.md §3.9) with the reported Keeper's
+ * own last public lines. Owner-read; the console marks them resolved (the only change the rule allows) or deletes them.
+ */
+export const REPORTS_COLLECTION = 'player-reports';
+export interface PlayerReport {
+  id: string; at: number | null; status: 'open' | 'resolved'; reason: string; note: string;
+  from: { uid: string | null; name: string; guest: boolean };
+  about: { uid: string | null; name: string; guest: boolean; area: string };
+  lines: { text: string; at: number }[];
+}
+const str = (v: unknown, max = 200): string => (typeof v === 'string' ? v.slice(0, max) : '');
+const who = (v: unknown): { uid: string | null; name: string; guest: boolean } => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return { uid: typeof o['uid'] === 'string' ? o['uid'] : null, name: str(o['name'], 40) || 'Keeper', guest: o['guest'] === true };
+};
+const millis = (v: unknown): number | null => {
+  if (typeof v === 'number') return v;
+  if (v && typeof (v as { toMillis?: unknown }).toMillis === 'function') return (v as { toMillis: () => number }).toMillis();
+  return null;
+};
+export function coerceReport(id: string, raw: Record<string, unknown>): PlayerReport {
+  const about = who(raw['about']);
+  const area = str(((raw['about'] ?? {}) as Record<string, unknown>)['area'], 60);
+  const lines = Array.isArray(raw['lines']) ? raw['lines'].slice(-10).map(l => ({ text: str((l as Record<string, unknown>)?.['text'], 240), at: Number((l as Record<string, unknown>)?.['at']) || 0 })) : [];
+  return { id, at: millis(raw['at']), status: raw['status'] === 'resolved' ? 'resolved' : 'open', reason: str(raw['reason'], 20) || 'other', note: str(raw['note']), from: who(raw['from']), about: { ...about, area }, lines };
+}
 
 /** Flat, owner-only index of who is banned. See the rule for why it is separate. */
 const BAN_INDEX_COLLECTION = 'admin-bans';
@@ -255,6 +283,18 @@ export class GmDataService {
     const rows: AuditEntry[] = [];
     snap.forEach(d => rows.push(coerceAuditEntry(d.id, d.data())));
     return rows;
+  }
+
+  /** Player reports, newest first (the Hearth files them; see REPORTS_COLLECTION). */
+  async reports(max = 50): Promise<PlayerReport[]> {
+    const snap = await getDocs(query(collection(this.firestore, REPORTS_COLLECTION), orderBy('at', 'desc'), limit(max)));
+    const rows: PlayerReport[] = [];
+    snap.forEach(d => rows.push(coerceReport(d.id, d.data())));
+    return rows;
+  }
+  /** Mark a report dealt with (the rule allows exactly this change). */
+  async resolveReport(id: string): Promise<void> {
+    await updateDoc(doc(this.firestore, REPORTS_COLLECTION, id), { status: 'resolved', resolvedAt: Date.now() });
   }
 
   async notice(): Promise<SiteNotice | null> {
