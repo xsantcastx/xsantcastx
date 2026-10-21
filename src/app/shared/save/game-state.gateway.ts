@@ -1401,6 +1401,17 @@ export class GameStateGateway {
     return moved;
   }
 
+  /**
+   * Every owner's memory to disk, then everything queued to the cloud, awaited — before a server reads this save (a
+   * trade or a drop checks the items and Gold the cloud holds, not what this tab holds). Throws when the push fails.
+   */
+  async syncNow(): Promise<void> {
+    if (!this.attached) return;
+    this.flushOwners();
+    this.cancelFlush();
+    await this.pushDirty({ batched: true });
+  }
+
   /** This device may write the save now (signed in and holding the lease): a trade must wait until it can. */
   get mayWriteCloud(): boolean { return this.attached && this.leases.mayWrite; }
 
