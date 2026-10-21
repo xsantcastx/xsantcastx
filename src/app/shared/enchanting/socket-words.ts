@@ -35,6 +35,7 @@
  */
 import { ITEM_STAT_KEYS, type GameItem, type ItemStats } from '../rpg/item.model';
 import { runeById, type RuneTier } from '../rune-forge/rune.model';
+import { graveStats } from '../grave-goods/grave-goods.model';
 import type { AuraId } from '../loot/auras';
 import {
   socketCountFor,
@@ -418,5 +419,12 @@ export function effectiveStats(item: GameItem, socketed: ItemStats): ItemStats {
  */
 export function wornStats(item: GameItem): ItemStats {
   const socketed = socketStats(item);
-  return effectiveStats(item, socketed);
+  const out = effectiveStats(item, socketed);
+  // A grave-good's curse or whisper (shared/grave-goods): its bonus and its cost ride on top of the roll.
+  if (!item.curse && !item.whisper) return out;
+  for (const [key, n] of Object.entries(graveStats(item)) as [keyof ItemStats, number][]) {
+    const total = Math.round(((out[key] ?? 0) + n) * 10) / 10;
+    if (total === 0) delete out[key]; else out[key] = total;
+  }
+  return out;
 }

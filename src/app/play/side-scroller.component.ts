@@ -205,6 +205,14 @@ import { HearthService, type FallSummary } from '../shared/hearth/hearth.service
 import { COLD_HEARTH_I18N } from '../shared/hearth/cold-hearth.i18n';
 import { HEARTH_GRACE_LEVEL } from '../shared/hearth/hearth-rules';
 import { HearthShrineComponent } from '../shared/hearth/hearth-shrine.component';
+import { SpellstoneService } from '../shared/spellstones/spellstone.service';
+import { SPELLSTONES_I18N } from '../shared/spellstones/spellstones.i18n';
+import { BLANK_ID, parseStoneKey, soulCap, stoneIcon, stoneRecipe } from '../shared/spellstones/spellstones.model';
+import { GraveGoodsService } from '../shared/grave-goods/grave-goods.service';
+import { GRAVE_I18N } from '../shared/grave-goods/grave-goods.i18n';
+import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
+import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
+import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
 import { lootEntry } from '../shared/loot/drop-tables';
 import { itemAuras } from '../shared/loot/aura-sources';
 import { socketCountFor } from '../shared/enchanting/socket.model';
@@ -331,6 +339,10 @@ interface ItemTip {
   tag: 'perfect' | 'flawless' | null;
   /** Blue lines: auras the piece carries, or a material's use. */
   specials: string[];
+  /** A cursed grave-good's block (shared/grave-goods): its name, the gift, the price, and who lays it to rest. */
+  curse?: { name: string; lines: string[]; rest: boolean; lore: string };
+  /** A whispering item's block: the words woken so far, how awake, the cost, and whether it was silenced. */
+  whisper?: { words: string; lines: string[]; silenced: boolean };
   sockets: (string | null)[];
   value: number;
   bound: boolean;
@@ -341,7 +353,7 @@ interface ItemTip {
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
 interface OpenPlace {
-  kind: 'page' | 'waystone' | 'chest' | 'slate' | 'shrine'; stationId: string; title: string; kicker: string;
+  kind: 'page' | 'waystone' | 'chest' | 'slate' | 'shrine' | 'sexton' | 'archivist'; stationId: string; title: string; kicker: string;
   chest?: { areaId: string; index: number };
   /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
   own?: true;
@@ -386,7 +398,7 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
   fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
 };
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -501,6 +513,7 @@ export class SideScrollerComponent implements OnDestroy {
   private wakeTimer: ReturnType<typeof setTimeout> | undefined;
   private lastFall: FallSummary | null = null;
   private hearthSub?: Subscription;
+  private unStonesHook: () => void = () => undefined;
   /** Kills whose XP already paid the debt this session (a replayed kill never pays twice). */
   private readonly debtKills = new Set<string>();
   private rulesKey = '';
@@ -914,6 +927,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(SOUND_I18N);
     this.i18n.register(LOOT_I18N);
     this.i18n.register(COLD_HEARTH_I18N);
+    this.i18n.register(SPELLSTONES_I18N);
+    this.i18n.register(GRAVE_I18N);
     this.i18n.register(ONE_WORLD_I18N);
     this.i18n.register(TRAVEL_MAP_I18N);
     this.keeperKey = ''; this.marksKey = '';
@@ -1060,6 +1075,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.heights.refresh();
     this.hearthSub?.unsubscribe();
     if (this.topDown) this.hearthSub = this.hearth.state$.subscribe(h => this.tdHearth?.setHearths?.({ lit: h.lit, wake: h.wake, blessings: h.blessings.length }));
+    // The screenshot specs' hook (`?fxstones=1`, only under an automated browser): Soul, blanks, grave-goods.
+    this.unStonesHook(); this.unStonesHook = this.topDown ? installStonesHook({ stones: this.spellstones, inventory: this.inventory }) : () => undefined;
     this.bindPointer(canvas);
     this.engine.start();
     if (this.panel && this.panel.kind !== 'slate') this.engine.setPaused(true);
@@ -1532,6 +1549,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Menu → Loot & Combat. */
   openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
+    this.unStonesHook();
     this.inventory.setWearCheck(null);
     this.companions.flush();
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
@@ -1804,7 +1822,7 @@ export class SideScrollerComponent implements OnDestroy {
   bookTree: TreeId = 'ember';
   bookPick: SkillId | null = null;
   respecAsk = false;
-  private get tdEngine(): { abilities?: readonly { id: string; key: string; left: number; mana: number; ready: boolean }[]; mana?: number; aura?: string | null; useAbility?: (id: string) => string | null; setSkillLoadout?: (bar: readonly string[], aura: string | null) => void } | undefined {
+  private get tdEngine(): { abilities?: readonly { id: string; key: string; left: number; mana: number; ready: boolean }[]; mana?: number; aura?: string | null; useAbility?: (id: string) => string | null; castStone?: (id: string, rank: number) => string | null; setSkillLoadout?: (bar: readonly string[], aura: string | null) => void } | undefined {
     return this.engine as never;
   }
   private tickAbilities(): void {
@@ -1828,6 +1846,8 @@ export class SideScrollerComponent implements OnDestroy {
     (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     this.tdBelt = this.potions.belt(performance.now() / 1000);
+    this.tdStone = this.spellstones.slotted(performance.now() / 1000);
+    this.tdSoul = this.spellstones.state.soul;
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
     this.tdAura = e?.aura ?? null;
     const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
@@ -1851,6 +1871,99 @@ export class SideScrollerComponent implements OnDestroy {
     this.tickAbilities();
     this.focusWorld();
   }
+  // ── Spellstones (shared/spellstones) ──
+  private readonly spellstones = inject(SpellstoneService);
+  private readonly graveGoods = inject(GraveGoodsService);
+  /** The stone on the belt's Spellstone slot (F), or null; and the Soul held (by the mana bar). */
+  tdStone: { key: string; skill: string; rank: number; charges: number; left: number } | null = null;
+  tdSoul = 0;
+  get soulMax(): number { return soulCap(this.huntingLevel); }
+  stoneArt(skill: string): string { return this.art(stoneIcon(TD_SKILLS[skill as SkillId]?.tree ?? 'common')); }
+  stoneTitle(st: { skill: string; rank: number; charges: number } | null): string {
+    if (!st) return this.t('play.stone.slotEmpty');
+    return this.t('play.stone.slotTitle', { name: this.t(`skill.${st.skill}`), rank: st.rank, n: st.charges });
+  }
+  /** F, or the belt's stone: the slotted Spellstone's spell at its rank, no mana. A charge is spent only if it went off. */
+  useStone(): void {
+    if (!this.topDown) return;
+    const st = this.spellstones.slotted(performance.now() / 1000);
+    if (!st) { this.message = this.t('play.stone.slotEmpty'); this.focusWorld(); return; }
+    const res = this.spellstones.use(st.key, performance.now() / 1000, (skill, rank) => { const cast = this.tdEngine?.castStone; return cast ? cast(skill, rank) : 'locked'; });
+    if (res === 'ok') {
+      const left = this.spellstones.state.pouch[st.key] ?? 0, name = this.t(`skill.${st.skill}`);
+      this.message = left > 0 ? this.t('play.stone.cast', { name, rank: st.rank, n: left }) : this.t('play.stone.spent', { name });
+      this.canvas?.nativeElement.setAttribute('data-stone-cast', `${st.skill}@${st.rank}`);
+    } else if (res === 'cooldown') this.message = this.t('play.stone.cooldown');
+    else if (res !== 'none') this.message = this.t(`play.td.ability.${res}`);
+    this.tickAbilities();
+    this.focusWorld();
+  }
+  /** The Spellbook's inscribing row for an active spell: the recipe, what it gives, what is held, and whether it can be cut. */
+  stoneView(id: string): { soul: number; charges: number; rank: number; held: number; blanks: number; onBelt: boolean; why: string } | null {
+    const sk = TD_SKILLS[id as SkillId];
+    if (!sk || sk.kind !== 'active') return null;
+    const rank = this.skillRanks[id as SkillId] ?? 0, r = stoneRecipe(sk.mana), s = this.spellstones.state, blanks = this.spellstones.blanks;
+    const key = `${id}@${Math.max(1, rank)}`;
+    const why = rank < 1 ? this.t('play.stone.need.rank') : blanks < r.blanks ? this.t('play.stone.need.blank') : s.soul < r.soul ? this.t('play.stone.need.soul', { n: r.soul }) : '';
+    return { soul: r.soul, charges: r.charges, rank: Math.max(1, rank), held: s.pouch[key] ?? 0, blanks, onBelt: s.slot === key, why };
+  }
+  inscribeStone(id: string): void {
+    const sk = TD_SKILLS[id as SkillId];
+    if (!sk) return;
+    const rank = this.skillRanks[id as SkillId] ?? 0;
+    const code = this.spellstones.inscribe(id, rank, sk.mana);
+    const v = this.stoneView(id);
+    this.message = code === 'ok' ? this.t('play.stone.inscribed', { name: this.t(`skill.${id}`), rank, n: stoneRecipe(sk.mana).charges })
+      : code === 'blank' ? this.t('play.stone.need.blank') : code === 'soul' ? this.t('play.stone.need.soul', { n: v?.soul ?? 0 })
+      : code === 'rank' ? this.t('play.stone.need.rank') : '';
+    if (code === 'ok') this.sound.sfx('five');
+    this.tickAbilities();
+  }
+  beltStone(id: string): void {
+    const rank = Math.max(1, this.skillRanks[id as SkillId] ?? 0);
+    this.spellstones.slot(`${id}@${rank}`);
+    this.tickAbilities();
+  }
+  /** A kill: Soul, and the whispering items' count (a piece of the sentence woken says itself in the chat). */
+  private stonesKill(creature: string): void {
+    const level = MOBS[creature]?.level ?? this.huntingLevel;
+    this.spellstones.kill(this.huntingLevel, level, this.skillRanks['soul-harvest'] ?? 0);
+    for (const w of this.graveGoods.kill()) {
+      const id = w.item.whisper?.id;
+      if (id && isWhisperId(id)) this.toastLoot(this.t('grave.woke', { name: w.item.name, line: this.t(`grave.whisper.${id}.${w.stage}`) }));
+    }
+  }
+  /** The card's grave-good blocks: a curse's gift and price (or "Laid to rest."), a whisper's words so far and its cost. */
+  private graveTip(item: GameItem): Pick<ItemTip, 'curse' | 'whisper'> {
+    const out: Pick<ItemTip, 'curse' | 'whisper'> = {};
+    const c = item.curse;
+    if (c && isCurseId(c.id)) {
+      const def = CURSES[c.id as CurseId], lines: string[] = [];
+      lines.push(this.t('grave.tip.gift', { n: c.cleansed ? Math.round(c.bonus * 5) / 10 : c.bonus, stat: ITEM_STAT_LABELS[def.bonus] }));
+      if (!c.cleansed) lines.push(def.cost === 'lifeRegen' ? this.t('grave.tip.drain', { n: c.cost }) : this.t('grave.tip.price', { n: c.cost, stat: ITEM_STAT_LABELS[def.cost] }));
+      lines.push(this.t(c.cleansed ? 'grave.tip.rest' : 'grave.tip.sexton'));
+      out.curse = { name: this.t('grave.tip.cursed', { name: this.t(`grave.curse.${c.id}.name`) }), lines, rest: !!c.cleansed, lore: this.t(`grave.curse.${c.id}.lore`) };
+    }
+    const w = item.whisper;
+    if (w && isWhisperId(w.id)) {
+      const def = WHISPERS[w.id as WhisperId], stage = whisperStage(w), next = nextWhisperAt({ ...w, id: w.id as WhisperId });
+      const words = Array.from({ length: 4 }, (_, i) => (i <= stage ? this.t(`grave.whisper.${w.id}.${i}`) : '…')).join(' ');
+      const lines = [this.t('grave.tip.awake', { n: stage + 1, v: Math.round(def.per * stage * 10) / 10, stat: ITEM_STAT_LABELS[def.stat] })];
+      if (stage >= 3) lines.push(this.t('grave.tip.full', { who: this.t(`grave.whisper.${w.id}.who`) }));
+      else if (next !== null) lines.push(this.t('grave.tip.next', { k: next, have: w.kills }));
+      lines.push(w.silenced ? this.t('grave.tip.silenced') : this.t('grave.tip.listening', { n: WHISPER_COST }));
+      if (!w.silenced) lines.push(this.t('grave.tip.archivist'));
+      out.whisper = { words, lines, silenced: !!w.silenced };
+    }
+    return out;
+  }
+  /** Sexton Wren's cleansing or the Archivist's silence, in the place panel. */
+  openGraveDesk(role: 'sexton' | 'archivist'): void {
+    if (!this.browser) return;
+    this.closeTalk();
+    this.showPanel({ kind: role, stationId: role, title: this.t(`grave.${role}.title`), kicker: role === 'sexton' ? 'Sexton Aldous Wren' : this.t('grave.archivist.name') });
+  }
+
   /** The belt slot's tooltip: the potion, its key, what it does. */
   beltTitle(slot: BeltSlot): string {
     const key = ` (${slot.key})`;
@@ -2254,6 +2367,8 @@ export class SideScrollerComponent implements OnDestroy {
 
   /** A task giver was spoken to (their own spot: beside a keeper's counter, or where they stand). A stall keeper keeps a Trade button. */
   private talkTo(keeperId: string): boolean {
+    // The Archivist (shared/grave-goods): no tasks; speaking to him opens his desk, where whispers are silenced.
+    if (this.topDown && keeperId === 'archivist') { this.openGraveDesk('archivist'); return true; }
     if (!this.topDown || !this.townTasks.isGiver(keeperId)) return false;
     const view = this.townTasks.talk(keeperId);
     const stall = this.engine?.places.find(p => TOWN_KEEPERS.infernal.some(k => k.id === keeperId && (k.station === p.id || (k.serves ?? []).includes(p.id)))) ?? null;
@@ -3090,6 +3205,8 @@ export class SideScrollerComponent implements OnDestroy {
     else if ((event.code === 'KeyQ' || event.code === 'KeyR') && this.topDown && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault(); this.drinkPotion(event.code === 'KeyQ' ? 'health' : 'mana');
     }
+    // The belt's Spellstone slot (shared/spellstones): F casts the slotted stone.
+    else if (event.code === 'KeyF' && this.topDown && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); this.useStone(); }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
     else if (event.code === 'KeyM' && this.topDown) { event.preventDefault(); this.togglePlaces(); }
@@ -4064,6 +4181,7 @@ export class SideScrollerComponent implements OnDestroy {
       ],
       sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
       reqs: this.reqLines(item),
+      ...this.graveTip(item),
     };
   }
   /** The card's requirement lines; a level of 1 with no attribute says nothing. */
@@ -4929,6 +5047,9 @@ export class SideScrollerComponent implements OnDestroy {
       this.pets.count(`kill:${event.areaId}`);
     }
     // A gate boss on this tier opens the next one (shared/loot/difficulty.model.ts).
+    // Spellstones (shared/spellstones): a kill near the Keeper's level gives Soul; Soul Harvest's ranks give more.
+    // Whispering items worn count it, and may wake a piece of their sentence (shared/grave-goods).
+    if (this.topDown) this.stonesKill(event.creature);
     const opened = this.loot.killed(event.creature);
     if (opened) this.message = this.t('play.loot.unlocked', { tier: this.t('loot.tier.' + opened) });
     const base = Math.round(huntingXpFor(event.hp) * (event.xp ?? 1));

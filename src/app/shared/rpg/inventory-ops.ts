@@ -18,9 +18,12 @@ import {
   RETIRED_CHARM_TAG,
   canonicalizeSlot,
   type GameItem,
+  type GraveCurse,
+  type GraveWhisper,
   type ItemType,
   type SlotId,
 } from './item.model';
+import { parseCurse, parseWhisper } from '../grave-goods/grave-goods.model';
 import {
   INVENTORY_ERA,
   INVENTORY_FOLD_ID_MEMORY,
@@ -135,6 +138,7 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     lastReforgeMutationId: item.lastReforgeMutationId,
     lastReforgeLock: item.lastReforgeLock,
     sockets: item.sockets ? [...item.sockets] : undefined,
+    ...graveFields(item),
   };
 }
 
@@ -165,7 +169,18 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lastReforgeMutationId: record.lastReforgeMutationId,
     lastReforgeLock: record.lastReforgeLock,
     sockets: record.sockets ? [...record.sockets] : undefined,
+    ...graveFields(record),
   };
+}
+
+/** A grave-good's curse and whisper, copied (shared/grave-goods); nothing at all for an ordinary item. */
+function graveFields(from: { curse?: GraveCurse; whisper?: GraveWhisper }): { curse?: GraveCurse; whisper?: GraveWhisper } {
+  return { ...(from.curse ? { curse: { ...from.curse } } : {}), ...(from.whisper ? { whisper: { ...from.whisper } } : {}) };
+}
+/** A saved curse and whisper, read strictly: junk is dropped, the item still loads (grave-goods.model.ts). */
+function parseGrave(raw: Record<string, unknown>): { curse?: GraveCurse; whisper?: GraveWhisper } {
+  const curse = parseCurse(raw['curse']), whisper = parseWhisper(raw['whisper']);
+  return { ...(curse ? { curse } : {}), ...(whisper ? { whisper } : {}) };
 }
 
 export function itemsFromLedger(ledger: InventoryLedger): GameItem[] {
@@ -299,6 +314,7 @@ export function parseGameItem(raw: unknown): GameItem | null {
     soulbound: raw['soulbound'] === true,
     definitionId: typeof raw['definitionId'] === 'string' ? raw['definitionId'] : undefined,
     sockets: parseSockets(raw['sockets']),
+    ...parseGrave(raw),
     ...parseUpgradeFields(raw),
   };
 }
@@ -763,6 +779,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     econ: ECONOMY_VERSION,
     location,
     sockets: parseSockets(raw['sockets']),
+    ...parseGrave(raw),
     ...parseUpgradeFields(raw),
   };
 }

@@ -14,6 +14,7 @@ import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
+import { BLANK_ID, BLANK_NAME, rollBlankDrop } from '../../shared/spellstones/spellstones.model';
 import { rollHuntGold } from '../../shared/economy/economy-curve';
 import { LOOT } from './td-fx';
 import { CRIT_MULT, MANA_REGEN, MAX_MANA, MAX_RANK, SKILLS, incomingDamage, skillVars, type SkillId } from './td-skills';
@@ -1909,6 +1910,8 @@ export class MobSystem {
   }
   /** A skill's rank: the tree's, plus what worn boss uniques add to a skill already learnt (never past MAX_RANK). */
   rank(id: SkillId): number {
+    // A Spellstone going off (useStone): the spell at the stone's own rank, whatever the trees hold.
+    if (this.stone?.id === id) return this.stone.rank;
     const base = this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1;
     return base > 0 ? Math.min(MAX_RANK, base + (this.relics.ranks[id] ?? 0)) : 0;
   }
@@ -2437,6 +2440,26 @@ export class MobSystem {
     }
   }
 
+  /** The Spellstone going off now (useStone), or null. */
+  private stone: { id: SkillId; rank: number } | null = null;
+  /**
+   * A Spellstone (shared/spellstones): the spell at the stone's rank, with no mana and no cooldown of its own — the
+   * spell's own cooldown and the Keeper's mana are left exactly as they were. Returns why not, or null when it went off.
+   */
+  useStone(id: SkillId, rank: number): ReturnType<MobSystem['useAbility']> {
+    const sk = SKILLS[id];
+    if (!sk || sk.kind !== 'active') return 'locked';
+    const mana = this.mana, cd = this.cooldowns[id];
+    this.stone = { id, rank: Math.max(1, Math.min(MAX_RANK, Math.floor(rank) || 1)) };
+    this.varsAt.delete(id); this.cooldowns[id] = 0; this.mana = mana + sk.mana;
+    let why: ReturnType<MobSystem['useAbility']>;
+    try { why = this.useAbility(id); } finally {
+      this.stone = null; this.varsAt.delete(id); this.mana = mana;
+      if (cd === undefined) delete this.cooldowns[id]; else this.cooldowns[id] = cd;
+    }
+    return why;
+  }
+
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
   useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | null {
     const sk = SKILLS[id];
@@ -2700,6 +2723,9 @@ export class MobSystem {
     // Now and then a potion (shared/potions): better ones from stronger creatures, a Rejuvenation rarely from the deep.
     const potion = rollPotionDrop(m.def.level, m.def.rank ?? 'normal', Math.random);
     if (potion) this.drops.push({ id: `${id}:p`, ...spot(n++), coins: 0, material: potion.id, qty: 1, label: potion.name, color: RARITY_COLOR.common, age: 0 });
+    // Now and then a Basalt Blank (shared/spellstones): the stone a Spellstone is cut from.
+    const blanks = rollBlankDrop(m.def.rank ?? 'normal', Math.random);
+    if (blanks) this.drops.push({ id: `${id}:b`, ...spot(n++), coins: 0, material: BLANK_ID, qty: blanks, label: BLANK_NAME, color: RARITY_COLOR.common, age: 0 });
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
     const rank = m.def.rank ?? 'normal';
