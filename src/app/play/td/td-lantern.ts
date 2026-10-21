@@ -27,7 +27,7 @@ export function lightBlow(raw: number, creature: string): number { return shadow
  * Tiles each class's own light reaches past the bare glow every Keeper carries: the Lanternwright's lantern on its pole.
  * (design-bible §4.3: "your light is a place".)
  */
-export const VOCATION_LIGHT: Readonly<Record<Vocation, number>> = { warlock: 0, ashguard: 0, lanternwright: 2 };
+export const VOCATION_LIGHT: Readonly<Record<Vocation, number>> = { warlock: 0, ashguard: 0, lanternwright: 2, thornstrider: 0 };
 
 /**
  * The tiles of light the Keeper carries past the bare glow: the class's lantern and the Lantern Aura while they are

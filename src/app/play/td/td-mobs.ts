@@ -30,6 +30,8 @@ import { ASHGUARD_SKILLS } from './td-ashguard-skills';
 import { LANTERN_SKILLS } from './td-lantern-skills';
 import { BANISH_BOSS, carriedLight, healOverTime, inDisc, lastLightClamp, lightBlow, shadowBorn, stepHeal, unmakes, type HealOverTime } from './td-lantern';
 import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, type WeaponSwing } from './td-melee';
+import { THORN_SKILLS } from './td-thorn-skills';
+import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 
 export interface MobDef {
   id: string;
@@ -1739,6 +1741,12 @@ export interface Mob {
   brandDps?: number;
   /** The Lanternwright's Dawn at Noon: seconds it stays unveiled (it takes more from every hit meanwhile). */
   revealT?: number;
+  /** The Thornstrider (td-thorn-skills): rooted by a snare or a trap (seconds left: it stands, it still bites). */
+  rootT?: number;
+  /** A Barbed Shot's bleed: seconds left, the tick timer, the whole life it loses each tick. */
+  bleedT?: number;
+  bleedTick?: number;
+  bleedDps?: number;
 }
 
 /**
@@ -1830,7 +1838,9 @@ export interface Spear { x: number; y: number; vx: number; vy: number; age: numb
 export interface Zone {
   kind: 'rain' | 'wall' | 'meteor' | 'whirl'
     // The Lanternwright (td-lantern-skills): a Hearth Circle on the ground, a disc of Dawn at Noon.
-    | 'hearth' | 'dawn';
+    | 'hearth' | 'dawn'
+    // The Thornstrider (td-thorn-skills): a Thornroot Snare's line of thorns, a Bramble Trap hidden on the ground.
+    | 'snare' | 'trap';
   x: number; y: number;
   /** Radius (art px): the rain's circle, the meteor's blast; a wall's reach either side of its line. */
   r: number;
@@ -1839,6 +1849,8 @@ export interface Zone {
   min: number; max: number;
   /** A wall's line, one point a tile. */
   pts?: { x: number; y: number }[];
+  /** A Thornroot Snare's catch: each creature it has rooted (it holds each once). */
+  caught?: Mob[];
 }
 
 export interface Drop {
@@ -1872,7 +1884,10 @@ export interface Effect {
     | 'arc' | 'brand' | 'bash' | 'oath' | 'cry' | 'stride' | 'vow'
     // The Lanternwright (td-lantern-fx.ts): a flare landing, the flash, Banish's column, a heal's glow, the ward's frame
     // and its break, a wisp called, a beacon planted, the dawn rising, the shutters, Last Light.
-    | 'kindle-hit' | 'lamp-flash' | 'banish' | 'hearthglow' | 'lward' | 'lward-break' | 'wisp-call' | 'beacon-plant' | 'dawn-rise' | 'shutter' | 'lastlight';
+    | 'kindle-hit' | 'lamp-flash' | 'banish' | 'hearthglow' | 'lward' | 'lward-break' | 'wisp-call' | 'beacon-plant' | 'dawn-rise' | 'shutter' | 'lastlight'
+    // The Thornstrider (td-thorn-fx.ts): an arrow striking, a barb's blood, the bow's twang, Command's mark, a beast
+    // called, the stampede's dust, thorns breaking the ground, a trap set and sprung, Rootwalk's moss.
+    | 'arrow-hit' | 'bleed' | 'loose' | 'command' | 'wild-call' | 'trample' | 'snare-rise' | 'trap-set' | 'trap-spring' | 'rootwalk';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
   /** A pulse's or a wave's element: the aura or spell that did the work (a wave is ember unless it says). */
   el?: 'ember' | 'life' | 'shadow' | 'bone' | 'brass' | 'lamp';
@@ -1891,6 +1906,28 @@ export interface Wisp { x: number; y: number; t: number; cd: number; a: number }
 /** A Beacon on its pole: where it stands, seconds left, its next mote. */
 export interface Beacon { x: number; y: number; t: number; cd: number }
 
+/**
+ * A Thornstrider's arrow in flight (td-thorn-skills): it seeks its foe until the first strike, then flies straight on;
+ * every foe in its line it strikes once — the first always, each further one only on a pierce. `barb`: a Barbed Shot's
+ * bleed rides on it.
+ */
+export interface Arrow {
+  x: number; y: number; vx: number; vy: number; age: number; life: number; dmg: number;
+  to: Mob | null; hit: Mob[]; pierce: number; knock: number; barb?: { dps: number; secs: number };
+}
+/**
+ * A beast of the wild (td-thorn-skills): one answering the Call of the Wilds (it hunts by the Keeper, `t` seconds), or
+ * one of a Stampede (it charges along its line, striking each foe once, and is gone at the line's end).
+ */
+export interface WildBeast {
+  kind: 'called' | 'stampede';
+  x: number; y: number; t: number; cd: number; face: 1 | -1; age: number;
+  dmg: [number, number];
+  target: Mob | null;
+  /** A stampede's run: its step a second, how far it still goes, the foes it has trampled, its knock (px). */
+  vx?: number; vy?: number; left?: number; hit?: Mob[]; knock?: number;
+}
+
 
 /** The ladder's colours on the ground (labels, the name that floats up on pick-up): the `--cozy-loot-*` tokens via td-fx. */
 export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
@@ -1899,6 +1936,11 @@ export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
 };
 
 const REACH = 24;          // the Keeper's swing
+/** A Thornstrider's arrow's flight (art px a second), a stampede's run, a called beast's trot and its bite's rest. */
+const ARROW_SPEED = 300;
+const STAMPEDE_SPEED = 230;
+const BEAST_SPEED = 92;
+const BEAST_REST = 1.1;
 /** Dawn at Noon: % more every hit lands for on a creature the daylight has unveiled. */
 export const DAWN_REVEAL = 15;
 const MOB_REACH = 18;      // a creature's bite
@@ -1964,6 +2006,9 @@ export class MobSystem {
   /** The Lanternwright's kin: the wisps at his shoulder (they follow him anywhere) and a beacon on its pole (its place's). */
   readonly wisps: Wisp[] = [];
   readonly beacons: Beacon[] = [];
+  /** The Thornstrider's arrows in flight, and the beasts of the wild running with him (called, or a stampede). */
+  readonly arrows: Arrow[] = [];
+  readonly beasts: WildBeast[] = [];
   private minionSeq = 0;
   /**
    * The ranks the trees give (docs/design/skill-trees.md); null = every skill at rank 1 (the specs, and the moments
@@ -2083,8 +2128,22 @@ export class MobSystem {
   get range(): number {
     if (this.melee) return this.v('watch-blade')['reach'] * TILE;
     if (this.lamp) return this.v('kindle')['range'] * TILE;
+    if (this.thorn) return this.v('thorn-shot')['range'] * TILE;
     return SKILLS['ember-bolt'].vars['range'] * TILE;
   }
+  /** The Thornstrider (td-thorn-skills): the bow, the beast at his side, the briar on the ground. */
+  get thorn(): boolean { return this.vocation === 'thornstrider'; }
+  /** Arrows loosed so far (the specs and the e2e count them). */
+  loosed = 0;
+  /** Command: the foe the beast is sent at, the seconds it stays sent, and how many times it was sent (the engine rouses a tired beast on each new one). */
+  commandFoe: Mob | null = null;
+  commandT = 0;
+  commands = 0;
+  /** Where the Keeper's beast stands (the engine hands it in each frame; null: none). Pack Bond reads it. */
+  beast: { x: number; y: number } | null = null;
+  /** Rootwalk: seconds left, and how much faster the Keeper walks meanwhile (%). */
+  rootwalkT = 0;
+  rootwalkPct = 0;
   /** The lantern's shutters: closed, its light (and the aura's) is gone and the Light spell is put out (td-lantern). */
   shuttered = false;
   /** Kindle's flares thrown so far (the specs and the e2e count them). */
@@ -2145,8 +2204,11 @@ export class MobSystem {
     // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
     // them down at his side on the new ground.
     this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0; this.zones.length = 0; this.bursts.length = 0;
-    this.beacons.length = 0;
+    this.beacons.length = 0; this.arrows.length = 0;
     for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
+    // A called beast follows the Keeper through any door (the leash sets it down at his side); a stampede stays behind.
+    for (let i = this.beasts.length - 1; i >= 0; i--) { const b = this.beasts[i]; if (b.kind === 'stampede') this.beasts.splice(i, 1); else { b.target = null; b.x = 1e9; b.y = 1e9; } }
+    this.commandFoe = null; this.commandT = 0;
     this.addSpawns(spawns);
   }
   /** Spawns that came into reach (the endless surface hands them over chunk by chunk). */
@@ -2258,6 +2320,16 @@ export class MobSystem {
       }
       foe = null;
     }
+    // The Thornstrider's bow: an arrow at the foe in its long reach (Thorn Shot); it may pierce, it knocks back.
+    if (this.thorn) {
+      if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
+        const tv = this.v('thorn-shot');
+        this.swing = SKILLS['thorn-shot'].cd / (1 + this.agility) / (1 + this.castSpeed);
+        this.looseArrow(foe, rnd(tv['min'], tv['max']));
+        this.host.swung(foe);
+      }
+      foe = null;
+    }
     // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
@@ -2303,6 +2375,16 @@ export class MobSystem {
           if (m.hp <= 0) continue;
         }
       }
+      if ((m.bleedT ?? 0) > 0) {
+        // A Barbed Shot's bleed: a whole number a second, a drop of blood falling.
+        m.bleedT = (m.bleedT ?? 0) - dt; m.bleedTick = (m.bleedTick ?? 1) - dt;
+        if (m.bleedTick <= 0) {
+          m.bleedTick = 1;
+          this.effects.push({ kind: 'bleed', x: m.x + rnd(-3, 3), y: m.y - m.def.h / 2, age: 0, life: .45, dir: 1 });
+          this.hitFoe(m, m.bleedDps ?? 0, '#d0504a');
+          if (m.hp <= 0) continue;
+        }
+      }
       if ((m.weak ?? 0) > 0) m.weak = Math.max(0, (m.weak ?? 0) - dt);
       if ((m.inkT ?? 0) > 0) m.inkT = Math.max(0, (m.inkT ?? 0) - dt);
       if ((m.singeT ?? 0) > 0 && this.relics.singe) {
@@ -2330,6 +2412,8 @@ export class MobSystem {
       if (whole > 0) { this.regenOwed -= whole; this.host.healPlayer(whole); }
     }
     if (this.lamp) this.tickLamp(dt);
+    this.updateArrows(dt);
+    if (this.thorn || this.beasts.length) this.tickThorn(dt);
     this.updateZones(dt);
     this.curseT = Math.max(0, this.curseT - dt);
     // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
@@ -2353,13 +2437,18 @@ export class MobSystem {
         if (m.tell <= 0) { m.tell = 0; if (m.aim) this.loose(m, m.aim.x, m.aim.y); m.aim = null; }
         else continue;
       }
+      // Rooted (a Thornroot Snare, a Bramble Trap): it stands where it is; it still bites what is in reach.
+      const rooted = (m.rootT ?? 0) > 0;
+      if (rooted) m.rootT = Math.max(0, (m.rootT ?? 0) - dt);
       // Its prey: the Keeper, or one of his raised skeletons standing closer — unless a Watch Cry has called it to him.
       const taunted = (m.taunt ?? 0) > 0;
       if (taunted) m.taunt = Math.max(0, (m.taunt ?? 0) - dt);
       let prey: Minion | null = null, d = Math.hypot(p.x - m.x, p.y - m.y);
       if (!taunted) for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
       const px0 = prey ? prey.x : p.x, py0 = prey ? prey.y : p.y;
-      const hunting = taunted || d < m.def.sight, shoot = m.def.ranged;
+      // Rootwalk: the forest closes behind the Keeper — a creature loses his track unless he is at its very side.
+      const lost = this.rootwalkT > 0 && !prey && d > MOB_REACH * 2;
+      const hunting = !lost && (taunted || d < m.def.sight), shoot = m.def.ranged;
       if (hunting && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
         // Where it will land: a step short of its prey, on its own side; never into a wall.
         const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
@@ -2387,7 +2476,7 @@ export class MobSystem {
         }
         if (m.wander) { tx = m.wander.x; ty = m.wander.y; if (Math.hypot(tx - m.x, ty - m.y) < 3) m.wander = null; }
       }
-      if (tx !== null && ty !== null) {
+      if (tx !== null && ty !== null && !rooted) {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
         if (len > stop) {
           const step = Math.min(len, m.def.speed * this.paceOf(m) * dt), vx = dx / len * step, vy = dy / len * step;
@@ -2524,6 +2613,8 @@ export class MobSystem {
     // The Vow of the Last Watch: whatever comes, the Keeper keeps his last point of life; what it held off is counted.
     if (this.vowT > 0 && n > 0) { this.vowTaken += n; n = vowClamp(n, this.host.playerHp?.() ?? Infinity); }
     if (this.lamp && n > 0) n = this.lampGuard(n);
+    // Pack Bond: the Keeper and his beast share the blows while it is near.
+    if (this.thorn && n > 0 && this.bonded) n = bondShare(n, this.v('pack-bond')['guard']);
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
   }
   /** The Defense a blow meets on the Ashguard: his own, the Watchfire's, Hold the Line's lift when his life runs low. */
@@ -2584,7 +2675,9 @@ export class MobSystem {
   petBite(foe: Mob, dmg: number, dir: number): { landed: boolean; killed: boolean } {
     if (foe.hp <= 0 || !this.mobs.includes(foe)) return { landed: false, killed: false };
     this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
-    this.hurtMob(foe, Math.max(1, Math.round(dmg)), '#ffd98a');
+    // A Thornstrider's beast is one of the pack: its bite grows with him and with every Wild skill he holds.
+    if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) });
+    this.hurtMob(foe, Math.max(1, Math.round(dmg)), this.thorn ? '#9af0d0' : '#ffd98a');
     return { landed: true, killed: foe.hp <= 0 };
   }
   /** E2E only (td-engine's `?petfetch=1` under webdriver): a material lying at (x, y), as if a creature dropped it. */
@@ -2747,6 +2840,7 @@ export class MobSystem {
     const p = this.host.player();
     if (id in ASHGUARD_SKILLS) return this.useAshSkill(id, v);
     if (id in LANTERN_SKILLS) return this.useLampSkill(id, v);
+    if (id in THORN_SKILLS) return this.useThornSkill(id, v, foeInRange);
     if (id === 'cinder-rain') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
@@ -3082,6 +3176,202 @@ export class MobSystem {
     for (const m of this.mobs) if ((m.revealT ?? 0) > 0) m.revealT = Math.max(0, (m.revealT ?? 0) - dt);
   }
 
+  // ── The Thornstrider (td-thorn-skills.ts, design-bible §4.5) ──
+
+  /** Pack Bond holds: the aura runs and the Keeper's beast stands within its reach. */
+  get bonded(): boolean {
+    if (!this.thorn || this.aura !== 'pack-bond' || this.rank('pack-bond') <= 0 || !this.beast) return false;
+    const p = this.host.player();
+    return Math.hypot(this.beast.x - p.x, this.beast.y - p.y) <= this.v('pack-bond')['radius'] * TILE;
+  }
+  /** How much harder the beasts strike (%): Pack Bond while bonded, Wild Heart, and Command on the commanded foe. */
+  beastPct(commanded: boolean): number {
+    return (this.bonded ? this.v('pack-bond')['pct'] : 0) + (this.rank('wild-heart') > 0 ? this.v('wild-heart')['pct'] : 0)
+      + (commanded && this.commandT > 0 ? this.v('command')['pct'] : 0);
+  }
+  /** The commanded foe while Command holds (null: none, or it fell). */
+  get commanded(): Mob | null {
+    const f = this.commandFoe;
+    return this.commandT > 0 && f && f.hp > 0 && this.mobs.includes(f) ? f : null;
+  }
+  /**
+   * Loose an arrow at `foe`: it seeks it (or, given `angle`, flies straight that way, a Volley's), carrying the
+   * Heartwood's lift and its pierce, the Thorn Shot's knock and a Barbed Shot's bleed.
+   */
+  private looseArrow(foe: Mob, dmg: number, o: { angle?: number; barb?: { dps: number; secs: number }; pierce?: number } = {}): void {
+    const p = this.host.player(), face = p.face ?? 1, sx = p.x + face * 7, sy = p.y - 20;
+    const tv = this.v('thorn-shot'), hw = this.rank('heartwood') > 0 ? this.v('heartwood') : null;
+    const aim = o.angle ?? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
+    this.arrows.push({
+      x: sx, y: sy, vx: Math.cos(aim) * ARROW_SPEED, vy: Math.sin(aim) * ARROW_SPEED, age: 0, life: (this.range + 2 * TILE) / ARROW_SPEED,
+      dmg: dmg * (1 + (hw?.['pct'] ?? 0) / 100), to: o.angle === undefined ? foe : null, hit: [],
+      pierce: o.pierce ?? tv['pierce'] + (hw?.['pierce'] ?? 0), knock: tv['knock'], ...(o.barb ? { barb: o.barb } : {}),
+    });
+    this.loosed++;
+    this.effects.push({ kind: 'loose', x: sx, y: sy, age: 0, life: .2, dir: face, a: aim });
+  }
+  /** Knock a creature back along (ux, uy) by `px`, stopping at the last open step (never a rooted one). */
+  private knock(m: Mob, ux: number, uy: number, px: number): void {
+    // A rooted creature is held fast: the roots do not let it be knocked off its ground.
+    if (!(px > 0) || (m.rootT ?? 0) > 0) return;
+    const n = Math.max(1, Math.ceil(px / 2)), step = px / n;
+    for (let i = 0; i < n; i++) {
+      const nx = m.x + ux * step, ny = m.y + uy * step;
+      if (!this.free(nx, ny, m.def.floats)) break;
+      m.x = nx; m.y = ny;
+    }
+  }
+  /** The arrows in flight: each seeks its foe until it strikes, then flies on straight; a pierce carries it further. */
+  private updateArrows(dt: number): void {
+    if (!this.arrows.length) return;
+    const flies = (x: number, y: number) => { const c = Math.floor(x / TILE), r = Math.floor((y + 12) / TILE); return this.host.passable ? this.host.passable(c, r) : this.host.walkable(c, r); };
+    for (let i = this.arrows.length - 1; i >= 0; i--) {
+      const a = this.arrows[i];
+      a.age += dt;
+      if (a.to && (a.to.hp <= 0 || !this.mobs.includes(a.to))) a.to = null;
+      if (a.to) {
+        const dx = a.to.x - a.x, dy = a.to.y - a.to.def.h / 2 - a.y, d = Math.hypot(dx, dy);
+        if (d > 1) { a.vx = dx / d * ARROW_SPEED; a.vy = dy / d * ARROW_SPEED; }
+      }
+      a.x += a.vx * dt; a.y += a.vy * dt;
+      if (a.age > a.life || !flies(a.x, a.y)) { this.arrows.splice(i, 1); continue; }
+      const ux = a.vx / ARROW_SPEED, uy = a.vy / ARROW_SPEED;
+      for (const m of [...this.mobs]) {
+        if (a.hit.includes(m) || Math.hypot(m.x - a.x, m.y - m.def.h / 2 - a.y) > Math.max(7, m.def.w / 3)) continue;
+        a.hit.push(m);
+        this.effects.push({ kind: 'arrow-hit', x: a.x, y: a.y, age: 0, life: .3, dir: ux < 0 ? -1 : 1, a: Math.atan2(uy, ux) });
+        this.hitFoe(m, a.dmg, '#d8f0a8');
+        if (a.barb && m.hp > 0) {
+          const b = addBleed((m.bleedT ?? 0) > 0 ? { t: m.bleedT ?? 0, dps: m.bleedDps ?? 0 } : null, a.barb.dps, a.barb.secs);
+          m.bleedT = b.t; m.bleedDps = b.dps; m.bleedTick = (m.bleedTick ?? 0) > 0 ? m.bleedTick : 1;
+          this.effects.push({ kind: 'bleed', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .45, dir: 1 });
+        }
+        if (m.hp > 0) this.knock(m, ux, uy, knockFor(a.knock, m.def.rank));
+        // Through and on to the next foe in its line, a little spent — or it stays in this one.
+        if (a.hit.length < PIERCE_MAX && pierces(a.pierce, Math.random())) { a.to = null; a.dmg *= PIERCE_KEEP; continue; }
+        this.arrows.splice(i, 1);
+        break;
+      }
+    }
+  }
+  /** The Thornstrider's timers each frame: Command, Rootwalk, the called beast's hunt and the stampede's run. */
+  private tickThorn(dt: number): void {
+    const p = this.host.player();
+    if (this.commandT > 0) { this.commandT = Math.max(0, this.commandT - dt); if (!this.commanded) { this.commandT = 0; this.commandFoe = null; } }
+    if (this.rootwalkT > 0) {
+      this.rootwalkT = Math.max(0, this.rootwalkT - dt);
+      if (Math.random() < dt * 7) this.effects.push({ kind: 'rootwalk', x: p.x + rnd(-4, 4), y: p.y + 1, age: 0, life: .9, dir: 1 });
+    }
+    const k = 1 + this.beastPct(false) / 100;
+    for (let i = this.beasts.length - 1; i >= 0; i--) {
+      const b = this.beasts[i];
+      b.age += dt; b.cd -= dt;
+      if (b.kind === 'stampede') {
+        if (b.age < 0) continue;
+        const vx = b.vx ?? 0, vy = b.vy ?? 0, sp = Math.hypot(vx, vy) || 1;
+        b.x += vx * dt; b.y += vy * dt; b.left = (b.left ?? 0) - sp * dt;
+        if (Math.random() < dt * 9) this.effects.push({ kind: 'trample', x: b.x - vx / sp * 6, y: b.y, age: 0, life: .5, dir: b.face });
+        for (const m of [...this.mobs]) {
+          if (b.hit?.includes(m) || Math.hypot(m.x - b.x, m.y - b.y) > 10 + m.def.w / 4) continue;
+          (b.hit ??= []).push(m);
+          this.hitFoe(m, rnd(b.dmg[0], b.dmg[1]) * k, '#9af0d0');
+          if (m.hp > 0) this.knock(m, vx / sp, vy / sp, m.def.rank === 'boss' ? (b.knock ?? 0) * .2 : b.knock ?? 0);
+        }
+        if ((b.left ?? 0) <= 0) { this.beasts.splice(i, 1); this.effects.push({ kind: 'trample', x: b.x, y: b.y, age: 0, life: .5, dir: b.face }); }
+        continue;
+      }
+      b.t -= dt;
+      if (b.t <= 0) { this.beasts.splice(i, 1); this.effects.push({ kind: 'wild-call', x: b.x, y: b.y, age: 0, life: .5, dir: -1 }); continue; }
+      // Left far behind: it steps out of the green at the Keeper's side again.
+      if (Math.hypot(b.x - p.x, b.y - p.y) > MINION_LEASH * 1.6) { b.x = p.x + 16; b.y = p.y + 4; if (!this.free(b.x, b.y)) { b.x = p.x; b.y = p.y; } b.target = null; }
+      const sent = this.commanded;
+      if (sent) b.target = sent;
+      else if (!b.target || b.target.hp <= 0 || !this.mobs.includes(b.target) || Math.hypot(b.target.x - p.x, b.target.y - p.y) > MINION_LEASH) b.target = pickMinionTarget(b, this.mobs, p, MINION_SIGHT, MINION_LEASH);
+      const foe = b.target;
+      const reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
+      const tx = foe ? foe.x - (foe.x > b.x ? 1 : -1) * (reach - 4) : p.x + 16, ty = foe ? foe.y + 1 : p.y + 6;
+      const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy);
+      if (len > 2) {
+        const step = Math.min(len, BEAST_SPEED * this.pace * dt), mx = dx / len * step, my = dy / len * step;
+        if (this.free(b.x + mx, b.y)) b.x += mx;
+        if (this.free(b.x, b.y + my)) b.y += my;
+      }
+      if (foe) b.face = foe.x < b.x ? -1 : 1; else if (Math.abs(dx) > 2) b.face = dx < 0 ? -1 : 1;
+      if (foe && Math.hypot(foe.x - b.x, foe.y - b.y) <= reach + 2 && b.cd <= 0) {
+        b.cd = sent === foe ? BEAST_REST * THORN_PET.commandRest : BEAST_REST;
+        this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir: b.face });
+        this.hitFoe(foe, rnd(b.dmg[0], b.dmg[1]) * (1 + this.beastPct(sent === foe) / 100), '#9af0d0');
+      }
+    }
+  }
+  /** The Thornstrider's spells. Each reads its numbers at its rank and leaves its picture (td-thorn-fx). */
+  private useThornSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | null {
+    const p = this.host.player(), face: 1 | -1 = (p.face ?? 1) < 0 ? -1 : 1;
+    if (id === 'barbed-shot') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      this.looseArrow(foe, rnd(v['min'], v['max']), { barb: { dps: v['dps'], secs: v['secs'] } });
+      this.host.swung(foe);
+    } else if (id === 'volley') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      const aim = Math.atan2(foe.y - foe.def.h / 2 - (p.y - 20), foe.x - (p.x + face * 7));
+      // A volley's arrows fly where they are aimed: each strikes the first foe in its own line, none of them pierce.
+      for (const a of fanAngles(aim, v['count'], 11)) this.looseArrow(foe, rnd(v['min'], v['max']), { angle: a, pierce: 0 });
+      this.host.swung(foe);
+    } else if (id === 'command') {
+      const reach = Math.max(this.range, THORN_PET.commandReach);
+      const foe = this.target && this.target.hp > 0 && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach ? this.target : foeInRange();
+      if (!foe) return 'nofoe';
+      this.commandFoe = foe; this.commandT = v['secs']; this.commands++;
+      for (const b of this.beasts) if (b.kind === 'called') b.target = foe;
+      this.effects.push({ kind: 'command', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .8, dir: 1 });
+      this.host.swung(foe);
+    } else if (id === 'call-of-the-wilds') {
+      // One called beast at a time: a new call sends the old one back into the green.
+      for (let i = this.beasts.length - 1; i >= 0; i--) if (this.beasts[i].kind === 'called') this.beasts.splice(i, 1);
+      let x = p.x - face * 18, y = p.y + 4;
+      if (!this.free(x, y)) { x = p.x; y = p.y; }
+      this.beasts.push({ kind: 'called', x, y, t: v['secs'], cd: .4, face, age: 0, dmg: [v['min'], v['max']], target: this.commanded });
+      this.effects.push({ kind: 'wild-call', x, y, age: 0, life: .7, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'stampede') {
+      const foe = foeInRange();
+      const aim = foe ? Math.atan2(foe.y - p.y, foe.x - p.x) : face < 0 ? Math.PI : 0, ux = Math.cos(aim), uy = Math.sin(aim);
+      // They come from behind the Keeper, lane by lane across the line, a step apart, and run past him.
+      const sx = p.x - ux * 2 * TILE, sy = p.y - uy * 2 * TILE;
+      stampedeLanes(v['count'], 13).forEach((off, i) => {
+        this.beasts.push({
+          kind: 'stampede', x: sx - uy * off - ux * (i % 2) * 8, y: sy + ux * off - uy * (i % 2) * 8, t: 99, cd: 0, face: ux < 0 ? -1 : 1, age: -i * .06,
+          dmg: [v['min'], v['max']], target: null, vx: ux * STAMPEDE_SPEED, vy: uy * STAMPEDE_SPEED, left: (v['length'] + 2) * TILE, hit: [], knock: v['knock'] * TILE,
+        });
+      });
+      this.effects.push({ kind: 'wild-call', x: sx, y: sy, age: 0, life: .7, dir: 2 });
+      this.host.swung(foe);
+    } else if (id === 'thornroot-snare') {
+      const foe = foeInRange();
+      const cx = foe ? foe.x : p.x + face * 2 * TILE, cy = foe ? foe.y : p.y;
+      // Across the foe's way to the Keeper: the line stands square to it, one thorn-clump a tile.
+      const a = Math.atan2(cy - p.y, cx - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
+      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE; pts.push({ x: cx + Math.cos(a) * o, y: cy + Math.sin(a) * o }); }
+      this.zones.push({ kind: 'snare', x: cx, y: cy, r: TILE * .8, t: v['secs'], tick: 0, min: v['min'], max: v['max'], pts, caught: [] });
+      pts.forEach((q, i) => this.effects.push({ kind: 'snare-rise', x: q.x, y: q.y, age: -i * .05, life: .5, dir: 1 }));
+      this.host.swung(foe);
+    } else if (id === 'bramble-trap') {
+      // Two at most: a third lifts the oldest.
+      const traps = this.zones.filter(z => z.kind === 'trap');
+      if (traps.length >= 2) this.zones.splice(this.zones.indexOf(traps[0]), 1);
+      this.zones.push({ kind: 'trap', x: p.x, y: p.y + 2, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['min'], max: v['max'] });
+      this.effects.push({ kind: 'trap-set', x: p.x, y: p.y + 2, age: 0, life: .5, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'rootwalk') {
+      this.rootwalkT = v['secs']; this.rootwalkPct = v['pct'];
+      this.effects.push({ kind: 'rootwalk', x: p.x, y: p.y + 1, age: 0, life: .9, dir: 2 });
+      this.host.swung(null);
+    }
+    return null;
+  }
+
   /** Doom runs out: the foe bursts, and so does everything near it. */
   private doomBurst(m: Mob): void {
     const hit = m.doomHit;
@@ -3122,6 +3412,30 @@ export class MobSystem {
           this.hearthOwed += z.min * dt;
           const whole = Math.floor(this.hearthOwed);
           if (whole > 0) { this.hearthOwed -= whole; this.host.healPlayer(whole); }
+        }
+        continue;
+      }
+      if (z.kind === 'snare' && z.pts) {
+        // The Thornroot Snare: whatever crosses the line is struck once and rooted (a boss a fifth as long).
+        const v = this.v('thornroot-snare');
+        for (const m of [...this.mobs]) {
+          if (z.caught?.includes(m) || !z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r)) continue;
+          (z.caught ??= []).push(m);
+          m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank));
+          this.effects.push({ kind: 'snare-rise', x: m.x, y: m.y, age: 0, life: .5, dir: 1 });
+          this.hitFoe(m, rnd(z.min, z.max), '#c9a66b');
+        }
+        continue;
+      }
+      if (z.kind === 'trap') {
+        // A Bramble Trap: the first creature to step on it springs it on everything near.
+        const v = this.v('bramble-trap');
+        if (!this.mobs.some(m => Math.hypot(m.x - z.x, m.y - z.y) <= 10 + m.def.w / 4)) continue;
+        this.zones.splice(i, 1);
+        this.effects.push({ kind: 'trap-spring', x: z.x, y: z.y, r: z.r, age: 0, life: .6, dir: 1 });
+        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) {
+          m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank));
+          this.hitFoe(m, rnd(z.min, z.max), '#c9a66b');
         }
         continue;
       }

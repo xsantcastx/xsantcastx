@@ -232,8 +232,8 @@ export const SKILLS_LEARNED: Blobs = {
 /** In the open Spellbook (K): find the skill on its tree's tab and pick it, so its card (keys, aura switch) shows. */
 export async function pickSkill(page: Page, id: string): Promise<void> {
   const node = page.locator(`.sbt__node[data-skill="${id}"]`);
-  // The Warlock's tabs, the Ashguard's, the Lanternwright's, then the common page: only the open class's tabs are there to click.
-  for (const tree of ['ember', 'bone', 'shadow', 'brand', 'oath', 'ash', 'lamp', 'hearth', 'moth', 'common']) {
+  // The Warlock's tabs, the Ashguard's, the Lanternwright's, the Thornstrider's, then the common page: only the open class's tabs are there to click.
+  for (const tree of ['ember', 'bone', 'shadow', 'brand', 'oath', 'ash', 'lamp', 'hearth', 'moth', 'thorn', 'wild', 'briar', 'common']) {
     if (await node.count()) break;
     const tab = page.locator(`.sbt__tab[data-tree="${tree}"]`);
     if (await tab.count()) await tab.click();

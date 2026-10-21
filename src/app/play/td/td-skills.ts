@@ -13,6 +13,7 @@ import { LEVEL_GROWTH, levelSpeedBonus, levelSteps } from '../../shared/skills/k
 import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { ASHGUARD_BOOK, ASHGUARD_SKILLS, ASHGUARD_STARTERS, ASH_TREES, type AshSkillId } from './td-ashguard-skills';
 import { LAMP_TREES, LANTERN_BOOK, LANTERN_SKILLS, LANTERN_STARTERS, type LampSkillId } from './td-lantern-skills';
+import { THORN_BOOK, THORN_SKILLS, THORN_STARTERS, THORN_TREES, type ThornSkillId } from './td-thorn-skills';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
@@ -28,7 +29,9 @@ export type SkillId =
   // The Ashguard's book (td-ashguard-skills.ts, design-bible §4.4).
   | AshSkillId
   // The Lanternwright's book (td-lantern-skills.ts, design-bible §4.3).
-  | LampSkillId;
+  | LampSkillId
+  // The Thornstrider's book (td-thorn-skills.ts, design-bible §4.5).
+  | ThornSkillId;
 
 /** The Warlock's three trees (D2's three tabs): fire, necromancy, curses and wards. */
 export const TREES = ['ember', 'bone', 'shadow'] as const;
@@ -39,9 +42,9 @@ export const TREES = ['ember', 'bone', 'shadow'] as const;
 export const COMMON_TREE = 'common' as const;
 /** The Spellbook's tabs: the class's three trees, then the common page (the Warlock's; bookTrees(v) for any class). */
 export const BOOK_TREES = [...TREES, COMMON_TREE] as const;
-export type TreeId = typeof BOOK_TREES[number] | typeof ASH_TREES[number] | typeof LAMP_TREES[number];
+export type TreeId = typeof BOOK_TREES[number] | typeof ASH_TREES[number] | typeof LAMP_TREES[number] | typeof THORN_TREES[number];
 /** Each class's three trees, in tab order. */
-export const CLASS_TREES: Readonly<Record<Vocation, readonly TreeId[]>> = { warlock: TREES, ashguard: ASH_TREES, lanternwright: LAMP_TREES };
+export const CLASS_TREES: Readonly<Record<Vocation, readonly TreeId[]>> = { warlock: TREES, ashguard: ASH_TREES, lanternwright: LAMP_TREES, thornstrider: THORN_TREES };
 /** A class's Spellbook tabs: its three trees, then the common page. */
 export function bookTrees(v: Vocation): readonly TreeId[] { return [...(CLASS_TREES[v] ?? TREES), COMMON_TREE]; }
 /** The level each tier opens at (D2: 1, 6, 12, 18, 24 …). */
@@ -253,6 +256,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   ...ASHGUARD_SKILLS,
   // ── The Lanternwright's three trees (td-lantern-skills.ts) ──
   ...LANTERN_SKILLS,
+  // ── The Thornstrider's three trees (td-thorn-skills.ts) ──
+  ...THORN_SKILLS,
 };
 
 /** Vars that count whole things (skeletons, spears): a rank adds a fraction, the fight takes the whole part. */
@@ -290,6 +295,7 @@ export const STARTER_RANKS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'soul-harvest', 'light'],
   ashguard: [...ASHGUARD_STARTERS, 'light'],
   lanternwright: [...LANTERN_STARTERS, 'light'],
+  thornstrider: [...THORN_STARTERS, 'light'],
 };
 
 /** Each class's book: its actives (the order is the default bar), its auras, its passives. */
@@ -301,6 +307,7 @@ export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
     'light', 'seek'],
   ashguard: [...ASHGUARD_BOOK, 'light', 'seek'],
   lanternwright: [...LANTERN_BOOK, 'light', 'seek'],
+  thornstrider: [...THORN_BOOK, 'light', 'seek'],
 };
 
 export const MAX_MANA = 60;
@@ -315,11 +322,14 @@ export const ATTR_STEP = { vit: 6, ene: 4, eneRegen: .15, spi: .02, agi: .01, ag
  * What a class's body is made of (design-bible §4.4: the Ashguard is Vitality-led): life and mana as shares of the
  * level's, and Defense it carries before any gear (a base, plus a little each level). The Warlock is the yardstick.
  */
-export const VOCATION_BODY: Readonly<Record<Vocation, { life: number; mana: number; defense: number; defenseLevel: number }>> = {
+export const VOCATION_BODY: Readonly<Record<Vocation, { life: number; mana: number; defense: number; defenseLevel: number; speed?: number }>> = {
   warlock: { life: 1, mana: 1, defense: 0, defenseLevel: 0 },
   ashguard: { life: 1.3, mana: .6, defense: 8, defenseLevel: 1 },
   // The Lanternwright (design-bible §4.3): a support's body — a little less life, a deep well of mana, no plate.
   lanternwright: { life: .9, mana: 1.4, defense: 0, defenseLevel: 0 },
+  // The Thornstrider (design-bible §4.5): balanced, a little life over a little mana, light leather — and lighter feet
+  // (`speed`: a share of pace added to Agility and worn Move Speed, under the same 40% cap; the level's pace on top).
+  thornstrider: { life: 1.05, mana: .95, defense: 0, defenseLevel: 0, speed: .06 },
 };
 export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0, spi: 0, agi: 0 }, v: Vocation = 'warlock'): { maxHp: number; maxMana: number; power: number; regen: number; haste: number } {
   // Level steps: exactly level − 1 to 100, a gentle log taper past it so 10,000 stays sane (shared/skills/keeper-level.ts).
@@ -422,7 +432,7 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
     regen: base.regen + g(gear.manaRegen),
     haste: base.haste,
     // A cursed grave-good's Leaden Step can push worn Move Speed below zero: slower feet, never below 70% pace.
-    moveHaste: Math.max(-.3, Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + signed(gear.moveSpeed) / 100)),
+    moveHaste: Math.max(-.3, Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + signed(gear.moveSpeed) / 100 + (body.speed ?? 0))),
     levelPace: levelSpeedBonus(level),
     castSpeed: Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) / 100,
     crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
