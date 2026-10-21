@@ -15,7 +15,6 @@ import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
-import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
 import { DeviceLeaseBannerComponent } from './shared/save/device-lease-banner.component';
 import { SiteNoticeOutletComponent } from './shared/notice/site-notice-outlet.component';
 import { PwaOutletComponent } from './shared/pwa/pwa-outlet.component';
@@ -39,7 +38,6 @@ import { PwaService } from './shared/pwa.service';
     CommonModule,
     // Standalone — imported here so the (non-standalone) HeaderComponent and
     // AppComponent templates can use them without the module graph moving.
-    CloudSaveMergeDialogComponent,
     DeviceLeaseBannerComponent,
     SiteNoticeOutletComponent,
     PwaOutletComponent,
