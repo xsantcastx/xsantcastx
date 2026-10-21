@@ -73,6 +73,7 @@ import {
   EXPEDITION_UPGRADES,
   Enchantment,
   FORGE_UPGRADES,
+  isRetiredIncomeUpgrade,
   MULTIPLIER_UPGRADES,
   HAMMER_UPGRADES,
   THRALL_UPGRADES,
@@ -764,14 +765,16 @@ export class MarketComponent implements OnInit, OnDestroy {
     ].join('|');
     if (key === this.itemCacheKey) return this.itemCache;
 
+    // Furnaces and automatons made Gold by the second; with the forge's income off they are retired
+    // (isRetiredIncomeUpgrade) and the Market stops offering them. Old levels stay on the ledger.
     const out: MarketItem[] = [
-      ...FORGE_UPGRADES.map((u, i) =>
+      ...FORGE_UPGRADES.filter(u => !isRetiredIncomeUpgrade(u.id)).map((u, i) =>
         this.fromLadder(u, i, FORGE_UPGRADES.length, 'forge', 'Forge',
           `${formatCompact(u.ratePerSecond)}/sec`)),
       ...HAMMER_UPGRADES.map((u, i) =>
         this.fromLadder(u, i, HAMMER_UPGRADES.length, 'hammer', 'Forge',
           `${formatCompact(u.goldPerClick)}/hit`)),
-      ...AUTO_CLICKERS.map((u, i) =>
+      ...AUTO_CLICKERS.filter(u => !isRetiredIncomeUpgrade(u.id)).map((u, i) =>
         this.fromLadder(u, i, AUTO_CLICKERS.length, 'automaton', 'Enlist',
           `${formatCompact(u.clicksPerSecond)}/sec`)),
       ...MULTIPLIER_UPGRADES.map((u, i) =>

@@ -68,6 +68,7 @@ import {
   shardsFor,
   totalUpgradeLevels,
   upgradeById,
+  isRetiredIncomeUpgrade,
   isFirstFree,
 } from './economy.model';
 import {
@@ -100,7 +101,7 @@ import {
   type CommerceReceipt,
 } from './commerce-ops';
 import * as CURVE from './economy-curve';
-import { CENTURY_STRIKE_MULTIPLIER, incomeRewardBase } from './economy.model';
+import { CENTURY_STRIKE_MULTIPLIER, incomeRewardBase, rewardRate } from './economy.model';
 import { migrateEconomyV3WithReport, needsEconomyV3, type EconomyMigrationReport } from './economy-migration';
 
 export const ECONOMY_KEY = 'godforge-economy';
@@ -203,6 +204,17 @@ export interface EconomySnapshot {
    * when none is running. Optional so hand-built snapshots in specs still fit.
    */
   frenzyUntil?: number;
+  /**
+   * The Keeper's level the rewards are priced at (setHuntLevel; 1 until the Hunting XP is known). Optional so
+   * hand-built snapshots in specs still fit.
+   */
+  huntLevel?: number;
+  /**
+   * The rate every "N seconds of income" reward and price reads (economy-model rewardRate): the hunt's Gold/s at
+   * `huntLevel` (economy-curve huntRate) while the forge pays nothing by the second (IDLE_INCOME off), else the
+   * forge's own rate. Never carries the Fragment's ×2 (earnGold applies it once). Optional, as above.
+   */
+  rewardPerSecond?: number;
 }
 
 /** Emitted on every mint, so the Flame can float a "+5" and the rail can pulse. */
@@ -305,6 +317,8 @@ export class EconomyService implements OnDestroy {
   /** A Golden Spark's Forge Frenzy window, epoch ms. In memory only. */
   private frenzyFrom = 0;
   private frenzyUntil = 0;
+  /** The Keeper's level rewards are priced at (setHuntLevel). */
+  private huntLevel = 1;
   /** What the v3 migration did on this page load, or null. For the console and the spec. */
   migrationReport: EconomyMigrationReport | null = null;
   /** This load emptied the purse into the current Gold era (economy-ops enterGoldEra): write it back at once. */
@@ -480,8 +494,23 @@ export class EconomyService implements OnDestroy {
    * its minimum (economy v3, rule I). Pure read; mints nothing.
    */
   incomeReward(floor: number, seconds: number): number {
-    return CURVE.incomeReward(floor, seconds, goldPerSecond(this.state));
+    return Math.round(Math.max(Math.max(0, floor), incomeRewardBase(0, seconds, this.snapshot) * (this.snapshot.doubled ? 2 : 1)));
   }
+
+  /**
+   * The Keeper's level, which every "N seconds of income" reward and price is read at now that the forge pays
+   * nothing by the second (economy-curve huntRate). Fed by EconomyWiringService from the Hunting XP; republishes only
+   * when it moved.
+   */
+  setHuntLevel(level: number): void {
+    const next = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
+    if (next === this.huntLevel) return;
+    this.huntLevel = next;
+    if (this.isBrowser) this.publish();
+  }
+
+  /** The level rewards are priced at (see setHuntLevel). */
+  get rewardLevel(): number { return this.huntLevel; }
 
   /**
    * Mint a reward priced as max(floor, N seconds of income).
@@ -513,7 +542,7 @@ export class EconomyService implements OnDestroy {
       this.publish();
       return 0;
     }
-    const amount = CURVE.goldenSparkWindfall(goldPerSecond(this.state), this.state.gold);
+    const amount = CURVE.goldenSparkWindfall(rewardRate(this.snapshot), this.state.gold);
     return this.earnGold(amount / globalMultiplier(this.state), 'golden-spark');
   }
 
@@ -1014,6 +1043,7 @@ export class EconomyService implements OnDestroy {
     if (kind === 'upgrade') {
       const def = upgradeById(id);
       if (!def) return { cost: 0, currency: 'gold', eligible: false, affordable: false, reason: 'not-found' };
+      if (isRetiredIncomeUpgrade(id)) return { cost: this.nextCost(id), currency: 'gold', eligible: false, affordable: false, reason: 'ineligible' };
       if (this.isMaxed(id)) {
         return { cost: this.nextCost(id), currency: 'gold', eligible: false, affordable: false, reason: 'maxed' };
       }
@@ -1063,7 +1093,7 @@ export class EconomyService implements OnDestroy {
   private tryBuyUpgrade(id: string): boolean {
     if (!this.isBrowser) return false;
     const def = upgradeById(id);
-    if (!def || this.isMaxed(id)) return false;
+    if (!def || this.isMaxed(id) || isRetiredIncomeUpgrade(id)) return false;
     const cost = this.nextCost(id);
     if (this.state.gold < cost) return false;
     this.recordOp('buy-upgrade', { amount: cost, itemId: id });
@@ -1786,6 +1816,10 @@ export class EconomyService implements OnDestroy {
       enchantment: activeEnchantment(state, now),
       doubled: globalMultiplier(state) > 1,
       frenzyUntil: now < this.frenzyUntil ? this.frenzyUntil : 0,
+      huntLevel: this.huntLevel,
+      rewardPerSecond: CURVE.IDLE_INCOME
+        ? breakdown.total / (globalMultiplier(state) > 1 ? 2 : 1)
+        : CURVE.huntRate(this.huntLevel),
     };
   }
 }

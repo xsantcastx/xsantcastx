@@ -272,8 +272,8 @@ describe('the mission ladder', () => {
   it('pays N seconds of launch income when that beats the floor (economy v3)', () => {
     const scout = MISSIONS.find(m => m.id === 'scout')!;
     const reward = rollReward(scout, () => 0, { realm: 'luminous', incomeAtLaunch: 100 });
-    // 0.5 × 120 s × 100/s = 6,000, then the realm's cut.
-    expect(reward.gold).toBe(Math.round(6_000 * 1.15));
+    // 0.25 × 120 s × 100/s = 3,000, then the realm's cut (the rate is the hunt's at the Keeper's level: huntRate).
+    expect(reward.gold).toBe(Math.round(3_000 * 1.15));
     const floorOnly = rollReward(scout, () => 0, { realm: 'luminous', incomeAtLaunch: 0 });
     expect(floorOnly.gold).toBe(Math.round(scout.goldMin * 1.15));
   });

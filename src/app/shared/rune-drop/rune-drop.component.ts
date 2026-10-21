@@ -27,6 +27,7 @@ import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { EconomyService } from '../economy/economy.service';
 import { gamesBetCap } from '../economy/economy-curve';
+import { rewardRate } from '../economy/economy.model';
 import { injectInWorldPanel } from '../in-world-panel';
 import { STATION_UI, STATION_UI_I18N, type StationCost } from '../station-ui';
 import { GAMES_I18N } from '../games/games.i18n';
@@ -136,7 +137,7 @@ export class RuneDropComponent implements OnInit, OnDestroy {
     this.hydrated = true;
     this.subs.add(this.economy.snapshot$.subscribe(s => {
       this.gold = s.gold;
-      this.gps = s.perSecond;
+      this.gps = rewardRate(s);
       this.refresh();
       this.cdr.markForCheck();
     }));

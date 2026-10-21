@@ -78,7 +78,8 @@ describe('Croupier games on the play ledger', () => {
     it('refuses a bet over the cap and a board off the table, charging nothing', () => {
       pin(memory, 'rd', 1_000_000);
       const { drop, economy } = boot(memory);
-      const over = gamesBetCap(0) * 10;
+      // The cap reads the hunt at the Keeper's level and the purse (economy-model rewardRate).
+      const over = gamesBetCap(economy.snapshot.rewardPerSecond ?? 0, economy.snapshot.gold) * 10;
       expect(drop.drop('d2', over, 'low', 8)).toEqual({ ok: false, code: 'bet' });
       expect(drop.drop('d3', 10, 'low', 20)).toEqual({ ok: false, code: 'bet' });
       expect(economy.snapshot.gold).toBe(1_000_000);

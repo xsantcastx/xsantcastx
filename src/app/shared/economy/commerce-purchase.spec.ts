@@ -7,6 +7,12 @@ import { compactCommerceReceipts } from './commerce-ops';
 import { parseOp } from './economy-ops';
 import { ENCHANTMENTS } from './economy.model';
 
+/**
+ * A repeatable rung the ledger still sells. The furnace and the automatons are retired while the forge pays nothing
+ * by the second (isRetiredIncomeUpgrade), so the receipt tests buy an Explorer slot instead.
+ */
+const RUNG = 'explorer-slot';
+
 class MemoryGateway {
   private readonly bag = new Map<string, string>();
   attached = false;
@@ -39,16 +45,16 @@ describe('EconomyService.purchaseListing', () => {
   beforeEach(() => {
     memory = new MemoryGateway();
     economy = configure(memory);
-    economy['state'].gold = 10_000;
+    economy['state'].gold = 10_000_000;
     economy['state'].eclipseEssence = 500;
   });
 
   it('retries the same mutation key with one debit and one grant', () => {
     const intent = {
-      mutationKey: 'buy:forge-bellows:test',
-      listingId: 'forge-bellows',
+      mutationKey: 'buy:explorer-slot:test',
+      listingId: RUNG,
       kind: 'upgrade' as const,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     };
     const first = economy.purchaseListing(intent);
     const gold = economy.snapshot.gold;
@@ -57,29 +63,29 @@ describe('EconomyService.purchaseListing', () => {
     expect(second.ok).toBe(true);
     expect(second.operation?.id).toBe(first.operation?.id);
     expect(economy.snapshot.gold).toBe(gold);
-    expect(economy.levelOf('forge-bellows')).toBe(1);
+    expect(economy.levelOf(RUNG)).toBe(1);
   });
 
   it('rejects a stale expected price without spending', () => {
     const gold = economy.snapshot.gold;
     const receipt = economy.purchaseListing({
-      mutationKey: 'buy:forge-bellows:stale',
-      listingId: 'forge-bellows',
+      mutationKey: 'buy:explorer-slot:stale',
+      listingId: RUNG,
       kind: 'upgrade',
       expectedCost: 1,
     });
     expect(receipt.ok).toBe(false);
     expect(receipt.code).toBe('stale');
     expect(economy.snapshot.gold).toBe(gold);
-    expect(economy.levelOf('forge-bellows')).toBe(0);
+    expect(economy.levelOf(RUNG)).toBe(0);
   });
 
   it('recovers a pending receipt whose ledger op already landed', () => {
     const intent = {
-      mutationKey: 'buy:forge-bellows:crash',
-      listingId: 'forge-bellows',
+      mutationKey: 'buy:explorer-slot:crash',
+      listingId: RUNG,
       kind: 'upgrade' as const,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     };
     const first = economy.purchaseListing(intent);
     expect(first.ok).toBe(true);
@@ -93,7 +99,7 @@ describe('EconomyService.purchaseListing', () => {
     const again = reloaded.purchaseListing(intent);
     expect(again.ok).toBe(true);
     expect(reloaded.snapshot.gold).toBe(gold);
-    expect(reloaded.levelOf('forge-bellows')).toBe(1);
+    expect(reloaded.levelOf(RUNG)).toBe(1);
   });
 
   it('buys an enchantment again after it expires when the action id is new', () => {
@@ -130,9 +136,9 @@ describe('EconomyService.purchaseListing', () => {
   it('replays a compacted mutation key and does not debit again', () => {
     const intent = {
       mutationKey: 'buy:keep-forever',
-      listingId: 'forge-bellows',
+      listingId: RUNG,
       kind: 'upgrade' as const,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     };
     const first = economy.purchaseListing(intent);
     expect(first.ok).toBe(true);
@@ -153,15 +159,15 @@ describe('EconomyService.purchaseListing', () => {
     const again = economy.purchaseListing(intent);
     expect(again.ok).toBe(true);
     expect(economy.snapshot.gold).toBe(gold);
-    expect(economy.levelOf('forge-bellows')).toBe(1);
+    expect(economy.levelOf(RUNG)).toBe(1);
   });
 
   it('replays a legacy string applied map after reload', () => {
     const intent = {
       mutationKey: 'buy:legacy-string',
-      listingId: 'forge-bellows',
+      listingId: RUNG,
       kind: 'upgrade' as const,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     };
     const first = economy.purchaseListing(intent);
     expect(first.ok).toBe(true);
@@ -176,15 +182,15 @@ describe('EconomyService.purchaseListing', () => {
     const again = reloaded.purchaseListing(intent);
     expect(again.ok).toBe(true);
     expect(reloaded.snapshot.gold).toBe(gold);
-    expect(reloaded.levelOf('forge-bellows')).toBe(1);
+    expect(reloaded.levelOf(RUNG)).toBe(1);
   });
 
   it('treats a cap-evicted mutation key as a new purchase', () => {
     const intent = {
       mutationKey: 'buy:evicted',
-      listingId: 'forge-bellows',
+      listingId: RUNG,
       kind: 'upgrade' as const,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     };
     const first = economy.purchaseListing(intent);
     expect(first.ok).toBe(true);
@@ -215,36 +221,36 @@ describe('EconomyService.purchaseListing', () => {
     economy['state'].commerceOps = evicted.ops;
     economy['state'].commerceApplied = evicted.appliedKeys;
     const gold = economy.snapshot.gold;
-    const level = economy.levelOf('forge-bellows');
+    const level = economy.levelOf(RUNG);
     const again = economy.purchaseListing({
       ...intent,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     });
     expect(again.ok).toBe(true);
     expect(economy.snapshot.gold).toBeLessThan(gold);
-    expect(economy.levelOf('forge-bellows')).toBe(level + 1);
+    expect(economy.levelOf(RUNG)).toBe(level + 1);
   });
 
   it('treats a pruned mutation key as a new purchase', () => {
     const intent = {
       mutationKey: 'buy:forgotten',
-      listingId: 'forge-bellows',
+      listingId: RUNG,
       kind: 'upgrade' as const,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     };
     const first = economy.purchaseListing(intent);
     expect(first.ok).toBe(true);
     economy['state'].commerceOps = [];
     economy['state'].commerceApplied = {};
     const gold = economy.snapshot.gold;
-    const level = economy.levelOf('forge-bellows');
+    const level = economy.levelOf(RUNG);
     const again = economy.purchaseListing({
       ...intent,
-      expectedCost: economy.nextCost('forge-bellows'),
+      expectedCost: economy.nextCost(RUNG),
     });
     expect(again.ok).toBe(true);
     expect(economy.snapshot.gold).toBeLessThan(gold);
-    expect(economy.levelOf('forge-bellows')).toBe(level + 1);
+    expect(economy.levelOf(RUNG)).toBe(level + 1);
   });
 });
 
@@ -257,15 +263,18 @@ describe('the doorway rung (economy v3: 15 Gold, no longer free)', () => {
     economy['state'].gold = 0;
   });
 
-  it('prices the first Forge Bellows at 15 Gold and escalates by 1.15', () => {
+  it('still prices the first Forge Bellows at 15 Gold, but sells no furnace while the forge pays nothing', () => {
     expect(economy.nextCost('forge-bellows')).toBe(15);
     expect(economy.buyUpgrade('forge-bellows')).toBe(false);
     economy['state'].gold = 15;
-    expect(economy.buyUpgrade('forge-bellows')).toBe(true);
-    expect(economy.levelOf('forge-bellows')).toBe(1);
-    expect(economy.snapshot.gold).toBe(0);
-    // ceil(15 × 1.15).
-    expect(economy.nextCost('forge-bellows')).toBe(18);
+    // Retired (economy-curve IDLE_INCOME off): a furnace bought now would make nothing, so the ledger refuses it.
+    expect(economy.buyUpgrade('forge-bellows')).toBe(false);
+    expect(economy.buyUpgrade('apprentice-striker')).toBe(false);
+    expect(economy.levelOf('forge-bellows')).toBe(0);
+    expect(economy['state'].gold).toBe(15);
+    const receipt = economy.purchaseListing({ mutationKey: 'buy:forge-bellows:retired', listingId: 'forge-bellows', kind: 'upgrade', expectedCost: 15 });
+    expect(receipt.ok).toBe(false);
+    expect(receipt.code).toBe('ineligible');
   });
 
   it('prices every other rung from the curve, and sells a hammer once', () => {

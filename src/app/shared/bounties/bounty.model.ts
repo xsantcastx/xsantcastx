@@ -44,13 +44,18 @@ export function stratumOfRow(row: number): number {
   return STRATUM_ROWS.length - 1;
 }
 
-/** What one tier pays: seconds of income (rule I), a Gold floor (v2 figure × ρ), Delving XP. */
+/** What one tier pays: seconds of the Keeper's hunt (rule I, economy-curve huntRate), a Gold floor (v2 figure × ρ), Delving XP. */
 export interface BountyReward { goldSeconds: number; gold: number; delvingXp: number }
-/** 5, 10 and 15 minutes of income: inside the daily band (REWARD_SECONDS.daily, 5–20 min). */
+/**
+ * 5, 8 and 10 minutes of the Keeper's hunt: inside the daily band (REWARD_SECONDS.daily, 5–20 min). Trimmed from
+ * 5/10/15 when the forge's income went: a hunt pays only while you hunt, so a day of repeatable chores (three
+ * bounties, three daily challenges, the day's eclipses, the Ledger Catch) stays within two hours of hunting
+ * (economy-sim --reprice).
+ */
 export const BOUNTY_REWARDS: Readonly<Record<1 | 2 | 3, BountyReward>> = {
   1: { goldSeconds: 5 * 60, gold: itemScaled(4_000), delvingXp: 40 },
-  2: { goldSeconds: 10 * 60, gold: itemScaled(8_000), delvingXp: 70 },
-  3: { goldSeconds: 15 * 60, gold: itemScaled(14_000), delvingXp: 110 },
+  2: { goldSeconds: 8 * 60, gold: itemScaled(8_000), delvingXp: 70 },
+  3: { goldSeconds: 10 * 60, gold: itemScaled(14_000), delvingXp: 110 },
 };
 /** Bounties a day. */
 export const BOUNTIES_PER_DAY = 3;
@@ -59,7 +64,7 @@ export const FRAGMENT_EVERY = 7;
 export const COMPASS_ID = 'broken-astral-compass';
 export const FRAGMENT_ID = 'rift-map-fragment';
 
-/** Gold a claim pays: the floor, or the seconds of income when that is more. Whole Gold. */
+/** Gold a claim pays: the floor, or the seconds of the hunt (`perSecond`: economy-model rewardRate) when that is more. Whole Gold. */
 export function bountyGold(reward: BountyReward, perSecond: number): number {
   const floor = Math.max(0, Math.floor(reward.gold));
   if (!Number.isFinite(perSecond) || perSecond <= 0) return floor;

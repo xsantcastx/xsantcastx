@@ -290,21 +290,31 @@ export function questRewardSeconds(xp: number): number {
 }
 
 /**
+ * The Gold/s a reward priced as "N seconds of income" is read at, without the Fragment of the First Sun's ×2 (the mint
+ * applies that once). Reads the published snapshot (any object with these fields, so specs' fake economies fit):
+ * `rewardPerSecond` — the hunt's rate at the Keeper's level now that the forge pays nothing by the second
+ * (economy-curve huntRate, IDLE_INCOME) — and, for a hand-built snapshot without it, `perSecond` with the ×2 taken out.
+ */
+export function rewardRate(
+  snap: { perSecond?: number; rewardPerSecond?: number; doubled?: boolean } | null | undefined,
+): number {
+  if (snap && Number.isFinite(snap.rewardPerSecond)) return Math.max(0, snap.rewardPerSecond as number);
+  const perSecond = snap && Number.isFinite(snap.perSecond) ? Math.max(0, snap.perSecond as number) : 0;
+  return perSecond / (snap?.doubled ? 2 : 1);
+}
+
+/**
  * The base Gold to hand `EconomyService.earnGold` for a reward priced as
- * max(floor, N seconds of income) — economy v3, rule I.
- *
- * Reads the published snapshot (any object with `perSecond`, so specs' fake
- * economies fit). The Fragment of the First Sun's ×2 is already inside
- * `perSecond` and `earnGold` applies it again, so it is divided back out of the
- * income term; the flat floor is doubled once, as every flat payout is.
+ * max(floor, N seconds of income) — economy v3, rule I, read in the hunt
+ * (`rewardRate`: huntGold at the Keeper's level). The flat floor is doubled
+ * once by the mint, as every flat payout is.
  */
 export function incomeRewardBase(
   floor: number,
   seconds: number,
-  snap: { perSecond?: number; doubled?: boolean } | null | undefined,
+  snap: { perSecond?: number; rewardPerSecond?: number; doubled?: boolean } | null | undefined,
 ): number {
-  const perSecond = snap && Number.isFinite(snap.perSecond) ? Math.max(0, snap.perSecond as number) : 0;
-  const income = Math.max(0, seconds) * perSecond / (snap?.doubled ? 2 : 1);
+  const income = Math.max(0, seconds) * rewardRate(snap);
   return Math.max(Math.max(0, floor), Math.round(income));
 }
 
@@ -677,6 +687,17 @@ export function levelCap(id: string): number {
 }
 
 /** The definition behind any Gold-ladder id, or undefined. */
+/**
+ * A forge upgrade that only ever made Gold by the second — a furnace rung or an automaton. Retired while the forge
+ * pays nothing on its own (economy-curve IDLE_INCOME off; Gold comes from the hunt): the ledger refuses to sell one,
+ * the side view's Homestead and the Market stop offering them. Kept in the catalogue so an old save's levels still
+ * load and still read.
+ */
+export function isRetiredIncomeUpgrade(id: string): boolean {
+  if (CURVE.IDLE_INCOME) return false;
+  return FORGE_UPGRADES.some(u => u.id === id) || AUTO_CLICKERS.some(u => u.id === id);
+}
+
 export function upgradeById(id: string): AnyUpgrade | undefined {
   return ALL_UPGRADES.find(u => u.id === id);
 }

@@ -469,7 +469,8 @@ export class HomesteadScene implements HomesteadView {
     c.fillStyle = '#1a120fe6'; c.fillRect(-90, -26, 180, 40);
     this.label(c, homesteadT('homestead.canvas.purse', { n: Math.floor(m.gold).toLocaleString('en-US') }), 0, 0, GOLD, 18, 700);
     c.restore();
-    this.label(c, homesteadT('homestead.canvas.perSecond', { n: compact(m.perSecond) }), x, FLOOR - 176, '#e7d3b4', 12);
+    // Nothing to show while the forge pays nothing by the second (IDLE_INCOME off): no "0 Gold every second".
+    if (m.perSecond > 0) this.label(c, homesteadT('homestead.canvas.perSecond', { n: compact(m.perSecond) }), x, FLOOR - 176, '#e7d3b4', 12);
   }
 
   private drawForge(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {

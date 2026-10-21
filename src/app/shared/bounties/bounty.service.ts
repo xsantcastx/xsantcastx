@@ -23,6 +23,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { EconomyService } from '../economy/economy.service';
+import { rewardRate } from '../economy/economy.model';
 import { InventoryService } from '../rpg/inventory.service';
 import { DelveSaveService } from '../delve/delve-save.service';
 import { xpGrantChunks } from '../activity/activity.model';
@@ -94,7 +95,7 @@ export class BountyService {
     const list = this.board();
     const span = this.delve.exploredSpan();
     const frontier = { east: span?.east ?? CORE_EAST_SX, west: span?.west ?? CORE_WEST_SX };
-    const perSecond = this.economy.snapshot.perSecond;
+    const perSecond = rewardRate(this.economy.snapshot);
     const views = list.map(bounty => {
       const observed = bountyObserved(bounty, this.current.progress[bounty.id] ?? [], frontier);
       const claimed = this.current.claimed.includes(bounty.id);

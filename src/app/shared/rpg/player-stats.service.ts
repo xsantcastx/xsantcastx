@@ -32,6 +32,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { rewardRate } from '../economy/economy.model';
 import { XpService } from '../gamification/xp.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
@@ -227,7 +228,7 @@ export class PlayerStatsService {
   }
 
   /** max(20,000, ten minutes of income) — economy v3. */
-  get respecCost(): number { return respecCostFor(this.economy.snapshot.perSecond); }
+  get respecCost(): number { return respecCostFor(rewardRate(this.economy.snapshot)); }
 
   /**
    * Refund every spent point for a flat fee.

@@ -67,6 +67,7 @@ import { mergePets } from '../pets/pets-save.model';
 import { mergeTownTasks } from '../town-tasks/town-tasks-save.model';
 import { mergeKeeperMilestones } from '../skills/keeper-milestones-save.model';
 import { mergeHearth } from '../hearth/hearth-save.model';
+import { WHEREABOUTS_KEY, mergeWhereabouts } from '../save/whereabouts.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -619,6 +620,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     doc: 'characters',
     label: 'Characters',
     merge: mergeCharacterRoster,
+  },
+  // Where the character last stood (owner, 2026-10-21: position followed the device, not the character). The play
+  // view's own `eclipse-play-world-v1` stays device-local and is written every two seconds; this twin is written at
+  // most about once a minute of walking, on an area change and on pagehide (whereabouts.service.ts), so it costs ~1
+  // document write a minute of play, never one a frame. Per character. The newest `at` wins, whole.
+  {
+    key: WHEREABOUTS_KEY,
+    collection: 'progress',
+    doc: 'whereabouts',
+    label: 'Whereabouts',
+    merge: mergeWhereabouts,
   },
 ];
 

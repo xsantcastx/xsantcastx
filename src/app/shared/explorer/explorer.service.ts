@@ -32,6 +32,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { rewardRate } from '../economy/economy.model';
 import { XpService } from '../gamification/xp.service';
 import { RealmId, realmById } from '../realms/realm.model';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
@@ -419,7 +420,7 @@ export class ExplorerService implements OnDestroy {
       startedAt: Date.now(),
       // Economy v3: the payout is "N seconds of income", priced off the
       // income the player had when they sent them.
-      incomeAtLaunch: this.economy.snapshot.perSecond,
+      incomeAtLaunch: rewardRate(this.economy.snapshot),
       lootBonus: this.roster.lootBonusOf(chosen.id),
       yieldMultiplier: this.stats.missionMultiplier,
       bonus,
@@ -543,7 +544,7 @@ export class ExplorerService implements OnDestroy {
         // Economy v3. A record from before v3 has no frozen income and is paid
         // off the income at return, so a mission out across the update still
         // pays a v3-sized reward rather than only the floor.
-        incomeAtLaunch: explorer.incomeAtLaunch ?? this.economy.snapshot.perSecond,
+        incomeAtLaunch: explorer.incomeAtLaunch ?? rewardRate(this.economy.snapshot),
         durationMs: explorer.duration,
       });
 

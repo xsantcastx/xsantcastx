@@ -23,9 +23,9 @@
  *   node scripts/economy-sim.mjs --loot          # drops per hour by rung, per difficulty (in --check too)
  *   node scripts/economy-sim.mjs --combat        # time to kill / time to die per creature, tier and Keeper stage (in --check too)
  *   node scripts/economy-sim.mjs --living        # the Living World: mysteries, critter catches, strongboxes (in --check too)
- *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
- *                                                # first purchase is > 15 s or
- *                                                # < 20 purchases in 10 min
+ *   node scripts/economy-sim.mjs --reprice      # every income-priced reward and price read in the hunt at L10/40/100 (in --check too)
+ *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when any band below fails (the hunt is the yardstick:
+ *                                                # economy-curve huntRate / huntGold; the forge pays nothing by the second)
  *   node scripts/economy-sim.mjs                 # both economies, default player
  *   node scripts/economy-sim.mjs --cps=6         # active click attempts per second
  *   node scripts/economy-sim.mjs --idleCpm=0     # clicks/min while the tab idles
@@ -80,6 +80,23 @@ function loadTsTree(rel, cache = new Map()) {
 
 const C = loadTs('src/app/shared/economy/economy-curve.ts');
 const V2 = loadTs('src/app/shared/economy/economy-legacy-v2.ts');
+
+// ───────────────────────────────────────────────────────────────────────────
+// The yardstick: the hunt (economy-curve HUNT_GOLD). The forge pays nothing by
+// the second (IDLE_INCOME off), so every band below that used to read "N
+// seconds of income at a stage of the forge's curve" now reads N seconds of a
+// steady hunt at a Keeper level: huntRate(L) Gold a second, huntGold(L, s).
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Gold a second of a steady level-L hunt. */
+const huntRate = L => C.huntRate(L);
+/** The Keeper levels every hunt-priced band is graded at. */
+const HUNT_STAGES = [[1, 'L1'], [10, 'L10'], [20, 'L20'], [40, 'L40'], [100, 'L100'], [300, 'L300']];
+/**
+ * A reward's floor is a new Keeper's safety net: past this level it must never beat the hunt seconds it is priced at
+ * (the old rule "no floor beats its income seconds after the first half hour", read in the hunt).
+ */
+const FLOOR_LEVEL = 10;
 
 // ───────────────────────────────────────────────────────────────────────────
 // Economies
@@ -498,17 +515,11 @@ function stageTable(E) {
 
 /** CI smoke: the v3 opening must feel like Cookie Clicker. */
 function check(E) {
-  const { log } = simulate(E);
-  const paid = log.buys.filter(b => b.paid);
-  const first = paid[0]?.t;
-  const inTen = paid.filter(b => b.t <= 600).length;
   const fails = [];
-  if (!(first <= 15)) fails.push(`first purchase at ${fmtT(first)} (must be <= 15 s)`);
-  if (inTen < 20) fails.push(`${inTen} purchases in the first 10 min (must be >= 20)`);
-  console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
-  // The forge above is the legacy clicker (only the side view's Homestead still draws it): with IDLE_INCOME off the
-  // ledger mints nothing by the second, so every "seconds of income" reward below pays its floor, and Gold comes
-  // from the hunt (`--hunt` prints it). The hunt's own checks run in huntScenario.
+  // The forge's clicker curve (first purchase in 15 s, 20 in 10 min) graded a forge that no longer pays: with
+  // IDLE_INCOME off the ledger mints nothing by the second and Gold comes from the hunt, so every band below reads
+  // the hunt (huntRate / huntGold at a Keeper level) and the forge's opening is no longer checked.
+  console.log(`economy-sim --check (${E.name}): every band read in the hunt (huntGold at L${HUNT_STAGES.map(([L]) => L).join('/')})`);
   console.log(`  forge idle income: ${C.IDLE_INCOME ? 'ON' : 'off'} (Gold comes from the hunt: HUNT_GOLD)`);
   if (C.IDLE_INCOME) fails.push('the forge pays idle income again (IDLE_INCOME must stay off: Gold comes from the hunt)');
   // The Mirror Slate (Lune Coyne's shortcut price): 10-60 minutes of a level-10 hunt, where a Keeper first meets her.
@@ -539,6 +550,9 @@ function check(E) {
     }
     console.log(`  Potions: ${rows.join('; ')}`);
   }
+  // Everything that was priced as "N seconds of income" (bet cap, respec, expeditions, collection, challenges, the
+  // item economy): read in the hunt at the Keeper's level (`--reprice` prints the table).
+  fails.push(...repriceScenario({ quiet: true }));
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // The cascade machines (Eclipse Cascade, Orrery Tumbler): a quick stratified proof, autoplay at the cap (`--cascade` runs the full one).
@@ -713,31 +727,30 @@ function reelsScenario({ rounds, plays, quiet }) {
     if (Math.abs(rep.rtp - R.REELS_STATS.rtp) > 0.01) fails.push(`${plays} plays returned ${pct(rep.rtp)}, more than 1 point from ${pct(R.REELS_STATS.rtp)}`);
   }
 
-  // Bet ladder against the curve: the first bet within minutes, and the cap
-  // never more than two minutes of income past the floor.
-  const { log } = simulate(PROPOSED);
-  const stages = [[60, '1m'], [300, '5m'], [1800, '30m'], [3600, '1h'], [86400, '1d'], [7 * 86400, '7d']];
-  if (!quiet) console.log('\n  Bet cap (two minutes of income, floor 50):  ' + stages.map(([t, l]) => `${l}: ${fmtN(C.gamesBetCap(log.at[t]?.gps ?? 0))}`).join(' · '));
-  // Higher bets (owner 2026-10-15): with a deep purse (a day of income banked) the cap is 1% of it, never over an hour of income.
-  if (!quiet) console.log('  Bet cap with a day of income banked:         ' + stages.map(([t, l]) => { const g = log.at[t]?.gps ?? 0; return `${l}: ${fmtN(C.gamesBetCap(g, g * 86400))}`; }).join(' · '));
+  // Bet ladder against the hunt: the first bet within a minute or two of hunting, and the cap never more than two
+  // minutes of the Keeper's hunt past the floor. "Income" is huntRate at the Keeper's level (the forge pays nothing).
+  const stages = HUNT_STAGES.map(([L, label]) => [huntRate(L), label]);
+  if (!quiet) console.log('\n  Bet cap (two minutes of the hunt, floor 50):  ' + stages.map(([g, l]) => `${l}: ${fmtN(C.gamesBetCap(g))}`).join(' · '));
+  // Higher bets (owner 2026-10-15): with a deep purse (ten hours of hunting banked) the cap is 1% of it, never over an hour of the hunt.
+  if (!quiet) console.log('  Bet cap with ten hours of hunting banked:     ' + stages.map(([g, l]) => `${l}: ${fmtN(C.gamesBetCap(g, g * 36000))}`).join(' · '));
   const minBet = C.GAMES_BET.min;
-  const bankAt = t => log.trace.filter(([tt]) => tt <= t).map(([, total]) => total).pop() ?? 0;
-  if (!(bankAt(120) >= minBet)) fails.push(`the first ${minBet}-Gold bet is not affordable by 2 min`);
-  for (const [t] of stages) {
-    const gps = log.at[t]?.gps ?? 0;
+  // The first bet: a level-1 Keeper's first few kills.
+  const firstBetS = minBet / huntRate(1);
+  if (!(firstBetS <= 120)) fails.push(`the first ${minBet}-Gold bet takes ${firstBetS.toFixed(0)} s of a level-1 hunt (must be <= 2 min)`);
+  for (const [gps, t] of stages) {
     const cap = C.gamesBetCap(gps);
-    if (cap > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`cap ${cap} above two minutes of income at ${t}s`);
+    if (cap > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`cap ${cap} above two minutes of the hunt at ${t}`);
     // A deep purse never opens more than an hour of income, nor more than 1% of the purse past the two-minute cap.
     for (const days of [0.1, 1, 30, 3650]) {
       const purse = gps * 86400 * days;
       const deep = C.gamesBetCap(gps, purse);
-      if (deep > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps, Math.min(C.GAMES_BET.purseShare * purse, C.GAMES_BET.purseIncomeSeconds * gps))) fails.push(`cap ${deep} with ${days} d banked breaks the purse rule at ${t}s`);
-      if (deep > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.purseIncomeSeconds * gps)) fails.push(`cap ${deep} above an hour of income at ${t}s`);
+      if (deep > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps, Math.min(C.GAMES_BET.purseShare * purse, C.GAMES_BET.purseIncomeSeconds * gps))) fails.push(`cap ${deep} with ${days} d banked breaks the purse rule at ${t}`);
+      if (deep > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.purseIncomeSeconds * gps)) fails.push(`cap ${deep} above an hour of the hunt at ${t}`);
     }
   }
-  // Autoplay at the cap (a rich Keeper: a day of income banked) is still a sink, at every stage.
+  // Autoplay at the cap (a rich Keeper: ten hours of hunting banked) is still a sink, at every stage.
   fails.push(...autoplayAtCap({
-    name: 'Reels', quiet, log, stages: stages.slice(3),
+    name: 'Reels', quiet, stages: stages.slice(1),
     play: (r, bet) => { const o = R.playReels(r, bet); return { value: R.reelsReturn(o), bonus: !!o.bonus }; },
     rtpAtCap: bet => th.goldRtp + R.prizeRtp(bet, th),
   }));
@@ -755,15 +768,15 @@ function reelsScenario({ rounds, plays, quiet }) {
 // never crossed. Percentiles (in hours of income) show how wide the swing is.
 // ───────────────────────────────────────────────────────────────────────────
 
-function autoplayAtCap({ name, quiet, log, stages, play, rtpAtCap, runs = 300, spins = 100 }) {
+function autoplayAtCap({ name, quiet, stages, play, rtpAtCap, runs = 300, spins = 100 }) {
   const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
   const A = loadTsTree('src/app/shared/games/autoplay.ts');
   const fails = [];
   const r = rng.seededRng(`economy-sim:autoplay:${name}`);
-  for (const [t, label] of stages) {
-    const gps = log.at[t]?.gps ?? 0;
+  for (const [gps, label] of stages) {
     if (!(gps > 0)) continue;
-    const purse0 = gps * 86400;
+    // A rich Keeper: ten hours of hunting banked (the forge's "a day of income" read in the hunt).
+    const purse0 = gps * 36000;
     const bet = C.gamesBetCap(gps, purse0);
     const nets = [];
     let floorBroken = 0;
@@ -786,9 +799,9 @@ function autoplayAtCap({ name, quiet, log, stages, play, rtpAtCap, runs = 300, s
     nets.sort((a, b) => a - b);
     const mean = nets.reduce((a, b) => a + b, 0) / runs;
     const q = p => nets[Math.min(runs - 1, Math.floor(p * runs))];
-    if (!quiet) console.log(`  ${name} autoplay ×${spins} at the cap, ${label}: bet ${fmtN(bet)} (${(bet / gps / 60).toFixed(1)} min of income, ${(100 * bet / purse0).toFixed(2)}% of a day banked); returned ${(100 * returned / Math.max(1, wagered)).toFixed(1)}%; net in hours of income: mean ${mean.toFixed(2)} · p10 ${q(0.1).toFixed(2)} · p50 ${q(0.5).toFixed(2)} · p90 ${q(0.9).toFixed(2)} · p99 ${q(0.99).toFixed(2)} · max ${nets[runs - 1].toFixed(2)}`);
+    if (!quiet) console.log(`  ${name} autoplay ×${spins} at the cap, ${label}: bet ${fmtN(bet)} (${(bet / gps / 60).toFixed(1)} min of income, ${(100 * bet / purse0).toFixed(2)}% of ten hours banked); returned ${(100 * returned / Math.max(1, wagered)).toFixed(1)}%; net in hours of income: mean ${mean.toFixed(2)} · p10 ${q(0.1).toFixed(2)} · p50 ${q(0.5).toFixed(2)} · p90 ${q(0.9).toFixed(2)} · p99 ${q(0.99).toFixed(2)} · max ${nets[runs - 1].toFixed(2)}`);
     if (rtpAtCap(bet) >= 1) fails.push(`${name}: RTP at the cap (${label}) is ${(rtpAtCap(bet) * 100).toFixed(2)}%, not a sink`);
-    if (bet > 0.0100001 * purse0 && bet > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`${name}: the cap stakes ${(100 * bet / purse0).toFixed(2)}% of a day banked at ${label}`);
+    if (bet > 0.0100001 * purse0 && bet > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`${name}: the cap stakes ${(100 * bet / purse0).toFixed(2)}% of ten hours banked at ${label}`);
     if (bet > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.purseIncomeSeconds * gps)) fails.push(`${name}: the cap is over an hour of income at ${label}`);
     if (floorBroken) fails.push(`${name}: autoplay crossed its Gold floor ${floorBroken} times at ${label}`);
     if (q(0.5) > 0) fails.push(`${name}: the median autoplay run at the cap gains at ${label}`);
@@ -814,7 +827,6 @@ function cascadeScenario({ base, free, superRounds, plays, quiet }) {
   const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
   const fails = [];
   const pct = x => `${(x * 100).toFixed(2)}%`;
-  const { log } = simulate(PROPOSED);
   for (const m of [M.ECLIPSE_CASCADE, M.ORRERY_TUMBLER]) {
     const stated = M.CASCADE_STATS[m.id].rtp;
     const p = M.cascadeProof(m, rng.seededRng(`economy-sim:cascade:${m.id}`), base, free, superRounds);
@@ -840,7 +852,7 @@ function cascadeScenario({ base, free, superRounds, plays, quiet }) {
       if (!quiet) console.log(`  ${fmtN(plays)} whole plays: RTP ${pct(rep.rtp)}, hit 1 in ${(1 / rep.hitRate).toFixed(2)}, free ${oneIn('free')}, super ${oneIn('super')}, Big ${oneIn('big')}, Mega ${oneIn('mega')}, Epic ${oneIn('eclipse')}, capped ${oneIn('capped')}, max ×${fmtN(rep.maxX)}`);
     }
     fails.push(...autoplayAtCap({
-      name: m.id, quiet, log, stages: [[3600, '1h'], [86400, '1d'], [7 * 86400, '7d']],
+      name: m.id, quiet, stages: [[40, 'L40'], [100, 'L100'], [300, 'L300']].map(([L, label]) => [huntRate(L), label]),
       play: (r, bet) => { const o = M.playCascade(m, r, bet); return { value: o.win, bonus: !!o.bonus }; },
       rtpAtCap: () => stated, runs: quiet ? 60 : 400,
     }));
@@ -1027,15 +1039,15 @@ function levelingScenario({ quiet = false } = {}) {
 
 function fishingScenario({ quiet = false } = {}) {
   const fails = [];
-  const { log } = simulate(PROPOSED);
   const say = (...a) => { if (!quiet) console.log(...a); };
   const order = merchantOrder();
-  say(`Fishing scenario · v3 curve (PROPOSED) · order ${order.items.map(([id, n]) => `${n} ${id}`).join(' + ')} for max(${order.floor}, ${order.seconds} s of income)\n`);
-  const stages = [[600, '10m', 5], [1800, '30m', 8], [3600, '1h', 12], [3 * 3600, '3h', 20], [86400, '1d', 30], [3 * 86400, '3d', 45], [7 * 86400, '7d', 60], [14 * 86400, '14d', 80], [30 * 86400, '30d', 99]];
-  say('  ' + 'stage'.padEnd(6) + 'Fish'.padStart(5) + 'forge G/min'.padStart(14) + 'sell G/min'.padStart(12) + 'order G/min'.padStart(13) + 'share'.padStart(8) + 'ledger (daily)'.padStart(16) + 'XP/min'.padStart(9));
-  for (const [t, label, level] of stages) {
-    const gps = log.at[t]?.gps;
-    if (!gps) continue;
+  say(`Fishing scenario · read in the hunt · order ${order.items.map(([id, n]) => `${n} ${id}`).join(' + ')} for max(${order.floor}, ${order.seconds} s of the Keeper's hunt)\n`);
+  // [Keeper level, label, Fishing level]: a fisher's Fishing level beside the Keeper's hunting level.
+  const stages = [[5, 'L5', 5], [10, 'L10', 12], [20, 'L20', 20], [30, 'L30', 30], [40, 'L40', 45], [60, 'L60', 60], [100, 'L100', 80], [150, 'L150', 99]];
+  say('  ' + 'stage'.padEnd(6) + 'Fish'.padStart(5) + 'hunt G/min'.padStart(14) + 'sell G/min'.padStart(12) + 'order G/min'.padStart(13) + 'share'.padStart(8) + 'ledger (daily)'.padStart(16) + 'XP/min'.padStart(9));
+  for (const [keeper, label, level] of stages) {
+    const gps = huntRate(keeper);
+    const t = Infinity;
     const forgeMin = gps * 60;
     // The fisher splits time between the Mere and Magma lava (once a Seam Rod works) to fill the order.
     const mere = fishingRate(level, 'mere', 'active');
@@ -1057,16 +1069,18 @@ function fishingScenario({ quiet = false } = {}) {
     const ledger = Math.max(FISH.LEDGER_REWARD.goldFloor, gps * FISH.LEDGER_REWARD.goldSeconds);
     const xpMin = rotation.reduce((s, w) => s + w.xpMin, 0) / rotation.length;
     say('  ' + label.padEnd(6) + String(level).padStart(5) + fmtN(forgeMin).padStart(14) + fmtN(sell).padStart(12) + fmtN(orderMin).padStart(13) + `${(share * 100).toFixed(1)}%`.padStart(8) + fmtN(ledger).padStart(16) + xpMin.toFixed(0).padStart(9));
-    // 1. Fishing's Gold a minute (selling everything plus the standing order) ≤ 10% of the forge's, after the first 10 minutes.
-    if (t > 600 && share > .10) fails.push(`fishing pays ${(share * 100).toFixed(1)}% of the forge's Gold/min at ${label} (must be <= 10%)`);
-    // 2. A crate's vendor value ≤ the Gold the forge earns in the minutes it took to fish it.
+    // 1. Fishing's Gold a minute (selling everything plus the standing order) never out-earns the hunt at the Keeper's
+    //    level: <= 90% of it (it was 10% of a forge that paid around the clock; a hunt pays only while you hunt, so a
+    //    calm skill may come close, but the hunt stays the Gold road).
+    if (t > 600 && share > .90) fails.push(`fishing pays ${(share * 100).toFixed(1)}% of the hunt's Gold/min at ${label} (must be <= 90%)`);
+    // 2. A crate's vendor value ≤ the Gold the hunt earns in the minutes it took to fish it.
     for (const water of ['mere', 'magma', 'hearth']) {
       const r = water === 'mere' ? mere : water === 'magma' ? magma : hearth;
       if (!r) continue;
       const crate = FISH.WATERS[water].crate;
       const value = FISH.crateExpectedAnchor(crate, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION;
       const minutes = 1 / Math.max(1e-9, r.crateP * r.perMin);
-      if (value > forgeMin * minutes) fails.push(`${crate} worth ${value.toFixed(0)} beats ${minutes.toFixed(0)} min of the forge at ${label}`);
+      if (value > forgeMin * minutes) fails.push(`${crate} worth ${value.toFixed(0)} beats ${minutes.toFixed(0)} min of the hunt at ${label}`);
     }
   }
   // 3. No rod is bought past its gate: each rod's recipe asks for the Fishing level that wears it.
@@ -1111,11 +1125,9 @@ function underhearthScenario({ quiet = false } = {}) {
     'kesh-roots-1', 'siv-roots-2', 'kesh-roots-3',
     'aureth-prism-1', 'lune-prism-2', 'aureth-prism-3',
     'sera-wells-1', 'sera-wells-2', 'sera-wells-3'];
-  const { log } = simulate(PROPOSED);
-  const gpsAt = t => log.at[t]?.gps ?? 0;
-  // The stratum opens at Mining 45 / Smithing 45 / Delving 15: a week into the curve at the earliest.
-  const t7 = 7 * 86400, gps = gpsAt(t7);
-  say(`Underhearth scenario · v3 curve (PROPOSED) · forge ${fmtN(gps * 60)} Gold/min at 7d\n`);
+  // The stratum opens at Mining 45 / Smithing 45 / Delving 15: a Keeper around level 30 at the earliest.
+  const UH_LEVEL = 30, gps = huntRate(UH_LEVEL);
+  say(`Underhearth scenario · read in the hunt · ${fmtN(gps * 60)} Gold/min at L${UH_LEVEL}\n`);
   for (const id of ids) {
     const at = missions.indexOf(`id: '${id}'`);
     if (at < 0) { fails.push(`mission ${id} is missing`); continue; }
@@ -1126,14 +1138,14 @@ function underhearthScenario({ quiet = false } = {}) {
     const floor = Number(v2[1].replace(/_/g, '')) * C.ITEM_ECONOMY_SCALE;
     say(`  ${id.padEnd(26)} floor ${fmtN(floor).padStart(8)} Gold`);
   }
-  // 2. The Banked Furnace's repeat fights: its coins once a day stay a rounding error of a day's forge income.
+  // 2. The Banked Furnace's repeat fights: its coins once a day stay small beside an hour of the Keeper's hunt.
   const infernal = readFileSync(resolve(here, '../src/app/play/world/towns/infernal.ts'), 'utf8');
   const drops = infernal.slice(infernal.indexOf('BANKED_FURNACE_DROPS'), infernal.indexOf('BANKED_FURNACE_FLAG'));
   const coins = /base: (\d+), spread: (\d+)/.exec(drops);
   const perDay = coins ? Number(coins[1]) + Number(coins[2]) : Infinity;
-  const share = perDay / (gps * 86400);
-  say(`\n  Banked Furnace rematch: at most ${perDay} coins a day = ${(share * 100).toFixed(4)}% of a day's forge income at 7d`);
-  if (!(share < .001)) fails.push(`the furnace's daily coins are ${(share * 100).toFixed(3)}% of a day's forge income (must be < 0.1%)`);
+  const share = perDay / (gps * 3600);
+  say(`\n  Banked Furnace rematch: at most ${perDay} coins a day = ${(share * 100).toFixed(2)}% of an hour's hunt at L${UH_LEVEL}`);
+  if (!(share < .1)) fails.push(`the furnace's daily coins are ${(share * 100).toFixed(1)}% of an hour's hunt (must be < 10%)`);
   const engine = readFileSync(resolve(here, '../src/app/play/engine/engine.ts'), 'utf8');
   // 3. Its spilled embers pay nothing (no drop table, no kill tally): no farm while it is awake.
   if (!/drops: \{ id: 'furnace-ember', entries: \[\] \}/.test(engine)) fails.push('the furnace\'s spilled embers have a drop table');
@@ -1141,7 +1153,7 @@ function underhearthScenario({ quiet = false } = {}) {
   const crafting = readFileSync(resolve(here, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
   const gold = (/const TOOL_GOLD = \[([\d_,\s]+)\]/.exec(crafting)?.[1] ?? '').split(',').map(s => Number(s.trim().replace(/_/g, '')));
   const ratio = gold[5] / gold[4];
-  say(`  Tool V fee ${fmtN(gold[5] ?? 0)} Gold (×${ratio.toFixed(1)} tier IV) = ${(gold[5] / (gps * 60)).toFixed(1)} min of the forge at 7d`);
+  say(`  Tool V fee ${fmtN(gold[5] ?? 0)} Gold (×${ratio.toFixed(1)} tier IV) = ${(gold[5] / (gps * 60)).toFixed(1)} min of the hunt at L${UH_LEVEL}`);
   if (!(ratio >= 3 && ratio <= 5)) fails.push(`tool tier V costs ×${ratio} tier IV (must be ×3-×5)`);
   if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
   if (quiet) console.log(`economy-sim underhearth: ${fails.length ? fails.length + ' fail(s)' : 'rule I rewards, a furnace that is no farm, tool V on the ladder'}`);
@@ -1179,10 +1191,9 @@ const HEIGHTS = loadTsTree('src/app/play/world/heights.ts');
 function heightsScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
-  const { log } = simulate(PROPOSED);
   const quest = C.REWARD_SECONDS.quest, daily = C.REWARD_SECONDS.daily;
-  const gps30 = log.at[1800]?.gps ?? 0;
-  say('High roads scenario · v3 curve (PROPOSED)\n');
+  const gps30 = huntRate(FLOOR_LEVEL);
+  say(`High roads scenario · read in the hunt (a cache pays max(floor, N s of the Keeper's hunt); floors graded at L${FLOOR_LEVEL})\n`);
   say('  realm        caches (s)   summit (s)   road total');
   let all = 0;
   const ids = new Set();
@@ -1196,14 +1207,14 @@ function heightsScenario({ quiet = false } = {}) {
       road += r.goldSeconds;
       const band = f.kind === 'summit' ? daily : quest;
       if (r.goldSeconds < band.minS || r.goldSeconds > band.maxS) fails.push(`${f.id} pays ${r.goldSeconds} s of income (band ${band.minS}-${band.maxS} s)`);
-      if (gps30 && r.gold > r.goldSeconds * gps30) fails.push(`${f.id}: its floor ${r.gold} still beats ${r.goldSeconds} s of income at 30 min`);
+      if (gps30 && r.gold > r.goldSeconds * gps30) fails.push(`${f.id}: its floor ${r.gold} still beats ${r.goldSeconds} s of a level-${FLOOR_LEVEL} hunt`);
     }
     const caches = h.finds.filter(f => f.kind === 'cache').map(f => f.reward.goldSeconds).join(' + ');
     say(`  ${area.padEnd(22)} ${caches.padEnd(12)} ${String(h.finds.find(f => f.kind === 'summit').reward.goldSeconds).padEnd(12)} ${(road / 60).toFixed(0)} min`);
     if (road > 30 * 60) fails.push(`${area}'s road pays ${road / 60} min of income (must be <= 30)`);
     all += road;
   }
-  say(`\n  All five roads, once: ${(all / 60).toFixed(0)} min of income.`);
+  say(`\n  All five roads, once: ${(all / 60).toFixed(0)} min of the Keeper's hunt (${fmtN(C.huntGold(10, all))} Gold at L10, ${fmtN(C.huntGold(40, all))} at L40, ${fmtN(C.huntGold(100, all))} at L100).`);
   if (all > 150 * 60) fails.push(`the five roads pay ${all / 60} min of income (must be <= 150)`);
   if (quiet) console.log(`economy-sim heights: ${fails.length ? fails.length + ' fail(s)' : 'rule I bands, road envelope and floors ok'}`);
   else for (const f of fails) console.error(`  FAIL ${f}`);
@@ -1237,17 +1248,16 @@ const CLOCK_MODEL = loadTsTree('src/app/shared/world-clock/world-clock.model.ts'
 function eclipseScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
-  const { log } = simulate(PROPOSED);
   const daily = C.REWARD_SECONDS.daily;
-  const gps30 = log.at[1800]?.gps ?? 0;
+  const gps30 = huntRate(FLOOR_LEVEL);
   const o = ECLIPSE_MODEL.OBSERVATION;
   const realDayMs = 24 * 3600 * 1000;
   const perDay = Math.ceil(realDayMs / (CLOCK_MODEL.ECLIPSE.every * CLOCK_MODEL.WORLD_DAY_MS));
-  say("Sera Quill's Eclipse Ledger · v3 curve (PROPOSED)\n");
+  say(`Sera Quill's Eclipse Ledger · read in the hunt (floors graded at L${FLOOR_LEVEL})\n`);
   say(`  one eclipse every ${(CLOCK_MODEL.ECLIPSE.every * CLOCK_MODEL.WORLD_DAY_MS / 60000).toFixed(0)} real min: at most ${perDay} a real day`);
   say(`  an observation pays ${o.goldSeconds} s of income (floor ${o.gold}); all of a real day's: ${(perDay * o.goldSeconds / 60).toFixed(0)} min`);
   if (perDay * o.goldSeconds > daily.maxS) fails.push(`a real day of eclipses pays ${perDay * o.goldSeconds} s (must be <= ${daily.maxS})`);
-  if (gps30 && o.gold > o.goldSeconds * gps30) fails.push(`the observation's floor ${o.gold} still beats ${o.goldSeconds} s of income at 30 min`);
+  if (gps30 && o.gold > o.goldSeconds * gps30) fails.push(`the observation's floor ${o.gold} still beats ${o.goldSeconds} s of a level-${FLOOR_LEVEL} hunt`);
   let all = 0, last = 0;
   const ids = new Set();
   say('\n  mark  at  pays (s)  glass  floor');
@@ -1258,7 +1268,7 @@ function eclipseScenario({ quiet = false } = {}) {
     if (m.at <= last) fails.push(`${m.id}: marks must ascend`);
     last = m.at;
     if (m.goldSeconds < daily.minS || m.goldSeconds > daily.maxS) fails.push(`${m.id} pays ${m.goldSeconds} s (band ${daily.minS}-${daily.maxS} s)`);
-    if (gps30 && m.gold > m.goldSeconds * gps30) fails.push(`${m.id}: its floor ${m.gold} still beats ${m.goldSeconds} s of income at 30 min`);
+    if (gps30 && m.gold > m.goldSeconds * gps30) fails.push(`${m.id}: its floor ${m.gold} still beats ${m.goldSeconds} s of a level-${FLOOR_LEVEL} hunt`);
     if (m.glass > 10) fails.push(`${m.id} hands over ${m.glass} Eclipse Glass (keep it small: <= 10)`);
     say(`  ${m.id.padEnd(16)} ${String(m.at).padEnd(4)} ${String(m.goldSeconds).padEnd(9)} ${String(m.glass).padEnd(6)} ${m.gold}`);
   }
@@ -1272,10 +1282,9 @@ function eclipseScenario({ quiet = false } = {}) {
 function cabinetsScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
-  const { log } = simulate(PROPOSED);
   const quest = C.REWARD_SECONDS.quest, daily = C.REWARD_SECONDS.daily;
-  const gps30 = log.at[1800]?.gps ?? 0;
-  say('Lost Cabinets scenario · v3 curve (PROPOSED)\n');
+  const gps30 = huntRate(FLOOR_LEVEL);
+  say(`Lost Cabinets scenario · read in the hunt (floors graded at L${FLOOR_LEVEL})\n`);
   say('  cabinet              place        pays (s)   floor');
   const ids = new Set();
   let all = 0, surfaceMax = 0, deepMin = Infinity;
@@ -1285,12 +1294,12 @@ function cabinetsScenario({ quiet = false } = {}) {
     all += c.goldSeconds;
     if (c.needs) deepMin = Math.min(deepMin, c.goldSeconds); else surfaceMax = Math.max(surfaceMax, c.goldSeconds);
     if (c.goldSeconds < quest.minS || c.goldSeconds > quest.maxS) fails.push(`${c.id} pays ${c.goldSeconds} s of income (band ${quest.minS}-${quest.maxS} s)`);
-    if (gps30 && c.gold > c.goldSeconds * gps30) fails.push(`${c.id}: its floor ${c.gold} still beats ${c.goldSeconds} s of income at 30 min`);
+    if (gps30 && c.gold > c.goldSeconds * gps30) fails.push(`${c.id}: its floor ${c.gold} still beats ${c.goldSeconds} s of a level-${FLOOR_LEVEL} hunt`);
     say(`  ${c.id.padEnd(20)} ${c.place.padEnd(12)} ${String(c.goldSeconds).padEnd(10)} ${c.gold}`);
   }
   const f = CABINETS_MODEL.FINAL_REWARD;
   if (f.goldSeconds < daily.minS || f.goldSeconds > daily.maxS) fails.push(`the final reward pays ${f.goldSeconds} s (band ${daily.minS}-${daily.maxS} s)`);
-  if (gps30 && f.gold > f.goldSeconds * gps30) fails.push(`the final reward's floor ${f.gold} still beats ${f.goldSeconds} s of income at 30 min`);
+  if (gps30 && f.gold > f.goldSeconds * gps30) fails.push(`the final reward's floor ${f.gold} still beats ${f.goldSeconds} s of a level-${FLOOR_LEVEL} hunt`);
   all += f.goldSeconds;
   if (deepMin < surfaceMax) fails.push(`a deep cabinet pays ${deepMin} s, less than a surface one (${surfaceMax} s)`);
   say(`\n  The set's final reward: ${f.goldSeconds} s. All of it, once: ${(all / 60).toFixed(0)} min of income.`);
@@ -1316,7 +1325,6 @@ const TERRAIN = loadTsTree('src/app/play/engine/terrain.ts');
 function livingScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
-  const { log } = simulate(PROPOSED);
   const value = id => FISH.WATERS && Object.values(FISH.WATERS).some(w => w.crate === id)
     ? FISH.crateExpectedAnchor(id, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION : buyback(anchorOf(id));
   const node = id => TERRAIN.TERRAIN_NODE_LIST.find(n => n.id === id);
@@ -1331,22 +1339,23 @@ function livingScenario({ quiet = false } = {}) {
   const box = Math.max(value(node('old-strongbox').yield.materialId), value(node('ember-strongbox').yield.materialId));
   const fossil = node('fossil-bone').yield;
   const digH = cols * .8 * (.35 * box + .4 * 20 * fossil.qty * (fossil.chance ?? 1) * value(fossil.materialId));
-  say('Living World scenario · v3 curve (PROPOSED)\n');
+  say('Living World scenario · read in the hunt\n');
   say(`  walking: ${fmtN(sectorsH)} sectors/h, a mystery ${fmtN(mysteryEach)} Gold, a catch ${fmtN(catchEach)} Gold -> ${fmtN(walkH)} Gold/h at most`);
   say(`  digging: ${fmtN(cols)} sector columns/h of one stratum, a strongbox ${fmtN(box)} Gold -> ${fmtN(digH)} Gold/h at most\n`);
-  say('  stage   forge Gold/h   walking   digging');
-  for (const [t, label] of [[1800, '30m'], [3600, '1h'], [3 * 3600, '3h'], [86400, '1d'], [7 * 86400, '7d']]) {
-    const gps = log.at[t]?.gps;
-    if (!gps) continue;
+  say('  stage   hunt Gold/h    walking   digging');
+  // Walking and digging are side lines next to the hunt: <= 50% of an hour's hunt at the Keeper's level (it was 25%
+  // of a forge that paid around the clock; a hunt pays only while you hunt).
+  for (const [L, label] of HUNT_STAGES.slice(1)) {
+    const gps = huntRate(L);
     const forge = gps * 3600;
     say(`  ${label.padEnd(6)}${fmtN(forge).padStart(14)}   ${(walkH / forge * 100).toFixed(1).padStart(6)}%   ${(digH / forge * 100).toFixed(1).padStart(6)}%`);
-    if (walkH > .25 * forge) fails.push(`walking the wilds pays ${(walkH / forge * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 25 %)`);
-    if (digH > .25 * forge) fails.push(`the Living World's finds pay ${(digH / forge * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 25 %)`);
+    if (walkH > .5 * forge) fails.push(`walking the wilds pays ${(walkH / forge * 100).toFixed(1)} % of the hunt at ${label} (must be <= 50 %)`);
+    if (digH > .5 * forge) fails.push(`the Living World's finds pay ${(digH / forge * 100).toFixed(1)} % of the hunt at ${label} (must be <= 50 %)`);
   }
-  const gps30 = log.at[1800]?.gps ?? 0;
+  const gps30 = huntRate(FLOOR_LEVEL);
   for (const h of LIVING.HERMITS) {
     const g = value(h.gift.materialId) * h.gift.qty;
-    if (gps30 && g > 120 * gps30) fails.push(`${h.id}'s gift is worth ${fmtN(g)} Gold, over 2 min of income at 30 min`);
+    if (gps30 && g > 120 * gps30) fails.push(`${h.id}'s gift is worth ${fmtN(g)} Gold, over 2 min of a level-${FLOOR_LEVEL} hunt`);
   }
   if (quiet) console.log(`economy-sim living: ${fails.length ? fails.length + ' fail(s)' : 'finds, catches and mysteries a side line'}`);
   else for (const f of fails) console.error(`  FAIL ${f}`);
@@ -1383,20 +1392,18 @@ function petsScenario({ quiet = false } = {}) {
   if (T.gatherChance > .25) fails.push(`the hedgehog's gather chance ${T.gatherChance} is over 25 %`);
   if (T.xpShare > .1) fails.push(`the moth-kit's XP share ${T.xpShare} is over 10 %`);
   if (T.biteBoost > 1.25) fails.push(`the shade-kit's bite boost ${T.biteBoost} is over x1.25`);
-  const { log } = simulate(PROPOSED);
   const nodes = VERDANT.ROOTGLASS_THICKET.nodes ?? [];
   // Every node harvested the moment it regrows, an hour long: the hedgehog's share of it, sold back.
   const perHour = nodes.reduce((g, n) => g + 3600 / n.respawn * n.yield.qty * (n.yield.chance ?? 1) * T.gatherChance * buyback(anchorOf(n.yield.materialId)), 0);
-  say('Pets scenario · v3 curve (PROPOSED)\n');
+  say('Pets scenario · read in the hunt\n');
   say(`  helpers: gather ${T.gatherChance * 100}% · XP +${T.xpShare * 100}% · bite x${T.biteBoost} · glow ${T.glowRadius}px · fetch ${T.fetchReach}px · scent ${T.scentCells} cells`);
   say(`  the hedgehog's extra Thicket harvest, sold back: ${fmtN(perHour)} Gold/h (${nodes.length} nodes, all regrown at once)\n`);
-  say('  stage   forge Gold/h   hedgehog share');
-  for (const [t, label] of [[1800, '30m'], [3600, '1h'], [3 * 3600, '3h'], [86400, '1d'], [7 * 86400, '7d']]) {
-    const gps = log.at[t]?.gps;
-    if (!gps) continue;
+  say('  stage   hunt Gold/h    hedgehog share');
+  for (const [L, label] of HUNT_STAGES.slice(1)) {
+    const gps = huntRate(L);
     const share = perHour / (gps * 3600);
     say(`  ${label.padEnd(6)}${fmtN(gps * 3600).padStart(14)}   ${(share * 100).toFixed(2)}%`);
-    if (share > .05) fails.push(`the hedgehog's extra harvest is ${(share * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 5 %)`);
+    if (share > .1) fails.push(`the hedgehog's extra harvest is ${(share * 100).toFixed(1)} % of the hunt at ${label} (must be <= 10 %)`);
   }
   for (const pet of PETS.PETS) if (!pet.source || (!pet.source.tally && !pet.source.flag && !pet.source.claimDays)) fails.push(`${pet.id} has no source in play`);
   // The roles: combat next to the Keeper's own blow, stuns, the pulse, the finds.
@@ -1418,10 +1425,10 @@ function petsScenario({ quiet = false } = {}) {
   const pulse = A.pulseShare / A.pulseRest;
   if (pulse > T.mendShare) fails.push(`the Sunling's pulse heals ${(pulse * 100).toFixed(2)} %/s, faster than the mend`);
   const scoutDay = ROLES.FINDS_PER_DAY.scout * ROLES.scoutCoins(top, true);
-  const hour30 = (log.at[1800]?.gps ?? 0) * 3600;
+  const hour30 = huntRate(FLOOR_LEVEL) * 3600;
   const digShare = hour30 ? scoutDay / hour30 : 1;
-  say(`  digs a day: ${ROLES.FINDS_PER_DAY.scout} spots (${scoutDay} Gold at best) + ${ROLES.FINDS_PER_DAY.trinket} trinkets · ${(digShare * 100).toFixed(2)}% of an hour's forge income at 30m`);
-  if (digShare > .02) fails.push(`what pets dig up a day is ${(digShare * 100).toFixed(1)} % of an hour of forge income at 30m (must be <= 2 %)`);
+  say(`  digs a day: ${ROLES.FINDS_PER_DAY.scout} spots (${scoutDay} Gold at best) + ${ROLES.FINDS_PER_DAY.trinket} trinkets · ${(digShare * 100).toFixed(2)}% of an hour's hunt at L${FLOOR_LEVEL}`);
+  if (digShare > .1) fails.push(`what pets dig up a day is ${(digShare * 100).toFixed(1)} % of an hour's hunt at L${FLOOR_LEVEL} (must be <= 10 %)`);
   if (ROLES.FINDS_PER_DAY.trinket > 2) fails.push('more than two trinkets a day');
   // Kindle: a warm vein (3 hp, a starter pick chips 1) breaks in 1 swing instead of 3, one vein per rest.
   const saved = (3 - Math.ceil(3 / A.kindleBoost)) * .52 / A.kindleRest;
@@ -1438,10 +1445,9 @@ const BOUNTY = loadTsTree('src/app/shared/bounties/bounty.model.ts');
 function bountiesScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
-  const { log } = simulate(PROPOSED);
   const band = C.REWARD_SECONDS.daily;
   const tiers = [1, 2, 3].map(t => BOUNTY.BOUNTY_REWARDS[t]);
-  say('Bounties scenario · v3 curve (PROPOSED)\n');
+  say('Bounties scenario · read in the hunt (a bounty pays max(floor, N s of the Keeper\'s hunt))\n');
   say('  tier  income   floor   Delving XP');
   tiers.forEach((r, i) => say(`  ${i + 1}     ${String(r.goldSeconds / 60).padStart(3)} min ${String(r.gold).padStart(6)}   ${r.delvingXp}`));
   for (const [i, r] of tiers.entries()) {
@@ -1451,13 +1457,12 @@ function bountiesScenario({ quiet = false } = {}) {
   const day = 3 * Math.max(...tiers.map(r => r.goldSeconds));
   if (day > 3600) fails.push(`a day of bounties pays ${day / 60} min of income (must be <= 60)`);
   say(`\n  stage   Gold/s    tier 1    tier 3    a day (3 × tier 3)   floor wins?`);
-  for (const [t, label] of [[600, '10m'], [1800, '30m'], [3600, '1h'], [3 * 3600, '3h'], [86400, '1d'], [3 * 86400, '3d'], [7 * 86400, '7d']]) {
-    const gps = log.at[t]?.gps;
-    if (!gps) continue;
+  for (const [L, label] of HUNT_STAGES) {
+    const gps = huntRate(L), t = L >= FLOOR_LEVEL ? Infinity : 0;
     const pay = r => BOUNTY.bountyGold(r, gps);
     const floorWins = tiers.some(r => r.gold > r.goldSeconds * gps);
     say(`  ${label.padEnd(6)}${fmtN(gps).padStart(8)}${fmtN(pay(tiers[0])).padStart(10)}${fmtN(pay(tiers[2])).padStart(10)}${fmtN(3 * pay(tiers[2])).padStart(21)}   ${floorWins ? 'yes' : 'no'}`);
-    if (t >= 1800 && floorWins) fails.push(`a bounty's Gold floor beats its income seconds at ${label} (the floor is for a new save only)`);
+    if (t >= 1800 && floorWins) fails.push(`a bounty's Gold floor beats its hunt seconds at ${label} (the floor is for a new Keeper only)`);
   }
   // 4. XP: a day of bounties against one Delving level at 20 (xpFor is the 1-99 curve).
   const dayXp = 3 * Math.max(...tiers.map(r => r.delvingXp));
@@ -1494,6 +1499,168 @@ function bountiesScenario({ quiet = false } = {}) {
   say(`  Gifts: the Broken Astral Compass with the first claim; a Rift Map Fragment every ${BOUNTY.FRAGMENT_EVERY}th claim day (never a streak).`);
   if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
   if (quiet) console.log(`economy-sim bounties: ${fails.length ? fails.length + ' fail(s)' : 'rule I band, daily envelope, XP and the draw ok'}`);
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// --reprice: everything that was sized as "N seconds of income" while the forge paid by the second, read in the hunt
+// now that it does not (economy-curve IDLE_INCOME off, huntRate / huntGold). With a published rate of 0 these
+// silently paid their floors or sat at them; each now reads huntGold at the Keeper's level (EconomyService.setHuntLevel).
+// The table prints the forge-era value (what a Keeper got with the rate at 0: the floor, or the old flat price) beside
+// the new one at levels 10, 40 and 100. The checks:
+//   1. bet cap: 50 at level 1, then two minutes of the Keeper's hunt (a rung of the ladder), climbing with the level;
+//   2. respec: 5-15 minutes of the Keeper's hunt from level 10 on, and never more than 15 at level 1;
+//   3. expeditions: the floor band's rate the same on every rung (a short run is never better per hour) and at most
+//      half a level-1 hunt hour; the income term at most a quarter of the hunt the same time; every fee under the
+//      band's top, climbing with the rung, and at most an hour of a level-40 hunt;
+//   4. the collection and the challenges pay their seconds of the Keeper's hunt (10-120 min once; 5-20 min a daily,
+//      1-4 h a weekly), their floors never beating that past FLOOR_LEVEL; a day of repeatable chores (three bounties,
+//      three dailies, a day of eclipses, the Ledger Catch) at most two hours of the hunt;
+//   5. the item economy: each craft tier's cheapest fee is its hunt minutes at its level (CRAFT_FEE_HUNT), every
+//      fee at least what the item sells for; a vendor unit at most 5 kills at level 10; a market material at most an
+//      hour of a level-40 hunt; a wearable at the till at most 1.5 h of the hunt at the level its rarity drops in force
+//      (6 h for the two top rungs, finds of a season; `--loot` holds what an hour of drops sells for).
+// ───────────────────────────────────────────────────────────────────────────
+
+const PLAYER_STATS = loadTsTree('src/app/shared/rpg/player-stats.model.ts');
+const REPRICE_LEVELS = [10, 40, 100];
+/** What the forge era priced these at (the economy-curve / player-stats constants before the hunt re-base). */
+const FORGE_ERA = {
+  respec: 20_000,
+  craftFloor: { uncommon: 1_000, rare: 10_000, epic: 150_000, legendary: 2_500_000, mythic: 60_000_000 },
+  expedition: { scout: [90, 180, 0], delve: [600, 1_500, 300], expedition: [4_000, 12_000, 2_500], 'deep-dive': [30_000, 84_000, 25_000], grand: [300_000, 900_000, 400_000], abyss: [2_000_000, 6_000_000, 5_000_000] },
+};
+const EXPEDITION_SECONDS = { scout: 120, delve: 600, expedition: 3600, 'deep-dive': 4 * 3600, grand: 24 * 3600, abyss: 72 * 3600 };
+
+function repriceScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const pay = (floor, seconds, L) => Math.round(Math.max(floor, seconds * huntRate(L)));
+  const rows = [];
+  const row = (name, old, f) => rows.push([name, old, ...REPRICE_LEVELS.map(f)]);
+  // Rewards (old = the floor a rate of 0 paid).
+  const B = BOUNTY.BOUNTY_REWARDS;
+  row('Bounty, tier 1', B[1].gold, L => pay(B[1].gold, B[1].goldSeconds, L));
+  row('Bounty, tier 3', B[3].gold, L => pay(B[3].gold, B[3].goldSeconds, L));
+  const finds = Object.values(HEIGHTS.HUNT_HEIGHTS).flatMap(h => h.finds).filter(f => f.reward);
+  const cache = finds.find(f => f.kind === 'cache').reward, summit = finds.find(f => f.kind === 'summit').reward;
+  row('High road cache', cache.gold, L => pay(cache.gold, cache.goldSeconds, L));
+  row('High road summit', summit.gold, L => pay(summit.gold, summit.goldSeconds, L));
+  const cabS = CABINETS_MODEL.CABINETS.find(c => !c.needs), cabD = CABINETS_MODEL.CABINETS.find(c => c.needs), cabF = CABINETS_MODEL.FINAL_REWARD;
+  row('Lost Cabinet (surface)', cabS.gold, L => pay(cabS.gold, cabS.goldSeconds, L));
+  row('Lost Cabinet (deep)', cabD.gold, L => pay(cabD.gold, cabD.goldSeconds, L));
+  row('Lost Cabinets, the set', cabF.gold, L => pay(cabF.gold, cabF.goldSeconds, L));
+  const obs = ECLIPSE_MODEL.OBSERVATION, mark1 = ECLIPSE_MODEL.LEDGER_MARKS[0], markN = ECLIPSE_MODEL.LEDGER_MARKS.at(-1);
+  row('Eclipse observation', obs.gold, L => pay(obs.gold, obs.goldSeconds, L));
+  row(`Eclipse mark ${mark1.at}`, mark1.gold, L => pay(mark1.gold, mark1.goldSeconds, L));
+  row(`Eclipse mark ${markN.at}`, markN.gold, L => pay(markN.gold, markN.goldSeconds, L));
+  const ledger = FISH.LEDGER_REWARD;
+  row('Fishing Lodge Ledger Catch', ledger.goldFloor, L => pay(ledger.goldFloor, ledger.goldSeconds, L));
+  const coll = C.REWARD_SECONDS.collection;
+  // The collection's floor: the v2 Gold × ρ, capped at what its minutes pay a level-1 Keeper (collection.service).
+  const collFloor = ([old, secs]) => Math.min(C.itemScaled(old), C.huntGold(1, secs));
+  row('Collection, first milestone', C.itemScaled(coll[0][0]), L => pay(collFloor(coll[0]), coll[0][1], L));
+  row('Collection, last milestone', C.itemScaled(coll.at(-1)[0]), L => pay(collFloor(coll.at(-1)), coll.at(-1)[1], L));
+  const d = C.REWARD_SECONDS.daily, w = C.REWARD_SECONDS.weekly;
+  row('Daily challenge (top)', C.itemScaled(d.oldMax), L => pay(C.itemScaled(d.oldMax), d.maxS, L));
+  row('Weekly challenge (top)', C.itemScaled(w.oldMax), L => pay(C.itemScaled(w.oldMax), w.maxS, L));
+  for (const id of ['scout', 'expedition', 'grand']) {
+    const e = C.EXPEDITION_CURVE.find(x => x.id === id), o = FORGE_ERA.expedition[id];
+    row(`Expedition: ${id} (top of band)`, o[1], L => Math.round(Math.max(e.floorMax, C.expeditionIncomeGold(e, EXPEDITION_SECONDS[id] * 1000, huntRate(L)))));
+  }
+  // Prices.
+  row('Casino max bet (empty purse)', C.gamesBetCap(0), L => C.gamesBetCap(huntRate(L)));
+  row('Respec', FORGE_ERA.respec, L => PLAYER_STATS.respecCostFor(huntRate(L)));
+  for (const id of ['expedition', 'grand']) row(`Expedition fee: ${id}`, FORGE_ERA.expedition[id][2], () => C.EXPEDITION_CURVE.find(x => x.id === id).fee);
+  for (const r of ['uncommon', 'rare', 'epic', 'legendary', 'mythic']) row(`Craft fee floor: ${r}`, FORGE_ERA.craftFloor[r], () => C.CRAFT_FEE_FLOOR[r]);
+
+  say('Re-priced on the hunt · forge era (rate 0) → now, at Keeper levels ' + REPRICE_LEVELS.join(' / ') + '\n');
+  say('  ' + 'system'.padEnd(34) + 'forge era'.padStart(11) + REPRICE_LEVELS.map(L => `L${L}`.padStart(11)).join(''));
+  for (const [name, old, ...vals] of rows) say('  ' + name.padEnd(34) + fmtN(old).padStart(11) + vals.map(v => fmtN(v).padStart(11)).join(''));
+
+  // 1. Bet cap.
+  if (C.gamesBetCap(huntRate(1)) !== C.GAMES_BET.floorCap) fails.push(`reprice: the level-1 bet cap is ${C.gamesBetCap(huntRate(1))}, not the ${C.GAMES_BET.floorCap} floor`);
+  let lastCap = 0;
+  for (const [L] of HUNT_STAGES) {
+    const g = huntRate(L), cap = C.gamesBetCap(g);
+    if (cap > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * g)) fails.push(`reprice: the bet cap at L${L} (${cap}) is over two minutes of the hunt`);
+    if (cap < lastCap) fails.push(`reprice: the bet cap falls at L${L}`);
+    lastCap = cap;
+  }
+  if (!(C.gamesBetCap(huntRate(100)) >= 1_000)) fails.push('reprice: the bet cap does not climb with the level (under 1,000 at L100)');
+  // 2. Respec.
+  for (const [L] of HUNT_STAGES) {
+    const min = PLAYER_STATS.respecCostFor(huntRate(L)) / huntRate(L) / 60;
+    if (min > 15 || (L >= FLOOR_LEVEL && min < 5)) fails.push(`reprice: a respec costs ${min.toFixed(1)} min of the hunt at L${L} (band 5-15)`);
+  }
+  // 3. Expeditions.
+  const curve = C.EXPEDITION_CURVE;
+  let lastRate = 0, lastFee = -1;
+  for (const e of curve) {
+    const secs = EXPEDITION_SECONDS[e.id];
+    if (!secs) { fails.push(`reprice: no duration for expedition ${e.id}`); continue; }
+    const rate = e.floorMax / secs;
+    if (rate + 1e-9 < lastRate) fails.push(`reprice: ${e.id}'s floor band pays less an hour than the rung below`);
+    lastRate = rate;
+    if (rate > .5 * huntRate(1)) fails.push(`reprice: ${e.id}'s floor band pays ${fmtN(rate * 3600)} an hour, over half a level-1 hunt hour`);
+    if (e.incomeShare > .25) fails.push(`reprice: ${e.id} pays ${e.incomeShare} of the hunt the same time (must be <= 0.25)`);
+    if (e.fee >= e.floorMax) fails.push(`reprice: ${e.id}'s fee ${e.fee} is not under its band's top ${e.floorMax}`);
+    if (e.fee && e.fee <= lastFee) fails.push(`reprice: ${e.id}'s fee does not climb`);
+    if (e.fee) lastFee = e.fee;
+    if (e.fee > C.huntGold(40, 3600)) fails.push(`reprice: ${e.id}'s fee is over an hour of a level-40 hunt`);
+  }
+  // 4. Collection, challenges, the repeatable day.
+  for (const step of coll) {
+    const [, secs] = step;
+    if (secs < 600 || secs > 7200) fails.push(`reprice: a collection milestone pays ${secs} s of the hunt (band 10-120 min)`);
+    if (collFloor(step) > secs * huntRate(FLOOR_LEVEL)) fails.push(`reprice: the collection floor ${collFloor(step)} beats ${secs} s of a level-${FLOOR_LEVEL} hunt`);
+  }
+  if (C.itemScaled(d.oldMax) > d.maxS * huntRate(FLOOR_LEVEL)) fails.push(`reprice: a daily challenge's floor beats its hunt seconds at L${FLOOR_LEVEL}`);
+  if (C.itemScaled(w.oldMax) > w.maxS * huntRate(FLOOR_LEVEL)) fails.push(`reprice: a weekly challenge's floor beats its hunt seconds at L${FLOOR_LEVEL}`);
+  const perDayEclipses = Math.ceil(24 * 3600 * 1000 / (CLOCK_MODEL.ECLIPSE.every * CLOCK_MODEL.WORLD_DAY_MS));
+  const chores = 3 * B[3].goldSeconds + 3 * d.maxS + perDayEclipses * obs.goldSeconds + ledger.goldSeconds;
+  say(`\n  A day of repeatable chores at their tops (3 bounties, 3 dailies, ${perDayEclipses} eclipses, the Ledger Catch): ${(chores / 60).toFixed(0)} min of the Keeper's hunt`);
+  if (chores > 2 * 3600) fails.push(`reprice: a day of repeatable chores pays ${(chores / 60).toFixed(0)} min of the hunt (must be <= 120)`);
+  // 5. The item economy.
+  const CR = loadTsTree('src/app/shared/crafting/crafting.model.ts');
+  const ITEMDEF = loadTsTree('src/app/shared/rpg/item-definition.ts', LOOT_TREE);
+  const VENDOR = loadTsTree('src/app/shared/vendor/material-vendor.model.ts');
+  say('\n  Crafting: each tier\'s cheapest and dearest fee, in minutes of the hunt at the tier\'s level');
+  for (const [rarity, [L, secs]] of Object.entries(C.CRAFT_FEE_HUNT)) {
+    const fees = CR.CRAFTING_RECIPES.filter(r => r.rarity === rarity && r.category !== 'delve' && !r.skill).map(r => r.goldCost);
+    const floor = C.CRAFT_FEE_FLOOR[rarity];
+    const want = C.huntGold(L, secs);
+    if (Math.abs(floor - want) / want > .06) fails.push(`reprice: the ${rarity} craft floor ${floor} is not ${secs / 60} min of a level-${L} hunt (${want})`);
+    if (fees.length) {
+      const lo = Math.min(...fees), hi = Math.max(...fees);
+      say(`    ${rarity.padEnd(10)} L${String(L).padEnd(4)} ${fmtN(lo).padStart(8)} (${(lo / huntRate(L) / 60).toFixed(0)} min) – ${fmtN(hi).padStart(8)} (${(hi / huntRate(L) / 60).toFixed(0)} min)`);
+      if (lo < floor * .95) fails.push(`reprice: a ${rarity} craft costs ${lo}, under its floor ${floor}`);
+      if (hi / huntRate(L) > 8 * 3600) fails.push(`reprice: the dearest ${rarity} craft is ${(hi / huntRate(L) / 3600).toFixed(1)} h of a level-${L} hunt (must be <= 8 h)`);
+    }
+    const sells = ITEMDEF.EQUIPMENT_SCRAP[rarity];
+    if (sells > floor) fails.push(`reprice: a crafted ${rarity} sells for ${sells}, more than the cheapest ${rarity} craft fee ${floor}`);
+  }
+  const kill10 = C.huntGoldMean(10);
+  let worstVendor = 0;
+  for (const v of VENDOR.VENDOR_SHELF) worstVendor = Math.max(worstVendor, v.price / kill10);
+  say(`\n  Vendor: the dearest unit the counter buys is ${worstVendor.toFixed(1)} kills of a level-10 creature`);
+  if (worstVendor > 5) fails.push(`reprice: a vendor unit sells for ${worstVendor.toFixed(1)} kills at L10 (must be <= 5)`);
+  const exchangeText = readFileSync(resolve(here, '../src/app/shared/exchange/exchange.model.ts'), 'utf8');
+  const bases = [...exchangeText.matchAll(/base: ([\d_]+),\s+liquidity/g)].map(m => C.itemScaled(Number(m[1].replace(/_/g, ''))));
+  const dearest = Math.max(...bases);
+  say(`  Market: the dearest material quotes ${fmtN(dearest)} Gold = ${(dearest / huntRate(40) / 60).toFixed(0)} min of a level-40 hunt`);
+  if (!bases.length) fails.push('reprice: no market materials read');
+  if (dearest > C.huntGold(40, 3600)) fails.push(`reprice: a market material quotes ${dearest}, over an hour of a level-40 hunt`);
+  // A wearable's reference price against the hunt at the level its rarity drops in force (RUNG_LEVEL, at least 10).
+  for (const [rarity, sells] of Object.entries(ITEMDEF.EQUIPMENT_SCRAP)) {
+    const L = Math.max(10, 4 * (LOOT.RUNG_LEVEL[rarity] ?? 0));
+    const hours = sells / huntRate(L) / 3600;
+    say(`    ${rarity.padEnd(10)} wearable ${fmtN(sells).padStart(8)} = ${hours.toFixed(2)} h of a level-${L} hunt`);
+    const cap = rarity === 'mythic' || rarity === 'singular' ? 6 : 1.5;
+    if (hours > cap) fails.push(`reprice: a ${rarity} wearable is ${hours.toFixed(1)} h of a level-${L} hunt at the till (must be <= ${cap} h)`);
+  }
+  if (quiet) console.log(`economy-sim reprice: ${fails.length ? fails.length + ' fail(s)' : 'bet cap, respec, expeditions, collection, challenges and the item economy read in the hunt'}`);
+  else for (const f of fails) console.error(`  FAIL ${f}`);
   return fails;
 }
 
@@ -1861,16 +2028,18 @@ function lootScenario({ quiet = false } = {}) {
     const n = rarePlus[`${row.creature}:normal`], nm = rarePlus[`${row.creature}:nightmare`], h = rarePlus[`${row.creature}:hell`];
     if (!(n < nm && nm < h)) fails.push(`loot: ${row.creature} rare+/h does not climb Normal < Nightmare < Hell (${n.toFixed(2)}, ${nm.toFixed(2)}, ${h.toFixed(2)})`);
   }
-  // Gold: selling every Hell drop an hour is pocket change next to the forge (rule: gear is for wearing, not a Gold farm).
+  // Gold: selling every drop of an hour's hunt is a top-up beside the hunt's own Gold piles (rule: gear is for
+  // wearing, not a Gold farm): <= 50% of the same hour's piles at the creature's level, on every tier.
   {
     const SCRAP = loadTsTree('src/app/shared/rpg/item-definition.ts', LOOT_TREE).EQUIPMENT_SCRAP;
-    const per = LOOT.expectedDropsPerHour({ creature: 'anchor-warden', level: FAM.monsterLevel('anchor-warden', 0, 'hell'), tier: 'hell', magicFind: 0, rank: 'normal' }, KPH);
-    const gold = TIERS6.reduce((s, t) => s + per[t] * SCRAP[t], 0);
-    const { log } = simulate(PROPOSED);
-    const gps = log.at[1800]?.gps ?? 0;
-    const minutes = gps > 0 ? gold / gps / 60 : 0;
-    say(`  Selling an hour of Hell drops: ${fmtN(gold)} Gold = ${minutes.toFixed(1)} min of income at 30m`);
-    if (minutes > 30) fails.push(`loot: an hour of Hell drops sells for ${minutes.toFixed(1)} min of income (must be <= 30)`);
+    for (const tier of DIFF.DIFFICULTY_TIERS) {
+      const level = FAM.monsterLevel('anchor-warden', 0, tier);
+      const per = LOOT.expectedDropsPerHour({ creature: 'anchor-warden', level, tier, magicFind: 0, rank: 'normal' }, KPH);
+      const gold = TIERS6.reduce((s, t) => s + per[t] * SCRAP[t], 0);
+      const piles = C.huntGoldMean(level) * KPH;
+      say(`  Selling an hour of ${tier} drops (L${level}): ${fmtN(gold)} Gold = ${(100 * gold / piles).toFixed(0)}% of the hour's Gold piles (${fmtN(piles)})`);
+      if (gold > .5 * piles) fails.push(`loot: an hour of ${tier} drops sells for ${(100 * gold / piles).toFixed(0)}% of the hour's Gold piles (must be <= 50%)`);
+    }
   }
   // A boss an hour, and a champion pack every few minutes, at the Orrery's depth on each tier.
   say('\n  Bosses (one an hour) and champions (12 an hour): rare+ per hour');
@@ -2097,6 +2266,10 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv['town-tasks'] && !argv.check) {
   const fails = townTasksScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.reprice && !argv.check) {
+  const fails = repriceScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.bounties && !argv.check) {

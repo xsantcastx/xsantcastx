@@ -43,6 +43,7 @@ import { AutoSpinComponent, type AutoBegin } from '../games/auto-spin.component'
 import { AUTO_GAP_MS, autoAfter, autoCanSpin, startAuto, type AutoRun, type AutoStopReason } from '../games/autoplay';
 import { betAllowed, betsOpen, clampBet, stepBet } from '../games/bet-tiers';
 import { gamesBetCap } from '../economy/economy-curve';
+import { rewardRate } from '../economy/economy.model';
 import { newPlayId, type PlayRecord } from '../games/play-ledger';
 import { PlayLedgerService } from '../games/play-ledger.service';
 import { REELS_I18N } from './reels.i18n';
@@ -171,7 +172,7 @@ export class ReelsComponent implements OnInit, OnDestroy {
     this.hydrated = true;
     this.subs.add(this.economy.snapshot$.subscribe(s => {
       this.gold = s.gold;
-      this.gps = s.perSecond;
+      this.gps = rewardRate(s);
       this.refresh();
       this.cdr.markForCheck();
     }));

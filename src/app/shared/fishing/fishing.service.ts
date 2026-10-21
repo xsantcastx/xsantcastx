@@ -17,6 +17,7 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { EconomyService } from '../economy/economy.service';
+import { rewardRate } from '../economy/economy.model';
 import { SkillActionService } from '../skills/skill-actions.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
 import { skillLevel } from '../skills/skill.model';
@@ -218,7 +219,7 @@ export class FishingService {
     if (!taken.ok) return null;
     const turnIns = this.save.turnIns + 1;
     this.write({ ...this.save, turnIns, lastTurnIn: view.day });
-    const perSecond = this.economy.snapshot.perSecond;
+    const perSecond = rewardRate(this.economy.snapshot);
     const gold = Math.max(LEDGER_REWARD.goldFloor, Number.isFinite(perSecond) && perSecond > 0 ? Math.floor(perSecond * LEDGER_REWARD.goldSeconds) : 0);
     this.economy.earnGold(gold, 'npc:lodge-warden');
     const xp = ledgerXp(view.water);

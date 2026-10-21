@@ -641,6 +641,8 @@ describe('the registry', () => {
       'eclipse-npc',
       'eclipse-quests',
       'eclipse-realm-rush-board',
+      // Where the character last stood: the throttled, per-character twin of the device-local eclipse-play-world-v1.
+      'eclipse-whereabouts',
       'godforge-activity',
       'godforge-bounties',
       'godforge-arena',
@@ -703,7 +705,8 @@ describe('the registry', () => {
    *   donations/recent           a read cache of public data
    *   site-stats/visits          ditto
    *   eclipse-td                 this device's top-down / side-view toggle
-   *   eclipse-play-world-v1      where this device's Keeper last stood
+   *   eclipse-play-world-v1      where this device's Keeper last stood (every 2 s; its throttled,
+   *                              per-character twin eclipse-whereabouts is what syncs)
    */
   it('leaves device-local keys out of the registry', () => {
     const synced = new Set(SYNCED_BLOBS.map(b => b.key));

@@ -19,6 +19,7 @@ import { EconomyService } from '../shared/economy/economy.service';
 import { InventoryService, type VaultRouted } from '../shared/rpg/inventory.service';
 import { VAULT_STATION_I18N } from '../shared/vault/vault-station.i18n';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
+import { WhereaboutsService } from '../shared/save/whereabouts.service';
 import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
@@ -485,6 +486,8 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly hub = inject(CharacterHubService);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
+  /** The character's place in the cloud (throttled; whereabouts.service.ts). */
+  private readonly whereabouts = inject(WhereaboutsService);
   private readonly lobby = inject(PlayLobbyService);
   private readonly economy = inject(EconomyService);
   /** Loot & combat: drops, the aura, the difficulty, the corpse run (shared/loot). */
@@ -1310,13 +1313,16 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setCombatRules({ tier: rules.tier, seed: rules.seed, aura: rules.aura, resists: rules.resists, filter: rules.filter });
     if (first) this.pushPurse();
   }
-  private playSave(): { town?: unknown; coins?: unknown; td?: unknown } {
+  private playSave(): { town?: unknown; coins?: unknown; td?: unknown; tdAt?: unknown } {
     const raw = this.store.read(PLAY_KEY);
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown; td?: unknown } : {};
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown; td?: unknown; tdAt?: unknown } : {};
   }
   /**
    * The top-down Keeper's last place (owner 2026-10-20: "not saving in my last location"): kept in PLAY_KEY beside the
-   * town (device-local, like the side view's), written every two seconds when it changed by a tile, restored once.
+   * town (device-local, like the side view's), written every two seconds when it changed by a tile with its time
+   * (`tdAt`), restored once. The same place is offered to WhereaboutsService, which syncs it per character at most
+   * about once a minute (owner 2026-10-21: the place follows the character across devices); the wake place is the
+   * newer of the two.
    */
   private tdSavedAt = 0;
   private tdSavedKey = '';
@@ -1327,9 +1333,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (!e?.whereabouts) return;
     if (!this.tdRestored) {
       this.tdRestored = true;
-      const saved = this.playSave().td;
+      const saved = this.whereabouts.wakePlace(this.playSave() as { td?: unknown; tdAt?: unknown });
       // A deep link (?at=) means go there, not back.
-      if (saved && typeof saved === 'object' && !this.route.snapshot.queryParamMap.get('at')) e.restoreWhereabouts?.(saved);
+      if (saved && !this.route.snapshot.queryParamMap.get('at')) e.restoreWhereabouts?.(saved);
       return;
     }
     if (Date.now() - this.tdSavedAt < 2000) return;
@@ -1337,7 +1343,9 @@ export class SideScrollerComponent implements OnDestroy {
     const w = e.whereabouts, key = `${w.continent}|${w.level}|${Math.round(w.x / 16)}|${Math.round(w.y / 16)}`;
     if (key === this.tdSavedKey) return;
     this.tdSavedKey = key;
-    this.store.write(PLAY_KEY, { ...this.playSave(), td: w });
+    const at = Date.now();
+    this.store.write(PLAY_KEY, { ...this.playSave(), td: w, tdAt: at });
+    this.whereabouts.note(w, at);
   }
   /** Merge a change into PLAY_KEY; a write that changes nothing is skipped. */
   private writePlay(patch: { town?: RealmTownId; coins?: number }): void {

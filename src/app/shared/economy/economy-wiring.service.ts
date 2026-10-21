@@ -39,6 +39,9 @@ import { tierForEgg } from '../rarity/rarity.model';
 import { InfusionService } from '../enchanting/infusion.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
 import { InventoryService } from '../rpg/inventory.service';
+import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
+import { keeperLevelForXp } from '../skills/keeper-level';
+import { skillXp } from '../skills/skill.model';
 
 @Injectable({ providedIn: 'root' })
 export class EconomyWiringService {
@@ -49,6 +52,7 @@ export class EconomyWiringService {
   private readonly eggs = inject(EasterEggService);
   private readonly stats = inject(PlayerStatsService);
   private readonly inventory = inject(InventoryService);
+  private readonly activity = inject(ActivityProgressionGateway);
   private readonly infusions = inject(InfusionService);
 
   private started = false;
@@ -100,6 +104,10 @@ export class EconomyWiringService {
     // changed — and it is the only way the streak bonus is correct on the day
     // it rolls over rather than on the next reload.
     this.xp.snapshot$.subscribe(() => this.mirrorProgression());
+
+    // Every "N seconds of income" reward and price is read in the hunt at the Keeper's level (economy-curve
+    // huntRate): the ledger is told the level whenever the Hunting XP moves (a no-op when the level did not).
+    this.activity.snapshot$.subscribe(ledger => this.economy.setHuntLevel(keeperLevelForXp(skillXp(ledger.progress, 'hunting'))));
 
     // ── Gold in ─────────────────────────────────────────────────────────────
 

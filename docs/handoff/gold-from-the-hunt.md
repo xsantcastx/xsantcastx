@@ -31,8 +31,26 @@ Owner: "remove the forge where gold is being generated, thats to much gold … m
 time; `--check` asserts IDLE_INCOME off. e2e `td-gold-drop.spec.ts` (`?fxgold=1` lays three real piles) →
 `docs/handoff/cozy-ui/gold-drop.jpg`, `gold-drop-pickup.jpg`.
 
+## Re-priced on the hunt (2026-10-21, follow-up)
+Everything that was "N seconds of income" now reads the hunt at the Keeper's level: `economy-curve huntRate(L)` (Gold/s
+of a steady level-L hunt). `EconomyWiringService` feeds the Keeper's level (Hunting XP) into `EconomyService.setHuntLevel`;
+the snapshot publishes `huntLevel` and `rewardPerSecond`, and `economy.model rewardRate(snap)` is what every reward and
+price reads (`incomeRewardBase`, bounties, the Fishing Lodge, expeditions, NPC missions, the bet cap, the respec, the
+Golden Spark). So a reward of N seconds pays max(floor, huntGold(level, N)).
+- Bet cap: 50 at L1, 200 at L10, 1,000 at L40, 2,000 at L100 (plus the 1%-of-purse rule, capped at an hour of the hunt).
+- Respec: max(250, 10 min of the hunt): ~1.3k at L10, ~5.8k at L40, ~20k at L100 (was a flat 20k floor).
+- Expeditions (`EXPEDITION_CURVE`): floors 8–43k at a flat 600 Gold/h of mission, income share 6–25% of the hunt,
+  fees 20–10k (were 90–6M floors and fees up to 5M).
+- Bounties trimmed to 5/8/10 min (a day of chores ≤ 2 h of hunting); the collection's floor is capped at what its
+  minutes pay a level-1 Keeper.
+- Item economy: craft fee floors are `CRAFT_FEE_HUNT` minutes of a hunt at the tier's level (uncommon 340 … mythic
+  230k, were 1k … 60M); gear's till price (`EQUIPMENT_SCRAP`) is a fifth of before so an hour's drops sell for ≤ 50%
+  of the hour's piles; vendor and market material prices were already on the hunt's scale and are now graded.
+- The side view's furnace and automatons are retired (`isRetiredIncomeUpgrade`): the ledger refuses them, the
+  Homestead shows "Retired: …", the Market stops listing them; old levels still load.
+- `economy-sim --reprice` prints forge-era vs now at L10/40/100; `--check` runs it, and every side-line band
+  (fishing, living, pets, heights, cabinets, eclipse, bounties, loot, reels/cascade caps) is graded against the hunt.
+
 ## Not done / follow-ups
-- Systems still written in "seconds of income" (bounties, heights, cabinets, eclipse marks, fishing lodge, expeditions,
-  collection, challenges) now pay their floors; their sim bands still grade the legacy forge model.
-- The casino bet cap now sits at its 50-Gold floor (`gamesBetCap(0)`), and the respec cost at its floor.
-- Old prices across the item economy were set against forge income; only the Mirror Slate was re-priced.
+- Still forge-era prices, not re-based: STORAGE_CURVE (satchel rows / vault tabs, 200k–25T), HOME_FORGE_PRICES
+  (5M/1B/1T), THRALL_SLOT_COST, mystery-box prices, gear `goldPerSec` stats (a dead Forge Power line).

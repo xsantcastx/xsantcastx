@@ -1,7 +1,7 @@
 <aside class="hc" [class.hc--open]="open" [attr.aria-label]="t('homestead.column.aria')">
   <button type="button" class="hc-toggle" (click)="toggle()" [attr.aria-expanded]="open">
     <span class="hc-purse">{{ t('homestead.column.gold', { n: gold(hud.gold) }) }}</span>
-    <small>{{ perSecond(hud.perSecond).slice(1) }}</small>
+    @if (hud.perSecond > 0) { <small>{{ perSecond(hud.perSecond).slice(1) }}</small> }
   </button>
   @if (open) {
     <button type="button" class="hc-strike" (click)="strike()">{{ t('homestead.column.strike', { n: gold(hud.perClick) }) }}</button>

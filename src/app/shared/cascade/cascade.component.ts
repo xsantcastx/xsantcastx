@@ -26,6 +26,7 @@ import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { EconomyService } from '../economy/economy.service';
 import { gamesBetCap } from '../economy/economy-curve';
+import { rewardRate } from '../economy/economy.model';
 import { SoundService } from '../sound/sound.service';
 import { GAMES_I18N } from '../games/games.i18n';
 import { WinCelebrationComponent } from '../games/win-celebration.component';
@@ -182,7 +183,7 @@ export class CascadeComponent implements OnInit, OnDestroy {
     this.hydrated = true;
     this.subs.add(this.economy.snapshot$.subscribe(s => {
       this.gold = s.gold;
-      this.gps = s.perSecond;
+      this.gps = rewardRate(s);
       this.refresh();
       this.cdr.markForCheck();
     }));
