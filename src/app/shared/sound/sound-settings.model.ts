@@ -28,6 +28,13 @@ export const SOUND_CHANNELS: readonly SoundChannel[] = ['music', 'ambience', 'ef
 export type HushSetting = 'full' | 'quiet' | 'off';
 export const HUSH_SETTINGS: readonly HushSetting[] = ['full', 'quiet', 'off'];
 
+/**
+ * Night darkness (play/td/td-night.ts; an accessibility choice saved beside the Hush): 'full' the deep night the world
+ * is drawn for, 'softer' a lighter pass for eyes or screens that lose the shapes in it.
+ */
+export type NightSetting = 'full' | 'softer';
+export const NIGHT_SETTINGS: readonly NightSetting[] = ['full', 'softer'];
+
 export interface SoundSettings {
   version: 1;
   music: number;
@@ -36,6 +43,8 @@ export interface SoundSettings {
   muted: boolean;
   /** How deep the Hush may run (an older save without it: the full dial). */
   hush: HushSetting;
+  /** How dark the night is drawn (an older save without it: full). */
+  night: NightSetting;
   /** When this choice was made (ms); the later one wins a merge. 0 = never touched. */
   updatedAt: number;
 }
@@ -44,7 +53,7 @@ export interface SoundSettings {
 export const QUIET_LEVELS: Readonly<Record<SoundChannel, number>> = { music: .35, ambience: .4, effects: .5 };
 
 export function defaultSound(): SoundSettings {
-  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', updatedAt: 0 };
+  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', updatedAt: 0 };
 }
 
 /** A level is 0..1 on a 5% grid (a slider step), so two devices never disagree by a hair. */
@@ -65,6 +74,7 @@ export function coerceSound(raw: unknown): SoundSettings {
     effects: clampLevel(r.effects, base.effects),
     muted: r.muted === true,
     hush: HUSH_SETTINGS.includes(r.hush as HushSetting) ? r.hush as HushSetting : 'full',
+    night: NIGHT_SETTINGS.includes(r.night as NightSetting) ? r.night as NightSetting : 'full',
     updatedAt: at,
   };
 }

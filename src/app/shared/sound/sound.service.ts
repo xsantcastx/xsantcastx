@@ -20,7 +20,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { HUSH_SETTINGS, SOUND_KEY, type HushSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
+import { HUSH_SETTINGS, NIGHT_SETTINGS, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
 import type { SoundScene } from './sound-palette';
 import type { SfxCue, SfxOptions, SoundDirector } from './sound-director';
 
@@ -72,6 +72,14 @@ export class SoundService {
     const cur = this.subject.value;
     if (cur.hush === hush || !HUSH_SETTINGS.includes(hush)) return;
     this.save({ ...cur, hush, updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+
+  /** Night darkness (Menu → Sound: "Night darkness"): the full night or a softer one. */
+  setNight(night: NightSetting, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (cur.night === night || !NIGHT_SETTINGS.includes(night)) return;
+    this.save({ ...cur, night, updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
   toggleMuted(): boolean {

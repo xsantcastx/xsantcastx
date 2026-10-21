@@ -469,6 +469,13 @@ and loot that lights itself. This makes light a **thing you manage** without eve
 | Lantern-light pet (Ember Newt, Prism Moth-kit) | +2 | while out | shipped job | — |
 | Lit hearths, lantern posts | 4–6 | fixed | hand-placed | towns and safe rooms |
 
+**As built — the darkness pass (2026-10-21, `play/td/td-night.ts`).** Night is a deep blue-violet pass at 86% (the
+eclipse violet at 93%, a dark floor 90% at any hour); every light is a stepped pixel hole (effects-spec "The night").
+The Keeper's own light is 3.5 tiles, Glim's 4 in the open; lamps, windows and hearths lay a warm wash, so a town at
+midnight is a cozy island and the wilds past it are not. Creatures out past the light are faint silhouettes with lit
+eyes, so a fight stays fair. Menu → Sound → *Night darkness* (Full / Softer) is an accessibility choice saved with the
+Hush.
+
 **Things that exist only in the dark** (outside every light radius; a light falling on them makes them vanish or
 flee — the core *mystery* mechanic):
 
