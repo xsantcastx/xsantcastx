@@ -75,6 +75,13 @@
           <b class="td-pot__n">{{ b.count }}</b><kbd>{{ b.key }}</kbd>
         </button>
       }
+      <!-- The Spellstone slot (shared/spellstones): F casts the stone on the belt at its rank, no mana. -->
+      <button type="button" class="td-pot td-stone" data-kind="stone" [attr.data-stone]="tdStone?.key ?? ''" [class.td-pot--empty]="!tdStone" [class.td-skill--cool]="(tdStone?.left ?? 0) > 0" [style.--cd]="tdStone?.left ?? 0"
+              (click)="useStone()" [attr.aria-label]="stoneTitle(tdStone)" [title]="stoneTitle(tdStone)">
+        @if (tdStone; as st) { <img [src]="stoneArt(st.skill)" alt="" draggable="false"> }
+        @else { <img class="td-stone__blank" [src]="art('basalt-blank')" alt="" draggable="false"> }
+        <b class="td-pot__n">{{ tdStone?.charges ?? 0 }}</b><kbd>F</kbd>
+      </button>
     </div>
   }
   <!-- Top-down: the menu toolbar (docs/design/ui-pass-top-heroes.md, the reference's Build · Workers · Storage row): square
@@ -279,6 +286,21 @@
                   }
                 </div>
               }
+              @if (stoneView(pk.id); as sv) {
+                <!-- Inscribe a Spellstone (shared/spellstones): 1 Basalt Blank + Soul → charges at the rank held now. -->
+                <div class="sbt__stone" data-inscribe [attr.data-stone-held]="sv.held">
+                  <b><img [src]="stoneArt(pk.id)" alt="" width="20" height="20"> {{ t('play.stone.title') }}</b>
+                  <small>{{ t('play.stone.gives', { n: sv.charges, rank: sv.rank }) }}</small>
+                  <small>{{ t('play.stone.have', { blanks: sv.blanks, soul: tdSoul, held: sv.held }) }}</small>
+                  <span class="sbt__stone-acts">
+                    <button type="button" class="sbt__inscribe" data-inscribe-btn [disabled]="!!sv.why" [title]="sv.why || t('play.stone.lore')" (click)="inscribeStone(pk.id)">{{ t('play.stone.inscribe', { soul: sv.soul }) }}</button>
+                    @if (sv.held > 0) {
+                      <button type="button" class="sbt__belt" data-stone-belt [attr.aria-pressed]="sv.onBelt" (click)="beltStone(pk.id)">{{ t(sv.onBelt ? 'play.stone.onBelt' : 'play.stone.belt') }}</button>
+                    }
+                  </span>
+                  @if (sv.why) { <small class="sbt__why">{{ sv.why }}</small> }
+                </div>
+              }
               <div class="sbt__acts">
                 <button type="button" class="sbt__learn" [disabled]="!!pk.block" (click)="learnSkill(pk.id)">
                   {{ pk.rank > 0 ? t('play.td.tree.rankUp') : t('play.td.tree.learn') }}
@@ -325,6 +347,7 @@
     <div class="td-orbs" aria-hidden="true" data-engine-ignore>
       <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
       <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana"><b>{{ tdMana }}</b></i>
+      <i class="td-soul" data-soul-orb><i class="soul-pip"></i>{{ tdSoul }}</i>
       @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura)"></i> }
       <!-- The Ember debt on a phone (the plates are hidden there): a small brass tag under the orbs while it is owed. -->
       @if (emberDebt > 0) { <i class="td-debt" data-ember-debt-orb>{{ t('play.coldHearth.debt.hud') }} {{ xpText(emberDebt) }}</i> }
@@ -499,6 +522,10 @@
         @if (tk.stall) {
           <button type="button" class="td-talk__trade" (click)="tradeInstead()">{{ t('play.task.trade') }}</button>
         }
+        @if (tk.giver === 'sexton-wren') {
+          <!-- Sexton Wren lays cursed grave-goods to rest (shared/grave-goods). -->
+          <button type="button" class="td-talk__trade" data-talk-grave (click)="openGraveDesk('sexton')">{{ t('grave.sexton.talk') }}</button>
+        }
       </footer>
     </section>
   }
@@ -635,7 +662,10 @@
     </div>
     @if (topDown) {
       <div class="vital vital--mana">
-        <label>{{ t('play.td.mana') }} <b>{{ tdMana }}</b></label>
+        <label>{{ t('play.td.mana') }} <b>{{ tdMana }}</b>
+          <!-- Soul (shared/spellstones): kills near the Keeper's level fill it; Spellstones are inscribed with it. -->
+          <span class="vital__soul" data-soul [attr.data-soul-n]="tdSoul" [attr.aria-label]="t('play.stone.soulAria', { n: tdSoul, cap: soulMax })" [title]="t('play.stone.soulTitle', { n: tdSoul, cap: soulMax })"><i class="soul-pip" aria-hidden="true"></i>{{ tdSoul }}</span>
+        </label>
         <div class="meter mana"><i [style.--fill]="tdMana / tdMaxMana"></i></div>
       </div>
       <!-- The Ember debt (shared/hearth): shown while owed; kills pay it off. Never a level lost. -->
@@ -947,6 +977,22 @@
                 @for (a of it.affixes; track a.key) { <li [attr.data-stat]="a.key">{{ a.text }}@if (a.range) { <span class="d2tip__range">{{ a.range }}</span> }</li> }
               </ul>
             }
+            @if (it.curse; as cu) {
+              <!-- A cursed grave-good (shared/grave-goods): the gift, the price, who lays it to rest. -->
+              <div class="d2tip__curse" data-tip-curse [class.d2tip__curse--rest]="cu.rest">
+                <b>{{ cu.name }}</b>
+                @for (ln of cu.lines; track ln) { <p>{{ ln }}</p> }
+                <p class="d2tip__lore">{{ cu.lore }}</p>
+              </div>
+            }
+            @if (it.whisper; as wh) {
+              <!-- A whispering item: the words woken so far, how awake, the cost while it whispers. -->
+              <div class="d2tip__whisper" data-tip-whisper [class.d2tip__whisper--silent]="wh.silenced">
+                <b>{{ t('grave.tip.whisper') }}</b>
+                <q>{{ wh.words }}</q>
+                @for (ln of wh.lines; track ln) { <p>{{ ln }}</p> }
+              </div>
+            }
             @if (it.specials.length) {
               <div class="d2tip__special">
                 @for (sp of it.specials; track sp) { <p>{{ sp }}</p> }
@@ -1218,6 +1264,9 @@
     <div class="place-body">
       @if (panel?.kind === 'shrine') {
         <app-hearth-shrine [level]="huntingLevel" />
+      }
+      @if (panel?.kind === 'sexton' || panel?.kind === 'archivist') {
+        <app-grave-desk [role]="panel?.kind === 'archivist' ? 'archivist' : 'sexton'" [level]="huntingLevel" />
       }
       @if (panel?.kind === 'waystone') {
         <p class="place-note">{{ t('play.hud.way.note') }}</p>

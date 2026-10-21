@@ -29,7 +29,7 @@
  *   charm1–3 unequip to bag and stay frozen (“Requires the future charm system”).
  * C5 applies that map: offhand → off-hand, charm1–3 bag + retired tag.
  */
-import type { GameItem, ItemRarity, ItemStats, ItemType, SlotId } from './item.model';
+import type { GameItem, GraveCurse, GraveWhisper, ItemRarity, ItemStats, ItemType, SlotId } from './item.model';
 
 export const INVENTORY_SCHEMA_VERSION = 2 as const;
 /** Bump wipes bag, stacks, and worn pieces. Cloud copies without this era empty too. */
@@ -118,6 +118,10 @@ export interface OwnedItemInstance extends OwnedItemBase {
   lastReforgeLock?: keyof ItemStats;
   /** Runes in this instance's sockets, in well order. See `GameItem.sockets`. */
   sockets?: (string | null)[];
+  /** A cursed grave-good's curse. See `GameItem.curse`. */
+  curse?: GraveCurse;
+  /** A whispering item's voice and progress. See `GameItem.whisper`. */
+  whisper?: GraveWhisper;
 }
 
 export interface OwnedItemStack extends OwnedItemBase {

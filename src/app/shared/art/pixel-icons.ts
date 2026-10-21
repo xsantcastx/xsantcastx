@@ -13,6 +13,7 @@
 import type { ArtEntry } from './art-manifest.generated';
 import { CURIO_ICONS } from '../cabinets/curio-icons';
 import { CLOCK_ICONS } from '../world-clock/clock-icons';
+import { SPELLSTONE_ICONS } from '../spellstones/spellstone-icons';
 
 /** A shape: 16 rows of 16 chars. '.' is clear; every other char is a palette slot. */
 type Shape = readonly string[];
@@ -627,6 +628,8 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   ...CURIO_ICONS,
   // The world clock's Moonwake Bloom, Mirrorfin and Eclipse Glass (shared/world-clock/clock-icons.ts).
   ...CLOCK_ICONS,
+  // The Basalt Blank and the four families of Spellstone (shared/spellstones/spellstone-icons.ts).
+  ...SPELLSTONE_ICONS,
 };
 
 /**

@@ -335,7 +335,7 @@ export interface FightStats {
   /** Chance (0..1) a hit crits ×1.75. */
   crit: number;
   defense: number;
-  /** Life back per second, always. */
+  /** Life back per second, always (negative: a curse drains it). */
   lifeRegen: number;
   /** Worn resists per element (its own + All Resist), each capped at 75. */
   resists: Record<Element, number>;
@@ -384,19 +384,23 @@ export function wornCombat(inventory: { readonly equippedTotals: Required<ItemSt
 export function fightStats(level: number, stats?: KeeperStats, gear: Partial<ItemStats> = {}): FightStats {
   const base = levelStats(level, stats);
   const g = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 0);
+  const signed = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
   return {
     maxHp: base.maxHp + Math.round(g(gear.life)),
     maxMana: base.maxMana + Math.round(g(gear.mana)),
     power: base.power * (1 + Math.min(GEAR_CAPS.spellDamage, g(gear.spellDamage)) / 100),
     regen: base.regen + g(gear.manaRegen),
     haste: base.haste,
-    moveHaste: Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + g(gear.moveSpeed) / 100),
+    // A cursed grave-good's Leaden Step can push worn Move Speed below zero: slower feet, never below 70% pace.
+    moveHaste: Math.max(-.3, Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + signed(gear.moveSpeed) / 100)),
     levelPace: levelSpeedBonus(level),
     castSpeed: Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) / 100,
     crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
     defense: g(gear.defense),
-    lifeRegen: g(gear.lifeRegen),
-    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + g(gear.allResist))])) as Record<Element, number>,
+    // Signed: a Grave-cold curse (shared/grave-goods) drains life slowly; the engine never lets it take the last point.
+    lifeRegen: signed(gear.lifeRegen),
+    // All Resist is signed (a Hollow Ward curse or a whispering item takes some away); each resist floors at 0.
+    resists: Object.fromEntries(ELEMENTS.map(el => [el, Math.max(0, Math.min(MAX_KEEPER_RESIST, g(gear[RESIST_STAT[el]]) + signed(gear.allResist)))])) as Record<Element, number>,
   };
 }
 

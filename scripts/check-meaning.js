@@ -342,6 +342,58 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
     n.lore = !!(p.lore && p.lore.trim());
   }
 }
+// Spellstones (shared/spellstones/spellstones.model.ts): the Basalt Blank is a satchel stack (creature drops, Edrin
+// Kade's counter) inscribed in the Spellbook; the stones themselves live in the stone pouch, one per active spell (a
+// thing each, by its icon family), cast from the belt's Spellstone slot. Their words must be on the play view.
+{
+  const SS = L('shared/spellstones/spellstones.model.ts');
+  const HUD = read('play/side-scroller.component.html') + read('play/side-scroller.component.ts');
+  const STONE_WORDS = read('shared/spellstones/spellstones.i18n.ts');
+  const blank = thing(SS.BLANK_ID);
+  for (const s of SS.SPELLSTONE_MEANING.blank.sources) src(SS.BLANK_ID, s);
+  if (HUD.includes('inscribeStone(')) for (const u of SS.SPELLSTONE_MEANING.blank.uses) use(SS.BLANK_ID, u);
+  blank.lore = !!SS.SPELLSTONE_MEANING.blank.lore && STONE_WORDS.includes("'play.stone.lore'");
+  for (const fam of SS.STONE_FAMILIES) {
+    const n = node('item', SS.stoneIcon(fam), `Spellstone (${fam})`);
+    for (const s of SS.SPELLSTONE_MEANING.stone.sources) n.sources.add(s);
+    if (HUD.includes('useStone(') && HUD.includes('castStone')) for (const u of SS.SPELLSTONE_MEANING.stone.uses) n.uses.add(u);
+    n.lore = !!SS.SPELLSTONE_MEANING.stone.lore;
+    if (!HUD.includes('stoneArt(')) { n.visible = false; n.notes.push('the belt never paints a stone'); }
+  }
+  const soul = node('stat', 'soul', 'Soul');
+  for (const s of SS.SPELLSTONE_MEANING.soul.sources) if (HUD.includes('spellstones.kill(')) soul.sources.add(s);
+  for (const u of SS.SPELLSTONE_MEANING.soul.uses) soul.uses.add(u);
+  soul.lore = !!SS.SPELLSTONE_MEANING.soul.lore;
+  if (!HUD.includes('data-soul')) { soul.visible = false; soul.notes.push('no Soul on the HUD'); }
+}
+// Grave-goods (shared/grave-goods/grave-goods.model.ts): cursed pieces (crypt drops, Sexton Wren cleanses) and
+// whispering pieces (any rare+ drop, the Archivist silences). Each curse and voice needs its words on the card.
+{
+  const GG = L('shared/grave-goods/grave-goods.model.ts');
+  const WORDS = read('shared/grave-goods/grave-goods.i18n.ts');
+  const MINT = read('shared/loot/loot.service.ts');
+  const DESK = read('shared/grave-goods/grave-desk.component.ts') + read('play/side-scroller.component.html');
+  for (const id of GG.CURSE_IDS) {
+    const n = node('item', `curse:${id}`, `Cursed (${id})`);
+    if (MINT.includes('rollGrave(')) for (const s of GG.GRAVE_MEANING.cursed.sources) n.sources.add(s);
+    if (DESK.includes("'sexton'")) for (const u of GG.GRAVE_MEANING.cursed.uses) n.uses.add(u);
+    n.lore = WORDS.includes(`'grave.curse.${id}.lore'`);
+    if (!WORDS.includes(`'grave.curse.${id}.name'`)) { n.visible = false; n.notes.push('no name on the card'); }
+  }
+  for (const id of GG.WHISPER_IDS) {
+    const n = node('item', `whisper:${id}`, `Whispering (${id})`);
+    if (MINT.includes('rollGrave(')) for (const s of GG.GRAVE_MEANING.whispering.sources) n.sources.add(s);
+    if (DESK.includes("'archivist'")) for (const u of GG.GRAVE_MEANING.whispering.uses) n.uses.add(u);
+    n.lore = [0, 1, 2, 3, 'who'].every(k => WORDS.includes(`'grave.whisper.${id}.${k}'`));
+    if (!n.lore) n.notes.push('a piece of its sentence has no words');
+  }
+  // The two who tend them stand in the Seamworks square and say who they are.
+  const npcSexton = node('npc', 'grave:sexton-wren', 'Sexton Aldous Wren');
+  if (DESK.includes('data-talk-grave')) npcSexton.uses.add('lays cursed grave-goods to rest');
+  const npcArch = node('npc', 'grave:archivist', 'The Archivist');
+  if (read('play/td/seamworks-square.ts').includes("giverStall('archivist'")) npcArch.uses.add('silences whispering items');
+  npcArch.lore = WORDS.includes("'grave.archivist.who'");
+}
 // The machines (shared/cascade): the Eclipse Cascade on the Slate, and the realm machines found in their Delves
 // (realm-machines.model.ts). A built one stands in a real area, says where it is found, has a use, its lore in
 // the model AND in the machine's words (EN + ES), a name the play view can say, and a Slate app; a spec'd one

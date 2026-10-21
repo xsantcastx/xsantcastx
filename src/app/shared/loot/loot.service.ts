@@ -23,6 +23,8 @@ import { EconomyService } from '../economy/economy.service';
 import { GOLD_ERA } from '../economy/economy-curve';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { mintEquipment } from '../rpg/item-definition';
+import { dropLevel, rollGrave } from '../grave-goods/grave-goods.model';
+import { isUnique } from '../rpg/unique-items';
 import { runeById } from '../rune-forge/rune.model';
 import type { GameItem } from '../rpg/item.model';
 import { pickAura, type AuraId, type AuraSource } from './auras';
@@ -103,14 +105,18 @@ export class LootService {
    * A gear or rune drop was walked over or tapped: mint it into the satchel
    * (an item) or the Forge ledger (a rune). False leaves it on the ground.
    */
-  grantDrop(dropId: string, drop: { item?: { definitionId: string; rarity: LootTier; level?: number }; rune?: string }): GameItem | true | false {
+  grantDrop(dropId: string, drop: { item?: { definitionId: string; rarity: LootTier; level?: number; unique?: boolean }; rune?: string }): GameItem | true | false {
     if (!this.isBrowser) return false;
     if (this.granted.has(dropId)) return true;
     if (drop.item) {
       const rng = seededRandom(hashSeed(`${this.seed()}|mint|${dropId}`));
       // Item level = the monster's level where it fell (§3); it sets the affix ranges.
-      const item = mintEquipment(drop.item.definitionId, drop.item.rarity, rng, undefined, undefined, drop.item.level);
-      if (!item) return false;
+      const minted = mintEquipment(drop.item.definitionId, drop.item.rarity, rng, undefined, undefined, drop.item.level);
+      if (!minted) return false;
+      // A grave-good (shared/grave-goods): in the crypts a rare+ piece may come up Cursed; anywhere it may whisper.
+      // Rolled once, here, off the same seeded stream: a replayed pickup mints the very same thing.
+      const grave = rollGrave({ rarity: minted.rarity, unique: !!drop.item.unique || isUnique(minted), itemLevel: minted.itemLevel, levelId: dropLevel(dropId) }, rng);
+      const item: GameItem = { ...minted, ...grave };
       const landed = this.inventory.add(item);
       if (!landed) return false;
       this.granted.add(dropId);

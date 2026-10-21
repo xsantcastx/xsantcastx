@@ -448,6 +448,14 @@ export class TopDownEngine {
     if (!why && sk?.words) this.cant = { text: sk.words, color: CANT_TONE[sk.tree], age: 0 };
     return why;
   }
+  /** A Spellstone (shared/spellstones; the host spends the charge): the spell at the stone's rank, no mana. Returns why not. */
+  castStone(id: string, rank: number): ReturnType<MobSystem['useAbility']> {
+    if (this.paused || !(id in SKILLS)) return 'cooldown';
+    const why = this.mobs.useStone(id as SkillId, rank);
+    const sk = SKILLS[id as SkillId];
+    if (!why && sk.words) this.cant = { text: sk.words, color: CANT_TONE[sk.tree], age: 0 };
+    return why;
+  }
   /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
   get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
     return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / this.mobs.cdOf(id)) : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
@@ -2030,6 +2038,8 @@ export class TopDownEngine {
     // Worn regeneration, with the boss uniques' (the Mossbound Heart: more, and twice it standing still).
     const regen = relicRegen(this.lifeRegen, this.mobs.relics, this.stillT > .5);
     if (regen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + regen * dt);
+    // A Grave-cold curse (shared/grave-goods) drains slowly: never the last point of life.
+    else if (regen < 0 && this.hp > 1) this.hp = Math.max(1, this.hp + regen * dt);
   }
 
   // ── Smoke ──────────────────────────────────────────────────────────────────

@@ -67,6 +67,7 @@ import { mergePets } from '../pets/pets-save.model';
 import { mergeTownTasks } from '../town-tasks/town-tasks-save.model';
 import { mergeKeeperMilestones } from '../skills/keeper-milestones-save.model';
 import { mergeHearth } from '../hearth/hearth-save.model';
+import { mergeSpellstones } from '../spellstones/spellstones.model';
 import { WHEREABOUTS_KEY, mergeWhereabouts } from '../save/whereabouts.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -568,6 +569,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // (the later lighting wins), the Ember debt and the Hearth Blessings held (the later fall or purchase wins both,
     // whole) and the falls counted (the higher). Per character. See hearth-save.model.ts.
     merge: mergeHearth,
+  },
+  {
+    key: 'godforge-spellstones',
+    collection: 'progress',
+    doc: 'spellstones',
+    label: 'Spellstones',
+    // `{ version, soul, pouch, slot, inscribed, at }`: the Soul held, the stone pouch (`skill@rank` → charges) and the
+    // stone on the belt. The later change wins the whole blob (a cast and an inscription cannot be split); the
+    // count of stones ever inscribed takes the higher. Per character. See spellstones.model.ts.
+    merge: mergeSpellstones,
   },
   {
     key: 'godforge-cabinets',
