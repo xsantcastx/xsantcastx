@@ -8,6 +8,8 @@ export interface RoomPlayer {
   area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; vocation?: string; look?: string; level?: number;
   /** Protocol 3: life, for the party frames. */
   hp?: number; maxHp?: number;
+  /** Protocol 4: not signed in (a guest name, no friends). Absent from an older room. */
+  guest?: boolean;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
@@ -24,9 +26,26 @@ export interface RoomSnapshot {
   status: string; connected: boolean; players: RoomPlayer[]; messages: RoomMessage[]; id: string; protocol?: number;
   /** Protocol 3 (absent or empty against an older room). */
   party?: RoomParty | null; invites?: RoomInvite[]; partyMessages?: RoomMessage[];
+  /** Protocol 4: this Keeper joined as a guest (true against an older room: nobody is signed in there). */
+  guest?: boolean; friends?: RoomFriend[]; friendRequests?: RoomFriendRequest[]; whispers?: RoomWhisper[]; blocks?: RoomBlock[];
+  /** The room refused this account (a ban): the client stops trying. */
+  barred?: boolean;
 }
 /** The room's party verbs (protocol 3). */
 export const PARTY_PROTOCOL = 3;
+/** The room's social graph (protocol 4): who is signed in, friends, whispers, block, report, privacy. */
+export const SOCIAL_PROTOCOL = 4;
+/** A friend (protocol 4): their account, the name they were added under, and — online — where and which Keeper. */
+export interface RoomFriend { uid: string; name: string; online: boolean; area?: string; player?: string }
+/** A friend request waiting on this Keeper's answer (lapses at `until`). */
+export interface RoomFriendRequest { id: string; name: string; from: string; until: number }
+/** A whisper, to or from this Keeper. */
+export interface RoomWhisper { id: string; from: string; name: string; to: string; toName: string; text: string; at: number }
+/** Someone this Keeper blocked: `key` is what /unblock takes. */
+export interface RoomBlock { key: string; name: string }
+/** Privacy (protocol 4): appear offline to friends; party invites from friends only. */
+export interface RoomPrivacy { offline: boolean; invites: 'everyone' | 'friends' }
+export type ReportReason = 'spam' | 'abuse' | 'cheating' | 'name' | 'other';
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
 export interface RoomProfile { vocation?: string; look?: string; level?: number }
 /** The top-down presence beyond x/y/zone/facing/animation. */
@@ -49,6 +68,15 @@ export interface RoomOptions {
   onPartyKill?: (kill: RoomPartyKill) => void;
   /** Protocol 3: someone joined, left or was sent away; an invite was declined. */
   onPartyNote?: (note: RoomPartyNote) => void;
+  /**
+   * Protocol 4: the signed-in player's Firebase ID token (null: join as a guest). Asked on every join; a token the
+   * room refuses (401) is dropped for that join and the Keeper comes in as a guest instead of not at all.
+   */
+  idToken?: () => Promise<string | null>;
+  /** Protocol 4: a whisper arrived (or this Keeper's own came back). */
+  onWhisper?: (whisper: RoomWhisper) => void;
+  /** Protocol 4: a friend request was accepted by the other side. */
+  onSocialNote?: (note: { kind: 'friend-added'; name: string }) => void;
 }
 
 /** The Hearth room's service (scripts/social-deployment.md). */
@@ -122,7 +150,9 @@ export class SocialRoom {
   private wanted: { name: string; profile: RoomProfile } | null = null;
   /** The page is out of sight: no stream, no updates; the session is kept for the return. */
   private paused = false;
-  private snapshot: RoomSnapshot = { status: SOLO, connected: false, players: [], messages: [], id: '', protocol: 0, party: null, invites: [], partyMessages: [] };
+  private snapshot: RoomSnapshot = { status: SOLO, connected: false, players: [], messages: [], id: '', protocol: 0, party: null, invites: [], partyMessages: [], guest: true, friends: [], friendRequests: [], whispers: [], blocks: [], barred: false };
+  /** Privacy as the Keeper set it (sent on join, and again when it changes). */
+  private privacy: RoomPrivacy = { offline: false, invites: 'everyone' };
   private readonly endpoint: string;
   private readonly keepAlive: boolean;
   private readonly send: (url: string, init?: RequestInit) => Promise<Response>;
@@ -156,9 +186,23 @@ export class SocialRoom {
     clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
     this.publish({ status: 'Joining the hearth…' });
     try {
-      const response = await this.send(`${this.endpoint}/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true }), signal: AbortSignal.timeout(8000),
+      // Protocol 4: signed in, the room is told who this is (an older room ignores the header).
+      let idToken: string | null = null;
+      try { idToken = (await this.options.idToken?.()) ?? null; } catch { idToken = null; }
+      if (generation !== this.generation || this.wanted !== wanted) return;
+      const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
+      let response = await join(idToken);
+      // A token the room will not take: in as a guest rather than not at all.
+      if (response.status === 401 && idToken) response = await join(null);
+      if (response.status === 403 && /barred/i.test(String((await response.clone().json().catch(() => null) as { error?: unknown } | null)?.error ?? ''))) {
+        // Barred (a ban): stop wanting the room; the always-on loop must not knock for ever.
+        this.wanted = null;
+        this.publish({ status: 'This account is barred from the hearth.', connected: false, barred: true });
+        return;
+      }
       if (!response.ok) throw new Error('Join failed');
       const result = await response.json();
       if (generation !== this.generation || this.wanted !== wanted) {
@@ -167,7 +211,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1 });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -190,7 +234,7 @@ export class SocialRoom {
     this.reconnectAttempts = 0; this.updating = false; this.lastUpdate = -Infinity; this.lastBody = '';
     const token = this.token; this.token = '';
     if (token) void this.post('leave', {}, token).catch(() => {});
-    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [] });
+    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [], friends: [], friendRequests: [], whispers: [], blocks: [] });
   }
   private async listen(generation: number, signal: AbortSignal): Promise<void> {
     let openedAt: number | undefined;
@@ -221,6 +265,7 @@ export class SocialRoom {
           let data: {
             type?: string; players?: RoomPlayer[]; messages?: RoomMessage[]; message?: RoomMessage; emote?: RoomEmote;
             party?: RoomParty | null; invite?: RoomInvite; kill?: RoomPartyKill; note?: RoomPartyNote;
+            friends?: RoomFriend[]; request?: RoomFriendRequest; whisper?: RoomWhisper; blocks?: RoomBlock[];
           };
           try { data = JSON.parse(line.slice(5)); } catch { continue; }
           if (data.type === 'snapshot') this.publish({ players: data.players ?? [], messages: data.messages ?? [] });
@@ -231,6 +276,7 @@ export class SocialRoom {
           }
           if (data.type === 'emote' && data.emote?.kind === 'wave') this.options.onEmote?.(data.emote);
           this.partyEvent(data);
+          if (this.socialEvent(data)) return;
         }
       }
       if (!signal.aborted) throw new Error('Stream ended');
@@ -274,6 +320,67 @@ export class SocialRoom {
     }
     if (data.type === 'party-kill' && data.kill) this.options.onPartyKill?.(data.kill);
     if (data.type === 'party-note' && data.note) this.options.onPartyNote?.(data.note);
+  }
+  /**
+   * Protocol 4's events. True when the session ended here (a ban, or this account joined from another window: the
+   * always-on loop must not take the room back and push that window out in turn).
+   */
+  private socialEvent(data: { type?: string; friends?: RoomFriend[]; request?: RoomFriendRequest; whisper?: RoomWhisper; blocks?: RoomBlock[]; note?: unknown }): boolean {
+    if (data.type === 'friends' && Array.isArray(data.friends)) {
+      this.publish({ friends: data.friends.filter(f => f && typeof f.uid === 'string' && typeof f.name === 'string').slice(0, 200) });
+    }
+    const r = data.request;
+    if (data.type === 'friend-request' && r && typeof r.id === 'string' && !(this.snapshot.friendRequests ?? []).some(x => x.id === r.id)) {
+      this.publish({ friendRequests: [...(this.snapshot.friendRequests ?? []), r].slice(-5) });
+    }
+    const w = data.whisper;
+    if (data.type === 'whisper' && w && typeof w.id === 'string' && !(this.snapshot.whispers ?? []).some(x => x.id === w.id)) {
+      this.publish({ whispers: [...(this.snapshot.whispers ?? []), w].slice(-30) });
+      this.options.onWhisper?.(w);
+    }
+    if (data.type === 'blocks' && Array.isArray(data.blocks)) this.publish({ blocks: data.blocks.filter(b => b && typeof b.key === 'string').slice(0, 100) });
+    if (data.type === 'social-note' && data.note && typeof data.note === 'object') this.options.onSocialNote?.(data.note as { kind: 'friend-added'; name: string });
+    if (data.type === 'banned' || data.type === 'replaced') {
+      const barred = data.type === 'banned';
+      this.wanted = null;
+      clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
+      this.generation++; this.stream?.abort(); this.stream = undefined; this.token = '';
+      this.publish({ connected: false, players: [], barred, status: barred ? 'This account is barred from the hearth.' : 'You joined the hearth from another window.' });
+      return true;
+    }
+    return false;
+  }
+  /** The room knows the social graph (protocol 4) and the Keeper is in it. */
+  get canSocial(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= SOCIAL_PROTOCOL; }
+  async friendRequest(player: string): Promise<string> { return this.socialCall('friend/request', { to: player }); }
+  async friendAnswer(requestId: string, yes: boolean): Promise<string> {
+    this.publish({ friendRequests: (this.snapshot.friendRequests ?? []).filter(r => r.id !== requestId) });
+    return this.socialCall(yes ? 'friend/accept' : 'friend/decline', { request: requestId });
+  }
+  forgetFriendRequest(requestId: string): void { this.publish({ friendRequests: (this.snapshot.friendRequests ?? []).filter(r => r.id !== requestId) }); }
+  async friendRemove(uid: string): Promise<string> { return this.socialCall('friend/remove', { uid }); }
+  async whisper(player: string, text: string): Promise<string> { return this.socialCall('whisper', { to: player, text }); }
+  async block(player: string): Promise<string> { return this.socialCall('block', { player }); }
+  async unblock(key: string): Promise<string> { return this.socialCall('unblock', { key }); }
+  async report(player: string, reason: ReportReason, note = ''): Promise<string> { return this.socialCall('report', { player, reason, ...(note ? { note } : {}) }); }
+  /** Privacy: kept for the next join, and sent now when the room knows it. */
+  setPrivacy(p: RoomPrivacy): void {
+    const next: RoomPrivacy = { offline: !!p.offline, invites: p.invites === 'friends' ? 'friends' : 'everyone' };
+    if (next.offline === this.privacy.offline && next.invites === this.privacy.invites) return;
+    this.privacy = next;
+    if (this.canSocial) void this.socialCall('privacy', next);
+  }
+  private async socialCall(path: string, body: unknown): Promise<string> {
+    if (!this.canSocial || !this.token) return 'offline';
+    try {
+      const response = await this.send(`${this.endpoint}/${path}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
+      });
+      if (response.ok) return '';
+      const said = await response.json().catch(() => null) as { error?: unknown } | null;
+      return typeof said?.error === 'string' && said.error ? said.error.slice(0, 120) : 'failed';
+    } catch { return 'failed'; }
   }
   /** The room knows parties (protocol 3) and the Keeper is in it. */
   get canParty(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= PARTY_PROTOCOL; }

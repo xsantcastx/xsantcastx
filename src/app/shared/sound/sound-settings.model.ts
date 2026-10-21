@@ -43,6 +43,15 @@ export const NIGHT_SETTINGS: readonly NightSetting[] = ['full', 'softer'];
 export type ChatSetting = 'on' | 'ignore';
 export const CHAT_SETTINGS: readonly ChatSetting[] = ['on', 'ignore'];
 
+/**
+ * Privacy at the Hearth (protocol 4; docs/design/online.md §3.10): 'offline' appears offline to friends (still in the
+ * room, still seen in the world); party invites from everyone, or from friends only.
+ */
+export type PresenceSetting = 'online' | 'offline';
+export const PRESENCE_SETTINGS: readonly PresenceSetting[] = ['online', 'offline'];
+export type InviteSetting = 'everyone' | 'friends';
+export const INVITE_SETTINGS: readonly InviteSetting[] = ['everyone', 'friends'];
+
 export interface SoundSettings {
   version: 1;
   music: number;
@@ -55,6 +64,10 @@ export interface SoundSettings {
   night: NightSetting;
   /** The Hearth chat: on (always connected) or ignored (an older save without it: on). */
   chat: ChatSetting;
+  /** Appear online or offline to friends (an older save without it: online). */
+  presence: PresenceSetting;
+  /** Who may invite to a party (an older save without it: everyone). */
+  invites: InviteSetting;
   /** When this choice was made (ms); the later one wins a merge. 0 = never touched. */
   updatedAt: number;
 }
@@ -63,7 +76,7 @@ export interface SoundSettings {
 export const QUIET_LEVELS: Readonly<Record<SoundChannel, number>> = { music: .35, ambience: .4, effects: .5 };
 
 export function defaultSound(): SoundSettings {
-  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', updatedAt: 0 };
+  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', updatedAt: 0 };
 }
 
 /** A level is 0..1 on a 5% grid (a slider step), so two devices never disagree by a hair. */
@@ -86,6 +99,8 @@ export function coerceSound(raw: unknown): SoundSettings {
     hush: HUSH_SETTINGS.includes(r.hush as HushSetting) ? r.hush as HushSetting : 'full',
     night: NIGHT_SETTINGS.includes(r.night as NightSetting) ? r.night as NightSetting : 'full',
     chat: CHAT_SETTINGS.includes(r.chat as ChatSetting) ? r.chat as ChatSetting : 'on',
+    presence: PRESENCE_SETTINGS.includes(r.presence as PresenceSetting) ? r.presence as PresenceSetting : 'online',
+    invites: INVITE_SETTINGS.includes(r.invites as InviteSetting) ? r.invites as InviteSetting : 'everyone',
     updatedAt: at,
   };
 }

@@ -307,6 +307,37 @@
 
   <!-- ── Logs ──────────────────────────────────────────────────────────── -->
   @if (view === 'logs') {
+    <section class="gm-sec" aria-labelledby="gm-rep-h" data-gm-reports>
+      <header class="gm-sec__head">
+        <h2 class="gm-sec__title" id="gm-rep-h">Player reports ({{ openReports }} open)</h2>
+        <p class="gm-sec__sub">
+          Filed from the Hearth (a Keeper tapped Report). The lines are the reported Keeper's own last public lines,
+          as the room heard them, unmasked. Ban from the Players table.
+        </p>
+      </header>
+      @if (!reports.length) {
+        <p class="gm-empty">No reports.</p>
+      } @else {
+        <div class="gm-scroll">
+          <table class="gm-table">
+            <caption class="gm-sr">Player reports, newest first</caption>
+            <thead><tr><th scope="col">When</th><th scope="col">About</th><th scope="col">Reason</th><th scope="col">Their lines</th><th scope="col">From</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              @for (r of reports; track r.id) {
+                <tr [attr.data-report]="r.id">
+                  <td [title]="r.at ? (r.at | date: 'medium') : ''">{{ ago(r.at) }}</td>
+                  <td>{{ r.about.name }}@if (r.about.guest) { <small> (guest)</small> }@if (r.about.uid) { <br><code class="gm-action">{{ r.about.uid }}</code> }</td>
+                  <td><code class="gm-action">{{ r.reason }}</code>@if (r.note) { <br>{{ r.note }} }</td>
+                  <td class="gm-detail">@for (l of r.lines; track $index) { <div>{{ l.text }}</div> } @empty { — }</td>
+                  <td>{{ r.from.name }}@if (r.from.guest) { <small> (guest)</small> }</td>
+                  <td>@if (r.status === 'open') { <button type="button" class="gm-btn" (click)="resolveReport(r)">Resolve</button> } @else { resolved }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
     <section class="gm-sec" aria-labelledby="gm-log-h">
       <header class="gm-sec__head">
         <h2 class="gm-sec__title" id="gm-log-h">Audit trail</h2>

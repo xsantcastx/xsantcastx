@@ -154,7 +154,7 @@ for (const size of SIZES) {
       expect(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.km__keep'), { x: k.x + k.width / 2, y: k.y + k.height / 2 })).toBe(true);
     });
 
-    test('the world: Spellbook, Satchel, sheet, Bestiary, Map, settings, Shrine, Wren, journal', async ({ page }) => {
+    test('the world: Spellbook, Satchel, sheet, Bestiary, Map, settings, friends, Shrine, Wren, journal', async ({ page }) => {
       test.setTimeout(180_000);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
@@ -182,6 +182,10 @@ for (const size of SIZES) {
       await key('m');
       await page.locator('#places-list [data-open="sound"]').tap();
       await check(page, 'settings sheet', '.sound-host');
+      await closeAll(page);
+      await key('m');
+      await page.locator('#places-list [data-open="friends"]').tap();
+      await check(page, 'friends sheet', '.friends-host');
       await closeAll(page);
 
       // The Hearth Shrine, stood at.
