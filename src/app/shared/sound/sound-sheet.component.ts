@@ -95,6 +95,8 @@ import { SOUND_I18N } from './sound.i18n';
         <span>{{ t('play.sound.mute') }}</span>
       </label>
       <p class="ss__note" role="status">{{ statusLine }}</p>
+      <!-- The host's own settings (the play view: Reset HUD layout, on a computer). -->
+      <ng-content />
     </section>
   `,
   styles: [`

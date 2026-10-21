@@ -193,6 +193,28 @@ the rules); the GM console's report list does. Diff the live ruleset first
 firebase deploy --only firestore:rules --project xsantcastx-1694b
 ```
 
+### Protocol 5 (shared creatures and companions, 2026-10-21 — built, NOT deployed)
+
+`/health` and `/join` report `protocol: 5`. A client that shares creatures says `coop: true` (with `party: true`) on
+`/join`; only such sessions are elected, sent co-op events or allowed the co-op verbs, so an older client sees nothing new.
+Per party and per area (presence `area`), the room elects a host: the earliest-joined co-op member present, sticky
+while it stays; re-elected when it changes area, leaves the party or the room, or sends no snapshot for 3 s while
+others share its area. It announces `{type:'coop', areas:{[area]:{host, term, members}}}` to the party's co-op members
+on every change (and to a reopened stream); one dropped from the party hears `areas: {}`.
+
+| verb | who | body | relayed |
+|---|---|---|---|
+| POST `/coop/snap` | that area's host | `{area, seq, kf, mobs[≤48], gone[≤64]?, ev[≤24]?, tier?}` | `{type:'coop-snap', from, area, term, seq, kf, mobs, gone, ev}` to the party's other co-op members in that area |
+| POST `/coop/hits` | a member with a host there | `{area, hits[1–24]:{i, d, el, c?, s?}}` | `{type:'coop-hits', from, area, x, y, level, hits}` (x/y/level: the room's own presence record) to that host only |
+| POST `/coop/pals` | any co-op member (each owner its own) | `{area, pals[≤16]:{i, k: pet\|beast\|stampede\|skel\|wisp\|beacon\|glim, t?, x, y, f?, h?, m?, a?}}` | `{type:'coop-pals', from, area, pals}` to the party's other co-op members in that area; 6 / s per session |
+
+Every creature, event and claim field is validated (unknown keys refused; ids `[a-z0-9]{1,10}`, keys
+`[a-z0-9:,~._-]{1,80}`, creature ids as `/party/kill`, whole numbers in bounds, a `bite`/`kill` may only name party
+members other than the host). Caps: 8 KB a body (413), 12 snapshots and 12 claim batches a second per session, 40 co-op
+requests a second per party for snapshots and claims (429). Blocks (protocol 4) are honoured both ways: no snapshot,
+claim or companion list travels between a blocked pair. Presence also accepts `pals` (`[a-z0-9:,-]{0,96}`: a pet and
+Glim as offsets from the Keeper, cosmetic, relayed to everyone in `players`). Never stored; the room never simulates. See docs/design/online.md §3.4.
+
 **Deploy (the owner's call — not executed).** `--set-env-vars` replaces every
 variable, so the four origins and the project go in one `^|^` string:
 
@@ -210,7 +232,7 @@ gcloud run deploy eclipse-hearth \
   --timeout 3600 \
   --session-affinity \
   --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
-curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":4
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":5
 ```
 
 To check the identity path after the deploy: two browsers, both signed in with

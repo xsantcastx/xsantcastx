@@ -16,7 +16,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import * as fs from 'fs';
-import { ERA, openPlay, seed } from './play-helpers';
+import { ERA, mapFind, openPlay, seed } from './play-helpers';
 import { RAF_COUNTER, sample, startProbe, type MemorySample } from './play-memory-probe';
 
 const PROBE = !!process.env['PLAY_MEMORY_PROBE'];
@@ -36,6 +36,7 @@ const place = (page: Page) => page.locator('section.place');
 
 async function openPlace(page: Page, name: RegExp): Promise<void> {
   await page.locator('.places-toggle').click();
+  await mapFind(page, name);
   await page.locator('#places-list button', { hasText: name }).first().click();
   await expect(place(page)).toBeVisible({ timeout: 60000 });
   // The hosted page has rendered (not just the "Opening…" note).

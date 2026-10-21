@@ -18,6 +18,8 @@ export interface EngineState {
   /** Id of the town or hunt the Keeper stands in. */
   areaId?: string;
   coins?: number; kills?: number; area?: string;
+  /** Top-down: the zone the Keeper stands in (play/td/td-zones.ts): its fixed level band, and whether it is safe ground. */
+  zone?: { id: string; band: readonly [number, number]; safe: boolean } | null;
   facing?: number; animation?: KeeperAnimation;
   /** True in an area with diggable terrain. `depth`: terrain rows below the surface the Keeper stands at. */
   delve?: boolean; depth?: number;
@@ -279,6 +281,17 @@ export interface EngineOptions {
    */
   onKill?: (event: KillEvent) => void;
   /**
+   * Shared creatures (Hearth protocol 4; play/td/td-coop.ts), top-down only. `onCoopSnap`: post this host's snapshot
+   * (false when it did not go); `onCoopHits`: post this member's damage claims; `onCoopKill`: the host's creature fell —
+   * how it pays this member ('full': the engine lays its own spoils and fires onKill with `coop`; 'share' and 'none' are
+   * the host page's to pay or not).
+   */
+  onCoopSnap?: (body: import('../social/coop-protocol').CoopSnapBody) => Promise<boolean>;
+  onCoopHits?: (body: { area: string; hits: import('../social/coop-protocol').CoopHit[] }) => Promise<boolean>;
+  onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
+  /** Protocol 5: post this Keeper's own companions to the party in its area. */
+  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
+  /**
    * A find on the high ground (world/heights.ts) was used: a courier cache, a
    * carving, the look-out or a summit cairn. The host books it once per player
    * (the claim is keyed by `find.id`) and answers with what to show; the engine
@@ -380,6 +393,13 @@ export interface KillEvent {
   hp: number;
   /** The sky's XP multiplier on this kill (night, an eclipse: td-phases.ts) times the Hush's (td-dark.ts); unset = 1. */
   xp?: number;
+  /**
+   * Shared creatures (Hearth protocol 4): `coop` — a creature the party's host simulated, felled with this Keeper
+   * fighting it (paid in full, never announced to the party again); `share` — the host's own creature that only other
+   * members fought (this Keeper takes the party share, no loot).
+   */
+  coop?: boolean;
+  share?: boolean;
 }
 export interface DiscoverEvent {
   /**

@@ -38,7 +38,7 @@
  *  - TRAVEL seconds between pulls on a hunt (leveling.md's 240 kills an hour).
  */
 import { createRequire } from 'node:module';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -83,6 +83,7 @@ const POT = load('src/app/shared/potions/potions.model.ts');
 const KL = load('src/app/shared/skills/keeper-level.ts');
 const MILE = load('src/app/shared/skills/keeper-milestones.ts');
 const HUNT = load('src/app/shared/skills/hunting.ts');
+const ZONE = load('src/app/play/td/td-zones.ts');
 const PTS = load('src/app/shared/keeper-look/skill-points.ts');
 const { MOBS, MobSystem } = MOBS_M;
 const TILE = load('src/app/play/td/td-art.ts').TILE;
@@ -258,9 +259,9 @@ function arena(k, state) {
   sys.power = f.power; sys.regen = f.regen; sys.agility = f.haste; sys.castSpeed = f.castSpeed; sys.crit = f.crit;
   sys.defense = f.defense; sys.keeperLevel = k.level; sys.resists = f.resists; sys.pace = 1 + f.levelPace;
   if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ spellDamage: k.gear.weapon.spellDamage ?? 0 });
-  sys.elites = false;
+  sys.elites = false; sys.levelGap = true;
   // Every blow or shot that reaches him (before a ward or Defense drinks it): a kiting Keeper must still be struck.
-  { const bite = sys.biteKeeper.bind(sys); sys.biteKeeper = (raw, type, from) => { if (raw > 0) life.struck++; return bite(raw, type, from); }; }
+  { const bite = sys.biteKeeper.bind(sys); sys.biteKeeper = (raw, ...rest) => { if (raw > 0) life.struck++; return bite(raw, ...rest); }; }
   if (TALLY) { const step = sys.stepDash.bind(sys); sys.stepDash = (m, dt) => { step(m, dt); if (!m.dash) { const d = Math.hypot(m.x - keeper.x, m.y - keeper.y); TALLY[d <= MOBS_M.CHARGE_HIT ? 'charge:landed' : 'charge:missed'] = (TALLY[d <= MOBS_M.CHARGE_HIT ? 'charge:landed' : 'charge:missed'] ?? 0) + 1; } }; }
   if (TALLY) { const hurt = sys.hurtMob.bind(sys); sys.hurtMob = (m, n, c, k) => { if (m.hp > 0) TALLY[c] = (TALLY[c] ?? 0) + Math.min(n, m.hp); return hurt(m, n, c, k); }; }
   return { sys, keeper, life, walk: WALK * (1 + f.moveHaste) * (1 + f.levelPace) };
@@ -271,6 +272,8 @@ function spawn(sys, enc, dist) {
   const def = enc.def;
   const at = Math.min(dist, Math.max(40, (def.sight ?? 120) - 12));
   if (enc.pack) return sys.spawnPack(`enc`, def, at, 0, enc.pack);
+  // A pull of `count` (a wild pack of the zone's ordinary creatures, td-world: one to three), side by side.
+  if (enc.count > 1) return Array.from({ length: enc.count }, (_, i) => sys.place(`enc${i}`, def, at + (i % 2) * 14, (i - (enc.count - 1) / 2) * 16));
   return [sys.place('enc', def, at, 0)];
 }
 
@@ -329,7 +332,7 @@ export function fight(k, enc, seed, state = null, max = 600) {
       if (dodge) {
         const dx = dodge.x - keeper.x, dy = dodge.y - keeper.y, d = Math.hypot(dx, dy);
         if (d <= step) { keeper.x = dodge.x; keeper.y = dodge.y; dodge = null; } else { keeper.x += dx / d * step; keeper.y += dy / d * step; }
-      } else if (kiter && (chaser = sys.mobs.find(m => m.def.speed < A.walk * .85 && Math.hypot(m.x - keeper.x, m.y - keeper.y) < KITE))) {
+      } else if (kiter && (chaser = sys.mobs.find(m => m.def.speed * ZONE.gapPace(ZONE.levelGap(k.level, m.def.level)) < A.walk * .85 && Math.hypot(m.x - keeper.x, m.y - keeper.y) < KITE))) {
         // A ranged Keeper keeps a slower creature off him: he backs away round it (circling, so he stays near the fight).
         const ax = keeper.x - chaser.x, ay = keeper.y - chaser.y, d = Math.hypot(ax, ay) || 1;
         const vx = ax / d + (-ay / d) * orbit, vy = ay / d + (ax / d) * orbit, n = Math.hypot(vx, vy);
@@ -390,15 +393,49 @@ export function fight(k, enc, seed, state = null, max = 600) {
 const ALL = Object.values(MOBS);
 const NORMALS = ALL.filter(d => (d.rank ?? 'normal') === 'normal');
 export const BOSSES = ALL.filter(d => d.rank === 'boss' && d.id !== SEAM.SEAM_ID).sort((a, b) => a.level - b.level);
-/** The ordinary creatures a Keeper hunts at a level: within six below to two above (the nearest three when none). */
-function huntPool(level, below = 6) {
-  const near = NORMALS.filter(d => d.level >= level - below && d.level <= level + 2);
-  return near.length ? near : [...NORMALS].sort((a, b) => Math.abs(a.level - level) - Math.abs(b.level - level)).slice(0, 3);
+/**
+ * The world's zones (td-zones.ts ZONES) with who lives in each, read off the game's own maps: every continent's region
+ * tables (and its graveyard's Bone Walkers) and every hand-drawn floor's legend. A Keeper hunts where the zone's fixed
+ * band holds his level (owner 2026-10-21: D2's zone levels), and the creatures come at the zone's level, re-made by
+ * the game's own atZoneLevel — never at his.
+ */
+export const HUNT_ZONES = (() => {
+  const out = [];
+  for (const f of readdirSync(resolve(ROOT, 'src/app/play/td/maps'))) {
+    if (!f.endsWith('.ts') || f.includes(' ')) continue;
+    for (const v of Object.values(load(`src/app/play/td/maps/${f}`))) {
+      if (!v || typeof v !== 'object') continue;
+      if (v.mobs && v.names && v.map) {
+        for (const [region, t] of Object.entries(v.mobs)) {
+          const z = ZONE.zoneOf(ZONE.regionZone(v.id, region));
+          if (z && t?.types?.length) out.push({ id: ZONE.regionZone(v.id, region), band: z.band, types: [...new Set(t.types)] });
+        }
+        const g = ZONE.zoneOf(ZONE.graveyardZone(v.id));
+        if (g && v.places.some(p => p.kind === 'graveyard')) out.push({ id: ZONE.graveyardZone(v.id), band: g.band, types: ['bone-walker'] });
+      } else if (v.rows && v.legend && v.id) {
+        const z = ZONE.zoneOf(v.id), types = new Set();
+        for (const [ch, e] of Object.entries(v.legend)) if (e.mob && v.rows.some(r => r.includes(ch)) && (MOBS[e.mob]?.rank ?? 'normal') === 'normal') types.add(e.mob);
+        if (z && types.size) out.push({ id: v.id, band: z.band, types: [...types] });
+      }
+    }
+  }
+  return out;
+})();
+/** The zones whose band holds `level` (the highest zone's, for a Keeper past all of them). */
+function zonesAt(level) {
+  const at = HUNT_ZONES.filter(z => level >= z.band[0] && level <= z.band[1]);
+  if (at.length) return at;
+  const top = Math.max(...HUNT_ZONES.map(z => z.band[1]));
+  return HUNT_ZONES.filter(z => z.band[1] === top);
 }
-/** The creatures "at his level" the time-to-kill bands are read on: three below to two above. */
-const atLevel = level => huntPool(level, 3);
-/** Levels with creatures at them (content stops at 42: a level-60 Keeper outlevels all of it, so his row is shown, not banded). */
-const banded = level => NORMALS.some(d => Math.abs(d.level - level) <= 3);
+/** A creature of `id` as a zone raises it at `level` (td-zones atZoneLevel). */
+const atZone = (id, level) => ZONE.atZoneLevel(MOBS[id], level);
+/** The ordinary creatures a Keeper hunts at a level: every kind of every zone that holds it, at that zone's level for the spawn. */
+function huntPool(level) { return [...new Set(zonesAt(level).flatMap(z => z.types))].map(id => atZone(id, level)); }
+/** The creatures "at his level" the time-to-kill bands are read on: the kinds of his level's zones, at exactly his level. */
+const atLevel = level => huntPool(level);
+/** Levels a zone holds (a level-60 Keeper outlevels the world: his row is shown, not banded). */
+const banded = level => HUNT_ZONES.some(z => level >= z.band[0] && level <= z.band[1]);
 function packOf(rank, seed) {
   return seeded(`pack|${seed}`, r => rank === 'unique'
     ? ELITE.makePack('unique', ELITE.rollAffixes(r, r() < .3 ? 1 : r() < .64 ? 2 : 3), 'Sim the Leader', 2 + Math.floor(r() * 3))
@@ -434,15 +471,17 @@ function attempts(voc, level, tier, encOf, runs, resist = null) {
  * carried from fight to fight, TRAVEL seconds between (the Keeper mends 6 a second after 4 s unhurt, td-engine
  * MEND_PER_SEC), resting when under 60% life, FALL_SECS on a fall. Returns XP, Gold and kills an hour, and deaths.
  */
-function hunt(voc, level, secs, seed) {
+function hunt(voc, level, secs, seed, lift = 0) {
   const k = keeper(voc, level, 'normal', seed);
-  const pool = huntPool(level), f = k.fight;
-  return seeded(`hunt|${voc}|${level}|${seed}`, r => {
+  const zones = zonesAt(level + lift), f = k.fight;
+  return seeded(`hunt|${voc}|${level}|${lift ? `${lift}|` : ''}${seed}`, r => {
     let clock = 0, xp = 0, gold = 0, kills = 0, deaths = 0, pots = 0, n = 0;
     let state = { hp: f.maxHp, mana: f.maxMana, belt: { hp: BELT * 4, mana: BELT * 4 } };
     while (clock < secs) {
-      const def = pool[Math.floor(r() * pool.length)];
-      const pack = ELITE.eliteEligible({ level: def.level, rank: def.rank, keeperLevel: level, safe: false }) ? ELITE.rollElite(`${seed}|${level}|${n}`) : null;
+      // A zone that holds his level, one of its kinds, at the zone's level for this spawn (td-zones zoneLevel).
+      const z = zones[Math.floor(r() * zones.length)], key = `${seed}|${n}`;
+      const def = atZone(z.types[Math.floor(r() * z.types.length)], lift ? level + lift : ZONE.zoneLevel(z.band, key));
+      const pack = ELITE.eliteEligible({ level: def.level, rank: def.rank, safe: false }) ? ELITE.rollElite(`${seed}|${level}|${n}`) : null;
       const res = fight(k, { def, pack }, `hunt|${voc}|${level}|${seed}|${n++}`, state);
       clock += res.secs; xp += res.xp; gold += res.gold; kills += res.kills; pots += res.used.hp + res.used.mana;
       if (res.died) { deaths++; clock += FALL_SECS; state = { hp: f.maxHp, mana: f.maxMana, belt: res.belt }; continue; }
@@ -453,7 +492,7 @@ function hunt(voc, level, secs, seed) {
       state = { hp: Math.min(f.maxHp, hp), mana: Math.min(f.maxMana, res.mana + f.regen * wait), belt: res.belt };
     }
     const h = clock / 3600;
-    return { xph: xp / h, goldh: gold / h, killsh: kills / h, deathsh: deaths / h, potsh: pots / h };
+    return { xph: xp / h, goldh: gold / h, killsh: kills / h, deathsh: deaths / h, potsh: pots / h, deaths };
   });
 }
 
@@ -462,7 +501,7 @@ function cell(voc, level, runs) {
   // Each run meets one of the creatures a Keeper of this level hunts (huntPool), in turn.
   const pick = i => pool[(i + hash(`${voc}|${level}`)) % pool.length];
   // Packs only rise from creatures of level 3 or more (td-elites eliteEligible), so a pack is one of those.
-  const packs = pool.filter(d => ELITE.eliteEligible({ level: d.level, rank: d.rank, keeperLevel: level, safe: false }));
+  const packs = pool.filter(d => ELITE.eliteEligible({ level: d.level, rank: d.rank, safe: false }));
   const pickPack = i => (packs.length ? packs : pool)[(i + hash(`${voc}|${level}`)) % (packs.length || pool.length)];
   const id = `${pool.length} kinds, L${Math.min(...pool.map(d => d.level))}–${Math.max(...pool.map(d => d.level))}`;
   return {
@@ -480,9 +519,52 @@ function bossCell(voc, def, runs) {
  * a wall, not impossible — on them he comes higher and in resist gear for its arcane).
  */
 export const TIER_LEAD = { normal: 0, nightmare: 5, hell: 15 };
+/** The Seam Eater's levels: each continent's rift's, fixed (td-zones SEAM_LEVELS). */
+const SEAM_AT = [...new Set(Object.values(ZONE.SEAM_LEVELS))].sort((a, b) => a - b);
 function seamCell(voc, level, tier, runs) {
   const def = SEAM.seamEaterAt(MOBS[SEAM.SEAM_ID], level), k = level + TIER_LEAD[tier];
   return { level, keeper: k, tier, ...attempts(voc, k, tier, () => ({ def }), runs, tier === 'normal' ? null : 'arcane') };
+}
+
+/**
+ * The level gap (owner 2026-10-21: "If I'm level 20 vs a 40 I should get one-shot"; td-zones LEVEL_GAP): a Keeper of
+ * `level` against `gap`-levels-higher creatures of the zones that hold that level, `count` at a time.
+ */
+/**
+ * Hunting above his level: GAP_HUNT.secs on the hunt among creatures `lift` levels above him (the zone's own kinds, a
+ * pack now and then, life and belt carried, as hunt()), the share of those hunts in which he falls at least once.
+ */
+export const GAP_HUNT = { lift: 5, secs: 900 };
+function plusCell(voc, level, lift, runs) {
+  const hs = Array.from({ length: Math.max(4, Math.round(runs / 2)) }, (_, i) => hunt(voc, level, GAP_HUNT.secs, 100 + i, lift));
+  return { death: hs.filter(h => h.deaths > 0).length / hs.length };
+}
+/** A gap fight lasts at most this (a creature at his level falls in 2–5 s: this is a dozen times that and more). */
+const GAP_SECS = 60;
+function gapCell(voc, level, gap, count, runs) {
+  const pool = huntPool(level + gap);
+  const pick = i => pool[(i + hash(`${voc}|${level}|${gap}`)) % pool.length];
+  const out = [];
+  for (let i = 0; i < runs; i++) {
+    const k = keeper(voc, level, 'normal', i);
+    out.push(fight(k, { def: pick(i), count }, `gap|${voc}|${level}|${gap}|${count}|${i}`, null, GAP_SECS));
+  }
+  // One ordinary blow of each kind (its blow's middle, or its shot's) landing on him through his Defense and resists, as
+  // a share of his life: what a single blow does.
+  const blow = mean(pool.map(def => seeded(`blow|${voc}|${def.id}`, () => {
+    const k = keeper(voc, level, 'normal', 0), A = arena(k), m = A.sys.place('b', def, 400, 0);
+    const p = def.ranged && !def.dmg ? def.ranged.dmg : def.dmg, before = A.life.taken;
+    A.sys.biteKeeper((p[0] + p[1]) / 2, MOBS_M.mobHits(def), m);
+    return (A.life.taken - before) / k.fight.maxHp;
+  })));
+  const died = out.filter(r => r.died);
+  return {
+    death: died.length / runs, won: out.filter(r => r.cleared).length / runs, blow,
+    /** Blows that reached him before he fell (the deaths only). */
+    blows: median(died.map(r => r.struck)),
+    /** His damage a second on such a creature against one of his own level (the gap's to-hit and damage cut). */
+    dealt: mean([0, 1, 2].map(s => dps(voc, level, s, level + gap))) / mean([0, 1, 2].map(s => dps(voc, level, s, level))),
+  };
 }
 
 // ── The bands (docs/design/loot-and-combat.md §13) ──────────────────────────────────────────────────────────────
@@ -499,6 +581,12 @@ export const BANDS = {
   seamTierDeath: { nightmare: .4, hell: .55 },
   /** Vocations' time to kill one foe (a creature at level, each boss), each within ±25% of the four's mean. */
   spread: .25,
+  /**
+   * The level gap (td-zones LEVEL_GAP): a level-20 Keeper against a level-40 creature falls to 1–2 of its blows, does at
+   * most a fifth of his usual damage and never wins; fifteen minutes' hunting among creatures five levels up fells
+   * him in 25–50% of the hunts, the four vocations' mean (each 5–75%: a run of noise wide, as CI asks): a threat, survivable.
+   */
+  gap: { oneShotBlows: 2, oneShotWin: .05, oneShotDealt: .2, plus5Death: [.25, .5], plus5Each: [.05, .75] },
   /** Hours to reach a level on the hunt, against leveling.md §1 ("content at pace": 0.6 / 5.8 / 14 h): [low, high]. */
   hours: { 10: [.4, 1], 30: [4, 8], 50: [10, 18] },
 };
@@ -522,8 +610,8 @@ function hoursTo(xphAt, to) {
 // ── Run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** The Keeper's sustained damage a second on one creature that neither bites nor dies (30 s of the real fight loop). */
-export function dps(voc, level, seed = 0) {
-  const k = keeper(voc, level, 'normal', seed), def = atLevel(level)[0];
+export function dps(voc, level, seed = 0, foeLevel = level) {
+  const k = keeper(voc, level, 'normal', seed), def = atLevel(foeLevel)[0];
   const dummy = { ...def, hp: 1e9, dmg: [0, 0], rate: 999, ranged: undefined, speed: 0, sight: 999 };
   const r = fight(k, { def: dummy }, `dps|${voc}|${level}|${seed}`, null, 30);
   return r.dealt / r.secs;
@@ -540,9 +628,10 @@ if (argv.trace) {
   // The Seam Eater on Nightmare / Hell: <level> is the Eater's; the Keeper comes TIER_LEAD above it in resist gear.
   const seam = id === SEAM.SEAM_ID, lead = seam ? TIER_LEAD[tier] : 0;
   const k = keeper(voc, Number(L) + lead, tier, Number(argv.seed ?? 0), seam && tier !== 'normal' ? 'arcane' : null);
-  const def = seam ? SEAM.seamEaterAt(MOBS[id], Number(L)) : MOBS[id];
+  // An ordinary creature comes at the Keeper's level, as a zone holding his level raises it (td-zones atZoneLevel).
+  const def = seam ? SEAM.seamEaterAt(MOBS[id], Number(L)) : (MOBS[id].rank ?? 'normal') === 'normal' ? atZone(id, Number(argv.foe ?? L)) : MOBS[id];  // --foe=<level>: the creature's own level (the gap)
   console.log(JSON.stringify({ fight: k.fight, stats: k.stats, gear: k.gear.total, bar: k.tree.bar, aura: k.tree.aura, ranks: Object.fromEntries(Object.entries(k.tree.ranks).filter(([, n]) => n)) }));
-  console.log(fight(k, { def, pack: argv.pack ? packOf(String(argv.pack), 'trace') : undefined }, 'trace'));
+  console.log(fight(k, { def, pack: argv.pack ? packOf(String(argv.pack), 'trace') : undefined, count: Number(argv.count ?? 1) }, 'trace'));
   console.log('damage by colour', TALLY);
   process.exit(0);
 }
@@ -554,7 +643,8 @@ for (const voc of VOCATIONS) {
   table[voc] = { levels: {}, bosses: [], seam: [] };
   for (const L of levels) table[voc].levels[L] = cell(voc, L, RUNS);
   for (const b of BOSSES) table[voc].bosses.push(bossCell(voc, b, RUNS));
-  for (const L of QUICK ? [20, 40] : [20, 30, 40, 60]) for (const tier of ['normal', 'nightmare', 'hell']) table[voc].seam.push(seamCell(voc, L, tier, RUNS));
+  table[voc].gap = { oneShot: gapCell(voc, 20, 20, 1, RUNS), plus5: [20, 30].map(L => ({ level: L, ...plusCell(voc, L, GAP_HUNT.lift, RUNS) })) };
+  for (const L of QUICK ? [20, 40] : SEAM_AT) for (const tier of ['normal', 'nightmare', 'hell']) table[voc].seam.push(seamCell(voc, L, tier, RUNS));
 }
 const secs = (Date.now() - t0) / 1000;
 
@@ -587,6 +677,12 @@ for (let i = 0; i < table.warlock.seam.length; i++) {
 const xphAt = voc => Object.fromEntries(levels.map(L => [L, table[voc].levels[L].hunt.xph]));
 say('\nHours to reach a level on the hunt (leveling.md §1 "content at pace": 10 → 0.6 h, 30 → 5.8 h, 50 → 14 h)');
 for (const voc of VOCATIONS) say(`  ${voc.padEnd(14)} ${[10, 30, 50].map(L => `L${L} ${fmt(hoursTo(xphAt(voc), L), 1)} h`).join('   ')}`);
+
+say(`\nThe level gap: a level-20 Keeper vs a level-40 creature (falls · blows taken · wins · his damage vs at level), and hunting five levels up (share of ${GAP_HUNT.secs / 60}-minute hunts with a fall)`);
+for (const voc of VOCATIONS) {
+  const g = table[voc].gap;
+  say(`  ${voc.padEnd(14)} L20 vs L40: a blow ${pct(g.oneShot.blow)} of his life · falls ${pct(g.oneShot.death)} in ${fmt(g.oneShot.blows, 0)} blow(s) · wins ${pct(g.oneShot.won)} · deals ${pct(g.oneShot.dealt)}   ${g.plus5.map(p => `L${p.level} hunting L${p.level + GAP_HUNT.lift}: falls in ${pct(p.death)} of hunts`).join('   ')}`);
+}
 
 // ── The check ──
 for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
@@ -634,6 +730,21 @@ for (const voc of VOCATIONS) for (const [L, band] of Object.entries(BANDS.hours)
 for (const voc of VOCATIONS) for (let i = 1; i < levels.length; i++) {
   const [a, b] = [levels[i - 1], levels[i]].map(L => table[voc].levels[L].hunt);
   if (banded(levels[i]) && !(b.xph > a.xph && b.goldh > a.goldh)) fails.push(`${voc}: the L${levels[i]} hunt pays no more than L${levels[i - 1]}'s`);
+}
+
+for (const voc of VOCATIONS) {
+  const g = table[voc].gap, B = BANDS.gap;
+  // One blow takes ≥ 90% of his life (so one or two fell him), and every fall came in at most two that landed.
+  if (!(g.oneShot.blow >= .9 && (!(g.oneShot.death > 0) || g.oneShot.blows <= B.oneShotBlows))) fails.push(`${voc}: a level-40 creature's blow takes ${pct(g.oneShot.blow)} of a level-20 Keeper's life, falls in ${fmt(g.oneShot.blows, 0)} blows (≥ 90%, ≤ ${B.oneShotBlows})`);
+  if (g.oneShot.won > B.oneShotWin) fails.push(`${voc}: a level-20 Keeper beats a level-40 creature ${pct(g.oneShot.won)} of the time (≤ ${pct(B.oneShotWin)})`);
+  if (!(g.oneShot.dealt <= B.oneShotDealt * (1 + SLACK))) fails.push(`${voc}: a level-20 Keeper deals ${pct(g.oneShot.dealt)} of his damage to a level-40 creature (≤ ${pct(B.oneShotDealt)})`);
+  for (const p of g.plus5) if (!(p.death >= B.plus5Each[0] && p.death <= B.plus5Each[1])) fails.push(`${voc}: a level-${p.level} Keeper hunting level-${p.level + GAP_HUNT.lift} creatures falls in ${pct(p.death)} of ${GAP_HUNT.secs / 60}-minute hunts (each vocation ${B.plus5Each.map(pct).join('–')})`);
+}
+
+// Five levels up, the four vocations together fall in 25–50% of the hunts (a real threat, survivable).
+for (const L of [20, 30]) {
+  const m = mean(VOCATIONS.map(v => table[v].gap.plus5.find(p => p.level === L).death));
+  if (!(m >= BANDS.gap.plus5Death[0] * (1 - SLACK) && m <= BANDS.gap.plus5Death[1] * (1 + SLACK))) fails.push(`level-${L} Keepers hunting level-${L + GAP_HUNT.lift} creatures fall in ${pct(m)} of hunts, the vocations' mean (${BANDS.gap.plus5Death.map(pct).join('–')})`);
 }
 
 if (argv.check) {

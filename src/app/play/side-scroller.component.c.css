@@ -495,17 +495,10 @@
 .td-map__pin { --pin: var(--cozy-brass); position: absolute; width: 18px; height: 18px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
   translate: -50% -100%; background: transparent !important; box-shadow: none !important; cursor: pointer; }
 .td-map__pin i, .td-map__key i { display: block; width: 12px; height: 12px; margin: 0 auto; background: var(--pin); rotate: 45deg; box-shadow: 0 0 0 2px var(--cozy-wood-0); }
-.td-map__pin:hover i { scale: 1.35; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 8px var(--pin); }
 :is(.td-map__pin, .td-map__key button)[data-kind='way'] { --pin: var(--cozy-loot-epic); }
 :is(.td-map__pin, .td-map__key button)[data-kind='ship'] { --pin: var(--cozy-loot-rare); }
 /* A town task giver (shared/town-tasks). */
 :is(.td-map__pin, .td-map__key button)[data-kind='npc'] { --pin: var(--cozy-leaf); }
-/* A Harbourmaster's pier (td-harbour): an anchor, drawn (a masked shape), never a glyph. */
-:is(.td-map__pin, .td-map__key button)[data-kind='harbour'] { --pin: var(--cozy-loot-rare); }
-:is(.td-map__pin, .td-map__key) [data-kind='harbour'] i, .td-map__pin[data-kind='harbour'] i { rotate: none; box-shadow: none; width: 16px; height: 16px; background: var(--pin);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E") center / contain no-repeat; }
-.td-map__key button[data-kind='harbour'] i { width: 14px; height: 14px; }
 .stage .places.td-harbour { width: min(520px, calc(100% - 32px)); height: auto; max-height: calc(100% - 32px); grid-template-rows: auto minmax(0, 1fr); }
 .td-map__me { position: absolute; width: 10px; height: 10px; translate: -50% -50%; background: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-berry);
   animation: td-map-me 1.4s ease-in-out infinite; pointer-events: none; }
@@ -517,6 +510,9 @@
 .td-map__key button { --pin: var(--cozy-brass); display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 0 8px !important;
   text-align: left; font: 600 12px/1.2 var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
 .td-map__key button i { flex: none; margin: 0; width: 10px; height: 10px; }
+/* The Bestiary's level where found (td-zones.ts). */
+.td-best__lv { font-style: normal; color: var(--cozy-brass-hi); }
+.td-best__lv--danger { color: var(--cozy-berry); }
 .td-map__menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 35%, transparent); }
 .td-map__menu button { min-height: 34px; padding: 0 12px !important; font: 600 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
@@ -725,7 +721,7 @@
 .td-invite__yes { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
 .td-invite__no { background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important; }
 /* The party frames: a small wood column under the Keeper's own plate (desktop); name, class · level, life, where. */
-.td-party { position: absolute; z-index: 6; left: 16px; top: calc(var(--hud-top, 0px) + 150px); width: 196px; box-sizing: border-box; display: grid; gap: 4px; padding: 6px 8px 8px;
+.td-party { position: absolute; z-index: 6; left: 16px; top: var(--party-top, calc(var(--hud-top, 0px) + 150px)); width: 196px; box-sizing: border-box; display: grid; gap: 4px; padding: 6px 8px 8px;
   max-height: calc(100dvh - var(--hud-top, 0px) - 420px); overflow-y: auto; pointer-events: auto;
   background: color-mix(in srgb, var(--cozy-wood-0) 82%, transparent); box-shadow: 0 0 0 2px var(--cozy-wood-1), 0 0 0 4px var(--cozy-wood-0);
   font: 500 12px/1.25 var(--cozy-font-read); color: var(--cozy-cream); }
@@ -746,7 +742,7 @@
 .td-chat__party { color: var(--cozy-brass-hi); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   /* Phones: a narrow column at the left edge, above the spell column; the class line and the leave button stay. */
-  .stage--td .td-party { left: 8px; top: calc(var(--hud-safe-t, 0px) + 112px); width: 132px; padding: 4px 6px 6px; gap: 3px;
+  .stage--td .td-party { left: 8px; top: var(--party-top, calc(var(--hud-safe-t, 0px) + 112px)); width: 132px; padding: 4px 6px 6px; gap: 3px;
     max-height: calc(50dvh - var(--hud-safe-t, 0px) - 120px); }
   .stage--td .td-party__frame { grid-template-columns: minmax(0, 1fr); }
   .stage--td .td-party__line { justify-self: start; font-size: 10px; }
@@ -756,6 +752,82 @@
 @media (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .stage--td .td-party { top: calc(var(--hud-safe-t, 0px) + 12px); left: 180px; max-height: calc(100dvh - var(--hud-safe-t, 0px) - 120px); }
   .stage--td .td-invite { top: calc(var(--hud-safe-t, 0px) + 12px); }
+}
+
+/* ── Item cards always fit the window (owner's player notes 2026-10-21: "Equip runs off the bottom"): the card is placed
+   by FitViewportDirective (flips up / left at an edge), never taller than the window; the pinned card scrolls inside
+   itself and its actions stay stuck to its foot, so Equip / Stow / To the Vault are always in reach. ── */
+.d2tip { max-height: calc(100dvh - 16px); box-sizing: border-box; }
+.d2tip:not(.d2tip--pinned) { overflow: hidden; }
+.d2tip--pinned { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 0; }
+.d2tip--pinned::before, .d2tip--pinned::after { display: none; }
+@media (min-width: 901px) and (hover: hover) {
+  .d2tip--pinned .d2tip__actions { position: sticky; bottom: 0; z-index: 1; margin: 0 -12px; padding: 8px 12px 10px;
+    background: var(--cozy-wood-0); box-shadow: 0 -2px 0 0 color-mix(in srgb, var(--loot) 45%, transparent); }
+}
+.d2tip--pinned > :last-child:not(.d2tip__actions) { margin-bottom: 9px; }
+
+/* ── Pixel key caps (owner's player notes 2026-10-21: "show the keyboard letters"): a small wooden key, its letter in
+   the pixel face, a darker step under it. A computer only; phones read the tap words instead. ── */
+.px-key { display: inline-grid; place-items: center; min-width: 15px; height: 15px; padding: 0 3px; box-sizing: border-box;
+  font: 700 9px/1 var(--font-pixel); color: var(--cozy-cream); background: var(--cozy-wood-2);
+  box-shadow: 0 0 0 1px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-wood-0); text-shadow: none; }
+.guide-caps { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: 1px; }
+.guide-keys { flex: 1 0 100%; order: -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; margin: 0; padding: 2px 0 6px; list-style: none;
+  box-shadow: 0 2px 0 0 color-mix(in srgb, var(--cozy-parch-edge) 55%, transparent); color: var(--cozy-ink); }
+.guide-keys li { display: flex; align-items: center; gap: 6px; min-width: 0; font: 600 12px/1.2 var(--font-pixel); color: var(--cozy-ink); }
+.guide-keys .px-key { min-width: 22px; }
+.guide-taps { flex: 1 0 100%; color: var(--cozy-ink); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .guide-keys, .guide-caps, .guide-taps { display: none; }
+}
+.guide-keys li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guide-taps { margin: 6px 0 2px; font: 600 12px/1.3 var(--cozy-font-read); }
+@media (hover: hover) and (pointer: fine) {
+  .td-dock kbd { opacity: 1; top: 3px; right: 3px; min-width: 13px; height: 13px; display: grid; place-items: center; padding: 0 2px; box-sizing: border-box;
+    color: var(--cozy-cream); background: var(--cozy-wood-1); box-shadow: 0 0 0 1px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-wood-0); }
+}
+
+/* ── The character sheet's Skills page (RuneScape): one row a skill — its mark, name, level, bar, XP to the next. ── */
+.ks__skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.ks__skill { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: 'ico name lv' 'bar bar bar' 'xp xp xp'; align-items: center; gap: 3px 8px;
+  padding: 6px 8px; background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam); }
+.ks__skill-ico { grid-area: ico; display: grid; place-items: center; width: 28px; height: 28px; background: var(--cozy-well); }
+.ks__skill-ico img { image-rendering: pixelated; }
+.ks__skill-name { grid-area: name; font: 700 13px/1.2 var(--cozy-font-read); color: var(--cozy-cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks__skill .ks__skill-lv { grid-area: lv; width: 34px; height: 28px; font-size: 15px; }
+.ks__skill-bar { grid-area: bar; display: block; height: 6px; background: var(--cozy-well); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.ks__skill-bar i { display: block; height: 100%; background: var(--cozy-leaf); }
+.ks__skill-xp { grid-area: xp; font: 500 11px/1.2 var(--cozy-font-read); color: var(--cozy-cream); opacity: .8; }
+
+/* ── The experience bar (Diablo II): a thin brass-and-wood strip across the HUD's foot, ten notches; the tooltip on hover
+   (a mouse) or a tap. Phones: the same strip above the safe area; nothing else moves. ── */
+.td-xp { position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; height: 7px; box-sizing: border-box; cursor: help; pointer-events: auto;
+  background: var(--cozy-wood-0); box-shadow: inset 0 1px 0 0 var(--cozy-wood-2); }
+.td-xp::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; }
+.td-xp::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--cozy-wood-0) calc(10% - 2px) 10%); }
+.td-xp__fill { position: absolute; left: 0; top: 1px; bottom: 1px; background: var(--cozy-brass); box-shadow: inset 0 1px 0 0 var(--cozy-brass-hi), inset 0 -1px 0 0 var(--cozy-brass-lo); }
+.td-xp__tip { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; display: none; gap: 2px; padding: 6px 10px; white-space: nowrap; pointer-events: none;
+  font: 600 12px/1.25 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-1);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass), 0 0 0 6px var(--cozy-wood-0); }
+.td-xp__tip b { font-weight: 700; color: var(--cozy-glow); }
+.td-xp__tip small { font-size: 11px; opacity: .85; }
+.td-xp:hover .td-xp__tip, .td-xp:focus-visible .td-xp__tip, .td-xp.is-tip .td-xp__tip { display: grid; }
+.td-xp:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 0; }
+.stage--menu .td-xp { visibility: hidden; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-xp { bottom: var(--hud-safe-b, 0px); height: 6px; }
+}
+
+.hud-reset { min-height: 44px; padding: 0 12px; border: 0; cursor: pointer; font: 700 13px var(--cozy-font-read); color: var(--cozy-cream);
+  background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam); }
+
+/* ── The Map window (M, owner's player notes 2026-10-21): one tall wood window, the map filling it; the menu row under it. ── */
+.places.td-map--world { width: min(1100px, calc(100% - 32px)); height: min(820px, calc(100% - 32px)); }
+.td-map__win { min-height: 0; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .stage .places.td-map--world { height: auto; }
 }
 /* ── The social graph (protocol 4; docs/design/online.md Phase 3) ── */
 .td-peer { max-height: calc(100dvh - var(--hud-top, 0px) - 96px); overflow-y: auto; overscroll-behavior: contain; }

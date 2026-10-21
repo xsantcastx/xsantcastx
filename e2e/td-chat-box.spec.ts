@@ -3,7 +3,7 @@
  * for the Hearth room, hide to a tab and back. Screenshot: docs/handoff/cozy-ui/chat-box.jpg.
  */
 import { expect, test } from '@playwright/test';
-import { purse, sail, seed } from './play-helpers';
+import { mapFind, purse, sail, seed } from './play-helpers';
 
 test('the chat box: the Game tab hears the world, hides to a tab and comes back', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });

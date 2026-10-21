@@ -14,6 +14,7 @@ import type { ContinentDef, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
+import { graveyardZone, regionZone, zoneLevel, zoneOf } from './td-zones';
 import { onNightroad, onNook } from './td-dark';
 import { PIERS } from './td-harbour';
 
@@ -262,6 +263,22 @@ export class TdWorld implements TdLevel {
     return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)] ?? this.def.townName;
   }
 
+  /**
+   * The zone the Keeper stands in (td-zones.ts), read as placeName reads the land: a town or village is its continent's
+   * town zone, a graveyard's plot its own, else the region under him.
+   */
+  zoneAt(x: number, y: number): string {
+    const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
+    if ((c >= -6 && r >= -6 && c < this.town.cols + 6 && r < this.town.rows + 6) || this.villageAt(c, r, 6)) return regionZone(this.def.id, 'T');
+    for (const p of this.def.places) if (p.kind === 'graveyard' && Math.hypot(p.c - c, p.r - r) < 10) return graveyardZone(this.def.id);
+    return regionZone(this.def.id, this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy));
+  }
+  /** A spawn's level in its zone (td-zones zoneLevel, from its key alone); nothing when the zone has no band. */
+  private zoned(zone: string, key: string): { level?: number } {
+    const z = zoneOf(zone);
+    return z ? { level: zoneLevel(z.band, `${zone}|${key}`) } : {};
+  }
+
   /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. A cave mouth gets a smaller one. */
   private inClearing(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge' || p.kind === 'temple') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
@@ -402,7 +419,7 @@ export class TdWorld implements TdLevel {
       for (const [dc, dr] of GRAVE_WALKERS) {
         const c = p.c + dc, r = p.r + dr;
         if (c < x0 || c >= x0 + WORLD_CHUNK || r < y0 || r >= y0 + WORLD_CHUNK || !this.walkableGround(c, r)) continue;
-        spawns.push({ key: `g:${c},${r}`, type: 'bone-walker', x: c * TILE + TILE / 2, y: r * TILE + TILE });
+        { const key = `g:${c},${r}`; spawns.push({ key, type: 'bone-walker', x: c * TILE + TILE / 2, y: r * TILE + TILE, ...this.zoned(graveyardZone(this.def.id), key) }); }
       }
     }
     // Who lives here: packs by region (never near the square, never on a road).
@@ -415,7 +432,8 @@ export class TdWorld implements TdLevel {
         const c = cx * WORLD_CHUNK + Math.floor(hash(cx * 31 + tries, cy, 79) * WORLD_CHUNK), r = cy * WORLD_CHUNK + Math.floor(hash(cx, cy * 31 + tries, 80) * WORLD_CHUNK);
         const g = this.ground(c, r);
         if (g === 'water' || g === 'ember' || SOLID_GROUND.has(g) || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || this.nearWayIn(c, r)) continue;
-        spawns.push({ key: `w:${c},${r}`, type: table.types[Math.floor(hash(c, r, 81) * table.types.length)], x: c * TILE + TILE / 2, y: r * TILE + TILE });
+        const key = `w:${c},${r}`;
+        spawns.push({ key, type: table.types[Math.floor(hash(c, r, 81) * table.types.length)], x: c * TILE + TILE / 2, y: r * TILE + TILE, ...this.zoned(regionZone(this.def.id, mid), key) });
         i++;
       }
     }

@@ -75,15 +75,14 @@ describe('td-elites: the affix roll', () => {
     expect(uniques / packs).toBeLessThan(.32);
   });
 
-  it('only where the level suits the Keeper, never a boss, an authored champion, a level-1 creature or a safe square', () => {
-    expect(eliteEligible({ level: 10, keeperLevel: 8, safe: false })).toBeTrue();
-    expect(eliteEligible({ level: 10, keeperLevel: 8, safe: true })).toBeFalse();
-    expect(eliteEligible({ level: 10, rank: 'boss', keeperLevel: 8, safe: false })).toBeFalse();
-    expect(eliteEligible({ level: 10, rank: 'champion', keeperLevel: 8, safe: false })).toBeFalse();
-    expect(eliteEligible({ level: 2, keeperLevel: 1, safe: false })).toBeFalse();
-    // Far above the Keeper (unfair) or far below (a pushover) — neither.
-    expect(eliteEligible({ level: 30, keeperLevel: 5, safe: false })).toBeFalse();
-    expect(eliteEligible({ level: 4, keeperLevel: 40, safe: false })).toBeFalse();
+  it('the zone decides (never the Keeper\'s level): never a boss, an authored champion, a level-1 creature or a safe square', () => {
+    expect(eliteEligible({ level: 10, safe: false })).toBeTrue();
+    expect(eliteEligible({ level: 10, safe: true })).toBeFalse();
+    expect(eliteEligible({ level: 10, rank: 'boss', safe: false })).toBeFalse();
+    expect(eliteEligible({ level: 10, rank: 'champion', safe: false })).toBeFalse();
+    expect(eliteEligible({ level: 2, safe: false })).toBeFalse();
+    // A level-30 zone raises its packs for a level-5 Keeper and a level-50 one alike.
+    expect(eliteEligible({ level: 30, safe: false })).toBeTrue();
   });
 });
 

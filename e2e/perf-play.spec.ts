@@ -23,7 +23,7 @@
  */
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import * as fs from 'fs';
-import { bag as bagOf, canvas, ERA, focusWorld, openPlay, seed } from './play-helpers';
+import { bag as bagOf, canvas, ERA, focusWorld, openPlay, seed, mapFind } from './play-helpers';
 import { DelveFixture, DELVE_SEED, SPEC, withSectors } from './play-delve-fixtures';
 import { nodeIndex } from '../src/app/play/engine/terrain';
 import { latticePlans, sectorContext } from '../src/app/play/engine/sector-gen';
@@ -232,6 +232,7 @@ async function measure(page: Page, cdp: CDPSession, scene: string, walk: boolean
 
 async function travelByPlaces(page: Page, label: RegExp, area: string): Promise<void> {
   await page.getByRole('button', { name: 'Places' }).click();
+  await mapFind(page, label);
   await page.locator('#places-list button', { hasText: label }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 90000 });
   await page.waitForTimeout(800);

@@ -4,7 +4,7 @@
  * small key; a pin travels. Screenshots: docs/handoff/cozy-ui/map-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { purse, sail, seed } from './play-helpers';
+import { mapFind, purse, sail, seed } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -28,6 +28,7 @@ test('the Map: M opens it, pins and the key go places, on an island, a continent
   await expect(map).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/map-infernal-reach.jpg', type: 'jpeg', quality: 78 });
   // The key travels too: into the Molten Deep, whose floor is a map of its own.
+  await page.locator('#places-list [data-map-find]').fill('the molten deep');
   await map.locator('.td-map__key button', { hasText: /the molten deep/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /scorched throat/i, { timeout: 30000 });
   await page.keyboard.press('m');

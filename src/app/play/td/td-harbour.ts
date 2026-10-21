@@ -7,6 +7,7 @@
  * priced in the hunt (huntGold), a level band, and a state. Nothing here touches the DOM or the engine.
  */
 import type { ContinentDef } from './continent';
+import { CONTINENT_BANDS } from './td-zones';
 import { huntGold } from '../../shared/economy/economy-curve';
 
 /** A pier with a Harbourmaster on it. */
@@ -42,12 +43,9 @@ export const isBerth = (stationId: string): boolean => PIERS.some(p => p.station
 
 /** What a continent is, to a sailor: its level band (docs/design/world-map.md) and the act that closes the way in. */
 export interface LandFacts { band: readonly [number, number]; entry: number; gate: string | null }
-export const LANDS: Readonly<Record<string, LandFacts>> = {
-  'ember-isle': { band: [1, 8], entry: 1, gate: null },
-  'infernal-reach': { band: [8, 30], entry: 8, gate: 'ember-warden' },
-  'verdant-wilds': { band: [15, 40], entry: 15, gate: 'cinder-sovereign' },
-  'umbral-marches': { band: [25, 50], entry: 25, gate: 'elder-rootwyrm' },
-};
+const GATES: Readonly<Record<string, string | null>> = { 'ember-isle': null, 'infernal-reach': 'ember-warden', 'verdant-wilds': 'cinder-sovereign', 'umbral-marches': 'elder-rootwyrm' };
+/** The bands are td-zones' own (CONTINENT_BANDS), so a ship's board and the Map's titles never disagree; the entry is the band's floor. */
+export const LANDS: Readonly<Record<string, LandFacts>> = Object.fromEntries(Object.entries(CONTINENT_BANDS).map(([id, band]) => [id, { band, entry: band[0], gate: GATES[id] ?? null }]));
 /**
  * The story gates are a data hook, not a wall: until the acts that set them are tracked, every route that is reachable
  * today stays reachable. Flip this on (and pass `cleared`) when the story spine lands.

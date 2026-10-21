@@ -22,7 +22,8 @@ async function open(page: Page, coins: number, query = 'hour=12'): Promise<void>
 async function toMaster(page: Page, who?: RegExp): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('m');
-  await page.locator('#places-list.td-map .td-map__key button[data-kind="harbour"]', who ? { hasText: who } : {}).first().click();
+  const src = who ? who.source.replace(/\\/g, '') : '';
+  await page.locator(`#places-list.td-map .mw__pin[data-cat="harbour"]${src ? `[data-name*="${src}" i]` : ''}`).first().click();
   await expect(board(page)).toBeVisible({ timeout: 40000 });
 }
 

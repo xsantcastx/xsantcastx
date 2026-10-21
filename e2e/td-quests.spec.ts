@@ -34,6 +34,7 @@ async function travelTo(page: Page, name: RegExp, phone = false): Promise<void> 
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
+  await page.locator('#places-list [data-map-find]').fill(name.source);
   await map.locator('.td-map__key button[data-kind="npc"]', { hasText: name }).click();
 }
 
