@@ -729,6 +729,25 @@ Witness Runes stay **not socketable** (canon: quest evidence, not currency).
 Set pieces show a **set ribbon** pixel and a green-brass card band (cozy tokens); the card lists the bonuses greyed
 until met. Code: new `set-items.ts` next to `unique-items.ts`, bonuses summed in `equippedTotals`.
 
+**As built (2026-10-21, `shared/rpg/set-items.ts`).** Sixteen mythic pieces (`--cozy-loot-mythic`, the ladder's set rung),
+four to a set, spread into `UNIQUE_ITEMS` with a `set` tag like the boss uniques: never from the Gambler or an open
+unique roll. Tiers are cumulative (2, 3, full). Each tier is real: flat stats and a Defense share ride the worn totals
+through `wornCombat(inventory, worn)` into `fightStats`; signatures (skill ranks, light, regeneration standing still,
+ink, one more skeleton, Magic Find) reach the mob system through `relicTotals` as `set:<set>:<n>` ids. Adapted to what
+the fight has (no Pyre Watch banner, pets in combat, Shadow school, Hush gain or Small Eclipse yet):
+
+| Set (pieces, slots) | Source | 2 | 3 | Full |
+|---|---|---|---|---|
+| **The Ossuary Watch** (helm, hauberk, bulwark, boots: head, chest, off-hand, feet) | bone-archer, ash-ghoul, the Ashbone Dragon (Ashen Crypt), from level 8 | +10% Defense | one more skeleton may stand | Skeleton Mastery +2 ranks, +10% spell damage |
+| **Garb of the Drowned Abbey** (hood, robe, censer-chain, sandals: head, chest, trinket, feet) | drowned-knight, gloam-witch, ink-hound, Ink Abbess (Drowned Crypts, Umbral Marches), from level 32 | +15% spell damage | +1 mana/s, +20% Magic Find | Dark Ward +2 ranks; hits stain with ink (+10% for 3 s) |
+| **Rootcradle Vestments** (circlet, wrap, bracers, greaves: head, chest, hands, legs) | thorn-weaver, drowned-acolyte, Elder Rootwyrm (Overgrown Temple 4-5), from level 28 | +1.5 life/s | +30 life | +10 all resists, regeneration x2 standing still |
+| **The Lamplighter's Things** (lantern, coat, gloves, ring: off-hand, chest, hands, trinket) | the five shade chests: Ember Mine 2 (lantern), Bone Hall (coat), Four Smithies (gloves), Sporewell (ring), Sunken Cloister (any) | +2 light | +10% Magic Find | +2 light more (4), shapes unveiled sooner |
+
+Chances per kill: 2% normal, 6% champion, 10% unique, 20% boss, leaned by Magic Find (`rollSetPiece`, rolled last in
+`rollCreatureLoot`). The card shows the set name with `(worn/total)`, each piece greyed until worn, each tier lit while
+on, and Used for / Found in; the Bestiary card of each set creature names its set. Note: the Lamplighter's own light
+(2 pieces) hides the shade chests (they show only in low light) - take it off to find the rest.
+
 ### 7.5 Sockets
 
 D2 rules: sockets by base and item level (iL 1–14: max 2; 15–29: 3; 30+: 4; shields and staves +1). Sockets come
@@ -881,7 +900,7 @@ Ordered so each ships something the owner can **see in play**. Size S ≈ a day,
 | 9 ✓ | **Boss uniques** (8 named; shipped 2026-10-21, §7.2 as built) | S–M | `rpg/unique-items.ts`, `drop-tables.ts` boss path, item icons | every boss has a reason to farm it |
 | 10 | **Spellstones + Soul** | M | new `shared/spellstones/`, belt (`potions` pattern), mining yield (Basalt Blank), Rune Forge stall | Tibia runes; mines and kills both matter |
 | 11 | **Cursed grave-goods + Sexton cleansing** | S–M | `unique-items.ts` (cursed flag), loot card, Sexton's dialogue | strong-but-strange items with a choice |
-| 12 | **Sets** (4) | M | new `rpg/set-items.ts`, `equippedTotals`, item card band | a mythic chase with goals |
+| 12 ✓ | **Sets** (4; shipped 2026-10-21, §7.4 as built) | M | new `rpg/set-items.ts`, `equippedTotals`, item card band | a mythic chase with goals |
 | 13 | **Kael's Quench** (6 recipes) | M | new `shared/quench/`, Kael's station UI (one button) | deterministic crafting; sockets |
 | 14 ✓ | **The Hush** (shipped 2026-10-21, §5.4 as built; the Hush-walker still to come) | M | HUD band under Glim, `td-engine` tick, settings | depth feels deeper; a risk dial |
 | 15 | **Second vocation: the Ashguard** (then Lanternwright, Thornstrider) | L | `keeper-look.model.ts` `VOCATIONS`, `vocation-look.ts`, `td-skills.ts` trees, `td-mobs.ts` melee path | a second way to play |
