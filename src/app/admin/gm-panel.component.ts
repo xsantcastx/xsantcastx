@@ -38,7 +38,7 @@ import {
   AuditEntry, BanRecord, PlayerDirectoryEntry, SiteNotice,
 } from '../shared/cloud-save/gm.model';
 import {
-  EconomySnapshotView, GmDataService, PlayerProfile,
+  EconomySnapshotView, GmDataService, PlayerProfile, PlayerReport,
 } from './gm-data.service';
 
 /** Which sub-view of the console is on screen. Set by the parent's sidebar. */
@@ -93,6 +93,8 @@ export class GmPanelComponent implements OnInit {
   bans = new Map<string, BanRecord>();
   stats: EconomySnapshotView | null = null;
   audit: AuditEntry[] = [];
+  /** Player reports from the Hearth (newest first); empty when none, or when the read is refused (rules not live). */
+  reports: PlayerReport[] = [];
   notice: SiteNotice | null = null;
 
   // ── User table state ──────────────────────────────────────────────────
@@ -143,12 +145,15 @@ export class GmPanelComponent implements OnInit {
     this.loadError = '';
     this.cdr.markForCheck();
     try {
-      const [players, bans, audit, notice] = await Promise.all([
+      const [players, bans, audit, notice, reports] = await Promise.all([
         this.gm.players(),
         this.gm.bannedUids(),
         this.gm.auditLog(),
         this.gm.notice(),
+        // A refused read (the player-reports rule not yet deployed) must not take the console down with it.
+        this.gm.reports().catch(() => [] as PlayerReport[]),
       ]);
+      this.reports = reports;
       this.players = players;
       this.bans = bans;
       this.audit = audit;
@@ -484,6 +489,13 @@ export class GmPanelComponent implements OnInit {
   num(n: number | null | undefined): string {
     return n === null || n === undefined ? '—' : Math.round(n).toLocaleString('en-US');
   }
+
+  /** Mark a report resolved (the open ones stay on top). */
+  async resolveReport(r: PlayerReport): Promise<void> {
+    try { await this.gm.resolveReport(r.id); r.status = 'resolved'; } catch (err) { this.loadError = describe(err); }
+    this.cdr.markForCheck();
+  }
+  get openReports(): number { return this.reports.filter(r => r.status === 'open').length; }
 
   ago(ms: number | null | undefined): string {
     if (!ms) return '—';

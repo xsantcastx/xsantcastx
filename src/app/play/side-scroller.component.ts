@@ -1,5 +1,8 @@
-import { HEARTH_PORT_KEY, PARTY_PROTOCOL, SocialRoom, roomName, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
-import { PartyShare } from './social/party-share';
+import { COOP_ROOM_PROTOCOL, HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
+import { CloudSaveService } from '../shared/cloud-save/cloud-save.service';
+import { PartyShare, SHARE } from './social/party-share';
+import { CoopRewards } from './social/coop-rules';
+import type { CoopKill } from './td/td-coop';
 import { compass as compassOf, bandOf } from './td/td-seek';
 import { packLook } from './social/peer-look';
 import {
@@ -239,6 +242,7 @@ import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
 import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
 import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
 import { RUNG_LEVEL, lootEntry } from '../shared/loot/drop-tables';
+import { mfTowardUnique } from '../shared/loot/magic-find-curve';
 import { DIFFICULTIES } from '../shared/loot/difficulty.model';
 import { itemAuras } from '../shared/loot/aura-sources';
 import { socketCountFor, socketStats } from '../shared/enchanting/socket.model';
@@ -530,6 +534,8 @@ export class SideScrollerComponent implements OnDestroy {
   private toastKey = 0;
   // ── World feel (docs/handoff/world-feel.md): the sound, the Satchel's pulse, the craft's flight ──
   private readonly sound = inject(SoundService);
+  /** The signed-in account (the Hearth's identity, protocol 4: friends, blocks that last). */
+  private readonly cloud = inject(CloudSaveService);
   private readonly feel = inject(WorldFeelBus);
   private readonly levelAudio = inject(LevelUpAudioService);
   private readonly forgeAudio = inject(ForgeAudioService);
@@ -719,12 +725,28 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly seenPartyLines = new Set<string>();
   /** Shared XP: each kill a party member announces is checked here, on this device, and paid through hunted(). */
   private readonly partyShare = new PartyShare(id => MOBS[id] ? { level: MOBS[id].level, hp: MOBS[id].hp } : null);
+  /** Shared creatures (protocol 4): each host kill pays this Keeper once, in full or as the share (coop-rules.ts). */
+  private readonly coopRewards = new CoopRewards();
+  /** What shared kills have paid here (the canvas's data-coop-paid, for the e2e). */
+  private readonly coopPaid = { full: 0, share: 0 };
   /** Invites already given their lapse timer. */
   private readonly inviteTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** A party verb in flight (the buttons wait on it). */
   partyBusy = false;
   /** Another Keeper's card (tapped in the world): name, class, level and Wave. */
   peerCard: { id: string; name: string; vocation: string; level: number } | null = null;
+  // ── The social graph (protocol 4; docs/design/online.md Phase 3) ──
+  /** Menu → Friends: friends (online, where), requests, the block list. */
+  friendsOpen = false;
+  /** The peer card's report step: the reasons, one tap each. */
+  reportOpen = false;
+  readonly reportReasons: readonly ReportReason[] = ['spam', 'abuse', 'cheating', 'name', 'other'];
+  /** Muted Keepers (this device, this session): their lines are not shown. Blocking is the lasting, server-side one. */
+  readonly muted = new Set<string>();
+  /** A verb in flight (the social buttons wait on it). */
+  socialBusy = false;
+  private readonly requestTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private barredSaid = false;
   private lastWaveAt = 0;
   /** When a line last landed (ms): the box fades when quiet, wakes on a new line or a hover. */
   chatLastAt = 0;
@@ -785,6 +807,17 @@ export class SideScrollerComponent implements OnDestroy {
       this.ensureHearth();
     });
     this.chatSetting = this.sound.settings.chat;
+    // Privacy (protocol 4): appear offline to friends, invites from friends only — told on join and on every change.
+    const privacy = (st: { presence: string; invites: string }) => this.room?.setPrivacy({ offline: st.presence === 'offline', invites: st.invites === 'friends' ? 'friends' : 'everyone' });
+    privacy(this.sound.settings);
+    const privacySub = this.sound.settings$.subscribe(st => privacy(st));
+    // Signing in or out while in the world: join again, so the room binds (or drops) the account.
+    let uid = this.cloud.status.uid;
+    const idSub = this.cloud.status$.subscribe(st => {
+      if (st.uid === uid || st.state === 'syncing') return;
+      uid = st.uid;
+      if (this.room?.wants) void this.joinRoom(this.keeperName || 'Keeper');
+    });
     // The on-screen keyboard (a phone typing in the chat): it shrinks the visual viewport, not the layout, on Android
     // Chrome and iOS Safari, so the chat would sit under it. --kb-inset lifts the chat by the keyboard's height.
     const vv = window.visualViewport, host = this.host.nativeElement as HTMLElement;
@@ -798,8 +831,14 @@ export class SideScrollerComponent implements OnDestroy {
       document.removeEventListener('visibilitychange', visible);
       window.removeEventListener('pagehide', hide);
       window.removeEventListener('pageshow', show);
-      sub.unsubscribe();
+      sub.unsubscribe(); privacySub.unsubscribe(); idSub.unsubscribe();
     };
+  }
+  /** A whisper landed: an unread mark while the Chat tab is out of view (one of this Keeper's own does not count). */
+  private whispered(w: RoomWhisper): void {
+    if (w.from === this.social.id || this.muted.has(w.from)) return;
+    if (!(this.chatTab === 'public' && !this.chatHidden) && this.chatSetting === 'on') this.chatUnread = Math.min(99, this.chatUnread + 1);
+    this.chatLastAt = Date.now();
   }
   /** The room changed: other Keepers to the engine, the unread count for lines that landed out of view. */
   private roomChanged(snapshot: RoomSnapshot): void {
@@ -819,6 +858,9 @@ export class SideScrollerComponent implements OnDestroy {
     // The party: the engine marks the others (gold plates, the minimap, the Seek); lines out of view count as unread.
     const party = snapshot.party?.members.filter(id => id !== snapshot.id) ?? [];
     (this.engine as unknown as { setParty?: (ids: readonly string[]) => void } | undefined)?.setParty?.(party);
+    // Shared creatures (protocol 4): the room's election, or nothing (an older room, no party: solo as before).
+    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[]) => void } | undefined)
+      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && snapshot.party ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -827,6 +869,12 @@ export class SideScrollerComponent implements OnDestroy {
     }
     if (freshParty && !(this.chatTab === 'party' && !this.chatHidden)) this.partyUnread = Math.min(99, this.partyUnread + freshParty);
     if (!snapshot.party) { this.partyUnread = 0; if (this.chatTab === 'party') this.chatTab = 'public'; }
+    // A friend request stands five minutes; its toast lets it go after one (the Friends sheet keeps nothing pending).
+    for (const r of snapshot.friendRequests ?? []) {
+      if (this.requestTimers.has(r.id)) continue;
+      this.requestTimers.set(r.id, setTimeout(() => this.zone.run(() => { this.room?.forgetFriendRequest(r.id); }), 60000));
+    }
+    if (snapshot.barred && !this.barredSaid) { this.barredSaid = true; this.message = this.t('play.social.barred'); this.logGame(this.t('play.social.barred')); }
     // An invite stands a minute; the toast lets it go by itself if nobody answers.
     for (const inv of snapshot.invites ?? []) {
       if (this.inviteTimers.has(inv.id)) continue;
@@ -870,8 +918,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.partyBusy = true;
     try {
       const why = await this.room?.invite(peer.id) ?? 'offline';
-      this.logGame(why ? this.t('play.party.inviteFailed', { why }) : this.t('play.party.invited', { name: peer.name }));
-      if (!why) this.message = this.t('play.party.invited', { name: peer.name });
+      if (why) this.logGame(this.t('play.party.inviteFailed', { why })); else this.message = this.t('play.party.invited', { name: peer.name });
     } finally { this.partyBusy = false; }
   }
   async answerInvite(inv: RoomInvite, yes: boolean): Promise<void> {
@@ -912,6 +959,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser || !this.topDown || !this.social.party) return;
     const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
     if (!here) return;
+    // Shared creatures: the host of this area announcing a kill here was already paid through its shared kill.
+    if (!this.coopRewards.partyKillPays(kill, here, this.coopHostHere(here.area))) return;
     const r = this.partyShare.accept(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
     const el = this.canvas?.nativeElement;
     el?.setAttribute('data-party-share', r.ok ? `+${r.xp}` : r.why);
@@ -919,6 +968,31 @@ export class SideScrollerComponent implements OnDestroy {
     // Through the same door as a kill of one's own (payHunt): the debt, the ledger's replay check, the toast.
     // (The toast lands in the Game tab by itself.)
     this.payHunt(`party:${kill.id}`, `party:${kill.id}`, r.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name: kill.name }));
+  }
+  /** Who hosts the party's creatures in `area` (not this Keeper), or null. */
+  private coopHostHere(area: string): string | null {
+    const a = (this.social.protocol ?? 0) >= COOP_ROOM_PROTOCOL && this.social.party ? this.social.coop?.[area] : undefined;
+    return a && a.host !== this.social.id && a.members.includes(this.social.id) ? a.host : null;
+  }
+  /**
+   * A shared creature fell on the host (protocol 4). Fought it: full Hunting XP and personal loot, as if this Keeper had
+   * felled it (the engine lays the spoils and pays through hunted()). Only stood by: the party share. Each kill once.
+   */
+  private coopKilled(kill: CoopKill): 'full' | 'share' | 'none' {
+    const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
+    if (!here || !this.social.party) return 'none';
+    const r = this.coopRewards.decide(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y });
+    const el = this.canvas?.nativeElement;
+    if (r.kind === 'share') {
+      const name = this.social.players.find(p => p.id === kill.from)?.name ?? '';
+      const share = this.partyShare.accept({ id: kill.id, from: kill.from, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
+        { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
+      el?.setAttribute('data-party-share', share.ok ? `+${share.xp}` : share.why);
+      if (share.ok) { this.coopPaid.share++; this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name })); }
+    }
+    if (r.kind === 'full') this.coopPaid.full++;
+    el?.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
+    return r.kind === 'none' ? 'none' : r.kind;
   }
   private partyNoted(note: RoomPartyNote): void {
     if (note.id === this.social.id && note.kind === 'kicked') { this.logGame(this.t('play.party.youKicked')); this.message = this.t('play.party.youKicked'); return; }
@@ -937,6 +1011,97 @@ export class SideScrollerComponent implements OnDestroy {
   /** Another Keeper was tapped in the world. */
   private peerTapped(peer: { id: string; name: string; vocation: string; level: number }): void {
     this.peerCard = peer;
+    this.reportOpen = false;
+  }
+  /** The room knows the social graph (protocol 4). Against an older room the buttons stay hidden. */
+  get socialReady(): boolean { return this.social.connected && (this.social.protocol ?? 0) >= SOCIAL_PROTOCOL; }
+  /** A Keeper in the room plays as a guest (protocol 4; unknown against an older room). */
+  isGuest(playerId: string): boolean { return this.social.players.find(p => p.id === playerId)?.guest === true; }
+  /** The peer on the card is a friend (their Keeper is the one a friend is online as). */
+  get peerFriend(): RoomFriend | null { const id = this.peerCard?.id; return id ? (this.social.friends ?? []).find(f => f.player === id) ?? null : null; }
+  /** "Add friend": both signed in, not friends yet. */
+  get canBefriendPeer(): boolean { return this.socialReady && !this.social.guest && !!this.peerCard && !this.isGuest(this.peerCard.id) && !this.peerFriend; }
+  /** The friend request toast: the oldest standing. */
+  get friendRequest(): RoomFriendRequest | null { return this.invite ? null : this.social.friendRequests?.[0] ?? null; }
+  /** Run one social verb: the room's refusal (if any) lands in the Game tab. */
+  private async socialVerb(run: () => Promise<string> | undefined, done: string): Promise<boolean> {
+    if (this.socialBusy) return false;
+    this.socialBusy = true;
+    try {
+      const why = (await run()) ?? 'offline';
+      // A success is the toast (which lands in the Game tab by itself); a refusal is a Game line.
+      if (why) this.logGame(this.t('play.social.failed', { why })); else this.message = done;
+      return !why;
+    } finally { this.socialBusy = false; }
+  }
+  async befriendPeer(): Promise<void> {
+    const peer = this.peerCard;
+    if (peer) await this.socialVerb(() => this.room?.friendRequest(peer.id), this.t('play.social.asked', { name: peer.name }));
+  }
+  async answerFriend(r: RoomFriendRequest, yes: boolean): Promise<void> {
+    clearTimeout(this.requestTimers.get(r.id));
+    await this.socialVerb(() => this.room?.friendAnswer(r.id, yes), yes ? this.t('play.social.nowFriends', { name: r.name }) : this.t('play.social.declined', { name: r.name }));
+    this.focusWorld();
+  }
+  async removeFriend(f: RoomFriend): Promise<void> { await this.socialVerb(() => this.room?.friendRemove(f.uid), this.t('play.social.removed', { name: f.name })); }
+  async blockPeer(): Promise<void> {
+    const peer = this.peerCard;
+    if (!peer) return;
+    if (await this.socialVerb(() => this.room?.block(peer.id), this.t('play.social.blocked', { name: peer.name }))) this.peerCard = null;
+  }
+  async unblock(key: string, name: string): Promise<void> { await this.socialVerb(() => this.room?.unblock(key), this.t('play.social.unblocked', { name })); }
+  /** Mute (this device): their lines hide at once; a second tap brings them back. */
+  toggleMutePeer(): void {
+    const peer = this.peerCard;
+    if (!peer) return;
+    if (this.muted.has(peer.id)) { this.muted.delete(peer.id); this.logGame(this.t('play.social.unmuted', { name: peer.name })); }
+    else { this.muted.add(peer.id); this.logGame(this.t('play.social.muted', { name: peer.name })); }
+  }
+  async reportPeer(reason: ReportReason): Promise<void> {
+    const peer = this.peerCard;
+    if (!peer) return;
+    if (await this.socialVerb(() => this.room?.report(peer.id, reason), this.t('play.social.reported', { name: peer.name }))) this.reportOpen = false;
+  }
+  /** Whisper the Keeper on the card (or a friend online): the Chat tab opens with "/w Name " ready to finish. */
+  whisperTo(name: string): void {
+    this.peerCard = null; this.friendsOpen = false;
+    this.chatHidden = false; this.chatTab = 'public'; this.chatLastAt = Date.now();
+    setTimeout(() => {
+      const input = (this.host.nativeElement as HTMLElement).querySelector<HTMLInputElement>('.td-chat__say input');
+      if (!input) return;
+      input.value = `/w ${name.includes(' ') ? `"${name}"` : name} `;
+      input.focus({ preventScroll: true });
+    });
+  }
+  openFriends(): void { this.placesOpen = false; this.friendsOpen = true; }
+  closeFriends(): void { this.friendsOpen = false; this.focusWorld(); }
+  /** A friend's place, in words: here, or the area's name. */
+  friendWhere(f: RoomFriend): string {
+    if (!f.online) return this.t('play.friends.offline');
+    const here = (this.engine as unknown as { peerArea?: () => string } | undefined)?.peerArea?.();
+    return f.area && here && f.area === here ? this.t('play.friends.near') : this.t('play.friends.online');
+  }
+  /**
+   * The Chat tab's lines: the room's, and whispers to or from this Keeper, oldest first; a muted Keeper's lines are
+   * left out; a guest's name carries "(guest)" when the room says so.
+   */
+  get publicLines(): { id: string; name: string; text: string; kind: 'say' | 'from' | 'to'; guest: boolean }[] {
+    const me = this.social.id;
+    const says = this.social.messages.filter(m => !this.muted.has(m.playerId)).map(m => ({ id: m.id, at: m.at, name: m.name, text: m.text, kind: 'say' as const, guest: this.isGuest(m.playerId) }));
+    const ws = (this.social.whispers ?? []).filter(w => !this.muted.has(w.from)).map(w => w.from === me
+      ? { id: w.id, at: w.at, name: w.toName, text: w.text, kind: 'to' as const, guest: false }
+      : { id: w.id, at: w.at, name: w.name, text: w.text, kind: 'from' as const, guest: false });
+    return [...says, ...ws].sort((a, b) => a.at - b.at).slice(-7);
+  }
+  /** The Hearth's identity: the signed-in account's ID token (a local e2e may stand one in on localhost only). */
+  private async hearthToken(): Promise<string | null> {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.webdriver && ['localhost', '127.0.0.1'].includes(location.hostname)) {
+        const fake = localStorage.getItem('eclipse-hearth-fake-token');
+        if (fake) return fake;
+      }
+    } catch { /* storage refused: no stand-in */ }
+    return this.cloud.idToken();
   }
   peerClass(vocation: string): string {
     const key = `look.class.${vocation}`, named = this.t(key);
@@ -1197,6 +1362,13 @@ export class SideScrollerComponent implements OnDestroy {
         keepAlive: true, onEmote: emote => this.zone.run(() => this.roomEmote(emote)),
         onPartyKill: kill => this.zone.run(() => this.partyKilled(kill)),
         onPartyNote: note => this.zone.run(() => this.partyNoted(note)),
+        idToken: () => this.hearthToken(),
+        onWhisper: w => this.zone.run(() => this.whispered(w)),
+        onSocialNote: note => this.zone.run(() => { if (note.kind === 'friend-added') this.logGame(this.t('play.social.nowFriends', { name: note.name })); }),
+        // Protocol 5: straight to the engine (outside Angular: ~8 a second, nothing in the HUD changes).
+        onCoopSnap: msg => (this.engine as unknown as { coopSnap?: (m: typeof msg) => void } | undefined)?.coopSnap?.(msg),
+        onCoopHits: msg => (this.engine as unknown as { coopHits?: (m: typeof msg) => void } | undefined)?.coopHits?.(msg),
+        onCoopPals: msg => (this.engine as unknown as { coopPals?: (m: typeof msg) => void } | undefined)?.coopPals?.(msg),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -1300,6 +1472,10 @@ export class SideScrollerComponent implements OnDestroy {
       onBucket: event => this.zone.run(() => this.bucketSwap(event)),
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
+      onCoopSnap: body => this.room?.coopSnap(body) ?? Promise.resolve(false),
+      onCoopHits: body => this.room?.coopHits(body) ?? Promise.resolve(false),
+      onCoopPals: body => this.room?.coopPals(body) ?? Promise.resolve(false),
+      onCoopKill: kill => this.zone.run(() => this.coopKilled(kill)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
       // A realm machine (the Orrery Tumbler): found once, then played in the place panel.
@@ -1377,12 +1553,12 @@ export class SideScrollerComponent implements OnDestroy {
         this.soundScene(state);
         // Presence: top-down, the area id (a continent or a floor) and the way the Keeper faces; it goes in `zone` too,
         // so a v1 room (no protocol-2 fields) still lines Keepers up by area. Side view: the WORLD, or the area's name.
-        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean } | undefined) : undefined;
+        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string } | undefined) : undefined;
         const here = td?.peerPresence?.();
         if (here) {
           // Life for the party frames, in twentieths of the most (a regenerating Keeper does not send every point).
           const maxHp = Math.max(1, Math.round(this.tdMaxHp)), hp = Math.round(Math.round(Math.max(0, Math.min(1, state.hp / maxHp)) * 20) / 20 * maxHp);
-          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp });
+          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '' });
           if (el) {
             el.setAttribute('data-peers', (td?.peersOnScreen?.() ?? []).map(p => `${p.name}@${p.x},${p.y}${p.waving ? '~' : ''}`).join(';'));
             el.setAttribute('data-self-waving', td?.selfWaving ? 'true' : 'false');
@@ -2465,7 +2641,7 @@ export class SideScrollerComponent implements OnDestroy {
         // Resists (§6): each element's worn total (its own + All Resist), capped at 75.
         ...ELEMENTS.filter(el => derived.resists[el] !== 0).map(el => ({ key: RESIST_TOTAL_KEY[el], value: `${Math.round(derived.resists[el])}%` })),
         // The finds (they change the loot, the piles and the XP, not the fight): what each kill is rolled and paid at.
-        ...(mf !== 0 ? [{ key: 'play.td.total.mf', value: `+${mf}%` }] : []),
+        ...(mf !== 0 ? [{ key: 'play.td.total.mf', value: `+${mf}%` }, { key: 'play.td.total.mfu', value: `+${mfTowardUnique(mf)}%` }] : []),
         ...(gf > 0 ? [{ key: 'play.td.total.gf', value: `+${gf}%` }] : []),
         ...(xp > 0 ? [{ key: 'play.td.total.xp', value: `+${xp}%` }] : []),
       ],
@@ -3618,6 +3794,18 @@ export class SideScrollerComponent implements OnDestroy {
     const text = input.value.trim();
     // The Seam-Cant typed (design-bible §4.0, Tibia's `exori vis`): a learned spell's words cast it instead of chatting.
     if (this.castWords(text)) { input.value = ''; this.sending = false; return; }
+    // "/w Name words" (or /w "Two Words" words) whispers one Keeper in the room (protocol 4).
+    const w = /^\/w\s+(?:"([^"]+)"|(\S+))\s+(.+)$/i.exec(text);
+    if (w) {
+      try {
+        const name = (w[1] ?? w[2]).toLowerCase();
+        const target = this.social.players.find(p => p.id !== this.social.id && p.name.toLowerCase() === name);
+        if (!target) { this.logGame(this.t('play.social.noOne', { name: w[1] ?? w[2] })); return; }
+        const why = await this.room?.whisper(target.id, w[3]) ?? 'offline';
+        if (!why) { if (input.value.trim() === text) input.value = ''; } else this.logGame(this.t('play.social.failed', { why }));
+      } finally { this.sending = false; }
+      return;
+    }
     // "/p words" in the Chat tab goes to the party (Tibia's party channel shortcut).
     const toParty = /^\/p\s+(.+)$/i.exec(text);
     if (toParty && this.inParty) {
@@ -3799,6 +3987,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.bestiaryOpen && event.key === 'Escape') { event.preventDefault(); this.closeBestiary(); return; }
     // The settings and pet sheets fold on Escape too, wherever the focus is (their own handlers need it inside them).
     if (this.soundOpen && event.key === 'Escape') { event.preventDefault(); this.soundOpen = false; this.focusWorld(); return; }
+    if (this.friendsOpen && event.key === 'Escape') { event.preventDefault(); this.closeFriends(); return; }
     if (this.petsOpen && event.key === 'Escape') { event.preventDefault(); this.closePets(); return; }
     if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
@@ -5421,13 +5610,14 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return !!this.taskTalk || this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return !!this.taskTalk || this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
     if (this.taskTalk) this.closeTalk();
     else if (this.petsOpen) this.closePets();
     else if (this.bestiaryOpen) this.closeBestiary();
     else if (this.soundOpen) this.soundOpen = false;
+    else if (this.friendsOpen) this.closeFriends();
     else if (this.anchorSheet) this.closeAnchors();
     else if (this.panel) this.closePanel();
     else if (this.placesOpen) this.placesOpen = false;
@@ -5659,13 +5849,20 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Tell the party (protocol 3) a creature fell here: each member near enough pays itself a share (party-share.ts). */
   private announceKill(event: KillEvent): void {
-    if (!this.topDown || !this.inParty || (this.social.party?.members.length ?? 0) < 2) return;
+    if (!this.topDown || !this.inParty || (this.social.party?.members.length ?? 0) < 2 || event.coop || event.share) return;
     const def = MOBS[event.creature], area = (this.engine as unknown as { peerArea?: () => string } | undefined)?.peerArea?.();
     if (!def || !area) return;
     this.room?.partyKill({ creature: event.creature, level: def.level, hp: Math.max(1, Math.round(event.hp)), ...(event.xp && event.xp !== 1 ? { xp: Math.round(event.xp * 1000) / 1000 } : {}), area });
   }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
+    // The host's own creature, felled by the others only (protocol 4): the party share, nothing else.
+    if (event.share) {
+      this.coopPaid.share++;
+      this.canvas?.nativeElement.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
+      this.payHunt(`hunt:${event.id}`, event.id, Math.max(1, Math.round(huntingXpFor(event.hp) * (event.xp ?? 1) * SHARE)), event.areaId, n => this.t('play.hunt.xp', { n }));
+      return;
+    }
     // The Bestiary counts every top-down kill (account progress: a read-modify-write, so no copy goes stale).
     if (this.topDown) { const blob = withKill(this.store.read(BESTIARY_KEY), event.creature); if (blob) this.store.write(BESTIARY_KEY, blob); }
     // A town task's hunt counts it (only once taken: shared/town-tasks).
