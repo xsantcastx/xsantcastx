@@ -68,16 +68,20 @@ interface ResistRow { id: Element; value: number }
 
       </div>
       <div class="ls__col">
-      <h3 class="ls__h">{{ t('loot.tier.title') }}</h3>
-      <div class="ls__tiers" role="radiogroup" [attr.aria-label]="t('loot.tier.title')">
-        @for (tier of tiers; track tier) {
-          <button type="button" role="radio" class="ls__tier" [class.ls__pick--on]="s.tier === tier" [attr.aria-checked]="s.tier === tier"
-                  [attr.data-tier]="tier" [disabled]="!s.unlocked.includes(tier)" (click)="setTier(tier)">
-            <strong [style.color]="tierColor(tier)">{{ t('loot.tier.' + tier) }}</strong>
-            @if (!s.unlocked.includes(tier)) { <small>{{ t('loot.tier.locked', { tier: t('loot.tier.' + previous(tier)) }) }}</small> }
-          </button>
-        }
-      </div>
+      <!-- The tiers (difficulty.model): shown only once a save holds more than Normal. Their gate boss, the Fallen
+           Ephemeris, is not in the top-down world yet, so a new Keeper has nothing to open (docs/design/loot-and-combat.md §8). -->
+      @if (openTiers.length > 1) {
+        <h3 class="ls__h">{{ t('loot.tier.title') }}</h3>
+        <div class="ls__tiers" role="radiogroup" [attr.aria-label]="t('loot.tier.title')">
+          @for (tier of openTiers; track tier) {
+            <button type="button" role="radio" class="ls__tier" [class.ls__pick--on]="s.tier === tier" [attr.aria-checked]="s.tier === tier"
+                    [attr.data-tier]="tier" (click)="setTier(tier)">
+              <strong [style.color]="tierColor(tier)">{{ t('loot.tier.' + tier) }}</strong>
+              <small>{{ t('loot.tierBlurb.' + tier) }}</small>
+            </button>
+          }
+        </div>
+      }
 
       <h3 class="ls__h">{{ t('loot.resist.title') }}</h3>
       <ul class="ls__res">
@@ -154,16 +158,17 @@ export class LootSheetComponent implements OnDestroy {
     const items = this.inventory.snapshot.items;
     this.sources = this.loot.auraSources(items);
     this.active = this.loot.activeAura(items);
-    // What the armour's runes add, as the fight adds them (side-scroller gearCombat → td-skills fightStats): no
-    // difficulty penalty (the top-down fight has none), the 75 cap applied to the whole total on the C sheet.
-    const gear = this.loot.combatRules().resists;
-    this.resists = ELEMENTS.map(id => ({ id, value: Math.min(MAX_KEEPER_RESIST, keeperResist(gear[id], 0)) }));
+    // What the armour's runes add, as the fight adds them (side-scroller gearCombat → td-skills fightStats), less the
+    // tier's penalty (Normal: none); the C sheet shows the whole worn total under the same penalty and the 75 cap.
+    const rules = this.loot.combatRules(), gear = rules.resists;
+    this.resists = ELEMENTS.map(id => ({ id, value: Math.min(MAX_KEEPER_RESIST, keeperResist(gear[id], DIFFICULTIES[rules.tier]?.resistPenalty ?? 0)) }));
   }
 
   setFilter(f: LootFilter): void { this.loot.setFilter(f); }
   setAura(a: AuraId | null): void { this.loot.setAura(a); }
   setTier(tier: DifficultyTier): void { this.loot.setTier(tier); }
-  previous(tier: DifficultyTier): DifficultyTier { return DIFFICULTY_TIERS[Math.max(0, DIFFICULTY_TIERS.indexOf(tier) - 1)]; }
+  /** The tiers this save has opened, in order (the picker shows only these). */
+  get openTiers(): DifficultyTier[] { return this.tiers.filter(t => this.s.unlocked.includes(t)); }
   color(a: AuraId): string { return AURAS[a].color; }
   tierColor(tier: DifficultyTier): string { return DIFFICULTIES[tier].color; }
 
