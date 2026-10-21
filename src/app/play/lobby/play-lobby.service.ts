@@ -18,6 +18,8 @@ export const LOBBY_GUEST_KEY = 'eclipse-lobby-guest';
 export const LOBBY_SKIP_KEY = 'eclipse-lobby';
 export const LOBBY_ENTER_KEY = 'eclipse-enter';
 export const LOBBY_MAKE_KEY = 'eclipse-make';
+/** sessionStorage: the Keeper a New Keeper was started from, to go back to when the Glass is left without Become. */
+export const LOBBY_FROM_KEY = 'eclipse-make-from';
 
 /** Where /play opens, from the flags above (pure, so it is specced). */
 export function initialLobbyMode(input: {
@@ -32,6 +34,15 @@ export function initialLobbyMode(input: {
   if (input.enter === input.character || input.skip) return 'game';
   if (input.signedIn || input.guest) return 'select';
   return 'title';
+}
+
+/**
+ * May New Keeper hand out character #1's slot? Only when this device knows the account's whole list: it was never
+ * bound to an account, or its cloud pull has completed and is not running. A new device whose cloud roster has not
+ * landed would otherwise make a Keeper inside the account's own #1 save (its look and name merged over it).
+ */
+export function mayUsePrimarySlot(input: { bound: boolean; signedIn: boolean; state: string; lastSyncedAt: number | null }): boolean {
+  return !input.bound || (input.signedIn && input.state !== 'syncing' && input.lastSyncedAt !== null);
 }
 
 @Injectable({ providedIn: 'root' })

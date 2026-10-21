@@ -21,6 +21,7 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'lobby.select.unnamed': { en: 'Unnamed Keeper', es: 'Guardian sin nombre' },
   'lobby.select.elsewhere': { en: 'Saved in the cloud', es: 'Guardado en la nube' },
   'lobby.select.enter': { en: 'Enter world', es: 'Entrar al mundo' },
+  'lobby.select.syncing': { en: 'Syncing…', es: 'Sincronizando…' },
   'lobby.select.new': { en: 'New Keeper', es: 'Nuevo Guardian' },
   'lobby.select.delete': { en: 'Delete', es: 'Borrar' },
   'lobby.select.full': { en: 'All five places by the hearth are taken.', es: 'Los cinco sitios junto al hogar estan ocupados.' },
@@ -43,6 +44,8 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
 
   'lobby.create.title': { en: 'A new Keeper', es: 'Un nuevo Guardian' },
   'lobby.create.back': { en: 'Back to the list', es: 'Volver a la lista' },
+  'lobby.create.close': { en: 'Close without making a Keeper', es: 'Cerrar sin crear un Guardian' },
+  'lobby.create.skipTut': { en: 'I\'ve played before: skip the tutorial', es: 'Ya he jugado: saltar el tutorial' },
 
   'lobby.menu': { en: 'Character select', es: 'Seleccion de personaje' },
   'lobby.menuBlurb': { en: 'Save and return to your Keepers', es: 'Guardar y volver a tus Guardianes' },

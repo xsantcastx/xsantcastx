@@ -430,6 +430,14 @@
   .stage.stage--td .glim-say { top: calc(var(--hud-safe-t) + 172px); left: 8px; right: 8px; max-width: none; }
   .stage--td .guide-glim, .stage--td .guide-fold { display: none; }
   .stage--td .guide-text b { display: block; font-size: 10px; }
+  /* The prologue's card (td/td-prologue.ts): the line gets the whole width (two lines), Show me and Skip under it. */
+  .stage--td .guide[data-goal^="pro-"] { height: auto; flex-wrap: wrap; align-items: center; row-gap: 4px; }
+  .stage--td .guide[data-goal^="pro-"] .guide-text { flex: 1 1 100%; padding-right: 0; -webkit-line-clamp: 3; line-clamp: 3; }
+  .stage--td .guide[data-goal^="pro-"] .guide-text b { display: inline; }
+  /* The taller card pushes the pet chip down (it sat under the one-row goal chip), still above Glim's line. */
+  .stage--td:has(.guide[data-goal^="pro-"]) .td-pet { top: calc(var(--hud-safe-t) + 122px); }
+  .stage--td .guide[data-goal^="pro-"] .guide-go { min-height: 44px; }
+  .stage--td .guide[data-goal^="pro-"] .guide-skip { height: 44px; min-height: 44px; margin-left: auto; padding: 0 6px; font-size: 10px; }
   /* Touch phones: the attack button stands above the menu grid (it sat under it), Interact above that. */
   .stage--td .touch-act { left: auto; right: 8px; bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 20px); }
   .stage--td:has(.touch-act button) .prompt { bottom: calc(var(--hud-safe-b) + 8px + 2 * var(--tab) + 84px); }
@@ -469,6 +477,12 @@
   .td-map__key ul { grid-template-columns: 1fr 1fr; }
   .td-map__key button { min-height: 44px; }
   .td-map__menu button { min-height: 44px; }
+}
+/* Sideways phones: the map fills the width, so the key below it had no height left at all (Wren and every place
+   were out of reach). The body scrolls instead: the map, then its key. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-map__body { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; grid-template-rows: auto auto; }
+  .td-map__key { overflow: visible; overscroll-behavior: auto; }
 }
 
 /* ── The Bestiary: a card per creature; the undefeated are a dark silhouette and "???" ── */

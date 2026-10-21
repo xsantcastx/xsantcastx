@@ -253,6 +253,9 @@ html {
 body {
   margin: 0;
   font-family: var(--font-body);
+  /* Pixelify Sans draws its "fi" / "fl" ligatures as a wrong glyph ("Win a first fight" read "Win a Arst Aght" on the
+     prologue scroll). No common ligatures anywhere: the pixel fonts read letter by letter. */
+  font-variant-ligatures: no-common-ligatures;
   font-size: 1rem;
   line-height: 1.6;
   color: var(--text-color);
