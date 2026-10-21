@@ -177,7 +177,7 @@ export function coerceLook(raw: unknown): KeeperLook {
   const d = defaultLook();
   if (!raw || typeof raw !== 'object') return d;
   const r = raw as Record<string, unknown>;
-  const bar = Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x)).slice(0, 4) : [];
+  const bar = Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x)).slice(0, 8) : [];
   const aura = typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '';
   return {
     version: 1,
