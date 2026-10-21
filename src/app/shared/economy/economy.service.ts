@@ -319,6 +319,8 @@ export class EconomyService implements OnDestroy {
   private frenzyUntil = 0;
   /** The Keeper's level rewards are priced at (setHuntLevel). */
   private huntLevel = 1;
+  /** Gold Find, percent: worn gear + Forge Power (setGoldFind). In memory only, like the Market discount. */
+  private goldFindPct = 0;
   /** What the v3 migration did on this page load, or null. For the console and the spec. */
   migrationReport: EconomyMigrationReport | null = null;
   /** This load emptied the purse into the current Gold era (economy-ops enterGoldEra): write it back at once. */
@@ -1290,6 +1292,28 @@ export class EconomyService implements OnDestroy {
     this.state.infusionGold = next;
     this.persistSoon();
     this.publish();
+  }
+
+  /**
+   * Install the Keeper's Gold Find (worn `goldFind`, the retired Gold/sec of older items read as Gold Find, and Forge
+   * Power points), in percent. Pushed by the RPG wiring layer. Not persisted: a pile is only ever picked up while the
+   * page is open, and recomputing it on load cannot leave a stale bonus after a respec or an unequip.
+   */
+  setGoldFind(percent: number): void {
+    this.goldFindPct = Number.isFinite(percent) ? Math.min(CURVE.GOLD_FIND_CAP, Math.max(0, percent)) : 0;
+  }
+
+  /** The Gold Find a pile is picked up at, percent (capped). */
+  get goldFind(): number { return this.goldFindPct; }
+
+  /**
+   * A Gold pile off the hunt reached the Keeper: Gold Find (worn gear, Forge Power) and a running Gold potion raise
+   * it, then the ledger credits it. Returns the Gold actually credited, for the "+N Gold" float.
+   */
+  earnHuntGold(pile: number): number {
+    if (!(pile > 0)) return 0;
+    const potion = Number.isFinite(this.state.infusionGold) ? Math.max(1, this.state.infusionGold) : 1;
+    return this.earnGold(CURVE.goldFindPile(pile, this.goldFindPct) * potion, 'hunt');
   }
 
   get shards(): number { return this.state.eclipseShards; }

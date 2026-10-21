@@ -66,14 +66,14 @@ describe('grading an instance', () => {
   });
 
   it('averages every rolled stat unweighted', () => {
-    expect(qualityOf({ rollQuality: { goldPerSec: 0.8, ward: 0.4 } })).toBeCloseTo(0.6, 6);
+    expect(qualityOf({ rollQuality: { goldFind: 0.8, ward: 0.4 } })).toBeCloseTo(0.6, 6);
   });
 
   it('tags Perfect on the average and Flawless only when every stat is maxed', () => {
-    expect(qualityTagOf({ rollQuality: { goldPerSec: 0.99, ward: 0.99 } })).toBe('perfect');
+    expect(qualityTagOf({ rollQuality: { goldFind: 0.99, ward: 0.99 } })).toBe('perfect');
     // A maxed primary cannot drag a poor secondary over the line on its own.
-    expect(qualityTagOf({ rollQuality: { goldPerSec: 1, ward: 0.5 } })).toBeNull();
-    expect(qualityTagOf({ rollQuality: { goldPerSec: 1, ward: 1 } })).toBe('flawless');
+    expect(qualityTagOf({ rollQuality: { goldFind: 1, ward: 0.5 } })).toBeNull();
+    expect(qualityTagOf({ rollQuality: { goldFind: 1, ward: 1 } })).toBe('flawless');
     // Flawless outranks Perfect; only the higher tag comes back.
     expect(PERFECT_THRESHOLD).toBeLessThan(FLAWLESS_THRESHOLD);
   });
@@ -87,22 +87,22 @@ describe('grading an instance', () => {
 
 describe('the till pays for the roll', () => {
   it('prices a dud at half sticker and a maxed roll at one and a half', () => {
-    expect(qualityAdjustedSellValue(1_000, { rollQuality: { goldPerSec: 0 } })).toBe(500);
+    expect(qualityAdjustedSellValue(1_000, { rollQuality: { goldFind: 0 } })).toBe(500);
     // 1.0 on a single stat is Flawless, so read the curve just below the tag.
-    expect(qualityAdjustedSellValue(1_000, { rollQuality: { goldPerSec: 0.9 } })).toBe(1_400);
+    expect(qualityAdjustedSellValue(1_000, { rollQuality: { goldFind: 0.9 } })).toBe(1_400);
   });
 
   it('jumps rather than continues the curve for Perfect and Flawless', () => {
-    const nearMiss = qualityAdjustedSellValue(1_000, { rollQuality: { goldPerSec: 0.94 } });
-    const perfect = qualityAdjustedSellValue(1_000, { rollQuality: { goldPerSec: 0.96 } });
-    const flawless = qualityAdjustedSellValue(1_000, { rollQuality: { goldPerSec: 1 } });
+    const nearMiss = qualityAdjustedSellValue(1_000, { rollQuality: { goldFind: 0.94 } });
+    const perfect = qualityAdjustedSellValue(1_000, { rollQuality: { goldFind: 0.96 } });
+    const flawless = qualityAdjustedSellValue(1_000, { rollQuality: { goldFind: 1 } });
     expect(perfect).toBe(3_000);
     expect(flawless).toBe(5_000);
     expect(perfect / nearMiss).toBeGreaterThan(2);
   });
 
   it('never pays for something the till would not take', () => {
-    expect(qualityAdjustedSellValue(0, { rollQuality: { goldPerSec: 1 } })).toBe(0);
+    expect(qualityAdjustedSellValue(0, { rollQuality: { goldFind: 1 } })).toBe(0);
   });
 });
 
@@ -110,8 +110,8 @@ describe('minting carries the grade', () => {
   it('grades every rolled key and only the rolled keys', () => {
     const def = itemDefinitionById('eclipse-longblade')!;
     const rolled = rollItemStatsWithQuality(def, 'rare', () => 0.5);
-    expect(Object.keys(rolled.quality).sort()).toEqual(['goldPerSec', 'strikePower']);
-    expect(rolled.quality.goldPerSec).toBeCloseTo(0.5, 6);
+    expect(Object.keys(rolled.quality).sort()).toEqual(['goldFind', 'strikePower']);
+    expect(rolled.quality.goldFind).toBeCloseTo(0.5, 6);
     expect(rolled.quality.xpBonus).toBeUndefined();
   });
 

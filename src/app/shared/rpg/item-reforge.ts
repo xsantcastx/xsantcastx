@@ -115,7 +115,9 @@ export function reforgeKeys(item: GameItem): ItemStatKey[] {
   const keys = item.itemLevel != null
     ? (Object.keys(item.stats ?? {}) as ItemStatKey[])
     : def?.rollKeys?.length
-    ? [...def.rollKeys]
+    // The retired Gold/sec of a piece minted before Gold Find stays in the accounting: the reroll drops it, and the
+    // panel should say so rather than lose it silently.
+    ? [...def.rollKeys, ...(item.stats?.goldPerSec ? ['goldPerSec' as ItemStatKey] : [])]
     : (Object.keys(item.stats ?? {}) as ItemStatKey[]);
   // ITEM_STAT_KEYS order, so the panel's before/after rows never reshuffle.
   return ITEM_STAT_KEYS.filter(key => keys.includes(key));

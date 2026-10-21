@@ -150,8 +150,8 @@ describe('socket effects', () => {
 
   it('sums the wells and ignores the empty ones', () => {
     const sword = item({ rarity: 'legendary', sockets: ['ash', null, 'ash'] });
-    // Two Commons on the Gold channel: 1 + 1.
-    expect(socketStats(sword).goldPerSec).toBe(2);
+    // Two Commons on the Gold Find channel: 1 + 1.
+    expect(socketStats(sword).goldFind).toBe(2);
     expect(socketStats(sword).magicFind).toBeUndefined();
   });
 
