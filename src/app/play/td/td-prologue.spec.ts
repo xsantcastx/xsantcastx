@@ -58,8 +58,9 @@ describe('td prologue', () => {
     expect(stepKey('fight', 'warlock', false)).toBe('play.pro.fight.warlock.keys');
     expect(stepKey('fight', 'ashguard', true)).toBe('play.pro.fight.ashguard.touch');
     expect(stepKey('fight', 'lanternwright', false)).toBe('play.pro.fight.lanternwright.keys');
+    expect(stepKey('fight', 'thornstrider', true)).toBe('play.pro.fight.thornstrider.touch');
     // A class still to come reads the plain line rather than a missing one.
-    expect(stepKey('fight', 'thornstrider', false)).toBe('play.pro.fight.any.keys');
+    expect(stepKey('fight', 'unknown-class', false)).toBe('play.pro.fight.any.keys');
     expect(stepKey('walk', 'warlock', true)).toBe('play.pro.walk.touch');
     const v = prologueView('fight', 'lanternwright', false, 'Hearthlight');
     expect(v).toEqual(jasmine.objectContaining({ id: 'pro-fight', n: 3, total: PROLOGUE_STEPS.length, vars: { skill: 'Hearthlight' } }));
