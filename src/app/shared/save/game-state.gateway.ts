@@ -1370,6 +1370,51 @@ export class GameStateGateway {
     return this.attach(uid, fs);
   }
 
+  /**
+   * Re-read a few documents right now and adopt what the cloud holds — after a server write this device must see
+   * before it plays on (a trade or a ground pickup: functions/src/trade-core.ts). Not throttled, and only the named
+   * keys are read (one billed read each). Every owner is flushed first, the merged copy is cached and pushed into its
+   * owner in the same tick (LocalSaveRegistry), and a key whose merge holds something the cloud lacks is queued.
+   * Returns the keys that moved locally. A no-op while signed out.
+   */
+  async pullKeys(keys: readonly string[]): Promise<string[]> {
+    const uid = this.uid, fs = this.fs;
+    if (!this.attached || !uid || !fs) return [];
+    this.flushOwners();
+    const moved: string[] = [];
+    for (const key of keys) {
+      const entry = BY_KEY.get(key);
+      if (!entry) continue;
+      const snap = await fs.api.getDoc(this.ref(fs, uid, entry));
+      if (this.fs !== fs || this.uid !== uid) return moved;
+      const cloud = snap.exists() ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data()) : null;
+      if (cloud === null) continue;
+      this.lastRemote.set(key, JSON.stringify(cloud));
+      const localRaw = this.readRaw(key);
+      const local = localRaw === null ? null : safeParse(localRaw);
+      const merged = applyStrategy(entry, cloud, local, 'merge');
+      if (merged === null || merged === undefined) continue;
+      const resolved = entry.identify ? entry.identify(merged, uid) : merged;
+      if (stable(entry, resolved) !== stable(entry, local)) { this.adopt(key, JSON.stringify(resolved)); moved.push(key); }
+      if (stable(entry, resolved) !== stable(entry, cloud)) this.markDirty(key);
+    }
+    return moved;
+  }
+
+  /**
+   * Every owner's memory to disk, then everything queued to the cloud, awaited — before a server reads this save (a
+   * trade or a drop checks the items and Gold the cloud holds, not what this tab holds). Throws when the push fails.
+   */
+  async syncNow(): Promise<void> {
+    if (!this.attached) return;
+    this.flushOwners();
+    this.cancelFlush();
+    await this.pushDirty({ batched: true });
+  }
+
+  /** This device may write the save now (signed in and holding the lease): a trade must wait until it can. */
+  get mayWriteCloud(): boolean { return this.attached && this.leases.mayWrite; }
+
   /** Send everything queued, now. Used by sign-out and the retry button. */
   async flushNow(): Promise<void> {
     if (!this.attached) return;

@@ -1,5 +1,6 @@
 import type { CoopAreas, CoopHit, CoopHitsMsg, CoopSnapBody, CoopSnapMsg } from './coop-protocol';
 import type { CoopPal } from './coop-pals';
+import type { OfferItem } from '../trade/trade-items';
 
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
@@ -39,7 +40,24 @@ export interface RoomSnapshot {
   barred?: boolean;
   /** Protocol 5: who hosts the party's creatures in each area (absent against an older room). */
   coop?: CoopAreas | null;
+  /** Protocol 6: trade requests waiting on this Keeper's answer, the open trade window, what lies on the ground here. */
+  tradeAsks?: RoomTradeAsk[]; trade?: RoomTrade | null; ground?: { area: string; items: RoomGround[] };
 }
+/** The room's trading and shared ground (protocol 6; the trade Function moves things: functions/src/trade-core.ts). */
+export const TRADE_PROTOCOL = 6;
+export interface RoomTradeAsk { id: string; from: string; name: string; to: string; until: number }
+/** One side's offer in the window. */
+export interface RoomOffer { items: OfferItem[]; gold: number }
+/** The open trade as the room relays it: `me` is this Keeper's side; any offer change clears both Accepts (rev). */
+export interface RoomTrade {
+  id: string; me: 'a' | 'b'; a: { id: string; name: string }; b: { id: string; name: string };
+  offers: { a: RoomOffer; b: RoomOffer }; accepted: { a: boolean; b: boolean }; confirmed: { a: boolean; b: boolean };
+  rev: number; stage: 'offer' | 'confirm'; until: number;
+}
+/** How a trade window closed. */
+export interface RoomTradeEnd { id: string; outcome: 'done' | 'cancelled' | 'void'; by: string; why: string }
+/** An item on the ground, as the room was told by the one who dropped it (checked against the escrow). */
+export interface RoomGround { id: string; area: string; x: number; y: number; name: string; rarity: string; def: string; until: number; by?: string }
 /** The room's party verbs (protocol 3). */
 export const PARTY_PROTOCOL = 3;
 /** The room's social graph (protocol 4): who is signed in, friends, whispers, block, report, privacy. */
@@ -92,6 +110,10 @@ export interface RoomOptions {
   onCoopHits?: (msg: CoopHitsMsg) => void;
   /** Protocol 5: a party member's companions (in this area) arrived. */
   onCoopPals?: (msg: { from: string; area: string; pals: CoopPal[] }) => void;
+  /** Protocol 6: a trade window closed (done, cancelled, void). */
+  onTradeEnd?: (end: RoomTradeEnd) => void;
+  /** Protocol 6: a trade request was declined. */
+  onTradeNote?: (note: { kind: 'declined'; name: string }) => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
@@ -173,7 +195,7 @@ export class SocialRoom {
   private wanted: { name: string; profile: RoomProfile } | null = null;
   /** The page is out of sight: no stream, no updates; the session is kept for the return. */
   private paused = false;
-  private snapshot: RoomSnapshot = { status: SOLO, connected: false, players: [], messages: [], id: '', protocol: 0, party: null, invites: [], partyMessages: [], guest: true, friends: [], friendRequests: [], whispers: [], blocks: [], barred: false };
+  private snapshot: RoomSnapshot = { status: SOLO, connected: false, players: [], messages: [], id: '', protocol: 0, party: null, invites: [], partyMessages: [], guest: true, friends: [], friendRequests: [], whispers: [], blocks: [], barred: false, tradeAsks: [], trade: null, ground: { area: '', items: [] } };
   /** Privacy as the Keeper set it (sent on join, and again when it changes). */
   private privacy: RoomPrivacy = { offline: false, invites: 'everyone' };
   private readonly endpoint: string;
@@ -215,7 +237,7 @@ export class SocialRoom {
       if (generation !== this.generation || this.wanted !== wanted) return;
       const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
-        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
       let response = await join(idToken);
       // A token the room will not take: in as a guest rather than not at all.
@@ -257,7 +279,7 @@ export class SocialRoom {
     this.reconnectAttempts = 0; this.updating = false; this.lastUpdate = -Infinity; this.lastBody = '';
     const token = this.token; this.token = '';
     if (token) void this.post('leave', {}, token).catch(() => {});
-    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [], friends: [], friendRequests: [], whispers: [], blocks: [], coop: null });
+    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [], friends: [], friendRequests: [], whispers: [], blocks: [], coop: null, tradeAsks: [], trade: null, ground: { area: '', items: [] } });
   }
   private async listen(generation: number, signal: AbortSignal): Promise<void> {
     let openedAt: number | undefined;
@@ -300,6 +322,7 @@ export class SocialRoom {
           if (data.type === 'emote' && data.emote?.kind === 'wave') this.options.onEmote?.(data.emote);
           this.partyEvent(data);
           this.coopEvent(data as Record<string, unknown>);
+          this.tradeEvent(data as Record<string, unknown>);
           if (this.socialEvent(data)) return;
         }
       }
@@ -373,6 +396,65 @@ export class SocialRoom {
       });
       return response.ok;
     } catch { return false; }
+  }
+  // ── Protocol 6: trading and ground drops. The room relays; the trade Function commits (play/trade/trade-flow.ts). ──
+  private tradeEvent(data: Record<string, unknown>): void {
+    const type = data['type'];
+    const ask = data['ask'] as RoomTradeAsk | undefined;
+    if (type === 'trade-ask' && ask && typeof ask.id === 'string' && !(this.snapshot.tradeAsks ?? []).some(a => a.id === ask.id)) {
+      this.publish({ tradeAsks: [...(this.snapshot.tradeAsks ?? []), ask].slice(-3) });
+    }
+    const t = data['trade'] as RoomTrade | undefined;
+    if (type === 'trade' && t && typeof t.id === 'string' && (t.me === 'a' || t.me === 'b') && t.offers && t.accepted) this.publish({ trade: t, tradeAsks: [] });
+    const end = data['end'] as RoomTradeEnd | undefined;
+    if (type === 'trade-end' && end && typeof end.id === 'string') {
+      if (this.snapshot.trade?.id === end.id) this.publish({ trade: null });
+      this.options.onTradeEnd?.(end);
+    }
+    if (type === 'trade-note' && data['note']) this.options.onTradeNote?.(data['note'] as { kind: 'declined'; name: string });
+    if (type === 'ground' && typeof data['area'] === 'string') {
+      const area = data['area'] as string;
+      const valid = (g: RoomGround) => g && typeof g.id === 'string' && Number.isFinite(g.x) && Number.isFinite(g.y) && typeof g.name === 'string';
+      const held = this.snapshot.ground?.area === area ? this.snapshot.ground.items : [];
+      let items = Array.isArray(data['items']) ? (data['items'] as RoomGround[]).filter(valid) : held;
+      if (Array.isArray(data['add'])) items = [...items.filter(g => !(data['add'] as RoomGround[]).some(x => x.id === g.id)), ...(data['add'] as RoomGround[]).filter(valid)];
+      if (Array.isArray(data['gone'])) items = items.filter(g => !(data['gone'] as string[]).includes(g.id));
+      this.publish({ ground: { area, items: items.slice(-80) } });
+    }
+  }
+  /** The room trades (protocol 6) and the Keeper is in it. */
+  get canTrade(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= TRADE_PROTOCOL; }
+  async tradeAsk(to: string): Promise<string> { return this.tradeCall('trade/ask', { to }); }
+  async tradeAnswer(askId: string, yes: boolean): Promise<string> {
+    this.publish({ tradeAsks: (this.snapshot.tradeAsks ?? []).filter(a => a.id !== askId) });
+    return this.tradeCall('trade/answer', { ask: askId, accept: yes });
+  }
+  forgetTradeAsk(askId: string): void { this.publish({ tradeAsks: (this.snapshot.tradeAsks ?? []).filter(a => a.id !== askId) }); }
+  async tradeOffer(trade: string, items: OfferItem[], gold: number): Promise<string> { return this.tradeCall('trade/offer', { trade, items, gold }); }
+  async tradeAccept(trade: string, rev: number, yes = true): Promise<string> { return this.tradeCall('trade/accept', { trade, rev, accept: yes }); }
+  async tradeConfirm(trade: string, rev: number, done: boolean): Promise<string> { return this.tradeCall('trade/confirm', { trade, rev, done }); }
+  async tradeCancel(trade: string, why = '', outcome: 'cancelled' | 'void' = 'cancelled'): Promise<string> {
+    if (this.snapshot.trade?.id === trade) this.publish({ trade: null });
+    return this.tradeCall('trade/cancel', { trade, why, outcome });
+  }
+  /** Tell the area what this Keeper's drop put on the ground (the room checks the escrow first). */
+  async groundDrop(g: { id: string; area: string; x: number; y: number; name: string; rarity: string; def: string }): Promise<string> { return this.tradeCall('ground/drop', g); }
+  /** An item is gone from the ground (picked up, or found gone): it leaves everyone's screen. */
+  async groundTake(area: string, id: string): Promise<string> {
+    if (this.snapshot.ground?.area === area) this.publish({ ground: { area, items: this.snapshot.ground.items.filter(g => g.id !== id) } });
+    return this.tradeCall('ground/take', { area, id });
+  }
+  private async tradeCall(path: string, body: unknown): Promise<string> {
+    if (!this.canTrade || !this.token) return 'offline';
+    try {
+      const response = await this.send(`${this.endpoint}/${path}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
+      });
+      if (response.ok) return '';
+      const said = await response.json().catch(() => null) as { error?: unknown } | null;
+      return typeof said?.error === 'string' && said.error ? said.error.slice(0, 160) : 'failed';
+    } catch { return 'failed'; }
   }
   /**
    * Protocol 4's events. True when the session ended here (a ban, or this account joined from another window: the

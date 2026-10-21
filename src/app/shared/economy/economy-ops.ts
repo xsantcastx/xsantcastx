@@ -51,6 +51,8 @@ export type EconomyOpKind =
   | 'credit-gold'
   | 'credit-essence'
   | 'spend-gold'
+  /** Gold handed over by another Keeper (functions/src/trade-core.ts): a credit, but not "earned". */
+  | 'receive-gold'
   | 'buy-upgrade'
   | 'buy-artifact'
   | 'buy-cosmetic'
@@ -62,6 +64,7 @@ export type EconomyOpKind =
 
 const OP_KINDS = new Set<EconomyOpKind>([
   'credit-gold',
+  'receive-gold',
   'credit-essence',
   'spend-gold',
   'buy-upgrade',
@@ -76,6 +79,7 @@ const OP_KINDS = new Set<EconomyOpKind>([
 
 const AMOUNT_KINDS = new Set<EconomyOpKind>([
   'credit-gold',
+  'receive-gold',
   'credit-essence',
   'spend-gold',
   'buy-upgrade',
@@ -314,6 +318,11 @@ export function applyOp(state: EconomyLedger, op: EconomyOp): boolean {
       return true;
     case 'credit-essence':
       state.eclipseEssence += amount;
+      return true;
+    case 'receive-gold':
+      // A trade's Gold: the purse grows, the all-time "earned" counters do not (passing Gold back and forth between
+      // two Keepers must not farm them).
+      state.gold += amount;
       return true;
     case 'spend-gold':
       if (state.gold < amount) return false;

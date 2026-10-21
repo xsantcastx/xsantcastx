@@ -369,7 +369,13 @@ export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
     hlc: finiteNumber(raw['hlc']),
     legacyBackup: parseInventoryV1(raw['legacyBackup']),
     era: typeof raw['era'] === 'number' && Number.isFinite(raw['era']) ? raw['era'] : 0,
+    ...serverSeqOf(raw['serverSeq']),
   };
+}
+
+/** The trade server's write count (InventoryLedger.serverSeq), kept only when it is a real positive whole number. */
+function serverSeqOf(raw: unknown): { serverSeq?: number } {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw > 0 ? { serverSeq: raw } : {};
 }
 
 /**
@@ -537,7 +543,10 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
   const b = coerceInventoryLedger(local) ?? emptyInventoryLedger();
   const aEra = a.era ?? 0;
   const bEra = b.era ?? 0;
-  if (aEra !== bEra) return aEra > bEra ? { ...a, era: aEra } : { ...b, era: bEra };
+  // The trade server's write count survives every branch, the era short-circuit included: a lower one would make
+  // the inventory rule refuse this device's writes for good.
+  const seq = serverSeqOf(Math.max(a.serverSeq ?? 0, b.serverSeq ?? 0));
+  if (aEra !== bEra) return aEra > bEra ? { ...a, era: aEra, ...seq } : { ...b, era: bEra, ...seq };
   const tombstones = mergeTombstones(a.tombstones, b.tombstones);
   const tombById = new Map(tombstones.map(row => [row.id, row]));
   const byId = new Map<string, OwnedItemRecord>();
@@ -573,6 +582,7 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc), ...stacks.folds.map(fold => fold.upToHlc)),
     legacyBackup: a.legacyBackup ?? b.legacyBackup,
     era: Math.max(aEra, bEra),
+    ...seq,
   };
 }
 

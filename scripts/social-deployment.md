@@ -241,3 +241,61 @@ online. `gcloud run services logs read eclipse-hearth --region us-central1` show
 `[hearth] … failed` lines if Firestore or the certificates are unreachable (the
 room then degrades: a failed ban read lets the Keeper in, a failed friends read
 starts an empty list, a failed write is refused with "Could not save that").
+
+### Protocol 6 (trading and shared ground drops, 2026-10-21 — built, NOT deployed)
+
+`/health` and `/join` report `protocol: 6`. A client that trades says `trade: true` on `/join`; only such sessions are
+asked to trade or told what lies on the ground. The room **relays only**: the `tradeApi` Cloud Function
+(functions/src/trade.ts → trade-core.ts) is the only thing that moves an item or Gold. Full design:
+docs/design/online.md §4c.
+
+| verb | body | effect |
+|---|---|---|
+| POST `/trade/ask` | `{to}` | both signed in, same `area`, not blocked either way, neither trading; the other gets `trade-ask` (lapses 30 s); 5 / 30 s |
+| POST `/trade/answer` | `{ask, accept}` | accept **creates `trades/{id}`** (both uids, players, names, `status:'open'`, `expiresAt` +10 min; create-only) and opens the window: both get `trade` |
+| POST `/trade/offer` | `{trade, items ≤12, gold}` | one side's offer (items validated field by field, ≤16 KB body); clears both Accepts, `rev`+1; refused once anyone confirmed |
+| POST `/trade/accept` | `{trade, rev, accept}` | at the current `rev` only; both → `stage:'confirm'` |
+| POST `/trade/confirm` | `{trade, rev, done}` | this side called the Function; `done:true` (the Function swapped) closes both windows with `trade-end` `done` |
+| POST `/trade/cancel` | `{trade, why?, outcome?}` | closes both windows (`trade-end` cancelled / void) |
+| POST `/ground/drop` | `{id, area, x, y, name, rarity, def}` | **checked against `ground-items/{id}`** (must exist, this area, this account's) then shown to everyone in the area (`ground` add); 10 / min, 60 per area |
+| POST `/ground/take` | `{id, area}` | only when `ground-items/{id}` no longer exists; `ground` gone to the area; 20 / 10 s |
+
+Events: `trade-ask`, `trade` (the window, with `me`), `trade-end`, `trade-note` (declined), `ground` (`items` on
+stream open / area change, else `add` / `gone`). Leaving the room or walking to another area cancels an open trade.
+Rate windows per session; asks and trades lapse in the cleanup loop.
+
+The image is unchanged (three files): `scripts/trade-fake.mjs` is the local e2e's stand-in and is only imported
+when `SOCIAL_FAKE_AUTH=1` and `SOCIAL_FAKE_TRADE=1` (refused on Cloud Run).
+
+**IAM.** The room now also writes `trades/{id}` and reads `ground-items/{id}` with its service account (same
+`roles/editor`/`roles/datastore.user` as protocol 4). Nothing new to grant.
+
+**Deploy order (the owner's call — none of this was executed).** Functions and rules first, then the hearth, then
+Hosting (the client hides Trade until the room says protocol 6, and a trade fails cleanly — "the trade house is out of
+reach" — until the Function exists):
+
+```sh
+# 1. Functions (Node 22; needs the Blaze plan, which v2 functions and the scheduler already require)
+cd functions && npm ci && npm run build && cd ..
+firebase deploy --only functions:tradeApi,functions:groundSweep --project xsantcastx-1694b
+
+# 2. Rules — diff the live ruleset first (memory: "Live rules drift from the repo"); CI's rules step 403s
+firebase deploy --only firestore:rules --project xsantcastx-1694b
+
+# 3. The hearth — read the live env first; keep all four origins and the project
+gcloud run services describe eclipse-hearth --project xsantcastx-1694b --region us-central1 \
+  --format='value(spec.template.spec.containers[0].env)'
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated --max-instances 1 --concurrency 80 --timeout 3600 --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":6
+
+# 4. Hosting (or push to main and let CI deploy)
+```
+
+`tradeApi` is called at `https://us-central1-xsantcastx-1694b.cloudfunctions.net/tradeApi/{execute|cancel|drop|pickup}`
+(already in firebase.json's `connect-src`; CORS allows the same four origins). `groundSweep` runs every 5 minutes and
+returns ground items past their 10 minutes to their droppers (the Cloud Scheduler job is created by the deploy).
