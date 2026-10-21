@@ -254,8 +254,8 @@ bottom of the Orrery Wells); stepping down is always allowed.
 | | HP | Blow | Level | Keeper resist | Creature resist | Item chance | Ladder shift | Rune cap | Fall |
 |---|---|---|---|---|---|---|---|---|---|
 | Normal | ×1 | ×1 | +0 | 0 | +0 | ×1 | 0 | Rare | 5% |
-| Nightmare | ×2.5 | ×2 | +20 | −40 | +15 | ×1.35 | +1 | Legendary | 10% |
-| Hell | ×4 | ×3 | +40 | −100 | +30 | ×1.7 | +2 | Singular | 15% |
+| Nightmare | ×2.5 | ×1.6 | +20 | −40 | +15 | ×1.35 | +1 | Legendary | 10% |
+| Hell | ×4 | ×2.2 | +40 | −100 | +30 | ×1.7 | +2 | Singular | 15% |
 
 **Decision (2026-10-21, branch `passives`): applied in the top-down fight.** **Gate (2026-10-21, branch `seam`):
 the Seam Eater opens the tiers; the picker is shown.**
@@ -265,10 +265,15 @@ the Seam Eater opens the tiers; the picker is shown.**
   **before** the 75 cap (`td-skills fightStats(…, resistPenalty)`, D2's order), so the fight, the C sheet and the Loot
   sheet's rows all show the penalised number. Hunting XP still follows the creature's own life (the tier pays in
   drops, as its blurb says). Drops, the rune cap and the fall share already followed the tier. The blurbs quote the
-  table's numbers exactly ("2.5× life, 2× as hard, −40, 35% more often"), and `td-truth-gear.spec.ts` measures each one
-  in a real MobSystem.
+  table's numbers exactly ("2.5× life, 1.6× as hard, −40, 35% more often"), and `td-truth-gear.spec.ts` measures each
+  one in a real MobSystem.
+- *A wall, not impossible (owner, 2026-10-21):* the blows were ×2 / ×3; at the Keeper's own level that made the Seam
+  Eater on Nightmare a near-certain fall for every vocation but the Ashguard (§13). They are ×1.6 / ×2.2 now; the life
+  and the −40 / −100 resist penalties stay, so **resist gear is the answer**, as in D2. `combat-sim --check` holds it: a
+  Keeper five levels above the Eater in resist gear (rares, the Eater's arcane first, a full belt) beats it on
+  Nightmare with ≤ 35% first-try falls, and one fifteen above in epics with ≤ 50% in Hell.
 - *The top-down gate:* **the Seam Eater** (`play/td/td-seam.ts`, `seam-eater-risen`; §10), the eclipse's world boss.
-  Its first fall on Normal opens Nightmare; a fall on Nightmare (where it rises 2.5× the life and strikes 2× as hard)
+  Its first fall on Normal opens Nightmare; a fall on Nightmare (where it rises 2.5× the life and strikes 1.6× as hard)
   opens Hell (`difficulty.model` `TD_GATE_BOSS`, `unlockedBy`; the kill path's `LootService.killed`). The Fallen
   Ephemeris stays the side view's gate.
 - *Shown:* the Loot sheet's Difficulty picker always shows the opened tiers (Normal alone for a new Keeper) and, under
@@ -367,8 +372,8 @@ two to four minutes (§13); bite 0.75L–1.1L every 1.8 s, walks 18 px/s, sight 
 - **Seam Rend** (`ul dra`): **3** rings (one under the Keeper, two 34 px round him) of 20 px, shown for **1 s**, then
   each bursts for 0.85L–1.15L arcane; every **6 s**. A step out of the ring and nothing lands.
 - **At half life** (`ul teth`): two **Eclipse-touched** creatures climb out after the 0.6 s call sigil (lone touched
-  champions by its level, never above it: the Cinder Wraith under 28, then the shade-kin of the fens — Lantern Wisp
-  under 32, Ink Hound under 40, Drowned Knight above), and the fight quickens: a fan of **7** every **3.2 s**, **5**
+  champions by its level, never above it: the Cinder Wraith up to 30, then the shade-kin of the fens — Lantern Wisp
+  under 34, Ink Hound under 40, Drowned Knight above), and the fight quickens: a fan of **7** every **3.2 s**, **5**
   rings every **4.5 s**.
 - *Rewards:* boss rank (3 item rolls with the 2-step shift, Hunt Gold at the boss band, the boss's potion and Blank
   odds), Hunting XP by its life before the boss factors (§13), Eclipse Glass ×2, Nightglass ×2, an Umbral Sigil at 50%; and its unique, the
@@ -376,6 +381,25 @@ two to four minutes (§13); bite 0.75L–1.1L every 1.8 s, walks 18 px/s, sight 
   (`RelicSig.umbra`, measured in `td-seam.spec.ts`).
 - *Balance:* for a well-geared solo Keeper at its level. A level-1 Keeper on Ember Isle meets the level-20 one: a
   world boss to run from — it will not follow him into town.
+
+**Gap-closers (owner, 2026-10-21: "a ranged Keeper who walks backwards forever should get caught"; `td-mobs`
+`MobDef.charge`).** The five bosses with no ranged attack each carry one: when the Keeper stands more than 28 art px off
+(beyond its bite), every 6 s it winds up for `BOSS_TELL` (0.6 s, the phones' floor) — a pixel lane on the floor in the
+ember tones (effects-spec: the foe's edge outline, the front filling as the tell runs down) to the ring where it will
+come down — then crosses there at ~200 px/s and strikes everything within 22 px (`CHARGE_HIT`). It **leads a Keeper on
+the move**: it aims where he will be at his pace now (at most 72 px ahead, `CHARGE_LEAD`), so walking straight away is
+caught, and a step *aside* in the tell is not. A minion standing there takes it instead.
+
+| Boss | Gap-closer | Blow | Words |
+|---|---|---|---|
+| The Uncounted (7) | the forty dead lurch at once (charge) | 10–17 | *osk mur* (the dead, a line) |
+| The Ember Warden (8) | leap | 14–22 | — |
+| The Anvil Warden (18) | slam | 22–36 | — |
+| The Magma Tyrant (20) | charge | 25–40 | — |
+| The Mossbound Colossus (34) | slam | 38–58 | — |
+
+The tier multiplies the blow as it does a bite. `combat-sim --check` asserts a kiting ranged Keeper is struck at least
+four times in every boss fight (by these five he was never struck at all before).
 
 **Skill trees (2026-10-21, `docs/design/skill-trees.md`).** The Warlock's 21 skills now sit in three D2 trees —
 **Ember** (fire), **Bone** (necromancy), **Shadow** (curses and wards) — in tiers that open at levels 1, 6, 12, 18 and
@@ -449,9 +473,11 @@ pack 1 in 16), life and mana carried over, 12 s between pulls (leveling.md's 240
 | A creature at his level (three below to two above) | 2–5 s; falls ≤ 2% |
 | A champion pack / a unique pack | 15–40 s / 30–75 s; falls ≤ 10% |
 | A floor boss at its level, first attempt | 60–150 s; falls ≤ 30% |
-| The Seam Eater on Normal (20, 30, 40, 60) | 2–4 min; falls ≤ 30%; Nightmare and Hell harder (more falls or a longer fight) |
+| The Seam Eater on Normal (20, 30, 40, 60) | 2–4 min; falls ≤ 30% |
+| The Seam Eater on Nightmare / Hell: a Keeper 5 / 15 levels above it, in resist gear (rares / epics, its arcane first, a belt of 16 + 16) | falls ≤ 35% / ≤ 50%; never softer than Normal |
+| Every boss against a kiting ranged Keeper | he is struck ≥ 4 times a fight |
 | Vocations on one foe (a creature at level, each boss) | each within ±25% of the four's mean |
-| Hours to level 10 / 30 / 50 on the hunt | 0.4–1 / 4–8 / 8–20 h (leveling.md: 0.6 / 5.8 / 14) |
+| Hours to level 10 / 30 / 50 on the hunt | 0.4–1 / 4–8 / 10–18 h (leveling.md: 0.6 / 5.8 / 14) |
 | The hunt | XP and Gold an hour climb with the level |
 
 Level 60 is shown, not banded: content stops at 42 (the Gloam Witch) and 50 (the Ink Abbess), so a level-60 Keeper
@@ -472,18 +498,21 @@ outlevels everything he hunts.
   climbing to ×3 by level 6, then +0.06 a level (×5.1 at 40); a boss ×22. Hunting XP still follows the authored life.
 - **Packs** (`td-elites TD_RANK_HP`): a champion copy ×3.25 life (was 2.5), a unique leader ×9 (was 3.5).
 - **The Seam Eater** (`td-seam`): life × 22 × 1.25, +50% from 40 to 60; its blows, breath and Rend a sixth softer; its
-  half-life call never above its level (the Cinder Wraith under 28).
-- **Skills** (skill-trees.md "Balance pass"): Ember Bolt +3/+5 a rank, Kindle +3/+4, Watch Blade +1/+2, Cinder Cleave
+  half-life call never above its level (the Cinder Wraith up to 30).
+- **Skills** (skill-trees.md "Balance pass"; the second pass below moved Ember Bolt to +4/+6): Ember Bolt +3/+5 a rank, Kindle +3/+4, Watch Blade +1/+2, Cinder Cleave
   100% +4%, Ember Brand +4% a rank.
 
-**Open questions for the owner** (what the numbers say, not decided here):
-1. *Nightmare and Hell* at the Keeper's own level are near-certain falls for every vocation but the Ashguard, even at
-   level 80 against the level-60 Eater: the tiers' ×2 blows and −40/−100 resists need resist gear (the sim rolls none on
-   purpose) or the side view's +20/+40 level offset. Is that the intended wall?
-2. *Kiting:* a ranged Keeper can walk backwards from every boss without a breath or a Rend (the Uncounted, the Warden,
-   the Anvil Warden, the Magma Tyrant, the Mossbound Colossus) and never be touched; the first two bosses cost a melee
-   Ashguard his whole belt. Bosses may want a gap-closer.
-3. *Packs and the blade:* the Ashguard clears a champion pack in about half the ranged vocations' time (his swing
-   strikes the whole arc). Kept as his identity; say if it should close further.
-4. *Leveling pace* past 30 runs ~1.5× faster than leveling.md's "content at pace" column, because the Umbral Marches'
-   creatures were authored above the 30 + 12.5·level rule (Drowned Knight 1,200 at 38 against 505).
+**The owner's decisions on them (2026-10-21, second pass):**
+1. *Nightmare and Hell are a wall, not impossible.* Their blows are ×1.6 / ×2.2 (were ×2 / ×3); life and the resist
+   penalties stay, and resist gear is the answer (§8). Measured: a Keeper 5 levels above the Eater in resist gear falls
+   0–8% on Nightmare; 15 above, 0–50% in Hell (the Lanternwright and the Thornstrider at the top of that).
+2. *No boss can be kited forever.* The five melee-only bosses have a telegraphed gap-closer (§10, `MobDef.charge`); a
+   kiting ranged Keeper was struck 0 times by them a fight, now 6–12.
+3. *The Ashguard's pack clear stays* — his identity (skill-trees.md).
+4. *Leveling past 30 matches leveling.md.* The Umbral Marches' six creatures (Mire Lurker, Lantern Wisp, Ink Hound,
+   Drowned Acolyte, Drowned Knight, Gloam Witch) now carry the rule's authored life (30 + 12.5 × level) and pay its
+   XP; `MobDef.tough` keeps the life they fight with. Level 50 in ~12 h (was ~9); 30 → 50 ~7 h against the doc's ~8.
+5. *The Lanternwright's first two bosses* fall in ~120 s (were ~155): Kindle 9–14 every 0.9 s, Lamp-Wisp motes 8–12.
+   Ember Bolt grows +4/+6 a rank, so the Warlock keeps within ±25% at 30 as kiting the gap-closers costs him time.
+   The Seam Eater's half-life call is the Cinder Wraith up to its level 30 (the level-28 Lantern Wisps it called at 30
+   felled a quarter of the Keepers on Normal and half on Nightmare).

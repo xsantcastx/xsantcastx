@@ -2302,10 +2302,11 @@ function combatScenario({ quiet = false } = {}) {
   say(`\n  Hell without resists: ${deadly.length}/${elemental.length} elemental creatures out-kill a bare endgame Keeper (${deadly.map(p => p.creature).join(', ')})`);
   if (soft.length) fails.push(`combat: resists barely matter in Hell against ${soft.map(p => p.creature).join(', ')}`);
   if (!deadly.length) fails.push('combat: nothing in Hell punishes a Keeper without resists');
-  // Hell is hard: a seasoned (mid-game) Keeper loses to at least a third of it.
+  // Hell is hard: a seasoned (mid-game) Keeper loses to at least 30% of it (a third before 2026-10-21, when the owner
+  // softened Hell's blows ×3 → ×2.2 — "a wall, not impossible"; resist gear is the answer, combat-sim §13).
   const beaten = FAM.CREATURE_PROFILES.filter(p => { const f = fight(p.creature, 'hell', STAGES[1]); return f.ttd < f.ttk; });
   say(`  Hell vs a seasoned Keeper: ${beaten.length}/${FAM.CREATURE_PROFILES.length} creatures win`);
-  if (beaten.length * 3 < FAM.CREATURE_PROFILES.length) fails.push(`combat: Hell is soft (a seasoned Keeper beats ${FAM.CREATURE_PROFILES.length - beaten.length}/${FAM.CREATURE_PROFILES.length})`);
+  if (beaten.length * 10 < FAM.CREATURE_PROFILES.length * 3) fails.push(`combat: Hell is soft (a seasoned Keeper beats ${FAM.CREATURE_PROFILES.length - beaten.length}/${FAM.CREATURE_PROFILES.length})`);
   // Phones: every pack keeps a readable wind-up.
   if (PACK.packWindup(.85, 1.6 * 1.6) < PACK.MIN_WINDUP) fails.push('combat: a pack wind-up drops under MIN_WINDUP');
   if (quiet) console.log(`economy-sim combat: ${fails.length ? fails.length + ' fail(s)' : 'first hunt safe, bosses beatable, Hell needs resists, tells readable'}`);

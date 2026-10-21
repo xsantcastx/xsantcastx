@@ -64,6 +64,11 @@ export interface MobDef {
   ranged?: { range: number; keep: number; rate: number; dmg: [number, number]; speed: number; kind: MobShot['kind']; spread?: number };
   /** The Seam-Cant a boss speaks as it winds up (design-bible §4.0): a readable tell in words beside the ground cone. */
   chant?: string;
+  /**
+   * A tank: its fight life is `tough` × its authored `hp` (on top of td-life lifeScale), while its Hunting XP stays on the
+   * authored `hp` — which follows leveling.md's rule (30 + 12.5 × level). The Umbral Marches' heavy creatures (2026-10-21).
+   */
+  tough?: number;
   /** It drifts over lava and embers as if they were floor (a wraith). */
   floats?: boolean;
   /** Half there: drawn see-through, flickering. */
@@ -78,6 +83,14 @@ export interface MobDef {
   rend?: { rate: number; rings: number; r: number; spread: number; tell: number; dmg: [number, number]; chant: string };
   /** At half its life (with its call) the fight quickens: the breath's fan and cadence, the rend's rings and cadence. */
   half?: { spread: number; rate: number; rings: number; rendRate: number; chant: string };
+  /**
+   * A gap-closer (owner 2026-10-21: "a ranged Keeper who walks backwards forever should get caught"): when its prey
+   * stands `min` art px off or more, every `rate` s it winds up (BOSS_TELL, a lane on the ground toward where the prey
+   * will be at his pace — CHARGE_LEAD), then crosses to that spot at `speed` px/s and strikes it for `dmg` — a step aside in the tell and it lands
+   * on nothing. `kind` is how it looks: a charge (it runs), a leap (it jumps), a slam (it throws itself down). A boss
+   * with words speaks its own `chant` as it winds up.
+   */
+  charge?: { min: number; rate: number; dmg: [number, number]; speed: number; kind: 'charge' | 'leap' | 'slam'; chant?: string };
   /** A world boss: it never sets foot on a town's safe ground nor strikes into it, and past `leash` tiles from where it rose it goes back. */
   bound?: { leash: number };
   /**
@@ -1478,11 +1491,13 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8, hits: 'fire',
     lore: 'Keeper of the flooded galleries, it banks the old forge-fire each night and bites anyone who comes to stoke it.',
     drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 40, h: 56, rank: 'boss',
+    charge: { min: 28, rate: 6, dmg: [14, 22], speed: 210, kind: 'leap' },
   },
   'magma-tyrant': {
     id: 'magma-tyrant', name: 'The Magma Tyrant', hp: 1400, speed: 20, dmg: [18, 30], rate: 1.8, sight: 160, level: 20, hits: 'fire',
     lore: 'It was a crown once, poured too hot. Now the caldera wears it, and the caldera does not take kindly to visitors.',
     drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintTyrant, w: 58, h: 72, rank: 'boss',
+    charge: { min: 28, rate: 6, dmg: [25, 40], speed: 220, kind: 'charge' },
   },
   'ash-wolf': {
     id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
@@ -1515,6 +1530,8 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     id: 'the-uncounted', name: 'The Uncounted', hp: 360, speed: 26, dmg: [7, 12], rate: 1.5, sight: 120, level: 7,
     lore: 'The forty-first of forty graves. It does not fight like it hates you. It fights like it wants to be counted.',
     drops: [{ material: 'ember-residue', qty: 2, chance: 1 }, { material: 'world-root-bark', qty: 2, chance: .5 }], paint: paintUncounted, w: 34, h: 54, rank: 'boss',
+    // Its gap-closer: the forty dead lurch at once along a line (osk mur: the dead, a line).
+    charge: { min: 28, rate: 6, dmg: [10, 17], speed: 200, kind: 'charge', chant: 'osk mur' },
     chant: 'osk teth', ghost: true, summon: { type: 'bone-walker', count: 2, at: .5 },
   },
   'bone-archer': {
@@ -1579,6 +1596,7 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     id: 'anvil-warden', name: 'The Anvil-Warden', hp: 1100, speed: 22, dmg: [16, 26], rate: 1.7, sight: 150, level: 18,
     lore: 'The First Smith\'s anvil grew legs to keep its oath; it still hammers the air for a blade nobody will finish.',
     drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 48, h: 67, rank: 'boss',
+    charge: { min: 28, rate: 6, dmg: [22, 36], speed: 200, kind: 'slam' },
     summon: { type: 'cinder-bailiff', count: 2, at: .5 },
   },
   'cinder-sovereign': {
@@ -1620,33 +1638,34 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     id: 'mossbound-colossus', name: 'The Mossbound Colossus', hp: 3600, speed: 20, dmg: [28, 42], rate: 1.8, sight: 170, level: 34,
     lore: 'The temple set it to keep the shrine; the Root grew in and kept the guardian. Its heart is rootglass now, and it beats slow.',
     drops: [{ material: 'world-root-bark', qty: 3, chance: 1 }, { material: 'verdant-sap', qty: 4, chance: 1 }, { material: 'thornroot', qty: 4, chance: 1 }], paint: paintColossus, w: 64, h: 76, rank: 'boss',
+    charge: { min: 28, rate: 6, dmg: [38, 58], speed: 190, kind: 'slam' },
     // At half its life it calls the temple's lashers up through the stones.
     summon: { type: 'vine-lasher', count: 2, at: .5 },
   },
   // The Umbral Marches (levels 25–50): the fens, the deep fen, the meres, the drowned ruins, the Drowned Crypts.
   'mire-lurker': {
-    id: 'mire-lurker', name: 'Mire Lurker', hp: 620, speed: 26, dmg: [20, 30], rate: 1.4, sight: 120, level: 25,
+    id: 'mire-lurker', name: 'Mire Lurker', hp: 345, tough: 620 / 345, speed: 26, dmg: [20, 30], rate: 1.4, sight: 120, level: 25,
     lore: 'Fen folk hang their lanterns high for a reason. The low ones, the ones that bob a little, belong to something that is very patient.',
     drops: [{ material: 'nightbloom', qty: 1, chance: .5 }, { material: 'umbral-ink', qty: 1, chance: .2 }], paint: paintMireLurker, w: 36, h: 28,
   },
   'lantern-wisp': {
-    id: 'lantern-wisp', name: 'Lantern Wisp', hp: 480, speed: 46, dmg: [18, 26], rate: 1.1, sight: 150, level: 28,
+    id: 'lantern-wisp', name: 'Lantern Wisp', hp: 380, tough: 480 / 380, speed: 46, dmg: [18, 26], rate: 1.1, sight: 150, level: 28,
     lore: 'A lantern dropped in the mire goes out. Most of them. This one kept the flame and lost the lantern, and it is looking for someone to carry it home.',
     drops: [{ material: 'umbral-ink', qty: 1, chance: .35 }, { material: 'nightglass', qty: 1, chance: .12 }], paint: paintLanternWisp, w: 22, h: 30,
     floats: true, ghost: true, hits: 'fire',
   },
   'ink-hound': {
-    id: 'ink-hound', name: 'Ink Hound', hp: 760, speed: 56, dmg: [24, 35], rate: 1.1, sight: 160, level: 32,
+    id: 'ink-hound', name: 'Ink Hound', hp: 430, tough: 760 / 430, speed: 56, dmg: [24, 35], rate: 1.1, sight: 160, level: 32,
     lore: 'Poured, not born, out of the Ink Deeps. It leaves pawprints that never dry, and it can follow its own trail back down in the dark.',
     drops: [{ material: 'umbral-ink', qty: 2, chance: .7 }, { material: 'inkstone', qty: 1, chance: .2 }], paint: paintInkHound, w: 34, h: 24,
   },
   'drowned-knight': {
-    id: 'drowned-knight', name: 'Drowned Knight', hp: 1200, speed: 28, dmg: [32, 46], rate: 1.6, sight: 140, level: 38,
+    id: 'drowned-knight', name: 'Drowned Knight', hp: 505, tough: 1200 / 505, speed: 28, dmg: [32, 46], rate: 1.6, sight: 140, level: 38,
     lore: 'Gloamhaven\'s old guard marched into the fen the night the abbey went under. They are still on watch. Nobody has told them to stand down.',
     drops: [{ material: 'inkstone', qty: 1, chance: .5 }, { material: 'nightglass', qty: 1, chance: .25 }], paint: paintDrownedKnight, w: 30, h: 40,
   },
   'gloam-witch': {
-    id: 'gloam-witch', name: 'Gloam Witch', hp: 900, speed: 30, dmg: [24, 34], rate: 1.5, sight: 170, level: 42,
+    id: 'gloam-witch', name: 'Gloam Witch', hp: 555, tough: 900 / 555, speed: 30, dmg: [24, 34], rate: 1.5, sight: 170, level: 42,
     lore: 'She sells cures in Lanternfen on market days and curses in the fen on the others. Her lantern burns ink, and what it shows you is true.',
     drops: [{ material: 'nightbloom', qty: 2, chance: .8 }, { material: 'umbral-ink', qty: 2, chance: .6 }, { material: 'nightglass', qty: 1, chance: .2 }], paint: paintGloamWitch, w: 26, h: 38,
     ranged: { range: 120, keep: 80, rate: 2, dmg: [26, 38], speed: 120, kind: 'ink' },
@@ -1672,7 +1691,7 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     ranged: { range: 96, keep: 56, rate: 2.4, dmg: [14, 21], speed: 90, kind: 'spore' },
   },
   'drowned-acolyte': {
-    id: 'drowned-acolyte', name: 'Drowned Acolyte', hp: 560, speed: 24, dmg: [20, 30], rate: 1.5, sight: 140, level: 33,
+    id: 'drowned-acolyte', name: 'Drowned Acolyte', hp: 445, tough: 560 / 445, speed: 24, dmg: [20, 30], rate: 1.5, sight: 140, level: 33,
     lore: 'The priests who stayed to keep the Vault when the springs rose. The moss kept them in turn. They still carry the lamps, and still do not let anyone past.',
     drops: [{ material: 'verdant-sap', qty: 2, chance: .7 }, { material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintAcolyte, w: 26, h: 38,
   },
@@ -1706,7 +1725,7 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
  * own curve (td-seam seamStats, the same boss factor in it). Hunting XP still follows the authored life (kill).
  */
 export const MOBS: Readonly<Record<string, MobDef>> = Object.fromEntries(Object.entries(AUTHORED)
-  .map(([key, def]) => [key, key === SEAM_ID ? def : { ...def, hp: livedHp(def.hp, def.level, def.rank) }]));
+  .map(([key, def]) => [key, key === SEAM_ID ? def : { ...def, hp: livedHp(def.hp * (def.tough ?? 1), def.level, def.rank) }]));
 
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
 export const RAISED_SKELETON: MobDef = {
@@ -1810,6 +1829,10 @@ export interface Mob {
   /** A ground attack's cooldown (MobDef.rend), and whether its half-life change has come (MobDef.half). */
   rendCd?: number;
   halved?: boolean;
+  /** A gap-closer (MobDef.charge): its cooldown, whether the tell running is one, and the crossing under way. */
+  chargeCd?: number;
+  charging?: boolean;
+  dash?: { x: number; y: number; t: number } | null;
   /** A member of an elite pack (td-elites.ts): its rank, role, affixes and a unique leader's name. */
   elite?: EliteTag;
   /** What it takes of every hit (Stone Skin < 1). */
@@ -2040,6 +2063,10 @@ const BEAST_REST = 1.1;
 /** Dawn at Noon: % more every hit lands for on a creature the daylight has unveiled. */
 export const DAWN_REVEAL = 15;
 const MOB_REACH = 18;      // a creature's bite
+/** A gap-closer's blow lands on what stands this close to where it comes down (art px). */
+export const CHARGE_HIT = 22;
+/** How far ahead of a moving Keeper a gap-closer aims, at most (art px). */
+export const CHARGE_LEAD = 72;
 const RESPAWN = 75;        // seconds until a spawn comes back
 const DESPAWN = 300;       // seconds a drop lies on the ground
 const CORPSE_SECS = 20;
@@ -2089,6 +2116,7 @@ export function tiered(def: MobDef, t: Pick<DifficultyDef, 'hp' | 'damage'>): Mo
     ...def, hp: Math.max(1, Math.round(def.hp * t.hp)), dmg: def.dmg[1] > 0 ? k(def.dmg) : def.dmg,
     ...(def.ranged ? { ranged: { ...def.ranged, dmg: k(def.ranged.dmg) } } : {}),
     ...(def.rend ? { rend: { ...def.rend, dmg: k(def.rend.dmg) } } : {}),
+    ...(def.charge ? { charge: { ...def.charge, dmg: k(def.charge.dmg) } } : {}),
   };
 }
 
@@ -2411,7 +2439,7 @@ export class MobSystem {
   place(key: string, def: MobDef, x: number, y: number): Mob { const m = this.spawnMob(key, def, x, y); this.mobs.push(m); return m; }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
     def = tiered(def, this.tier);
-    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
+    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}), ...(def.charge ? { chargeCd: def.charge.rate * .5 } : {}) };
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
   prune(maxDist: number): void {
@@ -2430,9 +2458,16 @@ export class MobSystem {
     return best;
   }
 
+  /** The Keeper's pace a moment ago (art px/s, smoothed): a gap-closer leads him by it. */
+  private readonly pv = { x: 0, y: 0, lx: NaN, ly: NaN };
   update(dt: number): void {
     this.clock += dt;
     const p = this.host.player();
+    if (dt > 0 && Number.isFinite(this.pv.lx)) {
+      const k = Math.min(1, dt * 6);
+      this.pv.x += ((p.x - this.pv.lx) / dt - this.pv.x) * k; this.pv.y += ((p.y - this.pv.ly) / dt - this.pv.y) * k;
+    }
+    this.pv.lx = p.x; this.pv.ly = p.y;
     this.swing = Math.max(0, this.swing - dt);
     // The Keeper's attack: the target, or with the key held the nearest creature in reach.
     if (this.target && (this.target.hp <= 0 || !this.mobs.includes(this.target))) this.target = null;
@@ -2575,11 +2610,18 @@ export class MobSystem {
       if (m.blinkCd !== undefined) m.blinkCd -= dt;
       if (m.chantT) m.chantT = Math.max(0, m.chantT - dt);
       if (m.rendCd !== undefined) m.rendCd -= dt;
+      if (m.chargeCd !== undefined) m.chargeCd -= dt;
+      // A gap-closer under way: it crosses to the spot it aimed at and strikes there (MobDef.charge).
+      if (m.dash) { this.stepDash(m, dt); continue; }
       // A boss in its wind-up stands its ground; when the tell runs out the attack leaves for where it aimed.
       if (m.tell > 0) {
         m.tell -= dt;
-        if (m.tell <= 0) { m.tell = 0; if (m.aim) this.loose(m, m.aim.x, m.aim.y); m.aim = null; }
-        else continue;
+        if (m.tell <= 0) {
+          m.tell = 0;
+          if (m.charging && m.aim && m.def.charge) { const to = { x: m.aim.x, y: m.aim.y + 12 }; m.dash = { ...to, t: Math.hypot(to.x - m.x, to.y - m.y) / m.def.charge.speed + .15 }; }
+          else if (m.aim) this.loose(m, m.aim.x, m.aim.y);
+          m.aim = null; m.charging = false;
+        } else continue;
       }
       // Rooted (a Thornroot Snare, a Bramble Trap): it stands where it is; it still bites what is in reach.
       const rooted = (m.rootT ?? 0) > 0;
@@ -2616,6 +2658,16 @@ export class MobSystem {
         }
         // A ground attack (the Seam Eater's Rend): rings open round its prey, never in the same breath as a wind-up.
         if (m.def.rend && m.tell <= 0 && (m.rendCd ?? 0) <= 0 && d <= m.def.sight) { m.rendCd = m.def.rend.rate; this.rendAt(m, px0, py0); }
+        // A gap-closer: prey that keeps its distance is crossed to (the tell first, so a step aside still saves it).
+        const ch = m.def.charge;
+        if (ch && m.tell <= 0 && (m.chargeCd ?? 0) <= 0 && d >= ch.min && d <= m.def.sight) {
+          // It leads a Keeper on the move (where he will be when it lands, at his pace now, at most CHARGE_LEAD px):
+          // walking straight away is caught; a step aside in the tell is not.
+          const lead = prey ? 0 : BOSS_TELL + d / ch.speed, lx = this.pv.x * lead, ly = this.pv.y * lead, ll = Math.hypot(lx, ly), cut = ll > CHARGE_LEAD ? CHARGE_LEAD / ll : 1;
+          m.chargeCd = ch.rate; m.tell = BOSS_TELL; m.charging = true; m.aim = { x: px0 + lx * cut, y: py0 + ly * cut - 12 };
+          if (ch.chant) { m.chantT = CHANT_SECS; m.chantText = ch.chant; }
+          continue;
+        }
       } else {
         // Roam near home: a short stroll, a pause, another.
         if (!m.wander) {
@@ -2690,6 +2742,26 @@ export class MobSystem {
       this.haste = Math.max(0, this.haste - dt);
       if (Math.random() < dt * 8) this.effects.push({ kind: 'dust', x: p.x + rnd(-4, 4), y: p.y, age: 0, life: .4, dir: 1 });
     }
+  }
+
+  /** A gap-closer crossing (MobDef.charge): on to its spot, then the blow lands on whatever stands there. */
+  private stepDash(m: Mob, dt: number): void {
+    const ch = m.def.charge, to = m.dash!;
+    to.t -= dt;
+    const dx = to.x - m.x, dy = to.y - m.y, len = Math.hypot(dx, dy), step = (ch?.speed ?? 200) * dt;
+    if (len > step && to.t > 0) {
+      const nx = m.x + dx / len * step, ny = m.y + dy / len * step;
+      if (this.canStep(m, nx, ny)) { m.x = nx; m.y = ny; if (Math.abs(dx) > 1) m.face = dx < 0 ? -1 : 1; return; }
+    } else if (len <= step) { m.x = to.x; m.y = to.y; }
+    m.dash = null; m.cd = Math.max(m.cd, .6);
+    if (!ch) return;
+    this.effects.push({ kind: 'wave', el: 'ember', r: Math.round(CHARGE_HIT * 1.2), x: m.x, y: m.y, age: 0, life: .45, dir: 1 });
+    const p = this.host.player();
+    let n = rnd(ch.dmg[0], ch.dmg[1]);
+    const weak = this.weakOf(m);
+    if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
+    if (Math.hypot(p.x - m.x, p.y - m.y) <= CHARGE_HIT) { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
+    for (const k of this.minions) if (Math.hypot(k.x - m.x, k.y - m.y) <= CHARGE_HIT) this.hurtMinion(k, n);
   }
 
   /** Returns the life the blow took (after spell power, a crit and a Stone Skin), 0 on a foe already down. */
@@ -3766,7 +3838,7 @@ export class MobSystem {
     const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100);
     // XP follows the creature's own authored life: not the tier's multiple of it (the tier pays in drops, its blurb says
     // so), nor td-life's (the life a creature rises with is the fight's; the authored life is leveling.md's pace).
-    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp / lifeScale(m.def.level, m.def.rank)), ...(xpK !== 1 ? { xp: xpK } : {}) });
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp / lifeScale(m.def.level, m.def.rank) / (m.def.tough ?? 1)), ...(xpK !== 1 ? { xp: xpK } : {}) });
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });

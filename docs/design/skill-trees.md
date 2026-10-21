@@ -26,12 +26,19 @@ vocations at levels 5–60 in the real fight and found the Ashguard ~40% ahead o
 Lanternwright ~25% behind. Five numbers moved, nothing else: **Ember Bolt** grows +3/+5 a rank (was +2/+3); **Kindle**
 +3/+4 (was +2/+3); **Watch Blade** +1/+2 (was +2/+3); **Cinder Cleave** 100% of the blow, +4% a rank (was 120%, +6%);
 **Ember Brand** +4% a rank (was +5%). Each vocation's time to kill one foe now sits within ±25% of the four's mean.
+A second pass the same day (the bosses' gap-closers made kiting cost the ranged vocations time): **Ember Bolt** +4/+6 a
+rank; **Kindle** 9–14 every 0.9 s (was 7–11 every 1 s); **Lamp-Wisp** motes 8–12 (was 4–7) — the Lanternwright's first
+two bosses fall in ~120 s (were ~155).
+
+**The Ashguard's packs (owner, 2026-10-21: kept as his identity).** His blade strikes everything in its arc, so he
+clears a champion pack in about half the ranged vocations' time (~14 s against ~25–35 s at level 20). That is the
+Ashguard, not a bug: the ±25% rule holds on one foe, not on packs.
 
 ## The trees
 
 | Tier (level) | Ember (fire) | Bone (necromancy) | Shadow (curses & wards) |
 |---|---|---|---|
-| 1 (1) | **Ember Bolt** (passive staff bolt) 8–13 +3/+5 · **Hellfire Nova** 20–30, r3 +4/+6, r+0.1 · **Aura of Embers** 3 dps r3 +1 dps, r+0.1 | **Bone Spear** 22–32 +4/+6 · **Raise Skeleton** 2 (max 2), life 50, blow 7; count +0.15, max +0.25, life +10, blow +1 · **Soul Harvest** 8 mana a kill +1 | **Drain Life** 18–26, heal 50% +3/+5, +1% · **Ember Curse** 5 dps 8 s, −20% bites; +1 dps, +0.2 s, +1% · **Dark Ward** absorbs 40 for 12 s; +10, +0.5 s |
+| 1 (1) | **Ember Bolt** (passive staff bolt) 8–13 +4/+6 · **Hellfire Nova** 20–30, r3 +4/+6, r+0.1 · **Aura of Embers** 3 dps r3 +1 dps, r+0.1 | **Bone Spear** 22–32 +4/+6 · **Raise Skeleton** 2 (max 2), life 50, blow 7; count +0.15, max +0.25, life +10, blow +1 · **Soul Harvest** 8 mana a kill +1 | **Drain Life** 18–26, heal 50% +3/+5, +1% · **Ember Curse** 5 dps 8 s, −20% bites; +1 dps, +0.2 s, +1% · **Dark Ward** absorbs 40 for 12 s; +10, +0.5 s |
 | 2 (6) | **Cinder Rain** ← Nova: 6–10 twice a second for 3 s in r2 around the target; +2/+3, +0.1 s, r+0.05 | **Corpse Burst** ← Bone Spear: the freshest corpse within 6 tiles bursts, 18–28 in r2; +4/+6 · **Skeleton Mastery** ← Raise: skeletons +10% life and blow, +5%/rank | **Aura of Siphoning** ← Drain Life: heal 2 per hit, +0.5 · **Weaken** ← Curse: foes within r2 of the target bite 25% weaker for 8 s; +1%, r+0.1, +0.3 s |
 | 3 (12) | **Flame Wall** ← Rain: a 4-tile wall across the target, 8 dps for 5 s; +2 dps, +0.1 tile, +0.2 s | **Bone Armor** ← Soul Harvest: absorbs 30 for 15 s (before the ward); +8, +0.5 s | **Life Tap** ← Dark Ward: 20 life → 30 mana; +4 mana (never the last life) |
 | 4 (18) | **Ember Mastery** ← Ember Bolt: +10% fire damage, +3%/rank | **Bone Storm** ← Corpse Burst: 5 spears in a fan (a ring with no foe), 14–22 each; +0.2 count, +3/+4 | **Doom** ← Weaken: after 4 s the target bursts for 50–80 to all within r2; +9/+13, r+0.05 |
@@ -121,7 +128,7 @@ ghouls, wisps and drowned (`td-lantern shadowBorn`).
 
 | Tier (level) | Lamp (light as a weapon) | Hearth (mending, wards) | Moth (the lantern's kin) |
 |---|---|---|---|
-| 1 (1) | **Kindle** (passive flare) *lum sha* 7–11 +3/+4, 4 tiles · **Blinding Flash** *lum orum* 8–12 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, a 4–7 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
+| 1 (1) | **Kindle** (passive flare) *lum sha* 9–14 +3/+4, 4 tiles, every 0.9 s · **Blinding Flash** *lum orum* 8–12 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, an 8–12 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
 | 2 (6; the shutters at 1) | **Shutter the Lantern** *lum un ka* (level 1): shut, the lantern's and the aura's light go and the Light spell goes out; again, open · 0 · 1 s | **Hearth Circle** ← Hearthlight *hesk orum* r3 for 10 s: you mend 4/s inside, foes walk 20% slower, the Hush cannot rise; +1/s, r+0.05 · 24 · 14 s | **Moth-Kin** ← Wisp (passive): the kin's motes +10%; +3% |
 | 3 (12) | **Banish** ← Flash *lum un* 30–46 to one within 6 tiles; one of the dead at ≤ 25% life after it is unmade (a boss of the dead takes ×1.5 instead); +6/+9 · 22 · 6 s | **Lantern Ward** ← Hearthlight *lum hesk ka* absorbs 50 for 12 s; breaking, it blinds all within 3 tiles 2 s (bosses ⅕); +10, +0.3 s · 20 · 18 s | **Beacon** ← Wisp *lum dra* a lantern on a pole 12 s, a 6–10 mote each second at 5 tiles, a fixed light; +2/+3, +0.3 s · 26 · 16 s |
 | 4 (18) | — | **Last Light** ← Hearth Circle (passive): once every 600 s a fatal blow leaves you at 1 life, 3 s untouchable; +0.1 s | — |
