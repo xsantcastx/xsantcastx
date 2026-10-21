@@ -701,6 +701,8 @@
   .stage--td .td-chat { width: calc(100% - 2 * var(--tab) - 212px); max-width: 380px; }
   .stage--td .td-chat__log { max-height: 34px; }
   .stage--td .td-peer { top: calc(var(--hud-safe-t) + 12px); }
+  /* Sideways, the right column is the minimap, the touch attack and the dock: the Menu button steps left of the orbs, under the goal line. */
+  .stage--td .top-actions { top: calc(var(--hud-safe-t) + 90px); right: 170px; }
 }
 /* ── Parties (protocol 3; docs/design/online.md Phase 2) ── */
 /* The peer card's second button: a quieter wood one under Wave; the "in your party" line in gold. */
