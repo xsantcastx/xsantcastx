@@ -7,7 +7,7 @@
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
-<section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" (dragover)="overWorld($event)" (drop)="dropOnWorld($event)" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -55,7 +55,7 @@
       <span>{{ t('play.td.raised.release', { n: tdRaised }) }}</span>
     </button>
   }
-  @if (topDown && tdAbilities.length && !panel) {
+  @if (topDown && tdAbilities.length && !panel && !hudBar) {
     <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore>
       @for (a of tdAbilities; track a.key) {
         <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left" (click)="useAbility(a.key)"
@@ -66,7 +66,7 @@
   }
   <!-- Top-down: the potion belt (shared/potions): Q drinks the best Health potion held, R the best Mana potion; the count
        on the glass, the shared cooldown sweeping back. Two buttons on phones. -->
-  @if (topDown && tdBelt.length && !panel) {
+  @if (topDown && tdBelt.length && !panel && !hudBar) {
     <div class="td-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore>
       @for (b of tdBelt; track b.kind) {
         <button type="button" class="td-pot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
@@ -89,7 +89,9 @@
   }
   <!-- Top-down: the menu toolbar (docs/design/ui-pass-top-heroes.md, the reference's Build · Workers · Storage row): square
        icon buttons with their names, the key on hover. -->
-  @if (topDown && !panel) {
+  <!-- Desktop: one bottom bar (play/hud-bar) holds the orbs, the XP strip, the small menu buttons, the eight skill slots and the belt. -->
+  @if (hudBar && !panel) { <app-hud-bar [hud]="this" /> }
+  @if (topDown && !panel && !hudBar) {
     <nav class="td-dock" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore>
       <button type="button" (click)="toggleBag()" [attr.aria-expanded]="bagOpen" [title]="t('play.td.dock.bag') + ' (I)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
@@ -732,32 +734,34 @@
         <button type="button" class="win-x places-close" data-game-menu-close (click)="closeGameMenu()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </header>
       <div class="win-body">
+        <ul class="game-menu__resume">
+          <li><button type="button" data-open="resume" (click)="closeGameMenu()" aria-describedby="place-blurb-resume"><strong>{{ t('keys.resume') }}</strong>@if (keyCaps) {<kbd class="kc" aria-hidden="true" data-keycap="esc">Esc</kbd>}<small id="place-blurb-resume">{{ t('keys.resumeBlurb') }}</small></button></li>
+        </ul>
         <h3 class="game-menu__group">{{ t('menu.group.world') }}</h3>
         <ul>
-          <li><button type="button" data-open="map" (click)="gameMenuOpen = false; togglePlaces()" aria-describedby="place-blurb-map"><strong>{{ t('menu.map') }}</strong><small id="place-blurb-map">{{ t('menu.mapBlurb') }}</small></button></li>
+          <li><button type="button" data-open="map" (click)="gameMenuOpen = false; togglePlaces()" aria-describedby="place-blurb-map"><strong>{{ t('menu.map') }}</strong>@if (keyCaps && keymap.cap('map')) {<kbd class="kc" aria-hidden="true" data-keycap="map">{{ keymap.cap('map') }}</kbd>}<small id="place-blurb-map">{{ t('menu.mapBlurb') }}</small></button></li>
         </ul>
         <h3 class="game-menu__group">{{ t('menu.group.character') }}</h3>
         <ul>
-          <li><button type="button" data-open="character" (click)="gameMenuOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
+          <li><button type="button" data-open="character" (click)="gameMenuOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong>@if (keyCaps && keymap.cap('sheet')) {<kbd class="kc" aria-hidden="true" data-keycap="sheet">{{ keymap.cap('sheet') }}</kbd>}<small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
           <li><button type="button" data-open="glass" (click)="gameMenuOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
-          <li><button type="button" data-open="bestiary" (click)="gameMenuOpen = false; toggleBestiary()" aria-describedby="place-blurb-bestiary"><strong>{{ t('play.best.menu') }}</strong><small id="place-blurb-bestiary">{{ t('menu.bestiaryBlurb') }}</small></button></li>
-          <li><button type="button" data-open="lore" (click)="gameMenuOpen = false; openLore()" aria-describedby="place-blurb-lore"><strong>{{ t('lore.tab') }}</strong><small id="place-blurb-lore">{{ t('menu.loreBlurb') }}</small></button></li>
+          <li><button type="button" data-open="bestiary" (click)="gameMenuOpen = false; toggleBestiary()" aria-describedby="place-blurb-bestiary"><strong>{{ t('play.best.menu') }}</strong>@if (keyCaps && keymap.cap('bestiary')) {<kbd class="kc" aria-hidden="true" data-keycap="bestiary">{{ keymap.cap('bestiary') }}</kbd>}<small id="place-blurb-bestiary">{{ t('menu.bestiaryBlurb') }}</small></button></li>
+          <li><button type="button" data-open="lore" (click)="gameMenuOpen = false; openLore()" aria-describedby="place-blurb-lore"><strong>{{ t('lore.tab') }}</strong>@if (keyCaps && keymap.cap('lore')) {<kbd class="kc" aria-hidden="true" data-keycap="lore">{{ keymap.cap('lore') }}</kbd>}<small id="place-blurb-lore">{{ t('menu.loreBlurb') }}</small></button></li>
         </ul>
         <h3 class="game-menu__group">{{ t('menu.group.social') }}</h3>
         <ul>
-          <li><button type="button" data-open="friends" (click)="gameMenuOpen = false; openFriends()" aria-describedby="place-blurb-friends"><strong>{{ t('play.friends.menu') }}</strong><small id="place-blurb-friends">{{ t('play.friends.menuBlurb') }}</small></button></li>
+          <li><button type="button" data-open="friends" (click)="gameMenuOpen = false; openFriends()" aria-describedby="place-blurb-friends"><strong>{{ t('play.friends.menu') }}</strong>@if (keyCaps && keymap.cap('friends')) {<kbd class="kc" aria-hidden="true" data-keycap="friends">{{ keymap.cap('friends') }}</kbd>}<small id="place-blurb-friends">{{ t('play.friends.menuBlurb') }}</small></button></li>
         </ul>
         <h3 class="game-menu__group">{{ t('menu.group.settings') }}</h3>
         <ul>
-          <li><button type="button" data-open="sound" (click)="gameMenuOpen = false; openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+          <li><button type="button" data-open="sound" (click)="gameMenuOpen = false; openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong>@if (keyCaps && keymap.cap('options')) {<kbd class="kc" aria-hidden="true" data-keycap="options">{{ keymap.cap('options') }}</kbd>}<small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+          <li><button type="button" data-open="controls" (click)="gameMenuOpen = false; openControls()" aria-describedby="place-blurb-controls"><strong>{{ t('keys.menu') }}</strong><small id="place-blurb-controls">{{ t('keys.menuBlurb') }}</small></button></li>
           <li><button type="button" data-open="loot" (click)="gameMenuOpen = false; openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
           <li><button type="button" data-open="account" (click)="gameMenuOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
           @if (keyCaps) {
             <li><button type="button" data-open="hud-reset" (click)="resetHud()" aria-describedby="place-blurb-hud-reset"><strong>{{ t('ux.hud.reset') }}</strong><small id="place-blurb-hud-reset">{{ t('menu.resetHudBlurb') }}</small></button></li>
           }
           <li><button type="button" data-open="feedback" (click)="gameMenuOpen = false; openFeedback()" aria-describedby="place-blurb-feedback"><strong>{{ t('feedback.menu') }}</strong><small id="place-blurb-feedback">{{ t('feedback.menuBlurb') }}</small></button></li>
-          <!-- One World (preview): this device only; a flip reloads the world. -->
-          <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
         </ul>
         <ul class="game-menu__end">
           <li><button type="button" data-open="characters" (click)="gameMenuOpen = false; toCharacterSelect()" aria-describedby="place-blurb-characters"><strong>{{ t('lobby.menu') }}</strong><small id="place-blurb-characters">{{ t('lobby.menuBlurb') }}</small></button></li>
@@ -1043,6 +1047,9 @@
   }
   @if (feedbackOpen) {
     <div class="sound-host win-host feedback-host" data-engine-ignore appSheetDrag (sheetDismiss)="feedbackOpen = false"><app-feedback-sheet [canvas]="feedbackCanvas" [context]="feedbackContext" (done)="closeFeedback()" /></div>
+  }
+  @if (controlsOpen) {
+    <div class="sound-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="controlsOpen = false"><app-controls-sheet [readOnly]="!keyCaps" (done)="closeControls()" (changed)="keysChanged()" /></div>
   }
   @if (soundOpen) {
     <div class="sound-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false">@if (keyCaps) { <button type="button" class="hud-reset" data-hud-reset (click)="resetHud()">{{ t('ux.hud.reset') }}</button> }</app-sound-sheet></div>

@@ -18,6 +18,7 @@
 import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { cleanOverrides, type KeyOverrides } from '../keys/keymap.model';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, type ChatSetting, type InviteSetting, type PresenceSetting, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
@@ -191,6 +192,13 @@ export class SoundService {
       if (this.unbind && !document.hidden) director.start();
       this.zone.run(() => this.status$$.next('live'));
     })).catch(() => this.status$$.next('unsupported'));
+  }
+
+  /** Save the key bindings (sparse overrides; shared/keys/keymap.model.ts) with the rest of the settings. */
+  setKeys(keys: KeyOverrides, at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    this.save({ ...cur, keys: cleanOverrides(keys), updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
   /** iOS: a silent buffer played inside a gesture unlocks the context for good; then resume. */
