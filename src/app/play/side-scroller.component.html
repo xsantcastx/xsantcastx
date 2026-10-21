@@ -822,7 +822,7 @@
           @if (bookStats) {
             <!-- The doll's other face: the live stat sheet and where the rest of your things are. -->
             <div id="satchel-stats" class="book-detail">
-              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" [huntingLevel]="huntingLevel" />
+              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [hideZero]="true" [huntingLevel]="huntingLevel" />
               @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
             </div>
           } @else {

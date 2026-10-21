@@ -86,8 +86,10 @@
       @if (pk.phase; as ph) { <p class="sbt__phase" [class.sbt__phase--up]="ph.up" [attr.data-spell-phase]="skyPhase">{{ ph.text }}</p> }
 
       <section class="sbt__does">
-        <h4>{{ pk.rank > 0 ? t('play.td.tree.nowAt', { n: pk.rank }) : t('play.td.tree.first') }}</h4>
+        <h4>{{ pk.rank > 0 ? t('play.td.tree.nowAt', { n: pk.nowRank }) : t('play.td.tree.first') }}</h4>
+        @if (pk.gear > 0) { <p class="sbt__gear" data-gear-ranks>{{ t('play.td.tree.gearRanks', { n: pk.gear }) }}</p> }
         <p class="sbt__now">{{ pk.now }}</p>
+        @if (pk.power) { <p class="sbt__power" data-spell-power>{{ pk.power }}</p> }
         @if (pk.kind === 'active') { <p class="sbt__cost"><span>{{ pk.mana }} {{ t('play.td.mana') }}</span><span>{{ pk.cd }}s</span></p> }
       </section>
       @if (pk.next.length) {
