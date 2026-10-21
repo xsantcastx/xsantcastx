@@ -38,7 +38,7 @@ describe('td-thorn: the book as data', () => {
     expect(CLASS_TREES.thornstrider).toEqual(['thorn', 'wild', 'briar']);
     expect(bookTrees('thornstrider')).toEqual(['thorn', 'wild', 'briar', 'common']);
     expect(THORN.length).toBe(12);
-    expect(CLASS_SKILLS.thornstrider.length).toBe(14);
+    expect(CLASS_SKILLS.thornstrider.length).toBe(15); // + the common page: Light, the Seek, the Waygate
     for (const tr of THORN_TREES) {
       const ids = treeSkills('thornstrider', tr);
       expect(ids.length).withContext(tr).toBeGreaterThanOrEqual(3);

@@ -2113,6 +2113,8 @@ export interface MobHost {
    * False when there is nothing to seek (the spell is not spent). Absent: nothing can be sought.
    */
   seek?(secs: number): boolean;
+  /** The Waygate (td-waygate.ts): the host opens a town portal standing `secs` where the Keeper is; why not, or null. */
+  waygate?(secs: number): 'waytown' | 'wayboss' | 'wayseam' | null;
   /** Ash Stride: carry the Keeper toward (x, y), stopping at the last open step. Absent: he stays where he is. */
   dash?(x: number, y: number): void;
   /** A line on the message strip (an i18n key): the lantern shuttered or opened, Last Light catching a fall. */
@@ -2532,7 +2534,7 @@ export class MobSystem {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const kv = this.v('kindle');
         this.swing = SKILLS['kindle'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
-        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']), age: 0, lamp: true });
+        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']) * this.handMult, age: 0, lamp: true });
         this.flares++;
         this.host.swung(foe);
       }
@@ -2543,7 +2545,7 @@ export class MobSystem {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const tv = this.v('thorn-shot');
         this.swing = SKILLS['thorn-shot'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
-        this.looseArrow(foe, rnd(tv['min'], tv['max']));
+        this.looseArrow(foe, this.shotBlow(tv['min'], tv['max']));
         this.host.swung(foe);
       }
       foe = null;
@@ -2553,7 +2555,7 @@ export class MobSystem {
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
       this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
       const bv = this.v('ember-bolt');
-      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult, age: 0 });
+      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult * this.handMult, age: 0 });
       this.host.swung(foe);
     }
     for (let i = this.bolts.length - 1; i >= 0; i--) {
@@ -3113,7 +3115,7 @@ export class MobSystem {
   }
 
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
-  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | null {
+  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | 'waytown' | 'wayboss' | 'wayseam' | null {
     const sk = SKILLS[id];
     if (!sk || sk.kind !== 'active') return null;
     if (this.rank(id) < 1) return 'locked';
@@ -3188,6 +3190,10 @@ export class MobSystem {
     } else if (id === 'seek') {
       // Lumvesh (design-bible §5.5): the host finds what to point at; nothing to seek spends nothing.
       if (!this.host.seek?.(v['secs'])) return 'noseek';
+    } else if (id === 'waygate') {
+      // A town portal (td-waygate.ts): the host knows the hearths, the towns and the fights; a refusal spends nothing.
+      const why = this.host.waygate ? this.host.waygate(v['secs']) : 'waytown';
+      if (why) return why;
     } else {
       const why = this.useTreeSkill(id, v, foeInRange);
       if (why) return why;
@@ -3282,6 +3288,19 @@ export class MobSystem {
 
   /** The weapon in hand as the swing sees it (td-melee weaponSwing; the host hands it in). The starter edge's swing until the host says what is held (setWeapon: null is bare hands). */
   weaponSwing: WeaponSwing = NO_WEAPON_BONUS;
+  /**
+   * A two-handed weapon's lift on the casters' basic attack (the Ember Bolt, the Kindle): its multiplier when it is
+   * more than 1 (shared/rpg/item-hands.ts). Bare hands never weaken a spell: the bolt is the staff's, not the fist's.
+   */
+  get handMult(): number { return this.weaponSwing.mult > 1 ? this.weaponSwing.mult : 1; }
+  /**
+   * The Thorn Shot's arrow: its roll times the weapon's hands (a two-handed bow ×TWO_HAND_MULT, a crossbow ×1). The
+   * weapon's Spell Damage already lifts every arrow through spell power; its flat is the blade's alone. With nothing
+   * worn the kit's hunting bow looses it exactly as the book shows (bare hands are not a bow's).
+   */
+  shotBlow(min: number, max: number, roll: () => number = Math.random): number {
+    return meleeBlow(min, max, 100, roll, { flat: 0, mult: this.handMult });
+  }
 
   /** The basic attack: one swing of the Watch Blade in an arc toward the foe (the Ember Brand lights it while it burns). */
   private swingBlade(foe: Mob): void {
