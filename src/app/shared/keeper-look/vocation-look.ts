@@ -5,6 +5,10 @@
  * The Ashguard (design-bible §4.4) is the Pyre Watch's knight: the Keeper's own face and hair under an ember-lit iron
  * kit — helm, plate, gauntlets, greaves, boots, a blade and a brass-rimmed shield. Each piece is only a stand-in: a
  * slot the Keeper actually wears shows the worn piece instead, so visible gear layers on exactly as on the Warlock.
+ *
+ * The Lanternwright (design-bible §4.3) is the lamp-keepers' own: the Keeper's face under a cream wool hood, a long
+ * brass-buttoned coat, and a lantern hung from the crook of a pole — it glows, and its light is the Keeper's (td-lantern
+ * VOCATION_LIGHT). A worn weapon takes the pole's hand; the lantern then hangs from the off-hand, unless that is worn too.
  */
 import type { GearPiece, GearSlot, KeeperGear } from './keeper-gear';
 import type { Vocation } from './keeper-look.model';
@@ -23,9 +27,30 @@ export const ASHGUARD_KIT: Readonly<KeeperGear> = {
   feet: piece('feet', 'boots'), weapon: piece('weapon', 'sword'), 'off-hand': { ...piece('off-hand', 'shield'), color: '#8a6a2a', accent: '#ff7a2e' },
 };
 
+/** The Lanternwright's undercoat: cream wool, brass trim, dark breeches, a lamp-glow sash. */
+export const LANTERN_GARB: KeeperGarb = { tunic: '#e8dcc0', trim: '#c99a3e', trousers: '#4a3a2a', sash: '#ffd27a' };
+
+/** The lamp-keeper's kit: the hood, the coat, soft boots and the lamp-staff (a staff with a lantern at its crook). */
+const lamp = (slot: GearSlot, kind: GearPiece['kind'], color: string, accent: string): GearPiece => ({ slot, kind, style: 'luminous', rarity: 'common', color, accent });
+export const LANTERN_KIT: Readonly<KeeperGear> = {
+  head: lamp('head', 'hood', '#d9c9a3', '#c99a3e'),
+  chest: lamp('chest', 'coat', '#8a6a3a', '#ffd27a'),
+  feet: lamp('feet', 'boots', '#5a4020', '#c99a3e'),
+  weapon: { ...lamp('weapon', 'staff', '#6e4526', '#ffd27a'), variant: 'lamp' },
+};
+/** The lantern on its own, for the off-hand when the pole's hand holds a worn weapon. */
+export const LANTERN_OFFHAND: GearPiece = lamp('off-hand', 'lantern', '#8a6a3a', '#ffd27a');
+
 /** The class's garb and its gear with the class's own pieces standing in where nothing is worn. */
 export function vocationLook(v: Vocation, gear: KeeperGear | null): { garb: KeeperGarb | null; gear: KeeperGear | null } {
   if (v === 'ashguard') return { garb: ASHGUARD_GARB, gear: { ...ASHGUARD_KIT, ...(gear ?? {}) } };
+  if (v === 'lanternwright') {
+    const out: KeeperGear = { ...LANTERN_KIT, ...(gear ?? {}) };
+    // A worn staff carries the lantern at its crook; any other weapon leaves the lantern to the off-hand.
+    if (gear?.weapon?.kind === 'staff') out.weapon = { ...gear.weapon, variant: 'lamp' };
+    else if (gear?.weapon && !gear['off-hand']) out['off-hand'] = LANTERN_OFFHAND;
+    return { garb: LANTERN_GARB, gear: out };
+  }
   if (v !== 'warlock') return { garb: null, gear };
   return {
     garb: WARLOCK_GARB,

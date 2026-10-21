@@ -95,6 +95,7 @@ import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
+import { LANTERN_I18N } from './td/td-lantern.i18n';
 import { ACCOUNT_I18N } from '../shared/account/account.i18n';
 import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
 import { GLIM_I18N } from '../shared/glim/glim.i18n';
@@ -185,7 +186,7 @@ import { WORLD_CLOCK_I18N } from '../shared/world-clock/world-clock.i18n';
 import { DARK_I18N } from './td/td-dark.i18n';
 import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-clock/eclipse.model';
 import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
-import { eclipseWarning, spellMult } from './td/td-phases';
+import { eclipseWarning, skyVars, spellMult } from './td/td-phases';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
@@ -838,6 +839,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HEARTH_I18N);
     this.i18n.register(HUD_I18N);
     this.i18n.register(ASHGUARD_I18N);
+    this.i18n.register(LANTERN_I18N);
     this.i18n.register(TOWN_TASKS_I18N);
     this.i18n.register(ACCOUNT_I18N);
     this.i18n.register(TOOLS_I18N);
@@ -2313,7 +2315,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** The sky's hand on a damage spell (td-phases.ts): "Eclipse now: +25% power", or null when the hour changes nothing. */
   private spellPhase(id: SkillId): { text: string; up: boolean } | null {
     const vars = TD_SKILLS[id].vars, k = spellMult(TD_SKILLS[id].tree, this.skyPhase);
-    if (k === 1 || !('min' in vars || 'dps' in vars)) return null;
+    // The sky moves damage (and the Hearth's heal): a skill with none of those keeps no hour (td-phases skyVars).
+    if (k === 1 || !skyVars(TD_SKILLS[id].tree).some(v => v in vars)) return null;
     const pct = Math.round((k - 1) * 100);
     return { up: pct > 0, text: this.t('clock.spell.now', { phase: this.t('clock.phase.' + this.skyPhase), pct: `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%` }) };
   }

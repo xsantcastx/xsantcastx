@@ -51,8 +51,11 @@ export interface GearPiece {
    */
   color?: string;
   accent?: string;
-  /** A helm painted as the Pyre Watch's iron helm (nasal, visor slit, ember-lit rim) rather than the round cap. */
-  variant?: 'pyre';
+  /**
+   * A helm painted as the Pyre Watch's iron helm (nasal, visor slit, ember-lit rim) rather than the round cap; a staff
+   * painted as the Lanternwright's lamp-staff (a brass crook with a lit lantern hung from it) rather than an orb's.
+   */
+  variant?: 'pyre' | 'lamp';
 }
 export type KeeperGear = Partial<Record<GearSlot, GearPiece>>;
 

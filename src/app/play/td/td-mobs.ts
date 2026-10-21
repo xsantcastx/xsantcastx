@@ -23,10 +23,12 @@ import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
 import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
-import { extraSpawn, hardened, nightType, rollTouched, rulesOf, spellMult, touchedRandom } from './td-phases';
+import { extraSpawn, hardened, nightType, rollTouched, rulesOf, skyVars, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
 import { ASHGUARD_SKILLS } from './td-ashguard-skills';
+import { LANTERN_SKILLS } from './td-lantern-skills';
+import { BANISH_BOSS, carriedLight, healOverTime, inDisc, lastLightClamp, lightBlow, shadowBorn, stepHeal, unmakes, type HealOverTime } from './td-lantern';
 import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, type WeaponSwing } from './td-melee';
 
 export interface MobDef {
@@ -1735,6 +1737,8 @@ export interface Mob {
   brandT?: number;
   brandTick?: number;
   brandDps?: number;
+  /** The Lanternwright's Dawn at Noon: seconds it stays unveiled (it takes more from every hit meanwhile). */
+  revealT?: number;
 }
 
 /**
@@ -1824,7 +1828,9 @@ export interface Spear { x: number; y: number; vx: number; vy: number; age: numb
  * a Meteor on its way down. `t` is the seconds it still lasts (a meteor's: until it lands).
  */
 export interface Zone {
-  kind: 'rain' | 'wall' | 'meteor' | 'whirl';
+  kind: 'rain' | 'wall' | 'meteor' | 'whirl'
+    // The Lanternwright (td-lantern-skills): a Hearth Circle on the ground, a disc of Dawn at Noon.
+    | 'hearth' | 'dawn';
   x: number; y: number;
   /** Radius (art px): the rain's circle, the meteor's blast; a wall's reach either side of its line. */
   r: number;
@@ -1863,10 +1869,13 @@ export interface Effect {
     // The trees (docs/design/skill-trees.md): a falling cinder, a flame tongue of a wall, a meteor coming down.
     | 'cinder' | 'flame' | 'meteor'
     // The Ashguard (td-ashguard-fx.ts): a blade's arc, the brand catching, a bash, an oath, a cry, a stride, a vow.
-    | 'arc' | 'brand' | 'bash' | 'oath' | 'cry' | 'stride' | 'vow';
+    | 'arc' | 'brand' | 'bash' | 'oath' | 'cry' | 'stride' | 'vow'
+    // The Lanternwright (td-lantern-fx.ts): a flare landing, the flash, Banish's column, a heal's glow, the ward's frame
+    // and its break, a wisp called, a beacon planted, the dawn rising, the shutters, Last Light.
+    | 'kindle-hit' | 'lamp-flash' | 'banish' | 'hearthglow' | 'lward' | 'lward-break' | 'wisp-call' | 'beacon-plant' | 'dawn-rise' | 'shutter' | 'lastlight';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
   /** A pulse's or a wave's element: the aura or spell that did the work (a wave is ember unless it says). */
-  el?: 'ember' | 'life' | 'shadow' | 'bone' | 'brass';
+  el?: 'ember' | 'life' | 'shadow' | 'bone' | 'brass' | 'lamp';
   /** A blade's arc: where it aims (radians) and how wide it sweeps (degrees). */
   a?: number;
   w?: number;
@@ -1875,7 +1884,12 @@ export interface Effect {
 }
 
 /** A bolt in flight toward a creature. */
-export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number }
+export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean }
+
+/** A lamp-wisp at the Lanternwright's shoulder (td-lantern-skills): seconds left, its next mote, where it circles. */
+export interface Wisp { x: number; y: number; t: number; cd: number; a: number }
+/** A Beacon on its pole: where it stands, seconds left, its next mote. */
+export interface Beacon { x: number; y: number; t: number; cd: number }
 
 
 /** The ladder's colours on the ground (labels, the name that floats up on pick-up): the `--cozy-loot-*` tokens via td-fx. */
@@ -1885,6 +1899,8 @@ export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
 };
 
 const REACH = 24;          // the Keeper's swing
+/** Dawn at Noon: % more every hit lands for on a creature the daylight has unveiled. */
+export const DAWN_REVEAL = 15;
 const MOB_REACH = 18;      // a creature's bite
 const RESPAWN = 75;        // seconds until a spawn comes back
 const DESPAWN = 300;       // seconds a drop lies on the ground
@@ -1899,7 +1915,7 @@ export interface MobHost {
   readonly options: EngineOptions;
   walkable(c: number, r: number): boolean;
   levelId(): string;
-  player(): { x: number; y: number };
+  player(): { x: number; y: number; face?: number };
   hurtPlayer(n: number): void;
   healPlayer(n: number): void;
   /** Can a floating creature drift over this tile (floor, lava, embers)? Default: walkable. */
@@ -1919,6 +1935,8 @@ export interface MobHost {
   seek?(secs: number): boolean;
   /** Ash Stride: carry the Keeper toward (x, y), stopping at the last open step. Absent: he stays where he is. */
   dash?(x: number, y: number): void;
+  /** A line on the message strip (an i18n key): the lantern shuttered or opened, Last Light catching a fall. */
+  say?(key: string): void;
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -1943,6 +1961,9 @@ export class MobSystem {
   readonly corpses: { x: number; y: number; at: number }[] = [];
   /** Spells lying on the ground (Cinder Rain, Flame Wall, a Meteor coming down). */
   readonly zones: Zone[] = [];
+  /** The Lanternwright's kin: the wisps at his shoulder (they follow him anywhere) and a beacon on its pole (its place's). */
+  readonly wisps: Wisp[] = [];
+  readonly beacons: Beacon[] = [];
   private minionSeq = 0;
   /**
    * The ranks the trees give (docs/design/skill-trees.md); null = every skill at rank 1 (the specs, and the moments
@@ -1973,8 +1994,14 @@ export class MobSystem {
   /** The Light spell: seconds it still burns, and how many tiles it adds to the Keeper's light. */
   lightT = 0;
   lightTiles = 0;
-  /** Tiles the Keeper's own light reaches past its usual: the Light spell while it burns, plus the worn uniques'. */
-  get lightBonus(): number { return (this.lightT > 0 ? this.lightTiles : 0) + this.relics.light; }
+  /**
+   * Tiles the Keeper's own light reaches past its usual: the Light spell while it burns, the worn uniques', and the
+   * Lanternwright's lantern and its aura unless the shutters are closed (td-lantern carriedLight).
+   */
+  get lightBonus(): number {
+    const aura = this.lamp && this.aura === 'lantern-aura' && this.rank('lantern-aura') > 0 ? this.v('lantern-aura')['light'] : 0;
+    return carriedLight({ vocation: this.vocation, shuttered: this.shuttered, aura, spell: this.lightT > 0 ? this.lightTiles : 0, relics: this.relics.light });
+  }
   /** A skill's numbers at its rank. */
   v(id: SkillId): Record<string, number> {
     let got = this.varsAt.get(id);
@@ -1984,8 +2011,8 @@ export class MobSystem {
       const k = spellMult(SKILLS[id].tree, this.phase);
       if (k !== 1) {
         got = { ...got };
-        for (const key of ['min', 'max'] as const) if (key in got) got[key] = Math.max(1, Math.round(got[key] * k));
-        if ('dps' in got) got['dps'] = Math.round(got['dps'] * k * 10) / 10;
+        // Damage (and the Hearth's heal) by the sky's hand: whole blows stay whole, a rate keeps a tenth.
+        for (const key of skyVars(SKILLS[id].tree)) if (key in got) got[key] = key === 'dps' || key === 'heal' ? Math.round(got[key] * k * 10) / 10 : Math.max(1, Math.round(got[key] * k));
       }
       this.varsAt.set(id, got);
     }
@@ -2011,7 +2038,10 @@ export class MobSystem {
   get auraRadius(): number { return Math.round((this.aura ? this.v(this.aura)['radius'] ?? 3 : this.v('aura-embers')['radius']) * TILE); }
   /** How much weaker a creature bites (%): the Ember Curse's and Weaken's, the stronger of the two. */
   private weakOf(m: Mob): number {
-    return Math.max(m.cursed > 0 ? this.v('ember-curse')['weaken'] : 0, (m.weak ?? 0) > 0 ? m.weakPct ?? 0 : 0);
+    // The Lantern Aura: within its reach every bite is weaker (design-bible §4.3: "your light is a place").
+    const p = this.host.player(), lit = this.lamp && this.aura === 'lantern-aura' && this.rank('lantern-aura') > 0
+      && Math.hypot(m.x - p.x, m.y - p.y) <= this.v('lantern-aura')['radius'] * TILE ? this.v('lantern-aura')['weaken'] : 0;
+    return Math.max(m.cursed > 0 ? this.v('ember-curse')['weaken'] : 0, (m.weak ?? 0) > 0 ? m.weakPct ?? 0 : 0, lit);
   }
   /** Seconds each skill still cools. */
   readonly cooldowns: Partial<Record<SkillId, number>> = {};
@@ -2047,8 +2077,27 @@ export class MobSystem {
    */
   vocation: Vocation = 'warlock';
   get melee(): boolean { return this.vocation === 'ashguard'; }
-  /** The basic attack reaches this far (art px): the staff's bolt (7 tiles), or the Watch Blade's reach. */
-  get range(): number { return this.melee ? this.v('watch-blade')['reach'] * TILE : SKILLS['ember-bolt'].vars['range'] * TILE; }
+  /** The Lanternwright (td-lantern-skills): the lantern's flare at short range, the healing, the light, the kin. */
+  get lamp(): boolean { return this.vocation === 'lanternwright'; }
+  /** The basic attack reaches this far (art px): the staff's bolt (7 tiles), the Watch Blade's reach, or Kindle's 4 tiles. */
+  get range(): number {
+    if (this.melee) return this.v('watch-blade')['reach'] * TILE;
+    if (this.lamp) return this.v('kindle')['range'] * TILE;
+    return SKILLS['ember-bolt'].vars['range'] * TILE;
+  }
+  /** The lantern's shutters: closed, its light (and the aura's) is gone and the Light spell is put out (td-lantern). */
+  shuttered = false;
+  /** Kindle's flares thrown so far (the specs and the e2e count them). */
+  flares = 0;
+  /** Hearthlight's heal, paid a tick a second. */
+  private hot: HealOverTime | null = null;
+  /** The Lantern Ward: what it can still drink, and seconds left. */
+  lampWard = 0;
+  lampWardT = 0;
+  /** Last Light: seconds of untouchable left, and seconds until it can catch a fall again. */
+  lastLightT = 0;
+  lastLightCd = 0;
+  private hearthOwed = 0;
   /** The Keeper's most life (the host hands it in with the build): Hold the Line reads his share of it. */
   keeperMaxHp = 100;
   /** Swings of the blade so far (the specs and the e2e count them). */
@@ -2096,6 +2145,7 @@ export class MobSystem {
     // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
     // them down at his side on the new ground.
     this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0; this.calls.length = 0; this.zones.length = 0; this.bursts.length = 0;
+    this.beacons.length = 0;
     for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
     this.addSpawns(spawns);
   }
@@ -2197,6 +2247,17 @@ export class MobSystem {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range + foe.def.w / 4) this.swingBlade(foe);
       foe = null;
     }
+    // The Lanternwright's lantern: a flare of light flies to the foe in its shorter reach (Kindle).
+    if (this.lamp) {
+      if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
+        const kv = this.v('kindle');
+        this.swing = SKILLS['kindle'].cd / (1 + this.agility) / (1 + this.castSpeed);
+        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']), age: 0, lamp: true });
+        this.flares++;
+        this.host.swung(foe);
+      }
+      foe = null;
+    }
     // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
@@ -2208,10 +2269,16 @@ export class MobSystem {
     for (let i = this.bolts.length - 1; i >= 0; i--) {
       const b = this.bolts[i], tx = b.to.x, ty = b.to.y - b.to.def.h / 2;
       b.age += dt;
-      const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy), step = 190 * dt;
+      const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy), step = (b.lamp ? 230 : 190) * dt;
       if (!this.mobs.includes(b.to) || b.age > 2) { this.bolts.splice(i, 1); continue; }
       if (len <= step + 2) {
         this.bolts.splice(i, 1);
+        if (b.lamp) {
+          // A flare of light: the dead and the dark-born take it half again (td-lantern LIGHT_BANE).
+          this.effects.push({ kind: 'kindle-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
+          this.hitFoe(b.to, lightBlow(b.dmg, b.to.def.id), '#fff2a8');
+          continue;
+        }
         this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
         this.hitFoe(b.to, b.dmg, '#ffd25a');
         // The Crown of the Banked Coal: the bolt leaves its foe smouldering.
@@ -2262,6 +2329,7 @@ export class MobSystem {
       const whole = Math.floor(this.regenOwed);
       if (whole > 0) { this.regenOwed -= whole; this.host.healPlayer(whole); }
     }
+    if (this.lamp) this.tickLamp(dt);
     this.updateZones(dt);
     this.curseT = Math.max(0, this.curseT - dt);
     // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
@@ -2322,7 +2390,7 @@ export class MobSystem {
       if (tx !== null && ty !== null) {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
         if (len > stop) {
-          const step = Math.min(len, m.def.speed * dt), vx = dx / len * step, vy = dy / len * step;
+          const step = Math.min(len, m.def.speed * this.paceOf(m) * dt), vx = dx / len * step, vy = dy / len * step;
           if (this.free(m.x + vx, m.y, m.def.floats)) m.x += vx; else m.wander = null;
           if (this.free(m.x, m.y + vy, m.def.floats)) m.y += vy; else m.wander = null;
           if (!hunting && Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
@@ -2394,6 +2462,8 @@ export class MobSystem {
       else this.effects.push({ kind: 'pulse', el: 'shadow', x: foe.x, y: foe.y, age: 0, life: .25, dir: 1 });
       foe.inkT = ink.secs;
     }
+    // Unveiled by Dawn at Noon: it takes more from every hit while the daylight holds it.
+    if ((foe.revealT ?? 0) > 0) raw *= 1 + DAWN_REVEAL / 100;
     const crit = this.crit > 0 && Math.random() < this.crit;
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
@@ -2453,6 +2523,7 @@ export class MobSystem {
     if (this.ward > 0 && n > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
     // The Vow of the Last Watch: whatever comes, the Keeper keeps his last point of life; what it held off is counted.
     if (this.vowT > 0 && n > 0) { this.vowTaken += n; n = vowClamp(n, this.host.playerHp?.() ?? Infinity); }
+    if (this.lamp && n > 0) n = this.lampGuard(n);
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
   }
   /** The Defense a blow meets on the Ashguard: his own, the Watchfire's, Hold the Line's lift when his life runs low. */
@@ -2653,6 +2724,8 @@ export class MobSystem {
     } else if (id === 'light') {
       // Light (design-bible §4.6): the Keeper's own light reaches further while it burns; spoken again it starts over.
       this.lightT = v['secs']; this.lightTiles = v['radius'];
+      // Light is light: spoken by a Lanternwright it opens the lantern's shutters too.
+      this.shuttered = false;
       this.effects.push({ kind: 'pillar', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
     } else if (id === 'seek') {
       // Lumvesh (design-bible §5.5): the host finds what to point at; nothing to seek spends nothing.
@@ -2673,6 +2746,7 @@ export class MobSystem {
   private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | null {
     const p = this.host.player();
     if (id in ASHGUARD_SKILLS) return this.useAshSkill(id, v);
+    if (id in LANTERN_SKILLS) return this.useLampSkill(id, v);
     if (id === 'cinder-rain') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
@@ -2859,6 +2933,155 @@ export class MobSystem {
     }
   }
 
+  // ── The Lanternwright (td-lantern-skills.ts, design-bible §4.3) ──
+
+  /** A creature's pace: a Hearth Circle's ground slows whatever walks in it. */
+  private paceOf(m: Mob): number {
+    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return 1 - z.max / 100;
+    return 1;
+  }
+  /** Is the Keeper standing in his own Hearth Circle (the Hush cannot rise there)? */
+  get inHearth(): boolean { const p = this.host.player(); return this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r)); }
+  /** The discs of Dawn at Noon now burning (the engine paints the daylight and the dark layer unveils inside them). */
+  get dawns(): readonly { x: number; y: number; r: number; t: number }[] { return this.zones.filter(z => z.kind === 'dawn'); }
+  /** The Lantern Ward drinks a blow first; Last Light holds the fatal one to the last point and is untouchable a while. */
+  private lampGuard(n: number): number {
+    const p = this.host.player();
+    if (this.lastLightT > 0) return 0;
+    if (this.lampWard > 0) {
+      const soak = Math.min(this.lampWard, n);
+      this.lampWard -= soak; n -= soak;
+      this.float(p.x + 8, p.y - 30, `-${soak}`, '#fff2a8');
+      if (this.lampWard <= 0) this.breakLampWard();
+    }
+    if (n > 0 && this.rank('last-light') > 0 && this.lastLightCd <= 0) {
+      const held = lastLightClamp(n, this.host.playerHp?.() ?? Infinity);
+      if (held.caught) {
+        const v = this.v('last-light');
+        this.lastLightT = v['secs']; this.lastLightCd = v['every'];
+        this.effects.push({ kind: 'lastlight', x: p.x, y: p.y - 16, age: 0, life: .9, dir: 1 });
+        this.host.say?.('lamp.lastlight');
+        n = held.n;
+      }
+    }
+    return n;
+  }
+  /** The ward breaks: it flashes, and every creature near is blinded (stunned) a while — a boss a fifth as long. */
+  private breakLampWard(): void {
+    const p = this.host.player(), v = this.v('lantern-ward');
+    this.lampWard = 0; this.lampWardT = 0;
+    this.effects.push({ kind: 'lward-break', x: p.x, y: p.y - 16, r: Math.round(v['radius'] * TILE), age: 0, life: .5, dir: 1 });
+    for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) m.stun = Math.max(m.stun ?? 0, ccSecs(v['stun'], m.def.rank));
+  }
+  /** The nearest creature within `reach` art px of a point (the target first when it is in reach of the Keeper). */
+  private foeNear(x: number, y: number, reach: number): Mob | null {
+    const p = this.host.player();
+    if (this.target && x === p.x && y === p.y && Math.hypot(this.target.x - x, this.target.y - y) <= reach) return this.target;
+    let best: Mob | null = null, bd = reach;
+    for (const m of this.mobs) { const d = Math.hypot(m.x - x, m.y - y); if (d <= bd) { bd = d; best = m; } }
+    return best;
+  }
+  /** The Lanternwright's spells. Each reads its numbers at its rank and leaves its picture (td-lantern-fx). */
+  private useLampSkill(id: SkillId, v: Record<string, number>): 'nofoe' | null {
+    const p = this.host.player();
+    if (id === 'blinding-flash') {
+      // Everything near takes the light; the dead and the dark-born stand stunned (bosses a fifth as long).
+      for (const m of [...this.mobs]) {
+        if (Math.hypot(m.x - p.x, m.y - p.y) > v['radius'] * TILE) continue;
+        this.hitFoe(m, lightBlow(rnd(v['min'], v['max']), m.def.id), '#fff2a8');
+        if (m.hp > 0 && shadowBorn(m.def.id)) m.stun = Math.max(m.stun ?? 0, ccSecs(v['stun'], m.def.rank));
+      }
+      this.effects.push({ kind: 'lamp-flash', x: p.x, y: p.y - 16, r: Math.round(v['radius'] * TILE), age: 0, life: .5, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'shutter-lantern') {
+      // The shutters: shut, the lantern and its aura give no light and the Light spell goes out; open, they come back.
+      this.shuttered = !this.shuttered;
+      if (this.shuttered) this.lightT = 0;
+      this.effects.push({ kind: 'shutter', x: p.x + (p.face ?? 1) * 9, y: p.y - 36, age: 0, life: .5, dir: this.shuttered ? -1 : 1 });
+      this.host.say?.(this.shuttered ? 'lamp.shut' : 'lamp.open');
+    } else if (id === 'banish') {
+      const foe = this.foeNear(p.x, p.y, v['reach'] * TILE);
+      if (!foe) return 'nofoe';
+      const boss = foe.def.rank === 'boss' && shadowBorn(foe.def.id);
+      this.effects.push({ kind: 'banish', x: foe.x, y: foe.y, age: 0, life: .5, dir: 1 });
+      this.hitFoe(foe, lightBlow(rnd(v['min'], v['max']), foe.def.id) * (boss ? BANISH_BOSS : 1), '#ffffff');
+      // What is left of one of the dead, low enough, is unmade outright.
+      if (foe.hp > 0 && unmakes(foe.def.id, foe.def.rank, foe.hp, foe.def.hp, v['below'])) {
+        this.float(foe.x, foe.y - foe.def.h - 8, `${foe.hp}!`, '#ffffff');
+        foe.hp = 0; this.kill(foe);
+      }
+      this.host.swung(foe);
+    } else if (id === 'dawn-at-noon') {
+      this.zones.push({ kind: 'dawn', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['dps'], max: v['dps'] });
+      this.effects.push({ kind: 'dawn-rise', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .9, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'hearthlight') {
+      this.hot = healOverTime(v['heal'], v['secs']);
+      this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'hearth-circle') {
+      // One circle at a time: a new one is laid where the Keeper stands now.
+      for (let i = this.zones.length - 1; i >= 0; i--) if (this.zones[i].kind === 'hearth') this.zones.splice(i, 1);
+      this.zones.push({ kind: 'hearth', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['heal'], max: v['slow'] });
+      this.host.swung(null);
+    } else if (id === 'lantern-ward') {
+      this.lampWard = v['absorb']; this.lampWardT = v['secs'];
+      this.effects.push({ kind: 'lward', x: p.x, y: p.y - 16, age: 0, life: .5, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'lamp-wisp') {
+      // The wisps answer in a flock of `count` (the old ones go back to the dark).
+      this.wisps.length = 0;
+      for (let i = 0; i < Math.max(1, v['count']); i++) this.wisps.push({ x: p.x, y: p.y - 26, t: v['secs'], cd: .4 + i * .3, a: i * Math.PI });
+      this.effects.push({ kind: 'wisp-call', x: p.x, y: p.y - 26, age: 0, life: .6, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'beacon') {
+      this.beacons.length = 0;
+      this.beacons.push({ x: p.x + (p.face ?? 1) * 14, y: p.y + 2, t: v['secs'], cd: .5 });
+      this.effects.push({ kind: 'beacon-plant', x: p.x + (p.face ?? 1) * 14, y: p.y + 2, age: 0, life: .6, dir: 1 });
+      this.host.swung(null);
+    }
+    return null;
+  }
+  /** The Lanternwright's timers each frame: the heal's ticks, the ward, Last Light, the wisps' and the beacon's motes. */
+  private tickLamp(dt: number): void {
+    const p = this.host.player();
+    if (this.hot) {
+      const paid = stepHeal(this.hot, dt);
+      if (paid > 0) { this.host.healPlayer(paid); this.float(p.x, p.y - 36, `+${paid}`, '#7fe08a'); }
+      if (this.hot.left <= 0) this.hot = null;
+    }
+    if (this.lampWardT > 0) { this.lampWardT -= dt; if (this.lampWardT <= 0) { this.lampWardT = 0; this.lampWard = 0; } }
+    if (this.lastLightT > 0) this.lastLightT = Math.max(0, this.lastLightT - dt);
+    if (this.lastLightCd > 0) this.lastLightCd = Math.max(0, this.lastLightCd - dt);
+    // Moth-Kin: the kin's motes strike harder.
+    const kin = this.rank('moth-kin') > 0 ? 1 + this.v('moth-kin')['pct'] / 100 : 1;
+    const wv = this.v('lamp-wisp');
+    for (let i = this.wisps.length - 1; i >= 0; i--) {
+      const w = this.wisps[i];
+      w.t -= dt; w.cd -= dt; w.a += dt * 2.4;
+      if (w.t <= 0) { this.wisps.splice(i, 1); continue; }
+      // It circles the Keeper's shoulders, a little behind his lantern.
+      w.x = p.x + Math.cos(w.a) * 14; w.y = p.y - 28 + Math.sin(w.a) * 5;
+      if (w.cd > 0) continue;
+      const foe = this.foeNear(p.x, p.y, wv['range'] * TILE);
+      if (!foe) continue;
+      w.cd = 1;
+      this.bolts.push({ x: w.x, y: w.y, to: foe, dmg: rnd(wv['min'], wv['max']) * kin, age: 0, lamp: true });
+    }
+    const bv = this.v('beacon');
+    for (let i = this.beacons.length - 1; i >= 0; i--) {
+      const b = this.beacons[i];
+      b.t -= dt; b.cd -= dt;
+      if (b.t <= 0) { this.beacons.splice(i, 1); continue; }
+      if (b.cd > 0) continue;
+      const foe = this.foeNear(b.x, b.y, bv['range'] * TILE);
+      if (!foe) continue;
+      b.cd = 1;
+      this.bolts.push({ x: b.x, y: b.y - 30, to: foe, dmg: rnd(bv['min'], bv['max']) * kin, age: 0, lamp: true });
+    }
+    for (const m of this.mobs) if ((m.revealT ?? 0) > 0) m.revealT = Math.max(0, (m.revealT ?? 0) - dt);
+  }
+
   /** Doom runs out: the foe bursts, and so does everything near it. */
   private doomBurst(m: Mob): void {
     const hit = m.doomHit;
@@ -2892,6 +3115,28 @@ export class MobSystem {
         continue;
       }
       if (z.t <= 0) { this.zones.splice(i, 1); continue; }
+      if (z.kind === 'hearth') {
+        // The Hearth Circle: the Keeper inside mends `min` life a second (paid whole, the rest carried).
+        const p = this.host.player();
+        if (inDisc(p.x, p.y, z.x, z.y, z.r)) {
+          this.hearthOwed += z.min * dt;
+          const whole = Math.floor(this.hearthOwed);
+          if (whole > 0) { this.hearthOwed -= whole; this.host.healPlayer(whole); }
+        }
+        continue;
+      }
+      if (z.kind === 'dawn') {
+        // Dawn at Noon: twice a second the dead and the dark-born inside burn; everything inside is unveiled.
+        for (const m of this.mobs) if (inDisc(m.x, m.y, z.x, z.y, z.r)) m.revealT = Math.max(m.revealT ?? 0, .6);
+        if (z.tick <= 0) {
+          z.tick = .5;
+          for (const m of [...this.mobs]) if (inDisc(m.x, m.y, z.x, z.y, z.r) && shadowBorn(m.def.id)) {
+            this.effects.push({ kind: 'kindle-hit', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 });
+            this.hitFoe(m, z.min / 2, '#fff2a8');
+          }
+        }
+        continue;
+      }
       if (z.kind === 'rain') {
         // Falling cinders all over the circle; twice a second each foe under it is struck.
         if (Math.random() < dt * 14) {

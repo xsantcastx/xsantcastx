@@ -89,7 +89,7 @@
 .km__classcard b { display: block; font: 700 16px/1.1 var(--font-game, inherit); color: var(--gold-bright); }
 .km__classcard small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.3; opacity: .85; }
 .km__more { font-size: 11px; opacity: .6; }
-/* Two callings side by side (one column when narrow); a made Keeper's other calling rests, dimmed. */
+/* The callings side by side (one column when narrow); a made Keeper's other callings rest, dimmed. */
 .km__classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px; }
 .km__classcard:disabled { opacity: .45; cursor: default; }
 /* The class row heads the window, full width: the label, the card, the promise of more. */
