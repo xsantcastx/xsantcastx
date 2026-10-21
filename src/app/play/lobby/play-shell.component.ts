@@ -35,7 +35,7 @@ import { LOBBY_I18N } from './lobby.i18n';
 import { paintTitleArt, titleArtSize } from './title-art';
 import { hasMeaningfulSave, summarise } from './character-summary';
 import {
-  LOBBY_ENTER_KEY, LOBBY_FROM_KEY, LOBBY_GUEST_KEY, LOBBY_MAKE_KEY, LOBBY_SKIP_KEY, LobbyMode, PlayLobbyService, initialLobbyMode,
+  LOBBY_ENTER_KEY, LOBBY_FROM_KEY, LOBBY_GUEST_KEY, LOBBY_MAKE_KEY, LOBBY_SKIP_KEY, LobbyMode, PlayLobbyService, initialLobbyMode, mayUsePrimarySlot,
 } from './play-lobby.service';
 
 /** The title art's frame rate: slow motion needs few frames, and a phone on the title screen should stay cool. */
@@ -97,6 +97,8 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
   get signedIn(): boolean { return this.cloud.signedIn; }
+  /** The cloud is pulling this account's save (the roster among it): New Keeper waits, so it cannot land on a slot it has not seen. */
+  syncing = false;
   get account(): string { return this.cloud.status.displayName || this.cloud.status.email || ''; }
   get full(): boolean { return !hasFreeSlot(this.roster.roster); }
   get pickedRow(): CharacterRow | null { return this.rows.find(r => r.id === this.picked) ?? null; }
@@ -108,6 +110,7 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.subs.push(this.lobby.selectRequested$.subscribe(() => void this.leaveWorld()));
     this.subs.push(this.roster.roster$.subscribe(() => this.refreshRows()));
+    this.subs.push(this.cloud.status$.subscribe(st => { const now = st.state === 'syncing'; if (now !== this.syncing) this.zone.run(() => { this.syncing = now; }); }));
     void this.decide();
   }
 
@@ -312,9 +315,14 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async newCharacter(): Promise<void> {
-    if (this.busy || this.full) return;
+    if (this.busy || this.full || this.syncing) return;
     const roster = this.roster.roster;
-    const id = idForNewCharacter(roster, hasMeaningfulSave(this.gateway, PRIMARY_CHARACTER), newCharacterId(Math.random, new Set(Object.keys(roster.chars))));
+    // Character #1's slot is handed out only when this device knows the account's whole list: a device that was
+    // never bound to an account, or one whose cloud pull has completed. Before that (a new device, the cloud roster
+    // not landed yet) a fresh id, never c1 — a c1 created here would merge its look and name over the account's c1.
+    const settled = mayUsePrimarySlot({ bound: hasBoundAccount(), signedIn: this.cloud.signedIn, state: this.cloud.status.state, lastSyncedAt: this.cloud.status.lastSyncedAt });
+    const fresh = newCharacterId(Math.random, new Set(Object.keys(roster.chars)));
+    const id = settled ? idForNewCharacter(roster, hasMeaningfulSave(this.gateway, PRIMARY_CHARACTER), fresh) : fresh;
     // No row yet: a Keeper exists only once Become is pressed (made()). Leaving the Glass any other way leaves the
     // list as it was. The Keeper we came from is remembered, to go back to.
     try { sessionStorage.setItem(LOBBY_FROM_KEY, this.gateway.character); } catch { /* private mode: the list's first */ }

@@ -36,6 +36,15 @@ export function initialLobbyMode(input: {
   return 'title';
 }
 
+/**
+ * May New Keeper hand out character #1's slot? Only when this device knows the account's whole list: it was never
+ * bound to an account, or its cloud pull has completed and is not running. A new device whose cloud roster has not
+ * landed would otherwise make a Keeper inside the account's own #1 save (its look and name merged over it).
+ */
+export function mayUsePrimarySlot(input: { bound: boolean; signedIn: boolean; state: string; lastSyncedAt: number | null }): boolean {
+  return !input.bound || (input.signedIn && input.state !== 'syncing' && input.lastSyncedAt !== null);
+}
+
 @Injectable({ providedIn: 'root' })
 export class PlayLobbyService {
   private readonly select$$ = new Subject<void>();

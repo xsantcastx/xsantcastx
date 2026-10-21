@@ -68,7 +68,7 @@
         <footer class="win__foot">
           <button type="button" class="btn btn--brass" data-lobby-enter (click)="enter()" [disabled]="!picked || busy">{{ t('lobby.select.enter') }}</button>
           <div class="win__row">
-            <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy" [attr.title]="full ? t('lobby.select.full') : null">{{ t('lobby.select.new') }}</button>
+            <button type="button" class="btn" data-lobby-new (click)="newCharacter()" [disabled]="full || busy || syncing" [attr.aria-busy]="syncing" [attr.title]="full ? t('lobby.select.full') : null">{{ syncing ? t('lobby.select.syncing') : t('lobby.select.new') }}</button>
             <button type="button" class="btn btn--quiet" data-lobby-delete (click)="askDelete()" [disabled]="!picked || busy">{{ t('lobby.select.delete') }}</button>
           </div>
           @if (full) { <small class="select__full">{{ t('lobby.select.full') }}</small> }
