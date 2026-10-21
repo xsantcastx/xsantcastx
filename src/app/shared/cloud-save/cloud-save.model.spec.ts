@@ -680,6 +680,7 @@ describe('the registry', () => {
       'godforge-runes',
       'godforge-scrolls',
       'godforge-sound',
+      'godforge-spellstones',
       'godforge-stats',
       'godforge-story',
       'godforge-thralls',

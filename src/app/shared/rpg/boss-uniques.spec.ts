@@ -141,6 +141,9 @@ describe('boss uniques: the signatures summed', () => {
     expect(relicRegen(1, NO_RELICS, true)).toBe(1);
     expect(relicRegen(1, heart, false)).toBe(3);
     expect(relicRegen(1, heart, true)).toBe(6);
-    expect(relicRegen(-4, heart, false)).toBe(2);
+    // A negative base is a cursed grave-good's drain (shared/grave-goods): the Heart's +2 offsets it, standing still never doubles it.
+    expect(relicRegen(-4, heart, false)).toBe(-2);
+    expect(relicRegen(-4, heart, true)).toBe(-2);
+    expect(relicRegen(-1, heart, true)).toBe(2);
   });
 });

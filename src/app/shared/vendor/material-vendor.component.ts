@@ -39,6 +39,9 @@ import { VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
 import { MaterialVendorService } from './material-vendor.service';
 import { PotionService, type PotionBuyCode } from '../potions/potion.service';
 import { POTION_SHELF, type PotionDef } from '../potions/potions.model';
+import { SpellstoneService, type BlankBuyCode } from '../spellstones/spellstone.service';
+import { BLANK_ID, BLANK_NAME, blankPrice } from '../spellstones/spellstones.model';
+import { SPELLSTONES_I18N } from '../spellstones/spellstones.i18n';
 import {
   VENDOR_MAX_QTY,
   VENDOR_SHELF,
@@ -88,6 +91,7 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   private subs: Subscription[] = [];
   private readonly i18n = inject(TranslationService);
   private readonly potions = inject(PotionService);
+  private readonly spellstones = inject(SpellstoneService);
 
   /** Sell (the buyback board) or Potions (Edrin Kade's shelf, shared/potions). */
   tab: 'sell' | 'potions' = 'sell';
@@ -129,6 +133,7 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(VENDOR_I18N);
+    this.i18n.register(SPELLSTONES_I18N);
   }
 
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
@@ -274,21 +279,30 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     this.walletGold = { kind: 'gold', label: goldLabel, need: this.gold, have: this.gold };
     this.tabs = [{ id: 'sell', label: this.t('vendor.tab.sell') }, { id: 'potions', label: this.t('vendor.tab.potions') }];
     const held = (id: string) => (this.isBrowser ? this.inventory.stackOf(id) : 0);
-    this.potionRows = POTION_SHELF.map(p => {
+    this.potionRows = [...POTION_SHELF.map(p => ({ id: p.id, name: p.name, price: p.price })), { id: BLANK_ID, name: BLANK_NAME, price: this.blankPrice }].map(p => {
       const art = artFor(p.id);
       return { id: p.id, name: p.name, art: art ? { src: art.src, srcset: art.srcset } : null, sub: this.t('vendor.potions.rowSub', { held: held(p.id), price: this.fmt(p.price) }) };
     });
-    const pa = artFor(this.potion.id);
+    const pa = artFor(this.shelf.id);
     this.potionArt = pa ? { src: pa.src, srcset: pa.srcset } : null;
-    this.potionCosts = [{ kind: 'gold', label: goldLabel, need: this.potion.price, have: this.gold }];
+    this.potionCosts = [{ kind: 'gold', label: goldLabel, need: this.shelf.price, have: this.gold }];
   }
 
   // ── Potions (Edrin Kade's shelf) ────────────────────────────────────────────
 
   get potion(): PotionDef { return POTION_SHELF.find(p => p.id === this.potionId) ?? POTION_SHELF[0]; }
-  get potionHeld(): number { return this.isBrowser ? this.inventory.stackOf(this.potion.id) : 0; }
+  get potionHeld(): number { return this.isBrowser ? this.inventory.stackOf(this.shelf.id) : 0; }
+  /** The Basalt Blank's price (shared/spellstones): twenty seconds of a hunt at the Keeper's level. */
+  get blankPrice(): number { return blankPrice(this.economy.rewardLevel); }
+  /** What is picked on the shelf: a potion, or the Basalt Blank. */
+  get shelf(): { id: string; name: string; price: number } {
+    if (this.potionId === BLANK_ID) return { id: BLANK_ID, name: BLANK_NAME, price: this.blankPrice };
+    const p = this.potion;
+    return { id: p.id, name: p.name, price: p.price };
+  }
   /** What the chosen potion does, in one line (the belt's words). */
   get potionDoes(): string {
+    if (this.potionId === BLANK_ID) return this.t('vendor.blank.does');
     const p = this.potion;
     return this.t(p.kind === 'health' ? 'vendor.potions.health' : 'vendor.potions.mana', { n: p.amount });
   }
@@ -299,15 +313,16 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
   pickPotion(id: string): void {
-    if (!POTION_SHELF.some(p => p.id === id)) return;
+    if (id !== BLANK_ID && !POTION_SHELF.some(p => p.id === id)) return;
     this.potionId = id;
     this.potionQty = 1;
     this.refresh();
     this.cdr.markForCheck();
   }
   buyPotion(n: number): void {
-    const p = this.potion;
-    const code: PotionBuyCode = this.potions.buy(p.id, n, `${p.id}:${Date.now().toString(36)}:${++this.buySeq}`);
+    const p = this.shelf;
+    const press = `${p.id}:${Date.now().toString(36)}:${++this.buySeq}`;
+    const code: PotionBuyCode | BlankBuyCode = p.id === BLANK_ID ? this.spellstones.buyBlanks(n, this.economy.rewardLevel, press) : this.potions.buy(p.id, n, press);
     if (code !== 'ok') {
       this.announce = this.t(code === 'funds' ? 'vendor.potions.funds' : 'vendor.potions.failed', { name: p.name });
       this.cdr.markForCheck();

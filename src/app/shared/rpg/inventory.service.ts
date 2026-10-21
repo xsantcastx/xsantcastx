@@ -811,6 +811,30 @@ export class InventoryService {
   }
 
   /**
+   * Rewrite one instance's grave-good marks (shared/grave-goods): a curse laid to rest, a whisper's kills, a whisper
+   * silenced. The sole writer of `GameItem.curse` / `GameItem.whisper` after the mint. `null` removes the field.
+   * Gold is the caller's (GraveGoodsService spends it first, in the same tick).
+   */
+  setGrave(itemId: string, patch: { curse?: GameItem['curse'] | null; whisper?: GameItem['whisper'] | null }):
+    | { ok: true; item: GameItem }
+    | { ok: false; code: 'ssr' | 'missing' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const item = this.itemById(itemId);
+    if (!item) return { ok: false, code: 'missing' };
+    const next: GameItem = { ...item };
+    if (patch.curse !== undefined) { if (patch.curse) next.curse = { ...patch.curse }; else delete next.curse; }
+    if (patch.whisper !== undefined) { if (patch.whisper) next.whisper = { ...patch.whisper }; else delete next.whisper; }
+    const previous = this.ledger;
+    this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(next)));
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    return { ok: true, item: this.itemById(itemId) ?? next };
+  }
+
+  /**
    * C1 Refining: three of one ore tier become one of the next (see
    * refine-ops.ts for the ladder). Same mutation id returns the stored result
    * without applying twice. Consume + grant are ONE ledger write; a failed

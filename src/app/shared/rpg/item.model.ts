@@ -326,7 +326,19 @@ export interface GameItem {
    * time the Enchanting Table looks at it.
    */
   sockets?: (string | null)[];
+  /**
+   * A cursed grave-good (shared/grave-goods): the curse it carries, its bonus and its cost frozen at the drop, and
+   * whether Sexton Wren laid it to rest. Absent on every ordinary item.
+   */
+  curse?: GraveCurse;
+  /** A whispering item (shared/grave-goods): whose voice, kills made with it worn, and whether the Archivist silenced it. */
+  whisper?: GraveWhisper;
 }
+
+/** The saved shape of a curse (grave-goods.model.ts owns the ids and the rules). */
+export interface GraveCurse { id: string; bonus: number; cost: number; cleansed?: boolean }
+/** The saved shape of a whisper (grave-goods.model.ts). */
+export interface GraveWhisper { id: string; kills: number; silenced?: boolean }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Slots

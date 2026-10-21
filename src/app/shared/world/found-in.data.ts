@@ -36,6 +36,7 @@ import { SLATE_ITEMS } from '../slate/slate-items.model';
 import { CABINET_ITEMS } from '../cabinets/cabinets.model';
 import { CLOCK_ITEMS } from '../world-clock/eclipse.model';
 import { POTIONS } from '../potions/potions.model';
+import { BLANK_ID, SPELLSTONE_MEANING } from '../spellstones/spellstones.model';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
@@ -82,6 +83,8 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   for (const item of CLOCK_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   // The potion belt (shared/potions): Edrin Kade's counter and the creatures that drop them.
   for (const item of POTIONS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
+  // The Basalt Blank (shared/spellstones): the creatures that drop it and Edrin Kade's counter.
+  for (const place of SPELLSTONE_MEANING.blank.sources) rows.push({ place: place.replace(/^creature drops/, 'Creatures of every hunt').replace(/^Edrin Kade sells it/, 'Seamworks: Edrin Kade\'s counter'), materialIds: [BLANK_ID] });
   void CRATE_IDS;
   return rows;
 }
