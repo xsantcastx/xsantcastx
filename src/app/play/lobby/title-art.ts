@@ -1,5 +1,6 @@
 /**
  * title-art.ts — the title screen's pixel painting: an eclipse over the hills and a lit cottage below it.
+ * Its night (sky, stars, eclipse, hills) and cottage are shared with the campfire character select (camp-art.ts).
  *
  * "Dark outside, warm inside" (design-bible §1.1) as one picture: a black sun with a gold corona in a night sky, the
  * hills cold and violet, and one small house with a lit window and a hearth fire. Painted at a low resolution (about
@@ -11,16 +12,16 @@
 const SKY = ['#0b0718', '#120a24', '#1a0f30', '#24133a', '#321a44', '#45214a'];
 const HILL_FAR = '#2a1838';
 const HILL_NEAR = '#170d22';
-const GROUND = '#0e0816';
+export const GROUND = '#0e0816';
 const CORONA = ['#ffe6a6', '#ffd27a', '#f0a64a', '#c86a32', '#7a3a3a'];
 const MOON = '#07040d';
 const MOON_RIM = '#8f78c8';
 const WALL = '#2b1a14';
 const ROOF = '#3d2318';
 const WINDOW = ['#ffd27a', '#f6b04f'];
-const FIRE = ['#fff1b8', '#ffd27a', '#f0883a', '#c4472c'];
+export const FIRE = ['#fff1b8', '#ffd27a', '#f0883a', '#c4472c'];
 const SMOKE = '#5a4a66';
-const MOTE = '#ffe2a0';
+export const MOTE = '#ffe2a0';
 
 /** A small deterministic generator, so the hills and stars are the same every visit. */
 function rng(seed: number): () => number {
@@ -51,13 +52,22 @@ export function titleArtSize(width: number, height: number): { w: number; h: num
   return { w: Math.max(64, Math.min(320, Math.round(h * aspect))), h };
 }
 
-/** Paint one frame at `time` seconds (0 for the still frame). */
-export function paintTitleArt(c: CanvasRenderingContext2D, w: number, h: number, time: number): void {
-  const px = (x: number, y: number, col: string, ww = 1, hh = 1): void => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), ww, hh); };
+/** Where the night's pieces sit: the horizon row, and the eclipse's centre and radius (art px). */
+export interface NightFrame { horizon: number; sunX: number; sunY: number; sunR: number }
+
+type Px = (x: number, y: number, col: string, ww?: number, hh?: number) => void;
+const pen = (c: CanvasRenderingContext2D): Px => (x, y, col, ww = 1, hh = 1) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), ww, hh); };
+
+/**
+ * The night above the hearth, shared by the title and the campfire (lobby/camp-art.ts): sky bands, stars, the eclipse,
+ * the far and near hills with their pines, and the dark ground below them.
+ */
+export function paintNight(c: CanvasRenderingContext2D, w: number, h: number, time: number, f: NightFrame): void {
+  const px = pen(c);
   c.imageSmoothingEnabled = false;
+  const horizon = f.horizon;
 
   // Sky: flat bands, dithered where they meet (a checker of the two colours over two rows).
-  const horizon = Math.round(h * 0.72);
   const band = horizon / SKY.length;
   for (let i = 0; i < SKY.length; i++) {
     const y0 = Math.round(i * band), y1 = Math.round((i + 1) * band);
@@ -79,7 +89,7 @@ export function paintTitleArt(c: CanvasRenderingContext2D, w: number, h: number,
   }
 
   // The eclipse: a corona of rings (breathing a little), long rays, the black moon, its lit rim and one bright bead.
-  const cx = Math.round(w / 2), cy = Math.round(h * 0.22), r = Math.max(7, Math.round(Math.min(w * 0.16, h * 0.085)));
+  const cx = f.sunX, cy = f.sunY, r = f.sunR;
   const breathe = Math.sin(time * 0.6) * 0.6;
   for (let y = -r * 3; y <= r * 3; y++) {
     for (let x = -r * 3; x <= r * 3; x++) {
@@ -127,15 +137,27 @@ export function paintTitleArt(c: CanvasRenderingContext2D, w: number, h: number,
     const base = horizon + 4 - Math.round(ridge(x, 21, 26) * 10 + ridge(x, 22, 9) * 3);
     for (let k = 0; k < tall; k++) { const half = Math.floor((k / tall) * 3); c.fillStyle = HILL_NEAR; c.fillRect(x - half, base - tall + k, half * 2 + 1, 1); }
   }
+}
 
-  // The cottage, below and left of the eclipse, and its warm light on the ground.
-  const hx = Math.round(w * 0.5) - 22, hy = h - 22;
+/** The near ridge's top row at `x` (art px), for anything that sits on the hills. */
+export function nearRidge(x: number, horizon: number): number {
+  return horizon + 2 - Math.round(ridge(x, 21, 26) * 10 + ridge(x, 22, 9) * 3);
+}
+
+/**
+ * The lit cottage with its top-left wall corner at (`hx`, `hy`): its warm light on the ground, chimney smoke, and
+ * (unless `hearth` is false) the small hearth fire by the door with its motes.
+ */
+export function paintCottage(c: CanvasRenderingContext2D, hx: number, hy: number, time: number, hearth = true): void {
+  const px = pen(c);
   const glow = 0.85 + 0.15 * Math.sin(time * 7.3) * Math.sin(time * 3.1);
+  // The warm light on the ground (on the title, the hearth's; up on the campfire's ridge, only the window's spill).
+  const reach = hearth ? 15 : 6, core = hearth ? 6 : 3;
   for (let y = -16; y <= 16; y++) for (let x = -34; x <= 34; x++) {
     const d = Math.hypot(x / 2.2, y);
-    if (d > 15 * glow) continue;
-    if ((x + y) % 2 !== 0 && d > 9) continue;
-    px(hx + 16 + x, hy + 14 + y, d < 6 ? '#4a2a1c' : '#2c1820');
+    if (d > reach * glow) continue;
+    if ((x + y) % 2 !== 0 && d > core * 1.5) continue;
+    px(hx + (hearth ? 16 : 6) + x, hy + (hearth ? 14 : 11) + y, d < core ? '#4a2a1c' : '#2c1820');
   }
   c.fillStyle = WALL; c.fillRect(hx, hy, 20, 12);
   for (let k = 0; k < 8; k++) { c.fillStyle = ROOF; c.fillRect(hx - 2 + k, hy - 1 - k, 24 - k * 2, 1); }
@@ -152,6 +174,7 @@ export function paintTitleArt(c: CanvasRenderingContext2D, w: number, h: number,
     if (age > 0.85 && (i % 2)) continue;
     px(sx, sy, SMOKE, age < 0.5 ? 2 : 1, 1);
   }
+  if (!hearth) return;
 
   // The hearth fire in front of the door: four flame pixels flickering, stones either side.
   const fx = hx + 28, fy = hy + 10;
@@ -168,4 +191,14 @@ export function paintTitleArt(c: CanvasRenderingContext2D, w: number, h: number,
     if (age > 0.9) continue;
     px(fx + Math.round(Math.sin(age * 9 + i * 2) * 4), fy - 4 - Math.round(age * 30), MOTE);
   }
+}
+
+/** Paint one frame at `time` seconds (0 for the still frame). */
+export function paintTitleArt(c: CanvasRenderingContext2D, w: number, h: number, time: number): void {
+  const horizon = Math.round(h * 0.72);
+  paintNight(c, w, h, time, {
+    horizon, sunX: Math.round(w / 2), sunY: Math.round(h * 0.22), sunR: Math.max(7, Math.round(Math.min(w * 0.16, h * 0.085))),
+  });
+  // The cottage, below and left of the eclipse, and its warm light on the ground.
+  paintCottage(c, Math.round(w * 0.5) - 22, h - 22, time);
 }
