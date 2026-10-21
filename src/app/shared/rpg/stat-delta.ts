@@ -14,6 +14,7 @@ import {
   ITEM_STAT_IS_PERCENT,
   ITEM_STAT_KEYS,
   ITEM_STAT_LABELS,
+  sumStats,
   type ItemStats,
 } from './item.model';
 
@@ -97,9 +98,12 @@ export function compareStats(
   options: CompareOptions = {},
 ): StatDeltaRow[] {
   const rows: StatDeltaRow[] = [];
+  // An old item's retired Gold/sec compares as the Gold Find its card shows (sumStats folds it in), never as a raw
+  // "+500%" of a number nothing pays any more.
+  const cand = sumStats([candidate]), was = worn ? sumStats([worn]) : null;
   for (const key of ITEM_STAT_KEYS) {
-    const next = candidate[key] ?? 0;
-    const now = worn?.[key] ?? 0;
+    const next = cand[key] ?? 0;
+    const now = was?.[key] ?? 0;
     if (next === 0 && now === 0) continue;
     const r = row(key, now, next);
     if (r.direction === 'same' && !options.includeUnchanged) continue;

@@ -20,9 +20,12 @@ export interface SpellbookNode {
   id: SkillId; name: string; tier: number; col: number; rank: number; need: number; open: boolean; picked: boolean; buyable: boolean; slot: number; on: boolean;
 }
 export interface SpellbookPick {
-  id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; next: string[]; mana: number; cd: number;
+  /** `nowRank`: the rank the fight casts at (the tree's plus `gear`, the ranks worn gear adds). `cd`: the wait now (cast speed in). */
+  id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; gear: number; next: string[]; mana: number; cd: number;
   block: string | null; need: string; slot: number; on: boolean; words: string;
   syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[]; phase: { text: string; up: boolean } | null;
+  /** What lifts the card's damage in the fight now (spell power, fire, the weapon, crits), or null. */
+  power: string | null;
 }
 export interface SpellbookView {
   trees: { id: TreeId; ranks: number }[];

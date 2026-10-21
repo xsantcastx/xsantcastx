@@ -43,7 +43,8 @@ describe('td-tree: the trees themselves', () => {
 
   it('rank 1 is the old numbers, and no number ever shrinks with a rank', () => {
     for (const id of CLASS_SKILLS.warlock) {
-      expect(skillVars(id, 1)).withContext(id).toEqual({ ...SKILLS[id].vars });
+      // A var that counts whole things and grows by fractions (Soul Harvest's extra Soul) shows its whole part.
+      expect(skillVars(id, 1)).withContext(id).toEqual(Object.fromEntries(Object.entries(SKILLS[id].vars).map(([k, n]) => [k, k === 'soul' ? Math.floor(n) : n])));
       expect(skillVars(id, 0)).withContext(id).toEqual(skillVars(id, 1));
       for (let r = 1; r < MAX_RANK; r++) {
         const a = skillVars(id, r), b = skillVars(id, r + 1);
@@ -55,7 +56,7 @@ describe('td-tree: the trees themselves', () => {
     }
     expect(skillVars('hellfire-nova', 4)).toEqual({ min: 32, max: 48, radius: 3.3 });
     // A raised count never outruns how many may stand at once.
-    for (let r = 1; r <= MAX_RANK; r++) expect(skillVars('raise-skeleton', r)['count']).toBeLessThanOrEqual(skillVars('raise-skeleton', r)['max']);
+    for (let r = 1; r <= MAX_RANK; r++) expect(skillVars('raise-skeleton', r)['count']).toBeLessThanOrEqual(skillVars('raise-skeleton', r)['cap']);
   });
 });
 

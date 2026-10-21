@@ -457,9 +457,12 @@ const ANY_READS = {};
 for (const key of ITEM_STAT_KEYS) {
   const keeper = new Set(readersOf(new RegExp(`equippedTotals\\.${key}\\b`)));
   if (key === 'magicFind') readersOf(/\bequippedMagicFind\b/).filter(f => !/inventory\.service/.test(f)).forEach(f => keeper.add(f));
+  // Gold Find (and the retired Gold/sec read as it) is paid piece by piece through InventoryService.equippedGoldFind.
+  const goldFind = key === 'goldFind' || key === 'goldPerSec' ? readersOf(/\bequippedGoldFind\b/).filter(f => !/inventory\.service/.test(f)) : [];
+  goldFind.forEach(f => keeper.add(f));
   if (key === 'strikePower' || key === 'ward') readersOf(/\bkeeperCombatStats\(/).filter(f => !/keeper-combat\.ts$/.test(f)).forEach(f => keeper.add(f));
   KEEPER_READS[key] = [...keeper];
-  ANY_READS[key] = readersOf(new RegExp(`\\.${key}\\b`));
+  ANY_READS[key] = [...readersOf(new RegExp(`\\.${key}\\b`)), ...goldFind];
 }
 const keeperLive = new Set(ITEM_STAT_KEYS.filter(k => KEEPER_READS[k].length));
 const statSheetShows = /ITEM_STAT_KEYS/.test(read('shared/rpg/keeper-stat-sheet.component.ts'));

@@ -106,6 +106,7 @@ import { PET_ACT, petRole, type PetCommand, type PetMove, type PetRole, type Pet
 import type { PetAbility } from '../../shared/pets/pets.model';
 import type { GlimMood } from '../../shared/glim/glim-art';
 import type { LootFilter } from '../../shared/loot/loot-tiers';
+import type { AuraId } from '../../shared/loot/auras';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
 import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
@@ -117,7 +118,7 @@ import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
-const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
+export const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
   'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist'];
 
 /** The Map window's ground colours (one pixel per tile, or per two on a continent). */
@@ -605,7 +606,9 @@ export class TopDownEngine {
   get walkSpeed(): number {
     // Rootwalk (the Thornstrider): the forest opens in front of him while it lasts.
     const root = this.mobs.rootwalkT > 0 ? 1 + this.mobs.rootwalkPct / 100 : 1;
-    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root;
+    // Vigor (a worn aura) quickens the feet: "You move {{n}}% faster".
+    const vigor = this.mobs.itemAura?.fx.moveSpeed ?? 1;
+    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor;
   }
   private buildKey = '';
   /**
@@ -1339,8 +1342,15 @@ export class TopDownEngine {
     if (!b) return;
     b.feel = kind; b.feelT = kind === 'trick' ? 1 : 1.2; b.hopT = .4; b.idleT = 0;
   }
-  /** The loot & combat rules (shared/loot): only the filter matters here — a pet fetches the gear it shows. */
-  setCombatRules(rules: { filter: LootFilter } | null): void { this.lootFilter = rules?.filter ?? 'all'; }
+  /**
+   * The loot & combat rules (shared/loot): the filter (a pet fetches the gear it shows) and the worn aura the Loot sheet
+   * runs (td-mobs setItemAura: what its card says, in this fight). The armour runes' resists reach the fight through
+   * the worn totals (side-scroller gearCombat), the difficulty's resist penalty is the old side-view's and not applied.
+   */
+  setCombatRules(rules: { filter: LootFilter; aura?: { id: AuraId; level: number } | null } | null): void {
+    this.lootFilter = rules?.filter ?? 'all';
+    this.mobs.setItemAura(rules?.aura ?? null);
+  }
 
   /** Glim (shown once the Keeper has met it); `arrive` flies it in from above, once. */
   setGlim(shown: boolean, arrive = false): void {
