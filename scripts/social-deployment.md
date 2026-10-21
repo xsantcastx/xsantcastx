@@ -62,8 +62,34 @@ memory, never display or log them. GET `/events` with `Authorization: Bearer TOK
 JSON `{type:'snapshot',players,messages}`, `{type:'players',players}`, and
 `{type:'chat',message}`. Subsequent POSTs require `Authorization: Bearer TOKEN`:
 `/update` `{x,y,facing,animation,zone}`, `/chat` `{text}`, and `/leave` `{}`.
-Position bounds are x 30–2670, y -100–610; zones are `Basalt Seamworks` and
-`Ember Quarry`. Send updates at least every 20 seconds, including while idle.
+Positions are any finite x/y within ±1,000,000; `zone` is any 1–60 character
+name without markup or control characters. Send updates at least every 20
+seconds, including while idle (the client sends at most one per 250 ms while
+moving and a heartbeat every 10 s standing still). The server rate-limits
+`/update` to 8 a second per session and coalesces the resulting `players`
+broadcasts to at most one per 100 ms.
+
+### Protocol 2 (top-down presence, 2026-10-21)
+
+`/health` and the `/join` reply carry `protocol: 2`. `/join` and `/update` accept
+these optional fields; each one, when present, must be valid or the request is
+refused with 400, and players carry them in every `players`/`snapshot` event:
+
+| field | accepted |
+|---|---|
+| `area` | `[a-z0-9_-]{1,40}` — the top-down area id (a continent or a floor) |
+| `dir` | `side`, `down` or `up` |
+| `moving` | boolean |
+| `vocation` | `[a-z]{1,16}` |
+| `look` | `[a-z0-9.]{1,48}` — the compact look (play/social/peer-look.ts) |
+| `level` | integer 1–999 |
+
+POST `/emote` `{kind:'wave', to?: playerId}` relays `{type:'emote', emote:{id,
+from, name, to, kind, at}}` to the room (4 per 5 s per session; `to` must be a
+Keeper in the room). v1 clients ignore the extra fields and the new event; the
+client degrades against a v1 server (Keepers line up by `zone`, which it sets to
+the area id, and drawn in the default look; a Wave shows only on the waver's
+screen).
 Sessions expire after 45 seconds without a client request. Render names and
 messages as text, never HTML. Chat is limited to 240 characters and five sends
 per ten seconds. The server limits request bodies, room size, updates and joins.

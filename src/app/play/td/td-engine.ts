@@ -116,6 +116,8 @@ import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, heart
 import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
+import { PEER_PLATE, TdPeers } from './td-peers';
+import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
@@ -379,6 +381,7 @@ export class TopDownEngine {
     return m ? Math.max(0, Math.min(100, Number(m[1]))) : null;
   })();
   private readonly fxDark = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxdark=1\b/.test(location.search);
+  private readonly peers = new TdPeers();
   private readonly reduceMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   /** Reduced motion, read live: the same shapes, no travel (spec §Rules 6). */
   private get still(): boolean { return !!this.reduceMq?.matches; }
@@ -950,6 +953,28 @@ export class TopDownEngine {
   /** The hearths of the continent the Keeper is on (placed once, with their stalls). */
   get hearths(): readonly TdHearth[] { return hearthsOf(this.world); }
   /** The host's word on the hearths: which are lit, the wake point, how many blessings are held (the shrine's pips). */
+  // ── Other Keepers (the Hearth room; td-peers.ts) ──
+  /** The room's list (the side engine's name and shape: the HUD calls it on whichever engine it holds). */
+  setPeers(peers: RemoteKeeper[]): void { this.peers.set(peers as unknown as Parameters<TdPeers['set']>[0]); }
+  /** The presence area: the continent on its surface, else the floor's own id. */
+  peerArea(): string { return this.level === this.world ? this.world.continent : this.level.id; }
+  /** What the room is told: the area, where, which way, walking or not. */
+  peerPresence(): { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean } {
+    const p = this.player;
+    return { area: this.peerArea(), x: Math.round(p.x), y: Math.round(p.y), face: p.face, dir: p.dir, moving: p.moving };
+  }
+  /** A Wave over a Keeper ('' or null: the local one). */
+  peerWave(who: string | null): void { this.peers.wave(who ?? '', this.time); }
+  /** Who is drawn, in CSS pixels on the page (the HUD's data-peers, the e2e's tap target). */
+  peersOnScreen(): { id: string; name: string; x: number; y: number; waving: boolean }[] {
+    const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
+    return this.peers.drawn.map(p => ({
+      id: p.id, name: p.name, waving: this.peers.waving(p.id, this.time),
+      x: Math.round(r.left + (p.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (p.y - 16 - this.cam.y) * this.scale / k),
+    }));
+  }
+  /** The local Keeper is waving. */
+  get selfWaving(): boolean { return this.peers.waving('', this.time); }
   setHearths(s: { lit: readonly string[]; wake: string | null; blessings: number }): void {
     this.hearthLit = new Set(s.lit); this.hearthWake = s.wake; this.hearthBlessed = Math.max(0, Math.min(5, s.blessings));
     this.markHearth();
@@ -2012,6 +2037,7 @@ export class TopDownEngine {
 
   private update(dt: number): void {
     this.time += dt;
+    this.peers.step(dt, this.peerArea(), this.player, this.still);
     if (this.cant && (this.cant.age += dt) >= CHANT_SECS) this.cant = null;
     // The continent's hearths stand from the first frame (placed once: their stalls join the town's).
     hearthsOf(this.world);
@@ -2225,6 +2251,9 @@ export class TopDownEngine {
     const foe = this.mobs.mobAt(wx, wy);
     if (foe) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
+    // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
+    const peer = this.peers.at(wx, wy);
+    if (peer && this.options.onPeerTap) { this.options.onPeerTap(peer); return; }
     if (this.level === this.world) {
       const tc = Math.floor(wx / TILE), tr = Math.floor((wy + 6) / TILE);
       for (const [c, r] of [[tc, tr], [tc, tr + 1], [tc, tr + 2]]) {
@@ -2553,6 +2582,13 @@ export class TopDownEngine {
     for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeast(c, b, this.time, this.still) });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
+    // Other Keepers (the Hearth room): y-sorted with the world, but always under the local Keeper where they overlap.
+    const view = { scale: s, camX: cam.x, camY: cam.y, time: this.time };
+    for (const p of this.peers.drawn) {
+      if (!inView(p.x, p.y)) continue;
+      const under = Math.abs(p.x - this.player.x) < 18 && Math.abs(p.y - this.player.y) < 36;
+      items.push({ y: under ? Math.min(p.y, this.player.y - .01) : p.y, draw: () => this.peers.draw(c, p, view) });
+    }
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -2606,6 +2642,13 @@ export class TopDownEngine {
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
     for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 42, '#f3e7cf');
+    // Other Keepers' name plates (name · level) and Waves (over them and over the Keeper).
+    for (const p of this.peers.drawn) {
+      if (!inView(p.x, p.y)) continue;
+      this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, PEER_PLATE);
+      if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - 52, this.time, this.still);
+    }
+    if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - 46, this.time, this.still);
     // A task giver's head mark: '!' a task on offer, '?' one to hand in (MapleStory), seen from across the square.
     for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? 54 : 44)); }
     this.drawEffects();

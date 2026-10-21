@@ -115,3 +115,106 @@ test('expired session ends immediately without stream retries', async t => {
   assert.equal(x.timers.length, 0);
   assert.equal(x.requests.filter(r => r.url.endsWith('/leave')).length, 1);
 });
+
+// Always-on (owner 2026-10-21): the room keeps itself joined; protocol 2 presence and the Wave.
+function setupOn(t, { join = () => Response.json({ token: 'secret', id: 'keeper', players: [], messages: [], protocol: 2 }), events } = {}) {
+  const requests = [], streams = [], timers = [];
+  let state, clock = 0;
+  t.mock.method(globalThis, 'setTimeout', (callback, delay) => { const timer = { callback, delay }; timers.push(timer); return timer; });
+  t.mock.method(globalThis, 'clearTimeout', timer => { if (timer) timer.cancelled = true; });
+  const transport = async (url, options) => {
+    requests.push({ url, options });
+    if (url.endsWith('/join')) return join();
+    if (url.endsWith('/events')) {
+      if (events) { const r = events(); if (r) return r; }
+      const body = new ReadableStream({ start(controller) { streams.push(controller); options.signal.addEventListener('abort', () => { try { controller.close(); } catch {} }); } });
+      return new Response(body);
+    }
+    return Response.json({ ok: true });
+  };
+  const room = new SocialRoom(value => { state = value; }, { keepAlive: true, endpoint: 'http://room', fetch: transport, now: () => clock });
+  t.after(() => room.leave());
+  return { room, requests, streams, timers, state: () => state, tick: ms => { clock += ms; }, count: path => requests.filter(r => r.url.endsWith(path)).length };
+}
+
+test('always-on: join carries the profile; a failed join retries with growing backoff', async t => {
+  let fail = 2;
+  const x = setupOn(t, { join: () => (fail-- > 0 ? new Response('{}', { status: 503 }) : Response.json({ token: 'secret', id: 'keeper', players: [], messages: [], protocol: 2 })) });
+  await x.room.join('Arin', { vocation: 'warlock', look: '1.0.2', level: 7 }); await flush();
+  assert.deepEqual(JSON.parse(x.requests[0].options.body), { name: 'Arin', vocation: 'warlock', look: '1.0.2', level: 7 });
+  assert.equal(x.timers.at(-1).delay, 2000);
+  x.timers.at(-1).callback(); await flush();
+  assert.equal(x.timers.at(-1).delay, 4000);
+  x.timers.at(-1).callback(); await flush();
+  assert.equal(x.state().connected, true);
+  assert.equal(x.count('/join'), 3);
+});
+
+test('always-on: an expired session (401) joins afresh instead of giving up', async t => {
+  let expired = true;
+  const x = setupOn(t, { events: () => (expired ? (expired = false, new Response(null, { status: 401 })) : null) });
+  await x.room.join('Arin'); await flush();
+  assert.equal(x.state().connected, false);
+  assert.equal(x.timers.at(-1).delay, 2000);
+  x.timers.at(-1).callback(); await flush();
+  assert.equal(x.count('/join'), 2);
+  assert.equal(x.state().connected, true);
+});
+
+test('always-on: after five stream retries the room is joined again, not left', async t => {
+  const x = setupOn(t);
+  await x.room.join('Arin'); await flush();
+  for (let attempt = 0; attempt < 6; attempt++) {
+    x.streams[attempt].close(); await flush();
+    if (attempt < 5) { x.timers.at(-1).callback(); await flush(); }
+  }
+  assert.equal(x.room.wants, true);
+  assert.equal(x.timers.at(-1).delay, 2000);
+  x.timers.at(-1).callback(); await flush();
+  assert.equal(x.count('/join'), 2);
+  assert.equal(x.state().connected, true);
+});
+
+test('pause closes the stream and sends nothing; resume reopens the same session', async t => {
+  const x = setupOn(t);
+  await x.room.join('Arin'); await flush();
+  x.room.pause(); await flush();
+  assert.equal(x.state().connected, false);
+  x.tick(20000);
+  x.room.update(1, 2, 'ember-isle'); await flush();
+  assert.equal(x.count('/update'), 0);
+  assert.equal(x.count('/leave'), 0);
+  x.room.resume(); await flush();
+  assert.equal(x.state().connected, true);
+  assert.equal(x.count('/join'), 1);
+  assert.equal(x.requests.filter(r => r.url.endsWith('/events')).at(-1).options.headers.Authorization, 'Bearer secret');
+});
+
+test('presence throttle: ≤1 update per 250ms moving, a heartbeat every 10s standing still', async t => {
+  const x = setupOn(t);
+  await x.room.join('Arin', { vocation: 'ashguard', level: 3 }); await flush();
+  const at = (px) => { x.room.update(px, 5, 'ember-isle', 1, 'run', { area: 'ember-isle', dir: 'side', moving: true }); return flush(); };
+  await at(10); x.tick(100); await at(11); x.tick(100); await at(12);
+  assert.equal(x.count('/update'), 1);
+  x.tick(60); await at(13);
+  assert.equal(x.count('/update'), 2);
+  const body = JSON.parse(x.requests.filter(r => r.url.endsWith('/update')).at(-1).options.body);
+  assert.deepEqual(body, { x: 13, y: 5, zone: 'ember-isle', facing: 1, animation: 'run', area: 'ember-isle', dir: 'side', moving: true, vocation: 'ashguard', level: 3 });
+  // Standing still: the same body is not resent until the heartbeat is due.
+  for (let i = 0; i < 30; i++) { x.tick(300); await at(13); }
+  assert.equal(x.count('/update'), 2);
+  x.tick(1000); await at(13);
+  assert.equal(x.count('/update'), 3);
+});
+
+test('a Wave travels only on a protocol-2 room; leave stops the always-on room for good', async t => {
+  const x = setupOn(t, { join: () => Response.json({ token: 'secret', id: 'keeper', players: [], messages: [] }) });
+  await x.room.join('Arin'); await flush();
+  assert.equal(await x.room.wave('mira'), false);
+  assert.equal(x.count('/emote'), 0);
+  x.room.leave();
+  const timers = x.timers.length;
+  await flush();
+  assert.equal(x.timers.length, timers);
+  assert.equal(x.room.wants, false);
+});

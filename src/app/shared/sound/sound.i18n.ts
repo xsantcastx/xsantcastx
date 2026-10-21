@@ -30,6 +30,11 @@ export const SOUND_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.sound.night.softer': { en: 'Softer', es: 'Suave' },
   'play.sound.night.full.line': { en: 'The night as it is: your light is a small island and the dark is deep.', es: 'La noche tal cual: tu luz es una isla pequena y la oscuridad es honda.' },
   'play.sound.night.softer.line': { en: 'A lighter night: shapes and ground stay easier to see past your light.', es: 'Una noche mas clara: formas y suelo se ven mejor mas alla de tu luz.' },
+  'play.sound.chat': { en: 'Chat', es: 'Chat' },
+  'play.sound.chat.on': { en: 'On', es: 'Activo' },
+  'play.sound.chat.ignore': { en: 'Ignore', es: 'Ignorar' },
+  'play.sound.chat.on.line': { en: 'Always at the Hearth: other Keepers see you and you see them.', es: 'Siempre en el Hogar: otros Guardianes te ven y tu a ellos.' },
+  'play.sound.chat.ignore.line': { en: 'You play alone: no room, no other Keepers, no unread count.', es: 'Juegas a solas: sin sala, sin otros Guardianes, sin mensajes sin leer.' },
   'play.sound.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
 
   // ── Catch & craft ──
