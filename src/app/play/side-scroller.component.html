@@ -103,10 +103,13 @@
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
         <span>{{ t('play.td.dock.sheet') }}</span><kbd>C</kbd>
       </button>
+      <!-- A phone has the menu icon top-right (and a dock of four, clear of the attack button). -->
+      @if (keyCaps) {
       <button type="button" data-game-menu-toggle (click)="toggleGameMenu()" [attr.aria-expanded]="gameMenuOpen" [title]="t('menu.title') + ' (Esc)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="3" width="10" height="2" fill="#e9dcae"/><rect x="3" y="7" width="10" height="2" fill="#e9dcae"/><rect x="3" y="11" width="10" height="2" fill="#e9dcae"/></svg>
         <span>{{ t('menu.title') }}</span><kbd>Esc</kbd>
       </button>
+      }
       <button type="button" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" [title]="t('play.td.dock.places') + ' (M)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
         <span>{{ t('play.td.dock.places') }}</span><kbd>M</kbd>
