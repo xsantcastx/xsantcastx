@@ -233,7 +233,7 @@ function matOf(piece: GearPiece): Mat {
 // ── Held items, painted pointing up ──
 
 /** Paint a weapon/tool sprite (tip at the top) into its own canvas, outlined. */
-export function paintWeapon(kind: WeaponKind, m: Mat): HTMLCanvasElement {
+export function paintWeapon(kind: WeaponKind, m: Mat, variant?: GearPiece['variant']): HTMLCanvasElement {
   const spec = WEAPON_SPECS[kind];
   const raw = canvas(spec.w + 2, spec.h + 2);
   const c = raw.getContext('2d')!;
@@ -273,6 +273,14 @@ export function paintWeapon(kind: WeaponKind, m: Mat): HTMLCanvasElement {
       p(1, 1, 5, 5, m.base); p(2, 2, 2, 2, m.baseHi); p(3, 0, 1, 1, m.accent); p(0, 3, 1, 1, m.accent); p(6, 3, 1, 1, m.accent); p(3, 6, 1, 1, m.trim);
       break;
     case 'staff':
+      if (variant === 'lamp') {
+        // The Lanternwright's lamp-staff: a pole banded in brass with a lit lantern set on its head.
+        p(2, 9, 2, 18, m.wood); p(2, 9, 1, 18, m.woodLo); p(2, 15, 2, 1, '#c99a3e'); p(2, 22, 2, 1, '#c99a3e');
+        p(2, 0, 2, 1, '#8a6a3a'); p(1, 1, 4, 1, '#c99a3e');
+        p(0, 2, 1, 5, '#c99a3e'); p(5, 2, 1, 5, '#8a6a3a'); p(1, 2, 4, 5, '#ffd27a'); p(2, 3, 2, 3, '#fffbe8'); p(2, 3, 1, 1, '#ffffff');
+        p(0, 7, 6, 1, '#c99a3e'); p(1, 8, 4, 1, '#8a6a3a');
+        break;
+      }
       p(2, 4, 2, 23, m.wood); p(2, 4, 1, 23, m.woodLo); p(2, 12, 2, 1, m.trim); p(2, 20, 2, 1, m.trim);
       p(0, 2, 1, 3, m.base); p(5, 2, 1, 3, m.base);
       p(1, 0, 4, 4, m.trim); p(2, 1, 1, 1, '#ffffff'); p(3, 2, 2, 2, m.accent);
@@ -543,7 +551,7 @@ export class KeeperPainter {
     holdPose(kind, action, phase, state.attackT, this.pose);
     const hand = handAt(sx, sy, this.pose.arm, this.hand);
     if (kind) {
-      const sprite = this.weaponSprite ??= paintWeapon(kind, matOf(this.gear!.weapon!));
+      const sprite = this.weaponSprite ??= paintWeapon(kind, matOf(this.gear!.weapon!), this.gear!.weapon!.variant);
       const spec = WEAPON_SPECS[kind];
       gripTransform(Math.round(hand.x) + .5, Math.round(hand.y) + .5, this.pose.weapon, spec, this.grip);
       c.save();
