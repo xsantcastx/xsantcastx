@@ -774,7 +774,7 @@ the fight has (no Pyre Watch banner, pets in combat, Shadow school, Hush gain or
 | **Rootcradle Vestments** (circlet, wrap, bracers, greaves: head, chest, hands, legs) | thorn-weaver, drowned-acolyte, Elder Rootwyrm (Overgrown Temple 4-5), from level 28 | +1.5 life/s | +30 life | +10 all resists, regeneration x2 standing still |
 | **The Lamplighter's Things** (lantern, coat, gloves, ring: off-hand, chest, hands, trinket) | the five shade chests: Ember Mine 2 (lantern), Bone Hall (coat), Four Smithies (gloves), Sporewell (ring), Sunken Cloister (any) | +2 light | +10% Magic Find | +2 light more (4), shapes unveiled sooner |
 
-Chances per kill: 2% normal, 6% champion, 10% unique, 20% boss, leaned by Magic Find (`rollSetPiece`, rolled last in
+Chances per kill: 0.05% normal, 0.25% champion, 1% unique, 7% boss (retuned 2026-10-21; was 2 / 6 / 10 / 20%), leaned by Magic Find on the K 500 curve (`rollSetPiece`, rolled last in
 `rollCreatureLoot`). The card shows the set name with `(worn/total)`, each piece greyed until worn, each tier lit while
 on, and Used for / Found in; the Bestiary card of each set creature names its set. Note: the Lamplighter's own light
 (2 pieces) hides the shade chests (they show only in low light) - take it off to find the rest.
