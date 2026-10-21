@@ -81,7 +81,7 @@ export const HOMESTEAD_I18N: Readonly<Record<string, { en: string; es: string }>
 
   // Service: one plain sentence per building
   'homestead.sentence.forge':      { en: 'Every strike makes {{n}} Gold. Click it as fast as you like.', es: 'Cada golpe da {{n}} de oro. Púlsala tan rápido como quieras.' },
-  'homestead.sentence.treasury':   { en: 'You hold {{n}} Gold. Treasury upgrades raise ALL Gold income.', es: 'Tienes {{n}} de oro. Las mejoras de la tesorería suben TODOS los ingresos de oro.' },
+  'homestead.sentence.treasury':   { en: 'You hold {{n}} Gold. Treasury upgrades raise what every Forge strike makes.', es: 'Tienes {{n}} de oro. Las mejoras de la tesorería suben lo que da cada golpe de la Forja.' },
   'homestead.sentence.furnace':    { en: 'Your buildings make {{rate}}, even while you are away.', es: 'Tus edificios producen {{rate}}, incluso cuando no estás.' },
   'homestead.sentence.automatons': { en: '{{n}} automatons strike for you: {{rate}}.', es: '{{n}} autómatas golpean por ti: {{rate}}.' },
   'homestead.sentence.camp':       { en: '{{out}} of {{slots}} explorers are out. Send them from the Sanctum.', es: '{{out}} de {{slots}} exploradores están fuera. Envíalos desde el Santuario.' },
@@ -90,6 +90,9 @@ export const HOMESTEAD_I18N: Readonly<Record<string, { en: string; es: string }>
 
   // Canvas lines
   'homestead.canvas.spark':        { en: 'Golden spark!', es: '¡Chispa dorada!' },
+  'homestead.retired.why':         { en: 'Retired: the forge no longer makes Gold on its own. Gold comes from the hunt now.', es: 'Retirado: la forja ya no produce oro por sí sola. El oro sale de la caza.' },
+  'homestead.retired.furnace':     { en: 'The furnace has gone cold. Gold comes from the hunt now: every creature drops a pile.', es: 'El horno se ha enfriado. El oro sale de la caza: cada criatura deja un montón.' },
+  'homestead.retired.automatons':  { en: 'The automatons stand idle. Gold comes from the hunt now: every creature drops a pile.', es: 'Los autómatas están parados. El oro sale de la caza: cada criatura deja un montón.' },
   'homestead.canvas.perSecond':    { en: '{{n}} Gold every second', es: '{{n}} de oro por segundo' },
   'homestead.canvas.pressE':       { en: 'Press E to strike!', es: '¡Pulsa E para golpear!' },
   'homestead.canvas.clickMe':      { en: 'Click me!', es: '¡Púlsame!' },

@@ -36,7 +36,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { XpService } from '../gamification/xp.service';
 import { QuestService } from '../quests/quest.service';
 import { EconomyService } from '../economy/economy.service';
-import { incomeRewardBase } from '../economy/economy.model';
+import { incomeRewardBase, rewardRate } from '../economy/economy.model';
 import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { ComboService } from '../economy/combo.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
@@ -368,7 +368,7 @@ export class NpcQuestService {
 
   private payMission(mission: DelveMission, times: number): number {
     const r = mission.reward;
-    const gold = missionGold(r, this.economy.snapshot.perSecond);
+    const gold = missionGold(r, rewardRate(this.economy.snapshot));
     if (gold > 0) this.economy.earnGold(gold, `npc:${mission.npcId}`);
     if (r.rune) {
       const rune = runeById(r.rune);
@@ -460,7 +460,7 @@ export class NpcQuestService {
           id => missionMaterialName(id, x => materialDisplay(x)?.name),
           id => NPCS.find(n => n.id === id)?.name ?? id,
         ),
-      gold: missionGold(mission.reward, this.economy.snapshot.perSecond),
+      gold: missionGold(mission.reward, rewardRate(this.economy.snapshot)),
     };
   }
 

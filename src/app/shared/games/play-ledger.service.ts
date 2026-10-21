@@ -31,6 +31,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, type Observable } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { rewardRate } from '../economy/economy.model';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { betAllowed } from './bet-tiers';
@@ -130,7 +131,7 @@ export class PlayLedgerService {
       return { ok: true, id: mutationId, record: this.ledger.plays[mutationId] as PlayRecord<O>, replay: true };
     }
 
-    if (!betAllowed(bet, this.economy.snapshot.perSecond, this.economy.snapshot.gold)) return { ok: false, code: 'bet' };
+    if (!betAllowed(bet, rewardRate(this.economy.snapshot), this.economy.snapshot.gold)) return { ok: false, code: 'bet' };
 
     const secret = ledger.secret || newSecret();
     const seq = ledger.nonce;
@@ -167,7 +168,7 @@ export class PlayLedgerService {
     const known = ledger.plays[mutationId] as PlayRecord<O> | undefined;
     if (known) return { ok: true, id: mutationId, record: known, replay: true };
 
-    if (!betAllowed(bet, this.economy.snapshot.perSecond, this.economy.snapshot.gold)) return { ok: false, code: 'bet' };
+    if (!betAllowed(bet, rewardRate(this.economy.snapshot), this.economy.snapshot.gold)) return { ok: false, code: 'bet' };
     const secret = ledger.secret || newSecret();
     const seq = ledger.nonce;
     const seed = playSeed(secret, seq);

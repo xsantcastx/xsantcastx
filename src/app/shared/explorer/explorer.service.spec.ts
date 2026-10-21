@@ -16,6 +16,7 @@ import { ExplorerService } from './explorer.service';
 import {
   EXPEDITION_HISTORY_CAP,
   EXPLORER_KEY,
+  missionById,
   type ExplorerReturn,
   type ExplorerState,
 } from './explorer.model';
@@ -271,7 +272,7 @@ describe('ExplorerService', () => {
     const before = economy.snapshot.gold;
 
     expect(explorers.dispatch('umbral', 'delve')).toBe(true);
-    expect(before - economy.snapshot.gold).toBe(300); // economy v3 Delve fee
+    expect(before - economy.snapshot.gold).toBe(missionById('delve')!.cost!); // the Delve fee (economy-curve EXPEDITION_CURVE)
   });
 
   it('does not charge for a dispatch the roster refuses', () => {

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { EconomyService } from '../economy/economy.service';
+import { huntGold } from '../economy/economy-curve';
 import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
 import { GameStateGateway } from '../save/game-state.gateway';
@@ -140,8 +141,8 @@ describe('CollectionService', () => {
 
       expect(paid).toContain('collector-apprentice');
       expect(storedLedger().rewards).toContain('collector-apprentice');
-      // Economy v3: max(10,000 × ρ, ten minutes of income).
-      expect(economy.snapshot.gold).toBeGreaterThanOrEqual(goldBefore + 600);
+      // Ten minutes of the Keeper's hunt, at least what they pay a level-1 Keeper (collection.service).
+      expect(economy.snapshot.gold).toBeGreaterThanOrEqual(goldBefore + huntGold(1, 600));
       expect(economy.ownsCosmetic('title-prefix')).toBe(true);
       expect(economy.equippedIn('prefix')).toBe('apprentice-collector');
     });

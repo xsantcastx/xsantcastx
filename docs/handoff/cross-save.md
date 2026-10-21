@@ -81,3 +81,16 @@ as device-local in the model spec.
   `eclipse-play-world-v1` pinned device-local.
 - `e2e/play-cloud-resume.spec.ts`: a real build resumes a remembered binding on `/play` load; a signed-out load makes no
   auth requests.
+
+## Where the character stands (2026-10-21)
+Position used to be device-only (`eclipse-play-world-v1`). It now has a synced, per-character twin,
+`eclipse-whereabouts` → `users/{uid}/progress/whereabouts` (character #1) or
+`users/{uid}/characters/{id}/progress/whereabouts` (#2…#5), owned by `shared/save/whereabouts.service.ts`.
+- The play view still writes the device blob every 2 s (now stamped `tdAt`) and offers the same place to the service.
+- `WhereaboutsThrottle` writes the synced key on the page's first place, on an area change (≥ 5 s apart), at most once
+  a minute while walking, never while standing; the place it held back goes up on `pagehide` / tab hidden through the
+  gateway's owner flush (`LocalSaveRegistry`). With the gateway's 4 s / 20 s batching that is ≤ ~1 document write a
+  minute of play.
+- Merge: the newest `at` wins, whole (`mergeWhereabouts`). Wake place: the newer of the device blob and the synced one
+  (`pickWakePlace`); the lobby's area line reads the same. A place adopted mid-session never teleports the Keeper.
+- Specs: `whereabouts.model.spec.ts` (throttle, merge, wake), `whereabouts.service.spec.ts` (write rate, flush).

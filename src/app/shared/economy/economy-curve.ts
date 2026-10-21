@@ -71,6 +71,70 @@ export const IDLE_INCOME = false;
 export const GOLD_ERA = 1;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Gold from the hunt (owner, 2026-10-21: "monsters drop more gold like in d2")
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every creature drops a pile of Gold on the ground where it falls (td-mobs kill → the Keeper walks over it, or a
+ * pet fetches it). Diablo II's shape: the pile follows the monster's level, a champion's and a boss's pile is several
+ * times a common one's, and every pile rolls ± `spread` around its mean.
+ *
+ *   mean(L, rank) = (flat + perLevel × L × (1 + L / growth)) × rank multiplier
+ *   roll          = mean × uniform(1 − spread, 1 + spread), whole Gold, at least 1
+ *
+ * Normal creatures: L1 ≈ 6, L10 ≈ 32, L20 ≈ 64, L40 ≈ 144, L100 ≈ 504, L1000 ≈ 27.5k. The quadratic tail keeps a
+ * high-level hunt paying for high-level prices without a second currency.
+ */
+export const HUNT_GOLD = {
+  flat: 4,
+  perLevel: 2.5,
+  growth: 100,
+  spread: 0.4,
+  rank: { normal: 1, champion: 4, unique: 6, boss: 15 },
+  /** A steady, level-appropriate hunt: the kills an hour the leveling sim also assumes (economy-sim KILLS_PER_HOUR). */
+  killsPerHour: 240,
+} as const;
+
+export type HuntRank = keyof typeof HUNT_GOLD.rank;
+
+/** The mean Gold pile of a creature of `level` and `rank` (unrounded). */
+export function huntGoldMean(level: number, rank: HuntRank | string = 'normal'): number {
+  const L = Number.isFinite(level) ? Math.max(1, level) : 1;
+  const mult = (HUNT_GOLD.rank as Record<string, number>)[rank] ?? 1;
+  return (HUNT_GOLD.flat + HUNT_GOLD.perLevel * L * (1 + L / HUNT_GOLD.growth)) * mult;
+}
+
+/** The smallest and the biggest pile a creature can drop. */
+export function huntGoldRange(level: number, rank: HuntRank | string = 'normal'): [number, number] {
+  const mean = huntGoldMean(level, rank);
+  return [Math.max(1, Math.round(mean * (1 - HUNT_GOLD.spread))), Math.max(1, Math.round(mean * (1 + HUNT_GOLD.spread)))];
+}
+
+/** One pile: `rng` is a uniform [0, 1) source (Math.random in play, a seeded one in specs). */
+export function rollHuntGold(level: number, rank: HuntRank | string = 'normal', rng: () => number = Math.random): number {
+  const mean = huntGoldMean(level, rank);
+  const u = Math.min(1, Math.max(0, rng()));
+  return Math.max(1, Math.round(mean * (1 - HUNT_GOLD.spread + 2 * HUNT_GOLD.spread * u)));
+}
+
+/** What a steady hunt of normal creatures of `level` pays in `seconds` (the yardstick every fixed reward is priced in). */
+export function huntGold(level: number, seconds: number): number {
+  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  return Math.round(huntGoldMean(level) * HUNT_GOLD.killsPerHour * s / 3600);
+}
+
+/**
+ * The hunt's rate: Gold a second of a steady hunt of normal creatures of `level` pays (unrounded). With the forge's
+ * income off (IDLE_INCOME), this is the "income" every reward written as max(floor, N seconds of income) and every
+ * price written as N seconds of income is read in: bounties, the high roads, the Lost Cabinets, the Eclipse Ledger,
+ * the Fishing Lodge, expeditions, the collection, challenges, the bet cap and the respec. Where a Keeper is involved
+ * the level is the Keeper's (EconomyService.setHuntLevel); `economy-sim --check` grades every system against it.
+ */
+export function huntRate(level: number): number {
+  return huntGoldMean(level) * HUNT_GOLD.killsPerHour / 3600;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // The Gold ladders (ids kept from v2, so saves keep their levels)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -177,14 +241,20 @@ export interface ExpeditionCurve {
   fee: number;
 }
 
-/** k < 1 everywhere: a mission tops up the forge and never replaces it. */
+/**
+ * Re-based on the hunt (IDLE_INCOME off): an explorer is a small top-up beside the Keeper's own hunt, never a second
+ * income. The income term is k × seconds × the hunt's rate at the Keeper's level at launch (huntRate), with k a few
+ * percent; the floor band pays at most 600 Gold an hour of mission (≈ a third of a level-1 hunt hour), the same rate
+ * on every rung so a long run is never worse per hour than a short one (explorer.model.spec); fees climb with the rung
+ * and always sit under the band's top. `economy-sim --check` grades it against huntGold at levels 10/40/100.
+ */
 export const EXPEDITION_CURVE: readonly ExpeditionCurve[] = [
-  { id: 'scout', floor: 90, floorMax: 180, incomeShare: 0.5, fee: 0 },
-  { id: 'delve', floor: 600, floorMax: 1_500, incomeShare: 0.4, fee: 300 },
-  { id: 'expedition', floor: 4_000, floorMax: 12_000, incomeShare: 0.33, fee: 2_500 },
-  { id: 'deep-dive', floor: 30_000, floorMax: 84_000, incomeShare: 0.25, fee: 25_000 },
-  { id: 'grand', floor: 300_000, floorMax: 900_000, incomeShare: 0.15, fee: 400_000 },
-  { id: 'abyss', floor: 2_000_000, floorMax: 6_000_000, incomeShare: 0.12, fee: 5_000_000 },
+  { id: 'scout', floor: 8, floorMax: 20, incomeShare: 0.25, fee: 0 },
+  { id: 'delve', floor: 40, floorMax: 100, incomeShare: 0.2, fee: 20 },
+  { id: 'expedition', floor: 240, floorMax: 600, incomeShare: 0.15, fee: 120 },
+  { id: 'deep-dive', floor: 960, floorMax: 2_400, incomeShare: 0.12, fee: 500 },
+  { id: 'grand', floor: 5_760, floorMax: 14_400, incomeShare: 0.08, fee: 3_000 },
+  { id: 'abyss', floor: 17_280, floorMax: 43_200, incomeShare: 0.06, fee: 10_000 },
 ];
 
 /** The income term of an expedition: k × seconds × Gold/s at launch. */
@@ -311,14 +381,30 @@ export const FORGE_POWER_PERCENT_PER_POINT = 0.5;
  */
 export const VENDOR_BUYBACK_FRACTION = 0.08;
 
-/** Craft fee floors per rarity (spec §3); each tier's old spread is kept above its floor. */
-export const CRAFT_FEE_FLOOR: Readonly<Record<string, number>> = {
-  uncommon: 1_000,
-  rare: 10_000,
-  epic: 150_000,
-  legendary: 2_500_000,
-  mythic: 60_000_000,
+/**
+ * Craft fee floors per rarity: the cheapest recipe of each tier costs N minutes of a hunt at the level a Keeper first
+ * crafts that tier (re-based on the hunt when the forge's income went, IDLE_INCOME). Each tier's authored spread is
+ * kept above its floor (crafting.model craftFeeV3), and every floor stays ≥ ρ × the tier's cheapest v2 fee, so a craft
+ * never costs less than the item it makes sells for. `economy-sim --check` holds each floor inside its hunt band.
+ */
+export const CRAFT_FEE_HUNT: Readonly<Record<string, readonly [level: number, seconds: number]>> = {
+  uncommon: [5, 5 * 60],
+  rare: [15, 15 * 60],
+  epic: [25, 45 * 60],
+  legendary: [40, 2 * 3600],
+  mythic: [60, 4 * 3600],
 };
+
+/** Two significant figures (3,409 → 3,400), never below 1. */
+function twoSig(n: number): number {
+  if (!(n > 0)) return 0;
+  const magnitude = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1));
+  return Math.max(1, Math.round(n / magnitude) * magnitude);
+}
+
+export const CRAFT_FEE_FLOOR: Readonly<Record<string, number>> = Object.fromEntries(
+  Object.entries(CRAFT_FEE_HUNT).map(([rarity, [level, seconds]]) => [rarity, twoSig(huntGold(level, seconds))]),
+);
 
 /**
  * The Homestead's own Anvil and Enchanting Circle: Gold to reach tiers II, III
@@ -365,7 +451,10 @@ export const STORAGE_CURVE = {
  * Two minutes of income for everyone; and a Keeper with a deep purse may stake
  * up to 1% of it on one play (owner 2026-10-15: "higher bets"), but never more
  * than an hour of their income, so a hoard built over days cannot be staked
- * against a forge that earns little: the cap follows the curve, not the pile.
+ * against a hunt that earns little: the cap follows the curve, not the pile.
+ * "Income" is the hunt's rate at the Keeper's level (huntRate; the forge pays
+ * nothing by the second), so the cap climbs as the Keeper does: 50 at level 1,
+ * 200 at 10, 1,000 at 40, 2,000 at 100, before the purse.
  * A new Keeper (no income yet) can bet 10, 20 or 50 — the first 10 Gold is a
  * few strikes in. A bet above `incomeSeconds` of income is a high stake: the
  * games ask for one more tap before taking it (the Max chip's confirm).
@@ -431,56 +520,3 @@ export const MIGRATION_INCOME_FLOOR = 0.6;
 /** Bounds on the income-seconds factor f. */
 export const MIGRATION_FACTOR_MIN = ITEM_ECONOMY_SCALE;
 export const MIGRATION_FACTOR_MAX = 1_000;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Gold from the hunt (owner, 2026-10-21: "monsters drop more gold like in d2")
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Every creature drops a pile of Gold on the ground where it falls (td-mobs kill → the Keeper walks over it, or a
- * pet fetches it). Diablo II's shape: the pile follows the monster's level, a champion's and a boss's pile is several
- * times a common one's, and every pile rolls ± `spread` around its mean.
- *
- *   mean(L, rank) = (flat + perLevel × L × (1 + L / growth)) × rank multiplier
- *   roll          = mean × uniform(1 − spread, 1 + spread), whole Gold, at least 1
- *
- * Normal creatures: L1 ≈ 6, L10 ≈ 32, L20 ≈ 64, L40 ≈ 144, L100 ≈ 504, L1000 ≈ 27.5k. The quadratic tail keeps a
- * high-level hunt paying for high-level prices without a second currency.
- */
-export const HUNT_GOLD = {
-  flat: 4,
-  perLevel: 2.5,
-  growth: 100,
-  spread: 0.4,
-  rank: { normal: 1, champion: 4, unique: 6, boss: 15 },
-  /** A steady, level-appropriate hunt: the kills an hour the leveling sim also assumes (economy-sim KILLS_PER_HOUR). */
-  killsPerHour: 240,
-} as const;
-
-export type HuntRank = keyof typeof HUNT_GOLD.rank;
-
-/** The mean Gold pile of a creature of `level` and `rank` (unrounded). */
-export function huntGoldMean(level: number, rank: HuntRank | string = 'normal'): number {
-  const L = Number.isFinite(level) ? Math.max(1, level) : 1;
-  const mult = (HUNT_GOLD.rank as Record<string, number>)[rank] ?? 1;
-  return (HUNT_GOLD.flat + HUNT_GOLD.perLevel * L * (1 + L / HUNT_GOLD.growth)) * mult;
-}
-
-/** The smallest and the biggest pile a creature can drop. */
-export function huntGoldRange(level: number, rank: HuntRank | string = 'normal'): [number, number] {
-  const mean = huntGoldMean(level, rank);
-  return [Math.max(1, Math.round(mean * (1 - HUNT_GOLD.spread))), Math.max(1, Math.round(mean * (1 + HUNT_GOLD.spread)))];
-}
-
-/** One pile: `rng` is a uniform [0, 1) source (Math.random in play, a seeded one in specs). */
-export function rollHuntGold(level: number, rank: HuntRank | string = 'normal', rng: () => number = Math.random): number {
-  const mean = huntGoldMean(level, rank);
-  const u = Math.min(1, Math.max(0, rng()));
-  return Math.max(1, Math.round(mean * (1 - HUNT_GOLD.spread + 2 * HUNT_GOLD.spread * u)));
-}
-
-/** What a steady hunt of normal creatures of `level` pays in `seconds` (the yardstick every fixed reward is priced in). */
-export function huntGold(level: number, seconds: number): number {
-  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
-  return Math.round(huntGoldMean(level) * HUNT_GOLD.killsPerHour * s / 3600);
-}

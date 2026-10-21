@@ -40,7 +40,7 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
 import { incomeRewardBase } from '../economy/economy.model';
-import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
+import { REWARD_SECONDS, huntGold, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { InventoryService } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
@@ -293,9 +293,11 @@ export class CollectionService {
       this.publish();
 
       for (const reward of due) {
-        // Economy v3: max(v2 Gold × ρ, 10/30/60/120 min of income).
+        // 10/30/60/120 min of the Keeper's hunt (economy-model rewardRate), with a floor of what those minutes pay a
+        // level-1 Keeper (the v2 Gold × ρ floor beat the hunt it was priced in until level 20; economy-sim --reprice).
+        const seconds = steppedRewardSeconds(reward.gold, REWARD_SECONDS.collection);
         this.economy.earnGold(
-          incomeRewardBase(itemScaled(reward.gold), steppedRewardSeconds(reward.gold, REWARD_SECONDS.collection), this.economy.snapshot),
+          incomeRewardBase(Math.min(itemScaled(reward.gold), huntGold(1, seconds)), seconds, this.economy.snapshot),
           'collection',
         );
         this.economy.grantCosmetic('title-prefix', reward.titleVariant);

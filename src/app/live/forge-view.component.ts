@@ -56,6 +56,7 @@ import { Subscription } from 'rxjs';
 
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { GoldenSparkService, type GoldenSparkKind } from '../shared/economy/golden-spark.service';
+import { rewardRate } from '../shared/economy/economy.model';
 import {
   ARTIFACTS,
   AUTO_CLICKERS,
@@ -1074,7 +1075,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     const mission = missionById(this.pickedMission);
     return sitesInRealm(this.pickedRealm).map(site => {
       const block = this.explorers.blockedSite(site.id, this.armedExplorerId);
-      const band = mission ? realmGoldBand(mission, this.pickedRealm, this.snap.perSecond) : { min: 0, max: 0 };
+      const band = mission ? realmGoldBand(mission, this.pickedRealm, rewardRate(this.snap)) : { min: 0, max: 0 };
       const cost = this.explorers.dispatchCost(this.pickedMission, site.id);
       return {
         site,
@@ -1198,7 +1199,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
    * the destination mattered, because it did not.
    */
   goldBand(mission: MissionDefinition): string {
-    const band = realmGoldBand(mission, this.pickedRealm, this.snap.perSecond);
+    const band = realmGoldBand(mission, this.pickedRealm, rewardRate(this.snap));
     const mult = siteProfile(this.pickedSite).goldMultiplier;
     return this.t('sanctum.band', { min: formatCompact(Math.round(band.min * mult)), max: formatCompact(Math.round(band.max * mult)) });
   }

@@ -138,15 +138,16 @@ function roundStat(key: ItemStatKey, value: number): number {
  * the item — never the Gold it melts down into.
  */
 export const EQUIPMENT_SCRAP: Readonly<Record<ItemRarity, number>> = {
-  // Economy v3: the v2 ladder × ρ (0.06), the factor every box, rune and craft
-  // fee moved by, so every box stays negative EV in scrap.
-  common: 36,
-  uncommon: 150,
-  rare: 720,
-  epic: 3_600,
-  legendary: 18_000,
-  mythic: 90_000,
-  singular: 480_000,
+  // Re-based on the hunt (the forge's income is off, economy-curve IDLE_INCOME): a fifth of the v2 ladder × ρ, so
+  // selling every drop of an hour's hunt stays under half of that hour's Gold piles on every tier (economy-sim
+  // --loot) — gear is for wearing, the piles are the Gold. Lower than before, so every box stays negative EV in scrap.
+  common: 7,
+  uncommon: 30,
+  rare: 144,
+  epic: 720,
+  legendary: 3_600,
+  mythic: 15_000,
+  singular: 80_000,
 };
 
 /** Sticker price for one minted instance, before the roll grade scales it. */

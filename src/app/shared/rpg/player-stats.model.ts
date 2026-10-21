@@ -133,15 +133,17 @@ export const STAT_IDS: StatId[] = STAT_DEFINITIONS.map(s => s.id);
 export const POINTS_PER_LEVEL = 3;
 
 /**
- * The floor of a respec's price. Economy v3: a respec costs max(this, ten
- * minutes of income) — `respecCostFor` — so it stays a small decision at every
- * stage, and a build is still cheap to regret.
+ * The floor of a respec's price. A respec costs max(this, ten minutes of the
+ * Keeper's hunt) — `respecCostFor`, fed the hunt's rate at the Keeper's level
+ * (economy-curve huntRate; the forge pays nothing by the second) — so it stays
+ * a small decision at every level and a build is still cheap to regret:
+ * 250 Gold at level 1, ~1.3k at 10, ~5.8k at 40, ~20k at 100.
  */
-export const RESPEC_COST = 20_000;
-/** Seconds of income a respec costs once that exceeds the floor. */
+export const RESPEC_COST = 250;
+/** Seconds of the Keeper's hunt a respec costs once that exceeds the floor. */
 export const RESPEC_INCOME_SECONDS = 600;
 
-/** What a respec costs right now, given the live Gold/sec. */
+/** What a respec costs right now, given the hunt's Gold/sec at the Keeper's level. */
 export function respecCostFor(goldPerSecond: number): number {
   const gps = Number.isFinite(goldPerSecond) ? Math.max(0, goldPerSecond) : 0;
   return Math.max(RESPEC_COST, Math.ceil(gps * RESPEC_INCOME_SECONDS));

@@ -18,6 +18,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { EconomyService } from './economy.service';
 import { GOLDEN_SPARK, goldenSparkWindfall } from './economy-curve';
+import { rewardRate } from './economy.model';
 
 export type GoldenSparkKind = 'windfall' | 'frenzy';
 
@@ -86,7 +87,7 @@ export class GoldenSparkService implements OnDestroy {
   /** What a Windfall caught now would pay. For the offer's copy. */
   previewWindfall(): number {
     const snap = this.economy.snapshot;
-    return goldenSparkWindfall(snap.perSecond, snap.gold);
+    return goldenSparkWindfall(rewardRate(snap), snap.gold);
   }
 
   /** Catch the spark on offer. Null when there is none (or it just expired). */

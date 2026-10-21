@@ -2,7 +2,7 @@
  * character-summary.ts — one character's row on the character list, read from its save on this device.
  *
  * Level is the Keeper's Hunting level (the number on the HUD portrait), the place is where the top-down Keeper last
- * stood (PLAY_KEY's `td`, written by the play view), and the look is the painting fields of the Glass's choice.
+ * stood (the newer of PLAY_KEY's `td`, written by the play view, and the synced whereabouts), and the look is the painting fields of the Glass's choice.
  * Reads go through GameStateGateway.readFor, which never writes, so summarising a character the page is not playing
  * is safe.
  */
@@ -14,6 +14,7 @@ import { skillXp } from '../../shared/skills/skill.model';
 import { CharacterRow, portraitOf } from '../../shared/characters/character-roster.model';
 import { CONTINENTS, LEVELS } from '../td/td-engine';
 import { PROGRESS_KEY } from '../../shared/gamification/gamification.model';
+import { WHEREABOUTS_KEY, pickWakePlace } from '../../shared/save/whereabouts.model';
 
 /** The play view's device-local world blob (side-scroller.component.ts PLAY_KEY): `td` is where the Keeper stands. */
 export const PLAY_WORLD_KEY = 'eclipse-play-world-v1';
@@ -51,7 +52,8 @@ export function summarise(store: SaveReader, row: CharacterRow, now = Date.now()
   const rawLook = store.readFor(row.id, KEEPER_LOOK_KEY);
   const look = coerceLook(rawLook);
   const play = store.readFor(row.id, PLAY_WORLD_KEY);
-  const area = areaName(play && typeof play === 'object' ? (play as Record<string, unknown>)['td'] : null);
+  // The newer of this device's last place and the character's synced one (whereabouts.model.ts).
+  const area = areaName(pickWakePlace(play && typeof play === 'object' ? play as { td?: unknown; tdAt?: unknown } : null, store.readFor(row.id, WHEREABOUTS_KEY)));
   const next: CharacterRow = {
     ...row,
     name: look.made ? look.name : row.name,
