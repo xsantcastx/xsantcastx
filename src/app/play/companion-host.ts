@@ -156,10 +156,22 @@ export class CompanionHost {
     this.d.engine()?.glimMood(r.mood);
     if (r.key && this.d.voice.react(r.key, now, GLIM_REACT_MS, { name: this.petName, ...(vars ?? {}) })) this.d.sfx('glim');
   }
+  /** A danger that cannot wait (the Seam Eater rising, play/td/td-seam.ts): the line replaces whatever Glim was saying. */
+  private warn(m: GlimMoment): void {
+    if (!this.d.voice.met) return;
+    const now = Date.now();
+    const r = react(m, this.memory, { now, quiet: this.d.glim.quiet, busy: this.d.busy() || this.chatOpen, roll: Math.random() });
+    this.memory = r.memory;
+    this.d.engine()?.glimMood(r.mood);
+    if (!r.key) return;
+    this.d.voice.dismiss();
+    if (this.d.voice.react(r.key, now, GLIM_REACT_MS * 1.5, { name: this.petName })) this.d.sfx('glim');
+  }
   onGlimCue(cue: GlimCue): void {
     if (cue.kind === 'dodge') this.moment('dodge');
     else if (cue.kind === 'missed') this.moment('missed');
     else if (cue.kind === 'spotted') this.moment('spotted');
+    else if (cue.kind === 'seam') this.warn('seam');
     else this.moment(cue.rarity === 'epic' ? 'rare' : 'legendary');
   }
   /** A level up anywhere: the high five, and a word. */

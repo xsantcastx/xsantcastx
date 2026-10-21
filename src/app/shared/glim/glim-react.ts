@@ -24,7 +24,7 @@ import type { BondStage } from './glim-bond';
 
 export type GlimMoment =
   | 'dodge' | 'rare' | 'legendary' | 'lowHp' | 'place' | 'night' | 'dawn'
-  | 'petTrick' | 'petHit' | 'petFind' | 'petTired' | 'petLevel' | 'levelUp' | 'missed' | 'spotted';
+  | 'petTrick' | 'petHit' | 'petFind' | 'petTired' | 'petLevel' | 'levelUp' | 'missed' | 'spotted' | 'seam';
 
 export interface ReactionDef {
   /** How many variants (keys glim.react.<moment>.<1..n>). */
@@ -53,6 +53,8 @@ export const GLIM_REACTIONS: Readonly<Record<GlimMoment, ReactionDef>> = {
   missed: { lines: 3, mood: 'curious', rest: 60 },
   // The top-down world: Glim hops toward something worth finding (an ore seam, a way not yet taken).
   spotted: { lines: 3, mood: 'curious', rest: 90 },
+  // The Seam Eater rising under an eclipse (play/td/td-seam.ts): a warning that matters now.
+  seam: { lines: 2, mood: 'worry', rest: 120, urgent: true },
 };
 export const GLIM_MOMENTS = Object.keys(GLIM_REACTIONS) as GlimMoment[];
 
