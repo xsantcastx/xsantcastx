@@ -134,13 +134,15 @@ test('shared creatures: one host, the same monsters on every screen, claims, one
     }
 
     // ── A shared boss: +60% life for each other member present (three here: ×2.2) ──
+    // The Magma Tyrant's fight life: authored 1,400 × td-life's boss scale (×22, docs/design/loot-and-combat.md §13).
+    const TYRANT = 1400 * 22;
     const boss = await lay('magma-tyrant', 90, 40);
-    await expect.poll(async () => (await mob(b, boss!))?.max, { timeout: 10000 }).toBe(Math.round(1400 * 2.2));
-    expect((await mob(a, boss!))?.max).toBe(Math.round(1400 * 2.2));
-    expect((await mob(c, boss!))?.max).toBe(Math.round(1400 * 2.2));
+    await expect.poll(async () => (await mob(b, boss!))?.max, { timeout: 10000 }).toBe(Math.round(TYRANT * 2.2));
+    expect((await mob(a, boss!))?.max).toBe(Math.round(TYRANT * 2.2));
+    expect((await mob(c, boss!))?.max).toBe(Math.round(TYRANT * 2.2));
     await b.evaluate(id => (window as unknown as Hooks).__tdCoop.hit(id, 300), boss!);
-    await expect.poll(async () => (await mob(a, boss!))?.hp ?? 0, { timeout: 10000 }).toBeLessThanOrEqual(Math.round(1400 * 2.2) - 300);
-    await expect.poll(async () => (await mob(c, boss!))?.hp ?? 0, { timeout: 10000 }).toBeLessThanOrEqual(Math.round(1400 * 2.2) - 300);
+    await expect.poll(async () => (await mob(a, boss!))?.hp ?? 0, { timeout: 10000 }).toBeLessThanOrEqual(Math.round(TYRANT * 2.2) - 300);
+    await expect.poll(async () => (await mob(c, boss!))?.hp ?? 0, { timeout: 10000 }).toBeLessThanOrEqual(Math.round(TYRANT * 2.2) - 300);
     await calm(a); await calm(c);
     await sideBySide(browser, info, a, c, 'docs/handoff/cozy-ui/coop-shared-boss.jpg', ['Aster (host): the Magma Tyrant at ×2.2 life for three', 'Cora (member): the same boss, wounded by Bryn\'s claim']);
 
@@ -158,7 +160,7 @@ test('shared creatures: one host, the same monsters on every screen, claims, one
       else expect(Math.abs(now!.hp / now!.max - was.hp / was.max)).toBeLessThan(0.01);
     }
     // Two of the party present now: the boss's life is rescaled to ×1.6, its wound kept in proportion.
-    await expect.poll(async () => (await mob(c, boss!))?.max, { timeout: 15000 }).toBe(Math.round(1400 * 1.6));
+    await expect.poll(async () => (await mob(c, boss!))?.max, { timeout: 15000 }).toBe(Math.round(TYRANT * 1.6));
     await expect.poll(async () => (await view(c)).mobs.map(m => m.id).sort().join(), { timeout: 10000 }).toContain(w2!);
     await expect.poll(async () => (await view(c)).host, { timeout: 10000 }).toBe((await view(b)).host);
     await calm(b); await calm(c);
