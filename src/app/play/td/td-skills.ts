@@ -8,6 +8,7 @@
  */
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import type { ItemStats } from '../../shared/rpg/item.model';
+import { addSetBonuses } from '../../shared/rpg/set-items';
 import { LEVEL_GROWTH, levelSpeedBonus, levelSteps } from '../../shared/skills/keeper-level';
 import { ELEMENTS, MAX_KEEPER_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { ASHGUARD_BOOK, ASHGUARD_SKILLS, ASHGUARD_STARTERS, ASH_TREES, type AshSkillId } from './td-ashguard-skills';
@@ -380,8 +381,9 @@ export function incomingDamage(raw: number, type: DamageType, defense: number, l
  * The worn gear's combat affixes, read key by key off the inventory's equipped totals — this is the fight's read
  * of each stat (scripts/check-meaning.js counts `equippedTotals.<key>` as a live stat).
  */
-export function wornCombat(inventory: { readonly equippedTotals: Required<ItemStats> }): Partial<ItemStats> {
-  return {
+export function wornCombat(inventory: { readonly equippedTotals: Required<ItemStats> }, worn: readonly string[] = []): Partial<ItemStats> {
+  // `worn`: the definition ids worn, so the item sets' tiers (rpg/set-items.ts) ride on the totals into fightStats.
+  return addSetBonuses({
     life: inventory.equippedTotals.life,
     mana: inventory.equippedTotals.mana,
     defense: inventory.equippedTotals.defense,
@@ -396,7 +398,7 @@ export function wornCombat(inventory: { readonly equippedTotals: Required<ItemSt
     lightningResist: inventory.equippedTotals.lightningResist,
     arcaneResist: inventory.equippedTotals.arcaneResist,
     allResist: inventory.equippedTotals.allResist,
-  };
+  }, worn);
 }
 
 /** The level and attributes (levelStats) with the worn gear totals on top. */

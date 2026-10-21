@@ -565,6 +565,10 @@
                   <!-- A boss's own unique (boss-uniques.ts): named, gold, and the odds of each kill. -->
                   <p class="td-best__relic" [attr.data-relic]="r.id"><small>{{ t('play.best.relic') }}</small> <b>{{ r.name }}</b> <span>{{ t('play.best.relicOdds', { n: r.oneIn }) }}</span></p>
                 }
+                @if (e.set; as st) {
+                  <!-- An item set's creature (set-items.ts): the set whose pieces its kills may drop. -->
+                  <p class="td-best__relic" [attr.data-set]="st.id"><small>{{ t('play.best.set') }}</small> <b>{{ t('play.set.name.' + st.id) }}</b></p>
+                }
                 <p class="td-best__lore">{{ e.lore }}</p>
               } @else {
                 <p class="td-best__lore td-best__lore--hidden">{{ t('play.best.unknown') }}</p>
@@ -996,6 +1000,19 @@
             @if (it.specials.length) {
               <div class="d2tip__special">
                 @for (sp of it.specials; track sp) { <p>{{ sp }}</p> }
+              </div>
+            }
+            @if (it.set; as st) {
+              <!-- An item set (rpg/set-items.ts): its pieces (greyed when not worn), its tiers (lit when on), where it is found. -->
+              <div class="d2tip__set" data-tip-set>
+                <b class="d2tip__set-name">{{ st.name }} <small>({{ st.count }}/{{ st.total }})</small></b>
+                <ul class="d2tip__set-pieces">
+                  @for (pc of st.pieces; track pc.id) { <li [class.on]="pc.worn" [attr.data-piece]="pc.id">{{ pc.name }}</li> }
+                </ul>
+                <ul class="d2tip__set-tiers">
+                  @for (ti of st.tiers; track ti.n) { <li [class.on]="ti.on" [attr.data-tier]="ti.n"><i>{{ ti.word }}</i> {{ ti.text }}</li> }
+                </ul>
+                @for (f of st.found; track f) { <p class="d2tip__set-found">{{ f }}</p> }
               </div>
             }
             @if (it.sockets.length) {
