@@ -20,7 +20,7 @@ import type { StationDef } from '../../world/world.model';
 import type { LegendEntry, TdMapDef } from '../td-level';
 
 /** The way in, in the Drowned Ruins (td-world stamps the crypt door there). */
-export const CRYPTS_IN: StationDef = { id: 'drowned-crypts', x: 0, label: 'THE DROWNED CRYPTS', kind: 'passage', blurb: 'The abbey\'s crypts, under the fen. Dangerous below level 26.' };
+export const CRYPTS_IN: StationDef = { id: 'drowned-crypts', x: 0, label: 'THE DROWNED CRYPTS', kind: 'passage', blurb: 'The abbey\'s crypts, under the fen. Dangerous below level 41.' };
 const CRYPTS_OUT: StationDef = { id: 'crypts-out', x: 0, label: 'CRYPT DOOR', kind: 'passage', blurb: 'Back up to the Drowned Ruins.' };
 const D1_DOWN: StationDef = { id: 'crypts1-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Sunken Cloister (floor 2).' };
 const D2_UP: StationDef = { id: 'crypts2-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Flooded Nave (floor 1).' };

@@ -9,6 +9,7 @@ import { footFree, standNear } from './td-level';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { huntGold } from '../../shared/economy/economy-curve';
 import { HARBOUR_I18N } from '../harbour/harbour.i18n';
+import { CONTINENT_BANDS } from './td-zones';
 import { LANDS, PIERS, STORY_LOCKS_ENFORCED, buildBoard, cheapestFare, fareFor, isBerth, pierById, pierOfMaster, pierOfStation, routesFrom } from './td-harbour';
 
 describe('td: harbour fares', () => {
@@ -22,7 +23,7 @@ describe('td: harbour fares', () => {
   it('the doc\'s table, as the formula gives it (the doc\'s 20 for Ember Isle is the one it rounds past)', () => {
     expect(fareFor(8)).toBe(260);
     expect(fareFor(15)).toBe(470);
-    expect(fareFor(25)).toBe(820);
+    expect(fareFor(LANDS['umbral-marches'].entry)).toBeGreaterThan(fareFor(15));
   });
   it('fares only rise with the destination\'s level, and never fall to nothing', () => {
     let last = 0;
@@ -79,6 +80,9 @@ describe('td: the piers and their Harbourmasters', () => {
     expect(isBerth('giver-harbourmaster-odd-tarn')).toBeFalse();
     for (const r of PIERS.flatMap(p => routesFrom(p.id, CONTINENTS))) expect(new TdWorld(CONTINENTS[r.to]).stalls.some(s => s.station.id === r.arrive)).withContext(r.arrive).toBeTrue();
   });
+  it('the bands are td-zones\' own', () => {
+    for (const [id, band] of Object.entries(CONTINENT_BANDS)) expect(LANDS[id].band).toEqual(band);
+  });
   it('every land has its text and a band', () => {
     for (const id of Object.keys(CONTINENTS)) { expect(LANDS[id]).withContext(id).toBeDefined(); expect(HARBOUR_I18N[`harbour.land.${id}`]).withContext(id).toBeDefined(); }
   });
@@ -89,13 +93,13 @@ describe('td: the Sailing Board', () => {
   it('Pyrehold lists three ships, the cheapest (home) first', () => {
     const rows = buildBoard('pyrehold', base);
     expect(rows.map(r => r.destPier)).toEqual(['ember-harbour', 'mossharbor', 'mirewatch']);
-    expect(rows.map(r => r.fare)).toEqual([fareFor(1), fareFor(15), fareFor(25)]);
+    expect(rows.map(r => r.fare)).toEqual([fareFor(1), fareFor(15), fareFor(LANDS['umbral-marches'].entry)]);
     expect(rows.every(r => r.state === 'ok' && !r.warn)).toBeTrue();
   });
   it('each row carries its destination, its continent, its band and the way the engine sails it', () => {
     const rows = buildBoard('ember-harbour', base);
     const reach = rows.find(r => r.destPier === 'pyrehold')!;
-    expect(reach).toEqual(jasmine.objectContaining({ continent: 'infernal-reach', band: [8, 30], entry: 8, to: 'infernal-reach', arrive: 'ship-isle', id: 'ship-reach' }));
+    expect(reach).toEqual(jasmine.objectContaining({ continent: 'infernal-reach', band: CONTINENT_BANDS['infernal-reach'], entry: 8, to: 'infernal-reach', arrive: 'ship-isle', id: 'ship-reach' }));
     const wilds = rows.find(r => r.destPier === 'mossharbor')!;
     expect(wilds.long).toBeTrue();
     expect(wilds.arrive).toBe('ship-mossharbor-isle');

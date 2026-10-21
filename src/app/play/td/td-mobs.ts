@@ -35,6 +35,7 @@ import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow,
 import { THORN_SKILLS } from './td-thorn-skills';
 import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
+import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
 import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 
 export interface MobDef {
@@ -1505,7 +1506,7 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 30, h: 22,
   },
   'cinder-imp': {
-    id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2, hits: 'fire',
+    id: 'cinder-imp', name: 'Cinder Imp', hp: 65, speed: 38, dmg: [4, 7], rate: 1.2, sight: 120, level: 2, hits: 'fire',
     lore: 'A spark that grew a grudge. It throws small tempers and smaller fires, and giggles when the soot finds your collar.',
     drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 24, h: 24,
   },
@@ -1703,8 +1704,8 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     ranged: { range: 140, keep: 0, rate: 3.2, dmg: [24, 36], speed: 120, kind: 'shard', spread: 5 },
     summon: { type: 'drowned-acolyte', count: 2, at: .5 },
   },
-  // The eclipse's world boss (td-seam.ts): it rises at a continent's rift under an eclipse, scaled to the Keeper's level
-  // inside 20–60 as it rises (seamEaterAt). This is its level-20 self, as the Bestiary shows it.
+  // The eclipse's world boss (td-seam.ts): it rises at a continent's rift under an eclipse, at that rift's fixed level
+  // (td-zones SEAM_LEVELS, seamEaterAt). This is its level-20 self, Ember Isle's, as the Bestiary shows it.
   'seam-eater-risen': {
     id: 'seam-eater-risen', name: 'The Seam Eater', hp: seamStats(20).hp, speed: 18, dmg: [15, 22], rate: 1.8, sight: 170, level: 20,
     lore: 'They sank it in the slag under the Seamworks and posted thanks. Under an eclipse the seam it ate opens again, and it climbs out of the tear with the dark still on it.',
@@ -1793,7 +1794,8 @@ export function mobSheet(def: MobDef): HTMLCanvasElement {
   return s;
 }
 
-export interface MobSpawn { key: string; type: string; x: number; y: number }
+/** A spawn: its own key, its kind, where it stands, and its zone's level for it (td-zones zoneLevel; unset: its kind's own). */
+export interface MobSpawn { key: string; type: string; x: number; y: number; level?: number }
 
 export interface Mob {
   key: string;
@@ -1862,6 +1864,15 @@ export interface Mob {
   bleedT?: number;
   bleedTick?: number;
   bleedDps?: number;
+  /**
+   * Shared creatures (protocol 4, td-coop.ts): its short id on the wire; who of the party fought it ('' = this
+   * Keeper; a member's room id for a claim that landed or a bite it took); a boss's life before the party's +60% each
+   * (coopBossLife) and how many it was scaled for.
+   */
+  nid?: string;
+  coopBy?: Set<string>;
+  coopBase?: number;
+  coopN?: number;
 }
 
 /**
@@ -1880,6 +1891,8 @@ export interface DeathBurst {
   x: number; y: number; t: number; r: number; dmg: number;
   /** A boss's ground warning (the Seam Eater's Rend): its whole tell (FIRE_BURST.delay when unset), its tone and type. */
   delay?: number; el?: 'ember' | 'shadow'; type?: DamageType;
+  /** The level of the creature it came from (td-zones level gap); unset: none. */
+  lv?: number;
 }
 
 /**
@@ -1894,10 +1907,10 @@ export const CHANT_SECS = 1.2;
 /** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
 export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
 /** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
-export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean }
+export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
@@ -2125,8 +2138,32 @@ export function goldDropFor(def: Pick<MobDef, 'level' | 'rank'>, rng: () => numb
   return rollHuntGold(def.level, def.rank ?? 'normal', rng);
 }
 
+/**
+ * Shared creatures (protocol 4; td-coop.ts owns the wire). On the host the mob system tells the link when a creature
+ * strikes another member and when one falls; on a member (`replica`) every blow it lands on a host's creature becomes
+ * a claim instead of damage.
+ */
+export interface CoopLink {
+  bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean): void;
+  killed(m: Mob, by: string[]): void;
+  claim(m: Mob, dmg: number, crit: boolean, color: string): void;
+}
+/** Another member of the party in the host's area, as prey (where the room last said it stands). */
+export interface CoopKeeper { id: string; x: number; y: number }
+
 export class MobSystem {
   readonly mobs: Mob[] = [];
+  // ── Shared creatures (protocol 4) ──
+  /** The co-op link (td-coop.ts): set while this Keeper hosts or shares an area; null alone. */
+  coop: CoopLink | null = null;
+  /** A member under a host: the creatures are the host's (no AI, no bites here; blows become claims). */
+  replica = false;
+  /** On the host: the party's other Keepers in this area; the creatures hunt them as they hunt this one. */
+  others: readonly CoopKeeper[] = [];
+  /** The host is in a menu (its world keeps running for the others): its creatures neither hunt nor strike it. */
+  selfAway = false;
+  /** Whose blow is landing now (applyClaim: a member's id; '' for this Keeper's own). */
+  private claimFrom = '';
   readonly drops: Drop[] = [];
   readonly floaters: Floater[] = [];
   readonly effects: Effect[] = [];
@@ -2352,6 +2389,11 @@ export class MobSystem {
    */
   elites = false;
   eliteSalt = '';
+  /**
+   * The level gap and the XP falloff (td-zones.ts LEVEL_GAP, zoneXp): off until the host turns them on (the engine and
+   * the combat sim do; a spec chooses), so a spec's creature fights exactly by its numbers against the default Keeper.
+   */
+  levelGap = false;
   private readonly fallen = new Map<string, number>();
   /** Fire Enchanted bursts on their way, the Cursed mark on the Keeper (seconds), the Cold Aura's slow on his step (0..1). */
   readonly bursts: DeathBurst[] = [];
@@ -2396,7 +2438,8 @@ export class MobSystem {
     if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) return;
     const type = MOBS[s.type];
     if (!type) return;
-    const def = hardened(type, phase);
+    // Its zone's level (td-zones.ts), never the Keeper's: a night creature takes the spawn's level too, so it stays in the band.
+    const def = hardened(s.level ? atZoneLevel(type, s.level) : type, phase);
     let pack = this.elites ? this.eliteFor(s, def) : null;
     if (this.elites && phase !== 'day' && (def.rank ?? 'normal') === 'normal' && rollTouched(seed, phase)) pack = touchPack(pack, touchedRandom(seed));
     if (pack) this.spawnPack(s.key, def, s.x, s.y, pack);
@@ -2404,7 +2447,7 @@ export class MobSystem {
   }
   /** Does this spawn come up as an elite pack (td-elites.ts)? Never in a safe square, only where its level suits. */
   private eliteFor(s: MobSpawn, def: MobDef): ElitePack | null {
-    if (!eliteEligible({ level: def.level, rank: def.rank, keeperLevel: this.keeperLevel, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
+    if (!eliteEligible({ level: def.level, rank: def.rank, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
     return rollElite(`${this.eliteSalt}|${this.host.levelId()}|${s.key}|${this.fallen.get(s.key) ?? 0}`);
   }
   /**
@@ -2447,7 +2490,9 @@ export class MobSystem {
     for (let i = this.mobs.length - 1; i >= 0; i--) {
       const m = this.mobs[i];
       // A world boss (bound to its rift) stays until it leaves or falls; the host owns it.
-      if (Math.hypot(m.x - p.x, m.y - p.y) > maxDist && m !== this.target && !m.def.bound) this.mobs.splice(i, 1);
+      // On the host, a creature near another member of the party stays too (it is theirs to fight).
+      const far = Math.hypot(m.x - p.x, m.y - p.y) > maxDist && this.others.every(o => Math.hypot(m.x - o.x, m.y - o.y) > maxDist);
+      if (far && m !== this.target && !m.def.bound) this.mobs.splice(i, 1);
     }
   }
 
@@ -2471,8 +2516,9 @@ export class MobSystem {
     this.swing = Math.max(0, this.swing - dt);
     // The Keeper's attack: the target, or with the key held the nearest creature in reach.
     if (this.target && (this.target.hp <= 0 || !this.mobs.includes(this.target))) this.target = null;
-    let foe = this.target;
-    if (!foe && this.attacking) {
+    // Away in a menu (a host keeping the shared creatures alive): no swing of its own.
+    let foe = this.selfAway ? null : this.target;
+    if (!foe && this.attacking && !this.selfAway) {
       let bd = this.range;
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd) { bd = d; foe = m; } }
     }
@@ -2598,6 +2644,8 @@ export class MobSystem {
     this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R) ? COLD_SLOW : 0;
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      // A member under a host: the host moves, aims and bites with it (td-coop.ts places it each frame).
+      if (this.replica) continue;
       // Stunned (a Shield Bash): it stands where it is, does nothing, and its blow waits.
       if ((m.stun ?? 0) > 0) { m.stun = Math.max(0, (m.stun ?? 0) - dt); m.cd = Math.max(m.cd, .2); continue; }
       // Teleport: a short wind-up where it stands, then it is at its prey's side.
@@ -2629,11 +2677,14 @@ export class MobSystem {
       // Its prey: the Keeper, or one of his raised skeletons standing closer — unless a Watch Cry has called it to him.
       const taunted = (m.taunt ?? 0) > 0;
       if (taunted) m.taunt = Math.max(0, (m.taunt ?? 0) - dt);
-      let prey: Minion | null = null, d = Math.hypot(p.x - m.x, p.y - m.y);
+      let prey: Minion | null = null, d = this.selfAway ? Infinity : Math.hypot(p.x - m.x, p.y - m.y);
       if (!taunted) for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
-      const px0 = prey ? prey.x : p.x, py0 = prey ? prey.y : p.y;
+      // Shared creatures: another member of the party standing nearer is its prey (the host decides; the bite travels).
+      let other: CoopKeeper | null = null;
+      if (!taunted) for (const o of this.others) { const dk = Math.hypot(o.x - m.x, o.y - m.y); if (dk < d) { d = dk; other = o; prey = null; } }
+      const px0 = other ? other.x : prey ? prey.x : p.x, py0 = other ? other.y : prey ? prey.y : p.y;
       // Rootwalk: the forest closes behind the Keeper — a creature loses his track unless he is at its very side.
-      const lost = this.rootwalkT > 0 && !prey && d > MOB_REACH * 2;
+      const lost = this.rootwalkT > 0 && !prey && !other && d > MOB_REACH * 2;
       // A world boss (bound): never past its leash from the rift, never after prey standing on a town's safe ground.
       const bound = m.def.bound, held = !!bound && (Math.hypot(m.x - m.hx, m.y - m.hy) > bound.leash * TILE || !!this.host.safeAt?.(px0, py0));
       const hunting = !lost && !held && (taunted || d < m.def.sight), shoot = m.def.ranged;
@@ -2692,7 +2743,11 @@ export class MobSystem {
         // A cursed foe bites weaker.
         const weak = this.weakOf(m);
         if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
-        if (prey) this.hurtMinion(prey, n);
+        if (other) {
+          const ax = m.elite?.affixes ?? [];
+          (m.coopBy ??= new Set()).add(other.id);
+          this.coop?.bite(other.id, m, n, this.blowType(m), ax.includes('mana-burn'), ax.includes('cursed'));
+        } else if (prey) this.hurtMinion(prey, n);
         else { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
       }
     }
@@ -2703,7 +2758,10 @@ export class MobSystem {
       if (b.t > 0) continue;
       this.bursts.splice(i, 1);
       this.effects.push({ kind: 'wave', el: b.el ?? 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, b.type ?? 'fire');
+      // A member under a host only sees the burst: the host decides who it caught (a bite, below, on the host's side).
+      if (this.replica) continue;
+      if (!this.selfAway && Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, b.type ?? 'fire', undefined, b.lv);
+      for (const o of this.others) if (Math.hypot(o.x - b.x, o.y - b.y) <= b.r) this.coop?.bite(o.id, null, b.dmg, b.type ?? 'fire', false, false);
     }
     for (let i = this.calls.length - 1; i >= 0; i--) {
       const k = this.calls[i];
@@ -2711,7 +2769,7 @@ export class MobSystem {
       if (k.t > 0) continue;
       this.calls.splice(i, 1);
       // Eclipse-touched summons (the Seam Eater's call) climb out as lone touched champions (td-elites touchPack).
-      if (MOBS[k.type]) { if (k.touched) this.spawnPack(k.key, MOBS[k.type], k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, MOBS[k.type], k.x, k.y)); }
+      if (MOBS[k.type]) { const cd = k.level ? atZoneLevel(MOBS[k.type], k.level) : MOBS[k.type]; if (k.touched) this.spawnPack(k.key, cd, k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, cd, k.x, k.y)); }
       this.effects.push({ kind: 'spark', x: k.x, y: k.y - 6, age: 0, life: .3, dir: 1 });
     }
     this.updateShots(dt);
@@ -2801,12 +2859,33 @@ export class MobSystem {
     return this.hurtMob(foe, dmg, color, crit);
   }
   /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
-  smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff'); }
+  smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff', false, true); }
   /** Test hooks only (the seam specs): one blow of `n` on a creature, through the real path (its call, its half-life change, its fall). */
-  wound(m: Mob, n: number): number { return this.hurtMob(m, Math.max(1, Math.round(n)), '#ffffff'); }
+  wound(m: Mob, n: number): number { return this.hurtMob(m, Math.max(1, Math.round(n)), '#ffffff', false, true); }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
-  private hurtMob(foe: Mob, dmg: number, color: string, crit = false): number {
+  private hurtMob(foe: Mob, dmg: number, color: string, crit = false, exact = false): number {
     if (foe.hp <= 0) return 0;
+    // The level gap (td-zones LEVEL_GAP): a creature above the Keeper is missed more and hurt less (D2's to-hit by level).
+    // `exact`: a test hook's blow (smite, wound) lands as written.
+    // A member's claim landing on the host was already cut by that member's own gap (td-coop: claimFrom).
+    const gap = this.levelGap && !exact && this.claimFrom === '' ? levelGap(this.keeperLevel, foe.def.level) : 0;
+    if (gap > 0) {
+      if (Math.random() < gapMiss(gap)) { foe.hit = .1; this.float(foe.x, foe.y - foe.def.h, 'miss', '#9a948a'); return 0; }
+      // Rounded by chance, so a small tick keeps its share on average (a 2 at ×0.3 is a 1 three times in five, else 0).
+      const cut = dmg * gapDealt(gap);
+      dmg = Math.floor(cut) + (Math.random() < cut % 1 ? 1 : 0);
+      if (dmg <= 0) { foe.hit = .1; return 0; }
+    }
+    // A member under a host: the blow is shown here and claimed from the host, which decides (td-coop.ts, ClaimGate).
+    if (this.replica) {
+      const n = Math.max(1, Math.round(dmg));
+      foe.hit = .18;
+      this.float(foe.x, foe.y - foe.def.h, crit ? `${n}!` : `${n}`, color);
+      this.coop?.claim(foe, n, crit, color);
+      return n;
+    }
+    // Who fought it (a shared creature's kill pays those who did in full): this Keeper, or the member whose claim this is.
+    if (this.coop) (foe.coopBy ??= new Set()).add(this.claimFrom);
     // Stone Skin turns part of every hit aside.
     if (foe.take !== undefined && foe.take < 1) dmg = Math.max(1, Math.round(dmg * foe.take));
     foe.hp -= dmg; foe.hit = .18;
@@ -2819,7 +2898,7 @@ export class MobSystem {
         const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 10), y = foe.y + 6;
         const at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
         // A sigil first, where it will stand (CALL_TELL); it climbs out when the sigil runs out (update).
-        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, ...(call.touched ? { touched: true } : {}) });
+        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: callLevel(foe.def, MOBS[call.type]), ...(call.touched ? { touched: true } : {}) });
       }
     }
     // The half-life change (MobDef.half): a wider, quicker breath, more rings, sooner; its call spoken.
@@ -2840,14 +2919,20 @@ export class MobSystem {
    * A blow or a shot landing on the Keeper (§6): worn Defense turns a share of a physical one aside, a worn resist
    * of an element's; the Dark Ward drinks what it can. The number floats in the type's colour (physical stays red).
    */
-  private biteKeeper(raw: number, type: DamageType = 'physical', from?: Mob): void {
+  private biteKeeper(raw: number, type: DamageType = 'physical', from?: Mob, lv?: number): void {
     const p = this.host.player();
+    // The level gap (td-zones LEVEL_GAP): a creature above the Keeper's level strikes far harder; never softer below it.
+    const atk = lv ?? from?.def.level;
+    if (this.levelGap && atk !== undefined && raw > 0) raw *= gapHurt(levelGap(this.keeperLevel, atk));
+    // Taking its blows is fighting it too (a shared kill pays the one who held it off).
+    if (from && this.coop && !this.replica) (from.coopBy ??= new Set()).add('');
     // A worn unique's thorns (unique-items.ts ward-mirror): a creature striking in melee takes a share of its blow back.
     if (from && from.hp > 0 && this.relics.thorns > 0 && raw > 0) this.hurtMob(from, Math.max(1, Math.round(raw * this.relics.thorns / 100)), '#e0b25a');
     // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
     const cursed = this.curseT > 0;
     const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
-    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, this.keeperLevel, resists);
+    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, atk ?? this.keeperLevel, resists);
+    // (Defense is read against the attacker's level, D2's way: worn armour holds better in a zone below the Keeper.)
     if (this.melee && n > 0) {
       // The Shield Oath turns a share of blows aside whole; the Watch Cry's guard takes a share off the rest.
       if (this.blockT > 0 && Math.random() < this.blockPct / 100) {
@@ -2894,7 +2979,7 @@ export class MobSystem {
       const weak = this.weakOf(m);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
       const ax = m.elite?.affixes ?? [];
-      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: this.blowType(m), ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
+      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: this.blowType(m), lv: m.def.level, ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
     }
   }
 
@@ -2906,7 +2991,12 @@ export class MobSystem {
       const s = this.shots[i];
       stepShot(s, dt);
       if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
-      if (shotHits(s, p.x, p.y - 12, s.kind === 'breath' || s.kind === 'shard' ? 10 : 7)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical'); this.shotAffixes(s); continue; }
+      // A member under a host only sees the host's shots fly: the host decides what they hit.
+      if (this.replica) continue;
+      const reach = s.kind === 'breath' || s.kind === 'shard' ? 10 : 7;
+      if (!this.selfAway && shotHits(s, p.x, p.y - 12, reach)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical', undefined, s.lv); this.shotAffixes(s); continue; }
+      const o = this.others.find(k => shotHits(s, k.x, k.y - 12, reach));
+      if (o) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.coop?.bite(o.id, null, s.dmg, s.type ?? 'physical', !!s.burn, !!s.curse); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }
@@ -3306,10 +3396,12 @@ export class MobSystem {
 
   /** A creature's pace: a Hearth Circle's ground slows whatever walks in it. */
   private paceOf(m: Mob): number {
+    // The level gap (td-zones gapPace): a creature above the Keeper's level is quicker on its feet.
+    const gap = this.levelGap ? gapPace(levelGap(this.keeperLevel, m.def.level)) : 1;
     // Holy Freeze (a worn aura) slows whatever walks near the Keeper.
     const frozen = this.itemAura && this.itemAura.fx.slow > 0 && this.inItemAura(m) ? 1 - this.itemAura.fx.slow : 1;
-    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return (1 - z.max / 100) * frozen;
-    return frozen;
+    for (const z of this.zones) if (z.kind === 'hearth' && inDisc(m.x, m.y, z.x, z.y, z.r)) return (1 - z.max / 100) * frozen * gap;
+    return frozen * gap;
   }
   /** Is the Keeper standing in his own Hearth Circle (the Hush cannot rise there)? */
   get inHearth(): boolean { const p = this.host.player(); return this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r)); }
@@ -3765,7 +3857,7 @@ export class MobSystem {
       const a = turn + (i - 1) / Math.max(1, rend.rings - 1) * Math.PI * 2, r = i ? rend.spread : 0;
       let dmg = rnd(rend.dmg[0], rend.dmg[1]);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
-      this.bursts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r * .6, t: rend.tell, r: rend.r, dmg, delay: rend.tell, el: 'shadow', type });
+      this.bursts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r * .6, t: rend.tell, r: rend.r, dmg, delay: rend.tell, el: 'shadow', type, lv: m.def.level });
     }
     m.chantT = CHANT_SECS; m.chantText = rend.chant;
   }
@@ -3817,7 +3909,7 @@ export class MobSystem {
     this.mobs.splice(this.mobs.indexOf(m), 1);
     if (m.elite?.role === 'leader' || !m.elite) this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
     // Fire Enchanted: it bursts where it fell, after its ring has shown the reach.
-    if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share) });
+    if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share), lv: m.def.level });
     // Redemption (a worn aura): a creature that falls near the Keeper heals him.
     if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.host.healPlayer(this.itemAura.fx.healPerCorpse);
     // Soul Harvest (passive): every kill gives back mana.
@@ -3829,16 +3921,30 @@ export class MobSystem {
     // Fresh dead, for Raise Skeleton.
     this.corpses.push({ x: m.x, y: m.y, at: this.clock });
     if (this.corpses.length > 12) this.corpses.shift();
+    // Shared creatures: the party hears who fought it; the host, if it never did, takes only the party share.
+    const by = m.coopBy ? [...m.coopBy].filter(i => i) : [];
+    const fought = !this.coop || !m.coopBy || m.coopBy.has('');
+    if (this.coop) this.coop.killed(m, by);
+    this.spoils(m, fought ? 'own' : 'share');
+  }
+  /**
+   * What a fall pays this Keeper (onKill: Hunting XP, the Bestiary, the tasks) and leaves on the ground (Gold, materials,
+   * gear: personal loot). `own`: a kill of its own; `coop`: a shared creature it fought, felled on the host (never
+   * announced again to the party); `share`: it was there but did not fight (the party share, no loot).
+   */
+  private spoils(m: Mob, mode: 'own' | 'coop' | 'share', baseHp = m.coopBase ?? m.def.hp): void {
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
     // Night and the eclipse pay a little more (td-phases.ts): Hunting XP and the Gold pile, in the open wilds.
     const sky = this.wildRules;
     // The Hush pays too (td-dark.ts): a little more XP the deeper it runs, capped.
     // A worn unique (unique-items.ts xp-echo): more Hunting XP from every kill.
-    const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100);
+    // The zone's level against the Keeper's (td-zones zoneXp, D2): full XP at his level, less far below it, a little more above.
+    const xpK = sky.xp * this.darkBoon.xp * (1 + this.relics.xp / 100) * (this.levelGap ? zoneXp(this.keeperLevel, m.def.level) : 1);
     // XP follows the creature's own authored life: not the tier's multiple of it (the tier pays in drops, its blurb says
-    // so), nor td-life's (the life a creature rises with is the fight's; the authored life is leveling.md's pace).
-    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(m.def.hp / this.tier.hp / lifeScale(m.def.level, m.def.rank) / (m.def.tough ?? 1)), ...(xpK !== 1 ? { xp: xpK } : {}) });
+    // so), nor td-life's (the life a creature rises with is the fight's), nor a shared boss's party scaling (baseHp).
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(baseHp / this.tier.hp / lifeScale(m.def.level, m.def.rank) / (m.def.tough ?? 1)), ...(xpK !== 1 ? { xp: xpK } : {}), ...(mode === 'coop' ? { coop: true } : {}), ...(mode === 'share' ? { share: true } : {}) });
+    if (mode === 'share') return;
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
@@ -3871,6 +3977,62 @@ export class MobSystem {
       else this.drops.push({ id: `${id}:r${i}`, ...spot(n++), coins: 0, qty: 0, rune: row.rune, rarity: row.rarity, label: row.label, color, age: 0 });
     });
   }
+
+  // ── Shared creatures (protocol 4; td-coop.ts) ──
+  /** A creature as the host sent it, not tiered again (its numbers are the host's). */
+  replicaMob(key: string, def: MobDef, x: number, y: number): Mob {
+    return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
+  }
+  /** The host: a member's claim that passed the gate lands through the creature's own path (Stone Skin, its call, its half-life change, its fall). */
+  applyClaim(m: Mob, dmg: number, from: string, crit = false): number {
+    if (!this.mobs.includes(m) || m.hp <= 0) return 0;
+    this.claimFrom = from;
+    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; }
+  }
+  /** A member: the host says a creature struck this Keeper. It lands through this Keeper's own defenses, resists and wards. */
+  coopBite(dmg: number, type: DamageType, from: Mob | null, burn: boolean, curse: boolean): void {
+    this.biteKeeper(dmg, type, from ?? undefined);
+    if (burn || curse) this.shotAffixes({ burn, curse });
+  }
+  /**
+   * A member: the host's creature fell. It leaves the world here (a corpse, its spawn resting), and when this Keeper
+   * fought it, its own spoils: full Hunting XP and personal loot (`baseHp`: its own life, before any party scaling).
+   */
+  coopFell(m: Mob, full: boolean, baseHp: number): void {
+    const i = this.mobs.indexOf(m);
+    if (i >= 0) this.mobs.splice(i, 1);
+    if (this.target === m) this.target = null;
+    this.deadUntil.set(m.key, this.clock + RESPAWN);
+    this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
+    this.corpses.push({ x: m.x, y: m.y, at: this.clock });
+    if (this.corpses.length > 12) this.corpses.shift();
+    if (!full) return;
+    if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
+    if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
+    this.spoils(m, 'coop', baseHp);
+  }
+  /** The host: a boss's life for `present` Keepers of the party here (keeping its wounded share). */
+  scaleBoss(m: Mob, max: number, present: number): void {
+    if (m.coopN === present && m.def.hp === max) return;
+    m.coopBase ??= m.def.hp;
+    const old = m.def.hp;
+    m.def = { ...m.def, hp: max };
+    m.hp = old > 0 ? Math.max(m.hp > 0 ? 1 : 0, Math.min(max, Math.round(m.hp / old * max))) : max;
+    m.coopN = present;
+  }
+  /** The half-life change (MobDef.half), as the host saw it come: a member mirrors it so an adopted boss fights on in kind. */
+  halve(m: Mob): void {
+    const half = m.def.half;
+    if (!half || m.halved) return;
+    m.halved = true;
+    m.def = {
+      ...m.def,
+      ...(m.def.ranged ? { ranged: { ...m.def.ranged, spread: half.spread, rate: half.rate } } : {}),
+      ...(m.def.rend ? { rend: { ...m.def.rend, rings: half.rings, rate: half.rendRate } } : {}),
+    };
+  }
+  /** Is a spawn resting after a fall (a new host must not raise it again at once)? */
+  resting(key: string): boolean { return (this.deadUntil.get(key) ?? 0) > this.clock; }
 
   private pick(g: Drop, i: number): void {
     const ok = this.host.options.onLoot?.({

@@ -24,7 +24,7 @@ import type { StationDef } from '../../world/world.model';
 import type { LegendEntry, TdMapDef } from '../td-level';
 
 /** The way in, in the Sunken Courts (td-world stamps the temple's stepped gate there). */
-export const TEMPLE_IN: StationDef = { id: 'overgrown-temple', x: 0, label: 'THE OVERGROWN TEMPLE', kind: 'passage', blurb: 'A temple the Root grew into, under the Sunken Courts. Dangerous below level 16.' };
+export const TEMPLE_IN: StationDef = { id: 'overgrown-temple', x: 0, label: 'THE OVERGROWN TEMPLE', kind: 'passage', blurb: 'A temple the Root grew into, under the Sunken Courts. Dangerous below level 24.' };
 const TEMPLE_OUT: StationDef = { id: 'temple-out', x: 0, label: 'TEMPLE GATE', kind: 'passage', blurb: 'Back up to the Sunken Courts.' };
 const T1_DOWN: StationDef = { id: 'temple1-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Hall of Roots (floor 2).' };
 const T2_UP: StationDef = { id: 'temple2-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Sunken Narthex (floor 1).' };

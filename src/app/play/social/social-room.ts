@@ -1,3 +1,6 @@
+import type { CoopAreas, CoopHit, CoopHitsMsg, CoopSnapBody, CoopSnapMsg } from './coop-protocol';
+import type { CoopPal } from './coop-pals';
+
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
  * A Keeper in the room. v1 servers send id/name/x/y/zone/facing/animation; protocol 2 (scripts/social-server.mjs)
@@ -10,6 +13,8 @@ export interface RoomPlayer {
   hp?: number; maxHp?: number;
   /** Protocol 4: not signed in (a guest name, no friends). Absent from an older room. */
   guest?: boolean;
+  /** Protocol 5: the pet and Glim beside it, cosmetic (play/social/coop-pals.ts). */
+  pals?: string;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
@@ -30,6 +35,8 @@ export interface RoomSnapshot {
   guest?: boolean; friends?: RoomFriend[]; friendRequests?: RoomFriendRequest[]; whispers?: RoomWhisper[]; blocks?: RoomBlock[];
   /** The room refused this account (a ban): the client stops trying. */
   barred?: boolean;
+  /** Protocol 5: who hosts the party's creatures in each area (absent against an older room). */
+  coop?: CoopAreas | null;
 }
 /** The room's party verbs (protocol 3). */
 export const PARTY_PROTOCOL = 3;
@@ -49,7 +56,7 @@ export type ReportReason = 'spam' | 'abuse' | 'cheating' | 'name' | 'other';
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
 export interface RoomProfile { vocation?: string; look?: string; level?: number }
 /** The top-down presence beyond x/y/zone/facing/animation. */
-export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number }
+export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string }
 export interface RoomOptions {
   /**
    * Always on (owner 2026-10-21: "the chat should always be connected"): a dropped stream, an expired session or a
@@ -77,7 +84,15 @@ export interface RoomOptions {
   onWhisper?: (whisper: RoomWhisper) => void;
   /** Protocol 4: a friend request was accepted by the other side. */
   onSocialNote?: (note: { kind: 'friend-added'; name: string }) => void;
+  /** Protocol 5: a host's creature snapshot reached this member. */
+  onCoopSnap?: (msg: CoopSnapMsg) => void;
+  /** Protocol 5: members' damage claims reached this host. */
+  onCoopHits?: (msg: CoopHitsMsg) => void;
+  /** Protocol 5: a party member's companions (in this area) arrived. */
+  onCoopPals?: (msg: { from: string; area: string; pals: CoopPal[] }) => void;
 }
+/** The room's shared creatures (protocol 4). */
+export const COOP_ROOM_PROTOCOL = 5;
 
 /** The Hearth room's service (scripts/social-deployment.md). */
 export const HEARTH_URL = 'https://eclipse-hearth-773269119730.us-central1.run.app';
@@ -89,6 +104,8 @@ export const HEARTH_PORT_KEY = 'eclipse-hearth-port';
  */
 export const MOVE_MS = 250;
 export const HEARTBEAT_MS = 10000;
+/** In a party on a protocol-4 room: one presence update per COOP_MOVE_MS while moving (the room allows 8 a second). */
+export const COOP_MOVE_MS = 150;
 /** Stream retries before the session is dropped (and, always-on, joined afresh). */
 const STREAM_RETRIES = 5;
 /** Rejoin backoff (always-on): 2s, 4s, 8s … capped. */
@@ -129,6 +146,8 @@ export function cleanPresence(p: RoomPresence): RoomPresence {
     const max = Math.min(1e6, Math.round(p.maxHp as number));
     out.maxHp = max; out.hp = Math.max(0, Math.min(max, Math.round(p.hp as number)));
   }
+  // Companions (protocol 5): the cosmetic offsets string, as the room accepts it (an older room ignores it).
+  if (typeof p.pals === 'string' && /^[a-z0-9:,-]{0,96}$/.test(p.pals)) out.pals = p.pals;
   return out;
 }
 
@@ -192,7 +211,7 @@ export class SocialRoom {
       if (generation !== this.generation || this.wanted !== wanted) return;
       const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
-        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
       let response = await join(idToken);
       // A token the room will not take: in as a guest rather than not at all.
@@ -234,7 +253,7 @@ export class SocialRoom {
     this.reconnectAttempts = 0; this.updating = false; this.lastUpdate = -Infinity; this.lastBody = '';
     const token = this.token; this.token = '';
     if (token) void this.post('leave', {}, token).catch(() => {});
-    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [], friends: [], friendRequests: [], whispers: [], blocks: [] });
+    this.publish({ connected: false, players: [], messages: [], id: '', party: null, invites: [], partyMessages: [], friends: [], friendRequests: [], whispers: [], blocks: [], coop: null });
   }
   private async listen(generation: number, signal: AbortSignal): Promise<void> {
     let openedAt: number | undefined;
@@ -276,6 +295,7 @@ export class SocialRoom {
           }
           if (data.type === 'emote' && data.emote?.kind === 'wave') this.options.onEmote?.(data.emote);
           this.partyEvent(data);
+          this.coopEvent(data as Record<string, unknown>);
           if (this.socialEvent(data)) return;
         }
       }
@@ -320,6 +340,35 @@ export class SocialRoom {
     }
     if (data.type === 'party-kill' && data.kill) this.options.onPartyKill?.(data.kill);
     if (data.type === 'party-note' && data.note) this.options.onPartyNote?.(data.note);
+  }
+  // ── Protocol 5: shared creatures (play/td/td-coop.ts). Kept apart from the party verbs. ──
+  /** The election, a host's snapshot, members' claims. A malformed event is dropped whole. */
+  private coopEvent(data: Record<string, unknown>): void {
+    if (data['type'] === 'coop') {
+      const areas = data['areas'];
+      this.publish({ coop: areas && typeof areas === 'object' && !Array.isArray(areas) ? areas as CoopAreas : {} });
+    }
+    if (data['type'] === 'coop-snap' && typeof data['from'] === 'string' && Array.isArray(data['mobs'])) this.options.onCoopSnap?.(data as unknown as CoopSnapMsg);
+    if (data['type'] === 'coop-hits' && typeof data['from'] === 'string' && Array.isArray(data['hits'])) this.options.onCoopHits?.(data as unknown as CoopHitsMsg);
+    if (data['type'] === 'coop-pals' && typeof data['from'] === 'string' && typeof data['area'] === 'string' && Array.isArray(data['pals'])) this.options.onCoopPals?.(data as unknown as { from: string; area: string; pals: CoopPal[] });
+  }
+  /** The room shares creatures (protocol 5) and the Keeper is in it. */
+  get canCoop(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && !!this.snapshot.party; }
+  /** Post this host's snapshot; false when it did not go (the caller sends a keyframe next). */
+  coopSnap(body: CoopSnapBody): Promise<boolean> { return this.coopPost('snap', body); }
+  /** Post this member's damage claims. */
+  coopHits(body: { area: string; hits: CoopHit[] }): Promise<boolean> { return this.coopPost('hits', body); }
+  /** Post this Keeper's own companions to the party in its area. */
+  coopPals(body: { area: string; pals: CoopPal[] }): Promise<boolean> { return this.coopPost('pals', body); }
+  private async coopPost(verb: 'snap' | 'hits' | 'pals', body: unknown): Promise<boolean> {
+    if (!this.canCoop || !this.token || this.paused) return false;
+    try {
+      const response = await this.send(`${this.endpoint}/coop/${verb}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(4000),
+      });
+      return response.ok;
+    } catch { return false; }
   }
   /**
    * Protocol 4's events. True when the session ended here (a ban, or this account joined from another window: the
@@ -461,8 +510,11 @@ export class SocialRoom {
     if (!this.token || this.paused || this.updating) return;
     const extra = presence ? cleanPresence({ ...(this.wanted?.profile ?? {}), ...presence }) : {};
     const body = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, zone, facing: facing === -1 ? -1 : 1, animation: KEEPER_ANIMATIONS.has(animation) ? animation : 'idle', ...extra };
-    const key = JSON.stringify(body), t = this.now(), since = t - this.lastUpdate;
-    if (since < MOVE_MS) return;
+    // The cosmetic companions (protocol 5) ride along on updates that go anyway; they never cause one on their own.
+    const { pals: _pals, ...moved } = body as typeof body & { pals?: string };
+    const key = JSON.stringify(moved), t = this.now(), since = t - this.lastUpdate;
+    // Sharing creatures (protocol 4), the host aims at where members stand: their presence goes a little oftener.
+    if (since < (this.canCoop ? COOP_MOVE_MS : MOVE_MS)) return;
     if (key === this.lastBody && since < HEARTBEAT_MS) return;
     const generation = this.generation;
     this.updating = true; this.lastUpdate = t; this.lastBody = key;

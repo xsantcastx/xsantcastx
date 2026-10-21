@@ -1,6 +1,8 @@
-import { HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
+import { COOP_ROOM_PROTOCOL, HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
 import { CloudSaveService } from '../shared/cloud-save/cloud-save.service';
-import { PartyShare } from './social/party-share';
+import { PartyShare, SHARE } from './social/party-share';
+import { CoopRewards } from './social/coop-rules';
+import type { CoopKill } from './td/td-coop';
 import { compass as compassOf, bandOf } from './td/td-seek';
 import { packLook } from './social/peer-look';
 import {
@@ -11,6 +13,11 @@ import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { PROLOGUE_ROWS, PROLOGUE_WALK_TILES, type PrologueStep, guideFor, prologueStep, prologueView, tipKey } from './td/td-prologue';
 import { TD_PROLOGUE_I18N } from './td/td-prologue.i18n';
+import { TD_UX_I18N } from './td/td-ux.i18n';
+import { FitViewportDirective, type FitAnchor } from './fit-viewport.directive';
+import { HudDragDirective, resetHudLayout } from './hud-drag.directive';
+import { TdMapWindowComponent } from './td-map-window.component';
+import type { TdMapSection } from './td/td-map';
 import { activeCharacterKey } from '../shared/save/character-scope';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
@@ -56,7 +63,7 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { PlayLobbyService } from './lobby/play-lobby.service';
-import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
+import { createTopDownEngine, topDownGate, type TdMapPin, type TdMapView, type TopDownEngine } from './td/td-engine';
 import { ELEMENTS, MAX_KEEPER_RESIST, type Element as DamageElement } from '../shared/loot/damage.model';
 import { GOLD_FIND_CAP } from '../shared/economy/economy-curve';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
@@ -71,6 +78,7 @@ import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/
 import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES, WARDEN_FLAG } from './engine/terrain';
 import { formatXp, miningLevelView } from '../shared/activity/mining-level';
+import { CraftingService } from '../shared/crafting/crafting.service';
 import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
 import { heldToolPieces, heldToolsKey, type HeldToolKind } from '../shared/skills/held-tool';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
@@ -178,6 +186,8 @@ import { SextonJournalComponent } from '../shared/sexton/sexton-journal.componen
 import { LORE_PAGES } from '../shared/lore/lore';
 import { LORE_I18N } from '../shared/lore/lore.i18n';
 import { SEAM_I18N } from './td/td-seam.i18n';
+import { ZONES_I18N } from './td/td-zones.i18n';
+import { zoneDanger } from './td/td-zones';
 import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
@@ -428,6 +438,8 @@ interface ReelView { pending: PendingCatch; seed: number; widen: number; biome: 
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/** The pointer as a zero-size box (the hover card sits beside it). */
+const pointAt = (ev: PointerEvent): FitAnchor => ({ left: ev.clientX, top: ev.clientY, right: ev.clientX, bottom: ev.clientY });
 function titleCase(label: string): string {
   return label.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
 }
@@ -464,7 +476,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -518,7 +530,7 @@ export class SideScrollerComponent implements OnDestroy {
   placesOpen = false;
   /** The Bestiary window (top-down only): opened from the Map's menu row or with B. */
   bestiaryOpen = false;
-  bestiary: { entries: (BestiaryEntry & { lit: string; dark: string; shownHaunts: string[]; moreHaunts: number })[]; found: number } | null = null;
+  bestiary: { entries: (BestiaryEntry & { lit: string; dark: string; shownHaunts: { where: string; band: readonly [number, number] | null }[]; moreHaunts: number })[]; found: number } | null = null;
   /**
    * A town task giver spoken to (top-down; shared/town-tasks): who they are, what they ask now (or the thanks for what
    * was just handed in), and whether they keep a stall (its "Trade" button opens it as before).
@@ -567,6 +579,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead's canvas view and its data (homestead/homestead.service.ts). */
   private readonly homestead = inject(HomesteadService);
   private readonly activity = inject(ActivityProgressionGateway);
+  /** The crafting bench's own ladder XP counts toward Smithing on the Skills page (skill.model skillXp). */
+  private readonly crafting = inject(CraftingService);
   private readonly hub = inject(CharacterHubService);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
@@ -630,6 +644,41 @@ export class SideScrollerComponent implements OnDestroy {
   private proWasOn = false;
   /** Phones read the touch words (drag, tap); a pointer reads the keys. */
   private touchMq: MediaQueryList | null | undefined;
+  /** Key caps on the quest scroll and the dock: a computer only (a phone reads the tap words). */
+  get keyCaps(): boolean { return this.topDown && !this.touchUi; }
+  /** The keys each prologue row asks for (owner's player notes 2026-10-21: "show the shortcut letters"). */
+  readonly proKeys: Readonly<Record<string, readonly string[]>> = {
+    'play.pro.title.walk': ['W', 'A', 'S', 'D'], 'play.pro.title.hearth': ['E'], 'play.pro.title.fight': ['1'],
+    'play.pro.title.book': ['K'], 'play.pro.title.bag': ['I'], 'play.pro.title.story': ['E'],
+  };
+  /**
+   * The party frames sit under the Keeper's plate and the pet chip, never over them (owner's player notes 2026-10-21):
+   * the plate grows (a title, the Ember debt, a foe's bar), so its foot is measured (offsetTop/Height: a dragged plate's
+   * translate does not move the frames) and handed to the CSS as --party-top. Only while a party is up.
+   */
+  private partyTopPx = -1;
+  private tickPartyTop(): void {
+    if (!this.browser || !this.topDown || !this.social.party) { this.partyTopPx = -1; return; }
+    const host = this.host.nativeElement as HTMLElement;
+    const stage = host.querySelector<HTMLElement>('.stage');
+    if (!stage) return;
+    let foot = 0;
+    for (const el of Array.from(host.querySelectorAll<HTMLElement>('.stage .vitals, .stage .td-pet'))) {
+      if (el.offsetParent !== stage || !el.offsetHeight) continue;
+      foot = Math.max(foot, el.offsetTop + el.offsetHeight);
+    }
+    const top = foot ? foot + 12 : -1;
+    if (top === this.partyTopPx) return;
+    this.partyTopPx = top;
+    if (top > 0) stage.style.setProperty('--party-top', `${top}px`); else stage.style.removeProperty('--party-top');
+  }
+  /** Settings → Reset HUD layout: every dragged piece goes home (hud-drag.directive). */
+  resetHud(): void { resetHudLayout(); this.message = this.t('ux.hud.resetDone'); this.sound.sfx('tap'); }
+  /** The HUD's keys, under the prologue's list. */
+  readonly hudKeys: readonly { k: string; key: string }[] = [
+    { k: 'I', key: 'ux.keys.satchel' }, { k: 'K', key: 'ux.keys.spells' }, { k: 'C', key: 'ux.keys.character' }, { k: 'M', key: 'ux.keys.map' },
+    { k: 'E', key: 'ux.keys.interact' }, { k: '1-4', key: 'ux.keys.skills' }, { k: 'Esc', key: 'ux.keys.close' },
+  ];
   private get touchUi(): boolean {
     if (this.touchMq === undefined) this.touchMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(hover: none) and (pointer: coarse)') : null;
     return !!this.touchMq?.matches;
@@ -724,6 +773,10 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly seenPartyLines = new Set<string>();
   /** Shared XP: each kill a party member announces is checked here, on this device, and paid through hunted(). */
   private readonly partyShare = new PartyShare(id => MOBS[id] ? { level: MOBS[id].level, hp: MOBS[id].hp } : null);
+  /** Shared creatures (protocol 4): each host kill pays this Keeper once, in full or as the share (coop-rules.ts). */
+  private readonly coopRewards = new CoopRewards();
+  /** What shared kills have paid here (the canvas's data-coop-paid, for the e2e). */
+  private readonly coopPaid = { full: 0, share: 0 };
   /** Invites already given their lapse timer. */
   private readonly inviteTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** A party verb in flight (the buttons wait on it). */
@@ -853,6 +906,9 @@ export class SideScrollerComponent implements OnDestroy {
     // The party: the engine marks the others (gold plates, the minimap, the Seek); lines out of view count as unread.
     const party = snapshot.party?.members.filter(id => id !== snapshot.id) ?? [];
     (this.engine as unknown as { setParty?: (ids: readonly string[]) => void } | undefined)?.setParty?.(party);
+    // Shared creatures (protocol 4): the room's election, or nothing (an older room, no party: solo as before).
+    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[]) => void } | undefined)
+      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && snapshot.party ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -951,6 +1007,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser || !this.topDown || !this.social.party) return;
     const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
     if (!here) return;
+    // Shared creatures: the host of this area announcing a kill here was already paid through its shared kill.
+    if (!this.coopRewards.partyKillPays(kill, here, this.coopHostHere(here.area))) return;
     const r = this.partyShare.accept(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
     const el = this.canvas?.nativeElement;
     el?.setAttribute('data-party-share', r.ok ? `+${r.xp}` : r.why);
@@ -958,6 +1016,31 @@ export class SideScrollerComponent implements OnDestroy {
     // Through the same door as a kill of one's own (payHunt): the debt, the ledger's replay check, the toast.
     // (The toast lands in the Game tab by itself.)
     this.payHunt(`party:${kill.id}`, `party:${kill.id}`, r.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name: kill.name }));
+  }
+  /** Who hosts the party's creatures in `area` (not this Keeper), or null. */
+  private coopHostHere(area: string): string | null {
+    const a = (this.social.protocol ?? 0) >= COOP_ROOM_PROTOCOL && this.social.party ? this.social.coop?.[area] : undefined;
+    return a && a.host !== this.social.id && a.members.includes(this.social.id) ? a.host : null;
+  }
+  /**
+   * A shared creature fell on the host (protocol 4). Fought it: full Hunting XP and personal loot, as if this Keeper had
+   * felled it (the engine lays the spoils and pays through hunted()). Only stood by: the party share. Each kill once.
+   */
+  private coopKilled(kill: CoopKill): 'full' | 'share' | 'none' {
+    const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
+    if (!here || !this.social.party) return 'none';
+    const r = this.coopRewards.decide(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y });
+    const el = this.canvas?.nativeElement;
+    if (r.kind === 'share') {
+      const name = this.social.players.find(p => p.id === kill.from)?.name ?? '';
+      const share = this.partyShare.accept({ id: kill.id, from: kill.from, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
+        { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
+      el?.setAttribute('data-party-share', share.ok ? `+${share.xp}` : share.why);
+      if (share.ok) { this.coopPaid.share++; this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name })); }
+    }
+    if (r.kind === 'full') this.coopPaid.full++;
+    el?.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
+    return r.kind === 'none' ? 'none' : r.kind;
   }
   private partyNoted(note: RoomPartyNote): void {
     if (note.id === this.social.id && note.kind === 'kicked') { this.logGame(this.t('play.party.youKicked')); this.message = this.t('play.party.youKicked'); return; }
@@ -1260,6 +1343,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(WORLD_CLOCK_I18N);
     this.i18n.register(DARK_I18N);
     this.i18n.register(SEAM_I18N);
+    this.i18n.register(ZONES_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
@@ -1329,6 +1413,10 @@ export class SideScrollerComponent implements OnDestroy {
         idToken: () => this.hearthToken(),
         onWhisper: w => this.zone.run(() => this.whispered(w)),
         onSocialNote: note => this.zone.run(() => { if (note.kind === 'friend-added') this.logGame(this.t('play.social.nowFriends', { name: note.name })); }),
+        // Protocol 5: straight to the engine (outside Angular: ~8 a second, nothing in the HUD changes).
+        onCoopSnap: msg => (this.engine as unknown as { coopSnap?: (m: typeof msg) => void } | undefined)?.coopSnap?.(msg),
+        onCoopHits: msg => (this.engine as unknown as { coopHits?: (m: typeof msg) => void } | undefined)?.coopHits?.(msg),
+        onCoopPals: msg => (this.engine as unknown as { coopPals?: (m: typeof msg) => void } | undefined)?.coopPals?.(msg),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -1350,7 +1438,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); this.tickPartyTop(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1365,6 +1453,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(RIFT_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(TD_PROLOGUE_I18N);
+    this.i18n.register(TD_UX_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
@@ -1432,6 +1521,10 @@ export class SideScrollerComponent implements OnDestroy {
       onBucket: event => this.zone.run(() => this.bucketSwap(event)),
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
+      onCoopSnap: body => this.room?.coopSnap(body) ?? Promise.resolve(false),
+      onCoopHits: body => this.room?.coopHits(body) ?? Promise.resolve(false),
+      onCoopPals: body => this.room?.coopPals(body) ?? Promise.resolve(false),
+      onCoopKill: kill => this.zone.run(() => this.coopKilled(kill)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
       // A realm machine (the Orrery Tumbler): found once, then played in the place panel.
@@ -1509,12 +1602,12 @@ export class SideScrollerComponent implements OnDestroy {
         this.soundScene(state);
         // Presence: top-down, the area id (a continent or a floor) and the way the Keeper faces; it goes in `zone` too,
         // so a v1 room (no protocol-2 fields) still lines Keepers up by area. Side view: the WORLD, or the area's name.
-        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean } | undefined) : undefined;
+        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string } | undefined) : undefined;
         const here = td?.peerPresence?.();
         if (here) {
           // Life for the party frames, in twentieths of the most (a regenerating Keeper does not send every point).
           const maxHp = Math.max(1, Math.round(this.tdMaxHp)), hp = Math.round(Math.round(Math.max(0, Math.min(1, state.hp / maxHp)) * 20) / 20 * maxHp);
-          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp });
+          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '' });
           if (el) {
             el.setAttribute('data-peers', (td?.peersOnScreen?.() ?? []).map(p => `${p.name}@${p.x},${p.y}${p.waving ? '~' : ''}`).join(';'));
             el.setAttribute('data-self-waving', td?.selfWaving ? 'true' : 'false');
@@ -2264,7 +2357,8 @@ export class SideScrollerComponent implements OnDestroy {
    * The place-name card (owner, 2026-10-19): no name parked in the corner; on arriving somewhere new its name rises in
    * the middle of the screen, holds, and fades (the CSS animation does the timing; the card leaves the DOM after it).
    */
-  areaCard: { title: string; realm: string; n: number } | null = null;
+  /** The place-name card; `lv` its zone's fixed band (td-zones.ts), `danger` when that is well above the Keeper. */
+  areaCard: { title: string; realm: string; n: number; lv: string; danger: boolean } | null = null;
   private areaCardSeen = '';
   private areaCardTimer?: ReturnType<typeof setTimeout>;
   /** Top-down: while the Slate is open the Keeper holds it up and looks at it (owner, 2026-10-19). */
@@ -2605,7 +2699,7 @@ export class SideScrollerComponent implements OnDestroy {
   spendPoint(attr: Attribute): void { const lv = this.huntingLevel; this.looks.spendPoint(attr, lv, Date.now(), keeperAttributePoints(lv)); this.tickAbilities(); }
   // ── The Keeper's level (docs/design/leveling.md): the fanfare, the milestones tab, the title, the frame ──
   /** The character sheet's tab: the attributes, or the level milestones. */
-  sheetTab: 'attrs' | 'milestones' | 'lore' = 'attrs';
+  sheetTab: 'attrs' | 'skills' | 'milestones' | 'lore' = 'attrs';
   /** The character sheet's Lore tab: the lore log's pages (shared/lore). */
   readonly lorePages = LORE_PAGES;
   /** The milestones tab's page (5 a page); -1 = the page holding the next milestone. */
@@ -2862,6 +2956,20 @@ export class SideScrollerComponent implements OnDestroy {
     this.looks.setLoadout(this.loadoutBar, this.loadoutAura === id ? 'none' : id);
     this.tickAbilities();
   }
+  /** The zone's band as words ("Lv 6–9"), "Safe ground" in a town, '' where none is written (td-zones.ts). */
+  get zoneLabel(): string {
+    const z = this.topDown ? this.state.zone : null;
+    if (!z) return '';
+    if (z.safe) return this.t('play.zone.safe');
+    return this.bandLabel(z.band);
+  }
+  bandLabel(band: readonly [number, number]): string {
+    return band[0] === band[1] ? this.t('play.zone.one', { n: band[0] }) : this.t('play.zone.band', { lo: band[0], hi: band[1] });
+  }
+  /** Is the zone underfoot well above the Keeper ("Dangerous for your level")? */
+  get zoneDangerous(): boolean { const z = this.topDown ? this.state.zone : null; return !!z && !z.safe && zoneDanger(z.band, this.huntingLevel); }
+  /** A band shown on the Map: is it dangerous for this Keeper? */
+  bandDanger(band: readonly [number, number] | undefined): boolean { return zoneDanger(band, this.huntingLevel); }
   private tickAreaCard(): void {
     const title = this.areaTitle;
     if (!title) return;
@@ -2869,7 +2977,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (title !== this.areaCardPending) { this.areaCardPending = title; this.areaCardSince = Date.now(); return; }
     if (title === this.areaCardSeen || Date.now() - this.areaCardSince < 1200) return;
     this.areaCardSeen = title;
-    this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1 };
+    this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1, lv: this.zoneLabel, danger: this.zoneDangerous };
     clearTimeout(this.areaCardTimer);
     this.areaCardTimer = setTimeout(() => this.zone.run(() => { this.areaCard = null; }), 3600);
   }
@@ -2921,6 +3029,7 @@ export class SideScrollerComponent implements OnDestroy {
   togglePlaces(): void {
     this.bestiaryOpen = false;
     this.placesOpen = !this.placesOpen;
+    this.mapSection = null;
     // The nudge is a one-time thing: seen once the list is open (the entry stays).
     this.lookNudgeShown = this.placesOpen && this.lookNudge;
     if (this.placesOpen && this.lookNudge) { this.looks.markPrompted(); this.lookNudge = false; }
@@ -2937,8 +3046,19 @@ export class SideScrollerComponent implements OnDestroy {
     this.focusWorld();
   }
   /** The Map window's picture, pins and the Keeper's mark (td-engine mapView); null in the side view. */
-  get tdMapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
-    return this.topDown ? (this.engine as unknown as { mapView?: () => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.() ?? null : null;
+  get tdMapView(): TdMapView | null {
+    return this.topDown ? (this.engine as unknown as { mapView?: (section?: string) => ReturnType<TopDownEngine['mapView']> } | undefined)?.mapView?.(this.mapSection ?? undefined) ?? null : null;
+  }
+  /** The section the Map shows (null: where the Keeper stands); reset each time the Map opens. */
+  mapSection: string | null = null;
+  /** Every section of this continent, for the Map's picker (cached per continent: the levels never change). */
+  private sectionsCache: { key: string; rows: TdMapSection[] } | null = null;
+  get tdMapSections(): TdMapSection[] {
+    const eng = this.engine as unknown as { mapSections?: (name: string) => TdMapSection[]; whereabouts?: { continent: string } } | undefined;
+    const continent = eng?.whereabouts?.continent ?? '';
+    if (!eng?.mapSections) return [];
+    if (this.sectionsCache?.key !== continent) this.sectionsCache = { key: continent, rows: eng.mapSections(titleCase(continent.replace(/-/g, ' '))) };
+    return this.sectionsCache.rows;
   }
   /** B or the Map's menu: open or fold the Bestiary (cards are rebuilt on open, from the saved kill counts). */
   toggleBestiary(): void {
@@ -2948,7 +3068,7 @@ export class SideScrollerComponent implements OnDestroy {
     const entries = bestiaryEntries(readKills(this.store.read(BESTIARY_KEY)));
     this.bestiary = {
       found: discoveredCount(entries),
-      entries: entries.map(e => ({ ...e, lit: this.mobPortrait(e.id, false), dark: this.mobPortrait(e.id, true), shownHaunts: e.haunts.slice(0, 3), moreHaunts: Math.max(0, e.haunts.length - 3) })),
+      entries: entries.map(e => ({ ...e, lit: this.mobPortrait(e.id, false), dark: this.mobPortrait(e.id, true), shownHaunts: e.haunts.slice(0, 3).map((where, i) => ({ where, band: e.hauntBands[i] ?? null })), moreHaunts: Math.max(0, e.haunts.length - 3) })),
     };
     this.bestiaryOpen = true;
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-best .places-close')?.focus());
@@ -3829,6 +3949,36 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Keeper's level: Hunting XP read on the Keeper curve (shared/skills/keeper-level.ts), never below the Hunting skill level. */
   get huntingLevel(): number { return this.keeperView.level; }
   private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting')); }
+  /**
+   * The Diablo II experience bar along the HUD's foot (owner's player notes 2026-10-21): how far into this Keeper
+   * level, and the words its tooltip shows on hover or tap (current XP in the level, the level's span, the percent).
+   */
+  get xpBar(): { pct: number; level: number; aria: string; tip: string; left: string } {
+    const v = this.keeperView, top = v.span <= 0;
+    const pct = top ? 100 : Math.max(0, Math.min(100, Math.floor(v.into / v.span * 1000) / 10));
+    return {
+      pct, level: v.level,
+      aria: this.t('ux.xp.aria', { level: v.level, pct, next: v.level + 1 }),
+      tip: top ? this.t('ux.xp.top', { level: v.level }) : this.t('ux.xp.tip', { level: v.level, xp: formatXp(v.into), need: formatXp(v.span), pct }),
+      left: top ? '' : this.t('ux.xp.tipLeft', { left: formatXp(v.toNext), next: v.level + 1 }),
+    };
+  }
+  /** The bar's tooltip, held open by a tap (a mouse shows it on hover through CSS). */
+  xpTip = false;
+  /** The character sheet's Skills page (RuneScape's skills tab): every skill the activity ledger tracks, its level and bar. */
+  get skillRows(): { id: string; name: string; level: number; pct: number; xp: string; toNext: string; art: string }[] {
+    const progress = this.activity.snapshot.progress, bench = this.crafting.snapshot.xp;
+    return SKILLS.map(def => {
+      const v = skillView(progress, def.id, def.id === 'smithing' ? bench : 0);
+      const pct = v.span <= 0 ? 100 : Math.max(0, Math.min(100, Math.floor(v.into / v.span * 100)));
+      return {
+        id: def.id, name: this.t(def.labelKey), level: v.level, pct, xp: this.t('ux.skills.xp', { n: formatXp(v.xp) }),
+        toNext: v.next == null ? this.t('ux.skills.max') : this.t('ux.skills.toNext', { n: formatXp(v.next - v.xp), level: v.level + 1 }),
+        art: this.art(def.artId),
+      };
+    });
+  }
+  get skillTotal(): number { return this.skillRows.reduce((n, r) => n + r.level, 0); }
   /** The Keeper as gear requirements read them: the Hunting level and the points spent on each attribute. */
   get standing(): KeeperStanding { return { level: this.huntingLevel, stats: this.looks.look.stats }; }
   /** The HUD portrait (top-down): the Keeper's own face, from the engine's sprite; '' until the world is up. */
@@ -3968,18 +4118,27 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     if (this.taskTalk) { if (event.key === 'Escape') { event.preventDefault(); this.closeTalk(); } return; }
-    if (this.bestiaryOpen && event.key === 'Escape') { event.preventDefault(); this.closeBestiary(); return; }
-    // The settings and pet sheets fold on Escape too, wherever the focus is (their own handlers need it inside them).
-    if (this.soundOpen && event.key === 'Escape') { event.preventDefault(); this.soundOpen = false; this.focusWorld(); return; }
-    if (this.friendsOpen && event.key === 'Escape') { event.preventDefault(); this.closeFriends(); return; }
-    if (this.petsOpen && event.key === 'Escape') { event.preventDefault(); this.closePets(); return; }
-    if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
+    // Chat, WoW / Tibia style (owner's player notes 2026-10-21): in the chat's line, Enter sends and hands the keyboard
+    // back to the world; Enter on an empty line, or Escape, just hands it back.
+    const chatField = (event.target as HTMLElement | null)?.closest?.('.td-chat__say input') as HTMLInputElement | null;
+    if (chatField) {
+      if (event.key === 'Escape' || (event.key === 'Enter' && !chatField.value.trim())) { event.preventDefault(); chatField.blur(); this.focusWorld(); }
+      else if (event.key === 'Enter') setTimeout(() => { chatField.blur(); this.focusWorld(); });
+      return;
+    }
+    // Escape folds the topmost HUD menu, wherever the focus is (owner's player notes 2026-10-21: "Esc doesn't close K
+    // or C"): one ordered list, the card over the satchel first, the satchel last (closeTopMenu).
+    if (event.key === 'Escape' && this.closeTopMenu()) { event.preventDefault(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
     if (this.hearthOpen && event.key === 'Escape' && (event.target as HTMLElement | null)?.closest?.('.dock')) {
       event.preventDefault(); this.toggleHearth(); return;
     }
-    const target = event.target;
-    if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
+    // A field has the keyboard (its target, or whatever holds focus, or an IME composing): no hotkey fires.
+    if (this.typing(event)) return;
+    // Enter opens the chat and puts the cursor in its line (never over a menu, never on a focused button or link).
+    if (event.key === 'Enter' && this.topDown && !this.anyMenuOpen && !(event.target as HTMLElement | null)?.closest?.('button, a, [role="button"], summary')) {
+      event.preventDefault(); this.openChatLine(); return;
+    }
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
     else if (event.code === 'KeyB' && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
     else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
@@ -4110,10 +4269,51 @@ export class SideScrollerComponent implements OnDestroy {
     this.loadPanel({ load: () => import('../shared/cascade/cascade.component').then(m => m.CascadeComponent) }, this.panelInjector,
       ref => ref.setInput('machine', machine));
   }
-  /** A key typed into a field is the field's, not the world's. */
+  /**
+   * Fold the topmost open HUD menu (Escape): a pinned item card before the satchel under it, the settings sheets
+   * before the Map that opened them, then the Bestiary, the Map, the Spellbook, the character sheet, the satchel.
+   * Overlays registered with OverlayStackService (the inspect card, the market) still take Escape first: its capture
+   * listener runs before this one. False when nothing was open (Escape then falls through).
+   */
+  closeTopMenu(): boolean {
+    if (this.bagOpen && this.pick) { this.unpick(); return true; }
+    if (this.peerCard) { this.closePeerCard(); return true; }
+    if (this.lootOpen) { this.lootOpen = false; this.focusWorld(); return true; }
+    if (this.soundOpen) { this.soundOpen = false; this.focusWorld(); return true; }
+    if (this.friendsOpen) { this.closeFriends(); return true; }
+    if (this.petsOpen) { this.closePets(); return true; }
+    if (this.bestiaryOpen) { this.closeBestiary(); return true; }
+    if (this.placesOpen) { this.closePlaces(); return true; }
+    if (this.spellbookOpen) { this.spellbookOpen = false; this.focusWorld(); return true; }
+    if (this.sheetOpen) { this.sheetOpen = false; this.focusWorld(); return true; }
+    if (this.bagOpen) { this.closeBag(); return true; }
+    return false;
+  }
+  /** A key typed into a field is the field's, not the world's (the event's target, the focused element, or an IME). */
   private typing(event: KeyboardEvent): boolean {
-    const target = event.target;
-    return target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable);
+    const field = (el: EventTarget | Element | null) => el instanceof HTMLElement && (el.matches('input, textarea, select') || el.isContentEditable);
+    return event.isComposing || field(event.target) || (typeof document !== 'undefined' && field(document.activeElement));
+  }
+  /** Any HUD menu over the world (Enter then belongs to it, not the chat). */
+  private get anyMenuOpen(): boolean {
+    return this.bagOpen || this.placesOpen || this.bestiaryOpen || this.soundOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
+      || !!this.panel || !!this.anchorSheet || !!this.taskTalk || !!this.peerCard || this.map.open;
+  }
+  /**
+   * Enter: show the chat, on the room's tab (joining it when needed, unless chat is set to Ignore), and put the cursor
+   * in its line; the line may only appear once the room answers, so focus is tried for a short while.
+   */
+  openChatLine(): void {
+    this.chatHidden = false;
+    if (this.chatTab === 'game' && this.chatSetting !== 'ignore') void this.openPublicChat();
+    this.chatLastAt = Date.now();
+    let tries = 0;
+    const focus = () => {
+      const input = (this.host.nativeElement as HTMLElement).querySelector<HTMLInputElement>('.td-chat__say input:not([disabled])');
+      if (input) { input.focus({ preventScroll: true }); return; }
+      if (++tries < 20) setTimeout(focus, 100);
+    };
+    setTimeout(focus);
   }
   /** The HUD button: open the Slate, or fold it when it is the place on screen. */
   toggleSlate(): void {
@@ -4628,13 +4828,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.placePick(ev);
   }
   /** Where a click pins the item card: beside the cell, kept on screen (it flips to the cell's left at the right edge). */
-  pickAt = { x: 16, y: 80 };
+  pickAt: FitAnchor = { left: 16, top: 80, right: 16, bottom: 80 };
+  /** The cell's box: FitViewportDirective measures the card itself and keeps it on screen (it flips up and left). */
   private placePick(ev?: Event): void {
     const el = ev?.currentTarget as HTMLElement | null;
     if (!el?.getBoundingClientRect || typeof window === 'undefined') return;
-    const r = el.getBoundingClientRect(), W = 264, H = 380;
-    const x = r.right + 10 + W > window.innerWidth ? r.left - 10 - W : r.right + 10;
-    this.pickAt = { x: Math.max(8, Math.min(x, window.innerWidth - W - 8)), y: Math.max(8, Math.min(r.top - 8, window.innerHeight - H)) };
+    const r = el.getBoundingClientRect();
+    this.pickAt = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
   }
   unpick(): void { this.pick = null; }
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
@@ -4781,19 +4981,19 @@ export class SideScrollerComponent implements OnDestroy {
    * The hover card (owner 2026-10-20: "look at diablo 2, just stats and that's it"): pointing at a cell with a mouse
    * shows the item's name in its rarity colour, what it is, its stats and how it compares — no art, no buttons.
    */
-  hoverTip: { row: BagSlip; x: number; y: number } | null = null;
+  hoverTip: { row: BagSlip; at: FitAnchor } | null = null;
   hoverPocket(pocket: BagPocket, ev: PointerEvent): void {
     if (ev.pointerType !== 'mouse') return;
     const row = pocket.kind === 'stack' ? this.stackSlip(pocket.ref)
       : (() => { const item = this.inventory.snapshot.items.find(r => r.id === pocket.ref && !r.explorerId); return item ? this.itemSlip(item, item.equipped) : null; })();
-    this.hoverTip = row ? { row, x: ev.clientX, y: ev.clientY } : null;
+    this.hoverTip = row ? { row, at: pointAt(ev) } : null;
   }
   hoverWell(slot: string, ev: PointerEvent): void {
     if (ev.pointerType !== 'mouse') return;
     const item = this.inventory.snapshot.equipped[slot as SlotId];
-    this.hoverTip = item && !item.explorerId ? { row: this.itemSlip(item, true), x: ev.clientX, y: ev.clientY } : null;
+    this.hoverTip = item && !item.explorerId ? { row: this.itemSlip(item, true), at: pointAt(ev) } : null;
   }
-  moveTip(ev: PointerEvent): void { if (this.hoverTip) this.hoverTip = { ...this.hoverTip, x: ev.clientX, y: ev.clientY }; }
+  moveTip(ev: PointerEvent): void { if (this.hoverTip) this.hoverTip = { ...this.hoverTip, at: pointAt(ev) }; }
   get slip(): BagSlip | null {
     const pick = this.pick;
     if (!pick) return null;
@@ -5834,13 +6034,20 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Tell the party (protocol 3) a creature fell here: each member near enough pays itself a share (party-share.ts). */
   private announceKill(event: KillEvent): void {
-    if (!this.topDown || !this.inParty || (this.social.party?.members.length ?? 0) < 2) return;
+    if (!this.topDown || !this.inParty || (this.social.party?.members.length ?? 0) < 2 || event.coop || event.share) return;
     const def = MOBS[event.creature], area = (this.engine as unknown as { peerArea?: () => string } | undefined)?.peerArea?.();
     if (!def || !area) return;
     this.room?.partyKill({ creature: event.creature, level: def.level, hp: Math.max(1, Math.round(event.hp)), ...(event.xp && event.xp !== 1 ? { xp: Math.round(event.xp * 1000) / 1000 } : {}), area });
   }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
+    // The host's own creature, felled by the others only (protocol 4): the party share, nothing else.
+    if (event.share) {
+      this.coopPaid.share++;
+      this.canvas?.nativeElement.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
+      this.payHunt(`hunt:${event.id}`, event.id, Math.max(1, Math.round(huntingXpFor(event.hp) * (event.xp ?? 1) * SHARE)), event.areaId, n => this.t('play.hunt.xp', { n }));
+      return;
+    }
     // The Bestiary counts every top-down kill (account progress: a read-modify-write, so no copy goes stale).
     if (this.topDown) { const blob = withKill(this.store.read(BESTIARY_KEY), event.creature); if (blob) this.store.write(BESTIARY_KEY, blob); }
     // A town task's hunt counts it (only once taken: shared/town-tasks).

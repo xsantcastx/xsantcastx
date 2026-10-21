@@ -200,11 +200,13 @@ for (const size of SIZES) {
       // Sexton Wren's talk window (from the Map's key), then his journal once the Count is taken.
       await page.evaluate(() => (window as unknown as { __tdSexton: { to: (w: string) => unknown } }).__tdSexton.to('square'));
       await key('m');
+      await page.locator('#places-list [data-map-find]').fill('aldous wren');
       await page.locator('#places-list .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).tap();
       await check(page, "Wren's talk", '.td-talk');
       await page.locator('.td-talk [data-story-accept]').tap();
       await closeAll(page);
       await key('m');
+      await page.locator('#places-list [data-map-find]').fill('aldous wren');
       await page.locator('#places-list .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).tap();
       await page.locator('.td-talk [data-story-journal]').first().tap();
       await check(page, 'journal', '.place:not([hidden])');
@@ -212,7 +214,7 @@ for (const size of SIZES) {
 
       // A Harbourmaster's Sailing Board (play/harbour), from the Map's anchor pin; Esc folds it.
       await key('m');
-      await page.locator('#places-list .td-map__key button[data-kind="harbour"]').first().tap();
+      await page.locator('#places-list .mw__pin[data-cat="harbour"]').first().tap();
       await check(page, 'Sailing Board', '.td-harbour');
       await page.keyboard.press('Escape');
       await expect(page.locator('.td-harbour')).toHaveCount(0);

@@ -16,8 +16,9 @@
  *  - At half its life (`ul teth`, "the seam, calling") two Eclipse-touched creatures climb out beside it, and the
  *    fight quickens: a wider breath, more rings, both sooner.
  *
- * Its level follows the Keeper's inside the band (SEAM_BAND, 20–60): a Keeper below it meets the level-20 Eater (a
- * world boss to run from, which is what Glim says); above it, the level-60 one. Pure: no DOM.
+ * Its level is its rift's, fixed per continent (td-zones SEAM_LEVELS: Ember Isle 20, the Reach 30, the Verdant Wilds
+ * 40, the Umbral Marches 55), never the Keeper's (owner 2026-10-21, D2's zone levels): the starter island's is the
+ * world boss a new Keeper runs from, which is what Glim says. SEAM_BAND only bounds its curve. Pure: no DOM.
  */
 import type { ContinentDef } from './continent';
 import type { MobDef } from './td-mobs';
@@ -25,7 +26,7 @@ import { CREATURE_LIFE } from './td-life';
 
 /** The creature's id (the side view's Act I warden keeps 'seam-eater'; this is its second rising). */
 export const SEAM_ID = 'seam-eater-risen';
-/** The level band it scales inside. */
+/** The levels its curve is drawn for (every rift's level, td-zones SEAM_LEVELS, lies inside). */
 export const SEAM_BAND = { min: 20, max: 60 } as const;
 /** The Seam-Cant it speaks before each attack (design-bible §4.0: ul the seam, nyr the unseen, -sha one way, -dra from above, -teth calling). */
 export const SEAM_CANT = { breath: 'ul nyr sha', rend: 'ul dra', call: 'ul teth' } as const;
@@ -56,9 +57,9 @@ export function seamCall(level: number): string {
   return level < 31 ? 'cinder-wraith' : level < 34 ? 'lantern-wisp' : level < 40 ? 'ink-hound' : 'drowned-knight';
 }
 
-/** The Eater's level for a Keeper of `keeperLevel`: his own, held inside the band. */
-export function seamLevel(keeperLevel: number): number {
-  const k = Number.isFinite(keeperLevel) ? Math.round(keeperLevel) : SEAM_BAND.min;
+/** A level held inside the curve's band. */
+export function seamLevel(level: number): number {
+  const k = Number.isFinite(level) ? Math.round(level) : SEAM_BAND.min;
   return Math.max(SEAM_BAND.min, Math.min(SEAM_BAND.max, k));
 }
 

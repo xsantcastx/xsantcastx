@@ -111,6 +111,7 @@ test('a cursed grave-good: its card shows the curse, and Sexton Aldous Wren lays
   await page.keyboard.press('m');
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
+  await page.locator('#places-list [data-map-find]').fill('aldous wren');
   await map.locator('.td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).click();
   const talk = page.locator('.td-talk');
   await expect(talk).toBeVisible({ timeout: 10000 });
@@ -159,6 +160,7 @@ test('a whispering item: its card shows the words woken so far and its cost; the
   await page.keyboard.press('m');
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
+  await page.locator('#places-list [data-map-find]').fill('archivist');
   await map.locator('.td-map__key button[data-kind="npc"]', { hasText: /archivist/i }).click();
   const desk = page.locator('[data-grave-desk="archivist"]');
   await expect(desk).toBeVisible({ timeout: 10000 });

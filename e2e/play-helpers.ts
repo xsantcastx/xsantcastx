@@ -254,7 +254,9 @@ export async function sail(page: Page, dest: RegExp, area: RegExp, master?: RegE
   const cv = page.locator('canvas').first();
   const map = page.locator('#places-list.td-map');
   if (!(await map.isVisible())) { await cv.focus(); await page.keyboard.press('m'); }
-  const pin = map.locator('.td-map__key button[data-kind="harbour"]', master ? { hasText: master } : {}).first();
+  // The new Map (td-map-window): a harbour pin is an anchor named for its keeper; a click on it walks there.
+  const who = master ? master.source.replace(/\\/g, '').replace(/"/g, '') : '';
+  const pin = map.locator(`.mw__pin[data-cat="harbour"]${who ? `[data-name*="${who}" i]` : ''}`).first();
   await pin.click();
   const board = page.locator('.td-harbour');
   await expect(board).toBeVisible({ timeout: 30000 });
@@ -263,4 +265,13 @@ export async function sail(page: Page, dest: RegExp, area: RegExp, master?: RegE
   await page.locator('[data-harbour-skip]').click();
   await expect(page.locator('[data-harbour-voyage]')).toHaveCount(0, { timeout: 10000 });
   await expect(cv).toHaveAttribute('data-area', area, { timeout: 30000 });
+}
+
+/**
+ * The top-down Map has no list of every place any more (owner's player notes 2026-10-21): its search finds one. Type
+ * the name there first, then click the result as before; on a menu with no search (the side view) this does nothing.
+ */
+export async function mapFind(page: Page, name: string | RegExp): Promise<void> {
+  const find = page.locator('#places-list [data-map-find]');
+  if (await find.count()) await find.fill(typeof name === 'string' ? name : name.source.replace(/[\\^$.*+?()[\]{}|]/g, ''));
 }

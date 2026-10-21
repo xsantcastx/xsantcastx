@@ -59,6 +59,9 @@ export function outOfFightMend(regen: number, unhurtSecs: number): number { retu
 export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
   'umbral-marches': UMBRAL_MARCHES_DEF };
 
+/** The most creatures the minimap marks at once (owner's player notes 2026-10-21: "cap the count for performance"). */
+const MINI_MOBS = 40;
+
 export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
   'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
@@ -93,9 +96,11 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
 import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
-import { FIRE_BURST, makePack, touchPack } from './td-elites';
+import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
+import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
+import { GAP_TONES, atZoneLevel, gapTone, graveyardZone, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { weaponSwing } from './td-melee';
@@ -119,6 +124,9 @@ import { compass, levelLinks, levelSpawns, seekCost, townEntries, wayEntries, se
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
 import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
+import { TdCoop, type CoopRole } from './td-coop';
+import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
+import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
 import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
@@ -140,7 +148,16 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   mire: PAL.mire[1], wetstone: PAL.wetstone[1], blackwater: '#202c38', drownwall: '#1f252b', boardwalk: PAL.boardwalk[3],
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
-export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc' | 'harbour'; u: number; v: number }
+export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc' | 'harbour'; u: number; v: number;
+  /** A task giver's mark ('!' a task to take, '?' one to hand in). */
+  mark?: '!' | '?';
+  /** A way down on the surface: the level it leads to (the Map opens its floors). */
+  to?: string }
+/** The Map window's view of one section (td-engine mapView). `me` is null on a section the Keeper is not on. */
+export interface TdMapView {
+  url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } | null;
+  section: string; here: string; party: { id: string; name: string; u: number; v: number }[]; zones: TdZoneLabel[];
+}
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
@@ -263,6 +280,18 @@ export class TopDownEngine {
    * what the canvas last said of it (`data-seam`: risen, half, slain, gone).
    */
   private seam: Mob | null = null;
+  /** Shared creatures in a party (Hearth protocol 4; td-coop.ts): host, member, or solo as before. */
+  private coop!: TdCoop;
+  /** `?fxcoop=1` (automated browsers only): `window.__tdCoop` lays calm creatures, wounds them, reads the shared set. */
+  private readonly fxCoop = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxcoop=1\b/.test(location.search);
+  /** The co-op spec's quiet: no wild spawns (only what it lays). */
+  private fxCoopQuiet = false;
+  private coopRoleSeen = '';
+  /** Other Keepers' companions (coop-pals.ts): the party's from its channel, everyone's pet and Glim from presence. */
+  private readonly palBook = new PalBook();
+  private palAcc = 0;
+  private palKey = '';
+  private palAt = -1e9;
   private seamSlain = false;
   private seamLast = '';
   private seamSeen = '';
@@ -431,7 +460,16 @@ export class TopDownEngine {
       say: key => this.say(key),
     });
     // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
-    this.mobs.elites = true;
+    this.mobs.elites = true; this.mobs.levelGap = true;
+    this.coop = new TdCoop(this.mobs, {
+      send: body => this.options.onCoopSnap?.(body) ?? Promise.resolve(false),
+      claim: body => this.options.onCoopHits?.(body) ?? Promise.resolve(false),
+      killed: kill => this.options.onCoopKill?.(kill) ?? 'none',
+      now: () => performance.now(),
+      phase: () => (this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase),
+      still: () => this.still,
+      role: role => this.coopRole(role),
+    });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.placeCompanions();
@@ -446,6 +484,27 @@ export class TopDownEngine {
       omen: (kind: 'bell' | 'flicker' | 'whisper' | 'name') => this.darkLayer.fire(kind, 1, { keeper: this.player, own: this.ownLight(), glim: this.glimLight(), still: this.still }),
       hush: (n: number) => { this.darkLayer.pinned = Math.max(0, Math.min(100, n)); },
       state: () => this.darkState(),
+    };
+    // The zone specs (webdriver only): stand the Keeper on a tile of the world (the nearest walkable), lay a creature
+    // at a zone's level beside him, and read the zone underfoot (td-zones.ts).
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdZones'] = {
+      to: (c: number, r: number) => {
+        for (let d = 0; d <= 12; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
+          if (Math.max(Math.abs(x), Math.abs(y)) !== d || !footFree(this.level, (c + x) * TILE + TILE / 2, (r + y) * TILE + TILE - 2)) continue;
+          this.player.x = (c + x) * TILE + TILE / 2; this.player.y = (r + y) * TILE + TILE - 2; this.path = [];
+          this.placeCompanions();
+          return true;
+        }
+        return false;
+      },
+      foe: (type: string, level: number, dx = 40, dy = 0) => {
+        const def = MOBS[type]; if (!def) return null;
+        const p = this.player, m = this.mobs.place(`fx-zone:${type}:${level}:${this.mobs.mobs.length}`, { ...atZoneLevel(def, level), sight: 0 }, p.x + dx, p.y + dy);
+        m.wait = 1e9;
+        return m.def.level;
+      },
+      zone: () => this.zoneHere(),
+      keeperLevel: () => this.mobs.keeperLevel,
     };
     // The Ashguard's e2e (webdriver only): a creature at the Keeper's side to swing at, and the blade's count.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdAsh'] = {
@@ -465,9 +524,10 @@ export class TopDownEngine {
       },
       state: () => ({ step: this.sexton.step, level: this.level.id, near: this.nearby?.station.id ?? null, mobs: this.mobs.mobs.map(m => m.key), phase: this.phaseNow }),
     };
-    // The Lanternwright's e2e (webdriver only): a creature at the Keeper's side, a wound to mend, the lantern's count.
+    // The Lanternwright's e2e (webdriver only): a creature at the Keeper's side (at his level or its own, the lower: no
+    // level gap in the way of the spells it tests), a wound to mend, the lantern's count.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdLamp'] = {
-      foe: (type = 'bone-walker', dx = 40) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
+      foe: (type = 'bone-walker', dx = 40) => { const def = MOBS[type] && atZoneLevel(MOBS[type], Math.min(MOBS[type].level, this.mobs.keeperLevel)); if (!def) return null; const p = this.player; this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
       foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-lamp:')).length,
       calm: () => { for (const m of this.mobs.mobs) if (m.key.startsWith('fx-lamp:')) { m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 1e9; } },
       wound: (n: number) => { this.hp = Math.max(1, this.hp - n); return this.hp; },
@@ -535,6 +595,28 @@ export class TopDownEngine {
       },
       hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); this.lastHurt = this.time; },
     };
+    if (this.fxCoop) (window as unknown as Record<string, unknown>)['__tdCoop'] = {
+      view: () => this.coop.view(),
+      stats: () => ({ ...this.coop.stats }),
+      // No wild spawns from now on, and none standing: only what the spec lays (a calm stage for comparing screens).
+      quiet: () => { this.fxCoopQuiet = true; if (this.coop.role !== 'member') { this.mobs.mobs.length = 0; this.mobs.target = null; } return true; },
+      // A calm creature `dx, dy` from the Keeper (the host's), given its wire id at once.
+      lay: (type = 'ash-wolf', dx = 40, dy = 0, calm = true) => {
+        const def = MOBS[type]; if (!def || this.coop.role === 'member') return null;
+        const p = this.player, m = this.mobs.place(`fx-coop:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, calm ? { ...def, sight: 0 } : def, p.x + dx, p.y + dy);
+        if (calm) m.wait = 1e9;
+        return this.coop.name(m);
+      },
+      // A blow of `n` on the creature with this wire id, through the real path (a member's becomes a claim).
+      hit: (id: string, n: number) => { const m = this.mobs.mobs.find(x => x.nid === id); if (!m) return false; this.mobs.wound(m, n); return true; },
+      // Point the Keeper's own attack at it (its staff, its blade): the real auto-attack path.
+      target: (id: string) => { const m = this.mobs.mobs.find(x => x.nid === id); this.mobs.target = m ?? null; return !!m; },
+      hp: () => Math.round(this.hp),
+      // Companions: the other Keepers' drawn here, this Keeper's own as sent, and `n` raised skeletons at his side.
+      pals: () => this.palsShown(),
+      mine: () => this.myPals(),
+      raise: (n = 2) => { for (let i = 0; i < n; i++) this.mobs.minions.push({ id: 9000 + i, x: this.player.x + (i ? -16 : 16), y: this.player.y + 6, hp: 40, maxHp: 40, dmg: [3, 5], cd: .6, t: 1, face: 1, life: Infinity, hit: 0, target: null }); return this.mobs.minions.length; },
+    };
   }
 
   // ── Lifecycle (the component's contract) ───────────────────────────────────
@@ -550,6 +632,8 @@ export class TopDownEngine {
       this.raf = requestAnimationFrame(loop);
       try {
         if (!this.paused && !this.fxFrozen) this.update(dt);
+        // A host in a menu still keeps the party's creatures alive for the others (they are not paused); it is no prey meanwhile.
+        else if (this.paused && !this.fxFrozen && this.coop.role === 'host') this.updateShared(dt);
         this.draw();
       } catch (err) {
         if (!this.frameError) { this.frameError = true; console.error('[top-down] frame error', err); }
@@ -561,6 +645,7 @@ export class TopDownEngine {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
+    if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
@@ -820,9 +905,14 @@ export class TopDownEngine {
    * Keeper is on — a hand-drawn floor whole, or the continent's whole region map — painted once from its own ground,
    * with a pin per place to go and the Keeper's mark. Positions are 0..1 across and down the picture.
    */
-  mapView(): { url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } } | null {
+  mapView(section?: string): TdMapView | null {
     if (typeof document === 'undefined') return null;
-    const lv = this.level, onWorld = lv === this.world;
+    // Another section of this continent (owner's player notes 2026-10-21: "show every floor"): its own picture and
+    // pins, no "you are here". An unknown id (or one on another continent) shows where the Keeper is.
+    const here = this.level === this.world ? 'surface' : this.level.id;
+    const want = section && section !== here && (section === 'surface' || this.levelLinks().get(section)?.continent === this.world.continent) ? section : here;
+    const lv: TdLevel = want === here ? this.level : want === 'surface' ? this.world : this.handLevel(want);
+    const onWorld = lv === this.world;
     const key = onWorld ? `world:${this.world.continent}` : lv.id;
     let m = this.mapImages.get(key);
     if (!m) {
@@ -848,6 +938,8 @@ export class TopDownEngine {
     }
     const mm = m;
     const u = (x: number) => (x / TILE - mm.x0) / mm.w, v = (y: number) => (y / TILE - mm.y0) / mm.h;
+    // A way down on the surface knows the level it leads to (the link's anchor stands at it), so the Map can open its floors.
+    const anchors = onWorld ? [...this.levelLinks()].filter(([, l]) => l.continent === this.world.continent) : [];
     const seen = new Set<string>(), pins: TdMapPin[] = [];
     for (const st of lv.stalls) {
       if (seen.has(st.station.id)) continue;
@@ -860,10 +952,41 @@ export class TopDownEngine {
       // Two ships at one harbour (ContinentWay.along) would share a pin's spot and the later one would eat every
       // click on the first: set a second ship's pin beside it.
       if (kind === 'ship') while (pins.some(q => q.kind === 'ship' && Math.abs(q.u - pu) < .03 && Math.abs(q.v - pv) < .03)) pu += .035;
-      const pier = kind === 'harbour' ? pierOfMaster(id.slice(6)) : undefined;
-      pins.push({ id, label: st.station.label, blurb: pier ? this.harbourBlurb(pier.id) : st.station.blurb ?? '', kind, u: pu, v: pv });
+      const hp = kind === 'harbour' ? pierOfMaster(id.slice(6)) : undefined;
+      const pin: TdMapPin = { id, label: st.station.label, blurb: hp ? this.harbourBlurb(hp.id) : st.station.blurb ?? '', kind, u: pu, v: pv };
+      const mark = id.startsWith('giver-') ? this.taskMarks[id.slice(6)] : undefined;
+      if (mark) pin.mark = mark;
+      if (kind === 'way' && onWorld) {
+        let best = 3 * TILE;
+        for (const [to, l] of anchors) { const dd = Math.hypot(l.ax - st.x, l.ay - st.y); if (dd < best) { best = dd; pin.to = to; } }
+      }
+      pins.push(pin);
     }
-    return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
+    const area = onWorld ? this.world.continent : lv.id;
+    const party = this.peers.partyWhere().filter(p => p.area === area).map(p => ({ id: p.id, name: p.name, u: u(p.x), v: v(p.y) }));
+    return { url: mm.url, aspect: mm.w / mm.h, pins, me: want === here ? { u: u(this.player.x), v: v(this.player.y) } : null, section: want, here, party,
+      zones: onWorld ? zoneLabels(this.world.def, MOBS, { block: BLOCK }, this.zoneBands()) : [] };
+  }
+  /**
+   * The Map's level bands from the zone table (td-zones.ts), by the names the Map shows: a region's name (the union of
+   * every region drawn under it, e.g. Slagstone Hills' hills and rock), a graveyard's, a floor's (its map name). A safe
+   * house or a name with no zone reads null (the Map shows no band); the creature-derived band is never used for a zone.
+   */
+  private zoneBands(): BandOverride {
+    const d = this.world.def, byName = new Map<string, LevelBand>();
+    const add = (name: string | undefined, band: readonly [number, number] | undefined) => {
+      if (!name || !band) return;
+      const b = byName.get(name);
+      byName.set(name, b ? { min: Math.min(b.min, band[0]), max: Math.max(b.max, band[1]) } : { min: band[0], max: band[1] });
+    };
+    for (const [region, name] of Object.entries(d.names)) { const z = zoneOf(regionZone(d.id, region)); if (z && !z.safe && region !== '~') add(name, z.band); }
+    for (const p of d.places) if (p.kind === 'graveyard') add(p.name, zoneOf(graveyardZone(d.id))?.band);
+    for (const [id, def] of Object.entries(LEVELS)) { const z = zoneOf(id); if (z && !z.safe) add(def.name, z.band); }
+    return name => byName.get(name) ?? null;
+  }
+  /** Every section of the continent the Keeper is on, for the Map's area picker (td-map.ts). */
+  mapSections(surfaceName: string): TdMapSection[] {
+    return mapSections(this.world.def, surfaceName, LEVELS, this.levelLinks(), MOBS, this.zoneBands());
   }
   /** Where the Keeper stands — continent, level (or 'surface'), position — so the HUD can save it and a reload resumes there. */
   get whereabouts(): { continent: string; level: string; x: number; y: number } {
@@ -1016,6 +1139,78 @@ export class TopDownEngine {
   }
   /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
   setParty(ids: readonly string[]): void { this.peers.party = new Set(ids); }
+  /** Protocol 4: the room's election (null against an older room), this Keeper's id, the whole party's ids. */
+  setCoop(areas: CoopAreas | null, me: string, party: readonly string[]): void { this.coop.setAreas(areas, me, party); }
+  /** Protocol 4: a host's snapshot reached this member. */
+  coopSnap(msg: CoopSnapMsg): void { this.coop.snap(msg); }
+  /** Protocol 4: members' claims reached this host. */
+  coopHits(msg: CoopHitsMsg): void { this.coop.hits(msg); }
+  /** Protocol 5: a party member's own companions (pet, beasts, skeletons, wisps, beacon, Glim) reached this screen. */
+  coopPals(msg: { from: string; area: string; pals: CoopPal[] }): void {
+    if (msg.area === this.peerArea()) this.palBook.take(msg.from, msg.pals, performance.now(), this.still);
+  }
+  /** Presence's cosmetic companions (the pet and Glim as offsets: everyone sees them, party or not). */
+  palsPresence(): string { return encodePresencePals(this.player, this.myPals()); }
+  /** This Keeper's own companions as the party sees them: each owner is the authority for its own. */
+  private myPals(): CoopPal[] {
+    const out: CoopPal[] = [];
+    const b = this.pet;
+    if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
+    this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
+    for (const k of this.mobs.minions) out.push({ i: `k${k.id % 1e6}`, k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
+    this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
+    if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
+    return cleanPals(out);
+  }
+  /** Five times a second while others of the party share the area: this Keeper's companions, when they changed (a heartbeat a second). */
+  private tickPals(dt: number): void {
+    if (!this.coop.sharing) return;
+    this.palAcc += dt * 1000;
+    if (this.palAcc < PAL_MS) return;
+    this.palAcc = 0;
+    const pals = this.myPals(), key = JSON.stringify(pals), now = performance.now();
+    if (key === this.palKey && now - this.palAt < PAL_HEARTBEAT_MS) return;
+    this.palKey = key; this.palAt = now;
+    void this.options.onCoopPals?.({ area: this.peerArea(), pals });
+  }
+  /** Another Keeper's companion, with the painter its own owner uses. */
+  private drawPal(p: CoopPal, x: number, y: number, moving: boolean): void {
+    const c = this.ctx, time = this.time + (p.i.charCodeAt(0) % 5) * .3;
+    if (p.k === 'pet') {
+      if (!p.t) return;
+      const body = { id: p.t, x, y, face: p.f, t: time, doing: p.a ? 'fight' : 'follow', moving, carried: null, feel: null, feelT: 0, hopT: 0, hurtT: 0, cd: 0 } as unknown as PetBody;
+      this.drawPet(body);
+    } else if (p.k === 'beast' || p.k === 'stampede') drawBeast(c, { x, y, face: p.f, age: 1, kind: p.k === 'stampede' ? 'stampede' : 'called' }, time, this.still);
+    else if (p.k === 'skel') this.drawRaised({ x, y, face: p.f, t: time + 1, life: Infinity, hit: 0, hp: p.h ?? 1, maxHp: p.m ?? 1 } as unknown as Minion);
+    else if (p.k === 'wisp') drawLampState(c, { ward: 0, lastLight: 0, wisps: [{ x, y }], mobs: [] }, { x, y }, time, this.still);
+    else if (p.k === 'beacon') drawBeacon(c, { x, y, t: 1 }, time, this.still);
+    else if (p.k === 'glim') {
+      const gx = Math.round(x), gy = Math.round(y);
+      c.globalCompositeOperation = 'lighter';
+      glowSquare(c, gx, gy, 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, .32);
+      c.globalCompositeOperation = 'source-over';
+      const sprite = glimFrame(this.still ? 'mid' : GLIM_FLAP[Math.floor(time * 8) % 4], 'calm');
+      if (sprite) c.drawImage(sprite, gx - Math.floor((GLIM_W + 2) / 2), gy - Math.floor((GLIM_H + 2) / 2));
+    }
+  }
+  /** The other Keepers' companions drawn now (the e2e reads it): the party's whole list, everyone else's pet and Glim. */
+  palsShown(): { owner: string; k: string; t: string; x: number; y: number }[] {
+    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number }[] = [];
+    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y) });
+    for (const p of this.peers.drawn) {
+      if (this.palBook.fresh(p.id, now)) continue;
+      for (const q of decodePresencePals(this.peers.palsOf(p.id))) out.push({ owner: p.id, k: q.k, t: q.t, x: Math.round(p.x + q.dx), y: Math.round(p.y + q.dy) });
+    }
+    return out;
+  }
+  /** Protocol 4: this Keeper's part in its area ('solo', 'host' or 'member'). */
+  get coopRoleNow(): CoopRole { return this.coop.role; }
+  /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
+  private coopRole(role: CoopRole): void {
+    if (role === 'member') this.seam = null;
+    if (role !== this.coopRoleSeen) { this.coopRoleSeen = role; this.canvas.setAttribute('data-coop-role', role); }
+  }
   /** The local Keeper is waving. */
   get selfWaving(): boolean { return this.peers.waving('', this.time); }
   setHearths(s: { lit: readonly string[]; wake: string | null; blessings: number }): void {
@@ -1197,9 +1392,11 @@ export class TopDownEngine {
     this.darkLayer.markOpened(id);
     const x = ch.c * TILE + TILE / 2, y = ch.r * TILE + TILE;
     // What the floor's own creatures carry: its first spawn names the drop table and the level.
-    const type = this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6)[0]?.type ?? 'ash-wolf', def = MOBS[type] ?? MOBS['ash-wolf'];
+    const first = this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6)[0], type = first?.type ?? 'ash-wolf', def = MOBS[type] ?? MOBS['ash-wolf'];
+    // …at the floor's own level (td-zones.ts), not the kind's.
+    const lootLevel = first?.level ?? def.level;
     const key = `shade:${id}:${Date.now().toString(36)}`;
-    const roll = (k: string) => { try { return this.options.rollLoot?.({ creature: def.id, level: def.level, rank: 'champion', killKey: k, mf: this.mobs.darkBoon.mf }) ?? []; } catch { return []; } };
+    const roll = (k: string) => { try { return this.options.rollLoot?.({ creature: def.id, level: lootLevel, rank: 'champion', killKey: k, mf: this.mobs.darkBoon.mf }) ?? []; } catch { return []; } };
     let n = 0;
     const rows: LootRow[] = guaranteeMagic(floorEliteRows(roll(key), 'champion'), () => roll(`${key}:x${n++}`)).slice(0, 2);
     // The Lamplighter's Things (set-items.ts): each shy chest holds a piece of the set, as well as what is above.
@@ -2148,6 +2345,7 @@ export class TopDownEngine {
     this.updateSexton(dt);
     this.updateSmoke(dt);
     this.updateFight(dt);
+    this.tickPals(dt);
     this.updatePet(dt);
     this.updateGlim(dt);
     this.updateGuide(dt);
@@ -2174,13 +2372,18 @@ export class TopDownEngine {
   }
   private free(x: number, y: number): boolean { return footFree(this.level, x, y); }
 
+  /** The zone under the Keeper (td-zones.ts): its fixed band, whether it is safe ground; null where none is written. */
+  private zoneHere(): { id: string; band: readonly [number, number]; safe: boolean } | null {
+    const id = this.level.zoneAt(this.player.x, this.player.y), z = zoneOf(id);
+    return z ? { id, band: z.band, safe: !!z.safe } : null;
+  }
   private report(): void {
     const s = this.nearby;
     const state: EngineState = {
       hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : this.treeNear() ? 'td-tree' : null,
       nearbyLabel: s ? s.station.label : this.treeNear() ? 'CHOP TREE' : undefined, nearbyKind: s?.station.kind ?? (this.treeNear() ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
-      area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
+      area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
       paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message, ...(this.messageKey ? { messageKey: this.messageKey } : {}),
     };
@@ -2240,14 +2443,20 @@ export class TopDownEngine {
   // ── Input ──────────────────────────────────────────────────────────────────
 
   private bindInput(): void {
+    // A field has the keyboard (chat, a whisper, a name, the Map's search): the world hears nothing typed into it
+    // (owner's player notes 2026-10-21: "typing in chat moves the character"). Checked on the event's target AND on
+    // document.activeElement, and while an IME is composing, so every field to come is covered without a list.
+    const editable = (el: EventTarget | Element | null): boolean => el instanceof HTMLElement && (el.matches('input, textarea, select') || el.isContentEditable);
+    const typing = (e: KeyboardEvent): boolean => e.isComposing || editable(e.target) || (typeof document !== 'undefined' && editable(document.activeElement));
     const onKey = (down: boolean) => (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || this.paused) return;
-      // Space, Enter and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
+      // A key let go is always let go (even into a field, even paused): nothing stays held down.
+      if (!down) { this.keys.delete(k); if (k === 'j' || k === ' ') this.mobs.attacking = false; return; }
+      if (typing(e) || this.paused) return;
+      // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
       if ((k === ' ' || k === 'enter' || k === 'e') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
-      // E opens the stall in reach (the side view handled E inside its own engine).
-      if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
+      // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
+      if (down && !e.repeat && k === 'e' && this.nearby) { e.preventDefault(); this.interact(); return; }
       if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
       if (/^[1-4]$/.test(k)) { if (down && !e.repeat) { const why = this.useAbility(k); if (why) this.say(`play.td.ability.${why}`); } return; }
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
@@ -2256,6 +2465,11 @@ export class TopDownEngine {
     const kd = onKey(true), ku = onKey(false);
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
     this.unbind.push(() => window.removeEventListener('keydown', kd), () => window.removeEventListener('keyup', ku));
+    // Focus going into a field, or away from the window, lets go of every held key and the held attack.
+    const release = () => { this.keys.clear(); this.mobs.attacking = false; };
+    const focusIn = (e: FocusEvent) => { if (editable(e.target)) release(); };
+    document.addEventListener('focusin', focusIn); window.addEventListener('blur', release);
+    this.unbind.push(() => document.removeEventListener('focusin', focusIn), () => window.removeEventListener('blur', release));
     const c = this.canvas;
     const down = (e: PointerEvent) => {
       if (this.paused) return;
@@ -2353,6 +2567,7 @@ export class TopDownEngine {
     for (const st of this.level.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
     if (this.level === this.world) for (const kp of this.keepers) if (kp.kid && this.taskMarks[kp.kid]) dot(kp.x, kp.y, Math.max(2, k - 1), this.taskMarks[kp.kid] === '?' ? '#ffd27a' : '#f3e7cf');
     if (this.level === this.world) for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
+    this.miniMobs(dot, reach);
     // Party members (protocol 3): a gold mark where they stand, or a pip on the rim pointing their way.
     const area = this.peerArea();
     for (const m of this.peers.partyWhere()) {
@@ -2362,6 +2577,26 @@ export class TopDownEngine {
       dot(this.player.x + dx * f / k * TILE, this.player.y + dy * f / k * TILE, Math.max(2, k - 1), PARTY_PLATE);
     }
     dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
+  }
+
+  /**
+   * The creatures round the Keeper on the minimap (owner's player notes 2026-10-21): a red dot each, a champion blue and
+   * a unique gold (their aura tones, td-elites ELITE_TONES) and a size bigger, a boss bigger still with a pale heart. In
+   * the dark (a dungeon floor, or night past half) only what the Keeper's own light reaches shows. Capped at MINI_MOBS.
+   */
+  private miniMobs(dot: (x: number, y: number, r: number, fill: string) => void, reach: number): void {
+    const p = this.player, dark = this.level.dark || this.darkness > .5;
+    const sight = dark ? this.ownLight().r * 1.5 : reach;
+    let n = 0;
+    for (const m of this.mobs.mobs) {
+      if (m.hp <= 0 || Math.abs(m.x - p.x) > sight || Math.abs(m.y - p.y) > sight) continue;
+      if (dark && Math.hypot(m.x - p.x, m.y - p.y) > sight) continue;
+      if (++n > MINI_MOBS) break;
+      const boss = m.def.rank === 'boss', elite = m.elite?.rank;
+      if (boss) { dot(m.x, m.y, 3, '#b0283a'); dot(m.x, m.y, 1, '#ffe7e0'); }
+      else if (elite) dot(m.x, m.y, 2, ELITE_TONES[elite].body);
+      else dot(m.x, m.y, 1, '#e0453a');
+    }
   }
 
   // ── Fireflies: dusk and night, round the trees and the flower beds (the references' summer evenings) ──
@@ -2529,9 +2764,10 @@ export class TopDownEngine {
     }
     return this.rifts.get(id) ?? null;
   }
-  /** The tear opens and the Eater climbs out at (x, y), at the Keeper's level inside its band; Glim warns, the strip says so. */
+  /** The tear opens and the Eater climbs out at (x, y), at its continent's fixed level (td-zones SEAM_LEVELS); Glim warns, the strip says so. */
   private raiseSeam(x: number, y: number, calm: boolean): Mob {
-    const def = seamEaterAt(MOBS[SEAM_ID], this.mobs.keeperLevel);
+    // Its rift's fixed level (td-zones SEAM_LEVELS), never the Keeper's: Ember Isle's is the one a starter runs from.
+    const def = seamEaterAt(MOBS[SEAM_ID], seamLevelFor(this.world.continent));
     const m = this.mobs.place(`seam:${this.world.continent}:${Math.round(this.time)}`, calm ? { ...def, sight: 0 } : def, x, y);
     if (calm) m.wait = 1e9;
     this.seam = m;
@@ -2572,6 +2808,16 @@ export class TopDownEngine {
     };
   }
 
+  /** The shared creatures alone (a host with a menu open): they move, fight the others and stream; this Keeper is away. */
+  private updateShared(dt: number): void {
+    this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
+    this.peers.step(dt, this.peerArea(), this.player, this.still);
+    this.mobs.selfAway = true;
+    try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
+    this.coop.after(dt);
+    this.tickPals(dt);
+  }
+
   private updateFight(dt: number): void {
     // The sky as a rule (td-phases.ts): a pinned `?hour=` stands for its own phase, so a picture never meets the real sky.
     const phase = this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase;
@@ -2580,14 +2826,20 @@ export class TopDownEngine {
     if (this.fxPhase && !this.fxPhaseLaid && this.time > .5 && this.level === this.world) this.layPhaseShowcase(this.fxPhase);
     // After Glim's welcome line has had its say, so the warning is not lost under it.
     if (this.fxSeam && !this.fxSeamLaid && this.time > 6 && this.level === this.world) this.laySeamShowcase();
-    this.updateSeam(phase);
+    // Shared creatures (td-coop.ts): this Keeper's part in its area now, the others of the party as prey on the host,
+    // the host's creatures placed on a member. A member raises nothing of its own (no spawns, no Seam Eater).
+    this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
+    const member = this.coop.role === 'member';
+    if (!member) this.updateSeam(phase);
     // The endless surface hands over the spawns round the Keeper as they come into reach, and forgets far ones.
     this.spawnTimer -= dt;
     // (The seam specs keep the stage to the Eater and its call, so every photograph and count is its own.)
-    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam) {
+    if (this.spawnTimer <= 0 && this.level === this.world && !this.fxSeam && !member && !this.fxCoopQuiet) {
       this.spawnTimer = .5;
       const r = 420;
       this.mobs.addSpawns(this.world.spawnsIn(this.player.x - r, this.player.y - r, this.player.x + r, this.player.y + r));
+      // A host raises the ground round the others too (they hunt where they stand, not only where the host does).
+      for (const o of this.mobs.others) this.mobs.addSpawns(this.world.spawnsIn(o.x - r, o.y - r, o.x + r, o.y + r));
       this.mobs.prune(900);
     }
     // Chasing a target (Tibia): walk into reach of it, re-aimed as it moves.
@@ -2600,6 +2852,7 @@ export class TopDownEngine {
       else this.path = [];
     }
     this.mobs.update(dt);
+    this.coop.after(dt);
     // A potion pouring in: its share of what is left this frame.
     if (this.sip.t > 0) {
       const f = Math.min(1, dt / this.sip.t), h = this.sip.hp * f, m = this.sip.mana * f;
@@ -2728,6 +2981,18 @@ export class TopDownEngine {
     for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeast(c, b, this.time, this.still) });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
+    // Other Keepers' companions (coop-pals.ts), each with its owner's painter.
+    {
+      const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id));
+      for (const sp of this.palBook.shown(now)) if (drawn.has(sp.owner) && inView(sp.x, sp.y)) items.push({ y: sp.y, draw: () => this.drawPal(sp.pal, sp.x, sp.y, sp.moving) });
+      for (const peer of this.peers.drawn) {
+        if (this.palBook.fresh(peer.id, now)) continue;
+        for (const q of decodePresencePals(this.peers.palsOf(peer.id))) {
+          const x = peer.x + q.dx, y = peer.y + q.dy;
+          if (inView(x, y)) items.push({ y, draw: () => this.drawPal({ i: q.k, k: q.k, ...(q.t ? { t: q.t } : {}), x, y, f: q.dx > 0 ? -1 : 1 }, x, y, peer.moving) });
+        }
+      }
+    }
     // Other Keepers (the Hearth room): y-sorted with the world, but always under the local Keeper where they overlap.
     const view = { scale: s, camX: cam.x, camY: cam.y, time: this.time };
     for (const p of this.peers.drawn) {
@@ -3461,8 +3726,18 @@ export class TopDownEngine {
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
       // A unique's minions follow its name: a bar each, no name of their own.
       if (m.elite?.role === 'minion') continue;
-      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(m.def.name, Math.round(m.x) + 1, Math.round(top) - 1);
-      c.fillStyle = m === this.mobs.target ? '#ff8a7a' : '#f3e7cf'; c.fillText(m.def.name, Math.round(m.x), Math.round(top) - 2);
+      // Its name in the colour of its level against the Keeper's (td-zones gapTone, Tibia): grey trivial, cream even,
+      // yellow +3, orange +6, red with a skull from +10 — the one-shot range.
+      const tone = gapTone(this.mobs.keeperLevel, m.def.level), label = `${m.def.name} ${m.def.level}`;
+      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(label, Math.round(m.x) + 1, Math.round(top) - 1);
+      c.fillStyle = m === this.mobs.target && tone === 'even' ? '#ff8a7a' : GAP_TONES[tone]; c.fillText(label, Math.round(m.x), Math.round(top) - 2);
+      if (tone === 'deadly') {
+        // A skull, 5×5 pixels, left of the name.
+        const sx = Math.round(m.x - c.measureText(label).width / 2) - 8, sy = Math.round(top) - 8;
+        c.fillStyle = '#1a1014'; c.fillRect(sx, sy, 6, 6);
+        c.fillStyle = GAP_TONES.deadly; c.fillRect(sx + 1, sy, 4, 3); c.fillRect(sx, sy + 1, 6, 2); c.fillRect(sx + 1, sy + 3, 4, 1); c.fillRect(sx + 1, sy + 4, 1, 1); c.fillRect(sx + 3, sy + 4, 1, 1);
+        c.fillStyle = '#1a1014'; c.fillRect(sx + 1, sy + 1, 1, 1); c.fillRect(sx + 4, sy + 1, 1, 1);
+      }
     }
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r && inView(g.x, g.y) && (Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110 || this.showcase.includes(g))) this.plate(g.label, g.x, this.dropTop(g), LOOT[r].body); }
     // A Gold pile names its sum while it lies there (Diablo II's "38 Gold"), in the pile's own gold.

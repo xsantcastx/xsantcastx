@@ -22,7 +22,7 @@ export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO
 export const SHIP_TO_VERDANT: StationDef = { id: 'ship-verdant', x: 0, label: 'SHIP TO THE VERDANT WILDS', kind: 'passage', blurb: 'Sail to Mossharbor, on the jungle continent. Its creatures start at level 15.' };
 
 /** The third ship at Pyrehold's pier, at its far end: across the sea to Mirewatch in the Umbral Marches. */
-export const SHIP_TO_UMBRAL: StationDef = { id: 'ship-umbral', x: 0, label: 'SHIP TO THE UMBRAL MARCHES', kind: 'passage', blurb: 'Sail to Mirewatch, on the swamp continent. Its creatures start at level 25.' };
+export const SHIP_TO_UMBRAL: StationDef = { id: 'ship-umbral', x: 0, label: 'SHIP TO THE UMBRAL MARCHES', kind: 'passage', blurb: 'Sail to Mirewatch, on the swamp continent. Its creatures start at level 26.' };
 
 export const INFERNAL_REACH: readonly string[] = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',

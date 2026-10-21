@@ -10,7 +10,7 @@
  *
  * Rates are modest — about one pack per 16 eligible spawns (ELITE_CHANCE), a quarter of them uniques — and they only
  * come where they belong: never in a town or a safe square, never a boss or an authored champion, never a creature
- * under level 3 (the first hunt stays gentle), and only where the creature's level suits the Keeper's (LEVEL_BAND).
+ * under level 3 (the first hunt stays gentle). The zone decides, never the Keeper's level (td-zones.ts).
  *
  * The roll is deterministic per spawn (its key, the times it has fallen, a session salt): a chunk that scrolls away
  * and back brings back the same pack; the pack re-rolls only once it has been killed.
@@ -91,8 +91,6 @@ export function isTouched(tag: Pick<EliteTag, 'affixes'> | undefined): boolean {
 /** About one pack per 16 eligible spawns (the brief: 1 in 12–20), a quarter of them uniques. */
 export const ELITE_CHANCE = 1 / 16;
 export const UNIQUE_SHARE = .25;
-/** A creature suits a Keeper of level L when its level is within L − below … L + above. */
-export const LEVEL_BAND = { below: 10, above: 6 } as const;
 /** The Cursed mark on the Keeper. */
 export const CURSE_SECONDS = 4;
 export const CURSE_RESIST = 25;
@@ -160,11 +158,12 @@ export function rollAffixes(r: () => number, count: number): EliteAffix[] {
 }
 
 /** May this spawn lead a pack at all? */
-export function eliteEligible(o: { level: number; rank?: MonsterRank; keeperLevel: number; safe: boolean }): boolean {
+export function eliteEligible(o: { level: number; rank?: MonsterRank; safe: boolean }): boolean {
   if (o.safe) return false;
   if ((o.rank ?? 'normal') !== 'normal') return false;     // a boss is itself; an authored champion already is one
-  if (o.level < MIN_PACK_LEVEL) return false;               // the first hunt stays gentle
-  return o.level >= o.keeperLevel - LEVEL_BAND.below && o.level <= o.keeperLevel + LEVEL_BAND.above;
+  // The zone decides, never the Keeper (td-zones.ts): a spawn's level is its zone's, and from MIN_PACK_LEVEL on any
+  // wild zone can raise a pack — a level-40 Keeper in a level-12 zone meets that zone's packs, not his own.
+  return o.level >= MIN_PACK_LEVEL;                         // the first hunt stays gentle
 }
 
 /**
