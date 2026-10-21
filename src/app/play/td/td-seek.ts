@@ -74,7 +74,8 @@ export function wayEntries(continents: Readonly<Record<string, ContinentDef>>, l
     for (const w of def.ways) {
       if (w.ship || !levels[w.to]) continue;
       const p = def.places.find(pl => pl.kind === w.place);
-      if (p) out.push({ level: w.to, continent: def.id, x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE + 6 });
+      const [dc, dr] = w.at ?? [0, 0];
+      if (p) out.push({ level: w.to, continent: def.id, x: (p.c + dc) * TILE + TILE / 2, y: (p.r + dr) * TILE + TILE + 6 });
     }
     for (const v of def.villages ?? []) for (const w of v.ways ?? []) if (!w.ship && levels[w.to]) out.push({ level: w.to, continent: def.id, x: (v.c + w.c) * TILE + TILE / 2, y: (v.r + w.r) * TILE + TILE });
   }

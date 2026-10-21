@@ -159,6 +159,10 @@ import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
 import { BountyService } from '../shared/bounties/bounty.service';
 import { TownTaskService, type TownTaskView } from '../shared/town-tasks/town-tasks.service';
+import { SextonCountService, type SextonView } from '../shared/sexton/sexton-count.service';
+import { SEXTON_I18N } from '../shared/sexton/sexton-count.i18n';
+import { SEXTON_FACTS, SEXTON_GIVER, SEXTON_LEVEL, SEXTON_REWARD, sextonGold, type SextonEvent } from '../shared/sexton/sexton-count.model';
+import { SextonJournalComponent } from '../shared/sexton/sexton-journal.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
 import { itemDefinitionById } from '../shared/rpg/item-definition';
@@ -291,6 +295,15 @@ const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
 const TUTORIAL_EMBER_ID = 'seamworks-opening:keeper-ember:v1';
 const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 'feet', 'trinket'];
 
+/** Sexton Wren's story talk (the Sexton's Count, shared/sexton): what he says, the step's task, the reward, the choice. */
+interface StoryTalk {
+  view: SextonView; say: string; task: string; reward: string; paid: boolean;
+  /** The two ways the end can go, one line each. */
+  notes: string[];
+  /** Laying the cowl to rest needs it in hand. */
+  restOk: boolean;
+  thanks: 'kept' | 'rested' | null;
+}
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
 /** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
 interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; /** Its satchel tab. */ cat: BagCat; }
@@ -365,7 +378,7 @@ interface ItemTip {
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
 interface OpenPlace {
-  kind: 'page' | 'waystone' | 'chest' | 'slate' | 'shrine' | 'sexton' | 'archivist'; stationId: string; title: string; kicker: string;
+  kind: 'page' | 'waystone' | 'chest' | 'slate' | 'shrine' | 'sexton' | 'archivist' | 'journal'; stationId: string; title: string; kicker: string;
   chest?: { areaId: string; index: number };
   /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
   own?: true;
@@ -410,7 +423,7 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
   fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
 };
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SextonJournalComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -469,9 +482,11 @@ export class SideScrollerComponent implements OnDestroy {
    * A town task giver spoken to (top-down; shared/town-tasks): who they are, what they ask now (or the thanks for what
    * was just handed in), and whether they keep a stall (its "Trade" button opens it as before).
    */
-  taskTalk: { giver: string; name: string; view: TownTaskView | null; stall: StationDef | null; thanks: { task: TownTask; reward: string } | null } | null = null;
+  taskTalk: { giver: string; name: string; view: TownTaskView | null; stall: StationDef | null; thanks: { task: TownTask; reward: string } | null; story?: StoryTalk | null } | null = null;
   /** The tasks under way, for the goal scroll's Tasks rows (re-read on the HUD tick). */
-  taskRows: readonly { id: string; title: string; need: string; have: number; n: number; ready: boolean; giver: string }[] = [];
+  taskRows: readonly { id: string; title: string; need: string; have: number; n: number; ready: boolean; giver: string; story?: boolean }[] = [];
+  /** The Sexton's Count's level, shown on Wren's talk window (never gated). */
+  readonly sextonLevel = SEXTON_LEVEL;
   /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
   lootToasts: LootToast[] = [];
   private toastKey = 0;
@@ -721,6 +736,7 @@ export class SideScrollerComponent implements OnDestroy {
   // ── Map v2 and the Board Herald's bounties (docs/handoff/bounties-map-v2.md) ──
   private readonly bounties = inject(BountyService);
   private readonly townTasks = inject(TownTaskService);
+  private readonly sexton = inject(SextonCountService);
   private readonly heights = inject(HeightsService);
   private heightsSub?: Subscription;
   private readonly glim = inject(GlimService);
@@ -943,6 +959,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(COLD_HEARTH_I18N);
     this.i18n.register(SPELLSTONES_I18N);
     this.i18n.register(GRAVE_I18N);
+    this.i18n.register(SEXTON_I18N);
     this.i18n.register(ONE_WORLD_I18N);
     this.i18n.register(TRAVEL_MAP_I18N);
     this.keeperKey = ''; this.marksKey = '';
@@ -1015,6 +1032,8 @@ export class SideScrollerComponent implements OnDestroy {
       onGlimCue: cue => this.zone.run(() => this.companions.onGlimCue(cue)),
       // Lumvesh, the Seek (td-seek.ts): Glim's words for where it points.
       onSeek: answer => this.zone.run(() => { this.message = this.seekLine(answer); }),
+      // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
+      onSexton: event => this.zone.run(() => this.sextonSaw(event.kind === 'stone' ? { kind: 'stone', n: event.n ?? 1 } : event.kind === 'page' ? { kind: 'page', dark: !!event.dark } : { kind: event.kind })),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -2067,7 +2086,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (a.kind === 'unknown') return this.t('play.seek.unknown', { name: a.name });
     // Glim names nothing it has not seen (design-bible §5.5): a boss not yet met is "something great".
     const met = a.kind !== 'boss' || (readKills(this.store.read(BESTIARY_KEY))[a.id] ?? 0) > 0;
-    const name = a.kind === 'purse' ? this.t('play.seek.purse') : met ? a.name : this.t('play.seek.unseen');
+    const name = a.kind === 'purse' ? this.t('play.seek.purse') : a.kind === 'story' ? this.t(a.name) : met ? a.name : this.t('play.seek.unseen');
     if (a.sea) return this.t('play.seek.sea', { name });
     const floor = a.floor === 'here' ? '' : this.t('play.seek.floor.' + a.floor);
     if (!a.dir) return this.t('play.seek.beside', { name, floor });
@@ -2436,7 +2455,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.topDown || !this.townTasks.isGiver(keeperId)) return false;
     const view = this.townTasks.talk(keeperId);
     const stall = this.engine?.places.find(p => TOWN_KEEPERS.infernal.some(k => k.id === keeperId && (k.station === p.id || (k.serves ?? []).includes(p.id)))) ?? null;
-    this.taskTalk = { giver: keeperId, name: giverById(keeperId)?.name ?? keeperId, view, stall, thanks: null };
+    // Sexton Wren speaks of the Count first while it is not done (his town tasks are a "Something else" away).
+    const story = this.sexton.isGiver(keeperId) ? this.storyTalk(null) : null;
+    this.taskTalk = { giver: keeperId, name: giverById(keeperId)?.name ?? keeperId, view, stall, thanks: null, story };
     this.engine?.setPaused(true);
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-talk__acts button')?.focus());
     return true;
@@ -2480,6 +2501,61 @@ export class SideScrollerComponent implements OnDestroy {
     this.closeTalk();
     if (stall) this.openStation(stall);
   }
+  // ── The Sexton's Count (shared/sexton): Wren's story talk, the world's events, the choice, the journal ──
+
+  /** What Wren says of the Count now (null: it is done, so his town tasks speak). `thanks`: the choice just made. */
+  private storyTalk(thanks: { choice: 'kept' | 'rested'; gold: number; xp: number } | null): StoryTalk | null {
+    const v = this.sexton.view();
+    if (thanks) return { view: v, say: this.t(`sexton.thanks.${thanks.choice}`), task: '', reward: this.t('sexton.reward.paid', { gold: thanks.gold, xp: thanks.xp }), paid: true, notes: [], restOk: false, thanks: thanks.choice };
+    if (v.step === 'done') return null;
+    const gone = v.step === 'return' && !v.cowlHeld;
+    const say = this.t(gone ? 'sexton.ask.returnGone' : `sexton.ask.${v.step}`);
+    const reward = this.t('sexton.reward.line', { gold: sextonGold('kept'), xp: SEXTON_REWARD.huntingXp });
+    const notes = v.step === 'return'
+      ? [v.cowlHeld ? this.t('sexton.choice.rest', { gold: SEXTON_REWARD.restGold }) : this.t('sexton.choice.needCowl'), this.t('sexton.choice.keep')]
+      : [];
+    return { view: v, say, task: v.step === 'offer' ? this.t('sexton.journal.lead') : this.sextonNeed(v), reward, paid: false, notes, restOk: v.cowlHeld, thanks: null };
+  }
+  /** The journal entry under way, as one line ("Read the three chalk-marked stones … (1/3)"). */
+  sextonNeed(v: SextonView): string {
+    const now = v.journal.find(e => e.state === 'now');
+    return now ? this.t(`sexton.journal.${now.id}.line`, { n: v.stones }) : '';
+  }
+  /** Take the Count from Wren. */
+  acceptStory(): void {
+    const tk = this.taskTalk;
+    if (!tk || !this.sexton.accept()) return;
+    this.message = this.t('sexton.say.taken');
+    this.sound.sfx('coin');
+    this.closeTalk();
+    this.tickTasks(true);
+  }
+  /** The end: lay the cowl to rest, or keep it. Wren thanks the Keeper; the window stays open on his words. */
+  chooseStory(choice: 'kept' | 'rested'): void {
+    const tk = this.taskTalk;
+    if (!tk) return;
+    const claim = this.sexton.choose(choice);
+    if (!claim) return;
+    this.message = this.t(`sexton.thanks.${choice}`);
+    this.sound.sfx(choice === 'rested' ? 'five' : 'coin'); this.bump('.coin-count');
+    this.taskTalk = { ...tk, story: this.storyTalk(claim), view: this.townTasks.talk(tk.giver) };
+    this.tickTasks(true);
+  }
+  /** Wren's town tasks instead of the story (his other talk, the Grave-goods desk). */
+  storyElse(): void { if (this.taskTalk) this.taskTalk = { ...this.taskTalk, story: null }; }
+  /** The world told the chain something: record it, say it, push the step to the engine. */
+  private sextonSaw(ev: SextonEvent): void {
+    if (!this.topDown) return;
+    const { line, moved } = this.sexton.event(ev);
+    if (line) this.message = this.t(line);
+    if (moved) { this.sound.sfx(ev.kind === 'grave' || ev.kind === 'door' ? 'five' : 'tap'); this.tickTasks(true); }
+  }
+  /** The quest journal (the Count's six entries), in the place panel. */
+  openJournal(): void {
+    if (!this.browser) return;
+    this.closeTalk();
+    this.showPanel({ kind: 'journal', stationId: 'journal', title: this.t('sexton.journal.title'), kicker: 'Sexton Aldous Wren' });
+  }
   /** "Defeat 6 Rivet Maw" / "Bring 6 Cinder Ore" / "Reach the Ember Inn's upstairs". */
   taskNeed(task: TownTask): string {
     if (task.kind === 'visit') return this.t('play.task.need.visit', { place: this.t(`task.place.${task.target}`) });
@@ -2519,7 +2595,13 @@ export class SideScrollerComponent implements OnDestroy {
     const level = e.whereabouts?.level ?? '';
     if (level !== this.taskLevel) { this.taskLevel = level; if (level && level !== 'surface') this.tasksFinished(this.townTasks.visited(level)); }
     const marks = this.townTasks.marks();
-    const rows = this.townTasks.active().map(v => ({ id: v.task.id, title: (v.task.daily ? this.t('play.task.dailyTag') + ' ' : '') + this.t(`task.${v.task.id}.title`), need: this.taskNeed(v.task), have: v.have, n: v.task.n, ready: v.standing === 'ready', giver: giverById(v.task.giver)?.name ?? '' }));
+    const rows: { id: string; title: string; need: string; have: number; n: number; ready: boolean; giver: string; story?: boolean }[] = this.townTasks.active().map(v => ({ id: v.task.id, title: (v.task.daily ? this.t('play.task.dailyTag') + ' ' : '') + this.t(`task.${v.task.id}.title`), need: this.taskNeed(v.task), have: v.have, n: v.task.n, ready: v.standing === 'ready', giver: giverById(v.task.giver)?.name ?? '' }));
+    // The Sexton's Count: its mark over Wren ("!" to take it, "?" to bring the cowl back), its row first on the scroll.
+    const sv = this.sexton.view();
+    if (sv.step === 'offer' && marks[SEXTON_GIVER] !== '?') marks[SEXTON_GIVER] = '!';
+    if (sv.step === 'return') marks[SEXTON_GIVER] = '?';
+    if (sv.step !== 'offer' && sv.step !== 'done') rows.unshift({ id: 'sexton-count', title: this.t('sexton.row'), need: this.sextonNeed(sv), have: sv.index - 1, n: sv.journal.length, ready: sv.step === 'return', giver: giverById(SEXTON_GIVER)?.name ?? '', story: true });
+    (this.engine as unknown as { setSextonCount?: (s: { step: string; facts: readonly string[] }) => void }).setSextonCount?.({ step: sv.step, facts: SEXTON_FACTS.filter(f => typeof sv.facts[f] === 'number') });
     const key = JSON.stringify([marks, rows]);
     if (!force && key === this.tasksKey) return;
     this.tasksKey = key;
@@ -5105,6 +5187,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.topDown) { const blob = withKill(this.store.read(BESTIARY_KEY), event.creature); if (blob) this.store.write(BESTIARY_KEY, blob); }
     // A town task's hunt counts it (only once taken: shared/town-tasks).
     if (this.topDown) this.tasksFinished(this.townTasks.killed(event.creature));
+    // The Sexton's Count: the Row-Walker (its spawn key) and the Uncounted, felled while the chain waits on them.
+    if (this.topDown && /^td:surface:sexton:row-walker:/.test(event.id)) this.sextonSaw({ kind: 'walker' });
+    if (this.topDown && event.creature === 'the-uncounted') this.sextonSaw({ kind: 'uncounted' });
     // The Banked Furnace banks itself again for a day after every fall.
     if (event.creature === 'banked-furnace') this.delve.claim(furnaceDayFlag(Date.now()));
     // The two rescues a hunt can earn (pets.model.ts): six Foragers, six Substitutes.

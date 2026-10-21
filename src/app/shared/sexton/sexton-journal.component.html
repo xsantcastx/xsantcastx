@@ -1,0 +1,19 @@
+<div class="sj" [attr.data-journal]="step" [attr.data-journal-rows]="rows.length">
+  @if (rows.length) {
+    <p class="sj__lead">{{ t('sexton.journal.lead') }}</p>
+    <ol class="sj__list">
+      @for (r of rows; track r.id; let i = $index) {
+        <li class="sj__row" [class.sj__row--now]="r.state === 'now'" [class.sj__row--later]="r.state === 'later'" [attr.data-entry]="r.id" [attr.data-entry-state]="r.state">
+          <span class="sj__num" aria-hidden="true">{{ i + 1 }}</span>
+          <span class="sj__body">
+            <b>{{ r.state === 'later' ? '…' : r.title }}</b>
+            <small>{{ r.line }}</small>
+          </span>
+          @if (r.state !== 'later') { <em class="sj__tag">{{ t(r.state === 'done' ? 'sexton.journal.done' : 'sexton.journal.now') }}</em> }
+        </li>
+      }
+    </ol>
+  } @else {
+    <p class="sj__lead">{{ t('sexton.journal.none') }}</p>
+  }
+</div>

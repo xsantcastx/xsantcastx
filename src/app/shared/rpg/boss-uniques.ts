@@ -2,7 +2,7 @@
  * boss-uniques.ts — one named thing per boss (docs/design/design-bible.md §7.2, roadmap §10 item 9: "every boss has a
  * reason to farm it").
  *
- * Each of the eight top-down bosses (`rank: 'boss'` in play/td/td-mobs.ts) carries one unique that drops from it and
+ * Each of the nine top-down bosses (`rank: 'boss'` in play/td/td-mobs.ts) carries one unique that drops from it and
  * from nothing else: never the Gambler, never another creature's unique roll (unique-items.ts `uniquesAtRarity` and
  * drop-tables.ts leave them out), only `rollBossUnique` on that boss's kill. Each has a **signature** the fight really
  * applies (play/td/td-mobs.ts reads `relicTotals` of what is worn); the card shows it with where it is found.
@@ -51,7 +51,7 @@ export interface BossUnique extends UniqueItem {
 }
 
 /**
- * The eight. Gold (legendary) like every boss's best; the stats roll as any gear of the slot at the boss's level
+ * The nine. Gold (legendary) like every boss's best; the stats roll as any gear of the slot at the boss's level
  * (item-affixes.ts), the signature is the named part. Chances: the starter boss 1 in 6 (the bible's normal), the
  * deeper ones rarer, the act bosses 1 in 10.
  */
@@ -62,6 +62,15 @@ export const BOSS_UNIQUES: readonly BossUnique[] = [
     passive: { effect: 'relic', text: 'Your own light reaches 2 tiles further, and your Ember Bolt holds 1 rank more.' },
     lore: 'It kept the mine lit after the miners left. Whatever it was banking, it is still banking it.',
     boss: 'ember-warden', oneIn: 6, lair: 'Ember Mine · Floor 3', sig: { light: 2, ranks: { 'ember-bolt': 1 } },
+  },
+  {
+    // The Hushed Barrow's own (shared/sexton, the Sexton's Count): it lies on the forty-first grave, and the chain hands
+    // the first one over cursed (a Hollow Ward, frozen at the find). Afterwards the Uncounted keeps rising, and keeps it.
+    id: 'unique-sextons-lost-cowl', name: "Sexton's Lost Cowl", rarity: 'legendary', slot: 'head', style: 'neutral',
+    rollKeys: ['life', 'lifeRegen'], base: { life: 8, lifeRegen: 0.4 },
+    passive: { effect: 'relic', text: 'Your own light reaches 2 tiles further.' },
+    lore: 'He lost it the night he counted forty-one. The Sexton counted it twice.',
+    boss: 'the-uncounted', oneIn: 6, lair: 'The Hushed Barrow · The Vault', sig: { light: 2 },
   },
   {
     id: 'unique-tyrants-crucible', name: "Tyrant's Crucible", rarity: 'legendary', slot: 'off-hand', style: 'infernal',
@@ -118,7 +127,7 @@ const BY_ID = new Map(BOSS_UNIQUES.map(u => [u.id, u]));
 const BY_BOSS = new Map(BOSS_UNIQUES.map(u => [u.boss, u]));
 
 export function bossUniqueById(id: string | undefined): BossUnique | undefined { return id ? BY_ID.get(id) : undefined; }
-/** The unique a boss keeps (undefined for anything that is not one of the eight). */
+/** The unique a boss keeps (undefined for anything that is not one of the nine). */
 export function bossUniqueFor(creature: string): BossUnique | undefined { return BY_BOSS.get(creature); }
 export function isBossUnique(id: string | undefined): boolean { return !!id && BY_ID.has(id); }
 

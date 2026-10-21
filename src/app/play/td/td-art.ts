@@ -972,6 +972,33 @@ export function anvil(): Sprite {
   });
 }
 /** A worn gravestone, a little askew. */
+/**
+ * Barrow Door 1 (the Hushed Barrow's vault; shared/sexton): one tile of an old iron-banded door in the rock, a keyhole
+ * stamped with its number. Open, the doorway is dark and the door stands back against the jamb.
+ */
+export function barrowDoor(open: boolean): Sprite {
+  return cached(`barrow-door-${open ? 1 : 0}`, () => {
+    const W = 16, H = 26, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    // The stone jambs and lintel, then the doorway.
+    rect(c, 0, 0, 16, 26, PAL.basalt[2]); rect(c, 0, 0, 16, 3, PAL.basalt[3]); rect(c, 0, 3, 2, 23, PAL.basalt[1]); rect(c, 14, 3, 2, 23, PAL.basalt[0]);
+    rect(c, 2, 3, 12, 23, '#120a0e');
+    if (open) {
+      // The door swung back: a sliver of planks against the left jamb.
+      rect(c, 2, 4, 3, 22, PAL.wood[2]); rect(c, 2, 4, 1, 22, PAL.wood[3]); rect(c, 3, 9, 2, 1, PAL.basalt[3]); rect(c, 3, 19, 2, 1, PAL.basalt[3]);
+    } else {
+      // Planks, two iron bands, the keyhole under a stamped "1".
+      rect(c, 2, 4, 12, 22, PAL.wood[2]);
+      for (let i = 0; i < 3; i++) rect(c, 5 + i * 3, 4, 1, 22, PAL.wood[0]);
+      rect(c, 2, 4, 12, 1, PAL.wood[3]);
+      rect(c, 2, 8, 12, 2, PAL.basalt[3]); rect(c, 2, 19, 12, 2, PAL.basalt[3]);
+      rect(c, 7, 12, 2, 4, PAL.stone[1]); rect(c, 7, 12, 1, 4, PAL.stone[3]);
+      rect(c, 7, 14, 2, 2, '#120a0e'); rect(c, 8, 16, 1, 1, '#120a0e');
+    }
+    return { img: outline(img), ax: 8, ay: H };
+  });
+}
+
 export function gravestone(seed = 0): Sprite {
   const v = ((seed % 3) + 3) % 3;
   return cached(`grave-${v}`, () => {

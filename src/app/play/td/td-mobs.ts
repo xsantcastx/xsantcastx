@@ -495,6 +495,29 @@ function paintBoneArcher(c: CanvasRenderingContext2D, f: number): void {
   boneArm(c, f, 1, 23, 20, R.bone);
   limb(c, [15, 17 + b], [18 - drawn, 20 + b], 2, R.bone);
 }
+/** The lamp-cold glow the Uncounted carries (the Hushed Barrow's own light: a sexton's lantern, burning wrong). */
+const GRAVELIGHT: Ramp = ['#f4fff8', '#b8e8d8', '#6aa898', '#3a6a60'];
+/**
+ * The Uncounted (the Hushed Barrow's vault; shared/sexton, the Sexton's Count): the forty-first of forty graves. A tall
+ * skeleton in a sexton's grey hood, a tally mark cut on its brow, a lantern held low that gives no warmth.
+ */
+function paintUncounted(c: CanvasRenderingContext2D, f: number): void {
+  grown(1.35, 2, 9, () => {
+    const b = BOB[f];
+    skeleton(c, f, 1, { bone: R.bone, eye: GRAVELIGHT });
+    // The hood, down over the shoulders and the back.
+    poly(c, [[3, 14 + b], [7, 13 + b], [8, 24 + b], [4, 23 + b]], R.hood);
+    poly(c, [[4, 10 + b], [6, 3 + b], [10, 1 + b], [15, 1 + b], [18, 4 + b], [18, 8 + b], [15, 6 + b], [9, 6 + b], [7, 14 + b], [4, 16 + b]], R.hood);
+    // One tally mark on the brow, scratched into the bone.
+    line(c, [12, 4 + b], [13, 7 + b], R.void[0]);
+    // The lantern, held low on its ring, swinging a little as it walks.
+    const sw = [0, 1, 0, -1][f];
+    line(c, [21, 19 + b], [21 + sw, 23 + b], R.iron[1]);
+    px(c, 19 + sw, 23 + b, 5, 6, R.iron[2]); px(c, 20 + sw, 24 + b, 3, 4, GRAVELIGHT[1]);
+    glow(c, 21 + sw, 26 + b, 1, GRAVELIGHT);
+    boneArm(c, f, 1, 21, 19, R.bone);
+  });
+}
 /** A skeleton the Warlock raised: the same bones blanched violet, his colour burning in the eyes, a rune-shield and a blade. */
 function paintRaised(c: CanvasRenderingContext2D, f: number): void {
   const b = BOB[f];
@@ -1419,6 +1442,13 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     lore: 'It remembers walking to work, so it walks. Nobody has told it which way the work went.',
     drops: [{ material: 'ember-residue', qty: 1, chance: .25 }], paint: paintBoneWalker, w: 22, h: 36,
   },
+  // The Hushed Barrow's vault, behind Barrow Door 1 (maps/hushed-barrow.ts; shared/sexton, the Sexton's Count).
+  'the-uncounted': {
+    id: 'the-uncounted', name: 'The Uncounted', hp: 360, speed: 26, dmg: [7, 12], rate: 1.5, sight: 120, level: 7,
+    lore: 'The forty-first of forty graves. It does not fight like it hates you. It fights like it wants to be counted.',
+    drops: [{ material: 'ember-residue', qty: 2, chance: 1 }, { material: 'world-root-bark', qty: 2, chance: .5 }], paint: paintUncounted, w: 34, h: 54, rank: 'boss',
+    chant: 'osk teth', ghost: true, summon: { type: 'bone-walker', count: 2, at: .5 },
+  },
   'bone-archer': {
     id: 'bone-archer', name: 'Bone Archer', hp: 85, speed: 30, dmg: [3, 6], rate: 1.5, sight: 140, level: 8,
     lore: 'A bow strung with something that is not quite sinew. It only ever aims at the lantern you carry.',
@@ -1600,7 +1630,7 @@ export const MOB_FRAMES = 4;
 /** A boss's rim, in its element's colour (docs/design/effects-spec.md): fire for the forge-born, violet bone-light for the dragon. */
 const RIM: Readonly<Record<string, string>> = {
   'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
-  'mossbound-colossus': '#7affd0', 'ink-abbess': '#a48bff', 'elder-rootwyrm': '#7affd0',
+  'mossbound-colossus': '#7affd0', 'ink-abbess': '#a48bff', 'elder-rootwyrm': '#7affd0', 'the-uncounted': '#b8e8d8',
 };
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 /**
@@ -2379,6 +2409,8 @@ export class MobSystem {
     }
     this.hurtMob(foe, dmg, color, crit);
   }
+  /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
+  smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff'); }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
   private hurtMob(foe: Mob, dmg: number, color: string, crit = false): void {
     if (foe.hp <= 0) return;

@@ -15,11 +15,11 @@ function seeded(seed: number): () => number {
   let a = seed >>> 0;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-const BOSSES = ['ember-warden', 'magma-tyrant', 'anvil-warden', 'bone-dragon', 'cinder-sovereign', 'mossbound-colossus', 'elder-rootwyrm', 'ink-abbess'];
+const BOSSES = ['ember-warden', 'the-uncounted', 'magma-tyrant', 'anvil-warden', 'bone-dragon', 'cinder-sovereign', 'mossbound-colossus', 'elder-rootwyrm', 'ink-abbess'];
 
-describe('boss uniques: the eight', () => {
+describe('boss uniques: one per boss', () => {
   it('one per boss, every boss has one, gold, with a slot, lore, a signature and odds of 1 in 6 to 1 in 10', () => {
-    expect(BOSS_UNIQUES.length).toBe(8);
+    expect(BOSS_UNIQUES.length).toBe(9);
     expect(new Set(BOSS_UNIQUES.map(u => u.boss))).toEqual(new Set(BOSSES));
     for (const u of BOSS_UNIQUES) {
       expect(bossUniqueFor(u.boss)).withContext(u.boss).toBe(u);
@@ -120,7 +120,8 @@ describe('boss uniques: the signatures summed', () => {
 
   it('each piece adds its own; two of one count once', () => {
     const all = relicTotals(BOSS_UNIQUES.map(u => u.id));
-    expect(all.light).toBe(2);
+    // The Warden's ember and the Sexton's cowl each reach 2 tiles further.
+    expect(all.light).toBe(4);
     expect(all.ranks).toEqual({ 'ember-bolt': 1, 'hellfire-nova': 2 });
     expect(all.cdCut).toEqual({ meteor: 2 });
     expect(all.construct).toBe(20);

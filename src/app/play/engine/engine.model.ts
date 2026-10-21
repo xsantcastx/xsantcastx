@@ -136,7 +136,7 @@ export type LootRow =
 /** A world sound (EngineOptions.onSfx). */
 /** What the Seek found (EngineOptions.onSeek): its kind and id, the name the engine knows, and Glim's reading. */
 export interface SeekAnswer {
-  kind: 'boss' | 'quest' | 'purse' | 'unknown';
+  kind: 'boss' | 'quest' | 'purse' | 'story' | 'unknown';
   id: string; name: string;
   dir: 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | null;
   band: 'beside' | 'near' | 'far' | 'veryFar';
@@ -337,6 +337,12 @@ export interface EngineOptions {
    * Glim's words ("The Ink Abbess is very far to the south-east, below you."). `kind: 'unknown'` — no such name.
    */
   onSeek?: (answer: SeekAnswer) => void;
+  /**
+   * The Sexton's Count (top-down; shared/sexton): the Keeper read a chalk-marked stone, the ledger page on the barrow's
+   * jetty (`dark`: the night or an eclipse is on it), tried Barrow Door 1, or read the forty-first grave. The host
+   * records what the chain allows and pushes the new step back (`setSextonCount`).
+   */
+  onSexton?: (event: { kind: 'stone' | 'page' | 'door' | 'grave'; n?: 1 | 2 | 3; dark?: boolean }) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug

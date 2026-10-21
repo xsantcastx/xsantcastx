@@ -44,6 +44,8 @@ import { HERBAL_0, HERBAL_1, NETLOFT_1, NETLOFT_2 } from './maps/verdant-houses'
 import { UMBRAL_MARCHES_DEF } from './maps/umbral-marches';
 import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lantern-tower';
 import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
+import { BARROW_DOOR_ID, HUSHED_BARROW_1 } from './maps/hushed-barrow';
+import { SEXTON_CONTINENT, SEXTON_PAGE, SEXTON_STONES, SEXTON_VAULT, VAULT_GRAVE, VAULT_KEYHOLE, WALKER, WALKER_AT, chalkMark, ledgerPage, pageShown, seekSpot, stallSpot } from './td-sexton';
 import type { ContinentDef } from './continent';
 import type { TdMapDef } from './td-level';
 
@@ -65,7 +67,8 @@ export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBE
   'drowned-crypts-1': DROWNED_CRYPTS_1, 'drowned-crypts-2': DROWNED_CRYPTS_2, 'drowned-crypts-3': DROWNED_CRYPTS_3,
   'overgrown-temple-4': OVERGROWN_TEMPLE_4, 'overgrown-temple-5': OVERGROWN_TEMPLE_5,
   'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
-  'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0 };
+  'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0,
+  'hushed-barrow-1': HUSHED_BARROW_1 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 /** The Seam-Cant's tone per tree: each element's body tone (effects-spec rule 2), so the words read as the spell's. */
 const CANT_TONE: Readonly<Record<TreeId, string>> = {
@@ -123,6 +126,8 @@ const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
+/** The Row-Walker's spawn key (the Sexton's Count): its kill reads `td:surface:sexton:row-walker:…`, which the host credits. */
+const WALKER_KEY = 'sexton:row-walker';
 const FOLK = 16;               // townsfolk strolling the square (the references' busy plaza)
 const FOLK_SPEED = 30;         // art px / s: a stroll, under half the Keeper's pace
 
@@ -324,6 +329,18 @@ export class TopDownEngine {
   private readonly darkSeeded = new WeakSet<object>();
   private darkSeen = '';
   /**
+   * The Sexton's Count (shared/sexton; td-sexton.ts): the step and the facts the host hands in (setSextonCount), the
+   * stones and the page stood once on Ember Isle, and the Row-Walker's wait before it rises again.
+   */
+  private sexton: { step: string; facts: ReadonlySet<string> } = { step: 'offer', facts: new Set() };
+  private readonly sextonSeeded = new WeakSet<object>();
+  private sextonSeen = '';
+  private walkerT = 0;
+  private walkerUp = false;
+  private fxSextonCalm = false;
+  /** For the chain's e2e (`?fxsexton=1`, only under an automated browser): `window.__tdSexton` walks the Keeper to each place of it. */
+  private readonly fxSexton = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxsexton=1\b/.test(location.search);
+  /**
    * For the dark specs (only under an automated browser): `?hush=0..100` holds the Hush there (awake anywhere, any
    * level); `?fxdark=1` lets `window.__tdDark.lay()` stand two shapes at the light's edge (held for a photograph) with a spell
    * of footsteps; with either, `window.__tdDark` can walk the Keeper to a shy chest or a Nightroad and fire an omen.
@@ -384,6 +401,17 @@ export class TopDownEngine {
       swings: () => this.mobs.swings,
       state: () => ({ vocation: this.mobs.vocation, range: this.mobs.range, hp: this.hp, maxHp: this.maxHp, mana: Math.round(this.mobs.mana), maxMana: this.mobs.maxMana, defense: this.mobs.defense, brand: this.mobs.brandT > 0, block: this.mobs.blockT > 0, vow: this.mobs.vowT > 0, swing: this.mobs.weaponSwing }),
     };
+    if (this.fxSexton) (window as unknown as Record<string, unknown>)['__tdSexton'] = {
+      to: (where: string) => this.fxToSexton(where),
+      smite: (what: 'walker' | 'uncounted') => this.fxSmite(what),
+      // What Lumvesh would point at for the chain now (the target, its words and Glim's reading), without casting it.
+      seek: () => {
+        const here = this.seekPlace(this.world.continent, this.level === this.world ? null : this.level.id, this.player.x, this.player.y);
+        const t = this.seekTargets().find(x => x.kind === 'story');
+        return t ? { id: t.id, name: t.name, ...seekReading(here, t.place) } : null;
+      },
+      state: () => ({ step: this.sexton.step, level: this.level.id, near: this.nearby?.station.id ?? null, mobs: this.mobs.mobs.map(m => m.key), phase: this.phaseNow }),
+    };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
@@ -417,6 +445,7 @@ export class TopDownEngine {
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
+    delete (window as unknown as Record<string, unknown>)['__tdSexton'];
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
@@ -606,6 +635,8 @@ export class TopDownEngine {
     if (id.startsWith('giver-') && s.keeper && this.options.onTalk?.(s.keeper.id)) return;
     // The Cold Hearth: a hearth is lit by hand (the wake point); a capital's shrine sells the blessings.
     if (id.startsWith('hearth:')) { this.lightHearth(id); return; }
+    // The Sexton's Count: a chalk-marked stone, the ledger page, Barrow Door 1, the forty-first grave (the host decides).
+    if (id.startsWith('sexton:')) { this.useSexton(id.slice(7)); return; }
     // The mystery layer: a shy chest (only opens in the dark), a Nightroad's note.
     if (id.startsWith('shade:')) { this.openShade(id.slice(6)); return; }
     if (id.startsWith('nightnote:')) { this.readNightNote(id.slice(10)); return; }
@@ -794,6 +825,8 @@ export class TopDownEngine {
     this.chunks.clear();
     this.path = []; this.arrive = null; this.puffs = [];
     this.mobs.enterLevel(level === this.world ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    // The Row-Walker was swept away with the last level's creatures, not felled: it may rise again at once.
+    this.walkerUp = false; this.walkerT = 0;
     // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).
     const s = level.stalls.find(st => st.station.id === at);
     if (s) { const spot = standNear(level, s.x, s.y + 10); this.player.x = spot.x; this.player.y = spot.y; }
@@ -1017,6 +1050,87 @@ export class TopDownEngine {
     this.messageAge = -6;
     this.darkLayer.hush = Math.min(100, this.darkLayer.hush + (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent }) ? 3 : 0));
   }
+  // ── The Sexton's Count (shared/sexton; td-sexton.ts) ────────────────────────────────────────────────────────
+
+  /** The chain's step and facts, from the host (null: none yet). The vault's door opens from the facts. */
+  setSextonCount(s: { step: string; facts: readonly string[] } | null): void {
+    this.sexton = { step: s?.step ?? 'offer', facts: new Set(s?.facts ?? []) };
+  }
+  /** The sky's phase as the rules read it (a pinned `?hour=` stands for its own). */
+  private get phaseNow(): SkyPhase { return this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase; }
+  /** Each frame: stand the stones and the page once on Ember Isle, open the vault's door, raise the Row-Walker. */
+  private updateSexton(dt: number): void {
+    const onIsle = this.world.continent === SEXTON_CONTINENT;
+    if (onIsle && !this.sextonSeeded.has(this.world)) {
+      this.sextonSeeded.add(this.world);
+      for (const st of SEXTON_STONES) this.world.addStall({ station: { id: `sexton:stone:${st.n}`, x: 0, label: 'A CHALK-MARKED STONE', kind: 'resource', blurb: 'Sexton Wren marks the graves he counts in chalk.' }, ...stallSpot(st.c, st.r) });
+      this.world.addStall({ station: { id: 'sexton:page', x: 0, label: 'A LEDGER PAGE', kind: 'resource', blurb: 'A torn page. It is only there in the dark.' }, x: SEXTON_PAGE.c * TILE + TILE / 2, y: SEXTON_PAGE.r * TILE + TILE - 6 });
+    }
+    const lv = this.level;
+    if (lv instanceof HandLevel && lv.id === SEXTON_VAULT && this.sexton.facts.has('door')) lv.open(BARROW_DOOR_ID);
+    // The one who walks the rows: a named Bone Walker rises at the plot while the key is to be taken (and the Keeper near).
+    // It rests a while after it falls (or wanders off); a new level (enter) forgets that.
+    const up = this.mobs.mobs.some(m => m.key === WALKER_KEY);
+    if (this.walkerUp && !up) this.walkerT = WALKER.again;
+    this.walkerUp = up;
+    this.walkerT = Math.max(0, this.walkerT - dt);
+    if (onIsle && lv === this.world && this.sexton.step === 'key' && this.walkerT <= 0 && !up && MOBS['bone-walker']) {
+      const x = WALKER_AT.c * TILE + TILE / 2, y = WALKER_AT.r * TILE + TILE;
+      if (Math.hypot(this.player.x - x, this.player.y - y) < WALKER.reach * TILE) {
+        this.mobs.spawnPack(WALKER_KEY, MOBS['bone-walker'], x, y, makePack('unique', ['extra-strong'], WALKER.name, 1));
+        this.walkerUp = true;
+      }
+    }
+    // The chain's e2e: once walked anywhere by the hook, every creature stays calm and the Keeper whole (pictures hold).
+    if (this.fxSextonCalm) {
+      for (const m of this.mobs.mobs) if (m.def.sight > 0) { m.def = { ...m.def, sight: 0 }; m.wait = 1e9; }
+      this.hp = this.maxHp;
+    }
+    this.markSexton();
+  }
+  /** A chain place used (E, a tap): the host records what the chain allows. */
+  private useSexton(what: string): void {
+    if (what.startsWith('stone:')) { const n = Number(what.slice(6)); if (n === 1 || n === 2 || n === 3) this.options.onSexton?.({ kind: 'stone', n }); }
+    else if (what === 'page') { const ph = this.phaseNow; this.options.onSexton?.({ kind: 'page', dark: ph === 'night' || ph === 'eclipse' }); }
+    else if (what === 'door' || what === 'grave') this.options.onSexton?.({ kind: what });
+  }
+  /** The chain on the canvas, for tests and tools: "step|level|door open|Row-Walker up|page shown". */
+  private markSexton(): void {
+    const lv = this.level, door = lv instanceof HandLevel && lv.id === SEXTON_VAULT && lv.opened.has(BARROW_DOOR_ID) ? 1 : 0;
+    const key = `${this.sexton.step}|${lv.id}|${door}|${this.mobs.mobs.some(m => m.key === WALKER_KEY) ? 1 : 0}|${pageShown(this.sexton.step, this.phaseNow) ? 1 : 0}`;
+    if (key === this.sextonSeen) return;
+    this.sextonSeen = key;
+    this.canvas.setAttribute('data-sexton', key);
+  }
+  /** Test hook only: stand the Keeper at a place of the chain, the creatures round it calm (they never notice him). */
+  private fxToSexton(where: string): string | null {
+    const isle = (c: number, r: number, dy = 2) => this.restoreWhereabouts({ continent: SEXTON_CONTINENT, level: 'surface', x: c * TILE + TILE / 2, y: (r + 1) * TILE + dy });
+    let ok = false;
+    const stone = /^stone-([123])$/.exec(where);
+    if (stone) { const st = SEXTON_STONES[Number(stone[1]) - 1]; ok = isle(st.c, st.r + 1); this.player.dir = 'up'; }
+    else if (where === 'barrow') ok = isle(WALKER_AT.c - 2, WALKER_AT.r + 2);
+    else if (where === 'square') ok = this.restoreWhereabouts({ continent: SEXTON_CONTINENT, level: 'surface', x: this.continents.get(SEXTON_CONTINENT)?.spawn.x ?? this.map.spawn.x, y: this.continents.get(SEXTON_CONTINENT)?.spawn.y ?? this.map.spawn.y });
+    // Beside the page (east of it, toward the road), so it shows in the picture.
+    else if (where === 'page') { ok = isle(SEXTON_PAGE.c + 1, SEXTON_PAGE.r, -2); this.player.face = -1; this.player.dir = 'side'; }
+    else if (where === 'door' || where === 'grave' || where === 'vault') {
+      const t = where === 'door' ? VAULT_KEYHOLE : where === 'grave' ? { c: VAULT_GRAVE.c, r: VAULT_GRAVE.r + 1 } : { c: VAULT_KEYHOLE.c, r: VAULT_KEYHOLE.r + 3 };
+      ok = this.restoreWhereabouts({ continent: SEXTON_CONTINENT, level: SEXTON_VAULT, x: t.c * TILE + TILE / 2, y: t.r * TILE + TILE - 2 });
+      this.player.dir = where === 'door' ? 'down' : 'up';
+    }
+    if (!ok) return null;
+    this.path = []; this.mobs.target = null; this.fxSextonCalm = true;
+    for (const m of this.mobs.mobs) { m.def = { ...m.def, sight: 0 }; m.wait = 1e9; }
+    this.placeCompanions();
+    return where;
+  }
+  /** Test hook only: fell the Row-Walker or the Uncounted at once (the kill goes through the real path: onKill, loot). */
+  private fxSmite(what: 'walker' | 'uncounted'): boolean {
+    const m = this.mobs.mobs.find(x => what === 'walker' ? x.key === WALKER_KEY : x.def.id === 'the-uncounted');
+    if (!m) return false;
+    this.mobs.smite(m);
+    return true;
+  }
+
   /** The layer's state on the canvas, for tests and tools (written only when it changes). */
   private markDark(): void {
     const v = this.hushView, open = this.world.nightOpen ? 1 : 0;
@@ -1457,8 +1571,8 @@ export class TopDownEngine {
     return l ? { continent: l.continent, level, x, y, floor: l.floor, ax: l.ax, ay: l.ay } : { continent, level, x, y, floor: 0, ax: x, ay: y };
   }
   /** What the Seek can point at: the fallen purse, every boss in its hall, every task giver with a task to hand in. */
-  private seekTargets(): { kind: 'boss' | 'quest' | 'purse'; id: string; name: string; place: SeekPlace }[] {
-    const out: { kind: 'boss' | 'quest' | 'purse'; id: string; name: string; place: SeekPlace }[] = [];
+  private seekTargets(): { kind: 'boss' | 'quest' | 'purse' | 'story'; id: string; name: string; place: SeekPlace }[] {
+    const out: { kind: 'boss' | 'quest' | 'purse' | 'story'; id: string; name: string; place: SeekPlace }[] = [];
     const pu = this.purse, m = pu ? /^td:([^|]+)\|(.+)$/.exec(pu.area) : null;
     if (pu && m) out.push({ kind: 'purse', id: 'purse', name: 'purse', place: this.seekPlace(m[1], m[2] === 'surface' ? null : m[2], pu.x, pu.y) });
     for (const b of levelSpawns(LEVELS, id => MOBS[id]?.rank === 'boss')) {
@@ -1466,6 +1580,13 @@ export class TopDownEngine {
       out.push({ kind: 'boss', id: b.mob, name: MOBS[b.mob].name, place: this.seekPlace(this.world.continent, b.level, b.x, b.y) });
     }
     for (const k of this.keepers) if (k.kid && this.taskMarks[k.kid] === '?') out.push({ kind: 'quest', id: k.kid, name: k.name ?? k.kid, place: this.seekPlace(this.world.continent, null, k.x, k.y) });
+    // The Sexton's Count under way: where its next step is (the name is the chain's own words, an i18n key).
+    const ss = seekSpot(this.sexton.step);
+    if (ss?.spot) out.push({ kind: 'story', id: ss.target, name: `sexton.seek.${ss.target}`, place: this.seekPlace(SEXTON_CONTINENT, ss.spot.level, ss.spot.x, ss.spot.y) });
+    else if (ss && this.world.continent === SEXTON_CONTINENT) {
+      const wren = this.keepers.find(k => k.kid === 'sexton-wren');
+      if (wren) out.push({ kind: 'story', id: ss.target, name: `sexton.seek.${ss.target}`, place: this.seekPlace(SEXTON_CONTINENT, null, wren.x, wren.y) });
+    }
     return out;
   }
   /**
@@ -1480,11 +1601,12 @@ export class TopDownEngine {
     if (name) {
       const bare = (s: string) => s.toLowerCase().replace(/^the\s+/, '').replace(/['’]/g, '');
       const want = bare(name);
-      const named = /^(purse|bolsa|monedero)$/.test(want) ? all.filter(t => t.kind === 'purse') : all.filter(t => t.kind !== 'purse' && (bare(t.name).includes(want) || t.id === want));
+      const named = /^(purse|bolsa|monedero)$/.test(want) ? all.filter(t => t.kind === 'purse') : all.filter(t => t.kind !== 'purse' && t.kind !== 'story' && (bare(t.name).includes(want) || t.id === want));
       pick = named.sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
       if (!pick) { this.options.onSeek?.({ kind: 'unknown', id: '', name, dir: null, band: 'veryFar', floor: 'here', sea: false }); return false; }
     } else {
-      pick = all.find(t => t.kind === 'purse') ?? all.filter(t => t.kind !== 'purse').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
+      // The purse first (a fall to set right), then the story's next place (the chain under way), then the nearest.
+      pick = all.find(t => t.kind === 'purse') ?? all.find(t => t.kind === 'story') ?? all.filter(t => t.kind !== 'purse').sort((a, b) => seekCost(a.r) - seekCost(b.r))[0];
     }
     if (!pick) return false;
     const r = pick.r;
@@ -1711,12 +1833,15 @@ export class TopDownEngine {
     let best: TdStall | null = null, bestD = REACH;
     for (const s of this.level.stalls) {
       if (s.station.id.startsWith('shade:') && this.darkLayer.isOpened(s.station.id.slice(6))) continue;
+      // The ledger page is only there in the dark, while the chain is at it.
+      if (s.station.id === 'sexton:page' && !pageShown(this.sexton.step, this.phaseNow)) continue;
       const d = Math.hypot(this.player.x - s.x, this.player.y - (s.y + 10));
       if (d < bestD) { best = s; bestD = d; }
     }
     this.nearby = best;
     this.updateHearth();
     this.updateDark(dt);
+    this.updateSexton(dt);
     this.updateSmoke(dt);
     this.updateFight(dt);
     this.updatePet(dt);
@@ -2178,6 +2303,11 @@ export class TopDownEngine {
       const sh = h.shrine;
       if (sh && inView(sh.x, sh.y)) items.push({ y: sh.y, draw: () => drawShrine(c, sh.x, sh.y, this.hearthBlessed, this.time, this.still) });
     }
+    // The Sexton's Count: Wren's chalk on the three marked stones (once the chain is taken).
+    if (surface && this.world.continent === SEXTON_CONTINENT && this.sexton.step !== 'offer') for (const st of SEXTON_STONES) {
+      const x = st.c * TILE + TILE / 2, y = st.r * TILE + TILE;
+      if (inView(x, y)) items.push({ y: y + .5, draw: () => chalkMark(c, x, y, this.sexton.facts.has(`stone-${st.n}`), this.time, this.still || this.sexton.step !== 'stones') });
+    }
     const fallen = this.purseHere();
     if (fallen && inView(fallen.x, fallen.y)) items.push({ y: fallen.y, draw: () => drawPurse(c, fallen.x, fallen.y, this.time, this.still) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
@@ -2211,6 +2341,11 @@ export class TopDownEngine {
     this.drawFog();
     this.drawLight();
     // What only the dark shows: the shapes at the light's edge, the prints behind, a shy chest, a road's pale nails.
+    // The ledger page on the barrow's jetty: only the dark shows it (over the night pass, faintly lit).
+    if (this.level === this.world && this.world.continent === SEXTON_CONTINENT && pageShown(this.sexton.step, this.phaseNow)) {
+      const px = SEXTON_PAGE.c * TILE + TILE / 2, py = SEXTON_PAGE.r * TILE + TILE - 3;
+      if (inView(px, py, 40)) ledgerPage(c, px, py, 1, this.time, this.still);
+    }
     this.darkLayer.drawOver(c, { levelId: this.level.id, continent: this.world.continent, surface: this.level === this.world, time: this.time, still: this.still, night: this.level.dark ? 1 : this.darkness }, (x, y) => inView(x, y, 40));
     this.drawFireflies();
     // The drag joystick: a ring where the thumb landed and a knob under it (screen space).

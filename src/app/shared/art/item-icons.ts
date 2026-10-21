@@ -227,6 +227,7 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-eclipse-manifest': I('sun', 'obsidian', 'eclipse'),
   // ── The bosses' own uniques (rpg/boss-uniques.ts): each in its boss's materials ──
   'unique-wardens-last-ember': I('pendant', 'basalt', 'ember', 'iron'),
+  'unique-sextons-lost-cowl': I('hood', 'ash', 'ivory', 'iron'),
   'unique-tyrants-crucible': I('cup', 'basalt', 'ember', 'iron'),
   'unique-hammer-first-watch': I('hammer', 'basalt', 'ember', 'iron'),
   'unique-ashbone-phylactery': I('pendant', 'ivory', 'ember', 'ash'),

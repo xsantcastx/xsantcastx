@@ -335,10 +335,10 @@ describe('TownTaskService (the town keepers\' tasks)', () => {
     expect(kept).not.toContain('d20261010-dly-x-1');
   });
 
-  it('migrates a version 1 blob: everything kept, the daily fields empty', () => {
+  it('migrates a version 1 blob: everything kept, the daily fields and the story chains empty', () => {
     const v1 = { version: 1, accepted: { 'seam-edrin-1': 7 }, progress: { 'seam-edrin-1': 3 }, claimed: ['seam-mara-1'] };
-    expect(coerceTownTasks(v1)).toEqual({ version: 2, accepted: { 'seam-edrin-1': 7 }, progress: { 'seam-edrin-1': 3 }, claimed: ['seam-mara-1'], dAccepted: {}, dProgress: {}, dClaimed: [] });
-    expect(coerceTownTasks(mergeTownTasks(v1, emptyTownTasks())).version).toBe(2);
+    expect(coerceTownTasks(v1)).toEqual({ version: 3, accepted: { 'seam-edrin-1': 7 }, progress: { 'seam-edrin-1': 3 }, claimed: ['seam-mara-1'], dAccepted: {}, dProgress: {}, dClaimed: [], chains: {} });
+    expect(coerceTownTasks(mergeTownTasks(v1, emptyTownTasks())).version).toBe(3);
     localStorage.setItem(TOWN_TASKS_KEY, JSON.stringify(v1));
     expect(boot().state.claimed).toEqual(['seam-mara-1']);
   });

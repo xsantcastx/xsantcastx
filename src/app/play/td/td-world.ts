@@ -86,7 +86,8 @@ export class TdWorld implements TdLevel {
       const p = def.places.find(pl => pl.kind === w.place);
       if (!p) continue;
       // A ship is boarded at the pier's end; anything else in front of the place.
-      const at = w.place === 'harbour' ? { x: p.c * TILE + TILE / 2, y: (p.r + PIER - 4 + (w.along ?? 0)) * TILE + TILE } : { x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE + 6 };
+      const [dc, dr] = w.at ?? [0, 0];
+      const at = w.place === 'harbour' ? { x: p.c * TILE + TILE / 2, y: (p.r + PIER - 4 + (w.along ?? 0)) * TILE + TILE } : { x: (p.c + dc) * TILE + TILE / 2, y: (p.r + dr) * TILE + TILE + 6 };
       this.allStalls.push({ station: w.station, ...at });
       this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
     }
@@ -375,7 +376,14 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'graveyard') {
         // Rows of graves round a bare plot; the dead walk between them (GRAVES below).
         GRAVES.forEach(([dc, dr], i) => stamp(dc, dr, () => gravestone(i)));
-        stamp(0, -4, () => standingStone(2));
+        // A way down under the plot (the Hushed Barrow's vault): its door where the standing stone would be, walled either side.
+        const down = this.def.ways.find(w => w.place === 'graveyard' && !w.ship);
+        if (down) {
+          const [dc, dr] = down.at ?? [0, -4];
+          stamp(dc, dr, cryptDoor);
+          // The door front is wider than its tile: the tiles either side are its walls (as a crypt's).
+          for (const side of [-1, 1]) { const c = p.c + dc + side, r = p.r + dr; if (c >= x0 && c < x0 + WORLD_CHUNK && r >= y0 && r < y0 + WORLD_CHUNK) blocked.add(this.key(c, r)); }
+        } else stamp(0, -4, () => standingStone(2));
       }
     }
     // The graveyards' own dead: a few Bone Walkers between the graves, back again after each falls.

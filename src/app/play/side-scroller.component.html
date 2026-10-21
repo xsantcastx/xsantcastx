@@ -419,7 +419,7 @@
       @if (topDown && taskRows.length) {
         <ol class="td-tasks" [attr.aria-label]="t('play.task.tasks')" data-tasks>
           @for (r of taskRows; track r.id) {
-            <li [class.is-ready]="r.ready" [attr.data-task]="r.id" [title]="r.need"><i aria-hidden="true"></i><span>{{ r.title }}</span><b>{{ r.ready ? '?' : r.have + '/' + r.n }}</b></li>
+            <li [class.is-ready]="r.ready" [attr.data-task]="r.id" [title]="r.need"><i aria-hidden="true"></i>@if (r.story) { <span role="button" tabindex="0" data-story-row (click)="openJournal()" (keydown.enter)="openJournal()">{{ r.title }}</span> } @else { <span>{{ r.title }}</span> }<b>{{ r.ready ? '?' : r.have + '/' + r.n }}</b></li>
           }
         </ol>
       }
@@ -432,7 +432,7 @@
       @if (topDown && taskRows.length) {
         <ol class="td-tasks" [attr.aria-label]="t('play.task.tasks')" data-tasks>
           @for (r of taskRows; track r.id) {
-            <li [class.is-ready]="r.ready" [attr.data-task]="r.id" [title]="r.need"><i aria-hidden="true"></i><span>{{ r.title }}</span><b>{{ r.ready ? '?' : r.have + '/' + r.n }}</b></li>
+            <li [class.is-ready]="r.ready" [attr.data-task]="r.id" [title]="r.need"><i aria-hidden="true"></i>@if (r.story) { <span role="button" tabindex="0" data-story-row (click)="openJournal()" (keydown.enter)="openJournal()">{{ r.title }}</span> } @else { <span>{{ r.title }}</span> }<b>{{ r.ready ? '?' : r.have + '/' + r.n }}</b></li>
           }
         </ol>
       }
@@ -482,6 +482,36 @@
         <h2>{{ tk.name }}</h2>
         <button type="button" class="win-x places-close" (click)="closeTalk()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </header>
+      @if (tk.story; as st) {
+      <!-- Sexton Wren's story (shared/sexton, the Sexton's Count): what he says, the step under way, the reward; the choice at the end. -->
+      <div class="td-talk__body">
+        <p class="td-talk__who">{{ t('task.giver.' + tk.giver + '.who') }}</p>
+        <div class="td-talk__scroll" data-talk-state="story" [attr.data-story-step]="st.thanks ? 'thanks' : st.view.step">
+          <p class="td-talk__daily"><b>{{ t('sexton.story') }}</b></p>
+          <h3>{{ t('sexton.title') }} <small>{{ t('play.td.level', { n: sextonLevel }) }}</small></h3>
+          <p class="td-talk__say" data-story-say>{{ st.say }}</p>
+          @if (st.task) { <p class="td-talk__row"><b>{{ t('sexton.task') }}</b><span>{{ st.task }}</span></p> }
+          <p class="td-talk__row"><b>{{ t(st.paid ? 'sexton.paid' : 'sexton.reward') }}</b><span data-story-reward>{{ st.reward }}</span></p>
+          @for (n of st.notes; track $index) { <p class="td-talk__daily" data-story-note>{{ n }}</p> }
+        </div>
+      </div>
+      <footer class="td-talk__acts">
+        @if (st.thanks) {
+          <button type="button" class="td-talk__go" (click)="closeTalk()">{{ t('sexton.btn.farewell') }}</button>
+          <button type="button" data-story-journal (click)="openJournal()">{{ t('sexton.btn.journal') }}</button>
+        } @else if (st.view.step === 'offer') {
+          <button type="button" class="td-talk__go" data-story-accept (click)="acceptStory()">{{ t('sexton.btn.accept') }}</button>
+          <button type="button" (click)="closeTalk()">{{ t('sexton.btn.notNow') }}</button>
+        } @else if (st.view.step === 'return') {
+          <button type="button" class="td-talk__go" data-story-rest [disabled]="!st.restOk" (click)="chooseStory('rested')">{{ t('sexton.btn.rest') }}</button>
+          <button type="button" data-story-keep (click)="chooseStory('kept')">{{ t('sexton.btn.keep') }}</button>
+        } @else {
+          <button type="button" class="td-talk__go" (click)="closeTalk()">{{ t('sexton.btn.onMyWay') }}</button>
+          <button type="button" data-story-journal (click)="openJournal()">{{ t('sexton.btn.journal') }}</button>
+        }
+        @if (!st.thanks) { <button type="button" class="td-talk__trade" data-story-else (click)="storyElse()">{{ t('sexton.btn.other') }}</button> }
+      </footer>
+      } @else {
       <div class="td-talk__body">
         <p class="td-talk__who">{{ t('task.giver.' + tk.giver + '.who') }}</p>
         @if (tk.thanks; as th) {
@@ -527,6 +557,7 @@
           <button type="button" class="td-talk__trade" data-talk-grave (click)="openGraveDesk('sexton')">{{ t('grave.sexton.talk') }}</button>
         }
       </footer>
+      }
     </section>
   }
 
@@ -1281,6 +1312,9 @@
     <div class="place-body">
       @if (panel?.kind === 'shrine') {
         <app-hearth-shrine [level]="huntingLevel" />
+      }
+      @if (panel?.kind === 'journal') {
+        <app-sexton-journal />
       }
       @if (panel?.kind === 'sexton' || panel?.kind === 'archivist') {
         <app-grave-desk [role]="panel?.kind === 'archivist' ? 'archivist' : 'sexton'" [level]="huntingLevel" />
