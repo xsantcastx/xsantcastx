@@ -81,6 +81,23 @@ before it looses (`td-mobs.ts`; numbers in docs/design/loot-and-combat.md §10):
   rim; the body tinted dusk-violet (`#6b3aa0`, 30%). Reduced motion: the same ring, the flares still.
 - **The sky**: under an eclipse the darkness pass is violet, not the night's blue, deepening with the eclipse.
 
+## The night (2026-10-21, `td-night.ts`, `td-engine.ts` drawLight / drawNightEyes)
+- **The pass**: one colour over the world, never pure black. Night `#100e2c` at 86%, the eclipse `#220c3a` at 93%
+  (blended in by its depth), a dark floor `#0a081a` at 90% at any hour. Outdoors its opacity is tone × max(darkness,
+  eclipse depth), darkness being 1 − the clock's daylight, so dusk (18–20) and dawn (05–07) slide; noon is clear.
+- **Lights are holes with stepped pixel falloff**: a clear core to 45% of the radius, then 80% and 50% steps, then a
+  dithered rim (30% / 8% on the world's checker) — three steps, no blur. The Keeper's own light is 56 art px (3.5
+  tiles), Glim's 64 in the open (112 / 150 below ground), hearths 90, a light pet 84, the lantern 46.
+- **Warm wash**: lamps, windows, hearths, the lantern and beacons lay stepped Hearth-palette bands inside their light
+  (`#ffd27a` heart, `#ffb347` body; 26% · 17% · 9%), so a town at midnight is a warm island.
+- **The buffer**: one buffer pixel = 2×2 art pixels, its origin on an even art pixel (the steps and the dither never
+  crawl as the camera moves), hole sprites cached per radius and never scaled, scaled up once with pixelated sampling.
+- **Fair fights**: a creature past the light is a faint `#4a4480` silhouette (≤ 28%) with its own eye colour lit one
+  pixel per eye (found in its sprite, `findEyes`), fading as a light reaches it. HP bars and names are drawn after the
+  pass; the HUD is DOM and is never darkened.
+- **Night darkness** (Menu → Sound, saved with the Hush): Softer drops the pass to 72% / 80% / 78%.
+- Reduced motion: no flicker (an omen dims every light once, then holds); the falloff is static.
+
 ## The dark-born (2026-10-21, `td-dark-layer.ts`)
 - Drawn **over** the night pass (they are what only the dark shows), in the shadow palette with the hostile dark: a shape
   is 12×22 px of `#140c1c` with a `#6b3aa0` rim at 35% and two `#f0e0ff` eye pixels, its foot dithering into the floor;

@@ -1858,9 +1858,10 @@ export class SideScrollerComponent implements OnDestroy {
   get hushLabel(): string { return this.tdHush ? `${this.t('dark.hud.band.' + this.tdHush.band)}. ${this.t('dark.hud.rule')}` : ''; }
   /** Each HUD tick: the player's cap and the whispers' words to the engine, the Hush back for the band. */
   private tickHush(): void {
-    const e = this.engine as unknown as { hushView?: { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null }; setHushCap?: (c: string) => void; setDarkWords?: (w: { whispers: readonly string[]; name: string }) => void } | undefined;
+    const e = this.engine as unknown as { hushView?: { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null }; setHushCap?: (c: string) => void; setNight?: (n: string) => void; setDarkWords?: (w: { whispers: readonly string[]; name: string }) => void } | undefined;
     if (!e?.hushView) { this.tdHush = null; return; }
     e.setHushCap?.(this.sound.settings.hush);
+    e.setNight?.(this.sound.settings.night);
     const first = this.t('dark.whisper.1');
     if (first !== this.darkWordsKey && e.setDarkWords) {
       this.darkWordsKey = first;
