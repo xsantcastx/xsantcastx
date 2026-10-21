@@ -1946,6 +1946,8 @@ export class MobSystem {
    * spell strength follows the sky everywhere, the spawn rules only in the open wilds.
    */
   phase: SkyPhase = 'day';
+  /** The Hush's boon (td-dark.ts hushBoon): Magic Find points on the loot roll and a Hunting XP multiplier. */
+  darkBoon: { mf: number; xp: number } = { mf: 0, xp: 1 };
   open = false;
   setPhase(phase: SkyPhase, open: boolean): void {
     if (phase !== this.phase) this.varsAt.clear();
@@ -2687,7 +2689,9 @@ export class MobSystem {
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
     // Night and the eclipse pay a little more (td-phases.ts): Hunting XP and the Gold pile, in the open wilds.
     const sky = this.wildRules;
-    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp, ...(sky.xp !== 1 ? { xp: sky.xp } : {}) });
+    // The Hush pays too (td-dark.ts): a little more XP the deeper it runs, capped.
+    const xpK = sky.xp * this.darkBoon.xp;
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp, ...(xpK !== 1 ? { xp: xpK } : {}) });
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
     const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
@@ -2703,7 +2707,7 @@ export class MobSystem {
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
     const rank = m.def.rank ?? 'normal';
-    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k }) ?? []; } catch { return []; } };
+    const roll = (k: string): readonly LootRow[] => { try { return this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank, killKey: k, ...(this.darkBoon.mf ? { mf: this.darkBoon.mf } : {}) }) ?? []; } catch { return []; } };
     rows = roll(id);
     // Elites (td-elites.ts): their gear never drops common, and a unique leader always leaves a magic-or-better piece.
     if (m.elite) {

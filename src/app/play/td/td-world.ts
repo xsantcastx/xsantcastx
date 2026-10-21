@@ -14,6 +14,7 @@ import type { ContinentDef, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
+import { onNightroad, onNook } from './td-dark';
 
 export const WORLD_CHUNK = 16;
 /** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
@@ -60,6 +61,12 @@ export class TdWorld implements TdLevel {
 
   /** Road tiles (hand-drawn waypoints, 3 wide). */
   private readonly roads = new Set<number>();
+
+  /**
+   * The Nightroads (td-dark NIGHTROADS) are walkable while this is set: the engine opens them at night and under an
+   * eclipse, and keeps one open while the Keeper stands on it. Their planks are drawn over the water, never baked in.
+   */
+  nightOpen = false;
 
   /** The ways on from this continent's places (a cave, a ship), by station id. */
   readonly ways = new Map<string, { to: string; arrive: string; ship: boolean }>();
@@ -153,6 +160,8 @@ export class TdWorld implements TdLevel {
     const v = this.villageAt(c, r);
     if (v) return v.map.ground[(r - v.r0) * v.map.cols + (c - v.c0)];
     if (this.onPier(c, r)) return 'plank';
+    // A Nightroad's nook: a square of old stone in the water, there by day too (only its road is not).
+    if (onNook(this.continent, c, r)) return 'flagstone';
     const reg = this.regionAt(c, r);
     if (reg === '~') return 'water';
     // The square's river crosses the island and runs into the sea; a road over it is a plank bridge.
@@ -190,6 +199,7 @@ export class TdWorld implements TdLevel {
     if (this.inTown(c, r)) return !!this.town.walkable[r * this.town.cols + c];
     const v = this.villageAt(c, r);
     if (v) return !!v.map.walkable[(r - v.r0) * v.map.cols + (c - v.c0)];
+    if (this.nightOpen && onNightroad(this.continent, c, r)) return true;
     const g = this.ground(c, r);
     if (g === 'water' || g === 'ember' || SOLID_GROUND.has(g)) return false;
     return !this.chunkAt(Math.floor(c / WORLD_CHUNK), Math.floor(r / WORLD_CHUNK)).blocked.has(this.key(c, r));

@@ -310,6 +310,13 @@
       <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
       @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}</span> }
     </div>
+    <!-- The Hush (td-dark.ts): a thin pale band under the minimap; deeper is longer and colder. Never a number. -->
+    @if (tdHush; as hu) {
+      <div class="td-hush" role="img" data-engine-ignore [attr.data-hush-band]="hu.band" [class.td-hush--omen]="hu.omen" [attr.aria-label]="hushLabel" [title]="hushLabel">
+        <i class="td-hush__eye" aria-hidden="true"></i><b class="td-hush__name" aria-hidden="true">{{ t('dark.hud.title') }}</b>
+        <span class="td-hush__band" aria-hidden="true"><i [style.--hush]="hu.fill"></i></span>
+      </div>
+    }
     <!-- The eclipse is coming: a short ominous ribbon a little before it starts (td-phases.ts WARN_MINUTES). -->
     @if (eclipseWarn !== null && !panel) {
       <p class="td-omen" role="status" data-eclipse-warn data-engine-ignore><b>{{ t('clock.warn.title') }}</b><span class="td-omen__long">{{ t('clock.warn.line', { m: eclipseWarn }) }}</span><span class="td-omen__short">{{ t('clock.warn.short', { m: eclipseWarn }) }}</span></p>

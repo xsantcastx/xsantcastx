@@ -93,6 +93,10 @@ import type { LootFilter } from '../../shared/loot/loot-tiers';
 import { drawHearth, drawPurse, drawShrine, drawWakeVeil, hearthContinent, hearthsOf, type TdHearth } from './td-hearth';
 import { levelLinks, levelSpawns, seekCost, townEntries, wayEntries, seekReading, type LevelLink, type SeekPlace, type SeekReading } from './td-seek';
 import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
+import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
+import { DarkLayer, type DarkFrame } from './td-dark-layer';
+import { floorEliteRows, guaranteeMagic } from './td-elites';
+import { goldDropFor } from './td-mobs';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -303,6 +307,24 @@ export class TopDownEngine {
   private popSeen = '';
   private showcaseLevel: unknown = null;
   private showcaseT = 0;
+  /**
+   * The mystery layer (td-dark.ts, design-bible §5.3–5.4): the Hush, the shapes at the light's edge, Hollow Footsteps,
+   * shy chests, the Nightroads. Session state only (the Hush is a mood of this outing, not a save).
+   */
+  private readonly darkLayer = new DarkLayer(Math.floor(Math.random() * 1e9).toString(36), cue => this.options.onSfx?.({ kind: cue }));
+  private readonly darkSeeded = new WeakSet<object>();
+  private darkSeen = '';
+  /**
+   * For the dark specs (only under an automated browser): `?hush=0..100` holds the Hush there (awake anywhere, any
+   * level); `?fxdark=1` lets `window.__tdDark.lay()` stand two shapes at the light's edge (held for a photograph) with a spell
+   * of footsteps; with either, `window.__tdDark` can walk the Keeper to a shy chest or a Nightroad and fire an omen.
+   */
+  private readonly fxHush: number | null = (() => {
+    if (typeof navigator === 'undefined' || !navigator.webdriver || typeof location === 'undefined') return null;
+    const m = /[?&]hush=(\d{1,3})\b/.exec(location.search);
+    return m ? Math.max(0, Math.min(100, Number(m[1]))) : null;
+  })();
+  private readonly fxDark = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxdark=1\b/.test(location.search);
   private readonly reduceMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   /** Reduced motion, read live: the same shapes, no travel (spec §Rules 6). */
   private get still(): boolean { return !!this.reduceMq?.matches; }
@@ -336,6 +358,15 @@ export class TopDownEngine {
     this.populate();
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
+    this.darkLayer.pinned = this.fxHush;
+    if (this.fxDark || this.fxHush !== null) (window as unknown as Record<string, unknown>)['__tdDark'] = {
+      chest: (id?: string) => this.fxToChest(id),
+      lay: () => { if (this.fxDark) this.layDarkShowcase(); return this.darkLayer.shapes.length; },
+      road: (id?: string, where?: 'shore' | 'nook') => this.fxToRoad(id, where),
+      omen: (kind: 'bell' | 'flicker' | 'whisper' | 'name') => this.darkLayer.fire(kind, 1, { keeper: this.player, own: this.ownLight(), glim: this.glimLight(), still: this.still }),
+      hush: (n: number) => { this.darkLayer.pinned = Math.max(0, Math.min(100, n)); },
+      state: () => this.darkState(),
+    };
     if (this.fxFall) (window as unknown as Record<string, unknown>)['__tdHearth'] = {
       fall: () => this.hurt(this.hp + 1e6),
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
@@ -367,6 +398,7 @@ export class TopDownEngine {
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
+    delete (window as unknown as Record<string, unknown>)['__tdDark'];
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
@@ -533,6 +565,9 @@ export class TopDownEngine {
     if (id.startsWith('giver-') && s.keeper && this.options.onTalk?.(s.keeper.id)) return;
     // The Cold Hearth: a hearth is lit by hand (the wake point); a capital's shrine sells the blessings.
     if (id.startsWith('hearth:')) { this.lightHearth(id); return; }
+    // The mystery layer: a shy chest (only opens in the dark), a Nightroad's note.
+    if (id.startsWith('shade:')) { this.openShade(id.slice(6)); return; }
+    if (id.startsWith('nightnote:')) { this.readNightNote(id.slice(10)); return; }
     if (id.startsWith('shrine:')) { const h = this.hearths.find(x => x.shrine?.id === id); this.options.onShrine?.({ id, town: h?.town ?? '' }); return; }
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
@@ -849,6 +884,153 @@ export class TopDownEngine {
     this.player.x = at.x; this.player.y = at.y; this.player.dir = 'up'; this.path = [];
     this.placeCompanions();
     return best.id;
+  }
+
+  // ── The mystery layer (td-dark.ts, td-dark-layer.ts) ─────────────────────
+
+  /** The player's cap on the Hush (Menu → Sound: "The Hush"). */
+  setHushCap(cap: string): void { if ((HUSH_CAPS as readonly string[]).includes(cap)) this.darkLayer.setCap(cap as HushCap); }
+  /** The whispers, in the player's language (the host's i18n): the lines and the one that names the Keeper. */
+  setDarkWords(w: { whispers: readonly string[]; name: string }): void { this.darkLayer.setWords(w); }
+  /** The Hush for the HUD: awake or not, its level (0–100, never shown as a number), band, and the last omen. */
+  get hushView(): { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null } {
+    const on = this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent });
+    return { on, level: Math.round(this.darkLayer.hush), band: on ? this.darkLayer.band : 0, omen: this.darkLayer.omen };
+  }
+  private ownLight(): LightSpot { return { x: this.player.x, y: this.player.y - 18, r: 70 + this.mobs.lightBonus * TILE }; }
+  private glimLight(): LightSpot | null {
+    if (!this.glim.shown) return null;
+    return { x: this.glim.x, y: this.glim.y, r: (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80) + this.mobs.lightBonus * TILE };
+  }
+  /** The fixed lights the dark-born and the Hush read: lamp sprites in view and lit hearths. */
+  private fixedLights(): LightSpot[] {
+    const out: LightSpot[] = [];
+    for (const o of this.visible) for (const l of o.sprite().lights ?? []) out.push({ x: o.x + l.x, y: o.y + l.y, r: l.r * 2 });
+    if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) out.push({ x: h.x, y: h.y - 8, r: 90 });
+    return out;
+  }
+  private darkFrame(dt: number): DarkFrame {
+    const surface = this.level === this.world, k = this.player, pb = this.pet;
+    const tc = Math.floor(k.x / TILE), tr = Math.floor((k.y - 1) / TILE);
+    return {
+      dt, time: this.time, still: this.still, levelId: this.level.id, dark: this.level.dark, continent: this.world.continent, surface,
+      phase: this.skyPhase, safe: surface ? this.world.safeAt(tc, tr) : !this.level.dark,
+      hearth: surface && this.hearths.some(h => this.hearthLit.has(h.id) && Math.hypot(h.x - k.x, h.y - k.y) < 90),
+      keeper: { x: k.x, y: k.y, moving: k.moving }, keeperLevel: this.mobs.keeperLevel,
+      own: this.ownLight(), glim: this.glimLight(),
+      pet: pb && tdPetJob(pb.id, 'follow') === 'light' ? { x: pb.x, y: pb.y - 8, r: TD_PET.light } : null,
+      fixed: this.fixedLights(), raised: this.mobs.lightBonus, trail: this.trail,
+      walkable: (c, r) => this.level.walkable(c, r),
+    };
+  }
+  /** Each frame: seed the level's shy chests and the continent's notes once, step the layer, open or close the roads. */
+  private updateDark(dt: number): void {
+    const lv = this.level;
+    if (!this.darkSeeded.has(lv) && lv instanceof HandLevel) {
+      this.darkSeeded.add(lv);
+      for (const ch of this.darkLayer.chestsOn(lv.id)) lv.stalls.push({ station: { id: `shade:${ch.id}`, x: 0, label: 'SOMETHING SHY', kind: 'resource', blurb: 'A chest that is only there in the dark.' }, x: ch.c * TILE + TILE / 2, y: ch.r * TILE + TILE - 6 });
+    }
+    if (!this.darkSeeded.has(this.world)) {
+      this.darkSeeded.add(this.world);
+      for (const n of NIGHTROADS) if (n.continent === this.world.continent) this.world.addStall({ station: { id: `nightnote:${n.id}`, x: 0, label: 'A WET PAGE', kind: 'resource', blurb: 'Someone left a page out here, under a stone.' }, x: n.note[0] * TILE + TILE / 2, y: n.note[1] * TILE + TILE - 6 });
+    }
+    const f = this.darkFrame(dt);
+    this.darkLayer.update(f);
+    // A Nightroad is walkable while it is there (night, an eclipse, or the Keeper still on it).
+    this.world.nightOpen = this.darkLayer.roadsOpen(this.world.continent, this.skyPhase, this.player.x, this.player.y);
+    // The dark pays (the Hush's boon): read by the kill (XP) and the loot roll (Magic Find).
+    this.mobs.darkBoon = this.darkLayer.awake(f) ? this.darkLayer.boon : { mf: 0, xp: 1 };
+    this.markDark();
+  }
+  /** A shy chest: in the dark it gives what it holds (once a session); in light it is not there to open. */
+  private openShade(id: string): void {
+    const ch = SHADE_CHESTS.find(x => x.id === id);
+    if (!ch || this.level.id !== ch.level || this.darkLayer.isOpened(id)) return;
+    if (!this.darkLayer.chestShown(ch, this.darkFrame(0))) { this.say('dark.chest.lit'); return; }
+    this.darkLayer.markOpened(id);
+    const x = ch.c * TILE + TILE / 2, y = ch.r * TILE + TILE;
+    // What the floor's own creatures carry: its first spawn names the drop table and the level.
+    const type = this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6)[0]?.type ?? 'ash-wolf', def = MOBS[type] ?? MOBS['ash-wolf'];
+    const key = `shade:${id}:${Date.now().toString(36)}`;
+    const roll = (k: string) => { try { return this.options.rollLoot?.({ creature: def.id, level: def.level, rank: 'champion', killKey: k, mf: this.mobs.darkBoon.mf }) ?? []; } catch { return []; } };
+    let n = 0;
+    const rows = guaranteeMagic(floorEliteRows(roll(key), 'champion'), () => roll(`${key}:x${n++}`)).slice(0, 2);
+    let gold = 0;
+    for (let i = 0; i < CHEST_GOLD_PILES; i++) gold += goldDropFor(def);
+    this.mobs.drops.push({ id: `${key}:c`, x: x - 10, y: y + 8, coins: gold, qty: 0, label: `${gold} Gold`, color: GOLD_RAMP[0], age: 0 });
+    rows.forEach((row, i) => {
+      const at = { x: x + 4 + i * 10, y: y + 10 };
+      if (row.kind === 'item') this.mobs.drops.push({ id: `${key}:g${i}`, ...at, coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique, level: row.level ?? def.level }, rarity: row.rarity, label: row.label, color: '#5aa8ff', age: 0 });
+      else this.mobs.drops.push({ id: `${key}:r${i}`, ...at, coins: 0, qty: 0, rune: row.rune, rarity: row.rarity, label: row.label, color: '#5aa8ff', age: 0 });
+    });
+    this.glimBurst(x, y - 8, 10);
+    this.say('dark.chest.open');
+  }
+  /** A Nightroad's note: its words on the message line; reading in the dark leans the Hush a little closer. */
+  private readNightNote(id: string): void {
+    if (!NIGHTROADS.some(n => n.id === id)) return;
+    this.say(`dark.note.${id}`);
+    this.messageAge = -6;
+    this.darkLayer.hush = Math.min(100, this.darkLayer.hush + (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent }) ? 3 : 0));
+  }
+  /** The layer's state on the canvas, for tests and tools (written only when it changes). */
+  private markDark(): void {
+    const v = this.hushView, open = this.world.nightOpen ? 1 : 0;
+    const chests = this.darkLayer.chestsOn(this.level.id).map(ch => `${ch.id}:${this.darkLayer.isOpened(ch.id) ? 'open' : this.darkLayer.chestShown(ch, this.darkFrame(0)) ? 'shown' : 'hid'}`).join(',');
+    const key = `${v.on ? 1 : 0}|${hushBand(v.level)}|${this.darkLayer.shapes.length}|${this.darkLayer.prints.length > 0 ? 1 : 0}|${open}|${chests}`;
+    if (key === this.darkSeen) return;
+    this.darkSeen = key;
+    const [on, band, shapes, prints, roads, ch] = key.split('|');
+    this.canvas.setAttribute('data-hush-on', on);
+    this.canvas.setAttribute('data-hush-band', band);
+    this.canvas.setAttribute('data-shapes', shapes);
+    this.canvas.setAttribute('data-prints', prints);
+    this.canvas.setAttribute('data-nightroads', roads);
+    this.canvas.setAttribute('data-shade-chests', ch);
+  }
+  private darkState(): Record<string, unknown> {
+    const tc = Math.floor(this.player.x / TILE), tr = Math.floor((this.player.y - 1) / TILE);
+    const row = (r: number) => Array.from({ length: 17 }, (_, i) => this.level.walkable(tc - 12 + i, r) ? (this.level.ground(tc - 12 + i, r) === 'water' ? '=' : '.') : this.level.ground(tc - 12 + i, r) === 'water' ? '~' : '#').join('');
+    return { tile: [tc, tr], near: [row(tr - 1), row(tr), row(tr + 1)], hush: Math.round(this.darkLayer.hush), band: this.darkLayer.band, shapes: this.darkLayer.shapes.map(s => ({ x: Math.round(s.x), y: Math.round(s.y), state: s.state })), prints: this.darkLayer.prints.length, roadsOpen: this.world.nightOpen, level: this.level.id, x: Math.round(this.player.x), y: Math.round(this.player.y), boon: this.mobs.darkBoon };
+  }
+  /** Test hook only: two shapes at the edge of the light, east and west, held for a photograph, and a spell of prints. */
+  private layDarkShowcase(): void {
+    this.darkLayer.hold = true;
+    this.darkLayer.shapes = []; this.darkLayer.prints = [];
+    const f = this.darkFrame(0), lights: LightSpot[] = [f.own, ...f.fixed, ...(f.glim ? [f.glim] : [])];
+    for (const a of [0, Math.PI]) { const s = this.darkLayer.placeShape(f, lights, false, a); if (s) { s.alpha = .78; s.life = 1e9; this.darkLayer.shapes.push(s); } }
+    // A trail of prints on open floor, just past the light, leading away (the first way that is all floor).
+    const reach = Math.max(f.own.r, f.glim?.r ?? 0) * .72 + 24;
+    let best: { x: number; y: number }[] = [];
+    for (let k = 0; k < 16; k++) {
+      const ang = k * Math.PI / 8;
+      const pts = Array.from({ length: 6 }, (_, i) => ({ x: this.player.x + Math.cos(ang) * (reach + i * 10), y: this.player.y + Math.sin(ang) * (reach + i * 10) }))
+        .filter(p => this.level.walkable(Math.floor(p.x / TILE), Math.floor((p.y - 1) / TILE)));
+      if (pts.length > best.length) best = pts;
+    }
+    best.forEach((p, i) => this.darkLayer.prints.push({ x: p.x, y: p.y, age: i * .4, left: i % 2 === 0 }));
+  }
+  /** Test hook only: into a shy chest's level, standing beside it. */
+  private fxToChest(id?: string): string | null {
+    const ch = SHADE_CHESTS.find(x => x.id === (id ?? 'galleries')) ?? SHADE_CHESTS[0];
+    this.enter(this.handLevel(ch.level), '');
+    // The floor's creatures stand calm for the photograph (they never notice the Keeper).
+    for (const m of this.mobs.mobs) { m.def = { ...m.def, sight: 0 }; m.wait = 1e9; }
+    this.mobs.target = null;
+    const at = standNear(this.level, ch.c * TILE + TILE / 2 + 18, ch.r * TILE + TILE + 4);
+    this.player.x = at.x; this.player.y = at.y; this.player.dir = 'up'; this.path = [];
+    this.placeCompanions();
+    return ch.id;
+  }
+  /** Test hook only: on the surface of the road's continent, at the shore end of a Nightroad. */
+  private fxToRoad(id?: string, where: 'shore' | 'nook' = 'shore'): string | null {
+    const n = NIGHTROADS.find(x => x.id === (id ?? 'ashwater')) ?? NIGHTROADS[0];
+    const [c, r] = n.road[0], dc = Math.sign(n.road[0][0] - n.road[n.road.length - 1][0]);
+    const at = where === 'nook' ? { x: (n.note[0] + (dc > 0 ? 1 : -1)) * TILE + TILE / 2, y: (n.note[1] + 1) * TILE + 2 } : { x: (c + dc * 2) * TILE + TILE / 2, y: (r + 1) * TILE + 2 };
+    if (!this.restoreWhereabouts({ continent: n.continent, level: 'surface', ...at })) return null;
+    this.player.dir = 'side'; this.player.face = dc > 0 ? -1 : 1; this.path = [];
+    this.placeCompanions();
+    return n.id;
   }
 
   // ── The companions: the pet and Glim (td-pets.ts; the side view's API, so the play view's wiring just works) ──
@@ -1482,11 +1664,13 @@ export class TopDownEngine {
     // The nearest stall within reach (the HUD's prompt and E).
     let best: TdStall | null = null, bestD = REACH;
     for (const s of this.level.stalls) {
+      if (s.station.id.startsWith('shade:') && this.darkLayer.isOpened(s.station.id.slice(6))) continue;
       const d = Math.hypot(this.player.x - s.x, this.player.y - (s.y + 10));
       if (d < bestD) { best = s; bestD = d; }
     }
     this.nearby = best;
     this.updateHearth();
+    this.updateDark(dt);
     this.updateSmoke(dt);
     this.updateFight(dt);
     this.updatePet(dt);
@@ -1919,6 +2103,8 @@ export class TopDownEngine {
         c.drawImage(this.chunk(cx, cy, frame), cx * span, cy * span);
       }
     }
+    // A Nightroad's planks over the water while it is open (td-dark-layer).
+    if (this.level === this.world) this.darkLayer.drawGround(c, this.world.continent, (x, y) => x > cam.x - 32 && x < cam.x + cam.w + 32 && y > cam.y - 32 && y < cam.y + cam.h + 32);
     // Ground effects (aura rings, nova waves, sigils): under every creature and the Keeper.
     this.drawGroundFx();
     // Y-sorted world: objects, keepers, the Keeper, Glim.
@@ -1976,6 +2162,8 @@ export class TopDownEngine {
     // Mist (the Umbral Marches), then night over it.
     this.drawFog();
     this.drawLight();
+    // What only the dark shows: the shapes at the light's edge, the prints behind, a shy chest, a road's pale nails.
+    this.darkLayer.drawOver(c, { levelId: this.level.id, continent: this.world.continent, surface: this.level === this.world, time: this.time, still: this.still, night: this.level.dark ? 1 : this.darkness }, (x, y) => inView(x, y, 40));
     this.drawFireflies();
     // The drag joystick: a ring where the thumb landed and a knob under it (screen space).
     if (this.joy?.active) {
@@ -2004,6 +2192,8 @@ export class TopDownEngine {
     if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 62 : 36), '#ffd27a');
     // The fallen purse names itself when the Keeper is near.
     if (fallen && Math.hypot(fallen.x - this.player.x, fallen.y - this.player.y) < 110) this.plate(`${fallen.gold} Gold`, fallen.x, fallen.y - 14, '#ffd27a');
+    // The Hush at its deepest: the edge of the world thins (screen space, two art pixels).
+    if (this.darkLayer.band >= 3 && this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent })) { c.setTransform(1, 0, 0, 1, 0, 0); this.darkLayer.drawEdge(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.still); }
     // The wake veil over everything (screen space).
     const veil = this.wakeVeil();
     if (veil.dark > 0 || veil.warm > 0) { c.setTransform(1, 0, 0, 1, 0, 0); drawWakeVeil(c, this.canvas.width, this.canvas.height, veil.dark, veil.warm); }
@@ -2793,7 +2983,8 @@ export class TopDownEngine {
     }
     // The Keeper's own light: wider while the Light spell burns, and with a boss unique's (the Warden's Last Ember).
     const lit = this.mobs.lightBonus * TILE;
-    hole(this.player.x, this.player.y - 18, 70 + lit);
+    const fl = this.darkLayer.flicker;
+    hole(this.player.x, this.player.y - 18, (70 + lit) * fl);
     if (lit > 0) glows.push({ x: this.player.x, y: this.player.y - 18, r: 14 + lit / 6 });
     // A lit hearth is a light of its own; the fallen purse's beam a faint one.
     if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 22 }); }
@@ -2823,7 +3014,7 @@ export class TopDownEngine {
     // Glim lights the dark wider than the Keeper's own (and wider still with its lamp while he rests); a light pet its own.
     if (this.glim.shown) {
       const r = (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : 80) + lit;
-      hole(this.glim.x, this.glim.y, r);
+      hole(this.glim.x, this.glim.y, r * fl);
       glows.push({ x: this.glim.x, y: this.glim.y, r: this.level.dark ? 22 : 14 });
     }
     const pb = this.pet;
