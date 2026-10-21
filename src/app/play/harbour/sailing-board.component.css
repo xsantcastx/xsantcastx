@@ -1,0 +1,53 @@
+/* The Sailing Board's body (the window around it is the play view's). Cozy tokens only; rows are >= 44px everywhere. */
+:host { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.sb { display: grid; gap: 8px; padding: 10px 14px 0; color: var(--cozy-cream); }
+.sb__who { display: grid; gap: 2px; margin: 0; padding: 10px 12px; background: var(--cozy-parch); color: var(--cozy-ink);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-parch-edge); }
+.sb__who b { font: 700 16px/1.2 var(--font-pixel); }
+.sb__who small { font: 700 11px/1.4 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-ink-soft); }
+.sb__who span { font: italic 500 14px/1.4 var(--cozy-font-read); }
+.sb__lead, .sb__note { margin: 0; font: 500 13px/1.4 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
+.sb__list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sb__item { display: grid; gap: 0; }
+.sb__row {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; grid-template-areas: 'crest name band fare' 'crest land band chip';
+  align-items: center; column-gap: 10px; row-gap: 2px; width: 100%; min-height: 56px; padding: 6px 10px; text-align: left; cursor: pointer;
+  border: 0; border-radius: 0; background: var(--cozy-wood-1); color: var(--cozy-cream);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-wood-2);
+}
+.sb__row[aria-checked='true'] { background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass); }
+.sb__row:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
+.sb__row[data-state='locked'] { opacity: .78; }
+.sb__crest { grid-area: crest; width: 18px; height: 18px; border-radius: 50%; --star: var(--cozy-brass);
+  background: radial-gradient(circle at 32% 28%, var(--cozy-cream) 0, var(--star) 55%, var(--cozy-wood-0) 100%); box-shadow: 0 0 6px var(--star); }
+.sb__row[data-land='infernal-reach'] .sb__crest { --star: var(--cozy-berry); }
+.sb__row[data-land='verdant-wilds'] .sb__crest { --star: var(--cozy-leaf); }
+.sb__row[data-land='umbral-marches'] .sb__crest { --star: var(--cozy-loot-epic); }
+.sb__name { grid-area: name; font: 700 15px/1.2 var(--font-pixel); min-width: 0; overflow-wrap: anywhere; }
+.sb__land { grid-area: land; font: 600 12px/1.2 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.sb__band { grid-area: band; align-self: center; padding: 3px 7px; font: 700 11px/1.2 var(--font-pixel); background: var(--cozy-wood-0); color: var(--cozy-cream); white-space: nowrap; }
+.sb__band--warn { color: var(--cozy-glow); box-shadow: inset 0 0 0 1px var(--cozy-berry); }
+.sb__fare { grid-area: fare; display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font: 700 14px/1 var(--font-pixel); color: var(--cozy-brass-hi); }
+.sb__fare--short { color: var(--cozy-berry); }
+.sb__coin { width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--cozy-brass-hi), var(--cozy-brass) 60%, var(--cozy-brass-lo)); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.sb__chip { grid-area: chip; display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font: 700 11px/1.2 var(--font-pixel); letter-spacing: .04em; text-transform: uppercase; color: var(--cozy-leaf); }
+.sb__chip[data-state='broke'] { color: var(--cozy-berry); }
+.sb__chip[data-state='locked'] { color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.sb__lock { position: relative; display: inline-block; width: 9px; height: 7px; margin-top: 4px; background: currentColor; }
+.sb__lock::before { content: ''; position: absolute; left: 1px; top: -5px; width: 5px; height: 5px; border: 2px solid currentColor; border-bottom: 0; border-radius: 3px 3px 0 0; }
+.sb__more { display: grid; gap: 4px; padding: 8px 12px; background: var(--cozy-parch); color: var(--cozy-ink); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.sb__more p { margin: 0; font: 500 13px/1.4 var(--cozy-font-read); }
+.sb__reason { font-weight: 700 !important; }
+.sb__warn { color: var(--cozy-berry); font-weight: 700 !important; }
+.sb__said { margin: 0; min-height: 0; font: 600 13px/1.4 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.sb__said:empty { display: none; }
+.sb__foot { position: sticky; bottom: 0; z-index: 1; margin: 0 -14px; padding: 10px 14px calc(12px + var(--hud-safe-b, 0px)); background: var(--cozy-wood-1);
+  box-shadow: 0 -2px 0 0 var(--cozy-wood-0); }
+.sb__go { width: 100%; min-height: 48px; padding: 0 16px; cursor: pointer; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0);
+  font: 700 15px var(--cozy-font-read); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -3px 0 var(--cozy-brass-lo); }
+.sb__go:disabled { opacity: .55; cursor: not-allowed; }
+.sb__go:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
+@media (max-width: 420px) {
+  .sb__row { grid-template-columns: 22px minmax(0, 1fr) auto; grid-template-areas: 'crest name fare' 'crest land chip' 'crest band band'; }
+  .sb__band { justify-self: start; }
+}

@@ -1,0 +1,38 @@
+<div class="sb" data-harbour-board [attr.data-pier]="pier" [attr.data-rows]="rows.length">
+  <p class="sb__who" data-harbour-line>
+    <b>{{ master.name }}</b>
+    <small>{{ t('harbour.master.' + pier + '.role') }}</small>
+    <span>"{{ t('harbour.master.' + pier + '.line') }}"</span>
+  </p>
+  <p class="sb__lead">{{ t('harbour.lead') }}</p>
+  @if (!rows.length) { <p class="sb__note">{{ t('harbour.empty') }}</p> }
+  <ul class="sb__list" role="radiogroup" [attr.aria-label]="t('harbour.title', { pier: t('harbour.pier.' + pier) })">
+    @for (r of rows; track r.id) {
+      <li class="sb__item" [attr.data-state]="r.state">
+        <button type="button" class="sb__row" role="radio" data-harbour-row
+                [attr.aria-checked]="r.id === pick" [attr.data-dest]="r.destPier" [attr.data-state]="r.state" [attr.data-land]="r.continent"
+                (click)="choose(r)">
+          <span class="sb__crest" aria-hidden="true"></span>
+          <span class="sb__name">{{ t('harbour.pier.' + r.destPier) }}</span>
+          <span class="sb__land">{{ t('harbour.land.' + r.continent) }}</span>
+          <span class="sb__band" [class.sb__band--warn]="r.warn" data-harbour-band>{{ t('harbour.band', { lo: r.band[0], hi: r.band[1] }) }}</span>
+          <span class="sb__fare" [class.sb__fare--short]="r.state === 'broke'" data-harbour-fare><i class="sb__coin" aria-hidden="true"></i>{{ r.fare }}</span>
+          <span class="sb__chip" [attr.data-state]="r.state">@if (r.state === 'locked') { <i class="sb__lock" aria-hidden="true"></i> }{{ t('harbour.state.' + r.state) }}</span>
+        </button>
+        @if (r.id === pick) {
+          <div class="sb__more" data-harbour-more>
+            <p>{{ t('harbour.blurb', { land: t('harbour.land.' + r.continent), lo: r.band[0], hi: r.band[1] }) }}@if (r.long) { {{ t('harbour.long') }} }</p>
+            @if (reason(r); as why) { <p class="sb__reason" data-harbour-reason>{{ why }}</p> }
+            @if (r.warn) { <p class="sb__warn" data-harbour-warn>{{ t('harbour.warn', { n: r.entry }) }}</p> }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+  <p class="sb__said" role="status" aria-live="polite" data-harbour-said>{{ said }}</p>
+  <div class="sb__foot">
+    <button type="button" class="sb__go" data-harbour-go [disabled]="!canBoard" (click)="board()">
+      {{ picked && canBoard ? t('harbour.boardFare', { n: picked.fare }) : t('harbour.board') }}
+    </button>
+  </div>
+</div>

@@ -57,6 +57,7 @@ export const TD_UX_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'ux.map.legend.quest': { en: 'Task to hand in', es: 'Tarea para entregar' },
   'ux.map.legend.npc': { en: 'Townsfolk', es: 'Vecino' },
   'ux.map.legend.ship': { en: 'Ship', es: 'Barco' },
+  'ux.map.legend.harbour': { en: 'Harbour', es: 'Puerto' },
   'ux.map.legend.party': { en: 'Party member', es: 'Miembro del grupo' },
   'ux.map.legend.you': { en: 'You', es: 'Tu' },
   'ux.map.legend.mob': { en: 'Creature (minimap)', es: 'Criatura (minimapa)' },
