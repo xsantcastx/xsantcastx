@@ -379,8 +379,9 @@ test.describe('the Homestead Gold list on a phone', () => {
     await page.locator('.guide-go').tap();
     await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead', { timeout: 30000 });
     const toggle = page.locator('.hc-toggle');
-    // A Keeper with no building yet gets it unfolded.
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // (The furnace and automatons are retired since forge income ended, so the list no longer unfolds itself for a
+    // Keeper with no building; the loop below unfolds it by hand.)
+    await expect(toggle).toBeVisible();
     const sizes = [
       { width: 375, height: 812 }, { width: 360, height: 740 }, { width: 430, height: 932 },
       { width: 844, height: 390 }, { width: 932, height: 430 }, { width: 915, height: 412 },
