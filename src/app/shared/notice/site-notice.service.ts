@@ -68,6 +68,12 @@ export class SiteNoticeService {
   start(): void {
     if (!this.isBrowser || this.started) return;
     this.started = true;
+    // Under an automated browser the live document is not read unless a spec asks for it
+    // ('godforge-notice-live' = '1'): a notice the owner posts from /admin must never decide whether
+    // the e2e suite can click the HUD (2026-10-22: a "Test" broadcast covered it and failed 25 specs).
+    if (typeof navigator !== 'undefined' && navigator.webdriver) {
+      try { if (localStorage.getItem('godforge-notice-live') !== '1') return; } catch { return; }
+    }
 
     // runOutsideAngular so the idle callback does not schedule change detection
     // on a tick where nothing has changed yet; the result is published back
