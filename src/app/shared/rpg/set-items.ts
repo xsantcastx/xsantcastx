@@ -96,13 +96,13 @@ export const SET_PIECES: readonly SetPiece[] = [
   // ── Garb of the Drowned Abbey: what the sisters wore under the water ──
   P({
     id: 'set-abbey-hood', set: 'drowned-abbey', name: 'Abbey Hood', rarity: 'mythic', slot: 'head', style: 'umbral',
-    rollKeys: ['spellDamage', 'mana'], base: { spellDamage: 7, mana: 8 },
+    rollKeys: ['mana', 'manaRegen'], base: { mana: 8, manaRegen: 0.5 },
     passive: { effect: 'relic', text: 'A piece of the Garb of the Drowned Abbey.' },
     lore: 'Wool that has been under the water so long it has forgotten it is wet. It remembers the hymns instead.',
   }),
   P({
     id: 'set-abbey-robe', set: 'drowned-abbey', name: 'Drowned Robe', rarity: 'mythic', slot: 'chest', style: 'umbral',
-    rollKeys: ['spellDamage', 'manaRegen'], base: { spellDamage: 8, manaRegen: 0.6 },
+    rollKeys: ['manaRegen', 'defense'], base: { manaRegen: 0.6, defense: 6 },
     passive: { effect: 'relic', text: 'A piece of the Garb of the Drowned Abbey.' },
     lore: 'Ink-stained to the knee: the sisters copied by lamplight, standing in the nave as it filled.',
   }),
@@ -133,7 +133,7 @@ export const SET_PIECES: readonly SetPiece[] = [
   }),
   P({
     id: 'set-rootcradle-bracers', set: 'rootcradle', name: 'Rootcradle Bracers', rarity: 'mythic', slot: 'hands', style: 'verdant',
-    rollKeys: ['castSpeed', 'lifeRegen'], base: { castSpeed: 4, lifeRegen: 0.5 },
+    rollKeys: ['lifeRegen', 'defense'], base: { lifeRegen: 0.5, defense: 4 },
     passive: { effect: 'relic', text: 'A piece of the Rootcradle Vestments.' },
     lore: 'Worn to tend the roots by hand. The grooves in them are the shapes of roots.',
   }),
@@ -158,7 +158,7 @@ export const SET_PIECES: readonly SetPiece[] = [
   }),
   P({
     id: 'set-lamplighter-gloves', set: 'lamplighters-things', name: "Lamplighter's Gloves", rarity: 'mythic', slot: 'hands', style: 'luminous',
-    rollKeys: ['castSpeed', 'critChance'], base: { castSpeed: 4, critChance: 2 },
+    rollKeys: ['defense', 'mana'], base: { defense: 4, mana: 6 },
     passive: { effect: 'relic', text: 'A piece of the Lamplighter\'s Things.' },
     lore: 'Scorched at the fingertips from a hundred wicks trimmed in a hurry.',
   }),

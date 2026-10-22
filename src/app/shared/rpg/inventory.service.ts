@@ -46,6 +46,8 @@ import {
   wornGoldFind,
 } from './item.model';
 import { wornStats } from '../enchanting/socket-words';
+import { oldRollTwins } from './item-calling';
+import { itemAffixFamily } from './item-base';
 import {
   INVENTORY_BAG_CAP,
   type InventoryLedger,
@@ -304,6 +306,16 @@ export class InventoryService {
    */
   get equippedGoldFind(): number {
     return wornGoldFind(this.snapshot.items.filter(i => i.equipped && !i.explorerId).map(wornStats));
+  }
+
+  /**
+   * The old rolls the player wears, as the fighters' twins (item-calling.ts oldRollTwins): Spell Damage and Cast Speed
+   * on pieces whose family no longer rolls them (an old sword's implicit), which a fighter reads as Martial Damage and
+   * Attack Speed. Never rewritten on the item — read here, at wear time (the frozen-grade rule).
+   */
+  get equippedOldRolls(): { attackDamage: number; attackSpeed: number } {
+    return oldRollTwins(this.snapshot.items.filter(i => i.equipped && !i.explorerId)
+      .map(i => ({ family: itemAffixFamily(i), stats: wornStats(i) })));
   }
 
   /** Magic Find from the player's own equipped items. */

@@ -103,9 +103,17 @@ export function milestoneAttributePoints(level: number): number {
 export function keeperAttributePoints(level: number): number { return levelAttributePoints(level) + milestoneAttributePoints(level); }
 
 /** The milestones' passives at `level`, as worn-stat bonuses (the fight adds them to the gear's totals). */
-export function passiveBonus(level: number): Partial<Record<PassiveStat, number>> {
-  const out: Partial<Record<PassiveStat, number>> = {};
-  for (const x of milestonesReached(level)) { const p = x.rewards.passive; if (p) out[p.stat] = (out[p.stat] ?? 0) + p.n; }
+export function passiveBonus(level: number): Partial<Record<PassiveStat | 'attackDamage' | 'attackSpeed', number>> {
+  const out: Partial<Record<PassiveStat | 'attackDamage' | 'attackSpeed', number>> = {};
+  for (const x of milestonesReached(level)) {
+    const p = x.rewards.passive;
+    if (!p) continue;
+    out[p.stat] = (out[p.stat] ?? 0) + p.n;
+    // A milestone's damage and speed are every calling's (§3.6: casters read Spell Damage, fighters Martial Damage),
+    // so each rides on both families; fightStats reads only the Keeper's own, nothing counts twice.
+    const twin = p.stat === 'spellDamage' ? 'attackDamage' : p.stat === 'castSpeed' ? 'attackSpeed' : null;
+    if (twin) out[twin] = (out[twin] ?? 0) + p.n;
+  }
   return out;
 }
 /** Titles earned by `level`, earliest first. */

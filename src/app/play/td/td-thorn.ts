@@ -27,6 +27,12 @@ export const THORN_PET = {
   commandReach: 10 * 16,
 } as const;
 
+/**
+ * The beast's share of the Keeper's worn Martial Damage (loot-and-combat §3.6): its bite grows by this share of it. Half,
+ * not all — the beast already grows with his level, the bond and the Wild skills (combat-sim's five-levels-up band).
+ */
+export const BEAST_DAMAGE_SHARE = .5;
+
 /** What flies on after a pierce keeps this share of the blow. */
 export const PIERCE_KEEP = .8;
 /** An arrow strikes at most this many foes (the first and its pierces). */

@@ -28,7 +28,6 @@ import { sendContactEmail } from "./contact";
 import { pruneActivityFeed } from "./pruneActivity";
 
 // Eclipse Realms trading and shared ground drops (docs/design/online.md §3.8)
-import { tradeApi, groundSweep } from "./trade";
 
 // Set global options for cost control
 setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
@@ -40,7 +39,6 @@ export { sendContactEmail };
 export { pruneActivityFeed };
 
 // Export trading (HTTPS, ID-token auth) and the ground sweep (scheduled)
-export { tradeApi, groundSweep };
 
 // Export PayPal functions
 export const paypal = {

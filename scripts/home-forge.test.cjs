@@ -148,7 +148,7 @@ test('mints no stat above today\'s ceiling at any home tier, even with a perfect
       for (const key of Object.keys(item.stats)) {
         // An affix item's best is its range top (item-affixes.ts); anything else, the legacy band ceiling.
         const ceiling = item.itemLevel != null && affixes.isAffixKey(key) && affixes.isAffixSlot(def.slot)
-          ? affixes.affixRange(key, def.slot, item.itemLevel, r.rarity)[1]
+          ? affixes.affixRange(key, def, item.itemLevel, r.rarity)[1]
           : defs.statCeiling(def, r.rarity, key) * max;
         if (!ceiling) continue;
         assert.ok((item.stats[key] ?? 0) <= ceiling + 1, `${def.id} ${key} at tier ${t}`);

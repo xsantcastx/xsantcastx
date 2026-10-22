@@ -153,6 +153,20 @@
 .d2tip__affixes li[data-stat='castSpeed'] { --pip: var(--cozy-loot-epic); }
 .d2tip__affixes li[data-stat='moveSpeed'] { --pip: var(--cozy-loot-uncommon); }
 .d2tip__affixes li[data-stat='critChance'] { --pip: var(--cozy-loot-legendary); }
+/* §3.6: the fighters' family wears warm metal, the casters' the glow. */
+.d2tip__affixes li[data-stat='attackDamage'], .d2tip__affixes li[data-stat='minDamage'] { --pip: var(--cozy-brass-hi); }
+.d2tip__affixes li[data-stat='attackSpeed'] { --pip: var(--cozy-loot-legendary); }
+.d2tip__affixes li[data-stat='lifeLeech'] { --pip: var(--cozy-berry); }
+.d2tip__affixes li[data-stat='pierceChance'] { --pip: var(--cozy-leaf); }
+.d2tip__affixes li[data-stat='blockChance'] { --pip: var(--cozy-brass); }
+.d2tip__affixes li[data-stat='skillRanks'] { --pip: var(--cozy-glow); }
+/* Who it is for (§3.6), and the lines this Keeper's calling cannot use: greyed, D2's "unused". */
+.d2tip__calling { margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
+.d2tip__calling.mine { color: var(--cozy-leaf); }
+.d2tip__affixes li.dim, .d2tip__headline.dim { color: color-mix(in srgb, var(--cozy-cream) 38%, transparent); }
+.d2tip__affixes li.dim::before { background: color-mix(in srgb, var(--cozy-cream) 30%, transparent); }
+.d2tip__old { margin-left: 4px; font-size: 10px; font-weight: 400; color: var(--cozy-brass-hi); }
+.d2tip__unused { margin: 0; font-size: 10px; color: color-mix(in srgb, var(--cozy-cream) 45%, transparent); }
 /* Resists (§6) wear their element: fire orange, cold blue, arcane violet, lightning pink; All Resist brass-bright. */
 .d2tip__affixes li[data-stat='fireResist'] { --pip: var(--cozy-loot-legendary); }
 .d2tip__affixes li[data-stat='coldResist'] { --pip: var(--cozy-loot-rare); }

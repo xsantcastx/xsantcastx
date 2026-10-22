@@ -241,6 +241,26 @@ const DISMISSED_KEY = 'godforge-notice-dismissed';
       color: var(--text-body);
     }
 
+    /* In the world (/play, body.gf-world-route) the strip would lie across the HUD's top row: there it
+       is a compact toast below that row, centred, dismissible as ever. The ban curtain is unchanged. */
+    :host-context(body.gf-world-route) .sn-strip {
+      top: calc(var(--nav-h, 0px) + clamp(7.5rem, 18vh, 9.75rem));
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: min(26rem, calc(100vw - 2rem));
+      padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+      border: var(--border-hairline, 1px solid);
+      border-color: var(--edge-hairline, currentColor);
+      border-radius: var(--radius-md, 8px);
+      box-shadow: var(--shadow-overlay);
+    }
+    /* A phone stacks Glim's line under the top row: the toast goes below that too. */
+    @media (max-width: 600px) {
+      :host-context(body.gf-world-route) .sn-strip { top: calc(var(--nav-h, 0px) + 14.5rem); }
+    }
+
     .sn-strip--maint {
       color: var(--feedback-warn);
       border-color: var(--feedback-warn, currentColor);

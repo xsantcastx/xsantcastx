@@ -22,9 +22,11 @@
  *   node scripts/combat-sim.mjs --patch=what-if.json   # try numbers without editing the game (see --patch below)
  *
  * The Keeper (docs/design/loot-and-combat.md §13 "the simulated Keeper"):
- *  - gear: the eight gear wells rolled at item level = his level through the real rollAffixes; magic everywhere below
- *    10, then rare in the weapon, head, chest and trinket and magic in the rest; each well the best of three drops for
- *    his vocation (a player keeps the better piece);
+ *  - gear: the eight gear wells rolled at item level = his level through the real rollAffixes, each in its class-
+ *    appropriate family (loot-and-combat.md §3.6: a wand and a focus for the casters, a blade and a shield for the
+ *    Ashguard, a crossbow and a quiver for the Thornstrider; armour and a ring for all); magic everywhere below 10, then
+ *    rare in the weapon, head, chest and trinket and magic in the rest; each well the best of three drops for his
+ *    vocation, weighed by his own damage family (a player keeps the better piece);
  *  - attributes: every point he has (keeperAttributePoints): 45% Spirit, 40% Vitality, 15% Energy (Ashguard and
  *    Thornstrider: Agility, to its 30-point cap, then Vitality);
  *  - skill points along PATHS below through buyRank (tiers, prerequisites, points), the bar and aura from what he
@@ -157,15 +159,34 @@ export const PATHS = {
 /** The bar each vocation wants, best first; the first four it holds a rank in go on the keys. */
 const BARS = {
   warlock: ['meteor', 'hellfire-nova', 'ember-curse', 'dark-ward', 'drain-life'],
-  ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'shield-oath', 'shield-bash', 'ash-stride'],
+  ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'shield-oath', 'ash-stride', 'shield-bash'],
   lanternwright: ['banish', 'lamp-wisp', 'hearthlight', 'dawn-at-noon', 'beacon', 'blinding-flash', 'lantern-ward'],
   thornstrider: ['barbed-shot', 'volley', 'command', 'stampede', 'call-of-the-wilds', 'thornroot-snare'],
 };
-/** What each stat is worth to a vocation when it picks the better of its drops. */
-const WANT = {
-  spellDamage: 3, critChance: 2, castSpeed: 2, life: 1.5, defense: 1, lifeRegen: 1, manaRegen: .6, mana: .4,
-  fireResist: .6, coldResist: .5, lightningResist: .3, arcaneResist: .6, allResist: 1.5, moveSpeed: .4, magicFind: 0, xpBonus: 0,
+/** What each stat is worth to any vocation when it picks the better of its drops (its own damage family below). */
+const WANT_ALL = {
+  critChance: 2, life: 1.5, defense: 1, lifeRegen: 1, manaRegen: .6, mana: .4,
+  fireResist: .6, coldResist: .5, lightningResist: .3, arcaneResist: .6, allResist: 1.5, moveSpeed: .4, magicFind: 0, xpBonus: 0, goldFind: 0,
 };
+/** §3.6: each calling wants its own family — the casters Spell Damage, the fighters Martial Damage and their weapon's own. */
+const WANT_BY = {
+  warlock: { spellDamage: 3, castSpeed: 2, skillRanks: 3 },
+  lanternwright: { spellDamage: 3, castSpeed: 2, skillRanks: 3 },
+  ashguard: { attackDamage: 4, attackSpeed: 3, minDamage: 2, maxDamage: 2, lifeLeech: 1.5, blockChance: 1.5 },
+  thornstrider: { attackDamage: 3, attackSpeed: 2, minDamage: 2, maxDamage: 2, pierceChance: 1 },
+};
+/**
+ * §3.6: the class-appropriate gear each wears in its weapon and off-hand wells (the one-handed build every class can):
+ * the Warlock a wand and a focus, the Lanternwright a wand and the lantern, the Ashguard a blade and a shield, the
+ * Thornstrider a crossbow and a quiver. Armour and rings are every calling's.
+ */
+const GEAR_FAMILY = {
+  warlock: { weapon: 'caster', 'off-hand': 'focus' },
+  lanternwright: { weapon: 'caster', 'off-hand': 'focus' },
+  ashguard: { weapon: 'martial', 'off-hand': 'shield' },
+  thornstrider: { weapon: 'bow', 'off-hand': 'quiver' },
+};
+const familyFor = (voc, slot) => GEAR_FAMILY[voc]?.[slot] ?? AFFIX.DEFAULT_FAMILY[slot];
 const SLOTS = ['weapon', 'head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'];
 const RARE_SLOTS = new Set(['weapon', 'head', 'chest', 'trinket']);
 
@@ -174,17 +195,19 @@ const RARE_SLOTS = new Set(['weapon', 'head', 'chest', 'trinket']);
  * drops, resists weighing heavily and the foe's own element most.
  */
 const RESIST_WANT = { fireResist: 4, coldResist: 4, lightningResist: 4, arcaneResist: 4, allResist: 8 };
-function rollGear(level, seed, resist = null, tierRarity = 'rare') {
-  const want = resist ? { ...WANT, ...RESIST_WANT, [`${resist}Resist`]: 16 } : WANT;
+function rollGear(level, seed, resist = null, tierRarity = 'rare', voc = 'warlock') {
+  const base = { ...WANT_ALL, ...WANT_BY[voc] };
+  const want = resist ? { ...base, ...RESIST_WANT, [`${resist}Resist`]: 16 } : base;
   return seeded(`gear|${seed}|${level}|${resist ?? ''}`, r => {
     const total = {}, weapon = {};
     for (const slot of SLOTS) {
       const rarity = resist === null ? (level >= 10 && RARE_SLOTS.has(slot) ? 'rare' : 'uncommon') : tierRarity;
       let best = null, bestScore = -1;
       for (let k = 0; k < (resist === null ? 3 : 10); k++) {
-        const { stats } = AFFIX.rollAffixes({ slot }, rarity, level, r);
+        const where = { slot, affixFamily: familyFor(voc, slot) };
+        const { stats } = AFFIX.rollAffixes(where, rarity, level, r);
         let score = 0;
-        for (const [key, v] of Object.entries(stats)) { const hi = AFFIX.affixRange(key, slot, level, rarity)[1] || 1; score += (want[key] ?? 0) * v / hi; }
+        for (const [key, v] of Object.entries(stats)) { const hi = AFFIX.affixRange(key, { family: where.affixFamily, slot }, level, rarity)[1] || 1; score += (want[key] ?? 0) * v / hi; }
         if (score > bestScore) { bestScore = score; best = stats; }
       }
       for (const [key, v] of Object.entries(best)) total[key] = (total[key] ?? 0) + v;
@@ -222,7 +245,7 @@ function skillTree(voc, level) {
 }
 
 export function keeper(voc, level, tier = 'normal', seed = 0, resist = null) {
-  const gear = rollGear(level, `${voc}|${seed}`, resist, tier === 'hell' ? 'epic' : 'rare');
+  const gear = rollGear(level, `${voc}|${seed}`, resist, tier === 'hell' ? 'epic' : 'rare', voc);
   const stats = attributes(voc, level);
   const fight = SK.fightStats(level, stats, gear.total, voc, DIFF.DIFFICULTIES[tier].resistPenalty);
   return { voc, level, tier, gear, stats, fight, tree: skillTree(voc, level), potTier: POT.dropTier(level) };
@@ -257,12 +280,17 @@ function arena(k, state) {
   const f = k.fight;
   sys.keeperMaxHp = f.maxHp; sys.maxMana = f.maxMana; sys.mana = state?.mana ?? f.maxMana;
   sys.power = f.power; sys.regen = f.regen; sys.agility = f.haste; sys.castSpeed = f.castSpeed; sys.crit = f.crit;
+  // §3.6 (td-engine setKeeperBuild): Life Steal, Pierce, Block, the beast's share of the damage %, a caster's +Spells.
+  sys.leech = f.leech; sys.gearPierce = f.pierce; sys.gearBlock = f.block; sys.damagePct = f.damagePct; sys.gearRanks = f.ranks;
   sys.defense = f.defense; sys.keeperLevel = k.level; sys.resists = f.resists; sys.pace = 1 + f.levelPace;
   // Hands (shared/rpg/item-hands.ts): every Keeper here wears the one-handed build every class can — a weapon beside an
   // off-hand (rollGear rolls all eight wells): the Ashguard's blade and shield, the Warlock's wand, the Lanternwright's
   // wand and lantern, the Thornstrider's crossbow and quiver. The two-handed path trades the off-hand's affixes for
-  // TWO_HAND_MULT on the basic attack; only the Ashguard's blade adds the weapon's own flat (td-melee weaponSwing).
-  if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ spellDamage: k.gear.weapon.spellDamage ?? 0, hands: 1 });
+  // TWO_HAND_MULT on the basic attack; the weapon's own +min–max rides on the blade (Ashguard) and the arrow (Thornstrider).
+  // §3.6: the weapon's own +min–max Damage is the Ashguard's blade's and the Thornstrider's arrow's.
+  const w = k.gear.weapon;
+  if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ minDamage: w.minDamage ?? 0, maxDamage: w.maxDamage ?? 0, hands: 1, kind: 'melee' });
+  if (k.voc === 'thornstrider') sys.weaponSwing = MELEE.weaponSwing({ minDamage: w.minDamage ?? 0, maxDamage: w.maxDamage ?? 0, hands: 1, kind: 'bow' });
   sys.elites = false; sys.levelGap = true;
   // Every blow or shot that reaches him (before a ward or Defense drinks it): a kiting Keeper must still be struck.
   { const bite = sys.biteKeeper.bind(sys); sys.biteKeeper = (raw, ...rest) => { if (raw > 0) life.struck++; return bite(raw, ...rest); }; }
@@ -450,6 +478,12 @@ function packOf(rank, seed) {
 
 const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
 const median = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+/**
+ * The interquartile mean: the mean of the middle half of the runs (7–18 of 24). A time band reads this, not the
+ * median — the runs of a cell often fall in two clusters (a pack with or without its follower in the arc), and a
+ * median sitting in the gap between them flipped on a two-tick change anywhere in the fight (2026-10-22).
+ */
+const iqm = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y), lo = Math.floor(s.length / 4), hi = Math.max(lo + 1, s.length - lo); return mean(s.slice(lo, hi)); };
 
 /** Many seeded attempts at one encounter, each with a freshly rolled Keeper (his gear varies run to run). */
 function attempts(voc, level, tier, encOf, runs, resist = null) {
@@ -460,7 +494,7 @@ function attempts(voc, level, tier, encOf, runs, resist = null) {
   }
   const won = out.filter(r => r.cleared);
   return {
-    ttk: median(won.map(r => r.secs)), ttkMean: mean(won.map(r => r.secs)),
+    ttk: iqm(won.map(r => r.secs)), ttkMedian: median(won.map(r => r.secs)), ttkMean: mean(won.map(r => r.secs)),
     death: out.filter(r => r.died).length / out.length, timeout: out.filter(r => !r.died && !r.cleared).length / out.length,
     hpPots: mean(out.map(r => r.used.hp)), manaPots: mean(out.map(r => r.used.mana)),
     /** Life lost in the fight, in whole bars of his life (a kiting Keeper must still lose some to every boss). */
@@ -575,6 +609,11 @@ function gapCell(voc, level, gap, count, runs) {
 
 export const BANDS = {
   normal: [2, 5], champion: [15, 40], unique: [30, 75], boss: [60, 150], seam: [120, 240],
+  /**
+   * The Ashguard's floor on a pack band, × the band's: his blade strikes the whole arc, so he clears a pack in about
+   * half the ranged vocations' time — his identity (owner 2026-10-21, skill-trees.md), not a bug to tune away.
+   */
+  ashPackFloor: .75,
   /** Death-rate ceilings: a creature at his level (near never), a pack, a first attempt at a boss / the Seam Eater. */
   normalDeath: .02, packDeath: .1, bossDeath: .3, seamDeath: .3,
   /** A kiting ranged Keeper is struck at least this many times a boss fight (no boss can be walked away from). */
@@ -661,19 +700,19 @@ if (argv.json) { console.log(JSON.stringify(table, null, 1)); process.exit(0); }
 const fails = [];
 const say = argv.check && !argv.verbose ? () => undefined : console.log;
 say(`Combat sim · the real MobSystem · ${RUNS} seeded runs a cell · dodge ${DODGE * 100}% of tells · ${fmt(secs, 0)} s\n`);
-say('Per level: time to kill (median s) · death rate · potions (life+mana) · hunt XP/h · Gold/h · kills/h');
+say('Per level: time to kill (s, interquartile mean) · death rate · potions (life+mana) · hunt XP/h · Gold/h · kills/h');
 say('voc            L   creatures hunted    normal         champion pack   unique pack     hunt XP/h  Gold/h  kills/h  falls/h');
 for (const voc of VOCATIONS) for (const L of levels) {
   const c = table[voc].levels[L];
   const row = x => `${fmt(x.ttk).padStart(5)}s ${pct(x.death).padStart(4)} ${fmt(x.hpPots + x.manaPots).padStart(3)}`;
   say(`${voc.padEnd(14)} ${String(L).padStart(2)}  ${c.normal.id.padEnd(18)} ${row(c.normal)}  ${row(c.champion)}  ${row(c.unique)}  ${k1(c.hunt.xph).padStart(8)}  ${k1(c.hunt.goldh).padStart(6)}  ${fmt(c.hunt.killsh, 0).padStart(6)}  ${fmt(c.hunt.deathsh, 2).padStart(6)}`);
 }
-say('\nBosses at their level, Normal: time to kill (median s) · first-attempt death rate · potions · life lost (bars) · blows that reached him');
+say('\nBosses at their level, Normal: time to kill (s, interquartile mean) · first-attempt death rate · potions · life lost (bars) · blows that reached him');
 say(`${'boss'.padEnd(20)} L   ${VOCATIONS.map(v => v.padEnd(22)).join('')}`);
 for (let i = 0; i < BOSSES.length; i++) {
   say(`${BOSSES[i].id.padEnd(20)} ${String(BOSSES[i].level).padStart(2)}  ${VOCATIONS.map(v => { const b = table[v].bosses[i]; return `${fmt(b.ttk, 0).padStart(4)}s ${pct(b.death).padStart(4)} ${fmt(b.hpPots + b.manaPots).padStart(3)} ${fmt(b.taken, 1).padStart(3)} ${fmt(b.struck, 0).padStart(3)} `; }).join('')}`);
 }
-say('\nThe Seam Eater (Normal: the Keeper at its level; Nightmare +5 and Hell +15 levels, in resist gear): time to kill (median s) · death rate');
+say('\nThe Seam Eater (Normal: the Keeper at its level; Nightmare +5 and Hell +15 levels, in resist gear): time to kill (s, interquartile mean) · death rate');
 for (let i = 0; i < table.warlock.seam.length; i++) {
   const s = table.warlock.seam[i];
   say(`  L${String(s.level).padEnd(3)} K${String(s.keeper).padEnd(3)} ${s.tier.padEnd(10)} ${VOCATIONS.map(v => { const x = table[v].seam[i]; return `${v.slice(0, 5)} ${fmt(x.ttk, 0).padStart(4)}s ${pct(x.death).padStart(4)}`; }).join('   ')}`);
@@ -693,8 +732,9 @@ for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);
   if (c.normal.death > BANDS.normalDeath) fails.push(`${voc} L${L}: a creature at his level kills him ${pct(c.normal.death)} of the time`);
-  if (!inBand(c.champion.ttk, BANDS.champion)) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${BANDS.champion.join('–')} s)`);
-  if (!inBand(c.unique.ttk, BANDS.unique)) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${BANDS.unique.join('–')} s)`);
+  const pack = band => voc === 'ashguard' ? [band[0] * BANDS.ashPackFloor, band[1]] : band;
+  if (!inBand(c.champion.ttk, pack(BANDS.champion))) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${pack(BANDS.champion).join('–')} s)`);
+  if (!inBand(c.unique.ttk, pack(BANDS.unique))) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${pack(BANDS.unique).join('–')} s)`);
   for (const [what, x] of [['champion pack', c.champion], ['unique pack', c.unique]]) if (x.death > BANDS.packDeath) fails.push(`${voc} L${L}: a ${what} kills him ${pct(x.death)} of the time (≤ ${pct(BANDS.packDeath)})`);
 }
 for (const voc of VOCATIONS) table[voc].bosses.forEach(b => {

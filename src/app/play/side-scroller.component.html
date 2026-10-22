@@ -1171,12 +1171,17 @@
                 @if (it.itemLevel) { <span>{{ t('play.tip.itemLevel', { n: it.itemLevel }) }}</span> }
               </p>
             }
-            @if (it.head) { <p class="d2tip__headline">{{ it.head.text }}@if (it.head.range) { <span class="d2tip__range">{{ it.head.range }}</span> }</p> }
+            @if (it.calling; as cl) {
+              <!-- Who the piece is for (§3.6, rpg/item-calling.ts); greyed lines do nothing for this Keeper's calling. -->
+              <p class="d2tip__calling" data-tip-calling [class.mine]="cl.mine">{{ cl.text }}</p>
+            }
+            @if (it.head) { <p class="d2tip__headline" [attr.data-stat]="it.head.key" [class.dim]="it.head.dim" [attr.title]="it.head.dim ? t('play.tip.unused') : null">{{ it.head.text }}@if (it.head.range) { <span class="d2tip__range">{{ it.head.range }}</span> }@if (it.head.old) { <small class="d2tip__old">{{ it.head.old }}</small> }</p> }
             @if (it.affixes.length) {
               <ul class="d2tip__affixes">
-                @for (a of it.affixes; track a.key) { <li [attr.data-stat]="a.key">{{ a.text }}@if (a.range) { <span class="d2tip__range">{{ a.range }}</span> }</li> }
+                @for (a of it.affixes; track a.key) { <li [attr.data-stat]="a.key" [class.dim]="a.dim" [attr.title]="a.dim ? t('play.tip.unused') : null">{{ a.text }}@if (a.range) { <span class="d2tip__range">{{ a.range }}</span> }@if (a.old) { <small class="d2tip__old">{{ a.old }}</small> }</li> }
               </ul>
             }
+            @if (it.calling?.unused) { <p class="d2tip__unused" data-tip-unused>{{ t('play.tip.unusedNote') }}</p> }
             @if (it.curse; as cu) {
               <!-- A cursed grave-good (shared/grave-goods): the gift, the price, who lays it to rest. -->
               <div class="d2tip__curse" data-tip-curse [class.d2tip__curse--rest]="cu.rest">

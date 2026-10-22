@@ -122,7 +122,8 @@ describe('boss uniques: the signatures summed', () => {
     const all = relicTotals(BOSS_UNIQUES.map(u => u.id));
     // The Warden's ember and the Sexton's cowl each reach 2 tiles further.
     expect(all.light).toBe(4);
-    expect(all.ranks).toEqual({ 'ember-bolt': 1, 'hellfire-nova': 2 });
+    // §3.6: the Hammer (a maul) is the Ashguard's, the Splinterbow the Thornstrider's.
+    expect(all.ranks).toEqual({ 'ember-bolt': 1, 'cinder-cleave': 2, volley: 2 });
     expect(all.cdCut).toEqual({ meteor: 2 });
     expect(all.construct).toBe(20);
     expect(all.raisedMax).toBe(1);

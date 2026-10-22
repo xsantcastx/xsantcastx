@@ -34,7 +34,7 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
   },
   'blinding-flash': {
     id: 'blinding-flash', kind: 'active', mana: 14, cd: 8, nameKey: 'skill.blinding-flash', textKey: 'skill.blinding-flash.text',
-    vars: { min: 8, max: 12, radius: 3, stun: 2 }, grow: { min: 2, max: 3, radius: .05, stun: .1 }, tree: 'lamp', tier: 0, col: 1, req: null,
+    vars: { min: 28, max: 42, radius: 3, stun: 2 }, grow: { min: 2, max: 3, radius: .05, stun: .1 }, tree: 'lamp', tier: 0, col: 1, req: null,
     icon: I('<rect x="7" y="1" width="2" height="3" fill="#fff2a8"/><rect x="7" y="12" width="2" height="3" fill="#fff2a8"/><rect x="1" y="7" width="3" height="2" fill="#fff2a8"/><rect x="12" y="7" width="3" height="2" fill="#fff2a8"/><rect x="3" y="3" width="2" height="2" fill="#ffd27a"/><rect x="11" y="3" width="2" height="2" fill="#ffd27a"/><rect x="3" y="11" width="2" height="2" fill="#ffd27a"/><rect x="11" y="11" width="2" height="2" fill="#ffd27a"/><rect x="5" y="5" width="6" height="6" fill="#ffd27a"/><rect x="6" y="6" width="4" height="4" fill="#fffbe8"/><rect x="7" y="7" width="2" height="2" fill="#ffffff"/>'),
     words: 'lum orum',
     syn: [{ from: 'lantern-aura', per: 4, what: 'radius' }],
