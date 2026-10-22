@@ -79,7 +79,7 @@ export class SpellbookPageComponent {
   @Output() readonly inscribe = new EventEmitter<string>();
   @Output() readonly belt = new EventEmitter<string>();
 
-  readonly keys = [1, 2, 3, 4];
+  readonly keys = [1, 2, 3, 4, 5, 6, 7, 8];
   readonly maxRank = MAX_RANK;
 
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }

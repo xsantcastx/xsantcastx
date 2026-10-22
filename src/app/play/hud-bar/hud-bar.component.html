@@ -1,0 +1,102 @@
+<!-- The bottom bar. data-engine-ignore keeps the world's tap handlers off it. -->
+<div class="hb" data-hud-bar data-engine-ignore>
+  <!-- Life (left) -->
+  <div class="hb__orb hb__orb--hp" data-orb="hp" role="img" [attr.aria-label]="t('play.hud.health') + ' ' + hud.hpShown + ' / ' + hud.tdMaxHp" [title]="t('play.hud.health') + ' ' + hud.hpShown + ' / ' + hud.tdMaxHp">
+    <svg viewBox="0 0 36 36" shape-rendering="crispEdges" aria-hidden="true">
+      <defs><clipPath id="hb-clip-hp"><rect x="0" [attr.y]="top(fill(hud.hpShown, hud.tdMaxHp))" width="36" height="36"/></clipPath></defs>
+      <path class="hb__ring" [attr.d]="ring"/><path class="hb__empty" [attr.d]="well"/>
+      <path class="hb__hp" [attr.d]="well" clip-path="url(#hb-clip-hp)"/>
+      <path class="hb__glint" d="M11 6h8v1h-8zM8 8h3v1H8zM6 10h2v1H6zM6 11h1v7H6zM7 9h1v1H7z"/>
+    </svg>
+    <b>{{ hud.hpShown }}</b>
+  </div>
+
+  <div class="hb__panel">
+    <!-- The experience strip along the panel's top (Diablo II): a hover or a tap shows the numbers. -->
+    @if (hud.xpBar; as xb) {
+      <div class="td-xp" data-xp-bar [attr.data-xp-pct]="xb.pct" role="meter" tabindex="0" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="xb.pct" [attr.aria-label]="xb.aria"
+           [class.is-tip]="hud.xpTip" (click)="hud.xpTip = !hud.xpTip" (blur)="hud.xpTip = false" (mouseleave)="hud.xpTip = false">
+        <i class="td-xp__fill" [style.width.%]="xb.pct"></i>
+        <span class="td-xp__tip" role="tooltip" data-xp-tip><b>{{ xb.tip }}</b>@if (xb.left) { <small>{{ xb.left }}</small> }</span>
+      </div>
+    }
+    <div class="hb__row">
+      <!-- The small menu buttons: an icon each, the name and its key in a tooltip. -->
+      <nav class="td-dock hb__menu" [attr.aria-label]="t('play.td.dock.label')">
+        <button type="button" data-game-menu-toggle (click)="hud.toggleGameMenu()" [attr.aria-expanded]="hud.gameMenuOpen" [attr.aria-label]="t('menu.title') + ' (Esc)'" [attr.data-tip]="t('menu.title') + '  Esc'">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="3" width="10" height="2" fill="#e9dcae"/><rect x="3" y="7" width="10" height="2" fill="#e9dcae"/><rect x="3" y="11" width="10" height="2" fill="#e9dcae"/></svg>
+        </button>
+        <button type="button" data-hb="bag" (click)="hud.toggleBag()" [attr.aria-expanded]="hud.bagOpen" [attr.aria-label]="t('play.td.dock.bag') + ' (' + hud.keymap.cap('bag') + ')'" [attr.data-tip]="t('play.td.dock.bag') + '  ' + hud.keymap.cap('bag')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
+        </button>
+        <button type="button" data-hb="sheet" (click)="hud.toggleSheet()" [attr.aria-expanded]="hud.sheetOpen" [attr.aria-label]="t('play.td.dock.sheet') + ' (' + hud.keymap.cap('sheet') + ')'" [attr.data-tip]="t('play.td.dock.sheet') + '  ' + hud.keymap.cap('sheet')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
+        </button>
+        <button type="button" data-hb="spellbook" (click)="hud.toggleSpellbook()" [attr.aria-expanded]="hud.spellbookOpen" [attr.aria-label]="t('play.td.dock.book') + ' (' + hud.keymap.cap('spellbook') + ')'" [attr.data-tip]="t('play.td.dock.book') + '  ' + hud.keymap.cap('spellbook')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
+        </button>
+        <button type="button" data-hb="bestiary" (click)="hud.toggleBestiary()" [attr.aria-expanded]="hud.bestiaryOpen" [attr.aria-label]="t('play.best.menu') + ' (' + hud.keymap.cap('bestiary') + ')'" [attr.data-tip]="t('play.best.menu') + '  ' + hud.keymap.cap('bestiary')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="3" width="10" height="10" fill="#3a4a2c"/><rect x="3" y="3" width="10" height="1" fill="#6f9a3c"/><rect x="5" y="6" width="2" height="2" fill="#f3e7cf"/><rect x="9" y="6" width="2" height="2" fill="#f3e7cf"/><rect x="6" y="7" width="1" height="1" fill="#2a1a10"/><rect x="10" y="7" width="1" height="1" fill="#2a1a10"/><rect x="6" y="10" width="4" height="1" fill="#f3e7cf"/><rect x="6" y="10" width="1" height="2" fill="#f3e7cf"/><rect x="9" y="10" width="1" height="2" fill="#f3e7cf"/></svg>
+        </button>
+        <button type="button" data-hb="friends" (click)="hud.toggleFriends()" [attr.aria-expanded]="hud.friendsOpen" [attr.aria-label]="t('play.friends.menu') + ' (' + hud.keymap.cap('friends') + ')'" [attr.data-tip]="t('play.friends.menu') + '  ' + hud.keymap.cap('friends')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="3" width="4" height="4" fill="#e6c9a0"/><rect x="2" y="8" width="6" height="5" fill="#b8432e"/><rect x="9" y="4" width="4" height="4" fill="#e6c9a0"/><rect x="8" y="9" width="6" height="4" fill="#5aa8ff"/></svg>
+        </button>
+        <button type="button" data-hb="party" (click)="hud.openParty()" [attr.aria-label]="t('keys.action.party') + ' (' + hud.keymap.cap('party') + ')'" [attr.data-tip]="t('keys.action.party') + '  ' + hud.keymap.cap('party')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="7" y="2" width="2" height="5" fill="#ffd27a"/><rect x="9" y="2" width="4" height="3" fill="#ffd27a"/><rect x="2" y="9" width="3" height="3" fill="#e6c9a0"/><rect x="6" y="9" width="3" height="3" fill="#e6c9a0"/><rect x="10" y="9" width="3" height="3" fill="#e6c9a0"/><rect x="1" y="12" width="5" height="2" fill="#6f9a3c"/><rect x="5" y="12" width="5" height="2" fill="#6f9a3c"/><rect x="9" y="12" width="5" height="2" fill="#6f9a3c"/></svg>
+        </button>
+        <button type="button" data-hb="map" (click)="hud.togglePlaces()" [attr.aria-expanded]="hud.placesOpen" [attr.aria-label]="t('play.td.dock.places') + ' (' + hud.keymap.cap('map') + ')'" [attr.data-tip]="t('play.td.dock.places') + '  ' + hud.keymap.cap('map')">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
+        </button>
+      </nav>
+
+      <!-- The skills: eight slots on keys 1–8 (rebindable), two rows of four. An empty slot waits for the Spellbook's "Put on bar". -->
+      <div class="td-skills hb__skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')">
+        @for (row of rows; track $index) {
+          <div class="hb__skillrow">
+            @for (n of row; track n) {
+              <span class="hb__slot">
+                @if (ability(n); as a) {
+                  <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left" (click)="hud.useAbility(a.key)"
+                          [attr.aria-label]="t('skill.' + a.id) + ' (' + hud.keymap.cap('skill' + n) + ')'" [attr.data-tip]="t('skill.' + a.id) + '  ' + hud.keymap.cap('skill' + n) + ' · ' + a.mana + ' ' + t('play.td.mana')"
+                          [innerHTML]="hud.skillIcon(a.id)"></button>
+                } @else {
+                  <span class="hb__empty-slot" aria-hidden="true"></span>
+                }
+                <kbd class="hb__slotkey" aria-hidden="true">{{ hud.keymap.cap('skill' + n) }}</kbd>
+              </span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- The belt: Health and Mana potions and the Spellstone, each on its own (rebindable) key. -->
+      <div class="td-belt hb__belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')">
+        @for (b of hud.tdBelt; track b.kind) {
+          <button type="button" class="td-pot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
+                  (click)="hud.drinkPotion(b.kind)" [attr.aria-label]="hud.beltTitle(b)" [attr.data-tip]="hud.beltTitle(b)">
+            @if (b.potion) { <img [src]="hud.art(b.potion.id)" alt="" draggable="false"> }
+            @else { <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="7" y="2" width="2" height="2" fill="#5a3a22"/><rect x="6" y="4" width="4" height="2" fill="#6a5a6a"/><rect x="4" y="6" width="8" height="7" fill="#3a2e3a"/><rect x="5" y="13" width="6" height="1" fill="#3a2e3a"/><rect x="5" y="7" width="1" height="3" fill="#6a5a6a"/></svg> }
+            <b class="td-pot__n">{{ b.count }}</b><kbd>{{ hud.keymap.cap(b.kind === 'health' ? 'potionHealth' : 'potionMana') }}</kbd>
+          </button>
+        }
+        <button type="button" class="td-pot td-stone" data-kind="stone" [attr.data-stone]="hud.tdStone?.key ?? ''" [class.td-pot--empty]="!hud.tdStone" [class.td-skill--cool]="(hud.tdStone?.left ?? 0) > 0" [style.--cd]="hud.tdStone?.left ?? 0"
+                (click)="hud.useStone()" [attr.aria-label]="hud.stoneTitle(hud.tdStone)" [attr.data-tip]="hud.stoneTitle(hud.tdStone)">
+          @if (hud.tdStone; as st) { <img [src]="hud.stoneArt(st.skill)" alt="" draggable="false"> }
+          @else { <img class="td-stone__blank" [src]="hud.art('basalt-blank')" alt="" draggable="false"> }
+          <b class="td-pot__n">{{ hud.tdStone?.charges ?? 0 }}</b><kbd>{{ hud.keymap.cap('stone') }}</kbd>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mana (right) -->
+  <div class="hb__orb hb__orb--mana" data-orb="mana" role="img" [attr.aria-label]="t('play.td.mana') + ' ' + hud.tdMana + ' / ' + hud.tdMaxMana" [title]="t('play.td.mana') + ' ' + hud.tdMana + ' / ' + hud.tdMaxMana">
+    <svg viewBox="0 0 36 36" shape-rendering="crispEdges" aria-hidden="true">
+      <defs><clipPath id="hb-clip-mana"><rect x="0" [attr.y]="top(fill(hud.tdMana, hud.tdMaxMana))" width="36" height="36"/></clipPath></defs>
+      <path class="hb__ring" [attr.d]="ring"/><path class="hb__empty" [attr.d]="well"/>
+      <path class="hb__mana" [attr.d]="well" clip-path="url(#hb-clip-mana)"/>
+      <path class="hb__glint" d="M11 6h8v1h-8zM8 8h3v1H8zM6 10h2v1H6zM6 11h1v7H6zM7 9h1v1H7z"/>
+    </svg>
+    <b>{{ hud.tdMana }}</b>
+  </div>
+</div>
