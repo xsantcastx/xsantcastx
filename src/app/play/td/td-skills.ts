@@ -9,6 +9,7 @@
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { addSetBonuses } from '../../shared/rpg/set-items';
+import { damageFamilyOf, type DamageFamily } from '../../shared/rpg/item-calling';
 import type { RelicTotals } from '../../shared/rpg/boss-uniques';
 import { LEVEL_GROWTH, levelSpeedBonus, levelSteps } from '../../shared/skills/keeper-level';
 import { ELEMENTS, MAX_KEEPER_RESIST, MIN_RESIST, type DamageType, type Element } from '../../shared/loot/damage.model';
@@ -304,9 +305,10 @@ export function skillVars(id: SkillId, rank: number, bought: Readonly<Partial<Re
 export type GearSig = Pick<RelicTotals, 'ranks' | 'cdCut' | 'raisedMax' | 'spears' | 'spearRange'>;
 export const NO_GEAR_SIG: GearSig = { ranks: {}, cdCut: {}, raisedMax: 0, spears: 0, spearRange: 0 };
 /** A skill's rank in the fight: the tree's, plus the ranks worn gear adds to a skill already learnt (never past MAX_RANK). */
-export function castRank(id: SkillId, treeRank: number, sig: GearSig = NO_GEAR_SIG): number {
+export function castRank(id: SkillId, treeRank: number, sig: GearSig = NO_GEAR_SIG, allRanks = 0): number {
   const base = Math.max(0, Math.floor(treeRank) || 0);
-  return base > 0 ? Math.min(MAX_RANK, base + Math.max(0, sig.ranks[id] ?? 0)) : 0;
+  // `allRanks`: a caster's worn +Spells (item-affixes skillRanks, fightStats ranks) — every learnt skill, D2's +skills.
+  return base > 0 ? Math.min(MAX_RANK, base + Math.max(0, sig.ranks[id] ?? 0) + Math.max(0, Math.floor(allRanks) || 0)) : 0;
 }
 /**
  * A skill's numbers in the fight (before the sky's hand, td-phases): its rank's and synergies' (skillVars), plus what
@@ -316,6 +318,8 @@ export function castVars(id: SkillId, rank: number, bought: Readonly<Partial<Rec
   const out = skillVars(id, rank, bought);
   if (id === 'raise-skeleton') out['cap'] += Math.max(0, sig.raisedMax);
   if (id === 'bone-storm') out['count'] = Math.max(1, out['count'] + Math.max(0, sig.spears));
+  // The Splinterbow (boss-uniques.ts): the same "more missiles" signature looses more arrows in a Volley.
+  if (id === 'volley') out['count'] = Math.max(1, out['count'] + Math.max(0, sig.spears));
   if (id === 'bone-spear') out['range'] += Math.max(0, sig.spearRange);
   return out;
 }
@@ -398,7 +402,11 @@ export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0,
 export const MANA_REGEN = 3;
 
 /** Worn-total caps (docs/design/loot-and-combat.md §3): they bound the fight, never the roll. */
-export const GEAR_CAPS = { spellDamage: 150, castSpeed: 40, critChance: 40, moveSpeed: 40 } as const;
+export const GEAR_CAPS = {
+  spellDamage: 150, castSpeed: 40, critChance: 40, moveSpeed: 40,
+  // §3.6: the fighters' twins and the families' own.
+  attackDamage: 150, attackSpeed: 40, lifeLeech: 20, pierceChance: 50, blockChance: 50, skillRanks: 3,
+} as const;
 /** A crit hits this many times as hard. */
 export const CRIT_MULT = 1.75;
 
@@ -411,8 +419,23 @@ export function defenseReduction(defense: number, level: number): number {
 export interface FightStats {
   maxHp: number;
   maxMana: number;
-  /** Spell power multiplier: the level's, Spirit's and worn Spell Damage %. */
+  /**
+   * The damage multiplier: the level's, Spirit's, and the worn damage % of the class's own family (§3.6) — Spell
+   * Damage for a caster (Warlock, Lanternwright), Martial Damage for a fighter (Ashguard, Thornstrider).
+   */
   power: number;
+  /** Which family `power` and `castSpeed` read: 'spell' (casters) or 'martial' (fighters). */
+  family: DamageFamily;
+  /** The worn damage % in `power` (the family's, after its cap): the Thornstrider's beast bites by it too. */
+  damagePct: number;
+  /** A fighter's Life Steal (0..0.2): this share of every blow he lands comes back as life. 0 for a caster. */
+  leech: number;
+  /** Worn Pierce, in points (0..50): added to every Thorn Shot's own chance. The Thornstrider's alone. */
+  pierce: number;
+  /** Worn Block (0..0.5): the chance a blow is turned aside whole. */
+  block: number;
+  /** A caster's worn +Spells (0..3): every learnt spell casts that many ranks higher (castRank). 0 for a fighter. */
+  ranks: number;
   /** Mana back per second. */
   regen: number;
   /** Agility's quicker staff (fraction). */
@@ -421,7 +444,10 @@ export interface FightStats {
   moveHaste: number;
   /** The level's own pace (Tibia: higher level, faster feet; keeper-level levelSpeedBonus, → 0.6). Multiplies moveHaste. */
   levelPace: number;
-  /** Spell cooldowns and the bolt's pace are divided by 1 + this. */
+  /**
+   * The class's own speed (§3.6): worn Cast Speed for a caster, Attack Speed for a fighter. Skill cooldowns and the
+   * basic attack's pace (the bolt, the Kindle, the swing, the Thorn Shot) are divided by 1 + this.
+   */
   castSpeed: number;
   /** Chance (0..1) a hit crits ×1.75. */
   crit: number;
@@ -453,8 +479,14 @@ export function incomingDamage(raw: number, type: DamageType, defense: number, l
  * The worn gear's combat affixes, read key by key off the inventory's equipped totals — this is the fight's read
  * of each stat (scripts/check-meaning.js counts `equippedTotals.<key>` as a live stat).
  */
-export function wornCombat(inventory: { readonly equippedTotals: Required<ItemStats> }, worn: readonly string[] = []): Partial<ItemStats> {
+export function wornCombat(
+  inventory: { readonly equippedTotals: Required<ItemStats>; readonly equippedOldRolls?: { attackDamage: number; attackSpeed: number } },
+  worn: readonly string[] = [],
+): Partial<ItemStats> {
   // `worn`: the definition ids worn, so the item sets' tiers (rpg/set-items.ts) ride on the totals into fightStats.
+  // Old rolls (rpg/item-calling.ts): Spell Damage / Cast Speed on a piece that can no longer roll them also count as the
+  // fighters' Martial Damage / Attack Speed — fightStats reads only the wearer's own family, so nothing counts twice.
+  const old = inventory.equippedOldRolls ?? { attackDamage: 0, attackSpeed: 0 };
   return addSetBonuses({
     life: inventory.equippedTotals.life,
     mana: inventory.equippedTotals.mana,
@@ -470,6 +502,12 @@ export function wornCombat(inventory: { readonly equippedTotals: Required<ItemSt
     lightningResist: inventory.equippedTotals.lightningResist,
     arcaneResist: inventory.equippedTotals.arcaneResist,
     allResist: inventory.equippedTotals.allResist,
+    attackDamage: inventory.equippedTotals.attackDamage + old.attackDamage,
+    attackSpeed: inventory.equippedTotals.attackSpeed + old.attackSpeed,
+    lifeLeech: inventory.equippedTotals.lifeLeech,
+    pierceChance: inventory.equippedTotals.pierceChance,
+    blockChance: inventory.equippedTotals.blockChance,
+    skillRanks: inventory.equippedTotals.skillRanks,
   }, worn);
 }
 
@@ -482,16 +520,27 @@ export function fightStats(level: number, stats?: KeeperStats, gear: Partial<Ite
   const base = levelStats(level, stats, v), body = VOCATION_BODY[v] ?? VOCATION_BODY.warlock;
   const g = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 0);
   const signed = (n: number | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
+  // §3.6: each calling reads its own damage family — the casters Spell Damage and Cast Speed, the fighters Martial
+  // Damage and Attack Speed (rpg/item-calling.ts). The other family's numbers do nothing for it.
+  const family = damageFamilyOf(v), caster = family === 'spell';
+  const damagePct = caster ? Math.min(GEAR_CAPS.spellDamage, g(gear.spellDamage)) : Math.min(GEAR_CAPS.attackDamage, g(gear.attackDamage));
+  const speed = caster ? Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) : Math.min(GEAR_CAPS.attackSpeed, g(gear.attackSpeed));
   return {
     maxHp: base.maxHp + Math.round(g(gear.life)),
     maxMana: base.maxMana + Math.round(g(gear.mana)),
-    power: base.power * (1 + Math.min(GEAR_CAPS.spellDamage, g(gear.spellDamage)) / 100),
+    power: base.power * (1 + damagePct / 100),
+    family,
+    damagePct,
+    leech: caster ? 0 : Math.min(GEAR_CAPS.lifeLeech, g(gear.lifeLeech)) / 100,
+    pierce: v === 'thornstrider' ? Math.min(GEAR_CAPS.pierceChance, g(gear.pierceChance)) : 0,
+    block: Math.min(GEAR_CAPS.blockChance, g(gear.blockChance)) / 100,
+    ranks: caster ? Math.min(GEAR_CAPS.skillRanks, Math.floor(g(gear.skillRanks))) : 0,
     regen: base.regen + g(gear.manaRegen),
     haste: base.haste,
     // A cursed grave-good's Leaden Step can push worn Move Speed below zero: slower feet, never below 70% pace.
     moveHaste: Math.max(-.3, Math.min(GEAR_CAPS.moveSpeed / 100, base.haste + signed(gear.moveSpeed) / 100 + (body.speed ?? 0))),
     levelPace: levelSpeedBonus(level),
-    castSpeed: Math.min(GEAR_CAPS.castSpeed, g(gear.castSpeed)) / 100,
+    castSpeed: speed / 100,
     crit: Math.min(GEAR_CAPS.critChance, g(gear.critChance)) / 100,
     // The class's own Defense (an Ashguard's plate and shield) under the worn gear's.
     defense: g(gear.defense) + body.defense + Math.round(levelSteps(level) * body.defenseLevel),

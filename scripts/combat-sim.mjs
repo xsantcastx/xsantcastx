@@ -22,9 +22,11 @@
  *   node scripts/combat-sim.mjs --patch=what-if.json   # try numbers without editing the game (see --patch below)
  *
  * The Keeper (docs/design/loot-and-combat.md §13 "the simulated Keeper"):
- *  - gear: the eight gear wells rolled at item level = his level through the real rollAffixes; magic everywhere below
- *    10, then rare in the weapon, head, chest and trinket and magic in the rest; each well the best of three drops for
- *    his vocation (a player keeps the better piece);
+ *  - gear: the eight gear wells rolled at item level = his level through the real rollAffixes, each in its class-
+ *    appropriate family (loot-and-combat.md §3.6: a wand and a focus for the casters, a blade and a shield for the
+ *    Ashguard, a crossbow and a quiver for the Thornstrider; armour and a ring for all); magic everywhere below 10, then
+ *    rare in the weapon, head, chest and trinket and magic in the rest; each well the best of three drops for his
+ *    vocation, weighed by his own damage family (a player keeps the better piece);
  *  - attributes: every point he has (keeperAttributePoints): 45% Spirit, 40% Vitality, 15% Energy (Ashguard and
  *    Thornstrider: Agility, to its 30-point cap, then Vitality);
  *  - skill points along PATHS below through buyRank (tiers, prerequisites, points), the bar and aura from what he
@@ -161,11 +163,30 @@ const BARS = {
   lanternwright: ['banish', 'lamp-wisp', 'hearthlight', 'dawn-at-noon', 'beacon', 'blinding-flash', 'lantern-ward'],
   thornstrider: ['barbed-shot', 'volley', 'command', 'stampede', 'call-of-the-wilds', 'thornroot-snare'],
 };
-/** What each stat is worth to a vocation when it picks the better of its drops. */
-const WANT = {
-  spellDamage: 3, critChance: 2, castSpeed: 2, life: 1.5, defense: 1, lifeRegen: 1, manaRegen: .6, mana: .4,
-  fireResist: .6, coldResist: .5, lightningResist: .3, arcaneResist: .6, allResist: 1.5, moveSpeed: .4, magicFind: 0, xpBonus: 0,
+/** What each stat is worth to any vocation when it picks the better of its drops (its own damage family below). */
+const WANT_ALL = {
+  critChance: 2, life: 1.5, defense: 1, lifeRegen: 1, manaRegen: .6, mana: .4,
+  fireResist: .6, coldResist: .5, lightningResist: .3, arcaneResist: .6, allResist: 1.5, moveSpeed: .4, magicFind: 0, xpBonus: 0, goldFind: 0,
 };
+/** §3.6: each calling wants its own family — the casters Spell Damage, the fighters Martial Damage and their weapon's own. */
+const WANT_BY = {
+  warlock: { spellDamage: 3, castSpeed: 2, skillRanks: 3 },
+  lanternwright: { spellDamage: 3, castSpeed: 2, skillRanks: 3 },
+  ashguard: { attackDamage: 4, attackSpeed: 3, minDamage: 2, maxDamage: 2, lifeLeech: 1.5, blockChance: 1.5 },
+  thornstrider: { attackDamage: 3, attackSpeed: 2, minDamage: 2, maxDamage: 2, pierceChance: 1 },
+};
+/**
+ * §3.6: the class-appropriate gear each wears in its weapon and off-hand wells (the one-handed build every class can):
+ * the Warlock a wand and a focus, the Lanternwright a wand and the lantern, the Ashguard a blade and a shield, the
+ * Thornstrider a crossbow and a quiver. Armour and rings are every calling's.
+ */
+const GEAR_FAMILY = {
+  warlock: { weapon: 'caster', 'off-hand': 'focus' },
+  lanternwright: { weapon: 'caster', 'off-hand': 'focus' },
+  ashguard: { weapon: 'martial', 'off-hand': 'shield' },
+  thornstrider: { weapon: 'bow', 'off-hand': 'quiver' },
+};
+const familyFor = (voc, slot) => GEAR_FAMILY[voc]?.[slot] ?? AFFIX.DEFAULT_FAMILY[slot];
 const SLOTS = ['weapon', 'head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'];
 const RARE_SLOTS = new Set(['weapon', 'head', 'chest', 'trinket']);
 
@@ -174,17 +195,19 @@ const RARE_SLOTS = new Set(['weapon', 'head', 'chest', 'trinket']);
  * drops, resists weighing heavily and the foe's own element most.
  */
 const RESIST_WANT = { fireResist: 4, coldResist: 4, lightningResist: 4, arcaneResist: 4, allResist: 8 };
-function rollGear(level, seed, resist = null, tierRarity = 'rare') {
-  const want = resist ? { ...WANT, ...RESIST_WANT, [`${resist}Resist`]: 16 } : WANT;
+function rollGear(level, seed, resist = null, tierRarity = 'rare', voc = 'warlock') {
+  const base = { ...WANT_ALL, ...WANT_BY[voc] };
+  const want = resist ? { ...base, ...RESIST_WANT, [`${resist}Resist`]: 16 } : base;
   return seeded(`gear|${seed}|${level}|${resist ?? ''}`, r => {
     const total = {}, weapon = {};
     for (const slot of SLOTS) {
       const rarity = resist === null ? (level >= 10 && RARE_SLOTS.has(slot) ? 'rare' : 'uncommon') : tierRarity;
       let best = null, bestScore = -1;
       for (let k = 0; k < (resist === null ? 3 : 10); k++) {
-        const { stats } = AFFIX.rollAffixes({ slot }, rarity, level, r);
+        const where = { slot, affixFamily: familyFor(voc, slot) };
+        const { stats } = AFFIX.rollAffixes(where, rarity, level, r);
         let score = 0;
-        for (const [key, v] of Object.entries(stats)) { const hi = AFFIX.affixRange(key, slot, level, rarity)[1] || 1; score += (want[key] ?? 0) * v / hi; }
+        for (const [key, v] of Object.entries(stats)) { const hi = AFFIX.affixRange(key, { family: where.affixFamily, slot }, level, rarity)[1] || 1; score += (want[key] ?? 0) * v / hi; }
         if (score > bestScore) { bestScore = score; best = stats; }
       }
       for (const [key, v] of Object.entries(best)) total[key] = (total[key] ?? 0) + v;
@@ -222,7 +245,7 @@ function skillTree(voc, level) {
 }
 
 export function keeper(voc, level, tier = 'normal', seed = 0, resist = null) {
-  const gear = rollGear(level, `${voc}|${seed}`, resist, tier === 'hell' ? 'epic' : 'rare');
+  const gear = rollGear(level, `${voc}|${seed}`, resist, tier === 'hell' ? 'epic' : 'rare', voc);
   const stats = attributes(voc, level);
   const fight = SK.fightStats(level, stats, gear.total, voc, DIFF.DIFFICULTIES[tier].resistPenalty);
   return { voc, level, tier, gear, stats, fight, tree: skillTree(voc, level), potTier: POT.dropTier(level) };
@@ -257,12 +280,17 @@ function arena(k, state) {
   const f = k.fight;
   sys.keeperMaxHp = f.maxHp; sys.maxMana = f.maxMana; sys.mana = state?.mana ?? f.maxMana;
   sys.power = f.power; sys.regen = f.regen; sys.agility = f.haste; sys.castSpeed = f.castSpeed; sys.crit = f.crit;
+  // §3.6 (td-engine setKeeperBuild): Life Steal, Pierce, Block, the beast's share of the damage %, a caster's +Spells.
+  sys.leech = f.leech; sys.gearPierce = f.pierce; sys.gearBlock = f.block; sys.damagePct = f.damagePct; sys.gearRanks = f.ranks;
   sys.defense = f.defense; sys.keeperLevel = k.level; sys.resists = f.resists; sys.pace = 1 + f.levelPace;
   // Hands (shared/rpg/item-hands.ts): every Keeper here wears the one-handed build every class can — a weapon beside an
   // off-hand (rollGear rolls all eight wells): the Ashguard's blade and shield, the Warlock's wand, the Lanternwright's
   // wand and lantern, the Thornstrider's crossbow and quiver. The two-handed path trades the off-hand's affixes for
-  // TWO_HAND_MULT on the basic attack; only the Ashguard's blade adds the weapon's own flat (td-melee weaponSwing).
-  if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ spellDamage: k.gear.weapon.spellDamage ?? 0, hands: 1 });
+  // TWO_HAND_MULT on the basic attack; the weapon's own +min–max rides on the blade (Ashguard) and the arrow (Thornstrider).
+  // §3.6: the weapon's own +min–max Damage is the Ashguard's blade's and the Thornstrider's arrow's.
+  const w = k.gear.weapon;
+  if (k.voc === 'ashguard') sys.weaponSwing = MELEE.weaponSwing({ minDamage: w.minDamage ?? 0, maxDamage: w.maxDamage ?? 0, hands: 1, kind: 'melee' });
+  if (k.voc === 'thornstrider') sys.weaponSwing = MELEE.weaponSwing({ minDamage: w.minDamage ?? 0, maxDamage: w.maxDamage ?? 0, hands: 1, kind: 'bow' });
   sys.elites = false; sys.levelGap = true;
   // Every blow or shot that reaches him (before a ward or Defense drinks it): a kiting Keeper must still be struck.
   { const bite = sys.biteKeeper.bind(sys); sys.biteKeeper = (raw, ...rest) => { if (raw > 0) life.struck++; return bite(raw, ...rest); }; }

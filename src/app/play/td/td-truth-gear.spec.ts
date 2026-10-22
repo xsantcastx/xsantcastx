@@ -27,12 +27,27 @@ import { LOOT_I18N } from '../../shared/loot/loot.i18n';
 import { GRAVE_I18N } from '../../shared/grave-goods/grave-goods.i18n';
 import { MOBS, MobSystem, type MobHost } from './td-mobs';
 import { RESIST_STAT, fightStats, wornCombat } from './td-skills';
+import { AFFIX_FAMILIES, FAMILY_RULES, affixPoolFor, familyRolls, rollAffixes, type AffixFamily } from '../../shared/rpg/item-affixes';
+import { OLD_ROLL_TWIN, VOCATIONS, oldRollTwins, statUse } from '../../shared/rpg/item-calling';
+import { arrowBlow, type HeldWeapon } from './td-melee';
+import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
 
 /** The number a card prints for a stat (formatStatValue: "+12%", "+0.4"), back to a number. */
 const printed = (key: keyof ItemStats, n: number) => Number(formatStatValue(key, n).replace(/[+%]/g, ''));
 /** The fight's numbers wearing exactly these stats (one piece), at a mid level, as a Warlock. */
 const fightWith = (stats: ItemStats) => fightStats(30, undefined, wornCombat({ equippedTotals: sumStats([stats]) }));
 const bare = fightWith({});
+/** The fight's numbers for a calling wearing exactly these stats on one piece of `family` (its old rolls read as worn). */
+const fightAs = (v: Vocation, stats: ItemStats, family: AffixFamily | null = 'jewel') =>
+  fightStats(30, undefined, wornCombat({ equippedTotals: sumStats([stats]), equippedOldRolls: oldRollTwins([{ family, stats }]) }), v);
+/** A weapon of `family` carrying these stats, as the swing reads it (side-scroller heldSwing). */
+const heldOf = (family: AffixFamily, st: ItemStats): HeldWeapon =>
+  ({ ...st, hands: 1, kind: family === 'bow' ? 'bow' : family === 'caster' ? 'caster' : 'melee' });
+/** What a weapon's own damage adds to the calling's basic blow at a low (u = 0) or a top (u → 1) roll. */
+const ownBlow = (v: Vocation, family: AffixFamily, st: ItemStats, top: boolean) => {
+  const u = () => (top ? .99999 : 0), w = weaponSwing(heldOf(family, st));
+  return v === 'thornstrider' ? arrowBlow(10, 10, u, w) - 10 : v === 'ashguard' ? meleeBlow(10, 10, 100, u, w) - 10 : 0;
+};
 
 /**
  * For each stat: given a piece carrying `n` of it, what moved where it lives — in the stat's own units, so it must
@@ -62,6 +77,16 @@ const LIVES: Record<keyof ItemStats, (n: number) => number> = {
   // Ward turns 10% of a temper's fail chance aside a point (item-upgrade).
   strikePower: n => (weaponSwing({ strikePower: 1 + n }).flat - weaponSwing({ strikePower: 1 }).flat) / 3,
   ward: n => Math.round((1 - temperFailChance(.5, n) / .5) * 10 * 100) / 100,
+  // §3.6: the fighters' twins (read as an Ashguard; the Thornstrider for Pierce) and the families' own.
+  attackDamage: n => Math.round((fightAs('ashguard', { attackDamage: n }).power / fightAs('ashguard', {}).power - 1) * 1000) / 10,
+  attackSpeed: n => Math.round(fightAs('ashguard', { attackSpeed: n }).castSpeed * 1000) / 10,
+  lifeLeech: n => Math.round(fightAs('ashguard', { lifeLeech: n }).leech * 1000) / 10,
+  pierceChance: n => fightAs('thornstrider', { pierceChance: n }).pierce,
+  blockChance: n => Math.round(fightAs('warlock', { blockChance: n }).block * 1000) / 10,
+  skillRanks: n => fightAs('warlock', { skillRanks: n }).ranks,
+  // A sword's own damage on the Ashguard's blow: the low end at a bottom roll, the high end at a top one.
+  minDamage: n => ownBlow('ashguard', 'martial', { minDamage: n, maxDamage: n + 5 }, false),
+  maxDamage: n => ownBlow('ashguard', 'martial', { minDamage: 0, maxDamage: n }, true),
 };
 
 describe('td-truth gear: one stat, one piece — the card\'s number is what moves', () => {
@@ -70,8 +95,8 @@ describe('td-truth gear: one stat, one piece — the card\'s number is what move
   });
   for (const key of ITEM_STAT_KEYS) {
     it(`${key}`, () => {
-      // Small enough to sit under every cap (resists 75, Spell Damage 150, Cast/Crit/Move 40, Ward's 3 points).
-      for (const n of key === 'ward' ? [1, 2] : key === 'goldPerSec' ? [4, 30] : [2, 7, 12]) {
+      // Small enough to sit under every cap (resists 75, Spell Damage 150, Cast/Crit/Move 40, Ward's 3 points, +3 Spells).
+      for (const n of key === 'ward' ? [1, 2] : key === 'goldPerSec' ? [4, 30] : key === 'skillRanks' ? [1, 2, 3] : [2, 7, 12]) {
         const card = key === 'goldPerSec' ? printed(key, n) : n;
         expect(Math.abs(LIVES[key](n) - card)).withContext(`${key} ${n}: card ${formatStatValue(key, n)}`).toBeLessThanOrEqual(.11);
       }
@@ -213,7 +238,7 @@ describe('td-truth gear: a Grave-cold drain is a real price out of the fight too
 
 describe('td-truth gear: two hands — the card\'s "% harder" is what the basic attack does (shared/rpg/item-hands.ts)', () => {
   const pct = Math.round((TWO_HAND_MULT - 1) * 100);
-  const sysWith = (w: { strikePower?: number; hands?: number } | null) => {
+  const sysWith = (w: HeldWeapon | null) => {
     const keeper = { x: 0, y: 0, face: 1 };
     const host: MobHost = {
       options: { onKill: () => undefined } as unknown as EngineOptions,
@@ -240,12 +265,92 @@ describe('td-truth gear: two hands — the card\'s "% harder" is what the basic 
     expect(sysWith({ strikePower: 1, hands: 2 }).shotBlow(50, 50, () => 0)).toBe(Math.round(50 * (1 + pct / 100)));
     expect(sysWith({ strikePower: 1, hands: 1 }).shotBlow(50, 50, () => 0)).toBe(50);
     expect(sysWith(null).shotBlow(50, 50, () => 0)).toBe(50);
-    // The weapon's flat is the blade's alone: a heavier crossbow lifts the arrow through spell power, not a flat.
+    // Strike's flat is the blade's alone; a bow's own +min–max is what rides the arrow (§3.6).
     expect(sysWith({ strikePower: 3, hands: 1 }).shotBlow(50, 50, () => 0)).toBe(50);
+    expect(sysWith({ minDamage: 4, maxDamage: 9, hands: 1, kind: 'bow' } as never).shotBlow(50, 50, () => 0)).toBe(54);
   });
   it('the Ember Bolt and the Kindle: a two-handed staff lifts them that much; bare hands never weaken a spell', () => {
     expect(sysWith({ strikePower: 1, hands: 2 }).handMult).toBe(1 + pct / 100);
     expect(sysWith({ strikePower: 1, hands: 1 }).handMult).toBe(1);
     expect(sysWith(null).handMult).toBe(1);
+  });
+});
+
+describe('td-truth gear: two damage families — every family\'s every key, read by the callings it is for (§3.6)', () => {
+  /**
+   * What `key` = n on one piece of `family` moves for calling `v`, in the card's units — through the real path
+   * (wornCombat with the piece's old rolls, fightStats, the swing). `read` is the key the fight reads it as.
+   */
+  function moved(key: keyof ItemStats, n: number, v: Vocation, family: AffixFamily): { read: keyof ItemStats; by: number } {
+    const st: ItemStats = key === 'maxDamage' ? { minDamage: 0, maxDamage: n } : key === 'minDamage' ? { minDamage: n, maxDamage: n + 5 } : { [key]: n };
+    const f = fightAs(v, st, family), b = fightAs(v, {}, family);
+    const pct = (x: number) => Math.round(x * 1000) / 10;
+    switch (key) {
+      case 'spellDamage': case 'attackDamage': return { read: f.family === 'spell' ? 'spellDamage' : 'attackDamage', by: pct(f.power / b.power - 1) };
+      case 'castSpeed': case 'attackSpeed': return { read: f.family === 'spell' ? 'castSpeed' : 'attackSpeed', by: pct(f.castSpeed - b.castSpeed) };
+      case 'skillRanks': return { read: key, by: f.ranks - b.ranks };
+      case 'lifeLeech': return { read: key, by: pct(f.leech - b.leech) };
+      case 'pierceChance': return { read: key, by: f.pierce - b.pierce };
+      case 'blockChance': return { read: key, by: pct(f.block - b.block) };
+      case 'critChance': return { read: key, by: pct(f.crit - b.crit) };
+      case 'minDamage': return { read: key, by: ownBlow(v, family, st, false) };
+      case 'maxDamage': return { read: key, by: ownBlow(v, family, st, true) };
+      default: return { read: key, by: Math.abs(LIVES[key](n) - n) <= .11 ? n : NaN };
+    }
+  }
+  const N = 7;
+
+  for (const family of AFFIX_FAMILIES) {
+    const keys = [...affixPoolFor({ family, slot: null }), ...(FAMILY_RULES[family].pool.includes('minDamage') ? ['maxDamage' as const] : [])];
+    // Keys a family rolls only in one slot (boots' Move Speed, gloves' speeds) count too.
+    for (const k of Object.keys(FAMILY_RULES[family].only ?? {}) as (keyof ItemStats)[]) if (!keys.includes(k as never)) keys.push(k as never);
+    it(`${family}: each key moves the stat the card says for the callings it is for, and nothing for the rest`, () => {
+      for (const key of keys) for (const v of VOCATIONS) {
+        const n = key === 'skillRanks' ? 2 : N, use = statUse(key, family, v), m = moved(key, n, v, family);
+        if (use === 'used') expect(m.by).withContext(`${family} ${key} → ${v}`).toBeCloseTo(n, 1);
+        else if (use === 'unused') expect(m.by).withContext(`${family} ${key} → ${v} (unused)`).toBeCloseTo(0, 5);
+        else fail(`${family} ${key} → ${v}: a new roll can never be an old one`);
+      }
+    });
+  }
+
+  it('the old rolls: Spell Damage on a sword counts — as Spell Damage for a caster, as Martial Damage for a fighter (no re-roll)', () => {
+    const sword = { spellDamage: 12 };
+    for (const v of VOCATIONS) {
+      const p = fightAs(v, sword, 'martial').power / fightAs(v, {}, 'martial').power;
+      expect(Math.round((p - 1) * 1000) / 10).withContext(v).toBe(12);
+      expect(statUse('spellDamage', 'martial', v)).toBe(v === 'warlock' || v === 'lanternwright' ? 'used' : 'old');
+    }
+    // An old pair of gloves' Cast Speed is a fighter's Attack Speed the same way… on a family that can no longer roll it.
+    expect(OLD_ROLL_TWIN.castSpeed).toBe('attackSpeed');
+    expect(Math.round(fightAs('ashguard', { castSpeed: 9 }, 'shield').castSpeed * 1000) / 10).toBe(9);
+    // …and never counts twice: a caster reads its own family only.
+    expect(fightAs('warlock', { spellDamage: 12 }, 'martial').power).toBeCloseTo(fightAs('warlock', { spellDamage: 12 }, 'caster').power, 9);
+  });
+
+  it('a ring\'s Spell Damage is the casters\' alone (a new-rule family), and a new sword never rolls it', () => {
+    expect(fightAs('ashguard', { spellDamage: 12 }, 'jewel').power).toBeCloseTo(fightAs('ashguard', {}, 'jewel').power, 9);
+    expect(statUse('spellDamage', 'jewel', 'ashguard')).toBe('unused');
+    for (const f of ['martial', 'bow', 'quiver', 'shield', 'armour'] as AffixFamily[]) {
+      expect(familyRolls(f, 'spellDamage')).withContext(f).toBeFalse();
+      for (let seed = 1; seed <= 40; seed++) {
+        let a = seed;
+        const rng = () => { a = (a * 16807) % 2147483647; return a / 2147483647; };
+        const slot = f === 'martial' || f === 'bow' ? 'weapon' : f === 'armour' ? 'head' : f === 'jewel' ? 'trinket' : 'off-hand';
+        expect(rollAffixes({ slot, affixFamily: f }, 'singular', 60, rng).stats.spellDamage).withContext(f).toBeUndefined();
+      }
+    }
+  });
+
+  it('rings and amulets roll both families (Spell and Martial Damage, both speeds), lower than a weapon\'s', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 400; seed++) {
+      let a = seed;
+      const rng = () => { a = (a * 48271) % 2147483647; return a / 2147483647; };
+      for (const k of Object.keys(rollAffixes({ slot: 'trinket' }, 'legendary', 30, rng).stats)) seen.add(k);
+    }
+    for (const k of ['spellDamage', 'attackDamage', 'castSpeed', 'attackSpeed', 'goldFind', 'magicFind', 'life', 'mana', 'allResist']) expect(seen).withContext(k).toContain(k);
+    expect(FAMILY_RULES.jewel.scale?.spellDamage).toBeLessThan(1);
+    expect(FAMILY_RULES.jewel.scale?.attackDamage).toBeLessThan(1);
   });
 });

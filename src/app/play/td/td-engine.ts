@@ -107,7 +107,7 @@ import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from
 import { GAP_TONES, atZoneLevel, gapTone, graveyardZone, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
-import { weaponSwing } from './td-melee';
+import { weaponSwing, type HeldWeapon } from './td-melee';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
@@ -143,7 +143,9 @@ import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 export const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
-  'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist'];
+  'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist',
+  // §3.6: the fighters' twins and the families' own.
+  'attackDamage', 'attackSpeed', 'lifeLeech', 'pierceChance', 'blockChance', 'skillRanks'];
 
 /** The Map window's ground colours (one pixel per tile, or per two on a continent). */
 const MAP_COL: Partial<Record<Ground, string>> = {
@@ -832,6 +834,9 @@ export class TopDownEngine {
     this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
     this.mobs.power = st.power; this.mobs.regen = st.regen; this.mobs.agility = st.haste;
     this.mobs.castSpeed = st.castSpeed; this.mobs.crit = st.crit;
+    // §3.6: Life Steal, Pierce, Block, the beast's share of the damage %, a caster's +Spells.
+    this.mobs.leech = st.leech; this.mobs.gearPierce = st.pierce; this.mobs.gearBlock = st.block;
+    this.mobs.damagePct = st.damagePct; this.mobs.gearRanks = st.ranks;
     this.mobs.defense = st.defense; this.mobs.keeperLevel = Math.max(1, Math.floor(level));
     this.mobs.resists = st.resists;
     this.agility = st.moveHaste;
@@ -2081,7 +2086,7 @@ export class TopDownEngine {
     this.mobs.setRelics(relicTotals(ids, relicSigOf));
   }
   /** The weapon in hand (strike + spell damage, or null for bare hands): the Ashguard's swing reads it (td-melee weaponSwing). */
-  setWeapon(w: { strikePower?: number; spellDamage?: number; hands?: number } | null): void { this.mobs.weaponSwing = weaponSwing(w); }
+  setWeapon(w: HeldWeapon | null): void { this.mobs.weaponSwing = weaponSwing(w); }
   /** The arrow Glim leaves after a Seek: which way, the floor, and the seconds it still holds. */
   private seekArrow: { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null = null;
   /** A typed "lum vesh <name>": the name the next Seek looks for (null: the nearest). */
