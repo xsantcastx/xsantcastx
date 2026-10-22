@@ -125,7 +125,9 @@ const readSaveFrom = async (get, uid, character) => {
 export function toValue(v) {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'boolean') return { booleanValue: v };
-  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  // Only a safe integer is an int64: a whole number past 2^53 (a Gold ledger can reach 1e26) prints as "6.9e+26",
+  // which Firestore refuses as integerValue and so failed the whole trade commit. The SDK stores those as doubles too.
+  if (typeof v === 'number') return Number.isSafeInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
   if (typeof v === 'string') return { stringValue: v };
   if (v instanceof Date) return { timestampValue: v.toISOString() };
   if (Array.isArray(v)) return { arrayValue: { values: v.map(toValue) } };
