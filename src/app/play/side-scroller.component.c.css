@@ -754,6 +754,10 @@
 .td-party__bar { grid-column: 1 / -1; display: block; height: 6px; background: var(--cozy-wood-0); box-shadow: inset 0 0 0 1px var(--cozy-wood-2); }
 .td-party__bar i { display: block; height: 100%; width: calc(var(--hp, 1) * 100%); background: var(--cozy-berry); }
 .td-party__where { grid-column: 1 / -1; opacity: .75; font-size: 11px; }
+/* Protocol 8: a member logged out stays in the party, greyed (back in when they log in); the leader's × removes them. */
+.td-party__frame--away { opacity: .5; filter: grayscale(1); }
+.td-party__drop { min-width: 26px; min-height: 26px; padding: 0 !important; border: 0 !important; border-radius: 0 !important; cursor: pointer;
+  background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important; box-shadow: 0 0 0 1px var(--cozy-wood-0) !important; font: 700 13px/1 var(--cozy-font-read) !important; }
 .td-chat__party b { color: var(--cozy-glow); }
 .td-chat__party { color: var(--cozy-brass-hi); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
@@ -763,6 +767,7 @@
   .stage--td .td-party__frame { grid-template-columns: minmax(0, 1fr); }
   .stage--td .td-party__line { justify-self: start; font-size: 10px; }
   .stage--td .td-party__leave { min-height: 32px; }
+  .stage--td .td-party__drop { min-width: 32px; min-height: 32px; justify-self: end; }
   .stage--td .td-invite { top: calc(var(--hud-safe-t, 0px) + 124px); z-index: 42; }
 }
 @media (hover: none) and (pointer: coarse) and (max-height: 500px) {

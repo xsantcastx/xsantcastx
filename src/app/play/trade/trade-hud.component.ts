@@ -14,7 +14,7 @@ import { InventoryService } from '../../shared/rpg/inventory.service';
 import type { GameItem } from '../../shared/rpg/item.model';
 import { itemArt } from '../../shared/rpg/material-catalog';
 import { TranslationService } from '../../translation.service';
-import type { RoomGround, RoomSnapshot, RoomTrade, RoomTradeAsk, RoomTradeEnd, SocialRoom } from '../social/social-room';
+import type { RoomGround, RoomGroundNote, RoomSnapshot, RoomTrade, RoomTradeAsk, RoomTradeCommit, RoomTradeEnd, SocialRoom } from '../social/social-room';
 import { TradeBackendService } from './trade-backend.service';
 import { GroundFlow, TradeFlow } from './trade-flow';
 import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, itemFromOffer, offerItemOf, tradeBlock, type OfferItem } from './trade-items';
@@ -57,6 +57,12 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     tradeCancel: (t: string, why?: string, outcome?: 'cancelled' | 'void') => this.room?.tradeCancel(t, why, outcome) ?? Promise.resolve('offline'),
     groundDrop: (g: Parameters<SocialRoom['groundDrop']>[0]) => this.room?.groundDrop(g) ?? Promise.resolve('offline'),
     groundTake: (area: string, id: string) => this.room?.groundTake(area, id) ?? Promise.resolve('offline'),
+    // Protocol 8: the room settles trades and lays drops itself.
+    canSettle: () => !!this.room?.canSettle,
+    tradeStatus: (t: string) => this.room?.tradeStatus(t) ?? Promise.resolve({ status: 'offline' as const }),
+    groundLay: (g: Parameters<SocialRoom['groundLay']>[0]) => this.room?.groundLay(g) ?? Promise.resolve({ why: 'offline' }),
+    groundSynced: (id: string) => this.room?.groundSynced(id),
+    groundPick: (area: string, id: string) => this.room?.groundPick(area, id) ?? Promise.resolve({ ok: false as const, why: 'offline' }),
   };
   readonly flow = new TradeFlow(this.backend, this.roomVerbs, () => this.cdr.markForCheck());
   readonly groundFlow = new GroundFlow(this.backend, this.roomVerbs);
@@ -133,7 +139,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   /** The satchel's loose items, offered ones left out; the ones that cannot be traded say why. */
   get satchel(): Cell[] {
     const offered = new Set(this.mine.map(i => i.id));
-    return (this.inventory.snapshot.bag ?? []).filter(i => !offered.has(i.id)).map(i => ({ ...this.cell(i), block: tradeBlock(i) }));
+    return (this.inventory.snapshot.bag ?? []).filter(i => !offered.has(i.id) && !this.groundFlow.isPending(i.id)).map(i => ({ ...this.cell(i), block: tradeBlock(i) }));
   }
   cellsOf(items: OfferItem[]): Cell[] { return items.map(o => this.cell(itemFromOffer(o))); }
   private cell(item: GameItem): Cell {
@@ -166,6 +172,8 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   async accept(yes = true): Promise<void> {
     const t = this.trade;
     if (!t || this.locked) return;
+    // Protocol 8: the room reads both saves when both accept — this one goes up first.
+    if (yes && !(await this.flow.beforeAccept(t))) { this.cdr.markForCheck(); return; }
     const why = await this.room?.tradeAccept(t.id, t.rev, yes) ?? 'offline';
     if (why) this.said.emit(this.t('trade.askFailed', { why }));
   }
@@ -190,10 +198,27 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     this.cdr.markForCheck();
   }
   closeResult(): void { this.trade = null; this.card = null; this.flow.reset(); this.cdr.markForCheck(); }
+  /** Protocol 8: the room's commit of a settled trade (the save is re-read on a yes; a no is told). */
+  async committed(c: RoomTradeCommit): Promise<void> {
+    await this.flow.committed(c);
+    // A yes was already told when the room settled it; only a commit that did not land is news.
+    if (!c.ok) this.said.emit(this.t('trade.commitFailed', { why: this.whyText(c.why || 'failed') }));
+    this.cdr.markForCheck();
+  }
+  /** Protocol 8: the stream came back: a settled trade still waiting on its commit asks how it ended. */
+  resumed(): void { this.flow.resumed(); }
+  /** Protocol 8: the room's word on this Keeper's drop (escrowed: the save is re-read; handed back: told why). */
+  async groundNoted(note: RoomGroundNote): Promise<void> {
+    await this.groundFlow.noted(note);
+    if (note.kind === 'returned') this.said.emit(this.t('trade.dropReturned', { name: note.name, why: this.whyText(note.why || 'failed') }));
+    this.cdr.markForCheck();
+  }
+  /** Protocol 8: an item on its way to the ground (laid, escrow not landed): the satchel keeps hands off it. */
+  dropPending(itemId: string): boolean { return this.groundFlow.isPending(itemId); }
   get statusLine(): string {
     const st = this.flow.status, t = this.trade;
     if (!t) return '';
-    if (st.stage === 'sending') return this.t('trade.stage.sending');
+    if (st.stage === 'sending') return this.t(t.room ? 'trade.stage.sendingRoom' : 'trade.stage.sending');
     if (st.stage === 'waiting') return this.t('trade.stage.waiting', { name: this.theirName });
     if (st.stage === 'settling') return this.t('trade.stage.settling');
     if (st.stage === 'done') return st.received ? this.t('trade.doneGot', { items: st.received.items.length, gold: st.received.gold }) : this.t('trade.done');
@@ -245,7 +270,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   // ── Ground drops ──
   /** Put a satchel item on the ground at the Keeper's feet (the card's Drop, or a drag onto the world). */
   async drop(item: GameItem): Promise<boolean> {
-    if (tradeBlock(item)) return false;
+    if (tradeBlock(item) || this.groundFlow.isPending(item.id)) return false;
     const here = (this.engine as GroundEngine | undefined)?.peerPresence?.();
     if (!here) return false;
     const out = await this.groundFlow.drop(offerItemOf(item), { area: here.area, x: here.x, y: here.y + 6 });
@@ -262,6 +287,6 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     this.cdr.markForCheck();
   }
   canDrop(item: GameItem | null | undefined): boolean {
-    return !!item && !tradeBlock(item) && !!this.social?.connected && (this.social.protocol ?? 0) >= 6;
+    return !!item && !tradeBlock(item) && !this.groundFlow.isPending(item.id) && !!this.social?.connected && (this.social.protocol ?? 0) >= 6;
   }
 }

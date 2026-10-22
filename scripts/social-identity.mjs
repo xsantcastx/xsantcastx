@@ -73,7 +73,7 @@ const emptyList = () => ({ ids: [], names: {} });
  * `docs`: protocol 6's trade bindings and ground escrow, as path → document (the local e2e hands in the fake trade
  * Function's own map, so the room and the "Function" see one store: scripts/trade-fake.mjs).
  */
-export function memoryStore(docs = new Map()) {
+export function memoryStore(docs = new Map(), db = null) {
   const bans = new Set(), friends = new Map(), blocks = new Map(), reports = [];
   const list = (map, uid) => { if (!map.has(uid)) map.set(uid, emptyList()); return map.get(uid); };
   const add = (l, uid, name) => { if (!l.ids.includes(uid)) l.ids.push(uid); l.names[uid] = name; };
@@ -95,8 +95,31 @@ export function memoryStore(docs = new Map()) {
     // Protocol 7: what a sleeping area of the room-run world keeps (its ground, its spawns resting).
     async worldLoad(area) { const d = docs.get(`world-rooms/${area}`); return d ? JSON.parse(d.json) : null; },
     async worldSave(area, doc) { docs.set(`world-rooms/${area}`, { json: JSON.stringify(doc), savedAt: Date.now() }); },
+    // Protocol 8: trade-core's Db for the room's own transactions (settled trades, escrowed drops, pickups). The local
+    // e2e hands in the fake Function's Db so both write through one optimistic store; otherwise the room makes one
+    // over `docs` (createSocialServer).
+    db,
+    async readSave(uid, character) { return readSaveFrom(path => docs.get(path) ?? null, uid, character); },
+    async partyRead(uid) {
+      const ptr = docs.get(`users/${uid}/social/party`);
+      const id = typeof ptr?.party === 'string' ? ptr.party : null;
+      const doc = id ? docs.get(`parties/${id}`) ?? null : null;
+      return id && doc ? { id, doc: JSON.parse(JSON.stringify(doc)) } : null;
+    },
+    async partyWrite(id, doc, pointers) {
+      if (doc) docs.set(`parties/${id}`, JSON.parse(JSON.stringify(doc))); else docs.delete(`parties/${id}`);
+      for (const [uid, party] of Object.entries(pointers)) docs.set(`users/${uid}/social/party`, { party, at: Date.now() });
+    },
   };
 }
+
+/** character-scope.ts characterDocPath: character #1 keeps the root paths. */
+export const savePath = (uid, character, doc) => (character === 'c1' ? `users/${uid}/progress/${doc}` : `users/${uid}/characters/${character}/progress/${doc}`);
+/** The three documents a Keeper's budget is read from (world/keeper-budget.ts). */
+const readSaveFrom = async (get, uid, character) => {
+  const [activity, look, inventory] = await Promise.all(['activity', 'keeper-look', 'inventory'].map(d => get(savePath(uid, character, d))));
+  return { activity, look, inventory };
+};
 
 /** Firestore's typed values, both ways (only what these documents hold). */
 export function toValue(v) {
@@ -162,7 +185,65 @@ export function firestoreStore({ projectId, fetch: get = fetch, now = Date.now, 
     updateTransforms: [{ fieldPath: 'ids', removeAllFromArray: { values: [toValue(other)] } }],
   });
   const commit = writes => call(`${api}:commit`, { method: 'POST', body: JSON.stringify({ writes }) });
+  /** Several documents in one request (`:batchGet`), as plain values by path (null when missing). */
+  const readMany = async (paths, transaction) => {
+    const res = await call(`${api}:batchGet`, { method: 'POST', body: JSON.stringify({ documents: paths.map(p => `${root}/${p}`), ...(transaction ? { transaction } : {}) }) });
+    const out = new Map(paths.map(p => [p, null]));
+    for (const r of Array.isArray(res) ? res : []) {
+      if (!r.found?.name) continue;
+      const path = r.found.name.slice(root.length + 1);
+      out.set(path, fromValue({ mapValue: { fields: r.found.fields ?? {} } }));
+    }
+    return out;
+  };
+  const docWrite = (path, data) => ({ update: { name: `${root}/${path}`, fields: toValue(data).mapValue.fields } });
   return {
+    readMany,
+    // Protocol 8: trade-core's Db over Firestore's REST transactions (begin → reads inside it → one commit). A commit
+    // Firestore aborts on contention runs the whole function again, as the Admin SDK's runTransaction does.
+    db: {
+      async run(fn) {
+        for (let attempt = 0; ; attempt++) {
+          const begun = await call(`${api}:beginTransaction`, { method: 'POST', body: JSON.stringify({ options: { readWrite: {} } }) });
+          const transaction = begun?.transaction;
+          if (!transaction) throw new Error('no transaction');
+          const writes = [];
+          let wrote = false;
+          const tx = {
+            async get(path) { if (wrote) throw new Error('Firestore transactions read before they write.'); return (await readMany([path], transaction)).get(path) ?? null; },
+            set(path, data) { wrote = true; writes.push(docWrite(path, data)); },
+            delete(path) { wrote = true; writes.push({ delete: `${root}/${path}` }); },
+          };
+          let out;
+          try { out = await fn(tx); } catch (e) { await call(`${api}:rollback`, { method: 'POST', body: JSON.stringify({ transaction }) }).catch(() => {}); throw e; }
+          try { await call(`${api}:commit`, { method: 'POST', body: JSON.stringify({ writes, transaction }) }); return out; }
+          catch (e) { if (attempt >= 4 || !/firestore (409|503|500)/.test(String(e?.message))) throw e; await new Promise(r => setTimeout(r, 30 * 2 ** attempt)); }
+        }
+      },
+      async expiredGround() { return []; },
+    },
+    /** A Keeper's activity, look and inventory for its budget: one request (world/keeper-budget.ts). */
+    async readSave(uid, character) {
+      const paths = ['activity', 'keeper-look', 'inventory'].map(d => savePath(uid, character, d));
+      const got = await readMany(paths);
+      return { activity: got.get(paths[0]), look: got.get(paths[1]), inventory: got.get(paths[2]) };
+    },
+    // Protocol 8: a party that outlives a relog. `users/{uid}/social/party` {party: id} points at `parties/{id}`
+    // {leader, members: [{key, name}], …} — both written only by the room (rules: the pointer is its owner's to read,
+    // `parties` falls to the deny-all). Uids stay on the server.
+    async partyRead(uid) {
+      const ptr = (await readMany([`users/${uid}/social/party`])).get(`users/${uid}/social/party`);
+      const id = typeof ptr?.party === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(ptr.party) ? ptr.party : null;
+      if (!id) return null;
+      const doc = (await readMany([`parties/${id}`])).get(`parties/${id}`);
+      return doc ? { id, doc } : null;
+    },
+    /** The party document (or its removal) and every pointer that changed, in one commit. */
+    async partyWrite(id, doc, pointers) {
+      const writes = [doc ? docWrite(`parties/${id}`, doc) : { delete: `${root}/parties/${id}` }];
+      for (const [uid, party] of Object.entries(pointers)) writes.push(docWrite(`users/${uid}/social/party`, { party, at: new Date(now()) }));
+      await commit(writes);
+    },
     async banned(uid) {
       const doc = await call(`${api}/users/${uid}/meta/ban`);
       return !!doc && doc.fields?.banned?.booleanValue === true;

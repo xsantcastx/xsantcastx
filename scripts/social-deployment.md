@@ -339,3 +339,35 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
+
+### Protocol 8 (M2 of the room-run world, 2026-10-22 — deployed: revision 00011)
+
+`/health` and `/join` report `protocol: 8`; `/health` adds `economy` (the room's settles, commits, escrows and picks
+with their running write times). A client that says `protocol: 8` and names its `character` has its trades settled and
+its drops laid by the room, its claim budget read from its save, and its party kept across a relog. Older clients keep
+protocol 6/7. Design: docs/design/online.md §4d "M2 as built".
+
+The image is unchanged in shape (the same five files): the trade core and the budget ride inside
+`world-sim.generated.mjs`, so the deploy command is protocol 7's — build the bundle, submit, deploy with the four
+origins and the project:
+
+```sh
+node scripts/world-sim-build.mjs
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated --max-instances 1 --concurrency 80 --timeout 3600 --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":8 and an "economy" entry
+```
+
+Firestore, by the room's service account (IAM as protocol 4, nothing new): transactions on `trades/{id}`, both players'
+`progress/inventory` and `economy/state`, `trade-audit/*`, `ground-items/*`, `ground/{area}`, `ground-rate/{uid}` (the
+same documents and the same code as the `tradeApi` Function); `parties/{id}` and `users/{uid}/social/party` (party
+across relogs); one `:batchGet` of `progress/{activity,keeper-look,inventory}` per signed-in join (and every 5 minutes
+in the world). Rules: none changed (live rules were diffed against the repo on 2026-10-22: identical). functions-game:
+`trade-core.ts` gained `settleTrade`/`closeTrade` (the Function's verbs are unchanged); redeployed with
+`npx firebase deploy --only functions:game --project xsantcastx-1694b`.
+
+Billing: nothing changes (no CPU, memory, min/max-instances or region flag; 1 vCPU / 512 MiB, min 0, max 1).

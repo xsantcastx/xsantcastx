@@ -22,7 +22,11 @@ export const CLAIM_WINDOW_MS = 3000;
 /** What a Keeper of `level` can plausibly deal in a second, every gear and sky boost in: 40 + 20 a level. */
 export function claimDpsCap(level: number): number { return 40 + 20 * Math.max(1, Math.min(999, Math.floor(level || 1))); }
 
-export interface ClaimFrom { id: string; x: number; y: number; level: number }
+/**
+ * Who claims: where the room last saw it and its level. `dps` (protocol 8): the damage a second the room believes from
+ * the Keeper's own save (world/keeper-budget.ts); without it the level's claimDpsCap stands.
+ */
+export interface ClaimFrom { id: string; x: number; y: number; level: number; dps?: number }
 export interface ClaimTarget { x: number; y: number; hp: number }
 export type ClaimResult = { ok: true; dmg: number; clipped: boolean } | { ok: false; why: 'gone' | 'dead' | 'far' | 'cap' | 'bad' };
 
@@ -36,7 +40,8 @@ export class ClaimGate {
     if (!Number.isFinite(from.x) || !Number.isFinite(from.y) || Math.hypot(target.x - from.x, target.y - from.y) > CLAIM_RANGE_TILES * CLAIM_TILE_PX) return { ok: false, why: 'far' };
     const log = this.spent.get(from.id) ?? [];
     while (log.length && now - log[0].at >= CLAIM_WINDOW_MS) log.shift();
-    const room = claimDpsCap(from.level) * CLAIM_WINDOW_MS / 1000 - log.reduce((n, e) => n + e.d, 0);
+    const perSec = Number.isFinite(from.dps) && (from.dps as number) > 0 ? (from.dps as number) : claimDpsCap(from.level);
+    const room = perSec * CLAIM_WINDOW_MS / 1000 - log.reduce((n, e) => n + e.d, 0);
     if (room < 1) { this.spent.set(from.id, log); return { ok: false, why: 'cap' }; }
     const dmg = Math.max(1, Math.min(Math.round(claim.d), Math.floor(room)));
     log.push({ at: now, d: dmg });

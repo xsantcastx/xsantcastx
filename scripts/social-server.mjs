@@ -44,7 +44,13 @@ import { createWorldRooms, loadWorldSim } from './social-world.mjs';
 // `/coop/hits` claims the room weighs; loot is rolled once, here, and taken from the room's ground (`/world/take`,
 // first allowed Keeper wins). A client says `world: true` on join; an older one never does and keeps simulating its
 // own creatures as in protocol 6. Party co-op (protocol 5) runs on everywhere else.
-export const PROTOCOL = 7;
+// Protocol 8 (2026-10-22, M2 of the room-run world; docs/design/online.md §4d): a client that says `protocol: 8` (and
+// names its `character`) has its trades SETTLED BY THE ROOM — both Confirms reach it, it settles from a precheck of both
+// saves at once and commits ONE Firestore transaction (trade-core settleTrade) behind the result; its ground drops are
+// LAID BY THE ROOM — on everyone's ground at once, escrowed (trade-core dropItem) behind it, picked up first-come
+// (`/ground/pick`, trade-core pickupItem); its claim budget comes from its SAVE (world/keeper-budget.ts); and a party
+// outlives a relog (offline members stay; `parties/{id}`). Older clients keep protocol 6/7's paths unchanged.
+export const PROTOCOL = 8;
 export const FRIENDS_MAX = 200;
 export const BLOCKS_MAX = 100;
 /** How long a friend request stands (ms). */
@@ -217,8 +223,28 @@ export function coopHit(raw) {
  * `verify`: (idToken) => Promise<{uid, anonymous}> (null: nobody is signed in, every Keeper is a guest — the room
  * before its project is configured). `store`: bans, friends, blocks and reports (social-identity.mjs).
  */
-export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {}, extraRoutes = null, world = null } = {}) {
+export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {}, extraRoutes = null, world = null, core = null, escrowWaitMs = 12000 } = {}) {
   const sessions = new Map();
+  /**
+   * Protocol 8: the trade Function's own core (functions-game/src/trade-core.ts, bundled with the world) and a Db the
+   * room's service account writes through — Firestore's REST transactions in production, an in-memory optimistic store
+   * otherwise. Null (an image without the bundle): every trade and drop takes protocol 6's Function path.
+   */
+  const tradeCore = core?.tradeCore ?? null;
+  const economy = tradeCore ? { core: tradeCore, db: store.db ?? tradeCore.memoryDb(store.docs ?? new Map()) } : null;
+  /** What the room measured (the /health line): settles, commits, escrows and picks, and how long their writes took. */
+  const econStats = { settled: 0, committed: 0, voided: 0, commitMs: 0, escrowed: 0, escrowFailed: 0, escrowMs: 0, picked: 0, pickMs: 0 };
+  const avg = (key, ms, n) => { econStats[key] = Math.round(((econStats[key] * (n - 1)) + ms) / n * 10) / 10; };
+  /** A Keeper's budget from its save (world/keeper-budget.ts): read on join and every STATS_MS while it plays. */
+  const STATS_MS = 5 * 60000;
+  const readStats = async s => {
+    if (typeof core?.keeperBudget !== 'function' || !store.readSave || !s.uid || !s.character) return;
+    s.statsAt = now();
+    try {
+      const save = await store.readSave(s.uid, s.character);
+      if (sessions.get(s.token) === s) s.stats = core.keeperBudget(save);
+    } catch (e) { log('save read failed', e); }
+  };
   const messages = [];
   /** Friend requests by id (in memory; they lapse): from/to uids, the sender's name and player id. */
   const requests = new Map();
@@ -257,32 +283,124 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   };
   const sessionOf = playerId => { for (const s of sessions.values()) if (s.player.id === playerId) return s; return null; };
   const sendTo = (playerId, value) => { const s = sessionOf(playerId); if (s?.stream) send(s.stream, value); };
-  const partyView = p => p ? { id: p.id, leader: p.leader, members: [...p.members] } : null;
+  /**
+   * Protocol 8: a party is a ROSTER that outlives a relog (WoW-style). Each entry is a Keeper by account (`key` = uid;
+   * a guest's is `p:<player id>` and lasts its session), with `player` set while that Keeper is in the room and null
+   * while it is offline. `members` stays what every protocol-3 path reads: the ONLINE player ids, roster order; the
+   * leader is always an online member (handed over when the leader logs out). A signed-in member logging out stays
+   * in the party, greyed on the others' frames; logging back in rejoins it, unless it left, was kicked, or the party
+   * disbanded meanwhile. Persisted by the room only: `parties/{id}` and `users/{uid}/social/party` (store.partyWrite).
+   */
+  const rosterKey = s => s.uid ?? `p:${s.player.id}`;
+  const rosterEntry = s => ({ rid: randomBytes(4).toString('hex'), key: rosterKey(s), uid: s.uid ?? null, name: s.player.name, player: s.player.id, at: now() });
+  /** Re-derive the online members (and a leader among them) from the roster. */
+  const syncMembers = p => {
+    p.members = p.roster.filter(e => e.player && sessionOf(e.player)).map(e => e.player);
+    if (!p.members.includes(p.leader)) p.leader = p.members[0] ?? null;
+    if (p.leader) p.leaderKey = p.roster.find(e => e.player === p.leader)?.key ?? p.leaderKey;
+  };
+  const partyView = p => p ? { id: p.id, leader: p.leader, members: [...p.members], offline: p.roster.filter(e => !e.player).map(e => ({ id: e.rid, name: e.name })) } : null;
+  /** Write the party (its signed-in roster) and the pointers that changed: one commit, fire and forget. */
+  const persistParty = (p, pointers = {}) => {
+    if (!store.partyWrite) return;
+    const signed = p ? p.roster.filter(e => e.uid) : [];
+    const doc = p && signed.length ? { v: 1, leader: p.leaderKey ?? signed[0].key, members: signed.map(e => ({ key: e.uid, name: e.name, rid: e.rid, ...(e.player ? {} : { offlineAt: e.at }) })), updatedAt: now() } : null;
+    if (!p && !Object.keys(pointers).length) return;
+    store.partyWrite(p?.id ?? pointers.__id, doc, Object.fromEntries(Object.entries(pointers).filter(([k]) => k !== '__id'))).catch(e => log('party write failed', e));
+  };
   /** Tell every member (and anyone just dropped, with `also`) where the party stands now. */
   const publishParty = (p, also = []) => {
     for (const id of p ? p.members : []) sendTo(id, { type: 'party', party: partyView(p) });
     for (const id of also) sendTo(id, { type: 'party', party: null });
     coopOnParty(p, also);
   };
-  /** A member goes (left, kicked, gone from the room): a new leader if it led; under two, the party is no more. */
-  const dropMember = (s, why) => {
+  /** A party note to its online members; the protocol-8 kinds (offline, back) only to protocol-8 clients. */
+  const partyNote = (p, note, also = []) => {
+    const p8only = note.kind === 'offline' || note.kind === 'back';
+    for (const id of [...p.members, ...also]) { const m = sessionOf(id); if (m?.stream && (!p8only || (m.p8 && id !== note.id))) send(m.stream, { type: 'party-note', note }); }
+  };
+  /** The party is no more: everyone's pointer cleared (an offline member will not come back to it). */
+  const disband = (p, also = []) => {
+    parties.delete(p.id);
+    for (const id of p.members) { const m = sessionOf(id); if (m) m.party = null; }
+    for (const [id, inv] of invites) if (inv.party === p.id) invites.delete(id);
+    const pointers = { __id: p.id };
+    for (const e of p.roster) if (e.uid) pointers[e.uid] = null;
+    if (store.partyWrite) store.partyWrite(p.id, null, Object.fromEntries(Object.entries(pointers).filter(([k]) => k !== '__id'))).catch(e => log('party write failed', e));
+    publishParty(null, [...p.members, ...also]);
+  };
+  /**
+   * A member goes for good (left, kicked, or a guest gone from the room): out of the roster; under two, the party is
+   * no more. `entry` names an offline member (a kick of someone logged out).
+   */
+  const dropMember = (s, why, entry = null) => {
+    const p = entry ? entry.party : s.party && parties.get(s.party);
+    const key = entry ? entry.key : rosterKey(s);
+    if (s) s.party = null;
+    if (!p) return;
+    const gone = p.roster.find(e => e.key === key);
+    p.roster = p.roster.filter(e => e.key !== key);
+    if (s) for (const [id, inv] of invites) if (inv.from === s.player.id) invites.delete(id);
+    syncMembers(p);
+    const note = { kind: why, name: gone?.name ?? s?.player.name ?? 'Keeper', id: s?.player.id ?? gone?.rid ?? '' };
+    const told = why === 'kicked' && s ? [s.player.id] : [];
+    if (p.roster.length < 2) { const left = [...p.members]; disband(p, s ? [s.player.id] : []); partyNote({ members: left }, note, told); return; }
+    persistParty(p, gone?.uid ? { [gone.uid]: null } : {});
+    publishParty(p, s ? [s.player.id] : []);
+    partyNote(p, note, told);
+  };
+  /** A signed-in member logs out (or its window is replaced): it stays in the party, offline; the lead passes on. */
+  const goOffline = s => {
     const p = s.party && parties.get(s.party);
     s.party = null;
     if (!p) return;
-    p.members = p.members.filter(id => id !== s.player.id);
+    const e = p.roster.find(x => x.key === rosterKey(s));
+    if (e) { e.player = null; e.at = now(); }
     for (const [id, inv] of invites) if (inv.from === s.player.id) invites.delete(id);
-    if (p.members.length < 2) {
-      parties.delete(p.id);
-      for (const id of p.members) { const m = sessionOf(id); if (m) m.party = null; }
-      for (const [id, inv] of invites) if (inv.party === p.id) invites.delete(id);
-      publishParty(null, [...p.members, s.player.id]);
-    } else {
-      if (p.leader === s.player.id) p.leader = p.members[0];
-      publishParty(p, [s.player.id]);
+    syncMembers(p);
+    persistParty(p);
+    if (!p.members.length) { parties.delete(p.id); return; }
+    publishParty(p);
+    partyNote(p, { kind: 'offline', name: s.player.name, id: s.player.id });
+  };
+  /** How long a party with nobody online is kept for a relog (ms): past it, the next login finds it disbanded. */
+  const PARTY_IDLE_MS = 2 * 3600000;
+  /**
+   * A signed-in Keeper joined: back into its party if it still has one — from memory (the others are on), or from the
+   * store (the room restarted or slept since). Never over a party it joined meanwhile.
+   */
+  const rejoinParty = async s => {
+    if (!s.uid || !s.parties) return;
+    let p = [...parties.values()].find(x => x.roster.some(e => e.uid === s.uid)) ?? null;
+    if (!p && store.partyRead) {
+      let saved = null;
+      try { saved = await store.partyRead(s.uid); } catch (e) { log('party read failed', e); return; }
+      if (!saved || sessions.get(s.token) !== s || s.party) return;
+      p = parties.get(saved.id) ?? null;
+      if (!p) {
+        const doc = saved.doc ?? {};
+        const members = (Array.isArray(doc.members) ? doc.members : []).filter(m => m && typeof m.key === 'string').slice(0, PARTY_MAX);
+        if (!members.some(m => m.key === s.uid)) { store.partyWrite?.(saved.id, null, {}).catch(() => {}); return; }
+        const stale = now() - Number(doc.updatedAt ?? 0) > PARTY_IDLE_MS;
+        if (stale || members.length < 2) {
+          store.partyWrite?.(saved.id, null, Object.fromEntries(members.map(m => [m.key, null]))).catch(e => log('party write failed', e));
+          return;
+        }
+        p = { id: saved.id, leader: null, leaderKey: typeof doc.leader === 'string' ? doc.leader : null, members: [], messages: [],
+          roster: members.map(m => ({ rid: typeof m.rid === 'string' ? m.rid : randomBytes(4).toString('hex'), key: m.key, uid: m.key, name: typeof m.name === 'string' ? m.name.slice(0, 20) : 'Keeper', player: null, at: Number(m.offlineAt) || now() })) };
+        parties.set(p.id, p);
+      }
     }
-    const note = { kind: why, name: s.player.name, id: s.player.id };
-    for (const id of p.members) sendTo(id, { type: 'party-note', note });
-    if (why === 'kicked') sendTo(s.player.id, { type: 'party-note', note });
+    if (!p || s.party || sessions.get(s.token) !== s) return;
+    const e = p.roster.find(x => x.uid === s.uid);
+    if (!e) return;
+    e.player = s.player.id; e.name = s.player.name; e.at = now();
+    s.party = p.id;
+    for (const [id, inv] of invites) if (inv.to === s.player.id) invites.delete(id);
+    syncMembers(p);
+    persistParty(p);
+    publishParty(p);
+    partyNote(p, { kind: 'back', name: s.player.name, id: s.player.id }, []);
   };
   const sessionOfUid = uid => { for (const s of sessions.values()) if (s.uid === uid) return s; return null; };
   /** A signed-in session's friends as it sees them: online (unless they appear offline), their area and player id. */
@@ -297,7 +415,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   const remove = token => {
     const s = sessions.get(token);
     if (!s) return;
-    if (s.party) dropMember(s, 'left');
+    // Protocol 8: a signed-in Keeper logging out stays in its party (offline); a guest's party place ends with it.
+    if (s.party) { if (s.uid) goOffline(s); else dropMember(s, 'left'); }
     for (const [id, inv] of invites) if (inv.from === s.player.id || inv.to === s.player.id) invites.delete(id);
     for (const [id, r] of requests) if (r.fromPlayer === s.player.id) requests.delete(id);
     tradeGone(s, 'left');
@@ -347,7 +466,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       // either way, so a block is never revealed).
       if (blocks(them, session) || (them.privacy.invites === 'friends' && !(session.uid && them.friends?.ids.includes(session.uid)))) throw fail(403, 'That Keeper is not taking invites.');
       if (them.party) throw fail(409, mine && them.party === mine.id ? 'Already in your party.' : 'That Keeper is already in a party.');
-      if (mine && mine.members.length >= PARTY_MAX) throw fail(409, 'The party is full.');
+      if (mine && mine.roster.length >= PARTY_MAX) throw fail(409, 'The party is full.');
       for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
       if ([...invites.values()].some(inv => inv.from === me && inv.to === them.player.id)) throw fail(409, 'Already invited.');
       if ([...invites.values()].filter(inv => inv.from === me).length >= PARTY_MAX - 1) throw fail(429, 'Too many open invites.');
@@ -372,12 +491,19 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       let p = host.party ? parties.get(host.party) : null;
       if (p && p.leader !== inv.from) throw fail(410, 'That invite lapsed.');
       if (!p && inv.party) throw fail(410, 'That party is gone.');
-      if (p && p.members.length >= PARTY_MAX) throw fail(409, 'The party is full.');
+      if (p && p.roster.length >= PARTY_MAX) throw fail(409, 'The party is full.');
+      const pointers = {};
       if (!p) {
-        p = { id: randomUUID(), leader: inv.from, members: [inv.from], messages: [] };
+        p = { id: randomUUID(), leader: inv.from, leaderKey: rosterKey(host), members: [inv.from], messages: [], roster: [rosterEntry(host)] };
         parties.set(p.id, p); host.party = p.id;
+        if (host.uid) pointers[host.uid] = p.id;
       }
-      p.members.push(me); session.party = p.id;
+      // An offline member of this account's old party (it joined another meanwhile) is let go of there first.
+      for (const other of parties.values()) if (other !== p && session.uid && other.roster.some(e => e.uid === session.uid)) dropMember(null, 'left', { party: other, key: session.uid });
+      p.roster.push(rosterEntry(session)); session.party = p.id;
+      if (session.uid) pointers[session.uid] = p.id;
+      syncMembers(p);
+      persistParty(p, pointers);
       for (const [id, other] of invites) if (other.to === me) invites.delete(id);
       publishParty(p);
       for (const id of p.members) if (id !== me) sendTo(id, { type: 'party-note', note: { kind: 'joined', name: session.player.name, id: me } });
@@ -393,6 +519,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       consume(session, 'answer', 10, 10000);
       if (!mine) throw fail(409, 'You are not in a party.');
       if (mine.leader !== me) throw fail(403, 'Only the party leader can do that.');
+      // Protocol 8: an offline member is named by its roster id (the frames' greyed row).
+      const away = typeof data.member === 'string' ? mine.roster.find(e => !e.player && e.rid === data.member) : null;
+      if (away) { dropMember(null, 'kicked', { party: mine, key: away.key }); reply(200, { ok: true }); return; }
       if (typeof data.member !== 'string' || data.member === me || !mine.members.includes(data.member)) throw fail(400, 'That Keeper is not in your party.');
       const them = sessionOf(data.member);
       if (!them) throw fail(400, 'That Keeper is not here.');
@@ -764,6 +893,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   const tradeView = (t, side) => ({
     id: t.id, me: side, a: { id: t.a.id, name: t.a.name }, b: { id: t.b.id, name: t.b.name },
     offers: t.offers, accepted: t.accepted, confirmed: t.confirmed, rev: t.rev, stage: t.stage, until: t.until,
+    ...(t.room ? { room: true } : {}),
   });
   const tradePublish = t => { for (const side of ['a', 'b']) sendTo(t[side].id, { type: 'trade', trade: tradeView(t, side) }); };
   /** A trade ends: both windows hear how (done, cancelled — and by whom — or void with the Function's words). */
@@ -778,9 +908,166 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (t) tradeEnd(t, 'cancelled', s.player.name, why);
     s.trade = null;
   }
-  const groundIn = area => [...(ground.get(area)?.values() ?? [])].filter(g => g.until > now());
+  const groundIn = area => [...(ground.get(area)?.values() ?? [])].filter(g => g.until > now() && !g.claim);
   const groundTell = (area, value) => { for (const o of sessions.values()) if (o.stream && o.trades && o.player.area === area) send(o.stream, { type: 'ground', area, ...value }); };
   const groundSnapshot = s => { if (s.trades && s.stream && typeof s.player.area === 'string') send(s.stream, { type: 'ground', area: s.player.area, items: groundIn(s.player.area) }); };
+  // ── Protocol 8: the room settles trades and lays drops itself (docs/design/online.md §4d, M2). ──
+  /** Trades the room is committing (settled in memory, the one Firestore commit in flight): id → promise of the outcome. */
+  const commits = new Map();
+  /**
+   * Both Keepers accepted the same revision: read both saves now (one batch, no transaction) and run the trade through
+   * the very checks the commit will run, on a throwaway copy — so a Confirm can settle at once from memory. A refusal
+   * found here is told before anyone confirms.
+   */
+  const precheck = t => {
+    if (!t.room || !economy || t.pre?.rev === t.rev) return;
+    const rev = t.rev, chars = { a: t.a.character, b: t.b.character };
+    const body = { trade: t.id, a: { uid: t.a.uid, character: chars.a }, b: { uid: t.b.uid, character: chars.b }, terms: { a: t.offers.a, b: t.offers.b } };
+    const C = economy.core;
+    const paths = [C.tradePath(t.id), C.inventoryPath(t.a.uid, chars.a), C.inventoryPath(t.b.uid, chars.b), C.economyPath(t.a.uid, chars.a), C.economyPath(t.b.uid, chars.b)];
+    const read = store.readMany ? store.readMany(paths) : Promise.resolve(new Map(paths.map(p => [p, store.docs?.get(p) ?? null])));
+    const promise = read.then(docs => {
+      const copy = new Map();
+      for (const [p, d] of docs) if (d) copy.set(p, JSON.parse(JSON.stringify(d)));
+      return C.settleTrade(C.memoryDb(copy), body, now());
+    }).catch(e => ({ status: 'error', why: e?.message ?? String(e) }));
+    t.pre = { rev, promise };
+  };
+  /** Tell both Keepers how the commit went; the window is already closed on the settle. */
+  const commitTell = (t, out) => { for (const side of ['a', 'b']) sendTo(t[side].id, { type: 'trade-commit', commit: { id: t.id, ok: out.status === 'done', ...(out.status === 'done' ? { received: out.received[side] } : { why: out.why ?? 'The trade did not go through. Nothing moved.' }) } }); };
+  /**
+   * The one atomic commit (trade-core settleTrade: both saves, both ledgers, the trade, the audit). Retried on a
+   * transient failure; if it still cannot be told, the trade is closed in a transaction (closeTrade) so it is either
+   * done or void — never left for a late commit to land on.
+   */
+  const commitTrade = (t, body) => {
+    const C = economy.core, t0 = performance.now();
+    const run = async () => {
+      for (let i = 0; i < 3; i++) {
+        try { return await C.settleTrade(economy.db, body, now()); }
+        catch (e) { if (e instanceof Error && e.status && e.status < 500) return { status: 'void', why: e.message }; log('trade commit failed', e); await new Promise(r => setTimeout(r, 100 * (i + 1))); }
+      }
+      try { const c = await C.closeTrade(economy.db, t.id, t.a.uid, now()); return c.status === 'done' ? { status: 'done', received: { a: C.receivedBy(t.id, c.terms, 'a'), b: C.receivedBy(t.id, c.terms, 'b') } } : { status: 'void', why: c.why }; }
+      catch (e) { log('trade close failed', e); return { status: 'unknown', why: 'The trade could not be confirmed yet. Look again in a moment.' }; }
+    };
+    const promise = run().then(out => {
+      if (out.status === 'done') { econStats.committed++; avg('commitMs', performance.now() - t0, econStats.committed); } else econStats.voided++;
+      commitTell(t, out);
+      setTimeout(() => commits.delete(t.id), 60000).unref?.();
+      return out;
+    });
+    commits.set(t.id, { promise, a: t.a.uid, b: t.b.uid });
+    return promise;
+  };
+  /** Both confirmed: settle from the precheck (instant), close both windows with the result, then commit. */
+  const settle = async t => {
+    t.stage = 'settling';
+    precheck(t);
+    const pre = await t.pre.promise;
+    if (!trades.has(t.id)) return;
+    if (pre.status !== 'done') { tradeEnd(t, 'void', '', pre.why || 'The trade could not be settled.'); return; }
+    econStats.settled++;
+    const body = { trade: t.id, a: { uid: t.a.uid, character: t.a.character }, b: { uid: t.b.uid, character: t.b.character }, terms: { a: t.offers.a, b: t.offers.b } };
+    // In memory the trade is done: both windows close on it now, with what each receives; the commit makes it so.
+    trades.delete(t.id);
+    for (const side of ['a', 'b']) { const o = sessionOf(t[side].id); if (o && o.trade === t.id) o.trade = null; sendTo(t[side].id, { type: 'trade-end', end: { id: t.id, outcome: 'done', by: '', why: '', settled: true, received: pre.received[side] } }); }
+    void commitTrade(t, body);
+  };
+  /** Protocol 8 ground: drops the room laid and is escrowing, and the takes waiting on them. */
+  const escrows = new Map();
+  /** How long a drop waits for its dropper's save to reach the cloud before it is handed back (ms). */
+  const ESCROW_WAIT_MS = escrowWaitMs;
+  /**
+   * Escrow a laid drop: trade-core dropItem in one transaction (out of the dropper's save, into ground-items). The
+   * item is already on everyone's screen; nobody can take it until this lands. If the dropper's save does not hold it
+   * yet (a pickup not synced), it waits for the dropper's `synced` word (or a timer) and tries again; any other refusal,
+   * or the wait running out, hands it back: off the ground, the dropper told why.
+   */
+  const escrow = (g, s, body) => {
+    const C = economy.core, t0 = performance.now();
+    let wake = () => {};
+    const e = { g, uid: s.uid, tries: 0, synced: false, nudge: () => wake(), done: null };
+    e.done = (async () => {
+      const until = now() + ESCROW_WAIT_MS;
+      for (;;) {
+        e.tries++;
+        try {
+          const out = await C.dropItem(economy.db, s.uid, body, now());
+          econStats.escrowed++; avg('escrowMs', performance.now() - t0, econStats.escrowed);
+          return { ok: true, until: Number(out.ground?.expiresAt) || g.until };
+        } catch (err) {
+          const code = err?.code ?? '';
+          const later = code === 'item-gone' || code === 'no-save' || !(err instanceof Error && err.status);
+          if (!later || now() >= until || e.tries >= 8) return { ok: false, why: err?.message ?? 'The ground would not take it.' };
+          if (!err?.status) log('escrow failed', err);
+          await new Promise(r => { wake = r; const tm = setTimeout(r, e.synced ? 600 : 2000); tm.unref?.(); });
+          e.synced = false;
+        }
+      }
+    })().then(out => {
+      escrows.delete(g.id);
+      const list = ground.get(g.area);
+      if (out.ok) {
+        g.pending = false; g.until = out.until;
+        if (list?.has(g.id) && !g.claim) groundTell(g.area, { add: [g] });
+        sendTo(g.byId, { type: 'ground-note', note: { kind: 'escrowed', id: g.id, name: g.name } });
+      } else {
+        econStats.escrowFailed++;
+        list?.delete(g.id);
+        groundTell(g.area, { gone: [g.id] });
+        sendTo(g.byId, { type: 'ground-note', note: { kind: 'returned', id: g.id, name: g.name, why: out.why } });
+      }
+      return out;
+    });
+    escrows.set(g.id, e);
+    return e;
+  };
+  /** Lay a drop (protocol 8): on everyone's ground at once, escrowed behind it. */
+  const layDrop = (session, data, area, reply) => {
+    const C = economy.core;
+    if (!session.uid) throw fail(403, 'Sign in to drop things.');
+    if (!session.character) throw fail(409, 'Update the game to drop things.');
+    let item;
+    try { item = C.parseOfferItem(data.item); } catch (e) { tradeBad(e?.message ?? 'Invalid drop.'); }
+    const gid = C.groundId(session.uid, item.id);
+    const list = ground.get(area) ?? new Map();
+    ground.set(area, list);
+    for (const [id, x] of list) if (x.until <= now()) list.delete(id);
+    const held = list.get(gid);
+    if (held) { reply(200, { ground: held }); return; }
+    if (list.size >= 60) throw fail(429, 'The ground here is covered.');
+    // Where it lands: at the Keeper's feet as the room last saw it (a claim further off is pulled back to them).
+    const pl = session.player;
+    const near = (v, at) => (Number.isFinite(v) && Math.abs(v - at) <= 48 ? Math.round(v) : Math.round(at));
+    const g = { id: gid, area, x: near(data.x, pl.x), y: near(data.y, pl.y), name: item.name, rarity: item.rarity, def: item.def, until: now() + C.GROUND_TTL_MS, by: pl.name, byId: pl.id, pending: true, room: true };
+    list.set(gid, g);
+    groundTell(area, { add: [g] });
+    reply(201, { ground: g });
+    escrow(g, session, { character: session.character, area, item, x: g.x, y: g.y });
+  };
+  /** Take a drop (protocol 8): the first Keeper in memory wins; the pickup transaction behind it makes it so. */
+  const pickDrop = async (session, data, reply) => {
+    const C = economy.core;
+    if (!session.uid) throw fail(403, 'Sign in to pick things up.');
+    if (!session.character) throw fail(409, 'Update the game to pick things up.');
+    const area = typeof session.player.area === 'string' ? session.player.area : null;
+    const g = area && typeof data.id === 'string' ? ground.get(area)?.get(data.id) : null;
+    if (!g || g.claim) { reply(200, { ok: false, why: 'gone' }); return; }
+    if (Math.hypot(g.x - session.player.x, g.y - session.player.y) > 160) { reply(200, { ok: false, why: 'far' }); return; }
+    const t0 = performance.now();
+    g.claim = session.player.id;
+    groundTell(area, { gone: [g.id] });
+    const putBack = () => { if (ground.get(area)?.get(g.id) === g) { g.claim = null; groundTell(area, { add: [g] }); } };
+    const e = escrows.get(g.id);
+    if (e) { const out = await e.done; if (!out.ok) { reply(200, { ok: false, why: 'gone' }); return; } }
+    let out;
+    try { out = await C.pickupItem(economy.db, session.uid, { character: session.character, ground: g.id }, now()); }
+    catch (err) { putBack(); if (err?.status && err.status < 500) { reply(200, { ok: false, why: err.message, ...(err.code ? { code: err.code } : {}) }); return; } log('pickup failed', err); reply(200, { ok: false, why: 'offline' }); return; }
+    ground.get(area)?.delete(g.id);
+    if (out.status !== 'picked') { reply(200, { ok: false, why: out.why ?? 'gone' }); return; }
+    econStats.picked++; avg('pickMs', performance.now() - t0, econStats.picked);
+    reply(200, { ok: true, item: out.item, ms: Math.round((performance.now() - t0) * 10) / 10 });
+  };
   const readTradeBody = async req => {
     if (!req.headers['content-type']?.startsWith('application/json')) throw fail(415, 'JSON required.');
     let body = '';
@@ -835,15 +1122,40 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       try {
         await store.openTrade(t.id, { a: { uid: them.uid, player: them.player.id, name: them.player.name }, b: { uid: session.uid, player: me, name: session.player.name }, status: 'open', openedAt: now(), expiresAt: t.until });
       } catch (e) { log('trade open failed', e); throw fail(503, 'Could not open the trade. Try again.'); }
+      // Protocol 8: both Keepers' clients let the room settle (and name their characters): the room commits it.
+      if (economy && them.p8 && session.p8 && them.character && session.character) {
+        t.room = true;
+        Object.assign(t.a, { uid: them.uid, character: them.character });
+        Object.assign(t.b, { uid: session.uid, character: session.character });
+      }
       trades.set(t.id, t); them.trade = t.id; session.trade = t.id;
       tradePublish(t);
       reply(200, { trade: tradeView(t, 'b') }); return;
+    }
+    if (path === '/trade/status') {
+      // Protocol 8: how a trade the room settled ended (the commit's answer was lost: a dropped stream, a room restart).
+      consume(session, 'trade-status', 10, 10000);
+      if (!economy || !session.uid) throw fail(409, 'Update the game to trade.');
+      if (typeof data.trade !== 'string' || !OFFER_ID.test(data.trade)) tradeBad();
+      const C = economy.core;
+      const held = commits.get(data.trade);
+      let out;
+      if (held && (held.a === session.uid || held.b === session.uid)) {
+        const r = await held.promise;
+        out = r.status === 'done' ? { status: 'done', received: r.received[held.a === session.uid ? 'a' : 'b'] } : { status: r.status, why: r.why };
+      } else {
+        let c;
+        try { c = await C.closeTrade(economy.db, data.trade, session.uid, now()); } catch (e) { if (e?.status && e.status < 500) throw fail(e.status, e.message); log('trade status failed', e); throw fail(503, 'Could not check that. Try again.'); }
+        out = c.status === 'done' ? { status: 'done', received: C.receivedBy(data.trade, c.terms, c.side) } : { status: 'void', why: c.why };
+      }
+      reply(200, out); return;
     }
     if (path.startsWith('/trade/')) {
       const t = typeof data.trade === 'string' ? trades.get(data.trade) : undefined;
       const side = t ? sideOf(t, session) : null;
       if (!t || !side) throw fail(404, 'That trade is not open.');
       const verb = path.slice('/trade/'.length);
+      if (verb === 'cancel' && t.stage === 'settling') throw fail(409, 'The trade is settling.');
       if (verb === 'cancel') { tradeEnd(t, typeof data.outcome === 'string' && data.outcome === 'void' ? 'void' : 'cancelled', session.player.name, typeof data.why === 'string' ? data.why.replace(/[\u0000-\u001f<>]/g, ' ').slice(0, 160) : ''); reply(200, { ok: true }); return; }
       if (verb === 'offer') {
         if (t.confirmed.a || t.confirmed.b) throw fail(409, 'A Keeper already confirmed. Cancel to change the trade.');
@@ -858,8 +1170,17 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       }
       if (data.rev !== t.rev) throw fail(409, 'The trade changed. Look again.');
       if (verb === 'accept') {
+        if (t.stage === 'settling') throw fail(409, 'The trade is settling.');
         t.accepted[side] = data.accept !== false;
         t.stage = t.accepted.a && t.accepted.b ? 'confirm' : 'offer';
+        // Protocol 8: both accepted — read both saves now, so the second Confirm settles from memory.
+        if (t.stage === 'confirm') precheck(t);
+        tradePublish(t); reply(200, { ok: true }); return;
+      }
+      if (verb === 'confirm' && t.room) {
+        if (t.stage !== 'confirm') throw fail(409, t.stage === 'settling' ? 'The trade is settling.' : 'Both Keepers accept first.');
+        t.confirmed[side] = true;
+        if (t.confirmed.a && t.confirmed.b) { reply(200, { ok: true, settling: true }); await settle(t); return; }
         tradePublish(t); reply(200, { ok: true }); return;
       }
       if (verb === 'confirm') {
@@ -870,6 +1191,23 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         tradePublish(t); reply(200, { ok: true }); return;
       }
       throw fail(404, 'Not found.');
+    }
+    if (path === '/ground/drop' && session.p8 && economy && data.item !== undefined) {
+      consume(session, 'ground-drop', 10, 60000);
+      if (!area || data.area !== area) tradeBad('Invalid drop.');
+      layDrop(session, data, area, reply); return;
+    }
+    if (path === '/ground/synced') {
+      // Protocol 8: the dropper's save reached the cloud — an escrow waiting on it tries again now.
+      consume(session, 'ground-synced', 20, 10000);
+      const e = typeof data.id === 'string' ? escrows.get(data.id) : null;
+      if (e && e.uid === session.uid) { e.synced = true; e.nudge(); }
+      reply(200, { ok: true }); return;
+    }
+    if (path === '/ground/pick') {
+      consume(session, 'ground-take', 20, 10000);
+      if (!session.p8 || !economy) throw fail(409, 'Update the game to pick things up.');
+      await pickDrop(session, data, reply); return;
     }
     if (path === '/ground/drop') {
       consume(session, 'ground-drop', 10, 60000);
@@ -892,6 +1230,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (path === '/ground/take') {
       consume(session, 'ground-take', 20, 10000);
       if (typeof data.id !== 'string' || !OFFER_ID.test(data.id) || typeof data.area !== 'string' || !AREA.test(data.area)) tradeBad('Invalid take.');
+      // A drop the room laid (protocol 8) is the room's to clear: still escrowing, or being picked up, it stays.
+      const laid = ground.get(data.area)?.get(data.id);
+      if (laid?.room && (laid.pending || laid.claim)) { reply(200, { ok: true }); return; }
       // Only an item the escrow no longer holds leaves everyone's ground (nobody can hide another's drop).
       let held = null;
       try { held = await store.groundItem(data.id); } catch (e) { log('ground read failed', e); throw fail(503, 'Could not check that. Try again.'); }
@@ -904,7 +1245,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   };
   // ── Protocol 7: the room-run world (social-world.mjs). ──
   const rooms = createWorldRooms({
-    sim: world?.sim ?? null, store, now, log, areas: world?.areas ?? null, timing: world?.timing ?? {}, fx: !!world?.fx,
+    sim: world?.sim ?? null, core, store, now, log, areas: world?.areas ?? null, timing: world?.timing ?? {}, fx: !!world?.fx,
     ...(world?.seed ? { seed: () => world.seed } : {}),
     send: (s, value) => { if (s.stream) send(s.stream, value); },
   });
@@ -959,7 +1300,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (url.pathname.startsWith('/social/')) url.pathname = url.pathname.slice('/social'.length);
       // The local e2e's stand-in for the trade Function (scripts/trade-fake.mjs; SOCIAL_FAKE_TRADE=1, never on Cloud Run).
       if (extraRoutes && url.pathname.startsWith('/fake-trade/')) { await extraRoutes(req, res, url); return; }
-      if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size, protocol: PROTOCOL, ...(rooms.enabled ? { world: rooms.health() } : {}) }); return; }
+      if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size, protocol: PROTOCOL, ...(rooms.enabled ? { world: rooms.health() } : {}), ...(economy ? { economy: econStats } : {}) }); return; }
       if (req.method === 'POST' && url.pathname === '/join') {
         const ip = req.socket.remoteAddress;
         const limiter = joinAttempts.get(ip) ?? {};
@@ -1002,10 +1343,19 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         session.trades = data.trade === true; session.trade = null;
         // Protocol 7: only a client that says it knows the room-run world is ever hosted by the room.
         session.world = data.world === true && rooms.enabled;
+        // Protocol 8: a client that says `protocol: 8` has its trades settled and its drops laid by the room, sees
+        // offline party members, and names the character it plays (its save: the budget, the trades, the drops).
+        session.p8 = Number.isInteger(data.protocol) && data.protocol >= 8;
+        session.character = session.p8 && typeof data.character === 'string' && /^[a-z0-9]{2,16}$/.test(data.character) ? data.character : null;
+        session.token = token;
         sessions.set(token, session);
-        reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world });
+        reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world, ...(session.p8 ? { settles: !!economy } : {}) });
         publishPlayers();
-        friendsHear(uid); return;
+        friendsHear(uid);
+        // Protocol 8: back into its party (from memory, or the store after a restart), and what its save says it can deal.
+        if (uid) void rejoinParty(session).catch(e => log('party rejoin failed', e));
+        if (uid && session.character) void readStats(session);
+        return;
       }
       if (req.method === 'POST' && url.pathname === '/world/fx' && world?.fx && !req.headers.authorization) { await worldFxNear(req, reply); return; }
       const token = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization ?? '')?.[1];
@@ -1118,6 +1468,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (gone.length) groundTell(area, { gone });
       if (!list.size) ground.delete(area);
     }
+    // Protocol 8: a Keeper's budget follows its save (a level gained, better gear worn) while it plays the world.
+    for (const session of sessions.values()) if (session.world && session.uid && session.character && now() - (session.statsAt ?? 0) >= STATS_MS) void readStats(session);
     // A GM ban reaches a Keeper already in the room within BAN_RECHECK_MS.
     for (const [token, session] of sessions) {
       if (!session.uid || now() - session.checkedAt < BAN_RECHECK_MS) continue;
@@ -1136,7 +1488,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     try { await rooms.saveAll(); } catch (e) { log('world save failed', e); }
     for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve));
   };
-  return { server, dispose, coopSweep, worldStep, rooms };
+  return { server, dispose, coopSweep, worldStep, rooms, sessions, econStats };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -1157,16 +1509,19 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (fake && process.env.SOCIAL_FAKE_TRADE === '1' && !process.env.K_SERVICE) {
     const { fakeTrade } = await import('./trade-fake.mjs');
     const ft = fakeTrade({ origins: origins ?? [] });
-    identity.store = memoryStore(ft.docs);
+    identity.store = memoryStore(ft.docs, ft.db);
     extraRoutes = ft.handle;
   }
   // Protocol 7: the room-run world — the bundled game modules (world-sim.generated.mjs, built at deploy), or compiled
   // from the sources in a checkout. SOCIAL_WORLD=0 turns it off (the room is protocol 6 for everyone).
   // SOCIAL_WORLD_FX=1 opens the local e2e's hooks (/world/fx: lay a creature, quiet the spawns), never on Cloud Run.
-  const sim = process.env.SOCIAL_WORLD === '0' ? null : await loadWorldSim(log);
+  // The same bundle carries protocol 8's trade core and budget, which run whatever SOCIAL_WORLD says.
+  const bundle = await loadWorldSim(log);
+  const sim = process.env.SOCIAL_WORLD === '0' ? null : bundle;
   const worldFx = process.env.SOCIAL_WORLD_FX === '1' && !process.env.K_SERVICE;
   if (sim) console.log(`[hearth] world on: ${(sim.WORLD_AREAS ?? []).join(', ')}${sim.BUILT ? ` (bundle ${sim.BUILT})` : ' (from sources)'}`);
-  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log, extraRoutes, world: sim ? { sim, fx: worldFx } : null });
+  if (bundle?.tradeCore) console.log('[hearth] the room settles trades and lays drops (protocol 8)');
+  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log, extraRoutes, world: sim ? { sim, fx: worldFx } : null, core: bundle });
   room.server.listen(port, host, () => console.log(`Eclipse Realms social room: http://${host}:${port}`));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void room.dispose().finally(() => process.exit(0)); });
 }

@@ -25,14 +25,17 @@ export interface RoomPlayer {
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
 export interface RoomEmote { id: string; from: string; name: string; to: string | null; kind: 'wave'; at: number }
-/** Protocol 3: a party (ids of Keepers in the room; the leader first among them). */
-export interface RoomParty { id: string; leader: string; members: string[] }
+/**
+ * Protocol 3: a party (ids of Keepers in the room; the leader first among them). Protocol 8: `offline` — members
+ * logged out who stay in the party (greyed; back in when they log in), by a roster id the leader can kick.
+ */
+export interface RoomParty { id: string; leader: string; members: string[]; offline?: { id: string; name: string }[] }
 /** An invite waiting on this Keeper's answer (it lapses at `until`, the server's clock). */
 export interface RoomInvite { id: string; from: string; name: string; to: string; until: number }
 /** A creature a party member felled, as the room relays it: where the killer last stood is the room's own record. */
 export interface RoomPartyKill { id: string; from: string; name: string; creature: string; level: number; hp: number; xp?: number; area: string; x: number; y: number; at: number }
 /** Something that happened to the party: a member joined, left or was sent away; an invite was declined. */
-export interface RoomPartyNote { kind: 'joined' | 'left' | 'kicked' | 'declined'; name: string; id: string }
+export interface RoomPartyNote { kind: 'joined' | 'left' | 'kicked' | 'declined' | 'offline' | 'back'; name: string; id: string }
 export interface RoomSnapshot {
   status: string; connected: boolean; players: RoomPlayer[]; messages: RoomMessage[]; id: string; protocol?: number;
   /** Protocol 3 (absent or empty against an older room). */
@@ -47,6 +50,8 @@ export interface RoomSnapshot {
   tradeAsks?: RoomTradeAsk[]; trade?: RoomTrade | null; ground?: { area: string; items: RoomGround[] };
   /** Protocol 7: the room runs the world here (this Keeper said `world: true` and the room has the world on). */
   world?: boolean;
+  /** Protocol 8: the room settles this Keeper's trades and lays its drops itself (it has the trade core). */
+  settles?: boolean;
 }
 /** The room's trading and shared ground (protocol 6; the trade Function moves things: functions-game/src/trade-core.ts). */
 export const TRADE_PROTOCOL = 6;
@@ -57,12 +62,28 @@ export interface RoomOffer { items: OfferItem[]; gold: number }
 export interface RoomTrade {
   id: string; me: 'a' | 'b'; a: { id: string; name: string }; b: { id: string; name: string };
   offers: { a: RoomOffer; b: RoomOffer }; accepted: { a: boolean; b: boolean }; confirmed: { a: boolean; b: boolean };
-  rev: number; stage: 'offer' | 'confirm'; until: number;
+  rev: number; stage: 'offer' | 'confirm' | 'settling'; until: number;
+  /** Protocol 8: the room settles this trade itself (both Keepers' clients speak protocol 8). */
+  room?: boolean;
 }
-/** How a trade window closed. */
-export interface RoomTradeEnd { id: string; outcome: 'done' | 'cancelled' | 'void'; by: string; why: string }
-/** An item on the ground, as the room was told by the one who dropped it (checked against the escrow). */
-export interface RoomGround { id: string; area: string; x: number; y: number; name: string; rarity: string; def: string; until: number; by?: string }
+/**
+ * How a trade window closed. Protocol 8: `settled` — the room settled it in memory; `received` is what this Keeper
+ * gets; the commit's word follows as a RoomTradeCommit.
+ */
+export interface RoomTradeEnd { id: string; outcome: 'done' | 'cancelled' | 'void'; by: string; why: string; settled?: boolean; received?: { items: string[]; gold: number } }
+/** Protocol 8: the room's one Firestore commit of a settled trade landed (ok) or did not (why). */
+export interface RoomTradeCommit { id: string; ok: boolean; received?: { items: string[]; gold: number }; why?: string }
+/** Protocol 8: how a trade the room settled ended, asked again (the commit's word was lost). */
+export type RoomTradeStatus = { status: 'done'; received: { items: string[]; gold: number } } | { status: 'void' | 'unknown' | 'offline'; why?: string };
+/**
+ * An item on the ground, as the room was told by the one who dropped it (checked against the escrow). Protocol 8:
+ * `pending` — laid by the room and still being escrowed (nobody can have it yet); `room` — the room's to clear.
+ */
+export interface RoomGround { id: string; area: string; x: number; y: number; name: string; rarity: string; def: string; until: number; by?: string; pending?: boolean; room?: boolean }
+/** Protocol 8: the room's word on this Keeper's drop: escrowed (out of the save, safe on the ground) or handed back. */
+export interface RoomGroundNote { kind: 'escrowed' | 'returned'; id: string; name: string; why?: string }
+/** Protocol 8: a pick's answer — the new id the item took in this save, or why not. */
+export type RoomPick = { ok: true; item: string; ms?: number } | { ok: false; why: string; code?: string };
 /** The room's party verbs (protocol 3). */
 export const PARTY_PROTOCOL = 3;
 /** The room's social graph (protocol 4): who is signed in, friends, whispers, block, report, privacy. */
@@ -121,6 +142,12 @@ export interface RoomOptions {
   onTradeNote?: (note: { kind: 'declined'; name: string }) => void;
   /** Protocol 7: the room's ground in this Keeper's area (the whole list, or what came and went). */
   onWorldGround?: (msg: WorldGroundMsg) => void;
+  /** Protocol 8: which character this device plays (character-scope.ts): the room reads that save. */
+  character?: () => string;
+  /** Protocol 8: a trade the room settled was committed (or was not). */
+  onTradeCommit?: (commit: RoomTradeCommit) => void;
+  /** Protocol 8: this Keeper's drop was escrowed, or handed back. */
+  onGroundNote?: (note: RoomGroundNote) => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
@@ -129,6 +156,10 @@ export const COOP_ROOM_PROTOCOL = 5;
  * checks they agree). Kept here as values so this file imports nothing at run time.
  */
 export const ROOM_WORLD_PROTOCOL = 7;
+/** Protocol 8 (M2 of the room-run world): trades settled and drops laid by the room, a party that outlives a relog. */
+export const ROOM_SETTLE_PROTOCOL = 8;
+/** What the room accepts as a character id (character-scope.ts). */
+const CHARACTER_ID = /^[a-z0-9]{2,16}$/;
 export const ROOM_DROP_ID = /^td:surface:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
 
 /** The Hearth room's service (scripts/social-deployment.md). */
@@ -252,7 +283,7 @@ export class SocialRoom {
       if (generation !== this.generation || this.wanted !== wanted) return;
       const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
-        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, protocol: ROOM_SETTLE_PROTOCOL, ...this.characterField(), privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
       let response = await join(idToken);
       // A token the room will not take: in as a guest rather than not at all.
@@ -271,7 +302,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -366,7 +397,9 @@ export class SocialRoom {
   private partyEvent(data: { type?: string; party?: RoomParty | null; messages?: RoomMessage[]; invite?: RoomInvite; message?: RoomMessage; kill?: RoomPartyKill; note?: RoomPartyNote }): void {
     if (data.type === 'party') {
       const p = data.party;
-      const party = p && typeof p.id === 'string' && typeof p.leader === 'string' && Array.isArray(p.members) ? { id: p.id, leader: p.leader, members: p.members.filter(m => typeof m === 'string').slice(0, 4) } : null;
+      // Protocol 8: the members logged out who stay in it (absent from an older room).
+      const offline = (Array.isArray(p?.offline) ? p.offline : []).filter(o => o && typeof o.id === 'string' && typeof o.name === 'string').slice(0, 3).map(o => ({ id: o.id, name: o.name.slice(0, 20) }));
+      const party = p && typeof p.id === 'string' && typeof p.leader === 'string' && Array.isArray(p.members) ? { id: p.id, leader: p.leader, members: p.members.filter(m => typeof m === 'string').slice(0, 4), ...(Array.isArray(p.offline) ? { offline } : {}) } : null;
       const same = !!party && party.id === this.snapshot.party?.id;
       const lines = Array.isArray(data.messages) ? data.messages.slice(-30) : same ? this.snapshot.partyMessages ?? [] : [];
       // In a party, no invite stands any more (the room spends them on accept).
@@ -467,6 +500,11 @@ export class SocialRoom {
       this.options.onTradeEnd?.(end);
     }
     if (type === 'trade-note' && data['note']) this.options.onTradeNote?.(data['note'] as { kind: 'declined'; name: string });
+    // Protocol 8: the room's commit of a settled trade; the room's word on this Keeper's drop.
+    const commit = data['commit'] as RoomTradeCommit | undefined;
+    if (type === 'trade-commit' && commit && typeof commit.id === 'string' && typeof commit.ok === 'boolean') this.options.onTradeCommit?.(commit);
+    const gnote = data['note'] as RoomGroundNote | undefined;
+    if (type === 'ground-note' && gnote && typeof gnote.id === 'string' && (gnote.kind === 'escrowed' || gnote.kind === 'returned')) this.options.onGroundNote?.(gnote);
     if (type === 'ground' && typeof data['area'] === 'string') {
       const area = data['area'] as string;
       const valid = (g: RoomGround) => g && typeof g.id === 'string' && Number.isFinite(g.x) && Number.isFinite(g.y) && typeof g.name === 'string';
@@ -487,10 +525,67 @@ export class SocialRoom {
   forgetTradeAsk(askId: string): void { this.publish({ tradeAsks: (this.snapshot.tradeAsks ?? []).filter(a => a.id !== askId) }); }
   async tradeOffer(trade: string, items: OfferItem[], gold: number): Promise<string> { return this.tradeCall('trade/offer', { trade, items, gold }); }
   async tradeAccept(trade: string, rev: number, yes = true): Promise<string> { return this.tradeCall('trade/accept', { trade, rev, accept: yes }); }
-  async tradeConfirm(trade: string, rev: number, done: boolean): Promise<string> { return this.tradeCall('trade/confirm', { trade, rev, done }); }
+  async tradeConfirm(trade: string, rev: number, done: boolean): Promise<string> { return this.tradeCall('trade/confirm', { trade, rev, done, ...this.characterField() }); }
   async tradeCancel(trade: string, why = '', outcome: 'cancelled' | 'void' = 'cancelled'): Promise<string> {
     if (this.snapshot.trade?.id === trade) this.publish({ trade: null });
     return this.tradeCall('trade/cancel', { trade, why, outcome });
+  }
+  // ── Protocol 8: the room settles and lays (docs/design/online.md §4d M2) ──
+  /** The room settles this Keeper's trades and lays its drops (protocol 8, the trade core aboard, signed in). */
+  get canSettle(): boolean { return this.canTrade && (this.snapshot.protocol ?? 0) >= ROOM_SETTLE_PROTOCOL && this.snapshot.settles === true && !this.snapshot.guest; }
+  private characterField(): { character?: string } {
+    try { const c = this.options.character?.() ?? ''; return CHARACTER_ID.test(c) ? { character: c } : {}; } catch { return {}; }
+  }
+  /**
+   * Lay an item at this Keeper's feet: on this screen at once (pending), on everyone's when the room hears it; the room
+   * escrows it behind (out of the save) and says so with a ground note. '' when the room took it, else its words.
+   */
+  async groundLay(g: { area: string; x: number; y: number; item: OfferItem }): Promise<{ why: string; ground?: RoomGround }> {
+    if (!this.canSettle || !this.token) return { why: 'offline' };
+    try {
+      const response = await this.send(`${this.endpoint}/ground/drop`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify({ area: g.area, x: g.x, y: g.y, item: g.item }), signal: AbortSignal.timeout(8000),
+      });
+      const out = await response.json().catch(() => null) as { ground?: RoomGround; error?: unknown } | null;
+      if (!response.ok || !out?.ground) return { why: typeof out?.error === 'string' && out.error ? out.error.slice(0, 160) : 'failed' };
+      const laid = out.ground;
+      if (this.snapshot.ground?.area === g.area && !this.snapshot.ground.items.some(x => x.id === laid.id)) this.publish({ ground: { area: g.area, items: [...this.snapshot.ground.items, laid] } });
+      return { why: '', ground: laid };
+    } catch { return { why: 'failed' }; }
+  }
+  /** This Keeper's save reached the cloud: an escrow waiting on it may land now (fire and forget). */
+  groundSynced(id: string): void { void this.tradeCall('ground/synced', { id }); }
+  /** Reach for a ground item: off this screen at once; the first Keeper the room hears wins; its pickup is committed. */
+  async groundPick(area: string, id: string): Promise<RoomPick> {
+    if (!this.canSettle || !this.token) return { ok: false, why: 'offline' };
+    const held = this.snapshot.ground?.area === area ? this.snapshot.ground.items : [];
+    const was = held.find(g => g.id === id);
+    if (was) this.publish({ ground: { area, items: held.filter(g => g.id !== id) } });
+    try {
+      const response = await this.send(`${this.endpoint}/ground/pick`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify({ id }), signal: AbortSignal.timeout(15000),
+      });
+      const out = await response.json().catch(() => null) as { ok?: boolean; item?: unknown; why?: unknown; error?: unknown; ms?: number } | null;
+      if (response.ok && out?.ok === true && typeof out.item === 'string') return { ok: true, item: out.item, ...(typeof out.ms === 'number' ? { ms: out.ms } : {}) };
+      const code = (out as { code?: unknown } | null)?.code;
+      return { ok: false, why: typeof out?.why === 'string' ? out.why : typeof out?.error === 'string' ? out.error : 'failed', ...(typeof code === 'string' ? { code } : {}) };
+    } catch { return { ok: false, why: 'offline' }; }
+  }
+  /** How a trade the room settled ended (its commit's word never came: a dropped stream, a restarted room). */
+  async tradeStatus(trade: string): Promise<RoomTradeStatus> {
+    if (!this.canSettle || !this.token) return { status: 'offline' };
+    try {
+      const response = await this.send(`${this.endpoint}/trade/status`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify({ trade }), signal: AbortSignal.timeout(15000),
+      });
+      const out = await response.json().catch(() => null) as { status?: unknown; received?: { items?: unknown; gold?: unknown }; why?: unknown } | null;
+      if (!response.ok || !out) return { status: 'offline' };
+      if (out.status === 'done' && out.received && Array.isArray(out.received.items)) return { status: 'done', received: { items: out.received.items.filter((x): x is string => typeof x === 'string'), gold: Number(out.received.gold) || 0 } };
+      return { status: out.status === 'void' ? 'void' : 'unknown', ...(typeof out.why === 'string' ? { why: out.why } : {}) };
+    } catch { return { status: 'offline' }; }
   }
   /** Tell the area what this Keeper's drop put on the ground (the room checks the escrow first). */
   async groundDrop(g: { id: string; area: string; x: number; y: number; name: string; rarity: string; def: string }): Promise<string> { return this.tradeCall('ground/drop', g); }

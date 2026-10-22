@@ -126,3 +126,93 @@ describe('TradeFlow (client) × trade-core (server)', () => {
     expect(await new GroundFlow(guest, s.ra).drop(core.offerOf(rec('s1') as unknown as core.Doc), { area: 'x', x: 0, y: 0 })).toEqual({ ok: false, why: 'signin' });
   });
 });
+
+describe('TradeFlow / GroundFlow — protocol 8: the room settles and lays', () => {
+  const trade = (me: 'a' | 'b'): RoomTrade => ({
+    id: 't8', me, a: { id: 'pa', name: 'Aster' }, b: { id: 'pb', name: 'Bryn' },
+    offers: { a: { items: [], gold: 40 }, b: { items: [], gold: 0 } }, accepted: { a: true, b: true }, confirmed: { a: false, b: false },
+    rev: 2, stage: 'confirm', until: Date.now() + 600000, room: true,
+  });
+  function rig() {
+    const log: string[] = [];
+    const backend: TradeBackend = {
+      character: 'c1', blocked: () => null,
+      async prepare() { log.push('prepare'); },
+      async call(verb) { log.push(`function:${verb}`); return { status: 500, body: {} }; },
+      async settle() { log.push('settle'); },
+    };
+    let status: Awaited<ReturnType<NonNullable<TradeRoom['tradeStatus']>>> = { status: 'offline' };
+    const room: TradeRoom = {
+      async tradeConfirm(_t, _rev, done) { log.push(`confirm:${done}`); return ''; },
+      async tradeCancel() { log.push('cancel'); return ''; },
+      async groundDrop() { log.push('function-drop'); return ''; },
+      async groundTake() { return ''; },
+      canSettle: () => true,
+      async tradeStatus() { log.push('status'); return status; },
+      async groundLay(g) { log.push(`lay:${g.item.id}`); return { why: '', ground: { id: 'g1', area: g.area, x: g.x, y: g.y, name: g.item.name, rarity: g.item.rarity, def: g.item.def, until: 0, pending: true } }; },
+      groundSynced(id) { log.push(`synced:${id}`); },
+      async groundPick(_a, id) { log.push(`pick:${id}`); return id === 'g1' ? { ok: true, item: 'pX' } : { ok: false, why: 'gone' }; },
+    };
+    return { log, backend, room, setStatus: (s: typeof status) => { status = s; } };
+  }
+
+  it('Accept pushes the save; Confirm only tells the room; the settle shows the result at once; the save is re-read on the commit', async () => {
+    const r = rig();
+    const f = new TradeFlow(r.backend, r.room);
+    f.view(trade('b'));
+    expect(await f.beforeAccept(trade('b'))).toBeTrue();
+    await f.confirm(trade('b'));
+    expect(f.status.stage).toBe('waiting');
+    expect(r.log).toEqual(['prepare', 'confirm:false']);
+    await f.ended({ id: 't8', outcome: 'done', by: '', why: '', settled: true, received: { items: [], gold: 40 } }, trade('b'));
+    expect(f.status.stage).toBe('done');
+    expect(f.status.received).toEqual({ items: [], gold: 40 });
+    expect(r.log).not.toContain('settle');
+    await f.committed({ id: 't8', ok: true, received: { items: [], gold: 40 } });
+    expect(r.log.filter(x => x === 'settle').length).toBe(1);
+    expect(r.log.some(x => x.startsWith('function:'))).toBeFalse();
+  });
+
+  it('a commit that did not land says nothing moved; a lost commit word is asked for again', async () => {
+    const r = rig();
+    const f = new TradeFlow(r.backend, r.room);
+    f.view(trade('a'));
+    await f.ended({ id: 't8', outcome: 'done', by: '', why: '', settled: true, received: { items: [], gold: 0 } }, trade('a'));
+    await f.committed({ id: 't8', ok: false, why: 'Aster no longer holds Ash Blade.' });
+    expect(f.status.stage).toBe('failed');
+    expect(r.log).not.toContain('settle');
+    // Another settled trade whose commit word never comes: after the wait the room is asked; done → the save is re-read.
+    const g = new TradeFlow(r.backend, r.room, () => {}, 5);
+    g.view({ ...trade('a'), id: 't9' });
+    r.setStatus({ status: 'done', received: { items: ['tX'], gold: 0 } });
+    await g.ended({ id: 't9', outcome: 'done', by: '', why: '', settled: true, received: { items: ['tX'], gold: 0 } }, { ...trade('a'), id: 't9' });
+    await new Promise(res => setTimeout(res, 40));
+    expect(r.log).toContain('status');
+    expect(g.status.stage).toBe('done');
+    expect(r.log.filter(x => x === 'settle').length).toBe(1);
+  });
+
+  it('a drop is laid by the room at once, pushed and told behind; the escrow re-reads the save; a pick re-reads it too', async () => {
+    const r = rig();
+    const flow = new GroundFlow(r.backend, r.room);
+    const item = core.offerOf(rec('s9') as unknown as core.Doc);
+    const out = await flow.drop(item, { area: 'ember-isle', x: 1, y: 2 });
+    expect(out).toEqual({ ok: true, id: 'g1' });
+    expect(flow.isPending('s9')).toBeTrue();
+    await new Promise(res => setTimeout(res, 0));
+    expect(r.log).toEqual(['lay:s9', 'prepare', 'synced:g1']);
+    await flow.noted({ kind: 'escrowed', id: 'g1', name: item.name });
+    expect(flow.isPending('s9')).toBeFalse();
+    expect(r.log).toContain('settle');
+    // Handed back: no longer pending, the save not re-read (nothing left it).
+    await flow.drop(item, { area: 'ember-isle', x: 1, y: 2 });
+    const settles = r.log.filter(x => x === 'settle').length;
+    await flow.noted({ kind: 'returned', id: 'g1', name: item.name, why: 'no' });
+    expect(flow.isPending('s9')).toBeFalse();
+    expect(r.log.filter(x => x === 'settle').length).toBe(settles);
+    // Picks: the first wins (the save re-read), a gone one says so.
+    expect(await flow.pickup({ id: 'g1', area: 'ember-isle', x: 0, y: 0, name: 'x', rarity: 'rare', def: 'd', until: 0 })).toEqual({ ok: true, id: 'pX' });
+    expect(await flow.pickup({ id: 'g2', area: 'ember-isle', x: 0, y: 0, name: 'x', rarity: 'rare', def: 'd', until: 0 })).toEqual({ ok: false, why: 'gone' });
+    expect(r.log).not.toContain('function-drop');
+  });
+});

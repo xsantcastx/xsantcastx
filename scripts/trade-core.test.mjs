@@ -267,3 +267,87 @@ test('handle(): refusals are words and statuses, never a crash', async () => {
   assert.equal((await core.handle(db, 'pickup', 'uidA', { character: 'c1', ground: 'g404' }, T0)).body.status, 'gone');
   assert.equal((await core.handle(db, 'nope', 'uidA', {}, T0)).status, 404);
 });
+
+// ── Protocol 8: the room settles the trade in one transaction (docs/design/online.md §4d M2) ──
+const settle = (db, terms, now = T0 + 1000, over = {}) => core.settleTrade(db, { trade: 't1', a: { uid: 'uidA', character: 'c1' }, b: { uid: 'uidB', character: 'kb2' }, terms, ...over }, now);
+
+test('settleTrade: one commit moves both offers, both ledgers and writes the audit; a retry moves nothing twice', async () => {
+  const db = world();
+  const terms = { a: { items: [offerOf(db, 'a', 's1')], gold: 120 }, b: { items: [offerOf(db, 'b', 'r1')], gold: 0 } };
+  const out = await settle(db, terms);
+  assert.equal(out.status, 'done');
+  assert.deepEqual(out.received.b.items, [`t${core.hashId('t1:s1')}`]);
+  assert.deepEqual(out.received.a, { items: [`t${core.hashId('t1:r1')}`], gold: 0 });
+  assert.equal(out.received.b.gold, 120);
+  assert.ok(!live(invA(db)).includes('s1') && live(invB(db)).includes(`t${core.hashId('t1:s1')}`));
+  assert.ok(!live(invB(db)).includes('r1') && live(invA(db)).includes(`t${core.hashId('t1:r1')}`));
+  assert.equal(goldA(db), 380); assert.equal(goldB(db), 170);
+  const t = db.docs.get('trades/t1');
+  assert.equal(t.status, 'done'); assert.equal(t.room, true);
+  assert.equal(t.confirms.a.character, 'c1'); assert.equal(t.confirms.b.character, 'kb2');
+  assert.equal(db.docs.get('trade-audit/trade-t1').room, true);
+  const before = JSON.stringify([...db.docs]);
+  const again = await settle(db, terms, T0 + 9000);
+  assert.equal(again.status, 'done');
+  assert.deepEqual(again.received, out.received);
+  assert.equal(JSON.stringify([...db.docs]), before);
+});
+
+test('settleTrade refuses forged parties, and voids a changed item, a short purse, an expired or self trade', async () => {
+  let db = world();
+  const terms = { a: { items: [offerOf(db, 'a', 's1')], gold: 0 }, b: { items: [], gold: 0 } };
+  await assert.rejects(settle(db, terms, T0 + 1000, { a: { uid: 'uidX', character: 'c1' } }), e => e.code === 'not-yours');
+  await assert.rejects(settle(db, terms, T0 + 1000, { a: { uid: 'uidA', character: '../x' } }), e => e.code === 'bad-request');
+  // A changed item (tempered after it was offered): void, nothing moved.
+  const inv = db.docs.get('users/uidA/progress/inventory');
+  inv.v.records.find(r => r.id === 's1').upgradeLevel = 2;
+  const before = JSON.stringify([db.docs.get('users/uidA/progress/inventory'), db.docs.get('users/uidB/characters/kb2/progress/inventory')]);
+  const changed = await settle(db, terms);
+  assert.equal(changed.status, 'void'); assert.match(changed.why, /changed/);
+  assert.equal(JSON.stringify([db.docs.get('users/uidA/progress/inventory'), db.docs.get('users/uidB/characters/kb2/progress/inventory')]), before);
+  assert.equal(db.docs.get('trades/t1').status, 'void');
+  // Gold the purse does not hold.
+  db = world({ aGold: 10 });
+  const rich = await settle(db, { a: { items: [], gold: 500 }, b: { items: [], gold: 0 } });
+  assert.equal(rich.status, 'void'); assert.equal(goldA(db), 10); assert.equal(goldB(db), 50);
+  // Out of time.
+  db = world();
+  assert.equal((await settle(db, terms, T0 + core.TRADE_TTL_MS + 1)).status, 'void');
+  // One account on both sides.
+  db = world();
+  db.docs.set('trades/t1', { ...db.docs.get('trades/t1'), b: { ...A } });
+  assert.equal((await settle(db, terms, T0 + 1000, { b: { uid: 'uidA', character: 'kb2' } })).status, 'void');
+});
+
+test('closeTrade after a crash: a committed trade stays done, an open one is voided, and a late commit cannot also win', async () => {
+  // The room crashed after settling in memory, before the commit: the Keepers ask; the trade is voided, nothing moved.
+  let db = world();
+  const terms = { a: { items: [offerOf(db, 'a', 's1')], gold: 30 }, b: { items: [], gold: 0 } };
+  const closed = await core.closeTrade(db, 't1', 'uidB', T0 + 2000);
+  assert.equal(closed.status, 'void');
+  assert.equal(db.docs.get('trades/t1').status, 'void');
+  // The old room's commit, arriving late, finds it void and moves nothing.
+  const late = await settle(db, terms, T0 + 2100);
+  assert.equal(late.status, 'void');
+  assert.ok(live(invA(db)).includes('s1')); assert.equal(goldA(db), 500);
+  // The commit landed before the crash: asking reports it done with the terms, and nothing moves again.
+  db = world();
+  await settle(db, terms);
+  const after = JSON.stringify([...db.docs]);
+  const asked = await core.closeTrade(db, 't1', 'uidA', T0 + 3000);
+  assert.equal(asked.status, 'done'); assert.equal(asked.side, 'a');
+  assert.deepEqual(core.receivedBy('t1', asked.terms, 'b'), { items: [`t${core.hashId('t1:s1')}`], gold: 30 });
+  assert.equal(JSON.stringify([...db.docs]), after);
+  await assert.rejects(core.closeTrade(db, 't1', 'uidZ', T0 + 3000), e => e.code === 'not-yours');
+  // Racing: the commit and the close run at once — exactly one wins, never both.
+  for (let i = 0; i < 8; i++) {
+    db = world();
+    const [s, c] = await Promise.all([settle(db, terms, T0 + 4000), core.closeTrade(db, 't1', 'uidA', T0 + 4000)]);
+    const status = db.docs.get('trades/t1').status;
+    const moved = !live(invA(db)).includes('s1');
+    assert.equal(moved, status === 'done');
+    assert.equal(s.status === 'done', status === 'done');
+    assert.equal(c.status, status);
+    assert.equal(goldA(db) + goldB(db), 550);
+  }
+});

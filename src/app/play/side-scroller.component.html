@@ -273,12 +273,21 @@
       </header>
       <ol class="td-party__list">
         @for (m of partyFrames; track m.id) {
+          @if (m.offline) {
+            <!-- Protocol 8: logged out, still in the party (back in when they log in); the leader may remove them. -->
+            <li class="td-party__frame td-party__frame--away" data-party-frame data-party-offline [attr.data-member]="m.name">
+              <span class="td-party__name">{{ m.name }}</span>
+              @if (partyLeader) { <button type="button" class="td-party__drop" data-party-kick-away [disabled]="partyBusy" (click)="kickOffline(m.id)" [attr.aria-label]="t('play.party.removeAway', { name: m.name })" [title]="t('play.party.removeAway', { name: m.name })">&times;</button> }
+              <small class="td-party__where" data-party-where>{{ m.where }}</small>
+            </li>
+          } @else {
           <li class="td-party__frame" data-party-frame [attr.data-member]="m.name" [attr.data-hp]="(m.hp * 100).toFixed(0)">
             <span class="td-party__name">@if (m.leader) { <i class="td-party__crown" [attr.aria-label]="t('play.party.leader')" [title]="t('play.party.leader')"></i> }{{ m.name }}</span>
             <small class="td-party__line">{{ peerClass(m.vocation) }}@if (m.level) { · {{ m.level }} }</small>
             <span class="td-party__bar" role="meter" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="(m.hp * 100).toFixed(0)" [attr.aria-label]="t('play.party.hp', { n: (m.hp * 100).toFixed(0) })"><i [style.--hp]="m.hp"></i></span>
             <small class="td-party__where" data-party-where>{{ m.where }}</small>
           </li>
+          }
         }
       </ol>
     </aside>

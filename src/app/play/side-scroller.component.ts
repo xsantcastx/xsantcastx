@@ -956,6 +956,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The room changed: other Keepers to the engine, the unread count for lines that landed out of view. */
   private roomChanged(snapshot: RoomSnapshot): void {
+    // Protocol 8: the stream came back — a trade the room settled, still waiting on its commit's word, asks again.
+    if (snapshot.connected && !this.social.connected) this.tradeHud?.resumed();
     this.social = snapshot;
     this.engine?.setPeers(this.peersFor(snapshot));
     this.engine?.setChat(snapshot.messages, snapshot.id);
@@ -1007,9 +1009,11 @@ export class SideScrollerComponent implements OnDestroy {
    * The party frames: every other member's name, class, level, life and which way they are (Seek's compass and bands,
    * from the room's presence; "elsewhere" on another continent or floor).
    */
-  get partyFrames(): { id: string; name: string; vocation: string; level: number; hp: number; leader: boolean; where: string }[] {
+  get partyFrames(): { id: string; name: string; vocation: string; level: number; hp: number; leader: boolean; where: string; offline?: boolean }[] {
     const p = this.social.party;
     if (!p) return [];
+    // Protocol 8: members logged out stay in the party, greyed, at the foot of the list (the leader may remove them).
+    const away = (p.offline ?? []).map(o => ({ id: o.id, name: o.name, vocation: '', level: 0, hp: 0, leader: false, where: this.t('play.party.offline'), offline: true }));
     const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
     const out = [];
     for (const id of p.members) {
@@ -1025,7 +1029,13 @@ export class SideScrollerComponent implements OnDestroy {
       const hp = Number.isFinite(pl.hp) && Number.isFinite(pl.maxHp) && (pl.maxHp as number) > 0 ? Math.max(0, Math.min(1, (pl.hp as number) / (pl.maxHp as number))) : 1;
       out.push({ id, name: pl.name, vocation: pl.vocation ?? '', level: pl.level ?? 0, hp, leader: p.leader === id, where });
     }
-    return out;
+    return [...out, ...away];
+  }
+  /** Protocol 8: the leader removes a member who is logged out (its greyed row). */
+  async kickOffline(id: string): Promise<void> {
+    if (!this.partyLeader || this.partyBusy) return;
+    this.partyBusy = true;
+    try { const why = await this.room?.kick(id) ?? 'offline'; if (why) this.logGame(this.t('play.party.kickFailed', { why })); } finally { this.partyBusy = false; }
   }
   /** Invite the Keeper on the card. */
   async inviteToParty(): Promise<void> {
@@ -1577,6 +1587,10 @@ export class SideScrollerComponent implements OnDestroy {
         onTradeNote: note => this.zone.run(() => this.tradeHud?.declined(note.name)),
         // Protocol 7: the room's ground (a few times a minute; the engine lays it among the drops).
         onWorldGround: msg => this.zone.run(() => this.worldGround(msg)),
+        // Protocol 8: the room reads this character's save; a settled trade's commit; the room's word on a drop.
+        character: () => this.store.character,
+        onTradeCommit: c => this.zone.run(() => { void this.tradeHud?.committed(c); }),
+        onGroundNote: note => this.zone.run(() => { void this.tradeHud?.groundNoted(note); }),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).

@@ -35,7 +35,7 @@ const DROP_ID = /^td:surface:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}
  * `sim`: the bundled module (RoomWorld, WORLD_AREAS) or null (the world is off: every area behaves as protocol 6).
  * `send(session, value)`: an event down one stream. `store`: worldLoad/worldSave (social-identity.mjs).
  */
-export function createWorldRooms({ sim = null, store = null, now = Date.now, send, log = () => {}, areas = null, timing = {}, seed = () => Math.random().toString(36).slice(2), fx = false } = {}) {
+export function createWorldRooms({ sim = null, core = null, store = null, now = Date.now, send, log = () => {}, areas = null, timing = {}, seed = () => Math.random().toString(36).slice(2), fx = false } = {}) {
   const T = { ...WORLD_TIMING, ...timing };
   const worldAreas = new Set(areas ?? sim?.WORLD_AREAS ?? []);
   const enabled = !!sim && worldAreas.size > 0;
@@ -46,6 +46,19 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
   /** Is this session part of the room-run world where it stands now? */
   const inWorld = s => enabled && s.world && isWorldArea(s.player.area);
 
+  /**
+   * Protocol 8: the damage a second the room allows a Keeper's blows. Signed in with its character named, its save says
+   * (`s.stats`, world/keeper-budget.ts: read on join, again every few minutes). A guest, or a protocol-8 Keeper whose
+   * save is still being read: the conservative guest budget. A protocol-7 signed-in Keeper (no character named): the
+   * level budget as before, until that client refreshes.
+   */
+  const dpsOf = s => {
+    if (s.stats?.dps > 0) return { dps: s.stats.dps };
+    const b = sim ?? core;
+    if ((!s.uid || s.character) && typeof b?.guestBudget === 'function') return { dps: b.guestBudget(levelOf(s)) };
+    return {};
+  };
+  const keeperOf = s => ({ id: s.player.id, x: s.player.x, y: s.player.y, level: s.stats?.level ?? levelOf(s), ...dpsOf(s) });
   /** The level the room believes: the one reported, but never more than LEVEL_RISE_PER_MIN above what it believed a minute ago. */
   const levelOf = s => {
     const said = Number.isInteger(s.player.level) ? s.player.level : 1;
@@ -67,7 +80,7 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
       w.term = term;
       try { w.load(saved); } catch (e) { log('world load failed', e); }
       room.world = w; room.loading = false; room.last = now();
-      for (const s of room.members.values()) { w.keeper({ id: s.player.id, x: s.player.x, y: s.player.y, level: levelOf(s) }); groundTo(s, w); }
+      for (const s of room.members.values()) { w.keeper(keeperOf(s)); groundTo(s, w); }
     };
     if (!store?.worldLoad) { ready(null); return room; }
     // A sleep still being written finishes first (a quick return must not read the area from before it); a store that
@@ -107,7 +120,7 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
       for (const [id, s] of room.members) if (!next.has(id)) { room.members.delete(id); room.world?.leave(id); changed.add(s); moved = true; }
       for (const [id, s] of next) if (!room.members.has(id)) {
         room.members.set(id, s); moved = true;
-        if (room.world) { room.world.keeper({ id, x: s.player.x, y: s.player.y, level: levelOf(s) }); groundTo(s, room.world); }
+        if (room.world) { room.world.keeper(keeperOf(s)); groundTo(s, room.world); }
       }
       if (moved) for (const s of room.members.values()) changed.add(s);
       room.emptySince = room.members.size ? 0 : (room.emptySince || now());
@@ -128,7 +141,7 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
       }
       const dt = (ms ?? (t - room.last)) / 1000;
       room.last = t;
-      for (const s of room.members.values()) w.keeper({ id: s.player.id, x: s.player.x, y: s.player.y, level: levelOf(s) });
+      for (const s of room.members.values()) w.keeper(keeperOf(s));
       try { w.tick(dt); } catch (e) { log('world tick failed', e); }
       room.snapAcc += dt * 1000;
       // The ground goes right after the snapshots, never before: the kill that left it reaches each screen first, so
@@ -164,7 +177,7 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
     claims(s, hits) {
       const room = roomOf(s);
       if (!room?.world || !room.members.has(s.player.id)) throw fail(409, 'Not in the world.');
-      room.world.keeper({ id: s.player.id, x: s.player.x, y: s.player.y, level: levelOf(s) });
+      room.world.keeper(keeperOf(s));
       // (What a kill left is told after the next snapshot carries the kill: step.)
       return room.world.claims(s.player.id, hits);
     },
@@ -173,7 +186,7 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
       const room = roomOf(s);
       if (typeof id !== 'string' || !DROP_ID.test(id)) throw fail(400, 'Invalid take.');
       if (!room?.world || !room.members.has(s.player.id)) return { ok: false, why: 'area' };
-      room.world.keeper({ id: s.player.id, x: s.player.x, y: s.player.y, level: levelOf(s) });
+      room.world.keeper(keeperOf(s));
       const r = room.world.take(id, s.player.id);
       flush(room);
       return r;
@@ -207,6 +220,8 @@ export function createWorldRooms({ sim = null, store = null, now = Date.now, sen
     /** The specs: an area's world, or null. */
     worldOf(area) { return rooms.get(area)?.world ?? null; },
     rooms,
+    /** The specs: what the room feeds the world for this Keeper (its level and claim budget). */
+    keeperOf,
   };
 }
 
