@@ -5221,7 +5221,10 @@ export class SideScrollerComponent implements OnDestroy {
       const name = display?.name ?? stack.stackKey;
       return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [], cat: 'mats' };
     });
-    const gear: BagPocket[] = clusterBy(groupItems(snap.bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
+    // A dropped item leaves the satchel the moment it hits the ground: the room escrows it behind the scenes (protocol 8),
+    // and a hand-back clears the pending mark so it reappears here.
+    const bag = snap.bag.filter(item => !this.tradeHud?.dropPending(item.id));
+    const gear: BagPocket[] = clusterBy(groupItems(bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
       key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
       art: itemArt(item)?.src ?? '', qty: ids.length, pip: lootColor(item.rarity), mark: monogram(item.name), ids,
       cat: item.type === 'charm' ? 'charm' : 'gear',
