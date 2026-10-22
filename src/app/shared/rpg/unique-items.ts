@@ -50,6 +50,7 @@ import type { ItemDefinition, ItemStatKey, ItemStyle } from './item-definition';
 import type { ItemRarity, ItemStats, SlotId } from './item.model';
 import type { AuraId } from '../loot/auras';
 import { BOSS_UNIQUES, type RelicSig } from './boss-uniques';
+import type { WornLookSpec } from '../keeper-look/worn-look.model';
 import { SET_PIECES, setSigOf } from './set-items';
 
 /**
@@ -114,6 +115,12 @@ export interface UniqueItem {
    * the player by its own path (a creature of its place, a shade chest), never the Gambler or an open unique roll.
    */
   set?: string;
+  /**
+   * How it looks WORN on the Keeper (keeper-look/worn-look.model.ts): its silhouette, tones and details — glowing eyes,
+   * runes, horns, embers… A new unique writes its look here, beside its lore; the uniques that shipped before this field
+   * have theirs in keeper-look/worn-looks.data.ts. Without one, the look is derived from the icon and the base type.
+   */
+  look?: WornLookSpec;
 }
 
 /**

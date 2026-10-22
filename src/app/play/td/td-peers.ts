@@ -2,8 +2,8 @@
  * td-peers.ts — the other Keepers in the top-down world (owner 2026-10-21: "can other players see each other?").
  *
  * The Hearth room (play/social) reports who is online and where; this draws the ones in the Keeper's own area as
- * real sprites (the same painter and front sheet as the Keeper's, dressed in their class's own kit — worn gear does
- * not travel), each with a name plate, gliding between packets (social/peer-tracker). They never block a step: there
+ * real sprites (the same painter and front sheet as the Keeper's, dressed in their class's own kit and, over it, the
+ * gear they wear — presence `worn`, shared/keeper-look/worn-looks.ts: the same cowls, crowns and censers), each with a name plate, gliding between packets (social/peer-tracker). They never block a step: there
  * is no collision with other Keepers. Under reduced motion they stand where they were last seen and the Wave holds
  * still.
  *
@@ -12,7 +12,8 @@
  */
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
-import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
+import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
+import { unpackWorn } from '../../shared/keeper-look/worn-looks';
 import { defaultLook, VOCATIONS, type KeeperLook, type Vocation } from '../../shared/keeper-look/keeper-look.model';
 import { PeerTracker, type PeerShown } from '../social/peer-tracker';
 import { unpackLook } from '../social/peer-look';
@@ -96,19 +97,29 @@ export class TdPeers {
   wave(who: string, now: number): void { this.waves.set(who, now + WAVE_SECS); }
   waving(who: string, now: number): boolean { return (this.waves.get(who) ?? 0) > now; }
 
+  /** Test hook only (?fxpeer=1): what a pinned Keeper wears. */
+  readonly pinnedWorn = new Map<string, string>();
+  /** What a Keeper wears (presence `worn`), as the room last said. */
+  wornOf(id: string): string {
+    const pin = this.pinnedWorn.get(id);
+    if (pin !== undefined) return pin;
+    const p = this.raw.find(x => x.id === id); return typeof p?.worn === 'string' ? p.worn : '';
+  }
+
   private painter(p: PeerShown): KeeperPainter {
-    const key = `${p.look}|${p.vocation}`;
+    const worn = this.wornOf(p.id);
+    const key = `${p.look}|${p.vocation}|${worn}`;
     const have = this.painters.get(p.id);
     if (have && have.key === key) return have.painter;
     const look: KeeperLook = unpackLook(p.look, p.vocation, p.name) ?? { ...defaultLook(), name: p.name };
-    const v = vocationLook(VOCATIONS.includes(p.vocation as Vocation) ? p.vocation as Vocation : look.vocation, null);
+    const v = vocationLook(VOCATIONS.includes(p.vocation as Vocation) ? p.vocation as Vocation : look.vocation, unpackWorn(worn));
     const painter = new KeeperPainter(look, v.gear, v.garb);
     this.painters.set(p.id, { key, painter });
     return painter;
   }
 
   /** One Keeper, feet at (p.x, p.y): the front/back sheet facing the camera or away, the painter's side view across. */
-  draw(c: CanvasRenderingContext2D, p: PeerShown, view: { scale: number; camX: number; camY: number; time: number }): void {
+  draw(c: CanvasRenderingContext2D, p: PeerShown, view: { scale: number; camX: number; camY: number; time: number; still?: boolean }): void {
     const sx = Math.round(p.x), sy = Math.round(p.y);
     c.fillStyle = 'rgba(30,18,26,.28)';
     c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
@@ -118,12 +129,13 @@ export class TdPeers {
     if (p.dir !== 'side') {
       const sheet = frontSheet(painter, carriesStaff(p.vocation)), row = p.dir === 'down' ? 0 : 1, f = frontFrame(t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, sx - FRONT_AX, sy - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, painter, row === 0 ? 'down' : 'up', f, sx - FRONT_AX, sy - FRONT_AY, view.time, !!view.still);
       return;
     }
     const s = view.scale;
     c.save();
     c.setTransform(s * p.face, 0, 0, s, (sx - view.camX) * s, (sy - view.camY) * s);
-    painter.draw(c, 1, { action: p.moving ? 'walk' : 'idle', time: t, attackT: 0, weapon: false });
+    painter.draw(c, 1, { action: p.moving ? 'walk' : 'idle', time: t, attackT: 0, weapon: false, fxStill: !!view.still });
     c.restore();
   }
 

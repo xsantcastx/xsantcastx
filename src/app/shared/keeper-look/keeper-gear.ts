@@ -17,6 +17,7 @@
  *
  * Pure: types, tables and math only. No DOM, safe on an SSR path and in specs.
  */
+import type { WornLook } from './worn-look.model';
 
 export type GearSlot = 'head' | 'chest' | 'hands' | 'legs' | 'feet' | 'weapon' | 'off-hand' | 'trinket' | 'charm1' | 'charm2' | 'charm3';
 export const GEAR_SLOTS: readonly GearSlot[] = ['head', 'chest', 'hands', 'legs', 'feet', 'weapon', 'off-hand', 'trinket', 'charm1', 'charm2', 'charm3'];
@@ -26,7 +27,7 @@ export type WeaponKind =
   | 'staff' | 'wand' | 'bow' | 'crossbow' | 'spear' | 'halberd' | 'sickle' | 'tongs'
   /** A fishing rod: never read from an item name (a "Rod" weapon is a staff), only put in hand by held-tool.ts. */
   | 'rod';
-export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | 'cards' | 'scales' | 'quiver' | WeaponKind;
+export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | 'cards' | 'scales' | 'quiver' | 'censer' | 'crucible' | WeaponKind;
 export type HeadKind = 'helm' | 'hood' | 'crown' | 'circlet';
 export type ChestKind = 'plate' | 'coat' | 'robe' | 'mantle';
 export type HandsKind = 'gauntlet' | 'wrap';
@@ -61,6 +62,11 @@ export interface GearPiece {
    * rule). Unset on a kit piece and a townsperson's: KIND_HANDS reads it off the kind then.
    */
   hands?: 1 | 2;
+  /**
+   * How this worn item really looks (worn-looks.ts: its silhouette, its icon's colours, eyes, runes, embers…). When set
+   * the painters draw it instead of the slot's generic layer. Kit pieces and townsfolk's props carry none.
+   */
+  look?: WornLook;
 }
 
 /** The hands each weapon kind takes when the piece carries no word of its own (a class's kit, an NPC's prop). */
@@ -172,7 +178,7 @@ export function gearPiece(slot: GearSlot, text: string, style: unknown, rarity: 
 /** A stable key for a gear set (the painter rebuilds its layers when it changes). */
 export function gearKey(gear: KeeperGear | null | undefined): string {
   if (!gear) return '';
-  return GEAR_SLOTS.map(slot => { const p = gear[slot]; return p ? `${slot}:${p.kind}:${p.style}:${p.rarity}${p.color ? `:${p.color}${p.accent ?? ''}` : ''}${p.variant ? `:${p.variant}` : ''}` : ''; }).filter(Boolean).join('|');
+  return GEAR_SLOTS.map(slot => { const p = gear[slot]; return p ? `${slot}:${p.kind}:${p.style}:${p.rarity}${p.color ? `:${p.color}${p.accent ?? ''}` : ''}${p.variant ? `:${p.variant}` : ''}${p.look ? `:${p.look.id}` : ''}` : ''; }).filter(Boolean).join('|');
 }
 
 // ── Held weapons: sprite size, grip and swing ──────────────────────────────
