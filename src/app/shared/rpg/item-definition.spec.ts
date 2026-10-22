@@ -11,9 +11,10 @@ describe('item definition rolls', () => {
     expect(b.goldFind).toBeGreaterThan(a.goldFind ?? 0);
     const first = mintEquipment('eclipse-longblade', 'rare', () => 0, '2026-08-01T00:00:00.000Z', 'a');
     const second = mintEquipment('eclipse-longblade', 'rare', () => 1, '2026-08-01T00:00:00.000Z', 'b');
-    // New mints roll the slot's implicit (Spell Damage on a weapon), not Gold Find (§3).
+    // New mints roll the family's implicit (a longblade's own +min–max Damage, §3.6), not Gold Find (§3).
     expect(first?.stats.goldFind).toBeUndefined();
-    expect(first?.stats.spellDamage).not.toBe(second?.stats.spellDamage);
+    expect(first?.stats.spellDamage).toBeUndefined();
+    expect(first?.stats.minDamage).not.toBe(second?.stats.minDamage);
     expect(first?.definitionId).toBe('eclipse-longblade');
   });
 

@@ -4,7 +4,7 @@
  */
 import type { EngineOptions } from '../engine/engine.model';
 import { MOBS, MobSystem, isConstruct, type Mob, type MobHost } from './td-mobs';
-import { SKILLS } from './td-skills';
+import { SKILLS, castVars } from './td-skills';
 import { BOSS_UNIQUES, NO_RELICS, relicTotals } from '../../shared/rpg/boss-uniques';
 import { bestiaryEntries, creatureHaunts } from './td-bestiary';
 
@@ -54,7 +54,7 @@ describe('td-relics: the signatures the fight applies', () => {
     expect(worn.cdOf('meteor')).toBe(SKILLS['meteor'].cd - 2);
   });
 
-  it('Hammer of the First Watch: Nova +2 ranks, and 20% harder on constructs only', () => {
+  it('Hammer of the First Watch (the Ashguard\'s maul, §3.6): Cinder Cleave +2 ranks, and 20% harder on constructs only', () => {
     expect(isConstruct('anvil-warden')).toBeTrue();
     expect(isConstruct('cinder-bailiff')).toBeTrue();
     expect(isConstruct('obsidian-golem')).toBeTrue();
@@ -70,9 +70,9 @@ describe('td-relics: the signatures the fight applies', () => {
     expect(hit(true, 'obsidian-golem')).toBe(Math.round(hit(false, 'obsidian-golem') * 1.2));
     expect(hit(true, 'bone-walker')).toBe(hit(false, 'bone-walker'));
     const { sys } = world();
-    sys.setRanks({ 'hellfire-nova': 1 });
+    sys.setRanks({ 'cinder-cleave': 1 });
     wear(sys, 'unique-hammer-first-watch');
-    expect(sys.rank('hellfire-nova')).toBe(3);
+    expect(sys.rank('cinder-cleave')).toBe(3);
   });
 
   it('Ashbone Phylactery: one more skeleton at once, and each first blow is a breath of fire (3×)', () => {
@@ -121,13 +121,18 @@ describe('td-relics: the signatures the fight applies', () => {
     expect(n.singeT ?? 0).toBe(0);
   });
 
-  it('Splinterbow of the Rootcradle: two more spears in a Bone Storm, and a Bone Spear 3 tiles further', () => {
-    const plain = world().sys, worn = world().sys;
-    wear(worn, 'unique-splinterbow-rootcradle');
-    for (const s of [plain, worn]) { s.setRanks({ 'bone-storm': 1, 'bone-spear': 1 }); s.useAbility('bone-storm'); }
-    expect(worn.spears.length).toBe(plain.spears.length + 2);
+  it('Splinterbow of the Rootcradle (the Thornstrider\'s bow, §3.6): Volley +2 ranks, and 2 more arrows in it', () => {
+    const { sys } = world();
+    sys.setRanks({ volley: 1 });
+    wear(sys, 'unique-splinterbow-rootcradle');
+    expect(sys.rank('volley')).toBe(3);
+    const sig = relicTotals(['unique-splinterbow-rootcradle']);
+    expect(castVars('volley', 3, null, sig)['count'] - castVars('volley', 3)['count']).toBe(2);
+  });
+
+  it('Ashbone Phylactery: a Bone Spear flies 3 tiles further (the Warlock\'s spear range left the bow for the bone)', () => {
     const a = world().sys, b = world().sys;
-    wear(b, 'unique-splinterbow-rootcradle');
+    wear(b, 'unique-ashbone-phylactery');
     for (const s of [a, b]) { s.setRanks({ 'bone-spear': 1 }); mobAt(s, 'bone-walker', 40, 0); s.useAbility('bone-spear'); }
     const range = SKILLS['bone-spear'].vars['range'];
     expect(b.spears[0].life / a.spears[0].life).toBeCloseTo((range + 3) / range, 5);

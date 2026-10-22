@@ -68,7 +68,7 @@ rarity, and the card shows the range beside the roll (`+7 Defense [4–9]`), D4-
 | mythic | 5 | ×2.2 |
 | singular | 5 | ×2.8 |
 
-**Implicits:** weapon → Spell Damage %; armour (head, chest, hands, legs, feet, off-hand) → Defense; trinket → Life.
+**Implicits** (by family since §3.6): staff/wand and focus → Spell Damage %; sword/axe/mace/maul/polearm/dagger and bow/crossbow → their own +min–max Damage; quiver → Martial Damage %; shield and armour → Defense; ring/amulet → Life. The "slots that roll it" column below is the pre-§3.6 table, kept for the history; the live pools are §3.6's.
 
 **The combat stats** (`ItemStats`, each read by the top-down fight through `equippedTotals`):
 
@@ -151,6 +151,71 @@ and "Takes both hands: … 20% harder". **Old saves** wearing both are mended on
 off-hand to the satchel, else the Vault). The crossbow family: Canopy Warden's Crossbow, Spinerift, Cinderlatch
 (`ranger-items.ts`), and the Canopy Warden's Quiver (off-hand); they drop from every hunt at the creature's level.
 The combat sim's bands are checked on the one-handed build every class can wear.
+
+### 3.6 Two damage families, and affixes by item family (owner 2026-10-22: "all weapons are giving spell damage? If im a warrior? … only staffs or mage items … rings or amulets could give mage damage but … could roll for warriors or archer etc… consistency in items")
+
+D2's way. **Spell Damage %** lifts the Warlock's and the Lanternwright's spells; **Martial Damage %** (D2's Enhanced
+Damage) and a weapon's own **+min–max Damage** lift the Ashguard's blade and skills and the Thornstrider's arrows, skills
+and beast. Speed splits the same way: **Cast Speed** for the casters, **Attack Speed** for the fighters (each the class's
+whole pace: its basic attack and its skill cooldowns). Crit, Block, life, Defense, resists and the finds are everyone's.
+One file owns the pools: `src/app/shared/rpg/item-affixes.ts` (`FAMILY_RULES`); one owns who reads what:
+`src/app/shared/rpg/item-calling.ts`.
+
+| Item family (`affixFamilyOf`) | Implicit | Rolls |
+|---|---|---|
+| **caster** — staves, wands | Spell Damage | Spell Damage, Cast Speed, Mana, Mana Regen, **+Spells** (1–3 ranks to every learnt spell), Crit, MF, XP |
+| **focus** — orbs, tomes, lanterns, mirrors, censers (off-hand) | Spell Damage ×0.5 | Spell Damage, Cast Speed, Mana, Mana Regen, Crit, MF, XP |
+| **martial** — swords, axes, maces, greatswords, mauls, polearms, daggers | +min–max Damage (×1.55) | flat Damage, Martial Damage, Attack Speed, **Life Steal**, Crit, MF, XP |
+| **bow** — bows, crossbows | +min–max Damage (×0.85) | flat Damage, Martial Damage, Attack Speed, **Pierce**, Crit, MF, XP |
+| **quiver** (the Thornstrider's off-hand) | Martial Damage ×0.5 | Martial Damage, Pierce, Attack Speed, Crit, Life, Defense, the four resists, MF |
+| **shield** | Defense | Defense, **Block**, Life, the four resists, Life Regen, MF |
+| **armour** — head, chest, hands, legs, feet | Defense | Defense, Life, Mana, the four resists, Life/Mana Regen, MF, XP; boots alone Move Speed, gloves alone Cast/Attack Speed (D2's gloves) |
+| **jewel** — rings, amulets | Life | **either family**: Spell and Martial Damage (×0.6), Cast and Attack Speed; Crit, Life, Mana, the resists, All Resist, Life/Mana Regen, MF, **Gold Find**, XP |
+| charms | — | unchanged: their authored small mixed rolls |
+
+New ranges at item level 1 (× rarity × the family scale): Martial Damage 3–6 (+0.25/lvl, worn cap 150), Attack Speed 3–6
+(+0.1, cap 40), flat Damage low 1–2 (+0.15) and high 2–4 (+0.3) on ONE sample (max ≥ min), Life Steal 1–2% (+0.03, cap
+20), Pierce 3–6 (+0.1, cap 50), Block 3–6 (+0.1, cap 50), +Spells 0.6–1.2 (whole ranks, cap 3), Gold Find 3–6 (+0.1).
+
+**How each calling reads** (`td-skills fightStats`, `damageFamilyOf`):
+
+| Calling | Damage multiplier (`power`) | Pace (`castSpeed`) | Also reads |
+|---|---|---|---|
+| Warlock, Lanternwright | level × Spirit × (1 + Spell Damage) | Cast Speed | +Spells (castRank) |
+| Ashguard | level × Spirit × (1 + Martial Damage) | Attack Speed | Life Steal; a **melee** weapon's +min–max on every blow (Watch Blade, blade skills) |
+| Thornstrider | level × Spirit × (1 + Martial Damage) | Attack Speed | Life Steal, Pierce; a **bow's** +min–max on every arrow (Thorn Shot, Barbed Shot, Volley); his beast bites ×(1 + half his Martial Damage) |
+
+Everyone reads Crit (×1.75), Block (a blow turned aside whole), Defense, resists, life, mana and the finds. The
+milestones' "+1% damage" and "+1% speed" ride on both families, so every calling gets them.
+
+**The card** (side-scroller `itemTip`): a line under the title says who the piece is for — "Favoured by: Ashguard",
+"Favoured by: Warlock, Lanternwright", "Worn by every calling" (green when it is the Keeper's own); a line the Keeper's
+calling cannot use is greyed (hover: "unused by your calling") with one note under the affixes. A weapon's own damage
+reads as one line, "+18–35 Damage [16–19 / 31–36]".
+
+**Old items (the frozen-grade rule — nothing is re-rolled or rewritten).** Before §3.6 every weapon's implicit was
+Spell Damage, helms and gloves rolled it too, and every calling read it. Decision: **a Spell Damage (or Cast Speed) roll
+on a piece whose family can no longer roll it counts in the wearer's own family** — Spell Damage for a caster, Martial
+Damage (Attack Speed) for a fighter — a read-time conversion (`item-calling oldRollTwins`, `InventoryService
+equippedOldRolls`), and the card says "(an old roll: counts as Martial Damage for you)". An old melee weapon's Spell
+Damage also keeps its old quarter-point of swing flat (td-melee `WEAPON_SD_PER_POINT`), so an old sword swings exactly
+as before. Why not "casters only": that would strip every existing Ashguard and Thornstrider of the damage their weapon
+has always given; this rule changes no existing character's numbers. The edge: rings and amulets and staves still roll
+Spell Damage, so an old ring's Spell Damage is now the casters' alone (and old gloves' Cast Speed, since gloves roll
+both speeds now). A reforge re-rolls under the new families.
+
+**The uniques that did not fit** (their named skills now match their piece): Hammer of the First Watch (a maul) —
+Cinder Cleave +2 ranks instead of Hellfire Nova; Splinterbow of the Rootcradle (a bow) — Volley +2 ranks and 2 more
+arrows instead of Bone Storm/Bone Spear; the Bone Spear's +3 tiles moved to the Ashbone Phylactery (the bone dragon's
+amulet). Authored roll keys on nine pieces (Tyrant's Crucible, Crown of the Banked Coal, Seamstitch Grips, the Abbey
+hood and robe, the Rootcradle bracers, the Lamplighter's gloves, the Hammer, the Splinterbow) now name keys their family
+rolls; `item-calling.spec.ts` keeps it so.
+
+**Balance** (`node scripts/combat-sim.mjs --check`, the class-appropriate build: a wand and a focus for the casters, a
+blade and a shield for the Ashguard, a crossbow and a quiver for the Thornstrider; `rollGear` rolls each well in its
+family and each calling wants its own family): every band holds. Tuning that got there: the focus's Spell Damage ×0.5,
+the quiver's Martial Damage ×0.5, a melee weapon's flat ×1.55 and a bow's ×0.85, quivers ward (Defense and resists),
+full-strength speeds on rings and gloves.
 
 ## 4. Monster families and roles
 

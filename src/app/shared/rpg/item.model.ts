@@ -158,12 +158,30 @@ export interface ItemStats {
   arcaneResist?: number;
   /** % added to all four resists (trinkets). */
   allResist?: number;
+  // ── The martial family and the families' own (docs/design/loot-and-combat.md §3.6) ─────────────────────────────
+  /** Martial Damage: % more on every blow, arrow and beast's bite of a fighter (Ashguard, Thornstrider); cap 150. */
+  attackDamage?: number;
+  /** % quicker swings, shots and fighters' skill cooldowns (worn cap 40). */
+  attackSpeed?: number;
+  /** A weapon's own damage, low end: added to the Ashguard's blow (a melee weapon) or the Thornstrider's arrow (a bow). */
+  minDamage?: number;
+  /** A weapon's own damage, high end. */
+  maxDamage?: number;
+  /** % of every blow a fighter lands that comes back as life (worn cap 20). */
+  lifeLeech?: number;
+  /** % chance an arrow flies on through its foe, added to the Thorn Shot's own (worn cap 50). */
+  pierceChance?: number;
+  /** % chance a blow is turned aside whole (shields; worn cap 50). */
+  blockChance?: number;
+  /** + ranks to every spell a caster has learnt (worn cap 3). */
+  skillRanks?: number;
 }
 
 export const ITEM_STAT_KEYS: (keyof ItemStats)[] = [
   'goldPerSec', 'goldFind', 'magicFind', 'xpBonus', 'strikePower', 'ward',
   'life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
   'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist',
+  'attackDamage', 'attackSpeed', 'minDamage', 'maxDamage', 'lifeLeech', 'pierceChance', 'blockChance', 'skillRanks',
 ];
 
 /** The five stats that predate the combat affixes (Gold Find took the retired Gold/sec's place). */
@@ -209,6 +227,14 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   lightningResist: 'Lightning Resist',
   arcaneResist: 'Arcane Resist',
   allResist: 'All Resist',
+  attackDamage: 'Martial Damage',
+  attackSpeed: 'Attack Speed',
+  minDamage: 'Min Damage',
+  maxDamage: 'Max Damage',
+  lifeLeech: 'Life Steal',
+  pierceChance: 'Pierce',
+  blockChance: 'Block',
+  skillRanks: 'to Spells',
 };
 
 /** True for the stats written as a percentage. */
@@ -233,6 +259,14 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   lightningResist: true,
   arcaneResist: true,
   allResist: true,
+  attackDamage: true,
+  attackSpeed: true,
+  minDamage: false,
+  maxDamage: false,
+  lifeLeech: true,
+  pierceChance: true,
+  blockChance: true,
+  skillRanks: false,
 };
 
 /**
@@ -837,6 +871,7 @@ export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
     goldPerSec: 0, goldFind: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
     life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0,
     fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0,
+    attackDamage: 0, attackSpeed: 0, minDamage: 0, maxDamage: 0, lifeLeech: 0, pierceChance: 0, blockChance: 0, skillRanks: 0,
   };
   for (const block of blocks) {
     for (const key of ITEM_STAT_KEYS) {
