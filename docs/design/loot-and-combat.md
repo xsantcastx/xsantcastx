@@ -541,7 +541,9 @@ steps out of half the telegraphed attacks (a breath's tell, a Rend ring, a burst
 slower than him; the Thornstrider's spirit beast bites. A hunt is the creatures of his level one after another (an elite
 pack 1 in 16), life and mana carried over, 12 s between pulls (leveling.md's 240 kills an hour), the out-of-fight mend.
 
-**The bands** (`--check`, in CI and the gate; ±15% for seeded noise on a time):
+**The bands** (`--check`, in CI and the gate; ±15% for seeded noise on a time). A time is the **interquartile mean** of
+a cell's 24 runs (the mean of runs 7–18), not the median (2026-10-22): a cell's runs often fall in two clusters, and a
+median sitting in the gap between them flipped on a two-tick change anywhere in the fight.
 
 | What | Band |
 |---|---|

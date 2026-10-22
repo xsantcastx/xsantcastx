@@ -29,6 +29,11 @@ Lanternwright ~25% behind. Five numbers moved, nothing else: **Ember Bolt** grow
 A second pass the same day (the bosses' gap-closers made kiting cost the ranged vocations time): **Ember Bolt** +4/+6 a
 rank; **Kindle** 9–14 every 0.9 s (was 7–11 every 1 s); **Lamp-Wisp** motes 8–12 (was 4–7) — the Lanternwright's first
 two bosses fall in ~120 s (were ~155).
+A third, on 2026-10-22: the D2 zone levels (`td-zones`) put every creature a level-5 Keeper hunts at level 5, and his
+champion packs crept to the band's edge (34 → 46 s). **Blinding Flash** 28–42 (was 8–12; +2/+3 a rank unchanged) — it
+leaves the bar for Banish at 12, so only the first levels feel it: packs at 5 in ~37 s, the first two bosses in ~109 s.
+The sim's Ashguard puts Ash Stride on his bar (over the Shield Oath), as a melee Keeper would against the zones'
+casters.
 
 **The Ashguard's packs (owner, 2026-10-21: kept as his identity).** His blade strikes everything in its arc, so he
 clears a champion pack in about half the ranged vocations' time (~14 s against ~25–35 s at level 20). That is the
@@ -136,7 +141,7 @@ ghouls, wisps and drowned (`td-lantern shadowBorn`).
 
 | Tier (level) | Lamp (light as a weapon) | Hearth (mending, wards) | Moth (the lantern's kin) |
 |---|---|---|---|
-| 1 (1) | **Kindle** (passive flare) *lum sha* 9–14 +3/+4, 4 tiles, every 0.9 s · **Blinding Flash** *lum orum* 8–12 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, an 8–12 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
+| 1 (1) | **Kindle** (passive flare) *lum sha* 9–14 +3/+4, 4 tiles, every 0.9 s · **Blinding Flash** *lum orum* 28–42 to all within 3 tiles, the dead stunned 2 s (bosses ⅕); +2/+3, r+0.05, +0.1 s · 14 · 8 s · **Lantern Aura** (aura) *lum ka* light +2 tiles, foes within 3 bite 10% weaker; +0.1, +0.05, +0.5% | **Hearthlight** *hesk ka* 30 life over 3 s; +6 · 12 · 6 s | **Lamp-Wisp** *lum teth* 1 wisp (+0.1 a rank) 30 s, an 8–12 mote each second at 5 tiles; +1/+2, +1 s · 18 · 12 s |
 | 2 (6; the shutters at 1) | **Shutter the Lantern** *lum un ka* (level 1): shut, the lantern's and the aura's light go and the Light spell goes out; again, open · 0 · 1 s | **Hearth Circle** ← Hearthlight *hesk orum* r3 for 10 s: you mend 4/s inside, foes walk 20% slower, the Hush cannot rise; +1/s, r+0.05 · 24 · 14 s | **Moth-Kin** ← Wisp (passive): the kin's motes +10%; +3% |
 | 3 (12) | **Banish** ← Flash *lum un* 30–46 to one within 6 tiles; one of the dead at ≤ 25% life after it is unmade (a boss of the dead takes ×1.5 instead); +6/+9 · 22 · 6 s | **Lantern Ward** ← Hearthlight *lum hesk ka* absorbs 50 for 12 s; breaking, it blinds all within 3 tiles 2 s (bosses ⅕); +10, +0.3 s · 20 · 18 s | **Beacon** ← Wisp *lum dra* a lantern on a pole 12 s, a 6–10 mote each second at 5 tiles, a fixed light; +2/+3, +0.3 s · 26 · 16 s |
 | 4 (18) | — | **Last Light** ← Hearth Circle (passive): once every 600 s a fatal blow leaves you at 1 life, 3 s untouchable; +0.1 s | — |
