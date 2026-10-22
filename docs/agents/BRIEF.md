@@ -20,6 +20,9 @@ zone or lore, read `docs/world/canon.md` (the canon bible) and `docs/world/campa
 build" queue). Build quests from that queue, and reuse canon names, motives and planted clues, never inventing new
 ones that clash. Record anything new in canon.md's registries. If something must contradict canon, stop and flag it
 in your report. The DM role is `~/.claude/agents/dungeon-master.md`; the coordinator has it review lore-heavy branches.
+**Zones feel like a dark D&D dungeon** (owner, 2026-10-22); towns and hearths stay cozy as the safe light. Making or
+editing a zone? Its entry in canon.md's **Zone bible** is your brief: mood, lighting, set dressing, sounds, encounters
+and hidden rewards.
 New player text goes in LAZY i18n tables, EN + ES. Saved state only through the save gateway, merge-safe.
 Never push, deploy, or touch `firestore.rules`, `functions/`, or market flags.
 
