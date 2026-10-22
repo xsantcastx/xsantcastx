@@ -157,7 +157,7 @@ export const PATHS = {
 /** The bar each vocation wants, best first; the first four it holds a rank in go on the keys. */
 const BARS = {
   warlock: ['meteor', 'hellfire-nova', 'ember-curse', 'dark-ward', 'drain-life'],
-  ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'ash-stride', 'shield-oath', 'shield-bash'],
+  ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'shield-oath', 'ash-stride', 'shield-bash'],
   lanternwright: ['banish', 'lamp-wisp', 'hearthlight', 'dawn-at-noon', 'beacon', 'blinding-flash', 'lantern-ward'],
   thornstrider: ['barbed-shot', 'volley', 'command', 'stampede', 'call-of-the-wilds', 'thornroot-snare'],
 };
@@ -581,6 +581,11 @@ function gapCell(voc, level, gap, count, runs) {
 
 export const BANDS = {
   normal: [2, 5], champion: [15, 40], unique: [30, 75], boss: [60, 150], seam: [120, 240],
+  /**
+   * The Ashguard's floor on a pack band, × the band's: his blade strikes the whole arc, so he clears a pack in about
+   * half the ranged vocations' time — his identity (owner 2026-10-21, skill-trees.md), not a bug to tune away.
+   */
+  ashPackFloor: .75,
   /** Death-rate ceilings: a creature at his level (near never), a pack, a first attempt at a boss / the Seam Eater. */
   normalDeath: .02, packDeath: .1, bossDeath: .3, seamDeath: .3,
   /** A kiting ranged Keeper is struck at least this many times a boss fight (no boss can be walked away from). */
@@ -699,8 +704,9 @@ for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);
   if (c.normal.death > BANDS.normalDeath) fails.push(`${voc} L${L}: a creature at his level kills him ${pct(c.normal.death)} of the time`);
-  if (!inBand(c.champion.ttk, BANDS.champion)) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${BANDS.champion.join('–')} s)`);
-  if (!inBand(c.unique.ttk, BANDS.unique)) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${BANDS.unique.join('–')} s)`);
+  const pack = band => voc === 'ashguard' ? [band[0] * BANDS.ashPackFloor, band[1]] : band;
+  if (!inBand(c.champion.ttk, pack(BANDS.champion))) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${pack(BANDS.champion).join('–')} s)`);
+  if (!inBand(c.unique.ttk, pack(BANDS.unique))) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${pack(BANDS.unique).join('–')} s)`);
   for (const [what, x] of [['champion pack', c.champion], ['unique pack', c.unique]]) if (x.death > BANDS.packDeath) fails.push(`${voc} L${L}: a ${what} kills him ${pct(x.death)} of the time (≤ ${pct(BANDS.packDeath)})`);
 }
 for (const voc of VOCATIONS) table[voc].bosses.forEach(b => {

@@ -548,7 +548,7 @@ median sitting in the gap between them flipped on a two-tick change anywhere in 
 | What | Band |
 |---|---|
 | A creature at his level (every kind of every zone whose band holds his level, raised to it: §14) | 2–5 s; falls ≤ 2% |
-| A champion pack / a unique pack | 15–40 s / 30–75 s; falls ≤ 10% |
+| A champion pack / a unique pack | 15–40 s / 30–75 s (the Ashguard's floor ×0.75: his arc clears packs, his identity); falls ≤ 10% |
 | A floor boss at its level, first attempt | 60–150 s; falls ≤ 30% |
 | The Seam Eater on Normal (its rifts: 20, 30, 40, 55) | 2–4 min; falls ≤ 30% |
 | The Seam Eater on Nightmare / Hell: a Keeper 5 / 15 levels above it, in resist gear (rares / epics, its arcane first, a belt of 16 + 16) | falls ≤ 35% / ≤ 50%; never softer than Normal |

@@ -32,8 +32,10 @@ two bosses fall in ~120 s (were ~155).
 A third, on 2026-10-22: the D2 zone levels (`td-zones`) put every creature a level-5 Keeper hunts at level 5, and his
 champion packs crept to the band's edge (34 → 46 s). **Blinding Flash** 28–42 (was 8–12; +2/+3 a rank unchanged) — it
 leaves the bar for Banish at 12, so only the first levels feel it: packs at 5 in ~37 s, the first two bosses in ~109 s.
-The sim's Ashguard puts Ash Stride on his bar (over the Shield Oath), as a melee Keeper would against the zones'
-casters.
+A fourth, the same day: that bar swap (Ash Stride over the Shield Oath, to chase the zones' casters) starved his
+defence — a level-20 Ashguard hunting level-25 creatures fell in 75% of hunts, 83% once line of sight landed. The
+sim's Ashguard keeps the Shield Oath again; instead **Watch Blade** grows +1/+3 a rank (was +1/+2), which lifts his
+single-foe time at 40 back inside the ±25% (3.7 → 3.0 s; hunts five levels up 50%).
 
 **The Ashguard's packs (owner, 2026-10-21: kept as his identity).** His blade strikes everything in its arc, so he
 clears a champion pack in about half the ranged vocations' time (~14 s against ~25–35 s at level 20). That is the
@@ -94,7 +96,7 @@ bought ranks. The basic attack is the **Watch Blade**: a swing in a 110° arc in
 
 | Tier (level) | Brand (fire on the blade) | Oath (shield, taunt, guard) | Ash (endurance) |
 |---|---|---|---|
-| 1 (1) | **Watch Blade** (passive swing) 9–14 +1/+2 · **Ember Brand** *brann vael sha* 8 s: blows +40% as fire and a 6 burn over 3 s; +4%, +1, +0.3 s · 12 · 12 s | **Shield Bash** *brann mur* 10–16 and a 1.2 s stun (bosses ⅕); +2/+3, +0.05 s · 8 · 6 s · **Shield Oath** *brann ka* 6 s: blocks 30% of blows whole; +1%, +0.2 s · 12 · 16 s | **Ash Stride** *brann sha* charge 3 tiles, 80% of a blow, knock back 1 tile (not bosses); +5%, +0.05 tile · 10 · 7 s · **Watchfire** (aura) *brann hesk ka* +10 Defense, 1 life/s; +3, +0.2 |
+| 1 (1) | **Watch Blade** (passive swing) 9–14 +1/+3 · **Ember Brand** *brann vael sha* 8 s: blows +40% as fire and a 6 burn over 3 s; +4%, +1, +0.3 s · 12 · 12 s | **Shield Bash** *brann mur* 10–16 and a 1.2 s stun (bosses ⅕); +2/+3, +0.05 s · 8 · 6 s · **Shield Oath** *brann ka* 6 s: blocks 30% of blows whole; +1%, +0.2 s · 12 · 16 s | **Ash Stride** *brann sha* charge 3 tiles, 80% of a blow, knock back 1 tile (not bosses); +5%, +0.05 tile · 10 · 7 s · **Watchfire** (aura) *brann hesk ka* +10 Defense, 1 life/s; +3, +0.2 |
 | 2 (6) | **Cinder Cleave** ← Brand *brann vael mur*: a 160° arc 2 tiles deep, 100% as fire; +4% · 14 · 5 s | **Watch Cry** ← Bash *brann orum*: taunts all within 4 tiles 3 s (bosses ⅕), you take 15% less; +0.1 s, +0.5% · 10 · 10 s | — |
 | 3 (12) | — | **Hold the Line** ← Oath (passive): below 40% life, +20% Defense; +2% | **Ember Blood** ← Watchfire (passive): 3% of damage dealt heals; +0.2% |
 | 4 (18) | **Whirl of Cinders** ← Cleave *vael orum brann*: 4 turns in 2 s, each 60% as fire in r2; +4%, r+0.05 · 26 · 10 s | — | — |
@@ -115,8 +117,8 @@ then the Brand's %, then spell power (level, Spell Damage worn). The weapon's *p
 plus a quarter of its Spell Damage % (the affixed head stat): `flat = round(3 × max(0, power − 1))`, `mult = 1`.
 The starter Basalt Edge (Strike 1) is power 1, so it adds nothing and swings exactly the numbers the book shows. With
 **nothing in hand** the Keeper fights bare-handed: `flat = 0`, `mult = 0.85` (a fifth lighter, still a swing).
-Examples, Watch Blade rank 5 (13–22 base, power ×1): bare hands 11–19 · Basalt Edge 13–22 · Dawnrender (Strike 1.7)
-15–24 · a rare with 12% Spell Damage (power 3, flat +6) 19–28, and its 12% lifts the spell power on top. Cinder Cleave,
+Examples, Watch Blade rank 5 (13–26 base, power ×1): bare hands 11–22 · Basalt Edge 13–26 · Dawnrender (Strike 1.7)
+15–28 · a rare with 12% Spell Damage (power 3, flat +6) 19–32, and its 12% lifts the spell power on top. Cinder Cleave,
 the Whirl and Ash Stride roll the same blow (their % of it), so the weapon counts in all of them. Shield Bash is the shield's
 and keeps its own roll.
 
