@@ -42,7 +42,10 @@ export class ConsentService {
   private setDefaultConsent(): void {
     // Default to denied for GDPR compliance (Spain/EU)
     window.gtag!('consent', 'default', {
+      // Consent Mode v2. The ad signals are never granted: there are no ads.
       ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
       analytics_storage: 'denied',
       functionality_storage: 'denied',
       security_storage: 'granted' // Security storage is always granted

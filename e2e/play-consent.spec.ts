@@ -6,8 +6,10 @@
  *     the bar's height, so the bar's rect meets neither the canvas (and so no
  *     stall hit box), the action bar, the touch row, the Hearth pill nor the
  *     goal line — at 1280×800 and on a 390×844 phone.
- *   - Nothing optional loads before the answer: no gtag.js / Google Analytics
- *     request, no consent key stored. Accept and Essential Only are the same
+ *   - Google Consent Mode v2 (advanced): before an answer, and after Essential
+ *     Only, every GA hit is a cookieless ping with analytics storage denied
+ *     (gcs=G100) and no _ga cookie is ever written; no consent key is stored
+ *     until the player answers. Accept and Essential Only are the same
  *     size, both keyboard reachable; Space on a focused button presses it (the
  *     engine does not take it as a jump). The answer persists as before, and
  *     answering gives the frame its full height back.
@@ -55,6 +57,15 @@ function recordAnalytics(page: Page): string[] {
   const hits: string[] = [];
   page.on('request', (req: Request) => { if (ANALYTICS.test(req.url())) hits.push(req.url()); });
   return hits;
+}
+
+/** GA hits whose consent state is anything but "analytics storage denied". */
+function grantedHits(hits: string[]): string[] {
+  return hits.filter(u => /\/g\/collect/.test(u) && new URL(u).searchParams.get('gcs') !== 'G100');
+}
+
+async function gaCookies(page: Page): Promise<string[]> {
+  return (await page.context().cookies()).map(c => c.name).filter(n => n.startsWith('_ga'));
 }
 
 async function assertBarClear(page: Page, sizeLabel: string, hud: string[]): Promise<Rect> {
@@ -109,8 +120,8 @@ test.describe('the consent bar on /play at 1280×800', () => {
     await openPlay(page);
     await assertBarClear(page, '1280×800', ['.prompt', '.dock', '.hearth-pill', '.guide', '.satchel', '.vitals']);
     expect(await page.evaluate(k => localStorage.getItem(k), CONSENT_KEY)).toBeNull();
-    expect(await page.locator('script[src*="googletagmanager"]').count()).toBe(0);
-    expect(analytics, 'no analytics request before an answer').toEqual([]);
+    expect(grantedHits(analytics), 'before an answer, only consent-denied pings').toEqual([]);
+    expect(await gaCookies(page), 'no GA cookie before an answer').toEqual([]);
 
     // Keyboard: both buttons are in the tab order; Space presses the focused one
     // and the Keeper does not jump.
@@ -128,7 +139,8 @@ test.describe('the consent bar on /play at 1280×800', () => {
     await openPlay(page);
     await expect(page.locator('.cookie-banner')).toHaveCount(0);
     await page.waitForTimeout(500);
-    expect(analytics, 'Essential Only loads no analytics').toEqual([]);
+    expect(grantedHits(analytics), 'Essential Only: only consent-denied pings').toEqual([]);
+    expect(await gaCookies(page), 'Essential Only writes no GA cookie').toEqual([]);
   });
 });
 
@@ -138,13 +150,13 @@ test.describe('the consent bar on /play on a 390×844 phone', () => {
 
   test('first visit: docked under the frame, clear of the action bar, touch row, pill and goal line; Accept persists', async ({ page }) => {
     const analytics = recordAnalytics(page);
-    // Never reach the network for gtag.js, even after Accept.
+    // Keep the test off Google's servers; the requests are still recorded.
     await page.route(ANALYTICS, route => route.abort());
     await firstVisit(page);
     await openPlay(page);
     await assertBarClear(page, '390×844', ['.prompt', '.touch-move', '.touch-act', '.dock', '.hearth-pill', '.guide', '.satchel', '.vitals']);
     expect(await page.evaluate(k => localStorage.getItem(k), CONSENT_KEY)).toBeNull();
-    expect(analytics, 'no analytics request before an answer').toEqual([]);
+    expect(grantedHits(analytics), 'before an answer, only consent-denied pings').toEqual([]);
 
     await page.locator('.cookie-banner--world .btn-accept').tap();
     await expect(page.locator('.cookie-banner')).toHaveCount(0);

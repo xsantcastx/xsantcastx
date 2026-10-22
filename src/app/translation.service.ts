@@ -211,7 +211,7 @@ export class TranslationService {
     // Cookie Banner / GDPR Consent
     'cookies.banner.title': { en: 'Cookie preferences', es: 'Preferencias de cookies' },
     'cookies.banner.description': { en: 'Tiny analytics breadcrumbs help us see which stars get visited most.', es: 'Pequenas migas de analytics nos ayudan a ver que estrellas se visitan mas.' },
-    'cookies.banner.details': { en: 'No personal data is sold or shared — we just count footsteps in the cosmos.', es: 'No se vende ni se comparte ningun dato personal — solo contamos pisadas en el cosmos.' },
+    'cookies.banner.details': { en: 'Decline and we still count visits anonymously — no cookies, nothing that identifies you. Nothing is ever sold.', es: 'Si rechazas, solo contamos visitas de forma anonima — sin cookies ni nada que te identifique. Nunca se vende nada.' },
     'cookies.accept': { en: 'Accept Analytics', es: 'Aceptar Analytics' },
     'cookies.deny': { en: 'Essential Only', es: 'Solo Esenciales' },
     'cookies.later.aria': { en: 'Not now — ask me next visit', es: 'Ahora no — preguntame en la proxima visita' },
