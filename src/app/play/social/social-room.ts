@@ -1,6 +1,7 @@
 import type { CoopAreas, CoopHit, CoopHitsMsg, CoopSnapBody, CoopSnapMsg } from './coop-protocol';
 import type { CoopPal } from './coop-pals';
 import type { OfferItem } from '../trade/trade-items';
+import type { WorldGroundMsg, WorldTakeResult } from './world-protocol';
 
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
@@ -44,6 +45,8 @@ export interface RoomSnapshot {
   coop?: CoopAreas | null;
   /** Protocol 6: trade requests waiting on this Keeper's answer, the open trade window, what lies on the ground here. */
   tradeAsks?: RoomTradeAsk[]; trade?: RoomTrade | null; ground?: { area: string; items: RoomGround[] };
+  /** Protocol 7: the room runs the world here (this Keeper said `world: true` and the room has the world on). */
+  world?: boolean;
 }
 /** The room's trading and shared ground (protocol 6; the trade Function moves things: functions-game/src/trade-core.ts). */
 export const TRADE_PROTOCOL = 6;
@@ -116,9 +119,17 @@ export interface RoomOptions {
   onTradeEnd?: (end: RoomTradeEnd) => void;
   /** Protocol 6: a trade request was declined. */
   onTradeNote?: (note: { kind: 'declined'; name: string }) => void;
+  /** Protocol 7: the room's ground in this Keeper's area (the whole list, or what came and went). */
+  onWorldGround?: (msg: WorldGroundMsg) => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
+/**
+ * The room-run world (protocol 7) and the ids of its ground: the same values as world-protocol.ts (room-world.spec
+ * checks they agree). Kept here as values so this file imports nothing at run time.
+ */
+export const ROOM_WORLD_PROTOCOL = 7;
+export const ROOM_DROP_ID = /^td:surface:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
 
 /** The Hearth room's service (scripts/social-deployment.md). */
 export const HEARTH_URL = 'https://eclipse-hearth-773269119730.us-central1.run.app';
@@ -241,7 +252,7 @@ export class SocialRoom {
       if (generation !== this.generation || this.wanted !== wanted) return;
       const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
-        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
       let response = await join(idToken);
       // A token the room will not take: in as a guest rather than not at all.
@@ -260,7 +271,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -382,6 +393,45 @@ export class SocialRoom {
     if (data['type'] === 'coop-snap' && typeof data['from'] === 'string' && Array.isArray(data['mobs'])) this.options.onCoopSnap?.(data as unknown as CoopSnapMsg);
     if (data['type'] === 'coop-hits' && typeof data['from'] === 'string' && Array.isArray(data['hits'])) this.options.onCoopHits?.(data as unknown as CoopHitsMsg);
     if (data['type'] === 'coop-pals' && typeof data['from'] === 'string' && typeof data['area'] === 'string' && Array.isArray(data['pals'])) this.options.onCoopPals?.(data as unknown as { from: string; area: string; pals: CoopPal[] });
+    // Protocol 7: the room's ground (play/social/world-protocol.ts). Ids the room would not hand out are dropped.
+    if (data['type'] === 'world-ground' && typeof data['area'] === 'string') {
+      const ok = (l: unknown) => (Array.isArray(l) ? l : []).filter(g => g && typeof g === 'object' && ROOM_DROP_ID.test(String((g as { id?: unknown }).id)) && Number.isFinite((g as { x?: unknown }).x) && Number.isFinite((g as { y?: unknown }).y));
+      const msg: WorldGroundMsg = { area: data['area'] as string };
+      if (Array.isArray(data['items'])) msg.items = ok(data['items']);
+      if (Array.isArray(data['add'])) msg.add = ok(data['add']);
+      if (Array.isArray(data['gone'])) msg.gone = (data['gone'] as unknown[]).filter((id): id is string => typeof id === 'string');
+      this.options.onWorldGround?.(msg);
+    }
+  }
+  /** The room runs the world (protocol 7) and this Keeper is in it. */
+  get canWorld(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= ROOM_WORLD_PROTOCOL && this.snapshot.world === true; }
+  /**
+   * Reach for a piece of the room's ground: the room answers from memory (the first allowed Keeper wins). The answer
+   * carries the loot to grant; a refusal says why ('gone': someone else was first). 'offline' when the room is out of reach.
+   */
+  async worldTake(id: string): Promise<WorldTakeResult> {
+    if (!this.canWorld || !this.token || this.paused || !ROOM_DROP_ID.test(id)) return { ok: false, why: 'offline' };
+    try {
+      const response = await this.send(`${this.endpoint}/world/take`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify({ id }), signal: AbortSignal.timeout(6000),
+      });
+      if (response.status === 429) return { ok: false, why: 'busy' };
+      if (!response.ok) return { ok: false, why: 'offline' };
+      const r = await response.json() as WorldTakeResult;
+      return r && typeof r === 'object' && (r.ok === true ? !!r.drop && r.drop.id === id : typeof r.why === 'string') ? r : { ok: false, why: 'offline' };
+    } catch { return { ok: false, why: 'offline' }; }
+  }
+  /** The satchel could not hold what the room handed over: it lies on the ground again. */
+  async worldReturn(id: string): Promise<boolean> {
+    if (!this.canWorld || !this.token || !ROOM_DROP_ID.test(id)) return false;
+    try {
+      const response = await this.send(`${this.endpoint}/world/return`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify({ id }), signal: AbortSignal.timeout(6000),
+      });
+      return response.ok && (await response.json() as { ok?: boolean }).ok === true;
+    } catch { return false; }
   }
   /** The room shares creatures (protocol 5) and the Keeper is in it. */
   get canCoop(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && !!this.snapshot.party; }
@@ -392,7 +442,8 @@ export class SocialRoom {
   /** Post this Keeper's own companions to the party in its area. */
   coopPals(body: { area: string; pals: CoopPal[] }): Promise<boolean> { return this.coopPost('pals', body); }
   private async coopPost(verb: 'snap' | 'hits' | 'pals', body: unknown): Promise<boolean> {
-    if (!this.canCoop || !this.token || this.paused) return false;
+    // Claims also go to the room itself where it runs the world (protocol 7), party or not.
+    if (!(this.canCoop || (verb === 'hits' && this.canWorld)) || !this.token || this.paused) return false;
     try {
       const response = await this.send(`${this.endpoint}/coop/${verb}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
@@ -604,7 +655,7 @@ export class SocialRoom {
     const { pals: _pals, ...moved } = body as typeof body & { pals?: string };
     const key = JSON.stringify(moved), t = this.now(), since = t - this.lastUpdate;
     // Sharing creatures (protocol 4), the host aims at where members stand: their presence goes a little oftener.
-    if (since < (this.canCoop ? COOP_MOVE_MS : MOVE_MS)) return;
+    if (since < (this.canCoop || this.canWorld ? COOP_MOVE_MS : MOVE_MS)) return;
     if (key === this.lastBody && since < HEARTBEAT_MS) return;
     const generation = this.generation;
     this.updating = true; this.lastUpdate = t; this.lastBody = key;

@@ -24,7 +24,9 @@ async function freePort(): Promise<number> {
 export async function startHearth(origin: string, script = path.join(__dirname, '..', 'scripts', 'social-server.mjs'), env: Record<string, string> = {}): Promise<Hearth> {
   const port = await freePort();
   const child: ChildProcess = spawn(process.execPath, [script], {
-    env: { ...process.env, PORT: '', SOCIAL_HOST: '127.0.0.1', SOCIAL_PORT: String(port), SOCIAL_ORIGINS: origin, ...env },
+    // The room-run world (protocol 7) is off unless a spec asks for it (SOCIAL_WORLD: '1'): the older specs test the
+    // party host's election on the island, which the room takes over where it runs the world.
+    env: { ...process.env, PORT: '', SOCIAL_HOST: '127.0.0.1', SOCIAL_PORT: String(port), SOCIAL_ORIGINS: origin, SOCIAL_WORLD: '0', ...env },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise<void>((resolve, reject) => {

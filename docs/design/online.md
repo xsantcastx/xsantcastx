@@ -60,7 +60,7 @@ per session and pushed by the room, never polled.
 | 5 | **Co-op encounters** — party quests/dailies, group bosses (Seam Eater) with scaling, personal loot, host-authority dungeons | L | ⚑ hearth redeploy |
 | 6 | **Trading** + **shared ground drops** — two-sided confirm window, atomic Gold/item swap; Tibia drops everyone sees | M–L (built, §4c) | ⚑ Functions + ⚑ rules + ⚑ hearth (protocol 6) |
 | 7 | **Leaderboards** | S–M | ⚑ rules + ⚑ Functions (scheduled) |
-| 8 | **Scale-out** — WebSocket, per-area rooms/shards, persistence, moderation tooling | L | ⚑ Cloud Run config, maybe a new host |
+| 8 | **The room simulates** (protocol 7, §4d): server-run creatures, loot and ground on the island (M1); then trades, more areas, WebSocket | L | ⚑ hearth redeploy only (no billing change) |
 
 Moderation (§3.9) is not a phase of its own: each phase ships the moderation it needs (rate limits and validation now,
 block/mute/report with friends, guild kick/ranks with guilds, ban checks once auth lands).
@@ -318,6 +318,95 @@ monotonic-XP guard on `progress/state` is unchanged.
 | Hearth | `scripts/social-server.mjs` protocol 6; `social-identity.mjs` `openTrade`/`groundItem`; fake: `scripts/trade-fake.mjs` |
 | Client | `play/trade/` (`trade-items`, `trade-flow`, `trade-backend.service`, `trade-hud.component`, `trade.i18n`); `social-room.ts` verbs; td-engine `setSharedGround`; gateway `syncNow`/`pullKeys`; inventory `serverSeq`; economy `receive-gold` |
 | Tests | `scripts/trade-core.test.mjs` (13), `social-server.test.mjs` (3 new), karma `trade-merge.spec` (5) + `trade-flow.spec` (5), e2e `e2e/td-trade.spec.ts` |
+
+## 4d. Phase 8: the room simulates (protocol 7) — design and M1 as built
+
+Owner, 2026-10-22: *"the server owns the world, so everyone sees the same monsters and cheating is hard."* Hosting
+stays **option A**: Cloud Run `eclipse-hearth`, us-central1, 1 vCPU / 512 MiB, request-based billing, min 0, max 1,
+session affinity. Nothing billed changes; a ~2 s cold start is accepted.
+
+**Transport: SSE down + JSON POST up, kept (not WebSocket yet).** Cloud Run does carry WebSockets, but: the room has no
+dependencies and Node ships no WebSocket server (a hand-rolled RFC 6455 framer is risk for no gain at 8 Hz); every
+deployed client, the protocol-6 trade flow and the CSP already speak SSE+POST; and billing is the same (an open SSE
+stream and an open socket both hold the instance's CPU). Latency of an intent is one HTTPS POST on a kept-alive
+HTTP/2 connection to `run.app` — the same RTT a socket frame would pay. Revisit when per-message overhead shows up in
+the bill or the profile (M3).
+
+**The room is the host.** The client already treats "the host" as an id the room names (§3.4): in a **world area** the
+room names the reserved id `@room` and plays the host's part itself, on the protocol-5 wire, so a client draws the
+room's creatures exactly as a party member draws its host's. The simulation is the game's **own** code, not a port:
+`src/app/play/world/room-world.ts` runs `MobSystem` (AI, shots, bursts, elites, calls, the damage path), the island's
+spawn tables (`TdWorld.spawnsIn`), zone levels, the sky, `MobSystem.spoils` (Gold, materials, potions, Blanks) and the
+gear table (`drop-tables`). `scripts/world-sim-build.mjs` bundles that module and its imports into one plain ES module
+for the image (`world-sim.generated.mjs`, built at deploy, git-ignored); tests and a local room compile it in memory.
+
+**Protocol 7 (new on top of 6).**
+
+| | |
+|---|---|
+| join | `world: true` (an older client never says it) → the reply's `world: true` when the room runs the world |
+| `coop` event | as protocol 5; in a world area the entry is `{host: '@room', term, members: [everyone of the world there]}` — party or not |
+| `coop-snap` | from `@room`, **one delta encoder per Keeper** (the creatures within 24 tiles of *that* Keeper, ≤48, nearest first), 8 Hz; its bites, the kills near it, shots and bursts near it |
+| `POST /coop/hits` | a Keeper's blows as claims `{area, hits}` → weighed by the room (below); `/coop/snap` from a Keeper in a world area → 409 |
+| `world-ground` event | `{area, items}` on arrival / stream open, else `{add}` / `{gone}`; each piece `{id, x, y, m (its creature), coins / material+qty / item / rune, label, color, own[], free ms}` |
+| `POST /world/take {id}` | the first allowed Keeper wins, answered from memory → `{ok, drop}` or `{ok:false, why: gone/owned/far/area}`; 40 / 5 s |
+| `POST /world/return {id}` | a satchel too full to hold it: it lies again (the taker only, within a minute) |
+| `/health` | `protocol: 7`, `world: {areas, awake: [{area, keepers, creatures, ground}]}` |
+
+**Rooms per area.** `WORLD_AREAS` names the areas the room runs (**M1: `ember-isle`**, the Seamworks island's surface).
+Each awake area is one `RoomWorld` (20 ticks a second, 8 snapshots a second to each Keeper). Everywhere else nothing
+changed: party co-op (protocol 5) elects a player host as before; in a world area a Keeper of the world is never elected.
+
+**The authority boundary.**
+
+| Now (M1) — the room decides | Still client-trusted (M2+) |
+|---|---|
+| creature life, AI, movement, spawns and respawn timers on the island | the Keeper's own life (bites land through its own defenses on its screen) |
+| every hit on a creature: a claim is bounded by the room's own record — within 16 tiles of where the room last saw the Keeper, a clear line of sight beyond 2.5 tiles, at most `40 + 20 × level` a second over a rolling 3 s (clipped) | the size of a blow within that budget (the client computes it from its gear; the room only bounds it) |
+| deaths, and who fought (who may take the loot first) | Hunting XP and Gold credited to the save (paid by the client on the room's kill / take, through the same idempotent doors) |
+| **loot rolls** (once per kill, from the room's seeded stream: the pile, materials, potions, Blanks, gear rarity and base) and the **ground** (who may take, first come) | an item's affixes (minted at pickup from the player's seed + the room's drop id, as every drop is) |
+| the level the room believes: what the Keeper reports, but rising at most 3 a minute | the reported level itself (M2: read the save's XP at join) |
+
+**Speed.** A pick removes the piece from the screen at once and floats its label (client-perceived 0 ms); the room
+answers from memory (measured below); a yes grants it through the normal pickup door, a no puts it back (or says
+*"Someone else picked that up."*). Ground persistence is written in the background, never on the take's path.
+
+**Sleep and persist.** An area with no Keeper streaming for 30 s goes to sleep: its ground (absolute expiry) and its
+resting spawns (absolute end) are written to `world-rooms/{area}` (one document, one JSON field, by the service account;
+firestore.rules' deny-all already refuses every client) and the world is dropped from memory. The next Keeper wakes it
+(one read). While awake it is written at most once a minute when it changed, and on SIGTERM (Cloud Run's scale-to-zero
+gives ten seconds). Creatures themselves are not kept: they rise again from the spawn tables.
+
+**Anti-cheat, M1.** Unknown keys refused, ids and numbers bounded (the protocol-5 validators); claims: range, sight,
+budget, the creature must live; takes: the id format, reach (10 tiles of the room's record, the coin magnet's 8 + slack),
+ownership window (20 s for its fighters), first wins; snapshots from a Keeper in a world area refused; the level rise cap;
+the room's ground ids never collide with a client's (`td:surface:w.<area>.<boot>.<n>`). Rate limits as protocol 5/6.
+
+**Old clients.** A protocol-6 client never says `world: true`: it is never hosted by the room, never sent `@room`
+snapshots or `world-ground`, and keeps simulating its own creatures on the island exactly as before. It still sees the
+world's Keepers as peers (presence is unchanged) and can party, trade and drop. A party mixing old and new clients on
+the island: the old ones elect among themselves; the new ones are the room's.
+
+**Migration of what exists.** Protocol 5 (party host authority) stays for every area the room does not run, and its
+wire *is* the world's. Protocol 6 (trades, player ground drops through `tradeApi` escrow) is unchanged in M1: a player's
+own dropped item still goes through the Function's transaction (dupe-proof); the room's loot is a separate ground the
+room owns. M2 moves trades into the room (settled from memory, one atomic Firestore commit for durability) and player
+drops onto the room's ground with the same escrow write in the background.
+
+**M2+ (planned, not built).** (1) Trades in the room: the room holds both offers, settles in memory, writes one commit
+(both inventories, both ledgers, the audit) — the trade-core checks reused server-side. (2) More areas: `WORLD_AREAS`
+grows island by island, then floors (each a RoomWorld keyed by level id; dungeons per party instance). (3) Party
+persistence across relog (party id in `users/{uid}/social/party`, re-joined on join). (4) Server-known stats: the
+Keeper's level and gear read from the save at join (one read), the claim's budget from its real damage. (5) The
+Keeper's life on the room (bites decided here, death and the corpse run from the room). (6) WebSocket once the bill or
+the profile asks for it.
+
+| Code | Where |
+|---|---|
+| The world (pure) | `src/app/play/world/room-world.ts`; wire `src/app/play/social/world-protocol.ts` |
+| The room | `scripts/social-world.mjs` (areas, wake/sleep, ticks, verbs); `social-server.mjs` protocol 7; bundle `scripts/world-sim-build.mjs` |
+| Client | `social-room.ts` (`world: true`, `worldTake`/`worldReturn`, `world-ground`); `td-coop.ts` (`@room` kills roll no loot; corpse ids); `td-mobs.ts` (`roomLoot`, room drops, `onRoomTake`); `td-engine.ts` (`setRoomGround`); HUD `roomTake` |
+| Tests | `scripts/social-world.test.mjs` (7: determinism, loot/ownership, forged intents, sleep/wake, two clients over HTTP, v6 compat, the store); karma `room-world.spec.ts`; e2e `e2e/td-world.spec.ts` |
 
 ## 5. Next phase recommended
 

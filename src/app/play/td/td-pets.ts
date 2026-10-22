@@ -93,6 +93,8 @@ export function pastLeash(pet: { x: number; y: number }, k: { x: number; y: numb
 
 /** May a pet carry this drop? Gear and runes only when the loot filter shows them; potions, materials and far coins always. */
 export function fetchable(g: Drop, filter: LootFilter): boolean {
+  // The room's ground (protocol 7) is taken where the room sees it lie, by the Keeper himself: a pet never carries it.
+  if (g.room) return false;
   if (g.item || g.rune) return shownUnderFilter(g.rarity ?? g.item?.rarity, filter);
   return g.coins > 0 || !!g.material;
 }

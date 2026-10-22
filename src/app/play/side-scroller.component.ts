@@ -14,6 +14,9 @@ import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { PROLOGUE_ROWS, PROLOGUE_WALK_TILES, type PrologueStep, guideFor, prologueStep, prologueView, tipKey } from './td/td-prologue';
 import { TD_PROLOGUE_I18N } from './td/td-prologue.i18n';
 import { TD_UX_I18N } from './td/td-ux.i18n';
+import { WORLD_I18N } from './world/world.i18n';
+import { ROOM_HOST, WORLD_PROTOCOL, type WorldDrop, type WorldGroundMsg } from './social/world-protocol';
+import type { Drop } from './td/td-mobs';
 import { TradeHudComponent, type TradeCard } from './trade/trade-hud.component';
 import { FitViewportDirective, type FitAnchor } from './fit-viewport.directive';
 import { HudDragDirective, resetHudLayout } from './hud-drag.directive';
@@ -970,8 +973,10 @@ export class SideScrollerComponent implements OnDestroy {
     const party = snapshot.party?.members.filter(id => id !== snapshot.id) ?? [];
     (this.engine as unknown as { setParty?: (ids: readonly string[]) => void } | undefined)?.setParty?.(party);
     // Shared creatures (protocol 4): the room's election, or nothing (an older room, no party: solo as before).
+    // Protocol 7: where the room runs the world it hosts every Keeper there, party or not (its election rides along).
+    const roomRun = (snapshot.protocol ?? 0) >= WORLD_PROTOCOL && snapshot.world === true && !!snapshot.coop && Object.values(snapshot.coop).some(a => a.host === ROOM_HOST);
     (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[]) => void } | undefined)
-      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && snapshot.party ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
+      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && (snapshot.party || roomRun) ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -1091,19 +1096,62 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private coopKilled(kill: CoopKill): 'full' | 'share' | 'none' {
     const here = (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number } } | undefined)?.peerPresence?.();
-    if (!here || !this.social.party) return 'none';
+    // Protocol 7: the room's kills pay anyone who fought them, party or not; a party's share goes through a mate who fought.
+    const room = kill.from === ROOM_HOST;
+    if (!here || (!this.social.party && !room)) return 'none';
     const r = this.coopRewards.decide(kill, { id: this.social.id, area: here.area, x: here.x, y: here.y });
     const el = this.canvas?.nativeElement;
-    if (r.kind === 'share') {
-      const name = this.social.players.find(p => p.id === kill.from)?.name ?? '';
-      const share = this.partyShare.accept({ id: kill.id, from: kill.from, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
+    const mate = room ? kill.by.find(id => id !== this.social.id && !!this.social.party?.members.includes(id)) : kill.from;
+    if (r.kind === 'share' && this.social.party && mate) {
+      const name = this.social.players.find(p => p.id === mate)?.name ?? '';
+      const share = this.partyShare.accept({ id: kill.id, from: mate, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
         { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
       el?.setAttribute('data-party-share', share.ok ? `+${share.xp}` : share.why);
       if (share.ok) { this.coopPaid.share++; this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name })); }
     }
     if (r.kind === 'full') this.coopPaid.full++;
     el?.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
-    return r.kind === 'none' ? 'none' : r.kind;
+    return r.kind === 'none' || (r.kind === 'share' && !mate) ? 'none' : r.kind;
+  }
+  /** Protocol 7: the room's ground here (the whole list on arrival, else what came and went). */
+  private worldGround(msg: WorldGroundMsg): void {
+    (this.engine as unknown as { setRoomGround?: (m: WorldGroundMsg, me: string) => void } | undefined)?.setRoomGround?.(msg, this.social.id);
+  }
+  /** Room takes answered (the e2e and the report read the timings: client-perceived 0 ms, then the room's round trip). */
+  private readonly worldTakes = { ok: 0, refused: 0, lastRtt: 0, lastServer: 0 };
+  /**
+   * Protocol 7: a piece of the room's ground was picked. It already left the screen (optimistic); the room is asked,
+   * and on a yes it is granted through the same door as any pickup (grantLoot). A no puts it back where it lay —
+   * unless someone else took it, which the Keeper is told. A satchel too full to hold it hands it back to the room.
+   */
+  private roomTake(g: Drop): void {
+    const engine = this.engine as unknown as { restoreRoomDrop?: (d: Drop, wait?: number) => void; tookRoomDrop?: (id: string) => void; takingRoomDrop?: (id: string) => void } | undefined;
+    engine?.takingRoomDrop?.(g.id);
+    const t0 = performance.now();
+    void this.room?.worldTake(g.id).then(r => this.zone.run(() => {
+      this.worldTakes.lastRtt = Math.round(performance.now() - t0);
+      const el = this.canvas?.nativeElement;
+      if (!r.ok) {
+        this.worldTakes.refused++;
+        el?.setAttribute('data-world-take', `no:${r.why}:${this.worldTakes.lastRtt}`);
+        if (r.why === 'gone') { engine?.tookRoomDrop?.(g.id); this.message = this.t('world.take.gone'); return; }
+        engine?.restoreRoomDrop?.(g, r.why === 'owned' ? 2 : 4);
+        if (r.why !== 'busy') this.message = this.t(`world.take.${r.why === 'owned' || r.why === 'far' ? r.why : 'offline'}`);
+        return;
+      }
+      this.worldTakes.ok++; this.worldTakes.lastServer = r.ms ?? 0;
+      el?.setAttribute('data-world-take', `ok:${this.worldTakes.ok}:${this.worldTakes.lastRtt}:${this.worldTakes.lastServer}`);
+      const d: WorldDrop = r.drop;
+      const granted = this.grantLoot({ id: d.id, coins: d.coins, ore: d.material ? d.qty : 0, ...(d.material ? { material: d.material } : {}), ...(d.item ? { item: { definitionId: d.item.definitionId, rarity: d.item.rarity as LootRarity, unique: d.item.unique, ...(d.item.level ? { level: d.item.level } : {}) } } : {}), ...(d.rune ? { rune: d.rune } : {}) });
+      if (granted === false) {
+        // The satchel is full: back to the room, and back on the ground here.
+        void this.room?.worldReturn(d.id);
+        engine?.restoreRoomDrop?.(g, 6);
+        this.message = this.t('world.take.full');
+        return;
+      }
+      engine?.tookRoomDrop?.(g.id);
+    }));
   }
   private partyNoted(note: RoomPartyNote): void {
     if (note.id === this.social.id && note.kind === 'kicked') { this.logGame(this.t('play.party.youKicked')); this.message = this.t('play.party.youKicked'); return; }
@@ -1527,6 +1575,8 @@ export class SideScrollerComponent implements OnDestroy {
         // Protocol 6: a trade window closed; a request was declined (play/trade).
         onTradeEnd: end => this.zone.run(() => { void this.tradeHud?.ended(end); }),
         onTradeNote: note => this.zone.run(() => this.tradeHud?.declined(note.name)),
+        // Protocol 7: the room's ground (a few times a minute; the engine lays it among the drops).
+        onWorldGround: msg => this.zone.run(() => this.worldGround(msg)),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -1564,6 +1614,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(TD_PROLOGUE_I18N);
     this.i18n.register(TD_UX_I18N);
+    this.i18n.register(WORLD_I18N);
     this.i18n.register(CORPSE_I18N);
     this.i18n.register(GAME_MENU_I18N);
     this.i18n.register(KEYS_I18N);
@@ -1604,9 +1655,9 @@ export class SideScrollerComponent implements OnDestroy {
       onStation: station => this.zone.run(() => this.openStation(station)),
       // Top-down: a town task giver spoken to (E, a tap): the talk window, or false to open the stall as usual.
       onTalk: keeperId => this.zone.run(() => this.talkTo(keeperId)),
-      onLoot: loot => this.zone.run(() => (loot.item || loot.rune ? this.collectGear(loot.id, loot)
-        : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
-        && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)))),
+      onLoot: loot => this.zone.run(() => this.grantLoot(loot)),
+      // Protocol 7: a piece of the room's ground was picked (it asks the room first; play/social/world-protocol.ts).
+      onRoomTake: drop => this.zone.run(() => this.roomTake(drop)),
       // What a kill drops on top of its area's table (shared/loot/drop-tables.ts). Outside the zone: pure rolls.
       rollLoot: kill => this.loot.rollLoot(kill).map((drop, i) => lootEntry(drop, `loot${i}`)),
       // The corpse run's purse, walked over: its Gold comes home.
@@ -1951,6 +2002,12 @@ export class SideScrollerComponent implements OnDestroy {
    * A gear or rune drop reached the Keeper: LootService mints it (the roll is
    * frozen then) or grants the rune. False leaves it shining on the ground.
    */
+  /** A pickup lands (a drop walked over or tapped, a corpse's, the room's): gear, a rune, a Gold pile, a material. False: it stays. */
+  private grantLoot(loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }): boolean {
+    return loot.item || loot.rune ? this.collectGear(loot.id, loot)
+      : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
+      && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore));
+  }
   private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }): boolean {
     const got = this.loot.grantDrop(dropId, loot);
     if (!got) return false;

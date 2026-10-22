@@ -67,10 +67,10 @@ async function room(t, options = {}) {
 const snap = (area, mobs = [], extra = {}) => ({ area, seq: 1, kf: true, mobs, ...extra });
 const wolf = (i = 'a1', more = {}) => ({ i, t: 'ash-wolf', k: 'w:3,4', x: 120, y: 140, f: 1, h: 30, m: 40, l: 6, ...more });
 
-test('protocol 5 and up: the health check and the join reply say the room\'s protocol (6 since trading)', async t => {
+test('protocol 5 and up: the health check and the join reply say the room\'s protocol (7 since the room-run world)', async t => {
   const { base, join } = await room(t);
   assert.ok(PROTOCOL >= 5);
-  assert.equal(PROTOCOL, 6);
+  assert.equal(PROTOCOL, 7);
   assert.equal((await (await fetch(`${base}/health`)).json()).protocol, PROTOCOL);
   assert.equal((await join('Arin')).protocol, PROTOCOL);
 });

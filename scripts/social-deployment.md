@@ -299,3 +299,43 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 `tradeApi` is called at `https://us-central1-xsantcastx-1694b.cloudfunctions.net/tradeApi/{execute|cancel|drop|pickup}`
 (already in firebase.json's `connect-src`; CORS allows the same four origins). `groundSweep` runs every 5 minutes and
 returns ground items past their 10 minutes to their droppers (the Cloud Scheduler job is created by the deploy).
+
+### Protocol 7 (the room simulates, 2026-10-22 — built; hearth deploys are pre-approved)
+
+`/health` and `/join` report `protocol: 7`; `/health` adds `world: {areas, awake}`. A client that knows the room-run
+world says `world: true` on `/join`. In a world area (`ember-isle` first) the room hosts the creatures itself — the
+game's own simulation, bundled into the image — and streams them on the protocol-5 wire from `@room`; `/coop/hits` from
+a Keeper there is weighed by the room; loot is rolled once and taken with `POST /world/take {id}` (first allowed Keeper
+wins; `/world/return {id}` when the satchel is full). Older clients never say `world: true` and keep protocol 6's
+behaviour. Full design: docs/design/online.md §4d.
+
+The image now holds five files: `social-server.mjs`, `social-identity.mjs`, `social-words.mjs`, `social-world.mjs`
+and `world-sim.generated.mjs`. The last is **built before the image** from the game's TypeScript (git-ignored):
+`node scripts/world-sim-build.mjs` (it runs one tick of the island first, so a broken bundle never ships). Without it
+the room starts with the world off (protocol 7, but every area behaves as protocol 6) and logs
+`world sources unavailable`.
+
+Firestore: the room writes `world-rooms/{area}` (what a sleeping area keeps: its ground and resting spawns), one read per
+wake and at most one write a minute while awake. Same service account as protocol 4; firestore.rules' deny-all already
+refuses every client. Nothing new to grant, no rules change.
+
+Billing: nothing changes. The command below sets no CPU, memory, min-instances or region flag, so the live values stay
+(1 vCPU / 512 MiB, min 0, max 1, request-based). The world ticks only while a Keeper's stream is open (that is when
+Cloud Run allocates CPU anyway) and an empty area sleeps after 30 s. Measured: ~0.03 ms a tick for one Keeper and
+~0.8 ms for 32 spread over the island (20 ticks a second: under 2% of a core), ~10 MB of heap.
+
+```sh
+gcloud run services describe eclipse-hearth --project xsantcastx-1694b --region us-central1 \
+  --format='value(spec.template.spec.containers[0].env)'
+node scripts/world-sim-build.mjs
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated --max-instances 1 --concurrency 80 --timeout 3600 --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":7 and a "world" entry
+```
+
+To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
+every area on protocol 6 behaviour).

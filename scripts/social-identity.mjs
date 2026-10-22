@@ -92,6 +92,9 @@ export function memoryStore(docs = new Map()) {
     // Protocol 6: a trade's binding (create only), and a ground item as the escrow holds it.
     async openTrade(id, doc) { if (docs.has(`trades/${id}`)) throw new Error('exists'); docs.set(`trades/${id}`, JSON.parse(JSON.stringify(doc))); },
     async groundItem(id) { const d = docs.get(`ground-items/${id}`); return d ? JSON.parse(JSON.stringify(d)) : null; },
+    // Protocol 7: what a sleeping area of the room-run world keeps (its ground, its spawns resting).
+    async worldLoad(area) { const d = docs.get(`world-rooms/${area}`); return d ? JSON.parse(d.json) : null; },
+    async worldSave(area, doc) { docs.set(`world-rooms/${area}`, { json: JSON.stringify(doc), savedAt: Date.now() }); },
   };
 }
 
@@ -184,6 +187,18 @@ export function firestoreStore({ projectId, fetch: get = fetch, now = Date.now, 
     async groundItem(id) {
       const doc = await call(`${api}/ground-items/${encodeURIComponent(id)}`);
       return doc ? fromValue({ mapValue: { fields: doc.fields ?? {} } }) : null;
+    },
+    // Protocol 7: a sleeping area of the room-run world (social-world.mjs). One document per area, the state as one
+    // JSON string (read once per wake, written on sleep and at most once a minute while it changes). No client reads
+    // or writes it: firestore.rules has no match for `world-rooms`, so every client request is refused.
+    async worldLoad(area) {
+      const doc = await call(`${api}/world-rooms/${encodeURIComponent(area)}`);
+      const json = doc?.fields?.json?.stringValue;
+      if (!json) return null;
+      try { return JSON.parse(json); } catch { return null; }
+    },
+    async worldSave(area, doc) {
+      await call(`${api}/world-rooms/${encodeURIComponent(area)}`, { method: 'PATCH', body: JSON.stringify({ fields: { json: toValue(JSON.stringify(doc)), area: toValue(area), savedAt: toValue(new Date(now())) } }) });
     },
   };
 }
