@@ -698,7 +698,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     reply(200, { ok: true });
   };
 
-  // ── Protocol 6: trading and ground drops (relay only; functions/src/trade-core.ts moves things). ──
+  // ── Protocol 6: trading and ground drops (relay only; functions-game/src/trade-core.ts moves things). ──
   /** Open trades by id, and asks waiting on an answer. */
   const trades = new Map();
   const asks = new Map();

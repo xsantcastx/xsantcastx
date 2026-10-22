@@ -63,6 +63,14 @@ export const STAT_UNIT: Readonly<Record<StatKey, number>> = {
   lightningResist: 8,
   arcaneResist: 8,
   allResist: 5,
+  attackDamage: 8,
+  attackSpeed: 6,
+  minDamage: 4,
+  maxDamage: 8,
+  lifeLeech: 1.5,
+  pierceChance: 6,
+  blockChance: 6,
+  skillRanks: 1,
 };
 
 export const STAT_AXIS: Readonly<Record<StatKey, BuildAxis>> = {
@@ -86,6 +94,14 @@ export const STAT_AXIS: Readonly<Record<StatKey, BuildAxis>> = {
   lightningResist: 'ward',
   arcaneResist: 'ward',
   allResist: 'ward',
+  attackDamage: 'strike',
+  attackSpeed: 'strike',
+  minDamage: 'strike',
+  maxDamage: 'strike',
+  lifeLeech: 'ward',
+  pierceChance: 'strike',
+  blockChance: 'ward',
+  skillRanks: 'lore',
 };
 
 export const AXIS_ARCHETYPE: Readonly<Record<BuildAxis, BuildArchetype>> = {

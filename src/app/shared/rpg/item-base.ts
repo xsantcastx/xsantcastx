@@ -12,6 +12,7 @@ import { ITEM_ICONS } from '../art/item-icons';
 import type { GearBase, GearLook } from '../art/gear-icons';
 import { definitionFor, type ItemDefinition } from './item-definition';
 import { ALL_CHARMS, type GameItem } from './item.model';
+import { DEFAULT_FAMILY, affixFamilyOf, isAffixSlot, type AffixFamily } from './item-affixes';
 
 /** The 16-px icon kinds that have a 32-px painter, and which. */
 const KIND_BASE: Readonly<Record<string, GearBase>> = {
@@ -91,4 +92,15 @@ export function gearLookOf(item: ItemRef): GearLook | null {
     };
   }
   return null;
+}
+
+/**
+ * The family a piece of gear rolls in (item-affixes.ts §3.6: a staff, a sword, a bow, a quiver, a shield, a focus,
+ * armour, a ring), from its definition — else its worn slot's default (an old row with no definition). Null for
+ * anything that is not gear.
+ */
+export function itemAffixFamily(item: ItemRef & { slot?: string }): AffixFamily | null {
+  const def = itemDefinitionOf(item);
+  if (def) return affixFamilyOf(def);
+  return isAffixSlot(item.slot) ? DEFAULT_FAMILY[item.slot] : null;
 }

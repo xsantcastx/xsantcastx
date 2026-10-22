@@ -25,7 +25,7 @@ export const ASHGUARD_SKILLS: Readonly<Record<AshSkillId, SkillDef>> = {
   // ── Brand: fire on the blade ──
   'watch-blade': {
     id: 'watch-blade', kind: 'passive', mana: 0, cd: .8, nameKey: 'skill.watch-blade', textKey: 'skill.watch-blade.text',
-    vars: { min: 9, max: 14, reach: 1.6, arc: 110 }, grow: { min: 1, max: 2 }, tree: 'brand', tier: 0, col: 0, req: null,
+    vars: { min: 9, max: 14, reach: 1.6, arc: 110 }, grow: { min: 1, max: 3 }, tree: 'brand', tier: 0, col: 0, req: null,
     icon: I('<rect x="11" y="1" width="3" height="2" fill="#f2f5fa"/><rect x="9" y="3" width="3" height="2" fill="#c3cad6"/><rect x="7" y="5" width="3" height="2" fill="#c3cad6"/><rect x="5" y="7" width="3" height="2" fill="#7d8796"/><rect x="2" y="7" width="3" height="1" fill="#c99a3e"/><rect x="5" y="10" width="1" height="3" fill="#c99a3e"/><rect x="3" y="9" width="2" height="2" fill="#6e4526"/><rect x="1" y="11" width="2" height="2" fill="#e2552a"/><rect x="12" y="10" width="1" height="1" fill="#ffb347"/><rect x="13" y="12" width="1" height="1" fill="#ffb347"/><rect x="10" y="13" width="1" height="1" fill="#e2552a"/>'),
   },
   'ember-brand': {

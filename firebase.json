@@ -5,7 +5,7 @@
   },
   "hosting": {
     "public": "dist/xsantcastx/browser",
-    "//trailingSlash": "Prerendering emits every route as <route>/index.html. With this key absent, Hosting falls back to its default 'trailing slashes only for directory index files' behaviour and 301s /home -> /home/, /tools/box-shadow-generator -> /tools/box-shadow-generator/, and so on for all 137 sitemap URLs. Every canonical tag SeoService writes omits the slash, so each canonical pointed at a URL that redirected — the sitemap advertised 137 redirects and Search Console files those as 'Page with redirect' instead of indexing them. false serves <route>/index.html at /route with no redirect and 301s the /route/ form back to /route, so canonical, sitemap and served URL finally agree. Safe here because no route exists as both <route>.html and <route>/index.html (that pair is what triggers the superstatic infinite-redirect bug).",
+    "//trailingSlash": "Prerendering emits every route as <route>/index.html. With this key absent, Hosting falls back to its default 'trailing slashes only for directory index files' behaviour and 301s /home -> /home/, /tools/box-shadow-generator -> /tools/box-shadow-generator/, and so on for all 137 sitemap URLs. Every canonical tag SeoService writes omits the slash, so each canonical pointed at a URL that redirected \u2014 the sitemap advertised 137 redirects and Search Console files those as 'Page with redirect' instead of indexing them. false serves <route>/index.html at /route with no redirect and 301s the /route/ form back to /route, so canonical, sitemap and served URL finally agree. Safe here because no route exists as both <route>.html and <route>/index.html (that pair is what triggers the superstatic infinite-redirect bug).",
     "trailingSlash": false,
     "ignore": [
       "firebase.json",
@@ -37,18 +37,18 @@
             "value": "camera=(), microphone=(), geolocation=()"
           },
           {
-            "//coop": "signInWithPopup opens a popup and then polls popupWin.closed to notice the visitor giving up on it. COOP decides whether that read is allowed: if the opener and the popup end up in different browsing context groups the reference is severed, the read throws, and Firebase reports the popup as closed by a user who never touched it. Set explicitly to same-origin-allow-popups rather than left unset, because unset is only safe by accident — the default is unsafe-none, and anything that later introduces a stricter default (a hardening pass on this file, a Hosting change, a browser shipping a stronger default) breaks sign-in with no code change and no error anybody would connect to it. same-origin-allow-popups keeps the cross-origin-opener protection for every other window while exempting the ones this page opens itself.",
-            "//coop-scope": "Deliberately NOT applied to the popup's own page: Firebase Hosting serves the reserved /__/* namespace ahead of this config and strips custom headers from it, verified by curl — /__/auth/handler comes back 200 with no CSP and no COOP. That is what makes this safe to add rather than a coin flip: a COOP landing on the auth handler could sever the postMessage that completes the sign-in, which would break the flow this is meant to protect.",
+            "//coop": "signInWithPopup opens a popup and then polls popupWin.closed to notice the visitor giving up on it. COOP decides whether that read is allowed: if the opener and the popup end up in different browsing context groups the reference is severed, the read throws, and Firebase reports the popup as closed by a user who never touched it. Set explicitly to same-origin-allow-popups rather than left unset, because unset is only safe by accident \u2014 the default is unsafe-none, and anything that later introduces a stricter default (a hardening pass on this file, a Hosting change, a browser shipping a stronger default) breaks sign-in with no code change and no error anybody would connect to it. same-origin-allow-popups keeps the cross-origin-opener protection for every other window while exempting the ones this page opens itself.",
+            "//coop-scope": "Deliberately NOT applied to the popup's own page: Firebase Hosting serves the reserved /__/* namespace ahead of this config and strips custom headers from it, verified by curl \u2014 /__/auth/handler comes back 200 with no CSP and no COOP. That is what makes this safe to add rather than a coin flip: a COOP landing on the auth handler could sever the postMessage that completes the sign-in, which would break the flow this is meant to protect.",
             "key": "Cross-Origin-Opener-Policy",
             "value": "same-origin-allow-popups"
           },
           {
-            "//csp-script-src": "The 'sha256-…' pins the one remaining inline <script> (the pre-paint boot cut in index.html, which cannot be externalised without a render-blocking round-trip). Note that a hash and 'unsafe-inline' are mutually exclusive: per CSP3 a browser that understands hashes IGNORES 'unsafe-inline' whenever any hash or nonce is present, so adding it here would weaken nothing and fix nothing — it would just be dead text. Everything else inline was moved to assets/js/ and is covered by 'self'. scripts/verify-csp-hashes.js fails the build if this hash drifts from the HTML, which is how the previous one went stale and silently killed both inline blocks in production. www.googletagmanager.com is gtag.js, loaded lazily by AnalyticsService after cookie consent; apis.google.com is the gapi shim signInWithPopup needs.",
-            "//csp-connect-src": "*.google-analytics.com and *.analytics.google.com are the GA4 measurement beacons — without them gtag loads and then every event silently fails to send. *.googleapis.com already covers firestore.googleapis.com and identitytoolkit.googleapis.com; wss://*.firestore.googleapis.com covers the WebChannel transport Firestore falls back to. us-central1-xsantcastx-1694b.cloudfunctions.net is where httpsCallable() posts (the Stripe checkout callable); without it every callable is blocked before it leaves the browser.",
-            "//csp-img-src": "Left as the broad `https:` rather than enumerating *.googleusercontent.com (auth avatars) and the GA pixel hosts — `https:` already covers both, and narrowing it would be a behaviour change, not a hardening win, while user-supplied avatar hosts vary.",
+            "//csp-script-src": "The 'sha256-\u2026' pins the one remaining inline <script> (the pre-paint boot cut in index.html, which cannot be externalised without a render-blocking round-trip). Note that a hash and 'unsafe-inline' are mutually exclusive: per CSP3 a browser that understands hashes IGNORES 'unsafe-inline' whenever any hash or nonce is present, so adding it here would weaken nothing and fix nothing \u2014 it would just be dead text. Everything else inline was moved to assets/js/ and is covered by 'self'. scripts/verify-csp-hashes.js fails the build if this hash drifts from the HTML, which is how the previous one went stale and silently killed both inline blocks in production. www.googletagmanager.com is gtag.js, loaded lazily by AnalyticsService after cookie consent; apis.google.com is the gapi shim signInWithPopup needs.",
+            "//csp-connect-src": "*.google-analytics.com and *.analytics.google.com are the GA4 measurement beacons \u2014 without them gtag loads and then every event silently fails to send. *.googleapis.com already covers firestore.googleapis.com and identitytoolkit.googleapis.com; wss://*.firestore.googleapis.com covers the WebChannel transport Firestore falls back to. us-central1-xsantcastx-1694b.cloudfunctions.net is where httpsCallable() posts (the Stripe checkout callable); without it every callable is blocked before it leaves the browser.",
+            "//csp-img-src": "Left as the broad `https:` rather than enumerating *.googleusercontent.com (auth avatars) and the GA pixel hosts \u2014 `https:` already covers both, and narrowing it would be a behaviour change, not a hardening win, while user-supplied avatar hosts vary.",
             "key": "Content-Security-Policy",
             "value": "default-src 'self'; script-src 'self' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc=' https://apis.google.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://apis.google.com wss://*.firestore.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://xsantcastx-1694b.firebaseapp.com https://cloudflare-dns.com https://api.github.com https://us-central1-xsantcastx-1694b.cloudfunctions.net https://eclipse-hearth-773269119730.us-central1.run.app https://api.stripe.com https://*.paypal.com https://*.braintree-api.com; frame-src 'self' https://apis.google.com https://www.google.com https://js.stripe.com https://hooks.stripe.com https://*.paypal.com https://xsantcastx-1694b.firebaseapp.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
-            "//csp-unsafe-hashes": "'unsafe-hashes' + 'sha256-MhtPZ…' allows exactly one inline event handler: this.media='all'. It is emitted by Angular itself, not by us — `optimization.styles.inlineCritical: true` inlines the above-the-fold CSS and defers the rest as <link media=\"print\" onload=\"this.media='all'\">. Inline handlers need script-src permission, and the policy had none, so in production that onload was refused and the main stylesheet never flipped from media=\"print\" to \"all\": the whole site was rendering on the inlined critical CSS alone. 'unsafe-hashes' is the narrow fix — it permits only handler bodies whose hash is listed, which here is one 16-character string, rather than 'unsafe-inline' which would permit every inline script on the site and silently disable the sha256 pin above it. Supported in Chrome 85+/Firefox 86+/Safari 15.4+; older engines still block the handler and fall back to critical-CSS-only, which is the behaviour they already had. If this hash ever needs regenerating, it is sha256 of the attribute value, and scripts/verify-csp-hashes.js prints the expected value on failure."
+            "//csp-unsafe-hashes": "'unsafe-hashes' + 'sha256-MhtPZ\u2026' allows exactly one inline event handler: this.media='all'. It is emitted by Angular itself, not by us \u2014 `optimization.styles.inlineCritical: true` inlines the above-the-fold CSS and defers the rest as <link media=\"print\" onload=\"this.media='all'\">. Inline handlers need script-src permission, and the policy had none, so in production that onload was refused and the main stylesheet never flipped from media=\"print\" to \"all\": the whole site was rendering on the inlined critical CSS alone. 'unsafe-hashes' is the narrow fix \u2014 it permits only handler bodies whose hash is listed, which here is one 16-character string, rather than 'unsafe-inline' which would permit every inline script on the site and silently disable the sha256 pin above it. Supported in Chrome 85+/Firefox 86+/Safari 15.4+; older engines still block the handler and fall back to critical-CSS-only, which is the behaviour they already had. If this hash ever needs regenerating, it is sha256 of the attribute value, and scripts/verify-csp-hashes.js prints the expected value on failure."
           }
         ]
       },
@@ -91,7 +91,7 @@
         ]
       },
       {
-        "//": "Prerendered routes are served at clean URLs (/home, /blueprint, /tools/x) which do NOT match the *.html glob above — header globs match the REQUEST path, not the resolved file. Without this they fell through to Firebase's default max-age=3600, so a deploy stayed invisible for an hour and the site looked like it had not shipped. !(*.*) matches only extensionless final segments, so content-hashed js/css/font/image assets keep their immutable year-long cache.",
+        "//": "Prerendered routes are served at clean URLs (/home, /blueprint, /tools/x) which do NOT match the *.html glob above \u2014 header globs match the REQUEST path, not the resolved file. Without this they fell through to Firebase's default max-age=3600, so a deploy stayed invisible for an hour and the site looked like it had not shipped. !(*.*) matches only extensionless final segments, so content-hashed js/css/font/image assets keep their immutable year-long cache.",
         "source": "**/!(*.*)",
         "headers": [
           {
@@ -110,7 +110,7 @@
         ]
       },
       {
-        "//": "MUST stay after the **/*.@(js|...) immutable rule so it overrides it — Firebase applies matching header blocks in order and the last one to set a key wins. Without this, /service-worker.js inherits max-age=31536000, immutable, which is the single worst cache header a service worker can have: it is the file that controls every other file, so a bad version would be pinned for a year with no way to push a replacement. Modern browsers ignore the HTTP cache for the top-level worker script (updateViaCache defaults to 'imports'), but that is a browser courtesy, not a guarantee, and it does not cover older engines. no-cache costs one conditional request per navigation and removes the whole failure mode.",
+        "//": "MUST stay after the **/*.@(js|...) immutable rule so it overrides it \u2014 Firebase applies matching header blocks in order and the last one to set a key wins. Without this, /service-worker.js inherits max-age=31536000, immutable, which is the single worst cache header a service worker can have: it is the file that controls every other file, so a bad version would be pinned for a year with no way to push a replacement. Modern browsers ignore the HTTP cache for the top-level worker script (updateViaCache defaults to 'imports'), but that is a browser courtesy, not a guarantee, and it does not cover older engines. no-cache costs one conditional request per navigation and removes the whole failure mode.",
         "source": "/service-worker.js",
         "headers": [
           {
@@ -165,7 +165,7 @@
         "type": 301
       },
       {
-        "//": "Exact /forge only — do not use /forge/** or /forge/runes would loop.",
+        "//": "Exact /forge only \u2014 do not use /forge/** or /forge/runes would loop.",
         "source": "/forge",
         "destination": "/play?at=runes",
         "type": 301
@@ -177,7 +177,7 @@
         "type": 301
       },
       {
-        "//": "/arena index is now /world/trials. Exact path only — do not use /arena/** or the playable gates would 301 as well.",
+        "//": "/arena index is now /world/trials. Exact path only \u2014 do not use /arena/** or the playable gates would 301 as well.",
         "source": "/arena",
         "destination": "/play?at=trials",
         "type": 301
@@ -201,7 +201,7 @@
         "type": 301
       },
       {
-        "//": "The portfolio pages deleted in the full migration, plus the retired public product surfaces. Each 301 lands on /play — the game is the only public product.",
+        "//": "The portfolio pages deleted in the full migration, plus the retired public product surfaces. Each 301 lands on /play \u2014 the game is the only public product.",
         "source": "/skills",
         "destination": "/play",
         "type": 301
@@ -293,7 +293,7 @@
         "type": 301
       },
       {
-        "//": "Game-only shell (docs/handoff/game-only-shell.md): every page that stood beside the game is now a panel in it or gone, so its URL 301s into /play — at the panel it became, the same table as shared/canonical-routes.ts INTO_PLAY. /world/realms/** comes after the three activity-site entries above it is listed with, and Hosting matches redirects in order.",
+        "//": "Game-only shell (docs/handoff/game-only-shell.md): every page that stood beside the game is now a panel in it or gone, so its URL 301s into /play \u2014 at the panel it became, the same table as shared/canonical-routes.ts INTO_PLAY. /world/realms/** comes after the three activity-site entries above it is listed with, and Hosting matches redirects in order.",
         "source": "/character",
         "destination": "/play?at=character",
         "type": 301
@@ -458,6 +458,19 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    },
+    {
+      "source": "functions-game",
+      "codebase": "game",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
         "*.local"
       ],
       "predeploy": [

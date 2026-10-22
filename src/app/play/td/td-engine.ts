@@ -107,7 +107,7 @@ import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from
 import { GAP_TONES, atZoneLevel, gapTone, graveyardZone, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
-import { weaponSwing } from './td-melee';
+import { weaponSwing, type HeldWeapon } from './td-melee';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
@@ -143,7 +143,9 @@ import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 export const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
-  'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist'];
+  'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist',
+  // §3.6: the fighters' twins and the families' own.
+  'attackDamage', 'attackSpeed', 'lifeLeech', 'pierceChance', 'blockChance', 'skillRanks'];
 
 /** The Map window's ground colours (one pixel per tile, or per two on a continent). */
 const MAP_COL: Partial<Record<Ground, string>> = {
@@ -465,6 +467,9 @@ export class TopDownEngine {
       playerHp: () => this.hp,
       hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember' || this.level.ground(c, r) === 'blackwater',
       passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall' && g !== 'vinewall' && g !== 'bark'; },
+      // Sight (td-sight.ts): whatever the walkability map keeps feet off stops a ray and a shot — walls, rock, stalls,
+      // trees, a shut door — except the low ground a shot flies over (water, embers, the fens, the leaf-sea).
+      sight: (c, r) => { const g = this.level.ground(c, r); return g !== 'water' && g !== 'ember' && g !== 'blackwater' && g !== 'canopy' && !this.level.walkable(c, r); },
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
       // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
@@ -529,6 +534,53 @@ export class TopDownEngine {
       },
       zone: () => this.zoneHere(),
       keeperLevel: () => this.mobs.keeperLevel,
+    };
+    // Sight's e2e (webdriver only; td-sight.ts): a wall between the Keeper and a calm boss, a raw bolt thrown at it
+    // anyway, the raised laid on one spot to watch them spread.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdLos'] = {
+      // The nearest wall (three tiles of it) with open floor two tiles either side and no sight across: the Keeper on one
+      // side, the boss (calm, sturdy) on the other. Its world spots, or null.
+      arena: (type = 'ember-warden', hp = 5000) => {
+        const def = MOBS[type]; if (!def) return null;
+        const pc = Math.floor(this.player.x / TILE), pr = Math.floor((this.player.y - 1) / TILE), at = (c: number, r: number) => ({ x: c * TILE + TILE / 2, y: r * TILE + TILE - 2 });
+        // Side by side first (the wall stands between them on the screen), then one above the other.
+        for (const [ox, oy] of [[1, 0], [0, 1]] as const) for (let d = 0; d <= 40; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
+          if (Math.max(Math.abs(x), Math.abs(y)) !== d) continue;
+          const c = pc + x, r = pr + y;
+          if (!this.mobs.sight.solid(c, r)) continue;
+          {
+            // A real wall (three tiles of it across the line), not a lone post.
+            if (!this.mobs.sight.solid(c - oy, r - ox) || !this.mobs.sight.solid(c + oy, r + ox)) continue;
+            // The wall may be a few tiles thick: the boss on the first open floor past it, two tiles on.
+            const a = at(c - 2 * ox, r - 2 * oy);
+            let b: { x: number; y: number } | null = null;
+            for (let g = 2; g <= 5 && !b; g++) { const q = at(c + g * ox, r + g * oy); if (footFree(this.level, q.x, q.y) && !this.mobs.sight.solid(c + (g - 1) * ox, r + (g - 1) * oy) && this.mobs.sight.solid(c + (g - 2) * ox, r + (g - 2) * oy)) b = q; }
+            if (!b || !footFree(this.level, a.x, a.y) || this.mobs.sight.solid(c - ox, r - oy) || this.mobs.sight.sees(a.x, a.y, b.x, b.y)) continue;
+            this.player.x = a.x; this.player.y = a.y; this.path = []; this.arrive = null; this.mobs.target = null;
+            for (let i = this.mobs.mobs.length - 1; i >= 0; i--) if (this.mobs.mobs[i].key.startsWith('fx-los:')) this.mobs.mobs.splice(i, 1);
+            const m = this.mobs.place(`fx-los:${type}`, { ...def, hp, sight: 0, ranged: undefined, rend: undefined, charge: undefined, summon: undefined }, b.x, b.y);
+            m.wait = 1e9;
+            this.placeCompanions();
+            return { keeper: a, boss: b, wall: { c, r } };
+          }
+        }
+        return null;
+      },
+      boss: () => { const m = this.mobs.mobs.find(x => x.key.startsWith('fx-los:')); return m ? { hp: m.hp, max: m.def.hp, x: Math.round(m.x), y: Math.round(m.y), seen: this.mobs.sees(m), target: this.mobs.target === m } : null; },
+      // Where the boss's middle is on the page (for a real tap on it).
+      page: () => {
+        const m = this.mobs.mobs.find(x => x.key.startsWith('fx-los:')); if (!m) return null;
+        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
+        return { x: Math.round(r.left + (m.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (m.y - m.def.h / 2 - this.cam.y) * this.scale / k) };
+      },
+      // An Ember Bolt thrown at the boss whatever stands between (the path the auto-attack never takes without sight).
+      bolt: () => { const m = this.mobs.mobs.find(x => x.key.startsWith('fx-los:')); if (!m) return false; const p = this.player; this.mobs.bolts.push({ x: p.x, y: p.y - 22, to: m, dmg: 40, age: 0, lift: 22 }); return true; },
+      cast: (id: string) => { this.mobs.cooldowns[id as SkillId] = 0; this.mobs.mana = this.mobs.maxMana; return this.useAbility(id); },
+      attack: (on: boolean) => { this.mobs.attacking = on; },
+      // `n` raised all on the Keeper's own feet (as a careless spell would lay them); where they stand now.
+      raise: (n = 6) => { this.mobs.minions.length = 0; for (let i = 0; i < n; i++) this.mobs.minions.push({ id: 9100 + i, x: this.player.x, y: this.player.y, hp: 400, maxHp: 400, dmg: [3, 5], cd: .6, t: 1, face: 1, life: Infinity, hit: 0, target: null }); return n; },
+      kin: () => this.mobs.minions.map(k => ({ x: Math.round(k.x), y: Math.round(k.y) })),
+      state: () => ({ walled: this.mobs.walled, bolts: this.mobs.bolts.length, puffs: this.mobs.effects.filter(e => e.kind === 'puff').length, rays: this.mobs.sight.castTotal, asked: this.mobs.sight.asked, x: Math.round(this.player.x), y: Math.round(this.player.y), level: this.level.id }),
     };
     // The Ashguard's e2e (webdriver only): a creature at the Keeper's side to swing at, and the blade's count.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdAsh'] = {
@@ -838,6 +890,9 @@ export class TopDownEngine {
     this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
     this.mobs.power = st.power; this.mobs.regen = st.regen; this.mobs.agility = st.haste;
     this.mobs.castSpeed = st.castSpeed; this.mobs.crit = st.crit;
+    // §3.6: Life Steal, Pierce, Block, the beast's share of the damage %, a caster's +Spells.
+    this.mobs.leech = st.leech; this.mobs.gearPierce = st.pierce; this.mobs.gearBlock = st.block;
+    this.mobs.damagePct = st.damagePct; this.mobs.gearRanks = st.ranks;
     this.mobs.defense = st.defense; this.mobs.keeperLevel = Math.max(1, Math.floor(level));
     this.mobs.resists = st.resists;
     this.agility = st.moveHaste;
@@ -1950,7 +2005,7 @@ export class TopDownEngine {
     b.face = foe.x < b.x ? -1 : 1;
     if (b.cd > 0) return true;
     const blow = petBlow(b.move, b.role === 'combat', b.level);
-    const hit = this.mobs.petBite(foe, blow.dmg, b.face);
+    const hit = this.mobs.petBite(foe, blow.dmg, b.face, b);
     b.cd = this.mobs.thorn ? thornPetRest(blow.rest, foe === sent) : blow.rest;
     if (!hit.landed) return true;
     b.hits++; b.nips++; b.hopT = .25;
@@ -2087,7 +2142,7 @@ export class TopDownEngine {
     this.mobs.setRelics(relicTotals(ids, relicSigOf));
   }
   /** The weapon in hand (strike + spell damage, or null for bare hands): the Ashguard's swing reads it (td-melee weaponSwing). */
-  setWeapon(w: { strikePower?: number; spellDamage?: number; hands?: number } | null): void { this.mobs.weaponSwing = weaponSwing(w); }
+  setWeapon(w: HeldWeapon | null): void { this.mobs.weaponSwing = weaponSwing(w); }
   /** The arrow Glim leaves after a Seek: which way, the floor, and the seconds it still holds. */
   private seekArrow: { dir: SeekReading['dir']; floor: SeekReading['floor']; t: number; life: number } | null = null;
   /** A typed "lum vesh <name>": the name the next Seek looks for (null: the nearest). */
@@ -2642,13 +2697,20 @@ export class TopDownEngine {
   private tap(clientX: number, clientY: number): void {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);
     // A creature under the finger is the target (Tibia's click-to-attack): the Keeper closes in and swings.
+    // Only one the Keeper can see (td-sight): a creature behind a wall is no target — the tap walks toward it instead.
     const foe = this.mobs.mobAt(wx, wy);
-    if (foe) { this.mobs.target = foe; this.chaseTimer = 0; return; }
+    if (foe && this.mobs.sees(foe)) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
-    // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
     // A shared ground item (protocol 6) under the finger — before the Keepers, it is the smaller target and often lies
     // at one's feet: walk to it, then the HUD reaches for it.
     const lying = this.shared.find(g => Math.abs(wx - g.x) < 9 && wy > g.y - 12 && wy < g.y + 5);
+    if (lying && this.options.onGroundTap) {
+      const id = lying.id.slice('shared:'.length), reach = () => this.options.onGroundTap?.(id);
+      // No way to its side (a wall, a Keeper standing on it): reach from here when close, as a corpse opens.
+      if (!this.walkTo(lying.x, lying.y + 2, reach) && Math.hypot(lying.x - this.player.x, lying.y - this.player.y) <= CORPSE_REACH * 2) reach();
+      return;
+    }
+    // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
     // Several things can lie under one finger (a Keeper standing at a giver's side, a corpse by a stall): the nearest to
     // the point wins, the way stallAt picks the nearest foot. A Keeper tapped on their own body always wins; one the
     // finger only just missed (they glide between packets, and a thumb is wide) wins when nearer than the stall.
@@ -2991,7 +3053,8 @@ export class TopDownEngine {
     if (t && this.chaseTimer <= 0 && !this.keys.size && !this.joy?.active) {
       this.chaseTimer = .4;
       // Close in only to the staff's range (a Warlock fights from a distance).
-      if (Math.hypot(t.x - this.player.x, t.y - this.player.y) > this.mobs.range - 12) { const route = this.route(this.player.x, this.player.y, t.x, t.y); if (route) { this.path = route; this.arrive = null; } }
+      // …or round the wall that hides it (td-sight): no sight, no blow, so he walks until he sees it.
+      if (Math.hypot(t.x - this.player.x, t.y - this.player.y) > this.mobs.range - 12 || !this.mobs.sees(t)) { const route = this.route(this.player.x, this.player.y, t.x, t.y); if (route) { this.path = route; this.arrive = null; } }
       else this.path = [];
     }
     this.mobs.update(dt);
@@ -3766,6 +3829,12 @@ export class TopDownEngine {
       } else if (e.kind === 'spark') {
         // A foe's shot breaking: its own fire, edged dark.
         drawBurst(c, X, Y, burst(6, bt, seed, 7, 5), FX.ember, true);
+      } else if (e.kind === 'puff') {
+        // A shot breaking on a wall (td-sight): a few sparks of its own colour and grey grit falling off the stone.
+        const tone = e.el === 'bone' || e.el === 'brass' ? FX.bone : e.el === 'life' ? FX.life : e.el === 'shadow' ? FX.shadow : e.el === 'lamp' ? LEVEL_UP : FX.ember;
+        drawBurst(c, X, Y, burst(5, bt, seed, 6, 3), tone);
+        c.fillStyle = FX.bone.edge;
+        for (let i = 0; i < 4; i++) c.fillRect(X - 4 + i * 3, Math.round(Y + 1 + bt * (4 + (i % 2) * 5)), 1, 1);
       } else if (e.kind === 'bolt-hit') {
         // The Ember Bolt landing: a quick core flash, then 8 embers flying out and falling.
         if (t < .3 || this.still) glowSquare(c, X, Y, 3, FX.ember, .6);

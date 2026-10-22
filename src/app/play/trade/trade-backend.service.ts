@@ -1,7 +1,7 @@
 /**
  * trade-backend.service.ts — where trade-flow.ts's verbs go.
  *
- * Production: the `tradeApi` Cloud Function (functions/src/trade.ts) with this account's Firebase ID token, and the
+ * Production: the `tradeApi` Cloud Function (functions-game/src/trade.ts) with this account's Firebase ID token, and the
  * save moved through GameStateGateway — `syncNow()` before (the Function reads the cloud's copy), `pullKeys()` after
  * (the Function wrote it; the merge adopts the move, see trade-core's header and trade-merge.spec).
  *
