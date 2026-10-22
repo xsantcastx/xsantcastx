@@ -2,7 +2,7 @@
  * trade-fake.mjs — the local e2e's stand-in for the trade Function and for Firestore (never on Cloud Run).
  *
  * Mounted on the Hearth room under /fake-trade/ when SOCIAL_FAKE_AUTH=1 and SOCIAL_FAKE_TRADE=1 (social-server.mjs):
- * the REAL functions/src/trade-core.ts (through Node's type stripping) over an in-memory store with Firestore's
+ * the REAL functions-game/src/trade-core.ts (through Node's type stripping) over an in-memory store with Firestore's
  * optimistic transactions, sharing that store with the room's memoryStore — so the room's `trades/{id}` binding and
  * the ground escrow it checks are the very documents the "Function" reads and writes.
  *
@@ -15,7 +15,7 @@
  * What it cannot stand in for: the rules themselves (only the serverSeq guard is mirrored), Firestore's own
  * contention behaviour, ID-token verification and the ban check (trade.ts) — see docs/design/online.md §4c.
  */
-import { handle, memoryDb, returnExpired } from '../functions/src/trade-core.ts';
+import { handle, memoryDb, returnExpired } from '../functions-game/src/trade-core.ts';
 
 export function fakeTrade() {
   if (process.env.K_SERVICE) throw new Error('the fake trade Function is refused on Cloud Run');

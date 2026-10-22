@@ -2690,10 +2690,16 @@ export class TopDownEngine {
     const foe = this.mobs.mobAt(wx, wy);
     if (foe && this.mobs.sees(foe)) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
-    // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
     // A shared ground item (protocol 6) under the finger — before the Keepers, it is the smaller target and often lies
     // at one's feet: walk to it, then the HUD reaches for it.
     const lying = this.shared.find(g => Math.abs(wx - g.x) < 9 && wy > g.y - 12 && wy < g.y + 5);
+    if (lying && this.options.onGroundTap) {
+      const id = lying.id.slice('shared:'.length), reach = () => this.options.onGroundTap?.(id);
+      // No way to its side (a wall, a Keeper standing on it): reach from here when close, as a corpse opens.
+      if (!this.walkTo(lying.x, lying.y + 2, reach) && Math.hypot(lying.x - this.player.x, lying.y - this.player.y) <= CORPSE_REACH * 2) reach();
+      return;
+    }
+    // Another Keeper under the finger: their card (name, class, level, Wave), and the Keeper stays where they are.
     // Several things can lie under one finger (a Keeper standing at a giver's side, a corpse by a stall): the nearest to
     // the point wins, the way stallAt picks the nearest foot. A Keeper tapped on their own body always wins; one the
     // finger only just missed (they glide between packets, and a thumb is wide) wins when nearer than the stall.

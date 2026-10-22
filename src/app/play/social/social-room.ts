@@ -43,7 +43,7 @@ export interface RoomSnapshot {
   /** Protocol 6: trade requests waiting on this Keeper's answer, the open trade window, what lies on the ground here. */
   tradeAsks?: RoomTradeAsk[]; trade?: RoomTrade | null; ground?: { area: string; items: RoomGround[] };
 }
-/** The room's trading and shared ground (protocol 6; the trade Function moves things: functions/src/trade-core.ts). */
+/** The room's trading and shared ground (protocol 6; the trade Function moves things: functions-game/src/trade-core.ts). */
 export const TRADE_PROTOCOL = 6;
 export interface RoomTradeAsk { id: string; from: string; name: string; to: string; until: number }
 /** One side's offer in the window. */
