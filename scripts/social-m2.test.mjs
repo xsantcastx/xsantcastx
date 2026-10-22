@@ -428,3 +428,10 @@ test('protocol 8: the room\'s REST transactions — begin, read inside, one comm
   assert.deepEqual(calls.at(-1).body.writes.map(w => w.update.name.slice(root.length + 1)), ['parties/p1', 'users/u1/social/party', 'users/u2/social/party']);
   assert.equal((await fs.partyRead('u2')).doc.members[1].name, 'Bryn');
 });
+
+test('toValue: a whole number past 2^53 goes as a double (Firestore refuses "6.9e+26" as an int64)', async () => {
+  const { toValue } = await import('./social-identity.mjs');
+  assert.deepEqual(toValue(6.931155932289466e26), { doubleValue: 6.931155932289466e26 });
+  assert.deepEqual(toValue(2 ** 53 + 2), { doubleValue: 2 ** 53 + 2 });
+  assert.deepEqual(toValue(42), { integerValue: '42' });
+});
