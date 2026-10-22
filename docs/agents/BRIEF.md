@@ -15,6 +15,11 @@ Find files via `docs/agents/SYSTEMS.md` before searching.
 Everything needs meaning (source, use, lore, visible) — `npm run -s check:meaning`. Terraria is the art/feel reference.
 Gold only, never real money. Stations: one plain primary action. Phones: ≥44px, nothing over the centre 50%.
 Lore is pre-approved: write it, ship it, log it in `docs/world/lore-addendum.md` ("shipped — owner reviews in play").
+**The Dungeon Master owns the story** (owner rule, 2026-10-22). Before writing any quest, NPC, dialogue, unique, set,
+zone or lore, read `docs/world/canon.md` (the canon bible) and `docs/world/campaign.md` (the arc and the "next to
+build" queue). Build quests from that queue, and reuse canon names, motives and planted clues, never inventing new
+ones that clash. Record anything new in canon.md's registries. If something must contradict canon, stop and flag it
+in your report. The DM role is `~/.claude/agents/dungeon-master.md`; the coordinator has it review lore-heavy branches.
 New player text goes in LAZY i18n tables, EN + ES. Saved state only through the save gateway, merge-safe.
 Never push, deploy, or touch `firestore.rules`, `functions/`, or market flags.
 
