@@ -15,6 +15,8 @@ import { RARITY_TRIM, STYLE_COLORS, type GearPiece, type KeeperGear } from './ke
 import type { BodyType, EyeStyle, FaceMark, Form, HairStyle } from './keeper-look.model';
 import type { KeeperGarb } from './npc-looks';
 import { WARLOCK_GARB } from './vocation-look';
+import type { WornLook } from './worn-look.model';
+import { eyeFlicker, eyeGlow, wornParticles } from './worn-fx';
 
 export type Facing = 'down' | 'up';
 export const FRONT_W = 28;
@@ -35,6 +37,7 @@ const C = 14, HX = 5, HT = 4, TT = 19, LT = 28, BT = 34, FEET = 37;
 const HEAD_IN = [4, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 4];
 const BOOT = '#4a3328', BOOT_LO = '#2e1f1a', BOOT_HI = '#71523f';
 const WOOD = '#8a5a34', WOOD_LO = '#5a3820', WOOD_HI = '#b07a48';
+const WOOD_BASE = WOOD, WOOD_LIT = WOOD_HI, WOOD_SHADE = WOOD_LO;
 const STEEL = '#c3cad6', STEEL_LO = '#7d8796', STEEL_HI = '#f2f5fa';
 const BONE = '#e9e4d8', BONE_LO = '#b3aa98';
 
@@ -103,9 +106,11 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
 
   // ── The head ──
   headSkin(P, p, ht, fem);
+  const cowl = head?.look?.shape === 'cowl' ? head.look : null;
   if (hooded) {
     hood(P, p, hoodCloth, ht, tt, front, staff ? sash : hoodCloth.trim);
-    if (front) { if (staff) undeadFace(P, p, ht, frame, cast, fem); else face(P, p, fig, ht, frame, phone, true); }
+    if (cowl) cowlFace(P, hoodCloth, cowl, ht, tt, front);
+    else if (front) { if (staff) undeadFace(P, p, ht, frame, cast, fem); else face(P, p, fig, ht, frame, phone, true); }
   }
   else {
     if (front) {
@@ -118,8 +123,8 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   }
   if (hooded && staff) mantle(P, hoodCloth, tt, bw, front);
   // Her hair escapes the hood: two locks framing the face, falling over the mantle onto the chest.
-  if (hooded && fem && front) locks(P, p, ht, 'hood');
-  paintGear(P, M, gear, front, ht, tt, bw, pose, phone);
+  if (hooded && fem && front && !cowl) locks(P, p, ht, 'hood');
+  paintGear(P, M, gear, front, ht, tt, bw, pose, phone, p, frame);
   // Under a helm her hair falls out below the cheek guards (in front) and as a tail under the neck guard (behind).
   if (fem && !hooded && (head?.kind === 'helm')) locks(P, p, ht, front ? 'helm' : 'helm-back');
   // Its arrows' fletchings: over the shoulder from behind, peeking past the hood's edge from the front.
@@ -132,7 +137,7 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   const handY = raise ? tt - 5 : tt + 8 + (staff ? 1 : 0) + (front ? pose.rArm : pose.lArm);
   if (held) paintHeld(H, held, handY);
   else if (weapon?.variant === 'lamp') paintLampStaff(H, cast, handY, front);
-  else paintStaff(H, cast, handY, weapon?.kind === 'wand' ? weapon : null);
+  else paintStaff(H, cast, handY, weapon?.kind === 'wand' ? weapon : null, weapon?.look ?? null);
   // The hand closed round the grip, over the shaft.
   const g = gear?.hands ? matOf(gear.hands) : null;
   H(22, handY, 3, 2, g ? g.base : front ? p.skin : p.skinLo);
@@ -414,6 +419,25 @@ function hood(P: Px, p: Readonly<Palette>, m: Cloth, ht: number, tt: number, fro
   }
 }
 
+/**
+ * A cowl (worn-look `cowl`): its brim droops over the brow and the face inside is lost in shadow, two eye-pips burning
+ * in it (their glow flickers live: drawWornFront). From behind, stitches down the centre seam.
+ */
+function cowlFace(P: Px, m: Cloth, L: WornLook, ht: number, tt: number, front: boolean): void {
+  const shade = mix(m.lo, OUTLINE, .6), deeper = mix(m.lo, OUTLINE, .8);
+  if (front) {
+    // The whole opening below the brim (hood()'s own rows), so not a pixel of cheek or chin shows.
+    ([[2, 14], [2, 14], [2, 14], [2, 14], [2, 14], [2, 14], [3, 12], [4, 10]] as const)
+      .forEach(([x, w], i) => P(HX + x, ht + 7 + i, w, 1, i < 2 ? deeper : shade));
+    // The brim: two rows of cloth over the opening's top, lit along its lip.
+    P(HX + 3, ht + 5, 12, 1, m.base); P(HX + 4, ht + 6, 10, 1, m.lo); P(HX + 5, ht + 4, 8, 1, mix(m.hi, m.trim, .5));
+    if (L.eyes) {
+      for (const ex of [HX + 5, HX + 11]) { P(ex, ht + 10, 2, 1, L.eyes); P(ex + (ex < C ? 1 : 0), ht + 10, 1, 1, hi(L.eyes, .45)); }
+    }
+    if (L.seam) for (let y = ht + 4; y < tt; y += 3) P(HX - 1, y, 1, 1, L.seam);
+  } else if (L.seam) for (let y = ht; y < tt; y += 2) P(HX + 8, y, 1, 1, L.seam);
+}
+
 /** The hood's mantle over the shoulders, bone-clasped at the throat. */
 function mantle(P: Px, m: Cloth, tt: number, bw: number, front: boolean): void {
   const h = m.base, hHi = m.hi, hLo = m.lo;
@@ -534,6 +558,8 @@ function slate(P: Px, p: Readonly<Palette>, tt: number): void {
 interface Mat { base: string; hi: string; lo: string; accent: string; trim: string }
 /** A worn piece's colours: its own, or its realm style's, each two-toned; the trim is its rarity's. */
 function matOf(pc: GearPiece): Mat {
+  const L = pc.look;
+  if (L) return { base: L.base, hi: L.lit, lo: L.deep, accent: L.accent, trim: L.trim ?? mix(L.base, L.lit, .6) };
   const [b, a] = STYLE_COLORS[pc.style];
   const base = pc.color ?? b;
   return { base, hi: hi(base, .28), lo: lo(base, .38), accent: pc.accent ?? a, trim: RARITY_TRIM[pc.rarity] };
@@ -583,100 +609,181 @@ function paintChest(P: Px, gear: KeeperGear | null, front: boolean, tt: number, 
       for (const y of [tt + 2, tt + 4]) P(C - 1, y, 1, 1, m.accent);
     } else P(C, tt + 7, 1, 6, m.lo);
   }
+  const L = ch.look;
+  if (!L) return;
+  // Its look: scale rows over the chest, a stitched seam, runes down the front, a short mantle, a glow on the shoulders.
+  if (L.shape === 'scale') for (let y = tt + 1; y < tt + 6; y++) for (let x = l + 1 + (y & 1); x < l + w - 1; x += 2) P(x, y, 1, 1, m.lo);
+  if (L.seam) { if (front) for (let y = tt + 1; y < tt + 13; y++) P(C, y, 1, 1, L.seam); else P(C, tt + 1, 1, 12, L.seam); }
+  if (L.runes && front) for (const [x, y] of [[C - 1, tt + 2], [C + 1, tt + 4], [C - 1, tt + 8], [C + 1, tt + 10]] as const) P(x, y, 1, 1, L.runes);
+  if (L.mantle) {
+    P(l - 1, tt, w + 2, 3, L.mantle); P(l - 1, tt, w + 2, 1, hi(L.mantle, .25)); P(l - 1, tt, 1, 3, hi(L.mantle, .15));
+    P(C + bw - 1, tt, 2, 3, lo(L.mantle, .3)); P(l - 1, tt + 3, w + 2, 1, lo(L.mantle, .4));
+    if (front) { P(C - 1, tt + 1, 2, 2, L.accent); P(C - 1, tt + 1, 1, 1, hi(L.accent, .4)); }
+  }
+  if (L.glow) P(l + 1, tt, w - 2, 1, mix(m.base, L.glow, .35));
 }
 
-function paintGear(P: Px, M: Px, gear: KeeperGear | null, front: boolean, ht: number, tt: number, bw: number, pose: Pose, phone: boolean): void {
+function paintGear(P: Px, M: Px, gear: KeeperGear | null, front: boolean, ht: number, tt: number, bw: number, pose: Pose, phone: boolean, p: Readonly<Palette>, frame: number): void {
   if (!gear) return;
   const robed = gear.chest?.kind === 'robe' || gear.chest?.kind === 'mantle';
   if (gear.legs) {
-    const m = matOf(gear.legs);
+    const m = matOf(gear.legs), L = gear.legs.look;
     if (gear.legs.kind === 'belt') { P(C - bw, tt + 6, bw * 2, 1, m.base); P(C - 1, tt + 6, 2, 1, m.trim); }
     else if (!robed) for (const [x, lift] of [[C - 4, pose.lLift], [C + 1, pose.rLift]] as const) {
       // Greaves: lit on the left, a kneecap in the trim.
       const h = BT - (LT + 2) - lift;
       P(x, LT + 2, 3, h, m.base); P(x, LT + 2, 1, h, m.hi); P(x + 2, LT + 2, 1, h, m.lo);
       P(x, LT + 2, 3, 1, m.trim);
+      if (L?.runes) P(x + 1, LT + 4, 1, 1, L.runes);
     }
   }
   if (gear.feet && !robed) {
-    const m = matOf(gear.feet);
+    const m = matOf(gear.feet), L = gear.feet.look;
     for (const [x, lift, lit] of [[C - 5, pose.lLift, true], [C + 1, pose.rLift, false]] as const) {
       const by = BT - lift;
+      if (L?.shape === 'sandals') {
+        // Reed sandals: bare feet on a thin sole, two straps.
+        P(x, by, 4, 3, lit ? p.skin : p.skinLo); P(x, by + 3, 4, 1, m.lo); P(x, by + 1, 4, 1, m.base); P(x + 1, by + 2, 2, 1, L.accent);
+        continue;
+      }
       P(x, by, 4, 4, m.base); P(x, by, 4, 1, m.trim); P(x + 3, by + 1, 1, 3, m.lo); P(x, by + 3, 4, 1, m.lo);
       if (lit) P(x, by + 1, 1, 2, m.hi);
+      // Sabatons: plate up the shin, a cuff in the trim.
+      if (L?.shape === 'greaves') { P(x, by - 3, 4, 3, m.base); P(x, by - 3, 4, 1, m.trim); if (lit) P(x, by - 2, 1, 2, m.hi); else P(x + 3, by - 2, 1, 2, m.lo); }
     }
   }
   if (gear.hands && !phone) {
-    // Gauntlets or wraps over the cuffs.
-    const m = matOf(gear.hands);
+    // Gauntlets or wraps over the cuffs (a look's seam, runes, a gauntlet's flared cuff).
+    const m = matOf(gear.hands), L = gear.hands.look;
     for (const [x, dy, lit] of [[C - bw - 3, pose.lArm, true], [C + bw, pose.rArm, false]] as const) {
       const y = tt + 7 + dy;
       P(x, y, 3, 3, m.base); P(x, y, 3, 1, m.trim); P(x + (lit ? 0 : 2), y + 1, 1, 2, lit ? m.hi : m.lo);
+      if (L?.shape === 'gauntlets') { P(x - (lit ? 1 : 0), y - 1, 4, 1, L.trim ?? m.hi); }
+      if (L?.seam) P(x + 1, y, 1, 3, L.seam);
+      if (L?.runes) P(x + 1, y + 2, 1, 1, L.runes);
     }
   }
   const hd = gear.head;
-  if (hd && hd.kind !== 'hood') {
-    const m = matOf(hd);
-    const at = (x: number, y: number, w: number, col: string) => P(HX + x, ht + y, w, 1, col);
-    if (hd.kind === 'helm' && hd.variant === 'pyre') {
-      // The Pyre Watch's iron helm: a combed dome, an ember-lit rim, a dark visor slit over the eyes and a nasal guard.
-      const slit = '#150f14', glow = m.accent;
-      ([[4, 10], [2, 14], [0, 18], [-1, 20], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 2, w, m.base));
-      at(4, -2, 5, m.hi); at(2, -1, 3, m.hi); at(0, 0, 2, m.hi); at(-1, 1, 1, m.hi);
-      for (let y = -1; y < 5; y++) at(15, y, 3, m.lo);
-      // The comb: a raised ridge front to back over the crown, lit on its left.
-      for (let y = -3; y < 4; y++) { at(7, y, 1, m.hi); at(8, y, 2, y === -3 ? m.hi : m.base); at(10, y, 1, m.lo); }
-      // The ember-lit rim and the brow plate under it.
-      at(-1, 3, 20, glow); at(-1, 3, 4, hi(glow, .4)); at(14, 3, 5, lo(glow, .35));
-      at(-1, 4, 20, lo(m.base, .3)); at(0, 5, 18, m.base); at(0, 5, 18, m.base); at(16, 5, 2, m.lo);
-      // The visor slit, an ember catching in it from either side of the nasal.
-      if (front) { at(2, 6, 14, slit); at(4, 6, 2, glow); at(12, 6, 2, glow); }
-      // Cheek guards with an ember rivet, the nasal (front); the neck guard (back).
-      for (let y = 5; y < 12; y++) { at(-1, y, 3, m.base); at(16, y, 3, m.lo); }
-      at(-1, 5, 1, m.hi); at(0, 10, 1, glow); at(17, 10, 1, glow);
-      if (front) { for (let y = 5; y < 11; y++) { at(8, y, 2, y === 5 ? m.trim : m.hi); at(9, y, 1, m.base); } at(8, 10, 2, lo(m.base, .3)); }
-      else {
-        for (let y = 5; y < 13; y++) at(-1, y, 20, y === 12 ? m.trim : y % 3 ? m.base : m.lo);
-        at(1, 6, 16, slit); at(1, 6, 16, lo(m.base, .5)); at(8, 8, 2, glow);
-      }
-    } else if (hd.kind === 'helm') {
-      ([[4, 10], [2, 14], [0, 18], [-1, 20], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 2, w, m.base));
-      at(4, -2, 5, m.hi); at(2, -1, 3, m.hi); at(0, 0, 2, m.hi); at(-1, 1, 1, m.hi);
-      for (let y = -1; y < 5; y++) at(15, y, 3, m.lo);
-      at(-1, 4, 20, m.trim);
-      // Cheek guards and a nasal (front); the neck guard (back).
-      for (let y = 5; y < 12; y++) { at(-1, y, 3, m.base); at(16, y, 3, m.lo); }
-      at(-1, 5, 1, m.hi);
-      if (front) { for (let y = 5; y < 10; y++) at(8, y, 2, y === 5 ? m.trim : m.base); at(8, 6, 1, m.hi); }
-      else for (let y = 5; y < 13; y++) at(-1, y, 20, y === 12 ? m.trim : y % 3 ? m.base : m.lo);
-      at(7, -3, 4, m.accent); at(7, -3, 2, hi(m.accent, .35));
-    } else if (hd.kind === 'crown') {
-      for (const x of [2, 8, 14]) { at(x, -2, 2, m.trim); at(x, -1, 2, m.trim); }
-      at(1, 0, 16, m.trim); at(1, 1, 16, m.trim); at(1, 2, 16, lo(m.trim, .3));
-      at(1, 0, 6, hi(m.trim, .35)); at(2, -2, 1, hi(m.trim, .45));
-      if (front) { at(8, 1, 2, m.accent); at(8, 1, 1, hi(m.accent, .5)); at(4, 1, 1, m.accent); at(13, 1, 1, m.accent); }
-    } else {
-      at(-1, 5, 20, m.trim); at(-1, 5, 6, hi(m.trim, .3)); at(14, 5, 5, lo(m.trim, .3));
-      if (front) { at(8, 5, 2, m.accent); at(8, 6, 2, lo(m.accent, .3)); at(8, 5, 1, hi(m.accent, .5)); }
-    }
+  if (hd && hd.kind !== 'hood') paintHeadGear(P, hd, front, ht);
+  if (front && gear.trinket) {
+    // A pendant at the throat (a ring: a glint on the left hand).
+    const m = matOf(gear.trinket), L = gear.trinket.look;
+    if (L?.shape === 'ring') P(C - bw - 2, tt + 9 + pose.lArm, 1, 1, L.accent);
+    else { P(C - 2, tt + 1, 1, 1, m.hi); P(C + 1, tt + 1, 1, 1, m.hi); P(C - 1, tt + 2, 2, 2, L ? m.base : m.trim); P(C - 1, tt + 2, 1, 1, L ? L.accent : hi(m.trim, .4)); }
   }
+  const charms = (['charm1', 'charm2', 'charm3'] as const).map(slot => gear[slot]).filter((c): c is GearPiece => !!c);
+  if (front) charms.forEach((ch, i) => P(C - 3 + i * 2, tt + 7, 1, 1, ch.look?.accent ?? RARITY_TRIM[ch.rarity]));
   const off = gear['off-hand'];
   if (off && !phone) {
-    const m = matOf(off), S = front ? P : M;
+    const m = matOf(off), S = front ? P : M, L = off.look;
     const y = tt + 3 + pose.lArm;
     if (off.kind === 'shield') {
       // A heater shield on the forearm (from behind we see its back: planks and a strap).
-      ([[0, 8], [0, 8], [0, 8], [0, 8], [0, 8], [0, 8], [1, 6], [2, 4], [3, 2]] as const).forEach(([x, w], i) => S(1 + x, y + i, w, 1, front ? m.base : WOOD));
+      ([[0, 8], [0, 8], [0, 8], [0, 8], [0, 8], [0, 8], [1, 6], [2, 4], [3, 2]] as const).forEach(([x, w], i) => S(1 + x, y + i, w, 1, front ? m.base : L ? L.sub : WOOD));
       if (front) {
         S(1, y, 8, 1, m.trim); S(1, y, 1, 6, m.trim); S(8, y, 1, 6, lo(m.trim, .3)); S(2, y + 1, 2, 4, m.hi); S(6, y + 1, 2, 5, m.lo);
         S(4, y + 2, 2, 4, m.accent); S(3, y + 3, 4, 1, m.accent); S(4, y + 2, 1, 1, hi(m.accent, .4));
+        if (L?.runes) { S(2, y + 6, 1, 1, L.runes); S(7, y + 6, 1, 1, L.runes); S(4, y + 7, 2, 1, L.runes); }
       } else { S(3, y, 1, 7, WOOD_LO); S(6, y, 1, 6, WOOD_LO); S(1, y + 3, 8, 1, '#3a2618'); S(1, y, 8, 1, m.trim); }
     } else if (off.kind === 'lantern') {
-      S(3, y + 5, 4, 1, '#3a2c24'); S(3, y + 6, 4, 4, '#ffd27a'); S(4, y + 7, 2, 2, '#fff4c2'); S(3, y + 10, 4, 1, '#3a2c24'); S(4, y + 4, 2, 1, '#3a2c24');
-    } else if (off.kind === 'tome' || off.kind === 'scroll' || off.kind === 'cards' || off.kind === 'orb' || off.kind === 'scales') {
+      const frameCol = L ? L.base : '#3a2c24', glass = L ? L.accent : '#ffd27a', heart = L ? hi(L.accent, .6) : '#fff4c2';
+      S(3, y + 5, 4, 1, frameCol); S(3, y + 6, 4, 4, glass); S(4, y + 7, 2, 2, heart); S(3, y + 10, 4, 1, frameCol); S(4, y + 4, 2, 1, frameCol);
+      if (L) { S(3, y + 6, 1, 4, L.lit); S(6, y + 6, 1, 4, L.deep); }
+    } else if (off.kind === 'censer') {
+      // The censer on its chain from the hand, swinging a pixel either way with the step; its holes glow.
+      const sw = [0, 0, -1, 0, 1, 0, 0, 0][frame] ?? 0;
+      S(4, y + 5, 1, 3, m.lo); S(4 + sw, y + 8, 1, 2, m.lo);
+      S(3 + sw, y + 10, 3, 1, m.hi); S(2 + sw, y + 11, 5, 3, m.base); S(2 + sw, y + 11, 1, 3, m.hi); S(6 + sw, y + 11, 1, 3, m.lo);
+      S(3 + sw, y + 12, 1, 1, m.accent); S(5 + sw, y + 12, 1, 1, m.accent); S(4 + sw, y + 11, 1, 1, hi(m.accent, .4));
+      S(3 + sw, y + 14, 3, 1, m.lo);
+    } else if (off.kind === 'crucible') {
+      // A black pot held at the hip, molten to the brim.
+      S(1, y + 6, 7, 1, m.hi); S(1, y + 7, 7, 4, m.base); S(1, y + 7, 1, 4, m.hi); S(7, y + 7, 1, 4, m.lo); S(2, y + 11, 5, 1, m.lo);
+      S(2, y + 7, 5, 1, m.accent); S(3, y + 7, 3, 1, hi(m.accent, .45)); S(4, y + 7, 1, 1, '#fff2a8');
+    } else if (off.kind === 'orb') {
+      S(2, y + 5, 5, 5, m.base); S(3, y + 4, 3, 1, m.base); S(3, y + 10, 3, 1, m.lo); S(3, y + 5, 2, 2, m.hi); S(5, y + 7, 2, 2, m.accent);
+      if (L) S(3, y + 11, 3, 1, L.sub);
+    } else if (off.kind === 'tome' || off.kind === 'scroll' || off.kind === 'cards' || off.kind === 'scales') {
       S(2, y + 4, 5, 6, m.base); S(2, y + 4, 5, 1, m.hi); S(6, y + 5, 1, 5, m.lo); S(3, y + 6, 3, 1, m.trim);
+      if (L) { S(3, y + 7, 2, 2, L.accent); if (L.runes) S(4, y + 9, 1, 1, L.runes); }
+    } else if (L && (off.kind === 'wand' || off.kind === 'dagger' || off.kind === 'sword')) {
+      // A held off-hand rod (a shuttle, a wand): its shaft and lit head.
+      S(4, y + 1, 1, 8, L.sub); S(3, y - 1, 3, 2, L.base); S(4, y - 1, 1, 1, L.accent);
     }
   }
+}
+
+/** Head gear that is not a hood: helms (open, horned, great), a crown, a circlet, a mask. */
+function paintHeadGear(P: Px, hd: GearPiece, front: boolean, ht: number): void {
+  const m = matOf(hd), L = hd.look;
+  const at = (x: number, y: number, w: number, col: string) => P(HX + x, ht + y, w, 1, col);
+  const shape = L ? L.shape : hd.kind === 'helm' ? (hd.variant === 'pyre' ? 'great-helm' : 'open-helm') : hd.kind;
+  if (shape === 'great-helm') {
+    // A closed helm (the Pyre Watch's iron): a combed dome, a lit rim, a dark visor slit over the eyes and a nasal guard.
+    const slit = '#150f14', glow = m.accent, eyes = L?.eyes ?? glow;
+    ([[4, 10], [2, 14], [0, 18], [-1, 20], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 2, w, m.base));
+    at(4, -2, 5, m.hi); at(2, -1, 3, m.hi); at(0, 0, 2, m.hi); at(-1, 1, 1, m.hi);
+    for (let y = -1; y < 5; y++) at(15, y, 3, m.lo);
+    // The comb: a raised ridge front to back over the crown, lit on its left.
+    for (let y = -3; y < 4; y++) { at(7, y, 1, m.hi); at(8, y, 2, y === -3 ? m.hi : m.base); at(10, y, 1, m.lo); }
+    // The lit rim and the brow plate under it.
+    at(-1, 3, 20, glow); at(-1, 3, 4, hi(glow, .4)); at(14, 3, 5, lo(glow, .35));
+    at(-1, 4, 20, lo(m.base, .3)); at(0, 5, 18, m.base); at(16, 5, 2, m.lo);
+    // The visor slit, eyes (or an ember) catching in it either side of the nasal.
+    if (front) { at(2, 6, 14, slit); at(4, 6, 2, eyes); at(12, 6, 2, eyes); }
+    // Cheek guards with a rivet, the nasal (front); the neck guard (back).
+    for (let y = 5; y < 12; y++) { at(-1, y, 3, m.base); at(16, y, 3, m.lo); }
+    at(-1, 5, 1, m.hi); at(0, 10, 1, glow); at(17, 10, 1, glow);
+    if (front) { for (let y = 5; y < 11; y++) { at(8, y, 2, y === 5 ? m.trim : m.hi); at(9, y, 1, m.base); } at(8, 10, 2, lo(m.base, .3)); }
+    else {
+      for (let y = 5; y < 13; y++) at(-1, y, 20, y === 12 ? m.trim : y % 3 ? m.base : m.lo);
+      at(1, 6, 16, lo(m.base, .5)); at(8, 8, 2, glow);
+    }
+  } else if (shape === 'open-helm' || shape === 'horned') {
+    ([[4, 10], [2, 14], [0, 18], [-1, 20], [-1, 20], [-1, 20], [-1, 20]] as const).forEach(([x, w], i) => at(x, i - 2, w, m.base));
+    at(4, -2, 5, m.hi); at(2, -1, 3, m.hi); at(0, 0, 2, m.hi); at(-1, 1, 1, m.hi);
+    for (let y = -1; y < 5; y++) at(15, y, 3, m.lo);
+    at(-1, 4, 20, m.trim);
+    // Cheek guards and a nasal (front); the neck guard (back).
+    for (let y = 5; y < 12; y++) { at(-1, y, 3, m.base); at(16, y, 3, m.lo); }
+    at(-1, 5, 1, m.hi);
+    if (front) { for (let y = 5; y < 10; y++) at(8, y, 2, y === 5 ? m.trim : m.base); at(8, 6, 1, m.hi); }
+    else for (let y = 5; y < 13; y++) at(-1, y, 20, y === 12 ? m.trim : y % 3 ? m.base : m.lo);
+    if (shape === 'open-helm') { at(7, -3, 4, m.accent); at(7, -3, 2, hi(m.accent, .35)); }
+  } else if (shape === 'crown') {
+    const gold = L ? m.base : m.trim, gHi = L ? m.hi : hi(m.trim, .35), gLo = L ? m.lo : lo(m.trim, .3);
+    for (const x of [2, 8, 14]) { at(x, -2, 2, gold); at(x, -1, 2, gold); }
+    at(1, 0, 16, gold); at(1, 1, 16, gold); at(1, 2, 16, gLo);
+    at(1, 0, 6, gHi); at(2, -2, 1, L ? gHi : hi(m.trim, .45));
+    if (L) for (const x of [2, 8, 14]) at(x + 1, -2, 1, m.accent);
+    if (front) { at(8, 1, 2, m.accent); at(8, 1, 1, hi(m.accent, .5)); at(4, 1, 1, m.accent); at(13, 1, 1, m.accent); }
+  } else if (shape === 'mask') {
+    // A face plate over the face (the fringe still shows above it): eye holes, a lit brow, a mouth slit; a strap behind.
+    if (front) {
+      ([[3, 12], [2, 14], [2, 14], [2, 14], [3, 12], [4, 10], [6, 6]] as const).forEach(([x, w], i) => at(x, 8 + i, w, m.base));
+      at(3, 8, 12, m.hi); at(8, 9, 2, m.hi); at(14, 9, 2, m.lo); at(15, 10, 1, m.lo);
+      const eye = L?.eyes ?? OUTLINE;
+      at(4, 10, 3, eye); at(11, 10, 3, eye); at(7, 13, 4, m.lo);
+      if (L?.trim) at(2, 8, 14, L.trim);
+    } else at(-1, 9, 20, m.lo);
+  } else {
+    at(-1, 5, 20, m.trim); at(-1, 5, 6, hi(m.trim, .3)); at(14, 5, 5, lo(m.trim, .3));
+    if (front) { at(8, 5, 2, m.accent); at(8, 6, 2, lo(m.accent, .3)); at(8, 5, 1, hi(m.accent, .5)); }
+    if (L) { at(-1, 5, 20, m.base); at(-1, 5, 6, m.hi); at(14, 5, 5, m.lo); if (front) { at(8, 5, 2, m.accent); at(8, 5, 1, hi(m.accent, .5)); } }
+  }
+  if (!L) return;
+  if (L.horns || shape === 'horned') {
+    // Horns from the temples, curling out and up; the far side's in shade.
+    const hn = L.horns ?? m.hi;
+    for (const [x, y, w] of [[-1, 0, 1], [-2, -1, 2], [-3, -2, 2], [-3, -3, 1]] as const) { at(x, y, w, hn); at(17 - x - w + 1, y, w, lo(hn, .25)); }
+    at(-2, -1, 1, hi(hn, .3));
+  }
+  if (L.runes) {
+    if (shape === 'crown') { at(5, 1, 1, L.runes); at(12, 1, 1, L.runes); }
+    else if (shape === 'circlet') { at(3, 5, 1, L.runes); at(14, 5, 1, L.runes); }
+    else if (shape !== 'mask') { at(3, 1, 1, L.runes); at(6, 0, 1, L.runes); at(11, 0, 1, L.runes); at(14, 1, 1, L.runes); }
+  }
+  if (L.glow && shape !== 'mask' && shape !== 'circlet') at(4, shape === 'crown' ? 0 : -2, 10, mix(m.base, L.glow, .35));
 }
 
 /**
@@ -708,42 +815,45 @@ function quiver(P: Px, q: string, tt: number, fletch: boolean, front = false): v
 
 /** A weapon that is not a staff, held upright in the right hand (front) or the left (back). `hy`: the hand's row. */
 function paintHeld(P: Px, w: GearPiece, hy: number): void {
-  const m = matOf(w), x = 23;
+  const m = matOf(w), x = 23, L = w.look;
+  // Its own look: the blade or head in its tones, the haft in its second material (else steel and ash).
+  const STEEL_ = L ? mix(L.base, L.lit, .5) : STEEL, STEEL_HI_ = L ? hi(L.lit, .4) : STEEL_HI, STEEL_LO_ = L ? L.deep : STEEL_LO;
+  const WOOD_ = L ? L.sub : WOOD, WOOD_HI_ = L ? hi(L.sub, .25) : WOOD_HI, WOOD_LO_ = L ? lo(L.sub, .3) : WOOD_LO, BONE_ = L ? hi(L.lit, .5) : BONE;
   switch (w.kind) {
     case 'axe': case 'pickaxe': case 'hammer': case 'mace': case 'sickle': case 'tongs': {
-      P(x, hy - 11, 2, 16, WOOD); P(x, hy - 11, 1, 16, WOOD_HI); P(x, hy + 4, 2, 1, WOOD_LO);
+      P(x, hy - 11, 2, 16, WOOD_); P(x, hy - 11, 1, 16, WOOD_HI_); P(x, hy + 4, 2, 1, WOOD_LO_);
       if (w.kind === 'axe' || w.kind === 'sickle') {
-        P(x + 2, hy - 12, 2, 6, STEEL); P(x + 3, hy - 12, 1, 6, STEEL_HI); P(x + 2, hy - 11, 1, 4, STEEL_LO);
-        P(x - 1, hy - 11, 1, 3, STEEL_LO); P(x, hy - 9, 2, 1, m.trim);
+        P(x + 2, hy - 12, 2, 6, STEEL_); P(x + 3, hy - 12, 1, 6, STEEL_HI_); P(x + 2, hy - 11, 1, 4, STEEL_LO_);
+        P(x - 1, hy - 11, 1, 3, STEEL_LO_); P(x, hy - 9, 2, 1, m.trim);
       } else if (w.kind === 'pickaxe') {
-        P(x - 3, hy - 11, 7, 2, STEEL); P(x - 3, hy - 11, 7, 1, STEEL_HI); P(x - 4, hy - 9, 1, 1, STEEL_LO); P(x + 3, hy - 9, 1, 1, STEEL_LO); P(x, hy - 11, 2, 1, m.trim);
+        P(x - 3, hy - 11, 7, 2, STEEL_); P(x - 3, hy - 11, 7, 1, STEEL_HI_); P(x - 4, hy - 9, 1, 1, STEEL_LO_); P(x + 3, hy - 9, 1, 1, STEEL_LO_); P(x, hy - 11, 2, 1, m.trim);
       } else if (w.kind === 'tongs') {
-        P(x - 1, hy - 12, 1, 3, STEEL_LO); P(x + 2, hy - 12, 1, 3, STEEL_LO);
+        P(x - 1, hy - 12, 1, 3, STEEL_LO_); P(x + 2, hy - 12, 1, 3, STEEL_LO_);
       } else {
-        const head = w.kind === 'mace' ? m.base : STEEL;
+        const head = w.kind === 'mace' ? m.base : STEEL_;
         P(x - 2, hy - 13, 6, 5, head); P(x - 2, hy - 13, 6, 1, hi(head, .35)); P(x - 2, hy - 12, 1, 3, hi(head, .25)); P(x + 2, hy - 12, 2, 4, lo(head, .3));
         P(x - 2, hy - 9, 6, 1, m.trim);
-        if (w.kind === 'mace') { P(x - 3, hy - 11, 1, 1, STEEL_HI); P(x, hy - 14, 2, 1, STEEL_HI); }
+        if (w.kind === 'mace') { P(x - 3, hy - 11, 1, 1, STEEL_HI_); P(x, hy - 14, 2, 1, STEEL_HI_); }
       }
       break;
     }
     case 'spear': case 'halberd': {
       const top = Math.max(1, hy - 22);
-      P(x, top + 4, 2, hy + 10 - top - 4, WOOD); P(x, top + 4, 1, hy + 10 - top - 4, WOOD_HI);
-      P(x, top, 2, 4, STEEL); P(x, top, 1, 4, STEEL_HI); P(x - 1, top + 2, 4, 2, STEEL); P(x + 2, top + 2, 1, 2, STEEL_LO);
+      P(x, top + 4, 2, hy + 10 - top - 4, WOOD_); P(x, top + 4, 1, hy + 10 - top - 4, WOOD_HI_);
+      P(x, top, 2, 4, STEEL_); P(x, top, 1, 4, STEEL_HI_); P(x - 1, top + 2, 4, 2, STEEL_); P(x + 2, top + 2, 1, 2, STEEL_LO_);
       P(x, top + 4, 2, 1, m.trim);
-      if (w.kind === 'halberd') { P(x + 2, top + 5, 2, 4, STEEL); P(x + 3, top + 5, 1, 4, STEEL_HI); P(x - 2, top + 6, 2, 1, STEEL_LO); }
+      if (w.kind === 'halberd') { P(x + 2, top + 5, 2, 4, STEEL_); P(x + 3, top + 5, 1, 4, STEEL_HI_); P(x - 2, top + 6, 2, 1, STEEL_LO_); }
       break;
     }
     case 'bow': case 'crossbow': {
       if (w.kind === 'crossbow') {
-        P(x - 3, hy - 6, 7, 1, WOOD); P(x - 3, hy - 6, 3, 1, WOOD_HI); P(x, hy - 7, 2, 10, WOOD_LO); P(x, hy - 7, 1, 10, WOOD);
-        P(x - 3, hy - 5, 7, 1, BONE); P(x, hy - 8, 2, 1, m.trim);
+        P(x - 3, hy - 6, 7, 1, WOOD_); P(x - 3, hy - 6, 3, 1, WOOD_HI_); P(x, hy - 7, 2, 10, WOOD_LO_); P(x, hy - 7, 1, 10, WOOD_);
+        P(x - 3, hy - 5, 7, 1, BONE_); P(x, hy - 8, 2, 1, m.trim);
       } else {
         // The limbs bow out to the right; the string runs straight down the left.
-        P(x + 1, hy - 11, 1, 2, WOOD); P(x + 2, hy - 9, 1, 8, WOOD_HI); P(x + 3, hy - 9, 1, 8, WOOD_LO);
-        P(x + 2, hy + 1, 1, 3, WOOD); P(x + 1, hy + 4, 1, 2, WOOD_LO);
-        P(x, hy - 11, 1, 17, BONE);
+        P(x + 1, hy - 11, 1, 2, WOOD_); P(x + 2, hy - 9, 1, 8, WOOD_HI_); P(x + 3, hy - 9, 1, 8, WOOD_LO_);
+        P(x + 2, hy + 1, 1, 3, WOOD_); P(x + 1, hy + 4, 1, 2, WOOD_LO_);
+        P(x, hy - 11, 1, 17, BONE_);
         P(x + 2, hy - 1, 2, 2, m.trim);
       }
       break;
@@ -752,17 +862,22 @@ function paintHeld(P: Px, w: GearPiece, hy: number): void {
       // A blade: steel with a lit edge, its tier's trim at the guard and pommel.
       const len = w.kind === 'dagger' ? 6 : w.kind === 'greatsword' ? 17 : 13, bwid = w.kind === 'greatsword' ? 3 : 2;
       const top = Math.max(2, hy - 1 - len);
-      P(x, top, bwid, hy - 1 - top, STEEL); P(x, top, 1, hy - 1 - top, STEEL_HI); P(x + bwid - 1, top + 1, 1, hy - 2 - top, STEEL_LO);
-      P(x, top - 1, 1, 1, STEEL_HI);
+      P(x, top, bwid, hy - 1 - top, STEEL_); P(x, top, 1, hy - 1 - top, STEEL_HI_); P(x + bwid - 1, top + 1, 1, hy - 2 - top, STEEL_LO_);
+      P(x, top - 1, 1, 1, STEEL_HI_);
       P(x - 2, hy - 1, bwid + 4, 1, m.trim); P(x - 2, hy - 1, 2, 1, hi(m.trim, .35));
-      P(x, hy + 2, 2, 1, WOOD); P(x, hy + 3, 2, 1, m.accent);
+      P(x, hy + 2, 2, 1, WOOD_); P(x, hy + 3, 2, 1, m.accent);
+      if (L?.runes) for (let ry = top + 2; ry < hy - 2; ry += 4) P(x + (bwid > 2 ? 1 : 0), ry, 1, 1, L.runes);
     }
   }
+  if (L?.runes && w.kind !== 'sword' && w.kind !== 'greatsword' && w.kind !== 'dagger') P(x, hy - 6, 1, 1, L.runes);
 }
 
 /** The Warlock's staff: ashwood, bands of bone, a violet cage round an ember orb — raised and flaring to cast. */
-function paintStaff(P: Px, cast: boolean, hy: number, wand: GearPiece | null): void {
-  const x = 23, cage = '#3b2140', cageHi = '#8a55c8';
+function paintStaff(P: Px, cast: boolean, hy: number, wand: GearPiece | null, look: WornLook | null = null): void {
+  // A worn staff or wand in its own look: its cage in its tones, its orb its accent, its shaft its haft.
+  const x = 23, cage = look ? look.deep : '#3b2140', cageHi = look ? look.lit : '#8a55c8';
+  const orb = look ? look.accent : '#8a3fd0', core = look ? hi(look.accent, .45) : '#ff9a3a', spark = look ? hi(look.accent, .75) : '#ffe08a';
+  const WOOD = look ? look.sub : WOOD_BASE, WOOD_HI = look ? hi(look.sub, .25) : WOOD_LIT, WOOD_LO = look ? lo(look.sub, .3) : WOOD_SHADE;
   const y0 = wand ? hy - 10 : cast ? 2 : 5;
   const bottom = wand ? hy + 4 : cast ? FEET - 4 : FEET;
   // The shaft: lit on the left.
@@ -776,9 +891,10 @@ function paintStaff(P: Px, cast: boolean, hy: number, wand: GearPiece | null): v
   P(x, y0, 2, 1, cage); P(x, y0, 1, 1, cageHi);
   P(x - 1, y0 + 6, 4, 1, BONE); P(x + 2, y0 + 6, 1, 1, BONE_LO);
   // The orb: an ember in a violet haze; white-hot when casting.
-  P(x, y0 + 1, 2, 5, cast ? '#ffd25a' : '#8a3fd0');
-  P(x, y0 + 2, 2, 3, cast ? '#fff1b8' : '#ff9a3a');
-  P(x, y0 + 2, 1, 1, cast ? '#ffffff' : '#ffe08a');
+  P(x, y0 + 1, 2, 5, cast ? '#ffd25a' : orb);
+  P(x, y0 + 2, 2, 3, cast ? '#fff1b8' : core);
+  P(x, y0 + 2, 1, 1, cast ? '#ffffff' : spark);
+  if (look?.runes && !wand) for (const y of [y0 + 13, y0 + 18]) P(x, y, 1, 1, look.runes);
   if (cast) for (const [dx, dy] of [[-3, 3], [-2, 1], [3, 0], [3, 4], [-3, 6], [1, -1]] as const) P(x + dx, y0 + dy, 1, 1, dy % 2 ? '#ffd25a' : '#e2c6ff');
 }
 
@@ -849,4 +965,41 @@ export function frontSheet(painter: KeeperPainter, staff = false): HTMLCanvasEle
 export function frontFrame(time: number, moving: boolean): number {
   if (moving) return 2 + Math.floor(time * 9) % 4;
   return Math.floor(time * 1.4) % 4 === 3 ? 1 : 0;
+}
+
+/**
+ * The live part of a Keeper's worn looks over a front/back sheet frame (worn-fx.ts): glowing eyes flickering in a cowl,
+ * a mask or a great helm's slit (facing the camera only), and each piece's few particles — embers off a crown, a censer's
+ * smoke, motes, a mist wisp. (x0, y0) is where the frame's top-left was drawn, in the same pixels; `frame` the frame shown.
+ */
+export function drawWornFront(c: CanvasRenderingContext2D, painter: KeeperPainter, facing: Facing, frame: number, x0: number, y0: number, time: number, still: boolean): void {
+  const gear = painter.gear;
+  if (!gear) return;
+  let any = false;
+  for (const k in gear) { const L = gear[k as keyof KeeperGear]?.look; if (L && (L.fx || L.eyes)) { any = true; break; } }
+  if (!any) return;
+  const front = facing === 'down', pose = poseOf(frame), ht = HT + pose.u, tt = TT + pose.u;
+  const head = gear.head?.look;
+  if (front && head?.eyes) {
+    const a = eyeFlicker(time, still, painter.key);
+    // Where each shape's eyes are (keeper-front's own rows): the cowl's pips, the great helm's slit, the mask's holes.
+    const spots = head.shape === 'cowl' ? [[5, 10, 2], [11, 10, 2]] : head.shape === 'great-helm' ? [[4, 6, 2], [12, 6, 2]] : head.shape === 'mask' ? [[4, 10, 3], [11, 10, 3]] : [];
+    for (const [ex, ey, ew] of spots) eyeGlow(c, x0 + HX + ex, y0 + ht + ey, ew, 1, head.eyes, a);
+  }
+  const mx = (x: number, w: number) => (front ? x : FRONT_W - x - w);
+  for (const slot of ['head', 'chest', 'hands', 'weapon', 'off-hand', 'trinket'] as const) {
+    const L = gear[slot]?.look;
+    if (!L?.fx) continue;
+    let ox = C, oy = ht - 2, w = 14;
+    if (slot === 'head' && (L.shape === 'cowl' || L.shape === 'hood')) { oy = ht + 4; w = 16; }
+    else if (slot === 'chest') { oy = tt + 2; w = 12; }
+    else if (slot === 'trinket') { oy = tt + 3; w = 2; }
+    else if (slot === 'hands') { ox = mx(23, 1); oy = tt + 8; w = 3; }
+    else if (slot === 'weapon') { ox = mx(23, 1); oy = gear.weapon!.kind === 'staff' ? 6 : tt - 4; w = 2; }
+    else if (slot === 'off-hand') {
+      const sw = gear['off-hand']!.kind === 'censer' ? [0, 0, -1, 0, 1, 0, 0, 0][frame] ?? 0 : 0;
+      ox = mx(4 + sw, 1); oy = tt + 3 + pose.lArm + (gear['off-hand']!.kind === 'censer' ? 10 : 6); w = 4;
+    }
+    wornParticles(c, L.fx.kind, L.fx.color, x0 + ox, y0 + oy, w, time, still, painter.key + slot);
+  }
 }

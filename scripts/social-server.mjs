@@ -50,6 +50,11 @@ export const INVITE_MS = 60000;
 const CREATURE = /^[a-z0-9-]{1,40}$/;
 const AREA = /^[a-z0-9_-]{1,40}$/;
 const LOOK = /^[a-z0-9.]{1,48}$/;
+/**
+ * What a Keeper wears, as worn-look ids (src/app/shared/keeper-look/worn-looks.ts packWorn: `h<id>,c<id>,…`), so the
+ * others draw its gear; '' when nothing is worn. Cosmetic, optional, plain lowercase ids: an older client never sends it.
+ */
+const WORN = /^[a-z0-9.,-]{0,240}$/;
 const VOCATION = /^[a-z]{1,16}$/;
 const DIRS = new Set(['side', 'down', 'up']);
 /** Protocol 5: the cosmetic companions in presence (a pet and Glim as offsets from the Keeper: play/social/coop-pals.ts). */
@@ -70,6 +75,7 @@ export function presenceFields(data) {
   if (data.moving !== undefined) { if (typeof data.moving !== 'boolean') bad(); out.moving = data.moving; }
   if (data.vocation !== undefined) { if (typeof data.vocation !== 'string' || !VOCATION.test(data.vocation)) bad(); out.vocation = data.vocation; }
   if (data.look !== undefined) { if (typeof data.look !== 'string' || !LOOK.test(data.look)) bad(); out.look = data.look; }
+  if (data.worn !== undefined) { if (typeof data.worn !== 'string' || !WORN.test(data.worn)) bad(); out.worn = data.worn; }
   if (data.level !== undefined) { if (!Number.isInteger(data.level) || data.level < 1 || data.level > 999) bad(); out.level = data.level; }
   // Protocol 3: life for the party frames (both or neither; whole numbers; never more than the most).
   if (data.hp !== undefined || data.maxHp !== undefined) {

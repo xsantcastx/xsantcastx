@@ -588,6 +588,12 @@ test('protocol 5: a town portal travels in presence (td-waygate encodeGate); any
   assert.throws(() => presenceFields({ gate: '<b>' }), /Invalid presence/);
   assert.throws(() => presenceFields({ gate: 7 }), /Invalid presence/);
   assert.equal(presenceFields({}).gate, undefined);
+  // Worn looks (shared/keeper-look/worn-looks.ts packWorn): plain ids, '' to take everything off, nothing else.
+  assert.equal(presenceFields({ worn: 'hu.sextons-lost-cowl,ceclipse-longblade.4' }).worn, 'hu.sextons-lost-cowl,ceclipse-longblade.4');
+  assert.equal(presenceFields({ worn: '' }).worn, '');
+  assert.throws(() => presenceFields({ worn: '<img>' }), /Invalid presence/);
+  assert.throws(() => presenceFields({ worn: 'h'.repeat(241) }), /Invalid presence/);
+  assert.equal(presenceFields({}).worn, undefined);
 });
 
 // ── Protocol 6: trading and ground drops (relay only; the trade Function moves things) ──

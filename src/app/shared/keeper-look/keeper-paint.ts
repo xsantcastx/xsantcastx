@@ -31,6 +31,8 @@ import {
   gearKey, gripPoint, gripTransform, handAt, holdPose,
 } from './keeper-gear';
 import { KeeperGarb, garbKey } from './npc-looks';
+import type { WornLook } from './worn-look.model';
+import { eyeFlicker, eyeGlow, wornParticles } from './worn-fx';
 
 export const CELL = 48;
 /** The feet: bottom edge, centre column. */
@@ -219,6 +221,15 @@ function paletteOf(look: KeeperLook, garb: KeeperGarb | null): Palette {
 /** Gear materials: realm base, realm accent, tier trim. */
 interface Mat { base: string; baseLo: string; baseHi: string; accent: string; trim: string; blade: string; bladeHi: string; bladeLo: string; wood: string; woodLo: string; bright: boolean }
 function matOf(piece: GearPiece): Mat {
+  const L = piece.look;
+  if (L) {
+    // Its own look (worn-looks.ts): the icon's tones, its trim (rare and up), its glow edge (legendary and up).
+    const blade = mix(L.base, L.lit, .55);
+    return {
+      base: L.base, baseLo: L.deep, baseHi: L.lit, accent: L.accent, trim: L.trim ?? mix(L.base, L.lit, .6),
+      blade, bladeHi: light(L.lit, .45), bladeLo: L.base, wood: L.sub, woodLo: dark(L.sub, .3), bright: !!L.glow,
+    };
+  }
   const [styleBase, styleAccent] = STYLE_COLORS[piece.style];
   const base = piece.color ?? styleBase, accent = piece.accent ?? styleAccent;
   const blade = mix('#d3d9e4', base, .3);
@@ -233,7 +244,13 @@ function matOf(piece: GearPiece): Mat {
 // ── Held items, painted pointing up ──
 
 /** Paint a weapon/tool sprite (tip at the top) into its own canvas, outlined. */
-export function paintWeapon(kind: WeaponKind, m: Mat, variant?: GearPiece['variant']): HTMLCanvasElement {
+/** Where a weapon kind's runes are cut (sprite px, before the 1-px outline margin). */
+const RUNE_AT: Partial<Record<WeaponKind, readonly (readonly [number, number])[]>> = {
+  sword: [[3, 4], [3, 7], [3, 10]], greatsword: [[4, 4], [4, 8], [4, 12]], axe: [[5, 3], [5, 5]], hammer: [[2, 2], [6, 2], [4, 4]],
+  mace: [[2, 3]], staff: [[2, 8], [2, 15], [2, 22]], wand: [[2, 6]], bow: [[4, 5], [4, 15]], spear: [[2, 3]], halberd: [[6, 5]],
+  dagger: [[2, 3]], crossbow: [[6, 7]],
+};
+export function paintWeapon(kind: WeaponKind, m: Mat, variant?: GearPiece['variant'], look?: WornLook): HTMLCanvasElement {
   const spec = WEAPON_SPECS[kind];
   const raw = canvas(spec.w + 2, spec.h + 2);
   const c = raw.getContext('2d')!;
@@ -330,6 +347,7 @@ export function paintWeapon(kind: WeaponKind, m: Mat, variant?: GearPiece['varia
       p(3, 20, 2, 2, m.base); p(3, 20, 1, 1, m.baseHi);
       break;
   }
+  if (look?.runes) for (const [x, y] of RUNE_AT[kind] ?? []) p(x, y, 1, 1, look.runes);
   if (m.bright) {
     // Epic and above: the tip catches the realm's light.
     c.globalAlpha = .9; p(spec.gx, 0, 1, 1, light(m.accent, .4)); c.globalAlpha = 1;
@@ -342,12 +360,13 @@ function paintOffhand(piece: GearPiece, m: Mat): OffhandSprite {
   const kind = piece.kind;
   if (kind in WEAPON_SPECS) {
     const spec = WEAPON_SPECS[kind as WeaponKind];
-    return { el: paintWeapon(kind as WeaponKind, m), gx: spec.gx + 1, gy: spec.gy + 1 };
+    return { el: paintWeapon(kind as WeaponKind, m, undefined, piece.look), gx: spec.gx + 1, gy: spec.gy + 1 };
   }
   const sizes: Record<string, [number, number, number, number]> = {
     shield: [9, 11, 4, 5], tome: [7, 8, 3, 4], orb: [6, 7, 3, 6], lantern: [5, 8, 2, 0], scroll: [4, 10, 2, 5],
-    cards: [6, 7, 2, 6], scales: [9, 9, 4, 8],
+    cards: [6, 7, 2, 6], scales: [9, 9, 4, 8], censer: [5, 10, 2, 0], crucible: [7, 6, 3, 1],
   };
+  const runes = piece.look?.runes;
   const [w, h, gx, gy] = sizes[kind] ?? sizes['orb'];
   const raw = canvas(w + 2, h + 2);
   const c = raw.getContext('2d')!;
@@ -358,10 +377,26 @@ function paintOffhand(piece: GearPiece, m: Mat): OffhandSprite {
       p(0, 0, 9, 9, m.accent); p(1, 9, 7, 1, m.accent); p(3, 10, 3, 1, m.accent);
       p(1, 1, 7, 8, m.base); p(2, 9, 5, 1, m.base); p(1, 1, 7, 1, m.baseHi); p(7, 2, 1, 6, m.baseLo);
       p(3, 3, 3, 3, m.trim); p(4, 4, 1, 1, '#ffffff');
+      if (runes) { p(4, 2, 1, 1, runes); p(2, 4, 1, 1, runes); p(6, 4, 1, 1, runes); p(4, 7, 1, 1, runes); }
+      break;
+    case 'censer':
+      // A censer on its chain: the chain from the hand, a domed lid, the bowl with its holes lit by what burns inside.
+      p(2, 0, 1, 4, m.woodLo); p(2, 1, 1, 1, m.baseHi);
+      p(1, 4, 3, 1, m.baseHi); p(2, 3, 1, 1, m.baseHi);
+      p(0, 5, 5, 3, m.base); p(0, 5, 1, 3, m.baseHi); p(4, 5, 1, 3, m.baseLo);
+      p(1, 6, 1, 1, m.accent); p(3, 6, 1, 1, m.accent); p(2, 5, 1, 1, light(m.accent, .4));
+      p(1, 8, 3, 1, m.baseLo); p(2, 9, 1, 1, m.trim);
+      break;
+    case 'crucible':
+      // A black pot held by its rim, molten to the brim, the heat lighting its lip.
+      p(0, 0, 7, 1, m.baseHi); p(0, 1, 7, 4, m.base); p(0, 1, 1, 4, m.baseHi); p(6, 1, 1, 4, m.baseLo); p(1, 5, 5, 1, m.baseLo);
+      p(1, 1, 5, 1, m.accent); p(2, 1, 3, 1, light(m.accent, .45)); p(3, 1, 1, 1, '#fff2a8');
+      p(2, 3, 3, 1, m.wood);
       break;
     case 'tome':
       p(0, 0, 7, 8, m.base); p(0, 0, 1, 8, m.baseLo); p(6, 1, 1, 6, '#efe6d0'); p(1, 0, 5, 1, m.baseHi);
       p(2, 2, 3, 3, m.accent); p(5, 3, 2, 2, m.trim);
+      if (runes) { p(3, 3, 1, 1, runes); p(1, 6, 4, 1, runes); }
       break;
     case 'lantern':
       p(1, 0, 3, 1, m.base); p(0, 1, 5, 1, m.base); p(0, 2, 5, 5, m.baseLo); p(1, 2, 3, 5, light(m.accent, .35)); p(2, 3, 1, 3, '#ffffff'); p(0, 7, 5, 1, m.base);
@@ -399,6 +434,8 @@ export interface PaintState {
   squash?: number;
   /** A flash of feeling (level up, loot); otherwise the eyes are open and blink now and then. */
   face?: 'happy' | 'surprised';
+  /** Hold the worn looks' live pixels still (reduced motion) without stilling the body's frames (`reduced` does both). */
+  fxStill?: boolean;
 }
 
 /**
@@ -429,6 +466,8 @@ export class KeeperPainter {
   private tipDrawn = false;
   /** Offsets this Keeper's blink so a crowd never blinks in unison. */
   private readonly blinkPhase: number;
+  /** Any worn look with live pixels (glowing eyes, embers, mist, motes, smoke): worn-fx.ts. */
+  private readonly hasFx: boolean;
 
   /** The colours this Keeper is painted in (read-only): the top-down front/back views (keeper-front.ts) use the same ones. */
   get colors(): Readonly<Palette> { return this.pal; }
@@ -443,6 +482,7 @@ export class KeeperPainter {
     let hash = 0;
     for (let i = 0; i < this.key.length; i++) hash = (hash * 31 + this.key.charCodeAt(i)) >>> 0;
     this.blinkPhase = (hash % 997) / 997 * BLINK_EVERY;
+    this.hasFx = !!gear && Object.values(gear).some(p => !!p?.look && (!!p.look.fx || !!p.look.eyes));
   }
 
   /**
@@ -470,7 +510,13 @@ export class KeeperPainter {
   get top(): number {
     const head = this.gear?.head, garb = this.garb, hair = this.look.hair;
     let rise = 2;
-    if (head?.kind === 'helm') rise = head.variant === 'pyre' ? 5 : head.rarity === 'common' || head.rarity === 'uncommon' ? 4 : 7;
+    const shape = head?.look?.shape;
+    if (head?.look?.horns || shape === 'horned') rise = 10;
+    else if (shape === 'great-helm') rise = 6;
+    else if (shape === 'open-helm') rise = head!.rarity === 'common' || head!.rarity === 'uncommon' ? 4 : 7;
+    else if (shape === 'crown') rise = 6;
+    else if (shape === 'mask' || shape === 'circlet') rise = 2;
+    else if (head?.kind === 'helm') rise = head.variant === 'pyre' ? 5 : head.rarity === 'common' || head.rarity === 'uncommon' ? 4 : 7;
     else if (head?.kind === 'hood') rise = 4;
     else if (head?.kind === 'crown') rise = 5;
     else if (garb?.hat) rise = garb.hat === 'brim' ? 8 : 5;
@@ -520,6 +566,7 @@ export class KeeperPainter {
       c.save();
       c.translate(x, y); c.scale(scale, scale);
       this.frontArm(c, action, frame, state);
+      if (this.hasFx) this.wornFx(c, action, bodyFrame(action === 'talk' ? 'idle' : action, frame), state);
       c.restore();
       c.shadowBlur = blur;
     }
@@ -554,7 +601,7 @@ export class KeeperPainter {
     holdPose(kind, action, phase, state.attackT, this.pose);
     const hand = handAt(sx, sy, this.pose.arm, this.hand);
     if (kind) {
-      const sprite = this.weaponSprite ??= paintWeapon(kind, matOf(this.gear!.weapon!), this.gear!.weapon!.variant);
+      const sprite = this.weaponSprite ??= paintWeapon(kind, matOf(this.gear!.weapon!), this.gear!.weapon!.variant, this.gear!.weapon!.look);
       const spec = WEAPON_SPECS[kind];
       gripTransform(Math.round(hand.x) + .5, Math.round(hand.y) + .5, this.pose.weapon, spec, this.grip);
       c.save();
@@ -579,6 +626,14 @@ export class KeeperPainter {
     px(c, hx - 1, hy - 2, 3, 5, OUTLINE); px(c, hx - 2, hy - 1, 5, 3, OUTLINE);
     px(c, hx - 1, hy - 1, 3, 3, this.gloveColor());
     px(c, hx - 1, hy - 1, 1, 1, light(this.gloveColor(), .2));
+    const gl = this.gear?.hands?.look;
+    if (gl) {
+      // Its look: a stitched seam across the back of the hand, a rune on the knuckle, a gauntlet's cuff in the trim.
+      if (gl.seam) px(c, hx, hy - 1, 1, 3, gl.seam);
+      if (gl.runes) px(c, hx + 1, hy, 1, 1, gl.runes);
+      if (gl.shape === 'gauntlets') px(c, hx - 2, hy - 2, 1, 3, gl.trim ?? gl.lit);
+      else if (gl.trim) px(c, hx - 1, hy + 1, 3, 1, gl.trim);
+    }
     if (kind && state.attackT > .3 && (WEAPON_SPECS[kind].swing === 'cast')) {
       // A cast: the head of the staff or wand flares in the tier's colour.
       const cos = Math.cos(this.pose.weapon), sin = Math.sin(this.pose.weapon);
@@ -598,6 +653,7 @@ export class KeeperPainter {
   private gloveColor(): string {
     const hands = this.gear?.hands;
     if (!hands) return this.pal.skin;
+    if (hands.look) return hands.look.base;
     const m = matOf(hands);
     return hands.kind === 'wrap' ? m.accent : m.base;
   }
@@ -682,7 +738,11 @@ export class KeeperPainter {
     const off = gear['off-hand'];
     if (off && !this.frontProp) {
       const sprite = this.offhand === undefined ? (this.offhand = paintOffhand(off, matOf(off))) : this.offhand;
-      if (sprite) c.drawImage(sprite.el, Math.round(bhx) - sprite.gx, Math.round(bhy) - sprite.gy);
+      if (sprite && off.kind === 'censer') {
+        // The censer swings on its chain with the step (each body frame its own angle).
+        c.save(); c.translate(Math.round(bhx), Math.round(bhy)); c.rotate(censerSwing(f));
+        c.drawImage(sprite.el, -sprite.gx, -sprite.gy); c.restore();
+      } else if (sprite) c.drawImage(sprite.el, Math.round(bhx) - sprite.gx, Math.round(bhy) - sprite.gy);
     }
     if (!garb?.oneHand) px(c, Math.round(bhx) - 1, Math.round(bhy) - 1, 2, 2, dark(this.gloveColor(), .25));
 
@@ -715,6 +775,18 @@ export class KeeperPainter {
       px(c, cx + 1, top + 1, 1, hip - top - 2, chest ? cm!.accent : dark(pal.tunic, .15));
     }
 
+    const cl = chest?.look;
+    if (cl) {
+      // Its look: scale (mail rows), a stitched seam, runes down the front, a glow along the shoulders.
+      if (cl.shape === 'scale') for (let y = top + 1; y < hip; y += 2) {
+        const u = (y - top) / Math.max(1, hip - top), w = Math.round(b.sw + (b.hw - b.sw) * u), left = cx - Math.floor(w / 2);
+        for (let x = left + 1 + ((y >> 1) & 1); x < left + w - 1; x += 2) px(c, x, y, 1, 1, cm!.baseLo);
+      }
+      if (cl.seam) px(c, cx + 1, top + 1, 1, hip - top - 1, cl.seam);
+      if (cl.runes) { px(c, cx, top + 2, 1, 1, cl.runes); px(c, cx + 2, top + 4, 1, 1, cl.runes); px(c, cx, top + 6, 1, 1, cl.runes); }
+      if (cl.glow) px(c, cx - half + 1, top, b.sw - 3, 1, mix(cm!.base, cl.glow, .35));
+    }
+
     // 5. Front leg, then the skirt of a coat or robe over the legs.
     this.leg(c, cx + 1, hip, f.front, false);
     if (chest && (chest.kind === 'coat' || chest.kind === 'robe')) {
@@ -731,6 +803,12 @@ export class KeeperPainter {
       // The clasp across the shoulders.
       px(c, cx - half, top - 1, b.sw, 2, matOf(chest).base);
       px(c, cx + 1, top, 2, 2, matOf(chest).trim);
+    }
+    const mantle = chest?.look?.mantle;
+    if (mantle) {
+      // A short mantle over the shoulders: lit on the near shoulder, its hem a shade down.
+      px(c, cx - half - 1, top - 1, b.sw + 2, 3, mantle); px(c, cx - half - 1, top + 2, b.sw + 2, 1, dark(mantle, .3));
+      px(c, cx + half - 2, top - 1, 3, 1, light(mantle, .25)); px(c, cx - half - 1, top - 1, 1, 3, dark(mantle, .2));
     }
 
     // 5b. A work apron (bib to knee) and a sash, over whatever the chest wears.
@@ -753,10 +831,12 @@ export class KeeperPainter {
     px(c, cx - Math.floor(hw / 2), hip - 1, hw, 2, beltColor);
     px(c, cx + 1, hip - 1, 2, 2, legs?.kind === 'belt' ? matOf(legs).trim : '#c9a45a');
     const charms = (['charm1', 'charm2', 'charm3'] as const).map(slot => gear[slot]).filter((p): p is GearPiece => !!p);
-    charms.forEach((charm, i) => px(c, cx - 3 + i * 2, hip + 1, 1, 2, RARITY_TRIM[charm.rarity]));
+    charms.forEach((charm, i) => px(c, cx - 3 + i * 2, hip + 1, 1, 2, charm.look?.accent ?? RARITY_TRIM[charm.rarity]));
     if (gear.trinket) {
-      px(c, cx + 2, top + 1, 1, 1, '#c9a45a');
-      px(c, cx + 2, top + 2, 2, 2, RARITY_TRIM[gear.trinket.rarity]);
+      const tl = gear.trinket.look;
+      px(c, cx + 2, top + 1, 1, 1, tl ? tl.lit : '#c9a45a');
+      if (tl?.shape === 'ring') px(c, cx + 2, top + 2, 1, 1, tl.accent);
+      else { px(c, cx + 2, top + 2, 2, 2, tl ? tl.base : RARITY_TRIM[gear.trinket.rarity]); if (tl) px(c, cx + 2, top + 2, 1, 1, tl.accent); }
     }
 
     // 7. The big head (the elder's sits a pixel forward and lower).
@@ -797,8 +877,21 @@ export class KeeperPainter {
     limb(c, x, hip, ax, ay - 2, b.leg, back ? dark(color, .3) : color);
     if (greaves && !back) px(c, Math.round((x + ax) / 2) + 1, Math.round((hip + ay) / 2) - 1, 1, 2, greaves.baseHi);
     const boot = back ? dark(boots ? boots.base : LEATHER, .3) : boots ? boots.base : LEATHER;
+    const fl = gear.feet?.look, ll = gear.legs?.look;
+    if (ll?.runes && greaves && !back) px(c, Math.round((x + ax) / 2), Math.round((hip + ay) / 2), 1, 1, ll.runes);
+    if (fl?.shape === 'sandals') {
+      // Reed sandals: a thin sole, two straps over a bare foot.
+      px(c, ax - 1, ay - 1, 4, 1, back ? dark(pal.skin, .3) : pal.skin); px(c, ax - 1, ay, 5, 1, boot);
+      px(c, ax, ay - 1, 1, 1, back ? boot : fl.accent); px(c, ax + 2, ay - 1, 1, 1, back ? boot : fl.accent);
+      return;
+    }
     px(c, ax - 1, ay - 1, 4, 2, boot); px(c, ax + 3, ay, 1, 1, boot);
-    if (boots) {
+    if (fl?.shape === 'greaves') {
+      // Sabatons: plate to the shin, a cuff in the trim.
+      px(c, ax - 1, ay - 4, 3, 3, boot); if (!back) px(c, ax - 1, ay - 4, 1, 3, boots!.baseHi);
+      px(c, ax - 1, ay - 4, 3, 1, back ? boot : boots!.trim);
+      if (!back) px(c, ax + 1, ay - 1, 2, 1, boots!.baseHi);
+    } else if (boots) {
       px(c, ax - 1, ay - 2, 4, 1, back ? boot : boots.trim);
       if (!back) px(c, ax + 1, ay - 1, 2, 1, boots.baseHi);
     } else if (!back) px(c, ax + 1, ay - 1, 2, 1, light(LEATHER, .15));
@@ -980,24 +1073,27 @@ export class KeeperPainter {
   }
 
   private headGear(c: Ctx, x: number, y: number, head: GearPiece): void {
-    const m = matOf(head);
-    switch (head.kind) {
-      case 'helm':
-        if (head.variant === 'pyre') {
-          // The Pyre Watch's iron helm in profile: a combed dome, an ember-lit rim, a dark visor slit and a nasal guard.
-          const slit = '#150f14';
-          px(c, x + 3, y - 4, HW - 6, 1, m.base); px(c, x + 1, y - 3, HW - 2, 1, m.base); px(c, x, y - 2, HW, 1, m.base);
-          px(c, x - 1, y - 1, HW + 2, 4, m.base);
-          px(c, x + 3, y - 3, 6, 1, m.baseHi); px(c, x + 1, y - 2, 2, 2, m.baseHi);
-          px(c, x + 4, y - 5, 7, 1, m.baseHi);   // the comb along the crown
-          px(c, x + 10, y - 3, 4, 3, m.baseLo);                                      // the shaded front of the dome
-          px(c, x - 1, y + 3, HW + 2, 1, m.accent); px(c, x, y + 3, 4, 1, light(m.accent, .4)); // the ember-lit rim
-          px(c, x - 1, y + 4, HW + 1, 1, m.baseLo);                                  // the brow plate
-          px(c, x + 6, y + 5, HW - 5, 1, slit); px(c, x + 6, y + 5, 2, 1, m.accent);  // the visor slit, an ember in it
-          px(c, x + HW - 2, y + 5, 2, 5, m.baseHi); px(c, x + HW - 1, y + 5, 1, 5, m.base); // the nasal guard
-          px(c, x - 1, y + 6, 5, 6, m.base); px(c, x - 1, y + 6, 1, 6, m.baseLo); px(c, x + 1, y + 10, 1, 1, m.accent); // cheek and neck guard
-          break;
-        }
+    const m = matOf(head), L = head.look;
+    // A worn look picks its own silhouette; a kit piece or a townsperson's hat keeps its kind.
+    const shape = L ? L.shape : head.kind === 'helm' ? (head.variant === 'pyre' ? 'great-helm' : 'open-helm') : head.kind;
+    switch (shape) {
+      case 'great-helm': {
+        // A closed helm in profile: a combed dome, a lit rim, a dark visor slit and a nasal guard (the Pyre Watch's iron).
+        const slit = '#150f14', ember = L?.eyes ?? m.accent;
+        px(c, x + 3, y - 4, HW - 6, 1, m.base); px(c, x + 1, y - 3, HW - 2, 1, m.base); px(c, x, y - 2, HW, 1, m.base);
+        px(c, x - 1, y - 1, HW + 2, 4, m.base);
+        px(c, x + 3, y - 3, 6, 1, m.baseHi); px(c, x + 1, y - 2, 2, 2, m.baseHi);
+        px(c, x + 4, y - 5, 7, 1, m.baseHi);   // the comb along the crown
+        px(c, x + 10, y - 3, 4, 3, m.baseLo);                                      // the shaded front of the dome
+        px(c, x - 1, y + 3, HW + 2, 1, m.accent); px(c, x, y + 3, 4, 1, light(m.accent, .4)); // the lit rim
+        px(c, x - 1, y + 4, HW + 1, 1, m.baseLo);                                  // the brow plate
+        px(c, x + 6, y + 5, HW - 5, 1, slit); px(c, x + 6, y + 5, 2, 1, ember);    // the visor slit, an ember in it
+        if (L?.eyes) px(c, x + 11, y + 5, 2, 1, L.eyes);                           // eyes burning in the slit
+        px(c, x + HW - 2, y + 5, 2, 5, m.baseHi); px(c, x + HW - 1, y + 5, 1, 5, m.base); // the nasal guard
+        px(c, x - 1, y + 6, 5, 6, m.base); px(c, x - 1, y + 6, 1, 6, m.baseLo); px(c, x + 1, y + 10, 1, 1, m.accent); // cheek and neck guard
+        break;
+      }
+      case 'open-helm': case 'horned':
         // A round cap of a helm on the big head: the eyes stay clear under the brim.
         px(c, x + 3, y - 4, HW - 6, 1, m.base); px(c, x + 1, y - 3, HW - 2, 1, m.base); px(c, x, y - 2, HW, 1, m.base);
         px(c, x - 1, y - 1, HW + 2, 5, m.base);
@@ -1005,32 +1101,114 @@ export class KeeperPainter {
         px(c, x - 1, y + 4, HW + 2, 2, m.baseLo);
         for (const k of [2, 7, 12]) px(c, x + k, y + 4, 1, 1, m.trim);
         px(c, x - 1, y + 6, 5, 6, m.base); px(c, x - 1, y + 6, 1, 6, m.baseLo); // the cheek and neck guard
-        if (m.bright || head.rarity === 'rare') {
+        if (shape === 'open-helm' && (m.bright || head.rarity === 'rare')) {
           // A crest in the tier's colour, swept back.
           px(c, x + 3, y - 7, 7, 3, m.trim); px(c, x + 1, y - 6, 3, 2, m.trim); px(c, x - 1, y - 5, 2, 2, dark(m.trim, .2));
           px(c, x + 4, y - 7, 4, 1, light(m.trim, .3));
         }
         break;
-      case 'hood':
+      case 'hood': case 'cowl':
         // A soft pointed hood: crown, a little tip at the back, a drape and a lip round the face.
         px(c, x + 1, y - 4, HW - 3, 1, m.base); px(c, x - 1, y - 3, HW + 2, 8, m.base);
         px(c, x - 2, y - 2, 1, 2, m.base); px(c, x - 3, y - 1, 1, 1, m.base);
         px(c, x - 2, y + 5, 7, 10, m.base); px(c, x - 2, y + 5, 1, 10, m.baseLo);
         px(c, x + 13, y + 5, 3, 6, m.base); px(c, x + 15, y + 5, 1, 6, m.baseLo);
         px(c, x + 2, y - 3, 5, 1, m.baseHi);
-        px(c, x + 5, y + 4, 9, 1, m.trim); px(c, x + 12, y + 5, 1, 6, m.trim);
+        if (shape === 'cowl' && L) {
+          // The cowl: its brim reaches past the brow and the face is lost in its shadow, but for the eyes.
+          const shade = mix(m.baseLo, OUTLINE, .55), deeper = mix(m.baseLo, OUTLINE, .75);
+          px(c, x + 4, y + 4, HW - 3, 10, shade); px(c, x + 5, y + 4, HW - 4, 3, deeper);
+          px(c, x + 3, y - 2, HW + 1, 6, m.base); px(c, x + HW, y - 1, 2, 6, m.base); px(c, x + HW + 1, y + 4, 1, 3, m.baseLo);
+          px(c, x + 4, y - 2, 6, 1, m.baseHi);
+          px(c, x + 5, y + 4, HW - 3, 1, L.trim ?? m.baseLo); px(c, x + HW, y + 5, 1, 7, L.trim ?? m.baseLo);
+          if (L.eyes) { px(c, x + 11, y + 8, 2, 1, L.eyes); px(c, x + 12, y + 8, 1, 1, light(L.eyes, .45)); px(c, x + 7, y + 8, 1, 1, mix(L.eyes, shade, .3)); }
+          if (L.seam) for (let k = -2; k <= 12; k += 3) px(c, x + 1, y + k, 1, 1, L.seam);
+        } else {
+          px(c, x + 5, y + 4, 9, 1, m.trim); px(c, x + 12, y + 5, 1, 6, m.trim);
+        }
         break;
       case 'crown': {
-        const gold = mix('#e0bc52', m.base, .35);
-        px(c, x + 1, y - 3, HW - 2, 3, m.base === STYLE_COLORS.umbral[0] ? m.accent : gold);
+        const gold = L ? m.base : mix('#e0bc52', m.base, .35), hi = L ? m.baseHi : light(gold, .3);
+        px(c, x + 1, y - 3, HW - 2, 3, !L && m.base === STYLE_COLORS.umbral[0] ? m.accent : gold);
         for (const k of [1, 7, 13]) px(c, x + k, y - 5, 1, 2, gold);
         px(c, x + 4, y - 4, 1, 1, gold); px(c, x + 10, y - 4, 1, 1, gold);
-        px(c, x + 7, y - 2, 1, 2, m.trim); px(c, x + 2, y - 3, HW - 4, 1, light(gold, .3));
+        px(c, x + 7, y - 2, 1, 2, L ? m.accent : m.trim); px(c, x + 2, y - 3, HW - 4, 1, hi);
+        if (L) { px(c, x + 1, y - 1, HW - 2, 1, m.baseLo); for (const k of [1, 13]) px(c, x + k, y - 6, 1, 1, m.accent); px(c, x + 7, y - 6, 1, 1, light(m.accent, .4)); }
         break;
       }
+      case 'mask':
+        // A face plate tied over the face: lit down its brow, eye holes, a mouth slit; the strap round the back of the head.
+        px(c, x, y + 5, 8, 1, m.baseLo);
+        px(c, x + 7, y + 3, 8, 9, m.base); px(c, x + 15, y + 5, 1, 5, m.base); px(c, x + 8, y + 12, 6, 1, m.base);
+        px(c, x + 8, y + 3, 6, 1, m.baseHi); px(c, x + 7, y + 4, 1, 7, m.baseHi);
+        px(c, x + 11, y + 6, 2, 2, L?.eyes ?? OUTLINE); px(c, x + 8, y + 6, 1, 2, L?.eyes ? mix(L.eyes, OUTLINE, .4) : OUTLINE);
+        px(c, x + 11, y + 10, 3, 1, m.baseLo); px(c, x + 14, y + 4, 1, 8, m.baseLo);
+        break;
       case 'circlet':
-        px(c, x, y + 4, HW, 1, mix('#d8d0b8', m.base, .3)); px(c, x + 11, y + 3, 2, 2, m.trim); px(c, x + 11, y + 3, 1, 1, '#ffffff');
+        px(c, x, y + 4, HW, 1, L ? m.base : mix('#d8d0b8', m.base, .3)); px(c, x + 11, y + 3, 2, 2, L ? m.accent : m.trim); px(c, x + 11, y + 3, 1, 1, '#ffffff');
+        if (L) px(c, x, y + 4, 4, 1, m.baseHi);
         break;
     }
+    if (!L) return;
+    if (L.horns || shape === 'horned') {
+      // Horns from the temples: the near one curling forward and up, the far one back, a shade darker.
+      const hn = L.horns ?? m.baseHi, far = dark(hn, .3);
+      for (const [dx, dy, w, h] of [[3, -4, 2, 2], [2, -6, 2, 2], [1, -8, 1, 2], [0, -9, 1, 1]] as const) px(c, x + dx, y + dy, w, h, far);
+      for (const [dx, dy, w, h] of [[9, -4, 2, 2], [10, -6, 2, 2], [12, -8, 1, 2], [13, -9, 1, 1]] as const) px(c, x + dx, y + dy, w, h, hn);
+      px(c, x + 10, y - 6, 1, 1, light(hn, .3));
+    }
+    if (L.runes) {
+      if (shape === 'hood' || shape === 'cowl') { px(c, x - 1, y + 7, 1, 1, L.runes); px(c, x, y + 10, 1, 1, L.runes); px(c, x - 1, y + 13, 1, 1, L.runes); }
+      else if (shape === 'crown' || shape === 'circlet') { px(c, x + 4, y + (shape === 'crown' ? -2 : 4), 1, 1, L.runes); px(c, x + 10, y + (shape === 'crown' ? -2 : 4), 1, 1, L.runes); }
+      else { px(c, x + 3, y + 1, 1, 1, L.runes); px(c, x + 6, y + 1, 1, 1, L.runes); px(c, x + 9, y + 1, 1, 1, L.runes); }
+    }
+    if (L.glow && shape !== 'circlet' && shape !== 'mask') {
+      // Legendary and up: a faint glow along the top edge.
+      const top = shape === 'crown' ? y - 3 : y - 4;
+      px(c, x + 3, top, HW - 6, 1, mix(m.base, L.glow, .35));
+    }
   }
+
+  /**
+   * The live part of the worn looks (worn-fx.ts), after the cached body: the eyes' flickering glow and each piece's few
+   * particles. `f` is the body frame drawn, so the pixels ride with the head's bob and the hand's swing.
+   */
+  private wornFx(c: Ctx, action: KeeperAction, f: BodyFrame, state: PaintState): void {
+    const gear = this.gear;
+    if (!gear || action === 'death') return;
+    const still = !!state.reduced || !!state.fxStill, t = state.time;
+    const old = this.garb?.elder ? 1 : 0;
+    const hx = CX + f.lean - 7 + old, hy = HEAD_TOP + f.bob + f.nod + old;
+    const head = gear.head?.look;
+    if (head?.eyes && (head.shape === 'cowl' || head.shape === 'great-helm' || head.shape === 'mask')) {
+      const a = eyeFlicker(t, still, this.key);
+      if (head.shape === 'cowl') eyeGlow(c, hx + 11, hy + 8, 2, 1, head.eyes, a);
+      else if (head.shape === 'mask') eyeGlow(c, hx + 11, hy + 6, 2, 2, head.eyes, a);
+      else eyeGlow(c, hx + 11, hy + 5, 2, 1, head.eyes, a);
+    }
+    for (const slot of ['head', 'chest', 'hands', 'weapon', 'off-hand', 'trinket'] as const) {
+      const L = gear[slot]?.look;
+      if (!L?.fx) continue;
+      let ox = hx + 7, oy = hy - 4, w = HW;
+      if (slot === 'head') { if (L.shape === 'cowl' || L.shape === 'hood') { ox = hx + 12; oy = hy + 6; } }
+      else if (slot === 'chest') { ox = CX + f.lean; oy = SHOULDER + f.bob; w = this.body.sw; }
+      else if (slot === 'trinket') { ox = CX + f.lean + 2; oy = SHOULDER + f.bob + 2; w = 2; }
+      else if (slot === 'hands' || (slot === 'weapon' && !this.weaponKind)) { ox = Math.round(this.hand.x); oy = Math.round(this.hand.y) - 1; w = 3; }
+      else if (slot === 'weapon') { if (!this.tipDrawn) continue; ox = Math.round(this.tipAt.x + PIVOT_X); oy = Math.round(this.tipAt.y + PIVOT_Y) + 1; w = 2; }
+      else {
+        // The off-hand hangs in the back hand (a censer at the end of its chain).
+        const bsx = CX + f.lean - 2, bsy = SHOULDER + 2 + f.bob;
+        const bhx = Math.round(bsx + Math.cos(f.armB) * ARM), bhy = Math.round(bsy + Math.sin(f.armB) * ARM);
+        if (gear['off-hand']?.kind === 'censer') { const a = censerSwing(f); ox = bhx - Math.round(Math.sin(a) * 7); oy = bhy + Math.round(Math.cos(a) * 7) - 2; }
+        else { ox = bhx; oy = bhy - 2; }
+        w = 4;
+      }
+      wornParticles(c, L.fx.kind, L.fx.color, ox, oy, w, t, still, this.key + slot);
+    }
+  }
+}
+
+/** The censer's swing on its chain for a body frame (radians): with the arm, and a beat either way with the step. */
+function censerSwing(f: BodyFrame): number {
+  return Math.max(-.6, Math.min(.6, (1.6 - f.armB) * .35 + ((f.cape & 1) ? .22 : -.22)));
 }
