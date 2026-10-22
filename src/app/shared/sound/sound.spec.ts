@@ -30,7 +30,7 @@ describe('sound settings (godforge-sound)', () => {
     expect(coerceSound(null)).toEqual(defaultSound());
     expect(coerceSound([1, 2])).toEqual(defaultSound());
     const s = coerceSound({ music: 1.7, ambience: -2, effects: .333, muted: 'yes', updatedAt: 'x' });
-    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', updatedAt: 0 });
+    expect(s).toEqual({ version: 1, music: 1, ambience: 0, effects: .35, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', keys: {}, updatedAt: 0 });
     expect(clampLevel(NaN, .4)).toBe(.4);
   });
 

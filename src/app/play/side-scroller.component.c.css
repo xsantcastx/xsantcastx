@@ -882,3 +882,21 @@
 .game-menu__group:first-child { margin-top: 0; }
 .game-menu__end { margin-top: 10px; }
 .top-actions .menu-toggle { min-height: 44px; }
+
+/* ── The Game Menu as the options hub: Resume first, a pixel keycap on every row that has a key ── */
+.game-menu li button { grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 8px; }
+.game-menu li button small { grid-column: 1 / -1; }
+.game-menu .kc { grid-column: 2; grid-row: 1; display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 6px; box-sizing: border-box;
+  font: 700 12px/1 var(--cozy-font-read); color: var(--cozy-wood-0); background: var(--cozy-cream); box-shadow: inset 0 -3px 0 0 rgba(0, 0, 0, .25), 0 0 0 2px var(--cozy-wood-0); }
+@media (min-width: 901px) {
+  .game-menu .win-body ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-menu .win-body ul.game-menu__resume { grid-template-columns: minmax(0, 1fr); }
+}
+.game-menu__resume { margin-bottom: 6px; }
+
+/* ── Desktop with the bottom bar (play/hud-bar): what stood on the bottom edge lifts clear of it, and the plate's bars
+   give way to the orbs (the plate keeps the face, the name, the level and the Soul). ── */
+.stage--bar .td-chat, .stage--bar .td-chat-tab { bottom: 132px; }
+.stage--bar .prompt { bottom: 132px; }
+.stage--bar .td-toast { bottom: 190px; }
+.stage--bar .vitals .meter { display: none; }

@@ -194,6 +194,10 @@ for (const size of SIZES) {
       await check(page, 'settings sheet', '.sound-host');
       await closeAll(page);
       await openMenu(page);
+      await page.locator('#game-menu [data-open="controls"]').tap();
+      await check(page, 'controls list (read-only on a phone)', '.sound-host');
+      await closeAll(page);
+      await openMenu(page);
       await page.locator('#game-menu [data-open="friends"]').tap();
       await check(page, 'friends sheet', '.friends-host');
       await closeAll(page);

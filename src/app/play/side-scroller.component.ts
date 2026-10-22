@@ -76,6 +76,10 @@ import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/u
 import type { CorpseView, SeekAnswer } from './engine/engine.model';
 import { CORPSE_I18N } from './td/td-corpse.i18n';
 import { GAME_MENU_I18N } from './world/game-menu.i18n';
+import { HudBarComponent } from './hud-bar/hud-bar.component';
+import { ControlsSheetComponent } from './keys/controls-sheet.component';
+import { KeymapService } from '../shared/keys/keymap.service';
+import { KEYS_I18N } from '../shared/keys/keys.i18n';
 import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
@@ -505,7 +509,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -576,6 +580,8 @@ export class SideScrollerComponent implements OnDestroy {
   private toastKey = 0;
   // ── World feel (docs/handoff/world-feel.md): the sound, the Satchel's pulse, the craft's flight ──
   private readonly sound = inject(SoundService);
+  /** Every hotkey is read through here (shared/keys): a key the player rebinds works everywhere at once. */
+  readonly keymap = inject(KeymapService);
   /** The signed-in account (the Hearth's identity, protocol 4: friends, blocks that last). */
   private readonly cloud = inject(CloudSaveService);
   private readonly feel = inject(WorldFeelBus);
@@ -587,6 +593,10 @@ export class SideScrollerComponent implements OnDestroy {
   private soundSub?: Subscription;
   /** Menu → Sound is open. */
   soundOpen = false;
+  /** Menu → Controls & keys (shared/keys): every action with its key, click to rebind. */
+  controlsOpen = false;
+  /** Name plates over Keepers (the Plates key). */
+  platesOn = true;
   /** Menu → Send feedback (shared/feedback). */
   feedbackOpen = false;
   /** The Game Menu (Esc, or the Menu button): the Keeper's own things and the settings. */
@@ -681,6 +691,17 @@ export class SideScrollerComponent implements OnDestroy {
   private touchMq: MediaQueryList | null | undefined;
   /** Key caps on the quest scroll and the dock: a computer only (a phone reads the tap words). */
   get keyCaps(): boolean { return this.topDown && !this.touchUi; }
+  /**
+   * The desktop bottom bar (play/hud-bar) stands on a keyboard-and-mouse screen wider than a phone's: the same width the
+   * stylesheet uses to fold the HUD into its phone layout (900px; a sideways phone is short). Narrow windows keep the
+   * touch pieces, so nothing is crammed.
+   */
+  get hudBar(): boolean {
+    if (!this.keyCaps) return false;
+    if (this.barMq === undefined) this.barMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(min-width: 901px) and (min-height: 501px)') : null;
+    return !!this.barMq?.matches;
+  }
+  private barMq?: MediaQueryList | null;
   /** The keys each prologue row asks for (owner's player notes 2026-10-21: "show the shortcut letters"). */
   readonly proKeys: Readonly<Record<string, readonly string[]>> = {
     'play.pro.title.walk': ['W', 'A', 'S', 'D'], 'play.pro.title.hearth': ['E'], 'play.pro.title.fight': ['1'],
@@ -710,10 +731,13 @@ export class SideScrollerComponent implements OnDestroy {
   /** Settings → Reset HUD layout: every dragged piece goes home (hud-drag.directive). */
   resetHud(): void { resetHudLayout(); this.message = this.t('ux.hud.resetDone'); this.sound.sfx('tap'); }
   /** The HUD's keys, under the prologue's list. */
-  readonly hudKeys: readonly { k: string; key: string }[] = [
-    { k: 'I', key: 'ux.keys.satchel' }, { k: 'K', key: 'ux.keys.spells' }, { k: 'C', key: 'ux.keys.character' }, { k: 'M', key: 'ux.keys.map' },
-    { k: 'E', key: 'ux.keys.interact' }, { k: '1-4', key: 'ux.keys.skills' }, { k: 'Esc', key: 'ux.keys.close' },
-  ];
+  get hudKeys(): readonly { k: string; key: string }[] {
+    const k = (action: string) => this.keymap.cap(action) || '·';
+    return [
+      { k: k('bag'), key: 'ux.keys.satchel' }, { k: k('spellbook'), key: 'ux.keys.spells' }, { k: k('sheet'), key: 'ux.keys.character' }, { k: k('map'), key: 'ux.keys.map' },
+      { k: k('interact'), key: 'ux.keys.interact' }, { k: `${k('skill1')}-${k('skill8')}`, key: 'ux.keys.skills' }, { k: 'Esc', key: 'ux.keys.close' },
+    ];
+  }
   private get touchUi(): boolean {
     if (this.touchMq === undefined) this.touchMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(hover: none) and (pointer: coarse)') : null;
     return !!this.touchMq?.matches;
@@ -1540,6 +1564,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TD_UX_I18N);
     this.i18n.register(CORPSE_I18N);
     this.i18n.register(GAME_MENU_I18N);
+    this.i18n.register(KEYS_I18N);
     this.i18n.register(FEEDBACK_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
@@ -2199,6 +2224,16 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Menu → Sound. */
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
+  /** Menu → Controls & keys. */
+  openControls(): void { this.placesOpen = false; this.controlsOpen = true; }
+  /** The Party key / button: the party's chat tab when in a party, else a line saying how to start one. */
+  openParty(): void { if (this.social.party) { this.chatHidden = false; this.openPartyChat(); } else this.message = this.t('keys.party.none'); }
+  toggleSheet(): void { this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
+  toggleSpellbook(): void { this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
+  toggleFriends(): void { if (this.friendsOpen) this.closeFriends(); else this.openFriends(); }
+  closeControls(): void { this.controlsOpen = false; this.focusWorld(); }
+  /** The player rebound a key: the engine reads the new table. */
+  keysChanged(): void { this.engine && (this.engine as unknown as { setBindings?: (b: unknown) => void }).setBindings?.(this.keymap.bindings); }
   closeGameMenu(): void { this.gameMenuOpen = false; this.focusWorld(); }
   closeFeedback(): void { this.feedbackOpen = false; this.focusWorld(); }
   openFeedback(): void { this.placesOpen = false; this.feedbackOpen = true; }
@@ -2350,7 +2385,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.showTip(null, 0, 0);
     // A place takes the screen: the sheets that float over the world fold (the settings sheet stayed up over the
     // Hearth Shrine and took its taps on a phone).
-    this.soundOpen = false; this.feedbackOpen = false; this.bestiaryOpen = false;
+    this.soundOpen = false; this.controlsOpen = false; this.feedbackOpen = false; this.bestiaryOpen = false;
     // Remember a keyboard opener (not one place replacing another: keep the first).
     if (!this.panel) { this.panelOpener = this.keyboardOpener(); this.sound.sfx('open'); }
     this.panelSeq++;
@@ -2519,6 +2554,8 @@ export class SideScrollerComponent implements OnDestroy {
     // The chat box's Game tab hears every line the HUD shows (the toast, the engine's own words).
     for (const line of [this.message, this.engineMessage]) if (line && line !== this.lastLogged) { this.lastLogged = line; this.logGame(line); }
     const e = this.tdEngine;
+    // The key bindings (shared/keys): a change from another device lands here; the engine swaps only on a new table.
+    this.keysChanged();
     // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
     // The trees' ranks go first: the bar and the aura only take skills that hold a rank.
     const look = this.looks.look, ranks = this.skillRanks, key = `${look.bar.join(',')}|${look.aura}|${Object.values(ranks).join(',')}`;
@@ -4231,14 +4268,14 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.panel) {
       if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); this.closePanel(); }
       // P folds the Slate away again (never while a field inside it has the keyboard).
-      else if (event.code === 'KeyP' && this.panel.kind === 'slate' && !event.defaultPrevented && !this.typing(event)) { event.preventDefault(); this.closePanel(); }
+      else if (this.keymap.matches('slate', event) && this.panel.kind === 'slate' && !event.defaultPrevented && !this.typing(event)) { event.preventDefault(); this.closePanel(); }
       return;
     }
     // The Slate (P) opens over the map too: the map folds first.
-    if (event.code === 'KeyP' && this.slateTier > 0 && !this.typing(event)) { event.preventDefault(); this.openSlate(); return; }
+    if (this.keymap.matches('slate', event) && this.slateTier > 0 && !this.typing(event)) { event.preventDefault(); this.openSlate(); return; }
     // The full map owns the keyboard while it is open: M or Escape folds it.
     if (this.map.open) {
-      if (event.key === 'Escape' || event.code === 'KeyM') { event.preventDefault(); this.closeMap(); }
+      if (event.key === 'Escape' || this.keymap.matches('map', event)) { event.preventDefault(); this.closeMap(); }
       return;
     }
     if (this.taskTalk) { if (event.key === 'Escape') { event.preventDefault(); this.closeTalk(); } return; }
@@ -4262,24 +4299,26 @@ export class SideScrollerComponent implements OnDestroy {
     // Nothing open: Escape opens the Game Menu (the usual game's pause menu).
     if (event.key === 'Escape' && !this.anyMenuOpen && !event.repeat) { event.preventDefault(); this.toggleGameMenu(); return; }
     // Enter opens the chat and puts the cursor in its line (never over a menu, never on a focused button or link).
-    if (event.key === 'Enter' && this.topDown && !this.anyMenuOpen && !(event.target as HTMLElement | null)?.closest?.('button, a, [role="button"], summary')) {
+    if (this.keymap.matches('chat', event) && this.topDown && !this.anyMenuOpen && !(event.target as HTMLElement | null)?.closest?.('button, a, [role="button"], summary')) {
       event.preventDefault(); this.openChatLine(); return;
     }
-    if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
-    else if (event.code === 'KeyB' && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
-    else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
-    else if (event.code === 'KeyC' && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
-    // The potion belt: Q drinks the best Health potion held, R the best Mana potion (shared/potions).
-    else if ((event.code === 'KeyQ' || event.code === 'KeyR') && this.topDown && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      event.preventDefault(); this.drinkPotion(event.code === 'KeyQ' ? 'health' : 'mana');
+    const is = (action: string) => this.keymap.matches(action, event);
+    if (is('bag')) { event.preventDefault(); this.toggleBag(); }
+    else if (is('bestiary') && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
+    else if (is('spellbook') && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
+    else if (is('sheet') && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
+    // The potion belt: the Health key drinks the best Health potion held, the Mana key the best Mana potion (shared/potions).
+    else if ((is('potionHealth') || is('potionMana')) && this.topDown) {
+      event.preventDefault(); this.drinkPotion(is('potionHealth') ? 'health' : 'mana');
     }
-    // The belt's Spellstone slot (shared/spellstones): F casts the slotted stone.
-    else if (event.code === 'KeyF' && this.topDown && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); this.useStone(); }
-    else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
-    // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
-    else if (event.code === 'KeyM' && this.topDown) { event.preventDefault(); this.togglePlaces(); }
-    else if (event.code === 'KeyM' && this.oneWorld && this.state.world) { event.preventDefault(); this.openTravelMap(null); }
-    else if (event.code === 'KeyM' && this.state.delve) { event.preventDefault(); this.openMap(); }
+    // The belt's Spellstone slot (shared/spellstones): the Stone key casts the slotted stone.
+    else if (is('stone') && this.topDown) { event.preventDefault(); this.useStone(); }
+    else if (is('sheet') && this.campReady) { event.preventDefault(); this.descendToCamp(); }
+    else if (this.topDown && this.worldHotkey(event)) { /* handled */ }
+    // One World: the map key is the Travel map (the world's map with its stones); it opens the full map from there.
+    else if (is('map') && this.topDown) { event.preventDefault(); this.togglePlaces(); }
+    else if (is('map') && this.oneWorld && this.state.world) { event.preventDefault(); this.openTravelMap(null); }
+    else if (is('map') && this.state.delve) { event.preventDefault(); this.openMap(); }
     else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {
       // Keys 1-9, then 0 for the tenth slot.
       const slot = this.hotbar[(Number(event.code.slice(5)) + 9) % 10];
@@ -4409,6 +4448,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.lootOpen) { this.lootOpen = false; this.focusWorld(); return true; }
     if (this.gameMenuOpen) { this.gameMenuOpen = false; this.focusWorld(); return true; }
     if (this.feedbackOpen) { this.feedbackOpen = false; this.focusWorld(); return true; }
+    if (this.controlsOpen) { this.controlsOpen = false; this.focusWorld(); return true; }
     if (this.soundOpen) { this.soundOpen = false; this.focusWorld(); return true; }
     if (this.friendsOpen) { this.closeFriends(); return true; }
     if (this.petsOpen) { this.closePets(); return true; }
@@ -4419,6 +4459,33 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.bagOpen) { this.closeBag(); return true; }
     return false;
   }
+  /**
+   * The keys that open a window or do a thing in the top-down world, beyond the Bag/Book/Sheet/potions above (all read
+   * through the keymap). True when the key was one of them.
+   */
+  private worldHotkey(event: KeyboardEvent): boolean {
+    const is = (action: string) => this.keymap.matches(action, event);
+    const eng = this.engine as unknown as { useAbility?: (id: string) => string | null; cycleTarget?: () => boolean; setPlates?: (on: boolean) => void } | undefined;
+    const cast = (id: string) => { const why = eng?.useAbility?.(id); if (why) this.message = this.t(`play.td.ability.${why}`); };
+    if (is('lore')) { event.preventDefault(); if (this.sheetOpen && this.sheetTab === 'lore') { this.sheetOpen = false; this.focusWorld(); } else this.openLore(); }
+    else if (is('friends')) { event.preventDefault(); if (this.friendsOpen) this.closeFriends(); else this.openFriends(); }
+    else if (is('options')) { event.preventDefault(); if (this.soundOpen) { this.soundOpen = false; this.focusWorld(); } else this.openSound(); }
+    else if (is('party')) {
+      event.preventDefault();
+      this.openParty();
+    }
+    else if (is('trade')) { event.preventDefault(); if (this.peerCard) void this.tradeWithPeer(); else this.message = this.t('keys.trade.none'); }
+    else if (is('hearth')) { event.preventDefault(); this.toggleHearth(); }
+    else if (is('waygate')) { event.preventDefault(); cast('waygate'); }
+    else if (is('seek')) { event.preventDefault(); cast('seek'); }
+    else if (is('plates')) { event.preventDefault(); this.platesOn = !this.platesOn; eng?.setPlates?.(this.platesOn); this.message = this.t(this.platesOn ? 'keys.plates.on' : 'keys.plates.off'); }
+    // Tab picks the next creature in reach (only over the bare world: with a menu up, Tab keeps moving focus).
+    else if (is('target') && !this.anyMenuOpen && !(event.target as HTMLElement | null)?.closest?.('button, a, [role="button"], summary, input, select, textarea')) {
+      event.preventDefault(); eng?.cycleTarget?.();
+    }
+    else return false;
+    return true;
+  }
   /** A key typed into a field is the field's, not the world's (the event's target, the focused element, or an IME). */
   private typing(event: KeyboardEvent): boolean {
     const field = (el: EventTarget | Element | null) => el instanceof HTMLElement && (el.matches('input, textarea, select') || el.isContentEditable);
@@ -4426,7 +4493,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Any HUD menu over the world (Enter then belongs to it, not the chat). */
   private get anyMenuOpen(): boolean {
-    return this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.feedbackOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
+    return this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.controlsOpen || this.feedbackOpen || this.friendsOpen || this.lootOpen || this.petsOpen || this.spellbookOpen || this.sheetOpen
       || !!this.panel || !!this.anchorSheet || !!this.taskTalk || !!this.peerCard || this.map.open || !!this.tradeHud?.open;
   }
   /**
@@ -6011,7 +6078,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return !!this.taskTalk || !!this.harbourBoard || this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.feedbackOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return !!this.taskTalk || !!this.harbourBoard || this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.controlsOpen || this.feedbackOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
     if (this.harbourBoard) this.closeHarbour();
@@ -6020,6 +6087,7 @@ export class SideScrollerComponent implements OnDestroy {
     else if (this.bestiaryOpen) this.closeBestiary();
     else if (this.gameMenuOpen) this.gameMenuOpen = false;
     else if (this.feedbackOpen) this.feedbackOpen = false;
+    else if (this.controlsOpen) this.controlsOpen = false;
     else if (this.soundOpen) this.soundOpen = false;
     else if (this.friendsOpen) this.closeFriends();
     else if (this.anchorSheet) this.closeAnchors();

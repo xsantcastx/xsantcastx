@@ -110,7 +110,7 @@ test('the prologue card shows key caps, the XP bar its tooltip, the sheet its Sk
   await enter(page, '', true);
   const keys = page.locator('[data-guide-keys]');
   await expect(keys).toBeVisible();
-  await expect(keys.locator('kbd')).toHaveText(['I', 'K', 'C', 'M', 'E', '1-4', 'Esc']);
+  await expect(keys.locator('kbd')).toHaveText(['I', 'K', 'C', 'M', 'E', '1-8', 'Esc']);
   await expect(page.locator('[data-pro-keys]').first()).toBeVisible();
   await page.locator('.guide').screenshot({ path: 'docs/handoff/cozy-ui/ux-prologue-keys.jpg', type: 'jpeg', quality: 85 });
   // A Keeper some way along: level 8.
