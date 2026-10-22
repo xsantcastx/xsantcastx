@@ -351,7 +351,10 @@ export class CloudSaveService {
       let user: AuthUser | null = null;
       // Set when a popup in this session already came back closed without a
       // credential. See `popupUnreliable`.
-      let viaRedirect = this.popupUnreliable;
+      // An iPhone/iPad home-screen app (standalone PWA) can open the popup but never gets its answer back — the
+      // sign-in sat on "syncing" forever. Go straight to the redirect there; authDomain is our own origin, so the
+      // /__/auth/handler round trip stays inside the app.
+      let viaRedirect = this.popupUnreliable || isIosStandalone();
 
       if (!viaRedirect) {
         try {
@@ -803,4 +806,13 @@ function changed(before: SaveSummary, after: SaveSummary): boolean {
   return after.xp > before.xp
     || after.level > before.level
     || after.achievements > before.achievements;
+}
+
+/** An iOS/iPadOS home-screen web app, where popup sign-in never reports back. */
+function isIosStandalone(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const nav = navigator as Navigator & { standalone?: boolean };
+  const ios = /iPad|iPhone|iPod/.test(nav.userAgent) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
+  const standalone = nav.standalone === true || !!window.matchMedia?.('(display-mode: standalone)').matches;
+  return ios && standalone;
 }
