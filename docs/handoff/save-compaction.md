@@ -72,3 +72,5 @@ record, every stack quantity and the Gold/Essence/upgrades are identical. Result
 1. `functions:game` and the Hearth (both read both formats) — done on this branch.
 2. `firestore.rules` (inventoryFormatHolds; harmless while nothing is packed) — done on this branch.
 3. The client (owner).
+
+> 2026-10-22: firestore.rules (inventoryFormatHolds) deployed by hand before e6452175 — CI's rules step 403s and skipped hosting, so a docs-only follow-up push deploys the client.
