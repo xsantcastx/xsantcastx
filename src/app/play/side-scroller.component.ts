@@ -226,8 +226,9 @@ import { KEEPER_LOOK_I18N } from '../shared/keeper-look/keeper-look.i18n';
 import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.model';
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
+import { packWorn } from '../shared/keeper-look/worn-looks';
 import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
-import { FRONT_H, FRONT_W, frontSheet } from '../shared/keeper-look/keeper-front';
+import { FRONT_H, FRONT_W, drawWornFront, frontSheet } from '../shared/keeper-look/keeper-front';
 import { KIT_HANDS, vocationLook } from '../shared/keeper-look/vocation-look';
 import { WaygateScrollService } from '../shared/waygate/waygate-scroll.service';
 import { WAYGATE_SCROLL_ID, WAYGATE_SCROLL_MEANING } from '../shared/waygate/waygate-scroll';
@@ -863,7 +864,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** Who the room is told the Keeper is (protocol 2): the class, the look in a dozen characters, the level. */
   private hearthProfile(): RoomProfile {
     const look = this.looks.look;
-    return { vocation: look.vocation, look: packLook(look), level: Math.max(1, this.huntingLevel || 1) };
+    // What it wears travels too (worn-looks packWorn): the others draw the same cowl, crown and censer.
+    return { vocation: look.vocation, look: packLook(look), level: Math.max(1, this.huntingLevel || 1), worn: packWorn(wornGear(this.inventory.snapshot.equipped)) };
   }
   private wireHearth(): void {
     this.hearthWired = true;
@@ -5569,10 +5571,15 @@ export class SideScrollerComponent implements OnDestroy {
       if (this.topDown) {
         // The top-down game's doll is the Keeper the world shows (owner 2026-10-20): the front sprite, class garb and
         // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
-        const sheet = frontSheet(new KeeperPainter(look, v.gear, v.garb), look.vocation === 'warlock');
+        const painter = new KeeperPainter(look, v.gear, v.garb);
+        const sheet = frontSheet(painter, look.vocation === 'warlock');
         const c = el.getContext('2d')!, k = 4, w = FRONT_W * k, h = FRONT_H * k;
         c.imageSmoothingEnabled = false;
         c.drawImage(sheet, 0, 0, FRONT_W, FRONT_H, Math.round((176 - w) / 2), Math.round((176 - h) / 2), w, h);
+        // The worn looks' glow and particles, held still (the doll is a picture).
+        c.save(); c.translate(Math.round((176 - w) / 2), Math.round((176 - h) / 2)); c.scale(k, k);
+        drawWornFront(c, painter, 'down', 0, 0, 0, 0, true);
+        c.restore();
       } else new KeeperPainter(look, v.gear, v.garb).still(el);
       this.dollFigure = el.toDataURL('image/png');
     } catch { /* no 2D canvas: the doll frame stays empty */ }

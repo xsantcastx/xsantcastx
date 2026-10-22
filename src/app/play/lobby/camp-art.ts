@@ -13,8 +13,9 @@
  * sparks moving, the step forward is taken at once.
  */
 import { type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
+import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
-import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, frontSheet } from '../../shared/keeper-look/keeper-front';
+import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, drawWornFront, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { FIRE, MOTE, nearRidge, paintCottage, paintNight } from './title-art';
 
@@ -90,6 +91,8 @@ export interface CampFigure {
   chosen: boolean;
   /** A calling not yet open (the Wanewalkers, shared/lore): a faint, cold silhouette that drifts, never steps forward. */
   ghost?: boolean;
+  /** What the Keeper wears (keeper-look worn-gear): its worn looks over the class kit. `key` must change with it. */
+  gear?: KeeperGear | null;
 }
 
 const CLEARING = '#170e1c';
@@ -113,7 +116,7 @@ function rng(seed: number): () => number {
   };
 }
 
-interface Sprite { sheet: HTMLCanvasElement; lit: HTMLCanvasElement; ghost: HTMLCanvasElement }
+interface Sprite { sheet: HTMLCanvasElement; lit: HTMLCanvasElement; ghost: HTMLCanvasElement; painter: KeeperPainter }
 const GHOST = '#b8d0f0';
 
 /** The campfire painter. One per lobby: it holds the baked sprites and each place's step toward the fire. */
@@ -234,6 +237,8 @@ export class CampArt {
       c.globalAlpha = (f.chosen ? 0.34 : 0.22) + 0.12 * flick;
       c.drawImage(sprite.lit, frame * FRONT_W, 0, FRONT_W, FRONT_H, ox, oy, FRONT_W, FRONT_H);
       c.globalAlpha = 1;
+      // What it wears, alive: eyes glowing in a cowl, embers off a crown, a censer's smoke (worn-fx.ts).
+      drawWornFront(c, sprite.painter, 'down', frame, ox, oy, t, still);
     }
 
     // The fire: a ring of stones, two crossed logs, the flames, embers, and sparks rising into the dark.
@@ -277,8 +282,9 @@ export class CampArt {
     const held = this.sprites.get(f.key);
     if (held) return held;
     try {
-      const v = vocationLook(f.look.vocation, null);
-      const sheet = frontSheet(new KeeperPainter(f.look, v.gear, v.garb), carriesStaff(f.look.vocation));
+      const v = vocationLook(f.look.vocation, f.gear ?? null);
+      const painter = new KeeperPainter(f.look, v.gear, v.garb);
+      const sheet = frontSheet(painter, carriesStaff(f.look.vocation));
       const lit = document.createElement('canvas');
       lit.width = FRONT_W * 2; lit.height = FRONT_H;
       const c = lit.getContext('2d');
@@ -303,7 +309,7 @@ export class CampArt {
         g.globalCompositeOperation = 'destination-out';
         for (let x = 0; x < FRONT_W; x += 2) g.fillRect(x, FRONT_H - 4 + (x % 4 ? 1 : 0), 1, 4);
       }
-      const sprite = { sheet, lit, ghost };
+      const sprite = { sheet, lit, ghost, painter };
       // The Glass bakes one per look tried on: keep the cache small.
       if (this.sprites.size > 48) this.sprites.clear();
       this.sprites.set(f.key, sprite);

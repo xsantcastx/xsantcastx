@@ -18,6 +18,8 @@ export interface RoomPlayer {
   pals?: string;
   /** Protocol 5: its town portal, if one stands (play/td/td-waygate.ts encodeGate): party members may step through. */
   gate?: string;
+  /** What it wears, as worn-look ids (shared/keeper-look/worn-looks.ts packWorn): drawn on its sprite. An older room drops it. */
+  worn?: string;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
@@ -74,7 +76,7 @@ export interface RoomBlock { key: string; name: string }
 export interface RoomPrivacy { offline: boolean; invites: 'everyone' | 'friends' }
 export type ReportReason = 'spam' | 'abuse' | 'cheating' | 'name' | 'other';
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
-export interface RoomProfile { vocation?: string; look?: string; level?: number }
+export interface RoomProfile { vocation?: string; look?: string; level?: number; worn?: string }
 /** The top-down presence beyond x/y/zone/facing/animation. */
 export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string; gate?: string }
 export interface RoomOptions {
@@ -165,6 +167,8 @@ export function cleanPresence(p: RoomPresence): RoomPresence {
   if (typeof p.vocation === 'string' && /^[a-z]{1,16}$/.test(p.vocation)) out.vocation = p.vocation;
   if (typeof p.look === 'string' && /^[a-z0-9.]{1,48}$/.test(p.look)) out.look = p.look;
   if (Number.isInteger(p.level)) out.level = Math.max(1, Math.min(999, p.level as number));
+  // Worn looks (the room's `worn`: plain ids, '' when nothing is worn so the others take it off too).
+  if (typeof p.worn === 'string' && /^[a-z0-9.,-]{0,240}$/.test(p.worn)) out.worn = p.worn;
   // Life (protocol 3): both or neither, whole, never above the most (a v2 room ignores them).
   if (Number.isFinite(p.hp) && Number.isFinite(p.maxHp) && (p.maxHp as number) >= 1) {
     const max = Math.min(1e6, Math.round(p.maxHp as number));
