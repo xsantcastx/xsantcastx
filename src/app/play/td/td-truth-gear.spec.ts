@@ -30,6 +30,7 @@ import { RESIST_STAT, fightStats, wornCombat } from './td-skills';
 import { AFFIX_FAMILIES, FAMILY_RULES, affixPoolFor, familyRolls, rollAffixes, type AffixFamily } from '../../shared/rpg/item-affixes';
 import { OLD_ROLL_TWIN, VOCATIONS, oldRollTwins, statUse } from '../../shared/rpg/item-calling';
 import { arrowBlow, type HeldWeapon } from './td-melee';
+import { BEAST_DAMAGE_SHARE } from './td-thorn';
 import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
 
 /** The number a card prints for a stat (formatStatValue: "+12%", "+0.4"), back to a number. */
@@ -352,5 +353,26 @@ describe('td-truth gear: two damage families — every family\'s every key, read
     for (const k of ['spellDamage', 'attackDamage', 'castSpeed', 'attackSpeed', 'goldFind', 'magicFind', 'life', 'mana', 'allResist']) expect(seen).withContext(k).toContain(k);
     expect(FAMILY_RULES.jewel.scale?.spellDamage).toBeLessThan(1);
     expect(FAMILY_RULES.jewel.scale?.attackDamage).toBeLessThan(1);
+  });
+});
+
+describe('td-truth gear: the Thornstrider\'s beast bites by his Martial Damage (§3.6)', () => {
+  it('a worn Martial Damage lifts the bite by BEAST_DAMAGE_SHARE of it; a caster\'s beast is untouched', () => {
+    const bite = (v: 'thornstrider' | 'warlock', pct: number) => {
+      const keeper = { x: 0, y: 0, face: 1 };
+      const host: MobHost = {
+        options: { onKill: () => undefined } as unknown as EngineOptions,
+        walkable: () => true, levelId: () => 'truth', player: () => keeper,
+        hurtPlayer: () => undefined, healPlayer: () => undefined, swung: () => undefined, playerHp: () => 1e6,
+      };
+      const sys = new MobSystem(host);
+      sys.vocation = v; sys.keeperLevel = 1; sys.damagePct = pct;
+      const m = sys.place('t', { ...MOBS['ash-wolf'], hp: 1e6, sight: 0, speed: 0 }, 10, 0);
+      const before = m.hp;
+      sys.petBite(m, 100, 1);
+      return before - m.hp;
+    };
+    expect(bite('thornstrider', 40) / bite('thornstrider', 0)).toBeCloseTo(1 + .4 * BEAST_DAMAGE_SHARE, 2);
+    expect(bite('warlock', 40)).toBe(bite('warlock', 0));
   });
 });

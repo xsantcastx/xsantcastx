@@ -37,7 +37,7 @@ import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
 import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
 import { CORPSE_REACH, corpseSeed, layCorpse, weatherCorpses, type Corpse } from './td-corpse';
-import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
+import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 
 export interface MobDef {
@@ -3149,7 +3149,7 @@ export class MobSystem {
     if (from && !this.sight.sees(from.x, from.y, foe.x, foe.y)) return { landed: false, killed: false };
     this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
     // A Thornstrider's beast is one of the pack: its bite grows with him and with every Wild skill he holds.
-    if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) }) * (1 + this.damagePct / 100);
+    if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) }) * (1 + this.damagePct * BEAST_DAMAGE_SHARE / 100);
     this.hurtMob(foe, Math.max(1, Math.round(dmg)), this.thorn ? '#9af0d0' : '#ffd98a');
     return { landed: true, killed: foe.hp <= 0 };
   }
