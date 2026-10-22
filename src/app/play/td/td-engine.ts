@@ -16,7 +16,7 @@ import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } fro
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
-import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
+import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
@@ -689,13 +689,19 @@ export class TopDownEngine {
       at: (what: 'hearth' | 'shrine' = 'hearth') => this.fxStandAt(what),
       hearths: () => this.hearths.map(h => h.id),
     };
+    // `?fxworn=1` (automated browsers only): `window.__wornLineup` paints a sheet of Keepers wearing given items (the
+    // worn-look screenshots, e2e/td-worn-shots.spec.ts). Loaded on demand, never in a player's bundle path.
+    if (typeof navigator !== 'undefined' && navigator.webdriver && /[?&]fxworn=1\b/.test(location.search)) {
+      void import('../../shared/keeper-look/worn-lineup').then(m => { (window as unknown as Record<string, unknown>)['__wornLineup'] = m.wornLineup; });
+    }
     if (this.fxPeer) (window as unknown as Record<string, unknown>)['__tdPeer'] = {
       // The Keeper walks up to the first task giver here, and a Keeper named `name` stands `dx` px to the giver's right.
-      lay: (name = 'Wick', dx = 14) => {
+      lay: (name = 'Wick', dx = 14, worn = '') => {
         const g = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-'));
         if (!g?.keeper) return null;
         this.player.x = g.keeper.x - 70; this.player.y = g.keeper.y + 8; this.path = [];
         this.peers.pinned.length = 0;
+        this.peers.pinnedWorn.set(`fx-${name}`, worn);
         this.peers.pinned.push({ id: `fx-${name}`, name, x: g.keeper.x + dx, y: g.keeper.y + 8, face: -1, dir: 'down', moving: false, vocation: 'warlock', level: 7, look: '', area: this.peerArea() });
         return { giver: g.keeper.name, gx: g.keeper.x, gy: g.keeper.y };
       },
@@ -3229,7 +3235,7 @@ export class TopDownEngine {
       }
     }
     // Other Keepers (the Hearth room): y-sorted with the world, but always under the local Keeper where they overlap.
-    const view = { scale: s, camX: cam.x, camY: cam.y, time: this.time };
+    const view = { scale: s, camX: cam.x, camY: cam.y, time: this.time, still: this.still };
     for (const p of this.peers.drawn) {
       if (!inView(p.x, p.y)) continue;
       const under = Math.abs(p.x - this.player.x) < 18 && Math.abs(p.y - this.player.y) < 36;
@@ -4128,17 +4134,19 @@ export class TopDownEngine {
       const sheet = frontSheet(p.painter, staff), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
       const f = acting ? CAST_FRAME : this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, this.time, this.still);
       return;
     }
     if (p.dir !== 'side') {
       const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
       const f = p === this.player && this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, this.time, this.still);
       return;
     }
     c.save();
     c.setTransform(s * p.face, 0, 0, s, (Math.round(p.x) - cam.x) * s, (Math.round(p.y) - cam.y) * s);
-    p.painter.draw(c, 1, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player });
+    p.painter.draw(c, 1, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true, fxStill: this.still } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player, fxStill: this.still });
     c.restore();
   }
 

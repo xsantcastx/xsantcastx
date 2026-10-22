@@ -28,6 +28,10 @@ import { KEEPER_LOOK_I18N } from '../../shared/keeper-look/keeper-look.i18n';
 import { type KeeperLook, type Vocation, VOCATIONS, coerceLook } from '../../shared/keeper-look/keeper-look.model';
 import { KeeperLookService } from '../../shared/keeper-look/keeper-look.service';
 import { KeeperMakerComponent } from '../../shared/keeper-look/keeper-maker.component';
+import { equippedInLedger, wornGear } from '../../shared/keeper-look/worn-gear';
+import { packWorn } from '../../shared/keeper-look/worn-looks';
+import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
+import { INVENTORY_KEY } from '../../shared/rpg/inventory.service';
 import { FeedbackSheetComponent } from '../../shared/feedback/feedback-sheet.component';
 import { FEEDBACK_I18N } from '../../shared/feedback/feedback.i18n';
 import { SideScrollerComponent } from '../side-scroller.component';
@@ -387,6 +391,17 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     return look;
   }
 
+  /** What a row's Keeper wears, read from its save on this device (cached per row revision); null when there is none here. */
+  private rowGear(row: CharacterRow): KeeperGear | null {
+    const key = `${row.id}@${row.updatedAt}`;
+    if (this.rowGears.has(key)) return this.rowGears.get(key)!;
+    let gear: KeeperGear | null = null;
+    try { if (this.gateway.hasLocalSave(row.id)) gear = wornGear(equippedInLedger(this.gateway.readFor(row.id, INVENTORY_KEY))); } catch { gear = null; }
+    this.rowGears.set(key, gear);
+    return gear;
+  }
+  private readonly rowGears = new Map<string, KeeperGear | null>();
+
   /** The free place by the fire ("New Keeper"), or null when there is none. */
   get emptySpot(): number | null {
     return this.mode === 'select' && !this.full && this.rows.length < CAMP_SLOTS.length ? this.rows.length : null;
@@ -623,7 +638,11 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
       // The fifth place: the Wanewalker, a calling not yet open (shared/lore), a faint figure at the back.
       return [...callings, { key: 'ghost', look: GHOST_LOOK, chosen: false, ghost: true }];
     }
-    return this.rows.slice(0, CAMP_SLOTS.length).map(row => ({ key: row.vocation + '#' + JSON.stringify(row.look), look: this.rowLook(row), chosen: row.id === this.picked }));
+    return this.rows.slice(0, CAMP_SLOTS.length).map(row => {
+      // Each Keeper by the fire wears what it wore when it last left the world (its own save on this device).
+      const gear = this.rowGear(row);
+      return { key: row.vocation + '#' + JSON.stringify(row.look) + '#' + packWorn(gear), look: this.rowLook(row), chosen: row.id === this.picked, gear };
+    });
   }
 
   private draftKey(): string {
