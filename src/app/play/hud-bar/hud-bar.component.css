@@ -1,0 +1,81 @@
+/* The bottom bar: wood and brass, pixel orbs. Tokens from _cozy.css only. Phones never render it. */
+:host { display: contents; }
+.hb { position: absolute; z-index: 5; left: 50%; bottom: 0; translate: -50% 0; width: min(920px, 100%); display: flex; align-items: flex-end; pointer-events: none; }
+.hb__orb { position: relative; flex: none; width: 112px; height: 112px; margin-bottom: 2px; pointer-events: auto; cursor: help; filter: drop-shadow(0 3px 0 var(--cozy-wood-0)); }
+.hb__orb svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.hb__ring { fill: var(--cozy-brass); }
+.hb__empty { fill: var(--cozy-wood-0); }
+.hb__hp { fill: var(--cozy-berry); }
+.hb__mana { fill: var(--cozy-mana); }
+.hb__glint { fill: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
+.hb__orb b { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font: 700 13px/1 var(--font-pixel); font-style: normal; color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0), -1px -1px 0 var(--cozy-wood-0), 1px -1px 0 var(--cozy-wood-0), -1px 1px 0 var(--cozy-wood-0); pointer-events: none; }
+
+.hb__panel { position: relative; flex: 1 1 auto; min-width: 0; margin: 0 -14px; padding: 14px 20px 8px; pointer-events: auto;
+  background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); }
+.hb__row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+
+/* The XP strip along the panel's top. */
+.td-xp { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 8px; box-sizing: border-box; cursor: help;
+  background: var(--cozy-wood-0); box-shadow: inset 0 -1px 0 0 var(--cozy-wood-2); }
+.td-xp::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 14px; }
+.td-xp::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--cozy-wood-0) calc(10% - 2px) 10%); }
+.td-xp__fill { position: absolute; left: 0; top: 1px; bottom: 1px; background: var(--cozy-brass); box-shadow: inset 0 1px 0 0 var(--cozy-brass-hi), inset 0 -1px 0 0 var(--cozy-brass-lo); }
+.td-xp__tip { position: absolute; left: 50%; bottom: 12px; translate: -50% 0; display: none; gap: 2px; padding: 6px 10px; white-space: nowrap; pointer-events: none;
+  font: 600 12px/1.25 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-1);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass), 0 0 0 6px var(--cozy-wood-0); }
+.td-xp__tip b { font-weight: 700; color: var(--cozy-glow); }
+.td-xp__tip small { font-size: 11px; opacity: .85; }
+.td-xp:hover .td-xp__tip, .td-xp:focus-visible .td-xp__tip, .td-xp.is-tip .td-xp__tip { display: grid; }
+.td-xp:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 0; }
+
+/* The small menu buttons: 4 × 2 icons, names in a tooltip. */
+.td-dock.hb__menu { display: grid; grid-template-columns: repeat(4, 34px); gap: 4px; padding: 0; background: none; box-shadow: none; }
+.td-dock button { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 0; cursor: pointer; color: var(--cozy-cream);
+  background: var(--cozy-wood-2); box-shadow: inset 0 0 0 2px var(--cozy-wood-1), 0 0 0 2px var(--cozy-wood-0); }
+.td-dock button:hover, .td-dock button:focus-visible, .td-dock button[aria-expanded='true'] { background: var(--cozy-wood-3); box-shadow: inset 0 0 0 2px var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0); outline: none; }
+.td-dock svg { width: 22px; height: 22px; image-rendering: pixelated; }
+.td-dock button:active { translate: 0 1px; }
+
+/* The skill slots: two rows of four, the key under each slot's corner. */
+.hb__skills { display: grid; gap: 6px; padding: 0; background: none; box-shadow: none; }
+.hb__skillrow { display: flex; gap: 5px; }
+.hb__slot { position: relative; display: block; width: 44px; height: 44px; }
+.td-skill, .hb__empty-slot { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 0; box-sizing: border-box;
+  background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
+.td-skill { cursor: pointer; }
+.td-skill:hover, .td-skill:focus-visible { box-shadow: inset 0 0 0 2px var(--cozy-glow); outline: none; }
+.td-skill::after { content: ''; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.td-skill--dry { filter: saturate(.4) brightness(.8); }
+.td-skill:active { translate: 0 2px; }
+.hb__slotkey, .td-pot kbd { position: absolute; right: 2px; bottom: 1px; font: 700 10px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); pointer-events: none; }
+.hb__slotkey { z-index: 1; }
+
+/* The belt: three glass slots, the count on the glass, the key in the corner. */
+.td-belt { display: flex; gap: 5px; padding: 0; background: none; box-shadow: none; }
+.td-pot { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 0; cursor: pointer; background: var(--cozy-well);
+  box-shadow: inset 0 0 0 2px var(--pot, var(--cozy-wood-1)), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
+.td-pot[data-kind='health'] { --pot: color-mix(in srgb, var(--cozy-berry) 70%, var(--cozy-wood-1)); }
+.td-pot[data-kind='mana'] { --pot: color-mix(in srgb, var(--cozy-mana) 70%, var(--cozy-wood-1)); }
+.td-pot:hover, .td-pot:focus-visible { box-shadow: inset 0 0 0 2px var(--cozy-glow); outline: none; }
+.td-pot img { width: 30px; height: 30px; image-rendering: pixelated; pointer-events: none; }
+.td-pot::after { content: ''; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.td-pot--empty img, .td-pot--empty svg { opacity: .55; }
+.td-pot__n { position: absolute; left: 3px; top: 2px; font: 700 10px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+
+/* A tooltip for anything with data-tip: the name and its key, above the bar. */
+[data-tip]:hover::before, [data-tip]:focus-visible::before { content: attr(data-tip); position: absolute; z-index: 3; left: 50%; bottom: calc(100% + 10px); translate: -50% 0; padding: 4px 8px; white-space: pre; pointer-events: none;
+  font: 600 12px/1.25 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass); }
+
+/* Narrow desktop windows: smaller orbs and slots, the bar stays one piece. */
+@media (max-width: 1000px) {
+  .hb__orb { width: 80px; height: 80px; }
+  .hb__orb b { font-size: 11px; bottom: 6px; }
+  .hb__panel { padding: 12px 18px 6px; }
+  .hb__row { gap: 8px; }
+  .td-dock.hb__menu { grid-template-columns: repeat(4, 30px); }
+  .td-dock button { width: 30px; height: 30px; }
+  .hb__slot, .td-pot { width: 38px; height: 38px; }
+}
+@media (prefers-reduced-motion: reduce) { .td-skill:active, .td-dock button:active { translate: none; } }
