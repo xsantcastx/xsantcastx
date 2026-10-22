@@ -25,8 +25,10 @@ import {
 } from './item.model';
 import { parseCurse, parseWhisper } from '../grave-goods/grave-goods.model';
 import {
+  INVENTORY_DORMANT_DEVICE_MS,
   INVENTORY_ERA,
   INVENTORY_FOLD_ID_MEMORY,
+  INVENTORY_SIZE_GUARD,
   INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
@@ -45,6 +47,11 @@ import {
   type RuneProjectionInput,
 } from './inventory.model';
 import { ECONOMY_VERSION, itemScaled } from '../economy/economy-curve';
+// The packed cloud format (save format 3) lives with the trade server so the Function, the Hearth and every client
+// read and write it with the very same code (functions-game/src/trade-core.ts: dependency-free).
+import { isPackedInventory, packInventory, unpackInventory } from '../../../../functions-game/src/trade-core';
+
+export { isPackedInventory, packInventory, unpackInventory };
 
 export function emptyInventoryLedger(): InventoryLedger {
   return {
@@ -345,7 +352,8 @@ function parseSockets(raw: unknown): (string | null)[] | undefined {
  */
 const PARSED_SOCKET_MAX = 8;
 
-export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
+export function parseInventoryLedger(input: unknown): InventoryLedger | null {
+  const raw = isPackedInventory(input) ? unpackInventory(input) : input;
   if (!isPlainObject(raw)) return null;
   if (raw['version'] !== 2) return null;
   if (!Array.isArray(raw['records'])) return null;
@@ -370,7 +378,13 @@ export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
     legacyBackup: parseInventoryV1(raw['legacyBackup']),
     era: typeof raw['era'] === 'number' && Number.isFinite(raw['era']) ? raw['era'] : 0,
     ...serverSeqOf(raw['serverSeq']),
+    ...floorOf(raw['tombFloor']),
   };
+}
+
+/** The tombstone watermark (InventoryLedger.tombFloor), kept only when it is a real positive number. */
+function floorOf(raw: unknown): { tombFloor?: number } {
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? { tombFloor: raw } : {};
 }
 
 /** The trade server's write count (InventoryLedger.serverSeq), kept only when it is a real positive whole number. */
@@ -383,8 +397,9 @@ function serverSeqOf(raw: unknown): { serverSeq?: number } {
  * recoverable v1 payload. Failure here returns null so the service can
  * restore empty rather than throw.
  */
-export function coerceInventoryLedger(raw: unknown): InventoryLedger | null {
-  if (raw == null) return emptyInventoryLedger();
+export function coerceInventoryLedger(input: unknown): InventoryLedger | null {
+  if (input == null) return emptyInventoryLedger();
+  const raw = isPackedInventory(input) ? unpackInventory(input) : input;
   const v2 = parseInventoryLedger(raw);
   if (v2) return v2;
   if (isPlainObject(raw) && raw['version'] === 2 && isPlainObject(raw['legacyBackup'])) {
@@ -550,8 +565,13 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
   const tombstones = mergeTombstones(a.tombstones, b.tombstones);
   const tombById = new Map(tombstones.map(row => [row.id, row]));
   const byId = new Map<string, OwnedItemRecord>();
+  // The tombstone watermark (InventoryLedger.tombFloor): every record still alive when a ledger raised its floor was
+  // re-stamped above it by that compaction, so a revision at or below the floor is a copy from before it — of an item
+  // whose tombstone has since been dropped. Refused exactly as that tombstone would have refused it.
+  const floor = Math.max(a.tombFloor ?? 0, b.tombFloor ?? 0);
 
   for (const record of [...a.records, ...b.records]) {
+    if (record.revision.hlc <= floor) continue;
     const tomb = tombById.get(record.id);
     if (tomb && compareRevision(tomb.revision, record.revision) >= 0) continue;
     const held = byId.get(record.id);
@@ -572,18 +592,25 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
   return {
     version: 2,
     records,
-    // Cap only. Age-pruning here would drop a winning tombstone and let a
-    // stale live record resurrect on the next merge.
-    tombstones: pruneTombstones(tombstones, Date.now(), Number.MAX_SAFE_INTEGER),
+    // Every tombstone of either side: the merge is a pure join (commutative, associative, idempotent). Dropping old
+    // ones is compaction's job (`compactInventoryLedger`), which raises `tombFloor` as it drops them.
+    // (A tombstone at or below the floor is redundant with it.)
+    tombstones: tombstones.filter(row => row.revision.hlc > floor).sort(byTombAge),
     stackOps: stacks.ops,
     ...(stacks.folds.length ? { stackFolds: stacks.folds } : {}),
     goldFromSales: Math.max(a.goldFromSales, b.goldFromSales),
     sold: Math.max(a.sold, b.sold),
-    hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc), ...stacks.folds.map(fold => fold.upToHlc)),
+    hlc: Math.max(a.hlc, b.hlc, floor, ...records.map(row => row.revision.hlc), ...stacks.folds.map(fold => fold.upToHlc)),
     legacyBackup: a.legacyBackup ?? b.legacyBackup,
     era: Math.max(aEra, bEra),
     ...seq,
+    ...floorOf(floor),
   };
+}
+
+/** Oldest first: (deletedAt, revision, id). A total order, so a merge's tombstone list does not depend on input order. */
+function byTombAge(a: InventoryTombstone, b: InventoryTombstone): number {
+  return a.deletedAt - b.deletedAt || compareRevision(a.revision, b.revision) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
 export function tombstoneRecord(
@@ -627,6 +654,47 @@ function mergeTombstones(
   return [...byId.values()];
 }
 
+/**
+ * Drop tombstones past the age window, then past the cap (oldest first), and raise the ledger's `tombFloor` to the
+ * newest time among them — min(revision.hlc, deletedAt), so a server tombstone (hlc = MAX_SAFE_INTEGER) counts at the
+ * moment it was written. The floor keeps every dropped tombstone's work: the merge refuses any record revision at or
+ * below it. So that refuses only the dead, every record this ledger still holds at or below the new floor is
+ * re-stamped just above it, by this device (`deviceId`): the copy that went through the compaction is the one that
+ * lives. What a device that has not synced since before the floor still holds at older revisions — an item it found,
+ * a move, a sale — loses to that. The floor trails the newest dropped tombstone, which is ~30 days, or the cap's worth
+ * of deletions, behind the present: the same stale-device window as the economy checkpoint. Returns the same ledger
+ * when nothing is due.
+ */
+export function boundTombstones(
+  ledger: InventoryLedger,
+  now: number,
+  deviceId = 'compaction',
+  retainMs = INVENTORY_TOMBSTONE_RETAIN_MS,
+  max = INVENTORY_TOMBSTONE_MAX,
+): InventoryLedger {
+  const kept = pruneTombstones(ledger.tombstones, now, retainMs, max);
+  if (kept.length === ledger.tombstones.length) return ledger;
+  const keptIds = new Set(kept.map(row => row.id));
+  const before = ledger.tombFloor ?? 0;
+  let floor = before;
+  for (const row of ledger.tombstones) {
+    if (keptIds.has(row.id)) continue;
+    floor = Math.max(floor, Math.min(row.revision.hlc, row.deletedAt || row.revision.hlc));
+  }
+  // (A record already at or below the old floor is dead in every merge: it is not brought back by a re-stamp.)
+  const records = ledger.records.filter(row => row.revision.hlc > before).map(row => row.revision.hlc > floor ? row : {
+    ...row,
+    revision: { hlc: floor + 1, deviceId, sequence: (row.revision.deviceId === deviceId ? row.revision.sequence : 0) + 1 },
+  });
+  return {
+    ...ledger,
+    records,
+    tombstones: kept.filter(row => row.revision.hlc > floor),
+    hlc: Math.max(ledger.hlc, floor + 1),
+    ...floorOf(floor),
+  };
+}
+
 export function pruneTombstones(
   tombstones: InventoryTombstone[],
   now: number,
@@ -635,9 +703,7 @@ export function pruneTombstones(
 ): InventoryTombstone[] {
   const live = tombstones.filter(row => now - row.deletedAt < retainMs || row.deletedAt === 0);
   if (live.length <= max) return live;
-  return [...live]
-    .sort((a, b) => a.deletedAt - b.deletedAt || compareRevision(a.revision, b.revision))
-    .slice(-max);
+  return [...live].sort(byTombAge).slice(-max);
 }
 
 /** Devices that never fold: no stable id, so their ops cannot be told apart. */
@@ -661,7 +727,82 @@ export function compactStackOps(
   if (own.length <= live) return ledger;
 
   own.sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
-  const cutHlc = own[own.length - Math.floor(live / 2) - 1].hlc;
+  return foldDeviceOps(ledger, deviceId, own, own[own.length - Math.floor(live / 2) - 1].hlc, memory);
+}
+
+/**
+ * Fold the ops of devices that went quiet: every op of a device whose newest op is older than `dormantMs` goes into
+ * that device's fold, as if it had folded them itself. Safe for the same reason a device's own fold is: a device
+ * writes its ops in rising hlc and pushes its whole log, so the ops of it any save holds are a prefix of its history —
+ * an op it writes later (or holds unsynced) is above the fold's `upToHlc` and still counts, and the higher-`upToHlc`
+ * copy of its fold is always the later state of the same counter. Its own device and the server never qualify.
+ */
+export function foldDormantDevices(
+  ledger: InventoryLedger,
+  self: string,
+  now: number,
+  dormantMs = INVENTORY_DORMANT_DEVICE_MS,
+  memory = INVENTORY_FOLD_ID_MEMORY,
+): InventoryLedger {
+  const byDevice = new Map<string, InventoryStackOp[]>();
+  for (const op of ledger.stackOps) {
+    if (op.deviceId === self || NON_FOLDING_DEVICES.has(op.deviceId) || op.deviceId === 'trade') continue;
+    const list = byDevice.get(op.deviceId) ?? [];
+    list.push(op);
+    byDevice.set(op.deviceId, list);
+  }
+  let next = ledger;
+  for (const deviceId of [...byDevice.keys()].sort()) {
+    const ops = byDevice.get(deviceId)!.sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
+    const newest = ops[ops.length - 1].hlc;
+    if (now - newest < dormantMs) continue;
+    next = foldDeviceOps(next, deviceId, ops, newest, memory);
+  }
+  return next;
+}
+
+/**
+ * Everything that keeps the saved inventory bounded, in one pass (save compaction, docs/handoff/save-compaction.md):
+ * this device folds its own oldest stack ops, folds the ops of devices that went quiet, and drops tombstones past the
+ * age window or the cap (raising `tombFloor`). Merges never compact; this runs where a device writes — every
+ * InventoryService save and every cloud push (GameStateGateway, after the merge).
+ *
+ * The size guard: when the cloud document it would write (packed) passes {@link INVENTORY_SIZE_GUARD}, it compacts
+ * hard — any other device's ops older than a day, half the tombstones, half the fold memory. Nothing it does removes
+ * an owned item or changes a stack's quantity: folds keep every op's net, and the floor only refuses what a dropped
+ * tombstone had already refused.
+ */
+export function compactInventoryLedger(
+  ledger: InventoryLedger,
+  deviceId: string,
+  now: number,
+  opts: { checkSize?: boolean } = {},
+): InventoryLedger {
+  let next = compactStackOps(ledger, deviceId);
+  next = foldDormantDevices(next, deviceId, now);
+  next = boundTombstones(next, now, deviceId);
+  if (!opts.checkSize || inventoryCloudBytes(next) <= INVENTORY_SIZE_GUARD) return next;
+  const memory = Math.floor(INVENTORY_FOLD_ID_MEMORY / 2);
+  next = compactStackOps(next, deviceId, Math.floor(INVENTORY_STACK_OPS_MAX / 2), memory);
+  next = foldDormantDevices(next, deviceId, now, 24 * 60 * 60 * 1000, memory);
+  next = boundTombstones(next, now, deviceId, INVENTORY_TOMBSTONE_RETAIN_MS, Math.floor(INVENTORY_TOMBSTONE_MAX / 2));
+  const folds = next.stackFolds?.map(fold => fold.ids.length > memory ? { ...fold, ids: fold.ids.slice(-memory) } : fold);
+  return folds ? { ...next, stackFolds: folds } : next;
+}
+
+/** Characters of the inventory document as the cloud holds it (packed): the size guard's measure. */
+export function inventoryCloudBytes(ledger: InventoryLedger): number {
+  return JSON.stringify(packInventory(ledger)).length;
+}
+
+/** Fold `ops` (one device's, sorted by hlc) at or below `cutHlc` into that device's fold. */
+function foldDeviceOps(
+  ledger: InventoryLedger,
+  deviceId: string,
+  own: readonly InventoryStackOp[],
+  cutHlc: number,
+  memory: number,
+): InventoryLedger {
   const folds = ledger.stackFolds ?? [];
   const others = folds.filter(fold => fold.deviceId !== deviceId);
   const previous = folds.find(fold => fold.deviceId === deviceId);

@@ -207,17 +207,309 @@ export function sameItem(record: Doc, offered: OfferItem): boolean {
   return canonical(offerOf(record)) === canonical({ ...offered, ...(offered.up === 0 ? { up: undefined } : {}), ...(offered.reforged === 0 ? { reforged: undefined } : {}) });
 }
 
+// ── The packed inventory: save format 3 (docs/handoff/save-compaction.md) ────────────────────────────────────────
+/**
+ * The inventory document as Firestore holds it, from the compaction release on. The ledger itself does not change:
+ * every device still merges the same v2 ledger (inventory-ops.ts) and keeps that in localStorage. Only the cloud copy
+ * is written in this denser shape, because the owner's save was ~400 KB of a 1 MiB document (Firestore bytes).
+ *
+ * Lossless by construction: every key of every record maps to exactly one packed key, nothing is dropped for being a
+ * default, and any value the packer does not recognise is kept verbatim (under `$` + its key for a record, or as the
+ * original object in a list). `unpackInventory(packInventory(v))` deep-equals `v` for every v2 ledger (key order
+ * aside), which scripts/trade-core.test.mjs and inventory-codec.spec.ts check against generated and real saves.
+ *
+ *   records    → `R`: one map per record, short keys; revisions as `hlc.device.seq` (base 36, device by index into `D`);
+ *                ISO dates as epoch ms; locations as `b` / `e:<slot>` / `x:<explorer>`; repeated long strings
+ *                (names, lore, definitions, tags) by index into `S`.
+ *   tombstones → `T`: `hlc device seq deletedAt id` strings.
+ *   stackOps   → `O`: `±qty|hlc|device|seq|stackKey|id` strings.
+ *   stackFolds → `F`: `{d, u, n, h}` with the op-id hashes as one fixed-width string (9 chars each).
+ *
+ * The format is the document's `version: 3`. A client from before it cannot read it, and firestore.rules refuses its
+ * writes to a document already in it (inventoryFormatHolds), so an old tab can neither read a packed save as empty
+ * nor write a v2 save over it. The server (this file, the Function and the Hearth) reads both and writes back the
+ * format it read, so it can ship before the client.
+ */
+export const INVENTORY_PACKED_VERSION = 3;
+const REC_KEYS: Record<string, string> = {
+  id: 'i', definitionId: 'd', category: 'c', tags: 't', rarity: 'y', soulbound: 'b', acquiredAt: 'a', revision: 'r',
+  source: 's', kind: 'k', stackKey: 'sk', location: 'l', name: 'n', type: 'ty', lore: 'lo', stats: 'st', rollQuality: 'q',
+  itemLevel: 'il', sellValue: 'sv', econ: 'e', upgradeLevel: 'ul', lastUpgradeAt: 'lua', lastUpgradeMutationId: 'lum',
+  lastUpgradeOk: 'luo', reforgeCount: 'rc', lastReforgeAt: 'lra', lastReforgeMutationId: 'lrm', lastReforgeLock: 'lrl',
+  sockets: 'so', curse: 'cu', whisper: 'wh',
+};
+const REC_LONG: Record<string, string> = Object.fromEntries(Object.entries(REC_KEYS).map(([k, v]) => [v, k]));
+/** Record keys whose string value goes through the shared string table when it repeats. */
+const INTERNED = new Set(['definitionId', 'name', 'lore', 'type', 'rarity', 'category', 'source', 'kind', 'location']);
+/**
+ * The closed vocabularies (inventory.model.ts), as one-letter codes. A code is a 1–2 character string; a value of
+ * these keys that is not in its list is kept as itself only when it is longer than that (else verbatim under `$`).
+ */
+const ENUMS: Record<string, readonly string[]> = {
+  source: ['inventory', 'economy', 'runes'],
+  kind: ['instance', 'stack'],
+  category: ['equipment', 'runes', 'materials', 'consumables', 'quest', 'artifacts'],
+  type: ['artifact', 'charm', 'rune', 'runeword'],
+  rarity: ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'unique', 'set', 'ancient'],
+};
+/**
+ * Stat maps (`stats`, `rollQuality`) whose keys go through the key table `K`, as letters (`a`, `b`, … `ba`): never an
+ * integer-like key, which JavaScript would reorder — the order a stat map was written in is the order its card shows.
+ */
+const STAT_MAPS = new Set(['stats', 'rollQuality']);
+const STAT_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const INTERN_MIN = 8;
+const B64 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
+const HASH_WIDTH = 9;
+const PACKED_TOP = ['D', 'S', 'K', 'R', 'T', 'O', 'F'];
+
+const letters = (n: number): string => (n < 26 ? '' : letters(Math.floor(n / 26) - 1)) + String.fromCharCode(97 + (n % 26));
+const fromLetters = (s: string): number => { let n = 0; for (const ch of s) n = n * 26 + (ch.charCodeAt(0) - 96); return n - 1; };
+const safeInt = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+const b36 = (n: number) => n.toString(36);
+/** A base-36 string that is exactly the canonical spelling of a safe integer (what opIdHash produces). */
+const fromB36 = (s: string): number | null => {
+  if (!/^[0-9a-z]{1,11}$/.test(s)) return null;
+  const n = parseInt(s, 36);
+  return Number.isSafeInteger(n) && n.toString(36) === s ? n : null;
+};
+const hashCell = (n: number): string => {
+  let out = '';
+  for (let i = 0; i < HASH_WIDTH; i++) { out = B64[n % 64] + out; n = Math.floor(n / 64); }
+  return out;
+};
+const cellHash = (s: string): number => { let n = 0; for (const ch of s) n = n * 64 + B64.indexOf(ch); return n; };
+const isoMs = (v: unknown): number | null => {
+  if (typeof v !== 'string') return null;
+  const ms = Date.parse(v);
+  if (!Number.isSafeInteger(ms) || ms < 0) return null;
+  try { return new Date(ms).toISOString() === v ? ms : null; } catch { return null; }
+};
+const exactKeys = (o: Doc, keys: readonly string[]) => Object.keys(o).length === keys.length && keys.every(k => k in o);
+
+/** True for a document value in the packed format. */
+export function isPackedInventory(v: unknown): boolean {
+  return isObj(v) && v['version'] === INVENTORY_PACKED_VERSION && Array.isArray(v['R']);
+}
+
+/** A v2 inventory ledger (plain JSON) in the packed format. Anything that is not a v2 ledger comes back unchanged. */
+export function packInventory(v: unknown): unknown {
+  if (!isObj(v) || v['version'] !== 2 || !Array.isArray(v['records'])) return v;
+  if (PACKED_TOP.some(k => k in v)) return v;
+  const devs: string[] = [];
+  const devIx = new Map<string, number>();
+  const dev = (id: string): number => {
+    let i = devIx.get(id);
+    if (i === undefined) { i = devs.length; devs.push(id); devIx.set(id, i); }
+    return i;
+  };
+  const rev = (r: unknown): string | null => {
+    if (!isObj(r) || !exactKeys(r, ['hlc', 'deviceId', 'sequence'])) return null;
+    if (!safeInt(r['hlc']) || !safeInt(r['sequence']) || typeof r['deviceId'] !== 'string') return null;
+    return `${b36(r['hlc'])}.${b36(dev(r['deviceId']))}.${b36(r['sequence'])}`;
+  };
+  // Strings worth a table entry: long enough to beat an 8-byte index, and seen at least twice.
+  const counts = new Map<string, number>();
+  const tally = (s: unknown) => { if (typeof s === 'string' && s.length >= INTERN_MIN) counts.set(s, (counts.get(s) ?? 0) + 1); };
+  const locText = (l: unknown): string | null => {
+    if (isObj(l) && l['kind'] === 'bag' && exactKeys(l, ['kind'])) return 'b';
+    if (isObj(l) && l['kind'] === 'equipped' && typeof l['slotId'] === 'string' && exactKeys(l, ['kind', 'slotId'])) return `e:${l['slotId']}`;
+    if (isObj(l) && l['kind'] === 'explorer' && typeof l['explorerId'] === 'string' && exactKeys(l, ['kind', 'explorerId'])) return `x:${l['explorerId']}`;
+    return null;
+  };
+  const statKeys: string[] = [];
+  const statIx = new Map<string, number>();
+  for (const r of v['records'] as unknown[]) {
+    if (!isObj(r)) continue;
+    for (const k of INTERNED) if (k !== 'location' && !ENUMS[k]?.includes(r[k] as string)) tally(r[k]);
+    tally(locText(r['location']));
+    if (Array.isArray(r['tags'])) (r['tags'] as unknown[]).forEach(tally);
+  }
+  const strs: string[] = [];
+  const strIx = new Map<string, number>();
+  for (const [s, n] of counts) if (n >= 2) { strIx.set(s, strs.length); strs.push(s); }
+  const str = (s: string): string | number => strIx.get(s) ?? s;
+  const packStats = (m: unknown): Doc | undefined => {
+    if (!isObj(m) || !Object.keys(m).every(k => STAT_NAME.test(k))) return undefined;
+    const out: Doc = {};
+    for (const [k, x] of Object.entries(m)) {
+      let i = statIx.get(k);
+      if (i === undefined) { i = statKeys.length; statKeys.push(k); statIx.set(k, i); }
+      out[letters(i)] = x;
+    }
+    return out;
+  };
+
+  const packRecord = (r: unknown): unknown => {
+    if (!isObj(r)) return r;
+    const out: Doc = {};
+    for (const [k, val] of Object.entries(r)) {
+      if (val === undefined) continue;
+      const short = REC_KEYS[k];
+      let packed: unknown = undefined;
+      if (short) {
+        if (k === 'revision') packed = rev(val) ?? undefined;
+        else if (k === 'acquiredAt') packed = isoMs(val) ?? undefined;
+        else if (k === 'location') {
+          const text = locText(val);
+          if (text !== null) packed = str(text);
+        } else if (k === 'tags') {
+          if (Array.isArray(val) && val.every(t => typeof t === 'string')) packed = (val as string[]).map(str);
+        } else if (STAT_MAPS.has(k)) packed = packStats(val);
+        else if (INTERNED.has(k)) {
+          const code = ENUMS[k]?.indexOf(val as string) ?? -1;
+          if (code >= 0) packed = b36(code);
+          else if (typeof val === 'string' && (!ENUMS[k] || val.length > 2)) packed = str(val);
+        } else packed = val;
+      }
+      if (packed === undefined) out[`$${k}`] = val;
+      else out[short] = packed;
+    }
+    return out;
+  };
+  const packTomb = (t: unknown): unknown => {
+    if (!isObj(t) || !exactKeys(t, ['id', 'revision', 'deletedAt']) || typeof t['id'] !== 'string' || !safeInt(t['deletedAt'])) return t;
+    const r = rev(t['revision']);
+    return r === null ? t : `${r.replace(/\./g, ' ')} ${b36(t['deletedAt'])} ${t['id']}`;
+  };
+  const packOp = (o: unknown): unknown => {
+    if (!isObj(o) || !exactKeys(o, ['id', 'stackKey', 'kind', 'quantity', 'hlc', 'deviceId', 'sequence'])) return o;
+    const { id, stackKey, kind, quantity, hlc, deviceId, sequence } = o;
+    if (typeof id !== 'string' || typeof stackKey !== 'string' || stackKey.includes('|') || typeof deviceId !== 'string') return o;
+    if ((kind !== 'grant' && kind !== 'consume') || typeof quantity !== 'number' || !Number.isFinite(quantity) || !safeInt(hlc) || !safeInt(sequence)) return o;
+    const qty = String(quantity);
+    if (Number(qty) !== quantity || qty.includes('|')) return o;
+    return `${kind === 'grant' ? '+' : '-'}${qty}|${b36(hlc)}|${b36(dev(deviceId))}|${b36(sequence)}|${stackKey}|${id}`;
+  };
+  const packFold = (f: unknown): unknown => {
+    if (!isObj(f) || !exactKeys(f, ['deviceId', 'upToHlc', 'net', 'ids']) || typeof f['deviceId'] !== 'string' || !Array.isArray(f['ids'])) return f;
+    const cells: string[] = [];
+    for (const id of f['ids'] as unknown[]) {
+      const n = typeof id === 'string' ? fromB36(id) : null;
+      if (n === null || n >= 64 ** HASH_WIDTH) return f;
+      cells.push(hashCell(n));
+    }
+    return { d: f['deviceId'], u: f['upToHlc'], n: f['net'], h: cells.join('') };
+  };
+
+  const out: Doc = { version: INVENTORY_PACKED_VERSION };
+  const R = (v['records'] as unknown[]).map(packRecord);
+  const T = Array.isArray(v['tombstones']) ? (v['tombstones'] as unknown[]).map(packTomb) : null;
+  const O = Array.isArray(v['stackOps']) ? (v['stackOps'] as unknown[]).map(packOp) : null;
+  const F = Array.isArray(v['stackFolds']) ? (v['stackFolds'] as unknown[]).map(packFold) : null;
+  for (const [k, val] of Object.entries(v)) {
+    if (val === undefined || k === 'version' || k === 'records') continue;
+    if ((k === 'tombstones' && T) || (k === 'stackOps' && O) || (k === 'stackFolds' && F)) continue;
+    out[k] = val;
+  }
+  out['D'] = devs;
+  out['S'] = strs;
+  out['K'] = statKeys;
+  out['R'] = R;
+  if (T) out['T'] = T;
+  if (O) out['O'] = O;
+  if (F) out['F'] = F;
+  return out;
+}
+
+/** A packed inventory back to the v2 ledger it was packed from. Anything not packed comes back unchanged. */
+export function unpackInventory(v: unknown): unknown {
+  if (!isPackedInventory(v)) return v;
+  const p = v as Doc;
+  const devs = Array.isArray(p['D']) ? p['D'] as unknown[] : [];
+  const strs = Array.isArray(p['S']) ? p['S'] as unknown[] : [];
+  const dev = (s: string): string => {
+    const id = devs[parseInt(s, 36)];
+    return typeof id === 'string' ? id : '';
+  };
+  const str = (x: unknown): unknown => (typeof x === 'number' && typeof strs[x] === 'string' ? strs[x] : x);
+  const keys = Array.isArray(p['K']) ? p['K'] as unknown[] : [];
+  const unStats = (m: unknown): unknown => {
+    if (!isObj(m)) return m;
+    const out: Doc = {};
+    for (const [k, x] of Object.entries(m)) { const name = /^[a-z]+$/.test(k) ? keys[fromLetters(k)] : undefined; out[typeof name === 'string' ? name : k] = x; }
+    return out;
+  };
+  const rev = (s: string) => {
+    const [h, d, q] = s.split(/[. ]/);
+    return { hlc: parseInt(h, 36), deviceId: dev(d), sequence: parseInt(q, 36) };
+  };
+  const unRecord = (r: unknown): unknown => {
+    if (!isObj(r)) return r;
+    const out: Doc = {};
+    for (const [k, val] of Object.entries(r)) {
+      if (k.startsWith('$')) { out[k.slice(1)] = val; continue; }
+      const long = REC_LONG[k];
+      if (!long) { out[k] = val; continue; }
+      if (long === 'revision' && typeof val === 'string') out[long] = rev(val);
+      else if (long === 'acquiredAt' && typeof val === 'number') out[long] = new Date(val).toISOString();
+      else if (long === 'location' && (typeof val === 'string' || typeof val === 'number')) {
+        const text = String(str(val));
+        out[long] = text === 'b' ? { kind: 'bag' }
+          : text.startsWith('e:') ? { kind: 'equipped', slotId: text.slice(2) }
+            : { kind: 'explorer', explorerId: text.slice(2) };
+      } else if (long === 'tags' && Array.isArray(val)) out[long] = val.map(str);
+      else if (STAT_MAPS.has(long)) out[long] = unStats(val);
+      else if (INTERNED.has(long)) {
+        out[long] = typeof val === 'string' && val.length <= 2 && ENUMS[long] ? ENUMS[long][parseInt(val, 36)] : str(val);
+      }
+      else out[long] = val;
+    }
+    return out;
+  };
+  const unTomb = (t: unknown): unknown => {
+    if (typeof t !== 'string') return t;
+    const parts = t.split(' ');
+    return { id: parts.slice(4).join(' '), revision: rev(parts.slice(0, 3).join(' ')), deletedAt: parseInt(parts[3], 36) };
+  };
+  const unOp = (o: unknown): unknown => {
+    if (typeof o !== 'string') return o;
+    const parts = o.split('|');
+    const head = parts[0];
+    return {
+      id: parts.slice(5).join('|'), stackKey: parts[4], kind: head[0] === '+' ? 'grant' : 'consume', quantity: Number(head.slice(1)),
+      hlc: parseInt(parts[1], 36), deviceId: dev(parts[2]), sequence: parseInt(parts[3], 36),
+    };
+  };
+  const unFold = (f: unknown): unknown => {
+    if (!isObj(f) || !('h' in f)) return f;
+    const h = typeof f['h'] === 'string' ? f['h'] : '';
+    const ids: string[] = [];
+    for (let i = 0; i + HASH_WIDTH <= h.length; i += HASH_WIDTH) ids.push(b36(cellHash(h.slice(i, i + HASH_WIDTH))));
+    return { deviceId: f['d'], upToHlc: f['u'], net: f['n'], ids };
+  };
+  const out: Doc = { version: 2, records: (p['R'] as unknown[]).map(unRecord) };
+  if (Array.isArray(p['T'])) out['tombstones'] = (p['T'] as unknown[]).map(unTomb);
+  if (Array.isArray(p['O'])) out['stackOps'] = (p['O'] as unknown[]).map(unOp);
+  if (Array.isArray(p['F'])) out['stackFolds'] = (p['F'] as unknown[]).map(unFold);
+  for (const [k, val] of Object.entries(p)) {
+    if (k === 'version' || PACKED_TOP.includes(k)) continue;
+    out[k] = val;
+  }
+  return out;
+}
+
 // ── The inventory ledger (inventory-ops.ts, raw) ──────────────────────────────────────────────────────────────────
 interface Revision { hlc: number; deviceId: string; sequence: number }
 const cmpRev = (a: Revision, b: Revision) => (a.hlc !== b.hlc ? a.hlc - b.hlc : a.deviceId !== b.deviceId ? (a.deviceId < b.deviceId ? -1 : 1) : a.sequence - b.sequence);
 const revOf = (raw: unknown): Revision => (isObj(raw) ? { hlc: num(raw['hlc']), deviceId: String(raw['deviceId'] ?? ''), sequence: num(raw['sequence']) } : { hlc: 0, deviceId: '', sequence: 0 });
 
-/** A save's inventory, checked current; throws a plain refusal otherwise. */
+/** Saves read packed (format 3): written back packed, so the server never moves a save between formats. */
+const READ_PACKED = new WeakSet<Doc>();
+/** A save's inventory, checked current; throws a plain refusal otherwise. Either stored format; always the v2 ledger. */
 export function readInventory(doc: Doc | null, who: string): Doc {
-  const v = unwrap(doc);
+  const stored = unwrap(doc);
+  const packed = isPackedInventory(stored);
+  const v = packed ? unpackInventory(stored) as Doc : stored;
   if (!v || v['version'] !== 2 || !Array.isArray(v['records'])) refuse(409, 'no-save', `${who} has no saved satchel yet. Open the game signed in first.`);
   if (num(v!['era']) !== INVENTORY_ERA) refuse(409, 'stale-save', `${who}'s save is from an older build. Reload the game, then try again.`);
-  return clone(v!);
+  const out = clone(v!);
+  if (packed) READ_PACKED.add(out);
+  return out;
+}
+/** The document body for an inventory `readInventory` returned: in the format it was read in. */
+export function inventoryEnvelope(inv: Doc, now: number): Doc {
+  return envelope(READ_PACKED.has(inv) ? packInventory(inv) : inv, now);
 }
 function liveRecord(inv: Doc, id: string): Doc | null {
   const rec = (inv['records'] as Doc[]).find(r => isObj(r) && r['id'] === id) ?? null;
@@ -414,8 +706,8 @@ async function swap(
     }
     if (terms.a.items.length + terms.b.items.length > 0) {
       bumpServerSeq(inv.a); bumpServerSeq(inv.b);
-      tx.set(inventoryPath(trade.a.uid, chars.a), envelope(inv.a, now));
-      tx.set(inventoryPath(trade.b.uid, chars.b), envelope(inv.b, now));
+      tx.set(inventoryPath(trade.a.uid, chars.a), inventoryEnvelope(inv.a, now));
+      tx.set(inventoryPath(trade.b.uid, chars.b), inventoryEnvelope(inv.b, now));
     }
     if (eco && terms.a.gold !== terms.b.gold) {
       tx.set(economyPath(trade.a.uid, chars.a), envelope(eco.a, now));
@@ -557,7 +849,7 @@ export async function dropItem(db: Db, uid: string, body: unknown, now: number):
       id: gid, area, x, y, item: rec, name: offered.name, rarity: offered.rarity, def: offered.def,
       owner: { uid, character }, droppedAt: now, expiresAt: now + GROUND_TTL_MS,
     };
-    tx.set(inventoryPath(uid, character), envelope(inv, now));
+    tx.set(inventoryPath(uid, character), inventoryEnvelope(inv, now));
     tx.set(groundItemPath(gid), ground as unknown as Doc);
     tx.set(groundAreaPath(area), { count: count + 1, updatedAt: now });
     tx.set(groundRatePath(uid), { start: inWindow ? windowStart : now, n: n + 1 });
@@ -572,7 +864,7 @@ function landGround(tx: Tx, g: GroundDoc, areaDoc: Doc | null, invDoc: Doc | nul
   const newId = pickedId(g.id);
   giveItem(inv, g.item, newId, now);
   bumpServerSeq(inv);
-  tx.set(inventoryPath(to.uid, to.character), envelope(inv, now));
+  tx.set(inventoryPath(to.uid, to.character), inventoryEnvelope(inv, now));
   tx.delete(groundItemPath(g.id));
   tx.set(groundAreaPath(g.area), { count: Math.max(0, num(areaDoc?.['count']) - 1), updatedAt: now });
   tx.set(auditPath(`${kind}-${g.id}-${now}`), { kind, at: now, ground: g.id, area: g.area, from: g.owner, to, item: newId, name: g.name, rarity: g.rarity });

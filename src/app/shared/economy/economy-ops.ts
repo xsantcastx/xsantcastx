@@ -187,6 +187,17 @@ export const COMPACT_AFTER = 64;
 export const COMPACT_KEEP = 16;
 /** A device that has not written in this long does not block compaction. */
 export const ACK_STALE_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * The ack barrier's ceiling (save compaction, docs/handoff/save-compaction.md). Past this many live ops — or past
+ * {@link ECONOMY_SIZE_GUARD} — the cloud commit folds without waiting for every recent device's ack. The barrier only
+ * ever bought ordering: a fold records a per-device `applied` watermark, so a lagging device's copy of a folded op is
+ * skipped on replay and its own later ops (always above its watermark) still replay on top. Without the ceiling, one
+ * device that stops a checkpoint short (the owner's third device, two days quiet) held every fold for 30 days while
+ * the log grew ~700 ops a day: 2,105 ops, 340 KB of a 1 MiB document.
+ */
+export const COMPACT_FORCE_AFTER = 256;
+/** The size guard: an economy document (JSON characters) above this folds at the next commit, acked or not. */
+export const ECONOMY_SIZE_GUARD = 400_000;
 
 export function emptyLedger(): EconomyLedger {
   return {
@@ -623,7 +634,7 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   // Never fold here. The merged log stays the full union; the cloud commit
   // is what checkpoints, once every recent device has acked.
   replayed.ops = sortOps(ops);
-  replayed.origin = origin;
+  replayed.origin = leanOrigin(origin);
   replayed.hlc = Math.max(a.hlc, b.hlc, ...ops.map(o => o.hlc));
   replayed.checkpointId = Math.max(a.checkpointId, b.checkpointId);
   replayed.acks = maxRecord(a.acks, b.acks);
@@ -652,11 +663,12 @@ export function acknowledgeAndMaybeCompact(
   ledger: EconomyLedger,
   deviceId: string,
   now: number,
-  opts: { after?: number; keep?: number; staleMs?: number } = {},
+  opts: { after?: number; keep?: number; staleMs?: number; forceAfter?: number } = {},
 ): EconomyLedger {
   const after = opts.after ?? COMPACT_AFTER;
   const keep = opts.keep ?? COMPACT_KEEP;
   const staleMs = opts.staleMs ?? ACK_STALE_MS;
+  const forceAfter = opts.forceAfter ?? COMPACT_FORCE_AFTER;
   const next = cloneLedger(ledger);
   next.acks = { ...next.acks, [deviceId]: next.checkpointId };
   // A clock set years ahead would otherwise stay "recent" forever
@@ -664,14 +676,16 @@ export function acknowledgeAndMaybeCompact(
   next.seenAt = clampSeenAt(next.seenAt, now);
   next.seenAt[deviceId] = now;
 
+  if (next.origin) next.origin = leanOrigin(next.origin);
   if (next.ops.length < after || !next.origin) return next;
 
   const known = recentDevices(next, deviceId, now, staleMs);
-  if (!known.every(id => (next.acks[id] ?? -1) >= next.checkpointId)) return next;
+  const acked = known.every(id => (next.acks[id] ?? -1) >= next.checkpointId);
+  if (!acked && next.ops.length < forceAfter && JSON.stringify(next).length <= ECONOMY_SIZE_GUARD) return next;
 
   const foldedCheckpoint = next.checkpointId;
   const folded = compactOps(next.origin, next.ops, keep);
-  next.origin = folded.origin;
+  next.origin = leanOrigin(folded.origin);
   next.ops = folded.ops;
   next.applied = { ...folded.origin.applied };
   next.checkpointId += 1;
@@ -692,6 +706,17 @@ export function acknowledgeAndMaybeCompact(
   next.commerceOps = foldedRx.ops;
   next.commerceApplied = foldedRx.appliedKeys;
   return next;
+}
+
+/**
+ * An origin with only what a replay starts from. Its commerce receipts, acks and device clock are never read (a merge
+ * and a commit take all four from the ledger itself), yet every fold used to copy the ledger's in — the owner's origin
+ * carried 239 folded purchase keys, 24 KB of a document near its limit.
+ */
+export function leanOrigin(origin: EconomyLedger): EconomyLedger {
+  if (!Object.keys(origin.commerceApplied ?? {}).length && !(origin.commerceOps ?? []).length
+    && !Object.keys(origin.acks ?? {}).length && !Object.keys(origin.seenAt ?? {}).length) return origin;
+  return { ...origin, commerceApplied: {}, commerceOps: [], acks: {}, seenAt: {} };
 }
 
 function recentDevices(

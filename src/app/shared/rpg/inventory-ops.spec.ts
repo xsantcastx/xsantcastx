@@ -249,7 +249,7 @@ describe('inventory adapter (C3)', () => {
       revision: revision(i),
       deletedAt: now - 1,
     }));
-    expect(INVENTORY_TOMBSTONE_MAX).toBe(512);
+    expect(INVENTORY_TOMBSTONE_MAX).toBe(1024); // save compaction: the floor covers what the cap drops
     expect(pruneTombstones(many, now).length).toBe(INVENTORY_TOMBSTONE_MAX);
   });
 

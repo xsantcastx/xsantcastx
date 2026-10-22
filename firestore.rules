@@ -107,7 +107,8 @@ service cloud.firestore {
                       || !('xp' in request.resource.data)
                       || request.resource.data.xp >= resource.data.xp
                     )
-                    && serverSeqHolds(docId);
+                    && serverSeqHolds(docId)
+                    && inventoryFormatHolds(docId);
     }
 
     // ── Trades and ground drops: the inventory guard ─────────────────────────
@@ -125,6 +126,20 @@ service cloud.firestore {
       return docId != 'inventory'
              || request.resource.data.get('v', {}).get('serverSeq', 0)
                   >= resource.data.get('v', {}).get('serverSeq', 0);
+    }
+
+    // ── Save compaction: the inventory's packed format ───────────────────────
+    // From the compaction release the inventory document is stored packed
+    // (`v.version == 3`, functions-game/src/trade-core.ts packInventory). A tab
+    // still running the build before it cannot read that shape — it sees an
+    // empty save — so it must not write over it: this refuses a v2 write to a
+    // document that is already packed. The gateway keeps the refused write
+    // queued, and the device lands it after its next reload. New builds always
+    // write packed; the trade server writes back the format it read.
+    function inventoryFormatHolds(docId) {
+      return docId != 'inventory'
+             || resource.data.get('v', {}).get('version', 2) != 3
+             || request.resource.data.get('v', {}).get('version', 2) == 3;
     }
 
     // ── Cloud save: the Godforge ledger ───────────────────────────────────────
@@ -162,7 +177,7 @@ service cloud.firestore {
                       || !('xp' in request.resource.data)
                       || request.resource.data.xp >= resource.data.xp
                     )
-                    && (coll != 'progress' || serverSeqHolds(docId));
+                    && (coll != 'progress' || (serverSeqHolds(docId) && inventoryFormatHolds(docId)));
     }
 
     // ── Cloud save: device coordination ──────────────────────────────────────

@@ -36,8 +36,22 @@ export const INVENTORY_SCHEMA_VERSION = 2 as const;
 export const INVENTORY_ERA = 55 as const;
 /** Same window as ledger ACK_STALE_MS: tombstones survive this long after delete. */
 export const INVENTORY_TOMBSTONE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
-/** 512 since the eviction was removed (inventory spec §2.8: ~56 KB). */
-export const INVENTORY_TOMBSTONE_MAX = 512;
+/**
+ * Tombstones a ledger keeps. Past it — and past {@link INVENTORY_TOMBSTONE_RETAIN_MS} — the oldest are dropped by
+ * `compactInventoryLedger` and their time raises `tombFloor`, so the record they killed still cannot come back
+ * (save compaction, docs/handoff/save-compaction.md). ~45 B each in the packed cloud document.
+ */
+export const INVENTORY_TOMBSTONE_MAX = 1024;
+/**
+ * Another device's stack ops are folded for it once its newest op is this old: a phone that stopped syncing would
+ * otherwise keep its unfolded ops in every save forever (the owner's held 256 from August).
+ */
+export const INVENTORY_DORMANT_DEVICE_MS = 14 * 24 * 60 * 60 * 1000;
+/**
+ * The size guard: a cloud inventory document (packed, JSON characters) above this is compacted hard — every other
+ * device's ops folded after a day, tombstones and fold memory halved. Firestore refuses documents over 1 MiB.
+ */
+export const INVENTORY_SIZE_GUARD = 400_000;
 /**
  * Own stack ops one device keeps unfolded. Past it, the device folds its own
  * oldest ops into its {@link InventoryStackFold} (down to half), so a device
@@ -46,9 +60,12 @@ export const INVENTORY_TOMBSTONE_MAX = 512;
 export const INVENTORY_STACK_OPS_MAX = 64;
 /**
  * Folded op ids a device remembers (as hashes), so a grant replayed after its
- * op was folded is still recognised and lands once. ~13 B each, ~27 KB a device.
+ * op was folded is still recognised and lands once. 10 B each in the packed
+ * cloud document, ~10 KB a device. 1,024 since save compaction (was 2,048, the
+ * largest part of the owner's save after its records): a replay is a retry of
+ * the same action, and 1,024 folded ops is days of play on one device.
  */
-export const INVENTORY_FOLD_ID_MEMORY = 2048;
+export const INVENTORY_FOLD_ID_MEMORY = 1024;
 /**
  * The retired 250-record ceiling. Nothing on the client enforces it any more;
  * kept for the inventory spec §4.4 / slice S7 (the player market server that
@@ -202,6 +219,14 @@ export interface InventoryLedger {
    * Absent (0) on a save the server never touched.
    */
   serverSeq?: number;
+  /**
+   * The tombstone watermark (save compaction): the newest time of any tombstone this ledger has dropped. A record
+   * at or below it that this ledger does not hold is one of the items those tombstones killed, so the merge refuses
+   * it from the other side instead of letting a stale device resurrect it. Merged by max. Absent (0) until the first
+   * tombstone is dropped. Items minted on a device that did not sync for longer than the window are the price — the
+   * same stale-device window the economy ledger's checkpoint uses.
+   */
+  tombFloor?: number;
 }
 
 export type EconomyProjectionInput = {

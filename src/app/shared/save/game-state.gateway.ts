@@ -169,6 +169,9 @@ export interface StateEntry {
    * Only the comparison ignores these. The payload that gets written keeps them.
    */
   volatile?: readonly string[];
+  /** The document's stored shape for a payload, and back (SyncedBlob.encode/decode; the inventory's packed format). */
+  encode?: (value: unknown) => unknown;
+  decode?: (stored: unknown) => unknown;
 }
 
 /**
@@ -207,6 +210,8 @@ export const STATE_ENTRIES: readonly StateEntry[] = [
     label: b.label,
     merge: b.merge,
     enveloped: true,
+    ...(b.encode ? { encode: b.encode } : {}),
+    ...(b.decode ? { decode: b.decode } : {}),
   })),
   {
     key: PROGRESS_KEY,
@@ -1169,7 +1174,7 @@ export class GameStateGateway {
       snap.forEach(doc => {
         if (collection === RESET_COLLECTION && doc.id === RESET_DOC) { resetAt = coerceResetStamp(doc.data()).at; return; }
         const entry = byPath.get(`${collection}/${doc.id}`);
-        if (entry) cloud.set(entry.key, entry.enveloped ? unwrapBlob(doc.data()) : doc.data());
+        if (entry) cloud.set(entry.key, fromDoc(entry, doc.data()));
       });
     }
     // Wiped on another device after this device's copy: the character's own page adopts the wipe; pushing would undo it.
@@ -1387,7 +1392,7 @@ export class GameStateGateway {
       if (!entry) continue;
       const snap = await fs.api.getDoc(this.ref(fs, uid, entry));
       if (this.fs !== fs || this.uid !== uid) return moved;
-      const cloud = snap.exists() ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data()) : null;
+      const cloud = snap.exists() ? fromDoc(entry, snap.data()) : null;
       if (cloud === null) continue;
       this.lastRemote.set(key, JSON.stringify(cloud));
       const localRaw = this.readRaw(key);
@@ -1476,7 +1481,7 @@ export class GameStateGateway {
         const snap = await fs.api.getDoc(this.ref(fs, uid, entry));
         if (!snap.exists()) continue;
         const data = snap.data();
-        out.set(entry.key, entry.enveloped ? unwrapBlob(data) : data);
+        out.set(entry.key, fromDoc(entry, data));
       }
     }
 
@@ -1496,7 +1501,7 @@ export class GameStateGateway {
         // turns into data loss.
         if (!entry) return;
         const data = doc.data();
-        out.set(entry.key, entry.enveloped ? unwrapBlob(data) : data);
+        out.set(entry.key, fromDoc(entry, data));
       });
     }
     return { blobs: out, resetAt };
@@ -1637,7 +1642,7 @@ export class GameStateGateway {
         } else {
           const snap = await fs.api.getDoc(this.ref(fs, uid, entry));
           cloud = snap.exists()
-            ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
+            ? fromDoc(entry, snap.data())
             : null;
         }
 
@@ -1704,7 +1709,7 @@ export class GameStateGateway {
     await fs.api.runTransaction(fs.db, async (tx) => {
       const snap = await tx.get(ref);
       const cloud = snap.exists()
-        ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
+        ? fromDoc(entry, snap.data())
         : null;
       const reconciled = applyStrategy(entry, cloud, local, strategy);
       const identified = entry.identify ? entry.identify(reconciled, uid) : reconciled;
@@ -1979,8 +1984,14 @@ function preserveMonotonicXp(entry: StateEntry, payload: unknown, cloud: unknown
 
 /** The document body for a payload — wrapped, except for progression. */
 function envelope(entry: StateEntry, payload: unknown): Record<string, unknown> {
-  if (entry.enveloped) return wrapBlob(payload) as unknown as Record<string, unknown>;
+  if (entry.enveloped) return wrapBlob(entry.encode ? entry.encode(payload) : payload) as unknown as Record<string, unknown>;
   return stripUndefined(payload) as Record<string, unknown>;
+}
+
+/** A document's payload as the merges read it: unwrapped from its envelope, and decoded from its stored shape. */
+function fromDoc(entry: StateEntry, data: unknown): unknown {
+  const value = entry.enveloped ? unwrapBlob(data) : data;
+  return entry.decode && value !== null && value !== undefined ? entry.decode(value) : value;
 }
 
 function safeParse(raw: string): unknown {

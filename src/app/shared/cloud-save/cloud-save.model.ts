@@ -36,8 +36,8 @@
  * Firestore write once every recently-seen device has acknowledged.
  */
 
-import { mergeEconomyLedgers } from '../economy/economy-ops';
-import { mergeInventoryLedgers } from '../rpg/inventory-ops';
+import { DEVICE_ID_KEY, mergeEconomyLedgers } from '../economy/economy-ops';
+import { compactInventoryLedger, mergeInventoryLedgers, packInventory, unpackInventory } from '../rpg/inventory-ops';
 import { mergeActivityLedgers } from '../activity/activity-ops';
 import { mergeChapterLedgers } from '../narrative/chapter-ops';
 import { mergeCollectionLedgers } from '../collection/collection.model';
@@ -91,6 +91,13 @@ export interface SyncedBlob {
    * question — a first-discovery date, a bounded leaderboard, a preference.
    */
   merge?: (remote: unknown, local: unknown) => unknown;
+  /**
+   * The document's stored shape, when it is not the payload itself: `encode` on the way into Firestore, `decode` on
+   * the way out (the gateway's envelope / fromDoc). Only the inventory has one — its packed format (save format 3,
+   * functions-game/src/trade-core.ts packInventory). localStorage always holds the decoded payload.
+   */
+  encode?: (value: unknown) => unknown;
+  decode?: (stored: unknown) => unknown;
 }
 
 /**
@@ -192,6 +199,8 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     doc: 'inventory',
     label: 'inventory',
     merge: mergeInventory,
+    encode: packInventory,
+    decode: unpackInventory,
   },
   {
     key: 'godforge-activity',
@@ -791,8 +800,21 @@ export function mergeEconomy(remote: unknown, local: unknown): unknown {
   return mergeEconomyLedgers(remote, local);
 }
 
+/**
+ * The inventory merge, then this device's compaction (save compaction): the merge itself is a pure join, and what
+ * the gateway writes back is what keeps the document bounded — own and quiet devices' stack ops folded, old
+ * tombstones dropped under the floor, and the size guard.
+ */
 function mergeInventory(remote: unknown, local: unknown): unknown {
-  return mergeInventoryLedgers(remote, local);
+  return compactInventoryLedger(mergeInventoryLedgers(remote, local), localDeviceId(), Date.now(), { checkSize: true });
+}
+
+function localDeviceId(): string {
+  try {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem(DEVICE_ID_KEY)) || 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 function mergeCollection(remote: unknown, local: unknown): unknown {
