@@ -61,7 +61,8 @@ describe('td-mobs: Raise Skeleton', () => {
     sys.corpses.push({ x: 40, y: 5, at: 0 });
     sys.useAbility('raise-skeleton');
     expect(sys.minions.some(k => k.x === 40 && k.y === 5)).toBeTrue();
-    expect(sys.minions.some(k => Math.abs(k.x) === 16)).toBeTrue();
+    // The other out of the ground at its place in his formation (td-sight): beside him, never on his feet.
+    expect(sys.minions.some(k => !(k.x === 40 && k.y === 5) && Math.hypot(k.x, k.y) >= 10 && Math.hypot(k.x, k.y) <= 40)).toBeTrue();
     expect(sys.corpses.length).toBe(0);
   });
 
