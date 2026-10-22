@@ -220,7 +220,7 @@ should appear for everybody like in tibia"*. Both dupe-proof.
 | Piece | Owns | Never does |
 |---|---|---|
 | Hearth (protocol 6) | who trades with whom: it verified both ID tokens, so it writes `trades/{id}` `{a:{uid,player,name}, b:{…}, status:'open', expiresAt}` (create-only); relays offers, Accepts, confirms; tells an area what lies on its ground — after reading `ground-items/{id}` | move an item or a coin; show a ground item the escrow does not hold; hide one it still holds |
-| `tradeApi` Function (functions/src/trade.ts → trade-core.ts) | every move, each in **one Firestore transaction**: `execute`, `cancel`, `drop`, `pickup`; `groundSweep` every 5 min | trust the client's word on what it holds (it re-reads the save) |
+| `tradeApi` Function (functions-game/src/trade.ts → trade-core.ts) | every move, each in **one Firestore transaction**: `execute`, `cancel`, `drop`, `pickup`; `groundSweep` every 5 min | trust the client's word on what it holds (it re-reads the save) |
 | The client (play/trade) | the window and the flows; pushing its save before (`gateway.syncNow()`) and adopting the server's write after (`gateway.pullKeys()`) | write `trades`, `ground*` or the audit (rules: no client writes) |
 
 **A trade.** Card → **Trade** → the other's toast → **Trade** → one window on both screens (Tibia / D2): what you offer,
@@ -314,7 +314,7 @@ monotonic-XP guard on `progress/state` is unchanged.
 
 | Code | Where |
 |---|---|
-| Server core (pure) | `functions/src/trade-core.ts`; Functions `functions/src/trade.ts` (`tradeApi`, `groundSweep`) |
+| Server core (pure) | `functions-game/src/trade-core.ts`; Functions `functions-game/src/trade.ts` (`tradeApi`, `groundSweep`) |
 | Hearth | `scripts/social-server.mjs` protocol 6; `social-identity.mjs` `openTrade`/`groundItem`; fake: `scripts/trade-fake.mjs` |
 | Client | `play/trade/` (`trade-items`, `trade-flow`, `trade-backend.service`, `trade-hud.component`, `trade.i18n`); `social-room.ts` verbs; td-engine `setSharedGround`; gateway `syncNow`/`pullKeys`; inventory `serverSeq`; economy `receive-gold` |
 | Tests | `scripts/trade-core.test.mjs` (13), `social-server.test.mjs` (3 new), karma `trade-merge.spec` (5) + `trade-flow.spec` (5), e2e `e2e/td-trade.spec.ts` |
@@ -325,3 +325,5 @@ monotonic-XP guard on `progress/state` is unchanged.
 block/mute/report + privacy together. Auth unlocks everything after it (guilds, trading, bans), and moderation must
 land before the room is promoted publicly. In parallel, a small Phase 5 slice — **server-seeded spawns** — would make
 party hunting look shared for very little code.
+
+_2026-10-22: Phase 6 trading and ground drops are live: game:tradeApi + game:groundSweep (functions-game), rules with the serverSeq guard, hearth protocol 6._

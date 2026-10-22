@@ -51,7 +51,7 @@ export type EconomyOpKind =
   | 'credit-gold'
   | 'credit-essence'
   | 'spend-gold'
-  /** Gold handed over by another Keeper (functions/src/trade-core.ts): a credit, but not "earned". */
+  /** Gold handed over by another Keeper (functions-game/src/trade-core.ts): a credit, but not "earned". */
   | 'receive-gold'
   | 'buy-upgrade'
   | 'buy-artifact'

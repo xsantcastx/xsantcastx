@@ -606,12 +606,14 @@ steps out of half the telegraphed attacks (a breath's tell, a Rend ring, a burst
 slower than him; the Thornstrider's spirit beast bites. A hunt is the creatures of his level one after another (an elite
 pack 1 in 16), life and mana carried over, 12 s between pulls (leveling.md's 240 kills an hour), the out-of-fight mend.
 
-**The bands** (`--check`, in CI and the gate; ±15% for seeded noise on a time):
+**The bands** (`--check`, in CI and the gate; ±15% for seeded noise on a time). A time is the **interquartile mean** of
+a cell's 24 runs (the mean of runs 7–18), not the median (2026-10-22): a cell's runs often fall in two clusters, and a
+median sitting in the gap between them flipped on a two-tick change anywhere in the fight.
 
 | What | Band |
 |---|---|
 | A creature at his level (every kind of every zone whose band holds his level, raised to it: §14) | 2–5 s; falls ≤ 2% |
-| A champion pack / a unique pack | 15–40 s / 30–75 s; falls ≤ 10% |
+| A champion pack / a unique pack | 15–40 s / 30–75 s (the Ashguard's floor ×0.75: his arc clears packs, his identity); falls ≤ 10% |
 | A floor boss at its level, first attempt | 60–150 s; falls ≤ 30% |
 | The Seam Eater on Normal (its rifts: 20, 30, 40, 55) | 2–4 min; falls ≤ 30% |
 | The Seam Eater on Nightmare / Hell: a Keeper 5 / 15 levels above it, in resist gear (rares / epics, its arcane first, a belt of 16 + 16) | falls ≤ 35% / ≤ 50%; never softer than Normal |
