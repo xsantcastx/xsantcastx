@@ -20,8 +20,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, '..');
-/** What the room imports: the world, and the protocol constants it shares with the client. */
-export const ENTRIES = ['src/app/play/world/room-world.ts', 'src/app/play/social/world-protocol.ts'];
+/** What the room imports: the world, the protocol constants it shares with the client, a Keeper's budget from its save. */
+export const ENTRIES = ['src/app/play/world/room-world.ts', 'src/app/play/social/world-protocol.ts', 'src/app/play/world/keeper-budget.ts'];
+/**
+ * Modules exported whole under one name (protocol 8): the trade Function's own core (functions-game/src/trade-core.ts),
+ * so the room settles trades and escrows ground drops with the very code the Function runs — never a copy.
+ */
+export const NAMED = { tradeCore: 'functions-game/src/trade-core.ts' };
 export const OUT = resolve(here, 'world-sim.generated.mjs');
 
 /** Transpile every module reachable from ENTRIES: id (repo-relative path) → { code, deps: {specifier: id} }. */
@@ -48,7 +53,7 @@ export function compile() {
       visit(id);
     }
   };
-  for (const e of ENTRIES) visit(e);
+  for (const e of [...ENTRIES, ...Object.values(NAMED)]) visit(e);
   return mods;
 }
 
@@ -64,7 +69,7 @@ export function evaluate(mods) {
     new Function('require', 'module', 'exports', m.code)(spec => req(m.deps[spec]), module, module.exports);
     return module.exports;
   };
-  return Object.assign({}, ...ENTRIES.map(req));
+  return Object.assign({}, ...ENTRIES.map(req), Object.fromEntries(Object.entries(NAMED).map(([name, id]) => [name, req(id)])));
 }
 
 /** The world, compiled in memory from the sources (tests, a local room). */
@@ -79,7 +84,7 @@ export function emit(mods) {
     `const MODS = {\n${body}\n};\n` +
     `const cache = new Map();\n` +
     `function req(id) { if (cache.has(id)) return cache.get(id).exports; const m = MODS[id]; const module = { exports: {} }; cache.set(id, module); m.run(spec => req(m.deps[spec]), module, module.exports); return module.exports; }\n` +
-    `const all = Object.assign({}, ${ENTRIES.map(e => `req(${JSON.stringify(e)})`).join(', ')});\n` +
+    `const all = Object.assign({}, ${ENTRIES.map(e => `req(${JSON.stringify(e)})`).join(', ')}, { ${Object.entries(NAMED).map(([n, id]) => `${n}: req(${JSON.stringify(id)})`).join(', ')} });\n` +
     `export const BUILT = ${JSON.stringify(new Date().toISOString())};\n` +
     names.map(n => `export const ${n} = all.${n};`).join('\n') + '\n';
 }

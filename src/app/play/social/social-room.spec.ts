@@ -219,4 +219,37 @@ describe('SocialRoom (the Hearth room client)', () => {
     expect(fake.requests.some(q => /\/(whisper|friend|block|report|privacy)/.test(q.url))).toBeFalse();
     r.leave();
   });
+
+  it('protocol 8: names its character on join; offline party members, commits and ground notes arrive; lay, pick, status post', async () => {
+    const transport = async (url: string, init?: RequestInit): Promise<Response> => {
+      if (url.endsWith('/ground/drop')) { const b = JSON.parse(String(init?.body)); return Response.json({ ground: { id: 'g1', area: b.area, x: b.x, y: b.y, name: b.item.name, rarity: 'rare', def: 'd', until: 9, pending: true } }, { status: 201 }); }
+      if (url.endsWith('/ground/pick')) return Response.json({ ok: true, item: 'pg1', ms: 2 });
+      if (url.endsWith('/trade/status')) return Response.json({ status: 'done', received: { items: ['t1'], gold: 5 } });
+      return fake.transport(url, init);
+    };
+    const fake = fakeRoom(() => Response.json({ token: 'secret', id: 'me', players: [], messages: [], protocol: 8, guest: false, settles: true }));
+    const commits: unknown[] = [], gnotes: unknown[] = [];
+    const r = new SocialRoom(s => { state = s; }, { keepAlive: true, endpoint: 'http://room', fetch: transport, now: () => clock, idToken: async () => 'tok', character: () => 'c2', onTradeCommit: c => commits.push(c), onGroundNote: n => gnotes.push(n) });
+    await r.join('Arin'); await settle();
+    expect(fake.requests[0].body).toEqual(jasmine.objectContaining({ protocol: 8, character: 'c2' }));
+    expect(r.canSettle).toBeTrue();
+    const push = async (value: unknown) => { fake.streams[0].enqueue(new TextEncoder().encode(`data: ${JSON.stringify(value)}\n\n`)); await settle(); };
+    await push({ type: 'party', party: { id: 'p', leader: 'me', members: ['me'], offline: [{ id: 'r1', name: 'Mira' }, { id: 7, name: 'bad' }] } });
+    expect(state!.party).toEqual({ id: 'p', leader: 'me', members: ['me'], offline: [{ id: 'r1', name: 'Mira' }] });
+    await push({ type: 'trade-commit', commit: { id: 't', ok: true, received: { items: [], gold: 3 } } });
+    await push({ type: 'ground-note', note: { kind: 'escrowed', id: 'g1', name: 'Ash Blade' } });
+    await push({ type: 'ground-note', note: { kind: 'stolen', id: 'g1', name: 'x' } });
+    expect(commits.length).toBe(1); expect(gnotes.length).toBe(1);
+    await push({ type: 'ground', area: 'ember-isle', items: [] });
+    const item = { id: 's1', def: 'd', name: 'Ash Blade', type: 'artifact', rarity: 'rare', stats: {} };
+    const laid = await r.groundLay({ area: 'ember-isle', x: 4, y: 5, item });
+    expect(laid.why).toBe('');
+    expect(state!.ground!.items.map(g => [g.id, g.pending])).toEqual([['g1', true]]);
+    expect(await r.groundPick('ember-isle', 'g1')).toEqual({ ok: true, item: 'pg1', ms: 2 });
+    expect(state!.ground!.items).toEqual([]);
+    expect(await r.tradeStatus('t')).toEqual({ status: 'done', received: { items: ['t1'], gold: 5 } });
+    expect(await r.tradeConfirm('t', 2, false)).toBe('');
+    expect(fake.requests.pop()).toEqual({ url: 'http://room/trade/confirm', body: { trade: 't', rev: 2, done: false, character: 'c2' } });
+    r.leave();
+  });
 });

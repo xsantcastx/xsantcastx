@@ -379,47 +379,123 @@ export async function executeTrade(db: Db, uid: string, body: unknown, now: numb
     }
     // Both confirmed the same terms. Read everything, then decide, then write — or void with the reason.
     const chars = { [me]: character, [other]: theirs.character } as Record<'a' | 'b', string>;
-    const nameOf = (s: 'a' | 'b') => trade[s].name || 'Keeper';
-    const movesGold = terms.a.gold > 0 || terms.b.gold > 0;
-    const [invA, invB, ecoA, ecoB] = [
-      await tx.get(inventoryPath(trade.a.uid, chars.a)), await tx.get(inventoryPath(trade.b.uid, chars.b)),
-      movesGold ? await tx.get(economyPath(trade.a.uid, chars.a)) : null, movesGold ? await tx.get(economyPath(trade.b.uid, chars.b)) : null,
-    ];
-    try {
-      const inv = { a: readInventory(invA, nameOf('a')), b: readInventory(invB, nameOf('b')) };
-      const eco = movesGold ? { a: readEconomy(ecoA, nameOf('a')), b: readEconomy(ecoB, nameOf('b')) } : null;
-      const taken = { a: terms.a.items.map(i => takeItem(inv.a, i, nameOf('a'), now)), b: terms.b.items.map(i => takeItem(inv.b, i, nameOf('b'), now)) };
-      taken.a.forEach((rec, i) => giveItem(inv.b, rec, `t${hashId(`${tradeId}:${terms.a.items[i].id}`)}`, now));
-      taken.b.forEach((rec, i) => giveItem(inv.a, rec, `t${hashId(`${tradeId}:${terms.b.items[i].id}`)}`, now));
-      if (eco) {
-        // Each must hold what it offers; only the difference moves (one op a side, never a debit that cannot land).
-        if (spendableGold(eco.a) < terms.a.gold) refuse(409, 'gold', `${nameOf('a')} does not hold that much Gold.`);
-        if (spendableGold(eco.b) < terms.b.gold) refuse(409, 'gold', `${nameOf('b')} does not hold that much Gold.`);
-        const net = terms.a.gold - terms.b.gold;
-        if (net > 0) { moveGold(eco.a, 'spend-gold', net, now, nameOf('a')); moveGold(eco.b, 'receive-gold', net, now, nameOf('b')); }
-        if (net < 0) { moveGold(eco.b, 'spend-gold', -net, now, nameOf('b')); moveGold(eco.a, 'receive-gold', -net, now, nameOf('a')); }
-      }
-      if (terms.a.items.length + terms.b.items.length > 0) {
-        bumpServerSeq(inv.a); bumpServerSeq(inv.b);
-        tx.set(inventoryPath(trade.a.uid, chars.a), envelope(inv.a, now));
-        tx.set(inventoryPath(trade.b.uid, chars.b), envelope(inv.b, now));
-      }
-      if (eco && terms.a.gold !== terms.b.gold) {
-        tx.set(economyPath(trade.a.uid, chars.a), envelope(eco.a, now));
-        tx.set(economyPath(trade.b.uid, chars.b), envelope(eco.b, now));
-      }
-      tx.set(tradePath(tradeId as string), { ...trade, status: 'done', confirms, terms, doneAt: now } as unknown as Doc);
-      tx.set(auditPath(`trade-${tradeId}`), {
-        kind: 'trade', at: now, trade: tradeId,
-        a: { uid: trade.a.uid, character: chars.a, name: nameOf('a'), gave: terms.a.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity })), gold: terms.a.gold },
-        b: { uid: trade.b.uid, character: chars.b, name: nameOf('b'), gave: terms.b.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity })), gold: terms.b.gold },
-      });
-      return { status: 'done', received: { items: receivedIds(tradeId as string, terms[other]), gold: terms[other].gold } };
-    } catch (e) {
-      if (e instanceof TradeError && e.status === 409) return voidIt(e.message);
-      throw e;
-    }
+    return swap(tx, tradeId as string, trade, terms, chars, confirms, now, other, voidIt);
   });
+}
+
+/**
+ * The swap itself, inside the caller's transaction (every read before any write): both inventories (and both ledgers
+ * when Gold moves) read, every item re-checked, everything moved, the trade stamped `done` with its terms, the audit
+ * written. A 409 refusal voids the trade with the reason instead. `side` names whose view `received` is told from.
+ */
+async function swap(
+  tx: Tx, tradeId: string, trade: TradeDoc, terms: Terms, chars: Record<'a' | 'b', string>,
+  confirms: TradeDoc['confirms'], now: number, other: 'a' | 'b', voidIt: (why: string) => ExecuteResult, extra: Doc = {},
+): Promise<ExecuteResult> {
+  const nameOf = (s: 'a' | 'b') => trade[s].name || 'Keeper';
+  const movesGold = terms.a.gold > 0 || terms.b.gold > 0;
+  const [invA, invB, ecoA, ecoB] = [
+    await tx.get(inventoryPath(trade.a.uid, chars.a)), await tx.get(inventoryPath(trade.b.uid, chars.b)),
+    movesGold ? await tx.get(economyPath(trade.a.uid, chars.a)) : null, movesGold ? await tx.get(economyPath(trade.b.uid, chars.b)) : null,
+  ];
+  try {
+    const inv = { a: readInventory(invA, nameOf('a')), b: readInventory(invB, nameOf('b')) };
+    const eco = movesGold ? { a: readEconomy(ecoA, nameOf('a')), b: readEconomy(ecoB, nameOf('b')) } : null;
+    const taken = { a: terms.a.items.map(i => takeItem(inv.a, i, nameOf('a'), now)), b: terms.b.items.map(i => takeItem(inv.b, i, nameOf('b'), now)) };
+    taken.a.forEach((rec, i) => giveItem(inv.b, rec, `t${hashId(`${tradeId}:${terms.a.items[i].id}`)}`, now));
+    taken.b.forEach((rec, i) => giveItem(inv.a, rec, `t${hashId(`${tradeId}:${terms.b.items[i].id}`)}`, now));
+    if (eco) {
+      // Each must hold what it offers; only the difference moves (one op a side, never a debit that cannot land).
+      if (spendableGold(eco.a) < terms.a.gold) refuse(409, 'gold', `${nameOf('a')} does not hold that much Gold.`);
+      if (spendableGold(eco.b) < terms.b.gold) refuse(409, 'gold', `${nameOf('b')} does not hold that much Gold.`);
+      const net = terms.a.gold - terms.b.gold;
+      if (net > 0) { moveGold(eco.a, 'spend-gold', net, now, nameOf('a')); moveGold(eco.b, 'receive-gold', net, now, nameOf('b')); }
+      if (net < 0) { moveGold(eco.b, 'spend-gold', -net, now, nameOf('b')); moveGold(eco.a, 'receive-gold', -net, now, nameOf('a')); }
+    }
+    if (terms.a.items.length + terms.b.items.length > 0) {
+      bumpServerSeq(inv.a); bumpServerSeq(inv.b);
+      tx.set(inventoryPath(trade.a.uid, chars.a), envelope(inv.a, now));
+      tx.set(inventoryPath(trade.b.uid, chars.b), envelope(inv.b, now));
+    }
+    if (eco && terms.a.gold !== terms.b.gold) {
+      tx.set(economyPath(trade.a.uid, chars.a), envelope(eco.a, now));
+      tx.set(economyPath(trade.b.uid, chars.b), envelope(eco.b, now));
+    }
+    tx.set(tradePath(tradeId), { ...trade, ...extra, status: 'done', confirms, terms, doneAt: now } as unknown as Doc);
+    tx.set(auditPath(`trade-${tradeId}`), {
+      kind: 'trade', at: now, trade: tradeId, ...extra,
+      a: { uid: trade.a.uid, character: chars.a, name: nameOf('a'), gave: terms.a.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity })), gold: terms.a.gold },
+      b: { uid: trade.b.uid, character: chars.b, name: nameOf('b'), gave: terms.b.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity })), gold: terms.b.gold },
+    });
+    return { status: 'done', received: { items: receivedIds(tradeId, terms[other]), gold: terms[other].gold } };
+  } catch (e) {
+    if (e instanceof TradeError && e.status === 409) return voidIt(e.message);
+    throw e;
+  }
+}
+
+// ── Trades settled by the room (Hearth protocol 8; docs/design/online.md §4d M2) ───────────────────────────────────
+/**
+ * The room holds both offers and both consents (each Keeper's Confirm reached it over its verified session), so it
+ * settles the trade itself, as ONE transaction run by its service account: the same reads, checks and writes as the
+ * second `execute` above (`swap`), with both sides' characters named by the room. The `trades/{id}` binding it wrote at
+ * open is re-read inside the transaction and must name the same two accounts; a trade already `done` answers `done`
+ * again (the room retrying after a lost answer), one `void` stays void. The commit is the source of truth: until it
+ * lands nothing has moved, and once it lands everything has.
+ */
+export interface SettleBody { trade: string; a: { uid: string; character: string }; b: { uid: string; character: string }; terms: unknown }
+export async function settleTrade(db: Db, body: SettleBody, now: number): Promise<{ status: 'done'; received: { a: { items: string[]; gold: number }; b: { items: string[]; gold: number } } } | { status: 'void'; why: string }> {
+  const tradeId = typeof body?.trade === 'string' && ID.test(body.trade) ? body.trade : refuse(400, 'bad-request', 'Invalid trade.');
+  const chars = { a: body?.a?.character, b: body?.b?.character };
+  if (typeof chars.a !== 'string' || !CHARACTER.test(chars.a) || typeof chars.b !== 'string' || !CHARACTER.test(chars.b)) refuse(400, 'bad-request', 'Invalid character.');
+  const terms = parseTerms(body.terms);
+  const key = canonical(terms);
+  const both = (t: Terms) => ({ a: { items: receivedIds(tradeId as string, t.b), gold: t.b.gold }, b: { items: receivedIds(tradeId as string, t.a), gold: t.a.gold } });
+  return db.run(async tx => {
+    const raw = await tx.get(tradePath(tradeId as string));
+    if (!raw) refuse(404, 'no-trade', 'That trade is not open.');
+    const trade = clone(raw) as unknown as TradeDoc;
+    if (trade.a?.uid !== body.a.uid || trade.b?.uid !== body.b.uid) refuse(403, 'not-yours', 'That trade is not theirs.');
+    if (trade.status === 'done') return { status: 'done' as const, received: both(trade.terms!) };
+    if (trade.status === 'void') return { status: 'void' as const, why: trade.why ?? 'The trade was called off.' };
+    const voidIt = (why: string): ExecuteResult => {
+      tx.set(tradePath(tradeId as string), { ...trade, status: 'void', why, voidAt: now, room: true } as unknown as Doc);
+      return { status: 'void', why };
+    };
+    let out: ExecuteResult;
+    if (trade.a.uid === trade.b.uid) out = voidIt('A Keeper cannot trade with their own account.');
+    else if (now > num(trade.expiresAt)) out = voidIt('The trade ran out of time.');
+    else {
+      const confirms = { a: { key, character: chars.a as string, at: now }, b: { key, character: chars.b as string, at: now } };
+      out = await swap(tx, tradeId as string, trade, terms, chars as Record<'a' | 'b', string>, confirms, now, 'b', voidIt, { room: true });
+    }
+    return out.status === 'done' ? { status: 'done' as const, received: both(terms) } : { status: 'void' as const, why: out.status === 'void' ? out.why : 'The trade was called off.' };
+  });
+}
+/**
+ * A trade the room was settling when it stopped (a crash, a redeploy): its Keepers ask how it ended. Done stays done;
+ * anything still open is voided in a transaction — so a commit still in flight from the old room and this answer can
+ * never both win (Firestore serialises them on the trade document).
+ */
+export async function closeTrade(db: Db, tradeId: string, uid: string, now: number): Promise<{ status: 'done' | 'void'; why?: string; terms?: Terms; side?: 'a' | 'b' }> {
+  if (typeof tradeId !== 'string' || !ID.test(tradeId)) refuse(400, 'bad-request', 'Invalid trade.');
+  return db.run(async tx => {
+    const raw = await tx.get(tradePath(tradeId));
+    if (!raw) return { status: 'void' as const, why: 'That trade is not open.' };
+    const trade = raw as unknown as TradeDoc;
+    const side = trade.a?.uid === uid ? 'a' as const : trade.b?.uid === uid ? 'b' as const : null;
+    if (!side) refuse(403, 'not-yours', 'That trade is not yours.');
+    if (trade.status === 'done') return { status: 'done' as const, terms: trade.terms, side: side! };
+    if (trade.status === 'void') return { status: 'void' as const, why: trade.why ?? 'The trade was called off.', side: side! };
+    const why = 'The trade was interrupted. Nothing moved.';
+    tx.set(tradePath(tradeId), { ...clone(raw), status: 'void', why, voidAt: now });
+    return { status: 'void' as const, why, side: side! };
+  });
+}
+/** What the side `side` of a done trade received (its new ids and Gold): the room's answer to a reconnecting Keeper. */
+export function receivedBy(tradeId: string, terms: Terms, side: 'a' | 'b'): { items: string[]; gold: number } {
+  const from = side === 'a' ? terms.b : terms.a;
+  return { items: receivedIds(tradeId, from), gold: from.gold };
 }
 
 /** A party calls it off (the window's Cancel after it confirmed): a confirmation on record must not complete later. */

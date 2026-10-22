@@ -319,7 +319,7 @@ monotonic-XP guard on `progress/state` is unchanged.
 | Client | `play/trade/` (`trade-items`, `trade-flow`, `trade-backend.service`, `trade-hud.component`, `trade.i18n`); `social-room.ts` verbs; td-engine `setSharedGround`; gateway `syncNow`/`pullKeys`; inventory `serverSeq`; economy `receive-gold` |
 | Tests | `scripts/trade-core.test.mjs` (13), `social-server.test.mjs` (3 new), karma `trade-merge.spec` (5) + `trade-flow.spec` (5), e2e `e2e/td-trade.spec.ts` |
 
-## 4d. Phase 8: the room simulates (protocol 7) — design and M1 as built
+## 4d. Phase 8: the room simulates (protocols 7 and 8) — design, M1 and M2 as built
 
 Owner, 2026-10-22: *"the server owns the world, so everyone sees the same monsters and cheating is hard."* Hosting
 stays **option A**: Cloud Run `eclipse-hearth`, us-central1, 1 vCPU / 512 MiB, request-based billing, min 0, max 1,
@@ -393,13 +393,51 @@ own dropped item still goes through the Function's transaction (dupe-proof); the
 room owns. M2 moves trades into the room (settled from memory, one atomic Firestore commit for durability) and player
 drops onto the room's ground with the same escrow write in the background.
 
-**M2+ (planned, not built).** (1) Trades in the room: the room holds both offers, settles in memory, writes one commit
-(both inventories, both ledgers, the audit) — the trade-core checks reused server-side. (2) More areas: `WORLD_AREAS`
-grows island by island, then floors (each a RoomWorld keyed by level id; dungeons per party instance). (3) Party
-persistence across relog (party id in `users/{uid}/social/party`, re-joined on join). (4) Server-known stats: the
-Keeper's level and gear read from the save at join (one read), the claim's budget from its real damage. (5) The
-Keeper's life on the room (bites decided here, death and the corpse run from the room). (6) WebSocket once the bill or
-the profile asks for it.
+**M2 as built (protocol 8, 2026-10-22, branch `world-m2`; hearth revision 00011 live).** A client says `protocol: 8`
+and names its `character` on `/join`; the reply says `settles: true` when the room carries the trade core. Older
+clients never say it and keep protocol 6/7's paths unchanged (the room serves both until they refresh).
+
+| | |
+|---|---|
+| **The trade core aboard** | `scripts/world-sim-build.mjs` bundles `functions-game/src/trade-core.ts` (as `tradeCore`) and `world/keeper-budget.ts` into the image beside the world — the Function's own code, not a copy. The room's writes go through trade-core's `Db`: Firestore's REST transactions in production (`social-identity.mjs` `firestoreStore().db`: `:beginTransaction`, reads inside it by `:batchGet`, one `:commit`; an ABORTED commit runs the whole function again), an in-memory optimistic store in tests and the local e2e. Service account as protocol 4; no new IAM. |
+| **Trades settled in the room** | A trade between two protocol-8 Keepers is `room: true`. Accept pushes the save first (`TradeFlow.beforeAccept`); when both accept the room **prechecks**: one `:batchGet` of the trade, both inventories and both ledgers, and `settleTrade` run on a throwaway copy. Confirm goes to the room only. The second Confirm **settles from memory**: both windows close at once with what each receives (`trade-end {settled, received}`), then **ONE** transaction (`trade-core settleTrade`, the same `swap` the Function's `execute` runs) re-reads and re-checks everything and writes both inventories, both ledgers, `trades/{id}` `status: 'done', room: true` and the audit. `trade-commit {ok}` follows; only then does the client re-read its save (`pullKeys`). A precheck refusal is told before anything settles; a commit refusal ("changed since it was offered") says nothing moved. |
+| **Crash between settle and commit** | The commit is the truth: until it lands nothing has moved. A client whose commit word never comes asks `/trade/status` after 8 s (or when its stream returns); a room that does not hold the trade (it restarted) runs `closeTrade` — a transaction on `trades/{id}`: `done` stays done (the client re-reads), anything still open becomes `void` ("interrupted, nothing moved"). Because both the late commit and the close are transactions on the same document, exactly one can win (node test: 8 races, Gold and items conserved). |
+| **Drops laid by the room** | `/ground/drop {area, x, y, item}` from a protocol-8 Keeper: the room lays it **at once** (`pending: true`) on everyone's ground (`ground {add}`), answers, and escrows it behind with trade-core `dropItem` (one transaction: out of the dropper's save under a MAX tombstone, into `ground-items/{gid}`, the area cap and the per-account rate). A save that does not hold it yet (looted a moment ago) waits for the dropper's `/ground/synced` (sent after its push) or a timer, up to 12 s / 8 tries; then — or on any other refusal (worn, soulbound, changed) — it goes **back**: off everyone's ground, `ground-note {returned, why}` to the dropper (the item never left its save). Landed: `ground-note {escrowed}` and the dropper re-reads its save. Nobody can have a pending drop. |
+| **Picks** | `/ground/pick {id}`: the first Keeper the room hears (within 10 tiles of its record) wins in memory — off everyone's screen at once — and the room runs trade-core `pickupItem` (one transaction; a pick of a still-pending drop waits for its escrow). Yes → `{ok, item}` and the picker re-reads its save; a picker whose save is not in the cloud yet is told `no-save`, pushes and reaches once more; any refusal puts it back. A protocol-6 `/ground/take` cannot clear a drop the room laid while it escrows or is being picked. Guests can neither drop nor pick. |
+| **Server-known stats** | On join (signed in, character named) the room reads `activity`, `keeper-look` and `inventory` in ONE `:batchGet` (`store.readSave`) and computes `keeperBudget`: the level its Hunting XP reads as (keeper-level.ts — not the presence's), and the worn gear's lift ((1 + damage%)(1 + crit%)(1 + speed%), capped). Re-read every 5 minutes while in the world. The claim gate's budget is `max(40 + 20·L, 4 × REF_DPS(L) × gear lift / 1.4)` (REF_DPS: combat-sim's best sustained single-target DPS by level; ×4 for blows on a crowd; lift ≤ 3) — ≥ 3× the simulated Keeper at every level, so honest play is never clipped, and a level-5 save cannot claim level-40 damage. Guests: `40 + 20·L` with L the reported level rising ≤ 3/min **capped at 30**. A protocol-7 signed-in Keeper (no character named): M1's level budget until it refreshes. |
+| **Party across a relog (WoW)** | A party is a roster by account. A signed-in member logging out (or replaced by its own new window) stays in it **offline**: the others' `party` event carries `offline: [{id, name}]` (greyed frames; the leader can remove one by its row id); the lead passes to an online member. Logging back in rejoins it with no invite — from memory, or from the store after a restart: `parties/{id}` `{leader, members: [{key: uid, name, rid, offlineAt?}], updatedAt}` and `users/{uid}/social/party` `{party}`, written only by the room (the pointer is its owner's to read; `parties` falls to the deny-all — no rules change). Leaving or being kicked clears the pointer; under two members the party disbands and every pointer is cleared; a party with nobody online for 2 h is disbanded at the next login. Guests' places end with their session, as before. Notes `offline`/`back` go to protocol-8 clients only. |
+| **`/health`** | `protocol: 8`, plus `economy: {settled, committed, voided, commitMs, escrowed, escrowFailed, escrowMs, picked, pickMs}` — the room's own running averages of its Firestore writes. |
+
+**The authority boundary after M2.**
+
+| The room decides (M1 + M2) | Still client-trusted |
+|---|---|
+| creatures, hits within a budget **from the save** (level and gear), deaths, loot rolls, the room's ground | the size of each blow within that budget; the Keeper's own life (bites land on its screen) |
+| **trades**: both consents, the precheck, the settle, the one commit (both saves, both ledgers, the audit) | what the window shows before Accept (re-checked by the commit anyway) |
+| **player drops and picks**: on the ground at once, escrowed and picked in its own transactions, first come | — |
+| **party membership across relogs** (persisted) | XP and Gold credited to the save (paid by the client on the room's kill / take, through the idempotent doors) |
+| | an item's affixes (minted at pickup from the player's seed + the room's drop id) |
+
+**Measured.** Local (node tests, `scripts/social-m2.test.mjs`): settle 0.8 ms after the second Confirm reaches the room;
+a drop on the other Keeper's stream 0.9 ms after it was sent; a pick's transaction 0.1 ms in memory. e2e (two
+browsers, `e2e/td-world-m2.spec.ts`): the drop on the other screen **3–4 ms** after the Drop click; a trade `done` on
+both screens **3 ms** after the second Confirm. Live (revision 00011, guests, from the owner's machine): a POST round trip
+**~195 ms** median (145–230), another Keeper's stream hears a Keeper's POST **~190 ms** after it is sent — so live, the
+dropper sees the drop at 0 ms (optimistic), others at ~190 ms; a trade shows done ~200 ms after the second Confirm; the
+commit/escrow/pick write times show in `/health economy` once signed-in players use them (no live sample yet: the site
+still serves the protocol-7 client until it is pushed).
+
+**Limits, stated.** XP and Gold are still credited by the client on the room's word; a blow's size within the budget is
+the client's; the Keeper's own life is its screen's. The room's list of player drops is memory: a hearth restart forgets
+what is drawn (each escrowed item still goes home on time through `groundSweep`). A sale of a dropped item in the
+~0.1 s before its escrow lands could keep that item's vendor value (the satchel hides a pending drop from the trade
+window and from a second Drop; the shop does not check) — as protocol 6. The budget's gear lift reads worn records'
+`stats` (upgrade multipliers, sets and uniques ride inside the ×4 headroom). A protocol-7 client keeps M1's trust until
+it refreshes.
+
+**Next (M3+).** More areas (`WORLD_AREAS` island by island, then floors and party dungeon instances); the Keeper's life on
+the room (bites decided here, death and the corpse run); XP and Gold credited by the room (a Function or the room's own
+write); WebSocket once the bill or the profile asks; retire protocol 7's trust once old clients are gone.
 
 | Code | Where |
 |---|---|
@@ -407,6 +445,8 @@ the profile asks for it.
 | The room | `scripts/social-world.mjs` (areas, wake/sleep, ticks, verbs); `social-server.mjs` protocol 7; bundle `scripts/world-sim-build.mjs` |
 | Client | `social-room.ts` (`world: true`, `worldTake`/`worldReturn`, `world-ground`); `td-coop.ts` (`@room` kills roll no loot; corpse ids); `td-mobs.ts` (`roomLoot`, room drops, `onRoomTake`); `td-engine.ts` (`setRoomGround`); HUD `roomTake` |
 | Tests | `scripts/social-world.test.mjs` (7: determinism, loot/ownership, forged intents, sleep/wake, two clients over HTTP, v6 compat, the store); karma `room-world.spec.ts`; e2e `e2e/td-world.spec.ts` |
+| M2 (protocol 8) | room: `social-server.mjs` (precheck/settle/commitTrade, layDrop/escrow/pickDrop, `/trade/status`, `/ground/{drop,synced,pick}`, the party roster + rejoinParty, readStats); `social-identity.mjs` (REST `db`, `readMany`, `readSave`, `partyRead/Write`); `social-world.mjs` (`keeperOf`: the save's budget); core `trade-core.ts` (`settleTrade`, `closeTrade`, `receivedBy`, the shared `swap`); `world/keeper-budget.ts`; client `social-room.ts` (`groundLay/Pick/Synced`, `tradeStatus`, `canSettle`, `offline`), `trade-flow.ts` (room mode), `trade-hud`, the HUD's greyed frames |
+| M2 tests | `scripts/social-m2.test.mjs` (8: the settle and its commit, precheck/forged/mixed, the crash race, the instant drop and first pick, escrow waits and hand-backs, the party across relog and restart, the save's budget, the REST transaction shapes); `trade-core.test.mjs` (+3: settleTrade, refusals, closeTrade races); karma `trade-flow.spec` (+3), `social-room.spec` (+1), `keeper-budget.spec` (4); e2e `e2e/td-world-m2.spec.ts` |
 
 ## 5. Next phase recommended
 

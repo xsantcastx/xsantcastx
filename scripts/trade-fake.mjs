@@ -25,6 +25,7 @@ export function fakeTrade() {
   const own = (uid, path) => typeof path === 'string' && path.startsWith(`users/${uid}/`) && !path.includes('..');
   return {
     docs: db.docs,
+    db,
     async handle(req, res, url) {
       if (req.method !== 'POST') { reply(res, 405, { error: 'POST only.' }); return; }
       const uid = /^Bearer fake\.([A-Za-z0-9_-]{1,64})/.exec(req.headers.authorization ?? '')?.[1];

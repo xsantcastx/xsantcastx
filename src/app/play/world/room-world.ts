@@ -36,8 +36,11 @@ import { hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/cham
 import { eclipseAt, worldTime, type SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { EngineOptions } from '../engine/engine.model';
 
-/** A Keeper in the area as the room knows it: where it last said it stands, and its level (the room's own record). */
-export interface RoomKeeper { id: string; x: number; y: number; level: number }
+/**
+ * A Keeper in the area as the room knows it: where it last said it stands, and its level (the room's own record).
+ * `dps` (protocol 8): the damage a second its save allows (keeper-budget.ts), the claim gate's budget when present.
+ */
+export interface RoomKeeper { id: string; x: number; y: number; level: number; dps?: number }
 /** What survives a sleep: the ground (absolute expiry) and the spawns resting (absolute end), the id counters. */
 export interface RoomWorldSave {
   v: 1; area: string; savedAt: number; seq: number; drops: number;
@@ -263,7 +266,7 @@ export class RoomWorld implements CoopLink {
         const d = m ? Math.hypot(m.x - k.x, m.y - k.y) : 0;
         // Too far first (the gate's own reach), then the line: a wall between them stops a blow as it stops a shot.
         if (m && d <= CLAIM_RANGE_TILES * TILE && d > LOS_FREE && !this.mobs.sight.sees(k.x, k.y, m.x, m.y)) { refused++; this.stats.refusedSight++; continue; }
-        const r = this.gate.check(h, { id: from, x: k.x, y: k.y, level: k.level }, m ? { x: m.x, y: m.y, hp: m.hp } : null, now);
+        const r = this.gate.check(h, { id: from, x: k.x, y: k.y, level: k.level, ...(k.dps ? { dps: k.dps } : {}) }, m ? { x: m.x, y: m.y, hp: m.hp } : null, now);
         if (!r.ok || !m) { refused++; if (!r.ok && r.why === 'far') this.stats.refusedFar++; if (!r.ok && r.why === 'cap') this.stats.refusedCap++; continue; }
         landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c);
       }
