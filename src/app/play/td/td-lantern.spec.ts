@@ -294,13 +294,15 @@ describe('td-lantern: the fight', () => {
   it('the Blinding Flash stuns the dead (a boss a fifth as long) and only hurts the living', () => {
     const { sys } = world();
     sys.place('dead', MOBS['bone-walker'], 20, 0);
-    sys.place('wolf', MOBS['ash-wolf'], -20, 0);
+    // A sturdy wolf: the Flash (34–51 at its starting rank since the balance pass) can fell a plain one, and a fallen
+    // wolf leaves the list — the old 45-life wolf made this spec fail about one run in three.
+    sys.place('wolf', { ...MOBS['ash-wolf'], hp: 500 }, -20, 0);
     expect(sys.useAbility('blinding-flash')).toBeNull();
     const [dead, wolf] = sys.mobs;
     expect(dead.stun).toBeCloseTo(sys.v('blinding-flash')['stun'], 5);
     expect(wolf.stun ?? 0).toBe(0);
     expect(dead.hp).toBeLessThan(MOBS['bone-walker'].hp);
-    expect(wolf.hp).toBeLessThan(MOBS['ash-wolf'].hp);
+    expect(wolf.hp).toBeLessThan(500);
     const { sys: s2 } = world();
     s2.place('boss', MOBS['bone-dragon'], 20, 0);
     s2.useAbility('blinding-flash');
