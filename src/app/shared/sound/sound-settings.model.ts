@@ -14,8 +14,11 @@
  * First visit is QUIET (the "reduce sound" default): nobody opens a game to a
  * wall of noise. The player turns it up if they like it.
  *
- * No imports: cloud-save.model.ts is eager and imports this merge.
+ * The key bindings ride in this blob too (`keys`, sparse overrides; shared/keys/keymap.model.ts), so they follow the
+ * Keeper to every device. Only the pure keymap model is imported: cloud-save.model.ts is eager and imports this merge.
  */
+import { cleanOverrides, type KeyOverrides } from '../keys/keymap.model';
+
 export const SOUND_KEY = 'godforge-sound';
 
 export type SoundChannel = 'music' | 'ambience' | 'effects';
@@ -68,6 +71,8 @@ export interface SoundSettings {
   presence: PresenceSetting;
   /** Who may invite to a party (an older save without it: everyone). */
   invites: InviteSetting;
+  /** The player's key bindings: only the actions they changed (an older save without it: the defaults). */
+  keys: KeyOverrides;
   /** When this choice was made (ms); the later one wins a merge. 0 = never touched. */
   updatedAt: number;
 }
@@ -76,7 +81,7 @@ export interface SoundSettings {
 export const QUIET_LEVELS: Readonly<Record<SoundChannel, number>> = { music: .35, ambience: .4, effects: .5 };
 
 export function defaultSound(): SoundSettings {
-  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', updatedAt: 0 };
+  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', keys: {}, updatedAt: 0 };
 }
 
 /** A level is 0..1 on a 5% grid (a slider step), so two devices never disagree by a hair. */
@@ -101,6 +106,7 @@ export function coerceSound(raw: unknown): SoundSettings {
     chat: CHAT_SETTINGS.includes(r.chat as ChatSetting) ? r.chat as ChatSetting : 'on',
     presence: PRESENCE_SETTINGS.includes(r.presence as PresenceSetting) ? r.presence as PresenceSetting : 'online',
     invites: INVITE_SETTINGS.includes(r.invites as InviteSetting) ? r.invites as InviteSetting : 'everyone',
+    keys: cleanOverrides(r.keys),
     updatedAt: at,
   };
 }

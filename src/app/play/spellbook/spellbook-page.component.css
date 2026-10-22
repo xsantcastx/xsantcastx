@@ -210,7 +210,7 @@
 .sbt__why { font: 600 13px/1.25 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-berry) 70%, var(--cozy-cream)); }
 .sbt__bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sbt__bar-label { font: 700 13px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); }
-.sb__keys { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; }
+.sb__keys { display: grid; grid-template-columns: repeat(4, 44px); /* eight slots: two rows of four */ gap: 6px; }
 .sb__keys button, .sb__aura, .sbt__belt {
   min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 0; cursor: pointer;
   background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: var(--px-btn-rim); font: 700 15px/1 var(--cozy-font-read);

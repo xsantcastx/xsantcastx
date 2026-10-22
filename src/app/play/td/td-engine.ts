@@ -139,6 +139,7 @@ import { DarkLayer, type DarkFrame } from './td-dark-layer';
 import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, eyeGlow, findEyes, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
 import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
+import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/keymap.model';
 import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
@@ -816,10 +817,28 @@ export class TopDownEngine {
     }
     p.x = ok.x; p.y = ok.y; this.path = []; this.arrive = null;
   }
+  /** The key bindings the world's keys follow (shared/keys/keymap.model; the HUD hands over the player's). */
+  private binds: Bindings = defaultBindings();
+  /** Name plates over Keepers and passers-by (the Plates key toggles them; the HUD keeps the choice). */
+  private platesOn = true;
+  setPlates(on: boolean): void { this.platesOn = on; }
+  /**
+   * The Target key: the next creature in reach after the one targeted, nearest first (wrapping round); none in reach
+   * clears the target. True when something is targeted.
+   */
+  cycleTarget(): boolean {
+    const near = this.mobs.mobs.filter(m => m.hp > 0 && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240)
+      .sort((a, b) => Math.hypot(a.x - this.player.x, a.y - this.player.y) - Math.hypot(b.x - this.player.x, b.y - this.player.y));
+    if (!near.length) { this.mobs.target = null; return false; }
+    const at = this.mobs.target ? near.indexOf(this.mobs.target) : -1;
+    this.mobs.target = near[(at + 1) % near.length]; this.chaseTimer = 0;
+    return true;
+  }
+  setBindings(b: Bindings): void { this.binds = b; }
   setInput(action: EngineInput, pressed: boolean): void {
     // The side view's on-screen buttons: left/right walk, down walks south, jump walks north.
     if (action === 'attack') { this.mobs.attacking = pressed; return; }
-    const key = action === 'left' ? 'a' : action === 'right' ? 'd' : action === 'down' ? 's' : action === 'jump' ? 'w' : '';
+    const key = action === 'left' ? 'left' : action === 'right' ? 'right' : action === 'down' ? 'down' : action === 'jump' ? 'up' : '';
     if (!key) return;
     if (pressed) { this.keys.add(key); this.path = []; } else this.keys.delete(key);
   }
@@ -835,7 +854,7 @@ export class TopDownEngine {
   private bar: SkillId[] = defaultBar('warlock');
   /** Use a skill on the bar (by id, or by slot '1'–'4'). Returns why not, or null when it went off. */
   useAbility(idOrSlot: string): ReturnType<MobSystem['useAbility']> {
-    const id = /^[1-4]$/.test(idOrSlot) ? this.bar[Number(idOrSlot) - 1] : idOrSlot as SkillId;
+    const id = /^[1-8]$/.test(idOrSlot) ? this.bar[Number(idOrSlot) - 1] : idOrSlot as SkillId;
     if (!id) return null;
     if (this.paused) return 'cooldown';
     const why = this.mobs.useAbility(id);
@@ -905,9 +924,9 @@ export class TopDownEngine {
     this.mobs.effects.push({ kind: 'pillar', x: this.player.x, y: this.player.y, age: 0, life: big ? 1.8 : 1.3, dir: big ? 2 : 1 });
   }
   get ward(): number { return this.mobs.ward; }
-  /** The Spellbook's choices: the bar (up to four actives) and the running aura (a skill at rank 0 cannot sit there). */
+  /** The Spellbook's choices: the bar (up to eight actives) and the running aura (a skill at rank 0 cannot sit there). */
   setSkillLoadout(bar: readonly string[], aura: string | null): void {
-    this.bar = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active' && this.mobs.rank(id as SkillId) > 0).slice(0, 4);
+    this.bar = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active' && this.mobs.rank(id as SkillId) > 0).slice(0, 8);
     this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' && this.mobs.rank(aura as SkillId) > 0 ? aura as SkillId : null;
   }
   /** The trees' ranks (td-tree effectiveRanks): every skill's numbers follow its rank. */
@@ -2461,10 +2480,10 @@ export class TopDownEngine {
     hearthsOf(this.world);
     if (this.waking) { this.stepWaking(dt); return; }
     let vx = 0, vy = 0;
-    if (this.keys.has('a') || this.keys.has('arrowleft')) vx -= 1;
-    if (this.keys.has('d') || this.keys.has('arrowright')) vx += 1;
-    if (this.keys.has('w') || this.keys.has('arrowup')) vy -= 1;
-    if (this.keys.has('s') || this.keys.has('arrowdown')) vy += 1;
+    if (this.keys.has('left')) vx -= 1;
+    if (this.keys.has('right')) vx += 1;
+    if (this.keys.has('up')) vy -= 1;
+    if (this.keys.has('down')) vy += 1;
     if (this.joy?.active) {
       const dx = this.joy.x - this.joy.sx, dy = this.joy.y - this.joy.sy, len = Math.hypot(dx, dy);
       if (len > 6) { const k = Math.min(1, len / 48); vx = dx / len * k; vy = dy / len * k; }
@@ -2621,19 +2640,23 @@ export class TopDownEngine {
     // document.activeElement, and while an IME is composing, so every field to come is covered without a list.
     const editable = (el: EventTarget | Element | null): boolean => el instanceof HTMLElement && (el.matches('input, textarea, select') || el.isContentEditable);
     const typing = (e: KeyboardEvent): boolean => e.isComposing || editable(e.target) || (typeof document !== 'undefined' && editable(document.activeElement));
+    // Keys are read through the keymap (shared/keys): what a code means is the player's binding, held movement is kept
+    // as the action ('up'…'right'), so a rebound key releases cleanly.
+    const MOVES = ['up', 'down', 'left', 'right'];
     const onKey = (down: boolean) => (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
+      const act = e.ctrlKey || e.metaKey || e.altKey ? null : actionFor(this.binds, e.code);
       // A key let go is always let go (even into a field, even paused): nothing stays held down.
-      if (!down) { this.keys.delete(k); if (k === 'j' || k === ' ') this.mobs.attacking = false; return; }
-      if (typing(e) || this.paused) return;
+      if (!down) { if (act) this.keys.delete(act); if (act === 'attack') this.mobs.attacking = false; return; }
+      if (typing(e) || this.paused || !act) return;
       // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
-      if ((k === ' ' || k === 'enter' || k === 'e') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
+      if ((e.code === 'Space' || e.code === 'Enter' || act === 'interact') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
       // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
-      if (down && !e.repeat && k === 'e' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y))) { e.preventDefault(); this.interact(); return; }
-      if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
-      if (/^[1-4]$/.test(k)) { if (down && !e.repeat) { const why = this.useAbility(k); if (why) this.say(`play.td.ability.${why}`); } return; }
-      if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
-      if (down) { this.keys.add(k); this.path = []; } else this.keys.delete(k);
+      if (down && !e.repeat && act === 'interact' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y))) { e.preventDefault(); this.interact(); return; }
+      if (act === 'attack') { e.preventDefault(); this.mobs.attacking = down; return; }
+      const slot = /^skill([1-8])$/.exec(act);
+      if (slot) { if (down && !e.repeat) { const why = this.useAbility(slot[1]); if (why) this.say(`play.td.ability.${why}`); } return; }
+      if (!MOVES.includes(act)) return;
+      if (down) { this.keys.add(act); this.path = []; } else this.keys.delete(act);
     };
     const kd = onKey(true), ku = onKey(false);
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
@@ -3255,11 +3278,11 @@ export class TopDownEngine {
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
-    for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 42, '#f3e7cf');
+    for (const k of this.keepers) if (this.platesOn && this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 42, '#f3e7cf');
     // Other Keepers' name plates (name · level) and Waves (over them and over the Keeper).
     for (const p of this.peers.drawn) {
       if (!inView(p.x, p.y)) continue;
-      this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
+      if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
       if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - 52, this.time, this.still);
     }
     if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - 46, this.time, this.still);
