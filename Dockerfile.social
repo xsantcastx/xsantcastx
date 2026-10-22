@@ -1,6 +1,7 @@
 FROM node:24-alpine
 WORKDIR /app
-COPY --chown=node:node scripts/social-server.mjs scripts/social-words.mjs scripts/social-identity.mjs ./scripts/
+# world-sim.generated.mjs is written by `node scripts/world-sim-build.mjs` before the build (scripts/social-deployment.md).
+COPY --chown=node:node scripts/social-server.mjs scripts/social-words.mjs scripts/social-identity.mjs scripts/social-world.mjs scripts/world-sim.generated.mjs ./scripts/
 USER node
 ENV NODE_ENV=production
 ENV PORT=8080

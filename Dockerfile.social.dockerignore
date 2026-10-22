@@ -4,3 +4,5 @@
 !scripts/social-server.mjs
 !scripts/social-words.mjs
 !scripts/social-identity.mjs
+!scripts/social-world.mjs
+!scripts/world-sim.generated.mjs

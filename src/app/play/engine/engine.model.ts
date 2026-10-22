@@ -298,6 +298,11 @@ export interface EngineOptions {
   /** Protocol 5: post this Keeper's own companions to the party in its area. */
   onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
   /**
+   * Protocol 7 (play/social/world-protocol.ts): a piece of the room's ground was picked here. It has already left this
+   * screen; the host asks the room and grants it on a yes, or hands it back (td-engine restoreRoomDrop) on a no.
+   */
+  onRoomTake?: (drop: import('../td/td-mobs').Drop) => void;
+  /**
    * A find on the high ground (world/heights.ts) was used: a courier cache, a
    * carving, the look-out or a summit cairn. The host books it once per player
    * (the claim is keyed by `find.id`) and answers with what to show; the engine
