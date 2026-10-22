@@ -57,7 +57,7 @@ import {
 import {
   applyStackOp,
   coerceInventoryLedger,
-  compactStackOps,
+  compactInventoryLedger,
   dropLegacyBackup,
   emptyInventoryLedger,
   itemToRecord,
@@ -1798,7 +1798,7 @@ export class InventoryService {
 
   private save(): boolean {
     if (!this.isBrowser) return false;
-    this.ledger = compactStackOps(this.ledger, this.deviceId);
+    this.ledger = compactInventoryLedger(this.ledger, this.deviceId, Date.now());
     const raw = JSON.stringify(this.ledger);
     this.store.write(INVENTORY_KEY, this.ledger);
     return this.store.readRaw(INVENTORY_KEY) === raw;

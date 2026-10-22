@@ -371,3 +371,8 @@ in the world). Rules: none changed (live rules were diffed against the repo on 2
 `npx firebase deploy --only functions:game --project xsantcastx-1694b`.
 
 Billing: nothing changes (no CPU, memory, min/max-instances or region flag; 1 vCPU / 512 MiB, min 0, max 1).
+
+**Save compaction (2026-10-22, revision 00013, same command).** The trade core reads the inventory document in either
+format — v2 or packed (`v.version: 3`, docs/handoff/save-compaction.md) — and writes back the format it read; the
+room's budget (`keeper-budget.ts wornLift`) unpacks it too. Protocol unchanged (8). Deployed before the client, with
+`functions:game` and the `inventoryFormatHolds` rule (live rules diffed against the repo first: identical).

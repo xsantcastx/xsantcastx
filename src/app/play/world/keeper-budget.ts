@@ -20,6 +20,7 @@
  * Pure: no Angular, no DOM. The Hearth bundles it (scripts/world-sim-build.mjs); Karma runs keeper-budget.spec.ts.
  */
 import { claimDpsCap } from '../social/coop-rules';
+import { unpackInventory } from '../../../../functions-game/src/trade-core';
 import { keeperLevelForXp } from '../../shared/skills/keeper-level';
 
 /**
@@ -77,7 +78,8 @@ export function huntingXp(activity: unknown): number {
 
 /** The worn gear's damage, crit and speed (the best family: the room does not need to know which one the calling reads). */
 export function wornLift(inventory: unknown): number {
-  const v = unwrap(inventory);
+  // The cloud document may be in the packed format (save format 3): read it as the v2 ledger it encodes.
+  const v = unwrap(unpackInventory(unwrap(inventory)));
   const records = v && Array.isArray(v['records']) ? v['records'] as unknown[] : [];
   const tombs = new Map<string, number>();
   for (const t of v && Array.isArray(v['tombstones']) ? v['tombstones'] as unknown[] : []) if (isObj(t) && typeof t['id'] === 'string') tombs.set(t['id'], num(isObj(t['revision']) ? t['revision']['hlc'] : 0));

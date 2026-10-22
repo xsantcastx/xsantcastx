@@ -64,7 +64,7 @@ import {
 } from '../shared/economy/economy-ops';
 import { emptyProgress } from '../shared/gamification/gamification.model';
 import { dayKey } from '../shared/quests/quest.model';
-import { coerceInventoryLedger, stackQuantityOf } from '../shared/rpg/inventory-ops';
+import { coerceInventoryLedger, packInventory, stackQuantityOf, unpackInventory } from '../shared/rpg/inventory-ops';
 import {
   INVENTORY_ERA, INVENTORY_SCHEMA_VERSION, InventoryLedger,
 } from '../shared/rpg/inventory.model';
@@ -285,7 +285,8 @@ export class GmDataService {
       // `{ v, updatedAt }`. See StateEntry.enveloped in game-state.gateway.ts.
       progress: progressDocs.get('state') ?? null,
       ledger: unwrap(economyDocs.get('state')),
-      inventory: unwrap(progressDocs.get('inventory')),
+      // Decoded from the packed format (save format 3), so the panel reads the same v2 ledger either way.
+      inventory: unpackInventory(unwrap(progressDocs.get('inventory'))) as Record<string, unknown> | null,
       quests: unwrap(progressDocs.get('quests')),
       documents: [
         ...[...progressDocs.keys()].map(k => `progress/${k}`),
@@ -660,7 +661,9 @@ export class GmDataService {
       legacyBackup: null,
     };
 
-    await setDoc(ref, { v: next, updatedAt: new Date().toISOString() });
+    // Written in the save's packed format (save format 3): a v2 body over a packed document would be read fine, but the
+    // next push packs it again anyway, and the size it saves is why the format exists.
+    await setDoc(ref, { v: packInventory(JSON.parse(JSON.stringify(next))), updatedAt: new Date().toISOString() });
     return tombstones.length;
   }
 

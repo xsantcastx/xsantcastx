@@ -351,3 +351,86 @@ test('closeTrade after a crash: a committed trade stays done, an open one is voi
     assert.equal(goldA(db) + goldB(db), 550);
   }
 });
+
+// ── Save compaction: the packed inventory (save format 3) ──────────────────────────────────────────────────────────
+/** Deep equality ignoring key order. */
+const canon = x => JSON.stringify(x, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(key => [key, v[key]])) : v));
+
+/** A v2 ledger with every shape the packer meets — and some it must leave verbatim. */
+function fullLedger() {
+  const recs = [
+    record('s1', { lore: 'A long lore line repeated across two records.', stats: { strikePower: 12, critChance: 3.5 }, rollQuality: { critChance: 0.123456789, strikePower: 0.7 } }),
+    record('s2', { lore: 'A long lore line repeated across two records.', location: { kind: 'equipped', slotId: 'weapon' }, sockets: ['rune-el', null], curse: { id: 'c', at: 1 } }),
+    record('s3', { location: { kind: 'explorer', explorerId: 'vault:general-2' }, rarity: 'weird-rarity', category: 'quest', upgradeLevel: 0, lastReforgeLock: 'critChance' }),
+    record('s4', { acquiredAt: 'not a date', revision: { hlc: 1.5, deviceId: 'dev-a', sequence: 1 }, location: { kind: 'moon' }, extraField: { a: 1 }, $odd: 2, i: 'clash', rarity: 'x' }),
+    { id: 'stack:ore', definitionId: 'ore', category: 'materials', tags: ['material', 'ore'], soulbound: false, acquiredAt: new Date(T0).toISOString(), revision: { hlc: T0, deviceId: 'dev-b', sequence: 2 }, source: 'inventory', kind: 'stack', stackKey: 'ore', location: { kind: 'bag' } },
+    'garbage',
+  ];
+  return {
+    version: 2, records: recs,
+    tombstones: [
+      { id: 'gone 1', revision: { hlc: T0 - 5, deviceId: 'dev-a', sequence: 3 }, deletedAt: T0 - 5 },
+      { id: 't-server', revision: { hlc: Number.MAX_SAFE_INTEGER, deviceId: 'trade', sequence: 1 }, deletedAt: T0 },
+      { id: 'odd', revision: { hlc: T0, deviceId: 'dev-a', sequence: 1 }, deletedAt: -1 },
+    ],
+    stackOps: [
+      { id: 'u1:ore', stackKey: 'ore', kind: 'grant', quantity: 3, hlc: T0 + 1, deviceId: 'dev-a', sequence: 1 },
+      { id: 'u2|pipe', stackKey: 'ore', kind: 'consume', quantity: 0.5, hlc: T0 + 2, deviceId: 'dev-b', sequence: 1 },
+      { id: 'u3', stackKey: 'bad|key', kind: 'grant', quantity: 1, hlc: T0 + 3, deviceId: 'dev-b', sequence: 2 },
+    ],
+    stackFolds: [
+      { deviceId: 'dev-a', upToHlc: T0, net: { ore: 4 }, ids: ['0', 'zz', core.hashId('x'), core.hashId('y')] },
+      { deviceId: 'dev-c', upToHlc: T0, net: { ore: -1 }, ids: ['NOT-base36'] },
+    ],
+    goldFromSales: 7, sold: 2, hlc: T0 + 3, legacyBackup: null, era: core.INVENTORY_ERA, serverSeq: 4, tombFloor: T0 - 100,
+  };
+}
+
+test('packed inventory: unpack(pack(v)) is v, for every shape, and it is smaller', () => {
+  const v = fullLedger();
+  const packed = core.packInventory(v);
+  assert.equal(packed.version, core.INVENTORY_PACKED_VERSION);
+  assert.ok(core.isPackedInventory(packed));
+  assert.equal(canon(core.unpackInventory(JSON.parse(JSON.stringify(packed)))), canon(v));
+  // What it could not encode is kept verbatim, never dropped.
+  const odd = packed.R[3];
+  assert.equal(odd.$acquiredAt, 'not a date');
+  assert.deepEqual(odd.$location, { kind: 'moon' });
+  assert.deepEqual(odd.$extraField, { a: 1 });
+  assert.equal(packed.R[5], 'garbage');
+  assert.equal(typeof packed.O[2], 'object');
+  assert.equal(typeof packed.F[1].ids, 'object');
+  // Not a v2 ledger: untouched both ways.
+  for (const x of [null, 5, { version: 1, items: [] }, { version: 2 }, { version: 2, records: [], R: [] }]) {
+    assert.equal(core.packInventory(x), x);
+    assert.equal(core.unpackInventory(x), x);
+  }
+  // A real-sized save shrinks by more than half.
+  const big = { ...v, records: Array.from({ length: 300 }, (_, i) => record(`x${i}`, { lore: 'The Infernal Realm\'s soldiers do not see the battlefield through their visors.', location: { kind: 'explorer', explorerId: 'vault:general-2' } })) };
+  assert.ok(JSON.stringify(core.packInventory(big)).length < JSON.stringify(big).length / 2);
+});
+
+test('packed inventory: the server reads it and writes it back packed; a v2 save stays v2', async () => {
+  const db = world();
+  const packedA = { v: core.packInventory(db.docs.get('users/uidA/progress/inventory').v), updatedAt: '' };
+  db.docs.set('users/uidA/progress/inventory', packedA);
+  const terms = { a: { items: [core.offerOf(core.unpackInventory(packedA.v).records.find(r => r.id === 's1'))], gold: 0 }, b: { items: [offerOf(db, 'b', 'r1')], gold: 0 } };
+  const { second } = await both(db, terms);
+  assert.equal(second.status, 'done');
+  const storedA = db.docs.get('users/uidA/progress/inventory').v;
+  assert.ok(core.isPackedInventory(storedA), 'A was packed and stays packed');
+  assert.ok(!core.isPackedInventory(invB(db)), 'B was v2 and stays v2');
+  const a = core.unpackInventory(storedA);
+  assert.ok(!live(a).includes('s1'));
+  assert.ok(live(a).includes(`t${core.hashId('t1:r1')}`));
+  assert.equal(a.serverSeq, 1);
+  // Ground: a drop from a packed save, picked up into a packed save.
+  const g = await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: core.offerOf(a.records.find(r => r.id === 's2')), x: 1, y: 2 }, T0 + 5000);
+  assert.ok(core.isPackedInventory(db.docs.get('users/uidA/progress/inventory').v));
+  assert.ok(!core.isPackedInventory(g.ground.item) && g.ground.item.id === 's2', 'the ground holds the plain record');
+  const p = await core.pickupItem(db, 'uidA', { character: 'c1', ground: g.ground.id }, T0 + 6000);
+  assert.equal(p.status, 'picked');
+  const after = core.unpackInventory(db.docs.get('users/uidA/progress/inventory').v);
+  assert.ok(live(after).includes(p.item));
+  assert.deepEqual(after.records.find(r => r.id === p.item).rollQuality, a.records.find(r => r.id === 's2').rollQuality);
+});

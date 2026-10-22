@@ -289,3 +289,51 @@ describe('economy merge lifecycle', () => {
     expect(folded.seenAt['tablet']).toBeUndefined();
   });
 });
+
+describe('economy save compaction: the ack barrier has a ceiling', () => {
+  const credit = (deviceId: string, seq: number, amount: number, hlc: number) =>
+    ({ id: `${deviceId}:${seq}`, deviceId, seq, kind: 'credit-gold' as const, amount, hlc, wall: hlc });
+  const spend = (deviceId: string, seq: number, amount: number, hlc: number) =>
+    ({ id: `${deviceId}:${seq}`, deviceId, seq, kind: 'spend-gold' as const, amount, hlc, wall: hlc });
+
+  function busy(ops: number) {
+    const origin = emptyLedger();
+    origin.gold = 1_000;
+    const log = Array.from({ length: ops }, (_, i) => (i % 3 === 2 ? spend('phone', i + 1, 7, 100 + i) : credit('phone', i + 1, 11, 100 + i)));
+    const live = mergeEconomyLedgers(origin, { ...origin, origin, ops: log });
+    live.seenAt = { phone: 10_000, tablet: 9_000 };
+    live.acks = { phone: 0 };
+    live.commerceApplied = { 'buy:x': { status: 'committed', at: 1, checkpointId: 0 } };
+    return live;
+  }
+
+  it('waits for a lagging device below the ceiling, folds past it — and the Gold is the same', () => {
+    const below = acknowledgeAndMaybeCompact(busy(100), 'phone', 10_000, { forceAfter: 256 });
+    expect(below.ops.length).toBe(100);
+    const live = busy(300);
+    const folded = acknowledgeAndMaybeCompact(live, 'phone', 10_000, { forceAfter: 256 });
+    expect(folded.checkpointId).toBe(1);
+    expect(folded.ops.length).toBe(16);
+    expect(folded.gold).toBe(live.gold);
+    expect(mergeEconomyLedgers(folded, null).gold).toBe(live.gold);
+  });
+
+  it('the lagging device comes back with its stale copy and new ops: nothing replays twice, nothing is lost', () => {
+    const live = busy(300);
+    const folded = acknowledgeAndMaybeCompact(live, 'phone', 10_000);
+    // The tablet read the ledger before the fold and earned 500 since.
+    const tablet = mergeEconomyLedgers(live, { ...live, ops: [...live.ops, credit('tablet', 1, 500, 5_000)] });
+    for (const merged of [mergeEconomyLedgers(folded, tablet), mergeEconomyLedgers(tablet, folded)]) {
+      expect(merged.gold).toBe(live.gold + 500);
+      expect(merged.ops.some(o => o.id === 'tablet:1')).toBeTrue();
+    }
+  });
+
+  it('keeps the origin lean: no receipts, acks or device clocks copied into it', () => {
+    const folded = acknowledgeAndMaybeCompact(busy(300), 'phone', 10_000);
+    expect(folded.origin!.commerceApplied).toEqual({});
+    expect(folded.origin!.acks).toEqual({});
+    expect(folded.origin!.seenAt).toEqual({});
+    expect(folded.commerceApplied['buy:x']).toBeDefined();
+  });
+});
