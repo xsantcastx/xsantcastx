@@ -31,6 +31,7 @@ import {
   type CoopAreas, type CoopElite, type CoopEvent, type CoopHit, type CoopHitsMsg, type CoopMobState, type CoopSnapBody, type CoopSnapMsg,
 } from '../social/coop-protocol';
 import { CoopInterp } from '../social/coop-interp';
+import { ROOM_HOST } from '../social/world-protocol';
 import { BOSS_LIFE_PER_MEMBER, ClaimGate, coopBossLife } from '../social/coop-rules';
 
 export type CoopRole = 'solo' | 'host' | 'member';
@@ -103,6 +104,8 @@ export class TdCoop implements CoopLink {
   private claims: CoopHit[] = [];
   private claimAcc = 0;
   private claiming = false;
+  /** The corpse each fallen host creature left here (its wire id → corpse id): the room's loot lies beside it. */
+  private readonly fell = new Map<string, string>();
   /** Counters the e2e and the HUD read. */
   readonly stats = { sent: 0, heard: 0, dropped: 0, claimsOut: 0, claimsIn: 0, claimsRefused: 0 };
 
@@ -373,7 +376,10 @@ export class TdCoop implements CoopLink {
     }
     if (m) {
       m.hp = 0;
-      this.mobs.coopFell(m, reward === 'full', hp * (this.mobs.tier.hp || 1));
+      // The room's world (protocol 7) rolled the loot once, on its own ground: this Keeper is paid its XP, never a roll.
+      const corpse = this.mobs.coopFell(m, reward === 'full', hp * (this.mobs.tier.hp || 1), msg.from !== ROOM_HOST);
+      this.fell.set(e.i, corpse);
+      if (this.fell.size > 64) this.fell.delete(this.fell.keys().next().value!);
     }
     this.replicas.delete(e.i); this.interp.forget(e.i); this.dec.state.delete(e.i);
   }
@@ -385,6 +391,8 @@ export class TdCoop implements CoopLink {
       mobs: this.mobs.mobs.filter(m => m.nid || this.role !== 'member').map(m => ({ id: m.nid ?? '', t: m.def.id, key: m.key, x: Math.round(m.x), y: Math.round(m.y), hp: Math.round(m.hp), max: Math.round(m.def.hp) })),
     };
   }
+  /** The corpse a host's creature left on this screen (the room's loot from it lies beside it), if it fell here. */
+  corpseOf(nid: string | undefined): string | undefined { return nid ? this.fell.get(nid) : undefined; }
   /** Give every creature its wire id now (the host's e2e reads them before the first snapshot). */
   name(m: Mob): string { return this.nid(m); }
 }
