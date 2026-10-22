@@ -38,6 +38,7 @@ import { SEAM_ID, seamStats } from './td-seam';
 import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
 import { CORPSE_REACH, corpseSeed, layCorpse, weatherCorpses, type Corpse } from './td-corpse';
 import { PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
+import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 
 export interface MobDef {
   id: string;
@@ -1874,6 +1875,12 @@ export interface Mob {
   coopBy?: Set<string>;
   coopBase?: number;
   coopN?: number;
+  /**
+   * Sight (td-sight.ts): whether it saw its prey at its last look, and the seconds it keeps chasing where it last saw
+   * it after losing sight (CHASE_MEMORY) — a creature behind a wall neither starts a hunt nor strikes.
+   */
+  saw?: boolean;
+  chaseT?: number;
 }
 
 /**
@@ -1911,7 +1918,19 @@ export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!
 export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
+export interface MobShot extends Lofted { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
+
+/**
+ * A shot's height over the ground it flies above (art px): `lift` where it left the hand, `land` where it was aimed,
+ * `reach` the ground between. Its ground track — what a wall stops (td-sight) — is its picture's y plus the height at
+ * how far it has flown. Unset: 12 px all the way (a creature's shot at a Keeper's chest).
+ */
+export interface Lofted { lift?: number; land?: number; reach?: number }
+/** The ground under a lofted shot at (x, y), `flown` art px from where it left. */
+export function groundY(s: Lofted, y: number, flown: number): number {
+  const a = s.lift ?? 12, b = s.land ?? a, k = s.reach && s.reach > 0 ? Math.min(1, flown / s.reach) : 1;
+  return y + a + (b - a) * k;
+}
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
@@ -1950,19 +1969,22 @@ export function raisedStats(level: number, power: number, v: Readonly<Record<str
 export function capMinions(list: Minion[], cap: number): Minion[] {
   return list.length > cap ? list.splice(0, list.length - cap) : [];
 }
-/** The foe a raised skeleton goes for: the nearest within its sight that is also within the leash of the Keeper. */
-export function pickMinionTarget(from: { x: number; y: number }, mobs: readonly Mob[], keeper: { x: number; y: number }, sight: number, leash: number): Mob | null {
+/**
+ * The foe a raised skeleton goes for: the nearest within its sight that is also within the leash of the Keeper — and,
+ * given `sees`, one it can see (td-sight: never one behind a wall).
+ */
+export function pickMinionTarget(from: { x: number; y: number }, mobs: readonly Mob[], keeper: { x: number; y: number }, sight: number, leash: number, sees?: (m: Mob) => boolean): Mob | null {
   let best: Mob | null = null, bd = sight;
   for (const m of mobs) {
     if (m.hp <= 0 || Math.hypot(m.x - keeper.x, m.y - keeper.y) > leash) continue;
     const d = Math.hypot(m.x - from.x, m.y - from.y);
-    if (d <= bd) { bd = d; best = m; }
+    if (d <= bd && (!sees || sees(m))) { bd = d; best = m; }
   }
   return best;
 }
 
 /** A Bone Spear in flight: it passes through every foe in its line, striking each once. */
-export interface Spear { x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[]; dmg?: [number, number] }
+export interface Spear extends Lofted { x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[]; dmg?: [number, number] }
 
 /**
  * A spell left on the ground (the trees' new fire): Cinder Rain falling on a circle, a Flame Wall burning along a line,
@@ -2022,7 +2044,9 @@ export interface Effect {
     | 'kindle-hit' | 'lamp-flash' | 'banish' | 'hearthglow' | 'lward' | 'lward-break' | 'wisp-call' | 'beacon-plant' | 'dawn-rise' | 'shutter' | 'lastlight'
     // The Thornstrider (td-thorn-fx.ts): an arrow striking, a barb's blood, the bow's twang, Command's mark, a beast
     // called, the stampede's dust, thorns breaking the ground, a trap set and sprung, Rootwalk's moss.
-    | 'arrow-hit' | 'bleed' | 'loose' | 'command' | 'wild-call' | 'trample' | 'snare-rise' | 'trap-set' | 'trap-spring' | 'rootwalk';
+    | 'arrow-hit' | 'bleed' | 'loose' | 'command' | 'wild-call' | 'trample' | 'snare-rise' | 'trap-set' | 'trap-spring' | 'rootwalk'
+    // Sight (td-sight.ts): a shot breaking on a wall — a puff of grit in the shot's own colour (`el`).
+    | 'puff';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
   /** A pulse's or a wave's element: the aura or spell that did the work (a wave is ember unless it says). */
   el?: 'ember' | 'life' | 'shadow' | 'bone' | 'brass' | 'lamp';
@@ -2034,7 +2058,7 @@ export interface Effect {
 }
 
 /** A bolt in flight toward a creature. */
-export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean }
+export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean; /** Its height over its ground track (art px; 22, the staff's tip, when unset): a wall stops the track. */ lift?: number }
 
 /** A lamp-wisp at the Lanternwright's shoulder (td-lantern-skills): seconds left, its next mote, where it circles. */
 export interface Wisp { x: number; y: number; t: number; cd: number; a: number }
@@ -2046,7 +2070,7 @@ export interface Beacon { x: number; y: number; t: number; cd: number }
  * every foe in its line it strikes once — the first always, each further one only on a pierce. `barb`: a Barbed Shot's
  * bleed rides on it.
  */
-export interface Arrow {
+export interface Arrow extends Lofted {
   x: number; y: number; vx: number; vy: number; age: number; life: number; dmg: number;
   to: Mob | null; hit: Mob[]; pierce: number; knock: number; barb?: { dps: number; secs: number };
 }
@@ -2092,6 +2116,14 @@ const MINION_SIGHT = 6 * TILE;
 const MINION_LEASH = 9 * TILE;
 const MINION_SPEED = 52;
 const SPEAR_SPEED = 280;
+/** Seconds a creature keeps after its prey once a wall has hidden it (td-sight): it goes where it last saw it. */
+export const CHASE_MEMORY = 3;
+/** How much nearer than he is a raised skeleton counts for a creature choosing its prey (art px): they fight in its face. */
+const MINION_DRAW = 6;
+/** The soft push between creatures (art px a second): a pack stays a pack, not one sprite. */
+const CROWD_PUSH = 30;
+/** …and between the Keeper's raised and called (they are lighter on their feet). */
+const KIN_PUSH = 70;
 
 /** What the mob system needs from the engine. */
 export interface MobHost {
@@ -2105,6 +2137,11 @@ export interface MobHost {
   hover?(c: number, r: number): boolean;
   /** Does a shot fly over this tile (not into a wall)? Default: walkable. */
   passable?(c: number, r: number): boolean;
+  /**
+   * Is this tile solid to sight and to shots (td-sight.ts): a wall, rock, a stall, a tree, a shut door — not the low
+   * water a shot flies over? Default: not passable (or, without that, not walkable).
+   */
+  sight?(c: number, r: number): boolean;
   /** The Keeper's life now (Life Tap will not spend the last of it). */
   playerHp?(): number;
   /** The Keeper swung (an attack or an ability): the host plays the swing toward `at`. */
@@ -2412,6 +2449,24 @@ export class MobSystem {
 
   constructor(private readonly host: MobHost) {}
 
+  // ── Sight (td-sight.ts; owner 2026-10-21: "we shouldn't be able to shoot or dmg them like that") ──
+  /** Sight on the tile grid: what stops a ray, a shot, a blow — the host's solid tiles, cached a moment at a time. */
+  readonly sight = new TdSight((c, r) => this.host.sight ? this.host.sight(c, r) : this.host.passable ? !this.host.passable(c, r) : !this.host.walkable(c, r));
+  /** Can the Keeper see this creature (or point)? No sight: no target, no blow, no spell on it. */
+  sees(m: { x: number; y: number }): boolean { const p = this.host.player(); return this.sight.sees(p.x, p.y, m.x, m.y); }
+  /** Does something centred at (x, y) reach this creature: open ground under the centre and a clear line to its feet. */
+  private reaches(x: number, y: number, m: { x: number; y: number }): boolean { return !this.sight.wallAt(x, y - 1) && this.sight.sees(x, y, m.x, m.y); }
+  /** A shot's ground track from (x0, g0) to (x1, g1): the first point of it inside a wall, or null (looked at every 6 px, so nothing quick slips through a tile). */
+  private wallOn(x0: number, g0: number, x1: number, g1: number): { x: number; y: number; k: number } | null {
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, g1 - g0) / 6));
+    for (let i = 1; i <= n; i++) { const k = i / n, x = x0 + (x1 - x0) * k, y = g0 + (g1 - g0) * k; if (this.sight.wallAt(x, y)) return { x, y, k }; }
+    return null;
+  }
+  /** A shot breaking on a wall: a puff of grit at (x, y) (its picture's height), in the shot's colour. */
+  private puff(x: number, y: number, el: NonNullable<Effect['el']>): void { this.effects.push({ kind: 'puff', x, y, age: 0, life: .35, dir: 1, el }); }
+  /** Shots stopped by a wall so far (the specs and the e2e count them). */
+  walled = 0;
+
   /** Bring the level's spawns to life (those not resting after a death) and drop everything of the last level. */
   enterLevel(spawns: readonly MobSpawn[]): void {
     this.mobs.length = 0; this.drops.length = 0; this.target = null;
@@ -2517,7 +2572,9 @@ export class MobSystem {
   private readonly pv = { x: 0, y: 0, lx: NaN, ly: NaN };
   update(dt: number): void {
     this.clock += dt;
+    this.sight.tick(dt, this.host.levelId());
     const p = this.host.player();
+    this.holding.clear(); this.heading.clear();
     if (dt > 0 && Number.isFinite(this.pv.lx)) {
       const k = Math.min(1, dt * 6);
       this.pv.x += ((p.x - this.pv.lx) / dt - this.pv.x) * k; this.pv.y += ((p.y - this.pv.ly) / dt - this.pv.y) * k;
@@ -2530,8 +2587,10 @@ export class MobSystem {
     let foe = this.selfAway ? null : this.target;
     if (!foe && this.attacking && !this.selfAway) {
       let bd = this.range;
-      for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd) { bd = d; foe = m; } }
+      for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd && this.sees(m)) { bd = d; foe = m; } }
     }
+    // Behind a wall the target stays chosen, but nothing flies at it (the host walks the Keeper round to see it).
+    if (foe && !this.sees(foe)) foe = null;
     // The Ashguard's blade: a swing in an arc toward the foe, striking whatever stands in it.
     if (this.melee) {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range + foe.def.w / 4) this.swingBlade(foe);
@@ -2542,7 +2601,7 @@ export class MobSystem {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const kv = this.v('kindle');
         this.swing = SKILLS['kindle'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
-        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']) * this.handMult, age: 0, lamp: true });
+        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']) * this.handMult, age: 0, lamp: true, lift: 34 });
         this.flares++;
         this.host.swung(foe);
       }
@@ -2563,7 +2622,7 @@ export class MobSystem {
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
       this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
       const bv = this.v('ember-bolt');
-      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult * this.handMult, age: 0 });
+      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult * this.handMult, age: 0, lift: 22 });
       this.host.swung(foe);
     }
     for (let i = this.bolts.length - 1; i >= 0; i--) {
@@ -2571,6 +2630,17 @@ export class MobSystem {
       b.age += dt;
       const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy), step = (b.lamp ? 230 : 190) * dt;
       if (!this.mobs.includes(b.to) || b.age > 2) { this.bolts.splice(i, 1); continue; }
+      // Its ground track (its picture's y plus its height, which sinks to the foe's middle as it closes): a wall on it
+      // and the bolt breaks there, harmless.
+      const lift = b.lift ?? 22, land = b.to.def.h / 2, k = len > 0 ? Math.min(1, step / len) : 1, lift2 = lift + (land - lift) * k;
+      const nx = len <= step + 2 ? tx : b.x + dx / len * step, ny = len <= step + 2 ? ty : b.y + dy / len * step;
+      const wall = this.wallOn(b.x, b.y + lift, nx, ny + lift2);
+      if (wall) {
+        this.bolts.splice(i, 1); this.walled++;
+        this.puff(wall.x, wall.y - (lift + (lift2 - lift) * wall.k), b.lamp ? 'lamp' : 'ember');
+        continue;
+      }
+      b.lift = lift2;
       if (len <= step + 2) {
         this.bolts.splice(i, 1);
         if (b.lamp) {
@@ -2633,7 +2703,7 @@ export class MobSystem {
         m.doom = (m.doom ?? 0) - dt;
         if (m.doom <= 0) { m.doom = 0; this.doomBurst(m); if (m.hp <= 0) continue; }
       }
-      if (auraTick && this.aura === 'aura-embers' && this.rank('aura-embers') > 0 && Math.hypot(m.x - p.x, m.y - p.y) <= this.v('aura-embers')['radius'] * TILE) {
+      if (auraTick && this.aura === 'aura-embers' && this.rank('aura-embers') > 0 && Math.hypot(m.x - p.x, m.y - p.y) <= this.v('aura-embers')['radius'] * TILE && this.sees(m)) {
         this.effects.push({ kind: 'pulse', el: 'ember', x: m.x, y: m.y, age: 0, life: .2, dir: 1 });
         this.hitFoe(m, this.v('aura-embers')['dps'] * this.fireMult, '#ff8a2e');
       }
@@ -2651,7 +2721,7 @@ export class MobSystem {
     this.updateZones(dt);
     this.curseT = Math.max(0, this.curseT - dt);
     // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
-    this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R) ? COLD_SLOW : 0;
+    this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R && this.sees(m)) ? COLD_SLOW : 0;
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
       // A member under a host: the host moves, aims and bites with it (td-coop.ts places it each frame).
@@ -2687,18 +2757,28 @@ export class MobSystem {
       // Its prey: the Keeper, or one of his raised skeletons standing closer — unless a Watch Cry has called it to him.
       const taunted = (m.taunt ?? 0) > 0;
       if (taunted) m.taunt = Math.max(0, (m.taunt ?? 0) - dt);
-      let prey: Minion | null = null, d = this.selfAway ? Infinity : Math.hypot(p.x - m.x, p.y - m.y);
-      if (!taunted) for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk < d) { d = dk; prey = k; } }
+      // Only prey it can see (td-sight): a wall between and it neither picks it nor strikes it. Past this frame's ray
+      // budget it keeps what it saw last.
+      const dKeeper = this.selfAway ? Infinity : Math.hypot(p.x - m.x, p.y - m.y), look = Math.max(m.def.sight, MOB_REACH * 2);
+      const spots = (x: number, y: number, dd: number) => dd <= look && this.sight.sees(m.x, m.y, x, y, m.saw ?? false);
+      let prey: Minion | null = null, d = Infinity, seen = false;
+      if (dKeeper < Infinity && (taunted ? this.sight.sees(m.x, m.y, p.x, p.y, m.saw ?? false) : spots(p.x, p.y, dKeeper))) { d = dKeeper; seen = true; }
+      // The raised stand in its face: one a step farther than the Keeper still draws it (MINION_DRAW).
+      if (!taunted) for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk - MINION_DRAW < d && spots(k.x, k.y, dk)) { d = dk; prey = k; seen = true; } }
       // Shared creatures: another member of the party standing nearer is its prey (the host decides; the bite travels).
       let other: CoopKeeper | null = null;
-      if (!taunted) for (const o of this.others) { const dk = Math.hypot(o.x - m.x, o.y - m.y); if (dk < d) { d = dk; other = o; prey = null; } }
+      if (!taunted) for (const o of this.others) { const dk = Math.hypot(o.x - m.x, o.y - m.y); if (dk < d && spots(o.x, o.y, dk)) { d = dk; other = o; prey = null; seen = true; } }
+      // Nothing in sight: it keeps after the Keeper a while (CHASE_MEMORY), toward where he is, and strikes nothing.
+      if (!seen) d = dKeeper;
+      m.saw = seen;
+      m.chaseT = seen ? CHASE_MEMORY : Math.max(0, (m.chaseT ?? 0) - dt);
       const px0 = other ? other.x : prey ? prey.x : p.x, py0 = other ? other.y : prey ? prey.y : p.y;
       // Rootwalk: the forest closes behind the Keeper — a creature loses his track unless he is at its very side.
       const lost = this.rootwalkT > 0 && !prey && !other && d > MOB_REACH * 2;
       // A world boss (bound): never past its leash from the rift, never after prey standing on a town's safe ground.
       const bound = m.def.bound, held = !!bound && (Math.hypot(m.x - m.hx, m.y - m.hy) > bound.leash * TILE || !!this.host.safeAt?.(px0, py0));
-      const hunting = !lost && !held && (taunted || d < m.def.sight), shoot = m.def.ranged;
-      if (hunting && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
+      const hunting = !lost && !held && (taunted || (d < m.def.sight && (seen || (m.chaseT ?? 0) > 0))), shoot = m.def.ranged;
+      if (hunting && seen && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
         // Where it will land: a step short of its prey, on its own side; never into a wall.
         const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
         m.blinkCd = TELEPORT.cd;
@@ -2712,16 +2792,16 @@ export class MobSystem {
         if (Math.abs(px0 - m.x) > 2) m.face = px0 < m.x ? -1 : 1;
         // A shot at where the prey stands now: a step aside and it flies by. A boss winds up first (BOSS_TELL):
         // it aims now and looses when the tell runs out, so the ground warning is where the breath goes.
-        if (shoot && d <= shoot.range && m.rcd <= 0 && m.tell <= 0) {
+        if (shoot && seen && d <= shoot.range && m.rcd <= 0 && m.tell <= 0) {
           m.rcd = shoot.rate;
           if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; if (m.def.chant) { m.chantT = CHANT_SECS; m.chantText = m.def.chant; } }
           else this.loose(m, px0, py0 - 12);
         }
         // A ground attack (the Seam Eater's Rend): rings open round its prey, never in the same breath as a wind-up.
-        if (m.def.rend && m.tell <= 0 && (m.rendCd ?? 0) <= 0 && d <= m.def.sight) { m.rendCd = m.def.rend.rate; this.rendAt(m, px0, py0); }
+        if (m.def.rend && seen && m.tell <= 0 && (m.rendCd ?? 0) <= 0 && d <= m.def.sight) { m.rendCd = m.def.rend.rate; this.rendAt(m, px0, py0); }
         // A gap-closer: prey that keeps its distance is crossed to (the tell first, so a step aside still saves it).
         const ch = m.def.charge;
-        if (ch && m.tell <= 0 && (m.chargeCd ?? 0) <= 0 && d >= ch.min && d <= m.def.sight) {
+        if (ch && seen && m.tell <= 0 && (m.chargeCd ?? 0) <= 0 && d >= ch.min && d <= m.def.sight) {
           // It leads a Keeper on the move (where he will be when it lands, at his pace now, at most CHARGE_LEAD px):
           // walking straight away is caught; a step aside in the tell is not.
           const lead = prey ? 0 : BOSS_TELL + d / ch.speed, lx = this.pv.x * lead, ly = this.pv.y * lead, ll = Math.hypot(lx, ly), cut = ll > CHARGE_LEAD ? CHARGE_LEAD / ll : 1;
@@ -2741,13 +2821,15 @@ export class MobSystem {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
         if (len > stop) {
           const step = Math.min(len, m.def.speed * this.paceOf(m) * dt), vx = dx / len * step, vy = dy / len * step;
+          if (hunting) this.heading.set(m, { x: dx / len, y: dy / len });
           if (this.canStep(m, m.x + vx, m.y)) m.x += vx; else m.wander = null;
           if (this.canStep(m, m.x, m.y + vy)) m.y += vy; else m.wander = null;
           if (!hunting && Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
         }
       }
-      // A bite when its prey is in reach.
-      if (d <= MOB_REACH && m.cd <= 0) {
+      if (seen && (d <= MOB_REACH || (shoot && d <= shoot.range))) this.holding.add(m);
+      // A bite when its prey is in reach — and in sight (no bite through a wall's corner).
+      if (seen && d <= MOB_REACH && m.cd <= 0) {
         m.cd = m.def.rate;
         let n = rnd(m.def.dmg[0], m.def.dmg[1]);
         // A cursed foe bites weaker.
@@ -2761,6 +2843,8 @@ export class MobSystem {
         else { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
       }
     }
+    // A pack stays a pack, not one sprite: creatures standing on each other ease apart (never into a wall).
+    if (!this.replica) this.spreadMobs(dt);
     // Fire Enchanted's last word: the burst leaves when its ring has shown its reach.
     for (let i = this.bursts.length - 1; i >= 0; i--) {
       const b = this.bursts[i];
@@ -2770,8 +2854,9 @@ export class MobSystem {
       this.effects.push({ kind: 'wave', el: b.el ?? 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
       // A member under a host only sees the burst: the host decides who it caught (a bite, below, on the host's side).
       if (this.replica) continue;
-      if (!this.selfAway && Math.hypot(p.x - b.x, p.y - b.y) <= b.r) this.biteKeeper(b.dmg, b.type ?? 'fire', undefined, b.lv);
-      for (const o of this.others) if (Math.hypot(o.x - b.x, o.y - b.y) <= b.r) this.coop?.bite(o.id, null, b.dmg, b.type ?? 'fire', false, false);
+      // Only what it can reach from its centre: a ring by a wall does not burst into the room behind it.
+      if (!this.selfAway && Math.hypot(p.x - b.x, p.y - b.y) <= b.r && this.reaches(b.x, b.y, p)) this.biteKeeper(b.dmg, b.type ?? 'fire', undefined, b.lv);
+      for (const o of this.others) if (Math.hypot(o.x - b.x, o.y - b.y) <= b.r && this.reaches(b.x, b.y, o)) this.coop?.bite(o.id, null, b.dmg, b.type ?? 'fire', false, false);
     }
     for (let i = this.calls.length - 1; i >= 0; i--) {
       const k = this.calls[i];
@@ -2829,8 +2914,8 @@ export class MobSystem {
     let n = rnd(ch.dmg[0], ch.dmg[1]);
     const weak = this.weakOf(m);
     if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
-    if (Math.hypot(p.x - m.x, p.y - m.y) <= CHARGE_HIT) { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
-    for (const k of this.minions) if (Math.hypot(k.x - m.x, k.y - m.y) <= CHARGE_HIT) this.hurtMinion(k, n);
+    if (Math.hypot(p.x - m.x, p.y - m.y) <= CHARGE_HIT && this.sight.sees(m.x, m.y, p.x, p.y)) { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
+    for (const k of this.minions) if (Math.hypot(k.x - m.x, k.y - m.y) <= CHARGE_HIT && this.sight.sees(m.x, m.y, k.x, k.y)) this.hurtMinion(k, n);
   }
 
   /** Returns the life the blow took (after spell power, a crit and a Stone Skin), 0 on a foe already down. */
@@ -2990,18 +3075,22 @@ export class MobSystem {
       const weak = this.weakOf(m);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
       const ax = m.elite?.affixes ?? [];
-      this.shots.push({ ...aimShot(m.x + m.face * m.def.w * .3, m.y - m.def.h * .55, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), type: this.blowType(m), lv: m.def.level, ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
+      // Its ground track (td-sight): from the creature's feet to the prey's, so a wall between stops it.
+      const sx = m.x + m.face * m.def.w * .3, lift = m.def.h * .55, reach = Math.hypot(tx - sx, ty + 12 - m.y);
+      this.shots.push({ ...aimShot(sx, m.y - lift, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), lift, land: 12, reach, type: this.blowType(m), lv: m.def.level, ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
     }
   }
 
   /** Creatures' shots and the Keeper's spears in flight. */
   private updateShots(dt: number): void {
     const p = this.host.player();
-    const flies = (x: number, y: number) => { const c = Math.floor(x / TILE), r = Math.floor((y + 12) / TILE); return this.host.passable ? this.host.passable(c, r) : this.host.walkable(c, r); };
     for (let i = this.shots.length - 1; i >= 0; i--) {
-      const s = this.shots[i];
+      const s = this.shots[i], sp = Math.hypot(s.vx, s.vy), x0 = s.x, g0 = groundY(s, s.y, s.age * sp);
       stepShot(s, dt);
-      if (s.age > s.life || !flies(s.x, s.y)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
+      // A wall on its ground track: it breaks there (a puff of grit), whatever stands behind.
+      const wall = this.wallOn(x0, g0, s.x, groundY(s, s.y, s.age * sp));
+      if (wall) { this.shots.splice(i, 1); this.walled++; this.puff(wall.x, s.y + (wall.y - groundY(s, s.y, s.age * sp)), s.kind === 'ink' || s.kind === 'spore' ? 'shadow' : 'ember'); continue; }
+      if (s.age > s.life) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); continue; }
       // A member under a host only sees the host's shots fly: the host decides what they hit.
       if (this.replica) continue;
       const reach = s.kind === 'breath' || s.kind === 'shard' ? 10 : 7;
@@ -3013,15 +3102,18 @@ export class MobSystem {
     }
     const v = this.v('bone-spear');
     for (let i = this.spears.length - 1; i >= 0; i--) {
-      const s = this.spears[i];
+      const s = this.spears[i], sp = Math.hypot(s.vx, s.vy), x0 = s.x, g0 = groundY(s, s.y, s.age * sp);
       s.x += s.vx * dt; s.y += s.vy * dt; s.age += dt;
+      // A wall stops a spear where it stands (it strikes nothing past it).
+      const wall = this.wallOn(x0, g0, s.x, groundY(s, s.y, s.age * sp));
+      if (wall) { this.spears.splice(i, 1); this.walled++; this.puff(wall.x, s.y + (wall.y - groundY(s, s.y, s.age * sp)), 'bone'); continue; }
       for (const m of [...this.mobs]) {
         if (s.hit.includes(m) || !shotHits(s, m.x, m.y - m.def.h / 2, Math.max(9, m.def.w / 3))) continue;
         s.hit.push(m);
         this.effects.push({ kind: 'bone-chips', x: s.x, y: s.y, age: 0, life: .35, dir: s.vx < 0 ? -1 : 1 });
         this.hitFoe(m, s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max']), '#e9dcff');
       }
-      if (s.age > s.life || !flies(s.x, s.y)) this.spears.splice(i, 1);
+      if (s.age > s.life) this.spears.splice(i, 1);
     }
   }
 
@@ -3029,8 +3121,10 @@ export class MobSystem {
    * A pet's nip (td-pets.ts): a small blow on a creature, never on the Keeper. Not the Keeper's spell power or crits:
    * a pet's bite is its own size. `killed` when the creature fell to it.
    */
-  petBite(foe: Mob, dmg: number, dir: number): { landed: boolean; killed: boolean } {
+  petBite(foe: Mob, dmg: number, dir: number, from?: { x: number; y: number }): { landed: boolean; killed: boolean } {
     if (foe.hp <= 0 || !this.mobs.includes(foe)) return { landed: false, killed: false };
+    // Never through a wall (td-sight): `from`, where the pet stands.
+    if (from && !this.sight.sees(from.x, from.y, foe.x, foe.y)) return { landed: false, killed: false };
     this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
     // A Thornstrider's beast is one of the pack: its bite grows with him and with every Wild skill he holds.
     if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) });
@@ -3048,32 +3142,37 @@ export class MobSystem {
     this.minions.length = 0;
     return n;
   }
-  /** The raised: keep near the Keeper, fight the nearest foe, crumble only when killed or released (no timer). */
+  /**
+   * The raised: keep near the Keeper, fight the nearest foe they can see, crumble only when killed or released (no
+   * timer). Idle, each takes its slot of the formation behind and round him (td-sight formationSpot); fighting, the
+   * ones on one foe fan out round it (fanSpot); the soft push after (spreadKin) keeps any two a body apart.
+   */
   private updateMinions(dt: number): void {
     const p = this.host.player();
     for (let i = this.minions.length - 1; i >= 0; i--) {
       const k = this.minions[i];
+      if (k.hp > 0) continue;
+      this.minions.splice(i, 1);
+      for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
+    }
+    const face = this.formFace(), fans = this.fanCounts();
+    this.minions.forEach((k, slot) => {
       k.t += dt; k.cd -= dt; k.hit = Math.max(0, k.hit - dt);
-      if (k.hp <= 0) {
-        this.minions.splice(i, 1);
-        for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
-        continue;
-      }
       // Left far behind (a wall between, a long run): it steps out of the ground at the Keeper's side again.
-      if (Math.hypot(k.x - p.x, k.y - p.y) > MINION_LEASH * 1.6) { k.x = p.x + (k.id % 2 ? -14 : 14); k.y = p.y + 2; if (!this.free(k.x, k.y)) { k.x = p.x; k.y = p.y; } k.target = null; }
+      if (Math.hypot(k.x - p.x, k.y - p.y) > MINION_LEASH * 1.6) { const at = this.slotOpen(formationSpot(slot, p, face)); k.x = at.x; k.y = at.y; k.target = null; }
       const t = k.target;
-      if (!t || t.hp <= 0 || !this.mobs.includes(t) || Math.hypot(t.x - p.x, t.y - p.y) > MINION_LEASH) k.target = pickMinionTarget(k, this.mobs, p, MINION_SIGHT, MINION_LEASH);
-      const foe = k.target;
-      const tx = foe ? foe.x : p.x + (k.id % 2 ? -16 : 16), ty = foe ? foe.y : p.y + 4, stop = foe ? MOB_REACH - 4 : 6;
-      const dx = tx - k.x, dy = ty - k.y, len = Math.hypot(dx, dy);
+      if (!t || t.hp <= 0 || !this.mobs.includes(t) || Math.hypot(t.x - p.x, t.y - p.y) > MINION_LEASH || !this.sight.sees(k.x, k.y, t.x, t.y, true)) k.target = pickMinionTarget(k, this.mobs, p, MINION_SIGHT, MINION_LEASH, m => this.sight.sees(k.x, k.y, m.x, m.y, false));
+      const foe = k.target, reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
+      const spot = foe ? this.fanFor(k, foe, fans) : formationSpot(slot, p, face), stop = foe ? 2 : 3;
+      const dx = spot.x - k.x, dy = spot.y - k.y, len = Math.hypot(dx, dy);
       if (len > stop) {
-        const step = Math.min(len - stop, MINION_SPEED * this.pace * dt), vx = dx / len * step, vy = dy / len * step;
+        const step = Math.min(len - stop, MINION_SPEED * this.pace * (foe ? 1 : len > 40 ? 1.6 : 1) * dt), vx = dx / len * step, vy = dy / len * step;
         if (this.free(k.x + vx, k.y)) k.x += vx;
         if (this.free(k.x, k.y + vy)) k.y += vy;
       }
-      if (Math.abs(dx) > 2) k.face = dx < 0 ? -1 : 1;
-      // Its blow only ever lands on a creature: the Keeper is never its foe.
-      if (foe && Math.hypot(foe.x - k.x, foe.y - k.y) <= MOB_REACH && k.cd <= 0) {
+      if (foe) k.face = foe.x < k.x ? -1 : 1; else if (Math.abs(dx) > 2) k.face = dx < 0 ? -1 : 1;
+      // Its blow only ever lands on a creature it can see: the Keeper is never its foe, a wall never lets it through.
+      if (foe && Math.hypot(foe.x - k.x, foe.y - k.y) <= reach + 2 && k.cd <= 0 && this.sight.sees(k.x, k.y, foe.x, foe.y)) {
         k.cd = RAISED_SKELETON.rate;
         this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .2, dir: k.face });
         // The Ashbone Phylactery: each skeleton's first blow is a breath of fire.
@@ -3081,6 +3180,65 @@ export class MobSystem {
         if (breath) { k.breathed = true; for (let j = 0; j < 3; j++) this.effects.push({ kind: 'flame', x: (k.x + foe.x) / 2 + (j - 1) * 4, y: (k.y + foe.y) / 2, age: 0, life: .45, dir: 1 }); }
         this.hurtMob(foe, Math.round(rnd(k.dmg[0], k.dmg[1]) * (breath ? this.relics.breath : 1)), breath ? '#ff9a4a' : '#c88bff');
       }
+    });
+    this.spreadKin(dt);
+  }
+
+  // ── The crowd (td-sight.ts) ──
+  /** Which way the Keeper is going, held while he stands (his formation is behind his walk, not his last swing). */
+  private kinFace: 1 | -1 = 1;
+  private formFace(): 1 | -1 {
+    if (Math.abs(this.pv.x) > 12) this.kinFace = this.pv.x < 0 ? -1 : 1;
+    return this.kinFace;
+  }
+  /** A formation slot on open ground: the slot, else halfway to the Keeper, else his own feet. */
+  private slotOpen(at: { x: number; y: number }): { x: number; y: number } {
+    if (this.free(at.x, at.y)) return at;
+    const p = this.host.player(), half = { x: (at.x + p.x) / 2, y: (at.y + p.y) / 2 };
+    return this.free(half.x, half.y) ? half : { x: p.x, y: p.y };
+  }
+  /** How many of the Keeper's raised and called fight each foe (they share its arc). */
+  private fanCounts(): Map<Mob, (Minion | WildBeast)[]> {
+    const out = new Map<Mob, (Minion | WildBeast)[]>();
+    const add = (k: Minion | WildBeast) => { if (k.target && k.target.hp > 0) { const l = out.get(k.target); if (l) l.push(k); else out.set(k.target, [k]); } };
+    for (const k of this.minions) add(k);
+    for (const b of this.beasts) if (b.kind === 'called') add(b);
+    return out;
+  }
+  /** Where one of the kin stands to fight its foe: its place on the arc round it on the Keeper's side (or straight at it, when that place is rock). */
+  private fanFor(k: Minion | WildBeast, foe: Mob, fans: Map<Mob, (Minion | WildBeast)[]>): { x: number; y: number } {
+    const all = fans.get(foe) ?? [k], j = Math.max(0, all.indexOf(k));
+    const at = fanSpot(j, all.length, foe, this.host.player(), MOB_REACH - 3 + foe.def.w / 6);
+    return this.free(at.x, at.y) && this.sight.sees(at.x, at.y, foe.x, foe.y, true) ? at : { x: foe.x - (foe.x > k.x ? 1 : -1) * (MOB_REACH - 4 + foe.def.w / 4), y: foe.y + 1 };
+  }
+  /** The soft push among the Keeper's raised and his called beast, clear of him and of his pet. */
+  private spreadKin(dt: number): void {
+    const kin: Body[] = [...this.minions, ...this.beasts.filter(b => b.kind === 'called')];
+    if (!kin.length) return;
+    const p = this.host.player();
+    kin.push({ x: p.x, y: p.y, fixed: true, r: KEEPER_ELBOW });
+    if (this.beast) kin.push({ x: this.beast.x, y: this.beast.y, fixed: true });
+    separate(kin, (x, y) => this.free(x, y), KIN_PUSH * dt);
+  }
+  /** The creatures standing at their prey this frame (in reach, in sight): they hold their ground while the rest find room round them. */
+  private readonly holding = new Set<Mob>();
+  /** Which way each hunting creature stepped this frame (its push gives way sideways, never back). */
+  private readonly heading = new Map<Mob, { x: number; y: number }>();
+  /** The soft push among creatures: a body's room is near a third of its width; the held (at their prey, rooted, stunned, mid-attack) and a boss do not give way. */
+  private spreadMobs(dt: number): void {
+    if (this.mobs.length < 2) return;
+    const bodies: (Body & { m: Mob })[] = this.mobs.map(m => ({
+      m, x: m.x, y: m.y, r: Math.max(7, Math.min(11, m.def.w * .3)), held: this.holding.has(m),
+      fixed: m.def.rank === 'boss' || !!m.def.bound || !!m.dash || (m.blinkT ?? 0) > 0 || m.tell > 0 || (m.rootT ?? 0) > 0 || (m.stun ?? 0) > 0,
+    }));
+    separate(bodies, (x, y) => this.free(x, y), CROWD_PUSH * dt);
+    for (const b of bodies) {
+      let dx = b.x - b.m.x, dy = b.y - b.m.y;
+      if (!dx && !dy) continue;
+      // A creature on the hunt gives way to the side, never back: the push never slows its run at its prey.
+      const h = this.heading.get(b.m);
+      if (h) { const along = dx * h.x + dy * h.y; if (along < 0) { dx -= along * h.x; dy -= along * h.y; } }
+      if (this.canStep(b.m, b.m.x + dx, b.m.y + dy)) { b.m.x += dx; b.m.y += dy; }
     }
   }
 
@@ -3100,7 +3258,7 @@ export class MobSystem {
     const p = this.host.player(), el = a.id === 'holy-fire' ? 'ember' as const : a.id === 'holy-freeze' ? 'life' as const : 'lamp' as const;
     this.effects.push({ kind: 'wave', el, x: p.x, y: p.y, age: 0, life: .5, dir: 1, r: ITEM_AURA_REACH });
     // The card's number exactly ("{{n}} fire damage every 1.5 s"): not the Keeper's spell power, not a crit.
-    for (const m of [...this.mobs]) if (this.inItemAura(m)) this.hurtMob(m, a.fx.pulseDamage, a.id === 'holy-freeze' ? '#8fd8ff' : a.id === 'holy-shock' ? '#ffe36d' : '#ff8a3d');
+    for (const m of [...this.mobs]) if (this.inItemAura(m) && this.sees(m)) this.hurtMob(m, a.fx.pulseDamage, a.id === 'holy-freeze' ? '#8fd8ff' : a.id === 'holy-shock' ? '#ffe36d' : '#ff8a3d');
   }
 
   /** The Spellstone going off now (useStone), or null. */
@@ -3131,10 +3289,11 @@ export class MobSystem {
     if ((this.cooldowns[id] ?? 0) > 0) return 'cooldown';
     if (this.mana < sk.mana) return 'mana';
     const p = this.host.player();
+    // The foe a spell goes at: the target when it is in range and in sight, else the nearest one in sight (td-sight).
     const foeInRange = (): Mob | null => {
-      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= this.range) return this.target;
+      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= this.range && this.sees(this.target)) return this.target;
       let best: Mob | null = null, bd = this.range;
-      for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d <= bd) { bd = d; best = m; } }
+      for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d <= bd && this.sees(m)) { bd = d; best = m; } }
       return best;
     };
     const v = this.v(id);
@@ -3154,7 +3313,8 @@ export class MobSystem {
       this.effects.push({ kind: 'curse', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .6, dir: 1 });
       this.host.swung(foe);
     } else if (id === 'hellfire-nova') {
-      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']) * this.fireMult, '#ff9a4a');
+      // Only what the Keeper can see: a nova by a wall does not burn the room behind it.
+      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) this.hitFoe(m, rnd(v['min'], v['max']) * this.fireMult, '#ff9a4a');
       // The ring runs out for half a second, the scorch fades over the next half (on the ground, at the feet).
       this.effects.push({ kind: 'wave', x: p.x, y: p.y, age: 0, life: 1, dir: 1, r: Math.round(v['radius'] * TILE) });
       this.host.swung(null);
@@ -3163,7 +3323,7 @@ export class MobSystem {
       if (!foe) return 'nofoe';
       const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
       this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .15, dir: 1 });
-      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [] });
+      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], lift: 16, land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y) });
       this.host.swung(foe);
     } else if (id === 'raise-skeleton') {
       // From the fresh dead nearest the Keeper first; with none, out of the ground at his side.
@@ -3178,9 +3338,9 @@ export class MobSystem {
       }
       for (let i = 0; i < v['count']; i++) {
         const cp = fresh[i];
-        let at = cp ? { x: cp.x, y: cp.y } : { x: p.x + (i % 2 ? -16 : 16), y: p.y + 2 };
+        // Out of the ground at its own place in the formation (td-sight), never on another's.
+        const at = cp ? { x: cp.x, y: cp.y } : this.slotOpen(formationSpot(this.minions.length, p, this.formFace()));
         if (cp) this.corpses.splice(this.corpses.indexOf(cp), 1);
-        else if (!this.free(at.x, at.y)) at = { x: p.x, y: p.y };
         this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null });
         this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
       }
@@ -3231,7 +3391,8 @@ export class MobSystem {
       if (!foe) return 'nofoe';
       // Across the way from the Keeper to the foe, through the foe: whatever walks it burns.
       const a = Math.atan2(foe.y - p.y, foe.x - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
-      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE; pts.push({ x: foe.x + Math.cos(a) * o, y: foe.y + Math.sin(a) * o }); }
+      // Not in a wall (td-sight): a flame on rock burns nothing, and each tongue burns only what it can reach.
+      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE, q = { x: foe.x + Math.cos(a) * o, y: foe.y + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
       this.zones.push({ kind: 'wall', x: foe.x, y: foe.y, r: TILE * .7, t: v['secs'], tick: 0, min: v['dps'], max: v['dps'], pts });
       this.host.swung(foe);
     } else if (id === 'meteor') {
@@ -3246,7 +3407,7 @@ export class MobSystem {
         .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
       if (!cp) return 'nocorpse';
       this.corpses.splice(this.corpses.indexOf(cp), 1);
-      for (const m of [...this.mobs]) if (Math.hypot(m.x - cp.x, m.y - cp.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
+      for (const m of [...this.mobs]) if (Math.hypot(m.x - cp.x, m.y - cp.y) <= v['radius'] * TILE && this.reaches(cp.x, cp.y, m)) this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
       this.effects.push({ kind: 'flash', x: cp.x, y: cp.y - 6, age: 0, life: .2, dir: 1 });
       this.effects.push({ kind: 'wave', el: 'bone', x: cp.x, y: cp.y, age: 0, life: .6, dir: 1, r: Math.round(v['radius'] * TILE) });
       for (let i = 0; i < 4; i++) this.effects.push({ kind: 'bone-chips', x: cp.x + (i % 2 ? -8 : 8), y: cp.y - 4 - (i < 2 ? 6 : 0), age: 0, life: .4, dir: i % 2 ? -1 : 1 });
@@ -3257,7 +3418,7 @@ export class MobSystem {
       const base = foe ? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx) : 0;
       for (let i = 0; i < n; i++) {
         const a = foe ? base + (i - (n - 1) / 2) * .22 : i / n * Math.PI * 2;
-        this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']] });
+        this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']], lift: 16, ...(foe ? { land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y) } : {}) });
       }
       this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .2, dir: 1 });
       this.host.swung(foe);
@@ -3268,7 +3429,7 @@ export class MobSystem {
     } else if (id === 'weaken') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
-      for (const m of this.mobs) if (Math.hypot(m.x - foe.x, m.y - foe.y) <= v['radius'] * TILE) {
+      for (const m of this.mobs) if (Math.hypot(m.x - foe.x, m.y - foe.y) <= v['radius'] * TILE && this.sight.sees(foe.x, foe.y, m.x, m.y)) {
         m.weak = v['secs']; m.weakPct = v['weaken'];
         this.effects.push({ kind: 'curse', x: m.x, y: m.y - m.def.h - 4, age: 0, life: .6, dir: 1 });
       }
@@ -3332,6 +3493,8 @@ export class MobSystem {
     let n = 0;
     for (const m of [...this.mobs]) {
       if (m !== must && !inArc(p.x, p.y, aim, reach, arc, m.x, m.y, m.def.w / 2)) continue;
+      // Never through a wall (td-sight): the blade strikes only what the Keeper can see.
+      if (!this.sees(m)) continue;
       let blow = meleeBlow(blade['min'], blade['max'], pct, Math.random, this.weaponSwing);
       if (brand) blow = brandedBlow(blow, brand['pct']);
       if (lit) blow *= this.fireMult;
@@ -3345,9 +3508,9 @@ export class MobSystem {
   /** The nearest creature within `reach` art px of the Keeper (the target first, when it is in reach). */
   private foeWithin(reach: number): Mob | null {
     const p = this.host.player();
-    if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach + this.target.def.w / 4) return this.target;
+    if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach + this.target.def.w / 4 && this.sees(this.target)) return this.target;
     let best: Mob | null = null, bd = Infinity;
-    for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y) - m.def.w / 4; if (d <= reach && d < bd) { bd = d; best = m; } }
+    for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y) - m.def.w / 4; if (d <= reach && d < bd && this.sees(m)) { bd = d; best = m; } }
     return best;
   }
   /** The Ashguard's spells. Each reads its numbers at its rank and leaves its picture (td-ashguard-fx). */
@@ -3379,7 +3542,7 @@ export class MobSystem {
       this.host.swung(null);
     } else if (id === 'watch-cry') {
       // Every creature within the cry turns on the Keeper (the pet and the raised are spared), and he braces.
-      for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) m.taunt = ccSecs(v['secs'], m.def.rank);
+      for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) m.taunt = ccSecs(v['secs'], m.def.rank);
       this.guardT = v['secs']; this.guardPct = v['guard'];
       this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .6, dir: 1 });
     } else if (id === 'ash-stride') {
@@ -3462,14 +3625,14 @@ export class MobSystem {
     const p = this.host.player(), v = this.v('lantern-ward');
     this.lampWard = 0; this.lampWardT = 0;
     this.effects.push({ kind: 'lward-break', x: p.x, y: p.y - 16, r: Math.round(v['radius'] * TILE), age: 0, life: .5, dir: 1 });
-    for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) m.stun = Math.max(m.stun ?? 0, ccSecs(v['stun'], m.def.rank));
+    for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) m.stun = Math.max(m.stun ?? 0, ccSecs(v['stun'], m.def.rank));
   }
-  /** The nearest creature within `reach` art px of a point (the target first when it is in reach of the Keeper). */
+  /** The nearest creature within `reach` art px of a point and in sight of it (the target first when it is in reach of the Keeper). */
   private foeNear(x: number, y: number, reach: number): Mob | null {
     const p = this.host.player();
-    if (this.target && x === p.x && y === p.y && Math.hypot(this.target.x - x, this.target.y - y) <= reach) return this.target;
+    if (this.target && x === p.x && y === p.y && Math.hypot(this.target.x - x, this.target.y - y) <= reach && this.sight.sees(x, y, this.target.x, this.target.y)) return this.target;
     let best: Mob | null = null, bd = reach;
-    for (const m of this.mobs) { const d = Math.hypot(m.x - x, m.y - y); if (d <= bd) { bd = d; best = m; } }
+    for (const m of this.mobs) { const d = Math.hypot(m.x - x, m.y - y); if (d <= bd && this.sight.sees(x, y, m.x, m.y)) { bd = d; best = m; } }
     return best;
   }
   /** The Lanternwright's spells. Each reads its numbers at its rank and leaves its picture (td-lantern-fx). */
@@ -3478,7 +3641,7 @@ export class MobSystem {
     if (id === 'blinding-flash') {
       // Everything near takes the light; the dead and the dark-born stand stunned (bosses a fifth as long).
       for (const m of [...this.mobs]) {
-        if (Math.hypot(m.x - p.x, m.y - p.y) > v['radius'] * TILE) continue;
+        if (Math.hypot(m.x - p.x, m.y - p.y) > v['radius'] * TILE || !this.sees(m)) continue;
         this.hitFoe(m, lightBlow(rnd(v['min'], v['max']), m.def.id), '#fff2a8');
         if (m.hp > 0 && shadowBorn(m.def.id)) m.stun = Math.max(m.stun ?? 0, ccSecs(v['stun'], m.def.rank));
       }
@@ -3522,7 +3685,9 @@ export class MobSystem {
     } else if (id === 'lamp-wisp') {
       // The wisps answer in a flock of `count` (the old ones go back to the dark).
       this.wisps.length = 0;
-      for (let i = 0; i < Math.max(1, v['count']); i++) this.wisps.push({ x: p.x, y: p.y - 26, t: v['secs'], cd: .4 + i * .3, a: i * Math.PI });
+      // Spread evenly round his shoulders (a third wisp no longer circles inside the first).
+      const n = Math.max(1, v['count']);
+      for (let i = 0; i < n; i++) this.wisps.push({ x: p.x, y: p.y - 26, t: v['secs'], cd: .4 + i * .3, a: i * Math.PI * 2 / n });
       this.effects.push({ kind: 'wisp-call', x: p.x, y: p.y - 26, age: 0, life: .6, dir: 1 });
       this.host.swung(null);
     } else if (id === 'beacon') {
@@ -3557,7 +3722,7 @@ export class MobSystem {
       const foe = this.foeNear(p.x, p.y, wv['range'] * TILE);
       if (!foe) continue;
       w.cd = 1;
-      this.bolts.push({ x: w.x, y: w.y, to: foe, dmg: rnd(wv['min'], wv['max']) * kin, age: 0, lamp: true });
+      this.bolts.push({ x: w.x, y: w.y, to: foe, dmg: rnd(wv['min'], wv['max']) * kin, age: 0, lamp: true, lift: p.y - w.y });
     }
     const bv = this.v('beacon');
     for (let i = this.beacons.length - 1; i >= 0; i--) {
@@ -3568,7 +3733,7 @@ export class MobSystem {
       const foe = this.foeNear(b.x, b.y, bv['range'] * TILE);
       if (!foe) continue;
       b.cd = 1;
-      this.bolts.push({ x: b.x, y: b.y - 30, to: foe, dmg: rnd(bv['min'], bv['max']) * kin, age: 0, lamp: true });
+      this.bolts.push({ x: b.x, y: b.y - 30, to: foe, dmg: rnd(bv['min'], bv['max']) * kin, age: 0, lamp: true, lift: 30 });
     }
     for (const m of this.mobs) if ((m.revealT ?? 0) > 0) m.revealT = Math.max(0, (m.revealT ?? 0) - dt);
   }
@@ -3600,6 +3765,8 @@ export class MobSystem {
     const tv = this.v('thorn-shot'), hw = this.rank('heartwood') > 0 ? this.v('heartwood') : null;
     const aim = o.angle ?? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
     this.arrows.push({
+      // Its ground track (td-sight): from the bow, 20 px up, down to the foe's middle.
+      lift: 20, land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y),
       x: sx, y: sy, vx: Math.cos(aim) * ARROW_SPEED, vy: Math.sin(aim) * ARROW_SPEED, age: 0, life: (this.range + 2 * TILE) / ARROW_SPEED,
       dmg: dmg * (1 + (hw?.['pct'] ?? 0) / 100), to: o.angle === undefined ? foe : null, hit: [],
       pierce: o.pierce ?? tv['pierce'] + (hw?.['pierce'] ?? 0), knock: tv['knock'], ...(o.barb ? { barb: o.barb } : {}),
@@ -3621,7 +3788,6 @@ export class MobSystem {
   /** The arrows in flight: each seeks its foe until it strikes, then flies on straight; a pierce carries it further. */
   private updateArrows(dt: number): void {
     if (!this.arrows.length) return;
-    const flies = (x: number, y: number) => { const c = Math.floor(x / TILE), r = Math.floor((y + 12) / TILE); return this.host.passable ? this.host.passable(c, r) : this.host.walkable(c, r); };
     for (let i = this.arrows.length - 1; i >= 0; i--) {
       const a = this.arrows[i];
       a.age += dt;
@@ -3630,8 +3796,12 @@ export class MobSystem {
         const dx = a.to.x - a.x, dy = a.to.y - a.to.def.h / 2 - a.y, d = Math.hypot(dx, dy);
         if (d > 1) { a.vx = dx / d * ARROW_SPEED; a.vy = dy / d * ARROW_SPEED; }
       }
+      const x0 = a.x, g0 = groundY(a, a.y, (a.age - dt) * ARROW_SPEED);
       a.x += a.vx * dt; a.y += a.vy * dt;
-      if (a.age > a.life || !flies(a.x, a.y)) { this.arrows.splice(i, 1); continue; }
+      // A wall on its ground track: it breaks there (td-sight), whatever stands behind.
+      const wall = this.wallOn(x0, g0, a.x, groundY(a, a.y, a.age * ARROW_SPEED));
+      if (wall) { this.arrows.splice(i, 1); this.walled++; this.puff(wall.x, a.y + (wall.y - groundY(a, a.y, a.age * ARROW_SPEED)), 'life'); continue; }
+      if (a.age > a.life) { this.arrows.splice(i, 1); continue; }
       const ux = a.vx / ARROW_SPEED, uy = a.vy / ARROW_SPEED;
       for (const m of [...this.mobs]) {
         if (a.hit.includes(m) || Math.hypot(m.x - a.x, m.y - m.def.h / 2 - a.y) > Math.max(7, m.def.w / 3)) continue;
@@ -3659,17 +3829,20 @@ export class MobSystem {
       this.rootwalkT = Math.max(0, this.rootwalkT - dt);
       if (Math.random() < dt * 7) this.effects.push({ kind: 'rootwalk', x: p.x + rnd(-4, 4), y: p.y + 1, age: 0, life: .9, dir: 1 });
     }
-    const k = 1 + this.beastPct(false) / 100;
+    const k = 1 + this.beastPct(false) / 100, face = this.formFace(), fans = this.fanCounts();
+    let slot = this.minions.length;
     for (let i = this.beasts.length - 1; i >= 0; i--) {
       const b = this.beasts[i];
       b.age += dt; b.cd -= dt;
       if (b.kind === 'stampede') {
         if (b.age < 0) continue;
         const vx = b.vx ?? 0, vy = b.vy ?? 0, sp = Math.hypot(vx, vy) || 1;
+        // A wall ends the run where it stands (td-sight): the herd does not trample the room behind it.
+        if (this.sight.wallAt(b.x + vx * dt, b.y + vy * dt - 1)) { this.beasts.splice(i, 1); this.puff(b.x, b.y - 8, 'life'); this.effects.push({ kind: 'trample', x: b.x, y: b.y, age: 0, life: .5, dir: b.face }); continue; }
         b.x += vx * dt; b.y += vy * dt; b.left = (b.left ?? 0) - sp * dt;
         if (Math.random() < dt * 9) this.effects.push({ kind: 'trample', x: b.x - vx / sp * 6, y: b.y, age: 0, life: .5, dir: b.face });
         for (const m of [...this.mobs]) {
-          if (b.hit?.includes(m) || Math.hypot(m.x - b.x, m.y - b.y) > 10 + m.def.w / 4) continue;
+          if (b.hit?.includes(m) || Math.hypot(m.x - b.x, m.y - b.y) > 10 + m.def.w / 4 || !this.sight.sees(b.x, b.y, m.x, m.y)) continue;
           (b.hit ??= []).push(m);
           this.hitFoe(m, rnd(b.dmg[0], b.dmg[1]) * k, '#9af0d0');
           if (m.hp > 0) this.knock(m, vx / sp, vy / sp, m.def.rank === 'boss' ? (b.knock ?? 0) * .2 : b.knock ?? 0);
@@ -3679,14 +3852,16 @@ export class MobSystem {
       }
       b.t -= dt;
       if (b.t <= 0) { this.beasts.splice(i, 1); this.effects.push({ kind: 'wild-call', x: b.x, y: b.y, age: 0, life: .5, dir: -1 }); continue; }
+      // Its place in the Keeper's formation, after the raised (td-sight formationSpot).
+      const home = formationSpot(slot++, p, face);
       // Left far behind: it steps out of the green at the Keeper's side again.
-      if (Math.hypot(b.x - p.x, b.y - p.y) > MINION_LEASH * 1.6) { b.x = p.x + 16; b.y = p.y + 4; if (!this.free(b.x, b.y)) { b.x = p.x; b.y = p.y; } b.target = null; }
+      if (Math.hypot(b.x - p.x, b.y - p.y) > MINION_LEASH * 1.6) { const at = this.slotOpen(home); b.x = at.x; b.y = at.y; b.target = null; }
       const sent = this.commanded;
       if (sent) b.target = sent;
-      else if (!b.target || b.target.hp <= 0 || !this.mobs.includes(b.target) || Math.hypot(b.target.x - p.x, b.target.y - p.y) > MINION_LEASH) b.target = pickMinionTarget(b, this.mobs, p, MINION_SIGHT, MINION_LEASH);
+      else if (!b.target || b.target.hp <= 0 || !this.mobs.includes(b.target) || Math.hypot(b.target.x - p.x, b.target.y - p.y) > MINION_LEASH || !this.sight.sees(b.x, b.y, b.target.x, b.target.y, true)) b.target = pickMinionTarget(b, this.mobs, p, MINION_SIGHT, MINION_LEASH, m => this.sight.sees(b.x, b.y, m.x, m.y, false));
       const foe = b.target;
       const reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
-      const tx = foe ? foe.x - (foe.x > b.x ? 1 : -1) * (reach - 4) : p.x + 16, ty = foe ? foe.y + 1 : p.y + 6;
+      const { x: tx, y: ty } = foe ? this.fanFor(b, foe, fans) : home;
       const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy);
       if (len > 2) {
         const step = Math.min(len, BEAST_SPEED * this.pace * dt), mx = dx / len * step, my = dy / len * step;
@@ -3694,7 +3869,7 @@ export class MobSystem {
         if (this.free(b.x, b.y + my)) b.y += my;
       }
       if (foe) b.face = foe.x < b.x ? -1 : 1; else if (Math.abs(dx) > 2) b.face = dx < 0 ? -1 : 1;
-      if (foe && Math.hypot(foe.x - b.x, foe.y - b.y) <= reach + 2 && b.cd <= 0) {
+      if (foe && Math.hypot(foe.x - b.x, foe.y - b.y) <= reach + 2 && b.cd <= 0 && this.sight.sees(b.x, b.y, foe.x, foe.y)) {
         b.cd = sent === foe ? BEAST_REST * THORN_PET.commandRest : BEAST_REST;
         this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir: b.face });
         this.hitFoe(foe, rnd(b.dmg[0], b.dmg[1]) * (1 + this.beastPct(sent === foe) / 100), '#9af0d0');
@@ -3718,7 +3893,7 @@ export class MobSystem {
       this.host.swung(foe);
     } else if (id === 'command') {
       const reach = Math.max(this.range, THORN_PET.commandReach);
-      const foe = this.target && this.target.hp > 0 && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach ? this.target : foeInRange();
+      const foe = this.target && this.target.hp > 0 && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach && this.sees(this.target) ? this.target : foeInRange();
       if (!foe) return 'nofoe';
       this.commandFoe = foe; this.commandT = v['secs']; this.commands++;
       for (const b of this.beasts) if (b.kind === 'called') b.target = foe;
@@ -3750,7 +3925,7 @@ export class MobSystem {
       const cx = foe ? foe.x : p.x + face * 2 * TILE, cy = foe ? foe.y : p.y;
       // Across the foe's way to the Keeper: the line stands square to it, one thorn-clump a tile.
       const a = Math.atan2(cy - p.y, cx - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
-      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE; pts.push({ x: cx + Math.cos(a) * o, y: cy + Math.sin(a) * o }); }
+      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE, q = { x: cx + Math.cos(a) * o, y: cy + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
       this.zones.push({ kind: 'snare', x: cx, y: cy, r: TILE * .8, t: v['secs'], tick: 0, min: v['min'], max: v['max'], pts, caught: [] });
       pts.forEach((q, i) => this.effects.push({ kind: 'snare-rise', x: q.x, y: q.y, age: -i * .05, life: .5, dir: 1 }));
       this.host.swung(foe);
@@ -3774,7 +3949,7 @@ export class MobSystem {
     const hit = m.doomHit;
     if (!hit) return;
     const at = { x: m.x, y: m.y };
-    for (const o of [...this.mobs]) if (Math.hypot(o.x - at.x, o.y - at.y) <= hit.r) this.hitFoe(o, rnd(hit.min, hit.max), '#c88bff');
+    for (const o of [...this.mobs]) if (Math.hypot(o.x - at.x, o.y - at.y) <= hit.r && (o === m || this.reaches(at.x, at.y, o))) this.hitFoe(o, rnd(hit.min, hit.max), '#c88bff');
     this.effects.push({ kind: 'wave', el: 'shadow', x: at.x, y: at.y, age: 0, life: .7, dir: 1, r: Math.round(hit.r) });
     this.effects.push({ kind: 'flash', x: at.x, y: at.y - 8, age: 0, life: .2, dir: 1 });
   }
@@ -3787,7 +3962,7 @@ export class MobSystem {
       if (z.kind === 'meteor') {
         if (z.t > 0) continue;
         this.zones.splice(i, 1);
-        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
+        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
         this.effects.push({ kind: 'wave', x: z.x, y: z.y, age: 0, life: 1, dir: 1, r: Math.round(z.r) });
         this.effects.push({ kind: 'bolt-hit', x: z.x, y: z.y - 6, age: 0, life: .4, dir: 1 });
         continue;
@@ -3816,7 +3991,7 @@ export class MobSystem {
         // The Thornroot Snare: whatever crosses the line is struck once and rooted (a boss a fifth as long).
         const v = this.v('thornroot-snare');
         for (const m of [...this.mobs]) {
-          if (z.caught?.includes(m) || !z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r)) continue;
+          if (z.caught?.includes(m) || !z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r && this.reaches(q.x, q.y, m))) continue;
           (z.caught ??= []).push(m);
           m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank));
           this.effects.push({ kind: 'snare-rise', x: m.x, y: m.y, age: 0, life: .5, dir: 1 });
@@ -3827,10 +4002,10 @@ export class MobSystem {
       if (z.kind === 'trap') {
         // A Bramble Trap: the first creature to step on it springs it on everything near.
         const v = this.v('bramble-trap');
-        if (!this.mobs.some(m => Math.hypot(m.x - z.x, m.y - z.y) <= 10 + m.def.w / 4)) continue;
+        if (!this.mobs.some(m => Math.hypot(m.x - z.x, m.y - z.y) <= 10 + m.def.w / 4 && this.reaches(z.x, z.y, m))) continue;
         this.zones.splice(i, 1);
         this.effects.push({ kind: 'trap-spring', x: z.x, y: z.y, r: z.r, age: 0, life: .6, dir: 1 });
-        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) {
+        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) {
           m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank));
           this.hitFoe(m, rnd(z.min, z.max), '#c9a66b');
         }
@@ -3838,10 +4013,10 @@ export class MobSystem {
       }
       if (z.kind === 'dawn') {
         // Dawn at Noon: twice a second the dead and the dark-born inside burn; everything inside is unveiled.
-        for (const m of this.mobs) if (inDisc(m.x, m.y, z.x, z.y, z.r)) m.revealT = Math.max(m.revealT ?? 0, .6);
+        for (const m of this.mobs) if (inDisc(m.x, m.y, z.x, z.y, z.r) && this.reaches(z.x, z.y, m)) m.revealT = Math.max(m.revealT ?? 0, .6);
         if (z.tick <= 0) {
           z.tick = .5;
-          for (const m of [...this.mobs]) if (inDisc(m.x, m.y, z.x, z.y, z.r) && shadowBorn(m.def.id)) {
+          for (const m of [...this.mobs]) if (inDisc(m.x, m.y, z.x, z.y, z.r) && shadowBorn(m.def.id) && this.reaches(z.x, z.y, m)) {
             this.effects.push({ kind: 'kindle-hit', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 });
             this.hitFoe(m, z.min / 2, '#fff2a8');
           }
@@ -3857,13 +4032,13 @@ export class MobSystem {
         }
         if (z.tick <= 0) {
           z.tick = .5;
-          for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
+          for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
         }
       } else if (z.kind === 'wall' && z.pts) {
         if (Math.random() < dt * 18) { const q = z.pts[Math.floor(Math.random() * z.pts.length)]; this.effects.push({ kind: 'flame', x: q.x + rnd(-4, 4), y: q.y, age: 0, life: .5, dir: 1 }); }
         if (z.tick <= 0) {
           z.tick = 1;
-          for (const m of [...this.mobs]) if (z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r)) this.hitFoe(m, z.min * this.fireMult, '#ff8a2e');
+          for (const m of [...this.mobs]) if (z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r && this.reaches(q.x, q.y, m))) this.hitFoe(m, z.min * this.fireMult, '#ff8a2e');
         }
       }
     }
