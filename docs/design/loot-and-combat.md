@@ -183,7 +183,7 @@ New ranges at item level 1 (× rarity × the family scale): Martial Damage 3–6
 |---|---|---|---|
 | Warlock, Lanternwright | level × Spirit × (1 + Spell Damage) | Cast Speed | +Spells (castRank) |
 | Ashguard | level × Spirit × (1 + Martial Damage) | Attack Speed | Life Steal; a **melee** weapon's +min–max on every blow (Watch Blade, blade skills) |
-| Thornstrider | level × Spirit × (1 + Martial Damage) | Attack Speed | Life Steal, Pierce; a **bow's** +min–max on every arrow (Thorn Shot, Barbed Shot, Volley); his beast bites ×(1 + Martial Damage) |
+| Thornstrider | level × Spirit × (1 + Martial Damage) | Attack Speed | Life Steal, Pierce; a **bow's** +min–max on every arrow (Thorn Shot, Barbed Shot, Volley); his beast bites ×(1 + half his Martial Damage) |
 
 Everyone reads Crit (×1.75), Block (a blow turned aside whole), Defense, resists, life, mana and the finds. The
 milestones' "+1% damage" and "+1% speed" ride on both families, so every calling gets them.

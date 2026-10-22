@@ -11,7 +11,7 @@ Design and the full tables: `docs/design/loot-and-combat.md` §3.6.
   instead of Life Steal; a quiver Martial Damage and Pierce (and a little ward); a shield Defense and **Block**; armour
   Defense, life, resists (boots Move Speed, gloves either speed); rings and amulets either family, lower, plus Gold Find.
 - The Warlock and Lanternwright read Spell Damage / Cast Speed; the Ashguard and Thornstrider read Martial Damage /
-  Attack Speed. The pet bite and the Thornstrider's skills use Martial Damage.
+  Attack Speed. The Thornstrider's skills use Martial Damage; his beast bites by half of it (td-thorn BEAST_DAMAGE_SHARE).
 - The item card: "Favoured by: Ashguard" (green when it is you), greyed lines "unused by your calling", a weapon's own
   damage as "+18–35 Damage [16–19 / 31–36]", and an old roll's note. Screenshots: `docs/handoff/cozy-ui/affix-*.jpg`.
 
