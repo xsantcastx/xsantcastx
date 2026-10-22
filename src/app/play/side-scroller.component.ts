@@ -50,7 +50,8 @@ import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-c
 import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
-import { IMPLICIT_BY_SLOT, affixRange, isAffixKey, isAffixSlot } from '../shared/rpg/item-affixes';
+import { IMPLICIT_BY_SLOT, affixRange, implicitOf, isAffixKey, isAffixSlot, type AffixSlot } from '../shared/rpg/item-affixes';
+import { FAMILY_FAVOURED, OLD_ROLL_TWIN, statUse } from '../shared/rpg/item-calling';
 import { qualityTagOf } from '../shared/rpg/item-quality';
 import {
   CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
@@ -215,9 +216,9 @@ import { DARK_I18N } from './td/td-dark.i18n';
 import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-clock/eclipse.model';
 import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
 import { eclipseWarning, skyVars, spellMult } from './td/td-phases';
-import { weaponSwing } from './td/td-melee';
+import { weaponSwing, type HeldWeapon } from './td/td-melee';
 import { TWO_HAND_MULT, handsOf, isTwoHanded } from '../shared/rpg/item-hands';
-import { itemBase } from '../shared/rpg/item-base';
+import { itemAffixFamily, itemBase } from '../shared/rpg/item-base';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
@@ -398,13 +399,21 @@ interface ItemSetTip {
   found: string[];
 }
 /** What the hover card shows beyond name and kicker: the frame's rarity, the headline stat, the affixes, wells, worth. */
+/** One stat line on the card: `dim` when the Keeper's calling cannot use it, `old` the old-roll note (item-calling.ts). */
+interface TipLine { key: string; text: string; range: string; dim?: boolean; old?: string }
+
 interface ItemTip {
   rarity: string;
   typeLine: string;
   rarityWord: string;
   /** The implicit (or the legacy headline stat); `range` is the `[min–max]` it could roll, '' for none. */
-  head: { key: string; text: string; range: string } | null;
-  affixes: { key: string; text: string; range: string }[];
+  head: TipLine | null;
+  affixes: TipLine[];
+  /**
+   * Who the piece is for (§3.6, rpg/item-calling.ts FAMILY_FAVOURED): "Favoured by: Ashguard", or every calling; `mine`
+   * when the Keeper's own calling is among them. `unused`: some line does nothing for the Keeper's calling (dimmed).
+   */
+  calling?: { text: string; mine: boolean; unused: boolean };
   /** Item level (where it dropped), or 0 for items minted before affixes. */
   itemLevel: number;
   /** Every grade ≥ 95% (perfect) or ≥ 99.9% (flawless) — item-quality qualityTagOf. */
@@ -480,10 +489,13 @@ const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
 /** A grave-good's number as its card writes it: "12%" on a percent stat (Spell Damage, Move Speed, All Resist …), else "12". */
 function pctOf(key: keyof ItemStats, n: number): string { return `${n}${ITEM_STAT_IS_PERCENT[key] ? '%' : ''}`; }
 
-function heldSwing(held: GameItem): { strikePower?: number; spellDamage?: number; hands?: number } {
+function heldSwing(held: GameItem): HeldWeapon {
   const st = wornStats(held);
+  // What it is (item-affixes §3.6): a melee weapon's own damage is the blade's, a bow's the arrow's, a staff's neither.
+  const family = itemAffixFamily(held);
+  const kind: HeldWeapon['kind'] = family === 'bow' ? 'bow' : family === 'caster' ? 'caster' : 'melee';
   // Two hands (item-hands.ts) land the basic attack harder (td-melee weaponSwing's mult).
-  return { strikePower: st.strikePower, spellDamage: st.spellDamage, hands: handsOf(held) ?? 1 };
+  return { strikePower: st.strikePower, spellDamage: st.spellDamage, minDamage: st.minDamage, maxDamage: st.maxDamage, hands: handsOf(held) ?? 1, kind };
 }
 
 /** Where the fight stops a worn total (the item card says it): td-skills GEAR_CAPS, the resist cap, Gold Find's. */
@@ -2524,7 +2536,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (kit !== this.kitHandsSet) { this.kitHandsSet = kit; this.inventory.setKitHands(kit); }
     // The weapon in hand: its Strike and Spell Damage lift the Ashguard's swing (td-melee weaponSwing).
     const held = this.inventory.snapshot.equipped['weapon'];
-    (this.engine as unknown as { setWeapon?: (w: { strikePower?: number; spellDamage?: number; hands?: number } | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? heldSwing(held) : null);
+    (this.engine as unknown as { setWeapon?: (w: HeldWeapon | null) => void } | undefined)?.setWeapon?.(held && !held.explorerId ? heldSwing(held) : null);
     // The worn boss uniques' signatures (shared/rpg/boss-uniques.ts): the engine re-applies only when the set changed.
     (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
@@ -2772,12 +2784,17 @@ export class SideScrollerComponent implements OnDestroy {
         { key: 'play.td.total.life', value: `${derived.maxHp}` },
         { key: 'play.td.total.mana', value: `${derived.maxMana}` },
         { key: 'play.td.total.regen', value: `${derived.regen.toFixed(1)}/s` },
-        { key: 'play.td.total.power', value: pct(derived.power) },
+        { key: derived.family === 'spell' ? 'play.td.total.power' : 'play.td.total.might', value: pct(derived.power) },
         // Speed: the level's own pace (Tibia) times Agility and worn Move Speed (td-engine walkSpeed).
         { key: 'play.td.total.speed', value: `+${pct((1 + derived.levelPace) * (1 + derived.moveHaste) * vigor - 1)}` },
         // What the worn gear adds (§3 affixes); a row shows once a piece carries it.
         ...(derived.defense > 0 ? [{ key: 'play.td.total.defense', value: `${Math.round(derived.defense)} (−${pct(defenseReduction(derived.defense, lv))})` }] : []),
-        ...(derived.castSpeed > 0 ? [{ key: 'play.td.total.cast', value: `+${pct(derived.castSpeed)}` }] : []),
+        // The class's own speed (§3.6): Cast Speed for a caster, Attack Speed for a fighter.
+        ...(derived.castSpeed > 0 ? [{ key: derived.family === 'spell' ? 'play.td.total.cast' : 'play.td.total.attack', value: `+${pct(derived.castSpeed)}` }] : []),
+        ...(derived.ranks > 0 ? [{ key: 'play.td.total.ranks', value: `+${derived.ranks}` }] : []),
+        ...(derived.leech > 0 ? [{ key: 'play.td.total.leech', value: pct(derived.leech) }] : []),
+        ...(derived.pierce > 0 ? [{ key: 'play.td.total.pierce', value: `+${Math.round(derived.pierce)}%` }] : []),
+        ...(derived.block > 0 ? [{ key: 'play.td.total.block', value: pct(derived.block) }] : []),
         ...(derived.crit > 0 ? [{ key: 'play.td.total.crit', value: pct(derived.crit) }] : []),
         // Life back a second as the fight pays it (td-engine relicRegen): worn, plus the boss uniques' and the sets'; a
         // curse's drain shows as a negative; "×2 standing still" when a Mossbound Heart or the Rootcradle doubles it.
@@ -2909,13 +2926,13 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** A skill's line at a tree rank (rank 0 reads as rank 1): the numbers the fight uses (td-skills castVars). */
   private skillLine(id: SkillId, treeRank: number): string {
-    const sk = TD_SKILLS[id], sig = this.gearSig, v = castVars(id, castRank(id, Math.max(1, treeRank), sig), this.skillTree.bought, sig);
+    const sk = TD_SKILLS[id], sig = this.gearSig, v = castVars(id, castRank(id, Math.max(1, treeRank), sig, this.fightNow.ranks), this.skillTree.bought, sig);
     return this.t(sk.textKey, { ...v, mana: v['mana'] ?? sk.mana, cd: sk.cd });
   }
   /** What the next tree rank changes, var by var ("Damage: 24–36 → 28–42"); a min/max pair reads as one range. */
   private rankDiff(id: SkillId, rank: number): string[] {
     const syn = this.skillTree.bought, sig = this.gearSig;
-    const a = castVars(id, castRank(id, rank, sig), syn, sig), b = castVars(id, castRank(id, rank + 1, sig), syn, sig), out: string[] = [];
+    const a = castVars(id, castRank(id, rank, sig, this.fightNow.ranks), syn, sig), b = castVars(id, castRank(id, rank + 1, sig, this.fightNow.ranks), syn, sig), out: string[] = [];
     const pair = 'min' in a && 'max' in a;
     if (pair && (a['min'] !== b['min'] || a['max'] !== b['max'])) out.push(`${this.t('play.td.tree.var.damage')}: ${a['min']}–${a['max']} → ${b['min']}–${b['max']}`);
     for (const k of Object.keys(a)) {
@@ -2964,7 +2981,7 @@ export class SideScrollerComponent implements OnDestroy {
       : block === 'req' && req ? this.t('play.td.tree.needSkill', { name: this.t(TD_SKILLS[req].nameKey) })
       : block === 'max' ? this.t('play.td.tree.maxed') : block === 'points' ? this.t('play.td.tree.noPoints') : '';
     // The rank the fight casts at: the tree's, plus what worn gear adds to a learnt skill (td-skills castRank).
-    const sig = this.gearSig, nowRank = castRank(id, Math.max(1, rank), sig);
+    const sig = this.gearSig, nowRank = castRank(id, Math.max(1, rank), sig, this.fightNow.ranks);
     return {
       id, name: this.t(sk.nameKey), kind: sk.kind, rank, max: MAX_RANK, now: this.skillLine(id, Math.max(1, rank)), nowRank, gear: rank > 0 ? nowRank - rank : 0,
       // The cooldown the Keeper really waits: less what worn gear cuts, over worn cast speed (td-mobs cdOf ÷ 1 + cast).
@@ -2991,7 +3008,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private spellPower(id: SkillId): string | null {
     if (!dealsDamage(id)) return null;
-    const f = this.fightNow, sig = this.gearSig, mastery = castRank('ember-mastery', this.skillRanks['ember-mastery'] ?? 0, sig);
+    const f = this.fightNow, sig = this.gearSig, mastery = castRank('ember-mastery', this.skillRanks['ember-mastery'] ?? 0, sig, this.fightNow.ranks);
     const fire = FIRE_SKILLS.has(id) ? (mastery > 0 ? 1 + castVars('ember-mastery', mastery, this.skillTree.bought, sig)['pct'] / 100 : 1) * (1 + sig.fire / 100) : 1;
     const k = Math.round(f.power * fire * 100) / 100;
     const parts: string[] = [];
@@ -5296,13 +5313,17 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The hover card's parts for a piece of gear: its frame, the stat it is for, the rest, its wells and worth. */
   private itemTip(item: GameItem, tempered: number): ItemTip {
-    const slot = definitionFor(item)?.slot ?? item.slot;
-    // An affix item (§3) heads with its slot's implicit; older items with the legacy Strike / Ward.
-    const affixed = item.itemLevel != null && isAffixSlot(slot);
-    const headKey = affixed ? IMPLICIT_BY_SLOT[slot] : slot === 'weapon' ? 'strikePower' : 'ward';
+    const def = definitionFor(item);
+    const slot = def?.slot ?? item.slot;
+    // §3.6: what the piece is (a staff, a sword, a bow…) decides its pool, its headline and who it is for.
+    const family = itemAffixFamily(item);
+    const where = def && isAffixSlot(def.slot) ? def : isAffixSlot(slot) ? slot : null;
+    // An affix item (§3) heads with its family's implicit; older items with the legacy Strike / Ward.
+    const affixed = item.itemLevel != null && !!where;
+    const headKey: keyof GameItem['stats'] = affixed ? implicitOf(where!) ?? IMPLICIT_BY_SLOT[slot as AffixSlot] : slot === 'weapon' ? 'strikePower' : 'ward';
     const range = (key: keyof GameItem['stats']): string => {
       if (!affixed || !isAffixKey(key)) return '';
-      const [lo, hi] = affixRange(key, slot, item.itemLevel!, item.rarity);
+      const [lo, hi] = affixRange(key, where!, item.itemLevel!, item.rarity);
       return lo || hi ? `[${lo}–${hi}]` : '';
     };
     // What the piece pays when worn (its runes and a seated Socket Word in, as the worn totals count it), not the bare
@@ -5314,17 +5335,45 @@ export class SideScrollerComponent implements OnDestroy {
     // A stat whose worn total the fight caps says so (td-skills GEAR_CAPS, the 75 resist cap, Gold Find's 150): the C
     // sheet shows the capped total, the card says where it stops.
     const cap = (key: keyof GameItem['stats']) => { const n = WORN_CAP[key]; return n ? ' ' + this.t('play.tip.cap', { n }) : ''; };
-    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, paid[key]!)} ${ITEM_STAT_LABELS[key]}${what(key)}${cap(key)}`, range: paid[key] === item.stats[key] ? range(key) : '' });
-    const held = ITEM_STAT_KEYS.filter(key => (paid[key] ?? 0) !== 0);
-    const head = held.includes(headKey) ? line(headKey) : null;
+    // §3.6 (rpg/item-calling.ts): a line the Keeper's calling cannot use is dimmed; an old roll that counts as its twin says so.
+    const voc = this.looks.look.vocation;
+    const reads = (key: keyof GameItem['stats']): Pick<TipLine, 'dim' | 'old'> => {
+      const use = statUse(key, family, voc);
+      if (use === 'unused') return { dim: true };
+      const twin = OLD_ROLL_TWIN[key];
+      return use === 'old' && twin ? { old: this.t('play.tip.oldRoll', { stat: ITEM_STAT_LABELS[twin] }) } : {};
+    };
+    const line = (key: keyof GameItem['stats']): TipLine => {
+      // A weapon's own damage reads as one line, "+3–7 Damage", its two ranges beside it.
+      if (key === 'minDamage' || key === 'maxDamage') {
+        const lo = paid.minDamage ?? 0, hi = paid.maxDamage ?? 0;
+        const unmoved = lo === item.stats.minDamage && hi === item.stats.maxDamage;
+        const r = unmoved && range('minDamage') ? `[${range('minDamage').slice(1, -1)} / ${range('maxDamage').slice(1, -1)}]` : '';
+        return { key: 'minDamage', text: '+' + this.t('play.tip.flat', { lo, hi }), range: r, ...reads('minDamage') };
+      }
+      return { key, text: `${formatStatValue(key, paid[key]!)} ${ITEM_STAT_LABELS[key]}${what(key)}${cap(key)}`, range: paid[key] === item.stats[key] ? range(key) : '', ...reads(key) };
+    };
+    const held = ITEM_STAT_KEYS.filter(key => (paid[key] ?? 0) !== 0)
+      // The flat pair is one line: keep its low end as the line's key.
+      .filter(key => key !== 'maxDamage' || !(paid.minDamage ?? 0));
+    const headAs: keyof GameItem['stats'] = headKey === 'maxDamage' ? 'minDamage' : headKey;
+    const head = held.includes(headAs) ? line(headAs) : null;
     const wells = socketCountFor(item);
     const sockets = Array.from({ length: wells }, (_, i) => item.sockets?.[i] ?? null).map(id => (id ? materialDisplay(id)?.name ?? id : null));
+    const affixes = held.filter(key => key !== head?.key).map(line);
+    const favoured = family ? FAMILY_FAVOURED[family] : null;
+    const calling = favoured ? {
+      text: favoured.length ? this.t('play.tip.favoured', { who: favoured.map(v => this.t('look.class.' + v)).join(', ') }) : this.t('play.tip.favouredAll'),
+      mine: !favoured.length || favoured.includes(voc),
+      unused: [head, ...affixes].some(l => l?.dim),
+    } : undefined;
     return {
       rarity: item.rarity,
       typeLine: item.type === 'charm' ? this.t('play.tip.charm') : this.handsLine(item) ?? (slot ? SLOT_BY_ID.get(slot)?.name ?? '' : ''),
       rarityWord: rarityLabel(item.rarity),
       head,
-      affixes: held.filter(key => key !== head?.key).map(line),
+      affixes,
+      ...(calling ? { calling } : {}),
       itemLevel: item.itemLevel ?? 0,
       tag: qualityTagOf(item),
       specials: [

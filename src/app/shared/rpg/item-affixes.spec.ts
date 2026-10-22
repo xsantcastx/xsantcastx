@@ -4,10 +4,15 @@ import {
   AFFIX_KEYS,
   AFFIX_RARITY_MULT,
   IMPLICIT_BY_SLOT,
+  AFFIX_FAMILIES,
+  FAMILY_RULES,
+  affixFamilyOf,
+  familyRolls,
   affixCountFor,
   affixPoolFor,
   affixRange,
   rollAffixes,
+  type AffixFamily,
   type AffixSlot,
 } from './item-affixes';
 import { RARITY_MULT, mintEquipment, rollsAffixes, itemDefinitionById } from './item-definition';
@@ -43,7 +48,8 @@ describe('item-affixes (every item is a roll)', () => {
       for (const rarity of RARITIES) {
         for (let seed = 1; seed <= 40; seed++) {
           const roll = rollAffixes({ slot }, rarity, 20, seeded(seed));
-          const keys = Object.keys(roll.stats);
+          // The flat pair is one affix: its high end rides with its low end.
+          const keys = Object.keys(roll.stats).filter(k => k !== 'maxDamage');
           expect(roll.implicit).toBe(IMPLICIT_BY_SLOT[slot]);
           expect(keys).toContain(IMPLICIT_BY_SLOT[slot]);
           expect(new Set(keys).size).toBe(keys.length);
@@ -55,7 +61,7 @@ describe('item-affixes (every item is a roll)', () => {
   });
 
   it('rolls Movement Speed on feet only', () => {
-    expect(AFFIX_DEFS.moveSpeed.slots).toEqual(['feet']);
+    expect(FAMILY_RULES.armour.only?.moveSpeed).toEqual(['feet']);
     for (const slot of SLOTS.filter(s => s !== 'feet')) {
       expect(affixPoolFor(slot)).not.toContain('moveSpeed');
       expect(affixRange('moveSpeed', slot, 30, 'mythic')).toEqual([0, 0]);
@@ -70,7 +76,9 @@ describe('item-affixes (every item is a roll)', () => {
 
   it('grows ranges with item level and with rarity', () => {
     for (const key of AFFIX_KEYS) {
-      const slot = AFFIX_DEFS[key].slots[0];
+      const family = AFFIX_FAMILIES.find(f => familyRolls(f, key))!;
+      const slot = { family, slot: FAMILY_RULES[family].only?.[key]?.[0] ?? null };
+      if (key === 'skillRanks') continue; // whole ranks: a range of 1–2 does not grow by a rank every few levels
       const low = affixRange(key, slot, 1, 'rare');
       const high = affixRange(key, slot, 60, 'rare');
       expect(high[0]).withContext(key).toBeGreaterThan(low[0]);
@@ -121,7 +129,7 @@ describe('item-affixes (every item is a roll)', () => {
   });
 
   it('returns nothing for a definition with no gear slot', () => {
-    expect(rollAffixes({}, 'epic', 10, seeded(1))).toEqual({ stats: {}, quality: {}, implicit: null });
+    expect(rollAffixes({}, 'epic', 10, seeded(1))).toEqual({ stats: {}, quality: {}, implicit: null, family: null });
     expect(rollAffixes({ slot: 'charm1' }, 'epic', 10, seeded(1)).implicit).toBeNull();
   });
 
@@ -144,9 +152,10 @@ describe('item-affixes (every item is a roll)', () => {
       expect(Object.keys(item.stats).length).toBe(3);
     });
 
-    it('gives every slot a pool deep enough for a mythic\'s five affixes', () => {
-      for (const slot of Object.keys(IMPLICIT_BY_SLOT) as (keyof typeof IMPLICIT_BY_SLOT)[]) {
-        expect(affixPoolFor(slot).filter(k => k !== IMPLICIT_BY_SLOT[slot]).length).toBeGreaterThanOrEqual(5);
+    it('gives every family (in every slot it fills) a pool deep enough for a mythic\'s five affixes', () => {
+      for (const family of AFFIX_FAMILIES) for (const slot of SLOTS) {
+        const pool = affixPoolFor({ family, slot });
+        expect(pool.filter(k => k !== FAMILY_RULES[family].implicit).length).withContext(`${family} ${slot}`).toBeGreaterThanOrEqual(5);
       }
     });
 
@@ -174,13 +183,14 @@ describe('item-affixes (every item is a roll)', () => {
     const ELEMENT_KEYS = ['fireResist', 'coldResist', 'lightningResist', 'arcaneResist'] as const;
     const WARDED: AffixSlot[] = ['head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'];
 
-    it('rolls each element on armour and the trinket, never on the weapon; All Resist on the trinket only', () => {
+    it('rolls each element on armour, shields, quivers and rings, never on a weapon or a focus; All Resist on rings only', () => {
       for (const key of ELEMENT_KEYS) {
-        expect([...AFFIX_DEFS[key].slots].sort()).withContext(key).toEqual([...WARDED].sort());
+        for (const slot of WARDED) expect(affixPoolFor(slot)).withContext(`${key} ${slot}`).toContain(key);
+        for (const f of ['caster', 'martial', 'bow', 'focus'] as AffixFamily[]) expect(familyRolls(f, key)).withContext(`${key} ${f}`).toBeFalse();
         expect(affixPoolFor('weapon')).not.toContain(key);
         expect(affixRange(key, 'weapon', 40, 'mythic')).toEqual([0, 0]);
       }
-      expect(AFFIX_DEFS.allResist.slots).toEqual(['trinket']);
+      expect(AFFIX_FAMILIES.filter(f => familyRolls(f, 'allResist'))).toEqual(['jewel']);
       for (const slot of SLOTS.filter(s => s !== 'trinket')) expect(affixPoolFor(slot)).withContext(slot).not.toContain('allResist');
       for (let seed = 1; seed <= 60; seed++) {
         const weapon = rollAffixes({ slot: 'weapon' }, 'singular', 60, seeded(seed)).stats;

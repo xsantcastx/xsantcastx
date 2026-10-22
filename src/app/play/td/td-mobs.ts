@@ -31,7 +31,7 @@ import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
 import { ASHGUARD_SKILLS } from './td-ashguard-skills';
 import { LANTERN_SKILLS } from './td-lantern-skills';
 import { BANISH_BOSS, carriedLight, healOverTime, inDisc, lastLightClamp, lightBlow, shadowBorn, stepHeal, unmakes, type HealOverTime } from './td-lantern';
-import { NO_WEAPON_BONUS, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, type WeaponSwing } from './td-melee';
+import { NO_WEAPON_BONUS, arrowBlow, brandedBlow, ccSecs, guardedDefense, inArc, meleeBlow, strideEnd, vowClamp, type WeaponSwing } from './td-melee';
 import { THORN_SKILLS } from './td-thorn-skills';
 import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
@@ -2207,8 +2207,12 @@ export class MobSystem {
   rank(id: SkillId): number {
     // A Spellstone going off (useStone): the spell at the stone's own rank, whatever the trees hold.
     if (this.stone?.id === id) return this.stone.rank;
-    return castRank(id, this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1, this.relics);
+    return castRank(id, this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1, this.relics, this.gearRanks);
   }
+  /** A caster's worn +Spells (td-skills fightStats ranks): every learnt spell casts that many ranks higher. */
+  private gearRanksN = 0;
+  get gearRanks(): number { return this.gearRanksN; }
+  set gearRanks(n: number) { const k = Math.max(0, Math.floor(n) || 0); if (k !== this.gearRanksN) { this.gearRanksN = k; this.varsAt.clear(); } }
   /**
    * The worn boss uniques' signatures (shared/rpg/boss-uniques.ts relicTotals; the host hands them in): extra ranks,
    * a shorter Meteor, harder hits on constructs, more skeletons, more fire, ink, smoulder, more spears, more light.
@@ -2308,6 +2312,11 @@ export class MobSystem {
   /** Worn gear (td-skills fightStats): cast speed (fraction), crit chance (0..1), Defense, and the Keeper's level. */
   castSpeed = 0;
   crit = 0;
+  /** §3.6 (td-skills fightStats): a fighter's Life Steal share, worn Pierce points (the Thornstrider's), worn Block, and the worn damage % his beast bites by. */
+  leech = 0;
+  gearPierce = 0;
+  gearBlock = 0;
+  damagePct = 0;
   defense = 0;
   keeperLevel = 1;
   /** The Keeper's level pace as a factor (1 → 1.6): the raised walk at the Keeper's pace, as the pets do. */
@@ -2383,6 +2392,7 @@ export class MobSystem {
   /** Fractions of life the Watchfire and Ember Blood owe, paid out whole. */
   private regenOwed = 0;
   private bloodOwed = 0;
+  private leechOwed = 0;
   private auraT = 0;
   target: Mob | null = null;
   attacking = false;
@@ -2862,6 +2872,12 @@ export class MobSystem {
     }
     if (crit) this.effects.push({ kind: 'crit', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .15, dir: 1 });
     // Ember Blood (the Ashguard's passive): a share of every blow he lands comes back as life.
+    // Life Steal (worn, a fighter's: rpg/item-calling.ts): a share of every blow he lands comes back as life.
+    if (this.leech > 0 && foe.hp > 0) {
+      this.leechOwed += Math.min(dmg, foe.hp) * this.leech;
+      const whole = Math.floor(this.leechOwed);
+      if (whole > 0) { this.leechOwed -= whole; this.host.healPlayer(whole); }
+    }
     if (this.melee && this.rank('ember-blood') > 0 && foe.hp > 0) {
       this.bloodOwed += Math.min(dmg, foe.hp) * this.v('ember-blood')['pct'] / 100;
       const whole = Math.floor(this.bloodOwed);
@@ -2943,6 +2959,12 @@ export class MobSystem {
     const cursed = this.curseT > 0;
     const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
     let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, atk ?? this.keeperLevel, resists);
+    // A worn shield's Block (§3.6): the blow is turned aside whole.
+    if (n > 0 && this.gearBlock > 0 && Math.random() < this.gearBlock) {
+      this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
+      this.float(p.x, p.y - 34, '0', '#e0b25a');
+      return;
+    }
     // (Defense is read against the attacker's level, D2's way: worn armour holds better in a zone below the Keeper.)
     if (this.melee && n > 0) {
       // The Shield Oath turns a share of blows aside whole; the Watch Cry's guard takes a share off the rest.
@@ -3033,7 +3055,7 @@ export class MobSystem {
     if (foe.hp <= 0 || !this.mobs.includes(foe)) return { landed: false, killed: false };
     this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
     // A Thornstrider's beast is one of the pack: its bite grows with him and with every Wild skill he holds.
-    if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) });
+    if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) }) * (1 + this.damagePct / 100);
     this.hurtMob(foe, Math.max(1, Math.round(dmg)), this.thorn ? '#9af0d0' : '#ffd98a');
     return { landed: true, killed: foe.hp <= 0 };
   }
@@ -3308,7 +3330,7 @@ export class MobSystem {
    * worn the kit's hunting bow looses it exactly as the book shows (bare hands are not a bow's).
    */
   shotBlow(min: number, max: number, roll: () => number = Math.random): number {
-    return meleeBlow(min, max, 100, roll, { flat: 0, mult: this.handMult });
+    return arrowBlow(min, max, roll, this.weaponSwing, this.handMult);
   }
 
   /** The basic attack: one swing of the Watch Blade in an arc toward the foe (the Ember Brand lights it while it burns). */
@@ -3602,7 +3624,7 @@ export class MobSystem {
     this.arrows.push({
       x: sx, y: sy, vx: Math.cos(aim) * ARROW_SPEED, vy: Math.sin(aim) * ARROW_SPEED, age: 0, life: (this.range + 2 * TILE) / ARROW_SPEED,
       dmg: dmg * (1 + (hw?.['pct'] ?? 0) / 100), to: o.angle === undefined ? foe : null, hit: [],
-      pierce: o.pierce ?? tv['pierce'] + (hw?.['pierce'] ?? 0), knock: tv['knock'], ...(o.barb ? { barb: o.barb } : {}),
+      pierce: o.pierce ?? tv['pierce'] + (hw?.['pierce'] ?? 0) + this.gearPierce, knock: tv['knock'], ...(o.barb ? { barb: o.barb } : {}),
     });
     this.loosed++;
     this.effects.push({ kind: 'loose', x: sx, y: sy, age: 0, life: .2, dir: face, a: aim });
@@ -3707,14 +3729,14 @@ export class MobSystem {
     if (id === 'barbed-shot') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
-      this.looseArrow(foe, rnd(v['min'], v['max']), { barb: { dps: v['dps'], secs: v['secs'] } });
+      this.looseArrow(foe, arrowBlow(v['min'], v['max'], Math.random, this.weaponSwing), { barb: { dps: v['dps'], secs: v['secs'] } });
       this.host.swung(foe);
     } else if (id === 'volley') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       const aim = Math.atan2(foe.y - foe.def.h / 2 - (p.y - 20), foe.x - (p.x + face * 7));
       // A volley's arrows fly where they are aimed: each strikes the first foe in its own line, none of them pierce.
-      for (const a of fanAngles(aim, v['count'], 11)) this.looseArrow(foe, rnd(v['min'], v['max']), { angle: a, pierce: 0 });
+      for (const a of fanAngles(aim, v['count'], 11)) this.looseArrow(foe, arrowBlow(v['min'], v['max'], Math.random, this.weaponSwing), { angle: a, pierce: 0 });
       this.host.swung(foe);
     } else if (id === 'command') {
       const reach = Math.max(this.range, THORN_PET.commandReach);
