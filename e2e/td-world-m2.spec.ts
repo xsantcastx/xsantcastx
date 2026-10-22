@@ -119,6 +119,8 @@ test('M2: a party, an instant drop picked up by the other, a fast trade, and a r
   console.log(`# m2 drop: on the other Keeper's ground ${dropSeen} ms after the Drop click (local room)`);
   expect(dropSeen).toBeLessThan(1500);
   await shot(bryn, 'drop-seen');
+  // The dropper's satchel lets go at once — not when the escrow lands (owner hotfix 2026-10-22).
+  await expect(page.locator('#satchel-book .pocket[aria-label^="Ember Charm"]'), 'the dropped charm left the satchel').toHaveCount(0, { timeout: 1000 });
   // The escrow lands behind it: the charm leaves Aster's save.
   await expect.poll(() => save(page), { timeout: 15000 }).toEqual({ names: ['Ash Blade'], gold: 300 });
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
