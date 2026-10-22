@@ -23,7 +23,7 @@ Design and the full tables: `docs/design/loot-and-combat.md` §3.6.
   `block`, `ranks`, `damagePct`. `castRank(…, allRanks)` adds +Spells.
 - `src/app/play/td/td-melee.ts` — `weaponSwing` (`blade` for a melee weapon, `arrow` for a bow), `meleeBlow`, `arrowBlow`.
 - `src/app/play/td/td-mobs.ts` — small: Life Steal in `hitFoe`, Block in `biteKeeper`, gear Pierce in `looseArrow`, the
-  beast's bite ×(1 + Martial Damage), arrows through `arrowBlow`, `gearRanks`.
+  beast's bite ×(1 + half the Martial Damage), arrows through `arrowBlow`, `gearRanks`.
 - The card: side-scroller `itemTip` + template + `side-scroller.component.c.css` (`.d2tip__calling`, `.dim`, `.d2tip__old`).
 
 ## Old items (decision)
