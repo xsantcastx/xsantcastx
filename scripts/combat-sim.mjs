@@ -159,7 +159,7 @@ export const PATHS = {
 /** The bar each vocation wants, best first; the first four it holds a rank in go on the keys. */
 const BARS = {
   warlock: ['meteor', 'hellfire-nova', 'ember-curse', 'dark-ward', 'drain-life'],
-  ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'shield-oath', 'shield-bash', 'ash-stride'],
+  ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'shield-oath', 'ash-stride', 'shield-bash'],
   lanternwright: ['banish', 'lamp-wisp', 'hearthlight', 'dawn-at-noon', 'beacon', 'blinding-flash', 'lantern-ward'],
   thornstrider: ['barbed-shot', 'volley', 'command', 'stampede', 'call-of-the-wilds', 'thornroot-snare'],
 };
@@ -478,6 +478,12 @@ function packOf(rank, seed) {
 
 const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
 const median = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+/**
+ * The interquartile mean: the mean of the middle half of the runs (7–18 of 24). A time band reads this, not the
+ * median — the runs of a cell often fall in two clusters (a pack with or without its follower in the arc), and a
+ * median sitting in the gap between them flipped on a two-tick change anywhere in the fight (2026-10-22).
+ */
+const iqm = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y), lo = Math.floor(s.length / 4), hi = Math.max(lo + 1, s.length - lo); return mean(s.slice(lo, hi)); };
 
 /** Many seeded attempts at one encounter, each with a freshly rolled Keeper (his gear varies run to run). */
 function attempts(voc, level, tier, encOf, runs, resist = null) {
@@ -488,7 +494,7 @@ function attempts(voc, level, tier, encOf, runs, resist = null) {
   }
   const won = out.filter(r => r.cleared);
   return {
-    ttk: median(won.map(r => r.secs)), ttkMean: mean(won.map(r => r.secs)),
+    ttk: iqm(won.map(r => r.secs)), ttkMedian: median(won.map(r => r.secs)), ttkMean: mean(won.map(r => r.secs)),
     death: out.filter(r => r.died).length / out.length, timeout: out.filter(r => !r.died && !r.cleared).length / out.length,
     hpPots: mean(out.map(r => r.used.hp)), manaPots: mean(out.map(r => r.used.mana)),
     /** Life lost in the fight, in whole bars of his life (a kiting Keeper must still lose some to every boss). */
@@ -603,6 +609,11 @@ function gapCell(voc, level, gap, count, runs) {
 
 export const BANDS = {
   normal: [2, 5], champion: [15, 40], unique: [30, 75], boss: [60, 150], seam: [120, 240],
+  /**
+   * The Ashguard's floor on a pack band, × the band's: his blade strikes the whole arc, so he clears a pack in about
+   * half the ranged vocations' time — his identity (owner 2026-10-21, skill-trees.md), not a bug to tune away.
+   */
+  ashPackFloor: .75,
   /** Death-rate ceilings: a creature at his level (near never), a pack, a first attempt at a boss / the Seam Eater. */
   normalDeath: .02, packDeath: .1, bossDeath: .3, seamDeath: .3,
   /** A kiting ranged Keeper is struck at least this many times a boss fight (no boss can be walked away from). */
@@ -689,19 +700,19 @@ if (argv.json) { console.log(JSON.stringify(table, null, 1)); process.exit(0); }
 const fails = [];
 const say = argv.check && !argv.verbose ? () => undefined : console.log;
 say(`Combat sim · the real MobSystem · ${RUNS} seeded runs a cell · dodge ${DODGE * 100}% of tells · ${fmt(secs, 0)} s\n`);
-say('Per level: time to kill (median s) · death rate · potions (life+mana) · hunt XP/h · Gold/h · kills/h');
+say('Per level: time to kill (s, interquartile mean) · death rate · potions (life+mana) · hunt XP/h · Gold/h · kills/h');
 say('voc            L   creatures hunted    normal         champion pack   unique pack     hunt XP/h  Gold/h  kills/h  falls/h');
 for (const voc of VOCATIONS) for (const L of levels) {
   const c = table[voc].levels[L];
   const row = x => `${fmt(x.ttk).padStart(5)}s ${pct(x.death).padStart(4)} ${fmt(x.hpPots + x.manaPots).padStart(3)}`;
   say(`${voc.padEnd(14)} ${String(L).padStart(2)}  ${c.normal.id.padEnd(18)} ${row(c.normal)}  ${row(c.champion)}  ${row(c.unique)}  ${k1(c.hunt.xph).padStart(8)}  ${k1(c.hunt.goldh).padStart(6)}  ${fmt(c.hunt.killsh, 0).padStart(6)}  ${fmt(c.hunt.deathsh, 2).padStart(6)}`);
 }
-say('\nBosses at their level, Normal: time to kill (median s) · first-attempt death rate · potions · life lost (bars) · blows that reached him');
+say('\nBosses at their level, Normal: time to kill (s, interquartile mean) · first-attempt death rate · potions · life lost (bars) · blows that reached him');
 say(`${'boss'.padEnd(20)} L   ${VOCATIONS.map(v => v.padEnd(22)).join('')}`);
 for (let i = 0; i < BOSSES.length; i++) {
   say(`${BOSSES[i].id.padEnd(20)} ${String(BOSSES[i].level).padStart(2)}  ${VOCATIONS.map(v => { const b = table[v].bosses[i]; return `${fmt(b.ttk, 0).padStart(4)}s ${pct(b.death).padStart(4)} ${fmt(b.hpPots + b.manaPots).padStart(3)} ${fmt(b.taken, 1).padStart(3)} ${fmt(b.struck, 0).padStart(3)} `; }).join('')}`);
 }
-say('\nThe Seam Eater (Normal: the Keeper at its level; Nightmare +5 and Hell +15 levels, in resist gear): time to kill (median s) · death rate');
+say('\nThe Seam Eater (Normal: the Keeper at its level; Nightmare +5 and Hell +15 levels, in resist gear): time to kill (s, interquartile mean) · death rate');
 for (let i = 0; i < table.warlock.seam.length; i++) {
   const s = table.warlock.seam[i];
   say(`  L${String(s.level).padEnd(3)} K${String(s.keeper).padEnd(3)} ${s.tier.padEnd(10)} ${VOCATIONS.map(v => { const x = table[v].seam[i]; return `${v.slice(0, 5)} ${fmt(x.ttk, 0).padStart(4)}s ${pct(x.death).padStart(4)}`; }).join('   ')}`);
@@ -721,8 +732,9 @@ for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);
   if (c.normal.death > BANDS.normalDeath) fails.push(`${voc} L${L}: a creature at his level kills him ${pct(c.normal.death)} of the time`);
-  if (!inBand(c.champion.ttk, BANDS.champion)) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${BANDS.champion.join('–')} s)`);
-  if (!inBand(c.unique.ttk, BANDS.unique)) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${BANDS.unique.join('–')} s)`);
+  const pack = band => voc === 'ashguard' ? [band[0] * BANDS.ashPackFloor, band[1]] : band;
+  if (!inBand(c.champion.ttk, pack(BANDS.champion))) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${pack(BANDS.champion).join('–')} s)`);
+  if (!inBand(c.unique.ttk, pack(BANDS.unique))) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${pack(BANDS.unique).join('–')} s)`);
   for (const [what, x] of [['champion pack', c.champion], ['unique pack', c.unique]]) if (x.death > BANDS.packDeath) fails.push(`${voc} L${L}: a ${what} kills him ${pct(x.death)} of the time (≤ ${pct(BANDS.packDeath)})`);
 }
 for (const voc of VOCATIONS) table[voc].bosses.forEach(b => {
