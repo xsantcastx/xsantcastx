@@ -2466,10 +2466,14 @@ export class MobSystem {
   sees(m: { x: number; y: number }): boolean { const p = this.host.player(); return this.sight.sees(p.x, p.y, m.x, m.y); }
   /** Does something centred at (x, y) reach this creature: open ground under the centre and a clear line to its feet. */
   private reaches(x: number, y: number, m: { x: number; y: number }): boolean { return !this.sight.wallAt(x, y - 1) && this.sight.sees(x, y, m.x, m.y); }
-  /** A shot's ground track from (x0, g0) to (x1, g1): the first point of it inside a wall, or null (looked at every 6 px, so nothing quick slips through a tile). */
+  /**
+   * A shot's ground track from (x0, g0) to (x1, g1): the first point of it inside a wall, or null (looked at every 6 px, so
+   * nothing quick slips through a tile). The track is read a pixel above the ground, as `reaches` reads feet: a Keeper
+   * whose feet rest on a tile seam (y a hair past 400) must not have every flare break on the wall row below him.
+   */
   private wallOn(x0: number, g0: number, x1: number, g1: number): { x: number; y: number; k: number } | null {
     const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, g1 - g0) / 6));
-    for (let i = 1; i <= n; i++) { const k = i / n, x = x0 + (x1 - x0) * k, y = g0 + (g1 - g0) * k; if (this.sight.wallAt(x, y)) return { x, y, k }; }
+    for (let i = 1; i <= n; i++) { const k = i / n, x = x0 + (x1 - x0) * k, y = g0 + (g1 - g0) * k; if (this.sight.wallAt(x, y - 1)) return { x, y, k }; }
     return null;
   }
   /** A shot breaking on a wall: a puff of grit at (x, y) (its picture's height), in the shot's colour. */
