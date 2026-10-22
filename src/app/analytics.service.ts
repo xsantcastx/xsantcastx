@@ -1,12 +1,10 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import type { Analytics } from 'firebase/analytics';
 import { environment } from '../environments/environment';
 import { ConsentService } from './consent.service';
 import { AnalyticsDebugService } from './analytics-debug.service';
 
-type AnalyticsApi = typeof import('firebase/analytics');
+type Gtag = (...args: unknown[]) => void;
 
 export interface CustomEventData {
   [key: string]: string | number | boolean;
@@ -30,10 +28,8 @@ export class AnalyticsService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
-  private analyticsRef: Analytics | null = null;
-  private api: AnalyticsApi | null = null;
-  private queue: Array<() => void> = [];
-  private loader: Promise<void> | null = null;
+  private loaded = false;
+  private readonly measurementId = environment.firebase.measurementId;
 
   constructor() {
     // Initialize consent service to set up gtag
@@ -52,71 +48,55 @@ export class AnalyticsService {
   }
 
   /**
-   * Load the Analytics SDK on first real use, then replay anything queued.
+   * Run a gtag command, loading gtag.js on first real use.
    *
-   * This was `inject(Analytics)` from @angular/fire, and before that a
-   * constructor injection. Two separate costs were being paid: resolving the
-   * token booted Firebase Analytics (and gtag.js, ~150 kB) — fixed upstream by
-   * deferring the injection — and, separately, `@angular/fire/analytics`
-   * *statically imports* `@angular/fire/auth`, so merely referencing the module
-   * put the ~100 kB auth SDK in the initial chunk for a site whose only
-   * sign-in lives on /guestbook and /admin. Talking to the raw modular SDK
-   * behind a dynamic import removes both.
+   * Google Consent Mode v2, "advanced": ConsentService sets every storage
+   * signal to denied before anything loads, and gtag.js is then fetched for
+   * every visitor. Without consent it sends cookieless pings (no client id, no
+   * cookies, no storage), which GA uses to model the traffic it cannot see;
+   * once the banner is accepted the same tag upgrades to full measurement.
    *
-   * Calls made before the SDK lands are queued, so every public track*()
-   * method keeps its synchronous fire-and-forget signature.
+   * Talks to gtag directly rather than through `firebase/analytics`: the
+   * Firebase SDK also writes a Firebase Installations id to IndexedDB, which a
+   * visitor who declined must not get. gtag() only pushes onto dataLayer, so
+   * calls made before the script lands are replayed by gtag.js itself, and the
+   * script tag is injected in an idle window to keep it off the critical path.
    */
-  private enqueue(run: (api: AnalyticsApi, analytics: Analytics) => void): void {
-    if (!this.isBrowser) return;
-
-    if (this.api && this.analyticsRef) {
-      run(this.api, this.analyticsRef);
-      return;
-    }
-
-    this.queue.push(() => {
-      if (this.api && this.analyticsRef) run(this.api, this.analyticsRef);
-    });
+  private enqueue(run: (gtag: Gtag) => void): void {
+    if (!this.isBrowser || !window.gtag || !this.measurementId) return;
     this.load();
+    run(window.gtag as Gtag);
   }
 
   private load(): void {
-    if (this.loader) return;
-
-    this.loader = import('firebase/analytics')
-      .then(async (api) => {
-        // Analytics needs cookies + IndexedDB; bail cleanly where it can't run.
-        if (!(await api.isSupported())) {
-          this.queue.length = 0;
-          return;
-        }
-        const app = getApps().length ? getApp() : initializeApp(environment.firebase);
-        this.api = api;
-        this.analyticsRef = api.getAnalytics(app);
-        this.queue.splice(0).forEach(fn => fn());
-      })
-      .catch((err) => {
-        console.warn('[Analytics] unavailable:', err);
-        this.queue.length = 0;
-      });
+    if (this.loaded) return;
+    this.loaded = true;
+    const gtag = window.gtag as Gtag;
+    gtag('js', new Date());
+    // page_view is logged by TitleStrategy on every navigation; an automatic
+    // one here would count the landing page twice.
+    gtag('config', this.measurementId, { send_page_view: false });
+    this.whenIdle(() => {
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(this.measurementId)}`;
+      document.head.appendChild(script);
+    });
   }
 
-  /** Consent-gated event log. */
+  /** DNT-gated event log; consent decides what gtag stores, not whether it pings. */
   private log(name: string, params?: Record<string, any>): void {
     if (!this.canTrack()) return;
-    this.enqueue((api, analytics) => api.logEvent(analytics, name as any, params as any));
+    this.enqueue((gtag) => gtag('event', name, params ?? {}));
   }
 
   /**
-   * Consent is checked BEFORE anything touches the SDK, and the order
-   * matters: loading it has the side effect of booting Firebase Analytics.
-   * With the old ordering, a visitor who never accepted the cookie banner
-   * still paid for gtag.js on every page — consent mode denied what it
-   * *stored*, not what it *downloaded*. Now neither the SDK chunk nor the
-   * script is fetched until the user has actually opted in.
+   * Whether to measure at all. Consent no longer gates this — Consent Mode
+   * does, inside gtag — but Do Not Track still does, and a declined visitor is
+   * never given an identifier (see setUserId).
    */
   private canTrack(): boolean {
-    return this.isBrowser && !this.doNotTrack() && this.consentService.hasConsent();
+    return this.isBrowser && !this.doNotTrack();
   }
 
   /**
@@ -129,7 +109,7 @@ export class AnalyticsService {
    * the one we interrupted them for.
    *
    * Checked inside `canTrack()` rather than at each call site so it also gates
-   * the SDK *load* — `enqueue()` is what resolves `firebase/analytics` and pulls
+   * the script *load* — `enqueue()` is what pulls
    * gtag.js, so a DNT browser now never downloads it, rather than downloading it
    * and then declining to log through it.
    *
@@ -245,7 +225,7 @@ export class AnalyticsService {
   setUserProperties(properties: UserProperties): void {
     if (!this.canTrack()) return;
 
-    this.enqueue((api, analytics) => api.setUserProperties(analytics, properties));
+    this.enqueue((gtag) => gtag('set', 'user_properties', properties));
     this.debugService.logEvent('user_properties_set', properties);
   }
 
@@ -253,9 +233,9 @@ export class AnalyticsService {
    * Set user ID for logged-in users (only after consent)
    */
   setUserId(userId: string): void {
-    if (!this.canTrack()) return;
+    if (!this.canTrack() || !this.consentService.hasConsent()) return;
 
-    this.enqueue((api, analytics) => api.setUserId(analytics, userId));
+    this.enqueue((gtag) => gtag('set', { user_id: userId }));
     this.debugService.logEvent('user_id_set', { user_id: userId });
   }
 
@@ -265,7 +245,7 @@ export class AnalyticsService {
   clearUserId(): void {
     if (!this.canTrack()) return;
 
-    this.enqueue((api, analytics) => api.setUserId(analytics, null));
+    this.enqueue((gtag) => gtag('set', { user_id: null }));
     this.debugService.logEvent('user_id_cleared', {});
   }
 
