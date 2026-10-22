@@ -29,9 +29,14 @@ export class ConsentService {
     window.dataLayer = window.dataLayer || [];
 
     // Define gtag function
-    window.gtag = function(...args: any[]) {
-      window.dataLayer.push(args);
-    };
+    // Must push the `arguments` object, never a rest-parameter array: gtag.js
+    // only treats Arguments entries as commands and silently ignores arrays, so
+    // `(...args) => push(args)` loaded the script but never sent a single hit
+    // (GA showed zero traffic).
+    window.gtag = function() {
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer.push(arguments);
+    } as any;
   }
 
   private setDefaultConsent(): void {
