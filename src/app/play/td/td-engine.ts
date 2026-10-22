@@ -604,7 +604,16 @@ export class TopDownEngine {
     // The Lanternwright's e2e (webdriver only): a creature at the Keeper's side (at his level or its own, the lower: no
     // level gap in the way of the spells it tests), a wound to mend, the lantern's count.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdLamp'] = {
-      foe: (type = 'bone-walker', dx = 40) => { const def = MOBS[type] && atZoneLevel(MOBS[type], Math.min(MOBS[type].level, this.mobs.keeperLevel)); if (!def) return null; const p = this.player; this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
+      // At dx east of the Keeper — or, when a wall stands there or between (walls stop sight and flares since td-sight),
+      // the first open spot the same distance off that he can see (as __tdThorn's): a creature he cannot see he cannot fell.
+      foe: (type = 'bone-walker', dx = 40) => {
+        const def = MOBS[type] && atZoneLevel(MOBS[type], Math.min(MOBS[type].level, this.mobs.keeperLevel)); if (!def) return null;
+        const p = this.player, d = Math.abs(dx) || 1;
+        const tries: [number, number][] = [[dx, 0], [-dx, 0], [0, d], [0, -d], [d * .7, d * .7], [-d * .7, d * .7], [d * .7, -d * .7], [-d * .7, -d * .7]];
+        const at = tries.find(([x, y]) => footFree(this.level, p.x + x, p.y + y) && this.petSees(p.x, p.y, p.x + x, p.y + y) && this.mobs.sees({ x: p.x + x, y: p.y + y })) ?? [dx, 0];
+        this.mobs.place(`fx-lamp:${type}:${Math.round(this.time * 100)}:${this.mobs.mobs.length}`, def, p.x + at[0], p.y + at[1]);
+        return this.mobs.mobs.length;
+      },
       foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-lamp:')).length,
       calm: () => { for (const m of this.mobs.mobs) if (m.key.startsWith('fx-lamp:')) { m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 1e9; } },
       wound: (n: number) => { this.hp = Math.max(1, this.hp - n); return this.hp; },
