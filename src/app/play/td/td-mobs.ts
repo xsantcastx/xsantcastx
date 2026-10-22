@@ -2023,6 +2023,12 @@ export interface Drop {
   age: number;
   /** The corpse it lies beside (td-corpse.ts): the corpse window lists the drops that carry its id. */
   corpse?: string;
+  /**
+   * The room's ground (protocol 7, play/social/world-protocol.ts): the room rolled it and owns it. Never taken by
+   * walking over it alone — a pick asks the room (onRoomTake), which hands it to the first Keeper allowed to have it.
+   * `hold`: seconds before this Keeper may take it (another Keeper's kill, still theirs); `wait`: after a refusal.
+   */
+  room?: { hold: number; wait: number };
 }
 
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
@@ -2204,6 +2210,11 @@ export class MobSystem {
   others: readonly CoopKeeper[] = [];
   /** The host is in a menu (its world keeps running for the others): its creatures neither hunt nor strike it. */
   selfAway = false;
+  /**
+   * The room-run world (protocol 7, play/world/room-world.ts): the room has no Keeper of its own, so a kill it never
+   * fought itself still rolls its loot here — once, for everyone (the room owns that ground).
+   */
+  roomLoot = false;
   /** Whose blow is landing now (applyClaim: a member's id; '' for this Keeper's own). */
   private claimFrom = '';
   readonly drops: Drop[] = [];
@@ -2889,7 +2900,11 @@ export class MobSystem {
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const g = this.drops[i];
       g.age += dt;
-      if (g.age > DESPAWN) { this.drops.splice(i, 1); continue; }
+      // The room's ground (protocol 7) lies as long as the room says; it is taken only when this Keeper may have it.
+      if (g.room) {
+        g.room.hold = Math.max(0, g.room.hold - dt); g.room.wait = Math.max(0, g.room.wait - dt);
+        if (g.room.hold > 0 || g.room.wait > 0) continue;
+      } else if (g.age > DESPAWN) { this.drops.splice(i, 1); continue; }
       // Coins come to the Keeper (a Warlock kills from afar); gear and materials wait to be walked to.
       if (g.coins > 0 && g.age > .6) {
         const dx = p.x - g.x, dy = p.y - g.y, d = Math.hypot(dx, dy);
@@ -4154,14 +4169,14 @@ export class MobSystem {
     const by = m.coopBy ? [...m.coopBy].filter(i => i) : [];
     const fought = !this.coop || !m.coopBy || m.coopBy.has('');
     if (this.coop) this.coop.killed(m, by);
-    this.spoils(m, fought ? 'own' : 'share', undefined, this.leaveCorpse(m).id);
+    this.spoils(m, fought || this.roomLoot ? 'own' : 'share', undefined, this.leaveCorpse(m).id);
   }
   /**
    * What a fall pays this Keeper (onKill: Hunting XP, the Bestiary, the tasks) and leaves on the ground (Gold, materials,
    * gear: personal loot). `own`: a kill of its own; `coop`: a shared creature it fought, felled on the host (never
    * announced again to the party); `share`: it was there but did not fight (the party share, no loot).
    */
-  private spoils(m: Mob, mode: 'own' | 'coop' | 'share', baseHp = m.coopBase ?? m.def.hp, corpseId = ''): void {
+  private spoils(m: Mob, mode: 'own' | 'coop' | 'share', baseHp = m.coopBase ?? m.def.hp, corpseId = '', loot = true): void {
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
     const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
     // Night and the eclipse pay a little more (td-phases.ts): Hunting XP and the Gold pile, in the open wilds.
@@ -4173,7 +4188,8 @@ export class MobSystem {
     // XP follows the creature's own authored life: not the tier's multiple of it (the tier pays in drops, its blurb says
     // so), nor td-life's (the life a creature rises with is the fight's), nor a shared boss's party scaling (baseHp).
     this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: Math.round(baseHp / this.tier.hp / lifeScale(m.def.level, m.def.rank) / (m.def.tough ?? 1)), ...(xpK !== 1 ? { xp: xpK } : {}), ...(mode === 'coop' ? { coop: true } : {}), ...(mode === 'share' ? { share: true } : {}) });
-    if (mode === 'share') return;
+    // A room-run world's kill (protocol 7): the room rolled the loot once, for everyone; nothing is rolled here.
+    if (mode === 'share' || !loot) return;
     const firstDrop = this.drops.length;
     // The ground loot: a Gold pile with the creature's materials, and whatever gear the host rolls for the kill.
     // The pile is Diablo II's: it follows the creature's level and rank, ± 40 % (economy-curve HUNT_GOLD).
@@ -4230,7 +4246,7 @@ export class MobSystem {
    * A member: the host's creature fell. It leaves the world here (a corpse, its spawn resting), and when this Keeper
    * fought it, its own spoils: full Hunting XP and personal loot (`baseHp`: its own life, before any party scaling).
    */
-  coopFell(m: Mob, full: boolean, baseHp: number): void {
+  coopFell(m: Mob, full: boolean, baseHp: number, loot = true): string {
     const i = this.mobs.indexOf(m);
     if (i >= 0) this.mobs.splice(i, 1);
     if (this.target === m) this.target = null;
@@ -4239,10 +4255,11 @@ export class MobSystem {
     this.corpses.push({ x: m.x, y: m.y, at: this.clock });
     if (this.corpses.length > 12) this.corpses.shift();
     const corpseId = this.leaveCorpse(m).id;
-    if (!full) return;
+    if (!full) return corpseId;
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
-    this.spoils(m, 'coop', baseHp, corpseId);
+    this.spoils(m, 'coop', baseHp, corpseId, loot);
+    return corpseId;
   }
   /** The host: a boss's life for `present` Keepers of the party here (keeping its wounded share). */
   scaleBoss(m: Mob, max: number, present: number): void {
@@ -4266,6 +4283,14 @@ export class MobSystem {
   }
   /** Is a spawn resting after a fall (a new host must not raise it again at once)? */
   resting(key: string): boolean { return (this.deadUntil.get(key) ?? 0) > this.clock; }
+  /** The spawns resting now, with the seconds each has left (the room-run world keeps them across a sleep). */
+  restingList(): [string, number][] {
+    const out: [string, number][] = [];
+    for (const [k, t] of this.deadUntil) if (t > this.clock) out.push([k, Math.round((t - this.clock) * 10) / 10]);
+    return out;
+  }
+  /** Rest a spawn `secs` more (a woken room-run world: its spawns fallen before the sleep stay down their time). */
+  rest(key: string, secs: number): void { if (secs > 0) this.deadUntil.set(key, Math.max(this.deadUntil.get(key) ?? 0, this.clock + secs)); }
 
   // ── Corpses (td-corpse.ts) ──
   /** Lay the fallen creature where it fell. Every Keeper of a party sees the host's kill, so each lays the same corpse. */
@@ -4311,6 +4336,15 @@ export class MobSystem {
   }
 
   private pick(g: Drop, i: number): void {
+    if (g.room) {
+      // The room's ground (protocol 7): it leaves this screen at once (optimistic), the room is asked, and the HUD
+      // grants it when the room says yes — or puts it back (restoreRoomDrop) when someone else was first.
+      if (g.room.hold > 0 || g.room.wait > 0 || !this.host.options.onRoomTake) return;
+      this.drops.splice(i, 1);
+      this.float(g.x, g.y - 10, g.coins > 0 ? `+${g.coins} Gold` : g.label, g.color);
+      this.host.options.onRoomTake(g);
+      return;
+    }
     const ok = this.host.options.onLoot?.({
       id: g.id, coins: g.coins, ore: g.material ? g.qty : 0, ...(g.material ? { material: g.material } : {}),
       ...(g.item ? { item: g.item } : {}), ...(g.rune ? { rune: g.rune } : {}),

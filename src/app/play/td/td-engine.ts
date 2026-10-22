@@ -13,7 +13,7 @@
  * top-down world has no use for yet are no-ops (see createTopDownEngine).
  */
 import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
-import type { StationDef } from '../world/world.model';
+import type { LootRarity, StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
@@ -130,6 +130,7 @@ import { chestSetPiece } from '../../shared/rpg/set-items';
 import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
 import { TdCoop, type CoopRole } from './td-coop';
 import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
+import type { WorldDrop } from '../social/world-protocol';
 import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
 import type { RemoteKeeper } from '../engine/engine';
 import { relicSigOf } from '../../shared/rpg/unique-items';
@@ -409,6 +410,10 @@ export class TopDownEngine {
   private showcase: Drop[] = [];
   /** Items other Keepers (or this one) left on the ground, as the Hearth relays them (protocol 6; play/trade). */
   private shared: Drop[] = [];
+  /** Protocol 7: room ground ids gone for good here (taken, crumbled), and those asked for and not yet answered. */
+  private readonly roomGone = new Set<string>();
+  private readonly roomTaking = new Set<string>();
+  private roomArea = '';
   private groundSeen = '';
   private tellSeen = '';
   /** The Seam-Cant line over the Keeper (design-bible §4.0): the last spell's words, their tone, and how long they have hung. */
@@ -756,6 +761,9 @@ export class TopDownEngine {
       pals: () => this.palsShown(),
       mine: () => this.myPals(),
       raise: (n = 2) => { for (let i = 0; i < n; i++) this.mobs.minions.push({ id: 9000 + i, x: this.player.x + (i ? -16 : 16), y: this.player.y + 6, hp: 40, maxHp: 40, dmg: [3, 5], cd: .6, t: 1, face: 1, life: Infinity, hit: 0, target: null }); return this.mobs.minions.length; },
+      // Protocol 7: the room's ground as this screen holds it, and a walk onto one piece of it (the real pick path).
+      ground: () => this.mobs.drops.filter(d => d.room).map(d => ({ id: d.id, x: Math.round(d.x), y: Math.round(d.y), coins: d.coins, label: d.label, hold: Math.round((d.room?.hold ?? 0) * 10) / 10, corpse: d.corpse ?? '' })),
+      walkTo: (id: string) => { const g = this.mobs.drops.find(d => d.id === id); if (!g) return false; this.player.x = g.x; this.player.y = g.y; return true; },
     };
   }
 
@@ -1396,6 +1404,8 @@ export class TopDownEngine {
   /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
   private coopRole(role: CoopRole): void {
     if (role === 'member') this.seam = null;
+    // The room's ground belongs to the area it was sent for: walking elsewhere leaves it behind.
+    if (this.roomArea && this.roomArea !== this.peerArea()) this.clearRoomGround();
     if (role !== this.coopRoleSeen) { this.coopRoleSeen = role; this.canvas.setAttribute('data-coop-role', role); }
   }
   /** The local Keeper is waving. */
@@ -3453,6 +3463,63 @@ export class TopDownEngine {
     const rung = (r: string): LootRung => (r in LOOT ? r as LootRung : 'common');
     this.shared = items.map(g => ({ id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: 1, item: { definitionId: g.def, rarity: rung(g.rarity), unique: false }, rarity: rung(g.rarity), label: g.name, color: LOOT[rung(g.rarity)].body, age: 99 }));
     this.canvas.setAttribute('data-ground', items.map(g => g.id).join(','));
+  }
+  /**
+   * Protocol 7 (play/social/world-protocol.ts): the room's ground in this area. Each piece lies among the fight's own
+   * drops (drawn, magnetised and picked the same way), marked `room`: a pick asks the room (onRoomTake) instead of
+   * granting. `items` replaces every room piece here; `add` and `gone` change it. A piece of another Keeper's kill
+   * waits (`hold`) until it is anyone's. Gone ids are remembered a while, so an answer racing an update cannot revive one.
+   */
+  setRoomGround(msg: { area: string; items?: readonly WorldDrop[]; add?: readonly WorldDrop[]; gone?: readonly string[] }, me: string): void {
+    const drops = this.mobs.drops;
+    if (msg.area !== this.peerArea()) { this.clearRoomGround(); return; }
+    this.roomArea = msg.area;
+    const lay = (g: WorldDrop): void => {
+      if (this.roomGone.has(g.id) || this.roomTaking.has(g.id)) return;
+      const i = drops.findIndex(d => d.id === g.id);
+      if (i >= 0) drops.splice(i, 1);
+      const hold = g.own.length && !g.own.includes(me) ? Math.max(0, g.free) / 1000 : 0;
+      drops.push({
+        id: g.id, x: g.x, y: g.y, coins: g.coins, qty: g.qty, ...(g.material ? { material: g.material } : {}),
+        ...(g.item ? { item: { definitionId: g.item.definitionId, rarity: g.item.rarity as LootRarity, unique: g.item.unique, ...(g.item.level ? { level: g.item.level } : {}) } } : {}),
+        ...(g.rune ? { rune: g.rune } : {}), ...(g.rarity ? { rarity: g.rarity as LootRarity } : {}), label: g.label, color: g.color, age: 1,
+        ...(this.coop.corpseOf(g.m) ? { corpse: this.coop.corpseOf(g.m) } : {}), room: { hold, wait: 0 },
+      });
+    };
+    if (msg.items) {
+      const keep = new Set(msg.items.map(g => g.id));
+      for (let i = drops.length - 1; i >= 0; i--) if (drops[i].room && !keep.has(drops[i].id)) drops.splice(i, 1);
+      for (const g of msg.items) lay(g);
+    }
+    for (const g of msg.add ?? []) lay(g);
+    for (const id of msg.gone ?? []) {
+      this.roomGone.add(id);
+      const i = drops.findIndex(d => d.id === id);
+      if (i >= 0) drops.splice(i, 1);
+    }
+    if (this.roomGone.size > 400) for (const id of [...this.roomGone].slice(0, 200)) this.roomGone.delete(id);
+    this.markRoomGround();
+  }
+  /** The room said no (someone else was first, not yet this Keeper's) or the satchel was full: the piece lies again. */
+  restoreRoomDrop(g: Drop, wait = 1.5): void {
+    this.roomTaking.delete(g.id);
+    if (this.roomGone.has(g.id) || this.mobs.drops.some(d => d.id === g.id)) return;
+    this.mobs.drops.push({ ...g, room: { hold: g.room?.hold ?? 0, wait } });
+    this.markRoomGround();
+  }
+  /** The room said yes: the piece is this Keeper's (it never comes back on a late update). */
+  tookRoomDrop(id: string): void { this.roomTaking.delete(id); this.roomGone.add(id); this.markRoomGround(); }
+  /** A piece is on its way to the room (picked, not yet answered). */
+  takingRoomDrop(id: string): void { this.roomTaking.add(id); }
+  private clearRoomGround(): void {
+    this.roomArea = '';
+    const drops = this.mobs.drops;
+    for (let i = drops.length - 1; i >= 0; i--) if (drops[i].room) drops.splice(i, 1);
+    this.markRoomGround();
+  }
+  private markRoomGround(): void {
+    const ids = this.mobs.drops.filter(d => d.room).map(d => d.id);
+    this.canvas.setAttribute('data-room-ground', String(ids.length));
   }
   /** Where shared ground items are drawn, in CSS pixels on the page (the e2e's tap target). */
   groundOnScreen(): { id: string; x: number; y: number }[] {

@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { clean, nameIsRude } from './social-words.mjs';
 import { fakeVerifier, firebaseVerifier, firestoreStore, memoryStore } from './social-identity.mjs';
+import { createWorldRooms, loadWorldSim } from './social-world.mjs';
 
 // Social presence only. Combat, inventory, and rewards remain local to each game.
 //
@@ -36,7 +37,14 @@ import { fakeVerifier, firebaseVerifier, firestoreStore, memoryStore } from './s
 // the trade Function does, in one Firestore transaction, when both Keepers confirm the same terms. Ground drops are
 // escrowed by the same Function; the room only tells everyone in the area what lies there (checked against the
 // escrow document when the store can read it). A client says `trade: true` on join; an older one never does.
-export const PROTOCOL = 6;
+//
+// Protocol 7 (2026-10-22, the room simulates; docs/design/online.md "Phase 8"): in a world area (the Seamworks island
+// first) the room itself hosts the creatures — the game's own simulation, run here (social-world.mjs, room-world.ts) —
+// and streams them on the protocol-5 wire from the host id '@room' to every Keeper there, party or not. Blows are
+// `/coop/hits` claims the room weighs; loot is rolled once, here, and taken from the room's ground (`/world/take`,
+// first allowed Keeper wins). A client says `world: true` on join; an older one never does and keeps simulating its
+// own creatures as in protocol 6. Party co-op (protocol 5) runs on everywhere else.
+export const PROTOCOL = 7;
 export const FRIENDS_MAX = 200;
 export const BLOCKS_MAX = 100;
 /** How long a friend request stands (ms). */
@@ -209,7 +217,7 @@ export function coopHit(raw) {
  * `verify`: (idToken) => Promise<{uid, anonymous}> (null: nobody is signed in, every Keeper is a guest — the room
  * before its project is configured). `store`: bans, friends, blocks and reports (social-identity.mjs).
  */
-export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {}, extraRoutes = null } = {}) {
+export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http://localhost:4317', 'http://127.0.0.1:4183', 'http://localhost:4183'], maxClients = 32, idleMs = 45000, publishMs = 100, now = Date.now, verify = null, store = memoryStore(), log = () => {}, extraRoutes = null, world = null } = {}) {
   const sessions = new Map();
   const messages = [];
   /** Friend requests by id (in memory; they lapse): from/to uids, the sender's name and player id. */
@@ -554,7 +562,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     const byArea = new Map();
     for (const s of coopSessions(p)) {
       const area = coopAreaOf(s);
-      if (!area) continue;
+      // Protocol 7: where the room hosts, a Keeper of the room-run world is never elected (nor counted as a member).
+      if (!area || rooms.inWorld(s)) continue;
       if (!byArea.has(area)) byArea.set(area, []);
       byArea.get(area).push(s);
     }
@@ -578,19 +587,35 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     const hosts = coopHosts.get(p.id) ?? new Map();
     const areas = {};
     for (const [area, h] of hosts) {
-      areas[area] = { host: h.host, term: h.term, members: coopSessions(p).filter(s => coopAreaOf(s) === area).map(s => s.player.id) };
+      areas[area] = { host: h.host, term: h.term, members: coopSessions(p).filter(s => coopAreaOf(s) === area && !rooms.inWorld(s)).map(s => s.player.id) };
     }
     return areas;
   };
+  /**
+   * Who hosts what, as one Keeper sees it: its party's election (protocol 5), and — for a Keeper of the room-run world
+   * standing in a world area — the room as that area's host (protocol 7), whatever its party's election says there.
+   */
+  const coopAreasFor = s => {
+    const p = s.coop && s.party ? parties.get(s.party) : null;
+    const areas = p ? coopView(p) : {};
+    if (s.world) { for (const a of Object.keys(areas)) if (rooms.isWorldArea(a)) delete areas[a]; Object.assign(areas, rooms.viewFor(s)); }
+    return areas;
+  };
+  /** Tell one Keeper who hosts where, when that changed for it (or always, `force`: its stream reopened). */
+  const coopTell = (s, force = false) => {
+    if (!s.stream || !(s.coop || s.world)) return;
+    const areas = coopAreasFor(s), key = JSON.stringify(areas);
+    if (!force && s.coopTold === key) return;
+    s.coopTold = key;
+    send(s.stream, { type: 'coop', areas });
+  };
   const coopPublish = (p, force = false) => {
-    const areas = coopView(p), key = JSON.stringify(areas);
-    if (!force && coopTold.get(p.id) === key) return;
-    coopTold.set(p.id, key);
-    for (const s of coopSessions(p)) if (s.stream) send(s.stream, { type: 'coop', areas });
+    coopTold.set(p.id, JSON.stringify(coopView(p)));
+    for (const s of coopSessions(p)) coopTell(s, force);
   };
   /** The party changed (formed, joined, left, disbanded): elect again; anyone dropped hears there is no host. */
   function coopOnParty(p, also = []) {
-    for (const id of also) { const s = sessionOf(id); if (s?.coop) sendTo(id, { type: 'coop', areas: {} }); }
+    for (const id of also) { const s = sessionOf(id); if (s?.coop || s?.world) coopTell(s); }
     if (p) coopElect(p);
   }
   /** A Keeper moved (maybe to another area): elect again; a host heard from is not stale any more. */
@@ -601,11 +626,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (p) coopElect(p);
   };
   /** A reopened stream learns who hosts where. */
-  const coopResend = s => {
-    if (!s.coop || !s.party || !s.stream) return;
-    const p = parties.get(s.party);
-    if (p) send(s.stream, { type: 'coop', areas: coopView(p) });
-  };
+  const coopResend = s => coopTell(s, true);
   /** Once a second: a host that has gone quiet while others share its area is replaced; forgotten parties are dropped. */
   const coopSweep = () => {
     for (const id of [...coopHosts.keys()]) if (!parties.has(id)) { coopHosts.delete(id); coopTold.delete(id); }
@@ -641,6 +662,18 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
    */
   const coopRequest = async (verb, session, req, reply) => {
     if (verb !== 'snap' && verb !== 'hits' && verb !== 'pals') throw fail(404, 'Not found.');
+    // Protocol 7: in a world area the room hosts. A Keeper's blows are weighed here; nobody else may host.
+    if (verb !== 'pals' && rooms.inWorld(session)) {
+      consume(session, `coop-${verb}`, verb === 'snap' ? COOP.snapsPerSec : COOP.hitsPerSec, 1000);
+      const data = await readCoopBody(req);
+      session.lastSeen = now();
+      if (verb === 'snap') throw fail(409, 'The room hosts here.');
+      coopKeys(data, ['area', 'hits']);
+      if (typeof data.area !== 'string' || data.area !== session.player.area) throw fail(409, 'Not in that place.');
+      if (!Array.isArray(data.hits) || !data.hits.length || data.hits.length > COOP.maxHits) coopBad();
+      const r = rooms.claims(session, data.hits.map(coopHit));
+      reply(200, { ok: true, ...r }); return;
+    }
     if (!session.coop) throw fail(409, 'Update the game to share creatures.');
     consume(session, `coop-${verb}`, verb === 'snap' ? COOP.snapsPerSec : verb === 'hits' ? COOP.hitsPerSec : COOP.palsPerSec, 1000);
     const data = await readCoopBody(req);
@@ -869,6 +902,44 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     }
     throw fail(404, 'Not found.');
   };
+  // ── Protocol 7: the room-run world (social-world.mjs). ──
+  const rooms = createWorldRooms({
+    sim: world?.sim ?? null, store, now, log, areas: world?.areas ?? null, timing: world?.timing ?? {}, fx: !!world?.fx,
+    ...(world?.seed ? { seed: () => world.seed } : {}),
+    send: (s, value) => { if (s.stream) send(s.stream, value); },
+  });
+  /** One step of the world: who is where, the simulation, the snapshots; anyone whose view changed hears it. */
+  const worldStep = (ms = null) => { for (const s of rooms.step(sessions.values(), ms)) coopTell(s); };
+  /**
+   * The world verbs. `/world/take {id}`: a piece of the room's ground — answered from memory, the first allowed Keeper
+   * wins (40 in 5 s: coins come in showers); `/world/return {id}`: the satchel could not hold it (10 in 10 s).
+   */
+  const worldRequest = async (path, session, req, reply) => {
+    if (!session.world || !rooms.enabled) throw fail(409, 'Update the game to enter the world.');
+    const data = await readBody(req);
+    session.lastSeen = now();
+    if (path === '/world/take') {
+      consume(session, 'world-take', 40, 5000);
+      const t0 = performance.now();
+      const r = rooms.take(session, data.id);
+      reply(200, { ...r, ms: Math.round((performance.now() - t0) * 100) / 100 }); return;
+    }
+    if (path === '/world/return') {
+      consume(session, 'world-return', 10, 10000);
+      reply(200, { ok: rooms.giveBack(session, data.id) }); return;
+    }
+    if (path === '/world/fx') { reply(200, rooms.fx(session, data)); return; }
+    throw fail(404, 'Not found.');
+  };
+  /** The local e2e's hook without a session (SOCIAL_WORLD_FX=1 only): act beside the Keeper named `near`. */
+  const worldFxNear = async (req, reply) => {
+    const data = await readBody(req);
+    const s = [...sessions.values()].find(o => o.player.name === data.near && o.world);
+    if (!s) throw fail(404, 'Nobody by that name in the world.');
+    reply(200, rooms.fx(s, data));
+  };
+  const worldTick = world?.sim && (world.timing?.tickMs ?? 50) > 0 ? setInterval(() => worldStep(), world.timing?.tickMs ?? 50) : null;
+  worldTick?.unref?.();
   const coopTimer = setInterval(coopSweep, 1000);
   coopTimer.unref?.();
   const server = createServer(async (req, res) => {
@@ -888,7 +959,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (url.pathname.startsWith('/social/')) url.pathname = url.pathname.slice('/social'.length);
       // The local e2e's stand-in for the trade Function (scripts/trade-fake.mjs; SOCIAL_FAKE_TRADE=1, never on Cloud Run).
       if (extraRoutes && url.pathname.startsWith('/fake-trade/')) { await extraRoutes(req, res, url); return; }
-      if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size, protocol: PROTOCOL }); return; }
+      if (req.method === 'GET' && url.pathname === '/health') { reply(200, { ok: true, players: sessions.size, protocol: PROTOCOL, ...(rooms.enabled ? { world: rooms.health() } : {}) }); return; }
       if (req.method === 'POST' && url.pathname === '/join') {
         const ip = req.socket.remoteAddress;
         const limiter = joinAttempts.get(ip) ?? {};
@@ -929,11 +1000,14 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         session.coop = data.party === true && data.coop === true;
         // Protocol 6: only a client that says it trades is ever asked to (or told what lies on the ground).
         session.trades = data.trade === true; session.trade = null;
+        // Protocol 7: only a client that says it knows the room-run world is ever hosted by the room.
+        session.world = data.world === true && rooms.enabled;
         sessions.set(token, session);
-        reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid });
+        reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world });
         publishPlayers();
         friendsHear(uid); return;
       }
+      if (req.method === 'POST' && url.pathname === '/world/fx' && world?.fx && !req.headers.authorization) { await worldFxNear(req, reply); return; }
       const token = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization ?? '')?.[1];
       const session = sessions.get(token);
       if (!session) throw fail(401, 'Join the hearth again.');
@@ -960,6 +1034,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         }
         // Protocol 6: what lies on the ground here, and the trade window if one is open.
         groundSnapshot(session);
+        // Protocol 7: the room's ground here, and a whole snapshot next.
+        if (session.world) { rooms.opened(session); worldStep(0); }
         const open = session.trade && trades.get(session.trade);
         if (open) send(res, { type: 'trade', trade: tradeView(open, sideOf(open, session)) });
         res.on('close', () => { if (session.stream === res) { session.stream = null; session.lastSeen = now(); } });
@@ -969,6 +1045,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       consume(session, 'requests', 40, 1000);
       if (url.pathname.startsWith('/coop/')) { await coopRequest(url.pathname.slice('/coop/'.length), session, req, reply); return; }
       if (url.pathname.startsWith('/trade/') || url.pathname.startsWith('/ground/')) { await tradeRequest(url.pathname, session, req, reply); return; }
+      if (url.pathname.startsWith('/world/')) { await worldRequest(url.pathname, session, req, reply); return; }
       const data = await readBody(req);
       session.lastSeen = now();
       if (url.pathname === '/update') {
@@ -1053,8 +1130,13 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     }
   }, Math.min(10000, idleMs));
   cleanup.unref();
-  const dispose = () => { clearInterval(cleanup); clearInterval(coopTimer); clearTimeout(publishTimer); for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); };
-  return { server, dispose, coopSweep };
+  const dispose = async () => {
+    clearInterval(cleanup); clearInterval(coopTimer); if (worldTick) clearInterval(worldTick); clearTimeout(publishTimer);
+    // What the world must keep goes to Firestore before the room closes (Cloud Run's SIGTERM gives ten seconds).
+    try { await rooms.saveAll(); } catch (e) { log('world save failed', e); }
+    for (const token of sessions.keys()) remove(token); server.closeAllConnections(); return new Promise(resolve => server.close(resolve));
+  };
+  return { server, dispose, coopSweep, worldStep, rooms };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -1078,7 +1160,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     identity.store = memoryStore(ft.docs);
     extraRoutes = ft.handle;
   }
-  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log, extraRoutes });
+  // Protocol 7: the room-run world — the bundled game modules (world-sim.generated.mjs, built at deploy), or compiled
+  // from the sources in a checkout. SOCIAL_WORLD=0 turns it off (the room is protocol 6 for everyone).
+  // SOCIAL_WORLD_FX=1 opens the local e2e's hooks (/world/fx: lay a creature, quiet the spawns), never on Cloud Run.
+  const sim = process.env.SOCIAL_WORLD === '0' ? null : await loadWorldSim(log);
+  const worldFx = process.env.SOCIAL_WORLD_FX === '1' && !process.env.K_SERVICE;
+  if (sim) console.log(`[hearth] world on: ${(sim.WORLD_AREAS ?? []).join(', ')}${sim.BUILT ? ` (bundle ${sim.BUILT})` : ' (from sources)'}`);
+  const room = createSocialServer({ ...(origins ? { origins } : {}), ...identity, log, extraRoutes, world: sim ? { sim, fx: worldFx } : null });
   room.server.listen(port, host, () => console.log(`Eclipse Realms social room: http://${host}:${port}`));
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void room.dispose(); });
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void room.dispose().finally(() => process.exit(0)); });
 }
