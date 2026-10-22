@@ -34,9 +34,11 @@ export function inArc(ox: number, oy: number, aim: number, reach: number, arcDeg
 
 /**
  * The weapon in hand as the swing sees it: `flat` is added to the Watch Blade's roll (before any %), `mult` scales the
- * whole roll. D2-style: the kit blade is the base, the weapon's own damage rides on it.
+ * whole roll. D2-style: the kit blade is the base, the weapon's own damage rides on it. `blade` is a melee weapon's own
+ * +min–max Damage (the Ashguard's swing and blade skills add it), `arrow` a bow's or crossbow's (the Thornstrider's
+ * shots add it) — docs/design/loot-and-combat.md §3.6.
  */
-export interface WeaponSwing { flat: number; mult: number }
+export interface WeaponSwing { flat: number; mult: number; blade?: readonly [number, number]; arrow?: readonly [number, number] }
 /** Bare hands: the blade still swings, a fifth less hard (the kit sword with nothing to hold). */
 export const FISTS: WeaponSwing = { flat: 0, mult: .85 };
 /** A weapon with no extra damage over the starter edge swings exactly as the kit blade does. */
@@ -45,31 +47,60 @@ export const NO_WEAPON_BONUS: WeaponSwing = { flat: 0, mult: 1 };
 export const STARTER_WEAPON_POWER = 1;
 /** Flat swing damage per point of weapon power above the starter's. */
 export const WEAPON_FLAT_PER_POINT = 3;
-/** A weapon's Spell Damage % counts as this share of a point of weapon power per % (it also lifts all spell power). */
+/** An OLD roll's Spell Damage % on a melee weapon counts as this share of a point of weapon power per % (§3.6 old rolls). */
 export const WEAPON_SD_PER_POINT = .25;
 
-/**
- * A held weapon's swing: weapon power = its Strike (the legacy head stat) + a quarter of its Spell Damage % (the
- * affixed head stat); the flat is WEAPON_FLAT_PER_POINT × what that has over the starter edge's 1; `hands: 2` (a bow, a
- * staff, a greatsword, a maul, a polearm) multiplies the blow by TWO_HAND_MULT. `null` is no weapon.
- */
-export function weaponSwing(w: { strikePower?: number; spellDamage?: number; hands?: number } | null): WeaponSwing {
-  if (!w) return FISTS;
-  const sp = Number.isFinite(w.strikePower) ? Math.max(0, w.strikePower as number) : 0;
-  const sd = Number.isFinite(w.spellDamage) ? Math.max(0, w.spellDamage as number) : 0;
-  const power = sp + sd * WEAPON_SD_PER_POINT;
-  // Two hands (shared/rpg/item-hands.ts): the whole blow lands TWO_HAND_MULT harder — the price is the empty off-hand.
-  return { flat: Math.round(Math.max(0, power - STARTER_WEAPON_POWER) * WEAPON_FLAT_PER_POINT), mult: handsMult(w.hands) };
+/** What the swing reads off the held weapon. `kind`: 'melee' (a sword, an axe…), 'bow' (bows, crossbows) or 'caster'. */
+export interface HeldWeapon {
+  strikePower?: number; spellDamage?: number; minDamage?: number; maxDamage?: number; hands?: number;
+  kind?: 'melee' | 'bow' | 'caster';
 }
 
 /**
- * A blow: a roll between the blade's min and max (both whole), plus the weapon's flat damage, times `pct` % of it.
- * Never below 1.
+ * A held weapon's swing. Weapon power = its Strike (the legacy head stat) + a quarter of an OLD melee weapon's Spell
+ * Damage % (§3.6: an old sword swings exactly as before); the flat is WEAPON_FLAT_PER_POINT × what that has over the
+ * starter edge's 1. A melee weapon's +min–max Damage is the blade's, a bow's is the arrow's; a caster's weapon adds
+ * neither (its Spell Damage lifts the spells). `hands: 2` (a bow, a staff, a greatsword, a maul, a polearm) multiplies
+ * the blow by TWO_HAND_MULT. `null` is no weapon.
+ */
+export function weaponSwing(w: HeldWeapon | null): WeaponSwing {
+  if (!w) return FISTS;
+  const n = (x: number | undefined) => (Number.isFinite(x) ? Math.max(0, x as number) : 0);
+  const kind = w.kind ?? 'melee';
+  const power = n(w.strikePower) + (kind === 'melee' ? n(w.spellDamage) * WEAPON_SD_PER_POINT : 0);
+  const lo = Math.round(n(w.minDamage)), hi = Math.max(lo, Math.round(n(w.maxDamage)));
+  const own: readonly [number, number] | undefined = hi > 0 ? [lo, hi] : undefined;
+  // Two hands (shared/rpg/item-hands.ts): the whole blow lands TWO_HAND_MULT harder — the price is the empty off-hand.
+  return {
+    flat: Math.round(Math.max(0, power - STARTER_WEAPON_POWER) * WEAPON_FLAT_PER_POINT), mult: handsMult(w.hands),
+    ...(own && kind === 'melee' ? { blade: own } : {}),
+    ...(own && kind === 'bow' ? { arrow: own } : {}),
+  };
+}
+
+/** One roll inside [lo, hi] (whole numbers) on the sample `u` in [0, 1). */
+function within(lo: number, hi: number, u: number): number {
+  return lo + Math.floor(u * (hi - lo + 1));
+}
+
+/**
+ * A blow: a roll between the blade's min and max (both whole), plus the weapon's flat and its own +min–max (the same
+ * roll, so a top blade roll is a top weapon roll), times `pct` % of it. Never below 1.
  */
 export function meleeBlow(min: number, max: number, pct = 100, roll: () => number = Math.random, weapon: WeaponSwing = NO_WEAPON_BONUS): number {
   const lo = Math.min(min, max), hi = Math.max(min, max);
-  const base = (lo + Math.floor(roll() * (hi - lo + 1)) + weapon.flat) * weapon.mult;
+  const u = roll();
+  const own = weapon.blade ? within(weapon.blade[0], weapon.blade[1], u) : 0;
+  const base = (within(lo, hi, u) + weapon.flat + own) * weapon.mult;
   return Math.max(1, Math.round(base * pct / 100));
+}
+
+/** An arrow: the shot's roll plus a bow's own +min–max (the same sample), times its hands. Never below 1. */
+export function arrowBlow(min: number, max: number, roll: () => number = Math.random, weapon: WeaponSwing = NO_WEAPON_BONUS, mult = 1): number {
+  const lo = Math.min(min, max), hi = Math.max(min, max);
+  const u = roll();
+  const own = weapon.arrow ? within(weapon.arrow[0], weapon.arrow[1], u) : 0;
+  return Math.max(1, Math.round((within(lo, hi, u) + own) * mult));
 }
 
 /** The Ember Brand on a blow: the blow grows by its %, and the brand's burn rides on top (whole numbers). */

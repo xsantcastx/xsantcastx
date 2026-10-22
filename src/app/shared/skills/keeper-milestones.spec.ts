@@ -47,7 +47,8 @@ describe('Keeper level milestones', () => {
     expect(frameFor(99)).toBe('silver');
     expect(frameFor(10_000)).toBe('starlit');
     expect(passiveBonus(14)).toEqual({});
-    expect(passiveBonus(40)).toEqual({ spellDamage: 1, moveSpeed: 1, critChance: 1 });
+    // A damage milestone is every calling's (§3.6): it rides on both families, and each calling reads its own.
+    expect(passiveBonus(40)).toEqual({ spellDamage: 1, attackDamage: 1, moveSpeed: 1, critChance: 1 });
     expect(keeperAttributePoints(19)).toBe(levelAttributePoints(19));
     expect(keeperAttributePoints(20)).toBe(levelAttributePoints(20) + 5);
     expect(nextMilestone(10)?.level).toBe(15);

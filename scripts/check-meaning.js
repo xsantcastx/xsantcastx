@@ -472,6 +472,9 @@ for (const key of ITEM_STAT_KEYS) {
   const goldFind = key === 'goldFind' || key === 'goldPerSec' ? readersOf(/\bequippedGoldFind\b/).filter(f => !/inventory\.service/.test(f)) : [];
   goldFind.forEach(f => keeper.add(f));
   if (key === 'strikePower' || key === 'ward') readersOf(/\bkeeperCombatStats\(/).filter(f => !/keeper-combat\.ts$/.test(f)).forEach(f => keeper.add(f));
+  // A weapon's own +min–max Damage (item-affixes §3.6) is read off the held weapon, not the worn total: the play screen
+  // hands it to the engine's setWeapon, whose weaponSwing feeds the swing and the arrow (td-melee).
+  if (key === 'minDamage' || key === 'maxDamage') readersOf(/\bweaponSwing\(w\)/).filter(f => !/td-melee\.ts$/.test(f)).forEach(f => keeper.add(f));
   KEEPER_READS[key] = [...keeper];
   ANY_READS[key] = [...readersOf(new RegExp(`\\.${key}\\b`)), ...goldFind];
 }

@@ -32,7 +32,7 @@ export interface RelicSig {
   /** Life back a second, always; and the whole regeneration × this while standing still. */
   regen?: number;
   stillRegen?: number;
-  /** More spears in a Bone Storm, and tiles added to a Bone Spear's flight. */
+  /** More missiles: spears in a Bone Storm, arrows in a Volley (td-skills castVars); and tiles added to a Bone Spear's flight. */
   spears?: number;
   spearRange?: number;
   /** Every spell hit stains its foe with ink: it takes `pct`% more from every hit for `secs` seconds. */
@@ -91,28 +91,28 @@ export const BOSS_UNIQUES: readonly BossUnique[] = [
   },
   {
     id: 'unique-tyrants-crucible', name: "Tyrant's Crucible", rarity: 'legendary', slot: 'off-hand', style: 'infernal',
-    rollKeys: ['spellDamage', 'defense'], base: { spellDamage: 6, defense: 5 },
+    rollKeys: ['spellDamage', 'mana'], base: { spellDamage: 6, mana: 6 },
     passive: { effect: 'relic', text: 'Meteor cools 2 seconds sooner.' },
     lore: 'A crucible that never cools. The caldera poured its crown in this, and the crown poured badly.',
     boss: 'magma-tyrant', oneIn: 7, lair: 'The Molten Deep · Floor 3', sig: { cdCut: { meteor: 2 } },
   },
   {
     id: 'unique-hammer-first-watch', name: 'Hammer of the First Watch', rarity: 'legendary', slot: 'weapon', style: 'infernal',
-    rollKeys: ['spellDamage', 'critChance'], base: { spellDamage: 6, critChance: 2 },
-    passive: { effect: 'relic', text: 'Hellfire Nova holds 2 ranks more, and every hit lands 20% harder on constructs.' },
+    rollKeys: ['attackDamage', 'critChance'], base: { attackDamage: 6, critChance: 2 },
+    passive: { effect: 'relic', text: 'Cinder Cleave holds 2 ranks more, and every hit lands 20% harder on constructs.' },
     lore: 'Four smithies. One hammer they all agreed on. The anvil kept it when the smiths stopped coming down.',
-    boss: 'anvil-warden', oneIn: 7, lair: 'The Forge of the Four · Floor 3', sig: { ranks: { 'hellfire-nova': 2 }, construct: 20 },
+    boss: 'anvil-warden', oneIn: 7, lair: 'The Forge of the Four · Floor 3', sig: { ranks: { 'cinder-cleave': 2 }, construct: 20 },
   },
   {
     id: 'unique-ashbone-phylactery', name: 'Ashbone Phylactery', rarity: 'legendary', slot: 'trinket', style: 'infernal',
     rollKeys: ['life', 'allResist'], base: { life: 8, allResist: 3 },
-    passive: { effect: 'relic', text: 'One more skeleton may stand at once, and each one\'s first blow is a breath of fire (3× its blow).' },
+    passive: { effect: 'relic', text: 'One more skeleton may stand at once, each one\'s first blow is a breath of fire (3× its blow), and Bone Spear flies 3 tiles further.' },
     lore: 'The dragon kept its last heat in a bone. Hold it to your ear and the Bastion is still burning.',
-    boss: 'bone-dragon', oneIn: 8, lair: 'The Ashen Crypt · Floor 2', sig: { raisedMax: 1, breath: 3 },
+    boss: 'bone-dragon', oneIn: 8, lair: 'The Ashen Crypt · Floor 2', sig: { raisedMax: 1, breath: 3, spearRange: 3 },
   },
   {
     id: 'unique-crown-banked-coal', name: 'Crown of the Banked Coal', rarity: 'legendary', slot: 'head', style: 'infernal',
-    rollKeys: ['defense', 'spellDamage'], base: { defense: 5, spellDamage: 5 },
+    rollKeys: ['defense', 'fireResist'], base: { defense: 5, fireResist: 5 },
     passive: { effect: 'relic', text: '+15% fire damage, and your staff\'s bolts leave their foe smouldering (5 fire a second for 3 seconds).' },
     lore: 'It banked the heat to keep the seam shut. Wear it and you can feel the seam leaning on the other side.',
     boss: 'cinder-sovereign', oneIn: 10, lair: 'The Molten Deep · Floor 6', sig: { fire: 15, singe: { dps: 5, secs: 3 } },
@@ -126,10 +126,10 @@ export const BOSS_UNIQUES: readonly BossUnique[] = [
   },
   {
     id: 'unique-splinterbow-rootcradle', name: 'Splinterbow of the Rootcradle', rarity: 'legendary', slot: 'weapon', style: 'verdant',
-    rollKeys: ['spellDamage', 'castSpeed'], base: { spellDamage: 6, castSpeed: 4 },
-    passive: { effect: 'relic', text: 'Bone Storm looses 2 more spears, and Bone Spear flies 3 tiles further.' },
+    rollKeys: ['attackDamage', 'pierceChance'], base: { attackDamage: 6, pierceChance: 4 },
+    passive: { effect: 'relic', text: 'Volley holds 2 ranks more, and looses 2 more arrows.' },
     lore: 'Splinters of rootglass that remember the tree. Draw it and the Cradle\'s coils creak somewhere under you.',
-    boss: 'elder-rootwyrm', oneIn: 9, lair: 'The Overgrown Temple · Floor 5', sig: { spears: 2, spearRange: 3 },
+    boss: 'elder-rootwyrm', oneIn: 9, lair: 'The Overgrown Temple · Floor 5', sig: { ranks: { volley: 2 }, spears: 2 },
   },
   {
     id: 'unique-abbess-censer', name: "The Abbess's Censer", rarity: 'legendary', slot: 'off-hand', style: 'umbral',
@@ -141,7 +141,7 @@ export const BOSS_UNIQUES: readonly BossUnique[] = [
   {
     // The eclipse's world boss (play/td/td-seam.ts): it rises at the rifts under an eclipse and its fall opens the tiers.
     id: 'unique-seamstitch-grips', name: 'Seamstitch Grips', rarity: 'legendary', slot: 'hands', style: 'umbral',
-    rollKeys: ['spellDamage', 'critChance'], base: { spellDamage: 7, critChance: 3 },
+    rollKeys: ['defense', 'life'], base: { defense: 6, life: 8 },
     passive: { effect: 'relic', text: 'While the sky is dark (night or an eclipse), every hit you land is 20% harder.' },
     lore: 'The bone thread the Seamworks stitched it shut with. It held for a while. It still remembers which side it was on.',
     boss: 'seam-eater-risen', oneIn: 8, lair: 'The Ninefold Stones, Ember Isle', sig: { umbra: 20 },
