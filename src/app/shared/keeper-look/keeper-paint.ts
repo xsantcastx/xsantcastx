@@ -25,6 +25,7 @@
  * Browser only (canvas). Pure inputs: the same look + gear + state always paint
  * the same pixels, which is what the specs and the e2e pixel diff rely on.
  */
+import { volumize } from './keeper-volume';
 import { EYE_COLORS, HAIR_COLORS, KeeperLook, OUTFIT_COLORS, SKIN_TONES, lookKey } from './keeper-look.model';
 import {
   GearPiece, GripTransform, HoldPose, KeeperAction, KeeperGear, RARITY_TRIM, STYLE_COLORS, WEAPON_SPECS, WeaponKind,
@@ -665,7 +666,7 @@ export class KeeperPainter {
     const id = `${pose}:${frame}:${face}`;
     let slot = this.slots.get(id);
     if (slot === undefined) {
-      const art = pose === 'death' ? this.lying() : outlined(this.paintBody(bodyFrame(pose, frame), pose, face));
+      const art = pose === 'death' ? this.lying() : volumize(outlined(this.paintBody(bodyFrame(pose, frame), pose, face)));
       slot = this.slots.size;
       const sheet = this.room(slot + 1);
       sheet.getContext('2d')!.drawImage(art, (slot % SHEET_COLS) * CELL, Math.floor(slot / SHEET_COLS) * CELL);

@@ -14,6 +14,7 @@ import { DIFFICULTIES, type DifficultyDef } from '../../shared/loot/difficulty.m
 import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
+import { volumizeData } from '../../shared/keeper-look/keeper-volume';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { BLANK_ID, BLANK_NAME, rollBlankDrop } from '../../shared/spellstones/spellstones.model';
 import { rollHuntGold } from '../../shared/economy/economy-curve';
@@ -482,8 +483,9 @@ function skeleton(c: CanvasRenderingContext2D, f: number, o: number, k: Bones): 
   // Spine, ribs, pelvis.
   limb(c, [o + 10, 14 + b], [o + 10, 26 + b], 2, r);
   orb(c, o + 10.5, 19 + b, 4.5, 3.8, r);
-  for (let i = 0; i < 3; i++) px(c, o + 7, 17 + b + i * 2, 7, 1, r[3]);
-  px(c, o + 10, 16 + b, 1, 6, r[1]);
+  // The ribcage: dark gaps between the ribs, each rib catching the light at its left end, the sternum down the middle.
+  for (let i = 0; i < 3; i++) { px(c, o + 7, 17 + b + i * 2, 7, 1, r[3]); dot(c, o + 7, 16 + b + i * 2, r[0]); dot(c, o + 13, 16 + b + i * 2, r[2]); }
+  px(c, o + 10, 16 + b, 1, 6, r[1]); dot(c, o + 10, 16 + b, r[0]);
   poly(c, [[o + 7, 25 + b], [o + 14, 25 + b], [o + 13, 28 + b], [o + 8, 28 + b]], r);
   if (k.rag) poly(c, [[o + 7, 25 + b], [o + 14, 25 + b], [o + 14, 29 + b], [o + 12, 28 + b], [o + 11, 31 + b], [o + 9, 28 + b], [o + 7, 29 + b]], k.rag);
   // Near leg.
@@ -495,6 +497,8 @@ function skeleton(c: CanvasRenderingContext2D, f: number, o: number, k: Bones): 
   px(c, o + 8, 13 + b, 6, 1, r[3]); for (let i = 0; i < 3; i++) dot(c, o + 8 + i * 2, 14 + b, r[3]);
   orb(c, o + 9, 9 + b, 1.8, 1.6, R.void); orb(c, o + 13, 9 + b, 1.8, 1.6, R.void);
   dot(c, o + 11, 11 + b, R.void[1]);
+  // Cheekbones under the sockets, a lit brow over them.
+  dot(c, o + 7, 11 + b, r[2]); dot(c, o + 15, 11 + b, r[3]); px(c, o + 8, 6 + b, 3, 1, r[0]);
   glow(c, o + 9, 9 + b, 1, k.eye); glow(c, o + 13, 9 + b, 1, k.eye);
 }
 /** The near arm of a skeleton, out to the hand at (hx, hy). */
@@ -506,10 +510,30 @@ function boneArm(c: CanvasRenderingContext2D, f: number, o: number, hx: number, 
 function paintBoneWalker(c: CanvasRenderingContext2D, f: number): void {
   const b = BOB[f];
   skeleton(c, f, 0, { bone: R.bone, eye: EMBER, rag: R.red });
-  limb(c, [18, 22 + b], [18, 6 + b], 2, R.iron); line(c, [18, 7 + b], [18, 20 + b], R.iron[0]);
-  dot(c, 18, 5 + b, R.iron[0]); line(c, [19, 12 + b], [19, 16 + b], EMBER[2]);
-  px(c, 15, 22 + b, 6, 1, R.leather[1]); px(c, 17, 23 + b, 2, 2, R.leather[2]);
+  garrisonSword(c, b, R.iron, EMBER[2]);
   boneArm(c, f, 0, 17, 23, R.bone);
+  roundShield(c, b, R.wood, R.iron);
+}
+/**
+ * A garrison sword held upright (the art style upgrade, 2026-10-26): a two-pixel blade lit down its left edge, a point,
+ * a crossguard, a leather grip and a pommel; `fleck` a pixel of the slag still glowing in the steel.
+ */
+function garrisonSword(c: CanvasRenderingContext2D, b: number, steel: Ramp, fleck?: string): void {
+  limb(c, [18, 20 + b], [18, 6 + b], 2, steel);
+  line(c, [18, 6 + b], [18, 19 + b], steel[0]);
+  dot(c, 18, 4 + b, steel[1]); dot(c, 18, 5 + b, steel[0]);
+  if (fleck) line(c, [19, 12 + b], [19, 15 + b], fleck);
+  px(c, 15, 21 + b, 7, 1, steel[1]); dot(c, 15, 21 + b, steel[0]); dot(c, 21, 21 + b, steel[2]);
+  px(c, 17, 22 + b, 2, 2, R.leather[1]); dot(c, 17, 22 + b, R.leather[0]);
+  dot(c, 18, 24 + b, steel[0]);
+}
+/** A round wooden shield on the far arm: planks, an iron rim, a boss in the middle catching the light. */
+function roundShield(c: CanvasRenderingContext2D, b: number, wood: Ramp, iron: Ramp, mark?: string): void {
+  orb(c, 4.5, 22 + b, 4.6, 5, iron);
+  orb(c, 4.5, 22 + b, 3.6, 4, wood);
+  line(c, [3, 18.5 + b], [3, 25.5 + b], wood[3]); line(c, [6, 18.5 + b], [6, 25.5 + b], wood[3]);
+  if (mark) { line(c, [4.5, 19 + b], [4.5, 25 + b], mark); line(c, [2, 22 + b], [7, 22 + b], mark); }
+  orb(c, 4.5, 22 + b, 1.4, 1.4, iron); dot(c, 4, 21 + b, iron[0]);
 }
 /** The Bone Archer: a hooded skeleton with a bow of blackened charwood, an ember-tipped arrow on the string. */
 function paintBoneArcher(c: CanvasRenderingContext2D, f: number): void {
@@ -555,13 +579,11 @@ function paintUncounted(c: CanvasRenderingContext2D, f: number): void {
 /** A skeleton the Warlock raised: the same bones blanched violet, his colour burning in the eyes, a rune-shield and a blade. */
 function paintRaised(c: CanvasRenderingContext2D, f: number): void {
   const b = BOB[f];
-  orb(c, 4, 21 + b, 3.6, 4.6, R.membrane);
-  line(c, [4, 18 + b], [4, 24 + b], VIOLET[1]); line(c, [2, 21 + b], [6, 21 + b], VIOLET[2]);
   skeleton(c, f, 0, { bone: R.vbone, eye: VIOLET });
-  limb(c, [18, 22 + b], [18, 6 + b], 2, R.membrane); line(c, [18, 7 + b], [18, 20 + b], VIOLET[1]);
-  dot(c, 18, 5 + b, VIOLET[0]); px(c, 15, 22 + b, 6, 1, R.membrane[2]);
+  garrisonSword(c, b, R.membrane, VIOLET[1]);
   boneArm(c, f, 0, 17, 23, R.vbone);
-  if (f % 2) dot(c, 4, 21 + b, VIOLET[0]);
+  // His rune-shield: the round shield in the dusk wood, a violet rune cut across it, glowing on the beat.
+  roundShield(c, b, R.membrane, R.vbone, f % 2 ? VIOLET[0] : VIOLET[1]);
 }
 
 /** The Cinder Wraith: a hooded shade of ash, an ember for a heart, bone hands reaching; no feet, it drifts. */
@@ -1789,6 +1811,8 @@ export function mobSheet(def: MobDef): HTMLCanvasElement {
     const c = cell.getContext('2d', { willReadFrequently: true })!;
     def.paint(c, f);
     const img = c.getImageData(0, 0, def.w, def.h);
+    // The volume pass (keeper-volume.ts), gentle: the creatures are already lit shape by shape; this rounds the whole.
+    volumizeData(img.data, def.w, def.h, { light: .2, shade: .24, depth: 4, alphaMin: 200 });
     outline(img, RIM[def.id]);
     o.putImageData(img, f * def.w, 0);
   }
