@@ -21,6 +21,9 @@ import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
+import { paintRichGround, richEdge } from './td-ground';
+import { castShadow } from './td-shade';
+import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
@@ -522,6 +525,24 @@ export class TopDownEngine {
     };
     // The zone specs (webdriver only): stand the Keeper on a tile of the world (the nearest walkable), lay a creature
     // at a zone's level beside him, and read the zone underfoot (td-zones.ts).
+    // The art pass's camera (webdriver only; e2e/td-art-shots.spec.ts): the arcane aura on the Keeper, the motes alive.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdArt'] = {
+      aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
+      motes: () => this.auraFx.alive,
+      // The nearest worn road through grass (a dirt tile with grass to either side): the Keeper stands beside it.
+      road: (dc = 1) => {
+        const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE), g = (c: number, r: number) => this.level.ground(c, r);
+        for (let d = 0; d <= 60; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
+          if (Math.max(Math.abs(x), Math.abs(y)) !== d) continue;
+          const c = pc + x, r = pr + y;
+          if (g(c, r) !== 'dirt' || g(c + 3, r) !== 'grass' || g(c - 3, r + 2) !== 'grass' || !footFree(this.level, (c + dc) * TILE + TILE / 2, r * TILE + TILE - 2)) continue;
+          this.player.x = (c + dc) * TILE + TILE / 2; this.player.y = r * TILE + TILE - 2; this.path = [];
+          this.placeCompanions();
+          return { c, r };
+        }
+        return null;
+      },
+    };
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdZones'] = {
       to: (c: number, r: number) => {
         for (let d = 0; d <= 12; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
@@ -2416,8 +2437,6 @@ export class TopDownEngine {
     const c = this.ctx, x = Math.round(b.x), y = Math.round(b.y), calm = this.still;
     const resting = b.doing === 'sleep' || b.doing === 'rest';
     const fly = TD_PET_FLIES.has(b.id) && !resting;
-    c.fillStyle = 'rgba(30,18,26,.28)';
-    c.fillRect(x - 5, y - 2, 10, 1); c.fillRect(x - 6, y - 1, 12, 2);
     const frame: TdPetFrame = this.petFrame(b);
     const hop = !calm && (frame === 'happy' || b.hopT > 0) ? -Math.round(Math.abs(Math.sin(b.t * 11)) * 3) : 0;
     const hover = fly ? -Math.round(2 + (calm ? 0 : Math.sin(b.t * 3) * 1.5)) : 0;
@@ -3137,7 +3156,9 @@ export class TopDownEngine {
     const w = Math.max(1, Math.round(this.canvas.clientWidth * dpr)), h = Math.max(1, Math.round(this.canvas.clientHeight * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
     // 1.5 CSS px per art px on phones (~16 tiles across), 2 on tablets, 3 on wide screens; whole device pixels so pixels stay crisp.
-    const css = this.canvas.clientWidth >= 1100 ? 3 : this.canvas.clientWidth >= 700 ? 2 : 1.5;
+    // The art style upgrade (2026-10-26): a wide screen frames about 180–240 art px of height, so the Keeper and the trees
+    // read big and detailed (the owner's references) — 4 css px per art px at 720–899 tall, 5 from 900, never under 3.
+    const css = this.canvas.clientWidth >= 1100 ? Math.max(3, Math.min(5, Math.floor(this.canvas.clientHeight / 180))) : this.canvas.clientWidth >= 700 ? 2 : 1.5;
     this.scale = Math.max(1, Math.round(css * dpr));
     this.cam.w = w / this.scale; this.cam.h = h / this.scale;
     // No edge to clamp to: the world runs on in every direction.
@@ -3159,11 +3180,9 @@ export class TopDownEngine {
         const g = el.getContext('2d')!;
         for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
           const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
-          paintGround(g, k, c, r, ox, oy, f);
-          paintEdge(g, k, kind(c, r - 1), 'n', c, r, ox, oy);
-          paintEdge(g, k, kind(c, r + 1), 's', c, r, ox, oy);
-          paintEdge(g, k, kind(c - 1, r), 'w', c, r, ox, oy);
-          paintEdge(g, k, kind(c + 1, r), 'e', c, r, ox, oy);
+          if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy))) paintGround(g, k, c, r, ox, oy, f);
+          const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
+          edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
         }
         frames.push(el);
       }
@@ -3191,15 +3210,17 @@ export class TopDownEngine {
     }
     // A Nightroad's planks over the water while it is open (td-dark-layer).
     if (this.level === this.world) this.darkLayer.drawGround(c, this.world.continent, (x, y) => x > cam.x - 32 && x < cam.x + cam.w + 32 && y > cam.y - 32 && y < cam.y + cam.h + 32);
+    const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
+    const visible = this.level.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
+    this.visible = visible;
+    // Shadows on the ground (td-shade.ts): under every tree and everything standing, never over a neighbour's feet.
+    this.drawShadows(visible, inView);
     // Ground effects (aura rings, nova waves, sigils): under every creature and the Keeper.
     this.drawGroundFx();
     // Y-sorted world: objects, keepers, the Keeper, Glim.
     type Item = { y: number; draw: () => void };
     const items: Item[] = [];
-    const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
     const roofs: { o: TdObject; sp: Sprite }[] = [];
-    const visible = this.level.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
-    this.visible = visible;
     for (const o of visible) {
       const sp = o.sprite();
       const jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
@@ -3254,6 +3275,7 @@ export class TopDownEngine {
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
+    { const look = this.auraLook(); if (look) this.auraFx.air(c, this.player.x, this.player.y - 1, look); }
     // Roofs and crowns, faded when the Keeper is behind or under them.
     for (const { o, sp } of roofs) {
       const r = sp.roof!;
@@ -3331,6 +3353,21 @@ export class TopDownEngine {
     const veil = this.wakeVeil();
     if (veil.dark > 0 || veil.warm > 0) { c.setTransform(1, 0, 0, 1, 0, 0); drawWakeVeil(c, this.canvas.width, this.canvas.height, veil.dark, veil.warm); }
   }
+  /** The ground pass's shadows: each object's own (a tree's), then a soft one under every Keeper, creature and pet. */
+  private drawShadows(visible: readonly TdObject[], inView: (x: number, y: number, pad?: number) => boolean): void {
+    const c = this.ctx;
+    for (const o of visible) { const sh = o.sprite().shadow; if (sh) c.drawImage(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
+    const surface = this.level === this.world;
+    if (surface) {
+      for (const k of this.keepers) if (inView(k.x, k.y) && k.painter) castShadow(c, k.x, k.y, 18);
+      for (const f of this.folk) if (inView(f.x, f.y) && f.painter) castShadow(c, f.x, f.y, 18);
+    }
+    for (const m of this.mobs.mobs) if (inView(m.x, m.y)) castShadow(c, m.x, m.y, Math.max(10, m.def.w * .72), m.def.floats || m.def.ghost ? .55 : 1);
+    for (const k of this.mobs.minions) if (inView(k.x, k.y)) castShadow(c, k.x, k.y, 16);
+    const pet = this.pet;
+    if (pet && inView(pet.x, pet.y)) castShadow(c, pet.x, pet.y, 14, TD_PET_FLIES.has(pet.id) ? .5 : 1);
+    if (this.player.painter) castShadow(c, this.player.x, this.player.y, 20);
+  }
   /** A pixel speech mark over a head: a brass bubble with '!' or '?', bobbing a little (still under reduced motion). */
   private headMark(mark: '!' | '?', x: number, y: number): void {
     const c = this.ctx, bob = this.still ? 0 : Math.round(Math.sin(this.time * 3) * 1.5);
@@ -3345,7 +3382,6 @@ export class TopDownEngine {
 
   private drawMob(m: Mob): void {
     const c = this.ctx, d = m.def, sheet = mobSheet(d), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
-    c.fillStyle = 'rgba(30,18,26,.3)'; c.fillRect(Math.round(m.x - d.w / 2 + 2), Math.round(m.y - 2), d.w - 4, 3);
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
     c.save();
@@ -3698,6 +3734,9 @@ export class TopDownEngine {
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
+    // The aura the Keeper wears (td-aura.ts): its layered ring round the feet; its motes rise in the air pass.
+    const look = this.auraLook();
+    if (look) { this.auraFx.step(this.time, look, this.still); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
     if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
       const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
@@ -4185,12 +4224,25 @@ export class TopDownEngine {
   }
 
   private drawPerson(p: Person, action: 'idle' | 'run' | 'walk'): void {
-    const c = this.ctx, s = this.scale, cam = this.cam;
-    // Soft shadow under the feet: a pixel ellipse as wide as the sprite's stance.
-    c.fillStyle = 'rgba(30,18,26,.28)';
-    const sx = Math.round(p.x), sy = Math.round(p.y);
-    c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
+    // Its shadow is cast in the ground pass (drawShadows).
     if (!p.painter) return;
+    // The Keeper's aura (td-aura.ts): the figure drawn once on a scratch canvas, its silhouette laid round it as a rim-glow.
+    const look = p === this.player ? this.auraLook() : null;
+    if (look) {
+      const sc = this.figureScratch ??= document.createElement('canvas');
+      if (sc.width !== 72) { sc.width = 72; sc.height = 80; }
+      const g = sc.getContext('2d')!;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
+      this.paintPerson(g, p, action, { x: 36, y: 70 });
+      rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
+    }
+    this.paintPerson(this.ctx, p, action, null);
+  }
+  /** One person's figure: on the world (`at` null) or on a scratch canvas with the feet at `at`. */
+  private paintPerson(c: CanvasRenderingContext2D, p: Person, action: 'idle' | 'run' | 'walk', at: { x: number; y: number } | null): void {
+    const s = this.scale, cam = this.cam;
+    if (!p.painter) return;
+    const fx = at ? at.x : Math.round(p.x), fy = at ? at.y : Math.round(p.y);
     const acting = p === this.player && this.actT > 0;
     // The Thornstrider draws his bow from the side too (the painter's own draw pose), like the Ashguard's swing.
     const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard' && this.mobs.vocation !== 'thornstrider';
@@ -4200,21 +4252,34 @@ export class TopDownEngine {
       // The Warlock: front/back views with the staff in hand; every cast faces the camera, staff raised.
       const sheet = frontSheet(p.painter, staff), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
       const f = acting ? CAST_FRAME : this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
-      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
-      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, this.time, this.still);
+      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, fx - FRONT_AX, fy - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, fx - FRONT_AX, fy - FRONT_AY, this.time, this.still);
       return;
     }
     if (p.dir !== 'side') {
       const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
       const f = p === this.player && this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
-      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
-      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, this.time, this.still);
+      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, fx - FRONT_AX, fy - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, fx - FRONT_AX, fy - FRONT_AY, this.time, this.still);
       return;
     }
     c.save();
-    c.setTransform(s * p.face, 0, 0, s, (Math.round(p.x) - cam.x) * s, (Math.round(p.y) - cam.y) * s);
+    if (at) c.setTransform(p.face, 0, 0, 1, fx, fy);
+    else c.setTransform(s * p.face, 0, 0, s, (fx - cam.x) * s, (fy - cam.y) * s);
     p.painter.draw(c, 1, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true, fxStill: this.still } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player, fxStill: this.still });
     c.restore();
+  }
+
+  // ── The aura look (td-aura.ts) ──
+  private figureScratch: HTMLCanvasElement | null = null;
+  private readonly auraFx = new AuraFx();
+  /** `window.__tdArt.aura(true)` (automated browsers): the arcane aura on the Keeper, for the art pass's photographs. */
+  private artAura: AuraLookId | null = null;
+  /** The look of the aura the Keeper wears now: a running aura skill in its element, or the art pass's showcase. */
+  private auraLook(): AuraLook | null {
+    if (this.artAura) return AURA_LOOKS[this.artAura];
+    const a = this.mobs.aura;
+    return a === 'aura-embers' ? AURA_LOOKS.ember : a === 'aura-siphon' ? AURA_LOOKS.life : a === 'aura-watchfire' ? AURA_LOOKS.brass : a === 'lantern-aura' ? AURA_LOOKS.lamp : a === 'pack-bond' ? AURA_LOOKS.wild : null;
   }
 
   private plate(text: string, x: number, y: number, color: string): void {

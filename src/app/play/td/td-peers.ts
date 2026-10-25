@@ -10,6 +10,7 @@
  * A tap on one names it (EngineOptions.onPeerTap: the HUD's small card, with Wave). A Wave hangs over the Keeper who
  * waved and the one waved at for a few seconds.
  */
+import { castShadow } from './td-shade';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
@@ -121,8 +122,7 @@ export class TdPeers {
   /** One Keeper, feet at (p.x, p.y): the front/back sheet facing the camera or away, the painter's side view across. */
   draw(c: CanvasRenderingContext2D, p: PeerShown, view: { scale: number; camX: number; camY: number; time: number; still?: boolean }): void {
     const sx = Math.round(p.x), sy = Math.round(p.y);
-    c.fillStyle = 'rgba(30,18,26,.28)';
-    c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
+    castShadow(c, sx, sy, 20);
     const painter = this.painter(p);
     // A per-Keeper phase so two standing side by side do not breathe in step.
     const t = view.time + (p.id.charCodeAt(0) % 7) * .37;

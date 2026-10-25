@@ -8,6 +8,8 @@
  * a 1px dark outline on objects and none on ground tiles. Original art only —
  * the owner's references set the bar, not the pixels.
  */
+import { broadleafTree, pineTree } from './td-flora';
+
 export const TILE = 16;
 
 type Ctx = CanvasRenderingContext2D;
@@ -449,6 +451,8 @@ export interface Sprite {
   lights?: readonly { x: number; y: number; r: number; warm?: boolean }[];
   /** Chimney mouths (art px from the anchor) for smoke. */
   smoke?: readonly { x: number; y: number }[];
+  /** A soft shadow cast on the ground (drawn in the ground pass, under everything standing): its image and offset from the anchor. */
+  shadow?: { img: HTMLCanvasElement; x: number; y: number };
 }
 
 const cache = new Map<string, Sprite>();
@@ -585,7 +589,13 @@ export function stall(widthTiles: number, palette: number, goods: 'pots' | 'brea
 
 /** A round tree: trunk on the ground, a fat canopy as its own fading layer. */
 export function tree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
-  return cached(`tree:${kind}:${seed}`, () => {
+  // The art style upgrade (td-flora.ts): volumetric clumped crowns and a cast shadow; six variants a kind.
+  const v = ((seed % 6) + 6) % 6;
+  return cached(`tree:${kind}:${v}`, () => kind === 'pine' ? pineTree(v) : broadleafTree(kind, v));
+}
+/** The flat crowns the world grew before the art style upgrade (kept for comparison galleries). */
+export function flatTree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
+  return cached(`flat-tree:${kind}:${seed}`, () => {
     const W = 34, H = 46;
     const trunk = cv(W, H);
     const c = trunk.getContext('2d')!;

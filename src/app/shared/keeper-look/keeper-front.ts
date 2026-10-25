@@ -17,6 +17,7 @@ import type { KeeperGarb } from './npc-looks';
 import { WARLOCK_GARB } from './vocation-look';
 import type { WornLook } from './worn-look.model';
 import { eyeFlicker, eyeGlow, wornParticles } from './worn-fx';
+import { volumize } from './keeper-volume';
 
 export type Facing = 'down' | 'up';
 export const FRONT_W = 28;
@@ -956,7 +957,8 @@ export function frontSheet(painter: KeeperPainter, staff = false): HTMLCanvasEle
       c.restore();
     }
   });
-  sheet = outline(raw);
+  // The volume pass (keeper-volume.ts): the figure lit round from the upper left.
+  sheet = volumize(outline(raw));
   cache.set(painter, sheet);
   return sheet;
 }
