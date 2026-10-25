@@ -255,7 +255,7 @@ The finale is at the **Godforge threshold**: a ring of five sockets under the ch
 ### 3.3 Sea and harbours
 The Harbourmasters (`play/td/td-harbour.ts:29-33`):
 - Ember Harbour: **Odd Tarn**.
-- Pyrehold: **Hale Dross**, three ships.
+- Pyrehold: **Garrick Dross** (renamed from Hale Dross, C-20, decided 2026-10-22), three ships.
 - Cinderport: **Marit Salt**.
 - Mossharbor: **Sunny Pell**.
 - Mirewatch: **Old Corvane**.
@@ -281,6 +281,33 @@ The Delve strata are retired: Root Hollows (Delve), Basalt Caverns, Glowcap Grot
 Starfall Deep, the Void Shore and the Unmade. Their **ideas** move into the Realms (realms-endgame.md §3.4). The name
 **Root Hollows** now means only the Verdant dungeon.
 
+### 3.4b The acts as long lands (planned, 2026-10-26, `docs/design/world-acts.md` §1)
+Each land becomes a D2-style act: a chain of long surface **sections** (one room area each, `<land>:<section>`), each
+with a **Waystone** (a stone that remembers who touched it), joined by **connector caves** that are the only way on,
+and ending at the land's harbour (the Harbourmasters, §3.3).
+- **Ember Isle** grows to 40 × 30 blocks. A **rockslide** closes the old Hills road, so **Slagstone Cave** is the way
+  east. New: **the Barrow Road**.
+- **Infernal Reach**: the Cinder Steppe → the Charwood → **the Kiln Tunnels** (connector, the charcoal burners'
+  haul-ways) → the Deep Charwood → the Obsidian Badlands → **the Glass Throat** −1…−2 (connector, a lava tube cooled to
+  glass) → the Molten Fields → the Pyre Peaks, **the Bastion Road** and **the Caldera Rim**.
+- **Verdant Wilds**: the Mossy Shore → the Fernglades → **the Rootwater Ford** → the Greenwood → the Root Hollows (now a
+  connector: −3 gains a root-ramp up) → the Deep Wilds → the Sunken Courts. A thorn hedge "the wood closes what it
+  forgets" shuts the Greenwood road.
+- **Umbral Marches**: the Gloaming Shore → the Fen → **the Pilgrims' Boardwalk** → the Sunken Belfry (connector,
+  upper half only; the fifth bell stays sealed for campaign #12) → the Black Meres → the Deep Fen → **the Bog
+  Galleries** −1…−2 (connector, the peat-cutters') → the Drowned Ruins.
+- **Waystone names**: Meadow, Woodcutter's, Rockslide, Sexton's, Slag-Cart (Ember Isle); Watch Cairn, Glasswater,
+  Kiln, Clan, Spill, Drake, Pyre (Reach); Net, Bell-Post, Plank, Mere, Copy-Tree, Heartroot, Pillar (Wilds); Corvane,
+  Wick, Prayer-Board, Mere-Lamp, Lost-Lantern, Abbey-Slab (Marches).
+- **Hot spots**: the Slag-Cart Graveyard, the Wolf-Run; Kettle Camp, the Scorch Rings, the Drake Nests, the Watch's
+  Last Cairn; the Weaver Canopy, the Hart Meadow, the Bell-less Square; the Lure Pools, the Knights' Causeway, the
+  Witch's Island. New landmarks: **the Storm-Struck Oak** (the Greenwood) and **the three dead lantern posts** of the
+  Black Meres.
+- **New fish**: Ash Perch, Rootling Eel, Mire Carp, **Stormscale** (a Mirrorfin caught in thunder). Mirrorfin, Lampfish
+  and Moonwake keep their waters.
+- **Celestial and Luminous** section names are outlines only (world-acts.md §1.5–1.6); they are not canon until those
+  acts are built.
+
 ### 3.5 Realms (endgame, planned)
 These follow realms-endgame.md §3.4. Each opens with an act **Seal**, a **Gate Fragment** (three Margin Notes in one
 hand), and, for Realms 6–8, the **Unbound Seal**. Entry is through a **Seam-gate** (a standing-stone ring) or a capital
@@ -304,7 +331,7 @@ hand), and, for Realms 6–8, the **Unbound Seal**. Entry is through a **Seam-ga
 ### 4.1 Factions and orders
 | Name | Seat | What they want | Who |
 |---|---|---|---|
-| **The Pyre Watch** | Pyrehold, the Pyre Spire | Hold the gate. Sworn on a hammer "struck by five, kept by one"; admits no one under 20. | Captain Brannoc Vey, Hale Dross (quartermaster) |
+| **The Pyre Watch** | Pyrehold, the Pyre Spire | Hold the gate. Sworn on a hammer "struck by five, kept by one"; admits no one under 20. | Captain Brannoc Vey, Garrick Dross (quartermaster) |
 | **The Four** (smiths' guild) | the Forge of the Four, Pyrehold's great forges | Four masters, four marks (ring, wedge, tongs, flame). They scraped the fifth. | Forgewife Ysolde Marr keeps the forges; Odric Hale was the fifth [Q2] |
 | **The Archive** (formally *the Dawn Archive*; its hall is the *Archivum*) | the Meridian observatory; its moon-mirror shard under Gloamhaven | Keeps the rolls: who is counted, who is struck. It files what it cannot measure and does not publish it. | The Archivist, Idris Calder (trained there), Ilyra Venn, Tomas Rill |
 | **The Meridian Compact** | Meridian | Keeps the hour and the Waystones; modelled the eclipse, "the model was wrong". | Sera Quill, Nox Aster (dismissed) |
@@ -324,15 +351,23 @@ Legacy factions (world-and-cast.md:970-973) are kept as names for later acts:
 - **Root Accord** (Verdant).
 
 ### 4.2 The four callings (owner-locked), plus one waiting
-| Calling (EN / ES) | Trainer and line | Trees | Fantasy |
-|---|---|---|---|
-| **Warlock** / Brujo | Old Mother Cindle, Ember Inn back room | Ember, Bone, Shadow | the hearth-witch who walks the dark |
-| **Ashguard** / Guardiceniza | Captain Brannoc Vey, Pyre Watch | Brand, Oath, Ash | the watch that holds the gate |
-| **Lanternwright** / Farolero | Tomas Rill, the lamp-keepers | Lamp, Hearth, Moth | the one who carries the light in |
-| **Thornstrider** / Caminaespinas | Canopy Warden Ilsa Fenn | Thorn, Wild, Briar | the one the wild lets through |
-| *(locked)* **Wanewalker** | none: "a thin one already waits by the fire" | — | fights from the far side of the Hush |
+| Calling (EN / ES) | Trainer and line | Trees | Fantasy | Role (DM, 2026-10-26) |
+|---|---|---|---|---|
+| **Warlock** / Brujo | Old Mother Cindle, Ember Inn back room | Ember, Bone, Shadow (curses, wards and **rime**) | the hearth-witch who walks the dark | **AoE damage**, the fastest to level |
+| **Ashguard** / Guardiceniza | Captain Brannoc Vey, Pyre Watch | Brand, Oath, Ash | the watch that holds the gate | **the tank**; a strong duellist |
+| **Lanternwright** / Farolero | Tomas Rill, the lamp-keepers | Lamp, Hearth, Moth | the one who carries the light in | **the healer** (the only true one), bane of the dead |
+| **Thornstrider** / Caminaespinas | Canopy Warden Ilsa Fenn | Thorn, Wild, **Briar & Sky** (*Zarza y Cielo*) | the one the wild lets through | **single target and weather**; the PvP lean |
+| *(locked)* **Wanewalker** | none: "a thin one already waits by the fire" | — | fights from the far side of the Hush | — |
 
-The callings are chosen at **the Glass** in the Keeper maker. Any calling may wear any gear.
+The callings are chosen at **the Glass** in the Keeper maker. Any calling may wear any gear. Every calling's book runs
+to level 100 (`docs/design/skills-100.md`); each has a level-100 capstone that is a **sixth-mark** skill (the Keeper is
+the sixth tally): *Noon Goes Black* (Warlock), *Kept by One* (Ashguard, from the Watch's "kept by one"), *The Sixth
+Light* (Lanternwright), *Eye of the Storm* (Thornstrider).
+
+**Why these roles (lore).** The Watch holds the gate, so the Ashguard stands in front. The lamp-keepers bring people
+home: "the first five didn't come home, so the sixth brings them home", so the Lanternwright mends and **Rekindles**
+the fallen. The Warlock spends the fire inside on many at once. The Canopy Wardens read the weather in the wood, so
+the Thornstrider asks the sky, and sometimes it answers.
 
 ---
 
@@ -375,14 +410,14 @@ world now.
 - **Idris Calder**, enchanter, Archive-trained. *Enchanting stall (13,19).*
   - "A rune in a socket is a promise the gear has to keep."
   - **Becomes the Enchanting Table's keeper: runewords are made here** (§6.2).
-- **The Archivist**, keeper of fragments (currently "he"; §10 C-12). *Stall (35,13).*
+- **The Archivist**, keeper of fragments. Pronoun **they** (decided 2026-10-22, C-12). *Stall (35,13).*
   - Silences whispering items. "A hint is a kindness. An answer is a theft."
   - **Secret**: filed Kael's refusal and the first lock and never published either. Their own first name is the one
     redaction.
 - **Old Mother Cindle** (planned, design-bible.md:246; not placed in code yet), retired Warlock. *Ember Inn back
   room.* She knits; she trains Warlocks.
 - **Odd Tarn**, one-eyed ferryman. *Ember Harbour.* "It's been warm since the second tally."
-- **Hollis the Row-Walker** (dead), a unique Bone Walker who carries Barrow Key 1. *Barrow plot.*
+- **Hollis Vane, the Row-Walker** (dead; brother to Tobias Vane, C-20), a unique Bone Walker who carries Barrow Key 1. *Barrow plot.*
 - **The Barrow dead**: Maren Cole, who rang the bell; Tobias Vane, and his dog; the forty-first, with no name, only a
   tally mark.
 
@@ -399,7 +434,7 @@ world now.
 - **Scholar Odette Pryor**. *Pyrehold (34,19), the Pyre Spire study.*
   - Maps the Deep; keeps the Forge-roll of the Four.
   - **Thread**: the caldera smoke leans toward the land the next eclipse will lean on. She becomes a forecaster.
-- **Hale Dross**, Brannoc's quartermaster and Harbourmaster. *Pyrehold pier.* "I only write down the ones that come
+- **Garrick Dross** (was Hale Dross; C-20), Brannoc's quartermaster and Harbourmaster. *Pyrehold pier.* "I only write down the ones that come
   back."
 - **Harbourmaster Tamsin Coyle**. *Cinderport (18,10).* "Nothing docks in Cinderport without her nod." Task giver.
 - **Marit Salt**, the Salted Ember tavern-keeper's sister. *Cinderport pier, the Sailing Board.* "The Salted Ember
@@ -458,6 +493,30 @@ Merchant buy anything". This is canon; the Merchant *weighs and takes in*, the C
 | (planned) Graft Crown ~45 | the Rootcradle Below | The tree that wears a lantern: a copy that wants to be the original. |
 | (planned) Mirror Parliament ~55 | the Ink Deeps | The four Keepers' consensus, copied and left to vote forever. |
 | (planned) Perihelion Engine; Pale Refrain; Unbound Pattern | Acts IV, V, Finale | design-bible.md §3.3 |
+| (planned) **The Last Siege** ~32, world boss | the Obsidian Badlands, ashfall nights | the Ashen Bastion's siege tower, still rolling toward a war that ended. It is not angry; it is late. If it reaches the Bastion's ruin it salutes and leaves. |
+| (planned) **The Antlered Storm** ~42, world boss | the Storm-Struck Oak, the Greenwood, thunderstorms | the oldest Rootglass Hart, struck by the first storm after the Lock; the lightning stayed. The wood remembering it was weather before it was a wood. |
+| (planned) **The Fogmother** ~54, world boss | the Black Meres, fog at night | what the fog keeps when a lantern gutters, wrapped in the drowned sisters' habits. Lighting the three dead posts first prevents her. She is **not** what the fog thins round (Act III's Second Lantern). |
+
+**Party forms** (planned, monsters-abilities.md §5.3). On Nightmare and Hell, a party meets each floor boss's party
+form: its reason made visible as a mechanic (the Anvil-Warden's Sunder is the hammer on the anvil; the Ink Abbess
+writes your name, a Brand only the healer can lift).
+
+**World-boss uniques** (planned; worldbound: one trade binds):
+- **The Wall That Kept Walking**, a shield. "It held the line so well that it carried the line with it."
+- **Crown of the Antlered Storm**, a helm. "The hart wanted to be a tree. The tree wanted to be the storm. Neither
+  asked the antlers."
+- **The Psalm Heard Through Water**, an amulet. "She sang it wrong for so long that it became a different hymn, and
+  that one works."
+
+### 5.7 Creatures added 2026-10-26 (planned, monsters-abilities.md §2)
+- **Ashsinger** / *Cantaceniza* (orc, 12–18, the Deep Charwood and the Obsidian Badlands). The clans' shaman sings the
+  fallen back up (*vael osk teth*), D2's Fallen Shaman: "The clans bury no one. The Ashsinger sings them back up
+  instead, and charges the family for the verse."
+- **Bone Priest** / *Sacerdote de hueso* (bone, 15–25, the Ashen Crypt only). The Bastion's chaplain still calls the
+  roll (*osk teth*): "He still calls the roll, and the roll still answers."
+- **Monster auras** share the Keepers' aura names (Might, Blessed Aim, Conviction, Redemption, Holy Fire, Holy Freeze,
+  Holy Shock, Fanaticism, Prayer, Vigor, Thorns), plus two of our own: **Lightless** (the dark leaning in) and
+  **Cant-Chorus** (a pack speaking the old tongue together). A pack's aura blesses its own pack only.
 
 ---
 
@@ -476,6 +535,8 @@ The tongue of making, older than the Seamworks. Roots say *what*; shapes say *ho
 | thar | thorn, root, the wild |
 | brann | oath, iron, the watch |
 | ul | the eclipse, the seam |
+| vor | the sky, weather, storm: rain, wind, thunder (added 2026-10-26) |
+| rim | cold, frost, ice: "what the heat leaves" (added 2026-10-26) |
 
 | Shape | Meaning |
 |---|---|
@@ -496,6 +557,9 @@ The tongue of making, older than the Seamworks. Roots say *what*; shapes say *ho
 - The final sentence is the **Cant of Holding**, *ul brann hesk lum nyr*: "the five-root sentence the first Keepers
   spoke wrong". Do not reveal its meaning before the Finale.
 - The Cant is never a person's name. See §10 C-14 (Hesk Ashby).
+- **Compounds fixed by the 2026-10-26 pass**: lightning is *lum vor*, "the sky's lamp"; rain *vor dra*; fog *vor nyr*;
+  a blizzard *rim vor dra*; a frost bolt *rim sha*; raising the dead *osk teth* (the Ashsinger sings *vael osk teth*).
+  *vor* and *rim* are never names (§7.5).
 
 ### 6.2 Runes and runewords (the owner's queued system, now canon)
 - **What a rune is.** The 22 runes are *compact principles of the Godforge*. They are splinters of the line the Keepers
@@ -539,8 +603,12 @@ The tongue of making, older than the Seamworks. Roots say *what*; shapes say *ho
 
 ### 6.3 Spellstones (Tibia runes)
 They are called **Spellstones** so they never clash with runes. A **Basalt Blank** plus **Soul** plus a known spell,
-inscribed in the Spellbook, makes a charged stone. "The Seamworks scribes cut the Cant into basalt because basalt
-remembers being fire."
+cut in the **Skill Book** (the "create Spellstone" button on the skill's row), makes a charged stone. "The Seamworks
+scribes cut the Cant into basalt because basalt remembers being fire."
+- **A stone records the hand that cut it** (2026-10-26, `skill-book.md` §4): the spell's rank *and the marks (modifier
+  nodes) taken under it*. It is a real satchel item, one charge a unit, stacking only with stones of the identical
+  recipe; it can be traded, sold and dropped. "Lend it to a friend and it still speaks in your voice."
+- The hidden stone pouch is retired; its stones move into the satchel.
 
 ### 6.4 Light, dark and the eclipse
 - Light is a resource: torches, lamps and hearths are fixed lights, and the Keeper and Glim carry light.
@@ -563,7 +631,7 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
 | City | District → shop | Keeper |
 |---|---|---|
 | Seamworks | Market square → **General Store** (rope, tinderbox, torches, Waygate Scrolls); Harbour road → **Tackle shed** | Edrin Kade; Odd Tarn's nephew (unnamed until built) |
-| Pyrehold | Plaza of stalls → General Store; Forge district → **Smith's** (normal bases with sockets, the Enchanting Table's supply); Harbour → **Fishing Store** | Hale Dross; Ysolde Marr; Netter Pell's stall |
+| Pyrehold | Plaza of stalls → General Store; Forge district → **Smith's** (normal bases with sockets, the Enchanting Table's supply); Harbour → **Fishing Store** | Garrick Dross; Ysolde Marr; Netter Pell's stall |
 | Cinderport | Dockside → **Fishing Store** (rods, bait, the fishing-spot chart) | Old Netter Pell |
 | Rootglass | Boardwalk market → General Store; the Bole → **Herb and Seed** | to be named |
 | Mossharbor | Pier → **Fishing Store** | Netmender Wenna Brisk |
@@ -572,6 +640,32 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
 ### 6.6 Death
 - **Normal world**: the Cold Hearth. Ember debt, a fallen purse, nothing lost; under level 20 a fall costs the walk.
 - **Realms and Nightmare/Hell**: Tibia-style (realms-endgame.md §3.9). Story items are never lost.
+- **A death to a Keeper** (PvP, §6.8) keeps the scope's XP rule and always leaves a **Keeper's bag** (world-acts.md §6.5).
+- **Rekindle** (the Lanternwright, L30): a party member fallen where a fall costs can be woken where they fell; within
+  30 s of the fall, the death costs nothing. Lore: the sixth brings them home.
+
+### 6.7 Weather (2026-10-26, `docs/design/world-acts.md` §3)
+- The sky is one for everyone: each land rolls its weather every 6 real minutes from the world clock. States: Clear,
+  Overcast, Rain, Thunderstorm, Fog, and one per land (Ashfall on Ember Isle and the Reach, Spore drift in the Wilds,
+  Mist-rain in the Marches; Snow and Glass-storm later). Outdoors only; an eclipse hushes it.
+- **Wet** is the weather's rule: lightning bites deeper and leaps further on the wet; fire burns lower; cold freezes
+  them. A thunderstorm's strike never takes a Keeper below a tenth of their life.
+- Lore: "Ask the sky; sometimes it answers." The Canopy Wardens read it; **Odette Pryor** forecasts it from the
+  Pyre Spire (the smoke-leans thread pays off here first, §9).
+
+### 6.8 PvP: the world counts (2026-10-26, `docs/design/world-acts.md` §6)
+- Open, Tibia-style, everywhere outside the safe light. **Never** on Ember Isle, on a town's or village's safe ground,
+  indoors, on piers and boards, at Waystones and hearth rings, in the Waystone Hall. Under level 20 nobody fights a
+  Keeper. Nobody opens on a Keeper below two-thirds of their level.
+- **The marks** are a count on your name, because the world counts (the Keepers' line was a count; the Sexton counts
+  the graves; the Archive strikes names):
+  - **Ash Mark** / *Marca de ceniza*: struck first; 15 minutes.
+  - **Red Tally** / *Cuenta Roja*: 3 unjustified kills in a day, 5 in a week or 10 in a month; 30 days.
+  - **Struck** / *Tachado*: 6 more while Red; 45 days; your name leaves the plate, Glim dims beside you, no harbour
+    will carry you.
+- The Pyre Watch pays a **Writ of the Watch** for the counted, at Captain Brannoc Vey's desk. Aldous Wren cuts a
+  tally on the lych-gate post for every Red Keeper who visits: "Forty graves. And one more name to keep."
+
 
 ---
 
@@ -606,7 +700,7 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
      *Waygate*.
 7. **Spanish ships in the house style**:
    - no diacritics or ñ, as in the shipped tables ("Guardian", "anos");
-   - place names stay English (*Rootglass*, *Pyrehold*), except the harbour board, which translates them (§10 C-16);
+   - place names stay English (*Rootglass*, *Pyrehold*) in every language (decided 2026-10-22, §10 C-16);
    - the Seamworks is *el Taller* in story text;
    - a Keeper is *Guardian*.
 8. **Numbers in lore**: see the dating rule in §1. Counts are sacred: forty graves, four bells, five marks, nine lanterns.
@@ -842,6 +936,23 @@ atmosphere pass adds:
 
 ---
 
+### 8.5 Connector caves (planned, 2026-10-26; full briefs in `docs/design/world-acts.md` §1)
+- **The Kiln Tunnels** (Reach, 12–14). *Built by* the charcoal burners to haul under the orc raids; *fell* when the clans
+  found them and the burners bricked their end. *Lair*: Cinder Imps in cold kilns, Ash Ghouls (burners who never came
+  up). *Mood*: soot-black, one cold kiln-glow per chamber. *Dressing*: cart rails, "BURNERS ONLY" chalked on a bricked
+  arch, a cart tally that stops mid-week. *Sounds*: a cart rolling with nobody pushing it. *Puzzle*: the rail junction.
+  *Hidden*: a lunch tin with a Margin Note scrap; a chest behind the arch, opened from the far side.
+- **The Glass Throat** −1…−2 (Reach, 17–19). *Built by* nobody: a lava tube cooled to glass. *Lair*: Glass Sentinels
+  that lost the way home to the Foundry. *Mood*: your light comes back from every wall, and shows doubles. *Puzzle*:
+  −2's mirror hall, where only the Sentinel Glim does not dim beside is real. *Hidden*: a cache that shows only with
+  your light shuttered.
+- **The Bog Galleries** −1…−2 (Marches, 35–38). *Built by* Gloamhaven's peat-cutters, who cut fuel for the lanterns;
+  *fell* when they flooded the year the abbey drowned. *Lair*: Ink Hounds on the cutters' scent, Mire Lurkers. *Mood*:
+  peat-brown, empty lantern-hooks you can light (Firemaking). *Puzzle*: sinking peat blocks on −2. *Hidden*: a cutters'
+  cache with a Margin Note scrap in Veil's hand.
+- **The Sunken Belfry**, upper half (Marches, 30–32): the abbey's bell-tower lying on its side under the water. Its
+  louvres are the floor now. The fifth bell's door stays sealed (campaign #12).
+
 ## 9. Open threads and planted clues
 
 | Thread | Planted (where) | Pays off |
@@ -849,7 +960,7 @@ atmosphere pass adds:
 | **The sixth tally mark** | five marks at Keeper height; Ember Mine −3 / Ninefold Stones (campaign #1); a fresh mark in each act-boss room | Finale: carve it or leave it blank (Seam Stance) |
 | **The forty-first grave / Barrow Doors 2–5** | the Sexton's Count; four sealed keyholes in the vault | one door per act: the erased witnesses each act uncovers |
 | **What drinks the heat** | Ysolde Marr's forges; frost-glass; cold anvils | Act I: the Sovereign banked heat to keep the seam shut; Realm 1 the Cold Anvil |
-| **The smoke leans** | Odette Pryor | she becomes the eclipse forecaster |
+| **The smoke leans** | Odette Pryor | she becomes the forecaster: first the weather (her board shows the next two windows, world-acts.md §3.6), then the eclipse's lean |
 | **The sea is warmer** | Netter Pell, Odd Tarn ("since the second tally"), Sunny Pell | the Burning Sea is the Godforge's cooling bath (Act IV/V) |
 | **Wanewalkers** | lore page; the Hollow Choir; Odric Hale [Q2]; the Sailing Board's eclipse lamp | Realm 6 the Hush Beneath; the fifth calling |
 | **Who brews the Rejuvenations / the Lamplighter's Things** | potion lore; five shade chests; "For whoever comes next" (campaign #3) | the Lamplighter Below, Act III |
@@ -859,7 +970,13 @@ atmosphere pass adds:
 | **The Archive's struck names** | Odric, the Choir, the Wanewalkers | Act IV: the Archivist publishes the struck roll (their own first name last) |
 | **The Watch's hammer "struck by five"** | Brannoc Vey [Q2]; the Hammer of the First Watch | the Ashguard calling quest: re-swear the oath "struck by six" |
 | **Glim's first lamp** | Glim's margin tales | Finale egg (unchanged) |
-| **Doors in the dark** | sealed doors in the Ashen Crypt, Temple below −5, Drowned Crypts below −3 | Graft Crown, Ink Deeps, Ashguard quest |
+| **Doors in the dark** | sealed doors in the Ashen Crypt, Temple below −5, Drowned Crypts below −3; the Relief Column's chalked last name (night event) | Graft Crown, Ink Deeps, Ashguard quest |
+| **The Late Shift** (night event, the Ember Mine head) | six lamp-lights walk up out of the shaft and go out at the fence: "Shift done. Nobody signed us out." | campaign #1 The Beacon Goes Down: the beacon leans down the shaft because something below is still working |
+| **The Ossuary Watch badge** | dropped by the Last Siege (1 in 3) | campaign #11 Barrow Door 2 |
+| **The copy-seed** | the Walking Tree (Greenwood night event) | campaign #7, the Graft Crown |
+| **The bell-clapper and the bell under the water** | the Dusk Hymn (Sunken Courts); the Bell Under the Water (eclipse, the Black Meres); a ringer's glove: "Pull on four. Never on five." | campaign #12 Who Rings Under the Water |
+| **A Voice Calls a Name** | the Deep Fen: on the third night it calls the Keeper's own name | a personal fixed light; ties to Old Corvane's lanterns (Act III) |
+| **The world counts** | PvP marks; Wren cuts a tally for every Red Keeper | the Tally Hall (Realm 7) may read the PvP counts; DM to decide when it is built |
 
 ---
 
@@ -952,7 +1069,8 @@ sister, **Bryony Salt**) as a flavour keeper.
 **C-12. The Archivist's pronoun.** world-and-cast.md:531-555 says they; lore-addendum.md:1408 says him;
 lore-addendum.md:1449-1451 says she; `seamworks-square.ts` (stall blurb) says "He silences".
 
-*Fix (owner)*: pick one. The DM recommends **they**, since the Archivist's first name is the one redaction.
+*Decided (owner, 2026-10-22)*: **they**. Still to apply in code: `seamworks-square.ts:121` "He silences" → "They
+silence what whispers." (lore-addendum lines are history and stay).
 
 **C-13. The Graft Crown's floor.** It is at "Rootcradle −6" in design-bible.md:168 and realms-endgame.md:117, but the
 temple ends at −5, the Rootcradle (`maps/overgrown-temple.ts`; world-map.md:31).
@@ -974,7 +1092,8 @@ not want on the scale. I will weigh it."
 **C-16. Spanish place names.** `play/harbour/harbour.i18n.ts:8-17` translates them (Isla Brasa, Pirohold, Puerto
 Ceniza…); everywhere else keeps English (`td-prologue.i18n.ts:47` "Ember Isle").
 
-*Fix (owner)*: one rule. The DM recommends English names everywhere, with the board's Spanish only as a subtitle.
+*Decided (owner, 2026-10-22)*: place names stay English in every language; the board's Spanish may stand only as a
+subtitle. Still to apply: `harbour.i18n.ts:8-17`.
 
 **C-17. "Realms" in player text for the lands.** `shared/lore/lore.i18n.ts:6` says "Pages the realms have told you",
 and `play/lobby/lobby.i18n.ts:7` says "Waking the realm...". Both break the owner's naming decision
@@ -1004,6 +1123,10 @@ the line to "a gravedigger's cowl, not mine".
 - Make the Row-Walker **Hollis Vane**, brother to Tobias Vane on the stone. This adds a Barrow family.
 - Rename the quartermaster **Hale Dross → Garrick Dross** in td-harbour.ts / harbour.i18n.ts. Odric's surname is the
   story's.
+
+*Decided (owner, 2026-10-22)*: Garrick Dross and Hollis Vane approved. **Still to apply in code** (2026-10-26):
+`play/td/td-harbour.ts:30` (`harbourmaster-hale-dross`, 'Hale Dross') and `play/td/td-sexton.ts:34` ('Hollis the
+Row-Walker').
 
 **C-21. Rune counts in comments.** `shared/rune-forge/rune.model.ts:2` says "twenty-five runes"; there are 22.
 `shared/rpg/boss-uniques.ts:5` says "ten", while :71 and :155 say "nine"; there are 10, and 12 with [Q2].
@@ -1041,3 +1164,32 @@ design-bible.md:164-172 and realms-endgame.md:111-121 have one act per land.
 
 *Fix (DM)*: the land acts are canon (§1.4, campaign.md). Add a banner at the top of world-and-cast.md and
 delve-and-beyond.md: "Legacy layer: see docs/world/canon.md for what is current."
+
+**C-28. Item loss on death, rejected and now asked for.** design-bible.md:100 lists "Full-loot or item-loss death
+(Tibia red skull, D2 hardcore)" under *What we reject*. The owner asked on 2026-10-26 for Tibia-style PvP with loot on
+death.
+
+*Fix (DM, decided)*: the owner's newer ask wins, inside the cozy contract. Only a **death to a Keeper** drops a bag.
+Only a **Red Tally or Struck** Keeper loses worn pieces. Story items are never lost, and nothing is lost under level 20
+or on Ember Isle (world-acts.md §6). Reword design-bible.md:100 to "Full loot for everyone (D2 hardcore) | kills the
+cozy contract | bags only from deaths to a Keeper; worn items only from the counted (Red Tally, Struck)".
+
+**C-29. The skill rules in skill-trees.md.** skill-trees.md "Rules" (tiers 1 · 6 · 12 · 18 · 24, a prerequisite chain,
+standalone passives) and design-bible.md §4.3 (Last Light as a tier-5 skill) describe the board that skills-100.md and
+skill-book.md replace. Also stale: spellstones.model.ts:15-16 ("Stones live in the Keeper's stone pouch … not the
+satchel") and design-bible.md §5.1.
+
+*Fix (builder, when the book ships)*: put a banner on skill-trees.md, "Superseded by skills-100.md and skill-book.md for
+the book's rules; the shipped numbers stay here." Update the spellstones header comment.
+
+**C-30. Monster auras' math.** monsters-abilities.md first said a pack aura uses "the same math" as a Keeper's. Its own
+table uses different numbers (Conviction −(10 + 3/L), max −60, against the Keepers' −(20 + 4/L), max 85).
+
+*Fix (DM, applied 2026-10-26)*: "same names and effects, with its own pack coefficients".
+
+**C-31. The Lanternwright heals only herself in code.** `play/td/td-lantern.ts` and `td-lantern-skills.ts`: Hearthlight
+and the Hearth Circle mend the Keeper only. Canon §4.2 now makes the Lanternwright the party's healer.
+
+*Fix (builder)*: skills-100.md §3, ally targeting (campaign §4 S3). It is not a lore contradiction, but a role the
+code must catch up to.
+
