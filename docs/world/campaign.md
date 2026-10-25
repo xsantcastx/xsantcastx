@@ -194,6 +194,204 @@ before building.
 
 ---
 
+### The systems queue: S1–S13 (DM design pass, 2026-10-26)
+
+These come from the owner's notes of 2026-10-26: the skill book, skills to 100, animations and sound, monster abilities
+and auras, MMO roles, long maps, weather, fish, the dark, and PvP. Four docs carry the specs:
+- `docs/design/skills-100.md`
+- `docs/design/skill-book.md`
+- `docs/design/monsters-abilities.md`
+- `docs/design/world-acts.md`
+
+**Order.** The queue is ordered by player impact. It runs in **three lanes**, so two or three builders never touch the
+same files:
+- **Book lane**: S1, S2, S3, S5, S9, S13 (`td-skills*`, `td-tree`, `play/spellbook`, `shared/spellstones`).
+- **World lane**: S4, S7, S8, S11 (`td-weather` new, `td-engine` draw passes, `maps/*`, `td-zones`).
+- **Monster lane**: S6, S10 (`td-mobs`, `td-elites`, `creature-families`, `td-corpse`).
+
+S12 (PvP) waits for online M3. The story queue (#1–#12 below) keeps its own order; a builder on the story lane uses
+whatever S-work has landed.
+
+**The gate for every S-task.** The full gate, plus:
+- `npm run -s check:meaning`;
+- `node scripts/combat-sim.mjs --check` green (bands re-run where a task says so);
+- EN and ES for every new player line;
+- a phone check at 360×640;
+- reduced motion honoured.
+
+#### S1 [spec'd]: The Skill Book, with nodes and the migration (L, book lane), FIRST
+- **What.** skill-book.md §1–3 and §6.1–6.2, plus skills-100.md §0.2–0.3 and §6:
+  - `NodeDef` and the node grammar;
+  - `tree.nodes` and `book: 2`;
+  - `clampTree`'s four new checks;
+  - the per-row unlock levels and the "one rank in any earlier row" rule;
+  - the ten folded passives as nodes, with their shipped values (skills-100.md §6);
+  - the one-time refund and the parchment note;
+  - the staged Accept/Cancel;
+  - the book component replacing the tree board.
+- **Rows in this task.** Only the **shipped** rows, with all six nodes each. No new skills yet.
+- **The fight.** It reads every node verb of skills-100.md §0.2. Each node of the shipped rows gets a truth spec in the
+  `td-truth-*.spec.ts` style: "a Keeper with Twin Nova sees a second ring 0.4 s later at 60%".
+- **Accept when:**
+  - every shipped Keeper loads into book 2 with no rank lost and the folded points refunded;
+  - the e2e reaches Accept at 360×640;
+  - combat-sim's vocation band (±25% on one foe) is green with the new PATHS (skills-100.md §7). If not, tune **A1**
+    nodes only.
+
+#### S2 [spec'd]: Spellstones as satchel items, and the create-Spellstone button (M, book lane)
+- **What.** skill-book.md §4 and §6.3:
+  - the `spellstone` stack type, keyed `skill@rank#nodes`, qty = charges, ≤ 100 a stack;
+  - `cut()`;
+  - the button on every active row;
+  - the confirm card;
+  - the Stones tab;
+  - the pouch migration with "Stones to collect";
+  - the level-to-use rule;
+  - the stone casting **with its recorded nodes**;
+  - tradeable, droppable, sellable at half a Blank a charge.
+- **Lore.** "A spell held in stone keeps the hand that cut it" (canon §6.3).
+- **Accept when:**
+  - two stones with different nodes never stack, and two identical ones always do;
+  - an old pouch migrates once on two devices without doubling (the merge rule in §6.3.5);
+  - check:meaning finds the stone's Found in and Used for.
+
+#### S3 [spec'd]: An animation and a sound for every attack (M, book lane)
+- **What.** skills-100.md §0.6:
+  - the eleven Keeper animations on the visible-gear rig;
+  - the FX kit rules;
+  - the new SfxCue families with their synth recipes in `sound-director.ts` / `sound-palette.ts`;
+  - then each shipped row's "Anim / FX / Sfx" line.
+- **The creatures' basic bites** get `bite` variations by family: maw clank, beast snarl, bone rattle, orc grunt,
+  shade hiss.
+- **The cap.** At most 6 hit cues per 100 ms.
+- **Accept when** every shipped skill and every basic attack has a frame set, an FX and a cue; reduced motion removes
+  particles and keeps tells; a 20-creature Nova does not clip the audio.
+
+#### S4 [spec'd]: Weather v1, Wet, and fish in the water (M + S, world lane)
+- **What.** world-acts.md §3.1–3.5 (Clear, Overcast, Rain, Fog only), the Wet status (skills-100.md §0.4) and §4 (fish
+  shadows, jumps, the bite tell):
+  - `td-weather.ts` as data: the per-section weights;
+  - the HUD pip;
+  - Menu → Weather full/soft/off.
+- **Lines.** Netter Pell's and Glim's first-rain lines (world-acts.md §3.6, EN + ES).
+- **Accept when:**
+  - two clients on one land see the same state in the same window;
+  - an eclipse forces Clear or Overcast;
+  - at most 14 fish shadows (8 on a phone);
+  - a jump at a spot shortens the next bite by 2 s.
+
+#### S5 [spec'd]: The healer and tank kit to level 30 (M, book lane)
+- **What.** skills-100.md §2 and §3 rows up to level 30, plus the Thornstrider's interrupts:
+  - **ally targeting** (§3, one rule), with Hearthlight and the Hearth Circle reworked to allies and the level factor;
+  - **Cleanse** (18) and **Rekindle** (30, only where a fall costs);
+  - **Banner of the Watch** (24), **Intercept** (30), **Brand Throw** (12);
+  - **Hunter's Mark** (6, with the Strip node) and **Pinning Shot** (12);
+  - **Moth Dust** (6), **Cinder Skin** (12), **Second Wind** (24), **Feral Leap** (18), **Call the Rain** (18, with S4's
+    Wet).
+- **Threat ×2** for the Ashguard's book is written now. It is read by S10.
+- **combat-sim.** The `--party` cells of skills-100.md §7.
+- **Accept when:**
+  - a level-30 Lanternwright keeps a level-30 Ashguard alive against a level-30 floor boss in the party sim;
+  - without her, the party falls ≥ 70%.
+
+#### S6 [spec'd]: Monster abilities batch 1, the raisers, and pack auras (M + M + M, monster lane)
+- **What.** monsters-abilities.md §7 steps 1–5:
+  - `MobDef.ability` with the kinds `wave`, `drop`, `smash`, `field`, `raise`;
+  - every Ember Isle and Reach creature's ability (§2.1–2.7);
+  - the **Ashsinger** and the **Bone Priest** (new creatures: profiles, art, i18n EN + ES, spawns per §2.6–2.7);
+  - fire-to-ash, Corpse Burst, Consecrate and Grave-Stamp as raise counters;
+  - the **pack aura** visuals: sigil disc, linked motes, pips;
+  - Aura Enchanted and the fixed bearers;
+  - the zone aura lists;
+  - the new affixes and the per-band affix counts.
+- **The Bestiary card** gains its counter line ("Kill the Ashsinger first." / "Mata primero al Cantaceniza.").
+- **Accept when:**
+  - combat-sim's at-level bands still hold (2–5 s, ≤ 2% falls);
+  - an Aura Enchanted unique pack sits in 30–75 s;
+  - every ability over 25% of a Keeper's life shows a ≥ 0.6 s tell on a phone.
+
+#### S7 [spec'd]: The Infernal Reach as an act, with sections, connectors and hot spots (L, world lane)
+- **What.** world-acts.md §1.2 and §2.2:
+  - the nine section areas (`infernal-reach:<section>`), with `td-zones` rows;
+  - **the Kiln Tunnels** and **the Glass Throat** −1…−2, to their zone briefs (canon §8.5);
+  - the section seams (walked gates, the 0.4 s veil, the arrival rule);
+  - **Waystones**: one a section, Atlas travel within the land;
+  - Cinderport and Ashgrove as their own small safe areas;
+  - the hot spots (Kettle Camp, the Scorch Rings, the Drake Nests, the Watch's Last Cairn).
+- **Walking time**, plaza to the Caldera Rim: 12–15 min.
+- **The end of the act.** Garrick Dross's board (story-locked by the Cinder Sovereign).
+- **Accept when:**
+  - the room runs each section as its own area;
+  - no section seam is an invisible wall;
+  - every section has one thing to read, one sealed thing and one sound (the zone-bible check).
+
+#### S8 [spec'd]: Thunderstorms, the land weathers, and night events batch 1 (M + M, world lane)
+- **What.** world-acts.md §3.2–3.6:
+  - Thunderstorm strikes: the 1.2 s tell; never below 10% life; the flash at ≤ 25% and ≤ 1 per 3 s, off under reduced
+    motion;
+  - Ashfall, Spore drift and Mist-rain;
+  - the thunder cues;
+  - all the weather lines;
+  - **Odette Pryor's forecast board** (canon §9);
+  - Stormscale and the Thundercake.
+- **Night events** (§5): the Late Shift (a clue for #1), the Count Goes On, the Relief Column, the Kiln That Lights
+  Itself.
+- **Accept when** each event is seeded per land and night (a party sees the same), never hurts or chases, and pays its
+  reward.
+
+#### S9 [spec'd]: Rows 30–50 for every calling (L, book lane)
+- **What.** skills-100.md §8 step 4: Rime Lance, Raise Grave-Mage, Kiln Breath, Pyre Strike, Hold the Gate, Watchquake,
+  Chain of Lamps, Hearthsong, Moth Swarm, Glim's Margin, Fogwalk, Lightning Call, Thornrain, Elder Beast, Ossuary
+  Golem. Each comes with its nodes, FX and sound (S3's kit).
+- **Accept when** combat-sim's 50 cell is banded for all four callings, and the party cell holds at 50.
+
+#### S10 [spec'd]: Threat, party forms, and the first world boss (L, monster lane; needs online M2)
+- **What:**
+  - monsters-abilities.md §5, the threat table and the nine mechanics, on the room-hosted boss;
+  - §5.3, the ten floor bosses' party forms on Nightmare and Hell;
+  - §6.3, **the Antlered Storm**, the first world boss: it needs S8's thunderstorm; the Storm-Struck Oak; its unique
+    Crown of the Antlered Storm; the Glim and rumour lines in EN + ES;
+  - then **the Last Siege** (ashfall nights), then **the Fogmother** (fog and the three posts).
+- **Accept when:**
+  - a party of four, one per calling, wins ≥ 70% in 3–6 min;
+  - a solo Keeper wins ≤ 15%;
+  - removing the healer, the tank or the AoE each fails the fight in the sim.
+
+#### S11 [spec'd]: The Verdant Wilds and the Umbral Marches as acts (L each, world lane)
+- **What.** world-acts.md §1.3–1.4, §2.3–2.4 and §5.3–5.4:
+  - the sections;
+  - the Root Hollows' −3 root-ramp;
+  - the thorn hedge;
+  - the Pilgrims' Boardwalk;
+  - the Sunken Belfry's upper half, with **the fifth bell's door sealed** (#12);
+  - the Bog Galleries;
+  - hot spots;
+  - the night events (the Walking Tree is a clue for #7, the Bell Under the Water a clue for #12).
+- **Also** Ember Isle's growth (§1.1: the rockslide and Slagstone Cave as the way east), done as the world lane's
+  filler.
+
+#### S12 [spec'd, blocked on online M3]: PvP, the world counts (L)
+- **What.** world-acts.md §6, all of it:
+  - safe ground and protection;
+  - Hot Ember;
+  - the marks and counts in a server `pvp/{characterId}` ledger;
+  - the Keeper's bag as a room ground pile;
+  - the Writ of the Watch and the Watch Board at Brannoc Vey's desk;
+  - the reactions: Glim, Aldous Wren's tally post, the Harbourmasters refusing the Struck, innkeepers;
+  - the death card in EN + ES.
+- **Accept when:**
+  - an unmarked Keeper in town can never be hurt;
+  - a level-19 Keeper can never be hurt;
+  - a Red Tally's death drops the satchel and 3 worn pieces;
+  - story items never drop.
+
+#### S13 [spec'd]: Rows 60–100 and the capstones (L, book lane)
+- **What.** skills-100.md §8 step 5: Blizzard, Rain of the Caldera, the Five-Struck Blow, Lighthouse, the Hundred-Year
+  Shot, Gale, the four L85 party skills, and the four sixth-mark capstones.
+- **When.** Built as content reaches 60+. It is banded in the sim against rule-level creatures now.
+
+---
+
 ### #1 [spec'd]: The Beacon Goes Down (Prologue gate, Ember Isle, level 8)
 
 - **Hook.** "The Eclipse Beacon has burned out to sea since before the count. Three nights now it leans down the mine
