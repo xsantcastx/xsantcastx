@@ -9,7 +9,7 @@
  * the crowd fights instead). Prints the rAF frame deltas (mean / p95 / worst, the count over 33 ms), the engine's own
  * work per frame (window.__tdArt.perf(): update, draw, of which ground baking), the paint caches' canvas pixels, the
  * main canvas's backing pixels and the JS heap. Printed, not asserted. TD_DETAIL=low|normal picks the setting;
- * ARTOPT=a|b|c photographs the art-direction prototype's look (td-artopt.ts). TD_WEATHER=rain|storm|fog pins the weather (the rain streaks, puddles and fog on top of every scene).
+ * TD_VIEW=desktop measures a 1280×800 DPR 2 laptop instead. ARTOPT=a|b|c|iso photographs the art-direction prototype's look (td-artopt.ts). TD_WEATHER=rain|storm|fog pins the weather (the rain streaks, puddles and fog on top of every scene).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { seed } from './play-helpers';
@@ -80,7 +80,8 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
 }
 
 on('phone perf (390×844, DPR 3)', () => {
-  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  // TD_VIEW=desktop: a 1280×800 laptop at DPR 2 instead (with TD_CPU=1, the desktop's smoothness check).
+  test.use(process.env['TD_VIEW'] === 'desktop' ? { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 } : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   const places: [string, (p: Page) => Promise<void>][] = [
     ['road', p => p.evaluate(() => { const w = window as unknown as W; w.__tdZones.to(58, 62); w.__tdArt.road(0); w.__tdArt.aura(true); })],
     ['town', async () => undefined],

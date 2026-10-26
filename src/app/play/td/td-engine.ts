@@ -25,7 +25,7 @@ import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
-import { optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
+import { offerClassic, onGraphics, optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
@@ -605,6 +605,9 @@ export class TopDownEngine {
       // shadows, floor's ground effects) and, last, the frames.
       // Iso: skip sections of drawIso (1 ground, 2 floor, 4 standing, 8 air, 16 fog/light, 32 world UI) to price each.
       isoSkip: (mask: number) => { this.isoSkip = mask; },
+      // Where a world foot (lifted `lift` px) is on the page, either projection; and what the Keeper is targeting.
+      pageOf: (x: number, y: number, lift = 0) => this.clientOf(x, y, lift),
+      target: () => { const m = this.mobs.target; return m ? { x: Math.round(m.x), y: Math.round(m.y), h: m.def.h } : null; },
       isoFlush: (on: boolean) => { this.isoFlush = on; },
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
@@ -942,6 +945,8 @@ export class TopDownEngine {
   }
   /** Environment detail changed (Menu → Settings, or measured slow frames): the ground is baked again in the new look. */
   private readonly offDetail = onEnvDetail(() => { this.chunks.clear(); this.isoGen++; });
+  /** Graphics changed (Menu → Settings, Classic / Isometric): the ground is baked again for the new projection. */
+  private readonly offGraphics = onGraphics(() => { this.chunks.clear(); this.isoGen++; });
   /**
    * Measured slow frames (td-detail autoLowerDetail): with no choice made, a device whose frames average over 22 ms
    * (under 45 a second) across four seconds, after the first eight while the world settles, drops to Low for the
@@ -956,7 +961,8 @@ export class TopDownEngine {
     if (w.t < 8000) return;
     w.n++; w.sum += dtMs;
     if (w.t < 12000) return;
-    if (w.sum / w.n > 22) autoLowerDetail();
+    // Slow here: Low detail if nobody chose; in Isometric, the HUD offers Classic too (one tap, the player decides).
+    if (w.sum / w.n > 22) { autoLowerDetail(); if (this.iso) offerClassic(); }
     w.done = true;
   }
   /** Frame work (webdriver only, e2e/td-perf-phone.spec.ts): [update ms, draw ms, of which ground baking ms] per frame. */
@@ -988,7 +994,7 @@ export class TopDownEngine {
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
     this.isoLayers?.light.remove(); this.isoLayers?.ui.remove(); this.isoLayers = null;
-    this.offDetail();
+    this.offDetail(); this.offGraphics();
     if (this.bgTimer) { clearInterval(this.bgTimer); this.bgTimer = null; }
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
@@ -3856,7 +3862,10 @@ export class TopDownEngine {
   private draw(): void {
     this.resize();
     this.iso = optIso();
+    if (this.iso !== this.isoSeen) { this.isoSeen = this.iso; this.canvas.setAttribute('data-graphics', this.iso ? 'iso' : 'classic'); }
     if (this.iso) { this.drawIso(); return; }
+    // Back from Isometric (Settings): its light and UI layers go away.
+    if (this.isoLayers) { this.isoLayers.light.remove(); this.isoLayers.ui.remove(); this.isoLayers = null; }
     const c = this.ctx, s = this.scale, cam = this.cam;
     c.imageSmoothingEnabled = false;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -5185,6 +5194,8 @@ export class TopDownEngine {
   private readonly isoWorld = { x: 0, y: 0, w: 0, h: 0 };
   /** Drawing in iso this frame (td-artopt `iso`). */
   private iso = false;
+  /** The graphics last told to the canvas's data-graphics (for the specs). */
+  private isoSeen: boolean | null = null;
   private isoGround: IsoGround | null = null;
   /** Bumped when the ground must be baked again (a new level, a new detail setting). */
   private isoGen = 0;

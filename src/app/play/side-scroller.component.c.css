@@ -28,6 +28,15 @@
 @keyframes td-toast { 0% { opacity: 0; transform: translateY(6px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-toast { bottom: calc(var(--hud-bottom, 96px) + 10px); } }
 .stage--menu .td-toast { display: none; }
+/* Isometric running slowly here: a parchment card, the brass button back to Classic (td-artopt offerClassic). */
+.td-iso-slow { position: absolute; z-index: 6; left: 50%; top: 96px; translate: -50% 0; max-width: min(420px, calc(100% - 24px));
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; pointer-events: auto;
+  font: 600 14px/1.3 var(--font-pixel); color: var(--cozy-ink); background: var(--cozy-parch); box-shadow: var(--px-parch-rim), 0 0 0 2px var(--cozy-wood-0); }
+.td-iso-slow span { flex: 1 1 100%; text-align: center; }
+.td-iso-slow button { min-height: 44px; padding: 0 14px; border: 0; font: 700 14px/1 var(--font-pixel); cursor: pointer; }
+.td-iso-slow__go { color: var(--cozy-ink); background: var(--cozy-brass); box-shadow: inset 0 -3px 0 var(--cozy-brass-lo), 0 0 0 2px var(--cozy-wood-0); }
+.td-iso-slow__keep { color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.stage--menu .td-iso-slow { display: none; }
 
 /* ── The ability bar (top-down): four wooden slots, the key in a corner, a dark sweep while it cools ── */
 .td-skills { position: absolute; z-index: 5; left: 50%; bottom: 84px; translate: -50% 0; display: flex; gap: 8px; padding: 6px;
