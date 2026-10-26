@@ -1068,7 +1068,7 @@ export const HD_MODELS: Record<string, HdModel> = {
     box: [190, 160, 95, 140],
     build: (r, p) => bailiff(r, p, { robe: HM.robe, hood: HM.hood, tool: 'hook', scale: 1.15 }),
     body: p => ({ ...lungeBody(p, .7), ...fallBody(p, 'back') }),
-    scale: 1.3,
+    scale: 1.05,
   },
   'cinder-orc': { box: BIG, build: hb(ORC), body: biped },
   'orc-firecaller': { box: BIG, build: hb({ ...ORC, torso: C.red, robe: C.red, plates: undefined, head: 'hood', headMat: C.red, weapon: 'staff', off: 'cinder', caster: true, bulk: 1.1 }), body: biped },
@@ -1081,7 +1081,7 @@ export const HD_MODELS: Record<string, HdModel> = {
   'slag-crawler': { scale: 1.35, box: BIG, build: (r, p) => crawler(r, p, C.slag, FIRE, HM.iron, 4, 1.1), body: beast },
   'rootgnaw': { scale: 1.35, box: BIG, build: grub, body: beast },
   'vine-lasher': { scale: 1.45, box: BIG, build: lasher, body: p => ({ ...lungeBody(p, .3), ...fallBody(p, 'side', .7) }) },
-  'sporecap': { scale: 1.5, box: BIG, build: sporecap, body: p => ({ ...lungeBody(p, .3), ...fallBody(p, 'side', .7) }) },
+  'sporecap': { scale: 1.2, box: BIG, build: sporecap, body: p => ({ ...lungeBody(p, .3), ...fallBody(p, 'side', .7) }) },
   'lava-hound': { box: BIG, build: qb({ ...WOLFLIKE, len: 17, hipU: 31, barrel: [19, 13, 12], chest: 14, haunch: 12.5, body: C.obs, under: C.obsDk, dark: C.obsDk, eye: EYE.ember, nose: '#ff8a3a', claw: '#ffb347',
     dress: (r, p, q) => { for (let i = 0; i < 5; i++) { const f = -14 + i * 7, h = 6 + ((i + p.f) % 3) * 3; r.chain([add(q.hip, [f + 17, 0, 9]), add(q.hip, [f + 15, Math.sin(p.f + i), 9 + h * .6]), add(q.hip, [f + 13, 0, 9 + h])], 3, .8, FIRE, { z: .5 }); }
       r.line(add(q.hip, [10, 13, 4]), add(q.hip, [18, 13, -2]), '#ff8a3a', { n: [0, 1, 0] }); r.line(add(q.hip, [20, -13, 4]), add(q.hip, [28, -13, 0]), '#ff8a3a', { n: [0, -1, 0] }); } }), body: beast },
