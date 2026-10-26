@@ -1,14 +1,22 @@
-import { GRAPHICS_KEY, artOpt, graphics, onGraphics, optIso, setGraphics } from './td-artopt';
+import { GRAPHICS_KEY, artOpt, defaultGraphics, graphics, onGraphics, optIso, resetGraphicsForTest, setGraphics } from './td-artopt';
 
 describe('td-artopt Graphics (Classic / Isometric Beta)', () => {
-  afterEach(() => { setGraphics('classic'); try { localStorage.removeItem(GRAPHICS_KEY); } catch { /* private mode */ } });
+  // Every other unit spec runs the engine in Classic (karma.helpers): leave it that way.
+  beforeEach(() => setGraphics('classic'));
+  afterEach(() => setGraphics('classic'));
 
-  it('is Classic until the device chooses', () => {
+  it('is Isometric for a player who never chose (the default since 2026-10-27); the unit specs run Classic', () => {
+    expect(defaultGraphics(false)).toBe('iso');
+    expect(defaultGraphics(true)).toBe('classic');
+    localStorage.removeItem(GRAPHICS_KEY); resetGraphicsForTest();
     expect(graphics()).toBe('classic');
-    expect(optIso()).toBeFalse();
+    localStorage.setItem(GRAPHICS_KEY, 'iso'); resetGraphicsForTest();
+    expect(graphics()).toBe('iso');
+    expect(optIso()).toBeTrue();
   });
 
   it('Isometric is kept on the device, drawn at once, and announced', () => {
+    setGraphics('classic');
     const heard: string[] = [];
     const off = onGraphics(g => heard.push(g));
     setGraphics('iso');

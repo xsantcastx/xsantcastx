@@ -39,22 +39,32 @@ export function artOpt(): ArtOpt {
 
 // ── Graphics (Menu → Settings; owner 2026-10-27: iso goes live as a Beta toggle) ──
 /**
- * The player's graphics: `classic` the top-down world (the default), `iso` the isometric Beta (td-iso*.ts). A device's
+ * The player's graphics: `iso` the isometric Beta (td-iso*.ts, the default since 2026-10-27), `classic` the top-down world. A device's
  * own choice like Environment detail (td-detail.ts): plain localStorage behind try/catch, never the save gateway. The
  * dev `?artopt=` parameter (webdriver or localhost only) still overrides it, for the specs and the comparison shots.
  */
 export type Graphics = 'classic' | 'iso';
-export const GRAPHICS: readonly Graphics[] = ['classic', 'iso'];
+/** In the order the setting lists them: Isometric (Beta) first, the default. */
+export const GRAPHICS: readonly Graphics[] = ['iso', 'classic'];
 export const GRAPHICS_KEY = 'eclipse-td-graphics';
 let graphicsNow: Graphics | null = null;
 const graphicsListeners = new Set<(g: Graphics) => void>();
 const slowListeners = new Set<() => void>();
-/** The graphics this device chose (Classic until it chooses). */
+/** The graphics this device chose; Isometric (Beta) until it chooses (owner 2026-10-27: the new default for everyone). */
 export function graphics(): Graphics {
   if (graphicsNow) return graphicsNow;
-  let v: Graphics = 'classic';
-  try { if (typeof localStorage !== 'undefined' && localStorage.getItem(GRAPHICS_KEY) === 'iso') v = 'iso'; } catch { /* private mode: Classic */ }
+  let v: Graphics = defaultGraphics(unitSpecs());
+  try { const st = typeof localStorage === 'undefined' ? null : localStorage.getItem(GRAPHICS_KEY); if (st === 'classic' || st === 'iso') v = st; } catch { /* private mode: the default */ }
   return (graphicsNow = v);
+}
+/** No stored choice: Isometric for every player; the unit specs (Karma/Jasmine), written for the top-down engine, Classic. */
+export function defaultGraphics(unit: boolean): Graphics { return unit ? 'classic' : 'iso'; }
+/** Running under Karma/Jasmine (a Playwright browser is not: it gets the players' default unless a spec pins it). */
+function unitSpecs(): boolean {
+  const g = globalThis as unknown as { jasmine?: unknown; __karma__?: unknown; parent?: { __karma__?: unknown } };
+  let karma = !!g.__karma__;
+  try { karma ||= !!g.parent?.__karma__; } catch { /* cross-origin parent */ }
+  return typeof g.jasmine !== 'undefined' || karma;
 }
 /** Choose the graphics (saved on this device, applied at once: the engine draws the next frame the new way). */
 export function setGraphics(g: Graphics): void {
@@ -65,6 +75,8 @@ export function setGraphics(g: Graphics): void {
   graphicsNow = g; cached = null;
   for (const f of graphicsListeners) f(g);
 }
+/** Forget the cached choice (unit specs only: the next read comes from storage). */
+export function resetGraphicsForTest(): void { graphicsNow = null; cached = null; }
 export function onGraphics(f: (g: Graphics) => void): () => void { graphicsListeners.add(f); return () => graphicsListeners.delete(f); }
 /** The engine measured Isometric running slowly here (never under a test harness): the HUD offers Classic, one tap. */
 export function offerClassic(): void { for (const f of slowListeners) f(); }
