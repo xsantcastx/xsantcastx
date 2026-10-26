@@ -382,6 +382,8 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
     },
     /** Protocol 10: the room keeps this Keeper's life. */
     lifeOn: s => !!lifeOf(s),
+    /** S5: this room weighs heals, wards and guards on allies (`/world/life` `a`; ally-claims.ts). */
+    alliesOn: !!M && typeof M.parseAllyClaim === 'function',
     /** Protocol 10: the room pays this Keeper's XP and Gold. */
     creditsOn,
     /**

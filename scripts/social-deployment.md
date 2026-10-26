@@ -340,6 +340,14 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
 
+### S5 on protocol 10 (2026-10-26 — built on `s5`, NOT deployed)
+
+Still `protocol: 10`. `/join` adds `allies: true` (the room weighs heals, wards and guards on allies); `/world/life`
+takes `a` (ally claims, `src/app/play/world/ally-claims.ts`) and answers `a` (what each moved, or why not); snapshots
+add `al` (the life of the Keepers near) and `ally` events; creatures pick their prey by threat (`td-threat.ts`). The
+bundle gains `ally-claims.ts` and `td-threat.ts`: rebuild and deploy with protocol 10's commands below (hearth first,
+then the client). An older client sends no `a`; an older room never says `allies`, so a new client sends none to it.
+
 ### Protocol 10 (M4 of the room-run world, 2026-10-26 — built on `m4`, NOT deployed)
 
 `/health` and `/join` report `protocol: 10`; `/join` adds `life` and `credits` for a protocol-10 client; `/health world`

@@ -111,6 +111,13 @@ line, and moves the mark off this list. No saved mask changes (a mark is a bit, 
 - **Rootwalk A3 Rootwalk Party** (15% less taken): (c) S5. Allies within 4 take the same.
 - **Rootwalk B3 Mossfoot** (the Hush cannot rise while it runs): (a). It uses the real hearth flag.
 
+## S5's share: done (2026-10-26, branch `s5`, docs/handoff/s5-party-kits.md)
+Every (c) mark above marked S5 now reaches allies through the room's ally claims, keeping its solo effect, and the
+Hush-rate hook is in (`hushRate`'s `keeper`; Moth Hours 0.5). Healing Sun and Warded Ground (two of the three marks
+the earlier list missed) reach allies too. Thorn Shot B3 Mark-Seeker waits for Hunter's Mark (a Thornstrider row).
+Departures for the DM's eye: Iron Will (a new Banner mark) shrugs off Weaken and Blind (Keepers carry no Fear or
+Taunt); Watchfire Banner's ally share is regen.
+
 ## Count
 Of the 58 listed: (a) 18, (b) 6, (c) 34. The (c) swaps by task: S5 23 (Moth Hours via the Hush hook), S6 6, S4 3, S8 1, S10 1.
 

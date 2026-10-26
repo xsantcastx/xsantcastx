@@ -59,6 +59,8 @@ export interface RoomSnapshot {
   life?: boolean;
   /** Protocol 10: the room pays this Keeper's Hunting XP and hunt Gold (play/world/room-credit.ts; signed in only). */
   credits?: boolean;
+  /** S5: the room weighs heals and guards on allies (world/ally-claims.ts). An older room: the screen sends none. */
+  allies?: boolean;
 }
 /** Protocol 10: the room's answer to a batch of claims (what it refused, and why). */
 export interface RoomClaimReply { ok?: boolean; no?: { i: string; why: string }[]; st?: { no?: { i: string; why: string }[] } }
@@ -333,7 +335,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true, allies: result.allies === true });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -536,6 +538,8 @@ export class SocialRoom {
   /** Protocol 10: post life claims (and the guard); the room's word on the life, or null when it did not reach. */
   async worldLife(body: { g?: { m: number; d: number; r: number[] }; c: LifeClaim[]; a?: AllyClaim[] }): Promise<(LifeView & { a?: (number | string)[] }) | null> {
     if (!this.canLife || !this.token || this.paused) return null;
+    // S5: an older room refuses a body it does not know; it hears no ally claims.
+    if (body.a && this.snapshot.allies !== true) { const { a: _, ...rest } = body; body = rest; }
     try {
       const response = await this.send(`${this.endpoint}/world/life`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },

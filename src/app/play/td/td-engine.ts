@@ -878,6 +878,9 @@ export class TopDownEngine {
       // Point the Keeper's own attack at it (its staff, its blade): the real auto-attack path.
       target: (id: string) => { const m = this.mobs.mobs.find(x => x.nid === id); this.mobs.target = m ?? null; return !!m; },
       hp: () => Math.round(this.hp),
+      // S5: the allies this screen sees (and their life as the room keeps it), what it healed and was healed; a tap.
+      allies: () => this.allyView(),
+      pick: (id: string) => { this.mobs.pickAlly(id); return true; },
       // Companions: the other Keepers' drawn here, this Keeper's own as sent, and `n` raised skeletons at his side.
       pals: () => this.palsShown(),
       mine: () => this.myPals(),
