@@ -56,7 +56,7 @@ Branch `mobs`, 2026-10-26. Spec: `docs/design/monsters-abilities.md` §1–§4 (
 | `play/td/td-abilities.i18n.ts` | EN + ES: every ability's name and counter, the auras, the affixes, the new creatures. The Bestiary card shows "What it does". |
 
 Room and client run the same code. Monster → Keeper statuses travel in the room's bite; a Keeper's CC on room creatures
-stays client-side (M4). Hazard statuses are felt from the drawn patch on every screen; damage is the room's.
+is the room's since M4 (protocol 10, `world/room-status.ts`). Hazard statuses are felt from the drawn patch on every screen; damage is the room's.
 
 ## Balance (combat-sim, economy-sim green)
 

@@ -102,7 +102,7 @@ test('protocol 7: forged intents are refused — far, unseen, over budget, unkno
   const m = w.mobs.mobs.find(x => x.nid === id);
   const max = m.hp;
   // Unknown creature.
-  assert.deepEqual(w.claims('a', [{ i: 'zz', d: 5, el: 'physical' }]), { landed: 0, refused: 1, dmg: 0 });
+  assert.deepEqual(w.claims('a', [{ i: 'zz', d: 5, el: 'physical' }]), { landed: 0, refused: 1, dmg: 0, no: [{ i: 'zz', why: 'gone' }] });
   // Not a Keeper in the area.
   assert.equal(w.claims('nobody', [{ i: id, d: 5, el: 'physical' }]).landed, 0);
   // Over the level's budget: a level 5 Keeper deals at most (40 + 20×5) × 3 s in the window, whatever it claims.

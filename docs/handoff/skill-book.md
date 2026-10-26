@@ -133,17 +133,12 @@ is at most +13% over `REF_DPS`, at L60).
 - A fall the room announces runs the felling skill's kill marks (`coopFell` → `markKill`, via `Mob.lastSrc`).
 - `td-truth-marks.spec.ts` checks this case.
 
-**Not yet on room creatures.** The room has no status channel, so these land on this Keeper's picture of the creature
-only:
-- chill, fear, blind and hush;
-- the marks' stun, root and taunt, including the Captain's;
-- Night Shroud, Moth Hours and Quiet Hands;
-- Firebreak's slow;
-- pulls;
-- Unmaking and Banish the Bearer's affix strip.
-
-The shipped stun, root and taunt (Shield Bash, snares, Watch Cry) have the same gap. The fix is a status in the hit
-protocol, which is m3's to add.
+**On room creatures since M4 (protocol 10).** Statuses travel beside the blows (`/coop/hits` `st`) and the room lays
+them after checking each is legal for the skill and mark by the data (`world/room-status.ts`): chill, fear, blind, hush;
+stun, root and taunt (marks, the Captain's, Shield Bash, snares, Watch Cry); Firebreak's and the Hearth Circle's slows;
+pulls; Unmaking and Banish the Bearer's strips; burns and bleeds (ticked by the room). Still screen-only: Night
+Shroud, Moth Hours and Quiet Hands (they change how creatures notice this Keeper, not the creature), Ember Brand's
+ticks (claimed as blows, as before), and an item aura's slow. See `docs/handoff/room-world.md` § M4.
 
 ## Balance (combat-sim, every band green)
 The refunded passive points buy ranks and marks, so the first run was 15–35% faster. Tuning:

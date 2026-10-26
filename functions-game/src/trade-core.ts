@@ -619,7 +619,7 @@ export function readEconomy(doc: Doc | null, who: string): Doc {
 /** The Gold this save can hand over: the purse it shows, and never more than a replay can pay. */
 export function spendableGold(l: Doc): number { return Math.min(num(l['gold']), replayGold(l)); }
 /** Append a server op to a ledger, keeping the snapshot in step with the op (and freezing an origin first, as a device does). */
-export function moveGold(l: Doc, kind: 'spend-gold' | 'receive-gold', amount: number, now: number, who: string): Op {
+export function moveGold(l: Doc, kind: 'spend-gold' | 'receive-gold' | 'credit-gold', amount: number, now: number, who: string): Op {
   if (!(amount > 0)) refuse(400, 'bad-terms', 'Invalid Gold.');
   if (kind === 'spend-gold' && spendableGold(l) < amount) refuse(409, 'gold', `${who} does not hold that much Gold.`);
   const ops = opsOf(l);
@@ -636,6 +636,9 @@ export function moveGold(l: Doc, kind: 'spend-gold' | 'receive-gold', amount: nu
   l['ops'] = [...ops, op];
   l['hlc'] = hlc;
   l['gold'] = kind === 'spend-gold' ? num(l['gold']) - amount : num(l['gold']) + amount;
+  // Protocol 10 (the room's hunt Gold, scripts/social-world.mjs): earned Gold counts toward the run and the all-time
+  // totals, as economy-ops applyOp's credit-gold does on every device (a trade's receive-gold never does).
+  if (kind === 'credit-gold') { l['runGoldEarned'] = num(l['runGoldEarned']) + amount; l['totalGoldEarned'] = num(l['totalGoldEarned']) + amount; }
   return op;
 }
 
