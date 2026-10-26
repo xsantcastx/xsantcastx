@@ -44,6 +44,8 @@ import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondS
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
 import { BLEED_MOVING, abilitiesOf, FL_AB0, FL_AB1, FL_AURA_OFF, FL_HIDDEN, FL_WARDED, KEEPER_CC_IMMUNE, KEEPER_ROOT_MAX, KEEP_WALKING, SPORE_WEAKEN, T as ATILE, TRUE_LIGHT_CUT, castable, decodeStatus, encodeStatus, tierCd, type AbilityDef, type KeeperStatus, type StatusLay, type TellTone } from './td-abilities';
+import { AURA_F, CUT_AURAS, type AllyClaim } from '../world/ally-claims';
+import { damageThreat, healThreat, pickByThreat, tauntThreat, type ThreatBook, type ThreatCandidate } from './td-threat';
 import { biteCueOf, bitePitch, skillKit, type KeeperAnim } from './td-skill-kit';
 import { PACK_AURA_REACH, PACK_PULSE, PACK_PULSE_TYPE, PACK_STRIP_SECS, fixedAura, halvedBy, landOf, packAuraFx, packAuraLevel, packAuraPool, type PackAuraFx, type PackAuraId } from './td-pack-aura';
 
@@ -2006,6 +2008,9 @@ export interface Mob {
   /** The Ashguard (td-ashguard-skills): stunned by a Shield Bash, taunted by a Watch Cry (seconds left). */
   stun?: number;
   taunt?: number;
+  /** Threat by Keeper ('' this screen's own; td-threat.ts), and who it went for last (it holds unless outdone by 10%). */
+  threat?: ThreatBook;
+  threatOn?: string;
   /** The Ember Brand's burn on it: seconds left, the tick timer, the burn still owed and the ticks left to pay it (so the whole burn the card names lands). */
   brandT?: number;
   brandTick?: number;
@@ -2280,6 +2285,8 @@ export interface Zone {
   pts?: { x: number; y: number }[];
   /** A Thornroot Snare's catch: each creature it has rooted (it holds each once). */
   caught?: Mob[];
+  /** S5: the allies a Hearth Circle has already eased (Mend the Mind lifts one status from each, once). */
+  caughtIds?: Set<string>;
   /** The skill that laid it, when its kind does not say (a mark's burning ground: Scorched Earth, Burning Crater). */
   src?: SkillId;
   /** A meteor's fragment (Splitting Stone) does not split again, nor leave a second crater. */
@@ -2487,6 +2494,38 @@ export const CHILL_SLOW = .3;
 export const BLIND_MISS = .5;
 /** Captain of the Dead's taunt reaches this many tiles (skill-book-stand-ins.md). */
 export const CAPTAIN_REACH = 4;
+/** S5: the tank's and the healer's new rows (td-mobs useTankSkill / useHealSkill). */
+const TANK_ROWS: ReadonlySet<string> = new Set(['brand-throw', 'cinder-skin', 'second-wind', 'intercept', 'hold-the-gate']);
+const HEAL_ROWS: ReadonlySet<string> = new Set(['cleanse', 'rekindle', 'hearthsong']);
+/** A Keeper near, as a heal or a guard sees it (td-engine fills MobSystem.allies from the room's word). */
+export interface AllyNear { id: string; x: number; y: number; h: number; m: number; down?: boolean }
+/** A tap on an ally picks it this long (s). The Hearth's heals lift 3% a level (skills-100.md §3). */
+export const ALLY_PICK_SECS = 3;
+export const HEAL_PER_LEVEL = .03;
+/** Hearthsong pulses this often (s); the Gate taunts again this often (s); Ricochet's bounce reach (tiles). */
+export const HEARTHSONG_PULSE = .5;
+export const GATE_RETAUNT = 2;
+export const RICOCHET_TILES = 4;
+/** Dry Cloak keeps Wet off this long (s); Standard-Bearer's life a second (% of the most). */
+export const DRY_CLOAK_SECS = 10;
+export const BANNER_REGEN = .5;
+/** Cinder Skin and the Gate's spikes answer a blow struck from this near (art px: a melee blow). */
+export const REFLECT_REACH = 40;
+/** An ally's Waymark (Beacon B2) and Hearth-Heat (Aura of Embers A3) as this Keeper's screen mirrors them (%). */
+export const ALLY_WAYMARK = 10;
+export const ALLY_HEARTH_HEAT = 8;
+/** Rootwalk Party reaches allies this near (tiles; skill-book-stand-ins.md). */
+export const ROOTWALK_PARTY_TILES = 4;
+/** The kin-heals that now reach allies (Kindling Light, Lantern Burst, Healing Wisps) look this far (tiles). */
+export const ALLY_KIN_TILES = 6;
+/** A ward claim's flag: Vow for Two's copy (the ally cannot fall below one life while it holds). */
+export const ALLY_VOW = 2;
+/** Moth Hours (Shutter A3): the Hush rises at this share while the shutters are closed (skill-book-stand-ins.md). */
+export const MOTH_HOURS_HUSH = .5;
+/** Rekindle: art px past its reach the kneel still finds the fallen (the room's record of the spot lags a step). */
+export const REKINDLE_SLACK = 4;
+/** What Cleanse lifts (and its grace keeps off): every status of §0.4 but Wet (skills-100.md §3). */
+const CLEANSED: ReadonlySet<string> = new Set(['stun', 'freeze', 'frost', 'root', 'chill', 'blind', 'weak', 'dark', 'burn', 'bleed']);
 /** Under this pace (art px a second) the Keeper counts as standing still (Kept Fire, a mark). */
 const STILL_PACE = 6;
 
@@ -2516,7 +2555,7 @@ export interface CoopLink {
   /** `st` (S6): statuses the blow lays (td-abilities encodeStatus), and a pull/push toward its caster. */
   bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean, st?: string): void;
   killed(m: Mob, by: string[]): void;
-  claim(m: Mob, dmg: number, crit: boolean, color: string): void;
+  claim(m: Mob, dmg: number, crit: boolean, color: string, src?: SkillId | null): void;
   /** Protocol 10: a status this Keeper laid on a shared creature that the timers do not show (a pull, a strip). */
   laid?(m: Mob, kind: 'pull' | 'strip', secs: number, src: SkillId | null, tiles?: number): void;
 }
@@ -2549,6 +2588,8 @@ export class MobSystem {
   lastCast: SkillId | null = null;
   /** Whose blow is landing now (applyClaim: a member's id; '' for this Keeper's own). */
   private claimFrom = '';
+  /** The skill a member's claim names (CoopHit.s): its threat doubles when it is the Ashguard's (td-threat). */
+  private claimSrc: string | null = null;
   readonly drops: Drop[] = [];
   readonly floaters: Floater[] = [];
   readonly effects: Effect[] = [];
@@ -2710,7 +2751,9 @@ export class MobSystem {
     const hh = this.aura === 'aura-embers' ? this.mk('aura-embers', 'fireUp') : null;
     // Wet: fire dealt by the Wet burns 15% lower (the Ashguard's Ember Brand, the Warlock's embers in the rain).
     const wet = this.kst.wet > 0 ? WET.fireDealt : 1;
-    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1) * wet;
+    // S5: an ally's Hearth-Heat over him lifts his fire too.
+    const ally = this.allyFlags & AURA_F.fireUp ? 1 + ALLY_HEARTH_HEAT / 100 : 1;
+    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1) * wet * ally;
   }
   /**
    * The marks' quicker feet (a share of pace; td-engine walkSpeed multiplies by 1 + this): Walking Whirl while the whirl
@@ -2728,6 +2771,8 @@ export class MobSystem {
     if (hart) k += (hart.s ?? 0) / 100;
     const wm = this.mk('beacon', 'poleSpeed');
     if (wm && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (wm.m ?? 0) * TILE)) k += (wm.n ?? 0) / 100;
+    // S5: an ally's Waymark beacon near him.
+    if (this.allyFlags & AURA_F.speed) k += ALLY_WAYMARK / 100;
     return k;
   }
   /** The running aura's ring (art px). */
@@ -2862,7 +2907,8 @@ export class MobSystem {
   private hitFx(foe: Mob, src: SkillId | null, crit: boolean): void {
     const k = skillKit(src ?? this.basicId());
     this.sfxCue(k.hit, k.pitch);
-    if (this.effects.length < 160) this.effects.push({ kind: 'impact', x: foe.x + (Math.random() - .5) * 4, y: foe.y - foe.def.h / 2, age: 0, life: crit ? .2 : .14, dir: crit ? 2 : 1, c: DAMAGE_COLORS[k.el] });
+    // (No Math.random here: a picture must never move the fight's dice — the sim and the room are seeded.)
+    if (this.effects.length < 160) this.effects.push({ kind: 'impact', x: foe.x + ((this.clock * 997) % 4) - 2, y: foe.y - foe.def.h / 2, age: 0, life: crit ? .2 : .14, dir: crit ? 2 : 1, c: DAMAGE_COLORS[k.el] });
   }
   /** This calling's basic attack (the row a bare blow is). */
   private basicId(): SkillId { return this.melee ? 'watch-blade' : this.lamp ? 'kindle' : this.thorn ? 'thorn-shot' : 'ember-bolt'; }
@@ -2895,6 +2941,11 @@ export class MobSystem {
   chill = 0;
 
   constructor(private readonly host: MobHost) {}
+  /** This Keeper heals himself `n`: the life, and its threat on whatever fights him (td-threat: ×0.5, split). */
+  private healMe(n: number): void {
+    this.host.healPlayer(n);
+    if (n > 0) healThreat(this.mobs, '', '', n);
+  }
 
   // ── Sight (td-sight.ts; owner 2026-10-21: "we shouldn't be able to shoot or dmg them like that") ──
   /** Sight on the tile grid: what stops a ray, a shot, a blow — the host's solid tiles, cached a moment at a time. */
@@ -3127,9 +3178,11 @@ export class MobSystem {
           // A flare of light: the dead and the dark-born take it half again (td-lantern LIGHT_BANE).
           this.effects.push({ kind: 'kindle-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
           const got = this.hitFoe(b.to, lightBlow(b.dmg, b.to.def.id), '#fff2a8', b.src ?? 'kindle');
-          if (b.heal) this.healOwed(got * b.heal / 100);
+          // Kindling Light (a mark, S5): the heal goes to the lowest ally near (the Keeper, alone).
+          if (b.heal) { const a = this.allies.length ? this.lowestAlly(ALLY_KIN_TILES) : null; if (a) this.mendAlly(a, got * b.heal / 100, 'kindle'); else this.healOwed(got * b.heal / 100); }
           // Healing Wisps (a mark): each mote that lands heals the Keeper a share of his life.
-          if (b.src === 'lamp-wisp' && got > 0) { const mh = this.mk('lamp-wisp', 'moteHeal'); if (mh) this.healOwed(this.keeperMaxHp * (mh.n ?? 0) / 100); }
+          // Healing Wisps (a mark, S5): each mote mends the lowest ally near (the Keeper, alone) a share of its most.
+          if (b.src === 'lamp-wisp' && got > 0) { const mh = this.mk('lamp-wisp', 'moteHeal'); if (mh) { const a = this.allies.length ? this.lowestAlly(ALLY_KIN_TILES) : null; if (a) this.mendAlly(a, a.m * (mh.n ?? 0) / 100, 'lamp-wisp'); else this.healOwed(this.keeperMaxHp * (mh.n ?? 0) / 100); } }
           continue;
         }
         this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
@@ -3214,10 +3267,22 @@ export class MobSystem {
     if (auraTick && this.melee && this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0) {
       // Banked Fire (a mark): twice the life while his own runs low.
       const bf = this.mk('aura-watchfire', 'lowDouble');
-      this.regenOwed += this.v('aura-watchfire')['regen'] * (bf && this.lifeShare() < (bf.n ?? 0) / 100 ? 2 : 1);
+      const regen = this.v('aura-watchfire')['regen'] * (bf && this.lifeShare() < (bf.n ?? 0) / 100 ? 2 : 1);
+      this.regenOwed += regen;
       const whole = Math.floor(this.regenOwed);
-      if (whole > 0) { this.regenOwed -= whole; this.host.healPlayer(whole); }
+      if (whole > 0) { this.regenOwed -= whole; this.healMe(whole); }
+      // Warm Ground (a mark, S5): allies in its reach share the life (a claim each, once a second).
+      if (this.mk('aura-watchfire', 'warmGround')) for (const a of this.alliesNear(this.v('aura-watchfire')['radius'])) this.mendAlly(a, regen, 'aura-watchfire');
     }
+    // Watchfire Banner (a mark, S5): the Banner carries the Watchfire's life a second at its share.
+    const wbr = auraTick && this.melee && this.aura === 'banner-of-the-watch' && this.rank('aura-watchfire') > 0 ? this.mk('banner-of-the-watch', 'carryAura') : null;
+    if (wbr) {
+      this.regenOwed += this.v('aura-watchfire')['regen'] * (wbr.n ?? 0) / 100;
+      const whole = Math.floor(this.regenOwed);
+      if (whole > 0) { this.regenOwed -= whole; this.healMe(whole); }
+    }
+    // Standard-Bearer (a mark, S5): the Banner's bearer regenerates as those under it do.
+    if (this.aura === 'banner-of-the-watch' && this.rank('banner-of-the-watch') > 0 && this.mk('banner-of-the-watch', 'bannerRegen')) this.healOwed(this.keeperMaxHp * BANNER_REGEN / 100 * dt);
     this.tickItemAura(dt);
     if (this.lamp) this.tickLamp(dt);
     this.updateArrows(dt);
@@ -3225,6 +3290,7 @@ export class MobSystem {
     this.updateZones(dt);
     // S6: his statuses, the pack auras, the hostile ground.
     this.tickKeeper(dt);
+    this.tickAllies(dt);
     this.tickPackAuras(dt);
     this.tickHazards(dt);
     this.curseT = Math.max(0, this.curseT - dt);
@@ -3282,15 +3348,26 @@ export class MobSystem {
       const dKeeper = this.selfAway ? Infinity : Math.hypot(p.x - m.x, p.y - m.y), look = Math.max(m.def.sight, MOB_REACH * 2);
       const spots = (x: number, y: number, dd: number) => dd <= look && this.sight.sees(m.x, m.y, x, y, m.saw ?? false);
       let prey: Minion | null = null, d = Infinity, seen = false;
-      if (dKeeper < Infinity && (taunted ? this.sight.sees(m.x, m.y, p.x, p.y, m.saw ?? false) : spots(p.x, p.y, dKeeper))) { d = dKeeper; seen = true; }
-      // The raised stand in its face: one a step farther than the Keeper still draws it (MINION_DRAW).
-      if (!taunted) for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk - MINION_DRAW < d && spots(k.x, k.y, dk)) { d = dk; prey = k; seen = true; } }
-      // Shared creatures: another member of the party standing nearer is its prey (the host decides; the bite travels).
+      // Shared creatures: another Keeper of the party or the room may be its prey (the host or the room decides; the
+      // bite travels).
       let other: CoopKeeper | null = null;
-      // Protocol 10: taunted by a Keeper of the room — it turns on that one, wherever the others stand.
-      const by = taunted && m.tauntBy ? this.others.find(o => o.id === m.tauntBy) ?? null : null;
-      if (by) { const dk = Math.hypot(by.x - m.x, by.y - m.y); if (this.sight.sees(m.x, m.y, by.x, by.y, m.saw ?? false)) { d = dk; other = by; prey = null; seen = true; } }
-      if (!taunted) for (const o of this.others) { const dk = Math.hypot(o.x - m.x, o.y - m.y); if (dk < d && spots(o.x, o.y, dk)) { d = dk; other = o; prey = null; seen = true; } }
+      if (taunted) {
+        // A taunt (a Watch Cry, a Brand Throw, the Gate): it turns on the taunter wherever the others stand, and the
+        // taunter holds the top of its threat +10% while it lasts (td-threat). Protocol 10: the room names the taunter.
+        tauntThreat(m, m.tauntBy ?? '');
+        if (!m.tauntBy && dKeeper < Infinity && this.sight.sees(m.x, m.y, p.x, p.y, m.saw ?? false)) { d = dKeeper; seen = true; }
+        const by = m.tauntBy ? this.others.find(o => o.id === m.tauntBy) ?? null : null;
+        if (by) { const dk = Math.hypot(by.x - m.x, by.y - m.y); if (this.sight.sees(m.x, m.y, by.x, by.y, m.saw ?? false)) { d = dk; other = by; seen = true; } }
+      } else {
+        // Threat (td-threat, skills-100.md §0.5): of the Keepers it can reach, the one with the most; none yet, the nearest.
+        const cands: ThreatCandidate[] = [];
+        if (dKeeper < Infinity && spots(p.x, p.y, dKeeper)) cands.push({ id: '', d: dKeeper });
+        for (const o of this.others) { const dk = Math.hypot(o.x - m.x, o.y - m.y); if (spots(o.x, o.y, dk)) cands.push({ id: o.id, d: dk }); }
+        const pick = pickByThreat(m, cands, m.threatOn);
+        if (pick) { m.threatOn = pick.id; d = pick.d; seen = true; other = pick.id ? this.others.find(o => o.id === pick.id) ?? null : null; }
+        // The raised stand in its face: one a step farther than the Keeper still draws it (MINION_DRAW).
+        for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk - MINION_DRAW < d && spots(k.x, k.y, dk)) { d = dk; prey = k; other = null; seen = true; } }
+      }
       // Nothing in sight: it keeps after the Keeper a while (CHASE_MEMORY), toward where he is, and strikes nothing.
       if (!seen) d = dKeeper;
       m.saw = seen;
@@ -3516,7 +3593,15 @@ export class MobSystem {
   layOn(st: string | undefined, from?: { x: number; y: number } | null): void {
     if (!st) return;
     const k = this.kst, p = this.host.player();
+    // S5: Cleanse's grace, Dry Cloak, and the Banner's Steadfast and Iron Will (his own, or an ally's over him).
+    const own = this.aura === 'banner-of-the-watch' && this.rank('banner-of-the-watch') > 0;
+    const steady = (this.allyFlags & AURA_F.steady) || (own && this.mk('banner-of-the-watch', 'steadfast'));
+    const resolve = (this.allyFlags & AURA_F.resolve) || (own && this.mk('banner-of-the-watch', 'resolve'));
     for (const x of decodeStatus(st)) {
+      if (this.cleanseT > 0 && CLEANSED.has(x.s)) continue;
+      if (this.dryT > 0 && x.s === 'wet') continue;
+      if (steady && (x.s === 'pull' || x.s === 'push')) continue;
+      if (resolve && (x.s === 'weak' || x.s === 'blind')) continue;
       switch (x.s) {
         case 'stun': case 'freeze':
           if (k.immune > 0) break;
@@ -3920,10 +4005,15 @@ export class MobSystem {
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
       // Vampire's Patience (a mark): twice as much while the Keeper's life runs low.
       const low = this.mk('aura-siphon', 'lowDouble'), heal = this.v('aura-siphon')['heal'] * (low && this.lifeShare() < (low.n ?? 0) / 100 ? 2 : 1);
-      this.host.healPlayer(heal);
+      this.healMe(heal);
       // Siphon Kin: the raised mend a share of it too. Mana Siphon: a little mana with it.
       const kin = this.mk('aura-siphon', 'kinHeal');
-      if (kin) this.healKin(heal * (kin.n ?? 0) / 100);
+      if (kin) {
+        this.healKin(heal * (kin.n ?? 0) / 100);
+        // S5: and the lowest ally near (Reach, a mark: a tile further).
+        const a = this.allies.length ? this.lowestAlly((kin.m ?? 6) + (this.mk('aura-siphon', 'reach')?.n ?? 0), '') : null;
+        if (a) this.mendAlly(a, heal * (kin.n ?? 0) / 100, 'aura-siphon');
+      }
       const mana = this.mk('aura-siphon', 'manaHit');
       if (mana) this.mana = Math.min(this.maxMana, this.mana + (mana.n ?? 0));
       this.effects.push({ kind: 'pulse', el: 'life', x: foe.x, y: foe.y, age: 0, life: .2, dir: 1 });
@@ -3934,12 +4024,12 @@ export class MobSystem {
     if (this.leech > 0 && foe.hp > 0) {
       this.leechOwed += Math.min(dmg, foe.hp) * this.leech;
       const whole = Math.floor(this.leechOwed);
-      if (whole > 0) { this.leechOwed -= whole; this.host.healPlayer(whole); }
+      if (whole > 0) { this.leechOwed -= whole; this.healMe(whole); }
     }
     if (this.melee && this.rank('ember-blood') > 0 && foe.hp > 0) {
       this.bloodOwed += Math.min(dmg, foe.hp) * this.v('ember-blood')['pct'] / 100;
       const whole = Math.floor(this.bloodOwed);
-      if (whole > 0) { this.bloodOwed -= whole; this.host.healPlayer(whole); }
+      if (whole > 0) { this.bloodOwed -= whole; this.healMe(whole); }
     }
     const was = foe.hp > 0;
     // A shared creature falls on the room's word (coopFell), not here: remember whose blow this Keeper landed last.
@@ -4019,7 +4109,8 @@ export class MobSystem {
     const ab = this.mk(src, 'absorbHit');
     if (ab) { this.markShield = Math.min(ab.m ?? 0, this.markShield + (ab.n ?? 0)); this.markShieldT = ab.s ?? 0; }
     const hh = this.mk(src, 'healHit');
-    if (hh) this.healOwed((dealt * (hh.n ?? 0)) / 100);
+    // Lantern Burst (a mark, S5): the lowest ally near is healed a share of the hit (the Keeper, alone).
+    if (hh) { const a = this.allies.length ? this.lowestAlly(ALLY_KIN_TILES) : null; if (a) this.mendAlly(a, dealt * (hh.n ?? 0) / 100, src); else this.healOwed((dealt * (hh.n ?? 0)) / 100); }
     const vl = this.mk('last-watch', 'vowLeech');
     if (vl && this.vowT > 0) this.healOwed((dealt * (vl.n ?? 0)) / 100);
     // Wild Blood: while Pack Bond runs, the beasts' bites heal the Keeper.
@@ -4051,7 +4142,7 @@ export class MobSystem {
     if (!(n > 0)) return;
     this.markHealOwed += n;
     const whole = Math.floor(this.markHealOwed);
-    if (whole > 0) { this.markHealOwed -= whole; this.host.healPlayer(whole); }
+    if (whole > 0) { this.markHealOwed -= whole; this.healMe(whole); }
   }
   /**
    * Lay a row's rider statuses on a creature (td-marks `rider`): a burn or a bleed at its share of `raw` a second, a
@@ -4195,7 +4286,7 @@ export class MobSystem {
       const n = Math.max(1, Math.round(dmg));
       foe.hit = .18;
       this.float(foe.x, foe.y - foe.def.h, crit ? `${n}!` : `${n}`, color);
-      this.coop?.claim(foe, n, crit, color);
+      this.coop?.claim(foe, n, crit, color, this.src);
       return n;
     }
     // Who fought it (a shared creature's kill pays those who did in full): this Keeper, or the member whose claim this is.
@@ -4206,6 +4297,8 @@ export class MobSystem {
     if (foe.elite?.affixes.includes('shielded-by-kin') && this.mobs.some(k => k !== foe && samePack(foe, k) && Math.hypot(k.x - foe.x, k.y - foe.y) <= KIN_SHIELD.r)) dmg = Math.max(1, Math.round(dmg * KIN_SHIELD.take));
     if ((foe.ward ?? 0) > 0) { const soak = Math.min(foe.ward ?? 0, dmg); foe.ward = (foe.ward ?? 0) - soak; dmg -= soak; this.float(foe.x - 8, foe.y - foe.def.h - 4, `-${soak}`, '#e8e1cf'); if (dmg <= 0) { foe.hit = .1; return 0; } }
     if (foe.bless?.fx.thorns) this.thornsBack(foe, dmg);
+    // Threat (td-threat): the blow's, ×2 for the Ashguard's book — this Keeper's own, or the member's whose claim it is.
+    damageThreat(foe, this.claimFrom, Math.min(dmg, Math.max(0, foe.hp)), this.claimFrom ? this.claimSrc : this.src);
     foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
     if (foe.hp <= 0) { this.kill(foe); return dmg; }
@@ -4270,7 +4363,7 @@ export class MobSystem {
     // The marks' resists (Ember Shield, Kindled, Shield of Light, Fur and Leaf) while their aura runs; a pack's
     // Conviction (S6) takes its points off every one while he stands in its reach.
     const res = this.markResist(), conv = this.packResist;
-    const resists = cursed || res.fire || res.all || conv ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - (cursed ? CURSE_RESIST : 0) - conv + res.all + (k === 'fire' ? res.fire : 0)])) as Partial<Record<Element, number>> : this.resists;
+    const resists = cursed || res.fire || res.all || res.cold || conv ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - (cursed ? CURSE_RESIST : 0) - conv + res.all + (k === 'fire' ? res.fire : 0) + (k === 'cold' ? res.cold : 0)])) as Partial<Record<Element, number>> : this.resists;
     // Hearth Bond (Hearthlight's mark): more Defense a while after the heal.
     const def = (this.melee ? this.guardDefense() : this.defense) * (this.defBuffT > 0 ? 1 + this.defBuffPct / 100 : 1);
     let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, def, atk ?? this.keeperLevel, resists);
@@ -4287,6 +4380,12 @@ export class MobSystem {
       this.blocked(from);
       return;
     }
+    // Guardian's Bond (an ally's Intercept mark, S5): while bonded he holds the tank's Shield Oath too.
+    if (n > 0 && this.allyBond.t > 0 && this.allyBond.oath > 0 && Math.random() < this.allyBond.oath / 100) {
+      this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
+      this.float(p.x, p.y - 34, '0', '#e0b25a');
+      return;
+    }
     // (Defense is read against the attacker's level, D2's way: worn armour holds better in a zone below the Keeper.)
     if (this.melee && n > 0) {
       // The Shield Oath turns a share of blows aside whole; the Watch Cry's guard takes a share off the rest.
@@ -4300,6 +4399,23 @@ export class MobSystem {
     }
     // The marks' damage cuts: Shared Hurt (bonded), Rootwalk Party (while it runs), Warded Ground (in the circle).
     if (n > 0) n = this.markGuard(n);
+    // S5: the tank's own cuts (the Banner's, the Gate's).
+    if (n > 0 && this.melee) n = this.tankCut(n);
+    // S5: a ward an ally laid round him (a Lantern Ward, a Shared Bones) drinks first of the wards.
+    if (this.allyWard > 0 && n > 0) { const soak = Math.min(this.allyWard, n); this.allyWard -= soak; n -= soak; this.float(p.x + 10, p.y - 28, `-${soak}`, '#fff2c8'); if (this.allyWard <= 0) this.allyWardT = 0; }
+    // S5: struck, the kneel breaks (Steady Hands, a mark, holds it) and the song falters (Steady Song holds it).
+    if (n > 0 && this.kneel && !this.mk('rekindle', 'steadyHands')) { this.kneel = null; this.float(p.x, p.y - 44, '…', '#e8e1cf'); }
+    if (n > 0 && this.song && !this.mk('hearthsong', 'steadySong')) this.song.t = Math.min(this.song.t, 0);
+    // S5: Cinder Skin turns a share of a blow at his side back as fire (Molten Skin: it burns); the Gate's spikes too.
+    if (from && from.hp > 0 && n > 0 && Math.hypot(from.x - p.x, from.y - p.y) <= REFLECT_REACH) {
+      if (this.skinT > 0 && this.rank('cinder-skin') > 0) {
+        this.hurtMob(from, Math.max(1, Math.round(n * this.v('cinder-skin')['reflect'] / 100)), DAMAGE_COLORS.fire);
+        const mo = this.mk('cinder-skin', 'molten');
+        if (mo && from.hp > 0) this.applyStatus(from, 'burn', mo.s ?? 2, Math.max(1, n * .1));
+      }
+      const sp = this.gateT > 0 ? this.mk('hold-the-gate', 'spikes') : null;
+      if (sp && from.hp > 0) this.hurtMob(from, Math.max(1, Math.round(raw * (sp.n ?? 0) / 100)), '#e0b25a');
+    }
     // A mark's ward (Cinder Ward, Iron Lesson, Grave Thirst) drinks first.
     if (this.markShield > 0 && n > 0) { const soak = Math.min(this.markShield, n); this.markShield -= soak; n -= soak; this.float(p.x - 12, p.y - 26, `-${soak}`, '#ffd25a'); }
     if (this.bone > 0 && n > 0) {
@@ -4316,6 +4432,7 @@ export class MobSystem {
     }
     // The Vow of the Last Watch: whatever comes, the Keeper keeps his last point of life; what it held off is counted.
     if (this.vowT > 0 && n > 0) { this.vowTaken += n; n = vowClamp(n, this.host.playerHp?.() ?? Infinity); }
+    else if (this.allyVowT > 0 && n > 0) n = vowClamp(n, this.host.playerHp?.() ?? Infinity);
     if (this.lamp && n > 0) n = this.lampGuard(n);
     // Pack Bond: the Keeper and his beast share the blows while it is near.
     if (this.thorn && n > 0 && this.bonded) n = bondShare(n, this.v('pack-bond')['guard']);
@@ -4332,11 +4449,14 @@ export class MobSystem {
   defBuffT = 0;
   defBuffPct = 0;
   /** The marks' resists while their aura runs: fire alone, and every element. */
-  private markResist(): { fire: number; all: number } {
-    let fire = 0, all = 0;
+  private markResist(): { fire: number; cold: number; all: number } {
+    let fire = 0, all = 0, cold = 0;
     const add = (id: SkillId) => { const r = this.aura === id ? this.mk(id, 'resist') : null; if (r) { if (r.el === 'fire') fire += r.n ?? 0; else all += r.n ?? 0; } };
     add('aura-embers'); add('aura-watchfire'); add('lantern-aura'); add('pack-bond');
-    return { fire, all };
+    // S5: Cinder Skin while it holds (Cold Ash, a mark: cold too); what an ally's aura lends.
+    if (this.skinT > 0 && this.rank('cinder-skin') > 0) { fire += this.v('cinder-skin')['resist']; cold += this.mk('cinder-skin', 'coldAsh')?.n ?? 0; }
+    const ar = this.allyResist();
+    return { fire: fire + ar.fire, cold, all: all + ar.all };
   }
   /** The marks' cuts on a blow: Shared Hurt while bonded, Rootwalk Party while it runs, Warded Ground in the circle. */
   private markGuard(n: number): number {
@@ -4387,7 +4507,9 @@ export class MobSystem {
   }
   /** The Defense a blow meets on the Ashguard: his own, the Watchfire's, Hold the Line's lift when his life runs low. */
   guardDefense(): number {
-    const aura = this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0 ? this.v('aura-watchfire')['def'] : 0;
+    // Watchfire Banner (a mark): the Banner carries the Watchfire at its share.
+    const wb = this.aura === 'banner-of-the-watch' && this.rank('aura-watchfire') > 0 ? this.mk('banner-of-the-watch', 'carryAura') : null;
+    const aura = this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0 ? this.v('aura-watchfire')['def'] : wb ? Math.round(this.v('aura-watchfire')['def'] * (wb.n ?? 0) / 100) : 0;
     const hold = this.rank('hold-the-line') > 0 ? { below: this.v('hold-the-line')['below'], pct: this.v('hold-the-line')['pct'] } : null;
     return guardedDefense(this.defense, aura, this.host.playerHp?.() ?? this.keeperMaxHp, this.keeperMaxHp, hold);
   }
@@ -4635,7 +4757,7 @@ export class MobSystem {
     if (a.fx.regen > 0) {
       this.prayerOwed += a.fx.regen * dt;
       const whole = Math.floor(this.prayerOwed);
-      if (whole > 0) { this.prayerOwed -= whole; this.host.healPlayer(whole); }
+      if (whole > 0) { this.prayerOwed -= whole; this.healMe(whole); }
     }
     if (!(a.fx.pulseDamage > 0)) return;
     this.itemAuraT -= dt;
@@ -4669,7 +4791,7 @@ export class MobSystem {
   }
 
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
-  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | 'waytown' | 'wayboss' | 'wayseam' | null {
+  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | 'waytown' | 'wayboss' | 'wayseam' | 'noally' | 'nofallen' | null {
     const sk = SKILLS[id];
     if (!sk || sk.kind !== 'active') return null;
     if (this.rank(id) < 1) return 'locked';
@@ -4743,10 +4865,15 @@ export class MobSystem {
       if (thirst && hp !== undefined && hp + heal > this.keeperMaxHp) {
         this.markShield = Math.min(thirst.n ?? 0, this.markShield + (hp + heal - this.keeperMaxHp)); this.markShieldT = Math.max(this.markShieldT, 10);
       }
-      this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a');
+      this.healMe(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a');
       // Share the Cup: the raised drink of it too.
       const cup = this.mk(id, 'kinHeal');
-      if (cup) this.healKin(heal * (cup.n ?? 0) / 100);
+      if (cup) {
+        this.healKin(heal * (cup.n ?? 0) / 100);
+        // S5: and the lowest ally near drinks its share.
+        const a = this.allies.length ? this.lowestAlly(cup.m ?? 6, '') : null;
+        if (a) this.mendAlly(a, heal * (cup.n ?? 0) / 100, id);
+      }
       this.host.swung(foe);
     } else if (id === 'ember-curse') {
       const foe = foeInRange();
@@ -4798,6 +4925,7 @@ export class MobSystem {
       this.host.swung(null);
     } else if (id === 'dark-ward') {
       this.ward = v['absorb']; this.wardT = v['secs']; this.wardMax = v['absorb'];
+      this.wardCopy(id, v['absorb'], v['secs']);
       this.effects.push({ kind: 'ward', x: p.x, y: p.y - 14, age: 0, life: .6, dir: 1 });
       // Life Tap (Dark Ward's mark now): the casting turns a share of life into mana, never the last of it.
       if (this.rank('life-tap') > 0 && this.echoK === 1) {
@@ -4853,8 +4981,10 @@ export class MobSystem {
    * The trees' new skills (docs/design/skill-trees.md). Each is small and self-contained: it reads its numbers at its
    * rank, leaves its picture with the td-fx kit, and says why not (no foe, no corpse, too little life) like the rest.
    */
-  private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | null {
+  private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | 'noally' | 'nofallen' | null {
     const p = this.host.player();
+    if (TANK_ROWS.has(id)) return this.useTankSkill(id, v);
+    if (HEAL_ROWS.has(id)) return this.useHealSkill(id, v);
     if (id in ASHGUARD_SKILLS) return this.useAshSkill(id, v);
     if (id in LANTERN_SKILLS) return this.useLampSkill(id, v);
     if (id in THORN_SKILLS) return this.useThornSkill(id, v, foeInRange);
@@ -4912,6 +5042,7 @@ export class MobSystem {
       this.host.swung(foe);
     } else if (id === 'bone-armor') {
       this.bone = v['absorb']; this.boneT = v['secs'];
+      this.wardCopy(id, v['absorb'], v['secs']);
       for (let i = 0; i < 4; i++) this.effects.push({ kind: 'bone-chips', x: p.x + (i % 2 ? -9 : 9), y: p.y - 10 - (i < 2 ? 8 : 0), age: 0, life: .4, dir: i % 2 ? -1 : 1 });
       this.host.swung(null);
     } else if (id === 'weaken') {
@@ -5096,6 +5227,9 @@ export class MobSystem {
       // Call to the Gate (a mark): the taunted are drawn a step toward him.
       this.pullIn(id, v['radius']);
       this.guardT = v['secs']; this.guardPct = v['guard'];
+      // Rally (a mark, S5): allies near take less while the cry holds.
+      const ra = this.mk(id, 'rally');
+      if (ra && this.allies.length) this.allyOut.push({ k: 'aura', s: id, n: ra.n ?? 0, r: Math.round((ra.m ?? 6) * 10), t: Math.round(v['secs'] * 10) });
       this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .6, dir: 1 });
     } else if (id === 'ash-stride') {
       const foe = this.foeWithin(v['reach'] * TILE + this.range);
@@ -5115,6 +5249,9 @@ export class MobSystem {
       this.host.swung(foe);
     } else if (id === 'last-watch') {
       this.vowT = v['secs']; this.vowTaken = 0; this.vowTauntT = 0;
+      // Vow for Two (a mark, S5): the lowest ally near holds a copy of the vow a few seconds.
+      const vs = this.mk(id, 'vowShare'), va = vs && this.allies.length ? this.lowestAlly(vs.m ?? 6, '') : null;
+      if (vs && va) this.allyOut.push({ k: 'ward', s: id, to: va.id, n: 0, t: Math.round((vs.s ?? 4) * 10), f: ALLY_VOW });
       this.effects.push({ kind: 'vow', x: p.x, y: p.y - 30, age: 0, life: .8, dir: 1 });
       this.host.swung(null);
     }
@@ -5144,7 +5281,7 @@ export class MobSystem {
         this.vowT = 0;
         const heal = Math.round(this.vowTaken * this.v('last-watch')['heal'] / 100), p = this.host.player();
         this.vowTaken = 0;
-        if (heal > 0) { this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a'); }
+        if (heal > 0) { this.healMe(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a'); }
         this.effects.push({ kind: 'heal', x: p.x, y: p.y, age: 0, life: .7, dir: 1 });
       }
     }
@@ -5295,21 +5432,42 @@ export class MobSystem {
       this.effects.push({ kind: 'dawn-rise', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .9, dir: 1 });
       this.host.swung(null);
     } else if (id === 'hearthlight') {
+      // S5: it heals the lowest ally in reach (the Keeper included; a tapped one for 3 s), at the level's lift.
       // Quick Mend (a mark): a share of it lands at once, the rest over its seconds. Hearth Bond: more Defense a while.
-      const qm = this.mk(id, 'quickMend'), now = qm ? Math.round(v['heal'] * (qm.n ?? 0) / 100) : 0;
-      if (now > 0) { this.host.healPlayer(now); this.float(p.x, p.y - 36, `+${now}`, '#7fe08a'); }
-      this.hot = healOverTime(v['heal'] - now, v['secs']);
+      const total = Math.round(v['heal'] * this.healLevel()), to = this.lowestAlly(v['reach']);
+      const qm = this.mk(id, 'quickMend'), now = qm ? Math.round(total * (qm.n ?? 0) / 100) : 0;
+      this.mendTo(to, now, id);
+      this.mendTo(to, total - now, id, v['secs']);
+      // Twin Lights (a mark): a second ally (the next lowest, the Keeper among them) at its share; alone, the light
+      // comes again on the Keeper a moment later.
+      const tw = this.mk(id, 'twinLights');
+      if (tw) {
+        const second = to ? this.lowestAlly(v['reach'], to.id) : this.lowestAlly(v['reach'], '');
+        const share = Math.round(total * (tw.n ?? 0) / 100);
+        if (second || to) this.mendTo(second, share, id, v['secs']);
+        else if (this.echoK === 1) this.echoes.push({ id, t: tw.s ?? 3, k: (tw.n ?? 0) / 100, left: 0, gap: 0 });
+      }
       const hb = this.mk(id, 'defBuff');
       if (hb) { this.defBuffT = hb.s ?? 0; this.defBuffPct = hb.n ?? 0; }
-      this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
+      this.effects.push({ kind: 'hearthglow', x: to?.x ?? p.x, y: to?.y ?? p.y, age: 0, life: .9, dir: 1 });
       this.host.swung(null);
     } else if (id === 'hearth-circle') {
       // One circle at a time: a new one is laid where the Keeper stands now.
       for (let i = this.zones.length - 1; i >= 0; i--) if (this.zones[i].kind === 'hearth') this.zones.splice(i, 1);
-      this.zones.push({ kind: 'hearth', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['heal'], max: v['slow'] });
+      // S5: every ally inside mends too, at the level's lift.
+      this.zones.push({ kind: 'hearth', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['heal'] * this.healLevel(), max: v['slow'] });
       this.host.swung(null);
     } else if (id === 'lantern-ward') {
-      this.lampWard = v['absorb']; this.lampWardT = v['secs'];
+      // S5: it goes on an ally (the lowest, or the one tapped); alone, on the Keeper. Self-Ward Too (a mark): cast on an
+      // ally, it lands on the Keeper as well, at its share.
+      const to = this.lowestAlly(v['reach']);
+      if (to) {
+        this.allyOut.push({ k: 'ward', s: id, to: to.id, n: Math.round(v['absorb']), t: Math.round(v['secs'] * 10) });
+        this.effects.push({ kind: 'lward', x: to.x, y: to.y - 16, age: 0, life: .5, dir: 1 });
+        this.sfxCue('ward');
+        const sw = this.mk(id, 'selfWard');
+        if (sw) { this.lampWard = Math.round(v['absorb'] * (sw.n ?? 0) / 100); this.lampWardT = v['secs']; }
+      } else { this.lampWard = v['absorb']; this.lampWardT = v['secs']; }
       this.effects.push({ kind: 'lward', x: p.x, y: p.y - 16, age: 0, life: .5, dir: 1 });
       this.host.swung(null);
     } else if (id === 'lamp-wisp') {
@@ -5331,6 +5489,423 @@ export class MobSystem {
     }
     return null;
   }
+  // ── S5: allies, the healer's and the tank's party kit (skills-100.md §2–3; world/ally-claims.ts) ──
+
+  /**
+   * The Keepers near this one that its heals and guards can reach (party mates and Keepers nearby, protocol 10): where
+   * each stands and its life as the room keeps it. The engine fills it every frame; empty alone (then every heal is the
+   * Keeper's own, as it always was).
+   */
+  allies: AllyNear[] = [];
+  /** A tap on an ally's plate or party frame picks it for ALLY_PICK_SECS (skills-100.md §3, the one rule). */
+  allyPick: { id: string; until: number } | null = null;
+  /** What this Keeper laid on others, for the room to weigh (td-engine sends them with its life claims). */
+  allyOut: AllyClaim[] = [];
+  /** Others' heals over time, ticking here: each tick a heal claim. */
+  private allyHots: { to: string; s: SkillId; hot: HealOverTime }[] = [];
+  /** What other Keepers laid on this one (mirrored from the room's `ally` events): a guard on its bites, a bond, a ward. */
+  readonly allyAuras = new Map<string, { n: number; f: number; t: number }>();
+  allyBond = { share: 0, t: 0, oath: 0 };
+  allyWard = 0;
+  allyWardT = 0;
+  /** Vow for Two: an ally's vow over this Keeper (s): he cannot fall below one life. */
+  allyVowT = 0;
+  /** The fallen near (the room's word: where each fell, and when) — Rekindle's targets. */
+  readonly fallenAllies = new Map<string, { x: number; y: number; at: number }>();
+  /** Cleanse's grace: seconds the removed statuses cannot take hold again (and Dry Cloak's dryness). */
+  cleanseT = 0;
+  dryT = 0;
+  /** Rekindle's kneel and Hearthsong's channel (he does not walk while either holds, unless a mark says so). */
+  kneel: { to: string; t: number; pct: number; also: string | null } | null = null;
+  song: { t: number; tick: number; pulses: number } | null = null;
+  /** The tank: Intercept's bond (whom, until), Hold the Gate, Cinder Skin, Second Wind's breath. */
+  bondT = 0;
+  bondTo: string[] = [];
+  gateT = 0;
+  private gateTick = 0;
+  skinT = 0;
+  private windHot: HealOverTime | null = null;
+  /** The auras that guard allies are said to the room once a second while they run. */
+  private allySay = 0;
+
+  /** The level's lift on the Hearth's heals (skills-100.md §3: Hearthlight and the Hearth Circle carry the party). */
+  healLevel(): number { return 1 + HEAL_PER_LEVEL * Math.max(1, this.keeperLevel); }
+  /** This Keeper's life share now (0–1). */
+  private myShare(): number { return (this.host.playerHp?.() ?? this.keeperMaxHp) / Math.max(1, this.keeperMaxHp); }
+  /** The allies within `tiles` of the Keeper (alive). */
+  alliesNear(tiles: number, x = this.host.player().x, y = this.host.player().y): AllyNear[] {
+    const r = tiles * TILE;
+    return this.allies.filter(a => !a.down && a.m > 0 && Math.hypot(a.x - x, a.y - y) <= r);
+  }
+  /**
+   * The heal's target (skills-100.md §3): the lowest-life party member by share within reach, the Keeper included — or
+   * the one tapped in the last ALLY_PICK_SECS. Null: the Keeper himself. `not`: one already healed (Twin Lights).
+   */
+  lowestAlly(tiles: number, not: string | null = null): AllyNear | null {
+    const near = this.alliesNear(tiles).filter(a => a.id !== not);
+    if (this.allyPick && this.allyPick.until > this.clock) { const a = near.find(x => x.id === this.allyPick!.id); if (a) return a; }
+    let best: AllyNear | null = null, bs = not === '' ? Infinity : this.myShare();
+    for (const a of near) { const s = a.h / a.m; if (s < bs) { bs = s; best = a; } }
+    return best;
+  }
+  /** A tap on an ally's plate: it takes the heals for a while. */
+  pickAlly(id: string): void { this.allyPick = id ? { id, until: this.clock + ALLY_PICK_SECS } : null; }
+  /** A heal of `n` on an ally now: a claim for the room, its picture at once. */
+  private mendAlly(a: AllyNear, n: number, s: SkillId): void {
+    const v = Math.round(n);
+    if (!(v > 0)) return;
+    this.allyOut.push({ k: 'heal', s, to: a.id, n: v });
+    a.h = Math.min(a.m, a.h + v);
+    this.float(a.x, a.y - 36, `+${v}`, '#7fe08a');
+    this.effects.push({ kind: 'hearthglow', x: a.x, y: a.y, age: 0, life: .7, dir: 1 });
+    this.sfxCue('heal');
+  }
+  /** A heal on the target the rules pick (null: this Keeper): now, or over `secs`. */
+  private mendTo(to: AllyNear | null, n: number, s: SkillId, secs = 0): void {
+    if (!(n > 0)) return;
+    if (secs > 0) {
+      if (to) this.allyHots.push({ to: to.id, s, hot: healOverTime(n, secs) });
+      else this.hot = healOverTime(n, secs);
+      return;
+    }
+    if (to) { this.mendAlly(to, n, s); return; }
+    const p = this.host.player();
+    this.healMe(Math.round(n)); this.float(p.x, p.y - 36, `+${Math.round(n)}`, '#7fe08a');
+  }
+  /** Cleanse on this Keeper: every status of §0.4 but Wet (Dry Cloak: Wet too), then a grace. */
+  cleanseMe(graceSecs: number, dry = 0): void {
+    const k = this.kst;
+    for (const s of ['stun', 'freeze', 'root', 'chill', 'blind', 'weak', 'dark'] as const) k[s] = 0;
+    k.burn.t = 0; k.burn.dps = 0; k.bleed.t = 0; k.bleed.dps = 0;
+    if (dry > 0) { k.wet = 0; this.dryT = Math.max(this.dryT, dry); }
+    this.cleanseT = Math.max(this.cleanseT, graceSecs);
+    const p = this.host.player();
+    this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .7, dir: 1 });
+  }
+  /** One status off this Keeper (Second Wind's Steady, Hearthsong's Choir, Mend the Mind): the worst first. */
+  shedOne(): boolean {
+    const k = this.kst;
+    for (const s of ['stun', 'freeze', 'root', 'blind', 'chill', 'weak', 'dark'] as const) if (k[s] > 0) { k[s] = 0; return true; }
+    if (k.burn.t > 0) { k.burn.t = 0; k.burn.dps = 0; return true; }
+    if (k.bleed.t > 0) { k.bleed.t = 0; k.bleed.dps = 0; return true; }
+    return false;
+  }
+  /**
+   * His feet while a skill plants them (td-engine walkSpeed multiplies by this): Rekindle's kneel and Hearthsong hold
+   * him still; Walking Song and the Mobile Gate let him walk at their share.
+   */
+  get footing(): number {
+    if (this.kneel) return 0;
+    if (this.song) return this.mk('hearthsong', 'walkingSong') ? (this.mk('hearthsong', 'walkingSong')!.n ?? 0) / 100 : 0;
+    if (this.gateT > 0) return this.mk('hold-the-gate', 'mobileGate') ? (this.mk('hold-the-gate', 'mobileGate')!.n ?? 0) / 100 : 0;
+    return 1;
+  }
+  /**
+   * Another Keeper laid something on this one (the room's `ally` event, already weighed): the screen mirrors it. A heal
+   * is the room's (its life follows in `me`); a ward, a guard and a bond are held here and cut its bites the way the
+   * room cuts them; a cleanse clears its statuses; a Rekindle stands it up where it fell (the engine moves it).
+   */
+  allyLaid(e: { a: string; by: string; s: string; n: number; t?: number; f?: number }): void {
+    const p = this.host.player();
+    if (e.a === 'heal') { this.float(p.x, p.y - 36, `+${e.n}`, '#7fe08a'); this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .7, dir: 1 }); this.sfxCue('heal'); this.allyHealed += e.n; }
+    else if (e.a === 'ward' && ((e.f ?? 0) & ALLY_VOW)) { this.allyVowT = Math.max(this.allyVowT, (e.t ?? 40) / 10); this.effects.push({ kind: 'vow', x: p.x, y: p.y - 30, age: 0, life: .8, dir: 1 }); }
+    else if (e.a === 'ward') { this.allyWard = Math.max(this.allyWard, e.n); this.allyWardT = Math.max(this.allyWardT, (e.t ?? 120) / 10); this.effects.push({ kind: 'lward', x: p.x, y: p.y - 16, age: 0, life: .5, dir: 1 }); this.sfxCue('ward'); }
+    else if (e.a === 'cleanse') { this.cleanseMe((e.t ?? 20) / 10, e.f ? DRY_CLOAK_SECS : 0); this.sfxCue('light-hit'); }
+    else if (e.a === 'aura') this.allyAuras.set(e.s, { n: e.n, f: e.f ?? 0, t: Math.max(1, (e.t ?? 20) / 10) });
+    else if (e.a === 'bond') { this.allyBond = { share: e.n, t: (e.t ?? 60) / 10, oath: e.f ?? 0 }; this.sfxCue('shield'); }
+    else if (e.a === 'rekindle') { this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: 1.2, dir: 1 }); this.sfxCue('revive'); }
+  }
+  /** Heals other Keepers gave this one (the e2e reads it; the screen's own heals are not counted). */
+  allyHealed = 0;
+  /**
+   * The guards others hold over this Keeper, on a creature's blow BEFORE anything else (the room cuts the same, then
+   * its own guard): an ally's Banner or Gate, an Intercept bond's share (the tank takes it on his own screen).
+   */
+  allyCut(dmg: number): number {
+    let n = dmg;
+    const cut = this.allyCutPct;
+    if (cut > 0) n = Math.max(1, Math.round(n * (1 - Math.min(60, cut) / 100)));
+    if (this.allyBond.t > 0 && this.allyBond.share > 0 && n > 1) n = Math.max(1, n - Math.round(n * this.allyBond.share / 100));
+    return n;
+  }
+  /** The strongest damage cut an ally's guard lays on this Keeper now (%; the room cuts the same, ally-claims CUT_AURAS). */
+  get allyCutPct(): number { let c = 0; for (const [s, a] of this.allyAuras) if (CUT_AURAS.has(s) && a.n > c) c = a.n; return c; }
+  /** The flags of every ally's aura on this Keeper now (ally-claims AURA_F). */
+  get allyFlags(): number { let f = 0; for (const a of this.allyAuras.values()) f |= a.f; return f; }
+  /** Resists an ally's aura lends (Shared Skin's fire, Shield of Light's every element). */
+  allyResist(): { fire: number; all: number } {
+    return { fire: this.allyAuras.get('cinder-skin')?.n ?? 0, all: (this.allyFlags & AURA_F.light) ? this.allyAuras.get('lantern-aura')?.n ?? 0 : 0 };
+  }
+  /** Each frame: the allies' heals ticking, the channels, the tank's timers, the mirrored guards running down. */
+  private tickAllies(dt: number): void {
+    const p = this.host.player();
+    for (const [s, a] of this.allyAuras) { a.t -= dt; if (a.t <= 0) this.allyAuras.delete(s); }
+    if (this.allyBond.t > 0) { this.allyBond.t = Math.max(0, this.allyBond.t - dt); if (this.allyBond.t <= 0) this.allyBond.share = 0; }
+    if (this.allyVowT > 0) this.allyVowT = Math.max(0, this.allyVowT - dt);
+    if (this.allyWardT > 0) { this.allyWardT -= dt; if (this.allyWardT <= 0) { this.allyWardT = 0; this.allyWard = 0; } }
+    if (this.cleanseT > 0) this.cleanseT = Math.max(0, this.cleanseT - dt);
+    if (this.dryT > 0) { this.dryT = Math.max(0, this.dryT - dt); this.kst.wet = 0; }
+    if (this.allyPick && this.allyPick.until <= this.clock) this.allyPick = null;
+    // Standard-Bearer (a mark of an ally's Banner, mirrored): life back a second while it stands near.
+    if (this.allyFlags & AURA_F.regen) this.healOwed(this.keeperMaxHp * BANNER_REGEN / 100 * dt);
+    for (let i = this.allyHots.length - 1; i >= 0; i--) {
+      const h = this.allyHots[i], paid = stepHeal(h.hot, dt);
+      const a = this.allies.find(x => x.id === h.to && !x.down);
+      if (paid > 0 && a) this.mendAlly(a, paid, h.s);
+      if (h.hot.left <= 0 || !a) this.allyHots.splice(i, 1);
+    }
+    if (this.windHot) {
+      const paid = stepHeal(this.windHot, dt);
+      if (paid > 0) { this.healMe(paid); this.float(p.x, p.y - 36, `+${paid}`, '#7fe08a'); }
+      if (this.windHot.left <= 0) this.windHot = null;
+    }
+    // Rekindle: kneeling beside the fallen; when the channel runs out, the room is asked to stand them up.
+    if (this.kneel) {
+      this.kneel.t -= dt;
+      this.keeperAnim = 'kneel';
+      if (this.kneel.t <= 0) {
+        const kn = this.kneel; this.kneel = null;
+        for (const id of [kn.to, kn.also]) if (id) { this.allyOut.push({ k: 'rekindle', s: 'rekindle', to: id, n: kn.pct }); this.fallenAllies.delete(id); }
+        this.effects.push({ kind: 'dawn-rise', x: p.x, y: p.y, r: 24, age: 0, life: .9, dir: 1 });
+        this.sfxCue('revive');
+      }
+    }
+    // Hearthsong: a pulse every half second to every ally in reach (and him), mana a second, until it ends or he stops.
+    if (this.song) {
+      const s = this.song, v = this.v('hearthsong');
+      s.t -= dt; s.tick -= dt;
+      this.keeperAnim = 'channel';
+      const cost = this.manaOf('hearthsong') * dt;
+      if (this.mana < cost) s.t = 0; else this.mana -= cost;
+      if (s.tick <= 0 && s.t > -1e-6) {
+        s.tick += HEARTHSONG_PULSE; s.pulses++;
+        const choir = this.mk('hearthsong', 'choir'), reach = v['radius'] + (choir?.n ?? 0);
+        const each = (most: number) => Math.round(most * v['heal'] / 100 + v['flat'] * this.power);
+        this.mendTo(null, each(this.keeperMaxHp), 'hearthsong');
+        for (const a of this.alliesNear(reach)) this.mendAlly(a, each(a.m), 'hearthsong');
+        if (choir) { const low = this.lowestAlly(reach); if (low) this.allyOut.push({ k: 'cleanse', s: 'hearthsong', to: low.id, n: 1, t: 10 }); else this.shedOne(); }
+        this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round(reach * TILE), age: 0, life: .45, dir: 1 });
+      }
+      if (s.t <= 0) {
+        this.song = null;
+        // Kept Note (a mark): the last pulse leaves a Hearth Circle a while.
+        const kn = this.mk('hearthsong', 'keptNote');
+        if (kn) { const hc = this.v('hearth-circle'); this.zones.push({ kind: 'hearth', x: p.x, y: p.y, r: hc['radius'] * TILE, t: kn.s ?? 4, tick: 0, min: hc['heal'] * this.healLevel(), max: hc['slow'] }); }
+      }
+    }
+    // The tank's timers.
+    if (this.skinT > 0) this.skinT = Math.max(0, this.skinT - dt);
+    if (this.bondT > 0) { this.bondT = Math.max(0, this.bondT - dt); if (this.bondT <= 0) this.bondTo = []; }
+    if (this.gateT > 0) {
+      this.gateT = Math.max(0, this.gateT - dt);
+      this.gateTick -= dt;
+      if (this.gateTick <= 0 && this.gateT > 0) {
+        // Every 2 s the Gate taunts again everything in its reach (bosses a fifth as long).
+        this.gateTick = GATE_RETAUNT;
+        const g = this.v('hold-the-gate');
+        for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= g['radius'] * TILE && this.sees(m)) this.applyStatus(m, 'taunt', g['taunt']);
+        this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round(g['radius'] * TILE), age: 0, life: .5, dir: 1 });
+      }
+      if (this.gateT <= 0) {
+        // The Gate Opens (a mark): a Watch Cry and a Cinder Cleave at its share as it ends.
+        const go = this.mk('hold-the-gate', 'gateOpens');
+        if (go && this.echoK === 1) { this.freeCast('watch-cry', 1); this.freeCast('cinder-cleave', (go.n ?? 100) / 100); }
+      }
+    }
+    // The auras and guards that reach allies, said to the room once a second while they hold.
+    this.allySay -= dt;
+    if (this.allySay <= 0) { this.allySay = 1; this.sayAllyAuras(); }
+  }
+  /** The tank's guards over allies (the Banner, the Gate, the Rally…), said to the room: it cuts their bites. */
+  private sayAllyAuras(): void {
+    if (!this.allies.length) return;
+    const say = (s: SkillId, n: number, r: number, f = 0) => { if (r > 0) this.allyOut.push({ k: 'aura', s, n: Math.round(n), r: Math.round(r * 10), t: 20, ...(f ? { f } : {}) }); };
+    if (this.aura === 'banner-of-the-watch' && this.rank('banner-of-the-watch') > 0) {
+      const v = this.v('banner-of-the-watch');
+      const f = (this.mk('banner-of-the-watch', 'steadfast') ? AURA_F.steady : 0) | (this.mk('banner-of-the-watch', 'resolve') ? AURA_F.resolve : 0)
+        | (this.mk('banner-of-the-watch', 'bannerRegen') ? AURA_F.regen : 0) | (this.mk('banner-of-the-watch', 'carryAura') ? AURA_F.watchfire : 0);
+      say('banner-of-the-watch', v['cut'], v['radius'], f);
+    }
+    if (this.gateT > 0) {
+      const gg = this.mk('hold-the-gate', 'gateGuard');
+      if (gg) say('hold-the-gate', gg.n ?? 0, gg.m ?? 0);
+    }
+    // The stand-ins S5 swaps in (skill-book-stand-ins.md): Hearth-Heat, Warm Light and Shield of Light, Waymark,
+    // Rootwalk Party reach the allies in their reach.
+    if (this.aura === 'aura-embers' && this.mk('aura-embers', 'fireUp')) say('aura-embers', 0, this.v('aura-embers')['radius'], AURA_F.fireUp);
+    if (this.aura === 'lantern-aura' && this.rank('lantern-aura') > 0) {
+      const wl = this.mk('lantern-aura', 'regen'), sl = this.mk('lantern-aura', 'resist');
+      if (wl || sl) say('lantern-aura', sl?.n ?? 0, this.v('lantern-aura')['radius'], (wl ? AURA_F.regen : 0) | (sl ? AURA_F.light : 0));
+    }
+    const wm = this.mk('beacon', 'poleSpeed');
+    if (wm && this.beacons.length) say('beacon', 0, wm.m ?? 4, AURA_F.speed);
+    const rp = this.rootwalkT > 0 ? this.mk('rootwalk', 'walkGuard') : null;
+    if (rp) say('rootwalk', rp.n ?? 0, ROOTWALK_PARTY_TILES);
+    // Warm Pole (a mark): allies near a beacon mend a share of their most a second; Healing Sun: allies in the dawn.
+    const wp = this.mk('beacon', 'poleRegen');
+    if (wp) for (const a of this.allies) if (!a.down && this.beacons.some(b => Math.hypot(b.x - a.x, b.y - a.y) <= (wp.m ?? 3) * TILE)) this.mendAlly(a, a.m * (wp.n ?? 0) / 100, 'beacon');
+    const hs = this.mk('dawn-at-noon', 'zoneRegen');
+    if (hs) for (const a of this.allies) if (!a.down && this.zones.some(z => z.kind === 'dawn' && inDisc(a.x, a.y, z.x, z.y, z.r))) this.mendAlly(a, a.m * (hs.n ?? 0) / 100, 'dawn-at-noon');
+  }
+  /** A ward's copy for the lowest ally near (Shared Bones, Ward the Fellowship: marks, S5). */
+  private wardCopy(id: SkillId, absorb: number, secs: number): void {
+    const wc = this.mk(id, 'wardCopy');
+    const a = wc && this.allies.length ? this.lowestAlly(wc.m ?? 6, '') : null;
+    if (!wc || !a) return;
+    this.allyOut.push({ k: 'ward', s: id, to: a.id, n: Math.round(absorb * (wc.n ?? 0) / 100), t: Math.round(secs * 10) });
+    this.effects.push({ kind: 'ward', x: a.x, y: a.y - 14, age: 0, life: .5, dir: 1 });
+  }
+  /** The Hush-rate hook (td-dark hushRate's `keeper`): Moth Hours, with the shutters closed, halves how fast it rises. */
+  get hushMult(): number { return this.lamp && this.shuttered && this.mk('shutter-lantern', 'mothHours') ? MOTH_HOURS_HUSH : 1; }
+  /** The tank's own cuts on a blow (skills-100.md §2): the Banner's −4% to him, the Gate's −40%. */
+  private tankCut(n: number): number {
+    let k = 1;
+    if (this.aura === 'banner-of-the-watch' && this.rank('banner-of-the-watch') > 0) k *= 1 - this.v('banner-of-the-watch')['self'] / 100;
+    if (this.gateT > 0) k *= 1 - this.v('hold-the-gate')['cut'] / 100;
+    return k < 1 ? Math.max(1, Math.round(n * k)) : n;
+  }
+
+  /** The tank's new rows (S5). */
+  private useTankSkill(id: SkillId, v: Record<string, number>): 'nofoe' | 'noally' | null {
+    const p = this.host.player();
+    if (id === 'brand-throw') {
+      // The branded blade flies to the first foe within its reach, strikes and taunts it, then flies back striking again.
+      const foe = this.foeWithin(v['range'] * TILE);
+      if (!foe) return 'nofoe';
+      const blow = () => meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], v['pct'], Math.random, this.weaponSwing);
+      const throwAt = (m: Mob, share: number) => {
+        this.hitFoe(m, blow() * share, '#ffb347');
+        if (m.hp > 0) this.applyStatus(m, 'taunt', v['taunt']);
+        this.effects.push({ kind: 'cry', x: m.x, y: m.y, r: 10, age: 0, life: .35, dir: 1 });
+      };
+      this.effects.push({ kind: 'stride', x: foe.x, y: foe.y, tx: p.x, ty: p.y, age: 0, life: .35, dir: foe.x < p.x ? -1 : 1 });
+      throwAt(foe, 1);
+      // Ricochet (a mark): it bounces on to more foes near the first, taunting each.
+      const rc = this.mk(id, 'ricochet');
+      if (rc) {
+        let from = foe;
+        const hit = new Set<Mob>([foe]);
+        for (let i = 0; i < (rc.n ?? 0); i++) {
+          let next: Mob | null = null, bd = RICOCHET_TILES * TILE;
+          for (const m of this.mobs) { if (hit.has(m) || m.hp <= 0) continue; const d = Math.hypot(m.x - from.x, m.y - from.y); if (d < bd && this.sees(m)) { bd = d; next = m; } }
+          if (!next) break;
+          hit.add(next); throwAt(next, 1); from = next;
+        }
+      }
+      // Hook and Haul (a mark): the first foe is dragged toward him (never a boss).
+      const hk = this.mk(id, 'hook');
+      if (hk && foe.hp > 0 && foe.def.rank !== 'boss') {
+        const d = Math.hypot(p.x - foe.x, p.y - foe.y) || 1, go = Math.min((hk.n ?? 0) * TILE, Math.max(0, d - 16));
+        const nx = foe.x + (p.x - foe.x) / d * go, ny = foe.y + (p.y - foe.y) / d * go;
+        if (this.free(nx, ny, foe.def.floats)) { foe.x = nx; foe.y = ny; }
+        if (this.replica) this.coop?.laid?.(foe, 'pull', 0, id, hk.n ?? 0);
+      }
+      // The return: the blade comes back through the first foe at its share.
+      if (foe.hp > 0) this.hitFoe(foe, blow() * v['back'] / 100, '#ffb347');
+      this.host.swung(foe);
+    } else if (id === 'cinder-skin') {
+      this.skinT = v['secs'];
+      // Ash Shell (a mark): casting it shakes off a burn and a chill.
+      if (this.mk(id, 'ashShell')) { this.kst.burn.t = 0; this.kst.burn.dps = 0; this.kst.chill = 0; }
+      // Shared Skin (a mark): allies near get a share of the resist (their screens hold it as an aura of no cut).
+      const sh = this.mk(id, 'shareSkin');
+      if (sh && this.allies.length) this.allyOut.push({ k: 'aura', s: id, n: Math.round(v['resist'] * (sh.n ?? 50) / 100), r: Math.round((sh.m ?? 3) * 10), t: Math.round(v['secs'] * 10) });
+      this.effects.push({ kind: 'brand', x: p.x, y: p.y - 14, age: 0, life: .5, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'second-wind') {
+      const lb = this.mk(id, 'lastBreath'), bb = this.mk(id, 'battleBreath');
+      const near = bb ? Math.min(bb.m ?? 6, this.mobs.filter(m => Math.hypot(m.x - p.x, m.y - p.y) <= (bb.s ?? 3) * TILE).length) : 0;
+      const total = Math.round(this.keeperMaxHp * (v['heal'] + near * (bb?.n ?? 0)) / 100);
+      // Last Breath (a mark): low on life, it lands at once.
+      if (lb && this.myShare() < (lb.n ?? 25) / 100) { this.healMe(total); this.float(p.x, p.y - 36, `+${total}`, '#7fe08a'); }
+      else this.windHot = healOverTime(total, v['secs']);
+      if (this.mk(id, 'steadyBreath')) this.shedOne();
+      // Breathing Room (a mark): what stands at his side is shoved back a step.
+      const br = this.mk(id, 'breathRoom');
+      if (br) for (const m of this.mobs) {
+        const d = Math.hypot(m.x - p.x, m.y - p.y);
+        if (d > (br.n ?? 2) * TILE || m.def.rank === 'boss' || d < 1) continue;
+        const go = (br.m ?? 1) * TILE, nx = m.x + (m.x - p.x) / d * go, ny = m.y + (m.y - p.y) / d * go;
+        if (this.free(nx, ny, m.def.floats)) { m.x = nx; m.y = ny; }
+      }
+      this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'intercept') {
+      // Dash to an ally within reach and stand bonded: for a while he takes a share of what it takes.
+      const tb = this.mk(id, 'twoBonds');
+      const near = this.alliesNear(v['reach']).sort((a, b) => a.h / a.m - b.h / b.m);
+      const first = this.allyPick && this.allyPick.until > this.clock ? near.find(a => a.id === this.allyPick!.id) ?? near[0] : near[0];
+      if (!first) return 'noally';
+      const to = strideEnd(p.x, p.y, first.x, first.y, 14), from = { x: p.x, y: p.y };
+      this.host.dash?.(to.x, to.y);
+      const at = this.host.player();
+      this.effects.push({ kind: 'stride', x: at.x, y: at.y, tx: from.x, ty: from.y, age: 0, life: .4, dir: first.x < from.x ? -1 : 1 });
+      // Rescue (a mark): what stands on the dash's path is knocked aside.
+      const rs = this.mk(id, 'rescue');
+      if (rs) for (const m of this.mobs) if (m.def.rank !== 'boss' && segDist(from.x, from.y, at.x, at.y, m.x, m.y) <= TILE * .8) {
+        const dx = at.x - from.x, dy = at.y - from.y, len = Math.hypot(dx, dy) || 1, nx = m.x - dy / len * (rs.n ?? 1) * TILE, ny = m.y + dx / len * (rs.n ?? 1) * TILE;
+        if (this.free(nx, ny, m.def.floats)) { m.x = nx; m.y = ny; }
+      }
+      const bonded = tb ? [first, ...near.filter(a => a !== first)].slice(0, 2) : [first];
+      const share = tb ? tb.n ?? 35 : v['share'];
+      const oath = this.mk(id, 'bondOath') && this.blockT > 0 ? Math.round(this.blockPct) : 0;
+      for (const a of bonded) this.allyOut.push({ k: 'bond', s: id, to: a.id, n: Math.round(share), t: Math.round(v['secs'] * 10), ...(oath ? { f: oath } : {}) });
+      this.bondT = v['secs']; this.bondTo = bonded.map(a => a.id);
+      this.host.swung(null);
+    } else if (id === 'hold-the-gate') {
+      this.gateT = v['secs']; this.gateTick = 0;
+      this.keeperAnim = 'shield-up';
+      this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .6, dir: 1 });
+      this.host.swung(null);
+    }
+    return null;
+  }
+
+  /** The healer's new rows (S5). */
+  private useHealSkill(id: SkillId, v: Record<string, number>): 'noally' | 'nofallen' | null {
+    const p = this.host.player();
+    if (id === 'cleanse') {
+      // One ally (the picked, else the lowest; alone, the Keeper): every status but Wet, then a grace.
+      const to = this.lowestAlly(v['reach']), grace = v['immune'], dry = this.mk(id, 'dryCloak');
+      const wh = this.mk(id, 'warmHands');
+      const one = (a: AllyNear | null) => {
+        if (a) {
+          this.allyOut.push({ k: 'cleanse', s: id, to: a.id, n: 1, t: Math.round(grace * 10), ...(dry ? { f: 1 } : {}) });
+          this.effects.push({ kind: 'hearthglow', x: a.x, y: a.y, age: 0, life: .7, dir: 1 });
+          if (wh) this.mendAlly(a, a.m * (wh.n ?? 0) / 100, id);
+        } else {
+          this.cleanseMe(grace, dry ? dry.s ?? DRY_CLOAK_SECS : 0);
+          if (wh) this.mendTo(null, this.keeperMaxHp * (wh.n ?? 0) / 100, id);
+        }
+      };
+      one(to);
+      // Cleansing Circle (a mark): every ally within its reach of the cleansed one too.
+      const cc = this.mk(id, 'cleanseCircle');
+      if (cc) {
+        const at = to ?? { x: p.x, y: p.y };
+        for (const a of this.alliesNear(cc.n ?? 3, at.x, at.y)) if (a !== to) one(a);
+        if (to && Math.hypot(to.x - p.x, to.y - p.y) <= (cc.n ?? 3) * TILE) one(null);
+      }
+      this.host.swung(null);
+    } else if (id === 'rekindle') {
+      // Beside a fallen party member (where the room saw it fall, within the window): kneel, and the channel runs.
+      const window = v['window'] * 1000, now = Date.now();
+      const reach = v['reach'] * TILE + REKINDLE_SLACK;
+      const fallen = [...this.fallenAllies.entries()].filter(([, f]) => now - f.at <= window && Math.hypot(f.x - p.x, f.y - p.y) <= reach);
+      if (!fallen.length) return 'nofallen';
+      fallen.sort((a, b) => Math.hypot(a[1].x - p.x, a[1].y - p.y) - Math.hypot(b[1].x - p.x, b[1].y - p.y));
+      const tl = this.mk(id, 'twoLamps');
+      const also = tl ? [...this.fallenAllies.entries()].find(([fid, f]) => fid !== fallen[0][0] && now - f.at <= window && Math.hypot(f.x - fallen[0][1].x, f.y - fallen[0][1].y) <= (tl.n ?? 3) * TILE)?.[0] ?? null : null;
+      this.kneel = { to: fallen[0][0], t: v['channel'], pct: Math.round(v['pct']), also };
+      this.effects.push({ kind: 'beacon-plant', x: fallen[0][1].x, y: fallen[0][1].y, age: 0, life: v['channel'], dir: 1 });
+      this.host.swung(null);
+    } else if (id === 'hearthsong') {
+      this.song = { t: v['secs'], tick: 0, pulses: 0 };
+      this.host.swung(null);
+    }
+    return null;
+  }
+
   /** The Lanternwright's timers each frame: the heal's ticks, the ward, Last Light, the wisps' and the beacon's motes. */
   private tickLamp(dt: number): void {
     const p = this.host.player();
@@ -5342,7 +5917,7 @@ export class MobSystem {
     if (wp && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (wp.m ?? 0) * TILE)) this.healOwed(this.keeperMaxHp * (wp.n ?? 0) / 100 * dt);
     if (this.hot) {
       const paid = stepHeal(this.hot, dt);
-      if (paid > 0) { this.host.healPlayer(paid); this.float(p.x, p.y - 36, `+${paid}`, '#7fe08a'); }
+      if (paid > 0) { this.healMe(paid); this.float(p.x, p.y - 36, `+${paid}`, '#7fe08a'); }
       if (this.hot.left <= 0) this.hot = null;
     }
     if (this.lampWardT > 0) { this.lampWardT -= dt; if (this.lampWardT <= 0) { this.lampWardT = 0; this.lampWard = 0; } }
@@ -5731,7 +6306,20 @@ export class MobSystem {
         if (inDisc(p.x, p.y, z.x, z.y, z.r)) {
           this.hearthOwed += z.min * dt;
           const whole = Math.floor(this.hearthOwed);
-          if (whole > 0) { this.hearthOwed -= whole; this.host.healPlayer(whole); }
+          if (whole > 0) { this.hearthOwed -= whole; this.healMe(whole); }
+        }
+        // S5: every ally inside mends too — once a second, a claim each for the room.
+        z.tick -= dt;
+        if (z.tick <= 0 && this.allies.length) {
+          z.tick += 1;
+          const inside = this.allies.filter(a => !a.down && inDisc(a.x, a.y, z.x, z.y, z.r));
+          for (const a of inside) this.mendAlly(a, z.min, 'hearth-circle');
+          // Mend the Mind (a mark): each ally that steps in has one status lifted.
+          if (this.mk('hearth-circle', 'mendMind')) for (const a of inside) if (!(z.caughtIds ??= new Set()).has(a.id)) { z.caughtIds.add(a.id); this.allyOut.push({ k: 'cleanse', s: 'hearth-circle', to: a.id, n: 1, t: 0 }); }
+          // Warded Ground (a mark): allies inside take less (said to the room as a guard round the Keeper, while he
+          // stands in it).
+          const wg = this.mk('hearth-circle', 'zoneGuard');
+          if (wg && inDisc(p.x, p.y, z.x, z.y, z.r)) this.allyOut.push({ k: 'aura', s: 'hearth-circle', n: wg.n ?? 0, r: Math.round(z.r / TILE * 10), t: 15 });
         }
         continue;
       }
@@ -5888,7 +6476,7 @@ export class MobSystem {
     const redeem = m.bless?.id === 'redemption' && m.bless.by !== m && m.bless.by.hp > 0 ? m.bless.fx.redeem : 0;
     if (redeem > 0) for (const k of this.mobs) if (k.bless?.by === m.bless!.by) { k.hp = Math.min(k.def.hp, k.hp + healBase(k) * redeem); this.effects.push({ kind: 'heal', x: k.x, y: k.y - k.def.h / 2, age: 0, life: .5, dir: 1 }); }
     // Redemption (a worn aura): a creature that falls near the Keeper heals him.
-    if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.host.healPlayer(this.itemAura.fx.healPerCorpse);
+    if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.healMe(this.itemAura.fx.healPerCorpse);
     // Soul Harvest (passive): every kill gives back mana.
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     // A worn unique (unique-items.ts reforge-memory): every kill gives back mana.
@@ -5975,14 +6563,16 @@ export class MobSystem {
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
   }
   /** The host: a member's claim that passed the gate lands through the creature's own path (Stone Skin, its call, its half-life change, its fall). */
-  applyClaim(m: Mob, dmg: number, from: string, crit = false, el = ''): number {
+  applyClaim(m: Mob, dmg: number, from: string, crit = false, el = '', skill = ''): number {
     if (!this.mobs.includes(m) || m.hp <= 0) return 0;
-    this.claimFrom = from; this.fireBlow = el === 'fire';
+    this.claimFrom = from; this.fireBlow = el === 'fire'; this.claimSrc = skill || null;
     if (this.fireBlow) this.burnHazards(m.x, m.y, 8);
-    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; this.fireBlow = false; }
+    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; this.fireBlow = false; this.claimSrc = null; }
   }
   /** A member: the host says a creature struck this Keeper. It lands through this Keeper's own defenses, resists and wards. */
   coopBite(dmg: number, type: DamageType, from: Mob | null, burn: boolean, curse: boolean, st?: string): void {
+    // S5: an ally's Banner or Gate, an Intercept bond — cut first, as the room cut it.
+    if (!(st && dmg <= 1)) dmg = this.allyCut(dmg);
     // A status-only blow (an ability's chill, a shriek) carries one point: it lands as the status alone.
     if (!(st && dmg <= 1)) {
       const life = this.host.lifeBite;

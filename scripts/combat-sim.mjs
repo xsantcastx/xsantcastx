@@ -232,11 +232,11 @@ function attributes(voc, level) {
   return { vit: n - spi - agi - ene, ene, spi, agi };
 }
 
-function skillTree(voc, level) {
+function skillTree(voc, level, path = PATHS[voc], barOf = BARS[voc]) {
   let tree = { spent: {}, free: [], at: 0 };
   for (let guard = 0; guard < 400; guard++) {
     let bought = false;
-    for (const [step, want] of PATHS[voc]) {
+    for (const [step, want] of path) {
       const [id, slot] = step.split('#');
       if (slot) {
         // A mark: taken once, as soon as the row's rank and the points allow.
@@ -252,16 +252,40 @@ function skillTree(voc, level) {
     if (!bought) break;
   }
   const ranks = TREE.effectiveRanks(tree, voc), bought = TREE.boughtRanks(tree, voc), marks = TREE.effectiveMarks(tree, voc);
-  const bar = BARS[voc].filter(id => (ranks[id] ?? 0) > 0).slice(0, 4);
+  const bar = barOf.filter(id => (ranks[id] ?? 0) > 0).slice(0, 4);
   return { ranks, bought, marks, bar, aura: SK.defaultAura(voc), spent: TREE.pointsSpent(tree), earned: PTS.skillPointsEarned(level) };
 }
 
-export function keeper(voc, level, tier = 'normal', seed = 0, resist = null) {
+export function keeper(voc, level, tier = 'normal', seed = 0, resist = null, role = null) {
   const gear = rollGear(level, `${voc}|${seed}`, resist, tier === 'hell' ? 'epic' : 'rare', voc);
   const stats = attributes(voc, level);
   const fight = SK.fightStats(level, stats, gear.total, voc, DIFF.DIFFICULTIES[tier].resistPenalty);
-  return { voc, level, tier, gear, stats, fight, tree: skillTree(voc, level), potTier: POT.dropTier(level) };
+  // S5: a party role builds its book its way (PARTY_PATHS), the bar and the aura with it.
+  const tree = role ? skillTree(voc, level, PARTY_PATHS[role].path, PARTY_PATHS[role].bar) : skillTree(voc, level);
+  if (role && PARTY_PATHS[role].aura && (tree.ranks[PARTY_PATHS[role].aura] ?? 0) > 0) tree.aura = PARTY_PATHS[role].aura;
+  return { voc, level, tier, gear, stats, fight, tree, potTier: POT.dropTier(level) };
 }
+
+/**
+ * S5's party (skills-100.md §7 `--party`, campaign.md S5): the tank and the healer build their books for the party —
+ * the Ashguard into the Oath (the Shield Oath, the Watch Cry, Brand Throw) under the Banner, the Lanternwright into
+ * the Hearth (Hearthlight, the Hearth Circle, the Lantern Ward). The damage is the Warlock's own hunting build.
+ */
+export const PARTY_PATHS = {
+  tank: {
+    path: [['watch-blade', 4], ['watch-blade#a1'], ['shield-oath', 4], ['shield-oath#a1'], ['watch-cry', 3], ['cinder-cleave', 3], ['brand-throw', 3],
+      ['banner-of-the-watch', 5], ['banner-of-the-watch#a1'], ['shield-oath', 10], ['shield-oath#a2'], ['watch-cry', 8], ['watch-cry#a1'],
+      ['brand-throw', 6], ['banner-of-the-watch', 10], ['banner-of-the-watch#a2'], ['watch-blade', 10], ['cinder-cleave', 10], ['intercept', 1], ['shield-oath', 20]],
+    bar: ['watch-cry', 'shield-oath', 'brand-throw', 'cinder-cleave'],
+    aura: 'banner-of-the-watch',
+  },
+  healer: {
+    path: [['hearthlight', 6], ['hearthlight#a1'], ['hearth-circle', 4], ['hearth-circle#a1'], ['kindle', 3], ['lantern-ward', 3], ['hearthlight#a2'],
+      ['hearthlight', 12], ['hearth-circle', 10], ['hearth-circle#a2'], ['cleanse', 1], ['lantern-ward', 8], ['lantern-ward#a1'], ['rekindle', 1], ['hearthlight', 20], ['hearth-circle', 20]],
+    bar: ['hearthlight', 'hearth-circle', 'lantern-ward', 'cleanse'],
+    aura: 'lantern-aura',
+  },
+};
 
 // ── One fight ───────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -327,9 +351,10 @@ const DEFENSIVE = new Set(['dark-ward', 'bone-armor', 'shield-oath', 'lantern-wa
  * Fight until every creature (and whatever they call) is down, the Keeper falls, or `max` seconds pass.
  * Returns the seconds, whether he fell, the potions drunk, the life he lost, and the XP and Gold the kills paid.
  */
-export function fight(k, enc, seed, state = null, max = 600) {
+export function fight(k, enc, seed, state = null, max = 600, party = null) {
   return seeded(`fight|${seed}`, rand => {
     const A = arena(k, state), { sys, keeper, life } = A;
+    party?.setup(A);
     const belt = state?.belt ?? (k.tier === 'normal' ? { hp: BELT, mana: BELT } : { hp: TIER_BELT, mana: TIER_BELT });
     const used = { hp: 0, mana: 0 };
     const first = spawn(sys, enc, 80);
@@ -345,6 +370,7 @@ export function fight(k, enc, seed, state = null, max = 600) {
     for (; t < max; t += dt) {
       if (!sys.mobs.length && !sys.calls.length) break;
       if (life.hp <= 0) break;
+      if (party?.step(A, dt, t)) break;
       // Aim: the nearest creature.
       if (!sys.target || sys.target.hp <= 0 || !sys.mobs.includes(sys.target)) {
         let best = null, bd = Infinity;
@@ -428,7 +454,7 @@ export function fight(k, enc, seed, state = null, max = 600) {
     }
     // The Gold still lying about comes in (the pull reaches 8 tiles; the sim does not walk to it).
     for (const g of sys.drops) life.gold += g.coins ?? 0;
-    const died = life.hp <= 0, cleared = !sys.mobs.length && !sys.calls.length && !died;
+    const died = life.hp <= 0 || !!party?.fell, cleared = !sys.mobs.length && !sys.calls.length && !died;
     const dealt = first.reduce((a, m) => a + m.def.hp - Math.max(0, m.hp), 0);
     return { secs: t, died, cleared, used, dealt, taken: life.taken / k.fight.maxHp, struck: life.struck, hpLost: Math.max(0, start - life.hp), hp: Math.max(0, life.hp), mana: sys.mana, belt, xp: life.xp, gold: life.gold, kills: life.kills };
   });
@@ -607,6 +633,117 @@ function plusCell(voc, level, lift, runs) {
   return { death: hs.filter(h => h.deaths > 0).length / hs.length };
 }
 /** A gap fight lasts at most this (a creature at his level falls in 2–5 s: this is a dozen times that and more). */
+// ── The party (skills-100.md §7 `--party`; campaign.md S5) ──────────────────────────────────────────────────────
+
+const THREAT = load('src/app/play/td/td-threat.ts');
+/** The party's level and its boss: the floor boss nearest that level, its life lifted for three Keepers (td-coop rules). */
+export const PARTY_LEVEL = 30;
+const PARTY_BOSS = () => BOSSES.reduce((a, b) => (Math.abs(b.level - PARTY_LEVEL) < Math.abs(a.level - PARTY_LEVEL) ? b : a));
+const PARTY_LIFE = n => 1 + .6 * (n - 1);
+/** The tier the party meets it on (argv --party-tier; Nightmare is where the party forms live, monsters-abilities §5.3). */
+const PARTY_TIER = String(argv['party-tier'] ?? 'nightmare');
+/** Where the healer and the damage stand behind the tank (art px, along the line from the boss through him). */
+const PARTY_BEHIND = { heal: 34, dps: 70 };
+/**
+ * One party fight: the tank is the arena's Keeper (the real MobSystem: his kit, his threat ×2, the boss's targeting by
+ * threat), the damage and the healer are the room's other Keepers (`others`: the boss may turn on them). The damage
+ * deals its calling's sustained dps as claims (threat ×1). The healer is a second real MobSystem with the tank and the
+ * damage as its allies: her Hearthlight, Hearth Circle and Lantern Ward pick the lowest and go out as ally claims,
+ * which land here (life, wards) with their threat (×0.5, split). `healer: false`: nobody heals but the belt.
+ */
+function partyRun(seed, { healer = true, tank = true, tier = PARTY_TIER } = {}) {
+  const L = PARTY_LEVEL, def0 = PARTY_BOSS();
+  const n = 1 + (healer ? 1 : 0) + (tank ? 1 : 0);
+  const def = { ...def0, hp: Math.round(def0.hp * PARTY_LIFE(n)) };
+  // Without a tank the damage stands in front (the warlock as the arena's Keeper); with one, the Ashguard does.
+  const front = tank ? keeper('ashguard', L, tier, seed, null, 'tank') : keeper('warlock', L, tier, seed);
+  const kHeal = keeper('lanternwright', L, tier, seed, null, 'healer');
+  const kDps = keeper('warlock', L, tier, seed + 100);
+  const dpsRate = PARTY_DPS[L] ??= mean([0, 1, 2].map(s => dps('warlock', L, s)));
+  const mates = {};
+  const mate = (id, k) => ({ id, k, hp: k.fight.maxHp, max: k.fight.maxHp, x: 0, y: 0, down: false });
+  if (healer) mates.heal = mate('heal', kHeal);
+  if (tank) mates.dps = mate('dps', kDps);
+  let hsys = null, hostH = null, dpsT = 0, fell = false, othersStruck = 0;
+  const party = {
+    get fell() { return fell; },
+    setup(A) {
+      const { sys } = A;
+      // The others' bites land on their own life through their own guard (the room's KeeperLife cut, td-skills incomingDamage).
+      sys.coop = {
+        bite: (to, from, dmg, type) => {
+          const m = mates[to];
+          if (!m || m.down) return;
+          if (dmg > 1) othersStruck++;
+          const atk = from?.def.level ?? L, raw = dmg * ZONE.gapHurt(ZONE.levelGap(m.k.level, atk));
+          m.hp -= SK.incomingDamage(raw, type, m.k.fight.defense, atk, m.k.fight.resists);
+          if (m.hp <= 0) { m.down = true; fell = true; }
+        },
+        killed: () => undefined, claim: () => undefined,
+      };
+      if (healer) {
+        const me = mates.heal;
+        hostH = {
+          options: { onKill: () => undefined }, walkable: () => true, levelId: () => 'sim', player: () => me,
+          hurtPlayer: n => { me.hp -= n; }, healPlayer: n => { me.hp = Math.min(me.max, me.hp + n); }, swung: () => undefined,
+          playerHp: () => me.hp, dash: () => undefined, seek: () => false, say: () => undefined,
+        };
+        hsys = new MobSystem(hostH);
+        hsys.vocation = 'lanternwright';
+        hsys.setRanks(kHeal.tree.ranks, kHeal.tree.bought, kHeal.tree.marks);
+        hsys.aura = kHeal.tree.aura;
+        const f = kHeal.fight;
+        hsys.keeperMaxHp = f.maxHp; hsys.maxMana = f.maxMana; hsys.mana = f.maxMana; hsys.power = f.power; hsys.regen = f.regen; hsys.castSpeed = f.castSpeed;
+        hsys.keeperLevel = L; hsys.defense = f.defense; hsys.resists = f.resists;
+      }
+    },
+    step(A, dt) {
+      const { sys, keeper, life } = A;
+      const boss = sys.mobs.find(m => m.def.id === def.id) ?? sys.mobs[0];
+      // The others stand behind the front Keeper, on the line from the boss.
+      const ax = boss ? keeper.x - boss.x : -1, ay = boss ? keeper.y - boss.y : 0, d = Math.hypot(ax, ay) || 1;
+      for (const m of Object.values(mates)) { const b = PARTY_BEHIND[m.id]; m.x = keeper.x + ax / d * b; m.y = keeper.y + ay / d * b + (m.id === 'heal' ? 8 : -8); }
+      sys.others = Object.values(mates).filter(m => !m.down).map(m => ({ id: m.id, x: m.x, y: m.y }));
+      // The damage: its sustained dps, claimed twice a second (threat ×1 on the boss's ledger).
+      if (mates.dps && !mates.dps.down && boss && boss.hp > 0) {
+        dpsT += dt;
+        if (dpsT >= .5) { sys.applyClaim(boss, dpsRate * dpsT, 'dps', false, 'fire'); dpsT = 0; }
+      }
+      if (hsys && !mates.heal.down) {
+        const me = mates.heal, frontId = 'front';
+        hsys.allies = [{ id: frontId, x: keeper.x, y: keeper.y, h: Math.max(0, life.hp), m: front.fight.maxHp }, ...(mates.dps && !mates.dps.down ? [{ id: 'dps', x: mates.dps.x, y: mates.dps.y, h: mates.dps.hp, m: mates.dps.max }] : [])];
+        // Her hands: the Hearth first when two are hurt or the front is low, Hearthlight on the lowest, the Ward on the front.
+        const share = a => a.h / a.m, low = Math.min(...hsys.allies.map(share), me.hp / me.max);
+        const hurt = hsys.allies.filter(a => share(a) < .9).length + (me.hp / me.max < .9 ? 1 : 0);
+        hsys.gcd = (hsys.gcd ?? 0) - dt;
+        if (hsys.gcd <= 0) {
+          const tryCast = id => (hsys.rank(id) > 0 && (hsys.cooldowns[id] ?? 0) <= 0 && hsys.mana >= hsys.manaOf(id) && hsys.useAbility(id) === null);
+          if ((share(hsys.allies[0]) < .6 && tryCast('lantern-ward')) || ((hurt >= 2 || share(hsys.allies[0]) < .7) && tryCast('hearth-circle')) || (low < .85 && tryCast('hearthlight'))) hsys.gcd = .4;
+        }
+        if (me.hp < me.max * .4 && !me.sipped) { me.hp = Math.min(me.max, me.hp + (POTION('health')(kHeal.potTier)?.amount ?? 0)); me.sipped = 8; }
+        if (me.sipped > 0) me.sipped -= dt;
+        hsys.update(dt);
+        // Her claims land: heals on life (and their threat, ×0.5 split over what fights the healed), wards round the front.
+        for (const c of hsys.allyOut.splice(0)) {
+          if (c.k === 'heal') {
+            if (c.to === frontId) { const n = Math.min(c.n, front.fight.maxHp - life.hp); life.hp += n; THREAT.healThreat(sys.mobs, '', 'heal', n); }
+            else if (mates[c.to] && !mates[c.to].down) { const m = mates[c.to], n = Math.min(c.n, m.max - m.hp); m.hp += n; THREAT.healThreat(sys.mobs, c.to, 'heal', n); }
+          } else if (c.k === 'ward' && c.to === frontId) sys.allyLaid({ a: 'ward', by: 'heal', s: c.s, n: c.n, t: c.t });
+        }
+      }
+      return fell;
+    },
+  };
+  const r = fight(front, { def }, `party|${seed}|${healer}|${tank}`, null, 600, party);
+  return { ...r, fell: r.died, healerUp: !mates.heal?.down, held: r.struck / Math.max(1, r.struck + othersStruck) };
+}
+const PARTY_DPS = {};
+/** The party cells: the full party, and the party without its healer (and without its tank), over `runs` seeds. */
+function partyCell(runs) {
+  const one = o => { const out = []; for (let i = 0; i < runs; i++) out.push(partyRun(i, o)); return { fell: out.filter(r => r.fell).length / out.length, ttk: iqm(out.filter(r => r.cleared).map(r => r.secs)), cleared: out.filter(r => r.cleared).length / out.length, held: mean(out.map(r => r.held)) }; };
+  return { boss: PARTY_BOSS().id, level: PARTY_BOSS().level, full: one({}), noHealer: one({ healer: false }), noTank: one({ tank: false }) };
+}
+
 const GAP_SECS = 60;
 function gapCell(voc, level, gap, count, runs) {
   const pool = huntPool(level + gap);
@@ -645,6 +782,8 @@ export const BANDS = {
   ashPackFloor: .75,
   /** Death-rate ceilings: a creature at his level (near never), a pack, a first attempt at a boss / the Seam Eater. */
   normalDeath: .02, packDeath: .1, bossDeath: .3, seamDeath: .3,
+  /** S5: without its healer, the party falls to the floor boss at least this often (skills-100.md §7). */
+  partyNoHealer: .7,
   /** A kiting ranged Keeper is struck at least this many times a boss fight (no boss can be walked away from). */
   kitedStruck: 4,
   /** The Seam Eater on Nightmare (a Keeper 5 levels above it) and Hell (15 above), both in resist gear. */
@@ -694,6 +833,13 @@ if (argv.dps) {
   console.log(`  creature life ${LEVELS.map(L => `L${L} ${Math.round(mean(atLevel(L).map(d => d.hp)))}`).join('  ')} (the hunted kinds' mean)`);
   process.exit(0);
 }
+if (argv.party) {
+  // --party: the S5 party cells alone (a tank, a healer and the damage against a floor boss at PARTY_LEVEL).
+  const c = partyCell(RUNS);
+  console.log(`Party at L${PARTY_LEVEL} vs ${c.boss} (L${c.level}), ${RUNS} runs: falls · cleared · time to kill`);
+  for (const [k, x] of Object.entries({ full: c.full, 'no healer': c.noHealer, 'no tank': c.noTank })) console.log(`  ${k.padEnd(10)} ${Math.round(x.fell * 100)}% · ${Math.round(x.cleared * 100)}% · ${Number.isFinite(x.ttk) ? x.ttk.toFixed(0) : '—'} s · the front Keeper took ${Math.round(x.held * 100)}% of the blows`);
+  process.exit(0);
+}
 if (argv.trace) {
   // --trace=<vocation>,<level>,<creature id>[,<tier>]: one fight, its Keeper and its outcome.
   const [voc, L, id, tier = 'normal'] = String(argv.trace).split(',');
@@ -718,6 +864,8 @@ for (const voc of VOCATIONS) {
   table[voc].gap = { oneShot: gapCell(voc, 20, 20, 1, RUNS), plus5: [20, 30].map(L => ({ level: L, ...plusCell(voc, L, GAP_HUNT.lift, RUNS) })) };
   for (const L of QUICK ? [20, 40] : SEAM_AT) for (const tier of ['normal', 'nightmare', 'hell']) table[voc].seam.push(seamCell(voc, L, tier, RUNS));
 }
+// S5: the party cells (a tank, a healer and the damage against a floor boss at L30, on Nightmare).
+const party = partyCell(QUICK ? 6 : 12);
 const secs = (Date.now() - t0) / 1000;
 
 const fmt = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) : '—';
@@ -756,7 +904,14 @@ for (const voc of VOCATIONS) {
   say(`  ${voc.padEnd(14)} L20 vs L40: a blow ${pct(g.oneShot.blow)} of his life · falls ${pct(g.oneShot.death)} in ${fmt(g.oneShot.blows, 0)} blow(s) · wins ${pct(g.oneShot.won)} · deals ${pct(g.oneShot.dealt)}   ${g.plus5.map(p => `L${p.level} hunting L${p.level + GAP_HUNT.lift}: falls in ${pct(p.death)} of hunts`).join('   ')}`);
 }
 
+say(`\nThe party at L${PARTY_LEVEL} on ${PARTY_TIER} vs ${party.boss} (L${party.level}): falls · cleared · time to kill`);
+for (const [k, x] of Object.entries({ full: party.full, 'no healer': party.noHealer, 'no tank': party.noTank })) say(`  ${k.padEnd(10)} ${pct(x.fell)} · ${pct(x.cleared)} · ${fmt(x.ttk, 0)} s`);
+
 // ── The check ──
+// S5 (campaign.md): a level-30 Lanternwright keeps a level-30 Ashguard alive against the floor boss; without her the
+// party falls in at least 70% of the runs (the boss needs a healer).
+if (party.full.fell > BANDS.bossDeath) fails.push(`the L${PARTY_LEVEL} party (tank, healer, damage) falls to ${party.boss} ${pct(party.full.fell)} of the time (≤ ${pct(BANDS.bossDeath)})`);
+if (party.noHealer.fell < BANDS.partyNoHealer) fails.push(`the L${PARTY_LEVEL} party without its healer falls to ${party.boss} only ${pct(party.noHealer.fell)} of the time (≥ ${pct(BANDS.partyNoHealer)})`);
 for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);

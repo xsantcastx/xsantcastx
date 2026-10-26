@@ -301,9 +301,11 @@ export interface EngineOptions {
    * guard), answered with the life the room holds; `cueText`: the words for a refused blow ('far', 'sight', 'cap',
    * 'immune'); `onPeerDown`: another Keeper near fell (the room's word).
    */
-  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[] }) => Promise<import('../world/keeper-life').LifeView | null>;
+  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[]; a?: import('../world/ally-claims').AllyClaim[] }) => Promise<(import('../world/keeper-life').LifeView & { a?: (number | string)[] }) | null>;
   cueText?: (why: string) => string;
   onPeerDown?: (id: string, x: number, y: number) => void;
+  /** S5: a Lanternwright's Rekindle stood this Keeper up where it fell: the fall's cost is undone (the purse, the debt). */
+  onRekindle?: () => void;
   onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
   /** Protocol 5: post this Keeper's own companions to the party in its area. */
   onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;

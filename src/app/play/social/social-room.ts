@@ -4,6 +4,7 @@ import type { OfferItem } from '../trade/trade-items';
 import type { WorldCreditAsk, WorldCreditMsg, WorldGroundMsg, WorldTakeResult } from './world-protocol';
 import type { CoopStatus } from '../world/room-status';
 import type { LifeClaim, LifeView } from '../world/keeper-life';
+import type { AllyClaim } from '../world/ally-claims';
 
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
@@ -533,7 +534,7 @@ export class SocialRoom {
   /** Protocol 10: the room keeps this Keeper's life, and the room is reachable. */
   get canLife(): boolean { return this.canWorld && (this.snapshot.protocol ?? 0) >= ROOM_LIFE_PROTOCOL && this.snapshot.life === true; }
   /** Protocol 10: post life claims (and the guard); the room's word on the life, or null when it did not reach. */
-  async worldLife(body: { g?: { m: number; d: number; r: number[] }; c: LifeClaim[] }): Promise<LifeView | null> {
+  async worldLife(body: { g?: { m: number; d: number; r: number[] }; c: LifeClaim[]; a?: AllyClaim[] }): Promise<(LifeView & { a?: (number | string)[] }) | null> {
     if (!this.canLife || !this.token || this.paused) return null;
     try {
       const response = await this.send(`${this.endpoint}/world/life`, {
@@ -541,9 +542,12 @@ export class SocialRoom {
         body: JSON.stringify(body), signal: AbortSignal.timeout(4000),
       });
       if (!response.ok) return null;
-      const r = await response.json().catch(() => null) as { me?: LifeView } | null;
+      const r = await response.json().catch(() => null) as { me?: LifeView; a?: unknown } | null;
       const me = r?.me;
-      return me && Number.isFinite(me.h) && Number.isFinite(me.m) && Number.isFinite(me.q) ? me : null;
+      if (!(me && Number.isFinite(me.h) && Number.isFinite(me.m) && Number.isFinite(me.q))) return null;
+      // S5: the room's word on each ally claim (what it moved, or why not).
+      const a = Array.isArray(r?.a) ? (r!.a as unknown[]).slice(0, 16).map(x => (typeof x === 'number' && Number.isFinite(x) ? x : typeof x === 'string' ? x.slice(0, 12) : 0)) : undefined;
+      return { ...me, ...(a ? { a } : {}) };
     } catch { return null; }
   }
   /** Protocol 10: the room pays this Keeper's XP and Gold (signed in, a protocol-10 room). */

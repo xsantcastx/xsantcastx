@@ -17,6 +17,13 @@ export const ASHGUARD_I18N: Readonly<Record<string, { en: string; es: string }>>
   'play.td.tree.var.knock': { en: 'Knock back (tiles)', es: 'Empuje (casillas)' },
   'play.td.tree.var.def': { en: 'Defense', es: 'Defensa' },
   'play.td.tree.var.regen': { en: 'Life a second', es: 'Vida por segundo' },
+  'play.td.tree.var.back': { en: 'Return blow (%)', es: 'Golpe de vuelta (%)' },
+  'play.td.tree.var.taunt': { en: 'Taunt (s)', es: 'Provocacion (s)' },
+  'play.td.tree.var.resist': { en: 'Fire resist', es: 'Resistencia al fuego' },
+  'play.td.tree.var.reflect': { en: 'Blow sent back (%)', es: 'Golpe devuelto (%)' },
+  'play.td.tree.var.cut': { en: 'Less damage taken (%)', es: 'Menos dano recibido (%)' },
+  'play.td.tree.var.self': { en: 'Less damage to you (%)', es: 'Menos dano para ti (%)' },
+  'play.td.tree.var.share': { en: 'Share you take (%)', es: 'Parte que recibes (%)' },
 
   'skill.watch-blade': { en: 'Watch Blade', es: 'Hoja de la Guardia' },
   'skill.watch-blade.text': {
@@ -77,5 +84,36 @@ export const ASHGUARD_I18N: Readonly<Record<string, { en: string; es: string }>>
   'skill.last-watch.text': {
     en: 'For {{secs}} seconds you cannot fall below 1 life. When the vow ends, {{heal}}% of the damage it held off comes back as life.',
     es: 'Durante {{secs}} segundos no puedes bajar de 1 de vida. Al terminar el voto, el {{heal}}% del dano que contuvo vuelve como vida.',
+  },
+  // ── S5: the tank's kit (skills-100.md §2; all of it makes threat ×2) ──
+  'skill.brand-throw': { en: 'Brand Throw', es: 'Lanzar la marca' },
+  'skill.brand-throw.text': {
+    en: 'Throw the branded blade at the first foe within {{range}} tiles: it strikes at {{pct}}% of your blow and Taunts it {{taunt}} seconds, then flies back through it at {{back}}%.',
+    es: 'Lanza la hoja marcada al primer enemigo a {{range}} casillas: golpea al {{pct}}% de tu golpe y lo Provoca {{taunt}} segundos, y vuelve atravesandolo al {{back}}%.',
+  },
+  'skill.cinder-skin': { en: 'Cinder Skin', es: 'Piel de ceniza' },
+  'skill.cinder-skin.text': {
+    en: 'For {{secs}} seconds: +{{resist}} fire resist, and a foe that strikes you at your side takes {{reflect}}% of its blow back as fire.',
+    es: 'Durante {{secs}} segundos: +{{resist}} de resistencia al fuego, y un enemigo que te golpea a tu lado recibe el {{reflect}}% de su golpe de vuelta como fuego.',
+  },
+  'skill.banner-of-the-watch': { en: 'Banner of the Watch', es: 'Estandarte de la guardia' },
+  'skill.banner-of-the-watch.text': {
+    en: 'While it runs, allies within {{radius}} tiles take {{cut}}% less damage and you take {{self}}% less. One aura at a time: this or the Watchfire.',
+    es: 'Mientras dura, los aliados a {{radius}} casillas reciben un {{cut}}% menos de dano y tu un {{self}}% menos. Una sola aura a la vez: esta o el Fuego de guardia.',
+  },
+  'skill.second-wind': { en: 'Second Wind', es: 'Segundo aliento' },
+  'skill.second-wind.text': {
+    en: 'Draw breath: {{heal}}% of your life back over {{secs}} seconds.',
+    es: 'Recupera el aliento: el {{heal}}% de tu vida en {{secs}} segundos.',
+  },
+  'skill.intercept': { en: 'Intercept', es: 'Interceptar' },
+  'skill.intercept.text': {
+    en: 'Dash to an ally within {{reach}} tiles. For {{secs}} seconds you take {{share}}% of the damage it takes, through your own Defense, and it takes the rest.',
+    es: 'Lanzate hacia un aliado a {{reach}} casillas. Durante {{secs}} segundos recibes el {{share}}% del dano que recibe, a traves de tu Defensa, y el recibe el resto.',
+  },
+  'skill.hold-the-gate': { en: 'Hold the Gate', es: 'Defender la puerta' },
+  'skill.hold-the-gate.text': {
+    en: 'Plant the shield for {{secs}} seconds: you cannot move, you take {{cut}}% less, and every foe within {{radius}} tiles is Taunted {{taunt}} seconds, again every 2 seconds.',
+    es: 'Planta el escudo durante {{secs}} segundos: no puedes moverte, recibes un {{cut}}% menos y cada enemigo a {{radius}} casillas queda Provocado {{taunt}} segundos, otra vez cada 2 segundos.',
   },
 };
