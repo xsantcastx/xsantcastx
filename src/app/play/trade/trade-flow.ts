@@ -25,7 +25,7 @@ import { canonical, type OfferItem, type Terms } from './trade-items';
 /** Where the trade Function lives and how this save reaches the cloud (real: trade-backend.ts; specs: a fake). */
 export interface TradeBackend {
   /** Why this device cannot trade right now, or null: 'signin' (a guest) or 'lease' (another device holds the save). */
-  blocked(): 'signin' | 'lease' | null;
+  blocked(): 'signin' | 'lease' | 'connecting' | null;
   /** This device's character (character-scope.ts): which save the Function reads. */
   readonly character: string;
   /** Push everything this device holds to the cloud, awaited (the Function checks the cloud's copy). */
@@ -99,7 +99,7 @@ export class TradeFlow {
   async confirm(t: RoomTrade): Promise<void> {
     if (t.stage !== 'confirm' || (this.status.stage !== 'confirm' && this.status.stage !== 'open')) return;
     const blocked = this.backend.blocked();
-    if (blocked) { this.set(this.status.stage, blocked === 'signin' ? 'signin' : 'lease'); return; }
+    if (blocked) { this.set(this.status.stage, blocked); return; }
     if (t.room) {
       // The room holds both offers and both consents: the save went up on Accept; one word settles it.
       this.set('sending');

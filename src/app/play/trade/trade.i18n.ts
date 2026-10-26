@@ -45,6 +45,7 @@ export const TRADE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'trade.cancelled': { en: 'The trade was cancelled.', es: 'Se canceló el comercio.' },
   'trade.failed': { en: 'The trade did not happen: {{why}}', es: 'El comercio no se hizo: {{why}}' },
   'trade.why.signin': { en: 'sign in to trade', es: 'inicia sesión para comerciar' },
+  'trade.why.connecting': { en: 'your save is still connecting to your account; it will be ready in a moment', es: 'tu partida aun se esta conectando a tu cuenta; estara lista en un momento' },
   'trade.why.lease': { en: 'another device is playing this save (Play Here first)', es: 'otro dispositivo juega esta partida (pulsa Jugar aquí)' },
   'trade.why.offline': { en: 'the trade house is out of reach; try again', es: 'la casa de comercio no responde; reintenta' },
   'trade.why.busy': { en: 'one thing at a time', es: 'una cosa a la vez' },
