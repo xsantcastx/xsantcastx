@@ -227,20 +227,21 @@ const FX = new WeakMap<Mob, AuraFx>();
  * The pack auras on the ground (§3): each bearer on its sigil disc (AuraFx's floor and rings, smaller than a
  * Keeper's), its sigil turning a step every 0.5 s, the dashed reach ring at 4 tiles. Lightless: a black disc.
  */
-export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean): void {
+export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean, low = false): void {
   for (const m of mobs) {
     if (!m.aura || (m.hidden ?? 0) > 0 || !near(m.x, m.y)) continue;
     const look = packLook(m.aura), p = PACK_AURA_LOOKS[m.aura], X = Math.round(m.x), Y = Math.round(m.y) - 1;
     let fx = FX.get(m);
     if (!fx) { fx = new AuraFx(); FX.set(m, fx); }
-    fx.step(time, look, still);
+    // Environment detail Low (td-detail): no motes and no claimed floor, only the sigil and its reach.
+    fx.step(time, look, still || low);
     if (m.aura === 'lightless') {
       // A black disc, its rim a ring of dark pixels; inside, the ground is simply gone.
       c.globalAlpha = .7; c.fillStyle = p.dark;
       for (let y = -7; y <= 7; y++) { const w = Math.round(15 * Math.sqrt(Math.max(0, 1 - (y / 7.5) * (y / 7.5)))); c.fillRect(X - w, Y + y, w * 2 + 1, 1); }
       c.globalAlpha = .9;
       groundRing(15).forEach((q, i) => { c.fillStyle = i % 2 ? HOSTILE_EDGE : p.tones.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
-    } else fx.ground(c, X, Y, look, time, still);
+    } else if (!low) fx.ground(c, X, Y, look, time, still);
     // The sigil: 7×7 grown ×2, turning one step every half second (a mirror flip on odd steps).
     const rows = SIGILS[p.sigil], flip = !still && Math.floor(time * 2) % 2 === 1;
     c.globalAlpha = .9;
@@ -259,7 +260,8 @@ export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still
 }
 
 /** Over the creatures: the bearers' motes, and the linked mote lines to each blessed one (three motes travelling). */
-export function drawPackAir(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean): void {
+export function drawPackAir(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean, low = false): void {
+  if (low) still = true;
   for (const m of mobs) {
     if (m.aura && near(m.x, m.y)) { const fx = FX.get(m); if (fx) fx.air(c, m.x, m.y - 1, packLook(m.aura)); }
     const b = m.bless;
