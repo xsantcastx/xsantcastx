@@ -413,6 +413,13 @@
   <!-- Top-down: what just happened (a deed, a refusal) as a short toast above the prompt; it fades by itself. -->
   @if (topDown && (message || engineMessage)) {
     @for (m of [message || engineMessage]; track m) { <p class="td-toast" role="status" data-engine-ignore>{{ m }}</p> }
+    <!-- Isometric is slow on this device (td-artopt offerClassic): one tap back to Classic, or keep it. -->
+    @if (isoSlow) {
+      <div class="td-iso-slow" role="alert" data-engine-ignore data-iso-slow><span>{{ t('play.sound.graphics.slow') }}</span>
+        <button type="button" class="td-iso-slow__go" (click)="isoClassic()">{{ t('play.sound.graphics.slow.go') }}</button>
+        <button type="button" class="td-iso-slow__keep" (click)="isoSlow = false">{{ t('play.sound.graphics.slow.keep') }}</button>
+      </div>
+    }
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {

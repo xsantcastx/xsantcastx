@@ -13,25 +13,62 @@
  *          Keeper, warm light pools indoors. Only the drawing and the input mapping change: the world, collision, maps and
  *          the room server stay square.
  *
- * `?artopt=a|b|c` is read only in an automated browser (navigator.webdriver) or on localhost, so it can never leak to a
- * player on the live site.
+ * `?artopt=a|b|c|iso|live` is read only in an automated browser (navigator.webdriver) or on localhost, so a, b and c
+ * can never reach a player on the live site; `iso` reaches players only through their own Graphics setting.
  */
 export type ArtOpt = 'live' | 'a' | 'b' | 'c' | 'iso';
+/** (`iso` is also the player's Isometric graphics: Menu → Settings, `graphics()` below.) */
 
 let cached: ArtOpt | null = null;
+let fromParam = false;
+/** The look came from the dev `?artopt=` parameter (webdriver or localhost), not the player's setting. */
+export function artOptParam(): boolean { artOpt(); return fromParam; }
 
 export function artOpt(): ArtOpt {
   if (cached) return cached;
-  let v: ArtOpt = 'live';
+  let v: ArtOpt = graphics() === 'iso' ? 'iso' : 'live';
   try {
     if (typeof window !== 'undefined' && typeof location !== 'undefined') {
       const dev = (typeof navigator !== 'undefined' && navigator.webdriver === true) || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
       const q = dev ? new URLSearchParams(location.search).get('artopt') : null;
-      if (q === 'a' || q === 'b' || q === 'c' || q === 'iso') v = q;
+      if (q === 'a' || q === 'b' || q === 'c' || q === 'iso' || q === 'live') { v = q; fromParam = true; }
     }
-  } catch { /* no location: live */ }
+  } catch { /* no location: the player's setting */ }
   return (cached = v);
 }
+
+// ── Graphics (Menu → Settings; owner 2026-10-27: iso goes live as a Beta toggle) ──
+/**
+ * The player's graphics: `classic` the top-down world (the default), `iso` the isometric Beta (td-iso*.ts). A device's
+ * own choice like Environment detail (td-detail.ts): plain localStorage behind try/catch, never the save gateway. The
+ * dev `?artopt=` parameter (webdriver or localhost only) still overrides it, for the specs and the comparison shots.
+ */
+export type Graphics = 'classic' | 'iso';
+export const GRAPHICS: readonly Graphics[] = ['classic', 'iso'];
+export const GRAPHICS_KEY = 'eclipse-td-graphics';
+let graphicsNow: Graphics | null = null;
+const graphicsListeners = new Set<(g: Graphics) => void>();
+const slowListeners = new Set<() => void>();
+/** The graphics this device chose (Classic until it chooses). */
+export function graphics(): Graphics {
+  if (graphicsNow) return graphicsNow;
+  let v: Graphics = 'classic';
+  try { if (typeof localStorage !== 'undefined' && localStorage.getItem(GRAPHICS_KEY) === 'iso') v = 'iso'; } catch { /* private mode: Classic */ }
+  return (graphicsNow = v);
+}
+/** Choose the graphics (saved on this device, applied at once: the engine draws the next frame the new way). */
+export function setGraphics(g: Graphics): void {
+  if (!GRAPHICS.includes(g)) return;
+  const was = graphics();
+  try { localStorage.setItem(GRAPHICS_KEY, g); } catch { /* private mode: this session only */ }
+  if (was === g) return;
+  graphicsNow = g; cached = null;
+  for (const f of graphicsListeners) f(g);
+}
+export function onGraphics(f: (g: Graphics) => void): () => void { graphicsListeners.add(f); return () => graphicsListeners.delete(f); }
+/** The engine measured Isometric running slowly here (never under a test harness): the HUD offers Classic, one tap. */
+export function offerClassic(): void { for (const f of slowListeners) f(); }
+export function onIsoSlow(f: () => void): () => void { slowListeners.add(f); return () => slowListeners.delete(f); }
 
 /** The zoomed-out camera and the ringless aura (A, B and C). */
 export const optCamera = (): boolean => artOpt() !== 'live';

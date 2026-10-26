@@ -318,6 +318,7 @@ import { PlayLedgerService } from '../shared/games/play-ledger.service';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
 import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
+import { onIsoSlow, setGraphics } from './td/td-artopt';
 import { WorldFeelBus, type CraftedFeel } from '../shared/sound/world-feel.bus';
 import { materialOf, REALM_IDS, TOWN_GROUND, type RealmId } from '../shared/sound/sound-palette';
 import { LevelUpAudioService } from '../shared/activity/level-up-audio.service';
@@ -1502,6 +1503,11 @@ export class SideScrollerComponent implements OnDestroy {
   private makerWait = 0;
   /** The one gentle nudge: a lit dot on the Places button until the list is opened (existing saves). */
   lookNudge = false;
+  /** Isometric runs slowly on this device (td-artopt offerClassic): a one-tap way back to Classic. */
+  isoSlow = false;
+  private readonly offIsoSlow = onIsoSlow(() => this.zone.run(() => { this.isoSlow = true; }));
+  /** The slow-device card's primary: Classic graphics on this device, at once. */
+  isoClassic(): void { setGraphics('classic'); this.isoSlow = false; }
   /** The open Places list carries the nudge line this once. */
   lookNudgeShown = false;
   /** The Keeper's chosen name (the vitals label), or '' for "Keeper". */
@@ -2411,6 +2417,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Menu → Loot & Combat. */
   openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
+    this.offIsoSlow();
     this.unStonesHook();
     this.inventory.setWearCheck(null);
     this.inventory.setKitHands(1);
