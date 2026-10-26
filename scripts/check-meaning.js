@@ -372,15 +372,15 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
   }
 }
 // Spellstones (shared/spellstones/spellstones.model.ts): the Basalt Blank is a satchel stack (creature drops, Edrin
-// Kade's counter) inscribed in the Spellbook; the stones themselves live in the stone pouch, one per active spell (a
-// thing each, by its icon family), cast from the belt's Spellstone slot. Their words must be on the play view.
+// Kade's counter) cut in the Skill Book into a satchel stone (the grid release: spell, rank, marks, charges; a thing
+// each, by its icon family), cast from the belt's Spellstone slot. Their words must be on the play view.
 {
   const SS = L('shared/spellstones/spellstones.model.ts');
   const HUD = read('play/side-scroller.component.html') + read('play/side-scroller.component.ts');
   const STONE_WORDS = read('shared/spellstones/spellstones.i18n.ts');
   const blank = thing(SS.BLANK_ID);
   for (const s of SS.SPELLSTONE_MEANING.blank.sources) src(SS.BLANK_ID, s);
-  if (HUD.includes('inscribeStone(')) for (const u of SS.SPELLSTONE_MEANING.blank.uses) use(SS.BLANK_ID, u);
+  if (HUD.includes('cutStone(') && HUD.includes('spellstones.cut(')) for (const u of SS.SPELLSTONE_MEANING.blank.uses) use(SS.BLANK_ID, u);
   blank.lore = !!SS.SPELLSTONE_MEANING.blank.lore && STONE_WORDS.includes("'play.stone.lore'");
   for (const fam of SS.STONE_FAMILIES) {
     const n = node('item', SS.stoneIcon(fam), `Spellstone (${fam})`);

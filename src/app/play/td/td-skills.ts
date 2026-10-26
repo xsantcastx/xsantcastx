@@ -16,6 +16,7 @@ import { ELEMENTS, MAX_KEEPER_RESIST, MIN_RESIST, type DamageType, type Element 
 import { ASHGUARD_BOOK, ASHGUARD_SKILLS, ASHGUARD_STARTERS, ASH_TREES, type AshSkillId } from './td-ashguard-skills';
 import { LAMP_TREES, LANTERN_BOOK, LANTERN_SKILLS, LANTERN_STARTERS, type LampSkillId } from './td-lantern-skills';
 import { THORN_BOOK, THORN_SKILLS, THORN_STARTERS, THORN_TREES, type ThornSkillId } from './td-thorn-skills';
+import { FOLDED, applyMarkVars, markCd, markManaPct } from './td-marks';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
@@ -137,7 +138,7 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   },
   'ember-mastery': {
     id: 'ember-mastery', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.ember-mastery', textKey: 'skill.ember-mastery.text',
-    vars: { pct: 10 }, grow: { pct: 3 }, tree: 'ember', tier: 3, col: 0, req: 'ember-bolt',
+    vars: { pct: 1.5 }, grow: { pct: 1.5 }, tree: 'ember', tier: 3, col: 0, req: 'ember-bolt',
     icon: I('<rect x="3" y="1" width="10" height="1" fill="#c8963c"/><rect x="3" y="14" width="10" height="1" fill="#c8963c"/><rect x="1" y="3" width="1" height="10" fill="#c8963c"/><rect x="14" y="3" width="1" height="10" fill="#c8963c"/><rect x="2" y="2" width="1" height="1" fill="#c8963c"/><rect x="13" y="2" width="1" height="1" fill="#c8963c"/><rect x="2" y="13" width="1" height="1" fill="#c8963c"/><rect x="13" y="13" width="1" height="1" fill="#c8963c"/><rect x="6" y="4" width="4" height="8" fill="#ff8a2e"/><rect x="5" y="7" width="6" height="5" fill="#e2552a"/><rect x="7" y="7" width="2" height="4" fill="#ffd25a"/><rect x="7" y="3" width="2" height="1" fill="#ffd25a"/>'),
   },
   'meteor': {
@@ -163,7 +164,7 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   },
   'soul-harvest': {
     id: 'soul-harvest', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.soul-harvest', textKey: 'skill.soul-harvest.text',
-    vars: { mana: 8, soul: .2 }, grow: { mana: 1, soul: .2 }, tree: 'bone', tier: 0, col: 2, req: null,
+    vars: { mana: 8, soul: .2 }, grow: { soul: .2 }, tree: 'bone', tier: 0, col: 2, req: null,
     icon: I('<rect x="5" y="2" width="6" height="6" fill="#e9e4f0"/><rect x="6" y="4" width="1" height="2" fill="#2a1a24"/><rect x="9" y="4" width="1" height="2" fill="#2a1a24"/><rect x="4" y="9" width="8" height="5" fill="#5f8bff"/><rect x="6" y="10" width="4" height="3" fill="#c8dcff"/>'),
   },
   'corpse-burst': {
@@ -175,7 +176,7 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   },
   'skeleton-mastery': {
     id: 'skeleton-mastery', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.skeleton-mastery', textKey: 'skill.skeleton-mastery.text',
-    vars: { pct: 10 }, grow: { pct: 5 }, tree: 'bone', tier: 1, col: 1, req: 'raise-skeleton',
+    vars: { pct: 10 }, grow: { pct: 1 }, tree: 'bone', tier: 1, col: 1, req: 'raise-skeleton',
     icon: I('<rect x="4" y="1" width="2" height="2" fill="#c8963c"/><rect x="7" y="0" width="2" height="3" fill="#c8963c"/><rect x="10" y="1" width="2" height="2" fill="#c8963c"/><rect x="4" y="3" width="8" height="1" fill="#c8963c"/><rect x="4" y="4" width="8" height="6" fill="#ddd2ea"/><rect x="5" y="6" width="2" height="2" fill="#6b3aa0"/><rect x="9" y="6" width="2" height="2" fill="#6b3aa0"/><rect x="5" y="10" width="6" height="2" fill="#a99bc0"/><rect x="6" y="12" width="1" height="2" fill="#ddd2ea"/><rect x="9" y="12" width="1" height="2" fill="#ddd2ea"/><rect x="2" y="14" width="12" height="1" fill="#3b2140"/>'),
   },
   'bone-armor': {
@@ -212,7 +213,6 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     vars: { absorb: 40, secs: 12 }, grow: { absorb: 10, secs: .5 }, tree: 'shadow', tier: 0, col: 2, req: null,
     icon: I('<rect x="3" y="2" width="10" height="9" fill="#6b3aa0"/><rect x="4" y="3" width="8" height="7" fill="#b06bff"/><rect x="5" y="11" width="6" height="2" fill="#6b3aa0"/><rect x="7" y="13" width="2" height="2" fill="#6b3aa0"/><rect x="6" y="5" width="4" height="3" fill="#e9d8ff"/>'),
     words: 'nyr ka',
-    syn: [{ from: 'life-tap', per: 6, what: 'absorb' }],
   },
   'aura-siphon': {
     id: 'aura-siphon', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.aura-siphon', textKey: 'skill.aura-siphon.text',
@@ -229,10 +229,9 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     syn: [{ from: 'ember-curse', per: 4, what: 'radius' }],
   },
   'life-tap': {
-    id: 'life-tap', kind: 'active', mana: 0, cd: 10, nameKey: 'skill.life-tap', textKey: 'skill.life-tap.text',
-    vars: { life: 20, mana: 30 }, grow: { mana: 4 }, tree: 'shadow', tier: 2, col: 2, req: 'dark-ward',
+    id: 'life-tap', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.life-tap', textKey: 'skill.life-tap.text',
+    vars: { life: 10, mana: 15 }, grow: { mana: 1 }, tree: 'shadow', tier: 2, col: 2, req: 'dark-ward',
     icon: I('<rect x="1" y="3" width="3" height="3" fill="#e2452a"/><rect x="4" y="3" width="3" height="3" fill="#e2452a"/><rect x="2" y="6" width="4" height="2" fill="#e2452a"/><rect x="3" y="8" width="2" height="1" fill="#9e2e1c"/><rect x="7" y="7" width="2" height="1" fill="#b06bff"/><rect x="11" y="5" width="2" height="2" fill="#5f8bff"/><rect x="10" y="7" width="4" height="5" fill="#5f8bff"/><rect x="11" y="8" width="2" height="2" fill="#c8dcff"/>'),
-    words: 'hesk un',
   },
   'doom': {
     id: 'doom', kind: 'active', mana: 28, cd: 14, nameKey: 'skill.doom', textKey: 'skill.doom.text',
@@ -314,8 +313,9 @@ export function castRank(id: SkillId, treeRank: number, sig: GearSig = NO_GEAR_S
  * A skill's numbers in the fight (before the sky's hand, td-phases): its rank's and synergies' (skillVars), plus what
  * worn gear adds — more skeletons at once, more spears in a storm, a spear that flies further.
  */
-export function castVars(id: SkillId, rank: number, bought: Readonly<Partial<Record<SkillId, number>>> | null = null, sig: GearSig = NO_GEAR_SIG): Record<string, number> {
-  const out = skillVars(id, rank, bought);
+export function castVars(id: SkillId, rank: number, bought: Readonly<Partial<Record<SkillId, number>>> | null = null, sig: GearSig = NO_GEAR_SIG, mask = 0): Record<string, number> {
+  // The Skill Book's marks (td-marks): their % and flat numbers on the row's own, after rank and synergies.
+  const out = applyMarkVars(id, skillVars(id, rank, bought), mask);
   if (id === 'raise-skeleton') out['cap'] += Math.max(0, sig.raisedMax);
   if (id === 'bone-storm') out['count'] = Math.max(1, out['count'] + Math.max(0, sig.spears));
   // The Splinterbow (boss-uniques.ts): the same "more missiles" signature looses more arrows in a Volley.
@@ -323,13 +323,32 @@ export function castVars(id: SkillId, rank: number, bought: Readonly<Partial<Rec
   if (id === 'bone-spear') out['range'] += Math.max(0, sig.spearRange);
   return out;
 }
-/** A spell's cooldown (seconds, before cast speed): its own, less what worn gear cuts from it, never under half a second. */
-export function castCd(id: SkillId, sig: GearSig = NO_GEAR_SIG): number {
-  return Math.max(.5, SKILLS[id].cd - Math.max(0, sig.cdCut[id] ?? 0));
+/** A spell's cooldown (seconds, before cast speed): its own, less what worn gear and the row's marks cut, never under half a second. */
+export function castCd(id: SkillId, sig: GearSig = NO_GEAR_SIG, mask = 0): number {
+  return Math.max(.5, SKILLS[id].cd - Math.max(0, sig.cdCut[id] ?? 0) + markCd(id, mask));
 }
 /** The cooldown the Keeper actually waits: castCd ÷ (1 + worn cast speed), to a tenth. */
-export function cooldownNow(id: SkillId, castSpeed: number, sig: GearSig = NO_GEAR_SIG): number {
-  return Math.round(castCd(id, sig) / (1 + Math.max(0, castSpeed)) * 10) / 10;
+export function cooldownNow(id: SkillId, castSpeed: number, sig: GearSig = NO_GEAR_SIG, mask = 0): number {
+  return Math.round(castCd(id, sig, mask) / (1 + Math.max(0, castSpeed)) * 10) / 10;
+}
+/** A spell's mana cost: its own, with the row's marks' % (a "−25% mana" mark), whole, never below 0. */
+export function manaCost(id: SkillId, mask = 0): number {
+  const base = SKILLS[id].mana, pct = markManaPct(id, mask);
+  return pct ? Math.max(0, Math.round(base * (100 + pct) / 100)) : base;
+}
+
+/**
+ * What a row is in the book (skill-book.md §1): an Active skill, an Aura, a Basic attack (the vocation's staff, blade,
+ * lantern or bow — a "passive" that is not a folded one), or a Utility (the lantern's shutters). Folded passives have no
+ * row (td-marks FOLDED) and read as 'folded'.
+ */
+export type RowKind = 'active' | 'aura' | 'basic' | 'utility' | 'folded';
+export function rowKind(id: SkillId): RowKind {
+  if (FOLDED[id]) return 'folded';
+  const k = SKILLS[id].kind;
+  if (k === 'aura') return 'aura';
+  if (k === 'passive') return 'basic';
+  return id === 'shutter-lantern' ? 'utility' : 'active';
 }
 
 /** The Ashguard's skills that strike with a share of the Watch Blade's blow (their damage is the blade's, td-mobs strike). */
@@ -348,7 +367,7 @@ export function dealsDamage(id: SkillId): boolean {
 /** The skills a new Keeper of the class starts with at rank 1, free (a new Warlock fights as before the trees). */
 export const STARTER_RANKS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   // Light is Glim's first word, taught the first night: every Keeper holds it free (design-bible §4.6).
-  warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'soul-harvest', 'light'],
+  warlock: ['ember-bolt', 'drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'light'],
   ashguard: [...ASHGUARD_STARTERS, 'light'],
   lanternwright: [...LANTERN_STARTERS, 'light'],
   thornstrider: [...THORN_STARTERS, 'light'],

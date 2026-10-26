@@ -9,7 +9,8 @@
  * shade on the dirt under it. Everything is whole pixels lit from the upper left; tiles are baked once per chunk (the
  * engine's chunk cache), so none of this runs per frame.
  */
-import { TILE, hash, type Ground } from './td-art';
+import { SOLID_GROUND, TILE, hash, type Ground } from './td-art';
+import { floorEdge, paintFloor } from './td-floors';
 
 type Ctx = CanvasRenderingContext2D;
 type Rgb = readonly [number, number, number];
@@ -119,7 +120,7 @@ const WORN: ReadonlyMap<Ground, readonly Rgb[]> = new Map<Ground, readonly Rgb[]
 /** Is this ground the rich grass (so a dirt tile beside it grows a ragged edge, and its own tufts are not drawn twice)? */
 export const richGrass = (g: Ground) => GRASSY.has(g);
 /** Does the rich painter own the edge between `kind` and `neighbour` (paintEdge should leave it)? */
-export function richEdge(kind: Ground, neighbour: Ground): boolean { return WORN.has(kind) && GRASSY.has(neighbour); }
+export function richEdge(kind: Ground, neighbour: Ground): boolean { return (WORN.has(kind) && GRASSY.has(neighbour)) || floorEdge(kind, neighbour); }
 
 let scratch: ImageData | null = null;
 const put = (d: Uint8ClampedArray, k: number, rgb: Rgb) => { d[k * 4] = rgb[0]; d[k * 4 + 1] = rgb[1]; d[k * 4 + 2] = rgb[2]; d[k * 4 + 3] = 255; };
@@ -128,7 +129,9 @@ const put = (d: Uint8ClampedArray, k: number, rgb: Rgb) => { d[k * 4] = rgb[0]; 
  * Paint a grass, flowers, moss, dirt, sand, mire or cave tile richly at (ox, oy); `nb(dx, dy)` reads a neighbouring
  * tile's ground. Returns false for any other ground (the old painter keeps it).
  */
-export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, nb: (dx: number, dy: number) => Ground): boolean {
+export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, nb: (dx: number, dy: number) => Ground, frame = 0): boolean {
+  // Boards, rugs, inside walls, rock faces and water (stage 4, td-floors.ts).
+  if (paintFloor(c, kind, tx, ty, ox, oy, nb, frame)) return true;
   const worn = WORN.get(kind) ?? (kind === 'cave' ? RGB.cave : null), lush = GRASSY.get(kind);
   if (!worn && !lush) return false;
   const img = scratch && scratch.width === TILE ? scratch : (scratch = c.createImageData(TILE, TILE));
@@ -176,6 +179,11 @@ export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox
     }
     c.putImageData(img, ox, oy);
     wornExtras(c, kind, tx, ty, ox, oy);
+    // A dungeon floor under a wall: the wall's shadow falls on its first rows (stage 4, the taller faces).
+    if (kind === 'cave') {
+      if (SOLID_GROUND.has(nb(0, -1))) { rect(c, ox, oy, TILE, 1, 'rgba(6,3,8,.5)'); rect(c, ox, oy + 1, TILE, 2, 'rgba(6,3,8,.32)'); for (let x = 0; x < TILE; x += 2) rect(c, ox + x + (ty & 1), oy + 3, 1, 1, 'rgba(6,3,8,.25)'); }
+      if (SOLID_GROUND.has(nb(-1, 0))) rect(c, ox, oy, 2, TILE, 'rgba(6,3,8,.22)');
+    }
     return true;
   }
   for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) put(d, y * TILE + x, lush![grassAt(wx0 + x, wy0 + y)]);

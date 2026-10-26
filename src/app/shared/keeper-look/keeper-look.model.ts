@@ -78,8 +78,24 @@ export type Vocation = typeof VOCATIONS[number];
 export interface KeeperSkillTree {
   spent: Record<string, number>;
   free: string[];
+  /** The Skill Book's marks (play/td/td-marks): a 6-bit mask a row (A1=1 A2=2 A3=4 B1=8 B2=16 B3=32). */
+  nodes?: Record<string, number>;
+  /** The book's version: 2 is the Skill Book (rows and marks). Absent = 1, the tree board (migrated on read). */
+  book?: number;
+  /**
+   * Set on the read that rebound a book-1 tree (present, even at 0, until the Keeper reads the book's one-time note):
+   * the points its folded passives held, back to spend.
+   */
+  rebound?: number;
   at: number;
 }
+/**
+ * The ten passives the Skill Book folded into marks (skill-book.md §6.2; td-marks FOLDED holds the same ten — the
+ * spec checks they agree). Their ranks are refunded on the read that rebinds a book-1 tree.
+ */
+export const FOLDED_PASSIVES: readonly string[] = [
+  'ember-mastery', 'soul-harvest', 'skeleton-mastery', 'life-tap', 'hold-the-line', 'ember-blood', 'last-light', 'moth-kin', 'heartwood', 'wild-heart',
+];
 /** The most ranks a skill takes (td-skills MAX_RANK; no imports here). */
 const TREE_MAX_RANK = 20;
 const SKILL_ID = /^[a-z-]{1,24}$/;
@@ -119,7 +135,7 @@ export function defaultLook(): KeeperLook {
   return {
     version: 1, made: false, prompted: false,
     body: 'sturdy', form: 'masc', skin: 2, hair: 'swept', hairColor: 2, eyes: 'round', eyeColor: 0, face: 'none',
-    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', stats: { vit: 0, ene: 0, spi: 0, agi: 0 }, tree: { spent: {}, free: [], at: 0 }, updatedAt: 0,
+    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', stats: { vit: 0, ene: 0, spi: 0, agi: 0 }, tree: { spent: {}, free: [], nodes: {}, book: 2, at: 0 }, updatedAt: 0,
   };
 }
 
@@ -150,7 +166,7 @@ function coerceStats(raw: unknown): KeeperStats {
 export function coerceTree(raw: unknown, bar: readonly string[], aura: string): KeeperSkillTree {
   if (!raw || typeof raw !== 'object') {
     const free = [...new Set([...bar, aura].filter(id => !!id && id !== 'none' && SKILL_ID.test(id)))];
-    return { spent: {}, free, at: 0 };
+    return rebindTree({ spent: {}, free, at: 0 }, false);
   }
   const r = raw as Record<string, unknown>;
   const spent: Record<string, number> = {};
@@ -160,7 +176,33 @@ export function coerceTree(raw: unknown, bar: readonly string[], aura: string): 
   }
   const free = Array.isArray(r['free']) ? [...new Set((r['free'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x)))].slice(0, 40) : [];
   const at = typeof r['at'] === 'number' && Number.isFinite(r['at']) && r['at'] > 0 ? r['at'] : 0;
-  return { spent, free, at };
+  const nodes: Record<string, number> = {};
+  const rn = (r['nodes'] && typeof r['nodes'] === 'object' ? r['nodes'] : {}) as Record<string, unknown>;
+  for (const [id, m] of Object.entries(rn)) if (SKILL_ID.test(id) && typeof m === 'number' && Number.isInteger(m) && m > 0 && m < 64) nodes[id] = m;
+  if (r['book'] === 2) {
+    const rb = r['rebound'];
+    return { spent, free, nodes, book: 2, ...(typeof rb === 'number' && Number.isInteger(rb) && rb >= 0 && rb < 10_000 ? { rebound: rb } : {}), at };
+  }
+  return rebindTree({ spent, free, at });
+}
+
+/**
+ * A book-1 tree (the tree board) → the Skill Book (skill-book.md §6.2), once, on read: the ranks bought in the ten
+ * folded passives go back to Unused (the marks are NOT taken for them: a mark costs a point and the player chooses), a
+ * free rank in one (the Warlock's kit's Soul Harvest) is simply dropped, and every other rank stays — the new "one rank
+ * in any earlier row" rule admits every shipped tree. Lossless and merge-safe: it is a pure function of the stored
+ * tree, the tree's clock is kept (so the newer tree still wins whole), and `book: 2` reaches the save with the next
+ * write through the gateway. `rebound` carries the refunded points for the book's one-time note.
+ */
+export function rebindTree(t: { spent: Record<string, number>; free: string[]; at: number }, note = true): KeeperSkillTree {
+  const spent: Record<string, number> = {};
+  let rebound = 0;
+  for (const [id, n] of Object.entries(t.spent)) if (FOLDED_PASSIVES.includes(id)) rebound += n; else spent[id] = n;
+  const free = t.free.filter(id => !FOLDED_PASSIVES.includes(id));
+  // The note is for a Keeper who had spent points on the board (their book changed under them); a tree with none, or a
+  // save from before the trees, opens straight onto the book.
+  const told = note && Object.keys(t.spent).length > 0;
+  return { spent, free, nodes: {}, book: 2, ...(told ? { rebound } : {}), at: t.at };
 }
 
 /**
@@ -177,7 +219,8 @@ export function coerceLook(raw: unknown): KeeperLook {
   const d = defaultLook();
   if (!raw || typeof raw !== 'object') return d;
   const r = raw as Record<string, unknown>;
-  const bar = Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x)).slice(0, 8) : [];
+  // A key holding Life Tap is emptied (skill-book.md §6.2: it is Dark Ward's mark now, never a key).
+  const bar = Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x) && x !== 'life-tap').slice(0, 8) : [];
   const aura = typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '';
   return {
     version: 1,

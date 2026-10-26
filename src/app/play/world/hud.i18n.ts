@@ -406,7 +406,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'skill.aura-siphon': { en: 'Aura of Siphoning', es: 'Aura de sifon' },
   'skill.aura-siphon.text': { en: 'While it runs, every hit you land heals you for {{heal}}.', es: 'Mientras dura, cada golpe que das te cura {{heal}}.' },
   'skill.soul-harvest': { en: 'Soul Harvest', es: 'Cosecha de almas' },
-  'skill.soul-harvest.text': { en: 'Every foe you finish gives you back {{mana}} mana, and every kill near your level gives {{soul}} more Soul for the Spellstones (one more each 5 ranks).', es: 'Cada enemigo que rematas te devuelve {{mana}} de mana, y cada presa cerca de tu nivel da {{soul}} de Alma mas para las Piedras de hechizo (una mas cada 5 rangos).' },
+  'skill.soul-harvest.text': { en: 'Every foe you finish gives you back {{mana}} mana, and every kill near your level gives {{soul}} more Soul for the Spellstones (one more each 5 Bone Spear ranks).', es: 'Cada enemigo que rematas te devuelve {{mana}} de mana, y cada presa cerca de tu nivel da {{soul}} de Alma mas para las Piedras de hechizo (una mas cada 5 rangos de Lanza de hueso).' },
   'skill.cinder-rain': { en: 'Cinder Rain', es: 'Lluvia de cenizas' },
   'skill.cinder-rain.text': { en: 'Embers rain for {{secs}} seconds on the ground around your target: twice a second, {{min}}–{{max}} fire damage to every foe within {{radius}} tiles.', es: 'Llueven brasas durante {{secs}} segundos alrededor de tu objetivo: dos veces por segundo, {{min}}–{{max}} de dano de fuego a cada enemigo a {{radius}} casillas.' },
   'skill.flame-wall': { en: 'Flame Wall', es: 'Muro de llamas' },
@@ -426,7 +426,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'skill.weaken': { en: 'Weaken', es: 'Debilitar' },
   'skill.weaken.text': { en: 'Every foe within {{radius}} tiles of your target bites {{weaken}}% weaker for {{secs}} seconds.', es: 'Cada enemigo a {{radius}} casillas de tu objetivo muerde un {{weaken}}% mas debil durante {{secs}} segundos.' },
   'skill.life-tap': { en: 'Life Tap', es: 'Sangria vital' },
-  'skill.life-tap.text': { en: 'Trades {{life}} of your life for {{mana}} mana (never your last).', es: 'Cambia {{life}} de tu vida por {{mana}} de mana (nunca la ultima).' },
+  'skill.life-tap.text': { en: 'Casting the Dark Ward turns {{life}}% of your life into {{mana}} mana (never your last).', es: 'Lanzar la Guarda oscura convierte el {{life}}% de tu vida en {{mana}} de mana (nunca la ultima).' },
   'skill.doom': { en: 'Doom', es: 'Condena' },
   'skill.doom.text': { en: 'Marks your target: {{secs}} seconds later it bursts for {{min}}–{{max}} shadow damage, and so does every foe within {{radius}} tiles of it.', es: 'Marca a tu objetivo: {{secs}} segundos despues estalla con {{min}}–{{max}} de dano de sombra, igual que cada enemigo a {{radius}} casillas de el.' },
   // The common page (design-bible §4.6): Light and Lumvesh, the Seek.

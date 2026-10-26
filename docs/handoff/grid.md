@@ -52,14 +52,10 @@ Spec, footprint table and rules: `docs/design/inventory-grid.md`. Screenshots: `
 - **The client is not deployed.** The branch is not pushed.
 
 ## Integration notes
-- **The book's S2 hook.** `book` has not landed on main. When it does, its "create Spellstone" button (`S2 HOOK` in the
-  book component) should call `SpellstoneService.cut(skill, rank, marks, mana)` with the row's 6-bit node mask. The
-  result codes:
-  - `'room'` (satchel full: show `play.grid.full`);
-  - `'blank'`, `'soul'`, `'rank'`.
-
-  The Stones tab reads `SpellstoneService.stones()` and `chargesOf(recipe)`. The cast passes the marks as
-  `castStone(skill, rank, marks)`'s third argument, which the engine ignores until the book's nodes land.
+- **The book (wired after merging main a040dea6).** "Create Spellstone" → **Cut it** calls
+  `SpellstoneService.cut(skill, rank, savedNodeMask, mana)`. `'room'` shows `play.grid.full`. Stones cast with their
+  own marks (`castStone(skill, rank, marks)` → `MobSystem.useStone`). The pouch-era `inscribe` paths (service and pure
+  model) are removed. A later Stones tab can read `SpellstoneService.stones()` and `chargesOf(recipe)`.
 - **Shops.** A shelf is a drag source with `ref: { kind: 'shop', offerId }`. `<app-item-grid [extraDrop]>` handles it,
   and the shelf registers as a target to sell.
 - **Benches read the satchel only.** Vault stacks are their own keys (`v:<tab>:<key>`). The station's Details says

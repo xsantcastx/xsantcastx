@@ -1,8 +1,8 @@
 import { huntGold } from '../economy/economy-curve';
 import { materialDisplay } from '../rpg/material-catalog';
 import {
-  BLANK_ID, BLANK_MIN_PRICE, blankPrice, coerceSpellstones, emptySpellstones, gainSoul, inscribe, mergeSpellstones, parseStoneKey,
-  rollBlankDrop, soulCap, soulForKill, spendCharge, stoneIcon, stoneKey, stoneRecipe, type SpellstoneSave,
+  BLANK_ID, BLANK_MIN_PRICE, blankPrice, coerceSpellstones, emptySpellstones, gainSoul, mergeSpellstones, parseRecipeKey, parseStoneKey, recipeKey, recipeOfDef, stoneDefId,
+  rollBlankDrop, soulCap, soulForKill, stoneIcon, stoneKey, stoneRecipe, type SpellstoneSave,
 } from './spellstones.model';
 import { SKILLS } from '../../play/td/td-skills';
 import { artFor } from '../art/art';
@@ -44,33 +44,13 @@ describe('spellstones.model', () => {
     }
   });
 
-  it('inscribing spends the Soul, keeps the rank, adds charges, and slots the first stone', () => {
-    const r = stoneRecipe(25);
-    const s = { ...emptySpellstones(), soul: 12 };
-    const a = inscribe(s, 'hellfire-nova', 6, r)!;
-    expect(a.soul).toBe(7);
-    expect(a.pouch['hellfire-nova@6']).toBe(4);
-    expect(a.slot).toBe('hellfire-nova@6');
-    expect(a.inscribed).toBe(1);
-    const b = inscribe(a, 'hellfire-nova', 6, r)!;
-    expect(b.pouch['hellfire-nova@6']).toBe(8);
-    // A different rank is a different stone; the slot stays.
-    const c = inscribe(b, 'hellfire-nova', 7, { ...r, soul: 1 })!;
-    expect(c.pouch['hellfire-nova@7']).toBe(4);
-    expect(c.slot).toBe('hellfire-nova@6');
-    // Not enough Soul, or no rank: nothing.
-    expect(inscribe({ ...emptySpellstones(), soul: 4 }, 'hellfire-nova', 6, r)).toBeNull();
-    expect(inscribe({ ...emptySpellstones(), soul: 40 }, 'hellfire-nova', 0, r)).toBeNull();
-  });
-
-  it('each use spends one charge; the last one empties the stone off the belt', () => {
-    let s: SpellstoneSave = { ...emptySpellstones(), pouch: { 'light@2': 2 }, slot: 'light@2' };
-    s = spendCharge(s, 'light@2')!;
-    expect(s.pouch['light@2']).toBe(1);
-    s = spendCharge(s, 'light@2')!;
-    expect(s.pouch['light@2']).toBeUndefined();
-    expect(s.slot).toBeNull();
-    expect(spendCharge(s, 'light@2')).toBeNull();
+  it('a stone\'s recipe names its spell, rank and marks; a v1 pouch key reads as the recipe with no marks', () => {
+    expect(recipeKey('hellfire-nova', 7, 5)).toBe('hellfire-nova@7#5');
+    expect(parseRecipeKey('hellfire-nova@7#5')).toEqual({ skill: 'hellfire-nova', rank: 7, marks: 5 });
+    expect(parseRecipeKey('hellfire-nova@7')).toEqual({ skill: 'hellfire-nova', rank: 7, marks: 0 });
+    expect(parseRecipeKey('hellfire-nova@7#64')).toBeNull();
+    expect(recipeOfDef(stoneDefId('light@2#1'))).toBe('light@2#1');
+    expect(coerceSpellstones({ version: 1, soul: 3, pouch: { 'light@2': 4 }, slot: 'light@2', inscribed: 1, at: 5 }).slot).toBe('light@2#0');
   });
 
   it('stone keys carry the spell and the rank, clamped to 1–20', () => {

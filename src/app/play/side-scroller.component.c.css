@@ -92,17 +92,18 @@
   .spellbook { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 72%; }
 }
 
-/* ── The skill trees (K, docs/design/skill-trees.md): the window only — the page inside (points, tabs, the tree board,
-   the card) is play/spellbook/spellbook-page.component, with its own stylesheet. ── */
-.spellbook.sbt { display: flex; flex-direction: column; top: 104px; width: min(820px, calc(100% - 32px)); max-height: calc(100% - 128px); overflow: hidden; padding-bottom: 14px; }
-.spellbook.sbt > .sbt__page { flex: 1 1 auto; min-height: 0; }
-/* Upright phones: a tall sheet, so the board and the card both fit under the title. */
+/* ── The Skill Book (K, docs/design/skill-book.md): the window only — the book inside (tabs, the spread, the foot,
+   the cards) is play/spellbook/skill-book.component, with its own stylesheet. It hugs its content: ~1040×640 at 1280×800. ── */
+.spellbook.sbook { display: flex; flex-direction: column; left: 50%; right: auto; top: 72px; translate: -50% 0; width: min(1060px, calc(100% - 32px)); height: min(660px, calc(100% - 96px)); max-height: none; overflow: hidden; padding: 8px 10px 10px; }
+.spellbook.sbook > .sbook__book { flex: 1 1 auto; min-height: 0; }
+.sbook__wait { margin: auto; font: 700 16px/1 var(--font-pixel); color: var(--cozy-cream); }
+/* Upright phones: a tall sheet; the book scrolls inside it and its foot stays put. */
 @media (max-width: 900px) and (orientation: portrait) {
-  .spellbook.sbt { top: auto; left: 8px; right: 8px; width: auto; height: min(calc(100% - 88px), 780px); max-height: none; padding: 10px 10px 10px; }
+  .spellbook.sbook { top: calc(8px + env(safe-area-inset-top, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); left: 8px; right: 8px; translate: none; width: auto; height: auto; padding: 6px 8px 8px; }
 }
 /* Sideways phones: a side panel as tall as the screen, the left thumb zone clear. */
 @media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .spellbook.sbt { top: calc(8px + env(safe-area-inset-top, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); left: auto; width: min(660px, calc(100% - 112px)); max-height: none; padding: 4px 10px 8px; }
+  .spellbook.sbook { top: calc(8px + env(safe-area-inset-top, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px)); left: auto; right: 8px; translate: none; width: min(760px, calc(100% - 112px)); height: auto; padding: 4px 8px 6px; }
 }
 
 /* ── The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): a dark plate framed in its rarity,

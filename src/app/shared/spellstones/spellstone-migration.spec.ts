@@ -98,5 +98,10 @@ describe('Spellstones in the satchel', () => {
     expect(piles.map(p => p.qty).sort()).toEqual([1, 2]);
     expect(charges(inventory, 'hellfire-nova@7#5')).toBe(8);
     expect(stones.state.slot).toBe('hellfire-nova@7#5');
+    // The cast carries the stone's own marks (whatever the book holds now).
+    const cast: number[] = [];
+    expect(stones.use('hellfire-nova@7#5', 50, (_s, _r, m) => { cast.push(m); return null; })).toBe('ok');
+    expect(cast).toEqual([5]);
+    expect(charges(inventory, 'hellfire-nova@7#5')).toBe(7);
   });
 });

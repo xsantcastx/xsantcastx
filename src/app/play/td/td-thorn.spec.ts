@@ -39,15 +39,10 @@ describe('td-thorn: the book as data', () => {
     expect(bookTrees('thornstrider')).toEqual(['thorn', 'wild', 'briar', 'common']);
     expect(THORN.length).toBe(12);
     expect(CLASS_SKILLS.thornstrider.length).toBe(15); // + the common page: Light, the Seek, the Waygate
+    // The book's rows (skills-100.md §6): Thorn 3 (Heartwood is Thorn Shot's mark), Wild 4 (Wild Heart, Pack Bond's), Briar 3.
+    expect(THORN_TREES.map(tr => treeSkills('thornstrider', tr).length)).toEqual([3, 4, 3]);
     for (const tr of THORN_TREES) {
       const ids = treeSkills('thornstrider', tr);
-      expect(ids.length).withContext(tr).toBeGreaterThanOrEqual(3);
-      for (const id of ids) {
-        const req = SKILLS[id].req;
-        if (!req) continue;
-        expect(SKILLS[req].tree).withContext(id).toBe(tr);
-        expect(SKILLS[req].tier).withContext(id).toBeLessThan(SKILLS[id].tier);
-      }
       expect(new Set(ids.map(id => `${SKILLS[id].tier}:${SKILLS[id].col}`)).size).withContext(tr).toBe(ids.length);
     }
     for (const id of THORN) for (const v of ['warlock', 'ashguard', 'lanternwright'] as const) expect(CLASS_SKILLS[v]).withContext(`${v}: ${id}`).not.toContain(id);
@@ -502,12 +497,12 @@ describe('td-thorn: the trees and the saves', () => {
     // Level 5: the Call (6) and the trap (6) are not open yet, nor the Stampede (24).
     expect(clampTree(t, 'thornstrider', 5).spent).toEqual({});
     expect(clampTree(t, 'lanternwright', 30).spent).toEqual({ 'banish': 2 });
-    expect(rankBlock(empty(), 'thornstrider', 'stampede', 30)).toBe('req');
-    let tree: KeeperSkillTree | null = buyRank(empty(), 'thornstrider', 'call-of-the-wilds', 30);
-    expect(tree).not.toBeNull();
-    tree = buyRank(tree!, 'thornstrider', 'stampede', 30);
+    // The book's rule: the kit's free Command is a rank above it, so the Stampede opens at its level.
+    expect(rankBlock(empty(), 'thornstrider', 'stampede', 30)).toBeNull();
+    expect(rankBlock(empty(), 'thornstrider', 'wild-heart', 30)).toBe('folded');
+    const tree = buyRank(empty(), 'thornstrider', 'stampede', 30);
     expect(rankOf(tree!, 'thornstrider', 'stampede')).toBe(1);
-    expect(clampTree({ spent: { 'stampede': 2 }, free: [], at: 0 }, 'thornstrider', 30).spent).toEqual({});
+    expect(clampTree({ spent: { 'stampede': 2, heartwood: 4 }, free: [], at: 0 }, 'thornstrider', 30).spent).toEqual({ 'stampede': 2 });
     for (let lv = 1; lv <= 30; lv++) expect(pointsSpent(clampTree(t, 'thornstrider', lv))).toBeLessThanOrEqual(skillPointsEarned(lv));
     expect(rankBlock(empty(), 'thornstrider', 'banish', 30)).toBe('class');
     expect(rankBlock(empty(), 'lanternwright', 'stampede', 30)).toBe('class');

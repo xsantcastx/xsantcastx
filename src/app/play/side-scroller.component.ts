@@ -25,13 +25,13 @@ import type { TdMapSection } from './td/td-map';
 import { activeCharacterKey } from '../shared/save/character-scope';
 import { PlaySessionService } from '../shared/save/play-session.service';
 import { HiddenStreamCap } from './social/hidden-cap';
-import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
+import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats, type Vocation } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import { wornResists } from '../shared/loot/aura-sources';
 import { auraEffect } from '../shared/loot/auras';
 import type { ItemStats } from '../shared/rpg/item.model';
 import { BLADE_SHARE, CLASS_SKILLS as TD_CLASS_SKILLS, CRIT_MULT, FIRE_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, bookTrees, castRank, castVars, cooldownNow, dealsDamage, defaultAura, defaultBar, synergies, type SkillId, type TreeId } from './td/td-skills';
-import { boughtRanks, buyRank, clampTree, effectiveRanks, levelFor, rankBlock, resetTree, treePointsLeft, treeSkills, type RankBlock } from './td/td-tree';
+import { boughtRanks, clampTree, effectiveMarks, effectiveRanks } from './td/td-tree';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
@@ -212,7 +212,7 @@ import { LORE_I18N } from '../shared/lore/lore.i18n';
 import { SEAM_I18N } from './td/td-seam.i18n';
 import { ZONES_I18N } from './td/td-zones.i18n';
 import { zoneDanger } from './td/td-zones';
-import { SpellbookPageComponent } from './spellbook/spellbook-page.component';
+import { SkillBookComponent } from './spellbook/skill-book.component';
 import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
 import { itemDefinitionById } from '../shared/rpg/item-definition';
@@ -517,7 +517,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SkillBookComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -2334,8 +2334,7 @@ export class SideScrollerComponent implements OnDestroy {
   openControls(): void { this.placesOpen = false; this.controlsOpen = true; }
   /** The Party key / button: the party's chat tab when in a party, else a line saying how to start one. */
   openParty(): void { if (this.social.party) { this.chatHidden = false; this.openPartyChat(); } else this.message = this.t('keys.party.none'); }
-  toggleSheet(): void { this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
-  toggleSpellbook(): void { this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
+  toggleSheet(): void { if (this.spellbookOpen && this.bookDirty) { this.bookCloseAsk++; return; } this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
   toggleFriends(): void { if (this.friendsOpen) this.closeFriends(); else this.openFriends(); }
   closeControls(): void { this.controlsOpen = false; this.focusWorld(); }
   /** The player rebound a key: the engine reads the new table. */
@@ -2648,11 +2647,7 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly iconCache = new Map<string, SafeHtml>();
   private tdLoadoutKey = '';
-  /** The Spellbook's open tree (tab), the skill picked on it, and the respec's "are you sure". */
-  bookTree: TreeId = 'ember';
-  bookPick: SkillId | null = null;
-  respecAsk = false;
-  private get tdEngine(): { abilities?: readonly { id: string; key: string; left: number; mana: number; ready: boolean }[]; mana?: number; aura?: string | null; useAbility?: (id: string) => string | null; castStone?: (id: string, rank: number) => string | null; setSkillLoadout?: (bar: readonly string[], aura: string | null) => void } | undefined {
+  private get tdEngine(): { abilities?: readonly { id: string; key: string; left: number; mana: number; ready: boolean }[]; mana?: number; aura?: string | null; useAbility?: (id: string) => string | null; castStone?: (id: string, rank: number, marks?: number) => string | null; setSkillLoadout?: (bar: readonly string[], aura: string | null) => void } | undefined {
     return this.engine as never;
   }
   private tickAbilities(): void {
@@ -2664,11 +2659,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.keysChanged();
     // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
     // The trees' ranks go first: the bar and the aura only take skills that hold a rank.
-    const look = this.looks.look, ranks = this.skillRanks, key = `${look.bar.join(',')}|${look.aura}|${Object.values(ranks).join(',')}`;
+    const look = this.looks.look, ranks = this.skillRanks, marks = this.skillTree.marks;
+    const key = `${look.bar.join(',')}|${look.aura}|${Object.values(ranks).join(',')}|${Object.entries(marks).map(([k, m]) => `${k}:${m}`).join(',')}`;
     if (key !== this.tdLoadoutKey && e?.setSkillLoadout) {
       this.tdLoadoutKey = key;
       // The points bought ride along: the synergies (design-bible §4.1) read them, never the kit's free rank.
-      (this.engine as unknown as { setSkillRanks?: (r: Readonly<Record<string, number>>, b: Readonly<Record<string, number>>) => void } | undefined)?.setSkillRanks?.(ranks, this.skillTree.bought);
+      // The book's marks ride along too (td-tree effectiveMarks): the fight reads each row's mask (td-mobs mk).
+      (this.engine as unknown as { setSkillRanks?: (r: Readonly<Record<string, number>>, b: Readonly<Record<string, number>>, m: Readonly<Record<string, number>>) => void } | undefined)?.setSkillRanks?.(ranks, this.skillTree.bought, marks as Readonly<Record<string, number>>);
       e.setSkillLoadout(this.loadoutBar, this.loadoutAura);
     }
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
@@ -2728,9 +2725,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.topDown) return;
     const st = this.spellstones.slotted(performance.now() / 1000);
     if (!st) { this.message = this.t('play.stone.slotEmpty'); this.focusWorld(); return; }
-    // The stone casts at its rank with its recorded marks (skill-book.md §4.1); the engine reads the marks once the
-    // book's nodes land (castStone's third argument is ignored until then).
-    const res = this.spellstones.use(st.key, performance.now() / 1000, (skill, rank, marks) => { const cast = this.tdEngine?.castStone as ((s: string, r: number, m?: number) => string | null) | undefined; return cast ? cast(skill, rank, marks) : 'locked'; });
+    // The stone casts at its rank with ITS recorded marks (skill-book.md §4.1), whatever the book holds now.
+    const res = this.spellstones.use(st.key, performance.now() / 1000, (skill, rank, marks) => { const e = this.tdEngine; return e?.castStone ? e.castStone(skill, rank, marks) : 'locked'; });
     if (res === 'ok') {
       const left = this.spellstones.chargesOf(st.key), name = this.t(`skill.${st.skill}`);
       this.message = left > 0 ? this.t('play.stone.cast', { name, rank: st.rank, n: left }) : this.t('play.stone.spent', { name });
@@ -2745,15 +2741,18 @@ export class SideScrollerComponent implements OnDestroy {
     const sk = TD_SKILLS[id as SkillId];
     if (!sk || sk.kind !== 'active') return null;
     const rank = this.skillRanks[id as SkillId] ?? 0, r = stoneRecipe(sk.mana), s = this.spellstones.state, blanks = this.spellstones.blanks;
-    const key = recipeKey(id, Math.max(1, rank), 0);
+    const key = recipeKey(id, Math.max(1, rank), this.stoneMarks(id));
     const why = rank < 1 ? this.t('play.stone.need.rank') : blanks < r.blanks ? this.t('play.stone.need.blank') : s.soul < r.soul ? this.t('play.stone.need.soul', { n: r.soul }) : '';
     return { soul: r.soul, charges: r.charges, rank: Math.max(1, rank), held: this.spellstones.chargesOf(key), blanks, onBelt: s.slot === key, why };
   }
-  inscribeStone(id: string): void {
+  /** The marks a row has taken in the SAVED book (its 6-bit node mask): what a stone cut now records. */
+  private stoneMarks(id: string): number { return this.bookSaved.nodes?.[id] ?? 0; }
+  /** The Skill Book's "create Spellstone" (skill-book.md §4.2): a satchel stone recording the row's rank and marks. */
+  cutStone(id: string): void {
     const sk = TD_SKILLS[id as SkillId];
     if (!sk) return;
     const rank = this.skillRanks[id as SkillId] ?? 0;
-    const code = this.spellstones.inscribe(id, rank, sk.mana);
+    const code = this.spellstones.cut(id, rank, this.stoneMarks(id), sk.mana);
     const v = this.stoneView(id);
     this.message = code === 'ok' ? this.t('play.stone.inscribed', { name: this.t(`skill.${id}`), rank, n: stoneRecipe(sk.mana).charges })
       : code === 'blank' ? this.t('play.stone.need.blank') : code === 'soul' ? this.t('play.stone.need.soul', { n: v?.soul ?? 0 })
@@ -2763,7 +2762,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   beltStone(id: string): void {
     const rank = Math.max(1, this.skillRanks[id as SkillId] ?? 0);
-    this.spellstones.slot(recipeKey(id, rank, 0));
+    this.spellstones.slot(recipeKey(id, rank, this.stoneMarks(id)));
     this.tickAbilities();
   }
   /** A kill: Soul, and the whispering items' count (a piece of the sentence woken says itself in the chat). */
@@ -3043,19 +3042,20 @@ export class SideScrollerComponent implements OnDestroy {
     if (paid.length) this.message = this.t('play.lvl.backlog', { n: paid.reduce((g, p) => g + p.gold, 0) });
   }
   /** The trees as the fight may use them: the saved tree clamped to the level's points (td-tree). Cached per look + level. */
-  private treeCache: { tree: KeeperSkillTree; level: number; voc: string; out: KeeperSkillTree; ranks: Record<SkillId, number>; bought: Record<SkillId, number> } | null = null;
-  private get skillTree(): { tree: KeeperSkillTree; ranks: Record<SkillId, number>; bought: Record<SkillId, number> } {
+  private treeCache: { tree: KeeperSkillTree; level: number; voc: string; out: KeeperSkillTree; ranks: Record<SkillId, number>; bought: Record<SkillId, number>; marks: Partial<Record<SkillId, number>> } | null = null;
+  private get skillTree(): { tree: KeeperSkillTree; ranks: Record<SkillId, number>; bought: Record<SkillId, number>; marks: Partial<Record<SkillId, number>> } {
     const look = this.looks.look, level = this.huntingLevel, c = this.treeCache;
     if (!c || c.tree !== look.tree || c.level !== level || c.voc !== look.vocation) {
       const out = clampTree(look.tree, look.vocation, level);
-      this.treeCache = { tree: look.tree, level, voc: look.vocation, out, ranks: effectiveRanks(out, look.vocation), bought: boughtRanks(out, look.vocation) };
+      this.treeCache = { tree: look.tree, level, voc: look.vocation, out, ranks: effectiveRanks(out, look.vocation), bought: boughtRanks(out, look.vocation), marks: effectiveMarks(out, look.vocation) };
     }
-    return { tree: this.treeCache!.out, ranks: this.treeCache!.ranks, bought: this.treeCache!.bought };
+    return { tree: this.treeCache!.out, ranks: this.treeCache!.ranks, bought: this.treeCache!.bought, marks: this.treeCache!.marks };
   }
   private get skillRanks(): Record<SkillId, number> { return this.skillTree.ranks; }
   private ranked(id: string): boolean { return (this.skillRanks[id as SkillId] ?? 0) > 0; }
-  private get loadoutBar(): string[] { const b = this.looks.look.bar; return (b.length ? b : defaultBar(this.looks.look.vocation)).filter(id => this.ranked(id)); }
-  private get loadoutAura(): string | null {
+  /** Keys 1–4: what the look holds (or the class default), only skills with a rank and only actives (Life Tap, a mark now, never sits on a key). */
+  protected get loadoutBar(): string[] { const b = this.looks.look.bar; return (b.length ? b : defaultBar(this.looks.look.vocation)).filter(id => this.ranked(id) && TD_SKILLS[id as SkillId]?.kind === 'active'); }
+  protected get loadoutAura(): string | null {
     const a = this.looks.look.aura, id = a === 'none' ? null : a || defaultAura(this.looks.look.vocation);
     return id && this.ranked(id) ? id : null;
   }
@@ -3064,83 +3064,10 @@ export class SideScrollerComponent implements OnDestroy {
    * is handed (td-engine setRelics), so the card's ranks, counts, reach and cooldowns are the fight's. Cached per set.
    */
   private sigCache: { key: string; sig: RelicTotals } | null = null;
-  private get gearSig(): RelicTotals {
+  protected get gearSig(): RelicTotals {
     const ids = this.wornRelics, key = [...ids].sort().join(',');
     if (!this.sigCache || this.sigCache.key !== key) this.sigCache = { key, sig: relicTotals(ids, relicSigOf) };
     return this.sigCache.sig;
-  }
-  /** A skill's line at a tree rank (rank 0 reads as rank 1): the numbers the fight uses (td-skills castVars). */
-  private skillLine(id: SkillId, treeRank: number): string {
-    const sk = TD_SKILLS[id], sig = this.gearSig, v = castVars(id, castRank(id, Math.max(1, treeRank), sig, this.fightNow.ranks), this.skillTree.bought, sig);
-    return this.t(sk.textKey, { ...v, mana: v['mana'] ?? sk.mana, cd: sk.cd });
-  }
-  /** What the next tree rank changes, var by var ("Damage: 24–36 → 28–42"); a min/max pair reads as one range. */
-  private rankDiff(id: SkillId, rank: number): string[] {
-    const syn = this.skillTree.bought, sig = this.gearSig;
-    const a = castVars(id, castRank(id, rank, sig, this.fightNow.ranks), syn, sig), b = castVars(id, castRank(id, rank + 1, sig, this.fightNow.ranks), syn, sig), out: string[] = [];
-    const pair = 'min' in a && 'max' in a;
-    if (pair && (a['min'] !== b['min'] || a['max'] !== b['max'])) out.push(`${this.t('play.td.tree.var.damage')}: ${a['min']}–${a['max']} → ${b['min']}–${b['max']}`);
-    for (const k of Object.keys(a)) {
-      if (pair && (k === 'min' || k === 'max')) continue;
-      if (a[k] !== b[k]) out.push(`${this.t('play.td.tree.var.' + k)}: ${a[k]} → ${b[k]}`);
-    }
-    return out;
-  }
-  /** The Spellbook as D2's skill page: the open tree's tiers and skills, its prerequisite lines, the picked skill's card. */
-  get spellbook(): {
-    trees: { id: TreeId; ranks: number }[];
-    left: number;
-    tiers: { level: number; open: boolean }[];
-    nodes: { id: SkillId; name: string; tier: number; col: number; rank: number; need: number; open: boolean; picked: boolean; buyable: boolean; slot: number; on: boolean }[];
-    lines: { x1: number; y1: number; x2: number; y2: number; lit: boolean }[];
-    pick: null | { id: SkillId; name: string; kind: string; rank: number; max: number; now: string; nowRank: number; gear: number; next: string[]; mana: number; cd: number; block: RankBlock | null; need: string; slot: number; on: boolean;
-      words: string; syn: { from: SkillId; name: string; ranks: number; text: string; live: boolean }[]; phase: { text: string; up: boolean } | null; power: string | null };
-  } {
-    const v = this.looks.look.vocation, level = this.huntingLevel, { tree, ranks } = this.skillTree, bar = this.loadoutBar, aura = this.loadoutAura;
-    const ids = treeSkills(v, this.bookTab);
-    // Each row's level: its tier's, or the lowest a skill on it asks (the common page's Seek opens at 8).
-    const tiers = TIER_LEVELS.slice(0, Math.max(...ids.map(id => TD_SKILLS[id].tier)) + 1).map((lv, i) => {
-      const own = ids.filter(id => TD_SKILLS[id].tier === i).map(levelFor), at = own.length ? Math.min(...own) : lv;
-      return { level: at, open: level >= at };
-    });
-    const pickId = this.bookPick && ids.includes(this.bookPick) ? this.bookPick : ids[0];
-    const nodes = ids.map(id => {
-      const sk = TD_SKILLS[id], need = levelFor(id);
-      return { id, name: this.t(sk.nameKey), tier: sk.tier, col: sk.col, rank: ranks[id] ?? 0, need, open: level >= need,
-        picked: id === pickId, buyable: !rankBlock(tree, v, id, level), slot: bar.indexOf(id) + 1, on: aura === id };
-    });
-    const lines = ids.filter(id => TD_SKILLS[id].req && ids.includes(TD_SKILLS[id].req!)).map(id => {
-      const a = TD_SKILLS[TD_SKILLS[id].req!], b = TD_SKILLS[id];
-      return { x1: a.col + .5, y1: a.tier + .5, x2: b.col + .5, y2: b.tier + .5, lit: (ranks[TD_SKILLS[id].req!] ?? 0) > 0 };
-    });
-    let pick: ReturnType<SideScrollerComponent['spellbookPick']> | null = null;
-    if (pickId) pick = this.spellbookPick(pickId, ranks[pickId] ?? 0, rankBlock(tree, v, pickId, level), bar, aura);
-    return {
-      trees: bookTrees(v).map(id => ({ id, ranks: treeSkills(v, id).reduce((n, s) => n + (ranks[s] ?? 0), 0) })),
-      left: treePointsLeft(tree, level), tiers, nodes, lines, pick,
-    };
-  }
-  private spellbookPick(id: SkillId, rank: number, block: RankBlock | null, bar: string[], aura: string | null) {
-    const sk = TD_SKILLS[id], req = sk.req;
-    const need = block === 'level' ? this.t('play.td.tree.needLevel', { n: levelFor(id) })
-      : block === 'req' && req ? this.t('play.td.tree.needSkill', { name: this.t(TD_SKILLS[req].nameKey) })
-      : block === 'max' ? this.t('play.td.tree.maxed') : block === 'points' ? this.t('play.td.tree.noPoints') : '';
-    // The rank the fight casts at: the tree's, plus what worn gear adds to a learnt skill (td-skills castRank).
-    const sig = this.gearSig, nowRank = castRank(id, Math.max(1, rank), sig, this.fightNow.ranks);
-    return {
-      id, name: this.t(sk.nameKey), kind: sk.kind, rank, max: MAX_RANK, now: this.skillLine(id, Math.max(1, rank)), nowRank, gear: rank > 0 ? nowRank - rank : 0,
-      // The cooldown the Keeper really waits: less what worn gear cuts, over worn cast speed (td-mobs cdOf ÷ 1 + cast).
-      next: rank >= MAX_RANK ? [] : rank < 1 ? [] : this.rankDiff(id, rank), mana: sk.mana, cd: cooldownNow(id, this.fightNow.castSpeed, sig), block, need,
-      slot: bar.indexOf(id) + 1, on: aura === id,
-      // The Seam-Cant (never translated) and the synergies with live numbers: each source, its bought ranks, the % now.
-      words: sk.words ?? '',
-      syn: synergies(id, this.skillTree.bought).map(s => ({
-        from: s.from, name: this.t(TD_SKILLS[s.from].nameKey), ranks: s.ranks, live: s.pct > 0,
-        text: this.t('play.td.tree.syn.line', { pct: s.pct, per: s.per, what: this.t('play.td.tree.syn.' + s.what) }),
-      })),
-      phase: this.spellPhase(id),
-      power: this.spellPower(id),
-    };
   }
   /** The Keeper's fight numbers now (td-skills fightStats): the level, the attributes and the worn gear, as the engine is handed them. */
   private get fightNow(): ReturnType<typeof fightStats> {
@@ -3182,27 +3109,39 @@ export class SideScrollerComponent implements OnDestroy {
     const pct = Math.round((k - 1) * 100);
     return { up: pct > 0, text: this.t('clock.spell.now', { phase: this.t('clock.phase.' + this.skyPhase), pct: `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%` }) };
   }
-  /** Open a tree's tab (the first skill on it is picked). */
-  /** The open tab: the chosen tree when it is this class's, else the class's first (an Ashguard opens on Brand). */
-  get bookTab(): TreeId { const trees = bookTrees(this.looks.look.vocation); return trees.includes(this.bookTree) ? this.bookTree : trees[0]; }
-  openTree(id: TreeId): void { this.bookTree = id; this.bookPick = null; this.respecAsk = false; }
-  pickSkill(id: string): void { this.bookPick = id as SkillId; this.respecAsk = false; }
-  /** Spend a skill point on a rank (D2: one click, one rank). */
-  learnSkill(id: string): void {
-    const look = this.looks.look, next = buyRank(look.tree, look.vocation, id as SkillId, this.huntingLevel);
-    if (!next) return;
-    this.looks.setTree(next);
-    this.message = this.t('play.td.tree.learned', { name: this.t(TD_SKILLS[id as SkillId].nameKey), n: effectiveRanks(next, look.vocation)[id as SkillId] });
+  // ── The Skill Book (K, play/spellbook/skill-book; docs/design/skill-book.md) ──
+  /** The book's pending changes (it asks before closing while there are some), and the HUD's request to close. */
+  bookDirty = false;
+  bookCloseAsk = 0;
+  /** The saved book (the Keeper's look's tree) and the class, as the book reads them. */
+  get bookSaved(): KeeperSkillTree { return this.looks.look.tree; }
+  get bookVocation(): Vocation { return this.looks.look.vocation; }
+  /** The fight's context for the book's cards: worn +Spells and the class's speed (td-skills fightStats). */
+  get bookGearRanks(): number { return this.fightNow.ranks; }
+  get bookCastSpeed(): number { return this.fightNow.castSpeed; }
+  /** The HUD's own lines on a row's card: the sky's hand on it, what lifts its damage. */
+  readonly bookExtra = (id: SkillId): string[] => [this.spellPhase(id)?.text, this.spellPower(id)].filter((x): x is string => !!x);
+  /** S2 PLACEHOLDER: the per-row "create Spellstone" opens today's inscribing card (stones in the pouch, skill@rank). */
+  readonly bookStone = (id: string) => this.stoneView(id);
+  readonly bookStoneArt = (id: string) => this.stoneArt(id);
+  /** Accept (and Reset, and the rebound note): the book's tree goes to the save, one write through the gateway. */
+  acceptBook(tree: KeeperSkillTree): void {
+    this.looks.setTree(tree);
+    // The book registered its own words (book.i18n) when it opened, so its line is there to say.
+    this.message = this.t('book.accepted');
+    this.sound.sfx('five');
     this.tickAbilities();
   }
-  /** The free respec (asked once): every bought point comes back; the starting ranks stay. */
-  respecTree(): void {
-    if (!this.respecAsk) { this.respecAsk = true; return; }
-    this.respecAsk = false;
-    this.looks.setTree(resetTree(this.skillTree.tree));
-    this.message = this.t('play.td.tree.reset');
-    this.tickAbilities();
+  /** Open or close the book; closing with changes pending asks the book first (it shows its own confirm). */
+  toggleSpellbook(): void {
+    if (this.spellbookOpen) { this.requestBookClose(); return; }
+    this.spellbookOpen = true; this.sheetOpen = false;
   }
+  requestBookClose(): void {
+    if (this.spellbookOpen && this.bookDirty) { this.bookCloseAsk++; return; }
+    this.closeBookNow();
+  }
+  closeBookNow(): void { this.spellbookOpen = false; this.bookDirty = false; this.focusWorld(); }
   /** Put a skill on a key (1–4); whatever sat there swaps to where this one was. */
   assignSkill(id: string, slot: number): void {
     if (!this.ranked(id)) return;
@@ -4413,8 +4352,8 @@ export class SideScrollerComponent implements OnDestroy {
     const is = (action: string) => this.keymap.matches(action, event);
     if (is('bag')) { event.preventDefault(); this.toggleBag(); }
     else if (is('bestiary') && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
-    else if (is('spellbook') && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
-    else if (is('sheet') && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
+    else if (is('spellbook') && this.topDown) { event.preventDefault(); this.toggleSpellbook(); }
+    else if (is('sheet') && this.topDown) { event.preventDefault(); this.toggleSheet(); }
     // The potion belt: the Health key drinks the best Health potion held, the Mana key the best Mana potion (shared/potions).
     else if ((is('potionHealth') || is('potionMana')) && this.topDown) {
       event.preventDefault(); this.drinkPotion(is('potionHealth') ? 'health' : 'mana');
@@ -4562,7 +4501,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.petsOpen) { this.closePets(); return true; }
     if (this.bestiaryOpen) { this.closeBestiary(); return true; }
     if (this.placesOpen) { this.closePlaces(); return true; }
-    if (this.spellbookOpen) { this.spellbookOpen = false; this.focusWorld(); return true; }
+    if (this.spellbookOpen) { this.requestBookClose(); return true; }
     if (this.sheetOpen) { this.sheetOpen = false; this.focusWorld(); return true; }
     if (this.bagOpen) { this.closeBag(); return true; }
     return false;
