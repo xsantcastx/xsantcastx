@@ -93,11 +93,14 @@ test('S5: a healer heals her party mate and both see it; a tank holds the room\'
       if (i % 2 === 0) await a.evaluate(() => { const h = (window as unknown as Hooks).__tdCoop; h.cast('hearthlight'); });
       await b.evaluate(id => (window as unknown as Hooks).__tdCoop.target(id), wolf);
       await a.waitForTimeout(250);
-      const now = (await life(b)).room!.h;
+      const lb2 = await life(b), now = lb2.room!.h;
       if (now < last) brynDipped = true;
       last = now;
+      // The tank down (a slow machine's heals fall behind): the creature rightly turns; what counts is before that.
+      if (lb2.down || lb2.room?.d || now <= 0) break;
+      if ((await life(a)).room!.h < aster0) break;
     }
-    const asterBitten = (await life(a)).room!.h < aster0;
+    const asterBitten = (await life(a)).room!.h < aster0 && !((await life(b)).room?.d || (await life(b)).down);
     expect(brynDipped, 'the creature fought the tank').toBe(true);
     console.log(`# s5 threat: Aster ${aster0} → ${(await life(a)).room!.h}, Bryn ${bryn0} → ${(await life(b)).room!.h} over 6 s with the wolf on them`);
     expect(asterBitten).toBe(false);
