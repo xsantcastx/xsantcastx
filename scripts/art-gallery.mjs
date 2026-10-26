@@ -108,6 +108,10 @@ if (want('ground')) {
   const row = section('Ground: grass, flowers and a dirt road');
   const W = 24, H = 12, g = (c: number, r: number) => (Math.abs(r - 6 - Math.round(Math.sin(c / 3) * 2)) <= 1 || (c >= 15 && c <= 16 && r < 6) ? 'dirt' : (c * 7 + r * 3) % 23 === 0 ? 'flowers' : 'grass');
   card(row, 'ground', W * 16, H * 16, c => c.drawImage(ground(W * 16, H * 16, g), 0, 0));
+  for (const [lush, worn] of [['moss', 'dirt'], ['moss', 'mire'], ['grass', 'sand'], ['cave', 'cave']] as const) {
+    const k = (q: number, r: number) => (Math.abs(r - 3 - Math.round(Math.sin(q / 2) * 1.5)) <= 1 ? worn : lush);
+    card(row, lush + ' / ' + worn, 10 * 16, 7 * 16, c => c.drawImage(ground(10 * 16, 7 * 16, k), 0, 0));
+  }
 }
 if (want('aura')) {
   const row = section('Auras');
