@@ -17,6 +17,8 @@
  * the eager shell import this module lazily so the painter never joins the
  * initial bundle.
  */
+import { optIso } from '../../play/td/td-artopt';
+import { hdStill } from '../../play/td/td-hd-keeper';
 import { KeeperPainter } from './keeper-paint';
 import { NPC_LOOKS } from './npc-looks';
 import { GLIM_H, GLIM_PALETTE, GLIM_W, glimRows } from '../glim/glim-art';
@@ -40,22 +42,25 @@ export function hasPortrait(id: string | null | undefined): boolean {
 /** The portrait of a town person or speaking NPC as an image URL, or null (SSR, no look). */
 export function npcPortrait(id: string | null | undefined): string | null {
   if (!id) return null;
-  const hit = cache.get(id);
+  // Isometric graphics paint the HD figure's face (td-hd-keeper.ts): the same people, one art style on screen.
+  const hd = optIso(), ck = hd ? `${id}|hd` : id;
+  const hit = cache.get(ck);
   if (hit !== undefined) return hit;
   let url: string | null = null;
   if (id === 'glim') url = glimPortrait();
-  else if (NPC_LOOKS[id] && typeof document !== 'undefined') url = keeperPortrait(id);
+  else if (NPC_LOOKS[id] && typeof document !== 'undefined') url = keeperPortrait(id, hd);
   else if (NPC_LOOKS[id]) return null; // SSR: do not cache, the browser will paint it
-  cache.set(id, url);
+  cache.set(ck, url);
   return url;
 }
 
-function keeperPortrait(id: string): string | null {
+function keeperPortrait(id: string, hd: boolean): string | null {
   const npc = NPC_LOOKS[id];
   try {
     const el = document.createElement('canvas');
     el.width = el.height = PORTRAIT_CROP.size * PORTRAIT_SCALE;
-    new KeeperPainter(npc.look, npc.gear, npc.garb).still(el, PORTRAIT_CROP);
+    const painter = new KeeperPainter(npc.look, npc.gear, npc.garb);
+    if (hd) hdStill(painter, el, 'bust'); else painter.still(el, PORTRAIT_CROP);
     return el.toDataURL('image/png');
   } catch {
     return null;
