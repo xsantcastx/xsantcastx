@@ -231,7 +231,11 @@ export class GroundFlow {
     const blocked = this.backend.blocked();
     if (blocked) return { ok: false, why: blocked };
     if (this.room.canSettle?.() && this.room.groundLay) {
-      const laid = await this.room.groundLay({ area: at.area, x: at.x, y: at.y, item });
+      // The satchel lets go the instant the drop is asked for, not a round trip later; a refusal hands it back.
+      const pre = `pre:${item.id}`;
+      this.pending.set(pre, item.id);
+      let laid: Awaited<ReturnType<NonNullable<TradeRoom['groundLay']>>>;
+      try { laid = await this.room.groundLay({ area: at.area, x: at.x, y: at.y, item }); } finally { this.pending.delete(pre); }
       if (laid.why || !laid.ground) return { ok: false, why: laid.why || 'failed' };
       const id = laid.ground.id;
       this.pending.set(id, item.id);
