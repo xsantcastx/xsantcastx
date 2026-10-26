@@ -3,8 +3,8 @@
 Spec, footprint table and rules: `docs/design/inventory-grid.md`. Screenshots: `docs/handoff/grid/`.
 
 ## What a player gets
-- **The satchel is one 10 × 6 grid**, plus a row per bought satchel row. A staff stands 1×4, armour is 2×3, rings are
-  1×1. Identical pieces pile in one cell, up to 20. A new find lands where it fits and glows twice there.
+- **The satchel is one 10 × 6 grid**, plus a row per bought satchel row. Since the loot hotfix (`docs/handoff/loot.md`)
+  every piece is 1×1 and pinned where it lies; Sort is a button. Identical pieces pile in one cell, up to 20. A new find lands where it fits and glows twice there.
 - **Drag and drop everywhere**:
   - inside the grid;
   - onto the doll to wear, and off the doll into a chosen cell;
@@ -12,7 +12,7 @@ Spec, footprint table and rules: `docs/design/inventory-grid.md`. Screenshots: `
   - onto the world, to drop it for the room;
   - onto the trade window, to offer it;
   - between the satchel and the stash, only at a Vault.
-- **Phones:** long-press to pick up, then tap where it goes. "Holding … · Put back" shows meanwhile.
+- **Phones (and desktop):** tap a piece to select it, then tap where it goes; long-press still picks up. "Holding … · Put back" shows meanwhile.
 - **Hover and click:** hover shows the item card; a click or right-click opens its options.
 - **A full satchel refuses a pickup** and says so. The item stays on the ground.
 - **The Vault station** is two grids side by side: the stash (tabs, plus Overflow while it holds anything) and the

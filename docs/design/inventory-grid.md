@@ -6,7 +6,17 @@ Vault by itself. Code: `shared/rpg/inventory-grid.ts` (pure), `shared/rpg/item-f
 
 ## 1. Footprints
 
-Width × height in cells. Every grid is 10 cells wide.
+**Since grid v2 (owner hotfix 2026-10-26, "make all items in the inventory 1×1, so it's more optimal and easier to
+manage on smaller displays"), every piece covers ONE cell**, a ring and a greatsword alike (`footprintOf`). Identical
+pieces and same-kind stacks still pile in one cell. The table below is the v1 table: `legacyFootprintOf` keeps it only
+for the v1 → v2 migration (§4b), which pins each piece at the top-left cell v1 drew it at.
+
+**Satchel size (decided):** it stays 10 × 6 (60 cells) plus the bought rows. At 1×1 that already holds more than the v1
+grid did (a cuirass was 6 cells, now 1), so nothing a save holds can stop fitting, the migration never needs the Vault,
+and the cell size on a 360 px phone stays where it was. Fewer rows were rejected: they would push pieces out of a
+full v1 satchel, and the owner ruled out any automatic Vault move.
+
+v1 table (width × height in cells; every grid is 10 cells wide):
 
 | Family (item-base `GearBase`) | Footprint |
 |---|---|
@@ -51,6 +61,12 @@ three starter tools take 8 cells, not 14. `inventory-grid.spec.ts` pins the tabl
 - **Arrivals** (drops, crafts, buys, quest rewards) write their landing cell as they are minted: they join a pile with
   room, or take the first free spot, column by column from the top left (Diablo II's pickup order). With no room, they
   have no `pos` and wait on the satchel's **no room** strip. They are never sent anywhere by themselves.
+- **Nothing moves by itself (grid v2).** Every save write pins any piece that has no stored place (or a stale one) at
+  the cell it is drawn in (`pinLoose`, in `InventoryService.save`). So the layout is a pure read of stored places: a
+  drop, a move, a pickup or a sale moves nothing else, and a new thing takes the first free cell. A stack pile that
+  leaves (to the Vault, the ground) takes its own cell with it; the piles left behind keep theirs.
+- **Sort** is a button (the satchel's purse row, and each Vault tab): kind (weapon, armour, other gear, rune, Spellstone,
+  supply, material), then rarity best first, then name. It runs only when pressed (`sortContainer`).
 - **Never-placed things** (list-era saves, a traded item: the server strips the giver's cell) are laid out by the rule:
   stored places first, newest first; then the rest biggest first, by id, into the first free spot. Every device draws
   the same grid from the same ledger.
@@ -59,8 +75,8 @@ three starter tools take 8 cells, not 14. `inventory-grid.spec.ts` pins the tabl
 
 ### 2.4 A full satchel refuses a pickup
 - `LootService.grantDrop` asks `canPickUp` first, and so do the HUD's material pickups and the room's ground pickups.
-- A refused pickup stays on the ground with the line "Your satchel is full. It stays on the ground until you make
-  room."
+- A refused pickup stays on the ground with the line "Too much baggage — your satchel is full. It stays on the ground
+  until you make room." (EN + ES, `play.grid.full`).
 - Non-ground arrivals still land, on the no-room strip, so nothing is lost:
   - mining and fishing grants;
   - quest rewards;
@@ -76,8 +92,12 @@ One API, `shared/inventory-grid/item-drag.service.ts`:
 **Gestures.**
 - **Mouse:** move 4 px to drag. Release over a target to drop. A click without a drag opens the options card, and so
   does a right-click. Hovering shows the item card.
-- **Touch:** a 400 ms still press picks the thing up and shows "Holding … · Put back". Tap a cell or a target to place
-  it; tap anywhere else to put it back. There is no finger-dragging, so windows still scroll.
+- **Tap-to-move (phones and desktop, owner 2026-10-26):** a tap or click on a piece selects it (a brass highlight, its
+  card opens). Tap a cell, the Vault grid, a doll well or the belt to move it there; tap it again to let go; a tap on
+  anything that takes nothing lets go and does what it does there. The card's buttons pass through
+  (`[data-drag-pass]`). The world canvas never takes a tap-selected piece (drop with the card's Drop or a drag).
+- **Touch long-press:** a 400 ms still press picks the thing up and shows "Holding … · Put back". Tap a cell or a target
+  to place it; tap anywhere else to put it back. There is no finger-dragging, so windows still scroll.
 - **Esc** puts it back.
 
 **Targets today.**
@@ -89,7 +109,7 @@ One API, `shared/inventory-grid/item-drag.service.ts`:
 | Doll wells | a satchel piece | `equip(id, slot)` with the Wear checks |
 | Book belt Q / R | a potion stack | that key drinks it (`PotionService.pin`) |
 | Book belt F | a Spellstone | its recipe goes on the slot |
-| The world canvas (top-down, in a room) | a satchel piece | a ground drop (trade HUD `drop`, server escrow) |
+| The world canvas (top-down) | a satchel piece or stack pile | a ground drop: online and tradeable → the room's ground (escrow); otherwise this screen's own ground (`dropToGround`) |
 | The trade window | a satchel piece | offered (`TradeHudComponent.add`) |
 
 **Shops.** The shops rework plugs in with the same API, and the grid already accepts a `shop` source through
@@ -101,6 +121,10 @@ One API, `shared/inventory-grid/item-drag.service.ts`:
 goes to the server in the background, and the UI never waits on it.
 
 ### 3.3 The Vault
+- **Deposit all** (the one brass button): every satchel piece into the first owned tab with room, except what the belt
+  draws from (the potions on Q and R, the Spellstone recipe on F); worn things are not in the satchel and quest finds
+  have no cell. **Take all** moves the open tab back into the satchel as far as it fits. **Sort tab** / **Sort satchel**.
+  Each is one ledger write (`depositAll`, `takeAllFrom`, `sortGrid`).
 - Standing at a Vault (the Vault station panel) opens a stash grid beside the satchel, with a tab per owned tab and
   Overflow while it holds anything. `InventoryService.setAtVault(true)` opens the stash for moves. Anywhere else a move
   into or out of a tab is refused (`vault-closed`).
@@ -111,6 +135,12 @@ goes to the server in the background, and the UI never waits on it.
   - `settle` (the satchel held to its cap by moving the newest pieces to the Vault);
   - the delve-v3 chest migration's stow;
   - the computed "materials show in the Materials tab" layout.
+
+## 4b. Grid v1 → v2 (1×1)
+
+`migrateGrid` on a `grid: 1` save: pin every piece at the top-left cell the v1 layout (v1 footprints) drew it at, then
+pin whatever v1 had no room for into the first free 1×1 cells. Nothing goes to the Vault, nothing that fitted moves;
+two devices write the same cells (only the revisions differ). Stamps `grid: 2`. Tests: `inventory-grid-1x1.spec.ts`.
 
 ## 4. The one-time migration (list → grid)
 

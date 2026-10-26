@@ -18,7 +18,8 @@
  */
 import { compareRevision, nextRevision, recordToItem, stackQuantityOf, applyStackOp } from './inventory-ops';
 import { IDENTICAL_PER_SLOT, identityKeyOf } from './item-groups';
-import { footprintOf, isSpellstoneDef, type Footprint } from './item-footprint';
+import { footprintOf, isSpellstoneDef, legacyFootprintOf, type Footprint } from './item-footprint';
+import { RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import {
   SATCHEL_MAX_ROWS, SATCHEL_ROW_KEY, VAULT_TABS, slotClassOf, stackCapOf, vaultHolder, vaultTabOf, type Capacity, type VaultTabId,
 } from './inventory-layout';
@@ -28,7 +29,9 @@ export const GRID_W = 10;
 export const SATCHEL_BASE_H = 6;
 export const VAULT_TAB_H = 12;
 /** The grid format a save is laid out under (InventoryLedger.grid). */
-export const GRID_VERSION = 1;
+export const GRID_VERSION = 2;
+/** How many cells a record covers (1×1 since grid v2; the v1 table only for the migration). */
+export type FootprintFn = (item: ReturnType<typeof recordToItem>) => Footprint;
 /** A Spellstone pile's charge cap is its pieces' (≤100 each); piles hold this many stones. */
 export const PILE_MAX = IDENTICAL_PER_SLOT;
 
@@ -200,7 +203,7 @@ function newer(a: InventoryRevision | null, b: InventoryRevision | null): Invent
 }
 
 /** Lay one container out. Deterministic and independent of record order. */
-function layContainer(id: ContainerId, w: number, h: number, bucket: Bucket): GridView {
+function layContainer(id: ContainerId, w: number, h: number, bucket: Bucket, fpOf: FootprintFn = footprintOf): GridView {
   const board = new Board(w, h);
   const held: Piece[] = [];
   const stored: Piece[] = [];
@@ -221,7 +224,7 @@ function layContainer(id: ContainerId, w: number, h: number, bucket: Bucket): Gr
   }
   for (const rowsOfPile of piles.values()) {
     const first = rowsOfPile[0];
-    const fp = footprintOf(recordToItem(first));
+    const fp = fpOf(recordToItem(first));
     const keep = rowsOfPile.slice(0, PILE_MAX);
     looseIds.push(...rowsOfPile.slice(PILE_MAX));
     stored.push({
@@ -258,7 +261,7 @@ function layContainer(id: ContainerId, w: number, h: number, bucket: Bucket): Gr
     const pk = pileKey(row);
     const pile = board.joinable(pk, 1) ?? fresh.find(p => p.pileKey !== null && p.pileKey === pk && p.qty < PILE_MAX);
     if (pile) { pile.ids.push(row.id); pile.ids.sort(); pile.qty += 1; continue; }
-    const fp = footprintOf(recordToItem(row));
+    const fp = fpOf(recordToItem(row));
     fresh.push({ key: `i:${row.id}`, kind: 'instance', ids: [row.id], qty: 1, w: fp.w, h: fp.h, cell: -1, pileKey: pk, rev: null });
   }
   fresh.push(...loose);
@@ -277,7 +280,7 @@ function bucketRows(bucket: Bucket, ids: readonly string[]): OwnedItemInstance[]
 }
 
 /** Every grid of a save. `capacity` gives the satchel's rows (via the row entitlement) and the owned tabs. */
-export function gridLayout(ledger: InventoryLedger, _capacity?: Capacity): GridLayout {
+export function gridLayout(ledger: InventoryLedger, _capacity?: Capacity, fpOf: FootprintFn = footprintOf): GridLayout {
   const buckets = new Map<ContainerId | 'overflow', Bucket>();
   const bucket = (id: ContainerId | 'overflow') => {
     let b = buckets.get(id);
@@ -301,15 +304,15 @@ export function gridLayout(ledger: InventoryLedger, _capacity?: Capacity): GridL
   }
   const empty: Bucket = { instances: [], stacks: [] };
   const h = satchelRows(key => stackQuantityOf(ledger, key));
-  const bag = layContainer('b', GRID_W, h, buckets.get('b') ?? empty);
+  const bag = layContainer('b', GRID_W, h, buckets.get('b') ?? empty, fpOf);
   const tabs = {} as Record<VaultTabId, GridView>;
   const overflow: Piece[] = [];
   for (const tab of GRID_TABS) {
-    tabs[tab] = layContainer(tab, GRID_W, VAULT_TAB_H, buckets.get(tab) ?? empty);
+    tabs[tab] = layContainer(tab, GRID_W, VAULT_TAB_H, buckets.get(tab) ?? empty, fpOf);
     overflow.push(...tabs[tab].held);
   }
   // Overflow: no grid, one entry per pile, in a stable order.
-  const over = layContainer('overflow', GRID_W, 0, buckets.get('overflow') ?? empty);
+  const over = layContainer('overflow', GRID_W, 0, buckets.get('overflow') ?? empty, fpOf);
   tabs.overflow = { ...over, pieces: [] };
   overflow.push(...over.held);
   return { bag, tabs, overflow };
@@ -380,6 +383,19 @@ export interface GridMigration { ledger: InventoryLedger; movedItems: string[]; 
 export function migrateGrid(ledger: InventoryLedger, capacity: Capacity, deviceId: string, now: number): GridMigration {
   if ((ledger.grid ?? 0) >= GRID_VERSION) return { ledger, movedItems: [], movedStacks: [] };
   if (!ledger.records.some(r => r.source === 'inventory')) return { ledger, movedItems: [], movedStacks: [] };
+  // v1 → v2 (every piece 1×1, owner 2026-10-26): pin each piece at the top-left cell v1 drew it at (a pinned v1 piece
+  // keeps its cell; one the rule laid gets that cell written), then pin what v1 had no room for into the first free
+  // cells. Nothing goes to the Vault and nothing that fitted moves. Deterministic, so two devices write the same cells.
+  if ((ledger.grid ?? 0) >= 1) {
+    const pinned = pinLoose(pinLoose(ledger, deviceId, now, legacyFootprintOf), deviceId, now);
+    return { ledger: { ...pinned, grid: GRID_VERSION }, movedItems: [], movedStacks: [] };
+  }
+  const v1 = migrateGridV1(ledger, capacity, deviceId, now);
+  return { ...v1, ledger: { ...pinLoose(v1.ledger, deviceId, now), grid: GRID_VERSION } };
+}
+
+/** The list era → grid layout (1×1), what did not fit the satchel to the Vault: the original one-time move. */
+function migrateGridV1(ledger: InventoryLedger, capacity: Capacity, deviceId: string, now: number): GridMigration {
   let next = ledger;
   const layout = gridLayout(ledger, capacity);
   const movedItems: string[] = [];
@@ -432,7 +448,7 @@ export function migrateGrid(ledger: InventoryLedger, capacity: Capacity, deviceI
   for (const tab of GRID_TABS) for (const p of layout.tabs[tab].held) {
     if (p.kind === 'instance') for (const id of p.ids) relocate(id, 'overflow', null);
   }
-  return { ledger: { ...next, grid: GRID_VERSION }, movedItems, movedStacks };
+  return { ledger: next, movedItems, movedStacks };
 }
 
 /** The stack's record (created when missing), with `cell` appended to its place in `tab` when given. */
@@ -453,4 +469,107 @@ export function ensureStackRecord(ledger: InventoryLedger, storeKey: string, dev
     stackKey: storeKey, location: { kind: 'bag' }, ...(pos ? { pos } : {}),
   };
   return { ...ledger, hlc: stepped.hlc, records: [...ledger.records, row] };
+}
+
+// ── Pinning: every piece keeps the cell it is drawn in ─────────────────────
+
+/**
+ * Write the drawn cell of every piece that has none (or a stale one) as its stored place, in every grid. After this, the
+ * layout is a pure read of stored places: dropping, moving or taking one piece can never move another (owner
+ * 2026-10-26: "drop one thing and nothing else moves"). A piece the rule would lay (a fresh arrival, a pile split by a
+ * merge) is pinned where it is first drawn. Pieces with no room stay unpinned. Returns the same object when nothing
+ * changes. Writes only places, each its own register (merge-safe: the newer place wins).
+ */
+export function pinLoose(ledger: InventoryLedger, deviceId: string, now: number, fpOf: FootprintFn = footprintOf): InventoryLedger {
+  const layout = gridLayout(ledger, undefined, fpOf);
+  const views: GridView[] = [layout.bag, ...GRID_TABS.map(t => layout.tabs[t])];
+  const instPos = new Map<string, { k: ContainerId; cell: number }>();
+  const stackCells = new Map<string, { k: ContainerId; cells: number[] }>();
+  for (const v of views) for (const p of v.pieces) {
+    if (p.kind === 'instance') for (const id of p.ids) instPos.set(id, { k: v.id, cell: p.cell });
+    else if (p.storeKey) {
+      const e = stackCells.get(p.storeKey) ?? { k: v.id, cells: [] };
+      e.cells[p.pile ?? 0] = p.cell;
+      stackCells.set(p.storeKey, e);
+    }
+  }
+  let rev: InventoryRevision | null = null;
+  let hlc = ledger.hlc;
+  const stamp = (): InventoryRevision => {
+    if (!rev) { const stepped = nextRevision(ledger, deviceId, now); rev = stepped.revision; hlc = stepped.hlc; }
+    return rev;
+  };
+  let changed = false;
+  const records = ledger.records.map(r => {
+    if (r.source !== 'inventory') return r;
+    if (r.kind === 'instance') {
+      const want = instPos.get(r.id);
+      if (!want || (r.pos && r.pos.k === want.k && r.pos.c.length === 1 && r.pos.c[0] === want.cell)) return r;
+      changed = true;
+      return { ...r, pos: { k: want.k, c: [want.cell], r: stamp() } };
+    }
+    if (r.kind === 'stack') {
+      const want = stackCells.get(r.stackKey);
+      if (!want || want.cells.some(c => c === undefined)) return r;
+      const cur = r.pos;
+      if (cur && cur.k === want.k && want.cells.every((c, i) => cur.c[i] === c)) return r;
+      changed = true;
+      // Keep any cells past the drawn piles (a pile that will come back keeps its place).
+      const tail = cur && cur.k === want.k ? cur.c.slice(want.cells.length).filter(c => !want.cells.includes(c)) : [];
+      return { ...r, pos: { k: want.k, c: [...want.cells, ...tail], r: stamp() } };
+    }
+    return r;
+  });
+  return changed ? { ...ledger, hlc, records } : ledger;
+}
+
+// ── The manual Sort (owner 2026-10-26: only when pressed; nothing ever sorts by itself) ──
+
+const KIND_ORDER = ['weapon', 'armor', 'artifact', 'rune', 'spellstone', 'supply', 'material'];
+
+/** A piece's sort key: by type, then rarity (best first), then name. */
+function sortKeyOf(ledger: InventoryLedger, p: Piece): [number, number, string] {
+  if (p.kind === 'stack') {
+    const cls = slotClassOf(p.stackKey ?? '');
+    return [KIND_ORDER.indexOf(cls === 'supply' ? 'supply' : 'material'), 0, p.stackKey ?? ''];
+  }
+  const row = ledger.records.find((r): r is OwnedItemInstance => r.kind === 'instance' && r.id === p.ids[0]);
+  if (!row) return [99, 0, p.key];
+  const item = recordToItem(row);
+  const kind = isSpellstoneDef(row.definitionId) ? 'spellstone' : item.type === 'rune' ? 'rune' : item.slot === 'weapon' || item.slot === 'off-hand' ? 'weapon' : item.slot ? 'armor' : 'artifact';
+  const tier = RUNE_TIER_ORDER.indexOf(item.rarity as (typeof RUNE_TIER_ORDER)[number]);
+  return [KIND_ORDER.indexOf(kind), -tier, item.name ?? ''];
+}
+
+/**
+ * Lay one grid out in order (type, rarity, name), from the top-left, row by row. Writes only places. Pieces with no
+ * room (the satchel's "no room" strip) stay where they are. Same object back when already in order.
+ */
+export function sortContainer(ledger: InventoryLedger, container: ContainerId, deviceId: string, now: number): InventoryLedger {
+  const layout = gridLayout(ledger);
+  const view = container === 'b' ? layout.bag : layout.tabs[container];
+  if (!view) return ledger;
+  const order = [...view.pieces].sort((a, b) => {
+    const ka = sortKeyOf(ledger, a), kb = sortKeyOf(ledger, b);
+    return ka[0] - kb[0] || ka[1] - kb[1] || ka[2].localeCompare(kb[2]) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  });
+  const target = new Map<string, number>();
+  order.forEach((p, i) => target.set(p.key, i));
+  if (order.every(p => p.cell === target.get(p.key))) return ledger;
+  const stepped = nextRevision(ledger, deviceId, now);
+  const r = stepped.revision;
+  const instCell = new Map<string, number>();
+  const stackCellsOf = new Map<string, number[]>();
+  for (const p of order) {
+    const cell = target.get(p.key)!;
+    if (p.kind === 'instance') for (const id of p.ids) instCell.set(id, cell);
+    else if (p.storeKey) { const list = stackCellsOf.get(p.storeKey) ?? []; list[p.pile ?? 0] = cell; stackCellsOf.set(p.storeKey, list); }
+  }
+  const records = ledger.records.map(row => {
+    if (row.source !== 'inventory') return row;
+    if (row.kind === 'instance' && instCell.has(row.id)) return { ...row, pos: { k: container, c: [instCell.get(row.id)!], r } };
+    if (row.kind === 'stack' && stackCellsOf.has(row.stackKey)) return { ...row, pos: { k: container, c: stackCellsOf.get(row.stackKey)!, r } };
+    return row;
+  });
+  return { ...ledger, hlc: stepped.hlc, records };
 }

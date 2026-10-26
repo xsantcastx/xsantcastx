@@ -40,6 +40,10 @@ interface Clash { action: string; slot: number; code: string; other: string }
         <span class="ks__name">{{ t('keys.escape') }}</span>
         <span class="ks__keys"><kbd class="kc kc--fixed">Esc</kbd><small>{{ t('keys.fixed') }}</small></span>
       </div>
+      <div class="ks__row ks__row--fixed" data-action="labels">
+        <span class="ks__name">{{ t('keys.labels') }}</span>
+        <span class="ks__keys"><kbd class="kc kc--fixed">Alt</kbd><small>{{ t('keys.hold') }}</small></span>
+      </div>
       @for (g of groups; track g) {
         <h3 class="ks__group">{{ t('keys.group.' + g) }}</h3>
         @for (a of actionsOf(g); track a.id) {
