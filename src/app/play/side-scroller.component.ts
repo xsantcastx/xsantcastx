@@ -687,6 +687,12 @@ export class SideScrollerComponent implements OnDestroy {
   private creditAsks: WorldCreditAsk[] = [];
   private creditTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly roomPaid = { asked: 0, batches: 0, xp: 0, gold: 0, refused: 0 };
+  /**
+   * What the room owes this Keeper and has not committed yet (it pays in batches, ~20 s apart): shown at once in the
+   * purse and the level bar, dropped when the commit is pulled back into the save.
+   */
+  private readonly roomPending = new Map<string, { xp: number; gold: number }>();
+  private pendingSum(k: 'xp' | 'gold'): number { let n = 0; for (const v of this.roomPending.values()) n += v[k]; return n; }
   /** The player's own Delve (seed + dug cells) and the inscriptions they have read. */
   private readonly delve = inject(DelveSaveService);
   private readonly delveLore = inject(DelveLoreService);
@@ -4239,7 +4245,7 @@ export class SideScrollerComponent implements OnDestroy {
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
   /** The Keeper's level: Hunting XP read on the Keeper curve (shared/skills/keeper-level.ts), never below the Hunting skill level. */
   get huntingLevel(): number { return this.keeperView.level; }
-  private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting')); }
+  private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting') + this.pendingSum('xp')); }
   /**
    * The Diablo II experience bar along the HUD's foot (owner's player notes 2026-10-21): how far into this Keeper
    * level, and the words its tooltip shows on hover or tap (current XP in the level, the level's span, the percent).
@@ -5373,7 +5379,7 @@ export class SideScrollerComponent implements OnDestroy {
     });
   }
   /** The purse, on the satchel's bottom row. */
-  get purseGold(): string { return Math.floor(this.economy.snapshot.gold).toLocaleString('en-US'); }
+  get purseGold(): string { return Math.floor(this.economy.snapshot.gold + this.pendingSum('gold')).toLocaleString('en-US'); }
   /**
    * The hover card (owner 2026-10-20: "look at diablo 2, just stats and that's it"): pointing at a cell with a mouse
    * shows the item's name in its rarity colour, what it is, its stats and how it compares — no art, no buttons.
@@ -6667,11 +6673,13 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Protocol 10: ask the room for what it owes (batched a fifth of a second); an XP ask shows its toast at once. */
   private creditAsk(a: WorldCreditAsk, line = true): void {
-    if (line && !a.id.startsWith('td:')) {
-      // What lands after the Ember debt takes its share (the room takes it from the hearth record; this is the forecast).
-      const debt = this.topDown ? this.hearth.state.debt : 0, earned = debt > 0 ? payDebt(a.n, debt).earned : a.n;
-      this.toastLoot(this.t('play.hunt.xp', { n: earned }));
-    }
+    const xp = !a.id.startsWith('td:');
+    // What lands after the Ember debt takes its share (the room takes it from the hearth record; this is the forecast).
+    const debt = xp && this.topDown ? this.hearth.state.debt : 0, earned = debt > 0 ? payDebt(a.n, debt).earned : a.n;
+    if (line && xp) this.toastLoot(this.t('play.hunt.xp', { n: earned }));
+    // Shown at once (the purse, the level bar) until the room's commit comes back into the save.
+    const was = this.roomPending.get(a.id) ?? { xp: 0, gold: 0 };
+    this.roomPending.set(a.id, xp ? { ...was, xp: earned } : { ...was, gold: a.n });
     this.creditAsks.push(a);
     this.roomPaid.asked++;
     if (this.creditTimer) return;
@@ -6687,7 +6695,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (msg.ok) { this.roomPaid.batches++; this.roomPaid.xp += msg.xp; this.roomPaid.gold += msg.gold; }
     else this.roomPaid.refused++;
     this.canvas?.nativeElement.setAttribute('data-room-paid', `${this.roomPaid.batches}:${this.roomPaid.xp}:${this.roomPaid.gold}:${this.roomPaid.refused}`);
-    if (msg.ok && (msg.xp > 0 || msg.gold > 0)) void this.store.pullKeys([ACTIVITY_KEY, ECONOMY_STATE_KEY, HEARTH_KEY]);
+    const settled = () => this.zone.run(() => { for (const id of msg.ids) this.roomPending.delete(id); });
+    if (msg.ok && (msg.xp > 0 || msg.gold > 0)) void this.store.pullKeys([ACTIVITY_KEY, ECONOMY_STATE_KEY, HEARTH_KEY]).finally(settled);
+    else settled();
   }
   /** Protocol 10: another Keeper near fell (the room's word on its life). */
   private peerFell(id: string): void {

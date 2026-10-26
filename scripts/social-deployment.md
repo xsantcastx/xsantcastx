@@ -363,8 +363,9 @@ Then the client (push to main → CI hosting). Order matters: hearth first (it s
 then the client. **No functions:game deploy** (trade-core's `moveGold` gained a `credit-gold` kind only the room calls;
 the Function's behaviour is unchanged) and **no rules deploy**: the room writes `users/{uid}/social/credits-<char>`,
 `progress/activity`, `progress/hearth` and `economy/state` with its service account (no new IAM — the same as
-protocol 8's trade writes). Firestore cost: at most one transaction (4 reads, ≤4 writes) per signed-in Keeper every
-1.5 s while it hunts in the world.
+protocol 8's trade writes). Firestore cost: one credit transaction per signed-in
+Keeper per 20 s window while it hunts (plus one on an area change, a fall, leaving, or Gold owed past 250): ≤ ~180 an
+hour, ≤ 4 reads and ≤ 4 writes each (typically 4 reads, 3 writes) — ≤ ~720 reads and ~540–720 writes per player-hour.
 
 ### Protocol 9 (M3 of the room-run world, 2026-10-26 — deployed: revision 00015; 00016 with the fixes merge)
 
