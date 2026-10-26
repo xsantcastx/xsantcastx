@@ -69,7 +69,8 @@ the DM reviewed it. Screenshots are in `docs/handoff/runes/`.
   A rune pile is a plain stack key. `scripts/trade-core.test.mjs` pins the round trip. functions:game was **not**
   redeployed.
 - **The Hearth.** The room rolls loot with `drop-tables.ts`, so the new ladder needs a Hearth rebuild: run
-  `world-sim-build`, then the protocol 9 deploy. See the report for whether it was deployed.
+  `world-sim-build`, then the protocol 9 deploy. **Deployed: revision `eclipse-hearth-00019-bkg`** (2026-10-26 09:40Z, from
+  2cbd0aaa with the cozy-ui `calm` merge; four origins, project, no billing flags; it replaced 00018 from another session).
 - **Rules:** unchanged.
 
 ## Notes for the next builder
