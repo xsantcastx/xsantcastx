@@ -856,12 +856,13 @@ const RULES: Partial<Record<string, RuleProbe>> = {
     expect(w.sys.markPace).toBeCloseTo(n_(fx) / 100, 5);
   },
   'shutter-lantern.a2:quietSight': () => {
-    const hunts = (mask: number) => { const w = withMarks('shutter-lantern', mask); w.sys.vocation = 'lanternwright'; cast(w, 'shutter-lantern'); const m = w.sys.place('h', { ...DUMMY, hp: 1e7, sight: 4 * TILE, speed: 40 }, 3.5 * TILE, 0); run(w, .5); return m.x < 3.5 * TILE - 2 ? 1 : 0; };
+    const hunts = (mask: number) => { const w = withMarks('shutter-lantern', mask); w.sys.vocation = 'lanternwright'; cast(w, 'shutter-lantern'); const m = w.sys.place('h', { ...DUMMY, hp: 1e7, sight: 4 * TILE, speed: 40 }, 3.5 * TILE, 0); m.wait = 1e9; run(w, .5); return m.x < 3.5 * TILE - 2 ? 1 : 0; };
     expect(hunts(0)).toBe(1);
     expect(hunts(bit('a2'))).toBe(0);
   },
   'shutter-lantern.a3:mothHours': () => {
-    const hunts = (mask: number) => { const w = withMarks('shutter-lantern', mask); w.sys.vocation = 'lanternwright'; cast(w, 'shutter-lantern'); const m = w.sys.place('h', { ...DEAD, hp: 1e7, sight: 999, speed: 40 }, 3 * TILE, 0); m.hp = m.def.hp; run(w, .5); return m.x < 3 * TILE - 2 ? 1 : 0; };
+    // m.wait = 1e9: no idle stroll (a fresh creature's first pause is random 0–3 s; a stroll west read as a hunt ~1 run in 10).
+    const hunts = (mask: number) => { const w = withMarks('shutter-lantern', mask); w.sys.vocation = 'lanternwright'; cast(w, 'shutter-lantern'); const m = w.sys.place('h', { ...DEAD, hp: 1e7, sight: 999, speed: 40 }, 3 * TILE, 0); m.hp = m.def.hp; m.wait = 1e9; run(w, .5); return m.x < 3 * TILE - 2 ? 1 : 0; };
     expect(hunts(0)).toBe(1);
     expect(hunts(bit('a3'))).toBe(0);
   },
