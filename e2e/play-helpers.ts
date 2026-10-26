@@ -233,6 +233,8 @@ export const SKILLS_LEARNED: Blobs = {
 export async function bookRow(page: Page, id: string): Promise<Locator> {
   const row = page.locator(`.brow[data-row="${id}"]`);
   // The Warlock's tabs, the Ashguard's, the Lanternwright's, the Thornstrider's, then the common page: only the open class's tabs are there to click.
+  // The book loads lazily (@defer): wait for it before reading its tabs.
+  await expect(page.locator('.sbook .book')).toBeVisible({ timeout: 10000 });
   const shown = () => expect(row).toBeVisible({ timeout: 800 }).then(() => true, () => false);
   if (await row.count()) { await expect(row).toBeVisible(); return row; }
   for (const tree of ['ember', 'bone', 'shadow', 'brand', 'oath', 'ash', 'lamp', 'hearth', 'moth', 'thorn', 'wild', 'briar', 'common']) {
