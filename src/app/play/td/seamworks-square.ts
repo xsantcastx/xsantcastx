@@ -24,6 +24,8 @@ export interface TdObject {
   block?: { w: number; h: number };
   /** A building the Keeper can stand behind: its roof fades then. */
   kind?: 'building' | 'tree' | 'prop' | 'stall';
+  /** A hand-made level's object id (td-level MapObject): the isometric prototype finds its own furniture by it. */
+  id?: string;
 }
 
 export interface TdStall {

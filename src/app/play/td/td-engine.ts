@@ -20,16 +20,18 @@ import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, drawWorn
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
-import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
+import { PAL, SOLID_GROUND, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
-import { optCamera, optHdFigures, optHdWorld } from './td-artopt';
+import { optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
+import { isoChunk, isoOf, isoProp, isoWall, lightPass, worldOfIso, type IsoChunk } from './td-iso';
 import { AuraFx as LookAuraFx, rimGlow as lookRimGlow } from './td-aura-look';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
 import { HD_KEEPER, HD_PET, HD_PET_ID, HD_SKEL, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
 import { paintRichGroundHd } from './td-ground';
+import { organic, paintFieldTile } from './td-terrain';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawKeeperStatus, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { castable } from './td-abilities';
@@ -167,6 +169,8 @@ const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 /** The most ground chunks kept baked (≈ 0.26 MB each, four for water): the view and its ring, with room to turn back. */
 const CHUNK_CAP = 40;
+/** Diamond ground chunks kept (td-iso.ts): each is 2 MB of canvas at the HD pixel. */
+const ISO_CAP = 28;
 /** Grounds the HD painter (option B) paints edge to edge with each other. */
 const GRASSY_HD = new Set<Ground>(['grass', 'flowers']);
 /** Ground baking's share of a frame (ms) after the draw (docs/handoff/calm.md). */
@@ -2831,7 +2835,8 @@ export class TopDownEngine {
     if (b.hurtT > 0 && Math.floor(b.hurtT * 20) % 2) return;
     c.save();
     c.translate(x, y - PET_H + 1 + hop + hover);
-    if (b.face < 0) c.scale(-1, 1);
+    if (optIso()) { if (this.isoFace(b, b.x, b.y).flip) c.scale(-1, 1); }
+    else if (b.face < 0) c.scale(-1, 1);
     // The art-direction prototype (td-artopt.ts B/C): the shade-kit in HD.
     if (optHdFigures() && b.id === HD_PET_ID && envDetail() !== 'low') { const P = HD_PET; c.drawImage(hdPetSheet(), hdPetFrameIndex(frame) * P.w, 0, P.w, P.h, -P.w / 4, PET_H - P.h / 2 + 1, P.w / 2, P.h / 2); }
     else c.drawImage(sheet, petFrameIndex(frame) * PET_W, 0, PET_W, PET_H, -PET_W / 2, 0, PET_W, PET_H);
@@ -2921,6 +2926,8 @@ export class TopDownEngine {
       const dx = this.joy.x - this.joy.sx, dy = this.joy.y - this.joy.sy, len = Math.hypot(dx, dy);
       if (len > 6) { const k = Math.min(1, len / 48); vx = dx / len * k; vy = dy / len * k; }
     }
+    // The isometric prototype (td-iso.ts): the keys and the stick steer on the screen, so turn them into the world.
+    if (optIso() && (vx || vy)) { const l = Math.hypot(vx, vy), wx = (vx + 2 * vy) / 2, wy = (2 * vy - vx) / 2, m = Math.hypot(wx, wy) || 1; vx = wx / m * l; vy = wy / m * l; }
     if (vx || vy) { this.path = []; this.chop = null; this.gather.stopAll(); }
     else if (this.path.length) {
       const p = this.path[0], dx = p.x - this.player.x, dy = p.y - this.player.y, d = Math.hypot(dx, dy);
@@ -3133,6 +3140,17 @@ export class TopDownEngine {
   /** A tap: on a stall or its keeper walks there and opens it; anywhere else walks there. */
   private toWorld(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect();
+    if (optIso()) {
+      // Isometric (td-iso.ts): the screen point back through the projection. A tap on a creature's body (drawn standing
+      // up from its foot) is its foot, so the world's hit tests find it.
+      const X = this.isoCam.x + (clientX - rect.left) * (this.canvas.width / Math.max(1, rect.width)) / this.scale;
+      const Y = this.isoCam.y + (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height)) / this.scale;
+      for (const m of this.mobs.mobs) {
+        const I = isoOf(Math.round(m.x), Math.round(m.y)), d = this.vis(m.def);
+        if (Math.abs(X - I.X) <= d.w / 2 + 2 && Y <= I.Y + 2 && Y >= I.Y - d.h) return { x: m.x, y: m.y - d.h / 2 };
+      }
+      return worldOfIso(X, Y);
+    }
     return {
       x: this.cam.x + (clientX - rect.left) * (this.canvas.width / Math.max(1, rect.width)) / this.scale,
       y: this.cam.y + (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height)) / this.scale,
@@ -3751,11 +3769,11 @@ export class TopDownEngine {
     const tg = t.getContext('2d')!;
     g.imageSmoothingEnabled = false;
     const nb = (dx: number, dy: number) => kind(c + dx, r + dy);
-    const rich = paintRichGroundHd(g, k, c, r, hx, hy, nb);
+    const rich = paintFieldTile(g, k, c, r, hx, hy, nb, f) || paintRichGroundHd(g, k, c, r, hx, hy, nb);
     tg.clearRect(0, 0, TILE, TILE);
     if (!rich && !paintRichGround(tg, k, c, r, 0, 0, nb, f)) paintGround(tg, k, c, r, 0, 0, f);
     let edges = !rich;
-    const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n) && !(rich && GRASSY_HD.has(n) && GRASSY_HD.has(k))) { paintEdge(tg, k, n, side, c, r, 0, 0); edges = true; } };
+    const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n) && !(rich && (organic(n) || GRASSY_HD.has(n)))) { paintEdge(tg, k, n, side, c, r, 0, 0); edges = true; } };
     edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
     if (edges) g.drawImage(t, hx, hy, TILE * 2, TILE * 2);
   }
@@ -3786,6 +3804,7 @@ export class TopDownEngine {
 
   private draw(): void {
     this.resize();
+    if (optIso()) { this.drawIso(); return; }
     const c = this.ctx, s = this.scale, cam = this.cam;
     c.imageSmoothingEnabled = false;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -3923,6 +3942,15 @@ export class TopDownEngine {
     }
     this.darkLayer.drawOver(c, { levelId: this.level.id, continent: this.world.continent, surface: this.level === this.world, time: this.time, still: this.still, night: this.level.dark ? 1 : this.darkness }, (x, y) => inView(x, y, 40));
     this.drawFireflies();
+    // The isometric prototype's tavern seen top-down (td-artopt.ts B): the same warm dark and pools of light as iso, so
+    // the two projections are compared on the art, not on the lighting.
+    if (optHdWorld() && this.level.id === 'artopt-tavern') {
+      const L: { x: number; y: number; r: number }[] = [];
+      for (const o of visible) for (const l of o.sprite().lights ?? []) L.push({ x: (o.x + l.x - cam.x) * s, y: (o.y + l.y - cam.y) * s, r: l.r * 3 * s });
+      L.push({ x: (this.player.x - cam.x) * s, y: (this.player.y - 14 - cam.y) * s, r: 72 * s });
+      lightPass(c, this.canvas.width, this.canvas.height, '#3a2c40', L);
+      c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
+    }
     // The weather over the world, under the HUD (td-weather-fx): the dimmed day, the rain, a storm's flash.
     if (this.level === this.world) this.weatherFx.drawScreen(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.frameDt, { still: this.still, low: lowDetail, phone: this.phone, night: this.darkness });
     // The drag joystick: a ring where the thumb landed and a knob under it (screen space).
@@ -4035,7 +4063,15 @@ export class TopDownEngine {
     // The art-direction prototype (td-artopt.ts B/C): the Bone Walker in HD, half a world px a sheet px, feet where its cell's are.
     if (optHdFigures() && m.def.id === 'bone-walker' && envDetail() !== 'low') {
       const hs = hdSkeletonSheet(), S = HD_SKEL, hf = Math.floor(m.t * 6) % 4;
-      c.drawImage(hs, hf * S.w, 0, S.w, S.h, -S.w / 4, d.h - S.h / 2 + 1, S.w / 2, S.h / 2);
+      let row = 0;
+      if (optIso()) {
+        // Isometric: square on, turned a quarter, or from behind; mirrored by the screen's left and right, not the world's.
+        const fc = this.isoFace(m, m.x, m.y);
+        row = !fc.front ? 2 : fc.turned ? 1 : 0;
+        if (m.face < 0) c.scale(-1, 1);
+        if (fc.flip) c.scale(-1, 1);
+      }
+      c.drawImage(hs, hf * S.w, row * S.h, S.w, S.h, -S.w / 4, d.h - S.h / 2 + 1, S.w / 2, S.h / 2);
       c.restore();
       if (m.elite) drawAffixTells(c, m, this.time, this.still);
       return;
@@ -5056,14 +5092,184 @@ export class TopDownEngine {
     c.restore();
   }
 
+  // ── The isometric prototype (td-artopt.ts `iso`, td-iso.ts) ──
+  /** The view in iso px (the world's camera, `cam`, then frames the view's bounding box in world px for the logic). */
+  private isoCam = { x: 0, y: 0, w: 0, h: 0 };
+  private readonly isoChunks = new Map<string, IsoChunk>();
+  /** How many water frames a diamond chunk has (1 dry, 4 liquid), once its first frame is baked. */
+  private readonly isoFrames = new Map<string, number>();
+  private readonly isoFaces = new WeakMap<object, { x: number; y: number; row: number; flip: boolean; turned: boolean; front: boolean }>();
+  /**
+   * Which way a figure faces on screen, from how it last moved: front or back, square on or turned a quarter, and
+   * mirrored when it heads left. Kept while it stands.
+   */
+  private isoFace(o: object, x: number, y: number): { front: boolean; turned: boolean; flip: boolean } {
+    let f = this.isoFaces.get(o);
+    if (!f) { f = { x, y, row: 0, flip: false, turned: false, front: true }; this.isoFaces.set(o, f); return f; }
+    const dx = x - f.x, dy = y - f.y;
+    if (Math.hypot(dx, dy) < .4) return f;
+    f.x = x; f.y = y;
+    // A jump (a visit, a waystone, a respawn) is not a step: keep the facing.
+    if (Math.hypot(dx, dy) > 24) return f;
+    const sx = dx - dy, sy = (dx + dy) / 2;
+    f.front = sy >= -.2 * Math.abs(sx);
+    f.turned = Math.abs(sx) > .45 * Math.abs(sy);
+    f.flip = f.turned && sx < 0;
+    return f;
+  }
+  /** Draw one figure the top-down way, but with its foot where the projection puts it (`cam` shifted for it). */
+  private isoAt(x: number, y: number): void {
+    const rx = Math.round(x), ry = Math.round(y), I = isoOf(rx, ry), s = this.scale;
+    const cx = rx - (I.X - this.isoCam.x), cy = ry - (I.Y - this.isoCam.y);
+    this.cam.x = cx; this.cam.y = cy;
+    this.ctx.setTransform(s, 0, 0, s, -cx * s, -cy * s);
+  }
+  private drawIso(): void {
+    const c = this.ctx, s = this.scale, p = this.player, cw = this.canvas.width, ch = this.canvas.height, ic = this.isoCam;
+    const P = isoOf(Math.round(p.x), Math.round(p.y));
+    ic.w = cw / s; ic.h = ch / s;
+    ic.x = Math.round(P.X - ic.w / 2); ic.y = Math.round(P.Y - up(20) - ic.h / 2);
+    // The world under the view (and a margin below for tall things standing just off the bottom).
+    const cs = [worldOfIso(ic.x, ic.y - 40), worldOfIso(ic.x + ic.w, ic.y - 40), worldOfIso(ic.x, ic.y + ic.h + 120), worldOfIso(ic.x + ic.w, ic.y + ic.h + 120)];
+    const wx0 = Math.min(...cs.map(q => q.x)), wx1 = Math.max(...cs.map(q => q.x)), wy0 = Math.min(...cs.map(q => q.y)), wy1 = Math.max(...cs.map(q => q.y));
+    const worldCam = { x: wx0, y: wy0, w: wx1 - wx0, h: wy1 - wy0 };
+    Object.assign(this.cam, worldCam);
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    c.fillStyle = '#0b0710'; c.fillRect(0, 0, cw, ch);
+    c.imageSmoothingEnabled = false;
+    const toIso = () => c.setTransform(s, 0, 0, s, -ic.x * s, -ic.y * s);
+    toIso();
+    // Ground: the square HD chunks, each resampled once into its diamond.
+    const span = CHUNK * TILE, frame = Math.floor(this.time * 3) % 4, solid = (q: number, r: number) => SOLID_GROUND.has(this.level.ground(q, r));
+    const gx0 = Math.floor(wx0 / span), gx1 = Math.floor(wx1 / span), gy0 = Math.floor(wy0 / span), gy1 = Math.floor(wy1 / span);
+    // Each diamond is baked once (its square source chunk baked first, then let go); a water chunk's later frames one a
+    // draw. The square cache must hold everything one bake needs, and the ring is baked ahead a diamond a draw.
+    this.chunkCap = Math.max(CHUNK_CAP, (gx1 - gx0 + 3) * (gy1 - gy0 + 3) + 6);
+    let fresh = 0;
+    const diamond = (cx: number, cy: number, f: number): IsoChunk | null => {
+      const base = `${this.level.id}:${cx},${cy}`, nf = this.isoFrames.get(base);
+      if (nf !== undefined) {
+        const want = this.isoChunks.get(`${base}:${f % nf}`);
+        if (want) { this.isoChunks.delete(`${base}:${f % nf}`); this.isoChunks.set(`${base}:${f % nf}`, want); return want; }
+        const zero = this.isoChunks.get(`${base}:0`);
+        if (zero && fresh > 0) return zero;
+      }
+      const e = this.chunkAt(cx, cy);
+      const ff = f % e.rows.length;
+      if (!this.bakeRows(e, ff, ff === 0 ? Infinity : performance.now() + 3)) return this.isoChunks.get(`${base}:0`) ?? null;
+      const ich = isoChunk(e.frames[ff]!, cx * span, cy * span, span, 2, solid);
+      fresh++;
+      this.isoFrames.set(base, e.rows.length);
+      this.isoChunks.set(`${base}:${ff}`, ich);
+      while (this.isoChunks.size > ISO_CAP) this.isoChunks.delete(this.isoChunks.keys().next().value!);
+      return ich;
+    };
+    const near = (cx: number, cy: number, pad: number) => {
+      const X0 = cx * span - (cy + 1) * span, X1 = (cx + 1) * span - cy * span, Y0 = (cx + cy) * span / 2, Y1 = Y0 + span;
+      return !(X1 < ic.x - pad || X0 > ic.x + ic.w + pad || Y1 < ic.y - pad || Y0 > ic.y + ic.h + pad);
+    };
+    for (let cy = gy0 - 1; cy <= gy1 + 1; cy++) for (let cx = gx0 - 1; cx <= gx1 + 1; cx++) {
+      if (!near(cx, cy, 0)) continue;
+      const ich = diamond(cx, cy, frame);
+      if (ich) c.drawImage(ich.canvas, ich.X, ich.Y, span * 2, span);
+    }
+    // Bake one diamond of the ring just outside the view ahead of the walk.
+    if (!fresh) outer: for (let cy = gy0 - 1; cy <= gy1 + 1; cy++) for (let cx = gx0 - 1; cx <= gx1 + 1; cx++) {
+      if (near(cx, cy, 0) || !near(cx, cy, span / 2) || this.isoFrames.has(`${this.level.id}:${cx},${cy}`)) continue;
+      diamond(cx, cy, 0);
+      break outer;
+    }
+    this.groundView = null;
+    const lights: { x: number; y: number; r: number; warm?: boolean }[] = [];
+    const lightAt = (X: number, Y: number, r: number, warm?: boolean) => lights.push({ x: (X - ic.x) * s, y: (Y - ic.y) * s, r: r * s, ...(warm === false ? { warm } : {}) });
+    // Soft shadows under everything that stands (a dark 2:1 ellipse).
+    const shadow = (x: number, y: number, r: number) => { const I = isoOf(Math.round(x), Math.round(y)); c.globalAlpha = .28; c.fillStyle = '#10080c'; c.beginPath(); c.ellipse(I.X, I.Y, r, r / 2, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; };
+    for (const m of this.mobs.mobs) shadow(m.x, m.y, 9);
+    if (this.pet) shadow(this.pet.x, this.pet.y, 8);
+    shadow(p.x, p.y, 11);
+    // The aura's pulse on the ground at the Keeper's feet.
+    this.isoAt(p.x, p.y); this.drawGroundFx(); toIso();
+    // Depth-sorted: wall blocks, furniture and trees, creatures, the pet, the Keeper.
+    type It = { d: number; draw: () => void };
+    const items: It[] = [];
+    const pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
+    for (let r = Math.floor(wy0 / TILE); r <= Math.floor(wy1 / TILE); r++) for (let q = Math.floor(wx0 / TILE); q <= Math.floor(wx1 / TILE); q++) {
+      if (!solid(q, r)) continue;
+      const so = !solid(q, r + 1), ea = !solid(q + 1, r);
+      if (!so && !ea && solid(q, r - 1) && solid(q - 1, r)) continue;
+      const I = isoOf(q * TILE + TILE / 2, r * TILE + TILE / 2);
+      if (I.X < ic.x - 40 || I.X > ic.x + ic.w + 40 || I.Y < ic.y - 20 || I.Y > ic.y + ic.h + 80) continue;
+      // Diablo II's cutaway: a wall nearer the camera than the Keeper is cut down to a stub.
+      const cut = q + r > pc + pr + 1;
+      const sp = isoWall(so, ea, cut, q % 3 === 0, r % 3 === 0);
+      items.push({ d: I.Y, draw: () => { toIso(); c.drawImage(sp.img, I.X - sp.ax / 2, I.Y - sp.ay / 2, sp.img.width / 2, sp.img.height / 2); } });
+    }
+    for (const o of this.level.objectsIn(wx0, wy0, wx1, wy1)) {
+      const I = isoOf(o.x, o.y - TILE / 2), ip = o.id ? isoProp(o.id) : null;
+      if (ip) {
+        items.push({ d: I.Y, draw: () => { toIso(); c.drawImage(ip.img, I.X - ip.ax / 2, I.Y - ip.ay / 2, ip.img.width / 2, ip.img.height / 2); } });
+        for (const l of ip.lights ?? []) lightAt(I.X + l.x, I.Y + l.y, l.r);
+        continue;
+      }
+      const sp = o.sprite(), k = sp.k ?? 1, fx = I.X, fy = I.Y + 4;
+      items.push({ d: I.Y, draw: () => {
+        toIso();
+        c.drawImage(sp.img, fx - sp.ax / k, fy - sp.ay / k, sp.img.width / k, sp.img.height / k);
+        const rf = sp.roof;
+        if (rf) {
+          const x0 = fx + rf.x, y0 = fy + rf.y, behind = P.X > x0 && P.X < x0 + rf.img.width / k && P.Y - 30 < y0 + rf.img.height / k && P.Y < fy;
+          c.globalAlpha = behind ? .35 : 1; c.drawImage(rf.img, x0, y0, rf.img.width / k, rf.img.height / k); c.globalAlpha = 1;
+        }
+      } });
+      for (const l of sp.lights ?? []) lightAt(fx + l.x, fy + l.y, l.r * 2.2, l.warm);
+    }
+    const inBox = (x: number, y: number) => x > wx0 && x < wx1 && y > wy0 && y < wy1;
+    for (const m of this.mobs.mobs) if (inBox(m.x, m.y)) items.push({ d: isoOf(m.x, m.y).Y, draw: () => { this.isoAt(m.x, m.y); this.drawMob(m); } });
+    for (const k of this.mobs.minions) if (inBox(k.x, k.y)) items.push({ d: isoOf(k.x, k.y).Y, draw: () => { this.isoAt(k.x, k.y); this.drawRaised(k); } });
+    const pet = this.pet;
+    if (pet && inBox(pet.x, pet.y)) items.push({ d: isoOf(pet.x, pet.y).Y, draw: () => { this.isoAt(pet.x, pet.y); this.drawPet(pet); } });
+    if (this.level === this.world) {
+      for (const k of this.keepers) if (inBox(k.x, k.y)) items.push({ d: isoOf(k.x, k.y).Y, draw: () => { this.isoAt(k.x, k.y); this.drawPerson(k, 'idle'); } });
+      for (const f of this.folk) if (inBox(f.x, f.y)) items.push({ d: isoOf(f.x, f.y).Y, draw: () => { this.isoAt(f.x, f.y); this.drawPerson(f, f.moving ? 'walk' : 'idle'); } });
+    }
+    items.push({ d: P.Y, draw: () => { this.isoAt(p.x, p.y); this.drawPerson(p, p.moving ? 'run' : 'idle'); } });
+    items.sort((a, b) => a.d - b.d);
+    for (const it of items) it.draw();
+    // The aura's motes, Glim, then names and health over the creatures.
+    this.isoAt(p.x, p.y);
+    { const look = this.auraLook(); if (look) { c.save(); c.scale(.5, .5); this.lookAura.air(c, Math.round(p.x) * 2, (Math.round(p.y) - 1) * 2, look); c.restore(); } }
+    this.drawGlim();
+    for (const m of this.mobs.mobs) {
+      if (!inBox(m.x, m.y) || Math.hypot(m.x - p.x, m.y - p.y) > 150) continue;
+      this.isoAt(m.x, m.y);
+      const top = m.y - this.vis(m.def).h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
+      c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
+      c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
+      const label = `${m.def.name} ${m.def.level}`;
+      c.font = '6px "Pixelify Sans", monospace'; c.textAlign = 'center'; c.textBaseline = 'bottom';
+      c.fillStyle = '#1a1014'; c.fillText(label, Math.round(m.x) + 1, Math.round(top) - 1);
+      c.fillStyle = '#f3e7cf'; c.fillText(label, Math.round(m.x), Math.round(top) - 2);
+    }
+    // Indoors: a warm dark, the lamps', the hearth's and the Keeper's own pools of light.
+    if (this.level !== this.world || this.level.dark) {
+      lightAt(P.X, P.Y - 14, 72);
+      lightPass(c, cw, ch, this.level.dark ? '#140e1c' : '#3a2c40', lights);
+    }
+    Object.assign(this.cam, worldCam);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
   // ── The art-direction prototype's HD figures (td-artopt.ts, td-hd-art.ts) ──
   private hdScratch: HTMLCanvasElement | null = null;
   /** The HD Keeper is drawn (B/C, an Ashguard: the one vocation the prototype repainted). */
   private hdKeeper(): boolean { return optHdFigures() && this.mobs.vocation === 'ashguard' && envDetail() !== 'low'; }
   /** The HD Keeper with its feet at (x, y), at `k` (½ on the world: one sheet px is half a world px; 1 on a scratch). */
   private paintHdKeeper(c: CanvasRenderingContext2D, p: Person, x: number, y: number, k: number): void {
-    const sheet = hdKeeperSheet(), K = HD_KEEPER, row = p.dir === 'up' ? 1 : 0, f = hdKeeperFrame(this.time + p.t, p.moving);
-    if (p.dir === 'side' && p.face < 0) {
+    const sheet = hdKeeperSheet(), K = HD_KEEPER, f = hdKeeperFrame(this.time + p.t, p.moving);
+    let row = p.dir === 'up' ? 1 : 0, flip = p.dir === 'side' && p.face < 0;
+    // Isometric: the four sheet rows give six facings (front, back, each turned a quarter, mirrored for the left).
+    if (optIso()) { const fc = this.isoFace(p, p.x, p.y); row = (fc.front ? 0 : 1) + (fc.turned ? 2 : 0); flip = fc.flip; }
+    if (flip) {
       c.save(); c.translate(x, y); c.scale(-1, 1);
       c.drawImage(sheet, f * K.w, row * K.h, K.w, K.h, -K.ax * k, -K.ay * k, K.w * k, K.h * k);
       c.restore();
