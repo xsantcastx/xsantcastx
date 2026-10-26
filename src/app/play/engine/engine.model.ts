@@ -308,7 +308,8 @@ export interface EngineOptions {
   onRekindle?: () => void;
   onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
   /** Protocol 5: post this Keeper's own companions to the party in its area. */
-  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
+  /** `g`: the summons' Shared Bones (%), for the room (`kin`). */
+  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[]; g?: number }) => Promise<boolean>;
   /**
    * Protocol 7 (play/social/world-protocol.ts): a piece of the room's ground was picked here. It has already left this
    * screen; the host asks the room and grants it on a yes, or hands it back (td-engine restoreRoomDrop) on a no.

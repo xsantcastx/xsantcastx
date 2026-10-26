@@ -225,6 +225,8 @@ export function coopEvent(raw, members, host) {
   coopBad();
 }
 const COOP_PAL_KINDS = new Set(['pet', 'beast', 'stampede', 'skel', 'wisp', 'beacon', 'glim']);
+/** A companion's id on its owner's screen (coop-pals cleanPals): what a summon is named by in the room. */
+const KIN_ID = /^[a-z0-9]{1,10}$/;
 /** One companion: its owner-scoped id, kind, type (a pet's id), place, facing, life, and whether it fights. */
 export function coopPal(raw) {
   coopKeys(raw, ['i', 'k', 't', 'x', 'y', 'f', 'h', 'm', 'a']);
@@ -253,11 +255,13 @@ export function coopStatus(raw) {
   return out;
 }
 export function coopHit(raw) {
-  coopKeys(raw, ['i', 'd', 'el', 'c', 's']);
+  coopKeys(raw, ['i', 'd', 'el', 'c', 's', 'k']);
   if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
   const out = { i: raw.i, d: coopInt(raw.d, 1, 100000), el: COOP_TYPES.has(raw.el) ? raw.el : coopBad() };
   if (raw.c !== undefined) { if (typeof raw.c !== 'boolean') coopBad(); if (raw.c) out.c = true; }
   if (raw.s !== undefined) { if (typeof raw.s !== 'string' || !COOP_SKILL.test(raw.s)) coopBad(); out.s = raw.s; }
+  // The room (`kin`): the blow is the claimer's summon's (its companion id); the room checks it holds that summon.
+  if (raw.k !== undefined) { if (typeof raw.k !== 'string' || !KIN_ID.test(raw.k)) coopBad(); out.k = raw.k; }
   return out;
 }
 
@@ -835,6 +839,28 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
    */
   const coopRequest = async (verb, session, req, reply) => {
     if (verb !== 'snap' && verb !== 'hits' && verb !== 'pals') throw fail(404, 'Not found.');
+    // The room hunts each Keeper's summons (room-kin.ts): a screen that says `kin` tells the room its companions list,
+    // party or not, and everyone in the area sees them (their owner's word, relayed). An older screen: the party path.
+    if (verb === 'pals' && rooms.inWorld(session) && rooms.kinOn && session.p10) {
+      consume(session, 'coop-pals', COOP.palsPerSec, 1000);
+      const data = await readCoopBody(req);
+      if (data && typeof data === 'object' && data.kin === 1) {
+        session.lastSeen = now();
+        coopKeys(data, ['area', 'pals', 'kin', 'g']);
+        if (typeof data.area !== 'string' || data.area !== session.player.area) throw fail(409, 'Not in that place.');
+        if (!Array.isArray(data.pals) || data.pals.length > COOP.maxPals) coopBad();
+        if (data.g !== undefined && (!Number.isInteger(data.g) || data.g < 0 || data.g > 100)) coopBad();
+        const pals = data.pals.map(coopPal);
+        if (new Set(pals.map(p => p.i)).size !== pals.length) coopBad();
+        const r = rooms.kin(session, pals, data.g ?? 0);
+        const msg = { type: 'coop-pals', from: session.player.id, area: session.player.area, pals };
+        const to = rooms.areaPeers(session).filter(o => !blocks(o, session) && !blocks(session, o));
+        for (const o of to) if (o.stream) send(o.stream, msg);
+        reply(200, { ok: true, to: to.length, kin: r }); return;
+      }
+      // A screen that does not apply the room's bites: its summons stay its party's pictures, as before.
+      return coopParty(verb, session, data, reply);
+    }
     // Protocol 7: in a world area the room hosts. A Keeper's blows are weighed here; nobody else may host.
     if (verb !== 'pals' && rooms.inWorld(session)) {
       consume(session, `coop-${verb}`, verb === 'snap' ? COOP.snapsPerSec : COOP.hitsPerSec, 1000);
@@ -853,7 +879,11 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     }
     if (!session.coop) throw fail(409, 'Update the game to share creatures.');
     consume(session, `coop-${verb}`, verb === 'snap' ? COOP.snapsPerSec : verb === 'hits' ? COOP.hitsPerSec : COOP.palsPerSec, 1000);
-    const data = await readCoopBody(req);
+    return coopParty(verb, session, await readCoopBody(req), reply);
+  };
+  /** The party's co-op verbs (protocols 4–5), with the body already read. */
+  const coopParty = async (verb, session, data, reply) => {
+    if (!session.coop) throw fail(409, 'Update the game to share creatures.');
     session.lastSeen = now();
     const me = session.player.id;
     const p = session.party ? parties.get(session.party) : null;
@@ -1414,7 +1444,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         sessions.set(token, session);
         reply(201, {
           id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world, ...(session.p8 ? { settles: !!economy } : {}),
-          ...(session.p10 ? { life: rooms.lifeOn(session), credits: rooms.creditsOn(session), allies: rooms.lifeOn(session) && !!rooms.alliesOn } : {}),
+          ...(session.p10 ? { life: rooms.lifeOn(session), credits: rooms.creditsOn(session), allies: rooms.lifeOn(session) && !!rooms.alliesOn, kin: !!rooms.kinOn } : {}),
         });
         publishPlayers();
         friendsHear(uid);

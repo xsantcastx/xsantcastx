@@ -348,6 +348,12 @@ add `al` (the life of the Keepers near) and `ally` events; creatures pick their 
 bundle gains `ally-claims.ts` and `td-threat.ts`: rebuild and deploy with protocol 10's commands below (hearth first,
 then the client). An older client sends no `a`; an older room never says `allies`, so a new client sends none to it.
 
+### Summons on the room (branch `minions`, 2026-10-26 — protocol stays 10)
+Redeploy the hearth from the merged code (no Functions, rules or hosting change). `/join` then says `kin: true` to
+protocol-10 sessions; `/coop/pals` with `kin: 1` feeds the room (`room-kin.ts`) and relays to the whole world area;
+`/coop/hits` accepts `k` (a summon's blow). Older screens never send `kin` and keep the party path. Check after the
+deploy: `/join` carries `kin`, and a Warlock's skeleton is bitten by a room creature (e2e `td-world-kin.spec.ts`).
+
 ### Protocol 10 (M4 of the room-run world, 2026-10-26 — built on `m4`, NOT deployed)
 
 `/health` and `/join` report `protocol: 10`; `/join` adds `life` and `credits` for a protocol-10 client; `/health world`

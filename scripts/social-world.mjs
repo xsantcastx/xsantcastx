@@ -380,6 +380,20 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       collectKills(room);
       return out;
     },
+    /** The room hunts each Keeper's summons (room-kin.ts): the screen tells it its companions list (`/coop/pals` `kin`). */
+    kinOn: enabled && !!M && typeof M.weighKin === 'function',
+    /** A Keeper's summons (its companions, already validated field by field): the room weighs and hunts them. */
+    kin(s, pals, g = 0) {
+      const room = roomOf(s);
+      if (!room?.world?.kin || !room.members.has(s.player.id)) return { ok: [], no: [] };
+      room.world.keeper(keeperOf(s));
+      return room.world.kin(s.player.id, pals, g);
+    },
+    /** The other Keepers in this Keeper's world area (they see its summons). */
+    areaPeers(s) {
+      const room = roomOf(s);
+      return room ? [...room.members.values()].filter(o => o !== s && o.player.id !== s.player.id) : [];
+    },
     /** Protocol 10: the room keeps this Keeper's life. */
     lifeOn: s => !!lifeOf(s),
     /** S5: this room weighs heals, wards and guards on allies (`/world/life` `a`; ally-claims.ts). */

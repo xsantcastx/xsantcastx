@@ -508,6 +508,18 @@ trust once old clients are gone; party-private instances if the shared floors cr
 | M4 tests | `scripts/social-m4.test.mjs` (9, in CI's node line: legality and forged statuses, the room's seconds and immunity, a cast cancelled, the life rules, a death on the room seen by others, refusals over HTTP and protocol-9 shape, two Keepers' stun and fall, XP/Gold once with a lost answer and a replay, a room dying mid-commit, guests and protocol 9); karma `room-status.spec`, `keeper-life.spec`; e2e `e2e/td-world-m4.spec.ts` |
 | M2 tests | `scripts/social-m2.test.mjs` (8: the settle and its commit, precheck/forged/mixed, the crash race, the instant drop and first pick, escrow waits and hand-backs, the party across relog and restart, the save's budget, the REST transaction shapes); `trade-core.test.mjs` (+3: settleTrade, refusals, closeTrade races); karma `trade-flow.spec` (+3), `social-room.spec` (+1), `keeper-budget.spec` (4); e2e `e2e/td-world-m2.spec.ts` |
 
+### Summons on the room (2026-10-26, branch `minions`; protocol stays 10)
+
+| What | Authority |
+|---|---|
+| A summon exists, where it stands | its owner's screen, weighed by the room: only `skel` (life of its own), count ≤ Raise Skeleton's cap at the owner's level (+2 gear), within the leash of the owner by the room's record |
+| Its life | the room's after the first word (≤ its definition at that level; the owner's number only lowers it, or heals it ≤ 25%/s); a bite is the room's, the owner applies it; it falls on the room's word |
+| Who a creature goes for | the room (td-threat `pickKin`): a summon out-threatening the Keeper it holds, or guarding the Keeper it would go for; a Captain's taunt names the Captain |
+| Threat of a summon's blow | the summon's own (`CoopHit.k`), none to its owner |
+| Seeing others' summons | everyone in the world area (relayed owner's word), not only the party |
+
+Handoff: `docs/handoff/minions.md`.
+
 ## 5. Next phase recommended
 
 *(Superseded: Phase 3 is built, §4b.)* **Phase 3, with auth first**: verify Firebase ID tokens on the hearth (one ⚑ redeploy), then friends + whispers +
