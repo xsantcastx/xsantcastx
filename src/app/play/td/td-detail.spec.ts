@@ -1,7 +1,15 @@
-import { DETAIL_KEY, envDetail, lowEndDevice, onEnvDetail, setEnvDetail } from './td-detail';
+import { DETAIL_KEY, autoLowerDetail, envDetail, lowEndDevice, onEnvDetail, setEnvDetail, underTest } from './td-detail';
 
 describe('td-detail (Environment detail)', () => {
+  beforeEach(() => setEnvDetail('normal', false));
   afterEach(() => { try { localStorage.removeItem(DETAIL_KEY); } catch { /* none */ } setEnvDetail('normal', false); });
+
+  it('never guesses or drops the detail under a test harness', () => {
+    expect(underTest()).toBeTrue();
+    expect(lowEndDevice()).toBeFalse();
+    expect(autoLowerDetail()).toBeFalse();
+    expect(envDetail()).toBe('normal');
+  });
 
   it('reads a weak device as low-end, an automated browser never', () => {
     expect(lowEndDevice({ deviceMemory: 4, hardwareConcurrency: 8 })).toBe(true);

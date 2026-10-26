@@ -75,6 +75,11 @@ export function creatureHauntBands(): Map<string, { where: string; band: readonl
       // The night tables (td-phases.ts): who comes out there after dark.
       for (const id of table.types) for (const night of NIGHT_TABLES[id] ?? []) add(night, `${name}, ${land} (at night)`, regionZone(c.id, region));
     }
+    // The lairs (hot spots, td-world): the orc camps' Ashsingers and the rest who gather there.
+    for (const h of c.hotspots ?? []) {
+      const name = c.names[h.region as keyof typeof c.names] ?? c.townName;
+      for (const id of h.types) add(id, `${name}, ${land}`, regionZone(c.id, h.region));
+    }
     // A graveyard's own dead are Bone Walkers (td-world.ts).
     for (const p of c.places) if (p.kind === 'graveyard') add('bone-walker', `${p.name}, ${land}`, graveyardZone(c.id));
     // The Seam Eater rises at each continent's rift, its standing stones, under an eclipse (td-seam.ts).
@@ -85,6 +90,8 @@ export function creatureHauntBands(): Map<string, { where: string; band: readonl
     for (const [ch, entry] of Object.entries(level.legend)) {
       if (entry.mob && level.rows.some(row => row.includes(ch))) add(entry.mob, level.name, level.id);
     }
+    // A floor's lair (td-levels FLOOR_LAIRS): the Bone Priest calling the roll, the rest of the floor's own.
+    for (const id of level.lair?.types ?? []) add(id, level.name, level.id);
   }
   return out;
 }
