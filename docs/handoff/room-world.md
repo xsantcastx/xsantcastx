@@ -110,7 +110,8 @@ a hush or stun in a cast's tell cancels it, burns and bleeds tick on the room. A
 "too far", "out of sight", "blocked" or "shrugs it off" over the creature instead of nothing. Your life is the room's:
 bites, potions and heals still show at once; the room's word follows ~200 ms later; you fall only when the room says so,
 and everyone near sees it ("Bryn has fallen."). Signed in, your Hunting XP and hunt Gold are written by the room, once
-per kill or pile, Ember debt first; your toast still shows at once.
+per kill or pile, Ember debt first, in batches ~20 s apart (sooner on an area change, a fall, leaving, or a big
+pile); your toast, purse and level bar still show it at once.
 
 **How.** `world/room-status.ts` (legality from td-marks/td-skills data, caps, immunity), `world/keeper-life.ts` (the
 room's KeeperLife: guard ceiling from the save, claims, death grace), `world/life-mirror.ts` (the screen's optimistic
@@ -122,7 +123,8 @@ lives, owed credit, `/world/life`, `/world/credit`; `social-server.mjs` `PROTOCO
 `docs/design/online.md` §4d "M4 as built". Deploy: `scripts/social-deployment.md` § Protocol 10.
 
 **Measured.** e2e: a stun on the other screen 82–143 ms after the cast; life claims acked in 5–9 ms locally; a kill's
-XP in the save ~1.3 s after the first blow (≤1.5 s of batching + one transaction).
+XP in the save at the batch window's end (~20 s; shown at once as pending in the level bar and purse). Firestore:
+≤ ~180 credit transactions per hunting player-hour (≤ 720 reads, ~540 writes).
 
 **Tests.** `node --test scripts/social-m4.test.mjs` (9, in CI's node line); karma `room-status.spec`,
 `keeper-life.spec`; e2e `e2e/td-world-m4.spec.ts` (stun seen by both, XP credited once, a death seen by both).

@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { createSocialServer } from './social-server.mjs';
 import { memoryStore } from './social-identity.mjs';
 import { load } from './world-sim-build.mjs';
+import { WORLD_TIMING } from './social-world.mjs';
 
 const sim = load();
 const C = sim.tradeCore;
@@ -174,12 +175,12 @@ test('protocol 10: a room creature fells a Keeper on the room; everyone near see
 });
 
 // ── The room over HTTP: refusals, life, credit ──
-async function room(t, { store = memoryStore(), db = null } = {}) {
+async function room(t, { store = memoryStore(), db = null, timing = { askWaitMs: 1000, creditGapMs: 200, retryMs: 300 } } = {}) {
   let time = T0;
   store.db = db ?? C.memoryDb(store.docs);
   const r = createSocialServer({
     publishMs: 5, now: () => time, store, core: sim,
-    world: { sim, seed: 'room4', fx: true, timing: { tickMs: 0, sleepMs: 60000, askWaitMs: 1000, creditGapMs: 200, retryMs: 300 } },
+    world: { sim, seed: 'room4', fx: true, timing: { tickMs: 0, sleepMs: 60000, ...timing } },
     verify: async token => { const m = /^tok-(\w+)-padding$/.exec(token); if (!m) throw Object.assign(new Error('bad'), { status: 401 }); return { uid: m[1], anonymous: false }; },
   });
   await new Promise(res => r.server.listen(0, '127.0.0.1', res));
@@ -386,4 +387,58 @@ test('protocol 10: a room that dies between a kill and its commit pays nothing t
   assert.equal(guest.credits, false);
   assert.equal(old.credits, undefined);
   assert.equal((await next.post('/world/credit', { c: [{ id: 'k.x.1', n: 5 }] }, old.token)).status, 404);
+});
+
+test('protocol 10: the credit is batched — one transaction per Keeper per window while hunting; paid early on a big pile, another area or a fall', async t => {
+  const store = memoryStore();
+  const real = C.memoryDb(store.docs);
+  let commits = 0;
+  const db = { ...real, async run(fn) { commits++; return real.run(fn); } };
+  // The deploy's own window (WORLD_TIMING): 20 s between transactions, 2.5 s for the screen's ask. (The Gold that
+  // flushes early is set low here so a wolf's pile passes it; the deploy's is 250.)
+  assert.deepEqual([WORLD_TIMING.creditGapMs, WORLD_TIMING.goldFlush], [20000, 250]);
+  const { r, post, join, move, stream, step } = await room(t, { store, db, timing: { goldFlush: 1 } });
+  save(store, 'u5', { xp: 4000, gold: 100 });
+  const a = await join('Aster', { uid: 'u5' });
+  await move(a, OPEN.x, OPEN.y);
+  const sa = await stream(a);
+  await step(3);
+  const w = r.rooms.worldOf(AREA);
+  const fell = async () => {
+    const id = (await post('/world/fx', { quiet: true, lay: { type: 'ash-wolf', dx: 30, dy: 0, calm: true } }, a.token)).body.id;
+    await step(1);
+    w.mobs.applyClaim(w.mobs.mobs.find(x => x.nid === id), 1e9, a.id);
+    await step(2);
+    return sa.until(() => sa.all('coop-snap').flatMap(e => e.ev).find(e => e.k === 'kill' && e.i === id));
+  };
+  // Six kills over ~15 s of hunting: the room owes them all and pays them in ONE transaction at the window's end.
+  const kills = [];
+  for (let i = 0; i < 6; i++) { kills.push(await fell()); for (let k = 0; k < 25; k++) await step(1, 100); }
+  const xp0 = hunting(store, 'u5');
+  assert.equal(commits, 0, 'nothing written inside the window');
+  for (let k = 0; k < 60; k++) await step(1, 100);
+  await sa.until(() => sa.all('world-credit').length >= 1);
+  assert.equal(commits, 1, 'one transaction for six kills');
+  assert.ok(hunting(store, 'u5') > xp0);
+  assert.equal(store.docs.get('users/u5/progress/activity').v.operations.filter(o => o.hlcRevision.deviceId === 'room').length, 1);
+  // A big pile of Gold is paid at once (no waiting out the window).
+  const g = w.groundList().find(x => x.coins > 0);
+  assert.ok(g, 'a wolf left Gold');
+  await move(a, g.x, g.y); await step(1);
+  const take = await post('/world/take', { id: g.id }, a.token);
+  assert.equal(take.body.pays, true);
+  const g0 = purse(store, 'u5');
+  await step(2);
+  await sa.until(() => commits >= 2);
+  assert.equal(commits, 2, 'a pile past the threshold is paid at once');
+  assert.ok(purse(store, 'u5') > g0);
+  // Another kill, then into another area: paid as it leaves, not 20 s later.
+  const before = commits;
+  await fell();
+  await post('/update', { x: 0, y: 0, facing: 1, animation: 'idle', zone: 'x', area: 'infernal-reach', level: 20 }, a.token);
+  await step(2);
+  await sa.until(() => commits > before);
+  assert.equal(commits, before + 1, 'paid on the area change');
+  // Each transaction reads at most 4 documents and writes at most 4 (the ring, activity, hearth with a debt, purse).
+  assert.ok(commits <= 4);
 });

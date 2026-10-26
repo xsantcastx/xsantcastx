@@ -6,8 +6,9 @@
  * guest.
  *   1. A stun: Aster's Shield Bash on a creature of the room — the room lays it, and the creature stands stunned on
  *      BOTH screens and in the room's own record (measured: Aster's cast → Bryn's screen).
- *   2. A kill credits XP once: Aster fells it; the room pays Aster's Hunting XP into the save itself (one operation of
- *      the room's in the activity ledger, never two, however long we wait); Aster's screen never writes it.
+ *   2. A kill credits XP once: Aster fells it; the room pays Aster's Hunting XP into the save itself, at its batch
+ *      window's end (~20 s: the Firestore bill) — one operation of the room's in the activity ledger, never two, however
+ *      long we wait; Aster's screen never writes it, but shows it at once (the level bar's pending XP).
  *   3. A death on the room: Bryn's life is the room's; a pack of the room's creatures fells him; the room says so and
  *      both screens see it (Bryn falls; Aster's log hears it). Measured: the life claims' round trip.
  * The numbers are printed (`# m4 …`); screenshots go to output/world-m4/ (not committed).
@@ -106,7 +107,7 @@ test('M4: a stun from one Keeper holds the creature on both screens; a kill cred
     for (let i = 0; i < 60 && await alive(); i++) { await a.evaluate(id => (window as unknown as Hooks).__tdCoop.target(id), prey); await a.waitForTimeout(300); }
     expect(await alive()).toBe(false);
     const hunted = async () => ((await doc('u1', 'get', ACT))?.v as { progress: { xpByDiscipline: { hunting: number } } }).progress.xpByDiscipline.hunting;
-    await expect.poll(hunted, { timeout: 15000 }).toBeGreaterThan(xp0);
+    await expect.poll(hunted, { timeout: 45000 }).toBeGreaterThan(xp0);
     const paidAt = Date.now();
     const once = await hunted();
     await a.waitForTimeout(4000);
@@ -118,7 +119,7 @@ test('M4: a stun from one Keeper holds the creature on both screens; a kill cred
     // Aster's screen asked; it never wrote the XP itself (its own ledger holds no new hunting operation).
     const local = await a.evaluate(() => JSON.parse(localStorage.getItem('godforge-activity') ?? '{}') as { operations?: { disciplineId: string }[] });
     expect((local.operations ?? []).filter(o => o.disciplineId === 'hunting').length).toBe(0);
-    console.log(`# m4 credit: +${once - xp0} XP in the save ${paidAt - killAt} ms after the first blow (once; one room op)`);
+    console.log(`# m4 credit: +${once - xp0} XP in the save ${paidAt - killAt} ms after the first blow (the 20 s batch window; once; one room op)`);
 
     // ── 3. Bryn falls to the room's creatures: the room's word, both screens ──
     const lb = await life(b);

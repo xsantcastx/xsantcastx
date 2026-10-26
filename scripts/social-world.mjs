@@ -33,8 +33,13 @@ export const WORLD_TIMING = Object.freeze({
   loadMs: 5000,
   /** Protocol 10: an owed credit waits this long for the screen's own number before the room pays its base (ms). */
   askWaitMs: 2500,
-  /** At most one credit transaction per Keeper this often (ms); a save not written yet is tried again after retryMs. */
-  creditGapMs: 1500,
+  /**
+   * At most one credit transaction per Keeper this often while it hunts (ms): the Firestore bill (a hunting Keeper
+   * costs ~180 transactions an hour, not ~2,400). Paid at once instead when it changes area, leaves the world, falls,
+   * loses its stream, the room sleeps, or the Gold owed passes goldFlush (a big pile shows in the purse soon).
+   */
+  creditGapMs: 20000,
+  goldFlush: 250,
   retryMs: 5000,
   /** A batch the store never takes is given up after this long (ms). */
   giveUpMs: 600000,
@@ -138,7 +143,9 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
   const addOwed = (s, item) => {
     const o = owedOf(s);
     if (o.done.has(item.id) || o.items.has(item.id) || o.batch?.items.some(i => i.id === item.id)) return false;
-    o.items.set(item.id, { ...item, ask: item.ask ?? null, at: now() });
+    // The window opens with the first thing owed (a Keeper's first kill waits it out too).
+    if (!o.items.size) o.windowAt = now();
+    o.items.set(item.id, { ...item, ask: item.ask ?? null, at: now(), area: s.player.area });
     return true;
   };
   /** A kill the room just paid out: each fighter that the room credits is owed its XP (the base until it asks). */
@@ -162,13 +169,21 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
     if (!o || o.busy || !credit) return null;
     const t = now();
     if (!force && t < o.retryAt) return null;
+    // Paid now, not at the window's end: another area, a big pile of Gold owed (death, leaving, sleep force it).
+    if (!force && !o.batch && o.items.size) {
+      let gold = 0;
+      for (const i of o.items.values()) if (i.kind === 'gold') gold += M.owed(i.base, i.cap, i.ask);
+      if (gold >= T.goldFlush || [...o.items.values()].some(i => i.area && i.area !== s.player.area)) force = true;
+    }
     if (!o.batch) {
       // Owed so long the store never took it (a save never written): given up.
       for (const [id, i] of o.items) if (t - i.at >= T.giveUpMs) { o.items.delete(id); creditStats.failed++; }
-      if (!o.items.size || (!force && t - o.lastAt < T.creditGapMs)) return null;
+      if (!o.items.size || (!force && t - (o.windowAt ?? t) < T.creditGapMs)) return null;
       const due = [...o.items.values()].filter(i => force || i.ask !== null || t - i.at >= T.askWaitMs).slice(0, 64);
       if (!due.length) return null;
       for (const i of due) o.items.delete(i.id);
+      // What is left (killed a moment ago, its ask still on the way) opens the next window from when it was owed.
+      o.windowAt = o.items.size ? Math.min(...[...o.items.values()].map(i => i.at)) : 0;
       o.batch = { id: `b.${bootId}.${s.uid.slice(0, 12)}.${++o.seq}`, at: t, area: s.player.area,
         items: due.map(i => ({ id: i.id, ...(i.kind === 'xp' ? { xp: M.owed(i.base, i.cap, i.ask) } : { gold: M.owed(i.base, i.cap, i.ask) }) })) };
     }
@@ -181,7 +196,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       // An id whose document is not written yet (its purse, its activity) waits for the next batch.
       const kept = new Set(r.kept ?? []);
       for (const i of b.items) {
-        if (kept.has(i.id)) { o.items.set(i.id, { id: i.id, kind: i.xp ? 'xp' : 'gold', base: i.xp ?? i.gold, cap: i.xp ?? i.gold, ask: i.xp ?? i.gold, at: b.at }); continue; }
+        if (kept.has(i.id)) { o.items.set(i.id, { id: i.id, kind: i.xp ? 'xp' : 'gold', base: i.xp ?? i.gold, cap: i.xp ?? i.gold, ask: i.xp ?? i.gold, at: b.at, area: '' }); continue; }
         o.done.add(i.id); if (o.done.size > 2000) o.done.delete(o.done.values().next().value);
       }
       if (kept.size) o.retryAt = now() + T.retryMs;
@@ -287,6 +302,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
     if (awake && emptySince && t - emptySince >= T.sleepMs) {
       awake = false; emptySince = 0;
       for (const room of [...rooms.values()]) { rooms.delete(room.area); if (room.world?.dirty) void persist(room); }
+      for (const s of seen) if (s.owed) void payOwed(s, true);
       return changed;
     }
     for (const room of [...rooms.values()]) {
@@ -307,7 +323,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       try { w.tick(dt); } catch (e) { log('world tick failed', e); }
       omens(room);
       // Protocol 10: a Keeper at zero past its grace is down (everyone near sees it); the kills' credit is owed.
-      for (const s of room.members.values()) if (lifeOf(s)?.tick(t)) w.downed(s.player.id);
+      for (const s of room.members.values()) if (lifeOf(s)?.tick(t)) { w.downed(s.player.id); if (s.owed) void payOwed(s, true); }
       collectKills(room);
       room.snapAcc += dt * 1000;
       // The ground goes right after the snapshots, never before: the kill that left it reaches each screen first, so
@@ -315,7 +331,8 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       if (room.snapAcc >= T.snapMs) { room.snapAcc = 0; snaps(room); flush(room); }
       if (w.dirty && t - room.savedAt >= T.saveMs) void persist(room);
     }
-    for (const s of seen) if (s.owed) void payOwed(s);
+    // A Keeper whose stream is gone is paid now (it may not come back); the rest on their window.
+    for (const s of seen) if (s.owed) void payOwed(s, !s.stream);
     const spent = performance.now() - t0;
     cost.steps++; cost.ms += spent; cost.maxMs = Math.max(cost.maxMs, spent);
     if (t - cost.at >= 60000) { cost.last = { steps: cost.steps, avgMs: Math.round(cost.ms / Math.max(1, cost.steps) * 1000) / 1000, maxMs: Math.round(cost.maxMs * 1000) / 1000 }; cost.steps = 0; cost.ms = 0; cost.maxMs = 0; cost.at = t; }
