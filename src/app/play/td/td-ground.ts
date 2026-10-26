@@ -11,6 +11,7 @@
  */
 import { SOLID_GROUND, TILE, hash, type Ground } from './td-art';
 import { floorEdge, paintFloor } from './td-floors';
+import { envDetail } from './td-detail';
 
 type Ctx = CanvasRenderingContext2D;
 type Rgb = readonly [number, number, number];
@@ -49,12 +50,13 @@ function clump(put: (x: number, y: number, v: number) => void, cx: number, cy: n
 let grassTex: Uint8Array | null = null, dirtTex: Uint8Array | null = null;
 function grass(): Uint8Array {
   return grassTex ??= texture(11, 2, (put, get) => {
-    const n = 560, pts: [number, number, number, number][] = [];
+    // Calm (owner 2026-10-26, "the environment looks too much"): fewer, softer clumps and a few blades, not a carpet.
+    const n = 300, pts: [number, number, number, number][] = [];
     for (let i = 0; i < n; i++) pts.push([Math.floor(hash(i, 1, 11) * T), Math.floor(hash(i, 2, 11) * T), 1.3 + hash(i, 3, 11) * 1.6, hash(i, 4, 11) < .18 ? -1 : 0]);
     pts.sort((a, b) => a[1] - b[1]);
     for (const [x, y, r, lift] of pts) clump(put, x, y, r, lift);
     // Blades: a lit tip over its stem, poking out of the clumps.
-    for (let i = 0; i < 380; i++) {
+    for (let i = 0; i < 110; i++) {
       const x = Math.floor(hash(i, 5, 11) * T), y = Math.floor(hash(i, 6, 11) * T);
       if (get(x, y) < 2) continue;
       put(x, y, 5); put(x, y + 1, 3);
@@ -69,16 +71,16 @@ function dirt(): Uint8Array {
       const cx = Math.floor(hash(i, 1, 23) * T), cy = Math.floor(hash(i, 2, 23) * T), r = 2 + hash(i, 3, 23) * 4;
       for (let y = -6; y <= 6; y++) for (let x = -7; x <= 7; x++) if (Math.hypot(x, y * 1.4) < r && hash(cx + x, cy + y, 29) < .8) put(cx + x, cy + y, 3);
     }
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 35; i++) {
       const x = Math.floor(hash(i, 4, 23) * T), y = Math.floor(hash(i, 5, 23) * T), len = 2 + Math.floor(hash(i, 6, 23) * 5);
       for (let k = 0; k < len; k++) put(x + k, y, 1);
     }
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 50; i++) {
       const x = Math.floor(hash(i, 7, 23) * T), y = Math.floor(hash(i, 8, 23) * T), big = hash(i, 9, 23) < .3;
       put(x, y, 5); put(x, y + 1, big ? 4 : 1);
       if (big) { put(x + 1, y, 4); put(x + 1, y + 1, 1); put(x, y + 2, 0); put(x + 1, y + 2, 0); } else put(x + 1, y + 1, 1);
     }
-    for (let i = 0; i < 260; i++) { const x = Math.floor(hash(i, 10, 23) * T), y = Math.floor(hash(i, 11, 23) * T); put(x, y, get(x, y) >= 3 ? 4 : 1); }
+    for (let i = 0; i < 90; i++) { const x = Math.floor(hash(i, 10, 23) * T), y = Math.floor(hash(i, 11, 23) * T); put(x, y, get(x, y) >= 3 ? 4 : 1); }
   });
 }
 
@@ -93,13 +95,21 @@ function meadow(x: number, y: number, s: number, salt: number): number {
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + .5) / 16);
 const bayer = (x: number, y: number) => BAYER[((y & 3) << 2) | (x & 3)];
 
-/** The grass ramp index at a world pixel, the meadow's patches dithered in. */
+/**
+ * The calm grass (2026-10-26): the texture's six indices folded onto four quiet tones (no near-black gaps, no
+ * sunlit tips), so the meadow reads as one soft green with a gentle clump texture — close to the old flat grass.
+ */
+const CALM = [1, 2, 2, 3, 3, 4] as const;
+/** The meadow's light and dark patches, sampled once per 4×4 block (it changes over 72 px; per pixel was the bake's cost). */
+let meadowKey = NaN, meadowVal = 0;
+/** The grass ramp index at a world pixel, the meadow's patches gently dithered in. */
 function grassAt(wx: number, wy: number): number {
-  let i = grass()[((wy & MASK) * T) + (wx & MASK)];
-  const m = meadow(wx, wy, 72, 5) * .7 + meadow(wx, wy, 23, 6) * .3;
-  const th = bayer(wx, wy);
-  if (m > .62 && th < (m - .62) * 2.6 && i > 0 && i < 5) i++;
-  else if (m < .36 && th < (.36 - m) * 2.6 && i > 1) i--;
+  let i: number = CALM[grass()[((wy & MASK) * T) + (wx & MASK)]];
+  const key = (wx >> 2) * 65536 + (wy >> 2);
+  if (key !== meadowKey) { meadowKey = key; meadowVal = meadow(wx & ~3, wy & ~3, 72, 5); }
+  const m = meadowVal, th = bayer(wx, wy);
+  if (m > .68 && th < (m - .68) * 2 && i < 4) i++;
+  else if (m < .3 && th < (.3 - m) * 2 && i > 1) i--;
   return i;
 }
 
@@ -120,7 +130,7 @@ const WORN: ReadonlyMap<Ground, readonly Rgb[]> = new Map<Ground, readonly Rgb[]
 /** Is this ground the rich grass (so a dirt tile beside it grows a ragged edge, and its own tufts are not drawn twice)? */
 export const richGrass = (g: Ground) => GRASSY.has(g);
 /** Does the rich painter own the edge between `kind` and `neighbour` (paintEdge should leave it)? */
-export function richEdge(kind: Ground, neighbour: Ground): boolean { return (WORN.has(kind) && GRASSY.has(neighbour)) || floorEdge(kind, neighbour); }
+export function richEdge(kind: Ground, neighbour: Ground): boolean { return envDetail() !== 'low' && ((WORN.has(kind) && GRASSY.has(neighbour)) || floorEdge(kind, neighbour)); }
 
 let scratch: ImageData | null = null;
 const put = (d: Uint8ClampedArray, k: number, rgb: Rgb) => { d[k * 4] = rgb[0]; d[k * 4 + 1] = rgb[1]; d[k * 4 + 2] = rgb[2]; d[k * 4 + 3] = 255; };
@@ -130,6 +140,8 @@ const put = (d: Uint8ClampedArray, k: number, rgb: Rgb) => { d[k * 4] = rgb[0]; 
  * tile's ground. Returns false for any other ground (the old painter keeps it).
  */
 export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, nb: (dx: number, dy: number) => Ground, frame = 0): boolean {
+  // Environment detail Low (td-detail.ts): the old flat painters, the cheapest bake.
+  if (envDetail() === 'low') return false;
   // Boards, rugs, inside walls, rock faces and water (stage 4, td-floors.ts).
   if (paintFloor(c, kind, tx, ty, ox, oy, nb, frame)) return true;
   const worn = WORN.get(kind) ?? (kind === 'cave' ? RGB.cave : null), lush = GRASSY.get(kind);
@@ -141,7 +153,8 @@ export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox
     let grassRgb: readonly Rgb[] = RGB.grass;
     const g = (dx: number, dy: number) => { const k = GRASSY.get(nb(dx, dy)); if (k) grassRgb = k; return !!k && kind !== 'cave'; };
     const n = g(0, -1), s = g(0, 1), w = g(-1, 0), e = g(1, 0), nw = g(-1, -1), ne = g(1, -1), sw = g(-1, 1), se = g(1, 1);
-    const reach = (a: number, salt: number) => 1.2 + meadow(a, salt, 5, 41) * 3.4 + (hash(a, salt, 43) < .12 ? 2 : 0);
+    // Calm road edges: a soft, gently wavering line (no spikes of grass reaching across).
+    const reach = (a: number, salt: number) => 1.4 + meadow(a, salt, 7, 41) * 1.6;
     const dirtT = dirt();
     const idx = new Int8Array(TILE * TILE);
     for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
@@ -153,7 +166,7 @@ export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox
       else if (e && TILE - 1 - x < reach(wy, wx0 + TILE + 7)) grassy = true;
       else {
         // Corners: a round tuft where only the diagonal is grass.
-        const cr = (cx: number, cy: number) => Math.hypot(x + .5 - cx, y + .5 - cy) < 2.2 + meadow(wx, wy, 4, 47) * 2.4;
+        const cr = (cx: number, cy: number) => Math.hypot(x + .5 - cx, y + .5 - cy) < 3;
         if ((nw && !n && !w && cr(0, 0)) || (ne && !n && !e && cr(TILE, 0)) || (sw && !s && !w && cr(0, TILE)) || (se && !s && !e && cr(TILE, TILE))) grassy = true;
       }
       idx[y * TILE + x] = grassy ? -1 - grassAt(wx, wy) : dirtT[((wy & MASK) * T) + (wx & MASK)];
@@ -197,10 +210,12 @@ export function paintRichGround(c: Ctx, kind: Ground, tx: number, ty: number, ox
     return true;
   }
   // Flowers: scattered over every meadow (thicker on a flower bed), each a tiny five-pixel bloom with its own shade.
-  const blooms = kind === 'flowers' ? 3 + Math.floor(hash(tx, ty, 70) * 3) : hash(tx, ty, 71) < .22 ? 1 + (hash(tx, ty, 72) < .25 ? 1 : 0) : 0;
+  // Calm (a little less than the old world): a flower bed's tile holds one bloom about half the time; open grass only the
+  // odd one.
+  const blooms = kind === 'flowers' ? (hash(tx, ty, 70) < .5 ? 1 : 0) : hash(tx, ty, 71) < .02 ? 1 : 0;
   for (let i = 0; i < blooms; i++) flower(c, ox + 1 + Math.floor(hash(tx, ty, 73 + i) * 13), oy + 1 + Math.floor(hash(tx, ty, 80 + i) * 12), Math.floor(hash(tx, ty, 87 + i) * FLOWERS.length));
   // Now and then a little grey stone, shaded, half in the grass.
-  if (hash(tx, ty, 95) < .045) stone(c, ox + 3 + Math.floor(hash(tx, ty, 96) * 8), oy + 4 + Math.floor(hash(tx, ty, 97) * 7), hash(tx, ty, 98) < .4 ? 4 : 3, false);
+  if (hash(tx, ty, 95) < .012) stone(c, ox + 3 + Math.floor(hash(tx, ty, 96) * 8), oy + 4 + Math.floor(hash(tx, ty, 97) * 7), hash(tx, ty, 98) < .4 ? 4 : 3, false);
   return true;
 }
 
@@ -210,7 +225,7 @@ function rect(c: Ctx, x: number, y: number, w: number, h: number, col: string): 
 function wornExtras(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number): void {
   const r = (n: number) => hash(tx, ty, n);
   const at = (a: number, b: number, span = 9) => [ox + 3 + Math.floor(r(a) * span), oy + 4 + Math.floor(r(b) * 8)] as const;
-  if (kind === 'dirt') { if (r(61) < .22) { const [x, y] = at(62, 63); stone(c, x, y, r(64) < .5 ? 2 : 3, true); } return; }
+  if (kind === 'dirt') { if (r(61) < .06) { const [x, y] = at(62, 63); stone(c, x, y, r(64) < .5 ? 2 : 3, true); } return; }
   if (kind === 'sand') {
     if (r(61) < .1) { const [x, y] = at(62, 63); stone(c, x, y, 2, true, SAND_RAMP[0]); }
     if (r(65) < .08) { const [x, y] = at(66, 67); rect(c, x, y, 2, 1, '#fff4e0'); rect(c, x, y + 1, 2, 1, '#d8b8a0'); rect(c, x + 2, y + 1, 1, 1, SAND_RAMP[1]); }

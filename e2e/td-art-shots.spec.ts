@@ -22,6 +22,8 @@ type Zones = { to(c: number, r: number): boolean; foe(type: string, level: numbe
 const zones = (page: Page, fn: (z: Zones) => unknown) => page.evaluate(f => new Function('z', `return (${f})(z)`)((window as unknown as { __tdZones: Zones }).__tdZones), fn.toString());
 
 const shots = PREFIX ? test.describe : test.describe.skip;
+// TD_DETAIL=low|normal: the Environment detail setting (play/td/td-detail.ts) for the photographs.
+if (process.env['TD_DETAIL']) test.beforeEach(async ({ page }) => { await page.addInitScript(d => { try { localStorage.setItem('eclipse-td-detail', d); } catch { /* none */ } }, process.env['TD_DETAIL']!); });
 for (const size of SIZES) {
   shots(`art shots (${size.name})`, () => {
     test.use(size.use);
