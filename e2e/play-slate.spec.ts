@@ -164,11 +164,11 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       expect(await upgrades(page)).toBe(built);
     });
 
-    test('Kael binds the second face at the Rune Forge: the Slate gains the map and Pim\'s bounties', async ({ page }) => {
+    test('Kael binds the second face at his anvil: the Slate gains the map and Pim\'s bounties', async ({ page }) => {
       mkdirSync(SHOTS, { recursive: true });
       await page.setViewportSize(size);
       await seed(page, { ...purse(START), ...bag({ 'mirror-slate': 1, glowcap: 6, 'slag-fragment': 12, 'obsidian-block': 4 }) });
-      await openPlay(page, '?at=runes');
+      await openPlay(page, '?at=crafting');
       await expect(placePanel(page)).toBeVisible();
       const kael = placePanel(page).locator('[data-slate-counter="kael"]');
       await expect(kael).toContainText('wake its second face');

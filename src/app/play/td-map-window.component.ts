@@ -16,7 +16,7 @@ export function pinCat(pin: TdMapPin): PinCat {
   return pin.kind;
 }
 /** "ship to pyrehold" → "Ship To Pyrehold" (the HUD's own titleCase). */
-function titleCase(label: string): string { return label.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+function titleCase(label: string): string { return label.toLowerCase().replace(/(^|[^\w'])(\w)/g, (_m, p: string, c: string) => p + c.toUpperCase()); }
 
 const MAX_ZOOM = 8;
 const LEGEND: readonly PinCat[] = ['stall', 'npc', 'quest', 'hearth', 'dungeon', 'way', 'ship', 'harbour'];

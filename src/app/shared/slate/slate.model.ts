@@ -48,7 +48,7 @@ export const SLATE_TABLE_GAMES: readonly string[] = SLATE_TABLES.map(t => t.game
 
 /** The stations whose panel shows Lune's offer (her own counter and her four tables). */
 export const CROUPIER_STATIONS: readonly string[] = ['gambler', ...SLATE_TABLE_GAMES];
-/** Kael's station: the Rune Forge in the Basalt Seamworks. */
+/** Kael's station: Kael's Anvil in the Basalt Seamworks (the Rune Forge is gone; canon §6.2). */
 export const KAEL_STATION = 'crafting';
 
 /**

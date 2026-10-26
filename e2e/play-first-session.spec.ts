@@ -6,7 +6,7 @@
  * nothing but the HUD's goal line ("Goal n of 4" + "Show me") through the four
  * first goals: buy a Homestead building, forge AND equip the Basalt Edge,
  * defeat a Rivet Maw with it, dig in the Ember Delve. When all four are done
- * the line is gone, and the Crafting Bench has something in "Ready now" made
+ * the line is gone, and Kael's Anvil has something in "Ready now" made
  * from what those goals left in the satchel.
  *
  * The audit that produced this (docs/handoff/first-session-audit.md) found the
@@ -161,7 +161,7 @@ test.describe('First session, played', () => {
     }
     mark('goal 4, first Delve dig (all four done)');
 
-    // ── The Crafting Bench: something is ready now, from what the goals left behind. ──
+    // ── Kael's Anvil: something is ready now, from what the goals left behind. ──
     await page.waitForTimeout(2500); // the debounced Delve write lands before the navigation
     await openPlay(page, '?at=crafting');
     await expect(panel(page).locator('.cb-hero')).toBeVisible({ timeout: 15000 });
@@ -170,34 +170,18 @@ test.describe('First session, played', () => {
     await expect(readyTab.locator('.tab__badge')).toHaveText(/[1-9]/);
     await expect(panel(page).locator('.cb-hero .dh__name')).toHaveText('Torch');
     await expect(panel(page).locator('.cb-hero .ab__btn')).not.toHaveAttribute('aria-disabled', 'true');
-    mark('Crafting Bench, Torch ready now');
+    mark("Kael's Anvil, Torch ready now");
 
-    // ── The Rune Forge: not yet (the purse is far short of a strike)… ──
+    // ── No Rune Forge any more (runes drop only from monsters, canon §6.2): a full purse brings no "next step". ──
     await page.keyboard.press('Escape');
     await expect(panel(page)).toBeHidden({ timeout: 10000 });
     await expect(guide(page)).toBeHidden();
-
-    // …then the purse first covers a strike (the Gold is topped up from a page that
-    // runs no app code, so nothing flushes over it), and one "next step" line appears.
     await page.waitForTimeout(1500);
     await page.goto('/robots.txt');
     await page.evaluate(() => {
       const economy = JSON.parse(localStorage.getItem('godforge-economy') ?? '{}');
       localStorage.setItem('godforge-economy', JSON.stringify({ ...economy, gold: 5000 }));
     });
-    await openPlay(page);
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
-    await expect(guide(page)).toHaveAttribute('data-goal', 'rune', { timeout: 10000 });
-    await expect(guide(page)).toContainText('Next step');
-    await expect(guide(page)).toContainText('Rune Forge');
-    await showMe(page); // walks to the Rune Forge and opens it
-    await expect(panel(page)).toBeVisible({ timeout: 30000 });
-    await expect(page).toHaveURL(/at=runes/);
-    await expect(guide(page)).toBeHidden();
-    // Once: a reload with the same purse does not bring it back.
-    await page.keyboard.press('Escape');
-    await expect(panel(page)).toBeHidden({ timeout: 10000 });
-    await page.waitForTimeout(500);
     await openPlay(page);
     await page.waitForTimeout(1000);
     await expect(guide(page)).toBeHidden();

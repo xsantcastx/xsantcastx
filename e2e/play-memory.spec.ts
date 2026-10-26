@@ -57,13 +57,13 @@ suite('/play memory across place open/close', () => {
 
   const scenes: { town: string; stations: RegExp[] }[] = PROBE
     ? [
-        { town: 'infernal', stations: [/Crafting Bench/, /Rune Forge/, /Enchanting Table/, /The Vault/, /Material Vendor/] },
+        { town: 'infernal', stations: [/Kael's Anvil/, /Charms and Brews/i, /Enchanting Table/, /The Vault/, /General Store/] },
         { town: 'luminous', stations: [/The Market/] },
         { town: 'celestial', stations: [/The Codex/] },
         { town: 'umbral', stations: [/The Gambler/] },
         { town: 'verdant', stations: [/The Sanctum/] },
       ]
-    : [{ town: 'infernal', stations: [/Crafting Bench/, /Rune Forge/, /Enchanting Table/, /The Vault/] }];
+    : [{ town: 'infernal', stations: [/Kael's Anvil/, /Charms and Brews/i, /Enchanting Table/, /The Vault/] }];
 
   for (const scene of scenes) {
     test(`${scene.town}: 20 open/close cycles stay flat`, async ({ page, browserName }) => {
