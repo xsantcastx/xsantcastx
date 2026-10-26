@@ -15,6 +15,15 @@ Find files via `docs/agents/SYSTEMS.md` before searching.
 Everything needs meaning (source, use, lore, visible) — `npm run -s check:meaning`. Terraria is the art/feel reference.
 Gold only, never real money. Stations: one plain primary action. Phones: ≥44px, nothing over the centre 50%.
 Lore is pre-approved: write it, ship it, log it in `docs/world/lore-addendum.md` ("shipped — owner reviews in play").
+**Studio roles** (owner, 2026-10-27). Three owners hold the quality bar, each with a role file in `~/.claude/agents/`:
+- **Story:** the Dungeon Master (`dungeon-master`).
+- **Look and feel:** the Art & UX Director (`art-ux-director`).
+- **Consistent behaviour:** the QA Lead (`qa-lead`).
+
+What every builder does:
+- **Anything a player sees.** Follow `docs/design/ui-system.md` (spacing, type, tokens, frames, phone rules). Commit before/after screenshots at 1280×800 and 390×844 under `docs/handoff/<branch>/`. The coordinator has the Director review it before merging.
+- **Any new item kind or player verb.** Extend `docs/design/verb-matrix.md` and its tests in the same branch. A thing a player expects to work (put food on a hotkey, drop a rune, sell a fish) must work the same way as its siblings.
+
 **The Dungeon Master owns the story** (owner rule, 2026-10-22). Before writing any quest, NPC, dialogue, unique, set,
 zone or lore, read `docs/world/canon.md` (the canon bible) and `docs/world/campaign.md` (the arc and the "next to
 build" queue). Build quests from that queue, and reuse canon names, motives and planted clues, never inventing new
