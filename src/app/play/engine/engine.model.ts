@@ -1,4 +1,5 @@
 import type { SpriteEntry } from '../../shared/art/sprite-manifest.generated';
+import type { CombatCue } from '../../shared/sound/combat-cues';
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
@@ -148,7 +149,7 @@ export interface SeekAnswer {
 }
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' } | { kind: 'seam' };
-export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
+export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;

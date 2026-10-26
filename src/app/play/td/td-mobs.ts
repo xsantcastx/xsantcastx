@@ -44,6 +44,7 @@ import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondS
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
 import { BLEED_MOVING, abilitiesOf, FL_AB0, FL_AB1, FL_AURA_OFF, FL_HIDDEN, FL_WARDED, KEEPER_CC_IMMUNE, KEEPER_ROOT_MAX, KEEP_WALKING, SPORE_WEAKEN, T as ATILE, TRUE_LIGHT_CUT, castable, decodeStatus, encodeStatus, tierCd, type AbilityDef, type KeeperStatus, type StatusLay, type TellTone } from './td-abilities';
+import { biteCueOf, bitePitch, skillKit, type KeeperAnim } from './td-skill-kit';
 import { PACK_AURA_REACH, PACK_PULSE, PACK_PULSE_TYPE, PACK_STRIP_SECS, fixedAura, halvedBy, landOf, packAuraFx, packAuraLevel, packAuraPool, type PackAuraFx, type PackAuraId } from './td-pack-aura';
 
 export interface MobDef {
@@ -1962,6 +1963,8 @@ export interface Mob {
   t: number;
   cd: number;
   hit: number;
+  /** S3: when (MobSystem.now) it last bit a Keeper — the drawn lunge and squash read it. */
+  lungeAt?: number;
   wander: { x: number; y: number } | null;
   wait: number;
   /** Seconds until its next shot (a ranged creature). */
@@ -2329,8 +2332,12 @@ export interface Effect {
     // called, the stampede's dust, thorns breaking the ground, a trap set and sprung, Rootwalk's moss.
     | 'arrow-hit' | 'bleed' | 'loose' | 'command' | 'wild-call' | 'trample' | 'snare-rise' | 'trap-set' | 'trap-spring' | 'rootwalk'
     // Sight (td-sight.ts): a shot breaking on a wall — a puff of grit in the shot's own colour (`el`).
-    | 'puff';
+    | 'puff'
+    // S3 (skills-100.md §0.6): every hit's 2–3 frame impact spark in its element's colour (`c`).
+    | 'impact';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
+  /** An impact's colour (DAMAGE_COLORS of the blow's element). */
+  c?: string;
   /** A pulse's or a wave's element: the aura or spell that did the work (a wave is ember unless it says). */
   el?: 'ember' | 'life' | 'shadow' | 'bone' | 'brass' | 'lamp';
   /** A blade's arc: where it aims (radians) and how wide it sweeps (degrees). */
@@ -2835,6 +2842,30 @@ export class MobSystem {
   private kills = 0;
   private readonly deadUntil = new Map<string, number>();
   private clock = 0;
+  /** The fight's clock (seconds): the drawn lunge of a biting creature reads it. */
+  get now(): number { return this.clock; }
+  /**
+   * S3 (td-skill-kit.ts): the cues the fight asks for, for the engine to drain each frame (to the sound director), and
+   * the Keeper's animation its last cast asked for. Capped, so a world nobody drains (the room) never piles them up.
+   */
+  readonly cues: { cue: string; pitch: number }[] = [];
+  keeperAnim: KeeperAnim | null = null;
+  /** Ask for a cue (dropped past 24 undrained: the room's world, a hidden tab). */
+  sfxCue(cue: string | null, pitch = 0): void { if (cue && this.cues.length < 24) this.cues.push({ cue, pitch }); }
+  /** A skill went off: its cast cue and the Keeper's animation (td-skill-kit). */
+  private castFx(id: SkillId): void {
+    const k = skillKit(id);
+    this.sfxCue(k.cast, k.pitch);
+    this.keeperAnim = k.anim;
+  }
+  /** A blow of `src` landed on `foe`: its hit cue and the impact spark in its element's colour (a crit's white outline is 'crit'). */
+  private hitFx(foe: Mob, src: SkillId | null, crit: boolean): void {
+    const k = skillKit(src ?? this.basicId());
+    this.sfxCue(k.hit, k.pitch);
+    if (this.effects.length < 160) this.effects.push({ kind: 'impact', x: foe.x + (Math.random() - .5) * 4, y: foe.y - foe.def.h / 2, age: 0, life: crit ? .2 : .14, dir: crit ? 2 : 1, c: DAMAGE_COLORS[k.el] });
+  }
+  /** This calling's basic attack (the row a bare blow is). */
+  private basicId(): SkillId { return this.melee ? 'watch-blade' : this.lamp ? 'kindle' : this.thorn ? 'thorn-shot' : 'ember-bolt'; }
   /** Seconds this system has run (the corpses' clock). */
   get age(): number { return this.clock; }
   /**
@@ -3916,6 +3947,7 @@ export class MobSystem {
     this.killSrc = src;
     const dealt = this.hurtMob(foe, dmg, color, crit);
     this.killSrc = null; this.fireBlow = false;
+    if (dealt > 0) this.hitFx(foe, src, crit);
     if (was && dealt > 0 && src) this.markHit(foe, src, raw, dealt);
     return dealt;
   }
@@ -4224,6 +4256,8 @@ export class MobSystem {
    */
   private biteKeeper(raw: number, type: DamageType = 'physical', from?: Mob, lv?: number): void {
     const p = this.host.player();
+    // S3: its family's bite, and the lunge the drawing shows (a creature's blow on a member arrives here too).
+    if (from && raw > 0) { from.lungeAt = this.clock; this.sfxCue(biteCueOf(from.def.id), bitePitch(from.def.h)); }
     // The level gap (td-zones LEVEL_GAP): a creature above the Keeper's level strikes far harder; never softer below it.
     const atk = lv ?? from?.def.level;
     if (this.levelGap && atk !== undefined && raw > 0) raw *= gapHurt(levelGap(this.keeperLevel, atk));
@@ -4683,7 +4717,7 @@ export class MobSystem {
   private castBody(id: SkillId): ReturnType<MobSystem['useAbility']> {
     const was = this.src;
     this.src = id; this.lastCast = id;
-    try { return this.castOnce(id); } finally { this.src = was; }
+    try { const why = this.castOnce(id); if (!why) this.castFx(id); return why; } finally { this.src = was; }
   }
   private castOnce(id: SkillId): ReturnType<MobSystem['useAbility']> {
     const p = this.host.player();
