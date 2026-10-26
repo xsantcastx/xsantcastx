@@ -18,6 +18,10 @@ import { enterAs, newContext, startHearth, type Hearth } from './hearth-helpers'
 import { ERA } from './play-helpers';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
+import { LANTERN_SKILLS } from '../src/app/play/td/td-lantern-skills';
+
+/** Hearthlight at rank 1 for a level-20 Lanternwright: its heal × the level's lift (td-mobs HEAL_PER_LEVEL 3%). */
+const HEARTHLIGHT_20 = Math.round(LANTERN_SKILLS['hearthlight'].vars['heal'] * (1 + .03 * 20));
 
 let hearth: Hearth;
 test.beforeAll(async ({}, info) => {
@@ -77,6 +81,11 @@ test('S5: a healer heals her party mate and both see it; a tank holds the room\'
     await expect.poll(async () => (await life(b)).room?.h ?? 0, { timeout: 8000 }).toBeGreaterThan(hurtAt);
     const seenAt = await b.evaluate(() => Date.now());
     await expect.poll(async () => { const x = (await allies(a)).allies[0]; return x?.h ?? 0; }, { timeout: 5000 }).toBeGreaterThan(hurtAt);
+    // The whole heal lands on the room (its three ticks over 3 s), not a sliver: at least its computed amount, unless
+    // the room's own bounds (the target's most life, 60% of it a second from all healers) say less.
+    const due = Math.min(HEARTHLIGHT_20, lb.room!.m - hurtAt);
+    await expect.poll(async () => (await life(b)).room!.h - hurtAt, { timeout: 8000 }).toBeGreaterThanOrEqual(due - 1);
+    expect((await allies(b)).healed).toBeGreaterThanOrEqual(due - 1);
     await shot(a, 'aster-heals-bryn'); await shot(b, 'bryn-healed');
     console.log(`# s5 heal: Aster's cast → Bryn healed on the room ≤ ${seenAt - castAt} ms; healed ${(await allies(b)).healed}, sent ${(await allies(a)).sent}`);
 

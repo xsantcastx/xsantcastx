@@ -715,3 +715,37 @@ test('summons: an older screen (no kin) keeps the party path; the room never bit
   await step(2);
   assert.equal((await post('/coop/pals', { area: AREA, pals: [skel('k1', OPEN.x + 10, OPEN.y)] }, a.token)).status, 409);
 });
+
+test('S5: online heals land their real amount — Hearthlight\'s ticks, Hearthsong\'s pulses, the Circle — up to the bounds', () => {
+  const t = { now: T0 };
+  // A Lanternwright (level 45: Hearthsong is her row 42) and her tank at 40% of 260 (the e2e's tank).
+  const lives = new Map([['tank', lifeOf(260)], ['tank2', lifeOf(260)]]);
+  const w = world('ally-real', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'heal', x: OPEN.x, y: OPEN.y, level: 45 });
+  w.keeper({ id: 'heal2', x: OPEN.x - 16, y: OPEN.y, level: 45 });
+  w.keeper({ id: 'tank', x: OPEN.x + 3 * 16, y: OPEN.y, level: 20 });
+  w.keeper({ id: 'tank2', x: OPEN.x + 2 * 16, y: OPEN.y, level: 20 });
+  const tank = lives.get('tank');
+  tank.hp = 104;
+  // Hearthlight (rank 1, ×1.6 at level 20 = 48): three ticks of 16 a second apart — every point lands.
+  for (let i = 0; i < 3; i++) { assert.deepEqual(w.allies('heal', [{ k: 'heal', s: 'hearthlight', to: 'tank', n: 16 }]), [16]); t.now += 1000; }
+  assert.equal(tank.hp, 152);
+  // Hearthsong: 3% of his life + 20 (≈28) every half second for 4 s — every pulse whole.
+  for (let i = 0; i < 8 && tank.hp < 250; i++) { const before = tank.hp; const [n] = w.allies('heal', [{ k: 'heal', s: 'hearthsong', to: 'tank', n: 28 }]); assert.equal(n, Math.min(28, 260 - before)); t.now += 500; }
+  // The Hearth Circle's tick (4 × 1.6 ≈ 6) lands as well; at his most, nothing more moves.
+  tank.hp = 200;
+  assert.deepEqual(w.allies('heal', [{ k: 'heal', s: 'hearth-circle', to: 'tank', n: 6 }]), [6]);
+  tank.hp = 260;
+  assert.deepEqual(w.allies('heal', [{ k: 'heal', s: 'hearthlight', to: 'tank', n: 16 }]), [0]);
+  // The bounds: a target takes at most 60% of its most a second (over the 3 s window) from all healers together…
+  t.now += 5000;
+  const t2 = lives.get('tank2');
+  t2.hp = 1;
+  let got = 0;
+  // (Kept near empty, so its most life never stops a heal first.)
+  for (let i = 0; i < 6; i++) for (const h of ['heal', 'heal2']) { t2.hp = 1; const [n] = w.allies(h, [{ k: 'heal', s: 'hearthsong', to: 'tank2', n: 100 }]); got += typeof n === 'number' ? n : 0; }
+  assert.equal(got, Math.round(260 * .6 * 3), `the target's share (${got})`);
+  // …and a healer gives at most 80 + 40 × level a second over the window (level 20: 880/s).
+  assert.equal(allyHealBudget(20), 880);
+});
