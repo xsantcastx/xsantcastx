@@ -24,7 +24,7 @@ import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } fro
 import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
-import { autoLowerDetail, envDetail, onEnvDetail } from './td-detail';
+import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
@@ -820,7 +820,7 @@ export class TopDownEngine {
   private watchFrames(dtMs: number): void {
     const w = this.slowWatch;
     if (w.done || document.hidden) return;
-    if (this.perf && !(window as unknown as { __tdAutoDetail?: boolean }).__tdAutoDetail) { w.done = true; return; }
+    if (underTest()) { w.done = true; return; }
     w.t += dtMs;
     if (w.t < 8000) return;
     w.n++; w.sum += dtMs;
