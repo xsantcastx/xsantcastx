@@ -442,3 +442,24 @@ test('protocol 10: the credit is batched — one transaction per Keeper per wind
   // Each transaction reads at most 4 documents and writes at most 4 (the ring, activity, hearth with a debt, purse).
   assert.ok(commits <= 4);
 });
+
+test('protocol 10 guard: the save ceiling counts what the HUD counts — runes, Socket Words, packed saves (2026-10-26 "261 life")', () => {
+  const rec = (id, slot, over = {}) => ({
+    id, definitionId: `artifact:${id}`, kind: 'instance', category: 'artifacts', tags: ['artifact'], rarity: 'common', soulbound: false,
+    acquiredAt: new Date(T0 - 1000).toISOString(), revision: { hlc: T0 - 1000, deviceId: 'dev', sequence: 1 }, source: 'inventory',
+    name: id, type: 'artifact', stats: { life: 40, defense: 10 }, itemLevel: 30, sellValue: 40, location: { kind: 'equipped', slotId: slot }, ...over,
+  });
+  const ledger = records => ({ version: 2, records, tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: T0, legacyBackup: null, era: C.INVENTORY_ERA });
+  const activity = { v: { progress: { xpByDiscipline: { hunting: 0 } } }, updatedAt: '' };
+  const look = { v: { vocation: 'ashguard', stats: { vit: 20, ene: 0, spi: 0, agi: 0 } }, updatedAt: '' };
+  const plain = ledger([rec('helm', 'head'), rec('coat', 'chest')]);
+  const runed = ledger([rec('helm', 'head'), rec('coat', 'chest', { sockets: ['ember', 'ember'] })]);
+  const a = sim.saveGuard(1, look, { v: plain, updatedAt: '' });
+  const b = sim.saveGuard(1, look, { v: C.packInventory(runed), updatedAt: '' });
+  // Worn life and Defense are read from the records (the same parser the game loads with), packed or not.
+  assert.equal(a.max, sim.saveGuard(1, look, { v: C.packInventory(plain), updatedAt: '' }).max);
+  assert.ok(a.max >= Math.round(100 * 1.3) + 20 * 6 + 80, `worn life counted: ${a.max}`);
+  // Runes set in an armour well ward against their element: the room's ceiling carries it (it did not before).
+  assert.ok(b.resists.fire > a.resists.fire, `armour runes counted: ${a.resists.fire} → ${b.resists.fire}`);
+  assert.equal(sim.keeperBudget({ activity, look, inventory: { v: runed, updatedAt: '' } }).guard.max, sim.slackGuard(b).max);
+});

@@ -340,6 +340,14 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
 
+### Protocol 10 hotfix — the life ceiling (2026-10-26, branch `life`)
+
+Same protocol, same command as below. The room's save ceiling (world/keeper-budget saveGuard) now reads the save
+through td/keeper-kit `keeperFight`, the function the HUD's orb reads: runes in wells, Socket Words, armour wards and
+milestone passives count (before, only the stored rolls did, and a socketed Keeper's life stopped near half its orb).
+The bundle gains inventory-ops and the socket modules (~+136 KB). Sessions recover on their own: the redeploy makes
+every client rejoin, a join reads the save at once (until it lands the level's guest ceiling stands), and the 5-min re-read and each declared guard re-clamp a live life, keeping its share.
+
 ### Protocol 10 (M4 of the room-run world, 2026-10-26 — built on `m4`, NOT deployed)
 
 `/health` and `/join` report `protocol: 10`; `/join` adds `life` and `credits` for a protocol-10 client; `/health world`
