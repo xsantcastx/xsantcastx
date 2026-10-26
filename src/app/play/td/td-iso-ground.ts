@@ -17,6 +17,7 @@
  * Least-recently-drawn out, capped at `cap` chunks. No allocation per frame once the view's chunks are baked.
  */
 import { TILE, type Ground } from './td-art';
+import { isoBlock, wallMat, type IsoBlock } from './td-iso-walls';
 
 /** A chunk's size in HD px (256 × 128 iso px: 8 tiles across a row of diamonds, 16 rows). */
 export const CW = 512, CH = 256;
@@ -57,8 +58,13 @@ const LIQUID: ReadonlySet<Ground> = new Set<Ground>(['water', 'ember', 'blackwat
 /** The dark a block stands on (ABGR, little-endian RGBA). */
 const VOID = 0xff100b0f;
 
+/** A wall block standing on a chunk (td-iso-walls.ts): its tile, its foot in iso px, its full and cut-away sprites. */
+export interface IsoWall { c: number; r: number; X: number; Y: number; full: IsoBlock; stub: IsoBlock }
+
 interface Chunk {
   I: number; J: number;
+  /** The blocks whose foot lies in this chunk (found once, when it is planned). */
+  walls: IsoWall[];
   /** One canvas per frame (1, or 4 with liquid). */
   frames: (HTMLCanvasElement | null)[];
   nf: number;
@@ -101,27 +107,32 @@ export class IsoGround {
     this.cap = Math.max(this.cap, (i1 - i0 + 3) * (j1 - j0 + 3) + 4);
     for (let J = j0; J <= j1; J++) for (let I = i0; I <= i1; I++) {
       const ch = this.chunk(I, J);
-      if (!this.ready(ch, 0)) this.bake(ch, Infinity);
+      // Never drawn half-painted: a chunk in view without its first frame bakes that frame now (the ring is baked ahead so
+      // this is rare); its water frames come later.
+      if (!this.ready(ch, 0)) this.bake(ch, Infinity, 1);
       const fi = f % ch.nf, cv = ch.frames[fi] ?? ch.frames[0]!;
       c.drawImage(cv, Math.round((I * CW / 2 - X0) * s), Math.round((J * CH / 2 - Y0) * s), CW * k, CH * k);
     }
   }
 
-  /** After a draw: up to `ms` on the view's water frames, then the ring round the view, nearest first. */
-  prefetch(X0: number, Y0: number, w: number, h: number, ms: number): void {
-    const deadline = performance.now() + ms;
+  /**
+   * After a draw, until `deadline` (performance.now ms): the first frame of each chunk in the ring round the view (so a
+   * walk never meets unpainted ground), then the view's water frames, then the ring's.
+   */
+  prefetch(X0: number, Y0: number, w: number, h: number, deadline: number): void {
     const i0 = Math.floor(X0 * 2 / CW), i1 = Math.floor((X0 + w) * 2 / CW), j0 = Math.floor(Y0 * 2 / CH), j1 = Math.floor((Y0 + h) * 2 / CH);
-    // The view's own water frames first.
-    for (let J = j0; J <= j1; J++) for (let I = i0; I <= i1; I++) {
-      const ch = this.chunks.get(pack(I, J));
-      if (ch && !this.ready(ch, ch.nf - 1) && !this.bake(ch, deadline)) return;
+    for (let pass = 0; pass < 3; pass++) for (let J = j0 - 1; J <= j1 + 1; J++) for (let I = i0 - 1; I <= i1 + 1; I++) {
+      const inView = I >= i0 && I <= i1 && J >= j0 && J <= j1;
+      if ((pass === 1) !== inView) continue;
+      const ch = this.chunk(I, J), upto = pass === 0 ? 1 : ch.nf;
+      if (!this.ready(ch, upto - 1) && !this.bake(ch, deadline, upto)) return;
     }
-    // Then the ring round the view.
-    for (let J = j0 - 1; J <= j1 + 1; J++) for (let I = i0 - 1; I <= i1 + 1; I++) {
-      if (I >= i0 && I <= i1 && J >= j0 && J <= j1) continue;
-      const ch = this.chunk(I, J);
-      if (!this.ready(ch, ch.nf - 1) && !this.bake(ch, deadline)) return;
-    }
+  }
+
+  /** Each wall block standing in the iso rectangle (iso px), chunk by chunk (planning chunks not seen yet). */
+  forWalls(X0: number, Y0: number, w: number, h: number, each: (wl: IsoWall) => void): void {
+    const i0 = Math.floor(X0 * 2 / CW), i1 = Math.floor((X0 + w) * 2 / CW), j0 = Math.floor(Y0 * 2 / CH), j1 = Math.floor((Y0 + h) * 2 / CH);
+    for (let J = j0; J <= j1; J++) for (let I = i0; I <= i1; I++) for (const wl of this.chunk(I, J).walls) each(wl);
   }
 
   /** Is frame `f` of chunk `ch` (and every frame before it) painted? */
@@ -155,14 +166,27 @@ export class IsoGround {
       if (moves) { anim.push(list.length - 2); if (LIQUID.has(g(c, r))) liquid = true; }
     }
     const nf = liquid ? 4 : 1;
-    return { I, J, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), frame: 0, next: 0, img: null, px: null, base: null };
+    // The blocks whose foot (the tile's centre) lies in this chunk: each block belongs to exactly one chunk.
+    const walls: IsoWall[] = [], block = (c: number, r: number) => BLOCK_GROUND.has(g(c, r));
+    for (let i = 0; i < list.length; i += 2) {
+      const c = list[i], r = list[i + 1], k = g(c, r);
+      if (!BLOCK_GROUND.has(k)) continue;
+      const X = (c - r) * 16, Y = (c + r + 1) * 8;
+      if (X * 2 < X0 || X * 2 >= X0 + CW || Y * 2 < Y0 || Y * 2 >= Y0 + CH) continue;
+      const so = !block(c, r + 1), ea = !block(c + 1, r);
+      // Inside the rock, or a back wall's top that nothing sees past: no block.
+      if (!so && !ea && block(c, r - 1) && block(c - 1, r)) continue;
+      const m = wallMat(k);
+      walls.push({ c, r, X, Y, full: isoBlock(m, so, ea, false, c % 3 === 0, r % 3 === 0), stub: isoBlock(m, so, ea, true, c % 3 === 0, r % 3 === 0) });
+    }
+    return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), frame: 0, next: 0, img: null, px: null, base: null };
   }
 
-  /** Paint chunk `ch` a tile at a time until every frame is done or `deadline` passes; true when finished. */
-  private bake(ch: Chunk, deadline: number): boolean {
-    if (ch.frame >= ch.nf) return true;
+  /** Paint chunk `ch` a tile at a time until its first `upto` frames are done or `deadline` passes; true when they are. */
+  private bake(ch: Chunk, deadline: number, upto = ch.nf): boolean {
+    if (ch.frame >= upto) return true;
     const t0 = performance.now();
-    while (ch.frame < ch.nf) {
+    while (ch.frame < upto) {
       if (!ch.img) {
         ch.img = new ImageData(CW, CH);
         ch.px = new Uint32Array(ch.img.data.buffer);
@@ -185,7 +209,7 @@ export class IsoGround {
       if (f === 0 && ch.nf > 1) ch.base = ch.px!.slice();
       ch.img = null; ch.px = null; ch.frame++;
       if (ch.frame >= ch.nf) ch.base = null;
-      if (performance.now() > deadline) { this.bakeMs += performance.now() - t0; return ch.frame >= ch.nf; }
+      if (performance.now() > deadline) { this.bakeMs += performance.now() - t0; return ch.frame >= upto; }
     }
     this.bakeMs += performance.now() - t0;
     return true;

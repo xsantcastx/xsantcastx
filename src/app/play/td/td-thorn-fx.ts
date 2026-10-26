@@ -163,8 +163,10 @@ export function drawThornAir(c: Ctx, e: FxLike, still: boolean, overFoe: (x: num
  * What lasts: thorned roots round a rooted creature's feet, a blood drop by a bleeding one, Command's chevron over the
  * sent-at foe, and Pack Bond's thread — a dotted line of green light from the Keeper to his beast while the bond holds.
  */
-export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded: MobLike | null; bond: { x: number; y: number } | null; keeper: { x: number; y: number } }, time: number, still: boolean): void {
+/** `at` (the isometric view): stand what follows on the given foot (each creature's marks; the bond from the Keeper's). */
+export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded: MobLike | null; bond: { x: number; y: number } | null; keeper: { x: number; y: number } }, time: number, still: boolean, at?: (x: number, y: number) => void): void {
   for (const m of st.mobs) {
+    at?.(m.x, m.y);
     const X = Math.round(m.x), Y = Math.round(m.y);
     if ((m.rootT ?? 0) > 0) {
       const w = Math.max(5, Math.round(mobCell(m.def).w / 3));
@@ -183,12 +185,14 @@ export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded
   }
   const f = st.commanded;
   if (f) {
+    at?.(f.x, f.y);
     const X = Math.round(f.x), Y = Math.round(f.y - mobCell(f.def).h - 6), bob = still ? 0 : Math.round(Math.sin(time * 6));
     for (let i = 0; i < 3; i++) { c.fillStyle = i ? LEAF : LEAF_HI; c.fillRect(X - 3 + i, Y + bob + i, 1, 1); c.fillRect(X + 3 - i, Y + bob + i, 1, 1); }
     c.fillStyle = THORN_FX.wild.core; c.fillRect(X, Y + bob + 3, 1, 1);
   }
   const b = st.bond;
   if (b) {
+    at?.(st.keeper.x, st.keeper.y);
     // Every third pixel of the line, turning slowly along it (still: fixed), at half strength.
     const pts = linePixels(st.keeper.x, st.keeper.y - 6, b.x, b.y - 6), shift = still ? 0 : Math.floor(time * 8);
     c.globalAlpha = .45;

@@ -86,9 +86,10 @@ export class TdPeers {
    * The Keeper nearest a point in the world, with `slop` art px of give all round their body for a thumb. `on`: the
    * point is on their body itself; `d`: how far it is from the middle of the body.
    */
-  nearest(wx: number, wy: number, slop: number): { card: PeerCard; on: boolean; d: number } | null {
+  nearest(x: number, y: number, slop: number, rel?: (fx: number, fy: number) => { x: number; y: number }): { card: PeerCard; on: boolean; d: number } | null {
     let best: PeerShown | null = null, bestD = Infinity, on = false;
     for (const p of this.shown) {
+      const q = rel ? rel(p.x, p.y) : null, wx = q ? q.x : x, wy = q ? q.y : y;
       if (Math.abs(wx - p.x) > TAP_W + slop || wy < p.y - TAP_H - slop || wy > p.y + 4 + slop) continue;
       const d = Math.hypot(wx - p.x, wy - (p.y - 16));
       if (d < bestD) { best = p; bestD = d; on = Math.abs(wx - p.x) <= TAP_W && wy >= p.y - TAP_H && wy <= p.y + 4; }

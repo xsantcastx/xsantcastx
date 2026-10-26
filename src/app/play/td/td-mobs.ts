@@ -2995,9 +2995,10 @@ export class MobSystem {
   }
 
   /** The creature under a world point (a tap), if any. */
-  mobAt(x: number, y: number): Mob | null {
+  /** The creature under a point (its middle within 18 px). `rel` (the isometric view): the point as seen against each foot. */
+  mobAt(x: number, y: number, rel?: (fx: number, fy: number) => { x: number; y: number }): Mob | null {
     let best: Mob | null = null, bd = 18;
-    for (const m of this.mobs) { const d = Math.hypot(m.x - x, m.y - m.def.h / 2 - y); if (d < bd) { bd = d; best = m; } }
+    for (const m of this.mobs) { const q = rel ? rel(m.x, m.y) : null, px = q ? q.x : x, py = q ? q.y : y; const d = Math.hypot(m.x - px, m.y - m.def.h / 2 - py); if (d < bd) { bd = d; best = m; } }
     return best;
   }
 
@@ -6029,9 +6030,10 @@ export class MobSystem {
   /** The loot still lying beside a corpse (this Keeper's own: loot is personal). */
   corpseLoot(id: string): Drop[] { return this.drops.filter(d => d.corpse === id); }
   /** The corpse under a point in the world (its flattened body, a little generous for a thumb), nearest first. */
-  corpseAt(wx: number, wy: number): Corpse | null {
+  corpseAt(x: number, y: number, rel?: (fx: number, fy: number) => { x: number; y: number }): Corpse | null {
     let best: Corpse | null = null, bd = Infinity;
     for (const c of this.remains) {
+      const q = rel ? rel(c.x, c.y) : null, wx = q ? q.x : x, wy = q ? q.y : y;
       const hh = Math.max(6, Math.round(c.kind.h * .38)) + 6;
       if (Math.abs(wx - c.x) > c.kind.w / 2 + 6 || wy < c.y - hh - 2 || wy > c.y + 8) continue;
       const d = Math.hypot(wx - c.x, wy - c.y + hh / 2);
