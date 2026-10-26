@@ -76,9 +76,10 @@ export class GatherRuntime {
   /** The level the Keeper stands on (a fire burns where it was lit). */
   lv = 'surface';
   /** The nearest burning fire within `reach` of a point, on the Keeper's level. */
-  fireNear(x: number, y: number, reach: number): Campfire | null {
+  /** The campfire within `reach` of a point. `rel` (the isometric view): the point as seen against each fire's foot. */
+  fireNear(x: number, y: number, reach: number, rel?: (fx: number, fy: number) => { x: number; y: number }): Campfire | null {
     let best: Campfire | null = null, bd = reach;
-    for (const f of this.fires) { if (f.lv !== this.lv) continue; const d = Math.hypot(f.x - x, f.y - y); if (d <= bd) { bd = d; best = f; } }
+    for (const f of this.fires) { if (f.lv !== this.lv) continue; const q = rel ? rel(f.x, f.y) : null; const d = Math.hypot(f.x - (q ? q.x : x), f.y - (q ? q.y : y)); if (d <= bd) { bd = d; best = f; } }
     return best;
   }
 

@@ -171,7 +171,9 @@ export interface LampState {
  * the wisps (a pale moth round a little lamp, wings beating two frames), the stunned (cream stars) and the unveiled
  * (a pale ring over the head).
  */
-export function drawLampState(c: Ctx, s: LampState, p: { x: number; y: number }, time: number, still: boolean): void {
+/** `at` (the isometric view): stand what follows on the given foot (the Keeper's marks, each wisp, each creature's). */
+export function drawLampState(c: Ctx, s: LampState, p: { x: number; y: number }, time: number, still: boolean, at?: (x: number, y: number) => void): void {
+  at?.(p.x, p.y);
   const X = Math.round(p.x), Y = Math.round(p.y), L = LAMP_FX.lamp;
   if (s.ward > 0) {
     const hw = 11, hh = 17, cy = Y - 15, off = still ? 0 : Math.floor(time * 4) % 4;
@@ -191,6 +193,7 @@ export function drawLampState(c: Ctx, s: LampState, p: { x: number; y: number },
     c.globalAlpha = 1;
   }
   for (const w of s.wisps) {
+    at?.(w.x, w.y);
     const wx = Math.round(w.x), wy = Math.round(w.y), flap = still ? 0 : Math.floor(time * 10) % 2;
     glowSquare(c, wx, wy, 3, L, .55);
     c.globalAlpha = .95;
@@ -200,6 +203,7 @@ export function drawLampState(c: Ctx, s: LampState, p: { x: number; y: number },
     c.globalAlpha = 1;
   }
   for (const m of s.mobs) {
+    at?.(m.x, m.y);
     const top = Math.round(m.y - mobCell(m.def).h - 6), mx = Math.round(m.x);
     if ((m.stun ?? 0) > 0) {
       // Blinded: three cream stars circling the head (the CC pip, design-bible §4.7).

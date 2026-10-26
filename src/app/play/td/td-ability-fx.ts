@@ -260,9 +260,11 @@ export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still
 }
 
 /** Over the creatures: the bearers' motes, and the linked mote lines to each blessed one (three motes travelling). */
-export function drawPackAir(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean, low = false): void {
+/** `at` (the isometric view): stand each creature's motes on its foot. */
+export function drawPackAir(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean, low = false, at?: (x: number, y: number) => void): void {
   if (low) still = true;
   for (const m of mobs) {
+    at?.(m.x, m.y);
     if (m.aura && near(m.x, m.y)) { const fx = FX.get(m); if (fx) fx.air(c, m.x, m.y - 1, packLook(m.aura)); }
     const b = m.bless;
     if (!b || b.by === m || !near(m.x, m.y)) continue;

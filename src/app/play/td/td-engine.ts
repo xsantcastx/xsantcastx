@@ -27,8 +27,8 @@ import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './t
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
 import { optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
-import { BLOCK_GROUND, IsoGround, type IsoGroundSource } from './td-iso-ground';
-import { IsoCutaway, WALL_H, isoBlock, wallMat, type IsoBlock } from './td-iso-walls';
+import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
+import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { AuraFx as LookAuraFx, rimGlow as lookRimGlow } from './td-aura-look';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
 import { HD_KEEPER, HD_PET, HD_PET_ID, HD_SKEL, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
@@ -175,6 +175,8 @@ const CHUNK_CAP = 40;
 const GRASSY_HD = new Set<Ground>(['grass', 'flowers']);
 /** Ground baking's share of a frame (ms) after the draw (docs/handoff/calm.md). */
 const BAKE_MS = 3;
+/** Iso: a frame's script may run to this many ms with ground baking (the rest of the frame is the canvas's raster). */
+const ISO_FRAME_MS = 8;
 /** A ground chunk: its water frames' canvases and how many tile rows of each are painted (CHUNK = done). */
 interface GroundChunk { cx: number; cy: number; frames: (HTMLCanvasElement | undefined)[]; rows: number[] }
 /** A height over the feet that was set for the art-grid figure, grown with the fine figure (FIGURE_K). */
@@ -643,8 +645,7 @@ export class TopDownEngine {
         return false;
       },
       page: (x: number, y: number) => {
-        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
-        return { x: Math.round(r.left + (x - this.cam.x) * this.scale / k), y: Math.round(r.top + (y - this.cam.y) * this.scale / k) };
+        return this.clientOf(x, y);
       },
       fires: () => this.gather.fires.map(f => ({ x: Math.round(f.x), y: Math.round(f.y), left: Math.round(f.left), lv: f.lv })),
       hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); return this.hp; },
@@ -710,8 +711,7 @@ export class TopDownEngine {
       // Where the boss's middle is on the page (for a real tap on it).
       page: () => {
         const m = this.mobs.mobs.find(x => x.key.startsWith('fx-los:')); if (!m) return null;
-        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
-        return { x: Math.round(r.left + (m.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (m.y - m.def.h / 2 - this.cam.y) * this.scale / k) };
+        return this.clientOf(m.x, m.y, m.def.h / 2);
       },
       // An Ember Bolt thrown at the boss whatever stands between (the path the auto-attack never takes without sight).
       bolt: () => { const m = this.mobs.mobs.find(x => x.key.startsWith('fx-los:')); if (!m) return false; const p = this.player; this.mobs.bolts.push({ x: p.x, y: p.y - 22, to: m, dmg: 40, age: 0, lift: 22 }); return true; },
@@ -848,8 +848,7 @@ export class TopDownEngine {
       /** Where on the page a point `dx` px right of the Keeper's middle (world px) is. */
       page: (name: string, dx: number) => {
         const p = this.peers.drawn.find(q => q.name === name); if (!p) return null;
-        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
-        return { x: Math.round(r.left + (p.x + dx - this.cam.x) * this.scale / k), y: Math.round(r.top + (p.y - 16 - this.cam.y) * this.scale / k) };
+        return this.clientOf(p.x, p.y, 16, dx);
       },
     };
     if (this.fxParty) (window as unknown as Record<string, unknown>)['__tdParty'] = {
@@ -866,7 +865,7 @@ export class TopDownEngine {
         const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
         return this.mobs.remains.map(c => ({
           id: c.id, kind: c.kind.id, stage: corpseStage(this.mobs.age - c.born, c.boss), loot: this.mobs.corpseLoot(c.id).length, x: Math.round(c.x), y: Math.round(c.y),
-          px: Math.round(r.left + (c.x - this.cam.x) * this.scale / k), py: Math.round(r.top + (c.y - 6 - this.cam.y) * this.scale / k), scale: this.scale / k,
+          px: this.clientOf(c.x, c.y, 6).x, py: this.clientOf(c.x, c.y, 6).y, scale: this.scale / k,
         }));
       },
       // A heap of ember residue laid in the nearest corpse (the loot a walk-over would not reach).
@@ -1722,10 +1721,9 @@ export class TopDownEngine {
   peerWave(who: string | null): void { this.peers.wave(who ?? '', this.time); }
   /** Who is drawn, in CSS pixels on the page (the HUD's data-peers, the e2e's tap target). */
   peersOnScreen(): { id: string; name: string; x: number; y: number; waving: boolean }[] {
-    const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
     return this.peers.drawn.map(p => ({
       id: p.id, name: p.name, waving: this.peers.waving(p.id, this.time),
-      x: Math.round(r.left + (p.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (p.y - 16 - this.cam.y) * this.scale / k),
+      ...this.clientOf(p.x, p.y, 16),
     }));
   }
   /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
@@ -2916,12 +2914,15 @@ export class TopDownEngine {
     }
     // The trail: dashes of light from the Keeper to what Glim found, fading.
     const tr = this.glimTrail;
+    // Iso: the trail lies on the floor; the sparks stay round Glim.
+    if (tr && this.iso) this.plane();
     if (tr) {
       const p = this.player, d = Math.hypot(tr.x - p.x, tr.y - p.y), n = Math.min(24, Math.floor(d / 7));
       c.globalAlpha = Math.min(.8, tr.t / 2); c.fillStyle = '#ffd98a';
       for (let i = 1; i < n; i++) { if ((i + Math.floor(this.time * 6)) % 3 === 0) continue; c.fillRect(Math.round(p.x + (tr.x - p.x) * i / n), Math.round(p.y - 2 + (tr.y - p.y) * i / n), 1, 1); }
       c.globalAlpha = 1;
     }
+    this.at(g.x, g.y);
     for (const s of this.sparks) { c.globalAlpha = Math.max(0, 1 - s.age / s.life); c.fillStyle = s.col; c.fillRect(Math.round(s.x), Math.round(s.y), 1, 1); }
     c.globalAlpha = 1;
   }
@@ -3156,18 +3157,17 @@ export class TopDownEngine {
     c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
     this.unbind.push(() => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); c.removeEventListener('pointerup', up); c.removeEventListener('pointercancel', up); });
   }
-  /** A tap: on a stall or its keeper walks there and opens it; anywhere else walks there. */
+  /**
+   * A screen point in the world: top-down the world point under it; iso the floor point under it (where a tap walks
+   * to), the screen point itself kept for `rel` so a tap on anything standing (a body, a stall, a corpse) is judged
+   * against its own projected foot.
+   */
   private toWorld(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect();
     if (optIso()) {
-      // Isometric (td-iso.ts): the screen point back through the projection. A tap on a creature's body (drawn standing
-      // up from its foot) is its foot, so the world's hit tests find it.
       const X = this.isoCam.x + (clientX - rect.left) * (this.canvas.width / Math.max(1, rect.width)) / this.scale;
       const Y = this.isoCam.y + (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height)) / this.scale;
-      for (const m of this.mobs.mobs) {
-        const I = isoOf(Math.round(m.x), Math.round(m.y)), d = this.vis(m.def);
-        if (Math.abs(X - I.X) <= d.w / 2 + 2 && Y <= I.Y + 2 && Y >= I.Y - d.h) return { x: m.x, y: m.y - d.h / 2 };
-      }
+      this.tapIso.X = X; this.tapIso.Y = Y;
       return worldOfIso(X, Y);
     }
     return {
@@ -3175,18 +3175,40 @@ export class TopDownEngine {
       y: this.cam.y + (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height)) / this.scale,
     };
   }
+  /**
+   * Where on the page (CSS px) a world point is drawn: foot (x, y), `lift` px straight up, `dx` px across — top-down the
+   * world point (x + dx, y − lift); iso the foot's projection, lifted on the screen. For the HUD's anchors and the specs.
+   */
+  private clientOf(x: number, y: number, lift = 0, dx = 0): { x: number; y: number } {
+    const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width), s = this.scale / k;
+    if (optIso()) return { x: Math.round(r.left + (x - y + dx - this.isoCam.x) * s), y: Math.round(r.top + ((x + y) / 2 - lift - this.isoCam.y) * s) };
+    return { x: Math.round(r.left + (x + dx - this.cam.x) * s), y: Math.round(r.top + (y - lift - this.cam.y) * s) };
+  }
+  /** Iso: the last tap's screen point (iso px). */
+  private readonly tapIso = { X: 0, Y: 0 };
+  /**
+   * Iso: the last tap as seen against a thing standing with its foot at (fx, fy): the world point that would sit at the
+   * tap's offset from that foot's projection if the view were top-down — so every top-down hit box (an upright box over
+   * the foot) works unchanged.
+   */
+  private readonly tapRel = (fx: number, fy: number): { x: number; y: number } => ({ x: fx + this.tapIso.X - (fx - fy), y: fy + this.tapIso.Y - (fx + fy) / 2 });
+  /** The tap's per-foot view in iso, nothing top-down (the hit tests then use the world point as they always did). */
+  private rel(): ((fx: number, fy: number) => { x: number; y: number }) | undefined { return optIso() ? this.tapRel : undefined; }
   private stallAt(wx: number, wy: number): TdStall | undefined { return this.stallHit(wx, wy)?.s; }
   /** The stall under a point and how far the point is from its body (a giver's body, else the stall's foot): for comparing with a Keeper or a corpse under the same finger. */
   private stallHit(wx: number, wy: number): { s: TdStall; d: number } | undefined {
     // A tap on a task giver's body talks to them (a stall keeper's counter still opens the stall).
-    const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < up(10) && wy > s.keeper.y - up(34) && wy < s.keeper.y + 2);
-    if (giver) return { s: giver, d: Math.hypot(wx - giver.keeper!.x, wy - (giver.keeper!.y - 17)) };
+    // Iso: each point as seen against that stall's (or giver's) own foot (rel).
+    const rel = this.rel(), at = (fx: number, fy: number) => rel ? rel(fx, fy) : { x: wx, y: wy };
+    const giver = this.level.stalls.find(s => { if (!s.keeper || !s.station.id.startsWith('giver-')) return false; const q = at(s.keeper.x, s.keeper.y); return Math.abs(q.x - s.keeper.x) < up(10) && q.y > s.keeper.y - up(34) && q.y < s.keeper.y + 2; });
+    if (giver) { const q = at(giver.keeper!.x, giver.keeper!.y); return { s: giver, d: Math.hypot(q.x - giver.keeper!.x, q.y - (giver.keeper!.y - 17)) }; }
     // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
     let hit: TdStall | undefined, best = Infinity;
     for (const s of this.level.stalls) {
       if (isBerth(s.station.id)) continue;
-      if (!(Math.abs(wx - s.x) < 34 && wy > s.y - (s.keeper ? up(46) : 46) && wy < s.y + 16)) continue;
-      const d = Math.hypot(wx - s.x, wy - (s.y - 14));
+      const q = at(s.x, s.y);
+      if (!(Math.abs(q.x - s.x) < 34 && q.y > s.y - (s.keeper ? up(46) : 46) && q.y < s.y + 16)) continue;
+      const d = Math.hypot(q.x - s.x, q.y - (s.y - 14));
       if (d < best) { best = d; hit = s; }
     }
     return hit ? { s: hit, d: best } : undefined;
@@ -3195,12 +3217,13 @@ export class TopDownEngine {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);
     // A creature under the finger is the target (Tibia's click-to-attack): the Keeper closes in and swings.
     // Only one the Keeper can see (td-sight): a creature behind a wall is no target — the tap walks toward it instead.
-    const foe = this.mobs.mobAt(wx, wy);
+    const rel = this.rel();
+    const foe = this.mobs.mobAt(wx, wy, rel);
     if (foe && this.mobs.sees(foe)) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
     // A shared ground item (protocol 6) under the finger — before the Keepers, it is the smaller target and often lies
     // at one's feet: walk to it, then the HUD reaches for it.
-    const lying = this.shared.find(g => Math.abs(wx - g.x) < 9 && wy > g.y - 12 && wy < g.y + 5);
+    const lying = this.shared.find(g => { const q = rel ? rel(g.x, g.y) : { x: wx, y: wy }; return Math.abs(q.x - g.x) < 9 && q.y > g.y - 12 && q.y < g.y + 5; });
     if (lying && this.options.onGroundTap) {
       const id = lying.id.slice('shared:'.length), reach = () => this.options.onGroundTap?.(id);
       // No way to its side (a wall, a Keeper standing on it): reach from here when close, as a corpse opens.
@@ -3212,7 +3235,7 @@ export class TopDownEngine {
     // the point wins, the way stallAt picks the nearest foot. A Keeper tapped on their own body always wins; one the
     // finger only just missed (they glide between packets, and a thumb is wide) wins when nearer than the stall.
     const stall = this.stallHit(wx, wy);
-    const peer = this.peers.nearest(wx, wy, PEER_SLOP);
+    const peer = this.peers.nearest(wx, wy, PEER_SLOP, rel);
     // Keepers never block one another (owner 2026-10-26, Tibia-style): a tap on one while walking walks on through, and
     // a second tap on the Keeper whose card is up walks there; only a first tap from a standstill names them.
     const walking = this.path.length > 0 || this.player.moving;
@@ -3222,10 +3245,10 @@ export class TopDownEngine {
       this.options.onPeerTap(peer.card); return;
     }
     if (peer && (walking || again)) { this.peerTapped = null; this.walkTo(wx, wy); return; }
-    const cp = this.mobs.corpseAt(wx, wy);
+    const cp = this.mobs.corpseAt(wx, wy, rel);
     if (cp) {
-      const { body } = corpseSize(cp);
-      if (!stall || Math.hypot(wx - cp.x, wy - (cp.y - body / 2)) <= stall.d) {
+      const { body } = corpseSize(cp), cq = rel ? rel(cp.x, cp.y) : { x: wx, y: wy };
+      if (!stall || Math.hypot(cq.x - cp.x, cq.y - (cp.y - body / 2)) <= stall.d) {
         const open = () => { this.openCorpse(cp.id); };
         // No way to its side (a wall): open it from where the Keeper stands if that is close, else walk as near as can be.
         if (!this.walkTo(cp.x, cp.y + 6, open)) { if (Math.hypot(cp.x - this.player.x, cp.y - this.player.y) <= CORPSE_REACH * 2) open(); else this.walkTo(cp.x, cp.y); }
@@ -3233,11 +3256,19 @@ export class TopDownEngine {
       }
     }
     // A campfire under the finger: cook at it. A fishing spot's float: walk to its shore and cast.
-    const fire = this.gather.fireNear(wx, wy + 4, 10);
+    const fire = rel ? this.gather.fireNear(wx, wy, 10, (fx, fy) => { const q = rel(fx, fy); return { x: q.x, y: q.y + 4 }; }) : this.gather.fireNear(wx, wy + 4, 10);
     if (fire) { const src = { fire, x: fire.x, y: fire.y, range: false }; if (!this.walkTo(fire.x + (this.player.x < fire.x ? -14 : 14), fire.y + 2, () => this.beginCook(src))) this.beginCook(src); return; }
     const spot = this.spotAt(wx, wy);
     if (spot) { const go = () => this.beginFish(spot); if (!this.walkTo(spot.shore.x, spot.shore.y, go)) go(); return; }
-    if (this.level === this.world) {
+    if (this.level === this.world && rel) {
+      // Iso: a tree stands up from its foot; look down the screen from the tap for a foot whose trunk or crown it hit.
+      for (let dY = 0; dY <= 48; dY += 4) {
+        const g = worldOfIso(this.tapIso.X, this.tapIso.Y + dY), c = Math.floor(g.x / TILE), r = Math.floor(g.y / TILE), o = this.world.treeAt(c, r);
+        if (!o) continue;
+        const q = rel(o.x, o.y);
+        if (Math.abs(q.x - o.x) < 14 && q.y > o.y - 50 && q.y < o.y + 4) { this.walkTo(o.x, o.y + 12, () => this.startChop(c, r, o.x, o.y)); return; }
+      }
+    } else if (this.level === this.world) {
       const tc = Math.floor(wx / TILE), tr = Math.floor((wy + 6) / TILE);
       for (const [c, r] of [[tc, tr], [tc, tr + 1], [tc, tr + 2]]) {
         const o = this.world.treeAt(c, r);
@@ -4290,8 +4321,7 @@ export class TopDownEngine {
   }
   /** Where shared ground items are drawn, in CSS pixels on the page (the e2e's tap target). */
   groundOnScreen(): { id: string; x: number; y: number }[] {
-    const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
-    return this.shared.map(g => ({ id: g.id.slice('shared:'.length), x: Math.round(r.left + (g.x - this.cam.x) * this.scale / k), y: Math.round(r.top + (g.y - 4 - this.cam.y) * this.scale / k) }));
+    return this.shared.map(g => ({ id: g.id.slice('shared:'.length), ...this.clientOf(g.x, g.y, 4) }));
   }
   /**
    * A drop on the ground: a coin pile, a sack, or gear standing in a pixel light column of its rung (spec §Loot) —
@@ -4855,11 +4885,11 @@ export class TopDownEngine {
     c.globalAlpha = 1;
     this.at(p.x, p.y);
     this.drawMotes();
-    if (this.mobs.melee) drawAshState(c, { brandT: this.mobs.brandT, blockT: this.mobs.blockT, vowT: this.mobs.vowT, mobs: this.mobs.mobs }, this.player, this.time, this.still);
-    if (this.mobs.lamp) drawLampState(c, { ward: this.mobs.lampWard, lastLight: this.mobs.lastLightT, wisps: this.mobs.wisps, mobs: this.mobs.mobs }, this.player, this.time, this.still);
+    if (this.mobs.melee) drawAshState(c, { brandT: this.mobs.brandT, blockT: this.mobs.blockT, vowT: this.mobs.vowT, mobs: this.mobs.mobs }, this.player, this.time, this.still, this.isoAtHook());
+    if (this.mobs.lamp) drawLampState(c, { ward: this.mobs.lampWard, lastLight: this.mobs.lastLightT, wisps: this.mobs.wisps, mobs: this.mobs.mobs }, this.player, this.time, this.still, this.isoAtHook());
     if (this.mobs.thorn || this.mobs.mobs.some(m => (m.rootT ?? 0) > 0 || (m.bleedT ?? 0) > 0)) {
       const pb = this.pet;
-      drawThornState(c, { mobs: this.mobs.mobs, commanded: this.mobs.commanded, bond: this.mobs.bonded && pb ? { x: pb.x, y: pb.y } : null, keeper: this.player }, this.time, this.still);
+      drawThornState(c, { mobs: this.mobs.mobs, commanded: this.mobs.commanded, bond: this.mobs.bonded && pb ? { x: pb.x, y: pb.y } : null, keeper: this.player }, this.time, this.still, this.isoAtHook());
     }
     // The Thornstrider's arrows in flight.
     for (const a of this.mobs.arrows) { this.at(a.x, a.y); drawArrow(c, a.x, a.y, a.vx, a.vy); }
@@ -5164,8 +5194,6 @@ export class TopDownEngine {
   };
   private readonly isoCut = new IsoCutaway();
   private readonly isoQ = new IsoQueue();
-  /** The view's wall blocks, found again only when the view's tile window or the Keeper's tile changes. */
-  private readonly isoWalls = { key: '', n: 0, X: new Float64Array(2048), Y: new Float64Array(2048), b: new Array<IsoBlock | null>(2048).fill(null) };
   private readonly isoFaces = new WeakMap<object, { x: number; y: number; row: number; flip: boolean; turned: boolean; front: boolean }>();
   /** A view object for the peers' painter, reused. */
   private readonly isoPeerView = { scale: 1, camX: 0, camY: 0, time: 0, still: false };
@@ -5203,6 +5231,9 @@ export class TopDownEngine {
   }
   /** Anchor an upright drawing at world point (x, y) (iso: where it projects; top-down: nothing to do). */
   private at(x: number, y: number): void { if (this.iso) this.isoAt(x, y); }
+  private readonly isoAtFn = (x: number, y: number): void => this.isoAt(x, y);
+  /** The painters' own anchor hook: iso's, or none top-down. */
+  private isoAtHook(): ((x: number, y: number) => void) | undefined { return this.iso ? this.isoAtFn : undefined; }
   /** Iso: the ground plane — world coordinates drawn flat on the floor (a circle becomes the 2:1 ellipse). */
   private plane(): void {
     const s = this.scale, ic = this.isoCam;
@@ -5358,7 +5389,7 @@ export class TopDownEngine {
     this.isoAt(p.x, p.y);
     { const look = this.auraLook(); if (look) { c.save(); c.scale(.5, .5); this.lookAura.air(c, Math.round(p.x) * 2, (Math.round(p.y) - 1) * 2, look); c.restore(); } }
     this.plane();
-    drawPackAir(c, this.mobs.mobs, this.time, this.still, this.isoNear, lowDetail);
+    drawPackAir(c, this.mobs.mobs, this.time, this.still, this.isoNear, lowDetail, this.isoAtFn);
     if (!lowDetail) for (const b of this.mobs.bursts) if (b.tone && this.isoNear(b.x, b.y)) { this.isoAt(b.x, b.y); drawFalling(c, b, this.time, this.still); }
     for (const pf of this.puffs) {
       const t = pf.age / pf.life, r = 2 + t * 5;
@@ -5397,7 +5428,9 @@ export class TopDownEngine {
     c.setTransform(1, 0, 0, 1, 0, 0);
     // The ring round the view baked ahead of the walk (and the view's water frames), inside the frame's budget.
     this.prof(6);
-    ground.prefetch(ic.x, ic.y, ic.w, ic.h, BAKE_MS);
+    // The budget: what is left of ISO_FRAME_MS since the frame began (the canvas still has to be rasterised after this),
+    // never under BAKE_MS — a quiet frame bakes more, so a walk across a river stays ahead of the view.
+    ground.prefetch(ic.x, ic.y, ic.w, ic.h, Math.max(performance.now() + BAKE_MS, this.frameAt + ISO_FRAME_MS));
     this.prof(7);
     if (this.perf) this.bakeMs += ground.bakeMs;
   }
@@ -5423,31 +5456,21 @@ export class TopDownEngine {
   }
   /** The dark layer's hooks in iso: its marks lie flat, its shapes stand up where they project. */
   private readonly isoProj = { flat: () => this.plane(), at: (x: number, y: number) => this.isoAt(x, y) };
-  /** Queue the view's wall blocks (cached until the view's tile window or the Keeper's tile changes). */
+  /** Queue the view's wall blocks (found once per ground chunk, td-iso-ground.ts), each cut away or standing. */
   private isoQueueWalls(): void {
-    const ic = this.isoCam, p = this.player, q = this.isoQ, wl = this.isoWalls;
-    const a0 = Math.floor((ic.x - 40) / 16), a1 = Math.ceil((ic.x + ic.w + 40) / 16), b0 = Math.floor((ic.y - 24) / 8) - 2, b1 = Math.ceil((ic.y + ic.h + WALL_H * 2 + 24) / 8);
+    const ic = this.isoCam, p = this.player, q = this.isoQ;
     const pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
-    const key = `${this.isoGen}:${this.level.id}:${a0}:${a1}:${b0}:${b1}:${pc}:${pr}`;
-    if (key !== wl.key) {
-      wl.key = key; wl.n = 0;
-      const g = (cc: number, rr: number) => this.level.ground(cc, rr), block = (cc: number, rr: number) => BLOCK_GROUND.has(g(cc, rr));
-      this.isoCut.update(`${this.isoGen}:${this.level.id}`, pc, pr, (cc, rr) => !block(cc, rr));
-      for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) {
-        if (((a + b) & 1) !== 0) continue;
-        const cc = (a + b) / 2, rr = (b - a) / 2, kind = g(cc, rr);
-        if (!BLOCK_GROUND.has(kind)) continue;
-        const so = !block(cc, rr + 1), ea = !block(cc + 1, rr);
-        // Inside the rock, or a back wall's top that nothing sees past: no block.
-        if (!so && !ea && block(cc, rr - 1) && block(cc - 1, rr)) continue;
-        if (wl.n >= wl.X.length) break;
-        const i = wl.n++;
-        wl.X[i] = a * 16; wl.Y[i] = (b + 1) * 8;
-        wl.b[i] = isoBlock(wallMat(kind), so, ea, this.isoCut.cut(cc, rr), cc % 3 === 0, rr % 3 === 0);
-      }
-    }
-    for (let i = 0; i < wl.n; i++) q.push(K.wall, wl.Y[i], wl.b[i], wl.X[i], wl.Y[i]);
+    this.isoCut.update(this.isoGen, this.level, pc, pr, this.isoOpen);
+    const x0 = ic.x - 40, x1 = ic.x + ic.w + 40, y0 = ic.y - 24, y1 = ic.y + ic.h + WALL_H + 24;
+    this.isoGround!.forWalls(x0, y0, x1 - x0, y1 - y0, this.isoWallEach);
   }
+  private readonly isoOpen = (c: number, r: number): boolean => !BLOCK_GROUND.has(this.level.ground(c, r));
+  private readonly isoWallEach = (wl: IsoWall): void => {
+    const ic = this.isoCam;
+    if (wl.X < ic.x - 40 || wl.X > ic.x + ic.w + 40 || wl.Y < ic.y - 24 || wl.Y > ic.y + ic.h + WALL_H + 24) return;
+    const b = this.isoCut.cut(wl.c, wl.r) ? wl.stub : wl.full;
+    this.isoQ.push(K.wall, wl.Y, b, wl.X, wl.Y);
+  };
   /** Draw queue slot `i`. */
   private isoDrawItem(i: number): void {
     const q = this.isoQ, c = this.ctx, ref = q.ref[i];

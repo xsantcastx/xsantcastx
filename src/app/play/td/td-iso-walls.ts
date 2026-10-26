@@ -93,15 +93,16 @@ export function isoBlock(mat: Mat, south: boolean, east: boolean, cut: boolean, 
  * ground that is not a block.
  */
 export class IsoCutaway {
-  private pc = NaN; private pr = NaN; private level = '';
+  private pc = NaN; private pr = NaN; private gen = NaN; private level: object | null = null;
   /** The room's wall tiles on the camera's side (packed keys), or null in the open. */
   private front: Set<number> | null = null;
   /** In a room (the flood closed under ROOM_CAP)? */
   inRoom = false;
 
-  update(level: string, pc: number, pr: number, open: (c: number, r: number) => boolean): void {
-    if (pc === this.pc && pr === this.pr && level === this.level) return;
-    this.pc = pc; this.pr = pr; this.level = level;
+  /** For the Keeper on tile (pc, pr) of `level` (ground generation `gen`); a no-op unless one of them changed. */
+  update(gen: number, level: object, pc: number, pr: number, open: (c: number, r: number) => boolean): void {
+    if (pc === this.pc && pr === this.pr && level === this.level && gen === this.gen) return;
+    this.pc = pc; this.pr = pr; this.level = level; this.gen = gen;
     // Flood the open ground from the Keeper's tile; the walls met on the way bound the room.
     const seen = new Set<number>(), stack = [pc, pr], walls = new Set<number>();
     seen.add(key(pc, pr));
