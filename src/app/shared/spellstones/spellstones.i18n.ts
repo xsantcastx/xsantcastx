@@ -20,6 +20,8 @@ export const SPELLSTONES_I18N: Readonly<Record<string, { en: string; es: string 
   'play.stone.gives': { en: '{{n}} charges at rank {{rank}}. No mana; any vocation can use it.', es: '{{n}} cargas a rango {{rank}}. Sin mana; cualquier vocacion puede usarla.' },
   'play.stone.have': { en: '{{blanks}} Basalt Blanks · {{soul}} Soul · {{held}} charges held', es: '{{blanks}} bloques de basalto · {{soul}} de Alma · {{held}} cargas guardadas' },
   'play.stone.belt': { en: 'Put on the belt (F)', es: 'Al cinturon (F)' },
+  'play.stone.beltPut': { en: 'Put on belt', es: 'Al cinturon' },
+  'play.stone.use': { en: 'Use', es: 'Usar' },
   'play.stone.onBelt': { en: 'On the belt (F)', es: 'En el cinturon (F)' },
   'play.stone.inscribed': { en: 'The cant takes in the basalt: {{name}}, rank {{rank}}, {{n}} charges. It is in your satchel.', es: 'El canto prende en el basalto: {{name}}, rango {{rank}}, {{n}} cargas. Esta en tu mochila.' },
   'play.stone.need.blank': { en: 'No Basalt Blank. Creatures drop them; Edrin Kade sells them.', es: 'No tienes bloque de basalto. Las criaturas los sueltan; Edrin Kade los vende.' },

@@ -81,3 +81,7 @@
 @media (max-width: 640px) {
   .vs-tabs { display: block; overflow-x: auto; }
 }
+
+/* Deposit all · Take all · Sort (owner 2026-10-26): one brass primary, the rest quiet chips; wraps on a phone. */
+.vs-actions { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.vs-chip--primary { background: var(--gold-bright); color: var(--cozy-wood-0); }

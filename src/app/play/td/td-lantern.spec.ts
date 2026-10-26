@@ -30,10 +30,11 @@ describe('td-lantern: the book as data', () => {
     expect(VOCATIONS).toContain('lanternwright');
     expect(CLASS_TREES.lanternwright).toEqual(['lamp', 'hearth', 'moth']);
     expect(bookTrees('lanternwright')).toEqual(['lamp', 'hearth', 'moth', 'common']);
-    expect(LAMP.length).toBe(13);
-    expect(CLASS_SKILLS.lanternwright.length).toBe(16); // + the common page: Light, the Seek, the Waygate
-    // The book's rows (skills-100.md §6): Lamp 6, Hearth 3 (Last Light is Lantern Ward's mark), Moth 2 (Moth-Kin, Lamp-Wisp's).
-    expect(LAMP_TREES.map(tr => treeSkills('lanternwright', tr).length)).toEqual([6, 3, 2]);
+    expect(LAMP.length).toBe(16);
+    expect(CLASS_SKILLS.lanternwright.length).toBe(19); // + the common page: Light, the Seek, the Waygate
+    // The book's rows (skills-100.md §6): Lamp 6, Hearth 6 (Last Light is Lantern Ward's mark; S5: Cleanse, Rekindle,
+    // Hearthsong), Moth 2 (Moth-Kin, Lamp-Wisp's).
+    expect(LAMP_TREES.map(tr => treeSkills('lanternwright', tr).length)).toEqual([6, 6, 2]);
     for (const id of LAMP) {
       expect(CLASS_SKILLS.warlock).not.toContain(id);
       expect(CLASS_SKILLS.ashguard).not.toContain(id);
@@ -245,6 +246,8 @@ describe('td-lantern: the fight', () => {
       sys.place('a', MOBS['bone-walker'], 20, 0);
       sys.place('b', MOBS['ash-wolf'], 24, 8);
       sys.target = sys.mobs[0];
+      // S5: Rekindle kneels beside a fallen party member.
+      if (id === 'rekindle') sys.fallenAllies.set('p', { x: 10, y: 0, at: Date.now() });
       expect(sys.useAbility(id)).withContext(id).toBeNull();
       expect(() => run(sys, 3)).not.toThrow();
     });
@@ -255,7 +258,8 @@ describe('td-lantern: the fight', () => {
     expect(sys.useAbility('hearthlight')).toBeNull();
     const v = sys.v('hearthlight');
     run(sys, v['secs'] + .3);
-    expect(healed.reduce((a, n) => a + n, 0)).toBe(v['heal']);
+    // S5: the Hearth's heals lift 3% a level (skills-100.md §3).
+    expect(healed.reduce((a, n) => a + n, 0)).toBe(Math.round(v['heal'] * sys.healLevel()));
     expect(healed.length).toBe(v['secs']);
   });
 

@@ -25,6 +25,7 @@ import { eliteStats, lootRank, type EliteAffix, type EliteTag } from './td-elite
 import { hardened } from './td-phases';
 import { STATUS_WIRE } from './td-abilities';
 import { TILE } from './td-art';
+import { isAshSkill } from './td-threat';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { DamageType } from '../../shared/loot/damage.model';
 import {
@@ -54,6 +55,12 @@ export interface CoopHooks {
   life?(me: LifeView): void;
   /** Protocol 10: the room holds a Keeper down (this one, or another near). */
   down?(to: string, x: number, y: number, self: boolean): void;
+  /** S5: another Keeper laid an effect on this one (a heal, a ward, a Rekindle…: world/ally-claims.ts, as the room weighed it). */
+  ally?(e: Extract<CoopEvent, { k: 'ally' }>): void;
+  /** The room weighs this Keeper's summons (`/join` `kin`): its summons' blows name them. */
+  kinOn?(): boolean;
+  /** S5: the life of the Keepers near this one, as the room keeps it. */
+  allies?(al: [string, number, number, number][]): void;
   /** A host's creature fell: 'full' (this Keeper fought it: its own spoils here), 'share' or 'none' (the HUD pays those). */
   killed(kill: CoopKill): 'full' | 'share' | 'none';
   now(): number;
@@ -154,6 +161,8 @@ export class TdCoop implements CoopLink {
 
   /** Others of the party share this Keeper's area (its companions go to them). */
   get sharing(): boolean { return this.present.length > 1 && this.present.includes(this.me); }
+  /** This Keeper's area is the room's (a member of the server-run world). */
+  get roomHosted(): boolean { return this.role === 'member' && this.host === ROOM_HOST; }
   /** The room's election (protocol 4) and who this Keeper is; null against an older room (everything solo). */
   setAreas(areas: CoopAreas | null, me: string, party: readonly string[], world = false, everywhere = false): void {
     this.areas = areas ?? {}; this.me = me; this.party = [...party]; this.world = world; this.everywhere = world && everywhere;
@@ -357,6 +366,8 @@ export class TdCoop implements CoopLink {
     const reach = COOP_RANGE_TILES * TILE, others = this.mobs.others;
     const near: { m: Mob; d: number }[] = [];
     for (const m of this.mobs.mobs) {
+      // A personal creature (a quest's foe, Mob.personal) is this Keeper's alone: each of the others raises their own.
+      if (m.personal) continue;
       let d = Infinity;
       for (const o of others) d = Math.min(d, Math.hypot(m.x - o.x, m.y - o.y));
       if (d <= reach || m.def.bound) near.push({ m, d });
@@ -438,18 +449,22 @@ export class TdCoop implements CoopLink {
       const r = this.gate.check(h, { id: msg.from, x: msg.x, y: msg.y, level: msg.level }, m ? { x: m.x, y: m.y, hp: m.hp } : null, now);
       if (!r.ok || !m) { this.stats.claimsRefused++; continue; }
       this.stats.claimsIn++;
-      this.mobs.applyClaim(m, r.dmg, msg.from, !!h.c);
+      this.mobs.applyClaim(m, r.dmg, msg.from, !!h.c, h.el, h.s);
     }
   }
 
   // ── Member ──
   /** CoopLink: this Keeper's blow on a host's creature — shown here, claimed from the host. */
-  claim(m: Mob, dmg: number, crit: boolean, color: string): void {
+  claim(m: Mob, dmg: number, crit: boolean, color: string, src?: SkillId | null, kin?: string): void {
     if (this.role !== 'member' || !m.nid) return;
     const el = elementOf(color);
-    const same = this.claims.find(c => c.i === m.nid && c.el === el);
+    // The skill rides on the claim when it makes threat of its own (the Ashguard's book ×2, td-threat).
+    const s = !kin && isAshSkill(src) ? src as string : undefined;
+    // A summon's blow names the summon (the room, `kin` on): its threat is its own. An older room never hears it.
+    const k = kin && this.host === ROOM_HOST && this.hooks.kinOn?.() ? kin : undefined;
+    const same = this.claims.find(c => c.i === m.nid && c.el === el && c.s === s && c.k === k);
     if (same) { same.d = Math.min(100000, same.d + dmg); if (crit) same.c = true; }
-    else this.claims.push({ i: m.nid, d: Math.min(100000, dmg), el, ...(crit ? { c: true } : {}) });
+    else this.claims.push({ i: m.nid, d: Math.min(100000, dmg), el, ...(crit ? { c: true } : {}), ...(s ? { s } : {}), ...(k ? { k } : {}) });
   }
   private sendClaims(): void {
     const hits = this.claims.slice(0, COOP_MAX_HITS);
@@ -470,6 +485,7 @@ export class TdCoop implements CoopLink {
     // Protocol 10: this Keeper's life as the room keeps it — after the bites it carries have landed here, so the
     // screen's own picture of them (its wards) is already claimed when the room's number is read.
     if (msg.me && msg.from === ROOM_HOST) this.hooks.life?.(msg.me);
+    if (msg.from === ROOM_HOST) this.hooks.allies?.(Array.isArray(msg.al) ? msg.al.filter(r => Array.isArray(r) && r.length === 4 && typeof r[0] === 'string' && r.slice(1).every(Number.isFinite)).slice(0, 12) : []);
     if (!res.ok) return;
     const now = this.hooks.now(), still = this.hooks.still();
     for (const id of res.removed) {
@@ -556,6 +572,16 @@ export class TdCoop implements CoopLink {
     if (e.k === 'down') {
       // Protocol 10: the room holds a Keeper down (its life ran out on the room): this one falls, others see it.
       this.hooks.down?.(e.to, e.x, e.y, e.to === this.me);
+      return;
+    }
+    if (e.k === 'kin') {
+      // The room: a creature bit one of this Keeper's raised (it falls only on the room's word).
+      if (e.to === this.me && msg.from === ROOM_HOST) this.mobs.kinBitten(e.p, e.d, e.x === 1, e.i ? this.replicas.get(e.i) ?? null : null);
+      return;
+    }
+    if (e.k === 'ally') {
+      // S5: only the room lays these, and only on the Keeper it names.
+      if (e.to === this.me && msg.from === ROOM_HOST) this.hooks.ally?.(e);
       return;
     }
     // A kill: this Keeper's reward is the HUD's call; the creature leaves the world here either way.

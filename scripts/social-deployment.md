@@ -340,6 +340,14 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
 
+### S5 on protocol 10 (2026-10-26 — built on `s5`, NOT deployed)
+
+Still `protocol: 10`. `/join` adds `allies: true` (the room weighs heals, wards and guards on allies); `/world/life`
+takes `a` (ally claims, `src/app/play/world/ally-claims.ts`) and answers `a` (what each moved, or why not); snapshots
+add `al` (the life of the Keepers near) and `ally` events; creatures pick their prey by threat (`td-threat.ts`). The
+bundle gains `ally-claims.ts` and `td-threat.ts`: rebuild and deploy with protocol 10's commands below (hearth first,
+then the client). An older client sends no `a`; an older room never says `allies`, so a new client sends none to it.
+
 ### Protocol 10 hotfix — the life ceiling (2026-10-26, branch `life`)
 
 Same protocol, same command as below. The room's save ceiling (world/keeper-budget saveGuard) now reads the save
@@ -347,6 +355,12 @@ through td/keeper-kit `keeperFight`, the function the HUD's orb reads: runes in 
 milestone passives count (before, only the stored rolls did, and a socketed Keeper's life stopped near half its orb).
 The bundle gains inventory-ops and the socket modules (~+136 KB). Sessions recover on their own: the redeploy makes
 every client rejoin, a join reads the save at once (until it lands the level's guest ceiling stands), and the 5-min re-read and each declared guard re-clamp a live life, keeping its share.
+
+### Summons on the room (branch `minions`, 2026-10-26 — protocol stays 10)
+Redeploy the hearth from the merged code (no Functions, rules or hosting change). `/join` then says `kin: true` to
+protocol-10 sessions; `/coop/pals` with `kin: 1` feeds the room (`room-kin.ts`) and relays to the whole world area;
+`/coop/hits` accepts `k` (a summon's blow). Older screens never send `kin` and keep the party path. Check after the
+deploy: `/join` carries `kin`, and a Warlock's skeleton is bitten by a room creature (e2e `td-world-kin.spec.ts`).
 
 ### Protocol 10 (M4 of the room-run world, 2026-10-26 — built on `m4`, NOT deployed)
 

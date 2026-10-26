@@ -459,6 +459,89 @@ const PROBES: Record<SkillId, Probe> = {
     return { secs, heal: w.life.hp >= 1 && w.healed.length === 1 && w.healed[0] > 0 && held >= 0 ? Math.round(v['heal']) : NaN };
   },
 
+  // ── S5: the tank's kit ──
+  'brand-throw': (r, o) => {
+    const make = () => world('ashguard', { 'watch-blade': 1, 'brand-throw': r }, o), w0 = make(), v = w0.sys.v('brand-throw'), b = w0.sys.v('watch-blade');
+    const range = edge(v['range'], d => { const x = make(); return cast(x, 'brand-throw') === 'nofoe' && (dummy(x, d), cast(x, 'brand-throw') === null); }, DUMMY.w / 4);
+    const first: number[] = [], back: number[] = [];
+    let taunt = NaN;
+    for (let i = 0; i < 300; i++) {
+      const x = make(), f = dummy(x, 2 * TILE), at = x.blows.length; cast(x, 'brand-throw');
+      const got = x.blows.slice(at).filter(h => h.m === f).map(h => h.n);
+      first.push(got[0]); back.push(got[1] ?? 0);
+      if (i === 0) taunt = Math.round(((f.taunt ?? 0)) * 100) / 100;
+    }
+    const [lo, hi] = [meleeBlow(b['min'], b['min'], v['pct']), meleeBlow(b['max'], b['max'], v['pct'])];
+    const mean = (a: number[]) => a.reduce((s, n) => s + n, 0) / a.length;
+    const ratio = Math.round(mean(back) / mean(first) * 100);
+    return { range, pct: rangeOf(first, lo, hi)[0] === lo ? v['pct'] : NaN, back: Math.abs(ratio - v['back']) <= 4 ? v['back'] : ratio, taunt };
+  },
+  'cinder-skin': (r, o) => {
+    const make = () => world('ashguard', { 'cinder-skin': r }, o), v = make().sys.v('cinder-skin');
+    const w = make(); cast(w, 'cinder-skin');
+    const resist = (w.sys as unknown as { markResist(): { fire: number } }).markResist().fire;
+    const b = biter(w, 1000); w.sys.update(.02);
+    const reflect = Math.round((1e7 - b.hp) / w.hurt[0] * 100);
+    const x = make(); cast(x, 'cinder-skin');
+    return { resist, reflect: Math.abs(reflect - v['reflect']) <= 1 ? v['reflect'] : reflect, secs: timeUntil(x, () => x.sys.skinT === 0) };
+  },
+  'banner-of-the-watch': (r, o) => {
+    const make = () => world('ashguard', { 'banner-of-the-watch': r }, o);
+    const w = make(); w.sys.aura = 'banner-of-the-watch'; biter(w, 1000); w.sys.update(.02);
+    const x = make(); x.sys.aura = 'banner-of-the-watch'; x.sys.allies = [{ id: 'a', x: TILE, y: 0, h: 50, m: 100 }]; run(x, 1.1);
+    const said = x.sys.allyOut.find(c => c.k === 'aura' && c.s === 'banner-of-the-watch');
+    // The room takes the cut in whole percents (the claim's wire): a half rounds up.
+    const v = make().sys.v('banner-of-the-watch'), cut = said?.n ?? NaN;
+    return { self: (1000 - w.hurt[0]) / 10, cut: cut === Math.round(v['cut']) ? v['cut'] : cut, radius: (said?.r ?? NaN) / 10 };
+  },
+  'second-wind': (r, o) => {
+    const w = world('ashguard', { 'second-wind': r }, o); w.life.hp = 100; cast(w, 'second-wind');
+    let last = 0;
+    for (let t = 0; t < 8; t += .02) { const n = w.healed.length; w.sys.update(.02); if (w.healed.length > n) last = t + .02; }
+    return { heal: Math.round(w.healed.reduce((a, b) => a + b, 0) / 5000 * 1000) / 10, secs: Math.round(last * 10) / 10 };
+  },
+  'intercept': (r, o) => {
+    const make = () => world('ashguard', { 'intercept': r }, o), v = make().sys.v('intercept');
+    const reach = edge(v['reach'], d => { const x = make(); x.sys.allies = [{ id: 'a', x: d, y: 0, h: 50, m: 100 }]; return cast(x, 'intercept') === null; });
+    const x = make(); x.sys.allies = [{ id: 'a', x: 3 * TILE, y: 0, h: 50, m: 100 }]; cast(x, 'intercept');
+    const bond = x.sys.allyOut.find(c => c.k === 'bond');
+    const held = timeUntil(x, () => x.sys.bondT === 0);
+    return { reach, share: bond?.n ?? NaN, secs: Math.abs((bond?.t ?? NaN) / 10 - held) <= .03 ? (bond?.t ?? NaN) / 10 : held };
+  },
+  'hold-the-gate': (r, o) => {
+    const make = () => world('ashguard', { 'hold-the-gate': r }, o), v = make().sys.v('hold-the-gate');
+    const w = make(); cast(w, 'hold-the-gate'); biter(w, 1000); w.sys.update(.02);
+    const radius = edge(v['radius'], d => { const x = make(), f = dummy(x, d); cast(x, 'hold-the-gate'); x.sys.update(.02); return (f.taunt ?? 0) > 0; });
+    const y = make(), f = dummy(y, TILE); cast(y, 'hold-the-gate'); y.sys.update(.02);
+    const x = make(); cast(x, 'hold-the-gate');
+    return { cut: (1000 - w.hurt[0]) / 10, radius, taunt: Math.round(((f.taunt ?? 0) + .02) * 100) / 100, secs: timeUntil(x, () => x.sys.gateT === 0) };
+  },
+  // ── S5: the healer's kit ──
+  'cleanse': (r, o) => {
+    const make = () => world('lanternwright', { 'cleanse': r }, o), v = make().sys.v('cleanse');
+    const reach = edge(v['reach'], d => { const x = make(); x.sys.allies = [{ id: 'a', x: d, y: 0, h: 1, m: 100 }]; cast(x, 'cleanse'); return x.sys.allyOut.some(c => c.k === 'cleanse' && c.to === 'a'); });
+    const w = make(); w.sys.layOn('stun:30,chill:30'); cast(w, 'cleanse');
+    const cleared = w.sys.kst.stun === 0 && w.sys.kst.chill === 0;
+    return { reach, immune: cleared ? timeUntil(w, () => w.sys.cleanseT === 0) : NaN };
+  },
+  'rekindle': (r, o) => {
+    const make = () => world('lanternwright', { 'rekindle': r }, o), v = make().sys.v('rekindle');
+    const fall = (x: World, d: number, ago = 0) => x.sys.fallenAllies.set('a', { x: d, y: 0, at: Date.now() - ago });
+    const reach = edge(v['reach'], d => { const x = make(); fall(x, d); return cast(x, 'rekindle') === null; }, 4);
+    const window = (() => { const ok = make(); fall(ok, TILE, v['window'] * 1000 - 400); const late = make(); fall(late, TILE, v['window'] * 1000 + 400); return cast(ok, 'rekindle') === null && cast(late, 'rekindle') === 'nofallen' ? v['window'] : NaN; })();
+    const w = make(); fall(w, TILE); cast(w, 'rekindle');
+    const channel = timeUntil(w, () => w.sys.allyOut.some(c => c.k === 'rekindle'));
+    return { reach, window, channel, pct: w.sys.allyOut.find(c => c.k === 'rekindle')?.n ?? NaN };
+  },
+  'hearthsong': (r, o) => {
+    const make = () => world('lanternwright', { 'hearthsong': r }, o), v = make().sys.v('hearthsong');
+    const pulse = (most: number) => { const x = make(); x.sys.keeperMaxHp = most; x.life.hp = 1; cast(x, 'hearthsong'); x.sys.update(.02); return x.healed[0] ?? NaN; };
+    const a = pulse(5000), b = pulse(10000), heal = Math.round((b - a) / 5000 * 1000) / 10;
+    const radius = edge(v['radius'], d => { const x = make(); x.sys.allies = [{ id: 'a', x: d, y: 0, h: 1, m: 100 }]; cast(x, 'hearthsong'); x.sys.update(.02); return x.sys.allyOut.some(c => c.k === 'heal' && c.to === 'a'); });
+    const x = make(); cast(x, 'hearthsong');
+    return { heal: Math.abs(heal - v['heal']) <= .1 ? v['heal'] : heal, flat: Math.round(a - 5000 * v['heal'] / 100), radius, secs: timeUntil(x, () => !x.sys.song) };
+  },
+
   // ── The Lanternwright ──
   'kindle': (r, o) => {
     const make = () => world('lanternwright', { 'kindle': r }, o), v = make().sys.v('kindle');
@@ -513,14 +596,17 @@ const PROBES: Record<SkillId, Probe> = {
     const w = world('lanternwright', { 'hearthlight': r }, o), v = w.sys.v('hearthlight'); cast(w, 'hearthlight');
     let last = 0;
     for (let t = 0; t < v['secs'] + 2; t += .02) { const n = w.healed.length; w.sys.update(.02); if (w.healed.length > n) last = t + .02; }
-    return { heal: w.healed.reduce((a, b) => a + b, 0), secs: Math.round(last * 10) / 10 };
+    // S5: the lowest ally within reach takes it (an ally hurt more, just inside; one just outside is passed over).
+    const reach = edge(v['reach'], d => { const x = world('lanternwright', { 'hearthlight': r }, o); x.sys.allies = [{ id: 'a', x: d, y: 0, h: 1, m: 100 }]; cast(x, 'hearthlight'); run(x, 1.1); return x.sys.allyOut.some(c => c.k === 'heal' && c.to === 'a'); });
+    // The card's heal is the level-1 base; the fight lifts it 3% a level (its words say so).
+    return { heal: Math.round(w.healed.reduce((a, b) => a + b, 0) / w.sys.healLevel()), secs: Math.round(last * 10) / 10, reach };
   },
   'hearth-circle': (r, o) => {
     const make = () => world('lanternwright', { 'hearth-circle': r }, o), v = make().sys.v('hearth-circle');
     const w = make(); cast(w, 'hearth-circle'); run(w, 5.001);
     const pace = (d: number) => { const x = make(); cast(x, 'hearth-circle'); const f = dummy(x, d); return (x.sys as unknown as { paceOf(m: Mob): number }).paceOf(f); };
     const x = make(); cast(x, 'hearth-circle');
-    return { heal: Math.round(w.healed.reduce((a, b) => a + b, 0) / 5 * 10) / 10, slow: Math.round((1 - pace(TILE)) * 100), radius: edge(v['radius'], d => pace(d) < 1), secs: timeUntil(x, () => !x.sys.zones.some(z => z.kind === 'hearth')) };
+    return { heal: Math.round(w.healed.reduce((a, b) => a + b, 0) / 5 / w.sys.healLevel() * 10) / 10, slow: Math.round((1 - pace(TILE)) * 100), radius: edge(v['radius'], d => pace(d) < 1), secs: timeUntil(x, () => !x.sys.zones.some(z => z.kind === 'hearth')) };
   },
   'lantern-ward': (r, o) => {
     const make = () => world('lanternwright', { 'lantern-ward': r }, o), v = make().sys.v('lantern-ward');
@@ -529,7 +615,9 @@ const PROBES: Record<SkillId, Probe> = {
     // It breaks: every foe near stands blinded.
     const radius = edge(v['radius'], d => { const y = make(); cast(y, 'lantern-ward'); const f = dummy(y, d); biter(y, 10000, 5); y.sys.update(.02); return (f.stun ?? 0) > 0; });
     const y = make(); cast(y, 'lantern-ward'); const f = dummy(y, TILE); biter(y, 10000, 5); y.sys.update(.02);
-    return { absorb: 10000 - w.hurt[0], secs: timeUntil(x, () => x.sys.lampWard === 0), radius, stun: Math.round(((f.stun ?? 0) + .02) * 100) / 100 };
+    // S5: it goes on the lowest ally within reach (a ward claim for the room), else on the Keeper.
+    const reach = edge(v['reach'], d => { const z = make(); z.sys.allies = [{ id: 'a', x: d, y: 0, h: 1, m: 100 }]; cast(z, 'lantern-ward'); return z.sys.allyOut.some(c => c.k === 'ward' && c.to === 'a' && c.n === v['absorb']); });
+    return { absorb: 10000 - w.hurt[0], secs: timeUntil(x, () => x.sys.lampWard === 0), radius, stun: Math.round(((f.stun ?? 0) + .02) * 100) / 100, reach };
   },
   'last-light': (r, o) => {
     const w = world('lanternwright', { 'last-light': r }, o); w.life.hp = 10;

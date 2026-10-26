@@ -10,6 +10,7 @@
  * A tap on one names it (EngineOptions.onPeerTap: the HUD's small card, with Wave). A Wave hangs over the Keeper who
  * waved and the one waved at for a few seconds.
  */
+import { hdFigure, hdWalkFrame, type HdView } from './td-hd-keeper';
 import { castShadow } from './td-shade';
 /** A Keeper's tap box over its feet (the fine figure, FIGURE_K, stands half again as tall as the art grid's). */
 const TAP_W = 12, TAP_H = 54;
@@ -123,12 +124,14 @@ export class TdPeers {
   }
 
   /** One Keeper, feet at (p.x, p.y): the front/back sheet facing the camera or away, the painter's side view across. */
-  draw(c: CanvasRenderingContext2D, p: PeerShown, view: { scale: number; camX: number; camY: number; time: number; still?: boolean }): void {
+  draw(c: CanvasRenderingContext2D, p: PeerShown, view: { scale: number; camX: number; camY: number; time: number; still?: boolean; hd?: (p: PeerShown) => { view: HdView; flip: boolean } }): void {
     const sx = Math.round(p.x), sy = Math.round(p.y);
     castShadow(c, sx, sy, 20);
     const painter = this.painter(p);
     // A per-Keeper phase so two standing side by side do not breathe in step.
     const t = view.time + (p.id.charCodeAt(0) % 7) * .37;
+    // HD (the isometric angle; td-hd-keeper.ts): six facings from the engine's own reading of how this Keeper moves.
+    if (view.hd) { const f = view.hd(p); hdFigure(painter).draw(c, sx, sy, .5, f.view, hdWalkFrame(t, p.moving), f.flip); return; }
     if (p.dir !== 'side') {
       const sheet = frontSheet(painter, carriesStaff(p.vocation)), row = p.dir === 'down' ? 0 : 1, f = frontFrame(t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, sx - FRONT_AX, sy - FRONT_AY, FRONT_W, FRONT_H);
