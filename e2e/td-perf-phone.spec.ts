@@ -116,4 +116,23 @@ on('phone perf (390×844, DPR 3)', () => {
     await measure(page, `hot spot walking ×${CPU}`, true);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   });
+  // Isometric B's HD creatures (ARTOPT=iso): twelve kinds at once, each baking its own frames; the baked cells' pixels.
+  test('hot spot, many kinds', async ({ page }) => {
+    test.setTimeout(180000);
+    await open(page);
+    await page.evaluate(() => {
+      const w = window as unknown as W;
+      w.__tdZones.to(58, 62); w.__tdArt.road(0);
+      const kinds = ['bone-walker', 'ash-wolf', 'rivet-maw', 'cinder-imp', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'lava-hound', 'thorn-weaver', 'gloam-witch', 'ember-drake', 'sporecap'];
+      for (let i = 0; i < 18; i++) w.__tdZones.foe(kinds[i % kinds.length], 3, Math.round(Math.cos(i * .7) * (40 + i * 4)), Math.round(Math.sin(i * .7) * (30 + i * 3)));
+    });
+    await page.waitForTimeout(1500);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+    await measure(page, `many kinds fighting (18 of 12 kinds) ×${CPU}`, false);
+    await measure(page, `many kinds walking ×${CPU}`, true);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    const hd = await page.evaluate(() => (window as unknown as { __tdArt: { hdStats?: () => unknown } }).__tdArt.hdStats?.());
+    console.warn(`[td-perf] HD creature cells: ${JSON.stringify(hd)}`);
+  });
 });
