@@ -24,6 +24,7 @@ import { TdMapWindowComponent } from './td-map-window.component';
 import type { TdMapSection } from './td/td-map';
 import { activeCharacterKey } from '../shared/save/character-scope';
 import { PlaySessionService } from '../shared/save/play-session.service';
+import { HiddenStreamCap } from './social/hidden-cap';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import { wornResists } from '../shared/loot/aura-sources';
@@ -914,7 +915,18 @@ export class SideScrollerComponent implements OnDestroy {
     // Never pause (owner 2026-10-26): the stream stays open while the tab is hidden or switched away, so the others
     // keep seeing this Keeper and the room keeps it in the world (td-engine steps the world on a timer meanwhile).
     // Coming back only makes sure it is joined (a phone that slept may have lost the connection).
-    const visible = (): void => { if (document.visibilityState !== 'hidden') { this.room?.resume(); this.ensureHearth(); } };
+    // Only for HIDDEN_STREAM_CAP_MS (30 min, the Hearth's Cloud Run budget): past that the stream closes, and the room
+    // is joined afresh the moment the tab is seen again (hidden-cap.ts). The world on this screen never stops.
+    const cap = new HiddenStreamCap(() => this.room);
+    // Opened in a background tab: the cap runs from the start.
+    if (document.visibilityState === 'hidden') cap.hidden();
+    const visible = (): void => {
+      if (document.visibilityState === 'hidden') { cap.hidden(); return; }
+      const wasCapped = cap.capped;
+      cap.shown();
+      if (!wasCapped) this.room?.resume();
+      this.ensureHearth();
+    };
     const hide = (): void => { this.room?.leave(); };
     const show = (event: PageTransitionEvent): void => { if (event.persisted) this.ensureHearth(); };
     document.addEventListener('visibilitychange', visible);
@@ -949,6 +961,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.unbindHearth = () => {
       vv?.removeEventListener('resize', keyboard); vv?.removeEventListener('scroll', keyboard);
       document.removeEventListener('visibilitychange', visible);
+      cap.dispose();
       window.removeEventListener('pagehide', hide);
       window.removeEventListener('pageshow', show);
       sub.unsubscribe(); privacySub.unsubscribe(); idSub.unsubscribe();
