@@ -113,6 +113,21 @@ if (want('ground')) {
     card(row, lush + ' / ' + worn, 10 * 16, 7 * 16, c => c.drawImage(ground(10 * 16, 7 * 16, k), 0, 0));
   }
 }
+if (want('props')) {
+  const row = section('Town: a house, a stall, a fence and the standing props (grown 1.5x)');
+  const props = [ART.lamp(), ART.bench(), ART.barrel(), ART.crate(), ART.signpost(), ART.anvil(), ART.chest(), ART.bush(1), ART.boulder(1), ART.gravestone(1)];
+  card(row, 'house + stall', 200, 120, c => {
+    grassBg(c, 200, 120, 5);
+    for (const [sp, x, y] of [[ART.house(5, 3, 'red', 'timber', true, 1), 48, 112], [ART.stall(3, 1, 'bread', 1), 150, 112], [ART.fence(4), 150, 70]] as const) {
+      if (sp.shadow) c.drawImage(sp.shadow.img, x + sp.shadow.x, y + sp.shadow.y);
+      c.drawImage(sp.img, x - sp.ax, y - sp.ay); if (sp.roof) c.drawImage(sp.roof.img, x + sp.roof.x, y + sp.roof.y);
+    }
+  });
+  card(row, 'props', 360, 60, c => {
+    grassBg(c, 360, 60, 6);
+    props.forEach((sp, i) => { const x = 18 + i * 34, y = 56; if (sp.shadow) c.drawImage(sp.shadow.img, x + sp.shadow.x, y + sp.shadow.y); c.drawImage(sp.img, x - sp.ax, y - sp.ay); });
+  });
+}
 if (want('aura')) {
   const row = section('Auras');
   for (const id of ['arcane', 'ember', 'life', 'brass'] as const) {
