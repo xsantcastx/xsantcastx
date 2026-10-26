@@ -2109,7 +2109,8 @@ export class TopDownEngine {
     });
     if (rm?.mode === 'roam' && rm.goal) {
       this.petGo(b, rm.goal.x, rm.goal.y, run * rm.pace / (far > 40 ? TD_PET.catchUp : 1), dt);
-      b.doing = b.mendT > 0 ? 'mend' : 'follow'; b.idleT = 0;
+      // A stroll while he rests is still his rest: its nap clock keeps running (it naps once it has settled).
+      b.doing = b.mendT > 0 ? 'mend' : 'follow'; b.idleT += dt;
       return;
     }
     let spot = followSpot(k);
