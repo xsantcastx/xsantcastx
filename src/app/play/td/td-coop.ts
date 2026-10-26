@@ -366,6 +366,8 @@ export class TdCoop implements CoopLink {
     const reach = COOP_RANGE_TILES * TILE, others = this.mobs.others;
     const near: { m: Mob; d: number }[] = [];
     for (const m of this.mobs.mobs) {
+      // A personal creature (a quest's foe, Mob.personal) is this Keeper's alone: each of the others raises their own.
+      if (m.personal) continue;
       let d = Infinity;
       for (const o of others) d = Math.min(d, Math.hypot(m.x - o.x, m.y - o.y));
       if (d <= reach || m.def.bound) near.push({ m, d });

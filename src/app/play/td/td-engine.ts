@@ -720,6 +720,9 @@ export class TopDownEngine {
     if (this.fxSexton) (window as unknown as Record<string, unknown>)['__tdSexton'] = {
       to: (where: string) => this.fxToSexton(where),
       smite: (what: 'walker' | 'uncounted') => this.fxSmite(what),
+      // The Row-Walker as the Keeper's own target (the real attack path: his blows, its life, its fall), and how it stands.
+      strike: () => { const m = this.mobs.mobs.find(x => x.key === WALKER_KEY); if (!m) return false; this.mobs.target = m; return true; },
+      walker: () => { const m = this.mobs.mobs.find(x => x.key === WALKER_KEY); return m ? { hp: Math.round(m.hp), max: Math.round(m.def.hp), personal: !!m.personal, name: m.elite?.name ?? null } : null; },
       // What Lumvesh would point at for the chain now (the target, its words and Glim's reading), without casting it.
       seek: () => {
         const here = this.seekPlace(this.world.continent, this.level === this.world ? null : this.level.id, this.player.x, this.player.y);
@@ -1795,6 +1798,8 @@ export class TopDownEngine {
   /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
   private coopRole(role: CoopRole, was: CoopRole = 'solo'): void {
     if (role === 'member') this.seam = null;
+    // Becoming a member sweeps this screen's creatures (td-coop become): a Row-Walker swept, not felled, rises again at once.
+    if (!this.mobs.mobs.some(m => m.key === WALKER_KEY)) { this.walkerUp = false; this.walkerT = 0; }
     // The room never took this floor after all (td-coop gave up waiting): its own creatures, as before the room.
     if (role === 'solo' && was === 'member' && this.level !== this.world && !this.mobs.mobs.length && !this.coop.roomRuns(this.peerArea())) {
       this.mobs.addSpawns(this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
@@ -2064,7 +2069,10 @@ export class TopDownEngine {
     if (onIsle && lv === this.world && this.sexton.step === 'key' && this.walkerT <= 0 && !up && MOBS['bone-walker']) {
       const x = WALKER_AT.c * TILE + TILE / 2, y = WALKER_AT.r * TILE + TILE;
       if (Math.hypot(this.player.x - x, this.player.y - y) < WALKER.reach * TILE) {
-        this.mobs.spawnPack(WALKER_KEY, MOBS['bone-walker'], x, y, makePack('unique', ['extra-strong'], WALKER.name, 1));
+        // Personal (phased): this Keeper's own foe, simulated here even when the room runs the island's creatures —
+        // the room cannot see the chain's step, and a local creature it never sent stood frozen and unhittable on a
+        // member (the "key never drops" report). Each Keeper on the step raises their own Hollis Vane.
+        for (const m of this.mobs.spawnPack(WALKER_KEY, MOBS['bone-walker'], x, y, makePack('unique', ['extra-strong'], WALKER.name, 1))) m.personal = true;
         this.walkerUp = true;
       }
     }
