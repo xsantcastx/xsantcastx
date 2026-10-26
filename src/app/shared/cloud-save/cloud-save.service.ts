@@ -69,10 +69,24 @@ import { MergeConflict, SaveSummary, summarise } from './cloud-save.model';
 // `publishDirectoryRow` / `readBan` below. See gm-sync.ts.
 import type { BanRecord } from './gm.model';
 import { whenAppCheckReady } from '../../app-check.bootstrap';
-import { ACCOUNT_SEEN_KEY, characterStorageKey, readActiveCharacter } from '../save/character-scope';
+import { ACCOUNT_SEEN_KEY, GUEST_FLAG_KEY, characterStorageKey, readActiveCharacter } from '../save/character-scope';
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
 const BOUND_UID_KEY = 'cloud-save-uid';
+/** The local e2e's fake cloud (fake-cloud.ts) is on: localhost, a WebDriver browser, `eclipse-cloud-fake` = a uid. */
+function fakeCloudUid(): string | null {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.webdriver || !['localhost', '127.0.0.1'].includes(location.hostname)) return null;
+    const uid = localStorage.getItem('eclipse-cloud-fake');
+    return uid && /^[A-Za-z0-9_-]{1,64}$/.test(uid) ? uid : null;
+  } catch { return null; }
+}
+/** sessionStorage: `<uid>@<ms>` — this tab reloaded to put a signed-in page into the account's saves (never a loop). */
+export const PROFILE_FIX_KEY = 'eclipse-profile-fix';
+/** No second such reload in one tab within this (ms). */
+const PROFILE_FIX_MS = 60_000;
+/** Signed in but not attached for this long: recover (recoverAttach). */
+export const ATTACH_WATCH_MS = 8_000;
 /**
  * Left over from the adopt-reload this file no longer does.
  *
@@ -205,6 +219,104 @@ export class CloudSaveService {
 
   private booted = false;
 
+  // ── Signed in ⇒ attached (owner bug 2026-10-26: "Sign in to trade" while signed in) ───────────────────────────────
+  // The status can say "signed in" (a uid) while the gateway is not attached: a page still in the guest's profile
+  // (character-scope "Profiles"), a bind that threw before the attach (a lazy chunk missing after a deploy, Firestore
+  // out of reach), or one stuck waiting. Nothing then reaches the account — the worst failure cloud save has, because
+  // the player believes it is safe. A watch notices it and recovers: a guest-profile page reloads into the account's
+  // saves (the guest flag cleared first, so the next page can only be the account's); an account page binds again,
+  // then reloads once. Each reload at most once per tab per minute ({@link PROFILE_FIX_KEY}): never a loop.
+  private watchTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Binds and resumes in flight (a resume binds inside itself). */
+  private binding = 0;
+  private rebinds = 0;
+  private waits = 0;
+  private readonly stuck$$ = new BehaviorSubject<boolean>(false);
+  /** Signed in, but the save has not reached the account yet past the watch (the HUD says so plainly). */
+  readonly stuck$: Observable<boolean> = this.stuck$$.asObservable();
+  get stuck(): boolean { return this.stuck$$.value; }
+  /** Signed in but not (yet) attached to the account: saves are not reaching it. */
+  get connecting(): boolean { return this.signedIn && !this.gateway.attached; }
+
+  private readonly watchSub = this.status$$.subscribe(st => { if (this.isBrowser) this.watchAttach(st); });
+
+  ngOnDestroy(): void {
+    this.watchSub.unsubscribe();
+    if (this.watchTimer) { clearTimeout(this.watchTimer); this.watchTimer = null; }
+  }
+
+  private watchAttach(st: SyncStatus): void {
+    if (!st.uid || this.gateway.attached) {
+      if (this.watchTimer) { clearTimeout(this.watchTimer); this.watchTimer = null; }
+      if (this.stuck$$.value) this.zone.run(() => this.stuck$$.next(false));
+      return;
+    }
+    if (this.watchTimer) return;
+    this.zone.runOutsideAngular(() => {
+      this.watchTimer = setTimeout(() => { this.watchTimer = null; this.recoverAttach(); }, ATTACH_WATCH_MS);
+    });
+  }
+
+  /**
+   * Signed in and still not attached: put it right. Public so a caller that needs the account now (a trade, a drop)
+   * can ask at once instead of waiting for the watch.
+   */
+  recoverAttach(): void {
+    if (!this.isBrowser || !this.signedIn || this.gateway.attached) return;
+    const uid = this.status.uid as string;
+    if (this.gateway.profile === 'guest') {
+      // The page plays the guest's saves while signed in: whatever was played here meanwhile is stamped as this
+      // account's (character-scope recovery: offered back on the account's page), then into the account's profile.
+      this.gateway.noteSignedIn(uid);
+      if (!this.reloadIntoAccount(uid)) this.markStuck();
+      return;
+    }
+    // Offline, or a bind still on its way (a slow network): wait a little longer before anything drastic.
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if (offline || (this.binding > 0 && this.waits < 3)) {
+      this.waits += 1;
+      this.watchAttach(this.status);
+      return;
+    }
+    if (this.binding === 0 && this.rebinds < 1) {
+      // The bind failed (it threw before the attach): once more, from the persisted session.
+      this.rebinds += 1;
+      void this.resume();
+      return;
+    }
+    // Still not attached after a second bind (or one that hangs): a fresh page fetches fresh code and binds anew.
+    if (!this.reloadIntoAccount(uid)) this.markStuck();
+  }
+
+  private markStuck(): void {
+    this.zone.run(() => {
+      this.stuck$$.next(true);
+      if (this.status.state !== 'error') this.status$$.next({ ...this.status, state: 'error', error: 'Your save could not reach your account. Reload the page to try again.' });
+    });
+  }
+
+  /**
+   * Reload into the account's saves: the guest flag goes first (with it gone the next page cannot boot the guest's
+   * profile, even if a write of the binding failed on a full disk). False when this tab already did so within
+   * {@link PROFILE_FIX_MS} — the caller says so instead of reloading again.
+   */
+  private reloadIntoAccount(uid: string): boolean {
+    try {
+      const last = sessionStorage.getItem(PROFILE_FIX_KEY);
+      const [who, at] = (last ?? '').split('@');
+      if (who === uid && Date.now() - Number(at) < PROFILE_FIX_MS) return false;
+      sessionStorage.setItem(PROFILE_FIX_KEY, `${uid}@${Date.now()}`);
+    } catch {
+      return false;
+    }
+    try {
+      localStorage.removeItem(GUEST_FLAG_KEY);
+      localStorage.setItem(BOUND_UID_KEY, uid);
+    } catch { /* the flag removal is what matters; the binding is written again on the next bind */ }
+    void this.gateway.settleForReload().catch(() => undefined).then(() => this.reloadPage());
+    return true;
+  }
+
   /**
    * A popup sign-in in this session ended without a credential. The next
    * attempt goes straight to redirect.
@@ -278,6 +390,11 @@ export class CloudSaveService {
   }
 
   private async resume(): Promise<void> {
+    this.binding += 1;
+    try { await this.resumeNow(); } finally { this.binding -= 1; this.watchAttach(this.status); }
+  }
+
+  private async resumeNow(): Promise<void> {
     try {
       const { getAuth, getRedirectResult, onAuthStateChanged } = await this.auth();
       const auth = getAuth(firebaseApp());
@@ -442,6 +559,11 @@ export class CloudSaveService {
    * renders, and the one question the structural rules cannot answer alone.
    */
   private async bind(user: AuthUser): Promise<void> {
+    this.binding += 1;
+    try { await this.bindNow(user); } finally { this.binding -= 1; this.watchAttach(this.status); }
+  }
+
+  private async bindNow(user: AuthUser): Promise<void> {
     this.status$$.next({
       state: 'syncing',
       uid: user.uid,
@@ -459,10 +581,10 @@ export class CloudSaveService {
     } catch { /* private mode; sync works for this session only */ }
 
     // Signed in from a guest page (character-scope "Profiles"): this page holds the guest's saves, never to be merged
-    // into the account. Reload: the next page boots into the account's profile and resumes this binding.
+    // into the account. Reload: the next page boots into the account's profile and resumes this binding. The guest
+    // flag is cleared first, so the next page can only be the account's (no loop: reloadIntoAccount).
     if (this.gateway.profile === 'guest') {
-      try { await this.gateway.settleForReload(); } catch { /* the guest's own keys are on disk already */ }
-      this.reloadPage();
+      if (!this.reloadIntoAccount(user.uid)) this.markStuck();
       return;
     }
 
@@ -659,11 +781,19 @@ export class CloudSaveService {
 
   /** Seam for tests: bind must not open Firestore until this settles. */
   private awaitAppCheck(): Promise<unknown> {
+    if (fakeCloudUid()) return Promise.resolve(null);
     return whenAppCheckReady();
   }
 
   private auth(): Promise<typeof import('@angular/fire/auth')> {
+    // The local e2e's stand-in (fake-cloud.ts): localhost, a WebDriver browser and a flag only, loaded only then.
+    const fake = fakeCloudUid();
+    if (fake) return (this.authModule ??= import('./fake-cloud').then(m => { this.exposeFake(); return m.fakeAuthModule(fake) as typeof import('@angular/fire/auth'); }));
     return (this.authModule ??= import('@angular/fire/auth'));
+  }
+  /** The e2e's view of the binding (fake cloud only). */
+  private exposeFake(): void {
+    (window as unknown as Record<string, unknown>)['__cloudFake'] = { attached: () => this.gateway.attached, profile: () => this.gateway.profile, signedIn: () => this.signedIn, stuck: () => this.stuck };
   }
 
   /**
@@ -675,6 +805,7 @@ export class CloudSaveService {
    * it is not working, because the visitor believes their progress is safe.
    */
   private async firestore(): Promise<FirestoreHandle> {
+    if (fakeCloudUid()) return (await import('./fake-cloud')).fakeFirestore() as unknown as FirestoreHandle;
     const handle = await this.lazyFirestore.get();
     if (!handle) throw new Error('[CloudSave] Firestore is unavailable.');
     return handle;
