@@ -31,10 +31,10 @@ import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-i
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
-import { HD_PET, HD_PET_ID, hdPetFrameIndex, hdPetSheet } from './td-hd-art';
 import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdWalkFrame, type HdView } from './td-hd-keeper';
-import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdStats } from './td-hd-mob';
+import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdGlim, hdIds, hdStats } from './td-hd-mob';
 import { facingRow } from './td-hd-rig';
+import { petClip } from './td-hd-pets';
 import type { Anim } from './td-hd-creatures';
 import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
@@ -638,8 +638,9 @@ export class TopDownEngine {
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
       motes: () => this.auraFx.alive,
       // Isometric B's HD creatures: the contact sheet, and the baked cells (count, pixels, kinds) for the memory check.
-      hdGallery: (ids?: string[], anims?: Anim[], k?: number) => hdGallery(ids, anims, k),
+      hdGallery: (ids?: string[], anims?: Anim[], k?: number, frames?: number[]) => hdGallery(ids, anims, k, frames),
       hdStats: () => hdStats(),
+      hdIds: () => hdIds(),
       // The HD figures' cached sheets (td-hd-keeper.ts), bytes: the phone memory check.
       hdBytes: () => hdFigureBytes(),
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
@@ -1991,8 +1992,9 @@ export class TopDownEngine {
       c.globalCompositeOperation = 'lighter';
       glowSquare(c, gx, gy, 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, .32);
       c.globalCompositeOperation = 'source-over';
-      const sprite = glimFrame(this.still ? 'mid' : GLIM_FLAP[Math.floor(time * 8) % 4], 'calm');
-      if (sprite) c.drawImage(sprite, gx - Math.floor((GLIM_W + 2) / 2), gy - Math.floor((GLIM_H + 2) / 2));
+      const fl = this.still ? 'mid' : GLIM_FLAP[Math.floor(time * 8) % 4];
+      if (optHdFigures() && envDetail() !== 'low') { const g2 = hdGlim(fl, 'calm'); c.drawImage(g2.img, 0, 0, g2.img.width, g2.img.height, gx - g2.ax / 2, gy + 5 - g2.ay / 2, g2.img.width / 2, g2.img.height / 2); }
+      else { const sprite = glimFrame(fl, 'calm'); if (sprite) c.drawImage(sprite, gx - Math.floor((GLIM_W + 2) / 2), gy - Math.floor((GLIM_H + 2) / 2)); }
     }
   }
   /** The other Keepers' companions drawn now (the e2e reads it): the party's whole list, everyone else's pet and Glim. */
@@ -3068,14 +3070,20 @@ export class TopDownEngine {
     const hover = fly ? -Math.round(2 + (calm ? 0 : Math.sin(b.t * 3) * 1.5)) : 0;
     // A blow it took: it blinks (never a body flash over the floor).
     if (b.hurtT > 0 && Math.floor(b.hurtT * 20) % 2) return;
-    c.save();
-    c.translate(x, y - PET_H + 1 + hop + hover);
-    if (optIso()) { if (this.isoFace(b, b.x, b.y).flip) c.scale(-1, 1); }
-    else if (b.face < 0) c.scale(-1, 1);
-    // The art-direction prototype (td-artopt.ts B/C): the shade-kit in HD.
-    if (optHdFigures() && b.id === HD_PET_ID && envDetail() !== 'low') { const P = HD_PET; c.drawImage(hdPetSheet(), hdPetFrameIndex(frame) * P.w, 0, P.w, P.h, -P.w / 4, PET_H - P.h / 2 + 1, P.w / 2, P.h / 2); }
-    else c.drawImage(sheet, petFrameIndex(frame) * PET_W, 0, PET_W, PET_H, -PET_W / 2, 0, PET_W, PET_H);
-    c.restore();
+    // Isometric B: the pet in HD (td-hd-pets.ts), its true facing; a flier's hover is in its own model.
+    if (optHdFigures() && hasHdModel(`pet:${b.id}`) && envDetail() !== 'low') {
+      const clip = petClip(frame);
+      c.save(); c.translate(x, y + 1 + hop);
+      this.paintHdCreature(c, `pet:${b.id}`, this.hdRow(b, b.x, b.y, b.face), clip.anim, clip.f, null, false);
+      c.restore();
+    } else {
+      c.save();
+      c.translate(x, y - PET_H + 1 + hop + hover);
+      if (optIso()) { if (this.isoFace(b, b.x, b.y).flip) c.scale(-1, 1); }
+      else if (b.face < 0) c.scale(-1, 1);
+      c.drawImage(sheet, petFrameIndex(frame) * PET_W, 0, PET_W, PET_H, -PET_W / 2, 0, PET_W, PET_H);
+      c.restore();
+    }
     // What it carries, in its mouth: a sack, a coin, or the gear's own colour.
     const g = b.carried;
     if (g) {
@@ -3121,8 +3129,14 @@ export class TopDownEngine {
       c.globalCompositeOperation = 'lighter';
       glowSquare(c, x, y, this.glimBright ? 9 : 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, this.glimBright ? .5 : .32);
       c.globalCompositeOperation = 'source-over';
-      const sprite = glimFrame(flap, this.glimMoodNow());
-      if (sprite) c.drawImage(sprite, x - Math.floor((GLIM_W + 2) / 2), y - Math.floor((GLIM_H + 2) / 2));
+      if (optHdFigures() && envDetail() !== 'low') {
+        // Isometric B: Glim at the HD pixel, half a world px a sheet px, its body on (x, y).
+        const g2 = hdGlim(flap, this.glimMoodNow());
+        c.drawImage(g2.img, 0, 0, g2.img.width, g2.img.height, x - g2.ax / 2, y + 5 - g2.ay / 2, g2.img.width / 2, g2.img.height / 2);
+      } else {
+        const sprite = glimFrame(flap, this.glimMoodNow());
+        if (sprite) c.drawImage(sprite, x - Math.floor((GLIM_W + 2) / 2), y - Math.floor((GLIM_H + 2) / 2));
+      }
       if (this.glimFlashT > 0) {
         const t = 1 - this.glimFlashT / .45, r = 6 + t * 10;
         c.globalAlpha = .9 * (1 - t); c.fillStyle = '#fff4dc';
