@@ -26,6 +26,7 @@ import type { SkillId } from './skill.model';
 import { TOOL_MAX_TIER, TOOL_NUMERALS, TOOL_TIER_LIST, toolName, type ToolFamily, type ToolTier } from './tool-items';
 import { TOOL_OPENS, TOOL_TIER_LEVEL, lanternRadiusFor } from './tools';
 import { fishingPerks, RODS } from '../fishing/fishing.model';
+import { LOGS, MEALS, WORLD_FISH } from '../gathering/gathering.model';
 
 export type PerkKind = 'yield' | 'speed' | 'quality' | 'loot';
 
@@ -81,6 +82,8 @@ const BASE_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = {
   woodcutting: sorted([
     ...wields('axe'),
     ...([1, 2, 3, 4, 5] as const).map(tier => node(TOOL_TIER_LEVEL[tier], TOOL_OPENS.axe[tier]!.materialId!)),
+    // The world's trees by land (shared/gathering LOGS): each land's log from its gate.
+    ...LOGS.map(l => node(l.cut, l.id)),
     ...gatherPerks([20, 30, 40, 50, 60, 70, 80, 90]),
     mastery,
   ]),
@@ -115,6 +118,20 @@ const BASE_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = {
     ...[20, 40, 60, 80].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'crate', n: Math.round(fishingPerks(level).crate * 1000) / 10 })),
     ...[25, 50, 75].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'double', n: Math.round(fishingPerks(level).double * 100) })),
     ...[30, 60, 90].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'window', n: Math.round(fishingPerks(level).window * 100) })),
+    // The world's fishing spots (shared/gathering WORLD_FISH): each fish from its gate.
+    ...WORLD_FISH.map(f => node(f.level, f.id)),
+    mastery,
+  ]),
+  // Firemaking (shared/gathering): each land's log lights from its gate; the fire is a small hearth.
+  firemaking: sorted([
+    ...LOGS.map(l => node(l.burn, l.id)),
+    ...gatherPerks([10, 25, 35, 55, 60, 70, 80, 90]),
+    mastery,
+  ]),
+  // Cooking (shared/gathering): each Hearth meal from its gate (it stops burning thirty levels on).
+  cooking: sorted([
+    ...MEALS.map(m => node(m.level, m.id)),
+    ...gatherPerks([30, 50, 60, 70, 80, 90]),
     mastery,
   ]),
   prospecting: sorted([

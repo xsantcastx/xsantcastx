@@ -17,6 +17,7 @@ import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS } from '../fishing/fishing.model';
 import { TOOL_TIER_LEVEL } from '../skills/tools';
 import { blankPrice } from '../spellstones/spellstones.model';
 import { waygateScrollPrice } from '../waygate/waygate-scroll';
+import { BURNT_FISH_ID, LOGS, MEALS, TINDERBOX_ID, WORLD_FISH, gatherAnchor } from '../gathering/gathering.model';
 
 export type ShopId = 'general' | 'fishing' | 'wood' | 'smith' | 'alchemist';
 export const SHOP_IDS: readonly ShopId[] = ['general', 'fishing', 'wood', 'smith', 'alchemist'];
@@ -55,7 +56,11 @@ const SET = (ids: readonly string[]) => new Set(ids);
 const ORE = ['slag-fragment', 'cinder-ore', 'ember-residue', 'pyrite-dust', 'emberheart-ore', 'orichalcum-ore', 'godforge-slag', 'celestial-alloy', 'luminous-prism', 'celestial-quartz'];
 const HERBS = ['sunbloom', 'nightbloom', 'starlight-herb', 'moonpetal-herb', 'verdant-sap', 'umbral-ink', 'solar-resin'];
 const WOOD = ['world-root-bark', 'thornroot', 'verdant-sap', 'shadowthread-silk'];
-const FISHED = CATCHES.filter(c => !LEDGER_CATCH_IDS.includes(c.id)).map(c => c.id);
+const FISHED = [
+  ...CATCHES.filter(c => !LEDGER_CATCH_IDS.includes(c.id)).map(c => c.id),
+  // The world's spots and the fire (shared/gathering): raw fish, Hearth meals, and the burnt ones (as bait).
+  ...WORLD_FISH.map(f => f.id), ...MEALS.map(m => m.id), BURNT_FISH_ID,
+];
 
 export const SHOPS: Readonly<Record<ShopId, ShopDef>> = {
   // The market's store: what keeps a Keeper walking. Edrin Kade (Seamworks) brews the small potions himself.
@@ -67,6 +72,8 @@ export const SHOPS: Readonly<Record<ShopId, ShopDef>> = {
       { id: 'gen-platform', kind: 'stack', key: 'platform', level: 1, secs: 30 },
       { id: 'gen-rope', kind: 'stack', key: 'bark-rope', level: 3, secs: 30 },
       { id: 'gen-rail', kind: 'stack', key: 'seam-rail', level: 1, secs: 20 },
+      // Firemaking (shared/gathering): flint and a fire-steel; it is never used up.
+      { id: 'gen-tinderbox', kind: 'stack', key: TINDERBOX_ID, level: 1, secs: 20 },
       { id: 'gen-blank', kind: 'special', key: 'basalt-blank' },
       { id: 'gen-waygate', kind: 'special', key: 'waygate-scroll' },
       { id: 'gen-minor-health', kind: 'potion', key: 'minor-health-potion' },
@@ -98,7 +105,8 @@ export const SHOPS: Readonly<Record<ShopId, ShopDef>> = {
       { id: 'wood-axe-2', kind: 'item', key: 'axe-2', level: TOOL_TIER_LEVEL[2], secs: 300 },
       { id: 'wood-timber', kind: 'stack', key: 'timber-support', level: 5, secs: 60 },
     ],
-    buys: SET(WOOD),
+    // The world's logs too (shared/gathering LOGS): the Charwood keeps count, the Woodward pays for it.
+    buys: SET([...WOOD, ...LOGS.map(l => l.id)]),
     buysGear: false,
   },
   // Among the forges: plain steel with room in it (normal bases with empty sockets, the Enchanting Table's supply:
@@ -147,6 +155,8 @@ export function stackWorth(key: string): number {
   if (shelf) return shelf.worth;
   const fish = CATCHES.find(c => c.id === key);
   if (fish && !LEDGER_CATCH_IDS.includes(fish.id)) return Math.round(fish.anchor * ITEM_ECONOMY_SCALE);
+  const gathered = gatherAnchor(key);
+  if (gathered) return Math.round(gathered * ITEM_ECONOMY_SCALE);
   return 0;
 }
 

@@ -126,6 +126,11 @@ import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
 import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/keymap.model';
 import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate';
+import { FISH_REACH, GatherRuntime, SHADOW_CAP, SHADOW_CAP_LOW, type Campfire } from './td-gather';
+import { WeatherFx } from './td-weather-fx';
+import type { FishSpot } from './td-world';
+import { FIRE_WARM } from '../../shared/gathering/gathering.model';
+import { WEATHER_STATES, WET_LINGER_SECS, fireSecs, fogExtra, isWet, weatherAt, type WeatherNow, type WeatherShow, type WeatherState } from '../../shared/weather/weather.model';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 export const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -243,7 +248,23 @@ export class TopDownEngine {
   /** Is a point over a creature's body (an effect there stays ≤ 60%, effects-spec §Budget)? */
   private readonly overFoe = (x: number, y: number): boolean => this.mobs.mobs.some(m => Math.abs(x - m.x) < m.def.w / 2 && y < m.y && y > m.y - m.def.h);
   /** A tree being cut: hits so far, the next swing's timer. */
-  private chop: { c: number; r: number; x: number; y: number; hits: number; t: number } | null = null;
+  private chop: { c: number; r: number; x: number; y: number; hits: number; t: number; swings?: number } | null = null;
+  /** The gathering loops (td-gather.ts): the spot being fished, the pan, a light being struck, the campfires, a meal. */
+  private readonly gather = new GatherRuntime();
+  /** Weather v1 (shared/weather): what the sky does here now, drawn by td-weather-fx. */
+  private readonly weatherFx = new WeatherFx();
+  /** The host's clock and the room's rolls (setWeatherClock), read once a second. */
+  private weatherIn: { ms: number; at: number; rolls: { window: number; lands: Readonly<Record<string, number>> } | null } | null = null;
+  private weatherT = 0;
+  /** `?weather=rain|storm|fog|overcast|clear`: the sky pinned for screenshots and tests. */
+  private readonly weatherPin: WeatherState | null = typeof location !== 'undefined' ? ((WEATHER_STATES as readonly string[]).includes(new URLSearchParams(location.search).get('weather') ?? '') ? new URLSearchParams(location.search).get('weather') as WeatherState : null) : null;
+  private weatherSeen = '';
+  private gatherSeen = '';
+  private gatherSeq = 0;
+  /** The spots in view this frame (the draw's; the tap and the prompt read them). */
+  private spotsInView: FishSpot[] = [];
+  /** The last frame's step (s): the rain falls by it. */
+  private frameDt = 0;
   private shake = 0;
   /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
   private map: TdMap;
@@ -575,6 +596,36 @@ export class TopDownEngine {
         return null;
       },
     };
+    // The gathering e2e (webdriver only): the spots near the Keeper and where their floats are on the page, a step to near
+    // one (the spec still taps the float, and the Keeper still walks to its shore), and what the loops are doing.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdGather'] = {
+      spots: (reach = 900) => {
+        const k = this.player;
+        return this.level === this.world ? this.world.spotsIn(k.x - reach, k.y - reach, k.x + reach, k.y + reach)
+          .map(sp => ({ id: sp.id, water: sp.water, x: sp.x, y: sp.y, shore: sp.shore, d: Math.round(Math.hypot(sp.x - k.x, sp.y - k.y)) }))
+          .sort((a, b) => a.d - b.d) : [];
+      },
+      near: (x: number, y: number, dx = 0, dy = 48) => {
+        const tx = x + dx, ty = y + dy;
+        for (let d = 0; d < 80; d += 4) for (const [ox, oy] of [[0, d], [d, 0], [-d, 0], [0, -d], [d, d], [-d, d]]) {
+          if (footFree(this.level, tx + ox, ty + oy)) { this.player.x = tx + ox; this.player.y = ty + oy; this.path = []; this.placeCompanions(); return true; }
+        }
+        return false;
+      },
+      page: (x: number, y: number) => {
+        const r = this.canvas.getBoundingClientRect(), k = Math.max(1, this.canvas.width) / Math.max(1, r.width);
+        return { x: Math.round(r.left + (x - this.cam.x) * this.scale / k), y: Math.round(r.top + (y - this.cam.y) * this.scale / k) };
+      },
+      fires: () => this.gather.fires.map(f => ({ x: Math.round(f.x), y: Math.round(f.y), left: Math.round(f.left), lv: f.lv })),
+      hurt: (n: number) => { this.hp = Math.max(1, this.hp - n); return this.hp; },
+      state: () => ({
+        fishing: this.gather.fish ? { spot: this.gather.fish.spot.id, n: this.gather.fish.n, wait: this.gather.fish.wait } : null,
+        cooking: this.gather.cook ? { n: this.gather.cook.n, range: this.gather.cook.range } : null,
+        striking: !!this.gather.strike, fires: this.gather.fires.length, shadows: this.gather.shadowsDrawn, meal: this.gather.meal,
+        weather: this.weatherFx.now, wet: this.mobs.kst.wet, flashes: this.weatherFx.flashes, wetness: this.weatherFx.wetness,
+        hp: Math.round(this.hp), maxHp: this.maxHp, x: Math.round(this.player.x), y: Math.round(this.player.y), level: this.level.id, continent: this.world.continent,
+      }),
+    };
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdZones'] = {
       to: (c: number, r: number) => {
         for (let d = 0; d <= 12; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
@@ -834,7 +885,7 @@ export class TopDownEngine {
       // rAF stamps the frame's start, which can precede the performance.now() taken in start(): never step backwards.
       const dt = Math.max(0, Math.min(.05, (now - this.last) / 1000));
       this.watchFrames(now - this.last);
-      this.last = now; this.frameAt = performance.now();
+      this.last = now; this.frameAt = performance.now(); this.frameDt = this.paused ? 0 : dt;
       // Schedule first: one bad frame (a host callback throwing) must never stop the world.
       this.raf = requestAnimationFrame(loop);
       try {
@@ -911,6 +962,7 @@ export class TopDownEngine {
     if (this.bgTimer) { clearInterval(this.bgTimer); this.bgTimer = null; }
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
+    delete (window as unknown as Record<string, unknown>)['__tdGather'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
     if (this.fxPeer) delete (window as unknown as Record<string, unknown>)['__tdPeer'];
     if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
@@ -936,6 +988,152 @@ export class TopDownEngine {
     this.darkness = Math.max(0, Math.min(1, 1 - sky.light));
     this.dusk = sky.glow;
   }
+  /**
+   * The weather's clock (shared/weather): the host's world-clock ms, and the room's rolls while a Keeper is in its world
+   * (the room owns the roll; alone, the rolls come from this clock). Called once a second.
+   */
+  setWeatherClock(input: { ms: number; rolls?: { window: number; lands: Readonly<Record<string, number>> } | null }): void {
+    this.weatherIn = { ms: input.ms, at: this.time, rolls: input.rolls ?? null };
+    if (!this.weatherT) this.stepWeather();
+  }
+  /** Menu → Settings → Weather: full, soft (no streaks, no flashes) or off (the pip only; the rules stay). */
+  setWeatherShow(show: WeatherShow): void { this.weatherFx.show = show; }
+  /** What the HUD's pip shows. */
+  weatherView(): WeatherNow { return this.weatherFx.now; }
+  private stepWeather(): void {
+    const k = this.player, outdoors = this.level === this.world;
+    let now: WeatherNow;
+    if (this.weatherPin) now = { state: outdoors ? this.weatherPin : 'clear', level: outdoors ? 1 : 0, window: 0, next: this.weatherPin, leftMs: 360_000 };
+    else if (!this.weatherIn) now = { state: 'clear', level: 0, window: 0, next: 'clear', leftMs: 0 };
+    else {
+      const ms = this.weatherIn.ms + (this.time - this.weatherIn.at) * 1000;
+      const region = outdoors ? this.world.regionAt(Math.floor(k.x / TILE), Math.floor(k.y / TILE)) : '*';
+      now = weatherAt({ land: this.world.continent, region, ms, rolls: this.weatherIn.rolls, indoors: !outdoors });
+    }
+    this.weatherFx.now = now;
+    const tag = `${now.state}:${now.level.toFixed(1)}`;
+    if (tag !== this.weatherSeen) { this.weatherSeen = tag; this.canvas.setAttribute('data-weather', tag); }
+  }
+  /** Rain on the Keeper now (outdoors, the sky wet). */
+  private get rainedOn(): boolean { return this.level === this.world && isWet(this.weatherFx.now.state) && this.weatherFx.now.level > .3; }
+
+  // ── Gathering (td-gather.ts; the host answers through onGather) ──────────
+
+  /** Something to gather in reach: a fire, a fishing spot, a tree (E works on it). */
+  private gatherNear(): boolean { return !!(this.gather.fireNear(this.player.x, this.player.y, 34) || this.spotNear() || this.treeNear()); }
+
+  private gatherId(kind: string): string { return `td-${kind}:${Date.now().toString(36)}:${(++this.gatherSeq).toString(36)}`; }
+  private tell(text: string | undefined): void { if (text) { this.message = text; this.messageKey = ''; this.messageAge = 0; } }
+  /** The spot whose float is under a point (art px), if any is in view. */
+  private spotAt(wx: number, wy: number): FishSpot | null {
+    if (this.level !== this.world) return null;
+    let best: FishSpot | null = null, bd = 14;
+    for (const sp of this.world.spotsIn(wx - 24, wy - 24, wx + 24, wy + 24)) { const d = Math.hypot(sp.x - wx, sp.y - wy); if (d < bd) { bd = d; best = sp; } }
+    return best;
+  }
+  /** The spot within casting reach of the Keeper. */
+  private spotNear(): FishSpot | null {
+    if (this.level !== this.world) return null;
+    const k = this.player;
+    let best: FishSpot | null = null, bd = FISH_REACH;
+    for (const sp of this.world.spotsIn(k.x - 40, k.y - 40, k.x + 40, k.y + 40)) { const d = Math.hypot(sp.x - k.x, sp.y - (k.y - 6)); if (d < bd) { bd = d; best = sp; } }
+    return best;
+  }
+  /** Cast at a spot: the host says whether (Fishing level, a rod, the room in the satchel) and how fast they bite. */
+  private beginFish(sp: FishSpot): void {
+    const a = this.options.onGather?.({ kind: 'fish', phase: 'start', water: sp.water, spot: sp.id, mutationId: this.gatherId('fish'), weather: this.weatherFx.now.state });
+    if (!a) return;
+    if (!a.ok) { this.tell(a.text); return; }
+    this.chop = null;
+    // Face the water: south, north, or to the side.
+    const dx = sp.x - this.player.x, dy = sp.y - (this.player.y - 6);
+    this.player.face = dx < 0 ? -1 : 1;
+    this.player.dir = Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? 'down' : 'up') : 'side';
+    this.gather.startFish(sp, a.speed ?? 1, this.player, Math.random);
+    this.tell(a.text);
+    this.options.onSfx?.({ kind: 'cast' });
+  }
+  /** A lit fire (or a lit hearth: a range) in reach of a point. */
+  private cookSourceNear(x: number, y: number): { fire: Campfire | null; x: number; y: number; range: boolean } | null {
+    const f = this.gather.fireNear(x, y, 34);
+    if (f) return { fire: f, x: f.x, y: f.y, range: false };
+    if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id) && Math.hypot(h.x - x, h.y - y) < 48) return { fire: null, x: h.x, y: h.y, range: true };
+    return null;
+  }
+  private beginCook(src: { fire: Campfire | null; x: number; y: number; range: boolean }): void {
+    const a = this.options.onGather?.({ kind: 'cook', phase: 'start', range: src.range, mutationId: this.gatherId('cook') });
+    if (!a) return;
+    if (!a.ok) { this.tell(a.text); return; }
+    this.chop = null;
+    this.player.face = src.x < this.player.x ? -1 : 1;
+    this.gather.startCook(src.fire, src.x, src.y, src.range, this.player);
+    this.tell(a.text);
+  }
+  /** Cook at the fire (or the lit hearth) in reach: the satchel card's Cook. Why not, or null. */
+  startCooking(): 'nofire' | null {
+    const src = this.cookSourceNear(this.player.x, this.player.y);
+    if (!src) return 'nofire';
+    this.beginCook(src);
+    return null;
+  }
+  /** Strike a light with this log at the Keeper's feet (the satchel card's Light). Why not, or null. */
+  lightFire(log: string): 'water' | 'busy' | null {
+    const k = this.player;
+    if (this.gather.strike) return 'busy';
+    const c = Math.floor(k.x / TILE), r = Math.floor((k.y - 1) / TILE), g = this.level.ground(c, r);
+    if (g === 'water' || g === 'blackwater' || !this.level.walkable(c, r)) return 'water';
+    this.chop = null;
+    this.gather.startStrike(log, k.x, k.y);
+    this.actT = .3;
+    return null;
+  }
+  /** A meal eaten from the satchel: it mends `heal` life over twelve seconds (a new one replaces the old). */
+  eat(heal: number): void { this.gather.eat(heal); }
+  private updateGather(dt: number): void {
+    this.gather.lv = this.level.id;
+    const out = this.gather.update(dt, this.time, this.player, this.rainedOn);
+    if (out.heal > 0) this.hp = Math.min(this.maxHp, this.hp + out.heal);
+    const f = this.gather.fish;
+    if (out.bite && f) {
+      this.options.onSfx?.({ kind: 'bite' });
+      const a = this.options.onGather?.({ kind: 'fish', phase: 'bite', water: f.spot.water, spot: f.spot.id, mutationId: this.gatherId('fish'), weather: this.weatherFx.now.state });
+      if (!a?.ok) { this.gather.fish = null; this.tell(a?.text); }
+      else {
+        this.mobs.floaters.push({ x: this.player.x, y: this.player.y - 34, text: a.label ?? '', color: '#bfe6ff', age: 0 });
+        this.options.onSfx?.({ kind: 'catch' });
+        this.gather.rearm(a.speed ?? f.speed, Math.random);
+      }
+    }
+    const ck = this.gather.cook;
+    if (out.cooked && ck) {
+      const a = this.options.onGather?.({ kind: 'cook', phase: 'one', range: ck.range, mutationId: this.gatherId('cook') });
+      if (!a?.ok) { this.gather.cook = null; this.tell(a?.text); }
+      else { this.mobs.floaters.push({ x: this.player.x, y: this.player.y - 34, text: a.label ?? '', color: a.burnt ? '#9a948a' : '#ffd08a', age: 0 }); ck.n++; }
+    }
+    if (out.lit) {
+      const s = out.lit;
+      const a = this.options.onGather?.({ kind: 'fire', phase: 'lit', log: s.log, mutationId: this.gatherId('fire') });
+      if (a?.ok) {
+        this.gather.lightFire(s.x, s.y - 2, s.log, fireSecs(this.level === this.world ? this.weatherFx.now.state : 'clear'), this.level.id);
+        this.mobs.chips(s.x, s.y - 6);
+        // Step aside of the fire, RuneScape's way (west if the ground lets him, else east).
+        for (const dx of [-14, 14]) if (footFree(this.level, this.player.x + dx, this.player.y)) { this.walkTo(this.player.x + dx, this.player.y); break; }
+      }
+      this.tell(a?.text);
+    }
+    // The fish under the water: their jumps (a jump at the spot being fished brings its bite two seconds sooner).
+    if (this.level === this.world && this.spotsInView.length) {
+      const sky = { dark: this.skyPhase === 'night' || this.skyPhase === 'eclipse', eclipse: this.skyPhase === 'eclipse' };
+      this.gather.stepJumps(this.spotsInView, this.time, sky, () => this.options.onSfx?.({ kind: 'splash' }));
+    }
+    const tag = `${f ? `fishing:${f.n}` : ck ? `cooking:${ck.n}` : this.gather.strike ? 'striking' : ''}|${this.gather.fires.length}|${this.gather.shadowsDrawn}`;
+    if (tag !== this.gatherSeen) {
+      this.gatherSeen = tag;
+      const [act, fires, shadows] = tag.split('|');
+      this.canvas.setAttribute('data-gather', act); this.canvas.setAttribute('data-fires', fires); this.canvas.setAttribute('data-fish-shadows', shadows);
+    }
+  }
+
   /** Night darkness (Menu → Sound): 'full' or 'softer' (td-night.ts). */
   setNight(n: string): void { if (n === 'full' || n === 'softer') this.nightSetting = n; }
   setKeeperLook(look: KeeperLook | null, gear: KeeperGear | null = null): void {
@@ -988,6 +1186,11 @@ export class TopDownEngine {
     const cp = this.mobs.corpseNear(this.player.x, this.player.y);
     if (cp && (!this.nearby || Math.hypot(cp.x - this.player.x, cp.y - this.player.y) < Math.hypot(this.nearby.x - this.player.x, this.nearby.y - this.player.y))) { this.openCorpse(cp.id); return; }
     if (this.nearby) { this.use(this.nearby); return; }
+    // The gathering skills: a fire in reach (cook), a fishing spot in reach (cast), then a tree (chop).
+    const src = this.cookSourceNear(this.player.x, this.player.y);
+    if (src?.fire) { this.beginCook(src); return; }
+    const sp = this.spotNear();
+    if (sp) { this.beginFish(sp); return; }
     const t = this.treeNear();
     if (t) this.startChop(t.c, t.r, t.x, t.y);
   }
@@ -1122,7 +1325,15 @@ export class TopDownEngine {
     return best;
   }
   private startChop(c: number, r: number, x: number, y: number): void {
-    this.chop = { c, r, x, y, hits: 0, t: 0 };
+    // The host says whether (Woodcutting for this land's log, room in the satchel) and how many swings it takes.
+    let swings: number | undefined;
+    if (this.options.onGather) {
+      const a = this.options.onGather({ kind: 'chop', phase: 'start', land: this.world.continent, mutationId: this.gatherId('chop') });
+      if (!a.ok) { this.tell(a.text); return; }
+      swings = a.swings;
+    }
+    this.gather.stopAll();
+    this.chop = { c, r, x, y, hits: 0, t: 0, ...(swings ? { swings } : {}) };
     this.player.face = x < this.player.x ? -1 : 1;
   }
   private updateChop(dt: number): void {
@@ -1135,7 +1346,15 @@ export class TopDownEngine {
     this.actT = .3; this.player.dir = 'side'; this.player.face = ch.x < this.player.x ? -1 : 1;
     this.shake = .15;
     this.mobs.chips(ch.x, ch.y - 12);
-    if (ch.hits < 4) return;
+    if (ch.hits < (ch.swings ?? 4)) return;
+    // Felled: the land's log (shared/gathering LOGS) through the host; a full satchel leaves the tree standing.
+    if (this.options.onGather) {
+      const a = this.options.onGather({ kind: 'chop', phase: 'fell', land: this.world.continent, mutationId: `td-chop:${ch.c},${ch.r}:${Date.now().toString(36)}` });
+      if (a.ok) { this.world.fell(ch.c, ch.r, 90_000); this.mobs.floaters.push({ x: this.player.x, y: this.player.y - 34, text: a.label ?? '', color: '#d8c8a0', age: 0 }); }
+      else this.tell(a.text);
+      this.chop = null;
+      return;
+    }
     // Felled: the host books Woodcutting XP and the bark (a roll) like any trunk in the old hunts.
     const bark = Math.random() < .6;
     const ok = this.options.onWorldAction?.({
@@ -1715,6 +1934,8 @@ export class TopDownEngine {
     // The Lanternwright's: a Beacon on its pole, a disc of Dawn at Noon.
     for (const b of this.mobs.beacons) out.push({ x: b.x, y: b.y - 30, r: BEACON_LIGHT });
     for (const d of this.mobs.dawns) out.push({ x: d.x, y: d.y, r: d.r * 1.4 });
+    // Every campfire is a small hearth (canon §6.5): the dark-born keep back from its light.
+    out.push(...this.gather.lights());
     return out;
   }
   private darkFrame(dt: number): DarkFrame {
@@ -1724,7 +1945,7 @@ export class TopDownEngine {
       dt, time: this.time, still: this.still, levelId: this.level.id, dark: this.level.dark, continent: this.world.continent, surface,
       phase: this.skyPhase, safe: surface ? this.world.safeAt(tc, tr) : !this.level.dark,
       // A lit hearth near, or the Lanternwright's own Hearth Circle round him: the Hush cannot rise there.
-      hearth: (surface && this.hearths.some(h => this.hearthLit.has(h.id) && Math.hypot(h.x - k.x, h.y - k.y) < 90)) || this.mobs.inHearth,
+      hearth: (surface && this.hearths.some(h => this.hearthLit.has(h.id) && Math.hypot(h.x - k.x, h.y - k.y) < 90)) || this.mobs.inHearth || !!this.gather.fireNear(k.x, k.y, FIRE_WARM),
       keeper: { x: k.x, y: k.y, moving: k.moving }, keeperLevel: this.mobs.keeperLevel,
       own: this.ownLight(), glim: this.glimLight(),
       pet: pb && tdPetJob(pb.id, 'follow') === 'light' ? { x: pb.x, y: pb.y - 8, r: TD_PET.light } : null,
@@ -2687,7 +2908,7 @@ export class TopDownEngine {
       const dx = this.joy.x - this.joy.sx, dy = this.joy.y - this.joy.sy, len = Math.hypot(dx, dy);
       if (len > 6) { const k = Math.min(1, len / 48); vx = dx / len * k; vy = dy / len * k; }
     }
-    if (vx || vy) { this.path = []; this.chop = null; }
+    if (vx || vy) { this.path = []; this.chop = null; this.gather.stopAll(); }
     else if (this.path.length) {
       const p = this.path[0], dx = p.x - this.player.x, dy = p.y - this.player.y, d = Math.hypot(dx, dy);
       // No headway on this step for half a second (an edge the feet catch on): count it reached, never grind a wall.
@@ -2710,7 +2931,7 @@ export class TopDownEngine {
       this.tryMove(0, vy * speed * dt);
     }
     // The Keeper's stillness (the companions idle by it) and his breadcrumbs (the pet's way round a corner).
-    this.stillT = this.player.moving || this.mobs.target || this.chop ? 0 : this.stillT + dt;
+    this.stillT = this.player.moving || this.mobs.target || this.chop || this.gather.busy ? 0 : this.stillT + dt;
     const crumb = this.trail[this.trail.length - 1];
     if (!crumb || Math.hypot(crumb.x - this.player.x, crumb.y - this.player.y) > 6) { this.trail.push({ x: this.player.x, y: this.player.y }); if (this.trail.length > 48) this.trail.shift(); }
     this.updateFolk(dt);
@@ -2743,6 +2964,14 @@ export class TopDownEngine {
     this.updateFx(dt);
     this.updateLoot(dt);
     this.updateChop(dt);
+    // Weather v1 (once a second: the window, the section underfoot) and the gathering loops.
+    this.weatherT -= dt;
+    if (this.weatherT <= 0) { this.weatherT = 1; this.stepWeather(); }
+    this.weatherFx.update(dt, this.time, Math.random, this.still);
+    // Wet (the weather's rule): rain on the Keeper keeps him Wet, and a few seconds after (td-mobs reads kst.wet).
+    if (this.rainedOn) this.mobs.kst.wet = Math.max(this.mobs.kst.wet, WET_LINGER_SECS);
+    this.mobs.weatherWet = this.rainedOn;
+    this.updateGather(dt);
     this.actT = Math.max(0, this.actT - dt); this.shake = Math.max(0, this.shake - dt);
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
     if (this.message || this.messageKey) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageKey = ''; this.messageAge = 0; } }
@@ -2770,9 +2999,11 @@ export class TopDownEngine {
   }
   private report(): void {
     const s = this.nearby;
+    // Nothing to use: the gathering skills' own (a fire to cook at, a spot to fish, a tree to chop).
+    const gx = s ? null : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
     const state: EngineState = {
-      hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : this.treeNear() ? 'td-tree' : null,
-      nearbyLabel: s ? s.station.label : this.treeNear() ? 'CHOP TREE' : undefined, nearbyKind: s?.station.kind ?? (this.treeNear() ? 'resource' : undefined),
+      hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : gx,
+      nearbyLabel: s ? s.station.label : gx === 'td-fire' ? 'COOK' : gx === 'td-spot' ? 'FISH' : gx === 'td-tree' ? 'CHOP TREE' : undefined, nearbyKind: s?.station.kind ?? (gx ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
@@ -2850,7 +3081,7 @@ export class TopDownEngine {
       // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
       if ((e.code === 'Space' || e.code === 'Enter' || act === 'interact') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
       // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
-      if (down && !e.repeat && act === 'interact' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y))) { e.preventDefault(); this.interact(); return; }
+      if (down && !e.repeat && act === 'interact' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y) || this.gatherNear())) { e.preventDefault(); this.interact(); return; }
       if (act === 'attack') { e.preventDefault(); this.mobs.attacking = down; return; }
       const slot = /^skill([1-8])$/.exec(act);
       if (slot) { if (down && !e.repeat) { const why = this.useAbility(slot[1]); if (why) this.say(`play.td.ability.${why}`); } return; }
@@ -2951,6 +3182,11 @@ export class TopDownEngine {
         return;
       }
     }
+    // A campfire under the finger: cook at it. A fishing spot's float: walk to its shore and cast.
+    const fire = this.gather.fireNear(wx, wy + 4, 10);
+    if (fire) { const src = { fire, x: fire.x, y: fire.y, range: false }; if (!this.walkTo(fire.x + (this.player.x < fire.x ? -14 : 14), fire.y + 2, () => this.beginCook(src))) this.beginCook(src); return; }
+    const spot = this.spotAt(wx, wy);
+    if (spot) { const go = () => this.beginFish(spot); if (!this.walkTo(spot.shore.x, spot.shore.y, go)) go(); return; }
     if (this.level === this.world) {
       const tc = Math.floor(wx / TILE), tr = Math.floor((wy + 6) / TILE);
       for (const [c, r] of [[tc, tr], [tc, tr + 1], [tc, tr + 2]]) {
@@ -3511,6 +3747,14 @@ export class TopDownEngine {
     this.drawShadows(visible, inView);
     // Ground effects (aura rings, nova waves, sigils): under every creature and the Keeper.
     this.drawGroundFx();
+    // The weather's puddles (Normal) and the fishing spots: their floats and the fish under the water (td-gather).
+    const lowDetail = envDetail() === 'low';
+    if (this.level === this.world) {
+      if (!lowDetail) this.weatherFx.drawPuddles(c, cam, (q, r) => this.level.ground(q, r), { left: 1 });
+      this.spotsInView = this.world.spotsIn(cam.x - 40, cam.y - 40, cam.x + cam.w + 40, cam.y + cam.h + 40);
+      const sky = { dark: this.skyPhase === 'night' || this.skyPhase === 'eclipse', eclipse: this.skyPhase === 'eclipse' };
+      this.gather.drawWater(c, this.spotsInView, this.time, this.player, sky, lowDetail || this.phone ? SHADOW_CAP_LOW : SHADOW_CAP, this.still, this.weatherFx.rain > 0);
+    } else { this.spotsInView = []; this.gather.shadowsDrawn = 0; }
     // Y-sorted world: objects, keepers, the Keeper, Glim.
     type Item = { y: number; draw: () => void };
     const items: Item[] = [];
@@ -3567,8 +3811,14 @@ export class TopDownEngine {
       items.push({ y: under ? Math.min(p.y, this.player.y - .01) : p.y, draw: () => this.peers.draw(c, p, view) });
     }
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
+    // Campfires (Firemaking) stand among everything else, sorted by their feet.
+    for (const f of this.gather.fires) if (f.lv === this.level.id && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.gather.drawFire(c, f, this.time, this.still) });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
+    // The spots' floats, the line to the one being fished, the sparks of a light being struck.
+    if (this.level === this.world) this.gather.drawFloats(c, this.spotsInView, this.time, this.still);
+    this.gather.drawLine(c, this.player, this.time);
+    this.gather.drawStrike(c, this.time, this.still);
     { const look = this.auraLook(); if (look) this.auraFx.air(c, this.player.x, this.player.y - 1, look); }
     // S6: the pack auras' motes and their linked lines; what falls from above onto its ring.
     { const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80; const low = envDetail() === 'low'; drawPackAir(c, this.mobs.mobs, this.time, this.still, near, low); if (!low) for (const b of this.mobs.bursts) if (b.tone && near(b.x, b.y)) drawFalling(c, b, this.time, this.still); }
@@ -3604,6 +3854,8 @@ export class TopDownEngine {
     }
     this.darkLayer.drawOver(c, { levelId: this.level.id, continent: this.world.continent, surface: this.level === this.world, time: this.time, still: this.still, night: this.level.dark ? 1 : this.darkness }, (x, y) => inView(x, y, 40));
     this.drawFireflies();
+    // The weather over the world, under the HUD (td-weather-fx): the dimmed day, the rain, a storm's flash.
+    if (this.level === this.world) this.weatherFx.drawScreen(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.frameDt, { still: this.still, low: lowDetail, phone: this.phone, night: this.darkness });
     // The drag joystick: a ring where the thumb landed and a knob under it (screen space).
     if (this.joy?.active) {
       const r = this.canvas.getBoundingClientRect(), k = this.canvas.width / Math.max(1, r.width);
@@ -4727,7 +4979,10 @@ export class TopDownEngine {
    * One 128-px tileable sprite made once, laid into a half-resolution layer; still under reduced motion.
    */
   private drawFog(): void {
-    const f = this.level.fog ?? 0;
+    // Weather v1's Fog thickens the land's own mist (+0.35 where it has none, +0.1 in the Marches); Low draws a flat wash
+    // instead (td-weather-fx), so the noise layer is never added there.
+    const own = this.level.fog ?? 0, wf = this.level === this.world ? this.weatherFx.now : null;
+    const f = own + (wf && envDetail() !== 'low' ? fogExtra(wf.state, own) * wf.level : 0);
     if (f <= 0 || typeof document === 'undefined') return;
     const cam = this.cam, s = this.scale, N = 128;
     if (!this.fogTile) {
@@ -4769,7 +5024,8 @@ export class TopDownEngine {
     // Clear round the Keeper (wide), and a little round every lantern: lit air holds no mist.
     d.globalCompositeOperation = 'destination-out'; d.globalAlpha = 1;
     const hole = (x: number, y: number, r: number) => d.drawImage(this.fogHole!, (x - cam.x - r) / 2, (y - cam.y - r) / 2, r, r);
-    hole(this.player.x, this.player.y - 14, 150);
+    // Weather v1's Fog: sight −40%, so the clear patch round the Keeper shrinks with it.
+    hole(this.player.x, this.player.y - 14, 150 * (1 - (wf?.state === 'fog' ? .4 * wf.level : 0)));
     d.globalAlpha = .5;
     for (const o of this.visible) for (const l of o.sprite().lights ?? []) if (l.warm) hole(o.x + l.x, o.y + l.y, l.r * 2);
     const c = this.ctx;
@@ -4845,6 +5101,8 @@ export class TopDownEngine {
     for (const b of this.mobs.beacons) { hole(b.x, b.y - 30, BEACON_LIGHT * 2); glows.push({ x: b.x, y: b.y - 30, r: 18 }); }
     // Dawn at Noon: the night opens over the disc (a little past its rim, twice for a clear core).
     for (const z of this.mobs.dawns) { hole(z.x, z.y, z.r * 1.7); hole(z.x, z.y, z.r * 1.25); glows.push({ x: z.x, y: z.y, r: z.r * .8 }); }
+    // A campfire is a small hearth (canon §6.5): a light of its own, warm at its heart.
+    for (const f of this.gather.lights()) { hole(f.x, f.y, f.r * 2); glows.push({ x: f.x, y: f.y, r: f.r * .35 }); }
     // A lit hearth is a light of its own; the fallen purse's beam a faint one.
     if (this.level === this.world) for (const h of this.hearths) if (this.hearthLit.has(h.id)) { hole(h.x, h.y - 8, 90); glows.push({ x: h.x, y: h.y - 8, r: 30 }); }
     const pl = this.purseHere();

@@ -17,6 +17,7 @@ import type { MobSpawn } from './td-mobs';
 import { graveyardZone, regionZone, zoneLevel, zoneOf } from './td-zones';
 import { onNightroad, onNook } from './td-dark';
 import { PIERS } from './td-harbour';
+import type { SpotWater } from '../../shared/gathering/gathering.model';
 
 export const WORLD_CHUNK = 16;
 /** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
@@ -32,7 +33,15 @@ const KEEP_CHUNKS = 160;
 /** A further town or village, stamped at (c0, r0), its things moved there once. */
 interface Village { name: string; c0: number; r0: number; map: TdMap; objects: TdObject[] }
 
-interface WildChunk { objects: TdObject[]; blocked: Set<number>; spawns: MobSpawn[] }
+interface WildChunk { objects: TdObject[]; blocked: Set<number>; spawns: MobSpawn[]; spots: FishSpot[] }
+
+/**
+ * A marked fishing spot (canon §6.5: a ripple with a float), on a water tile beside the shore the Keeper stands on.
+ * At most one a chunk, where the chunk's roll for its water allows (lakes almost always, the open sea now and then).
+ */
+export interface FishSpot { id: string; c: number; r: number; x: number; y: number; water: SpotWater; shore: { x: number; y: number }; seed: number }
+/** How often a chunk with shore water holds a spot, by water. */
+const SPOT_CHANCE: Readonly<Record<SpotWater, number>> = { lake: 1, river: .85, marsh: .6, sea: .35 };
 
 /** Smooth value noise in [0, 1): bilinear over hashed lattice points, smoothstepped. */
 function noise(x: number, y: number, salt: number): number {
@@ -243,6 +252,26 @@ export class TdWorld implements TdLevel {
     if ((this.felled.get(this.key(c, r)) ?? 0) > Date.now()) return null;
     return this.chunkAt(Math.floor(c / WORLD_CHUNK), Math.floor(r / WORLD_CHUNK)).objects.find(o => o.kind === 'tree' && Math.floor(o.x / TILE) === c && Math.floor((o.y - 1) / TILE) === r) ?? null;
   }
+  /** The fishing spots whose float lies in the rectangle (art px). */
+  spotsIn(x0: number, y0: number, x1: number, y1: number): FishSpot[] {
+    const out: FishSpot[] = [], span = WORLD_CHUNK * TILE;
+    for (let cy = Math.floor(y0 / span); cy <= Math.floor(y1 / span); cy++) {
+      for (let cx = Math.floor(x0 / span); cx <= Math.floor(x1 / span); cx++) for (const s of this.chunkAt(cx, cy).spots) if (s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1) out.push(s);
+    }
+    return out;
+  }
+  /** What water a tile is, for fishing: the lake, a river (the square's own, or a Verdant one), the marsh's black water, else the sea. */
+  waterKind(c: number, r: number): SpotWater | null {
+    const g = this.ground(c, r);
+    if (g === 'blackwater') return 'marsh';
+    if (g !== 'water') return null;
+    const reg = this.regionAt(c, r);
+    if (reg === 'l') return 'lake';
+    if (reg === 'r') return 'river';
+    const rv = this.riverAt(c);
+    if (r >= rv && r <= rv + 2) return 'river';
+    return 'sea';
+  }
   /** Fell a tree: a stump for `ms`, then it grows back. */
   fell(c: number, r: number, ms: number): void { this.felled.set(this.key(c, r), Date.now() + ms); }
 
@@ -327,15 +356,18 @@ export class TdWorld implements TdLevel {
 
   /** The things of one chunk, by region: trees thick in the Emberwood, boulders on the hills, the places worth finding. */
   private makeChunk(cx: number, cy: number): WildChunk {
-    const objects: TdObject[] = [], blocked = new Set<number>(), spawns: MobSpawn[] = [];
+    const objects: TdObject[] = [], blocked = new Set<number>(), spawns: MobSpawn[] = [], spots: FishSpot[] = [];
     const put = (o: TdObject, c: number, r: number) => { objects.push(o); if (o.block) blocked.add(this.key(c, r)); };
     const hot = this.hotspotOf(cx, cy);
+    /** Water tiles sampled for a fishing spot (a cheap hashed sample: the shore test reads the ground four times). */
+    const wet: [number, number, number][] = [];
     for (let r = cy * WORLD_CHUNK; r < (cy + 1) * WORLD_CHUNK; r++) {
       for (let c = cx * WORLD_CHUNK; c < (cx + 1) * WORLD_CHUNK; c++) {
         if (this.nearTown(c, r) || this.inClearing(c, r)) continue;
         // A lair's ring is kept clear (its pack has room to fight).
         if (hot && Math.hypot(c - hot.c, r - hot.r) <= HOT_CLEAR) continue;
         const g = this.ground(c, r);
+        if (g === 'water' || g === 'blackwater') { const h = hash(c, r, 1201); if (h < .18) wet.push([c, r, h]); continue; }
         if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave' && g !== 'moss' && g !== 'flagstone' && g !== 'mire' && g !== 'wetstone') continue;
         // A clear lane beside the roads.
         if (this.roads.has(this.key(c, r)) || this.roads.has(this.key(c + 2, r)) || this.roads.has(this.key(c - 2, r)) || this.roads.has(this.key(c, r + 2)) || this.roads.has(this.key(c, r - 2))) continue;
@@ -458,7 +490,21 @@ export class TdWorld implements TdLevel {
         i++;
       }
     }
-    return { objects, blocked, spawns };
+    // A fishing spot: the sampled water tile with the lowest roll that has open shore beside it (never by a town).
+    wet.sort((a, b) => a[2] - b[2]);
+    for (const [c, r] of wet) {
+      const water = this.waterKind(c, r);
+      if (!water || hash(cx, cy, 1203) >= SPOT_CHANCE[water]) continue;
+      const shore = ([[0, 1], [0, -1], [1, 0], [-1, 0]] as const).map(([dc, dr]) => [c + dc, r + dr] as const)
+        .find(([sc, sr]) => this.walkableGround(sc, sr) && !blocked.has(this.key(sc, sr)) && !this.roads.has(this.key(sc, sr)) && !this.nearTown(sc, sr));
+      if (!shore) continue;
+      // The float rides half a tile out from the bank (away from the shore), clear of the Keeper's feet.
+      const ox = (c - shore[0]) * 8, oy = (r - shore[1]) * 8;
+      spots.push({ id: `${this.continent}:${c},${r}`, c, r, x: c * TILE + TILE / 2 + ox, y: r * TILE + TILE / 2 + oy, water,
+        shore: { x: shore[0] * TILE + TILE / 2, y: shore[1] * TILE + TILE - 2 }, seed: Math.floor(hash(c, r, 1207) * 1e6) });
+      break;
+    }
+    return { objects, blocked, spawns, spots };
   }
   /** This chunk's lair, if it has one (continent hotspots): its heart (tiles) near the chunk's middle, in the open wilds. */
   private hotspotOf(cx: number, cy: number): { c: number; r: number; spot: ContinentHotspot } | null {

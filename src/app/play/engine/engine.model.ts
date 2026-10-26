@@ -3,6 +3,7 @@ import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
 import type { HeldToolKind } from '../../shared/skills/held-tool';
+import type { GatherAnswer, GatherEvent } from '../../shared/gathering/gathering.model';
 import type { LootRarity } from '../world/world.model';
 import type { MonsterRank } from '../../shared/loot/champions';
 import type { PetEvent } from './pet-brain';
@@ -334,6 +335,11 @@ export interface EngineOptions {
    * the critter's spawn id (`<sx>:<n>:<critter>`); the host grants its drop once a day per id.
    */
   onCatch?: (event: { id: string; critter: string }) => void;
+  /**
+   * The gathering skills in the top-down world (shared/gathering): a fishing spot's cast and each bite, a tree's
+   * felling, a struck light, each fish in the pan. The host books each step and answers whether the loop goes on.
+   */
+  onGather?: (event: GatherEvent) => GatherAnswer;
   /**
    * One World: a Waystone. 'seen': it came into view for the first time this
    * session (the host keeps the save's `seen`); 'light': E was held at an

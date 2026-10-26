@@ -580,6 +580,8 @@ function check(E) {
   fails.push(...cascadeScenario({ base: 150_000, free: 10_000, superRounds: 2_500, plays: 0, quiet: true }));
   // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).
   fails.push(...fishingScenario({ quiet: true }));
+  // The gathering skills (shared/gathering): spot fishing and the Hearth meals (`--gathering` prints the table).
+  fails.push(...gatheringScenario({ quiet: true }));
   // The Underhearth (Phase 8): rule I rewards, the furnace is no farm, tool V on the ladder (`--underhearth` prints it).
   fails.push(...underhearthScenario({ quiet: true }));
   // The Board Herald's daily bounties (Phase 7.5): rule I band, the daily envelope, XP, the draw (`--bounties` prints it).
@@ -975,7 +977,7 @@ function levelsScenario({ quiet = false } = {}) {
   };
   const sorted = Object.values(measured).sort((a, b) => a - b);
   const median = (sorted[1] + sorted[2]) / 2;
-  const skills = ['mining', 'foraging', 'woodcutting', 'smithing', 'delving', 'enchanting', 'hunting', 'prospecting', 'fishing'];
+  const skills = ['mining', 'foraging', 'woodcutting', 'smithing', 'delving', 'enchanting', 'hunting', 'prospecting', 'fishing', 'firemaking', 'cooking'];
   const targets = [100, 150, 200, 300];
   const hoursFrom99 = (rate, L) => (CURVE.xpForLevel(L) - CURVE.xpForLevel(99)) / rate / 60;
   const fmtH = h => h < 10 ? h.toFixed(1) + ' h' : h < 1000 ? Math.round(h) + ' h' : (h / 1000).toFixed(1) + 'k h';
@@ -1055,6 +1057,46 @@ function levelingScenario({ quiet = false } = {}) {
   // 4. Bounded stats: past 100 a level's growth tapers; at 10,000 at most ~4× level 100's.
   if (KLV.levelSteps(KLV.KEEPER_MAX_LEVEL) > 4 * KLV.levelSteps(100)) fails.push('leveling: level stats are not bounded at 10,000');
   if (quiet) console.log(`economy-sim leveling: 10 in ${fmtH(h10)}, 50 in ${fmtH(h50)}, 100 in ${fmtH(today.get(100).total)} today; 1,000 in ${fmtH(pace.get(1000).total)}, 10,000 in ${fmtH(pace.get(10000).total)} at pace; ${fails.length ? fails.length + ' fail(s)' : 'curve ok'}`);
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// --gathering: the world's fishing spots and the Hearth meals (shared/gathering, docs/handoff/gather.md).
+// ───────────────────────────────────────────────────────────────────────────
+function gatheringScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const G = loadTsTree('src/app/shared/gathering/gathering.model.ts');
+  const P = loadTsTree('src/app/shared/potions/potions.model.ts');
+  const S = loadTsTree('src/app/shared/shops/shops.model.ts');
+  const back = id => S.buyPriceOf('fishing', id);
+  say('Gathering · spot fishing at each fish\'s own level (a Root Rod, no bait, a dry day), then cooked and sold\n');
+  say('  ' + 'fish'.padEnd(14) + 'L'.padStart(3) + 'catch/min'.padStart(11) + 'raw G/min'.padStart(11) + 'meal G/min'.padStart(12) + 'hunt G/min'.padStart(12) + 'share'.padStart(8) + 'XP/min'.padStart(8));
+  for (const f of G.WORLD_FISH) {
+    const secs = G.BITE_SECS / G.biteSpeed(1.1, 0, f.level, 'clear');
+    const perMin = 60 / secs;
+    const meal = G.mealOfRaw(f.id);
+    const raw = perMin * back(f.id);
+    // Cooking on top costs the pan's seconds; a fish burns at its own level about half the time (paid as a burnt fish).
+    const cooked = meal ? 60 / (secs + G.COOK_SECS) * (back(meal.id) * (1 - G.burnChance(meal.level + 10, meal)) + back(G.BURNT_FISH_ID) * G.burnChance(meal.level + 10, meal)) : 0;
+    const hunt = huntRate(f.level) * 60;
+    const share = Math.max(raw, cooked) / hunt;
+    say('  ' + f.name.padEnd(14) + String(f.level).padStart(3) + perMin.toFixed(1).padStart(11) + fmtN(raw).padStart(11) + fmtN(cooked).padStart(12) + fmtN(hunt).padStart(12) + `${(share * 100).toFixed(0)}%`.padStart(8) + (perMin * f.xp).toFixed(0).padStart(8));
+    // 1. Selling the catch (raw or cooked) never out-earns the hunt at its level: the hunt stays the Gold road.
+    if (share > .9) fails.push(`${f.name}: fishing and selling pays ${(share * 100).toFixed(0)}% of the hunt at level ${f.level} (must be <= 90%)`);
+  }
+  // 2. Food never breaks the potions: a meal mends slower than the smallest potion pours, no shop sells a meal or a
+  //    catch (they are gathered, never bought), and no meal sells back for a potion's price.
+  const minor = P.POTIONS.find(p => p.id === 'minor-health-potion');
+  const pour = minor.amount / Math.max(1, P.POTION_POUR_SECS);
+  for (const m of G.MEALS) {
+    if (G.mealRate(m) >= pour) fails.push(`${m.name} mends ${G.mealRate(m).toFixed(0)} life/s, as fast as a potion pours (${pour}/s)`);
+    if (back(m.id) >= minor.price) fails.push(`${m.name} sells back for ${back(m.id)} Gold, a Minor Health Potion's price`);
+  }
+  const sold = new Set(S.SHOP_IDS.flatMap(id => S.SHOPS[id].stock.map(o => o.key)));
+  for (const id of [...G.MEALS.map(m => m.id), ...G.WORLD_FISH.map(f => f.id), ...G.LOGS.map(l => l.id)]) if (sold.has(id)) fails.push(`${id} is sold in a shop (it must be gathered)`);
+  say(`\n  Meals mend ${G.MEALS.map(m => `${m.name} ${G.mealRate(m).toFixed(1)}/s`).join(', ')} (a Minor Health Potion pours ${pour}/s)`);
+  if (quiet) console.log(`economy-sim gathering: ${G.WORLD_FISH.length} fish, ${G.MEALS.length} meals; ${fails.length ? fails.length + ' fail(s)' : 'the hunt stays the Gold road, meals stay slower than potions'}`);
   return fails;
 }
 
@@ -2459,6 +2501,10 @@ if (argv.loot && !argv.check) {
 } else if (argv.underhearth && !argv.check) {
   const fails = underhearthScenario({ quiet: false });
   if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.gathering && !argv.check) {
+  const fails = gatheringScenario({ quiet: false });
+  if (fails.length) { for (const f of fails) console.log(`  FAIL ${f}`); process.exit(1); }
   console.log('  ok');
 } else if (argv.fishing && !argv.check) {
   const fails = fishingScenario({ quiet: false });

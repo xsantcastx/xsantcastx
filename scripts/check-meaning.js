@@ -298,6 +298,24 @@ for (const id of FISHING.CRATE_IDS) use(id, 'opened in the satchel (FishingServi
 for (const id of FISHING.LEDGER_CATCH_IDS) use(id, 'the Lodge Warden\'s Ledger Catch (FishingService.turnIn)');
 for (const c of FISHING.LODGE_CHARMS) { src(c.id, 'the Lodge Warden\'s Ledger Catch ladder'); use(c.id, `held: ${c.effect}`); }
 for (const [crate, rows] of Object.entries(FISHING.CRATE_CONTENTS)) for (const row of rows) src(row.id, `crate ${crate}`);
+// The gathering skills (shared/gathering/gathering.model.ts, canon §6.5): logs, the world's fish, Hearth meals, the
+// burnt fish and the tinderbox. Each says where it is found and what it is for on its satchel card (the HUD's gatherSlip),
+// with its lore in EN + ES (gathering.i18n.ts); the tinderbox's source is the General Store's shelf.
+{
+  const G = L('shared/gathering/gathering.model.ts');
+  const WORDS = read('shared/gathering/gathering.i18n.ts');
+  const HUD = read('play/side-scroller.component.ts') + read('play/side-scroller.component.html');
+  const SHOPS_SRC = read('shared/shops/shops.model.ts');
+  const shown = HUD.includes('gatherSlip(') && HUD.includes('eatPicked()') && HUD.includes('lightPicked()') && HUD.includes('cookPicked()');
+  for (const m of G.GATHER_MEANING) {
+    const n = thing(m.id);
+    if (m.id === G.TINDERBOX_ID && !SHOPS_SRC.includes('TINDERBOX_ID')) violationsLater.push(['material', 'no-source', m.id, 'not on any shop shelf']);
+    else for (const x of m.sources) src(m.id, x);
+    for (const u of m.uses) use(m.id, u);
+    n.lore = !!m.lore && WORDS.includes(`'gather.lore.${m.id}'`);
+    if (!shown) { n.visible = false; n.notes.push('no satchel card says where it is found and what it is for'); }
+  }
+}
 // The Seam Bucket: scoops into a full bucket, which pours back out (engine useBucket).
 use('seam-bucket', 'scoops water or lava (Delve hotbar)');
 for (const id of ['seam-bucket-water', 'seam-bucket-lava']) { src(id, 'a Seam Bucket scooped full'); use(id, 'poured in the Delve (water on lava sets obsidian)'); }

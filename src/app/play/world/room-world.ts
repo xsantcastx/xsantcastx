@@ -772,3 +772,5 @@ export const WORLD_AREAS_ALL: readonly string[] = [...Object.keys(CONTINENTS), .
 /** The bestiary and the unique table, as the room reads them (the node tests check against them). */
 export { MOBS } from '../td/td-mobs';
 export { uniqueById } from '../../shared/rpg/unique-items';
+/** Weather v1 (shared/weather): the room owns the sky's roll, every land's for a window, from its own clock. */
+export { weatherRolls, weatherWindow, WEATHER_WINDOW_MS } from '../../shared/weather/weather.model';

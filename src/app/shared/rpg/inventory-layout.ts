@@ -25,6 +25,7 @@
  */
 import { nextRevision, stackQuantityOf, tombstoneRecord } from './inventory-ops';
 import type { InventoryLedger, ItemLocation, OwnedItemInstance } from './inventory.model';
+import { GATHER_PILE_CAP, GATHER_PILE_KEYS } from '../gathering/gather-keys';
 
 /**
  * Instance records one save may hold, every location counted (spec §2.8):
@@ -120,6 +121,8 @@ export function slotClassOf(stackKey: string): SlotClass {
 }
 
 export function stackCapOf(stackKey: string): number {
+  // What the gathering loops land (fish, logs, meals) piles 20 to a cell, in the satchel and in a Vault tab alike.
+  if (GATHER_PILE_KEYS.has(stackKey.replace(/^v:[^:]+:/, ''))) return GATHER_PILE_CAP;
   return slotClassOf(stackKey) === 'supply' && !BLOCK_KEYS.has(stackKey) ? SUPPLY_CAP : STACK_CAP;
 }
 
