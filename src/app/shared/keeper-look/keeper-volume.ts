@@ -42,7 +42,10 @@ export function volumize(canvas: HTMLCanvasElement, opts: VolumeOptions = {}): H
   if (!enabled) return canvas;
   const c = canvas.getContext('2d', { willReadFrequently: true });
   if (!c || !canvas.width || !canvas.height) return canvas;
-  const img = c.getImageData(0, 0, canvas.width, canvas.height);
+  // A stand-in canvas (a headless test's) may hand back no pixels at all: then there is nothing to light.
+  let img: ImageData | undefined;
+  try { img = c.getImageData(0, 0, canvas.width, canvas.height); } catch { return canvas; }
+  if (!img?.data || img.data.length < canvas.width * canvas.height * 4) return canvas;
   volumizeData(img.data, canvas.width, canvas.height, opts);
   c.putImageData(img, 0, 0);
   return canvas;
@@ -50,6 +53,7 @@ export function volumize(canvas: HTMLCanvasElement, opts: VolumeOptions = {}): H
 
 /** The same over raw RGBA (for tests and for sheets already read back). */
 export function volumizeData(d: Uint8ClampedArray, W: number, H: number, opts: VolumeOptions = {}): void {
+  if (!d || d.length < W * H * 4) return;
   const lightK = opts.light ?? .3, shadeK = opts.shade ?? .34, depth = opts.depth ?? 5;
   const n = W * H;
   // Distance (in px, capped) from each opaque pixel to the nearest transparent one: a two-pass chamfer.
