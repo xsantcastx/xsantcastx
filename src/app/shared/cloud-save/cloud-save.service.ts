@@ -69,7 +69,7 @@ import { MergeConflict, SaveSummary, summarise } from './cloud-save.model';
 // `publishDirectoryRow` / `readBan` below. See gm-sync.ts.
 import type { BanRecord } from './gm.model';
 import { whenAppCheckReady } from '../../app-check.bootstrap';
-import { characterStorageKey, readActiveCharacter } from '../save/character-scope';
+import { ACCOUNT_SEEN_KEY, characterStorageKey, readActiveCharacter } from '../save/character-scope';
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
 const BOUND_UID_KEY = 'cloud-save-uid';
@@ -454,7 +454,17 @@ export class CloudSaveService {
 
     try {
       localStorage.setItem(BOUND_UID_KEY, user.uid);
+      // From now on this browser's unprefixed saves are an account's: a guest here gets its own (character-scope).
+      localStorage.setItem(ACCOUNT_SEEN_KEY, '1');
     } catch { /* private mode; sync works for this session only */ }
+
+    // Signed in from a guest page (character-scope "Profiles"): this page holds the guest's saves, never to be merged
+    // into the account. Reload: the next page boots into the account's profile and resumes this binding.
+    if (this.gateway.profile === 'guest') {
+      try { await this.gateway.settleForReload(); } catch { /* the guest's own keys are on disk already */ }
+      this.reloadPage();
+      return;
+    }
 
     try {
       // App Check is idle-scheduled and used to settle "ready" with null if
@@ -681,6 +691,9 @@ export class CloudSaveService {
       this.status$$.next({ ...this.status, state: 'error', error: describe(err) });
     });
   }
+
+  /** A full reload (its own method so a spec can stand in for it). */
+  reloadPage(): void { location.reload(); }
 
   private forgetBinding(): void {
     try {
