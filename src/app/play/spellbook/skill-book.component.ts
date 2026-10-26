@@ -10,6 +10,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { TranslationService } from '../../translation.service';
+import { KeymapService } from '../../shared/keys/keymap.service';
 import type { KeeperSkillTree, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import { MAX_RANK, SKILLS, bookTrees, NO_GEAR_SIG, type GearSig, type SkillId, type TreeId } from '../td/td-skills';
 import { MARK_SLOTS, type MarkSlot } from '../td/td-marks';
@@ -30,6 +31,7 @@ type Card = { kind: 'row'; row: BookRow } | { kind: 'mark'; row: BookRow; mark: 
 export class SkillBookComponent implements OnChanges {
   private readonly i18n = inject(TranslationService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly keymap = inject(KeymapService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly icons = new Map<string, SafeHtml>();
 
@@ -82,7 +84,16 @@ export class SkillBookComponent implements OnChanges {
 
   readonly maxRank = MAX_RANK;
   readonly slots = MARK_SLOTS;
-  readonly keys = [1, 2, 3, 4];
+  /** Keys 1–8: the bottom bar's eight slots, the same order (rebindable; the cap shows the bound key). */
+  readonly keys = [1, 2, 3, 4, 5, 6, 7, 8];
+  /** The belt's three keys (potions and the Spellstone): shown so the tab lists every key the bar has. */
+  readonly beltKeys = [
+    { action: 'potionHealth', kind: 'health' },
+    { action: 'potionMana', kind: 'mana' },
+    { action: 'stone', kind: 'stone' },
+  ] as const;
+  /** The keycap a key action is bound to ('1' unless rebound). */
+  cap(action: string): string { return this.keymap.cap(action) || '–'; }
 
   constructor() { this.i18n.register(BOOK_I18N); }
 

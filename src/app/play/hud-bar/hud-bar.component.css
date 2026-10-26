@@ -1,6 +1,6 @@
 /* The bottom bar: wood and brass, pixel orbs. Tokens from _cozy.css only. Phones never render it. */
 :host { display: contents; }
-.hb { position: absolute; z-index: 5; left: 50%; bottom: 0; translate: -50% 0; width: min(920px, 100%); display: flex; align-items: flex-end; pointer-events: none; }
+.hb { position: absolute; z-index: 5; left: 50%; bottom: 0; translate: -50% 0; width: max-content; max-width: 100%; display: flex; align-items: flex-end; pointer-events: none; }
 .hb__orb { position: relative; flex: none; width: 112px; height: 112px; margin-bottom: 2px; pointer-events: auto; cursor: help; filter: drop-shadow(0 3px 0 var(--cozy-wood-0)); }
 .hb__orb svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .hb__ring { fill: var(--cozy-brass); }
@@ -10,9 +10,12 @@
 .hb__glint { fill: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
 .hb__orb b { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font: 700 13px/1 var(--font-pixel); font-style: normal; color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0), -1px -1px 0 var(--cozy-wood-0), 1px -1px 0 var(--cozy-wood-0), -1px 1px 0 var(--cozy-wood-0); pointer-events: none; }
 
-.hb__panel { position: relative; flex: 1 1 auto; min-width: 0; margin: 0 -14px; padding: 14px 20px 8px; pointer-events: auto;
+.hb__panel { position: relative; flex: 0 1 auto; min-width: 0; margin: 0 -12px; padding: 16px 28px 8px; pointer-events: auto;
   background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); }
-.hb__row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.hb__row { --hb-gap: 16px; display: flex; align-items: center; justify-content: center; gap: var(--hb-gap); }
+/* A groove between the three groups (menu · skills · belt), so the bar reads as three tools, not one row of boxes. */
+.hb__skills, .hb__belt { position: relative; }
+.hb__skills::before, .hb__belt::before { content: ''; position: absolute; left: calc(var(--hb-gap) / -2 - 1px); top: 4px; bottom: 4px; width: 2px; background: var(--cozy-wood-0); box-shadow: 1px 0 0 0 color-mix(in srgb, var(--cozy-wood-hi) 25%, transparent); pointer-events: none; }
 
 /* The XP strip along the panel's top. */
 .td-xp { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 8px; box-sizing: border-box; cursor: help;
@@ -37,8 +40,8 @@
 .td-dock button:active { translate: 0 1px; }
 
 /* The skill slots: two rows of four, the key under each slot's corner. */
-.hb__skills { display: grid; gap: 6px; padding: 0; background: none; box-shadow: none; }
-.hb__skillrow { display: flex; gap: 5px; }
+.hb__skills { display: grid; gap: 4px; padding: 0; background: none; box-shadow: none; }
+.hb__skillrow { display: flex; gap: 4px; }
 .hb__slot { position: relative; display: block; width: 44px; height: 44px; }
 .td-skill, .hb__empty-slot { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 0; box-sizing: border-box;
   background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
@@ -52,7 +55,7 @@
 .hb__slotkey { z-index: 1; }
 
 /* The belt: three glass slots, the count on the glass, the key in the corner. */
-.td-belt { display: flex; gap: 5px; padding: 0; background: none; box-shadow: none; }
+.td-belt { display: flex; gap: 4px; padding: 0; background: none; box-shadow: none; }
 .td-pot { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 0; cursor: pointer; background: var(--cozy-well);
   box-shadow: inset 0 0 0 2px var(--pot, var(--cozy-wood-1)), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
 .td-pot[data-kind='health'] { --pot: color-mix(in srgb, var(--cozy-berry) 70%, var(--cozy-wood-1)); }
@@ -71,11 +74,13 @@
 /* Narrow desktop windows: smaller orbs and slots, the bar stays one piece. */
 @media (max-width: 1000px) {
   .hb__orb { width: 80px; height: 80px; }
-  .hb__orb b { font-size: 11px; bottom: 6px; }
-  .hb__panel { padding: 12px 18px 6px; }
-  .hb__row { gap: 8px; }
+  .hb__orb b { font-size: 12px; bottom: 6px; }
+  .hb__panel { padding: 16px 20px 8px; }
+  .hb__row { --hb-gap: 12px; }
   .td-dock.hb__menu { grid-template-columns: repeat(4, 30px); }
   .td-dock button { width: 30px; height: 30px; }
   .hb__slot, .td-pot { width: 38px; height: 38px; }
 }
+/* Big screens: the whole bar one step larger (zoom keeps every pixel edge whole: 1.25 × the 4 px grid). */
+@media (min-width: 1700px) and (min-height: 980px) { .hb { zoom: 1.25; } }
 @media (prefers-reduced-motion: reduce) { .td-skill:active, .td-dock button:active { translate: none; } }
