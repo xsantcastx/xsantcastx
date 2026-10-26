@@ -658,6 +658,15 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
 - Lore: "Ask the sky; sometimes it answers." The Canopy Wardens read it; **Odette Pryor** forecasts it from the
   Pyre Spire (the smoke-leans thread pays off here first, §9).
 
+### 6.7b Skill Book marks and their stand-ins (2026-10-26, `docs/design/skill-book-stand-ins.md`)
+- A mark's **name is canon and its group effect is the promise**. Where a group system is missing, the mark carries a
+  solo stand-in and says so in its line; the stand-in stays and the group effect is *added* when the system ships.
+- The DM ruled all 58 listed stand-ins: 18 permanent, 6 replaced now, 34 swapped later (S4, S5, S6, S8, S10).
+- A mark's name must not promise what its effect is not: Watchfire B1 is **Tempered Fire / Fuego templado**
+  (was Wide Fire, which gave armour, not reach).
+- The Spanish mark names were the builder's; 16 rows (21 marks) are re-named: "Cheap" is **Frugal** in ES
+  (never "Barato", a shop word); "Rally" is **Cerrar filas**; wisps are **fuegos fatuos**.
+
 ### 6.8 PvP: the world counts (2026-10-26, `docs/design/world-acts.md` §6)
 - Open, Tibia-style, everywhere outside the safe light. **Never** on Ember Isle, on a town's or village's safe ground,
   indoors, on piers and boards, at Waystones and hearth rings, in the Waystone Hall. Under level 20 nobody fights a

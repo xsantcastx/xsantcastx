@@ -56,7 +56,7 @@ export type MarkFx =
 export type MarkFlag =
   // generic: on the row's own hits and kills
   | 'jump' | 'echo' | 'kill' | 'killHeal' | 'absorbHit' | 'healHit' | 'manaHit' | 'vsStatus' | 'vuln' | 'field' | 'nth' | 'nthCrit' | 'nthHeal'
-  | 'reach' | 'resist' | 'lowDouble' | 'struck' | 'pierce' | 'ringFan' | 'hearth' | 'hearthNear' | 'followFoe' | 'followSelf' | 'strip'
+  | 'pierceStack' | 'freeToggle' | 'wolfBearHart' | 'reach' | 'resist' | 'lowDouble' | 'struck' | 'pierce' | 'ringFan' | 'hearth' | 'hearthNear' | 'followFoe' | 'followSelf' | 'strip'
   // the Warlock's
   | 'fireUp' | 'ring' | 'slowZone' | 'cross' | 'split' | 'twin' | 'return' | 'captain' | 'crumble' | 'shards' | 'chain'
   | 'thorns' | 'breakRaise' | 'kinGuard' | 'overheal' | 'kinHeal' | 'spread' | 'hexRing' | 'cursedKill' | 'shroud'
@@ -101,17 +101,17 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   'meteor': [[P(15, 'dmg')], [F('field', { n: 10, s: 4, m: 2 })], [F('echo', { n: 60, s: .5 })], [A('delay', -.4)], [CD(-3)], [F('split', { n: 35, m: 4 })]],
   // ── Warlock · Bone ──
   'bone-spear': [[P(15, 'dmg')], [R('bleed', 3, 10)], [F('twin', { n: 10 })], [FOLD('soul-harvest')], [A('range', 3)], [F('return', { n: 50 })]],
-  'raise-skeleton': [[FOLD('skeleton-mastery')], [R('burn', 2, 20)], [F('captain', { n: 2 })], [CD(-4)], [A('count', 1)], [F('crumble', { n: 30, m: 1.5 })]],
+  'raise-skeleton': [[FOLD('skeleton-mastery')], [R('burn', 2, 20)], [F('captain', { n: 2, m: 6, s: 1.5 })], [CD(-4)], [A('count', 1)], [F('crumble', { n: 30, m: 1.5 })]],
   'corpse-burst': [[P(15, 'dmg')], [F('shards', { n: 30, m: 4, s: 3 })], [F('chain', { m: 3, s: 3 })], [A('radius', .5)], [A('reach', 3)], [R('hush', 1)]],
   'bone-armor': [[P(20, 'absorb')], [F('thorns', { n: 20 })], [F('breakRaise', { n: 1 })], [A('secs', 5)], [CD(-4)], [F('kinGuard', { n: 50 })]],
-  'bone-storm': [[P(15, 'dmg')], [R('bleed', 2, 10)], [F('ringFan')], [A('count', 2)], [MN(-25)], [F('echo', { n: 50, s: .3 })]],
+  'bone-storm': [[P(15, 'dmg')], [F('pierceStack', { n: 10, m: 30 })], [F('ringFan')], [A('count', 2)], [MN(-25)], [F('echo', { n: 50, s: .3 })]],
   // ── Warlock · Shadow ──
   'drain-life': [[P(15, 'min', 'max')], [F('overheal', { n: 30 })], [F('jump', { n: 50, m: 2, s: 3 })], [F('reach', { n: 2 })], [MN(-20)], [F('kinHeal', { n: 50 })]],
   'ember-curse': [[P(25, 'dps')], [F('spread', { s: 3 })], [F('hexRing', { n: 2 })], [A('secs', 4)], [F('cursedKill', { n: 3 })], [R('fear', 1.5)]],
-  'dark-ward': [[P(20, 'absorb')], [FOLD('life-tap')], [F('shroud', { n: 4 })], [A('secs', 5)], [CD(-3)], [F('breakBurst', { n: 50, m: 2 })]],
+  'dark-ward': [[P(20, 'absorb')], [FOLD('life-tap')], [F('shroud', { n: 4 })], [A('secs', 5)], [CD(-3)], [F('breakBurst', { n: 40, m: 2 })]],
   'aura-siphon': [[P(25, 'heal')], [F('manaHit', { n: 1 })], [F('kinHeal', { n: 50 })], [A('heal', 1)], [F('lowDouble', { n: 40 })], [F('killHeal', { n: 3 })]],
   'weaken': [[A('weaken', 5)], [F('vuln', { st: 'weaken', n: 10 })], [R('chill', 3)], [A('radius', 1)], [MN(-30)], [A('secs', 4)]],
-  'doom': [[P(15, 'dmg')], [F('doomTwo', { s: 3 })], [F('strip', { s: 10 })], [A('secs', -1.5)], [MN(-25)], [F('doomOnDeath', { n: 150 })]],
+  'doom': [[P(15, 'dmg')], [F('doomTwo', { s: 3 })], [F('strip', { s: 6 })], [A('secs', -1.5)], [MN(-25)], [F('doomOnDeath', { n: 150 })]],
   // ── Ashguard · Brand ──
   'watch-blade': [[P(5, 'dmg')], [A('arc', 30)], [F('nth', { m: 5, n: 180, s: .5 })], [F('speed', { n: 8 })], [F('vsStatus', { st: 'chill', n: 15 })], [F('absorbHit', { n: 2, m: 20, s: 4 })]],
   'ember-brand': [[A('pct', 10)], [F('brandSpread', { s: 3 })], [F('keptFire')], [A('secs', 4)], [MN(-30)], [F('blockBrand')]],
@@ -129,9 +129,9 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   'kindle': [[P(5, 'dmg')], [R('burn', 2, 8)], [F('nthHeal', { m: 4, n: 15 })], [A('range', 2)], [F('bane', { n: 10 })], [F('jump', { n: 50, m: 1, s: 3 })]],
   'blinding-flash': [[P(15, 'dmg')], [R('blind', 2)], [A('stun', 1)], [A('radius', 1)], [CD(-2)], [F('healHit', { n: 10 })]],
   'lantern-aura': [[A('weaken', 5)], [F('regen', { n: .5 })], [F('resist', { el: 'all', n: 15 })], [A('radius', 1)], [A('light', 1)], [F('baneAura', { n: 15 })]],
-  'shutter-lantern': [[F('shutSpeed', { n: 10 })], [F('quietSight', { n: 2 })], [F('mothHours')], [CD(-.5)], [F('keptLight', { n: 1 })], [F('flareOpen', { n: 50 })]],
+  'shutter-lantern': [[F('shutSpeed', { n: 10 })], [F('quietSight', { n: 2 })], [F('mothHours')], [F('freeToggle')], [F('keptLight', { n: 1 })], [F('flareOpen', { n: 50 })]],
   'banish': [[P(5, 'dmg')], [A('below', 10)], [F('strip', { s: 10 })], [A('reach', 3)], [CD(-2)], [F('unmakeHush', { n: 4, s: 2 })]],
-  'dawn-at-noon': [[P(15, 'dps')], [F('zoneRegen', { n: 1.5 })], [F('followSelf')], [A('radius', 1)], [A('secs', 3)], [F('zoneHush')]],
+  'dawn-at-noon': [[P(15, 'dps')], [F('zoneRegen', { n: 1.5 })], [F('followSelf')], [A('radius', 1)], [A('secs', 3)], [F('hearth')]],
   // ── Lanternwright · Hearth ──
   'hearthlight': [[P(15, 'heal')], [F('quickMend', { n: 50 })], [F('echo', { n: 60, s: 3 })], [P(10, 'heal')], [MN(-30)], [F('defBuff', { n: 10, s: 5 })]],
   'hearth-circle': [[P(20, 'heal')], [F('zoneGuard', { n: 10 })], [F('followSelf')], [A('radius', 1)], [A('secs', 4)], [F('noChill')]],
@@ -146,7 +146,7 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   // ── Thornstrider · Wild ──
   'command': [[A('pct', 15)], [R('chill', 1)], [F('commandWeaken', { n: 20 })], [A('secs', 3)], [CD(-2)], [F('vsCommanded', { n: 10 })]],
   'pack-bond': [[FOLD('wild-heart')], [F('sharedHurt', { n: 20 })], [A('guard', 5), A('pct', 5)], [A('radius', 2)], [F('resist', { el: 'all', n: 10 })], [F('biteHeal', { n: 5 })]],
-  'call-of-the-wilds': [[P(20, 'dmg')], [R('chill', 1)], [F('twoCalled', { n: 60 })], [A('secs', 15)], [MN(-30)], [F('jump', { n: 50, m: 1, s: 1.5 })]],
+  'call-of-the-wilds': [[P(20, 'dmg')], [F('wolfBearHart', { n: 1, m: 40, s: 30 })], [F('twoCalled', { n: 60 })], [A('secs', 15)], [MN(-30)], [F('jump', { n: 50, m: 1, s: 1.5 })]],
   'stampede': [[P(15, 'dmg')], [R('stun', .5)], [F('echo', { n: 50, s: .8 })], [A('length', 4)], [MN(-20)], [F('herdHeal', { n: 2 })]],
   // ── Thornstrider · Briar & Sky ──
   'thornroot-snare': [[P(20, 'dmg')], [F('regrasp', { s: 3 })], [F('ring', { n: 2 })], [A('length', 2)], [A('secs', 4)], [A('root', .5)]],

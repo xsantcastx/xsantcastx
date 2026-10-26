@@ -2016,8 +2016,9 @@ export interface Minion {
   target: Mob | null;
   /** The Ashbone Phylactery: its first blow (a breath of fire) is spent. */
   breathed?: boolean;
-  /** Captain of the Dead (a mark): the one raised twice as strong. */
+  /** Captain of the Dead (a mark): the one raised twice as strong, and seconds to its next taunt. */
   captain?: boolean;
+  tauntCd?: number;
 }
 
 /** A raised skeleton's life and blow: Raise Skeleton's numbers grown with the Keeper's level and spell power. */
@@ -2257,6 +2258,8 @@ const ECHO_VARS = ['min', 'max', 'dps', 'heal', 'absorb'] as const;
 export const CHILL_SLOW = .3;
 /** The share of a Blinded creature's blows and shots that go astray (§0.4). */
 export const BLIND_MISS = .5;
+/** Captain of the Dead's taunt reaches this many tiles (skill-book-stand-ins.md). */
+export const CAPTAIN_REACH = 4;
 /** Under this pace (art px a second) the Keeper counts as standing still (Kept Fire, a mark). */
 const STILL_PACE = 6;
 
@@ -2476,6 +2479,8 @@ export class MobSystem {
     if (wh && this.zones.some(z => z.kind === 'whirl')) k += (wh.n ?? 0) / 100;
     const ds = this.lamp && this.shuttered ? this.mk('shutter-lantern', 'shutSpeed') : null;
     if (ds) k += (ds.n ?? 0) / 100;
+    const hart = this.calledKind === 'hart' && this.beasts.some(b => b.kind === 'called') ? this.mk('call-of-the-wilds', 'wolfBearHart') : null;
+    if (hart) k += (hart.s ?? 0) / 100;
     const wm = this.mk('beacon', 'poleSpeed');
     if (wm && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (wm.m ?? 0) * TILE)) k += (wm.n ?? 0) / 100;
     return k;
@@ -3591,7 +3596,10 @@ export class MobSystem {
         if (s.hit.includes(m) || !shotHits(s, m.x, m.y - m.def.h / 2, Math.max(9, m.def.w / 3))) continue;
         s.hit.push(m);
         this.effects.push({ kind: 'bone-chips', x: s.x, y: s.y, age: 0, life: .35, dir: s.vx < 0 ? -1 : 1 });
-        this.hitFoe(m, s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max']), '#e9dcff', s.src ?? 'bone-spear');
+        // Pierce (Bone Storm's mark): each foe a spear has already passed through makes it strike the next harder.
+        const ps = s.src === 'bone-storm' ? this.mk('bone-storm', 'pierceStack') : null;
+        const lift = ps ? 1 + Math.min(ps.m ?? 0, (ps.n ?? 0) * (s.hit.length - 1)) / 100 : 1;
+        this.hitFoe(m, (s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max'])) * lift, '#e9dcff', s.src ?? 'bone-spear');
       }
       if (s.age > s.life) {
         this.spears.splice(i, 1);
@@ -3655,6 +3663,16 @@ export class MobSystem {
     const face = this.formFace(), fans = this.fanCounts();
     this.minions.forEach((k, slot) => {
       k.t += dt; k.cd -= dt; k.hit = Math.max(0, k.hit - dt);
+      // Captain of the Dead (a mark): every few seconds it taunts what stands near it.
+      const cap = k.captain ? this.mk('raise-skeleton', 'captain') : null;
+      if (cap) {
+        k.tauntCd = (k.tauntCd ?? 0) - dt;
+        if (k.tauntCd <= 0) {
+          k.tauntCd = cap.m ?? 6;
+          for (const m of this.mobs) if (Math.hypot(m.x - k.x, m.y - k.y) <= CAPTAIN_REACH * TILE) this.applyStatus(m, 'taunt', cap.s ?? 1.5);
+          this.effects.push({ kind: 'cry', x: k.x, y: k.y, r: CAPTAIN_REACH * TILE, age: 0, life: .4, dir: 1 });
+        }
+      }
       // Left far behind (a wall between, a long run): it steps out of the ground at the Keeper's side again.
       if (Math.hypot(k.x - p.x, k.y - p.y) > MINION_LEASH * 1.6) { const at = this.slotOpen(formationSpot(slot, p, face)); k.x = at.x; k.y = at.y; k.target = null; }
       const t = k.target;
@@ -3795,7 +3813,8 @@ export class MobSystem {
     if (why) return why;
     this.mana -= cost;
     if (free) { this.strideFreeT = 0; return null; }
-    this.cooldowns[id] = this.cdOf(id) / (1 + this.castSpeed);
+    // Swift Shutter (a mark): the shutters toggle with no cooldown.
+    this.cooldowns[id] = id === 'shutter-lantern' && this.mk(id, 'freeToggle') ? 0 : this.cdOf(id) / (1 + this.castSpeed);
     // The marks that follow a cast: an echo (Twin Nova, Twin Impact, Return Charge…), Double Stride's free window.
     const echo = this.mk(id, 'echo');
     if (echo) this.echoes.push({ id, t: echo.s ?? 0, k: (echo.n ?? 100) / 100, left: Math.max(0, (echo.m ?? 1) - 1), gap: echo.s ?? 0 });
@@ -4268,8 +4287,7 @@ export class MobSystem {
    * attack, no charge.
    */
   private hushed(m: Mob): boolean {
-    if ((m.hushT ?? 0) > 0) return true;
-    return !!this.mk('dawn-at-noon', 'zoneHush') && this.zones.some(z => z.kind === 'dawn' && inDisc(m.x, m.y, z.x, z.y, z.r));
+    return (m.hushT ?? 0) > 0;
   }
   /** Night Shroud (Dark Ward's mark): while the ward holds, nothing farther than its tiles can aim at the Keeper. */
   private shrouded(d: number): boolean {
@@ -4314,6 +4332,8 @@ export class MobSystem {
     if (this.aura === 'aura-watchfire' && this.mk('aura-watchfire', 'hearth')) return true;
     const hl = this.mk('beacon', 'hearthNear');
     if (hl && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (hl.n ?? 0) * TILE)) return true;
+    // No Shadow (Dawn at Noon's mark): while the dawn holds.
+    if (this.mk('dawn-at-noon', 'hearth') && this.zones.some(z => z.kind === 'dawn')) return true;
     return this.rootwalkT > 0 && !!this.mk('rootwalk', 'hearth');
   }
   /** The discs of Dawn at Noon now burning (the engine paints the daylight and the dark layer unveils inside them). */
@@ -4487,6 +4507,9 @@ export class MobSystem {
 
   // ── The Thornstrider (td-thorn-skills.ts, design-bible §4.5) ──
 
+  /** Wolf, Bear or Hart: calls made (the turn), and the kind of the beast called last (null: none, or not the mark). */
+  private calls3 = 0;
+  calledKind: 'wolf' | 'bear' | 'hart' | null = null;
   /** Thorn Shots loosed (Hunter's Rhythm counts them), and Leaf-Shadow's sure crit waiting. */
   private thornShots = 0;
   private leafReady = false;
@@ -4616,7 +4639,8 @@ export class MobSystem {
       const { x: tx, y: ty } = foe ? this.fanFor(b, foe, fans) : home;
       const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy);
       if (len > 2) {
-        const step = Math.min(len, BEAST_SPEED * this.pace * dt), mx = dx / len * step, my = dy / len * step;
+        const quick = this.calledKind === 'hart' ? 1 + (this.mk('call-of-the-wilds', 'wolfBearHart')?.s ?? 0) / 100 : 1;
+        const step = Math.min(len, BEAST_SPEED * this.pace * quick * dt), mx = dx / len * step, my = dy / len * step;
         if (this.free(b.x + mx, b.y)) b.x += mx;
         if (this.free(b.x, b.y + my)) b.y += my;
       }
@@ -4625,6 +4649,7 @@ export class MobSystem {
         b.cd = sent === foe ? BEAST_REST * THORN_PET.commandRest : BEAST_REST;
         this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir: b.face });
         this.hitFoe(foe, rnd(b.dmg[0], b.dmg[1]) * (1 + this.beastPct(sent === foe) / 100), '#9af0d0', 'call-of-the-wilds');
+        if (this.calledKind === 'wolf' && foe.hp > 0) { const w = this.mk('call-of-the-wilds', 'wolfBearHart'); if (w) this.applyStatus(foe, 'chill', w.n ?? 1); }
         // Hamstring (Command's mark): the commanded foe's bites from the beasts chill it.
         if (sent === foe && foe.hp > 0) this.ride('command', foe, 0);
       }
@@ -4663,7 +4688,11 @@ export class MobSystem {
       // One called beast at a time: a new call sends the old one back into the green. Two Called (a mark): two of
       // them, each at its share.
       for (let i = this.beasts.length - 1; i >= 0; i--) if (this.beasts[i].kind === 'called') this.beasts.splice(i, 1);
-      const two = this.mk(id, 'twoCalled'), k = two ? (two.n ?? 100) / 100 : 1;
+      // Wolf, Bear or Hart (a mark): each call brings the next of the three — a wolf whose bites Chill, a bear that bites
+      // harder, a hart that quickens the Keeper's feet (and its own).
+      const wbh = this.mk(id, 'wolfBearHart'), kind = wbh ? (['wolf', 'bear', 'hart'] as const)[this.calls3++ % 3] : undefined;
+      this.calledKind = kind ?? null;
+      const two = this.mk(id, 'twoCalled'), k = (two ? (two.n ?? 100) / 100 : 1) * (kind === 'bear' ? 1 + (wbh?.m ?? 0) / 100 : 1);
       for (let j = 0; j < (two ? 2 : 1); j++) {
         let x = p.x - face * 18, y = p.y + 4 + j * 12;
         if (!this.free(x, y)) { x = p.x; y = p.y; }
