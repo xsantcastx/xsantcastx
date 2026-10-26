@@ -46,7 +46,12 @@ Seven live bugs. For each one: what a player saw, the cause, and the change.
 - **Left alone on purpose.**
   - Menus still pause the world. That is not hide, idle or AFK.
   - The Forge vigil (`idle.service`) and Thrall shifts stop on hide by design. They are anti-AFK economy rules, and expeditions run on wall-clock time.
-- **Billing.** See the report.
+- **Billing cap** (coordinator, for the owner's €14/month Hearth budget): `play/social/hidden-cap.ts`.
+  - A stream may stay open while hidden for 30 minutes (`HIDDEN_STREAM_CAP_MS`). After that the client closes it, and the local world keeps running.
+  - When the tab is seen again, `SocialRoom.rejoinNow()` joins afresh at once, which restores presence, the party (kept across a relog) and a whole world snapshot.
+  - Under 30 minutes nothing changes. A tab opened in the background starts the cap at once.
+  - So a forgotten tab keeps Cloud Run billed for at most about 30 minutes, plus the server's 45 s idle-out.
+  - Test: Karma `social-room.spec.ts` "hidden under 30 minutes…" (fake timers).
 
 ## 5. Keepers walk through each other
 - **Cause.** Movement never collided with peers. What blocked was the tap: any tap on or near a Keeper opened their card and stood still, so tapping through a crowd went nowhere.
