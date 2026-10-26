@@ -14,6 +14,7 @@ import type { ArtEntry } from './art-manifest.generated';
 import { CURIO_ICONS } from '../cabinets/curio-icons';
 import { CLOCK_ICONS } from '../world-clock/clock-icons';
 import { SPELLSTONE_ICONS } from '../spellstones/spellstone-icons';
+import { GATHER_ICONS } from '../gathering/gather-icons';
 
 /** A shape: 16 rows of 16 chars. '.' is clear; every other char is a palette slot. */
 type Shape = readonly string[];
@@ -630,6 +631,8 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   ...CLOCK_ICONS,
   // The Basalt Blank and the four families of Spellstone (shared/spellstones/spellstone-icons.ts).
   ...SPELLSTONE_ICONS,
+  // The gathering skills' logs, fish, meals, the burnt fish and the tinderbox (shared/gathering/gather-icons.ts).
+  ...GATHER_ICONS,
 };
 
 /**

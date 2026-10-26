@@ -14,6 +14,11 @@ import { SoundService } from './sound.service';
 import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, SOUND_CHANNELS, type ChatSetting, type HushSetting, type InviteSetting, type NightSetting, type PresenceSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
 import { ENV_DETAILS, envDetail, onEnvDetail, setEnvDetail, type EnvDetail } from '../../play/td/td-detail';
+import { WEATHER_SHOWS, WEATHER_SHOW_KEY, type WeatherShow } from '../weather/weather-show';
+
+function readWeatherShow(): WeatherShow {
+  try { const v = localStorage.getItem(WEATHER_SHOW_KEY); return (WEATHER_SHOWS as readonly string[]).includes(v ?? '') ? v as WeatherShow : 'full'; } catch { return 'full'; }
+}
 
 @Component({
   selector: 'app-sound-sheet',
@@ -69,6 +74,15 @@ import { ENV_DETAILS, envDetail, onEnvDetail, setEnvDetail, type EnvDetail } fro
           }
         </span>
         <small class="ss__hushline">{{ t('play.sound.detail.' + detail + '.line') }}</small>
+      </div>
+      <!-- Weather v1 (shared/weather): this device's choice; the rules stay on every setting (reduced motion reads as soft). -->
+      <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('weather.setting')">
+        <span class="ss__name">{{ t('weather.setting') }}</span>
+        <span class="ss__seg">
+          @for (w of weathers; track w) {
+            <button type="button" role="radio" [attr.aria-checked]="weather === w" [class.on]="weather === w" [attr.data-weather-setting]="w" (click)="setWeather(w)">{{ t('weather.setting.' + w) }}</button>
+          }
+        </span>
       </div>
       <!-- The Hearth chat: always connected, or ignored (no joining, no unread count). Saved with the rest. -->
       <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.chat')">
@@ -150,6 +164,8 @@ export class SoundSheetComponent implements OnDestroy {
   readonly chats = CHAT_SETTINGS;
   readonly details = ENV_DETAILS;
   detail: EnvDetail = envDetail();
+  readonly weathers = WEATHER_SHOWS;
+  weather: WeatherShow = readWeatherShow();
   readonly presences = PRESENCE_SETTINGS;
   readonly inviteChoices = INVITE_SETTINGS;
   s: SoundSettings = this.sound.settings;
@@ -184,6 +200,8 @@ export class SoundSheetComponent implements OnDestroy {
   setNight(n: NightSetting): void { this.sound.setNight(n); this.sound.sfx('tap'); }
 
   setDetail(d: EnvDetail): void { setEnvDetail(d); this.detail = d; this.sound.sfx('tap'); }
+  /** Weather: full, soft or off (plain localStorage, a device preference like Environment detail; the play view reads it each second). */
+  setWeather(w: WeatherShow): void { try { localStorage.setItem(WEATHER_SHOW_KEY, w); } catch { /* private mode */ } this.weather = w; this.sound.sfx('tap'); }
   setChat(c: ChatSetting): void { this.sound.setChat(c); this.sound.sfx('tap'); }
 
   setPresence(p: PresenceSetting): void { this.sound.setPresence(p); this.sound.sfx('tap'); }

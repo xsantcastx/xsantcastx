@@ -101,3 +101,37 @@ still dead for both). The M1 sleep test now asserts M3's rule (awake while anyon
 **Limits.** World bosses are surface-only. Every floor is shared (party-private instances: a later option). The
 client still raises a floor's own creatures for the moment before the room's view lands (fixes' branch removes it).
 Per-tier difficulty is not applied to room creatures (as M1). XP/Gold still credited by the client.
+
+## M4 — Hearth protocol 10 (branch `m4`, 2026-10-26; NOT deployed — the owner deploys the hearth once, merged)
+
+**What a player gets.** A Keeper's stun, root, hush, fear, taunt, slow, pull, burn, bleed or strip on a room creature is
+the room's: the creature stands stunned on every screen (another Keeper's mark-bonuses against stunned foes work too),
+a hush or stun in a cast's tell cancels it, burns and bleeds tick on the room. A blow or status the room refuses floats
+"too far", "out of sight", "blocked" or "shrugs it off" over the creature instead of nothing. Your life is the room's:
+bites, potions and heals still show at once; the room's word follows ~200 ms later; you fall only when the room says so,
+and everyone near sees it ("Bryn has fallen."). Signed in, your Hunting XP and hunt Gold are written by the room, once
+per kill or pile, Ember debt first, in batches ~20 s apart (sooner on an area change, a fall, leaving, or a big
+pile); your toast, purse and level bar still show it at once.
+
+**How.** `world/room-status.ts` (legality from td-marks/td-skills data, caps, immunity), `world/keeper-life.ts` (the
+room's KeeperLife: guard ceiling from the save, claims, death grace), `world/life-mirror.ts` (the screen's optimistic
+mirror), `world/room-credit.ts` (`creditRoom`: one trade-core transaction per batch; the ring `users/{uid}/social/
+credits-<character>`). Room: `room-world.ts` `statuses`/refusals/`life`/`downed`/`flushKills`; `social-world.mjs`
+lives, owed credit, `/world/life`, `/world/credit`; `social-server.mjs` `PROTOCOL = 10`. Client: td-coop
+(`watchStatuses`, `laid`, cues, `st`, `me`, `down`), td-mobs (`roomStatus`, `statusSkill`, `lifeBite`), td-engine
+(LifeMirror, `fallNow`), social-room, the HUD (credit asks, `pullKeys`). Full design and authority table:
+`docs/design/online.md` §4d "M4 as built". Deploy: `scripts/social-deployment.md` § Protocol 10.
+
+**Measured.** e2e: a stun on the other screen 82–143 ms after the cast; life claims acked in 5–9 ms locally; a kill's
+XP in the save at the batch window's end (~20 s; shown at once as pending in the level bar and purse). Firestore:
+≤ ~180 credit transactions per hunting player-hour (≤ 720 reads, ~540 writes).
+
+**Tests.** `node --test scripts/social-m4.test.mjs` (9, in CI's node line); karma `room-status.spec`,
+`keeper-life.spec`; e2e `e2e/td-world-m4.spec.ts` (stun seen by both, XP credited once, a death seen by both).
+
+**Limits.** Which held skill laid a status, and the bonus over the room's XP/Gold base (≤2.5× / Gold Find's cap ×
+the potion's most), are the screen's word; heals and soaks are bounded, not simulated; the guard may stand ≤1.5× the
+save's. Ember Brand's ticks, Night Shroud, Moth Hours and Quiet Hands (Keeper-side) and item auras' slows stay on the
+screen. Guests pay themselves; gathering XP (fishing, woodcutting, firemaking, cooking) stays client-side. A Keeper's
+life starts from its presence on join (a relog refills it — no worse than today). The activity write races a
+client's own read-modify-write for ~one round trip (the client pulls right after the commit).

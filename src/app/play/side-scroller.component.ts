@@ -35,11 +35,11 @@ import { boughtRanks, clampTree, effectiveMarks, effectiveRanks } from './td/td-
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
-import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor, type DisciplineProgress } from '../shared/activity/activity.model';
+import { ACTIVITY_KEY, BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor, type DisciplineProgress } from '../shared/activity/activity.model';
 import { EconomyService } from '../shared/economy/economy.service';
 import { InventoryService, type VaultRouted } from '../shared/rpg/inventory.service';
 import { VAULT_STATION_I18N } from '../shared/vault/vault-station.i18n';
-import { GameStateGateway } from '../shared/save/game-state.gateway';
+import { ECONOMY_STATE_KEY, GameStateGateway } from '../shared/save/game-state.gateway';
 import { WhereaboutsService } from '../shared/save/whereabouts.service';
 import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
@@ -199,6 +199,11 @@ import type { StoneEvent } from './engine/engine.model';
 import { restCueDue, settleDelveMine } from './delve-reward';
 import { DelveMapView } from './delve-map-view';
 import { FishingService, type PendingCatch } from '../shared/fishing/fishing.service';
+import { GatheringService } from '../shared/gathering/gathering.service';
+import { GATHER_I18N } from '../shared/gathering/gathering.i18n';
+import { BURNT_FISH_ID, TINDERBOX_ID, logById, mealById, mealOfRaw, worldFishById, type GatherAnswer, type GatherEvent } from '../shared/gathering/gathering.model';
+import { isWet, type WeatherNow, type WeatherShow, WEATHER_SHOW_KEY, WEATHER_SHOWS } from '../shared/weather/weather.model';
+import type { RoomWorldWeather } from './social/social-room';
 import { FISHING_I18N } from '../shared/fishing/fishing.i18n';
 import { LineTensionComponent } from '../shared/fishing/line-tension.component';
 import { reelDuration } from '../shared/fishing/fishing-reel';
@@ -275,7 +280,9 @@ import { LootSheetComponent } from '../shared/loot/loot-sheet.component';
 import { LOOT_I18N } from '../shared/loot/loot.i18n';
 import { HearthService, type FallSummary } from '../shared/hearth/hearth.service';
 import { COLD_HEARTH_I18N } from '../shared/hearth/cold-hearth.i18n';
-import { HEARTH_GRACE_LEVEL } from '../shared/hearth/hearth-rules';
+import { HEARTH_GRACE_LEVEL, payDebt } from '../shared/hearth/hearth-rules';
+import { HEARTH_KEY } from '../shared/hearth/hearth-save.model';
+import type { WorldCreditAsk, WorldCreditMsg } from './social/world-protocol';
 import { HearthShrineComponent } from '../shared/hearth/hearth-shrine.component';
 import { SpellstoneService } from '../shared/spellstones/spellstone.service';
 import { SPELLSTONES_I18N } from '../shared/spellstones/spellstones.i18n';
@@ -401,6 +408,10 @@ interface BagSlip {
   wearBlocked?: string;
   /** A Waygate Scroll: Read opens a town portal (shared/waygate). */
   canRead?: boolean;
+  /** The gathering skills (shared/gathering): a meal eats, a log lights, a raw fish cooks at the fire in reach. */
+  canEat?: boolean;
+  canLight?: boolean;
+  canCook?: boolean;
   /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
   count?: number;
   /** Wearing it, against what that place holds now. Empty for worn items and materials. */
@@ -669,6 +680,20 @@ export class SideScrollerComponent implements OnDestroy {
   coinsKept = 0;
   /** Drops already credited this page (the engine reports an accepted drop once; this makes sure). */
   private readonly creditedDrops = new Set<string>();
+  /**
+   * Protocol 10 (play/world/room-credit.ts): the room pays this Keeper's Hunting XP and hunt Gold. The screen asks for
+   * its own number under the room's id (a kill's, a pile's) and shows it at once; the room's commit lands in the save
+   * and is pulled back in. Asks go in small batches.
+   */
+  private creditAsks: WorldCreditAsk[] = [];
+  private creditTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly roomPaid = { asked: 0, batches: 0, xp: 0, gold: 0, refused: 0 };
+  /**
+   * What the room owes this Keeper and has not committed yet (it pays in batches, ~20 s apart): shown at once in the
+   * purse and the level bar, dropped when the commit is pulled back into the save.
+   */
+  private readonly roomPending = new Map<string, { xp: number; gold: number }>();
+  private pendingSum(k: 'xp' | 'gold'): number { let n = 0; for (const v of this.roomPending.values()) n += v[k]; return n; }
   /** The player's own Delve (seed + dug cells) and the inscriptions they have read. */
   private readonly delve = inject(DelveSaveService);
   private readonly delveLore = inject(DelveLoreService);
@@ -677,6 +702,13 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly gatherSave = inject(GatherSaveService);
   /** Fishing: the catch, the Catalogue, the Lodge's ledger. */
   private readonly fishing = inject(FishingService);
+  /** The gathering skills' writes (shared/gathering): each step of a loop the world runs (td-engine onGather). */
+  private readonly gathering = inject(GatheringService);
+  /** The room's weather roll (it owns the sky while a Keeper is in its world), with when it was heard. */
+  private roomWeather: (RoomWorldWeather & { at: number }) | null = null;
+  /** Weather v1 now (the HUD's pip), read from the engine once a second. */
+  weatherNow: WeatherNow | null = null;
+  private rainSaid = false;
   private readonly infusions = inject(InfusionService);
   /** The Line Tension reel while a fish is on the line; null otherwise. */
   reel: ReelView | null = null;
@@ -1013,6 +1045,10 @@ export class SideScrollerComponent implements OnDestroy {
     const everywhere = worldOn && (snapshot.protocol ?? 0) >= 9;
     (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[], world?: boolean, everywhere?: boolean) => void } | undefined)
       ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && (snapshot.party || roomRun || worldOn) ? snapshot.coop ?? {} : null, snapshot.id, snapshot.party?.members ?? [], worldOn, everywhere);
+    // Protocol 10: the room lays this Keeper's statuses and keeps its life (an older room: the screen's own, as before).
+    const p10 = worldOn && (snapshot.protocol ?? 0) >= 10;
+    (this.engine as unknown as { setRoomStatus?: (on: boolean) => void; setRoomLife?: (on: boolean) => void } | undefined)?.setRoomStatus?.(p10);
+    (this.engine as unknown as { setRoomLife?: (on: boolean) => void } | undefined)?.setRoomLife?.(p10 && snapshot.life === true);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -1151,7 +1187,12 @@ export class SideScrollerComponent implements OnDestroy {
       const share = this.partyShare.accept({ id: kill.id, from: mate, creature: kill.creature, level: MOBS[kill.creature]?.level ?? kill.level, hp: kill.hp, area: kill.area, x: kill.x, y: kill.y },
         { id: this.social.id, area: here.area, x: here.x, y: here.y, level: Math.max(1, this.huntingLevel || 1), members: this.social.party.members }, Date.now());
       el?.setAttribute('data-party-share', share.ok ? `+${share.xp}` : share.why);
-      if (share.ok) { this.coopPaid.share++; this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name })); }
+      if (share.ok) {
+        this.coopPaid.share++;
+        // Protocol 10: the room pays the share of a kill it ran (it checks this Keeper stood by a mate who fought).
+        if (room && kill.cr && this.room?.canCredit) { this.creditAsk({ id: kill.cr, n: share.xp, s: 1 }, false); this.toastLoot(this.t('play.party.xpShare', { n: share.xp, name })); }
+        else this.payHunt(`party:${kill.id}`, `party:${kill.id}`, share.xp, 'ember-quarry', n => this.t('play.party.xpShare', { n, name }));
+      }
     }
     if (r.kind === 'full') this.coopPaid.full++;
     el?.setAttribute('data-coop-paid', `full:${this.coopPaid.full},share:${this.coopPaid.share}`);
@@ -1186,7 +1227,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.worldTakes.ok++; this.worldTakes.lastServer = r.ms ?? 0;
       el?.setAttribute('data-world-take', `ok:${this.worldTakes.ok}:${this.worldTakes.lastRtt}:${this.worldTakes.lastServer}`);
       const d: WorldDrop = r.drop;
-      const granted = this.grantLoot({ id: d.id, coins: d.coins, ore: d.material ? d.qty : 0, ...(d.material ? { material: d.material } : {}), ...(d.item ? { item: { definitionId: d.item.definitionId, rarity: d.item.rarity as LootRarity, unique: d.item.unique, ...(d.item.level ? { level: d.item.level } : {}) } } : {}), ...(d.rune ? { rune: d.rune } : {}) });
+      const granted = this.grantLoot({ id: d.id, coins: d.coins, ore: d.material ? d.qty : 0, ...(d.material ? { material: d.material } : {}), ...(d.item ? { item: { definitionId: d.item.definitionId, rarity: d.item.rarity as LootRarity, unique: d.item.unique, ...(d.item.level ? { level: d.item.level } : {}) } } : {}), ...(d.rune ? { rune: d.rune } : {}), ...(r.pays ? { pays: true } : {}) });
       if (granted === false) {
         // The satchel is full: back to the room, and back on the ground here.
         void this.room?.worldReturn(d.id);
@@ -1610,6 +1651,10 @@ export class SideScrollerComponent implements OnDestroy {
         onGroundNote: note => this.zone.run(() => { void this.tradeHud?.groundNoted(note); }),
         // Protocol 9: a world boss's omen, heard the world over (play/world/world-bosses.ts).
         onWorldOmen: omen => this.zone.run(() => this.worldOmen(omen)),
+        // Protocol 10: the room paid this Keeper's XP and Gold (its commit is pulled back into the save).
+        onWorldCredit: msg => this.zone.run(() => this.worldCredited(msg)),
+        // Weather v1: the room's roll for the sky (shared/weather); no change detection, read on the next clock tick.
+        onWorldWeather: weather => { this.roomWeather = { ...weather, at: Date.now() }; },
         // One live session per account: the room says another session of this account joined. If this one still holds
         // the save's lease it plays on (and takes the room back); otherwise the play shell shows "Play here?".
         onReplaced: () => { void this.session.hearthReplaced().then(still => this.zone.run(() => { if (still) this.ensureHearth(); })); },
@@ -1658,6 +1703,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(KEYS_I18N);
     this.i18n.register(FEEDBACK_I18N);
     this.i18n.register(FISHING_I18N);
+    this.i18n.register(GATHER_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
     this.i18n.register(GLIM_ALIVE_I18N);
@@ -1723,11 +1769,17 @@ export class SideScrollerComponent implements OnDestroy {
       onUse: event => this.zone.run(() => this.useCell(event)),
       onBucket: event => this.zone.run(() => this.bucketSwap(event)),
       onFish: event => this.zone.run(() => this.fishHooked(event)),
+      // The gathering skills (shared/gathering): each step of a fishing, chopping, lighting or cooking loop.
+      onGather: event => this.zone.run(() => this.gathered(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
       onCoopSnap: body => this.room?.coopSnap(body) ?? Promise.resolve(false),
       onCoopHits: body => this.room?.coopHits(body) ?? Promise.resolve(false),
       onCoopPals: body => this.room?.coopPals(body) ?? Promise.resolve(false),
       onCoopKill: kill => this.zone.run(() => this.coopKilled(kill)),
+      // Protocol 10: the life the room keeps, the words for a refused blow, another Keeper's fall.
+      onLife: body => this.room?.worldLife(body) ?? Promise.resolve(null),
+      cueText: why => (why === 'far' || why === 'sight' || why === 'cap' || why === 'immune' ? this.t(`world.refuse.${why}`) : ''),
+      onPeerDown: id => this.zone.run(() => this.peerFell(id)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
       // A realm machine (the Orrery Tumbler): found once, then played in the place panel.
@@ -2034,12 +2086,13 @@ export class SideScrollerComponent implements OnDestroy {
    * A coin drop reached the Keeper: the coins go to the Gold purse (once per
    * drop id) and onto the satchel's kept count, saved with the town.
    */
-  private collectCoins(dropId: string, coins: number): boolean {
+  private collectCoins(dropId: string, coins: number, pays = false): boolean {
     if (this.creditedDrops.has(dropId)) return true;
     this.creditedDrops.add(dropId);
     // Gold Find (worn gear, Forge Power, a Gold potion) raises the pile on the way in; the satchel's count keeps what
-    // the purse actually took.
-    const paid = this.economy.earnHuntGold(coins);
+    // the purse actually took. Protocol 10: the room pays a pile from its ground — this screen asks for its number.
+    const paid = pays ? this.economy.huntGoldFor(coins) : this.economy.earnHuntGold(coins);
+    if (pays) this.creditAsk({ id: dropId, n: paid }, false);
     this.coinsKept += paid || coins;
     this.writePlay({ coins: this.coinsKept });
     this.bump('.coin-count');
@@ -2051,9 +2104,9 @@ export class SideScrollerComponent implements OnDestroy {
    * frozen then) or grants the rune. False leaves it shining on the ground.
    */
   /** A pickup lands (a drop walked over or tapped, a corpse's, the room's): gear, a rune, a Gold pile, a material. False: it stays. */
-  private grantLoot(loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }): boolean {
+  private grantLoot(loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string; pays?: boolean }): boolean {
     return loot.item || loot.rune ? this.collectGear(loot.id, loot)
-      : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
+      : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins, loot.pays === true) : true)
       && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore));
   }
   private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }): boolean {
@@ -2720,7 +2773,7 @@ export class SideScrollerComponent implements OnDestroy {
     const res = this.potions.drink(kind, performance.now() / 1000);
     if (res.code === 'ok' && res.potion) {
       const fx = potionEffect(res.potion, this.tdMaxHp, this.tdMaxMana);
-      (this.engine as unknown as { drinkPotion?: (heal: number, mana: number, secs: number) => void } | undefined)?.drinkPotion?.(fx.heal, fx.mana, fx.secs);
+      (this.engine as unknown as { drinkPotion?: (heal: number, mana: number, secs: number, id?: string) => void } | undefined)?.drinkPotion?.(fx.heal, fx.mana, fx.secs, res.potion.id);
       this.message = this.t('play.potion.drank', { name: res.potion.name });
       this.sound.sfx('splash');
     } else if (res.code === 'none') this.message = this.t(kind === 'health' ? 'play.potion.noneHealth' : 'play.potion.noneMana');
@@ -4193,7 +4246,7 @@ export class SideScrollerComponent implements OnDestroy {
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
   /** The Keeper's level: Hunting XP read on the Keeper curve (shared/skills/keeper-level.ts), never below the Hunting skill level. */
   get huntingLevel(): number { return this.keeperView.level; }
-  private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting')); }
+  private get keeperView() { return keeperLevelView(skillXp(this.activity.snapshot.progress, 'hunting') + this.pendingSum('xp')); }
   /**
    * The Diablo II experience bar along the HUD's foot (owner's player notes 2026-10-21): how far into this Keeper
    * level, and the words its tooltip shows on hover or tap (current XP in the level, the level's span, the percent).
@@ -4439,6 +4492,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.skyClock = clockText(time.minute);
     this.eclipseWarn = eclipseWarning(ms);
     this.engine?.setSky({ ...sky, alignedHunt: eclipse ? REALM_HUNT[eclipse.realm] ?? null : null });
+    this.tickWeather(ms);
     const el = this.canvas?.nativeElement;
     if (el) {
       el.setAttribute('data-sky', sky.phase);
@@ -5326,7 +5380,7 @@ export class SideScrollerComponent implements OnDestroy {
     });
   }
   /** The purse, on the satchel's bottom row. */
-  get purseGold(): string { return Math.floor(this.economy.snapshot.gold).toLocaleString('en-US'); }
+  get purseGold(): string { return Math.floor(this.economy.snapshot.gold + this.pendingSum('gold')).toLocaleString('en-US'); }
   /**
    * The hover card (owner 2026-10-20: "look at diablo 2, just stats and that's it"): pointing at a cell with a mouse
    * shows the item's name in its rarity colour, what it is, its stats and how it compares — no art, no buttons.
@@ -5420,6 +5474,9 @@ export class SideScrollerComponent implements OnDestroy {
     // A catch says what it is and what it is for (the Catalogue's lines); a Lodge charm, what it does.
     const fish = catchById(stackKey), charm = LODGE_CHARMS.find(c => c.id === stackKey);
     const potion = potionById(stackKey);
+    // The gathering skills' logs, fish, meals, the burnt fish and the tinderbox (shared/gathering).
+    const gathered = this.gatherSlip(stackKey, name, display?.art ?? '', stack.quantity);
+    if (gathered) return gathered;
     if (stackKey === WAYGATE_SCROLL_ID) {
       // The Town Portal scroll: what it does, its lore, and Read (top-down only: the portal is the world's).
       const kicker = this.t('play.waygate.kicker'), does = this.t('play.waygate.does');
@@ -6129,6 +6186,95 @@ export class SideScrollerComponent implements OnDestroy {
   /** The picked stack is a crate (the slip shows Open). */
   get pickIsCrate(): boolean { return this.pick?.kind === 'stack' && CRATE_IDS.includes(this.pick.ref); }
 
+  // ── The gathering skills (shared/gathering) and Weather v1 (shared/weather) ──
+
+  /** A step of a gathering loop: the service books it; a cast in the rain gets Old Netter Pell's word. */
+  private gathered(e: GatherEvent): GatherAnswer {
+    const a = this.gathering.answer(e);
+    if (a.ok && e.kind === 'fish' && e.phase === 'start' && isWet(e.weather)) a.text = this.t('gather.fish.start.rain');
+    if (a.ok && a.got) { this.pulseSatchel(); this.sound.sfx('pickup'); }
+    return a;
+  }
+  /** Eat the picked meal: one is taken, and the Keeper mends its life over twelve seconds. */
+  eatPicked(): void {
+    const pick = this.pick;
+    if (pick?.kind !== 'stack') return;
+    const meal = this.gathering.eat(pick.ref, `eat:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e6).toString(36)}`);
+    if (!meal) { this.message = this.t('gather.eat.none'); return; }
+    (this.engine as unknown as { eat?: (heal: number) => void } | undefined)?.eat?.(meal.heal);
+    this.message = this.t('gather.eat.ate', { name: materialDisplay(meal.id)?.name ?? meal.name, heal: meal.heal });
+    this.sound.sfx('equip');
+    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
+  }
+  /** Light the picked log at the Keeper's feet (a tinderbox, the Firemaking level): the engine strikes the light. */
+  lightPicked(): void {
+    const pick = this.pick;
+    if (pick?.kind !== 'stack') return;
+    const why = this.gathering.lightRefusal(pick.ref);
+    if (why) { this.message = why; return; }
+    const r = (this.engine as unknown as { lightFire?: (log: string) => 'water' | 'busy' | null } | undefined)?.lightFire?.(pick.ref);
+    if (r) { this.message = this.t(`gather.fire.${r}`); return; }
+    this.message = this.t('gather.fire.striking');
+    this.pick = null;
+    this.closeBag();
+  }
+  /** Cook at the fire (or the lit hearth) in reach. */
+  cookPicked(): void {
+    const r = (this.engine as unknown as { startCooking?: () => 'nofire' | null } | undefined)?.startCooking?.();
+    if (r) { this.message = this.t('gather.cook.nofire'); return; }
+    this.pick = null;
+    this.closeBag();
+  }
+  /** The weather's clock: the room's while it has spoken lately (it owns the roll), else this device's world clock. */
+  private tickWeather(ms: number): void {
+    const eng = this.engine as unknown as { setWeatherClock?: (i: { ms: number; rolls?: { window: number; lands: Record<string, number> } | null }) => void; weatherView?: () => WeatherNow; setWeatherShow?: (s: WeatherShow) => void } | undefined;
+    if (!eng?.setWeatherClock) return;
+    const room = this.roomWeather && Date.now() - this.roomWeather.at < 7 * 60_000 ? this.roomWeather : null;
+    eng.setWeatherClock({ ms: room ? room.now + (Date.now() - room.at) : ms, rolls: room ? { window: room.window, lands: room.lands } : null });
+    eng.setWeatherShow?.(this.weatherShow);
+    const w = eng.weatherView?.() ?? null;
+    this.weatherNow = w;
+    // Glim's first rain (world-acts §3.6): once a session.
+    if (w && isWet(w.state) && w.level > .5 && !this.rainSaid && this.glimVoice.met) { this.rainSaid = true; this.glimVoice.bond({ id: 'weather-first-rain', key: 'weather.glim.rain' }); }
+  }
+  /** Menu → Settings → Weather (a device preference, like Environment detail; reduced motion reads as soft). */
+  get weatherShow(): WeatherShow {
+    let v: string | null = null;
+    try { v = localStorage.getItem(WEATHER_SHOW_KEY); } catch { /* private mode */ }
+    const show = (WEATHER_SHOWS as readonly string[]).includes(v ?? '') ? v as WeatherShow : 'full';
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return reduced && show === 'full' ? 'soft' : show;
+  }
+  get weatherLabel(): string { return this.weatherNow ? this.t('weather.pip', { state: this.t(`weather.state.${this.weatherNow.state}`) }) : ''; }
+  /** The satchel card of a gathered thing: what it is, where it is found, what it is for, its lore, and its one action. */
+  private gatherSlip(key: string, name: string, art: string, qty: number): BagSlip | null {
+    const log = logById(key), fish = worldFishById(key), meal = mealById(key), burnt = key === BURNT_FISH_ID, tinder = key === TINDERBOX_ID;
+    if (!log && !fish && !meal && !burnt && !tinder) return null;
+    const nm = (id: string) => materialDisplay(id)?.name ?? id;
+    let kicker: string, found: string, use: string;
+    if (log) { kicker = this.t('gather.card.log'); found = log.id === 'rootglass-bough' ? this.t('gather.found.bough', { n: log.cut }) : this.t('gather.found.log', { land: this.t(`land.${log.land}`), n: log.cut }); use = this.t('gather.use.log', { n: log.burn }); }
+    else if (fish) {
+      const m = mealOfRaw(key);
+      kicker = this.t('gather.card.fish');
+      found = this.t('gather.found.fish', { waters: fish.waters.map(w => this.t(`gather.water.${w}`)).join(', '), n: fish.level, when: fish.when ? this.t(`gather.when.${fish.when}`) : '' });
+      use = this.t('gather.use.fish', { meal: m ? nm(m.id) : '', n: m?.level ?? 1 });
+    } else if (meal) { kicker = this.t('gather.card.meal'); found = this.t('gather.found.meal', { n: meal.level, raw: nm(meal.raw) }); use = this.t('gather.use.meal', { heal: meal.heal }); }
+    else if (burnt) { kicker = this.t('gather.card.burnt'); found = this.t('gather.found.burnt'); use = this.t('gather.use.burnt'); }
+    else { kicker = this.t('gather.card.tinder'); found = this.t('gather.found.tinder'); use = this.t('gather.use.tinder'); }
+    const lore = this.t(`gather.lore.${key}`);
+    return {
+      name, art, mark: monogram(name), kicker, note: `${use} ${lore}`,
+      stats: [this.t('play.hud.slip.held', { n: qty })],
+      canWear: false, canStow: false, compare: [], compareLabel: '',
+      canEat: !!meal && this.topDown, canLight: !!log && this.topDown, canCook: !!fish && !!mealOfRaw(key) && this.topDown,
+      tip: {
+        rarity: 'material', typeLine: kicker, rarityWord: '', head: null, affixes: [],
+        specials: [found, use, lore],
+        sockets: [], value: 0, bound: false, tempered: 0, itemLevel: 0, tag: null,
+      },
+    };
+  }
+
   /** E beside (or a tap on) a placed chest or camp. */
   private useCell(event: UseEvent): void {
     if (!this.browser) return;
@@ -6521,7 +6667,45 @@ export class SideScrollerComponent implements OnDestroy {
     const base = Math.round(huntingXpFor(event.hp) * (event.xp ?? 1));
     // Worn XP (the "+X% XP" affix, rpg/item.model gearXp) lifts every kill's Hunting XP, as its card says.
     const gross = base + gearXp(base, this.inventory.equippedTotals.xpBonus) + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
+    // Protocol 10: the room pays a kill it ran — this screen asks for its own number and shows it now (the room's
+    // commit lands in the save a moment later; the Ember debt is the room's to take).
+    if (event.room && this.room?.canCredit) { this.creditAsk({ id: event.room, n: gross }); return; }
     this.payHunt(`hunt:${event.id}`, event.id, gross, event.areaId, n => this.t('play.hunt.xp', { n }));
+  }
+  /** Protocol 10: ask the room for what it owes (batched a fifth of a second); an XP ask shows its toast at once. */
+  private creditAsk(a: WorldCreditAsk, line = true): void {
+    const xp = !a.id.startsWith('td:');
+    // What lands after the Ember debt takes its share (the room takes it from the hearth record; this is the forecast).
+    const debt = xp && this.topDown ? this.hearth.state.debt : 0, earned = debt > 0 ? payDebt(a.n, debt).earned : a.n;
+    if (line && xp) this.toastLoot(this.t('play.hunt.xp', { n: earned }));
+    // Shown at once (the purse, the level bar) until the room's commit comes back into the save.
+    const was = this.roomPending.get(a.id) ?? { xp: 0, gold: 0 };
+    this.roomPending.set(a.id, xp ? { ...was, xp: earned } : { ...was, gold: a.n });
+    this.creditAsks.push(a);
+    this.roomPaid.asked++;
+    if (this.creditTimer) return;
+    this.creditTimer = setTimeout(() => {
+      this.creditTimer = null;
+      const list = this.creditAsks.splice(0, 32);
+      void this.room?.worldCredit(list);
+      if (this.creditAsks.length) this.creditAsk(this.creditAsks.pop()!, false);
+    }, 200);
+  }
+  /** Protocol 10: the room paid a batch (or could not): its commit comes back into this device's save now. */
+  private worldCredited(msg: WorldCreditMsg): void {
+    if (msg.ok) { this.roomPaid.batches++; this.roomPaid.xp += msg.xp; this.roomPaid.gold += msg.gold; }
+    else this.roomPaid.refused++;
+    this.canvas?.nativeElement.setAttribute('data-room-paid', `${this.roomPaid.batches}:${this.roomPaid.xp}:${this.roomPaid.gold}:${this.roomPaid.refused}`);
+    const settled = () => this.zone.run(() => { for (const id of msg.ids) this.roomPending.delete(id); });
+    if (msg.ok && (msg.xp > 0 || msg.gold > 0)) void this.store.pullKeys([ACTIVITY_KEY, ECONOMY_STATE_KEY, HEARTH_KEY]).finally(settled);
+    else settled();
+  }
+  /** Protocol 10: another Keeper near fell (the room's word on its life). */
+  private peerFell(id: string): void {
+    const name = this.social.players.find(p => p.id === id)?.name ?? '';
+    this.logGame(this.t('world.life.fell', { name: name || this.t('world.life.someone') }));
+    const el = this.canvas?.nativeElement;
+    el?.setAttribute('data-room-falls', String(Number(el.getAttribute('data-room-falls') ?? 0) + 1));
   }
   /**
    * Hunting XP lands (a kill of one's own, or a party share): the Ember debt takes half while one is owed (once per

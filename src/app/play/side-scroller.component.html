@@ -418,7 +418,7 @@
   @if (topDown) {
     <div class="td-mini" aria-hidden="true" data-engine-ignore appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
       <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
-      @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}</span> }
+      @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}@if (weatherNow && weatherNow.state !== 'clear') {<i class="td-mini__wx" data-weather-pip [attr.data-wx]="weatherNow.state" role="img" [attr.aria-label]="weatherLabel" [title]="weatherLabel"></i>}</span> }
     </div>
     <!-- The Hush (td-dark.ts): a thin pale band under the minimap; deeper is longer and colder. Never a number. -->
     @if (tdHush; as hu) {
@@ -1281,10 +1281,13 @@
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }
-          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead) {
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook) {
             <div class="d2tip__actions">
               @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
               @if (row.canRead) { <button type="button" class="wear" data-read-scroll (click)="readScroll()">{{ t('play.waygate.read') }}</button> }
+              @if (row.canEat) { <button type="button" class="wear" data-eat (click)="eatPicked()">{{ t('gather.card.eat') }}</button> }
+              @if (row.canLight) { <button type="button" class="wear" data-light (click)="lightPicked()">{{ t('gather.card.light') }}</button> }
+              @if (row.canCook) { <button type="button" class="wear" data-cook (click)="cookPicked()">{{ t('gather.card.cook') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
               @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }

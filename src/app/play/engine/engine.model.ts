@@ -3,6 +3,7 @@ import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
 import type { HeldToolKind } from '../../shared/skills/held-tool';
+import type { GatherAnswer, GatherEvent } from '../../shared/gathering/gathering.model';
 import type { LootRarity } from '../world/world.model';
 import type { MonsterRank } from '../../shared/loot/champions';
 import type { PetEvent } from './pet-brain';
@@ -293,7 +294,15 @@ export interface EngineOptions {
    * the host page's to pay or not).
    */
   onCoopSnap?: (body: import('../social/coop-protocol').CoopSnapBody) => Promise<boolean>;
-  onCoopHits?: (body: { area: string; hits: import('../social/coop-protocol').CoopHit[] }) => Promise<boolean>;
+  onCoopHits?: (body: { area: string; hits: import('../social/coop-protocol').CoopHit[]; st?: import('../world/room-status').CoopStatus[] }) => Promise<boolean | import('../td/td-coop').CoopClaimReply | null>;
+  /**
+   * Protocol 10 (play/world/keeper-life.ts): the room keeps this Keeper's life. `onLife`: post its life claims (and its
+   * guard), answered with the life the room holds; `cueText`: the words for a refused blow ('far', 'sight', 'cap',
+   * 'immune'); `onPeerDown`: another Keeper near fell (the room's word).
+   */
+  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[] }) => Promise<import('../world/keeper-life').LifeView | null>;
+  cueText?: (why: string) => string;
+  onPeerDown?: (id: string, x: number, y: number) => void;
   onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
   /** Protocol 5: post this Keeper's own companions to the party in its area. */
   onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
@@ -326,6 +335,11 @@ export interface EngineOptions {
    * the critter's spawn id (`<sx>:<n>:<critter>`); the host grants its drop once a day per id.
    */
   onCatch?: (event: { id: string; critter: string }) => void;
+  /**
+   * The gathering skills in the top-down world (shared/gathering): a fishing spot's cast and each bite, a tree's
+   * felling, a struck light, each fish in the pan. The host books each step and answers whether the loop goes on.
+   */
+  onGather?: (event: GatherEvent) => GatherAnswer;
   /**
    * One World: a Waystone. 'seen': it came into view for the first time this
    * session (the host keeps the save's `seen`); 'light': E was held at an
@@ -415,6 +429,11 @@ export interface KillEvent {
    */
   coop?: boolean;
   share?: boolean;
+  /**
+   * Protocol 10: the room's credit id for this kill (play/world/room-credit.ts) — when the room pays this Keeper, the
+   * screen asks for its XP under it instead of writing it itself.
+   */
+  room?: string;
 }
 export interface DiscoverEvent {
   /**

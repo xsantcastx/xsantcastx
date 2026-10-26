@@ -46,8 +46,19 @@ export interface WorldDrop {
 export interface WorldGroundMsg { area: string; items?: WorldDrop[]; add?: WorldDrop[]; gone?: string[] }
 /** A take's answer: the loot to grant (the client mints it as any pickup), or why not. */
 export type WorldTakeResult =
-  | { ok: true; drop: WorldDrop; ms?: number }
+  | { ok: true; drop: WorldDrop; ms?: number; /** Protocol 10: the room pays its Gold (the screen asks, never credits it). */ pays?: true }
   | { ok: false; why: 'gone' | 'far' | 'owned' | 'area' | 'busy' | 'offline' };
 
 /** Is this an id the room would hand out? (The client refuses anything else before asking.) */
 export const WORLD_DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
+
+/**
+ * Protocol 10 (M4 of the room-run world; docs/design/online.md §4d "M4"): the room lays a Keeper's statuses on its
+ * creatures (play/world/room-status.ts), tells it which claims it refused, keeps its life (play/world/keeper-life.ts),
+ * and — signed in — pays its Hunting XP and hunt Gold itself (play/world/room-credit.ts).
+ */
+export const LIFE_PROTOCOL = 10;
+/** A credit the screen asks the room for: the owed id (a kill's `cr`, a ground piece's id) and its own number. */
+export interface WorldCreditAsk { id: string; n: number; s?: 1 }
+/** The room paid (or could not pay) a batch: what it paid, what the debt took, which ids. */
+export interface WorldCreditMsg { ok: boolean; xp: number; gold: number; debt: number; ids: string[]; why?: string }
