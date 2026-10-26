@@ -18,7 +18,7 @@
  * Every random draw inside a tick or a claim comes from this world's own seeded stream (Math.random is lent to it for
  * the call), so a world built with the same seed and fed the same intents plays out the same.
  */
-import { MOBS, MobSystem, abilityFlags, fieldEvent, type CoopLink, type Drop, type Mob } from '../td/td-mobs';
+import { CAPTAIN_REACH, MOBS, MobSystem, abilityFlags, fieldEvent, type CoopLink, type Drop, type Mob, type RoomKin } from '../td/td-mobs';
 import { STATUS_WIRE } from '../td/td-abilities';
 import { landOf } from '../td/td-pack-aura';
 import { TdWorld } from '../td/td-world';
@@ -30,6 +30,7 @@ import { respawnSecs } from './respawn';
 import { WORLD_BOSS_KEY, fastForward, firstRising, nextRising, worldBossOfKey, worldBossesIn, type WorldBossClock, type WorldBossDef } from './world-bosses';
 import { uniqueById } from '../../shared/rpg/unique-items';
 import { TILE } from '../td/td-art';
+import { KIN_DEAD_MS, kinGuard, weighKin, type KinHeld, type KinRefusal, type KinWord } from './room-kin';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from '../td/td-seam';
 import { seamLevelFor } from '../td/td-zones';
 import type { ContinentDef } from '../td/continent';
@@ -44,7 +45,7 @@ import { lootEntry, rollCreatureLoot, type LootDrop } from '../../shared/loot/dr
 import { CC_IMMUNE, DOT_SHARE, PULL_MAX_TILES, SLOW_MAX_PCT, STATUS_CAP, ST_BIT, statusLegal, type CoopStatus, type RoomStatusKind } from './room-status';
 import type { KeeperLife } from './keeper-life';
 import { CUT_AURAS, ALLY_PER_SEC, ALLY_WINDOW_MS, REKINDLE_MAX_MS, REKINDLE_MIN_CD_MS, REKINDLE_REACH, allyHealBudget, allyLegal, type AllyClaim, type AllyRefusal } from './ally-claims';
-import { forgetThreat, healThreat } from '../td/td-threat';
+import { forgetThreat, healThreat, kinKey } from '../td/td-threat';
 import { hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
 import { eclipseAt, worldTime, type SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { EngineOptions } from '../engine/engine.model';
@@ -163,6 +164,14 @@ export class RoomWorld implements CoopLink {
   /** Effects laid on each Keeper since its last snapshot (its screen mirrors them). */
   private readonly allyEv = new Map<string, CoopEvent[]>();
   readonly allyStats = { claims: 0, refused: 0, healed: 0, wards: 0, rekindles: 0 };
+  // ── The Keepers' summons (room-kin.ts) ──
+  /** Each owner's summons the room holds (by companion id), with when each was last told. */
+  private readonly kinOf = new Map<string, Map<string, RoomKin & { at: number }>>();
+  /** Summons the room struck down: refused until then (by `<owner>/<id>`). */
+  private readonly kinDead = new Map<string, number>();
+  /** Bites on each owner's summons since its last snapshot (its screen applies them). */
+  private readonly kinEv = new Map<string, CoopEvent[]>();
+  readonly kinStats = { told: 0, refused: 0, bites: 0, fell: 0 };
 
   constructor(opts: RoomWorldOptions) {
     this.area = opts.area;
@@ -232,7 +241,45 @@ export class RoomWorld implements CoopLink {
     if (!was || !this.viewers.has(k.id)) this.viewers.set(k.id, { enc: new CoopEncoder(), ev: [], fx: new WeakSet() });
   }
   /** A Keeper left the area (or the room). */
-  leave(id: string): void { this.keepers.delete(id); this.viewers.delete(id); this.gate.forget(id); }
+  leave(id: string): void { this.keepers.delete(id); this.viewers.delete(id); this.gate.forget(id); this.dropKin(id); }
+  /** An owner's summons leave with it (its screen keeps them; another area's room hears them from there). */
+  private dropKin(id: string): void {
+    const had = this.kinOf.get(id);
+    if (!had) return;
+    this.kinOf.delete(id); this.kinEv.delete(id);
+    for (const k of had.values()) for (const m of this.mobs.mobs) { forgetThreat(m, k.key); if (m.tauntBy === k.key) { m.taunt = 0; m.tauntBy = undefined; } }
+    this.syncKin();
+  }
+  private syncKin(): void {
+    const out: RoomKin[] = [];
+    for (const list of this.kinOf.values()) for (const k of list.values()) if (k.hp > 0) out.push(k);
+    this.mobs.kin = out;
+  }
+  /**
+   * An owner's summons (its companions list, `/coop/pals` with `kin`): the room weighs each (room-kin.ts weighKin —
+   * kind, count, leash, life) and its creatures hunt the ones it takes. Ones the list no longer names are gone
+   * (released, crumbled on the owner's screen). Answers with the ids it took and the ones it refused.
+   */
+  kin(from: string, list: readonly KinWord[], g = 0): { ok: string[]; no: { i: string; why: KinRefusal }[] } {
+    const k = this.keepers.get(from);
+    if (!k) return { ok: [], no: list.map(w => ({ i: w.i, why: 'far' as const })) };
+    const now = this.clockMs, was = this.kinOf.get(from) ?? new Map<string, RoomKin & { at: number }>();
+    const held = new Map<string, KinHeld>();
+    for (const [i, r] of was) held.set(i, { i, x: r.x, y: r.y, hp: r.hp, maxHp: r.maxHp, at: r.at });
+    const dead = new Map<string, number>();
+    for (const [key, until] of this.kinDead) { if (until <= now) this.kinDead.delete(key); else if (key.startsWith(`${from}/`)) dead.set(key.slice(from.length + 1), until); }
+    const r = weighKin(list, k, held, dead, now), guard = kinGuard(g);
+    const next = new Map<string, RoomKin & { at: number }>();
+    for (const h of r.keep) next.set(h.i, { key: kinKey(from, h.i), owner: from, i: h.i, x: h.x, y: h.y, hp: h.hp, maxHp: h.maxHp, g: guard, at: h.at });
+    // The ones it no longer names: forgotten (a creature on one looks again).
+    for (const [i, old] of was) if (!next.has(i)) for (const m of this.mobs.mobs) { forgetThreat(m, old.key); if (m.tauntBy === old.key) { m.taunt = 0; m.tauntBy = undefined; } }
+    if (next.size) this.kinOf.set(from, next); else this.kinOf.delete(from);
+    this.syncKin();
+    this.kinStats.told += r.keep.length; this.kinStats.refused += r.no.length;
+    return { ok: r.keep.map(h => h.i), no: r.no.slice(0, 16) };
+  }
+  /** The summons the room holds now (tests, /health). */
+  kinNow(owner?: string): RoomKin[] { return this.mobs.kin.filter(k => owner === undefined || k.owner === owner).map(k => ({ ...k })); }
   get present(): string[] { return [...this.keepers.keys()]; }
   get empty(): boolean { return this.keepers.size === 0; }
   /** The next snapshot to this viewer is whole (its stream reopened, a send was lost). */
@@ -448,6 +495,20 @@ export class RoomWorld implements CoopLink {
     life?.bite(n, type, from?.def.level, now, !!status && d <= 1);
     v.ev.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d, ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}), ...(status ? { st: status } : {}) });
   }
+  /** CoopLink: a creature struck a Keeper's summon (td-mobs biteKin, its guard already taken): its owner hears it. */
+  kinBite(k: RoomKin, from: Mob | null, dmg: number): void {
+    const d = Math.max(0, Math.min(100000, Math.round(dmg))), fell = k.hp <= 0;
+    this.kinStats.bites++;
+    const list = this.kinEv.get(k.owner) ?? [];
+    list.push({ k: 'kin', to: k.owner, p: k.i, d, ...(from ? { i: this.nid(from) } : {}), ...(fell ? { x: 1 as const } : {}) });
+    this.kinEv.set(k.owner, list.slice(-24));
+    if (fell) {
+      this.kinStats.fell++;
+      this.kinDead.set(k.key, this.clockMs + KIN_DEAD_MS);
+      this.kinOf.get(k.owner)?.delete(k.i);
+      this.syncKin();
+    }
+  }
   /** Protocol 10: a Keeper went down (the room's life): everyone near sees it fall. */
   downed(id: string): void {
     const k = this.keepers.get(id);
@@ -530,7 +591,9 @@ export class RoomWorld implements CoopLink {
           if (why === 'far') this.stats.refusedFar++; if (why === 'cap') this.stats.refusedCap++;
           continue;
         }
-        landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c, h.el, h.s);
+        // A summon's blow (`k`): its threat is its own — only for a summon the room holds for this Keeper.
+        const kin = h.k && this.kinOf.get(from)?.has(h.k) ? h.k : '';
+        landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c, h.el, h.s, kin);
       }
     });
     this.stats.claimsIn += landed; this.stats.claimsRefused += refused;
@@ -580,6 +643,12 @@ export class RoomWorld implements CoopLink {
           by: from, at: { x: k.x, y: k.y }, dps, pct: Math.min(SLOW_MAX_PCT, Math.max(0, c.n ?? 0)), tiles: Math.min(PULL_MAX_TILES, Math.max(0, (c.n ?? 0) / 10)),
         });
         if (!ok) { nay(c.i, 'bad'); continue; }
+        // A Captain of the Dead's taunt (Raise Skeleton's mark): it turns on the Captain — this Keeper's summon nearest it.
+        if (c.k === 'taunt' && c.s === 'raise-skeleton') {
+          let best: RoomKin | null = null, bd = (CAPTAIN_REACH + 2) * TILE;
+          for (const kk of this.kinOf.get(from)?.values() ?? []) { const dk = Math.hypot(kk.x - m.x, kk.y - m.y); if (kk.hp > 0 && dk <= bd) { bd = dk; best = kk; } }
+          if (best) m.tauntBy = best.key;
+        }
         if (held) { im[c.k] = now + secs * 1000 + CC_IMMUNE * 1000; this.immune.set(m, im); }
         // Fighting it with a status is fighting it (its loot is this Keeper's first too).
         (m.coopBy ??= new Set()).add(from);
@@ -737,8 +806,8 @@ export class RoomWorld implements CoopLink {
     // Bites and kills first; pictures fill what room is left (a picture that does not fit is simply not shown).
     const firm = v.ev.filter(e => e.k === 'bite' || e.k === 'kill'), soft = v.ev.filter(e => e.k !== 'bite' && e.k !== 'kill');
     // S5: what other Keepers laid on this one (heals, wards, bonds…) goes first: it is its life.
-    const mine = this.allyEv.get(id) ?? [];
-    this.allyEv.delete(id);
+    const mine = [...this.allyEv.get(id) ?? [], ...this.kinEv.get(id) ?? []];
+    this.allyEv.delete(id); this.kinEv.delete(id);
     const ev = [...mine, ...[...firm, ...soft].slice(0, COOP_MAX_EVENTS)];
     v.ev = firm.slice(COOP_MAX_EVENTS);
     // S5: the life of the Keepers near it, as the room keeps it (a healer's lowest-ally pick; the plates' bars).

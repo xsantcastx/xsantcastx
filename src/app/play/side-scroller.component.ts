@@ -1049,6 +1049,8 @@ export class SideScrollerComponent implements OnDestroy {
     const p10 = worldOn && (snapshot.protocol ?? 0) >= 10;
     (this.engine as unknown as { setRoomStatus?: (on: boolean) => void; setRoomLife?: (on: boolean) => void } | undefined)?.setRoomStatus?.(p10);
     (this.engine as unknown as { setRoomLife?: (on: boolean) => void } | undefined)?.setRoomLife?.(p10 && snapshot.life === true);
+    // The room hunts this Keeper's summons too (`kin`): its raised are told to it, and their blows name them.
+    (this.engine as unknown as { setRoomKin?: (on: boolean) => void } | undefined)?.setRoomKin?.(p10 && snapshot.kin === true);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;

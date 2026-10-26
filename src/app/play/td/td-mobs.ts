@@ -45,7 +45,7 @@ import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } fr
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
 import { BLEED_MOVING, abilitiesOf, FL_AB0, FL_AB1, FL_AURA_OFF, FL_HIDDEN, FL_WARDED, KEEPER_CC_IMMUNE, KEEPER_ROOT_MAX, KEEP_WALKING, SPORE_WEAKEN, T as ATILE, TRUE_LIGHT_CUT, castable, decodeStatus, encodeStatus, tierCd, type AbilityDef, type KeeperStatus, type StatusLay, type TellTone } from './td-abilities';
 import { AURA_F, CUT_AURAS, type AllyClaim } from '../world/ally-claims';
-import { damageThreat, healThreat, pickByThreat, tauntThreat, type ThreatBook, type ThreatCandidate } from './td-threat';
+import { damageThreat, forgetThreat, healThreat, kinKey, pickByThreat, pickKin, tauntThreat, type KinCandidate, type ThreatBook, type ThreatCandidate } from './td-threat';
 import { biteCueOf, bitePitch, skillKit, type KeeperAnim } from './td-skill-kit';
 import { PACK_AURA_REACH, PACK_PULSE, PACK_PULSE_TYPE, PACK_STRIP_SECS, fixedAura, halvedBy, landOf, packAuraFx, packAuraLevel, packAuraPool, type PackAuraFx, type PackAuraId } from './td-pack-aura';
 
@@ -2421,6 +2421,8 @@ const SPEAR_SPEED = 280;
 export const CHASE_MEMORY = 3;
 /** How much nearer than he is a raised skeleton counts for a creature choosing its prey (art px): they fight in its face. */
 const MINION_DRAW = 6;
+/** Shared Bones' most (Bone Armor's mark kinGuard): the room never lets a summon turn more aside than this. */
+export const KIN_GUARD_MAX = 50;
 /** The soft push between creatures (art px a second): a pack stays a pack, not one sprite. */
 const CROWD_PUSH = 30;
 /** …and between the Keeper's raised and called (they are lighter on their feet). */
@@ -2554,13 +2556,24 @@ export function goldDropFor(def: Pick<MobDef, 'level' | 'rank'>, rng: () => numb
 export interface CoopLink {
   /** `st` (S6): statuses the blow lays (td-abilities encodeStatus), and a pull/push toward its caster. */
   bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean, st?: string): void;
+  /** A creature struck another Keeper's summon (the room: its owner hears it; at 0 the summon falls). */
+  kinBite?(k: RoomKin, from: Mob | null, dmg: number): void;
   killed(m: Mob, by: string[]): void;
-  claim(m: Mob, dmg: number, crit: boolean, color: string, src?: SkillId | null): void;
+  /** `kin`: the blow is this Keeper's summon's (its companion id): the threat is the summon's own. */
+  claim(m: Mob, dmg: number, crit: boolean, color: string, src?: SkillId | null, kin?: string): void;
   /** Protocol 10: a status this Keeper laid on a shared creature that the timers do not show (a pull, a strip). */
   laid?(m: Mob, kind: 'pull' | 'strip', secs: number, src: SkillId | null, tiles?: number): void;
 }
 /** Another member of the party in the host's area, as prey (where the room last said it stands). */
 export interface CoopKeeper { id: string; x: number; y: number }
+/**
+ * Another Keeper's summon as the room knows it (room-world.ts `kin`, from its owner's companions list): the room's
+ * creatures hunt and bite it as they would the Keeper's own raised. `key` is its ledger name (td-threat kinKey),
+ * `i` its id on its owner's screen (`k<n>`), `g` the share its owner's Shared Bones turns aside (%).
+ */
+export interface RoomKin { key: string; owner: string; i: string; x: number; y: number; hp: number; maxHp: number; g: number }
+/** A raised skeleton's companion id on the wire (coop-pals) — and so its name in the room. */
+export function minionPalId(k: { id: number }): string { return `k${k.id % 1e6}`; }
 
 export class MobSystem {
   readonly mobs: Mob[] = [];
@@ -2571,6 +2584,10 @@ export class MobSystem {
   replica = false;
   /** On the host: the party's other Keepers in this area; the creatures hunt them as they hunt this one. */
   others: readonly CoopKeeper[] = [];
+  /** The room: the other Keepers' summons (room-world.ts); hunted and bitten like this Keeper's own raised. */
+  kin: RoomKin[] = [];
+  /** Whose summon's blow is landing now (applyClaim / updateMinions): its threat is its own (td-threat kinKey). */
+  private blowKin: string | null = null;
   /** The host is in a menu (its world keeps running for the others): its creatures neither hunt nor strike it. */
   selfAway = false;
   /**
@@ -3347,7 +3364,7 @@ export class MobSystem {
       // budget it keeps what it saw last.
       const dKeeper = this.selfAway ? Infinity : Math.hypot(p.x - m.x, p.y - m.y), look = Math.max(m.def.sight, MOB_REACH * 2);
       const spots = (x: number, y: number, dd: number) => dd <= look && this.sight.sees(m.x, m.y, x, y, m.saw ?? false);
-      let prey: Minion | null = null, d = Infinity, seen = false;
+      let prey: Minion | null = null, kinPrey: RoomKin | null = null, d = Infinity, seen = false;
       // Shared creatures: another Keeper of the party or the room may be its prey (the host or the room decides; the
       // bite travels).
       let other: CoopKeeper | null = null;
@@ -3358,6 +3375,9 @@ export class MobSystem {
         if (!m.tauntBy && dKeeper < Infinity && this.sight.sees(m.x, m.y, p.x, p.y, m.saw ?? false)) { d = dKeeper; seen = true; }
         const by = m.tauntBy ? this.others.find(o => o.id === m.tauntBy) ?? null : null;
         if (by) { const dk = Math.hypot(by.x - m.x, by.y - m.y); if (this.sight.sees(m.x, m.y, by.x, by.y, m.saw ?? false)) { d = dk; other = by; seen = true; } }
+        // A summon's taunt (a Captain of the Dead): it turns on that skeleton.
+        const kb = m.tauntBy ? this.kinBody(m.tauntBy) : null;
+        if (kb && this.sight.sees(m.x, m.y, kb.x, kb.y, m.saw ?? false)) { d = Math.hypot(kb.x - m.x, kb.y - m.y); seen = true; other = null; if ('id' in kb) prey = kb; else kinPrey = kb; }
       } else {
         // Threat (td-threat, skills-100.md §0.5): of the Keepers it can reach, the one with the most; none yet, the nearest.
         const cands: ThreatCandidate[] = [];
@@ -3365,22 +3385,29 @@ export class MobSystem {
         for (const o of this.others) { const dk = Math.hypot(o.x - m.x, o.y - m.y); if (spots(o.x, o.y, dk)) cands.push({ id: o.id, d: dk }); }
         const pick = pickByThreat(m, cands, m.threatOn);
         if (pick) { m.threatOn = pick.id; d = pick.d; seen = true; other = pick.id ? this.others.find(o => o.id === pick.id) ?? null : null; }
-        // The raised stand in its face: one a step farther than the Keeper still draws it (MINION_DRAW).
-        for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (dk - MINION_DRAW < d && spots(k.x, k.y, dk)) { d = dk; prey = k; other = null; seen = true; } }
+        // The raised (this Keeper's, and in the room every Keeper's): one that out-threatens the pick, or stands in its
+        // face a step farther than the Keeper it guards (MINION_DRAW), takes it (td-threat pickKin).
+        if (this.minions.length || this.kin.length) {
+          const kc: KinCandidate[] = [];
+          for (const k of this.minions) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (k.hp > 0 && spots(k.x, k.y, dk)) kc.push({ id: kinKey('', minionPalId(k)), owner: '', d: dk }); }
+          for (const k of this.kin) { const dk = Math.hypot(k.x - m.x, k.y - m.y); if (k.hp > 0 && spots(k.x, k.y, dk)) kc.push({ id: k.key, owner: k.owner, d: dk }); }
+          const kp = pickKin(m, pick, kc, MINION_DRAW), kb = kp ? this.kinBody(kp.id) : null;
+          if (kp && kb) { m.threatOn = kp.id; d = kp.d; other = null; seen = true; if ('id' in kb) prey = kb; else kinPrey = kb; }
+        }
       }
       // Nothing in sight: it keeps after the Keeper a while (CHASE_MEMORY), toward where he is, and strikes nothing.
       if (!seen) d = dKeeper;
       m.saw = seen;
       m.chaseT = seen ? CHASE_MEMORY : Math.max(0, (m.chaseT ?? 0) - dt);
-      const px0 = other ? other.x : prey ? prey.x : p.x, py0 = other ? other.y : prey ? prey.y : p.y;
+      const body = other ?? prey ?? kinPrey, px0 = body ? body.x : p.x, py0 = body ? body.y : p.y;
       // Rootwalk: the forest closes behind the Keeper — a creature loses his track unless he is at its very side.
-      const lost = this.rootwalkT > 0 && !prey && !other && d > MOB_REACH * 2;
+      const lost = this.rootwalkT > 0 && !prey && !kinPrey && !other && d > MOB_REACH * 2;
       // A world boss (bound): never past its leash from the rift, never after prey standing on a town's safe ground.
       const bound = m.def.bound, held = !!bound && (Math.hypot(m.x - m.hx, m.y - m.hy) > bound.leash * TILE || !!this.host.safeAt?.(px0, py0));
       // The Lanternwright's shutters (marks): Quiet Hands shortens how far a creature notices him; in Moth Hours the
       // dark-born leave him be until he strikes them.
       const notice = m.def.sight - this.shutterQuiet(m);
-      const hunting = !lost && !held && ((taunted && (!m.tauntBy || !!other)) || (d < notice && (seen || (m.chaseT ?? 0) > 0))), shoot = this.hushed(m) ? undefined : m.def.ranged;
+      const hunting = !lost && !held && ((taunted && (!m.tauntBy || !!other || !!prey || !!kinPrey)) || (d < notice && (seen || (m.chaseT ?? 0) > 0))), shoot = this.hushed(m) ? undefined : m.def.ranged;
       if (hunting && seen && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
         // Where it will land: a step short of its prey, on its own side; never into a wall.
         const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
@@ -3407,7 +3434,7 @@ export class MobSystem {
         if (ch && seen && m.tell <= 0 && (m.chargeCd ?? 0) <= 0 && d >= ch.min && d <= m.def.sight) {
           // It leads a Keeper on the move (where he will be when it lands, at his pace now, at most CHARGE_LEAD px):
           // walking straight away is caught; a step aside in the tell is not.
-          const lead = prey ? 0 : BOSS_TELL + d / ch.speed, lx = this.pv.x * lead, ly = this.pv.y * lead, ll = Math.hypot(lx, ly), cut = ll > CHARGE_LEAD ? CHARGE_LEAD / ll : 1;
+          const lead = prey || kinPrey ? 0 : BOSS_TELL + d / ch.speed, lx = this.pv.x * lead, ly = this.pv.y * lead, ll = Math.hypot(lx, ly), cut = ll > CHARGE_LEAD ? CHARGE_LEAD / ll : 1;
           m.chargeCd = ch.rate; m.tell = BOSS_TELL; m.charging = true; m.aim = { x: px0 + lx * cut, y: py0 + ly * cut - 12 };
           if (ch.chant) { m.chantT = CHANT_SECS; m.chantText = ch.chant; }
           continue;
@@ -3453,6 +3480,7 @@ export class MobSystem {
           (m.coopBy ??= new Set()).add(other.id);
           this.coop?.bite(other.id, m, n, this.blowType(m), ax.includes('mana-burn'), ax.includes('cursed'), this.biteRiders(m, n, false) || undefined);
         } else if (prey) { this.hurtMinion(prey, n); this.biteRiders(m, n, false); }
+        else if (kinPrey) this.biteKin(kinPrey, m, n);
         else { this.biteKeeper(n, this.blowType(m), m); this.layOn(this.biteRiders(m, n, true), m); this.eliteBlow(m); this.struckBy(m); }
       }
     }
@@ -3969,6 +3997,7 @@ export class MobSystem {
     if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
     if (Math.hypot(p.x - m.x, p.y - m.y) <= CHARGE_HIT && this.sight.sees(m.x, m.y, p.x, p.y)) { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
     for (const k of this.minions) if (Math.hypot(k.x - m.x, k.y - m.y) <= CHARGE_HIT && this.sight.sees(m.x, m.y, k.x, k.y)) this.hurtMinion(k, n);
+    for (const k of this.kin) if (k.hp > 0 && Math.hypot(k.x - m.x, k.y - m.y) <= CHARGE_HIT && this.sight.sees(m.x, m.y, k.x, k.y)) this.biteKin(k, m, n);
   }
 
   /** Returns the life the blow took (after spell power, a crit and a Stone Skin), 0 on a foe already down. */
@@ -4286,7 +4315,7 @@ export class MobSystem {
       const n = Math.max(1, Math.round(dmg));
       foe.hit = .18;
       this.float(foe.x, foe.y - foe.def.h, crit ? `${n}!` : `${n}`, color);
-      this.coop?.claim(foe, n, crit, color, this.killSrc ?? this.src);
+      this.coop?.claim(foe, n, crit, color, this.killSrc ?? this.src, this.blowKin ?? undefined);
       return n;
     }
     // Who fought it (a shared creature's kill pays those who did in full): this Keeper, or the member whose claim this is.
@@ -4298,7 +4327,8 @@ export class MobSystem {
     if ((foe.ward ?? 0) > 0) { const soak = Math.min(foe.ward ?? 0, dmg); foe.ward = (foe.ward ?? 0) - soak; dmg -= soak; this.float(foe.x - 8, foe.y - foe.def.h - 4, `-${soak}`, '#e8e1cf'); if (dmg <= 0) { foe.hit = .1; return 0; } }
     if (foe.bless?.fx.thorns) this.thornsBack(foe, dmg);
     // Threat (td-threat): the blow's, ×2 for the Ashguard's book — this Keeper's own, or the member's whose claim it is.
-    damageThreat(foe, this.claimFrom, Math.min(dmg, Math.max(0, foe.hp)), this.claimFrom ? this.claimSrc : this.killSrc ?? this.src);
+    // A summon's blow (td-threat kinKey): the threat is the summon's own, not its Keeper's.
+    damageThreat(foe, this.blowKin ? kinKey(this.claimFrom, this.blowKin) : this.claimFrom, Math.min(dmg, Math.max(0, foe.hp)), this.blowKin ? null : this.claimFrom ? this.claimSrc : this.killSrc ?? this.src);
     foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
     if (foe.hp <= 0) { this.kill(foe); return dmg; }
@@ -4562,7 +4592,9 @@ export class MobSystem {
       const o = this.others.find(k => shotHits(s, k.x, k.y - 12, reach));
       if (o) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.coop?.bite(o.id, null, s.dmg, s.type ?? 'physical', !!s.burn, !!s.curse, s.st); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
-      if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
+      if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); continue; }
+      const rk = this.kin.find(mn => mn.hp > 0 && shotHits(s, mn.x, mn.y - 10, 7));
+      if (rk) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.biteKin(rk, null, s.dmg); }
     }
     const v = this.v('bone-spear');
     for (let i = this.spears.length - 1; i >= 0; i--) {
@@ -4648,7 +4680,9 @@ export class MobSystem {
         k.tauntCd = (k.tauntCd ?? 0) - dt;
         if (k.tauntCd <= 0) {
           k.tauntCd = cap.m ?? 6;
-          for (const m of this.mobs) if (Math.hypot(m.x - k.x, m.y - k.y) <= CAPTAIN_REACH * TILE) this.applyStatus(m, 'taunt', cap.s ?? 1.5);
+          // It turns them on itself (td-threat: the Captain to the top +10%). In the room the taunt is a claim, and the
+          // room names the Captain (room-world statuses).
+          for (const m of this.mobs) if (Math.hypot(m.x - k.x, m.y - k.y) <= CAPTAIN_REACH * TILE) { this.applyStatus(m, 'taunt', cap.s ?? 1.5); if (!this.replica && (m.taunt ?? 0) > 0) m.tauntBy = kinKey('', minionPalId(k)); }
           this.effects.push({ kind: 'cry', x: k.x, y: k.y, r: CAPTAIN_REACH * TILE, age: 0, life: .4, dir: 1 });
         }
       }
@@ -4676,7 +4710,9 @@ export class MobSystem {
         const breath = this.relics.breath > 0 && !k.breathed;
         if (breath) { k.breathed = true; for (let j = 0; j < 3; j++) this.effects.push({ kind: 'flame', x: (k.x + foe.x) / 2 + (j - 1) * 4, y: (k.y + foe.y) / 2, age: 0, life: .45, dir: 1 }); }
         const blow = rnd(k.dmg[0], k.dmg[1]);
-        this.hurtMob(foe, Math.round(blow * (breath ? this.relics.breath : 1)), breath ? '#ff9a4a' : '#c88bff');
+        // Its threat is its own (td-threat kinKey): the creature it bites turns on it, not on the Keeper.
+        this.blowKin = minionPalId(k);
+        try { this.hurtMob(foe, Math.round(blow * (breath ? this.relics.breath : 1)), breath ? '#ff9a4a' : '#c88bff'); } finally { this.blowKin = null; }
         // Ash-Bone (Raise Skeleton's mark): the blow sets what it struck burning.
         if (foe.hp > 0) this.ride('raise-skeleton', foe, blow / Math.max(.1, this.power));
       }
@@ -6563,12 +6599,39 @@ export class MobSystem {
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
   }
   /** The host: a member's claim that passed the gate lands through the creature's own path (Stone Skin, its call, its half-life change, its fall). */
-  applyClaim(m: Mob, dmg: number, from: string, crit = false, el = '', skill = ''): number {
+  applyClaim(m: Mob, dmg: number, from: string, crit = false, el = '', skill = '', kin = ''): number {
     if (!this.mobs.includes(m) || m.hp <= 0) return 0;
-    this.claimFrom = from; this.fireBlow = el === 'fire'; this.claimSrc = skill || null;
+    this.claimFrom = from; this.fireBlow = el === 'fire'; this.claimSrc = skill || null; this.blowKin = kin || null;
     if (this.fireBlow) this.burnHazards(m.x, m.y, 8);
-    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; this.fireBlow = false; this.claimSrc = null; }
+    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; this.fireBlow = false; this.claimSrc = null; this.blowKin = null; }
   }
+  // ── Summons as prey (the room's `kin`; this Keeper's own raised) ──
+  /** A summon by its ledger name: this Keeper's own raised ('' owner) or another Keeper's the room knows. */
+  private kinBody(key: string): Minion | RoomKin | null {
+    if (key.startsWith('/')) return this.minions.find(k => k.hp > 0 && `/${minionPalId(k)}` === key) ?? null;
+    return this.kin.find(k => k.key === key && k.hp > 0) ?? null;
+  }
+  /** A creature (or its shot, `from` null) struck another Keeper's summon: the room's word, through its owner's guard. */
+  private biteKin(k: RoomKin, from: Mob | null, n: number): void {
+    const d = k.g > 0 ? Math.max(1, Math.round(n * (1 - k.g / 100))) : n;
+    k.hp = Math.max(0, k.hp - d);
+    this.coop?.kinBite?.(k, from, d);
+    if (k.hp <= 0) for (const m of this.mobs) { forgetThreat(m, k.key); if (m.tauntBy === k.key) { m.taunt = 0; m.tauntBy = undefined; } if (m.threatOn === k.key) m.threatOn = undefined; }
+  }
+  /**
+   * The room says a creature struck this Keeper's raised skeleton `id` (its companion id) for `d` (already through
+   * Shared Bones), and whether it fell. The screen shows it and the skeleton falls only when the room says so.
+   */
+  kinBitten(id: string, d: number, fell: boolean, from: Mob | null): void {
+    const k = this.minions.find(mn => minionPalId(mn) === id);
+    if (!k) return;
+    const n = Math.max(0, Math.round(d));
+    k.hp = fell ? 0 : Math.max(1, k.hp - n); k.hit = .18;
+    if (n > 0) this.float(k.x, k.y - 26, `${n}`, '#c8a8ff');
+    if (from) { from.face = k.x < from.x ? -1 : 1; from.hit = Math.max(from.hit, 0); }
+  }
+  /** Shared Bones (Bone Armor's mark) now: the share of a blow the raised turn aside (%), told to the room with them. */
+  get kinGuard(): number { return this.bone > 0 ? Math.max(0, Math.min(KIN_GUARD_MAX, this.mk('bone-armor', 'kinGuard')?.n ?? 0)) : 0; }
   /** A member: the host says a creature struck this Keeper. It lands through this Keeper's own defenses, resists and wards. */
   coopBite(dmg: number, type: DamageType, from: Mob | null, burn: boolean, curse: boolean, st?: string): void {
     // S5: an ally's Banner or Gate, an Intercept bond — cut first, as the room cut it.
