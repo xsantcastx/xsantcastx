@@ -3,7 +3,7 @@
  * few pixels of blood (or ash, for what never bled); rotting, it goes greyer and the flies come; last it is a small
  * heap of bones. Each stage of each kind is painted once and cached.
  */
-import { mobSheet, type MobDef } from './td-mobs';
+import { mobCell, mobSheet, type MobDef } from './td-mobs';
 import { leavesAsh, type Corpse, type CorpseStage } from './td-corpse';
 
 type Stage = Exclude<CorpseStage, 'gone'>;
@@ -56,7 +56,7 @@ function paintBody(g: CanvasRenderingContext2D, c: Corpse, stage: Stage, w: numb
   g.fillRect(x0 + 3, h - 4, Math.max(3, c.kind.w - 8), 2);
   g.globalAlpha = 1;
   // The creature's own first frame, flattened to lie on the ground.
-  g.drawImage(mobSheet(c.def as MobDef), 0, 0, c.kind.w, c.kind.h, x0, y0, c.kind.w, body);
+  { const cell = mobCell(c.def as MobDef); g.drawImage(mobSheet(c.def as MobDef), 0, 0, cell.w, cell.h, x0, y0, c.kind.w, body); }
   // Darkened: a dead colour over it (rotting: greyer and greener still).
   g.globalCompositeOperation = 'source-atop';
   g.globalAlpha = stage === 'fresh' ? .36 : .52;

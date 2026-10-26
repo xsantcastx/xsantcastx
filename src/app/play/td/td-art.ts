@@ -8,6 +8,9 @@
  * a 1px dark outline on objects and none on ground tiles. Original art only —
  * the owner's references set the bar, not the pixels.
  */
+import { broadleafTree, clumpRamp, domeClumps, paintClump, paintClumps, pineTree, shadowSprite } from './td-flora';
+import { volumize } from '../../shared/keeper-look/keeper-volume';
+
 export const TILE = 16;
 
 type Ctx = CanvasRenderingContext2D;
@@ -449,6 +452,8 @@ export interface Sprite {
   lights?: readonly { x: number; y: number; r: number; warm?: boolean }[];
   /** Chimney mouths (art px from the anchor) for smoke. */
   smoke?: readonly { x: number; y: number }[];
+  /** A soft shadow cast on the ground (drawn in the ground pass, under everything standing): its image and offset from the anchor. */
+  shadow?: { img: HTMLCanvasElement; x: number; y: number };
 }
 
 const cache = new Map<string, Sprite>();
@@ -585,7 +590,13 @@ export function stall(widthTiles: number, palette: number, goods: 'pots' | 'brea
 
 /** A round tree: trunk on the ground, a fat canopy as its own fading layer. */
 export function tree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
-  return cached(`tree:${kind}:${seed}`, () => {
+  // The art style upgrade (td-flora.ts): volumetric clumped crowns and a cast shadow; six variants a kind.
+  const v = ((seed % 6) + 6) % 6;
+  return cached(`tree:${kind}:${v}`, () => kind === 'pine' ? pineTree(v) : broadleafTree(kind, v));
+}
+/** The flat crowns the world grew before the art style upgrade (kept for comparison galleries). */
+export function flatTree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
+  return cached(`flat-tree:${kind}:${seed}`, () => {
     const W = 34, H = 46;
     const trunk = cv(W, H);
     const c = trunk.getContext('2d')!;
@@ -809,7 +820,7 @@ export function boulder(seed = 0): Sprite {
     rect(c, x0, 5, w, 9, PAL.stone[2]); rect(c, x0 + 2, 2, w - 4, 4, PAL.stone[1]); rect(c, x0 + 3, 2, w - 8, 2, PAL.stone[3]);
     rect(c, x0, 12, w, 2, PAL.stone[0]);
     rect(c, x0 + 1, 5, 4, 2, PAL.leaf[1]); rect(c, x0 + w - 6, 3, 3, 1, PAL.leaf[3]);
-    return { img: outline(img), ax: 10, ay: 15 };
+    return { img: outline(volumize(img, { depth: 3 })), ax: 10, ay: 15, shadow: { img: shadowSprite(20, 7), x: -9, y: -4 } };
   });
 }
 
@@ -819,11 +830,10 @@ export function bush(seed = 0): Sprite {
   return cached(`bush-${v}`, () => {
     const W = 18, H = 14, img = cv(W, H);
     const c = img.getContext('2d')!;
-    rect(c, 2, 5, 14, 8, PAL.leaf[0]); rect(c, 4, 2, 10, 4, PAL.leaf[1]); rect(c, 5, 2, 5, 2, PAL.leaf[3]);
-    rect(c, 2, 11, 14, 2, PAL.leaf[2]);
+    paintClumps(c, [{ x: 6, y: 8, r: 4.5, tone: 0 }, { x: 12, y: 8, r: 4.5, tone: 0 }, { x: 9, y: 5, r: 4.5, tone: 1 }, { x: 9, y: 10, r: 3.5, tone: -1 }], clumpRamp(PAL.leaf), v + 3);
     if (v === 1) for (const [x, y] of [[5, 6], [10, 4], [12, 8], [7, 9]] as const) rect(c, x, y, 2, 2, PAL.flower[0]);
     if (v === 2) for (const [x, y] of [[6, 5], [11, 7]] as const) rect(c, x, y, 2, 2, PAL.flower[1]);
-    return { img: outline(img), ax: 9, ay: 14 };
+    return { img: outline(img), ax: 9, ay: 14, shadow: { img: shadowSprite(18, 6), x: -8, y: -4 } };
   });
 }
 
@@ -1140,11 +1150,8 @@ export function tower(): Sprite {
 
 /** A leaf blob: a round mass of `ramp` leaves, lit up-left, shadowed down-right. */
 function leafBlob(c: Ctx, x: number, y: number, r: number, ramp: readonly string[], seed: number): void {
-  for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
-    if (xx * xx + yy * yy > r * r) continue;
-    const shade = yy < -r / 3 && xx < r / 3 ? ramp[3] : yy > r / 2 || xx > r * .7 ? ramp[2] : hash(x + xx, y + yy, seed) > .78 ? ramp[1] : ramp[0];
-    rect(c, x + xx, y + yy, 1, 1, shade);
-  }
+  // The art style upgrade: a lit leaf clump (td-flora.ts), toned by where it sits in the crown.
+  paintClump(c, { x, y, r, tone: y < r * 1.2 ? 1 : 0 }, clumpRamp(ramp), seed + 7);
 }
 /** Hanging vines from a crown's underside, a leaf every few pixels. */
 function vines(c: Ctx, x0: number, x1: number, y: number, seed: number): void {
@@ -1192,7 +1199,7 @@ export function jungleTree(seed = 0): Sprite {
       }
       rect(k, tx0 - 3, ty0 + 1, 2, 2, '#7a5a30'); rect(k, tx0, ty0 + 2, 2, 2, '#8a6a38'); rect(k, tx0 - 2, ty0 + 3, 2, 2, '#6a4a28');
       if (v === 4) rect(k, tx0 + 3, ty0, 2, 3, PAL.rootglass[1]);
-      return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 } };
+      return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 }, shadow: { img: shadowSprite(30, 10), x: -13, y: -6 } };
     }
     buttressTrunk(c, 20, 26, H, 6 + (v % 2) * 2, 4);
     const blobs = v < 3
@@ -1202,7 +1209,7 @@ export function jungleTree(seed = 0): Sprite {
     vines(k, 6, 34, 30, v);
     if (v === 2 || v === 5) for (let i = 0; i < 4; i++) rect(k, 8 + Math.floor(hash(i, v, 4) * 24), 10 + Math.floor(hash(i, v, 5) * 18), 2, 2, i % 2 ? PAL.flower[2] : PAL.flower[0]);
     if (v === 1) for (let i = 0; i < 3; i++) rect(k, 10 + i * 9, 18 + (i % 2) * 6, 2, 3, PAL.rootglass[1]);
-    return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 } };
+    return { img: outline(volumize(trunk, { depth: 3 })), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 }, shadow: { img: shadowSprite(40, 13), x: -17, y: -8 } };
   });
 }
 
@@ -1223,7 +1230,7 @@ export function giantTree(seed = 0): Sprite {
     for (let i = 0; i < 5; i++) rect(k, 16 + Math.floor(hash(i, v, 7) * 62), 18 + Math.floor(hash(i, v, 8) * 34), 2, 2, PAL.rootglass[1]);
     return {
       img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 },
-      lights: [{ x: -20, y: -60, r: 14 }, { x: 22, y: -70, r: 12 }],
+      lights: [{ x: -20, y: -60, r: 14 }, { x: 22, y: -70, r: 12 }], shadow: { img: shadowSprite(84, 24), x: -38, y: -14 },
     };
   });
 }
@@ -1421,14 +1428,9 @@ export function swampTree(seed = 0): Sprite {
       for (let i = 0; i <= n; i++) rect(k, Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 2, 1, '#3e302c');
     }
     if (!dead) {
-      const ramp = ['#41513e', '#4e5f48', '#33402f', '#62745a'] as const;
-      for (const [x, y, rr] of [[20, 16, 11], [9, 20, 7], [31, 18, 7], [14, 8, 7], [27, 7, 7]] as const) {
-        for (let yy = -rr; yy <= rr; yy++) for (let xx = -rr; xx <= rr; xx++) {
-          if (xx * xx + yy * yy * 1.6 > rr * rr || hash(x + xx, y + yy, v + 70) > .9) continue;
-          const sh = yy < -rr / 3 && xx < rr / 3 ? ramp[3] : yy > rr / 3 || xx > rr * .6 ? ramp[2] : hash(x + xx, y + yy, v) > .75 ? ramp[1] : ramp[0];
-          rect(k, x + xx, y + yy, 1, 1, sh);
-        }
-      }
+      // Drooping, sparse clumps of grey-green needles (td-flora's lit clumps in the swamp's own ramp).
+      const ramp = clumpRamp(['#41513e', '#4e5f48', '#33402f', '#62745a']);
+      paintClumps(k, [[20, 16, 9], [10, 20, 6], [30, 18, 6], [14, 9, 6], [26, 8, 6], [20, 24, 6]].map(([x, y, r], i) => ({ x, y, r, tone: i > 2 ? 1 : i === 5 ? -1 : 0 })), ramp, v + 70);
     }
     // The hanging moss: long grey strands from the boughs, swaying nowhere.
     for (let x = 4; x < 36; x += 2) {
@@ -1437,7 +1439,7 @@ export function swampTree(seed = 0): Sprite {
       rect(k, x, y0, 1, len, PAL.hangmoss[1]); rect(k, x, y0, 1, 2, PAL.hangmoss[3]); rect(k, x, y0 + len - 1, 1, 1, PAL.hangmoss[2]);
     }
     if (v === 2) { rect(k, 25, 24, 2, 2, PAL.ink[1]); rect(k, 25, 24, 1, 1, PAL.ink[0]); }
-    return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 }, ...(v === 2 ? { lights: [{ x: 5, y: -28, r: 12 }] } : {}) };
+    return { img: outline(volumize(trunk, { depth: 3 })), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 }, shadow: { img: shadowSprite(34, 11), x: -15, y: -7 }, ...(v === 2 ? { lights: [{ x: 5, y: -28, r: 12 }] } : {}) };
   });
 }
 

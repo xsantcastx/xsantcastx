@@ -136,7 +136,7 @@ test('protocol 8: the room settles a trade at once from memory, then ONE commit 
   assert.equal((await post('/trade/accept', { trade: tr.id, rev: tr.rev }, a.token)).status, 404);
   assert.deepEqual((await post('/trade/status', { trade: tr.id }, b.token)).body, { status: 'done', received: endB.end.received });
   const health = await (await fetch(`${ctx.base}/health`)).json();
-  assert.equal(health.protocol, 8);
+  assert.ok(health.protocol >= 8);
   assert.equal(health.economy.committed, 1);
 });
 

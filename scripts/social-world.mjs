@@ -20,8 +20,13 @@ export const WORLD_TIMING = Object.freeze({
   tickMs: 50,
   /** Snapshots to each Keeper (ms): 8 a second, as a party host sends. */
   snapMs: 125,
-  /** An area empty this long goes to sleep (ms): a reload or a cave trip and back keeps it awake. */
+  /**
+   * Protocol 9: with nobody in the WORLD this long the room writes every area and sleeps (ms). (M1/M2 slept one area
+   * once it was empty; now every area stays simulated while any Keeper is anywhere: life goes on where nobody stands.)
+   */
   sleepMs: 30000,
+  /** An area nobody stands in is stepped this often (ms): the dormant tick — its fallen rest on, nothing moves. */
+  idleMs: 1000,
   /** While awake, what must survive is written at most this often when it changed (ms). */
   saveMs: 60000,
   /** A wake waits at most this long for the store (ms); then the area wakes empty. */
@@ -29,22 +34,33 @@ export const WORLD_TIMING = Object.freeze({
 });
 /** A Keeper's level, as the room believes it, may rise at most this much a minute (a forged jump is not believed). */
 export const LEVEL_RISE_PER_MIN = 3;
-const DROP_ID = /^td:surface:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
+/** The room's ground ids: `td:<level>:w.<area>.<boot>.<n>` (the surface, or a floor's own id since protocol 9). */
+const DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
 
 /**
  * `sim`: the bundled module (RoomWorld, WORLD_AREAS) or null (the world is off: every area behaves as protocol 6).
  * `send(session, value)`: an event down one stream. `store`: worldLoad/worldSave (social-identity.mjs).
  */
-export function createWorldRooms({ sim = null, core = null, store = null, now = Date.now, send, log = () => {}, areas = null, timing = {}, seed = () => Math.random().toString(36).slice(2), fx = false } = {}) {
+export function createWorldRooms({ sim = null, core = null, store = null, now = Date.now, send, log = () => {}, areas = null, allAreas = null, timing = {}, seed = () => Math.random().toString(36).slice(2), fx = false } = {}) {
   const T = { ...WORLD_TIMING, ...timing };
+  /** Protocol 7/8 clients: the island only (M1). Protocol 9: every continent and every floor (M3). */
   const worldAreas = new Set(areas ?? sim?.WORLD_AREAS ?? []);
+  const everyArea = new Set([...worldAreas, ...(allAreas ?? sim?.WORLD_AREAS_ALL ?? [])]);
   const enabled = !!sim && worldAreas.size > 0;
   /** Per area: the world (null while it wakes), the Keepers streaming there, timers. */
   const rooms = new Map();
   let wakes = 0;
-  const isWorldArea = area => enabled && typeof area === 'string' && worldAreas.has(area);
+  /** The world is awake (someone is in it) since; empty since (ms, 0: someone is). */
+  let awake = false, emptySince = 0;
+  /** The sessions of the last step (the omens go to every protocol-9 Keeper of the world). */
+  let seen = [];
+  /** The room's own cost: the last minute's step times (ms) and how many areas it stepped. */
+  const cost = { steps: 0, ms: 0, maxMs: 0, at: now() };
+  const areasOf = s => (s?.p9 ? everyArea : worldAreas);
+  /** Is this area run by the room (for this session: a protocol 7/8 client knows only the island)? */
+  const isWorldArea = (area, s = null) => enabled && typeof area === 'string' && (s ? areasOf(s) : everyArea).has(area);
   /** Is this session part of the room-run world where it stands now? */
-  const inWorld = s => enabled && s.world && isWorldArea(s.player.area);
+  const inWorld = s => enabled && s.world && isWorldArea(s.player.area, s);
 
   /**
    * Protocol 8: the damage a second the room allows a Keeper's blows. Signed in with its character named, its save says
@@ -72,7 +88,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
 
   const wake = area => {
     const term = ++wakes;
-    const room = { area, term, world: null, members: new Map(), emptySince: 0, snapAcc: 0, savedAt: now(), last: now(), loading: true };
+    const room = { area, term, world: null, members: new Map(), emptySince: 0, snapAcc: 0, idleAcc: 0, savedAt: now(), last: now(), loading: true };
     rooms.set(area, room);
     const ready = saved => {
       if (rooms.get(area) !== room) return;
@@ -112,8 +128,16 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
   const sync = sessions => {
     const changed = new Set();
     const want = new Map();
-    for (const s of sessions) if (inWorld(s) && s.stream) { const a = s.player.area; if (!want.has(a)) want.set(a, new Map()); want.get(a).set(s.player.id, s); }
-    for (const [area, members] of want) if (!rooms.has(area)) wake(area);
+    seen = [...sessions];
+    let anyone = false;
+    for (const s of seen) {
+      if (enabled && s.world && s.stream) anyone = true;
+      if (inWorld(s) && s.stream) { const a = s.player.area; if (!want.has(a)) want.set(a, new Map()); want.get(a).set(s.player.id, s); }
+    }
+    // Someone is in the world: every area wakes (each from its own document, fast-forwarded) and stays awake.
+    if (anyone) { emptySince = 0; if (!awake) { awake = true; for (const a of everyArea) if (!rooms.has(a)) wake(a); } }
+    else if (awake && !emptySince) emptySince = now();
+    for (const [area] of want) if (!rooms.has(area)) wake(area);
     for (const room of rooms.values()) {
       const next = want.get(room.area) ?? new Map();
       let moved = false;
@@ -131,25 +155,45 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
   /** One step of every awake area: feed the Keepers' positions, simulate, stream snapshots and the ground; sleep the empty. */
   const step = (sessions, ms = null) => {
     const changed = sync(sessions);
-    const t = now();
+    const t = now(), t0 = performance.now();
+    // Nobody left anywhere in the world for its grace: every area is written (what changed) and the room sleeps.
+    if (awake && emptySince && t - emptySince >= T.sleepMs) {
+      awake = false; emptySince = 0;
+      for (const room of [...rooms.values()]) { rooms.delete(room.area); if (room.world?.dirty) void persist(room); }
+      return changed;
+    }
     for (const room of [...rooms.values()]) {
       const w = room.world;
       if (!w) continue;
-      if (!room.members.size) {
-        if (t - room.emptySince >= T.sleepMs) { rooms.delete(room.area); void persist(room); }
-        continue;
-      }
       const dt = (ms ?? (t - room.last)) / 1000;
       room.last = t;
+      if (!room.members.size) {
+        // The dormant tick: once a second, time passes here (the fallen rest on, the ground crumbles, bosses' clocks).
+        room.idleAcc += dt;
+        if (room.idleAcc * 1000 >= T.idleMs) { try { w.idle(room.idleAcc); } catch (e) { log('world idle failed', e); } room.idleAcc = 0; }
+        omens(room);
+        if (w.dirty && t - room.savedAt >= T.saveMs) void persist(room);
+        continue;
+      }
+      if (room.idleAcc > 0) { try { w.idle(room.idleAcc); } catch (e) { log('world idle failed', e); } room.idleAcc = 0; }
       for (const s of room.members.values()) w.keeper(keeperOf(s));
       try { w.tick(dt); } catch (e) { log('world tick failed', e); }
+      omens(room);
       room.snapAcc += dt * 1000;
       // The ground goes right after the snapshots, never before: the kill that left it reaches each screen first, so
       // the loot lies beside a corpse that is already there.
       if (room.snapAcc >= T.snapMs) { room.snapAcc = 0; snaps(room); flush(room); }
       if (w.dirty && t - room.savedAt >= T.saveMs) void persist(room);
     }
+    const spent = performance.now() - t0;
+    cost.steps++; cost.ms += spent; cost.maxMs = Math.max(cost.maxMs, spent);
+    if (t - cost.at >= 60000) { cost.last = { steps: cost.steps, avgMs: Math.round(cost.ms / Math.max(1, cost.steps) * 1000) / 1000, maxMs: Math.round(cost.maxMs * 1000) / 1000 }; cost.steps = 0; cost.ms = 0; cost.maxMs = 0; cost.at = t; }
     return changed;
+  };
+  /** A world boss rose, fell or left: every protocol-9 Keeper in the world hears its omen (the line is the client's). */
+  const omens = room => {
+    const list = room.world.flushOmens?.() ?? [];
+    for (const o of list) for (const s of seen) if (s.world && s.p9 && s.stream) send(s, { type: 'world-omen', ...o });
   };
   const snaps = room => {
     for (const s of room.members.values()) {
@@ -205,6 +249,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
       const room = roomOf(s);
       if (!room?.world) throw fail(409, 'Not in the world.');
       if (data.quiet === true) room.world.fxQuiet();
+      if (typeof data.boss === 'string') room.world.fxBossNow(data.boss);
       let id = null;
       if (data.lay && typeof data.lay === 'object') {
         const { type, dx, dy, calm } = data.lay;
@@ -214,7 +259,18 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
       return { ok: true, id, stats: { ...room.world.stats }, mobs: room.world.mobs.mobs.map(m => ({ id: m.nid ?? '', t: m.def.id, hp: Math.round(m.hp), x: Math.round(m.x), y: Math.round(m.y) })), ground: room.world.groundList() };
     },
     /** The health line: the areas awake and their Keepers. */
-    health() { return { areas: [...worldAreas], awake: [...rooms.values()].map(r => ({ area: r.area, keepers: r.members.size, creatures: r.world?.mobs.mobs.length ?? 0, ground: r.world?.ground.size ?? 0 })) }; },
+    health() {
+      const all = [...rooms.values()], mem = process.memoryUsage();
+      return {
+        areas: [...worldAreas], every: everyArea.size, loaded: all.filter(r => r.world).length,
+        awake: all.filter(r => r.members.size).map(r => ({ area: r.area, keepers: r.members.size, creatures: r.world?.mobs.mobs.length ?? 0, ground: r.world?.ground.size ?? 0 })),
+        creatures: all.reduce((n, r) => n + (r.world?.mobs.mobs.length ?? 0), 0), ground: all.reduce((n, r) => n + (r.world?.ground.size ?? 0), 0),
+        resting: all.reduce((n, r) => n + (r.world?.restingNow?.().length ?? 0), 0),
+        bosses: all.flatMap(r => (r.world?.bossesUp?.() ?? []).map(b => ({ area: r.area, ...b }))),
+        step: cost.last ?? { steps: cost.steps, avgMs: Math.round(cost.ms / Math.max(1, cost.steps) * 1000) / 1000, maxMs: Math.round(cost.maxMs * 1000) / 1000 },
+        rssMB: Math.round(mem.rss / 1048576), heapMB: Math.round(mem.heapUsed / 1048576),
+      };
+    },
     /** Save every awake area (shutdown: Cloud Run's SIGTERM gives ten seconds). */
     async saveAll() { await Promise.all([...rooms.values()].map(persist)); },
     /** The specs: an area's world, or null. */

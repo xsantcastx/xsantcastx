@@ -153,13 +153,22 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
   ],
   places: REACH_PLACES, names: REACH_NAMES,
   mobs: {
-    '.': { types: ['rivet-maw', 'lava-hound'], chance: .25 },
-    f: { types: ['ash-wolf', 'ash-wolf'], chance: .4 },
+    '.': { types: ['rivet-maw', 'lava-hound'], chance: .35 },
+    f: { types: ['ash-wolf', 'ash-wolf', 'lava-hound'], chance: .6 },
     // The Cinder clans hold the Deep Charwood and the Badlands; drakes hunt the Molten Fields.
-    F: { types: ['ash-wolf', 'lava-hound', 'cinder-orc', 'cinder-orc', 'orc-firecaller'], chance: .5 },
-    h: { types: ['lava-hound', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'orc-warlord'], chance: .5 },
-    v: { types: ['cinder-imp', 'obsidian-golem', 'ember-drake'], chance: .55 },
+    F: { types: ['ash-wolf', 'lava-hound', 'cinder-orc', 'cinder-orc', 'orc-firecaller'], chance: .7 },
+    h: { types: ['lava-hound', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'orc-warlord'], chance: .65 },
+    v: { types: ['cinder-imp', 'obsidian-golem', 'ember-drake'], chance: .65 },
   },
+  // Lairs (canon §8.2): the orc camps of the Deep Charwood and the Badlands, the drakes' nests in the Molten Fields,
+  // the hounds' runs through the burnt Charwood.
+  hotspots: [
+    { region: 'F', chance: .5, types: ['cinder-orc', 'cinder-orc', 'orc-firecaller'], count: 5 },
+    { region: 'h', chance: .45, types: ['cinder-orc', 'orc-firecaller', 'orc-warlord', 'cinder-orc'], count: 5 },
+    { region: 'v', chance: .35, types: ['ember-drake', 'lava-hound', 'cinder-imp'], count: 4 },
+    { region: 'f', chance: .4, types: ['lava-hound', 'ash-wolf'], count: 4 },
+    { region: '.', chance: .15, types: ['lava-hound', 'rivet-maw'], count: 3 },
+  ],
   town: buildPyrehold, townName: 'Pyrehold', streets: { row: 15, col: 23 }, river: false,
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },

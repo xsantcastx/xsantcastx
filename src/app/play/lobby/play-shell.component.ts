@@ -20,7 +20,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription, filter, firstValueFrom, race, timer } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { GameStateGateway } from '../../shared/save/game-state.gateway';
-import { MAX_CHARACTERS, PRIMARY_CHARACTER, newCharacterId } from '../../shared/save/character-scope';
+import { MAX_CHARACTERS, PRIMARY_CHARACTER, newCharacterId, readProfile } from '../../shared/save/character-scope';
 import { CloudSaveService, hasBoundAccount } from '../../shared/cloud-save/cloud-save.service';
 import { CharacterRosterService } from '../../shared/characters/character-roster.service';
 import { CharacterRow, confirmsDelete, hasFreeSlot, idForNewCharacter, junkRowIds, needsTypedName, portraitOf } from '../../shared/characters/character-roster.model';
@@ -42,6 +42,7 @@ import { lorePage } from '../../shared/lore/lore';
 import { paintTitleArt, titleArtSize } from './title-art';
 import { CAMP_SLOTS, CampArt, type CampFigure, type CampLayout, type Rect, campLayout, spotBox } from './camp-art';
 import { hasMeaningfulSave, summarise } from './character-summary';
+import { PlaySessionService, type PlaySessionState } from '../../shared/save/play-session.service';
 import {
   LOBBY_ENTER_KEY, LOBBY_FROM_KEY, LOBBY_GUEST_KEY, LOBBY_MAKE_KEY, LOBBY_SKIP_KEY, LobbyMode, PlayLobbyService, initialLobbyMode, mayUsePrimarySlot,
 } from './play-lobby.service';
@@ -78,6 +79,11 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private readonly story = inject(StoryService);
   private readonly looks = inject(KeeperLookService);
+  private readonly session = inject(PlaySessionService);
+  /** One live session per account (play-session.service): 'wait' while the tab lock answers, then play or the takeover. */
+  worldGate: 'wait' | 'play' | 'elsewhere' = 'wait';
+  sessionState: PlaySessionState = this.session.state;
+  takingOver = false;
 
   mode: LobbyMode = 'boot';
   /** The highlighted row on the character list. */
@@ -167,6 +173,11 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.subs.push(this.lobby.selectRequested$.subscribe(() => void this.leaveWorld()));
     this.subs.push(this.roster.roster$.subscribe(() => this.refreshRows()));
+    // Another device or tab took this account (or held it first): the world gives way to the takeover screen.
+    this.subs.push(this.session.state$.subscribe(st => this.zone.run(() => {
+      this.sessionState = st;
+      if (st.role === 'elsewhere' && this.mode === 'game') { this.worldGate = 'elsewhere'; this.dirty = true; }
+    })));
     this.subs.push(this.cloud.status$.subscribe(st => { const now = st.state === 'syncing'; if (now !== this.syncing) this.zone.run(() => { this.syncing = now; }); }));
     // Summaries wait for the cloud pull (sync fix, 2026-10-21): a list drawn mid-sync re-summarises once it lands.
     this.subs.push(this.cloud.status$.pipe(filter(s => s.state !== 'syncing')).subscribe(() => {
@@ -223,6 +234,9 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cloud.init();
       await this.authSettled();
       if (!this.cloud.signedIn && target === 'select' && !guest) target = 'title';
+      // The session lapsed into Play offline: this page booted into the account's saves, the guest must not see them
+      // (character-scope "Profiles"). Reload into the guest's own.
+      if (!this.cloud.signedIn && readProfile(localStorage) !== this.gateway.profile) { location.reload(); return; }
     }
     if (target === 'game' && !skip && this.unfinished(character)) target = 'create';
     this.zone.run(() => this.go(target));
@@ -249,6 +263,14 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (mode === 'game') this.noteActive();
     if (mode === 'game') this.stopArt();
+    if (mode === 'game' && this.browser) {
+      this.worldGate = this.session.elsewhere ? 'elsewhere' : 'wait';
+      void this.session.enterWorld().then(st => this.zone.run(() => {
+        if (this.mode !== 'game') return;
+        this.worldGate = st.role === 'play' ? 'play' : 'elsewhere';
+        this.dirty = true;
+      }));
+    }
     this.mode = mode;
     this.dirty = true;
   }
@@ -270,8 +292,16 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  playOffline(): void {
+  async playOffline(): Promise<void> {
     try { localStorage.setItem(LOBBY_GUEST_KEY, '1'); } catch { /* private mode: asked again next time */ }
+    // A browser an account has signed in on: the guest plays its own saves, never the account's (character-scope
+    // "Profiles"). The profile is fixed per page, so a page booted into the account's reloads into the guest's.
+    if (this.browser && readProfile(localStorage) !== this.gateway.profile) {
+      this.busy = true;
+      await this.gateway.settleForReload();
+      location.reload();
+      return;
+    }
     this.go('select');
   }
 
@@ -595,6 +625,20 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ── Back from the world ────────────────────────────────────────────────────
+
+  /** The takeover screen's line: another device (named when the lease knows it) or another tab of this browser. */
+  get elsewhereLine(): string {
+    const st = this.sessionState;
+    if (st.why === 'tab') return this.t('lobby.session.tab');
+    return st.device ? this.t('lobby.session.deviceNamed', { device: st.device }) : this.t('lobby.session.device');
+  }
+  /** "Play here": this session takes the account (the other one stops), and the page reloads into the world. */
+  async playHere(): Promise<void> {
+    if (this.takingOver) return;
+    this.takingOver = true;
+    try { await this.session.playHere(LOBBY_ENTER_KEY, this.gateway.character); }
+    finally { this.zone.run(() => { this.takingOver = false; }); }
+  }
 
   private async leaveWorld(): Promise<void> {
     if (this.mode !== 'game' || this.busy) return;

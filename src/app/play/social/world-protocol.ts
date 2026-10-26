@@ -12,7 +12,8 @@
 export const WORLD_PROTOCOL = 7;
 /** The host id the room uses for itself (never a player's: player ids are UUIDs). */
 export const ROOM_HOST = '@room';
-/** The areas the room runs (M1: the Seamworks island's surface only). */
+/** The areas the room runs for a protocol 7/8 client (M1: the Seamworks island's surface only). Protocol 9 (M3): every
+ * continent and every floor (room-world.ts WORLD_AREAS_ALL, kept there: it reads the levels' tables). */
 export const WORLD_AREAS: readonly string[] = ['ember-isle'];
 
 /** How far from where the room last saw a Keeper a ground item may be taken (art px): the coin magnet's 8 tiles + slack. */
@@ -24,7 +25,7 @@ export const GROUND_MS = 300000;
 
 /** One item on the room's ground, as the wire carries it (and as a ground take hands it over). */
 export interface WorldDrop {
-  /** `td:surface:w.<area>.<boot>.<n>` (grave-goods dropLevel reads the level from it). */
+  /** `td:<level>:w.<area>.<boot>.<n>`: 'surface', or a floor's id (grave-goods dropLevel reads the level from it). */
   id: string;
   x: number; y: number;
   /** The creature (its wire id) whose loot it was; its corpse lists it. */
@@ -49,4 +50,4 @@ export type WorldTakeResult =
   | { ok: false; why: 'gone' | 'far' | 'owned' | 'area' | 'busy' | 'offline' };
 
 /** Is this an id the room would hand out? (The client refuses anything else before asking.) */
-export const WORLD_DROP_ID = /^td:surface:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
+export const WORLD_DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;

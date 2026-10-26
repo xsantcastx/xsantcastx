@@ -17,13 +17,27 @@ import type { KeeperGarb } from './npc-looks';
 import { WARLOCK_GARB } from './vocation-look';
 import type { WornLook } from './worn-look.model';
 import { eyeFlicker, eyeGlow, wornParticles } from './worn-fx';
+import { volumize } from './keeper-volume';
 
 export type Facing = 'down' | 'up';
-export const FRONT_W = 28;
-export const FRONT_H = 40;
+/**
+ * The art style upgrade (owner 2026-10-26: "bigger and detailed"): the figure is laid out on the 28×40 art grid as
+ * before, but painted 1.5× finer — every shape grown by FRONT_K onto whole pixels — and then the face, the hair's strands,
+ * the cape's folds and the blade are painted at the fine grid itself, with the one dark outline and the volume pass at
+ * that grid. So the Keeper stands about 51 px tall with twice the detail, and every worn look still layers by the
+ * same art-grid rules (its pieces are grown with it; live particles too: drawWornFront).
+ */
+export const FRONT_K = 1.5;
+/** The art grid's cell (the layout every painter here speaks in). */
+const AW = 28, AH = 40;
+/** The fine sheet's cell, and its feet anchor. */
+export const FRONT_W = AW * FRONT_K;
+export const FRONT_H = AH * FRONT_K;
 /** Feet: the sprite's anchor (art px from its top-left). */
-export const FRONT_AX = 14;
-export const FRONT_AY = 38;
+export const FRONT_AX = 14 * FRONT_K;
+export const FRONT_AY = 38 * FRONT_K;
+/** An art-grid coordinate on the fine grid (edges round the same way everywhere, so grown shapes tile with no gaps). */
+const gk = (v: number) => Math.round(v * FRONT_K);
 /** The frame where the Keeper looks at the Slate in their hands (facing down only). */
 export const PHONE_FRAME = 6;
 /** The frame where the Keeper casts: staff raised high, its orb flaring (facing down). */
@@ -45,6 +59,8 @@ const sheets = new WeakMap<KeeperPainter, HTMLCanvasElement>();
 const staffSheets = new WeakMap<KeeperPainter, HTMLCanvasElement>();
 
 type Px = (x: number, y: number, w: number, h: number, col: string) => void;
+/** The fine painters: `F` in fine-grid pixels (x from the cell's left), `FM` mirrored left for right. */
+interface Fine { F: Px; FM: Px }
 
 /** What a figure is, besides its colours: the body, the hair, the face, the eyes, the garb's extras. */
 interface Figure { body: BodyType; form: Form; hair: HairStyle; face: FaceMark; eyes: EyeStyle; garb: KeeperGarb | null }
@@ -66,9 +82,16 @@ const lo = (col: string, t = .35) => mix(col, OUTLINE, t);
 const hi = (col: string, t = .3) => mix(col, '#ffffff', t);
 
 function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, facing: Facing, frame: number, ox: number, staff: boolean, gear: KeeperGear | null): void {
-  const P: Px = (x, y, w, h, col) => { if (w > 0 && h > 0) { c.fillStyle = col; c.fillRect(ox + x, y, w, h); } };
+  // Art-grid shapes, grown onto the fine grid (ox is the fine cell's left).
+  const P: Px = (x, y, w, h, col) => {
+    if (w <= 0 || h <= 0) return;
+    const x0 = gk(x), y0 = gk(y), x1 = gk(x + w), y1 = gk(y + h);
+    if (x1 > x0 && y1 > y0) { c.fillStyle = col; c.fillRect(ox + x0, y0, x1 - x0, y1 - y0); }
+  };
   /** The same, mirrored left-for-right (what the right hand holds from the front is on the left seen from behind). */
-  const M: Px = (x, y, w, h, col) => P(FRONT_W - x - w, y, w, h, col);
+  const M: Px = (x, y, w, h, col) => P(AW - x - w, y, w, h, col);
+  const F: Px = (x, y, w, h, col) => { if (w > 0 && h > 0) { c.fillStyle = col; c.fillRect(ox + x, y, w, h); } };
+  const fine: Fine = { F, FM: (x, y, w, h, col) => F(FRONT_W - x - w, y, w, h, col) };
   const front = facing === 'down';
   const phone = frame === PHONE_FRAME && front;
   const cast = frame === CAST_FRAME;
@@ -90,6 +113,10 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   const holding = !phone && (!!held || staff || weapon?.kind === 'staff' || weapon?.kind === 'wand');
   const raise = cast && holding;
 
+  // A cape (the garb's: the Ashguard's), behind the body seen from the front: its lining shows past each side.
+  const capeCol = fig.garb?.cape;
+  if (capeCol && front) cape(P, fine, capeCol, tt, bw, pose.sway, true, ox);
+
   // ── Legs and boots (stepping lifts a foot; under a robe only the toes peek out) ──
   if (!robed) legs(P, p, pose, front);
   else toes(P, pose);
@@ -104,18 +131,21 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   // ── Arms ──
   arms(P, p, tt, bw, pose, front, phone, raise, staff, holding);
 
+  // Seen from behind, the cape falls over the back and the arms' tops, folds and all, under the head.
+  if (capeCol && !front) cape(P, fine, capeCol, tt, bw, pose.sway, false, ox);
+
   // ── The head ──
   headSkin(P, p, ht, fem);
   const cowl = head?.look?.shape === 'cowl' ? head.look : null;
   if (hooded) {
     hood(P, p, hoodCloth, ht, tt, front, staff ? sash : hoodCloth.trim);
     if (cowl) cowlFace(P, hoodCloth, cowl, ht, tt, front);
-    else if (front) { if (staff) undeadFace(P, p, ht, frame, cast, fem); else face(P, p, fig, ht, frame, phone, true); }
+    else if (front) { if (staff) undeadFace(P, p, ht, frame, cast, fem); else face(P, p, fig, ht, frame, phone, true, fine); }
   }
   else {
     if (front) {
       if (staff) undeadFace(P, p, ht, frame, cast, fem);
-      else face(P, p, fig, ht, frame, phone, false);
+      else face(P, p, fig, ht, frame, phone, false, fine);
     }
     hair(P, p, fig, ht, front);
     if (front && fig.face === 'beard') beard(P, p, ht);
@@ -135,7 +165,7 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, fig: Figure, f
   if (!holding) return;
   const H = front ? P : M;
   const handY = raise ? tt - 5 : tt + 8 + (staff ? 1 : 0) + (front ? pose.rArm : pose.lArm);
-  if (held) paintHeld(H, held, handY);
+  if (held) paintHeld(H, held, handY, front ? fine.F : fine.FM);
   else if (weapon?.variant === 'lamp') paintLampStaff(H, cast, handY, front);
   else paintStaff(H, cast, handY, weapon?.kind === 'wand' ? weapon : null, weapon?.look ?? null);
   // The hand closed round the grip, over the shaft.
@@ -330,7 +360,7 @@ function locks(P: Px, p: Readonly<Palette>, ht: number, where: 'hood' | 'helm' |
   }
 }
 
-function face(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, frame: number, phone: boolean, hooded: boolean): void {
+function face(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, frame: number, phone: boolean, hooded: boolean, fine?: Fine): void {
   const eye = fig.garb?.eyeGlow ?? p.eye;
   // The fringe's shadow on the brow (under a hood, the hood's own).
   if (!hooded) P(HX + 2, ht + 7, 14, 1, p.skinLo);
@@ -346,6 +376,26 @@ function face(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, frame: numbe
     P(HX + 4, ht + 9, 3, 2, p.eyeDk); P(HX + 11, ht + 9, 3, 2, p.eyeDk);
     P(HX + 5, ht + 10, 2, 1, eye); P(HX + 12, ht + 10, 2, 1, eye);
     P(HX + 4, ht + 8, 3, 1, lo(p.hair, .2)); P(HX + 11, ht + 8, 3, 1, lo(p.hair, .2));
+  } else if (fine) {
+    // Big eyes on the fine grid (the art style upgrade): a heavy upper lid flicked out at the corner, the iris lit
+    // toward its lower edge, a dark pupil, two catch-lights; a brow over each.
+    const { F } = fine, Y0 = gk(ht + 8), brow = hooded ? lo(p.skinLo, .2) : lo(p.hair, .3);
+    for (const [ex, outer] of [[HX + 4, -1], [HX + 11, 1]] as const) {
+      const X0 = gk(ex);
+      F(X0, Y0, 4, 6, p.eyeDk);
+      F(X0 + 1, Y0 + 1, 3, 5, eye);
+      F(X0 + 1, Y0 + 1, 3, 1, mix(eye, p.eyeDk, .45));
+      F(X0 + 1, Y0 + 4, 3, 1, mix(eye, p.eyeHi, .5)); F(X0 + 1, Y0 + 5, 3, 1, p.eyeHi);
+      F(X0 + 2, Y0 + 2, 1, 2, mix(p.eyeDk, OUTLINE, .6));
+      F(X0 + 1, Y0 + 1, 1, 2, '#ffffff');
+      F(outer < 0 ? X0 + 3 : X0 + 3, Y0 + 4, 1, 1, fig.eyes === 'bright' ? '#ffffff' : mix(p.eyeHi, '#ffffff', .4));
+      F(X0 - 1, Y0 - 1, 6, 1, p.eyeDk);
+      F(outer < 0 ? X0 - 2 : X0 + 5, Y0 - 2, 1, 1, p.eyeDk);
+      F(X0, Y0 - 3, 4, 1, brow); F(outer < 0 ? X0 - 1 : X0 + 4, Y0 - 2, 1, 1, brow);
+    }
+    // A nose: a pixel of shade under the bridge, lit beside it.
+    const cx = gk(HX + 9);
+    F(cx, Y0 + 6, 1, 1, p.skinLo); F(cx - 1, Y0 + 6, 1, 1, p.skinHi);
   } else {
     // Big chibi eyes: a dark rim, the iris, a white catch-light, a lit lower edge.
     for (const ex of [HX + 4, HX + 11]) {
@@ -361,7 +411,13 @@ function face(P: Px, p: Readonly<Palette>, fig: Figure, ht: number, frame: numbe
   const blushW = fig.face === 'rosy' || fem ? 3 : 2, bx = hooded ? 3 : 2;
   P(HX + bx, ht + 12, blushW, 1, p.blush); P(HX + 18 - bx - blushW, ht + 12, blushW, 1, p.blush);
   // Her mouth a small rosy bow; his a plain line.
-  if (fem) { P(HX + 8, ht + 12, 2, 1, mix(p.mouth, '#e0607a', .55)); P(HX + 8, ht + 13, 2, 1, mix(p.skinLo, '#e0607a', .25)); }
+  if (fine && !phone) {
+    // The mouth on the fine grid: a small line with a lit lower lip (hers a rosy bow).
+    const { F } = fine, mx0 = gk(HX + 9) - 2, my = gk(ht + 12) + 1;
+    if (fem) { F(mx0, my, 4, 1, mix(p.mouth, '#e0607a', .55)); F(mx0 + 1, my + 1, 2, 1, mix(p.skinLo, '#e0607a', .3)); F(mx0 + 1, my - 1, 2, 1, mix(p.skin, '#e0607a', .2)); }
+    else { F(mx0, my, 4, 1, p.mouth); F(mx0 + 1, my + 1, 2, 1, p.skinHi); F(mx0 - 1, my - 1, 1, 1, p.skinLo); }
+  }
+  else if (fem) { P(HX + 8, ht + 12, 2, 1, mix(p.mouth, '#e0607a', .55)); P(HX + 8, ht + 13, 2, 1, mix(p.skinLo, '#e0607a', .25)); }
   else P(HX + 8, ht + 12, 2, 1, p.mouth);
   if (fig.face === 'freckles') for (const [x, y] of [[3, 11], [5, 12], [12, 12], [14, 11]]) P(HX + x, ht + y, 1, 1, p.skinLo);
   if (fig.face === 'scar') { P(HX + 13, ht + 7, 1, 1, '#b85a5a'); P(HX + 12, ht + 8, 1, 1, '#b85a5a'); P(HX + 14, ht + 12, 1, 1, '#b85a5a'); }
@@ -436,6 +492,47 @@ function cowlFace(P: Px, m: Cloth, L: WornLook, ht: number, tt: number, front: b
     }
     if (L.seam) for (let y = ht + 4; y < tt; y += 3) P(HX - 1, y, 1, 1, L.seam);
   } else if (L.seam) for (let y = ht; y < tt; y += 2) P(HX + 8, y, 1, 1, L.seam);
+}
+
+/**
+ * A cape from the shoulders to the calves (the art style upgrade, owner's reference: "a flowing purple cape"): from the
+ * front its dark lining shows past each side of the body, flaring toward the hem; from behind it covers the back, its
+ * folds running down it on the fine grid (lit ridge, shaded hollow), the hem swinging with the step and cut in points.
+ */
+function cape(P: Px, fine: Fine, col: string, tt: number, bw: number, sway: number, front: boolean, _ox: number): void {
+  const lit = hi(col, .22), shade = lo(col, .3), deep = lo(col, .55), lining = mix(col, '#140c1c', .45);
+  const top = tt + 1, bottom = FEET - 3;
+  for (let y = top; y <= bottom; y++) {
+    const u = (y - top) / (bottom - top), flare = Math.round(u * 2.2), sw = Math.round(u * u * sway * 1.5);
+    const l = C - bw - 1 - flare + sw, w = (bw + 1 + flare) * 2;
+    if (front) {
+      // Only the edges show past the body: the lining, its outer fold lit.
+      P(l, y, 2, 1, lining); P(l + w - 2, y, 2, 1, lining);
+      P(l, y, 1, 1, u > .2 ? shade : col); P(l + w - 1, y, 1, 1, deep);
+    } else {
+      P(l, y, w, 1, col);
+      P(l, y, 1, 1, lit); P(l + w - 1, y, 1, 1, deep);
+    }
+  }
+  if (front) { P(C - bw - 1, tt, 2, 2, col); P(C + bw - 1, tt, 2, 2, shade); return; }
+  // The collar's roll across the shoulders.
+  P(C - bw - 1, top - 1, (bw + 1) * 2, 2, lit); P(C - bw - 1, top, (bw + 1) * 2, 1, col);
+  // Folds on the fine grid: ridges and hollows running down from the shoulders, fanning toward the hem.
+  const { F } = fine, y0 = gk(top + 2), y1 = gk(bottom);
+  for (let fy = y0; fy <= y1; fy++) {
+    const u = (fy - y0) / (y1 - y0), half = gk(bw + 1) + Math.round(u * 3), mid = gk(C) + Math.round(u * u * sway * 2);
+    for (let k = -2; k <= 2; k++) {
+      const fx = mid + Math.round(k * half * .42 * (1 + u * .25));
+      F(fx, fy, 1, 1, shade); F(fx - 1, fy, 1, 1, lit);
+      if (u > .55) F(fx + 1, fy, 1, 1, mix(shade, deep, .5));
+    }
+  }
+  // The hem: cut in points, its underside dark.
+  const hy = gk(bottom + 1), half = gk(bw + 1) + 3, mid = gk(C) + Math.round(sway * 2);
+  for (let fx = mid - half; fx < mid + half; fx++) {
+    const point = ((fx - mid + 40) % 5) < 2;
+    F(fx, hy, 1, point ? 2 : 1, point ? shade : deep);
+  }
 }
 
 /** The hood's mantle over the shoulders, bone-clasped at the throat. */
@@ -814,7 +911,7 @@ function quiver(P: Px, q: string, tt: number, fletch: boolean, front = false): v
 // ───────────────────────── held things ─────────────────────────
 
 /** A weapon that is not a staff, held upright in the right hand (front) or the left (back). `hy`: the hand's row. */
-function paintHeld(P: Px, w: GearPiece, hy: number): void {
+function paintHeld(P: Px, w: GearPiece, hy: number, F?: Px): void {
   const m = matOf(w), x = 23, L = w.look;
   // Its own look: the blade or head in its tones, the haft in its second material (else steel and ash).
   const STEEL_ = L ? mix(L.base, L.lit, .5) : STEEL, STEEL_HI_ = L ? hi(L.lit, .4) : STEEL_HI, STEEL_LO_ = L ? L.deep : STEEL_LO;
@@ -867,6 +964,20 @@ function paintHeld(P: Px, w: GearPiece, hy: number): void {
       P(x - 2, hy - 1, bwid + 4, 1, m.trim); P(x - 2, hy - 1, 2, 1, hi(m.trim, .35));
       P(x, hy + 2, 2, 1, WOOD_); P(x, hy + 3, 2, 1, m.accent);
       if (L?.runes) for (let ry = top + 2; ry < hy - 2; ry += 4) P(x + (bwid > 2 ? 1 : 0), ry, 1, 1, L.runes);
+      if (F) {
+        // The blade again on the fine grid (the art style upgrade): a tapered point, a lit edge, a shaded edge, the
+        // fuller down its middle; a crossguard with lit top and dark caps, a wrapped grip, a round pommel.
+        const X0 = gk(x), BW = gk(x + bwid) - X0, T = gk(top), G = gk(hy - 1), fuller = mix(STEEL_, STEEL_LO_, .55);
+        F(X0, T + 2, BW, G - T - 2, STEEL_);
+        F(X0, T + 2, 1, G - T - 2, STEEL_HI_); F(X0 + BW - 1, T + 3, 1, G - T - 3, STEEL_LO_);
+        if (BW >= 3 && w.kind !== 'dagger') F(X0 + Math.floor(BW / 2), T + 4, 1, G - T - 6, fuller);
+        F(X0 + Math.floor(BW / 2), T, 1, 2, STEEL_HI_); F(X0, T + 1, Math.ceil(BW / 2), 1, STEEL_HI_);
+        F(X0 + 1, T + 3, 1, 1, '#ffffff');
+        const gx = X0 - 3, gw = BW + 6;
+        F(gx, G, gw, 2, m.trim); F(gx, G, gw, 1, hi(m.trim, .35)); F(gx, G, 1, 2, lo(m.trim, .35)); F(gx + gw - 1, G, 1, 2, lo(m.trim, .45));
+        for (let i = 0; i < 4; i++) F(X0, G + 2 + i, BW, 1, i % 2 ? WOOD_LO_ : WOOD_);
+        F(X0, G + 6, BW, 2, m.accent); F(X0, G + 6, 1, 1, hi(m.accent, .45));
+      }
     }
   }
   if (L?.runes && w.kind !== 'sword' && w.kind !== 'greatsword' && w.kind !== 'dagger') P(x, hy - 6, 1, 1, L.runes);
@@ -925,11 +1036,33 @@ function paintLampStaff(P: Px, cast: boolean, hy: number, front: boolean): void 
 // ───────────────────────── the sheet ─────────────────────────
 
 /** The 1px dark outline round what is painted (the game's outline rule). */
+/**
+ * The hair's strands on the fine grid (the art style upgrade): wherever the base hair colour lies in a head's rows, a
+ * wavy run of darker strands and a few lit ones — the reference's readable hair — without touching any other colour.
+ */
+function strands(cv: HTMLCanvasElement, p: Readonly<Palette>): void {
+  const c = cv.getContext('2d', { willReadFrequently: true })!, img = c.getImageData(0, 0, cv.width, cv.height), d = img.data;
+  const rgb = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const [hr, hg, hb] = rgb(p.hair), lo_ = rgb(mix(p.hair, p.hairLo, .75)), hi_ = rgb(mix(p.hair, p.hairHi, .6));
+  const headRows = gk(HT + 28);
+  for (let y = 0; y < cv.height; y++) {
+    if (y % FRONT_H > headRows) continue;
+    for (let x = 0; x < cv.width; x++) {
+      const i = (y * cv.width + x) * 4;
+      if (d[i + 3] === 0 || d[i] !== hr || d[i + 1] !== hg || d[i + 2] !== hb) continue;
+      const s = (x * 3 + Math.floor(y / 3) + (Math.floor(y / 6) % 2) * 2) % 7, t = s === 0 ? lo_ : s === 4 && (x + y) % 2 ? hi_ : null;
+      if (t) { d[i] = t[0]; d[i + 1] = t[1]; d[i + 2] = t[2]; }
+    }
+  }
+  c.putImageData(img, 0, 0);
+}
+
 function outline(src: HTMLCanvasElement): HTMLCanvasElement {
   const out = document.createElement('canvas');
   out.width = src.width; out.height = src.height;
   const c = out.getContext('2d')!;
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) c.drawImage(src, dx, dy);
+  // The one dark outline, a pixel heavier on the shaded lower right (the references' weight).
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) c.drawImage(src, dx, dy);
   c.globalCompositeOperation = 'source-in';
   c.fillStyle = OUTLINE; c.fillRect(0, 0, out.width, out.height);
   c.globalCompositeOperation = 'source-over';
@@ -956,7 +1089,9 @@ export function frontSheet(painter: KeeperPainter, staff = false): HTMLCanvasEle
       c.restore();
     }
   });
-  sheet = outline(raw);
+  // The volume pass (keeper-volume.ts): the figure lit round from the upper left.
+  strands(raw, painter.colors);
+  sheet = volumize(outline(raw), { depth: 7 });
   cache.set(painter, sheet);
   return sheet;
 }
@@ -972,12 +1107,22 @@ export function frontFrame(time: number, moving: boolean): number {
  * a mask or a great helm's slit (facing the camera only), and each piece's few particles — embers off a crown, a censer's
  * smoke, motes, a mist wisp. (x0, y0) is where the frame's top-left was drawn, in the same pixels; `frame` the frame shown.
  */
-export function drawWornFront(c: CanvasRenderingContext2D, painter: KeeperPainter, facing: Facing, frame: number, x0: number, y0: number, time: number, still: boolean): void {
+export function drawWornFront(target: CanvasRenderingContext2D, painter: KeeperPainter, facing: Facing, frame: number, X0: number, Y0: number, time: number, still: boolean): void {
   const gear = painter.gear;
   if (!gear) return;
   let any = false;
   for (const k in gear) { const L = gear[k as keyof KeeperGear]?.look; if (L && (L.fx || L.eyes)) { any = true; break; } }
   if (!any) return;
+  // The live pixels speak the art grid (as the sheet's layout does); each is grown onto the fine grid where it lands.
+  const x0 = 0, y0 = 0;
+  const c = {
+    get fillStyle() { return target.fillStyle; }, set fillStyle(v) { target.fillStyle = v; },
+    get globalAlpha() { return target.globalAlpha; }, set globalAlpha(v) { target.globalAlpha = v; },
+    fillRect(x: number, y: number, w: number, h: number) {
+      const a = gk(x), b = gk(y);
+      target.fillRect(X0 + a, Y0 + b, Math.max(1, gk(x + w) - a), Math.max(1, gk(y + h) - b));
+    },
+  } as unknown as CanvasRenderingContext2D;
   const front = facing === 'down', pose = poseOf(frame), ht = HT + pose.u, tt = TT + pose.u;
   const head = gear.head?.look;
   if (front && head?.eyes) {
@@ -986,7 +1131,7 @@ export function drawWornFront(c: CanvasRenderingContext2D, painter: KeeperPainte
     const spots = head.shape === 'cowl' ? [[5, 10, 2], [11, 10, 2]] : head.shape === 'great-helm' ? [[4, 6, 2], [12, 6, 2]] : head.shape === 'mask' ? [[4, 10, 3], [11, 10, 3]] : [];
     for (const [ex, ey, ew] of spots) eyeGlow(c, x0 + HX + ex, y0 + ht + ey, ew, 1, head.eyes, a);
   }
-  const mx = (x: number, w: number) => (front ? x : FRONT_W - x - w);
+  const mx = (x: number, w: number) => (front ? x : AW - x - w);
   for (const slot of ['head', 'chest', 'hands', 'weapon', 'off-hand', 'trinket'] as const) {
     const L = gear[slot]?.look;
     if (!L?.fx) continue;

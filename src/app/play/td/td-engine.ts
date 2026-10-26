@@ -14,39 +14,26 @@
  */
 import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
 import type { LootRarity, StationDef } from '../world/world.model';
-import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { FIGURE_K, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
+import { paintRichGround, richEdge } from './td-ground';
+import { castShadow } from './td-shade';
+import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
-import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
-import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
-import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
-import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
-import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3, MOLTEN_DEEP_4, MOLTEN_DEEP_5, MOLTEN_DEEP_6 } from './maps/molten-deep';
-import { FORGE_OF_FOUR_1, FORGE_OF_FOUR_2, FORGE_OF_FOUR_3 } from './maps/forge-of-four';
-import { ASHEN_CRYPT_1, ASHEN_CRYPT_2 } from './maps/ashen-crypt';
-import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
-import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
-import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
-import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
-import { VERDANT_WILDS_DEF } from './maps/verdant-wilds';
-import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 } from './maps/rootglass-bole';
-import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3, OVERGROWN_TEMPLE_4, OVERGROWN_TEMPLE_5 } from './maps/overgrown-temple';
-import { ROOT_HOLLOWS_1, ROOT_HOLLOWS_2, ROOT_HOLLOWS_3 } from './maps/root-hollows';
-import { HERBAL_0, HERBAL_1, NETLOFT_1, NETLOFT_2 } from './maps/verdant-houses';
-import { UMBRAL_MARCHES_DEF } from './maps/umbral-marches';
-import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lantern-tower';
-import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
-import { BARROW_DOOR_ID, HUSHED_BARROW_1 } from './maps/hushed-barrow';
+import { BLOCK } from './maps/ember-isle';
+import { BARROW_DOOR_ID } from './maps/hushed-barrow';
 import { SEXTON_CONTINENT, SEXTON_PAGE, SEXTON_STONES, SEXTON_VAULT, VAULT_GRAVE, VAULT_KEYHOLE, WALKER, WALKER_AT, chalkMark, ledgerPage, pageShown, seekSpot, stallSpot } from './td-sexton';
 import type { ContinentDef } from './continent';
+import { CONTINENTS, LEVELS } from './td-levels';
+export { CONTINENTS, LEVELS };
 import type { TdMapDef } from './td-level';
 
 /** Out of the fight (4 s unhurt) the Keeper mends this much life a second, unless a curse's drain outweighs his regeneration. */
@@ -54,31 +41,16 @@ export const MEND_PER_SEC = 6;
 /** The out-of-fight mend now (life a second): 6 after 4 s unhurt, none while a curse's drain outweighs regeneration. */
 export function outOfFightMend(regen: number, unhurtSecs: number): number { return regen >= 0 && unhurtSecs > 4 ? MEND_PER_SEC : 0; }
 
-/** Every hand-drawn level under (or over) the surface, by id. */
-/** Every continent, by id (ships sail between them). */
-export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
-  'umbral-marches': UMBRAL_MARCHES_DEF };
-
 /** The most creatures the minimap marks at once (owner's player notes 2026-10-21: "cap the count for performance"). */
 const MINI_MOBS = 40;
 /** How far a thumb may miss a Keeper standing in the open and still tap them (art px sideways, up and down). */
 const PEER_SLOP = 9;
+/** The hidden-tab timer (ms) and the most time one tick of it catches up (s): stepHidden. */
+const BG_TICK_MS = 250;
+const BG_CATCHUP_SECS = 60;
+/** A second tap on the Keeper whose card a tap just opened walks there (s). */
+const PEER_AGAIN_SECS = 3;
 
-export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
-  'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
-  'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
-  'molten-deep-4': MOLTEN_DEEP_4, 'molten-deep-5': MOLTEN_DEEP_5, 'molten-deep-6': MOLTEN_DEEP_6,
-  'forge-of-four-1': FORGE_OF_FOUR_1, 'forge-of-four-2': FORGE_OF_FOUR_2, 'forge-of-four-3': FORGE_OF_FOUR_3,
-  'ashen-crypt-1': ASHEN_CRYPT_1, 'ashen-crypt-2': ASHEN_CRYPT_2,
-  'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2,
-  'rootglass-bole-0': ROOTGLASS_BOLE_0, 'rootglass-bole-1': ROOTGLASS_BOLE_1, 'rootglass-bole-2': ROOTGLASS_BOLE_2, 'rootglass-bole-3': ROOTGLASS_BOLE_3,
-  'overgrown-temple-1': OVERGROWN_TEMPLE_1, 'overgrown-temple-2': OVERGROWN_TEMPLE_2, 'overgrown-temple-3': OVERGROWN_TEMPLE_3,
-  'lantern-tower-0': LANTERN_TOWER_0, 'lantern-tower-1': LANTERN_TOWER_1, 'lantern-tower-2': LANTERN_TOWER_2,
-  'drowned-crypts-1': DROWNED_CRYPTS_1, 'drowned-crypts-2': DROWNED_CRYPTS_2, 'drowned-crypts-3': DROWNED_CRYPTS_3,
-  'overgrown-temple-4': OVERGROWN_TEMPLE_4, 'overgrown-temple-5': OVERGROWN_TEMPLE_5,
-  'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
-  'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0,
-  'hushed-barrow-1': HUSHED_BARROW_1 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 /** The Seam-Cant's tone per tree: each element's body tone (effects-spec rule 2), so the words read as the spell's. */
 const CANT_TONE: Readonly<Record<TreeId, string>> = {
@@ -99,7 +71,7 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 };
 import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobCell, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
 import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
@@ -170,6 +142,8 @@ export interface TdMapView {
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
+/** A height over the feet that was set for the art-grid figure, grown with the fine figure (FIGURE_K). */
+const up = (n: number) => Math.round(n * FIGURE_K);
 const SPEED = 74;              // art px / s
 const GUIDE_FAR_TILES = 40;     // Show me walks up to this far; past it Glim points instead
 const REACH = 26;              // art px from a stall's interaction spot
@@ -453,6 +427,8 @@ export class TopDownEngine {
   })();
   private readonly fxDark = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxdark=1\b/.test(location.search);
   private readonly peers = new TdPeers();
+  /** The last Keeper a tap named, and when (a second tap on them walks through: tap()). */
+  private peerTapped: { id: string; at: number } | null = null;
   private readonly reduceMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   /** Reduced motion, read live: the same shapes, no travel (spec §Rules 6). */
   private get still(): boolean { return !!this.reduceMq?.matches; }
@@ -503,7 +479,7 @@ export class TopDownEngine {
       now: () => performance.now(),
       phase: () => (this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase),
       still: () => this.still,
-      role: role => this.coopRole(role),
+      role: (role, was) => this.coopRole(role, was),
     });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -522,6 +498,24 @@ export class TopDownEngine {
     };
     // The zone specs (webdriver only): stand the Keeper on a tile of the world (the nearest walkable), lay a creature
     // at a zone's level beside him, and read the zone underfoot (td-zones.ts).
+    // The art pass's camera (webdriver only; e2e/td-art-shots.spec.ts): the arcane aura on the Keeper, the motes alive.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdArt'] = {
+      aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
+      motes: () => this.auraFx.alive,
+      // The nearest worn road through grass (a dirt tile with grass to either side): the Keeper stands beside it.
+      road: (dc = 1) => {
+        const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE), g = (c: number, r: number) => this.level.ground(c, r);
+        for (let d = 0; d <= 60; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
+          if (Math.max(Math.abs(x), Math.abs(y)) !== d) continue;
+          const c = pc + x, r = pr + y;
+          if (g(c, r) !== 'dirt' || g(c + 3, r) !== 'grass' || g(c - 3, r + 2) !== 'grass' || !footFree(this.level, (c + dc) * TILE + TILE / 2, r * TILE + TILE - 2)) continue;
+          this.player.x = (c + dc) * TILE + TILE / 2; this.player.y = r * TILE + TILE - 2; this.path = [];
+          this.placeCompanions();
+          return { c, r };
+        }
+        return null;
+      },
+    };
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdZones'] = {
       to: (c: number, r: number) => {
         for (let d = 0; d <= 12; d++) for (let y = -d; y <= d; y++) for (let x = -d; x <= d; x++) {
@@ -775,7 +769,7 @@ export class TopDownEngine {
     const loop = (now: number) => {
       // rAF stamps the frame's start, which can precede the performance.now() taken in start(): never step backwards.
       const dt = Math.max(0, Math.min(.05, (now - this.last) / 1000));
-      this.last = now;
+      this.last = now; this.frameAt = performance.now();
       // Schedule first: one bad frame (a host callback throwing) must never stop the world.
       this.raf = requestAnimationFrame(loop);
       try {
@@ -788,9 +782,39 @@ export class TopDownEngine {
       }
     };
     this.raf = requestAnimationFrame(loop);
+    // Never pause (owner 2026-10-26): a hidden or switched-away tab gets no animation frames at all, so the world keeps
+    // running on a timer instead — creatures, regen, the companions, the room's presence. Browsers fire it about once a
+    // second in a hidden tab (once a minute after five minutes); each tick steps the time missed, in frame-sized steps,
+    // without drawing. A tab in view never takes this path (its frames are recent).
+    this.frameAt = performance.now();
+    this.bgTimer = setInterval(() => this.stepHidden(), BG_TICK_MS);
+  }
+  /** When the last animation frame ran (performance.now ms), and the hidden-tab timer (start()). */
+  private frameAt = 0;
+  private bgTimer: ReturnType<typeof setInterval> | null = null;
+  /** True while stepHidden catches the world up (one HUD report at the end, not one per tenth of a second). */
+  private catchingUp = false;
+  private stepHidden(): void {
+    if (!this.raf) return;
+    const now = performance.now();
+    if (now - this.frameAt < BG_TICK_MS) return;
+    let left = Math.max(0, Math.min(BG_CATCHUP_SECS, (now - this.last) / 1000));
+    this.last = now;
+    this.catchingUp = true;
+    try {
+      while (left > 1e-4) {
+        const dt = Math.min(.05, left); left -= dt;
+        if (!this.paused && !this.fxFrozen) this.update(dt);
+        else if (this.paused && !this.fxFrozen && this.coop.role === 'host') this.updateShared(dt);
+      }
+    } catch (err) {
+      if (!this.frameError) { this.frameError = true; console.error('[top-down] hidden step error', err); }
+    } finally { this.catchingUp = false; }
+    this.report();
   }
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
+    if (this.bgTimer) { clearInterval(this.bgTimer); this.bgTimer = null; }
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
@@ -1258,9 +1282,12 @@ export class TopDownEngine {
   /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */
   private enter(level: TdLevel, at: string): void {
     this.level = level;
+    // The last area's shared creatures go with it, at once (td-coop left): a late snapshot of it is refused here.
+    this.coop?.left(this.peerArea());
     this.chunks.clear();
     this.path = []; this.arrive = null; this.puffs = [];
-    this.mobs.enterLevel(level === this.world ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    // A floor the room runs (protocol 7/9) raises nothing here: its creatures are the room's (no flash of our own).
+    this.mobs.enterLevel(level === this.world || this.coop?.roomRuns(this.peerArea()) ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
     // The Row-Walker was swept away with the last level's creatures, not felled: it may rise again at once.
     this.walkerUp = false; this.walkerT = 0;
     // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).
@@ -1336,7 +1363,7 @@ export class TopDownEngine {
   /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
   setParty(ids: readonly string[]): void { this.peers.party = new Set(ids); }
   /** Protocol 4: the room's election (null against an older room), this Keeper's id, the whole party's ids. */
-  setCoop(areas: CoopAreas | null, me: string, party: readonly string[]): void { this.coop.setAreas(areas, me, party); }
+  setCoop(areas: CoopAreas | null, me: string, party: readonly string[], world = false, everywhere = false): void { this.coop.setAreas(areas, me, party, world, everywhere); }
   /** Protocol 4: a host's snapshot reached this member. */
   coopSnap(msg: CoopSnapMsg): void { this.coop.snap(msg); }
   /** Protocol 4: members' claims reached this host. */
@@ -1403,8 +1430,12 @@ export class TopDownEngine {
   /** Protocol 4: this Keeper's part in its area ('solo', 'host' or 'member'). */
   get coopRoleNow(): CoopRole { return this.coop.role; }
   /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
-  private coopRole(role: CoopRole): void {
+  private coopRole(role: CoopRole, was: CoopRole = 'solo'): void {
     if (role === 'member') this.seam = null;
+    // The room never took this floor after all (td-coop gave up waiting): its own creatures, as before the room.
+    if (role === 'solo' && was === 'member' && this.level !== this.world && !this.mobs.mobs.length && !this.coop.roomRuns(this.peerArea())) {
+      this.mobs.addSpawns(this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    }
     // The room's ground belongs to the area it was sent for: walking elsewhere leaves it behind.
     if (this.roomArea && this.roomArea !== this.peerArea()) this.clearRoomGround();
     if (role !== this.coopRoleSeen) { this.coopRoleSeen = role; this.canvas.setAttribute('data-coop-role', role); }
@@ -1445,7 +1476,7 @@ export class TopDownEngine {
     if (!w.moved && w.t >= out + .2) { w.moved = true; this.wakeAtHearth(); this.markHearth(); }
     if (w.t >= out + .2 + back) { this.waking = null; this.markHearth(); }
     this.stateTimer -= dt;
-    if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
+    if (this.stateTimer <= 0) { this.stateTimer = .1; if (!this.catchingUp) this.report(); }
   }
   /** The veil's darkness and warmth now (0–1 each). */
   private wakeVeil(): { dark: number; warm: number } {
@@ -1870,7 +1901,7 @@ export class TopDownEngine {
   glimHighFive(): void {
     if (this.pet) this.petFeel('happy');
     if (!this.glim.shown) return;
-    const x = this.player.x + this.player.face * 10, y = this.player.y - 44;
+    const x = this.player.x + this.player.face * 10, y = this.player.y - up(44);
     this.glimPoint(x, y, .7, false);
     this.glimMood('happy', 3);
     this.glimBurst(x, y, 10);
@@ -1895,7 +1926,7 @@ export class TopDownEngine {
 
   /** Set the companions down beside the Keeper (arrival, a level change, a reload, a fall). */
   private placeCompanions(): void {
-    this.glim.x = this.player.x - this.player.face * 14; this.glim.y = this.player.y - 46;
+    this.glim.x = this.player.x - this.player.face * 14; this.glim.y = this.player.y - up(46);
     this.glimFlight = null; this.glimTrail = null;
     this.trail.length = 0;
     const b = this.pet;
@@ -2152,7 +2183,7 @@ export class TopDownEngine {
     const home = idle === 'orbit'
       ? { x: k.x + Math.cos(this.time * 1.1) * 24, y: k.y - 30 + Math.sin(this.time * 1.1) * 9 }
       : idle === 'doze' ? { x: k.x - k.face * 9, y: k.y - 38 + Math.sin(this.time * 1.2) }
-      : { x: k.x - k.face * 14, y: k.y - 46 + Math.sin(this.time * 2.4) * 3 };
+      : { x: k.x - k.face * 14, y: k.y - up(46) + Math.sin(this.time * 2.4) * 3 };
     let tx = home.x, ty = home.y, rate = 4;
     const f = this.glimFlight;
     if (f) {
@@ -2417,8 +2448,6 @@ export class TopDownEngine {
     const c = this.ctx, x = Math.round(b.x), y = Math.round(b.y), calm = this.still;
     const resting = b.doing === 'sleep' || b.doing === 'rest';
     const fly = TD_PET_FLIES.has(b.id) && !resting;
-    c.fillStyle = 'rgba(30,18,26,.28)';
-    c.fillRect(x - 5, y - 2, 10, 1); c.fillRect(x - 6, y - 1, 12, 2);
     const frame: TdPetFrame = this.petFrame(b);
     const hop = !calm && (frame === 'happy' || b.hopT > 0) ? -Math.round(Math.abs(Math.sin(b.t * 11)) * 3) : 0;
     const hover = fly ? -Math.round(2 + (calm ? 0 : Math.sin(b.t * 3) * 1.5)) : 0;
@@ -2574,7 +2603,7 @@ export class TopDownEngine {
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
     if (this.message || this.messageKey) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageKey = ''; this.messageAge = 0; } }
     this.stateTimer -= dt;
-    if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
+    if (this.stateTimer <= 0) { this.stateTimer = .1; if (!this.catchingUp) this.report(); }
   }
 
   private tryMove(dx: number, dy: number): void {
@@ -2725,13 +2754,13 @@ export class TopDownEngine {
   /** The stall under a point and how far the point is from its body (a giver's body, else the stall's foot): for comparing with a Keeper or a corpse under the same finger. */
   private stallHit(wx: number, wy: number): { s: TdStall; d: number } | undefined {
     // A tap on a task giver's body talks to them (a stall keeper's counter still opens the stall).
-    const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < 10 && wy > s.keeper.y - 34 && wy < s.keeper.y + 2);
+    const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < up(10) && wy > s.keeper.y - up(34) && wy < s.keeper.y + 2);
     if (giver) return { s: giver, d: Math.hypot(wx - giver.keeper!.x, wy - (giver.keeper!.y - 17)) };
     // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
     let hit: TdStall | undefined, best = Infinity;
     for (const s of this.level.stalls) {
       if (isBerth(s.station.id)) continue;
-      if (!(Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16)) continue;
+      if (!(Math.abs(wx - s.x) < 34 && wy > s.y - (s.keeper ? up(46) : 46) && wy < s.y + 16)) continue;
       const d = Math.hypot(wx - s.x, wy - (s.y - 14));
       if (d < best) { best = d; hit = s; }
     }
@@ -2759,7 +2788,15 @@ export class TopDownEngine {
     // finger only just missed (they glide between packets, and a thumb is wide) wins when nearer than the stall.
     const stall = this.stallHit(wx, wy);
     const peer = this.peers.nearest(wx, wy, PEER_SLOP);
-    if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d)) { this.options.onPeerTap(peer.card); return; }
+    // Keepers never block one another (owner 2026-10-26, Tibia-style): a tap on one while walking walks on through, and
+    // a second tap on the Keeper whose card is up walks there; only a first tap from a standstill names them.
+    const walking = this.path.length > 0 || this.player.moving;
+    const again = !!peer && this.peerTapped?.id === peer.card.id && this.time - this.peerTapped.at < PEER_AGAIN_SECS;
+    if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d) && !walking && !again) {
+      this.peerTapped = { id: peer.card.id, at: this.time };
+      this.options.onPeerTap(peer.card); return;
+    }
+    if (peer && (walking || again)) { this.peerTapped = null; this.walkTo(wx, wy); return; }
     const cp = this.mobs.corpseAt(wx, wy);
     if (cp) {
       const { body } = corpseSize(cp);
@@ -3138,12 +3175,14 @@ export class TopDownEngine {
     const w = Math.max(1, Math.round(this.canvas.clientWidth * dpr)), h = Math.max(1, Math.round(this.canvas.clientHeight * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
     // 1.5 CSS px per art px on phones (~16 tiles across), 2 on tablets, 3 on wide screens; whole device pixels so pixels stay crisp.
-    const css = this.canvas.clientWidth >= 1100 ? 3 : this.canvas.clientWidth >= 700 ? 2 : 1.5;
+    // The art style upgrade (2026-10-26): a wide screen frames about 200–260 art px of height, so the Keeper and the trees
+    // read big and detailed (the owner's references) — 4 css px per art px at 720–899 tall, 5 from 900, never under 3.
+    const css = this.canvas.clientWidth >= 1100 ? Math.max(3, Math.min(4, Math.floor(this.canvas.clientHeight / 260))) : this.canvas.clientWidth >= 700 ? 2 : 1.5;
     this.scale = Math.max(1, Math.round(css * dpr));
     this.cam.w = w / this.scale; this.cam.h = h / this.scale;
     // No edge to clamp to: the world runs on in every direction.
     this.cam.x = Math.round(this.player.x - this.cam.w / 2);
-    this.cam.y = Math.round(this.player.y - 20 - this.cam.h / 2);
+    this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
   }
 
   private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
@@ -3160,11 +3199,9 @@ export class TopDownEngine {
         const g = el.getContext('2d')!;
         for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
           const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
-          paintGround(g, k, c, r, ox, oy, f);
-          paintEdge(g, k, kind(c, r - 1), 'n', c, r, ox, oy);
-          paintEdge(g, k, kind(c, r + 1), 's', c, r, ox, oy);
-          paintEdge(g, k, kind(c - 1, r), 'w', c, r, ox, oy);
-          paintEdge(g, k, kind(c + 1, r), 'e', c, r, ox, oy);
+          if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy))) paintGround(g, k, c, r, ox, oy, f);
+          const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
+          edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
         }
         frames.push(el);
       }
@@ -3192,15 +3229,17 @@ export class TopDownEngine {
     }
     // A Nightroad's planks over the water while it is open (td-dark-layer).
     if (this.level === this.world) this.darkLayer.drawGround(c, this.world.continent, (x, y) => x > cam.x - 32 && x < cam.x + cam.w + 32 && y > cam.y - 32 && y < cam.y + cam.h + 32);
+    const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
+    const visible = this.level.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
+    this.visible = visible;
+    // Shadows on the ground (td-shade.ts): under every tree and everything standing, never over a neighbour's feet.
+    this.drawShadows(visible, inView);
     // Ground effects (aura rings, nova waves, sigils): under every creature and the Keeper.
     this.drawGroundFx();
     // Y-sorted world: objects, keepers, the Keeper, Glim.
     type Item = { y: number; draw: () => void };
     const items: Item[] = [];
-    const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
     const roofs: { o: TdObject; sp: Sprite }[] = [];
-    const visible = this.level.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
-    this.visible = visible;
     for (const o of visible) {
       const sp = o.sprite();
       const jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
@@ -3255,6 +3294,7 @@ export class TopDownEngine {
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
+    { const look = this.auraLook(); if (look) this.auraFx.air(c, this.player.x, this.player.y - 1, look); }
     // Roofs and crowns, faded when the Keeper is behind or under them.
     for (const { o, sp } of roofs) {
       const r = sp.roof!;
@@ -3304,26 +3344,26 @@ export class TopDownEngine {
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
-    for (const k of this.keepers) if (this.platesOn && this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 42, '#f3e7cf');
+    for (const k of this.keepers) if (this.platesOn && this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - up(42), '#f3e7cf');
     // Other Keepers' name plates (name · level) and Waves (over them and over the Keeper).
     for (const p of this.peers.drawn) {
       if (!inView(p.x, p.y)) continue;
-      if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
-      if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - 52, this.time, this.still);
+      if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - up(42), this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
+      if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - up(52), this.time, this.still);
     }
-    if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - 46, this.time, this.still);
+    if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - up(46), this.time, this.still);
     // Shared ground items (protocol 6): where they are on the page, for the HUD's tests and tools (only while any lie here).
     if (this.shared.length || this.groundSeen) {
       const at = this.groundOnScreen().map(g => `${g.id}@${g.x},${g.y}`).join(';');
       if (at !== this.groundSeen) { this.groundSeen = at; this.canvas.setAttribute('data-ground-at', at); }
     }
     // A task giver's head mark: '!' a task on offer, '?' one to hand in (MapleStory), seen from across the square.
-    for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? 54 : 44)); }
+    for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? up(54) : up(44))); }
     this.drawEffects();
     this.drawSeek();
     this.drawFightUi(inView);
     // A giver standing on their own already wears their name: no second plate.
-    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 62 : 36), '#ffd27a');
+    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? up(62) : 36), '#ffd27a');
     // The fallen purse names itself when the Keeper is near.
     if (fallen && Math.hypot(fallen.x - this.player.x, fallen.y - this.player.y) < 110) this.plate(`${fallen.gold} Gold`, fallen.x, fallen.y - 14, '#ffd27a');
     // The Hush at its deepest: the edge of the world thins (screen space, two art pixels).
@@ -3331,6 +3371,21 @@ export class TopDownEngine {
     // The wake veil over everything (screen space).
     const veil = this.wakeVeil();
     if (veil.dark > 0 || veil.warm > 0) { c.setTransform(1, 0, 0, 1, 0, 0); drawWakeVeil(c, this.canvas.width, this.canvas.height, veil.dark, veil.warm); }
+  }
+  /** The ground pass's shadows: each object's own (a tree's), then a soft one under every Keeper, creature and pet. */
+  private drawShadows(visible: readonly TdObject[], inView: (x: number, y: number, pad?: number) => boolean): void {
+    const c = this.ctx;
+    for (const o of visible) { const sh = o.sprite().shadow; if (sh) c.drawImage(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
+    const surface = this.level === this.world;
+    if (surface) {
+      for (const k of this.keepers) if (inView(k.x, k.y) && k.painter) castShadow(c, k.x, k.y, 18);
+      for (const f of this.folk) if (inView(f.x, f.y) && f.painter) castShadow(c, f.x, f.y, 18);
+    }
+    for (const m of this.mobs.mobs) if (inView(m.x, m.y)) castShadow(c, m.x, m.y, Math.max(10, m.def.w * .72), m.def.floats || m.def.ghost ? .55 : 1);
+    for (const k of this.mobs.minions) if (inView(k.x, k.y)) castShadow(c, k.x, k.y, 16);
+    const pet = this.pet;
+    if (pet && inView(pet.x, pet.y)) castShadow(c, pet.x, pet.y, 14, TD_PET_FLIES.has(pet.id) ? .5 : 1);
+    if (this.player.painter) castShadow(c, this.player.x, this.player.y, 20);
   }
   /** A pixel speech mark over a head: a brass bubble with '!' or '?', bobbing a little (still under reduced motion). */
   private headMark(mark: '!' | '?', x: number, y: number): void {
@@ -3344,9 +3399,15 @@ export class TopDownEngine {
     c.fillText(mark, bx + 5, by + 10);
   }
 
+  /** A creature's picture box (its sheet's cell: mobCell), keyed by its definition. */
+  private readonly visDefs = new WeakMap<object, Mob['def']>();
+  private vis(def: Mob['def']): Mob['def'] {
+    let v = this.visDefs.get(def);
+    if (!v) { v = { ...def, ...mobCell(def) }; this.visDefs.set(def, v); }
+    return v;
+  }
   private drawMob(m: Mob): void {
-    const c = this.ctx, d = m.def, sheet = mobSheet(d), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
-    c.fillStyle = 'rgba(30,18,26,.3)'; c.fillRect(Math.round(m.x - d.w / 2 + 2), Math.round(m.y - 2), d.w - 4, 3);
+    const c = this.ctx, d = this.vis(m.def), sheet = mobSheet(m.def), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
     c.save();
@@ -3367,7 +3428,7 @@ export class TopDownEngine {
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
-    const c = this.ctx, d = RAISED_SKELETON, sheet = mobSheet(d), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
+    const c = this.ctx, d = this.vis(RAISED_SKELETON), sheet = mobSheet(RAISED_SKELETON), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
     c.save();
     // Rising out of the ground for its first half second; fading as its time runs out.
@@ -3699,6 +3760,9 @@ export class TopDownEngine {
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
+    // The aura the Keeper wears (td-aura.ts): its layered ring round the feet; its motes rise in the air pass.
+    const look = this.auraLook();
+    if (look) { this.auraFx.step(this.time, look, this.still); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
     if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
       const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
@@ -3902,7 +3966,7 @@ export class TopDownEngine {
       } else if (e.kind === 'ward') {
         // The ward going up: the hex springs out from the Keeper, a bright frame.
         const k = this.still ? 1 : 1 - (1 - t) * (1 - t);
-        this.drawHex(p.x, p.y - 18, .55 + .45 * k, 1, this.still ? 0 : this.time * .8);
+        this.drawHex(p.x, p.y - up(18), .55 + .45 * k, 1, this.still ? 0 : this.time * .8);
       } else if (e.kind === 'raise') {
         // Bones knitting up out of the sigil (from 0.25 s), violet motes climbing with them.
         if (t > .25) {
@@ -4056,7 +4120,7 @@ export class TopDownEngine {
     // The Dark Ward while it holds: the hex turns, and it is missing the pixels the blows it drank have cracked off.
     if (this.mobs.ward > 0) {
       c.globalAlpha = .8;
-      this.drawHex(p.x, p.y - 18, 1, Math.max(.15, Math.min(1, this.mobs.ward / this.mobs.v('dark-ward')['absorb'])), this.still ? 0 : this.time * .8);
+      this.drawHex(p.x, p.y - up(18), 1, Math.max(.15, Math.min(1, this.mobs.ward / this.mobs.v('dark-ward')['absorb'])), this.still ? 0 : this.time * .8);
       c.globalAlpha = 1;
     }
     // Bone Armor while it holds: four bone shards circling the Keeper's chest.
@@ -4069,13 +4133,13 @@ export class TopDownEngine {
     }
     // Doom: a pale skull-mark ticking over the doomed.
     for (const m of this.mobs.mobs) if ((m.doom ?? 0) > 0) {
-      const X = Math.round(m.x), Y = Math.round(m.y - m.def.h - 10);
+      const X = Math.round(m.x), Y = Math.round(m.y - this.vis(m.def).h - 10);
       c.fillStyle = Math.floor(this.time * 4) % 2 ? FX.shadow.body : FX.shadow.edge; c.fillRect(X - 3, Y - 3, 6, 5);
       c.fillStyle = FX.shadow.core; c.fillRect(X - 2, Y - 2, 1, 1); c.fillRect(X + 1, Y - 2, 1, 1);
     }
     for (const m of this.mobs.mobs) if (m.cursed > 0) {
       c.fillStyle = Math.floor(this.time * 6) % 2 ? '#b06bff' : '#ff6a2a';
-      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - m.def.h - 8 - (this.time * 8) % 6), 2, 2);
+      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - this.vis(m.def).h - 8 - (this.time * 8) % 6), 2, 2);
     }
   }
 
@@ -4127,7 +4191,7 @@ export class TopDownEngine {
         continue;
       }
       if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
-      const top = m.y - m.def.h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
+      const top = m.y - this.vis(m.def).h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
       c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
       // A unique's minions follow its name: a bar each, no name of their own.
@@ -4159,10 +4223,10 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       const words = m.chantText ?? m.def.chant;
       // The Seam Eater speaks in the eclipse's pale violet; the rest of the bosses in ember.
-      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - m.def.h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID ? '#d8c0ff' : '#ff8a7a');
+      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - this.vis(m.def).h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID ? '#d8c0ff' : '#ff8a7a');
     }
     const k = this.cant;
-    if (k) this.speech(k.text, this.player.x, this.player.y - 44, k.age, k.color);
+    if (k) this.speech(k.text, this.player.x, this.player.y - up(44), k.age, k.color);
     // For the screenshot spec (e2e/td-cant-shots.spec.ts): the canvas says what the Keeper is saying.
     const said = k?.text ?? '';
     if (said !== this.cantSeen) { this.cantSeen = said; this.canvas.setAttribute('data-cant', said); }
@@ -4186,12 +4250,25 @@ export class TopDownEngine {
   }
 
   private drawPerson(p: Person, action: 'idle' | 'run' | 'walk'): void {
-    const c = this.ctx, s = this.scale, cam = this.cam;
-    // Soft shadow under the feet: a pixel ellipse as wide as the sprite's stance.
-    c.fillStyle = 'rgba(30,18,26,.28)';
-    const sx = Math.round(p.x), sy = Math.round(p.y);
-    c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
+    // Its shadow is cast in the ground pass (drawShadows).
     if (!p.painter) return;
+    // The Keeper's aura (td-aura.ts): the figure drawn once on a scratch canvas, its silhouette laid round it as a rim-glow.
+    const look = p === this.player ? this.auraLook() : null;
+    if (look) {
+      const sc = this.figureScratch ??= document.createElement('canvas');
+      if (sc.width !== 72) { sc.width = 72; sc.height = 80; }
+      const g = sc.getContext('2d')!;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
+      this.paintPerson(g, p, action, { x: 36, y: 70 });
+      rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
+    }
+    this.paintPerson(this.ctx, p, action, null);
+  }
+  /** One person's figure: on the world (`at` null) or on a scratch canvas with the feet at `at`. */
+  private paintPerson(c: CanvasRenderingContext2D, p: Person, action: 'idle' | 'run' | 'walk', at: { x: number; y: number } | null): void {
+    const s = this.scale, cam = this.cam;
+    if (!p.painter) return;
+    const fx = at ? at.x : Math.round(p.x), fy = at ? at.y : Math.round(p.y);
     const acting = p === this.player && this.actT > 0;
     // The Thornstrider draws his bow from the side too (the painter's own draw pose), like the Ashguard's swing.
     const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard' && this.mobs.vocation !== 'thornstrider';
@@ -4201,21 +4278,34 @@ export class TopDownEngine {
       // The Warlock: front/back views with the staff in hand; every cast faces the camera, staff raised.
       const sheet = frontSheet(p.painter, staff), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
       const f = acting ? CAST_FRAME : this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
-      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
-      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, this.time, this.still);
+      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, fx - FRONT_AX, fy - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, fx - FRONT_AX, fy - FRONT_AY, this.time, this.still);
       return;
     }
     if (p.dir !== 'side') {
       const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
       const f = p === this.player && this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
-      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
-      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, this.time, this.still);
+      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, fx - FRONT_AX, fy - FRONT_AY, FRONT_W, FRONT_H);
+      drawWornFront(c, p.painter, row === 0 ? 'down' : 'up', f, fx - FRONT_AX, fy - FRONT_AY, this.time, this.still);
       return;
     }
     c.save();
-    c.setTransform(s * p.face, 0, 0, s, (Math.round(p.x) - cam.x) * s, (Math.round(p.y) - cam.y) * s);
-    p.painter.draw(c, 1, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true, fxStill: this.still } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player, fxStill: this.still });
+    if (at) c.setTransform(p.face, 0, 0, 1, fx, fy);
+    else c.setTransform(s * p.face, 0, 0, s, (fx - cam.x) * s, (fy - cam.y) * s);
+    p.painter.draw(c, FIGURE_K, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true, fxStill: this.still } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player, fxStill: this.still });
     c.restore();
+  }
+
+  // ── The aura look (td-aura.ts) ──
+  private figureScratch: HTMLCanvasElement | null = null;
+  private readonly auraFx = new AuraFx();
+  /** `window.__tdArt.aura(true)` (automated browsers): the arcane aura on the Keeper, for the art pass's photographs. */
+  private artAura: AuraLookId | null = null;
+  /** The look of the aura the Keeper wears now: a running aura skill in its element, or the art pass's showcase. */
+  private auraLook(): AuraLook | null {
+    if (this.artAura) return AURA_LOOKS[this.artAura];
+    const a = this.mobs.aura;
+    return a === 'aura-embers' ? AURA_LOOKS.ember : a === 'aura-siphon' ? AURA_LOOKS.life : a === 'aura-watchfire' ? AURA_LOOKS.brass : a === 'lantern-aura' ? AURA_LOOKS.lamp : a === 'pack-bond' ? AURA_LOOKS.wild : null;
   }
 
   private plate(text: string, x: number, y: number, color: string): void {
@@ -4451,7 +4541,7 @@ export class TopDownEngine {
       if (!inView(m.x, m.y, 20)) continue;
       const k = eyeGlow(this.night.alpha, litAt(this.nightLights, m.x, m.y - m.def.h / 2));
       if (k <= .02) continue;
-      const d = m.def, sheet = mobSheet(d), frames = Math.max(1, Math.round(sheet.width / d.w)), f = Math.floor(m.t * 6) % frames;
+      const d = this.vis(m.def), sheet = mobSheet(m.def), frames = Math.max(1, Math.round(sheet.width / d.w)), f = Math.floor(m.t * 6) % frames;
       const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
       const X = Math.round(m.x), Y = Math.round(m.y - d.h - lift), left = -Math.floor(d.w / 2);
       // The silhouette: the body's shape in a pale night tone, a little lighter than the dark round it.

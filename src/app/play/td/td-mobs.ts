@@ -14,6 +14,7 @@ import { DIFFICULTIES, type DifficultyDef } from '../../shared/loot/difficulty.m
 import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
+import { volumizeData } from '../../shared/keeper-look/keeper-volume';
 import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { BLANK_ID, BLANK_NAME, rollBlankDrop } from '../../shared/spellstones/spellstones.model';
 import { rollHuntGold } from '../../shared/economy/economy-curve';
@@ -122,7 +123,8 @@ type P2 = readonly [number, number];
 let K = 1, OX = 0, OY = 0;
 function grown(k: number, ox: number, oy: number, draw: () => void): void {
   const was = [K, OX, OY] as const;
-  K = k; OX = ox; OY = oy;
+  // Composes with the frame it is drawn in (the sheet's own MOB_K growth round a boss's).
+  OX = OX + ox * K; OY = OY + oy * K; K = K * k;
   try { draw(); } finally { [K, OX, OY] = was; }
 }
 const sx = (x: number) => OX + x * K, sy = (y: number) => OY + y * K;
@@ -483,8 +485,9 @@ function skeleton(c: CanvasRenderingContext2D, f: number, o: number, k: Bones): 
   // Spine, ribs, pelvis.
   limb(c, [o + 10, 14 + b], [o + 10, 26 + b], 2, r);
   orb(c, o + 10.5, 19 + b, 4.5, 3.8, r);
-  for (let i = 0; i < 3; i++) px(c, o + 7, 17 + b + i * 2, 7, 1, r[3]);
-  px(c, o + 10, 16 + b, 1, 6, r[1]);
+  // The ribcage: dark gaps between the ribs, each rib catching the light at its left end, the sternum down the middle.
+  for (let i = 0; i < 3; i++) { px(c, o + 7, 17 + b + i * 2, 7, 1, r[3]); dot(c, o + 7, 16 + b + i * 2, r[0]); dot(c, o + 13, 16 + b + i * 2, r[2]); }
+  px(c, o + 10, 16 + b, 1, 6, r[1]); dot(c, o + 10, 16 + b, r[0]);
   poly(c, [[o + 7, 25 + b], [o + 14, 25 + b], [o + 13, 28 + b], [o + 8, 28 + b]], r);
   if (k.rag) poly(c, [[o + 7, 25 + b], [o + 14, 25 + b], [o + 14, 29 + b], [o + 12, 28 + b], [o + 11, 31 + b], [o + 9, 28 + b], [o + 7, 29 + b]], k.rag);
   // Near leg.
@@ -496,6 +499,8 @@ function skeleton(c: CanvasRenderingContext2D, f: number, o: number, k: Bones): 
   px(c, o + 8, 13 + b, 6, 1, r[3]); for (let i = 0; i < 3; i++) dot(c, o + 8 + i * 2, 14 + b, r[3]);
   orb(c, o + 9, 9 + b, 1.8, 1.6, R.void); orb(c, o + 13, 9 + b, 1.8, 1.6, R.void);
   dot(c, o + 11, 11 + b, R.void[1]);
+  // Cheekbones under the sockets, a lit brow over them.
+  dot(c, o + 7, 11 + b, r[2]); dot(c, o + 15, 11 + b, r[3]); px(c, o + 8, 6 + b, 3, 1, r[0]);
   glow(c, o + 9, 9 + b, 1, k.eye); glow(c, o + 13, 9 + b, 1, k.eye);
 }
 /** The near arm of a skeleton, out to the hand at (hx, hy). */
@@ -507,10 +512,30 @@ function boneArm(c: CanvasRenderingContext2D, f: number, o: number, hx: number, 
 function paintBoneWalker(c: CanvasRenderingContext2D, f: number): void {
   const b = BOB[f];
   skeleton(c, f, 0, { bone: R.bone, eye: EMBER, rag: R.red });
-  limb(c, [18, 22 + b], [18, 6 + b], 2, R.iron); line(c, [18, 7 + b], [18, 20 + b], R.iron[0]);
-  dot(c, 18, 5 + b, R.iron[0]); line(c, [19, 12 + b], [19, 16 + b], EMBER[2]);
-  px(c, 15, 22 + b, 6, 1, R.leather[1]); px(c, 17, 23 + b, 2, 2, R.leather[2]);
+  garrisonSword(c, b, R.iron, EMBER[2]);
   boneArm(c, f, 0, 17, 23, R.bone);
+  roundShield(c, b, R.wood, R.iron);
+}
+/**
+ * A garrison sword held upright (the art style upgrade, 2026-10-26): a two-pixel blade lit down its left edge, a point,
+ * a crossguard, a leather grip and a pommel; `fleck` a pixel of the slag still glowing in the steel.
+ */
+function garrisonSword(c: CanvasRenderingContext2D, b: number, steel: Ramp, fleck?: string): void {
+  limb(c, [18, 20 + b], [18, 6 + b], 2, steel);
+  line(c, [18, 6 + b], [18, 19 + b], steel[0]);
+  dot(c, 18, 4 + b, steel[1]); dot(c, 18, 5 + b, steel[0]);
+  if (fleck) line(c, [19, 12 + b], [19, 15 + b], fleck);
+  px(c, 15, 21 + b, 7, 1, steel[1]); dot(c, 15, 21 + b, steel[0]); dot(c, 21, 21 + b, steel[2]);
+  px(c, 17, 22 + b, 2, 2, R.leather[1]); dot(c, 17, 22 + b, R.leather[0]);
+  dot(c, 18, 24 + b, steel[0]);
+}
+/** A round wooden shield on the far arm: planks, an iron rim, a boss in the middle catching the light. */
+function roundShield(c: CanvasRenderingContext2D, b: number, wood: Ramp, iron: Ramp, mark?: string): void {
+  orb(c, 4.5, 22 + b, 4.6, 5, iron);
+  orb(c, 4.5, 22 + b, 3.6, 4, wood);
+  line(c, [3, 18.5 + b], [3, 25.5 + b], wood[3]); line(c, [6, 18.5 + b], [6, 25.5 + b], wood[3]);
+  if (mark) { line(c, [4.5, 19 + b], [4.5, 25 + b], mark); line(c, [2, 22 + b], [7, 22 + b], mark); }
+  orb(c, 4.5, 22 + b, 1.4, 1.4, iron); dot(c, 4, 21 + b, iron[0]);
 }
 /** The Bone Archer: a hooded skeleton with a bow of blackened charwood, an ember-tipped arrow on the string. */
 function paintBoneArcher(c: CanvasRenderingContext2D, f: number): void {
@@ -556,13 +581,11 @@ function paintUncounted(c: CanvasRenderingContext2D, f: number): void {
 /** A skeleton the Warlock raised: the same bones blanched violet, his colour burning in the eyes, a rune-shield and a blade. */
 function paintRaised(c: CanvasRenderingContext2D, f: number): void {
   const b = BOB[f];
-  orb(c, 4, 21 + b, 3.6, 4.6, R.membrane);
-  line(c, [4, 18 + b], [4, 24 + b], VIOLET[1]); line(c, [2, 21 + b], [6, 21 + b], VIOLET[2]);
   skeleton(c, f, 0, { bone: R.vbone, eye: VIOLET });
-  limb(c, [18, 22 + b], [18, 6 + b], 2, R.membrane); line(c, [18, 7 + b], [18, 20 + b], VIOLET[1]);
-  dot(c, 18, 5 + b, VIOLET[0]); px(c, 15, 22 + b, 6, 1, R.membrane[2]);
+  garrisonSword(c, b, R.membrane, VIOLET[1]);
   boneArm(c, f, 0, 17, 23, R.vbone);
-  if (f % 2) dot(c, 4, 21 + b, VIOLET[0]);
+  // His rune-shield: the round shield in the dusk wood, a violet rune cut across it, glowing on the beat.
+  roundShield(c, b, R.membrane, R.vbone, f % 2 ? VIOLET[0] : VIOLET[1]);
 }
 
 /** The Cinder Wraith: a hooded shade of ash, an ember for a heart, bone hands reaching; no feet, it drifts. */
@@ -1766,9 +1789,17 @@ function outline(img: ImageData, rim?: string): void {
       if (dx > 0 || dy > 0) lit++;
     }
     if (!n) continue;
-    const t = lit * 2 >= n ? .7 : .86, i = (y * w + x) * 4;
+    // Darker than it was (the art style upgrade: the references' heavier outline), still a dark of what it borders.
+    const t = lit * 2 >= n ? .84 : .94, i = (y * w + x) * 4;
     for (let k = 0; k < 3; k++) d[i + k] = Math.round(sum[k] / n * (1 - t) + out[k] * t);
     d[i + 3] = 255; edge[y * w + x] = 1;
+  }
+  // A second pixel of outline on the shaded lower right, where the body turns from the light.
+  for (let y = h - 1; y > 0; y--) for (let x = w - 1; x > 0; x--) {
+    const k = y * w + x;
+    if (filled(x, y) || edge[k] || !edge[k - w - 1] || !(filled(x - 1, y - 2) || filled(x - 2, y - 1) || filled(x - 2, y - 2))) continue;
+    const i = k * 4;
+    d[i] = out[0]; d[i + 1] = out[1]; d[i + 2] = out[2]; d[i + 3] = 255; edge[k] = 1;
   }
   if (!rim) return;
   const col = rgb(rim);
@@ -1780,18 +1811,29 @@ function outline(img: ImageData, rim?: string): void {
   }
 }
 /** A creature's frames side by side, each painted once, outlined (and a boss rimmed) in its own cell. */
+/**
+ * How much finer than their art grid creatures are painted (the art style upgrade, 2026-10-26): the Keeper stands on the
+ * fine grid (keeper-paint FIGURE_K), so a creature's shapes are grown by the same 1.5 — a boss's by less, it is big
+ * already. Only the picture grows: a creature's `w`/`h` (its reach, its hit box, where blows land) are unchanged.
+ */
+export function mobK(def: { w?: number }): number { const w = def.w ?? 0; return w >= 60 ? 1.15 : w >= 40 ? 1.3 : 1.5; }
+/** A creature's cell in its sheet (fine-grid px): its art box grown by mobK, rounded up. */
+export function mobCell(def: { w?: number; h: number }): { w: number; h: number } { const k = mobK(def); return { w: Math.ceil((def.w ?? 0) * k), h: Math.ceil(def.h * k) }; }
 export function mobSheet(def: MobDef): HTMLCanvasElement {
   let s = sheets.get(def.id);
   if (s) return s;
-  s = document.createElement('canvas'); s.width = def.w * MOB_FRAMES; s.height = def.h;
+  const { w, h } = mobCell(def), k = mobK(def);
+  s = document.createElement('canvas'); s.width = w * MOB_FRAMES; s.height = h;
   const o = s.getContext('2d')!;
   for (let f = 0; f < MOB_FRAMES; f++) {
-    const cell = document.createElement('canvas'); cell.width = def.w; cell.height = def.h;
+    const cell = document.createElement('canvas'); cell.width = w; cell.height = h;
     const c = cell.getContext('2d', { willReadFrequently: true })!;
-    def.paint(c, f);
-    const img = c.getImageData(0, 0, def.w, def.h);
+    grown(k, 0, 0, () => def.paint(c, f));
+    const img = c.getImageData(0, 0, w, h);
+    // The volume pass (keeper-volume.ts), gentle: the creatures are already lit shape by shape; this rounds the whole.
+    volumizeData(img.data, w, h, { light: .28, shade: .36, depth: 5, alphaMin: 200 });
     outline(img, RIM[def.id]);
-    o.putImageData(img, f * def.w, 0);
+    o.putImageData(img, f * w, 0);
   }
   sheets.set(def.id, s);
   return s;
@@ -1897,6 +1939,8 @@ export interface Mob {
   sunderN?: number;
   sunderT?: number;
   stripped?: { affix: string; t: number } | null;
+  /** A shared creature (a room's or a host's): the skill whose blow this Keeper last landed on it, for its fall's marks. */
+  lastSrc?: SkillId | null;
 }
 
 /**
@@ -2551,6 +2595,14 @@ export class MobSystem {
   /** Seconds this system has run (the corpses' clock). */
   get age(): number { return this.clock; }
   /**
+   * How long a fallen spawn rests before it rises again (seconds). Unset: RESPAWN, as every screen has always had it.
+   * The room-run world sets its own (world/respawn.ts: ordinary creatures 60–90 s each, elites longer, a boss about an
+   * hour), drawing from its seeded stream.
+   */
+  respawnOf: ((m: Mob) => number) | null = null;
+  /** Time passes with nobody here (a room-run area nobody stands in): the fallen rest on, nothing moves. */
+  idle(dt: number): void { if (dt > 0) this.clock += dt; }
+  /**
    * Elite packs (td-elites.ts): off until the host turns them on (the engine does; the specs choose), so a fixed spawn
    * list stays exactly itself. `eliteSalt` varies the rolls between sessions; `fallen` counts each spawn's deaths, so a
    * pack re-rolls only once it has been killed.
@@ -3140,6 +3192,8 @@ export class MobSystem {
       if (whole > 0) { this.bloodOwed -= whole; this.host.healPlayer(whole); }
     }
     const was = foe.hp > 0;
+    // A shared creature falls on the room's word (coopFell), not here: remember whose blow this Keeper landed last.
+    if (this.replica) foe.lastSrc = src;
     this.killSrc = src;
     const dealt = this.hurtMob(foe, dmg, color, crit);
     this.killSrc = null;
@@ -4928,7 +4982,7 @@ export class MobSystem {
     // A worn unique (unique-items.ts reforge-memory): every kill gives back mana.
     if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
     if (this.target === m) this.target = null;
-    this.deadUntil.set(m.key, this.clock + RESPAWN);
+    this.deadUntil.set(m.key, this.clock + (this.respawnOf?.(m) ?? RESPAWN));
     // Fresh dead, for Raise Skeleton.
     this.corpses.push({ x: m.x, y: m.y, at: this.clock });
     if (this.corpses.length > 12) this.corpses.shift();
@@ -5023,6 +5077,8 @@ export class MobSystem {
     if (this.corpses.length > 12) this.corpses.shift();
     const corpseId = this.leaveCorpse(m).id;
     if (!full) return corpseId;
+    // The Skill Book's marks a fall sets off (Soulfire, Spreading, Hour of Doom…), as for a creature of its own.
+    this.markKill(m, m.lastSrc ?? null);
     if (this.rank('soul-harvest') > 0) this.mana = Math.min(this.maxMana, this.mana + this.v('soul-harvest')['mana']);
     if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
     this.spoils(m, 'coop', baseHp, corpseId, loot);
@@ -5127,5 +5183,5 @@ export class MobSystem {
  * The bestiary's brushes and outline, for the companions' own sprites (td-pet-art.ts): the pets are painted to the
  * same standard as the creatures, with the same light and the same selective outline.
  */
-export const TD_BRUSH = { px, dot, orb, poly, limb, line, glow, outline } as const;
+export const TD_BRUSH = { px, dot, orb, poly, limb, line, glow, outline, grown } as const;
 export type TdRamp = Ramp;

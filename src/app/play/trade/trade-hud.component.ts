@@ -182,14 +182,27 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     const t = this.trade;
     if (!t) return;
     if (this.flow.status.stage === 'done' || this.flow.status.stage === 'failed') { this.closeResult(); return; }
+    this.ownCancel = t.id;
     await this.flow.cancel(t);
     this.trade = null; this.card = null; this.cdr.markForCheck();
   }
+  /** The trade this Keeper cancelled itself (its own window is already shut; the room's word on it says nothing new). */
+  private ownCancel = '';
   /** The room closed the window (done, cancelled, void). */
   async ended(end: RoomTradeEnd): Promise<void> {
     const last = this.trade && this.trade.id === end.id ? this.trade : null;
     await this.flow.ended(end, last);
     const st = this.flow.status;
+    // The other Keeper cancelled (or walked off, or left): the window closes on both screens, with who did it
+    // (owner 2026-10-26: "the other Keeper's trade window stays open"). A void (refused) keeps its result up.
+    if (end.outcome === 'cancelled' && st.stage !== 'done') {
+      const mine = this.ownCancel === end.id;
+      this.ownCancel = '';
+      if (!mine) this.said.emit(end.by ? this.t('trade.cancelledBy', { name: end.by }) : this.t('trade.cancelled'));
+      if (last || !this.trade) { this.trade = null; this.card = null; this.flow.reset(); }
+      this.cdr.markForCheck();
+      return;
+    }
     if (st.stage === 'done') this.said.emit(st.received ? this.t('trade.doneGot', { items: st.received.items.length, gold: st.received.gold }) : this.t('trade.done'));
     else if (end.outcome !== 'done') this.said.emit(this.t('trade.failed', { why: this.whyText(st.why || end.why || end.outcome) }));
     if (!last) return;

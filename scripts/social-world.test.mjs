@@ -312,20 +312,30 @@ test('protocol 7: a protocol-6 client in the same place keeps its own creatures;
   assert.ok(so.all('players').some(e => e.players.some(p => p.name === 'Aster')) || so.all('snapshot').some(e => e.players.some(p => p.name === 'Aster')));
 });
 
-test('protocol 7: an empty area sleeps to the store and wakes from it with its ground', async t => {
+test('protocol 7 (as M3 keeps it): an empty area stays awake while anyone is in the world; with nobody left it sleeps to the store and wakes with its ground', async t => {
   const store = memoryStore();
-  const { post, join, move, stream, step, r } = await room(t, { store });
+  const { post, join, move, stream, step, r, base } = await room(t, { store });
   const a = await join('Aster');
   await move(a, OPEN.x, OPEN.y);
-  const sa = await stream(a);
+  // Aster's own stream, closed below (stream() keeps its streams open to the end of the test).
+  const abort = new AbortController();
+  const res = await fetch(`${base}/events`, { headers: { Origin: origin, Authorization: `Bearer ${a.token}` }, signal: abort.signal });
+  void res.body.getReader().read().catch(() => {});
   await step(2);
   const wolf = (await post('/world/fx', { quiet: true, lay: { type: 'ash-wolf', dx: 30, dy: 0, calm: true } }, a.token)).body.id;
   await step(2);
   for (let i = 0; i < 12 && r.rooms.worldOf(AREA)?.mobs.mobs.some(m => m.nid === wolf); i++) { await post('/coop/hits', { area: AREA, hits: [{ i: wolf, d: 40, el: 'physical' }] }, a.token); await step(1, 200); }
   const lying = r.rooms.worldOf(AREA).groundList().map(g => g.id).sort();
   assert.ok(lying.length >= 1);
-  // Aster walks into the mine: the island is empty; after its grace it sleeps and writes what lies there.
+  // Aster walks into the mine: the island is empty, but Aster is still in the world — it stays awake (dormant).
   await move(a, 0, 0, 'ember-delve');
+  await step(1);
+  await step(1, 1500);
+  await new Promise(res => setTimeout(res, 20));
+  assert.ok(r.rooms.worldOf(AREA), 'still awake while anyone is in the world');
+  // Aster's stream closes (logged out): with nobody in the world, after its grace every area is written and sleeps.
+  abort.abort();
+  await new Promise(res => setTimeout(res, 30));
   await step(1);
   await step(1, 1500);
   await new Promise(res => setTimeout(res, 20));
@@ -333,6 +343,7 @@ test('protocol 7: an empty area sleeps to the store and wakes from it with its g
   const saved = await store.worldLoad(AREA);
   assert.deepEqual(saved.ground.map(g => g.id).sort(), lying);
   // Back on the island: it wakes from the store and the same ground is sent.
+  const sa = await stream(a);
   await move(a, OPEN.x, OPEN.y);
   await step(1);
   await new Promise(res => setTimeout(res, 20));

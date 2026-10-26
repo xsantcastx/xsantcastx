@@ -69,9 +69,20 @@ export interface TdMapDef {
   dark: boolean;
   /** Fog drifting over the floor (td-engine drawFog): 0 none … 1 thick. */
   fog?: number;
+  /**
+   * The floor's lair (owner 2026-10-26: "more combat zones, like hot spots"; td-levels FLOOR_LAIRS): a pack of `count`
+   * of `types` round the lair feature farthest from the stairs (bones, an ore vein, a boulder), never in a boss's ring.
+   */
+  lair?: { types: readonly string[]; count: number };
 }
+/** What a floor's lair gathers round, best first. */
+const LAIR_FEATURES: readonly MapObject[] = ['bones', 'ore', 'boulder', 'pillar'];
+/** A lair stands at least this far (tiles) from every way in or out (arriving is never an ambush) and from the boss. */
+const LAIR_CLEAR = 12, LAIR_BOSS = 10;
 
 const T = TILE;
+/** The floors' bosses (td-mobs rank 'boss'), by id, so a lair keeps out of their rings without reading the bestiary. */
+const BOSSES = /^(ember-warden|magma-tyrant|anvil-warden|cinder-sovereign|bone-dragon|mossbound-colossus|elder-rootwyrm|ink-abbess|the-uncounted)$/;
 
 /**
  * Roomier passages (owner 2026-10-20: "the caves … I'm getting stuck, we need more space"): wherever a way is one tile
@@ -114,6 +125,7 @@ export class HandLevel implements TdLevel {
   constructor(private readonly def: TdMapDef) {
     this.id = def.id; this.dark = def.dark; this.fog = def.fog ?? 0;
     const drawn = widen(def.rows);
+    const features: { c: number; r: number; rank: number }[] = [], bossTiles: { c: number; r: number }[] = [], ways: { c: number; r: number }[] = [];
     this.rows = drawn.length;
     this.cols = Math.max(...drawn.map(r => r.length));
     drawn.forEach((line, r) => {
@@ -121,13 +133,14 @@ export class HandLevel implements TdLevel {
         const e = def.legend[line[c] ?? ' '] ?? { ground: def.outside };
         this.grid[r * this.cols + c] = e.ground;
         const x = c * T + T / 2, y = r * T + T;
+        if (e.object && LAIR_FEATURES.includes(e.object)) features.push({ c, r, rank: LAIR_FEATURES.indexOf(e.object) });
         if (e.object) {
           this.objects.push({ sprite: SPRITES[e.object], x, y, kind: 'prop', ...(BLOCKS[e.object] ? { block: { w: 1, h: 1 } } : {}) });
           if (BLOCKS[e.object]) for (let dc = -(WIDE[e.object] ?? 0); dc <= (WIDE[e.object] ?? 0); dc++) if (c + dc >= 0 && c + dc < this.cols) this.blocked.add(r * this.cols + c + dc);
         }
         if (e.station) this.stalls.push({ station: e.station, x, y: y + 6 });
-        if (e.exit) this.exits.set(e.station?.id ?? `exit-${c},${r}`, e.exit);
-        if (e.mob) { const key = `${def.id}:${c},${r}`, z = zoneOf(def.id); this.spawns.push({ key, type: e.mob, x, y, ...(z ? { level: zoneLevel(z.band, `${def.id}|${key}`) } : {}) }); }
+        if (e.exit) { this.exits.set(e.station?.id ?? `exit-${c},${r}`, e.exit); ways.push({ c, r }); }
+        if (e.mob) { const key = `${def.id}:${c},${r}`, z = zoneOf(def.id); this.spawns.push({ key, type: e.mob, x, y, ...(z ? { level: zoneLevel(z.band, `${def.id}|${key}`) } : {}) }); if (BOSSES.test(e.mob)) bossTiles.push({ c, r }); }
         if (e.door) {
           const id = e.door;
           this.doorTiles.set(r * this.cols + c, id);
@@ -135,6 +148,33 @@ export class HandLevel implements TdLevel {
         }
       }
     });
+    if (def.lair) this.layLair(def.lair, features, bossTiles, ways);
+  }
+  /** The floor's lair: its pack round the best feature clear of the stairs and the boss (keys `<floor>:h<i>`). */
+  private layLair(lair: NonNullable<TdMapDef['lair']>, features: { c: number; r: number; rank: number }[], bosses: { c: number; r: number }[], stalls: { c: number; r: number }[]): void {
+    const clear = (c: number, r: number) => stalls.every(s => Math.hypot(s.c - c, s.r - r) >= LAIR_CLEAR) && bosses.every(b => Math.hypot(b.c - c, b.r - r) >= LAIR_BOSS);
+    const far = (f: { c: number; r: number }) => Math.min(99, ...stalls.map(s => Math.hypot(s.c - f.c, s.r - f.r)));
+    let at: { c: number; r: number } | undefined = features.filter(f => clear(f.c, f.r)).sort((a, b) => a.rank - b.rank || far(b) - far(a))[0];
+    // No feature clear of the stairs and the boss: the open ground farthest from the stairs (the floor's deep end).
+    if (!at) {
+      let best = -1;
+      for (let r = 1; r < this.rows - 1; r++) for (let c = 1; c < this.cols - 1; c++) {
+        if (!this.walkable(c, r) || !clear(c, r) || ![[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dc, dr]) => this.walkable(c + dc, r + dr))) continue;
+        const f = far({ c, r });
+        if (f > best) { best = f; at = { c, r }; }
+      }
+    }
+    if (!at) return;
+    const z = zoneOf(this.id);
+    for (let i = 0, tries = 0; i < lair.count && tries < 40; tries++) {
+      const a = tries * 2.39996, d = 1.5 + (tries % 3);
+      const c = Math.round(at.c + Math.cos(a) * d), r = Math.round(at.r + Math.sin(a) * d);
+      const x = c * T + T / 2, y = r * T + T;
+      if (!this.walkable(c, r) || !clear(c, r) || this.spawns.some(s => Math.abs(s.x - x) < T && Math.abs(s.y - y) < T)) continue;
+      const key = `${this.id}:h${i}`;
+      this.spawns.push({ key, type: lair.types[i % lair.types.length], x, y, ...(z ? { level: zoneLevel(z.band, `${this.id}|${key}`) } : {}) });
+      i++;
+    }
   }
 
   ground(c: number, r: number): Ground {

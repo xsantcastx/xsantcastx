@@ -11,7 +11,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { CHARACTER_ROSTER_KEY } from '../save/character-scope';
+import { CHARACTER_ROSTER_KEY, profileKey } from '../save/character-scope';
 import { CharacterRoster, CharacterRow, coerceRoster, emptyRoster, liveCharacters, mergeCharacterRoster } from './character-roster.model';
 
 @Injectable({ providedIn: 'root' })
@@ -93,7 +93,7 @@ export class CharacterRosterService implements OnDestroy {
 
   /** Another tab wrote the roster: take its rows live (merged with ours, nothing written back, so no ping-pong). */
   private readonly onStorage = (event: StorageEvent): void => {
-    if (event.key !== CHARACTER_ROSTER_KEY && event.key !== null) return;
+    if (event.key !== profileKey(CHARACTER_ROSTER_KEY) && event.key !== null) return;
     this.zone.run(() => this.adoptStored());
   };
 
