@@ -17,7 +17,7 @@ export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'loot.filter.all': { en: 'Show all', es: 'Mostrar todo' },
   'loot.filter.hide-common': { en: 'Hide commons', es: 'Ocultar comunes' },
   'loot.filter.rare-plus': { en: 'Rare and better', es: 'Raro o mejor' },
-  'loot.filter.note': { en: 'Hidden drops still land when you walk over them. Coins always show.', es: 'Lo oculto se recoge igual al pasar por encima. Las monedas siempre se ven.' },
+  'loot.filter.note': { en: 'Hidden drops still lie there to pick up. Coins always show.', es: 'Lo oculto sigue ahi para recogerlo. Las monedas siempre se ven.' },
 
   'loot.aura.title': { en: 'Aura', es: 'Aura' },
   'loot.aura.none': { en: 'Nothing you wear carries an aura. Socket Words and a few named things do.', es: 'Nada de lo que llevas tiene aura. Las Palabras de Engaste y algunos objetos con nombre si.' },
@@ -88,6 +88,7 @@ export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.loot.unique': { en: 'A named thing: {{name}}! Tap its name, or press E beside it, to pick it up.', es: '¡Un objeto con nombre: {{name}}! Toca su nombre, o pulsa E a su lado, para recogerlo.' },
   'play.loot.picked': { en: 'Picked up {{name}}.', es: 'Recogiste {{name}}.' },
   'play.loot.tooFar': { en: 'Too far to reach. Walking over to it.', es: 'Demasiado lejos. Vas hacia alla.' },
+  'play.td.loot.noneNear': { en: 'Nothing to pick up in reach. Click an item to walk to it.', es: 'No hay nada que recoger al alcance. Pulsa un objeto para ir a por el.' },
   'play.loot.full': { en: 'No room for {{name}}. Make space in the Satchel.', es: 'No cabe {{name}}. Haz espacio en la Mochila.' },
   'play.loot.purse': { en: 'Your fallen purse', es: 'Tu bolsa caida' },
   'play.loot.fall.purse': { en: 'You dropped {{n}} Gold where you fell. Walk back to take it.', es: 'Dejaste {{n}} de Oro donde caiste. Vuelve a buscarlo.' },

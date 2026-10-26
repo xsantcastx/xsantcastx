@@ -938,3 +938,10 @@
 canvas.is-drop-over { outline: 3px dashed var(--cozy-brass-hi); outline-offset: -3px; }
 /* The grid sizes its cells to the column it sits in (item-grid.component: 100cqi / 10). */
 .book .book-bag { container-type: inline-size; }
+/* The satchel's Sort (owner 2026-10-26): a quiet wood button in the purse row; never the brass primary. */
+.book .grid-sort {
+  min-height: 44px; min-width: 44px; padding: 0 10px; background: var(--cozy-plate); color: var(--cozy-cream);
+  border: 2px solid var(--cozy-wood-0); font: 700 12px var(--font-game); cursor: pointer; flex: 0 0 auto;
+}
+/* Phones: the ground's name plates toggle on the belt (Alt on a keyboard); lit while on. */
+.td-labels.td-labels--on { outline: 2px solid var(--cozy-brass-hi); outline-offset: -2px; }

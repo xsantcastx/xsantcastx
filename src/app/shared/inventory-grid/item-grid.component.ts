@@ -6,8 +6,9 @@
  * cells it would cover light up (brass when it fits, berry when it does not). A drop of a grid piece or a worn piece
  * is handled here (InventoryService.moveTo / unequipTo); anything else (a shop's offer, later) goes to `extraDrop`.
  *
- * Hover (a mouse) shows the item card; a click or a right-click opens the options card (the host's); a touch tap is a
- * click, a long-press picks the piece up.
+ * Hover (a mouse) shows the item card; a click or a tap SELECTS the piece (tap-to-move, owner 2026-10-26: highlighted,
+ * then a tap on a cell, the Vault, a well or the belt moves it; a tap on it again lets go) and opens its options card;
+ * a right-click opens the card only; a mouse drag still drags; a long-press still picks it up.
  */
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, Output, inject } from '@angular/core';
@@ -39,10 +40,10 @@ export interface GridPick { piece: Piece; el: HTMLElement; ev: Event }
         @let look = lookOf(p);
         <button type="button" class="ig-piece pocket" role="gridcell" [attr.data-piece]="p.key" [attr.data-cell]="p.cell" [attr.data-ids]="p.ids.join(',') || null"
                 [attr.data-stack]="p.stackKey ?? null" [attr.data-qty]="p.qty" [attr.data-w]="p.w" [attr.data-h]="p.h"
-                [class.is-held]="heldKey === p.key" [class.is-new]="newKeys.has(p.key)" [class.is-picked]="pickedKey === p.key"
+                [class.is-held]="heldKey === p.key && !selecting" [class.is-sel]="heldKey === p.key && selecting" [attr.aria-pressed]="heldKey === p.key && selecting ? true : null" [class.is-new]="newKeys.has(p.key)" [class.is-picked]="pickedKey === p.key"
                 [style.--x]="p.cell % view.w" [style.--y]="row(p.cell)" [style.--w]="p.w" [style.--h]="p.h" [style.--rim]="look.tone"
                 [attr.aria-label]="look.name + (p.qty > 1 ? ', ' + p.qty : '')"
-                (pointerdown)="press($event, p, look)" (click)="pick.emit({ piece: p, el: $any($event.currentTarget), ev: $event })"
+                (pointerdown)="press($event, p, look)" (click)="tapPiece($event, p, look)"
                 (contextmenu)="$event.preventDefault(); pick.emit({ piece: p, el: $any($event.currentTarget), ev: $event })"
                 (pointerenter)="hover.emit({ piece: p, ev: $event })" (pointermove)="hoverMove.emit($event)" (pointerleave)="unhover.emit()">
           @if (look.art) { <img [src]="look.art" alt="" draggable="false"> } @else { <em>{{ look.mark }}</em> }
@@ -72,6 +73,7 @@ export interface GridPick { piece: Piece; el: HTMLElement; ev: Event }
     .ig-piece img { max-width: 100%; max-height: 100%; image-rendering: pixelated; pointer-events: none; }
     .ig-piece em { font: 700 11px var(--font-game); font-style: normal; }
     .ig-piece.is-held { opacity: 0.35; }
+    .ig-piece.is-sel { z-index: 3; outline: 3px solid var(--cozy-brass-hi); outline-offset: -3px; background: color-mix(in srgb, var(--cozy-brass-hi) 32%, var(--cozy-plate)); }
     .ig-piece.is-new { animation: igNew 1.2s steps(4) 2; }
     .ig-qty { position: absolute; right: 2px; bottom: 1px; font: 700 10px var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); pointer-events: none; }
     .ig-preview {
@@ -113,6 +115,7 @@ export class ItemGridComponent implements OnChanges {
   cells: number[] = [];
   preview: { x: number; y: number; w: number; h: number; ok: boolean } | null = null;
   heldKey: string | null = null;
+  selecting = false;
 
   readonly target: DropTarget = {
     accepts: held => (this.accepts ? this.accepts(held) : true) && (held.ref.kind !== 'shop' || !!this.extraDrop),
@@ -140,7 +143,7 @@ export class ItemGridComponent implements OnChanges {
   };
 
   constructor() {
-    this.drag.held$.pipe(takeUntilDestroyed()).subscribe(h => { this.heldKey = h?.pieceKey && h.from === this.container ? h.pieceKey : null; this.cdr.markForCheck(); });
+    this.drag.held$.pipe(takeUntilDestroyed()).subscribe(h => { this.heldKey = h?.pieceKey && h.from === this.container ? h.pieceKey : null; this.selecting = this.drag.selecting; this.cdr.markForCheck(); });
   }
 
   ngOnChanges(): void {
@@ -150,6 +153,23 @@ export class ItemGridComponent implements OnChanges {
 
   row(cell: number): number { return Math.floor(cell / this.view.w); }
   lookOf(p: Piece): PieceLook { return this.look(p); }
+
+  /** A tap or a click: select the piece for tap-to-move (a second tap lets go), and tell the host (its card). */
+  tapPiece(ev: MouseEvent, p: Piece, look: PieceLook): void {
+    const el = ev.currentTarget as HTMLElement;
+    this.drag.select(this.heldOf(p, look, 0, 0));
+    this.pick.emit({ piece: p, el, ev });
+  }
+
+  private heldOf(p: Piece, look: PieceLook, grabDx: number, grabDy: number): DragHeld {
+    const ref = p.kind === 'instance'
+      ? { kind: 'instance' as const, ids: p.ids }
+      : { kind: 'stack' as const, storeKey: p.storeKey!, qty: p.qty, pile: p.pile };
+    return {
+      ref, from: this.container, w: p.w, h: p.h, grabDx, grabDy, name: look.name, art: look.art, mark: look.mark, tone: look.tone,
+      qty: p.qty, item: look.item, stackKey: p.stackKey, pieceKey: p.key,
+    };
+  }
 
   press(ev: PointerEvent, p: Piece, look: PieceLook): void {
     const box = (ev.currentTarget as HTMLElement).getBoundingClientRect();

@@ -207,7 +207,7 @@ export interface EngineOptions {
    * host mints the item (its roll frozen at mint) or grants the rune. False
    * leaves the drop on the ground (a full satchel).
    */
-  onLoot?: (loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }) => boolean | void;
+  onLoot?: (loot: { id: string; coins: number; own?: string; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }) => boolean | void;
   /**
    * What a kill drops on top of its area's table (shared/loot/drop-tables.ts
    * via LootService.rollLoot). Only asked while combat rules are set. Rows are
@@ -385,6 +385,11 @@ export interface EngineOptions {
   onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
   /** A shared ground item (Hearth protocol 6) was tapped: the Keeper walked to it; the HUD picks it up. */
   onGroundTap?: (id: string) => void;
+  /**
+   * A pile on the ground was opened (td-ground-pile.ts): a right-click, a long-press, or a tap on a tile with more than
+   * one thing. The HUD lists it (RuneScape-style); a row takes one (engine `takeFromPile`), "Take all" the lot.
+   */
+  onPileOpen?: (pile: { at: { x: number; y: number }; items: readonly PileRow[] }) => void;
   /**
    * The Sexton's Count (top-down; shared/sexton): the Keeper read a chalk-marked stone, the ledger page on the barrow's
    * jetty (`dark`: the night or an eclipse is on it), tried Barrow Door 1, or read the forty-first grave. The host
@@ -639,3 +644,6 @@ export function walkDirection(fromX: number, toX: number): -1 | 0 | 1 {
   const dx = toX - fromX;
   return Math.abs(dx) <= ARRIVE_DISTANCE ? 0 : dx > 0 ? 1 : -1;
 }
+
+/** One row of an opened ground pile (td-ground-pile.ts). */
+export interface PileRow { id: string; label: string; color: string; coins: number; qty: number; rarity: string | null; shared: boolean }

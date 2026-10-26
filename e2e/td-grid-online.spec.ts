@@ -85,9 +85,35 @@ test('drag a satchel piece onto the world: it lies on the ground for the room; o
   const book = page.locator('#satchel-book');
   const charm = book.locator('[data-grid="b"] [data-ids="s2"]');
   await expect(charm).toBeVisible();
+  // The escrow is slowed (every save read/write behind the drop waits 800 ms): the piece must leave the grid on the
+  // drop itself, not when the room's escrow lands and the save is re-read (owner 2026-10-26: "it stays ~2 s").
+  const slow = async (route: import('@playwright/test').Route) => { await new Promise(r => setTimeout(r, 800)); await route.continue().catch(() => { /* unrouted while it waited */ }); };
+  await page.route('**/fake-trade/doc/**', slow);
+  await page.evaluate(() => {
+    const w = window as unknown as { __dropT: { up: number; gone: number; back: number } };
+    w.__dropT = { up: 0, gone: 0, back: 0 };
+    window.addEventListener('pointerup', () => { if (!w.__dropT.up) w.__dropT.up = performance.now(); }, true);
+    const here = () => !!document.querySelector('#satchel-book [data-grid="b"] [data-ids="s2"]');
+    const watch = (now: number) => {
+      const t = w.__dropT;
+      if (t.up) {
+        if (!t.gone && !here()) t.gone = now;
+        else if (t.gone && !t.back && here()) t.back = now;
+        if (now - t.up > 15000) return;
+      }
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
   await dragTo(page, charm, canvas(page), { x: 160, y: 420 });
   await expect(book.locator('[data-grid="b"] [data-ids="s2"]'), 'the dropped charm left the grid').toHaveCount(0, { timeout: 2000 });
-  await expect.poll(() => save(page), { timeout: 15000 }).toEqual({ names: ['Ash Blade'], gold: 300 });
+  await expect.poll(() => save(page), { timeout: 20000 }).toEqual({ names: ['Ash Blade'], gold: 300 });
+  const dropT = await page.evaluate(() => (window as unknown as { __dropT: { up: number; gone: number; back: number } }).__dropT);
+  console.log(`drop → gone from the grid: ${Math.round(dropT.gone - dropT.up)} ms (escrow slowed 800 ms per save call)`);
+  expect(dropT.gone, 'the piece left the grid').toBeGreaterThan(0);
+  expect(dropT.gone - dropT.up, 'the piece leaves the grid within ~100 ms of the drop').toBeLessThan(120);
+  expect(dropT.back, 'and never comes back while the escrow lands').toBe(0);
+  await page.unroute('**/fake-trade/doc/**', slow);
   await expect.poll(async () => (await canvas(bryn).getAttribute('data-ground')) ?? '', { timeout: 15000 }).toMatch(/^g/);
   await shot(page, 'drop-1280');
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
@@ -105,5 +131,48 @@ test('drag a satchel piece onto the world: it lies on the ground for the room; o
   await expect(bryn.locator('[data-trade-theirs="s1"]')).toBeVisible({ timeout: 10000 });
   await shot(page, 'trade-drag-1280');
   await page.locator('[data-trade-cancel]').click();
+  await other.close();
+});
+
+test('online, two browsers: three drops lie on one tile as one pile on the other screen; its list takes one, then Take all', async ({ page, browser }, info) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await enterAs(page, hearth.port, 'Aster', 'ashguard', keeper('ua2', [
+    rec('p1', 'Pile Blade', 'astral-helm', 'rare', { magicFind: 2 }),
+    rec('p2', 'Pile Charm', 'keepers-cowl', 'uncommon', { magicFind: 1 }),
+    rec('p3', 'Pile Ring', 'anchor-ring', 'epic', { magicFind: 3 }),
+  ], 300));
+  const other = await newContext(browser, info, { viewport: { width: 1280, height: 800 } });
+  const bryn = await other.newPage();
+  await enterAs(bryn, hearth.port, 'Bryn', 'thornstrider', keeper('ub2', [], 20));
+  await calm(page);
+  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  const book = page.locator('#satchel-book');
+  for (const id of ['p1', 'p2', 'p3']) {
+    await book.locator(`[data-grid="b"] [data-ids="${id}"]`).click();
+    await page.locator('.d2tip--pinned [data-drop-item]').click();
+    await expect(book.locator(`[data-grid="b"] [data-ids="${id}"]`)).toHaveCount(0, { timeout: 3000 });
+  }
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  await expect.poll(() => save(page), { timeout: 30000 }).toEqual({ names: [], gold: 300 });
+  // Bryn's screen: one pile of three.
+  // (The room is shared with the test before, whose dropped charm may still lie on the same tile: ours are the "Pile" three.)
+  type P = { n: number; px: number; py: number; ids: string[]; labels: string[] };
+  const piles = () => bryn.evaluate(() => (window as unknown as { __tdGround: { piles(): P[] } }).__tdGround.piles());
+  const ours = (p: P) => ['Pile Blade', 'Pile Charm', 'Pile Ring'].every(n => p.labels.includes(n));
+  await expect.poll(async () => (await piles()).some(ours), { timeout: 20000 }).toBe(true);
+  await calm(bryn);
+  const pile = (await piles()).find(ours)!;
+  expect(pile.ids.every(id => id.startsWith('shared:'))).toBe(true);
+  await bryn.mouse.click(pile.px, pile.py, { button: 'right' });
+  const win = bryn.locator('[data-pile-window]');
+  await expect(win).toBeVisible();
+  await expect(win.locator('[data-pile-take]')).toHaveCount(pile.n);
+  await shot(bryn, 'pile-online-1280');
+  await win.locator('[data-pile-take]').first().click();
+  await expect.poll(async () => (await save(bryn)).names.length, { timeout: 20000 }).toBe(1);
+  await expect(win.locator('[data-pile-take]')).toHaveCount(pile.n - 1, { timeout: 10000 });
+  await win.locator('[data-pile-all]').click();
+  await expect.poll(async () => (await save(bryn)).names.filter(n => n.startsWith('Pile ')), { timeout: 30000 }).toEqual(['Pile Blade', 'Pile Charm', 'Pile Ring']);
   await other.close();
 });

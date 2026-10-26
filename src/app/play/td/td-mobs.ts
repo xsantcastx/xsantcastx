@@ -4,8 +4,10 @@
  *
  * Tibia's rules, cozy-sized: creatures roam near where they spawned and chase the Keeper on sight; the Keeper fights by
  * targeting one (a tap on it, or the attack key for the nearest) and swings while in reach; damage floats up in numbers;
- * a kill leaves its loot ON THE GROUND (coins, materials, rolled gear glowing in its rarity colour) to walk over and
- * pick up. A spawn comes back a while after its creature falls. Falling in a fight wakes the Keeper in the square.
+ * a kill leaves its loot ON THE GROUND (coins, materials, rolled gear glowing in its rarity colour). Gold comes to the
+ * Keeper by itself (walked over, or pulled in); everything else waits to be taken by hand, Diablo II-style: a click or
+ * a tap on it (or its plate) walks there and picks it up, the Pick-up key takes the nearest in reach (owner 2026-10-26:
+ * "let's remove the auto pickup items, let's only auto pickup gold"). A spawn comes back a while after its creature falls. Falling in a fight wakes the Keeper in the square.
  *
  * The host does the bookkeeping exactly as the side view did: onKill (Hunting XP, quests), rollLoot (gear) and onLoot
  * (into the satchel). Nothing here touches a save.
@@ -2322,6 +2324,13 @@ export interface Drop {
    * `hold`: seconds before this Keeper may take it (another Keeper's kill, still theirs); `wait`: after a refusal.
    */
   room?: { hold: number; wait: number };
+  /**
+   * A Keeper's own drop that only this screen holds (solo, or a stack while online): the host's token for what it was
+   * (the item or the stack it came out of the satchel as). Taking it back hands the token to onLoot.
+   */
+  own?: string;
+  /** The picture an own drop lies as (the satchel's icon for it). */
+  art?: string;
 }
 
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
@@ -2415,7 +2424,10 @@ export const CHARGE_HIT = 22;
 /** How far ahead of a moving Keeper a gap-closer aims, at most (art px). */
 export const CHARGE_LEAD = 72;
 const RESPAWN = 75;        // seconds until a spawn comes back
-const DESPAWN = 300;       // seconds a drop lies on the ground
+/** Seconds a drop lies on the ground: ten minutes, now that only Gold is picked up by walking over it. */
+export const DESPAWN = 600;
+/** How near the Keeper a piece is taken by hand (the Pick-up key, the end of a walk to a clicked piece; art px). */
+export const PICK_REACH = 28;
 const CORPSE_SECS = 20;
 /** How near the Keeper a worn aura reaches (art px): 4 tiles, the skill auras' size (the Loot sheet says "near you"). */
 export const ITEM_AURA_REACH = 4 * TILE;    // a kill's corpse stays fresh for Raise Skeleton this long
@@ -3537,7 +3549,7 @@ export class MobSystem {
     this.updateMinions(dt);
     for (let i = this.corpses.length - 1; i >= 0; i--) if (this.clock - this.corpses[i].at > CORPSE_SECS) this.corpses.splice(i, 1);
     weatherCorpses(this.remains, this.clock);
-    // Walk over loot to pick it up.
+    // Gold is picked up by walking over it (and pulled in); everything else waits for the Keeper's hand (takeDrop).
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const g = this.drops[i];
       g.age += dt;
@@ -3545,13 +3557,13 @@ export class MobSystem {
       if (g.room) {
         g.room.hold = Math.max(0, g.room.hold - dt); g.room.wait = Math.max(0, g.room.wait - dt);
         if (g.room.hold > 0 || g.room.wait > 0) continue;
-      } else if (g.age > DESPAWN) { this.drops.splice(i, 1); continue; }
+      } else if (!g.own && g.age > DESPAWN) { this.drops.splice(i, 1); continue; }
       // Coins come to the Keeper (a Warlock kills from afar); gear and materials wait to be walked to.
       if (g.coins > 0 && g.age > .6) {
         const dx = p.x - g.x, dy = p.y - g.y, d = Math.hypot(dx, dy);
         if (d < 8 * TILE && d > 1) { const v = Math.min(d, (90 + g.age * 60) * dt); g.x += dx / d * v; g.y += dy / d * v; }
       }
-      if (Math.hypot(g.x - p.x, g.y - p.y) < 22 && g.age > .4) this.pick(g, i);
+      if (g.coins > 0 && Math.hypot(g.x - p.x, g.y - p.y) < 22 && g.age > .4) this.pick(g, i);
     }
     for (let i = this.floaters.length - 1; i >= 0; i--) { const f = this.floaters[i]; f.age += dt; f.y -= 14 * dt; if (f.age > 1) this.floaters.splice(i, 1); }
     for (let i = this.effects.length - 1; i >= 0; i--) { const e = this.effects[i]; e.age += dt; if (e.age > e.life) this.effects.splice(i, 1); }
@@ -6743,7 +6755,19 @@ export class MobSystem {
     }
     return best;
   }
-  /** Take one piece of a corpse's loot into the satchel; false when the satchel is full (it stays). */
+  /** May this Keeper take it now (a room piece of another Keeper's kill waits its hold, and a beat after a refusal)? */
+  takeable(g: Drop): boolean { return !g.room || (g.room.hold <= 0 && g.room.wait <= 0); }
+  /** The nearest piece the Keeper can take by hand within reach of (x, y) — the Pick-up key's (Gold comes by itself). */
+  dropNear(x: number, y: number, reach = PICK_REACH): Drop | null {
+    let best: Drop | null = null, bd = reach;
+    for (const g of this.drops) {
+      if (g.coins > 0 || !this.takeable(g)) continue;
+      const d = Math.hypot(g.x - x, g.y - y);
+      if (d <= bd) { bd = d; best = g; }
+    }
+    return best;
+  }
+  /** Take one piece into the satchel (a corpse's, a clicked one, the Pick-up key's); false when it stays (a full satchel). */
   takeDrop(dropId: string): boolean {
     const i = this.drops.findIndex(g => g.id === dropId);
     if (i < 0) return false;
@@ -6763,7 +6787,7 @@ export class MobSystem {
       return;
     }
     const ok = this.host.options.onLoot?.({
-      id: g.id, coins: g.coins, ore: g.material ? g.qty : 0, ...(g.material ? { material: g.material } : {}),
+      id: g.id, coins: g.coins, ...(g.own ? { own: g.own } : {}), ore: g.material ? g.qty : 0, ...(g.material ? { material: g.material } : {}),
       ...(g.item ? { item: g.item } : {}), ...(g.rune ? { rune: g.rune } : {}),
     });
     if (ok === false) return;   // the satchel is full: it stays on the ground

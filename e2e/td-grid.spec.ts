@@ -81,15 +81,16 @@ async function dragTo(page: Page, from: Locator, to: Locator, toOffset?: { x: nu
 test.describe('the satchel grid', () => {
   test.describe.configure({ timeout: 120000 });
 
-  test('items cover their footprints; drag one to a cell, then onto the doll to wear it', async ({ page }) => {
+  test('every item covers one cell; drag one to a cell, then onto the doll to wear it', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await enter(page, { 'godforge-inventory': inventory(BASIC, { 'minor-health-potion': 5, 'basalt-blank': 3 }) });
     const book = await openSatchel(page);
     const grid = book.locator('[data-grid="b"]');
     const plate = grid.locator('[data-ids="g-plate"]');
-    await expect(plate).toHaveAttribute('data-w', '2');
-    await expect(plate).toHaveAttribute('data-h', '3');
-    await expect(grid.locator('[data-ids="g-staff"]')).toHaveAttribute('data-h', '4');
+    // 1×1 everywhere (owner 2026-10-26): a cuirass and a staff take one cell, like a ring.
+    await expect(plate).toHaveAttribute('data-w', '1');
+    await expect(plate).toHaveAttribute('data-h', '1');
+    await expect(grid.locator('[data-ids="g-staff"]')).toHaveAttribute('data-h', '1');
     await expect(grid.locator('[data-ids="g-ring"]')).toHaveAttribute('data-w', '1');
     await expect(grid.locator('[data-stack="minor-health-potion"]')).toHaveAttribute('data-qty', '5');
     await page.mouse.move(5, 5);
@@ -119,21 +120,21 @@ test.describe('the satchel grid', () => {
 
   test('a full grid refuses a pickup: the item stays on the ground, with the reason', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    // 52 rings and the three starter tools (sickle 1×2, pickaxe and axe 1×3) fill every cell of a 10×6 satchel.
-    const rings = Array.from({ length: 52 }, (_, i) => gear(`g-r${String(i).padStart(2, '0')}`, 'anchor-ring', 'Anchor Ring', i, { kind: 'bag' }, { stats: { defense: i + 1 } }));
+    // 57 rings and the three starter tools (one cell each) fill every cell of a 10×6 satchel.
+    const rings = Array.from({ length: 57 }, (_, i) => gear(`g-r${String(i).padStart(2, '0')}`, 'anchor-ring', 'Anchor Ring', i, { kind: 'bag' }, { stats: { defense: i + 1 } }));
     await enter(page, { 'godforge-inventory': inventory(rings) }, '&fxgrid=1');
     const book = await openSatchel(page);
-    await expect(book.locator('[data-grid="b"] .ig-piece')).toHaveCount(55);
+    await expect(book.locator('[data-grid="b"] .ig-piece')).toHaveCount(60);
     await expect(book.locator('[data-no-room]')).toHaveCount(0);
     await page.keyboard.press('Escape');
     // A drop at the Keeper's feet, walked over: refused, and it stays.
     await expect.poll(() => page.evaluate(() => !!(window as unknown as { __tdGrid?: unknown }).__tdGrid), { timeout: 10000 }).toBe(true);
     const took = await page.evaluate(() => (window as unknown as { __tdGrid: { pickup(def: string): boolean } }).__tdGrid.pickup('astral-helm'));
     expect(took).toBe(false);
-    await expect(page.locator('.objective')).toContainText(/satchel is full/i);
+    await expect(page.locator('.objective')).toContainText(/Too much baggage/);
     // And away from a Vault, nothing moves into it.
     expect(await page.evaluate(() => (window as unknown as { __tdGrid: { toVault(id: string): string } }).__tdGrid.toVault('g-r00'))).toBe('vault-closed');
-    expect(((await save(page)).records as { kind: string }[]).filter(r => r.kind === 'instance').length).toBe(52 + 3); // + the starter tools
+    expect(((await save(page)).records as { kind: string }[]).filter(r => r.kind === 'instance').length).toBe(57 + 3); // + the starter tools
     await page.mouse.move(5, 5);
     await page.waitForTimeout(700);
     await shot(page, 'full-1280');

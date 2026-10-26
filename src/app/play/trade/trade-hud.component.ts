@@ -28,6 +28,8 @@ export interface TradeCard { name: string; kicker: string; tone?: string | null;
 /** The engine's part (td-engine): where the Keeper stands, and the shared ground to draw. */
 interface GroundEngine {
   peerPresence?: () => { area: string; x: number; y: number };
+  /** The tile centre at the Keeper's feet where the next drop lands (td-ground-pile.ts: a pile grows there). */
+  dropSpot?: () => { x: number; y: number };
   setSharedGround?: (items: readonly RoomGround[]) => void;
 }
 interface Cell { id: string; name: string; art: string; mark: string; tone: string; item: GameItem; block?: string | null }
@@ -70,7 +72,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     groundPick: (area: string, id: string) => this.room?.groundPick(area, id) ?? Promise.resolve({ ok: false as const, why: 'offline' }),
   };
   readonly flow = new TradeFlow(this.backend, this.roomVerbs, () => this.cdr.markForCheck());
-  readonly groundFlow = new GroundFlow(this.backend, this.roomVerbs);
+  readonly groundFlow = new GroundFlow(this.backend, this.roomVerbs, id => { if (this.inventory.itemById(id)) this.inventory.drop(id); });
   readonly maxItems = TRADE_MAX_ITEMS;
 
   /** The last trade window the room showed (kept while a closed trade's outcome is on screen). */
@@ -309,9 +311,11 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   /** Put a satchel item on the ground at the Keeper's feet (the card's Drop, or a drag onto the world). */
   async drop(item: GameItem): Promise<boolean> {
     if (tradeBlock(item) || this.groundFlow.isPending(item.id)) return false;
-    const here = (this.engine as GroundEngine | undefined)?.peerPresence?.();
+    const eng = this.engine as GroundEngine | undefined;
+    const here = eng?.peerPresence?.();
     if (!here) return false;
-    const out = await this.groundFlow.drop(offerItemOf(item), { area: here.area, x: here.x, y: here.y + 6 });
+    const spot = eng?.dropSpot?.() ?? { x: here.x, y: here.y + 6 };
+    const out = await this.groundFlow.drop(offerItemOf(item), { area: here.area, x: spot.x, y: spot.y });
     this.said.emit(out.ok ? this.t('trade.dropped', { name: item.name }) : this.t('trade.dropFailed', { why: this.whyText(out.why) }));
     this.cdr.markForCheck();
     return out.ok;
@@ -322,7 +326,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     if (!g) return;
     // A full satchel refuses the pickup: it stays on the ground (docs/design/inventory-grid.md §2.4).
     const stub = { id: g.id, name: g.name, type: 'artifact', rarity: g.rarity, definitionId: g.def, stats: {}, sellValue: 0, equipped: false, foundAt: new Date(0).toISOString(), soulbound: false } as GameItem;
-    if (!this.inventory.canPickUp(stub)) { this.said.emit(this.t('trade.satchelFull')); return; }
+    if (!this.inventory.canPickUp(stub)) { this.said.emit(this.t('play.grid.full')); return; }
     const out = await this.groundFlow.pickup(g);
     this.said.emit(out.ok ? this.t('trade.picked', { name: g.name }) : this.t('trade.pickFailed', { why: this.whyText(out.why) }));
     this.cdr.markForCheck();

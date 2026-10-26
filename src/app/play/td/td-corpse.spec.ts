@@ -94,17 +94,26 @@ describe('a kill leaves a corpse with its loot beside it', () => {
     expect(loot.some(d => d.coins > 0)).toBeTrue();
     expect(sys.drops.every(d => d.corpse === cp.id)).toBeTrue();
   });
-  it('lets the Keeper take a piece out of it (and the walk-over pickup still exists)', () => {
+  it('lets the Keeper take a piece out of it; walking over the rest takes only its Gold', () => {
     const { sys, loot } = world();
     sys.smite(sys.place('w', { ...MOBS['ash-wolf'], speed: 0, sight: 0 }, 50, 20));
     const cp = sys.remains[0];
+    sys.layDrop('heap', 50, 22, 'ember-residue', 2, 'ember residue');
+    sys.drops[sys.drops.length - 1].corpse = cp.id;
     const before = sys.corpseLoot(cp.id).length;
-    expect(sys.takeDrop(sys.corpseLoot(cp.id)[0].id)).toBeTrue();
+    const first = sys.corpseLoot(cp.id).find(d => !d.coins)!;
+    expect(sys.takeDrop(first.id)).toBeTrue();
     expect(sys.corpseLoot(cp.id).length).toBe(before - 1);
     expect(loot.length).toBe(1);
-    // The rest lies there to walk over: the Keeper stands on it.
-    for (let t = 0; t < 1.5; t += .05) sys.update(.05);
-    expect(sys.drops.length).toBeLessThan(before - 1 + 1);
+    // The Keeper stands among the rest: the Gold comes to him, nothing else does.
+    const rest = sys.corpseLoot(cp.id).filter(d => !d.coins).length;
+    for (let t = 0; t < 3; t += .05) sys.update(.05);
+    expect(sys.drops.filter(d => d.coins > 0).length).toBe(0);
+    expect(sys.corpseLoot(cp.id).length).toBe(rest);
+    // The Pick-up key's nearest piece in reach is never Gold, and a hand takes it.
+    sys.layDrop('near', 4, 0, 'cinder-ore', 1, 'cinder ore');
+    expect(sys.dropNear(0, 0)?.id).toBe('near');
+    expect(sys.dropNear(200, 0)).toBeNull();
   });
   it('finds a corpse near the Keeper only while it holds loot, and under a tap', () => {
     const { sys } = world();
