@@ -82,13 +82,22 @@ test('S5: a healer heals her party mate and both see it; a tank holds the room\'
 
     // ── 2. The tank holds the room's creature off the healer ──
     // Bryn stands between: a hunting wolf laid beside him; he strikes it and calls the Watch Cry; Aster heals him.
-    // A Cinder Orc: tough, and no ground attack that would strike everyone near whoever it goes for.
+    // A Cinder Orc: tough. Its War Stomp (S6) is a ring round itself that strikes everyone in it, whoever it goes for —
+    // so the healer stands back a few tiles (inside Hearthlight's reach, outside the stomp): what is tested is who it
+    // goes for, not whether a ring reaches a healer standing in the tank's pocket.
+    await a.keyboard.down('ArrowLeft'); await a.waitForTimeout(800); await a.keyboard.up('ArrowLeft');
+    await expect.poll(async () => {
+      const bryn = (await allies(a)).allies[0], aster = (await allies(b)).allies[0];
+      return bryn && aster ? Math.hypot(bryn.x - aster.x, bryn.y - aster.y) : 0;
+    }, { timeout: 5000 }).toBeGreaterThan(44);
     const wolf = (await fx(origin, { near: 'Bryn', lay: { type: 'cinder-orc', dx: 16, dy: 0, calm: false } })).id!;
     await expect.poll(async () => (await view(b)).mobs.some(m => m.id === wolf), { timeout: 10000 }).toBe(true);
     await b.evaluate(id => (window as unknown as Hooks).__tdCoop.target(id), wolf);
     await cast(b, 'watch-cry');
     const aster0 = (await life(a)).room!.h, bryn0 = (await life(b)).room!.h;
-    let brynDipped = false, last = bryn0;
+    let brynDipped = false, last = bryn0, asterBitten = false;
+    // The tank fallen: at 0 on the room (its death grace) or held down. The creature then rightly turns on the healer.
+    const fallen = (l: LifeView) => l.down || !!l.room?.d || (l.room?.h ?? 1) <= 0;
     for (let i = 0; i < 24; i++) {
       if (i % 2 === 0) await a.evaluate(() => { const h = (window as unknown as Hooks).__tdCoop; h.cast('hearthlight'); });
       await b.evaluate(id => (window as unknown as Hooks).__tdCoop.target(id), wolf);
@@ -96,11 +105,16 @@ test('S5: a healer heals her party mate and both see it; a tank holds the room\'
       const lb2 = await life(b), now = lb2.room!.h;
       if (now < last) brynDipped = true;
       last = now;
-      // The tank down (a slow machine's heals fall behind): the creature rightly turns; what counts is before that.
-      if (lb2.down || lb2.room?.d || now <= 0) break;
-      if ((await life(a)).room!.h < aster0) break;
+      // What counts is while the tank stands (on a slow machine the heals fall behind and he falls).
+      if (fallen(lb2)) break;
+      if ((await life(a)).room!.h < aster0) {
+        // A bite on the healer only counts if the tank was still standing when it landed: the two screens hear the
+        // room ~one snapshot apart, so give the tank's screen that long to hear its own fall first.
+        await a.waitForTimeout(400);
+        asterBitten = !fallen(await life(b));
+        break;
+      }
     }
-    const asterBitten = (await life(a)).room!.h < aster0 && !((await life(b)).room?.d || (await life(b)).down);
     expect(brynDipped, 'the creature fought the tank').toBe(true);
     console.log(`# s5 threat: Aster ${aster0} → ${(await life(a)).room!.h}, Bryn ${bryn0} → ${(await life(b)).room!.h} over 6 s with the wolf on them`);
     expect(asterBitten).toBe(false);
