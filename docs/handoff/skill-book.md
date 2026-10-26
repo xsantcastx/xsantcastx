@@ -107,7 +107,7 @@ The ruling is `docs/design/skill-book-stand-ins.md` (branch `dm-marks`, merged h
 - Wording from the (a) rulings: Ash to Ash reads "A foe it kills gives you N mana"; Firebreak reads "Foes crossing the
   wall walk 40% slower".
 
-**Kept for their S-tasks (c), 34 of them:** see the ruling.
+**Kept for their S-tasks (c), 34 of them:** see the ruling. S5's 23 are done (2026-10-26, `docs/handoff/s5-party-kits.md`).
 
 **The 3 marks the earlier list missed** (the same test applies to each):
 1. Banish B3 Lay Them All. skills-100.md says the unmaking "ends every raise channel within 4 tiles"; it now only

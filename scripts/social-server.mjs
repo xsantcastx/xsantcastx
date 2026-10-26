@@ -1414,7 +1414,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         sessions.set(token, session);
         reply(201, {
           id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world, ...(session.p8 ? { settles: !!economy } : {}),
-          ...(session.p10 ? { life: rooms.lifeOn(session), credits: rooms.creditsOn(session) } : {}),
+          ...(session.p10 ? { life: rooms.lifeOn(session), credits: rooms.creditsOn(session), allies: rooms.lifeOn(session) && !!rooms.alliesOn } : {}),
         });
         publishPlayers();
         friendsHear(uid);

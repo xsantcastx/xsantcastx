@@ -4286,7 +4286,7 @@ export class MobSystem {
       const n = Math.max(1, Math.round(dmg));
       foe.hit = .18;
       this.float(foe.x, foe.y - foe.def.h, crit ? `${n}!` : `${n}`, color);
-      this.coop?.claim(foe, n, crit, color, this.src);
+      this.coop?.claim(foe, n, crit, color, this.killSrc ?? this.src);
       return n;
     }
     // Who fought it (a shared creature's kill pays those who did in full): this Keeper, or the member whose claim this is.
@@ -4298,7 +4298,7 @@ export class MobSystem {
     if ((foe.ward ?? 0) > 0) { const soak = Math.min(foe.ward ?? 0, dmg); foe.ward = (foe.ward ?? 0) - soak; dmg -= soak; this.float(foe.x - 8, foe.y - foe.def.h - 4, `-${soak}`, '#e8e1cf'); if (dmg <= 0) { foe.hit = .1; return 0; } }
     if (foe.bless?.fx.thorns) this.thornsBack(foe, dmg);
     // Threat (td-threat): the blow's, ×2 for the Ashguard's book — this Keeper's own, or the member's whose claim it is.
-    damageThreat(foe, this.claimFrom, Math.min(dmg, Math.max(0, foe.hp)), this.claimFrom ? this.claimSrc : this.src);
+    damageThreat(foe, this.claimFrom, Math.min(dmg, Math.max(0, foe.hp)), this.claimFrom ? this.claimSrc : this.killSrc ?? this.src);
     foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
     if (foe.hp <= 0) { this.kill(foe); return dmg; }
