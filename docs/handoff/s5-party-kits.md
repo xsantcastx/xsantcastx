@@ -120,3 +120,17 @@ in `scripts/social-deployment.md`. Hearth first, then the client. No functions, 
   10% hold, heal ×0.5, the Watch Cry).
 - **E2E:** `e2e/td-world-s5.spec.ts`, two browsers. A healer heals her mate and both see it (≤ 1.9 s, the HoT's first
   tick included). A tank holds the creature off the healer: over 6 s her life is untouched and his is not.
+
+## Phone perf (final build, `TD_PERF=1 TD_CPU=6`, DPR 3, 390×844)
+Frame mean / p95 / worst in ms, then frames over 33 ms. The engine's own work is 3–5 ms a frame (update ~1 ms).
+| Scene | Normal | Low |
+|---|---|---|
+| Hot spot fighting (18 walkers) | 19.3 / 33.4 / 34.3, 17/259 | 16.6 / 17.5 / 17.7, 0/302 |
+| Hot spot walking | 21.1 / 33.8 / 34.4, 17/238 | 17.0 / 17.6 / 33.5, 1/296 |
+| Town walking | 19.9 / 33.7 / 51.0, 17/251 | 16.7 / 17.5 / 33.5, 1/299 |
+| Road walking | 22.0 / 33.9 / 34.3, 24/227 | 16.8 / 17.6 / 33.6, 1/298 |
+| Harbour walking | 17.3 / 17.7 / 34.2, 6/290 | 16.6 / 17.5 / 17.7, 0/301 |
+- **Low holds 60 fps everywhere.**
+- **Normal runs a little behind calm.md's 18.4 ms on the hot spot.** As calm.md found, the frames over 33 ms are the
+  headless software raster of the 1.32 Mpx backing, not the fight's work. This run also shared the machine with
+  other builders.
