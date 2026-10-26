@@ -257,11 +257,19 @@ export const UMBRAL_MARCHES_DEF: ContinentDef = {
   ],
   places: UMBRAL_PLACES, names: UMBRAL_NAMES,
   mobs: {
-    q: { types: ['mire-lurker', 'mire-lurker', 'lantern-wisp'], chance: .3 },
-    Q: { types: ['mire-lurker', 'ink-hound', 'lantern-wisp', 'gloam-witch'], chance: .45 },
-    k: { types: ['lantern-wisp', 'mire-lurker'], chance: .35 },
-    x: { types: ['drowned-knight', 'gloam-witch', 'ink-hound', 'drowned-knight'], chance: .5 },
+    q: { types: ['mire-lurker', 'mire-lurker', 'lantern-wisp'], chance: .5 },
+    Q: { types: ['mire-lurker', 'ink-hound', 'lantern-wisp', 'gloam-witch'], chance: .6 },
+    k: { types: ['lantern-wisp', 'mire-lurker'], chance: .5 },
+    x: { types: ['drowned-knight', 'gloam-witch', 'ink-hound', 'drowned-knight'], chance: .6 },
   },
+  // Lairs (canon §8.4): the lurkers' lantern-lure pools of the fens, the Drowned Knights' patrol posts in the ruins,
+  // the wisps gathered over the Black Meres.
+  hotspots: [
+    { region: 'q', chance: .35, types: ['mire-lurker', 'lantern-wisp', 'mire-lurker'], count: 4 },
+    { region: 'Q', chance: .45, types: ['mire-lurker', 'ink-hound', 'gloam-witch'], count: 5 },
+    { region: 'x', chance: .5, types: ['drowned-knight', 'gloam-witch', 'drowned-knight'], count: 5 },
+    { region: 'k', chance: .4, types: ['lantern-wisp', 'mire-lurker'], count: 4 },
+  ],
   town: buildGloamhaven, townName: 'Gloamhaven', streets: { row: 18, col: 23 }, river: false,
   roadGround: { near: 'boardwalk', far: 'boardwalk' },
   ways: [

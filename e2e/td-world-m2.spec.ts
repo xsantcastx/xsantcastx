@@ -95,7 +95,7 @@ test('M2: a party, an instant drop picked up by the other, a fast trade, and a r
   const bryn = await other.newPage();
   await enterAs(bryn, hearth.port, 'Bryn', 'thornstrider', keeper('ub', [rec('r1', 'Tide Ring', 'keepers-cowl', 'epic', { magicFind: 3 })], 20));
   const health = await (await fetch(`http://127.0.0.1:${hearth.port}/health`)).json() as { protocol: number };
-  expect(health.protocol).toBe(8);
+  expect(health.protocol).toBeGreaterThanOrEqual(8);
 
   // ── 1. A party ──
   const c = await card(page, 'Bryn');

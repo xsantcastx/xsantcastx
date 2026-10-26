@@ -20,6 +20,13 @@
  */
 import { MOBS, MobSystem, type CoopLink, type Drop, type Mob } from '../td/td-mobs';
 import { TdWorld } from '../td/td-world';
+import { HandLevel, type TdLevel } from '../td/td-level';
+import { CONTINENTS, LEVELS } from '../td/td-levels';
+import { atZoneLevel } from '../td/td-zones';
+import { makePack } from '../td/td-elites';
+import { respawnSecs } from './respawn';
+import { WORLD_BOSS_KEY, fastForward, firstRising, nextRising, worldBossOfKey, worldBossesIn, type WorldBossClock, type WorldBossDef } from './world-bosses';
+import { uniqueById } from '../../shared/rpg/unique-items';
 import { TILE } from '../td/td-art';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from '../td/td-seam';
 import { seamLevelFor } from '../td/td-zones';
@@ -31,7 +38,7 @@ import {
 } from '../social/coop-protocol';
 import { CLAIM_RANGE_TILES, ClaimGate, coopBossLife } from '../social/coop-rules';
 import { GROUND_MS, OWN_MS, TAKE_REACH, type WorldDrop, type WorldTakeResult } from '../social/world-protocol';
-import { lootEntry, rollCreatureLoot } from '../../shared/loot/drop-tables';
+import { lootEntry, rollCreatureLoot, type LootDrop } from '../../shared/loot/drop-tables';
 import { hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
 import { eclipseAt, worldTime, type SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { EngineOptions } from '../engine/engine.model';
@@ -48,14 +55,18 @@ export interface RoomWorldSave {
   resting: [string, number][];
   /** The Seam Eater fell in this eclipse: it does not rise again until the eclipse is over (epoch ms). */
   seamSlainUntil?: number;
+  /** Protocol 9: the area's world bosses' clocks (world-bosses.ts), by boss id. */
+  wb?: [string, WorldBossClock][];
 }
+/** A world boss rose, fell or left unfound (the room tells the whole world: an omen line). */
+export interface WorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone'; level: number; x: number; y: number }
 export interface RoomWorldOptions {
   area: string;
   /** The world's random stream (the room: a fresh secret per wake; the specs: a fixed string). */
   seed: string;
   /** Epoch ms (the ground's clocks and the sky). */
   now: () => number;
-  /** The continent (default: the Seamworks island). */
+  /** The continent (default: the area's own — CONTINENTS — or the Seamworks island). A floor's area (LEVELS) is its floor. */
   def?: ContinentDef;
   /** The boot id woven into ground ids (unique across wakes). */
   boot?: string;
@@ -73,7 +84,14 @@ interface GroundDrop extends WorldDrop { until: number; freeAt: number; owners: 
 
 export class RoomWorld implements CoopLink {
   readonly area: string;
-  readonly world: TdWorld;
+  /** The continent's surface (a surface area), as the engine's TdWorld. On a floor: unset — `level` is the floor. */
+  readonly world!: TdWorld;
+  /** The ground the creatures walk: the surface, or a hand-drawn floor (td-levels LEVELS). */
+  readonly level: TdLevel;
+  /** A surface area (a continent), not a floor. */
+  readonly surface: boolean;
+  /** 'surface', or the floor's id (MobSystem.levelId; the ground ids `td:<level>:w.…`). */
+  readonly levelId: string;
   readonly mobs: MobSystem;
   /** Grows with every wake (the clients' decoders resync on a new term). */
   term = 1;
@@ -100,6 +118,14 @@ export class RoomWorld implements CoopLink {
   private rift: { x: number; y: number } | null | undefined;
   /** The ground or the resting spawns changed since the last save. */
   dirty = false;
+  /** The world bosses' clocks (protocol 9; world-bosses.ts), and the ones up now. */
+  private readonly wb = new Map<string, WorldBossClock>();
+  private readonly wbUp = new Map<string, Mob>();
+  /** Omens since the last flush (the room tells everyone). */
+  private omens: WorldOmen[] = [];
+  /** The spots each world boss may rise at (tiles), found once from the continent's map. */
+  private wbSpots: { c: number; r: number }[] | null = null;
+  private bossT = 0;
   readonly stats = { ticks: 0, kills: 0, claimsIn: 0, claimsRefused: 0, refusedFar: 0, refusedSight: 0, refusedCap: 0, drops: 0, takes: 0, takeRefused: 0 };
 
   constructor(opts: RoomWorldOptions) {
@@ -108,18 +134,22 @@ export class RoomWorld implements CoopLink {
     this.seed = opts.seed;
     this.boot = (opts.boot ?? hashSeed(`${opts.seed}|boot`).toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 12) || 'b';
     this.rng = seededRandom(hashSeed(`${opts.seed}|${opts.area}`));
-    this.world = opts.def ? new TdWorld(opts.def) : new TdWorld();
-    const world = this.world;
+    const def = opts.def ?? CONTINENTS[opts.area];
+    const floor = !opts.def && !def && LEVELS[opts.area] ? new HandLevel(LEVELS[opts.area]) : null;
+    this.surface = !floor;
+    this.levelId = floor ? floor.id : 'surface';
+    if (floor) this.level = floor;
+    else { this.world = def ? new TdWorld(def) : new TdWorld(); this.level = this.world; }
+    const world = this.level, surfaceWorld = floor ? null : this.world;
     const options: EngineOptions = {
       // The gear on top of the area's table, rolled here (drop-tables.ts) from the world's stream: the kill's key and
       // the creature's level decide it, never a Keeper's Magic Find (the room is nobody's).
-      rollLoot: kill => rollCreatureLoot({ creature: kill.creature, level: kill.level, tier: 'normal', magicFind: Math.max(0, kill.mf ?? 0), rank: kill.rank as MonsterRank, ...(kill.named ? { named: kill.named } : {}) },
-        seededRandom(hashSeed(`${this.seed}|loot|${kill.killKey}`))).map((d, i) => lootEntry(d, `loot${i}`)),
+      rollLoot: kill => this.rollLoot(kill).map((d, i) => lootEntry(d, `loot${i}`)),
     } as Partial<EngineOptions> as EngineOptions;
     this.mobs = new MobSystem({
       options,
       walkable: (c, r) => world.walkable(c, r),
-      levelId: () => 'surface',
+      levelId: () => this.levelId,
       // The room has no Keeper of its own: far away, and `selfAway` keeps every creature off it.
       player: () => ({ x: 1e7, y: 1e7 }),
       hurtPlayer: () => undefined,
@@ -129,9 +159,14 @@ export class RoomWorld implements CoopLink {
       passable: (c, r) => { const g = world.ground(c, r); return g !== 'rock' && g !== 'wall' && g !== 'vinewall' && g !== 'bark'; },
       sight: (c, r) => { const g = world.ground(c, r); return g !== 'water' && g !== 'ember' && g !== 'blackwater' && g !== 'canopy' && !world.walkable(c, r); },
       swung: () => undefined,
-      safeAt: (x, y) => world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
+      safeAt: (x, y) => !!surfaceWorld && surfaceWorld.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
     });
     this.mobs.selfAway = true;
+    // Elite packs as on every screen (td-elites.ts), and protocol 9's rest: each fallen spawn draws its own time
+    // (respawn.ts: an ordinary creature 60–90 s, an elite longer, a boss about an hour) from this world's stream.
+    this.mobs.elites = true;
+    this.mobs.eliteSalt = hashSeed(`${opts.seed}|${opts.area}|elite`).toString(36);
+    this.mobs.respawnOf = m => respawnSecs(m, Math.random);
     this.mobs.roomLoot = true;
     this.mobs.coop = this;
     this.mobs.aura = null;
@@ -165,24 +200,148 @@ export class RoomWorld implements CoopLink {
   tick(dt: number): void {
     if (!(dt > 0)) return;
     const d = Math.min(dt, .25);
-    this.clockMs += d * 1000;
+    // A late step (a stalled loop) simulates at most a quarter second, but the fallen's rest runs on real time.
+    if (dt > d) this.mobs.idle(dt - d);
+    this.clockMs += dt * 1000;
     this.stats.ticks++;
     this.seeded(() => {
-      this.mobs.setPhase(this.sky(), true);
+      this.mobs.setPhase(this.sky(), this.surface);
       const others = [...this.keepers.values()].map(k => ({ id: k.id, x: k.x, y: k.y }));
       this.mobs.others = others;
       this.spawnT -= d;
       if (this.spawnT <= 0) {
         this.spawnT = .5;
-        for (const o of others) this.mobs.addSpawns(this.world.spawnsIn(o.x - SPAWN_REACH, o.y - SPAWN_REACH, o.x + SPAWN_REACH, o.y + SPAWN_REACH));
-        this.mobs.prune(PRUNE);
-        this.updateSeam(this.sky());
+        if (this.surface) {
+          for (const o of others) this.mobs.addSpawns(this.world.spawnsIn(o.x - SPAWN_REACH, o.y - SPAWN_REACH, o.x + SPAWN_REACH, o.y + SPAWN_REACH));
+          this.mobs.prune(PRUNE);
+          this.updateSeam(this.sky());
+        } else if (others.length) {
+          // A floor is small and walled: all of it lives at once (Tibia), and nothing on it is ever forgotten.
+          this.mobs.addSpawns(this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+        }
         this.scaleBosses();
       }
+      this.bosses(d);
       this.mobs.update(d);
     });
     this.harvest();
     this.expire();
+  }
+
+  /**
+   * Protocol 9: time passes in an area with nobody in it (the "dormant tick"). Nothing moves and nothing is drawn, but the
+   * fallen rest on toward their rising, the ground crumbles on time, and the world bosses keep their clocks — so a
+   * Keeper who comes back finds what he left, minus what has risen again since.
+   */
+  idle(dt: number): void {
+    if (!(dt > 0)) return;
+    this.clockMs += dt * 1000;
+    this.mobs.idle(dt);
+    this.seeded(() => this.bosses(dt));
+    this.harvest();
+    this.expire();
+  }
+  /** The resting spawns now (key → seconds left): the specs and /health read it. */
+  restingNow(): [string, number][] { return this.mobs.restingList(); }
+
+  // ── World bosses (protocol 9; world-bosses.ts) ──
+  /** Once a second: each of this area's world bosses rises when its clock says, leaves when its stay is over. */
+  private bosses(dt: number): void {
+    this.bossT -= dt;
+    if (this.bossT > 0) return;
+    this.bossT = 1;
+    const now = this.now();
+    for (const b of worldBossesIn(this.area)) {
+      if (!this.surface) continue;
+      let c = this.wb.get(b.id);
+      if (!c) { c = { next: firstRising(b, now, Math.random) }; this.wb.set(b.id, c); this.dirty = true; }
+      const m = this.wbUp.get(b.id);
+      if (m && !this.mobs.mobs.includes(m)) {
+        // Felled (or gone some other way): the next rising is hours off.
+        this.wbUp.delete(b.id);
+        if (m.hp <= 0) this.omen(b, 'fall', m.x, m.y);
+        this.wb.set(b.id, { next: nextRising(b, now, Math.random) }); this.dirty = true;
+        continue;
+      }
+      if (m && c.up && now >= c.up.until) {
+        // Its stay is over and nobody felled it: it leaves, with its pack.
+        for (const o of [...this.mobs.mobs]) if (o === m || o.key.startsWith(`${m.key}~`)) this.mobs.banish(o);
+        this.wbUp.delete(b.id);
+        this.omen(b, 'gone', m.x, m.y);
+        this.wb.set(b.id, { next: nextRising(b, now, Math.random) }); this.dirty = true;
+        continue;
+      }
+      if (m) { c.up = { until: c.up?.until ?? now + b.stay * 3600000, x: Math.round(m.x), y: Math.round(m.y) }; continue; }
+      if (c.up && c.up.until > now) { this.raiseBoss(b, c.up.x, c.up.y, false); continue; }
+      if (c.up) { this.wb.set(b.id, { next: nextRising(b, c.up.until, Math.random) }); this.dirty = true; continue; }
+      if (now < c.next) continue;
+      const at = this.bossSpot(b);
+      if (!at) { this.wb.set(b.id, { next: now + 600000 }); continue; }
+      this.wb.set(b.id, { next: c.next, up: { until: now + b.stay * 3600000, x: at.x, y: at.y } });
+      this.raiseBoss(b, at.x, at.y, true);
+      this.dirty = true;
+    }
+  }
+  /** A world boss rises at (x, y): a named unique leader of its creature, its life and blows its own, its pack beside it. */
+  private raiseBoss(b: WorldBossDef, x: number, y: number, announce: boolean): Mob | null {
+    const base = MOBS[b.base];
+    if (!base) return null;
+    const def = { ...atZoneLevel(base, b.level), bound: { leash: 18 } };
+    const pack = this.mobs.spawnPack(WORLD_BOSS_KEY(b.id), def, x, y, makePack('unique', b.affixes, b.name, b.followers));
+    const m = pack[0];
+    if (!m) return null;
+    m.def = { ...m.def, hp: Math.round(m.def.hp * b.life), dmg: [Math.round(m.def.dmg[0] * b.blows), Math.round(m.def.dmg[1] * b.blows)] };
+    m.hp = m.def.hp;
+    this.wbUp.set(b.id, m);
+    if (announce) this.omen(b, 'rise', x, y);
+    return m;
+  }
+  private omen(b: WorldBossDef, at: WorldOmen['at'], x: number, y: number): void {
+    this.omens.push({ boss: b.id, name: b.name, area: this.area, at, level: b.level, x: Math.round(x), y: Math.round(y) });
+  }
+  /** The omens since the last call (the room tells the whole world). */
+  flushOmens(): WorldOmen[] { const o = this.omens; this.omens = []; return o; }
+  /** The world bosses up now (the specs, /health). */
+  bossesUp(): { id: string; hp: number; max: number; x: number; y: number }[] {
+    return [...this.wbUp].filter(([, m]) => this.mobs.mobs.includes(m)).map(([id, m]) => ({ id, hp: Math.round(m.hp), max: Math.round(m.def.hp), x: Math.round(m.x), y: Math.round(m.y) }));
+  }
+  /** The clocks (the specs). */
+  bossClock(id: string): WorldBossClock | null { return this.wb.get(id) ?? null; }
+  /**
+   * A random spot in one of the boss's regions: a block of the continent's map drawn in that region, then the nearest
+   * open tile to its middle that is wild (no town's safety) and clear of every way down (arriving is never an ambush).
+   */
+  private bossSpot(b: WorldBossDef): { x: number; y: number } | null {
+    const def = this.world.def, B = 8;
+    if (!this.wbSpots) {
+      this.wbSpots = [];
+      def.map.forEach((row, by) => { for (let bx = 0; bx < row.length; bx++) if (b.regions.includes(row[bx] as never)) this.wbSpots!.push({ c: (bx - def.ox) * B + B / 2, r: (by - def.oy) * B + B / 2 }); });
+    }
+    const spots = this.wbSpots.filter(p => b.regions.includes(this.world.regionAt(p.c, p.r)));
+    for (let tries = 0; tries < 12 && spots.length; tries++) {
+      const p = spots[Math.floor(Math.random() * spots.length)];
+      for (let rad = 0; rad <= 4; rad++) for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) {
+        const c = p.c + dc, r = p.r + dr;
+        if (!this.world.walkable(c, r) || this.world.safeAt(c, r)) continue;
+        if (def.places.some(pl => (pl.kind === 'cave' || pl.kind === 'crypt' || pl.kind === 'forge' || pl.kind === 'temple' || pl.kind === 'harbour') && Math.hypot(pl.c - c, pl.r - r) < 14)) continue;
+        return { x: c * TILE + TILE / 2, y: r * TILE + TILE };
+      }
+    }
+    return null;
+  }
+  /** The loot of a kill, rolled here: the creature's table, and a world boss's own on top (its rolls, its uniques). */
+  private rollLoot(kill: { creature: string; level: number; rank: string; killKey: string; mf?: number; named?: number }): LootDrop[] {
+    const rng = seededRandom(hashSeed(`${this.seed}|loot|${kill.killKey}`));
+    const ctx = { creature: kill.creature, level: kill.level, tier: 'normal' as const, magicFind: Math.max(0, kill.mf ?? 0), rank: kill.rank as MonsterRank, ...(kill.named ? { named: kill.named } : {}) };
+    const out = rollCreatureLoot(ctx, rng);
+    const b = worldBossOfKey(kill.killKey);
+    if (!b) return out;
+    for (let i = 0; i < b.loot.rolls; i++) out.push(...rollCreatureLoot({ ...ctx, rank: 'unique' }, rng));
+    if (rng() < b.loot.chance) {
+      const u = uniqueById(b.loot.uniques[Math.floor(rng() * b.loot.uniques.length)]);
+      if (u) out.push({ kind: 'item', definitionId: u.id, rarity: u.rarity, unique: true, name: u.name, level: kill.level });
+    }
+    return out;
   }
 
   /** The Seam Eater's glue (td-engine updateSeam, the room's copy): rises near a Keeper under the eclipse, leaves after it. */
@@ -192,7 +351,7 @@ export class RoomWorld implements CoopLink {
       this.seam = null;
     }
     if (this.seam && seamLeaves(phase)) { this.mobs.banish(this.seam); this.seam = null; }
-    if (this.seam || !this.keepers.size) return;
+    if (this.seam || !this.keepers.size || !this.surface) return;
     if (this.rift === undefined) {
       const at = riftPlace(this.world.def), t = at ? riftTile(this.world, at) : null;
       this.rift = t ? { x: t.c * TILE + TILE / 2, y: t.r * TILE + TILE } : null;
@@ -331,7 +490,8 @@ export class RoomWorld implements CoopLink {
     this.kills = [];
   }
   private layDrop(g: Drop, from: { nid: string; by: string[] } | null, now: number): void {
-    const id = `td:surface:w.${this.area}.${this.boot}.${(this.dropSeq++).toString(36)}`;
+    // `td:<level>:w.…`: a floor's own id where the surface says 'surface' (grave-goods reads the level from it).
+    const id = `td:${this.levelId}:w.${this.area}.${this.boot}.${(this.dropSeq++).toString(36)}`;
     const owners = from?.by.filter(Boolean) ?? [];
     const drop: GroundDrop = {
       id, x: Math.round(g.x), y: Math.round(g.y), ...(from ? { m: from.nid } : {}), coins: g.coins, ...(g.material ? { material: g.material } : {}), qty: g.qty,
@@ -407,6 +567,7 @@ export class RoomWorld implements CoopLink {
       ground: [...this.ground.values()].filter(g => g.until > now).map(g => ({ ...this.wire(g), until: g.until, freeAt: g.freeAt })),
       resting: this.mobs.restingList().map(([k, s]) => [k, Math.round(now + s * 1000)]),
       ...(this.seamSlainUntil > now ? { seamSlainUntil: this.seamSlainUntil } : {}),
+      ...(this.wb.size ? { wb: [...this.wb].map(([id, c]) => [id, { ...c, ...(c.up ? { up: { ...c.up } } : {}) }] as [string, WorldBossClock]) } : {}),
     };
   }
   /** Wake from a save: the ground as it lay (its clocks run on in real time), the fallen still resting their time. */
@@ -422,6 +583,13 @@ export class RoomWorld implements CoopLink {
     }
     for (const [key, until] of Array.isArray(s.resting) ? s.resting : []) if (typeof key === 'string' && until > now) this.mobs.rest(key, (until - now) / 1000);
     if (Number(s.seamSlainUntil) > now) this.seamSlainUntil = Number(s.seamSlainUntil);
+    // The world bosses' clocks, fast-forwarded by the time the room slept (a rising it slept through came and went).
+    for (const [id, c] of Array.isArray(s.wb) ? s.wb : []) {
+      const b = worldBossesIn(this.area).find(x => x.id === id);
+      if (!b || !c || !(Number(c.next) > 0 || c.up)) continue;
+      const clock: WorldBossClock = { next: Number(c.next) || now, ...(c.up && Number(c.up.until) > 0 ? { up: { until: Number(c.up.until), x: Number(c.up.x) || 0, y: Number(c.up.y) || 0 } } : {}) };
+      this.wb.set(id, this.seeded(() => fastForward(b, clock, now, Math.random)));
+    }
   }
 
   /** The test hook (the local e2e only, never on Cloud Run): lay a creature (calm: it stands still) where asked. */
@@ -435,7 +603,13 @@ export class RoomWorld implements CoopLink {
     });
   }
   /** The test hook: no wild spawns (the e2e compares only what it laid). */
-  fxQuiet(): void { this.spawnT = 1e9; this.mobs.mobs.length = 0; this.mobs.target = null; }
+  fxQuiet(): void { this.spawnT = 1e9; this.bossT = 1e9; this.mobs.mobs.length = 0; this.mobs.target = null; }
+  /** The test hook: this world boss's clock says now (it rises on the next check). */
+  fxBossNow(id: string): boolean {
+    if (!worldBossesIn(this.area).some(b => b.id === id)) return false;
+    this.wb.set(id, { next: this.now() }); this.bossT = 0;
+    return true;
+  }
   private mobDef(type: string) {
     // The bestiary's own creature (the Seam Eater is never laid by hand).
     return type === SEAM_ID ? null : (MOBS[type] ?? null);
@@ -443,3 +617,11 @@ export class RoomWorld implements CoopLink {
 }
 /** The world clock's next eclipse (the specs stand the room under one). */
 export { nextEclipse } from '../../shared/world-clock/world-clock.model';
+/**
+ * Protocol 9: every area the room runs for a client that says so — each continent's surface (CONTINENTS) and every
+ * hand-drawn floor (LEVELS: caves, dungeon floors, houses). A protocol 7/8 client keeps world-protocol's WORLD_AREAS.
+ */
+export const WORLD_AREAS_ALL: readonly string[] = [...Object.keys(CONTINENTS), ...Object.keys(LEVELS)];
+/** The bestiary and the unique table, as the room reads them (the node tests check against them). */
+export { MOBS } from '../td/td-mobs';
+export { uniqueById } from '../../shared/rpg/unique-items';

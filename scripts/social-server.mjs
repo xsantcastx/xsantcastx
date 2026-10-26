@@ -50,7 +50,14 @@ import { createWorldRooms, loadWorldSim } from './social-world.mjs';
 // LAID BY THE ROOM — on everyone's ground at once, escrowed (trade-core dropItem) behind it, picked up first-come
 // (`/ground/pick`, trade-core pickupItem); its claim budget comes from its SAVE (world/keeper-budget.ts); and a party
 // outlives a relog (offline members stay; `parties/{id}`). Older clients keep protocol 6/7's paths unchanged.
-export const PROTOCOL = 8;
+// Protocol 9 (2026-10-26, M3 of the room-run world; docs/design/online.md §4d "M3"): a client that says `protocol: 9`
+// is hosted by the room in EVERY area — each continent's surface and every hand-drawn floor (td-levels) — not only the
+// starting island. While anyone is in the world every area stays simulated (an empty one on a cheap dormant tick: its
+// fallen rest on, its ground crumbles, its world bosses keep their clocks); with nobody left the room writes each area
+// to `world-rooms/{area}` and sleeps, and wakes them all fast-forwarded. Respawns are per spawn (60–90 s ordinary,
+// elites longer, bosses about an hour), and world bosses rise on timers of hours with an omen (`world-omen`) to all.
+// A protocol 7/8 client keeps M1/M2's island only, until it refreshes.
+export const PROTOCOL = 9;
 export const FRIENDS_MAX = 200;
 export const BLOCKS_MAX = 100;
 /** How long a friend request stands (ms). */
@@ -727,7 +734,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   const coopAreasFor = s => {
     const p = s.coop && s.party ? parties.get(s.party) : null;
     const areas = p ? coopView(p) : {};
-    if (s.world) { for (const a of Object.keys(areas)) if (rooms.isWorldArea(a)) delete areas[a]; Object.assign(areas, rooms.viewFor(s)); }
+    if (s.world) { for (const a of Object.keys(areas)) if (rooms.isWorldArea(a, s)) delete areas[a]; Object.assign(areas, rooms.viewFor(s)); }
     return areas;
   };
   /** Tell one Keeper who hosts where, when that changed for it (or always, `force`: its stream reopened). */
@@ -1346,6 +1353,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         // Protocol 8: a client that says `protocol: 8` has its trades settled and its drops laid by the room, sees
         // offline party members, and names the character it plays (its save: the budget, the trades, the drops).
         session.p8 = Number.isInteger(data.protocol) && data.protocol >= 8;
+        // Protocol 9: the room hosts every area for it (social-world.mjs), and it hears the world bosses' omens.
+        session.p9 = Number.isInteger(data.protocol) && data.protocol >= 9;
         session.character = session.p8 && typeof data.character === 'string' && /^[a-z0-9]{2,16}$/.test(data.character) ? data.character : null;
         session.token = token;
         sessions.set(token, session);
@@ -1453,8 +1462,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   server.headersTimeout = 10000;
   const cleanup = setInterval(() => {
     for (const [token, session] of sessions) {
-      if (now() - session.lastSeen > idleMs) remove(token);
-      else if (session.stream) session.stream.write(': heartbeat\n\n');
+      // (fixes, carried here: a session with an open stream never idles out — a hidden tab keeps its place.)
+      if (!session.stream && now() - session.lastSeen > idleMs) remove(token);
+      else if (session.stream) { session.lastSeen = now(); session.stream.write(': heartbeat\n\n'); }
     }
     for (const [ip, limiter] of joinAttempts) if (now() - limiter.join?.start > 60000) joinAttempts.delete(ip);
     for (const [id, inv] of invites) if (inv.until <= now()) invites.delete(id);
