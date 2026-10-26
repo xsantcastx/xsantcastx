@@ -13,6 +13,7 @@ import { TranslationService } from '../../translation.service';
 import { SoundService } from './sound.service';
 import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, SOUND_CHANNELS, type ChatSetting, type HushSetting, type InviteSetting, type NightSetting, type PresenceSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
+import { ENV_DETAILS, envDetail, onEnvDetail, setEnvDetail, type EnvDetail } from '../../play/td/td-detail';
 
 @Component({
   selector: 'app-sound-sheet',
@@ -58,6 +59,16 @@ import { SOUND_I18N } from './sound.i18n';
           }
         </span>
         <small class="ss__hushline">{{ t('play.sound.night.' + s.night + '.line') }}</small>
+      </div>
+      <!-- Environment detail (play/td/td-detail.ts): this device's choice, not synced — the characters keep their look on both. -->
+      <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.detail')">
+        <span class="ss__name">{{ t('play.sound.detail') }}</span>
+        <span class="ss__seg">
+          @for (d of details; track d) {
+            <button type="button" role="radio" [attr.aria-checked]="detail === d" [class.on]="detail === d" [attr.data-detail-setting]="d" (click)="setDetail(d)">{{ t('play.sound.detail.' + d) }}</button>
+          }
+        </span>
+        <small class="ss__hushline">{{ t('play.sound.detail.' + detail + '.line') }}</small>
       </div>
       <!-- The Hearth chat: always connected, or ignored (no joining, no unread count). Saved with the rest. -->
       <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.chat')">
@@ -137,6 +148,8 @@ export class SoundSheetComponent implements OnDestroy {
   readonly hushes = HUSH_SETTINGS;
   readonly nights = NIGHT_SETTINGS;
   readonly chats = CHAT_SETTINGS;
+  readonly details = ENV_DETAILS;
+  detail: EnvDetail = envDetail();
   readonly presences = PRESENCE_SETTINGS;
   readonly inviteChoices = INVITE_SETTINGS;
   s: SoundSettings = this.sound.settings;
@@ -147,6 +160,8 @@ export class SoundSheetComponent implements OnDestroy {
   constructor() {
     this.i18n.register(SOUND_I18N);
     this.subs.add(this.sound.settings$.subscribe(s => { this.s = s; this.cdr.markForCheck(); }));
+    const off = onEnvDetail(d => { this.detail = d; this.cdr.markForCheck(); });
+    this.subs.add(() => off());
     this.subs.add(this.sound.status$.subscribe(st => { this.status = st; this.cdr.markForCheck(); }));
   }
 
@@ -168,6 +183,7 @@ export class SoundSheetComponent implements OnDestroy {
 
   setNight(n: NightSetting): void { this.sound.setNight(n); this.sound.sfx('tap'); }
 
+  setDetail(d: EnvDetail): void { setEnvDetail(d); this.detail = d; this.sound.sfx('tap'); }
   setChat(c: ChatSetting): void { this.sound.setChat(c); this.sound.sfx('tap'); }
 
   setPresence(p: PresenceSetting): void { this.sound.setPresence(p); this.sound.sfx('tap'); }
