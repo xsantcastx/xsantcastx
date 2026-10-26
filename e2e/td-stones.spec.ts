@@ -61,7 +61,11 @@ test('a Spellstone: inscribed in the Spellbook from a blank and Soul, cast from 
   await expect(page.locator('[data-soul]')).toHaveAttribute('data-soul-n', '35');
   const saved = await blob(page, 'godforge-spellstones');
   expect(saved.soul).toBe(35);
-  expect(Object.keys(saved.pouch)[0]).toMatch(/^hellfire-nova@\d+$/);
+  // The stone is a satchel item (the grid release, skill-book.md §4): its recipe and charges on the record.
+  expect(saved.pouch).toEqual({});
+  const stoneRec = async () => ((await blob(page, 'godforge-inventory'))?.records ?? [])
+    .find((r: { definitionId?: string }) => /^spellstone:hellfire-nova@\d+#\d+$/.test(r.definitionId ?? ''));
+  expect((await stoneRec())?.charges).toBe(4);
   await page.mouse.move(5, 5);
   await page.waitForTimeout(500);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/stones-craft.jpg', type: 'jpeg', quality: 86 });
@@ -81,7 +85,7 @@ test('a Spellstone: inscribed in the Spellbook from a blank and Soul, cast from 
   expect(Number(await page.locator('.vital--mana label b').first().innerText())).toBeGreaterThanOrEqual(mana);
   await page.waitForTimeout(150);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/stones-cast.jpg', type: 'jpeg', quality: 86 });
-  expect((await blob(page, 'godforge-spellstones')).pouch[Object.keys(saved.pouch)[0]]).toBe(3);
+  await expect.poll(async () => (await stoneRec())?.charges).toBe(3);
 });
 
 test('a cursed grave-good: its card shows the curse, and Sexton Aldous Wren lays it to rest for Gold', async ({ page }) => {

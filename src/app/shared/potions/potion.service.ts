@@ -32,12 +32,24 @@ export class PotionService {
   private sips = 0;
 
   private readonly qty = (id: string): number => this.inventory.stackOf(id);
+  /** What each key drinks when the player chose (a potion dragged onto the belt); a moment of play, not saved. */
+  private readonly pinned: Partial<Record<'health' | 'mana', string>> = {};
+  /** Put a potion on a belt key (null: back to the best held). */
+  pin(kind: 'health' | 'mana', id: string | null): void {
+    const p = id ? potionById(id) : null;
+    if (p && (p.kind === kind || p.kind === 'rejuv')) this.pinned[kind] = p.id; else delete this.pinned[kind];
+  }
+  private pick(kind: 'health' | 'mana'): PotionDef | null {
+    const id = this.pinned[kind];
+    const p = id ? potionById(id) : null;
+    return p && this.qty(p.id) > 0 ? p : bestPotion(kind, this.qty);
+  }
 
   /** The two belt slots: what Q and R would drink now, how many of it, and the cooldown left (0–1). */
   belt(now: number): BeltSlot[] {
     const left = potionCooldownLeft(this.lastAt, now) / POTION_COOLDOWN;
     return (['health', 'mana'] as const).map(kind => {
-      const potion = this.browser ? bestPotion(kind, this.qty) : null;
+      const potion = this.browser ? this.pick(kind) : null;
       return { kind, key: kind === 'health' ? 'Q' : 'R', potion, count: potion ? this.qty(potion.id) : 0, left };
     });
   }
@@ -45,7 +57,7 @@ export class PotionService {
   /** Drink the best potion of a kind. `now` in seconds. */
   drink(kind: 'health' | 'mana', now: number): { code: DrinkCode; potion: PotionDef | null } {
     if (!this.browser) return { code: 'ssr', potion: null };
-    const potion = bestPotion(kind, this.qty);
+    const potion = this.pick(kind);
     if (!potion) return { code: 'none', potion: null };
     if (potionCooldownLeft(this.lastAt, now) > 0) return { code: 'cooldown', potion };
     const res = this.inventory.consumeStacks(`potion:drink:${potion.id}:${Date.now().toString(36)}:${++this.sips}`, [{ id: potion.id, count: 1 }]);

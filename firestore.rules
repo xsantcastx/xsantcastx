@@ -108,7 +108,8 @@ service cloud.firestore {
                       || request.resource.data.xp >= resource.data.xp
                     )
                     && serverSeqHolds(docId)
-                    && inventoryFormatHolds(docId);
+                    && inventoryFormatHolds(docId)
+                    && inventoryGridHolds(docId);
     }
 
     // ── Trades and ground drops: the inventory guard ─────────────────────────
@@ -140,6 +141,18 @@ service cloud.firestore {
       return docId != 'inventory'
              || resource.data.get('v', {}).get('version', 2) != 3
              || request.resource.data.get('v', {}).get('version', 2) == 3;
+    }
+
+    // ── The grid: the inventory's places (docs/design/inventory-grid.md) ─────
+    // From the grid release a laid-out save carries `v.grid` (1), each record
+    // its `pos`, and a Spellstone its `charges`. A tab still on the build before
+    // it parses those away, so a write from it would strip every stone's
+    // charges: this refuses an inventory write without `grid` over a document
+    // that has one. The refused write stays queued and lands after a reload.
+    function inventoryGridHolds(docId) {
+      return docId != 'inventory'
+             || resource.data.get('v', {}).get('grid', 0) < 1
+             || request.resource.data.get('v', {}).get('grid', 0) >= 1;
     }
 
     // ── Cloud save: the Godforge ledger ───────────────────────────────────────
@@ -177,7 +190,7 @@ service cloud.firestore {
                       || !('xp' in request.resource.data)
                       || request.resource.data.xp >= resource.data.xp
                     )
-                    && (coll != 'progress' || (serverSeqHolds(docId) && inventoryFormatHolds(docId)));
+                    && (coll != 'progress' || (serverSeqHolds(docId) && inventoryFormatHolds(docId) && inventoryGridHolds(docId)));
     }
 
     // ── Cloud save: device coordination ──────────────────────────────────────

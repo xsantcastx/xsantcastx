@@ -372,6 +372,10 @@ export interface GameItem {
   curse?: GraveCurse;
   /** A whispering item (shared/grave-goods): whose voice, kills made with it worn, and whether the Archivist silenced it. */
   whisper?: GraveWhisper;
+  /** A Spellstone's charges left (shared/spellstones): one cast a charge; the stone is gone at 0. */
+  charges?: number;
+  /** Its place in the grid (inventory.model GridPos); carried so a record rebuilt from this item keeps its cell. */
+  gridPos?: import('./inventory.model').GridPos;
 }
 
 /** The saved shape of a curse (grave-goods.model.ts owns the ids and the rules). */

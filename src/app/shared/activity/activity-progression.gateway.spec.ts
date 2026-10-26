@@ -156,13 +156,14 @@ describe('ActivityProgressionGateway', () => {
     expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(EMBER_GUARANTEE_AT * MINING_XP_PER_ACTION);
   });
 
-  it('banks ore past a full satchel: it routes to the Vault instead of refusing', () => {
+  it('banks ore past a full satchel: it waits on the no-room strip, never the Vault', () => {
     fillSatchel(inventory);
     const result = gateway.resolveMine({ mutationId: 'full', now: 4_000, roll: 0.9 });
     expect(result.ok).toBe(true);
     expect(inventory.stackOf('cinder-ore')).toBe(1);
     expect(inventory.snapshot.stackPlace['cinder-ore']).toBeDefined();
-    expect(inventory.snapshot.stackPlace['cinder-ore']).not.toBe('satchel');
+    // The grid (docs/design/inventory-grid.md): no room keeps it on the satchel's no-room strip, never the Vault.
+    expect(inventory.snapshot.grid.bag.held.some(p => p.stackKey === 'cinder-ore')).toBeTrue();
     expect(storedOps(memory)).toBe(1);
   });
 
@@ -386,7 +387,8 @@ describe('ActivityProgressionGateway', () => {
       expect(result.ok).toBe(true);
       expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
       expect(inventory.snapshot.stackPlace[STARLIGHT_HERB_ID]).toBeDefined();
-      expect(inventory.snapshot.stackPlace[STARLIGHT_HERB_ID]).not.toBe('satchel');
+      // The grid (docs/design/inventory-grid.md): no room keeps it on the satchel's no-room strip, never the Vault.
+    expect(inventory.snapshot.grid.bag.held.some(p => p.stackKey === STARLIGHT_HERB_ID)).toBeTrue();
       expect(gateway.snapshot.operations.filter(op => op.disciplineId === 'foraging').length).toBe(1);
     });
 
@@ -591,7 +593,8 @@ describe('ActivityProgressionGateway', () => {
       expect(result.ok).toBe(true);
       expect(inventory.stackOf(CELESTIAL_ALLOY_ID)).toBe(1);
       expect(inventory.snapshot.stackPlace[CELESTIAL_ALLOY_ID]).toBeDefined();
-      expect(inventory.snapshot.stackPlace[CELESTIAL_ALLOY_ID]).not.toBe('satchel');
+      // The grid (docs/design/inventory-grid.md): no room keeps it on the satchel's no-room strip, never the Vault.
+    expect(inventory.snapshot.grid.bag.held.some(p => p.stackKey === CELESTIAL_ALLOY_ID)).toBeTrue();
       expect(gateway.snapshot.operations.filter(op => op.disciplineId === 'prospecting').length).toBe(1);
     });
 
@@ -685,7 +688,8 @@ describe('ActivityProgressionGateway.resolveWorldAction', () => {
     expect(r.ok).toBe(true);
     expect(inventory.stackOf(SUNBLOOM_ID)).toBe(1);
     expect(inventory.snapshot.stackPlace[SUNBLOOM_ID]).toBeDefined();
-    expect(inventory.snapshot.stackPlace[SUNBLOOM_ID]).not.toBe('satchel');
+    // The grid (docs/design/inventory-grid.md): no room keeps it on the satchel's no-room strip, never the Vault.
+    expect(inventory.snapshot.grid.bag.held.some(p => p.stackKey === SUNBLOOM_ID)).toBeTrue();
     expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(3);
   });
 

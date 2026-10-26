@@ -1,5 +1,5 @@
-<!-- The Vault: tabs → strip → list | detail → ONE button. Prices and the
-     routing explainer are behind Details (stations must be dummy-simple). -->
+<!-- The Vault: the stash grid beside the satchel grid. Drag between them (a phone: long-press, then tap the cell).
+     Prices for more room are behind Details (stations must be dummy-simple). -->
 <app-station-shell class="vs"
                    [title]="t('vault.title')"
                    [purpose]="t('vault.purpose')"
@@ -11,50 +11,46 @@
 
   <app-station-tabs stationTabs class="vs-tabs" [tabs]="tabs" [active]="view" (activeChange)="setView($event)" [label]="t('vault.tabs')" />
 
-  <app-skill-strip stationSkill [title]="strip.title" [level]="null" [progress]="strip.progress"
-                   [progressLabel]="strip.label" [hint]="strip.hint" />
-
-  <div stationHero class="vs-hero">
-    @if (locked) {
-      <p class="vs-locked">{{ lockedLine }}</p>
-    } @else {
-      <div class="vs-find">
-        <input type="search" class="vs-search" [value]="query" [attr.aria-label]="t('vault.search')"
-               [placeholder]="t('vault.search')" (input)="setQuery($any($event.target).value)">
-        <label class="vs-sort">
-          <span class="vs-sr">{{ t('vault.sort') }}</span>
-          <select [value]="sort" (change)="setSort($any($event.target).value)" [attr.aria-label]="t('vault.sort')">
-            @for (s of sorts; track s) { <option [value]="s" [selected]="s === sort">{{ t('vault.sort.' + s) }}</option> }
-          </select>
-        </label>
-      </div>
+  <div stationHero class="vs-hero" data-vault-stash>
+    <section class="vs-side" [attr.aria-label]="t('vault.strip.vault', { tab: tabName(view) })">
+      <h3 class="vs-h">{{ t('vault.strip.vault', { tab: tabName(view) }) }}</h3>
+      @if (view === 'overflow') {
+        <p class="vs-note">{{ t('vault.line.overflow') }}</p>
+        <div class="vs-overflow" data-vault-overflow>
+          @for (p of overflow; track p.key) {
+            <button type="button" class="vs-over" [attr.data-piece]="p.key" [attr.aria-label]="look(p).name"
+                    (pointerdown)="pressOverflow($event, p)" (pointerenter)="hoverPiece(p, $event)" (pointerleave)="unhover()">
+              @if (look(p).art) { <img [src]="look(p).art" alt="" draggable="false"> } @else { <em>{{ look(p).mark }}</em> }
+              @if (p.qty > 1) { <b>{{ p.qty }}</b> }
+            </button>
+          }
+        </div>
+      } @else if (locked) {
+        <p class="vs-locked">{{ t('vault.hint.locked') }}</p>
+        <button type="button" class="vs-chip" (click)="buy(view)">{{ t('vault.act.buyTab', { tab: tabName(view) }) }}</button>
+      } @else if (stash) {
+        <app-item-grid [container]="view" [view]="stash" [look]="look" [label]="tabName(view)" [accepts]="stashAccepts"
+                       (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)" (unhover)="unhover()" (moved)="moved($event)" />
+      }
+    </section>
+    <section class="vs-side" [attr.aria-label]="t('vault.strip.satchel')">
+      <h3 class="vs-h">{{ t('vault.strip.satchel') }}</h3>
+      @if (satchel) {
+        <app-item-grid container="b" [view]="satchel" [look]="look" [label]="t('vault.strip.satchel')"
+                       (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)" (unhover)="unhover()" (moved)="moved($event)" />
+      }
+    </section>
+    @if (card; as c) {
+      <p class="vs-card" role="status" data-vault-card [style.--rim]="c.look.tone"><b>{{ c.look.name }}</b>@if (c.piece.qty > 1) { <span> ×{{ c.piece.qty }}</span> }</p>
     }
-
-    <app-station-journal>
-      <app-journal-list journalList [rows]="rows" [selected]="selectedId" [label]="t('vault.list')"
-                        [empty]="locked ? '' : (query ? t('vault.noMatch', { q: query }) : t('vault.empty'))" (pick)="pick($event)" />
-
-      <div journalDetail class="vs-detail">
-        @if (selected; as row) {
-          <app-detail-head [art]="row.art" [name]="row.name" [rarity]="row.rarity" [line]="where" [count]="row.quantity" />
-        }
-        @if (primary; as p) {
-          <app-action-button [label]="p.label" [costs]="p.costs" chips="currency" [blocked]="p.blocked"
-                             [pending]="!hydrated && p.costs.length > 0" (act)="act()" (refused)="announce = $event" />
-        }
-      </div>
-    </app-station-journal>
+    @if (drag.held && drag.mode === 'hold') {
+      <p class="vs-hold" role="status">{{ t('vault.holding', { name: drag.held.name }) }} <button type="button" class="vs-chip" data-drag-cancel (click)="drag.cancel()">{{ t('vault.cancel') }}</button></p>
+    }
     @if (announce) { <p class="vs-announce" role="status">{{ announce }}</p> }
   </div>
 
   <div stationDetails class="vs-more">
-    @if (selected && selected.ids.length > 1 && !locked) {
-      <button type="button" class="vs-chip" (click)="moveOne()">{{ t('vault.act.moveOne') }}</button>
-    }
     <p>{{ t('vault.details.how') }}</p>
-    @if (view === 'satchel' && entries.length) {
-      <button type="button" class="vs-chip" (click)="sendAllGear()">{{ t('vault.act.sendAllGear') }}</button>
-    }
     <h3>{{ t('vault.details.prices') }}</h3>
     <ul class="vs-offers">
       @for (o of offers; track o.id) {

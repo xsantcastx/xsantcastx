@@ -11,6 +11,8 @@ export interface OfferItem {
   id: string; def: string; name: string; type: string; rarity: string;
   stats: Record<string, number>;
   roll?: Record<string, number>; ilvl?: number; up?: number; sockets?: (string | null)[]; reforged?: number;
+  /** A Spellstone's charges (trade-core OfferItem.ch). */
+  ch?: number;
 }
 export interface Offer { items: OfferItem[]; gold: number }
 export interface Terms { a: Offer; b: Offer }
@@ -30,6 +32,7 @@ export function offerItemOf(item: GameItem): OfferItem {
   if ((item.upgradeLevel ?? 0) > 0) out.up = item.upgradeLevel;
   if ((item.reforgeCount ?? 0) > 0) out.reforged = item.reforgeCount;
   if (item.sockets?.length) out.sockets = item.sockets.map(s => (s ? s : null));
+  if ((item.charges ?? 0) > 0) out.ch = item.charges;
   return out;
 }
 
@@ -39,6 +42,7 @@ export function itemFromOffer(o: OfferItem): GameItem {
     id: o.id, definitionId: o.def, name: o.name, type: o.type as ItemType, rarity: o.rarity as ItemRarity,
     stats: { ...o.stats }, ...(o.roll ? { rollQuality: { ...o.roll } } : {}), ...(o.ilvl ? { itemLevel: o.ilvl } : {}),
     ...(o.up ? { upgradeLevel: o.up } : {}), ...(o.reforged ? { reforgeCount: o.reforged } : {}), ...(o.sockets ? { sockets: [...o.sockets] } : {}),
+    ...(o.ch ? { charges: o.ch } : {}),
     sellValue: 0, equipped: false, foundAt: new Date(0).toISOString(), soulbound: false,
   } as GameItem;
 }

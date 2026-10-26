@@ -4,9 +4,13 @@
  * registered with LocalSaveRegistry, so a cloud merge lands in memory in the same tick. Nothing here touches localStorage.
  *
  *  - kill()      a kill's Soul (soulForKill), never past the level's cap
- *  - inscribe()  1 Basalt Blank from the satchel + the recipe's Soul → charges on the stone (skill@rank)
- *  - use()       one charge of the slotted stone, after the shared one-second cooldown; the play view hands the spell
- *                to the engine (castStone) and only then is the charge spent (a cast that cannot go off costs nothing)
+ *  - cut()       1 Basalt Blank from the satchel + the recipe's Soul → a Spellstone in the SATCHEL (skill-book.md §4):
+ *                a 1×1 item recording the spell, rank, marks and charges (inscribe() is cut() with no marks)
+ *  - use()       one charge of a satchel stone of the slotted recipe, after the shared one-second cooldown; the play
+ *                view hands the spell to the engine (castStone) and only then is the charge spent
+ *  - migration   a v1 save's hidden pouch becomes satchel stones on load, once (version 2), merge-safe: each stone's id
+ *                names its spell, rank and the save's `inscribed` count, so two devices migrating the same pouch mint
+ *                the same records (the merge keeps one) and a stone used up since stays used up (its tombstone wins)
  *  - buyBlanks() Edrin Kade's counter: blanks for Gold, priced on the hunt
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
@@ -16,12 +20,25 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { EconomyService } from '../economy/economy.service';
+import type { GameItem } from '../rpg/item.model';
 import {
-  BLANK_ID, SPELLSTONES_KEY, STONE_COOLDOWN, blankPrice, coerceSpellstones, emptySpellstones, gainSoul, inscribe, parseStoneKey,
-  soulCap, soulForKill, spendCharge, stoneRecipe, type SpellstoneSave,
+  BLANK_ID, SPELLSTONES_KEY, STONE_CHARGE_GOLD, STONE_COOLDOWN, STONE_MAX_CHARGES, blankPrice, coerceSpellstones, emptySpellstones,
+  gainSoul, parseRecipeKey, parseStoneKey, recipeKey, recipeOfDef, soulCap, soulForKill, stoneDefId, stoneRecipe, type SpellstoneSave,
 } from './spellstones.model';
 
-export type InscribeCode = 'ok' | 'rank' | 'blank' | 'soul' | 'failed' | 'ssr';
+export type InscribeCode = 'ok' | 'rank' | 'blank' | 'soul' | 'room' | 'failed' | 'ssr';
+
+/** A Spellstone as a satchel item (charges carried on the item). */
+export function mintStone(id: string, recipe: string, charges: number, foundAt: string, skillName?: string): GameItem {
+  const parsed = parseRecipeKey(recipe);
+  const name = `Spellstone: ${skillName ?? parsed?.skill ?? recipe}`;
+  const n = Math.max(1, Math.min(STONE_MAX_CHARGES, Math.floor(charges)));
+  return {
+    id, name, type: 'artifact', rarity: 'common', stats: {}, sellValue: STONE_CHARGE_GOLD * n, equipped: false,
+    foundAt, soulbound: false, definitionId: stoneDefId(recipe), charges: n,
+    lore: 'A spell held in stone keeps the hand that cut it. Lend it to a friend and it still speaks in your voice.',
+  };
+}
 export type BlankBuyCode = 'ok' | 'replayed' | 'funds' | 'failed' | 'unknown' | 'ssr';
 
 @Injectable({ providedIn: 'root' })
@@ -51,53 +68,80 @@ export class SpellstoneService {
     return next.soul - s.soul;
   }
 
-  /** Inscribe a Spellstone of `skill` at `rank` (the spell's mana sets the recipe). The blank first, then the stone. */
+  /** Inscribe a Spellstone of `skill` at `rank` with no marks (the pre-book path): `cut` with marks 0. */
   inscribe(skill: string, rank: number, mana: number, at = Date.now()): InscribeCode {
+    return this.cut(skill, rank, 0, mana, at);
+  }
+
+  /**
+   * Cut a Spellstone (the Skill Book's "create Spellstone", skill-book.md §4.2): 1 Basalt Blank + the recipe's Soul →
+   * a stone in the satchel recording the spell, its rank and the marks taken (`marks`, the row's 6-bit node mask).
+   * Refused with 'room' when the satchel has no cell for it (nothing is spent). The first stone ever cut goes on the belt.
+   */
+  cut(skill: string, rank: number, marks: number, mana: number, at = Date.now()): InscribeCode {
     if (!this.isBrowser) return 'ssr';
     const s = this.state, recipe = stoneRecipe(mana);
     if (!(rank >= 1)) return 'rank';
     if (this.blanks < recipe.blanks) return 'blank';
     if (s.soul < recipe.soul) return 'soul';
-    const next = inscribe(s, skill, rank, recipe);
-    if (!next) return 'soul';
-    const res = this.inventory.consumeStacks(`spellstone:inscribe:${skill}:${at.toString(36)}:${++this.seq}`, [{ id: BLANK_ID, count: recipe.blanks }]);
+    const key = recipeKey(skill, rank, marks);
+    const stone = mintStone(`stone-${key.replace(/[@#]/g, '-')}-${at.toString(36)}-${++this.seq}`, key, recipe.charges, new Date(at).toISOString());
+    if (!this.inventory.canPickUp(stone)) return 'room';
+    const res = this.inventory.consumeStacks(`spellstone:inscribe:${skill}:${at.toString(36)}:${this.seq}`, [{ id: BLANK_ID, count: recipe.blanks }]);
     if (!res.ok) return 'failed';
-    this.write({ ...next, at: Math.max(at, s.at + 1) });
+    if (!this.inventory.add(stone)) return 'failed';
+    // The first stone cut goes on the belt by itself (and an empty slot takes the newest).
+    const slot = s.slot && this.chargesOf(s.slot) > 0 ? s.slot : key;
+    this.write({ ...s, soul: s.soul - recipe.soul, inscribed: s.inscribed + 1, slot, at: Math.max(at, s.at + 1) });
     return 'ok';
   }
 
-  /** Put a stone on the belt's Spellstone slot (null: take it off). */
+  /** The satchel's stones (loose in the satchel, not the Vault), newest first. */
+  stones(): GameItem[] {
+    return this.inventory.snapshot.bag.filter(i => recipeOfDef(i.definitionId) !== null);
+  }
+  /** Charges held in the satchel for a recipe. */
+  chargesOf(recipe: string): number {
+    return this.stones().filter(i => recipeOfDef(i.definitionId) === recipe).reduce((n, i) => n + (i.charges ?? 0), 0);
+  }
+
+  /** Put a stone's recipe on the belt's Spellstone slot (null: take it off). It must be in the satchel. */
   slot(key: string | null, at = Date.now()): void {
     if (!this.isBrowser) return;
     const s = this.state;
-    if (key !== null && !((s.pouch[key] ?? 0) > 0)) return;
-    if (s.slot === key) return;
-    this.write({ ...s, slot: key, at: Math.max(at, s.at + 1) });
+    const recipe = key === null ? null : (parseRecipeKey(key) ? recipeKey(parseRecipeKey(key)!.skill, parseRecipeKey(key)!.rank, parseRecipeKey(key)!.marks) : null);
+    if (key !== null && (!recipe || this.chargesOf(recipe) <= 0)) return;
+    if (s.slot === recipe) return;
+    this.write({ ...s, slot: recipe, at: Math.max(at, s.at + 1) });
   }
 
-  /** The slotted stone, ready or not: its spell, rank, charges and the cooldown left (0–1). `now` in seconds. */
-  slotted(now: number): { key: string; skill: string; rank: number; charges: number; left: number } | null {
-    const s = this.state, key = s.slot, parsed = key ? parseStoneKey(key) : null;
-    if (!key || !parsed || !((s.pouch[key] ?? 0) > 0)) return null;
-    return { key, ...parsed, charges: s.pouch[key], left: this.cooldownLeft(now) / STONE_COOLDOWN };
+  /** The slotted recipe, ready or not: its spell, rank, marks, the satchel's charges and the cooldown left (0–1). */
+  slotted(now: number): { key: string; skill: string; rank: number; marks: number; charges: number; left: number } | null {
+    const key = this.state.slot, parsed = key ? parseRecipeKey(key) : null;
+    if (!key || !parsed) return null;
+    const charges = this.chargesOf(key);
+    if (charges <= 0) return null;
+    return { key, ...parsed, charges, left: this.cooldownLeft(now) / STONE_COOLDOWN };
   }
   cooldownLeft(now: number): number { return this.lastCast === null ? 0 : Math.max(0, STONE_COOLDOWN - (now - this.lastCast)); }
 
   /**
-   * Use the stone at `key`: `cast` is the engine's (it returns why not, or null when the spell went off). A charge is
-   * spent only when it went off. `now` in seconds (the cooldown), `at` in ms (the save).
+   * Use a stone of the recipe `key` from the satchel: `cast` is the engine's (it returns why not, or null when the
+   * spell went off). One charge is spent (from the emptiest stone of the pile) only when it went off. `now` in seconds.
    */
-  use(key: string, now: number, cast: (skill: string, rank: number) => string | null, at = Date.now()): 'ok' | 'none' | 'cooldown' | string {
+  use(key: string, now: number, cast: (skill: string, rank: number, marks: number) => string | null, _at = Date.now()): 'ok' | 'none' | 'cooldown' | string {
     if (!this.isBrowser) return 'none';
-    const s = this.state, parsed = parseStoneKey(key);
-    if (!parsed || !((s.pouch[key] ?? 0) > 0)) return 'none';
+    const parsed = parseRecipeKey(key);
+    if (!parsed) return 'none';
+    const recipe = recipeKey(parsed.skill, parsed.rank, parsed.marks);
+    const pile = this.stones().filter(i => recipeOfDef(i.definitionId) === recipe && (i.charges ?? 0) > 0)
+      .sort((a, b) => (a.charges ?? 0) - (b.charges ?? 0) || a.id.localeCompare(b.id));
+    if (!pile.length) return 'none';
     if (this.cooldownLeft(now) > 0) return 'cooldown';
-    const why = cast(parsed.skill, parsed.rank);
+    const why = cast(parsed.skill, parsed.rank, parsed.marks);
     if (why) return why;
-    const next = spendCharge(s, key);
-    if (!next) return 'none';
+    if (!this.inventory.spendCharge(pile[0].id)) return 'none';
     this.lastCast = now;
-    this.write({ ...next, at: Math.max(at, s.at + 1) });
     return 'ok';
   }
 
@@ -132,7 +176,29 @@ export class SpellstoneService {
   private hydrate(): void {
     if (this.hydrated || !this.isBrowser) return;
     this.hydrated = true;
-    this.subject.next(coerceSpellstones(this.store.read(SPELLSTONES_KEY)));
-    this.saves.register(SPELLSTONES_KEY, { rehydrate: () => this.subject.next(coerceSpellstones(this.store.read(SPELLSTONES_KEY))) });
+    this.inventory.init();
+    this.adopt(coerceSpellstones(this.store.read(SPELLSTONES_KEY)));
+    this.saves.register(SPELLSTONES_KEY, { rehydrate: () => this.adopt(coerceSpellstones(this.store.read(SPELLSTONES_KEY))) });
+  }
+
+  /**
+   * Take a save in; a v1 save's pouch moves into the satchel first (skill-book.md §6.3), in the same tick, and the save
+   * is written back as v2 with an empty pouch only after the satchel write landed.
+   */
+  private adopt(save: SpellstoneSave): void {
+    if (save.version === 2) { this.subject.next(save); return; }
+    const entries = Object.entries(save.pouch).filter(([k, n]) => parseStoneKey(k) && n > 0).sort(([a], [b]) => a.localeCompare(b));
+    const stones: GameItem[] = [];
+    for (const [k, n] of entries) {
+      const { skill, rank } = parseStoneKey(k)!;
+      const recipe = recipeKey(skill, rank, 0);
+      for (let i = 0, left = n; left > 0; i++, left -= STONE_MAX_CHARGES) {
+        stones.push(mintStone(`stone-mig-${skill}-${rank}-i${save.inscribed}-${i}`, recipe, Math.min(STONE_MAX_CHARGES, left), new Date(save.at || 0).toISOString()));
+      }
+    }
+    if (stones.length && !this.inventory.addMigrated(stones, save.at)) { this.subject.next(save); return; }
+    const next: SpellstoneSave = { ...save, version: 2, pouch: {}, at: Math.max(save.at, 1) };
+    this.subject.next(next);
+    this.store.write(SPELLSTONES_KEY, next);
   }
 }

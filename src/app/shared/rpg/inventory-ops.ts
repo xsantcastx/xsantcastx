@@ -33,6 +33,7 @@ import {
   INVENTORY_TOMBSTONE_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
   type EconomyProjectionInput,
+  type GridPos,
   type InventoryBlobV1,
   type InventoryLedger,
   type InventoryRecordSource,
@@ -146,6 +147,8 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     lastReforgeLock: item.lastReforgeLock,
     sockets: item.sockets ? [...item.sockets] : undefined,
     ...graveFields(item),
+    ...(item.charges !== undefined ? { charges: item.charges } : {}),
+    ...(item.gridPos ? { pos: clonePos(item.gridPos) } : {}),
   };
 }
 
@@ -177,7 +180,40 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     lastReforgeLock: record.lastReforgeLock,
     sockets: record.sockets ? [...record.sockets] : undefined,
     ...graveFields(record),
+    ...(record.charges !== undefined ? { charges: record.charges } : {}),
+    ...(record.pos ? { gridPos: clonePos(record.pos) } : {}),
   };
+}
+
+function clonePos(pos: GridPos): GridPos {
+  return { k: pos.k, c: [...pos.c], r: { ...pos.r } };
+}
+
+/** The cells a grid position may name: a 10-wide grid at most 64 rows deep (inventory-grid.ts). */
+const POS_CELL_MAX = 640;
+/** A stored grid position, read strictly; junk reads as absent (the thing is placed by the rule instead). */
+export function parsePos(raw: unknown): GridPos | undefined {
+  if (!isPlainObject(raw) || typeof raw['k'] !== 'string' || !/^[a-z0-9-]{1,24}$/.test(raw['k'])) return undefined;
+  if (!Array.isArray(raw['c']) || raw['c'].length < 1 || raw['c'].length > 64) return undefined;
+  const c = raw['c'].filter((n): n is number => Number.isInteger(n) && n >= 0 && n < POS_CELL_MAX);
+  if (c.length !== raw['c'].length) return undefined;
+  const r = parseRevision(raw['r']);
+  return r ? { k: raw['k'], c, r } : undefined;
+}
+
+/** The newer of two grid positions (a total order: revision, then the cells), or whichever exists. */
+export function newerPos(a: GridPos | undefined, b: GridPos | undefined): GridPos | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  const rev = compareRevision(a.r, b.r);
+  if (rev !== 0) return rev > 0 ? a : b;
+  const ka = `${a.k}:${a.c.join(',')}`, kb = `${b.k}:${b.c.join(',')}`;
+  return ka >= kb ? a : b;
+}
+
+/** A Spellstone's stored charges, read strictly (1..100). */
+function parseCharges(raw: unknown): { charges?: number } {
+  return Number.isInteger(raw) && (raw as number) >= 1 && (raw as number) <= 100 ? { charges: raw as number } : {};
 }
 
 /** A grave-good's curse and whisper, copied (shared/grave-goods); nothing at all for an ordinary item. */
@@ -323,6 +359,7 @@ export function parseGameItem(raw: unknown): GameItem | null {
     sockets: parseSockets(raw['sockets']),
     ...parseGrave(raw),
     ...parseUpgradeFields(raw),
+    ...parseCharges(raw['charges']),
   };
 }
 
@@ -379,7 +416,13 @@ export function parseInventoryLedger(input: unknown): InventoryLedger | null {
     era: typeof raw['era'] === 'number' && Number.isFinite(raw['era']) ? raw['era'] : 0,
     ...serverSeqOf(raw['serverSeq']),
     ...floorOf(raw['tombFloor']),
+    ...gridOf(raw['grid']),
   };
+}
+
+/** The grid version (InventoryLedger.grid), kept only when it is a real positive whole number. */
+function gridOf(raw: unknown): { grid?: number } {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw > 0 ? { grid: raw } : {};
 }
 
 /** The tombstone watermark (InventoryLedger.tombFloor), kept only when it is a real positive number. */
@@ -585,6 +628,18 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     }
   }
 
+  // A grid position is its own register (inventory.model GridPos): the newer one wins, whichever copy of the record did.
+  const posById = new Map<string, GridPos>();
+  for (const record of [...a.records, ...b.records]) {
+    if (!record.pos) continue;
+    const best = newerPos(posById.get(record.id), record.pos);
+    if (best) posById.set(record.id, best);
+  }
+  for (const [id, record] of byId) {
+    const pos = posById.get(id);
+    if (pos && pos !== record.pos) byId.set(id, { ...record, pos });
+  }
+
   const stacks = mergeStackHistory(a.stackOps, b.stackOps, a.stackFolds ?? [], b.stackFolds ?? []);
   // A pure union: a merge never tombstones a live record. The satchel's limit
   // is held by `settle` (inventory-layout.ts), which only moves things.
@@ -600,11 +655,12 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     ...(stacks.folds.length ? { stackFolds: stacks.folds } : {}),
     goldFromSales: Math.max(a.goldFromSales, b.goldFromSales),
     sold: Math.max(a.sold, b.sold),
-    hlc: Math.max(a.hlc, b.hlc, floor, ...records.map(row => row.revision.hlc), ...stacks.folds.map(fold => fold.upToHlc)),
+    hlc: Math.max(a.hlc, b.hlc, floor, ...records.map(row => Math.max(row.revision.hlc, row.pos?.r.hlc ?? 0)), ...stacks.folds.map(fold => fold.upToHlc)),
     legacyBackup: a.legacyBackup ?? b.legacyBackup,
     era: Math.max(aEra, bEra),
     ...seq,
     ...floorOf(floor),
+    ...gridOf(Math.max(a.grid ?? 0, b.grid ?? 0)),
   };
 }
 
@@ -899,6 +955,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     acquiredAt: typeof raw['acquiredAt'] === 'string' ? raw['acquiredAt'] : new Date(0).toISOString(),
     revision,
     source: recordSource,
+    ...((pos => (pos ? { pos } : {}))(parsePos(raw['pos']))),
   };
   if (raw['kind'] === 'stack') {
     if (typeof raw['stackKey'] !== 'string' || !raw['stackKey']) return null;
@@ -932,6 +989,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     sockets: parseSockets(raw['sockets']),
     ...parseGrave(raw),
     ...parseUpgradeFields(raw),
+    ...parseCharges(raw['charges']),
   };
 }
 

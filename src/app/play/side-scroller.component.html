@@ -9,7 +9,7 @@
 </noscript>
 <section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" (dragover)="overWorld($event)" (drop)="dropOnWorld($event)" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [appDropTarget]="worldTarget" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -1102,13 +1102,13 @@
               <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
               <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
               @for (well of wells; track well.id) {
-                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.blocked]="!!well.blocked" [attr.data-blocked]="well.blocked ? '1' : null" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.blocked ? well.label : well.name">
+                <button type="button" class="well" [appDropTarget]="wellTarget(well.id)" (pointerdown)="pressWell($event, well)" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.blocked]="!!well.blocked" [attr.data-blocked]="well.blocked ? '1' : null" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.blocked ? well.label : well.name">
                   @if (well.filled && well.art) {
-                    <img [src]="well.art" alt="">
+                    <img [src]="well.art" alt="" draggable="false">
                   } @else if (well.filled) {
                     <em>{{ well.mark }}</em>
                   } @else {
-                    <img class="well-ghost" [src]="well.ghost" alt="">
+                    <img class="well-ghost" [src]="well.ghost" alt="" draggable="false">
                   }
                 </button>
               }
@@ -1118,44 +1118,43 @@
                 @if (petWellArt) { <img [src]="petWellArt" alt=""> } @else { <img class="well-ghost" [src]="petGhost" alt=""> }
               </button>
             </div>
+            <!-- The belt, in the book: drag a potion onto Q or R (that key drinks it), a Spellstone onto F. -->
+            <div class="book-belt" role="group" [attr.aria-label]="t('play.potion.belt')">
+              @for (b of bookBelt; track b.kind) {
+                <span class="book-belt__slot" [attr.data-belt]="b.kind" [appDropTarget]="beltTarget(b.kind)" [attr.aria-label]="b.label" [title]="b.label" role="img">
+                  @if (b.art) { <img [src]="b.art" alt="" draggable="false"> }
+                  <b>{{ b.n }}</b><kbd>{{ b.key }}</kbd>
+                </span>
+              }
+            </div>
           </div>
           }
         </div>
         <div class="book-bag">
-          @if (bagTabs.length > 2) {
-            <!-- The bag's tabs (MapleStory's inventory): only the ones with something in them. -->
-            <div class="bag-tabs" role="group" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
-              @for (tab of bagTabs; track tab.id) {
-                <button type="button" class="bag-tab" [class.is-on]="tab.id === shownTab" [attr.aria-pressed]="tab.id === shownTab" [attr.data-bag-tab]="tab.id" (click)="bagTab = tab.id; bagPage = 0">{{ t(tab.key) }} <b>{{ tab.n }}</b></button>
+          @if (gridNote; as gn) {
+            <!-- The one-time list → grid layout moved things to the Vault (docs/design/inventory-grid.md §4): said once. -->
+            <p class="grid-note" role="status" data-grid-note>{{ t('play.grid.migrated', { n: gn.items + gn.stacks }) }} <button type="button" class="grid-note__ok" (click)="dismissGridNote()">{{ t('play.grid.ok') }}</button></p>
+          }
+          <!-- The satchel: one D2 grid. Drag a thing to move it, onto the doll to wear it, onto the world to drop it;
+               a phone long-presses to pick up and taps where it goes. -->
+          <app-item-grid class="satchel-grid" container="b" [view]="inventory.snapshot.grid.bag" [look]="pieceLook" [label]="t('play.hud.book.pocketsLabel')"
+                         [newKeys]="newPieces" [pickedKey]="pickedPieceKey" (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)"
+                         (hoverMove)="moveTip($event)" (unhover)="hoverTip = null" (moved)="gridMoved($event)" />
+          @if (inventory.snapshot.grid.bag.held.length) {
+            <!-- No room: things that arrived to a full satchel wait here (never sent anywhere by themselves). -->
+            <div class="no-room" data-no-room role="group" [attr.aria-label]="t('play.grid.noRoom')">
+              <span>{{ t('play.grid.noRoom') }}</span>
+              @for (p of inventory.snapshot.grid.bag.held; track p.key) {
+                <button type="button" class="no-room__piece pocket" [attr.data-piece]="p.key" [attr.data-ids]="p.ids.join(',') || null" [attr.data-stack]="p.stackKey ?? null" [attr.aria-label]="pieceLook(p).name"
+                        (pointerdown)="pressHeld($event, p)" (click)="pickPiece({ piece: p, el: $any($event.currentTarget), ev: $event })">
+                  @if (pieceLook(p).art) { <img [src]="pieceLook(p).art" alt="" draggable="false"> } @else { <em>{{ pieceLook(p).mark }}</em> }
+                </button>
               }
             </div>
           }
-      <div class="lining" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
-        @if (!pockets.length) {
-          <p class="bare">{{ t('play.hud.book.empty') }}</p>
-        } @else {
-          <div class="pockets">
-            @for (pocket of shownPockets; track pocket.key) {
-              <button type="button" class="pocket" [attr.draggable]="pocket.kind === 'item' && topDown ? 'true' : null" (dragstart)="dragPocket($event, pocket)" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket, $event)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
-                @if (pocket.art) {
-                  <img [src]="pocket.art" alt="">
-                } @else {
-                  <em>{{ pocket.mark }}</em>
-                }
-                @if (pocket.qty > 1) { <b>{{ pocket.qty }}</b> }
-              </button>
-            }
-            @for (cell of emptyCells; track cell) { <span class="cell-empty" aria-hidden="true"></span> }
-          </div>
-          @if (bagPages > 1) {
-            <div class="bag-pager" role="group" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
-              <button type="button" class="px-arrow px-arrow--prev" [disabled]="page() === 0" (click)="turnBag(-1)" [attr.aria-label]="t('play.hud.book.prevPage')"></button>
-              <span class="bag-pager__n" aria-live="polite">{{ page() + 1 }} / {{ bagPages }}</span>
-              <button type="button" class="px-arrow px-arrow--next" [disabled]="page() >= bagPages - 1" (click)="turnBag(1)" [attr.aria-label]="t('play.hud.book.nextPage')"></button>
-            </div>
+          @if (drag.held && drag.mode === 'hold') {
+            <p class="drag-bar" role="status" data-drag-bar>{{ t('play.grid.holding', { name: drag.held.name }) }} <button type="button" class="drag-bar__x" data-drag-cancel (click)="drag.cancel()">{{ t('play.grid.cancel') }}</button></p>
           }
-        }
-      </div>
           <!-- The purse and how full the satchel is: the bag's bottom row. -->
           <footer class="book-purse">
             <span class="purse-gold" [attr.aria-label]="t('play.hud.book.gold', { n: purseGold })"><i class="purse-coin" aria-hidden="true"></i>{{ purseGold }}</span>
@@ -1279,7 +1278,6 @@
               @if (row.canRead) { <button type="button" class="wear" data-read-scroll (click)="readScroll()">{{ t('play.waygate.read') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
-              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
               @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }
@@ -1316,7 +1314,6 @@
               @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
-              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
               @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }

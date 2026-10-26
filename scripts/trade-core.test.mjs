@@ -434,3 +434,28 @@ test('packed inventory: the server reads it and writes it back packed; a v2 save
   assert.ok(live(after).includes(p.item));
   assert.deepEqual(after.records.find(r => r.id === p.item).rollQuality, a.records.find(r => r.id === 's2').rollQuality);
 });
+
+test('the grid (inventory-grid.md): a place and a Spellstone\'s charges pack small and round-trip; a given item loses its old cell', () => {
+  const pos = { k: 'b', c: [23], r: { hlc: T0 + 9, deviceId: 'dev-a', sequence: 4 } };
+  const stackPos = { k: 'general-1', c: [0, 1, 37], r: { hlc: T0 + 2, deviceId: 'dev-b', sequence: 1 } };
+  const v = { ...fullLedger(), grid: 1 };
+  v.records = [...v.records, record('stone1', { charges: 7, pos, definitionId: 'spellstone:hellfire-nova@7#5' }),
+    { ...v.records[0], id: 'stack:ore', kind: 'stack', stackKey: 'ore', pos: stackPos },
+    record('oddpos', { pos: { k: 'b', c: [-1], r: pos.r } })];
+  const packed = core.packInventory(v);
+  assert.equal(canon(core.unpackInventory(JSON.parse(JSON.stringify(packed)))), canon(v));
+  const stone = packed.R.find(r => r.ch === 7);
+  assert.match(stone.g, /^b:n:/);
+  assert.ok(JSON.stringify(stone.g).length < 24);
+  assert.ok(packed.R.find(r => r.$pos)); // an odd place is kept verbatim, never dropped
+  // giveItem: the receiver's satchel places it itself.
+  const inv = { records: [], hlc: T0 };
+  core.giveItem(inv, record('given', { pos }), 'p-new', T0 + 50);
+  assert.equal(inv.records[0].pos, undefined);
+  assert.equal(inv.records[0].id, 'p-new');
+  // A stone offered with its charges is the same item; one used since is not.
+  const rec = record('stone2', { charges: 4 });
+  assert.ok(core.sameItem(rec, core.offerOf(rec)));
+  assert.ok(!core.sameItem({ ...rec, charges: 3 }, core.offerOf(rec)));
+  assert.equal(core.parseOfferItem(core.offerOf(rec)).ch, 4);
+});

@@ -57,17 +57,18 @@ test('a loot pile reads as a loot game: every base its own picture, dressed by i
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, PILE, {});
   await page.keyboard.press('i');
-  const pockets = page.locator('button.pocket');
+  // The pile, in the grid or on its no-room strip (15 big pieces and the starter tools overfill a 10×6 satchel).
+  const pockets = page.locator('#satchel-book button.pocket[data-ids^="p-"]');
   await expect(pockets).toHaveCount(15, { timeout: 10000 });
   // Every cell shows a 32-px painted icon, and no two cells share one.
-  const srcs = await page.locator('button.pocket img').evaluateAll(imgs => imgs.map(i => (i as HTMLImageElement).src));
+  const srcs = await page.locator('#satchel-book button.pocket[data-ids^="p-"] img').evaluateAll(imgs => imgs.map(i => (i as HTMLImageElement).src));
   expect(srcs.length).toBe(15);
   expect(new Set(srcs).size).toBe(15);
   for (const src of srcs) expect(decodeURIComponent(src)).toContain('viewBox="0 0 32 32"');
   // Let the window finish opening (it fades in over the world) before the picture.
   await page.mouse.move(5, 5);
   await page.waitForTimeout(900);
-  const grid = (await page.locator('.pockets').first().boundingBox())!;
+  const grid = (await page.locator('.satchel-grid').first().boundingBox())!;
   await page.screenshot({ path: 'docs/handoff/cozy-ui/item-icons-grid.jpg', type: 'jpeg', quality: 85,
     clip: { x: grid.x - 6, y: grid.y - 6, width: grid.width + 12, height: grid.height + 12 } });
 });

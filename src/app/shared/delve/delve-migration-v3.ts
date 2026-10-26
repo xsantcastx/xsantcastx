@@ -50,7 +50,8 @@ export class WorldMigrationService {
     for (const chest of plan.chests) {
       for (const s of chest.stacks) if (this.inventory.grantStack(s.opId, s.stackKey, s.qty)) stacks += s.qty;
       for (const item of this.inventory.itemsOnExplorer(chest.holder)) {
-        if (this.inventory.unequip(item.id) && this.inventory.stow(item.id)) gear++;
+        // Into the satchel (the grid: nothing goes to the Vault by itself); no room keeps it on the "no room" strip.
+        if (this.inventory.unequip(item.id)) gear++;
       }
     }
     this.delve.markMigrated();

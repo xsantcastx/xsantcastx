@@ -125,6 +125,8 @@ export interface OfferItem {
   id: string; def: string; name: string; type: string; rarity: string;
   stats: Record<string, number>;
   roll?: Record<string, number>; ilvl?: number; up?: number; sockets?: (string | null)[]; reforged?: number;
+  /** A Spellstone's charges (the grid release): re-checked like the roll, so a stone used since it was offered is refused. */
+  ch?: number;
 }
 export interface Offer { items: OfferItem[]; gold: number }
 export interface Terms { a: Offer; b: Offer }
@@ -153,7 +155,7 @@ const text = (v: unknown, max: number): string => {
 export function parseOfferItem(raw: unknown): OfferItem {
   if (!isObj(raw)) refuse(400, 'bad-terms', 'Invalid item.');
   const r = raw as Doc;
-  for (const k of Object.keys(r)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged'].includes(k)) refuse(400, 'bad-terms', 'Invalid item.');
+  for (const k of Object.keys(r)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged', 'ch'].includes(k)) refuse(400, 'bad-terms', 'Invalid item.');
   if (typeof r['id'] !== 'string' || !ID.test(r['id'])) refuse(400, 'bad-terms', 'Invalid item.');
   const out: OfferItem = {
     id: r['id'] as string, def: text(r['def'], 96), name: text(r['name'], 80), type: text(r['type'], 16), rarity: text(r['rarity'], 24),
@@ -163,6 +165,7 @@ export function parseOfferItem(raw: unknown): OfferItem {
   const ilvl = optInt(r['ilvl'], 1, 99); if (ilvl !== undefined) out.ilvl = ilvl;
   const up = optInt(r['up'], 0, 100); if (up !== undefined) out.up = up;
   const reforged = optInt(r['reforged'], 0, 10000); if (reforged !== undefined) out.reforged = reforged;
+  const ch = optInt(r['ch'], 1, 100); if (ch !== undefined) out.ch = ch;
   if (r['sockets'] !== undefined && r['sockets'] !== null) {
     const s = r['sockets'];
     if (!Array.isArray(s) || s.length > 8 || s.some(x => x !== null && (typeof x !== 'string' || !ID.test(x)))) refuse(400, 'bad-terms', 'Invalid item.');
@@ -200,6 +203,7 @@ export function offerOf(record: Doc): OfferItem {
   if (num(record['upgradeLevel']) > 0) out.up = num(record['upgradeLevel']);
   if (num(record['reforgeCount']) > 0) out.reforged = num(record['reforgeCount']);
   if (Array.isArray(record['sockets']) && (record['sockets'] as unknown[]).length) out.sockets = (record['sockets'] as unknown[]).map(x => (typeof x === 'string' && x ? x : null));
+  if (num(record['charges']) > 0) out.ch = num(record['charges']);
   return out;
 }
 /** The record still is the item that was offered: same id, same definition, same roll, same improvements. */
@@ -237,6 +241,8 @@ const REC_KEYS: Record<string, string> = {
   itemLevel: 'il', sellValue: 'sv', econ: 'e', upgradeLevel: 'ul', lastUpgradeAt: 'lua', lastUpgradeMutationId: 'lum',
   lastUpgradeOk: 'luo', reforgeCount: 'rc', lastReforgeAt: 'lra', lastReforgeMutationId: 'lrm', lastReforgeLock: 'lrl',
   sockets: 'so', curse: 'cu', whisper: 'wh',
+  // The grid (docs/design/inventory-grid.md): a place and a Spellstone's charges.
+  pos: 'g', charges: 'ch',
 };
 const REC_LONG: Record<string, string> = Object.fromEntries(Object.entries(REC_KEYS).map(([k, v]) => [v, k]));
 /** Record keys whose string value goes through the shared string table when it repeats. */
@@ -340,6 +346,14 @@ export function packInventory(v: unknown): unknown {
     return out;
   };
 
+  /** A grid place as `k:c0,c1:hlc.dev.seq` (cells base 36); anything else stays verbatim. */
+  const packPos = (p: unknown): string | undefined => {
+    if (!isObj(p) || !exactKeys(p, ['k', 'c', 'r']) || typeof p['k'] !== 'string' || !/^[a-z0-9-]{1,24}$/.test(p['k'])) return undefined;
+    const c = p['c'];
+    if (!Array.isArray(c) || !c.length || !c.every(safeInt)) return undefined;
+    const r = rev(p['r']);
+    return r === null ? undefined : `${p['k']}:${(c as number[]).map(b36).join(',')}:${r}`;
+  };
   const packRecord = (r: unknown): unknown => {
     if (!isObj(r)) return r;
     const out: Doc = {};
@@ -349,6 +363,7 @@ export function packInventory(v: unknown): unknown {
       let packed: unknown = undefined;
       if (short) {
         if (k === 'revision') packed = rev(val) ?? undefined;
+        else if (k === 'pos') packed = packPos(val);
         else if (k === 'acquiredAt') packed = isoMs(val) ?? undefined;
         else if (k === 'location') {
           const text = locText(val);
@@ -442,6 +457,10 @@ export function unpackInventory(v: unknown): unknown {
       const long = REC_LONG[k];
       if (!long) { out[k] = val; continue; }
       if (long === 'revision' && typeof val === 'string') out[long] = rev(val);
+      else if (long === 'pos' && typeof val === 'string') {
+        const [k, c, r] = val.split(':');
+        out[long] = { k, c: c.split(',').map(x => parseInt(x, 36)), r: rev(r) };
+      }
       else if (long === 'acquiredAt' && typeof val === 'number') out[long] = new Date(val).toISOString();
       else if (long === 'location' && (typeof val === 'string' || typeof val === 'number')) {
         const text = String(str(val));
@@ -545,7 +564,10 @@ export function giveItem(inv: Doc, rec: Doc, newId: string, now: number): void {
   const instances = (inv['records'] as Doc[]).filter(r => r['kind'] === 'instance').length;
   if (instances >= INSTANCE_RECORD_BUDGET) refuse(409, 'full', 'That satchel and Vault hold all they can.');
   const hlc = Math.max(now, num(inv['hlc']) + 1);
-  const next: Doc = { ...clone(rec), id: newId, location: { kind: 'bag' }, acquiredAt: new Date(now).toISOString(), revision: { hlc, deviceId: TRADE_DEVICE, sequence: 1 } };
+  // A fresh place in the new satchel: the giver's cell means nothing there (the receiving client places it, first fit).
+  const { pos: _pos, ...rest } = clone(rec);
+  void _pos;
+  const next: Doc = { ...rest, id: newId, location: { kind: 'bag' }, acquiredAt: new Date(now).toISOString(), revision: { hlc, deviceId: TRADE_DEVICE, sequence: 1 } };
   inv['records'] = [...(inv['records'] as Doc[]).filter(r => r['id'] !== newId), next];
   inv['hlc'] = hlc;
 }

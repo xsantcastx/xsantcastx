@@ -13,8 +13,10 @@
  *   Using        the Spellstone slot on the belt (F, or the button): the spell goes off at the stone's rank, with no
  *                mana and no cooldown of its own; one stone a second. Any vocation can use any Spellstone.
  *
- * Stones live in the Keeper's stone pouch (SpellstoneSave), not the satchel: a stone is a spell held ready, keyed by
- * the spell and the rank it carries. Blanks are ordinary satchel stacks (`basalt-blank`).
+ * Stones are satchel items (skill-book.md §4, the grid release): a 1×1 instance `spellstone:<skill>@<rank>#<marks>`
+ * carrying its charges, piled only with stones of the identical recipe, tradeable, droppable and storable. The old
+ * hidden pouch (save v1) migrates into the satchel once (spellstone.service.ts). Blanks are satchel stacks
+ * (`basalt-blank`).
  *
  * Lore: "The Seamworks scribes cut the cant into basalt because basalt remembers being fire."
  */
@@ -74,6 +76,36 @@ export function parseStoneKey(key: string): { skill: string; rank: number } | nu
   const rank = Number(m[2]);
   return rank >= 1 && rank <= STONE_MAX_RANK ? { skill: m[1], rank } : null;
 }
+/** Charges one stone holds at most (skill-book.md §4.1). */
+export const STONE_MAX_CHARGES = 100;
+/** The marks (modifier nodes) a stone recorded: the row's 6-bit mask when it was cut (A1 A2 A3 B1 B2 B3). */
+export const STONE_MARKS_MASK = 63;
+/** A stone's recipe: `hellfire-nova@7#5` (spell, rank, marks). Stones pile only with an identical recipe. */
+export function recipeKey(skill: string, rank: number, marks = 0): string {
+  return `${stoneKey(skill, rank)}#${Math.max(0, Math.min(STONE_MARKS_MASK, Math.floor(marks) || 0))}`;
+}
+export function parseRecipeKey(key: string): { skill: string; rank: number; marks: number } | null {
+  const m = /^([a-z][a-z-]{0,40}@\d{1,2})(?:#(\d{1,2}))?$/.exec(key);
+  if (!m) return null;
+  const base = parseStoneKey(m[1]);
+  const marks = m[2] === undefined ? 0 : Number(m[2]);
+  return base && marks <= STONE_MARKS_MASK ? { ...base, marks } : null;
+}
+/** The satchel item's definition id for a recipe. */
+export const STONE_DEF_PREFIX = 'spellstone:';
+export function stoneDefId(recipe: string): string { return `${STONE_DEF_PREFIX}${recipe}`; }
+export function recipeOfDef(definitionId: string | undefined): string | null {
+  if (!definitionId?.startsWith(STONE_DEF_PREFIX)) return null;
+  const r = definitionId.slice(STONE_DEF_PREFIX.length);
+  return parseRecipeKey(r) ? r : null;
+}
+/** Level to use a stone: the lowest level anyone could hold that rank (skill-book.md §4.1). */
+export function stoneLevel(unlockLevel: number, rank: number): number {
+  return Math.max(unlockLevel, unlockLevel + Math.max(1, rank) - 1);
+}
+/** Gold a charge sells for: half the cheapest blank's (cutting stones is never a Gold machine). */
+export const STONE_CHARGE_GOLD = Math.max(1, Math.floor(5 / 2));
+
 /** Seconds between two stones (Tibia's exhaust), whatever the spell. */
 export const STONE_COOLDOWN = 1;
 
@@ -99,12 +131,13 @@ export function blankPrice(level: number): number {
 export const SPELLSTONES_KEY = 'godforge-spellstones';
 
 export interface SpellstoneSave {
-  version: 1;
+  /** 1: the hidden pouch era. 2: stones live in the satchel; `pouch` is empty (kept for the migration's reading). */
+  version: 1 | 2;
   /** Soul held now. */
   soul: number;
-  /** The stone pouch: `skill@rank` → charges left. */
+  /** v1 only: the stone pouch, `skill@rank` → charges left. Empty from v2 on (its stones are satchel items). */
   pouch: Record<string, number>;
-  /** The stone on the belt's Spellstone slot (a pouch key), or null. */
+  /** The belt's Spellstone slot: a recipe (`skill@rank#marks`) the satchel's stones are drawn from, or null. */
   slot: string | null;
   /** Stones inscribed, ever (only grows). */
   inscribed: number;
@@ -113,7 +146,7 @@ export interface SpellstoneSave {
 }
 
 export function emptySpellstones(): SpellstoneSave {
-  return { version: 1, soul: 0, pouch: {}, slot: null, inscribed: 0, at: 0 };
+  return { version: 2, soul: 0, pouch: {}, slot: null, inscribed: 0, at: 0 };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -130,8 +163,12 @@ export function coerceSpellstones(raw: unknown): SpellstoneSave {
       if (n > 0 && parseStoneKey(k)) pouch[k] = n;
     }
   }
-  const slot = typeof raw['slot'] === 'string' && parseStoneKey(raw['slot']) ? raw['slot'] : null;
-  return { version: 1, soul: whole(raw['soul'], SOUL_MAX), pouch, slot, inscribed: whole(raw['inscribed']), at: whole(raw['at']) };
+  // A v1 slot names a pouch key (`skill@rank`): the recipe with no marks.
+  const slotRaw = typeof raw['slot'] === 'string' ? raw['slot'] : '';
+  const slotParsed = parseRecipeKey(slotRaw);
+  const slot = slotParsed ? recipeKey(slotParsed.skill, slotParsed.rank, slotParsed.marks) : null;
+  const version = raw['version'] === 2 ? 2 : 1;
+  return { version, soul: whole(raw['soul'], SOUL_MAX), pouch: version === 2 ? {} : pouch, slot, inscribed: whole(raw['inscribed']), at: whole(raw['at']) };
 }
 
 /** Two devices into one: the later change wins the whole blob (a cast on one and an inscription on the other cannot be split). */
@@ -181,8 +218,8 @@ export const SPELLSTONE_MEANING = {
     lore: 'The Seamworks scribes cut the cant into basalt because basalt remembers being fire.',
   },
   stone: {
-    sources: ['inscribed in the Spellbook: a Basalt Blank + Soul + a spell the Keeper has ranked'],
-    uses: ['the belt\'s Spellstone slot (F): the spell at the stone\'s rank, no mana; any vocation can use it'],
+    sources: ['cut in the Skill Book from a Basalt Blank and Soul (a spell the Keeper has ranked)', 'traded', 'dropped by Keepers in Tibia-scope falls'],
+    uses: ['the belt\'s Spellstone slot (F): the spell at the stone\'s rank with its marks, no mana; any vocation can use it'],
     lore: 'A spell held in stone keeps the hand that cut it. Lend it to a friend and it still speaks in your voice.',
   },
   soul: {

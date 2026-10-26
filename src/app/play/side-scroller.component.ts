@@ -45,6 +45,15 @@ import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
+import { ItemGridComponent, type GridPick, type PieceLook } from '../shared/inventory-grid/item-grid.component';
+import { ItemDragService, type DragHeld, type DropTarget } from '../shared/inventory-grid/item-drag.service';
+import { DropTargetDirective } from '../shared/inventory-grid/drop-target.directive';
+import { pieceLookOf } from '../shared/inventory-grid/piece-look';
+import { footprintOf } from '../shared/rpg/item-footprint';
+import type { Piece } from '../shared/rpg/inventory-grid';
+import type { GridMigrationNote, GridMoveResult } from '../shared/rpg/inventory.service';
+import { recipeKey, recipeOfDef } from '../shared/spellstones/spellstones.model';
+import { itemFromOffer } from './trade/trade-items';
 import { iconOf } from '../shared/art/item-icons';
 import type { IconKind } from '../shared/art/item-icon-shapes';
 import { SheetDragDirective } from './sheet-drag.directive';
@@ -52,7 +61,7 @@ import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-p
 import { areaOf, findStation, LootRarity, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
-import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
+import { slotsForGroup } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
 import { IMPLICIT_BY_SLOT, affixRange, implicitOf, isAffixKey, isAffixSlot, type AffixSlot } from '../shared/rpg/item-affixes';
@@ -365,15 +374,6 @@ interface StoryTalk {
   thanks: 'kept' | 'rested' | null;
 }
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
-/** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
-interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; /** Its satchel tab. */ cat: BagCat; }
-/** The satchel's tabs (MapleStory's inventory): everything, worn things, charms, materials. */
-type BagCat = 'gear' | 'charm' | 'mats';
-type BagTab = 'all' | BagCat;
-/** Spelt out, so the HUD key checks (scripts/seamworks-engine.test.cjs) can read them. */
-const BAG_TAB_KEYS: Record<BagTab, string> = {
-  all: 'play.hud.book.tab.all', gear: 'play.hud.book.tab.gear', charm: 'play.hud.book.tab.charm', mats: 'play.hud.book.tab.mats',
-};
 /** An empty well shows a faint picture of what goes there, never a word that spills out of its box. */
 const WELL_GHOST: Record<string, IconKind> = {
   weapon: 'sword', 'off-hand': 'shield', head: 'helm', chest: 'cuirass', hands: 'gauntlet', legs: 'greaves', feet: 'boots',
@@ -517,7 +517,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SpellbookPageComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -1343,20 +1343,6 @@ export class SideScrollerComponent implements OnDestroy {
     if (await this.tradeHud.drop(item)) this.pick = null;
   }
   get pickCanDrop(): boolean { return !!this.tradeHud?.canDrop(this.selectedGear()) && this.topDown; }
-  /** Drag a satchel item out onto the world: it is dropped (desktop; phones use Drop on the card). */
-  dragPocket(ev: DragEvent, pocket: BagPocket): void {
-    if (pocket.kind !== 'item' || !ev.dataTransfer) { ev.preventDefault(); return; }
-    ev.dataTransfer.setData('application/x-eclipse-item', pocket.ref);
-    ev.dataTransfer.effectAllowed = 'move';
-  }
-  overWorld(ev: DragEvent): void { if (ev.dataTransfer?.types.includes('application/x-eclipse-item')) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; } }
-  async dropOnWorld(ev: DragEvent): Promise<void> {
-    const id = ev.dataTransfer?.getData('application/x-eclipse-item');
-    if (!id || !this.tradeHud) return;
-    ev.preventDefault();
-    const item = this.inventory.snapshot.items.find(i => i.id === id && !i.equipped && !i.explorerId);
-    if (item) await this.tradeHud.drop(item);
-  }
   /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
@@ -1384,11 +1370,6 @@ export class SideScrollerComponent implements OnDestroy {
   bagOpen = false;
   /** The satchel's one details fold: the Keeper's stat sheet and the Vault count. */
   bookStats = false;
-  /** The satchel's open tab; All by default (and when the tab it was on empties). */
-  bagTab: BagTab = 'all';
-  /** The bag's page (ten-finger rule: pages with arrows, never a scrolling column). */
-  bagPage = 0;
-  readonly bagPerPage = 15;
   /** The empty pet well's faint picture. */
   readonly petGhost = ghostOf('pet');
   pick: BagPick | null = null;
@@ -1644,6 +1625,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
+      this.routedSub.add(this.inventory.gridMigrated$.subscribe(note => { if (note) this.gridNote = note; }));
       this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); this.tickPartyTop(); }), 200);
     });
   }
@@ -1849,6 +1831,14 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.topDown) this.hearthSub = this.hearth.state$.subscribe(h => this.tdHearth?.setHearths?.({ lit: h.lit, wake: h.wake, blessings: h.blessings.length }));
     // The screenshot specs' hook (`?fxstones=1`, only under an automated browser): Soul, blanks, grave-goods.
     this.unStonesHook(); this.unStonesHook = this.topDown ? installStonesHook({ stones: this.spellstones, inventory: this.inventory }) : () => undefined;
+    // The grid's e2e hook (`?fxgrid=1`, automated browsers only): a pickup through the real path, and a Vault move away from a Vault.
+    if (typeof navigator !== 'undefined' && navigator.webdriver && /[?&]fxgrid=1\b/.test(location.search)) {
+      let n = 0;
+      (window as unknown as Record<string, unknown>)['__tdGrid'] = {
+        pickup: (def: string) => this.zone.run(() => this.collectGear(`fx-grid-${Date.now().toString(36)}-${++n}`, { item: { definitionId: def, rarity: 'rare', unique: false, level: 3 } })),
+        toVault: (id: string) => this.inventory.moveTo({ kind: 'instance', ids: [id] }, { container: 'general-1', cell: 0 }),
+      };
+    }
     this.bindPointer(canvas);
     this.engine.start();
     if (this.panel && this.panel.kind !== 'slate') this.engine.setPaused(true);
@@ -2009,6 +1999,8 @@ export class SideScrollerComponent implements OnDestroy {
    * floor and the Keeper is told why.
    */
   private collectMaterial(dropId: string, material: string, quantity: number): boolean {
+    // A full satchel refuses the pickup: it stays on the ground (docs/design/inventory-grid.md §2.4).
+    if (!this.inventory.hasStackOp(`seamworks-loot:${dropId}`) && !this.inventory.canTakeStack(material, quantity)) return this.satchelFull();
     // Ore trains Mining like a vein does: one gateway write grants the ore and the XP together.
     if (miningTierFor(material)) {
       const result = this.skillActions.act({
@@ -2055,8 +2047,10 @@ export class SideScrollerComponent implements OnDestroy {
       && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore));
   }
   private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }): boolean {
+    this.inventory.lastRefusal = null;
     const got = this.loot.grantDrop(dropId, loot);
-    if (!got) return false;
+    if (!got) return this.inventory.lastRefusal === 'full' ? this.satchelFull() : false;
+    if (typeof got === 'object') { const p = this.inventory.snapshot.grid.bag.pieces.find(x => x.ids.includes(got.id)); if (p) this.markNew([p.key]); }
     this.sound.sfx('pickup');
     this.pulseSatchel();
     return true;
@@ -2734,9 +2728,11 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.topDown) return;
     const st = this.spellstones.slotted(performance.now() / 1000);
     if (!st) { this.message = this.t('play.stone.slotEmpty'); this.focusWorld(); return; }
-    const res = this.spellstones.use(st.key, performance.now() / 1000, (skill, rank) => { const cast = this.tdEngine?.castStone; return cast ? cast(skill, rank) : 'locked'; });
+    // The stone casts at its rank with its recorded marks (skill-book.md §4.1); the engine reads the marks once the
+    // book's nodes land (castStone's third argument is ignored until then).
+    const res = this.spellstones.use(st.key, performance.now() / 1000, (skill, rank, marks) => { const cast = this.tdEngine?.castStone as ((s: string, r: number, m?: number) => string | null) | undefined; return cast ? cast(skill, rank, marks) : 'locked'; });
     if (res === 'ok') {
-      const left = this.spellstones.state.pouch[st.key] ?? 0, name = this.t(`skill.${st.skill}`);
+      const left = this.spellstones.chargesOf(st.key), name = this.t(`skill.${st.skill}`);
       this.message = left > 0 ? this.t('play.stone.cast', { name, rank: st.rank, n: left }) : this.t('play.stone.spent', { name });
       this.canvas?.nativeElement.setAttribute('data-stone-cast', `${st.skill}@${st.rank}`);
     } else if (res === 'cooldown') this.message = this.t('play.stone.cooldown');
@@ -2749,9 +2745,9 @@ export class SideScrollerComponent implements OnDestroy {
     const sk = TD_SKILLS[id as SkillId];
     if (!sk || sk.kind !== 'active') return null;
     const rank = this.skillRanks[id as SkillId] ?? 0, r = stoneRecipe(sk.mana), s = this.spellstones.state, blanks = this.spellstones.blanks;
-    const key = `${id}@${Math.max(1, rank)}`;
+    const key = recipeKey(id, Math.max(1, rank), 0);
     const why = rank < 1 ? this.t('play.stone.need.rank') : blanks < r.blanks ? this.t('play.stone.need.blank') : s.soul < r.soul ? this.t('play.stone.need.soul', { n: r.soul }) : '';
-    return { soul: r.soul, charges: r.charges, rank: Math.max(1, rank), held: s.pouch[key] ?? 0, blanks, onBelt: s.slot === key, why };
+    return { soul: r.soul, charges: r.charges, rank: Math.max(1, rank), held: this.spellstones.chargesOf(key), blanks, onBelt: s.slot === key, why };
   }
   inscribeStone(id: string): void {
     const sk = TD_SKILLS[id as SkillId];
@@ -2761,13 +2757,13 @@ export class SideScrollerComponent implements OnDestroy {
     const v = this.stoneView(id);
     this.message = code === 'ok' ? this.t('play.stone.inscribed', { name: this.t(`skill.${id}`), rank, n: stoneRecipe(sk.mana).charges })
       : code === 'blank' ? this.t('play.stone.need.blank') : code === 'soul' ? this.t('play.stone.need.soul', { n: v?.soul ?? 0 })
-      : code === 'rank' ? this.t('play.stone.need.rank') : '';
+      : code === 'rank' ? this.t('play.stone.need.rank') : code === 'room' ? this.t('play.grid.full') : '';
     if (code === 'ok') this.sound.sfx('five');
     this.tickAbilities();
   }
   beltStone(id: string): void {
     const rank = Math.max(1, this.skillRanks[id as SkillId] ?? 0);
-    this.spellstones.slot(`${id}@${rank}`);
+    this.spellstones.slot(recipeKey(id, rank, 0));
     this.tickAbilities();
   }
   /** A kill: Soul, and the whispering items' count (a piece of the sentence woken says itself in the chat). */
@@ -5126,11 +5122,6 @@ export class SideScrollerComponent implements OnDestroy {
     // does (the remembered choice stands for next time).
     if (this.bagOpen) this.hearthOpen = false;
   }
-  /** Tap a pocket for its card; tap it again to put the card away. */
-  choosePocket(pocket: BagPocket, ev?: Event): void {
-    this.pick = this.pickedPocket(pocket) ? null : { kind: pocket.kind, ref: pocket.ref };
-    this.placePick(ev);
-  }
   /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
   chooseWell(well: BagWell, ev?: Event): void {
     this.pick = (!well.filled && !well.blocked) || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
@@ -5146,7 +5137,6 @@ export class SideScrollerComponent implements OnDestroy {
     this.pickAt = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
   }
   unpick(): void { this.pick = null; }
-  pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
   pickedWell(id: SlotId): boolean { return this.pick?.kind === 'slot' && this.pick.ref === id; }
   get pocketFill(): number {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
@@ -5157,41 +5147,144 @@ export class SideScrollerComponent implements OnDestroy {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     return Number.isFinite(cap) ? `${used}/${cap}` : `${used}`;
   }
-  /**
-   * The satchel's free slots, drawn as empty cells after the pockets so the grid reads
-   * as a fixed bag (Diablo II), not a list. Capped so an unbounded satchel draws none.
-   */
-  get emptyCells(): number[] {
-    const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
-    if (!Number.isFinite(cap) || this.shownTab !== 'all') return [];
-    const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
-    // Only what fits on this page: the empty cells fill the last page out to a full grid.
-    const room = Math.max(0, this.bagPerPage - this.shownPockets.length + this.page() * this.bagPerPage);
-    return Array.from({ length: Math.min(free, room) }, (_, i) => i);
-  }
   get bagFull(): boolean {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     return used >= cap;
   }
-  /** Send the picked satchel item to the Vault, from anywhere (inventory spec §5.1). */
-  sendToVault(): void {
-    const item = this.selectedGear();
-    if (!item || item.equipped || item.explorerId) return;
-    const ids = this.pickedGroup();
-    if (ids.length > 1) {
-      // A ×N cell: the whole group, in one write.
-      const moved = this.inventory.stowMany(ids);
-      this.message = moved.length
-        ? this.t('play.hud.msg.sentVaultN', { n: moved.length, name: item.name })
-        : this.t('play.hud.msg.stowFailed', { name: item.name });
-      if (!moved.length) return;
-      this.pick = null;
-      return;
+  // ── The grid (docs/design/inventory-grid.md): the satchel is one D2 grid; everything moves by drag and drop. ──
+  readonly drag = inject(ItemDragService);
+  /** How a piece looks in any grid (a Spellstone by its spell's tree and name). */
+  readonly pieceLook = (p: Piece): PieceLook => pieceLookOf(this.inventory.snapshot, p,
+    skill => TD_SKILLS[skill as SkillId]?.tree ?? 'common', skill => this.t('play.grid.stone', { name: this.t(`skill.${skill}`) }));
+  /** Pieces that just arrived (they glow where they landed, so the player sees where a pickup went). */
+  newPieces: ReadonlySet<string> = new Set();
+  private newPieceTimer?: ReturnType<typeof setTimeout>;
+  /** The one-time list → grid note (what went to the Vault), shown once in the satchel. */
+  gridNote: GridMigrationNote | null = null;
+  dismissGridNote(): void { this.gridNote = null; }
+  /** The picked piece's key (its cell rims brass while its card is open). */
+  get pickedPieceKey(): string | null {
+    const pick = this.pick;
+    if (!pick || pick.kind === 'slot') return null;
+    const grid = this.inventory.snapshot.grid.bag;
+    const p = [...grid.pieces, ...grid.held].find(x => pick.kind === 'item' ? x.ids.includes(pick.ref) : x.stackKey === pick.ref);
+    return p?.key ?? null;
+  }
+  pickPiece(ev: GridPick): void {
+    const p = ev.piece;
+    const pocket = { kind: p.kind === 'instance' ? 'item' as const : 'stack' as const, ref: p.kind === 'instance' ? p.ids[0] : p.stackKey ?? '' };
+    this.pick = this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref ? null : pocket;
+    this.placePick(ev.ev);
+  }
+  hoverPiece(p: Piece, ev: PointerEvent): void {
+    if (ev.pointerType !== 'mouse' || this.drag.held) return;
+    const row = p.kind === 'stack' ? this.stackSlip(p.stackKey ?? '')
+      : (() => { const item = this.inventory.snapshot.items.find(r => r.id === p.ids[0]); return item ? this.itemSlip(item, item.equipped) : null; })();
+    this.hoverTip = row ? { row, at: pointAt(ev) } : null;
+  }
+  gridMoved(ev: { result: GridMoveResult; held: DragHeld }): void {
+    if (ev.result === 'ok') { this.sound.sfx('equip'); this.pick = null; return; }
+    this.message = this.t(ev.result === 'vault-closed' ? 'play.grid.vaultClosed' : ev.result === 'persist' ? 'play.hud.msg.stowFailed' : 'play.grid.blocked', { name: ev.held.name });
+  }
+  /** A "no room" piece is dragged (or long-pressed) like any grid piece. */
+  pressHeld(ev: PointerEvent, p: Piece): void {
+    const look = this.pieceLook(p);
+    this.drag.press(ev, {
+      ref: p.kind === 'instance' ? { kind: 'instance', ids: p.ids } : { kind: 'stack', storeKey: p.storeKey!, qty: p.qty, pile: p.pile },
+      from: 'held', w: p.w, h: p.h, grabDx: 0, grabDy: 0, name: look.name, art: look.art, mark: look.mark, tone: look.tone,
+      qty: p.qty, item: look.item, stackKey: p.stackKey, pieceKey: p.key,
+    });
+  }
+  /** A worn piece is a drag source too: drag it from the doll into a satchel cell to take it off. */
+  pressWell(ev: PointerEvent, well: BagWell): void {
+    const item = this.inventory.snapshot.equipped[well.id];
+    if (!item || item.explorerId) return;
+    const fp = footprintOf(item);
+    this.drag.press(ev, {
+      ref: { kind: 'slot', slotId: well.id, itemId: item.id }, from: 'slot', w: fp.w, h: fp.h, grabDx: 0, grabDy: 0,
+      name: item.name, art: well.art, mark: well.mark, tone: well.tone, qty: 1, item,
+    });
+  }
+  private readonly wellTargets = new Map<string, DropTarget>();
+  /** A worn well takes a satchel piece that fits it: dropping it there wears it (the same check Wear makes). */
+  wellTarget(slot: SlotId): DropTarget {
+    let t = this.wellTargets.get(slot);
+    if (!t) {
+      t = {
+        accepts: held => held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held'),
+        drop: held => {
+          if (held.ref.kind !== 'instance' || !held.item) return false;
+          this.pick = { kind: 'item', ref: held.ref.ids[0] };
+          const blocked = this.wearBlockedReason(held.item);
+          if (blocked) { this.message = blocked; this.pick = null; return false; }
+          const ok = this.inventory.equip(held.ref.ids[0], slot);
+          if (!ok) { this.message = this.t('play.hud.msg.wearFailed', { name: held.item.name }); this.pick = null; return false; }
+          this.sound.sfx('equip');
+          this.message = this.t('play.hud.msg.worn', { name: held.item.name });
+          this.pick = null;
+          this.sync();
+          return true;
+        },
+      };
+      this.wellTargets.set(slot, t);
     }
-    if (!this.inventory.stow(item.id)) { this.message = this.t('play.hud.msg.stowFailed', { name: item.name }); return; }
-    const tab = this.inventory.itemById(item.id)?.explorerId?.replace(/^vault:/, '') ?? 'general-1';
-    this.message = this.t('play.hud.msg.sentVault', { name: item.name, tab: this.t(`vault.tab.${tab}`) });
-    this.pick = null;
+    return t;
+  }
+  /** The book's belt: Q and R take a potion (it is what that key drinks), F a Spellstone (its recipe goes on the slot). */
+  get bookBelt(): { kind: 'health' | 'mana' | 'stone'; key: string; art: string; label: string; n: number }[] {
+    const belt = this.potions.belt(performance.now() / 1000);
+    const st = this.spellstones.slotted(performance.now() / 1000);
+    return [
+      ...belt.map(b => ({ kind: b.kind, key: b.key, art: b.potion ? this.art(b.potion.id) : '', label: this.beltTitle(b), n: b.count })),
+      { kind: 'stone' as const, key: 'F', art: st ? this.stoneArt(st.skill) : this.art('basalt-blank'), label: this.stoneTitle(st), n: st?.charges ?? 0 },
+    ];
+  }
+  private readonly beltTargets = new Map<string, DropTarget>();
+  beltTarget(kind: 'health' | 'mana' | 'stone'): DropTarget {
+    let t = this.beltTargets.get(kind);
+    if (!t) {
+      t = {
+        accepts: held => kind === 'stone'
+          ? held.ref.kind === 'instance' && !!recipeOfDef(held.item?.definitionId) && held.from === 'b'
+          : held.ref.kind === 'stack' && held.from === 'b' && [kind, 'rejuv'].includes(potionById(held.stackKey ?? '')?.kind ?? ''),
+        drop: held => {
+          if (kind === 'stone') {
+            const recipe = recipeOfDef(held.item?.definitionId);
+            if (!recipe) return false;
+            this.spellstones.slot(recipe);
+            this.message = this.t('play.grid.beltStone', { name: held.name });
+          } else {
+            this.potions.pin(kind, held.stackKey ?? null);
+            this.message = this.t('play.grid.beltPotion', { name: held.name, key: kind === 'health' ? 'Q' : 'R' });
+          }
+          this.tickAbilities();
+          return true;
+        },
+      };
+      this.beltTargets.set(kind, t);
+    }
+    return t;
+  }
+  /** The world: a satchel item dropped on it lies at the Keeper's feet for everyone in the room (top-down, online). */
+  readonly worldTarget: DropTarget = {
+    accepts: held => this.topDown && held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held') && !!this.tradeHud?.canDrop(held.item),
+    drop: held => {
+      if (!held.item || !this.tradeHud) return false;
+      void this.tradeHud.drop(held.item);
+      return true;
+    },
+  };
+  /** A piece landed: it glows twice where it sits. */
+  private markNew(keys: readonly string[]): void {
+    if (!keys.length) return;
+    this.newPieces = new Set(keys);
+    clearTimeout(this.newPieceTimer);
+    this.newPieceTimer = setTimeout(() => { this.newPieces = new Set(); }, 2600);
+  }
+  private satchelFull(): boolean {
+    this.message = this.t('play.grid.full');
+    this.bump('.satchel .clasp');
+    return false;
   }
   /**
    * An arrival a full satchel turned away. The first of a burst names itself;
@@ -5246,59 +5339,6 @@ export class SideScrollerComponent implements OnDestroy {
       };
     });
   }
-  get pockets(): BagPocket[] {
-    const snap = this.inventory.snapshot;
-    const pin = [CINDER_ORE_ID, EMBER_RESIDUE_ID];
-    const stacks = snap.stacks.filter(stack => snap.stackPlace[stack.stackKey] === 'satchel').sort((a, b) => {
-      const ai = pin.indexOf(a.stackKey);
-      const bi = pin.indexOf(b.stackKey);
-      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      return (materialDisplay(a.stackKey)?.name ?? a.stackKey).localeCompare(materialDisplay(b.stackKey)?.name ?? b.stackKey);
-    });
-    const materials: BagPocket[] = stacks.map(stack => {
-      const display = materialDisplay(stack.stackKey);
-      const name = display?.name ?? stack.stackKey;
-      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [], cat: 'mats' };
-    });
-    // A dropped item leaves the satchel the moment it hits the ground: the room escrows it behind the scenes (protocol 8),
-    // and a hand-back clears the pending mark so it reappears here.
-    const bag = snap.bag.filter(item => !this.tradeHud?.dropPending(item.id));
-    const gear: BagPocket[] = clusterBy(groupItems(bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
-      key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
-      art: itemArt(item)?.src ?? '', qty: ids.length, pip: lootColor(item.rarity), mark: monogram(item.name), ids,
-      cat: item.type === 'charm' ? 'charm' : 'gear',
-    }));
-    return [...materials, ...gear];
-  }
-  /** The tabs that have something in them (All always). */
-  get bagTabs(): { id: BagTab; n: number; key: string }[] {
-    const all = this.pockets;
-    const tabs: { id: BagTab; n: number; key: string }[] = [{ id: 'all', n: all.length, key: BAG_TAB_KEYS.all }];
-    for (const cat of ['gear', 'charm', 'mats'] as const) {
-      const n = all.filter(p => p.cat === cat).length;
-      if (n) tabs.push({ id: cat, n, key: BAG_TAB_KEYS[cat] });
-    }
-    return tabs;
-  }
-  /** The open tab's pockets; a tab that emptied falls back to All. */
-  get shownPockets(): BagPocket[] {
-    const all = this.pockets;
-    const some = this.bagTab === 'all' ? all : all.filter(p => p.cat === this.bagTab);
-    const list = this.bagTab === 'all' || some.length ? some : all;
-    return list.slice(this.page() * this.bagPerPage, (this.page() + 1) * this.bagPerPage);
-  }
-  /** How many pages the open tab has. */
-  get bagPages(): number {
-    const all = this.pockets;
-    const some = this.bagTab === 'all' ? all : all.filter(p => p.cat === this.bagTab);
-    return Math.max(1, Math.ceil((this.bagTab === 'all' || some.length ? some : all).length / this.bagPerPage));
-  }
-  /** The page in range (a tab that emptied, or items sold, never leave it past the end). */
-  page(): number { return Math.min(this.bagPage, this.bagPages - 1); }
-  turnBag(by: number): void { this.bagPage = Math.max(0, Math.min(this.bagPages - 1, this.page() + by)); }
-  get shownTab(): BagTab {
-    return this.bagTab !== 'all' && this.pockets.some(p => p.cat === this.bagTab) ? this.bagTab : 'all';
-  }
   /** The purse, on the satchel's bottom row. */
   get purseGold(): string { return Math.floor(this.economy.snapshot.gold).toLocaleString('en-US'); }
   /**
@@ -5306,12 +5346,6 @@ export class SideScrollerComponent implements OnDestroy {
    * shows the item's name in its rarity colour, what it is, its stats and how it compares — no art, no buttons.
    */
   hoverTip: { row: BagSlip; at: FitAnchor } | null = null;
-  hoverPocket(pocket: BagPocket, ev: PointerEvent): void {
-    if (ev.pointerType !== 'mouse') return;
-    const row = pocket.kind === 'stack' ? this.stackSlip(pocket.ref)
-      : (() => { const item = this.inventory.snapshot.items.find(r => r.id === pocket.ref && !r.explorerId); return item ? this.itemSlip(item, item.equipped) : null; })();
-    this.hoverTip = row ? { row, at: pointAt(ev) } : null;
-  }
   hoverWell(slot: string, ev: PointerEvent): void {
     if (ev.pointerType !== 'mouse') return;
     const item = this.inventory.snapshot.equipped[slot as SlotId];
@@ -5380,7 +5414,8 @@ export class SideScrollerComponent implements OnDestroy {
   private pickedGroup(): string[] {
     const pick = this.pick;
     if (pick?.kind !== 'item') return [];
-    return this.pockets.find(pocket => pocket.kind === 'item' && pocket.ref === pick.ref)?.ids ?? [pick.ref];
+    const grid = this.inventory.snapshot.grid.bag;
+    return [...grid.pieces, ...grid.held].find(p => p.ids.includes(pick.ref))?.ids ?? [pick.ref];
   }
   private selectedGear(): GameItem | null {
     const pick = this.pick;

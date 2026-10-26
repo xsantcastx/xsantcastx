@@ -132,12 +132,12 @@ describe('item-hands: every equip path (InventoryService.equip)', () => {
     inventory.add(sword()); inventory.add(shield()); inventory.add(bow());
     expect(inventory.equip('sword')).toBe(true);
     expect(inventory.equip('shield')).toBe(true);
-    // Fill the satchel to the brim (distinct names: nothing groups).
-    for (let i = 0; inventory.snapshot.bag.length < inventory.snapshot.satchelCap && i < MAX_INVENTORY; i++) {
-      inventory.add({ id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common', stats: {}, sellValue: 1, equipped: false, foundAt: '2026-08-01T00:00:00.000Z', soulbound: false });
-    }
+    // Fill the grid to the brim (distinct names: nothing piles).
+    const fill = (i: number) => ({ id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact' as const, rarity: 'common' as const, stats: {}, sellValue: 1, equipped: false, foundAt: '2026-08-01T00:00:00.000Z', soulbound: false });
+    for (let i = 0; inventory.canPickUp(fill(i)) && i < MAX_INVENTORY; i++) inventory.add(fill(i));
+    expect(inventory.snapshot.held).toBe(0);
     expect(inventory.snapshot.bag.some(i => i.id === 'bow')).toBe(true);
-    // The bow leaves the satchel (−1), the sword and the shield come back (+2): one too many.
+    // The bow leaves the grid (6 cells), the sword (3) and the shield (4) come back: one cell too many.
     expect(inventory.equip('bow')).toBe(false);
     expect(inventory.equipRefusal).toBe('hands-full');
     expect(inventory.snapshot.equipped['weapon']?.id).toBe('sword');
@@ -147,9 +147,11 @@ describe('item-hands: every equip path (InventoryService.equip)', () => {
   it('a Vault piece is taken out to the satchel, then worn by the same rule', () => {
     inventory.add(shield()); inventory.add(bow());
     expect(inventory.equip('shield')).toBe(true);
-    expect(inventory.stow('bow')).toBe(true);
+    inventory.setAtVault(true);
+    expect(inventory.moveTo({ kind: 'instance', ids: ['bow'] }, { container: 'general-1', cell: 0 })).toBe('ok');
     expect(inventory.equip('bow')).toBe(false); // still in the Vault: never worn from there
-    expect(inventory.takeOut('bow')).toBe(true);
+    expect(inventory.moveTo({ kind: 'instance', ids: ['bow'] }, { container: 'b', cell: 8 })).toBe('ok');
+    inventory.setAtVault(false);
     expect(inventory.equip('bow')).toBe(true);
     expect(inventory.snapshot.equipped['off-hand']).toBeUndefined();
   });
