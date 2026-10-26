@@ -122,7 +122,8 @@ type P2 = readonly [number, number];
 let K = 1, OX = 0, OY = 0;
 function grown(k: number, ox: number, oy: number, draw: () => void): void {
   const was = [K, OX, OY] as const;
-  K = k; OX = ox; OY = oy;
+  // Composes with the frame it is drawn in (the sheet's own MOB_K growth round a boss's).
+  OX = OX + ox * K; OY = OY + oy * K; K = K * k;
   try { draw(); } finally { [K, OX, OY] = was; }
 }
 const sx = (x: number) => OX + x * K, sy = (y: number) => OY + y * K;
@@ -1787,9 +1788,17 @@ function outline(img: ImageData, rim?: string): void {
       if (dx > 0 || dy > 0) lit++;
     }
     if (!n) continue;
-    const t = lit * 2 >= n ? .7 : .86, i = (y * w + x) * 4;
+    // Darker than it was (the art style upgrade: the references' heavier outline), still a dark of what it borders.
+    const t = lit * 2 >= n ? .84 : .94, i = (y * w + x) * 4;
     for (let k = 0; k < 3; k++) d[i + k] = Math.round(sum[k] / n * (1 - t) + out[k] * t);
     d[i + 3] = 255; edge[y * w + x] = 1;
+  }
+  // A second pixel of outline on the shaded lower right, where the body turns from the light.
+  for (let y = h - 1; y > 0; y--) for (let x = w - 1; x > 0; x--) {
+    const k = y * w + x;
+    if (filled(x, y) || edge[k] || !edge[k - w - 1] || !(filled(x - 1, y - 2) || filled(x - 2, y - 1) || filled(x - 2, y - 2))) continue;
+    const i = k * 4;
+    d[i] = out[0]; d[i + 1] = out[1]; d[i + 2] = out[2]; d[i + 3] = 255; edge[k] = 1;
   }
   if (!rim) return;
   const col = rgb(rim);
@@ -1801,20 +1810,29 @@ function outline(img: ImageData, rim?: string): void {
   }
 }
 /** A creature's frames side by side, each painted once, outlined (and a boss rimmed) in its own cell. */
+/**
+ * How much finer than their art grid creatures are painted (the art style upgrade, 2026-10-26): the Keeper stands on the
+ * fine grid (keeper-paint FIGURE_K), so a creature's shapes are grown by the same 1.5 — a boss's by less, it is big
+ * already. Only the picture grows: a creature's `w`/`h` (its reach, its hit box, where blows land) are unchanged.
+ */
+export function mobK(def: { w?: number }): number { const w = def.w ?? 0; return w >= 60 ? 1.15 : w >= 40 ? 1.3 : 1.5; }
+/** A creature's cell in its sheet (fine-grid px): its art box grown by mobK, rounded up. */
+export function mobCell(def: { w?: number; h: number }): { w: number; h: number } { const k = mobK(def); return { w: Math.ceil((def.w ?? 0) * k), h: Math.ceil(def.h * k) }; }
 export function mobSheet(def: MobDef): HTMLCanvasElement {
   let s = sheets.get(def.id);
   if (s) return s;
-  s = document.createElement('canvas'); s.width = def.w * MOB_FRAMES; s.height = def.h;
+  const { w, h } = mobCell(def), k = mobK(def);
+  s = document.createElement('canvas'); s.width = w * MOB_FRAMES; s.height = h;
   const o = s.getContext('2d')!;
   for (let f = 0; f < MOB_FRAMES; f++) {
-    const cell = document.createElement('canvas'); cell.width = def.w; cell.height = def.h;
+    const cell = document.createElement('canvas'); cell.width = w; cell.height = h;
     const c = cell.getContext('2d', { willReadFrequently: true })!;
-    def.paint(c, f);
-    const img = c.getImageData(0, 0, def.w, def.h);
+    grown(k, 0, 0, () => def.paint(c, f));
+    const img = c.getImageData(0, 0, w, h);
     // The volume pass (keeper-volume.ts), gentle: the creatures are already lit shape by shape; this rounds the whole.
-    volumizeData(img.data, def.w, def.h, { light: .2, shade: .24, depth: 4, alphaMin: 200 });
+    volumizeData(img.data, w, h, { light: .28, shade: .36, depth: 5, alphaMin: 200 });
     outline(img, RIM[def.id]);
-    o.putImageData(img, f * def.w, 0);
+    o.putImageData(img, f * w, 0);
   }
   sheets.set(def.id, s);
   return s;
@@ -4384,5 +4402,5 @@ export class MobSystem {
  * The bestiary's brushes and outline, for the companions' own sprites (td-pet-art.ts): the pets are painted to the
  * same standard as the creatures, with the same light and the same selective outline.
  */
-export const TD_BRUSH = { px, dot, orb, poly, limb, line, glow, outline } as const;
+export const TD_BRUSH = { px, dot, orb, poly, limb, line, glow, outline, grown } as const;
 export type TdRamp = Ramp;

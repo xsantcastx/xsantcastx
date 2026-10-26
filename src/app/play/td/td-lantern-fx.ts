@@ -12,6 +12,7 @@
  * the ward's frame, Last Light, the wisps, the stunned and the unveiled), `drawBeacon` (y-sorted with the world) and
  * `drawKindle` (a flare in flight).
  */
+import { mobCell } from './td-mobs';
 import { burst, circlePixels, discRows, drawBurst, drawRing, glowSquare, groundRing, type Tones } from './td-fx';
 
 type Ctx = CanvasRenderingContext2D;
@@ -199,7 +200,7 @@ export function drawLampState(c: Ctx, s: LampState, p: { x: number; y: number },
     c.globalAlpha = 1;
   }
   for (const m of s.mobs) {
-    const top = Math.round(m.y - m.def.h - 6), mx = Math.round(m.x);
+    const top = Math.round(m.y - mobCell(m.def).h - 6), mx = Math.round(m.x);
     if ((m.stun ?? 0) > 0) {
       // Blinded: three cream stars circling the head (the CC pip, design-bible §4.7).
       for (let i = 0; i < 3; i++) {

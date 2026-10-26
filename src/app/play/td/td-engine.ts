@@ -14,7 +14,7 @@
  */
 import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
 import type { LootRarity, StationDef } from '../world/world.model';
-import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { FIGURE_K, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
@@ -102,7 +102,7 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 };
 import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobCell, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
 import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
 import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
@@ -173,6 +173,8 @@ export interface TdMapView {
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
+/** A height over the feet that was set for the art-grid figure, grown with the fine figure (FIGURE_K). */
+const up = (n: number) => Math.round(n * FIGURE_K);
 const SPEED = 74;              // art px / s
 const GUIDE_FAR_TILES = 40;     // Show me walks up to this far; past it Glim points instead
 const REACH = 26;              // art px from a stall's interaction spot
@@ -1890,7 +1892,7 @@ export class TopDownEngine {
   glimHighFive(): void {
     if (this.pet) this.petFeel('happy');
     if (!this.glim.shown) return;
-    const x = this.player.x + this.player.face * 10, y = this.player.y - 44;
+    const x = this.player.x + this.player.face * 10, y = this.player.y - up(44);
     this.glimPoint(x, y, .7, false);
     this.glimMood('happy', 3);
     this.glimBurst(x, y, 10);
@@ -1915,7 +1917,7 @@ export class TopDownEngine {
 
   /** Set the companions down beside the Keeper (arrival, a level change, a reload, a fall). */
   private placeCompanions(): void {
-    this.glim.x = this.player.x - this.player.face * 14; this.glim.y = this.player.y - 46;
+    this.glim.x = this.player.x - this.player.face * 14; this.glim.y = this.player.y - up(46);
     this.glimFlight = null; this.glimTrail = null;
     this.trail.length = 0;
     const b = this.pet;
@@ -2172,7 +2174,7 @@ export class TopDownEngine {
     const home = idle === 'orbit'
       ? { x: k.x + Math.cos(this.time * 1.1) * 24, y: k.y - 30 + Math.sin(this.time * 1.1) * 9 }
       : idle === 'doze' ? { x: k.x - k.face * 9, y: k.y - 38 + Math.sin(this.time * 1.2) }
-      : { x: k.x - k.face * 14, y: k.y - 46 + Math.sin(this.time * 2.4) * 3 };
+      : { x: k.x - k.face * 14, y: k.y - up(46) + Math.sin(this.time * 2.4) * 3 };
     let tx = home.x, ty = home.y, rate = 4;
     const f = this.glimFlight;
     if (f) {
@@ -2743,13 +2745,13 @@ export class TopDownEngine {
   /** The stall under a point and how far the point is from its body (a giver's body, else the stall's foot): for comparing with a Keeper or a corpse under the same finger. */
   private stallHit(wx: number, wy: number): { s: TdStall; d: number } | undefined {
     // A tap on a task giver's body talks to them (a stall keeper's counter still opens the stall).
-    const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < 10 && wy > s.keeper.y - 34 && wy < s.keeper.y + 2);
+    const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < up(10) && wy > s.keeper.y - up(34) && wy < s.keeper.y + 2);
     if (giver) return { s: giver, d: Math.hypot(wx - giver.keeper!.x, wy - (giver.keeper!.y - 17)) };
     // Of the stalls under the finger the one whose foot is nearest wins (a fire and its shrine must not shadow each other).
     let hit: TdStall | undefined, best = Infinity;
     for (const s of this.level.stalls) {
       if (isBerth(s.station.id)) continue;
-      if (!(Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16)) continue;
+      if (!(Math.abs(wx - s.x) < 34 && wy > s.y - (s.keeper ? up(46) : 46) && wy < s.y + 16)) continue;
       const d = Math.hypot(wx - s.x, wy - (s.y - 14));
       if (d < best) { best = d; hit = s; }
     }
@@ -3156,14 +3158,14 @@ export class TopDownEngine {
     const w = Math.max(1, Math.round(this.canvas.clientWidth * dpr)), h = Math.max(1, Math.round(this.canvas.clientHeight * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
     // 1.5 CSS px per art px on phones (~16 tiles across), 2 on tablets, 3 on wide screens; whole device pixels so pixels stay crisp.
-    // The art style upgrade (2026-10-26): a wide screen frames about 180–240 art px of height, so the Keeper and the trees
+    // The art style upgrade (2026-10-26): a wide screen frames about 200–260 art px of height, so the Keeper and the trees
     // read big and detailed (the owner's references) — 4 css px per art px at 720–899 tall, 5 from 900, never under 3.
-    const css = this.canvas.clientWidth >= 1100 ? Math.max(3, Math.min(5, Math.floor(this.canvas.clientHeight / 180))) : this.canvas.clientWidth >= 700 ? 2 : 1.5;
+    const css = this.canvas.clientWidth >= 1100 ? Math.max(3, Math.min(4, Math.floor(this.canvas.clientHeight / 260))) : this.canvas.clientWidth >= 700 ? 2 : 1.5;
     this.scale = Math.max(1, Math.round(css * dpr));
     this.cam.w = w / this.scale; this.cam.h = h / this.scale;
     // No edge to clamp to: the world runs on in every direction.
     this.cam.x = Math.round(this.player.x - this.cam.w / 2);
-    this.cam.y = Math.round(this.player.y - 20 - this.cam.h / 2);
+    this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
   }
 
   private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
@@ -3325,26 +3327,26 @@ export class TopDownEngine {
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
-    for (const k of this.keepers) if (this.platesOn && this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 42, '#f3e7cf');
+    for (const k of this.keepers) if (this.platesOn && this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - up(42), '#f3e7cf');
     // Other Keepers' name plates (name · level) and Waves (over them and over the Keeper).
     for (const p of this.peers.drawn) {
       if (!inView(p.x, p.y)) continue;
-      if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - 42, this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
-      if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - 52, this.time, this.still);
+      if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - up(42), this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
+      if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - up(52), this.time, this.still);
     }
-    if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - 46, this.time, this.still);
+    if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - up(46), this.time, this.still);
     // Shared ground items (protocol 6): where they are on the page, for the HUD's tests and tools (only while any lie here).
     if (this.shared.length || this.groundSeen) {
       const at = this.groundOnScreen().map(g => `${g.id}@${g.x},${g.y}`).join(';');
       if (at !== this.groundSeen) { this.groundSeen = at; this.canvas.setAttribute('data-ground-at', at); }
     }
     // A task giver's head mark: '!' a task on offer, '?' one to hand in (MapleStory), seen from across the square.
-    for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? 54 : 44)); }
+    for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? up(54) : up(44))); }
     this.drawEffects();
     this.drawSeek();
     this.drawFightUi(inView);
     // A giver standing on their own already wears their name: no second plate.
-    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 62 : 36), '#ffd27a');
+    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? up(62) : 36), '#ffd27a');
     // The fallen purse names itself when the Keeper is near.
     if (fallen && Math.hypot(fallen.x - this.player.x, fallen.y - this.player.y) < 110) this.plate(`${fallen.gold} Gold`, fallen.x, fallen.y - 14, '#ffd27a');
     // The Hush at its deepest: the edge of the world thins (screen space, two art pixels).
@@ -3380,8 +3382,15 @@ export class TopDownEngine {
     c.fillText(mark, bx + 5, by + 10);
   }
 
+  /** A creature's picture box (its sheet's cell: mobCell), keyed by its definition. */
+  private readonly visDefs = new WeakMap<object, Mob['def']>();
+  private vis(def: Mob['def']): Mob['def'] {
+    let v = this.visDefs.get(def);
+    if (!v) { v = { ...def, ...mobCell(def) }; this.visDefs.set(def, v); }
+    return v;
+  }
   private drawMob(m: Mob): void {
-    const c = this.ctx, d = m.def, sheet = mobSheet(d), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
+    const c = this.ctx, d = this.vis(m.def), sheet = mobSheet(m.def), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
     c.save();
@@ -3402,7 +3411,7 @@ export class TopDownEngine {
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
-    const c = this.ctx, d = RAISED_SKELETON, sheet = mobSheet(d), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
+    const c = this.ctx, d = this.vis(RAISED_SKELETON), sheet = mobSheet(RAISED_SKELETON), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
     c.save();
     // Rising out of the ground for its first half second; fading as its time runs out.
@@ -3940,7 +3949,7 @@ export class TopDownEngine {
       } else if (e.kind === 'ward') {
         // The ward going up: the hex springs out from the Keeper, a bright frame.
         const k = this.still ? 1 : 1 - (1 - t) * (1 - t);
-        this.drawHex(p.x, p.y - 18, .55 + .45 * k, 1, this.still ? 0 : this.time * .8);
+        this.drawHex(p.x, p.y - up(18), .55 + .45 * k, 1, this.still ? 0 : this.time * .8);
       } else if (e.kind === 'raise') {
         // Bones knitting up out of the sigil (from 0.25 s), violet motes climbing with them.
         if (t > .25) {
@@ -4094,7 +4103,7 @@ export class TopDownEngine {
     // The Dark Ward while it holds: the hex turns, and it is missing the pixels the blows it drank have cracked off.
     if (this.mobs.ward > 0) {
       c.globalAlpha = .8;
-      this.drawHex(p.x, p.y - 18, 1, Math.max(.15, Math.min(1, this.mobs.ward / this.mobs.v('dark-ward')['absorb'])), this.still ? 0 : this.time * .8);
+      this.drawHex(p.x, p.y - up(18), 1, Math.max(.15, Math.min(1, this.mobs.ward / this.mobs.v('dark-ward')['absorb'])), this.still ? 0 : this.time * .8);
       c.globalAlpha = 1;
     }
     // Bone Armor while it holds: four bone shards circling the Keeper's chest.
@@ -4107,13 +4116,13 @@ export class TopDownEngine {
     }
     // Doom: a pale skull-mark ticking over the doomed.
     for (const m of this.mobs.mobs) if ((m.doom ?? 0) > 0) {
-      const X = Math.round(m.x), Y = Math.round(m.y - m.def.h - 10);
+      const X = Math.round(m.x), Y = Math.round(m.y - this.vis(m.def).h - 10);
       c.fillStyle = Math.floor(this.time * 4) % 2 ? FX.shadow.body : FX.shadow.edge; c.fillRect(X - 3, Y - 3, 6, 5);
       c.fillStyle = FX.shadow.core; c.fillRect(X - 2, Y - 2, 1, 1); c.fillRect(X + 1, Y - 2, 1, 1);
     }
     for (const m of this.mobs.mobs) if (m.cursed > 0) {
       c.fillStyle = Math.floor(this.time * 6) % 2 ? '#b06bff' : '#ff6a2a';
-      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - m.def.h - 8 - (this.time * 8) % 6), 2, 2);
+      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - this.vis(m.def).h - 8 - (this.time * 8) % 6), 2, 2);
     }
   }
 
@@ -4165,7 +4174,7 @@ export class TopDownEngine {
         continue;
       }
       if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
-      const top = m.y - m.def.h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
+      const top = m.y - this.vis(m.def).h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
       c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
       // A unique's minions follow its name: a bar each, no name of their own.
@@ -4197,10 +4206,10 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       const words = m.chantText ?? m.def.chant;
       // The Seam Eater speaks in the eclipse's pale violet; the rest of the bosses in ember.
-      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - m.def.h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID ? '#d8c0ff' : '#ff8a7a');
+      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - this.vis(m.def).h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID ? '#d8c0ff' : '#ff8a7a');
     }
     const k = this.cant;
-    if (k) this.speech(k.text, this.player.x, this.player.y - 44, k.age, k.color);
+    if (k) this.speech(k.text, this.player.x, this.player.y - up(44), k.age, k.color);
     // For the screenshot spec (e2e/td-cant-shots.spec.ts): the canvas says what the Keeper is saying.
     const said = k?.text ?? '';
     if (said !== this.cantSeen) { this.cantSeen = said; this.canvas.setAttribute('data-cant', said); }
@@ -4266,7 +4275,7 @@ export class TopDownEngine {
     c.save();
     if (at) c.setTransform(p.face, 0, 0, 1, fx, fy);
     else c.setTransform(s * p.face, 0, 0, s, (fx - cam.x) * s, (fy - cam.y) * s);
-    p.painter.draw(c, 1, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true, fxStill: this.still } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player, fxStill: this.still });
+    p.painter.draw(c, FIGURE_K, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true, fxStill: this.still } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player, fxStill: this.still });
     c.restore();
   }
 
@@ -4515,7 +4524,7 @@ export class TopDownEngine {
       if (!inView(m.x, m.y, 20)) continue;
       const k = eyeGlow(this.night.alpha, litAt(this.nightLights, m.x, m.y - m.def.h / 2));
       if (k <= .02) continue;
-      const d = m.def, sheet = mobSheet(d), frames = Math.max(1, Math.round(sheet.width / d.w)), f = Math.floor(m.t * 6) % frames;
+      const d = this.vis(m.def), sheet = mobSheet(m.def), frames = Math.max(1, Math.round(sheet.width / d.w)), f = Math.floor(m.t * 6) % frames;
       const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
       const X = Math.round(m.x), Y = Math.round(m.y - d.h - lift), left = -Math.floor(d.w / 2);
       // The silhouette: the body's shape in a pale night tone, a little lighter than the dark round it.

@@ -37,26 +37,26 @@ function outline(src: HTMLCanvasElement): HTMLCanvasElement {
 }
 
 /** One clump: (x, y) its middle, r its radius, `tone` a whole-crown shift (−2 … +1) by where it sits. */
-interface Clump { x: number; y: number; r: number; tone: number }
+export interface Clump { x: number; y: number; r: number; tone: number }
 
 /**
  * A leaf clump: a lumpy sphere (its rim nibbled by noise so it reads as leaves, not a ball), lit from the upper left,
  * a dark rim on its lower right where the next clump meets it, speckled leaves dithered through the body.
  */
-function paintClump(c: Ctx, k: Clump, ramp: readonly string[], seed: number): void {
+export function paintClump(c: Ctx, k: Clump, ramp: readonly string[], seed: number): void {
   const R = Math.ceil(k.r) + 1, top = ramp.length - 1;
   for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
-    const ang = Math.atan2(y, x), wob = (hash(Math.round(ang * 4 + 9), seed, Math.round(k.x * 7 + k.y)) - .5) * 1.6;
+    const ang = Math.atan2(y, x), wob = (hash(Math.round(ang * 4 + 9), seed, Math.round(k.x * 7 + k.y)) - .5) * (k.r < 5 ? .7 : 1.6);
     const d = Math.hypot(x, y * 1.08) - wob;
     if (d > k.r) continue;
     const nx = x / k.r, ny = y / k.r, nz = Math.sqrt(Math.max(0, 1 - Math.min(1, (nx * nx + ny * ny))));
     // Light from the upper left and a little in front.
     let l = -.58 * nx - .62 * ny + .52 * nz;
-    l += (hash(k.x + x, k.y + y, seed + 3) - .5) * .34;
-    let i = l > .78 ? 6 : l > .5 ? 5 : l > .18 ? 4 : l > -.16 ? 3 : l > -.48 ? 2 : 1;
-    // The rim toward the lower right is the gap between clumps.
-    if (d > k.r - 1.1 && (nx + ny) > .25) i = (nx + ny) > .7 ? 0 : Math.min(i, 1);
-    else if (d > k.r - 2.1 && (nx + ny) > .5) i = Math.min(i, 2);
+    l += (hash(k.x + x, k.y + y, seed + 3) - .5) * (k.r < 5 ? .14 : .34);
+    let i = l > .82 ? 6 : l > .55 ? 5 : l > .2 ? 4 : l > -.2 ? 3 : l > -.5 ? 2 : 1;
+    // The rim toward the lower right is the gap between clumps: a dark crescent, two pixels deep on a big one.
+    if (d > k.r - 1.1 && (nx + ny) > .2) i = (nx + ny) > .6 ? 0 : Math.min(i, 1);
+    else if (d > k.r - 2.1 && (nx + ny) > .45) i = Math.min(i, 2);
     i = i === 0 ? 0 : Math.max(1, Math.min(top, i + k.tone));
     rect(c, Math.round(k.x + x), Math.round(k.y + y), 1, 1, ramp[i]);
   }
@@ -104,27 +104,38 @@ function trunk(c: Ctx, cx: number, top: number, foot: number, w: number, seed: n
   rect(c, x0, top, w, 3, BARK_RAMP[0]); rect(c, x0, top + 3, w, 1, BARK_RAMP[1]);
 }
 
-/** The crown's clumps for a broadleaf (oak, fruit): a back row, a broad middle, a front row hanging lower. */
+/**
+ * The crown's clumps for a broadleaf (oak, fruit): a round dome of many small leaf clusters (the owner's references) on
+ * a jittered hex grid inside an ellipse, each toned by where it sits on the dome — the upper left catching the sun,
+ * the lower right sinking into shade — so the crown reads as one lit ball made of little lit balls.
+ */
 function broadleaf(W: number, v: number): Clump[] {
-  const cx = W / 2, j = (n: number, s: number) => Math.round((hash(n, v, s) - .5) * 3);
-  const out: Clump[] = [];
-  // Back (top) row: smaller, darker (in the crown's own shade from the front clumps? no — highest, catching light).
-  for (const [dx, dy, r] of [[-7, 9, 7], [5, 7, 7.5], [-1, 4, 6]] as const) out.push({ x: cx + dx + j(out.length, 1), y: dy + j(out.length, 2), r, tone: 1 });
-  // Middle row: the crown's width.
-  for (const [dx, dy, r] of [[-15, 17, 7], [-6, 15, 8.5], [6, 14, 8.5], [15, 17, 7]] as const) out.push({ x: cx + dx + j(out.length, 1), y: dy + j(out.length, 2), r, tone: 0 });
-  // Front (low) row: hanging down over the trunk's top, in the lower crown's shade.
-  for (const [dx, dy, r] of [[-12, 25, 7], [0, 25, 8], [12, 24, 7]] as const) out.push({ x: cx + dx + j(out.length, 1), y: dy + j(out.length, 2), r, tone: -1 });
-  // A sunlit clump on the upper left, the crown's brightest.
-  out.push({ x: cx - 9 + j(20, 1), y: 10 + j(20, 2), r: 5.5, tone: 1 });
+  const cx = W / 2, cy = 18, rx = 19, ry = 16, step = 6.2, out: Clump[] = [];
+  for (let row = 0; row * step * .86 <= ry * 2 + 2; row++) {
+    const y = cy - ry + row * step * .86;
+    for (let col = -6; col <= 6; col++) {
+      const x = cx + col * step + (row % 2 ? step / 2 : 0) + (hash(row, col, v + 61) - .5) * 2.2;
+      const yy = y + (hash(row, col, v + 62) - .5) * 2;
+      const nx = (x - cx) / rx, ny = (yy - cy) / ry, d = nx * nx + ny * ny;
+      if (d > 1.02 || (d > .82 && hash(row, col, v + 63) < .35)) continue;
+      const l = -.62 * nx - .72 * ny;
+      out.push({ x, y: yy, r: 3.7 + hash(row, col, v + 64) * .8, tone: l > .55 ? 1 : l > .1 ? 0 : l > -.45 ? -1 : -2 });
+    }
+  }
   return out;
 }
 
 /** A broadleaf tree (oak or fruit): six variants by seed. Crown 42 × 34 over a trunk; the shadow falls lower right. */
 export function broadleafTree(kind: 'oak' | 'fruit', seed: number): Sprite {
   const v = ((seed % 6) + 6) % 6;
-  const W = 46, CH = 36, H = 54;
+  const W = 46, CH = 38, H = 54;
   const crown = cv(W, CH), k = crown.getContext('2d')!;
   const clumps = broadleaf(W, v);
+  // The crown's dark heart behind the clusters: where they part, the pockets read deep.
+  for (let y = 0; y < CH; y++) for (let x = 0; x < W; x++) {
+    const nx = (x + .5 - W / 2) / 19.5, ny = (y + .5 - 18) / 16.5;
+    if (nx * nx + ny * ny <= .92) rect(k, x, y, 1, 1, nx * nx + ny * ny > .6 || ny > .2 ? LEAF_RAMP[0] : LEAF_RAMP[1]);
+  }
   // Back to front: the higher a clump sits, the earlier it is painted (the lower ones overlap it, 3/4 view).
   for (const cl of [...clumps].sort((a, b) => a.y - b.y || a.x - b.x)) paintClump(k, cl, LEAF_RAMP, v * 17 + 5);
   if (kind === 'fruit') for (let i = 0; i < 8; i++) {
@@ -165,4 +176,34 @@ export function pineTree(seed: number): Sprite {
   const sp = { img: outline(body), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 } } as Sprite;
   sp.shadow = { img: shadowSprite(30, 11), x: -12, y: -7 };
   return sp;
+}
+
+/** Mix two #rrggbb colours (t: 0 → a, 1 → b). */
+function mixHex(a: string, b: string, t: number): string {
+  const p = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  return '#' + [0, 1, 2].map(i => Math.round(p(a, i) + (p(b, i) - p(a, i)) * t).toString(16).padStart(2, '0')).join('');
+}
+/**
+ * A clump ramp (seven tones, gap to sunlit tip) from one of td-art's four-tone leaf ramps ([base, light, shadow,
+ * highlight]): the jungle's, the swamp's, a roof of leaves.
+ */
+export function clumpRamp(r: readonly string[]): readonly string[] {
+  return [mixHex(r[2], '#08060e', .55), mixHex(r[2], '#08060e', .2), r[2], r[0], r[1], r[3], mixHex(r[3], '#fff8d8', .3)];
+}
+/** Clumps for a crown filling a dome `w` wide centred at cx, from y0 (top) to y1 (its lowest clump's middle). */
+export function domeClumps(cx: number, w: number, y0: number, y1: number, r: number, v: number): Clump[] {
+  const out: Clump[] = [], rows = Math.max(2, Math.round((y1 - y0) / (r * 1.1)) + 1);
+  for (let row = 0; row < rows; row++) {
+    const t = row / (rows - 1), y = y0 + (y1 - y0) * t, half = w / 2 * (.55 + .45 * Math.sin(Math.PI * Math.min(1, t * .9 + .25)));
+    const n = Math.max(1, Math.round(half * 2 / (r * 1.5)));
+    for (let i = 0; i < n; i++) {
+      const x = n === 1 ? cx : cx - half + r * .8 + (half * 2 - r * 1.6) * i / (n - 1);
+      out.push({ x: x + (hash(row, i, v + 51) - .5) * 3, y: y + (hash(row, i, v + 52) - .5) * 3, r: r * (.85 + hash(row, i, v + 53) * .3), tone: row === 0 ? 1 : row === rows - 1 ? -1 : 0 });
+    }
+  }
+  return out;
+}
+/** Paint clumps back to front (higher first, 3/4 view). */
+export function paintClumps(c: Ctx, clumps: readonly Clump[], ramp: readonly string[], seed: number): void {
+  for (const cl of [...clumps].sort((a, b) => a.y - b.y || a.x - b.x)) paintClump(c, cl, ramp, seed);
 }

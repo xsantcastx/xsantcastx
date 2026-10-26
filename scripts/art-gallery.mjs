@@ -29,7 +29,7 @@ import { frontSheet, FRONT_W, FRONT_H } from ${src('shared/keeper-look/keeper-fr
 import { setVolume } from ${src('shared/keeper-look/keeper-volume')};
 import { defaultLook } from ${src('shared/keeper-look/keeper-look.model')};
 import { vocationLook } from ${src('shared/keeper-look/vocation-look')};
-import { MOBS, RAISED_SKELETON, mobSheet } from ${src('play/td/td-mobs')};
+import { MOBS, RAISED_SKELETON, mobCell, mobSheet } from ${src('play/td/td-mobs')};
 import * as ART from ${src('play/td/td-art')};
 import { paintRichGround } from ${src('play/td/td-ground')};
 import { AURA_LOOKS, AuraFx } from ${src('play/td/td-aura')};
@@ -88,11 +88,11 @@ if (want('mobs')) {
   const row = section('Creatures (4 frames each)');
   const ids = ['bone-walker', 'bone-archer', 'ash-wolf', 'cinder-imp'];
   for (const id of ids) {
-    const d: any = (MOBS as any)[id] ?? RAISED_SKELETON; if (!d) continue;
-    const sh = mobSheet(d);
+    const d0: any = (MOBS as any)[id] ?? RAISED_SKELETON; if (!d0) continue;
+    const sh = mobSheet(d0), d: any = mobCell(d0);
     card(row, id, d.w * 4 + 6, d.h + 4, c => { grassBg(c, d.w * 4 + 6, d.h + 4, 3); for (let f = 0; f < 4; f++) c.drawImage(sh, f * d.w, 0, d.w, d.h, f * (d.w + 2), 2, d.w, d.h); });
   }
-  const sh = mobSheet(RAISED_SKELETON as any), d: any = RAISED_SKELETON;
+  const sh = mobSheet(RAISED_SKELETON as any), d: any = mobCell(RAISED_SKELETON as any);
   card(row, 'raised', d.w * 4 + 6, d.h + 4, c => { grassBg(c, d.w * 4 + 6, d.h + 4, 3); for (let f = 0; f < 4; f++) c.drawImage(sh, f * d.w, 0, d.w, d.h, f * (d.w + 2), 2, d.w, d.h); });
 }
 if (want('trees')) {
