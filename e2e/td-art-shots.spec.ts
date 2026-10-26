@@ -25,6 +25,15 @@ const shots = PREFIX ? test.describe : test.describe.skip;
 for (const size of SIZES) {
   shots(`art shots (${size.name})`, () => {
     test.use(size.use);
+    test('town square', async ({ page }) => {
+      test.setTimeout(120000);
+      await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+      await seed(page, { 'eclipse-td': '1', 'godforge-keeper-look': { version: 1, made: true, prompted: true, name: 'Brann', vocation: 'ashguard', hair: 'curls', updatedAt: 1 } });
+      await page.goto('/play?td=1&hour=12');
+      await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
+      await page.waitForTimeout(5000);
+      await page.screenshot({ path: `${DIR}/${PREFIX}-town-${size.name}.png` });
+    });
     test('forest clearing', async ({ page }) => {
       test.setTimeout(120000);
       await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
