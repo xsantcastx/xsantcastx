@@ -41,7 +41,7 @@ fit it, each in its district of a city. Gold only, never real money.
 | City | Shop | Where | Keeper |
 |---|---|---|---|
 | Basalt Seamworks | General Store | the market south of the fountain (22, 22) | Edrin Kade (and his potion shelf) |
-| | Tackle shed (Fishing) | the river bank by the bridge (30, 24) | Davy Tarn, Odd Tarn's nephew |
+| | Tackle shed (Fishing) | the river bank west of the bridge (13, 24) | Davy Tarn, Odd Tarn's nephew |
 | | Woodcutting Store | the north orchard (40, 5) | Forester Abe Thatch |
 | Pyrehold | General Store | the plaza of stalls (23, 22) | Garrick Dross |
 | | The Alchemist | the plaza (15, 20) | Apothecary Juno Marl |

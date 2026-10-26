@@ -419,7 +419,7 @@ world now.
 - **Old Mother Cindle** (planned, design-bible.md:246; not placed in code yet), retired Warlock. *Ember Inn back
   room.* She knits; she trains Warlocks.
 - **Odd Tarn**, one-eyed ferryman. *Ember Harbour.* "It's been warm since the second tally."
-- **Davy Tarn**, Odd Tarn's nephew. *The tackle shed on the river bank (30,24).* Keeps the Seamworks' Fishing Store
+- **Davy Tarn**, Odd Tarn's nephew. *The tackle shed on the river bank (13,24).* Keeps the Seamworks' Fishing Store
   (§6.5). "Uncle says the sea's warm. Uncle says a lot." (Named by the DM, 2026-10-26.)
 - **Forester Abe Thatch**. *The north orchard (40,5).* Keeps the Seamworks' Woodcutting Store. "Take the fallen first.
   Then ask me." (Named by the DM, 2026-10-26.)
