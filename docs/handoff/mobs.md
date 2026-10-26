@@ -35,9 +35,10 @@ Branch `mobs`, 2026-10-26. Spec: `docs/design/monsters-abilities.md` §1–§4 (
   uniques 1–2 / 2–3 / 3–4; +1 Nightmare, +1 Hell, cap 5), with the §4 combining rules.
 - **The Keeper feels it**: stun, freeze (4 s immunity after either), root (≤ 2 s), chill, blind (half his blows miss),
   wet, weaken, a shorter light, burns and bleeds; small glyphs over his head say which.
-- **Pets and summons roam** (helper `td-roam.ts`): standing still ~1.5 s, the pet, the spirit beast, called beasts and
-  raised skeletons stroll and hunt 3–8 tiles out; walking off or pressing the pet card's Follow/Fight brings them back
-  to the formation (12 s at heel).
+- **Pets and summons roam** (helper `td-roam.ts`): standing still ~1.5 s, raised skeletons, called beasts and the
+  Thornstrider's spirit beast stroll and hunt 3–8 tiles out (the spirit beast settles beside him after 14 s); a fighting
+  pet goes after what it sees within 8 tiles; with nothing to hunt, the pet comes back, sits and naps, every time.
+  Walking off or pressing the pet card's Follow/Fight brings them all back to the formation (12 s at heel).
 - **Ground items look like what they are** (helper `td-drop-art.ts`): a dropped item lies as its own icon (sword, axe,
   helm, ring, rune tablet via `runeIcon`, potion, Spellstone, material), in a beam and halo that grow with its rarity.
 - Fixed on the way: an elite's tint and the hit flash no longer paint a box over the grass round the creature.
