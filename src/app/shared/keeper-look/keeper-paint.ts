@@ -25,6 +25,7 @@
  * Browser only (canvas). Pure inputs: the same look + gear + state always paint
  * the same pixels, which is what the specs and the e2e pixel diff rely on.
  */
+import { volumize } from './keeper-volume';
 import { EYE_COLORS, HAIR_COLORS, KeeperLook, OUTFIT_COLORS, SKIN_TONES, lookKey } from './keeper-look.model';
 import {
   GearPiece, GripTransform, HoldPose, KeeperAction, KeeperGear, RARITY_TRIM, STYLE_COLORS, WEAPON_SPECS, WeaponKind,
@@ -35,6 +36,16 @@ import type { WornLook } from './worn-look.model';
 import { eyeFlicker, eyeGlow, wornParticles } from './worn-fx';
 
 export const CELL = 48;
+/**
+ * The fine grid (the art style upgrade, 2026-10-26): a figure drawn at a world scale that is a whole multiple of FIGURE_K
+ * (the top-down world draws at FIGURE_K itself) is blitted from a fine sheet — each body frame grown 1.5×, then given its
+ * one dark outline and the volume pass at that grid — so it matches the front/back views (keeper-front FRONT_K). Any
+ * other scale (the old side view's 4×, the Glass, portraits at whole multiples) keeps the art sheet, pixel for pixel.
+ */
+export const FIGURE_K = 1.5;
+const CELL_K = CELL * FIGURE_K;
+/** Does a draw at `scale` world px per art px take the fine sheet? */
+export const fineScale = (scale: number) => Math.abs(scale / FIGURE_K - Math.round(scale / FIGURE_K)) < 1e-6 && scale >= FIGURE_K - 1e-6;
 /** The feet: bottom edge, centre column. */
 export const PIVOT_X = 24;
 export const PIVOT_Y = 48;
@@ -455,6 +466,11 @@ export class KeeperPainter {
    */
   private sheet: HTMLCanvasElement | null = null;
   private readonly slots = new Map<string, number>();
+  /** The same on the fine grid (FIGURE_K), made only when a fine-scale draw asks for it. */
+  private fineSheet: HTMLCanvasElement | null = null;
+  private readonly fineSlots = new Map<string, number>();
+  /** The live arm and weapon, painted at art scale and grown onto the fine grid with the body (one per painter). */
+  private live: HTMLCanvasElement | null = null;
   private readonly weaponKind: WeaponKind | null;
   private weaponSprite: HTMLCanvasElement | null = null;
   private offhand: OffhandSprite | null | undefined;
@@ -547,27 +563,38 @@ export class KeeperPainter {
   draw(c: Ctx, scale: number, state: PaintState): void {
     const action = state.action;
     const frame = frameIndex(action, state.time, state.attackT, !!state.reduced);
-    const slot = this.frame(action, frame, action === 'death' ? 'open' : this.faceAt(state));
     const smoothing = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
     const squash = state.reduced ? 0 : Math.max(-1, Math.min(1, state.squash ?? 0));
     const squashed = Math.abs(squash) > .02;
     if (squashed) { c.save(); c.scale(1 + squash * .16, 1 - squash * .16); }
     const x = -PIVOT_X * scale, y = -PIVOT_Y * scale, size = CELL * scale;
-    this.blit(c, slot, x, y, size);
+    const fine = fineScale(scale) && !Number.isInteger(scale);
+    const at = this.frame(action, frame, action === 'death' ? 'open' : this.faceAt(state), fine);
+    this.blit(c, at, x, y, size, fine);
     if (state.rim && state.rim > .01) {
       c.save(); c.shadowBlur = 0; c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, state.rim) * .45;
-      this.blit(c, slot, x + scale * .5, y - scale * .5, size);
+      this.blit(c, at, x + scale * .5, y - scale * .5, size, fine);
       c.restore();
     }
     if (action !== 'death') {
       const blur = c.shadowBlur;
       c.shadowBlur = 0;
-      c.save();
-      c.translate(x, y); c.scale(scale, scale);
-      this.frontArm(c, action, frame, state);
-      if (this.hasFx) this.wornFx(c, action, bodyFrame(action === 'talk' ? 'idle' : action, frame), state);
-      c.restore();
+      if (fine) {
+        // A fractional scale would blur the live strokes: paint them at art scale, then grow them like the body.
+        const live = this.live ??= canvas(CELL * 2, CELL * 2), g = live.getContext('2d')!;
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, live.width, live.height); g.imageSmoothingEnabled = false;
+        g.translate(CELL / 2, CELL / 2);
+        this.frontArm(g, action, frame, state);
+        if (this.hasFx) this.wornFx(g, action, bodyFrame(action === 'talk' ? 'idle' : action, frame), state);
+        c.drawImage(live, x - CELL / 2 * scale, y - CELL / 2 * scale, CELL * 2 * scale, CELL * 2 * scale);
+      } else {
+        c.save();
+        c.translate(x, y); c.scale(scale, scale);
+        this.frontArm(c, action, frame, state);
+        if (this.hasFx) this.wornFx(c, action, bodyFrame(action === 'talk' ? 'idle' : action, frame), state);
+        c.restore();
+      }
       c.shadowBlur = blur;
     }
     if (squashed) c.restore();
@@ -660,40 +687,49 @@ export class KeeperPainter {
 
   // ── Cached body frames: one sheet per painter ──
   /** The sheet slot holding a frame, painting it on first sight. Idle and talk share bodies. */
-  private frame(action: KeeperAction, frame: number, face: KeeperFace): number {
+  private frame(action: KeeperAction, frame: number, face: KeeperFace, fine = false): number {
     const pose = action === 'talk' ? 'idle' : action;
-    const id = `${pose}:${frame}:${face}`;
-    let slot = this.slots.get(id);
+    const id = `${pose}:${frame}:${face}`, slots = fine ? this.fineSlots : this.slots;
+    let slot = slots.get(id);
     if (slot === undefined) {
-      const art = pose === 'death' ? this.lying() : outlined(this.paintBody(bodyFrame(pose, frame), pose, face));
-      slot = this.slots.size;
-      const sheet = this.room(slot + 1);
-      sheet.getContext('2d')!.drawImage(art, (slot % SHEET_COLS) * CELL, Math.floor(slot / SHEET_COLS) * CELL);
-      this.slots.set(id, slot);
+      let art: HTMLCanvasElement;
+      if (pose === 'death') art = this.lying(fine);
+      else if (fine) {
+        // Grown onto the fine grid first, then outlined and lit there (a finer outline, a smoother relief).
+        const raw = this.paintBody(bodyFrame(pose, frame), pose, face), up = canvas(CELL_K, CELL_K), g = up.getContext('2d')!;
+        g.imageSmoothingEnabled = false; g.drawImage(raw, 0, 0, CELL_K, CELL_K);
+        art = volumize(outlined(up), { depth: 7 });
+      } else art = volumize(outlined(this.paintBody(bodyFrame(pose, frame), pose, face)));
+      slot = slots.size;
+      const sheet = this.room(slot + 1, fine), cell = fine ? CELL_K : CELL;
+      sheet.getContext('2d')!.drawImage(art, (slot % SHEET_COLS) * cell, Math.floor(slot / SHEET_COLS) * cell);
+      slots.set(id, slot);
     }
     return slot;
   }
   /** The sheet, grown (by doubling its rows, copied across) until it holds `count` slots. */
-  private room(count: number): HTMLCanvasElement {
+  private room(count: number, fine = false): HTMLCanvasElement {
+    const cell = fine ? CELL_K : CELL, have0 = fine ? this.fineSheet : this.sheet;
     const rows = Math.ceil(count / SHEET_COLS);
-    const have = this.sheet ? this.sheet.height / CELL : 0;
-    if (this.sheet && rows <= have) return this.sheet;
-    const next = canvas(SHEET_COLS * CELL, Math.max(2, have * 2, rows) * CELL);
-    if (this.sheet) next.getContext('2d')!.drawImage(this.sheet, 0, 0);
-    this.sheet = next;
+    const have = have0 ? have0.height / cell : 0;
+    if (have0 && rows <= have) return have0;
+    const next = canvas(SHEET_COLS * cell, Math.max(2, have * 2, rows) * cell);
+    if (have0) next.getContext('2d')!.drawImage(have0, 0, 0);
+    if (fine) this.fineSheet = next; else this.sheet = next;
     return next;
   }
-  private blit(c: Ctx, slot: number, x: number, y: number, size: number): void {
-    c.drawImage(this.sheet!, (slot % SHEET_COLS) * CELL, Math.floor(slot / SHEET_COLS) * CELL, CELL, CELL, x, y, size, size);
+  private blit(c: Ctx, slot: number, x: number, y: number, size: number, fine = false): void {
+    const cell = fine ? CELL_K : CELL;
+    c.drawImage((fine ? this.fineSheet : this.sheet)!, (slot % SHEET_COLS) * cell, Math.floor(slot / SHEET_COLS) * cell, cell, cell, x, y, size, size);
   }
-  private lying(): HTMLCanvasElement {
-    const stand = this.frame('idle', 0, 'blink');
-    const out = canvas(CELL, CELL);
+  private lying(fine = false): HTMLCanvasElement {
+    const stand = this.frame('idle', 0, 'blink', fine), k = fine ? FIGURE_K : 1;
+    const out = canvas(CELL * k, CELL * k);
     const c = out.getContext('2d')!;
     c.imageSmoothingEnabled = false;
     // Feet to the right, the back on the floor (the figure's back edge lands on the bottom row).
-    c.translate(44, 37); c.rotate(-Math.PI / 2);
-    this.blit(c, stand, -PIVOT_X, -PIVOT_Y, CELL);
+    c.translate(44 * k, 37 * k); c.rotate(-Math.PI / 2);
+    this.blit(c, stand, -PIVOT_X * k, -PIVOT_Y * k, CELL * k, fine);
     return out;
   }
 
@@ -707,8 +743,9 @@ export class KeeperPainter {
     const half = Math.floor(b.sw / 2);
 
     // 1. Cape (a mantle) behind everything, trailing with the motion and scalloped at the hem.
-    if (gear.chest?.kind === 'mantle') {
-      const m = matOf(gear.chest);
+    const capeOf = gear.chest?.kind === 'mantle' ? matOf(gear.chest) : this.garb?.cape ? { base: this.garb.cape, baseLo: dark(this.garb.cape, .35), trim: dark(this.garb.cape, .2) } : null;
+    if (capeOf) {
+      const m = capeOf;
       const top = SHOULDER - 1 + uy, bottom = FOOT - 1 - (action === 'rest' ? 3 : 0);
       for (let y = top; y <= bottom; y++) {
         const u = (y - top) / Math.max(1, bottom - top);

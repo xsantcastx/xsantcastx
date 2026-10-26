@@ -8,9 +8,9 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
+import { beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
-import type { ContinentDef, Region } from './continent';
+import type { ContinentDef, ContinentHotspot, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
@@ -329,9 +329,12 @@ export class TdWorld implements TdLevel {
   private makeChunk(cx: number, cy: number): WildChunk {
     const objects: TdObject[] = [], blocked = new Set<number>(), spawns: MobSpawn[] = [];
     const put = (o: TdObject, c: number, r: number) => { objects.push(o); if (o.block) blocked.add(this.key(c, r)); };
+    const hot = this.hotspotOf(cx, cy);
     for (let r = cy * WORLD_CHUNK; r < (cy + 1) * WORLD_CHUNK; r++) {
       for (let c = cx * WORLD_CHUNK; c < (cx + 1) * WORLD_CHUNK; c++) {
         if (this.nearTown(c, r) || this.inClearing(c, r)) continue;
+        // A lair's ring is kept clear (its pack has room to fight).
+        if (hot && Math.hypot(c - hot.c, r - hot.r) <= HOT_CLEAR) continue;
         const g = this.ground(c, r);
         if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave' && g !== 'moss' && g !== 'flagstone' && g !== 'mire' && g !== 'wetstone') continue;
         // A clear lane beside the roads.
@@ -339,8 +342,8 @@ export class TdWorld implements TdLevel {
         const reg = this.regionAt(c, r), roll = hash(c, r, 919), x = c * TILE + TILE / 2, y = r * TILE + TILE;
         const treeKind = (pine: number): 'oak' | 'pine' | 'fruit' => { const h = hash(c, r, 5); return h < pine ? 'pine' : h < pine + .12 ? 'fruit' : 'oak'; };
         const treeAt = (kind: 'oak' | 'pine' | 'fruit') => { const seed = Math.floor(hash(c, r, 6) * 6); put({ sprite: () => tree(kind, seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r); };
-        if (reg === 'F') { if (roll < .34) treeAt(treeKind(.6)); else if (roll > .975) put({ sprite: () => bush(1), x, y, kind: 'prop' }, c, r); }
-        else if (reg === 'f') { if (roll < .14) treeAt(treeKind(.25)); else if (roll > .98) put({ sprite: () => bush(Math.floor(hash(c, r, 8) * 3)), x, y, kind: 'prop' }, c, r); }
+        if (reg === 'F') { if (roll < .26) treeAt(treeKind(.6)); else if (roll > .975) put({ sprite: () => bush(1), x, y, kind: 'prop' }, c, r); }
+        else if (reg === 'f') { if (roll < .1) treeAt(treeKind(.25)); else if (roll > .98) put({ sprite: () => bush(Math.floor(hash(c, r, 8) * 3)), x, y, kind: 'prop' }, c, r); }
         else if (reg === '.') {
           if (roll < .015) treeAt(treeKind(.1));
           else if (roll > .992) put({ sprite: () => bush(2), x, y, kind: 'prop' }, c, r);
@@ -355,7 +358,7 @@ export class TdWorld implements TdLevel {
           if (deep && roll < .03 && ((c % WORLD_CHUNK) + WORLD_CHUNK) % WORLD_CHUNK % 5 === 2 && this.giantRoom(c, r)) {
             put({ sprite: () => giantTree(seed), x, y, block: { w: 3, h: 1 }, kind: 'tree' }, c, r);
             blocked.add(this.key(c - 1, r)); blocked.add(this.key(c + 1, r));
-          } else if (roll < (deep ? .3 : .15)) put({ sprite: () => jungleTree(seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
+          } else if (roll < (deep ? .23 : .12)) put({ sprite: () => jungleTree(seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
           else if (roll > (deep ? .93 : .96)) put({ sprite: () => fern(seed), x, y, kind: 'prop' }, c, r);
           else if (!deep && g === 'grass' && roll > .945) put({ sprite: () => flowerbed(2, (c * 31 + r) & 7), x, y, kind: 'prop' }, c, r);
         } else if (reg === 'u') {
@@ -368,7 +371,7 @@ export class TdWorld implements TdLevel {
           // The Marches: moss-hung cypresses, reeds at the water, gloomcaps glowing in the bog; a lost lantern on a post
           // in the deep fen and the drowned ruins, still lit; broken walls where the old town went under.
           const seed = Math.floor(hash(c, r, 6) * 6), wet = this.ground(c + 1, r) === 'blackwater' || this.ground(c - 1, r) === 'blackwater' || this.ground(c, r + 1) === 'blackwater';
-          const trees = reg === 'Q' ? .1 : reg === 'q' ? .055 : .03;
+          const trees = reg === 'Q' ? .08 : reg === 'q' ? .045 : .03;
           if (reg === 'x' && g === 'wetstone' && roll < .03) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => ruinWall(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
           else if ((reg === 'Q' || reg === 'x') && roll > .996) put({ sprite: lanternPost, x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r);
           else if (g === 'mire' && roll < trees) put({ sprite: () => swampTree(seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
@@ -429,7 +432,8 @@ export class TdWorld implements TdLevel {
     const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), table = this.def.mobs[mid];
     const nearVillage = this.villages.some(v => Math.max(Math.abs(cx - Math.floor((v.c0 + v.map.cols / 2) / WORLD_CHUNK)), Math.abs(cy - Math.floor((v.r0 + v.map.rows / 2) / WORLD_CHUNK))) < 2);
     if (table && !nearVillage && Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= 3 && hash(cx, cy, 77) < table.chance) {
-      const pack = 1 + Math.floor(hash(cx, cy, 78) * 3);
+      // Two to four a chunk (was one to three: owner 2026-10-26, "we need more monsters over all the map").
+      const pack = 2 + Math.floor(hash(cx, cy, 78) * 3);
       for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
         const c = cx * WORLD_CHUNK + Math.floor(hash(cx * 31 + tries, cy, 79) * WORLD_CHUNK), r = cy * WORLD_CHUNK + Math.floor(hash(cx, cy * 31 + tries, 80) * WORLD_CHUNK);
         const g = this.ground(c, r);
@@ -439,6 +443,42 @@ export class TdWorld implements TdLevel {
         i++;
       }
     }
+    // The lair: bones round its heart, its pack close about it.
+    if (hot) {
+      for (const [dc, dr, k] of [[0, 0, 0], [-1, 1, 1], [2, -1, 2]] as const) {
+        const c = hot.c + dc, r = hot.r + dr;
+        if (this.walkableGround(c, r) && !blocked.has(this.key(c, r))) objects.push({ sprite: bones, x: c * TILE + TILE / 2 + k, y: r * TILE + TILE, kind: 'prop' });
+      }
+      for (let i = 0, tries = 0; i < hot.spot.count && tries < 32; tries++) {
+        const a = (tries / 8) * Math.PI * 2 + hash(hot.c, hot.r, 93) * 6, d = 2 + (tries % 3);
+        const c = Math.round(hot.c + Math.cos(a) * d), r = Math.round(hot.r + Math.sin(a) * d);
+        if (!this.walkableGround(c, r) || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || this.nearWayIn(c, r) || this.nearTown(c, r) || spawns.some(s => s.x === c * TILE + TILE / 2 && s.y === r * TILE + TILE)) continue;
+        const key = `h:${c},${r}`;
+        spawns.push({ key, type: hot.spot.types[i % hot.spot.types.length], x: c * TILE + TILE / 2, y: r * TILE + TILE, ...this.zoned(regionZone(this.def.id, hot.spot.region), key) });
+        i++;
+      }
+    }
     return { objects, blocked, spawns };
   }
+  /** This chunk's lair, if it has one (continent hotspots): its heart (tiles) near the chunk's middle, in the open wilds. */
+  private hotspotOf(cx: number, cy: number): { c: number; r: number; spot: ContinentHotspot } | null {
+    const list = this.def.hotspots;
+    if (!list?.length) return null;
+    const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), spot = list.find(h => h.region === mid);
+    if (!spot || hash(cx, cy, 91) >= spot.chance) return null;
+    const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
+    if (Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) < 3) return null;
+    if (this.villages.some(v => Math.max(Math.abs(cx - Math.floor((v.c0 + v.map.cols / 2) / WORLD_CHUNK)), Math.abs(cy - Math.floor((v.r0 + v.map.rows / 2) / WORLD_CHUNK))) < 2)) return null;
+    const c0 = cx * WORLD_CHUNK + 8 + Math.floor(hash(cx, cy, 92) * 5) - 2, r0 = cy * WORLD_CHUNK + 8 + Math.floor(hash(cy, cx, 92) * 5) - 2;
+    // The nearest open tile to that heart (rock, water or a road under it moves the lair, never cancels it).
+    for (let d = 0; d <= 3; d++) for (let dr = -d; dr <= d; dr++) for (let dc = -d; dc <= d; dc++) {
+      if (Math.max(Math.abs(dc), Math.abs(dr)) !== d) continue;
+      const c = c0 + dc, r = r0 + dr;
+      if (!this.walkableGround(c, r) || this.nearWayIn(c, r) || this.nearTown(c, r) || this.roads.has(this.key(c, r))) continue;
+      return { c, r, spot };
+    }
+    return null;
+  }
 }
+/** Tiles round a lair's heart kept clear of trees, rocks and bushes. */
+const HOT_CLEAR = 5;

@@ -1757,3 +1757,15 @@ long it has learned to want things. Wren lays it to rest for nothing ("the dead 
 coppers he was saving for himself — "I find I am in no hurry" — or the Keeper keeps it, and Wren counts the Keeper
 instead, every night, twice. Afterwards: "Forty-one. It comes out right now. Mostly." Lines live in
 `shared/sexton/sexton-count.i18n.ts`; the Uncounted's Bestiary line in `play/td/td-mobs.ts`.
+
+## World bosses (2026-10-26, M3 of the server-run world) — shipped, owner reviews in play
+
+Four rare creatures rise on timers of hours, somewhere in their own wilds, and the whole world hears an omen when they
+do. **Old Greymaw** (Ember Isle): "The Emberwood has gone quiet. The wolves are waiting for someone." **Gharak
+Emberjaw** (Infernal Reach): war-horns in the Badlands, and no clan answers them. **The Copied Hart** (Verdant Wilds):
+two harts drink at Glassmere, and only one casts a reflection; when it falls, one hart still drinks without a
+reflection (the Graft Crown thread, unresolved). **Ser Wickless, Marshal of the Drowned Guard** (Umbral Marches): a
+lantern with no flame walks the Ruins; he refused the Abbess's last order and gave his flame to the Fog-Shepherd. Each
+carries its own uniques (world-bosses.ts `loot.uniques`). DM review 2026-10-26: Wickless re-motived (The Tenth Lantern
+clash), Lastwarden's lore re-homed to him, six uniques' lore cleared of "Realm" for a land (canon §10 C-17). Lines live in
+`play/world/world-bosses.i18n.ts`. Lairs (hot spots) per zone: td-world hotspots, td-levels FLOOR_LAIRS (canon §8).

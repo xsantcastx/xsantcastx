@@ -37,7 +37,7 @@ jobs:
         run: node scripts/check-meaning.js
 
       - name: Test game engine and social transport
-        run: node --test scripts/seamworks-engine.test.cjs scripts/homestead.test.cjs scripts/home-forge.test.cjs scripts/social-client.test.mjs scripts/social-server.test.mjs scripts/trade-core.test.mjs scripts/social-world.test.mjs scripts/social-m2.test.mjs
+        run: node --test scripts/seamworks-engine.test.cjs scripts/homestead.test.cjs scripts/home-forge.test.cjs scripts/social-client.test.mjs scripts/social-server.test.mjs scripts/trade-core.test.mjs scripts/social-world.test.mjs scripts/social-m2.test.mjs scripts/social-m3.test.mjs
 
       - name: Economy curve smoke (first purchase <= 15 s, >= 20 purchases in 10 min)
         # Reads the shipped numbers from src/app/shared/economy/economy-curve.ts.

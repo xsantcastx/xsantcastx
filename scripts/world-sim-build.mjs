@@ -21,7 +21,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, '..');
 /** What the room imports: the world, the protocol constants it shares with the client, a Keeper's budget from its save. */
-export const ENTRIES = ['src/app/play/world/room-world.ts', 'src/app/play/social/world-protocol.ts', 'src/app/play/world/keeper-budget.ts'];
+export const ENTRIES = ['src/app/play/world/room-world.ts', 'src/app/play/social/world-protocol.ts', 'src/app/play/world/keeper-budget.ts',
+  // Protocol 9: the respawn rules, the world bosses, every area's tables (the tests and /health read them).
+  'src/app/play/world/respawn.ts', 'src/app/play/world/world-bosses.ts', 'src/app/play/td/td-levels.ts'];
 /**
  * Modules exported whole under one name (protocol 8): the trade Function's own core (functions-game/src/trade-core.ts),
  * so the room settles trades and escrows ground drops with the very code the Function runs — never a copy.

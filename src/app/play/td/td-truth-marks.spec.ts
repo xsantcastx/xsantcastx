@@ -1023,3 +1023,36 @@ describe('td-truth-marks: the book\'s rules', () => {
     expect(d.slot).toBe('a1');
   });
 });
+
+// ── Shared creatures (a room's or a host's: td-coop, world/room-world) ──────────────────────────────────────────
+
+describe('td-truth-marks: the marks on creatures the room runs', () => {
+  /** This Keeper as a member under the room: every blow becomes a claim (`/coop/hits`), the room decides. */
+  function member(id: SkillId, mask: number): { w: World; claims: number[] } {
+    const w = withMarks(id, mask), claims: number[] = [];
+    w.sys.replica = true;
+    w.sys.coop = { bite: () => undefined, killed: () => undefined, claim: (_m, dmg) => { claims.push(dmg); } };
+    return { w, claims };
+  }
+  it('a claim carries the marks lift (Sure Footing on a chilled foe), and the riders reach the creature it sees', () => {
+    const { w, claims } = member('watch-blade', bit('b2')), m = w.sys.replicaMob('r1', DUMMY, TILE, 0);
+    m.hp = 1e6; m.chillT = 9;
+    blow(w, m, 'watch-blade');
+    expect(claims).toEqual([115]);
+  });
+  it('a burn rider ticks as claims of its own', () => {
+    const { w, claims } = member('ember-bolt', bit('a2')), m = w.sys.replicaMob('r1', DUMMY, 2 * TILE, 0); w.sys.mobs.push(m);
+    m.hp = 1e6;
+    blow(w, m, 'ember-bolt');
+    expect((m.scorchT ?? 0) > 0).toBeTrue();
+    run(w, 2.2);
+    expect(claims.length).toBeGreaterThan(1);
+  });
+  it('a fall the room announces sets off the marks of the felling skill (Soulfire)', () => {
+    const { w } = member('ember-bolt', bit('b3')), m = w.sys.replicaMob('r1', DUMMY, 2 * TILE, 0);
+    m.hp = 1e6; w.sys.mana = 50; w.sys.maxMana = 999;
+    blow(w, m, 'ember-bolt');
+    w.sys.coopFell(m, true, m.def.hp, false);
+    expect(w.sys.mana).toBe(53);
+  });
+});

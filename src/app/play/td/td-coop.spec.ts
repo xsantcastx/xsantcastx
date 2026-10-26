@@ -199,4 +199,58 @@ describe('td-coop: shared creatures between a host and a member', () => {
     room.hits({ from: 'B', area: 'ember-isle', x: 0, y: 0, level: 20, hits: [{ i: wolf.nid!, d: 5, el: 'physical' }] });
     expect(wolf.hp).toBe(wolf.def.hp - 5);
   });
+
+  // Owner 2026-10-26: "mobs appear and then disappear, or bug out, when going in and out of dungeons".
+  it('stepping into a dungeon: the last area\'s creatures leave at once, a late snapshot of it is refused, nothing is adopted', async () => {
+    const { a, b, run } = rig();
+    const wolf = a.sys.place('w:1,1', calm(), 60, 20); wolf.wait = 1e9;
+    await run(.3);
+    expect(b.sys.mobs.length).toBe(1);
+    // B takes the stair down; a whole snapshot of the island was still in flight.
+    b.sys.enterLevel([]);
+    b.coop.left('ember-mine-1');
+    b.coop.snap({ area: 'ember-isle', from: 'A', term: 1, seq: 99, kf: true, mobs: [{ i: 'z', t: 'ash-wolf', x: 5, y: 5, f: 1, h: 30, m: 30, l: 3, e: null, tl: 0, ax: 0, ay: 0, fl: 0 }], gone: [], ev: [] } as unknown as CoopSnapMsg);
+    expect(b.sys.mobs.length).toBe(0);
+    expect(b.sys.replica).toBeFalse();
+    // Its own creatures of the dungeon are its own, at full life, and nothing of the island came along.
+    const own = b.sys.place('mine-wolf', MOBS['ash-wolf'], 10, 10);
+    b.coop.before(1 / 60, 'ember-mine-1', []);
+    expect(b.coop.role).toBe('solo');
+    expect(b.sys.mobs).toEqual([own]);
+    expect(own.hp).toBe(MOBS['ash-wolf'].hp);
+  });
+
+  it('back out onto a room-run island: the room is the host at once (no creatures of its own), and its listing changes nothing', () => {
+    const sys = new MobSystem({ options: {} as EngineOptions, walkable: () => true, levelId: () => 'surface', player: () => ({ x: 0, y: 0 }), hurtPlayer: () => undefined, healPlayer: () => undefined, swung: () => undefined });
+    let clock = 0;
+    const coop = new TdCoop(sys, { send: async () => true, claim: async () => true, killed: () => 'none', now: () => clock, phase: () => 'day', still: () => false });
+    // In the dungeon: the room lists nothing for this Keeper, but it runs the world.
+    coop.setAreas({}, 'B', [], true);
+    coop.before(1 / 60, 'ember-mine-1', []);
+    expect(coop.role).toBe('solo');
+    coop.left('ember-isle');
+    coop.before(1 / 60, 'ember-isle', []);
+    expect(coop.role).toBe('member');
+    expect(sys.replica).toBeTrue();
+    // The room's snapshot lands on the expected host; then its listing arrives: no reset, the replica stays.
+    coop.snap({ area: 'ember-isle', from: '@room', term: -1, seq: 1, kf: true, mobs: [{ i: 'a', t: 'ash-wolf', x: 5, y: 5, f: 1, h: 30, m: 30, l: 3, e: null, tl: 0, ax: 0, ay: 0, fl: 0 }], gone: [], ev: [] } as unknown as CoopSnapMsg);
+    expect(sys.mobs.length).toBe(1);
+    coop.setAreas({ 'ember-isle': { host: '@room', term: 4, members: ['B'] } }, 'B', [], true);
+    clock += 16; coop.before(1 / 60, 'ember-isle', []);
+    expect(coop.role).toBe('member');
+    expect(sys.mobs.length).toBe(1);
+  });
+
+  it('a room that never lists this Keeper in a world area: after a few seconds it is solo there, as before', () => {
+    const sys = new MobSystem({ options: {} as EngineOptions, walkable: () => true, levelId: () => 'surface', player: () => ({ x: 0, y: 0 }), hurtPlayer: () => undefined, healPlayer: () => undefined, swung: () => undefined });
+    let clock = 0;
+    const coop = new TdCoop(sys, { send: async () => true, claim: async () => true, killed: () => 'none', now: () => clock, phase: () => 'day', still: () => false });
+    coop.setAreas({}, 'B', [], true);
+    coop.before(1 / 60, 'ember-isle', []);
+    expect(coop.role).toBe('member');
+    clock += 6000;
+    coop.before(1 / 60, 'ember-isle', []);
+    expect(coop.role).toBe('solo');
+    expect(sys.replica).toBeFalse();
+  });
 });

@@ -21,17 +21,18 @@ import { FIRE, MOTE, nearRidge, paintCottage, paintNight } from './title-art';
 
 type Slots = ReadonlyArray<readonly [number, number]>;
 /** The five places by the fire (art px from the fire's base): left, right, back-left, back-right, back-centre. */
-export const CAMP_SLOTS: Slots = [[-56, -4], [56, -4], [-30, -22], [30, -22], [0, -30]];
+// Spaced for the fine-grid figures (keeper-front FRONT_K: they stand 60 px tall, not 40).
+export const CAMP_SLOTS: Slots = [[-80, -4], [80, -4], [-43, -30], [43, -30], [0, -42]];
 /** The same five on a tall, narrow stage (a phone held upright): a deeper ring, so the group can be drawn larger. */
-export const CAMP_SLOTS_TALL: Slots = [[-38, 4], [38, 4], [-22, -30], [22, -30], [0, -70]];
+export const CAMP_SLOTS_TALL: Slots = [[-48, 4], [48, 4], [-26, -28], [26, -28], [0, -58]];
 
 /**
  * The two arrangements: the art px the group needs (with its name tags and a margin), how far its centre sits above the
  * fire, how far above the fire the hills begin, and how deep the trodden clearing is.
  */
 const ARRANGEMENTS = {
-  wide: { slots: CAMP_SLOTS, needW: 170, needH: 92, lift: 28, hills: 52, deep: 24 },
-  tall: { slots: CAMP_SLOTS_TALL, needW: 118, needH: 128, lift: 48, hills: 90, deep: 40 },
+  wide: { slots: CAMP_SLOTS, needW: 236, needH: 126, lift: 38, hills: 70, deep: 32 },
+  tall: { slots: CAMP_SLOTS_TALL, needW: 150, needH: 140, lift: 50, hills: 96, deep: 44 },
 } as const;
 /** How far the chosen Keeper steps toward the fire (art px). */
 const STEP = 5;
@@ -63,7 +64,8 @@ export function campLayout(viewW: number, viewH: number, stage: Rect | null): Ca
   const st = stage && stage.w >= 40 && stage.h >= 40 ? stage : { x: 0, y: 0, w: viewW, h: viewH };
   const scale = (a: { needW: number; needH: number }) => Math.max(2, Math.min(4, Math.floor(Math.min(st.w / a.needW, st.h / a.needH))));
   // The deeper ring only when it lets the Keepers be drawn bigger (a phone held upright).
-  const a = scale(ARRANGEMENTS.tall) > scale(ARRANGEMENTS.wide) ? ARRANGEMENTS.tall : ARRANGEMENTS.wide;
+  // (or when the wide ring would not fit across at all: the fine-grid figures need room.)
+  const a = scale(ARRANGEMENTS.tall) > scale(ARRANGEMENTS.wide) || st.w < ARRANGEMENTS.wide.needW * 2 ? ARRANGEMENTS.tall : ARRANGEMENTS.wide;
   const s = scale(a);
   const w = Math.max(1, Math.ceil(viewW / s)), h = Math.max(1, Math.ceil(viewH / s));
   const fx = Math.round((st.x + st.w / 2) / s);

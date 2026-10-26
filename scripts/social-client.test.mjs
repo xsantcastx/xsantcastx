@@ -142,8 +142,8 @@ test('always-on: join carries the profile; a failed join retries with growing ba
   const x = setupOn(t, { join: () => (fail-- > 0 ? new Response('{}', { status: 503 }) : Response.json({ token: 'secret', id: 'keeper', players: [], messages: [], protocol: 2 })) });
   await x.room.join('Arin', { vocation: 'warlock', look: '1.0.2', level: 7 }); await flush();
   // Protocol 3: the client says it knows parties; protocol 4: its privacy; protocol 6: it trades; protocol 8: it lets the
-  // room settle (no character named here: no option given). An older room ignores them all.
-  assert.deepEqual(JSON.parse(x.requests[0].options.body), { name: 'Arin', vocation: 'warlock', look: '1.0.2', level: 7, party: true, coop: true, trade: true, world: true, protocol: 8, privacy: { offline: false, invites: 'everyone' } });
+  // room settle (no character named here: no option given); protocol 9: the room hosts it in every area. An older room ignores them all.
+  assert.deepEqual(JSON.parse(x.requests[0].options.body), { name: 'Arin', vocation: 'warlock', look: '1.0.2', level: 7, party: true, coop: true, trade: true, world: true, protocol: 9, privacy: { offline: false, invites: 'everyone' } });
   assert.equal(x.timers.at(-1).delay, 2000);
   x.timers.at(-1).callback(); await flush();
   assert.equal(x.timers.at(-1).delay, 4000);

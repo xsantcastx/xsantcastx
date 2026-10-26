@@ -12,6 +12,7 @@
  * roots at a creature's feet, a bleed, Command's mark over the sent-at foe, Pack Bond's thread to the beast),
  * `drawArrow` (one in flight) and `drawBeast` (a called beast or one of the stampede, y-sorted with the world).
  */
+import { mobCell } from './td-mobs';
 import { burst, drawBurst, glowSquare, groundRing, linePixels, type Tones } from './td-fx';
 import { PET_H, PET_W, petFrameIndex, petSheet, type TdPetFrame } from './td-pet-art';
 import { SPIRIT_BEAST } from './td-thorn';
@@ -166,7 +167,7 @@ export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded
   for (const m of st.mobs) {
     const X = Math.round(m.x), Y = Math.round(m.y);
     if ((m.rootT ?? 0) > 0) {
-      const w = Math.max(5, Math.round(m.def.w / 3));
+      const w = Math.max(5, Math.round(mobCell(m.def).w / 3));
       for (let i = -w; i <= w; i += 3) {
         const h = 2 + ((i + w) % 2);
         c.fillStyle = THORN_FX.briar.body; c.fillRect(X + i, Y - h, 1, h);
@@ -176,13 +177,13 @@ export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded
     }
     if ((m.bleedT ?? 0) > 0) {
       const k = still ? 0 : Math.floor(time * 3) % 3;
-      c.fillStyle = THORN_FX.blood.body; c.fillRect(X + Math.round(m.def.w / 4), Y - Math.round(m.def.h * .6) + k, 1, 2);
-      c.fillStyle = THORN_FX.blood.edge; c.fillRect(X + Math.round(m.def.w / 4), Y - Math.round(m.def.h * .6) + k + 2, 1, 1);
+      c.fillStyle = THORN_FX.blood.body; c.fillRect(X + Math.round(mobCell(m.def).w / 4), Y - Math.round(mobCell(m.def).h * .6) + k, 1, 2);
+      c.fillStyle = THORN_FX.blood.edge; c.fillRect(X + Math.round(mobCell(m.def).w / 4), Y - Math.round(mobCell(m.def).h * .6) + k + 2, 1, 1);
     }
   }
   const f = st.commanded;
   if (f) {
-    const X = Math.round(f.x), Y = Math.round(f.y - f.def.h - 6), bob = still ? 0 : Math.round(Math.sin(time * 6));
+    const X = Math.round(f.x), Y = Math.round(f.y - mobCell(f.def).h - 6), bob = still ? 0 : Math.round(Math.sin(time * 6));
     for (let i = 0; i < 3; i++) { c.fillStyle = i ? LEAF : LEAF_HI; c.fillRect(X - 3 + i, Y + bob + i, 1, 1); c.fillRect(X + 3 - i, Y + bob + i, 1, 1); }
     c.fillStyle = THORN_FX.wild.core; c.fillRect(X, Y + bob + 3, 1, 1);
   }

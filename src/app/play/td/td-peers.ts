@@ -10,7 +10,10 @@
  * A tap on one names it (EngineOptions.onPeerTap: the HUD's small card, with Wave). A Wave hangs over the Keeper who
  * waved and the one waved at for a few seconds.
  */
-import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { castShadow } from './td-shade';
+/** A Keeper's tap box over its feet (the fine figure, FIGURE_K, stands half again as tall as the art grid's). */
+const TAP_W = 12, TAP_H = 54;
+import { FIGURE_K, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { unpackWorn } from '../../shared/keeper-look/worn-looks';
@@ -72,7 +75,7 @@ export class TdPeers {
   at(wx: number, wy: number): PeerCard | null {
     let best: PeerShown | null = null, bestD = Infinity;
     for (const p of this.shown) {
-      if (Math.abs(wx - p.x) > 10 || wy < p.y - 36 || wy > p.y + 4) continue;
+      if (Math.abs(wx - p.x) > TAP_W || wy < p.y - TAP_H || wy > p.y + 4) continue;
       const d = Math.abs(wy - (p.y - 16)) + Math.abs(wx - p.x);
       if (d < bestD) { best = p; bestD = d; }
     }
@@ -86,9 +89,9 @@ export class TdPeers {
   nearest(wx: number, wy: number, slop: number): { card: PeerCard; on: boolean; d: number } | null {
     let best: PeerShown | null = null, bestD = Infinity, on = false;
     for (const p of this.shown) {
-      if (Math.abs(wx - p.x) > 10 + slop || wy < p.y - 36 - slop || wy > p.y + 4 + slop) continue;
+      if (Math.abs(wx - p.x) > TAP_W + slop || wy < p.y - TAP_H - slop || wy > p.y + 4 + slop) continue;
       const d = Math.hypot(wx - p.x, wy - (p.y - 16));
-      if (d < bestD) { best = p; bestD = d; on = Math.abs(wx - p.x) <= 10 && wy >= p.y - 36 && wy <= p.y + 4; }
+      if (d < bestD) { best = p; bestD = d; on = Math.abs(wx - p.x) <= TAP_W && wy >= p.y - TAP_H && wy <= p.y + 4; }
     }
     return best ? { card: { id: best.id, name: best.name, vocation: best.vocation, level: best.level }, on, d: bestD } : null;
   }
@@ -121,8 +124,7 @@ export class TdPeers {
   /** One Keeper, feet at (p.x, p.y): the front/back sheet facing the camera or away, the painter's side view across. */
   draw(c: CanvasRenderingContext2D, p: PeerShown, view: { scale: number; camX: number; camY: number; time: number; still?: boolean }): void {
     const sx = Math.round(p.x), sy = Math.round(p.y);
-    c.fillStyle = 'rgba(30,18,26,.28)';
-    c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
+    castShadow(c, sx, sy, 20);
     const painter = this.painter(p);
     // A per-Keeper phase so two standing side by side do not breathe in step.
     const t = view.time + (p.id.charCodeAt(0) % 7) * .37;
@@ -135,7 +137,7 @@ export class TdPeers {
     const s = view.scale;
     c.save();
     c.setTransform(s * p.face, 0, 0, s, (sx - view.camX) * s, (sy - view.camY) * s);
-    painter.draw(c, 1, { action: p.moving ? 'walk' : 'idle', time: t, attackT: 0, weapon: false, fxStill: !!view.still });
+    painter.draw(c, FIGURE_K, { action: p.moving ? 'walk' : 'idle', time: t, attackT: 0, weapon: false, fxStill: !!view.still });
     c.restore();
   }
 

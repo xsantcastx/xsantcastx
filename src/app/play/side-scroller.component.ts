@@ -1,4 +1,4 @@
-import { COOP_ROOM_PROTOCOL, HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
+import { COOP_ROOM_PROTOCOL, HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot, type RoomWorldOmen } from './social/social-room';
 import { CloudSaveService } from '../shared/cloud-save/cloud-save.service';
 import { PartyShare, SHARE } from './social/party-share';
 import { CoopRewards } from './social/coop-rules';
@@ -23,6 +23,8 @@ import { HudDragDirective, resetHudLayout } from './hud-drag.directive';
 import { TdMapWindowComponent } from './td-map-window.component';
 import type { TdMapSection } from './td/td-map';
 import { activeCharacterKey } from '../shared/save/character-scope';
+import { PlaySessionService } from '../shared/save/play-session.service';
+import { HiddenStreamCap } from './social/hidden-cap';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats, type Vocation } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import { wornResists } from '../shared/loot/aura-sources';
@@ -72,7 +74,7 @@ import { createTopDownEngine, topDownGate, type TdMapPin, type TdMapView, type T
 import { ELEMENTS, MAX_KEEPER_RESIST, type Element as DamageElement } from '../shared/loot/damage.model';
 import { GOLD_FIND_CAP } from '../shared/economy/economy-curve';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
-import { MOBS, mobSheet } from './td/td-mobs';
+import { MOBS, mobCell, mobSheet } from './td/td-mobs';
 import { bossUniqueById, relicTotals, type BossUnique, type RelicTotals } from '../shared/rpg/boss-uniques';
 import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
 import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/unique-items';
@@ -121,6 +123,8 @@ import {
 } from '../shared/delve/underhearth.model';
 import { EMBER_DELVE } from './world/towns/infernal';
 import { HEARTH_I18N } from './world/hearth.i18n';
+import { WORLD_BOSSES_I18N } from './world/world-bosses.i18n';
+import { omenKey } from './world/world-bosses';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
@@ -588,6 +592,7 @@ export class SideScrollerComponent implements OnDestroy {
   readonly keymap = inject(KeymapService);
   /** The signed-in account (the Hearth's identity, protocol 4: friends, blocks that last). */
   private readonly cloud = inject(CloudSaveService);
+  private readonly session = inject(PlaySessionService);
   private readonly feel = inject(WorldFeelBus);
   private readonly levelAudio = inject(LevelUpAudioService);
   private readonly forgeAudio = inject(ForgeAudioService);
@@ -883,7 +888,7 @@ export class SideScrollerComponent implements OnDestroy {
   /**
    * The Hearth, always on (owner 2026-10-21: "the chat should always be connected to online, unless they decide to
    * ignore the chat"): entering the top-down world joins the room under the Keeper's name, class, look and level;
-   * the room keeps itself joined (social-room keepAlive), pauses while the page is out of sight and leaves on pagehide.
+   * the room keeps itself joined (social-room keepAlive), stays joined while the page is out of sight and leaves on pagehide.
    * Settings → Chat: Ignore leaves and never joins. An automated browser joins only when a spec names a local room.
    */
   private ensureHearth(): void {
@@ -891,7 +896,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.hearthWired) this.wireHearth();
     this.room.setProfile(this.hearthProfile());
     const want = this.chatSetting === 'on' && this.hearthAllowed();
-    if (want && !this.room.wants && !this.room.isPaused && document.visibilityState !== 'hidden') void this.joinRoom(this.keeperName || 'Keeper');
+    // A tab opened in the background joins too: the world runs while hidden (never pause, owner 2026-10-26).
+    if (want && !this.room.wants && !this.room.isPaused && this.session.mayJoinHearth) void this.joinRoom(this.keeperName || 'Keeper');
     else if (!want && this.room.wants) this.room.leave();
   }
   /** The room is joined or being joined (the template's "Join" button hides meanwhile). */
@@ -908,7 +914,21 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private wireHearth(): void {
     this.hearthWired = true;
-    const visible = (): void => { if (document.visibilityState === 'hidden') this.room?.pause(); else { this.room?.resume(); this.ensureHearth(); } };
+    // Never pause (owner 2026-10-26): the stream stays open while the tab is hidden or switched away, so the others
+    // keep seeing this Keeper and the room keeps it in the world (td-engine steps the world on a timer meanwhile).
+    // Coming back only makes sure it is joined (a phone that slept may have lost the connection).
+    // Only for HIDDEN_STREAM_CAP_MS (30 min, the Hearth's Cloud Run budget): past that the stream closes, and the room
+    // is joined afresh the moment the tab is seen again (hidden-cap.ts). The world on this screen never stops.
+    const cap = new HiddenStreamCap(() => this.room);
+    // Opened in a background tab: the cap runs from the start.
+    if (document.visibilityState === 'hidden') cap.hidden();
+    const visible = (): void => {
+      if (document.visibilityState === 'hidden') { cap.hidden(); return; }
+      const wasCapped = cap.capped;
+      cap.shown();
+      if (!wasCapped) this.room?.resume();
+      this.ensureHearth();
+    };
     const hide = (): void => { this.room?.leave(); };
     const show = (event: PageTransitionEvent): void => { if (event.persisted) this.ensureHearth(); };
     document.addEventListener('visibilitychange', visible);
@@ -943,6 +963,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.unbindHearth = () => {
       vv?.removeEventListener('resize', keyboard); vv?.removeEventListener('scroll', keyboard);
       document.removeEventListener('visibilitychange', visible);
+      cap.dispose();
       window.removeEventListener('pagehide', hide);
       window.removeEventListener('pageshow', show);
       sub.unsubscribe(); privacySub.unsubscribe(); idSub.unsubscribe();
@@ -977,8 +998,13 @@ export class SideScrollerComponent implements OnDestroy {
     // Shared creatures (protocol 4): the room's election, or nothing (an older room, no party: solo as before).
     // Protocol 7: where the room runs the world it hosts every Keeper there, party or not (its election rides along).
     const roomRun = (snapshot.protocol ?? 0) >= WORLD_PROTOCOL && snapshot.world === true && !!snapshot.coop && Object.values(snapshot.coop).some(a => a.host === ROOM_HOST);
-    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[]) => void } | undefined)
-      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && (snapshot.party || roomRun) ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
+    // Connected to a room that runs the world: its areas are the room's from the first step in (td-coop expects it),
+    // so stepping out of a dungeon onto the island never raises creatures of this screen's own that the room's replace.
+    const worldOn = snapshot.connected && (snapshot.protocol ?? 0) >= WORLD_PROTOCOL && snapshot.world === true;
+    // Protocol 9 (the server-run world): the room hosts every surface and floor, not only the first island.
+    const everywhere = worldOn && (snapshot.protocol ?? 0) >= 9;
+    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[], world?: boolean, everywhere?: boolean) => void } | undefined)
+      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && (snapshot.party || roomRun || worldOn) ? snapshot.coop ?? {} : null, snapshot.id, snapshot.party?.members ?? [], worldOn, everywhere);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -1494,6 +1520,7 @@ export class SideScrollerComponent implements OnDestroy {
     afterNextRender(() => this.startWorld());
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
+    this.i18n.register(WORLD_BOSSES_I18N);
     this.i18n.register(LORE_I18N);
     this.i18n.register(HUD_I18N);
     this.i18n.register(ASHGUARD_I18N);
@@ -1591,6 +1618,11 @@ export class SideScrollerComponent implements OnDestroy {
         character: () => this.store.character,
         onTradeCommit: c => this.zone.run(() => { void this.tradeHud?.committed(c); }),
         onGroundNote: note => this.zone.run(() => { void this.tradeHud?.groundNoted(note); }),
+        // Protocol 9: a world boss's omen, heard the world over (play/world/world-bosses.ts).
+        onWorldOmen: omen => this.zone.run(() => this.worldOmen(omen)),
+        // One live session per account: the room says another session of this account joined. If this one still holds
+        // the save's lease it plays on (and takes the room back); otherwise the play shell shows "Play here?".
+        onReplaced: () => { void this.session.hearthReplaced().then(still => this.zone.run(() => { if (still) this.ensureHearth(); })); },
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -2141,6 +2173,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.questBoard.addToSet('pages', path);
     this.hallEggs.noteHall(path);
     this.secrets.visit(path);
+  }
+  /** A world boss rose, fell or left: its omen line (and, when it stands far above this Keeper, the danger word). */
+  private worldOmen(omen: RoomWorldOmen): void {
+    const key = omenKey(omen.boss, omen.at), line = this.t(key);
+    if (line === key) return;
+    const danger = omen.at === 'rise' && omen.level > Math.max(1, this.huntingLevel || 1) + 3;
+    this.toastLoot(danger ? `${line} (${this.t('play.zone.danger')})` : line);
   }
   private toastLoot(text: string, art?: string): void {
     this.logGame(text);
@@ -3461,7 +3500,7 @@ export class SideScrollerComponent implements OnDestroy {
     const c = document.createElement('canvas'); c.width = def.w * 3; c.height = def.h * 3;
     const g = c.getContext('2d')!;
     g.imageSmoothingEnabled = false;
-    g.drawImage(mobSheet(def), 0, 0, def.w, def.h, 0, 0, c.width, c.height);
+    { const cell = mobCell(def); g.drawImage(mobSheet(def), 0, 0, cell.w, cell.h, 0, 0, c.width, c.height); }
     if (dark) { g.globalCompositeOperation = 'source-in'; g.fillStyle = '#0d0813'; g.fillRect(0, 0, c.width, c.height); }
     const url = c.toDataURL('image/png');
     this.portraits.set(key, url);
@@ -5700,7 +5739,8 @@ export class SideScrollerComponent implements OnDestroy {
         // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
         const painter = new KeeperPainter(look, v.gear, v.garb);
         const sheet = frontSheet(painter, look.vocation === 'warlock');
-        const c = el.getContext('2d')!, k = 4, w = FRONT_W * k, h = FRONT_H * k;
+        // The fine sheet (keeper-front FRONT_K): three device px per fine px fills the doll's 176 (the cell's top margin crops).
+        const c = el.getContext('2d')!, k = 3, w = FRONT_W * k, h = FRONT_H * k;
         c.imageSmoothingEnabled = false;
         c.drawImage(sheet, 0, 0, FRONT_W, FRONT_H, Math.round((176 - w) / 2), Math.round((176 - h) / 2), w, h);
         // The worn looks' glow and particles, held still (the doll is a picture).

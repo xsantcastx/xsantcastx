@@ -148,6 +148,10 @@ export interface RoomOptions {
   onTradeCommit?: (commit: RoomTradeCommit) => void;
   /** Protocol 8: this Keeper's drop was escrowed, or handed back. */
   onGroundNote?: (note: RoomGroundNote) => void;
+  /** Protocol 9: a world boss's omen (it rose, fell or left). */
+  onWorldOmen?: (omen: RoomWorldOmen) => void;
+  /** The same account joined the room from somewhere else (`replaced`): this session is out of the room. */
+  onReplaced?: () => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
@@ -158,9 +162,16 @@ export const COOP_ROOM_PROTOCOL = 5;
 export const ROOM_WORLD_PROTOCOL = 7;
 /** Protocol 8 (M2 of the room-run world): trades settled and drops laid by the room, a party that outlives a relog. */
 export const ROOM_SETTLE_PROTOCOL = 8;
+/**
+ * Protocol 9 (M3): the room hosts this Keeper in every area — every continent and every floor — and tells it the world
+ * bosses' omens. The protocol this client speaks (sent on /join).
+ */
+export const ROOM_EVERYWHERE_PROTOCOL = 9;
+/** A world boss rose, fell or left unfound (protocol 9; play/world/world-bosses.ts): the omen line is the client's. */
+export interface RoomWorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone'; level: number }
 /** What the room accepts as a character id (character-scope.ts). */
 const CHARACTER_ID = /^[a-z0-9]{2,16}$/;
-export const ROOM_DROP_ID = /^td:surface:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
+export const ROOM_DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
 
 /** The Hearth room's service (scripts/social-deployment.md). */
 export const HEARTH_URL = 'https://eclipse-hearth-773269119730.us-central1.run.app';
@@ -283,7 +294,7 @@ export class SocialRoom {
       if (generation !== this.generation || this.wanted !== wanted) return;
       const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
-        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, protocol: ROOM_SETTLE_PROTOCOL, ...this.characterField(), privacy: this.privacy }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, protocol: ROOM_EVERYWHERE_PROTOCOL, ...this.characterField(), privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
       let response = await join(idToken);
       // A token the room will not take: in as a guest rather than not at all.
@@ -434,6 +445,9 @@ export class SocialRoom {
       if (Array.isArray(data['add'])) msg.add = ok(data['add']);
       if (Array.isArray(data['gone'])) msg.gone = (data['gone'] as unknown[]).filter((id): id is string => typeof id === 'string');
       this.options.onWorldGround?.(msg);
+    }
+    if (data['type'] === 'world-omen' && typeof data['boss'] === 'string' && /^[a-z0-9-]{1,40}$/.test(data['boss'] as string) && (data['at'] === 'rise' || data['at'] === 'fall' || data['at'] === 'gone')) {
+      this.options.onWorldOmen?.({ boss: data['boss'] as string, name: String(data['name'] ?? '').slice(0, 40), area: String(data['area'] ?? '').slice(0, 40), at: data['at'] as RoomWorldOmen['at'], level: Number(data['level']) || 1 });
     }
   }
   /** The room runs the world (protocol 7) and this Keeper is in it. */
@@ -631,6 +645,7 @@ export class SocialRoom {
       clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
       this.generation++; this.stream?.abort(); this.stream = undefined; this.token = '';
       this.publish({ connected: false, players: [], barred, status: barred ? 'This account is barred from the hearth.' : 'You joined the hearth from another window.' });
+      if (!barred) this.options.onReplaced?.();
       return true;
     }
     return false;
@@ -712,6 +727,17 @@ export class SocialRoom {
     clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
     this.reconnectAttempts = 0; this.updating = false;
     if (this.snapshot.connected) this.publish({ connected: false, status: 'Paused while the game is out of sight.' });
+  }
+  /**
+   * Back after a long time away (hidden-cap.ts): the old session has idled out on the server, so join again at once —
+   * presence, the party and a whole world snapshot come back with the new stream.
+   */
+  rejoinNow(): void {
+    this.paused = false;
+    this.rejoinAttempts = 0;
+    if (!this.wanted) return;
+    this.drop();
+    void this.connect();
   }
   /** Back in sight: reopen the stream with the same session, or join again if there is none. */
   resume(): void {

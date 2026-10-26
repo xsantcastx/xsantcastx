@@ -258,7 +258,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'magicFind'], base: { ward: 5.5, magicFind: 6 },
     passive: { effect: 'temper-mercy', text: 'Once every 90 seconds, a blow that would fell you leaves you standing on one point of life.' },
     sig: { mercy: 90 },
-    lore: 'The shield of the guard who stayed at the Verge gate after the order to hold it had been formally withdrawn.',
+    lore: 'The shield of the marshal who stayed on the abbey causeway after the order to hold it had been withdrawn.',
     aura: 'redemption',
   },
   {
@@ -289,7 +289,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'goldFind', 'xpBonus'], base: { ward: 9, goldFind: 5, xpBonus: 10 },
     passive: { effect: 'idle-drift', text: '+3 life a second, always.' },
     sig: { regen: 3 },
-    lore: 'Cut from the one tree that was standing on both sides of the Shattering and did not appear to notice.',
+    lore: 'Cut from the one tree that was standing on both sides of the Lock and did not appear to notice.',
     aura: 'prayer',
   },
   {
@@ -297,7 +297,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'magicFind'], base: { ward: 8, magicFind: 19 },
     passive: { effect: 'temper-mercy', text: 'Once every 60 seconds, a blow that would fell you leaves you standing on one point of life.' },
     sig: { mercy: 60 },
-    lore: 'It shows you the version of the attempt that went slightly better. This is either kindness or the cruellest thing in the realms.',
+    lore: 'It shows you the version of the attempt that went slightly better. This is either kindness or the cruellest thing in the world.',
   },
 
   // ── Singular: one each, unsellable. See the header. ──────────────────────
@@ -356,7 +356,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'magicFind'], base: { ward: 5.72, magicFind: 5.2 },
     passive: { effect: 'loot-bias', text: '+12% Magic Find on every kill\'s loot roll.' },
     sig: { mf: 12 },
-    lore: 'The Umbral Weavers use full-sized looms to weave shadow into cloth, armor, and concealment.',
+    lore: 'The Gloam Witches use full-sized looms to weave shadow into cloth, armor, and concealment.',
   },
   {
     id: 'unique-merchants-scale', name: 'The Merchant\'s Scale', rarity: 'epic', charm: true, style: 'neutral',
@@ -370,7 +370,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'magicFind'], base: { ward: 5.72, magicFind: 5.2 },
     passive: { effect: 'xp-echo', text: 'Every kill gives 12% more Hunting XP.' },
     sig: { xp: 12 },
-    lore: 'Before the Infernal Realm had a written language, it had this scroll. The Pyrograph writes down everything that happens near the bearer, recording events as they occur in a script of fire.',
+    lore: 'Before the Reach wrote in ink, it had this scroll. The Pyrograph writes down everything that happens near the bearer, recording events as they occur in a script of fire.',
   },
   {
     id: 'unique-mirror-meridians', name: 'The Mirror of Meridians', rarity: 'mythic', slot: 'off-hand', style: 'celestial',
@@ -384,7 +384,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['magicFind', 'xpBonus'], base: { magicFind: 7.8, xpBonus: 5.2 },
     passive: { effect: 'idle-drift', text: '+2 life a second, always.' },
     sig: { regen: 2 },
-    lore: 'Fungi are the Verdant Realm\'s communication network. The mycelial web beneath the World-Root carries messages between every living thing in the realm, and this crown connects the wearer to that network.',
+    lore: 'Fungi are the Wilds\' communication network. The mycelial web beneath the Deep Wilds carries messages between every living thing in the Wilds, and this crown connects the wearer to that network.',
   },
   {
     id: 'unique-eclipse-hourglass', name: 'Eclipse Hourglass', rarity: 'singular', slot: 'trinket', style: 'neutral',
@@ -399,7 +399,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['strikePower', 'ward'], base: { strikePower: 5.72, ward: 2.08 },
     passive: { effect: 'temper-mercy', text: 'Once every 90 seconds, a blow that would fell you leaves you standing on one point of life.' },
     sig: { mercy: 90 },
-    lore: 'A covenant in the Infernal Realm is sealed not with signatures but with a handshake in fire. This gauntlet allows such handshakes to occur without consuming the flesh.',
+    lore: 'A covenant in the Reach is sealed not with signatures but with a handshake in fire. This gauntlet allows such handshakes to occur without consuming the flesh.',
   },
   {
     id: 'unique-aureths-mantle', name: 'Aureth\'s Mantle', rarity: 'singular', slot: 'chest', style: 'luminous',
