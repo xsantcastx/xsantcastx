@@ -9,7 +9,7 @@
  * the crowd fights instead). Prints the rAF frame deltas (mean / p95 / worst, the count over 33 ms), the engine's own
  * work per frame (window.__tdArt.perf(): update, draw, of which ground baking), the paint caches' canvas pixels, the
  * main canvas's backing pixels and the JS heap. Printed, not asserted. TD_DETAIL=low|normal picks the setting;
- * TD_WEATHER=rain|storm|fog pins the weather (the rain streaks, puddles and fog on top of every scene).
+ * ARTOPT=a|b|c photographs the art-direction prototype's look (td-artopt.ts). TD_WEATHER=rain|storm|fog pins the weather (the rain streaks, puddles and fog on top of every scene).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { seed } from './play-helpers';
@@ -35,7 +35,7 @@ async function open(page: Page): Promise<void> {
   }, detail ?? '');
   // TD_WEATHER=rain|storm|fog pins the sky (shared/weather) so the rain's cost is measured on top of the scene's.
   const weather = process.env['TD_WEATHER'];
-  await page.goto(`/play?td=1&hour=12${weather ? `&weather=${weather}` : ''}`);
+  await page.goto(`/play?td=1&hour=12${weather ? `&weather=${weather}` : ''}${process.env['ARTOPT'] ? `&artopt=${process.env['ARTOPT']}` : ''}`);
   await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
   await page.waitForFunction(() => !!(window as unknown as Partial<W>).__tdZones && !!(window as unknown as Partial<W>).__tdArt);
   await page.waitForTimeout(2500);

@@ -10,6 +10,8 @@
  */
 import { envDetail } from './td-detail';
 import { broadleafTree, clumpRamp, paintClump, paintClumps, pineTree, shadowSprite } from './td-flora';
+import { optHdWorld } from './td-artopt';
+import { hdOak } from './td-hd-art';
 import { volumize } from '../../shared/keeper-look/keeper-volume';
 import { paintAltar, paintBrazier, paintBrokenStatue, paintCage, paintChains, paintCobweb, paintInscription, paintRime, paintRitualCircle, paintStain } from './td-dressing';
 import { RAMP, paintBarrowDoor, paintBed, paintCaveMouth, paintChimney, paintCounter, paintCryptDoor, paintForgeGate, paintLadderUp, paintMineShaft, paintRoof, paintRuinWall, paintShelf, paintShip, paintStairsDown, paintStairsUp, paintTable, paintTempleGate, paintTower } from './td-build';
@@ -460,6 +462,8 @@ export interface Sprite {
   shadow?: { img: HTMLCanvasElement; x: number; y: number };
   /** A floor decal (a ritual circle, a stain, a cobweb): painted in the ground pass with the shadows, under everything standing. */
   floor?: { img: HTMLCanvasElement; x: number; y: number };
+  /** Image px per world px (the art-direction prototype's HD sprites, td-hd-art.ts): `img`/`roof` drawn at 1/k; ax, ay in image px. */
+  k?: number;
 }
 
 const cache = new Map<string, Sprite>();
@@ -624,6 +628,8 @@ export function tree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
   // The art style upgrade (td-flora.ts): volumetric clumped crowns and a cast shadow; six variants a kind.
   const v = ((seed % 6) + 6) % 6;
   // Environment detail Low (td-detail.ts): the old clean tree with just a soft shadow.
+  // The art-direction prototype's option B (td-artopt.ts): the HD oak.
+  if (optHdWorld() && kind !== 'pine' && envDetail() !== 'low') { const key = `hd-tree:${v}`; let sp = cache.get(key); if (!sp) cache.set(key, sp = hdOak(v)); return sp; }
   if (envDetail() === 'low') return cached(`low-tree:${kind}:${v}`, () => ({ ...flatTree(kind, v), shadow: { img: shadowSprite(kind === 'pine' ? 26 : 34, 11), x: kind === 'pine' ? -10 : -14, y: -7 } }));
   return cached(`tree:${kind}:${v}`, () => kind === 'pine' ? pineTree(v) : broadleafTree(kind, v));
 }
