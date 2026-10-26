@@ -24,6 +24,8 @@ const INK = '#140c1c', CORE = '#f0e0ff', BODY = '#b06bff', EDGE = '#6b3aa0', BON
 /** What the engine knows this frame. */
 export interface DarkFrame {
   dt: number; time: number; still: boolean;
+  /** S5: the Keeper's marks on how fast the Hush rises (td-mobs hushMult; Moth Hours 0.5). */
+  hushMult?: number;
   levelId: string; dark: boolean; continent: string; surface: boolean;
   phase: SkyPhase;
   /** A town, a village, a lit building: no dark-born, the Hush falls fast. */
@@ -97,6 +99,7 @@ export class DarkLayer {
         dark: f.dark, depth: floorDepth(f.levelId, f.dark), phase: f.phase, town: f.safe, hearth: f.hearth,
         lamp: f.fixed.length > 0 && pastLight(f.keeper.x, f.keeper.y, f.fixed) < 0,
         lit: f.raised > 0 || !!f.pet,
+        ...(f.hushMult !== undefined && f.hushMult !== 1 ? { keeper: f.hushMult } : {}),
       };
       this.hush = stepHush(this.hush, f.dt, place, this.cap, awake);
     }

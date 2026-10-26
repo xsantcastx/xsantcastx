@@ -1753,6 +1753,8 @@ export class SideScrollerComponent implements OnDestroy {
       // The Cold Hearth (shared/hearth, top-down): a fall's cost, the wake at the hearth, a hearth lit, the shrine.
       onFall: event => this.zone.run(() => this.tdFell(event)),
       onWoke: event => this.zone.run(() => this.tdWoke(event)),
+      // S5: a Lanternwright's Rekindle stood the Keeper up where it fell: the purse comes home, the debt is forgiven.
+      onRekindle: () => this.zone.run(() => this.tdRekindled()),
       onHearth: event => this.zone.run(() => this.hearthLit(event)),
       onShrine: event => this.zone.run(() => this.openShrine(event)),
       onWorldAction: event => this.zone.run(() => {
@@ -2144,6 +2146,17 @@ export class SideScrollerComponent implements OnDestroy {
     this.sound.sfx('glim');
     clearTimeout(this.wakeTimer);
     this.wakeTimer = setTimeout(() => this.zone.run(() => { this.wakeCard = null; }), 12000);
+  }
+  /** S5: Rekindle undid the fall — its purse back in hand, its debt forgiven, no wake card. */
+  private tdRekindled(): void {
+    if (!this.browser) return;
+    const fall = this.lastFall ?? this.wakeCard?.fall ?? null;
+    this.lastFall = null; this.wakeCard = null;
+    const gold = this.loot.recover();
+    if (fall && !fall.grace && fall.debt > 0) this.hearth.forgive(fall.debt);
+    this.message = this.t('play.rekindled', { n: gold });
+    this.sound.sfx('revive');
+    this.pushPurse();
   }
   /** A hearth lit by the Keeper's hand: it is the wake point now. */
   private hearthLit(event: { id: string; town: string; capital: boolean }): void {

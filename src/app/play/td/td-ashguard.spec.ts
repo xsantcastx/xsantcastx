@@ -28,10 +28,11 @@ describe('td-ashguard: the book as data', () => {
     expect(CLASS_TREES.ashguard).toEqual(['brand', 'oath', 'ash']);
     expect(bookTrees('ashguard')).toEqual(['brand', 'oath', 'ash', 'common']);
     expect(bookTrees('warlock')).toEqual(['ember', 'bone', 'shadow', 'common']);
-    expect(ASH.length).toBe(12);
-    expect(CLASS_SKILLS.ashguard.length).toBe(15); // + the common page: Light, the Seek, the Waygate
-    // The book's rows (skills-100.md §6): Brand 4, Oath 3 (Hold the Line is Shield Oath's mark), Ash 3 (Ember Blood, the Watchfire's).
-    expect(ASH_TREES.map(tr => treeSkills('ashguard', tr).length)).toEqual([4, 3, 3]);
+    expect(ASH.length).toBe(18);
+    expect(CLASS_SKILLS.ashguard.length).toBe(21); // + the common page: Light, the Seek, the Waygate
+    // The book's rows (skills-100.md §6): Brand 5 (S5: Brand Throw), Oath 6 (Hold the Line is Shield Oath's mark; S5:
+    // the Banner, Intercept, the Gate), Ash 5 (Ember Blood, the Watchfire's; S5: Cinder Skin, Second Wind).
+    expect(ASH_TREES.map(tr => treeSkills('ashguard', tr).length)).toEqual([5, 6, 5]);
     // No Ashguard skill sits in a Warlock book, and the reverse.
     for (const id of ASH) expect(CLASS_SKILLS.warlock).not.toContain(id);
   });
@@ -89,7 +90,7 @@ describe('td-ashguard: the book as data', () => {
         expect(ASHGUARD_I18N[key]?.en).withContext(key).toBeTruthy();
         expect(ASHGUARD_I18N[key]?.es).withContext(key).toBeTruthy();
       }
-      for (const v of Object.keys(SKILLS[id].vars)) expect(ASHGUARD_I18N['play.td.tree.var.' + v] ?? (['min', 'max', 'secs', 'pct', 'radius', 'reach', 'heal'].includes(v) ? { en: 'x', es: 'x' } : undefined)).withContext(v).toBeDefined();
+      for (const v of Object.keys(SKILLS[id].vars)) expect(ASHGUARD_I18N['play.td.tree.var.' + v] ?? (['min', 'max', 'secs', 'pct', 'radius', 'reach', 'heal', 'range'].includes(v) ? { en: 'x', es: 'x' } : undefined)).withContext(v).toBeDefined();
     }
   });
 
@@ -276,6 +277,8 @@ describe('td-ashguard: the fight', () => {
       sys.place('a', MOBS['bone-walker'], 20, 0);
       sys.place('b', MOBS['bone-walker'], 24, 8);
       sys.target = sys.mobs[0];
+      // S5: Intercept dashes to an ally.
+      if (id === 'intercept') sys.allies = [{ id: 'p', x: 40, y: 0, h: 50, m: 100 }];
       expect(sys.useAbility(id)).withContext(id).toBeNull();
       expect(() => run(sys, 3)).not.toThrow();
     });

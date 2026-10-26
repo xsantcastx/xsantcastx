@@ -17,7 +17,9 @@ import type { SkillDef } from './td-skills';
 export type LampSkillId =
   | 'kindle' | 'blinding-flash' | 'lantern-aura' | 'shutter-lantern' | 'banish' | 'dawn-at-noon'
   | 'hearthlight' | 'hearth-circle' | 'lantern-ward' | 'last-light'
-  | 'lamp-wisp' | 'moth-kin' | 'beacon';
+  | 'lamp-wisp' | 'moth-kin' | 'beacon'
+  // S5 (skills-100.md §3): the healer's kit to level 30, and Hearthsong (42).
+  | 'cleanse' | 'rekindle' | 'hearthsong';
 
 /** The Lanternwright's three trees (D2's three tabs): the light as a weapon, the hearth, the lantern's kin. */
 export const LAMP_TREES = ['lamp', 'hearth', 'moth'] as const;
@@ -70,7 +72,7 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
   // ── Hearth: mending, wards, safe ground ──
   'hearthlight': {
     id: 'hearthlight', kind: 'active', mana: 12, cd: 6, nameKey: 'skill.hearthlight', textKey: 'skill.hearthlight.text',
-    vars: { heal: 30, secs: 3 }, grow: { heal: 6 }, tree: 'hearth', tier: 0, col: 1, req: null,
+    vars: { heal: 30, secs: 3, reach: 8 }, grow: { heal: 6 }, tree: 'hearth', tier: 0, col: 1, req: null,
     icon: I('<rect x="2" y="12" width="12" height="2" fill="#8a6a3a"/><rect x="4" y="10" width="8" height="2" fill="#c99a3e"/><rect x="6" y="5" width="4" height="5" fill="#ffd27a"/><rect x="7" y="3" width="2" height="3" fill="#fff2a8"/><rect x="7" y="7" width="2" height="2" fill="#fffbe8"/><rect x="3" y="4" width="1" height="3" fill="#7fe08a"/><rect x="2" y="5" width="3" height="1" fill="#7fe08a"/><rect x="12" y="2" width="1" height="3" fill="#7fe08a"/><rect x="11" y="3" width="3" height="1" fill="#7fe08a"/>'),
     words: 'hesk ka',
   },
@@ -83,7 +85,7 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
   },
   'lantern-ward': {
     id: 'lantern-ward', kind: 'active', mana: 20, cd: 18, nameKey: 'skill.lantern-ward', textKey: 'skill.lantern-ward.text',
-    vars: { absorb: 50, secs: 12, radius: 3, stun: 2 }, grow: { absorb: 10, secs: .3 }, tree: 'hearth', tier: 2, col: 2, req: 'hearthlight',
+    vars: { absorb: 50, secs: 12, radius: 3, stun: 2, reach: 8 }, grow: { absorb: 10, secs: .3 }, tree: 'hearth', tier: 2, col: 2, req: 'hearthlight',
     icon: I('<rect x="2" y="2" width="12" height="1" fill="#c99a3e"/><rect x="2" y="13" width="12" height="1" fill="#c99a3e"/><rect x="2" y="2" width="1" height="12" fill="#c99a3e"/><rect x="13" y="2" width="1" height="12" fill="#c99a3e"/><rect x="3" y="3" width="1" height="1" fill="#fff2a8"/><rect x="12" y="3" width="1" height="1" fill="#fff2a8"/><rect x="3" y="12" width="1" height="1" fill="#fff2a8"/><rect x="12" y="12" width="1" height="1" fill="#fff2a8"/><rect x="6" y="4" width="4" height="1" fill="#8a6a3a"/><rect x="5" y="5" width="6" height="6" fill="#ffd27a"/><rect x="6" y="6" width="4" height="4" fill="#fffbe8"/><rect x="5" y="11" width="6" height="1" fill="#8a6a3a"/>'),
     words: 'lum hesk ka',
     syn: [{ from: 'hearth-circle', per: 5, what: 'absorb' }],
@@ -112,11 +114,32 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
     words: 'lum dra',
     syn: [{ from: 'lamp-wisp', per: 5, what: 'dur' }],
   },
+  // ── S5: the healer's kit (skills-100.md §3: heals and wards go to allies) ──
+  'cleanse': {
+    id: 'cleanse', kind: 'active', mana: 14, cd: 8, nameKey: 'skill.cleanse', textKey: 'skill.cleanse.text',
+    vars: { reach: 8, immune: 2 }, grow: { immune: .1 }, tree: 'hearth', tier: 3, col: 0, req: null, level: 18,
+    icon: I('<rect x="7" y="1" width="2" height="2" fill="#fff2c8"/><rect x="5" y="3" width="6" height="2" fill="#ffe7a8"/><rect x="4" y="5" width="8" height="5" fill="#fff2c8"/><rect x="5" y="10" width="6" height="2" fill="#ffe7a8"/><rect x="6" y="6" width="4" height="3" fill="#ffffff"/><rect x="2" y="12" width="2" height="2" fill="#7fe08a"/><rect x="12" y="12" width="2" height="2" fill="#7fe08a"/><rect x="7" y="13" width="2" height="2" fill="#7fe08a"/>'),
+    words: 'hesk un',
+  },
+  'rekindle': {
+    id: 'rekindle', kind: 'active', mana: 50, cd: 120, nameKey: 'skill.rekindle', textKey: 'skill.rekindle.text',
+    vars: { pct: 40, channel: 3, window: 30, reach: 2 }, grow: { pct: 1 }, tree: 'hearth', tier: 4, col: 2, req: null, level: 30,
+    icon: I('<rect x="6" y="9" width="4" height="4" fill="#ff8a2e"/><rect x="7" y="7" width="2" height="3" fill="#ffd25a"/><rect x="7" y="5" width="2" height="2" fill="#fff2a8"/><rect x="3" y="13" width="10" height="2" fill="#8a6a2a"/><rect x="2" y="4" width="2" height="2" fill="#fff2c8"/><rect x="12" y="3" width="2" height="2" fill="#fff2c8"/><rect x="11" y="7" width="1" height="1" fill="#ffe7a8"/><rect x="4" y="8" width="1" height="1" fill="#ffe7a8"/>'),
+    words: 'hesk ul teth',
+  },
+  'hearthsong': {
+    id: 'hearthsong', kind: 'active', mana: 10, cd: 30, nameKey: 'skill.hearthsong', textKey: 'skill.hearthsong.text',
+    vars: { heal: 3, flat: 20, radius: 6, secs: 4 }, grow: { heal: .15 }, tree: 'hearth', tier: 4, col: 1, req: null, level: 42,
+    icon: I('<rect x="3" y="3" width="2" height="7" fill="#fff2c8"/><rect x="5" y="2" width="5" height="2" fill="#fff2c8"/><rect x="10" y="3" width="2" height="7" fill="#fff2c8"/><rect x="1" y="9" width="4" height="3" fill="#ffe7a8"/><rect x="8" y="9" width="4" height="3" fill="#ffe7a8"/><rect x="13" y="5" width="2" height="1" fill="#7fe08a"/><rect x="13" y="8" width="2" height="1" fill="#7fe08a"/><rect x="6" y="13" width="4" height="2" fill="#ffb347"/>'),
+    words: 'hesk orum lum',
+    syn: [{ from: 'hearth-circle', per: 4, what: 'heal' }],
+  },
 };
 
 /** The Lanternwright's book in the order the bar fills: the first four actives are the default keys 1–4. */
 export const LANTERN_BOOK: readonly LampSkillId[] = [
   'hearthlight', 'blinding-flash', 'lamp-wisp', 'shutter-lantern', 'banish', 'hearth-circle', 'lantern-ward', 'beacon', 'dawn-at-noon',
+  'cleanse', 'rekindle', 'hearthsong',
   'lantern-aura', 'kindle', 'moth-kin', 'last-light',
 ];
 /** What a new Lanternwright holds free at rank 1: the flare, the four keys and the lantern's aura. */

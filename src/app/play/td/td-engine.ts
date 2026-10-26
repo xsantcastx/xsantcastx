@@ -80,7 +80,11 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 };
 import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobCell, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
+import type { AllyClaim } from '../world/ally-claims';
+/** S5: the Keepers within this many tiles are the heals' and guards' allies; at most this many ally claims a send. */
+const ALLY_SEEN_TILES = 14;
+const ALLY_CLAIMS_PER_SEND = 16;
 import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
 import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
@@ -440,6 +444,13 @@ export class TopDownEngine {
   private lifeGuardSent = '';
   /** The room holds this Keeper down (its fall is under way until a hearth wakes it). */
   private roomDown = false;
+  // ── S5: allies (world/ally-claims.ts) ──
+  /** The life of the Keepers near, as the room keeps it (its snapshots' `al`). */
+  private readonly allyLife = new Map<string, { h: number; m: number; d: boolean }>();
+  /** Where this Keeper last fell (a Rekindle stands it up there). */
+  private lastFallAt: { continent: string; level: string; x: number; y: number } | null = null;
+  /** Heals this screen claimed on others (life), for the e2e. */
+  private allyHealSent = 0;
   /** The room's most life (it may clamp the screen's). */
   private roomMax = 0;
   /** The wake claim's sequence: the room's "down" from before it took the wake is old news. */
@@ -561,6 +572,8 @@ export class TopDownEngine {
       cue: why => this.options.cueText?.(why) ?? '',
       life: me => this.lifeHeard(me),
       down: (to, x, y, self) => this.coopDown(to, x, y, self),
+      ally: e => this.allyEvent(e),
+      allies: al => { this.allyLife.clear(); for (const [id, h, m, d] of al) this.allyLife.set(id, { h, m, d: d === 1 }); },
     });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -1234,8 +1247,10 @@ export class TopDownEngine {
     const vigor = this.mobs.itemAura?.fx.moveSpeed ?? 1;
     // The Skill Book's marks (td-mobs markPace): Walking Whirl, Dark Step, Waymark.
     // S6: stunned, frozen or rooted by a creature's ability, he does not step at all.
-    if (this.mobs.held) return 0;
-    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor * (1 + this.mobs.markPace);
+    // S5: Rekindle's kneel and Hearthsong plant him (Walking Song and the Mobile Gate let him walk at their share).
+    const footing = this.mobs.footing;
+    if (this.mobs.held || footing <= 0) return 0;
+    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor * (1 + this.mobs.markPace) * footing;
   }
   private buildKey = '';
   /**
@@ -1651,6 +1666,7 @@ export class TopDownEngine {
     const w = this.whereabouts;
     this.mobs.target = null; this.path = []; this.arrive = null; this.keys.clear(); this.joy = null; this.chop = null;
     this.waking = { t: 0, moved: false };
+    this.lastFallAt = { ...w };
     this.options.onFall?.({ area: `td:${w.continent}|${w.level}`, x: w.x, y: w.y });
     this.markHearth();
   }
@@ -1955,6 +1971,7 @@ export class TopDownEngine {
       pet: pb && tdPetJob(pb.id, 'follow') === 'light' ? { x: pb.x, y: pb.y - 8, r: TD_PET.light } : null,
       fixed: this.fixedLights(), raised: this.mobs.lightBonus, trail: this.trail,
       walkable: (c, r) => this.level.walkable(c, r),
+      hushMult: this.mobs.hushMult,
     };
   }
   /** Each frame: seed the level's shy chests and the continent's notes once, step the layer, open or close the roads. */
@@ -3173,6 +3190,8 @@ export class TopDownEngine {
     const again = !!peer && this.peerTapped?.id === peer.card.id && this.time - this.peerTapped.at < PEER_AGAIN_SECS;
     if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d) && !walking && !again) {
       this.peerTapped = { id: peer.card.id, at: this.time };
+      // S5: a tap on a Keeper picks it for the heals a moment (skills-100.md §3).
+      this.mobs.pickAlly(peer.card.id);
       this.options.onPeerTap(peer.card); return;
     }
     if (peer && (walking || again)) { this.peerTapped = null; this.walkTo(wx, wy); return; }
@@ -3527,15 +3546,31 @@ export class TopDownEngine {
     const now = performance.now();
     // In a fight the room hears every 150 ms; out of it (regeneration) once a second; a potion or a wake at once.
     const gap = this.life.urgent ? 0 : this.time - this.lastHurt < 5 ? 150 : 1000;
-    if (this.lifeBusy || (!this.life.queued && key === this.lifeGuardSent) || now - this.lifeSentAt < gap) return;
+    const allies = this.mobs.allyOut.length > 0;
+    if (this.lifeBusy || (!this.life.queued && !allies && key === this.lifeGuardSent) || now - this.lifeSentAt < (allies ? Math.min(gap, 150) : gap)) return;
     const life = this.life, c = life.drain(now), send = key !== this.lifeGuardSent;
+    // S5: what this Keeper laid on others goes in the same breath (the room weighs each: ally-claims.ts).
+    const a = this.mobs.allyOut.splice(0, ALLY_CLAIMS_PER_SEND);
     this.lifeBusy = true; this.lifeSentAt = now;
-    void this.options.onLife({ ...(send ? { g } : {}), c }).then(me => {
+    void this.options.onLife({ ...(send ? { g } : {}), c, ...(a.length ? { a } : {}) }).then(me => {
       if (this.life !== life) return;
       if (!me) { life.requeue(c); return; }
       if (send) this.lifeGuardSent = key;
+      this.allyAnswers(a, me.a);
       this.lifeHeard(me);
     }, () => { if (this.life === life) life.requeue(c); }).finally(() => { this.lifeBusy = false; });
+  }
+  /** S5: the room's answer to this Keeper's ally claims: a heal's life counted; a refusal said over the ally. */
+  private allyAnswers(sent: readonly AllyClaim[], got: readonly (number | string)[] | undefined): void {
+    if (!got) return;
+    sent.forEach((c, i) => {
+      const r = got[i];
+      if (typeof r === 'number') { if (c.k === 'heal') this.allyHealSent += r; return; }
+      const who = this.peers.drawn.find(p => p.id === c.to);
+      const why = r === 'far' ? this.options.cueText?.('far') ?? '' : '';
+      if (who && why) this.mobs.floaters.push({ x: who.x, y: who.y - 40, text: why, color: '#e8e1cf', age: 0 });
+    });
+    this.canvas.setAttribute('data-ally-sent', `${this.allyHealSent}`);
   }
   /** The room's word on this Keeper's life (a snapshot's `me`, a claim's answer). */
   private lifeHeard(me: LifeView): void {
@@ -3554,6 +3589,43 @@ export class TopDownEngine {
   private coopDown(to: string, x: number, y: number, self: boolean): void {
     if (self) { if (this.life && !this.roomDown && !this.waking) { this.roomDown = true; this.fallNow(); } return; }
     this.options.onPeerDown?.(to, x, y);
+    // S5: a fallen one near — a Lanternwright's Rekindle may stand it up where it fell, a while.
+    this.mobs.fallenAllies.set(to, { x, y, at: Date.now() });
+  }
+  /**
+   * S5: another Keeper laid something on this one (the room weighed it). The fight mirrors it (MobSystem.allyLaid); a
+   * Rekindle stands this Keeper up where it fell — out of the wake, at the share it was given — and the fall's cost is
+   * undone (the HUD: the purse and the debt).
+   */
+  private allyEvent(e: { a: string; by: string; s: string; n: number; t?: number; f?: number; x?: number; y?: number }): void {
+    this.mobs.allyLaid(e);
+    this.canvas.setAttribute('data-ally-healed', `${this.mobs.allyHealed}`);
+    if (e.a !== 'rekindle') return;
+    const back = this.lastFallAt;
+    this.waking = null; this.roomDown = false;
+    if (back) this.restoreWhereabouts(back);
+    this.path = []; this.arrive = null;
+    this.hp = Math.max(1, Math.round(this.maxHp * Math.max(5, Math.min(70, e.n)) / 100));
+    this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0;
+    this.lastFallAt = null;
+    this.markHearth();
+    this.canvas.setAttribute('data-rekindled', `${(Number(this.canvas.getAttribute('data-rekindled')) || 0) + 1}`);
+    this.options.onRekindle?.();
+  }
+  /** S5: the Keepers near this one that its heals and guards can reach, with their life as the room keeps it. */
+  private feedAllies(): void {
+    if (!this.life) { this.mobs.allies = []; this.mobs.allyOut.length = 0; return; }
+    const p = this.player, out: AllyNear[] = [];
+    for (const pe of this.peers.drawn) {
+      if (Math.hypot(pe.x - p.x, pe.y - p.y) > ALLY_SEEN_TILES * TILE) continue;
+      const l = this.allyLife.get(pe.id);
+      out.push({ id: pe.id, x: pe.x, y: pe.y, h: l?.h ?? 1, m: l?.m ?? 1, down: l?.d ?? false });
+    }
+    this.mobs.allies = out;
+  }
+  /** The e2e's view of the allies: who this screen sees, the heals it sent and was given, the fallen it knows. */
+  allyView(): { allies: AllyNear[]; sent: number; healed: number; fallen: string[]; bondT: number; gateT: number; song: boolean; kneel: boolean } {
+    return { allies: this.mobs.allies.map(a => ({ ...a })), sent: this.allyHealSent, healed: this.mobs.allyHealed, fallen: [...this.mobs.fallenAllies.keys()], bondT: this.mobs.bondT, gateT: this.mobs.gateT, song: !!this.mobs.song, kneel: !!this.mobs.kneel };
   }
   /** The e2e's view of the life the room keeps: the room's word, claims in flight, round trips (ms). */
   lifeView(): { on: boolean; hp: number; room: LifeView | null; inFlight: number; rtt: number[]; down: boolean } {
@@ -3570,6 +3642,7 @@ export class TopDownEngine {
     if (this.fxSeam && !this.fxSeamLaid && this.time > 6 && this.level === this.world) this.laySeamShowcase();
     // Shared creatures (td-coop.ts): this Keeper's part in its area now, the others of the party as prey on the host,
     // the host's creatures placed on a member. A member raises nothing of its own (no spawns, no Seam Eater).
+    this.feedAllies();
     this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
     const member = this.coop.role === 'member';
     if (!member) this.updateSeam(phase);
@@ -3884,6 +3957,13 @@ export class TopDownEngine {
     for (const p of this.peers.drawn) {
       if (!inView(p.x, p.y)) continue;
       if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - up(42), this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
+      // S5: its life under the plate (the room's word), so a healer sees who needs her.
+      const al = this.allyLife.get(p.id);
+      if (al && al.m > 0) {
+        const w = 18, bx = Math.round(p.x - w / 2), by = Math.round(p.y - up(42)) + 1, k = Math.max(0, Math.min(1, al.h / al.m));
+        c.fillStyle = '#1a1210'; c.fillRect(bx - 1, by - 1, w + 2, 4);
+        c.fillStyle = al.d ? '#6b5f58' : k < .35 ? '#e2452a' : '#7fe08a'; c.fillRect(bx, by, Math.round(w * k), 2);
+      }
       if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - up(52), this.time, this.still);
     }
     if (this.peers.waving('', this.time)) this.peers.drawWave(c, this.player.x, this.player.y - up(46), this.time, this.still);

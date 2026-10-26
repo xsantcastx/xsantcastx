@@ -391,7 +391,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
     life(s, data) {
       const L = lifeOf(s);
       if (!L) throw fail(409, 'Update the game to have your life kept.');
-      if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(k => k !== 'g' && k !== 'c')) throw fail(400, 'Invalid life.');
+      if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(k => k !== 'g' && k !== 'c' && k !== 'a')) throw fail(400, 'Invalid life.');
       if (data.g !== undefined) {
         const g = M.parseGuard(data.g);
         if (!g) throw fail(400, 'Invalid guard.');
@@ -403,7 +403,19 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       const claims = list.map(c => M.parseLifeClaim(c));
       if (claims.some(c => !c)) throw fail(400, 'Invalid life claim.');
       const t = now(), r = claims.map(c => L.claim(c, t).n);
-      return { ok: true, me: L.view(), n: r };
+      const room = roomOf(s);
+      // S5: its own heals make threat on what fights it (td-threat), as a heal on another does.
+      if (room?.world?.selfHealed) claims.forEach((c, i) => { if (c.k === 'heal' && r[i] > 0) room.world.selfHealed(s.player.id, r[i]); });
+      // S5: heals, wards, cleanses, Rekindles, bonds and auras on others (ally-claims.ts): the room weighs each.
+      let a;
+      if (data.a !== undefined) {
+        if (!Array.isArray(data.a) || data.a.length > 16 || typeof M.parseAllyClaim !== 'function') throw fail(400, 'Invalid ally.');
+        const list = data.a.map(c => M.parseAllyClaim(c));
+        if (list.some(c => !c)) throw fail(400, 'Invalid ally claim.');
+        if (!room?.world?.allies || !room.members.has(s.player.id)) a = list.map(() => 'nobody');
+        else { room.world.keeper(keeperOf(s)); a = room.world.allies(s.player.id, list); }
+      }
+      return { ok: true, me: L.view(), n: r, ...(a ? { a } : {}) };
     },
     /**
      * Protocol 10: the screen's own numbers for what it is owed (a kill's XP with its worn XP and boons, a pile's Gold

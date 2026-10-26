@@ -442,3 +442,126 @@ test('protocol 10: the credit is batched — one transaction per Keeper per wind
   // Each transaction reads at most 4 documents and writes at most 4 (the ring, activity, hearth with a debt, purse).
   assert.ok(commits <= 4);
 });
+
+// ── S5: heals, wards and guards on allies; threat (world/ally-claims.ts, td/td-threat.ts) ──
+const { parseAllyClaim, allyLegal, allyHealBudget, ALLY_WINDOW_MS, REKINDLE_MAX_MS, THREAT } = sim;
+const lifeOf = (max = 1000) => new KeeperLife({ max, defense: 0, resists: {}, level: 30 }, max);
+
+test('S5: the room weighs a heal on an ally — the skill, its level, its reach by the room\'s record, the healer\'s budget', () => {
+  const t = { now: T0 };
+  const lives = new Map([['h', lifeOf()], ['m', lifeOf()], ['far', lifeOf()]]);
+  const w = world('ally', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'h', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'm', x: OPEN.x + 3 * 16, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'far', x: OPEN.x + 40 * 16, y: OPEN.y, level: 30 });
+  for (const id of ['m', 'far']) lives.get(id).hp = 100;
+  // A Hearthlight on the mate beside her lands; its screen is told.
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'm', n: 200 }]), [200]);
+  assert.equal(lives.get('m').hp, 300);
+  assert.ok(w.snapFor('m').ev.some(e => e.k === 'ally' && e.a === 'heal' && e.by === 'h' && e.n === 200), 'the healed hears it');
+  // Too far by the room's record; a skill that heals nobody; a made-up one; one above her level (Rekindle is 30, a
+  // level-10 healer's claim is refused); herself.
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'far', n: 50 }]), ['far']);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'ember-bolt', to: 'm', n: 50 }]), ['illegal']);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'god-hand', to: 'm', n: 50 }]), ['illegal']);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'h', n: 50 }]), ['self']);
+  w.keeper({ id: 'low', x: OPEN.x + 16, y: OPEN.y, level: 10 });
+  assert.deepEqual(w.allies('low', [{ k: 'ward', s: 'lantern-ward', to: 'm', n: 50, t: 120 }]), ['level']);
+  // A forged "heal 99999" is clipped to the level's budget over the window; past it, refused.
+  lives.get('m').hp = 1;
+  const got = w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'm', n: 99999 }])[0];
+  assert.ok(typeof got === 'number' && got <= allyHealBudget(30) * ALLY_WINDOW_MS / 1000, `clipped (${got})`);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'm', n: 10 }]), ['budget']);
+  // The wire: unknown keys, a bad kind, a heal with no target are refused before the room sees them.
+  assert.equal(parseAllyClaim({ k: 'heal', s: 'hearthlight', n: 5 }), null);
+  assert.equal(parseAllyClaim({ k: 'smite', s: 'hearthlight', to: 'm', n: 5 }), null);
+  assert.equal(parseAllyClaim({ k: 'heal', s: 'hearthlight', to: 'm', n: 5, x: 1 }), null);
+  assert.ok(parseAllyClaim({ k: 'aura', s: 'banner-of-the-watch', n: 8, r: 60, t: 20 }));
+  assert.equal(allyLegal({ k: 'aura', s: 'banner-of-the-watch', n: 90, r: 60, t: 20 }, { id: 'h', x: 0, y: 0, level: 30 }, null), 'illegal', 'a 90% banner is forged');
+});
+
+test('S5: Rekindle stands a fallen party member up where it fell — only within the window, beside the spot, once a while', () => {
+  const t = { now: T0 };
+  const lives = new Map([['h', lifeOf()], ['m', lifeOf(400)]]);
+  const w = world('rekindle', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'h', x: OPEN.x + 160, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'm', x: OPEN.x, y: OPEN.y, level: 30 });
+  // Nobody fell: nothing to rekindle.
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['late']);
+  lives.get('m').hp = 0; lives.get('m').tick(t.now); t.now += 1000; assert.ok(lives.get('m').tick(t.now)); w.downed('m');
+  // Too far from where it fell.
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['far']);
+  w.keeper({ id: 'h', x: OPEN.x + 20, y: OPEN.y, level: 30 });
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), [160]);
+  assert.equal(lives.get('m').down, false);
+  const ev = w.snapFor('m').ev.find(e => e.k === 'ally' && e.a === 'rekindle');
+  assert.ok(ev && ev.x === OPEN.x && ev.y === OPEN.y, 'it is told where it stands up');
+  // A forged share past the row's top is refused; a second Rekindle waits its turn.
+  lives.get('m').hp = 0; t.now += 1000; lives.get('m').tick(t.now); t.now += 1000; lives.get('m').tick(t.now); w.downed('m');
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 95 }]), ['illegal']);
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['cooldown']);
+  // Too late after the fall.
+  t.now += REKINDLE_MAX_MS + 1000;
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['late']);
+});
+
+test('S5: the tank\'s guards are the room\'s — the Banner cuts an ally\'s bites, an Intercept bond hands the tank his share', () => {
+  const t = { now: T0 };
+  const lives = new Map([['tank', lifeOf(2000)], ['m', lifeOf(2000)]]);
+  const w = world('guard', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'tank', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'm', x: OPEN.x + 32, y: OPEN.y, level: 30 });
+  w.snapFor('tank'); w.snapFor('m');
+  w.bite('m', null, 100, 'physical', false, false);
+  const plain = 2000 - lives.get('m').hp;
+  lives.get('m').hp = 2000;
+  assert.deepEqual(w.allies('tank', [{ k: 'aura', s: 'banner-of-the-watch', n: 20, r: 60, t: 20 }]), [1]);
+  w.bite('m', null, 100, 'physical', false, false);
+  assert.equal(2000 - lives.get('m').hp, Math.round(plain * .8), 'the Banner cut it');
+  // A Shared Skin (no damage cut) cuts nothing: only the guards' auras do.
+  lives.get('m').hp = 2000; t.now += 3000;
+  w.allies('tank', [{ k: 'aura', s: 'cinder-skin', n: 15, r: 30, t: 100 }]);
+  w.bite('m', null, 100, 'physical', false, false);
+  assert.equal(2000 - lives.get('m').hp, plain);
+  // Intercept: half of what the mate takes is the tank's.
+  lives.get('m').hp = 2000;
+  assert.deepEqual(w.allies('tank', [{ k: 'bond', s: 'intercept', to: 'm', n: 50, t: 60 }]), [1]);
+  w.bite('m', null, 100, 'physical', false, false);
+  assert.equal(2000 - lives.get('m').hp, Math.round(plain / 2));
+  assert.equal(2000 - lives.get('tank').hp, Math.round(plain / 2));
+  assert.ok(w.snapFor('m').ev.some(e => e.k === 'ally' && e.a === 'bond' && e.n === 50), 'the mate\'s screen mirrors the bond');
+});
+
+test('S5: threat — a room creature goes for the Keeper with the most threat in reach (the Ashguard\'s book ×2, a heal ×0.5, a taunt the top)', () => {
+  const t = { now: T0 };
+  const w = world('threat', t);
+  w.fxQuiet();
+  w.keeper({ id: 'tank', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'dps', x: OPEN.x + 40, y: OPEN.y, level: 30 });
+  const id = w.fxLay('ash-wolf', OPEN.x + 20, OPEN.y, false), m = mobOf(w, id);
+  m.hp = m.def.hp = 1e6;
+  // The tank's blade (his book: ×2) against more raw damage from the warlock: the tank still holds it.
+  w.claims('tank', [{ i: id, d: 60, el: 'physical', s: 'watch-blade' }]);
+  w.claims('dps', [{ i: id, d: 100, el: 'fire' }]);
+  assert.equal(m.threat.get('tank'), 120); assert.equal(m.threat.get('dps'), 100);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'tank');
+  // The warlock pulls ahead (past the 10% it must clear), and the wolf turns.
+  w.claims('dps', [{ i: id, d: 40, el: 'fire' }]);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'dps');
+  // A heal on the tank draws the creatures fighting him to the healer (×0.5).
+  w.keeper({ id: 'heal', x: OPEN.x - 30, y: OPEN.y, level: 30 });
+  w.selfHealed('tank', 0);
+  const before = m.threat.get('heal') ?? 0;
+  sim.healThreat(w.mobs.mobs, 'tank', 'heal', 100);
+  assert.equal((m.threat.get('heal') ?? 0) - before, 100 * THREAT.heal);
+  // A Watch Cry: the taunter jumps to the top +10% and the wolf turns back.
+  assert.equal(w.statuses('tank', [{ i: id, k: 'taunt', s: 'watch-cry', t: 30 }]).landed, 1);
+  t.now += 50; w.tick(.05);
+  assert.ok(m.threat.get('tank') >= Math.max(m.threat.get('dps'), m.threat.get('heal') ?? 0) * THREAT.tauntTop - 1e-6);
+  assert.equal(m.tauntBy, 'tank');
+});
