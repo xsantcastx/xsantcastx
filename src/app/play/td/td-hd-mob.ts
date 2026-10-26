@@ -6,8 +6,12 @@
  * walks toward the Keeper bakes a row or two, not all 96 cells. A bake budget per drawn frame spreads the cost of a
  * new creature over a few frames (an unbaked cell shows the nearest baked one meanwhile).
  */
-import { FACING_YAW } from './td-hd-rig';
+import { FACING_YAW, Rig } from './td-hd-rig';
 import { FRAMES, HD_MODELS, rigFor, type Anim, type HdModel } from './td-hd-creatures';
+import { HD_PETS, glimModel, type GlimHdMood } from './td-hd-pets';
+
+/** A creature's model, or a pet's (`pet:<id>`). */
+const modelOf = (id: string): HdModel | undefined => (id.startsWith('pet:') ? HD_PETS[id.slice(4)] : HD_MODELS[id]);
 
 export interface HdCell { img: HTMLCanvasElement; ax: number; ay: number }
 
@@ -16,25 +20,29 @@ let budget = 0, budgetAt = -1;
 /** Cells baked per drawn frame before the rest wait (each is a few ms on a phone). */
 const BAKES_PER_FRAME = 3;
 
-export function hasHdModel(id: string): boolean { return id in HD_MODELS; }
-export function hdModel(id: string): HdModel | undefined { return HD_MODELS[id]; }
+/** Every creature with an HD model (the contact sheets). */
+export const hdIds = (): string[] => Object.keys(HD_MODELS);
+export function hasHdModel(id: string): boolean { return !!modelOf(id); }
+export function hdModel(id: string): HdModel | undefined { return modelOf(id); }
 
 /** Bake one cell: pose, sculpt, trim. */
 export function bakeHdCell(id: string, row: number, anim: Anim, f: number): HdCell | null {
-  const m = HD_MODELS[id];
+  const m = modelOf(id);
   if (!m) return null;
   const p = { anim, f };
   const r = rigFor(m, FACING_YAW[row] ?? 0, p);
   m.build(r, p);
-  const cv = r.render();
-  // Trim to the figure (the sculpt's canvas has a 1 px outline margin: the feet sit at ox + 1, oy + 1).
+  return trim(r.render(), r.ox, r.oy);
+}
+/** Trim a sculpt to its pixels (the sculpt's canvas has a 1 px outline margin: the feet sit at ox + 1, oy + 1). */
+function trim(cv: HTMLCanvasElement, ox: number, oy: number): HdCell {
   const g = cv.getContext('2d', { willReadFrequently: true })!, img = g.getImageData(0, 0, cv.width, cv.height).data;
   let x0 = cv.width, y0 = cv.height, x1 = -1, y1 = -1;
   for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (img[(y * cv.width + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   if (x1 < 0) { x0 = y0 = 0; x1 = y1 = 0; }
   const out = document.createElement('canvas'); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
   out.getContext('2d')!.drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
-  return { img: out, ax: r.ox + 1 - x0, ay: r.oy + 1 - y0 };
+  return { img: out, ax: ox + 1 - x0, ay: oy + 1 - y0 };
 }
 
 /** A creature's cell, baked on demand (within this frame's budget; else the nearest baked one, else baked anyway). */
@@ -87,9 +95,9 @@ export function hdDeathFrame(age: number): number { return Math.min(FRAMES - 1, 
  * A contact sheet (automated browsers, the art review): every HD creature × its six facings, one clip's frames each,
  * on a grass check, at `k` screen px a sheet px. Returns a PNG data URL.
  */
-export function hdGallery(ids: readonly string[] = Object.keys(HD_MODELS), anims: readonly Anim[] = ['idle', 'walk', 'attack', 'death'], k = 2): string {
+export function hdGallery(ids: readonly string[] = Object.keys(HD_MODELS), anims: readonly Anim[] = ['idle', 'walk', 'attack', 'death'], k = 2, frames: readonly number[] = [0, 1, 2, 3]): string {
   const rows: HdCell[][] = [];
-  for (const id of ids) for (let row = 0; row < 6; row++) { const line: HdCell[] = []; for (const a of anims) for (let f = 0; f < FRAMES; f++) { const c = bakeHdCell(id, row, a, f); if (c) line.push(c); } rows.push(line); }
+  for (const id of ids) for (let row = 0; row < 6; row++) { const line: HdCell[] = []; for (const a of anims) for (const f of frames) { const c = bakeHdCell(id, row, a, f % FRAMES); if (c) line.push(c); } rows.push(line); }
   const all = rows.flat(), cw = Math.max(...all.map(c => c.img.width)) + 8, chh = Math.max(...all.map(c => c.ay)) + 10, cb = Math.max(...all.map(c => c.img.height - c.ay)) + 4;
   const ch = chh + cb, cols = Math.max(...rows.map(l => l.length));
   const out = document.createElement('canvas'); out.width = cols * cw * k; out.height = rows.length * ch * k;
@@ -100,4 +108,17 @@ export function hdGallery(ids: readonly string[] = Object.keys(HD_MODELS), anims
     g.drawImage(c.img, (i * cw + cw / 2 - c.ax) * k, (j * ch + chh - c.ay) * k, c.img.width * k, c.img.height * k);
   }));
   return out.toDataURL('image/png');
+}
+
+const glims = new Map<string, HdCell>();
+/** Glim at the HD pixel (td-hd-pets glimModel): a wingbeat (up, mid, down) with a mood's face, facing the viewer. */
+export function hdGlim(frame: 'up' | 'mid' | 'down', mood: GlimHdMood): HdCell {
+  const key = `${frame}|${mood}`;
+  let c = glims.get(key);
+  if (c) return c;
+  const r = new Rig(64, 50, 32, 40, 0);
+  glimModel(r, frame === 'up' ? 0 : frame === 'mid' ? 1 : 2, mood);
+  c = trim(r.render(), r.ox, r.oy);
+  glims.set(key, c);
+  return c;
 }
