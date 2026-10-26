@@ -34,6 +34,25 @@ for (const size of SIZES) {
       await page.waitForTimeout(5000);
       await page.screenshot({ path: `${DIR}/${PREFIX}-town-${size.name}.png` });
     });
+    // Stage 4 (the structures, the dungeon dressing, interiors and the water): a few places in the new style.
+    // [name, level, c, r, continent, wait ms] (the vault's dead walk: photograph it before they arrive).
+    const spots: [string, string, number, number, string, number][] = [
+      ['barrow-door', 'hushed-barrow-1', 15, 11, 'ember-isle', 2600], ['harbour', 'surface', 30, 111, 'ember-isle', 7500], ['inn', 'ember-inn-1', 10, 6, 'ember-isle', 7500], ['mine', 'ember-mine-1', 11, 13, 'ember-isle', 7500],
+    ];
+    for (const [name, level, c, r, continent, wait] of spots) test(`stage 4: ${name}`, async ({ page }) => {
+      test.setTimeout(120000);
+      await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+      await seed(page, { 'eclipse-td': '1', 'godforge-keeper-look': { version: 1, made: true, prompted: true, name: 'Brann', vocation: 'ashguard', hair: 'curls', updatedAt: 1 } });
+      await page.goto('/play?td=1&hour=12');
+      await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
+      await page.waitForFunction(() => !!(window as unknown as { __tdArt?: unknown }).__tdArt);
+      await page.waitForTimeout(2500);
+      const ok = await page.evaluate(([l, cc, rr, k]) => (window as unknown as { __tdArt: { visit(l: string, c: number, r: number, k: string): boolean } }).__tdArt.visit(l as string, cc as number, rr as number, k as string), [level, c, r, continent] as const);
+      expect(ok).toBe(true);
+      // Clear the stage: no creature in the photograph, the place's title faded.
+      await page.waitForTimeout(wait);
+      await page.screenshot({ path: `${DIR}/${PREFIX}-${name}-${size.name}.png` });
+    });
     test('forest clearing', async ({ page }) => {
       test.setTimeout(120000);
       await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));

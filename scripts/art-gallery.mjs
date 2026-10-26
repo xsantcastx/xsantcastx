@@ -31,7 +31,7 @@ import { defaultLook } from ${src('shared/keeper-look/keeper-look.model')};
 import { vocationLook } from ${src('shared/keeper-look/vocation-look')};
 import { MOBS, RAISED_SKELETON, mobCell, mobSheet } from ${src('play/td/td-mobs')};
 import * as ART from ${src('play/td/td-art')};
-import { paintRichGround } from ${src('play/td/td-ground')};
+import { paintRichGround, richEdge } from ${src('play/td/td-ground')};
 import { AURA_LOOKS, AuraFx } from ${src('play/td/td-aura')};
 import { petSheet } from ${src('play/td/td-pet-art')};
 
@@ -139,6 +139,80 @@ if (want('aura')) {
 if (want('pets')) {
   const row = section('Pets');
   for (const id of ['ink-pup', 'shade-kit', 'moss-hedgehog', 'spirit-beast']) { const sh = petSheet(id as any); if (!sh) continue; card(row, id, sh.width, sh.height + 2, c => { grassBg(c, sh.width, sh.height + 2, 2); c.drawImage(sh, 0, 1); }); }
+}
+
+/** A patch of ground painted the way the engine bakes a chunk: the rich painter, else the old one, then the edges. */
+function chunk(rows: readonly string[], legend: Record<string, any>, frame = 0): HTMLCanvasElement {
+  const H = rows.length, W = Math.max(...rows.map(r => r.length));
+  const at = (q: number, r: number) => legend[rows[Math.max(0, Math.min(H - 1, r))][Math.max(0, Math.min(W - 1, q))] ?? '.'];
+  const el = document.createElement('canvas'); el.width = W * 16; el.height = H * 16;
+  const g = el.getContext('2d')!;
+  for (let r = 0; r < H; r++) for (let q = 0; q < W; q++) {
+    const k = at(q, r), ox = q * 16, oy = r * 16;
+    if (!(paintRichGround as any)(g, k, q + 3, r + 60, ox, oy, (dx: number, dy: number) => at(q + dx, r + dy), frame)) ART.paintGround(g, k, q + 3, r + 60, ox, oy, frame);
+    const edge = (n: any, side: any) => { if (!richEdge(k, n)) ART.paintEdge(g, k, n, side, q + 3, r + 60, ox, oy); };
+    edge(at(q, r - 1), 'n'); edge(at(q, r + 1), 's'); edge(at(q - 1, r), 'w'); edge(at(q + 1, r), 'e');
+  }
+  return el;
+}
+type Put = [any, number, number];
+function scene(c: CanvasRenderingContext2D, puts: Put[]): void {
+  const list = puts.filter(p => p[0]).sort((a, b) => a[2] - b[2]);
+  for (const [sp, x, y] of list) { if (sp.floor) c.drawImage(sp.floor.img, x + sp.floor.x, y + sp.floor.y); }
+  for (const [sp, x, y] of list) { if (sp.shadow) c.drawImage(sp.shadow.img, x + sp.shadow.x, y + sp.shadow.y); }
+  for (const [sp, x, y] of list) c.drawImage(sp.img, x - sp.ax, y - sp.ay);
+  for (const [sp, x, y] of list) if (sp.roof) c.drawImage(sp.roof.img, x + sp.roof.x, y + sp.roof.y);
+}
+const opt = (name: string, ...a: any[]) => typeof (ART as any)[name] === 'function' ? (ART as any)[name](...a) : null;
+if (want('structures')) {
+  const row = section('Dungeon doors, stairs and gates');
+  const cave = { '#': 'rock', '.': 'cave' };
+  const rows = ['##########', '##########', '##########', '..........', '..........', '..........'];
+  card(row, 'crypt + cave mouth', 160, 96, c => { c.drawImage(chunk(rows.map(r => r.replace(/#/g, '.')), { '.': 'grass' }), 0, 0); scene(c, [[ART.cryptDoor(), 44, 60], [ART.caveMouth(), 118, 60]]); });
+  card(row, 'forge gate + temple gate', 160, 96, c => { c.drawImage(chunk(rows.map(r => r.replace(/#/g, '.')), { '.': 'dirt' }), 0, 0); scene(c, [[ART.forgeGate(), 40, 70], [ART.templeGate(), 118, 70]]); });
+  card(row, 'barrow doors, stairs, ladder', 160, 96, c => {
+    c.drawImage(chunk(rows, cave), 0, 0);
+    scene(c, [[ART.barrowDoor(false), 24, 48], [ART.barrowDoor(true), 48, 48], [ART.stairsDown(), 80, 64], [ART.stairsUp(), 110, 48], [ART.ladderUp(), 140, 48], [opt('sealedDoor'), 24, 90]]);
+  });
+  card(row, 'tower, mine head, ruins', 200, 128, c => {
+    c.drawImage(chunk(['............'.repeat(1)].concat(Array(7).fill('............')), { '.': 'grass' }), 0, 0);
+    scene(c, [[ART.tower(), 34, 122], [ART.mineShaft(), 88, 120], [ART.ruinWall(0), 130, 120], [ART.ruinWall(1), 162, 120], [ART.ruinWall(2), 146, 80], [ART.lanternTower(), 186, 126]]);
+  });
+  const roofs = section('House roofs');
+  card(roofs, 'red / slate / thatch / gloam / leaf', 330, 100, c => {
+    grassBg(c, 330, 100, 4);
+    scene(c, [[ART.house(4, 3, 'red', 'timber', true, 1), 34, 96], [ART.house(4, 3, 'slate', 'stone', true, 2), 100, 96], [ART.house(4, 3, 'thatch', 'timber', false, 3), 166, 96], [ART.house(4, 3, 'gloam', 'basalt', true, 4), 232, 96], [ART.house(4, 3, 'leaf', 'timber', false, 5), 298, 96]]);
+  });
+}
+if (want('harbour')) {
+  const row = section('Harbour: water, a pier and the ships');
+  const rows = ['ggggggggggggggggg', 'ggggssssssssggggg', 'gsssssspsssssssgg', 'sswwwwwpwwwwwwwss', 'wwwwwwwpwwwwwwwww', 'wwwwwwwpwwwwwwwww', 'wwwwwwwpwwwwwwwww', 'wwwwwwwwwwwwwwwww'];
+  const L = { g: 'grass', s: 'sand', w: 'water', p: 'plank' };
+  for (const f of [0, 2]) card(row, 'pier, frame ' + f, 272, 128, c => { c.drawImage(chunk(rows, L, f), 0, 0); scene(c, [[ART.ship(), 160, 116], [ART.verdantShip(), 232, 116]]); });
+  const bridge = ['gggggdgggggg', 'gggggdgggggg', 'wwwwwpwwwwww', 'wwwwwpwwwwww', 'wwwwwpwwwwww', 'gggggdgggggg'];
+  card(row, 'bridge over a river', 192, 96, c => c.drawImage(chunk(bridge, { g: 'grass', d: 'dirt', w: 'water', p: 'plank' }, 1), 0, 0));
+  card(row, 'umbral ship', 96, 96, c => { c.drawImage(chunk(['bbbbbb', 'bbbbbb', 'kkkkkk', 'kkkkkk', 'kkkkkk', 'kkkkkk'], { b: 'boardwalk', k: 'blackwater' }, 1), 0, 0); scene(c, [[ART.umbralShip(), 48, 92]]); });
+}
+if (want('interior')) {
+  const row = section('Interiors: walls, boards, rugs, furniture');
+  const rows = ['##############', '##############', '#............#', '#.....rrr....#', '#.....rrr....#', '#............#', '#............#', '##############'];
+  card(row, 'the inn', 224, 128, c => {
+    c.drawImage(chunk(rows, { '#': 'wall', '.': 'plank', r: 'rug' }), 0, 0);
+    scene(c, [[ART.shelf(), 40, 48], [ART.shelf(), 64, 48], [ART.table(), 56, 88], [ART.table(), 150, 104], [ART.bed(1), 196, 72], [ART.counter(), 120, 64], [ART.chest(), 30, 104], [ART.barrel(), 180, 112]]);
+  });
+}
+if (want('dungeon')) {
+  const row = section('Dungeon set dressing (canon §8; campaign #4 atmosphere pass)');
+  const rows = ['####################', '####################', '#..................#', '#..................#', '#..................#', '#..................#', '#..................#', '####################'];
+  const names: [string, any[]][] = [['altar', []], ['brazier', [false]], ['brazier', [true]], ['cage', []], ['chains', []], ['brokenStatue', []], ['cobweb', []], ['ritualCircle', []], ['inscription', []], ['oldStain', []], ['rime', []]];
+  card(row, 'a floor with the new props', 320, 128, c => {
+    c.drawImage(chunk(rows, { '#': 'rock', '.': 'cave' }), 0, 0);
+    const p = (n: string, a: any[] = []) => opt(n, ...a);
+    scene(c, [[ART.torchPost(), 18, 48], [p('chains'), 48, 32], [p('inscription'), 88, 32], [p('chains'), 128, 32], [p('cobweb'), 302, 47],
+      [p('altar'), 72, 72], [p('brazier', [true]), 40, 72], [p('brazier', [false]), 104, 72], [p('ritualCircle'), 72, 104], [p('cage'), 160, 80], [p('brokenStatue'), 210, 72],
+      [p('oldStain'), 250, 104], [p('rime'), 290, 104], [ART.bones(), 150, 110], [ART.chest(), 260, 70], [ART.boulder(1), 200, 112], [ART.templePillar(1), 300, 72]]);
+  });
+  for (const [n, a] of names) { const sp = opt(n, ...a); if (!sp) continue; card(row, n + (a.length ? ' ' + a.join() : ''), 64, 64, c => { c.drawImage(chunk(['####', '####', '....', '....'], { '#': 'rock', '.': 'cave' }), 0, 0); scene(c, [[sp, 32, n === 'chains' || n === 'inscription' ? 32 : n === 'cobweb' ? 31 : 52]]); }); }
 }
 (window as any).done = true;
 `);
