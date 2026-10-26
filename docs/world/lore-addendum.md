@@ -1805,3 +1805,20 @@ Ashen Crypt (*osk teth*, *osk ka*): "He still calls the roll, and the roll still
 garrison's dead to rest when they fall near it. In the Drowned Crypts a Drowned Acolyte calls the Watch back up ("they
 have not been told to stand down") and prays over it. Fire turns the dead to ash, and ash answers no song. Lines live in
 `play/td/td-abilities.i18n.ts` (EN + ES); the creatures in `play/td/td-mobs.ts`; canon §5.7.
+
+## Gathering, fire and the sky (2026-10-26, branch `gather`) — shipped, owner reviews in play
+
+Canon §6.5 and §6.7, built. The lakes, the rivers, the marsh and the sea have **marked spots**: a ripple with a red and
+white float half a tile out from the bank, and the fish themselves as shadows circling under it (the spot's stock is
+what you see: Ash Perch grey, the Lampfish's warm dot by night, the Moonbelly's pale wake under an eclipse). A jump is the
+tell, as Old Netter Pell and Netmender Wenna Brisk say: "Watch them jump before you cast." The next bite there comes two
+seconds sooner. In the rain, Pell's line plays as you cast: "Rain's good for the hook. The fish come up to see what's
+falling." Glim, the first rain of a session: "Wet wings. I'll ride in your hood."
+
+Each land's trees give its own log (Ashwood, Char-oak, Rootglass Bough, Cypress), each with a line: "Take the fallen
+first. The Charwood keeps count of the rest." A log and a tinderbox make a campfire, Maud Kiln's small hearth ("Every fire
+you light is a small hearth. The dark minds its manners round one."): the Hush cannot climb beside it and the shapes in
+the dark step back from its light. Raw fish cook at it, or at a lit town hearth, into Hearth meals; each meal and fish has
+its own lore line (EN + ES) in `shared/gathering/gathering.i18n.ts` (`gather.lore.*`). "You hunt better on a night's
+sleep and a full belly." The words for Wet: lightning bites deeper, fire burns lower, cold freezes.
+

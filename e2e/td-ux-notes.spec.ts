@@ -133,7 +133,7 @@ test('the prologue card shows key caps, the XP bar its tooltip, the sheet its Sk
   await page.keyboard.press('c');
   await page.locator('[data-sheet-skills]').click();
   const rows = page.locator('[data-skills] [data-skill]');
-  await expect(rows).toHaveCount(9);
+  await expect(rows).toHaveCount(11);
   await expect(page.locator('[data-skill="mining"]')).toHaveAttribute('data-skill-level', /^[2-9]|\d\d/);
   await expect(page.locator('[data-skill="hunting"] .ks__skill-xp')).toContainText(/XP to/);
   await page.locator('.ksheet').screenshot({ path: 'docs/handoff/cozy-ui/ux-skills.jpg', type: 'jpeg', quality: 80 });

@@ -267,7 +267,7 @@ whatever S-work has landed.
 - **Accept when** every shipped skill and every basic attack has a frame set, an FX and a cue; reduced motion removes
   particles and keeps tells; a 20-creature Nova does not clip the audio.
 
-#### S4 [spec'd]: Weather v1, Wet, and fish in the water (M + S, world lane)
+#### S4 [built 2026-10-26, branch `gather`, docs/handoff/gather.md]: Weather v1, Wet, and fish in the water (M + S, world lane)
 - **What.** world-acts.md §3.1–3.5 (Clear, Overcast, Rain, Fog only), the Wet status (skills-100.md §0.4) and §4 (fish
   shadows, jumps, the bite tell):
   - `td-weather.ts` as data: the per-section weights;

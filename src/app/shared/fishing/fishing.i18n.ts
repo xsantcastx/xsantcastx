@@ -6,7 +6,12 @@
 export const FISHING_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── The skill ──
   'skills.name.fishing': { en: 'Fishing', es: 'Pesca' },
-  'skills.hint.fishing': { en: 'Cast a rod into the Delve\'s water (or lava, with a Seam Rod) and press E when the bob dips.', es: 'Lanza una cana al agua de la Grieta (o a la lava, con una Cana de veta) y pulsa E cuando el corcho se hunda.' },
+  'skills.hint.fishing': { en: 'Click a marked spot (a ripple with a float) by a lake, a river or the sea. The Keeper fishes until the satchel is full or you move.', es: 'Pulsa un punto marcado (una onda con una boya) en un lago, un rio o el mar. El Guardian pesca hasta llenar el morral o hasta que te muevas.' },
+  // Firemaking and Cooking (shared/gathering): here because the Skills panel and the level-up banner register this table.
+  'skills.name.firemaking': { en: 'Firemaking', es: 'Fogatas' },
+  'skills.hint.firemaking': { en: 'Light a log with a tinderbox (the satchel card\'s Light). Every fire is a small hearth: it keeps the dark back.', es: 'Enciende un tronco con un yesquero (Encender en la carta del morral). Cada fuego es un pequeno hogar: aparta la oscuridad.' },
+  'skills.name.cooking': { en: 'Cooking', es: 'Cocina' },
+  'skills.hint.cooking': { en: 'Cook raw fish at a campfire or a lit hearth. Burns less as you level; a meal mends slowly.', es: 'Cocina pescado crudo en una fogata o un hogar encendido. Se quema menos al subir; una comida cura despacio.' },
   'skills.unlock.rod': { en: '{{name}} works at its own tier', es: '{{name}} rinde a su propio nivel' },
   'skills.unlock.fish.bite': { en: 'Bites come {{n}}% faster', es: 'Pican un {{n}}% mas rapido' },
   'skills.unlock.fish.crate': { en: 'Crates +{{n}}% more often', es: 'Cajas un +{{n}}% mas a menudo' },
