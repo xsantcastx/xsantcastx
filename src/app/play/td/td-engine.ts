@@ -12,7 +12,7 @@
  * the same setters), so the play component keeps all its wiring; members the
  * top-down world has no use for yet are no-ops (see createTopDownEngine).
  */
-import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
+import type { CorpseView, EngineOptions, EngineSfx, EngineState, EngineInput, LootRow } from '../engine/engine.model';
 import type { LootRarity, StationDef } from '../world/world.model';
 import { FIGURE_K, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
@@ -25,6 +25,8 @@ import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
+import { skillKit, type KeeperAnim } from './td-skill-kit';
+import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawKeeperStatus, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { castable } from './td-abilities';
 import { creatureProfile } from '../../shared/loot/creature-families';
@@ -112,7 +114,7 @@ import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
 import { TdCoop, type CoopRole } from './td-coop';
 import { LifeMirror } from '../world/life-mirror';
 import type { LifeView } from '../world/keeper-life';
-import { ELEMENTS } from '../../shared/loot/damage.model';
+import { DAMAGE_COLORS, ELEMENTS, type DamageType } from '../../shared/loot/damage.model';
 import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
 import type { WorldDrop } from '../social/world-protocol';
 import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
@@ -245,6 +247,8 @@ export class TopDownEngine {
   private chaseTimer = 0;
   /** The swing being played (seconds left) and which way it faces. */
   private actT = 0;
+  /** S3: the Keeper's fight animation playing now (td-keeper-anim), and how far in. */
+  private kAnim: { anim: KeeperAnim; t: number; el: DamageType } | null = null;
   /** Is a point over a creature's body (an effect there stays ≤ 60%, effects-spec §Budget)? */
   private readonly overFoe = (x: number, y: number): boolean => this.mobs.mobs.some(m => Math.abs(x - m.x) < m.def.w / 2 && y < m.y && y > m.y - m.def.h);
   /** A tree being cut: hits so far, the next swing's timer. */
@@ -526,7 +530,7 @@ export class TopDownEngine {
       // Sight (td-sight.ts): whatever the walkability map keeps feet off stops a ray and a shot — walls, rock, stalls,
       // trees, a shut door — except the low ground a shot flies over (water, embers, the fens, the leaf-sea).
       sight: (c, r) => { const g = this.level.ground(c, r); return g !== 'water' && g !== 'ember' && g !== 'blackwater' && g !== 'canopy' && !this.level.walkable(c, r); },
-      swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
+      swung: at => { this.actT = .3; if (!this.kAnim) { const k = skillKit(this.basicSkill()); this.kAnim = { anim: k.anim, t: 0, el: k.el }; } if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
       // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
       seek: secs => this.seekNow(secs),
@@ -3479,6 +3483,7 @@ export class TopDownEngine {
     this.peers.step(dt, this.peerArea(), this.player, this.still);
     this.mobs.selfAway = true;
     try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
+    this.fightFx(dt);
     this.coop.after(dt);
     this.tickPals(dt);
     this.lifeFrame();
@@ -3592,6 +3597,7 @@ export class TopDownEngine {
     // S6: the land its packs' auras come from (td-pack-aura).
     this.mobs.land = this.world.continent;
     this.mobs.update(dt);
+    this.fightFx(dt);
     this.coop.after(dt);
     // Whispering (an elite affix, S6): its blows feed the Hush.
     if (this.mobs.hushOwed > 0) {
@@ -3956,7 +3962,10 @@ export class TopDownEngine {
     c.save();
     // A floater drifts a little above the floor; a ghost is half there, flickering.
     const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
-    c.translate(Math.round(m.x), Math.round(m.y - d.h - lift));
+    // S3: a bite reads — a hitch back (the wind-up), a lunge in (the blow), a settle — never under reduced motion.
+    const lg = m.lungeAt === undefined || this.still ? -1 : this.mobs.now - m.lungeAt;
+    const lunge = lg < 0 || lg >= .2 ? 0 : lg < .05 ? -1 : lg < .13 ? 3 : 1;
+    c.translate(Math.round(m.x) + lunge * m.face, Math.round(m.y - d.h - lift) + (lunge > 1 ? 1 : 0));
     if (m.face < 0) c.scale(-1, 1);
     if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14 + (Math.random() < .04 ? -.25 : 0);
     // A Mirrored copy (S6): a little see-through, a breath grey (Glim dims beside it).
@@ -4674,6 +4683,19 @@ export class TopDownEngine {
         c.fillStyle = '#5a3a2a'; c.fillRect(mx - 3, my - 3, 7, 7);
         c.fillStyle = '#8a5a3a'; c.fillRect(mx - 2, my - 2, 4, 4);
         c.fillStyle = FX.ember.core; c.fillRect(mx - 1, my - 1, 2, 2);
+      } else if (e.kind === 'impact') {
+        // S3: every hit's impact spark, its element's colour: a cross that opens over 2–3 frames (Low: one frame; reduced
+        // motion: the cross alone, still). A crit adds a 1-frame white outline round it.
+        const col = e.c ?? '#ffffff', fr = this.still ? 1 : Math.min(2, Math.floor(t * 3)), low = envDetail() === 'low';
+        if (low && t > .34) { c.globalAlpha = 1; continue; }
+        c.globalAlpha = 1;
+        if (e.dir > 1 && fr === 0) { c.fillStyle = '#ffffff'; c.fillRect(X - 3, Y - 1, 7, 3); c.fillRect(X - 1, Y - 3, 3, 7); }
+        c.fillStyle = col; c.fillRect(X - 2, Y, 5, 1); c.fillRect(X, Y - 2, 1, 5);
+        c.fillStyle = '#ffffff'; c.fillRect(X, Y, 1, 1);
+        if (!low && !this.still && fr > 0) {
+          const d = 2 + fr * 2;
+          c.fillStyle = col; c.fillRect(X - d, Y - d, 1, 1); c.fillRect(X + d, Y - d, 1, 1); c.fillRect(X - d, Y + d, 1, 1); c.fillRect(X + d, Y + d, 1, 1);
+        }
       } else if (e.kind === 'crit') {
         // A crit's white-hot core (over a creature: never above 60%).
         c.globalAlpha = .6 * Math.max(0, 1 - t);
@@ -4918,12 +4940,48 @@ export class TopDownEngine {
       rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
     }
     this.paintPerson(this.ctx, p, action, null);
+    if (p === this.player) this.drawAnimOverlay(p);
+  }
+  /** The fight animation's frame now (null: none playing). */
+  private animNow(): AnimFrame | null { return this.kAnim ? animFrame(this.kAnim.anim, this.kAnim.t, this.still) : null; }
+  /** This calling's basic attack row (its swing's animation). */
+  private basicSkill(): string {
+    const v = this.mobs.vocation;
+    return v === 'ashguard' ? 'watch-blade' : v === 'lanternwright' ? 'kindle' : v === 'thornstrider' ? 'thorn-shot' : 'ember-bolt';
+  }
+  /**
+   * S3: what the fight asked for this frame — its cues to the sound director (through onSfx), the Keeper's animation —
+   * and the animation's clock. Drained every frame, so nothing piles up.
+   */
+  private fightFx(dt: number): void {
+    const q = this.mobs.cues;
+    for (const k of q) this.options.onSfx?.({ kind: k.cue as EngineSfx['kind'], pitch: k.pitch });
+    q.length = 0;
+    if (this.mobs.keeperAnim) { this.kAnim = { anim: this.mobs.keeperAnim, t: 0, el: skillKit(this.mobs.lastCast ?? this.basicSkill()).el }; this.mobs.keeperAnim = null; }
+    else if (this.kAnim) { this.kAnim.t += dt; if (this.kAnim.t >= animSecs(this.kAnim.anim)) this.kAnim = null; }
+  }
+  /** The animation's overlay (a staff's flash, a slammed ring, a shield's brass) over the figure, in world px. */
+  private drawAnimOverlay(p: Person): void {
+    const f = this.animNow();
+    if (!f?.o) return;
+    const c = this.ctx, X = Math.round(p.x) + f.dx * p.face, Y = Math.round(p.y) + f.dy;
+    const el = this.kAnim?.el ?? 'arcane', body = el === 'physical' ? '#e0b25a' : DAMAGE_COLORS[el];
+    const tones = ['#ffffff', body, body] as const;
+    const was = c.globalAlpha;
+    c.globalAlpha = .9;
+    for (const [x, y, w, h, t] of overlayRects(f.o, envDetail() === 'low')) {
+      c.fillStyle = tones[t];
+      c.fillRect(p.face > 0 ? X + x : X - x - w + 1, Y + y, w, h);
+    }
+    c.globalAlpha = was;
   }
   /** One person's figure: on the world (`at` null) or on a scratch canvas with the feet at `at`. */
   private paintPerson(c: CanvasRenderingContext2D, p: Person, action: 'idle' | 'run' | 'walk', at: { x: number; y: number } | null): void {
     const s = this.scale, cam = this.cam;
     if (!p.painter) return;
-    const fx = at ? at.x : Math.round(p.x), fy = at ? at.y : Math.round(p.y);
+    // S3: the fight animation's body offset (whole art px, toward the facing side).
+    const af = p === this.player ? this.animNow() : null;
+    const fx = (at ? at.x : Math.round(p.x)) + (af ? af.dx * p.face : 0), fy = (at ? at.y : Math.round(p.y)) + (af ? af.dy : 0);
     const acting = p === this.player && this.actT > 0;
     // The Thornstrider draws his bow from the side too (the painter's own draw pose), like the Ashguard's swing.
     const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard' && this.mobs.vocation !== 'thornstrider';

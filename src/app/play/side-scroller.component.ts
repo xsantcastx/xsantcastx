@@ -2285,7 +2285,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** The engine made a sound: give it its material (a cell's, or the town street's). */
   private engineSfx(cue: EngineSfx): void {
     const material = cue.node ? materialOf(cue.node) : TOWN_GROUND[this.soundRealm()] ?? 'stone';
-    this.sound.sfx(cue.kind, { material });
+    this.sound.sfx(cue.kind, { material, ...(cue.pitch ? { pitch: cue.pitch } : {}) });
     // The landed fish reached the Keeper: into the Satchel it goes.
     if (cue.kind === 'catch') this.zone.run(() => this.pulseSatchel());
   }
