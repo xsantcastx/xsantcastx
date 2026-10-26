@@ -6,9 +6,13 @@ as a player setting.
 
 ## What a player gets
 
-- **Menu → Sound → Graphics: Classic / Isometric (Beta).** The setting is per device (`localStorage['eclipse-td-graphics']`, the
-  same rule as Environment detail) and takes effect at once. Classic is the default, and Classic is byte-for-byte the
-  old drawing path.
+- **Isometric is every player's default (Beta)** (owner, 2026-10-27). Menu → Sound → Graphics reads
+  "Isometric (Beta) / Classic"; the choice is per device (`localStorage['eclipse-td-graphics']`, the same rule as
+  Environment detail) and takes effect at once. A player who picks Classic keeps it, and Classic is live main's
+  top-down look, unchanged.
+- **Tests.** The e2e suite pins Classic (`playwright.config` storage state and `play-helpers` `seed`), so older specs
+  keep testing the top-down view. The Karma unit specs default to Classic (`defaultGraphics`). `e2e/td-iso.spec.ts`
+  removes the pin to prove a fresh player gets Isometric.
 - **Isometric.** The same square world (collision, maps, paths and the room server are unchanged) drawn as 2:1
   diamonds:
   - organic ground edges
