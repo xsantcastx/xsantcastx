@@ -10,6 +10,8 @@
  */
 import { broadleafTree, clumpRamp, paintClump, paintClumps, pineTree, shadowSprite } from './td-flora';
 import { volumize } from '../../shared/keeper-look/keeper-volume';
+import { paintAltar, paintBrazier, paintBrokenStatue, paintCage, paintChains, paintCobweb, paintInscription, paintRime, paintRitualCircle, paintStain } from './td-dressing';
+import { RAMP, paintBarrowDoor, paintBed, paintCaveMouth, paintChimney, paintCounter, paintCryptDoor, paintForgeGate, paintLadderUp, paintMineShaft, paintRoof, paintRuinWall, paintShelf, paintShip, paintStairsDown, paintStairsUp, paintTable, paintTempleGate, paintTower } from './td-build';
 
 export const TILE = 16;
 
@@ -454,6 +456,8 @@ export interface Sprite {
   smoke?: readonly { x: number; y: number }[];
   /** A soft shadow cast on the ground (drawn in the ground pass, under everything standing): its image and offset from the anchor. */
   shadow?: { img: HTMLCanvasElement; x: number; y: number };
+  /** A floor decal (a ritual circle, a stain, a cobweb): painted in the ground pass with the shadows, under everything standing. */
+  floor?: { img: HTMLCanvasElement; x: number; y: number };
 }
 
 const cache = new Map<string, Sprite>();
@@ -470,7 +474,7 @@ function cached(key: string, make: () => Sprite): Sprite {
  * blocked tiles are unchanged. Buildings, walls, gates, stairs, ships and trees keep their own footprint (not here).
  */
 const GROWN: ReadonlySet<string> = new Set(['lamp', 'bench', 'barrel', 'crate', 'cart', 'hearth', 'signpost', 'forge', 'waystone', 'ore', 'beacon',
-  'boulder', 'bush', 'torch', 'bones', 'chest', 'stump', 'ruin', 'stone', 'anvil', 'grave', 'table', 'bed', 'shelf', 'counter', 'root', 'pillar',
+  'boulder', 'bush', 'torch', 'bones', 'chest', 'stump', 'stone', 'anvil', 'grave', 'root', 'pillar',
   'fern', 'lantern', 'reeds', 'gloomcap', 'great', 'fountain']);
 /** Buildings that share a grown prop's first word. */
 const NOT_GROWN = ['lantern-tower', 'forge-gate'];
@@ -549,27 +553,14 @@ export function house(w: number, d: number, roof: RoofStyle, wall: WallStyle, ch
       if (hash(x, seed, 9) > .4) for (let i = 0; i < 6; i++) { rect(c, x + i * 2, y0 + 11, 2, 2, pick(PAL.flower, hash(x + i, seed, 11))); rect(c, x + i * 2, y0 + 12, 1, 1, PAL.leaf[1]); }
       wins.push({ x: x + 6 - W / 2, y: y0 + 6 - H, r: 16, warm: true });
     }
-    // Roof (separate layer): a 3/4 gable — the near slope big, ridge line, shingles.
+    // Roof (separate layer): a 3/4 gable, shingles shaded per course and slope (td-build paintRoof); a stone chimney.
     const roofImg = cv(W + 4, roofH + 4);
     const rc = roofImg.getContext('2d')!;
-    const ramp = roofRamp(roof);
-    rect(rc, 2, 2, W, roofH, ramp[0]);
-    for (let y = 0; y < roofH; y += 4) {
-      for (let x = (y / 4) % 2 ? 0 : 3; x < W; x += 6) {
-        rect(rc, 2 + x, 2 + y, 5, 3, pick(ramp, hash(x, y, seed + 3)));
-        rect(rc, 2 + x, 2 + y + 3, 5, 1, ramp[2]);
-      }
-    }
-    rect(rc, 2, 2 + Math.floor(roofH * .38), W, 2, ramp[3]);
-    rect(rc, 2, 2, W, 2, ramp[2]);
-    rect(rc, 2, 2 + roofH - 3, W, 3, ramp[2]);
-    // Chimney on the roof.
+    paintRoof(rc, 2, 2, W, roofH, roof, roofRamp(roof), seed + w * 7 + d);
     const smoke: { x: number; y: number }[] = [];
     if (chimney) {
       const cx = Math.floor(W * (hash(w, d, seed) > .5 ? .72 : .26));
-      rect(rc, cx, 0, 8, 12, PAL.stone[2]);
-      rect(rc, cx, 0, 8, 3, PAL.stone[3]);
-      rect(rc, cx + 1, 1, 6, 1, '#2a2430');
+      paintChimney(rc, cx, 0);
       smoke.push({ x: cx + 4 - W / 2 - 2, y: -H });
     }
     // The eave's shadow on the wall top: two steps.
@@ -824,16 +815,7 @@ export function oreSeam(): Sprite {
 
 /** The mine head into the Ember Delve: a timber frame over a dark shaft, a lantern on the post. */
 export function mineShaft(): Sprite {
-  return cached('mine-shaft', () => {
-    const W = 36, H = 34, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 6, 18, 24, 14, '#1a1016'); rect(c, 8, 20, 20, 10, '#0e080c');
-    rect(c, 4, 6, 4, 27, PAL.wood[0]); rect(c, 28, 6, 4, 27, PAL.wood[0]);
-    rect(c, 2, 4, 32, 5, PAL.wood[3]); rect(c, 2, 4, 32, 1, PAL.plank[2]);
-    rect(c, 9, 26, 18, 1, PAL.wood[2]); rect(c, 9, 29, 18, 1, PAL.wood[2]);
-    rect(c, 30, 10, 4, 5, PAL.glow); rect(c, 31, 11, 2, 3, PAL.window);
-    return { img: outline(img), ax: 18, ay: 34, lights: [{ x: 14, y: -22, r: 22 }] };
-  });
+  return cached('mine-shaft', paintMineShaft);
 }
 
 /** The Eclipse Beacon at the north road's end: a stone pillar crowned with a cold brazier. */
@@ -878,14 +860,7 @@ export function bush(seed = 0): Sprite {
 
 /** A ladder up out of a dungeon floor: rails and rungs against a pale shaft of daylight. */
 export function ladderUp(): Sprite {
-  return cached('ladder-up', () => {
-    const W = 18, H = 30, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 2, 0, 14, 22, '#e9dcae'); rect(c, 4, 0, 10, 22, '#fff3c9');
-    rect(c, 4, 0, 2, 30, PAL.wood[0]); rect(c, 12, 0, 2, 30, PAL.wood[0]);
-    for (let y = 3; y < 30; y += 5) rect(c, 4, y, 10, 2, PAL.wood[3]);
-    return { img: outline(img), ax: 9, ay: 30, lights: [{ x: 0, y: -18, r: 34, warm: false }] };
-  });
+  return cached('ladder-up', paintLadderUp);
 }
 
 /** A torch on a post, lighting the dark of a dungeon floor. */
@@ -935,15 +910,7 @@ export function stump(): Sprite {
 /** A broken wall of an old building, moss in its cracks (three shapes). */
 export function ruinWall(seed = 0): Sprite {
   const v = ((seed % 3) + 3) % 3;
-  return cached(`ruin-${v}`, () => {
-    const W = 32, H = 26, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    const tops = [[0, 6], [8, 2], [16, 10], [24, 4]];
-    for (const [x, t] of tops) { const h = H - (t + (v * 3 + x) % 7); rect(c, x, H - h, 8, h, PAL.stone[2]); rect(c, x, H - h, 8, 2, PAL.stone[3]); }
-    for (let y = 8; y < H; y += 5) rect(c, 0, y, W, 1, PAL.stone[0]);
-    rect(c, 3 + v * 6, H - 9, 4, 2, PAL.leaf[1]); rect(c, 20 - v * 3, H - 14, 3, 2, PAL.leaf[3]);
-    return { img: outline(img), ax: 16, ay: H };
-  });
+  return cached(`ruin-${v}`, () => paintRuinWall(v));
 }
 
 /** A tall standing stone, runes cut in it faintly glowing. */
@@ -960,54 +927,19 @@ export function standingStone(seed = 0): Sprite {
 
 /** A cave mouth in a rock face: a dark arch, timber props, a lantern. */
 export function caveMouth(): Sprite {
-  return cached('cave-mouth', () => {
-    const W = 40, H = 34, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 0, 4, W, H - 4, PAL.basalt[1]); rect(c, 0, 4, W, 3, PAL.basalt[3]);
-    rect(c, 10, 12, 20, 22, '#120a0e'); rect(c, 12, 10, 16, 3, '#120a0e');
-    rect(c, 8, 12, 3, 22, PAL.wood[0]); rect(c, 29, 12, 3, 22, PAL.wood[0]); rect(c, 7, 10, 26, 3, PAL.wood[3]);
-    rect(c, 31, 16, 4, 5, PAL.glow);
-    return { img: outline(img), ax: 20, ay: H, lights: [{ x: 13, y: -16, r: 22, warm: true }] };
-  });
+  return cached('cave-mouth', paintCaveMouth);
 }
 
 /** The Ashen Crypt's door: a basalt mausoleum front, steps going down into the dark, two violet grave-lights. */
 export function cryptDoor(): Sprite {
-  return cached('crypt-door', () => {
-    const W = 40, H = 36, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 4, 10, 32, 26, PAL.basalt[1]); rect(c, 4, 10, 32, 2, PAL.basalt[3]); rect(c, 2, 6, 36, 5, PAL.basalt[2]); rect(c, 2, 6, 36, 1, PAL.basalt[3]);
-    rect(c, 10, 2, 20, 5, PAL.basalt[2]); rect(c, 18, 0, 4, 3, PAL.stone[1]);
-    rect(c, 13, 15, 14, 21, '#120a0e'); rect(c, 15, 13, 10, 3, '#120a0e');
-    for (let i = 0; i < 4; i++) rect(c, 14 + i, 20 + i * 4, 12 - i * 2, 2, i % 2 ? PAL.stone[2] : PAL.stone[0]);
-    rect(c, 6, 14, 3, 22, PAL.stone[2]); rect(c, 31, 14, 3, 22, PAL.stone[2]); rect(c, 6, 14, 1, 22, PAL.stone[3]);
-    rect(c, 17, 3, 6, 3, '#e8e1cf'); rect(c, 18, 4, 1, 1, '#3a2a2a'); rect(c, 21, 4, 1, 1, '#3a2a2a');
-    rect(c, 0, 22, 4, 8, PAL.basalt[2]); rect(c, 1, 19, 2, 3, '#b06bff'); rect(c, 36, 22, 4, 8, PAL.basalt[2]); rect(c, 37, 19, 2, 3, '#b06bff');
-    return { img: outline(img), ax: 20, ay: H, lights: [{ x: -18, y: -16, r: 16, warm: false }, { x: 18, y: -16, r: 16, warm: false }] };
-  });
+  return cached('crypt-door', paintCryptDoor);
 }
 /**
  * The Forge of the Four's gate, at the foot of the Pyre Peaks: a basalt smithy front gone to ruin, four cold anvil
  * sigils over a doorway of steps going down, a brazier either side that still burns.
  */
 export function forgeGate(): Sprite {
-  return cached('forge-gate', () => {
-    const W = 48, H = 40, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 4, 12, 40, 28, PAL.basalt[1]); rect(c, 4, 12, 40, 2, PAL.basalt[3]);
-    for (let y = 15; y < 38; y += 5) for (let x = (y % 10) ? 5 : 9; x < 42; x += 8) rect(c, x, y, 6, 2, PAL.basalt[0]);
-    rect(c, 2, 7, 44, 6, PAL.basalt[2]); rect(c, 2, 7, 44, 1, PAL.basalt[3]);
-    // The broken lintel: one corner fallen.
-    rect(c, 38, 4, 8, 4, PAL.basalt[2]); rect(c, 2, 2, 12, 6, PAL.basalt[2]); rect(c, 2, 2, 12, 1, PAL.basalt[3]);
-    // Four anvil sigils, one for each smith.
-    for (let i = 0; i < 4; i++) { const x = 9 + i * 8; rect(c, x, 9, 6, 2, '#7a7584'); rect(c, x + 2, 11, 2, 1, '#4a4552'); }
-    rect(c, 16, 18, 16, 22, '#120a0e'); rect(c, 18, 16, 12, 3, '#120a0e');
-    for (let i = 0; i < 4; i++) rect(c, 17 + i, 23 + i * 4, 14 - i * 2, 2, i % 2 ? PAL.stone[2] : PAL.stone[0]);
-    rect(c, 13, 16, 3, 24, PAL.stone[2]); rect(c, 32, 16, 3, 24, PAL.stone[2]); rect(c, 13, 16, 1, 24, PAL.stone[3]);
-    rect(c, 0, 28, 5, 12, PAL.stone[2]); rect(c, 0, 25, 5, 3, PAL.ember[1]); rect(c, 1, 24, 3, 2, PAL.glow);
-    rect(c, 43, 28, 5, 12, PAL.stone[2]); rect(c, 43, 25, 5, 3, PAL.ember[1]); rect(c, 44, 24, 3, 2, PAL.glow);
-    return { img: outline(img), ax: 24, ay: H, lights: [{ x: -22, y: -15, r: 20, warm: true }, { x: 21, y: -15, r: 20, warm: true }] };
-  });
+  return cached('forge-gate', paintForgeGate);
 }
 /** A smith's anvil on its block, a hammer left across it. */
 export function anvil(): Sprite {
@@ -1026,26 +958,7 @@ export function anvil(): Sprite {
  * stamped with its number. Open, the doorway is dark and the door stands back against the jamb.
  */
 export function barrowDoor(open: boolean): Sprite {
-  return cached(`barrow-door-${open ? 1 : 0}`, () => {
-    const W = 16, H = 26, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    // The stone jambs and lintel, then the doorway.
-    rect(c, 0, 0, 16, 26, PAL.basalt[2]); rect(c, 0, 0, 16, 3, PAL.basalt[3]); rect(c, 0, 3, 2, 23, PAL.basalt[1]); rect(c, 14, 3, 2, 23, PAL.basalt[0]);
-    rect(c, 2, 3, 12, 23, '#120a0e');
-    if (open) {
-      // The door swung back: a sliver of planks against the left jamb.
-      rect(c, 2, 4, 3, 22, PAL.wood[2]); rect(c, 2, 4, 1, 22, PAL.wood[3]); rect(c, 3, 9, 2, 1, PAL.basalt[3]); rect(c, 3, 19, 2, 1, PAL.basalt[3]);
-    } else {
-      // Planks, two iron bands, the keyhole under a stamped "1".
-      rect(c, 2, 4, 12, 22, PAL.wood[2]);
-      for (let i = 0; i < 3; i++) rect(c, 5 + i * 3, 4, 1, 22, PAL.wood[0]);
-      rect(c, 2, 4, 12, 1, PAL.wood[3]);
-      rect(c, 2, 8, 12, 2, PAL.basalt[3]); rect(c, 2, 19, 12, 2, PAL.basalt[3]);
-      rect(c, 7, 12, 2, 4, PAL.stone[1]); rect(c, 7, 12, 1, 4, PAL.stone[3]);
-      rect(c, 7, 14, 2, 2, '#120a0e'); rect(c, 8, 16, 1, 1, '#120a0e');
-    }
-    return { img: outline(img), ax: 8, ay: H };
-  });
+  return cached(`barrow-door-${open ? 1 : 0}`, () => paintBarrowDoor(open));
 }
 
 export function gravestone(seed = 0): Sprite {
@@ -1062,126 +975,39 @@ export function gravestone(seed = 0): Sprite {
 
 /** Stairs cut down into the rock (to the floor below). */
 export function stairsDown(): Sprite {
-  return cached('stairs-down', () => {
-    const W = 20, H = 18, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 0, 0, W, H, PAL.basalt[1]); rect(c, 2, 2, 16, 14, '#120a0e');
-    for (let i = 0; i < 4; i++) rect(c, 3 + i, 3 + i * 3, 14 - i * 2, 2, i % 2 ? PAL.stone[2] : PAL.stone[1]);
-    return { img: outline(img), ax: 10, ay: 18 };
-  });
+  return cached('stairs-down', paintStairsDown);
 }
 /** Stairs going up out of a floor, lit from above. */
 export function stairsUp(): Sprite {
-  return cached('stairs-up', () => {
-    const W = 20, H = 22, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 2, 0, 16, 22, '#e9dcae');
-    for (let i = 0; i < 6; i++) rect(c, 2, 2 + i * 3.4, 16, 2, i % 2 ? PAL.stone[3] : PAL.stone[1]);
-    rect(c, 0, 0, 2, 22, PAL.basalt[0]); rect(c, 18, 0, 2, 22, PAL.basalt[0]);
-    return { img: outline(img), ax: 10, ay: 22, lights: [{ x: 0, y: -14, r: 28 }] };
-  });
+  return cached('stairs-up', paintStairsUp);
 }
 
 /** A sailing ship at the pier: a timber hull, a mast and a cream sail with the realm's ember stripe. */
 export function ship(): Sprite {
-  return cached('ship', () => {
-    const W = 48, H = 52, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 4, 38, 40, 10, PAL.wood[0]); rect(c, 6, 46, 36, 4, PAL.wood[2]); rect(c, 4, 38, 40, 2, PAL.wood[3]); rect(c, 0, 36, 6, 6, PAL.wood[0]); rect(c, 42, 34, 6, 8, PAL.wood[0]);
-    for (let x = 8; x < 42; x += 6) rect(c, x, 41, 2, 2, PAL.plank[2]);
-    rect(c, 23, 2, 2, 38, PAL.trunk[2]);
-    rect(c, 10, 6, 13, 26, '#f3e7cf'); rect(c, 25, 8, 12, 22, '#efdcb5'); rect(c, 10, 16, 13, 3, PAL.ember[1]); rect(c, 25, 17, 12, 3, PAL.ember[1]);
-    rect(c, 22, 0, 6, 3, PAL.ember[2]);
-    return { img: outline(img), ax: 24, ay: 50 };
-  });
+  return cached('ship', () => paintShip({ hull: RAMP.wood, sail: RAMP.cream, stripe: RAMP.ember, flag: PAL.ember[1] }));
 }
 
 /** A round tavern table with two stools and a candle. */
 export function table(): Sprite {
-  return cached('table', () => {
-    const W = 24, H = 18, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 4, 4, 16, 8, PAL.wood[1]); rect(c, 4, 4, 16, 2, PAL.wood[3]); rect(c, 11, 12, 2, 5, PAL.wood[0]);
-    rect(c, 0, 10, 4, 4, PAL.wood[2]); rect(c, 20, 10, 4, 4, PAL.wood[2]);
-    rect(c, 11, 1, 2, 4, '#f3e7cf'); rect(c, 11, 0, 2, 1, PAL.glow);
-    return { img: outline(img), ax: 12, ay: 18, lights: [{ x: 0, y: -16, r: 14, warm: true }] };
-  });
+  return cached('table', paintTable);
 }
 /** A bed with a quilt. */
 export function bed(seed = 0): Sprite {
-  const v = ((seed % 3) + 3) % 3, quilt = ['#5a7fb0', '#8f3524', '#5a9a49'][v];
-  return cached(`bed-${v}`, () => {
-    const W = 18, H = 28, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 1, 0, 16, 28, PAL.wood[0]); rect(c, 2, 2, 14, 6, '#f3e7cf'); rect(c, 2, 9, 14, 17, quilt); rect(c, 2, 9, 14, 2, '#ffffff');
-    return { img: outline(img), ax: 9, ay: 28 };
-  });
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`bed-${v}`, () => paintBed(v));
 }
 /** A bookshelf against the wall. */
 export function shelf(): Sprite {
-  return cached('shelf', () => {
-    const W = 20, H = 22, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 0, 0, 20, 22, PAL.wood[0]); rect(c, 1, 1, 18, 20, PAL.wood[2]);
-    for (const y of [2, 9, 16]) { rect(c, 1, y + 5, 18, 1, PAL.wood[0]); for (let x = 2; x < 18; x += 3) rect(c, x, y, 2, 5, ['#8f3524', '#3f78b5', '#5a9a49', '#d68a2e', '#8a4fb0'][(x + y) % 5]); }
-    return { img: outline(img), ax: 10, ay: 22 };
-  });
+  return cached('shelf', paintShelf);
 }
 /** The inn's bar: a long counter with mugs and a keg. */
 export function counter(): Sprite {
-  return cached('counter', () => {
-    const W = 64, H = 22, img = cv(W, H);
-    const c = img.getContext('2d')!;
-    rect(c, 0, 8, 64, 14, PAL.wood[1]); rect(c, 0, 6, 64, 4, PAL.wood[3]); rect(c, 0, 20, 64, 2, PAL.wood[0]);
-    for (const x of [8, 20, 34, 48]) { rect(c, x, 1, 5, 6, '#c99a3e'); rect(c, x, 1, 5, 2, '#f3e7cf'); }
-    rect(c, 56, 0, 8, 8, PAL.wood[2]);
-    return { img: outline(img), ax: 32, ay: 22 };
-  });
+  return cached('counter', paintCounter);
 }
 
 /** A round basalt tower of three floors: arched windows lit on each, a door at its foot, a slate cone and an ember finial. */
 export function tower(): Sprite {
-  return cached('tower', () => {
-    const W = 48, cone = 30, storey = 24, wallH = storey * 3, H = cone + wallH;
-    const img = cv(W, H);
-    const c = img.getContext('2d')!;
-    // The drum: basalt courses, shaded at both sides so it reads round.
-    rect(c, 2, cone, W - 4, wallH, PAL.basalt[0]);
-    for (let y = 0; y < wallH; y += 4) for (let x = (y / 4) % 2 ? 2 : 6; x < W - 4; x += 8) {
-      rect(c, x, cone + y, 7, 3, pick(PAL.basalt, hash(x, y, 77)));
-      rect(c, x, cone + y, 7, 1, PAL.basalt[3]);
-    }
-    rect(c, 2, cone, 5, wallH, 'rgba(0,0,0,.22)'); rect(c, W - 7, cone, 5, wallH, 'rgba(0,0,0,.28)');
-    // A ledge at each floor.
-    const lights: { x: number; y: number; r: number; warm?: boolean }[] = [];
-    for (let f = 0; f < 3; f++) {
-      const fy = cone + f * storey;
-      rect(c, 0, fy, W, 3, PAL.stone[2]); rect(c, 0, fy, W, 1, PAL.stone[3]);
-      if (f < 2) {
-        // Two arched windows, warm.
-        for (const x of [12, 30]) {
-          rect(c, x - 1, fy + 7, 8, 11, PAL.stone[2]);
-          rect(c, x, fy + 9, 6, 9, PAL.window); rect(c, x + 1, fy + 8, 4, 1, PAL.window);
-          rect(c, x + 2, fy + 9, 1, 9, PAL.stone[1]);
-          lights.push({ x: x + 3 - W / 2, y: fy + 13 - H, r: 12, warm: true });
-        }
-      }
-    }
-    // The door at the foot.
-    const dy = cone + storey * 2;
-    rect(c, 17, dy + 5, 14, 19, PAL.stone[2]); rect(c, 18, dy + 7, 12, 17, PAL.wood[0]); rect(c, 19, dy + 6, 10, 1, PAL.wood[0]);
-    rect(c, 23, dy + 7, 1, 17, PAL.wood[2]); rect(c, 27, dy + 15, 1, 2, '#e6c35a');
-    rect(c, 8, dy + 9, 4, 5, PAL.glow); lights.push({ x: 10 - W / 2, y: dy + 11 - H, r: 16, warm: true });
-    // The cone: slate, narrowing course by course, an ember finial on top.
-    for (let y = 0; y < cone - 4; y++) {
-      const half = Math.round(4 + (W / 2) * (y / (cone - 4)));
-      rect(c, W / 2 - half, 4 + y, half * 2, 1, pick(PAL.roofSlate, hash(y, 3, 91)));
-      if (y % 4 === 3) rect(c, W / 2 - half, 4 + y, half * 2, 1, PAL.roofSlate[2]);
-    }
-    rect(c, W / 2 - 1, 0, 2, 6, PAL.wood[2]); rect(c, W / 2 - 2, 0, 4, 3, PAL.ember[2]);
-    lights.push({ x: 0, y: -H + 2, r: 10, warm: true });
-    return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights };
-  });
+  return cached('tower', paintTower);
 }
 
 // ── The Verdant Wilds (maps/verdant-wilds.ts): jungle trees, the giant trees, the Rootglass Bole, rootglass lamps, the
@@ -1321,25 +1147,7 @@ export function rootLamp(): Sprite {
 
 /** The Overgrown Temple's gate: a stepped front of mossy stone, a dark door, a carved face with rootglass eyes. */
 export function templeGate(): Sprite {
-  return cached('temple-gate', () => {
-    const W = 64, H = 52, img = cv(W, H), c = img.getContext('2d')!;
-    for (const [x, y, w] of [[0, 34, 64], [4, 22, 56], [10, 10, 44], [18, 2, 28]] as const) {
-      rect(c, x, y, w, H - y, PAL.temple[1]); rect(c, x, y, w, 2, PAL.temple[3]);
-      for (let yy = y + 4; yy < H; yy += 4) for (let xx = x + ((yy / 4) % 2 ? 0 : 4); xx < x + w; xx += 8) rect(c, xx, yy, 1, 3, PAL.temple[2]);
-    }
-    // The carved face over the door.
-    rect(c, 24, 6, 16, 12, PAL.temple[2]); rect(c, 26, 8, 4, 3, '#1a2018'); rect(c, 34, 8, 4, 3, '#1a2018');
-    rect(c, 27, 9, 2, 1, PAL.rootglass[1]); rect(c, 35, 9, 2, 1, PAL.rootglass[1]); rect(c, 28, 14, 8, 2, '#3a4438');
-    // The door: steps going down into the dark.
-    rect(c, 22, 24, 20, 28, '#0e120c'); rect(c, 24, 22, 16, 3, '#0e120c');
-    for (let i = 0; i < 4; i++) rect(c, 23 + i, 30 + i * 5, 18 - i * 2, 2, i % 2 ? PAL.temple[2] : PAL.temple[0]);
-    // Roots and vines over all of it.
-    for (const [x, len] of [[6, 14], [13, 22], [46, 18], [55, 12], [31, 6]] as const) { rect(c, x, 22, 1, len, PAL.jungle[1]); rect(c, x + 1, 22 + len - 2, 1, 2, PAL.jungle[3]); }
-    rect(c, 2, 34, 10, 3, PAL.moss[1]); rect(c, 50, 22, 8, 2, PAL.moss[1]); rect(c, 18, 2, 10, 2, PAL.moss[3]);
-    rect(c, 0, 40, 4, 12, PAL.bark[1]); rect(c, 60, 38, 4, 14, PAL.bark[2]);
-    for (const x of [14, 48]) { rect(c, x, 26, 3, 5, PAL.rootglass[2]); rect(c, x + 1, 27, 1, 3, PAL.rootglass[0]); }
-    return { img: outline(img), ax: W / 2, ay: H, lights: [{ x: -17, y: -24, r: 18 }, { x: 17, y: -24, r: 18 }, { x: 0, y: -42, r: 10 }] };
-  });
+  return cached('temple-gate', paintTempleGate);
 }
 
 /** A temple pillar, broken off at the top, moss in its flutes (three heights). */
@@ -1373,15 +1181,7 @@ export function fern(seed = 0): Sprite {
 
 /** A Verdant ship at its pier: the hull and mast as ever, a moss-green sail with a rootglass stripe. */
 export function verdantShip(): Sprite {
-  return cached('verdant-ship', () => {
-    const W = 48, H = 52, img = cv(W, H), c = img.getContext('2d')!;
-    rect(c, 4, 38, 40, 10, PAL.wood[0]); rect(c, 6, 46, 36, 4, PAL.wood[2]); rect(c, 4, 38, 40, 2, PAL.wood[3]); rect(c, 0, 36, 6, 6, PAL.wood[0]); rect(c, 42, 34, 6, 8, PAL.wood[0]);
-    for (let x = 8; x < 42; x += 6) rect(c, x, 41, 2, 2, PAL.plank[2]);
-    rect(c, 23, 2, 2, 38, PAL.trunk[2]);
-    rect(c, 10, 6, 13, 26, PAL.roofLeaf[0]); rect(c, 25, 8, 12, 22, PAL.roofLeaf[2]); rect(c, 10, 16, 13, 3, PAL.rootglass[1]); rect(c, 25, 17, 12, 3, PAL.rootglass[2]);
-    rect(c, 22, 0, 6, 3, PAL.rootglass[2]);
-    return { img: outline(img), ax: 24, ay: 50, lights: [{ x: 0, y: -50, r: 10 }] };
-  });
+  return cached('verdant-ship', () => ({ ...paintShip({ hull: RAMP.wood, sail: RAMP.moss, stripe: RAMP.rootglass, flag: PAL.rootglass[2] }), lights: [{ x: 0, y: -54, r: 10 }] }));
 }
 
 // ── The Umbral Marches (maps/umbral-marches.ts): lantern posts, the Lantern Tower, swamp cypresses hung with moss,
@@ -1512,16 +1312,7 @@ export function gloomcap(seed = 0): Sprite {
 
 /** The Marches' ship at its pier: a black hull, a gloam-violet sail with a lantern-gold stripe, a lantern at its bow. */
 export function umbralShip(): Sprite {
-  return cached('umbral-ship', () => {
-    const W = 48, H = 52, img = cv(W, H), c = img.getContext('2d')!;
-    rect(c, 4, 38, 40, 10, '#3a2c30'); rect(c, 6, 46, 36, 4, '#241a1e'); rect(c, 4, 38, 40, 2, '#5a464c'); rect(c, 0, 36, 6, 6, '#3a2c30'); rect(c, 42, 34, 6, 8, '#3a2c30');
-    for (let x = 8; x < 42; x += 6) rect(c, x, 41, 2, 2, PAL.lantern[2]);
-    rect(c, 23, 2, 2, 38, '#2a2026');
-    rect(c, 10, 6, 13, 26, PAL.roofGloam[1]); rect(c, 25, 8, 12, 22, PAL.roofGloam[2]); rect(c, 10, 16, 13, 3, PAL.lantern[1]); rect(c, 25, 17, 12, 3, PAL.lantern[2]);
-    rect(c, 44, 28, 3, 4, PAL.lantern[1]); rect(c, 44, 27, 3, 1, '#1c1418');
-    rect(c, 22, 0, 6, 3, PAL.ink[1]);
-    return { img: outline(img), ax: 24, ay: 50, lights: [{ x: 21, y: -20, r: 18, warm: true }] };
-  });
+  return cached('umbral-ship', () => ({ ...paintShip({ hull: ['#140e12', '#1c1418', '#241a1e', '#2e2228', '#3a2c30', '#4a3a40', '#5a464c'], sail: [PAL.roofGloam[2], '#4a4262', PAL.roofGloam[1], PAL.roofGloam[3]], stripe: RAMP.lantern, flag: PAL.ink[1], lantern: true, studs: PAL.lantern[2] }), lights: [{ x: -26, y: -26, r: 18, warm: true }] }));
 }
 
 /** The Great Lantern at the top of Gloamhaven's tower: an iron cage as tall as a man round a glass of gold, on a plinth. */
@@ -1541,3 +1332,28 @@ export function greatLantern(): Sprite {
     return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights: [{ x: 0, y: -26, r: 44, warm: true }] };
   });
 }
+
+// ── Dungeon set dressing (campaign.md queue #4, the atmosphere pass; td-dressing.ts). Builders place them; none is on a map yet.
+
+/** A stone altar under a dry cloth, two cold candles. */
+export function altar(): Sprite { return cached('altar', paintAltar); }
+/** An iron brazier: unlit (cold ash; a Keeper may light it) or lit (a fixed light, four tiles). */
+export function brazier(lit = false): Sprite { return cached(`brazier-${lit ? 1 : 0}`, () => paintBrazier(lit)); }
+/** A hanging iron cage, old bones inside. */
+export function cage(): Sprite { return cached('cage', paintCage); }
+/** Chains hung on a wall's face (blocks nothing). */
+export function chains(): Sprite { return cached('chains', paintChains); }
+/** A broken statue on its pedestal, the head fallen at its foot. */
+export function brokenStatue(): Sprite { return cached('statue-broken', paintBrokenStatue); }
+/** A readable inscription set in a wall's face (the station and its i18n line are the builder's). */
+export function inscription(): Sprite { return cached('inscription', paintInscription); }
+/** A cobweb across a room's corner (floor decal). */
+export function cobweb(corner: 'nw' | 'ne' = 'nw'): Sprite { return cached(`cobweb-${corner}`, () => paintCobweb(corner)); }
+/** A chalk or salt ritual circle (floor decal). */
+export function ritualCircle(): Sprite { return cached('circle', paintRitualCircle); }
+/** An old dry stain, rust-brown (floor decal; never red, never fresh). */
+export function oldStain(): Sprite { return cached('stain', paintStain); }
+/** Frost crusted on the floor (floor decal). */
+export function rime(): Sprite { return cached('rime', paintRime); }
+/** A sealed Barrow door (Barrow Doors 2–5, canon §8.1: a Tibia door with no key yet): chained, padlocked, its number stamped. */
+export function sealedDoor(n = 2): Sprite { return cached(`sealed-door-${n}`, () => paintBarrowDoor(false, n, true)); }

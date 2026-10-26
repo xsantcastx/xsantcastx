@@ -31,27 +31,37 @@ async function scene(page: Page): Promise<void> {
     w.__tdZones.foe('bone-walker', 3, -50, -28); w.__tdZones.foe('bone-walker', 3, 50, -34); w.__tdZones.foe('bone-walker', 3, -46, 30);
     w.__tdArt?.aura(true);
   });
+  // ART_VISIT=level,c,r,continent: stand there instead (stage 4: the harbour's water, a dungeon floor, the inn).
+  const visit = process.env['ART_VISIT'];
+  if (visit) await page.evaluate(v => { const [l, c, r, k] = v.split(','); (window as unknown as { __tdArt: { visit(l: string, c: number, r: number, k?: string): boolean } }).__tdArt.visit(l, Number(c), Number(r), k || undefined); }, visit);
   await page.waitForTimeout(2500);
 }
 
 async function measure(page: Page, label: string): Promise<void> {
-  const r = await page.evaluate(() => new Promise<{ mean: number; p95: number; frames: number; canvases: number; mpx: number }>(done => {
+  if (process.env['ART_PAN']) await page.evaluate(() => { (window as unknown as { __pan: boolean }).__pan = true; });
+  const r = await page.evaluate(() => new Promise<{ mean: number; p95: number; max: number; frames: number; canvases: number; mpx: number }>(done => {
     const d: number[] = [];
     let last = performance.now();
     const t0 = last;
+    // ART_PAN=1: the Keeper steps a tile a few times a second, so new ground chunks are baked while it runs (the hitch).
+    const pan = (window as unknown as { __pan?: boolean }).__pan;
+    const z = (window as unknown as { __tdZones: { to(c: number, r: number): boolean } }).__tdZones;
+    const cv = document.querySelector('canvas')!;
+    let step = 0;
     const tick = (t: number) => {
       d.push(t - last); last = t;
+      if (pan && d.length % 6 === 0) { step++; const x = Number(cv.getAttribute('data-player-x')), y = Number(cv.getAttribute('data-player-y')); z.to(Math.floor(x / 16) + 1, Math.floor(y / 16)); void step; }
       if (t - t0 < 5000) requestAnimationFrame(tick);
       else {
         d.sort((a, b) => a - b);
         const made = (window as unknown as { __made: HTMLCanvasElement[] }).__made;
         const px = made.reduce((s, c) => s + c.width * c.height, 0);
-        done({ mean: d.reduce((a, b) => a + b, 0) / d.length, p95: d[Math.floor(d.length * .95)], frames: d.length, canvases: made.length, mpx: px / 1e6 });
+        done({ mean: d.reduce((a, b) => a + b, 0) / d.length, p95: d[Math.floor(d.length * .95)], max: d[d.length - 1], frames: d.length, canvases: made.length, mpx: px / 1e6 });
       }
     };
     requestAnimationFrame(tick);
   }));
-  console.warn(`[art-perf] ${label}: mean ${r.mean.toFixed(2)} ms, p95 ${r.p95.toFixed(2)} ms over ${r.frames} frames; ${r.canvases} canvases made, ${r.mpx.toFixed(2)} Mpx`);
+  console.warn(`[art-perf] ${label}: mean ${r.mean.toFixed(2)} ms, p95 ${r.p95.toFixed(2)} ms, max ${r.max.toFixed(1)} ms over ${r.frames} frames; ${r.canvases} canvases made, ${r.mpx.toFixed(2)} Mpx`);
 }
 
 on('art perf', () => {
