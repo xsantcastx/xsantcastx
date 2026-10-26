@@ -62,6 +62,48 @@ from the upper left); the world is now richer, the figures finer and rounder.
 Everything new is baked once (chunks, sprites, sheets); per frame there is only the aura (a few hundred pixels and ≤ 10
 motes) and the rim-glow (one small scratch draw).
 
+## Stage 4 (2026-10-26): structures, roofs, interiors, dungeon dressing, water
+
+What a player gets: dungeon fronts and doors that stand a head over the fine-grid Keeper (the Ashen Crypt's columns and
+skull pediment with violet grave-lights, the cave mouth's shaded boulders and timber props, iron-banded Barrow doors in
+basalt jambs, the Forge gate's broken lintel and braziers, the temple's mossy stepped front), stairs that recede into
+the dark, the tower drawn round, ruins with ragged tops and ivy, three ships with billowing shaded sails, rigging,
+a stern cabin and foam at the waterline. Roofs in courses (clay scallops, cut slate, combed thatch) lit on the far
+slope, a ridge cap, bargeboards, moss. Inside: walls two tiles tall (plaster over a panelled wainscot, a ceiling beam,
+the odd picture), staggered boards with nails, woven rugs with a border and fringe, the inn's furniture repainted at the
+fine scale. Dungeons: rock faces two tiles tall in rough ledges, damp at the foot, a shadow on the floor under them.
+Water: deeper away from the shore, wavelets rocking a pixel over the four frames, lapping foam, the bank's and a pier's
+shadow, pilings with a ring of foam; piers lay their planks across, bridges along.
+
+| File | What |
+|---|---|
+| `play/td/td-build.ts` | The structure kit (`blocks`, `boards`, `strap`, `doorway`, `column`, `flame`, `plinth`, `paintCone`, `paintRoof`, `paintChimney`) and every structure painter; td-art's `caveMouth`, `cryptDoor`, `forgeGate`, `templeGate`, `barrowDoor`, `stairsDown/Up`, `ladderUp`, `mineShaft`, `tower`, `ruinWall`, the ships, `table`/`bed`/`shelf`/`counter` and `house`'s roof delegate here. `ruin`, `table`, `bed`, `shelf`, `counter` left `GROWN` (painted at the fine size, same anchors). |
+| `play/td/td-floors.ts` | `paintFloor` for `plank`, `rug`, `wall`, `rock`, `water` (called first by `paintRichGround`, which now takes the water frame); `floorEdge` (these painters own their edges). Water's frame-independent shore distances are cached per tile. Fish-shadow hook: `fishShadow(len)`, `openWater(nb)` (nothing swims yet). |
+| `play/td/td-dressing.ts` | campaign #4's props. td-art: `altar()`, `brazier(lit)`, `cage()`, `chains()`, `brokenStatue()`, `inscription()`, `cobweb(corner)`, `ritualCircle()`, `oldStain()`, `rime()`, `sealedDoor(n)`. MapObject ids (td-level): `altar`, `brazier`, `brazier-lit` (light r 64 = four tiles), `cage`, `chains`, `statue-broken`, `cobweb`, `circle`, `inscription`, `stain`, `rime`; blocking: altar, both braziers, cage, statue. Chains and inscription hang on a wall's face tile; the inscription's station and i18n line are the builder's. |
+| `Sprite.floor` | A floor decal drawn in the ground pass (engine `drawShadows`), under everything that stands. |
+| engine `chunk()` | A liquid chunk bakes frame 0 at once and frames 1–3 one a draw (`frameBudget`), so crossing onto water never stacks four bakes in one frame. |
+
+Cameras: `node scripts/art-gallery.mjs <out> 4 structures,harbour,interior,dungeon`; `ART_SHOTS=<prefix> … e2e/td-art-shots`
+now also photographs the Barrow vault's doors, Ember Harbour, the Ember Inn and Ember Mine −1 (`__tdArt.visit(level, c,
+r, continent)`, webdriver only); `ART_PERF=1 ART_VISIT=level,c,r,continent ART_PAN=1 … e2e/td-art-perf` measures any spot,
+`ART_PAN` stepping the Keeper a tile six frames so chunks bake mid-run (prints the worst frame too).
+Shots: `docs/handoff/art/art4-gallery-before.png` / `art4-gallery-after.png`, `art4-{barrow-door,harbour,inn,mine,town}-{desktop,phone}.png`.
+
+Performance (headless Chromium, mean / p95 / worst frame ms; the paint caches' canvas pixels):
+
+| Scene | Desktop 1280×800 | Phone 390×844, CPU ×4 |
+|---|---|---|
+| Forest road (stage 3 scene) | 16.63 / 17.80 / 18.6, 5.49 Mpx | 16.60 / 18.50 / 18.7, 3.57 Mpx |
+| Ember Harbour (water, pier, ship) | 16.63 / 18.30 / 18.6, 6.53 Mpx | 16.64 / 18.60 / 18.7, 4.60 Mpx |
+| Ember Mine −1 (rock faces) | 16.65 / 18.10 / 18.6, 6.16 Mpx | 16.63 / 18.40 / 18.7, 4.23 Mpx |
+| Ember Inn (walls, boards, furniture) | 16.66 / 18.10 / 18.7, 5.89 Mpx | 16.64 / 18.40 / 18.8, 3.96 Mpx |
+| Walking the harbour shore (chunks baking) | 16.65 / 18.10 / 18.6 | 16.90 / 18.50 / 50.8 (was 116.5 before the one-frame-a-draw bake) |
+| Walking the forest (chunks baking, for comparison) | 16.65 / 18.10 / 18.7 | 16.97 / 18.50 / 68.4 |
+
+Not done (stage 4): the Lantern Tower, vinewall/drownwall/flagstone/wetstone/cobble faces and the stalls keep their
+older paint; the lit brazier's flame is still (no flicker frames); lighting an unlit brazier and placing any of the new
+props is the atmosphere pass's work.
+
 ## Not done / next
 
 - Monster auras (the DM's D2-style design) and gear auras: build them on `AuraFx` with `auraFrom(element tones, dark)`.
