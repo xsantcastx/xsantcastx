@@ -1462,7 +1462,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   server.headersTimeout = 10000;
   const cleanup = setInterval(() => {
     for (const [token, session] of sessions) {
-      // (fixes, carried here: a session with an open stream never idles out — a hidden tab keeps its place.)
+      // An open stream is a Keeper still here, even a hidden tab whose timers the browser slows to one a minute (the
+      // game never pauses: owner 2026-10-26). Only a session with no stream idles out; a dead client closes its stream.
       if (!session.stream && now() - session.lastSeen > idleMs) remove(token);
       else if (session.stream) { session.lastSeen = now(); session.stream.write(': heartbeat\n\n'); }
     }
