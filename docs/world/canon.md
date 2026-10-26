@@ -455,6 +455,11 @@ Merchant buy anything". This is canon; the Merchant *weighs and takes in*, the C
 | Elder Rootwyrm 40 | Temple −5 | The first thing the Root grew; the priests called it the Cradle. |
 | Ink Abbess 50 | Drowned Crypts −3 | Would not leave her prayers when the water came. |
 | Seam Eater, Risen | the standing stones | The seam's hunger, assembled when the stitches let go. |
+| **World bosses** (M3, 2026-10-26; `play/world/world-bosses.ts`) | rise on timers of hours, at a random spot in their regions, heard the world over (an omen line) | — |
+| Old Greymaw 12 (world) | Ember Isle, the Emberwood and the Deep Emberwood | The Ash Wolves' matriarch: when the Emberwood goes quiet, the wolves are waiting for her. Above the isle's 1–10 band (the Seam Eater at 20 is the precedent); the omen carries "Dangerous for your level". |
+| Gharak Emberjaw 32 (world) | Infernal Reach, the Obsidian Badlands and the Deep Charwood | A Cinder warlord who answers no clan; his war-horns blow and none of the clans answer. |
+| The Copied Hart 42 (world) | Verdant Wilds, the Deep Wilds | A rootglass hart the wood copied one time too many; foreshadows the Graft Crown (a copy that wants to be the original). Its fall line keeps the copying unresolved. |
+| Ser Wickless, Marshal of the Drowned Guard 55 (world) | Umbral Marches, the Drowned Ruins and the Deep Fen | The *other* abbey captain: he refused the Abbess's last order ("Bring them in"), gave his lantern's flame to the Fog-Shepherd (The Tenth Lantern), and has patrolled the Ruins dark ever since. |
 | (planned) Graft Crown ~45 | the Rootcradle Below | The tree that wears a lantern: a copy that wants to be the original. |
 | (planned) Mirror Parliament ~55 | the Ink Deeps | The four Keepers' consensus, copied and left to vote forever. |
 | (planned) Perihelion Engine; Pale Refrain; Unbound Pattern | Acts IV, V, Finale | design-bible.md §3.3 |

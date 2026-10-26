@@ -66,3 +66,38 @@ picked up by the other, fast trade, relog keeps the party). The older `e2e/td-tr
 **Limits.** XP and Gold still credited by the client; a blow's size within the budget is the client's; the room's list
 of player drops is memory (escrowed items still go home on time); a protocol-7 client keeps M1's trust until it
 refreshes; the ~0.1 s before an escrow lands is the same small vendor-value window protocol 6 had.
+
+## M3 — Hearth protocol 9 (branch `m3`, 2026-10-26; hearth revision 00015 live)
+
+**What a player gets.** Every island, every cave and every dungeon floor is the room's, for everyone at once: a kill
+on Ember Mine −1 stays dead when you climb out and come back, and the Keeper who stayed sees the same. Creatures come
+back on their own clocks (about a minute; elites a few minutes; floor bosses about an hour, the story's gate bosses
+about ten minutes). Four world bosses rise every few hours somewhere in their wilds, the whole world hears the omen,
+and they carry their own uniques. There are more creatures everywhere, lairs (bones in a cleared ring with a pack
+round them) in every wild region and on every dungeon floor, and fewer filler trees.
+
+**How.** `room-world.ts` takes any area: a continent (TdWorld) or a floor (`HandLevel` from the new pure
+`td/td-levels.ts`); `idle(dt)` is the dormant tick; `respawnOf` (td-mobs) draws each rest (`world/respawn.ts`); world
+bosses in `world/world-bosses.ts` (data per boss, clocks persisted as `wb`, `fastForward` on wake, omens flushed to the
+room). `social-world.mjs`: every area wakes with the first Keeper in the world and stays awake (members → 20 Hz,
+others → 1 Hz idle) until nobody is in the world for 30 s, then each dirty area is written and all sleep;
+`world-omen` to protocol-9 sessions; `/health` reports cost and memory. `social-server.mjs`: `PROTOCOL = 9`,
+`session.p9`, the per-session world-area check (and fixes' stream-never-idles line). Client: `social-room.ts`
+(`protocol: 9`, the wider ground-id pattern, `onWorldOmen`), `side-scroller` `worldOmen` (a toast + the game log).
+Density: `continent.ts ContinentHotspot`, `td-world.ts` (hot spots, 2–4 packs, thinner trees), the four maps' chances
+and hotspots, `td-level.ts` lairs. Canon: §5.6 world bosses (DM-reviewed), lore-addendum.
+
+**Measured.** All 51 areas loaded from the bundle, 20 Keepers: 0.39 ms a 50 ms step (~1 % of a vCPU), rss 147 MB;
+60 Keepers: 1.3 ms, rss 287 MB. Live (00015): one Keeper's stream woke all 51 areas, rss 107 MB. Density (spawns per 16×16 chunk, before → after): Deep Emberwood 2.2→5.8, Emberwood
+1.2→3.4, Slagstone Hills 0.7→3.7, Ashfields 0.9→3.4, Cinder Meadows 0.05→0.5; Badlands 0.9→1.9, Molten Fields 1.3→3.1,
+Deep Charwood 0.5→2.5, Steppe 0.3→0.5; Greenwood 0.8→2.7, Deep Wilds 1.3→3.0, Sunken Courts 1.9→4.1, Fernglades
+0.2→0.6; Gloaming Fen 0.6→2.2, Deep Fen 1.4→3.5, Drowned Ruins 1.6→6.3, Black Meres 0.3→1.7. Floors 155 → 249 spawns.
+
+**Tests.** `node --test scripts/social-m3.test.mjs` (8, in CI's node line: areas, respawn bands, dormant tick and
+wake fast-forward, world bosses, the sims' lair rule, floor kill/leave/return over HTTP with a protocol-8 client,
+omens, the all-areas CPU budget); e2e `e2e/td-world-m3.spec.ts` (two browsers on Ember Mine −1: kill, leave, return,
+still dead for both). The M1 sleep test now asserts M3's rule (awake while anyone is in the world).
+
+**Limits.** World bosses are surface-only. Every floor is shared (party-private instances: a later option). The
+client still raises a floor's own creatures for the moment before the room's view lands (fixes' branch removes it).
+Per-tier difficulty is not applied to room creatures (as M1). XP/Gold still credited by the client.

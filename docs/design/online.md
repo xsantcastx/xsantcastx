@@ -319,7 +319,7 @@ monotonic-XP guard on `progress/state` is unchanged.
 | Client | `play/trade/` (`trade-items`, `trade-flow`, `trade-backend.service`, `trade-hud.component`, `trade.i18n`); `social-room.ts` verbs; td-engine `setSharedGround`; gateway `syncNow`/`pullKeys`; inventory `serverSeq`; economy `receive-gold` |
 | Tests | `scripts/trade-core.test.mjs` (13), `social-server.test.mjs` (3 new), karma `trade-merge.spec` (5) + `trade-flow.spec` (5), e2e `e2e/td-trade.spec.ts` |
 
-## 4d. Phase 8: the room simulates (protocols 7 and 8) — design, M1 and M2 as built
+## 4d. Phase 8: the room simulates (protocols 7, 8 and 9) — design, M1, M2 and M3 as built
 
 Owner, 2026-10-22: *"the server owns the world, so everyone sees the same monsters and cheating is hard."* Hosting
 stays **option A**: Cloud Run `eclipse-hearth`, us-central1, 1 vCPU / 512 MiB, request-based billing, min 0, max 1,
@@ -435,7 +435,28 @@ window and from a second Drop; the shop does not check) — as protocol 6. The b
 `stats` (upgrade multipliers, sets and uniques ride inside the ×4 headroom). A protocol-7 client keeps M1's trust until
 it refreshes.
 
-**Next (M3+).** More areas (`WORLD_AREAS` island by island, then floors and party dungeon instances); the Keeper's life on
+**M3 as built (protocol 9, 2026-10-26, branch `m3`; hearth revision 00015 live).** Owner: *"the game server and all zones should be on at the same
+time … monsters respawn at random times … bosses once an hour … world bosses for OP items … more monsters, hot spots."*
+
+| | |
+|---|---|
+| **Every area in the room** | A client that says `protocol: 9` is hosted by the room in **every** area: the four continents' surfaces and all 47 hand-drawn levels (`room-world.ts WORLD_AREAS_ALL` = `td-levels` CONTINENTS + LEVELS; the level tables moved out of td-engine into the pure `td/td-levels.ts`). A floor's RoomWorld is its `HandLevel`: all of it lives at once (Tibia), never pruned; its ground ids are `td:<floor>:w.<area>.…` (grave-goods reads the floor from them). Elite packs are on in the room as on every screen. |
+| **All zones on at once** | While any Keeper is anywhere in the world, every area stays loaded: the ones with Keepers tick at 20 Hz; the rest take a **dormant tick** once a second (`RoomWorld.idle`: the fallen rest on, the ground crumbles, world bosses keep their clocks; nothing moves). With nobody in the world for `sleepMs` (30 s) the room writes each changed area to `world-rooms/{area}` and drops them all (Cloud Run scales to zero as before). The first Keeper back wakes **all** areas (one read each); resting spawns and the ground carry absolute times, world-boss clocks are fast-forwarded (`fastForward`: a rising slept through came and went), so life looks continuous. A late step simulates at most ¼ s but the rest clocks run on real time. |
+| **Respawns** (`world/respawn.ts`) | Each fall draws its own rest from the room's stream (`MobSystem.respawnOf`): ordinary **60–90 s**; elite leaders and champions **3–5 min**; floor bosses **51–69 min**; the story's gate bosses (Ember Warden, the Uncounted, Cinder Sovereign, Elder Rootwyrm) **8–12 min** so no Keeper waits an hour to sail on. A solo screen keeps RESPAWN 75 s. |
+| **World bosses** (`world/world-bosses.ts`, data per boss) | Old Greymaw (Ember Isle F/f, L12, every 3–5 h), Gharak Emberjaw (Reach h/F, L32, 4–6 h), the Copied Hart (Verdant J, L42, 5–7 h), Ser Wickless (Umbral x/Q, L55, 6–8 h); each stays 2 h unfound. A named unique leader of an existing creature (its art) ×6 life, ×1.35–1.4 blows, its affixes and pack, bound so it is never pruned; a random walkable spot in one of its regions, 14 tiles clear of every way down. Its fall rolls the elite's loot + 3–5 unique-rank rolls + at 40–50 % one of its three uniques (at the unique's rarity). `world-omen {boss, name, area, at: rise/fall/gone, level}` to every protocol-9 Keeper in the world; the client's line (`world-bosses.i18n.ts`, EN+ES) adds "Dangerous for your level" when it stands 4+ above. Clocks persist in the area document (`wb`). |
+| **Density and lairs** | Wild packs 2–4 a chunk (were 1–3) and higher region chances; continent **hot spots** (`ContinentDef.hotspots`: per region, a chance per chunk, ≤5 of the region's lairing creatures round bones in a tree-free ring); every dungeon floor a **lair** (`td-levels FLOOR_LAIRS`, ≤5 round its bones/ore/boulder, 8 tiles from the stairs, 10 from the boss). Filler trees thinned (Deep Emberwood .34→.26, Emberwood .14→.10, jungle .30/.15→.23/.12, fens .10/.055→.08/.045). The sims' rule: a lair of five at the ~75 s mean rest sustains exactly the sims' 240 kills an hour (combat-sim TRAVEL), so XP and Gold per hour stay what the sims band; both sims are green unchanged. |
+| **Old clients** | A protocol 7/8 client keeps M1's island only (`isWorldArea(area, s)`), simulates its own creatures everywhere else and never hears an omen, until it refreshes. The ground-id pattern widened on both sides (`td:<level>:w.`); the island's ids are unchanged, so an open protocol-8 client still takes its loot. |
+| **`/health`** | `protocol: 9`; `world: {areas, every, loaded, awake[], creatures, ground, resting, bosses[], step {avgMs, maxMs}, rssMB, heapMB}`. |
+
+**Measured (M3).** The deploy bundle in its own process, all 51 areas loaded, 120 s simulated at 20 Hz with snapshots
+and blows: 4 Keepers → 0.04 ms a step, rss 87 MB; 20 Keepers (245 creatures) → 0.39 ms a step (≈1.2 % of one vCPU),
+rss 147 MB, heap 42 MB; 60 Keepers (658 creatures) → 1.3 ms a step (≈3.4 %), rss 287 MB, heap 91 MB. Loading every
+area costs ~12 MB. Inside 1 vCPU / 512 MiB with a wide margin (the instance's cap is 80 concurrent requests).
+
+**Later (noted, not built).** Party-private dungeon instances (a floor copied per party, Diablo-style) — every floor is
+shared and persistent for now, Tibia-style. The Keeper's own life on the room, XP/Gold credited by the room, WebSocket.
+
+**Next (M4).** The Keeper's life on the room (bites decided here, death and the corpse run); XP and Gold credited by the room; party-private instances if the shared floors crowd; WebSocket once the bill or the profile asks; retire protocol 7/8's island-only trust once old clients are gone.
 the room (bites decided here, death and the corpse run); XP and Gold credited by the room (a Function or the room's own
 write); WebSocket once the bill or the profile asks; retire protocol 7's trust once old clients are gone.
 

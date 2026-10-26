@@ -261,11 +261,19 @@ export const VERDANT_WILDS_DEF: ContinentDef = {
   ],
   places: VERDANT_PLACES, names: VERDANT_NAMES,
   mobs: {
-    '.': { types: ['canopy-bat', 'moss-stalker'], chance: .2 },
-    j: { types: ['canopy-bat', 'moss-stalker', 'moss-stalker', 'vine-lasher'], chance: .4 },
-    J: { types: ['vine-lasher', 'moss-stalker', 'rootglass-hart', 'thorn-weaver'], chance: .5 },
-    u: { types: ['thorn-weaver', 'vine-lasher', 'canopy-bat'], chance: .5 },
+    '.': { types: ['canopy-bat', 'moss-stalker'], chance: .3 },
+    j: { types: ['canopy-bat', 'moss-stalker', 'moss-stalker', 'vine-lasher'], chance: .6 },
+    J: { types: ['vine-lasher', 'moss-stalker', 'rootglass-hart', 'thorn-weaver'], chance: .6 },
+    u: { types: ['thorn-weaver', 'vine-lasher', 'canopy-bat'], chance: .6 },
   },
+  // Lairs (canon §8.3): the Thorn Weavers' webs strung between trunks in the Deep Wilds, the stalkers' runs through the
+  // Greenwood, the broken statues of the Sunken Courts the lashers have taken.
+  hotspots: [
+    { region: 'J', chance: .45, types: ['thorn-weaver', 'vine-lasher', 'moss-stalker'], count: 5 },
+    { region: 'j', chance: .35, types: ['moss-stalker', 'canopy-bat', 'moss-stalker'], count: 4 },
+    { region: 'u', chance: .5, types: ['thorn-weaver', 'vine-lasher'], count: 5 },
+    { region: '.', chance: .15, types: ['canopy-bat', 'moss-stalker'], count: 3 },
+  ],
   town: buildRootglass, townName: 'Rootglass', streets: { row: 18, col: 23 }, river: false,
   roadGround: { near: 'plank', far: 'dirt' },
   ways: [

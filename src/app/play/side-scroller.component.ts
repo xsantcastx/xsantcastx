@@ -1,4 +1,4 @@
-import { COOP_ROOM_PROTOCOL, HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot } from './social/social-room';
+import { COOP_ROOM_PROTOCOL, HEARTH_PORT_KEY, PARTY_PROTOCOL, SOCIAL_PROTOCOL, SocialRoom, roomName, type ReportReason, type RoomFriend, type RoomFriendRequest, type RoomWhisper, type RoomEmote, type RoomInvite, type RoomPartyKill, type RoomPartyNote, type RoomPlayer, type RoomProfile, type RoomSnapshot, type RoomWorldOmen } from './social/social-room';
 import { CloudSaveService } from '../shared/cloud-save/cloud-save.service';
 import { PartyShare, SHARE } from './social/party-share';
 import { CoopRewards } from './social/coop-rules';
@@ -121,6 +121,8 @@ import {
 } from '../shared/delve/underhearth.model';
 import { EMBER_DELVE } from './world/towns/infernal';
 import { HEARTH_I18N } from './world/hearth.i18n';
+import { WORLD_BOSSES_I18N } from './world/world-bosses.i18n';
+import { omenKey } from './world/world-bosses';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
@@ -1494,6 +1496,7 @@ export class SideScrollerComponent implements OnDestroy {
     afterNextRender(() => this.startWorld());
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
+    this.i18n.register(WORLD_BOSSES_I18N);
     this.i18n.register(LORE_I18N);
     this.i18n.register(HUD_I18N);
     this.i18n.register(ASHGUARD_I18N);
@@ -1591,6 +1594,8 @@ export class SideScrollerComponent implements OnDestroy {
         character: () => this.store.character,
         onTradeCommit: c => this.zone.run(() => { void this.tradeHud?.committed(c); }),
         onGroundNote: note => this.zone.run(() => { void this.tradeHud?.groundNoted(note); }),
+        // Protocol 9: a world boss's omen, heard the world over (play/world/world-bosses.ts).
+        onWorldOmen: omen => this.zone.run(() => this.worldOmen(omen)),
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).
@@ -2141,6 +2146,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.questBoard.addToSet('pages', path);
     this.hallEggs.noteHall(path);
     this.secrets.visit(path);
+  }
+  /** A world boss rose, fell or left: its omen line (and, when it stands far above this Keeper, the danger word). */
+  private worldOmen(omen: RoomWorldOmen): void {
+    const key = omenKey(omen.boss, omen.at), line = this.t(key);
+    if (line === key) return;
+    const danger = omen.at === 'rise' && omen.level > Math.max(1, this.huntingLevel || 1) + 3;
+    this.toastLoot(danger ? `${line} (${this.t('play.zone.danger')})` : line);
   }
   private toastLoot(text: string, art?: string): void {
     this.logGame(text);
