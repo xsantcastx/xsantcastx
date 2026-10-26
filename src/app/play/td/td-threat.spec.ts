@@ -6,8 +6,8 @@
  */
 import type { EngineOptions } from '../engine/engine.model';
 import { TILE } from './td-art';
-import { MOBS, MobSystem, type Mob, type MobHost } from './td-mobs';
-import { THREAT, addThreat, damageThreat, healThreat, pickByThreat, tauntThreat, threatMult, topThreat } from './td-threat';
+import { MOBS, MobSystem, type Minion, type Mob, type MobHost, type RoomKin } from './td-mobs';
+import { THREAT, addThreat, damageThreat, healThreat, kinKey, pickByThreat, pickKin, tauntThreat, threatMult, topThreat } from './td-threat';
 import { KeeperLife } from '../world/keeper-life';
 import { allyLegal, parseAllyClaim } from '../world/ally-claims';
 import { CLASS_SKILLS, SKILLS, type SkillId } from './td-skills';
@@ -177,5 +177,57 @@ describe('S5: every ally claim the screen makes is one the room accepts', () => 
       }
     }
     expect(seen).toBeGreaterThan(20);
+  });
+});
+
+describe('td-threat: summons (the raised are prey too — on the screen and in the room)', () => {
+  it('pickKin: a summon that out-threatens takes it; one guarding the Keeper it would go for steps into its face; never another\'s holder', () => {
+    const m: { threat?: Map<string, number>; threatOn?: string } = {};
+    const tank = { id: 'tank', d: 30 }, near = { id: 'lock/k1', owner: 'lock', d: 10 };
+    // Nobody has threat: the nearest summon steps in front.
+    expect(pickKin(m, tank, [near], 6)?.id).toBe('lock/k1');
+    // The tank holds it: another Keeper's skeleton beside it does not pull it off him…
+    addThreat(m, 'tank', 50); m.threatOn = 'tank';
+    expect(pickKin(m, tank, [near], 6)).toBeNull();
+    // …until its own blows out-threaten him by 10%.
+    addThreat(m, 'lock/k1', 54);
+    expect(pickKin(m, tank, [near], 6)).toBeNull();
+    addThreat(m, 'lock/k1', 2);
+    expect(pickKin(m, tank, [near], 6)?.id).toBe('lock/k1');
+    // The Warlock's own skeletons guard him: nearer than he is, they draw what goes for him.
+    const lock = { id: 'lock', d: 30 }, m2 = { threat: new Map([['lock', 100]]), threatOn: 'lock' };
+    expect(pickKin(m2, lock, [near], 6)?.id).toBe('lock/k1');
+    expect(kinKey('', 'k3')).toBe('/k3');
+  });
+  it('the room: a wolf on the Keeper turns to another Keeper\'s skeleton that out-threatens it, and bites it', () => {
+    const { sys } = world('warlock');
+    const kin: RoomKin = { key: 'lock/k1', owner: 'lock', i: 'k1', x: 30, y: 0, hp: 400, maxHp: 400, g: 0 };
+    const struck: { k: string; d: number }[] = [];
+    sys.kin = [kin];
+    sys.coop = { bite: () => undefined, killed: () => undefined, claim: () => undefined, kinBite: (k, _m, d) => { struck.push({ k: k.key, d }); } };
+    const m = wolf(sys, 10, 0, 60);
+    sys.applyClaim(m, 200, '');
+    run(sys, 1);
+    expect(m.threatOn).toBe('');
+    // The skeleton's blows are its own threat (a claim naming it), and they clear the Keeper's.
+    sys.applyClaim(m, 300, 'lock', false, '', '', 'k1');
+    expect(m.threat?.get('lock/k1')).toBe(300);
+    expect(m.threat?.get('lock') ?? 0).toBe(0);
+    run(sys, 3);
+    expect(m.threatOn).toBe('lock/k1');
+    expect(struck.length).toBeGreaterThan(0);
+    expect(kin.hp).toBeLessThan(400);
+  });
+  it('solo: a Captain\'s taunt turns a creature from the Keeper onto the Captain, which takes the bites', () => {
+    const { sys, bitten } = world('warlock');
+    const cap: Minion = { id: 5, x: 40, y: 0, hp: 300, maxHp: 300, dmg: [1, 1], cd: 99, t: 0, face: 1, life: Infinity, hit: 0, target: null, captain: true };
+    sys.minions.push(cap);
+    const m = wolf(sys, 10, 0, 60);
+    sys.applyClaim(m, 500, '');
+    bitten.length = 0;
+    m.taunt = 3; m.tauntBy = kinKey('', 'k5');
+    run(sys, 2);
+    expect(cap.hp).toBeLessThan(300);
+    expect(bitten.length).toBe(0);
   });
 });

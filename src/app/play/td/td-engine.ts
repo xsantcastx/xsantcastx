@@ -80,7 +80,7 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 };
 import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, minionPalId, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
 import type { AllyClaim } from '../world/ally-claims';
 /** S5: the Keepers within this many tiles are the heals' and guards' allies; at most this many ally claims a send. */
 const ALLY_SEEN_TILES = 14;
@@ -574,6 +574,7 @@ export class TopDownEngine {
       down: (to, x, y, self) => this.coopDown(to, x, y, self),
       ally: e => this.allyEvent(e),
       allies: al => { this.allyLife.clear(); for (const [id, h, m, d] of al) this.allyLife.set(id, { h, m, d: d === 1 }); },
+      kinOn: () => this.roomKin,
     });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -1740,7 +1741,7 @@ export class TopDownEngine {
     const b = this.pet;
     if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
     this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
-    for (const k of this.mobs.minions) out.push({ i: `k${k.id % 1e6}`, k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    for (const k of this.mobs.minions) out.push({ i: minionPalId(k), k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
     this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
     this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
     if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
@@ -1748,14 +1749,16 @@ export class TopDownEngine {
   }
   /** Five times a second while others of the party share the area: this Keeper's companions, when they changed (a heartbeat a second). */
   private tickPals(dt: number): void {
-    if (!this.coop.sharing) return;
+    // The party's others in this area see them; the room (`kin`) hunts them, so they go to it even with nobody else here.
+    if (!this.coop.sharing && !(this.roomKin && this.coop.roomHosted)) return;
     this.palAcc += dt * 1000;
     if (this.palAcc < PAL_MS) return;
     this.palAcc = 0;
-    const pals = this.myPals(), key = JSON.stringify(pals), now = performance.now();
+    const g = this.roomKin ? this.mobs.kinGuard : 0, pals = this.myPals(), key = JSON.stringify(pals) + g, now = performance.now();
     if (key === this.palKey && now - this.palAt < PAL_HEARTBEAT_MS) return;
     this.palKey = key; this.palAt = now;
-    void this.options.onCoopPals?.({ area: this.peerArea(), pals });
+    // The room (`kin`) takes the summons' Shared Bones with them (their bites land through it there).
+    void this.options.onCoopPals?.({ area: this.peerArea(), pals, ...(g > 0 ? { g } : {}) });
   }
   /** Another Keeper's companion, with the painter its own owner uses. */
   private drawPal(p: CoopPal, x: number, y: number, moving: boolean): void {
@@ -1778,9 +1781,9 @@ export class TopDownEngine {
     }
   }
   /** The other Keepers' companions drawn now (the e2e reads it): the party's whole list, everyone else's pet and Glim. */
-  palsShown(): { owner: string; k: string; t: string; x: number; y: number }[] {
-    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number }[] = [];
-    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y) });
+  palsShown(): { owner: string; k: string; t: string; x: number; y: number; h?: number }[] {
+    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number; h?: number }[] = [];
+    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y), ...(s.pal.h !== undefined ? { h: s.pal.h } : {}) });
     for (const p of this.peers.drawn) {
       if (this.palBook.fresh(p.id, now)) continue;
       for (const q of decodePresencePals(this.peers.palsOf(p.id))) out.push({ owner: p.id, k: q.k, t: q.t, x: Math.round(p.x + q.dx), y: Math.round(p.y + q.dy) });
@@ -3515,6 +3518,12 @@ export class TopDownEngine {
   /** Protocol 10: the room lays this Keeper's statuses on its creatures (and tells it what it refused). */
   setRoomStatus(on: boolean): void { this.coop.setStatusOn(on); }
   /** The room keeps this Keeper's life (the HUD: connected to a protocol-10 room that said so), or no longer. */
+  /**
+   * The room hunts this Keeper's summons (`/join` `kin`): its raised skeletons go to the room with its companions list
+   * (even alone in the area), their blows name them, and a bite on one lands when the room says (td-mobs kinBitten).
+   */
+  private roomKin = false;
+  setRoomKin(on: boolean): void { this.roomKin = on; }
   setRoomLife(on: boolean): void {
     if (on === !!this.life) return;
     if (on) { this.life = new LifeMirror(); this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0; this.lifeFrac = 0; this.lifeGuardSent = ''; this.roomMax = 0; }

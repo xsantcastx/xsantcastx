@@ -356,6 +356,12 @@ milestone passives count (before, only the stored rolls did, and a socketed Keep
 The bundle gains inventory-ops and the socket modules (~+136 KB). Sessions recover on their own: the redeploy makes
 every client rejoin, a join reads the save at once (until it lands the level's guest ceiling stands), and the 5-min re-read and each declared guard re-clamp a live life, keeping its share.
 
+### Summons on the room (branch `minions`, 2026-10-26 — protocol stays 10)
+Redeploy the hearth from the merged code (no Functions, rules or hosting change). `/join` then says `kin: true` to
+protocol-10 sessions; `/coop/pals` with `kin: 1` feeds the room (`room-kin.ts`) and relays to the whole world area;
+`/coop/hits` accepts `k` (a summon's blow). Older screens never send `kin` and keep the party path. Check after the
+deploy: `/join` carries `kin`, and a Warlock's skeleton is bitten by a room creature (e2e `td-world-kin.spec.ts`).
+
 ### Protocol 10 (M4 of the room-run world, 2026-10-26 — built on `m4`, NOT deployed)
 
 `/health` and `/join` report `protocol: 10`; `/join` adds `life` and `credits` for a protocol-10 client; `/health world`

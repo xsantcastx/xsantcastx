@@ -135,3 +135,10 @@ save's. Ember Brand's ticks, Night Shroud, Moth Hours and Quiet Hands (Keeper-si
 screen. Guests pay themselves; gathering XP (fishing, woodcutting, firemaking, cooking) stays client-side. A Keeper's
 life starts from its presence on join (a relog refills it — no worse than today). The activity write races a
 client's own read-modify-write for ~one round trip (the client pulls right after the commit).
+
+## Summons on the room (branch `minions`, 2026-10-26; protocol stays 10)
+
+The room's creatures hunt and bite the Keepers' raised skeletons (`world/room-kin.ts`, `RoomWorld.kin`/`kinBite`,
+`MobSystem.kin`, td-threat `pickKin`). A protocol-10 screen on a room whose `/join` says `kin: true` posts its
+companions list with `kin: 1`; the room weighs it (kind, count, leash, life) and relays it to everyone in the area.
+Details and limits: `docs/handoff/minions.md`.
