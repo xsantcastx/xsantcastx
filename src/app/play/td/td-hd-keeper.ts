@@ -1143,3 +1143,26 @@ export const hdAttackFrame = (t: number): number => t < .3 ? HF.wind : t < .65 ?
 export const hdCastFrame = (t: number): number => t < .45 ? HF.raise : HF.release;
 /** Does this figure cast rather than swing (a staff, a wand, the Warlock's bare hand)? */
 export function hdCasts(src: HdSource): boolean { const k = src.gear?.weapon?.kind; return k === 'staff' || k === 'wand' || (!k && !!src.garb?.eyeGlow); }
+
+/** What a still shows (cell px): the whole figure, head and shoulders, or the face. */
+export const HD_CROPS = {
+  full: { x: HD_FIG.ax - 34, y: 8, w: 68, h: HD_FIG.ay - 6 },
+  bust: { x: HD_FIG.ax - 20, y: 12, w: 40, h: 40 },
+  face: { x: HD_FIG.ax - 14, y: 15, w: 28, h: 28 },
+} as const;
+/**
+ * A still of the figure (idle, weapon in hand) filling `target`, cropped and centred: the paper doll, the portraits, the
+ * HUD's face. The scale snaps to whole device pixels per sheet pixel whenever the crop fits once or more (crisp); only a
+ * target smaller than the crop shrinks it. `view`: a facing (the front by default; 2 shows the three-quarter turn).
+ */
+export function hdStill(src: HdSource, target: HTMLCanvasElement, crop: keyof typeof HD_CROPS = 'full', view: HdView = 0, fr: number = HF.idle): void {
+  const c = target.getContext('2d');
+  if (!c) return;
+  const r = HD_CROPS[crop], f = hdFigure(src);
+  f.bake(view, fr);
+  const fit = Math.min(target.width / r.w, target.height / r.h), k = fit >= 1 ? Math.floor(fit) : fit;
+  const ox = Math.round((target.width - r.w * k) / 2), oy = Math.round((target.height - r.h * k) / 2);
+  c.clearRect(0, 0, target.width, target.height);
+  c.imageSmoothingEnabled = false;
+  f.draw(c, ox + (HD_FIG.ax - r.x) * k, oy + (HD_FIG.ay - r.y) * k, k, view, fr, false);
+}
