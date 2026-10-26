@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { anvil, barrowDoor, bed, bones, boulder, chest, gravestone, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
+import { altar, brazier, brokenStatue, cage, chains, cobweb, inscription, oldStain, rime, ritualCircle, anvil, barrowDoor, bed, bones, boulder, chest, gravestone, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 import { zoneLevel, zoneOf } from './td-zones';
@@ -37,9 +37,13 @@ export interface TdExit {
   arrive: string;
 }
 
-export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp' | 'lantern' | 'great-lantern' | 'grave';
-const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp, lantern: lanternPost, 'great-lantern': greatLantern, grave: () => gravestone(1) };
-const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true, lantern: true, 'great-lantern': true, grave: true };
+export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp' | 'lantern' | 'great-lantern' | 'grave'
+  // The atmosphere pass's set dressing (docs/world/campaign.md queue #4; td-dressing.ts): painted, placed by the pass.
+  | 'altar' | 'brazier' | 'brazier-lit' | 'cage' | 'chains' | 'statue-broken' | 'cobweb' | 'circle' | 'inscription' | 'stain' | 'rime';
+const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp, lantern: lanternPost, 'great-lantern': greatLantern, grave: () => gravestone(1),
+  altar, brazier: () => brazier(false), 'brazier-lit': () => brazier(true), cage, chains, 'statue-broken': brokenStatue, cobweb: () => cobweb('nw'), circle: ritualCircle, inscription, stain: oldStain, rime };
+const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true, lantern: true, 'great-lantern': true, grave: true,
+  altar: true, brazier: true, 'brazier-lit': true, cage: true, 'statue-broken': true };
 /** Objects wider than their tile block the tiles either side too (a forge is three tiles of stone). */
 const WIDE: Partial<Record<MapObject, number>> = { forge: 1, 'great-lantern': 1 };
 
