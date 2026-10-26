@@ -377,7 +377,7 @@ Format: **Name**, title. *Place.* Voice. **Wants** / **Secret** / **Quests**. "B
 world now.
 
 ### 5.1 Ember Isle: the Basalt Seamworks (built)
-- **Kael, the Broken Flame**, the fifth Keeper. *Seamworks anvil (forge stall 18,8; runes stall 30,11).*
+- **Kael, the Broken Flame**, the fifth Keeper. *Seamworks anvil (forge stall 18,8; Kael's Anvil 30,11, the old runes stall).*
   - Voice: gruff, short, warm under it. "Hold the rhythm. The forge pays the steady, not the fast."
   - Look: blackened plate, one burning eye, grey braid with iron rings, left hand missing.
   - **Wants**: someone to finish the job without finishing it like the four did. Privately, to stop being the only one
@@ -386,7 +386,8 @@ world now.
     happened to the eye "when the anvil rings on its own".
   - **Quests**: *The Beacon Goes Down* (Prologue gate, campaign #1); the Finale, *The Sixth Mark*. He voices the
     **Seamsmith** in the Waystone Hall (Realms).
-  - When the Rune Forge goes, he keeps the anvil and **Kael's Quench** (§6.3).
+  - The Rune Forge is gone (built 2026-10-26): he keeps **Kael's Anvil (smithing)**, where every smithed recipe of
+    the old bench is made (§6.2).
 - **Glim, the Margin-Light**, companion. *On the Keeper's shoulder.*
   - Voice: curious, honest, cartography-nerdy, never cute. "A solid line is a promise."
   - **Wants**: the blanks kept on the map. **Secret**: the first lamp's name (for the finale).
@@ -400,16 +401,17 @@ world now.
   - Brews potions, buys Basalt Blanks.
   - **Wants**: the district's roofs patched, and to be asked. **Secret**: Mara pulled him out of a furnace breach, and
     he has never thanked her properly.
-  - Planned owner of the **General Store** in the Seamworks market (§6.5).
+  - Keeps the **General Store** in the Seamworks market, his potion shelf in it (§6.5, built 2026-10-26).
 - **Mara Voss**, Seamwright and bench smith. *Crafting stall (14,11).*
   - Voice: "Leave the seam showing."
   - **Wants**: Kael to tell her she is good. **Secret**: Kael's best student; he never told her.
-  - Planned role when the crafting bench goes: the **Seamwright's repair counter**, which mends and re-sockets nothing,
-    "only honest seams" (cosmetic dye and repair).
+  - The crafting bench is gone (2026-10-26): she works at Kael's Anvil as his Seamwright. Her **Seamwright's repair
+    counter**, which mends and re-sockets nothing, "only honest seams" (cosmetic dye and repair), is planned.
 - **Orla Stave**, vault clerk. *Vault stall.* "I have never lost a thing. I have misplaced my lunch." Edrin's cousin.
 - **Idris Calder**, enchanter, Archive-trained. *Enchanting stall (13,19).*
   - "A rune in a socket is a promise the gear has to keep."
-  - **Becomes the Enchanting Table's keeper: runewords are made here** (§6.2).
+  - **The Enchanting Table's keeper: runes are set and runewords made here, and only here** (§6.2, built 2026-10-26).
+    Its second counter, **Charms and Brews**, makes what the bench used to enchant or brew.
 - **The Archivist**, keeper of fragments. Pronoun **they** (decided 2026-10-22, C-12). *Stall (35,13).*
   - Silences whispering items. "A hint is a kindness. An answer is a theft."
   - **Secret**: filed Kael's refusal and the first lock and never published either. Their own first name is the one
@@ -417,6 +419,10 @@ world now.
 - **Old Mother Cindle** (planned, design-bible.md:246; not placed in code yet), retired Warlock. *Ember Inn back
   room.* She knits; she trains Warlocks.
 - **Odd Tarn**, one-eyed ferryman. *Ember Harbour.* "It's been warm since the second tally."
+- **Davy Tarn**, Odd Tarn's nephew. *The tackle shed on the river bank (13,24).* Keeps the Seamworks' Fishing Store
+  (§6.5). "Uncle says the sea's warm. Uncle says a lot." (Named by the DM, 2026-10-26.)
+- **Forester Abe Thatch**. *The north orchard (40,5).* Keeps the Seamworks' Woodcutting Store. "Take the fallen first.
+  Then ask me." (Named by the DM, 2026-10-26.)
 - **Hollis Vane, the Row-Walker** (dead; brother to Tobias Vane, C-20), a unique Bone Walker who carries Barrow Key 1. *Barrow plot.*
 - **The Barrow dead**: Maren Cole, who rang the bell; Tobias Vane, and his dog; the forty-first, with no name, only a
   tally mark.
@@ -427,14 +433,17 @@ world now.
   - **Wants**: the Charwood road held. **Secret**: he has always wondered who the fifth was, "and why nobody asked
     him" [Q2].
   - **Quests**: town tasks; Ashguard trainer; *Hammer* witness [Q2].
-- **Forgewife Ysolde Marr**, keeper of the great forges. *Pyrehold (9,10).*
+- **Forgewife Ysolde Marr**, keeper of the great forges. *Pyrehold (9,10); the Smith's (27,3), built 2026-10-26.*
   - Voice: practical, not superstitious. "I am a smith."
   - **Wants**: to know what is drinking her forges' heat.
   - **Quests**: town tasks; *The Smith Who Forgot His Own Hammer* [Q2]; Act I gate *What Drinks the Heat* (campaign #2).
 - **Scholar Odette Pryor**. *Pyrehold (34,19), the Pyre Spire study.*
   - Maps the Deep; keeps the Forge-roll of the Four.
   - **Thread**: the caldera smoke leans toward the land the next eclipse will lean on. She becomes a forecaster.
-- **Garrick Dross** (was Hale Dross; C-20), Brannoc's quartermaster and Harbourmaster. *Pyrehold pier.* "I only write down the ones that come
+- **Apothecary Juno Marl**, the Alchemist. *Pyrehold plaza (15,20).* "Everything here is brewed. Not the Rejuvenations.
+  Nobody here brews those." (Named by the DM, 2026-10-26; the line keeps the Rejuvenation mystery for Act III.)
+- **Garrick Dross** (was Hale Dross; C-20), Brannoc's quartermaster and Harbourmaster; keeps the General Store on the
+  plaza (23,22). *Pyrehold pier.* "I only write down the ones that come
   back."
 - **Harbourmaster Tamsin Coyle**. *Cinderport (18,10).* "Nothing docks in Cinderport without her nod." Task giver.
 - **Marit Salt**, the Salted Ember tavern-keeper's sister. *Cinderport pier, the Sailing Board.* "The Salted Ember
@@ -460,6 +469,10 @@ world now.
 - **Herbalist Agathe Sorrel**. *Thornwick (4,7), the Herbalist's Cottage.* She has her grandmother's memory and most of
   her temper. Choir witness [Q2]. Planned **Cooking** trainer (herbs) for the Wilds.
 - **Sunny Pell**, Netter Pell's niece and Harbourmaster. *Mossharbor pier.*
+- **Provisioner Teo Alder**, Rootglass's general store. *The boardwalk market (4,16).* "Rope, oil, a lamp that won't
+  scorch the boardwalk. The Bole's not for sale; I get asked." (DM, 2026-10-26.)
+- **Seedwife Rue Hazel**, Herb and Seed. *The Bole (18,8).* "Plant what you buy here and it grows true. Mostly. The
+  wood's been forgetful." (DM, 2026-10-26: a quiet seed for Act II's copied trees.)
 
 ### 5.4 Umbral Marches (built, almost empty)
 - **Old Corvane**, lamp-warden and Harbourmaster. *Mirewatch pier.* "The fog thins round a lantern. Round something
@@ -468,6 +481,10 @@ world now.
 - **Ansel Mott, Wick-Keeper** (new, campaign #3). *The Lantern Tower, the Keeper's Hall.* Keeps the tower's log.
 - **The Lamplighter Below** (planned, Act III). A sixth Keeper's apprentice who never came up. Brews the Rejuvenations,
   leaves the Lamplighter's Things, and becomes a Homestead visitor.
+- **Chandler Odo Murk**, Gloamhaven's general store and chandlery. *The square (18,9).* "Oil, wick, candles. In the
+  Marches that is the general store." (DM, 2026-10-26.)
+- **Fishmonger Dace Morrow** (reserved in campaign.md queue #6). *The west jetty (10,11).* "Black water, fat fish. Don't
+  ask what they eat." (DM, 2026-10-26.)
 
 ### 5.5 Legacy cast (adopted; placed when their capitals are built)
 Aureth, Verrin, the Merchant, Sera Quill, Nox Aster (always print the full name), Ilyra Venn, Tomas Rill, Rook Sable,
@@ -584,26 +601,35 @@ The tongue of making, older than the Seamworks. Roots say *what*; shapes say *ho
 | mythic | Convergence, Godstone | 45+ | the Expanse; Hell |
 | singular | Void | Hell or Realms | about 1 in 2,000,000 |
 
-  The difficulty tiers keep their rune caps: Normal rare, Nightmare legendary, Hell singular (loot-and-combat.md:343-347).
+  The zone's level decides the tier on every difficulty (built 2026-10-26: Nightmare lifts creatures 20 levels, Hell
+  40); only Hell lets the Void fall. (The earlier caps, Normal rare and Nightmare legendary, contradicted the ladder's
+  Marches and Peaks and were raised to mythic.) Drop rates: `docs/design/runewords.md` §1.
 - **Runewords** (the shipped *Socket Words*). They are made only at the **Enchanting Table** (Idris Calder in the
   Seamworks, plus an enchanting stall in each capital), by setting runes in order into a **normal** (white, no-affix)
   base with exactly the right number of sockets. The base keeps its item level. Lore: "Every rune you socket is a
-  sentence."
+  sentence." The eighteen starter words: `docs/design/runewords.md` §6 (Cinderling, Hearthguard, Wayfarer, Mothlight,
+  Ashwake, Brandoath, Stormglass, Rimeveil, Mercyroot, Vigil, the Archivist's Ledger, Verdict, Riftwalk, Emberseam,
+  Daybreak, Eclipse Blade, Godforge Weld, Voidmark). A runeword's name shows gold; a socketed white base, grey.
+- **Setting a rune** happens only at a table, and **it never comes out**: "A rune in a socket is a promise the gear
+  has to keep." There is no unsocketing.
 - **Sockets**:
-  - By item level: 1–14 gives up to 2, 15–29 up to 3, 30+ up to 4; shields and staves get +1.
+  - By item level: 1–14 gives up to 2, 15–29 up to 3, 30+ up to 4; shields and staves get +1. Only a normal (white)
+    item rolls them, once, when it drops; each base type has its own maximum (gloves, boots, belts, jewellery and
+    tools none). The Smith's in Pyrehold sells socketed normal bases.
   - Armour sockets give resists; weapon sockets give the rune's weapon line.
 - **Eclipse Words.** A word whose last rune is set during an eclipse gains an eclipse line. This is the most
   mysterious crafting rule and ties runes to the clock.
 - **Witness runes.** Ash, Thorn, Veil, Drift and Glint are also the *names* the four signers and Kael's line wrote
   under. As Witness marks they are **quest evidence, never socketable**. A dropped Ash rune is the principle; the Ash
   Witness mark is a signature.
-- **Retired.** The **Rune Forge** (strike for runes, STRIKE_COST) and the **crafting bench** are being removed. After
-  removal no line may say runes are struck, forged or bought.
+- **Retired (removed 2026-10-26).** The **Rune Forge** (strike for runes, STRIKE_COST) and the **crafting bench**.
+  No line may say runes are struck, forged or bought. Old forged runes stayed owned: they moved into the satchel as
+  the same runes. Every bench recipe moved to **Kael's Anvil (smithing)** or the Enchanting Table's **Charms and
+  Brews** counter (`docs/design/runewords.md` §7).
   - Kael keeps his anvil.
   - "Every rune in here was somebody's bad week made useful" moves to the Enchanting Table's rune pouch, voiced by
     Idris.
-  - Kael's Quench loses "Rune up" (no rune crafting). It keeps socketing a normal, blank Spellstones and
-    cleanse-and-keep.
+  - Kael's Anvil (smithing) replaces "Kael's Quench": no rune crafting.
 - **Realm runes** (endgame): one tier above the rune cap, bought only with Realm Shards from the Seamsmith.
 
 ### 6.3 Spellstones (Tibia runes)
@@ -635,12 +661,13 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
 
 | City | District → shop | Keeper |
 |---|---|---|
-| Seamworks | Market square → **General Store** (rope, tinderbox, torches, Waygate Scrolls); Harbour road → **Tackle shed** | Edrin Kade; Odd Tarn's nephew (unnamed until built) |
-| Pyrehold | Plaza of stalls → General Store; Forge district → **Smith's** (normal bases with sockets, the Enchanting Table's supply); Harbour → **Fishing Store** | Garrick Dross; Ysolde Marr; Netter Pell's stall |
+| Seamworks | Market square → **General Store** (rope, torches, ladders, Waygate Scrolls, small potions); river bank by the bridge → **Tackle shed** (Fishing Store); the north orchard → **Woodcutting Store** | Edrin Kade; Davy Tarn; Forester Abe Thatch |
+| Pyrehold | Plaza of stalls → General Store and the **Alchemist** (every potion, not the Rejuvenations); Forge district → **Smith's** (normal bases with sockets, the Enchanting Table's supply); Harbour → **Fishing Store** | Garrick Dross; Apothecary Juno Marl; Ysolde Marr; Netter Pell's stall |
+| Ashgrove | The Charwood's edge by the lodge → **Woodcutting Store** (axes, timber) | Woodward Hesk Ashby |
 | Cinderport | Dockside → **Fishing Store** (rods, bait, the fishing-spot chart) | Old Netter Pell |
-| Rootglass | Boardwalk market → General Store; the Bole → **Herb and Seed** | to be named |
+| Rootglass | Boardwalk market → General Store; the Bole → **Herb and Seed** (built 2026-10-26) | Provisioner Teo Alder; Seedwife Rue Hazel |
 | Mossharbor | Pier → **Fishing Store** | Netmender Wenna Brisk |
-| Gloamhaven | West jetty → **Fishmonger and Tackle** (already drawn as "the fishmonger on the west jetty"); the square → **Lamp-oil and Wick** (light and Firemaking supplies) | to be named |
+| Gloamhaven | West jetty → **Fishmonger and Tackle**; the square → the **Chandlery**, the general store with the Lamp-oil and Wick folded in (candles, wick, lamp oil) (built 2026-10-26) | Fishmonger Dace Morrow; Chandler Odo Murk |
 
 ### 6.6 Death
 - **Normal world**: the Cold Hearth. Ember debt, a fallen purse, nothing lost; under level 20 a fall costs the walk.

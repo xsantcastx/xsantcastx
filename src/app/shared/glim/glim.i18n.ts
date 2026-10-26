@@ -38,7 +38,7 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.glim.hint.back.2': { en: 'Take the way back marked on the goal line; Show me walks it the short way.', es: 'Toma el camino de vuelta que marca el objetivo; Llevame lo recorre por el atajo.' },
 
   'play.glim.hint.buy.town.1': { en: 'Gold here comes from work. You have a plot with a Forge that pays you to strike it.', es: 'Aqui el oro sale del trabajo. Tienes una parcela con una Forja que te paga por golpearla.' },
-  'play.glim.hint.buy.town.2': { en: 'Your Homestead\'s gate is between the Seamworks Forge and the Crafting Bench. Walk in.', es: 'La puerta de Tu Hacienda esta entre la Seamworks Forge y el Crafting Bench. Entra.' },
+  'play.glim.hint.buy.town.2': { en: 'Your Homestead\'s gate is between the Seamworks Forge and Kael\'s Anvil. Walk in.', es: 'La puerta de Tu Hacienda esta entre la Seamworks Forge y el yunque de Kael. Entra.' },
   'play.glim.hint.buy.home.1': { en: 'Every strike on the Forge is a coin. Fifteen of them buy something that strikes for you.', es: 'Cada golpe a la Forja es una moneda. Quince compran algo que golpea por ti.' },
   'play.glim.hint.buy.home.2': { en: 'Stand at the Forge and Interact (E) to 15 Gold, then press Buy on Forge Bellows.', es: 'Ponte en la Forja e interactua (E) hasta 15 de oro, luego pulsa Comprar en Forge Bellows.' },
 
@@ -59,8 +59,8 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.glim.hint.delve.dig.1': { en: 'The rock gives to a pick. Any block next to you will do.', es: 'La roca cede ante el pico. Cualquier bloque a tu lado sirve.' },
   'play.glim.hint.delve.dig.2': { en: 'Hold Down (S) and attack (J). On a phone, tap a block beside you.', es: 'Manten Abajo (S) y ataca (J). En el movil, toca un bloque a tu lado.' },
 
-  'play.glim.hint.rune.1': { en: 'There\'s a forge here that strikes runes, not blades. You can afford one try now.', es: 'Aqui hay una forja que golpea runas, no hojas. Ya te alcanza para un intento.' },
-  'play.glim.hint.rune.2': { en: 'The Rune Forge is east of the Crafting Bench. One strike is 600 Gold; the odds are on the forge.', es: 'La Rune Forge esta al este del Crafting Bench. Un golpe cuesta 600 de oro; las probabilidades estan en la forja.' },
+  'play.glim.hint.rune.1': { en: 'That glint on the ground was a rune. Nobody forges them: they fall off the things near the seam.', es: 'Ese brillo en el suelo era una runa. Nadie las forja: caen de las cosas cercanas a la veta.' },
+  'play.glim.hint.rune.2': { en: 'Runes come off the creatures nearest the seam. Idris Calder sets them at the Enchanting Table.', es: 'Las runas salen de las criaturas mas cercanas a la veta. Idris Calder las engarza en la Mesa de Encantar.' },
 
   // Delve missions: where to look, never what a carving means. Step 3 is Glim's mark on the map.
   'play.glim.hint.m.shadow.1': { en: 'Verrin wants the shadow of a tree that grows downward. Shallow roots first.', es: 'Verrin quiere la sombra de un arbol que crece hacia abajo. Primero las raices poco profundas.' },

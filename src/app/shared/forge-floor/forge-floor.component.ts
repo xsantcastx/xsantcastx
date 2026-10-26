@@ -96,7 +96,6 @@ const FLASH_MS = 1200;
 const STATIONS: readonly StationView[] = [
   { id: 'anvil', route: '/forge/crafting',   labelKey: 'forgeFloor.station.anvil', art: artFor('iron-hammer'),        fx: artFor('forge-heat-shimmer') },
   { id: 'table', route: '/forge/enchanting', labelKey: 'forgeFloor.station.table', art: artFor('enchantment-active'), fx: artFor('enhancement-aura') },
-  { id: 'runes', route: '/forge/runes',      labelKey: 'forgeFloor.station.runes', art: artFor('godforge-heart'),     fx: artFor('violet-forge-flame') },
 ];
 
 /** What the stockpile shows before anything has been made this visit. */

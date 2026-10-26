@@ -15,6 +15,8 @@ import { InventoryService, type GridMoveResult } from '../rpg/inventory.service'
 import { dropCell, dropFits, type ContainerId, type GridView, type Piece } from '../rpg/inventory-grid';
 import { DropTargetDirective } from './drop-target.directive';
 import { ItemDragService, type DragHeld, type DropTarget } from './item-drag.service';
+import { SocketingService, type SocketDrop } from '../enchanting/socketing.service';
+import { isRuneStack } from '../rune-forge/rune-stack';
 
 /** How a piece looks (the host knows the art and names). */
 export interface PieceLook { name: string; art: string; mark: string; tone: string | null; item?: import('../rpg/item.model').GameItem }
@@ -100,9 +102,12 @@ export class ItemGridComponent implements OnChanges {
   @Output() readonly unhover = new EventEmitter<void>();
   /** Every drop's outcome, for the host's line ('ok', 'blocked', 'vault-closed', …). */
   @Output() readonly moved = new EventEmitter<{ result: GridMoveResult; held: DragHeld }>();
+  /** A rune dropped onto a socketed item (set at an Enchanting Table, refused anywhere else): the host's line. */
+  @Output() readonly socketed = new EventEmitter<SocketDrop>();
 
   private readonly inventory = inject(InventoryService);
   private readonly drag = inject(ItemDragService);
+  private readonly socketing = inject(SocketingService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   cells: number[] = [];
@@ -111,10 +116,18 @@ export class ItemGridComponent implements OnChanges {
 
   readonly target: DropTarget = {
     accepts: held => (this.accepts ? this.accepts(held) : true) && (held.ref.kind !== 'shop' || !!this.extraDrop),
-    over: (held, x, y) => { this.preview = this.previewFor(held, x, y); this.cdr.markForCheck(); },
+    over: (held, x, y) => { this.preview = this.socketPreview(held, x, y) ?? this.previewFor(held, x, y); this.cdr.markForCheck(); },
     leave: () => { this.preview = null; this.cdr.markForCheck(); },
     drop: (held, x, y) => {
       this.preview = null;
+      // A rune onto an item under the pointer sets it into the item's next well (docs/design/runewords.md §3).
+      const target = this.runeTarget(held, x, y);
+      if (target) {
+        const out = this.socketing.drop(target.ids[0], held.stackKey);
+        this.socketed.emit(out);
+        this.cdr.markForCheck();
+        return out.code === 'ok';
+      }
       const cell = this.cellFor(held, x, y);
       this.cdr.markForCheck();
       if (cell < 0) return false;
@@ -169,6 +182,22 @@ export class ItemGridComponent implements OnChanges {
     // A finger's tap names the cell it hit: the piece's top-left goes there (no grab offset: it was lifted).
     const touchHold = (this.drag.mode ?? this.drag.dropMode) === 'hold';
     return dropCell(this.view, at, held.w, held.h, touchHold ? 0 : held.grabDx, touchHold ? 0 : held.grabDy);
+  }
+
+  /** The item piece a held rune is over (not a rune pile, not itself), or null. */
+  private runeTarget(held: DragHeld, x: number, y: number): Piece | null {
+    if (held.ref.kind !== 'stack' || !isRuneStack(held.stackKey)) return null;
+    const at = this.pointerCell(x, y);
+    if (at < 0) return null;
+    const col = at % this.view.w, row = this.row(at);
+    return this.view.pieces.find(p => p.kind === 'instance' && p.ids.length === 1
+      && col >= p.cell % this.view.w && col < p.cell % this.view.w + p.w && row >= this.row(p.cell) && row < this.row(p.cell) + p.h) ?? null;
+  }
+
+  private socketPreview(held: DragHeld, x: number, y: number) {
+    const p = this.runeTarget(held, x, y);
+    if (!p) return null;
+    return { x: p.cell % this.view.w, y: this.row(p.cell), w: p.w, h: p.h, ok: this.socketing.accepts(p.ids[0], held.stackKey) && this.socketing.tableOpen };
   }
 
   private previewFor(held: DragHeld, x: number, y: number) {

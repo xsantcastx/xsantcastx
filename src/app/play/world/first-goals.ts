@@ -147,7 +147,7 @@ export interface RuneHintFacts {
  * (the host stores `seen`), and never as a nag in the Delve or the Homestead.
  */
 export function runeForgeHint(facts: RuneHintFacts): FirstGoalView | null {
-  if (!facts.goalsDone || facts.seen || facts.areaId !== HOME_TOWN) return null;
-  if (!(facts.strikeCost > 0) || facts.gold < facts.strikeCost) return null;
-  return { id: 'rune', n: 0, total: FIRST_GOALS.length, key: 'play.goal.rune.town', target: { station: 'runes' } };
+  // Retired with the Rune Forge (runes drop only from monsters, canon §6.2): nothing left to point at.
+  void facts;
+  return null;
 }

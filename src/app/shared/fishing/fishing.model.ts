@@ -74,7 +74,7 @@ const FISH: readonly CatchDef[] = [
   { id: 'rootling-eel', name: 'Rootling Eel', rarity: 'uncommon', waters: ['seep'], anchor: 1_600,
     lore: 'Swims along the roots, toward the crack, like everything else down here.', use: 'Verrin wants five of them.' },
   { id: 'glowcap-minnow', name: 'Glowcap Minnow', rarity: 'common', waters: ['mere'], anchor: 1_100,
-    lore: 'Eats the glowcaps, so it carries their light. Small, bright, borrowed.', use: 'Lampfish Oil at the Crafting Bench; the Archivist asks for three.' },
+    lore: 'Eats the glowcaps, so it carries their light. Small, bright, borrowed.', use: 'Lampfish Oil at the Enchanting Table; the Archivist asks for three.' },
   { id: 'mere-perch', name: 'Mere Perch', rarity: 'rare', waters: ['mere'], anchor: 2_800,
     lore: 'Ordinary. In the Delve that is the rarest thing you can be.', use: 'The Merchant\'s standing fish order.' },
   { id: 'emberling', name: 'Emberling', rarity: 'common', waters: ['magma'], anchor: 2_400,
@@ -83,7 +83,7 @@ const FISH: readonly CatchDef[] = [
     lore: 'Bites through slag. Do not offer it your hand to compare.', use: 'The Merchant\'s standing fish order.' },
   // The Underhearth (Phase 8; lore addendum, Item lines: Fish).
   { id: 'cold-coalfish', name: 'Cold Coalfish', rarity: 'common', waters: ['hearth'], anchor: 3_600,
-    lore: 'Cold until you strike the bucket. Then it remembers.', use: 'Verrin\'s "Endings Kept Warm" asks for one; coal torches at the Crafting Bench.' },
+    lore: 'Cold until you strike the bucket. Then it remembers.', use: 'Verrin\'s "Endings Kept Warm" asks for one; coal torches at Kael\'s Anvil.' },
   { id: 'pressure-pike', name: 'Pressure Pike', rarity: 'uncommon', waters: ['hearth'], anchor: 6_000,
     lore: 'Swims as if the whole Underhearth were sitting on it, because it is.', use: 'Two Ember Elixirs, with Ember Residue.' },
   { id: 'the-kept-morning', name: 'The Kept Morning', rarity: 'legendary', waters: ['mere'], anchor: 60_000,
@@ -91,16 +91,16 @@ const FISH: readonly CatchDef[] = [
   { id: 'the-unpaid-debt', name: 'The Unpaid Debt', rarity: 'legendary', waters: ['magma'], anchor: 90_000,
     lore: 'Stamped on the flank with a heat seal. Somebody, somewhere, still owes for this fish.', use: 'The Merchant settles the debt, once.' },
   { id: 'the-fifth-ember', name: 'The Fifth Ember', rarity: 'legendary', waters: ['hearth'], anchor: 140_000,
-    lore: 'It swims with four others that are not there.', use: 'Banked into three Embervials at the Crafting Bench.' },
+    lore: 'It swims with four others that are not there.', use: 'Banked into three Embervials at the Enchanting Table.' },
   // The world clock (shared/world-clock/eclipse.model.ts): it only rises in the dark.
   { id: 'mirrorfin', name: 'Mirrorfin', rarity: 'rare', waters: ['seep', 'mere'], anchor: 3_200, when: 'dark',
     lore: 'Its scales are slivers of the moon mirror, and it swims up to see itself. By day it remembers it is a fish and goes back down.',
-    use: 'Renders into two Lampfish Oil at the Crafting Bench; the Ink Pup and the Shade-kit love it.' },
+    use: 'Renders into two Lampfish Oil at the Enchanting Table; the Ink Pup and the Shade-kit love it.' },
 ];
 
 const JUNK: readonly CatchDef[] = [
   { id: 'rusted-rivet', name: 'Rusted Rivet', rarity: 'junk', waters: ['seep', 'mere', 'magma', 'hearth'], anchor: 120,
-    lore: 'A Maw put this somewhere safe. You have undone a great deal of careful work.', use: 'Three smelt into a Slag Fragment at the Crafting Bench.' },
+    lore: 'A Maw put this somewhere safe. You have undone a great deal of careful work.', use: 'Three smelt into a Slag Fragment at Kael\'s Anvil.' },
   { id: 'waterlogged-ledger-page', name: 'Waterlogged Ledger Page', rarity: 'junk', waters: ['seep', 'mere'], anchor: 300,
     lore: 'Kael\'s handwriting, mostly. A column of figures that stops at the waterline.', use: 'The Archivist takes every page (Delving XP and a line of Kael\'s ledger).' },
 ];

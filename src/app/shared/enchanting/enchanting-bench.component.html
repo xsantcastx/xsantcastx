@@ -24,11 +24,21 @@
     <app-reward-pop [reward]="reward" (dismissed)="dismissReward()" />
 
     @if (enchantTab === 'runes') {
-      <app-station-journal>
-        <app-journal-list journalList [rows]="gearRows" [selected]="selected?.id ?? null"
-                          [label]="t('enchant.step.gear')" [empty]="t('enchant.why.noGear')" (pick)="pickGear($event)" />
+      <div class="eb-runes">
+        <!-- The satchel, at the table: drag a rune onto a socketed piece to set it (runes never come out). A phone
+             long-presses the rune, then taps the piece. Picking a piece selects it for the button below. -->
+        <div class="eb-grid" data-table-grid>
+          @if (satchel) {
+            <app-item-grid container="b" [view]="satchel" [look]="look" [label]="t('enchant.step.gear')"
+                           [pickedKey]="null" (pick)="pickPiece($event)" (socketed)="gridSocketed($event)" />
+          }
+          @if (drag.held && drag.mode === 'hold') {
+            <p class="eb-hold" role="status">{{ t('sock.holding', { name: drag.held.name }) }} <button type="button" class="eb-alert__x" data-drag-cancel (click)="drag.cancel()">{{ t('sock.cancel') }}</button></p>
+          }
+          <a class="eb-link" routerLink="/forge/brewing" data-to-brews>{{ t('sock.toBrews') }} →</a>
+        </div>
 
-        <div journalDetail class="eb-detail">
+        <div class="eb-detail eb-detail--runes">
           @if (selected) {
             <app-detail-head [art]="selectedArt" [name]="selected.name" [rarity]="selected.rarity" [line]="ctaLabel" />
           }
@@ -51,11 +61,8 @@
               (refused)="announce = $event" />
           }
 
-          @if (hydrated && !drawer.length && !inWorld) {
-            <a class="eb-link" routerLink="/forge/runes">{{ t('enchant.toForge') }}</a>
-          }
         </div>
-      </app-station-journal>
+      </div>
     } @else {
       <app-station-journal>
         <app-journal-list journalList [rows]="potionRows" [selected]="potionId" [label]="t('enchant.potions.title')"
@@ -111,12 +118,6 @@
               @if (well.rune; as rune) {
                 <span class="eb-well__rune" [attr.data-rarity]="rune.tier">{{ rune.name }}</span>
                 <span class="eb-well__effect">{{ well.effect.join(', ') }}</span>
-                <app-action-button variant="secondary"
-                  [label]="t('enchant.details.remove', { name: rune.name })"
-                  [costs]="[goldCost(well.cost)]"
-                  [pending]="!hydrated"
-                  (act)="pull(well)"
-                  (refused)="announce = $event" />
               } @else {
                 <span class="eb-well__empty">{{ t('enchant.details.emptySlot') }} {{ well.index + 1 }}</span>
               }
@@ -179,18 +180,13 @@
               <span class="eb-word__name">{{ card.found ? card.word.name : '???' }}</span>
               <span class="eb-word__tier">{{ card.tierLabel }}</span>
             </div>
-            <p class="eb-word__frame">
-              {{ card.word.frame === 'weapon' ? t('enchant.words.frame.weapon')
-                : card.word.frame === 'armor' ? t('enchant.words.frame.armor')
-                : t('enchant.words.frame.any') }}
-              · {{ wellLabel(card.word) }}
-            </p>
+            <p class="eb-word__frame">{{ basesLabel(card.word) }} · {{ wellLabel(card.word) }}</p>
             @if (card.found) {
               <p class="eb-word__runes">{{ runeNames(card.word) }}</p>
               <p class="eb-word__effect">{{ card.word.effect }}</p>
-              <p class="eb-word__lore">{{ card.word.lore }}</p>
+              <p class="eb-word__lore">{{ t('runeword.' + card.word.id + '.lore') }}</p>
             } @else {
-              <p class="eb-word__clue"><span class="eb-word__clueCap">{{ t('enchant.words.clue') }}</span> {{ card.word.clue }}</p>
+              <p class="eb-word__clue"><span class="eb-word__clueCap">{{ t('enchant.words.clue') }}</span> {{ t('runeword.' + card.word.id + '.clue') }}</p>
             }
           </li>
         }

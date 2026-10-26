@@ -20,7 +20,7 @@ import { InventoryService } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
-import { STRIKE_COST } from '../rune-forge/rune.model';
+import { RUNE_TIERS, STRIKE_COST } from '../rune-forge/rune.model';
 import type { GameItem } from '../rpg/item.model';
 import { ThrallService } from './thrall.service';
 import {
@@ -142,7 +142,7 @@ describe('ThrallService', () => {
   // ── Pulling ────────────────────────────────────────────────────────────────
 
   describe('pulling', () => {
-    it('pays a hundred strikes and banks the rune in the shared ledger', () => {
+    it('pays a hundred strikes; its rune comes back as the rune\'s worth in Gold (runes drop only from monsters)', () => {
       const forge = TestBed.inject(RuneForgeService);
       const t = bind('common');
       fund(THRALL_ROLL_COST * 2);
@@ -150,13 +150,11 @@ describe('ThrallService', () => {
       const runes = forge.snapshot.strikes;
 
       expect(thralls.pull(t.id, 1_000, sequence(0.5))).toBe(true);
-      expect(economy.snapshot.gold).toBe(gold - THRALL_ROLL_COST);
       expect(THRALL_ROLL_COST).toBe(STRIKE_COST * 100);
-
-      // The rune landed in the forge's own ledger — the Runewords can see it.
-      const held = Object.values(forge.snapshot.held).reduce((a, b) => a + b, 0);
-      expect(held).toBeGreaterThan(0);
-      // `grant` is not a strike: the lifetime strike counter must not move.
+      // The cost went out; the find's worth came back; no rune landed in the satchel.
+      expect(economy.snapshot.gold).toBeLessThan(gold);
+      expect(economy.snapshot.gold).toBeGreaterThan(gold - THRALL_ROLL_COST);
+      expect(Object.values(forge.snapshot.held).reduce((a, b) => a + b, 0)).toBe(0);
       expect(forge.snapshot.strikes).toBe(runes);
     });
 
@@ -438,7 +436,9 @@ describe('ThrallService', () => {
 
       const before = economy.snapshot.gold;
       const found = thralls.settleAway(T0, T0 + interval * 5);
-      expect(economy.snapshot.gold).toBe(before - found.length * THRALL_ROLL_COST);
+      // Each pull costs its price; each find comes back as its rune's worth (runes drop only from monsters).
+      const worth = found.reduce((n, f) => n + (Object.values(RUNE_TIERS).find(t => t.label === f.rarityLabel)?.sellValue ?? 0), 0);
+      expect(economy.snapshot.gold).toBe(before - found.length * THRALL_ROLL_COST + worth);
     });
 
     it('stops at the roll cap rather than replaying a whole night', () => {

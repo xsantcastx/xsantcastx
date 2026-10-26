@@ -1,14 +1,15 @@
 /**
- * rune-forge.service.ts — the anvil, the drop table and the ledger of runes.
+ * rune-forge.service.ts — the rune ledger (the Rune Forge itself is gone: docs/design/runewords.md).
  *
- * Owns the rune *inventory* and nothing else. The finished Runewords live in
- * `PlayerEconomy.runewords` because the Gold rate depends on them and idle
- * settlement has to be able to price them from that blob alone — see the note
- * on that field. This service is the only writer of either.
+ * Runes drop ONLY from monsters (canon §6.2): nobody strikes, buys or crafts one. A held rune is a satchel stack
+ * (`rune-<id>`, rune-stack.ts), one 1×1 cell per pile, written through InventoryService's stack ops — merge-safe, and
+ * the grid, the Vault, the ground and the Enchanting Table all see the same thing. This service keeps what is not
+ * a count: when each rune was first found (the Codex, the Collection Log, the achievements), and the one-time
+ * migration of the old Forge ledger's counts into the satchel.
  *
- * Everything here is browser-only. On the server `strike()` and `craft()`
- * return their failure value and the snapshot stays empty, which is exactly
- * what the prerendered page should show: a forge nobody has struck yet.
+ * The class keeps its name so the twenty readers of `countOf` / `snapshot` did not have to move.
+ *
+ * Browser-only writes; on the server the snapshot stays empty.
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -20,7 +21,6 @@ import { XpService } from '../gamification/xp.service';
 import { LoreScrollService } from './lore-scroll.service';
 import { LoreScroll, rollScroll } from './lore-scroll.model';
 import { RUNE_ACHIEVEMENTS } from './rune-achievements';
-import { strikeCopies, strikeValueMultiplier, strikeValuePct } from './strike-value';
 import {
   RUNES,
   RUNEWORDS,
@@ -28,136 +28,72 @@ import {
   Rune,
   RuneTier,
   Runeword,
-  STRIKE_COST,
-  rollRuneWithMagicFind,
   runeById,
   runeCostOf,
-  runewordById,
   tierOf,
-  totalBonus,
 } from './rune.model';
+import { runeStackKey } from './rune-stack';
 import { InventoryService } from '../rpg/inventory.service';
-import { MagicFindService } from '../rpg/magic-find.service';
-import { ExplorerRosterService } from '../rpg/explorer-roster.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { CollectionService } from '../collection/collection.service';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { RosterExplorer } from '../rpg/explorer-roster.model';
-import {
-  GameItem,
-  mintCharm,
-  rollCharmSeed,
-} from '../rpg/item.model';
+import type { GameItem } from '../rpg/item.model';
+import type { RosterExplorer } from '../rpg/explorer-roster.model';
 
-/** localStorage key holding the rune ledger. */
+/** The save key holding first-found dates (and, before the satchel, the counts). */
 export const RUNES_KEY = 'godforge-runes';
 
-/**
- * Essence minted per strike while Realm Bridge is held.
- *
- * Realm Bridge is sold as "earn every realm's currency at once". The Aether,
- * Nox and Relic Dust rails are declared in `PlayerEconomy` but have no source
- * and no sink anywhere in the app, so paying into them would be paying into a
- * number nobody can see or spend. Eclipse Essence is the second currency that
- * is actually live, so that is the one the word pays — the promise the player
- * can verify is the one the word keeps.
- */
-export const BRIDGE_ESSENCE_PER_STRIKE = 1;
-
-/**
- * Chance that a find's equippable is a Magic Find charm rather than a sigil.
- *
- * Eight percent. Charms are the only meaningful source of flat MF, so this is
- * effectively the rate at which the Luck build gets something to wear — low
- * enough that a Void Fragment stays a story, high enough that a new player sees
- * a Small Charm of Fortune within their first evening.
- */
-/**
- * Chance a rune find also mints a charm.
- *
- * Tripled from 0.0008 when the charm table went from one family to three. The
- * table's weights are identical across Magic Find, Gold and XP, so a drop is an
- * even three-way split on family — leaving this at 0.0008 would have cut the
- * supply of *each* family to a third of what the whole table used to be, which
- * is a silent Magic Find nerf nobody asked for. At 0.0024 a player sees the
- * same number of Magic Find charms per strike as before and gets the other two
- * families on top.
- */
-export const CHARM_DROP_CHANCE = 0.0024;
+/** The stack op id that moves one rune's old Forge count into the satchel. One per rune, whatever the count. */
+export function runeMigrationOpId(runeId: string): string { return `runemig:${runeId}`; }
 
 interface RuneLedger {
   version: 1;
-  /** rune id → how many are held. Absent means zero. */
+  /** Retired: the old Forge counts. Emptied into the satchel once (`migrated`). */
   runes: Record<string, number>;
   /** rune id → ISO timestamp of the first one ever found. */
   firstFound: Record<string, string>;
-  /** Lifetime strikes, including the ones that were refused for want of Gold. */
+  /** Lifetime strikes at the retired anvil (kept for the record). */
   strikes: number;
-  /** Lifetime Gold handed to the anvil. */
   goldSpent: number;
+  /** 1 once the old counts went into the satchel. */
+  migrated?: number;
 }
 
 function emptyLedger(): RuneLedger {
   return { version: 1, runes: {}, firstFound: {}, strikes: 0, goldSpent: 0 };
 }
 
-/** One resolved strike, as the component needs to animate it. */
+/** One rune that landed in the satchel. */
 export interface RuneFind {
   rune: Rune;
   /** How many are held after this one landed. */
   held: number;
-  /**
-   * How many copies of the rune this one event landed — 1, or 2 when worn
-   * strikePower sheared a second off the anvil (see `strike-value.ts`).
-   * Expedition grants are always 1: the yield bonus is the strike's alone.
-   *
-   * Optional so the shape stays additive: a find written against the
-   * pre-strikePower contract (a fake pushed on `find$` by a spec, a literal in
-   * a branch that has not seen this one) still type-checks. The service always
-   * sets it; readers take `find.copies ?? 1`.
-   */
   copies?: number;
-  /** First of its kind. Drives the "NEW" flag and the unique-count achievements. */
+  /** First of its kind. */
   isNew: boolean;
-  /** Essence minted alongside, when Realm Bridge is held. Zero otherwise. */
+  /** Retired with Realm Bridge's strikes: always 0. */
   essence: number;
-  /**
-   * A Lore Scroll the same strike turned up, or null.
-   *
-   * Carried on the find rather than announced on a channel of its own so that
-   * the rune and the scroll arrive in the same event and the reveal can show
-   * them together. Two subjects would let the two cards race, and the whole
-   * point of the drop is that one strike produced both.
-   */
+  /** A Lore Scroll the find turned up, or null. */
   scroll: LoreScroll | null;
-  /**
-   * An equippable minted alongside the rune, or null.
-   *
-   * Rune finds mint a matching item at their own tier; a strike may separately
-   * turn up a Magic Find charm. Both arrive on the find for the same reason the
-   * scroll does — one strike produced them, so one event should carry them, and
-   * two subjects would let the reveal cards race.
-   */
+  /** Retired (the strike's charm): always null. */
   item: GameItem | null;
-  /** An explorer the same strike turned up, or null. 5% of strikes. */
+  /** Retired (the strike's explorer): always null. */
   explorer: RosterExplorer | null;
 }
 
-/** Everything the page renders, recomputed on every change. */
+/** Everything the readers render. */
 export interface RuneSnapshot {
-  /** rune id → count held. */
+  /** rune id → count in the satchel. */
   held: Record<string, number>;
-  /** Crafted Runeword ids, mirrored out of the economy ledger. */
+  /** Forge Runewords crafted before the Forge was retired (their bonuses still pay). */
   crafted: string[];
   strikes: number;
   goldSpent: number;
   /** Distinct runes ever found, out of `RUNES.length`. */
   unique: number;
-  /** The rarest rune ever found, or null before the first strike. */
   rarest: Rune | null;
   /** Gold worth of everything currently held. */
   collectionValue: number;
-  /** rune id → first-found ISO time. */
   firstFound: Record<string, string>;
 }
 
@@ -169,8 +105,6 @@ export class RuneForgeService {
   private readonly eggs = inject(EasterEggService);
   private readonly scrolls = inject(LoreScrollService);
   private readonly inventory = inject(InventoryService);
-  private readonly magicFind = inject(MagicFindService);
-  private readonly roster = inject(ExplorerRosterService);
   private readonly saves = inject(LocalSaveRegistry);
   private readonly store = inject(GameStateGateway);
   private readonly collection = inject(CollectionService);
@@ -178,370 +112,112 @@ export class RuneForgeService {
   private ledger: RuneLedger = emptyLedger();
   private initialised = false;
 
-  private readonly snapshot$$ = new BehaviorSubject<RuneSnapshot>(this.snapshotOf(emptyLedger(), []));
+  private readonly snapshot$$ = new BehaviorSubject<RuneSnapshot>(this.snapshotOf(emptyLedger()));
   private readonly find$$ = new Subject<RuneFind>();
   private readonly craft$$ = new Subject<Runeword>();
 
-  /** The ledger, replayed. Safe to subscribe before `init()`. */
   readonly snapshot$: Observable<RuneSnapshot> = this.snapshot$$.asObservable();
-  /** One event per rune that lands. The reveal cinematic listens here. */
+  /** One event per rune that lands. */
   readonly find$: Observable<RuneFind> = this.find$$.asObservable();
-  /** One event per Runeword completed. */
+  /** Retired with the Forge's Runewords: never emits. Kept for old subscribers. */
   readonly craft$: Observable<Runeword> = this.craft$$.asObservable();
 
   get snapshot(): RuneSnapshot { return this.snapshot$$.value; }
 
-  /** Idempotent. Called from the component rather than app bootstrap — the
-   * forge is one route, and a visitor who never opens it should not pay for
-   * hydrating a ledger they have never written to. */
   init(): void {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
-    this.ledger = this.load();
-    // Both are idempotent. The scroll ledger has to be hydrated before the
-    // first strike or `rollScroll` would be handed an empty found-set and could
-    // re-award a scroll the visitor already has.
     this.scrolls.init();
-    // The bag and the roster have to be hydrated before the first strike for the
-    // same reason the scroll shelf does: `mintFor` adds into the inventory and
-    // `rollDrop` reads the roster's ceiling, and both would be operating on an
-    // empty store — silently evicting nothing and re-minting a starter explorer
-    // the visitor already has. Both are idempotent.
     this.inventory.init();
-    this.roster.init();
+    this.ledger = this.load();
+    this.migrate();
     this.publish();
-
-    // `save()` writes the whole ledger from memory, so runes pulled on another
-    // device would be dropped by the next strike here.
+    // The counts are the satchel's: every inventory change republishes them.
+    this.inventory.snapshot$.subscribe(() => this.publish());
     this.saves.register(RUNES_KEY, {
       rehydrate: () => {
         this.ledger = this.load();
+        this.migrate();
         this.publish();
       },
     });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Striking
+  // Counts (the satchel's)
   // ───────────────────────────────────────────────────────────────────────────
 
-  /** What one strike costs right now. Flat — the forge does not scale its price. */
-  get strikeCost(): number { return STRIKE_COST; }
-
-  get canStrike(): boolean {
-    return this.isBrowser && this.economy.snapshot.gold >= STRIKE_COST;
+  countOf(runeId: string): number {
+    return runeById(runeId) ? Math.max(0, this.inventory.stackOf(runeStackKey(runeId))) : 0;
   }
 
   /**
-   * Pay the anvil and take whatever it gives back.
-   *
-   * Null when the Gold is not there — the caller shows the "not enough Gold"
-   * state rather than a failed animation. `random` is injectable so a spec can
-   * drive a known sequence through the table; nothing in the app passes it.
+   * A monster's rune lands in the satchel (LootService.grantDrop, the only caller: canon §6.2). `grantId` makes it
+   * idempotent (the drop id): a retried pickup or a merged replay lands once.
    */
-  strike(random: () => number = Math.random): RuneFind | null {
-    if (!this.isBrowser) return null;
-    if (!this.economy.spendGold(STRIKE_COST, 'rune-forge')) return null;
-
-    this.ledger.strikes += 1;
-    this.ledger.goldSpent += STRIKE_COST;
-
-    // Magic Find is read at the moment of the strike rather than cached, so a
-    // charm equipped between two strikes is live on the second one — which is
-    // what a player who just equipped it will check.
-    const rune = rollRuneWithMagicFind(this.magicFind.total, random);
-
-    // The explorer roll is the strike's alone: an expedition that banks a rune
-    // through `grant` must not be able to turn up an explorer, or the roster
-    // would grow while the player is away from the anvil and the 5% would
-    // compound against itself.
-    //
-    // Rolled *before* the grant and handed in, rather than attached to the
-    // returned find. `grant` announces on `find$` before it returns, so anything
-    // set on the find afterwards is invisible to every subscriber — the reveal
-    // would have shown the rune and silently dropped the explorer.
-    const explorer = this.roster.rollDrop(random);
-
-    // Worn strikePower is read at the moment of the strike for the same reason
-    // Magic Find is: a Basalt Edge equipped between two strikes should pay on
-    // the second one. Read from the bag's live totals, never stored in this
-    // ledger — gear is the inventory's to own. Like the explorer roll, this is
-    // the strike's alone: an expedition banks one rune through `grant`.
-    const copies = strikeCopies(this.inventory.equippedTotals.strikePower, random());
-
-    return this.grant(rune, random, explorer, copies);
-  }
-
-  /**
-   * Expected runes per strike right now, from worn strikePower — 1.0 for a
-   * fresh Keeper, 1.25 at the cap. Live, so the page can print it next to the
-   * strike button and have it move the moment the loadout changes.
-   */
-  get strikeValueMultiplier(): number {
-    return strikeValueMultiplier(this.inventory.equippedTotals.strikePower);
-  }
-
-  /** Whole-percent yield bonus for the page. 0 means hide the line. */
-  get strikeValuePct(): number {
-    return strikeValuePct(this.inventory.equippedTotals.strikePower);
-  }
-
-  /**
-   * Bank a rune that was not struck out of the anvil.
-   *
-   * Expeditions find runes in the field, and they have to land in *this* ledger
-   * rather than in a second collection of their own: the runes are only worth
-   * anything because they craft Runewords, and a rune held somewhere the
-   * crafting table cannot see is a trophy with the mechanic cut off it. It also
-   * keeps one answer to "how many Ber have I got" — two registries would
-   * eventually disagree, and the visitor would believe whichever was larger.
-   *
-   * Everything downstream of a strike happens here and is therefore shared:
-   * the first-found date, the tier XP with its duplicate discount, the Codex
-   * achievements and the `find$` reveal. The only things left outside are the
-   * Gold, which is the part an expedition does not pay, and the strikePower
-   * yield roll, which is the part an expedition does not get — `copies` is
-   * handed in already rolled and defaults to the single rune a field find is.
-   */
-  grant(
-    rune: Rune,
-    random: () => number = Math.random,
-    explorer: RosterExplorer | null = null,
-    copies = 1,
-  ): RuneFind | null {
-    if (!this.isBrowser) return null;
-
-    // `copies` is only ever 1 or 2 today (`strikeCopies`), but the ledger
-    // arithmetic below is written for any positive count so a future source
-    // does not have to touch it. Anything below one is treated as one: a grant
-    // must always land at least the rune it was handed.
-    const landed = Number.isFinite(copies) ? Math.max(1, Math.floor(copies)) : 1;
-    const before = this.ledger.runes[rune.id] ?? 0;
-    const held = before + landed;
-    const isNew = before === 0;
-
-    this.ledger.runes = { ...this.ledger.runes, [rune.id]: held };
+  grant(rune: Rune, random: () => number = Math.random, grantId?: string): RuneFind | null {
+    if (!this.isBrowser || !runeById(rune.id)) return null;
+    this.init();
+    const id = grantId ?? `rune-find:${rune.id}:${Date.now().toString(36)}:${Math.floor(random() * 1e9).toString(36)}`;
+    const before = this.countOf(rune.id);
+    const isNew = !this.hasEverFound(rune.id);
+    if (!this.inventory.grantStack(id, runeStackKey(rune.id), 1)) return null;
     if (isNew) {
-      this.ledger.firstFound = {
-        ...this.ledger.firstFound,
-        [rune.id]: new Date().toISOString(),
-      };
+      this.ledger = { ...this.ledger, firstFound: { ...this.ledger.firstFound, [rune.id]: new Date().toISOString() } };
+      this.save();
     }
-
-    // Realm Bridge pays its second currency on the strike that earned it, not
-    // on a timer, so the player can see the two numbers move together.
-    let essence = 0;
-    if (totalBonus(this.economy.runewords).allRealms) {
-      essence = this.economy.earnEssence(BRIDGE_ESSENCE_PER_STRIKE, 'rune-forge');
-    }
-
-    this.save();
-    this.publish();
-
-    // A duplicate pays a fraction: the tier XP is for the *discovery*, and a
-    // table with a 60% head would otherwise turn the forge into the fastest XP
-    // source in the app by an order of magnitude.
-    //
-    // A second copy off the same strike is a duplicate by definition, so it
-    // pays the duplicate rate on top — the discovery XP is paid once, for the
-    // discovery, however many copies the blow sheared.
     const tier = tierOf(rune.tier);
     const dupXp = Math.max(1, Math.round(tier.xp / 10));
-    this.xp.award('craft', { amount: (isNew ? tier.xp : dupXp) + (landed - 1) * dupXp });
-
-    // The scroll is rolled against what is already held, so it can only ever be
-    // something new — see `rollScroll`. Granting is what makes it new, so the
-    // set has to be read before the grant, not after.
+    this.xp.award('craft', { amount: isNew ? tier.xp : dupXp });
     const scroll = rollScroll(rune.tier, this.scrolls.foundIds, random);
     if (scroll) {
       this.scrolls.grant(scroll.id);
-      // A scroll is worth a find of its own tier, on top of the rune's. The
-      // strike paid for one thing and produced two, and the XP should say so.
       this.xp.award('craft', { amount: tierOf(scroll.rarity).xp });
     }
-
-    const item = this.mintFor(rune, random);
-
-    // The Collection Log. Recorded here rather than watched from a wiring layer
-    // so the whole rune graph stays out of the initial bundle — see the note at
-    // the top of `collection-wiring.service.ts`. `discover` is idempotent on an
-    // id it already holds, and the reveal it raises is the log's own, separate
-    // from `find$`: one is "a rune landed", the other is "you have never held
-    // this before in the life of this save".
-    this.collection.discover(rune.id, landed);
-
+    this.collection.discover(rune.id, 1);
+    this.publish();
     this.checkAchievements();
-
-    const find: RuneFind = { rune, held, copies: landed, isNew, essence, scroll, item, explorer };
+    const find: RuneFind = { rune, held: before + 1, copies: 1, isNew, essence: 0, scroll, item: null, explorer: null };
     this.find$$.next(find);
     return find;
   }
 
   /**
-   * The equippable a rune find can turn up: a charm, `CHARM_DROP_CHANCE` of the
-   * time, or nothing. The rune itself is the find, and it lands in this
-   * service's ledger — that is what the reveal, the library, Runewords and
-   * sockets all read.
-   *
-   * There used to be a third outcome: every other find minted an empty-stat
-   * "<Rune> Sigil" item. It had no use but the till, buried the satchel (a
-   * ×1000 strike is a thousand of them) and drove the 250-row eviction that
-   * deleted real gear, so it is gone (inventory spec, Shipped §S2).
-   *
-   * Null when no charm dropped, or the save refused it. The rune has already
-   * landed in the ledger by this point and is not at risk.
+   * A retired, non-monster rune source (an expedition, a thrall, a reel, a quest chest) found one: runes drop only
+   * from monsters now (canon §6.2), so the find is paid as the rune's sell value in Gold instead. Returns the Gold.
    */
-  private mintFor(_rune: Rune, random: () => number): GameItem | null {
-    if (random() >= CHARM_DROP_CHANCE) return null;
-    return this.inventory.add(mintCharm(rollCharmSeed(random), undefined, random));
+  payInstead(rune: Rune, reason = 'rune-find'): number {
+    if (!this.isBrowser || !runeById(rune.id)) return 0;
+    const gold = Math.max(0, Math.floor(rune.sellValue));
+    if (gold > 0) this.economy.earnGold(gold, reason);
+    return gold;
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Crafting
-  // ───────────────────────────────────────────────────────────────────────────
-
-  countOf(runeId: string): number {
-    return this.ledger.runes[runeId] ?? 0;
-  }
-
-  /**
-   * Take one rune out of the ledger for something that is not a Runeword.
-   *
-   * The Enchanting Table sets runes into sockets, and a socketed rune is spent
-   * from the ledger's point of view — it is in a sword rather than in the
-   * drawer. This exists rather than the caller reaching into `ledger.runes`
-   * because the rune ledger has exactly one writer and adding a second one
-   * three files away is how a save ends up with a negative Ash.
-   *
-   * False when the rune is unknown or the drawer is short. The check and the
-   * decrement are one step, so a double-click cannot spend the same rune twice.
-   */
-  spendRune(runeId: string, count = 1): boolean {
-    if (!this.isBrowser || count <= 0) return false;
-    if (!runeById(runeId)) return false;
+  /** Spend runes from the satchel for a recipe or a socket. Idempotent on `mutationId`. */
+  spendRune(runeId: string, count = 1, mutationId?: string): boolean {
+    if (!this.isBrowser || count <= 0 || !runeById(runeId)) return false;
     if (this.countOf(runeId) < count) return false;
-
-    this.ledger.runes = { ...this.ledger.runes, [runeId]: this.countOf(runeId) - count };
-    this.save();
-    this.publish();
-    return true;
-  }
-
-  /**
-   * Put a rune back — the other half of `spendRune`, for pulling one out of a
-   * socket.
-   *
-   * Deliberately does *not* touch `firstFound`: the rune was found when it was
-   * struck, and a first-found date that moves when a player rearranges their
-   * gear would rewrite the Codex's history every time somebody changed their
-   * mind. It also does not award XP or fire `find$`, for the same reason —
-   * nothing was found here, something was returned.
-   */
-  returnRune(runeId: string, count = 1): boolean {
-    if (!this.isBrowser || count <= 0) return false;
-    if (!runeById(runeId)) return false;
-
-    this.ledger.runes = { ...this.ledger.runes, [runeId]: this.countOf(runeId) + count };
-    this.save();
-    this.publish();
-    return true;
+    const id = mutationId ?? `rune-spend:${runeId}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+    const taken = this.inventory.consumeStacks(id, [{ id: runeStackKey(runeId), count }]);
+    if (taken.ok) this.publish();
+    return taken.ok;
   }
 
   hasCrafted(wordId: string): boolean {
     return this.economy.hasRuneword(wordId);
   }
 
-  /**
-   * How many of each rune a word still needs, keyed by rune id.
-   *
-   * Empty means the recipe is payable. A recipe that repeats a rune is counted
-   * as repeated — `Breath of the Void` wanting a second Convergence is a real
-   * shortfall of one, not a satisfied requirement.
-   */
-  missingFor(word: Runeword): Map<string, number> {
-    const missing = new Map<string, number>();
-    for (const [runeId, needed] of runeCostOf(word)) {
-      const short = needed - this.countOf(runeId);
-      if (short > 0) missing.set(runeId, short);
-    }
-    return missing;
-  }
-
-  canCraft(word: Runeword): boolean {
-    return this.isBrowser
-      && !this.hasCrafted(word.id)
-      && this.missingFor(word).size === 0;
-  }
-
-  /**
-   * Set the runes into the word. The runes are consumed.
-   *
-   * False when the word is unknown, already held, or short a rune. The check
-   * and the consumption are one step with no await between them, so a
-   * double-click cannot spend the runes twice.
-   */
-  craft(wordId: string): boolean {
-    if (!this.isBrowser) return false;
-    const word = runewordById(wordId);
-    if (!word || !this.canCraft(word)) return false;
-
-    const runes = { ...this.ledger.runes };
-    for (const [runeId, needed] of runeCostOf(word)) {
-      runes[runeId] = (runes[runeId] ?? 0) - needed;
-    }
-    this.ledger.runes = runes;
-
-    // The ledger half is the economy's, because the Gold rate reads it.
-    if (!this.economy.grantRuneword(word.id, word.name)) return false;
-
-    this.save();
-    this.publish();
-
-    this.xp.award('craft', { amount: tierOf(word.tier).xp * 2 });
-    this.checkAchievements();
-    this.craft$$.next(word);
-    return true;
-  }
-
-  /**
-   * Test all eight against the ledger.
-   *
-   * `EasterEggService.trigger()` is a no-op on an id already found, so a
-   * condition that stays true forever fires exactly once and then costs a set
-   * lookup — the same reasoning `EconomyWiringService.checkAchievements()`
-   * gives for running its eight on every snapshot.
-   */
-  private checkAchievements(): void {
-    for (const a of RUNE_ACHIEVEMENTS) {
-      if (this.eggs.isFound(a.id)) continue;
-      if (a.met(this)) void this.eggs.trigger(a.id);
-    }
-  }
-
   // ───────────────────────────────────────────────────────────────────────────
   // Read models, for the achievement predicates
   // ───────────────────────────────────────────────────────────────────────────
 
-  /** Distinct runes ever found — counts the ones since spent on a word. */
-  get uniqueFound(): number {
-    return Object.keys(this.ledger.firstFound).length;
-  }
-
+  get uniqueFound(): number { return Object.keys(this.ledger.firstFound).length; }
   get craftedCount(): number { return this.economy.runewords.length; }
-
-  /** Lore Scrolls held. Read through, so the predicates have one source. */
   get scrollsFound(): number { return this.scrolls.foundCount; }
-
-  /** True once this rune has ever been found, even if it has since been spent. */
-  hasEverFound(runeId: string): boolean {
-    return runeId in this.ledger.firstFound;
-  }
-
+  hasEverFound(runeId: string): boolean { return runeId in this.ledger.firstFound; }
   get totalStrikes(): number { return this.ledger.strikes; }
-
   get goldSpent(): number { return this.ledger.goldSpent; }
 
-  /** Wipe the rune ledger. Dev-only, mirrors `EconomyService.reset()`. */
   reset(): void {
     if (!this.isBrowser) return;
     this.ledger = emptyLedger();
@@ -550,8 +226,37 @@ export class RuneForgeService {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Storage
+  // The one-time move of the old Forge counts into the satchel
   // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Every rune the old ledger held becomes a satchel stack of the same rune (a forged rune is a rune: same id, same
+   * tier, same use). One grant op per rune, `runemig:<id>`: two devices migrating the same save write the same id,
+   * and the merge keeps one. Then the counts are emptied and the save stamped, in the same tick. Nothing is lost:
+   * the grant lands before the counts are cleared, and a failed grant leaves that rune's count for the next load.
+   */
+  private migrate(): void {
+    if (this.ledger.migrated) return;
+    const left: Record<string, number> = {};
+    let moved = false;
+    for (const [runeId, count] of Object.entries(this.ledger.runes)) {
+      if (!runeById(runeId) || !(count > 0)) continue;
+      const opId = runeMigrationOpId(runeId);
+      if (this.inventory.hasStackOp(opId) || this.inventory.grantStack(opId, runeStackKey(runeId), Math.floor(count))) moved = true;
+      else left[runeId] = count;
+    }
+    // An empty fresh save is not stamped: it may yet merge with a cloud copy that still holds counts.
+    if (!moved && !Object.keys(left).length && !this.ledger.strikes && !Object.keys(this.ledger.firstFound).length) return;
+    this.ledger = { ...this.ledger, runes: left, ...(Object.keys(left).length ? {} : { migrated: 1 }) };
+    this.save();
+  }
+
+  private checkAchievements(): void {
+    for (const a of RUNE_ACHIEVEMENTS) {
+      if (this.eggs.isFound(a.id)) continue;
+      if (a.met(this)) void this.eggs.trigger(a.id);
+    }
+  }
 
   private load(): RuneLedger {
     try {
@@ -559,13 +264,8 @@ export class RuneForgeService {
       if (!raw) return emptyLedger();
       const parsed = JSON.parse(raw) as Partial<RuneLedger>;
       return {
-        // Merged over a fresh ledger so a blob written by an older build still
-        // hydrates rather than throwing on a field added since — same shape as
-        // `EconomyService.load()`.
         ...emptyLedger(),
         ...parsed,
-        // Runes retired from the table would otherwise sit in the inventory
-        // forever, uncounted by `RUNES.length` and unspendable by any recipe.
         runes: pruneToRegistry(parsed.runes),
         firstFound: pruneToRegistry(parsed.firstFound),
         version: 1,
@@ -577,23 +277,25 @@ export class RuneForgeService {
 
   private save(): void {
     if (!this.isBrowser) return;
-      this.store.write(RUNES_KEY, this.ledger);
+    this.store.write(RUNES_KEY, this.ledger);
   }
 
   private publish(): void {
-    this.snapshot$$.next(this.snapshotOf(this.ledger, this.economy.runewords));
+    this.snapshot$$.next(this.snapshotOf(this.ledger));
   }
 
-  private snapshotOf(ledger: RuneLedger, crafted: string[]): RuneSnapshot {
+  private snapshotOf(ledger: RuneLedger): RuneSnapshot {
+    const held: Record<string, number> = {};
     let collectionValue = 0;
-    for (const [runeId, count] of Object.entries(ledger.runes)) {
-      const rune = runeById(runeId);
-      if (rune && count > 0) collectionValue += rune.forgeCost * count;
+    if (this.isBrowser && this.inventory) {
+      for (const rune of RUNES) {
+        const n = this.countOf(rune.id);
+        if (n > 0) { held[rune.id] = n; collectionValue += rune.forgeCost * n; }
+      }
     }
-
     return {
-      held: { ...ledger.runes },
-      crafted: [...crafted],
+      held,
+      crafted: this.economy ? [...this.economy.runewords] : [],
       strikes: ledger.strikes,
       goldSpent: ledger.goldSpent,
       unique: Object.keys(ledger.firstFound).length,
@@ -604,7 +306,6 @@ export class RuneForgeService {
   }
 }
 
-/** Drop any key that is not a rune in the current registry. */
 function pruneToRegistry<T>(map: Record<string, T> | undefined): Record<string, T> {
   const kept: Record<string, T> = {};
   for (const [id, value] of Object.entries(map ?? {})) {
@@ -613,13 +314,6 @@ function pruneToRegistry<T>(map: Record<string, T> | undefined): Record<string, 
   return kept;
 }
 
-/**
- * The rarest of a set of rune ids.
- *
- * Ties inside a tier are broken by registry order, which is the order the runes
- * are listed on the page — so "rarest found" names the same rune the inventory
- * shows last, rather than whichever one happened to be found first.
- */
 function rarestOf(runeIds: string[]): Rune | null {
   let best: Rune | null = null;
   let bestRank = -1;
@@ -627,14 +321,10 @@ function rarestOf(runeIds: string[]): Rune | null {
     const rune = runeById(id);
     if (!rune) continue;
     const rank = RUNE_TIER_ORDER.indexOf(rune.tier);
-    if (rank > bestRank) {
-      best = rune;
-      bestRank = rank;
-    }
+    if (rank > bestRank) { best = rune; bestRank = rank; }
   }
   return best;
 }
 
-/** Every rune in the registry, for the inventory grid. Re-exported for the template. */
 export { RUNES, RUNEWORDS, RUNE_TIER_ORDER, tierOf, runeById, runeCostOf };
 export type { Rune, RuneTier, Runeword };

@@ -58,7 +58,7 @@ describe('first-session goals', () => {
       if ('station' in target) expect(stations.has(target.station)).withContext(JSON.stringify(f)).toBeTrue();
     }
     expect(stations.has(HOMESTEAD_GATE.id)).toBeTrue();
-    expect(stations.has('runes')).toBeTrue();
+    expect(stations.has('crafting')).toBeTrue();
     // The hunt goal walks to open floor east of the Waystone.
     expect('x' in firstGoal({ ...FRESH, bought: true, ...ARMED })!.target!).toBeTrue();
   });
@@ -107,11 +107,8 @@ describe('first-session goals', () => {
 describe('the Rune Forge hint after the first goals', () => {
   const READY: RuneHintFacts = { goalsDone: true, gold: STRIKE_COST, strikeCost: STRIKE_COST, seen: false, areaId: 'infernal' };
 
-  it('points at the Rune Forge once the four goals are done and a strike is affordable', () => {
-    const hint = runeForgeHint(READY)!;
-    expect(hint.id).toBe('rune');
-    expect(hint.n).toBe(0);
-    expect(hint.target).toEqual({ station: 'runes' });
+  it('is retired with the Rune Forge: runes drop only from monsters, so there is nothing to point at', () => {
+    expect(runeForgeHint(READY)).toBeNull();
   });
 
   it('stays out of the tutorial goals, out of reach of an empty purse, and never shows twice', () => {

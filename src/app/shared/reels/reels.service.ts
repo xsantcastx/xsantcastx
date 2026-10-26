@@ -15,7 +15,6 @@ import { Injectable, inject } from '@angular/core';
 import { InventoryService } from '../rpg/inventory.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { runeById } from '../rune-forge/rune.model';
-import { seededRng } from '../games/seeded-rng';
 import { PlayLedgerService, type ChanceGame, type PlayResult } from '../games/play-ledger.service';
 import { playReels, type ReelsOutcome } from './reels.model';
 
@@ -50,7 +49,8 @@ export class ReelsService {
         this.inventory.grantStack(`reels:${id}:${i}`, p.id, 1);
       } else {
         const rune = runeById(p.id);
-        if (rune) this.runes.grant(rune, seededRng(`${id}:prize:${i}`));
+        // Runes drop only from monsters (canon §6.2): a rune prize pays its worth.
+        if (rune) this.runes.payInstead(rune, 'reels');
       }
     });
   }

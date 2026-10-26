@@ -46,6 +46,7 @@ import { qualityOf } from '../rpg/item-quality';
 import type { GameItem } from '../rpg/item.model';
 import { NpcQuestService } from '../npc/npc-quest.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
+import { runeStackKey } from '../rune-forge/rune-stack';
 import { SkillActionService } from '../skills/skill-actions.service';
 import { CraftingService, type CraftingProgress } from './crafting.service';
 import {
@@ -173,22 +174,15 @@ export class CraftingGateway {
     const voidTouched = def.style === 'void' || def.style === 'void-touched';
     const rolls = masteryRng(rng, bonus, recipe.rarity, voidTouched);
 
-    // Runes first (the blocker checked they are there), handed back if the bag refuses.
-    const runeRows = recipe.ingredients.filter(row => row.rune);
-    const spent = runeRows.filter(row => this.runes.spendRune(row.materialId, row.count));
-    if (spent.length < runeRows.length) {
-      for (const row of spent) this.runes.returnRune(row.materialId, row.count);
-      return { ok: false, code: 'missing' };
-    }
     const crafted = this.inventory.craftRecipe(
       mutationId,
-      recipe.ingredients.filter(row => !row.rune).map(row => ({ id: row.materialId, count: row.count })),
+      // A rune ingredient is a satchel stack (`rune-<id>`), consumed in the same write as the materials.
+      recipe.ingredients.map(row => ({ id: row.rune ? runeStackKey(row.materialId) : row.materialId, count: row.count })),
       (itemId, _index, foundAt) => mintEquipment(def.id, recipe.rarity, rolls, foundAt, itemId),
       recipe.output.count,
       now,
     );
     if (!crafted.ok) {
-      for (const row of runeRows) this.runes.returnRune(row.materialId, row.count);
       return { ok: false, code: crafted.code === 'clock' ? 'persist' : crafted.code };
     }
 

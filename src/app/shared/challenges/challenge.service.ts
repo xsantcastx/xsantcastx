@@ -489,7 +489,8 @@ export class ChallengeService {
       roll -= rune.dropRate;
       if (roll <= 0) { chosen = rune; break; }
     }
-    this.runeForge.grant(chosen);
+    // Runes drop only from monsters (canon §6.2): the chest pays the rune's worth.
+    this.runeForge.payInstead(chosen, 'challenge');
     return chosen;
   }
 

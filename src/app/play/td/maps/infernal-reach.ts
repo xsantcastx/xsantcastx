@@ -9,7 +9,7 @@
  */
 import type { StationDef } from '../../world/world.model';
 import type { ContinentDef, ContinentPlace, Region } from '../continent';
-import { buildTown } from '../town-builder';
+import { buildTown, shopStation } from '../town-builder';
 import { SPIRE_DOOR } from './pyre-spire';
 import { DEEP_IN } from './molten-deep';
 import { CRYPT_IN } from './ashen-crypt';
@@ -97,9 +97,14 @@ export const buildPyrehold = () => buildTown({
   stalls: [
     { station: 'vault', c: 15, r: 11, w: 4, palette: 2, goods: 'pots' },
     { station: 'crafting', c: 31, r: 11, w: 4, palette: 0, goods: 'tools' },
-    { station: 'runes', c: 15, r: 20, w: 4, palette: 3, goods: 'gems' },
     { station: 'enchanting', c: 31, r: 20, w: 4, palette: 1, goods: 'books' },
-    { station: 'vendor', c: 23, r: 22, w: 4, palette: 4, goods: 'bread' },
+    { station: 'brews', c: 27, r: 20, w: 2, palette: 1, goods: 'pots' },
+    // The shops by district (shared/shops; canon §6.5): the General Store and the Alchemist on the plaza of stalls, the
+    // Smith's in the forge district north of the lava channel, Netter Pell's stall at the harbour.
+    { station: shopStation('shop-general', "GARRICK DROSS'S GENERAL STORE", 'garrick-dross'), c: 23, r: 22, w: 4, palette: 4, goods: 'bread' },
+    { station: shopStation('shop-alchemist', "JUNO MARL'S ALCHEMIST", 'juno-marl'), c: 15, r: 20, w: 4, palette: 3, goods: 'pots' },
+    { station: shopStation('shop-smith', "YSOLDE MARR'S SMITH", 'ysolde-marr'), c: 27, r: 3, w: 4, palette: 0, goods: 'tools' },
+    { station: shopStation('shop-fishing', "NETTER PELL'S FISHING STALL", 'netter-pell'), c: 31, r: 27, w: 4, palette: 2, goods: 'fish' },
   ],
   props: [
     { kind: 'fountain', c: 22, r: 14 }, { kind: 'hearth', c: 22, r: 18 },

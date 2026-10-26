@@ -86,8 +86,13 @@ import {
   socketFrameOf,
   socketStats,
   socketsOf,
-  unsocketCost,
 } from './socket.model';
+import { SocketingService, type SocketDrop } from './socketing.service';
+import { RUNEWORDS_I18N } from './runewords.i18n';
+import { ItemGridComponent, type GridPick, type PieceLook } from '../inventory-grid/item-grid.component';
+import { ItemDragService } from '../inventory-grid/item-drag.service';
+import { itemNameTone, pieceLookOf } from '../inventory-grid/piece-look';
+import type { GridView, Piece } from '../rpg/inventory-grid';
 
 import { RuneRitualComponent } from '../minigames/rune-ritual.component';
 import { MINIGAMES_I18N } from '../minigames/minigames.i18n';
@@ -171,7 +176,7 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 @Component({
   selector: 'app-enchanting-bench',
   standalone: true,
-  imports: [ForgeFloorComponent, RuneRitualComponent, CommonModule, RouterLink, ...STATION_UI],
+  imports: [ForgeFloorComponent, RuneRitualComponent, CommonModule, RouterLink, ItemGridComponent, ...STATION_UI],
   templateUrl: './enchanting-bench.component.html',
   styleUrls: ['./enchanting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -191,6 +196,11 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   private readonly skills = inject(SkillActionService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly socketing = inject(SocketingService);
+  readonly drag = inject(ItemDragService);
+  /** The satchel, at the table: drag a rune onto a socketed piece to set it (docs/design/runewords.md §3). */
+  satchel: GridView | null = null;
+  readonly look = (p: Piece): PieceLook => pieceLookOf(this.inventory.snapshot, p);
 
   /** The rune ritual is open. Nothing is spent until it succeeds. */
   ritual: {
@@ -265,6 +275,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(ENCHANTING_I18N);
     this.i18n.register(MINIGAMES_I18N);
+    this.i18n.register(RUNEWORDS_I18N);
     this.forgeTabs = forgeTabs(key => this.t(key));
     this.enchantTabs = [
       { id: 'runes', label: this.t('enchant.tab.runes') },
@@ -280,6 +291,10 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     if (!this.isBrowser) return;
     this.gateway.init();
+    // Standing at the table: runes may be set here (canon §6.2), and only here.
+    this.socketing.setAtTable(true);
+    this.subs.push(this.socketing.socketed$.subscribe(out => this.onSocketed(out)));
+    this.subs.push(this.drag.held$.subscribe(() => this.cdr.markForCheck()));
 
     this.subs.push(this.inventory.snapshot$.subscribe(() => {
       this.hydrated = true;
@@ -311,6 +326,8 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.socketing.setAtTable(false);
+    if (this.drag.held) this.drag.cancel();
     for (const sub of this.subs) sub.unsubscribe();
     this.subs = [];
     if (this.ticker) clearInterval(this.ticker);
@@ -324,9 +341,10 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     const now = Date.now();
     const snap = this.inventory.snapshot;
 
-    // Worn, lent and carried gear; what rests in the Vault is taken out there first (inventory spec S6).
+    this.satchel = snap.grid.bag;
+    // Satchel pieces with sockets: a rune is set into a carried piece (not a worn one, not one in the Vault).
     this.socketables = snap.items
-      .filter(item => isSocketable(item) && !item.explorerId?.startsWith('vault:'))
+      .filter(item => isSocketable(item) && !item.equipped && !item.explorerId)
       .map(item => {
         const frame = socketFrameOf(item);
         return {
@@ -449,8 +467,8 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       index,
       runeId,
       rune: runeId ? runeById(runeId) ?? null : null,
-      cost: runeId ? unsocketCost(runeId) : 0,
-      costs: runeId ? [this.goldCost(unsocketCost(runeId))] : [],
+      cost: 0,
+      costs: [],
       effect: runeId ? describeStats(socketEffectOf(runeId)) : [],
     }));
   }
@@ -630,7 +648,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     const runeId = this.chosenRuneId;
     const well = this.firstEmptyWell();
     if (!this.selected || !runeId || well === null) return;
-    const result = this.gateway.socket(this.selected.id, well, runeId);
+    const result = this.gateway.socket(this.selected.id, runeId);
     if (!result.ok) {
       this.error = SOCKET_COPY[result.code];
       this.cdr.markForCheck();
@@ -649,10 +667,43 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       { id: item.id, name: item.name, art: itemArt(item) },
       rune ? RUNE_TIERS[rune.tier]?.color : undefined,
     );
-    this.announce = result.discovered && result.word
-      ? `${result.word.name} — the runes have spelled something.`
-      : `${rune?.name ?? 'The rune'} is set.`;
-    const word = result.discovered && result.word ? result.word : null;
+    this.showSet(item, runeId, result.discovered && result.word ? result.word : null, enchantXp);
+  }
+
+  /** A satchel piece picked on the table's grid: a socketed one becomes the selected piece. */
+  pickPiece(ev: GridPick): void {
+    const id = ev.piece.kind === 'instance' ? ev.piece.ids[0] : null;
+    const row = id ? this.socketables.find(r => r.item.id === id) : null;
+    if (row) { this.ritual = null; this.select(row.item); }
+    else if (ev.piece.kind === 'instance') this.announce = this.t('sock.noSockets', { item: this.look(ev.piece).name });
+    this.cdr.markForCheck();
+  }
+
+  /** A rune dropped onto a piece on the table's grid (SocketingService): the same beat as the button, without the ritual. */
+  onSocketed(out: SocketDrop): void {
+    if (out.code !== 'ok' || !out.item || !out.rune) return;
+    const rune = out.rune;
+    const item = out.item;
+    this.select(item);
+    const granted = this.skills.grantEnchantingXp(1, `socket:${item.id}:${rune.id}:${newRitualId()}`);
+    const enchantXp = granted.ok && !granted.replayed ? craftSkillXp(1) : 0;
+    this.emitFloor([floorThing(rune.id, rune.name)], { id: item.id, name: item.name, art: itemArt(item) }, RUNE_TIERS[rune.tier]?.color);
+    this.showSet(item, rune.id, out.word ?? null, enchantXp);
+  }
+
+  /** The droppped-rune line for the grid's own refusals (no sockets, full, worn). */
+  gridSocketed(out: SocketDrop): void {
+    if (out.code === 'ok') return;
+    const item = out.item ? itemNameTone(out.item).name : '';
+    const key = out.code === 'no-sockets' ? 'sock.noSockets' : out.code === 'full' ? 'sock.full' : out.code === 'worn' ? 'sock.worn'
+      : out.code === 'no-rune' ? 'sock.noRune' : 'sock.failed';
+    this.announce = this.t(key, { item, rune: out.rune ? `${out.rune.name} Rune` : '' });
+    this.cdr.markForCheck();
+  }
+
+  private showSet(item: GameItem, runeId: string, word: SocketWord | null, enchantXp: number): void {
+    const rune = runeById(runeId);
+    this.announce = word ? this.t('sock.word', { word: word.name, item: item.name }) : this.t('sock.done', { rune: `${rune?.name ?? runeId} Rune`, item: item.name });
     const tier = word ? wordTier(word) : rune?.tier;
     this.reward = {
       seq: ++this.rewardSeq,
@@ -666,31 +717,13 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
         enchantXp ? this.t('minigame.ritual.xp', { n: enchantXp }) : '',
       ].filter(Boolean).join(' · ') || undefined,
     };
-    if (result.discovered && result.word) {
-      // Scaled to the rarest rune the word demands, which is the same scale the
-      // Forge celebrates a find on. A word seating for the first time is the
-      // loudest thing that happens at this table, and the Godforge Seal should
-      // not land as quietly as Cinderling.
-      this.celebration.celebrate(wordTier(result.word));
-    }
+    if (word) this.celebration.celebrate(wordTier(word));
     this.refresh();
   }
 
-  pull(well: WellView): void {
-    if (!this.selected || !well.runeId) return;
-    const result = this.gateway.unsocket(this.selected.id, well.index);
-    if (!result.ok) {
-      this.error = SOCKET_COPY[result.code];
-      this.cdr.markForCheck();
-      return;
-    }
-    this.error = null;
-    this.reward = null;
-    const rune = runeById(well.runeId);
-    // Pulled back out: nothing goes in, the rune comes home to the drawer.
-    this.emitFloor([], floorThing(well.runeId, rune?.name));
-    this.announce = `${rune?.name ?? 'The rune'} is back in the drawer.`;
-    this.refresh();
+  /** The bases a word is made in, for the wall ("Sword, Dagger"). */
+  basesLabel(word: SocketWord): string {
+    return word.bases.map(b => this.t('play.tip.base.' + b)).join(', ');
   }
 
   brew(card: InfusionCard): void {

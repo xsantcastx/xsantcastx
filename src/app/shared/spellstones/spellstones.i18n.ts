@@ -28,5 +28,4 @@ export const SPELLSTONES_I18N: Readonly<Record<string, { en: string; es: string 
   'play.stone.lore': { en: 'The Seamworks scribes cut the cant into basalt because basalt remembers being fire.', es: 'Los escribas de Seamworks tallan el canto en basalto porque el basalto recuerda haber sido fuego.' },
   'play.stone.pouch': { en: 'Stone pouch', es: 'Bolsa de piedras' },
   // ── The blank at Edrin Kade's counter ──
-  'vendor.blank.does': { en: 'Cut to take the cant: inscribe it in the Spellbook with a ranked spell and Soul.', es: 'Tallado para el canto: inscribelo en el Libro de hechizos con un hechizo aprendido y Alma.' },
 };

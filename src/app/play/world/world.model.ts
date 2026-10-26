@@ -57,16 +57,16 @@ export const REALM_TOWN_IDS: readonly RealmTownId[] = ['infernal', 'luminous', '
  */
 export type PanelId =
   | 'market' | 'gambler'
-  | 'crafting' | 'enchanting' | 'runes'
+  | 'crafting' | 'enchanting' | 'brews' | 'shop'
   | 'sanctum' | 'codex'
   | 'quests' | 'arena' | 'trials' | 'character'
-  | 'vendor' | 'homestead' | 'skills' | 'vault' | 'reels'
+  | 'homestead' | 'skills' | 'vault' | 'reels'
   | 'rune-drop' | 'seam-sweeper' | 'eclipse-ascent' | 'account'
   | 'seamworks' | 'canopy' | 'orrery';
 export const PANEL_IDS: readonly PanelId[] = [
-  'market', 'gambler', 'crafting', 'enchanting', 'runes',
+  'market', 'gambler', 'crafting', 'enchanting', 'brews', 'shop',
   'sanctum', 'codex', 'quests', 'arena', 'trials', 'character',
-  'vendor', 'homestead', 'skills', 'vault', 'reels',
+  'homestead', 'skills', 'vault', 'reels',
   'rune-drop', 'seam-sweeper', 'eclipse-ascent', 'account',
   'seamworks', 'canopy', 'orrery',
 ];
@@ -111,6 +111,8 @@ export interface StationDef {
   lockedMessage?: string;
   /** One-line description for the accessible Places list. */
   blurb?: string;
+  /** A shop stall's keeper (shared/shops SHOP_KEEPERS id): the same shop in another city has its own. */
+  keeper?: string;
 }
 
 /**

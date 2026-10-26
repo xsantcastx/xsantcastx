@@ -3,8 +3,8 @@
  *
  * D2's three passes over the same world. Each tier makes every creature
  * tougher and harder-hitting, puts a penalty on the Keeper's resists, and pays
- * for it with better drops: more items, a shift up the rarity ladder, and a
- * higher rune ceiling (the best runes only ever drop in Hell).
+ * for it with better drops: more items and a shift up the rarity ladder. Runes follow the zone's level (canon §6.2,
+ * drop-tables RUNE_LEVEL; a tier's `level` lifts every creature up it), and only Hell lets the Void fall.
  *
  * A tier unlocks once its gate boss falls on the tier below: the Fallen
  * Ephemeris, at the bottom of the Orrery Wells, is the end of a side-view
@@ -50,11 +50,11 @@ export const TD_GATE_BOSS = 'seam-eater-risen';
 export const DIFFICULTIES: Readonly<Record<DifficultyTier, DifficultyDef>> = {
   normal: {
     id: 'normal', hp: 1, damage: 1, level: 0, resistPenalty: 0, creatureResist: 0,
-    itemChance: 1, rarityShift: 0, runeCap: 'rare', deathShare: 0.05, gate: GATE_BOSS, color: '#f2e6d0',
+    itemChance: 1, rarityShift: 0, runeCap: 'mythic', deathShare: 0.05, gate: GATE_BOSS, color: '#f2e6d0',
   },
   nightmare: {
     id: 'nightmare', hp: 2.5, damage: 1.6, level: 20, resistPenalty: 40, creatureResist: 15,
-    itemChance: 1.35, rarityShift: 0.7, runeCap: 'legendary', deathShare: 0.10, gate: GATE_BOSS, color: '#a855f7',
+    itemChance: 1.35, rarityShift: 0.7, runeCap: 'mythic', deathShare: 0.10, gate: GATE_BOSS, color: '#a855f7',
   },
   hell: {
     id: 'hell', hp: 4, damage: 2.2, level: 40, resistPenalty: 100, creatureResist: 30,
