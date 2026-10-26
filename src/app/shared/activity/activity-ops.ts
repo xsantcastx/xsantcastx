@@ -401,7 +401,8 @@ function parseDiscovery(raw: unknown): ActivityDiscovery | null {
 function isDiscipline(value: unknown): value is DisciplineId {
   return value === 'mining' || value === 'foraging' || value === 'prospecting'
     || value === 'exploration' || value === 'forge' || value === 'hunting'
-    || value === 'woodcutting' || value === 'enchanting' || value === 'fishing';
+    || value === 'woodcutting' || value === 'enchanting' || value === 'fishing'
+    || value === 'firemaking' || value === 'cooking';
 }
 
 function isPlain(value: unknown): value is Record<string, unknown> {

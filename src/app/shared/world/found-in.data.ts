@@ -38,6 +38,7 @@ import { CLOCK_ITEMS } from '../world-clock/eclipse.model';
 import { POTIONS } from '../potions/potions.model';
 import { BLANK_ID, SPELLSTONE_MEANING } from '../spellstones/spellstones.model';
 import { WAYGATE_SCROLL_ID, WAYGATE_SCROLL_MEANING } from '../waygate/waygate-scroll';
+import { GATHER_MEANING } from '../gathering/gathering.model';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
@@ -88,6 +89,8 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   for (const place of SPELLSTONE_MEANING.blank.sources) rows.push({ place: place.replace(/^creature drops/, 'Creatures of every hunt').replace(/^Edrin Kade sells it/, 'Seamworks: Edrin Kade\'s counter'), materialIds: [BLANK_ID] });
   // The Waygate Scroll (shared/waygate): Edrin Kade's counter.
   for (const place of WAYGATE_SCROLL_MEANING.foundIn) rows.push({ place, materialIds: [WAYGATE_SCROLL_ID] });
+  // The gathering skills (shared/gathering): each log, fish, meal, the burnt fish and the tinderbox, where it comes from.
+  for (const item of GATHER_MEANING) for (const place of item.sources) rows.push({ place, materialIds: [item.id] });
   void CRATE_IDS;
   return rows;
 }
