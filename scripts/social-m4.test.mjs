@@ -443,6 +443,129 @@ test('protocol 10: the credit is batched — one transaction per Keeper per wind
   assert.ok(commits <= 4);
 });
 
+// ── S5: heals, wards and guards on allies; threat (world/ally-claims.ts, td/td-threat.ts) ──
+const { parseAllyClaim, allyLegal, allyHealBudget, ALLY_WINDOW_MS, REKINDLE_MAX_MS, THREAT } = sim;
+const lifeOf = (max = 1000) => new KeeperLife({ max, defense: 0, resists: {}, level: 30 }, max);
+
+test('S5: the room weighs a heal on an ally — the skill, its level, its reach by the room\'s record, the healer\'s budget', () => {
+  const t = { now: T0 };
+  const lives = new Map([['h', lifeOf()], ['m', lifeOf()], ['far', lifeOf()]]);
+  const w = world('ally', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'h', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'm', x: OPEN.x + 3 * 16, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'far', x: OPEN.x + 40 * 16, y: OPEN.y, level: 30 });
+  for (const id of ['m', 'far']) lives.get(id).hp = 100;
+  // A Hearthlight on the mate beside her lands; its screen is told.
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'm', n: 200 }]), [200]);
+  assert.equal(lives.get('m').hp, 300);
+  assert.ok(w.snapFor('m').ev.some(e => e.k === 'ally' && e.a === 'heal' && e.by === 'h' && e.n === 200), 'the healed hears it');
+  // Too far by the room's record; a skill that heals nobody; a made-up one; one above her level (Rekindle is 30, a
+  // level-10 healer's claim is refused); herself.
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'far', n: 50 }]), ['far']);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'ember-bolt', to: 'm', n: 50 }]), ['illegal']);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'god-hand', to: 'm', n: 50 }]), ['illegal']);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'h', n: 50 }]), ['self']);
+  w.keeper({ id: 'low', x: OPEN.x + 16, y: OPEN.y, level: 10 });
+  assert.deepEqual(w.allies('low', [{ k: 'ward', s: 'lantern-ward', to: 'm', n: 50, t: 120 }]), ['level']);
+  // A forged "heal 99999" is clipped to the level's budget over the window; past it, refused.
+  lives.get('m').hp = 1;
+  const got = w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'm', n: 99999 }])[0];
+  assert.ok(typeof got === 'number' && got <= allyHealBudget(30) * ALLY_WINDOW_MS / 1000, `clipped (${got})`);
+  assert.deepEqual(w.allies('h', [{ k: 'heal', s: 'hearthlight', to: 'm', n: 10 }]), ['budget']);
+  // The wire: unknown keys, a bad kind, a heal with no target are refused before the room sees them.
+  assert.equal(parseAllyClaim({ k: 'heal', s: 'hearthlight', n: 5 }), null);
+  assert.equal(parseAllyClaim({ k: 'smite', s: 'hearthlight', to: 'm', n: 5 }), null);
+  assert.equal(parseAllyClaim({ k: 'heal', s: 'hearthlight', to: 'm', n: 5, x: 1 }), null);
+  assert.ok(parseAllyClaim({ k: 'aura', s: 'banner-of-the-watch', n: 8, r: 60, t: 20 }));
+  assert.equal(allyLegal({ k: 'aura', s: 'banner-of-the-watch', n: 90, r: 60, t: 20 }, { id: 'h', x: 0, y: 0, level: 30 }, null), 'illegal', 'a 90% banner is forged');
+});
+
+test('S5: Rekindle stands a fallen party member up where it fell — only within the window, beside the spot, once a while', () => {
+  const t = { now: T0 };
+  const lives = new Map([['h', lifeOf()], ['m', lifeOf(400)]]);
+  const w = world('rekindle', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'h', x: OPEN.x + 160, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'm', x: OPEN.x, y: OPEN.y, level: 30 });
+  // Nobody fell: nothing to rekindle.
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['late']);
+  lives.get('m').hp = 0; lives.get('m').tick(t.now); t.now += 1000; assert.ok(lives.get('m').tick(t.now)); w.downed('m');
+  // Too far from where it fell.
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['far']);
+  w.keeper({ id: 'h', x: OPEN.x + 20, y: OPEN.y, level: 30 });
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), [160]);
+  assert.equal(lives.get('m').down, false);
+  const ev = w.snapFor('m').ev.find(e => e.k === 'ally' && e.a === 'rekindle');
+  assert.ok(ev && ev.x === OPEN.x && ev.y === OPEN.y, 'it is told where it stands up');
+  // A forged share past the row's top is refused; a second Rekindle waits its turn.
+  lives.get('m').hp = 0; t.now += 1000; lives.get('m').tick(t.now); t.now += 1000; lives.get('m').tick(t.now); w.downed('m');
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 95 }]), ['illegal']);
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['cooldown']);
+  // Too late after the fall.
+  t.now += REKINDLE_MAX_MS + 1000;
+  assert.deepEqual(w.allies('h', [{ k: 'rekindle', s: 'rekindle', to: 'm', n: 40 }]), ['late']);
+});
+
+test('S5: the tank\'s guards are the room\'s — the Banner cuts an ally\'s bites, an Intercept bond hands the tank his share', () => {
+  const t = { now: T0 };
+  const lives = new Map([['tank', lifeOf(2000)], ['m', lifeOf(2000)]]);
+  const w = world('guard', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'tank', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'm', x: OPEN.x + 32, y: OPEN.y, level: 30 });
+  w.snapFor('tank'); w.snapFor('m');
+  w.bite('m', null, 100, 'physical', false, false);
+  const plain = 2000 - lives.get('m').hp;
+  lives.get('m').hp = 2000;
+  assert.deepEqual(w.allies('tank', [{ k: 'aura', s: 'banner-of-the-watch', n: 20, r: 60, t: 20 }]), [1]);
+  w.bite('m', null, 100, 'physical', false, false);
+  assert.equal(2000 - lives.get('m').hp, Math.round(plain * .8), 'the Banner cut it');
+  // A Shared Skin (no damage cut) cuts nothing: only the guards' auras do.
+  lives.get('m').hp = 2000; t.now += 3000;
+  w.allies('tank', [{ k: 'aura', s: 'cinder-skin', n: 15, r: 30, t: 100 }]);
+  w.bite('m', null, 100, 'physical', false, false);
+  assert.equal(2000 - lives.get('m').hp, plain);
+  // Intercept: half of what the mate takes is the tank's.
+  lives.get('m').hp = 2000;
+  assert.deepEqual(w.allies('tank', [{ k: 'bond', s: 'intercept', to: 'm', n: 50, t: 60 }]), [1]);
+  w.bite('m', null, 100, 'physical', false, false);
+  assert.equal(2000 - lives.get('m').hp, Math.round(plain / 2));
+  assert.equal(2000 - lives.get('tank').hp, Math.round(plain / 2));
+  assert.ok(w.snapFor('m').ev.some(e => e.k === 'ally' && e.a === 'bond' && e.n === 50), 'the mate\'s screen mirrors the bond');
+});
+
+test('S5: threat — a room creature goes for the Keeper with the most threat in reach (the Ashguard\'s book ×2, a heal ×0.5, a taunt the top)', () => {
+  const t = { now: T0 };
+  const w = world('threat', t);
+  w.fxQuiet();
+  w.keeper({ id: 'tank', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'dps', x: OPEN.x + 40, y: OPEN.y, level: 30 });
+  const id = w.fxLay('ash-wolf', OPEN.x + 20, OPEN.y, false), m = mobOf(w, id);
+  m.hp = m.def.hp = 1e6;
+  // The tank's blade (his book: ×2) against more raw damage from the warlock: the tank still holds it.
+  w.claims('tank', [{ i: id, d: 60, el: 'physical', s: 'watch-blade' }]);
+  w.claims('dps', [{ i: id, d: 100, el: 'fire' }]);
+  assert.equal(m.threat.get('tank'), 120); assert.equal(m.threat.get('dps'), 100);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'tank');
+  // The warlock pulls ahead (past the 10% it must clear), and the wolf turns.
+  w.claims('dps', [{ i: id, d: 40, el: 'fire' }]);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'dps');
+  // A heal on the tank draws the creatures fighting him to the healer (×0.5).
+  w.keeper({ id: 'heal', x: OPEN.x - 30, y: OPEN.y, level: 30 });
+  w.selfHealed('tank', 0);
+  const before = m.threat.get('heal') ?? 0;
+  sim.healThreat(w.mobs.mobs, 'tank', 'heal', 100);
+  assert.equal((m.threat.get('heal') ?? 0) - before, 100 * THREAT.heal);
+  // A Watch Cry: the taunter jumps to the top +10% and the wolf turns back.
+  assert.equal(w.statuses('tank', [{ i: id, k: 'taunt', s: 'watch-cry', t: 30 }]).landed, 1);
+  t.now += 50; w.tick(.05);
+  assert.ok(m.threat.get('tank') >= Math.max(m.threat.get('dps'), m.threat.get('heal') ?? 0) * THREAT.tauntTop - 1e-6);
+  assert.equal(m.tauntBy, 'tank');
+});
+
 test('protocol 10 guard: the save ceiling counts what the HUD counts — runes, Socket Words, packed saves (2026-10-26 "261 life")', () => {
   const rec = (id, slot, over = {}) => ({
     id, definitionId: `artifact:${id}`, kind: 'instance', category: 'artifacts', tags: ['artifact'], rarity: 'common', soulbound: false,
@@ -462,4 +585,167 @@ test('protocol 10 guard: the save ceiling counts what the HUD counts — runes, 
   // Runes set in an armour well ward against their element: the room's ceiling carries it (it did not before).
   assert.ok(b.resists.fire > a.resists.fire, `armour runes counted: ${a.resists.fire} → ${b.resists.fire}`);
   assert.equal(sim.keeperBudget({ activity, look, inventory: { v: runed, updatedAt: '' } }).guard.max, sim.slackGuard(b).max);
+});
+
+// ── The Keepers' summons (room-kin.ts; the owner: "the monsters aren't attacking my minions") ──
+const skel = (i, x, y, h = 120, m = 120) => ({ i, k: 'skel', x, y, f: 1, h, m });
+
+test('summons: the room takes a Keeper\'s raised within its skills and leash and refuses forged, too many or too far', () => {
+  const t = { now: T0 };
+  const w = world('kin', t);
+  w.fxQuiet();
+  w.keeper({ id: 'a', x: OPEN.x, y: OPEN.y, level: 1 });
+  // Level 1: Raise Skeleton's cap (its rank, plus gear that adds one) — the rest are refused 'cap'.
+  const cap = sim.kinCap(1), many = Array.from({ length: cap + 2 }, (_, n) => skel(`k${n + 1}`, OPEN.x + 10, OPEN.y + n * 2, 50, 50));
+  let r = w.kin('a', many);
+  assert.equal(r.ok.length, cap);
+  assert.deepEqual(r.no.map(n => n.why), ['cap', 'cap']);
+  // Forged life (past what the summon's own definition allows at that level), past the leash, a dead id: refused.
+  r = w.kin('a', [skel('k1', OPEN.x + 10, OPEN.y, 50, 50), skel('k2', OPEN.x + 10, OPEN.y, 1e5, 1e5), skel('k3', OPEN.x + sim.KIN_LEASH + 20, OPEN.y)]);
+  assert.deepEqual(r.ok, ['k1']);
+  assert.deepEqual(r.no.map(n => [n.i, n.why]), [['k2', 'life'], ['k3', 'far']]);
+  // A pet or a wisp is a picture: neither taken nor refused. Ones the list no longer names are gone.
+  r = w.kin('a', [{ i: 'p', k: 'pet', x: OPEN.x, y: OPEN.y, f: 1 }, { i: 'w0', k: 'wisp', x: OPEN.x, y: OPEN.y, f: 1 }]);
+  assert.deepEqual([r.ok, r.no], [[], []]);
+  assert.equal(w.kinNow('a').length, 0);
+  // A Keeper the room does not hold in the area: nothing taken.
+  assert.deepEqual(w.kin('ghost', [skel('k1', 0, 0)]).ok, []);
+  // Once held, the life is the room's: the owner's word lowers it, and raises it only as fast as heals could.
+  w.kin('a', [skel('k9', OPEN.x + 10, OPEN.y, 50, 120)]);
+  w.kin('a', [skel('k9', OPEN.x + 10, OPEN.y, 120, 120)]);
+  assert.ok(w.kinNow('a')[0].hp < 60, `healed no faster than its heals (${w.kinNow('a')[0].hp})`);
+});
+
+test('summons: a room creature hunts and bites a Keeper\'s raised; the owner is told; it falls on the room\'s word', () => {
+  const t = { now: T0 };
+  const w = world('kin-bite', t);
+  w.fxQuiet();
+  w.keeper({ id: 'a', x: OPEN.x, y: OPEN.y, level: 20 });
+  // The skeleton stands between its Warlock and the wolf (td-threat pickKin: the raised step into its face).
+  assert.deepEqual(w.kin('a', [skel('k1', OPEN.x + 50, OPEN.y, 60, 60)]).ok, ['k1']);
+  const id = w.fxLay('ash-wolf', OPEN.x + 64, OPEN.y, false), m = mobOf(w, id);
+  m.hp = m.def.hp = 1e6;
+  let bites = [], sawKin = false;
+  for (let i = 0; i < 400 && !bites.some(e => e.x === 1); i++) {
+    t.now += 50; w.tick(.05);
+    sawKin ||= m.threatOn === 'a/k1';
+    bites.push(...w.snapFor('a').ev.filter(e => e.k === 'kin'));
+  }
+  assert.ok(sawKin, 'the wolf went for the skeleton');
+  assert.ok(bites.length >= 2, `bitten (${bites.length})`);
+  assert.ok(bites.every(e => e.to === 'a' && e.p === 'k1' && e.d > 0 && e.i === id), JSON.stringify(bites[0]));
+  assert.equal(bites.at(-1).x, 1, 'it fell on the room');
+  assert.equal(w.kinNow('a').length, 0);
+  // Fallen, it cannot be talked back up; the wolf turns to its Warlock.
+  assert.deepEqual(w.kin('a', [skel('k1', OPEN.x + 50, OPEN.y, 60, 60)]).no, [{ i: 'k1', why: 'dead' }]);
+  for (let i = 0; i < 20; i++) { t.now += 50; w.tick(.05); }
+  assert.notEqual(m.threatOn, 'a/k1');
+  // Shared Bones (its guard) cuts the room's bites; a summon gone from the list is forgotten by the creatures.
+  w.kin('a', [skel('k2', OPEN.x + 50, OPEN.y, 600, 600)], 50);
+  assert.equal(w.kinNow('a')[0].g, 50);
+  assert.equal(w.kin('a', [skel('k3', OPEN.x + 50, OPEN.y, 600, 600)], 90).ok.length, 1);
+  assert.equal(w.kinNow('a')[0].g, 50, 'never past the mark\'s most');
+});
+
+test('summons: a summon\'s blows make its own threat; it out-threatens or taunts a creature off another Keeper', () => {
+  const t = { now: T0 };
+  const w = world('kin-threat', t);
+  w.fxQuiet();
+  w.keeper({ id: 'tank', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'lock', x: OPEN.x + 60, y: OPEN.y, level: 30 });
+  w.kin('lock', [skel('k1', OPEN.x + 30, OPEN.y + 8, 800, 800)]);
+  const id = w.fxLay('ash-wolf', OPEN.x + 20, OPEN.y, false), m = mobOf(w, id);
+  m.hp = m.def.hp = 1e6;
+  w.claims('tank', [{ i: id, d: 50, el: 'physical' }]);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'tank', 'the tank holds it; a skeleton beside it does not pull it off him');
+  // The skeleton's blows (a claim naming it) are its own threat, never its Warlock's; a forged summon id is the Keeper's.
+  w.claims('lock', [{ i: id, d: 80, el: 'physical', k: 'k1' }, { i: id, d: 5, el: 'physical', k: 'k7' }]);
+  assert.equal(m.threat.get('lock/k1'), 80);
+  assert.equal(m.threat.get('lock'), 5);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'lock/k1', 'it out-threatens the tank');
+  // The tank's Watch Cry takes it back; a Captain of the Dead's taunt turns it on the Captain.
+  w.statuses('tank', [{ i: id, k: 'taunt', s: 'watch-cry', t: 20 }]);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.tauntBy, 'tank');
+  for (let i = 0; i < 60; i++) { t.now += 50; w.tick(.05); }
+  assert.equal(w.statuses('lock', [{ i: id, k: 'taunt', s: 'raise-skeleton', m: 'a3', t: 15 }]).landed, 1);
+  assert.equal(m.tauntBy, 'lock/k1');
+  t.now += 50; w.tick(.05);
+  assert.ok(m.threat.get('lock/k1') >= m.threat.get('tank') * 1.1 - 1e-6);
+});
+
+test('summons over HTTP: a screen that says kin tells the room; its skeleton is bitten and the other Keeper sees it', async t => {
+  const { post, join, move, stream, step } = await room(t);
+  const a = await join('Aster'), b = await join('Bryn');
+  assert.equal(a.kin, true);
+  await move(a, OPEN.x, OPEN.y); await move(b, OPEN.x + 20, OPEN.y);
+  const sa = await stream(a), sb = await stream(b);
+  await step(3);
+  const sk = skel('k1', OPEN.x + 50, OPEN.y, 60, 60);
+  let r = await post('/coop/pals', { area: AREA, pals: [sk], kin: 1, g: 0 }, a.token);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.kin.ok, ['k1']);
+  // Forged and malformed: refused by the room, or the body refused whole.
+  r = await post('/coop/pals', { area: AREA, pals: [sk, skel('k2', OPEN.x + 900, OPEN.y)], kin: 1 }, a.token);
+  assert.deepEqual(r.body.kin.no, [{ i: 'k2', why: 'far' }]);
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [sk, sk], kin: 1 }, a.token)).status, 400);
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [sk], kin: 1, g: 500 }, a.token)).status, 400);
+  // Bryn sees Aster's skeleton (the owner's word, relayed to everyone in the area).
+  assert.ok(await sb.until(() => sb.all('coop-pals').some(e => e.from === a.id && e.pals.some(p => p.i === 'k1'))), 'Bryn sees it');
+  await post('/coop/pals', { area: AREA, pals: [sk], kin: 1 }, a.token);
+  await post('/world/fx', { quiet: true, lay: { type: 'ash-wolf', dx: 64, dy: 0, calm: false } }, a.token);
+  let bite = null;
+  for (let i = 0; i < 200 && !bite; i++) { await step(1, 100); bite = sa.all('coop-snap').flatMap(e => e.ev).find(e => e.k === 'kin' && e.p === 'k1'); }
+  assert.ok(bite, 'Aster is told its skeleton was bitten');
+  assert.equal(sb.all('coop-snap').flatMap(e => e.ev).filter(e => e.k === 'kin').length, 0, 'only its owner hears the bite');
+});
+
+test('summons: an older screen (no kin) keeps the party path; the room never bites what it was not told', async t => {
+  const { post, join, move, step } = await room(t);
+  const old = await join('Oskar', { protocol: 9 });
+  assert.equal(old.kin, undefined);
+  await move(old, OPEN.x, OPEN.y);
+  await step(2);
+  // Not in a party: the party path answers as it always did.
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [skel('k1', OPEN.x + 10, OPEN.y)] }, old.token)).status, 409);
+  const a = await join('Aster');
+  await move(a, OPEN.x, OPEN.y);
+  await step(2);
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [skel('k1', OPEN.x + 10, OPEN.y)] }, a.token)).status, 409);
+});
+
+test('S5: online heals land their real amount — Hearthlight\'s ticks, Hearthsong\'s pulses, the Circle — up to the bounds', () => {
+  const t = { now: T0 };
+  // A Lanternwright (level 45: Hearthsong is her row 42) and her tank at 40% of 260 (the e2e's tank).
+  const lives = new Map([['tank', lifeOf(260)], ['tank2', lifeOf(260)]]);
+  const w = world('ally-real', t, id => lives.get(id) ?? null);
+  w.fxQuiet();
+  w.keeper({ id: 'heal', x: OPEN.x, y: OPEN.y, level: 45 });
+  w.keeper({ id: 'heal2', x: OPEN.x - 16, y: OPEN.y, level: 45 });
+  w.keeper({ id: 'tank', x: OPEN.x + 3 * 16, y: OPEN.y, level: 20 });
+  w.keeper({ id: 'tank2', x: OPEN.x + 2 * 16, y: OPEN.y, level: 20 });
+  const tank = lives.get('tank');
+  tank.hp = 104;
+  // Hearthlight (rank 1, ×1.6 at level 20 = 48): three ticks of 16 a second apart — every point lands.
+  for (let i = 0; i < 3; i++) { assert.deepEqual(w.allies('heal', [{ k: 'heal', s: 'hearthlight', to: 'tank', n: 16 }]), [16]); t.now += 1000; }
+  assert.equal(tank.hp, 152);
+  // Hearthsong: 3% of his life + 20 (≈28) every half second for 4 s — every pulse whole.
+  for (let i = 0; i < 8 && tank.hp < 250; i++) { const before = tank.hp; const [n] = w.allies('heal', [{ k: 'heal', s: 'hearthsong', to: 'tank', n: 28 }]); assert.equal(n, Math.min(28, 260 - before)); t.now += 500; }
+  // The Hearth Circle's tick (4 × 1.6 ≈ 6) lands as well; at his most, nothing more moves.
+  tank.hp = 200;
+  assert.deepEqual(w.allies('heal', [{ k: 'heal', s: 'hearth-circle', to: 'tank', n: 6 }]), [6]);
+  tank.hp = 260;
+  assert.deepEqual(w.allies('heal', [{ k: 'heal', s: 'hearthlight', to: 'tank', n: 16 }]), [0]);
+  // The bounds: a target takes at most 60% of its most a second (over the 3 s window) from all healers together…
+  t.now += 5000;
+  const t2 = lives.get('tank2');
+  t2.hp = 1;
+  let got = 0;
+  // (Kept near empty, so its most life never stops a heal first.)
+  for (let i = 0; i < 6; i++) for (const h of ['heal', 'heal2']) { t2.hp = 1; const [n] = w.allies(h, [{ k: 'heal', s: 'hearthsong', to: 'tank2', n: 100 }]); got += typeof n === 'number' ? n : 0; }
+  assert.equal(got, Math.round(260 * .6 * 3), `the target's share (${got})`);
+  // …and a healer gives at most 80 + 40 × level a second over the window (level 20: 880/s).
+  assert.equal(allyHealBudget(20), 880);
 });

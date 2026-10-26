@@ -4,6 +4,7 @@ import type { OfferItem } from '../trade/trade-items';
 import type { WorldCreditAsk, WorldCreditMsg, WorldGroundMsg, WorldTakeResult } from './world-protocol';
 import type { CoopStatus } from '../world/room-status';
 import type { LifeClaim, LifeView } from '../world/keeper-life';
+import type { AllyClaim } from '../world/ally-claims';
 
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
@@ -58,6 +59,10 @@ export interface RoomSnapshot {
   life?: boolean;
   /** Protocol 10: the room pays this Keeper's Hunting XP and hunt Gold (play/world/room-credit.ts; signed in only). */
   credits?: boolean;
+  /** S5: the room weighs heals and guards on allies (world/ally-claims.ts). An older room: the screen sends none. */
+  allies?: boolean;
+  /** The room hunts each Keeper's summons (its raised): the companions list goes to it, party or not. An older room: none. */
+  kin?: boolean;
 }
 /** Protocol 10: the room's answer to a batch of claims (what it refused, and why). */
 export interface RoomClaimReply { ok?: boolean; no?: { i: string; why: string }[]; st?: { no?: { i: string; why: string }[] } }
@@ -332,7 +337,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true, allies: result.allies === true, kin: result.kin === true });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -533,17 +538,22 @@ export class SocialRoom {
   /** Protocol 10: the room keeps this Keeper's life, and the room is reachable. */
   get canLife(): boolean { return this.canWorld && (this.snapshot.protocol ?? 0) >= ROOM_LIFE_PROTOCOL && this.snapshot.life === true; }
   /** Protocol 10: post life claims (and the guard); the room's word on the life, or null when it did not reach. */
-  async worldLife(body: { g?: { m: number; d: number; r: number[] }; c: LifeClaim[] }): Promise<LifeView | null> {
+  async worldLife(body: { g?: { m: number; d: number; r: number[] }; c: LifeClaim[]; a?: AllyClaim[] }): Promise<(LifeView & { a?: (number | string)[] }) | null> {
     if (!this.canLife || !this.token || this.paused) return null;
+    // S5: an older room refuses a body it does not know; it hears no ally claims.
+    if (body.a && this.snapshot.allies !== true) { const { a: _, ...rest } = body; body = rest; }
     try {
       const response = await this.send(`${this.endpoint}/world/life`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
         body: JSON.stringify(body), signal: AbortSignal.timeout(4000),
       });
       if (!response.ok) return null;
-      const r = await response.json().catch(() => null) as { me?: LifeView } | null;
+      const r = await response.json().catch(() => null) as { me?: LifeView; a?: unknown } | null;
       const me = r?.me;
-      return me && Number.isFinite(me.h) && Number.isFinite(me.m) && Number.isFinite(me.q) ? me : null;
+      if (!(me && Number.isFinite(me.h) && Number.isFinite(me.m) && Number.isFinite(me.q))) return null;
+      // S5: the room's word on each ally claim (what it moved, or why not).
+      const a = Array.isArray(r?.a) ? (r!.a as unknown[]).slice(0, 16).map(x => (typeof x === 'number' && Number.isFinite(x) ? x : typeof x === 'string' ? x.slice(0, 12) : 0)) : undefined;
+      return { ...me, ...(a ? { a } : {}) };
     } catch { return null; }
   }
   /** Protocol 10: the room pays this Keeper's XP and Gold (signed in, a protocol-10 room). */
@@ -560,10 +570,17 @@ export class SocialRoom {
     } catch { return false; }
   }
   /** Post this Keeper's own companions to the party in its area. */
-  coopPals(body: { area: string; pals: CoopPal[] }): Promise<boolean> { return this.coopPost('pals', body); }
+  coopPals(body: { area: string; pals: CoopPal[]; g?: number }): Promise<boolean> {
+    // The room hunts summons (`kin`): it hears them party or not, marked so it knows this screen applies its bites.
+    // An older room: only the party hears them, as before (and never the guard).
+    const { g, ...plain } = body;
+    if (this.roomKin) return this.coopPost('pals', { ...plain, kin: 1, ...(g ? { g } : {}) });
+    return this.coopPost('pals', plain);
+  }
+  private get roomKin(): boolean { return this.canWorld && this.snapshot.kin === true; }
   private async coopPost(verb: 'snap' | 'hits' | 'pals', body: unknown): Promise<boolean> {
-    // Claims also go to the room itself where it runs the world (protocol 7), party or not.
-    if (!(this.canCoop || (verb === 'hits' && this.canWorld)) || !this.token || this.paused) return false;
+    // Claims also go to the room itself where it runs the world (protocol 7), party or not; so do summons (`kin`).
+    if (!(this.canCoop || (verb === 'hits' && this.canWorld) || (verb === 'pals' && this.roomKin)) || !this.token || this.paused) return false;
     try {
       const response = await this.send(`${this.endpoint}/coop/${verb}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },

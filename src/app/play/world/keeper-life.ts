@@ -46,6 +46,8 @@ export const LIFE = Object.freeze({
   guardSlack: 1.5,
   /** Claims in one batch. */
   maxClaims: 24,
+  /** S5: other Keepers' heals land at most this share of the most life a second, over WINDOW_MS (all healers together). */
+  allyShare: 0.6,
 });
 
 const finite = (n: unknown, d = 0): number => (typeof n === 'number' && Number.isFinite(n) ? n : d);
@@ -87,12 +89,15 @@ export class KeeperLife {
   dyingAt = 0;
   /** The last bite (ms). */
   lastHitAt = -Infinity;
+  /** S5: an ally's Vow for Two holds this Keeper above zero until then (ms). */
+  vowUntil = 0;
   /** The highest claim sequence taken (applied, clipped or refused). */
   ack = 0;
   private potionAt = -Infinity;
   private heals: { at: number; n: number }[] = [];
   private soaks: { at: number; n: number }[] = [];
   private bites: { at: number; n: number }[] = [];
+  private allyHeals: { at: number; n: number }[] = [];
   readonly stats = { bites: 0, dealt: 0, healed: 0, clipped: 0, refused: 0, downs: 0 };
 
   constructor(guard: KeeperGuard, hp?: number) {
@@ -116,7 +121,9 @@ export class KeeperLife {
     if (this.down || statusOnly || !(raw > 0)) return 0;
     const ty = (type === 'fire' || type === 'cold' || type === 'lightning' || type === 'arcane' ? type : 'physical') as DamageType;
     const atk = Number.isFinite(atkLevel) ? atkLevel as number : this.guard.level;
-    const n = incomingDamage(raw * gapHurt(levelGap(this.guard.level, atk)), ty, this.guard.defense, atk, this.guard.resists);
+    let n = incomingDamage(raw * gapHurt(levelGap(this.guard.level, atk)), ty, this.guard.defense, atk, this.guard.resists);
+    // S5: an ally's vow (Vow for Two) holds it on its last point while it lasts.
+    if (this.vowUntil > now && this.hp - n < 1) n = Math.max(0, Math.round(this.hp) - 1);
     this.hp -= n;
     this.lastHitAt = now;
     this.bites.push({ at: now, n });
@@ -168,6 +175,32 @@ export class KeeperLife {
     this.stats.healed += moved;
     if (this.hp > 0) this.dyingAt = 0;
     return { ok: true, n: moved };
+  }
+  /**
+   * S5: another Keeper's heal (ally-claims.ts, already weighed against the healer's budget): at most ALLY_SHARE of the
+   * most life a second over the window from all healers together, never past the most. What it moved.
+   */
+  allyHeal(n: number, now: number): number {
+    if (this.down || !(n > 0)) return 0;
+    const room = this.guard.max * LIFE.allyShare * LIFE.windowMs / 1000 - this.window(this.allyHeals, now);
+    const allow = Math.max(0, Math.min(Math.round(n), room));
+    const moved = Math.min(allow, Math.max(0, this.guard.max - this.hp));
+    this.allyHeals.push({ at: now, n: allow });
+    this.hp += moved;
+    this.stats.healed += moved;
+    if (this.hp > 0) this.dyingAt = 0;
+    return moved;
+  }
+  /**
+   * S5: Rekindle — a Lanternwright knelt where this Keeper fell: it stands there with `pct`% of its most life (the room
+   * checked the fall's clock and place). Down or already woken at a hearth, it is up at that share now. What it holds.
+   */
+  rekindle(pct: number): number {
+    const share = Math.max(.05, Math.min(.7, pct / 100));
+    this.down = false; this.dyingAt = 0; this.lastHitAt = -Infinity;
+    this.hp = Math.max(1, Math.round(this.guard.max * share));
+    this.heals = []; this.soaks = []; this.bites = []; this.allyHeals = [];
+    return this.hp;
   }
   /** Every step: a Keeper at zero past its grace is down. True the step it goes down. */
   tick(now: number): boolean {

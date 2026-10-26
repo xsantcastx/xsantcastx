@@ -1050,6 +1050,8 @@ export class SideScrollerComponent implements OnDestroy {
     const p10 = worldOn && (snapshot.protocol ?? 0) >= 10;
     (this.engine as unknown as { setRoomStatus?: (on: boolean) => void; setRoomLife?: (on: boolean) => void } | undefined)?.setRoomStatus?.(p10);
     (this.engine as unknown as { setRoomLife?: (on: boolean) => void } | undefined)?.setRoomLife?.(p10 && snapshot.life === true);
+    // The room hunts this Keeper's summons too (`kin`): its raised are told to it, and their blows name them.
+    (this.engine as unknown as { setRoomKin?: (on: boolean) => void } | undefined)?.setRoomKin?.(p10 && snapshot.kin === true);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -1759,6 +1761,8 @@ export class SideScrollerComponent implements OnDestroy {
       // The Cold Hearth (shared/hearth, top-down): a fall's cost, the wake at the hearth, a hearth lit, the shrine.
       onFall: event => this.zone.run(() => this.tdFell(event)),
       onWoke: event => this.zone.run(() => this.tdWoke(event)),
+      // S5: a Lanternwright's Rekindle stood the Keeper up where it fell: the purse comes home, the debt is forgiven.
+      onRekindle: () => this.zone.run(() => this.tdRekindled()),
       onHearth: event => this.zone.run(() => this.hearthLit(event)),
       onShrine: event => this.zone.run(() => this.openShrine(event)),
       onWorldAction: event => this.zone.run(() => {
@@ -2151,6 +2155,17 @@ export class SideScrollerComponent implements OnDestroy {
     clearTimeout(this.wakeTimer);
     this.wakeTimer = setTimeout(() => this.zone.run(() => { this.wakeCard = null; }), 12000);
   }
+  /** S5: Rekindle undid the fall — its purse back in hand, its debt forgiven, no wake card. */
+  private tdRekindled(): void {
+    if (!this.browser) return;
+    const fall = this.lastFall ?? this.wakeCard?.fall ?? null;
+    this.lastFall = null; this.wakeCard = null;
+    const gold = this.loot.recover();
+    if (fall && !fall.grace && fall.debt > 0) this.hearth.forgive(fall.debt);
+    this.message = this.t('play.rekindled', { n: gold });
+    this.sound.sfx('revive');
+    this.pushPurse();
+  }
   /** A hearth lit by the Keeper's hand: it is the wake point now. */
   private hearthLit(event: { id: string; town: string; capital: boolean }): void {
     const { first } = this.hearth.light(event.id);
@@ -2291,7 +2306,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** The engine made a sound: give it its material (a cell's, or the town street's). */
   private engineSfx(cue: EngineSfx): void {
     const material = cue.node ? materialOf(cue.node) : TOWN_GROUND[this.soundRealm()] ?? 'stone';
-    this.sound.sfx(cue.kind, { material });
+    this.sound.sfx(cue.kind, { material, ...(cue.pitch ? { pitch: cue.pitch } : {}) });
     // The landed fish reached the Keeper: into the Satchel it goes.
     if (cue.kind === 'catch') this.zone.run(() => this.pulseSatchel());
   }

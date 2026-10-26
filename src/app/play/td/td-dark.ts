@@ -23,6 +23,11 @@ export const HUSH_QUIET_LANDS: readonly string[] = ['ember-isle'];
 
 /** Where the Keeper stands, as the Hush reads it. */
 export interface HushPlace {
+  /**
+   * The Keeper's own hand on how fast the Hush rises (S5, the Hush-rate hook: skill-book-stand-ins.md "New work"): a
+   * multiplier from his marks — Moth Hours, the shutters closed, reads 0.5. It never touches the Hush falling.
+   */
+  keeper?: number;
   /** A dark level (a dungeon floor, a cellar). */
   dark: boolean;
   /** Its floor number (1 = the first floor down); 0 on the surface. */
@@ -72,7 +77,8 @@ export function hushRate(p: HushPlace): number {
   } else if (p.phase === 'eclipse') up = HUSH_RATE.eclipse;
   else if (p.phase === 'night') up = HUSH_RATE.night;
   if (up <= 0) return HUSH_RATE.day;
-  return p.lit ? up * HUSH_RATE.litShare : up;
+  const k = p.keeper !== undefined && p.keeper >= 0 ? p.keeper : 1;
+  return (p.lit ? up * HUSH_RATE.litShare : up) * k;
 }
 
 /** Is the Hush awake at all for this Keeper here? */

@@ -43,18 +43,18 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
   },
   'skill.hearthlight': { en: 'Hearthlight', es: 'Luz del hogar' },
   'skill.hearthlight.text': {
-    en: 'A warm glow rises from your feet: {{heal}} life back over {{secs}} seconds.',
-    es: 'Un brillo calido sube desde tus pies: {{heal}} de vida en {{secs}} segundos.',
+    en: 'A warm glow rises at the feet of the lowest ally within {{reach}} tiles, you among them: {{heal}} life back over {{secs}} seconds, 3% more for every level you hold.',
+    es: 'Un brillo calido sube a los pies del aliado mas herido a {{reach}} casillas, tu incluido: {{heal}} de vida en {{secs}} segundos, un 3% mas por cada nivel que tengas.',
   },
   'skill.hearth-circle': { en: 'Hearth Circle', es: 'Circulo del hogar' },
   'skill.hearth-circle.text': {
-    en: 'A ring of warm stones round a little fire, {{radius}} tiles wide, for {{secs}} seconds: inside it you mend {{heal}} life a second, foes walk {{slow}}% slower, and the Hush cannot rise.',
-    es: 'Un anillo de piedras calidas alrededor de un fuego pequeno, de {{radius}} casillas, durante {{secs}} segundos: dentro recuperas {{heal}} de vida por segundo, los enemigos caminan un {{slow}}% mas lento y el Silencio no puede crecer.',
+    en: 'A ring of warm stones round a little fire, {{radius}} tiles wide, for {{secs}} seconds: you and every ally inside mend {{heal}} life a second (3% more for every level you hold), foes walk {{slow}}% slower, and the Hush cannot rise.',
+    es: 'Un anillo de piedras calidas alrededor de un fuego pequeno, de {{radius}} casillas, durante {{secs}} segundos: tu y cada aliado dentro recuperais {{heal}} de vida por segundo (un 3% mas por cada nivel que tengas), los enemigos caminan un {{slow}}% mas lento y el Silencio no puede crecer.',
   },
   'skill.lantern-ward': { en: 'Lantern Ward', es: 'Guarda del farol' },
   'skill.lantern-ward.text': {
-    en: 'A brass frame of hearthlight round you drinks {{absorb}} damage for {{secs}} seconds. When it breaks it flashes: every foe within {{radius}} tiles stands blinded for {{stun}} seconds.',
-    es: 'Un marco de laton de luz del hogar te rodea y absorbe {{absorb}} de dano durante {{secs}} segundos. Al romperse destella: cada enemigo a {{radius}} casillas queda cegado {{stun}} segundos.',
+    en: 'A brass frame of hearthlight round the lowest ally within {{reach}} tiles (you, alone) drinks {{absorb}} damage for {{secs}} seconds. When yours breaks it flashes: every foe within {{radius}} tiles stands blinded for {{stun}} seconds.',
+    es: 'Un marco de laton de luz del hogar rodea al aliado mas herido a {{reach}} casillas (a ti, si estas solo) y absorbe {{absorb}} de dano durante {{secs}} segundos. Al romperse el tuyo destella: cada enemigo a {{radius}} casillas queda cegado {{stun}} segundos.',
   },
   'skill.last-light': { en: 'Last Light', es: 'Ultima luz' },
   'skill.last-light.text': {
@@ -81,4 +81,24 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'lamp.open': { en: 'The lantern is open again.', es: 'El farol vuelve a estar abierto.' },
   'lamp.lastlight': { en: 'Last Light. You do not go dark.', es: 'Ultima luz. No te apagas.' },
   'dark.chest.shutter': { en: 'Only the dark can see it. Shutter the Lantern to let your light burn low.', es: 'Solo la oscuridad puede verlo. Cierra el farol para que tu luz arda baja.' },
+  'play.td.tree.var.immune': { en: 'Grace (s)', es: 'Gracia (s)' },
+  'play.td.tree.var.channel': { en: 'Kneel (s)', es: 'De rodillas (s)' },
+  'play.td.tree.var.window': { en: 'After a fall (s)', es: 'Tras una caida (s)' },
+  'play.td.tree.var.flat': { en: 'Life each pulse', es: 'Vida por pulso' },
+  // ── S5: the healer's kit (skills-100.md §3) ──
+  'skill.cleanse': { en: 'Cleanse', es: 'Purificar' },
+  'skill.cleanse.text': {
+    en: 'Lifts every Burn, Chill, Freeze, Bleed, Root, Stun, Blind and Weaken from the lowest ally within {{reach}} tiles (you, alone), never Wet; for {{immune}} seconds after, none of them takes hold again.',
+    es: 'Quita toda Quemadura, Escarcha, Congelacion, Sangrado, Enraizado, Aturdido, Ceguera y Debilidad del aliado mas herido a {{reach}} casillas (a ti, si estas solo), nunca Mojado; durante {{immune}} segundos despues, ninguno vuelve a prender.',
+  },
+  'skill.rekindle': { en: 'Rekindle', es: 'Reavivar' },
+  'skill.rekindle.text': {
+    en: 'Kneel {{channel}} seconds where a party member fell, within {{window}} seconds of the fall and {{reach}} tiles of the spot: they stand up there with {{pct}}% of their life, and the fall costs them nothing. A blow breaks the kneel.',
+    es: 'Arrodillate {{channel}} segundos donde cayo un companero, antes de {{window}} segundos de la caida y a {{reach}} casillas del sitio: se levanta alli con el {{pct}}% de su vida, y la caida no le cuesta nada. Un golpe rompe el arrodillarse.',
+  },
+  'skill.hearthsong': { en: 'Hearthsong', es: 'Cancion del hogar' },
+  'skill.hearthsong.text': {
+    en: 'Sing up to {{secs}} seconds, standing still, mana every second: every half second you and every ally within {{radius}} tiles mend {{heal}}% of their life and {{flat}} more. A blow ends the song.',
+    es: 'Canta hasta {{secs}} segundos, quieto, gastando mana cada segundo: cada medio segundo tu y cada aliado a {{radius}} casillas recuperais el {{heal}}% de vuestra vida y {{flat}} mas. Un golpe acaba la cancion.',
+  },
 };

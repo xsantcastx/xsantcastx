@@ -12,7 +12,7 @@
  * the same setters), so the play component keeps all its wiring; members the
  * top-down world has no use for yet are no-ops (see createTopDownEngine).
  */
-import type { CorpseView, EngineOptions, EngineState, EngineInput, LootRow } from '../engine/engine.model';
+import type { CorpseView, EngineOptions, EngineSfx, EngineState, EngineInput, LootRow } from '../engine/engine.model';
 import type { LootRarity, StationDef } from '../world/world.model';
 import { FIGURE_K, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
@@ -22,6 +22,7 @@ import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../.
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, SOLID_GROUND, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { paintRichGround, richEdge } from './td-ground';
+import { organic, paintFieldTile } from './td-terrain';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
@@ -29,12 +30,12 @@ import { offerClassic, onGraphics, optCamera, optHdFigures, optHdWorld, optIso }
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
-import { AuraFx as LookAuraFx, rimGlow as lookRimGlow } from './td-aura-look';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
 import { HD_KEEPER, HD_PET, HD_PET_ID, HD_SKEL, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
 import { paintRichGroundHd } from './td-ground';
-import { organic, paintFieldTile } from './td-terrain';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
+import { skillKit, type KeeperAnim } from './td-skill-kit';
+import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawKeeperStatus, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { castable } from './td-abilities';
 import { creatureProfile } from '../../shared/loot/creature-families';
@@ -88,7 +89,11 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
 };
 import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, mobCell, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, minionPalId, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
+import type { AllyClaim } from '../world/ally-claims';
+/** S5: the Keepers within this many tiles are the heals' and guards' allies; at most this many ally claims a send. */
+const ALLY_SEEN_TILES = 14;
+const ALLY_CLAIMS_PER_SEND = 16;
 import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
 import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
@@ -103,7 +108,7 @@ import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampS
 import { THORN_FX, drawArrow, drawBeast, drawThornAir, drawThornGround, drawThornState, drawThornZones } from './td-thorn-fx';
 import { SPIRIT_BEAST, THORN_PET, bondShare, spiritLevel, thornPetRest } from './td-thorn';
 import { dropGlow, dropIconSrc } from './td-drop-art';
-import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
+import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { ROAM, Stand, newRoam, stepRoam } from './td-roam';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
@@ -122,7 +127,7 @@ import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
 import { TdCoop, type CoopRole } from './td-coop';
 import { LifeMirror } from '../world/life-mirror';
 import type { LifeView } from '../world/keeper-life';
-import { ELEMENTS } from '../../shared/loot/damage.model';
+import { DAMAGE_COLORS, ELEMENTS, type DamageType } from '../../shared/loot/damage.model';
 import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
 import type { WorldDrop } from '../social/world-protocol';
 import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
@@ -267,6 +272,8 @@ export class TopDownEngine {
   private chaseTimer = 0;
   /** The swing being played (seconds left) and which way it faces. */
   private actT = 0;
+  /** S3: the Keeper's fight animation playing now (td-keeper-anim), and how far in. */
+  private kAnim: { anim: KeeperAnim; t: number; el: DamageType } | null = null;
   /** Is a point over a creature's body (an effect there stays ≤ 60%, effects-spec §Budget)? */
   private readonly overFoe = (x: number, y: number): boolean => this.mobs.mobs.some(m => Math.abs(x - m.x) < m.def.w / 2 && y < m.y && y > m.y - m.def.h);
   /** A tree being cut: hits so far, the next swing's timer. */
@@ -458,6 +465,13 @@ export class TopDownEngine {
   private lifeGuardSent = '';
   /** The room holds this Keeper down (its fall is under way until a hearth wakes it). */
   private roomDown = false;
+  // ── S5: allies (world/ally-claims.ts) ──
+  /** The life of the Keepers near, as the room keeps it (its snapshots' `al`). */
+  private readonly allyLife = new Map<string, { h: number; m: number; d: boolean }>();
+  /** Where this Keeper last fell (a Rekindle stands it up there). */
+  private lastFallAt: { continent: string; level: string; x: number; y: number } | null = null;
+  /** Heals this screen claimed on others (life), for the e2e. */
+  private allyHealSent = 0;
   /** The room's most life (it may clamp the screen's). */
   private roomMax = 0;
   /** The wake claim's sequence: the room's "down" from before it took the wake is old news. */
@@ -548,7 +562,7 @@ export class TopDownEngine {
       // Sight (td-sight.ts): whatever the walkability map keeps feet off stops a ray and a shot — walls, rock, stalls,
       // trees, a shut door — except the low ground a shot flies over (water, embers, the fens, the leaf-sea).
       sight: (c, r) => { const g = this.level.ground(c, r); return g !== 'water' && g !== 'ember' && g !== 'blackwater' && g !== 'canopy' && !this.level.walkable(c, r); },
-      swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
+      swung: at => { this.actT = .3; if (!this.kAnim) { const k = skillKit(this.basicSkill()); this.kAnim = { anim: k.anim, t: 0, el: k.el }; } if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
       // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
       safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
       seek: secs => this.seekNow(secs),
@@ -579,6 +593,9 @@ export class TopDownEngine {
       cue: why => this.options.cueText?.(why) ?? '',
       life: me => this.lifeHeard(me),
       down: (to, x, y, self) => this.coopDown(to, x, y, self),
+      ally: e => this.allyEvent(e),
+      allies: al => { this.allyLife.clear(); for (const [id, h, m, d] of al) this.allyLife.set(id, { h, m, d: d === 1 }); },
+      kinOn: () => this.roomKin,
     });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -600,6 +617,8 @@ export class TopDownEngine {
     // The art pass's camera (webdriver only; e2e/td-art-shots.spec.ts): the arcane aura on the Keeper, the motes alive.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdArt'] = {
       aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
+      // A pulse now (the aura photographs), and the pulses running.
+      pulse: () => { this.auraFx.pulse(1.3); this.auraBeat = this.time; return this.auraFx.pulsing; },
       perf: () => this.perf?.splice(0) ?? [],
       // Iso: ms spent per section of drawIso since the last call (ground, floor, queue, draw, air, light, ui, bake, floor's
       // shadows, floor's ground effects) and, last, the frames.
@@ -612,9 +631,8 @@ export class TopDownEngine {
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
       motes: () => this.auraFx.alive,
-      // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts), a pulse now.
+      // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
-      pulse: () => { this.lookAura.pulse(1.3); this.auraBeat = this.time; return this.lookAura.pulsing; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
       visit: (level: string, c: number, r: number, continent?: string) => this.restoreWhereabouts({ continent: continent ?? this.world.continent, level, x: c * TILE + TILE / 2, y: r * TILE + TILE - 2 }),
       // The nearest worn road through grass (a dirt tile with grass to either side): the Keeper stands beside it.
@@ -735,6 +753,9 @@ export class TopDownEngine {
     if (this.fxSexton) (window as unknown as Record<string, unknown>)['__tdSexton'] = {
       to: (where: string) => this.fxToSexton(where),
       smite: (what: 'walker' | 'uncounted') => this.fxSmite(what),
+      // The Row-Walker as the Keeper's own target (the real attack path: his blows, its life, its fall), and how it stands.
+      strike: () => { const m = this.mobs.mobs.find(x => x.key === WALKER_KEY); if (!m) return false; this.mobs.target = m; return true; },
+      walker: () => { const m = this.mobs.mobs.find(x => x.key === WALKER_KEY); return m ? { hp: Math.round(m.hp), max: Math.round(m.def.hp), personal: !!m.personal, name: m.elite?.name ?? null } : null; },
       // What Lumvesh would point at for the chain now (the target, its words and Glim's reading), without casting it.
       seek: () => {
         const here = this.seekPlace(this.world.continent, this.level === this.world ? null : this.level.id, this.player.x, this.player.y);
@@ -893,6 +914,9 @@ export class TopDownEngine {
       // Point the Keeper's own attack at it (its staff, its blade): the real auto-attack path.
       target: (id: string) => { const m = this.mobs.mobs.find(x => x.nid === id); this.mobs.target = m ?? null; return !!m; },
       hp: () => Math.round(this.hp),
+      // S5: the allies this screen sees (and their life as the room keeps it), what it healed and was healed; a tap.
+      allies: () => this.allyView(),
+      pick: (id: string) => { this.mobs.pickAlly(id); return true; },
       // Companions: the other Keepers' drawn here, this Keeper's own as sent, and `n` raised skeletons at his side.
       pals: () => this.palsShown(),
       mine: () => this.myPals(),
@@ -1266,8 +1290,10 @@ export class TopDownEngine {
     const vigor = this.mobs.itemAura?.fx.moveSpeed ?? 1;
     // The Skill Book's marks (td-mobs markPace): Walking Whirl, Dark Step, Waymark.
     // S6: stunned, frozen or rooted by a creature's ability, he does not step at all.
-    if (this.mobs.held) return 0;
-    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor * (1 + this.mobs.markPace);
+    // S5: Rekindle's kneel and Hearthsong plant him (Walking Song and the Mobile Gate let him walk at their share).
+    const footing = this.mobs.footing;
+    if (this.mobs.held || footing <= 0) return 0;
+    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor * (1 + this.mobs.markPace) * footing;
   }
   private buildKey = '';
   /**
@@ -1683,6 +1709,7 @@ export class TopDownEngine {
     const w = this.whereabouts;
     this.mobs.target = null; this.path = []; this.arrive = null; this.keys.clear(); this.joy = null; this.chop = null;
     this.waking = { t: 0, moved: false };
+    this.lastFallAt = { ...w };
     this.options.onFall?.({ area: `td:${w.continent}|${w.level}`, x: w.x, y: w.y });
     this.markHearth();
   }
@@ -1752,7 +1779,7 @@ export class TopDownEngine {
     const b = this.pet;
     if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
     this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
-    for (const k of this.mobs.minions) out.push({ i: `k${k.id % 1e6}`, k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    for (const k of this.mobs.minions) out.push({ i: minionPalId(k), k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
     this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
     this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
     if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
@@ -1760,14 +1787,16 @@ export class TopDownEngine {
   }
   /** Five times a second while others of the party share the area: this Keeper's companions, when they changed (a heartbeat a second). */
   private tickPals(dt: number): void {
-    if (!this.coop.sharing) return;
+    // The party's others in this area see them; the room (`kin`) hunts them, so they go to it even with nobody else here.
+    if (!this.coop.sharing && !(this.roomKin && this.coop.roomHosted)) return;
     this.palAcc += dt * 1000;
     if (this.palAcc < PAL_MS) return;
     this.palAcc = 0;
-    const pals = this.myPals(), key = JSON.stringify(pals), now = performance.now();
+    const g = this.roomKin ? this.mobs.kinGuard : 0, pals = this.myPals(), key = JSON.stringify(pals) + g, now = performance.now();
     if (key === this.palKey && now - this.palAt < PAL_HEARTBEAT_MS) return;
     this.palKey = key; this.palAt = now;
-    void this.options.onCoopPals?.({ area: this.peerArea(), pals });
+    // The room (`kin`) takes the summons' Shared Bones with them (their bites land through it there).
+    void this.options.onCoopPals?.({ area: this.peerArea(), pals, ...(g > 0 ? { g } : {}) });
   }
   /** Another Keeper's companion, with the painter its own owner uses. */
   private drawPal(p: CoopPal, x: number, y: number, moving: boolean): void {
@@ -1790,9 +1819,9 @@ export class TopDownEngine {
     }
   }
   /** The other Keepers' companions drawn now (the e2e reads it): the party's whole list, everyone else's pet and Glim. */
-  palsShown(): { owner: string; k: string; t: string; x: number; y: number }[] {
-    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number }[] = [];
-    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y) });
+  palsShown(): { owner: string; k: string; t: string; x: number; y: number; h?: number }[] {
+    const now = performance.now(), drawn = new Set(this.peers.drawn.map(p => p.id)), out: { owner: string; k: string; t: string; x: number; y: number; h?: number }[] = [];
+    for (const s of this.palBook.shown(now)) if (drawn.has(s.owner)) out.push({ owner: s.owner, k: s.pal.k, t: s.pal.t ?? '', x: Math.round(s.x), y: Math.round(s.y), ...(s.pal.h !== undefined ? { h: s.pal.h } : {}) });
     for (const p of this.peers.drawn) {
       if (this.palBook.fresh(p.id, now)) continue;
       for (const q of decodePresencePals(this.peers.palsOf(p.id))) out.push({ owner: p.id, k: q.k, t: q.t, x: Math.round(p.x + q.dx), y: Math.round(p.y + q.dy) });
@@ -1804,6 +1833,8 @@ export class TopDownEngine {
   /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
   private coopRole(role: CoopRole, was: CoopRole = 'solo'): void {
     if (role === 'member') this.seam = null;
+    // Becoming a member sweeps this screen's creatures (td-coop become): a Row-Walker swept, not felled, rises again at once.
+    if (!this.mobs.mobs.some(m => m.key === WALKER_KEY)) { this.walkerUp = false; this.walkerT = 0; }
     // The room never took this floor after all (td-coop gave up waiting): its own creatures, as before the room.
     if (role === 'solo' && was === 'member' && this.level !== this.world && !this.mobs.mobs.length && !this.coop.roomRuns(this.peerArea())) {
       this.mobs.addSpawns(this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
@@ -1986,6 +2017,7 @@ export class TopDownEngine {
       pet: pb && tdPetJob(pb.id, 'follow') === 'light' ? { x: pb.x, y: pb.y - 8, r: TD_PET.light } : null,
       fixed: this.fixedLights(), raised: this.mobs.lightBonus, trail: this.trail,
       walkable: (c, r) => this.level.walkable(c, r),
+      hushMult: this.mobs.hushMult,
     };
   }
   /** Each frame: seed the level's shy chests and the continent's notes once, step the layer, open or close the roads. */
@@ -2072,7 +2104,10 @@ export class TopDownEngine {
     if (onIsle && lv === this.world && this.sexton.step === 'key' && this.walkerT <= 0 && !up && MOBS['bone-walker']) {
       const x = WALKER_AT.c * TILE + TILE / 2, y = WALKER_AT.r * TILE + TILE;
       if (Math.hypot(this.player.x - x, this.player.y - y) < WALKER.reach * TILE) {
-        this.mobs.spawnPack(WALKER_KEY, MOBS['bone-walker'], x, y, makePack('unique', ['extra-strong'], WALKER.name, 1));
+        // Personal (phased): this Keeper's own foe, simulated here even when the room runs the island's creatures —
+        // the room cannot see the chain's step, and a local creature it never sent stood frozen and unhittable on a
+        // member (the "key never drops" report). Each Keeper on the step raises their own Hollis Vane.
+        for (const m of this.mobs.spawnPack(WALKER_KEY, MOBS['bone-walker'], x, y, makePack('unique', ['extra-strong'], WALKER.name, 1))) m.personal = true;
         this.walkerUp = true;
       }
     }
@@ -3248,6 +3283,8 @@ export class TopDownEngine {
     const again = !!peer && this.peerTapped?.id === peer.card.id && this.time - this.peerTapped.at < PEER_AGAIN_SECS;
     if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d) && !walking && !again) {
       this.peerTapped = { id: peer.card.id, at: this.time };
+      // S5: a tap on a Keeper picks it for the heals a moment (skills-100.md §3).
+      this.mobs.pickAlly(peer.card.id);
       this.options.onPeerTap(peer.card); return;
     }
     if (peer && (walking || again)) { this.peerTapped = null; this.walkTo(wx, wy); return; }
@@ -3567,6 +3604,7 @@ export class TopDownEngine {
     this.peers.step(dt, this.peerArea(), this.player, this.still);
     this.mobs.selfAway = true;
     try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
+    this.fightFx(dt);
     this.coop.after(dt);
     this.tickPals(dt);
     this.lifeFrame();
@@ -3576,6 +3614,12 @@ export class TopDownEngine {
   /** Protocol 10: the room lays this Keeper's statuses on its creatures (and tells it what it refused). */
   setRoomStatus(on: boolean): void { this.coop.setStatusOn(on); }
   /** The room keeps this Keeper's life (the HUD: connected to a protocol-10 room that said so), or no longer. */
+  /**
+   * The room hunts this Keeper's summons (`/join` `kin`): its raised skeletons go to the room with its companions list
+   * (even alone in the area), their blows name them, and a bite on one lands when the room says (td-mobs kinBitten).
+   */
+  private roomKin = false;
+  setRoomKin(on: boolean): void { this.roomKin = on; }
   setRoomLife(on: boolean): void {
     if (on === !!this.life) return;
     if (on) { this.life = new LifeMirror(); this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0; this.lifeFrac = 0; this.lifeGuardSent = ''; this.roomMax = 0; }
@@ -3610,15 +3654,31 @@ export class TopDownEngine {
     const now = performance.now();
     // In a fight the room hears every 150 ms; out of it (regeneration) once a second; a potion or a wake at once.
     const gap = this.life.urgent ? 0 : this.time - this.lastHurt < 5 ? 150 : 1000;
-    if (this.lifeBusy || (!this.life.queued && key === this.lifeGuardSent) || now - this.lifeSentAt < gap) return;
+    const allies = this.mobs.allyOut.length > 0;
+    if (this.lifeBusy || (!this.life.queued && !allies && key === this.lifeGuardSent) || now - this.lifeSentAt < (allies ? Math.min(gap, 150) : gap)) return;
     const life = this.life, c = life.drain(now), send = key !== this.lifeGuardSent;
+    // S5: what this Keeper laid on others goes in the same breath (the room weighs each: ally-claims.ts).
+    const a = this.mobs.allyOut.splice(0, ALLY_CLAIMS_PER_SEND);
     this.lifeBusy = true; this.lifeSentAt = now;
-    void this.options.onLife({ ...(send ? { g } : {}), c }).then(me => {
+    void this.options.onLife({ ...(send ? { g } : {}), c, ...(a.length ? { a } : {}) }).then(me => {
       if (this.life !== life) return;
       if (!me) { life.requeue(c); return; }
       if (send) this.lifeGuardSent = key;
+      this.allyAnswers(a, me.a);
       this.lifeHeard(me);
     }, () => { if (this.life === life) life.requeue(c); }).finally(() => { this.lifeBusy = false; });
+  }
+  /** S5: the room's answer to this Keeper's ally claims: a heal's life counted; a refusal said over the ally. */
+  private allyAnswers(sent: readonly AllyClaim[], got: readonly (number | string)[] | undefined): void {
+    if (!got) return;
+    sent.forEach((c, i) => {
+      const r = got[i];
+      if (typeof r === 'number') { if (c.k === 'heal') this.allyHealSent += r; return; }
+      const who = this.peers.drawn.find(p => p.id === c.to);
+      const why = r === 'far' ? this.options.cueText?.('far') ?? '' : '';
+      if (who && why) this.mobs.floaters.push({ x: who.x, y: who.y - 40, text: why, color: '#e8e1cf', age: 0 });
+    });
+    this.canvas.setAttribute('data-ally-sent', `${this.allyHealSent}`);
   }
   /** The room's word on this Keeper's life (a snapshot's `me`, a claim's answer). */
   private lifeHeard(me: LifeView): void {
@@ -3637,6 +3697,43 @@ export class TopDownEngine {
   private coopDown(to: string, x: number, y: number, self: boolean): void {
     if (self) { if (this.life && !this.roomDown && !this.waking) { this.roomDown = true; this.fallNow(); } return; }
     this.options.onPeerDown?.(to, x, y);
+    // S5: a fallen one near — a Lanternwright's Rekindle may stand it up where it fell, a while.
+    this.mobs.fallenAllies.set(to, { x, y, at: Date.now() });
+  }
+  /**
+   * S5: another Keeper laid something on this one (the room weighed it). The fight mirrors it (MobSystem.allyLaid); a
+   * Rekindle stands this Keeper up where it fell — out of the wake, at the share it was given — and the fall's cost is
+   * undone (the HUD: the purse and the debt).
+   */
+  private allyEvent(e: { a: string; by: string; s: string; n: number; t?: number; f?: number; x?: number; y?: number }): void {
+    this.mobs.allyLaid(e);
+    this.canvas.setAttribute('data-ally-healed', `${this.mobs.allyHealed}`);
+    if (e.a !== 'rekindle') return;
+    const back = this.lastFallAt;
+    this.waking = null; this.roomDown = false;
+    if (back) this.restoreWhereabouts(back);
+    this.path = []; this.arrive = null;
+    this.hp = Math.max(1, Math.round(this.maxHp * Math.max(5, Math.min(70, e.n)) / 100));
+    this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0;
+    this.lastFallAt = null;
+    this.markHearth();
+    this.canvas.setAttribute('data-rekindled', `${(Number(this.canvas.getAttribute('data-rekindled')) || 0) + 1}`);
+    this.options.onRekindle?.();
+  }
+  /** S5: the Keepers near this one that its heals and guards can reach, with their life as the room keeps it. */
+  private feedAllies(): void {
+    if (!this.life) { this.mobs.allies = []; this.mobs.allyOut.length = 0; return; }
+    const p = this.player, out: AllyNear[] = [];
+    for (const pe of this.peers.drawn) {
+      if (Math.hypot(pe.x - p.x, pe.y - p.y) > ALLY_SEEN_TILES * TILE) continue;
+      const l = this.allyLife.get(pe.id);
+      out.push({ id: pe.id, x: pe.x, y: pe.y, h: l?.h ?? 1, m: l?.m ?? 1, down: l?.d ?? false });
+    }
+    this.mobs.allies = out;
+  }
+  /** The e2e's view of the allies: who this screen sees, the heals it sent and was given, the fallen it knows. */
+  allyView(): { allies: AllyNear[]; sent: number; healed: number; fallen: string[]; bondT: number; gateT: number; song: boolean; kneel: boolean } {
+    return { allies: this.mobs.allies.map(a => ({ ...a })), sent: this.allyHealSent, healed: this.mobs.allyHealed, fallen: [...this.mobs.fallenAllies.keys()], bondT: this.mobs.bondT, gateT: this.mobs.gateT, song: !!this.mobs.song, kneel: !!this.mobs.kneel };
   }
   /** The e2e's view of the life the room keeps: the room's word, claims in flight, round trips (ms). */
   lifeView(): { on: boolean; hp: number; room: LifeView | null; inFlight: number; rtt: number[]; down: boolean } {
@@ -3653,6 +3750,7 @@ export class TopDownEngine {
     if (this.fxSeam && !this.fxSeamLaid && this.time > 6 && this.level === this.world) this.laySeamShowcase();
     // Shared creatures (td-coop.ts): this Keeper's part in its area now, the others of the party as prey on the host,
     // the host's creatures placed on a member. A member raises nothing of its own (no spawns, no Seam Eater).
+    this.feedAllies();
     this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
     const member = this.coop.role === 'member';
     if (!member) this.updateSeam(phase);
@@ -3680,6 +3778,7 @@ export class TopDownEngine {
     // S6: the land its packs' auras come from (td-pack-aura).
     this.mobs.land = this.world.continent;
     this.mobs.update(dt);
+    this.fightFx(dt);
     this.coop.after(dt);
     // Whispering (an elite affix, S6): its blows feed the Hush.
     if (this.mobs.hushOwed > 0) {
@@ -3805,8 +3904,12 @@ export class TopDownEngine {
       for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
         const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
         if (hd > 1) { this.bakeTileHd(g, k, c, r, ox * hd, oy * hd, kind, f); continue; }
-        if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy), f)) paintGround(g, k, c, r, ox, oy, f);
-        const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
+        const nb = (dx: number, dy: number) => kind(c + dx, r + dy);
+        // Organic terrain (td-terrain.ts): grass, flowers, moss, roads, sand, bog, cobble and water meet along curved,
+        // blended edges; Low (or any other ground) keeps the square painters and their edges.
+        const field = paintFieldTile(g, k, c, r, ox, oy, nb, f);
+        if (!field && !paintRichGround(g, k, c, r, ox, oy, nb, f)) paintGround(g, k, c, r, ox, oy, f);
+        const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!(field && organic(n)) && !richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
         edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
       }
       e.rows[f]++;
@@ -3826,7 +3929,7 @@ export class TopDownEngine {
     const tg = t.getContext('2d')!;
     g.imageSmoothingEnabled = false;
     const nb = (dx: number, dy: number) => kind(c + dx, r + dy);
-    const rich = paintFieldTile(g, k, c, r, hx, hy, nb, f) || paintRichGroundHd(g, k, c, r, hx, hy, nb);
+    const rich = paintFieldTile(g, k, c, r, hx, hy, nb, f, 2) || paintRichGroundHd(g, k, c, r, hx, hy, nb);
     tg.clearRect(0, 0, TILE, TILE);
     if (!rich && !paintRichGround(tg, k, c, r, 0, 0, nb, f)) paintGround(tg, k, c, r, 0, 0, f);
     let edges = !rich;
@@ -3964,9 +4067,9 @@ export class TopDownEngine {
     this.gather.drawLine(c, this.player, this.time);
     this.gather.drawStrike(c, this.time, this.still);
     { const look = this.auraLook(); if (look) {
-      if (!optCamera()) this.auraFx.air(c, this.player.x, this.player.y - 1, look);
-      else if (optHdFigures()) { c.save(); c.scale(.5, .5); this.lookAura.air(c, Math.round(this.player.x) * 2, (Math.round(this.player.y) - 1) * 2, look); c.restore(); }
-      else this.lookAura.air(c, this.player.x, this.player.y - 1, look);
+      // The prototypes' HD figures (td-artopt B/C): the motes at the HD pixel.
+      if (optHdFigures()) { c.save(); c.scale(.5, .5); this.auraFx.air(c, Math.round(this.player.x) * 2, (Math.round(this.player.y) - 1) * 2, look); c.restore(); }
+      else this.auraFx.air(c, this.player.x, this.player.y - 1, look);
     } }
     // S6: the pack auras' motes and their linked lines; what falls from above onto its ring.
     { const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80; const low = envDetail() === 'low'; drawPackAir(c, this.mobs.mobs, this.time, this.still, near, low); if (!low) for (const b of this.mobs.bursts) if (b.tone && near(b.x, b.y)) drawFalling(c, b, this.time, this.still); }
@@ -4047,6 +4150,13 @@ export class TopDownEngine {
       if (!inView(p.x, p.y)) continue;
       this.at(p.x, p.y);
       if (this.platesOn) this.plate(p.level ? `${p.name} · ${p.level}` : p.name, p.x, p.y - up(42), this.peers.party.has(p.id) ? PARTY_PLATE : PEER_PLATE);
+      // S5: its life under the plate (the room's word), so a healer sees who needs her.
+      const al = this.allyLife.get(p.id);
+      if (al && al.m > 0) {
+        const w = 18, bx = Math.round(p.x - w / 2), by = Math.round(p.y - up(42)) + 1, k = Math.max(0, Math.min(1, al.h / al.m));
+        c.fillStyle = '#1a1210'; c.fillRect(bx - 1, by - 1, w + 2, 4);
+        c.fillStyle = al.d ? '#6b5f58' : k < .35 ? '#e2452a' : '#7fe08a'; c.fillRect(bx, by, Math.round(w * k), 2);
+      }
       if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - up(52), this.time, this.still);
     }
     if (this.peers.waving('', this.time)) { this.at(this.player.x, this.player.y); this.peers.drawWave(c, this.player.x, this.player.y - up(46), this.time, this.still); }
@@ -4135,7 +4245,10 @@ export class TopDownEngine {
     c.save();
     // A floater drifts a little above the floor; a ghost is half there, flickering.
     const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
-    c.translate(Math.round(m.x), Math.round(m.y - d.h - lift));
+    // S3: a bite reads — a hitch back (the wind-up), a lunge in (the blow), a settle — never under reduced motion.
+    const lg = m.lungeAt === undefined || this.still ? -1 : this.mobs.now - m.lungeAt;
+    const lunge = lg < 0 || lg >= .2 ? 0 : lg < .05 ? -1 : lg < .13 ? 3 : 1;
+    c.translate(Math.round(m.x) + lunge * m.face, Math.round(m.y - d.h - lift) + (lunge > 1 ? 1 : 0));
     if (m.face < 0) c.scale(-1, 1);
     if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14 + (Math.random() < .04 ? -.25 : 0);
     // A Mirrored copy (S6): a little see-through, a breath grey (Glim dims beside it).
@@ -4592,29 +4705,24 @@ export class TopDownEngine {
 
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
-    const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
-    // The aura the Keeper wears (td-aura.ts): its layered ring round the feet; its motes rise in the air pass.
+    const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y);
+    // The aura the Keeper wears (td-aura.ts; owner 2026-10-26: no constant circle): nothing stays on the ground — a light
+    // ring runs out to the aura's reach when it starts, on a tick that reaches a foe, and as a slow heartbeat; its motes
+    // and flickers drift round the body in the air pass and its rim glows on the figure. Low: no motes. Reduced motion:
+    // no pulses.
     const look = this.auraLook();
-    if (look && optCamera()) {
-      // The prototype (the paused look branch, ~/er/wt-look): nothing constant on the ground — a light ring runs out to the aura's reach
-      // when it starts, on a tick that reaches a foe, and as a slow heartbeat. With HD effects it is drawn at the HD pixel.
-      const reach = this.artAura ? 3 * TILE : this.mobs.auraRadius, low = envDetail() === 'low', hd = optHdFigures();
+    if (look) {
+      // Iso and the HD figures: the pulse at the HD pixel.
+      const reach = this.artAura ? 3 * TILE : this.mobs.auraRadius, hd = optHdFigures();
       const hit = this.mobs.effects.some(e => e.kind === 'pulse' && e.age < .05 && (e.el === 'ember' || e.el === 'life'));
-      if (!this.auraWas) { this.lookAura.pulse(1.3); this.auraBeat = 0; }
-      else if (hit && this.time - this.auraBeat > .9) { this.lookAura.pulse(.85); this.auraBeat = this.time; }
-      else if (this.time - this.auraBeat > 3.2) { this.lookAura.pulse(.7); this.auraBeat = this.time; }
-      this.lookAura.step(this.time, look, this.still, low, up(31) * (hd ? 2 : 1));
-      if (hd) { c.save(); c.scale(.5, .5); this.lookAura.waves(c, X * 2, (Y - 1) * 2, look, reach * 2); c.restore(); }
-      else this.lookAura.waves(c, X, Y - 1, look, reach);
-    } else if (look) { this.auraFx.step(this.time, look, this.still || envDetail() === 'low'); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
-    this.auraWas = !!look;
-    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
-      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
-      c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
-      drawRing(c, X, Y, this.mobs.auraRadius, turn, tn.core, tn.body, 8, 6, tn.edge);
-      c.globalAlpha = .6; drawRing(c, X, Y, Math.round(this.mobs.auraRadius * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
-      c.globalAlpha = 1;
+      if (!this.auraWas) { this.auraFx.pulse(1.3); this.auraBeat = 0; }
+      else if (hit && this.time - this.auraBeat > .9) { this.auraFx.pulse(.85); this.auraBeat = this.time; }
+      else if (this.time - this.auraBeat > 3.2) { this.auraFx.pulse(.7); this.auraBeat = this.time; }
+      this.auraFx.step(this.time, look, this.still, envDetail() === 'low', up(31) * (hd ? 2 : 1));
+      if (hd) { c.save(); c.scale(.5, .5); this.auraFx.waves(c, X * 2, (Y - 1) * 2, look, reach * 2); c.restore(); }
+      else this.auraFx.waves(c, X, Y - 1, look, reach);
     }
+    this.auraWas = !!look;
     this.drawLootRings();
     this.drawTells();
     // Elite packs: the aura ring under each member, a Cold Aura's reach, a Fire Enchanted's burst on its way.
@@ -4882,6 +4990,19 @@ export class TopDownEngine {
         c.fillStyle = '#5a3a2a'; c.fillRect(mx - 3, my - 3, 7, 7);
         c.fillStyle = '#8a5a3a'; c.fillRect(mx - 2, my - 2, 4, 4);
         c.fillStyle = FX.ember.core; c.fillRect(mx - 1, my - 1, 2, 2);
+      } else if (e.kind === 'impact') {
+        // S3: every hit's impact spark, its element's colour: a cross that opens over 2–3 frames (Low: one frame; reduced
+        // motion: the cross alone, still). A crit adds a 1-frame white outline round it.
+        const col = e.c ?? '#ffffff', fr = this.still ? 1 : Math.min(2, Math.floor(t * 3)), low = envDetail() === 'low';
+        if (low && t > .34) { c.globalAlpha = 1; continue; }
+        c.globalAlpha = 1;
+        if (e.dir > 1 && fr === 0) { c.fillStyle = '#ffffff'; c.fillRect(X - 3, Y - 1, 7, 3); c.fillRect(X - 1, Y - 3, 3, 7); }
+        c.fillStyle = col; c.fillRect(X - 2, Y, 5, 1); c.fillRect(X, Y - 2, 1, 5);
+        c.fillStyle = '#ffffff'; c.fillRect(X, Y, 1, 1);
+        if (!low && !this.still && fr > 0) {
+          const d = 2 + fr * 2;
+          c.fillStyle = col; c.fillRect(X - d, Y - d, 1, 1); c.fillRect(X + d, Y - d, 1, 1); c.fillRect(X - d, Y + d, 1, 1); c.fillRect(X + d, Y + d, 1, 1);
+        }
       } else if (e.kind === 'crit') {
         // A crit's white-hot core (over a creature: never above 60%).
         c.globalAlpha = .6 * Math.max(0, 1 - t);
@@ -5139,7 +5260,7 @@ export class TopDownEngine {
         g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
         this.paintHdKeeper(g, p, 80, 140, 1);
         const c = this.ctx; c.save(); c.scale(.5, .5);
-        lookRimGlow(c, sc, 80, 140, Math.round(p.x) * 2, Math.round(p.y) * 2, look, this.time, this.still, envDetail() === 'low');
+        rimGlow(c, sc, 80, 140, Math.round(p.x) * 2, Math.round(p.y) * 2, look, this.time, this.still, envDetail() === 'low');
         c.restore();
       }
       this.paintHdKeeper(this.ctx, p, Math.round(p.x), Math.round(p.y), .5);
@@ -5151,16 +5272,51 @@ export class TopDownEngine {
       const g = sc.getContext('2d')!;
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
       this.paintPerson(g, p, action, { x: 36, y: 70 });
-      if (optCamera()) lookRimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still, envDetail() === 'low');
-      else rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
+      rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still, envDetail() === 'low');
     }
     this.paintPerson(this.ctx, p, action, null);
+    if (p === this.player) this.drawAnimOverlay(p);
+  }
+  /** The fight animation's frame now (null: none playing). */
+  private animNow(): AnimFrame | null { return this.kAnim ? animFrame(this.kAnim.anim, this.kAnim.t, this.still) : null; }
+  /** This calling's basic attack row (its swing's animation). */
+  private basicSkill(): string {
+    const v = this.mobs.vocation;
+    return v === 'ashguard' ? 'watch-blade' : v === 'lanternwright' ? 'kindle' : v === 'thornstrider' ? 'thorn-shot' : 'ember-bolt';
+  }
+  /**
+   * S3: what the fight asked for this frame — its cues to the sound director (through onSfx), the Keeper's animation —
+   * and the animation's clock. Drained every frame, so nothing piles up.
+   */
+  private fightFx(dt: number): void {
+    const q = this.mobs.cues;
+    for (const k of q) this.options.onSfx?.({ kind: k.cue as EngineSfx['kind'], pitch: k.pitch });
+    q.length = 0;
+    if (this.mobs.keeperAnim) { this.kAnim = { anim: this.mobs.keeperAnim, t: 0, el: skillKit(this.mobs.lastCast ?? this.basicSkill()).el }; this.mobs.keeperAnim = null; }
+    else if (this.kAnim) { this.kAnim.t += dt; if (this.kAnim.t >= animSecs(this.kAnim.anim)) this.kAnim = null; }
+  }
+  /** The animation's overlay (a staff's flash, a slammed ring, a shield's brass) over the figure, in world px. */
+  private drawAnimOverlay(p: Person): void {
+    const f = this.animNow();
+    if (!f?.o) return;
+    const c = this.ctx, X = Math.round(p.x) + f.dx * p.face, Y = Math.round(p.y) + f.dy;
+    const el = this.kAnim?.el ?? 'arcane', body = el === 'physical' ? '#e0b25a' : DAMAGE_COLORS[el];
+    const tones = ['#ffffff', body, body] as const;
+    const was = c.globalAlpha;
+    c.globalAlpha = .9;
+    for (const [x, y, w, h, t] of overlayRects(f.o, envDetail() === 'low')) {
+      c.fillStyle = tones[t];
+      c.fillRect(p.face > 0 ? X + x : X - x - w + 1, Y + y, w, h);
+    }
+    c.globalAlpha = was;
   }
   /** One person's figure: on the world (`at` null) or on a scratch canvas with the feet at `at`. */
   private paintPerson(c: CanvasRenderingContext2D, p: Person, action: 'idle' | 'run' | 'walk', at: { x: number; y: number } | null): void {
     const s = this.scale, cam = this.cam;
     if (!p.painter) return;
-    const fx = at ? at.x : Math.round(p.x), fy = at ? at.y : Math.round(p.y);
+    // S3: the fight animation's body offset (whole art px, toward the facing side).
+    const af = p === this.player ? this.animNow() : null;
+    const fx = (at ? at.x : Math.round(p.x)) + (af ? af.dx * p.face : 0), fy = (at ? at.y : Math.round(p.y)) + (af ? af.dy : 0);
     const acting = p === this.player && this.actT > 0;
     // The Thornstrider draws his bow from the side too (the painter's own draw pose), like the Ashguard's swing.
     const staff = carriesStaff(this.mobs.vocation), faces = this.mobs.vocation !== 'ashguard' && this.mobs.vocation !== 'thornstrider';
@@ -5398,7 +5554,7 @@ export class TopDownEngine {
     if (surface) { this.plane(); this.gather.drawFloats(c, this.spotsInView, this.time, this.still); }
     this.plane(); this.gather.drawLine(c, p, this.time); this.gather.drawStrike(c, this.time, this.still);
     this.isoAt(p.x, p.y);
-    { const look = this.auraLook(); if (look) { c.save(); c.scale(.5, .5); this.lookAura.air(c, Math.round(p.x) * 2, (Math.round(p.y) - 1) * 2, look); c.restore(); } }
+    { const look = this.auraLook(); if (look) { c.save(); c.scale(.5, .5); this.auraFx.air(c, Math.round(p.x) * 2, (Math.round(p.y) - 1) * 2, look); c.restore(); } }
     this.plane();
     drawPackAir(c, this.mobs.mobs, this.time, this.still, this.isoNear, lowDetail, this.isoAtFn);
     if (!lowDetail) for (const b of this.mobs.bursts) if (b.tone && this.isoNear(b.x, b.y)) { this.isoAt(b.x, b.y); drawFalling(c, b, this.time, this.still); }
@@ -5559,8 +5715,7 @@ export class TopDownEngine {
   // ── The aura look (td-aura.ts) ──
   private figureScratch: HTMLCanvasElement | null = null;
   private readonly auraFx = new AuraFx();
-  /** The prototype's ringless aura (the paused look branch, ~/er/wt-look): motes, flickers, the rim, a pulse when it fires. */
-  private readonly lookAura = new LookAuraFx();
+  /** The aura was on last frame (its start pulse), and when it last pulsed. */
   private auraWas = false;
   private auraBeat = 0;
   /** `window.__tdArt.aura(true)` (automated browsers): the arcane aura on the Keeper, for the art pass's photographs. */

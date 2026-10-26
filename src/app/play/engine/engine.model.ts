@@ -1,4 +1,5 @@
 import type { SpriteEntry } from '../../shared/art/sprite-manifest.generated';
+import type { CombatCue } from '../../shared/sound/combat-cues';
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
@@ -148,7 +149,7 @@ export interface SeekAnswer {
 }
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' } | { kind: 'seam' };
-export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
+export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -300,12 +301,15 @@ export interface EngineOptions {
    * guard), answered with the life the room holds; `cueText`: the words for a refused blow ('far', 'sight', 'cap',
    * 'immune'); `onPeerDown`: another Keeper near fell (the room's word).
    */
-  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[] }) => Promise<import('../world/keeper-life').LifeView | null>;
+  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[]; a?: import('../world/ally-claims').AllyClaim[] }) => Promise<(import('../world/keeper-life').LifeView & { a?: (number | string)[] }) | null>;
   cueText?: (why: string) => string;
   onPeerDown?: (id: string, x: number, y: number) => void;
+  /** S5: a Lanternwright's Rekindle stood this Keeper up where it fell: the fall's cost is undone (the purse, the debt). */
+  onRekindle?: () => void;
   onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
   /** Protocol 5: post this Keeper's own companions to the party in its area. */
-  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
+  /** `g`: the summons' Shared Bones (%), for the room (`kin`). */
+  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[]; g?: number }) => Promise<boolean>;
   /**
    * Protocol 7 (play/social/world-protocol.ts): a piece of the room's ground was picked here. It has already left this
    * screen; the host asks the room and grants it on a yes, or hands it back (td-engine restoreRoomDrop) on a no.

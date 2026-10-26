@@ -18,7 +18,7 @@
  * Every random draw inside a tick or a claim comes from this world's own seeded stream (Math.random is lent to it for
  * the call), so a world built with the same seed and fed the same intents plays out the same.
  */
-import { MOBS, MobSystem, abilityFlags, fieldEvent, type CoopLink, type Drop, type Mob } from '../td/td-mobs';
+import { CAPTAIN_REACH, MOBS, MobSystem, abilityFlags, fieldEvent, type CoopLink, type Drop, type Mob, type RoomKin } from '../td/td-mobs';
 import { STATUS_WIRE } from '../td/td-abilities';
 import { landOf } from '../td/td-pack-aura';
 import { TdWorld } from '../td/td-world';
@@ -30,6 +30,7 @@ import { respawnSecs } from './respawn';
 import { WORLD_BOSS_KEY, fastForward, firstRising, nextRising, worldBossOfKey, worldBossesIn, type WorldBossClock, type WorldBossDef } from './world-bosses';
 import { uniqueById } from '../../shared/rpg/unique-items';
 import { TILE } from '../td/td-art';
+import { KIN_DEAD_MS, kinGuard, weighKin, type KinHeld, type KinRefusal, type KinWord } from './room-kin';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from '../td/td-seam';
 import { seamLevelFor } from '../td/td-zones';
 import type { ContinentDef } from '../td/continent';
@@ -43,6 +44,8 @@ import { GROUND_MS, OWN_MS, TAKE_REACH, type WorldDrop, type WorldTakeResult } f
 import { lootEntry, rollCreatureLoot, type LootDrop } from '../../shared/loot/drop-tables';
 import { CC_IMMUNE, DOT_SHARE, PULL_MAX_TILES, SLOW_MAX_PCT, STATUS_CAP, ST_BIT, statusLegal, type CoopStatus, type RoomStatusKind } from './room-status';
 import type { KeeperLife } from './keeper-life';
+import { CUT_AURAS, ALLY_PER_SEC, ALLY_WINDOW_MS, REKINDLE_MAX_MS, REKINDLE_MIN_CD_MS, REKINDLE_REACH, allyHealBudget, allyLegal, type AllyClaim, type AllyRefusal } from './ally-claims';
+import { forgetThreat, healThreat, kinKey } from '../td/td-threat';
 import { hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
 import { eclipseAt, worldTime, type SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { EngineOptions } from '../engine/engine.model';
@@ -147,6 +150,28 @@ export class RoomWorld implements CoopLink {
   private readonly immune = new WeakMap<Mob, Partial<Record<RoomStatusKind, number>>>();
   /** Status claims a Keeper made in the last second (STATUS_PER_SEC). */
   private readonly stRate = new Map<string, number[]>();
+  // ── S5: the allies' claims (ally-claims.ts) ──
+  /** Ally claims a Keeper made in the last second, and the heals it gave others in the window (its level budget). */
+  private readonly allyRate = new Map<string, number[]>();
+  private readonly allyHeals = new Map<string, { at: number; n: number }[]>();
+  /** Where and when each Keeper last fell (Rekindle reads it), and each healer's last Rekindle. */
+  private readonly fallen = new Map<string, { at: number; x: number; y: number }>();
+  private readonly rekindled = new Map<string, number>();
+  /** Auras that guard allies (the Banner, the Gate, a Watch Cry's Rally…): by holder and skill. */
+  private readonly auras = new Map<string, { by: string; s: string; cut: number; r: number; until: number; f: number }>();
+  /** Intercept: an ally's bonds (the tank takes `share` of what it takes, through his own guard). */
+  private readonly bonds = new Map<string, { tank: string; share: number; until: number }[]>();
+  /** Effects laid on each Keeper since its last snapshot (its screen mirrors them). */
+  private readonly allyEv = new Map<string, CoopEvent[]>();
+  readonly allyStats = { claims: 0, refused: 0, healed: 0, wards: 0, rekindles: 0 };
+  // ── The Keepers' summons (room-kin.ts) ──
+  /** Each owner's summons the room holds (by companion id), with when each was last told. */
+  private readonly kinOf = new Map<string, Map<string, RoomKin & { at: number }>>();
+  /** Summons the room struck down: refused until then (by `<owner>/<id>`). */
+  private readonly kinDead = new Map<string, number>();
+  /** Bites on each owner's summons since its last snapshot (its screen applies them). */
+  private readonly kinEv = new Map<string, CoopEvent[]>();
+  readonly kinStats = { told: 0, refused: 0, bites: 0, fell: 0 };
 
   constructor(opts: RoomWorldOptions) {
     this.area = opts.area;
@@ -216,7 +241,45 @@ export class RoomWorld implements CoopLink {
     if (!was || !this.viewers.has(k.id)) this.viewers.set(k.id, { enc: new CoopEncoder(), ev: [], fx: new WeakSet() });
   }
   /** A Keeper left the area (or the room). */
-  leave(id: string): void { this.keepers.delete(id); this.viewers.delete(id); this.gate.forget(id); }
+  leave(id: string): void { this.keepers.delete(id); this.viewers.delete(id); this.gate.forget(id); this.dropKin(id); }
+  /** An owner's summons leave with it (its screen keeps them; another area's room hears them from there). */
+  private dropKin(id: string): void {
+    const had = this.kinOf.get(id);
+    if (!had) return;
+    this.kinOf.delete(id); this.kinEv.delete(id);
+    for (const k of had.values()) for (const m of this.mobs.mobs) { forgetThreat(m, k.key); if (m.tauntBy === k.key) { m.taunt = 0; m.tauntBy = undefined; } }
+    this.syncKin();
+  }
+  private syncKin(): void {
+    const out: RoomKin[] = [];
+    for (const list of this.kinOf.values()) for (const k of list.values()) if (k.hp > 0) out.push(k);
+    this.mobs.kin = out;
+  }
+  /**
+   * An owner's summons (its companions list, `/coop/pals` with `kin`): the room weighs each (room-kin.ts weighKin —
+   * kind, count, leash, life) and its creatures hunt the ones it takes. Ones the list no longer names are gone
+   * (released, crumbled on the owner's screen). Answers with the ids it took and the ones it refused.
+   */
+  kin(from: string, list: readonly KinWord[], g = 0): { ok: string[]; no: { i: string; why: KinRefusal }[] } {
+    const k = this.keepers.get(from);
+    if (!k) return { ok: [], no: list.map(w => ({ i: w.i, why: 'far' as const })) };
+    const now = this.clockMs, was = this.kinOf.get(from) ?? new Map<string, RoomKin & { at: number }>();
+    const held = new Map<string, KinHeld>();
+    for (const [i, r] of was) held.set(i, { i, x: r.x, y: r.y, hp: r.hp, maxHp: r.maxHp, at: r.at });
+    const dead = new Map<string, number>();
+    for (const [key, until] of this.kinDead) { if (until <= now) this.kinDead.delete(key); else if (key.startsWith(`${from}/`)) dead.set(key.slice(from.length + 1), until); }
+    const r = weighKin(list, k, held, dead, now), guard = kinGuard(g);
+    const next = new Map<string, RoomKin & { at: number }>();
+    for (const h of r.keep) next.set(h.i, { key: kinKey(from, h.i), owner: from, i: h.i, x: h.x, y: h.y, hp: h.hp, maxHp: h.maxHp, g: guard, at: h.at });
+    // The ones it no longer names: forgotten (a creature on one looks again).
+    for (const [i, old] of was) if (!next.has(i)) for (const m of this.mobs.mobs) { forgetThreat(m, old.key); if (m.tauntBy === old.key) { m.taunt = 0; m.tauntBy = undefined; } }
+    if (next.size) this.kinOf.set(from, next); else this.kinOf.delete(from);
+    this.syncKin();
+    this.kinStats.told += r.keep.length; this.kinStats.refused += r.no.length;
+    return { ok: r.keep.map(h => h.i), no: r.no.slice(0, 16) };
+  }
+  /** The summons the room holds now (tests, /health). */
+  kinNow(owner?: string): RoomKin[] { return this.mobs.kin.filter(k => owner === undefined || k.owner === owner).map(k => ({ ...k })); }
   get present(): string[] { return [...this.keepers.keys()]; }
   get empty(): boolean { return this.keepers.size === 0; }
   /** The next snapshot to this viewer is whole (its stream reopened, a send was lost). */
@@ -416,9 +479,35 @@ export class RoomWorld implements CoopLink {
     const d = Math.max(1, Math.min(100000, Math.round(dmg))), status = st && STATUS_WIRE.test(st) ? st : '';
     const life = this.life(to);
     if (life?.down) return;
+    const now = this.now();
+    // S5: the allies' guards the room keeps — the strongest Banner or Gate reaching it cuts the blow, and an Intercept
+    // bond hands its share to the tank (through his own guard). The screen mirrors both (its `ally` events).
+    const shield = this.guardOn(to, now);
+    let n = shield.cut > 0 ? Math.max(1, Math.round(d * (1 - shield.cut / 100))) : d;
+    if (life && n > 1 && !(status && d <= 1)) for (const b of this.bondsOn(to, now)) {
+      const share = Math.round(n * b.share / 100), tl = this.life(b.tank);
+      if (!(share > 0) || !tl || tl.down) continue;
+      tl.bite(share, type, from?.def.level, now);
+      this.viewers.get(b.tank)?.ev.push({ k: 'bite', to: b.tank, ...(from ? { i: this.nid(from) } : {}), d: share, ty: type });
+      n = Math.max(1, n - share);
+    }
     // Protocol 10: the room's own cut, off the life it keeps (the screen shows the same blow through its own wards).
-    life?.bite(d, type, from?.def.level, this.now(), !!status && d <= 1);
+    life?.bite(n, type, from?.def.level, now, !!status && d <= 1);
     v.ev.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d, ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}), ...(status ? { st: status } : {}) });
+  }
+  /** CoopLink: a creature struck a Keeper's summon (td-mobs biteKin, its guard already taken): its owner hears it. */
+  kinBite(k: RoomKin, from: Mob | null, dmg: number): void {
+    const d = Math.max(0, Math.min(100000, Math.round(dmg))), fell = k.hp <= 0;
+    this.kinStats.bites++;
+    const list = this.kinEv.get(k.owner) ?? [];
+    list.push({ k: 'kin', to: k.owner, p: k.i, d, ...(from ? { i: this.nid(from) } : {}), ...(fell ? { x: 1 as const } : {}) });
+    this.kinEv.set(k.owner, list.slice(-24));
+    if (fell) {
+      this.kinStats.fell++;
+      this.kinDead.set(k.key, this.clockMs + KIN_DEAD_MS);
+      this.kinOf.get(k.owner)?.delete(k.i);
+      this.syncKin();
+    }
   }
   /** Protocol 10: a Keeper went down (the room's life): everyone near sees it fall. */
   downed(id: string): void {
@@ -429,8 +518,12 @@ export class RoomWorld implements CoopLink {
       const o = this.keepers.get(vid);
       if (vid === id || (o && Math.hypot(o.x - k.x, o.y - k.y) <= reach)) v.ev.push({ k: 'down', to: id, x: Math.round(k.x), y: Math.round(k.y) });
     }
-    // Nothing keeps after it: its creatures forget it at once.
-    for (const m of this.mobs.mobs) if (m.tauntBy === id) { m.taunt = 0; m.tauntBy = undefined; }
+    // Nothing keeps after it: its creatures forget it at once (its taunts and its threat).
+    for (const m of this.mobs.mobs) { if (m.tauntBy === id) { m.taunt = 0; m.tauntBy = undefined; } forgetThreat(m, id); }
+    // S5: where and when it fell — a Lanternwright's Rekindle reads it; its bonds and auras end.
+    this.fallen.set(id, { at: this.now(), x: Math.round(k.x), y: Math.round(k.y) });
+    this.bonds.delete(id);
+    for (const [key, a] of this.auras) if (a.by === id) this.auras.delete(key);
   }
   /** The kills since the last call, with what each pays (protocol 10: the room's credit). */
   flushKills(): RoomKill[] { const k = this.paid; this.paid = []; return k; }
@@ -498,7 +591,9 @@ export class RoomWorld implements CoopLink {
           if (why === 'far') this.stats.refusedFar++; if (why === 'cap') this.stats.refusedCap++;
           continue;
         }
-        landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c, h.el);
+        // A summon's blow (`k`): its threat is its own — only for a summon the room holds for this Keeper.
+        const kin = h.k && this.kinOf.get(from)?.has(h.k) ? h.k : '';
+        landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c, h.el, h.s, kin);
       }
     });
     this.stats.claimsIn += landed; this.stats.claimsRefused += refused;
@@ -548,6 +643,12 @@ export class RoomWorld implements CoopLink {
           by: from, at: { x: k.x, y: k.y }, dps, pct: Math.min(SLOW_MAX_PCT, Math.max(0, c.n ?? 0)), tiles: Math.min(PULL_MAX_TILES, Math.max(0, (c.n ?? 0) / 10)),
         });
         if (!ok) { nay(c.i, 'bad'); continue; }
+        // A Captain of the Dead's taunt (Raise Skeleton's mark): it turns on the Captain — this Keeper's summon nearest it.
+        if (c.k === 'taunt' && c.s === 'raise-skeleton') {
+          let best: RoomKin | null = null, bd = (CAPTAIN_REACH + 2) * TILE;
+          for (const kk of this.kinOf.get(from)?.values() ?? []) { const dk = Math.hypot(kk.x - m.x, kk.y - m.y); if (kk.hp > 0 && dk <= bd) { bd = dk; best = kk; } }
+          if (best) m.tauntBy = best.key;
+        }
         if (held) { im[c.k] = now + secs * 1000 + CC_IMMUNE * 1000; this.immune.set(m, im); }
         // Fighting it with a status is fighting it (its loot is this Keeper's first too).
         (m.coopBy ??= new Set()).add(from);
@@ -557,6 +658,114 @@ export class RoomWorld implements CoopLink {
     this.stRate.set(from, rate);
     return { landed, refused, no: no.slice(0, 24) };
   }
+  // ── S5: heals, wards and guards on allies (ally-claims.ts) ──
+  /** The strongest guard (a Banner, a Gate…) another Keeper's aura lays on `to` now: its cut %, and its flags. */
+  private guardOn(to: string, now: number): { cut: number; f: number } {
+    const k = this.keepers.get(to);
+    let cut = 0, f = 0;
+    if (!k) return { cut, f };
+    for (const [key, a] of this.auras) {
+      if (a.until <= now) { this.auras.delete(key); continue; }
+      if (a.by === to) continue;
+      const o = this.keepers.get(a.by);
+      if (!o || Math.hypot(o.x - k.x, o.y - k.y) > a.r) continue;
+      if (a.cut > cut) cut = a.cut;
+      f |= a.f;
+    }
+    return { cut: Math.min(60, cut), f };
+  }
+  /** The live Intercept bonds on `to` (expired ones dropped; a tank who left takes nothing). */
+  private bondsOn(to: string, now: number): { tank: string; share: number }[] {
+    const list = (this.bonds.get(to) ?? []).filter(b => b.until > now && this.keepers.has(b.tank));
+    if (list.length) this.bonds.set(to, list); else this.bonds.delete(to);
+    return list;
+  }
+  /** An effect laid on `to` by another Keeper: its screen mirrors it with its next snapshot. */
+  private tell(to: string, e: CoopEvent): void {
+    const list = this.allyEv.get(to) ?? [];
+    if (list.length < 16) list.push(e);
+    this.allyEv.set(to, list);
+  }
+  /**
+   * S5: a Keeper's heals, wards, cleanses, Rekindles, bonds and auras on others (the `/world/life` body's `a`). Each is
+   * weighed (ally-claims allyLegal: the skill, the level, the reach by the room's record; then the level's heal budget
+   * over the window, Rekindle's clock and the fall's place, a rate) and what passes lands on the target's life the room
+   * keeps, with an `ally` event to its screen. Healing makes threat ×0.5 on the creatures fighting the healed (td-threat).
+   * Returns, for each claim, what it moved (a heal's life, a ward's absorb, 1 for the rest) or why it was refused.
+   */
+  allies(from: string, list: readonly AllyClaim[]): (number | AllyRefusal)[] {
+    const k = this.keepers.get(from);
+    const now = this.now();
+    if (!k) return list.map(() => 'nobody');
+    const rate = (this.allyRate.get(from) ?? []).filter(t => now - t < 1000);
+    const log = (this.allyHeals.get(from) ?? []).filter(e => now - e.at < ALLY_WINDOW_MS);
+    const out: (number | AllyRefusal)[] = [];
+    const nay = (why: AllyRefusal) => { this.allyStats.refused++; out.push(why); };
+    for (const c of list) {
+      if (rate.length >= ALLY_PER_SEC) { nay('rate'); continue; }
+      rate.push(now);
+      const to = c.to ? this.keepers.get(c.to) ?? null : null;
+      const why = allyLegal(c, k, to);
+      if (why) { nay(why); continue; }
+      this.allyStats.claims++;
+      if (c.k === 'aura') {
+        // The holder's guard on those near it, until it is said again (the screen repeats it while it runs).
+        const r = Math.max(0, Math.min(11, (c.r ?? 0) / 10)) * TILE, until = now + Math.max(500, (c.t ?? 20) * 100);
+        this.auras.set(`${from}|${c.s}`, { by: from, s: c.s, cut: CUT_AURAS.has(c.s) ? c.n : 0, r, until, f: c.f ?? 0 });
+        for (const o of this.keepers.values()) if (o.id !== from && Math.hypot(o.x - k.x, o.y - k.y) <= r) this.tell(o.id, { k: 'ally', to: o.id, a: 'aura', by: from, s: c.s, n: c.n, t: Math.round((until - now) / 100), ...(c.f ? { f: c.f } : {}) });
+        out.push(1);
+        continue;
+      }
+      const tl = this.life(to!.id);
+      if (!tl) { nay('nobody'); continue; }
+      if (c.k === 'rekindle') {
+        const fell = this.fallen.get(to!.id);
+        if (!fell || now - fell.at > REKINDLE_MAX_MS) { nay('late'); continue; }
+        if (Math.hypot(fell.x - k.x, fell.y - k.y) > (REKINDLE_REACH + 1) * TILE) { nay('far'); continue; }
+        if (now - (this.rekindled.get(from) ?? -Infinity) < REKINDLE_MIN_CD_MS) { nay('cooldown'); continue; }
+        this.rekindled.set(from, now); this.fallen.delete(to!.id);
+        const n = tl.rekindle(c.n);
+        this.allyStats.rekindles++;
+        this.tell(to!.id, { k: 'ally', to: to!.id, a: 'rekindle', by: from, s: c.s, n: c.n, x: fell.x, y: fell.y });
+        out.push(n);
+        continue;
+      }
+      if (tl.down) { nay('down'); continue; }
+      if (c.k === 'heal') {
+        const spent = log.reduce((a, e) => a + e.n, 0), room = allyHealBudget(k.level) * ALLY_WINDOW_MS / 1000 - spent;
+        if (room <= 0) { nay('budget'); continue; }
+        const want = Math.min(c.n, room);
+        const n = tl.allyHeal(want, now);
+        log.push({ at: now, n: want });
+        this.allyStats.healed += n;
+        healThreat(this.mobs.mobs, to!.id, from, n);
+        if (n > 0) this.tell(to!.id, { k: 'ally', to: to!.id, a: 'heal', by: from, s: c.s, n });
+        out.push(n);
+      } else if (c.k === 'ward') {
+        // The ward is the target's screen's to hold (its soaks are claims the room bounds by the bites it took). A vow's
+        // copy (Vow for Two) is the room's: it holds the life on its last point a few seconds.
+        this.allyStats.wards++;
+        if ((c.f ?? 0) & 2) tl.vowUntil = now + Math.max(0, Math.min(50, c.t ?? 40)) * 100;
+        this.tell(to!.id, { k: 'ally', to: to!.id, a: 'ward', by: from, s: c.s, n: c.n, t: c.t ?? 120, ...(c.f ? { f: c.f } : {}) });
+        out.push(c.n);
+      } else if (c.k === 'cleanse') {
+        this.tell(to!.id, { k: 'ally', to: to!.id, a: 'cleanse', by: from, s: c.s, n: c.n, ...(c.f ? { f: c.f } : {}), ...(c.t ? { t: c.t } : {}) });
+        out.push(1);
+      } else if (c.k === 'bond') {
+        const share = Math.max(0, Math.min(70, c.n)), until = now + Math.max(0, Math.min(110, c.t ?? 60)) * 100;
+        const mine = (this.bonds.get(to!.id) ?? []).filter(b => b.tank !== from);
+        mine.push({ tank: from, share, until });
+        this.bonds.set(to!.id, mine.slice(-2));
+        this.tell(to!.id, { k: 'ally', to: to!.id, a: 'bond', by: from, s: c.s, n: share, t: c.t ?? 60, ...(c.f ? { f: c.f } : {}) });
+        out.push(1);
+      }
+    }
+    this.allyRate.set(from, rate);
+    this.allyHeals.set(from, log);
+    return out;
+  }
+  /** A Keeper healed itself `n` (its own life claims): threat on what fights it, ×0.5 (td-threat). */
+  selfHealed(id: string, n: number): void { if (n > 0) healThreat(this.mobs.mobs, id, id, n); }
   /** Protocol 10: a burn's or a bleed's tick, charged to its Keeper's claim budget (what is left of it). */
   dotSpend(from: string, dmg: number): number {
     const k = this.keepers.get(from);
@@ -596,11 +805,22 @@ export class RoomWorld implements CoopLink {
     }
     // Bites and kills first; pictures fill what room is left (a picture that does not fit is simply not shown).
     const firm = v.ev.filter(e => e.k === 'bite' || e.k === 'kill'), soft = v.ev.filter(e => e.k !== 'bite' && e.k !== 'kill');
-    const ev = [...firm, ...soft].slice(0, COOP_MAX_EVENTS);
+    // S5: what other Keepers laid on this one (heals, wards, bonds…) goes first: it is its life.
+    const mine = [...this.allyEv.get(id) ?? [], ...this.kinEv.get(id) ?? []];
+    this.allyEv.delete(id); this.kinEv.delete(id);
+    const ev = [...mine, ...[...firm, ...soft].slice(0, COOP_MAX_EVENTS)];
     v.ev = firm.slice(COOP_MAX_EVENTS);
+    // S5: the life of the Keepers near it, as the room keeps it (a healer's lowest-ally pick; the plates' bars).
+    const al: [string, number, number, number][] = [];
+    for (const o of this.keepers.values()) {
+      if (o.id === id || Math.hypot(o.x - k.x, o.y - k.y) > reach) continue;
+      const ol = this.life(o.id);
+      if (ol) al.push([o.id, Math.max(0, Math.round(ol.hp)), ol.max, ol.down ? 1 : 0]);
+      if (al.length >= 12) break;
+    }
     // Protocol 10: the life the room keeps for this Keeper, with the last of its claims it took.
     const life = this.life(id);
-    return { area: this.area, seq: snap.seq, kf: snap.kf, mobs: snap.mobs, gone: snap.gone.slice(0, 64), ev, ...(life ? { me: life.view() } : {}) };
+    return { area: this.area, seq: snap.seq, kf: snap.kf, mobs: snap.mobs, gone: snap.gone.slice(0, 64), ev, ...(life ? { me: life.view() } : {}), ...(al.length ? { al } : {}) };
   }
   /** One creature on the wire (td-coop stateOf, the same fields). */
   stateOf(m: Mob): CoopMobState {
