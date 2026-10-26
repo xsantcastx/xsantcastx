@@ -24,6 +24,7 @@ import {
 } from './sound-palette';
 import { channelGain, type SoundSettings } from './sound-settings.model';
 
+import { HitCap, isHitCue, type CombatCue } from './combat-cues';
 export type SfxCue =
   | 'step' | 'land' | 'dig' | 'break' | 'clang'
   | 'pickup' | 'coin' | 'craft' | 'equip' | 'levelup'
@@ -42,7 +43,9 @@ export type SfxCue =
   // The cascade machines (shared/cascade): runes landing, a cluster bursting (pitch climbs each tumble), a big win.
   | 'tumble' | 'cluster' | 'bigwin'
   // The Hush's omens (play/td/td-dark.ts): a bell far off, a breath of whispering. Sound only, never a warning of harm.
-  | 'farbell' | 'whisper';
+  | 'farbell' | 'whisper'
+  // The fight (combat-cues.ts, skills-100.md §0.6): a cast cue and a hit cue per skill, a bite per creature family.
+  | CombatCue;
 
 export interface SfxOptions {
   material?: Material;
@@ -56,7 +59,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { farbell: 6, whisper: 3, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -84,6 +87,10 @@ export class SoundDirector {
   private tickTimer: ReturnType<typeof setTimeout> | null = null;
   private running = false;
   private lastCue = new Map<SfxCue, number>();
+  /** At most six hit cues a tenth of a second (combat-cues.ts): an AoE never clips the mix. */
+  private readonly hitCap = new HitCap();
+  /** Hit cues the cap dropped (the specs read it). */
+  hitsDropped = 0;
   /** Phrases played since start (the specs and the handoff's tuning notes read it). */
   phrases = 0;
 
@@ -186,6 +193,7 @@ export class SoundDirector {
     const now = this.ctx.currentTime;
     const gap = CUE_GAP[cue];
     if (gap && now - (this.lastCue.get(cue) ?? -1) < gap) return;
+    if (isHitCue(cue) && !this.hitCap.admit(now)) { this.hitsDropped++; return; }
     this.lastCue.set(cue, now);
     const t = now + .005;
     const up = Math.pow(2, (opts.pitch ?? 0) / 12);
@@ -237,6 +245,33 @@ export class SoundDirector {
       case 'farbell': this.tone(t, 'sine', 146.8, .05, 3.2, .02); this.tone(t, 'sine', 220, .025, 2.6, .02); return this.tone(t, 'triangle', 293.7, .012, 1.8, .02);
       // Something whispers: two breaths of filtered air, the second lower.
       case 'whisper': this.whoosh(t, 3200, 1900, .7, .03); return this.whoosh(t + .55, 2600, 1500, .8, .025);
+      // ── The fight (skills-100.md §0.6's recipes; `pitch` is the row's variation) ──
+      case 'fire-cast': this.sweep(t, 'bandpass', 800 * up, 300 * up, 1.2, .16, .28); return this.thump(t, 70 * up, .2, .22);
+      case 'fire-hit': this.noiseHit(t, 'bandpass', 2000 * up, .9, .11, .09, this.sfxBus); return this.noiseHit(t + .03, 'highpass', 3500, .7, .06, .03, this.sfxBus);
+      case 'frost-cast': this.glide(t, 'sine', 1800 * up, 2600 * up, .07, .3); return this.tone(t + .26, 'sine', 3136 * up, .05, .25, .002);
+      case 'frost-hit': this.noiseHit(t, 'highpass', 3000, 1, .12, .02, this.sfxBus); return this.noiseHit(t + .045, 'highpass', 3400, 1, .09, .02, this.sfxBus);
+      case 'bone-cast': for (let i = 0; i < 3; i++) this.tone(t + i * .07, 'triangle', 400 * up * (1 + i * .06), .09, .06, .002); return;
+      case 'bone-hit': for (let i = 0; i < 4; i++) this.noiseHit(t + i / 30, 'bandpass', 1800 * up, 2, .07 * (1 - i * .18), .018, this.sfxBus); return;
+      case 'shadow-cast': this.glide(t, 'sine', 500 * up, 120 * up, .09, .38); return this.whoosh(t, 3000, 1700, .4, .035);
+      case 'light-cast': this.tone(t, 'sine', 880 * up, .07, .4, .006); return this.tone(t, 'sine', 1320 * up, .045, .34, .006);
+      case 'light-hit': return this.tone(t, 'sine', 1760 * up, .06, .12, .002);
+      case 'lightning-cast': return this.glide(t, 'sawtooth', 100 * up, 900 * up, .045, .3);
+      case 'lightning-hit': this.noiseHit(t, 'highpass', 900, .5, .14, .04, this.sfxBus); return this.rumble(t + .02, 120, .16, .6);
+      case 'wind': return this.whoosh(t, 400 * up, 1100 * up, .4, .12);
+      case 'blade': this.partial(t, 'sine', 920 * up, .08, .3, .001, this.sfxBus); this.partial(t, 'sine', 1385 * up, .045, .2, .001, this.sfxBus); return this.noiseHit(t, 'highpass', 3000, .7, .09, .02, this.sfxBus);
+      case 'shield': this.tone(t, 'triangle', 180 * up, .14, .16, .002); return this.noiseHit(t, 'bandpass', 600 * up, 1.4, .12, .05, this.sfxBus);
+      case 'arrow': this.tone(t, 'sawtooth', 220 * up, .05, .07, .001); return this.whoosh(t + .02, 3200, 2200, .12, .04);
+      case 'beast': this.tone(t, 'triangle', 520 * up, .09, .07, .003); return this.tone(t + .08, 'triangle', 600 * up, .07, .06, .003);
+      case 'heal': this.tone(t, 'sine', 523.3 * up, .06, .5, .12); return this.tone(t, 'sine', 659.3 * up, .045, .5, .14);
+      case 'ward': this.partial(t, 'sine', 740 * up, .045, .45, .05, this.sfxBus, -9); return this.partial(t, 'sine', 740 * up, .045, .45, .05, this.sfxBus, 9);
+      case 'revive': [523.3, 659.3, 784].forEach((f, i) => this.tone(t + i * .2, 'sine', f * up, .07, .3, .01)); return;
+      case 'ultimate': this.thump(t, 55 * up, .3, .5); this.whoosh(t, 1200 * up, 250 * up, .5, .12); return this.tone(t + .1, 'sine', 146.8, .04, 2.2, .02);
+      // A creature's blow on the Keeper, by family.
+      case 'bite-maw': this.partial(t, 'square', 140 * up, .05, .09, .001, this.sfxBus); return this.noiseHit(t, 'bandpass', 2400, 3, .1, .04, this.sfxBus);
+      case 'bite-beast': this.glide(t, 'sawtooth', 210 * up, 120 * up, .05, .16); return this.noiseHit(t, 'bandpass', 900, 1.2, .08, .12, this.sfxBus);
+      case 'bite-bone': for (let i = 0; i < 3; i++) this.noiseHit(t + i * .035, 'bandpass', 1400 * up, 2.5, .07, .02, this.sfxBus); return;
+      case 'bite-orc': return this.glide(t, 'sawtooth', 150 * up, 95 * up, .06, .14);
+      case 'bite-shade': return this.noiseHit(t, 'highpass', 4200, .6, .07, .22, this.sfxBus, .05);
       case 'bigwin': this.arpeggio(t, [60, 64, 67, 72, 76, 79, 84, 88], 'bell', .07, .3, true); return this.arpeggio(t + .62, [84, 91], 'bell', .12, .32, true);
     }
   }
@@ -598,6 +633,31 @@ export class SoundDirector {
     o.connect(g); o.start(t); lfo.start(t); o.stop(t + 2); lfo.stop(t + 2);
     this.noiseHit(t, 'bandpass', 5000, 2, .06, 1.1, this.sfxBus, .4);
     this.arpeggio(t + .5, [76, 83, 88], 'bell', .08, .18, false);
+  }
+
+  /** A noise band swept from one frequency to another (fire-cast's breath). */
+  private sweep(t: number, type: BiquadFilterType, from: number, to: number, q: number, v: number, dur: number): void {
+    const s = this.ctx.createBufferSource(); s.buffer = this.white;
+    const f = this.ctx.createBiquadFilter(); f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
+    const g = this.env(t, v, .01, dur * .3, dur * .7, this.sfxBus);
+    s.connect(f); f.connect(g); s.start(t, Math.random()); s.stop(t + dur + .1);
+  }
+  /** One oscillator gliding between two pitches (frost's glissando, shadow's fall, lightning's rising buzz). */
+  private glide(t: number, type: OscillatorType, from: number, to: number, v: number, dur: number): void {
+    const g = this.env(t, v, .01, dur * .5, dur * .5, this.sfxBus);
+    const o = this.ctx.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(from, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
+    o.connect(g); o.start(t); o.stop(t + dur + .1);
+  }
+  /** A low thump: a sine dropping an octave fast. */
+  private thump(t: number, hz: number, v: number, dur: number): void { this.glide(t, 'sine', hz * 2, hz, v, dur); }
+  /** Brown-noise rumble under a low-pass (thunder's tail). */
+  private rumble(t: number, hz: number, v: number, dur: number): void {
+    const s = this.ctx.createBufferSource(); s.buffer = this.brown;
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = hz;
+    const g = this.env(t, v, .02, dur * .3, dur * .7, this.sfxBus);
+    s.connect(f); f.connect(g); s.start(t, Math.random()); s.stop(t + dur + .1);
   }
 
   private whoosh(t: number, from: number, to: number, dur: number, v: number): void {

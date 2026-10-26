@@ -38,8 +38,19 @@ export function isSpellstoneDef(definitionId: string | undefined): boolean {
   return typeof definitionId === 'string' && definitionId.startsWith('spellstone:');
 }
 
-/** The cells an item covers. */
-export function footprintOf(item: Pick<GameItem, 'name' | 'type' | 'definitionId' | 'rarity'> & { id?: string }): Footprint {
+/**
+ * The cells an item covers: one (owner 2026-10-26, "make all items in the inventory 1×1, so it's more optimal and easier
+ * to manage on smaller displays"). A ring and a greatsword each take one cell; identical pieces still pile.
+ */
+export function footprintOf(_item?: Pick<GameItem, 'name' | 'type' | 'definitionId' | 'rarity'> & { id?: string }): Footprint {
+  return ONE_BY_ONE;
+}
+
+/**
+ * The grid-v1 footprint (the table above): read only by the v1 → v2 migration (inventory-grid.ts migrateGrid), which
+ * pins every piece at the top-left cell it was drawn at, so the move to 1×1 reshuffles nothing.
+ */
+export function legacyFootprintOf(item: Pick<GameItem, 'name' | 'type' | 'definitionId' | 'rarity'> & { id?: string }): Footprint {
   if (item.type === 'rune' || isSpellstoneDef(item.definitionId)) return ONE_BY_ONE;
   let base: GearBase | null = null;
   try { base = itemBase(item); } catch { base = null; }

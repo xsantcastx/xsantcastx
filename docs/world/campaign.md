@@ -255,7 +255,7 @@ whatever S-work has landed.
   - an old pouch migrates once on two devices without doubling (the merge rule in §6.3.5);
   - check:meaning finds the stone's Found in and Used for.
 
-#### S3 [spec'd]: An animation and a sound for every attack (M, book lane)
+#### S3 [built 2026-10-26, branch `s5`, docs/handoff/s3-anim-sound.md]: An animation and a sound for every attack (M, book lane)
 - **What.** skills-100.md §0.6:
   - the eleven Keeper animations on the visible-gear rig;
   - the FX kit rules;
@@ -280,7 +280,7 @@ whatever S-work has landed.
   - at most 14 fish shadows (8 on a phone);
   - a jump at a spot shortens the next bite by 2 s.
 
-#### S5 [spec'd]: The healer and tank kit to level 30 (M, book lane)
+#### S5 [built 2026-10-26, branch `s5`, docs/handoff/s5-party-kits.md — the healer and tank rows, threat, ally claims on the room, the 23 swaps; the Thornstrider's rows wait]: The healer and tank kit to level 30 (M, book lane)
 - **What.** skills-100.md §2 and §3 rows up to level 30, plus the Thornstrider's interrupts:
   - **ally targeting** (§3, one rule), with Hearthlight and the Hearth Circle reworked to allies and the level factor;
   - **Cleanse** (18) and **Rekindle** (30, only where a fall costs);

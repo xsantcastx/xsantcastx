@@ -1,4 +1,5 @@
 import type { SpriteEntry } from '../../shared/art/sprite-manifest.generated';
+import type { CombatCue } from '../../shared/sound/combat-cues';
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
@@ -148,7 +149,7 @@ export interface SeekAnswer {
 }
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' } | { kind: 'seam' };
-export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
+export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -206,7 +207,7 @@ export interface EngineOptions {
    * host mints the item (its roll frozen at mint) or grants the rune. False
    * leaves the drop on the ground (a full satchel).
    */
-  onLoot?: (loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }) => boolean | void;
+  onLoot?: (loot: { id: string; coins: number; own?: string; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }) => boolean | void;
   /**
    * What a kill drops on top of its area's table (shared/loot/drop-tables.ts
    * via LootService.rollLoot). Only asked while combat rules are set. Rows are
@@ -300,12 +301,15 @@ export interface EngineOptions {
    * guard), answered with the life the room holds; `cueText`: the words for a refused blow ('far', 'sight', 'cap',
    * 'immune'); `onPeerDown`: another Keeper near fell (the room's word).
    */
-  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[] }) => Promise<import('../world/keeper-life').LifeView | null>;
+  onLife?: (body: { g?: { m: number; d: number; r: number[] }; c: import('../world/keeper-life').LifeClaim[]; a?: import('../world/ally-claims').AllyClaim[] }) => Promise<(import('../world/keeper-life').LifeView & { a?: (number | string)[] }) | null>;
   cueText?: (why: string) => string;
   onPeerDown?: (id: string, x: number, y: number) => void;
+  /** S5: a Lanternwright's Rekindle stood this Keeper up where it fell: the fall's cost is undone (the purse, the debt). */
+  onRekindle?: () => void;
   onCoopKill?: (kill: import('../td/td-coop').CoopKill) => 'full' | 'share' | 'none';
   /** Protocol 5: post this Keeper's own companions to the party in its area. */
-  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[] }) => Promise<boolean>;
+  /** `g`: the summons' Shared Bones (%), for the room (`kin`). */
+  onCoopPals?: (body: { area: string; pals: import('../social/coop-pals').CoopPal[]; g?: number }) => Promise<boolean>;
   /**
    * Protocol 7 (play/social/world-protocol.ts): a piece of the room's ground was picked here. It has already left this
    * screen; the host asks the room and grants it on a yes, or hands it back (td-engine restoreRoomDrop) on a no.
@@ -381,6 +385,11 @@ export interface EngineOptions {
   onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
   /** A shared ground item (Hearth protocol 6) was tapped: the Keeper walked to it; the HUD picks it up. */
   onGroundTap?: (id: string) => void;
+  /**
+   * A pile on the ground was opened (td-ground-pile.ts): a right-click, a long-press, or a tap on a tile with more than
+   * one thing. The HUD lists it (RuneScape-style); a row takes one (engine `takeFromPile`), "Take all" the lot.
+   */
+  onPileOpen?: (pile: { at: { x: number; y: number }; items: readonly PileRow[] }) => void;
   /**
    * The Sexton's Count (top-down; shared/sexton): the Keeper read a chalk-marked stone, the ledger page on the barrow's
    * jetty (`dark`: the night or an eclipse is on it), tried Barrow Door 1, or read the forty-first grave. The host
@@ -635,3 +644,6 @@ export function walkDirection(fromX: number, toX: number): -1 | 0 | 1 {
   const dx = toX - fromX;
   return Math.abs(dx) <= ARRIVE_DISTANCE ? 0 : dx > 0 ? 1 : -1;
 }
+
+/** One row of an opened ground pile (td-ground-pile.ts). */
+export interface PileRow { id: string; label: string; color: string; coins: number; qty: number; rarity: string | null; shared: boolean }
