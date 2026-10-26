@@ -22,6 +22,7 @@ import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../.
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { paintRichGround, richEdge } from './td-ground';
+import { organic, paintFieldTile } from './td-terrain';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
@@ -99,7 +100,7 @@ import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampS
 import { THORN_FX, drawArrow, drawBeast, drawThornAir, drawThornGround, drawThornState, drawThornZones } from './td-thorn-fx';
 import { SPIRIT_BEAST, THORN_PET, bondShare, spiritLevel, thornPetRest } from './td-thorn';
 import { dropGlow, dropIconSrc } from './td-drop-art';
-import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
+import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
 import { ROAM, Stand, newRoam, stepRoam } from './td-roam';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
@@ -596,6 +597,8 @@ export class TopDownEngine {
     // The art pass's camera (webdriver only; e2e/td-art-shots.spec.ts): the arcane aura on the Keeper, the motes alive.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdArt'] = {
       aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
+      // A pulse now (the aura photographs), and the pulses running.
+      pulse: () => { this.auraFx.pulse(1.3); this.auraBeat = this.time; return this.auraFx.pulsing; },
       perf: () => this.perf?.splice(0) ?? [],
       motes: () => this.auraFx.alive,
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
@@ -3778,8 +3781,12 @@ export class TopDownEngine {
       const r = cy * CHUNK + e.rows[f];
       for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
         const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
-        if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy), f)) paintGround(g, k, c, r, ox, oy, f);
-        const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
+        const nb = (dx: number, dy: number) => kind(c + dx, r + dy);
+        // Organic terrain (td-terrain.ts): grass, flowers, moss, roads, sand, bog, cobble and water meet along curved,
+        // blended edges; Low (or any other ground) keeps the square painters and their edges.
+        const field = paintFieldTile(g, k, c, r, ox, oy, nb, f);
+        if (!field && !paintRichGround(g, k, c, r, ox, oy, nb, f)) paintGround(g, k, c, r, ox, oy, f);
+        const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!(field && organic(n)) && !richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
         edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
       }
       e.rows[f]++;
@@ -4499,17 +4506,22 @@ export class TopDownEngine {
 
   /** Ground effects (spec §Rules 3): the aura's floor tint and rings, its pulses, the nova's ring and scorch, the raise sigil. */
   private drawGroundFx(): void {
-    const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
-    // The aura the Keeper wears (td-aura.ts): its layered ring round the feet; its motes rise in the air pass.
+    const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y);
+    // The aura the Keeper wears (td-aura.ts; owner 2026-10-26: no constant circle): nothing stays on the ground — a light
+    // ring runs out to the aura's reach when it starts, on a tick that reaches a foe, and as a slow heartbeat; its motes
+    // and flickers drift round the body in the air pass and its rim glows on the figure. Low: no motes. Reduced motion:
+    // no pulses.
     const look = this.auraLook();
-    if (look) { this.auraFx.step(this.time, look, this.still || envDetail() === 'low'); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
-    if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
-      const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
-      c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
-      drawRing(c, X, Y, this.mobs.auraRadius, turn, tn.core, tn.body, 8, 6, tn.edge);
-      c.globalAlpha = .6; drawRing(c, X, Y, Math.round(this.mobs.auraRadius * .6), -turn * 1.4, tn.body, tn.edge, 8, 4);
-      c.globalAlpha = 1;
+    if (look) {
+      const reach = this.artAura ? 3 * TILE : this.mobs.auraRadius;
+      const hit = this.mobs.effects.some(e => e.kind === 'pulse' && e.age < .05 && (e.el === 'ember' || e.el === 'life'));
+      if (!this.auraWas) { this.auraFx.pulse(1.3); this.auraBeat = 0; }
+      else if (hit && this.time - this.auraBeat > .9) { this.auraFx.pulse(.85); this.auraBeat = this.time; }
+      else if (this.time - this.auraBeat > 3.2) { this.auraFx.pulse(.7); this.auraBeat = this.time; }
+      this.auraFx.step(this.time, look, this.still, envDetail() === 'low', up(31));
+      this.auraFx.waves(c, X, Y - 1, look, reach);
     }
+    this.auraWas = !!look;
     this.drawLootRings();
     this.drawTells();
     // Elite packs: the aura ring under each member, a Cold Aura's reach, a Fire Enchanted's burst on its way.
@@ -5029,7 +5041,7 @@ export class TopDownEngine {
       const g = sc.getContext('2d')!;
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
       this.paintPerson(g, p, action, { x: 36, y: 70 });
-      rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
+      rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still, envDetail() === 'low');
     }
     this.paintPerson(this.ctx, p, action, null);
     if (p === this.player) this.drawAnimOverlay(p);
@@ -5104,6 +5116,9 @@ export class TopDownEngine {
   // ── The aura look (td-aura.ts) ──
   private figureScratch: HTMLCanvasElement | null = null;
   private readonly auraFx = new AuraFx();
+  /** The aura was on last frame (its start pulse), and when it last pulsed. */
+  private auraWas = false;
+  private auraBeat = 0;
   /** `window.__tdArt.aura(true)` (automated browsers): the arcane aura on the Keeper, for the art pass's photographs. */
   private artAura: AuraLookId | null = null;
   /** The look of the aura the Keeper wears now: a running aura skill in its element, or the art pass's showcase. */
