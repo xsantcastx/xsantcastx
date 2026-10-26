@@ -31,7 +31,12 @@ interface ShapeOpt { g?: number; bias?: number }
 
 const INK = '#170f1c';
 
-function rgb(h: string): [number, number, number] { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+const RGB = new Map<string, [number, number, number]>();
+function rgb(h: string): [number, number, number] {
+  let v = RGB.get(h);
+  if (!v) { v = [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; if (RGB.size < 4096) RGB.set(h, v); }
+  return v;
+}
 function hex(r: number, g: number, b: number): string { return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join(''); }
 export function mix(a: string, b: string, t: number): string { const p = rgb(a), q = rgb(b); return hex(p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t); }
 
@@ -44,7 +49,11 @@ export function rampOf(base: string, opts: { cool?: string; warm?: string; deep?
   return [mix(base, cool, deep), mix(base, cool, deep * .58), mix(base, cool, deep * .22), base, mix(base, warm, hi * .5), mix(base, warm, hi)];
 }
 
+const CAST: readonly (readonly [number, number])[] = [[-1, -1], [-2, -2], [0, -2], [-2, -1]];
 const B2 = [0.125, 0.625, 0.875, 0.375];
+const INKED = new Map<string, string>();
+/** A ramp's darkest tone pulled toward the ink (the contour between overlapping parts), cached. */
+function inked(c: string): string { let v = INKED.get(c); if (!v) { v = mix(c, INK, .35); INKED.set(c, v); } return v; }
 
 export class Sculpt {
   readonly w: number;
@@ -139,6 +148,12 @@ export class Sculpt {
     for (let i = 0; i <= n; i++) this.dot(Math.round(a[0] + (b[0] - a[0]) * i / n), Math.round(a[1] + (b[1] - a[1]) * i / n), c);
     return this;
   }
+  /** A one-pixel line of detail colour landing only where the figure is already solid (folds, seams). */
+  lineOn(a: Pt, b: Pt, c: string): this {
+    const n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]), 1);
+    for (let i = 0; i <= n; i++) { const x = Math.round(a[0] + (b[0] - a[0]) * i / n), y = Math.round(a[1] + (b[1] - a[1]) * i / n); if (this.solid(x, y)) this.dot(x, y, c); }
+    return this;
+  }
   /** Is this pixel solid (for details that should only land on the figure)? */
   solid(x: number, y: number): boolean { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.id[y * this.w + x] > 0; }
 
@@ -185,7 +200,7 @@ export class Sculpt {
       let t = 3 + (lit - flat) * 5.2 * (m.gain ?? 1) - fall * .7 + (m.bias ?? 0) + this.bias[k] / 4;
       // A part in front casts a short shadow down-right onto the part behind.
       const L = layer[k];
-      for (const [dx, dy] of [[-1, -1], [-2, -2], [0, -2], [-2, -1]] as const) {
+      for (const [dx, dy] of CAST) {
         const xx = x + dx, yy = y + dy;
         if (xx < 0 || yy < 0) continue;
         const j = yy * w + xx;
@@ -196,16 +211,16 @@ export class Sculpt {
       let i = Math.floor(t) + (fr > .5 + (th - .5) * .5 ? 1 : 0);
       // A contour: a part behind a neighbouring part in front of it (4-neighbours) takes its darkest line.
       let contour = false;
-      for (const j of [k - 1, k + 1, k - w, k + w]) if (j >= 0 && j < N && id[j] && layer[j] > L && region[j] !== region[k] && !this.mats[id[j] - 1].soft) { contour = true; break; }
+      for (let q = 0; q < 4; q++) { const j = q === 0 ? k - 1 : q === 1 ? k + 1 : q === 2 ? k - w : k + w; if (j >= 0 && j < N && id[j] && layer[j] > L && region[j] !== region[k] && !this.mats[id[j] - 1].soft) { contour = true; break; } }
       i = Math.max(0, Math.min(top, i));
-      let col = contour ? mix(ramp[0], INK, .35) : ramp[i];
+      let col = contour ? inked(ramp[0]) : ramp[i];
       if (m.shine && !contour && t > top + .35) col = mix(ramp[top], '#ffffff', .7);
       put(x, y, col);
     }
     for (const dt of this.details) if (dt.x >= 0 && dt.y >= 0 && dt.x < w && dt.y < h) put(dt.x, dt.y, dt.c);
     // The silhouette's one dark outline, a shade softer on the lit (upper-left) side.
     if (!opts.noOutline) {
-      const ink = opts.outline ?? INK, solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && (id[y * w + x] > 0 || this.details.some(q => q.x === x && q.y === y && false));
+      const ink = opts.outline ?? INK, solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && id[y * w + x] > 0;
       for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
         if (solid(x, y)) continue;
         const r = solid(x + 1, y), b = solid(x, y + 1), l = solid(x - 1, y), u = solid(x, y - 1);
