@@ -16,6 +16,10 @@ import { mobCell } from './td-mobs';
 import { burst, drawBurst, glowSquare, groundRing, linePixels, type Tones } from './td-fx';
 import { PET_H, PET_W, petFrameIndex, petSheet, type TdPetFrame } from './td-pet-art';
 import { SPIRIT_BEAST } from './td-thorn';
+import { optHdFigures } from './td-artopt';
+import { envDetail } from './td-detail';
+import { hdCell } from './td-hd-mob';
+import { facingRow } from './td-hd-rig';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -210,6 +214,9 @@ export function drawBeast(c: Ctx, b: { x: number; y: number; face: number; age: 
   c.globalAlpha = .35; c.fillStyle = THORN_FX.wild.edge;
   c.fillRect(X - 6, Y - 1, 12, 2);
   c.globalAlpha = run ? .62 : .78;
+  // Isometric B: the spirit beast's kin in HD (td-hd-pets.ts), turned toward its run.
+  const hd = optHdFigures() && envDetail() !== 'low' ? hdCell(`pet:${SPIRIT_BEAST}`, facingRow(true, true, b.face < 0), 'walk', petFrameIndex(frame), time) : null;
+  if (hd) { c.drawImage(hd.img, 0, 0, hd.img.width, hd.img.height, X - hd.ax / 2, Y + 1 - hd.ay / 2, hd.img.width / 2, hd.img.height / 2); c.globalAlpha = 1; return; }
   c.save();
   c.translate(X, Y - PET_H + 1);
   if (b.face < 0) c.scale(-1, 1);
