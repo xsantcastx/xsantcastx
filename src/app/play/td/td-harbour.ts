@@ -27,7 +27,7 @@ export interface Pier {
 
 export const PIERS: readonly Pier[] = [
   { id: 'ember-harbour', name: 'Ember Harbour', continent: 'ember-isle', village: null, stations: ['ship-reach', 'ship-isle-verdant'], master: { id: 'harbourmaster-odd-tarn', name: 'Odd Tarn' }, at: { c: 1, r: 2 } },
-  { id: 'pyrehold', name: 'Pyrehold', continent: 'infernal-reach', village: null, stations: ['ship-isle', 'ship-verdant', 'ship-umbral'], master: { id: 'harbourmaster-hale-dross', name: 'Hale Dross' }, at: { c: 1, r: 2 } },
+  { id: 'pyrehold', name: 'Pyrehold', continent: 'infernal-reach', village: null, stations: ['ship-isle', 'ship-verdant', 'ship-umbral'], master: { id: 'harbourmaster-garrick-dross', name: 'Garrick Dross' }, at: { c: 1, r: 2 } },
   { id: 'cinderport', name: 'Cinderport', continent: 'infernal-reach', village: 'Cinderport', stations: ['ship-cinderport'], master: { id: 'harbourmaster-marit-salt', name: 'Marit Salt' }, at: { c: 16, r: 12 } },
   { id: 'mossharbor', name: 'Mossharbor', continent: 'verdant-wilds', village: 'Mossharbor', stations: ['ship-mossharbor', 'ship-mossharbor-isle'], master: { id: 'harbourmaster-sunny-pell', name: 'Sunny Pell' }, at: { c: 12, r: 12 } },
   { id: 'mirewatch', name: 'Mirewatch', continent: 'umbral-marches', village: 'Mirewatch', stations: ['ship-mirewatch'], master: { id: 'harbourmaster-old-corvane', name: 'Old Corvane' }, at: { c: 17, r: 12 } },

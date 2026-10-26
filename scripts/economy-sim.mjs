@@ -552,6 +552,23 @@ function check(E) {
     }
     console.log(`  Potions: ${rows.join('; ')}`);
   }
+  // The district shops (shared/shops): every offer is priced off the curve (minutes of a hunt at its level) or its own
+  // pinned price, and no shop buys anything back for as much as any shop sells it (never a Gold loop). Gold only.
+  {
+    const S = loadTsTree('src/app/shared/shops/shops.model.ts');
+    let offers = 0;
+    for (const shop of S.SHOP_IDS) for (const o of S.SHOPS[shop].stock) {
+      offers++;
+      const price = S.offerPrice(o, 10);
+      if (!(Number.isInteger(price) && price >= 1)) fails.push(`shop ${o.id} has price ${price} (must be a whole Gold >= 1)`);
+      if ((o.kind === 'stack' || o.kind === 'item') && o.secs > 900) fails.push(`shop ${o.id} costs ${o.secs} s of a level-${o.level} hunt (must be <= 15 min)`);
+      for (const other of S.SHOP_IDS) {
+        const back = S.buyPriceOf(other, o.key);
+        if (back >= S.offerPrice(o, 1)) fails.push(`shop loop: ${other} buys ${o.key} for ${back}, ${shop} sells it for ${S.offerPrice(o, 1)}`);
+      }
+    }
+    console.log(`  Shops: ${S.SHOP_IDS.length} shops, ${offers} offers on the curve, no buy/sell loop`);
+  }
   // Everything that was priced as "N seconds of income" (bet cap, respec, expeditions, collection, challenges, the
   // item economy): read in the hunt at the Keeper's level (`--reprice` prints the table).
   fails.push(...repriceScenario({ quiet: true }));

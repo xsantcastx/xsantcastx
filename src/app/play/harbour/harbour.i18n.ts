@@ -5,18 +5,18 @@
  */
 export const HARBOUR_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Piers and lands ──
-  'harbour.pier.ember-harbour': { en: 'Ember Harbour', es: 'Puerto Brasa' },
-  'harbour.pier.pyrehold': { en: 'Pyrehold', es: 'Pirohold' },
-  'harbour.pier.cinderport': { en: 'Cinderport', es: 'Puerto Ceniza' },
-  'harbour.pier.mossharbor': { en: 'Mossharbor', es: 'Puerto Musgo' },
-  'harbour.pier.mirewatch': { en: 'Mirewatch', es: 'Cienaguarda' },
-  'harbour.land.ember-isle': { en: 'Ember Isle', es: 'Isla Brasa' },
-  'harbour.land.infernal-reach': { en: 'Infernal Reach', es: 'Dominio Infernal' },
-  'harbour.land.verdant-wilds': { en: 'Verdant Wilds', es: 'Selvas Verdes' },
-  'harbour.land.umbral-marches': { en: 'Umbral Marches', es: 'Marismas Umbrias' },
+  'harbour.pier.ember-harbour': { en: 'Ember Harbour', es: 'Ember Harbour' },
+  'harbour.pier.pyrehold': { en: 'Pyrehold', es: 'Pyrehold' },
+  'harbour.pier.cinderport': { en: 'Cinderport', es: 'Cinderport' },
+  'harbour.pier.mossharbor': { en: 'Mossharbor', es: 'Mossharbor' },
+  'harbour.pier.mirewatch': { en: 'Mirewatch', es: 'Mirewatch' },
+  'harbour.land.ember-isle': { en: 'Ember Isle', es: 'Ember Isle' },
+  'harbour.land.infernal-reach': { en: 'Infernal Reach', es: 'Infernal Reach' },
+  'harbour.land.verdant-wilds': { en: 'Verdant Wilds', es: 'Verdant Wilds' },
+  'harbour.land.umbral-marches': { en: 'Umbral Marches', es: 'Umbral Marches' },
   // ── The Harbourmasters: a trade line and one line of lore each ──
   'harbour.master.ember-harbour.role': { en: 'One-eyed ferryman', es: 'Barquero tuerto' },
-  'harbour.master.ember-harbour.line': { en: 'Sea\'s warm for the season. It\'s been warm since the second tally. Mind the Burning Sea.', es: 'El mar esta tibio para la epoca. Lo esta desde la segunda cuenta. Cuidado con el Mar Ardiente.' },
+  'harbour.master.ember-harbour.line': { en: 'Sea\'s warm for the season. It\'s been warm since the second tally. Mind the Burning Sea.', es: 'El mar esta tibio para la epoca. Lo esta desde la segunda cuenta. Cuidado con el Burning Sea.' },
   'harbour.master.cinderport.role': { en: 'The tavern-keeper\'s sister', es: 'La hermana del tabernero' },
   'harbour.master.cinderport.line': { en: 'The Salted Ember keeps the lamp lit till the last ketch is in. Nobody asks why.', es: 'La Brasa Salada mantiene la lampara encendida hasta que entra el ultimo queche. Nadie pregunta por que.' },
   'harbour.master.pyrehold.role': { en: 'Brannoc\'s quartermaster', es: 'Intendente de Brannoc' },

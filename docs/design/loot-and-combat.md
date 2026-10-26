@@ -342,9 +342,11 @@ bottom of the Orrery Wells); stepping down is always allowed.
 
 | | HP | Blow | Level | Keeper resist | Creature resist | Item chance | Ladder shift | Rune cap | Fall |
 |---|---|---|---|---|---|---|---|---|---|
-| Normal | ×1 | ×1 | +0 | 0 | +0 | ×1 | 0 | Rare | 5% |
-| Nightmare | ×2.5 | ×1.6 | +20 | −40 | +15 | ×1.35 | +0.7 | Legendary | 10% |
+| Normal | ×1 | ×1 | +0 | 0 | +0 | ×1 | 0 | Mythic | 5% |
+| Nightmare | ×2.5 | ×1.6 | +20 | −40 | +15 | ×1.35 | +0.7 | Mythic | 10% |
 | Hell | ×4 | ×2.2 | +40 | −100 | +30 | ×1.7 | +1.4 | Singular | 15% |
+
+Rune cap: zone level picks the tier (canon §6.2); the Void needs Hell (2026-10-26, `docs/design/runewords.md` §1).
 
 **Decision (2026-10-21, branch `passives`): applied in the top-down fight.** **Gate (2026-10-21, branch `seam`):
 the Seam Eater opens the tiers; the picker is shown.**

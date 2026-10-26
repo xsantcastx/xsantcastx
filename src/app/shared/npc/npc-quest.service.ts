@@ -372,7 +372,7 @@ export class NpcQuestService {
     if (gold > 0) this.economy.earnGold(gold, `npc:${mission.npcId}`);
     if (r.rune) {
       const rune = runeById(r.rune);
-      if (rune) this.runes.grant(rune);
+      if (rune) this.runes.payInstead(rune, `npc:${mission.npcId}`);
     }
     if (r.item) {
       const minted = mintEquipment(r.item.defId, r.item.rarity);

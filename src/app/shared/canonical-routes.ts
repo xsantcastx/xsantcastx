@@ -5,7 +5,7 @@ export const CANONICAL = {
   /** The game is the front door: `/`, `/home` and the retired `/world` landing all open it. */
   play: '/play',
   character: '/character',
-  forge: '/forge/runes',
+  forge: '/forge/crafting',
   quests: '/world/quests',
   trials: '/world/trials',
 } as const;
@@ -92,7 +92,8 @@ export const INTO_PLAY: Readonly<Record<string, string>> = {
   'sponsors': '', 'donate': '', 'pro': '', 'play/storyboard': '',
   // Pages that became panels in the world.
   'character': 'character', 'forge-keeper': 'character',
-  'forge/runes': 'runes', 'rune-forge': 'runes', 'forge': 'runes',
+  // The Rune Forge is gone (runes drop only from monsters): its old URLs open Kael's Anvil.
+  'forge/runes': 'crafting', 'rune-forge': 'crafting', 'forge': 'crafting', 'forge/brewing': 'brews',
   'forge/crafting': 'crafting', 'forge/enchanting': 'enchanting',
   'market': 'market', 'gambler': 'gambler', 'sanctum': 'sanctum', 'live': 'sanctum', 'forge-view': 'sanctum',
   'codex': 'codex',

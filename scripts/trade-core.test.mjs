@@ -459,3 +459,20 @@ test('the grid (inventory-grid.md): a place and a Spellstone\'s charges pack sma
   assert.ok(!core.sameItem({ ...rec, charges: 3 }, core.offerOf(rec)));
   assert.equal(core.parseOfferItem(core.offerOf(rec)).ch, 4);
 });
+
+// Runes and runewords (docs/design/runewords.md §4): a socketed normal base's wells, empty ones included, survive the
+// packed v3 round trip and a trade offer, so the server needs no new field. A rune stack key packs as any stack.
+test('sockets pack and unpack losslessly (empty wells kept), and an offer carries them', () => {
+  const staff = record('st1', { rarity: 'common', sockets: [null, 'ember', null] });
+  const v = { version: 2, records: [staff], tombstones: [], goldFromSales: 0, sold: 0, hlc: T0, legacyBackup: null, era: core.INVENTORY_ERA,
+    stackOps: [{ id: 'drop:k1', stackKey: 'rune-ash', kind: 'grant', quantity: 1, hlc: T0, deviceId: 'dev-a', sequence: 1 },
+      { id: 'sock:st1:1:ember', stackKey: 'rune-ember', kind: 'consume', quantity: 1, hlc: T0 + 1, deviceId: 'dev-a', sequence: 2 }] };
+  const back = core.unpackInventory(core.packInventory(v));
+  assert.deepEqual(back.records[0].sockets, [null, 'ember', null]);
+  assert.deepEqual(back.stackOps.map(o => [o.id, o.stackKey, o.kind]), [['drop:k1', 'rune-ash', 'grant'], ['sock:st1:1:ember', 'rune-ember', 'consume']]);
+  const offer = core.offerOf(staff);
+  assert.deepEqual(offer.sockets, [null, 'ember', null]);
+  assert.deepEqual(core.parseOfferItem(offer).sockets, [null, 'ember', null]);
+  assert.equal(core.sameItem(staff, offer), true);
+  assert.equal(core.sameItem({ ...staff, sockets: ['ash', 'ember', null] }, offer), false);
+});

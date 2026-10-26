@@ -15,7 +15,7 @@
  */
 import type { StationDef } from '../../world/world.model';
 import type { ContinentDef, ContinentPlace, Region } from '../continent';
-import { buildTown } from '../town-builder';
+import { buildTown, shopStation } from '../town-builder';
 import { BOLE_DOOR } from './rootglass-bole';
 import { TEMPLE_IN } from './overgrown-temple';
 import { HOLLOWS_IN } from './root-hollows';
@@ -100,11 +100,14 @@ export const buildRootglass = () => buildTown({
     { c: 17, r: 25, w: 5, d: 3, roof: 'leaf', wall: 'stone' }, { c: 30, r: 25, w: 5, d: 3, roof: 'thatch', wall: 'timber' },
   ],
   stalls: [
-    { station: 'runes', c: 18, r: 8, w: 4, palette: 3, goods: 'gems' },
+    // The Bole's herb and seed counter (shared/shops alchemist; canon §6.5: Seedwife Rue Hazel).
+    { station: shopStation('shop-alchemist', "RUE HAZEL'S HERB AND SEED", 'rue-hazel'), c: 18, r: 8, w: 4, palette: 3, goods: 'pots' },
     { station: 'enchanting', c: 30, r: 8, w: 4, palette: 1, goods: 'books' },
+    { station: 'brews', c: 34, r: 8, w: 2, palette: 1, goods: 'pots' },
     { station: 'vault', c: 18, r: 13, w: 4, palette: 2, goods: 'pots' },
     { station: 'crafting', c: 30, r: 13, w: 4, palette: 0, goods: 'tools' },
-    { station: 'vendor', c: 4, r: 16, w: 4, palette: 4, goods: 'bread' },
+    // The boardwalk market's general store (canon §6.5: Provisioner Teo Alder).
+    { station: shopStation('shop-general', "TEO ALDER'S GENERAL STORE", 'teo-alder'), c: 4, r: 16, w: 4, palette: 4, goods: 'bread' },
   ],
   props: [
     { kind: 'rootlamp', c: 21, r: 2 }, { kind: 'rootlamp', c: 26, r: 2 }, { kind: 'rootlamp', c: 14, r: 16 }, { kind: 'rootlamp', c: 33, r: 16 },

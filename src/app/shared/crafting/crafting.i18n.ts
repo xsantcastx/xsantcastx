@@ -1,10 +1,11 @@
 /**
- * crafting.i18n.ts — the Crafting Bench's plain-words copy. Lazy: ships in
+ * crafting.i18n.ts — the stations' recipe copy (Kael's Anvil; the Enchanting Table's charms and brews). Lazy: ships in
  * this route's chunk, merged by TranslationService.register(), checked by
  * scripts/check-i18n-keys.js.
  */
 export const CRAFTING_I18N: Readonly<Record<string, { en: string; es: string }>> = {
-  'crafting.name':          { en: 'Crafting Bench', es: 'Banco de fabricacion' },
+  'crafting.name':          { en: 'Kael\'s Anvil', es: 'El yunque de Kael' },
+  'crafting.name.enchanting': { en: 'Charms and brews', es: 'Amuletos y brebajes' },
   'crafting.ctaWorking':    { en: 'Crafting… {{s}}s', es: 'Fabricando… {{s}}s' },
   'crafting.why.level':     { en: 'Reach crafting level {{n}} first', es: 'Primero llega al nivel {{n}} de fabricacion' },
   'crafting.why.smithing':  { en: 'Reach Smithing {{n}} first', es: 'Primero llega a Herreria {{n}}' },

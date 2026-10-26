@@ -105,20 +105,27 @@ export function buildSeamworksSquare(): TdMap {
     if (!s) return;
     const x = tx(c), y = ty(r);
     add(() => stall(w, palette, goods, c * 7 + r), x, y, { w, h: 1 }, 'stall');
-    const k = keepers.find(k => k.station === id || (k.serves ?? []).includes(id));
+    // A keeper stands behind their own counter only (Idris serves the Charms and Brews counter from the table beside it).
+    const k = keepers.find(k => k.station === id && k.npc) ?? keepers.find(k => k.station === id);
     stalls.push({ station: s, x, y: y + 6, keeper: k ? { id: k.id, name: k.name, x, y: y - 14 } : undefined });
     // A keeper with town tasks (shared/town-tasks) is spoken to at the counter's west end; its front still opens the stall.
     if (k && giverById(k.id)) stalls.push({ ...giverStall(k.id, k.name, `${k.name} has work for you.`, x - 2 * T, y - 2), keeper: { id: k.id, name: k.name, x, y: y - 14 } });
   };
-  stallAt('crafting', 14, 11, 4, 0, 'tools');
-  stallAt('runes', 30, 11, 4, 3, 'gems');
+  // Kael's Anvil stands where the Rune Forge did (canon §6.2: the Forge and the bench are gone; runes drop only
+  // from monsters). Mara Voss works beside him.
+  stallAt('crafting', 30, 11, 4, 0, 'tools');
   stallAt('enchanting', 13, 19, 4, 1, 'books');
+  stallAt('brews', 17, 19, 2, 1, 'pots');
   stallAt('vault', 31, 19, 4, 2, 'pots');
-  stallAt('vendor', 22, 22, 4, 4, 'bread');
+  // The shops by district (shared/shops; canon §6.5): Edrin's General Store in the market south of the fountain,
+  // Davy Tarn's tackle shed on the river bank by the bridge, Abe Thatch's woodcutting store at the north orchard.
+  stallAt('shop-general', 22, 22, 4, 4, 'bread');
+  stallAt('shop-fishing', 30, 24, 4, 2, 'fish');
+  stallAt('shop-wood', 40, 5, 3, 0, 'tools');
   // The sexton of the Hushed Barrow, come into town on the west lane toward his graves (a town task giver, shared/town-tasks).
   stalls.push(giverStall('sexton-wren', 'Sexton Aldous Wren', 'He sweeps the Hushed Barrow and counts its graves twice.', tx(9), ty(13)));
-  // The Archivist, down from the Archive, on the east lane with his notes: he silences whispering items (shared/grave-goods).
-  stalls.push(giverStall('archivist', 'The Archivist', 'Keeper of fragments. He silences what whispers.', tx(35), ty(13)));
+  // The Archivist, down from the Archive, on the east lane with their notes: they silence whispering items (shared/grave-goods).
+  stalls.push(giverStall('archivist', 'The Archivist', 'Keeper of fragments. They silence what whispers.', tx(35), ty(13)));
   // The forge quest and the waystone stand on their own.
   const forge = station('forge');
   if (forge) { add(forgeHearth, tx(18), ty(8), { w: 2, h: 1 }); stalls.push({ station: forge, x: tx(18), y: ty(8) + 6 }); }

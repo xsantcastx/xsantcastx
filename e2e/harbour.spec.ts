@@ -78,11 +78,11 @@ test('walk to Odd Tarn, read the board, pay the fare, sail to Pyrehold, and sail
   await page.locator('[data-harbour-voyage]').click();
   await expect(page.locator('[data-harbour-voyage]')).toHaveCount(0, { timeout: 10000 });
   await expect(canvas(page)).toHaveAttribute('data-area', /pyrehold/i, { timeout: 20000 });
-  await expect(page.locator('.msg, .td-toast, [role="status"]').filter({ hasText: /Hale Dross/ }).first()).toBeVisible({ timeout: 10000 }).catch(() => undefined);
+  await expect(page.locator('.msg, .td-toast, [role="status"]').filter({ hasText: /Garrick Dross/ }).first()).toBeVisible({ timeout: 10000 }).catch(() => undefined);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOT}/harbour-arrival.jpg`, type: 'jpeg', quality: 78 });
 
-  // The way back is the same board, at the other pier: Hale Dross, three ships, home the cheapest (70).
+  // The way back is the same board, at the other pier: Garrick Dross, three ships, home the cheapest (70).
   await toMaster(page, /hale dross/i);
   await expect(page.locator('[data-harbour-line]')).toContainText(/Three ships, three coasts/);
   await expect(board(page).locator('[data-harbour-row]')).toHaveCount(3);

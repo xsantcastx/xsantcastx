@@ -420,11 +420,17 @@ export const INFERNAL_TOWN: TownDef = {
     { id: 'vault', x: 330, label: 'THE VAULT', kind: 'panel', panel: 'vault', art: 'artifacts', width: 100, blurb: 'Keep what you do not carry. A full satchel sends things here; the benches still use them.' },
     { id: 'ore', x: 480, label: 'CINDER ORE', kind: 'resource', art: CINDER_ORE, width: 130, blurb: 'Mine Cinder Ore from the seam.' },
     { id: 'delve', x: 590, label: 'EMBER DELVE', kind: 'passage', to: 'ember-delve', arriveX: 260, width: 90, blurb: 'A mine shaft into the rock under the Seamworks. Dig for ore.' },
-    { id: 'vendor', x: 705, label: 'MATERIAL VENDOR', kind: 'panel', panel: 'vendor', art: 'trade-complete', width: 130, blurb: 'Sell surplus materials for a little Gold, and buy potions for the road.' },
+    // The district shops (shared/shops; canon §6.5) the Seamworks has. Another city's stall of a shop carries its own
+    // label and keeper (td/town-builder shopStation); the Smith's and the Alchemist stand in Pyrehold.
+    { id: 'shop-general', x: 705, label: "EDRIN KADE'S GENERAL STORE", kind: 'panel', panel: 'shop', keeper: 'edrin-kade', art: 'trade-complete', width: 130, blurb: 'Torches, rope, ladders and small potions. Buys the materials you carry, and gear.' },
+    { id: 'shop-fishing', x: 2160, label: "DAVY TARN'S TACKLE SHED", kind: 'panel', panel: 'shop', keeper: 'davy-tarn', width: 80, blurb: 'Rods, bait and buckets. Buys your catch.' },
+    { id: 'shop-wood', x: 2320, label: "ABE THATCH'S WOODCUTTING STORE", kind: 'panel', panel: 'shop', keeper: 'abe-thatch', width: 80, blurb: 'Axes and timber. Buys bark, root and sap.' },
     { id: 'forge', x: 930, label: 'SEAMWORKS FORGE', kind: 'quest', width: 120, blurb: 'Forge and equip the Basalt Edge.' },
-    { id: 'crafting', x: 1220, label: 'CRAFTING BENCH', kind: 'panel', panel: 'crafting', art: 'iron-hammer', width: 170, blurb: 'Strike gathered materials into gear.' },
-    { id: 'runes', x: 1500, label: 'RUNE FORGE', kind: 'panel', panel: 'runes', art: 'rune-of-cinder', width: 170, blurb: 'Gamble Gold on the anvil for runes.' },
-    { id: 'enchanting', x: 1780, label: 'ENCHANTING TABLE', kind: 'panel', panel: 'enchanting', art: 'enchantment-active', width: 170, blurb: 'Socket runes into gear and brew infusions.' },
+    // Kael's Anvil: what is smithed (the crafting bench and the Rune Forge are gone; runes drop only from monsters).
+    { id: 'crafting', x: 1220, label: "KAEL'S ANVIL", kind: 'panel', panel: 'crafting', art: 'iron-hammer', width: 170, blurb: 'Smith weapons, armour, tools and Delve kit from what you gather.' },
+    { id: 'enchanting', x: 1780, label: 'ENCHANTING TABLE', kind: 'panel', panel: 'enchanting', art: 'enchantment-active', width: 170, blurb: 'Set runes into socketed gear (runewords) and brew potions.' },
+    // The table's second counter: what the crafting bench made that is enchanted or brewed (charms, elixirs, oils).
+    { id: 'brews', x: 1640, label: 'CHARMS AND BREWS', kind: 'panel', panel: 'brews', width: 60, blurb: 'Idris Calder\'s recipes: charms, elixirs, oils and scrolls, from what you gather.' },
     { id: 'waystone', x: 2010, label: 'WAYSTONE', kind: 'waystone', art: 'rift-portal-core', width: 130, blurb: 'Travel between the realm towns.' },
     { id: 'beacon', x: 2320 + QUARTER, label: 'ECLIPSE BEACON', kind: 'quest', width: 100, requires: 'guardian', lockedMessage: 'Defeat a Rivet Maw before repairing the beacon.', blurb: 'Rekindle the beacon once a Maw falls.' },
     { id: 'passage', x: 2580 + QUARTER, label: 'EAST PASSAGE', kind: 'passage', to: 'ember-quarry', arriveX: 240, width: 120, requires: 'beacon', lockedMessage: 'Restore the beacon to open the eastern passage.', blurb: 'The road east to Ember Quarry.' },

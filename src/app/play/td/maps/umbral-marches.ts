@@ -15,7 +15,7 @@
  */
 import type { StationDef } from '../../world/world.model';
 import type { ContinentDef, ContinentPlace, Region } from '../continent';
-import { buildTown } from '../town-builder';
+import { buildTown, shopStation } from '../town-builder';
 import { TOWER_DOOR } from './lantern-tower';
 import { CRYPTS_IN } from './drowned-crypts';
 
@@ -100,12 +100,14 @@ export const buildGloamhaven = () => buildTown({
     { c: 30, r: 4, w: 5, d: 2, roof: 'gloam', wall: 'timber' },
   ],
   stalls: [
-    { station: 'runes', c: 18, r: 9, w: 4, palette: 3, goods: 'gems' },
+    // The square's general store (shared/shops; canon §6.5: Chandler Odo Murk's, the Lamp-oil and Wick folded in).
+    { station: shopStation('shop-general', "ODO MURK'S CHANDLERY", 'odo-murk'), c: 18, r: 9, w: 4, palette: 3, goods: 'bread' },
     { station: 'enchanting', c: 30, r: 9, w: 4, palette: 3, goods: 'books' },
+    { station: 'brews', c: 34, r: 9, w: 2, palette: 3, goods: 'pots' },
     { station: 'vault', c: 18, r: 14, w: 4, palette: 1, goods: 'pots' },
     { station: 'crafting', c: 30, r: 14, w: 4, palette: 4, goods: 'tools' },
     // The fishmonger's, out on the west jetty.
-    { station: 'vendor', c: 10, r: 11, w: 4, palette: 1, goods: 'fish' },
+    { station: shopStation('shop-fishing', "DACE MORROW'S FISHMONGER AND TACKLE", 'dace-morrow'), c: 10, r: 11, w: 4, palette: 1, goods: 'fish' },
   ],
   props: [
     // Lanterns: the square's four corners, along the main street, down the south boardwalk, up the north one, the jetties.

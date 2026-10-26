@@ -66,7 +66,7 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.map.progress': { en: '{{n}} / {{total}}', es: '{{n}} / {{total}}' },
   'slate.map.ready': { en: 'Done: claim it at the Quest Board, Rootglass Canopy.', es: 'Hecha: cobrala en el Tablon, Dosel de Raizcristal.' },
   'slate.map.claimed': { en: 'Claimed', es: 'Cobrada' },
-  'slate.upgradeHint': { en: 'Kael at the Rune Forge (Basalt Seamworks) can bind a second face: your map pins and Pim\'s bounties.', es: 'Kael, en la Forja de Runas (Talleres de Basalto), puede atar una segunda cara: tus marcas del mapa y las recompensas de Pim.' },
+  'slate.upgradeHint': { en: 'Kael at his anvil (Basalt Seamworks) can bind a second face: your map pins and Pim\'s bounties.', es: 'Kael, en su yunque (Basalt Seamworks), puede atar una segunda cara: tus marcas del mapa y las recompensas de Pim.' },
 
   // Places stay places
   'slate.details': { en: 'What the Slate is', es: 'Que es la Pizarra' },

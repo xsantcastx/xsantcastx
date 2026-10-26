@@ -8,7 +8,7 @@
  */
 import type { StationDef } from '../../world/world.model';
 import type { LegendEntry, TdMapDef } from '../td-level';
-import { buildTown } from '../town-builder';
+import { buildTown, shopStation } from '../town-builder';
 
 export const SALTED_DOOR: StationDef = { id: 'salted-door', x: 0, label: 'THE SALTED EMBER', kind: 'passage', blurb: "Cinderport's dockside tavern." };
 const SALTED_OUT: StationDef = { id: 'salted-out', x: 0, label: 'DOOR', kind: 'passage', blurb: 'Back out to the docks.' };
@@ -46,7 +46,8 @@ export const buildCinderport = () => buildTown({
     { c: 6, r: 4, w: 5, d: 3, roof: 'slate', wall: 'basalt', door: SALTED_DOOR }, { c: 23, r: 4, w: 5, d: 3, roof: 'red', wall: 'basalt' },
     { c: 5, r: 10, w: 5, d: 2, roof: 'slate', wall: 'stone' }, { c: 24, r: 10, w: 5, d: 2, roof: 'red', wall: 'timber' },
   ],
-  stalls: [],
+  // Old Netter Pell's Fishing Store, dockside by the pier (shared/shops; canon §6.5).
+  stalls: [{ station: shopStation('shop-fishing', "NETTER PELL'S FISHING STORE", 'netter-pell'), c: 23, r: 11, w: 4, palette: 2, goods: 'fish' }],
   props: [
     { kind: 'lamp', c: 12, r: 5 }, { kind: 'lamp', c: 18, r: 5 }, { kind: 'lamp', c: 12, r: 9 }, { kind: 'lamp', c: 18, r: 9 },
     { kind: 'barrel', c: 11, r: 11 }, { kind: 'barrel', c: 12, r: 11 }, { kind: 'crate', c: 19, r: 11 }, { kind: 'crate', c: 19, r: 12 },
