@@ -35,6 +35,11 @@ function fakeToken(): string | null {
   } catch { return null; }
 }
 
+/** The e2e's fake Google sign-in + Firestore is on (shared/cloud-save/fake-cloud.ts). */
+function fakeCloud(): boolean {
+  try { return !!navigator.webdriver && ['localhost', '127.0.0.1'].includes(location.hostname) && !!localStorage.getItem('eclipse-cloud-fake'); } catch { return false; }
+}
+
 @Injectable({ providedIn: 'root' })
 export class TradeBackendService implements TradeBackend {
   private readonly gateway = inject(GameStateGateway);
@@ -43,9 +48,15 @@ export class TradeBackendService implements TradeBackend {
 
   get character(): string { return this.gateway.character; }
 
-  blocked(): 'signin' | 'lease' | null {
-    if (fakeToken()) return null;
-    if (!this.gateway.attached) return 'signin';
+  blocked(): 'signin' | 'lease' | 'connecting' | null {
+    // The trade stand-in skips the cloud save — unless the e2e's fake cloud is on, which tests exactly that binding.
+    if (fakeToken() && !fakeCloud()) return null;
+    if (!this.gateway.attached) {
+      // Signed in but the save is not on the account yet (owner bug 2026-10-26: "Sign in to trade" while signed in):
+      // say so, and put it right now rather than at the next watch (cloud-save recoverAttach).
+      if (this.cloud.signedIn) { this.cloud.recoverAttach(); return 'connecting'; }
+      return 'signin';
+    }
     return this.gateway.mayWriteCloud ? null : 'lease';
   }
 

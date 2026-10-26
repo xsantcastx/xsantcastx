@@ -360,7 +360,40 @@ export class PlayShellComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // ── Recovery: a Keeper played in this device's guest saves (cloud-save recoverAttach; owner bug 2026-10-26) ──────
+  /** The first guest Keeper this account may take back, or null (signed in and attached only; one at a time). */
+  guestFind: { id: string; name: string; vocation: string; playedAs: string | null } | null = null;
+  get accountUid(): string { return this.cloud.status.uid ?? ''; }
+  private refreshGuestFind(): void {
+    this.guestFind = this.cloud.signedIn && this.gateway.attached ? this.gateway.guestKeepers()[0] ?? null : null;
+  }
+  foundLine(g: { name: string; playedAs: string | null }): string {
+    const name = g.name || this.t('lobby.select.unnamed');
+    return this.t(g.playedAs && g.playedAs === this.accountUid ? 'lobby.found.mine' : 'lobby.found.guest', { name });
+  }
+  /**
+   * Bring it into this account as a new Keeper of its own (never merged into one the account has): its saves move from
+   * the guest's keys to the account's, the roster gains its row, and the cloud gets it on the next push.
+   */
+  adoptGuest(guestId: string): void {
+    const g = this.guestFind;
+    if (!g || g.id !== guestId || this.busy || this.full) return;
+    const id = newCharacterId(Math.random, new Set(Object.keys(this.roster.roster.chars)));
+    if (!this.gateway.adoptGuestKeeper(guestId, id)) { this.notice = this.t('lobby.found.failed'); return; }
+    this.roster.put(summarise(this.gateway, { id, name: g.name, vocation: g.vocation as CharacterRow['vocation'], level: 1, area: '', look: null, createdAt: Date.now(), updatedAt: 0 }));
+    this.notice = this.t('lobby.found.done', { name: g.name || this.t('lobby.select.unnamed') });
+    this.picked = id;
+    this.refreshGuestFind();
+    this.refreshRows();
+  }
+  dismissGuest(guestId: string): void {
+    this.gateway.dismissGuestKeeper(guestId);
+    this.refreshGuestFind();
+    this.dirty = true;
+  }
+
   private refreshRows(): void {
+    this.refreshGuestFind();
     this.rows = this.roster.characters;
     if (this.picked && !this.rows.some(r => r.id === this.picked) && this.mode === 'select') this.picked = this.rows[0]?.id ?? null;
     this.dirty = true;

@@ -440,3 +440,8 @@
 .elsewhere__title { margin: 0; font-family: var(--font-display); font-size: 1.4rem; color: var(--cozy-glow); }
 .elsewhere__line { margin: 0; font-family: var(--font-game); line-height: 1.45; color: var(--cozy-cream, var(--cozy-ink)); }
 .elsewhere .btn { min-height: 44px; min-width: 160px; }
+
+/* Recovery: a Keeper found in this device's guest saves (adoptGuest). One line, one brass button, one quiet one. */
+.select__found { display: grid; gap: 8px; margin: 8px 0; padding: 8px 10px; background: var(--cozy-parch); color: var(--cozy-ink); border: 2px solid var(--cozy-parch-edge); }
+.select__found .plate__line { color: var(--cozy-ink); }
+.select__found .btn { min-height: 44px; }
