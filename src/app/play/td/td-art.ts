@@ -486,7 +486,7 @@ function grownSprite(sp: Sprite): Sprite {
   return {
     img, ax: k(sp.ax), ay: k(sp.ay),
     ...(sp.roof ? { roof: { img: up(sp.roof.img), x: k(sp.roof.x), y: k(sp.roof.y) } } : {}),
-    ...(sp.lights ? { lights: sp.lights.map(l => ({ ...l, x: k(l.x), y: k(l.y), r: k(l.r) })) } : {}),
+    ...(sp.lights ? { lights: sp.lights.map(l => ({ ...l, x: k(l.x), y: k(l.y) })) } : {}),
     ...(sp.smoke ? { smoke: sp.smoke.map(m => ({ x: k(m.x), y: k(m.y) })) } : {}),
     shadow: sp.shadow ? { img: up(sp.shadow.img), x: k(sp.shadow.x), y: k(sp.shadow.y) } : { img: shadowSprite(sw, Math.max(4, Math.round(sw * .32))), x: -Math.round(sw / 2) + 1, y: -Math.round(sw * .2) },
   };
