@@ -31,7 +31,7 @@ import {
   type CoopAreas, type CoopElite, type CoopEvent, type CoopHit, type CoopHitsMsg, type CoopMobState, type CoopSnapBody, type CoopSnapMsg,
 } from '../social/coop-protocol';
 import { CoopInterp } from '../social/coop-interp';
-import { ROOM_HOST } from '../social/world-protocol';
+import { ROOM_HOST, WORLD_AREAS } from '../social/world-protocol';
 import { BOSS_LIFE_PER_MEMBER, ClaimGate, coopBossLife } from '../social/coop-rules';
 
 export type CoopRole = 'solo' | 'host' | 'member';
@@ -80,6 +80,9 @@ export function replicaDef(s: Pick<CoopMobState, 't' | 'm' | 'l' | 'e'>, phase: 
   return { ...def, hp: Math.max(1, s.m), level: s.l };
 }
 
+/** How long a world area waits on the room's listing before this screen raises its own creatures there (ms). */
+export const EXPECT_MS = 5000;
+
 export class TdCoop implements CoopLink {
   role: CoopRole = 'solo';
   private areas: CoopAreas = {};
@@ -89,6 +92,13 @@ export class TdCoop implements CoopLink {
   private host: string | null = null;
   private term = -1;
   private present: string[] = [];
+  /** The room runs the world for this Keeper (protocol 7, connected): a world area is the room's before it says so. */
+  private world = false;
+  /** This area's room host is assumed (the room has not listed this Keeper there yet): its real election is no change. */
+  private expecting = false;
+  /** When this Keeper began waiting on the room's listing in this area, and the area it gave up waiting in. */
+  private expectSince = 0;
+  private gaveUp = '';
   // Host
   private readonly enc = new CoopEncoder();
   private readonly gate = new ClaimGate();
@@ -114,15 +124,54 @@ export class TdCoop implements CoopLink {
   /** Others of the party share this Keeper's area (its companions go to them). */
   get sharing(): boolean { return this.present.length > 1 && this.present.includes(this.me); }
   /** The room's election (protocol 4) and who this Keeper is; null against an older room (everything solo). */
-  setAreas(areas: CoopAreas | null, me: string, party: readonly string[]): void {
-    this.areas = areas ?? {}; this.me = me; this.party = [...party];
+  setAreas(areas: CoopAreas | null, me: string, party: readonly string[], world = false, everywhere = false): void {
+    this.areas = areas ?? {}; this.me = me; this.party = [...party]; this.world = world; this.everywhere = world && everywhere;
+  }
+  /** Protocol 9 (m3, the server-run world): the room hosts every surface and floor, not only WORLD_AREAS. */
+  private everywhere = false;
+  /** Does the room run `area` for this Keeper (so this screen raises nothing of its own there)? */
+  roomRuns(area: string): boolean {
+    return this.world && !!this.me && this.gaveUp !== area && (this.everywhere || WORLD_AREAS.includes(area) || this.areas[area]?.host === ROOM_HOST);
+  }
+
+  /**
+   * The Keeper changed level (a dungeon's mouth, a stair, a ship): nothing of the last area may stay on this screen.
+   * Called by the engine the moment the level changes, before any snapshot of the old area can land in the new one
+   * (owner 2026-10-26: "mobs appear and then disappear around dungeon entrances"). The engine has already swept its
+   * own creatures (MobSystem.enterLevel); this forgets the replicas, the decoder and the interpolation, so a late
+   * snapshot of the old area is refused (area check) and the old area's creatures are never adopted into the new one.
+   */
+  left(area: string): void {
+    if (area === this.area) return;
+    const was = this.role;
+    if (was === 'member') {
+      for (const m of this.replicas.values()) { const i = this.mobs.mobs.indexOf(m); if (i >= 0) this.mobs.mobs.splice(i, 1); }
+      if (this.mobs.target && !this.mobs.mobs.includes(this.mobs.target)) this.mobs.target = null;
+    }
+    this.replicas.clear(); this.interp.clear(); this.dec.reset(); this.claims = []; this.pending = [];
+    // Solo until the next frame decides the new area's part (before()): never a member of the area left behind.
+    this.role = 'solo'; this.area = area; this.host = null; this.term = -1; this.present = []; this.expecting = false; this.gaveUp = '';
+    this.mobs.replica = false; this.mobs.coop = null; this.mobs.others = [];
+    this.enc.keyframe();
+    if (was !== 'solo') this.hooks.role?.('solo', was);
   }
 
   /** Every frame, before the creatures move: the role for the area this Keeper is in now, and the replicas placed. */
   before(dt: number, area: string, keepers: readonly CoopKeeper[]): void {
-    const a = this.areas[area];
+    const listed = this.areas[area];
+    // A world area of the room (protocol 7): the room hosts every Keeper there, party or not. Stepping into one, the
+    // room lists this Keeper only after its presence round-trips (~0.2 s live); meanwhile the island must not raise
+    // creatures of its own that the room's then wipe. So the room is the host at once, and its election is no change.
+    let expect = this.roomRuns(area) && (!listed || listed.host === ROOM_HOST) && !listed?.members.includes(this.me);
+    // A room that never lists this Keeper here (it does not run this area after all): its own creatures, as before.
+    if (expect && !this.expecting) this.expectSince = this.hooks.now();
+    else if (expect && this.hooks.now() - this.expectSince > EXPECT_MS) { expect = false; this.gaveUp = area; }
+    if (listed?.members.includes(this.me)) this.gaveUp = '';
+    const a = expect ? { host: ROOM_HOST, term: this.host === ROOM_HOST && this.area === area ? this.term : -1, members: [...(listed?.members ?? []), this.me] } : listed;
     const role: CoopRole = !a || !this.me ? 'solo' : a.host === this.me ? (a.members.length > 1 ? 'host' : 'solo') : a.members.includes(this.me) ? 'member' : 'solo';
-    const hostChanged = !!a && (a.host !== this.host || a.term !== this.term);
+    const confirmed = this.expecting && !expect && a?.host === ROOM_HOST && this.host === ROOM_HOST && area === this.area;
+    const hostChanged = !!a && !confirmed && (a.host !== this.host || a.term !== this.term);
+    this.expecting = expect;
     const was = this.role;
     if (role !== was || area !== this.area || (role === 'member' && hostChanged)) this.become(role, area, a?.host ?? null);
     this.host = a?.host ?? null; this.term = a?.term ?? -1;
@@ -154,6 +203,8 @@ export class TdCoop implements CoopLink {
 
   private become(role: CoopRole, area: string, host: string | null): void {
     const was = this.role;
+    // Host migration keeps the replicas (same area, a new host); a new area never inherits the last one's creatures.
+    const sameArea = area === this.area;
     this.role = role; this.area = area;
     if (role === 'member') {
       // The host's creatures replace this Keeper's own: nothing of its own is simulated here any more.
@@ -165,7 +216,11 @@ export class TdCoop implements CoopLink {
       void host;
       return;
     }
-    if (was === 'member') this.adopt();
+    if (was === 'member' && sameArea) this.adopt();
+    else if (was === 'member') {
+      for (const m of this.replicas.values()) { const i = this.mobs.mobs.indexOf(m); if (i >= 0) this.mobs.mobs.splice(i, 1); }
+      this.replicas.clear(); this.interp.clear(); this.dec.reset();
+    }
     this.mobs.replica = false;
     this.mobs.coop = role === 'host' ? this : null;
     this.pending = [];

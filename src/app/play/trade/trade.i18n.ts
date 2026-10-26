@@ -41,6 +41,8 @@ export const TRADE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'trade.stage.settling': { en: 'The trade went through. Unpacking…', es: 'El comercio se hizo. Desempacando…' },
   'trade.done': { en: 'Trade complete.', es: 'Comercio completo.' },
   'trade.doneGot': { en: 'Trade complete: {{items}} item(s) and {{gold}} Gold came your way.', es: 'Comercio completo: recibiste {{items}} objeto(s) y {{gold}} de Oro.' },
+  'trade.cancelledBy': { en: '{{name}} cancelled the trade.', es: '{{name}} canceló el comercio.' },
+  'trade.cancelled': { en: 'The trade was cancelled.', es: 'Se canceló el comercio.' },
   'trade.failed': { en: 'The trade did not happen: {{why}}', es: 'El comercio no se hizo: {{why}}' },
   'trade.why.signin': { en: 'sign in to trade', es: 'inicia sesión para comerciar' },
   'trade.why.lease': { en: 'another device is playing this save (Play Here first)', es: 'otro dispositivo juega esta partida (pulsa Jugar aquí)' },

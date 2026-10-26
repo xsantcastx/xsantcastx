@@ -177,6 +177,7 @@ export class DeviceLeaseService {
     this.release();
     this.uid = null;
     this.fs = null;
+    this.settledOnce = false;
   }
 
   /**
@@ -269,12 +270,9 @@ export class DeviceLeaseService {
     if (!this.isBrowser || this.timer !== null) return;
     this.zone.runOutsideAngular(() => {
       this.timer = setInterval(() => {
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-          // A backgrounded tab is not being played on. Skipping the beat is what
-          // lets the lease expire for a phone left in a pocket, without waiting
-          // for a `pagehide` that a suspended tab may never fire.
-          return;
-        }
+        // A hidden tab beats too: the game never pauses (owner 2026-10-26), so a tab switched away is still the
+        // session that plays. A phone put in a pocket is suspended outright — no timer runs — and its lease lapses
+        // on the TTL as before; a device that wants it sooner has "Play here".
         void this.acquire(false).catch(() => { /* handled in runAcquire */ });
       }, HEARTBEAT_MS);
     });
@@ -286,7 +284,12 @@ export class DeviceLeaseService {
     this.timer = null;
   }
 
+  /** True once the first acquire after begin() has answered (held, passive, or unreadable). */
+  get settled(): boolean { return this.settledOnce; }
+  private settledOnce = false;
+
   private publish(next: LeaseState): void {
+    if (this.uid) this.settledOnce = true;
     const prev = this.state$$.value;
     if (prev.role === next.role && prev.holder?.deviceId === next.holder?.deviceId) return;
     // In the zone: the banner is bound to this and would otherwise appear a

@@ -1,3 +1,4 @@
+import { HIDDEN_STREAM_CAP_MS, HiddenStreamCap } from './hidden-cap';
 import { HEARTBEAT_MS, MOVE_MS, SOCIAL_PROTOCOL, SocialRoom, cleanPresence, hearthEndpoint, roomName, type RoomSnapshot } from './social-room';
 
 /** A fake room server: records requests, hands out event streams the spec can end, answers join as told. */
@@ -89,6 +90,36 @@ describe('SocialRoom (the Hearth room client)', () => {
     r.leave(); await settle();
     expect(fake.count('/leave')).toBe(1);
     expect(r.wants).toBeFalse();
+  });
+
+  // The owner's €14/month Hearth budget (2026-10-26): a forgotten hidden tab must not keep Cloud Run billed.
+  it('hidden under 30 minutes: the stream stays open; past 30 minutes it closes, and in sight the room is joined again at once', async () => {
+    const fake = fakeRoom(), r = room(fake), cap = new HiddenStreamCap(() => r);
+    await r.join('Arin'); await settle();
+    // Hidden for 29 minutes, then seen: nothing changed (same session, the same one stream, never paused).
+    cap.hidden();
+    jasmine.clock().tick(HIDDEN_STREAM_CAP_MS - 60_000); await settle();
+    expect(r.isPaused).toBeFalse();
+    expect(state!.connected).toBeTrue();
+    cap.shown(); await settle();
+    expect(fake.count('/join')).toBe(1);
+    expect(fake.count('/events')).toBe(1);
+    // Hidden again, past the cap: the stream closes, nothing is sent meanwhile.
+    cap.hidden();
+    jasmine.clock().tick(HIDDEN_STREAM_CAP_MS); await settle();
+    expect(cap.capped).toBeTrue();
+    expect(r.isPaused).toBeTrue();
+    expect(state!.connected).toBeFalse();
+    clock += 60_000; r.update(1, 1, 'ember-isle'); await settle();
+    expect(fake.count('/update')).toBe(0);
+    // Seen again: joined afresh at once (no backoff wait), a new stream (presence, party and a whole snapshot).
+    cap.shown(); await settle();
+    expect(cap.capped).toBeFalse();
+    expect(fake.count('/join')).toBe(2);
+    expect(fake.count('/events')).toBe(2);
+    expect(state!.connected).toBeTrue();
+    expect(r.wants).toBeTrue();
+    cap.dispose(); r.leave();
   });
 
   it('cleans what it sends: names, presence fields, the local endpoint', () => {
