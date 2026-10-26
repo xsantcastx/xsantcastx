@@ -10,6 +10,8 @@ import { MOBS, MobSystem, type Mob, type MobHost } from './td-mobs';
 import { THREAT, addThreat, damageThreat, healThreat, pickByThreat, tauntThreat, threatMult, topThreat } from './td-threat';
 import { KeeperLife } from '../world/keeper-life';
 import { allyLegal, parseAllyClaim } from '../world/ally-claims';
+import { CLASS_SKILLS, SKILLS, type SkillId } from './td-skills';
+import { MARKS } from './td-marks';
 
 function world(voc: 'ashguard' | 'lanternwright' | 'warlock' = 'ashguard') {
   const keeper = { x: 0, y: 0, face: 1 }, life = { hp: 5000 }, bitten: string[] = [];
@@ -145,5 +147,35 @@ describe('S5: the allies on the screen', () => {
     expect(parseAllyClaim({ k: 'heal', s: 'hearthlight', to: 'x', n: -1 })).toBeNull();
     expect(allyLegal({ k: 'heal', s: 'hearthlight', to: 'b', n: 10 }, { id: 'a', x: 0, y: 0, level: 5 }, { id: 'b', x: 30 * 16, y: 0, level: 5 })).toBe('far');
     expect(allyLegal({ k: 'rekindle', s: 'rekindle', to: 'b', n: 40 }, { id: 'a', x: 0, y: 0, level: 29 }, { id: 'b', x: 0, y: 0, level: 5 })).toBe('level');
+  });
+});
+
+describe('S5: every ally claim the screen makes is one the room accepts', () => {
+  it('each row at rank 20, with either star and every mark it allows, says only legal, well-formed claims', () => {
+    const MASKS = [1 | 2 | 4 | 8 | 16, 1 | 2 | 8 | 16 | 32];
+    const rows: { id: SkillId; voc: 'ashguard' | 'lanternwright' | 'warlock' | 'thornstrider' }[] = [];
+    for (const voc of ['ashguard', 'lanternwright', 'warlock', 'thornstrider'] as const) for (const id of CLASS_SKILLS[voc]) if (MARKS[id]) rows.push({ id, voc });
+    let seen = 0;
+    for (const { id, voc } of rows) for (const mask of MASKS) {
+      const { sys } = world(voc as 'ashguard');
+      sys.vocation = voc;
+      sys.setRanks({ [id]: 20, 'watch-blade': 20, 'aura-watchfire': 20, 'hearth-circle': 20, 'shield-oath': 20, 'raise-skeleton': 1, 'drain-life': 20 }, null, { [id]: mask });
+      sys.allies = [{ id: 'a', x: TILE, y: 0, h: 10, m: 100 }, { id: 'b', x: TILE, y: 10, h: 30, m: 100 }];
+      sys.fallenAllies.set('a', { x: TILE, y: 0, at: Date.now() });
+      wolf(sys, 2 * TILE);
+      if (SKILLS[id].kind === 'aura') sys.aura = id;
+      sys.target = sys.mobs[0];
+      sys.cooldowns[id] = 0;
+      if (SKILLS[id].kind === 'active') sys.useAbility(id);
+      run(sys, 4);
+      for (const c of sys.allyOut) {
+        seen++;
+        const wire = parseAllyClaim(JSON.parse(JSON.stringify(c)));
+        expect(wire).withContext(`${id} ${mask}: ${JSON.stringify(c)}`).not.toBeNull();
+        const to = c.to ? { id: c.to, x: TILE, y: 0, level: 100 } : null;
+        expect(allyLegal(wire!, { id: 'me', x: 0, y: 0, level: 100 }, to)).withContext(`${id} ${mask}: ${JSON.stringify(c)}`).toBeNull();
+      }
+    }
+    expect(seen).toBeGreaterThan(20);
   });
 });

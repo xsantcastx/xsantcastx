@@ -57,9 +57,9 @@ export const ALLY_SKILLS: Readonly<Partial<Record<SkillId, AllySkill>>> = {
   // ── The Warlock's kin-marks that share with allies ──
   'drain-life': { kinds: ['heal'], reach: 6 },
   'aura-siphon': { kinds: ['heal'], reach: 6 },
-  'bone-armor': { kinds: ['ward'], reach: 6, maxT: 25 },
-  'dark-ward': { kinds: ['ward'], reach: 6, maxT: 25 },
-  'aura-embers': { kinds: ['aura'], reach: 0, maxN: 0, maxT: 3, maxR: 5 },
+  'bone-armor': { kinds: ['ward'], reach: 6, maxT: 40 },
+  'dark-ward': { kinds: ['ward'], reach: 6, maxT: 40 },
+  'aura-embers': { kinds: ['aura'], reach: 0, maxN: 0, maxT: 3, maxR: 9 },
   // ── The Ashguard: the Banner, Intercept, the Gate, and the marks that reach allies ──
   'banner-of-the-watch': { kinds: ['aura'], reach: 0, maxN: 25, maxT: 3, maxR: 9 },
   'hold-the-gate': { kinds: ['aura'], reach: 0, maxN: 25, maxT: 3, maxR: 5 },
