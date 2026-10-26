@@ -340,6 +340,33 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
 
+### Protocol 10 (M4 of the room-run world, 2026-10-26 — built on `m4`, NOT deployed)
+
+`/health` and `/join` report `protocol: 10`; `/join` adds `life` and `credits` for a protocol-10 client; `/health world`
+adds `credits {batches, xp, gold, dup, retries, failed, ms}`. New verbs `/world/life` and `/world/credit`; `/coop/hits`
+takes `st`. Protocol 7–9 clients are answered as before. Same image, same command as protocol 9 (the bundle now also
+carries room-status, keeper-life and room-credit):
+
+```sh
+node scripts/world-sim-build.mjs
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run services describe eclipse-hearth --project xsantcastx-1694b --region us-central1 --format='value(spec.template.spec.containers[0].env)'   # keep all four origins
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated --max-instances 1 --concurrency 80 --timeout 3600 --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":10 and "credits"
+```
+
+Then the client (push to main → CI hosting). Order matters: hearth first (it serves protocol 9 clients unchanged),
+then the client. **No functions:game deploy** (trade-core's `moveGold` gained a `credit-gold` kind only the room calls;
+the Function's behaviour is unchanged) and **no rules deploy**: the room writes `users/{uid}/social/credits-<char>`,
+`progress/activity`, `progress/hearth` and `economy/state` with its service account (no new IAM — the same as
+protocol 8's trade writes). Firestore cost: one credit transaction per signed-in
+Keeper per 20 s window while it hunts (plus one on an area change, a fall, leaving, or Gold owed past 250): ≤ ~180 an
+hour, ≤ 4 reads and ≤ 4 writes each (typically 4 reads, 3 writes) — ≤ ~720 reads and ~540–720 writes per player-hour.
+
 ### Protocol 9 (M3 of the room-run world, 2026-10-26 — deployed: revision 00015; 00016 with the fixes merge)
 
 `/health` and `/join` report `protocol: 9`; `/health world` adds `every`, `loaded`, `creatures`, `resting`, `bosses`,

@@ -17,7 +17,10 @@ export type DisciplineId =
   | 'woodcutting'
   | 'enchanting'
   /** Fishing (Phase 6): the Delve's lakes and lava, landed through resolveWorldAction. */
-  | 'fishing';
+  | 'fishing'
+  /** Firemaking and Cooking (shared/gathering): campfires and Hearth meals, granted through resolveWorldAction. */
+  | 'firemaking'
+  | 'cooking';
 
 export type ActivityLocationId = string;
 

@@ -197,6 +197,23 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'courier-honeycomb': 'Courier\'s Honeycomb',
   'hatbox-of-small-crowns': 'Hatbox of Small Crowns',
   'curators-loupe': 'Curator\'s Loupe',
+  // The gathering skills (shared/gathering/gathering.model.ts; gathering.spec pins the names together).
+  'ashwood-log': 'Ashwood Log',
+  'char-oak-log': 'Char-oak Log',
+  'rootglass-bough': 'Rootglass Bough',
+  'cypress-log': 'Cypress Log',
+  'ash-perch': 'Ash Perch',
+  'mire-carp': 'Mire Carp',
+  'lampfish': 'Lampfish',
+  'moonbelly': 'Moonbelly',
+  'baked-ash-perch': 'Baked Ash Perch',
+  'seared-mirrorfin': 'Seared Mirrorfin',
+  'smoked-rootling-eel': 'Smoked Rootling Eel',
+  'mire-carp-supper': 'Mire Carp Supper',
+  'lampfish-fry': 'Lampfish Fry',
+  'moonbelly-fillet': 'Moonbelly Fillet',
+  'burnt-fish': 'Burnt Fish',
+  'tinderbox': 'Tinderbox',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

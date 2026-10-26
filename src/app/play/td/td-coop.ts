@@ -34,15 +34,26 @@ import {
 import { CoopInterp } from '../social/coop-interp';
 import { ROOM_HOST, WORLD_AREAS } from '../social/world-protocol';
 import { BOSS_LIFE_PER_MEMBER, ClaimGate, coopBossLife } from '../social/coop-rules';
+import { COOP_MAX_STATUS, ST_BIT, statusSources, type CoopStatus, type RoomStatusKind } from '../world/room-status';
+import type { LifeView } from '../world/keeper-life';
+import type { SkillId } from './td-skills';
 
 export type CoopRole = 'solo' | 'host' | 'member';
 /** A host's kill as a member hears it (the reward is the HUD's call: coop-rules CoopRewards). */
-export interface CoopKill { id: string; from: string; area: string; x: number; y: number; by: string[]; creature: string; level: number; hp: number; elite: CoopElite | null }
+export interface CoopKill { id: string; from: string; area: string; x: number; y: number; by: string[]; creature: string; level: number; hp: number; elite: CoopElite | null; /** Protocol 10: the room's credit id. */ cr?: string }
+/** Protocol 10: the room's answer to a batch of claims — what it refused, and why. */
+export interface CoopClaimReply { ok?: boolean; no?: { i: string; why: string }[]; st?: { no?: { i: string; why: string }[] } }
 export interface CoopHooks {
   /** Post a snapshot (host); false when it did not go (the next is a keyframe). */
   send(body: CoopSnapBody): Promise<boolean>;
-  /** Post a batch of claims (member). */
-  claim(body: { area: string; hits: CoopHit[] }): Promise<boolean>;
+  /** Post a batch of claims (member); protocol 10: with statuses, answered with what the room refused. */
+  claim(body: { area: string; hits: CoopHit[]; st?: CoopStatus[] }): Promise<boolean | CoopClaimReply | null>;
+  /** Protocol 10: the words for a refused blow (out of sight, too far, blocked); '' for none. */
+  cue?(why: string): string;
+  /** Protocol 10: this Keeper's life as the room keeps it (each snapshot). */
+  life?(me: LifeView): void;
+  /** Protocol 10: the room holds a Keeper down (this one, or another near). */
+  down?(to: string, x: number, y: number, self: boolean): void;
   /** A host's creature fell: 'full' (this Keeper fought it: its own spoils here), 'share' or 'none' (the HUD pays those). */
   killed(kill: CoopKill): 'full' | 'share' | 'none';
   now(): number;
@@ -85,6 +96,8 @@ export function replicaDef(s: Pick<CoopMobState, 't' | 'm' | 'l' | 'e'>, phase: 
 export const EXPECT_MS = 5000;
 /** A kill's XP factor that says it owes nothing (a raised one, a mirror; S6). */
 export const NOTHING_OWED = .001;
+/** The status timers a replica carries, in TdCoop.vec's order (protocol 10). */
+const STATUS_ORDER: readonly RoomStatusKind[] = ['stun', 'root', 'chill', 'fear', 'blind', 'hush', 'taunt', 'burn', 'bleed'];
 
 export class TdCoop implements CoopLink {
   role: CoopRole = 'solo';
@@ -120,7 +133,22 @@ export class TdCoop implements CoopLink {
   /** The corpse each fallen host creature left here (its wire id → corpse id): the room's loot lies beside it. */
   private readonly fell = new Map<string, string>();
   /** Counters the e2e and the HUD read. */
-  readonly stats = { sent: 0, heard: 0, dropped: 0, claimsOut: 0, claimsIn: 0, claimsRefused: 0 };
+  readonly stats = { sent: 0, heard: 0, dropped: 0, claimsOut: 0, claimsIn: 0, claimsRefused: 0, statusOut: 0, statusRefused: 0, cues: 0, refused: '' };
+  /** Protocol 10: the room lays this Keeper's statuses (it says so on join); off: they stay on this screen, as before. */
+  private statusOn = false;
+  /** Statuses waiting to go with the next claims. */
+  private stClaims: CoopStatus[] = [];
+  /** Each replica's status timers as last seen (after the room's word): what rose since is this Keeper's doing. */
+  private readonly stBase = new WeakMap<Mob, number[]>();
+  /** When this screen last laid a status on a replica (the room's word does not clear it for a moment). */
+  private readonly stLocal = new WeakMap<Mob, number>();
+  /** The last refusal cue over each replica (one at a time). */
+  private readonly cueAt = new WeakMap<Mob, number>();
+  /** A slow this screen's ground lays (Firebreak, a Hearth Circle), claimed again each second it lasts. */
+  private readonly slowAt = new WeakMap<Mob, number>();
+  private readonly sources = new Map<RoomStatusKind, { s: SkillId; m?: string }[]>();
+  /** The room's last few refusals of this Keeper's claims (why), for the e2e and the HUD. */
+  readonly lastNo: string[] = [];
 
   constructor(private readonly mobs: MobSystem, private readonly hooks: CoopHooks) {}
 
@@ -132,6 +160,10 @@ export class TdCoop implements CoopLink {
   }
   /** Protocol 9 (m3, the server-run world): the room hosts every surface and floor, not only WORLD_AREAS. */
   private everywhere = false;
+  /** Protocol 10: the room lays this Keeper's statuses on its creatures and tells it what it refused. */
+  setStatusOn(on: boolean): void { this.statusOn = on; }
+  /** The room runs this area's creatures and lays this Keeper's statuses there (protocol 10). */
+  private get roomStatus(): boolean { return this.statusOn && this.role === 'member' && this.host === ROOM_HOST; }
   /** Does the room run `area` for this Keeper (so this screen raises nothing of its own there)? */
   roomRuns(area: string): boolean {
     return this.world && !!this.me && this.gaveUp !== area && (this.everywhere || WORLD_AREAS.includes(area) || this.areas[area]?.host === ROOM_HOST);
@@ -190,6 +222,8 @@ export class TdCoop implements CoopLink {
       if (this.role === 'solo') this.scaleBosses(1);
     }
     if (this.role === 'member') this.placeReplicas();
+    // Protocol 10: the room ticks the burns and bleeds on its creatures; this screen only shows them.
+    this.mobs.roomTicks = this.roomStatus;
     void dt;
   }
 
@@ -199,8 +233,69 @@ export class TdCoop implements CoopLink {
       this.acc += dt * 1000;
       if (this.acc >= SNAP_MS && !this.sending) { this.acc = 0; this.sendSnap(); }
     } else if (this.role === 'member') {
+      if (this.roomStatus) this.watchStatuses();
       this.claimAcc += dt * 1000;
-      if (this.claimAcc >= SNAP_MS && this.claims.length && !this.claiming) { this.claimAcc = 0; this.sendClaims(); }
+      if (this.claimAcc >= SNAP_MS && (this.claims.length || this.stClaims.length) && !this.claiming) { this.claimAcc = 0; this.sendClaims(); }
+    }
+  }
+
+  // ── Protocol 10: this Keeper's statuses on the room's creatures ──
+  /** A replica's status timers, in a fixed order (STATUS_ORDER). */
+  private vec(m: Mob): number[] {
+    return [m.stun ?? 0, m.rootT ?? 0, m.chillT ?? 0, m.fearT ?? 0, m.blindT ?? 0, m.hushT ?? 0, m.taunt ?? 0, m.scorchT ?? 0, m.bleedT ?? 0];
+  }
+  /** Each frame: a timer that rose since the room's last word is a status this screen laid — claim it from the room. */
+  private watchStatuses(): void {
+    const now = this.hooks.now();
+    for (const m of this.replicas.values()) {
+      if (!m.nid || m.hp <= 0) continue;
+      const v = this.vec(m), b = this.stBase.get(m) ?? [];
+      for (let i = 0; i < v.length; i++) {
+        if (!(v[i] > (b[i] ?? 0) + .05)) continue;
+        const k = STATUS_ORDER[i];
+        this.queueStatus(m, k, v[i], k === 'burn' ? m.scorchDps : k === 'bleed' ? m.bleedDps : undefined);
+      }
+      this.stBase.set(m, v);
+      // A slowing ground of this Keeper's own (Firebreak, the Hearth Circle) holds it: claimed again each second.
+      const slow = this.mobs.slowShare(m);
+      if (slow > 0 && now - (this.slowAt.get(m) ?? -1e9) >= 1000) { this.slowAt.set(m, now); this.queueStatus(m, 'slow', 1.5, undefined, Math.round(slow * 100)); }
+    }
+  }
+  private queueStatus(m: Mob, k: RoomStatusKind, secs: number, dps?: number, n?: number, src: SkillId | null = null): void {
+    if (!m.nid || this.stClaims.length >= COOP_MAX_STATUS * 2) return;
+    let list = this.sources.get(k);
+    if (!list) { list = statusSources(k); this.sources.set(k, list); }
+    const pick = src ? list.find(x => x.s === src) ?? this.mobs.statusSkill(list) : this.mobs.statusSkill(list);
+    if (!pick) return;
+    this.stLocal.set(m, this.hooks.now());
+    const same = this.stClaims.findIndex(c => c.i === m.nid && c.k === k);
+    const c: CoopStatus = {
+      i: m.nid, k, s: pick.s, ...(pick.m ? { m: pick.m as CoopStatus['m'] } : {}), t: Math.max(0, Math.min(600, Math.round(secs * 10))),
+      ...(dps && dps > 0 ? { d: Math.min(1e6, Math.round(dps)) } : {}), ...(n && n > 0 ? { n: Math.min(1000, Math.round(n)) } : {}),
+    };
+    if (same >= 0) this.stClaims[same] = c; else this.stClaims.push(c);
+  }
+  /** CoopLink (protocol 10): a pull or a strip this screen laid on a shared creature (no timer shows those). */
+  laid(m: Mob, kind: 'pull' | 'strip', secs: number, src: SkillId | null, tiles = 0): void {
+    if (!this.roomStatus) return;
+    this.queueStatus(m, kind, secs, undefined, kind === 'pull' ? tiles * 10 : undefined, src);
+  }
+  /** The room's answer: a small cue over each creature it refused a blow or a status on (out of sight, too far, blocked). */
+  private refused(r: CoopClaimReply | boolean | null): void {
+    if (!r || typeof r !== 'object') return;
+    const now = this.hooks.now();
+    this.stats.statusRefused += r.st?.no?.length ?? 0;
+    for (const n of [...(r.no ?? []), ...(r.st?.no ?? [])]) {
+      this.lastNo.push(n.why); if (this.lastNo.length > 8) this.lastNo.shift();
+      this.stats.refused = this.lastNo.join(',');
+      if (n.why !== 'far' && n.why !== 'sight' && n.why !== 'cap' && n.why !== 'immune') continue;
+      const m = this.replicas.get(n.i);
+      if (!m || now - (this.cueAt.get(m) ?? -1e9) < 1200) continue;
+      const text = this.hooks.cue?.(n.why) ?? '';
+      if (!text) continue;
+      this.cueAt.set(m, now);
+      this.stats.cues++;
+      this.mobs.cue(m, text);
     }
   }
 
@@ -359,9 +454,12 @@ export class TdCoop implements CoopLink {
   private sendClaims(): void {
     const hits = this.claims.slice(0, COOP_MAX_HITS);
     this.claims = this.claims.slice(COOP_MAX_HITS);
+    const st = this.roomStatus ? this.stClaims.slice(0, COOP_MAX_STATUS) : [];
+    this.stClaims = this.roomStatus ? this.stClaims.slice(COOP_MAX_STATUS) : [];
+    if (!hits.length && !st.length) return;
     this.claiming = true;
-    this.stats.claimsOut += hits.length;
-    void this.hooks.claim({ area: this.area, hits }).finally(() => { this.claiming = false; });
+    this.stats.claimsOut += hits.length; this.stats.statusOut += st.length;
+    void this.hooks.claim({ area: this.area, hits, ...(st.length ? { st } : {}) }).then(r => this.refused(r), () => undefined).finally(() => { this.claiming = false; });
   }
   /** A host's snapshot (member): the creatures kept in step, and the bites, kills and pictures applied. */
   snap(msg: CoopSnapMsg): void {
@@ -369,6 +467,9 @@ export class TdCoop implements CoopLink {
     this.stats.heard++;
     const res = this.dec.apply(msg);
     for (const e of msg.ev ?? []) this.event(e, msg);
+    // Protocol 10: this Keeper's life as the room keeps it — after the bites it carries have landed here, so the
+    // screen's own picture of them (its wards) is already claimed when the room's number is read.
+    if (msg.me && msg.from === ROOM_HOST) this.hooks.life?.(msg.me);
     if (!res.ok) return;
     const now = this.hooks.now(), still = this.hooks.still();
     for (const id of res.removed) {
@@ -403,6 +504,24 @@ export class TdCoop implements CoopLink {
     m.chantText = m.halved ? m.def.half?.chant ?? m.def.chant : m.def.chant;
     m.elite = s.e ? { rank: s.e.r, role: s.e.o, affixes: s.e.a as EliteAffix[], name: s.e.n ?? null } : undefined;
     mirrorAbilityFlags(m, s.fl);
+    // Protocol 10: the statuses the room says it carries — another Keeper's stun is on this screen too. One this screen
+    // laid a moment ago stands until the room has had time to hear it.
+    if (this.statusOn && s.st !== undefined) {
+      const fresh = this.hooks.now() - (this.stLocal.get(m) ?? -1e9) < 700;
+      const set = (bit: number, get: () => number | undefined, put: (v: number) => void) => {
+        if (s.st! & bit) { if (!((get() ?? 0) > 0)) put(.3); } else if (!fresh && (get() ?? 0) > 0) put(0);
+      };
+      set(ST_BIT.stun, () => m.stun, v => { m.stun = v; });
+      set(ST_BIT.root, () => m.rootT, v => { m.rootT = v; });
+      set(ST_BIT.chill, () => m.chillT, v => { m.chillT = v; });
+      set(ST_BIT.fear, () => m.fearT, v => { m.fearT = v; });
+      set(ST_BIT.blind, () => m.blindT, v => { m.blindT = v; });
+      set(ST_BIT.hush, () => m.hushT, v => { m.hushT = v; });
+      set(ST_BIT.taunt, () => m.taunt, v => { m.taunt = v; });
+      set(ST_BIT.burn, () => m.scorchT, v => { m.scorchT = v; if (v > 0) { m.scorchDps = m.scorchDps ?? 0; m.scorchTick = m.scorchTick ?? 1; } });
+      set(ST_BIT.bleed, () => m.bleedT, v => { m.bleedT = v; if (v > 0) { m.bleedDps = m.bleedDps ?? 0; m.bleedTick = m.bleedTick ?? 1; } });
+      this.stBase.set(m, this.vec(m));
+    }
   }
   private placeReplicas(): void {
     const now = this.hooks.now();
@@ -434,11 +553,16 @@ export class TdCoop implements CoopLink {
       this.mobs.fieldSeen(e);
       return;
     }
+    if (e.k === 'down') {
+      // Protocol 10: the room holds a Keeper down (its life ran out on the room): this one falls, others see it.
+      this.hooks.down?.(e.to, e.x, e.y, e.to === this.me);
+      return;
+    }
     // A kill: this Keeper's reward is the HUD's call; the creature leaves the world here either way.
     const def = MOBS[e.t];
     const cap = !def ? 0 : def.rank === 'boss' || e.t === SEAM_ID ? 100000 : def.hp * 6;
     const hp = Math.max(1, Math.min(cap || 1, e.h));
-    const kill: CoopKill = { id: `${msg.from}:${msg.term}:${msg.seq}:${e.i}`, from: msg.from, area: msg.area, x: e.x, y: e.y, by: e.by, creature: e.t, level: e.l, hp, elite: e.e ?? null };
+    const kill: CoopKill = { id: `${msg.from}:${msg.term}:${msg.seq}:${e.i}`, from: msg.from, area: msg.area, x: e.x, y: e.y, by: e.by, creature: e.t, level: e.l, hp, elite: e.e ?? null, ...(e.cr && msg.from === ROOM_HOST && /^k\.[a-z0-9]{1,12}\.[a-z0-9]{1,10}$/.test(e.cr) ? { cr: e.cr } : {}) };
     // S6: a raised one or a mirror owes nothing (its corpse still falls here).
     const owed = !(e.xp !== undefined && e.xp <= NOTHING_OWED);
     const reward = def && owed ? this.hooks.killed(kill) : 'none';
@@ -451,7 +575,7 @@ export class TdCoop implements CoopLink {
     if (m) {
       m.hp = 0;
       // The room's world (protocol 7) rolled the loot once, on its own ground: this Keeper is paid its XP, never a roll.
-      const corpse = this.mobs.coopFell(m, reward === 'full', hp * (this.mobs.tier.hp || 1), msg.from !== ROOM_HOST);
+      const corpse = this.mobs.coopFell(m, reward === 'full', hp * (this.mobs.tier.hp || 1), msg.from !== ROOM_HOST, kill.cr ?? '');
       this.fell.set(e.i, corpse);
       if (this.fell.size > 64) this.fell.delete(this.fell.keys().next().value!);
     }
@@ -459,10 +583,10 @@ export class TdCoop implements CoopLink {
   }
 
   /** The e2e's view: role, host, and the creatures as this screen holds them. */
-  view(): { role: CoopRole; host: string | null; area: string; present: string[]; mobs: { id: string; t: string; key: string; x: number; y: number; hp: number; max: number }[] } {
+  view(): { role: CoopRole; host: string | null; area: string; present: string[]; mobs: { id: string; t: string; key: string; x: number; y: number; hp: number; max: number; stun: boolean }[] } {
     return {
       role: this.role, host: this.host, area: this.area, present: this.present,
-      mobs: this.mobs.mobs.filter(m => m.nid || this.role !== 'member').map(m => ({ id: m.nid ?? '', t: m.def.id, key: m.key, x: Math.round(m.x), y: Math.round(m.y), hp: Math.round(m.hp), max: Math.round(m.def.hp) })),
+      mobs: this.mobs.mobs.filter(m => m.nid || this.role !== 'member').map(m => ({ id: m.nid ?? '', t: m.def.id, key: m.key, x: Math.round(m.x), y: Math.round(m.y), hp: Math.round(m.hp), max: Math.round(m.def.hp), stun: (m.stun ?? 0) > 0 })),
     };
   }
   /** The corpse a host's creature left on this screen (the room's loot from it lies beside it), if it fell here. */

@@ -44,20 +44,28 @@ export interface CoopMobState {
   /** A boss's wind-up left (tenths of a second; 0 = none) and where it will land. */
   tl: number; ax: number; ay: number;
   fl: number;
+  /** Protocol 10: the statuses it carries (play/world/room-status ST_BIT; 0 or absent: none). */
+  st?: number;
 }
 export type CoopMobWire = Partial<CoopMobState> & { i: string };
 
 /** Things that happen between snapshots. `kill`: the host's creature fell; `bite`: a creature struck a member. */
 export type CoopEvent =
-  | { k: 'kill'; i: string; t: string; l: number; h: number; xp?: number; by: string[]; x: number; y: number; e?: CoopElite; key?: string }
+  | { k: 'kill'; i: string; t: string; l: number; h: number; xp?: number; by: string[]; x: number; y: number; e?: CoopElite; key?: string; /** Protocol 10: the id the room pays it under. */ cr?: string }
   | { k: 'bite'; to: string; i?: string; d: number; ty: string; b?: boolean; c?: boolean; /** S6: statuses it lays (td-abilities encodeStatus). */ st?: string }
   | { k: 'shot'; x: number; y: number; vx: number; vy: number; s: string; l: number }
   | { k: 'burst'; x: number; y: number; r: number; t: number; el?: string }
   /** S6: a patch of hostile ground (fire ground, crust, ink, a web, a cloud): its tone and the status it lays (pictures and statuses; the host decides damage). */
-  | { k: 'field'; x: number; y: number; r: number; t: number; tn: string; st?: string };
+  | { k: 'field'; x: number; y: number; r: number; t: number; tn: string; st?: string }
+  /** Protocol 10: the room holds this Keeper down (its life, play/world/keeper-life.ts): everyone near sees it fall. */
+  | { k: 'down'; to: string; x: number; y: number };
 
 /** What the host posts (and the room relays, with `from`, `term`). */
-export interface CoopSnapBody { area: string; seq: number; kf: boolean; mobs: CoopMobWire[]; gone: string[]; ev: CoopEvent[]; tier?: string }
+export interface CoopSnapBody {
+  area: string; seq: number; kf: boolean; mobs: CoopMobWire[]; gone: string[]; ev: CoopEvent[]; tier?: string;
+  /** Protocol 10: this Keeper's life as the room keeps it (keeper-life LifeView: life, most, the last claim taken, down). */
+  me?: { h: number; m: number; q: number; d?: 1 };
+}
 export interface CoopSnapMsg extends CoopSnapBody { from: string; term: number }
 /** A member's damage claim (target id, amount, element, a crit, the skill it came from). */
 export interface CoopHit { i: string; d: number; el: string; c?: boolean; s?: string }
@@ -66,14 +74,14 @@ export interface CoopHitsMsg { from: string; area: string; x: number; y: number;
 /** The room's election: per area, the host, its term, and who of the party is there. */
 export type CoopAreas = Record<string, { host: string; term: number; members: string[] }>;
 
-const FIELDS = ['t', 'k', 'x', 'y', 'f', 'h', 'm', 'l', 'e', 'tl', 'ax', 'ay', 'fl'] as const;
+const FIELDS = ['t', 'k', 'x', 'y', 'f', 'h', 'm', 'l', 'e', 'tl', 'ax', 'ay', 'fl', 'st'] as const;
 const same = (a: unknown, b: unknown): boolean => a === b || (typeof a === 'object' && typeof b === 'object' && JSON.stringify(a) === JSON.stringify(b));
 
 /** A creature's state as the wire carries it: whole numbers for place and life, the wind-up in tenths. */
 export function quantize(s: CoopMobState): CoopMobState {
   return {
     ...s, x: Math.round(s.x), y: Math.round(s.y), f: s.f === -1 ? -1 : 1, h: Math.max(0, Math.round(s.h)), m: Math.max(1, Math.round(s.m)),
-    tl: Math.max(0, Math.min(100, Math.round(s.tl))), ax: Math.round(s.ax), ay: Math.round(s.ay), fl: s.fl & 255,
+    tl: Math.max(0, Math.min(100, Math.round(s.tl))), ax: Math.round(s.ax), ay: Math.round(s.ay), fl: s.fl & 255, st: (s.st ?? 0) & 2047,
   };
 }
 
@@ -112,6 +120,7 @@ export class CoopEncoder {
 function whole(s: CoopMobState): CoopMobWire {
   const w: CoopMobWire = { i: s.i, t: s.t, x: s.x, y: s.y, f: s.f, h: s.h, m: s.m, l: s.l, e: s.e, tl: s.tl, ax: s.ax, ay: s.ay, fl: s.fl };
   if (s.k) w.k = s.k;
+  if (s.st) w.st = s.st;
   return w;
 }
 
@@ -145,10 +154,12 @@ export class CoopDecoder {
       if (!was) {
         // A creature first heard of must come whole (a type, a place, its life); a partial one waits for a keyframe.
         if (typeof w.t !== 'string' || !Number.isFinite(w.x) || !Number.isFinite(w.y) || !Number.isFinite(w.m)) continue;
-        this.state.set(w.i, { i: w.i, t: w.t, k: w.k, x: w.x!, y: w.y!, f: w.f === -1 ? -1 : 1, h: w.h ?? w.m!, m: w.m!, l: w.l ?? 1, e: w.e ?? null, tl: w.tl ?? 0, ax: w.ax ?? 0, ay: w.ay ?? 0, fl: w.fl ?? 0 });
+        this.state.set(w.i, { i: w.i, t: w.t, k: w.k, x: w.x!, y: w.y!, f: w.f === -1 ? -1 : 1, h: w.h ?? w.m!, m: w.m!, l: w.l ?? 1, e: w.e ?? null, tl: w.tl ?? 0, ax: w.ax ?? 0, ay: w.ay ?? 0, fl: w.fl ?? 0, st: w.st ?? 0 });
         added.push(w.i);
         continue;
       }
+      // A keyframe leaves out a creature's statuses when it carries none (protocol 10): none, then.
+      if (msg.kf && w.st === undefined) was.st = 0;
       Object.assign(was, Object.fromEntries(Object.entries(w).filter(([, v]) => v !== undefined)));
       changed.push(w.i);
     }

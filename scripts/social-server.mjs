@@ -57,7 +57,13 @@ import { createWorldRooms, loadWorldSim } from './social-world.mjs';
 // to `world-rooms/{area}` and sleeps, and wakes them all fast-forwarded. Respawns are per spawn (60–90 s ordinary,
 // elites longer, bosses about an hour), and world bosses rise on timers of hours with an omen (`world-omen`) to all.
 // A protocol 7/8 client keeps M1/M2's island only, until it refreshes.
-export const PROTOCOL = 9;
+// Protocol 10 (2026-10-26, M4 of the room-run world; docs/design/online.md §4d "M4"): a client that says `protocol: 10`
+// has its statuses on the room's creatures laid by the room (`/coop/hits` `st`, play/world/room-status.ts), is told
+// which claims the room refused (`no`), has its life kept by the room (bites cut here, `/world/life` claims, death and
+// the corpse run on the room's word: play/world/keeper-life.ts), and — signed in — has its Hunting XP and hunt Gold paid
+// by the room (`/world/credit` asks; one Firestore transaction per batch, once per kill or pile: room-credit.ts).
+// A protocol 7–9 client keeps its own life and pays itself, as before, until it refreshes.
+export const PROTOCOL = 10;
 export const FRIENDS_MAX = 200;
 export const BLOCKS_MAX = 100;
 /** How long a friend request stands (ms). */
@@ -115,6 +121,8 @@ export function presenceFields(data) {
 export const COOP = Object.freeze({
   /** Creatures in one snapshot, events in one snapshot, ids in one `gone` list, claims in one batch. */
   maxMobs: 48, maxEvents: 24, maxGone: 64, maxHits: 24,
+  /** Protocol 10: status claims in one batch (play/world/room-status.ts COOP_MAX_STATUS). */
+  maxStatus: 16,
   /** Bytes in one co-op request body. */
   maxBytes: 8192,
   /** Snapshots a host may send a second; claim batches a member may send a second; all co-op requests of one party a second. */
@@ -229,6 +237,21 @@ export function coopPal(raw) {
   return out;
 }
 /** One damage claim: the creature's id, how much, its element, a crit, the skill it came from. */
+/**
+ * Protocol 10: one status claim (play/world/room-status.ts CoopStatus): the creature, the kind, the skill and mark it
+ * came from, its seconds in tenths, a burn's or bleed's damage a second, a pull's tiles or a slow's share. Shape only:
+ * whether that skill can lay it is the room's call (statusLegal).
+ */
+const COOP_ST_KINDS = new Set(['stun', 'root', 'chill', 'fear', 'blind', 'hush', 'taunt', 'slow', 'pull', 'burn', 'bleed', 'strip']);
+export function coopStatus(raw) {
+  coopKeys(raw, ['i', 'k', 's', 'm', 't', 'd', 'n']);
+  if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i) || !COOP_ST_KINDS.has(raw.k) || typeof raw.s !== 'string' || !COOP_SKILL.test(raw.s)) coopBad();
+  const out = { i: raw.i, k: raw.k, s: raw.s, t: coopInt(raw.t, 0, 600) };
+  if (raw.m !== undefined) { if (!['a1', 'a2', 'a3', 'b1', 'b2', 'b3'].includes(raw.m)) coopBad(); out.m = raw.m; }
+  if (raw.d !== undefined) out.d = coopInt(raw.d, 0, 1e6);
+  if (raw.n !== undefined) out.n = coopInt(raw.n, 0, 1000);
+  return out;
+}
 export function coopHit(raw) {
   coopKeys(raw, ['i', 'd', 'el', 'c', 's']);
   if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
@@ -439,6 +462,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     for (const [id, inv] of invites) if (inv.from === s.player.id || inv.to === s.player.id) invites.delete(id);
     for (const [id, r] of requests) if (r.fromPlayer === s.player.id) requests.delete(id);
     tradeGone(s, 'left');
+    // Protocol 10: whatever the room owes it is paid now.
+    void rooms.left?.(s);
     sessions.delete(token);
     s.stream?.end();
     publishPlayers();
@@ -816,10 +841,14 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       const data = await readCoopBody(req);
       session.lastSeen = now();
       if (verb === 'snap') throw fail(409, 'The room hosts here.');
-      coopKeys(data, ['area', 'hits']);
+      coopKeys(data, session.p10 ? ['area', 'hits', 'st'] : ['area', 'hits']);
       if (typeof data.area !== 'string' || data.area !== session.player.area) throw fail(409, 'Not in that place.');
-      if (!Array.isArray(data.hits) || !data.hits.length || data.hits.length > COOP.maxHits) coopBad();
-      const r = rooms.claims(session, data.hits.map(coopHit));
+      // Protocol 10: statuses ride beside the blows (a status alone, a stun with no damage, comes with no hits).
+      const st = data.st === undefined ? [] : data.st;
+      if (!Array.isArray(st) || st.length > COOP.maxStatus) coopBad();
+      const statuses = st.map(c => coopStatus(c));
+      if (!Array.isArray(data.hits) || data.hits.length > COOP.maxHits || (!data.hits.length && !statuses.length)) coopBad();
+      const r = rooms.claims(session, data.hits.map(coopHit), statuses);
       reply(200, { ok: true, ...r }); return;
     }
     if (!session.coop) throw fail(409, 'Update the game to share creatures.');
@@ -1264,7 +1293,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   };
   // ── Protocol 7: the room-run world (social-world.mjs). ──
   const rooms = createWorldRooms({
-    sim: world?.sim ?? null, core, store, now, log, areas: world?.areas ?? null, timing: world?.timing ?? {}, fx: !!world?.fx,
+    sim: world?.sim ?? null, core, store, db: economy?.db ?? null, now, log, areas: world?.areas ?? null, timing: world?.timing ?? {}, fx: !!world?.fx,
     ...(world?.seed ? { seed: () => world.seed } : {}),
     send: (s, value) => { if (s.stream) send(s.stream, value); },
   });
@@ -1287,6 +1316,17 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (path === '/world/return') {
       consume(session, 'world-return', 10, 10000);
       reply(200, { ok: rooms.giveBack(session, data.id) }); return;
+    }
+    // Protocol 10: its life claims (a heal, a ward's soak, a potion, harm the room did not deal, a wake) and its guard.
+    if (path === '/world/life' && session.p10) {
+      consume(session, 'world-life', 24, 2000);
+      reply(200, rooms.life(session, data)); return;
+    }
+    // Protocol 10: its own numbers for what the room owes it (each paid once, never past the cap).
+    if (path === '/world/credit' && session.p10) {
+      consume(session, 'world-credit', 20, 2000);
+      if (!data || typeof data !== 'object' || Object.keys(data).some(k => k !== 'c')) throw fail(400, 'Invalid credit.');
+      reply(200, rooms.ask(session, data.c)); return;
     }
     if (path === '/world/fx') { reply(200, rooms.fx(session, data)); return; }
     throw fail(404, 'Not found.');
@@ -1367,10 +1407,15 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         session.p8 = Number.isInteger(data.protocol) && data.protocol >= 8;
         // Protocol 9: the room hosts every area for it (social-world.mjs), and it hears the world bosses' omens.
         session.p9 = Number.isInteger(data.protocol) && data.protocol >= 9;
+        // Protocol 10: statuses, refusals, its life and its credit are the room's (social-world.mjs).
+        session.p10 = Number.isInteger(data.protocol) && data.protocol >= 10;
         session.character = session.p8 && typeof data.character === 'string' && /^[a-z0-9]{2,16}$/.test(data.character) ? data.character : null;
         session.token = token;
         sessions.set(token, session);
-        reply(201, { id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world, ...(session.p8 ? { settles: !!economy } : {}) });
+        reply(201, {
+          id: player.id, token, players: playersFor(session), messages: messagesFor(session), protocol: PROTOCOL, guest: !uid, world: session.world, ...(session.p8 ? { settles: !!economy } : {}),
+          ...(session.p10 ? { life: rooms.lifeOn(session), credits: rooms.creditsOn(session) } : {}),
+        });
         publishPlayers();
         friendsHear(uid);
         // Protocol 8: back into its party (from memory, or the store after a restart), and what its save says it can deal.

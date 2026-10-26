@@ -1,7 +1,9 @@
 import type { CoopAreas, CoopHit, CoopHitsMsg, CoopSnapBody, CoopSnapMsg } from './coop-protocol';
 import type { CoopPal } from './coop-pals';
 import type { OfferItem } from '../trade/trade-items';
-import type { WorldGroundMsg, WorldTakeResult } from './world-protocol';
+import type { WorldCreditAsk, WorldCreditMsg, WorldGroundMsg, WorldTakeResult } from './world-protocol';
+import type { CoopStatus } from '../world/room-status';
+import type { LifeClaim, LifeView } from '../world/keeper-life';
 
 const KEEPER_ANIMATIONS = new Set(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 /**
@@ -52,7 +54,13 @@ export interface RoomSnapshot {
   world?: boolean;
   /** Protocol 8: the room settles this Keeper's trades and lays its drops itself (it has the trade core). */
   settles?: boolean;
+  /** Protocol 10: the room keeps this Keeper's life (play/world/keeper-life.ts). */
+  life?: boolean;
+  /** Protocol 10: the room pays this Keeper's Hunting XP and hunt Gold (play/world/room-credit.ts; signed in only). */
+  credits?: boolean;
 }
+/** Protocol 10: the room's answer to a batch of claims (what it refused, and why). */
+export interface RoomClaimReply { ok?: boolean; no?: { i: string; why: string }[]; st?: { no?: { i: string; why: string }[] } }
 /** The room's trading and shared ground (protocol 6; the trade Function moves things: functions-game/src/trade-core.ts). */
 export const TRADE_PROTOCOL = 6;
 export interface RoomTradeAsk { id: string; from: string; name: string; to: string; until: number }
@@ -150,6 +158,10 @@ export interface RoomOptions {
   onGroundNote?: (note: RoomGroundNote) => void;
   /** Protocol 9: a world boss's omen (it rose, fell or left). */
   onWorldOmen?: (omen: RoomWorldOmen) => void;
+  /** Protocol 10: the room paid (or could not pay) a batch of this Keeper's XP and Gold. */
+  onWorldCredit?: (msg: WorldCreditMsg) => void;
+  /** Weather v1: the room owns the sky's roll (shared/weather): the window and each land's roll, from the room's clock. */
+  onWorldWeather?: (weather: RoomWorldWeather) => void;
   /** The same account joined the room from somewhere else (`replaced`): this session is out of the room. */
   onReplaced?: () => void;
 }
@@ -167,8 +179,15 @@ export const ROOM_SETTLE_PROTOCOL = 8;
  * bosses' omens. The protocol this client speaks (sent on /join).
  */
 export const ROOM_EVERYWHERE_PROTOCOL = 9;
+/**
+ * Protocol 10 (M4): the room lays this Keeper's statuses, tells it what it refused, keeps its life and — signed in —
+ * pays its XP and Gold. The protocol this client speaks (sent on /join).
+ */
+export const ROOM_LIFE_PROTOCOL = 10;
 /** A world boss rose, fell or left unfound (protocol 9; play/world/world-bosses.ts): the omen line is the client's. */
 export interface RoomWorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone'; level: number }
+/** The room's weather (scripts/social-world.mjs `world-weather`): a window and each land's roll in it (0..1). */
+export interface RoomWorldWeather { window: number; lands: Record<string, number>; now: number }
 /** What the room accepts as a character id (character-scope.ts). */
 const CHARACTER_ID = /^[a-z0-9]{2,16}$/;
 export const ROOM_DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
@@ -294,7 +313,7 @@ export class SocialRoom {
       if (generation !== this.generation || this.wanted !== wanted) return;
       const join = (token: string | null) => this.send(`${this.endpoint}/join`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Firebase ${token}` } : {}) },
-        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, protocol: ROOM_EVERYWHERE_PROTOCOL, ...this.characterField(), privacy: this.privacy }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ name: wanted.name, ...wanted.profile, party: true, coop: true, trade: true, world: true, protocol: ROOM_LIFE_PROTOCOL, ...this.characterField(), privacy: this.privacy }), signal: AbortSignal.timeout(8000),
       });
       let response = await join(idToken);
       // A token the room will not take: in as a guest rather than not at all.
@@ -313,7 +332,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -446,8 +465,18 @@ export class SocialRoom {
       if (Array.isArray(data['gone'])) msg.gone = (data['gone'] as unknown[]).filter((id): id is string => typeof id === 'string');
       this.options.onWorldGround?.(msg);
     }
+    // Protocol 10: the room paid this Keeper's XP and Gold (or could not).
+    if (data['type'] === 'world-credit' && typeof data['ok'] === 'boolean' && Array.isArray(data['ids'])) {
+      this.options.onWorldCredit?.({ ok: data['ok'] as boolean, xp: Number(data['xp']) || 0, gold: Number(data['gold']) || 0, debt: Number(data['debt']) || 0, ids: (data['ids'] as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 64), ...(typeof data['why'] === 'string' ? { why: data['why'] as string } : {}) });
+    }
     if (data['type'] === 'world-omen' && typeof data['boss'] === 'string' && /^[a-z0-9-]{1,40}$/.test(data['boss'] as string) && (data['at'] === 'rise' || data['at'] === 'fall' || data['at'] === 'gone')) {
       this.options.onWorldOmen?.({ boss: data['boss'] as string, name: String(data['name'] ?? '').slice(0, 40), area: String(data['area'] ?? '').slice(0, 40), at: data['at'] as RoomWorldOmen['at'], level: Number(data['level']) || 1 });
+    }
+    // Weather v1: the room's roll for the window (every land's), so every Keeper sees one sky whatever their clock says.
+    if (data['type'] === 'world-weather' && Number.isInteger(data['window']) && data['lands'] && typeof data['lands'] === 'object') {
+      const lands: Record<string, number> = {};
+      for (const [k, v] of Object.entries(data['lands'] as Record<string, unknown>)) if (/^[a-z-]{1,40}$/.test(k) && typeof v === 'number' && v >= 0 && v < 1) lands[k] = v;
+      this.options.onWorldWeather?.({ window: data['window'] as number, lands, now: Number(data['now']) || Date.now() });
     }
   }
   /** The room runs the world (protocol 7) and this Keeper is in it. */
@@ -484,8 +513,52 @@ export class SocialRoom {
   get canCoop(): boolean { return this.snapshot.connected && (this.snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && !!this.snapshot.party; }
   /** Post this host's snapshot; false when it did not go (the caller sends a keyframe next). */
   coopSnap(body: CoopSnapBody): Promise<boolean> { return this.coopPost('snap', body); }
-  /** Post this member's damage claims. */
-  coopHits(body: { area: string; hits: CoopHit[] }): Promise<boolean> { return this.coopPost('hits', body); }
+  /**
+   * Post this member's damage claims (protocol 10: and its statuses). Where the room runs the world its answer names
+   * what it refused (the screen's cue); elsewhere true/false as before.
+   */
+  async coopHits(body: { area: string; hits: CoopHit[]; st?: CoopStatus[] }): Promise<boolean | RoomClaimReply> {
+    if (!this.canWorld || (this.snapshot.protocol ?? 0) < ROOM_LIFE_PROTOCOL) return this.coopPost('hits', body);
+    if (!this.token || this.paused) return false;
+    try {
+      const response = await this.send(`${this.endpoint}/coop/hits`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(4000),
+      });
+      if (!response.ok) return false;
+      const r = await response.json().catch(() => null) as RoomClaimReply | null;
+      return r && typeof r === 'object' ? r : true;
+    } catch { return false; }
+  }
+  /** Protocol 10: the room keeps this Keeper's life, and the room is reachable. */
+  get canLife(): boolean { return this.canWorld && (this.snapshot.protocol ?? 0) >= ROOM_LIFE_PROTOCOL && this.snapshot.life === true; }
+  /** Protocol 10: post life claims (and the guard); the room's word on the life, or null when it did not reach. */
+  async worldLife(body: { g?: { m: number; d: number; r: number[] }; c: LifeClaim[] }): Promise<LifeView | null> {
+    if (!this.canLife || !this.token || this.paused) return null;
+    try {
+      const response = await this.send(`${this.endpoint}/world/life`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(4000),
+      });
+      if (!response.ok) return null;
+      const r = await response.json().catch(() => null) as { me?: LifeView } | null;
+      const me = r?.me;
+      return me && Number.isFinite(me.h) && Number.isFinite(me.m) && Number.isFinite(me.q) ? me : null;
+    } catch { return null; }
+  }
+  /** Protocol 10: the room pays this Keeper's XP and Gold (signed in, a protocol-10 room). */
+  get canCredit(): boolean { return this.canWorld && (this.snapshot.protocol ?? 0) >= ROOM_LIFE_PROTOCOL && this.snapshot.credits === true && !this.snapshot.guest; }
+  /** Protocol 10: this screen's own numbers for what the room owes it (each paid once, never past the cap). */
+  async worldCredit(c: WorldCreditAsk[]): Promise<boolean> {
+    if (!this.canCredit || !this.token || !c.length) return false;
+    try {
+      const response = await this.send(`${this.endpoint}/world/credit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+        body: JSON.stringify({ c: c.slice(0, 32) }), signal: AbortSignal.timeout(6000),
+      });
+      return response.ok;
+    } catch { return false; }
+  }
   /** Post this Keeper's own companions to the party in its area. */
   coopPals(body: { area: string; pals: CoopPal[] }): Promise<boolean> { return this.coopPost('pals', body); }
   private async coopPost(verb: 'snap' | 'hits' | 'pals', body: unknown): Promise<boolean> {

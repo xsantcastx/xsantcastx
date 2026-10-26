@@ -93,7 +93,8 @@ const FISH: readonly CatchDef[] = [
   { id: 'the-fifth-ember', name: 'The Fifth Ember', rarity: 'legendary', waters: ['hearth'], anchor: 140_000,
     lore: 'It swims with four others that are not there.', use: 'Banked into three Embervials at the Enchanting Table.' },
   // The world clock (shared/world-clock/eclipse.model.ts): it only rises in the dark.
-  { id: 'mirrorfin', name: 'Mirrorfin', rarity: 'rare', waters: ['seep', 'mere'], anchor: 3_200, when: 'dark',
+  // Its anchor is the sea's common fish's now (shared/gathering: the Burning Sea's spots, Fishing 5), not a Delve rare's.
+  { id: 'mirrorfin', name: 'Mirrorfin', rarity: 'rare', waters: ['seep', 'mere'], anchor: 1_000, when: 'dark',
     lore: 'Its scales are slivers of the moon mirror, and it swims up to see itself. By day it remembers it is a fish and goes back down.',
     use: 'Renders into two Lampfish Oil at the Enchanting Table; the Ink Pup and the Shade-kit love it.' },
 ];
@@ -163,6 +164,8 @@ export const BAITS: readonly BaitDef[] = [
   { id: 'blindfin', name: 'Blindfin', power: .25, source: 'seeps', note: 'Live bait.' },
   { id: 'glowcap', name: 'Glowcap', power: .20, source: 'Glowcap Grotto', note: 'At night it draws the rare ones.' },
   { id: 'ember-grub', name: 'Ember Grub', power: .10, source: 'digging dirt and root-loam', note: 'Gives dirt a second meaning.' },
+  // A fish that burned at the fire (shared/gathering): charred bits, the weakest bait, so the waste still means something.
+  { id: 'burnt-fish', name: 'Burnt Fish', power: .05, source: 'a fish burned at the fire', note: 'The small fish come up to see what fell.' },
 ];
 /** The bait a cast uses from what is held (stack id → count), or null. In the dark a held Moonwake Bloom goes on first. */
 export function bestBait(stackOf: (id: string) => number, dark = false): BaitDef | null {

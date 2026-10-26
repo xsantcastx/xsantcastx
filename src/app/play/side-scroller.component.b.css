@@ -1185,6 +1185,12 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .td-mini__sky[data-sky-phase='night'] .td-mini__ph { background: var(--cozy-cream); box-shadow: inset 3px -1px 0 0 var(--cozy-mana-lo), 0 0 0 1px var(--cozy-wood-0); }
 .td-mini__sky[data-sky-phase='eclipse'] { color: var(--cozy-cream); background: color-mix(in srgb, var(--cozy-loot-epic) 55%, var(--cozy-wood-0)); }
 .td-mini__sky[data-sky-phase='eclipse'] .td-mini__ph { background: var(--cozy-wood-0); box-shadow: 0 0 0 1px var(--cozy-cream), 0 0 0 2px var(--cozy-loot-epic); }
+/* Weather v1's pip (shared/weather): a stepped pixel mark after the hour — a cloud, a drop, a bolt, a fog bank. */
+.td-mini__wx { position: relative; flex: none; width: 8px; height: 8px; margin-left: 2px; }
+.td-mini__wx[data-wx='overcast'] { height: 4px; margin-top: 2px; background: var(--cozy-cream); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.td-mini__wx[data-wx='rain'] { width: 4px; height: 6px; background: var(--cozy-river); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.td-mini__wx[data-wx='storm'] { width: 4px; height: 8px; background: var(--cozy-brass-hi); box-shadow: 2px 2px 0 0 var(--cozy-brass-hi), 0 0 0 1px var(--cozy-wood-0); }
+.td-mini__wx[data-wx='fog'] { height: 2px; margin-top: 1px; background: var(--cozy-cream); box-shadow: 0 3px 0 0 var(--cozy-cream), 0 0 0 1px var(--cozy-wood-0); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .td-mini__sky { bottom: -8px; padding: 1px 4px 1px 3px; font-size: 9px; gap: 3px; }
   .td-mini__ph { width: 6px; height: 6px; }

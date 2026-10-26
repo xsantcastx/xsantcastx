@@ -26,7 +26,7 @@ const floorSpot = w => { const s = w.level.spawnsIn().find(x => w.mobs && sim.MO
 const fell = (w, m, by = 'a') => { w.mobs.applyClaim(m, 1e9, by); w.tick(.05); };
 
 test('protocol 9: every continent and every floor is a world area; protocol 7/8 keep the island', () => {
-  assert.equal(PROTOCOL, 9);
+  assert.ok(PROTOCOL >= 9);
   assert.deepEqual([...WORLD_AREAS], ['ember-isle']);
   for (const a of [...Object.keys(CONTINENTS), ...Object.keys(LEVELS)]) assert.ok(WORLD_AREAS_ALL.includes(a), a);
   // A floor's world is its hand-drawn level: all of it raised at once, its ground ids its own.
@@ -266,7 +266,7 @@ test('protocol 9: kill on a floor, leave, return — still dead; another Keeper 
   await step(4);
   assert.ok(w.mobs.mobs.some(x => x.key === key), 'risen');
   const health = await (await fetch(`http://127.0.0.1:${r.server.address().port}/health`)).json();
-  assert.equal(health.protocol, 9);
+  assert.ok(health.protocol >= 9);
   assert.equal(health.world.loaded, WORLD_AREAS_ALL.length);
 });
 
@@ -318,4 +318,25 @@ test('protocol 9: every area loaded with Keepers spread over them stays well ins
   // (rss here carries the TypeScript compiler the test loads the world with; the image runs the bundle, measured in the
   // M3 handoff, docs/handoff/room-world.md.)
   assert.ok(heapMB < 150, `the world's heap +${heapMB.toFixed(0)} MB`);
+});
+
+test('weather v1: the room owns the sky\'s roll — a Keeper hears the window and every land\'s roll from the room\'s clock, and again when the window turns', async t => {
+  const { r, join, move, stream, step, clock } = await room(t);
+  const a = await join('Aster'), b = await join('Bryn'), old = await join('Oskar', 8);
+  await move(a, 300, 300, 'ember-isle'); await move(b, 340, 300, 'ember-isle'); await move(old, 300, 340, 'ember-isle');
+  const sa = await stream(a), sb = await stream(b), so = await stream(old);
+  await step(2);
+  const first = await sa.until(() => sa.all('world-weather')[0]);
+  assert.ok(first, 'the room told the Keeper the sky');
+  assert.equal(first.window, sim.weatherWindow(clock.get()));
+  assert.deepEqual(first.lands, sim.weatherRolls(first.window), 'the rolls are the shared model\'s, from the room\'s clock');
+  assert.deepEqual((await sb.until(() => sb.all('world-weather')[0])).lands, first.lands, 'one sky for both');
+  assert.equal(so.all('world-weather').length, 0, 'a protocol-8 client keeps its own clock');
+  // The window turns: everyone hears the new roll once.
+  const left = (first.window + 1) * sim.WEATHER_WINDOW_MS - clock.get();
+  await step(1, left + 10);
+  const next = await sa.until(() => sa.all('world-weather').find(e => e.window === first.window + 1));
+  assert.ok(next, 'the next window was sent');
+  assert.equal(sa.all('world-weather').filter(e => e.window === first.window + 1).length, 1);
+  assert.deepEqual(r.rooms.weatherNow().lands, sim.weatherRolls(first.window + 1));
 });

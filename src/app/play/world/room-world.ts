@@ -41,6 +41,8 @@ import {
 import { CLAIM_RANGE_TILES, ClaimGate, coopBossLife } from '../social/coop-rules';
 import { GROUND_MS, OWN_MS, TAKE_REACH, type WorldDrop, type WorldTakeResult } from '../social/world-protocol';
 import { lootEntry, rollCreatureLoot, type LootDrop } from '../../shared/loot/drop-tables';
+import { CC_IMMUNE, DOT_SHARE, PULL_MAX_TILES, SLOW_MAX_PCT, STATUS_CAP, ST_BIT, statusLegal, type CoopStatus, type RoomStatusKind } from './room-status';
+import type { KeeperLife } from './keeper-life';
 import { hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
 import { eclipseAt, worldTime, type SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { EngineOptions } from '../engine/engine.model';
@@ -72,7 +74,16 @@ export interface RoomWorldOptions {
   def?: ContinentDef;
   /** The boot id woven into ground ids (unique across wakes). */
   boot?: string;
+  /**
+   * Protocol 10: the life the room keeps for this Keeper (keeper-life.ts), or null (an older client: its screen keeps
+   * its own). Bites on it are cut there; a downed Keeper is not hunted.
+   */
+  life?: (id: string) => KeeperLife | null;
 }
+/** A kill as the room pays it (protocol 10, room-credit.ts): its credit id, its life's XP, the sky's lift, who fought. */
+export interface RoomKill { id: string; nid: string; creature: string; level: number; hp: number; xpK: number; by: string[]; x: number; y: number }
+/** Why the room refused a blow or a status (the screen shows a small cue: out of sight, too far, blocked). */
+export type RoomRefusal = 'far' | 'sight' | 'cap' | 'gone' | 'dead' | 'bad' | 'illegal' | 'immune' | 'rate';
 /** A creature is raised round each Keeper within this (art px), and forgotten past PRUNE of every Keeper. */
 const SPAWN_REACH = 420;
 const PRUNE = 900;
@@ -128,7 +139,14 @@ export class RoomWorld implements CoopLink {
   /** The spots each world boss may rise at (tiles), found once from the continent's map. */
   private wbSpots: { c: number; r: number }[] | null = null;
   private bossT = 0;
-  readonly stats = { ticks: 0, kills: 0, claimsIn: 0, claimsRefused: 0, refusedFar: 0, refusedSight: 0, refusedCap: 0, drops: 0, takes: 0, takeRefused: 0 };
+  readonly stats = { ticks: 0, kills: 0, claimsIn: 0, claimsRefused: 0, refusedFar: 0, refusedSight: 0, refusedCap: 0, drops: 0, takes: 0, takeRefused: 0, statusIn: 0, statusRefused: 0 };
+  /** Protocol 10: the Keepers' life (null: none kept here), the kills since the last flush, when each held one may be held again. */
+  private readonly life: (id: string) => KeeperLife | null;
+  private paid: RoomKill[] = [];
+  private killXp: { nid: string; hp: number; xpK: number } | null = null;
+  private readonly immune = new WeakMap<Mob, Partial<Record<RoomStatusKind, number>>>();
+  /** Status claims a Keeper made in the last second (STATUS_PER_SEC). */
+  private readonly stRate = new Map<string, number[]>();
 
   constructor(opts: RoomWorldOptions) {
     this.area = opts.area;
@@ -136,6 +154,7 @@ export class RoomWorld implements CoopLink {
     this.seed = opts.seed;
     this.boot = (opts.boot ?? hashSeed(`${opts.seed}|boot`).toString(36)).replace(/[^a-z0-9]/g, '').slice(0, 12) || 'b';
     this.rng = seededRandom(hashSeed(`${opts.seed}|${opts.area}`));
+    this.life = opts.life ?? (() => null);
     const def = opts.def ?? CONTINENTS[opts.area];
     const floor = !opts.def && !def && LEVELS[opts.area] ? new HandLevel(LEVELS[opts.area]) : null;
     this.surface = !floor;
@@ -147,6 +166,8 @@ export class RoomWorld implements CoopLink {
       // The gear on top of the area's table, rolled here (drop-tables.ts) from the world's stream: the kill's key and
       // the creature's level decide it, never a Keeper's Magic Find (the room is nobody's).
       rollLoot: kill => this.rollLoot(kill).map((d, i) => lootEntry(d, `loot${i}`)),
+      // Protocol 10: what a kill pays (its life's XP, the sky's lift), for the room's credit (room-credit.ts).
+      onKill: ev => { const k = this.lastKill; if (k) this.killXp = { nid: k.nid, hp: ev.hp, xpK: ev.xp ?? 1 }; },
     } as Partial<EngineOptions> as EngineOptions;
     this.mobs = new MobSystem({
       options,
@@ -174,6 +195,8 @@ export class RoomWorld implements CoopLink {
     this.mobs.roomLoot = true;
     this.mobs.coop = this;
     this.mobs.aura = null;
+    // Protocol 10: a Keeper's burn or bleed ticks here, each tick charged to that Keeper's budget.
+    this.mobs.dotGate = (from, dmg) => this.dotSpend(from, dmg);
   }
 
   /** Lend this world's stream to Math.random for the length of `f` (MobSystem draws from Math.random). */
@@ -210,7 +233,8 @@ export class RoomWorld implements CoopLink {
     this.stats.ticks++;
     this.seeded(() => {
       this.mobs.setPhase(this.sky(), this.surface);
-      const others = [...this.keepers.values()].map(k => ({ id: k.id, x: k.x, y: k.y }));
+      // A Keeper the room holds down (protocol 10) is not hunted.
+      const others = [...this.keepers.values()].filter(k => !this.life(k.id)?.down).map(k => ({ id: k.id, x: k.x, y: k.y }));
       this.mobs.others = others;
       this.spawnT -= d;
       if (this.spawnT <= 0) {
@@ -389,20 +413,46 @@ export class RoomWorld implements CoopLink {
   bite(to: string, from: Mob | null, dmg: number, type: string, burn: boolean, curse: boolean, st?: string): void {
     const v = this.viewers.get(to);
     if (!v) return;
-    v.ev.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d: Math.max(1, Math.min(100000, Math.round(dmg))), ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}), ...(st && STATUS_WIRE.test(st) ? { st } : {}) });
+    const d = Math.max(1, Math.min(100000, Math.round(dmg))), status = st && STATUS_WIRE.test(st) ? st : '';
+    const life = this.life(to);
+    if (life?.down) return;
+    // Protocol 10: the room's own cut, off the life it keeps (the screen shows the same blow through its own wards).
+    life?.bite(d, type, from?.def.level, this.now(), !!status && d <= 1);
+    v.ev.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d, ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}), ...(status ? { st: status } : {}) });
   }
+  /** Protocol 10: a Keeper went down (the room's life): everyone near sees it fall. */
+  downed(id: string): void {
+    const k = this.keepers.get(id);
+    if (!k) return;
+    const reach = COOP_RANGE_TILES * TILE;
+    for (const [vid, v] of this.viewers) {
+      const o = this.keepers.get(vid);
+      if (vid === id || (o && Math.hypot(o.x - k.x, o.y - k.y) <= reach)) v.ev.push({ k: 'down', to: id, x: Math.round(k.x), y: Math.round(k.y) });
+    }
+    // Nothing keeps after it: its creatures forget it at once.
+    for (const m of this.mobs.mobs) if (m.tauntBy === id) { m.taunt = 0; m.tauntBy = undefined; }
+  }
+  /** The kills since the last call, with what each pays (protocol 10: the room's credit). */
+  flushKills(): RoomKill[] { const k = this.paid; this.paid = []; return k; }
+  private lastKill: { nid: string; by: string[]; m: Mob } | null = null;
   /** A creature fell: every Keeper near hears who fought it; its loot (rolled next, in spoils) is theirs first. */
   killed(m: Mob, by: string[]): void {
+    // The kill before this one has had its spoils by now: keep what it pays.
+    this.settleKill();
     const nid = this.nid(m);
     const fought = by.filter(Boolean).slice(0, 8);
     this.kills.push({ nid, by: fought, at: this.mobs.drops.length });
     this.stats.kills++;
+    this.lastKill = { nid, by: fought, m };
+    this.killXp = null;
     const base = Math.round((m.coopBase ?? m.def.hp) / (this.mobs.tier.hp || 1));
     const ev: CoopEvent = {
       k: 'kill', i: nid, t: m.def.id, l: Math.max(1, Math.min(999, m.def.level)), h: Math.max(1, Math.min(100000, base)), by: fought,
       x: Math.round(m.x), y: Math.round(m.y), ...(m.elite ? { e: wireElite(m.elite)! } : {}), ...(/^[a-z0-9:,~._-]{1,80}$/.test(m.key) ? { key: m.key } : {}),
       // S6: a raised one or a mirror owes nothing.
       ...(m.raised || m.mirror ? { xp: NOTHING_OWED } : {}),
+      // Protocol 10: the id the room pays this kill under (room-credit.ts), the same on every screen.
+      cr: `k.${this.boot}.${nid}`,
     };
     const reach = COOP_RANGE_TILES * TILE;
     for (const [id, v] of this.viewers) {
@@ -410,6 +460,14 @@ export class RoomWorld implements CoopLink {
       if (k && (Math.hypot(k.x - m.x, k.y - m.y) <= reach || fought.includes(id))) v.ev.push(ev);
     }
     this.dirty = true;
+  }
+  /** After a kill's spoils (MobSystem.kill → spoils → onKill): what it pays, kept for the room's credit. */
+  private settleKill(): void {
+    const k = this.lastKill, x = this.killXp;
+    this.lastKill = null; this.killXp = null;
+    if (!k || !x || x.nid !== k.nid || k.m.raised || k.m.mirror) return;
+    this.paid.push({ id: `k.${this.boot}.${k.nid}`, nid: k.nid, creature: k.m.def.id, level: k.m.def.level, hp: x.hp, xpK: x.xpK, by: k.by, x: Math.round(k.m.x), y: Math.round(k.m.y) });
+    if (this.paid.length > 512) this.paid.splice(0, this.paid.length - 512);
   }
   /** (A member's hook: the room is never a member.) */
   claim(): void { /* the room's creatures take blows through claims(), never this */ }
@@ -420,25 +478,90 @@ export class RoomWorld implements CoopLink {
    * gate's reach of it by the room's record, with a clear line unless at its side; its damage within its level's budget
    * over the gate's window (clipped past it). What passes lands through the creature's own path.
    */
-  claims(from: string, hits: readonly CoopHit[]): { landed: number; refused: number; dmg: number } {
+  claims(from: string, hits: readonly CoopHit[]): { landed: number; refused: number; dmg: number; no: { i: string; why: RoomRefusal }[] } {
     const k = this.keepers.get(from);
     let landed = 0, refused = 0, dmg = 0;
-    if (!k) return { landed, refused: hits.length, dmg };
+    const no: { i: string; why: RoomRefusal }[] = [];
+    if (!k) return { landed, refused: hits.length, dmg, no };
     const now = this.clockMs;
+    const nay = (i: string, why: RoomRefusal) => { refused++; if (!no.some(n => n.i === i && n.why === why)) no.push({ i, why }); };
     this.seeded(() => {
       for (const h of hits) {
         const m = this.mobs.mobs.find(x => x.nid === h.i) ?? null;
         const d = m ? Math.hypot(m.x - k.x, m.y - k.y) : 0;
         // Too far first (the gate's own reach), then the line: a wall between them stops a blow as it stops a shot.
-        if (m && d <= CLAIM_RANGE_TILES * TILE && d > LOS_FREE && !this.mobs.sight.sees(k.x, k.y, m.x, m.y)) { refused++; this.stats.refusedSight++; continue; }
+        if (m && d <= CLAIM_RANGE_TILES * TILE && d > LOS_FREE && !this.mobs.sight.sees(k.x, k.y, m.x, m.y)) { nay(h.i, 'sight'); this.stats.refusedSight++; continue; }
         const r = this.gate.check(h, { id: from, x: k.x, y: k.y, level: k.level, ...(k.dps ? { dps: k.dps } : {}) }, m ? { x: m.x, y: m.y, hp: m.hp } : null, now);
-        if (!r.ok || !m) { refused++; if (!r.ok && r.why === 'far') this.stats.refusedFar++; if (!r.ok && r.why === 'cap') this.stats.refusedCap++; continue; }
+        if (!r.ok || !m) {
+          const why = !r.ok ? r.why : 'gone';
+          nay(h.i, why);
+          if (why === 'far') this.stats.refusedFar++; if (why === 'cap') this.stats.refusedCap++;
+          continue;
+        }
         landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c, h.el);
       }
     });
     this.stats.claimsIn += landed; this.stats.claimsRefused += refused;
     this.harvest();
-    return { landed, refused, dmg };
+    return { landed, refused, dmg, no: no.slice(0, 24) };
+  }
+
+  /**
+   * Protocol 10: a Keeper's statuses on the room's creatures (room-status.ts). Each one: the creature exists and lives;
+   * the Keeper stands within reach and sight of it by the room's record (as a blow); the status is one the named skill
+   * and mark can lay by the game's data; at most STATUS_PER_SEC a second; its seconds the room's own (STATUS_CAP, a
+   * boss a fifth); a creature that just shook off a stun, root or fear is immune a while; a burn's or bleed's damage a
+   * second within the Keeper's budget (the room ticks it, charged to that budget). Laid through the creature's own path.
+   */
+  statuses(from: string, list: readonly CoopStatus[], perSec = 24): { landed: number; refused: number; no: { i: string; why: RoomRefusal }[] } {
+    const k = this.keepers.get(from);
+    let landed = 0, refused = 0;
+    const no: { i: string; why: RoomRefusal }[] = [];
+    if (!k) return { landed, refused: list.length, no };
+    const nay = (i: string, why: RoomRefusal) => { refused++; this.stats.statusRefused++; if (!no.some(n => n.i === i && n.why === why)) no.push({ i, why }); };
+    const now = this.clockMs;
+    const rate = (this.stRate.get(from) ?? []).filter(t => now - t < 1000);
+    this.seeded(() => {
+      for (const c of list) {
+        if (!statusLegal(c.s, c.m, c.k)) { nay(c.i, 'illegal'); continue; }
+        const m = this.mobs.mobs.find(x => x.nid === c.i) ?? null;
+        if (!m) { nay(c.i, 'gone'); continue; }
+        if (m.hp <= 0) { nay(c.i, 'dead'); continue; }
+        const d = Math.hypot(m.x - k.x, m.y - k.y);
+        if (d > CLAIM_RANGE_TILES * TILE) { nay(c.i, 'far'); continue; }
+        if (d > LOS_FREE && !this.mobs.sight.sees(k.x, k.y, m.x, m.y)) { nay(c.i, 'sight'); continue; }
+        if (rate.length >= perSec) { nay(c.i, 'rate'); continue; }
+        rate.push(now);
+        // Its own seconds: what was asked, never past the kind's cap (applyStatus makes a boss's a fifth).
+        const secs = Math.min(STATUS_CAP[c.k], Math.max(0, c.t / 10));
+        const im = this.immune.get(m) ?? {};
+        const held = c.k === 'stun' || c.k === 'root' || c.k === 'fear';
+        // Held once, it shakes off another of the same until that one is over and CC_IMMUNE more (no endless chain).
+        if (held && (im[c.k] ?? 0) > now) { nay(c.i, 'immune'); continue; }
+        let dps = 0;
+        if (c.k === 'burn' || c.k === 'bleed') {
+          const budget = (k.dps ?? 0) > 0 ? k.dps as number : 40 + 20 * Math.max(1, k.level);
+          dps = Math.max(0, Math.min(c.d ?? 0, Math.round(budget * DOT_SHARE)));
+          if (!(dps > 0)) { nay(c.i, 'bad'); continue; }
+        }
+        const ok = this.mobs.roomStatus(m, c.k, secs, {
+          by: from, at: { x: k.x, y: k.y }, dps, pct: Math.min(SLOW_MAX_PCT, Math.max(0, c.n ?? 0)), tiles: Math.min(PULL_MAX_TILES, Math.max(0, (c.n ?? 0) / 10)),
+        });
+        if (!ok) { nay(c.i, 'bad'); continue; }
+        if (held) { im[c.k] = now + secs * 1000 + CC_IMMUNE * 1000; this.immune.set(m, im); }
+        // Fighting it with a status is fighting it (its loot is this Keeper's first too).
+        (m.coopBy ??= new Set()).add(from);
+        landed++; this.stats.statusIn++;
+      }
+    });
+    this.stRate.set(from, rate);
+    return { landed, refused, no: no.slice(0, 24) };
+  }
+  /** Protocol 10: a burn's or a bleed's tick, charged to its Keeper's claim budget (what is left of it). */
+  dotSpend(from: string, dmg: number): number {
+    const k = this.keepers.get(from);
+    if (!k) return 0;
+    return this.gate.spend(from, dmg, (k.dps ?? 0) > 0 ? k.dps as number : 40 + 20 * Math.max(1, k.level), this.clockMs);
   }
 
   // ── Snapshots ──
@@ -475,7 +598,9 @@ export class RoomWorld implements CoopLink {
     const firm = v.ev.filter(e => e.k === 'bite' || e.k === 'kill'), soft = v.ev.filter(e => e.k !== 'bite' && e.k !== 'kill');
     const ev = [...firm, ...soft].slice(0, COOP_MAX_EVENTS);
     v.ev = firm.slice(COOP_MAX_EVENTS);
-    return { area: this.area, seq: snap.seq, kf: snap.kf, mobs: snap.mobs, gone: snap.gone.slice(0, 64), ev };
+    // Protocol 10: the life the room keeps for this Keeper, with the last of its claims it took.
+    const life = this.life(id);
+    return { area: this.area, seq: snap.seq, kf: snap.kf, mobs: snap.mobs, gone: snap.gone.slice(0, 64), ev, ...(life ? { me: life.view() } : {}) };
   }
   /** One creature on the wire (td-coop stateOf, the same fields). */
   stateOf(m: Mob): CoopMobState {
@@ -483,12 +608,22 @@ export class RoomWorld implements CoopLink {
       i: this.nid(m), t: m.def.id, ...(/^[a-z0-9:,~._-]{1,80}$/.test(m.key) ? { k: m.key } : {}), x: m.x, y: m.y, f: m.face, h: Math.max(0, m.hp), m: m.def.hp,
       l: Math.max(1, Math.min(999, m.def.level)), e: wireElite(m.elite), tl: m.tell > 0 ? m.tell * 10 : 0, ax: m.tell > 0 && m.aim ? m.aim.x : 0, ay: m.tell > 0 && m.aim ? m.aim.y : 0,
       fl: (m.halved ? FL_HALVED : 0) | (m.summoned ? FL_SUMMONED : 0) | ((m.chantT ?? 0) > 0 ? FL_CHANT : 0) | abilityFlags(m),
+      // Protocol 10: the statuses it carries (every screen draws them; an older one ignores the field).
+      ...(this.statusBits(m) ? { st: this.statusBits(m) } : {}),
     };
+  }
+  /** The statuses a creature carries now, as the wire's one number (room-status ST_BIT). */
+  statusBits(m: Mob): number {
+    const on = (v: number | undefined) => (v ?? 0) > 0;
+    return (on(m.stun) ? ST_BIT.stun : 0) | (on(m.rootT) ? ST_BIT.root : 0) | (on(m.chillT) ? ST_BIT.chill : 0) | (on(m.fearT) ? ST_BIT.fear : 0)
+      | (on(m.blindT) ? ST_BIT.blind : 0) | (on(m.hushT) ? ST_BIT.hush : 0) | (on(m.taunt) ? ST_BIT.taunt : 0) | (on(m.slowT) ? ST_BIT.slow : 0)
+      | (on(m.scorchT) ? ST_BIT.burn : 0) | (on(m.bleedT) ? ST_BIT.bleed : 0) | (m.stripped ? ST_BIT.strip : 0);
   }
 
   // ── The ground ──
   /** Move what the kills of this tick left (MobSystem.spoils) onto the room's ground, owned by who fought. */
   private harvest(): void {
+    this.settleKill();
     const drops = this.mobs.drops;
     if (!drops.length) { this.kills = []; return; }
     const now = this.now();
@@ -637,3 +772,5 @@ export const WORLD_AREAS_ALL: readonly string[] = [...Object.keys(CONTINENTS), .
 /** The bestiary and the unique table, as the room reads them (the node tests check against them). */
 export { MOBS } from '../td/td-mobs';
 export { uniqueById } from '../../shared/rpg/unique-items';
+/** Weather v1 (shared/weather): the room owns the sky's roll, every land's for a window, from its own clock. */
+export { weatherRolls, weatherWindow, WEATHER_WINDOW_MS } from '../../shared/weather/weather.model';

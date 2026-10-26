@@ -48,6 +48,20 @@ export class ClaimGate {
     this.spent.set(from.id, log);
     return { ok: true, dmg, clipped: dmg < Math.round(claim.d) };
   }
+  /**
+   * Protocol 10: spend `dmg` of a Keeper's budget with no creature to weigh (a burn's or a bleed's tick the room runs):
+   * what is left of the window's budget, at most `dmg` (0 when it is spent).
+   */
+  spend(id: string, dmg: number, perSec: number, now: number): number {
+    if (!(dmg > 0)) return 0;
+    const log = this.spent.get(id) ?? [];
+    while (log.length && now - log[0].at >= CLAIM_WINDOW_MS) log.shift();
+    const room = perSec * CLAIM_WINDOW_MS / 1000 - log.reduce((n, e) => n + e.d, 0);
+    const d = Math.max(0, Math.min(Math.round(dmg), Math.floor(room)));
+    if (d > 0) log.push({ at: now, d });
+    this.spent.set(id, log);
+    return d;
+  }
   forget(id: string): void { this.spent.delete(id); }
 }
 

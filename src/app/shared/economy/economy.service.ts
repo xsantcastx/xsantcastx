@@ -1310,6 +1310,15 @@ export class EconomyService implements OnDestroy {
    * A Gold pile off the hunt reached the Keeper: Gold Find (worn gear, Forge Power) and a running Gold potion raise
    * it, then the ledger credits it. Returns the Gold actually credited, for the "+N Gold" float.
    */
+  /**
+   * What a hunt pile would pay this Keeper, credited nowhere (protocol 10: the room pays a pile from its own ground;
+   * the screen asks for this number — Gold Find and a running Gold potion, as earnHuntGold — and the room caps it).
+   */
+  huntGoldFor(pile: number): number {
+    if (!(pile > 0)) return 0;
+    const potion = Number.isFinite(this.state.infusionGold) ? Math.max(1, this.state.infusionGold) : 1;
+    return Math.round(CURVE.goldFindPile(pile, this.goldFindPct) * potion);
+  }
   earnHuntGold(pile: number): number {
     if (!(pile > 0)) return 0;
     const potion = Number.isFinite(this.state.infusionGold) ? Math.max(1, this.state.infusionGold) : 1;
