@@ -2102,8 +2102,10 @@ export class TopDownEngine {
     if (b.carried) { this.dropCarried(b); }
     // Following: at his side — behind him, away from a boss winding up — and idling cute when he stands still.
     // td-roam: while he stands still (and has not called it) it strolls 3-8 tiles round him, sniffs, and strolls on.
-    // It explores a while, then settles at his side for its sit and nap (a long rest is a pet's, not a patrol's).
-    const rm = tell || job === 'play' || this.petStand.still > PET_SETTLE ? null : stepRoam(this.petRoam, {
+    // The pet itself does not stroll: with nothing to hunt near (petFight above takes a foe within the roam range), it
+    // comes back, sits and naps, every time (owner's cute idle; the e2e's sit-then-nap). The Thornstrider's spirit
+    // beast, a hunter, strolls a while, then settles at his side too.
+    const rm = tell || job === 'play' || !thorn || this.petStand.still > PET_SETTLE ? null : stepRoam(this.petRoam, {
       me: b, keeper: k, stand: this.petStand, dt, foe: null, called: this.mobs.heeling,
       free: (x, y) => this.petFree(x, y), sees: (ax, ay, bx, by) => this.petSees(ax, ay, bx, by), rng: Math.random,
     });
