@@ -87,6 +87,15 @@
             }
           </div>
           @if (notice) { <p class="select__notice" role="status">{{ notice }}</p> }
+          @if (guestFind; as g) {
+            <div class="select__found" data-guest-found [attr.data-guest-id]="g.id" role="group" [attr.aria-label]="t('lobby.found.title')">
+              <span class="plate__line" data-guest-line>{{ foundLine(g) }}</span>
+              <div class="camp__row">
+                <button type="button" class="btn btn--brass" data-guest-adopt (click)="adoptGuest(g.id)" [disabled]="busy || full">{{ t('lobby.found.adopt') }}</button>
+                <button type="button" class="btn btn--quiet" data-guest-dismiss (click)="dismissGuest(g.id)" [disabled]="busy">{{ t('lobby.found.dismiss') }}</button>
+              </div>
+            </div>
+          }
           <footer class="camp__foot">
             <button type="button" class="btn btn--brass" data-lobby-enter (click)="enter()" [disabled]="!picked || busy">{{ t('lobby.select.enter') }}</button>
             <div class="camp__row">
