@@ -83,7 +83,7 @@ test('walk to Odd Tarn, read the board, pay the fare, sail to Pyrehold, and sail
   await page.screenshot({ path: `${SHOT}/harbour-arrival.jpg`, type: 'jpeg', quality: 78 });
 
   // The way back is the same board, at the other pier: Garrick Dross, three ships, home the cheapest (70).
-  await toMaster(page, /hale dross/i);
+  await toMaster(page, /garrick dross/i);
   await expect(page.locator('[data-harbour-line]')).toContainText(/Three ships, three coasts/);
   await expect(board(page).locator('[data-harbour-row]')).toHaveCount(3);
   await expect(board(page).locator('[data-harbour-row]').first()).toContainText(/ember harbour/i);

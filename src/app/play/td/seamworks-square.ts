@@ -114,13 +114,15 @@ export function buildSeamworksSquare(): TdMap {
   // Kael's Anvil stands where the Rune Forge did (canon §6.2: the Forge and the bench are gone; runes drop only
   // from monsters). Mara Voss works beside him.
   stallAt('crafting', 30, 11, 4, 0, 'tools');
+  // Mara Voss, Kael's Seamwright, works just west of his anvil now the bench is gone; her town tasks are spoken to here.
+  stalls.push(giverStall('bench-smith', 'Mara Voss', 'Kael\'s Seamwright. She keeps his seams honest, and has work for you.', tx(26), ty(11)));
   stallAt('enchanting', 13, 19, 4, 1, 'books');
   stallAt('brews', 17, 19, 2, 1, 'pots');
   stallAt('vault', 31, 19, 4, 2, 'pots');
   // The shops by district (shared/shops; canon §6.5): Edrin's General Store in the market south of the fountain,
   // Davy Tarn's tackle shed on the river bank by the bridge, Abe Thatch's woodcutting store at the north orchard.
   stallAt('shop-general', 22, 22, 4, 4, 'bread');
-  stallAt('shop-fishing', 30, 24, 4, 2, 'fish');
+  stallAt('shop-fishing', 13, 24, 4, 2, 'fish');
   stallAt('shop-wood', 40, 5, 3, 0, 'tools');
   // The sexton of the Hushed Barrow, come into town on the west lane toward his graves (a town task giver, shared/town-tasks).
   stalls.push(giverStall('sexton-wren', 'Sexton Aldous Wren', 'He sweeps the Hushed Barrow and counts its graves twice.', tx(9), ty(13)));

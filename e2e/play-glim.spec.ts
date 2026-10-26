@@ -95,7 +95,7 @@ test.describe('Glim, the Margin-Light', () => {
     // Step 2: a direction, in plain words.
     await ask(page).click();
     await expect(say(page)).toHaveAttribute('data-glim-step', '2');
-    await expect(say(page)).toContainText("Your Homestead's gate is between the Seamworks Forge and the Crafting Bench");
+    await expect(say(page)).toContainText("Your Homestead's gate is between the Seamworks Forge and Kael's Anvil");
     expect(await playerX(page)).toBe(x0);
 
     // Step 3: Show me. Glim flies ahead to the gate (its trail ends there) and the Keeper follows.

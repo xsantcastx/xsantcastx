@@ -67,16 +67,15 @@ test.describe('desktop', () => {
       clip: { x: Math.max(0, box.x - 120), y: Math.max(0, box.y - 60), width: Math.min(1280 - Math.max(0, box.x - 120), box.width + 200), height: Math.min(800 - Math.max(0, box.y - 60), box.height + 100) } });
   });
 
-  test('Edrin Kade sells potions for Gold at the counter', async ({ page }) => {
+  test('Edrin Kade sells potions for Gold at his General Store', async ({ page }) => {
     await open(page, 1000);
     await page.keyboard.press('e');
-    await expect(page).toHaveURL(/[?&]at=vendor/, { timeout: 10000 });
-    await page.getByRole('button', { name: 'Potions', exact: true }).click();
-    const shelf = page.locator('[data-shelf="potions"]');
-    await expect(shelf).toBeVisible();
-    await shelf.locator('.ab__btn').first().hover();
+    await expect(page).toHaveURL(/[?&]at=shop-general/, { timeout: 10000 });
+    const offer = page.locator('[data-shop-shelf] [data-offer="gen-minor-health"]');
+    await expect(offer).toBeVisible();
+    await offer.click();
     await page.screenshot({ path: 'docs/handoff/cozy-ui/potions-vendor-1280x800.jpg', type: 'jpeg', quality: 80 });
-    await shelf.getByRole('button', { name: /Buy for 25 Gold/ }).click();
+    await page.locator('[data-shop-buy]').click();
     await expect.poll(() => stackQty(page, 'minor-health-potion')).toBe(4);
   });
 });
@@ -105,12 +104,13 @@ for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) t
     await expect.poll(() => stackQty(page, 'lesser-health-potion')).toBe(1);
   });
 
-  test('the counter\'s Potions shelf has its Buy button in plain view', async ({ page }) => {
+  test('the General Store\'s potion has its Buy button in plain view', async ({ page }) => {
     await open(page, 1000);
     await page.keyboard.press('e');
-    await expect(page).toHaveURL(/[?&]at=vendor/, { timeout: 10000 });
-    await page.getByRole('button', { name: 'Potions', exact: true }).click();
-    const buy = page.locator('[data-shelf="potions"] .ab__btn').first();
+    await expect(page).toHaveURL(/[?&]at=shop-general/, { timeout: 10000 });
+    await page.locator('[data-shop-shelf] [data-offer="gen-minor-health"]').tap();
+    const buy = page.locator('[data-shop-buy]');
+    await buy.scrollIntoViewIfNeeded();
     await expect(buy).toBeInViewport();
     await page.screenshot({ path: `docs/handoff/cozy-ui/potions-vendor-${size.width}x${size.height}.jpg`, type: 'jpeg', quality: 80 });
     await buy.tap();
