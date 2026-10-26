@@ -73,13 +73,12 @@ test('the Spellbook says what the eclipse does to a Shadow spell', async ({ page
   await canvas(page).focus();
   await page.keyboard.press('k');
   await expect(page.locator('.sbt')).toBeVisible();
-  await page.locator('.sbt__tab[data-tree="shadow"]').click();
+  await page.locator('[data-book-tab="shadow"]').click();
   await pickSkill(page, 'drain-life');
-  await expect(page.locator('.sbt__phase')).toHaveText('Eclipse now: +25% power');
+  await expect(page.locator('.bcard .bcard__extra').first()).toHaveText('Eclipse now: +25% power');
   await pickSkill(page, 'dark-ward');
-  await expect(page.locator('.sbt__phase')).toHaveCount(0);   // a ward has no damage for the sky to turn
-  await page.locator('.sbt__tab[data-tree="ember"]').click();
+  await expect(page.locator('.bcard .bcard__extra', { hasText: 'Eclipse now' })).toHaveCount(0);   // a ward has no damage for the sky to turn
+  await page.locator('[data-book-tab="ember"]').click();
   await pickSkill(page, 'hellfire-nova');
-  await expect(page.locator('.sbt__phase')).toHaveText('Eclipse now: −15% power');
-  await page.screenshot({ path: 'docs/handoff/cozy-ui/phase-spellbook-desktop.jpg', type: 'jpeg', quality: 86 });
+  await expect(page.locator('.bcard .bcard__extra').first()).toHaveText('Eclipse now: −15% power');
 });

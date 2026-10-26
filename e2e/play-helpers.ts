@@ -229,20 +229,43 @@ export const SKILLS_LEARNED: Blobs = {
   },
 };
 
-/**
- * In the open Spellbook (K, play/spellbook): find the skill on its tree's tab and pick it with one click, so its card
- * (Learn, keys 1–4, the aura switch) shows. One click only reads; a second click within ~0.4 s would learn a rank.
- */
-export async function pickSkill(page: Page, id: string): Promise<void> {
-  const node = page.locator(`.sbt__node[data-skill="${id}"]`);
+/** The open Skill Book's row for a skill (play/spellbook/skill-book): its tab opened if need be. */
+export async function bookRow(page: Page, id: string): Promise<Locator> {
+  const row = page.locator(`.brow[data-row="${id}"]`);
   // The Warlock's tabs, the Ashguard's, the Lanternwright's, the Thornstrider's, then the common page: only the open class's tabs are there to click.
   for (const tree of ['ember', 'bone', 'shadow', 'brand', 'oath', 'ash', 'lamp', 'hearth', 'moth', 'thorn', 'wild', 'briar', 'common']) {
-    if (await node.count()) break;
-    const tab = page.locator(`.sbt__tab[data-tree="${tree}"]`);
+    if (await row.count()) break;
+    const tab = page.locator(`[data-book-tab="${tree}"]`);
     if (await tab.count()) await tab.click();
   }
-  await node.click();
-  await expect(page.locator(`.sbt__detail[data-skill="${id}"]`)).toBeVisible();
+  await expect(row).toBeVisible();
+  return row;
+}
+/**
+ * In the open Skill Book (K): find the skill's row on its tree's tab and open its card with a click on its icon (what it
+ * does now, the next rank, the Cant words, synergies).
+ */
+export async function pickSkill(page: Page, id: string): Promise<void> {
+  const row = await bookRow(page, id);
+  await row.locator('.brow__icon').click();
+  await expect(page.locator(`.bcard[data-card="${id}"]`)).toBeVisible();
+}
+/** Buy `n` ranks of a skill in the open book and Accept them (one save). */
+export async function learnRanks(page: Page, id: string, n = 1): Promise<void> {
+  const row = await bookRow(page, id);
+  for (let i = 0; i < n; i++) await row.locator(`[data-plus="${id}"]`).click();
+  await page.locator('[data-book-accept]').click();
+  await expect(page.locator('[data-book-accept]')).toBeDisabled();
+}
+/** The book's Keys tab: put a learnt skill on a key (1–4). */
+export async function putOnKey(page: Page, id: string, key: number): Promise<void> {
+  await page.locator('[data-book-tab="keys"]').click();
+  await page.locator(`[data-key-row="${id}"] .bkey__key`, { hasText: String(key) }).click();
+}
+/** The book's Keys tab: the running aura's switch for `id`. */
+export async function bookAura(page: Page, id: string): Promise<Locator> {
+  await page.locator('[data-book-tab="keys"]').click();
+  return page.locator(`[data-aura-row="${id}"]`);
 }
 
 /**

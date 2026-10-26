@@ -38,7 +38,8 @@ async function open(page: Page, query: string): Promise<void> {
 async function auraOff(page: Page): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('k');
-  const on = page.locator('.spellbook .sb__aura[aria-pressed="true"]');
+  await page.locator('[data-book-tab="keys"]').click();
+  const on = page.locator('.spellbook .bkey__aura[aria-pressed="true"]');
   if (await on.count()) await on.first().click();
   await page.locator('.spellbook .win-x').click();
   await expect(page.locator('.spellbook')).toHaveCount(0);

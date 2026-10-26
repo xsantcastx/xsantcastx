@@ -9,7 +9,7 @@
  * depends on where the town's spawns happen to be. Screenshots: docs/handoff/cozy-ui/thorn-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, pickSkill, seed } from './play-helpers';
+import { ERA, pickSkill, seed, learnRanks, putOnKey } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
@@ -168,22 +168,20 @@ test.describe('the Thornstrider', () => {
     else { await canvas(page).focus(); await page.keyboard.press('k'); }
     await expect(page.locator('.sbt')).toBeVisible();
     await expect(page.locator('#spellbook-title')).toContainText('Thornstrider');
-    await expect(page.locator('.sbt__tab')).toHaveCount(4);
-    await expect(page.locator('.sbt__tab[data-tree="thorn"]')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.sbt__tab[data-tree="ember"]')).toHaveCount(0);
-    await expect(page.locator('.sbt__node[data-skill="thorn-shot"] .sbt__badge')).toHaveText('1');
-    await pickSkill(page, 'heartwood');
-    await page.screenshot({ path: `${SHOTS}/thorn-tree-thorn.jpg`, type: 'jpeg', quality: 85 });
-    await page.locator('.sbt__tab[data-tree="wild"]').click();
-    await expect(page.locator('.sbt__tree')).toHaveAttribute('data-tree', 'wild');
+    await expect(page.locator('.book__tab:not(.book__tab--keys)')).toHaveCount(4);
+    await expect(page.locator('[data-book-tab="thorn"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-book-tab="ember"]')).toHaveCount(0);
+    await expect(page.locator('.brow[data-row="thorn-shot"] .brow__rank b')).toHaveText('r 1/20');
+    // Heartwood is the Thorn Shot's first mark now (skill-book.md §6).
+    await expect(page.locator('[data-mark="thorn-shot.a1"]')).toHaveAttribute('aria-label', /^Heartwood/);
+    await pickSkill(page, 'thorn-shot');
+    await page.locator('[data-book-tab="wild"]').click();
+    await expect(page.locator('.book__spread')).toHaveAttribute('data-tree', 'wild');
     await pickSkill(page, 'stampede');
-    await expect(page.locator('.sbt__detail .sbt__cant q')).toHaveText('thar ul teth');
-    await expect(page.locator('.sbt__node[data-skill="stampede"] .sbt__need')).toHaveText('Lv 24');
-    await page.screenshot({ path: `${SHOTS}/thorn-tree-wild.jpg`, type: 'jpeg', quality: 85 });
-    await page.locator('.sbt__tab[data-tree="briar"]').click();
-    await expect(page.locator('.sbt__tree')).toHaveAttribute('data-tree', 'briar');
+    await expect(page.locator('.bcard .bcard__words')).toHaveText('thar ul teth');
+    await page.locator('[data-book-tab="briar"]').click();
+    await expect(page.locator('.book__spread')).toHaveAttribute('data-tree', 'briar');
     await pickSkill(page, 'bramble-trap');
-    await page.screenshot({ path: `${SHOTS}/thorn-tree-briar.jpg`, type: 'jpeg', quality: 85 });
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
@@ -211,14 +209,12 @@ test.describe('the Thornstrider', () => {
     await expect(page.locator('.sbt')).toBeVisible();
     // The Call → key 2, the Bramble Trap → key 3, the Stampede (it needs the Call) → key 4; Command stays on 1.
     for (const [skill, key] of [['call-of-the-wilds', 2], ['bramble-trap', 3], ['stampede', 4]] as const) {
-      await pickSkill(page, skill);
-      await page.locator('.sbt__detail .sbt__learn').click();
-      await page.locator('.sbt__detail .sb__keys button', { hasText: String(key) }).click();
+      await learnRanks(page, skill);
+      await putOnKey(page, skill, key);
     }
     // The Wild page at dusk: the beast's numbers show the hour.
-    await page.locator('.sbt__tab[data-tree="wild"]').click();
+    await page.locator('[data-book-tab="wild"]').click();
     await pickSkill(page, 'command');
-    await page.screenshot({ path: `${SHOTS}/thorn-tree-wild-dusk.jpg`, type: 'jpeg', quality: 85 });
     await page.locator('.spellbook .win-x').click();
     // Out of the square onto the open grass.
     expect(await thorn.clearing(page)).toBe(true);

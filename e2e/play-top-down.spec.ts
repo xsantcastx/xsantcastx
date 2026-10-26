@@ -5,7 +5,7 @@
  * and jump buttons give way to the drag joystick, and nothing ever drops the Keeper into the old 2D view.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { pickSkill, purse, sail, seed, mapFind } from './play-helpers';
+import { pickSkill, purse, sail, seed, mapFind, bookAura, putOnKey } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 
 const canvas = (page: Page) => page.locator('canvas').first();
@@ -145,11 +145,11 @@ test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spe
   await expect(page.locator('.ksheet')).toContainText(/Warlock/);
   await page.keyboard.press('k');
   await expect(page.locator('.ksheet')).toHaveCount(0);
+  // The Skill Book: a row reads its card; the Keys tab holds the running aura and keys 1–4.
   await pickSkill(page, 'aura-embers');
-  await expect(page.locator('.sbt__detail .sb__aura')).toContainText(/On|Activa/);
+  await expect(await bookAura(page, 'aura-embers')).toContainText(/Running|Activa/);
   // Put Drain Life on key 4: the bar follows.
-  await pickSkill(page, 'drain-life');
-  await page.locator('.sbt__detail .sb__keys button', { hasText: '4' }).click();
+  await putOnKey(page, 'drain-life', 4);
   await expect(page.locator('.td-skill').nth(3)).toHaveAttribute('aria-label', /Drain Life/);
 });
 

@@ -5,7 +5,7 @@
  * docs/handoff/cozy-ui/fx-*.jpg. Nothing here asserts on a fight's outcome.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { SKILLS_LEARNED, pickSkill, purse, sail, seed } from './play-helpers';
+import { SKILLS_LEARNED, pickSkill, purse, sail, seed, bookAura, putOnKey } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -48,8 +48,7 @@ async function toMoltenDeep(page: Page): Promise<void> {
 async function runAura(page: Page, id: string): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('k');
-  await pickSkill(page, id);
-  const btn = page.locator('.sbt__detail .sb__aura');
+  const btn = await bookAura(page, id);
   if ((await btn.getAttribute('aria-pressed')) !== 'true') await btn.click();
   await expect(btn).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.spellbook .win-x').click();
@@ -73,15 +72,14 @@ test('auras at night: Embers, then Siphoning, the icon on the portrait', async (
 /** Leave no aura running, so each spell reads on its own; then each spell goes on key 1 through the Spellbook. */
 async function spellCaster(page: Page): Promise<(id: string, wait: number, name: string, size?: number) => Promise<void>> {
   await page.keyboard.press('k');
-  await pickSkill(page, 'aura-embers');
-  const on = page.locator('.sbt__detail .sb__aura[aria-pressed="true"]');
+  await bookAura(page, 'aura-embers');
+  const on = page.locator('.bkey__aura[aria-pressed="true"]');
   if (await on.count()) await on.first().click();
   await page.locator('.spellbook .win-x').click();
   await canvas(page).focus();
   return async (id, wait, name, size) => {
     await page.keyboard.press('k');
-    await pickSkill(page, id);
-    await page.locator('.sbt__detail .sb__keys button', { hasText: '1' }).click();
+    await putOnKey(page, id, 1);
     await page.locator('.spellbook .win-x').click();
     await expect(page.locator('.spellbook')).toHaveCount(0);
     await canvas(page).focus();

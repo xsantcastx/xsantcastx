@@ -313,10 +313,13 @@ const PROBES: Record<SkillId, Probe> = {
     const w = make(), t = biter(w, 1000, 60); w.sys.target = t; cast(w, 'weaken');
     return { weaken: (1000 - x.hurt[0]) / 10, radius, secs: timeUntil(w, () => !(t.weak && t.weak > 0)) };
   },
+  // Life Tap is Dark Ward's mark (td-marks FOLDED): it goes off on the ward's cast, at the row's rank.
   'life-tap': (r, o) => {
-    const w = world('warlock', { 'life-tap': r }, o); w.sys.mana = 0; w.sys.maxMana = 99999; w.sys.cooldowns['life-tap'] = 0;
-    w.sys.useAbility('life-tap');
-    return { life: w.hurt[0], mana: w.sys.mana };
+    const w = world('warlock', { 'dark-ward': 1, 'life-tap': r }, o); w.sys.maxMana = 99999; w.sys.cooldowns['dark-ward'] = 0;
+    w.sys.mana = w.sys.manaOf('dark-ward');
+    w.sys.useAbility('dark-ward');
+    // "{{life}}% of your life": of the Keeper's most (5000 here), as the card says.
+    return { life: w.hurt[0] / w.sys.keeperMaxHp * 100, mana: w.sys.mana };
   },
   'doom': (r, o) => {
     const make = () => world('warlock', { 'doom': r }, o), v = make().sys.v('doom');

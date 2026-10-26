@@ -5,7 +5,7 @@
  * on a fight's outcome.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { pickSkill, seed } from './play-helpers';
+import { pickSkill, seed, learnRanks } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 
 const canvas = (page: Page) => page.locator('canvas').first();
@@ -38,21 +38,19 @@ for (const [name, size] of Object.entries(SIZES)) {
     await canvas(page).focus();
     await page.keyboard.press('k');
     await expect(page.locator('.sbt')).toBeVisible();
+    await learnRanks(page, 'aura-embers', 3);
+    await expect(page.locator('.brow[data-row="aura-embers"] .brow__rank b')).toHaveText('r 4/20');
     await pickSkill(page, 'aura-embers');
-    const card = page.locator('.sbt__detail');
-    for (let i = 0; i < 3; i++) await card.locator('.sbt__learn').click();
-    await expect(card.locator('.sbt__rank')).toHaveText('Rank 4/20');
-    await expect(card.locator('.sbt__cant q')).toHaveText('vael ka');
+    const card = page.locator('.bcard');
+    await expect(card.locator('.bcard__words')).toHaveText('vael ka');
     await pickSkill(page, 'hellfire-nova');
-    await expect(card.locator('.sbt__cant q')).toHaveText('vael orum');
-    await expect(card.locator('.sbt__syn b')).toHaveText('Synergies');
-    const syn = card.locator('.sbt__syn [data-syn="aura-embers"]');
-    await expect(syn).toHaveText('Aura of Embers · 3 bought · +15% damage (+5% a rank)');
-    await expect(syn).toHaveClass(/\bon\b/);
+    await expect(card.locator('.bcard__words')).toHaveText('vael orum');
+    const syn = card.locator('.bcard__syn[data-syn="aura-embers"]');
+    await expect(syn).toContainText('Aura of Embers');
+    await expect(syn).toContainText('+15%');
+    await expect(syn).toHaveClass(/bcard__syn--live/);
     // Rank 1 Nova is 20–30; +15% makes it 23–35 on the card (the fight reads the same numbers).
-    await expect(card.locator('.sbt__now')).toContainText('23–35');
-    await card.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `docs/handoff/cozy-ui/cant-card-${name}.jpg`, type: 'jpeg', quality: 85 });
+    await expect(card.locator('.bcard__line')).toContainText('23–35');
 
     // Cast Nova (key 3 on the default bar): the words hang over the Keeper. A few steps out onto the open square
     // first, so the line reads against the ground rather than a shop sign, and the place's title card has gone.

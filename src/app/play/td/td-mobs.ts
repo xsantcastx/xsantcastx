@@ -18,7 +18,8 @@ import { rollPotionDrop } from '../../shared/potions/potions.model';
 import { BLANK_ID, BLANK_NAME, rollBlankDrop } from '../../shared/spellstones/spellstones.model';
 import { rollHuntGold } from '../../shared/economy/economy-curve';
 import { LOOT } from './td-fx';
-import { CRIT_MULT, MANA_REGEN, MAX_MANA, MAX_RANK, SKILLS, castCd, castRank, castVars, incomingDamage, type SkillId } from './td-skills';
+import { CRIT_MULT, FIRE_SKILLS, MANA_REGEN, MAX_MANA, MAX_RANK, SKILLS, castCd, castRank, castVars, incomingDamage, manaCost, type SkillId } from './td-skills';
+import { markFlag, markRiders, type MarkFlag, type MarkFx, type MarkStatus } from './td-marks';
 import { NO_RELICS, type RelicTotals } from '../../shared/rpg/boss-uniques';
 import { AURA_PULSE, auraEffect, type AuraEffect, type AuraId } from '../../shared/loot/auras';
 import { creatureProfile } from '../../shared/loot/creature-families';
@@ -1881,6 +1882,21 @@ export interface Mob {
    */
   saw?: boolean;
   chaseT?: number;
+  /**
+   * The Skill Book's marks on it (td-marks riders and rules): a burn's seconds, its tick and its whole life a tick; a
+   * chill, a blind, a hush, a fear (seconds left); a Sunder's stacks and their seconds; an elite affix a mark stripped
+   * (and when it comes back).
+   */
+  scorchT?: number;
+  scorchTick?: number;
+  scorchDps?: number;
+  chillT?: number;
+  blindT?: number;
+  hushT?: number;
+  fearT?: number;
+  sunderN?: number;
+  sunderT?: number;
+  stripped?: { affix: string; t: number } | null;
 }
 
 /**
@@ -1956,6 +1972,8 @@ export interface Minion {
   target: Mob | null;
   /** The Ashbone Phylactery: its first blow (a breath of fire) is spent. */
   breathed?: boolean;
+  /** Captain of the Dead (a mark): the one raised twice as strong. */
+  captain?: boolean;
 }
 
 /** A raised skeleton's life and blow: Raise Skeleton's numbers grown with the Keeper's level and spell power. */
@@ -1984,7 +2002,13 @@ export function pickMinionTarget(from: { x: number; y: number }, mobs: readonly 
 }
 
 /** A Bone Spear in flight: it passes through every foe in its line, striking each once. */
-export interface Spear extends Lofted { x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[]; dmg?: [number, number] }
+export interface Spear extends Lofted {
+  x: number; y: number; vx: number; vy: number; age: number; life: number; hit: Mob[]; dmg?: [number, number];
+  /** The skill that loosed it (the marks read it: Bone Spear's, Bone Storm's, a Corpse Burst's shards). */
+  src?: SkillId;
+  /** Return of the Bone (a mark): this share of a blow when it has flown its length and comes back (once). */
+  back?: number;
+}
 
 /**
  * A spell left on the ground (the trees' new fire): Cinder Rain falling on a circle, a Flame Wall burning along a line,
@@ -1995,7 +2019,9 @@ export interface Zone {
     // The Lanternwright (td-lantern-skills): a Hearth Circle on the ground, a disc of Dawn at Noon.
     | 'hearth' | 'dawn'
     // The Thornstrider (td-thorn-skills): a Thornroot Snare's line of thorns, a Bramble Trap hidden on the ground.
-    | 'snare' | 'trap';
+    | 'snare' | 'trap'
+    // A mark's burning ground (td-marks `field`): fire a second, at a share of the hit that laid it.
+    | 'field';
   x: number; y: number;
   /** Radius (art px): the rain's circle, the meteor's blast; a wall's reach either side of its line. */
   r: number;
@@ -2006,6 +2032,12 @@ export interface Zone {
   pts?: { x: number; y: number }[];
   /** A Thornroot Snare's catch: each creature it has rooted (it holds each once). */
   caught?: Mob[];
+  /** The skill that laid it, when its kind does not say (a mark's burning ground: Scorched Earth, Burning Crater). */
+  src?: SkillId;
+  /** A meteor's fragment (Splitting Stone) does not split again, nor leave a second crater. */
+  frag?: boolean;
+  /** Seconds to the snare's next grasp (Grasping, a mark). */
+  regrasp?: number;
 }
 
 export interface Drop {
@@ -2064,10 +2096,10 @@ export interface Effect {
 }
 
 /** A bolt in flight toward a creature. */
-export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean; /** Its height over its ground track (art px; 22, the staff's tip, when unset): a wall stops the track. */ lift?: number }
+export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean; /** Its height over its ground track (art px; 22, the staff's tip, when unset): a wall stops the track. */ lift?: number; /** The skill that sent it (Ember Bolt, Kindle, a wisp's or a beacon's mote), and a mark's heal on landing (Kindling Light, % of the hit). */ src?: SkillId; heal?: number }
 
 /** A lamp-wisp at the Lanternwright's shoulder (td-lantern-skills): seconds left, its next mote, where it circles. */
-export interface Wisp { x: number; y: number; t: number; cd: number; a: number }
+export interface Wisp { x: number; y: number; t: number; cd: number; a: number; /** Lantern Swarm (a mark): this wisp's motes at this share. Wisp Ward: it still holds a shot off. */ k?: number; ward?: boolean }
 /** A Beacon on its pole: where it stands, seconds left, its next mote. */
 export interface Beacon { x: number; y: number; t: number; cd: number }
 
@@ -2079,6 +2111,8 @@ export interface Beacon { x: number; y: number; t: number; cd: number }
 export interface Arrow extends Lofted {
   x: number; y: number; vx: number; vy: number; age: number; life: number; dmg: number;
   to: Mob | null; hit: Mob[]; pierce: number; knock: number; barb?: { dps: number; secs: number };
+  /** The skill that loosed it; a mark's sure crit (Hunter's Rhythm, Leaf-Shadow); the most foes it may strike (a Volley's Pierce). */
+  src?: SkillId; crit?: boolean; most?: number;
 }
 /**
  * A beast of the wild (td-thorn-skills): one answering the Call of the Wilds (it hunts by the Keeper, `t` seconds), or
@@ -2168,6 +2202,19 @@ export interface MobHost {
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
+/** A point's distance from a segment (Through the Ranks: what stood on the charge's path). */
+function segDist(ax: number, ay: number, bx: number, by: number, px: number, py: number): number {
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+/** The numbers an echo's free cast carries at its share (td-marks `echo`): damage, heal, absorb. */
+const ECHO_VARS = ['min', 'max', 'dps', 'heal', 'absorb'] as const;
+/** How much a Chill slows a creature's feet and its blows (skills-100.md §0.4: −30%). */
+export const CHILL_SLOW = .3;
+/** The share of a Blinded creature's blows and shots that go astray (§0.4). */
+export const BLIND_MISS = .5;
+/** Under this pace (art px a second) the Keeper counts as standing still (Kept Fire, a mark). */
+const STILL_PACE = 6;
 
 /** A creature as it rises on a difficulty tier: life × `hp`, its blow and its shot × `damage` (Normal: itself). */
 export function tiered(def: MobDef, t: Pick<DifficultyDef, 'hp' | 'damage'>): MobDef {
@@ -2248,9 +2295,30 @@ export class MobSystem {
   private readonly varsAt = new Map<SkillId, Record<string, number>>();
   /** The points bought in each skill (td-tree boughtRanks): the synergies read these (design-bible §4.1); null = none. */
   private bought: Partial<Record<SkillId, number>> | null = null;
-  setRanks(ranks: Partial<Record<SkillId, number>> | null, bought: Partial<Record<SkillId, number>> | null = null): void {
-    this.ranks = ranks ? { ...ranks } : null; this.bought = bought ? { ...bought } : null; this.varsAt.clear();
+  /** The Skill Book's marks a row holds (td-tree effectiveMarks: a 6-bit mask a row); null = none (the specs' default). */
+  private marks: Partial<Record<SkillId, number>> | null = null;
+  setRanks(ranks: Partial<Record<SkillId, number>> | null, bought: Partial<Record<SkillId, number>> | null = null, marks: Partial<Record<SkillId, number>> | null = null): void {
+    this.ranks = ranks ? { ...ranks } : null; this.bought = bought ? { ...bought } : null; this.marks = marks ? { ...marks } : null; this.varsAt.clear();
   }
+  /** A row's marks now. A Spellstone going off carries none of the book's (a stone's own marks are S2's). */
+  markMask(id: SkillId): number { return this.stone?.id === id ? 0 : this.marks?.[id] ?? 0; }
+  /** A named mark rule a row holds, with its numbers (td-marks), or null — only while the row holds a rank. */
+  mk(id: SkillId, f: MarkFlag): Extract<MarkFx, { k: 'flag' }> | null {
+    const m = this.markMask(id);
+    return m && this.rank(id) > 0 ? markFlag(id, m, f) : null;
+  }
+  /** A skill's mana cost now (its marks' % in: td-skills manaCost). */
+  manaOf(id: SkillId): number { return manaCost(id, this.markMask(id)); }
+  /**
+   * A cast's echo (td-marks `echo`: Twin Nova, Twin Impact, Rolling Volley…): the share every damage and heal number
+   * carries while a free second cast runs (1 = a cast of its own). `src`: the skill whose hit is landing now (its
+   * marks' riders and rules read it); `killSrc`: the one whose blow felled the creature now falling.
+   */
+  private echoK = 1;
+  private src: SkillId | null = null;
+  private killSrc: SkillId | null = null;
+  /** Echoes waiting: the skill, seconds to go, the share they cast at, and how many more after this one. */
+  private readonly echoes: { id: SkillId; t: number; k: number; left: number; gap: number }[] = [];
   /** A skill's rank: the tree's, plus what worn boss uniques add to a skill already learnt (never past MAX_RANK). */
   rank(id: SkillId): number {
     // A Spellstone going off (useStone): the spell at the stone's own rank, whatever the trees hold.
@@ -2294,7 +2362,7 @@ export class MobSystem {
   /** Is a creature inside the worn aura's reach? */
   private inItemAura(m: { x: number; y: number }): boolean { const p = this.host.player(); return !!this.itemAura && Math.hypot(m.x - p.x, m.y - p.y) <= ITEM_AURA_REACH; }
   /** A spell's cooldown now (before cast speed): its own, less what a boss unique cuts from it. */
-  cdOf(id: SkillId): number { return castCd(id, this.relics); }
+  cdOf(id: SkillId): number { return castCd(id, this.relics, this.markMask(id)); }
   /** The Light spell: seconds it still burns, and how many tiles it adds to the Keeper's light. */
   lightT = 0;
   lightTiles = 0;
@@ -2304,14 +2372,17 @@ export class MobSystem {
    */
   get lightBonus(): number {
     const aura = this.lamp && this.aura === 'lantern-aura' && this.rank('lantern-aura') > 0 ? this.v('lantern-aura')['light'] : 0;
-    return carriedLight({ vocation: this.vocation, shuttered: this.shuttered, aura, spell: this.lightT > 0 ? this.lightTiles : 0, relics: this.relics.light });
+    const tiles = carriedLight({ vocation: this.vocation, shuttered: this.shuttered, aura, spell: this.lightT > 0 ? this.lightTiles : 0, relics: this.relics.light });
+    // Kept Ember (a mark): shuttered, his light never falls under its tiles.
+    const ke = this.lamp && this.shuttered ? this.mk('shutter-lantern', 'keptLight') : null;
+    return ke ? Math.max(tiles, ke.n ?? 0) : tiles;
   }
   /** A skill's numbers at its rank. */
   v(id: SkillId): Record<string, number> {
     let got = this.varsAt.get(id);
     if (!got) {
       // The card's numbers exactly (td-skills castVars: rank, synergies, what worn gear adds), then the sky's hand.
-      got = castVars(id, this.rank(id), this.bought, this.relics);
+      got = castVars(id, this.rank(id), this.bought, this.relics, this.markMask(id));
       // The sky's hand on the spell (td-phases.ts): Shadow stronger after dark and under an eclipse, Ember by day.
       const k = spellMult(SKILLS[id].tree, this.phase);
       if (k !== 1) {
@@ -2320,6 +2391,12 @@ export class MobSystem {
         for (const key of skyVars(SKILLS[id].tree)) if (key in got) got[key] = key === 'dps' || key === 'heal' || key === 'regen' ? Math.round(got[key] * k * 10) / 10 : Math.max(1, Math.round(got[key] * k));
       }
       this.varsAt.set(id, got);
+    }
+    // An echo's free cast: every damage and heal number at its share (never cached).
+    if (this.echoK !== 1) {
+      const out = { ...got };
+      for (const key of ECHO_VARS) if (key in out) out[key] = Math.max(1, Math.round(out[key] * this.echoK));
+      return out;
     }
     return got;
   }
@@ -2338,7 +2415,27 @@ export class MobSystem {
   /** The spawn rules in force here and now (the open wilds only; day's under a roof). */
   private get wildRules() { return rulesOf(this.open ? this.phase : 'day'); }
   /** Ember Mastery: what fire's damage is multiplied by. */
-  get fireMult(): number { return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100); }
+  get fireMult(): number {
+    // Hearth-Heat (the Aura of Embers' mark): while the aura runs, all his fire burns hotter.
+    const hh = this.aura === 'aura-embers' ? this.mk('aura-embers', 'fireUp') : null;
+    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1);
+  }
+  /**
+   * The marks' quicker feet (a share of pace; td-engine walkSpeed multiplies by 1 + this): Walking Whirl while the whirl
+   * turns, Dark Step while the lantern is shuttered, Waymark by a beacon.
+   */
+  get markPace(): number {
+    if (!this.marks) return 0;
+    let k = 0;
+    const p = this.host.player();
+    const wh = this.mk('whirl-of-cinders', 'whirlHaste');
+    if (wh && this.zones.some(z => z.kind === 'whirl')) k += (wh.n ?? 0) / 100;
+    const ds = this.lamp && this.shuttered ? this.mk('shutter-lantern', 'shutSpeed') : null;
+    if (ds) k += (ds.n ?? 0) / 100;
+    const wm = this.mk('beacon', 'poleSpeed');
+    if (wm && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (wm.m ?? 0) * TILE)) k += (wm.n ?? 0) / 100;
+    return k;
+  }
   /** The running aura's ring (art px). */
   get auraRadius(): number { return Math.round((this.aura ? this.v(this.aura)['radius'] ?? 3 : this.v('aura-embers')['radius']) * TILE); }
   /** How much weaker a creature bites (%): the Ember Curse's and Weaken's, the stronger of the two. */
@@ -2346,7 +2443,9 @@ export class MobSystem {
     // The Lantern Aura: within its reach every bite is weaker (design-bible §4.3: "your light is a place").
     const p = this.host.player(), lit = this.lamp && this.aura === 'lantern-aura' && this.rank('lantern-aura') > 0
       && Math.hypot(m.x - p.x, m.y - p.y) <= this.v('lantern-aura')['radius'] * TILE ? this.v('lantern-aura')['weaken'] : 0;
-    return Math.max(m.cursed > 0 ? this.v('ember-curse')['weaken'] : 0, (m.weak ?? 0) > 0 ? m.weakPct ?? 0 : 0, lit);
+    // Hold Them (Command's mark): the commanded foe bites weaker while the beast is on it.
+    const held = this.thorn && m === this.commanded ? this.mk('command', 'commandWeaken')?.n ?? 0 : 0;
+    return Math.max(m.cursed > 0 ? this.v('ember-curse')['weaken'] : 0, (m.weak ?? 0) > 0 ? m.weakPct ?? 0 : 0, lit, held);
   }
   /** Seconds each skill still cools. */
   readonly cooldowns: Partial<Record<SkillId, number>> = {};
@@ -2394,7 +2493,8 @@ export class MobSystem {
     if (this.melee) return this.v('watch-blade')['reach'] * TILE;
     if (this.lamp) return this.v('kindle')['range'] * TILE;
     if (this.thorn) return this.v('thorn-shot')['range'] * TILE;
-    return SKILLS['ember-bolt'].vars['range'] * TILE;
+    // The Warlock's staff: the Ember Bolt's reach (Long Ember, a mark, lengthens it).
+    return this.v('ember-bolt')['range'] * TILE;
   }
   /** The Thornstrider (td-thorn-skills): the bow, the beast at his side, the briar on the ground. */
   get thorn(): boolean { return this.vocation === 'thornstrider'; }
@@ -2626,8 +2726,10 @@ export class MobSystem {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const kv = this.v('kindle');
         this.swing = SKILLS['kindle'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
-        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']) * this.handMult, age: 0, lamp: true, lift: 34 });
         this.flares++;
+        // Kindling Light (a mark): every few flares heal the Keeper a share of what they strike for.
+        const nh = this.mk('kindle', 'nthHeal');
+        this.bolts.push({ x: p.x + (p.face ?? 1) * 9, y: p.y - 34, to: foe, dmg: rnd(kv['min'], kv['max']) * this.handMult, age: 0, lamp: true, lift: 34, src: 'kindle', ...(nh && this.flares % (nh.m ?? 1) === 0 ? { heal: nh.n ?? 0 } : {}) });
         this.host.swung(foe);
       }
       foe = null;
@@ -2637,7 +2739,11 @@ export class MobSystem {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
         const tv = this.v('thorn-shot');
         this.swing = SKILLS['thorn-shot'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
-        this.looseArrow(foe, this.shotBlow(tv['min'], tv['max']));
+        // Hunter's Rhythm (a mark): every few shots a sure crit; Leaf-Shadow: the first shot after a Rootwalk.
+        this.thornShots++;
+        const nc = this.mk('thorn-shot', 'nthCrit'), leaf = this.leafReady;
+        this.leafReady = false;
+        this.looseArrow(foe, this.shotBlow(tv['min'], tv['max']), { src: 'thorn-shot', crit: leaf || (!!nc && this.thornShots % (nc.m ?? 1) === 0) });
         this.host.swung(foe);
       }
       foe = null;
@@ -2647,7 +2753,7 @@ export class MobSystem {
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
       this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
       const bv = this.v('ember-bolt');
-      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult * this.handMult, age: 0, lift: 22 });
+      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bv['min'], bv['max']) * this.fireMult * this.handMult, age: 0, lift: 22, src: 'ember-bolt' });
       this.host.swung(foe);
     }
     for (let i = this.bolts.length - 1; i >= 0; i--) {
@@ -2671,11 +2777,14 @@ export class MobSystem {
         if (b.lamp) {
           // A flare of light: the dead and the dark-born take it half again (td-lantern LIGHT_BANE).
           this.effects.push({ kind: 'kindle-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
-          this.hitFoe(b.to, lightBlow(b.dmg, b.to.def.id), '#fff2a8');
+          const got = this.hitFoe(b.to, lightBlow(b.dmg, b.to.def.id), '#fff2a8', b.src ?? 'kindle');
+          if (b.heal) this.healOwed(got * b.heal / 100);
+          // Healing Wisps (a mark): each mote that lands heals the Keeper a share of his life.
+          if (b.src === 'lamp-wisp' && got > 0) { const mh = this.mk('lamp-wisp', 'moteHeal'); if (mh) this.healOwed(this.keeperMaxHp * (mh.n ?? 0) / 100); }
           continue;
         }
         this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
-        this.hitFoe(b.to, b.dmg, '#ffd25a');
+        this.hitFoe(b.to, b.dmg, '#ffd25a', 'ember-bolt');
         // The Crown of the Banked Coal: the bolt leaves its foe smouldering.
         if (this.relics.singe && b.to.hp > 0) { b.to.singeT = this.relics.singe.secs; b.to.singeTick = b.to.singeTick && b.to.singeTick > 0 ? b.to.singeTick : 1; }
       } else { b.x += dx / len * step; b.y += dy / len * step; }
@@ -2713,6 +2822,23 @@ export class MobSystem {
           if (m.hp <= 0) continue;
         }
       }
+      if ((m.scorchT ?? 0) > 0) {
+        // A mark's burn (Kindling, Smouldering, Caught Alight…): its share of the hit, once a second, for its seconds.
+        m.scorchT = (m.scorchT ?? 0) - dt; m.scorchTick = (m.scorchTick ?? 1) - dt;
+        if (m.scorchTick <= 0) {
+          m.scorchTick = 1;
+          this.effects.push({ kind: 'flame', x: m.x + rnd(-3, 3), y: m.y - 2, age: 0, life: .4, dir: 1 });
+          this.hitFoe(m, m.scorchDps ?? 0, '#ff9a4a', null);
+          if (m.hp <= 0) continue;
+        }
+      }
+      if ((m.chillT ?? 0) > 0) m.chillT = Math.max(0, (m.chillT ?? 0) - dt);
+      if ((m.blindT ?? 0) > 0) m.blindT = Math.max(0, (m.blindT ?? 0) - dt);
+      if ((m.hushT ?? 0) > 0) m.hushT = Math.max(0, (m.hushT ?? 0) - dt);
+      if ((m.fearT ?? 0) > 0) m.fearT = Math.max(0, (m.fearT ?? 0) - dt);
+      if ((m.sunderT ?? 0) > 0) { m.sunderT = Math.max(0, (m.sunderT ?? 0) - dt); if (m.sunderT <= 0) m.sunderN = 0; }
+      // Unmaking / Banish the Bearer: the stripped affix comes back when its seconds run out.
+      if (m.stripped) { m.stripped.t -= dt; if (m.stripped.t <= 0) { if (m.elite && !m.elite.affixes.includes(m.stripped.affix as never)) m.elite.affixes.push(m.stripped.affix as never); m.stripped = null; } }
       if ((m.weak ?? 0) > 0) m.weak = Math.max(0, (m.weak ?? 0) - dt);
       if ((m.inkT ?? 0) > 0) m.inkT = Math.max(0, (m.inkT ?? 0) - dt);
       if ((m.singeT ?? 0) > 0 && this.relics.singe) {
@@ -2730,12 +2856,14 @@ export class MobSystem {
       }
       if (auraTick && this.aura === 'aura-embers' && this.rank('aura-embers') > 0 && Math.hypot(m.x - p.x, m.y - p.y) <= this.v('aura-embers')['radius'] * TILE && this.sees(m)) {
         this.effects.push({ kind: 'pulse', el: 'ember', x: m.x, y: m.y, age: 0, life: .2, dir: 1 });
-        this.hitFoe(m, this.v('aura-embers')['dps'] * this.fireMult, '#ff8a2e');
+        this.hitFoe(m, this.v('aura-embers')['dps'] * this.fireMult, '#ff8a2e', 'aura-embers');
       }
     }
     // The Watchfire (the Ashguard's aura): life back every second while it runs.
     if (auraTick && this.melee && this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0) {
-      this.regenOwed += this.v('aura-watchfire')['regen'];
+      // Banked Fire (a mark): twice the life while his own runs low.
+      const bf = this.mk('aura-watchfire', 'lowDouble');
+      this.regenOwed += this.v('aura-watchfire')['regen'] * (bf && this.lifeShare() < (bf.n ?? 0) / 100 ? 2 : 1);
       const whole = Math.floor(this.regenOwed);
       if (whole > 0) { this.regenOwed -= whole; this.host.healPlayer(whole); }
     }
@@ -2747,8 +2875,15 @@ export class MobSystem {
     this.curseT = Math.max(0, this.curseT - dt);
     // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
     this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R && this.sees(m)) ? COLD_SLOW : 0;
+    // Mend the Mind (the Hearth Circle's mark): inside the circle no cold takes hold of him.
+    if (this.chill > 0 && this.inCircle && this.mk('hearth-circle', 'noChill')) this.chill = 0;
+    this.tickEchoes(dt);
+    if (this.markShieldT > 0) { this.markShieldT -= dt; if (this.markShieldT <= 0) { this.markShieldT = 0; this.markShield = 0; } }
+    if (this.strideFreeT > 0) this.strideFreeT = Math.max(0, this.strideFreeT - dt);
     for (const m of [...this.mobs]) {
-      m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      // A Chill (a mark's): its blows and shots come slower too.
+      const slow = (m.chillT ?? 0) > 0 ? 1 - CHILL_SLOW : 1;
+      m.t += dt; m.cd -= dt * slow; m.rcd -= dt * slow; m.hit = Math.max(0, m.hit - dt);
       // A member under a host: the host moves, aims and bites with it (td-coop.ts places it each frame).
       if (this.replica) continue;
       // Stunned (a Shield Bash): it stands where it is, does nothing, and its blow waits.
@@ -2802,7 +2937,10 @@ export class MobSystem {
       const lost = this.rootwalkT > 0 && !prey && !other && d > MOB_REACH * 2;
       // A world boss (bound): never past its leash from the rift, never after prey standing on a town's safe ground.
       const bound = m.def.bound, held = !!bound && (Math.hypot(m.x - m.hx, m.y - m.hy) > bound.leash * TILE || !!this.host.safeAt?.(px0, py0));
-      const hunting = !lost && !held && (taunted || (d < m.def.sight && (seen || (m.chaseT ?? 0) > 0))), shoot = m.def.ranged;
+      // The Lanternwright's shutters (marks): Quiet Hands shortens how far a creature notices him; in Moth Hours the
+      // dark-born leave him be until he strikes them.
+      const notice = m.def.sight - this.shutterQuiet(m);
+      const hunting = !lost && !held && (taunted || (d < notice && (seen || (m.chaseT ?? 0) > 0))), shoot = this.hushed(m) ? undefined : m.def.ranged;
       if (hunting && seen && m.blinkCd !== undefined && m.blinkCd <= 0 && d > TELEPORT.min) {
         // Where it will land: a step short of its prey, on its own side; never into a wall.
         const k = 1 - 14 / Math.max(1, d), bx = m.x + (px0 - m.x) * k, by = m.y + (py0 - m.y) * k;
@@ -2817,15 +2955,15 @@ export class MobSystem {
         if (Math.abs(px0 - m.x) > 2) m.face = px0 < m.x ? -1 : 1;
         // A shot at where the prey stands now: a step aside and it flies by. A boss winds up first (BOSS_TELL):
         // it aims now and looses when the tell runs out, so the ground warning is where the breath goes.
-        if (shoot && seen && d <= shoot.range && m.rcd <= 0 && m.tell <= 0) {
+        if (shoot && seen && d <= shoot.range && m.rcd <= 0 && m.tell <= 0 && !this.shrouded(d)) {
           m.rcd = shoot.rate;
           if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; if (m.def.chant) { m.chantT = CHANT_SECS; m.chantText = m.def.chant; } }
           else this.loose(m, px0, py0 - 12);
         }
         // A ground attack (the Seam Eater's Rend): rings open round its prey, never in the same breath as a wind-up.
-        if (m.def.rend && seen && m.tell <= 0 && (m.rendCd ?? 0) <= 0 && d <= m.def.sight) { m.rendCd = m.def.rend.rate; this.rendAt(m, px0, py0); }
+        if (m.def.rend && !this.hushed(m) && seen && m.tell <= 0 && (m.rendCd ?? 0) <= 0 && d <= m.def.sight) { m.rendCd = m.def.rend.rate; this.rendAt(m, px0, py0); }
         // A gap-closer: prey that keeps its distance is crossed to (the tell first, so a step aside still saves it).
-        const ch = m.def.charge;
+        const ch = this.hushed(m) ? undefined : m.def.charge;
         if (ch && seen && m.tell <= 0 && (m.chargeCd ?? 0) <= 0 && d >= ch.min && d <= m.def.sight) {
           // It leads a Keeper on the move (where he will be when it lands, at his pace now, at most CHARGE_LEAD px):
           // walking straight away is caught; a step aside in the tell is not.
@@ -2842,6 +2980,9 @@ export class MobSystem {
         }
         if (m.wander) { tx = m.wander.x; ty = m.wander.y; if (Math.hypot(tx - m.x, ty - m.y) < 3) m.wander = null; }
       }
+      // Feared (Fear of Fire, Fearsome): it runs from the Keeper and strikes nothing.
+      const afraid = (m.fearT ?? 0) > 0;
+      if (afraid) { tx = m.x + (m.x - p.x); ty = m.y + (m.y - p.y); stop = 0; }
       if (tx !== null && ty !== null && !rooted) {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
         if (len > stop) {
@@ -2854,8 +2995,10 @@ export class MobSystem {
       }
       if (seen && (d <= MOB_REACH || (shoot && d <= shoot.range))) this.holding.add(m);
       // A bite when its prey is in reach — and in sight (no bite through a wall's corner).
-      if (seen && d <= MOB_REACH && m.cd <= 0) {
+      if (seen && !afraid && d <= MOB_REACH && m.cd <= 0) {
         m.cd = m.def.rate;
+        // Blinded (Afterimage): half its blows go astray.
+        if ((m.blindT ?? 0) > 0 && Math.random() < BLIND_MISS) { this.float(m.x, m.y - m.def.h, 'miss', '#9a948a'); continue; }
         let n = rnd(m.def.dmg[0], m.def.dmg[1]);
         // A cursed foe bites weaker.
         const weak = this.weakOf(m);
@@ -2865,7 +3008,7 @@ export class MobSystem {
           (m.coopBy ??= new Set()).add(other.id);
           this.coop?.bite(other.id, m, n, this.blowType(m), ax.includes('mana-burn'), ax.includes('cursed'));
         } else if (prey) this.hurtMinion(prey, n);
-        else { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); }
+        else { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); this.struckBy(m); }
       }
     }
     // A pack stays a pack, not one sprite: creatures standing on each other ease apart (never into a wall).
@@ -2948,7 +3091,9 @@ export class MobSystem {
   }
 
   /** Returns the life the blow took (after spell power, a crit and a Stone Skin), 0 on a foe already down. */
-  private hitFoe(foe: Mob, raw: number, color: string): number {
+  private hitFoe(foe: Mob, raw: number, color: string, src: SkillId | null = this.src): number {
+    // The Skill Book's marks: what makes this hit land harder (td-marks; markHitMult says each).
+    if (foe.hp > 0) raw *= this.markHitMult(foe, src);
     // A worn unique's echo (unique-items.ts strike-double): every n-th hit the Keeper lands, each piece on its own beat.
     if (this.relics.echo.length && foe.hp > 0) {
       this.hitCount++;
@@ -2968,10 +3113,17 @@ export class MobSystem {
     if ((foe.revealT ?? 0) > 0) raw *= 1 + DAWN_REVEAL / 100;
     // The worn aura: Might lifts every hit; Conviction's lost resistance is that much more damage on a foe near.
     if (this.itemAura) { raw *= this.itemAura.fx.damage; if (this.itemAura.fx.resistLower > 0 && this.inItemAura(foe)) raw *= 1 + this.itemAura.fx.resistLower / 100; }
-    const crit = this.crit > 0 && Math.random() < this.crit;
+    const crit = this.forceCrit || (this.crit > 0 && Math.random() < this.crit);
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
-      this.host.healPlayer(this.v('aura-siphon')['heal']);
+      // Vampire's Patience (a mark): twice as much while the Keeper's life runs low.
+      const low = this.mk('aura-siphon', 'lowDouble'), heal = this.v('aura-siphon')['heal'] * (low && this.lifeShare() < (low.n ?? 0) / 100 ? 2 : 1);
+      this.host.healPlayer(heal);
+      // Siphon Kin: the raised mend a share of it too. Mana Siphon: a little mana with it.
+      const kin = this.mk('aura-siphon', 'kinHeal');
+      if (kin) this.healKin(heal * (kin.n ?? 0) / 100);
+      const mana = this.mk('aura-siphon', 'manaHit');
+      if (mana) this.mana = Math.min(this.maxMana, this.mana + (mana.n ?? 0));
       this.effects.push({ kind: 'pulse', el: 'life', x: foe.x, y: foe.y, age: 0, life: .2, dir: 1 });
     }
     if (crit) this.effects.push({ kind: 'crit', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .15, dir: 1 });
@@ -2987,7 +3139,154 @@ export class MobSystem {
       const whole = Math.floor(this.bloodOwed);
       if (whole > 0) { this.bloodOwed -= whole; this.host.healPlayer(whole); }
     }
-    return this.hurtMob(foe, dmg, color, crit);
+    const was = foe.hp > 0;
+    this.killSrc = src;
+    const dealt = this.hurtMob(foe, dmg, color, crit);
+    this.killSrc = null;
+    if (was && dealt > 0 && src) this.markHit(foe, src, raw, dealt);
+    return dealt;
+  }
+  /** A sure crit on the next hit (a mark's: Hunter's Rhythm, Leaf-Shadow) while it is set. */
+  private forceCrit = false;
+  /** The Keeper's life as a share of his most (1 when the host cannot say). */
+  private lifeShare(): number { const hp = this.host.playerHp?.(); return hp === undefined || !(this.keeperMaxHp > 0) ? 1 : hp / this.keeperMaxHp; }
+  /** Mend the raised a little (Share the Cup, Siphon Kin): each one, never past its most. */
+  private healKin(n: number): void {
+    const k = Math.round(n);
+    if (k <= 0) return;
+    for (const m of this.minions) if (m.hp > 0) m.hp = Math.min(m.maxHp, m.hp + k);
+  }
+  /** Does a creature carry a status now (the marks' `vsStatus` / `vuln` read it)? */
+  private hasStatus(m: Mob, st: MarkStatus): boolean {
+    switch (st) {
+      case 'burn': return (m.scorchT ?? 0) > 0 || m.cursed > 0 || (m.brandT ?? 0) > 0 || (m.singeT ?? 0) > 0;
+      case 'bleed': return (m.bleedT ?? 0) > 0;
+      case 'chill': return (m.chillT ?? 0) > 0;
+      case 'stun': return (m.stun ?? 0) > 0;
+      case 'root': return (m.rootT ?? 0) > 0;
+      case 'blind': return (m.blindT ?? 0) > 0;
+      case 'hush': return (m.hushT ?? 0) > 0;
+      case 'taunt': return (m.taunt ?? 0) > 0;
+      case 'fear': return (m.fearT ?? 0) > 0;
+      case 'weaken': return (m.weak ?? 0) > 0;
+    }
+  }
+  /**
+   * What the Skill Book's marks add to one hit (td-marks): the row's own `vsStatus` (Dry Season, Sure Footing,
+   * Mark-Seeker), every row's `vuln` (Brittle, Festering), a Sunder's stacks, Searching Light on the dead, the Lantern
+   * Aura's bane, the commanded foe, the Vow's wrath.
+   */
+  private markHitMult(foe: Mob, src: SkillId | null): number {
+    if (!this.marks) return 1;
+    let k = 1;
+    if (src) {
+      const vs = this.mk(src, 'vsStatus');
+      if (vs?.st && this.hasStatus(foe, vs.st)) k *= 1 + (vs.n ?? 0) / 100;
+      const bane = this.mk(src, 'bane');
+      if (bane && shadowBorn(foe.def.id)) k *= 1 + (bane.n ?? 0) / 100;
+    }
+    for (const id of ['weaken', 'barbed-shot'] as const) {
+      const vu = this.mk(id, 'vuln');
+      if (vu?.st && this.hasStatus(foe, vu.st)) k *= 1 + (vu.n ?? 0) / 100;
+    }
+    const sunder = this.mk('cinder-cleave', 'sunder');
+    if (sunder && (foe.sunderT ?? 0) > 0) k *= 1 + (sunder.n ?? 0) * (foe.sunderN ?? 0) / 100;
+    if (this.lamp && this.aura === 'lantern-aura' && shadowBorn(foe.def.id)) {
+      const ba = this.mk('lantern-aura', 'baneAura'), p = this.host.player();
+      if (ba && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.v('lantern-aura')['radius'] * TILE) k *= 1 + (ba.n ?? 0) / 100;
+    }
+    const cmd = this.mk('command', 'vsCommanded');
+    if (cmd && foe === this.commanded) k *= 1 + (cmd.n ?? 0) / 100;
+    const wrath = this.mk('last-watch', 'wrath');
+    if (wrath && this.vowT > 0) k *= 1 + (wrath.n ?? 0) / 100;
+    return k;
+  }
+  /**
+   * The marks a hit of `src` carries once it has landed (`raw`: the blow before spell power; `dealt`: what it took):
+   * its riders (td-marks `rider`), a ward from the blow (absorbHit), life back (healHit, the Vow for Two), a Sunder's
+   * stack, a jump to the next foe.
+   */
+  private markHit(foe: Mob, src: SkillId, raw: number, dealt: number): void {
+    if (!this.marks) return;
+    this.ride(src, foe, raw);
+    const ab = this.mk(src, 'absorbHit');
+    if (ab) { this.markShield = Math.min(ab.m ?? 0, this.markShield + (ab.n ?? 0)); this.markShieldT = ab.s ?? 0; }
+    const hh = this.mk(src, 'healHit');
+    if (hh) this.healOwed((dealt * (hh.n ?? 0)) / 100);
+    const vl = this.mk('last-watch', 'vowLeech');
+    if (vl && this.vowT > 0) this.healOwed((dealt * (vl.n ?? 0)) / 100);
+    // Wild Blood: while Pack Bond runs, the beasts' bites heal the Keeper.
+    const wb = this.mk('pack-bond', 'biteHeal');
+    if (wb && this.aura === 'pack-bond' && (src === 'call-of-the-wilds' || src === 'stampede')) this.healOwed((dealt * (wb.n ?? 0)) / 100);
+    if (src === 'cinder-cleave' && this.mk(src, 'sunder')) { const s = this.mk(src, 'sunder')!; foe.sunderN = Math.min(s.m ?? 1, (foe.sunderN ?? 0) + 1); foe.sunderT = s.s ?? 0; }
+    const j = this.mk(src, 'jump');
+    if (j && !this.jumping && Math.random() * 100 < (j.c ?? 100)) {
+      const p = this.host.player(), reach = (j.s ?? 0) * TILE;
+      const next = this.mobs.filter(m => m !== foe && m.hp > 0 && Math.hypot(m.x - foe.x, m.y - foe.y) <= reach && this.sight.sees(foe.x, foe.y, m.x, m.y))
+        .sort((a, b) => Math.hypot(a.x - foe.x, a.y - foe.y) - Math.hypot(b.x - foe.x, b.y - foe.y)).slice(0, j.m ?? 1);
+      this.jumping = true;
+      try {
+        for (const m of next) {
+          this.effects.push({ kind: 'drain', x: foe.x, y: foe.y - foe.def.h / 2, tx: m.x, ty: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 });
+          this.hitFoe(m, raw * (j.n ?? 0) / 100, '#ffd25a', null);
+        }
+      } finally { this.jumping = false; }
+      void p;
+    }
+  }
+  private jumping = false;
+  /** A mark's ward from its blows (Cinder Ward, Iron Lesson; Grave Thirst's overflow): it drinks a blow before the Bone Armor. */
+  markShield = 0;
+  markShieldT = 0;
+  /** Life owed by the marks' small heals (whole points paid, the rest carried). */
+  private markHealOwed = 0;
+  private healOwed(n: number): void {
+    if (!(n > 0)) return;
+    this.markHealOwed += n;
+    const whole = Math.floor(this.markHealOwed);
+    if (whole > 0) { this.markHealOwed -= whole; this.host.healPlayer(whole); }
+  }
+  /**
+   * Lay a row's rider statuses on a creature (td-marks `rider`): a burn or a bleed at its share of `raw` a second, a
+   * chill, a stun, a root, a blind, a hush, a taunt, a fear — a boss's crowd-control a fifth as long (td-melee ccSecs).
+   */
+  private ride(src: SkillId, m: Mob, raw: number): void {
+    const mask = this.markMask(src);
+    if (!mask || m.hp <= 0) return;
+    for (const r of markRiders(src, mask)) {
+      if (r.chance !== undefined && Math.random() * 100 >= r.chance) continue;
+      this.applyStatus(m, r.st, r.secs, r.pct !== undefined ? raw * r.pct / 100 : 0);
+    }
+  }
+  private applyStatus(m: Mob, st: MarkStatus, secs: number, dps = 0): void {
+    const cc = ccSecs(secs, m.def.rank);
+    switch (st) {
+      case 'burn':
+        if (dps > 0) {
+          const live = (m.scorchT ?? 0) > 0;
+          m.scorchDps = Math.max(live ? m.scorchDps ?? 0 : 0, Math.round(dps * 10) / 10);
+          m.scorchT = Math.max(live ? m.scorchT ?? 0 : 0, secs);
+          m.scorchTick = live && (m.scorchTick ?? 0) > 0 ? m.scorchTick : 1;
+        }
+        break;
+      case 'bleed': {
+        const b = addBleed((m.bleedT ?? 0) > 0 ? { t: m.bleedT ?? 0, dps: m.bleedDps ?? 0 } : null, dps, secs);
+        m.bleedT = b.t; m.bleedDps = b.dps; m.bleedTick = (m.bleedTick ?? 0) > 0 ? m.bleedTick : 1;
+        break;
+      }
+      case 'chill': m.chillT = Math.max(m.chillT ?? 0, cc); break;
+      case 'stun': m.stun = Math.max(m.stun ?? 0, cc); break;
+      case 'root': m.rootT = Math.max(m.rootT ?? 0, cc); break;
+      case 'blind': m.blindT = Math.max(m.blindT ?? 0, cc); break;
+      case 'hush':
+        m.hushT = Math.max(m.hushT ?? 0, cc);
+        // An interrupt: a boss's wind-up in progress is cancelled (skills-100.md §0.4).
+        if (m.tell > 0) { m.tell = 0; m.aim = null; m.charging = false; }
+        break;
+      case 'taunt': m.taunt = Math.max(m.taunt ?? 0, cc); break;
+      case 'fear': m.fearT = Math.max(m.fearT ?? 0, cc); break;
+      case 'weaken': break;
+    }
   }
   /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
   smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff', false, true); }
@@ -3061,12 +3360,17 @@ export class MobSystem {
     if (from && from.hp > 0 && this.relics.thorns > 0 && raw > 0) this.hurtMob(from, Math.max(1, Math.round(raw * this.relics.thorns / 100)), '#e0b25a');
     // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
     const cursed = this.curseT > 0;
-    const resists = cursed ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - CURSE_RESIST])) as Partial<Record<Element, number>> : this.resists;
-    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, this.melee ? this.guardDefense() : this.defense, atk ?? this.keeperLevel, resists);
+    // The marks' resists (Ember Shield, Kindled, Shield of Light, Fur and Leaf) while their aura runs.
+    const res = this.markResist();
+    const resists = cursed || res.fire || res.all ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - (cursed ? CURSE_RESIST : 0) + res.all + (k === 'fire' ? res.fire : 0)])) as Partial<Record<Element, number>> : this.resists;
+    // Hearth Bond (Hearthlight's mark): more Defense a while after the heal.
+    const def = (this.melee ? this.guardDefense() : this.defense) * (this.defBuffT > 0 ? 1 + this.defBuffPct / 100 : 1);
+    let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, def, atk ?? this.keeperLevel, resists);
     // A worn shield's Block (§3.6): the blow is turned aside whole.
     if (n > 0 && this.gearBlock > 0 && Math.random() < this.gearBlock) {
       this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
       this.float(p.x, p.y - 34, '0', '#e0b25a');
+      this.blocked(from);
       return;
     }
     // (Defense is read against the attacker's level, D2's way: worn armour holds better in a zone below the Keeper.)
@@ -3075,12 +3379,27 @@ export class MobSystem {
       if (this.blockT > 0 && Math.random() < this.blockPct / 100) {
         this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
         this.float(p.x, p.y - 34, '0', '#e0b25a');
+        this.blocked(from, true);
         return;
       }
       if (this.guardT > 0) n = Math.max(1, Math.round(n * (1 - this.guardPct / 100)));
     }
-    if (this.bone > 0 && n > 0) { const soak = Math.min(this.bone, n); this.bone -= soak; n -= soak; this.float(p.x - 8, p.y - 30, `-${soak}`, '#e8e1cf'); }
-    if (this.ward > 0 && n > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
+    // The marks' damage cuts: Shared Hurt (bonded), Rootwalk Party (while it runs), Warded Ground (in the circle).
+    if (n > 0) n = this.markGuard(n);
+    // A mark's ward (Cinder Ward, Iron Lesson, Grave Thirst) drinks first.
+    if (this.markShield > 0 && n > 0) { const soak = Math.min(this.markShield, n); this.markShield -= soak; n -= soak; this.float(p.x - 12, p.y - 26, `-${soak}`, '#ffd25a'); }
+    if (this.bone > 0 && n > 0) {
+      const soak = Math.min(this.bone, n); this.bone -= soak; n -= soak; this.float(p.x - 8, p.y - 30, `-${soak}`, '#e8e1cf');
+      // Splinter Back (a mark): what the bones drink comes back on the striker. Ossuary Coat: breaking, they rise.
+      const th = this.mk('bone-armor', 'thorns');
+      if (th && from && from.hp > 0) this.hurtMob(from, Math.max(1, Math.round(soak * (th.n ?? 0) / 100)), '#e9dcff');
+      if (this.bone <= 0) this.boneBroke();
+    }
+    if (this.ward > 0 && n > 0) {
+      const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff');
+      // Ward the Fellowship (a mark): the Dark Ward bursts outward as it breaks.
+      if (this.ward <= 0) this.wardBurst('dark-ward', this.wardMax);
+    }
     // The Vow of the Last Watch: whatever comes, the Keeper keeps his last point of life; what it held off is counted.
     if (this.vowT > 0 && n > 0) { this.vowTaken += n; n = vowClamp(n, this.host.playerHp?.() ?? Infinity); }
     if (this.lamp && n > 0) n = this.lampGuard(n);
@@ -3095,6 +3414,63 @@ export class MobSystem {
     }
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
   }
+  /** Hearth Bond (a mark): seconds of more Defense left, and how much more (%). */
+  defBuffT = 0;
+  defBuffPct = 0;
+  /** The marks' resists while their aura runs: fire alone, and every element. */
+  private markResist(): { fire: number; all: number } {
+    let fire = 0, all = 0;
+    const add = (id: SkillId) => { const r = this.aura === id ? this.mk(id, 'resist') : null; if (r) { if (r.el === 'fire') fire += r.n ?? 0; else all += r.n ?? 0; } };
+    add('aura-embers'); add('aura-watchfire'); add('lantern-aura'); add('pack-bond');
+    return { fire, all };
+  }
+  /** The marks' cuts on a blow: Shared Hurt while bonded, Rootwalk Party while it runs, Warded Ground in the circle. */
+  private markGuard(n: number): number {
+    let k = 1;
+    const sh = this.bonded ? this.mk('pack-bond', 'sharedHurt') : null;
+    if (sh) k *= 1 - (sh.n ?? 0) / 100;
+    const wg = this.rootwalkT > 0 ? this.mk('rootwalk', 'walkGuard') : null;
+    if (wg) k *= 1 - (wg.n ?? 0) / 100;
+    const zg = this.mk('hearth-circle', 'zoneGuard');
+    if (zg && this.inCircle) k *= 1 - (zg.n ?? 0) / 100;
+    return k === 1 ? n : Math.max(1, Math.round(n * k));
+  }
+  /** Is the Keeper inside his own Hearth Circle now? */
+  private get inCircle(): boolean { const p = this.host.player(); return this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r)); }
+  /**
+   * A blow turned aside whole: the Shield Oath's marks (`oath`: Counterblow strikes back, The Shield Remembers heals,
+   * Oathbound gives mana) and the Ember Brand's (Shield-Brand burns the striker), on any block.
+   */
+  private blocked(from: Mob | undefined, oath = false): void {
+    if (from && from.hp > 0 && this.brandT > 0 && this.mk('ember-brand', 'blockBrand')) { from.brandT = 3; from.brandTick = 1; from.brandDps = this.v('ember-brand')['burn']; from.brandTicks = 3; }
+    if (!oath) return;
+    const co = this.mk('shield-oath', 'counter');
+    if (co && from && from.hp > 0) this.hitFoe(from, meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], co.n ?? 0, Math.random, this.weaponSwing), '#efe6dc', null);
+    const bh = this.mk('shield-oath', 'blockHeal');
+    if (bh) this.healOwed(this.keeperMaxHp * (bh.n ?? 0) / 100);
+    const bm = this.mk('shield-oath', 'blockMana');
+    if (bm) this.mana = Math.min(this.maxMana, this.mana + (bm.n ?? 0));
+  }
+  /** The Bone Armor broke under a blow: Ossuary Coat (a mark) raises skeletons out of the pieces. */
+  private boneBroke(): void {
+    const oc = this.mk('bone-armor', 'breakRaise');
+    if (!oc || this.rank('raise-skeleton') < 1) return;
+    const p = this.host.player(), v = this.v('raise-skeleton'), st = this.raisedNow(v);
+    for (let i = 0; i < (oc.n ?? 0); i++) {
+      const at = this.slotOpen(formationSpot(this.minions.length, p, this.formFace()));
+      this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null });
+      this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
+    }
+    capMinions(this.minions, v['cap']);
+  }
+  /** A ward broke under a blow: its mark's burst (Ward the Fellowship, Self-Ward Too) strikes what stands near, a share of the whole ward. */
+  private wardBurst(id: SkillId, whole: number): void {
+    const wb = this.mk(id, 'breakBurst');
+    if (!wb || !(whole > 0)) return;
+    const p = this.host.player(), r = (wb.m ?? 0) * TILE, n = whole * (wb.n ?? 0) / 100 / Math.max(.1, this.power);
+    for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= r && this.sees(m)) this.hitFoe(m, n, '#c8a8ff', null);
+    this.effects.push({ kind: 'wave', el: 'shadow', x: p.x, y: p.y, age: 0, life: .5, dir: 1, r: Math.round(r) });
+  }
   /** The Defense a blow meets on the Ashguard: his own, the Watchfire's, Hold the Line's lift when his life runs low. */
   guardDefense(): number {
     const aura = this.aura === 'aura-watchfire' && this.rank('aura-watchfire') > 0 ? this.v('aura-watchfire')['def'] : 0;
@@ -3102,6 +3478,9 @@ export class MobSystem {
     return guardedDefense(this.defense, aura, this.host.playerHp?.() ?? this.keeperMaxHp, this.keeperMaxHp, hold);
   }
   private hurtMinion(k: Minion, n: number): void {
+    // Shared Bones (Bone Armor's mark): while the armour holds, the raised take less.
+    const kg = this.bone > 0 ? this.mk('bone-armor', 'kinGuard') : null;
+    if (kg) n = Math.max(1, Math.round(n * (1 - (kg.n ?? 0) / 100)));
     k.hp -= n; k.hit = .18;
     this.float(k.x, k.y - 26, `${n}`, '#c8a8ff');
   }
@@ -3135,7 +3514,13 @@ export class MobSystem {
       // A member under a host only sees the host's shots fly: the host decides what they hit.
       if (this.replica) continue;
       const reach = s.kind === 'breath' || s.kind === 'shard' ? 10 : 7;
-      if (!this.selfAway && shotHits(s, p.x, p.y - 12, reach)) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.biteKeeper(s.dmg, s.type ?? 'physical', undefined, s.lv); this.shotAffixes(s); continue; }
+      if (!this.selfAway && shotHits(s, p.x, p.y - 12, reach)) {
+        this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 });
+        // Wisp Ward (Lamp-Wisp's mark): a wisp at his shoulder takes the shot instead, once each.
+        const ward = this.mk('lamp-wisp', 'wispWard') ? this.wisps.find(w => w.ward) : undefined;
+        if (ward) { ward.ward = false; this.effects.push({ kind: 'kindle-hit', x: ward.x, y: ward.y, age: 0, life: .3, dir: 1 }); continue; }
+        this.biteKeeper(s.dmg, s.type ?? 'physical', undefined, s.lv); this.shotAffixes(s); continue;
+      }
       const o = this.others.find(k => shotHits(s, k.x, k.y - 12, reach));
       if (o) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.coop?.bite(o.id, null, s.dmg, s.type ?? 'physical', !!s.burn, !!s.curse); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
@@ -3152,9 +3537,13 @@ export class MobSystem {
         if (s.hit.includes(m) || !shotHits(s, m.x, m.y - m.def.h / 2, Math.max(9, m.def.w / 3))) continue;
         s.hit.push(m);
         this.effects.push({ kind: 'bone-chips', x: s.x, y: s.y, age: 0, life: .35, dir: s.vx < 0 ? -1 : 1 });
-        this.hitFoe(m, s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max']), '#e9dcff');
+        this.hitFoe(m, s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max']), '#e9dcff', s.src ?? 'bone-spear');
       }
-      if (s.age > s.life) this.spears.splice(i, 1);
+      if (s.age > s.life) {
+        this.spears.splice(i, 1);
+        // Return of the Bone (a mark): the spear turns at its length and flies back, striking again at its share.
+        if (s.back && s.dmg) this.spears.push({ x: s.x, y: s.y, vx: -s.vx, vy: -s.vy, age: 0, life: s.life, hit: [], dmg: [Math.max(1, Math.round(s.dmg[0] * s.back)), Math.max(1, Math.round(s.dmg[1] * s.back))], lift: s.lift, src: s.src });
+      }
     }
   }
 
@@ -3169,7 +3558,13 @@ export class MobSystem {
     this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
     // A Thornstrider's beast is one of the pack: its bite grows with him and with every Wild skill he holds.
     if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) }) * (1 + this.damagePct * BEAST_DAMAGE_SHARE / 100);
-    this.hurtMob(foe, Math.max(1, Math.round(dmg)), this.thorn ? '#9af0d0' : '#ffd98a');
+    const dealt = this.hurtMob(foe, Math.max(1, Math.round(dmg)), this.thorn ? '#9af0d0' : '#ffd98a');
+    if (this.thorn && foe.hp > 0) {
+      // Hamstring (Command's mark): the commanded foe's bites chill it. Wild Blood (Pack Bond's): the bite heals him.
+      if (foe === this.commanded) this.ride('command', foe, 0);
+    }
+    const wb = this.thorn && this.aura === 'pack-bond' ? this.mk('pack-bond', 'biteHeal') : null;
+    if (wb && dealt > 0) this.healOwed(dealt * (wb.n ?? 0) / 100);
     return { landed: true, killed: foe.hp <= 0 };
   }
   /** E2E only (td-engine's `?petfetch=1` under webdriver): a material lying at (x, y), as if a creature dropped it. */
@@ -3195,6 +3590,13 @@ export class MobSystem {
       if (k.hp > 0) continue;
       this.minions.splice(i, 1);
       for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
+      // Ember Bones (a mark): a skeleton that crumbles bursts into fire round where it stood.
+      const cr = this.mk('raise-skeleton', 'crumble');
+      if (cr) {
+        const r = (cr.m ?? 0) * TILE, n = k.maxHp * (cr.n ?? 0) / 100 / Math.max(.1, this.power);
+        for (const m of [...this.mobs]) if (Math.hypot(m.x - k.x, m.y - k.y) <= r && this.reaches(k.x, k.y, m)) this.hitFoe(m, n * this.fireMult, '#ff9a4a', null);
+        this.effects.push({ kind: 'wave', x: k.x, y: k.y, age: 0, life: .5, dir: 1, r: Math.round(r) });
+      }
     }
     const face = this.formFace(), fans = this.fanCounts();
     this.minions.forEach((k, slot) => {
@@ -3219,7 +3621,10 @@ export class MobSystem {
         // The Ashbone Phylactery: each skeleton's first blow is a breath of fire.
         const breath = this.relics.breath > 0 && !k.breathed;
         if (breath) { k.breathed = true; for (let j = 0; j < 3; j++) this.effects.push({ kind: 'flame', x: (k.x + foe.x) / 2 + (j - 1) * 4, y: (k.y + foe.y) / 2, age: 0, life: .45, dir: 1 }); }
-        this.hurtMob(foe, Math.round(rnd(k.dmg[0], k.dmg[1]) * (breath ? this.relics.breath : 1)), breath ? '#ff9a4a' : '#c88bff');
+        const blow = rnd(k.dmg[0], k.dmg[1]);
+        this.hurtMob(foe, Math.round(blow * (breath ? this.relics.breath : 1)), breath ? '#ff9a4a' : '#c88bff');
+        // Ash-Bone (Raise Skeleton's mark): the blow sets what it struck burning.
+        if (foe.hp > 0) this.ride('raise-skeleton', foe, blow / Math.max(.1, this.power));
       }
     });
     this.spreadKin(dt);
@@ -3327,13 +3732,59 @@ export class MobSystem {
     const sk = SKILLS[id];
     if (!sk || sk.kind !== 'active') return null;
     if (this.rank(id) < 1) return 'locked';
-    if ((this.cooldowns[id] ?? 0) > 0) return 'cooldown';
-    if (this.mana < sk.mana) return 'mana';
+    // Double Stride (Ash Stride's mark): a second charge soon after the first is free.
+    const free = id === 'ash-stride' && this.strideFreeT > 0;
+    if (!free && (this.cooldowns[id] ?? 0) > 0) return 'cooldown';
+    const cost = free ? 0 : this.manaOf(id);
+    if (this.mana < cost) return 'mana';
+    const why = this.castBody(id);
+    if (why) return why;
+    this.mana -= cost;
+    if (free) { this.strideFreeT = 0; return null; }
+    this.cooldowns[id] = this.cdOf(id) / (1 + this.castSpeed);
+    // The marks that follow a cast: an echo (Twin Nova, Twin Impact, Return Charge…), Double Stride's free window.
+    const echo = this.mk(id, 'echo');
+    if (echo) this.echoes.push({ id, t: echo.s ?? 0, k: (echo.n ?? 100) / 100, left: Math.max(0, (echo.m ?? 1) - 1), gap: echo.s ?? 0 });
+    const again = this.mk(id, 'again');
+    if (again) this.strideFreeT = again.s ?? 0;
+    return null;
+  }
+  /** Double Stride's window: seconds a free second Ash Stride stays open. */
+  strideFreeT = 0;
+  /** The echoes' clock: each goes off when its seconds run out, a free cast at its share (no mana, no cooldown). */
+  private tickEchoes(dt: number): void {
+    for (let i = this.echoes.length - 1; i >= 0; i--) {
+      const e = this.echoes[i];
+      e.t -= dt;
+      if (e.t > 0) continue;
+      if (e.left > 0) { e.left--; e.t = e.gap; } else this.echoes.splice(i, 1);
+      this.freeCast(e.id, e.k);
+    }
+  }
+  /** A free cast of a skill at a share of its numbers (an echo, Flare Open): no mana, no cooldown, its refusals ignored. */
+  private freeCast(id: SkillId, k: number): void {
+    if (this.rank(id) < 1 && id !== 'blinding-flash') return;
+    const was = this.echoK;
+    this.echoK = k;
+    try { this.castBody(id); } finally { this.echoK = was; }
+  }
+  /**
+   * What a skill does when it goes off: the effect alone (useAbility checks and pays; an echo pays nothing). Every hit
+   * it lands now is its own (`src`), so its marks' riders and rules ride on them.
+   */
+  private castBody(id: SkillId): ReturnType<MobSystem['useAbility']> {
+    const was = this.src;
+    this.src = id;
+    try { return this.castOnce(id); } finally { this.src = was; }
+  }
+  private castOnce(id: SkillId): ReturnType<MobSystem['useAbility']> {
     const p = this.host.player();
     // The foe a spell goes at: the target when it is in range and in sight, else the nearest one in sight (td-sight).
+    // Long Reach (Drain Life's mark) lengthens it for that spell alone.
+    const reach = this.range + (this.mk(id, 'reach')?.n ?? 0) * TILE;
     const foeInRange = (): Mob | null => {
-      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= this.range && this.sees(this.target)) return this.target;
-      let best: Mob | null = null, bd = this.range;
+      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= reach && this.sees(this.target)) return this.target;
+      let best: Mob | null = null, bd = reach;
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d <= bd && this.sees(m)) { bd = d; best = m; } }
       return best;
     };
@@ -3345,51 +3796,78 @@ export class MobSystem {
       // "Heals you for {{heal}}% of it": of the life it really pulled (spell power, a crit and all), not of the bare roll.
       const pulled = this.hitFoe(foe, rnd(v['min'], v['max']), '#ff7a6a');
       const heal = Math.round(pulled * v['heal'] / 100);
+      // Grave Thirst (a mark): what the heal would pour past full life becomes a ward, up to its most.
+      const thirst = this.mk(id, 'overheal'), hp = this.host.playerHp?.();
+      if (thirst && hp !== undefined && hp + heal > this.keeperMaxHp) {
+        this.markShield = Math.min(thirst.n ?? 0, this.markShield + (hp + heal - this.keeperMaxHp)); this.markShieldT = Math.max(this.markShieldT, 10);
+      }
       this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a');
+      // Share the Cup: the raised drink of it too.
+      const cup = this.mk(id, 'kinHeal');
+      if (cup) this.healKin(heal * (cup.n ?? 0) / 100);
       this.host.swung(foe);
     } else if (id === 'ember-curse') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
-      foe.cursed = v['secs']; foe.burnT = 1;
-      this.effects.push({ kind: 'curse', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .6, dir: 1 });
+      // Hex Ring (a mark): every foe near the target takes the curse too.
+      const ring = this.mk(id, 'hexRing');
+      const cursed = ring ? this.mobs.filter(m => m === foe || (Math.hypot(m.x - foe.x, m.y - foe.y) <= (ring.n ?? 0) * TILE && this.sight.sees(foe.x, foe.y, m.x, m.y))) : [foe];
+      for (const m of cursed) {
+        m.cursed = v['secs']; m.burnT = 1;
+        this.ride(id, m, 0);
+        this.effects.push({ kind: 'curse', x: m.x, y: m.y - m.def.h - 4, age: 0, life: .6, dir: 1 });
+      }
       this.host.swung(foe);
     } else if (id === 'hellfire-nova') {
       // Only what the Keeper can see: a nova by a wall does not burn the room behind it.
       for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) this.hitFoe(m, rnd(v['min'], v['max']) * this.fireMult, '#ff9a4a');
       // The ring runs out for half a second, the scorch fades over the next half (on the ground, at the feet).
       this.effects.push({ kind: 'wave', x: p.x, y: p.y, age: 0, life: 1, dir: 1, r: Math.round(v['radius'] * TILE) });
+      this.layField(id, p.x, p.y, v);
       this.host.swung(null);
     } else if (id === 'bone-spear') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
       this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .15, dir: 1 });
-      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], lift: 16, land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y) });
+      // Twin Spear (a mark): two spears, a few degrees apart. Return of the Bone: each comes back once at its share.
+      const twin = this.mk(id, 'twin'), back = this.mk(id, 'return');
+      const angles = twin ? [a - (twin.n ?? 0) * Math.PI / 360, a + (twin.n ?? 0) * Math.PI / 360] : [a];
+      for (const t of angles) this.spears.push({ x: sx, y: sy, vx: Math.cos(t) * SPEAR_SPEED, vy: Math.sin(t) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']], lift: 16, land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y), src: id, ...(back ? { back: (back.n ?? 0) / 100 } : {}) });
       this.host.swung(foe);
     } else if (id === 'raise-skeleton') {
       // From the fresh dead nearest the Keeper first; with none, out of the ground at his side.
       const fresh = this.corpses
         .filter(cp => this.clock - cp.at <= CORPSE_SECS && Math.hypot(cp.x - p.x, cp.y - p.y) <= v['reach'] * TILE)
         .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
-      const st = raisedStats(this.keeperLevel, this.power, v);
-      // Skeleton Mastery: the raised stand sturdier and hit harder.
-      if (this.rank('skeleton-mastery') > 0) {
-        const k = 1 + this.v('skeleton-mastery')['pct'] / 100;
-        st.hp = Math.round(st.hp * k); st.dmg = [Math.max(1, Math.round(st.dmg[0] * k)), Math.max(1, Math.round(st.dmg[1] * k))];
-      }
+      const st = this.raisedNow(v);
+      // Captain of the Dead (a mark): the first of each raising stands and strikes twice as hard.
+      const captain = this.mk(id, 'captain');
       for (let i = 0; i < v['count']; i++) {
         const cp = fresh[i];
         // Out of the ground at its own place in the formation (td-sight), never on another's.
         const at = cp ? { x: cp.x, y: cp.y } : this.slotOpen(formationSpot(this.minions.length, p, this.formFace()));
         if (cp) this.corpses.splice(this.corpses.indexOf(cp), 1);
-        this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null });
+        const k = captain && i === 0 ? captain.n ?? 1 : 1, hp = Math.round(st.hp * k);
+        this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp, maxHp: hp, dmg: [Math.round(st.dmg[0] * k), Math.round(st.dmg[1] * k)], cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null, ...(k > 1 ? { captain: true } : {}) });
         this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
       }
       capMinions(this.minions, v['cap']);
       this.host.swung(null);
     } else if (id === 'dark-ward') {
-      this.ward = v['absorb']; this.wardT = v['secs'];
+      this.ward = v['absorb']; this.wardT = v['secs']; this.wardMax = v['absorb'];
       this.effects.push({ kind: 'ward', x: p.x, y: p.y - 14, age: 0, life: .6, dir: 1 });
+      // Life Tap (Dark Ward's mark now): the casting turns a share of life into mana, never the last of it.
+      if (this.rank('life-tap') > 0 && this.echoK === 1) {
+        const tap = this.v('life-tap'), hp = this.host.playerHp?.() ?? Infinity, take = Math.round(this.keeperMaxHp * tap['life'] / 100);
+        if (take > 0 && hp > take) {
+          this.host.hurtPlayer(take);
+          this.mana = Math.min(this.maxMana, this.mana + tap['mana']);
+          this.float(p.x - 6, p.y - 36, `-${take}`, '#ff5a4a');
+          this.float(p.x + 6, p.y - 30, `+${tap['mana']}`, '#7fb8ff');
+          this.effects.push({ kind: 'drain', x: p.x - 10, y: p.y - 30, tx: p.x + 10, ty: p.y - 18, age: 0, life: .5, dir: 1 });
+        }
+      }
       this.host.swung(null);
     } else if (id === 'light') {
       // Light (design-bible §4.6): the Keeper's own light reaches further while it burns; spoken again it starts over.
@@ -3408,10 +3886,26 @@ export class MobSystem {
       const why = this.useTreeSkill(id, v, foeInRange);
       if (why) return why;
     }
-    this.mana -= sk.mana;
-    this.cooldowns[id] = this.cdOf(id) / (1 + this.castSpeed);
     return null;
   }
+  /** Raised skeletons' numbers now: their rank's (raisedStats), with Skeleton Mastery (its mark) on top. */
+  private raisedNow(v: Record<string, number>): { hp: number; dmg: [number, number] } {
+    const st = raisedStats(this.keeperLevel, this.power, v);
+    if (this.rank('skeleton-mastery') > 0) {
+      const k = 1 + this.v('skeleton-mastery')['pct'] / 100;
+      st.hp = Math.round(st.hp * k); st.dmg = [Math.max(1, Math.round(st.dmg[0] * k)), Math.max(1, Math.round(st.dmg[1] * k))];
+    }
+    return st;
+  }
+  /** A mark's burning ground (`field`: Scorched Earth, Burning Crater) where a skill's blast was: its share of the hit a second. */
+  private layField(id: SkillId, x: number, y: number, v: Record<string, number>): void {
+    const f = this.mk(id, 'field');
+    if (!f) return;
+    const dps = Math.max(1, Math.round((v['min'] + v['max']) / 2 * (f.n ?? 0) / 100));
+    this.zones.push({ kind: 'field', x, y, r: (f.m ?? 1) * TILE, t: f.s ?? 0, tick: 1, min: dps, max: dps, src: id });
+  }
+  /** The Dark Ward's whole absorb when it was laid (Ward the Fellowship's burst reads it). */
+  private wardMax = 0;
 
   /**
    * The trees' new skills (docs/design/skill-trees.md). Each is small and self-contained: it reads its numbers at its
@@ -3430,11 +3924,17 @@ export class MobSystem {
     } else if (id === 'flame-wall') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
-      // Across the way from the Keeper to the foe, through the foe: whatever walks it burns.
-      const a = Math.atan2(foe.y - p.y, foe.x - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
-      // Not in a wall (td-sight): a flame on rock burns nothing, and each tongue burns only what it can reach.
-      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE, q = { x: foe.x + Math.cos(a) * o, y: foe.y + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
-      this.zones.push({ kind: 'wall', x: foe.x, y: foe.y, r: TILE * .7, t: v['secs'], tick: 0, min: v['dps'], max: v['dps'], pts });
+      // Ring of Fire (a mark): a ring round the target instead of a line. Twin Walls: a second line square to the
+      // first, the two at their share.
+      const ring = this.mk(id, 'ring'), cross = this.mk(id, 'cross'), k = cross ? (cross.n ?? 100) / 100 : 1;
+      const lines = ring ? [this.ringPts(foe.x, foe.y, (ring.n ?? 2) * TILE)] : [0, ...(cross ? [Math.PI / 2] : [])].map(turn => {
+        // Across the way from the Keeper to the foe, through the foe: whatever walks it burns.
+        const a = Math.atan2(foe.y - p.y, foe.x - p.x) + Math.PI / 2 + turn, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
+        // Not in a wall (td-sight): a flame on rock burns nothing, and each tongue burns only what it can reach.
+        for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE, q = { x: foe.x + Math.cos(a) * o, y: foe.y + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
+        return pts;
+      });
+      for (const pts of lines) this.zones.push({ kind: 'wall', x: foe.x, y: foe.y, r: TILE * .7, t: v['secs'], tick: 0, min: v['dps'] * k, max: v['dps'] * k, pts });
       this.host.swung(foe);
     } else if (id === 'meteor') {
       const foe = foeInRange();
@@ -3447,19 +3947,24 @@ export class MobSystem {
         .filter(c => this.clock - c.at <= CORPSE_SECS && Math.hypot(c.x - p.x, c.y - p.y) <= v['reach'] * TILE)
         .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
       if (!cp) return 'nocorpse';
-      this.corpses.splice(this.corpses.indexOf(cp), 1);
-      for (const m of [...this.mobs]) if (Math.hypot(m.x - cp.x, m.y - cp.y) <= v['radius'] * TILE && this.reaches(cp.x, cp.y, m)) this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
-      this.effects.push({ kind: 'flash', x: cp.x, y: cp.y - 6, age: 0, life: .2, dir: 1 });
-      this.effects.push({ kind: 'wave', el: 'bone', x: cp.x, y: cp.y, age: 0, life: .6, dir: 1, r: Math.round(v['radius'] * TILE) });
-      for (let i = 0; i < 4; i++) this.effects.push({ kind: 'bone-chips', x: cp.x + (i % 2 ? -8 : 8), y: cp.y - 4 - (i < 2 ? 6 : 0), age: 0, life: .4, dir: i % 2 ? -1 : 1 });
+      // Chain of Graves (a mark): the burst sets off the next fresh corpse near it, and that one the next.
+      const chain = this.mk(id, 'chain');
+      let at: { x: number; y: number; at: number } | undefined = cp;
+      for (let n = 0; at && n <= (chain?.m ?? 0); n++) {
+        const here: { x: number; y: number; at: number } = at;
+        this.corpses.splice(this.corpses.indexOf(here), 1);
+        this.burstCorpse(here, v);
+        at = chain ? this.corpses.filter(c => this.clock - c.at <= CORPSE_SECS && Math.hypot(c.x - here.x, c.y - here.y) <= (chain.s ?? 0) * TILE)
+          .sort((a, b) => Math.hypot(a.x - here.x, a.y - here.y) - Math.hypot(b.x - here.x, b.y - here.y))[0] : undefined;
+      }
       this.host.swung(null);
     } else if (id === 'bone-storm') {
-      // A fan of spears at the foe; with none in reach, a ring of them all round.
-      const foe = foeInRange(), n = Math.max(1, v['count']), sx = p.x, sy = p.y - 16;
+      // A fan of spears at the foe; with none in reach (or Full Circle, a mark), a ring of them all round.
+      const foe = foeInRange(), n = Math.max(1, v['count']), sx = p.x, sy = p.y - 16, ring = !foe || !!this.mk(id, 'ringFan');
       const base = foe ? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx) : 0;
       for (let i = 0; i < n; i++) {
-        const a = foe ? base + (i - (n - 1) / 2) * .22 : i / n * Math.PI * 2;
-        this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']], lift: 16, ...(foe ? { land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y) } : {}) });
+        const a = ring ? base + i / n * Math.PI * 2 : base + (i - (n - 1) / 2) * .22;
+        this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']], lift: 16, src: id, ...(foe && !ring ? { land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y) } : {}) });
       }
       this.effects.push({ kind: 'flash', x: sx, y: sy, age: 0, life: .2, dir: 1 });
       this.host.swung(foe);
@@ -3472,27 +3977,47 @@ export class MobSystem {
       if (!foe) return 'nofoe';
       for (const m of this.mobs) if (Math.hypot(m.x - foe.x, m.y - foe.y) <= v['radius'] * TILE && this.sight.sees(foe.x, foe.y, m.x, m.y)) {
         m.weak = v['secs']; m.weakPct = v['weaken'];
+        // Withering (a mark): the weakened are Chilled too.
+        this.ride(id, m, 0);
         this.effects.push({ kind: 'curse', x: m.x, y: m.y - m.def.h - 4, age: 0, life: .6, dir: 1 });
       }
       this.effects.push({ kind: 'wave', el: 'shadow', x: foe.x, y: foe.y, age: 0, life: .6, dir: 1, r: Math.round(v['radius'] * TILE) });
       this.host.swung(foe);
-    } else if (id === 'life-tap') {
-      const hp = this.host.playerHp?.() ?? Infinity;
-      if (hp <= v['life']) return 'life';
-      this.host.hurtPlayer(v['life']);
-      this.mana = Math.min(this.maxMana, this.mana + v['mana']);
-      this.float(p.x - 6, p.y - 36, `-${v['life']}`, '#ff5a4a');
-      this.float(p.x + 6, p.y - 30, `+${v['mana']}`, '#7fb8ff');
-      this.effects.push({ kind: 'drain', x: p.x - 10, y: p.y - 30, tx: p.x + 10, ty: p.y - 18, age: 0, life: .5, dir: 1 });
-      this.host.swung(null);
     } else if (id === 'doom') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       foe.doom = v['secs']; foe.doomHit = { min: v['min'], max: v['max'], r: v['radius'] * TILE };
       this.effects.push({ kind: 'curse', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .8, dir: 1 });
+      // Doomed Together (a mark): the nearest other foe is doomed with it.
+      const two = this.mk(id, 'doomTwo');
+      if (two) {
+        const o = this.mobs.filter(m => m !== foe && !(m.doom ?? 0) && Math.hypot(m.x - foe.x, m.y - foe.y) <= (two.s ?? 0) * TILE).sort((a, b) => Math.hypot(a.x - foe.x, a.y - foe.y) - Math.hypot(b.x - foe.x, b.y - foe.y))[0];
+        if (o) { o.doom = v['secs']; o.doomHit = { ...foe.doomHit }; this.effects.push({ kind: 'curse', x: o.x, y: o.y - o.def.h - 4, age: 0, life: .8, dir: 1 }); }
+      }
       this.host.swung(foe);
     }
     return null;
+  }
+  /** One corpse bursts (Corpse Burst), and Bone Shards (a mark) fly out of it. */
+  private burstCorpse(cp: { x: number; y: number }, v: Record<string, number>): void {
+    for (const m of [...this.mobs]) if (Math.hypot(m.x - cp.x, m.y - cp.y) <= v['radius'] * TILE && this.reaches(cp.x, cp.y, m)) this.hitFoe(m, rnd(v['min'], v['max']), '#e9dcff');
+    this.effects.push({ kind: 'flash', x: cp.x, y: cp.y - 6, age: 0, life: .2, dir: 1 });
+    this.effects.push({ kind: 'wave', el: 'bone', x: cp.x, y: cp.y, age: 0, life: .6, dir: 1, r: Math.round(v['radius'] * TILE) });
+    for (let i = 0; i < 4; i++) this.effects.push({ kind: 'bone-chips', x: cp.x + (i % 2 ? -8 : 8), y: cp.y - 4 - (i < 2 ? 6 : 0), age: 0, life: .4, dir: i % 2 ? -1 : 1 });
+    const sh = this.mk('corpse-burst', 'shards');
+    if (sh) {
+      const n = sh.m ?? 0, k = (sh.n ?? 0) / 100;
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2 + Math.PI / 4;
+        this.spears.push({ x: cp.x, y: cp.y - 6, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: (sh.s ?? 0) * TILE / SPEAR_SPEED, hit: [], dmg: [Math.max(1, Math.round(v['min'] * k)), Math.max(1, Math.round(v['max'] * k))], lift: 6, src: 'corpse-burst' });
+      }
+    }
+  }
+  /** Points round a ring (Ring of Fire, Ring of Thorns): one a tile of its rim, none in rock. */
+  private ringPts(x: number, y: number, r: number): { x: number; y: number }[] {
+    const n = Math.max(6, Math.round(Math.PI * 2 * r / TILE)), out: { x: number; y: number }[] = [];
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, q = { x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }; if (!this.sight.wallAt(q.x, q.y - 1)) out.push(q); }
+    return out;
   }
 
   // ── The Ashguard (td-ashguard-skills.ts, design-bible §4.4) ──
@@ -3516,9 +4041,13 @@ export class MobSystem {
   /** The basic attack: one swing of the Watch Blade in an arc toward the foe (the Ember Brand lights it while it burns). */
   private swingBlade(foe: Mob): void {
     const p = this.host.player(), v = this.v('watch-blade');
-    this.swing = SKILLS['watch-blade'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism;
-    this.strike(Math.atan2(foe.y - p.y, foe.x - p.x), v['reach'] * TILE, v['arc'], 100, false, foe);
+    // Guard's Rhythm (a mark): a quicker swing.
+    this.swing = SKILLS['watch-blade'].cd / (1 + this.agility) / (1 + this.castSpeed) / this.fanaticism / (1 + (this.mk('watch-blade', 'speed')?.n ?? 0) / 100);
     this.swings++;
+    // Fifth Strike (a mark): every fifth swing is a heavy blow that stuns what it strikes.
+    const nth = this.mk('watch-blade', 'nth'), heavy = !!nth && this.swings % (nth.m ?? 1) === 0;
+    const struck = this.strike(Math.atan2(foe.y - p.y, foe.x - p.x), v['reach'] * TILE, v['arc'], heavy ? nth!.n ?? 100 : 100, false, foe, 'watch-blade', heavy ? nth!.s ?? 0 : 0);
+    void struck;
     this.host.swung(foe);
   }
   /**
@@ -3526,7 +4055,7 @@ export class MobSystem {
    * The Ember Brand, while it burns, lifts each blow by its % and sets its burn. `must` is struck even at the arc's
    * very edge (the creature the Keeper aimed at). Returns how many it struck.
    */
-  private strike(aim: number, reach: number, arc: number, pct: number, fire: boolean, must: Mob | null): number {
+  private strike(aim: number, reach: number, arc: number, pct: number, fire: boolean, must: Mob | null, src: SkillId | null = this.src, stun = 0): number {
     const p = this.host.player(), blade = this.v('watch-blade');
     const brand = this.brandT > 0 && this.rank('ember-brand') > 0 ? this.v('ember-brand') : null;
     const lit = fire || !!brand;
@@ -3540,11 +4069,25 @@ export class MobSystem {
       if (brand) blow = brandedBlow(blow, brand['pct']);
       if (lit) blow *= this.fireMult;
       this.effects.push({ kind: 'slash', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .2, dir: m.x < p.x ? -1 : 1 });
-      this.hitFoe(m, blow, lit ? '#ffb347' : '#f3e7cf');
+      this.hitFoe(m, blow, lit ? '#ffb347' : '#f3e7cf', src);
       if (brand && m.hp > 0) { m.brandT = 3; m.brandTick = 1; m.brandDps = brand['burn']; m.brandTicks = 3; }
+      if (stun > 0 && m.hp > 0) this.applyStatus(m, 'stun', stun);
       n++;
     }
     return n;
+  }
+  /** Seconds to the Taunting Vow's next call. */
+  private vowTauntT = 0;
+  /** Pull of the Fire, Call to the Gate (marks): every foe within `radius` tiles drawn its tiles toward the Keeper. */
+  private pullIn(id: SkillId, radius: number): void {
+    const pl = this.mk(id, 'pull');
+    if (!pl) return;
+    const p = this.host.player(), r = (pl.m || radius) * TILE;
+    for (const m of this.mobs) {
+      const d = Math.hypot(m.x - p.x, m.y - p.y);
+      if (d > r || d < 12 || !this.sees(m) || m.def.rank === 'boss') continue;
+      this.knock(m, (p.x - m.x) / d, (p.y - m.y) / d, Math.min(d - 10, (pl.n ?? 0) * TILE));
+    }
   }
   /** The nearest creature within `reach` art px of the Keeper (the target first, when it is in reach). */
   private foeWithin(reach: number): Mob | null {
@@ -3569,13 +4112,31 @@ export class MobSystem {
     } else if (id === 'whirl-of-cinders') {
       // Two seconds of turning: a full ring of the blade every half second, round the Keeper wherever he walks.
       this.zones.push({ kind: 'whirl', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['hits'] * .5, tick: 0, min: v['pct'], max: v['hits'] });
+      // Pull of the Fire (a mark): what stands near is drawn in to the blade.
+      this.pullIn(id, v['radius']);
       this.host.swung(null);
     } else if (id === 'shield-bash') {
-      const foe = this.foeWithin(reach);
+      // Shield Rush (a mark): a short dash to a foe a little further off, then the bash.
+      const rush = this.mk(id, 'rush');
+      const foe = this.foeWithin(reach + (rush?.n ?? 0) * TILE);
       if (!foe) return 'nofoe';
-      this.effects.push({ kind: 'bash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .35, dir: foe.x < p.x ? -1 : 1 });
-      this.hitFoe(foe, rnd(v['min'], v['max']), '#e0b25a');
-      if (foe.hp > 0) foe.stun = ccSecs(v['stun'], foe.def.rank);
+      if (rush && Math.hypot(foe.x - p.x, foe.y - p.y) > reach) { const to = strideEnd(p.x, p.y, foe.x, foe.y, 14); this.host.dash?.(to.x, to.y); }
+      const at = this.host.player();
+      this.effects.push({ kind: 'bash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .35, dir: foe.x < at.x ? -1 : 1 });
+      // Wide Bash (a mark): every foe in an arc takes it, not only the one aimed at.
+      const wide = this.mk(id, 'wideBash'), aim = Math.atan2(foe.y - at.y, foe.x - at.x);
+      const hit = wide ? this.mobs.filter(m => m === foe || (inArc(at.x, at.y, aim, (wide.m ?? 1) * TILE, wide.n ?? 90, m.x, m.y, m.def.w / 2) && this.sees(m))) : [foe];
+      for (const m of hit) {
+        this.hitFoe(m, rnd(v['min'], v['max']), '#e0b25a');
+        if (m.hp <= 0) continue;
+        m.stun = ccSecs(v['stun'], m.def.rank);
+        // Concussion (a mark): the stunned stay Hushed a while after.
+        const co = this.mk(id, 'concuss');
+        if (co) m.hushT = Math.max(m.hushT ?? 0, m.stun + (co.s ?? 0));
+      }
+      // Grave-Stamp (a mark): the shock knocks the foes beside the struck one off their feet.
+      const gs = this.mk(id, 'stampStun');
+      if (gs) for (const m of this.mobs) if (!hit.includes(m) && Math.hypot(m.x - foe.x, m.y - foe.y) <= (gs.n ?? 0) * TILE) this.applyStatus(m, 'stun', gs.s ?? 0);
       this.host.swung(foe);
     } else if (id === 'shield-oath') {
       this.blockT = v['secs']; this.blockPct = v['block'];
@@ -3583,7 +4144,14 @@ export class MobSystem {
       this.host.swung(null);
     } else if (id === 'watch-cry') {
       // Every creature within the cry turns on the Keeper (the pet and the raised are spared), and he braces.
-      for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) m.taunt = ccSecs(v['secs'], m.def.rank);
+      // Fearsome (a mark): a lesser creature (not a boss, below the Keeper's level) flees instead of turning on him.
+      const fear = this.mk(id, 'fearsome');
+      for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) {
+        if (fear && m.def.rank !== 'boss' && m.def.level < this.keeperLevel) this.applyStatus(m, 'fear', fear.s ?? 0);
+        else m.taunt = ccSecs(v['secs'], m.def.rank);
+      }
+      // Call to the Gate (a mark): the taunted are drawn a step toward him.
+      this.pullIn(id, v['radius']);
       this.guardT = v['secs']; this.guardPct = v['guard'];
       this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .6, dir: 1 });
     } else if (id === 'ash-stride') {
@@ -3594,6 +4162,8 @@ export class MobSystem {
       const at = this.host.player();
       this.effects.push({ kind: 'stride', x: at.x, y: at.y, tx: from.x, ty: from.y, age: 0, life: .4, dir: foe.x < from.x ? -1 : 1 });
       this.hitFoe(foe, meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], v['pct'], Math.random, this.weaponSwing), '#efe6dc');
+      // Through the Ranks (a mark): every foe on the charge's path takes the blow too.
+      if (this.mk(id, 'through')) for (const m of [...this.mobs]) if (m !== foe && m.hp > 0 && segDist(from.x, from.y, at.x, at.y, m.x, m.y) <= TILE * .8) this.hitFoe(m, meleeBlow(this.v('watch-blade')['min'], this.v('watch-blade')['max'], v['pct'], Math.random, this.weaponSwing), '#efe6dc');
       // The knock: a tile back along the charge, if the ground behind it is open (never for a boss).
       if (foe.hp > 0 && foe.def.rank !== 'boss') {
         const d = Math.hypot(foe.x - at.x, foe.y - at.y) || 1, k = v['knock'] * TILE / d, kx = foe.x + (foe.x - at.x) * k, ky = foe.y + (foe.y - at.y) * k;
@@ -3601,7 +4171,7 @@ export class MobSystem {
       }
       this.host.swung(foe);
     } else if (id === 'last-watch') {
-      this.vowT = v['secs']; this.vowTaken = 0;
+      this.vowT = v['secs']; this.vowTaken = 0; this.vowTauntT = 0;
       this.effects.push({ kind: 'vow', x: p.x, y: p.y - 30, age: 0, life: .8, dir: 1 });
       this.host.swung(null);
     }
@@ -3609,6 +4179,19 @@ export class MobSystem {
   }
   /** The Ashguard's timers: the brand, the oath, the guard, the vow (when the vow ends, a share of what it held comes back). */
   private tickOaths(dt: number): void {
+    // Kept Fire (a mark): while he stands his ground, the brand stays lit.
+    if (this.rank('ember-brand') > 0 && this.mk('ember-brand', 'keptFire') && Math.hypot(this.pv.x, this.pv.y) < STILL_PACE) this.brandT = Math.max(this.brandT, .5);
+    // Taunting Vow (a mark): while the vow holds, every few seconds what stands near turns on him.
+    const tv = this.vowT > 0 ? this.mk('last-watch', 'vowTaunt') : null;
+    if (tv) {
+      this.vowTauntT -= dt;
+      if (this.vowTauntT <= 0) {
+        this.vowTauntT = tv.s ?? 1;
+        const p = this.host.player();
+        for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= (tv.n ?? 0) * TILE && this.sees(m)) m.taunt = Math.max(m.taunt ?? 0, ccSecs(tv.s ?? 1, m.def.rank));
+        this.effects.push({ kind: 'cry', x: p.x, y: p.y, r: Math.round((tv.n ?? 0) * TILE), age: 0, life: .4, dir: 1 });
+      }
+    }
     if (this.brandT > 0) this.brandT = Math.max(0, this.brandT - dt);
     if (this.blockT > 0) this.blockT = Math.max(0, this.blockT - dt);
     if (this.guardT > 0) this.guardT = Math.max(0, this.guardT - dt);
@@ -3626,8 +4209,41 @@ export class MobSystem {
 
   // ── The Lanternwright (td-lantern-skills.ts, design-bible §4.3) ──
 
+  /**
+   * Hushed (a mark's interrupt: Lay to Rest, Concussion, Hushing Barb…, or inside No Shadow's dawn): no shots, no ground
+   * attack, no charge.
+   */
+  private hushed(m: Mob): boolean {
+    if ((m.hushT ?? 0) > 0) return true;
+    return !!this.mk('dawn-at-noon', 'zoneHush') && this.zones.some(z => z.kind === 'dawn' && inDisc(m.x, m.y, z.x, z.y, z.r));
+  }
+  /** Night Shroud (Dark Ward's mark): while the ward holds, nothing farther than its tiles can aim at the Keeper. */
+  private shrouded(d: number): boolean {
+    const sh = this.ward > 0 ? this.mk('dark-ward', 'shroud') : null;
+    return !!sh && d > (sh.n ?? 0) * TILE;
+  }
+  /** How much nearer a creature must come to notice a shuttered Lanternwright (art px; Infinity: it leaves him be). */
+  private shutterQuiet(m: Mob): number {
+    if (!this.lamp || !this.shuttered) return 0;
+    if (this.mk('shutter-lantern', 'mothHours') && shadowBorn(m.def.id) && m.hp >= m.def.hp) return Infinity;
+    return (this.mk('shutter-lantern', 'quietSight')?.n ?? 0) * TILE;
+  }
+  /** A creature's blow has landed on the Keeper: Flareback (the Aura of Embers' mark) sets it burning. */
+  private struckBy(m: Mob): void {
+    const fb = this.aura === 'aura-embers' ? this.mk('aura-embers', 'struck') : null;
+    if (fb && m.hp > 0) this.applyStatus(m, 'burn', fb.s ?? 0, this.v('aura-embers')['dps'] * this.fireMult);
+  }
   /** A creature's pace: a Hearth Circle's ground slows whatever walks in it. */
   private paceOf(m: Mob): number {
+    return this.groundPace(m) * ((m.chillT ?? 0) > 0 ? 1 - CHILL_SLOW : 1) * this.firebreak(m);
+  }
+  /** Firebreak (Flame Wall's mark): a creature in the fire walks slower. */
+  private firebreak(m: Mob): number {
+    const fb = this.mk('flame-wall', 'slowZone');
+    if (!fb) return 1;
+    return this.zones.some(z => z.kind === 'wall' && z.pts?.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r)) ? 1 - (fb.n ?? 0) / 100 : 1;
+  }
+  private groundPace(m: Mob): number {
     // The level gap (td-zones gapPace): a creature above the Keeper's level is quicker on its feet.
     const gap = this.levelGap ? gapPace(levelGap(this.keeperLevel, m.def.level)) : 1;
     // Holy Freeze (a worn aura) slows whatever walks near the Keeper.
@@ -3636,7 +4252,16 @@ export class MobSystem {
     return frozen * gap;
   }
   /** Is the Keeper standing in his own Hearth Circle (the Hush cannot rise there)? */
-  get inHearth(): boolean { const p = this.host.player(); return this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r)); }
+  get inHearth(): boolean {
+    const p = this.host.player();
+    if (this.zones.some(z => z.kind === 'hearth' && inDisc(p.x, p.y, z.x, z.y, z.r))) return true;
+    // The marks that count as a hearth (`hearth`): the Watchfire running (Hearth of the Watch), within three tiles of a
+    // beacon (Hush-Light), while a Rootwalk runs (Mossfoot).
+    if (this.aura === 'aura-watchfire' && this.mk('aura-watchfire', 'hearth')) return true;
+    const hl = this.mk('beacon', 'hearthNear');
+    if (hl && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (hl.n ?? 0) * TILE)) return true;
+    return this.rootwalkT > 0 && !!this.mk('rootwalk', 'hearth');
+  }
   /** The discs of Dawn at Noon now burning (the engine paints the daylight and the dark layer unveils inside them). */
   get dawns(): readonly { x: number; y: number; r: number; t: number }[] { return this.zones.filter(z => z.kind === 'dawn'); }
   /** The Lantern Ward drinks a blow first; Last Light holds the fatal one to the last point and is untouchable a while. */
@@ -3665,6 +4290,10 @@ export class MobSystem {
   private breakLampWard(): void {
     const p = this.host.player(), v = this.v('lantern-ward');
     this.lampWard = 0; this.lampWardT = 0;
+    // Shatter-Light (a mark): the breaking heals a share of what it held. Self-Ward Too: it bursts as it breaks.
+    const sl = this.mk('lantern-ward', 'breakHeal');
+    if (sl) this.healOwed(v['absorb'] * (sl.n ?? 0) / 100);
+    this.wardBurst('lantern-ward', v['absorb']);
     this.effects.push({ kind: 'lward-break', x: p.x, y: p.y - 16, r: Math.round(v['radius'] * TILE), age: 0, life: .5, dir: 1 });
     for (const m of this.mobs) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE && this.sees(m)) m.stun = Math.max(m.stun ?? 0, ccSecs(v['stun'], m.def.rank));
   }
@@ -3694,6 +4323,9 @@ export class MobSystem {
       if (this.shuttered) this.lightT = 0;
       this.effects.push({ kind: 'shutter', x: p.x + (p.face ?? 1) * 9, y: p.y - 36, age: 0, life: .5, dir: this.shuttered ? -1 : 1 });
       this.host.say?.(this.shuttered ? 'lamp.shut' : 'lamp.open');
+      // Flare Open (a mark): the shutters thrown open flash as a Blinding Flash at its share.
+      const fo = !this.shuttered ? this.mk(id, 'flareOpen') : null;
+      if (fo && this.echoK === 1) this.freeCast('blinding-flash', (fo.n ?? 0) / 100);
     } else if (id === 'banish') {
       const foe = this.foeNear(p.x, p.y, v['reach'] * TILE);
       if (!foe) return 'nofoe';
@@ -3701,9 +4333,15 @@ export class MobSystem {
       this.effects.push({ kind: 'banish', x: foe.x, y: foe.y, age: 0, life: .5, dir: 1 });
       this.hitFoe(foe, lightBlow(rnd(v['min'], v['max']), foe.def.id) * (boss ? BANISH_BOSS : 1), '#ffffff');
       // What is left of one of the dead, low enough, is unmade outright.
+      // Banish the Bearer (a mark): an elite's first affix is undone a while.
+      const bb = this.mk(id, 'strip');
+      if (bb && foe.hp > 0) this.strip(foe, bb.s ?? 0);
       if (foe.hp > 0 && unmakes(foe.def.id, foe.def.rank, foe.hp, foe.def.hp, v['below'])) {
         this.float(foe.x, foe.y - foe.def.h - 8, `${foe.hp}!`, '#ffffff');
-        foe.hp = 0; this.kill(foe);
+        foe.hp = 0; this.killSrc = id; this.kill(foe); this.killSrc = null;
+        // Lay Them All (a mark): the unmaking hushes everything near it.
+        const la = this.mk(id, 'unmakeHush');
+        if (la) for (const m of this.mobs) if (Math.hypot(m.x - foe.x, m.y - foe.y) <= (la.n ?? 0) * TILE) this.applyStatus(m, 'hush', la.s ?? 0);
       }
       this.host.swung(foe);
     } else if (id === 'dawn-at-noon') {
@@ -3711,7 +4349,12 @@ export class MobSystem {
       this.effects.push({ kind: 'dawn-rise', x: p.x, y: p.y, r: Math.round(v['radius'] * TILE), age: 0, life: .9, dir: 1 });
       this.host.swung(null);
     } else if (id === 'hearthlight') {
-      this.hot = healOverTime(v['heal'], v['secs']);
+      // Quick Mend (a mark): a share of it lands at once, the rest over its seconds. Hearth Bond: more Defense a while.
+      const qm = this.mk(id, 'quickMend'), now = qm ? Math.round(v['heal'] * (qm.n ?? 0) / 100) : 0;
+      if (now > 0) { this.host.healPlayer(now); this.float(p.x, p.y - 36, `+${now}`, '#7fe08a'); }
+      this.hot = healOverTime(v['heal'] - now, v['secs']);
+      const hb = this.mk(id, 'defBuff');
+      if (hb) { this.defBuffT = hb.s ?? 0; this.defBuffPct = hb.n ?? 0; }
       this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
       this.host.swung(null);
     } else if (id === 'hearth-circle') {
@@ -3726,13 +4369,16 @@ export class MobSystem {
     } else if (id === 'lamp-wisp') {
       // The wisps answer in a flock of `count` (the old ones go back to the dark).
       this.wisps.length = 0;
-      // Spread evenly round his shoulders (a third wisp no longer circles inside the first).
-      const n = Math.max(1, v['count']);
-      for (let i = 0; i < n; i++) this.wisps.push({ x: p.x, y: p.y - 26, t: v['secs'], cd: .4 + i * .3, a: i * Math.PI * 2 / n });
+      // Spread evenly round his shoulders (a third wisp no longer circles inside the first). Lantern Swarm (a mark):
+      // more of them, each at its share; Wisp Ward: each holds one shot off.
+      const sw = this.mk(id, 'swarm'), extra = sw?.m ?? 0, n = Math.max(1, v['count']) + extra, ward = !!this.mk(id, 'wispWard');
+      for (let i = 0; i < n; i++) this.wisps.push({ x: p.x, y: p.y - 26, t: v['secs'], cd: .4 + i * .3, a: i * Math.PI * 2 / n, ...(i >= n - extra ? { k: (sw?.n ?? 100) / 100 } : {}), ...(ward ? { ward: true } : {}) });
       this.effects.push({ kind: 'wisp-call', x: p.x, y: p.y - 26, age: 0, life: .6, dir: 1 });
       this.host.swung(null);
     } else if (id === 'beacon') {
-      this.beacons.length = 0;
+      // Two Beacons (a mark): more may stand; the oldest goes when a new one is planted past that.
+      const most = this.mk(id, 'twoBeacons')?.n ?? 1;
+      while (this.beacons.length >= most) this.beacons.shift();
       this.beacons.push({ x: p.x + (p.face ?? 1) * 14, y: p.y + 2, t: v['secs'], cd: .5 });
       this.effects.push({ kind: 'beacon-plant', x: p.x + (p.face ?? 1) * 14, y: p.y + 2, age: 0, life: .6, dir: 1 });
       this.host.swung(null);
@@ -3742,6 +4388,12 @@ export class MobSystem {
   /** The Lanternwright's timers each frame: the heal's ticks, the ward, Last Light, the wisps' and the beacon's motes. */
   private tickLamp(dt: number): void {
     const p = this.host.player();
+    if (this.defBuffT > 0) this.defBuffT = Math.max(0, this.defBuffT - dt);
+    // Warm Light (the Lantern Aura's mark), Warm Pole (the Beacon's): life back a second while they hold.
+    const wl = this.aura === 'lantern-aura' ? this.mk('lantern-aura', 'regen') : null;
+    if (wl) this.healOwed(this.keeperMaxHp * (wl.n ?? 0) / 100 * dt);
+    const wp = this.mk('beacon', 'poleRegen');
+    if (wp && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (wp.m ?? 0) * TILE)) this.healOwed(this.keeperMaxHp * (wp.n ?? 0) / 100 * dt);
     if (this.hot) {
       const paid = stepHeal(this.hot, dt);
       if (paid > 0) { this.host.healPlayer(paid); this.float(p.x, p.y - 36, `+${paid}`, '#7fe08a'); }
@@ -3763,7 +4415,7 @@ export class MobSystem {
       const foe = this.foeNear(p.x, p.y, wv['range'] * TILE);
       if (!foe) continue;
       w.cd = 1;
-      this.bolts.push({ x: w.x, y: w.y, to: foe, dmg: rnd(wv['min'], wv['max']) * kin, age: 0, lamp: true, lift: p.y - w.y });
+      this.bolts.push({ x: w.x, y: w.y, to: foe, dmg: rnd(wv['min'], wv['max']) * kin * (w.k ?? 1), age: 0, lamp: true, lift: p.y - w.y, src: 'lamp-wisp' });
     }
     const bv = this.v('beacon');
     for (let i = this.beacons.length - 1; i >= 0; i--) {
@@ -3774,13 +4426,16 @@ export class MobSystem {
       const foe = this.foeNear(b.x, b.y, bv['range'] * TILE);
       if (!foe) continue;
       b.cd = 1;
-      this.bolts.push({ x: b.x, y: b.y - 30, to: foe, dmg: rnd(bv['min'], bv['max']) * kin, age: 0, lamp: true, lift: 30 });
+      this.bolts.push({ x: b.x, y: b.y - 30, to: foe, dmg: rnd(bv['min'], bv['max']) * kin, age: 0, lamp: true, lift: 30, src: 'beacon' });
     }
     for (const m of this.mobs) if ((m.revealT ?? 0) > 0) m.revealT = Math.max(0, (m.revealT ?? 0) - dt);
   }
 
   // ── The Thornstrider (td-thorn-skills.ts, design-bible §4.5) ──
 
+  /** Thorn Shots loosed (Hunter's Rhythm counts them), and Leaf-Shadow's sure crit waiting. */
+  private thornShots = 0;
+  private leafReady = false;
   /** Pack Bond holds: the aura runs and the Keeper's beast stands within its reach. */
   get bonded(): boolean {
     if (!this.thorn || this.aura !== 'pack-bond' || this.rank('pack-bond') <= 0 || !this.beast) return false;
@@ -3801,7 +4456,7 @@ export class MobSystem {
    * Loose an arrow at `foe`: it seeks it (or, given `angle`, flies straight that way, a Volley's), carrying the
    * Heartwood's lift and its pierce, the Thorn Shot's knock and a Barbed Shot's bleed.
    */
-  private looseArrow(foe: Mob, dmg: number, o: { angle?: number; barb?: { dps: number; secs: number }; pierce?: number } = {}): void {
+  private looseArrow(foe: Mob, dmg: number, o: { angle?: number; barb?: { dps: number; secs: number }; pierce?: number; src?: SkillId; crit?: boolean; most?: number } = {}): void {
     const p = this.host.player(), face = p.face ?? 1, sx = p.x + face * 7, sy = p.y - 20;
     const tv = this.v('thorn-shot'), hw = this.rank('heartwood') > 0 ? this.v('heartwood') : null;
     const aim = o.angle ?? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
@@ -3811,6 +4466,7 @@ export class MobSystem {
       x: sx, y: sy, vx: Math.cos(aim) * ARROW_SPEED, vy: Math.sin(aim) * ARROW_SPEED, age: 0, life: (this.range + 2 * TILE) / ARROW_SPEED,
       dmg: dmg * (1 + (hw?.['pct'] ?? 0) / 100), to: o.angle === undefined ? foe : null, hit: [],
       pierce: o.pierce ?? tv['pierce'] + (hw?.['pierce'] ?? 0) + this.gearPierce, knock: tv['knock'], ...(o.barb ? { barb: o.barb } : {}),
+      src: o.src ?? this.src ?? 'thorn-shot', ...(o.crit ? { crit: true } : {}), ...(o.most ? { most: o.most } : {}),
     });
     this.loosed++;
     this.effects.push({ kind: 'loose', x: sx, y: sy, age: 0, life: .2, dir: face, a: aim });
@@ -3848,7 +4504,8 @@ export class MobSystem {
         if (a.hit.includes(m) || Math.hypot(m.x - a.x, m.y - m.def.h / 2 - a.y) > Math.max(7, m.def.w / 3)) continue;
         a.hit.push(m);
         this.effects.push({ kind: 'arrow-hit', x: a.x, y: a.y, age: 0, life: .3, dir: ux < 0 ? -1 : 1, a: Math.atan2(uy, ux) });
-        this.hitFoe(m, a.dmg, '#d8f0a8');
+        this.forceCrit = !!a.crit;
+        try { this.hitFoe(m, a.dmg, '#d8f0a8', a.src ?? 'thorn-shot'); } finally { this.forceCrit = false; }
         if (a.barb && m.hp > 0) {
           const b = addBleed((m.bleedT ?? 0) > 0 ? { t: m.bleedT ?? 0, dps: m.bleedDps ?? 0 } : null, a.barb.dps, a.barb.secs);
           m.bleedT = b.t; m.bleedDps = b.dps; m.bleedTick = (m.bleedTick ?? 0) > 0 ? m.bleedTick : 1;
@@ -3856,7 +4513,7 @@ export class MobSystem {
         }
         if (m.hp > 0) this.knock(m, ux, uy, knockFor(a.knock, m.def.rank));
         // Through and on to the next foe in its line, a little spent — or it stays in this one.
-        if (a.hit.length < PIERCE_MAX && pierces(a.pierce, Math.random())) { a.to = null; a.dmg *= PIERCE_KEEP; continue; }
+        if (a.hit.length < (a.most ?? PIERCE_MAX) && pierces(a.pierce, Math.random())) { a.to = null; a.dmg *= PIERCE_KEEP; continue; }
         this.arrows.splice(i, 1);
         break;
       }
@@ -3885,7 +4542,7 @@ export class MobSystem {
         for (const m of [...this.mobs]) {
           if (b.hit?.includes(m) || Math.hypot(m.x - b.x, m.y - b.y) > 10 + m.def.w / 4 || !this.sight.sees(b.x, b.y, m.x, m.y)) continue;
           (b.hit ??= []).push(m);
-          this.hitFoe(m, rnd(b.dmg[0], b.dmg[1]) * k, '#9af0d0');
+          this.hitFoe(m, rnd(b.dmg[0], b.dmg[1]) * k, '#9af0d0', 'stampede');
           if (m.hp > 0) this.knock(m, vx / sp, vy / sp, m.def.rank === 'boss' ? (b.knock ?? 0) * .2 : b.knock ?? 0);
         }
         if ((b.left ?? 0) <= 0) { this.beasts.splice(i, 1); this.effects.push({ kind: 'trample', x: b.x, y: b.y, age: 0, life: .5, dir: b.face }); }
@@ -3913,7 +4570,9 @@ export class MobSystem {
       if (foe && Math.hypot(foe.x - b.x, foe.y - b.y) <= reach + 2 && b.cd <= 0 && this.sight.sees(b.x, b.y, foe.x, foe.y)) {
         b.cd = sent === foe ? BEAST_REST * THORN_PET.commandRest : BEAST_REST;
         this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir: b.face });
-        this.hitFoe(foe, rnd(b.dmg[0], b.dmg[1]) * (1 + this.beastPct(sent === foe) / 100), '#9af0d0');
+        this.hitFoe(foe, rnd(b.dmg[0], b.dmg[1]) * (1 + this.beastPct(sent === foe) / 100), '#9af0d0', 'call-of-the-wilds');
+        // Hamstring (Command's mark): the commanded foe's bites from the beasts chill it.
+        if (sent === foe && foe.hp > 0) this.ride('command', foe, 0);
       }
     }
   }
@@ -3924,13 +4583,19 @@ export class MobSystem {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       this.looseArrow(foe, arrowBlow(v['min'], v['max'], Math.random, this.weaponSwing), { barb: { dps: v['dps'], secs: v['secs'] } });
+      // Twin Barb (a mark): a second arrow on its heels, at its share.
+      const tb = this.mk(id, 'twinArrow');
+      if (tb) this.looseArrow(foe, arrowBlow(v['min'], v['max'], Math.random, this.weaponSwing) * (tb.n ?? 0) / 100, { barb: { dps: v['dps'], secs: v['secs'] } });
       this.host.swung(foe);
     } else if (id === 'volley') {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       const aim = Math.atan2(foe.y - foe.def.h / 2 - (p.y - 20), foe.x - (p.x + face * 7));
-      // A volley's arrows fly where they are aimed: each strikes the first foe in its own line, none of them pierce.
-      for (const a of fanAngles(aim, v['count'], 11)) this.looseArrow(foe, arrowBlow(v['min'], v['max'], Math.random, this.weaponSwing), { angle: a, pierce: 0 });
+      // A volley's arrows fly where they are aimed: each strikes the first foe in its own line, none of them pierce —
+      // unless Pierce (a mark) carries each through one more. Ring Volley: all round him.
+      const pi = this.mk(id, 'pierce'), ring = this.mk(id, 'ringFan'), n = Math.max(1, v['count']);
+      const angles = ring ? Array.from({ length: n }, (_, i) => aim + i / n * Math.PI * 2) : fanAngles(aim, n, 11);
+      for (const a of angles) this.looseArrow(foe, arrowBlow(v['min'], v['max'], Math.random, this.weaponSwing), { angle: a, pierce: pi ? 100 : 0, ...(pi ? { most: 1 + (pi.n ?? 1) } : {}) });
       this.host.swung(foe);
     } else if (id === 'command') {
       const reach = Math.max(this.range, THORN_PET.commandReach);
@@ -3941,12 +4606,16 @@ export class MobSystem {
       this.effects.push({ kind: 'command', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .8, dir: 1 });
       this.host.swung(foe);
     } else if (id === 'call-of-the-wilds') {
-      // One called beast at a time: a new call sends the old one back into the green.
+      // One called beast at a time: a new call sends the old one back into the green. Two Called (a mark): two of
+      // them, each at its share.
       for (let i = this.beasts.length - 1; i >= 0; i--) if (this.beasts[i].kind === 'called') this.beasts.splice(i, 1);
-      let x = p.x - face * 18, y = p.y + 4;
-      if (!this.free(x, y)) { x = p.x; y = p.y; }
-      this.beasts.push({ kind: 'called', x, y, t: v['secs'], cd: .4, face, age: 0, dmg: [v['min'], v['max']], target: this.commanded });
-      this.effects.push({ kind: 'wild-call', x, y, age: 0, life: .7, dir: 1 });
+      const two = this.mk(id, 'twoCalled'), k = two ? (two.n ?? 100) / 100 : 1;
+      for (let j = 0; j < (two ? 2 : 1); j++) {
+        let x = p.x - face * 18, y = p.y + 4 + j * 12;
+        if (!this.free(x, y)) { x = p.x; y = p.y; }
+        this.beasts.push({ kind: 'called', x, y, t: v['secs'], cd: .4 + j * .3, face, age: 0, dmg: [Math.max(1, Math.round(v['min'] * k)), Math.max(1, Math.round(v['max'] * k))], target: this.commanded });
+        this.effects.push({ kind: 'wild-call', x, y, age: 0, life: .7, dir: 1 });
+      }
       this.host.swung(null);
     } else if (id === 'stampede') {
       const foe = foeInRange();
@@ -3960,37 +4629,90 @@ export class MobSystem {
         });
       });
       this.effects.push({ kind: 'wild-call', x: sx, y: sy, age: 0, life: .7, dir: 2 });
+      // The Herd Remembers (a mark): each beast in the charge mends him a little.
+      const hr = this.mk(id, 'herdHeal');
+      if (hr && this.echoK === 1) this.healOwed(this.keeperMaxHp * (hr.n ?? 0) / 100 * Math.max(1, v['count']));
       this.host.swung(foe);
     } else if (id === 'thornroot-snare') {
       const foe = foeInRange();
       const cx = foe ? foe.x : p.x + face * 2 * TILE, cy = foe ? foe.y : p.y;
-      // Across the foe's way to the Keeper: the line stands square to it, one thorn-clump a tile.
-      const a = Math.atan2(cy - p.y, cx - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), pts: { x: number; y: number }[] = [];
-      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE, q = { x: cx + Math.cos(a) * o, y: cy + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
+      // Across the foe's way to the Keeper: the line stands square to it, one thorn-clump a tile. Ring of Thorns (a
+      // mark): a ring round the foe instead.
+      const a = Math.atan2(cy - p.y, cx - p.x) + Math.PI / 2, n = Math.max(2, Math.round(v['length'])), ring = this.mk(id, 'ring');
+      let pts: { x: number; y: number }[] = [];
+      if (ring) pts = this.ringPts(cx, cy, (ring.n ?? 2) * TILE);
+      else for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * TILE, q = { x: cx + Math.cos(a) * o, y: cy + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
       this.zones.push({ kind: 'snare', x: cx, y: cy, r: TILE * .8, t: v['secs'], tick: 0, min: v['min'], max: v['max'], pts, caught: [] });
       pts.forEach((q, i) => this.effects.push({ kind: 'snare-rise', x: q.x, y: q.y, age: -i * .05, life: .5, dir: 1 }));
       this.host.swung(foe);
     } else if (id === 'bramble-trap') {
-      // Two at most: a third lifts the oldest.
-      const traps = this.zones.filter(z => z.kind === 'trap');
-      if (traps.length >= 2) this.zones.splice(this.zones.indexOf(traps[0]), 1);
-      this.zones.push({ kind: 'trap', x: p.x, y: p.y + 2, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['min'], max: v['max'] });
-      this.effects.push({ kind: 'trap-set', x: p.x, y: p.y + 2, age: 0, life: .5, dir: 1 });
+      // Two at most (Three Traps, a mark: three): one more lifts the oldest.
+      const most = this.mk(id, 'traps')?.n ?? 2, traps = this.zones.filter(z => z.kind === 'trap');
+      if (traps.length >= most) this.zones.splice(this.zones.indexOf(traps[0]), 1);
+      // Throw Trap (a mark): it lands under a foe within its tiles, else at his feet.
+      const th = this.mk(id, 'throwTrap'), foe = th ? this.foeNear(p.x, p.y, (th.n ?? 0) * TILE) : null, tx = foe ? foe.x : p.x, ty = foe ? foe.y : p.y + 2;
+      this.zones.push({ kind: 'trap', x: tx, y: ty, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['min'], max: v['max'] });
+      this.effects.push({ kind: 'trap-set', x: tx, y: ty, age: 0, life: .5, dir: 1 });
       this.host.swung(null);
     } else if (id === 'rootwalk') {
       this.rootwalkT = v['secs']; this.rootwalkPct = v['pct'];
+      // Leaf-Shadow (a mark): the next Thorn Shot is a sure crit.
+      if (this.mk(id, 'leafCrit')) this.leafReady = true;
       this.effects.push({ kind: 'rootwalk', x: p.x, y: p.y + 1, age: 0, life: .9, dir: 2 });
       this.host.swung(null);
     }
     return null;
   }
 
+  /** An elite's first affix taken away for a while (Unmaking, Banish the Bearer: marks); it comes back after. */
+  private strip(m: Mob, secs: number): void {
+    const ax = m.elite?.affixes;
+    if (!ax?.length || m.stripped || !(secs > 0)) return;
+    m.stripped = { affix: ax[0], t: ccSecs(secs, m.def.rank) };
+    ax.splice(0, 1);
+    this.effects.push({ kind: 'pulse', el: 'shadow', x: m.x, y: m.y, age: 0, life: .4, dir: 1 });
+  }
+  /**
+   * The marks a fall sets off (td-marks): the felling skill's mana (Soulfire, Ash to Ash), Grave Purse's life while the
+   * siphon runs, a cursed foe's mana (Mark of Ash), and what it carried passing on — the curse (Spreading), the brand's
+   * burn (Brand Spreads), the bleed (Spreading Barbs), and a Doom that bursts anyway (Hour of Doom).
+   */
+  private markKill(m: Mob, src: SkillId | null): void {
+    if (!this.marks) return;
+    const kill = src ? this.mk(src, 'kill') : null;
+    if (kill) this.mana = Math.min(this.maxMana, this.mana + (kill.n ?? 0));
+    const purse = this.aura === 'aura-siphon' ? this.mk('aura-siphon', 'killHeal') : null;
+    if (purse) this.healOwed(this.keeperMaxHp * (purse.n ?? 0) / 100);
+    const near = (reach: number, n: number) => this.mobs.filter(o => o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) <= reach * TILE && this.sight.sees(m.x, m.y, o.x, o.y))
+      .sort((a, b) => Math.hypot(a.x - m.x, a.y - m.y) - Math.hypot(b.x - m.x, b.y - m.y)).slice(0, n);
+    if (m.cursed > 0) {
+      const ash = this.mk('ember-curse', 'cursedKill');
+      if (ash) this.mana = Math.min(this.maxMana, this.mana + (ash.n ?? 0));
+      const sp = this.mk('ember-curse', 'spread');
+      if (sp) for (const o of near(sp.s ?? 0, 1)) { o.cursed = Math.max(o.cursed, m.cursed); o.burnT = 1; this.effects.push({ kind: 'curse', x: o.x, y: o.y - o.def.h - 4, age: 0, life: .6, dir: 1 }); }
+    }
+    if ((m.brandT ?? 0) > 0) {
+      const bs = this.mk('ember-brand', 'brandSpread');
+      if (bs) for (const o of near(bs.s ?? 0, 1)) { o.brandT = 3; o.brandTick = 1; o.brandDps = this.v('ember-brand')['burn']; o.brandTicks = 3; }
+    }
+    if ((m.bleedT ?? 0) > 0) {
+      const bl = this.mk('barbed-shot', 'bleedSpread');
+      if (bl) for (const o of near(bl.s ?? 0, bl.m ?? 1)) this.applyStatus(o, 'bleed', m.bleedT ?? 0, m.bleedDps ?? 0);
+    }
+    if ((m.doom ?? 0) > 0) {
+      const hd = this.mk('doom', 'doomOnDeath');
+      if (hd) { m.doom = 0; this.doomBurst(m, (hd.n ?? 100) / 100); }
+    }
+  }
   /** Doom runs out: the foe bursts, and so does everything near it. */
-  private doomBurst(m: Mob): void {
+  private doomBurst(m: Mob, k = 1): void {
     const hit = m.doomHit;
     if (!hit) return;
     const at = { x: m.x, y: m.y };
-    for (const o of [...this.mobs]) if (Math.hypot(o.x - at.x, o.y - at.y) <= hit.r && (o === m || this.reaches(at.x, at.y, o))) this.hitFoe(o, rnd(hit.min, hit.max), '#c88bff');
+    for (const o of [...this.mobs]) if (Math.hypot(o.x - at.x, o.y - at.y) <= hit.r && (o === m || this.reaches(at.x, at.y, o))) this.hitFoe(o, rnd(hit.min, hit.max) * k, '#c88bff', 'doom');
+    // Unmaking (a mark): the burst strips the doomed creature's first elite affix for a while.
+    const un = this.mk('doom', 'strip');
+    if (un) this.strip(m, un.s ?? 0);
     this.effects.push({ kind: 'wave', el: 'shadow', x: at.x, y: at.y, age: 0, life: .7, dir: 1, r: Math.round(hit.r) });
     this.effects.push({ kind: 'flash', x: at.x, y: at.y - 8, age: 0, life: .2, dir: 1 });
   }
@@ -4003,9 +4725,31 @@ export class MobSystem {
       if (z.kind === 'meteor') {
         if (z.t > 0) continue;
         this.zones.splice(i, 1);
-        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
+        for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a', 'meteor');
         this.effects.push({ kind: 'wave', x: z.x, y: z.y, age: 0, life: 1, dir: 1, r: Math.round(z.r) });
         this.effects.push({ kind: 'bolt-hit', x: z.x, y: z.y - 6, age: 0, life: .4, dir: 1 });
+        if (!z.frag) {
+          // Burning Crater (a mark): the ground it struck burns. Splitting Stone: fragments land round its edge.
+          this.layField('meteor', z.x, z.y, { min: z.min, max: z.max });
+          const sp = this.mk('meteor', 'split');
+          if (sp) {
+            const n = sp.m ?? 0, k = (sp.n ?? 0) / 100;
+            for (let j = 0; j < n; j++) {
+              const a = j / n * Math.PI * 2;
+              this.zones.push({ kind: 'meteor', x: z.x + Math.cos(a) * z.r, y: z.y + Math.sin(a) * z.r, r: TILE, t: .25, tick: 0, min: Math.max(1, Math.round(z.min * k)), max: Math.max(1, Math.round(z.max * k)), frag: true });
+            }
+          }
+        }
+        continue;
+      }
+      if (z.kind === 'field') {
+        // A mark's burning ground: once a second, every foe on it burns.
+        if (z.t <= 0) { this.zones.splice(i, 1); continue; }
+        if (Math.random() < dt * 8) this.effects.push({ kind: 'flame', x: z.x + rnd(-Math.round(z.r), Math.round(z.r)) * .7, y: z.y + rnd(-Math.round(z.r), Math.round(z.r)) * .5, age: 0, life: .4, dir: 1 });
+        if (z.tick <= 0) {
+          z.tick = 1;
+          for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, z.min * this.fireMult, '#ff8a2e', null);
+        }
         continue;
       }
       if (z.kind === 'whirl') {
@@ -4013,7 +4757,7 @@ export class MobSystem {
         const p = this.host.player();
         z.x = p.x; z.y = p.y;
         // `max` counts the turns still to come.
-        if (z.tick <= 0 && z.max > 0) { z.tick = .5; z.max--; this.strike(0, z.r, 360, z.min, true, null); }
+        if (z.tick <= 0 && z.max > 0) { z.tick = .5; z.max--; this.strike(0, z.r, 360, z.min, true, null, 'whirl-of-cinders'); }
         if (z.max <= 0) this.zones.splice(i, 1);
         continue;
       }
@@ -4021,6 +4765,8 @@ export class MobSystem {
       if (z.kind === 'hearth') {
         // The Hearth Circle: the Keeper inside mends `min` life a second (paid whole, the rest carried).
         const p = this.host.player();
+        // Moving Hearth (a mark): the circle walks with him.
+        if (this.mk('hearth-circle', 'followSelf')) { z.x = p.x; z.y = p.y; }
         if (inDisc(p.x, p.y, z.x, z.y, z.r)) {
           this.hearthOwed += z.min * dt;
           const whole = Math.floor(this.hearthOwed);
@@ -4036,7 +4782,16 @@ export class MobSystem {
           (z.caught ??= []).push(m);
           m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank));
           this.effects.push({ kind: 'snare-rise', x: m.x, y: m.y, age: 0, life: .5, dir: 1 });
-          this.hitFoe(m, rnd(z.min, z.max), '#c9a66b');
+          this.hitFoe(m, rnd(z.min, z.max), '#c9a66b', 'thornroot-snare');
+        }
+        // Grasping (a mark): every few seconds the thorns take hold of what stands in them again.
+        const gr = this.mk('thornroot-snare', 'regrasp');
+        if (gr) {
+          z.regrasp = (z.regrasp ?? gr.s ?? 0) - dt;
+          if (z.regrasp <= 0) {
+            z.regrasp = gr.s ?? 0;
+            for (const m of z.caught ?? []) if (m.hp > 0 && z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r)) { m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank)); this.effects.push({ kind: 'snare-rise', x: m.x, y: m.y, age: 0, life: .5, dir: 1 }); }
+          }
         }
         continue;
       }
@@ -4048,23 +4803,34 @@ export class MobSystem {
         this.effects.push({ kind: 'trap-spring', x: z.x, y: z.y, r: z.r, age: 0, life: .6, dir: 1 });
         for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) {
           m.rootT = Math.max(m.rootT ?? 0, ccSecs(v['root'], m.def.rank));
-          this.hitFoe(m, rnd(z.min, z.max), '#c9a66b');
+          this.hitFoe(m, rnd(z.min, z.max), '#c9a66b', 'bramble-trap');
         }
         continue;
       }
       if (z.kind === 'dawn') {
+        // Moving Sun (a mark): the disc walks with the Keeper. Healing Sun: inside it he mends.
+        const pk = this.host.player();
+        if (this.mk('dawn-at-noon', 'followSelf')) { z.x = pk.x; z.y = pk.y; }
+        const hs = this.mk('dawn-at-noon', 'zoneRegen');
+        if (hs && inDisc(pk.x, pk.y, z.x, z.y, z.r)) this.healOwed(this.keeperMaxHp * (hs.n ?? 0) / 100 * dt);
         // Dawn at Noon: twice a second the dead and the dark-born inside burn; everything inside is unveiled.
         for (const m of this.mobs) if (inDisc(m.x, m.y, z.x, z.y, z.r) && this.reaches(z.x, z.y, m)) m.revealT = Math.max(m.revealT ?? 0, .6);
         if (z.tick <= 0) {
           z.tick = .5;
           for (const m of [...this.mobs]) if (inDisc(m.x, m.y, z.x, z.y, z.r) && shadowBorn(m.def.id) && this.reaches(z.x, z.y, m)) {
             this.effects.push({ kind: 'kindle-hit', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 });
-            this.hitFoe(m, z.min / 2, '#fff2a8');
+            this.hitFoe(m, z.min / 2, '#fff2a8', 'dawn-at-noon');
           }
         }
         continue;
       }
       if (z.kind === 'rain') {
+        // Firestorm (a mark): the cloud drifts after the nearest foe.
+        const fs = this.mk('cinder-rain', 'followFoe');
+        if (fs) {
+          const near = this.mobs.reduce<Mob | null>((b, m) => (!b || Math.hypot(m.x - z.x, m.y - z.y) < Math.hypot(b.x - z.x, b.y - z.y) ? m : b), null);
+          if (near) { const dx = near.x - z.x, dy = near.y - z.y, d = Math.hypot(dx, dy), step = Math.min(d, (fs.n ?? 0) * TILE * dt); if (d > 1) { z.x += dx / d * step; z.y += dy / d * step; } }
+        }
         // Falling cinders all over the circle; twice a second each foe under it is struck.
         if (Math.random() < dt * 14) {
           const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * z.r, x = z.x + Math.cos(a) * d, y = z.y + Math.sin(a) * d;
@@ -4073,13 +4839,13 @@ export class MobSystem {
         }
         if (z.tick <= 0) {
           z.tick = .5;
-          for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a');
+          for (const m of [...this.mobs]) if (Math.hypot(m.x - z.x, m.y - z.y) <= z.r && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max) * this.fireMult, '#ff9a4a', 'cinder-rain');
         }
       } else if (z.kind === 'wall' && z.pts) {
         if (Math.random() < dt * 18) { const q = z.pts[Math.floor(Math.random() * z.pts.length)]; this.effects.push({ kind: 'flame', x: q.x + rnd(-4, 4), y: q.y, age: 0, life: .5, dir: 1 }); }
         if (z.tick <= 0) {
           z.tick = 1;
-          for (const m of [...this.mobs]) if (z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r && this.reaches(q.x, q.y, m))) this.hitFoe(m, z.min * this.fireMult, '#ff8a2e');
+          for (const m of [...this.mobs]) if (z.pts.some(q => Math.hypot(m.x - q.x, m.y - q.y) <= z.r && this.reaches(q.x, q.y, m))) this.hitFoe(m, z.min * this.fireMult, '#ff8a2e', 'flame-wall');
         }
       }
     }
@@ -4151,6 +4917,7 @@ export class MobSystem {
 
   private kill(m: Mob): void {
     this.mobs.splice(this.mobs.indexOf(m), 1);
+    this.markKill(m, this.killSrc);
     if (m.elite?.role === 'leader' || !m.elite) this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
     // Fire Enchanted: it bursts where it fell, after its ring has shown the reach.
     if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share), lv: m.def.level });
