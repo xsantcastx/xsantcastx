@@ -11,6 +11,12 @@
 import type { Sprite } from './td-art';
 import { hash } from './td-art';
 
+/**
+ * The calm crowns (owner 2026-10-26: "the environment looks too much"): fewer, bigger clusters with softer light and
+ * less leaf speckle, closer to the old clean trees beside the finer Keeper (docs/handoff/calm.md).
+ */
+const CALM = { step: 8.8, r: 5.4, rj: .9, noise: .12, marks: .35 } as const;
+
 type Ctx = CanvasRenderingContext2D;
 
 const OUTLINE = '#2a1a24';
@@ -46,22 +52,22 @@ export interface Clump { x: number; y: number; r: number; tone: number }
 export function paintClump(c: Ctx, k: Clump, ramp: readonly string[], seed: number): void {
   const R = Math.ceil(k.r) + 1, top = ramp.length - 1;
   for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
-    const ang = Math.atan2(y, x), wob = (hash(Math.round(ang * 4 + 9), seed, Math.round(k.x * 7 + k.y)) - .5) * (k.r < 5 ? .7 : 1.6);
+    const ang = Math.atan2(y, x), wob = (hash(Math.round(ang * 4 + 9), seed, Math.round(k.x * 7 + k.y)) - .5) * (k.r < 5 ? .7 : 1.1);
     const d = Math.hypot(x, y * 1.08) - wob;
     if (d > k.r) continue;
     const nx = x / k.r, ny = y / k.r, nz = Math.sqrt(Math.max(0, 1 - Math.min(1, (nx * nx + ny * ny))));
     // Light from the upper left and a little in front.
     let l = -.58 * nx - .62 * ny + .52 * nz;
-    l += (hash(k.x + x, k.y + y, seed + 3) - .5) * (k.r < 5 ? .14 : .34);
+    l += (hash(k.x + x, k.y + y, seed + 3) - .5) * (k.r < 5 ? .1 : CALM.noise * 2);
     let i = l > .82 ? 6 : l > .55 ? 5 : l > .2 ? 4 : l > -.2 ? 3 : l > -.5 ? 2 : 1;
     // The rim toward the lower right is the gap between clumps: a dark crescent, two pixels deep on a big one.
-    if (d > k.r - 1.1 && (nx + ny) > .2) i = (nx + ny) > .6 ? 0 : Math.min(i, 1);
+    if (d > k.r - 1.1 && (nx + ny) > .2) i = (nx + ny) > .75 ? 0 : Math.min(i, 2);
     else if (d > k.r - 2.1 && (nx + ny) > .45) i = Math.min(i, 2);
     i = i === 0 ? 0 : Math.max(1, Math.min(top, i + k.tone));
     rect(c, Math.round(k.x + x), Math.round(k.y + y), 1, 1, ramp[i]);
   }
   // Leaf marks in the lit half: little two-pixel highlights.
-  for (let n = 0; n < Math.round(k.r * .9); n++) {
+  for (let n = 0; n < Math.round(k.r * CALM.marks); n++) {
     const a = -Math.PI * .75 + (hash(n, seed, Math.round(k.x * 13 + k.y)) - .5) * 1.6, rr = k.r * (.25 + hash(n, seed + 1, Math.round(k.x + k.y * 5)) * .5);
     const x = Math.round(k.x + Math.cos(a) * rr), y = Math.round(k.y + Math.sin(a) * rr);
     rect(c, x, y, 1, 1, ramp[Math.min(top, 6 + Math.min(0, k.tone))]); rect(c, x + 1, y + 1, 1, 1, ramp[Math.max(1, 3 + k.tone)]);
@@ -110,7 +116,7 @@ function trunk(c: Ctx, cx: number, top: number, foot: number, w: number, seed: n
  * the lower right sinking into shade — so the crown reads as one lit ball made of little lit balls.
  */
 function broadleaf(W: number, v: number): Clump[] {
-  const cx = W / 2, cy = 18, rx = 19, ry = 16, step = 6.2, out: Clump[] = [];
+  const cx = W / 2, cy = 18, rx = 19, ry = 16, step = CALM.step, out: Clump[] = [];
   for (let row = 0; row * step * .86 <= ry * 2 + 2; row++) {
     const y = cy - ry + row * step * .86;
     for (let col = -6; col <= 6; col++) {
@@ -119,7 +125,7 @@ function broadleaf(W: number, v: number): Clump[] {
       const nx = (x - cx) / rx, ny = (yy - cy) / ry, d = nx * nx + ny * ny;
       if (d > 1.02 || (d > .82 && hash(row, col, v + 63) < .35)) continue;
       const l = -.62 * nx - .72 * ny;
-      out.push({ x, y: yy, r: 3.7 + hash(row, col, v + 64) * .8, tone: l > .55 ? 1 : l > .1 ? 0 : l > -.45 ? -1 : -2 });
+      out.push({ x, y: yy, r: CALM.r + hash(row, col, v + 64) * CALM.rj, tone: l > .6 ? 1 : l > -.35 ? 0 : -1 });
     }
   }
   return out;
@@ -163,7 +169,7 @@ export function pineTree(seed: number): Sprite {
       for (let x = -w; x <= w; x++) {
         const u = x / Math.max(1, w), drop = row === rows - 1 && hash(x + t * 9, v, 7) < .4;
         if (drop) continue;
-        let l = -.6 * u - .5 * (row / rows - .5) + (hash(x + 40, row + t * 13, v + 4) - .5) * .5;
+        let l = -.6 * u - .5 * (row / rows - .5) + (hash(x + 40, row + t * 13, v + 4) - .5) * .22;
         if (row >= rows - 2) l -= .45;
         let i = l > .55 ? 6 : l > .25 ? 5 : l > -.05 ? 4 : l > -.35 ? 3 : 2;
         if (row < 2 && t > 0) i = 1;

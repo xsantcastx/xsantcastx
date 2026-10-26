@@ -8,6 +8,7 @@
  * a 1px dark outline on objects and none on ground tiles. Original art only —
  * the owner's references set the bar, not the pixels.
  */
+import { envDetail } from './td-detail';
 import { broadleafTree, clumpRamp, paintClump, paintClumps, pineTree, shadowSprite } from './td-flora';
 import { volumize } from '../../shared/keeper-look/keeper-volume';
 import { paintAltar, paintBrazier, paintBrokenStatue, paintCage, paintChains, paintCobweb, paintInscription, paintRime, paintRitualCircle, paintStain } from './td-dressing';
@@ -111,7 +112,8 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
         const x = Math.floor(r(i) * 15), y = Math.floor(r(i + 20) * 15);
         rect(c, ox + x, oy + y, 1, 2, pick(PAL.grass, r(i + 40)));
       }
-      if (kind === 'flowers') for (let i = 0; i < 4; i++) {
+      // Calm (docs/handoff/calm.md): one bloom on about half a flower bed's tiles, not four on each.
+      if (kind === 'flowers') for (let i = 0; i < (r(59) < .5 ? 1 : 0); i++) {
         const x = 1 + Math.floor(r(i + 60) * 13), y = 1 + Math.floor(r(i + 70) * 13);
         const col = pick(PAL.flower, r(i + 80));
         rect(c, ox + x, oy + y, 2, 2, col); rect(c, ox + x, oy + y + 2, 1, 1, PAL.leaf[2]);
@@ -621,6 +623,8 @@ export function stall(widthTiles: number, palette: number, goods: 'pots' | 'brea
 export function tree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
   // The art style upgrade (td-flora.ts): volumetric clumped crowns and a cast shadow; six variants a kind.
   const v = ((seed % 6) + 6) % 6;
+  // Environment detail Low (td-detail.ts): the old clean tree with just a soft shadow.
+  if (envDetail() === 'low') return cached(`low-tree:${kind}:${v}`, () => ({ ...flatTree(kind, v), shadow: { img: shadowSprite(kind === 'pine' ? 26 : 34, 11), x: kind === 'pine' ? -10 : -14, y: -7 } }));
   return cached(`tree:${kind}:${v}`, () => kind === 'pine' ? pineTree(v) : broadleafTree(kind, v));
 }
 /** The flat crowns the world grew before the art style upgrade (kept for comparison galleries). */

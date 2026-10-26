@@ -24,6 +24,7 @@ import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } fro
 import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
+import { autoLowerDetail, envDetail, onEnvDetail } from './td-detail';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
@@ -142,6 +143,12 @@ export interface TdMapView {
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
+/** The most ground chunks kept baked (≈ 0.26 MB each, four for water): the view and its ring, with room to turn back. */
+const CHUNK_CAP = 40;
+/** Ground baking's share of a frame (ms) after the draw (docs/handoff/calm.md). */
+const BAKE_MS = 3;
+/** A ground chunk: its water frames' canvases and how many tile rows of each are painted (CHUNK = done). */
+interface GroundChunk { cx: number; cy: number; frames: (HTMLCanvasElement | undefined)[]; rows: number[] }
 /** A height over the feet that was set for the art-grid figure, grown with the fine figure (FIGURE_K). */
 const up = (n: number) => Math.round(n * FIGURE_K);
 const SPEED = 74;              // art px / s
@@ -229,7 +236,9 @@ export class TopDownEngine {
   private shake = 0;
   /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
   private map: TdMap;
-  private readonly chunks = new Map<string, HTMLCanvasElement[]>();
+  private readonly chunks = new Map<string, GroundChunk>();
+  /** The chunks the last draw showed [x0, y0, x1, y1] (prefetchGround bakes round them after the frame). */
+  private groundView: [number, number, number, number] | null = null;
   private readonly player: Person;
   private readonly keepers: Person[] = [];
   private readonly folk: Folk[] = [];
@@ -434,7 +443,8 @@ export class TopDownEngine {
   private get still(): boolean { return !!this.reduceMq?.matches; }
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
-    this.ctx = canvas.getContext('2d')!;
+    // Opaque (every frame paints the whole canvas): the compositor never blends it with the page under it.
+    this.ctx = canvas.getContext('2d', { alpha: false })!;
     this.world = new TdWorld();
     this.continents.set(this.world.continent, this.world);
     this.map = this.world.town;
@@ -501,6 +511,7 @@ export class TopDownEngine {
     // The art pass's camera (webdriver only; e2e/td-art-shots.spec.ts): the arcane aura on the Keeper, the motes alive.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdArt'] = {
       aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
+      perf: () => this.perf?.splice(0) ?? [],
       motes: () => this.auraFx.alive,
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
       visit: (level: string, c: number, r: number, continent?: string) => this.restoreWhereabouts({ continent: continent ?? this.world.continent, level, x: c * TILE + TILE / 2, y: r * TILE + TILE - 2 }),
@@ -771,14 +782,21 @@ export class TopDownEngine {
     const loop = (now: number) => {
       // rAF stamps the frame's start, which can precede the performance.now() taken in start(): never step backwards.
       const dt = Math.max(0, Math.min(.05, (now - this.last) / 1000));
+      this.watchFrames(now - this.last);
       this.last = now; this.frameAt = performance.now();
       // Schedule first: one bad frame (a host callback throwing) must never stop the world.
       this.raf = requestAnimationFrame(loop);
       try {
+        const t0 = this.perf ? performance.now() : 0;
         if (!this.paused && !this.fxFrozen) this.update(dt);
         // A host in a menu still keeps the party's creatures alive for the others (they are not paused); it is no prey meanwhile.
         else if (this.paused && !this.fxFrozen && this.coop.role === 'host') this.updateShared(dt);
+        const t1 = this.perf ? performance.now() : 0;
+        this.bakeMs = 0;
         this.draw();
+        const gv = this.groundView;
+        if (gv) this.prefetchGround(gv[0], gv[1], gv[2], gv[3]);
+        if (this.perf) { const t2 = performance.now(); this.perf.push([t1 - t0, t2 - t1, this.bakeMs]); if (this.perf.length > 4000) this.perf.splice(0, 2000); }
       } catch (err) {
         if (!this.frameError) { this.frameError = true; console.error('[top-down] frame error', err); }
       }
@@ -791,6 +809,28 @@ export class TopDownEngine {
     this.frameAt = performance.now();
     this.bgTimer = setInterval(() => this.stepHidden(), BG_TICK_MS);
   }
+  /** Environment detail changed (Menu → Settings, or measured slow frames): the ground is baked again in the new look. */
+  private readonly offDetail = onEnvDetail(() => { this.chunks.clear(); });
+  /**
+   * Measured slow frames (td-detail autoLowerDetail): with no choice made, a device whose frames average over 22 ms
+   * (under 45 a second) across four seconds, after the first eight while the world settles, drops to Low for the
+   * session. Never in an automated browser (a loaded test machine is not a weak phone) unless `__tdAutoDetail` is set.
+   */
+  private slowWatch = { t: 0, n: 0, sum: 0, done: false };
+  private watchFrames(dtMs: number): void {
+    const w = this.slowWatch;
+    if (w.done || document.hidden) return;
+    if (this.perf && !(window as unknown as { __tdAutoDetail?: boolean }).__tdAutoDetail) { w.done = true; return; }
+    w.t += dtMs;
+    if (w.t < 8000) return;
+    w.n++; w.sum += dtMs;
+    if (w.t < 12000) return;
+    if (w.sum / w.n > 22) autoLowerDetail();
+    w.done = true;
+  }
+  /** Frame work (webdriver only, e2e/td-perf-phone.spec.ts): [update ms, draw ms, of which ground baking ms] per frame. */
+  private readonly perf: [number, number, number][] | null = typeof navigator !== 'undefined' && navigator.webdriver ? [] : null;
+  private bakeMs = 0;
   /** When the last animation frame ran (performance.now ms), and the hidden-tab timer (start()). */
   private frameAt = 0;
   private bgTimer: ReturnType<typeof setInterval> | null = null;
@@ -816,6 +856,7 @@ export class TopDownEngine {
   }
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
+    this.offDetail();
     if (this.bgTimer) { clearInterval(this.bgTimer); this.bgTimer = null; }
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
@@ -3173,7 +3214,11 @@ export class TopDownEngine {
   // ── Drawing ────────────────────────────────────────────────────────────────
 
   private resize(): void {
-    const dpr = window.devicePixelRatio || 1;
+    // The canvas's backing resolution (docs/handoff/calm.md): a phone at DPR 3 rasterised 2.96 Mpx a frame, and that
+    // flush — not the engine's own work — was most of its frame. Capped at 2 device px per CSS px on a phone (no visible
+    // change at 1.5 css px per art px: still 3 device px per art px), 4/3 on Low (2 per art px on a phone), never more.
+    const narrow = this.canvas.clientWidth < 700;
+    const dpr = Math.min(window.devicePixelRatio || 1, envDetail() === 'low' ? 4 / 3 : narrow ? 2 : 3);
     const w = Math.max(1, Math.round(this.canvas.clientWidth * dpr)), h = Math.max(1, Math.round(this.canvas.clientHeight * dpr));
     if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
     // 1.5 CSS px per art px on phones (~16 tiles across), 2 on tablets, 3 on wide screens; whole device pixels so pixels stay crisp.
@@ -3187,37 +3232,77 @@ export class TopDownEngine {
     this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
   }
 
-  /** Water frames still to bake this draw (stage 4: a liquid chunk's frames 1–3 come one a draw, never all at once). */
-  private frameBudget = 1;
-  private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
+  /**
+   * The ground's chunk cache (docs/handoff/calm.md). A chunk is CHUNK×CHUNK tiles baked into one canvas (four for a
+   * liquid chunk's frames), painted a row of tiles at a time so the work spreads across frames: after each draw the
+   * engine spends a small budget (`BAKE_MS`) finishing the frames in view and baking the ring of chunks just outside it,
+   * nearest first, so walking reaches ground that is already painted. A chunk in view that is somehow not ready yet is
+   * finished at once (never drawn half-painted). The cache is least-recently-drawn first out, capped at CHUNK_CAP.
+   */
+  private chunkAt(cx: number, cy: number): GroundChunk {
     const key = `${cx},${cy}`;
-    let frames = this.chunks.get(key);
+    let e = this.chunks.get(key);
+    if (e) { this.chunks.delete(key); this.chunks.set(key, e); return e; }
+    let liquid = false;
+    for (let r = cy * CHUNK; r < (cy + 1) * CHUNK && !liquid; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
+      const k = this.level.ground(c, r);
+      if (k === 'water' || k === 'ember' || k === 'blackwater') { liquid = true; break; }
+    }
+    // A liquid chunk has four frames (Low: the old water's frames are just as many — the painters choose).
+    e = { cx, cy, frames: [], rows: liquid ? [0, 0, 0, 0] : [0] };
+    this.chunks.set(key, e);
+    while (this.chunks.size > CHUNK_CAP) this.chunks.delete(this.chunks.keys().next().value!);
+    return e;
+  }
+  /** Bake chunk `e`'s frame `f` a row of tiles at a time until done or past `deadline` (performance.now ms). */
+  private bakeRows(e: GroundChunk, f: number, deadline: number): boolean {
+    if (e.rows[f] >= CHUNK) return true;
+    const b0 = this.perf ? performance.now() : 0;
+    let el = e.frames[f];
+    const fresh = !el;
+    if (!el) { el = document.createElement('canvas'); el.width = CHUNK * TILE; el.height = CHUNK * TILE; e.frames[f] = el; }
+    const g = el.getContext('2d')!;
+    // The world's backdrop under the tiles, so a chunk is always opaque and the frame needs no full-canvas clear.
+    if (fresh) { g.fillStyle = '#2a1a24'; g.fillRect(0, 0, el.width, el.height); }
     const kind = (c: number, r: number): Ground => this.level.ground(c, r);
-    const bake = (f: number): HTMLCanvasElement => {
-      const el = document.createElement('canvas');
-      el.width = CHUNK * TILE; el.height = CHUNK * TILE;
-      const g = el.getContext('2d')!;
-      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
+    const { cx, cy } = e;
+    while (e.rows[f] < CHUNK) {
+      const r = cy * CHUNK + e.rows[f];
+      for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
         const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
         if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy), f)) paintGround(g, k, c, r, ox, oy, f);
         const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
         edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
       }
-      return el;
-    };
-    if (!frames) {
-      let liquid = false;
-      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember' || kind(c, r) === 'blackwater') liquid = true;
-      frames = [bake(0)];
-      // A liquid chunk has four frames; the other three are baked later, one a draw (the frame drawn meanwhile is the first).
-      if (liquid) frames.length = 4;
-      this.chunks.set(key, frames);
-      // Far chunks go (the world never ends; their canvases must not pile up).
-      if (this.chunks.size > 96) this.chunks.delete(this.chunks.keys().next().value!);
+      e.rows[f]++;
+      if (performance.now() > deadline) break;
     }
-    const f = ((frame % frames.length) + frames.length) % frames.length;
-    if (!frames[f]) { if (this.frameBudget > 0) { this.frameBudget--; frames[f] = bake(f); } else return frames[0]; }
-    return frames[f];
+    if (this.perf) this.bakeMs += performance.now() - b0;
+    return e.rows[f] >= CHUNK;
+  }
+  /** The canvas to draw for chunk (cx, cy) at water frame `frame`: frame 0 is finished at once; later frames when ready. */
+  private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
+    const e = this.chunkAt(cx, cy);
+    this.bakeRows(e, 0, Infinity);
+    const f = ((frame % e.rows.length) + e.rows.length) % e.rows.length;
+    return e.rows[f] >= CHUNK ? e.frames[f]! : e.frames[0]!;
+  }
+  /** After a draw: spend up to BAKE_MS on the view's water frames, then the ring of chunks round the view, nearest first. */
+  private prefetchGround(x0: number, y0: number, x1: number, y1: number): void {
+    const deadline = performance.now() + BAKE_MS;
+    const todo: { e: GroundChunk; d: number }[] = [];
+    const pcx = this.player.x / (CHUNK * TILE), pcy = this.player.y / (CHUNK * TILE);
+    for (let cy = y0 - 1; cy <= y1 + 1; cy++) for (let cx = x0 - 1; cx <= x1 + 1; cx++) {
+      const key = `${cx},${cy}`, have = this.chunks.get(key);
+      if (have && have.rows.every(r => r >= CHUNK)) continue;
+      const inView = cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1;
+      todo.push({ e: have ?? this.chunkAt(cx, cy), d: (inView ? 0 : 100) + Math.hypot(cx + .5 - pcx, cy + .5 - pcy) });
+    }
+    todo.sort((a, b) => a.d - b.d);
+    for (const { e } of todo) {
+      for (let f = 0; f < e.rows.length; f++) if (!this.bakeRows(e, f, deadline)) return;
+      if (performance.now() > deadline) return;
+    }
   }
 
   private draw(): void {
@@ -3225,17 +3310,17 @@ export class TopDownEngine {
     const c = this.ctx, s = this.scale, cam = this.cam;
     c.imageSmoothingEnabled = false;
     c.setTransform(1, 0, 0, 1, 0, 0);
-    c.fillStyle = '#2a1a24'; c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // No full-canvas clear: the ground's chunks are opaque (bakeRows) and cover the view, and on a phone that clear was a
+    // whole extra pass over every pixel a frame (docs/handoff/calm.md). Only the rim past the last whole pixel is filled.
+    c.fillStyle = '#2a1a24';
+    { const rw = this.canvas.width % s, rh = this.canvas.height % s; if (rw) c.fillRect(this.canvas.width - rw, 0, rw, this.canvas.height); if (rh) c.fillRect(0, this.canvas.height - rh, this.canvas.width, rh); }
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     // Ground.
     const frame = Math.floor(this.time * 3) % 4;
-    this.frameBudget = 1;
     const span = CHUNK * TILE;
-    for (let cy = Math.floor(cam.y / span); cy <= Math.floor((cam.y + cam.h) / span); cy++) {
-      for (let cx = Math.floor(cam.x / span); cx <= Math.floor((cam.x + cam.w) / span); cx++) {
-        c.drawImage(this.chunk(cx, cy, frame), cx * span, cy * span);
-      }
-    }
+    const gx0 = Math.floor(cam.x / span), gx1 = Math.floor((cam.x + cam.w) / span), gy0 = Math.floor(cam.y / span), gy1 = Math.floor((cam.y + cam.h) / span);
+    for (let cy = gy0; cy <= gy1; cy++) for (let cx = gx0; cx <= gx1; cx++) c.drawImage(this.chunk(cx, cy, frame), cx * span, cy * span);
+    this.groundView = [gx0, gy0, gx1, gy1];
     // A Nightroad's planks over the water while it is open (td-dark-layer).
     if (this.level === this.world) this.darkLayer.drawGround(c, this.world.continent, (x, y) => x > cam.x - 32 && x < cam.x + cam.w + 32 && y > cam.y - 32 && y < cam.y + cam.h + 32);
     const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
@@ -3771,7 +3856,7 @@ export class TopDownEngine {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
     // The aura the Keeper wears (td-aura.ts): its layered ring round the feet; its motes rise in the air pass.
     const look = this.auraLook();
-    if (look) { this.auraFx.step(this.time, look, this.still); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
+    if (look) { this.auraFx.step(this.time, look, this.still || envDetail() === 'low'); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
     if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
       const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
