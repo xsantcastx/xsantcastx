@@ -12,7 +12,7 @@
  */
 import { castShadow } from './td-shade';
 /** A Keeper's tap box over its feet (the fine figure, FIGURE_K, stands half again as tall as the art grid's). */
-const TAP_W = 15, TAP_H = 54;
+const TAP_W = 12, TAP_H = 54;
 import { FIGURE_K, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { carriesStaff, vocationLook } from '../../shared/keeper-look/vocation-look';
 import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, drawWornFront, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
