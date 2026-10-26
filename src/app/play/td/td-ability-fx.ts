@@ -6,14 +6,14 @@
  * two-tone front closing in as the shipped breath cone does — a cone (a breath), lines (a writ, a lash, a volley, a
  * beam), rings that fall (a meteor, a blizzard's pulses, tempers, the lava cracks), a ring round the caster (a smash),
  * a stir under the prey (a burrow), a sigil on each corpse (a raise); the hostile ground that lasts (fire ground,
- * crust, ink, a web, a cloud); and each pack aura's bearer standing on its sigil disc (AuraFx's claimed floor and
- * turning rings, a pixel sigil, a dashed reach ring at 4 tiles).
+ * crust, ink, a web, a cloud); and each pack aura's bearer on its small pixel sigil, a light ring running out to its
+ * 4-tile reach every few seconds (td-aura auraWave; no constant disc, docs/handoff/look.md).
  * Air layer (over them): the mote lines from a bearer to each one it blesses, a Bone Ward's circling shards, a body
  * tell's glow, and the Keeper's own statuses as small glyphs over his head.
  * Reduced motion: still rings, solid lines, no motes. All whole pixels; nothing is created per frame.
  */
 import { HOSTILE_EDGE, circlePixels, conePixels, groundRing, linePixels, ringArc, type Tones } from './td-fx';
-import { AuraFx, auraFrom, type AuraLook } from './td-aura';
+import { AURA_PULSE_LIFE, AuraFx, auraFrom, auraWave, type AuraLook } from './td-aura';
 import { castable, T, type TellTone } from './td-abilities';
 import { PACK_AURA_LOOKS, PACK_AURA_REACH, type PackAuraId, type PackSigil } from './td-pack-aura';
 import { mobCell, type DeathBurst, type Hazard, type Mob, type MobSystem } from './td-mobs';
@@ -224,8 +224,9 @@ const SIGILS: Readonly<Record<PackSigil, readonly string[]>> = {
 const FX = new WeakMap<Mob, AuraFx>();
 
 /**
- * The pack auras on the ground (§3): each bearer on its sigil disc (AuraFx's floor and rings, smaller than a
- * Keeper's), its sigil turning a step every 0.5 s, the dashed reach ring at 4 tiles. Lightless: a black disc.
+ * The pack auras on the ground (§3; owner 2026-10-26, docs/handoff/look.md: no constant circle): each bearer has only
+ * its small sigil underfoot, turning a step every 0.5 s; every few seconds a light ring runs out to its 4-tile reach
+ * and fades (td-aura `auraWave`). Lightless: a small dark smudge instead of a sigil. Reduced motion: the sigil only.
  */
 export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still: boolean, near: (x: number, y: number) => boolean, low = false): void {
   for (const m of mobs) {
@@ -233,29 +234,29 @@ export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still
     const look = packLook(m.aura), p = PACK_AURA_LOOKS[m.aura], X = Math.round(m.x), Y = Math.round(m.y) - 1;
     let fx = FX.get(m);
     if (!fx) { fx = new AuraFx(); FX.set(m, fx); }
-    // Environment detail Low (td-detail): no motes and no claimed floor, only the sigil and its reach.
-    fx.step(time, look, still || low);
+    // Environment detail Low (td-detail): no motes.
+    fx.step(time, look, still, low, mobCell(m.def).h * .8);
     if (m.aura === 'lightless') {
-      // A black disc, its rim a ring of dark pixels; inside, the ground is simply gone.
-      c.globalAlpha = .7; c.fillStyle = p.dark;
-      for (let y = -7; y <= 7; y++) { const w = Math.round(15 * Math.sqrt(Math.max(0, 1 - (y / 7.5) * (y / 7.5)))); c.fillRect(X - w, Y + y, w * 2 + 1, 1); }
-      c.globalAlpha = .9;
-      groundRing(15).forEach((q, i) => { c.fillStyle = i % 2 ? HOSTILE_EDGE : p.tones.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
-    } else if (!low) fx.ground(c, X, Y, look, time, still);
-    // The sigil: 7×7 grown ×2, turning one step every half second (a mirror flip on odd steps).
-    const rows = SIGILS[p.sigil], flip = !still && Math.floor(time * 2) % 2 === 1;
-    c.globalAlpha = .9;
-    for (let r = 0; r < 7; r++) for (let q = 0; q < 7; q++) {
-      if (rows[r][flip ? 6 - q : q] !== '#') continue;
-      const sx = X - 7 + q * 2, sy = Y - 3 + Math.round(r * 1.1);
-      c.fillStyle = HOSTILE_EDGE; c.fillRect(sx + 1, sy + 1, 2, 1);
-      c.fillStyle = r < 2 ? p.tones.core : p.tones.body; c.fillRect(sx, sy, 2, 1);
+      // A small dark smudge, its rim a ring of dark pixels.
+      c.globalAlpha = .55; c.fillStyle = p.dark;
+      for (let y = -4; y <= 4; y++) { const w = Math.round(9 * Math.sqrt(Math.max(0, 1 - (y / 4.5) * (y / 4.5)))); c.fillRect(X - w, Y + y, w * 2 + 1, 1); }
+    } else {
+      // The sigil: 7×7 grown ×2, turning one step every half second (a mirror flip on odd steps).
+      const rows = SIGILS[p.sigil], flip = !still && Math.floor(time * 2) % 2 === 1;
+      c.globalAlpha = .75;
+      for (let r = 0; r < 7; r++) for (let q = 0; q < 7; q++) {
+        if (rows[r][flip ? 6 - q : q] !== '#') continue;
+        const sx = X - 7 + q * 2, sy = Y - 3 + Math.round(r * 1.1);
+        c.fillStyle = HOSTILE_EDGE; c.fillRect(sx + 1, sy + 1, 2, 1);
+        c.fillStyle = r < 2 ? p.tones.core : p.tones.body; c.fillRect(sx, sy, 2, 1);
+      }
     }
-    // The reach: a dashed ring at 4 tiles, flattened (3/4 view), turning slowly.
-    const turn = still ? 0 : Math.floor(time * 4);
-    c.globalAlpha = .55;
-    groundRing(PACK_AURA_REACH).forEach((q, i) => { if ((i + turn) % 8 >= 4) return; c.fillStyle = HOSTILE_EDGE; c.fillRect(X + q.x, Y + q.y + 1, 1, 1); c.fillStyle = p.tones.edge; c.fillRect(X + q.x, Y + q.y, 1, 1); });
     c.globalAlpha = 1;
+    // Its reach, briefly: a light ring every 3.2 s (each bearer on its own beat). None under reduced motion.
+    if (!still) {
+      const k = ((time + (m.hx % 13) * .25) % 3.2) / AURA_PULSE_LIFE;
+      if (k < 1) auraWave(c, X, Y, PACK_AURA_REACH, k, look, m.aura === 'lightless' ? .6 : .8);
+    }
   }
 }
 
@@ -274,11 +275,11 @@ export function drawPackAir(c: Ctx, mobs: readonly Mob[], time: number, still: b
     const ox = Math.round(x0) - pts[0].x, oy = Math.round(y0) - pts[0].y;
     pts.forEach((q, i) => {
       if (!still && i % 2) return;
-      c.globalAlpha = .45; c.fillStyle = HOSTILE_EDGE; c.fillRect(ox + q.x, oy + q.y + 1, 1, 1);
-      c.globalAlpha = still ? .7 : .6; c.fillStyle = i % 4 ? tn.edge : tn.body; c.fillRect(ox + q.x, oy + q.y, 1, 1);
+      c.globalAlpha = .2; c.fillStyle = HOSTILE_EDGE; c.fillRect(ox + q.x, oy + q.y + 1, 1, 1);
+      c.globalAlpha = still ? .4 : .28; c.fillStyle = i % 4 ? tn.edge : tn.body; c.fillRect(ox + q.x, oy + q.y, 1, 1);
     });
     if (!still) {
-      c.globalAlpha = .95;
+      c.globalAlpha = .8;
       for (let j = 0; j < 3; j++) {
         const t = ((time * .8 + j / 3 + (m.hx % 7) / 7) % 1), q = pts[Math.min(pts.length - 1, Math.floor(t * pts.length))];
         const px = Math.round(x0) + q.x - pts[0].x, py = Math.round(y0) + q.y - pts[0].y;

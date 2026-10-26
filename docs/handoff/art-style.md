@@ -21,10 +21,15 @@ from the upper left); the world is now richer, the figures finer and rounder.
   figure round. The side view takes a matching fine sheet whenever it is drawn at 1.5×. Creatures and pets are painted
   grown the same way (bosses grow less) with a darker outline and the volume pass; skeletons carry a proper sword and
   a round wooden shield (the Warlock's raised: violet, with a glowing rune). The Ashguard wears a wine-dark watch cape.
-- **Auras**: the reusable aura look (`td-aura.ts`): a claimed floor in the aura's colour, three layered rings in 3/4
-  view (bright dashes with dark gaps, turning, sparks running round), rising motes (≤ 10), and a rim-glow round the
-  figure's outline. Every running aura skill uses it in its element; `AURA_LOOKS.arcane` is the owner's violet.
-  Reduced motion: still rings, no motes.
+- **Auras** (owner 2026-10-26: "only have light auras flashing around, like the radius use effect, not a constant
+  circle"; docs/handoff/edges/): the reusable aura look (`td-aura.ts`) leaves nothing standing on the ground. A rim-glow
+  round the figure's outline, motes and white-hot flickers rising round the body (≤ 10), and a brief light ring that
+  runs out to the aura's reach when it starts, on a tick that reaches a foe, and as a 3.2 s heartbeat. Pack-aura bearers
+  keep only their small sigil underfoot, with the same brief reach pulse (Lightless: a small dark smudge). Low: a faint
+  one-pixel rim, no motes. Reduced motion: no pulses, no motes; the rim only.
+- **Terrain edges** (`td-terrain.ts`, docs/handoff/edges/): grass, flowers, moss, dirt roads, sand, bog, cobble and
+  water meet along curved, noisy, blended edges with round corners; wet sand, two lines of foam lapping over the water's
+  frames, shallows paling to the deep. Baked into the ground chunks at the art grid; Low keeps the square painters.
 
 ## How it works
 
@@ -33,7 +38,8 @@ from the upper left); the world is now richer, the figures finer and rounder.
 | `play/td/td-ground.ts` | Seamless 128-px textures of ramp indices, sampled at the world pixel; meadow noise dithered in; per-tile extras; ragged worn edges (`richEdge`). Baked into the engine's chunk cache. |
 | `play/td/td-flora.ts` | `broadleafTree`, `pineTree`, the clump painter (`paintClump`, `clumpRamp`, `paintClumps`), `shadowSprite`. `td-art tree()` delegates; `flatTree` keeps the old look for galleries. |
 | `play/td/td-shade.ts` | `castShadow`; the engine's `drawShadows` ground pass (objects' `Sprite.shadow`, then entities). |
-| `play/td/td-aura.ts` | `AuraLook`, `AURA_LOOKS`, `auraFrom(tones)`, `AuraFx` (ground / air / motes), `rimGlow`. Engine: `auraLook()`, `window.__tdArt.aura()` (webdriver only). |
+| `play/td/td-terrain.ts` | `paintFieldTile` (the organic edges, per pixel from the 3×3 neighbourhood and per-class noise) and `organic(ground)`; the engine's `bakeRows` calls it first and skips `paintEdge` between two organic grounds. |
+| `play/td/td-aura.ts` | `AuraLook`, `AURA_LOOKS`, `auraFrom(tones)`, `AuraFx` (pulse / waves / air / motes), `auraWave`, `rimGlow`. Engine: `auraLook()`, `window.__tdArt.aura()` / `.pulse()` (webdriver only). |
 | `shared/keeper-look/keeper-volume.ts` | The volume pass (`volumize`, `volumizeData`): a relief from the silhouette lit from the upper left; outline, eye glints and pupils untouched. |
 | `shared/keeper-look/keeper-front.ts` | `FRONT_K` = 1.5; `P` grows art-grid shapes, `F`/`FM` paint fine pixels; fine eyes/brows/nose/mouth, blade, cape, `strands`; `drawWornFront` grows the live particles. `FRONT_W/H/AX/AY` are now fine-grid values. |
 | `shared/keeper-look/keeper-paint.ts` | `FIGURE_K`, `fineScale`; a second (fine) sheet per painter made only on a 1.5× draw; the live arm/weapon grown with it. Whole-number scales keep the art sheet exactly. |
