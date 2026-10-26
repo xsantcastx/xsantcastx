@@ -63,6 +63,11 @@ export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle'
 const MINI_MOBS = 40;
 /** How far a thumb may miss a Keeper standing in the open and still tap them (art px sideways, up and down). */
 const PEER_SLOP = 9;
+/** The hidden-tab timer (ms) and the most time one tick of it catches up (s): stepHidden. */
+const BG_TICK_MS = 250;
+const BG_CATCHUP_SECS = 60;
+/** A second tap on the Keeper whose card a tap just opened walks there (s). */
+const PEER_AGAIN_SECS = 3;
 
 export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
@@ -453,6 +458,8 @@ export class TopDownEngine {
   })();
   private readonly fxDark = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxdark=1\b/.test(location.search);
   private readonly peers = new TdPeers();
+  /** The last Keeper a tap named, and when (a second tap on them walks through: tap()). */
+  private peerTapped: { id: string; at: number } | null = null;
   private readonly reduceMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   /** Reduced motion, read live: the same shapes, no travel (spec §Rules 6). */
   private get still(): boolean { return !!this.reduceMq?.matches; }
@@ -503,7 +510,7 @@ export class TopDownEngine {
       now: () => performance.now(),
       phase: () => (this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase),
       still: () => this.still,
-      role: role => this.coopRole(role),
+      role: (role, was) => this.coopRole(role, was),
     });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -775,7 +782,7 @@ export class TopDownEngine {
     const loop = (now: number) => {
       // rAF stamps the frame's start, which can precede the performance.now() taken in start(): never step backwards.
       const dt = Math.max(0, Math.min(.05, (now - this.last) / 1000));
-      this.last = now;
+      this.last = now; this.frameAt = performance.now();
       // Schedule first: one bad frame (a host callback throwing) must never stop the world.
       this.raf = requestAnimationFrame(loop);
       try {
@@ -788,9 +795,39 @@ export class TopDownEngine {
       }
     };
     this.raf = requestAnimationFrame(loop);
+    // Never pause (owner 2026-10-26): a hidden or switched-away tab gets no animation frames at all, so the world keeps
+    // running on a timer instead — creatures, regen, the companions, the room's presence. Browsers fire it about once a
+    // second in a hidden tab (once a minute after five minutes); each tick steps the time missed, in frame-sized steps,
+    // without drawing. A tab in view never takes this path (its frames are recent).
+    this.frameAt = performance.now();
+    this.bgTimer = setInterval(() => this.stepHidden(), BG_TICK_MS);
+  }
+  /** When the last animation frame ran (performance.now ms), and the hidden-tab timer (start()). */
+  private frameAt = 0;
+  private bgTimer: ReturnType<typeof setInterval> | null = null;
+  /** True while stepHidden catches the world up (one HUD report at the end, not one per tenth of a second). */
+  private catchingUp = false;
+  private stepHidden(): void {
+    if (!this.raf) return;
+    const now = performance.now();
+    if (now - this.frameAt < BG_TICK_MS) return;
+    let left = Math.max(0, Math.min(BG_CATCHUP_SECS, (now - this.last) / 1000));
+    this.last = now;
+    this.catchingUp = true;
+    try {
+      while (left > 1e-4) {
+        const dt = Math.min(.05, left); left -= dt;
+        if (!this.paused && !this.fxFrozen) this.update(dt);
+        else if (this.paused && !this.fxFrozen && this.coop.role === 'host') this.updateShared(dt);
+      }
+    } catch (err) {
+      if (!this.frameError) { this.frameError = true; console.error('[top-down] hidden step error', err); }
+    } finally { this.catchingUp = false; }
+    this.report();
   }
   destroy(): void {
     cancelAnimationFrame(this.raf); this.raf = 0;
+    if (this.bgTimer) { clearInterval(this.bgTimer); this.bgTimer = null; }
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
@@ -1257,9 +1294,12 @@ export class TopDownEngine {
   /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */
   private enter(level: TdLevel, at: string): void {
     this.level = level;
+    // The last area's shared creatures go with it, at once (td-coop left): a late snapshot of it is refused here.
+    this.coop?.left(this.peerArea());
     this.chunks.clear();
     this.path = []; this.arrive = null; this.puffs = [];
-    this.mobs.enterLevel(level === this.world ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    // A floor the room runs (protocol 7/9) raises nothing here: its creatures are the room's (no flash of our own).
+    this.mobs.enterLevel(level === this.world || this.coop?.roomRuns(this.peerArea()) ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
     // The Row-Walker was swept away with the last level's creatures, not felled: it may rise again at once.
     this.walkerUp = false; this.walkerT = 0;
     // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).
@@ -1335,7 +1375,7 @@ export class TopDownEngine {
   /** The party's other members (protocol 3; empty when none): gold plates, minimap marks, Seek by name. */
   setParty(ids: readonly string[]): void { this.peers.party = new Set(ids); }
   /** Protocol 4: the room's election (null against an older room), this Keeper's id, the whole party's ids. */
-  setCoop(areas: CoopAreas | null, me: string, party: readonly string[]): void { this.coop.setAreas(areas, me, party); }
+  setCoop(areas: CoopAreas | null, me: string, party: readonly string[], world = false, everywhere = false): void { this.coop.setAreas(areas, me, party, world, everywhere); }
   /** Protocol 4: a host's snapshot reached this member. */
   coopSnap(msg: CoopSnapMsg): void { this.coop.snap(msg); }
   /** Protocol 4: members' claims reached this host. */
@@ -1402,8 +1442,12 @@ export class TopDownEngine {
   /** Protocol 4: this Keeper's part in its area ('solo', 'host' or 'member'). */
   get coopRoleNow(): CoopRole { return this.coop.role; }
   /** The role changed: a member's own creatures and its Seam Eater are gone (the host's stand in for them). */
-  private coopRole(role: CoopRole): void {
+  private coopRole(role: CoopRole, was: CoopRole = 'solo'): void {
     if (role === 'member') this.seam = null;
+    // The room never took this floor after all (td-coop gave up waiting): its own creatures, as before the room.
+    if (role === 'solo' && was === 'member' && this.level !== this.world && !this.mobs.mobs.length && !this.coop.roomRuns(this.peerArea())) {
+      this.mobs.addSpawns(this.level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    }
     // The room's ground belongs to the area it was sent for: walking elsewhere leaves it behind.
     if (this.roomArea && this.roomArea !== this.peerArea()) this.clearRoomGround();
     if (role !== this.coopRoleSeen) { this.coopRoleSeen = role; this.canvas.setAttribute('data-coop-role', role); }
@@ -1444,7 +1488,7 @@ export class TopDownEngine {
     if (!w.moved && w.t >= out + .2) { w.moved = true; this.wakeAtHearth(); this.markHearth(); }
     if (w.t >= out + .2 + back) { this.waking = null; this.markHearth(); }
     this.stateTimer -= dt;
-    if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
+    if (this.stateTimer <= 0) { this.stateTimer = .1; if (!this.catchingUp) this.report(); }
   }
   /** The veil's darkness and warmth now (0–1 each). */
   private wakeVeil(): { dark: number; warm: number } {
@@ -2573,7 +2617,7 @@ export class TopDownEngine {
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
     if (this.message || this.messageKey) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageKey = ''; this.messageAge = 0; } }
     this.stateTimer -= dt;
-    if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
+    if (this.stateTimer <= 0) { this.stateTimer = .1; if (!this.catchingUp) this.report(); }
   }
 
   private tryMove(dx: number, dy: number): void {
@@ -2758,7 +2802,15 @@ export class TopDownEngine {
     // finger only just missed (they glide between packets, and a thumb is wide) wins when nearer than the stall.
     const stall = this.stallHit(wx, wy);
     const peer = this.peers.nearest(wx, wy, PEER_SLOP);
-    if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d)) { this.options.onPeerTap(peer.card); return; }
+    // Keepers never block one another (owner 2026-10-26, Tibia-style): a tap on one while walking walks on through, and
+    // a second tap on the Keeper whose card is up walks there; only a first tap from a standstill names them.
+    const walking = this.path.length > 0 || this.player.moving;
+    const again = !!peer && this.peerTapped?.id === peer.card.id && this.time - this.peerTapped.at < PEER_AGAIN_SECS;
+    if (peer && this.options.onPeerTap && (peer.on || !stall || peer.d <= stall.d) && !walking && !again) {
+      this.peerTapped = { id: peer.card.id, at: this.time };
+      this.options.onPeerTap(peer.card); return;
+    }
+    if (peer && (walking || again)) { this.peerTapped = null; this.walkTo(wx, wy); return; }
     const cp = this.mobs.corpseAt(wx, wy);
     if (cp) {
       const { body } = corpseSize(cp);

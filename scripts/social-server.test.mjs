@@ -75,6 +75,26 @@ test('caps rooms, chat rate and removes stale sessions', async t => {
 });
 
 
+test('never pause: a Keeper whose stream is open is never idled out, however long it sends nothing', async t => {
+  let time = 0;
+  const { base, post, join } = await setup(t, { idleMs: 20, now: () => time });
+  const { token } = await join('Arin');
+  const abort = new AbortController();
+  t.after(() => abort.abort());
+  const stream = await fetch(`${base}/events`, { headers: { Authorization: `Bearer ${token}` }, signal: abort.signal });
+  await stream.body.getReader().read();
+  // A hidden tab: its timers slowed to one a minute, nothing posted for a long while — the open stream is enough.
+  time = 1000;
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal((await post('/chat', { text: 'still here' }, token)).status, 201);
+  // The stream closes (the tab is gone): then it idles out as before.
+  abort.abort();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  time = 3000;
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal((await post('/chat', { text: 'gone' }, token)).status, 401);
+});
+
 test('same-origin stream works without Origin; query credentials and foreign origins fail', async t => {
   const { base, join } = await setup(t);
   const { token } = await join('Arin');
