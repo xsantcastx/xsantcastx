@@ -7,7 +7,7 @@ import {
   Board, GRID_TABS, GRID_W, SATCHEL_BASE_H, VAULT_TAB_H, dropCell, dropFits, gridLayout, landingFor, migrateGrid,
   parseVaultStackKey, stackLanding, vaultStackKey, type GridView,
 } from './inventory-grid';
-import { FOOTPRINTS, footprintOf } from './item-footprint';
+import { FOOTPRINTS, legacyFootprintOf as footprintOf } from './item-footprint';
 import { ledgerCapacity, stackCapOf } from './inventory-layout';
 import type { InventoryLedger, OwnedItemInstance, OwnedItemStack } from './inventory.model';
 
@@ -58,7 +58,7 @@ function sound(view: GridView): boolean {
   return true;
 }
 
-describe('item footprints (D2 table)', () => {
+describe('item footprints (the v1 D2 table, kept for the v1 → v2 migration; every piece is 1×1 now)', () => {
   it('long things are tall, armour is 2×3, rings and runes one cell', () => {
     expect(FOOTPRINTS.staff).toEqual({ w: 1, h: 4 });
     expect(FOOTPRINTS.sword).toEqual({ w: 1, h: 3 });

@@ -39,6 +39,8 @@ export const KEY_ACTIONS: readonly KeyActionDef[] = [
   { id: 'waygate', group: 'combat', codes: ['KeyV'] },
   { id: 'seek', group: 'combat', codes: ['KeyX'] },
   { id: 'interact', group: 'world', codes: ['KeyE'] },
+  // D2-style looting (owner 2026-10-26): only Gold is taken by walking over it; this takes the nearest piece in reach.
+  { id: 'pickup', group: 'world', codes: ['KeyN'] },
   { id: 'chat', group: 'world', codes: ['Enter'] },
   { id: 'map', group: 'world', codes: ['KeyM'] },
   { id: 'hearth', group: 'world', codes: ['KeyH'] },

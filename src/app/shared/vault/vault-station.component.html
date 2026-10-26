@@ -1,4 +1,4 @@
-<!-- The Vault: the stash grid beside the satchel grid. Drag between them (a phone: long-press, then tap the cell).
+<!-- The Vault: the stash grid beside the satchel grid. Drag between them, or tap a piece then tap where it goes.
      Prices for more room are behind Details (stations must be dummy-simple). -->
 <app-station-shell class="vs"
                    [title]="t('vault.title')"
@@ -40,6 +40,14 @@
                        (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)" (unhover)="unhover()" (moved)="moved($event)" />
       }
     </section>
+    <div class="vs-actions" data-vault-actions>
+      <button type="button" class="vs-chip vs-chip--primary" data-vault-deposit (click)="depositAll()">{{ t('vault.act.deposit') }}</button>
+      @if (view !== 'overflow' && stash && !locked) {
+        <button type="button" class="vs-chip" data-vault-takeall (click)="takeAll()">{{ t('vault.act.takeAll') }}</button>
+        <button type="button" class="vs-chip" data-vault-sort (click)="sort(view)">{{ t('vault.act.sortTab') }}</button>
+      }
+      <button type="button" class="vs-chip" data-vault-sort-bag (click)="sort('b')">{{ t('vault.act.sortBag') }}</button>
+    </div>
     @if (card; as c) {
       <p class="vs-card" role="status" data-vault-card [style.--rim]="c.look.tone"><b>{{ c.look.name }}</b>@if (c.piece.qty > 1) { <span> ×{{ c.piece.qty }}</span> }</p>
     }

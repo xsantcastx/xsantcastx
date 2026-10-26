@@ -9,7 +9,7 @@
 </noscript>
 <section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [appDropTarget]="worldTarget" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [appDropTarget]="worldTarget" data-drop-world [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -84,6 +84,11 @@
         @if (tdStone; as st) { <img [src]="stoneArt(st.skill)" alt="" draggable="false"> }
         @else { <img class="td-stone__blank" [src]="art('basalt-blank')" alt="" draggable="false"> }
         <b class="td-pot__n">{{ tdStone?.charges ?? 0 }}</b><kbd>F</kbd>
+      </button>
+      <!-- Phones: the ground's name plates on or off (Alt held does it on a keyboard). -->
+      <button type="button" class="td-pot td-labels" data-loot-labels [class.td-labels--on]="lootLabelsOn" [attr.aria-pressed]="lootLabelsOn"
+              (click)="toggleLootLabels()" [attr.aria-label]="t('play.pile.labels')" [title]="t('play.pile.labels') + ' (Alt)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="1" y="4" width="14" height="7" fill="#2a1a24"/><rect x="2" y="5" width="12" height="5" [attr.fill]="lootLabelsOn ? '#e6c35a' : '#6a5a6a'"/><rect x="4" y="7" width="8" height="1" fill="#2a1a24"/><rect x="7" y="11" width="2" height="3" fill="#8a5a32"/></svg>
       </button>
     </div>
   }
@@ -221,7 +226,7 @@
       }
     </section>
   }
-  <!-- A corpse, opened in the world (E, or a tap on it): what it still holds. Walking over a drop still picks it up. -->
+  <!-- A corpse, opened in the world (E, or a tap on it): what it still holds. Only Gold is picked up by walking over it. -->
   @if (topDown && corpseView; as cv) {
     <section class="td-peer td-corpse" role="dialog" aria-modal="false" aria-labelledby="td-corpse-name" data-corpse-window [attr.data-corpse-stage]="cv.stage" data-engine-ignore>
       <header class="td-peer__head">
@@ -241,6 +246,25 @@
       } @else {
         <p class="td-peer__line" data-corpse-empty>{{ t('corpse.empty') }}</p>
       }
+    </section>
+  }
+  <!-- A pile on the ground (td-ground-pile.ts), RuneScape-style: a right-click, a long-press, or a tap on a tile of several
+       things lists them; a row takes one, Take all the lot. A full satchel says so and the rest stays. -->
+  @if (topDown && pileView; as pv) {
+    <section class="td-peer td-corpse td-pile" role="dialog" aria-modal="false" aria-labelledby="td-pile-name" data-pile-window data-engine-ignore>
+      <header class="td-peer__head">
+        <small>{{ pv.items.length }}</small>
+        <button type="button" class="td-peer__x" data-pile-close (click)="closePileView()" [attr.aria-label]="t('corpse.close')">&times;</button>
+      </header>
+      <h2 id="td-pile-name">{{ t('play.pile.title') }}</h2>
+      <ul class="td-corpse__list">
+        @for (row of pv.items; track row.id) {
+          <li><button type="button" class="td-peer__quiet td-corpse__row" data-pile-take [attr.data-drop]="row.id" (click)="takePileRow(row)">
+            <span [style.color]="row.color">{{ pileRowLabel(row) }}</span><small>{{ t('corpse.take') }}</small>
+          </button></li>
+        }
+      </ul>
+      @if (pv.items.length > 1) { <button type="button" class="td-peer__wave" data-pile-all (click)="takePileAll()">{{ t('play.pile.takeAll') }}</button> }
     </section>
   }
   <!-- A friend request (protocol 4): the same cozy toast as an invite; it lets itself go after a minute. -->
@@ -1151,8 +1175,8 @@
             <!-- The one-time list → grid layout moved things to the Vault (docs/design/inventory-grid.md §4): said once. -->
             <p class="grid-note" role="status" data-grid-note>{{ t('play.grid.migrated', { n: gn.items + gn.stacks }) }} <button type="button" class="grid-note__ok" (click)="dismissGridNote()">{{ t('play.grid.ok') }}</button></p>
           }
-          <!-- The satchel: one D2 grid. Drag a thing to move it, onto the doll to wear it, onto the world to drop it;
-               a phone long-presses to pick up and taps where it goes. -->
+          <!-- The satchel: one D2 grid, every piece 1×1. Drag a thing to move it, onto the doll to wear it, onto the world
+               to drop it; or tap it (it lights up) and tap where it goes. -->
           <app-item-grid class="satchel-grid" container="b" [view]="bagView" [look]="pieceLook" [label]="t('play.hud.book.pocketsLabel')"
                          [newKeys]="newPieces" [pickedKey]="pickedPieceKey" (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)"
                          (hoverMove)="moveTip($event)" (unhover)="hoverTip = null" (moved)="gridMoved($event)" (socketed)="gridSocketed($event)" />
@@ -1174,6 +1198,8 @@
           <!-- The purse and how full the satchel is: the bag's bottom row. -->
           <footer class="book-purse">
             <span class="purse-gold" [attr.aria-label]="t('play.hud.book.gold', { n: purseGold })"><i class="purse-coin" aria-hidden="true"></i>{{ purseGold }}</span>
+            <!-- Sort (owner 2026-10-26): by kind, rarity and name, only when pressed. Nothing ever sorts by itself. -->
+            <button type="button" class="grid-sort" data-satchel-sort (click)="sortSatchel()">{{ t('play.grid.sort') }}</button>
             <p class="capacity" [class.full]="bagFull">
               <span>{{ t('play.hud.book.slots', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) }}</span>
               <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
@@ -1284,12 +1310,17 @@
       }
       @if (topDown && slip; as row) {
         <!-- A click pins the same card beside the item, with its actions under it. -->
-        <div class="d2tip d2tip--pinned" role="dialog" [attr.aria-label]="row.name" [appFitViewport]="pickAt" fitMode="side" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
+        <div class="d2tip d2tip--pinned" data-drag-pass role="dialog" [attr.aria-label]="row.name" [appFitViewport]="pickAt" fitMode="side" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }
-          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook) {
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook || row.stone || row.potion || pickCanDrop) {
             <div class="d2tip__actions">
+              @if (row.potion) { <button type="button" class="wear" data-potion-belt (click)="beltPickedPotion()">{{ t('play.stone.beltPut') }}</button> }
+              @if (row.stone; as st) {
+                @if (topDown) { <button type="button" class="wear" data-stone-use (click)="usePickedStone()">{{ t('play.stone.use') }}</button> }
+                <button type="button" class="wear" data-stone-belt [disabled]="st.onBelt" (click)="beltPickedStone()">{{ st.onBelt ? t('play.stone.onBelt') : t('play.stone.beltPut') }}</button>
+              }
               @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
               @if (row.canRead) { <button type="button" class="wear" data-read-scroll (click)="readScroll()">{{ t('play.waygate.read') }}</button> }
               @if (row.canEat) { <button type="button" class="wear" data-eat (click)="eatPicked()">{{ t('gather.card.eat') }}</button> }
@@ -1297,7 +1328,7 @@
               @if (row.canCook) { <button type="button" class="wear" data-cook (click)="cookPicked()">{{ t('gather.card.cook') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
-              @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
+              @if (pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }
         </div>
@@ -1333,7 +1364,7 @@
               @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
-              @if (row.canSend && pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
+              @if (pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }
         </footer>
