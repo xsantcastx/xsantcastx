@@ -51,7 +51,7 @@ async function measure(page: Page, label: string): Promise<void> {
     };
     requestAnimationFrame(tick);
   }));
-  console.log(`[art-perf] ${label}: mean ${r.mean.toFixed(2)} ms, p95 ${r.p95.toFixed(2)} ms over ${r.frames} frames; ${r.canvases} canvases made, ${r.mpx.toFixed(2)} Mpx`);
+  console.warn(`[art-perf] ${label}: mean ${r.mean.toFixed(2)} ms, p95 ${r.p95.toFixed(2)} ms over ${r.frames} frames; ${r.canvases} canvases made, ${r.mpx.toFixed(2)} Mpx`);
 }
 
 on('art perf', () => {
