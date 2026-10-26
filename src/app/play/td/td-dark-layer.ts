@@ -239,8 +239,12 @@ export class DarkLayer {
     for (const n of NIGHTROADS) if (n.continent === continent && inView(n.note[0] * TILE, n.note[1] * TILE)) notePage(c, n.note[0] * TILE + 8, n.note[1] * TILE + 12);
   }
 
-  /** Over the night pass (world transform): what only the dark shows. */
-  drawOver(c: CanvasRenderingContext2D, f: { levelId: string; continent: string; surface: boolean; time: number; still: boolean; night: number }, inView: (x: number, y: number) => boolean): void {
+  /**
+   * Over the night pass (world transform): what only the dark shows. `proj` (the isometric view, td-artopt `iso`): `flat()`
+   * lays what lies on the ground flat on the projected floor, `at(x, y)` stands an upright thing where its foot projects.
+   */
+  drawOver(c: CanvasRenderingContext2D, f: { levelId: string; continent: string; surface: boolean; time: number; still: boolean; night: number }, inView: (x: number, y: number) => boolean, proj?: { flat(): void; at(x: number, y: number): void }): void {
+    proj?.flat();
     // An open road's pale nails, so it can be seen across the water.
     if (f.surface) for (const n of NIGHTROADS) {
       const a = this.roadAlphaOf(n.id);
@@ -259,12 +263,13 @@ export class DarkLayer {
     }
     for (const ch of this.chestsOn(f.levelId)) {
       const a = this.chestAlpha.get(ch.id) ?? 0;
-      if (a > .01) shyChest(c, ch.c * TILE + TILE / 2, ch.r * TILE + TILE - 2, a, this.opened.has(ch.id), f.time, f.still);
+      if (a > .01) { proj?.at(ch.c * TILE + TILE / 2, ch.r * TILE + TILE - 2); shyChest(c, ch.c * TILE + TILE / 2, ch.r * TILE + TILE - 2, a, this.opened.has(ch.id), f.time, f.still); }
     }
-    for (const s of this.shapes) if (s.alpha > .01 && inView(s.x, s.y)) shape(c, s, f.time, f.still);
+    for (const s of this.shapes) if (s.alpha > .01 && inView(s.x, s.y)) { proj?.at(s.x, s.y); shape(c, s, f.time, f.still); }
     const w = this.whisper;
     if (w) {
       const t = w.age / w.life, a = f.still ? 1 : t < .2 ? t / .2 : t > .75 ? (1 - t) / .25 : 1;
+      proj?.at(w.x, w.y);
       c.font = '7px "Pixelify Sans", monospace'; c.textAlign = 'center'; c.textBaseline = 'bottom';
       c.globalAlpha = .55 * a; c.fillStyle = INK; c.fillText(w.text, Math.round(w.x) + 1, Math.round(w.y) + 1);
       c.globalAlpha = .9 * a; c.fillStyle = CORE; c.fillText(w.text, Math.round(w.x), Math.round(w.y - (f.still ? 0 : t * 4)));
