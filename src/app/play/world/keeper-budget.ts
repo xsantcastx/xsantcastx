@@ -22,9 +22,10 @@
 import { claimDpsCap } from '../social/coop-rules';
 import { unpackInventory } from '../../../../functions-game/src/trade-core';
 import { keeperLevelForXp } from '../../shared/skills/keeper-level';
-import { fightStats } from '../td/td-skills';
-import { addSetBonuses } from '../../shared/rpg/set-items';
-import type { ItemStats } from '../../shared/rpg/item.model';
+import { keeperFight } from '../td/keeper-kit';
+import { sumStats, type GameItem } from '../../shared/rpg/item.model';
+import { wornStats } from '../../shared/enchanting/socket-words';
+import { coerceInventoryLedger, compareRevision, recordToItem } from '../../shared/rpg/inventory-ops';
 import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 import { slackGuard, type KeeperGuard } from './keeper-life';
 
@@ -67,7 +68,7 @@ export interface KeeperBudget {
   dps: number;
   /**
    * Protocol 10: the most the Keeper's declared guard may stand at (keeper-life.ts) — its save's own life, Defense and
-   * resists (td-skills fightStats on its level, attributes and worn gear with their sets), lifted by the slack.
+   * resists (td/keeper-kit keeperFight: the HUD's own function on its level, attributes and worn kit), lifted by the slack.
    */
   guard: KeeperGuard;
   /** Protocol 10: the worn gear's Gold Find and XP (%), for the room's credit caps (room-credit.ts). */
@@ -89,25 +90,36 @@ export function huntingXp(activity: unknown): number {
   return Math.max(0, num(by?.['hunting']));
 }
 
-/** The worn records' summed stats and their definition ids (tombstoned and past-16 records left out). */
-export function wornTotals(inventory: unknown): { stats: Record<string, number>; ids: string[] } {
-  // The cloud document may be in the packed format (save format 3): read it as the v2 ledger it encodes.
-  const v = unwrap(unpackInventory(unwrap(inventory)));
-  const records = v && Array.isArray(v['records']) ? v['records'] as unknown[] : [];
-  const tombs = new Map<string, number>();
-  for (const t of v && Array.isArray(v['tombstones']) ? v['tombstones'] as unknown[] : []) if (isObj(t) && typeof t['id'] === 'string') tombs.set(t['id'], num(isObj(t['revision']) ? t['revision']['hlc'] : 0));
-  const stats: Record<string, number> = {}, ids: string[] = [];
-  let worn = 0;
-  for (const r of records) {
-    if (!isObj(r) || r['kind'] !== 'instance' || !isObj(r['location']) || r['location']['kind'] !== 'equipped') continue;
-    const id = String(r['id']);
-    if (tombs.has(id) && (tombs.get(id) ?? 0) >= num(isObj(r['revision']) ? r['revision']['hlc'] : 0)) continue;
-    if (++worn > 16) break;
-    if (typeof r['definitionId'] === 'string') ids.push(r['definitionId']);
-    const st = isObj(r['stats']) ? r['stats'] : {};
-    for (const [k, n] of Object.entries(st)) if (/^[A-Za-z]{1,32}$/.test(k)) stats[k] = (stats[k] ?? 0) + Math.max(-1000, Math.min(10000, num(n)));
+/**
+ * The pieces the save's Keeper wears, as the game reads them (inventory-ops: the same parser and record → item the
+ * inventory service loads with; a packed cloud document is unpacked first). Tombstoned records and an explorer's
+ * kit are left out; at most 16 pieces.
+ */
+export function wornItems(inventory: unknown): GameItem[] {
+  const ledger = coerceInventoryLedger(unwrap(unpackInventory(unwrap(inventory))));
+  if (!ledger) return [];
+  const tombs = new Map(ledger.tombstones.map(t => [t.id, t]));
+  const out: GameItem[] = [];
+  for (const r of ledger.records) {
+    if (r.kind !== 'instance' || r.source !== 'inventory' || r.location.kind !== 'equipped') continue;
+    const t = tombs.get(r.id);
+    if (t && compareRevision(t.revision, r.revision) >= 0) continue;
+    out.push(recordToItem(r));
+    if (out.length >= 16) break;
   }
-  return { stats, ids };
+  return out;
+}
+
+/**
+ * The worn pieces' summed stats as they pay (socket-words wornStats: roll, runes, Socket Word, a curse) and their
+ * definition ids — the inventory's own equippedTotals, read from the save.
+ */
+export function wornTotals(inventory: unknown): { stats: Record<string, number>; ids: string[] } {
+  const worn = wornItems(inventory);
+  const sum = sumStats(worn.filter(i => !!i.slot).map(wornStats)) as unknown as Record<string, number>;
+  const stats: Record<string, number> = {};
+  for (const [k, n] of Object.entries(sum)) if (n) stats[k] = n;
+  return { stats, ids: worn.filter(i => !!i.definitionId).map(i => i.definitionId!) };
 }
 
 /** The worn gear's damage, crit and speed (the best family: the room does not need to know which one the calling reads). */
@@ -121,16 +133,19 @@ export function wornLift(inventory: unknown): number {
 }
 
 const VOCS: readonly string[] = ['warlock', 'ashguard', 'lanternwright', 'thornstrider'];
-/** The guard the Keeper's save allows (before the slack): fightStats on its level, attributes and worn gear. */
+/**
+ * The guard the Keeper's save allows (before the slack): the HUD's own maxHp, Defense and resists — td/keeper-kit
+ * keeperFight, the function the screen's setKeeperBuild reads — on its level, attributes, calling and worn kit (each
+ * piece with its runes and Socket Word, the sets, the armour wards, the milestones' passives). Only what the save
+ * cannot hold (XP earned since the last write, a buff) is left to the slack.
+ */
 export function saveGuard(level: number, look: unknown, inventory: unknown): KeeperGuard {
   const l = unwrap(look);
   const voc = (l && typeof l['vocation'] === 'string' && VOCS.includes(l['vocation']) ? l['vocation'] : 'warlock') as Vocation;
   const st = l && isObj(l['stats']) ? l['stats'] : {};
   const pts = (k: string) => Math.max(0, Math.min(5000, Math.floor(num(st[k]))));
   const stats: KeeperStats = { vit: pts('vit'), ene: pts('ene'), spi: pts('spi'), agi: pts('agi') };
-  const worn = wornTotals(inventory);
-  const gear = addSetBonuses(worn.stats as Partial<ItemStats>, worn.ids);
-  const f = fightStats(level, stats, gear, voc, 0);
+  const f = keeperFight(level, stats, wornItems(inventory), voc, 0);
   return { max: f.maxHp, defense: f.defense, resists: { ...f.resists }, level };
 }
 

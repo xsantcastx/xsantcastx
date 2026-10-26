@@ -9,8 +9,9 @@
  *    (td-zones gapHurt) and the Keeper's Defense and resists (td-skills incomingDamage, the very function the screen
  *    runs) — and taken off its life at once.
  *  - **the guard**: the Defense, resists and most life the cut reads are what the Keeper's screen declares, but never
- *    above the ceiling its own save allows (keeper-budget keeperGuard: the level its XP reads as, its attributes, its
- *    worn gear, ×GUARD_SLACK for upgrades and sets); a guest's ceiling is its level's.
+ *    above the ceiling its own save allows (keeper-budget saveGuard: td/keeper-kit keeperFight, the very function the
+ *    HUD's orb reads, on the level its XP reads as, its attributes and its worn kit with runes, Socket Words and sets;
+ *    ×GUARD_SLACK only for what the save cannot hold yet — XP since its last write, a buff); a guest's is its level's.
  *  - **claims** (each with a sequence the room acks, so the screen knows which it still predicts):
  *    `heal` (regeneration, leech, the Keeper's own heals) — free out of a fight, at most HEAL_SHARE of its life a
  *    second while in one; `soak` (a ward, a block or a mark took part of a blow the room cut whole) — never more than
@@ -41,7 +42,7 @@ export const LIFE = Object.freeze({
   /** In a fight, heals at most this share of the most life a second, over WINDOW_MS. */
   healShare: 0.5,
   windowMs: 3000,
-  /** The declared guard may stand at most this far above the save's own (upgrades, sets, uniques, auras). */
+  /** The declared guard may stand at most this far above the save's own (XP not yet written, a buff): never below it. */
   guardSlack: 1.5,
   /** Claims in one batch. */
   maxClaims: 24,

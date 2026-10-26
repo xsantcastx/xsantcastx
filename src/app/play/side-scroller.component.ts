@@ -26,8 +26,8 @@ import { activeCharacterKey } from '../shared/save/character-scope';
 import { PlaySessionService } from '../shared/save/play-session.service';
 import { HiddenStreamCap } from './social/hidden-cap';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats, type Vocation } from '../shared/keeper-look/keeper-look.model';
-import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
-import { wornResists } from '../shared/loot/aura-sources';
+import { ATTR_STEP, GEAR_CAPS, defenseReduction, fightStats } from './td/td-skills';
+import { keeperGear } from './td/keeper-kit';
 import { auraEffect } from '../shared/loot/auras';
 import type { ItemStats } from '../shared/rpg/item.model';
 import { BLADE_SHARE, CLASS_SKILLS as TD_CLASS_SKILLS, CRIT_MULT, FIRE_SKILLS, MAX_MANA, MAX_RANK, SKILLS as TD_SKILLS, TIER_LEVELS, bookTrees, castRank, castVars, cooldownNow, dealsDamage, defaultAura, defaultBar, synergies, type SkillId, type TreeId } from './td/td-skills';
@@ -120,7 +120,7 @@ import { DELVE_MISSIONS } from '../shared/npc/delve-missions.model';
 import { huntingXpFor } from '../shared/skills/hunting';
 import { keeperLevelView } from '../shared/skills/keeper-level';
 import { KeeperLevelService, type KeeperLevelUp } from '../shared/skills/keeper-level.service';
-import { MILESTONES, frameFor, keeperAttributePoints, nextMilestone, passiveBonus, titlesEarned, type Milestone } from '../shared/skills/keeper-milestones';
+import { MILESTONES, frameFor, keeperAttributePoints, nextMilestone, titlesEarned, type Milestone } from '../shared/skills/keeper-milestones';
 import { skillPointsEarned } from '../shared/keeper-look/skill-points';
 import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
@@ -2968,13 +2968,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The worn gear's combat totals (docs/design/loot-and-combat.md §3), read off the inventory by td-skills. */
   private get gearCombat(): Partial<ItemStats> {
-    // The milestones' passives (shared/skills/keeper-milestones.ts) ride on the worn totals, under the same caps.
-    const g: Partial<ItemStats> = { ...wornCombat(this.inventory, this.wornIds) };
-    // Runes set in armour wells ward against their realm's element (shared/loot/aura-sources wornResists; the Loot sheet's rows).
-    const runes = wornResists(this.inventory.snapshot.items);
-    for (const el of ELEMENTS) if (runes[el]) g[RESIST_STAT[el]] = (g[RESIST_STAT[el]] ?? 0) + (runes[el] ?? 0);
-    for (const [stat, n] of Object.entries(passiveBonus(this.huntingLevel)) as [keyof ItemStats, number][]) g[stat] = ((g[stat] as number | undefined) ?? 0) + n;
-    return g;
+    // td/keeper-kit.ts: the one read — each piece as it pays (runes, Socket Word), the sets, the armour wards, the
+    // milestones' passives. The room's life ceiling (world/keeper-budget saveGuard) calls the very same function.
+    return keeperGear(this.inventory.snapshot.items, this.huntingLevel);
   }
   get sheet(): { level: number; into: number; span: number; toNext: number; left: number; skillPoints: number; next: Milestone | null; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
     const view = this.keeperView, st = this.looks.look.stats, lv = view.level;
