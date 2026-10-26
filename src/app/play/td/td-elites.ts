@@ -19,17 +19,31 @@
  */
 import { MIN_PACK_LEVEL, RANK_DAMAGE, RANK_HP, hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
 import type { DamageType } from '../../shared/loot/damage.model';
+import { PACK_AURA_IDS, PACK_AURA_LOOKS, type PackAuraId } from './td-pack-aura';
 
 export type EliteAffix =
   | 'extra-strong' | 'extra-fast' | 'stone-skin' | 'cursed' | 'fire-enchanted'
   | 'cold-aura' | 'spectral-hit' | 'mana-burn' | 'teleport' | 'lightning-enchanted'
   // Eclipse only (td-phases.ts): never in the random pool below.
-  | 'eclipse-touched';
+  | 'eclipse-touched'
+  // S6 (monsters-abilities.md §4): the ten new ones. Aura Enchanted is carried as `aura-<id>` (the pack's aura), so the
+  // wire and the plate already know which.
+  | 'lightless' | 'whispering' | 'grave-called' | 'mirrored' | 'ember-hearted' | 'brutal' | 'multishot' | 'shielded-by-kin' | 'vampiric'
+  | `aura-${PackAuraId}`;
 
+/** The shipped pool (the shipped ten). */
 export const ELITE_AFFIXES: readonly EliteAffix[] = [
   'extra-strong', 'extra-fast', 'stone-skin', 'cursed', 'fire-enchanted',
   'cold-aura', 'spectral-hit', 'mana-burn', 'teleport', 'lightning-enchanted',
 ];
+/** The new pool (§4), drawn beside the shipped ten. Aura Enchanted takes a slot and names its aura from the zone's list. */
+export const NEW_AFFIXES: readonly EliteAffix[] = ['lightless', 'whispering', 'grave-called', 'mirrored', 'ember-hearted', 'brutal', 'multishot', 'shielded-by-kin', 'vampiric'];
+/** The pack's aura, if it is Aura Enchanted. */
+export function auraAffix(affixes: readonly string[] | undefined): PackAuraId | null {
+  const a = affixes?.find(x => x.startsWith('aura-'));
+  const id = a?.slice(5);
+  return id && (PACK_AURA_IDS as readonly string[]).includes(id) ? id as PackAuraId : null;
+}
 
 export interface EliteAffixDef {
   id: EliteAffix;
@@ -51,6 +65,7 @@ export interface EliteAffixDef {
   group?: 'element';
 }
 
+const AURA_NAME_LIST = ['Might', 'Blessed Aim', 'Conviction', 'Redemption', 'Holy Fire', 'Holy Freeze', 'Holy Shock', 'Fanaticism', 'Prayer', 'Vigor', 'Thorns', 'Lightless', 'Cant-Chorus'];
 export const AFFIX_DEFS: Readonly<Record<EliteAffix, EliteAffixDef>> = {
   'extra-strong': { id: 'extra-strong', name: 'Extra Strong', color: '#ff6a3d', damage: 1.5 },
   'extra-fast': { id: 'extra-fast', name: 'Extra Fast', color: '#9db8a8', speed: 1.6, rate: 1.3 },
@@ -71,7 +86,43 @@ export const AFFIX_DEFS: Readonly<Record<EliteAffix, EliteAffixDef>> = {
   // Under an eclipse only (design-bible §5.7): the seam breathes through it. A dark corona round its body, a pale ring
   // at the edge; a little harder, and its drops climb one ladder step (lootRank).
   'eclipse-touched': { id: 'eclipse-touched', name: 'Eclipse-touched', color: '#f0e0ff', damage: 1.1 },
+  // ── S6 (§4) ──
+  lightless: { id: 'lightless', name: 'Lightless', color: '#140c1c' },
+  whispering: { id: 'whispering', name: 'Whispering', color: '#d8c0ff' },
+  'grave-called': { id: 'grave-called', name: 'Grave-called', color: '#e8e0cc' },
+  mirrored: { id: 'mirrored', name: 'Mirrored', color: '#b06bff' },
+  // It bursts 1 s after it falls (EMBER_HEART): bigger and later than Fire Enchanted, never both (one element).
+  'ember-hearted': { id: 'ember-hearted', name: 'Ember-hearted', color: '#ff6a3d', group: 'element' },
+  brutal: { id: 'brutal', name: 'Brutal', color: '#c2402a' },
+  multishot: { id: 'multishot', name: 'Multishot', color: '#ffe36d' },
+  'shielded-by-kin': { id: 'shielded-by-kin', name: 'Shielded by Kin', color: '#9db8a8' },
+  vampiric: { id: 'vampiric', name: 'Vampiric', color: '#8a4b3a' },
+  ...Object.fromEntries(PACK_AURA_IDS.map(id => [`aura-${id}`, { id: `aura-${id}`, name: AURA_NAME_LIST[PACK_AURA_IDS.indexOf(id)], color: PACK_AURA_LOOKS[id].tones.body }])),
+} as Readonly<Record<EliteAffix, EliteAffixDef>>;
+/** The pack auras' names (EN; the HUD's ES is td-abilities.i18n `aura.<id>`). */
+export const AURA_NAMES_EN: Readonly<Record<PackAuraId, string>> = {
+  might: 'Might', 'blessed-aim': 'Blessed Aim', conviction: 'Conviction', redemption: 'Redemption', 'holy-fire': 'Holy Fire',
+  'holy-freeze': 'Holy Freeze', 'holy-shock': 'Holy Shock', fanaticism: 'Fanaticism', prayer: 'Prayer', vigor: 'Vigor',
+  thorns: 'Thorns', lightless: 'Lightless', 'cant-chorus': 'Cant-Chorus',
 };
+/** Ember-hearted's burst (§4): 2B fire in 2 tiles, 1 s after it falls, its ring first. */
+export const EMBER_HEART = { r: 32, delay: 1, share: 2 } as const;
+/** Brutal: every third blow is a heavy one (2.2B) after a 0.6 s red arc. */
+export const BRUTAL = { every: 3, share: 2.2, tell: .6 } as const;
+/** Multishot: three shots 15° apart, each 0.6 of the shot. */
+export const MULTISHOT = { n: 3, deg: 15, share: .6 } as const;
+/** Shielded by Kin: 50% less taken while a follower stands within 3 tiles. */
+export const KIN_SHIELD = { r: 48, take: .5 } as const;
+/** Vampiric: heals 25% of what its blows deal. */
+export const VAMPIRIC = .25;
+/** Lightless (the affix): the light snuffed in 3 tiles round it. */
+export const LIGHTLESS_R = 48;
+/** Whispering: Hush per blow. */
+export const WHISPER_HUSH = 3;
+/** Grave-called: at half life, two Bone Walkers at its level − 2. */
+export const GRAVE_CALL = { at: .5, count: 2, under: 2 } as const;
+/** Mirrored: a copy that dies in one hit and deals half a blow. */
+export const MIRROR_SHARE = .5;
 
 /** The Eclipse-touched tones: the corona's dark disc, its pale ring and the body's dusk (effects-spec Shadow ramp). */
 export const TOUCHED_TONES = { dark: '#140c1c', ring: '#f0e0ff', glow: '#b06bff', edge: '#6b3aa0' } as const;
@@ -145,16 +196,59 @@ export function eliteName(r: () => number): string {
   return `${NAME_FIRST[Math.floor(r() * NAME_FIRST.length)]} ${NAME_TITLE[Math.floor(r() * NAME_TITLE.length)]}`;
 }
 
-/** `count` distinct affixes, never two from the same group. */
-export function rollAffixes(r: () => number, count: number): EliteAffix[] {
-  const out: EliteAffix[] = [], pool = [...ELITE_AFFIXES];
-  while (out.length < count && pool.length) {
-    const a = pool.splice(Math.floor(r() * pool.length), 1)[0];
-    const g = AFFIX_DEFS[a].group;
-    if (g && out.some(x => AFFIX_DEFS[x].group === g)) continue;
-    out.push(a);
+/** What the spawn is, for the combining rules (§4): its level, whether it shoots, whether it is bone, where, which auras it may carry. */
+export interface AffixContext {
+  level?: number;
+  ranged?: boolean;
+  bone?: boolean;
+  levelId?: string;
+  /** The zone's aura list (td-pack-aura packAuraPool); empty: no Aura Enchanted. */
+  auras?: readonly PackAuraId[];
+  /** The difficulty tier ('normal' | 'nightmare' | 'hell'): one more affix on each harder tier. */
+  tier?: string;
+  /** The new affixes may roll (false keeps the shipped ten only: the specs that pin them). */
+  fresh?: boolean;
+}
+
+/** May this affix sit on this spawn beside these (§4 "Combining")? */
+export function affixAllowed(a: EliteAffix, have: readonly EliteAffix[], o: AffixContext): boolean {
+  const g = AFFIX_DEFS[a].group;
+  if (g && have.some(x => AFFIX_DEFS[x].group === g)) return false;
+  if (a === 'multishot' && !o.ranged) return false;
+  if (a === 'grave-called' && !o.bone && !/^(ashen-crypt|hushed-barrow)/.test(o.levelId ?? '')) return false;
+  const lightless = (x: string) => x === 'lightless' || x === 'aura-lightless';
+  if (lightless(a) && have.some(lightless)) return false;
+  if (a.startsWith('aura-') && have.some(x => x.startsWith('aura-'))) return false;
+  if ((o.level ?? 99) < 15 && (a === 'teleport' || a === 'extra-fast') && have.some(x => x === 'teleport' || x === 'extra-fast')) return false;
+  return true;
+}
+
+/** `count` distinct affixes, never two that may not combine. Aura Enchanted rolls as `aura-<id>` from the zone's list. */
+export function rollAffixes(r: () => number, count: number, o: AffixContext = {}): EliteAffix[] {
+  const out: EliteAffix[] = [];
+  const pool: string[] = [...ELITE_AFFIXES, ...(o.fresh ? NEW_AFFIXES : [])];
+  if (o.fresh && o.auras?.length) pool.push('aura-enchanted');
+  let guard = 0;
+  while (out.length < count && pool.length && guard++ < 64) {
+    let a = pool.splice(Math.floor(r() * pool.length), 1)[0];
+    if (a === 'aura-enchanted') a = `aura-${o.auras![Math.floor(r() * o.auras!.length)]}`;
+    if (!affixAllowed(a as EliteAffix, out, o)) continue;
+    out.push(a as EliteAffix);
   }
   return out;
+}
+
+/**
+ * How many affixes a pack carries (§4 "Affixes by zone band"): a champion pack 1 below 15, 2 from 15, 3 from 35; a
+ * unique leader 1–2 below 15, 2–3 from 15, 3–4 from 35; Nightmare +1, Hell +1 more, at most 5. With no level given,
+ * the shipped counts (a champion 1, a unique 1–3).
+ */
+export function affixCount(rank: EliteRank, r: () => number, o: AffixContext = {}): number {
+  if (o.level === undefined) { if (rank === 'champion') return 1; const k = r(); return k < .3 ? 1 : k < .75 ? 2 : 3; }
+  const band = o.level >= 35 ? 2 : o.level >= 15 ? 1 : 0;
+  const base = rank === 'champion' ? 1 + band : 1 + band + (r() < .5 ? 1 : 0);
+  const tier = o.tier === 'hell' ? 2 : o.tier === 'nightmare' ? 1 : 0;
+  return Math.min(5, base + tier);
 }
 
 /** May this spawn lead a pack at all? */
@@ -168,17 +262,28 @@ export function eliteEligible(o: { level: number; rank?: MonsterRank; safe: bool
 
 /**
  * Roll a spawn: null (an ordinary creature, the usual case) or a pack. `seed` is the spawn's own (its key, the times
- * it has fallen, the session salt): the same seed gives the same pack.
+ * it has fallen, the session salt): the same seed gives the same pack. `o` (S6): the zone's band, the creature, the
+ * zone's auras — more affixes in higher zones, the new ones in the pool.
  */
-export function rollElite(seed: string, chance = ELITE_CHANCE): ElitePack | null {
+export function rollElite(seed: string, chance = ELITE_CHANCE, o: AffixContext = {}): ElitePack | null {
   const r = seededRandom(hashSeed(`elite|${seed}`));
   const roll = r();
   if (roll >= chance) return null;
   if (roll < chance * UNIQUE_SHARE) {
-    const k = r(), count = k < .3 ? 1 : k < .75 ? 2 : 3;
-    return { rank: 'unique', affixes: rollAffixes(r, count), name: eliteName(r), followers: 2 + Math.floor(r() * 3) };
+    const count = affixCount('unique', r, o), affixes = rollAffixes(r, count, o);
+    return { rank: 'unique', affixes, name: eliteName(r), followers: o.level === undefined ? 2 + Math.floor(r() * 3) : packFollowers('unique', 2 + Math.floor(r() * 3), affixes.length) };
   }
-  return { rank: 'champion', affixes: rollAffixes(r, 1), name: null, followers: 1 + Math.floor(r() * 3) };
+  const affixes = rollAffixes(r, affixCount('champion', r, o), o);
+  return { rank: 'champion', affixes, name: null, followers: 1 + Math.floor(r() * 3) };
+}
+
+/**
+ * A pack's followers (S6, tuned on combat-sim's Aura Enchanted cell): a unique leader with more than two affixes
+ * brings one fewer minion for each affix past two (an affix-heavy leader is the threat, not the crowd; never under
+ * one). A champion pack keeps its copies.
+ */
+export function packFollowers(rank: EliteRank, base: number, affixes: number): number {
+  return rank === 'unique' ? Math.max(1, base - Math.max(0, affixes - 2)) : base;
 }
 
 /** A pack built on purpose (the screenshot hook, the specs). */

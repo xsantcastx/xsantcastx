@@ -72,8 +72,9 @@ export const FLOOR_LAIRS: Readonly<Record<string, NonNullable<TdMapDef['lair']>>
   'forge-of-four-2': { types: ['obsidian-golem', 'cinder-bailiff'], count: 4 },
   'forge-of-four-3': { types: ['cinder-bailiff'], count: 3 },
   // The Ashen Crypt: the garrison still standing its watch.
-  'ashen-crypt-1': { types: ['bone-walker', 'bone-archer', 'ash-ghoul'], count: 5 },
-  'ashen-crypt-2': { types: ['bone-walker'], count: 3 },
+  // The Bone Priest (S6, monsters-abilities §2.6): one a floor, calling the roll.
+  'ashen-crypt-1': { types: ['bone-walker', 'bone-archer', 'ash-ghoul', 'bone-priest'], count: 5 },
+  'ashen-crypt-2': { types: ['bone-walker', 'bone-priest', 'bone-walker'], count: 3 },
   // The Overgrown Temple: the lashers in the pews, the weavers below, the hollow choir at the bottom.
   'overgrown-temple-1': { types: ['vine-lasher', 'moss-stalker'], count: 4 },
   'overgrown-temple-2': { types: ['thorn-weaver', 'vine-lasher'], count: 4 },
@@ -87,7 +88,8 @@ export const FLOOR_LAIRS: Readonly<Record<string, NonNullable<TdMapDef['lair']>>
   // The Drowned Crypts: the guard that marched down, still at its posts.
   'drowned-crypts-1': { types: ['mire-lurker', 'drowned-knight'], count: 4 },
   'drowned-crypts-2': { types: ['ink-hound', 'drowned-knight'], count: 4 },
-  'drowned-crypts-3': { types: ['drowned-knight'], count: 3 },
+  // The Acolytes who keep the watch mustered (S6: Call the Watch and Prayer in the Drowned Crypts).
+  'drowned-crypts-3': { types: ['drowned-knight', 'drowned-acolyte', 'drowned-knight'], count: 3 },
 };
 
 /** Every hand-drawn level under (or over) the surface, by id (its lair woven in). */
