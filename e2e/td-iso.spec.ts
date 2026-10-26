@@ -1,6 +1,7 @@
 /**
  * td-iso.spec.ts — the Isometric (Beta) graphics (td-artopt.ts Graphics, td-iso*.ts, docs/handoff/iso.md):
- * - Menu → Sound → Graphics switches Classic ↔ Isometric at once and keeps the choice on the device;
+ * - a fresh player gets Isometric (the default since 2026-10-27); Menu → Sound → Graphics switches to Classic and back at
+ *   once and keeps the choice on the device;
  * - in Isometric a tap on a creature's body targets it (the tap is judged against its projected foot), a tap on open
  *   ground walks there, and the night's light map sits over the world with the names over it.
  */
@@ -23,22 +24,26 @@ async function open(page: Page, query: string): Promise<void> {
   await page.addStyleTag({ content: '.guide, .glim-say { visibility: hidden !important; }' });
 }
 
-test('Graphics: Classic by default; Isometric (Beta) from Menu → Sound, at once, kept on the device', async ({ page }) => {
+test('a fresh player gets Isometric (Beta); Menu → Sound → Graphics switches to Classic and back, at once, kept on the device', async ({ page }) => {
   test.setTimeout(90000);
+  // A player who never chose (the suite pins Classic for the older specs: playwright.config, play-helpers seed).
+  await page.addInitScript(() => localStorage.removeItem('eclipse-td-graphics'));
   await open(page, 'hour=12');
-  await expect(canvas(page)).toHaveAttribute('data-graphics', 'classic');
+  await expect(canvas(page)).toHaveAttribute('data-graphics', 'iso');
   await page.locator('.places-toggle').click();
   await openMenu(page);
   await page.locator('#game-menu [data-open="sound"]').first().click();
   const sheet = page.locator('app-sound-sheet');
-  await expect(sheet.locator('[data-graphics-setting="classic"]')).toHaveAttribute('aria-checked', 'true', { timeout: 5000 });
-  await sheet.locator('[data-graphics-setting="iso"]').click();
-  await expect(sheet.locator('[data-graphics-setting="iso"]')).toHaveAttribute('aria-checked', 'true');
-  await expect(canvas(page)).toHaveAttribute('data-graphics', 'iso', { timeout: 5000 });
-  expect(await page.evaluate(() => localStorage.getItem('eclipse-td-graphics'))).toBe('iso');
+  await expect(sheet.locator('[data-graphics-setting="iso"]')).toHaveAttribute('aria-checked', 'true', { timeout: 5000 });
+  // Listed Isometric (Beta) first, then Classic.
+  await expect(sheet.locator('[data-graphics-setting]')).toHaveText(['Isometric (Beta)', 'Classic']);
   await sheet.locator('[data-graphics-setting="classic"]').click();
+  await expect(sheet.locator('[data-graphics-setting="classic"]')).toHaveAttribute('aria-checked', 'true');
   await expect(canvas(page)).toHaveAttribute('data-graphics', 'classic', { timeout: 5000 });
   expect(await page.evaluate(() => localStorage.getItem('eclipse-td-graphics'))).toBe('classic');
+  await sheet.locator('[data-graphics-setting="iso"]').click();
+  await expect(canvas(page)).toHaveAttribute('data-graphics', 'iso', { timeout: 5000 });
+  expect(await page.evaluate(() => localStorage.getItem('eclipse-td-graphics'))).toBe('iso');
 });
 
 test('Isometric: a tap on a creature targets it, a tap on the ground walks there', async ({ page }) => {
