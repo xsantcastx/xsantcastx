@@ -24,6 +24,12 @@ import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } fro
 import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
+// The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
+import { optCamera, optHdFigures, optHdWorld } from './td-artopt';
+import { AuraFx as LookAuraFx, rimGlow as lookRimGlow } from './td-aura-look';
+import { backing, baseZoom, zoomFactor } from './td-zoom';
+import { HD_KEEPER, HD_PET, HD_PET_ID, HD_SKEL, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
+import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawKeeperStatus, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { castable } from './td-abilities';
@@ -161,6 +167,8 @@ const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 /** The most ground chunks kept baked (≈ 0.26 MB each, four for water): the view and its ring, with room to turn back. */
 const CHUNK_CAP = 40;
+/** Grounds the HD painter (option B) paints edge to edge with each other. */
+const GRASSY_HD = new Set<Ground>(['grass', 'flowers']);
 /** Ground baking's share of a frame (ms) after the draw (docs/handoff/calm.md). */
 const BAKE_MS = 3;
 /** A ground chunk: its water frames' canvases and how many tile rows of each are painted (CHUNK = done). */
@@ -580,6 +588,9 @@ export class TopDownEngine {
       aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
       perf: () => this.perf?.splice(0) ?? [],
       motes: () => this.auraFx.alive,
+      // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts), a pulse now.
+      pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
+      pulse: () => { this.lookAura.pulse(1.3); this.auraBeat = this.time; return this.lookAura.pulsing; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
       visit: (level: string, c: number, r: number, continent?: string) => this.restoreWhereabouts({ continent: continent ?? this.world.continent, level, x: c * TILE + TILE / 2, y: r * TILE + TILE - 2 }),
       // The nearest worn road through grass (a dirt tile with grass to either side): the Keeper stands beside it.
@@ -2821,7 +2832,9 @@ export class TopDownEngine {
     c.save();
     c.translate(x, y - PET_H + 1 + hop + hover);
     if (b.face < 0) c.scale(-1, 1);
-    c.drawImage(sheet, petFrameIndex(frame) * PET_W, 0, PET_W, PET_H, -PET_W / 2, 0, PET_W, PET_H);
+    // The art-direction prototype (td-artopt.ts B/C): the shade-kit in HD.
+    if (optHdFigures() && b.id === HD_PET_ID && envDetail() !== 'low') { const P = HD_PET; c.drawImage(hdPetSheet(), hdPetFrameIndex(frame) * P.w, 0, P.w, P.h, -P.w / 4, PET_H - P.h / 2 + 1, P.w / 2, P.h / 2); }
+    else c.drawImage(sheet, petFrameIndex(frame) * PET_W, 0, PET_W, PET_H, -PET_W / 2, 0, PET_W, PET_H);
     c.restore();
     // What it carries, in its mouth: a sack, a coin, or the gear's own colour.
     const g = b.carried;
@@ -3631,6 +3644,7 @@ export class TopDownEngine {
   // ── Drawing ────────────────────────────────────────────────────────────────
 
   private resize(): void {
+    if (optCamera()) { this.resizeOpt(); return; }
     // The canvas's backing resolution (docs/handoff/calm.md): a phone at DPR 3 rasterised 2.96 Mpx a frame, and that
     // flush — not the engine's own work — was most of its frame. Capped at 2 device px per CSS px on a phone (no visible
     // change at 1.5 css px per art px: still 3 device px per art px), 4/3 on Low (2 per art px on a phone), never more.
@@ -3648,6 +3662,33 @@ export class TopDownEngine {
     this.cam.x = Math.round(this.player.x - this.cam.w / 2);
     this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
   }
+
+  /**
+   * The prototype's camera (td-artopt.ts): the paused look branch, ~/er/wt-look's — the art style camera ÷ 1.15, about a third more
+   * world — always a whole number of backing px per art px; with HD figures an even number, so each HD pixel (half an
+   * art px) is a whole number of backing px too.
+   */
+  private resizeOpt(): void {
+    const cw = this.canvas.clientWidth, ch = this.canvas.clientHeight, narrow = cw < 700, dpr = window.devicePixelRatio || 1;
+    const cap = envDetail() === 'low' ? 4 / 3 : narrow ? 2 : 3;
+    const z = baseZoom(cw, ch) * zoomFactor();
+    let fit = backing(z, dpr, cap);
+    if (optHdFigures() && fit.scale % 2) {
+      const sc = (fit.scale + 1) / z <= cap + 1e-6 ? fit.scale + 1 : Math.max(2, fit.scale - 1), ratio = sc / z, q = dpr / ratio;
+      fit = { scale: sc, ratio, crisp: Math.abs(q - Math.round(q)) < 1e-3 };
+    }
+    const w = Math.max(1, Math.round(cw * fit.ratio)), h = Math.max(1, Math.round(ch * fit.ratio));
+    if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
+    const fitStyle = fit.crisp ? 'pixelated' : 'auto';
+    if (this.canvas.style.imageRendering !== fitStyle) this.canvas.style.imageRendering = fitStyle;
+    this.scale = fit.scale;
+    this.chunkCap = Math.max(CHUNK_CAP, (Math.ceil(w / this.scale / (CHUNK * TILE)) + 3) * (Math.ceil(h / this.scale / (CHUNK * TILE)) + 3) + 6);
+    this.cam.w = w / this.scale; this.cam.h = h / this.scale;
+    this.cam.x = Math.round(this.player.x - this.cam.w / 2);
+    this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
+  }
+  /** The ground cache's size for this view (the prototype's camera frames more chunks). */
+  private chunkCap = CHUNK_CAP;
 
   /**
    * The ground's chunk cache (docs/handoff/calm.md). A chunk is CHUNK×CHUNK tiles baked into one canvas (four for a
@@ -3668,7 +3709,7 @@ export class TopDownEngine {
     // A liquid chunk has four frames (Low: the old water's frames are just as many — the painters choose).
     e = { cx, cy, frames: [], rows: liquid ? [0, 0, 0, 0] : [0] };
     this.chunks.set(key, e);
-    while (this.chunks.size > CHUNK_CAP) this.chunks.delete(this.chunks.keys().next().value!);
+    while (this.chunks.size > this.chunkCap) this.chunks.delete(this.chunks.keys().next().value!);
     return e;
   }
   /** Bake chunk `e`'s frame `f` a row of tiles at a time until done or past `deadline` (performance.now ms). */
@@ -3677,7 +3718,8 @@ export class TopDownEngine {
     const b0 = this.perf ? performance.now() : 0;
     let el = e.frames[f];
     const fresh = !el;
-    if (!el) { el = document.createElement('canvas'); el.width = CHUNK * TILE; el.height = CHUNK * TILE; e.frames[f] = el; }
+    const hd = optHdWorld() ? 2 : 1;
+    if (!el) { el = document.createElement('canvas'); el.width = CHUNK * TILE * hd; el.height = CHUNK * TILE * hd; e.frames[f] = el; }
     const g = el.getContext('2d')!;
     // The world's backdrop under the tiles, so a chunk is always opaque and the frame needs no full-canvas clear.
     if (fresh) { g.fillStyle = '#2a1a24'; g.fillRect(0, 0, el.width, el.height); }
@@ -3687,6 +3729,7 @@ export class TopDownEngine {
       const r = cy * CHUNK + e.rows[f];
       for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
         const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
+        if (hd > 1) { this.bakeTileHd(g, k, c, r, ox * hd, oy * hd, kind, f); continue; }
         if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy), f)) paintGround(g, k, c, r, ox, oy, f);
         const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
         edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
@@ -3696,6 +3739,25 @@ export class TopDownEngine {
     }
     if (this.perf) this.bakeMs += performance.now() - b0;
     return e.rows[f] >= CHUNK;
+  }
+  private tileScratch: HTMLCanvasElement | null = null;
+  /**
+   * Option B's finer ground (td-artopt.ts): grass, flower beds and roads painted at two pixels a world pixel
+   * (td-ground paintRichGroundHd); anything else painted at the art grid on a scratch tile and scaled up whole, its
+   * edges likewise laid over.
+   */
+  private bakeTileHd(g: CanvasRenderingContext2D, k: Ground, c: number, r: number, hx: number, hy: number, kind: (c: number, r: number) => Ground, f: number): void {
+    const t = this.tileScratch ??= Object.assign(document.createElement('canvas'), { width: TILE, height: TILE });
+    const tg = t.getContext('2d')!;
+    g.imageSmoothingEnabled = false;
+    const nb = (dx: number, dy: number) => kind(c + dx, r + dy);
+    const rich = paintRichGroundHd(g, k, c, r, hx, hy, nb);
+    tg.clearRect(0, 0, TILE, TILE);
+    if (!rich && !paintRichGround(tg, k, c, r, 0, 0, nb, f)) paintGround(tg, k, c, r, 0, 0, f);
+    let edges = !rich;
+    const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n) && !(rich && GRASSY_HD.has(n) && GRASSY_HD.has(k))) { paintEdge(tg, k, n, side, c, r, 0, 0); edges = true; } };
+    edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
+    if (edges) g.drawImage(t, hx, hy, TILE * 2, TILE * 2);
   }
   /** The canvas to draw for chunk (cx, cy) at water frame `frame`: frame 0 is finished at once; later frames when ready. */
   private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
@@ -3736,7 +3798,7 @@ export class TopDownEngine {
     const frame = Math.floor(this.time * 3) % 4;
     const span = CHUNK * TILE;
     const gx0 = Math.floor(cam.x / span), gx1 = Math.floor((cam.x + cam.w) / span), gy0 = Math.floor(cam.y / span), gy1 = Math.floor((cam.y + cam.h) / span);
-    for (let cy = gy0; cy <= gy1; cy++) for (let cx = gx0; cx <= gx1; cx++) c.drawImage(this.chunk(cx, cy, frame), cx * span, cy * span);
+    for (let cy = gy0; cy <= gy1; cy++) for (let cx = gx0; cx <= gx1; cx++) c.drawImage(this.chunk(cx, cy, frame), cx * span, cy * span, span, span);
     this.groundView = [gx0, gy0, gx1, gy1];
     // A Nightroad's planks over the water while it is open (td-dark-layer).
     if (this.level === this.world) this.darkLayer.drawGround(c, this.world.continent, (x, y) => x > cam.x - 32 && x < cam.x + cam.w + 32 && y > cam.y - 32 && y < cam.y + cam.h + 32);
@@ -3762,7 +3824,9 @@ export class TopDownEngine {
     for (const o of visible) {
       const sp = o.sprite();
       const jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
-      items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x - sp.ax) + jig, Math.round(o.y - sp.ay)) });
+      const k = sp.k ?? 1;
+      if (k !== 1) items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x) - sp.ax / k + jig, Math.round(o.y) - sp.ay / k, sp.img.width / k, sp.img.height / k) });
+      else items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x - sp.ax) + jig, Math.round(o.y - sp.ay)) });
       if (sp.roof) roofs.push({ o, sp });
     }
     const surface = this.level === this.world;
@@ -3819,16 +3883,21 @@ export class TopDownEngine {
     if (this.level === this.world) this.gather.drawFloats(c, this.spotsInView, this.time, this.still);
     this.gather.drawLine(c, this.player, this.time);
     this.gather.drawStrike(c, this.time, this.still);
-    { const look = this.auraLook(); if (look) this.auraFx.air(c, this.player.x, this.player.y - 1, look); }
+    { const look = this.auraLook(); if (look) {
+      if (!optCamera()) this.auraFx.air(c, this.player.x, this.player.y - 1, look);
+      else if (optHdFigures()) { c.save(); c.scale(.5, .5); this.lookAura.air(c, Math.round(this.player.x) * 2, (Math.round(this.player.y) - 1) * 2, look); c.restore(); }
+      else this.lookAura.air(c, this.player.x, this.player.y - 1, look);
+    } }
     // S6: the pack auras' motes and their linked lines; what falls from above onto its ring.
     { const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80; const low = envDetail() === 'low'; drawPackAir(c, this.mobs.mobs, this.time, this.still, near, low); if (!low) for (const b of this.mobs.bursts) if (b.tone && near(b.x, b.y)) drawFalling(c, b, this.time, this.still); }
     // Roofs and crowns, faded when the Keeper is behind or under them.
     for (const { o, sp } of roofs) {
-      const r = sp.roof!;
-      const x0 = o.x + r.x, y0 = o.y + r.y, x1 = x0 + r.img.width, y1 = y0 + r.img.height;
+      const r = sp.roof!, rk = sp.k ?? 1;
+      const x0 = o.x + r.x, y0 = o.y + r.y, x1 = x0 + r.img.width / rk, y1 = y0 + r.img.height / rk;
       const under = this.player.x > x0 + 2 && this.player.x < x1 - 2 && this.player.y - 20 > y0 && this.player.y - 20 < y1 + 4 && this.player.y < o.y;
       c.globalAlpha = under ? .32 : 1;
-      c.drawImage(r.img, Math.round(x0), Math.round(y0));
+      if (rk !== 1) c.drawImage(r.img, Math.round(o.x) + r.x, Math.round(o.y) + r.y, r.img.width / rk, r.img.height / rk);
+      else c.drawImage(r.img, Math.round(x0), Math.round(y0));
       c.globalAlpha = 1;
     }
     // Smoke.
@@ -3963,6 +4032,14 @@ export class TopDownEngine {
     if (m.mirror) c.globalAlpha *= .62;
     // Teleport's wind-up: it thins out where it stands before it is gone.
     if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
+    // The art-direction prototype (td-artopt.ts B/C): the Bone Walker in HD, half a world px a sheet px, feet where its cell's are.
+    if (optHdFigures() && m.def.id === 'bone-walker' && envDetail() !== 'low') {
+      const hs = hdSkeletonSheet(), S = HD_SKEL, hf = Math.floor(m.t * 6) % 4;
+      c.drawImage(hs, hf * S.w, 0, S.w, S.h, -S.w / 4, d.h - S.h / 2 + 1, S.w / 2, S.h / 2);
+      c.restore();
+      if (m.elite) drawAffixTells(c, m, this.time, this.still);
+      return;
+    }
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
     // An elite's body tone: a champion blue, a unique leader a breath of gold (never over 25 %).
     // The tints lie on the figure only (a scratch copy of its frame, tinted, laid over it): on the opaque world canvas a
@@ -4401,7 +4478,19 @@ export class TopDownEngine {
     const c = this.ctx, p = this.player, X = Math.round(p.x), Y = Math.round(p.y), aura = this.mobs.aura;
     // The aura the Keeper wears (td-aura.ts): its layered ring round the feet; its motes rise in the air pass.
     const look = this.auraLook();
-    if (look) { this.auraFx.step(this.time, look, this.still || envDetail() === 'low'); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
+    if (look && optCamera()) {
+      // The prototype (the paused look branch, ~/er/wt-look): nothing constant on the ground — a light ring runs out to the aura's reach
+      // when it starts, on a tick that reaches a foe, and as a slow heartbeat. With HD effects it is drawn at the HD pixel.
+      const reach = this.artAura ? 3 * TILE : this.mobs.auraRadius, low = envDetail() === 'low', hd = optHdFigures();
+      const hit = this.mobs.effects.some(e => e.kind === 'pulse' && e.age < .05 && (e.el === 'ember' || e.el === 'life'));
+      if (!this.auraWas) { this.lookAura.pulse(1.3); this.auraBeat = 0; }
+      else if (hit && this.time - this.auraBeat > .9) { this.lookAura.pulse(.85); this.auraBeat = this.time; }
+      else if (this.time - this.auraBeat > 3.2) { this.lookAura.pulse(.7); this.auraBeat = this.time; }
+      this.lookAura.step(this.time, look, this.still, low, up(31) * (hd ? 2 : 1));
+      if (hd) { c.save(); c.scale(.5, .5); this.lookAura.waves(c, X * 2, (Y - 1) * 2, look, reach * 2); c.restore(); }
+      else this.lookAura.waves(c, X, Y - 1, look, reach);
+    } else if (look) { this.auraFx.step(this.time, look, this.still || envDetail() === 'low'); this.auraFx.ground(c, X, Y - 1, look, this.time, this.still); }
+    this.auraWas = !!look;
     if (aura === 'aura-embers' || aura === 'aura-siphon' || aura === 'aura-watchfire' || aura === 'lantern-aura' || aura === 'pack-bond') {
       const tn = aura === 'aura-embers' ? FX.ember : aura === 'aura-watchfire' ? ASH_FX.brass : aura === 'lantern-aura' ? LAMP_FX.lamp : aura === 'pack-bond' ? THORN_FX.wild : FX.life, turn = this.still ? 0 : this.time / 12;
       c.drawImage(discSprite(this.mobs.auraRadius, tn.edge, [.05, .045, .04]), X - this.mobs.auraRadius, Y - this.mobs.auraRadius);
@@ -4909,13 +4998,29 @@ export class TopDownEngine {
     if (!p.painter) return;
     // The Keeper's aura (td-aura.ts): the figure drawn once on a scratch canvas, its silhouette laid round it as a rim-glow.
     const look = p === this.player ? this.auraLook() : null;
+    // The art-direction prototype (td-artopt.ts B/C): the Ashguard Keeper in HD, its rim at the HD pixel.
+    if (p === this.player && this.hdKeeper()) {
+      if (look) {
+        const sc = this.hdScratch ??= document.createElement('canvas');
+        if (sc.width !== 160) { sc.width = 160; sc.height = 150; }
+        const g = sc.getContext('2d')!;
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
+        this.paintHdKeeper(g, p, 80, 140, 1);
+        const c = this.ctx; c.save(); c.scale(.5, .5);
+        lookRimGlow(c, sc, 80, 140, Math.round(p.x) * 2, Math.round(p.y) * 2, look, this.time, this.still, envDetail() === 'low');
+        c.restore();
+      }
+      this.paintHdKeeper(this.ctx, p, Math.round(p.x), Math.round(p.y), .5);
+      return;
+    }
     if (look) {
       const sc = this.figureScratch ??= document.createElement('canvas');
       if (sc.width !== 72) { sc.width = 72; sc.height = 80; }
       const g = sc.getContext('2d')!;
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
       this.paintPerson(g, p, action, { x: 36, y: 70 });
-      rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
+      if (optCamera()) lookRimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still, envDetail() === 'low');
+      else rimGlow(this.ctx, sc, 36, 70, Math.round(p.x), Math.round(p.y), look, this.time, this.still);
     }
     this.paintPerson(this.ctx, p, action, null);
   }
@@ -4951,9 +5056,29 @@ export class TopDownEngine {
     c.restore();
   }
 
+  // ── The art-direction prototype's HD figures (td-artopt.ts, td-hd-art.ts) ──
+  private hdScratch: HTMLCanvasElement | null = null;
+  /** The HD Keeper is drawn (B/C, an Ashguard: the one vocation the prototype repainted). */
+  private hdKeeper(): boolean { return optHdFigures() && this.mobs.vocation === 'ashguard' && envDetail() !== 'low'; }
+  /** The HD Keeper with its feet at (x, y), at `k` (½ on the world: one sheet px is half a world px; 1 on a scratch). */
+  private paintHdKeeper(c: CanvasRenderingContext2D, p: Person, x: number, y: number, k: number): void {
+    const sheet = hdKeeperSheet(), K = HD_KEEPER, row = p.dir === 'up' ? 1 : 0, f = hdKeeperFrame(this.time + p.t, p.moving);
+    if (p.dir === 'side' && p.face < 0) {
+      c.save(); c.translate(x, y); c.scale(-1, 1);
+      c.drawImage(sheet, f * K.w, row * K.h, K.w, K.h, -K.ax * k, -K.ay * k, K.w * k, K.h * k);
+      c.restore();
+      return;
+    }
+    c.drawImage(sheet, f * K.w, row * K.h, K.w, K.h, x - K.ax * k, y - K.ay * k, K.w * k, K.h * k);
+  }
+
   // ── The aura look (td-aura.ts) ──
   private figureScratch: HTMLCanvasElement | null = null;
   private readonly auraFx = new AuraFx();
+  /** The prototype's ringless aura (the paused look branch, ~/er/wt-look): motes, flickers, the rim, a pulse when it fires. */
+  private readonly lookAura = new LookAuraFx();
+  private auraWas = false;
+  private auraBeat = 0;
   /** `window.__tdArt.aura(true)` (automated browsers): the arcane aura on the Keeper, for the art pass's photographs. */
   private artAura: AuraLookId | null = null;
   /** The look of the aura the Keeper wears now: a running aura skill in its element, or the art pass's showcase. */
