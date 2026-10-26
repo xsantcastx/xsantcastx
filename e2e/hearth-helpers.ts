@@ -30,7 +30,7 @@ export async function startHearth(origin: string, script = path.join(__dirname, 
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise<void>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('the Hearth room did not start')), 10000);
+    const t = setTimeout(() => reject(new Error('the Hearth room did not start')), 30000);
     child.stdout?.on('data', (d: Buffer) => { if (/social room/.test(String(d))) { clearTimeout(t); resolve(); } });
     child.once('exit', code => { clearTimeout(t); reject(new Error(`the Hearth room exited (${code})`)); });
   });

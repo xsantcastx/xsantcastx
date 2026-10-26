@@ -108,6 +108,7 @@ import {
   instanceRecordCount,
   ledgerCapacity,
   slotClassOf,
+  stackCapOf,
   vaultHolder,
   vaultTabOf,
   type Capacity,
@@ -115,8 +116,8 @@ import {
 } from './inventory-layout';
 
 import {
-  Board, GRID_TABS, dropFits, ensureStackRecord, gridLayout, isVaultStackKey, landingFor, migrateGrid, parseVaultStackKey,
-  pileKeyOfRecord, stackLanding, vaultStackKey, containerOfLocation,
+  Board, GRID_TABS, dropFits, ensureStackRecord, gridLayout, pinLoose, sortContainer, isVaultStackKey, landingFor, migrateGrid, parseVaultStackKey,
+  PILE_MAX as IDENTICAL_PER_SLOT, pileKeyOfRecord, stackLanding, vaultStackKey, containerOfLocation,
   type ContainerId, type GridLayout, type GridView, type Piece,
 } from './inventory-grid';
 import { footprintOf } from './item-footprint';
@@ -443,7 +444,17 @@ export class InventoryService {
    */
   moveTo(ref: GridRef, to: GridTarget): GridMoveResult {
     if (!this.isBrowser) return 'gone';
-    const grid = this.snapshot.grid;
+    const previous = this.ledger;
+    const out = this.moveCore(ref, to, this.snapshot.grid);
+    if (out !== 'ok') { this.ledger = previous; return out; }
+    if (this.ledger === previous) return 'ok';
+    if (!this.save()) { this.ledger = previous; return 'persist'; }
+    this.publish();
+    return 'ok';
+  }
+
+  /** One grid move on `this.ledger`, unsaved (moveTo saves; the Vault's Deposit all / Take all batch many in one write). */
+  private moveCore(ref: GridRef, to: GridTarget, grid: GridLayout): GridMoveResult {
     const view = to.container === 'b' ? grid.bag : grid.tabs[to.container];
     if (!view || to.container === 'overflow') return 'blocked';
     const previous = this.ledger;
@@ -464,8 +475,6 @@ export class InventoryService {
         const base = moved ? this.withRevision({ ...row, location }) : row;
         this.ledger = upsertRecord(this.ledger, { ...base, pos: { k: to.container, c: [to.cell], r: this.advanceRevision().revision } });
       }
-      if (!this.save()) { this.ledger = previous; return 'persist'; }
-      this.publish();
       return 'ok';
     }
     const fromTab = parseVaultStackKey(ref.storeKey)?.tab ?? null;
@@ -484,6 +493,15 @@ export class InventoryService {
       const cells = piles.map(p => (p.pile === (ref.pile ?? 0) ? to.cell : p.cell));
       this.setStackPos(ref.storeKey, to.container, cells);
     } else {
+      // The pile that leaves takes its cell with it: the piles left behind keep theirs (nothing else moves).
+      const fromView = from === 'b' ? grid.bag : from === 'overflow' ? null : grid.tabs[from];
+      const srcPiles = (fromView?.pieces ?? []).filter(p => p.kind === 'stack' && p.storeKey === ref.storeKey).sort((a, b) => (a.pile ?? 0) - (b.pile ?? 0));
+      const leaving = srcPiles.find(p => (p.pile ?? 0) === (ref.pile ?? 0));
+      if (fromView && from !== 'overflow' && leaving && qty >= leaving.qty && srcPiles.length > 1) {
+        // The last pile is the partial one: what stays is the other piles' cells, the partial one landing in the
+        // leaving pile's place only when the leaving pile was the partial one itself.
+        this.setStackPos(ref.storeKey, from, srcPiles.filter(p => p !== leaving).map(p => p.cell));
+      }
       for (const [kind, k] of [['consume', ref.storeKey], ['grant', into]] as const) {
         const stepped = this.advanceRevision();
         this.ledger = { ...this.ledger, stackOps: applyStackOp(this.ledger.stackOps, {
@@ -494,6 +512,74 @@ export class InventoryService {
       this.ledger = ensureStackRecord(this.ledger, into, this.deviceId, Date.now(), fit === 'join' ? null : to.cell, to.container);
       if (this.stackOf(ref.storeKey) < 0) { this.ledger = previous; return 'gone'; }
     }
+    return 'ok';
+  }
+
+  /**
+   * The Vault's "Deposit all" (owner 2026-10-26): every satchel piece goes into the stash, each into the first owned
+   * tab with room (a pile of its kind first). Worn things are not in the satchel; `keep` names what stays (what the
+   * belt draws from). Quest finds have no cell and never move. Only at a Vault. One write.
+   */
+  depositAll(keep: { stackKeys?: ReadonlySet<string>; itemIds?: ReadonlySet<string> } = {}): { moved: number; left: number; code: GridMoveResult } {
+    if (!this.isBrowser) return { moved: 0, left: 0, code: 'gone' };
+    if (!this.atVault) return { moved: 0, left: 0, code: 'vault-closed' };
+    const previous = this.ledger;
+    const tabs = GRID_TABS.filter(t => this.capacity().tabs.has(t));
+    let moved = 0, left = 0;
+    for (const p of [...this.snapshot.grid.bag.pieces].sort((a, b) => a.cell - b.cell)) {
+      if (p.kind === 'stack' ? keep.stackKeys?.has(p.stackKey ?? '') : p.ids.some(id => keep.itemIds?.has(id))) continue;
+      if (p.kind === 'instance' && p.ids.some(id => this.instanceRow(id)?.tags?.includes('quest'))) continue;
+      if (this.moveIntoTabs(p, tabs)) moved++; else left++;
+    }
+    if (!moved) return { moved, left, code: left ? 'blocked' : 'ok' };
+    if (!this.save()) { this.ledger = previous; return { moved: 0, left, code: 'persist' }; }
+    this.publish();
+    return { moved, left, code: 'ok' };
+  }
+
+  /** The Vault's "Take all" for one tab: its pieces into the satchel's first free cells, as many as fit. One write. */
+  takeAllFrom(tab: VaultTabId): { moved: number; left: number; code: GridMoveResult } {
+    if (!this.isBrowser) return { moved: 0, left: 0, code: 'gone' };
+    if (!this.atVault) return { moved: 0, left: 0, code: 'vault-closed' };
+    const view = this.snapshot.grid.tabs[tab];
+    if (!view || tab === 'overflow') return { moved: 0, left: 0, code: 'blocked' };
+    const previous = this.ledger;
+    let moved = 0, left = 0;
+    for (const p of [...view.pieces].sort((a, b) => a.cell - b.cell)) {
+      if (this.moveIntoTabs(p, ['b'])) moved++; else left++;
+    }
+    if (!moved) return { moved, left, code: left ? 'blocked' : 'ok' };
+    if (!this.save()) { this.ledger = previous; return { moved: 0, left, code: 'persist' }; }
+    this.publish();
+    return { moved, left, code: 'ok' };
+  }
+
+  /** Move one piece into the first of `into` with room (a pile of its kind, else the first free cell). */
+  private moveIntoTabs(p: Piece, into: readonly ContainerId[]): boolean {
+    const ref: GridRef = p.kind === 'instance' ? { kind: 'instance', ids: p.ids } : { kind: 'stack', storeKey: p.storeKey ?? '', pile: p.pile ?? 0, qty: p.qty };
+    for (const c of into) {
+      const grid = gridLayout(this.ledger, this.capacity());
+      const view = c === 'b' ? grid.bag : grid.tabs[c];
+      if (!view) continue;
+      const join = view.pieces.find(x => p.kind === 'instance'
+        ? x.kind === 'instance' && x.pileKey !== null && x.pileKey === p.pileKey && x.qty + p.qty <= IDENTICAL_PER_SLOT
+        : x.kind === 'stack' && x.stackKey === p.stackKey && x.qty + p.qty <= stackCapOf(p.stackKey ?? ''));
+      const cell = join ? join.cell : Board.of(view).spot(1, 1);
+      if (cell < 0) continue;
+      const before = this.ledger;
+      if (this.moveCore(ref, { container: c, cell }, grid) === 'ok') return true;
+      this.ledger = before;
+    }
+    return false;
+  }
+
+  /** The manual Sort (type, rarity, name) of one grid; a Vault tab only at a Vault. Nothing sorts by itself. */
+  sortGrid(container: ContainerId): GridMoveResult {
+    if (!this.isBrowser) return 'gone';
+    if (container !== 'b' && !this.atVault) return 'vault-closed';
+    const previous = this.ledger;
+    this.ledger = sortContainer(this.ledger, container, this.deviceId, Date.now());
+    if (this.ledger === previous) return 'ok';
     if (!this.save()) { this.ledger = previous; return 'persist'; }
     this.publish();
     return 'ok';
@@ -1942,6 +2028,8 @@ export class InventoryService {
 
   private save(): boolean {
     if (!this.isBrowser) return false;
+    // Every piece keeps the cell it is drawn in (inventory-grid pinLoose): a drop, a move or a pickup moves nothing else.
+    this.ledger = pinLoose(this.ledger, this.deviceId, Date.now());
     this.ledger = compactInventoryLedger(this.ledger, this.deviceId, Date.now());
     const raw = JSON.stringify(this.ledger);
     this.store.write(INVENTORY_KEY, this.ledger);

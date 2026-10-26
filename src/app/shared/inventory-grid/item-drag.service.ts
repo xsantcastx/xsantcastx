@@ -10,6 +10,10 @@
  *   touch   a long-press (400 ms, still) picks the thing up: it is HELD (the ghost parks by the finger and a "Holding
  *           … · Cancel" bar shows). The next tap on a target places it there; a tap anywhere else, or Cancel, puts it
  *           back. No finger-dragging, so the window still scrolls.
+ *   tap     (owner 2026-10-26, phones and desktop alike) a tap or click on a piece SELECTS it: it is held in place with a
+ *           clear highlight, no ghost. The next tap on a target (a cell, the Vault, a well, the belt) moves it there; a
+ *           tap on the selected piece again, or anywhere else, puts it down. A tap on a `[data-drag-pass]` element (the
+ *           item card's buttons) lets go and lets the tap through. The world never takes a tap-selected piece.
  *   keys    Esc puts it back.
  *
  * Optimistic: a target's `drop` writes locally (InventoryService.moveTo is one ledger write) and returns at once; a
@@ -63,8 +67,12 @@ export class ItemDragService implements OnDestroy {
   /** What is in hand now (null: nothing). */
   readonly held$ = this.held$$.asObservable();
   get held(): DragHeld | null { return this.held$$.value; }
-  /** 'drag': following a mouse; 'hold': picked up by a long-press, waiting for a tap. */
+  /** 'drag': following a mouse; 'hold': picked up by a long-press or selected by a tap, waiting for a tap. */
   mode: 'drag' | 'hold' | null = null;
+  /** The held piece was selected by a tap (tap-to-move): highlighted in place, and the world does not take it. */
+  selecting = false;
+  /** The piece a tap just put down (its own click must not select it again). */
+  private dropped: { key: string; until: number } | null = null;
   /** The gesture the drop being delivered came from (a target reads it inside `drop`). */
   dropMode: 'drag' | 'hold' | null = null;
   /** The last refusal or result, for a polite live line. */
@@ -82,7 +90,8 @@ export class ItemDragService implements OnDestroy {
   /** A source's image would start the browser's own drag (and cancel the pointer stream): never while we hold one. */
   private readonly onNativeDrag = (ev: DragEvent) => { if (this.pending || this.held) ev.preventDefault(); };
   private readonly onClickCapture = (ev: MouseEvent) => {
-    if (Date.now() < this.swallowClickUntil) { ev.preventDefault(); ev.stopPropagation(); }
+    // One click only (the one the placing tap makes): a quick next tap on another piece must still select it.
+    if (Date.now() < this.swallowClickUntil) { this.swallowClickUntil = 0; ev.preventDefault(); ev.stopPropagation(); }
   };
 
   constructor() {
@@ -122,11 +131,30 @@ export class ItemDragService implements OnDestroy {
     });
   }
 
+  /**
+   * Tap-to-move: select a piece (a tap or a click on it). A second tap on the same piece puts it down. Returns true
+   * when it is now selected.
+   */
+  select(held: DragHeld): boolean {
+    if (!this.browser) return false;
+    const key = held.pieceKey ?? '';
+    if (this.dropped && this.dropped.key === key && Date.now() < this.dropped.until) { this.dropped = null; return false; }
+    if (this.held && this.held.pieceKey === key) { this.cancel(); return false; }
+    if (this.held) this.cancel();
+    if (this.pending) { clearTimeout(this.pending.timer); this.pending = null; }
+    this.mode = 'hold';
+    this.selecting = true;
+    this.held$$.next(held);
+    setTimeout(() => this.zone.runOutsideAngular(() => { if (this.held === held) window.addEventListener('pointerdown', this.onTap, true); }), 0);
+    return true;
+  }
+
   /** Put down whatever is in hand, back where it was. */
   cancel(): void {
     this.leaveHover();
     this.held$$.next(null);
     this.mode = null;
+    this.selecting = false;
     this.teardown();
   }
 
@@ -138,6 +166,7 @@ export class ItemDragService implements OnDestroy {
     this.leaveHover();
     this.held$$.next(null);
     this.mode = null;
+    this.selecting = false;
     this.teardown();
     this.swallowClickUntil = Date.now() + 350;
     try { return await target.target.drop(held, x, y); } catch { return false; }
@@ -187,8 +216,20 @@ export class ItemDragService implements OnDestroy {
 
   private tap(ev: PointerEvent): void {
     if (this.mode !== 'hold' || !this.held) return;
+    const el = ev.target as Element | null;
+    // The item card's own buttons (Eat, Drop, Put on belt…): let go, and let the tap reach the button.
+    if (el?.closest?.('[data-drag-pass]')) { this.zone.run(() => this.cancel()); return; }
+    // A tap on the selected piece itself puts it down (and its click must not select it again).
+    const onPiece = el?.closest?.('[data-piece]')?.getAttribute('data-piece');
+    if (this.selecting && onPiece && onPiece === this.held.pieceKey) {
+      this.dropped = { key: onPiece, until: Date.now() + 600 };
+      this.zone.run(() => this.cancel());
+      return;
+    }
     const hit = this.hitAt(ev.clientX, ev.clientY);
-    const cancelBtn = (ev.target as Element | null)?.closest?.('[data-drag-cancel]');
+    // Tap-selected and tapped somewhere that takes nothing: let go, and the tap does what it does there.
+    if (this.selecting && !hit) { this.zone.run(() => this.cancel()); return; }
+    const cancelBtn = el?.closest?.('[data-drag-cancel]');
     ev.preventDefault();
     ev.stopPropagation();
     this.swallowClickUntil = Date.now() + 500;
@@ -202,7 +243,7 @@ export class ItemDragService implements OnDestroy {
       if (node === this.ghost) continue;
       const el = (node as HTMLElement).closest?.('[data-drop-target]') as HTMLElement | null;
       const found = el ? this.targetFor(el) : null;
-      if (found && this.held && found.target.accepts(this.held)) return found;
+      if (found && this.held && !(this.selecting && found.el.hasAttribute('data-drop-world')) && found.target.accepts(this.held)) return found;
     }
     return null;
   }

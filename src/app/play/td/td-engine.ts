@@ -89,8 +89,10 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
 import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
+import { heapOffset, pileAt, pilesOf, tileCentre, tileKey } from './td-ground-pile';
+import type { PileRow } from '../engine/engine.model';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, RAISED_SKELETON, minionPalId, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, PICK_REACH, RAISED_SKELETON, minionPalId, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
 import type { AllyClaim } from '../world/ally-claims';
 /** S5: the Keepers within this many tiles are the heals' and guards' allies; at most this many ally claims a send. */
 const ALLY_SEEN_TILES = 14;
@@ -747,6 +749,22 @@ export class TopDownEngine {
       state: () => ({ walled: this.mobs.walled, bolts: this.mobs.bolts.length, puffs: this.mobs.effects.filter(e => e.kind === 'puff').length, rays: this.mobs.sight.castTotal, asked: this.mobs.sight.asked, x: Math.round(this.player.x), y: Math.round(this.player.y), level: this.level.id }),
     };
     // The Ashguard's e2e (webdriver only): a creature at the Keeper's side to swing at, and the blade's count.
+    // The ground's piles (td-ground-pile.ts), where they are on the page, and a coin pile laid at a distance (the
+    // walk-over check: Gold comes by itself, nothing else does).
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdGround'] = {
+      piles: () => [...pilesOf(this.groundLoot()).entries()].map(([key, list]) => ({ key, n: list.length, ids: list.map(g => g.id), labels: list.map(g => g.label), ...this.onPage(list[0].x, list[0].y, 4) })),
+      me: () => ({ x: Math.round(this.player.x), y: Math.round(this.player.y), ...this.onPage(this.player.x, this.player.y, 4) }),
+      labels: () => this.showLabels,
+      lay: (kind: 'gold' | 'ore', dx: number, dy = 0, n = 25) => {
+        const id = `fx-ground:${kind}:${this.mobs.drops.length}:${Math.round(this.time * 1000)}`;
+        const x = this.player.x + dx, y = this.player.y + dy;
+        if (kind === 'gold') this.mobs.drops.push({ id, x, y, coins: n, qty: 0, label: `${n} Gold`, color: '#e6c35a', age: 1 });
+        else this.mobs.drops.push({ id, x, y, coins: 0, material: 'cinder-ore', qty: n, label: 'Cinder Ore', color: '#c8c0b0', age: 1 });
+        return { id, ...this.onPage(x, y, 4) };
+      },
+      has: (id: string) => this.mobs.drops.some(g => g.id === id),
+      walk: (dx: number, dy: number) => { this.walkTo(this.player.x + dx, this.player.y + dy); return true; },
+    };
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdAsh'] = {
       foe: (type = 'ash-wolf', dx = 22) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-ash:${type}:${Math.round(this.time * 100)}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
       foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-ash:')).length,
@@ -898,6 +916,8 @@ export class TopDownEngine {
       // A heap of ember residue laid in the nearest corpse (the loot a walk-over would not reach).
       stock: () => { const c = this.mobs.remains[this.mobs.remains.length - 1]; if (!c) return false; this.mobs.drops.push({ id: `fx-stock:${this.mobs.drops.length}`, x: c.x + 8, y: c.y + 2, coins: 0, material: 'ember-residue', qty: 2, label: 'ember residue', color: '#c8c0b0', age: 1, corpse: c.id }); return true; },
       age: (secs: number) => { for (const c of this.mobs.remains) c.born -= secs; return this.mobs.remains.length; },
+      // The loot lying here, where it is on the page (click-to-loot's target) and how far from the Keeper.
+      loot: () => this.mobs.drops.map(d => ({ id: d.id, label: d.label, coins: d.coins, corpse: d.corpse ?? '', far: Math.round(Math.hypot(d.x - this.player.x, d.y - this.player.y)), ...this.onPage(d.x, d.y, 4) })),
       openNearest: () => { const c = this.mobs.corpseNear(this.player.x, this.player.y, 400); return c ? this.openCorpse(c.id) : false; },
     };
     if (this.fxCoop) (window as unknown as Record<string, unknown>)['__tdCoop'] = {
@@ -925,8 +945,8 @@ export class TopDownEngine {
       mine: () => this.myPals(),
       raise: (n = 2) => { for (let i = 0; i < n; i++) this.mobs.minions.push({ id: 9000 + i, x: this.player.x + (i ? -16 : 16), y: this.player.y + 6, hp: 40, maxHp: 40, dmg: [3, 5], cd: .6, t: 1, face: 1, life: Infinity, hit: 0, target: null }); return this.mobs.minions.length; },
       // Protocol 7: the room's ground as this screen holds it, and a walk onto one piece of it (the real pick path).
-      ground: () => this.mobs.drops.filter(d => d.room).map(d => ({ id: d.id, x: Math.round(d.x), y: Math.round(d.y), coins: d.coins, label: d.label, hold: Math.round((d.room?.hold ?? 0) * 10) / 10, corpse: d.corpse ?? '' })),
-      walkTo: (id: string) => { const g = this.mobs.drops.find(d => d.id === id); if (!g) return false; this.player.x = g.x; this.player.y = g.y; return true; },
+      // `px, py`: where it lies on the page (a click there walks to it and takes it, the real pick path).
+      ground: () => this.mobs.drops.filter(d => d.room).map(d => ({ id: d.id, x: Math.round(d.x), y: Math.round(d.y), coins: d.coins, label: d.label, hold: Math.round((d.room?.hold ?? 0) * 10) / 10, corpse: d.corpse ?? '', ...this.onPage(d.x, d.y, 4) })),
       // Protocol 10: cast a skill through the real path (a status it lays on a room creature is claimed), the life the
       // room keeps as this screen mirrors it, and harm the room did not deal (claimed as such).
       cast: (id: string) => this.mobs.useAbility(id as SkillId),
@@ -1026,6 +1046,7 @@ export class TopDownEngine {
     if (this.fxFall) delete (window as unknown as Record<string, unknown>)['__tdHearth'];
     delete (window as unknown as Record<string, unknown>)['__tdWaygate'];
     delete (window as unknown as Record<string, unknown>)['__tdGather'];
+    delete (window as unknown as Record<string, unknown>)['__tdGround'];
     if (this.fxParty) delete (window as unknown as Record<string, unknown>)['__tdParty'];
     if (this.fxPeer) delete (window as unknown as Record<string, unknown>)['__tdPeer'];
     if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
@@ -1255,7 +1276,150 @@ export class TopDownEngine {
     const sp = this.spotNear();
     if (sp) { this.beginFish(sp); return; }
     const t = this.treeNear();
-    if (t) this.startChop(t.c, t.r, t.x, t.y);
+    if (t) { this.startChop(t.c, t.r, t.x, t.y); return; }
+    // Nothing else in reach: E takes the nearest piece lying there, as the Pick-up key does.
+    this.pickNearest();
+  }
+  /** The Pick-up key (and E with nothing else in reach): the nearest piece within reach goes into the satchel. */
+  pickNearest(): boolean {
+    if (this.paused) return false;
+    const g = this.mobs.dropNear(this.player.x, this.player.y);
+    if (g) { this.mobs.takeDrop(g.id); return true; }
+    // A piece another Keeper laid down (protocol 6): the HUD reaches for it through the room.
+    const lying = this.sharedNear();
+    if (lying && this.options.onGroundTap) { this.options.onGroundTap(lying.id.slice('shared:'.length)); return true; }
+    this.say('play.td.loot.noneNear');
+    return false;
+  }
+  /** The nearest piece another Keeper laid down, within the Keeper's reach. */
+  private sharedNear(): Drop | null {
+    let best: Drop | null = null, bd = PICK_REACH;
+    for (const g of this.shared) { const d = Math.hypot(g.x - this.player.x, g.y - this.player.y); if (d <= bd) { bd = d; best = g; } }
+    return best;
+  }
+  /**
+   * A click or tap on a piece (or its plate), Diablo II-style: walk to it and take it. Room pieces go through the
+   * room (onRoomTake), a full satchel leaves it lying with the reason (the host says it), Gold is taken by the walk.
+   */
+  private reachFor(id: string, gold = false): void {
+    const near = () => { const g = this.mobs.drops.find(d => d.id === id); return g && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= PICK_REACH * 1.5 ? g : null; };
+    const take = () => { const g = near(); if (g && (gold || g.coins <= 0)) this.mobs.takeDrop(g.id); };
+    const g = this.mobs.drops.find(d => d.id === id);
+    if (!g) return;
+    if (Math.hypot(g.x - this.player.x, g.y - this.player.y) <= PICK_REACH) { this.path = []; take(); return; }
+    // No way to its side (a wall, water): take it from here when close, as a corpse opens.
+    if (!this.walkTo(g.x, g.y + 2, take) && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= PICK_REACH * 2) this.mobs.takeDrop(g.id);
+  }
+  /** Where a piece's name plate sits (centre x, baseline y, width; world px), or null when no plate is drawn for it. */
+  private plateOf(g: Drop): { x: number; y: number; w: number } | null {
+    const r = rungOf(g), d = Math.hypot(g.x - this.player.x, g.y - this.player.y);
+    const gold = g.coins > 0;
+    const shown = this.showLabels || this.showcase.includes(g) || (gold ? d < 160 : !!r && d < 110);
+    if (!shown) return null;
+    this.ctx.font = '7px "Pixelify Sans", monospace';
+    return { x: g.x, y: gold ? g.y - 12 : this.dropTop(g), w: Math.ceil(this.ctx.measureText(g.label).width) + 6 };
+  }
+  /** The piece under a point (its body, a thumb-wide box, or its plate), nearest first: the click-to-loot target. */
+  private dropAtPoint(x: number, y: number): Drop | null {
+    let best: Drop | null = null, bd = Infinity;
+    // Iso: the point as seen against each piece's own foot (tapRel).
+    const rel = this.rel();
+    for (const g of this.mobs.drops) {
+      if (!this.mobs.takeable(g) && !g.coins) continue;
+      const q = rel ? rel(g.x, g.y) : null, wx = q ? q.x : x, wy = q ? q.y : y;
+      const body = Math.abs(wx - g.x) <= 12 && wy >= g.y - 20 && wy <= g.y + 8;
+      const pl = body ? null : this.plateOf(g);
+      const onPlate = !!pl && Math.abs(wx - pl.x) <= pl.w / 2 + 2 && wy >= pl.y - 11 && wy <= pl.y + 2;
+      if (!body && !onPlate) continue;
+      const d = Math.hypot(wx - g.x, wy - (onPlate ? pl!.y : g.y - 6));
+      if (d < bd) { bd = d; best = g; }
+    }
+    return best;
+  }
+  /** Alt held: every piece's name plate shows, Diablo II-style. */
+  private lootLabels = false;
+  /** The phone's label toggle (a HUD button does what Alt does on a keyboard). */
+  private labelsPinned = false;
+  private get showLabels(): boolean { return this.lootLabels || this.labelsPinned; }
+  /** The HUD's label toggle (phones): every piece's plate shows while it is on. */
+  setLootLabels(on: boolean): void { this.labelsPinned = on; this.canvas.setAttribute('data-labels-on', on ? '1' : '0'); }
+  /** Everything on the ground that a hand can reach for (not the screenshot showcase). */
+  private takeableGround(): Drop[] {
+    return [...this.mobs.drops.filter(g => g.coins > 0 || this.mobs.takeable(g)), ...this.shared];
+  }
+  /** The pile under a point (td-ground-pile.ts): what lies on that tile. */
+  private pileAtPoint(wx: number, wy: number): Drop[] { return pileAt(this.takeableGround(), wx, wy, 12, this.rel()); }
+  private pileRows(pile: readonly Drop[]): PileRow[] {
+    return pile.map(g => ({ id: g.id, label: g.label, color: g.color, coins: g.coins, qty: g.qty, rarity: g.rarity ?? null, shared: g.id.startsWith('shared:') }));
+  }
+  /** Open a pile's list for the HUD (RuneScape's right-click "Take ..." menu). */
+  private openPile(pile: readonly Drop[], clientX: number, clientY: number): boolean {
+    if (!pile.length || !this.options.onPileOpen) return false;
+    this.pileOpen = tileKey(pile[0].x, pile[0].y);
+    this.canvas.setAttribute('data-pile-open', String(pile.length));
+    this.options.onPileOpen({ at: { x: clientX, y: clientY }, items: this.pileRows(pile) });
+    return true;
+  }
+  /** Own drops left on other floors (memory only, like a D2 game's floor). */
+  private readonly ownByLevel = new Map<string, Drop[]>();
+  /** The tile whose list is open (a row taken from it refreshes the list). */
+  private pileOpen: string | null = null;
+  /** What still lies on the open pile's tile (the HUD's list after a take). */
+  openPileRows(): PileRow[] {
+    if (!this.pileOpen) return [];
+    return this.pileRows(this.takeableGround().filter(g => tileKey(g.x, g.y) === this.pileOpen));
+  }
+  closePile(): void { this.pileOpen = null; this.canvas.setAttribute('data-pile-open', '0'); }
+  /** A row of the pile's list: walk to it and take it (a room piece through the room, another Keeper's through the HUD). */
+  takeFromPile(id: string): void {
+    if (id.startsWith('shared:')) {
+      const g = this.shared.find(x => x.id === id);
+      if (!g || !this.options.onGroundTap) return;
+      const reach = () => this.options.onGroundTap?.(id.slice('shared:'.length));
+      if (Math.hypot(g.x - this.player.x, g.y - this.player.y) <= PICK_REACH) { reach(); return; }
+      if (!this.walkTo(g.x, g.y + 2, reach) && Math.hypot(g.x - this.player.x, g.y - this.player.y) <= PICK_REACH * 2) reach();
+      return;
+    }
+    this.reachFor(id, true);
+  }
+  /** "Take all": walk to the pile and take each thing, oldest first, until the satchel says no (the rest stays). */
+  takePileAll(): void {
+    const key = this.pileOpen;
+    if (!key) return;
+    const here = () => this.takeableGround().filter(g => tileKey(g.x, g.y) === key);
+    const first = here()[0];
+    if (!first) return;
+    const all = () => {
+      for (const g of here()) {
+        if (g.id.startsWith('shared:')) { this.options.onGroundTap?.(g.id.slice('shared:'.length)); continue; }
+        if (g.coins > 0 && !g.room) { this.mobs.takeDrop(g.id); continue; }
+        // A refusal (a full satchel) stops the sweep: the host already said why, the rest stays on the ground.
+        if (!this.mobs.takeDrop(g.id) && !g.room) break;
+      }
+    };
+    if (Math.hypot(first.x - this.player.x, first.y - this.player.y) <= PICK_REACH) { this.path = []; all(); return; }
+    if (!this.walkTo(first.x, first.y + 2, all) && Math.hypot(first.x - this.player.x, first.y - this.player.y) <= PICK_REACH * 2) all();
+  }
+  /**
+   * Lay a thing the Keeper let go of at their feet, on the centre of the tile they stand on (a pile grows there). Only
+   * this screen holds it; `own` is the host's token for taking it back. Returns the drop id.
+   */
+  layOwn(own: string, label: string, rarity: string | null, qty = 1, art = ''): string {
+    const rung = rarity && rarity in LOOT ? rarity as LootRung : null;
+    const color = rung ? LOOT[rung].body : '#d8cfb8';
+    const at = tileCentre(this.player.x, this.player.y);
+    const n = this.groundLoot().filter(g => tileKey(g.x, g.y) === tileKey(at.x, at.y)).length;
+    const o = heapOffset(n);
+    const id = `own:${own}`;
+    this.mobs.drops.push({ id, x: at.x + o.dx, y: at.y + o.dy, coins: 0, qty, label, color, age: 1, own, ...(art ? { art } : {}), ...(rung ? { rarity: rung } : {}) });
+    return id;
+  }
+  /** Where the Keeper's next own drop lands (the tile centre at their feet): the room is told the same spot. */
+  dropSpot(): { x: number; y: number } {
+    const at = tileCentre(this.player.x, this.player.y);
+    const n = this.groundLoot().filter(g => tileKey(g.x, g.y) === tileKey(at.x, at.y)).length;
+    const o = heapOffset(n);
+    return { x: at.x + o.dx, y: at.y + o.dy };
   }
   /** The skills on keys 1–4 (the Spellbook assigns them). */
   private bar: SkillId[] = defaultBar('warlock');
@@ -1670,6 +1834,8 @@ export class TopDownEngine {
 
   /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */
   private enter(level: TdLevel, at: string): void {
+    // A Keeper's own drops stay on the floor they were let go on (td-ground-pile.ts): back there, they are still there.
+    if (this.level) this.ownByLevel.set(this.level.id, this.mobs.drops.filter(g => g.own));
     this.level = level;
     // The last area's shared creatures go with it, at once (td-coop left): a late snapshot of it is refused here.
     this.coop?.left(this.peerArea());
@@ -1677,6 +1843,8 @@ export class TopDownEngine {
     this.path = []; this.arrive = null; this.puffs = [];
     // A floor the room runs (protocol 7/9) raises nothing here: its creatures are the room's (no flash of our own).
     this.mobs.enterLevel(level === this.world || this.coop?.roomRuns(this.peerArea()) ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    this.mobs.drops.push(...(this.ownByLevel.get(level.id) ?? []));
+    this.ownByLevel.delete(level.id);
     // The Row-Walker was swept away with the last level's creatures, not felled: it may rise again at once.
     this.walkerUp = false; this.walkerT = 0;
     // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).
@@ -2532,9 +2700,10 @@ export class TopDownEngine {
     if (b.carried) {
       b.doing = 'carry'; b.idleT = 0;
       if (this.petGo(b, k.x + k.face * 4, k.y + 1, run, dt) || Math.hypot(b.x - k.x, b.y - k.y) < 12) {
-        // At his feet: set down where his own pick-up takes it (the Satchel's rules); if it stays (a full satchel), let it be.
+        // At his feet: it goes into the Satchel by his own hand (the Satchel's rules); if it stays (a full satchel), let it be.
         const g = b.carried;
         g.x = k.x; g.y = k.y; b.skip.add(g.id); b.carried = null;
+        this.mobs.takeDrop(g.id);
         this.petBrought(b);
       }
       return true;
@@ -2543,7 +2712,7 @@ export class TopDownEngine {
     // The nearest drop it can walk straight to (a drop behind a wall or across water is left for the Keeper).
     for (let tries = 0; !b.goal && tries < 4; tries++) {
       const own = tdPetJob(b.id, 'follow') === 'fetch';
-      const g = pickFetchTarget(k, this.mobs.drops, own ? TD_PET.fetchReach : TD_PET.gatherReach, this.lootFilter, b.skip);
+      const g = pickFetchTarget(k, this.mobs.drops.filter(d => !d.own), own ? TD_PET.fetchReach : TD_PET.gatherReach, this.lootFilter, b.skip);
       if (!g) break;
       if (this.petSees(b.x, b.y, g.x, g.y) || this.petSees(k.x, k.y, g.x, g.y)) b.goal = g; else b.skip.add(g.id);
       b.goalT = 0;
@@ -3165,7 +3334,8 @@ export class TopDownEngine {
       // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
       if ((e.code === 'Space' || e.code === 'Enter' || act === 'interact') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
       // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
-      if (down && !e.repeat && act === 'interact' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y) || this.gatherNear())) { e.preventDefault(); this.interact(); return; }
+      if (down && !e.repeat && act === 'interact' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y) || this.gatherNear() || this.mobs.dropNear(this.player.x, this.player.y) || this.sharedNear())) { e.preventDefault(); this.interact(); return; }
+      if (act === 'pickup') { if (down && !e.repeat) { e.preventDefault(); this.pickNearest(); } return; }
       if (act === 'attack') { e.preventDefault(); this.mobs.attacking = down; return; }
       const slot = /^skill([1-8])$/.exec(act);
       if (slot) { if (down && !e.repeat) { const why = this.useAbility(slot[1]); if (why) this.say(`play.td.ability.${why}`); } return; }
@@ -3175,14 +3345,31 @@ export class TopDownEngine {
     const kd = onKey(true), ku = onKey(false);
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
     this.unbind.push(() => window.removeEventListener('keydown', kd), () => window.removeEventListener('keyup', ku));
+    // Alt held shows every piece's name plate (Diablo II); a field keeps its own Alt.
+    const alt = (on: boolean) => (e: KeyboardEvent) => { if (e.key !== 'Alt' || (on && typing(e))) return; if (on) e.preventDefault(); this.lootLabels = on; };
+    const ad = alt(true), au = alt(false);
+    window.addEventListener('keydown', ad); window.addEventListener('keyup', au);
+    this.unbind.push(() => window.removeEventListener('keydown', ad), () => window.removeEventListener('keyup', au));
     // Focus going into a field, or away from the window, lets go of every held key and the held attack.
-    const release = () => { this.keys.clear(); this.mobs.attacking = false; };
+    const release = () => { this.keys.clear(); this.mobs.attacking = false; this.lootLabels = false; };
     const focusIn = (e: FocusEvent) => { if (editable(e.target)) release(); };
     document.addEventListener('focusin', focusIn); window.addEventListener('blur', release);
     this.unbind.push(() => document.removeEventListener('focusin', focusIn), () => window.removeEventListener('blur', release));
     const c = this.canvas;
+    // A right-click (desktop) on a pile lists it (RuneScape); the browser's own menu never opens over the world.
+    const menu = (e: MouseEvent) => {
+      e.preventDefault();
+      if (this.paused) return;
+      const { x: wx, y: wy } = this.toWorld(e.clientX, e.clientY);
+      this.openPile(this.pileAtPoint(wx, wy), e.clientX, e.clientY);
+    };
+    c.addEventListener('contextmenu', menu);
+    this.unbind.push(() => c.removeEventListener('contextmenu', menu));
+    let pressedAt = 0;
     const down = (e: PointerEvent) => {
       if (this.paused) return;
+      if (e.button === 2) return;
+      pressedAt = performance.now();
       this.joy = { id: e.pointerId, sx: e.clientX, sy: e.clientY, x: e.clientX, y: e.clientY, active: false };
       try { c.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
     };
@@ -3195,6 +3382,11 @@ export class TopDownEngine {
       if (!this.joy || this.joy.id !== e.pointerId) return;
       const tap = !this.joy.active;
       this.joy = null;
+      // A long-press (a finger held still ~½ s) on a pile lists it, as a right-click does.
+      if (tap && e.pointerType !== 'mouse' && performance.now() - pressedAt > 450) {
+        const { x: wx, y: wy } = this.toWorld(e.clientX, e.clientY);
+        if (this.openPile(this.pileAtPoint(wx, wy), e.clientX, e.clientY)) return;
+      }
       if (tap) this.tap(e.clientX, e.clientY);
     };
     c.addEventListener('pointerdown', down); c.addEventListener('pointermove', move);
@@ -3265,6 +3457,15 @@ export class TopDownEngine {
     const foe = this.mobs.mobAt(wx, wy, rel);
     if (foe && this.mobs.sees(foe)) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
+    // A piece of loot under the finger (its body or its plate): walk to it and take it (only Gold comes by itself).
+    // A corpse under the same finger wins when its body is nearer to the point (its window lists the same loot).
+    // A tile with more than one thing on it (td-ground-pile.ts): its list opens, RuneScape-style, to take one or all.
+    const pile = this.pileAtPoint(wx, wy);
+    if (pile.length > 1 && !this.mobs.corpseAt(wx, wy, rel) && this.openPile(pile, clientX, clientY)) return;
+    const loot = this.dropAtPoint(wx, wy);
+    const under = loot && this.mobs.corpseAt(wx, wy, rel);
+    const uq = under && rel ? rel(under.x, under.y) : { x: wx, y: wy }, lq = loot && rel ? rel(loot.x, loot.y) : { x: wx, y: wy };
+    if (loot && !(under && Math.hypot(uq.x - under.x, uq.y - (under.y - corpseSize(under).body / 2)) < Math.hypot(lq.x - loot.x, lq.y - (loot.y - 6)))) { this.reachFor(loot.id); return; }
     // A shared ground item (protocol 6) under the finger — before the Keepers, it is the smaller target and often lies
     // at one's feet: walk to it, then the HUD reaches for it.
     const lying = this.shared.find(g => { const q = rel ? rel(g.x, g.y) : { x: wx, y: wy }; return Math.abs(q.x - g.x) < 9 && q.y > g.y - 12 && q.y < g.y + 5; });
@@ -4444,6 +4645,11 @@ export class TopDownEngine {
     const ids = this.mobs.drops.filter(d => d.room).map(d => d.id);
     this.canvas.setAttribute('data-room-ground', String(ids.length));
   }
+  /** A world point in CSS pixels on the page (the e2e hooks' tap targets). */
+  private onPage(x: number, y: number, lift = 0): { px: number; py: number } {
+    const q = this.clientOf(x, y, lift);
+    return { px: q.x, py: q.y };
+  }
   /** Where shared ground items are drawn, in CSS pixels on the page (the e2e's tap target). */
   groundOnScreen(): { id: string; x: number; y: number }[] {
     return this.shared.map(g => ({ id: g.id.slice('shared:'.length), ...this.clientOf(g.x, g.y, 4) }));
@@ -4516,7 +4722,7 @@ export class TopDownEngine {
   /** Ground sprites: each icon baked once at 14 px (nearest) when its image has loaded; null until then. */
   private readonly dropSprites = new Map<string, HTMLCanvasElement | null>();
   private dropSprite(g: Drop): HTMLCanvasElement | null {
-    const src = dropIconSrc(g);
+    const src = g.art || dropIconSrc(g);
     if (!src || typeof Image === 'undefined') return null;
     const hit = this.dropSprites.get(src);
     if (hit !== undefined) return hit;
@@ -5197,9 +5403,22 @@ export class TopDownEngine {
         c.fillStyle = '#1a1014'; c.fillRect(sx + 1, sy + 1, 1, 1); c.fillRect(sx + 4, sy + 1, 1, 1);
       }
     }
-    for (const g of this.groundLoot()) { const r = rungOf(g); if (r && inView(g.x, g.y) && (Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110 || this.showcase.includes(g))) { this.at(g.x, g.y); this.plate(g.label, g.x, this.dropTop(g), LOOT[r].body); } }
-    // A Gold pile names its sum while it lies there (Diablo II's "38 Gold"), in the pile's own gold.
-    for (const g of this.mobs.drops) if (g.coins > 0 && inView(g.x, g.y) && Math.hypot(g.x - this.player.x, g.y - this.player.y) < 160) { this.at(g.x, g.y); this.plate(g.label, g.x, g.y - 12, GOLD_RAMP[0]); }
+    // Name plates: gear and runes near the Keeper, a Gold pile's sum (Diablo II's "38 Gold"); Alt shows every one.
+    // A pile's plates stack upward over its tile (D2's label column), and a pile of more than one shows its count.
+    const piles = pilesOf(this.groundLoot());
+    for (const pile of piles.values()) {
+      let row = 0;
+      for (const g of pile) {
+        if (!inView(g.x, g.y) || (g.coins > 0 && !this.mobs.drops.includes(g))) continue;
+        const pl = this.plateOf(g);
+        if (!pl) continue;
+        const r = rungOf(g);
+        this.at(g.x, g.y);
+        this.plate(g.label, pile.length > 1 ? pile[0].x : pl.x, pl.y - row * 10, g.coins > 0 ? GOLD_RAMP[0] : r ? LOOT[r].body : g.color);
+        row++;
+      }
+      if (pile.length > 1 && inView(pile[0].x, pile[0].y)) { this.at(pile[0].x, pile[0].y); this.pileBadge(pile.length, pile[0].x + 7, pile[0].y - 2); }
+    }
     c.font = 'bold 8px "Pixelify Sans", monospace';
     for (const f of this.mobs.floaters) {
       // Iso: a number floats from about a head's height over where it was struck.
@@ -5734,6 +5953,18 @@ export class TopDownEngine {
     return a === 'aura-embers' ? AURA_LOOKS.ember : a === 'aura-siphon' ? AURA_LOOKS.life : a === 'aura-watchfire' ? AURA_LOOKS.brass : a === 'lantern-aura' ? AURA_LOOKS.lamp : a === 'pack-bond' ? AURA_LOOKS.wild : null;
   }
 
+  /** A pile's count, bottom-right of its heap: a small dark plate with the number in cream. */
+  private pileBadge(n: number, x: number, y: number): void {
+    const c = this.ctx;
+    c.font = 'bold 7px "Pixelify Sans", monospace';
+    const text = `×${n}`, w = Math.ceil(c.measureText(text).width) + 4;
+    c.fillStyle = 'rgba(26,16,30,.9)';
+    c.fillRect(Math.round(x), Math.round(y - 7), w, 8);
+    c.fillStyle = '#f4e6c8';
+    c.textAlign = 'left';
+    c.fillText(text, Math.round(x + 2), Math.round(y));
+    c.textAlign = 'center';
+  }
   private plate(text: string, x: number, y: number, color: string): void {
     const c = this.ctx;
     c.font = '7px "Pixelify Sans", monospace';
