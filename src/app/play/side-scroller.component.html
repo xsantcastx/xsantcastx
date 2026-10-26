@@ -97,11 +97,11 @@
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
         <span>{{ t('play.td.dock.bag') }}</span><kbd>I</kbd>
       </button>
-      <button type="button" (click)="spellbookOpen = !spellbookOpen; sheetOpen = false" [attr.aria-expanded]="spellbookOpen" [title]="t('play.td.dock.book') + ' (K)'">
+      <button type="button" (click)="toggleSpellbook()" [attr.aria-expanded]="spellbookOpen" [title]="t('play.td.dock.book') + ' (K)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
         <span>{{ t('play.td.dock.book') }}</span><kbd>K</kbd>
       </button>
-      <button type="button" (click)="sheetOpen = !sheetOpen; spellbookOpen = false" [attr.aria-expanded]="sheetOpen" [title]="t('play.td.dock.sheet') + ' (C)'">
+      <button type="button" (click)="toggleSheet()" [attr.aria-expanded]="sheetOpen" [title]="t('play.td.dock.sheet') + ' (C)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
         <span>{{ t('play.td.dock.sheet') }}</span><kbd>C</kbd>
       </button>
@@ -392,21 +392,23 @@
       </section>
     }
   }
-  <!-- The Spellbook (K), D2's skill page made cozy (play/spellbook): the points, the tree tabs, the tree board with its
-       prerequisite arrows and rank badges, the picked skill's card (this rank, the next, Learn, keys 1–4, the aura). -->
+  <!-- The Skill Book (K, play/spellbook/skill-book; docs/design/skill-book.md): one skill a row, six marks beneath,
+       staged until Accept. Lazy: its chunk loads the first time the book opens. -->
   @if (topDown && spellbookOpen && !panel) {
-    @if (spellbook; as sb) {
-      <section class="spellbook sbt win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore>
-        <header class="win-head">
-          <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
-          <button type="button" class="win-x" (click)="spellbookOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
-        </header>
-        <app-spellbook-page class="sbt__page" [book]="sb" [tab]="bookTab" [vocation]="vocation" [respecAsk]="respecAsk" [skyPhase]="skyPhase"
-          [stone]="sb.pick ? stoneView(sb.pick.id) : null" [stoneArt]="sb.pick ? stoneArt(sb.pick.id) : ''" [soul]="tdSoul"
-          (pick)="pickSkill($event)" (learn)="learnSkill($event)" (openTree)="openTree($event)" (respec)="respecTree()" (respecCancel)="respecAsk = false"
-          (assign)="assignSkill($event.id, $event.slot)" (aura)="toggleAura($event)" (inscribe)="inscribeStone($event)" (belt)="beltStone($event)" />
-      </section>
-    }
+    <section class="spellbook sbt sbook win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore>
+      <header class="win-head">
+        <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
+        <button type="button" class="win-x" (click)="requestBookClose()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
+      </header>
+      @defer (on immediate) {
+        <app-skill-book class="sbook__book" [tree]="bookSaved" [level]="huntingLevel" [vocation]="bookVocation" [sig]="gearSig" [gearRanks]="bookGearRanks"
+          [castSpeed]="bookCastSpeed" [extra]="bookExtra" [bar]="loadoutBar" [aura]="loadoutAura" [stoneFor]="bookStone" [stoneArt]="bookStoneArt" [closeAsk]="bookCloseAsk"
+          (accept)="acceptBook($event)" (assign)="assignSkill($event.id, $event.slot)" (toggleAura)="toggleAura($event)" (inscribe)="inscribeStone($event)"
+          (belt)="beltStone($event)" (closed)="closeBookNow()" (dirty)="bookDirty = $event" />
+      } @placeholder {
+        <p class="sbook__wait">{{ t('play.td.book') }}</p>
+      }
+    </section>
   }
   <!-- Top-down: what just happened (a deed, a refusal) as a short toast above the prompt; it fades by itself. -->
   @if (topDown && (message || engineMessage)) {

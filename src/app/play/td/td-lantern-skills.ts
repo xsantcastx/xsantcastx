@@ -99,11 +99,10 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
     vars: { min: 8, max: 12, secs: 30, count: 1, range: 5 }, grow: { min: 1, max: 2, secs: 1, count: .1 }, tree: 'moth', tier: 0, col: 1, req: null,
     icon: I('<rect x="6" y="5" width="4" height="5" fill="#ffd27a"/><rect x="7" y="6" width="2" height="3" fill="#fffbe8"/><rect x="2" y="3" width="4" height="3" fill="#e8dcc0"/><rect x="10" y="3" width="4" height="3" fill="#e8dcc0"/><rect x="3" y="8" width="3" height="3" fill="#c9b894"/><rect x="10" y="8" width="3" height="3" fill="#c9b894"/><rect x="7" y="3" width="1" height="2" fill="#8a6a3a"/><rect x="8" y="3" width="1" height="2" fill="#8a6a3a"/><rect x="7" y="10" width="2" height="2" fill="#c99a3e"/><rect x="1" y="13" width="1" height="1" fill="#fff2a8"/><rect x="14" y="12" width="1" height="1" fill="#fff2a8"/>'),
     words: 'lum teth',
-    syn: [{ from: 'moth-kin', per: 6, what: 'dmg' }],
   },
   'moth-kin': {
     id: 'moth-kin', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.moth-kin', textKey: 'skill.moth-kin.text',
-    vars: { pct: 10 }, grow: { pct: 3 }, tree: 'moth', tier: 1, col: 0, req: 'lamp-wisp',
+    vars: { pct: 10 }, grow: { pct: 1.5 }, tree: 'moth', tier: 1, col: 0, req: 'lamp-wisp',
     icon: I('<rect x="7" y="4" width="2" height="8" fill="#5a4020"/><rect x="2" y="2" width="5" height="4" fill="#e8dcc0"/><rect x="9" y="2" width="5" height="4" fill="#e8dcc0"/><rect x="3" y="7" width="4" height="4" fill="#c9b894"/><rect x="9" y="7" width="4" height="4" fill="#c9b894"/><rect x="4" y="3" width="2" height="2" fill="#ffd27a"/><rect x="10" y="3" width="2" height="2" fill="#ffd27a"/><rect x="6" y="1" width="1" height="2" fill="#8a6a3a"/><rect x="9" y="1" width="1" height="2" fill="#8a6a3a"/><rect x="5" y="13" width="6" height="1" fill="#c99a3e"/>'),
   },
   'beacon': {

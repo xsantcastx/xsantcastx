@@ -30,17 +30,8 @@ describe('td-ashguard: the book as data', () => {
     expect(bookTrees('warlock')).toEqual(['ember', 'bone', 'shadow', 'common']);
     expect(ASH.length).toBe(12);
     expect(CLASS_SKILLS.ashguard.length).toBe(15); // + the common page: Light, the Seek, the Waygate
-    for (const tr of ASH_TREES) {
-      const ids = treeSkills('ashguard', tr);
-      expect(ids.length).withContext(tr).toBe(4);
-      for (const id of ids) {
-        const req = SKILLS[id].req;
-        if (!req) continue;
-        expect(SKILLS[req].tree).withContext(id).toBe(tr);
-        expect(SKILLS[req].tier).withContext(id).toBeLessThan(SKILLS[id].tier);
-      }
-      expect(new Set(ids.map(id => `${SKILLS[id].tier}:${SKILLS[id].col}`)).size).withContext(tr).toBe(ids.length);
-    }
+    // The book's rows (skills-100.md §6): Brand 4, Oath 3 (Hold the Line is Shield Oath's mark), Ash 3 (Ember Blood, the Watchfire's).
+    expect(ASH_TREES.map(tr => treeSkills('ashguard', tr).length)).toEqual([4, 3, 3]);
     // No Ashguard skill sits in a Warlock book, and the reverse.
     for (const id of ASH) expect(CLASS_SKILLS.warlock).not.toContain(id);
   });
@@ -413,21 +404,21 @@ describe('td-ashguard: the fight', () => {
 
 describe('td-ashguard: the trees and the saves', () => {
   it('clamps an Ashguard\'s tree: another class\'s points drop, tiers and prerequisites hold, the level\'s points cap it', () => {
-    const t: KeeperSkillTree = { spent: { 'bone-spear': 3, 'cinder-cleave': 2, 'whirl-of-cinders': 2, 'last-watch': 1 }, free: [], at: 0 };
-    // The Vow's point goes with no rank in Ember Blood, its prerequisite.
-    expect(clampTree(t, 'ashguard', 30).spent).toEqual({ 'cinder-cleave': 2, 'whirl-of-cinders': 2 });
+    const t: KeeperSkillTree = { spent: { 'bone-spear': 3, 'cinder-cleave': 2, 'whirl-of-cinders': 2, 'last-watch': 1, 'ember-blood': 2 }, free: [], at: 0 };
+    // The Vow keeps its point: the kit's free Ash Stride is a rank above it on its page (the book's rule). Ember Blood
+    // is a mark now: its points never count.
+    expect(clampTree(t, 'ashguard', 30).spent).toEqual({ 'cinder-cleave': 2, 'whirl-of-cinders': 2, 'last-watch': 1 });
     // Level 12: the Whirl (18) and the Vow (24) are not open yet.
     expect(clampTree(t, 'ashguard', 12).spent).toEqual({ 'cinder-cleave': 2 });
     // The Warlock reading the same tree keeps only his own.
     expect(clampTree(t, 'warlock', 30).spent).toEqual({ 'bone-spear': 3 });
-    // No Vow without Ember Blood (its prerequisite), even at a level that opens it.
-    expect(rankBlock(empty(), 'ashguard', 'last-watch', 30)).toBe('req');
-    let tree: KeeperSkillTree | null = buyRank(empty(), 'ashguard', 'ember-blood', 30);
-    expect(tree).not.toBeNull();
-    tree = buyRank(tree!, 'ashguard', 'last-watch', 30);
+    // A folded passive takes no rank at all; the Vow opens at its level.
+    expect(rankBlock(empty(), 'ashguard', 'ember-blood', 30)).toBe('folded');
+    expect(rankBlock(empty(), 'ashguard', 'last-watch', 23)).toBe('level');
+    const tree = buyRank(empty(), 'ashguard', 'last-watch', 30);
     expect(rankOf(tree!, 'ashguard', 'last-watch')).toBe(1);
-    // An orphan: the Vow's points go when Ember Blood's do.
-    expect(clampTree({ spent: { 'last-watch': 2 }, free: [], at: 0 }, 'ashguard', 30).spent).toEqual({});
+    // A row with no rank above it on its page holds none: a Keeper of another kit (no free Ash Stride, no Watchfire).
+    expect(clampTree({ spent: { 'last-watch': 2 }, free: [], at: 0 }, 'warlock', 30).spent).toEqual({});
     for (let lv = 1; lv <= 30; lv++) expect(pointsSpent(clampTree(t, 'ashguard', lv))).toBeLessThanOrEqual(skillPointsEarned(lv));
     // The kit's free ranks are the Ashguard's own; a Warlock skill is 'class'-blocked for him.
     expect(rankBlock(empty(), 'ashguard', 'bone-spear', 30)).toBe('class');

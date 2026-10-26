@@ -9,7 +9,7 @@
  * depends on where the town's spawns happen to be. Screenshots: docs/handoff/cozy-ui/lantern-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, pickSkill, seed } from './play-helpers';
+import { ERA, pickSkill, seed, learnRanks, putOnKey } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
@@ -152,19 +152,15 @@ test.describe('the Lanternwright', () => {
     else { await canvas(page).focus(); await page.keyboard.press('k'); }
     await expect(page.locator('.sbt')).toBeVisible();
     await expect(page.locator('#spellbook-title')).toContainText('Lanternwright');
-    await expect(page.locator('.sbt__tab')).toHaveCount(4);
-    await expect(page.locator('.sbt__tab[data-tree="lamp"]')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.sbt__tab[data-tree="ember"]')).toHaveCount(0);
-    await expect(page.locator('.sbt__node[data-skill="kindle"] .sbt__badge')).toHaveText('1');
-    await pickSkill(page, 'dawn-at-noon');
-    await expect(page.locator('.sbt__detail .sbt__cant q')).toHaveText('lum ul orum');
-    await expect(page.locator('.sbt__node[data-skill="dawn-at-noon"] .sbt__need')).toHaveText('Lv 24');
-    await page.screenshot({ path: `${SHOTS}/lantern-tree-lamp.jpg`, type: 'jpeg', quality: 85 });
+    await expect(page.locator('.book__tab:not(.book__tab--keys)')).toHaveCount(4);
+    await expect(page.locator('[data-book-tab="lamp"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-book-tab="ember"]')).toHaveCount(0);
+    await expect(page.locator('.brow[data-row="kindle"] .brow__rank b')).toHaveText('r 1/20');
+    await expect(page.locator('.brow[data-row="dawn-at-noon"] .brow__name small')).toHaveText('Opens at level 24');
     for (const tree of ['hearth', 'moth'] as const) {
-      await page.locator(`.sbt__tab[data-tree="${tree}"]`).click();
-      await expect(page.locator('.sbt__tree')).toHaveAttribute('data-tree', tree);
+      await page.locator(`[data-book-tab="${tree}"]`).click();
+      await expect(page.locator('.book__spread')).toHaveAttribute('data-tree', tree);
       await pickSkill(page, tree === 'hearth' ? 'hearth-circle' : 'beacon');
-      await page.screenshot({ path: `${SHOTS}/lantern-tree-${tree}.jpg`, type: 'jpeg', quality: 85 });
     }
     expect(errors, errors.join('\n')).toEqual([]);
   });
@@ -187,9 +183,8 @@ test.describe('the Lanternwright', () => {
     await expect(page.locator('.sbt')).toBeVisible();
     // Banish → key 1, Hearth Circle → key 2, the Beacon → key 3, Dawn at Noon (it needs Banish) → key 4.
     for (const [skill, key] of [['banish', 1], ['hearth-circle', 2], ['beacon', 3], ['dawn-at-noon', 4]] as const) {
-      await pickSkill(page, skill);
-      await page.locator('.sbt__detail .sbt__learn').click();
-      await page.locator('.sbt__detail .sb__keys button', { hasText: String(key) }).click();
+      await learnRanks(page, skill);
+      await putOnKey(page, skill, key);
     }
     await page.locator('.spellbook .win-x').click();
     // Out of the square onto the open grass, where the night is dark.

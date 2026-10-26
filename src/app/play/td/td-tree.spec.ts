@@ -9,27 +9,21 @@ import { skillPointsEarned } from '../../shared/keeper-look/skill-points';
 import { MobSystem, type MobHost } from './td-mobs';
 import { CLASS_SKILLS, MAX_RANK, SKILLS, STARTER_RANKS, TIER_LEVELS, TREES, skillVars, type SkillId } from './td-skills';
 import { buyRank, clampTree, effectiveRanks, levelFor, pointsSpent, rankBlock, rankOf, resetTree, treePointsLeft, treeSkills } from './td-tree';
+import { FOLDED } from './td-marks';
 
 const empty = (): KeeperSkillTree => ({ spent: {}, free: [], at: 0 });
 const NEW_SKILLS: SkillId[] = ['cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom'];
 
 describe('td-tree: the trees themselves', () => {
-  it('three trees of 6–8 skills each, in tiers by level, every prerequisite one tier up in the same tree', () => {
+  it('three pages of 5–6 rows each, in the book order (the level each opens at); the folded passives have no row', () => {
+    // skills-100.md §6: Ember 6 rows, Bone 5, Shadow 6 (Ember Mastery, Soul Harvest, Skeleton Mastery and Life Tap are marks now).
+    expect(TREES.map(tr => treeSkills('warlock', tr).length)).toEqual([6, 5, 6]);
     for (const tr of TREES) {
       const ids = treeSkills('warlock', tr);
-      expect(ids.length).withContext(tr).toBeGreaterThanOrEqual(6);
-      expect(ids.length).withContext(tr).toBeLessThanOrEqual(8);
-      expect(new Set(ids.map(id => SKILLS[id].tier)).size).withContext(tr).toBeGreaterThanOrEqual(4);
-      for (const id of ids) {
-        const req = SKILLS[id].req;
-        if (!req) continue;
-        expect(SKILLS[req].tree).withContext(id).toBe(tr);
-        expect(SKILLS[req].tier).withContext(id).toBeLessThan(SKILLS[id].tier);
-      }
-      // No two skills on one spot of the page.
-      expect(new Set(ids.map(id => `${SKILLS[id].tier}:${SKILLS[id].col}`)).size).withContext(tr).toBe(ids.length);
+      for (let i = 1; i < ids.length; i++) expect(levelFor(ids[i])).withContext(`${tr} ${ids[i]}`).toBeGreaterThanOrEqual(levelFor(ids[i - 1]));
+      for (const id of ids) expect(FOLDED[id]).withContext(id).toBeUndefined();
     }
-    // 21 in the three trees, and the common page's three (Light, the Seek, the Waygate).
+    // 21 records in the three trees (four of them folded into marks), and the common page's three.
     expect(CLASS_SKILLS.warlock.length).toBe(24);
   });
 
@@ -127,6 +121,9 @@ describe('td-tree: saves (migration and merge)', () => {
   it('a save from before the trees keeps its bar and aura: each gets rank 1 free', () => {
     const old = coerceLook({ made: true, bar: ['bone-spear', 'raise-skeleton', 'drain-life', 'dark-ward'], aura: 'aura-siphon', updatedAt: 9 });
     expect(old.tree.free).toEqual(['bone-spear', 'raise-skeleton', 'drain-life', 'dark-ward', 'aura-siphon']);
+    // It is rebound into the Skill Book on the same read (book 2, no marks; nothing was spent, so no note to read).
+    expect(old.tree.book).toBe(2);
+    expect(old.tree.rebound).toBeUndefined();
     const ranks = effectiveRanks(old.tree, 'warlock');
     for (const id of [...old.bar, old.aura] as SkillId[]) expect(ranks[id]).withContext(id).toBeGreaterThanOrEqual(1);
     expect(pointsSpent(old.tree)).toBe(0);
@@ -134,13 +131,18 @@ describe('td-tree: saves (migration and merge)', () => {
     expect(effectiveRanks(clampTree(old.tree, 'warlock', 1), 'warlock')['aura-siphon']).toBe(1);
     // A save that already has a tree is not migrated again.
     expect(coerceLook({ bar: ['bone-spear'], tree: { spent: {}, free: [], at: 3 } }).tree.free).toEqual([]);
-    // A new Keeper: nothing free beyond the kit.
-    expect(defaultLook().tree).toEqual({ spent: {}, free: [], at: 0 });
+    // A new Keeper: nothing free beyond the kit, already a book-2 tree (no note to read).
+    expect(defaultLook().tree).toEqual({ spent: {}, free: [], nodes: {}, book: 2, at: 0 });
   });
 
   it('junk in a stored tree is dropped', () => {
     const t = coerceLook({ tree: { spent: { 'bone-spear': 3, 'X!': 2, meteor: -1, doom: 2.5, weaken: 99 }, free: ['ok-id', 7, 'NO'], at: 'x' } }).tree;
-    expect(t).toEqual({ spent: { 'bone-spear': 3, weaken: MAX_RANK }, free: ['ok-id'], at: 0 });
+    expect(t).toEqual({ spent: { 'bone-spear': 3, weaken: MAX_RANK }, free: ['ok-id'], nodes: {}, book: 2, rebound: 0, at: 0 });
+    // A tree that held no points opens straight onto the book (no note).
+    expect(coerceLook({ tree: { spent: {}, free: [], at: 2 } }).tree.rebound).toBeUndefined();
+    // A book-2 tree's marks: whole masks of 1–63 only.
+    expect(coerceLook({ tree: { spent: {}, free: [], nodes: { 'ember-bolt': 5, 'X!': 1, meteor: 64, doom: 0, weaken: 2.5 }, book: 2, at: 1 } }).tree)
+      .toEqual({ spent: {}, free: [], nodes: { 'ember-bolt': 5 }, book: 2, at: 1 });
   });
 
   it('the merge takes the newer tree whole (never a sum), and the fight clamps it to the level', () => {
@@ -154,6 +156,41 @@ describe('td-tree: saves (migration and merge)', () => {
     // On a level that earned only 3 points, the fight sees 3.
     expect(pointsSpent(clampTree(merged.tree, 'warlock', 4))).toBe(3);
     expect(coerceLook(mergeKeeperLook(b, a)).tree.spent).toEqual({ 'drain-life': 5 });
+  });
+});
+
+describe('td-tree: the Skill Book\'s migration (skill-book.md §6.2)', () => {
+  it('every shipped Keeper loads into book 2 with no rank lost and the folded points refunded', () => {
+    for (const v of ['warlock', 'ashguard', 'lanternwright', 'thornstrider'] as const) {
+      // An old tree-board save: three ranks in every row, two in every passive since folded, the old free list.
+      const spent: Record<string, number> = {};
+      for (const id of CLASS_SKILLS[v]) spent[id] = FOLDED[id] ? 2 : 3;
+      const folded = CLASS_SKILLS[v].filter(id => FOLDED[id]).length * 2;
+      const look = coerceLook({ vocation: v, bar: ['life-tap', CLASS_SKILLS[v][0]], tree: { spent, free: ['soul-harvest'], at: 77 } });
+      expect(look.tree.book).withContext(v).toBe(2);
+      expect(look.tree.at).withContext(v).toBe(77);
+      expect(look.tree.rebound).withContext(v).toBe(folded);
+      expect(look.tree.nodes).withContext(v).toEqual({});
+      expect(look.tree.free).withContext(v).toEqual([]);
+      expect(look.bar).withContext(v).not.toContain('life-tap');
+      const c = clampTree(look.tree, v, 100), old = effectiveRanks({ spent, free: [], at: 0 }, v);
+      for (const id of CLASS_SKILLS[v]) {
+        if (FOLDED[id]) expect(rankOf(c, v, id)).withContext(`${v} ${id} folded`).toBe(0);
+        else expect(rankOf(c, v, id)).withContext(`${v} ${id}`).toBe(old[id]);
+      }
+      expect(pointsSpent(c)).withContext(v).toBe(pointsSpent({ spent, free: [], at: 0 }) - folded);
+      // Read twice (a second device, a merge): the same book, nothing refunded twice.
+      expect(coerceLook(look).tree).withContext(v).toEqual(look.tree);
+      expect(coerceLook(mergeKeeperLook(look, { vocation: v, tree: { spent, free: [], at: 76 } })).tree).withContext(v).toEqual(look.tree);
+    }
+  });
+  it('the rebound note is read once: the tree written without it stays book 2 with nothing to show', () => {
+    const look = coerceLook({ tree: { spent: { 'ember-mastery': 4 }, free: [], at: 5 } });
+    expect(look.tree.rebound).toBe(4);
+    const { rebound: _r, ...read } = look.tree; void _r;
+    const again = coerceLook({ ...look, tree: { ...read, at: 6 } });
+    expect(again.tree.rebound).toBeUndefined();
+    expect(again.tree.book).toBe(2);
   });
 });
 
@@ -188,11 +225,15 @@ describe('td-tree: every new skill goes off in the fight', () => {
     });
   }
 
-  it('a skill at rank 0 refuses; Life Tap never spends the last life; Corpse Burst needs a corpse', () => {
-    const { sys } = world(10);
-    sys.setRanks({ 'drain-life': 1, 'life-tap': 1, 'corpse-burst': 1 });
+  it('a skill at rank 0 refuses; Life Tap (Dark Ward\'s mark) never spends the last life; Corpse Burst needs a corpse', () => {
+    const { sys, hurt } = world(10);
+    sys.keeperMaxHp = 200;
+    sys.setRanks({ 'drain-life': 1, 'dark-ward': 1, 'life-tap': 1, 'corpse-burst': 1 });
     expect(sys.useAbility('meteor')).toBe('locked');
-    expect(sys.useAbility('life-tap')).toBe('life');
+    // Life Tap is no key any more: a mark, it runs on the Dark Ward's cast — and 10% of 200 life is more than the 10 left.
+    expect(sys.useAbility('life-tap')).toBeNull();
+    expect(sys.useAbility('dark-ward')).toBeNull();
+    expect(hurt).toEqual([]);
     expect(sys.useAbility('corpse-burst')).toBe('nocorpse');
   });
 
@@ -203,6 +244,7 @@ describe('td-tree: every new skill goes off in the fight', () => {
     expect(hi.bone).toBeGreaterThan(lo.bone);
     const m = world().sys;
     m.setRanks({ 'ember-mastery': 0 }); expect(m.fireMult).toBe(1);
-    m.setRanks({ 'ember-mastery': 3 }); expect(m.fireMult).toBeCloseTo(1.16, 5);
+    // Ember Mastery (Ember Bolt's star now): +1.5% fire a rank of its row.
+    m.setRanks({ 'ember-mastery': 3 }); expect(m.fireMult).toBeCloseTo(1.045, 5);
   });
 });

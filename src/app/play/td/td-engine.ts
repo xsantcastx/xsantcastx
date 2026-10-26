@@ -896,7 +896,7 @@ export class TopDownEngine {
   }
   /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
   get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
-    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / this.mobs.cdOf(id)) : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
+    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / this.mobs.cdOf(id)) : 0, mana: this.mobs.manaOf(id), ready: this.mobs.mana >= this.mobs.manaOf(id) }));
   }
   get mana(): number { return this.mobs.mana; }
   get maxMana(): number { return this.mobs.maxMana; }
@@ -907,7 +907,8 @@ export class TopDownEngine {
     const root = this.mobs.rootwalkT > 0 ? 1 + this.mobs.rootwalkPct / 100 : 1;
     // Vigor (a worn aura) quickens the feet: "You move {{n}}% faster".
     const vigor = this.mobs.itemAura?.fx.moveSpeed ?? 1;
-    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor;
+    // The Skill Book's marks (td-mobs markPace): Walking Whirl, Dark Step, Waymark.
+    return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor * (1 + this.mobs.markPace);
   }
   private buildKey = '';
   /**
@@ -952,9 +953,9 @@ export class TopDownEngine {
     this.bar = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active' && this.mobs.rank(id as SkillId) > 0).slice(0, 8);
     this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' && this.mobs.rank(aura as SkillId) > 0 ? aura as SkillId : null;
   }
-  /** The trees' ranks (td-tree effectiveRanks): every skill's numbers follow its rank. */
-  setSkillRanks(ranks: Readonly<Record<string, number>>, bought: Readonly<Record<string, number>> | null = null): void {
-    this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>, bought as Partial<Record<SkillId, number>> | null);
+  /** The trees' ranks (td-tree effectiveRanks): every skill's numbers follow its rank; the book's marks (effectiveMarks) ride along. */
+  setSkillRanks(ranks: Readonly<Record<string, number>>, bought: Readonly<Record<string, number>> | null = null, marks: Readonly<Record<string, number>> | null = null): void {
+    this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>, bought as Partial<Record<SkillId, number>> | null, marks as Partial<Record<SkillId, number>> | null);
   }
   get hasted(): boolean { return this.mobs.haste > 0; }
   /**

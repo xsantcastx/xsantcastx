@@ -1,163 +1,171 @@
 /**
- * td-book.spec.ts — the Spellbook page (play/spellbook, docs/design/skill-trees.md) as a player meets it: every control
- * in it is a 44px target on a desk and on a phone, on every tab of every vocation; a rank is learned by clicking — the
- * big Learn button, a second click (or tap) on the skill, its "+" — and from the keyboard (arrows walk, Enter learns).
+ * td-book.spec.ts — the Skill Book (K, play/spellbook/skill-book; docs/design/skill-book.md) as a player meets it: one
+ * skill a row, six marks beneath each row, ranks and marks staged until Accept, Cancel undoing them, the one-time note
+ * after the rebinding, every control a 44px target — and, on a 360×640 phone with touch, a book that scrolls inside its
+ * own window and whose Accept (the last control a player needs) can be reached and pressed.
+ *
+ * Screenshots of the book land in docs/handoff/book/ (1280×800 and 390×844).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { blob, seed } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 
-async function open(page: Page, vocation = 'warlock'): Promise<void> {
+type Tree = { spent: Record<string, number>; free: string[]; nodes?: Record<string, number>; book?: number; rebound?: number; at: number };
+
+async function open(page: Page, o: { level?: number; vocation?: string; tree?: Tree; key?: boolean } = {}): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, {
-    'eclipse-td': '1', 'preferred-language': 'en', 'godforge-realm-era': '55', ...activity({ hunting: xpForLevel(13) }),
-    'godforge-keeper-look': { version: 1, made: true, prompted: true, name: 'Tomas', vocation, skin: 2, hair: 'cropped', updatedAt: 1 },
+    'eclipse-td': '1', 'preferred-language': 'en', 'godforge-realm-era': '55', ...activity({ hunting: xpForLevel(o.level ?? 13) }),
+    'godforge-keeper-look': { version: 1, made: true, prompted: true, name: 'Tomas', vocation: o.vocation ?? 'warlock', skin: 2, hair: 'cropped', updatedAt: 1, ...(o.tree ? { tree: o.tree } : {}) },
   });
   await page.goto('/play?td=1&hour=12');
   await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
+  await page.addStyleTag({ content: '.lvl-banner, .glim-say { visibility: hidden !important; }' });
+  if (o.key === false) return;
   await page.locator('canvas').first().focus();
   await page.keyboard.press('k');
-  await expect(page.locator('.sbt')).toBeVisible();
+  await expect(page.locator('.sbook .book')).toBeVisible();
 }
+const unused = async (page: Page) => Number(await page.locator('[data-book-unused]').textContent());
+const saved = async (page: Page): Promise<Tree> => (await blob<{ tree?: Tree }>(page, 'godforge-keeper-look'))?.tree ?? { spent: {}, free: [], at: 0 };
 
-const points = async (page: Page): Promise<number> => Number((await page.locator('.sbt__pts').textContent())!.replace(/\D/g, ''));
-const badge = async (page: Page, id: string): Promise<number> => Number(await page.locator(`.sbt__node[data-skill="${id}"] .sbt__badge`).textContent());
+test('the book on a desk: rows and marks, staged until Accept, Cancel undoes, a star is one of two', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Level 16: 16 points, enough for Hellfire Nova to rank 10 and five of its marks.
+  await open(page, { level: 16 });
+  // The Warlock's three pages and the Common page, Ember open; one row a skill, in the order they open.
+  await expect(page.locator('.book__tab:not(.book__tab--keys)')).toHaveCount(4);
+  await expect(page.locator('[data-book-tab="ember"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.brow')).toHaveCount(6);
+  await expect(page.locator('.brow').first()).toHaveAttribute('data-row', 'ember-bolt');
+  await expect(page.locator('.brow[data-row="ember-bolt"] .brow__rank b')).toHaveText('r 1/20');
+  await expect(page.locator('.brow[data-row="meteor"] .brow__name small')).toHaveText('Opens at level 24');
+  await expect(page.locator('.brow[data-row="meteor"] .bmark')).toHaveCount(0);
+  // Six marks a row, in two branches; the folded passive sits where it was folded.
+  await expect(page.locator('.brow[data-row="ember-bolt"] .bmark')).toHaveCount(6);
+  await expect(page.locator('[data-mark="ember-bolt.a3"]')).toHaveAttribute('aria-label', /^Ember Mastery/);
+  const pts = await unused(page);
+  expect(pts).toBeGreaterThan(5);
+  await expect(page.locator('[data-book-accept]')).toBeDisabled();
 
-/** Every visible button and fold in the window, on every tab: none under 44px either way. */
-async function measureAll(page: Page): Promise<number> {
-  let n = 0;
-  const tabs = await page.locator('.sbt__tab').evaluateAll(els => els.map(e => e.getAttribute('data-tree')!));
-  for (const tree of tabs) {
-    await page.locator(`.sbt__tab[data-tree="${tree}"]`).click();
-    const ids = await page.locator('.sbt__node').evaluateAll(els => els.map(e => e.getAttribute('data-skill')!));
-    for (const id of ids.slice(0, 3)) {
-      await page.locator(`.sbt__node[data-skill="${id}"]`).click();
-      await page.waitForTimeout(450);   // past the double-click window: a pick, never a learn
-      // Unfold Synergies and the Spellstone so their buttons are measured too.
-      const closed = page.locator('.sbt__detail details:not([open]) > summary');
-      for (let i = 0; i < 3 && await closed.count(); i++) await closed.first().click();
-      const small = await page.locator('.spellbook').evaluate(root => [...root.querySelectorAll<HTMLElement>('button, summary')]
-        .map(el => ({ el, r: el.getBoundingClientRect() }))
-        .filter(({ el, r }) => r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden')
-        .map(({ el, r }) => ({ what: `${el.className || el.tagName} ${el.textContent?.trim().slice(0, 24)}`, w: Math.round(r.width), h: Math.round(r.height) })));
-      for (const b of small) { n++; expect(Math.min(b.w, b.h), `${tree}/${id}: ${b.what} ${b.w}×${b.h}`).toBeGreaterThanOrEqual(44); }
-    }
-  }
-  return n;
-}
+  // Stage: a rank in Hellfire Nova and its first mark. Nothing is saved until Accept.
+  await page.locator('[data-plus="hellfire-nova"]').click();
+  await expect(page.locator('.brow[data-row="hellfire-nova"] .brow__rank b')).toHaveText('r 2/20');
+  await page.locator('[data-mark="hellfire-nova.a1"]').click();
+  await expect(page.locator('[data-mark="hellfire-nova.a1"]')).toHaveClass(/bmark--pending/);
+  expect(await unused(page)).toBe(pts - 2);
+  await expect(page.locator('.book__pending')).toHaveText('2 pending');
+  expect((await saved(page)).spent['hellfire-nova'] ?? 0).toBe(0);
+  // A mark's card says what it does and what it needs (a hover on a desk).
+  await page.locator('[data-mark="hellfire-nova.a2"]').hover();
+  await expect(page.locator('.bcard[data-card="hellfire-nova.a2"]')).toContainText('Scorched Earth');
+  await expect(page.locator('.bcard[data-card="hellfire-nova.a2"]')).toContainText('Needs rank 5');
+  // Cancel: back to the saved book.
+  await page.locator('[data-book-cancel]').click();
+  await expect(page.locator('.brow[data-row="hellfire-nova"] .brow__rank b')).toHaveText('r 1/20');
+  expect(await unused(page)).toBe(pts);
 
-test.describe('desktop', () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  // Ranks to 10 and the Edge branch to its star: then the other star is closed.
+  for (let i = 0; i < 9; i++) await page.locator('[data-plus="hellfire-nova"]').click();
+  for (const s of ['a1', 'a2', 'a3']) await page.locator(`[data-mark="hellfire-nova.${s}"]`).click();
+  await page.locator('[data-mark="hellfire-nova.b1"]').click();
+  await page.locator('[data-mark="hellfire-nova.b2"]').click();
+  await expect(page.locator('[data-mark="hellfire-nova.b3"]')).toHaveClass(/bmark--blocked/);
+  await page.locator('[data-book-accept]').click();
+  await expect(page.locator('[data-book-accept]')).toBeDisabled();
+  await expect.poll(async () => (await saved(page)).nodes?.['hellfire-nova']).toBe(1 | 2 | 4 | 8 | 16);
+  expect((await saved(page)).spent['hellfire-nova']).toBe(9);
+  expect((await saved(page)).book).toBe(2);
+  // The other star asks to swap: the point moves.
+  await page.locator('[data-mark="hellfire-nova.b3"]').click();
+  await expect(page.locator('.bask')).toContainText('Swap Twin Nova for Cinder Ward?');
+  await page.locator('.bask__yes').click();
+  await expect(page.locator('[data-mark="hellfire-nova.b3"]')).toHaveClass(/bmark--pending/);
+  await expect(page.locator('[data-mark="hellfire-nova.a3"]')).toHaveClass(/bmark--blocked/);
+  await page.locator('[data-book-accept]').click();
+  await expect.poll(async () => (await saved(page)).nodes?.['hellfire-nova']).toBe(1 | 2 | 8 | 16 | 32);
 
-  for (const vocation of ['warlock', 'ashguard', 'lanternwright']) {
-    test(`every control in the ${vocation}'s Spellbook is at least 44px`, async ({ page }) => {
-      test.setTimeout(120000);
-      await open(page, vocation);
-      expect(await measureAll(page)).toBeGreaterThan(20);
-    });
-  }
-
-  test('a rank is learned by clicking: the button, a second click, the "+", and Enter', async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', e => errors.push(e.message));
-    await open(page);
-    const pts = await points(page);
-    await expect(page.locator('.sbt__banner--has')).toBeVisible();
-    // The tab shows its icon and the ranks it holds.
-    await expect(page.locator('.sbt__tab[data-tree="ember"] .sbt__tab-icon svg')).toHaveCount(1);
-    // Meteor is locked: a lock and the level it opens at.
-    await expect(page.locator('.sbt__node[data-skill="meteor"]')).toHaveAttribute('data-state', 'locked');
-    await expect(page.locator('.sbt__node[data-skill="meteor"] .sbt__lock')).toBeVisible();
-    await expect(page.locator('.sbt__node[data-skill="meteor"] .sbt__need')).toHaveText('Lv 24');
-    // Flame Wall needs Cinder Rain first: no "+", and the card says why with the button off.
-    await page.locator('.sbt__node[data-skill="flame-wall"]').click();
-    await expect(page.locator('.sbt__node[data-skill="flame-wall"] .sbt__plus')).toHaveCount(0);
-    await expect(page.locator('.sbt__detail .sbt__learn')).toBeDisabled();
-    await expect(page.locator('.sbt__detail .sbt__acts .sbt__why')).toHaveText('Needs a rank in Cinder Rain');
-    await page.waitForTimeout(450);
-
-    // 1. The big button.
-    await page.locator('.sbt__node[data-skill="cinder-rain"]').click();
-    await expect(page.locator('.sbt__node[data-skill="cinder-rain"]')).toHaveAttribute('data-state', 'learnable');
-    await expect(page.locator('.sbt__detail .sbt__learn')).toHaveText('Learn · 1 point');
-    const learn = (await page.locator('.sbt__detail .sbt__learn').boundingBox())!;
-    expect(learn.height).toBeGreaterThanOrEqual(44);
-    await page.locator('.sbt__detail .sbt__learn').click();
-    await expect(page.locator('.sbt__detail .sbt__rank')).toHaveText('Rank 1/20');
-    await expect(page.locator('.sbt__detail .sbt__learn')).toHaveText('Rank up · 1 point');
-    await expect(page.locator('.sbt__node[data-skill="flame-wall"] .sbt__plus')).toHaveCount(1);   // its prerequisite now held
-    // 2. A second click on the picked skill.
-    await page.waitForTimeout(450);
-    await page.locator('.sbt__node[data-skill="cinder-rain"]').dblclick();
-    await expect.poll(() => badge(page, 'cinder-rain')).toBe(2);
-    // 3. The "+" on another skill: picks it and learns at once.
-    await page.waitForTimeout(450);
-    await page.locator('.sbt__node[data-skill="flame-wall"] .sbt__plus').click();
-    await expect(page.locator('.sbt__detail')).toHaveAttribute('data-skill', 'flame-wall');
-    await expect.poll(() => badge(page, 'flame-wall')).toBe(1);
-    // 4. The keyboard: the picked skill holds the tab stop; Up walks to Cinder Rain, Enter learns a rank there.
-    await page.locator('.sbt__node[data-skill="flame-wall"]').focus();
-    await page.keyboard.press('ArrowUp');
-    await expect(page.locator('.sbt__detail')).toHaveAttribute('data-skill', 'cinder-rain');
-    await expect(page.locator('.sbt__node[data-skill="cinder-rain"]')).toBeFocused();
-    await page.keyboard.press('Enter');
-    await expect.poll(() => badge(page, 'cinder-rain')).toBe(3);
-    await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${pts - 4}`);
-    // Right and Left walk the tabs.
-    await page.locator('.sbt__tab[data-tree="ember"]').focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('.sbt__tab[data-tree="bone"]')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.sbt__tab[data-tree="bone"]')).toBeFocused();
-    // The card's folds: Synergies opens on a click.
-    await page.locator('.sbt__node[data-skill="bone-spear"]').click();
-    const syn = page.locator('.sbt__detail .sbt__syn');
-    if (await syn.count()) { await syn.locator('summary').click(); await expect(syn).toHaveAttribute('open', ''); }
-    expect(errors, errors.join('\n')).toEqual([]);
-  });
+  // Every control in the book is a 44px target.
+  const small = await page.locator('.sbook button:visible').evaluateAll(els => els.map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && (r.width < 43.5 || r.height < 43.5)).length);
+  expect(small).toBe(0);
+  await page.mouse.move(2, 2);
+  await page.locator('.brow[data-row="hellfire-nova"] .brow__icon').click();
+  await page.screenshot({ path: 'docs/handoff/book/book-desktop.png' });
+  // The Keys tab: today's key picker.
+  await page.locator('[data-book-tab="keys"]').click();
+  await expect(page.locator('[data-key-row="hellfire-nova"] .bkey__key')).toHaveCount(4);
+  // With nothing pending the X closes at once; with something pending it asks first.
+  await page.locator('[data-book-tab="ember"]').click();
+  await page.locator('[data-plus="ember-bolt"]').click();
+  await page.locator('.spellbook .win-x').click();
+  await expect(page.locator('.bask')).toContainText('Close and drop your changes?');
+  await page.locator('.bask__yes').click();
+  await expect(page.locator('.sbook')).toHaveCount(0);
+  expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test.describe('phone', () => {
-  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-
-  for (const vocation of ['warlock', 'ashguard', 'lanternwright']) {
-    test(`every control in the ${vocation}'s Spellbook is at least 44px on a phone`, async ({ page }) => {
-      test.setTimeout(120000);
-      await open(page, vocation);
-      expect(await measureAll(page)).toBeGreaterThan(20);
-    });
-  }
-
-  test('on a phone: the board sits above the card, a double-tap learns, nothing spills off the screen', async ({ page }) => {
-    await open(page);
-    const board = (await page.locator('.sbt__board').boundingBox())!, card = (await page.locator('.sbt__detail').boundingBox())!;
-    expect(board.y + board.height).toBeLessThanOrEqual(card.y + 1);
-    const sheet = (await page.locator('.sbt').boundingBox())!;
-    expect(sheet.x).toBeGreaterThanOrEqual(0);
-    expect(sheet.x + sheet.width).toBeLessThanOrEqual(390);
-    expect(sheet.y + sheet.height).toBeLessThanOrEqual(844);
-    const pts = await points(page);
-    const node = page.locator('.sbt__node[data-skill="cinder-rain"]');
-    await node.tap();
-    await expect(page.locator('.sbt__detail')).toHaveAttribute('data-skill', 'cinder-rain');
-    await expect.poll(() => badge(page, 'cinder-rain')).toBe(0);   // one tap reads, never spends
-    await node.tap();
-    await expect.poll(() => badge(page, 'cinder-rain')).toBe(1);
-    await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${pts - 1}`);
-    // The Learn button stays in reach at the card's foot.
-    const btn = page.locator('.sbt__detail .sbt__learn');
-    await expect(btn).toBeInViewport();
-    await btn.tap();
-    await expect.poll(() => badge(page, 'cinder-rain')).toBe(2);
-  });
+test('an old book is rebound: the folded passives\' points come back, the note is read once', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // A tree-board save: points in Ember Mastery and Soul Harvest (now marks), and in two rows.
+  await open(page, { level: 20, tree: { spent: { 'ember-mastery': 4, 'soul-harvest': 2, 'hellfire-nova': 3, 'bone-spear': 2 }, free: [], at: 5 } });
+  await expect(page.locator('.bnote')).toContainText('Your book has been rebound');
+  // No rank lost: the rows keep theirs.
+  await expect(page.locator('.brow[data-row="hellfire-nova"] .brow__rank b')).toHaveText('r 4/20');
+  const pts = await unused(page);
+  await expect(page.locator('.bnote')).toContainText(`${pts} unused`);
+  await page.locator('[data-book-note]').click();
+  await expect(page.locator('.bnote')).toHaveCount(0);
+  await expect.poll(async () => (await saved(page)).book).toBe(2);
+  const tree = await saved(page);
+  expect(tree.rebound).toBeUndefined();
+  expect(tree.spent).toEqual({ 'hellfire-nova': 3, 'bone-spear': 2 });
+  // Read once: a reopened book shows no note.
+  await page.locator('.spellbook .win-x').click();
+  await page.locator('canvas').first().focus();
+  await page.keyboard.press('k');
+  await expect(page.locator('.sbook .book')).toBeVisible();
+  await expect(page.locator('.bnote')).toHaveCount(0);
 });
 
-test.describe('phone held sideways', () => {
-  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
-  test('sideways: board and card side by side, every control at least 44px', async ({ page }) => {
-    test.setTimeout(120000);
-    await open(page, 'lanternwright');
-    const board = (await page.locator('.sbt__board').boundingBox())!, card = (await page.locator('.sbt__detail').boundingBox())!;
-    expect(board.x + board.width).toBeLessThanOrEqual(card.x + 1);
-    expect(await measureAll(page)).toBeGreaterThan(20);
-  });
+test.describe('the book on a phone', () => {
+  test.use({ hasTouch: true, isMobile: true });
+
+  for (const size of [{ width: 360, height: 640 }, { width: 390, height: 844 }]) {
+    test(`${size.width}×${size.height}: the book scrolls in its window; the last row's marks and Accept are reached and pressed`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize(size);
+      await open(page, { level: 30, key: false });
+      await page.locator('[data-hb="spellbook"]:visible, .td-dock button[title*="(K)"]:visible').first().tap();
+      await expect(page.locator('.sbook .book')).toBeVisible();
+      const scroll = page.locator('.sbook .book__scroll');
+      // The page is longer than the window: it scrolls inside it (not the whole screen).
+      expect(await scroll.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
+      // The last row on the page: a rank, then its first mark (a tap picks it and shows its card; the card's Take takes it).
+      const last = page.locator('.brow').last();
+      const id = await last.getAttribute('data-row');
+      await last.scrollIntoViewIfNeeded();
+      await last.locator('.brow__plus').tap();
+      const mark = last.locator('.bmark').first();
+      await mark.scrollIntoViewIfNeeded();
+      await mark.tap();
+      await expect(page.locator(`.bcard[data-card="${id}.a1"]`)).toBeVisible();
+      await page.locator('.bcard__act').tap();
+      await expect(mark).toHaveClass(/bmark--pending/);
+      // Scrolled to its very end, the book's foot is on screen: Accept is what a tap there hits.
+      await scroll.evaluate(e => { e.scrollTop = e.scrollHeight; });
+      const accept = page.locator('[data-book-accept]');
+      const box = (await accept.boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+      expect(box.x + box.width).toBeLessThanOrEqual(size.width);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-book-accept]'), { x: box.x + box.width / 2, y: box.y + box.height / 2 })).toBe(true);
+      // Nothing spills sideways.
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      if (size.width === 390) await page.screenshot({ path: 'docs/handoff/book/book-phone.png' });
+      await accept.tap();
+      await expect.poll(async () => (await saved(page)).nodes?.[id!]).toBe(1);
+    });
+  }
 });

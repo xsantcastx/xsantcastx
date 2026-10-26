@@ -49,12 +49,11 @@ test('a Spellstone: inscribed in the Spellbook from a blank and Soul, cast from 
   await page.keyboard.press('k');
   const book = page.locator('.spellbook');
   await expect(book).toBeVisible();
-  await book.locator('.sbt__tab[data-tree="ember"]').click();
-  await book.locator('.sbt__node[data-skill="hellfire-nova"]').click();
-  // The Spellstone is folded under the card ("Details" style): unfold it.
+  await book.locator('[data-book-tab="ember"]').click();
+  // The row's Spellstone hook (S2 makes it a satchel stone): today's inscribing card opens under the row.
+  await book.locator('.brow[data-row="hellfire-nova"] .brow__stone').click();
   const row = book.locator('[data-inscribe]');
   await expect(row).toBeVisible();
-  await row.locator('summary').click();
   await expect(row.locator('[data-inscribe-btn]')).toContainText('5 Soul');
   await row.locator('[data-inscribe-btn]').click();
   await expect(row).toHaveAttribute('data-stone-held', '4');
@@ -64,7 +63,8 @@ test('a Spellstone: inscribed in the Spellbook from a blank and Soul, cast from 
   expect(Object.keys(saved.pouch)[0]).toMatch(/^hellfire-nova@\d+$/);
   await page.mouse.move(5, 5);
   await page.waitForTimeout(500);
-  await page.screenshot({ path: 'docs/handoff/cozy-ui/stones-craft.jpg', type: 'jpeg', quality: 86 });
+  // Escape folds the stone card, then closes the book.
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect(book).toBeHidden();
 

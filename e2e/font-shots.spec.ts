@@ -83,12 +83,12 @@ for (const size of SIZES) {
       await canvas(page).focus();
       if (size.phone) { await page.keyboard.press('k'); } else await page.keyboard.press('k');
       await expect(page.locator('.sbt')).toBeVisible();
-      await page.locator('.sbt__node').nth(1).click();
+      await page.locator('.brow__icon').nth(1).click();
       await page.mouse.move(2, 2);
       await page.waitForTimeout(300);
       await shoot(page, 'spellbook', size.tag);
       if (MODE) return;
-      const tab = page.locator('.sbt__tab').first();
+      const tab = page.locator('.book__tab').first();
       expect(await tab.evaluate(e => getComputedStyle(e).fontVariantLigatures)).toBe('none');
     });
 
