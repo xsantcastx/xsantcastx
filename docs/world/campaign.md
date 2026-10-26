@@ -289,6 +289,9 @@ whatever S-work has landed.
   - **Moth Dust** (6), **Cinder Skin** (12), **Second Wind** (24), **Feral Leap** (18), **Call the Rain** (18, with S4's
     Wet).
 - **Threat ×2** for the Ashguard's book is written now. It is read by S10.
+- **The stand-in swaps** in `docs/design/skill-book-stand-ins.md` (23 marks land with S5's ally targeting, plus the
+  **Hush-rate hook**: `hushRate()` in `td-dark.ts` takes a Keeper multiplier; Moth Hours reads 0.5). S4 swaps 3 marks, S6
+  6, S8 1, S10 1. The Spanish mark renames (21) are applied by the S5 builder in `book.i18n.ts`.
 - **combat-sim.** The `--party` cells of skills-100.md §7.
 - **Accept when:**
   - a level-30 Lanternwright keeps a level-30 Ashguard alive against a level-30 floor boss in the party sim;

@@ -595,6 +595,50 @@ const RULES: Partial<Record<string, RuleProbe>> = {
     const w = withMarks('raise-skeleton', bit('a3')); cast(w, 'raise-skeleton');
     const [cap, other] = w.sys.minions;
     expect(cap.maxHp).toBe(other.maxHp * n_(fx));
+    // It taunts what stands within 4 tiles of it, every few seconds, for its seconds.
+    const m = dummy(w, cap.x + 2 * TILE, cap.y); m.x = cap.x + 2 * TILE;
+    let taunted = 0;
+    for (let t = 0; t < (fx.m ?? 0) + .2; t += .02) { w.sys.update(.02); taunted = Math.max(taunted, m.taunt ?? 0); }
+    expect(taunted).toBeCloseTo(fx.s ?? 0, 1);
+  },
+  'bone-storm.a2:pierceStack': fx => {
+    // Three foes in one spear's line: the second takes more than the first, the third more still (the spears pierce).
+    const per = (mask: number) => { const w = withMarks('bone-storm', mask), a = dummy(w, 2 * TILE, SPEAR_Y), b = dummy(w, 3 * TILE, SPEAR_Y), c = dummy(w, 4 * TILE, SPEAR_Y); w.sys.target = a; w.sys.v('bone-storm'); const s = w.sys as unknown as { spears: { hit: Mob[] }[] }; void s; cast(w, 'bone-storm'); run(w, .8); return [lost(a), lost(b), lost(c)]; };
+    let lifted = 0, plain = 0;
+    for (let i = 0; i < 30; i++) { const [a, , c] = per(bit('a2')); lifted += c / Math.max(1, a); const [a0, , c0] = per(0); plain += c0 / Math.max(1, a0); }
+    expect(lifted / plain).toBeGreaterThan(1 + n_(fx) / 100);
+    expect(lifted / plain).toBeLessThan(1 + (fx.m ?? 0) / 100 + .15);
+  },
+  'shutter-lantern.b1:freeToggle': () => {
+    const w = withMarks('shutter-lantern', bit('b1')); w.sys.vocation = 'lanternwright'; w.sys.mana = 0;
+    expect(w.sys.useAbility('shutter-lantern')).toBeNull();
+    expect(w.sys.useAbility('shutter-lantern')).toBeNull();
+    expect(w.sys.shuttered).toBeFalse();
+    const w0 = withMarks('shutter-lantern', 0); w0.sys.vocation = 'lanternwright';
+    expect(w0.sys.useAbility('shutter-lantern')).toBeNull();
+    expect(w0.sys.useAbility('shutter-lantern')).toBe('cooldown');
+  },
+  'dawn-at-noon.b3:hearth': () => {
+    const [a, b] = ab('dawn-at-noon', 'b3', w => { cast(w, 'dawn-at-noon'); return w.sys.inHearth ? 1 : 0; });
+    expect([a, b]).toEqual([0, 1]);
+    const w = withMarks('dawn-at-noon', bit('b3')); cast(w, 'dawn-at-noon'); run(w, w.sys.v('dawn-at-noon')['secs'] + .2);
+    expect(w.sys.inHearth).toBeFalse();
+  },
+  'call-of-the-wilds.a2:wolfBearHart': fx => {
+    const w = withMarks('call-of-the-wilds', bit('a2')), max = w.sys.v('call-of-the-wilds')['max'];
+    const m = dummy(w, 2 * TILE); w.sys.target = m;
+    // The wolf first: its bites Chill.
+    cast(w, 'call-of-the-wilds'); expect(w.sys.calledKind).toBe('wolf');
+    let chilled = false;
+    for (let t = 0; t < 5; t += .02) { w.sys.update(.02); if ((m.chillT ?? 0) > 0) chilled = true; }
+    expect(chilled).toBeTrue();
+    // Then the bear, biting harder; then the hart, quickening the Keeper's feet.
+    cast(w, 'call-of-the-wilds'); expect(w.sys.calledKind).toBe('bear');
+    expect(w.sys.beasts.find(b => b.kind === 'called')!.dmg[1]).toBe(Math.round(max * (1 + (fx.m ?? 0) / 100)));
+    expect(w.sys.markPace).toBe(0);
+    cast(w, 'call-of-the-wilds'); expect(w.sys.calledKind).toBe('hart');
+    expect(w.sys.markPace).toBeCloseTo((fx.s ?? 0) / 100, 5);
+    cast(w, 'call-of-the-wilds'); expect(w.sys.calledKind).toBe('wolf');
   },
   'raise-skeleton.b3:crumble': () => {
     const w = withMarks('raise-skeleton', bit('b3')); cast(w, 'raise-skeleton');
@@ -841,10 +885,6 @@ const RULES: Partial<Record<string, RuleProbe>> = {
   'dawn-at-noon.a2:zoneRegen': () => {
     const w = withMarks('dawn-at-noon', bit('a2')); w.life.hp = 1000; cast(w, 'dawn-at-noon'); run(w, 2);
     expect(w.healed.reduce((a, b) => a + b, 0)).toBeGreaterThan(100);
-  },
-  'dawn-at-noon.b3:zoneHush': () => {
-    const w = withMarks('dawn-at-noon', bit('b3')), m = dummy(w, TILE); cast(w, 'dawn-at-noon');
-    expect((w.sys as unknown as { hushed(m: Mob): boolean }).hushed(m)).toBeTrue();
   },
   'hearthlight.a2:quickMend': fx => {
     const w = withMarks('hearthlight', bit('a2')); w.life.hp = 100; cast(w, 'hearthlight');

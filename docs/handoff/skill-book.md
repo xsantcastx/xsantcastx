@@ -87,77 +87,63 @@ New statuses on a creature:
 `td-truth-marks.spec.ts` checks all 288 marks: the numbers against the fight, every rider landing, every fold, and one
 probe per named rule. A rule with no probe fails.
 
-## Stand-ins (for the Dungeon Master to re-canon)
-These skills-100.md effects need systems that do not exist yet: allies' heals, threat, rain and Wet, the Hush rate, pack
-auras, raisers. Each mark keeps its name but carries the nearest solo effect. The book's line says exactly what it does.
-- **Aura of Embers**:
-  - A3 Hearth-Heat: your fire +8% while it runs;
-  - B2 Ash to Ash: a kill by the aura gives 2 mana.
-- **Cinder Rain** B3 Dry Season: +30% on Burning foes.
-- **Flame Wall** B2 Firebreak: foes in the fire walk 40% slower.
-- **Raise Skeleton**:
-  - A2 Ash-Bone: blows Burn;
-  - A3 Captain: ×2 life and blow, no taunt;
-  - B2 From Ash Too: +1 raised a cast.
-- **Corpse Burst** B3: Hush only.
-- **Bone Armor** B3 Shared Bones: your raised take 50% less.
-- **Bone Storm**:
-  - A2 Pierce: Bleed (the spears already pierce);
-  - B3 Spiralling: a second fan at 50%.
-- **Drain Life** B3 and **Siphoning** A3: your raised drink.
-- **Siphoning** B1 Reach: +1 heal (the aura has no radius).
-- **Ember Curse** B2 Mark of Ash: a cursed foe's death gives mana.
-- **Dark Ward** B3: it bursts as it breaks.
-- **Weaken**:
-  - A2: all your hits;
-  - B3: +4 s.
-- **Doom** A3 and **Banish** A3: strip an elite's first affix, 10 s.
-- **Whirl** A3: +20% walk while it turns.
-- **Shield Bash** B2: a stun splash.
-- **Shield Oath** A3: a block heals 2%.
-- **Watch Cry** A2: +5% guard.
-- **Ash Stride** A2: struck foes Burn.
-- **Watchfire**:
-  - A2: +25% regen;
-  - B1: +15% Defense.
-- **Vow** A3: a 5% life steal during it.
-- **Kindle**:
-  - A3: heals you;
-  - B2: +10% on the dead.
-- **Flash**:
-  - A3: +1 s stun;
-  - B3: heals you.
-- **Lantern Aura**:
-  - A2 and A3: you;
-  - B2 Fog-Lamp: +1 light;
-  - B3: the dark-born take +15%.
-- **Shutter**:
-  - A2: noticed 2 tiles later;
-  - A3: the dark-born leave you be;
-  - B1: −0.5 s (the floor).
-- **Dawn** B3: inside is Hushed.
-- **Hearthlight**:
-  - A3: heals again at 60%;
-  - B1 Long Reach: +10% heal.
-- **Hearth Circle** B3: no chill inside.
-- **Lantern Ward** B3: it bursts as it breaks.
-- **Lamp-Wisp** A2, **Beacon** A2 and B2: you.
-- **Thorn Shot** B3: +15% on Bleeding foes.
-- **Command**:
-  - A3: the commanded foe bites 20% weaker;
-  - B3: it takes +10% from you.
-- **Pack Bond**:
-  - A2: 20% less taken while bonded;
-  - A3: +5% guard and bite.
-- **Call of the Wilds**:
-  - A2: bites Chill;
-  - B3: bites leap at 50%.
-- **Stampede** B3: you heal 2% a beast.
-- **Snare** B3: +0.5 s root.
-- **Bramble** B3: Stun 1 s.
-- **Rootwalk**:
-  - A3: 15% less taken;
-  - B3: the Hush cannot rise while it runs.
+## Stand-ins: the DM's ruling
+The ruling is `docs/design/skill-book-stand-ins.md` (branch `dm-marks`, merged here).
+
+**Applied now (b):**
+- Captain of the Dead: every 6 s it taunts foes within 4 tiles for 1.5 s.
+- Bone Storm A2 Pierce: each foe a spear has passed through makes it strike the next +10% harder, up to +30%. This
+  replaces the Bleed.
+- Swift Shutter: the toggle has no cooldown and costs no mana.
+- No Shadow: it is the `hearth` flag now. While the dawn holds, the Hush cannot rise.
+- Wolf, Bear or Hart: the calls come in turn.
+  - The wolf's bites Chill 1 s.
+  - The bear bites 40% harder. Called beasts cannot be hit, so "×1.4 life" would do nothing; this needs the DM's eye.
+  - The hart gives you and it +30% walk.
+- Doom A3: the strip lasts 6 s.
+- Dark Ward B3: the burst is 40% of the absorb, within 2 tiles.
+- Watchfire B1 is renamed Tempered Fire / Fuego templado.
+- All 21 Spanish names are fixed.
+- Wording from the (a) rulings: Ash to Ash reads "A foe it kills gives you N mana"; Firebreak reads "Foes crossing the
+  wall walk 40% slower".
+
+**Kept for their S-tasks (c), 34 of them:** see the ruling.
+
+**The 3 marks the earlier list missed** (the same test applies to each):
+1. Banish B3 Lay Them All. skills-100.md says the unmaking "ends every raise channel within 4 tiles"; it now only
+   Hushes them 2 s. This waits for S6's raisers.
+2. Dawn at Noon A2 Healing Sun. "Allies inside regenerate 1.5%/s" covers only you today (S5).
+3. Hearth Circle A2 Warded Ground. "Allies inside take −10%" covers only you today (S5).
+
+Smaller departures in the same spirit, not counted:
+- Hearthlight B3 Hearth Bond and Pack Bond B2 Fur and Leaf are yours only.
+- Meteor A3 Twin Impact lands on the same spot, not a tile off.
+- Stampede A3 Return Charge runs a second time the same way, not back.
+
+## Marks on creatures the room runs (M3, protocol 9)
+When the room (or a party host) runs the creatures, this Keeper's blows become claims (`/coop/hits`). The room
+applies the damage, bounded by the Keeper's budget (`world/keeper-budget.ts`: 4× the sim's dps; the marked build's dps
+is at most +13% over `REF_DPS`, at L60).
+
+**What works:**
+- Every damage lift reaches the claim: vsStatus, vuln, Sunder, bane, wrath, fireUp, pierceStack and the numbers.
+- Burn and bleed riders tick locally as claims.
+- Echoes, fields, jumps, shards and Doom bursts are claims too.
+- Wards, heals and mana from hits are this Keeper's own.
+- A fall the room announces runs the felling skill's kill marks (`coopFell` → `markKill`, via `Mob.lastSrc`).
+- `td-truth-marks.spec.ts` checks this case.
+
+**Not yet on room creatures.** The room has no status channel, so these land on this Keeper's picture of the creature
+only:
+- chill, fear, blind and hush;
+- the marks' stun, root and taunt, including the Captain's;
+- Night Shroud, Moth Hours and Quiet Hands;
+- Firebreak's slow;
+- pulls;
+- Unmaking and Banish the Bearer's affix strip.
+
+The shipped stun, root and taunt (Shield Bash, snares, Watch Cry) have the same gap. The fix is a status in the hit
+protocol, which is m3's to add.
 
 ## Balance (combat-sim, every band green)
 The refunded passive points buy ranks and marks, so the first run was 15–35% faster. Tuning:
