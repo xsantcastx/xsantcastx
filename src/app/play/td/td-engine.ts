@@ -3362,7 +3362,7 @@ export class TopDownEngine {
     this.drawSeek();
     this.drawFightUi(inView);
     // A giver standing on their own already wears their name: no second plate.
-    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? up(62) : 36), '#ffd27a');
+    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? up(62) : up(36)), '#ffd27a');
     // The fallen purse names itself when the Keeper is near.
     if (fallen && Math.hypot(fallen.x - this.player.x, fallen.y - this.player.y) < 110) this.plate(`${fallen.gold} Gold`, fallen.x, fallen.y - 14, '#ffd27a');
     // The Hush at its deepest: the edge of the world thins (screen space, two art pixels).
