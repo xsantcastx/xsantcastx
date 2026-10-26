@@ -52,7 +52,7 @@ import { itemNameTone, pieceLookOf } from '../shared/inventory-grid/piece-look';
 import { RUNEWORDS_I18N } from '../shared/enchanting/runewords.i18n';
 import type { SocketDrop } from '../shared/enchanting/socketing.service';
 import { footprintOf } from '../shared/rpg/item-footprint';
-import type { Piece } from '../shared/rpg/inventory-grid';
+import type { GridView, Piece } from '../shared/rpg/inventory-grid';
 import type { GridMigrationNote, GridMoveResult } from '../shared/rpg/inventory.service';
 import { recipeKey, recipeOfDef } from '../shared/spellstones/spellstones.model';
 import { itemFromOffer } from './trade/trade-items';
@@ -5197,6 +5197,24 @@ export class SideScrollerComponent implements OnDestroy {
   // ── The grid (docs/design/inventory-grid.md): the satchel is one D2 grid; everything moves by drag and drop. ──
   readonly drag = inject(ItemDragService);
   /** How a piece looks in any grid (a Spellstone by its spell's tree and name). */
+  private bagViewMemo: { src: GridView; sig: string; view: GridView } | null = null;
+  /** The satchel grid minus pieces on their way to the ground: a drop leaves the satchel at once, a hand-back returns it. */
+  get bagView(): GridView {
+    const src = this.inventory.snapshot.grid.bag;
+    const gone = new Set(src.pieces.flatMap(p => p.ids).filter(id => this.tradeHud?.dropPending(id)));
+    const sig = [...gone].join(',');
+    if (this.bagViewMemo && this.bagViewMemo.src === src && this.bagViewMemo.sig === sig) return this.bagViewMemo.view;
+    const view: GridView = !gone.size ? src : {
+      ...src,
+      pieces: src.pieces.flatMap(p => {
+        if (p.kind !== 'instance' || !p.ids.some(id => gone.has(id))) return [p];
+        const ids = p.ids.filter(id => !gone.has(id));
+        return ids.length ? [{ ...p, ids, qty: ids.length }] : [];
+      }),
+    };
+    this.bagViewMemo = { src, sig, view };
+    return view;
+  }
   readonly pieceLook = (p: Piece): PieceLook => pieceLookOf(this.inventory.snapshot, p,
     skill => TD_SKILLS[skill as SkillId]?.tree ?? 'common', skill => this.t('play.grid.stone', { name: this.t(`skill.${skill}`) }));
   /** Pieces that just arrived (they glow where they landed, so the player sees where a pickup went). */
