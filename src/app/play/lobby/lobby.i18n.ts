@@ -12,6 +12,14 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'lobby.guestBlurb': { en: 'Saved on this device only. You can sign in later.', es: 'Se guarda solo en este dispositivo. Puedes entrar mas tarde.' },
   'lobby.signInFailed': { en: 'Sign-in did not finish: {{msg}}', es: 'No se pudo entrar: {{msg}}' },
 
+  // One live session per account (play-session.service.ts).
+  'lobby.session.title': { en: 'Playing elsewhere', es: 'Jugando en otro lugar' },
+  'lobby.session.device': { en: 'This account is playing on another device — Play here?', es: 'Esta cuenta esta jugando en otro dispositivo — ¿Jugar aqui?' },
+  'lobby.session.deviceNamed': { en: 'This account is playing on another device ({{device}}) — Play here?', es: 'Esta cuenta esta jugando en otro dispositivo ({{device}}) — ¿Jugar aqui?' },
+  'lobby.session.tab': { en: 'This account is playing in another tab — Play here?', es: 'Esta cuenta esta jugando en otra pestana — ¿Jugar aqui?' },
+  'lobby.session.playHere': { en: 'Play here', es: 'Jugar aqui' },
+  'lobby.session.taking': { en: 'Taking over…', es: 'Tomando el control…' },
+
   'lobby.select.title': { en: 'Choose your Keeper', es: 'Elige a tu Guardian' },
   'lobby.select.slots': { en: '{{n}} of {{max}} Keepers', es: '{{n}} de {{max}} Guardianes' },
   'lobby.select.empty': { en: 'No Keeper has answered the hearth yet. Make one to begin.', es: 'Ningun Guardian ha respondido al hogar aun. Crea uno para empezar.' },

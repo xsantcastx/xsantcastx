@@ -23,10 +23,10 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./play/lobby/play-shell.component').then(m => m.PlayShellComponent),
       // Nothing in the game navigates away from it (see the guard's header).
       canDeactivate: [stayInGameGuard],
-      title: 'Eclipse Realms — Free Browser RPG, No Download',
+      title: 'Eclipse Realms — a pixel-art online RPG',
       data: {
-        description: 'Eclipse Realms is a free browser RPG you play with no download and no sign-up. An idle game with Diablo-style rolled loot: strike the forge for Gold, gamble it on runes across seven rarity tiers, craft weapons and armour, and send explorers into five realms. Progress persists in your browser.',
-        keywords: 'free browser rpg, idle rpg game, browser game no download, free idle game, online rpg free, incremental rpg, persistent browser game, crafting rpg browser, d2 style loot game, clicker rpg, arpg, eclipse realms, godforge',
+        description: 'Eclipse Realms is a pixel-art online RPG you play in your browser: a Tibia-like world of hand-made maps and dark dungeons, Diablo-like loot with rolled affixes, four callings, parties and trading with other Keepers. Free to play, nothing to install.',
+        keywords: 'eclipse realms, pixel art rpg, online rpg, mmorpg, browser mmorpg, play in browser, tibia like, tibia-like mmorpg, diablo like loot, arpg, free online rpg, pixel mmorpg, top-down rpg, multiplayer rpg browser',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -36,20 +36,20 @@ export const APP_ROUTES: Routes = [
               '@id': `${SITE_URL}/#website`,
               url: SITE_URL,
               name: 'Eclipse Realms',
-              description: 'A free idle RPG in the browser — forge Gold, gamble runes, craft gear with rolled stats, and send explorers into five realms.'
+              description: 'A pixel-art online RPG in the browser: a Tibia-like world, dark dungeons and Diablo-like loot.'
             },
             {
               '@type': 'WebPage',
               '@id': `${SITE_URL}/play`,
               url: `${SITE_URL}/play`,
-              name: 'Eclipse Realms — Free Browser RPG & Idle Game',
-              description: 'A free idle RPG: strike the forge for Gold, gamble it on runes, craft gear with rolled stats, send explorers into five realms, and keep a daily streak.',
+              name: 'Eclipse Realms — a pixel-art online RPG',
+              description: 'A pixel-art online RPG in your browser: a Tibia-like world, dark dungeons and Diablo-like loot. Warlock, Ashguard, Lanternwright or Thornstrider: choose your Keeper and set out from Ember Isle.',
               isPartOf: { '@id': `${SITE_URL}/#website` },
               primaryImageOfPage: { '@id': `${SITE_URL}/#gameimage` }
             },
             /*
-             * The VideoGame node is the one that earns the game its place in a
-             * "free browser RPG" result rather than a generic web-page one.
+             * The VideoGame node is the one that earns the game its place in an
+             * "online RPG" / "browser MMORPG" result rather than a generic web-page one.
              *
              * WebSite and WebPage above describe a document. They say nothing
              * about what is on it, so the whole site read to a crawler as a
@@ -71,14 +71,14 @@ export const APP_ROUTES: Routes = [
               name: 'Eclipse Realms',
               alternateName: 'The Godforge',
               url: SITE_URL,
-              description: 'A free persistent browser RPG with idle mechanics, Diablo-style rolled loot, rune gambling across seven rarity tiers, crafting, and expeditions into five realms. No sign-up and no download.',
-              genre: ['Role-Playing Game', 'Idle Game', 'Incremental Game', 'Browser Game', 'Action RPG'],
+              description: 'A pixel-art online RPG played in the browser: one shared, Tibia-like world of hand-made maps, towns and dark dungeons, with Diablo-like loot, four callings (Warlock, Ashguard, Lanternwright, Thornstrider), parties and trading between Keepers.',
+              genre: ['Role-Playing Game', 'MMORPG', 'Action RPG', 'Browser Game', 'Pixel Art'],
               gamePlatform: ['Web Browser', 'PC', 'Mobile Web'],
               applicationCategory: 'GameApplication',
               applicationSubCategory: 'Role-Playing Game',
               operatingSystem: 'Any',
-              browserRequirements: 'Requires a modern web browser with JavaScript enabled. No download or plugin.',
-              playMode: 'SinglePlayer',
+              browserRequirements: 'Requires a modern web browser with JavaScript enabled. Nothing to install.',
+              playMode: ['MultiPlayer', 'SinglePlayer'],
               inLanguage: ['en', 'es'],
               isAccessibleForFree: true,
               image: {

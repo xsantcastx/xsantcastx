@@ -148,6 +148,8 @@ export interface RoomOptions {
   onTradeCommit?: (commit: RoomTradeCommit) => void;
   /** Protocol 8: this Keeper's drop was escrowed, or handed back. */
   onGroundNote?: (note: RoomGroundNote) => void;
+  /** The same account joined the room from somewhere else (`replaced`): this session is out of the room. */
+  onReplaced?: () => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
@@ -631,6 +633,7 @@ export class SocialRoom {
       clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
       this.generation++; this.stream?.abort(); this.stream = undefined; this.token = '';
       this.publish({ connected: false, players: [], barred, status: barred ? 'This account is barred from the hearth.' : 'You joined the hearth from another window.' });
+      if (!barred) this.options.onReplaced?.();
       return true;
     }
     return false;
