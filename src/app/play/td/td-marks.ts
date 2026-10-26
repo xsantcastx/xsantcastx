@@ -47,7 +47,7 @@ export type MarkFx =
   | { k: 'mana'; n: number }
   | { k: 'rider'; st: MarkStatus; secs: number; pct?: number; chance?: number }
   | { k: 'fold'; skill: SkillId }
-  | { k: 'flag'; f: MarkFlag; n?: number; m?: number; s?: number; c?: number; st?: MarkStatus; el?: 'fire' | 'all' };
+  | { k: 'flag'; f: MarkFlag; n?: number; m?: number; s?: number; c?: number; st?: MarkStatus; el?: 'fire' | 'cold' | 'all' };
 
 /**
  * The named rules (each read once in td-mobs, each with its line `book.fx.<flag>` in book.i18n.ts):
@@ -70,7 +70,15 @@ export type MarkFlag =
   | 'wispWard' | 'poleRegen' | 'twoBeacons' | 'poleSpeed'
   // the Thornstrider's
   | 'twinArrow' | 'bleedSpread' | 'commandWeaken' | 'vsCommanded' | 'sharedHurt' | 'biteHeal' | 'twoCalled' | 'herdHeal'
-  | 'regrasp' | 'traps' | 'throwTrap' | 'leafCrit' | 'walkGuard';
+  | 'regrasp' | 'traps' | 'throwTrap' | 'leafCrit' | 'walkGuard'
+  // S5: the marks that reach allies (skill-book-stand-ins.md's (c) swaps)
+  | 'wardCopy' | 'rally' | 'warmGround' | 'vowShare' | 'twinLights' | 'mendMind' | 'selfWard'
+  // S5: the tank's new rows
+  | 'ricochet' | 'hook' | 'coldAsh' | 'molten' | 'shareSkin' | 'ashShell' | 'steadfast' | 'bannerRegen' | 'resolve' | 'carryAura'
+  | 'steadyBreath' | 'lastBreath' | 'breathRoom' | 'battleBreath' | 'rescue' | 'bondOath' | 'twoBonds'
+  | 'spikes' | 'gateGuard' | 'mobileGate' | 'gateOpens'
+  // S5: the healer's new rows
+  | 'warmHands' | 'cleanseCircle' | 'dryCloak' | 'steadyHands' | 'twoLamps' | 'steadySong' | 'choir' | 'walkingSong' | 'keptNote';
 
 export interface MarkDef {
   slot: MarkSlot;
@@ -87,7 +95,7 @@ const CD = (n: number): MarkFx => ({ k: 'cd', n });
 const MN = (n: number): MarkFx => ({ k: 'mana', n });
 const R = (st: MarkStatus, secs: number, pct?: number, chance?: number): MarkFx => ({ k: 'rider', st, secs, ...(pct !== undefined ? { pct } : {}), ...(chance !== undefined ? { chance } : {}) });
 const FOLD = (skill: SkillId): MarkFx => ({ k: 'fold', skill });
-const F = (f: MarkFlag, o: { n?: number; m?: number; s?: number; c?: number; st?: MarkStatus; el?: 'fire' | 'all' } = {}): MarkFx => ({ k: 'flag', f, ...(f === 'echo' ? { m: 1 } : {}), ...o });
+const F = (f: MarkFlag, o: { n?: number; m?: number; s?: number; c?: number; st?: MarkStatus; el?: 'fire' | 'cold' | 'all' } = {}): MarkFx => ({ k: 'flag', f, ...(f === 'echo' ? { m: 1 } : {}), ...o });
 
 type Row = readonly [readonly MarkFx[], readonly MarkFx[], readonly MarkFx[], readonly MarkFx[], readonly MarkFx[], readonly MarkFx[]];
 /** Six marks a row, in slot order a1 a2 a3 b1 b2 b3. */
@@ -103,13 +111,13 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   'bone-spear': [[P(15, 'dmg')], [R('bleed', 3, 10)], [F('twin', { n: 10 })], [FOLD('soul-harvest')], [A('range', 3)], [F('return', { n: 50 })]],
   'raise-skeleton': [[FOLD('skeleton-mastery')], [R('burn', 2, 20)], [F('captain', { n: 2, m: 6, s: 1.5 })], [CD(-4)], [A('count', 1)], [F('crumble', { n: 30, m: 1.5 })]],
   'corpse-burst': [[P(15, 'dmg')], [F('shards', { n: 30, m: 4, s: 3 })], [F('chain', { m: 3, s: 3 })], [A('radius', .5)], [A('reach', 3)], [R('hush', 1)]],
-  'bone-armor': [[P(20, 'absorb')], [F('thorns', { n: 20 })], [F('breakRaise', { n: 1 })], [A('secs', 5)], [CD(-4)], [F('kinGuard', { n: 50 })]],
+  'bone-armor': [[P(20, 'absorb')], [F('thorns', { n: 20 })], [F('breakRaise', { n: 1 })], [A('secs', 5)], [CD(-4)], [F('kinGuard', { n: 50 }), F('wardCopy', { n: 50, m: 6 })]],
   'bone-storm': [[P(15, 'dmg')], [F('pierceStack', { n: 10, m: 30 })], [F('ringFan')], [A('count', 2)], [MN(-25)], [F('echo', { n: 50, s: .3 })]],
   // ── Warlock · Shadow ──
-  'drain-life': [[P(15, 'min', 'max')], [F('overheal', { n: 30 })], [F('jump', { n: 50, m: 2, s: 3 })], [F('reach', { n: 2 })], [MN(-20)], [F('kinHeal', { n: 50 })]],
+  'drain-life': [[P(15, 'min', 'max')], [F('overheal', { n: 30 })], [F('jump', { n: 50, m: 2, s: 3 })], [F('reach', { n: 2 })], [MN(-20)], [F('kinHeal', { n: 50, m: 6 })]],
   'ember-curse': [[P(25, 'dps')], [F('spread', { s: 3 })], [F('hexRing', { n: 2 })], [A('secs', 4)], [F('cursedKill', { n: 3 })], [R('fear', 1.5)]],
-  'dark-ward': [[P(20, 'absorb')], [FOLD('life-tap')], [F('shroud', { n: 4 })], [A('secs', 5)], [CD(-3)], [F('breakBurst', { n: 40, m: 2 })]],
-  'aura-siphon': [[P(25, 'heal')], [F('manaHit', { n: 1 })], [F('kinHeal', { n: 50 })], [A('heal', 1)], [F('lowDouble', { n: 40 })], [F('killHeal', { n: 3 })]],
+  'dark-ward': [[P(20, 'absorb')], [FOLD('life-tap')], [F('shroud', { n: 4 })], [A('secs', 5)], [CD(-3)], [F('breakBurst', { n: 40, m: 2 }), F('wardCopy', { n: 50, m: 6 })]],
+  'aura-siphon': [[P(25, 'heal')], [F('manaHit', { n: 1 })], [F('kinHeal', { n: 50, m: 6 })], [A('heal', 1), F('reach', { n: 1 })], [F('lowDouble', { n: 40 })], [F('killHeal', { n: 3 })]],
   'weaken': [[A('weaken', 5)], [F('vuln', { st: 'weaken', n: 10 })], [R('chill', 3)], [A('radius', 1)], [MN(-30)], [A('secs', 4)]],
   'doom': [[P(15, 'dmg')], [F('doomTwo', { s: 3 })], [F('strip', { s: 6 })], [A('secs', -1.5)], [MN(-25)], [F('doomOnDeath', { n: 150 })]],
   // ── Ashguard · Brand ──
@@ -120,11 +128,22 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   // ── Ashguard · Oath ──
   'shield-bash': [[P(15, 'dmg')], [F('concuss', { s: 2 })], [F('rush', { n: 3 })], [CD(-1.5)], [F('stampStun', { n: 1, s: .5 })], [F('wideBash', { n: 90, m: 1.5 })]],
   'shield-oath': [[FOLD('hold-the-line')], [F('counter', { n: 50 })], [F('blockHeal', { n: 2 })], [A('secs', 3)], [MN(-30)], [F('blockMana', { n: 3 })]],
-  'watch-cry': [[A('radius', 1)], [A('guard', 5)], [F('pull', { n: 1 })], [CD(-3)], [A('secs', 2)], [F('fearsome', { s: 1.5 })]],
+  'watch-cry': [[A('radius', 1)], [A('guard', 5), F('rally', { n: 10, m: 6 })], [F('pull', { n: 1 })], [CD(-3)], [A('secs', 2)], [F('fearsome', { s: 1.5 })]],
   // ── Ashguard · Ash ──
   'ash-stride': [[P(15, 'pct')], [R('burn', 2, 25)], [F('again', { s: 2 })], [A('reach', 2)], [CD(-2)], [F('through')]],
-  'aura-watchfire': [[FOLD('ember-blood')], [P(25, 'regen')], [F('lowDouble', { n: 40 })], [P(15, 'def')], [F('resist', { el: 'fire', n: 10 })], [F('hearth')]],
-  'last-watch': [[A('heal', 10)], [F('wrath', { n: 20 })], [F('vowLeech', { n: 5 })], [A('secs', 2)], [CD(-15)], [F('vowTaunt', { n: 4, s: 2 })]],
+  'aura-watchfire': [[FOLD('ember-blood')], [P(25, 'regen'), F('warmGround')], [F('lowDouble', { n: 40 })], [P(15, 'def')], [F('resist', { el: 'fire', n: 10 })], [F('hearth')]],
+  'last-watch': [[A('heal', 10)], [F('wrath', { n: 20 })], [F('vowLeech', { n: 5 }), F('vowShare', { m: 6, s: 4 })], [A('secs', 2)], [CD(-15)], [F('vowTaunt', { n: 4, s: 2 })]],
+  // ── Ashguard · S5: the tank's kit (skills-100.md §2) ──
+  'brand-throw': [[P(15, 'pct')], [R('burn', 3, 20)], [F('ricochet', { n: 2 })], [A('range', 3)], [CD(-2)], [F('hook', { n: 3 })]],
+  'cinder-skin': [[A('reflect', 10)], [F('coldAsh', { el: 'cold', n: 20 })], [F('molten', { st: 'burn', s: 2 })], [A('secs', 5)], [F('shareSkin', { n: 50, m: 3 })], [F('ashShell')]],
+  'banner-of-the-watch': [[A('cut', 3)], [F('steadfast')], [F('bannerRegen', { n: .5 })], [A('radius', 2)], [F('resolve')], [F('carryAura', { n: 50 })]],
+  'second-wind': [[A('heal', 5)], [F('steadyBreath')], [F('lastBreath', { n: 25 })], [CD(-8)], [F('breathRoom', { n: 2, m: 1 })], [F('battleBreath', { n: 1, m: 6, s: 3 })]],
+  'intercept': [[S('share', 60)], [F('rescue', { n: 1 })], [F('bondOath')], [A('reach', 3)], [CD(-4)], [F('twoBonds', { n: 35 })]],
+  'hold-the-gate': [[S('cut', 50)], [F('spikes', { n: 30 })], [F('gateGuard', { n: 20, m: 4 })], [A('radius', 2)], [F('mobileGate', { n: 40 })], [F('gateOpens', { n: 150 })]],
+  // ── Lanternwright · S5: the healer's kit (skills-100.md §3) ──
+  'cleanse': [[F('warmHands', { n: 8 })], [A('immune', 2)], [F('cleanseCircle', { n: 3 })], [A('reach', 4)], [MN(-50)], [F('dryCloak', { s: 10 })]],
+  'rekindle': [[S('pct', 60)], [F('steadyHands')], [A('window', 60)], [A('channel', -1)], [CD(-40)], [F('twoLamps', { n: 3 })]],
+  'hearthsong': [[P(15, 'heal')], [F('steadySong')], [F('choir', { n: 2 })], [F('walkingSong', { n: 40 })], [MN(-30)], [F('keptNote', { s: 4 })]],
   // ── Lanternwright · Lamp ──
   'kindle': [[P(5, 'dmg')], [R('burn', 2, 8)], [F('nthHeal', { m: 4, n: 15 })], [A('range', 2)], [F('bane', { n: 10 })], [F('jump', { n: 50, m: 1, s: 3 })]],
   'blinding-flash': [[P(15, 'dmg')], [R('blind', 2)], [A('stun', 1)], [A('radius', 1)], [CD(-2)], [F('healHit', { n: 10 })]],
@@ -133,9 +152,9 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   'banish': [[P(5, 'dmg')], [A('below', 10)], [F('strip', { s: 10 })], [A('reach', 3)], [CD(-2)], [F('unmakeHush', { n: 4, s: 2 })]],
   'dawn-at-noon': [[P(15, 'dps')], [F('zoneRegen', { n: 1.5 })], [F('followSelf')], [A('radius', 1)], [A('secs', 3)], [F('hearth')]],
   // ── Lanternwright · Hearth ──
-  'hearthlight': [[P(15, 'heal')], [F('quickMend', { n: 50 })], [F('echo', { n: 60, s: 3 })], [P(10, 'heal')], [MN(-30)], [F('defBuff', { n: 10, s: 5 })]],
-  'hearth-circle': [[P(20, 'heal')], [F('zoneGuard', { n: 10 })], [F('followSelf')], [A('radius', 1)], [A('secs', 4)], [F('noChill')]],
-  'lantern-ward': [[P(20, 'absorb')], [F('breakHeal', { n: 25 })], [FOLD('last-light')], [A('secs', 5)], [MN(-35)], [F('breakBurst', { n: 50, m: 3 })]],
+  'hearthlight': [[P(15, 'heal')], [F('quickMend', { n: 50 })], [F('twinLights', { n: 60, s: 3 })], [P(10, 'heal'), A('reach', 2)], [MN(-30)], [F('defBuff', { n: 10, s: 5 })]],
+  'hearth-circle': [[P(20, 'heal')], [F('zoneGuard', { n: 10 })], [F('followSelf')], [A('radius', 1)], [A('secs', 4)], [F('noChill'), F('mendMind')]],
+  'lantern-ward': [[P(20, 'absorb')], [F('breakHeal', { n: 25 })], [FOLD('last-light')], [A('secs', 5)], [MN(-35)], [F('breakBurst', { n: 50, m: 3 }), F('selfWard', { n: 50 })]],
   // ── Lanternwright · Moth ──
   'lamp-wisp': [[FOLD('moth-kin')], [F('moteHeal', { n: 1 })], [F('swarm', { m: 2, n: 50 })], [A('secs', 15)], [MN(-30)], [F('wispWard')]],
   'beacon': [[P(15, 'dmg')], [F('poleRegen', { n: 1, m: 3 })], [F('twoBeacons', { n: 2 })], [A('secs', 6)], [F('poleSpeed', { n: 10, m: 4 })], [F('hearthNear', { n: 3 })]],
@@ -235,6 +254,7 @@ const ADD_UNIT: Readonly<Record<string, string>> = {
   'ember-brand.pct': 'book.unit.brandPct', 'command.pct': 'book.unit.bitePct', 'pack-bond.pct': 'book.unit.bitePct', 'rootwalk.pct': 'book.unit.walkPct',
   'raise-skeleton.count': 'book.unit.skeletons', 'bone-storm.count': 'book.unit.spears', 'volley.count': 'book.unit.arrows',
   'aura-siphon.heal': 'book.unit.siphon', 'last-watch.heal': 'book.unit.vowHeal', 'banish.below': 'book.unit.below',
+  'second-wind.heal': 'book.unit.windHeal',
 };
 /**
  * A mark's line as the book shows it, as i18n calls: each effect one phrase (`book.fx.*`), joined. Built from the same

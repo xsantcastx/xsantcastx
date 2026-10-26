@@ -380,8 +380,24 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       collectKills(room);
       return out;
     },
+    /** The room hunts each Keeper's summons (room-kin.ts): the screen tells it its companions list (`/coop/pals` `kin`). */
+    kinOn: enabled && !!M && typeof M.weighKin === 'function',
+    /** A Keeper's summons (its companions, already validated field by field): the room weighs and hunts them. */
+    kin(s, pals, g = 0) {
+      const room = roomOf(s);
+      if (!room?.world?.kin || !room.members.has(s.player.id)) return { ok: [], no: [] };
+      room.world.keeper(keeperOf(s));
+      return room.world.kin(s.player.id, pals, g);
+    },
+    /** The other Keepers in this Keeper's world area (they see its summons). */
+    areaPeers(s) {
+      const room = roomOf(s);
+      return room ? [...room.members.values()].filter(o => o !== s && o.player.id !== s.player.id) : [];
+    },
     /** Protocol 10: the room keeps this Keeper's life. */
     lifeOn: s => !!lifeOf(s),
+    /** S5: this room weighs heals, wards and guards on allies (`/world/life` `a`; ally-claims.ts). */
+    alliesOn: !!M && typeof M.parseAllyClaim === 'function',
     /** Protocol 10: the room pays this Keeper's XP and Gold. */
     creditsOn,
     /**
@@ -391,7 +407,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
     life(s, data) {
       const L = lifeOf(s);
       if (!L) throw fail(409, 'Update the game to have your life kept.');
-      if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(k => k !== 'g' && k !== 'c')) throw fail(400, 'Invalid life.');
+      if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(k => k !== 'g' && k !== 'c' && k !== 'a')) throw fail(400, 'Invalid life.');
       if (data.g !== undefined) {
         const g = M.parseGuard(data.g);
         if (!g) throw fail(400, 'Invalid guard.');
@@ -403,7 +419,19 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
       const claims = list.map(c => M.parseLifeClaim(c));
       if (claims.some(c => !c)) throw fail(400, 'Invalid life claim.');
       const t = now(), r = claims.map(c => L.claim(c, t).n);
-      return { ok: true, me: L.view(), n: r };
+      const room = roomOf(s);
+      // S5: its own heals make threat on what fights it (td-threat), as a heal on another does.
+      if (room?.world?.selfHealed) claims.forEach((c, i) => { if (c.k === 'heal' && r[i] > 0) room.world.selfHealed(s.player.id, r[i]); });
+      // S5: heals, wards, cleanses, Rekindles, bonds and auras on others (ally-claims.ts): the room weighs each.
+      let a;
+      if (data.a !== undefined) {
+        if (!Array.isArray(data.a) || data.a.length > 16 || typeof M.parseAllyClaim !== 'function') throw fail(400, 'Invalid ally.');
+        const list = data.a.map(c => M.parseAllyClaim(c));
+        if (list.some(c => !c)) throw fail(400, 'Invalid ally claim.');
+        if (!room?.world?.allies || !room.members.has(s.player.id)) a = list.map(() => 'nobody');
+        else { room.world.keeper(keeperOf(s)); a = room.world.allies(s.player.id, list); }
+      }
+      return { ok: true, me: L.view(), n: r, ...(a ? { a } : {}) };
     },
     /**
      * Protocol 10: the screen's own numbers for what it is owed (a kill's XP with its worn XP and boons, a pile's Gold

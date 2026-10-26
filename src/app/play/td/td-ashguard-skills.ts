@@ -14,7 +14,9 @@ import type { SkillDef } from './td-skills';
 export type AshSkillId =
   | 'watch-blade' | 'ember-brand' | 'cinder-cleave' | 'whirl-of-cinders'
   | 'shield-bash' | 'shield-oath' | 'watch-cry' | 'hold-the-line'
-  | 'ash-stride' | 'aura-watchfire' | 'ember-blood' | 'last-watch';
+  | 'ash-stride' | 'aura-watchfire' | 'ember-blood' | 'last-watch'
+  // S5 (skills-100.md §2): the tank's kit to level 30, and the Gate (42).
+  | 'brand-throw' | 'cinder-skin' | 'banner-of-the-watch' | 'second-wind' | 'intercept' | 'hold-the-gate';
 
 /** The Ashguard's three trees (D2's three tabs), in the bible's order of feel: the blade, the shield, the endurance. */
 export const ASH_TREES = ['brand', 'oath', 'ash'] as const;
@@ -100,12 +102,52 @@ export const ASHGUARD_SKILLS: Readonly<Record<AshSkillId, SkillDef>> = {
     // Hold the Line is Shield Oath's mark now (td-marks FOLDED), so the synergy reads Shield Oath's ranks.
     syn: [{ from: 'shield-oath', per: 5, what: 'dur' }],
   },
+  // ── S5: the tank's kit (skills-100.md §2; every Ashguard skill makes threat ×2, td-threat) ──
+  'brand-throw': {
+    id: 'brand-throw', kind: 'active', mana: 12, cd: 6, nameKey: 'skill.brand-throw', textKey: 'skill.brand-throw.text',
+    vars: { pct: 120, range: 7, back: 50, taunt: 3 }, grow: { pct: 4 }, tree: 'brand', tier: 2, col: 0, req: null, level: 12,
+    icon: I('<rect x="2" y="12" width="3" height="2" fill="#8a6a2a"/><rect x="4" y="10" width="2" height="2" fill="#c3cad6"/><rect x="6" y="8" width="2" height="2" fill="#c3cad6"/><rect x="8" y="6" width="2" height="2" fill="#f2f5fa"/><rect x="10" y="4" width="2" height="2" fill="#f2f5fa"/><rect x="12" y="2" width="2" height="2" fill="#ffb347"/><rect x="3" y="5" width="2" height="1" fill="#e2552a"/><rect x="5" y="3" width="2" height="1" fill="#ffb347"/><rect x="11" y="9" width="3" height="3" fill="#e2452a"/><rect x="12" y="10" width="1" height="1" fill="#fff2a8"/>'),
+    words: 'brann vael vesh',
+    syn: [{ from: 'ember-brand', per: 4, what: 'dmg' }],
+  },
+  'cinder-skin': {
+    id: 'cinder-skin', kind: 'active', mana: 16, cd: 18, nameKey: 'skill.cinder-skin', textKey: 'skill.cinder-skin.text',
+    vars: { resist: 30, reflect: 20, secs: 10 }, grow: { resist: 1, reflect: 1 }, tree: 'ash', tier: 2, col: 0, req: null, level: 12,
+    icon: I('<rect x="4" y="2" width="8" height="12" fill="#5e5450"/><rect x="5" y="3" width="6" height="10" fill="#a89a90"/><rect x="6" y="4" width="1" height="2" fill="#ffb347"/><rect x="9" y="6" width="1" height="3" fill="#e2552a"/><rect x="7" y="9" width="1" height="2" fill="#ffb347"/><rect x="2" y="5" width="1" height="2" fill="#e2552a"/><rect x="13" y="8" width="1" height="2" fill="#ffb347"/><rect x="3" y="11" width="1" height="1" fill="#ffb347"/>'),
+    words: 'brann vael ka',
+  },
+  'banner-of-the-watch': {
+    id: 'banner-of-the-watch', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.banner-of-the-watch', textKey: 'skill.banner-of-the-watch.text',
+    vars: { cut: 8, radius: 6, self: 4 }, grow: { cut: .5 }, tree: 'oath', tier: 4, col: 1, req: null, level: 24,
+    icon: I('<rect x="3" y="1" width="1" height="14" fill="#8a6a2a"/><rect x="4" y="2" width="9" height="7" fill="#9e2e1c"/><rect x="4" y="2" width="9" height="1" fill="#e0b25a"/><rect x="7" y="4" width="3" height="3" fill="#e0b25a"/><rect x="8" y="5" width="1" height="1" fill="#ffb347"/><rect x="4" y="9" width="2" height="1" fill="#9e2e1c"/><rect x="11" y="9" width="2" height="1" fill="#9e2e1c"/><rect x="2" y="14" width="3" height="1" fill="#5a3a2a"/>'),
+    words: 'brann orum ka',
+  },
+  'second-wind': {
+    id: 'second-wind', kind: 'active', mana: 20, cd: 30, nameKey: 'skill.second-wind', textKey: 'skill.second-wind.text',
+    vars: { heal: 20, secs: 4 }, grow: { heal: .5 }, tree: 'ash', tier: 4, col: 0, req: null, level: 24,
+    icon: I('<rect x="5" y="3" width="6" height="5" fill="#efe6dc"/><rect x="6" y="4" width="4" height="3" fill="#fff2c8"/><rect x="3" y="9" width="10" height="4" fill="#a89a90"/><rect x="2" y="2" width="2" height="1" fill="#fff2c8"/><rect x="12" y="1" width="2" height="1" fill="#fff2c8"/><rect x="1" y="6" width="1" height="2" fill="#efe6dc"/><rect x="14" y="5" width="1" height="2" fill="#efe6dc"/><rect x="7" y="13" width="2" height="2" fill="#ffb347"/>'),
+    words: 'hesk ka brann',
+  },
+  'intercept': {
+    id: 'intercept', kind: 'active', mana: 14, cd: 12, nameKey: 'skill.intercept', textKey: 'skill.intercept.text',
+    vars: { reach: 8, share: 50, secs: 6 }, grow: { secs: .2 }, tree: 'oath', tier: 4, col: 2, req: null, level: 30,
+    icon: I('<rect x="1" y="7" width="5" height="2" fill="#e0b25a"/><rect x="5" y="6" width="2" height="4" fill="#ffb347"/><rect x="8" y="3" width="6" height="10" fill="#8a6a2a"/><rect x="9" y="4" width="4" height="8" fill="#e0b25a"/><rect x="10" y="6" width="2" height="4" fill="#5a3a2a"/><rect x="2" y="4" width="1" height="1" fill="#fff2c8"/><rect x="3" y="11" width="1" height="1" fill="#fff2c8"/>'),
+    words: 'brann sha ka',
+  },
+  'hold-the-gate': {
+    id: 'hold-the-gate', kind: 'active', mana: 30, cd: 25, nameKey: 'skill.hold-the-gate', textKey: 'skill.hold-the-gate.text',
+    vars: { secs: 6, radius: 5, cut: 40, taunt: 3 }, grow: { secs: .1 }, tree: 'oath', tier: 4, col: 0, req: null, level: 42,
+    icon: I('<rect x="1" y="3" width="14" height="10" fill="#5a3a2a"/><rect x="2" y="4" width="5" height="8" fill="#8a6a2a"/><rect x="9" y="4" width="5" height="8" fill="#8a6a2a"/><rect x="7" y="4" width="2" height="8" fill="#e0b25a"/><rect x="3" y="6" width="1" height="1" fill="#e0b25a"/><rect x="12" y="6" width="1" height="1" fill="#e0b25a"/><rect x="0" y="13" width="16" height="2" fill="#2a2228"/><rect x="7" y="1" width="2" height="2" fill="#e2452a"/>'),
+    words: 'brann mur orum',
+    syn: [{ from: 'watch-cry', per: 3, what: 'dur' }],
+  },
 };
 
 /** The Ashguard's book in the order the bar fills: the first four actives are the default keys 1–4. */
 export const ASHGUARD_BOOK: readonly AshSkillId[] = [
   'shield-bash', 'ember-brand', 'ash-stride', 'shield-oath', 'cinder-cleave', 'watch-cry', 'whirl-of-cinders', 'last-watch',
-  'aura-watchfire', 'watch-blade', 'hold-the-line', 'ember-blood',
+  'brand-throw', 'cinder-skin', 'second-wind', 'intercept', 'hold-the-gate',
+  'aura-watchfire', 'banner-of-the-watch', 'watch-blade', 'hold-the-line', 'ember-blood',
 ];
 /** What a new Ashguard holds free at rank 1: the swing, the four keys and the watchfire. */
 export const ASHGUARD_STARTERS: readonly AshSkillId[] = ['watch-blade', 'shield-bash', 'ember-brand', 'ash-stride', 'shield-oath', 'aura-watchfire'];

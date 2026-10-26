@@ -494,6 +494,19 @@ the room's word on life follows ~200 ms later (one POST + the next snapshot) and
 shared and persistent for now, Tibia-style. PvP (world-acts §6) now has its prerequisite: Keeper life, deaths and
 claims are the room's. WebSocket once the bill or the profile asks.
 
+**Personal creatures (quest foes the room cannot see).** A quest step is per character (the chain's facts live in
+that Keeper's save), so the room does not know who should meet a quest's foe. Such a foe is raised by the Keeper's
+own screen and marked `Mob.personal` (td-mobs): on a member it keeps its mind, takes this screen's blows directly,
+falls through the screen's own kill path (its loot is the Keeper's own, as solo), and it is never put on the wire
+(td-coop `visible()` skips it), so every Keeper on the step meets their own and nobody else sees it: a per-player
+phase. What it can earn is bounded: it rises only while the step waits on it, and the step moves on at its fall, so
+it pays one kill per character; the reward is a quest fact, not an item that trades. Its bites still reach the
+room's life (LifeMirror claims the harm). Only the Sexton's Row-Walker (Hollis Vane) is one today. The bug it fixes:
+before 2026-10-26 the Row-Walker was a plain local creature, which on a member stood frozen (a replica's mind
+sleeps) and whose every blow was a claim naming no room creature, so it never fell and Barrow Key 1 never came. A
+new quest foe raised by the screen must set `personal`; a foe everyone shares belongs in the room's spawns instead.
+Tests: karma `td-coop.spec.ts` "personal creatures"; e2e `e2e/td-sexton-online.spec.ts`.
+
 **Next.** PvP on the room (Keeper-to-Keeper claims through the same gate and KeeperLife); retire protocol 7–9's
 trust once old clients are gone; party-private instances if the shared floors crowd.
 
@@ -507,6 +520,18 @@ trust once old clients are gone; party-private instances if the shared floors cr
 | M4 (protocol 10) | pure: `world/room-status.ts` (legality, caps, immunity, wire), `world/keeper-life.ts` (the room's KeeperLife, guards, claims), `world/life-mirror.ts` (the screen's mirror), `world/room-credit.ts` (`creditRoom`, caps, the ring), `keeper-budget.ts` (`saveGuard`, `wornTotals`); room: `room-world.ts` (`statuses`, refusals, `life` option, `downed`, `flushKills`, `cr`, `st`), `social-world.mjs` (lives, owed credit, `/world/life`, `/world/credit`, `collectKills`, `payOwed`), `social-server.mjs` (`PROTOCOL = 10`, `coopStatus`, the verbs); client: `td-coop.ts` (`watchStatuses`, `laid`, cues, `st` mirror, `me`, `down`), `td-mobs.ts` (`roomStatus`, `statusSkill`, `slowShare`, `roomTicks`/`dotGate`, `tauntBy`/`fearFrom`/`slowT`, `coopBite` → `lifeBite`), `td-engine.ts` (LifeMirror, `roomBite`, `lifeFrame`, `lifeHeard`, `fallNow`), `social-room.ts` (`protocol: 10`, `coopHits` reply, `worldLife`, `worldCredit`, `world-credit`), the HUD (credit asks, `pullKeys`, cues, a Keeper's fall) |
 | M4 tests | `scripts/social-m4.test.mjs` (9, in CI's node line: legality and forged statuses, the room's seconds and immunity, a cast cancelled, the life rules, a death on the room seen by others, refusals over HTTP and protocol-9 shape, two Keepers' stun and fall, XP/Gold once with a lost answer and a replay, a room dying mid-commit, guests and protocol 9); karma `room-status.spec`, `keeper-life.spec`; e2e `e2e/td-world-m4.spec.ts` |
 | M2 tests | `scripts/social-m2.test.mjs` (8: the settle and its commit, precheck/forged/mixed, the crash race, the instant drop and first pick, escrow waits and hand-backs, the party across relog and restart, the save's budget, the REST transaction shapes); `trade-core.test.mjs` (+3: settleTrade, refusals, closeTrade races); karma `trade-flow.spec` (+3), `social-room.spec` (+1), `keeper-budget.spec` (4); e2e `e2e/td-world-m2.spec.ts` |
+
+### Summons on the room (2026-10-26, branch `minions`; protocol stays 10)
+
+| What | Authority |
+|---|---|
+| A summon exists, where it stands | its owner's screen, weighed by the room: only `skel` (life of its own), count ≤ Raise Skeleton's cap at the owner's level (+2 gear), within the leash of the owner by the room's record |
+| Its life | the room's after the first word (≤ its definition at that level; the owner's number only lowers it, or heals it ≤ 25%/s); a bite is the room's, the owner applies it; it falls on the room's word |
+| Who a creature goes for | the room (td-threat `pickKin`): a summon out-threatening the Keeper it holds, or guarding the Keeper it would go for; a Captain's taunt names the Captain |
+| Threat of a summon's blow | the summon's own (`CoopHit.k`), none to its owner |
+| Seeing others' summons | everyone in the world area (relayed owner's word), not only the party |
+
+Handoff: `docs/handoff/minions.md`.
 
 ## 5. Next phase recommended
 

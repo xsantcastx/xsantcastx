@@ -91,6 +91,17 @@ export class HearthService {
     return { grace: false, gold, debt, debtTotal: next.debt, blessed };
   }
 
+  /**
+   * S5: a Lanternwright's Rekindle undid a fall (skills-100.md §3: it cancels the death's XP loss): the debt that fall
+   * added is forgiven. Returns what was forgiven.
+   */
+  forgive(debt: number, at = Date.now()): number {
+    const s = this.state, n = Math.max(0, Math.min(s.debt, Math.floor(debt || 0)));
+    if (!this.isBrowser || n <= 0) return 0;
+    this.write({ ...s, debt: s.debt - n, ledgerAt: Math.max(at, s.ledgerAt + 1) });
+    return n;
+  }
+
   /** A kill's Hunting XP: what is earned now, and what paid the debt. */
   earn(xp: number, at = Date.now()): { earned: number; paid: number } {
     const s = this.state;

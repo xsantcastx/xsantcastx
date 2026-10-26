@@ -1,6 +1,6 @@
 /**
- * td-terrain.ts — organic terrain for the art-direction prototype (td-artopt.ts option B and iso; owner 2026-10-26:
- * "lots of borders like squared … sand and water ends"). Grass, flower beds, moss, dirt roads, sand, bog, cobble and
+ * td-terrain.ts — organic terrain edges (owner 2026-10-26: "lots of borders like squared … sand and water ends"; first
+ * prototyped on the artopt branch, now the live look of the top-down world). Grass, flower beds, moss, dirt roads, sand, bog, cobble and
  * water meet along curved, noisy, blended edges with round corners: never a square tile seam.
  *
  * How: every pixel weighs the four nearest tile centres (smoothstep bilinear, so a lone tile becomes a round blob and
@@ -8,7 +8,8 @@
  * heaviest terrain wins. How close the runner-up came (the margin) is the distance to the edge, and the edge dresses
  * itself from it: a dark lip where grass meets a road, the road shaded under it, wet sand and two lines of foam that lap
  * over the water frames along every shore, shallows paling to the deep. Baked into the ground chunks like the rest of the
- * ground (HD: two pixels a world pixel), so none of it runs per frame.
+ * ground (at the art grid, K = 1; K = 2 would bake it at two pixels a world pixel), so none of it runs per frame.
+ * Environment detail Low keeps the old square painters and their simple edges (calm.md's Low path).
  */
 import { paintGround, hash, TILE, type Ground } from './td-art';
 import { DIRT_RAMP, GRASS_RAMP, MIRE_RAMP, MOSS_RAMP, SAND_RAMP, FLOWERS, dirt, flower, grassAt, meadow, stone } from './td-ground';
@@ -53,7 +54,7 @@ let scratch: ImageData | null = null;
  * Paint tile (tx, ty) at (ox, oy) on `c` at K pixels a world pixel, organically; `at(dx, dy)` reads a neighbour's ground.
  * False when this tile is not organic terrain (the caller's painters keep it) or on Environment detail Low.
  */
-export function paintFieldTile(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, at: (dx: number, dy: number) => Ground, frame = 0, K = 2): boolean {
+export function paintFieldTile(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, at: (dx: number, dy: number) => Ground, frame = 0, K = 1): boolean {
   if (envDetail() === 'low') return false;
   const own = CLASS.get(kind);
   if (own === undefined) return false;
@@ -125,7 +126,7 @@ export function paintFieldTile(c: Ctx, kind: Ground, tx: number, ty: number, ox:
         // Depth: how far the water won by (a shore is shallow, open water deep), dithered between bands.
         const d = land ? e : 99, dd = d + (th - .5) * .5;
         let wi = dd < 1.2 ? 5 : dd < 2.5 ? 4 : dd < 4 ? 3 : 2;
-        if (dd >= 4) { const ld = landDist(lx, ly) + (th - .5) * 3 + (meadow(x, y, 8, 113) - .5) * 6; wi = ld < 7 ? 2 : ld < 15 ? 1 : 0; if (ld < 5 && d < 5.2) wi = 2; }
+        if (dd >= 4) { const ld = landDist(lx, ly) + (th - .5) * 3 + (meadow(x, y, 8, 113) - .5) * 6; wi = ld < 10 ? 2 : ld < 22 ? 1 : 0; if (ld < 5 && d < 5.2) wi = 2; }
         col = WATER[wi];
         if (land) {
           // Two foam lines lapping in and out over the four frames, the outer one broken.
@@ -148,11 +149,13 @@ export function paintFieldTile(c: Ctx, kind: Ground, tx: number, ty: number, ox:
   }
   c.putImageData(img, ox, oy);
   // Flowers (thicker on a bed) and the odd stone, at the finer pixel; never at the tile's edge (it may be another ground).
-  const r = (q: number) => hash(tx, ty, q);
+  // The inset keeps a bloom (3 px) or a stone (up to 5 px) inside the tile: 3 / 4 px in from each side at the art grid.
+  const r = (q: number) => hash(tx, ty, q), inset = (q: number, w: number) => 3 * K + Math.floor(r(q) * (S - 3 * K - w));
   if (own === 0) {
-    const blooms = kind === 'flowers' ? (r(70) < .5 ? 2 : 1) : r(71) < .04 ? 1 : 0;
-    for (let i = 0; i < blooms; i++) flower(c, ox + 6 + Math.floor(r(73 + i) * (S - 14)), oy + 6 + Math.floor(r(80 + i) * (S - 14)), Math.floor(r(87 + i) * FLOWERS.length));
-    if (r(95) < .02) stone(c, ox + 8 + Math.floor(r(96) * (S - 18)), oy + 8 + Math.floor(r(97) * (S - 18)), r(98) < .4 ? 4 : 3, false);
-  } else if (own === 1 && r(61) < .1) stone(c, ox + 8 + Math.floor(r(62) * (S - 18)), oy + 8 + Math.floor(r(63) * (S - 18)), r(64) < .5 ? 2 : 3, true);
+    // The live ground's calm count at the art grid (calm.md); twice as many at the finer pixel, where they read smaller.
+    const blooms = K > 1 ? (kind === 'flowers' ? (r(70) < .5 ? 2 : 1) : r(71) < .04 ? 1 : 0) : kind === 'flowers' ? (r(70) < .5 ? 1 : 0) : r(71) < .02 ? 1 : 0;
+    for (let i = 0; i < blooms; i++) flower(c, ox + inset(73 + i, 4), oy + inset(80 + i, 4), Math.floor(r(87 + i) * FLOWERS.length));
+    if (r(95) < .02) stone(c, ox + inset(96, 6), oy + inset(97, 5), r(98) < .4 ? 4 : 3, false);
+  } else if (own === 1 && r(61) < .1) stone(c, ox + inset(62, 6), oy + inset(63, 5), r(64) < .5 ? 2 : 3, true);
   return true;
 }

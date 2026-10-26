@@ -76,6 +76,8 @@ function cast(w: World, id: SkillId): ReturnType<MobSystem['useAbility']> {
   return w.sys.useAbility(id);
 }
 const lost = (m: Mob) => 1e7 - m.hp;
+/** S5: one ally near (the room's word on its life: `h` of 100). */
+const ally = (w: World, x = TILE, h = 50) => { w.sys.allies = [{ id: 'a', x, y: 0, h, m: 100 }]; };
 
 /**
  * How a row touches a creature, for its riders and on-hit rules: where the dummy stands and what is done (a cast and
@@ -115,6 +117,7 @@ const TOUCH: Partial<Record<SkillId, { at?: [number, number]; def?: MobDef; go: 
   'stampede': { at: [3 * TILE, 0], go: (w, m) => { w.sys.target = m; cast(w, 'stampede'); run(w, 1.5); } },
   'thornroot-snare': { at: [2 * TILE, 0], go: (w, m) => { w.sys.target = m; cast(w, 'thornroot-snare'); run(w, .2); } },
   'bramble-trap': { at: [6, 2], go: (w) => { cast(w, 'bramble-trap'); run(w, .2); } },
+  'brand-throw': { at: [2 * TILE, 0], go: (w) => { cast(w, 'brand-throw'); run(w, .1); } },
 };
 /** The row touches a fresh dummy; the dummy is handed back (with `track` watching its statuses all the while). */
 function touch(id: SkillId, mask: number, extra: Partial<Record<SkillId, number>> = {}): { w: World; m: Mob; seen: Set<MarkStatus> } {
@@ -146,7 +149,7 @@ describe('td-truth-marks 1: the book holds six marks a row, each named and said 
       if (kind === 'folded' || SKILLS[id].tree === 'common') expect(MARKS[id]).withContext(id).toBeUndefined();
       else expect(MARKS[id]?.length).withContext(id).toBe(6);
     }
-    expect(ROWS.length).toBe(48);
+    expect(ROWS.length).toBe(57);
   });
 
   it('the ten folds sit where skills-100.md §6 puts them, and the save knows the same ten', () => {
@@ -330,10 +333,6 @@ const RULES: Partial<Record<string, RuleProbe>> = {
     expect(one(bit('a3')) / one(0)).toBeCloseTo(1 + n_(fx) / 100, 0);
   },
   'bone-storm.b3:echo': () => { const [a, b] = dealt('bone-storm', 'b3', 10); expect(b).toBeGreaterThan(a * 1.3); },
-  'hearthlight.a3:echo': () => {
-    const [a, b] = ab('hearthlight', 'a3', w => { w.life.hp = 100; cast(w, 'hearthlight'); run(w, 7); return w.life.hp; });
-    expect(b).toBeGreaterThan(a);
-  },
   'volley.b3:echo': () => {
     // Rolling Volley: three small volleys over the next moment (the first at once).
     const w = withMarks('volley', bit('b3')), m = dummy(w, 2 * TILE, ARROW_Y);
@@ -889,7 +888,7 @@ const RULES: Partial<Record<string, RuleProbe>> = {
   },
   'hearthlight.a2:quickMend': fx => {
     const w = withMarks('hearthlight', bit('a2')); w.life.hp = 100; cast(w, 'hearthlight');
-    expect(w.healed[0]).toBe(Math.round(w.sys.v('hearthlight')['heal'] * n_(fx) / 100));
+    expect(w.healed[0]).toBe(Math.round(Math.round(w.sys.v('hearthlight')['heal'] * w.sys.healLevel()) * n_(fx) / 100));
   },
   'hearthlight.b3:defBuff': fx => {
     const w = withMarks('hearthlight', bit('b3')); cast(w, 'hearthlight');
@@ -999,6 +998,201 @@ const RULES: Partial<Record<string, RuleProbe>> = {
   'rootwalk.a3:walkGuard': fx => {
     const [a, b] = ab('rootwalk', 'a3', w => { cast(w, 'rootwalk'); (w.sys as unknown as { biteKeeper(n: number, t: string): void }).biteKeeper(100, 'fire'); return w.hurt[0]; });
     expect(b).toBe(Math.round(a * (1 - n_(fx) / 100)));
+  },
+  // ── S5: the marks that reach allies (skill-book-stand-ins.md) ──
+  'bone-armor.b3:wardCopy': fx => {
+    const w = withMarks('bone-armor', bit('b3')); ally(w, 2 * TILE); cast(w, 'bone-armor');
+    const c = w.sys.allyOut.find(x => x.k === 'ward' && x.to === 'a');
+    expect(c?.n).toBe(Math.round(w.sys.v('bone-armor')['absorb'] * n_(fx) / 100));
+    const far = withMarks('bone-armor', bit('b3')); ally(far, (fx.m! + 1) * TILE); cast(far, 'bone-armor');
+    expect(far.sys.allyOut.length).toBe(0);
+  },
+  'dark-ward.b3:wardCopy': fx => {
+    const w = withMarks('dark-ward', bit('b3')); ally(w, 2 * TILE); cast(w, 'dark-ward');
+    expect(w.sys.allyOut.find(x => x.k === 'ward' && x.to === 'a')?.n).toBe(Math.round(w.sys.v('dark-ward')['absorb'] * n_(fx) / 100));
+  },
+  'aura-siphon.b1:reach': fx => {
+    // Reach: Siphon Kin's ally share looks a tile further.
+    const at = (mask: number) => { const w = withMarks('aura-siphon', mask, { 'drain-life': 1 }); ally(w, (6 + n_(fx) - .5) * TILE); w.sys.aura = 'aura-siphon'; const m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'drain-life'); return w.sys.allyOut.some(x => x.k === 'heal' && x.to === 'a'); };
+    expect(at(bit('a3'))).toBeFalse();
+    expect(at(bit('a3') | bit('b1'))).toBeTrue();
+  },
+  'watch-cry.a2:rally': fx => {
+    const w = withMarks('watch-cry', bit('a2')); ally(w, TILE); cast(w, 'watch-cry');
+    const c = w.sys.allyOut.find(x => x.k === 'aura' && x.s === 'watch-cry');
+    expect(c?.n).toBe(n_(fx)); expect(c?.r).toBe(fx.m! * 10);
+  },
+  'aura-watchfire.a2:warmGround': () => {
+    const w = withMarks('aura-watchfire', bit('a2')); w.sys.vocation = 'ashguard'; ally(w, TILE); w.sys.aura = 'aura-watchfire'; run(w, 1.1);
+    expect(w.sys.allyOut.some(x => x.k === 'heal' && x.to === 'a' && x.s === 'aura-watchfire')).toBeTrue();
+  },
+  'last-watch.a3:vowShare': fx => {
+    const w = withMarks('last-watch', bit('a3')); ally(w, 2 * TILE); cast(w, 'last-watch');
+    const c = w.sys.allyOut.find(x => x.k === 'ward' && x.to === 'a');
+    expect(c?.t).toBe(Math.round((fx.s ?? 0) * 10)); expect((c?.f ?? 0) & 2).toBe(2);
+    // On the ally's screen the copy holds its last point.
+    const x = withMarks('kindle', 0); x.sys.allyLaid({ a: 'ward', by: 'b', s: 'last-watch', n: 0, t: 40, f: 2 }); x.life.hp = 10;
+    (x.sys as unknown as { biteKeeper(n: number, t: string): void }).biteKeeper(500, 'physical');
+    expect(x.life.hp).toBe(1);
+  },
+  'hearthlight.a3:twinLights': fx => {
+    // Two allies hurt: the lowest takes the light, the next takes its share.
+    const w = withMarks('hearthlight', bit('a3')); w.sys.allies = [{ id: 'a', x: TILE, y: 0, h: 10, m: 100 }, { id: 'b', x: TILE, y: 10, h: 20, m: 100 }];
+    cast(w, 'hearthlight'); run(w, 3.1);
+    const to = (id: string) => w.sys.allyOut.filter(c => c.k === 'heal' && c.to === id).reduce((s, c) => s + c.n, 0);
+    expect(to('b')).toBeCloseTo(to('a') * n_(fx) / 100, -1);
+    // Alone: the light comes again on the Keeper.
+    const [a, b] = ab('hearthlight', 'a3', x => { x.life.hp = 100; cast(x, 'hearthlight'); run(x, 7); return x.life.hp; });
+    expect(b).toBeGreaterThan(a);
+  },
+  'hearth-circle.b3:mendMind': () => {
+    const w = withMarks('hearth-circle', bit('b3')); ally(w, TILE); cast(w, 'hearth-circle'); run(w, .1);
+    expect(w.sys.allyOut.filter(x => x.k === 'cleanse' && x.to === 'a').length).toBe(1);
+    run(w, 2.1);
+    expect(w.sys.allyOut.filter(x => x.k === 'cleanse' && x.to === 'a').length).toBe(1);
+  },
+  'lantern-ward.b3:selfWard': fx => {
+    const w = withMarks('lantern-ward', bit('b3')); ally(w, 2 * TILE); cast(w, 'lantern-ward');
+    expect(w.sys.allyOut.some(x => x.k === 'ward' && x.to === 'a')).toBeTrue();
+    expect(w.sys.lampWard).toBe(Math.round(w.sys.v('lantern-ward')['absorb'] * n_(fx) / 100));
+  },
+  // ── S5: the tank's rows ──
+  'brand-throw.a3:ricochet': fx => {
+    const w = withMarks('brand-throw', bit('a3'), { 'watch-blade': 1 }), a = dummy(w, 2 * TILE), b = dummy(w, 2 * TILE + 20), c = dummy(w, 2 * TILE + 40), d = dummy(w, 2 * TILE + 60);
+    void a; cast(w, 'brand-throw');
+    expect([b, c, d].filter(m => (m.taunt ?? 0) > 0).length).toBe(n_(fx));
+  },
+  'brand-throw.b3:hook': fx => {
+    const w = withMarks('brand-throw', bit('b3'), { 'watch-blade': 1 }), m = dummy(w, 6 * TILE); cast(w, 'brand-throw');
+    expect(6 * TILE - m.x).toBeCloseTo(n_(fx) * TILE, 0);
+  },
+  'cinder-skin.a2:coldAsh': fx => {
+    const w = withMarks('cinder-skin', bit('a2')); cast(w, 'cinder-skin');
+    expect((w.sys as unknown as { markResist(): { cold: number } }).markResist().cold).toBe(n_(fx));
+  },
+  'cinder-skin.a3:molten': () => {
+    const w = withMarks('cinder-skin', bit('a3')); cast(w, 'cinder-skin'); const b = biter(w, 100); run(w, .05);
+    expect(b.scorchT ?? 0).toBeGreaterThan(0);
+  },
+  'cinder-skin.b2:shareSkin': fx => {
+    const w = withMarks('cinder-skin', bit('b2')); ally(w, TILE); cast(w, 'cinder-skin');
+    const c = w.sys.allyOut.find(x => x.k === 'aura' && x.s === 'cinder-skin');
+    expect(c?.n).toBe(Math.round(w.sys.v('cinder-skin')['resist'] * n_(fx) / 100)); expect(c?.r).toBe(fx.m! * 10);
+    const x = withMarks('kindle', 0); x.sys.allyLaid({ a: 'aura', by: 'b', s: 'cinder-skin', n: 15, t: 20 });
+    expect((x.sys as unknown as { markResist(): { fire: number } }).markResist().fire).toBe(15);
+  },
+  'cinder-skin.b3:ashShell': () => {
+    const w = withMarks('cinder-skin', bit('b3')); w.sys.layOn('burn:30/5,chill:30'); cast(w, 'cinder-skin');
+    expect(w.sys.kst.burn.t).toBe(0); expect(w.sys.kst.chill).toBe(0);
+  },
+  'banner-of-the-watch.a2:steadfast': () => {
+    const w = withMarks('banner-of-the-watch', bit('a2')); w.sys.aura = 'banner-of-the-watch'; ally(w, TILE); run(w, 1.1);
+    expect((w.sys.allyOut.find(x => x.k === 'aura')?.f ?? 0) & 1).toBe(1);
+    w.sys.layOn('push:20', { x: 30, y: 0 });
+    expect(w.keeper.x).toBe(0);
+  },
+  'banner-of-the-watch.a3:bannerRegen': fx => {
+    const [a, b] = ab('banner-of-the-watch', 'a3', w => { w.sys.vocation = 'ashguard'; w.sys.aura = 'banner-of-the-watch'; w.life.hp = 100; run(w, 2); return w.life.hp; });
+    expect(b - a).toBeCloseTo(5000 * n_(fx) / 100 * 2, -1);
+  },
+  'banner-of-the-watch.b2:resolve': () => {
+    const w = withMarks('banner-of-the-watch', bit('b2')); w.sys.aura = 'banner-of-the-watch'; w.sys.layOn('weak:30,blind:30');
+    expect(w.sys.kst.weak).toBe(0); expect(w.sys.kst.blind).toBe(0);
+  },
+  'banner-of-the-watch.b3:carryAura': fx => {
+    const w = withMarks('banner-of-the-watch', bit('b3'), { 'aura-watchfire': 10 }); w.sys.vocation = 'ashguard'; w.sys.defense = 100;
+    const plain = w.sys.guardDefense(); w.sys.aura = 'banner-of-the-watch';
+    expect(w.sys.guardDefense() - plain).toBeCloseTo(w.sys.v('aura-watchfire')['def'] * n_(fx) / 100, 0);
+  },
+  'second-wind.a2:steadyBreath': () => {
+    const w = withMarks('second-wind', bit('a2')); w.sys.layOn('stun:30'); cast(w, 'second-wind');
+    expect(w.sys.kst.stun).toBe(0);
+  },
+  'second-wind.a3:lastBreath': () => {
+    const w = withMarks('second-wind', bit('a3')); w.life.hp = 100; cast(w, 'second-wind');
+    expect(w.healed.length).toBe(1);
+    const x = withMarks('second-wind', bit('a3')); x.life.hp = 4000; cast(x, 'second-wind');
+    expect(x.healed.length).toBe(0);
+  },
+  'second-wind.b2:breathRoom': fx => {
+    const w = withMarks('second-wind', bit('b2')), m = dummy(w, TILE); cast(w, 'second-wind');
+    expect(m.x).toBeCloseTo(TILE + (fx.m ?? 1) * TILE, 0);
+  },
+  'second-wind.b3:battleBreath': fx => {
+    const heal = (n: number) => { const w = withMarks('second-wind', bit('b3')); w.life.hp = 1; for (let i = 0; i < n; i++) dummy(w, TILE, i * 4); cast(w, 'second-wind'); run(w, 5); return w.healed.reduce((a, b) => a + b, 0); };
+    expect(heal(2) - heal(0)).toBeCloseTo(5000 * 2 * n_(fx) / 100, -1);
+  },
+  'intercept.a2:rescue': () => {
+    const w = withMarks('intercept', bit('a2')); ally(w, 5 * TILE); const m = dummy(w, 2 * TILE); cast(w, 'intercept');
+    expect(Math.abs(m.y)).toBeGreaterThan(TILE / 2);
+  },
+  'intercept.a3:bondOath': () => {
+    const w = withMarks('intercept', bit('a3'), { 'shield-oath': 5 }); ally(w, 3 * TILE); cast(w, 'shield-oath'); cast(w, 'intercept');
+    expect(w.sys.allyOut.find(x => x.k === 'bond')?.f).toBe(Math.round(w.sys.blockPct));
+  },
+  'intercept.b3:twoBonds': fx => {
+    const w = withMarks('intercept', bit('b3')); w.sys.allies = [{ id: 'a', x: 2 * TILE, y: 0, h: 10, m: 100 }, { id: 'b', x: 2 * TILE, y: 12, h: 30, m: 100 }]; cast(w, 'intercept');
+    const bonds = w.sys.allyOut.filter(x => x.k === 'bond');
+    expect(bonds.map(b => b.to).sort()).toEqual(['a', 'b']); expect(bonds.every(b => b.n === n_(fx))).toBeTrue();
+  },
+  'hold-the-gate.a2:spikes': fx => {
+    const w = withMarks('hold-the-gate', bit('a2')); cast(w, 'hold-the-gate'); const b = biter(w, 100); run(w, .05);
+    expect(1e7 - b.hp).toBe(Math.round(100 * n_(fx) / 100));
+  },
+  'hold-the-gate.a3:gateGuard': fx => {
+    const w = withMarks('hold-the-gate', bit('a3')); ally(w, TILE); cast(w, 'hold-the-gate'); run(w, 1.1);
+    const c = w.sys.allyOut.find(x => x.k === 'aura' && x.s === 'hold-the-gate');
+    expect(c?.n).toBe(n_(fx)); expect(c?.r).toBe(fx.m! * 10);
+  },
+  'hold-the-gate.b2:mobileGate': fx => {
+    const [a, b] = ab('hold-the-gate', 'b2', w => { cast(w, 'hold-the-gate'); return w.sys.footing; });
+    expect(a).toBe(0); expect(b).toBe(n_(fx) / 100);
+  },
+  'hold-the-gate.b3:gateOpens': () => {
+    const w = withMarks('hold-the-gate', bit('b3'), { 'watch-cry': 1, 'cinder-cleave': 1, 'watch-blade': 1 }), m = dummy(w, TILE); w.sys.target = m; cast(w, 'hold-the-gate');
+    const before = lost(m); run(w, w.sys.v('hold-the-gate')['secs'] + .1);
+    expect(lost(m)).toBeGreaterThan(before);
+  },
+  // ── S5: the healer's rows ──
+  'cleanse.a1:warmHands': fx => {
+    const w = withMarks('cleanse', bit('a1')); ally(w, TILE, 10); cast(w, 'cleanse');
+    expect(w.sys.allyOut.find(x => x.k === 'heal' && x.to === 'a')?.n).toBe(Math.round(100 * n_(fx) / 100));
+  },
+  'cleanse.a3:cleanseCircle': fx => {
+    const w = withMarks('cleanse', bit('a3')); w.sys.allies = [{ id: 'a', x: 2 * TILE, y: 0, h: 10, m: 100 }, { id: 'b', x: 2 * TILE + (n_(fx) - .5) * TILE, y: 0, h: 90, m: 100 }]; cast(w, 'cleanse');
+    expect(w.sys.allyOut.filter(x => x.k === 'cleanse').map(x => x.to).sort()).toEqual(['a', 'b']);
+  },
+  'cleanse.b3:dryCloak': fx => {
+    const w = withMarks('cleanse', bit('b3')); w.sys.layOn('wet:30'); cast(w, 'cleanse');
+    expect(w.sys.kst.wet).toBe(0); w.sys.layOn('wet:30'); expect(w.sys.kst.wet).toBe(0);
+    expect(w.sys.dryT).toBeCloseTo(fx.s ?? 0, 1);
+  },
+  'rekindle.a2:steadyHands': () => {
+    const kneelAfterBite = (mask: number) => { const w = withMarks('rekindle', mask); w.sys.fallenAllies.set('a', { x: TILE, y: 0, at: Date.now() }); cast(w, 'rekindle'); (w.sys as unknown as { biteKeeper(n: number, t: string): void }).biteKeeper(50, 'physical'); return !!w.sys.kneel; };
+    expect(kneelAfterBite(0)).toBeFalse(); expect(kneelAfterBite(bit('a2'))).toBeTrue();
+  },
+  'rekindle.b3:twoLamps': fx => {
+    const w = withMarks('rekindle', bit('b3')); w.sys.fallenAllies.set('a', { x: TILE, y: 0, at: Date.now() }); w.sys.fallenAllies.set('b', { x: TILE + (n_(fx) - .5) * TILE, y: 0, at: Date.now() });
+    cast(w, 'rekindle'); run(w, w.sys.v('rekindle')['channel'] + .1);
+    expect(w.sys.allyOut.filter(x => x.k === 'rekindle').map(x => x.to).sort()).toEqual(['a', 'b']);
+  },
+  'hearthsong.a2:steadySong': () => {
+    const sings = (mask: number) => { const w = withMarks('hearthsong', mask); cast(w, 'hearthsong'); (w.sys as unknown as { biteKeeper(n: number, t: string): void }).biteKeeper(50, 'physical'); run(w, .1); return !!w.sys.song; };
+    expect(sings(0)).toBeFalse(); expect(sings(bit('a2'))).toBeTrue();
+  },
+  'hearthsong.a3:choir': fx => {
+    const w = withMarks('hearthsong', bit('a3')), v = w.sys.v('hearthsong'); ally(w, (v['radius'] + n_(fx) - .5) * TILE); cast(w, 'hearthsong'); run(w, .1);
+    expect(w.sys.allyOut.some(x => x.k === 'heal' && x.to === 'a')).toBeTrue();
+    expect(w.sys.allyOut.some(x => x.k === 'cleanse' && x.to === 'a')).toBeTrue();
+  },
+  'hearthsong.b1:walkingSong': fx => {
+    const [a, b] = ab('hearthsong', 'b1', w => { cast(w, 'hearthsong'); return w.sys.footing; });
+    expect(a).toBe(0); expect(b).toBe(n_(fx) / 100);
+  },
+  'hearthsong.b3:keptNote': fx => {
+    const w = withMarks('hearthsong', bit('b3'), { 'hearth-circle': 1 }); cast(w, 'hearthsong'); run(w, w.sys.v('hearthsong')['secs'] + .1);
+    const z = w.sys.zones.find(x => x.kind === 'hearth');
+    expect(z).toBeDefined(); expect(z!.t).toBeLessThanOrEqual(fx.s ?? 0);
   },
 };
 
