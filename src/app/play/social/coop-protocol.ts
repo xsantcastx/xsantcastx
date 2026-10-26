@@ -64,7 +64,12 @@ export type CoopEvent =
    * cleanse, a Rekindle (where it fell), an Intercept bond, an aura's guard. `n`, `t` (tenths of a second) and `f` per
    * kind (AllyEffect).
    */
-  | { k: 'ally'; to: string; a: 'heal' | 'ward' | 'cleanse' | 'rekindle' | 'bond' | 'aura'; by: string; s: string; n: number; t?: number; f?: number; x?: number; y?: number };
+  | { k: 'ally'; to: string; a: 'heal' | 'ward' | 'cleanse' | 'rekindle' | 'bond' | 'aura'; by: string; s: string; n: number; t?: number; f?: number; x?: number; y?: number }
+  /**
+   * The room (`kin` on): a creature `i` (none: a shot) struck this Keeper's summon `p` (its companion id) for `d`, through
+   * its Shared Bones; `x` it fell. Only ever sent to its owner, and only to an owner that told the room its summons.
+   */
+  | { k: 'kin'; to: string; p: string; d: number; i?: string; x?: 1 };
 
 /** What the host posts (and the room relays, with `from`, `term`). */
 export interface CoopSnapBody {
@@ -76,7 +81,8 @@ export interface CoopSnapBody {
 }
 export interface CoopSnapMsg extends CoopSnapBody { from: string; term: number }
 /** A member's damage claim (target id, amount, element, a crit, the skill it came from). */
-export interface CoopHit { i: string; d: number; el: string; c?: boolean; s?: string }
+/** `k` (the room, `kin` on): the blow is the claimer's summon's (its companion id) — its threat is the summon's own. */
+export interface CoopHit { i: string; d: number; el: string; c?: boolean; s?: string; k?: string }
 /** The claims as the room hands them to the host: with the member's last presence (where, and its level). */
 export interface CoopHitsMsg { from: string; area: string; x: number; y: number; level: number; hits: CoopHit[] }
 /** The room's election: per area, the host, its term, and who of the party is there. */

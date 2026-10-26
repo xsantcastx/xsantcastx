@@ -61,6 +61,8 @@ export interface RoomSnapshot {
   credits?: boolean;
   /** S5: the room weighs heals and guards on allies (world/ally-claims.ts). An older room: the screen sends none. */
   allies?: boolean;
+  /** The room hunts each Keeper's summons (its raised): the companions list goes to it, party or not. An older room: none. */
+  kin?: boolean;
 }
 /** Protocol 10: the room's answer to a batch of claims (what it refused, and why). */
 export interface RoomClaimReply { ok?: boolean; no?: { i: string; why: string }[]; st?: { no?: { i: string; why: string }[] } }
@@ -335,7 +337,7 @@ export class SocialRoom {
       this.token = result.token;
       this.rejoinAttempts = 0;
       this.lastBody = ''; this.lastUpdate = -Infinity;
-      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true, allies: result.allies === true });
+      this.publish({ id: result.id, players: result.players, messages: result.messages, protocol: Number(result.protocol) || 1, guest: result.guest !== false, barred: false, world: result.world === true, settles: result.settles === true, life: result.life === true, credits: result.credits === true, allies: result.allies === true, kin: result.kin === true });
       if (this.paused) return;
       this.stream = new AbortController();
       void this.listen(generation, this.stream.signal);
@@ -568,10 +570,17 @@ export class SocialRoom {
     } catch { return false; }
   }
   /** Post this Keeper's own companions to the party in its area. */
-  coopPals(body: { area: string; pals: CoopPal[] }): Promise<boolean> { return this.coopPost('pals', body); }
+  coopPals(body: { area: string; pals: CoopPal[]; g?: number }): Promise<boolean> {
+    // The room hunts summons (`kin`): it hears them party or not, marked so it knows this screen applies its bites.
+    // An older room: only the party hears them, as before (and never the guard).
+    const { g, ...plain } = body;
+    if (this.roomKin) return this.coopPost('pals', { ...plain, kin: 1, ...(g ? { g } : {}) });
+    return this.coopPost('pals', plain);
+  }
+  private get roomKin(): boolean { return this.canWorld && this.snapshot.kin === true; }
   private async coopPost(verb: 'snap' | 'hits' | 'pals', body: unknown): Promise<boolean> {
-    // Claims also go to the room itself where it runs the world (protocol 7), party or not.
-    if (!(this.canCoop || (verb === 'hits' && this.canWorld)) || !this.token || this.paused) return false;
+    // Claims also go to the room itself where it runs the world (protocol 7), party or not; so do summons (`kin`).
+    if (!(this.canCoop || (verb === 'hits' && this.canWorld) || (verb === 'pals' && this.roomKin)) || !this.token || this.paused) return false;
     try {
       const response = await this.send(`${this.endpoint}/coop/${verb}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },

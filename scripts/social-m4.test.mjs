@@ -586,3 +586,132 @@ test('protocol 10 guard: the save ceiling counts what the HUD counts — runes, 
   assert.ok(b.resists.fire > a.resists.fire, `armour runes counted: ${a.resists.fire} → ${b.resists.fire}`);
   assert.equal(sim.keeperBudget({ activity, look, inventory: { v: runed, updatedAt: '' } }).guard.max, sim.slackGuard(b).max);
 });
+
+// ── The Keepers' summons (room-kin.ts; the owner: "the monsters aren't attacking my minions") ──
+const skel = (i, x, y, h = 120, m = 120) => ({ i, k: 'skel', x, y, f: 1, h, m });
+
+test('summons: the room takes a Keeper\'s raised within its skills and leash and refuses forged, too many or too far', () => {
+  const t = { now: T0 };
+  const w = world('kin', t);
+  w.fxQuiet();
+  w.keeper({ id: 'a', x: OPEN.x, y: OPEN.y, level: 1 });
+  // Level 1: Raise Skeleton's cap (its rank, plus gear that adds one) — the rest are refused 'cap'.
+  const cap = sim.kinCap(1), many = Array.from({ length: cap + 2 }, (_, n) => skel(`k${n + 1}`, OPEN.x + 10, OPEN.y + n * 2, 50, 50));
+  let r = w.kin('a', many);
+  assert.equal(r.ok.length, cap);
+  assert.deepEqual(r.no.map(n => n.why), ['cap', 'cap']);
+  // Forged life (past what the summon's own definition allows at that level), past the leash, a dead id: refused.
+  r = w.kin('a', [skel('k1', OPEN.x + 10, OPEN.y, 50, 50), skel('k2', OPEN.x + 10, OPEN.y, 1e5, 1e5), skel('k3', OPEN.x + sim.KIN_LEASH + 20, OPEN.y)]);
+  assert.deepEqual(r.ok, ['k1']);
+  assert.deepEqual(r.no.map(n => [n.i, n.why]), [['k2', 'life'], ['k3', 'far']]);
+  // A pet or a wisp is a picture: neither taken nor refused. Ones the list no longer names are gone.
+  r = w.kin('a', [{ i: 'p', k: 'pet', x: OPEN.x, y: OPEN.y, f: 1 }, { i: 'w0', k: 'wisp', x: OPEN.x, y: OPEN.y, f: 1 }]);
+  assert.deepEqual([r.ok, r.no], [[], []]);
+  assert.equal(w.kinNow('a').length, 0);
+  // A Keeper the room does not hold in the area: nothing taken.
+  assert.deepEqual(w.kin('ghost', [skel('k1', 0, 0)]).ok, []);
+  // Once held, the life is the room's: the owner's word lowers it, and raises it only as fast as heals could.
+  w.kin('a', [skel('k9', OPEN.x + 10, OPEN.y, 50, 120)]);
+  w.kin('a', [skel('k9', OPEN.x + 10, OPEN.y, 120, 120)]);
+  assert.ok(w.kinNow('a')[0].hp < 60, `healed no faster than its heals (${w.kinNow('a')[0].hp})`);
+});
+
+test('summons: a room creature hunts and bites a Keeper\'s raised; the owner is told; it falls on the room\'s word', () => {
+  const t = { now: T0 };
+  const w = world('kin-bite', t);
+  w.fxQuiet();
+  w.keeper({ id: 'a', x: OPEN.x, y: OPEN.y, level: 20 });
+  // The skeleton stands between its Warlock and the wolf (td-threat pickKin: the raised step into its face).
+  assert.deepEqual(w.kin('a', [skel('k1', OPEN.x + 50, OPEN.y, 60, 60)]).ok, ['k1']);
+  const id = w.fxLay('ash-wolf', OPEN.x + 64, OPEN.y, false), m = mobOf(w, id);
+  m.hp = m.def.hp = 1e6;
+  let bites = [], sawKin = false;
+  for (let i = 0; i < 400 && !bites.some(e => e.x === 1); i++) {
+    t.now += 50; w.tick(.05);
+    sawKin ||= m.threatOn === 'a/k1';
+    bites.push(...w.snapFor('a').ev.filter(e => e.k === 'kin'));
+  }
+  assert.ok(sawKin, 'the wolf went for the skeleton');
+  assert.ok(bites.length >= 2, `bitten (${bites.length})`);
+  assert.ok(bites.every(e => e.to === 'a' && e.p === 'k1' && e.d > 0 && e.i === id), JSON.stringify(bites[0]));
+  assert.equal(bites.at(-1).x, 1, 'it fell on the room');
+  assert.equal(w.kinNow('a').length, 0);
+  // Fallen, it cannot be talked back up; the wolf turns to its Warlock.
+  assert.deepEqual(w.kin('a', [skel('k1', OPEN.x + 50, OPEN.y, 60, 60)]).no, [{ i: 'k1', why: 'dead' }]);
+  for (let i = 0; i < 20; i++) { t.now += 50; w.tick(.05); }
+  assert.notEqual(m.threatOn, 'a/k1');
+  // Shared Bones (its guard) cuts the room's bites; a summon gone from the list is forgotten by the creatures.
+  w.kin('a', [skel('k2', OPEN.x + 50, OPEN.y, 600, 600)], 50);
+  assert.equal(w.kinNow('a')[0].g, 50);
+  assert.equal(w.kin('a', [skel('k3', OPEN.x + 50, OPEN.y, 600, 600)], 90).ok.length, 1);
+  assert.equal(w.kinNow('a')[0].g, 50, 'never past the mark\'s most');
+});
+
+test('summons: a summon\'s blows make its own threat; it out-threatens or taunts a creature off another Keeper', () => {
+  const t = { now: T0 };
+  const w = world('kin-threat', t);
+  w.fxQuiet();
+  w.keeper({ id: 'tank', x: OPEN.x, y: OPEN.y, level: 30 });
+  w.keeper({ id: 'lock', x: OPEN.x + 60, y: OPEN.y, level: 30 });
+  w.kin('lock', [skel('k1', OPEN.x + 30, OPEN.y + 8, 800, 800)]);
+  const id = w.fxLay('ash-wolf', OPEN.x + 20, OPEN.y, false), m = mobOf(w, id);
+  m.hp = m.def.hp = 1e6;
+  w.claims('tank', [{ i: id, d: 50, el: 'physical' }]);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'tank', 'the tank holds it; a skeleton beside it does not pull it off him');
+  // The skeleton's blows (a claim naming it) are its own threat, never its Warlock's; a forged summon id is the Keeper's.
+  w.claims('lock', [{ i: id, d: 80, el: 'physical', k: 'k1' }, { i: id, d: 5, el: 'physical', k: 'k7' }]);
+  assert.equal(m.threat.get('lock/k1'), 80);
+  assert.equal(m.threat.get('lock'), 5);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.threatOn, 'lock/k1', 'it out-threatens the tank');
+  // The tank's Watch Cry takes it back; a Captain of the Dead's taunt turns it on the Captain.
+  w.statuses('tank', [{ i: id, k: 'taunt', s: 'watch-cry', t: 20 }]);
+  t.now += 50; w.tick(.05);
+  assert.equal(m.tauntBy, 'tank');
+  for (let i = 0; i < 60; i++) { t.now += 50; w.tick(.05); }
+  assert.equal(w.statuses('lock', [{ i: id, k: 'taunt', s: 'raise-skeleton', m: 'a3', t: 15 }]).landed, 1);
+  assert.equal(m.tauntBy, 'lock/k1');
+  t.now += 50; w.tick(.05);
+  assert.ok(m.threat.get('lock/k1') >= m.threat.get('tank') * 1.1 - 1e-6);
+});
+
+test('summons over HTTP: a screen that says kin tells the room; its skeleton is bitten and the other Keeper sees it', async t => {
+  const { post, join, move, stream, step } = await room(t);
+  const a = await join('Aster'), b = await join('Bryn');
+  assert.equal(a.kin, true);
+  await move(a, OPEN.x, OPEN.y); await move(b, OPEN.x + 20, OPEN.y);
+  const sa = await stream(a), sb = await stream(b);
+  await step(3);
+  const sk = skel('k1', OPEN.x + 50, OPEN.y, 60, 60);
+  let r = await post('/coop/pals', { area: AREA, pals: [sk], kin: 1, g: 0 }, a.token);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.kin.ok, ['k1']);
+  // Forged and malformed: refused by the room, or the body refused whole.
+  r = await post('/coop/pals', { area: AREA, pals: [sk, skel('k2', OPEN.x + 900, OPEN.y)], kin: 1 }, a.token);
+  assert.deepEqual(r.body.kin.no, [{ i: 'k2', why: 'far' }]);
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [sk, sk], kin: 1 }, a.token)).status, 400);
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [sk], kin: 1, g: 500 }, a.token)).status, 400);
+  // Bryn sees Aster's skeleton (the owner's word, relayed to everyone in the area).
+  assert.ok(await sb.until(() => sb.all('coop-pals').some(e => e.from === a.id && e.pals.some(p => p.i === 'k1'))), 'Bryn sees it');
+  await post('/coop/pals', { area: AREA, pals: [sk], kin: 1 }, a.token);
+  await post('/world/fx', { quiet: true, lay: { type: 'ash-wolf', dx: 64, dy: 0, calm: false } }, a.token);
+  let bite = null;
+  for (let i = 0; i < 200 && !bite; i++) { await step(1, 100); bite = sa.all('coop-snap').flatMap(e => e.ev).find(e => e.k === 'kin' && e.p === 'k1'); }
+  assert.ok(bite, 'Aster is told its skeleton was bitten');
+  assert.equal(sb.all('coop-snap').flatMap(e => e.ev).filter(e => e.k === 'kin').length, 0, 'only its owner hears the bite');
+});
+
+test('summons: an older screen (no kin) keeps the party path; the room never bites what it was not told', async t => {
+  const { post, join, move, step } = await room(t);
+  const old = await join('Oskar', { protocol: 9 });
+  assert.equal(old.kin, undefined);
+  await move(old, OPEN.x, OPEN.y);
+  await step(2);
+  // Not in a party: the party path answers as it always did.
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [skel('k1', OPEN.x + 10, OPEN.y)] }, old.token)).status, 409);
+  const a = await join('Aster');
+  await move(a, OPEN.x, OPEN.y);
+  await step(2);
+  assert.equal((await post('/coop/pals', { area: AREA, pals: [skel('k1', OPEN.x + 10, OPEN.y)] }, a.token)).status, 409);
+});
