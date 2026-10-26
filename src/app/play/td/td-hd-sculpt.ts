@@ -197,14 +197,16 @@ export class Sculpt {
       const flat = Lz;
       // The light on this pixel, banded onto the ramp: flat-facing reads as the base tone (index 3 of 6).
       const fall = (fy1 > fy0 ? (y - fy0) / (fy1 - fy0) : .5) - .5;
-      let t = 3 + (lit - flat) * 5.2 * (m.gain ?? 1) - fall * .7 + (m.bias ?? 0) + this.bias[k] / 4;
+      // The base tone sits mid-ramp (index 3 of six, 4 of eight); a longer ramp spreads the same light over finer steps.
+      const span = ramp.length / 6;
+      let t = (ramp.length >> 1) + ((lit - flat) * 5.2 * (m.gain ?? 1) - fall * .7 + (m.bias ?? 0) + this.bias[k] / 4) * span;
       // A part in front casts a short shadow down-right onto the part behind.
       const L = layer[k];
       for (const [dx, dy] of CAST) {
         const xx = x + dx, yy = y + dy;
         if (xx < 0 || yy < 0) continue;
         const j = yy * w + xx;
-        if (id[j] && layer[j] > L && region[j] !== region[k] && !this.mats[id[j] - 1].soft) { t -= 1.1; break; }
+        if (id[j] && layer[j] > L && region[j] !== region[k] && !this.mats[id[j] - 1].soft) { t -= 1.1 * (ramp.length / 6); break; }
       }
       // Banding with a light dither only where two bands meet.
       const fr = t - Math.floor(t), th = B2[((y & 1) << 1) | (x & 1)];

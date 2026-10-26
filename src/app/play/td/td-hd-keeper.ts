@@ -25,6 +25,8 @@ export interface HdSource { readonly key: string; readonly look: KeeperLook; rea
 
 /** The sculpt's size; the cell is 2 px larger (the outline's margin). Feet at (ax, ay) in cell px. */
 const SW = 96, SH = 124, CX = 48, FY = 118;
+/** The body's lines (sheet px, standing): shoulders, belt, the tunic's hem, the top of the legs; the head drawn at HEAD_K about the chin. */
+const YS = 47, BELT = 72, HEM = 89, LEG = 84, CHIN = 44, HEAD_K = .8;
 export const HD_FIG = { w: SW + 2, h: SH + 2, ax: CX + 1, ay: FY + 1 } as const;
 
 /** Frames (sheet columns). */
@@ -55,20 +57,25 @@ const POSES: readonly Pose[] = [
 // ── Materials ──
 const mats = new Map<string, Mat>();
 type Stuff = 'cloth' | 'metal' | 'skin' | 'hair' | 'leather' | 'wood' | 'glow' | 'gem';
+/** Eight tones from one base (base at index 4): shadows cooler and deeper, lights warmer — the six-tone ramp, finer. */
+function ramp8(base: string, o: { cool?: string; warm?: string; deep?: number; hi?: number } = {}): string[] {
+  const cool = o.cool ?? '#1c1430', warm = o.warm ?? '#fff4d6', deep = o.deep ?? .62, hi = o.hi ?? .45;
+  return [mix(base, cool, deep), mix(base, cool, deep * .74), mix(base, cool, deep * .5), mix(base, cool, deep * .24), base, mix(base, warm, hi * .3), mix(base, warm, hi * .62), mix(base, warm, hi)];
+}
 /** One material per colour and stuff (shared by every sculpt: the sculptor indexes materials by identity). */
 function mat(hex: string, stuff: Stuff, bias = 0): Mat {
   const k = `${hex}|${stuff}|${bias}`;
   let m = mats.get(k);
   if (m) return m;
   switch (stuff) {
-    case 'skin': m = { ramp: rampOf(hex, { cool: '#5a2a3a', deep: .55 }), round: 7, gain: .85 }; break;
-    case 'hair': m = { ramp: rampOf(hex, { cool: '#120a14', warm: '#fff0d8', hi: .42 }), round: 3, gain: 1.1 }; break;
-    case 'metal': m = { ramp: rampOf(hex, { cool: '#14142a', warm: '#ffffff', hi: .6 }), shine: true, round: 4, gain: 1.2 }; break;
-    case 'leather': m = { ramp: rampOf(hex, { cool: '#1e0e10' }), round: 3, gain: 1 }; break;
+    case 'skin': m = { ramp: ramp8(hex, { cool: '#5a2a3a', deep: .55 }), round: 7, gain: .85 }; break;
+    case 'hair': m = { ramp: ramp8(hex, { cool: '#120a14', warm: '#fff0d8', hi: .42 }), round: 3, gain: 1.1 }; break;
+    case 'metal': m = { ramp: ramp8(hex, { cool: '#14142a', warm: '#ffffff', hi: .6 }), shine: true, round: 6, gain: 1.15 }; break;
+    case 'leather': m = { ramp: ramp8(hex, { cool: '#1e0e10' }), round: 4, gain: 1 }; break;
     case 'wood': m = { ramp: rampOf(hex, { cool: '#24100c', hi: .4 }), round: 2, gain: .9 }; break;
     case 'glow': m = { ramp: [mix(hex, '#000000', .1), hex, mix(hex, '#ffffff', .25), mix(hex, '#ffffff', .45), mix(hex, '#ffffff', .65), mix(hex, '#ffffff', .85)], round: 2, gain: .4, soft: true }; break;
     case 'gem': m = { ramp: rampOf(hex, { cool: '#100818', warm: '#ffffff', hi: .7 }), shine: true, round: 2, gain: 1.3 }; break;
-    default: m = { ramp: rampOf(hex, { cool: '#1a0a1c', warm: '#ffe0c0', hi: .35, deep: .6 }), round: 6, gain: .85 };
+    default: m = { ramp: ramp8(hex, { cool: '#1a0a1c', warm: '#ffe0c0', hi: .35, deep: .6 }), round: 8, gain: .85 };
   }
   if (bias) m = { ...m, bias };
   mats.set(k, m);
@@ -79,13 +86,13 @@ function lookMat(deep: string, base: string, lit: string, stuff: Stuff): Mat {
   const k = `L${deep}${base}${lit}|${stuff}`;
   let m = mats.get(k);
   if (m) return m;
-  const ramp = [mix(deep, '#120a18', .45), deep, mix(deep, base, .5), base, mix(base, lit, .55), lit];
-  m = stuff === 'metal' ? { ramp, shine: true, round: 4, gain: 1.2 } : stuff === 'leather' ? { ramp, round: 3, gain: 1 } : { ramp, round: 6, gain: .85 };
+  const ramp = [mix(deep, '#120a18', .45), mix(deep, '#120a18', .2), deep, mix(deep, base, .5), base, mix(base, lit, .35), mix(base, lit, .7), lit];
+  m = stuff === 'metal' ? { ramp, shine: true, round: 6, gain: 1.15 } : stuff === 'leather' ? { ramp, round: 4, gain: 1 } : { ramp, round: 8, gain: .85 };
   mats.set(k, m);
   return m;
 }
 
-const STEEL = '#9aa6b8', LEATHER = '#6a4028', BOOT = '#5a3424', BELT = '#3a2618', BRASS = '#d6a040', WOOD = '#7a4e2e';
+const STEEL = '#9aa6b8', LEATHER = '#6a4028', BOOT = '#5a3424', BELT_HEX = '#3a2618', BRASS = '#d6a040', WOOD = '#7a4e2e';
 
 /** A piece's tones: its own look's, else its fixed colour, else its realm's (metal leaning to steel so it reads lit). */
 interface Tones { base: string; deep: string; lit: string; accent: string; sub: string; trim: string | null; glow: boolean; runes?: string; eyes?: string; shadow?: boolean; horns?: string; mantle?: string; seam?: string }
@@ -121,7 +128,7 @@ interface Fig {
   glowEyes: string | null; bothEyes: boolean; undead: boolean;
 }
 
-const BUILD = { slight: { sw: 14.5, hw: 13 }, sturdy: { sw: 16.5, hw: 14 }, broad: { sw: 19, hw: 15.5 } } as const;
+const BUILD = { slight: { sw: 12.5, hw: 11 }, sturdy: { sw: 14.5, hw: 12 }, broad: { sw: 17, hw: 13.5 } } as const;
 
 function figOf(src: HdSource): Fig {
   const look = src.look, garb = src.garb ?? {}, gear = src.gear ?? {};
@@ -132,7 +139,7 @@ function figOf(src: HdSource): Fig {
   const trousersHex = garb.trousers ?? mix(trimHex, '#2a2230', .45);
   const b = BUILD[look.body] ?? BUILD.sturdy, fem = look.form === 'fem';
   const f: Fig = {
-    fem, sw: b.sw - (fem ? 1.5 : 0), hw: b.hw + (fem ? 2 : 0),
+    fem, sw: b.sw - (fem ? 2.5 : 0), hw: b.hw + (fem ? 2 : 0),
     skin: mat(skinHex, 'skin'), skinHex, hair: mat(hairHex, 'hair'), hairHex, style: look.hair, eyes: look.eyes, eyeHex: EYE_COLORS[look.eyeColor] ?? EYE_COLORS[0], mark: look.face,
     tunic: mat(tunicHex, 'cloth'), tunicHex, trimHex, trim: mat(trimHex, 'cloth'), trousers: mat(trousersHex, 'cloth'),
     garb, head: null, chest: null, cape: null, capeIn: null, gaunt: null, wrap: null, greaves: null,
@@ -199,7 +206,53 @@ function figOf(src: HdSource): Fig {
   return f;
 }
 
+/** A material's brightest tone (`down` steps below it). */
+const hiOf = (m: Mat, down = 0): string => m.ramp[m.ramp.length - 1 - down];
+
 // ── Geometry helpers ──
+/**
+ * Cloth hanging in folds: `n` tubes from the span (x0..x1 at y0) to the span (x2..x3 at y1), each its own rounded
+ * volume (so each catches the light and the next one's edge leaves a crease), the hem dipping at every other fold.
+ */
+function folds(s: Sculpt, m: Mat, x0: number, x1: number, y0: number, x2: number, x3: number, y1: number, n: number, g: number, bias = 0): void {
+  for (let i = 0; i < n; i++) {
+    const a = i / n, b = (i + 1) / n, dip = i % 2 ? 2.5 : 0, o = .6;
+    const ta = x0 + (x1 - x0) * a - o, tb = x0 + (x1 - x0) * b + o, ba = x2 + (x3 - x2) * a - o, bb = x2 + (x3 - x2) * b + o;
+    s.poly([[ta, y0], [tb, y0], [bb, y1 - dip], [(ba + bb) / 2, y1 + 1 - dip], [ba, y1 - dip]], m, { g: g + i, bias: bias + (i % 2 ? -.35 : .25) });
+  }
+}
+
+
+type ShapeO = { g?: number; bias?: number; rot?: number };
+/** What the head's painters draw on: the sculpt itself, or the sculpt seen through a scale about the chin. */
+interface Sc {
+  ellipse(cx: number, cy: number, rx: number, ry: number, m: Mat | null, o?: ShapeO): unknown;
+  poly(pts: readonly Pt[], m: Mat | null, o?: ShapeO): unknown;
+  limb(a: Pt, b: Pt, ra: number, rb: number, m: Mat | null, o?: ShapeO): unknown;
+  stroke(pts: readonly Pt[], ra: number, rb: number, m: Mat, o?: ShapeO): unknown;
+  rect(x: number, y: number, w: number, h: number, m: Mat | null, o?: ShapeO): unknown;
+  dot(x: number, y: number, c: string, w?: number, h?: number): unknown;
+  line(a: Pt, b: Pt, c: string): unknown;
+  lineOn(a: Pt, b: Pt, c: string): unknown;
+}
+/**
+ * The head is authored at one size and drawn at HEAD_K about the chin, so the figure reads at the references'
+ * proportions (about four heads tall) while every hair style, hat, helm and face keeps its own drawing.
+ */
+class Scaled implements Sc {
+  constructor(private readonly s: Sculpt, private readonly px: number, private readonly py: number, private readonly k: number) {}
+  private X = (x: number) => this.px + (x - this.px) * this.k;
+  private Y = (y: number) => this.py + (y - this.py) * this.k;
+  private P = (p: Pt): Pt => [this.X(p[0]), this.Y(p[1])];
+  ellipse(cx: number, cy: number, rx: number, ry: number, m: Mat | null, o?: ShapeO) { return this.s.ellipse(this.X(cx), this.Y(cy), rx * this.k, ry * this.k, m, o); }
+  poly(pts: readonly Pt[], m: Mat | null, o?: ShapeO) { return this.s.poly(pts.map(this.P), m, o); }
+  limb(a: Pt, b: Pt, ra: number, rb: number, m: Mat | null, o?: ShapeO) { return this.s.limb(this.P(a), this.P(b), ra * this.k, rb * this.k, m, o); }
+  stroke(pts: readonly Pt[], ra: number, rb: number, m: Mat, o?: ShapeO) { return this.s.stroke(pts.map(this.P), ra * this.k, rb * this.k, m, o); }
+  rect(x: number, y: number, w: number, h: number, m: Mat | null, o?: ShapeO) { return this.s.rect(Math.round(this.X(x)), Math.round(this.Y(y)), Math.max(1, Math.round(w * this.k)), Math.max(1, Math.round(h * this.k)), m, o); }
+  dot(x: number, y: number, c: string, w = 1, h = 1) { return this.s.dot(this.X(x), this.Y(y), c, Math.max(1, Math.round(w * this.k)), Math.max(1, Math.round(h * this.k))); }
+  line(a: Pt, b: Pt, c: string) { return this.s.line(this.P(a), this.P(b), c); }
+  lineOn(a: Pt, b: Pt, c: string) { return this.s.lineOn(this.P(a), this.P(b), c); }
+}
 /** An ellipse's outline above the line y = cut (a helm's dome, a hair cap). */
 function dome(cx: number, cy: number, rx: number, ry: number, cut: number): Pt[] {
   const pts: Pt[] = [];
@@ -228,38 +281,38 @@ function gripOf(f: Fig, view: HdView, q: Pose, side: number, sh: number): Grip {
   const back = view === 1 || view === 3, turned = view >= 2, b = q.bob, swing = q.swing;
   const sideW = side * (sh + 6);
   // Rest: the hand by the hip, what it holds raised up and a little out (a staff or a pole stands on the ground).
-  let hand: Pt = [CX + sideW + (turned ? swing * 3 : 0) + q.lean * .5, 82 + b + (turned ? 0 : swing * 1.5)];
+  let hand: Pt = [CX + sideW + (turned ? swing * 3 : 0) + q.lean * .5, 80 + b + (turned ? 0 : swing * 1.5)];
   let ang = f.held === 'pole' || f.held === 'cast' || f.held === 'bow' ? -90 + side * 4 : -90 + side * 12;
-  let off: Pt = [CX - sideW - (turned ? swing * 3 : 0) + q.lean * .5, 82 + b - (turned ? 0 : swing * 1.5)];
+  let off: Pt = [CX - sideW - (turned ? swing * 3 : 0) + q.lean * .5, 80 + b - (turned ? 0 : swing * 1.5)];
   let behind = back, offUp = false;
   const a = q.act;
   if (a === 'wind' || a === 'strike' || a === 'follow') {
     if (f.held === 'bow') {
       // The bow: raised, drawn, loosed. Seen from the front it is canted so its curve reads.
-      if (view === 0) { hand = [CX - 6, 64 + b]; ang = -60; off = [CX + (a === 'wind' ? 2 : 8), 66 + b]; behind = false; }
-      else if (view === 2) { hand = [CX + sh + 10, 62 + b]; ang = -90; off = [CX + (a === 'strike' ? 2 : a === 'wind' ? 10 : 14), 62 + b]; behind = false; }
-      else if (view === 1) { hand = [CX + 10, 56 + b]; ang = -120; off = [CX + 2, 62 + b]; offUp = true; }
-      else { hand = [CX + sh + 8, 54 + b]; ang = -100; off = [CX + 8, 60 + b]; offUp = true; }
+      if (view === 0) { hand = [CX - 6, 58 + b]; ang = -60; off = [CX + (a === 'wind' ? 2 : 8), 60 + b]; behind = false; }
+      else if (view === 2) { hand = [CX + sh + 10, 56 + b]; ang = -90; off = [CX + (a === 'strike' ? 2 : a === 'wind' ? 10 : 14), 56 + b]; behind = false; }
+      else if (view === 1) { hand = [CX + 10, 50 + b]; ang = -120; off = [CX + 2, 56 + b]; offUp = true; }
+      else { hand = [CX + sh + 8, 48 + b]; ang = -100; off = [CX + 8, 54 + b]; offUp = true; }
     } else {
-      const S = view === 0 ? { wind: [-16, 56, -140], strike: [8, 80, 12], follow: [12, 88, 70] }
-        : view === 2 ? { wind: [-10, 54, -150], strike: [20, 70, -8], follow: [16, 86, 55] }
-        : view === 1 ? { wind: [18, 54, -50], strike: [-2, 50, -115], follow: [-14, 64, -170] }
-        : { wind: [16, 52, -100], strike: [24, 60, -35], follow: [14, 74, 20] };
+      const S = view === 0 ? { wind: [-16, 50, -140], strike: [8, 74, 12], follow: [12, 82, 70] }
+        : view === 2 ? { wind: [-10, 48, -150], strike: [20, 64, -8], follow: [16, 80, 55] }
+        : view === 1 ? { wind: [18, 48, -50], strike: [-2, 44, -115], follow: [-14, 58, -170] }
+        : { wind: [16, 46, -100], strike: [24, 54, -35], follow: [14, 68, 20] };
       const [hx, hy, an] = S[a];
       hand = [CX + hx, hy + b]; ang = an;
       behind = back ? true : a === 'wind';
       // Two hands on a big weapon: the other hand just below on the grip.
       if (f.weapon?.two || f.held === 'big') { const u = rad(ang); off = [hand[0] - Math.cos(u) * 6, hand[1] - Math.sin(u) * 6]; }
-      else off = [CX - side * (sh + 4), 74 + b];
+      else off = [CX - side * (sh + 4), 70 + b];
     }
   } else if (a === 'raise' || a === 'release') {
     // A cast: the weapon hand high (a staff upright), the other hand out with the light in it.
     const up = a === 'raise';
-    hand = [CX + side * (up ? sh - 2 : sh + 2), (up ? 44 : 50) + b]; ang = up ? -90 : -90 + (view === 2 || view === 3 ? 25 : side * 20);
-    off = view === 0 ? [CX - side * (up ? 6 : 14), (up ? 70 : 64) + b] : view === 2 ? [CX + sh + (up ? 4 : 12), (up ? 68 : 62) + b] : [CX - side * (sh + 6), (up ? 62 : 56) + b];
+    hand = [CX + side * (up ? sh - 2 : sh + 2), (up ? 38 : 44) + b]; ang = up ? -90 : -90 + (view === 2 || view === 3 ? 25 : side * 20);
+    off = view === 0 ? [CX - side * (up ? 6 : 14), (up ? 66 : 60) + b] : view === 2 ? [CX + sh + (up ? 4 : 12), (up ? 62 : 56) + b] : [CX - side * (sh + 6), (up ? 56 : 50) + b];
     offUp = true; behind = back;
   } else if (a === 'hit') {
-    hand = [CX + side * (sh + 8), 74 + b]; ang = -90 + side * 40; off = [CX - side * (sh + 7), 72 + b]; offUp = true;
+    hand = [CX + side * (sh + 8), 70 + b]; ang = -90 + side * 40; off = [CX - side * (sh + 7), 68 + b]; offUp = true;
   } else if (a === 'kneel') {
     hand = [CX + side * (sh + 6), 86 + b]; ang = -90 + side * 70; off = [CX - side * (sh + 4), 84 + b];
   } else if (a === 'down') {
@@ -277,7 +330,7 @@ function weapon(s: Sculpt, f: Fig, h: Pt, ang: number, g: number, face: number):
   const blade = (len: number, wd: number, from = 5) => {
     s.poly([P(from, wd), P(len - wd * 2.4, wd * .9), P(len, 0), P(len - wd * 2.4, -wd * .9), P(from, -wd)], w.blade, { g });
     for (let t = from + 4; t < len - wd * 3; t++) s.dot(...P(t, 0), w.blade.ramp[1]);
-    for (let t = from + 3; t < len - wd * 2; t++) s.dot(...P(t, wd * .55), w.blade.ramp[5]);
+    for (let t = from + 3; t < len - wd * 2; t++) s.dot(...P(t, wd * .55), hiOf(w.blade));
   };
   const grip = (a0: number, a1: number, r = 2.2) => s.limb(P(a0, 0), P(a1, 0), r, r, w.haft, { g: g + 2 });
   const brass = mat(w.t.trim ?? BRASS, 'metal');
@@ -436,7 +489,8 @@ function sculpt(f: Fig, view: HdView, fr: number): HTMLCanvasElement {
   const cx = CX + ln + (turned ? 1 : 0), sw = f.sw * (turned ? .8 : 1), hw = f.hw * (turned ? .82 : 1);
   // The weapon hand: the right hand — the viewer's left from the front, the viewer's right from behind.
   const side = front ? -1 : 1;
-  const hc = cx + (turned ? 2.5 : 0) + (down ? 6 : 0), hy = 38 + b + (a === 'hit' ? 1 : 0) + (down ? 4 : 0);
+  const hc = cx + (turned ? 2.5 : 0) + (down ? 6 : 0), hy = CHIN - 16 + b + (a === 'hit' ? 1 : 0) + (down ? 4 : 0);
+  const hs = new Scaled(s, hc, CHIN + b + (down ? 4 : 0), HEAD_K);
   const grip = gripOf(f, view, q, side, sw);
   const robe = f.chest?.shape === 'robe', coat = f.chest?.shape === 'coat', plate = f.chest?.shape === 'plate' || f.chest?.shape === 'scale';
   const sleeve = f.chest && (robe || coat || f.chest.shape === 'cloak') ? f.chest.m : f.tunic;
@@ -448,17 +502,15 @@ function sculpt(f: Fig, view: HdView, fr: number): HTMLCanvasElement {
   // Aureth's dawn-glass shards fanned behind the head (never a halo).
   if (f.garb.shards) for (const [ang, len, w, k] of [[-145, 30, 4.5, 0], [-90, 36, 5, 1], [-35, 30, 4.5, 2], [-118, 22, 3.5, 3], [-62, 22, 3.5, 4]] as const) {
     const u = rad(ang), ux = Math.cos(u), uy = Math.sin(u), nx = -uy, ny = ux, x0 = hc + ux * 12, y0 = hy - 6 + uy * 12;
-    s.poly([[x0, y0], [x0 + ux * len * .45 + nx * w, y0 + uy * len * .45 + ny * w], [x0 + ux * len, y0 + uy * len], [x0 + ux * len * .45 - nx * w, y0 + uy * len * .45 - ny * w]], mat(k % 2 ? '#ffe28a' : '#fff1b0', 'gem'), { g: 1 + k });
+    hs.poly([[x0, y0], [x0 + ux * len * .45 + nx * w, y0 + uy * len * .45 + ny * w], [x0 + ux * len, y0 + uy * len], [x0 + ux * len * .45 - nx * w, y0 + uy * len * .45 - ny * w]], mat(k % 2 ? '#ffe28a' : '#fff1b0', 'gem'), { g: 1 + k });
   }
   // The cape from the front: its lining behind the legs, the outer folds either side.
-  const ys = 55 + b; // the shoulder line
+  const ys = YS + b; // the shoulder line
   if (f.cape && front && !down) {
     const hem = (kneel ? 112 : 110) + Math.min(b, 0);
     s.poly([[cx - sw, ys], [cx + sw, ys], [cx + sw + 10 + sway, hem - 4], [cx + sw - 2 + sway, hem], [cx, hem - 3], [cx - sw + 2 + sway, hem], [cx - sw - 10 + sway, hem - 4]], f.capeIn!, { g: 2 });
-    s.poly([[cx - sw - 2, ys + 4], [cx - sw + 5, ys + 10], [cx - sw + 2 + sway, hem - 2], [cx - sw - 11 + sway, hem - 4]], f.cape, { g: 3 });
-    if (!turned) s.poly([[cx + sw + 2, ys + 4], [cx + sw - 5, ys + 10], [cx + sw - 2 + sway, hem - 2], [cx + sw + 11 + sway, hem - 4]], f.cape, { g: 4, bias: -.4 });
-    s.lineOn([cx - sw - 4 + sway * .5, ys + 20], [cx - sw - 7 + sway, hem - 6], f.cape.ramp[1]);
-    s.lineOn([cx + sw + 4 + sway * .5, ys + 20], [cx + sw + 7 + sway, hem - 6], f.capeIn!.ramp[1]);
+    folds(s, f.cape, cx - sw - 2, cx - sw + 5, ys + 4, cx - sw - 11 + sway, cx - sw + 2 + sway, hem - 2, 2, 3);
+    if (!turned) folds(s, f.cape, cx + sw - 5, cx + sw + 2, ys + 4, cx + sw - 2 + sway, cx + sw + 11 + sway, hem - 2, 2, 6, -.4);
   }
   // A quiver on the back seen from the front: the fletchings over the off shoulder.
   if (f.garb.quiver && front) {
@@ -469,7 +521,7 @@ function sculpt(f: Fig, view: HdView, fr: number): HTMLCanvasElement {
   // A sack over the back shoulder (seen from the front: its bulge past the shoulder).
   if (f.garb.sack && front) s.ellipse(cx - side * (sw + 2), ys - 1, 7, 8, mat(f.garb.sack, 'cloth'), { g: 7 });
   // Back-hanging hair behind the head (long, braid, ponytail, pigtails, bob).
-  if (front) backHair(s, f, hc, hy, turned, 8);
+  if (front) backHair(hs, f, hc, hy, turned, 8);
 
   // The weapon when it is behind the body (raised behind the head; everything seen from behind).
   const wf = (f.held === 'bow' || f.weapon?.variant === 'lamp') && (a === 'none' || a === 'hit') ? (turned ? 1 : side) : turned ? 1 : -side;
@@ -496,8 +548,7 @@ function sculpt(f: Fig, view: HdView, fr: number): HTMLCanvasElement {
     // The cape over the back (folds, a collar roll), or the quiver's tube.
     if (f.cape && !down) {
       const hem = 110 + Math.min(b, 0);
-      s.poly([[cx - sw - 1, ys - 4], [cx + sw + 1, ys - 4], [cx + sw + 9 + sway, hem - 4], [cx + 9 + sway, hem], [cx - 9 + sway, hem], [cx - sw - 9 + sway, hem - 4]], f.cape, { g: 90 });
-      for (const fx of [-9, 0, 9]) s.poly([[cx + fx - 1, ys + 10], [cx + fx + 1, ys + 10], [cx + fx * 1.4 + 2.5 + sway, hem - 3], [cx + fx * 1.4 - 2.5 + sway, hem - 3]], f.capeIn!, { g: 91 + fx });
+      folds(s, f.cape, cx - sw - 1, cx + sw + 1, ys - 4, cx - sw - 10 + sway, cx + sw + 10 + sway, hem, 5, 90);
       s.ellipse(cx, ys - 4, sw - 2, 5, f.cape, { g: 102 });
     }
     if (f.garb.quiver) {
@@ -525,7 +576,7 @@ function sculpt(f: Fig, view: HdView, fr: number): HTMLCanvasElement {
   if (back && (a === 'raise' || a === 'release') && !f.off) castLight(s, f, grip.off, a === 'release', 129);
 
   // ── The head ──
-  head(s, f, view, q, hc, hy - tall, cx, 140);
+  head(hs, f, view, q, hc, hy - tall, cx, 140);
   // ── The weapon arm in front, and the weapon ──
   if (front) {
     if (!grip.behind && a !== 'down') weapon(s, f, grip.hand, grip.ang, wg, wf);
@@ -545,7 +596,7 @@ function sculpt(f: Fig, view: HdView, fr: number): HTMLCanvasElement {
 
 /** Two-bone arm from the shoulder to the hand: a sleeve, a cuff or gauntlet, the hand. `sl` null: the hand is gone. */
 function arm(s: Sculpt, f: Fig, sh: Pt, hand: Pt, sl: Mat | null, g: number, side: number, holding: boolean): void {
-  const e = elbow(sh, hand, 12, 12.5, side);
+  const e = elbow(sh, hand, 14, 14.5, side);
   s.limb(sh, e, 5.2, 4.8, sl ?? f.tunic, { g });
   if (!sl) { s.limb(e, [e[0] + (hand[0] - e[0]) * .4, e[1] + (hand[1] - e[1]) * .4], 4.6, 4.2, f.tunic, { g: g + 1 }); return; }
   const fore = f.gaunt ?? (f.chest?.shape === 'plate' ? f.chest.m : f.wrap ?? sl);
@@ -563,7 +614,7 @@ function castLight(s: Sculpt, f: Fig, h: Pt, big: boolean, g: number): void {
 
 /** A swing's smear: a thin crisp arc of the blade's light across the strike (one frame; drawn over the body). */
 function smear(s: Sculpt, f: Fig, view: HdView, b: number, g: number): void {
-  const c = mix(f.weapon!.blade.ramp[5], '#ffffff', .3), m: Mat = { ramp: [c, c, c, c, c, c], round: 1, gain: 0, soft: true };
+  const c = mix(hiOf(f.weapon!.blade), '#ffffff', .3), m: Mat = { ramp: [c, c, c, c, c, c], round: 1, gain: 0, soft: true };
   const [x0, y0, r, a0, a1] = view === 0 ? [CX - 4, 70 + b, 30, 200, 330] : view === 2 ? [CX + 6, 66 + b, 30, 230, 360] : view === 1 ? [CX, 56 + b, 28, 300, 200] : [CX + 6, 56 + b, 28, 250, 340];
   const pts: Pt[] = [];
   const n = 10, dir = a1 > a0 ? 1 : -1;
@@ -607,7 +658,7 @@ function legs(s: Sculpt, f: Fig, view: HdView, q: Pose, cx: number, hw: number, 
     // Turned: the stride runs across the picture; square on it is a lifted foot.
     const stride = turned ? q.step * 5 * side * (back ? -1 : 1) : q.step * side * .8;
     const lift = q.lift[side < 0 ? 0 : 1];
-    const x = cx + side * (turned ? 5.5 : 7) + stride, top = 92 + b, foot = FY - lift;
+    const x = cx + side * (turned ? 5.5 : f.fem ? 5.5 : 7) + stride, top = LEG + b, foot = FY - lift;
     const bias = side > 0 ? -.3 : 0;
     if (!robeHide) {
       s.limb([x, top], [x + side * .4, foot - 9], 6, 5.2, f.trousers, { g: g + 10 + side, bias });
@@ -630,12 +681,15 @@ function legs(s: Sculpt, f: Fig, view: HdView, q: Pose, cx: number, hw: number, 
 /** The torso: tunic and belt, the chest piece over it, an apron, a sash. */
 function torso(s: Sculpt, f: Fig, view: HdView, q: Pose, cx: number, sw: number, hw: number, ys: number, br: number, g: number): void {
   const b = q.bob, back = view === 1 || view === 3, turned = view >= 2, ch = f.chest, sh = ch?.shape;
-  const waist = (f.fem ? sw - 3.5 : sw - 1.5), belt = 78 + b, hem = (sh === 'robe' ? 115 : sh === 'coat' ? 104 : 96) + Math.min(0, b) + (q.act === 'kneel' ? -2 : 0);
+  // A feminine figure's chest: two soft volumes in whatever is worn over it (seen from the front).
+  const bust = (m: Mat, gg: number) => { if (!f.fem || back) return; const tx = turned ? 2 : 0; for (const side of [-1, 1] as const) { if (turned && side > 0) { s.ellipse(cx + 6 + tx, ys + 10 - br, 3.6, 4, m, { g: gg + 1, bias: -.4 }); continue; } s.ellipse(cx + side * 5 + tx, ys + 10 - br, 4.6, 4, m, { g: gg + (side > 0 ? 1 : 0), bias: side > 0 ? -.2 : .2 }); } };
+  const waist = (f.fem ? sw - 5 : sw - 1.5), belt = BELT + b, hem = (sh === 'robe' ? 114 : sh === 'coat' ? 97 : HEM) + Math.min(0, b) + (q.act === 'kneel' ? -2 : 0);
   // The tunic: shoulders rounded, the chest, the waist, the skirt flaring to the hips.
-  s.poly([[cx - sw, ys + 3], [cx - sw + 4, ys - 1], [cx + sw - 4, ys - 1], [cx + sw, ys + 3], [cx + waist, belt], [cx + hw + 2, 96 + b], [cx + 6, 98 + b], [cx - 6, 98 + b], [cx - hw - 2, 96 + b], [cx - waist, belt]], f.tunic, { g });
-  s.lineOn([cx - 6, belt + 4], [cx - 7, 96 + b], f.tunic.ramp[1]); s.lineOn([cx + 6, belt + 4], [cx + 7, 96 + b], f.tunic.ramp[1]);
+  s.poly([[cx - sw, ys + 3], [cx - sw + 4, ys - 1], [cx + sw - 4, ys - 1], [cx + sw, ys + 3], [cx + waist, belt], [cx + hw + 2, HEM + b], [cx + 6, HEM + 2 + b], [cx - 6, HEM + 2 + b], [cx - hw - 2, HEM + b], [cx - waist, belt]], f.tunic, { g });
+  if (!ch || sh === 'cloak' || sh === 'mantle') bust(f.tunic, g + 4);
+  s.lineOn([cx - 6, belt + 4], [cx - 7, HEM + b], f.tunic.ramp[1]); s.lineOn([cx + 6, belt + 4], [cx + 7, HEM + b], f.tunic.ramp[1]);
   // The hem's trim.
-  s.poly([[cx - hw - 2, 94.5 + b], [cx + hw + 2, 94.5 + b], [cx + hw + 2.3, 97 + b], [cx + 6, 99 + b], [cx - 6, 99 + b], [cx - hw - 2.3, 97 + b]], f.trim, { g: g + 1 });
+  s.poly([[cx - hw - 2, HEM - 1.5 + b], [cx + hw + 2, HEM - 1.5 + b], [cx + hw + 2.3, HEM + 1 + b], [cx + 6, HEM + 3 + b], [cx - 6, HEM + 3 + b], [cx - hw - 2.3, HEM + 1 + b]], f.trim, { g: g + 1 });
   if (!back && !ch) {
     // A V collar in the trim.
     s.poly([[cx - 6, ys - 1], [cx + 6, ys - 1], [cx + (turned ? 2 : 0), ys + 8]], f.trim, { g: g + 2 });
@@ -646,8 +700,10 @@ function torso(s: Sculpt, f: Fig, view: HdView, q: Pose, cx: number, sw: number,
     if (sh === 'robe' || sh === 'coat' || sh === 'cloak' && false) {
       // A robe to the ankles, or a coat to the knees: flaring, folds, a trim at the hem; a coat open over the tunic.
       const flare = sh === 'robe' ? hw + 6 : hw + 4;
-      s.poly([[cx - sw - .5, ys + 3], [cx - sw + 4, ys - 1.5], [cx + sw - 4, ys - 1.5], [cx + sw + .5, ys + 3], [cx + waist + .5, belt], [cx + flare, hem], [cx - flare, hem], [cx - waist - .5, belt]], m, { g: g + 10 });
-      for (const dx of [-.55, -.2, .25, .6]) s.lineOn([cx + dx * waist, belt + 4], [cx + dx * flare * 1.1, hem - 2], m.ramp[1]);
+      s.poly([[cx - sw - .5, ys + 3], [cx - sw + 4, ys - 1.5], [cx + sw - 4, ys - 1.5], [cx + sw + .5, ys + 3], [cx + waist + .5, belt + 1], [cx - waist - .5, belt + 1]], m, { g: g + 10 });
+      bust(m, g + 14);
+      if (sh === 'robe') folds(s, m, cx - waist - .5, cx + waist + .5, belt, cx - flare, cx + flare, hem, 5, g + 40);
+      else { folds(s, m, cx - waist - .5, cx - 1, belt, cx - flare, cx - 3, hem, 2, g + 40); folds(s, m, cx + 1, cx + waist + .5, belt, cx + 3, cx + flare, hem, 2, g + 44, -.2); }
       const tr = mat(t.trim ?? t.accent, sh === 'robe' ? 'cloth' : 'metal');
       s.poly([[cx - flare, hem - 2.5], [cx + flare, hem - 2.5], [cx + flare + .3, hem], [cx - flare - .3, hem]], tr, { g: g + 11 });
       if (!back) {
@@ -666,7 +722,8 @@ function torso(s: Sculpt, f: Fig, view: HdView, q: Pose, cx: number, sw: number,
     } else if (sh === 'plate' || sh === 'scale') {
       // The breastplate over a gambeson; faulds over the skirt; scale rows on a scale coat.
       s.poly([[cx - sw + 2, ys - br], [cx + sw - 2, ys - br], [cx + sw - 3, ys + 11], [cx + waist - 2, belt - 3], [cx - waist + 2, belt - 3], [cx - sw + 3, ys + 11]], m, { g: g + 10 });
-      if (!back) s.lineOn([cx + (turned ? 2.5 : 0), ys + 2 - br], [cx + (turned ? 2.5 : 0), belt - 4], m.ramp[2]);
+      bust(m, g + 14);
+      if (!back && !f.fem) s.lineOn([cx + (turned ? 2.5 : 0), ys + 2 - br], [cx + (turned ? 2.5 : 0), belt - 4], m.ramp[2]);
       for (let i = 0; i < 2; i++) s.poly([[cx - hw - 1 + i, belt + 3 + i * 6], [cx + hw + 1 - i, belt + 3 + i * 6], [cx + hw + 1.5 - i, belt + 9 + i * 6], [cx - hw - 1.5 + i, belt + 9 + i * 6]], m, { g: g + 11 + i });
       if (sh === 'scale') for (let y = ys + 4; y < belt - 4; y += 4) for (let x = -sw + 5 + (y % 8 ? 2 : 0); x < sw - 4; x += 4) s.dot(cx + x, y, m.ramp[1], 2, 1);
       if (t.trim) s.lineOn([cx - sw + 3, ys + 1 - br], [cx + sw - 3, ys + 1 - br], t.trim);
@@ -678,12 +735,12 @@ function torso(s: Sculpt, f: Fig, view: HdView, q: Pose, cx: number, sw: number,
   // An apron, bib to knee.
   if (f.garb.apron && !back) {
     const am = mat(f.garb.apron, 'leather');
-    s.poly([[cx - 7, ys + 6], [cx + 7, ys + 6], [cx + 8, belt], [cx + hw, 104 + b], [cx - hw, 104 + b], [cx - 8, belt]], am, { g: g + 20 });
+    s.poly([[cx - 7, ys + 6], [cx + 7, ys + 6], [cx + 8, belt], [cx + hw, 100 + b], [cx - hw, 100 + b], [cx - 8, belt]], am, { g: g + 20 });
     s.dot(cx - 3, ys + 14, am.ramp[1], 7, 1);
   }
   // The belt and its buckle.
   if (sh !== 'robe') {
-    s.poly([[cx - waist - .5, belt - 1], [cx + waist + .5, belt - 1], [cx + waist + 1, belt + 3], [cx - waist - 1, belt + 3]], mat(BELT, 'leather'), { g: g + 25 });
+    s.poly([[cx - waist - .5, belt - 1], [cx + waist + .5, belt - 1], [cx + waist + 1, belt + 3], [cx - waist - 1, belt + 3]], mat(BELT_HEX, 'leather'), { g: g + 25 });
     if (!back) { s.rect(cx - 2 + (turned ? 2 : 0), belt - 1, 5, 4, mat(BRASS, 'metal'), { g: g + 26 }); }
   } else {
     // A robe's sash.
@@ -709,7 +766,7 @@ function shoulders(s: Sculpt, f: Fig, cx: number, sw: number, ys: number, br: nu
       s.ellipse(cx + side * (sw + 2), ys + 6 - br, 6.2, 4, ch.m, { g: g + 4 + side, bias: side > 0 ? -.4 : 0 });
       if (ch.t.trim) s.lineOn([cx + side * (sw - 7), ys - br - 4], [cx + side * (sw + 6), ys - br - 2], ch.t.trim);
     }
-    const sd = (side: number) => s.dot(cx + side * (sw - 6), ys - br, ch.m.ramp[5]);
+    const sd = (side: number) => s.dot(cx + side * (sw - 6), ys - br, hiOf(ch.m));
     sd(-1);
   }
   const mantle = ch?.t.mantle ?? (ch?.shape === 'mantle' || ch?.shape === 'cloak' ? null : null);
@@ -721,7 +778,7 @@ function shoulders(s: Sculpt, f: Fig, cx: number, sw: number, ys: number, br: nu
 }
 
 /** Hair that hangs behind the head when seen from the front: drawn before the head. */
-function backHair(s: Sculpt, f: Fig, hc: number, hy: number, turned: boolean, g: number): void {
+function backHair(s: Sc, f: Fig, hc: number, hy: number, turned: boolean, g: number): void {
   const st = f.style, m = f.hair, cov = f.head && f.head.shape !== 'circlet' && f.head.shape !== 'crown';
   if (st === 'long' || st === 'bob') {
     const low = st === 'long' ? 26 : 12;
@@ -738,7 +795,7 @@ function backHair(s: Sculpt, f: Fig, hc: number, hy: number, turned: boolean, g:
 }
 
 /** The head: neck, skull, ears, hair, the face, what is worn on it. */
-function head(s: Sculpt, f: Fig, view: HdView, q: Pose, hc: number, hy: number, cx: number, g: number): void {
+function head(s: Sc, f: Fig, view: HdView, q: Pose, hc: number, hy: number, cx: number, g: number): void {
   const back = view === 1 || view === 3, turned = view >= 2, H = f.head, a = q.act;
   const hood = H && (H.shape === 'hood' || H.shape === 'cowl');
   const helm = H && (H.shape === 'helm' || H.shape === 'pyre' || H.shape === 'open' || H.shape === 'great' || H.shape === 'horned');
@@ -774,7 +831,7 @@ function head(s: Sculpt, f: Fig, view: HdView, q: Pose, hc: number, hy: number, 
         // The nape: a scalloped edge, strands from the crown.
         for (let x = -12; x <= 12; x += 6) s.ellipse(hc + d + x, hy + 12, 4.2, 3.6, f.hair, { g: g + 5 });
         for (const x of [-9, -3, 4, 10]) s.lineOn([hc + d + x * .4, hy - 14], [hc + d + x, hy + 13], f.hair.ramp[1]);
-        s.lineOn([hc + d - 8, hy - 12], [hc + d - 13, hy + 2], f.hair.ramp[4]);
+        s.lineOn([hc + d - 8, hy - 12], [hc + d - 13, hy + 2], hiOf(f.hair, 1));
       }
       backHairBehind(s, f, hc, hy, g + 7, !!helm);
     }
@@ -808,12 +865,12 @@ function head(s: Sculpt, f: Fig, view: HdView, q: Pose, hc: number, hy: number, 
 }
 
 /** From behind: what hangs below the head (a long fall, a braid, a tail, pigtails, a bun, a topknot, a crest). */
-function backHairBehind(s: Sculpt, f: Fig, hc: number, hy: number, g: number, helm: boolean): void {
+function backHairBehind(s: Sc, f: Fig, hc: number, hy: number, g: number, helm: boolean): void {
   const st = f.style, m = f.hair;
   if (st === 'long') {
     s.poly([[hc - 17.5, hy + 2], [hc + 17.5, hy + 2], [hc + 15, hy + 24], [hc + 10, hy + 31], [hc + 3, hy + 29], [hc - 3, hy + 32], [hc - 10, hy + 29], [hc - 15, hy + 24]], m, { g });
     for (const x of [-11, -5, 1, 7, 12]) s.lineOn([hc + x * .7, hy + 4], [hc + x, hy + 29], m.ramp[1]);
-    s.lineOn([hc - 13, hy + 4], [hc - 12, hy + 22], m.ramp[4]);
+    s.lineOn([hc - 13, hy + 4], [hc - 12, hy + 22], hiOf(m, 1));
   } else if (st === 'bob') {
     s.poly([[hc - 18.5, hy], [hc + 18.5, hy], [hc + 18, hy + 13], [hc + 9, hy + 15], [hc - 9, hy + 15], [hc - 18, hy + 13]], m, { g });
     for (const x of [-10, -3, 4, 11]) s.lineOn([hc + x * .6, hy + 2], [hc + x, hy + 14], m.ramp[1]);
@@ -829,7 +886,7 @@ function backHairBehind(s: Sculpt, f: Fig, hc: number, hy: number, g: number, he
 }
 
 /** The hair over the top of the head from the front: a cap with a fringe, in its style. Under a helm or hood only the locks show. */
-function hairCap(s: Sculpt, f: Fig, hc: number, hy: number, turned: boolean, g: number, covered: boolean): void {
+function hairCap(s: Sc, f: Fig, hc: number, hy: number, turned: boolean, g: number, covered: boolean): void {
   const st = f.style, m = f.hair, tx = turned ? 2 : 0;
   if (covered) {
     // Locks escaping under the brim.
@@ -852,11 +909,11 @@ function hairCap(s: Sculpt, f: Fig, hc: number, hy: number, turned: boolean, g: 
   if (st === 'bun') s.ellipse(hc + tx - 1, hy - 19, 6.5, 5.5, m, { g: g + 10 });
   if (st === 'pigtails') for (const side of [-1, 1] as const) s.rect(hc + side * 17 - 2, hy - 3, 5, 2.5, mat(f.trimHex, 'cloth'), { g: g + 12 + side });
   // A shine across the crown.
-  s.line([hc - 10 + tx, hy - 13], [hc - 3 + tx, hy - 15], m.ramp[5]);
+  s.line([hc - 10 + tx, hy - 13], [hc - 3 + tx, hy - 15], hiOf(m));
 }
 
 /** Eyes that glow: two pips (or one, Kael's) with a hot heart. */
-function glowEyes(s: Sculpt, f: Fig, fc: number, ey: number, both: boolean): void {
+function glowEyes(s: Sc, f: Fig, fc: number, ey: number, both: boolean): void {
   const c = f.glowEyes!;
   for (const side of [-1, 1] as const) {
     if (!both && side > 0) continue;
@@ -866,7 +923,7 @@ function glowEyes(s: Sculpt, f: Fig, fc: number, ey: number, both: boolean): voi
 }
 
 /** The face: brows, big eyes with a glint, a nose shade, a mouth, a blush; the face mark; a moment's expression. */
-function face(s: Sculpt, f: Fig, view: HdView, a: Act, fc: number, hy: number, H: Fig['head']): void {
+function face(s: Sc, f: Fig, view: HdView, a: Act, fc: number, hy: number, H: Fig['head']): void {
   const turned = view >= 2, ey = hy + 2, brow = f.garb.elder ? '#d8d0c4' : mix(f.hairHex, '#2a1a20', .4);
   const EYE = '#2a1a30', SHINE = '#ffffff';
   if (H?.shape === 'great') {
@@ -916,7 +973,7 @@ function face(s: Sculpt, f: Fig, view: HdView, a: Act, fc: number, hy: number, H
 }
 
 /** A hat (townsfolk): a wide brim, or a cap with a peak. */
-function hat(s: Sculpt, f: Fig, hc: number, hy: number, g: number, front: boolean): void {
+function hat(s: Sc, f: Fig, hc: number, hy: number, g: number, front: boolean): void {
   const m = mat(f.garb.hatColor ?? '#4a4030', 'cloth');
   if (f.garb.hat === 'brim') {
     s.ellipse(hc, hy - 9, 27, 6, m, { g });
@@ -930,7 +987,7 @@ function hat(s: Sculpt, f: Fig, hc: number, hy: number, g: number, front: boolea
 }
 
 /** What is worn on the head. `front`: seen from the front. */
-function headgear(s: Sculpt, f: Fig, H: NonNullable<Fig['head']>, hc: number, hy: number, front: boolean, turned: boolean, g: number): void {
+function headgear(s: Sc, f: Fig, H: NonNullable<Fig['head']>, hc: number, hy: number, front: boolean, turned: boolean, g: number): void {
   const m = H.m, t = H.t, tx = turned ? (front ? 1.5 : -1.5) : 0;
   const rim = mat(t.trim ?? t.accent, 'metal');
   switch (H.shape) {
