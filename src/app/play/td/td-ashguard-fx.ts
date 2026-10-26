@@ -10,6 +10,7 @@
  * the brand catching, a bash, an oath, a stride, the vow's bell) and `drawAshState` (what lasts: the burning blade, the
  * oath's rim, the vow's brass corners, stun stars and taunt marks over creatures).
  */
+import { mobCell } from './td-mobs';
 import { FX, burst, circlePixels, drawBurst, drawRing, glowSquare, type Tones } from './td-fx';
 
 type Ctx = CanvasRenderingContext2D;
@@ -141,7 +142,7 @@ export function drawAshState(c: Ctx, s: AshState, p: { x: number; y: number; fac
     }
   }
   for (const m of s.mobs) {
-    const top = Math.round(m.y - m.def.h - 6), mx = Math.round(m.x);
+    const top = Math.round(m.y - mobCell(m.def).h - 6), mx = Math.round(m.x);
     if ((m.stun ?? 0) > 0) {
       // Three brass stars circling over its head (a CC pip, design-bible §4.7).
       for (let i = 0; i < 3; i++) {

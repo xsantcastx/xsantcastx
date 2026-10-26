@@ -10,13 +10,17 @@
  *   happy         a hop, eyes smiling (a fetch brought back, a meal, a level)
  */
 import { TD_BRUSH, type TdRamp } from './td-mobs';
+import { volumizeData } from '../../shared/keeper-look/keeper-volume';
 import { GLIM_FACE_PALETTE, GLIM_H, GLIM_PALETTE, GLIM_PALETTE_DIM, GLIM_W, glimFace, glimRows, type GlimFrameName, type GlimMood } from '../../shared/glim/glim-art';
 
-const { px, dot, orb, poly, limb, line, glow, outline } = TD_BRUSH;
+const { px, dot, orb, poly, limb, line, glow, outline, grown } = TD_BRUSH;
 type C = CanvasRenderingContext2D;
 
-export const PET_W = 24;
-export const PET_H = 20;
+/** The art grid's cell (every pet painter speaks in it) and how much finer the sheet is painted (the art style upgrade). */
+const PW = 24, PH = 20, PET_K = 1.5;
+/** The sheet's cell on the fine grid (as the Keeper's, keeper-paint FIGURE_K). */
+export const PET_W = PW * PET_K;
+export const PET_H = PH * PET_K;
 export type TdPetFrame = 'walk0' | 'walk1' | 'walk2' | 'walk3' | 'sit0' | 'sit1' | 'sleep' | 'happy';
 export const TD_PET_FRAMES: readonly TdPetFrame[] = ['walk0', 'walk1', 'walk2', 'walk3', 'sit0', 'sit1', 'sleep', 'happy'];
 
@@ -328,8 +332,9 @@ export function petSheet(id: string): HTMLCanvasElement | null {
   TD_PET_FRAMES.forEach((frame, i) => {
     const cell = document.createElement('canvas'); cell.width = PET_W; cell.height = PET_H;
     const c = cell.getContext('2d', { willReadFrequently: true })!;
-    paint(c, POSES[frame]);
+    grown(PET_K, 0, 0, () => paint(c, POSES[frame]));
     const img = c.getImageData(0, 0, PET_W, PET_H);
+    volumizeData(img.data, PET_W, PET_H, { light: .24, shade: .3, depth: 4, alphaMin: 200 });
     outline(img);
     o.putImageData(img, i * PET_W, 0);
   });
@@ -347,8 +352,8 @@ export function petFace(id: string): string {
   const sheet = petSheet(id);
   if (!sheet) return '';
   const out = document.createElement('canvas');
-  out.width = out.height = 18;
-  out.getContext('2d')!.drawImage(sheet, petFrameIndex('sit0') * PET_W + 5, 0, 18, 18, 0, 0, 18, 18);
+  out.width = out.height = 27;
+  out.getContext('2d')!.drawImage(sheet, petFrameIndex('sit0') * PET_W + 8, 0, 27, 27, 0, 0, 27, 27);
   const url = out.toDataURL();
   faces.set(id, url);
   return url;

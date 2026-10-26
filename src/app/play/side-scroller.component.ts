@@ -72,7 +72,7 @@ import { createTopDownEngine, topDownGate, type TdMapPin, type TdMapView, type T
 import { ELEMENTS, MAX_KEEPER_RESIST, type Element as DamageElement } from '../shared/loot/damage.model';
 import { GOLD_FIND_CAP } from '../shared/economy/economy-curve';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
-import { MOBS, mobSheet } from './td/td-mobs';
+import { MOBS, mobCell, mobSheet } from './td/td-mobs';
 import { bossUniqueById, relicTotals, type BossUnique, type RelicTotals } from '../shared/rpg/boss-uniques';
 import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
 import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/unique-items';
@@ -3524,7 +3524,7 @@ export class SideScrollerComponent implements OnDestroy {
     const c = document.createElement('canvas'); c.width = def.w * 3; c.height = def.h * 3;
     const g = c.getContext('2d')!;
     g.imageSmoothingEnabled = false;
-    g.drawImage(mobSheet(def), 0, 0, def.w, def.h, 0, 0, c.width, c.height);
+    { const cell = mobCell(def); g.drawImage(mobSheet(def), 0, 0, cell.w, cell.h, 0, 0, c.width, c.height); }
     if (dark) { g.globalCompositeOperation = 'source-in'; g.fillStyle = '#0d0813'; g.fillRect(0, 0, c.width, c.height); }
     const url = c.toDataURL('image/png');
     this.portraits.set(key, url);
@@ -5763,7 +5763,8 @@ export class SideScrollerComponent implements OnDestroy {
         // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
         const painter = new KeeperPainter(look, v.gear, v.garb);
         const sheet = frontSheet(painter, look.vocation === 'warlock');
-        const c = el.getContext('2d')!, k = 4, w = FRONT_W * k, h = FRONT_H * k;
+        // The fine sheet (keeper-front FRONT_K): three device px per fine px fills the doll's 176 (the cell's top margin crops).
+        const c = el.getContext('2d')!, k = 3, w = FRONT_W * k, h = FRONT_H * k;
         c.imageSmoothingEnabled = false;
         c.drawImage(sheet, 0, 0, FRONT_W, FRONT_H, Math.round((176 - w) / 2), Math.round((176 - h) / 2), w, h);
         // The worn looks' glow and particles, held still (the doll is a picture).
