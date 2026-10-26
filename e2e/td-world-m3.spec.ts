@@ -20,7 +20,7 @@ test.afterAll(async () => { await hearth?.stop(); });
 
 const FLOOR = 'ember-mine-1';
 interface WorldView { role: string; host: string | null; area: string; mobs: { id: string; t: string; key: string; x: number; y: number; hp: number; max: number }[] }
-type Hooks = { __tdCoop: { view: () => WorldView; hit: (id: string, n: number) => boolean } };
+type Hooks = { __tdCoop: { view: () => WorldView; target: (id: string) => boolean } };
 
 const canvas = (page: Page) => page.locator('.viewport canvas');
 const view = (page: Page) => page.evaluate(() => (window as unknown as Hooks).__tdCoop.view());
@@ -57,15 +57,19 @@ test('a dungeon floor is the room\'s: a kill stays dead when its Keeper leaves a
     await expect.poll(async () => (await ids(b)) === (await ids(a)), { timeout: 10000 }).toBe(true);
 
     // ── Aster fells the nearest one ──
+    // Through the real attack path (the Keeper's own target: he walks round any wall into sight and reach, then
+    // strikes), never a blow forced from where he stands: the room refuses a blow with a wall between (its line of
+    // sight), as the screen does. Nearest to where Aster really stands, not to where the save put him.
+    type Where = { __tdWaygate: { where: () => { x: number; y: number } } };
+    const me = await a.evaluate(() => (window as unknown as Where).__tdWaygate.where());
     const va = await view(a);
-    const me = { x: 184, y: 250 };
     const prey = [...va.mobs].sort((p, q) => Math.hypot(p.x - me.x, p.y - me.y) - Math.hypot(q.x - me.x, q.y - me.y))[0];
     expect(prey.key).toBeTruthy();
     // Until the room itself says it fell (its own floor list, not this screen's).
     const alive = async () => (await fx(origin, { near: 'Bryn' })).mobs.some(m => m.id === prey.id);
-    for (let i = 0; i < 40 && await alive(); i++) {
-      await a.evaluate(id => (window as unknown as Hooks).__tdCoop.hit(id, 40), prey.id);
-      await a.waitForTimeout(300);
+    for (let i = 0; i < 60 && await alive(); i++) {
+      await a.evaluate(id => (window as unknown as Hooks).__tdCoop.target(id), prey.id);
+      await a.waitForTimeout(500);
     }
     expect(await alive()).toBe(false);
     for (const p of [a, b]) await expect.poll(async () => (await view(p)).mobs.some(m => m.key === prey.key), { timeout: 15000 }).toBe(false);
