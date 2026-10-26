@@ -37,6 +37,10 @@ export interface Corpse {
   boss: boolean;
   /** A stable number for the scatter of blood or ash. */
   seed: number;
+  /** S6: burnt to ash (a fire blow felled it, or fire swept it): nothing can raise it. */
+  ash?: boolean;
+  /** S6: laid to rest (Redemption, a raised one's second fall): nothing can raise it. */
+  rested?: boolean;
 }
 
 const k = (boss: boolean): number => (boss ? CORPSE_BOSS_STAY : 1);

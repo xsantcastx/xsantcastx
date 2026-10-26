@@ -129,6 +129,8 @@ const COOP_KEY = /^[a-z0-9:,~._-]{1,80}$/;
 const COOP_AFFIX = /^[a-z-]{1,24}$/;
 const COOP_SKILL = /^[a-z0-9-]{1,32}$/;
 const COOP_FX = /^[a-z]{1,12}$/;
+/** S6: a bite's statuses (td-abilities STATUS_WIRE: "stun:8,burn:40/12"). */
+const COOP_STATUS = /^(?:[a-z]{3,6}:\d{1,3}(?:\/\d{1,4})?)(?:,[a-z]{3,6}:\d{1,3}(?:\/\d{1,4})?){0,3}$/;
 const COOP_NAME = /^[\p{L}\p{N} '-]{1,40}$/u;
 const COOP_SHOTS = new Set(['arrow', 'fire', 'breath', 'ink', 'shard', 'spore']);
 const COOP_TYPES = new Set(['physical', 'fire', 'cold', 'lightning', 'arcane']);
@@ -183,12 +185,22 @@ export function coopEvent(raw, members, host) {
     return out;
   }
   if (raw.k === 'bite') {
-    coopKeys(raw, ['k', 'to', 'i', 'd', 'ty', 'b', 'c']);
+    coopKeys(raw, ['k', 'to', 'i', 'd', 'ty', 'b', 'c', 'st']);
     if (!member(raw.to) || raw.to === host) coopBad();
     const out = { k: 'bite', to: raw.to, d: coopInt(raw.d, 1, 100000), ty: COOP_TYPES.has(raw.ty) ? raw.ty : coopBad() };
     if (raw.i !== undefined) { if (typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad(); out.i = raw.i; }
     if (raw.b !== undefined) { if (typeof raw.b !== 'boolean') coopBad(); if (raw.b) out.b = true; }
     if (raw.c !== undefined) { if (typeof raw.c !== 'boolean') coopBad(); if (raw.c) out.c = true; }
+    // S6: the statuses a creature's ability lays (td-abilities STATUS_WIRE).
+    if (raw.st !== undefined) { if (typeof raw.st !== 'string' || !COOP_STATUS.test(raw.st)) coopBad(); out.st = raw.st; }
+    return out;
+  }
+  if (raw.k === 'field') {
+    // S6: a patch of hostile ground (a picture and a status; the host decides damage).
+    coopKeys(raw, ['k', 'x', 'y', 'r', 't', 'tn', 'st']);
+    if (typeof raw.tn !== 'string' || !COOP_FX.test(raw.tn)) coopBad();
+    const out = { k: 'field', x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6), r: coopInt(raw.r, 1, 200), t: Math.max(0, coopNum(raw.t, 30)), tn: raw.tn };
+    if (raw.st !== undefined) { if (typeof raw.st !== 'string' || !/^[a-z]{3,6}$/.test(raw.st)) coopBad(); out.st = raw.st; }
     return out;
   }
   if (raw.k === 'shot') {

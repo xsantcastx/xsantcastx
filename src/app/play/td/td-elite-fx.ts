@@ -155,6 +155,24 @@ export function drawAffixTells(c: Ctx, m: Mob, time: number, still: boolean): vo
         c.globalAlpha = .9;
         break;
       }
+      case 'lightless': {
+        // A black halo: a ring of dark pixels round its body, a cream rim pixel here and there.
+        const r = Math.max(8, Math.round(w * .55));
+        circlePixels(r).forEach((q, i) => { c.fillStyle = i % 5 ? HOSTILE_EDGE : '#f3e7cf'; c.fillRect(X + q.x, mid + q.y, 1, 1); });
+        break;
+      }
+      case 'ember-hearted': {
+        // An ember heart ticking on its chest.
+        if (still || Math.floor(t * 3) % 2) { hpx(c, X - 1, mid, col); hpx(c, X + 1, mid, col); hpx(c, X, mid + 1, col); hpx(c, X, mid, FX.ember.core); }
+        break;
+      }
+      case 'whispering': case 'grave-called': case 'mirrored': case 'brutal': case 'multishot': case 'shielded-by-kin': case 'vampiric': {
+        // A pip over its head in the affix's colour (§4's table); Multishot three dots.
+        const i = ['whispering', 'grave-called', 'mirrored', 'brutal', 'multishot', 'shielded-by-kin', 'vampiric'].indexOf(a), px0 = X - 8 + i * 3;
+        if (a === 'multishot') { hpx(c, px0, top - 7, col); hpx(c, px0 + 2, top - 7, col); hpx(c, px0 + 4, top - 7, col); }
+        else if (a !== 'whispering' || still || Math.sin(t * 9 + seed) > -.3) { hpx(c, px0, top - 7, col); hpx(c, px0 + 1, top - 7, col); hpx(c, px0, top - 8, col); }
+        break;
+      }
       case 'lightning-enchanted': {
         // A spark jumping round it.
         const k = Math.floor(t * 8 + seed) % 4, sx = X + [-1, 1, 1, -1][k] * Math.round(w * .35), sy = mid + [-6, -2, 4, 1][k];
@@ -186,16 +204,17 @@ export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean): void {
     c.fillStyle = tn.body; c.fillRect(X - 1, top - 3, 3, 1); c.fillRect(X, top - 4, 1, 1);
   }
   let y = top - 4;
-  if (tag.role === 'leader' && tag.affixes.length) {
+  if (tag.role === 'leader' && tag.affixes.some(a => !a.startsWith('aura-'))) {
     c.font = '6px "Pixelify Sans", monospace';
-    const line = affixLine(tag.affixes);
+    const line = affixLine(tag.affixes.filter(a => !a.startsWith('aura-')));
     c.fillStyle = HOSTILE_EDGE; c.fillText(line, X + 1, y + 1);
     c.fillStyle = '#d9cfe6'; c.fillText(line, X, y);
     y -= 7;
   }
   // Only the leader carries the name line (the pack's other members read by their frame and aura).
   if (tag.role !== 'leader') return;
-  const name = tag.name ?? m.def.name;
+  // Its pack aura on the name line (§3: "Grimfang the Hollow · Might").
+  const au = tag.affixes.find(a => a.startsWith('aura-')), name = `${tag.name ?? m.def.name}${au ? ` · ${AFFIX_DEFS[au].name}` : ''}`;
   c.font = 'bold 8px "Pixelify Sans", monospace';
   c.fillStyle = HOSTILE_EDGE;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [1, 1]]) c.fillText(name, X + dx, y + dy);

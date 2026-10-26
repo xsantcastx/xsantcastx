@@ -1769,3 +1769,14 @@ lantern with no flame walks the Ruins; he refused the Abbess's last order and ga
 carries its own uniques (world-bosses.ts `loot.uniques`). DM review 2026-10-26: Wickless re-motived (The Tenth Lantern
 clash), Lastwarden's lore re-homed to him, six uniques' lore cleared of "Realm" for a land (canon §10 C-17). Lines live in
 `play/world/world-bosses.i18n.ts`. Lairs (hot spots) per zone: td-world hotspots, td-levels FLOOR_LAIRS (canon §8).
+
+## The raisers and the pack auras (2026-10-26, S6) — shipped, owner reviews in play
+
+The **Ashsinger** (*Cantaceniza*) stands with every Cinder-clan camp of three or more in the Deep Charwood and the
+Obsidian Badlands, singing the fallen back up in the Cant (*vael osk teth*): "The clans bury no one. The Ashsinger sings
+them back up instead, and charges the family for the verse." Once it has raised one, its drums keep the camp's time
+(Fanaticism). The **Bone Priest** (*Sacerdote de hueso*), the Bastion's chaplain, keeps the roll on each floor of the
+Ashen Crypt (*osk teth*, *osk ka*): "He still calls the roll, and the roll still answers." Its Redemption lays the
+garrison's dead to rest when they fall near it. In the Drowned Crypts a Drowned Acolyte calls the Watch back up ("they
+have not been told to stand down") and prays over it. Fire turns the dead to ash, and ash answers no song. Lines live in
+`play/td/td-abilities.i18n.ts` (EN + ES); the creatures in `play/td/td-mobs.ts`; canon §5.7.

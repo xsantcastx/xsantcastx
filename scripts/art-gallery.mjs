@@ -29,7 +29,7 @@ import { frontSheet, FRONT_W, FRONT_H } from ${src('shared/keeper-look/keeper-fr
 import { setVolume } from ${src('shared/keeper-look/keeper-volume')};
 import { defaultLook } from ${src('shared/keeper-look/keeper-look.model')};
 import { vocationLook } from ${src('shared/keeper-look/vocation-look')};
-import { MOBS, RAISED_SKELETON, mobCell, mobSheet } from ${src('play/td/td-mobs')};
+import { MOBS, RAISED_SKELETON, S6_PAINTERS, mobCell, mobSheet } from ${src('play/td/td-mobs')};
 import * as ART from ${src('play/td/td-art')};
 import { paintRichGround, richEdge } from ${src('play/td/td-ground')};
 import { AURA_LOOKS, AuraFx } from ${src('play/td/td-aura')};
@@ -86,9 +86,12 @@ if (want('keeper')) {
 }
 if (want('mobs')) {
   const row = section('Creatures (4 frames each)');
-  const ids = ['bone-walker', 'bone-archer', 'ash-wolf', 'cinder-imp'];
+  // ART_MOB_IDS=a,b picks the creatures; a painter not yet in the table (S6_PAINTERS) is shown on a stand-in def.
+  const SIZES: Record<string, [number, number]> = { 'ashsinger': [26, 36], 'bone-priest': [24, 38] };
+  const ids = ${JSON.stringify(process.env.ART_MOB_IDS || '')} ? ${JSON.stringify(process.env.ART_MOB_IDS || '')}.split(',') : ['bone-walker', 'bone-archer', 'ash-wolf', 'cinder-imp'];
   for (const id of ids) {
-    const d0: any = (MOBS as any)[id] ?? RAISED_SKELETON; if (!d0) continue;
+    const sp: any = (S6_PAINTERS as any)[id];
+    const d0: any = (MOBS as any)[id] ?? (sp ? { id, w: SIZES[id][0], h: SIZES[id][1], paint: sp } : RAISED_SKELETON); if (!d0) continue;
     const sh = mobSheet(d0), d: any = mobCell(d0);
     card(row, id, d.w * 4 + 6, d.h + 4, c => { grassBg(c, d.w * 4 + 6, d.h + 4, 3); for (let f = 0; f < 4; f++) c.drawImage(sh, f * d.w, 0, d.w, d.h, f * (d.w + 2), 2, d.w, d.h); });
   }

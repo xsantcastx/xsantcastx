@@ -22,10 +22,12 @@ async function scene(page: Page): Promise<void> {
     const orig = document.createElement.bind(document);
     document.createElement = ((tag: string, o?: ElementCreationOptions) => { const el = orig(tag, o); if (tag.toLowerCase() === 'canvas') made.push(el as HTMLCanvasElement); return el; }) as typeof document.createElement;
   });
-  await page.goto('/play?td=1&hour=12');
+  // ART_QUERY=fxs6=aura (S6, docs/handoff/mobs.md): one of the monsters' scenes instead of the forest road.
+  const query = process.env['ART_QUERY'];
+  await page.goto(`/play?td=1&hour=12${query ? `&${query}` : ''}`);
   await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
   await page.waitForFunction(() => !!(window as unknown as { __tdZones?: unknown }).__tdZones);
-  await page.evaluate(() => {
+  if (!query) await page.evaluate(() => {
     const w = window as unknown as { __tdZones: Zones; __tdArt?: { aura(on: boolean): void; road(dc: number): unknown } };
     w.__tdZones.to(26, 94); w.__tdArt?.road(0);
     w.__tdZones.foe('bone-walker', 3, -50, -28); w.__tdZones.foe('bone-walker', 3, 50, -34); w.__tdZones.foe('bone-walker', 3, -46, 30);

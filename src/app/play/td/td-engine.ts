@@ -24,6 +24,10 @@ import { PAL, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } fro
 import { paintRichGround, richEdge } from './td-ground';
 import { castShadow } from './td-shade';
 import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './td-aura';
+import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawKeeperStatus, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
+import { castable } from './td-abilities';
+import { creatureProfile } from '../../shared/loot/creature-families';
+import { AURA_NAMES_EN } from './td-elites';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
@@ -42,6 +46,8 @@ export const MEND_PER_SEC = 6;
 export function outOfFightMend(regen: number, unhurtSecs: number): number { return regen >= 0 && unhurtSecs > 4 ? MEND_PER_SEC : 0; }
 
 /** The most creatures the minimap marks at once (owner's player notes 2026-10-21: "cap the count for performance"). */
+/** Seconds of the Keeper standing still after which the pet stops strolling and settles beside him (td-roam). */
+const PET_SETTLE = 14;
 const MINI_MOBS = 40;
 /** How far a thumb may miss a Keeper standing in the open and still tap them (art px sideways, up and down). */
 const PEER_SLOP = 9;
@@ -85,8 +91,10 @@ import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-f
 import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
 import { THORN_FX, drawArrow, drawBeast, drawThornAir, drawThornGround, drawThornState, drawThornZones } from './td-thorn-fx';
 import { SPIRIT_BEAST, THORN_PET, bondShare, spiritLevel, thornPetRest } from './td-thorn';
+import { dropGlow, dropIconSrc } from './td-drop-art';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
+import { ROAM, Stand, newRoam, stepRoam } from './td-roam';
 import { GLIM_TD, TD_PET, TD_PET_FLIES, bossTelling, followSpot, glimIdle, glimPointer, idlePose, mendPulse, pastLeash, petBlow, pickFetchTarget, pickNipTarget, tdPetJob, type GlimSpot, type TdPetDoing } from './td-pets';
 import { GLIM_H, GLIM_W, PET_H, PET_W, glimFrame, petFace, petFrameIndex, petSheet, type TdPetFrame } from './td-pet-art';
 import { PET_ACT, petRole, type PetCommand, type PetMove, type PetRole, type PetSecond } from '../../shared/pets/pet-roles';
@@ -316,6 +324,9 @@ export class TopDownEngine {
   /** The pet following (setPet), the Keeper's stillness (the companions idle by it) and his breadcrumbs (the pet's way round corners). */
   private pet: PetBody | null = null;
   private stillT = 0;
+  /** td-roam: where the Keeper stands, and the pet's own stroll. */
+  private readonly petStand = new Stand();
+  private readonly petRoam = newRoam();
   private readonly trail: { x: number; y: number }[] = [];
   /** The loot filter (setCombatRules): a pet fetches only the gear it shows. */
   private lootFilter: LootFilter = 'all';
@@ -354,6 +365,13 @@ export class TopDownEngine {
    * Screenshot-only (e2e/td-fx2-shots.spec.ts): with `?fxloot=1` under an automated browser, one drop of every rung
    * lies round the Keeper. Drawn only — never in the MobSystem, so nothing can be picked up and nothing reaches a save.
    */
+  /**
+   * Screenshot-only (e2e/td-mobs-shots.spec.ts, S6): with `?fxs6=aura|raise|meteor|pets` under an automated browser, a
+   * scene of the monsters' abilities and pack auras laid round the Keeper on open grass (calm, so the picture holds).
+   */
+  private readonly fxS6: string | null = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' ? (/[?&]fxs6=(aura|raise|meteor|pets|loot)\b/.exec(location.search)?.[1] ?? null) : null;
+  private fxS6Laid = false;
+  private fxS6T = 0;
   private readonly fxLoot = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxloot=1\b/.test(location.search);
   /** For the screenshot spec (`?fxgold=1`, only under an automated browser): three real Gold piles laid east of the Keeper, once. */
   private readonly fxGold = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxgold=1\b/.test(location.search);
@@ -934,6 +952,8 @@ export class TopDownEngine {
     // Vigor (a worn aura) quickens the feet: "You move {{n}}% faster".
     const vigor = this.mobs.itemAura?.fx.moveSpeed ?? 1;
     // The Skill Book's marks (td-mobs markPace): Walking Whirl, Dark Step, Waymark.
+    // S6: stunned, frozen or rooted by a creature's ability, he does not step at all.
+    if (this.mobs.held) return 0;
     return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill) * root * vigor * (1 + this.mobs.markPace);
   }
   private buildKey = '';
@@ -1580,7 +1600,11 @@ export class TopDownEngine {
     const p = this.player, dx = p.dir === 'down' ? 9 : p.dir === 'up' ? -9 : p.face * 6;
     return { x: p.x + dx, y: p.y - 32 };
   }
-  private ownLight(): LightSpot { return { x: this.player.x, y: this.player.y - 18, r: KEEPER_LIGHT + this.mobs.lightBonus * TILE }; }
+  private ownLight(): LightSpot {
+    // S6: a pack's Lightless, the affix, the Gloam Witch's True Light cut it (never below a third of the lamp).
+    const r = KEEPER_LIGHT + this.mobs.lightBonus * TILE;
+    return { x: this.player.x, y: this.player.y - 18, r: Math.max(KEEPER_LIGHT * .35, r - this.mobs.lightCut * TILE) };
+  }
   private glimLight(): LightSpot | null {
     if (!this.glim.shown) return null;
     return { x: this.glim.x, y: this.glim.y, r: (this.level.dark ? (this.glimLamp() ? GLIM_TD.lampLight : GLIM_TD.light) : GLIM_OPEN_LIGHT) + this.mobs.lightBonus * TILE };
@@ -1990,6 +2014,7 @@ export class TopDownEngine {
     this.mobs.beast = b ? { x: b.x, y: b.y } : null;
     if (!b) return;
     const k = this.player;
+    this.petStand.update(k, dt, !!k.moving);
     b.t += dt; b.cd -= dt; b.mendCd -= dt;
     b.feelT = Math.max(0, b.feelT - dt); b.hopT = Math.max(0, b.hopT - dt); b.hurtT = Math.max(0, b.hurtT - dt); b.mendT = Math.max(0, b.mendT - dt);
     if (!b.feelT) b.feel = null;
@@ -2035,6 +2060,17 @@ export class TopDownEngine {
     if (job === 'fetch' && !tell && this.petFetch(b, run, dt)) return;
     if (b.carried) { this.dropCarried(b); }
     // Following: at his side — behind him, away from a boss winding up — and idling cute when he stands still.
+    // td-roam: while he stands still (and has not called it) it strolls 3-8 tiles round him, sniffs, and strolls on.
+    // It explores a while, then settles at his side for its sit and nap (a long rest is a pet's, not a patrol's).
+    const rm = tell || job === 'play' || this.petStand.still > PET_SETTLE ? null : stepRoam(this.petRoam, {
+      me: b, keeper: k, stand: this.petStand, dt, foe: null, called: this.mobs.heeling,
+      free: (x, y) => this.petFree(x, y), sees: (ax, ay, bx, by) => this.petSees(ax, ay, bx, by), rng: Math.random,
+    });
+    if (rm?.mode === 'roam' && rm.goal) {
+      this.petGo(b, rm.goal.x, rm.goal.y, run * rm.pace / (far > 40 ? TD_PET.catchUp : 1), dt);
+      b.doing = b.mendT > 0 ? 'mend' : 'follow'; b.idleT = 0;
+      return;
+    }
     let spot = followSpot(k);
     if (tell) {
       const d = Math.max(1, Math.hypot(k.x - tell.x, k.y - tell.y)), away = { x: k.x + (k.x - tell.x) / d * 20, y: k.y + (k.y - tell.y) / d * 10 + 2 };
@@ -2049,7 +2085,7 @@ export class TopDownEngine {
       return;
     }
     const gap = Math.hypot(spot.x - b.x, spot.y - b.y);
-    if (gap > 3 && (k.moving || gap > 12 || tell)) {
+    if (rm?.mode !== 'roam' && gap > 3 && (k.moving || gap > 12 || tell)) {
       this.petGo(b, spot.x, spot.y, run, dt);
       b.doing = b.mendT > 0 ? 'mend' : 'follow'; b.idleT = 0;
       return;
@@ -2065,11 +2101,16 @@ export class TopDownEngine {
       if (Math.random() < .25) b.hopT = .4;
     }
   }
+  /** The Keeper calls his companions back to heel for a while (the pet card's Follow / Fight): no roaming, back to the formation. */
+  callCompanions(): void { this.mobs.callBack(); }
   /** fight: nip the foe at the Keeper's side; true while it is in a fight. */
   private petFight(b: PetBody, run: number, dt: number): boolean {
     // A Thornstrider's commanded foe first, wherever it is within the command's reach; else the nearest at his side.
     const sent = this.mobs.thorn ? this.mobs.commanded : null;
-    const foe = sent && Math.hypot(sent.x - this.player.x, sent.y - this.player.y) <= THORN_PET.commandReach ? sent : pickNipTarget(this.player, this.mobs.target, this.mobs.mobs);
+    // Calm (he stands still, no call): it hunts what it can see within the roam range of him (td-roam).
+    const roamy = this.petStand.calm && !this.mobs.heeling;
+    const foe = sent && Math.hypot(sent.x - this.player.x, sent.y - this.player.y) <= THORN_PET.commandReach ? sent
+      : roamy ? pickNipTarget(this.player, this.mobs.target, this.mobs.mobs, ROAM.huntR, ROAM.huntR, m => this.petSees(b.x, b.y, m.x, m.y)) : pickNipTarget(this.player, this.mobs.target, this.mobs.mobs);
     if (!foe) return false;
     b.doing = 'fight'; b.idleT = 0;
     const side = b.x < foe.x ? -1 : 1, reach = TD_PET.reach + foe.def.w / 4;
@@ -3139,8 +3180,15 @@ export class TopDownEngine {
       if (Math.hypot(t.x - this.player.x, t.y - this.player.y) > this.mobs.range - 12 || !this.mobs.sees(t)) { const route = this.route(this.player.x, this.player.y, t.x, t.y); if (route) { this.path = route; this.arrive = null; } }
       else this.path = [];
     }
+    // S6: the land its packs' auras come from (td-pack-aura).
+    this.mobs.land = this.world.continent;
     this.mobs.update(dt);
     this.coop.after(dt);
+    // Whispering (an elite affix, S6): its blows feed the Hush.
+    if (this.mobs.hushOwed > 0) {
+      if (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent })) this.darkLayer.hush = Math.min(100, this.darkLayer.hush + this.mobs.hushOwed);
+      this.mobs.hushOwed = 0;
+    }
     // A potion pouring in: its share of what is left this frame.
     if (this.sip.t > 0) {
       const f = Math.min(1, dt / this.sip.t), h = this.sip.hp * f, m = this.sip.mana * f;
@@ -3304,6 +3352,8 @@ export class TopDownEngine {
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
     { const look = this.auraLook(); if (look) this.auraFx.air(c, this.player.x, this.player.y - 1, look); }
+    // S6: the pack auras' motes and their linked lines; what falls from above onto its ring.
+    { const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80; drawPackAir(c, this.mobs.mobs, this.time, this.still, near); for (const b of this.mobs.bursts) if (b.tone && near(b.x, b.y)) drawFalling(c, b, this.time, this.still); }
     // Roofs and crowns, faded when the Keeper is behind or under them.
     for (const { o, sp } of roofs) {
       const r = sp.roof!;
@@ -3415,7 +3465,21 @@ export class TopDownEngine {
     if (!v) { v = { ...def, ...mobCell(def) }; this.visDefs.set(def, v); }
     return v;
   }
+  private tintScratch: HTMLCanvasElement | null = null;
+  /** Lay `color` at `alpha` over a sheet frame's own pixels only, at the current transform's origin (drawMob's). */
+  private tintFrame(sheet: HTMLCanvasElement, sx: number, w: number, h: number, color: string, alpha: number): void {
+    const t = this.tintScratch ??= document.createElement('canvas');
+    if (t.width < w || t.height < h) { t.width = Math.max(t.width, w); t.height = Math.max(t.height, h); }
+    const g = t.getContext('2d')!;
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, t.width, t.height);
+    g.drawImage(sheet, sx, 0, w, h, 0, 0, w, h);
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = color; g.fillRect(0, 0, w, h);
+    const c = this.ctx, was = c.globalAlpha;
+    c.globalAlpha = was * alpha; c.drawImage(t, 0, 0, w, h, -Math.floor(w / 2), 0, w, h); c.globalAlpha = was;
+  }
   private drawMob(m: Mob): void {
+    // Underground (a burrow, S6): only the stir on the ground shows where it will rise.
+    if ((m.hidden ?? 0) > 0) return;
     const c = this.ctx, d = this.vis(m.def), sheet = mobSheet(m.def), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
@@ -3425,15 +3489,22 @@ export class TopDownEngine {
     c.translate(Math.round(m.x), Math.round(m.y - d.h - lift));
     if (m.face < 0) c.scale(-1, 1);
     if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14 + (Math.random() < .04 ? -.25 : 0);
+    // A Mirrored copy (S6): a little see-through, a breath grey (Glim dims beside it).
+    if (m.mirror) c.globalAlpha *= .62;
     // Teleport's wind-up: it thins out where it stands before it is gone.
     if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
     // An elite's body tone: a champion blue, a unique leader a breath of gold (never over 25 %).
+    // The tints lie on the figure only (a scratch copy of its frame, tinted, laid over it): on the opaque world canvas a
+    // source-atop fill coloured the whole cell, grass and all (S6 fix: the box round every champion).
     const tint = eliteTint(m);
-    if (tint) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = tint.alpha; c.fillStyle = tint.color; c.fillRect(-d.w / 2, 0, d.w, d.h); c.globalAlpha = 1; }
-    if (m.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .7; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
+    if (tint) this.tintFrame(sheet, f * d.w, d.w, d.h, tint.color, tint.alpha * (d.ghost ? .7 : 1));
+    if (m.hit > 0) this.tintFrame(sheet, f * d.w, d.w, d.h, '#ffffff', .7);
     c.restore();
     if (m.elite) drawAffixTells(c, m, this.time, this.still);
+    // S6: a body tell's glow, a Bone Ward's shards.
+    drawBodyTell(c, m, this.time, this.still);
+    drawMobS6Air(c, m, this.time, this.still);
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
@@ -3607,46 +3678,131 @@ export class TopDownEngine {
     if (rung) {
       const tn = LOOT[rung], beam = lootBeam(rung), seed = this.dropSeed(g);
       const pulse = this.still ? 1 : .85 + .15 * Math.sin(this.time * 2.6 + seed % 7);
+      const glow = dropGlow(rung), icon = this.dropSprite(g);
       for (const b of beamSteps(beam.h)) {
         // Five pixels wide: an edge-tone halo, a body column, a one-pixel core — each band a step dimmer than the one under it.
-        const top = Y - 3 + b.y1, h = b.y0 - b.y1;
-        c.globalAlpha = b.a * pulse * .45; c.fillStyle = tn.edge; c.fillRect(X - 2, top, 5, h);
-        c.globalAlpha = b.a * pulse; c.fillStyle = tn.body; c.fillRect(X - 1, top, 3, h);
+        const top = Y - 3 + b.y1, h = b.y0 - b.y1, a = b.a * pulse * glow.beam;
+        c.globalAlpha = a * .45; c.fillStyle = tn.edge; c.fillRect(X - 2, top, 5, h);
+        c.globalAlpha = a; c.fillStyle = tn.body; c.fillRect(X - 1, top, 3, h);
         c.fillStyle = tn.core; c.fillRect(X, top, 1, h);
       }
-      if (beam.motes) {
+      const motes = Math.max(beam.motes, glow.motes);
+      if (motes && beam.h) {
         c.globalAlpha = .55;
-        for (const [i, m] of beamMotes(beam.h, beam.motes, this.still ? 1.3 : this.time, seed).entries()) {
+        for (const [i, m] of beamMotes(beam.h, motes, this.still ? 1.3 : this.time, seed).entries()) {
           c.fillStyle = i % 2 ? tn.core : tn.body; c.fillRect(X + m.x, Y - 3 + m.y, 1, 1);
         }
       }
+      // A halo round the piece (epic and up): dithered rings of its light, a step dimmer outward.
+      for (let r = 0; r < glow.halo; r++) {
+        c.globalAlpha = (r ? .22 : .38) * pulse; c.fillStyle = r ? tn.edge : tn.body;
+        circlePixels(7 + r * 3).forEach((q, i) => { if ((i + r) % 2 === 0) c.fillRect(X + q.x, Y - 5 + Math.round(q.y / 2), 1, 1); });
+      }
       c.globalAlpha = 1;
-      // The piece itself: a dark-outlined tile of its colour with a shine.
-      c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 6, 9, 5);
-      c.fillStyle = tn.edge; c.fillRect(X - 3, Y - 5, 7, 3);
-      c.fillStyle = tn.body; c.fillRect(X - 3, Y - 5, 6, 2);
-      c.fillStyle = tn.core; c.fillRect(X - 2, Y - 5, 2, 1);
+      if (icon) {
+        // Its own shape, lying on the ground: a one-pixel dark shadow under it, mirrored by the drop's seed.
+        const S = icon.width, x0 = X - (S >> 1), y0 = Y - S + 1;
+        c.fillStyle = '#2a1a24'; c.globalAlpha = .55; c.fillRect(x0 + 1, Y - 1, S - 2, 2); c.globalAlpha = 1;
+        if (seed & 1) { c.save(); c.translate(X, 0); c.scale(-1, 1); c.drawImage(icon, -(S >> 1), y0); c.restore(); }
+        else c.drawImage(icon, x0, y0);
+      } else {
+        // Until the icon loads: a dark-outlined tile of its colour with a shine.
+        c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 6, 9, 5);
+        c.fillStyle = tn.edge; c.fillRect(X - 3, Y - 5, 7, 3);
+        c.fillStyle = tn.body; c.fillRect(X - 3, Y - 5, 6, 2);
+        c.fillStyle = tn.core; c.fillRect(X - 2, Y - 5, 2, 1);
+      }
       // A glint: a four-point twinkle that crosses the piece now and then (every drop on its own beat).
       const beat = this.still ? .05 : ((this.time + (seed % 97) / 31) % 2.2) / 2.2;
       if (beat < .12) {
-        const big = beat > .03 && beat < .09;
-        c.fillStyle = '#ffffff'; c.fillRect(X + 2, Y - 6, 1, 1);
+        const gy = icon ? Y - 11 : Y - 6, big = beat > .03 && beat < .09;
+        c.fillStyle = '#ffffff'; c.fillRect(X + 2, gy, 1, 1);
         c.globalAlpha = .8; c.fillStyle = tn.core;
-        c.fillRect(X + 1, Y - 6, 1, 1); c.fillRect(X + 3, Y - 6, 1, 1); c.fillRect(X + 2, Y - 7, 1, 1); c.fillRect(X + 2, Y - 5, 1, 1);
-        if (big) { c.fillRect(X, Y - 6, 1, 1); c.fillRect(X + 4, Y - 6, 1, 1); c.fillRect(X + 2, Y - 8, 1, 1); }
+        c.fillRect(X + 1, gy, 1, 1); c.fillRect(X + 3, gy, 1, 1); c.fillRect(X + 2, gy - 1, 1, 1); c.fillRect(X + 2, gy + 1, 1, 1);
+        if (big) { c.fillRect(X, gy, 1, 1); c.fillRect(X + 4, gy, 1, 1); c.fillRect(X + 2, gy - 2, 1, 1); }
         c.globalAlpha = 1;
       }
     } else if (g.coins > 0) {
       const beat = this.still ? .05 : ((this.time + (this.dropSeed(g) % 97) / 31) % 2.4) / 2.4;
       drawGoldPile(c, X, Y, goldPileSize(g.coins), beat < .12);
+    } else if (this.dropSprite(g)) {
+      const icon = this.dropSprite(g)!, S = icon.width;
+      c.fillStyle = '#2a1a24'; c.globalAlpha = .55; c.fillRect(X - (S >> 1) + 1, Y - 1, S - 2, 2); c.globalAlpha = 1;
+      c.drawImage(icon, X - (S >> 1), Y - S + 1);
     } else {
       c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 8, 8, 8); c.fillStyle = '#a8743f'; c.fillRect(X - 3, Y - 7, 6, 6); c.fillStyle = '#c99657'; c.fillRect(X - 3, Y - 7, 6, 2);
     }
+  }
+  /** Ground sprites: each icon baked once at 14 px (nearest) when its image has loaded; null until then. */
+  private readonly dropSprites = new Map<string, HTMLCanvasElement | null>();
+  private dropSprite(g: Drop): HTMLCanvasElement | null {
+    const src = dropIconSrc(g);
+    if (!src || typeof Image === 'undefined') return null;
+    const hit = this.dropSprites.get(src);
+    if (hit !== undefined) return hit;
+    this.dropSprites.set(src, null);
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = 14; cv.height = 14;
+      const x = cv.getContext('2d');
+      if (x) { x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, 14, 14); this.dropSprites.set(src, cv); }
+    };
+    img.src = src;
+    return null;
   }
   private dropSeed(g: Drop): number { let h = 0; for (let i = 0; i < g.id.length; i++) h = (h * 31 + g.id.charCodeAt(i)) | 0; return Math.abs(h); }
   /** The top of a drop's column (its label sits just over it). */
   private dropTop(g: Drop): number { const r = rungOf(g); return g.y - 8 - (r ? lootBeam(r).h : 0); }
 
+  /** The S6 scenes (fxS6): the Keeper steps onto open grass, then the scene is laid and kept going for the camera. */
+  private layS6(dt: number): void {
+    const p = this.player;
+    const calm = (m: Mob) => { m.def = { ...m.def, sight: 0 }; m.wait = 1e9; m.wander = null; };
+    if (!this.fxS6Laid) {
+      if (this.time < .5) return;
+      this.fxS6Laid = true;
+      const pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
+      const open = (c0: number, r0: number) => { for (let dr = -7; dr <= 5; dr++) for (let dc = -12; dc <= 12; dc++) if (!this.level.walkable(c0 + dc, r0 + dr)) return false; return true; };
+      search: for (let rad = 6; rad <= 50; rad += 2) for (let k = 0; k < 24; k++) {
+        const c = pc + Math.round(Math.cos(k / 24 * Math.PI * 2) * rad), r = pr + Math.round(Math.sin(k / 24 * Math.PI * 2) * rad);
+        if (this.level === this.world && this.world.inTown(c, r)) continue;
+        if (open(c, r)) { p.x = c * TILE + TILE / 2; p.y = r * TILE + TILE; break search; }
+      }
+      const at = (type: string, dx: number, dy: number, level?: number): Mob => { const m = this.mobs.place(`fx-s6:${type}:${dx},${dy}`, level ? atZoneLevel(MOBS[type], level) : MOBS[type], p.x + dx, p.y + dy); calm(m); return m; };
+      const pack = (type: string, dx: number, dy: number, affixes: string[], name: string | null, n: number) => { for (const m of this.mobs.spawnPack(`fx-s6:${type}`, MOBS[type], p.x + dx, p.y + dy, makePack(name ? 'unique' : 'champion', affixes as never, name, n))) calm(m); };
+      if (this.fxS6 === 'aura') {
+        pack('bone-walker', -110, -30, ['aura-might', 'extra-strong'], 'Grimfang the Hollow', 2);
+        pack('cinder-orc', 96, -6, ['aura-holy-freeze'], null, 2);
+        at('orc-warlord', 0, -76, 16); at('cinder-orc', -30, -66, 16); at('cinder-orc', 30, -66, 16);
+      } else if (this.fxS6 === 'raise') {
+        at('ashsinger', 84, -44, 14);
+        // His own aura would burn the singer down before the camera arrives.
+        this.mobs.aura = null;
+      } else if (this.fxS6 === 'meteor') {
+        at('ember-drake', -80, -40, 18); at('orc-warlord', 80, -40, 16);
+      } else if (this.fxS6 === 'pets') {
+        this.mobs.useStone('raise-skeleton', 3);
+      }
+    }
+    // Keep the scene going: the singer sings the next corpses up, the meteors keep falling beside the Keeper.
+    if (this.fxS6 === 'raise') for (const m of this.mobs.mobs) if (m.raised && m.def.sight) calm(m);
+    this.fxS6T -= dt;
+    if (this.fxS6T > 0) return;
+    this.fxS6T = 2.6;
+    if (this.fxS6 === 'raise') {
+      // The last verse's orcs lie down again (laid to rest), and three fresh dead wait for the next one.
+      for (const m of [...this.mobs.mobs]) if (m.raised) this.mobs.fxLayDead(m);
+      for (const [dx, dy] of [[-30, -34], [0, -50], [30, -30]]) { const o = this.mobs.place(`fx-s6:dead:${Math.round(this.time * 10)}:${dx}`, atZoneLevel(MOBS['cinder-orc'], 14), p.x + dx, p.y + dy); calm(o); this.mobs.fxLayDead(o); }
+      const s = this.mobs.mobs.find(m => m.def.id === 'ashsinger');
+      if (s) this.mobs.fxCast(s, 0, p.x, p.y);
+      this.fxS6T = 3.2;
+    }
+    if (this.fxS6 === 'meteor') {
+      const d = this.mobs.mobs.find(m => m.def.id === 'ember-drake'), w = this.mobs.mobs.find(m => m.def.id === 'orc-warlord');
+      if (d) this.mobs.fxCast(d, 0, p.x - 44, p.y + 6);
+      if (w) this.mobs.fxCast(w, 0, p.x + 48, p.y - 4);
+    }
+  }
   /** Loot pops: a burst in its colour as gear lands, a smaller one rising as it is taken; the showcase, when on. */
   private updateLoot(dt: number): void {
     if (this.fxElite && !this.fxEliteLaid && this.time > .5) {
@@ -3671,6 +3827,7 @@ export class TopDownEngine {
       lay('cinder-bailiff', wide ? 84 : 0, wide ? -4 : 92, makePack('champion', ['extra-fast'], null, 2));
       lay('bone-walker', wide ? -84 : 0, wide ? -4 : -80, makePack('unique', ['cold-aura', 'extra-strong', 'mana-burn'], 'Grimfang the Hollow', 3));
     }
+    if (this.fxS6) this.layS6(dt);
     // For the elite specs: what packs walk round the Keeper ("champion:3,unique:1,minion:3").
     let ch = 0, un = 0, mi = 0;
     for (const m of this.mobs.mobs) if (m.elite) { if (m.elite.role === 'minion') mi++; else if (m.elite.rank === 'champion') ch++; else un++; }
@@ -3724,11 +3881,14 @@ export class TopDownEngine {
     if (popping !== this.popSeen) { this.popSeen = popping; this.canvas.setAttribute('data-loot-pop', popping); }
   }
   private makeShowcase(): Drop[] {
-    const p = this.player, rows: [LootRung, string, number, number][] = [
-      ['common', 'Worn Cap', -84, 44], ['uncommon', 'Ashwood Staff', -28, 44], ['rare', 'Ember Ring', 28, 44], ['epic', 'Hexed Mantle', 84, 44],
-      ['legendary', 'Pyrelord Crown', -60, 104], ['mythic', 'Eclipse Shard', 0, 104], ['singular', 'Void Rune', 60, 104],
+    const p = this.player, rows: [LootRung, string, number, number, string][] = [
+      ['common', 'Worn Cap', -84, 44, 'starter-axe'], ['uncommon', 'Ashwood Staff', -28, 44, 'nullthorn-staff'], ['rare', 'Ember Ring', 28, 44, 'anchor-ring'], ['epic', 'Hexed Mantle', 84, 44, 'keepers-mantle'],
+      ['legendary', 'Pyrelord Crown', -60, 104, 'crown-of-the-first-dawn'], ['mythic', 'Eclipse Shard', 0, 104, 'eclipse-longblade'], ['singular', 'Void Rune', 60, 104, ''],
     ];
-    return rows.map(([rung, label, dx, dy], i) => ({ id: `fx-showcase:${i}`, x: p.x + dx, y: p.y + dy, coins: 0, qty: 0, rarity: rung, label, color: LOOT[rung].body, age: 0 }));
+    return rows.map(([rung, label, dx, dy, def], i) => ({
+      id: `fx-showcase:${i}`, x: p.x + dx, y: p.y + dy, coins: 0, qty: 0, rarity: rung, label, color: LOOT[rung].body, age: 0,
+      ...(def ? { item: { definitionId: def, rarity: rung, unique: false } } : { rune: 'void' }),
+    }));
   }
 
   /** The effects pass's own pixels: an aura's motes (≤ 10 alive), the shards a Dark Ward sheds as it drinks a blow. */
@@ -3784,7 +3944,11 @@ export class TopDownEngine {
     // Elite packs: the aura ring under each member, a Cold Aura's reach, a Fire Enchanted's burst on its way.
     const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80;
     for (const m of this.mobs.mobs) if (m.elite && near(m.x, m.y)) drawEliteGround(c, m, this.time, this.still);
-    for (const b of this.mobs.bursts) if (near(b.x, b.y)) drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still);
+    // S6: the hostile ground, the pack auras' sigil discs, the ability tells (td-ability-fx.ts).
+    for (const h of this.mobs.hazards) if (near(h.x, h.y)) drawHazard(c, h, this.time, this.still);
+    drawPackGround(c, this.mobs.mobs, this.time, this.still, near);
+    for (const m of this.mobs.mobs) if (m.tell > 0 && m.abCast !== undefined && near(m.x, m.y)) drawCastTell(c, m, this.time, this.still);
+    for (const b of this.mobs.bursts) if (near(b.x, b.y)) { if (b.tone) drawAbilityRing(c, b, this.time, this.still); else drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still); }
     // The Lanternwright's circles on the floor: the Hearth Circle, the disc of Dawn at Noon.
     if (this.mobs.zones.length) drawLampZones(c, this.mobs.zones, this.time, this.still);
     // The Thornstrider's on the floor: the snare's thorns, a hidden trap.
@@ -4196,18 +4360,21 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
-        if (inView(m.x, m.y) && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240) drawElitePlate(c, m, m === this.mobs.target);
+        if (inView(m.x, m.y) && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240) { drawElitePlate(c, m, m === this.mobs.target); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5)); }
         continue;
       }
       if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
       const top = m.y - this.vis(m.def).h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
       c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
+      // S6: a pack aura's pip beside the bar (the bearer's and each one it blesses).
+      if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x + w / 2) + 3, Math.round(top) - 1);
       // A unique's minions follow its name: a bar each, no name of their own.
       if (m.elite?.role === 'minion') continue;
       // Its name in the colour of its level against the Keeper's (td-zones gapTone, Tibia): grey trivial, cream even,
       // yellow +3, orange +6, red with a skull from +10 — the one-shot range.
-      const tone = gapTone(this.mobs.keeperLevel, m.def.level), label = `${m.def.name} ${m.def.level}`;
+      // A fixed aura-bearer names its aura on its plate (Orc Warlord · Might).
+      const tone = gapTone(this.mobs.keeperLevel, m.def.level), label = m.aura ? `${m.def.name} ${m.def.level} · ${AURA_NAMES_EN[m.aura]}` : `${m.def.name} ${m.def.level}`;
       c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(label, Math.round(m.x) + 1, Math.round(top) - 1);
       c.fillStyle = m === this.mobs.target && tone === 'even' ? '#ff8a7a' : GAP_TONES[tone]; c.fillText(label, Math.round(m.x), Math.round(top) - 2);
       if (tone === 'deadly') {
@@ -4232,10 +4399,17 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       const words = m.chantText ?? m.def.chant;
       // The Seam Eater speaks in the eclipse's pale violet; the rest of the bosses in ember.
-      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - this.vis(m.def).h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID ? '#d8c0ff' : '#ff8a7a');
+      if (m.chantT && words && inView(m.x, m.y)) this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - this.vis(m.def).h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID || creatureProfile(m.def.id).family === 'shade' || m.def.ghost ? '#d8c0ff' : '#ff8a7a');
     }
     const k = this.cant;
     if (k) this.speech(k.text, this.player.x, this.player.y - up(44), k.age, k.color);
+    // S6: what creatures' abilities laid on him, over his head.
+    drawKeeperStatus(c, this.mobs, this.player.x, this.player.y - up(52), this.time, this.still);
+    // For the specs and the shots (S6): which abilities are telling now, and which auras stand here.
+    { const tell = this.mobs.mobs.filter(m => m.tell > 0 && m.abCast !== undefined).map(m => m.abCast === -1 ? 'brutal' : castable(m.def.id)[m.abCast!]?.id ?? '').filter(Boolean).sort().join(',');
+      const auras = [...new Set(this.mobs.mobs.map(m => m.aura).filter(Boolean))].sort().join(',');
+      if (tell !== this.abilitySeen) { this.abilitySeen = tell; this.canvas.setAttribute('data-ability-tell', tell); }
+      if (auras !== this.auraSeen) { this.auraSeen = auras; this.canvas.setAttribute('data-pack-auras', auras); } }
     // For the screenshot spec (e2e/td-cant-shots.spec.ts): the canvas says what the Keeper is saying.
     const said = k?.text ?? '';
     if (said !== this.cantSeen) { this.cantSeen = said; this.canvas.setAttribute('data-cant', said); }
@@ -4244,6 +4418,8 @@ export class TopDownEngine {
    * A spoken line (the Seam-Cant): pixel text in a tone, outlined one pixel in the night ink, that eases in, drifts up
    * a few pixels and fades over CHANT_SECS; with reduced motion it stands still at full strength, then is gone.
    */
+  private abilitySeen = '';
+  private auraSeen = '';
   private speech(text: string, x: number, y: number, age: number, color: string): void {
     const c = this.ctx, k = Math.min(1, Math.max(0, age / CHANT_SECS));
     text = text.replace(/ /g, '  ');   // the pixel face's space is a sliver: the words need air between them
