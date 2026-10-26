@@ -502,6 +502,8 @@ export class TopDownEngine {
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdArt'] = {
       aura: (on: boolean | AuraLookId) => { this.artAura = on === true ? 'arcane' : on ? on : null; },
       motes: () => this.auraFx.alive,
+      // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
+      visit: (level: string, c: number, r: number, continent?: string) => this.restoreWhereabouts({ continent: continent ?? this.world.continent, level, x: c * TILE + TILE / 2, y: r * TILE + TILE - 2 }),
       // The nearest worn road through grass (a dirt tile with grass to either side): the Keeper stands beside it.
       road: (dc = 1) => {
         const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE), g = (c: number, r: number) => this.level.ground(c, r);
@@ -3184,31 +3186,37 @@ export class TopDownEngine {
     this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
   }
 
+  /** Water frames still to bake this draw (stage 4: a liquid chunk's frames 1–3 come one a draw, never all at once). */
+  private frameBudget = 1;
   private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
     const key = `${cx},${cy}`;
     let frames = this.chunks.get(key);
+    const kind = (c: number, r: number): Ground => this.level.ground(c, r);
+    const bake = (f: number): HTMLCanvasElement => {
+      const el = document.createElement('canvas');
+      el.width = CHUNK * TILE; el.height = CHUNK * TILE;
+      const g = el.getContext('2d')!;
+      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
+        const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
+        if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy), f)) paintGround(g, k, c, r, ox, oy, f);
+        const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
+        edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
+      }
+      return el;
+    };
     if (!frames) {
-      frames = [];
-      const kind = (c: number, r: number): Ground => this.level.ground(c, r);
       let liquid = false;
       for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember' || kind(c, r) === 'blackwater') liquid = true;
-      for (let f = 0; f < (liquid ? 4 : 1); f++) {
-        const el = document.createElement('canvas');
-        el.width = CHUNK * TILE; el.height = CHUNK * TILE;
-        const g = el.getContext('2d')!;
-        for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
-          const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
-          if (!paintRichGround(g, k, c, r, ox, oy, (dx, dy) => kind(c + dx, r + dy))) paintGround(g, k, c, r, ox, oy, f);
-          const edge = (n: Ground, side: 'n' | 's' | 'w' | 'e') => { if (!richEdge(k, n)) paintEdge(g, k, n, side, c, r, ox, oy); };
-          edge(kind(c, r - 1), 'n'); edge(kind(c, r + 1), 's'); edge(kind(c - 1, r), 'w'); edge(kind(c + 1, r), 'e');
-        }
-        frames.push(el);
-      }
+      frames = [bake(0)];
+      // A liquid chunk has four frames; the other three are baked later, one a draw (the frame drawn meanwhile is the first).
+      if (liquid) frames.length = 4;
       this.chunks.set(key, frames);
       // Far chunks go (the world never ends; their canvases must not pile up).
       if (this.chunks.size > 96) this.chunks.delete(this.chunks.keys().next().value!);
     }
-    return frames[((frame % frames.length) + frames.length) % frames.length];
+    const f = ((frame % frames.length) + frames.length) % frames.length;
+    if (!frames[f]) { if (this.frameBudget > 0) { this.frameBudget--; frames[f] = bake(f); } else return frames[0]; }
+    return frames[f];
   }
 
   private draw(): void {
@@ -3220,6 +3228,7 @@ export class TopDownEngine {
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     // Ground.
     const frame = Math.floor(this.time * 3) % 4;
+    this.frameBudget = 1;
     const span = CHUNK * TILE;
     for (let cy = Math.floor(cam.y / span); cy <= Math.floor((cam.y + cam.h) / span); cy++) {
       for (let cx = Math.floor(cam.x / span); cx <= Math.floor((cam.x + cam.w) / span); cx++) {
@@ -3374,7 +3383,7 @@ export class TopDownEngine {
   /** The ground pass's shadows: each object's own (a tree's), then a soft one under every Keeper, creature and pet. */
   private drawShadows(visible: readonly TdObject[], inView: (x: number, y: number, pad?: number) => boolean): void {
     const c = this.ctx;
-    for (const o of visible) { const sh = o.sprite().shadow; if (sh) c.drawImage(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
+    for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow; if (fl) c.drawImage(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (sh) c.drawImage(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
     const surface = this.level === this.world;
     if (surface) {
       for (const k of this.keepers) if (inView(k.x, k.y) && k.painter) castShadow(c, k.x, k.y, 18);
