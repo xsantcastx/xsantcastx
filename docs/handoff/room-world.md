@@ -67,7 +67,7 @@ picked up by the other, fast trade, relog keeps the party). The older `e2e/td-tr
 of player drops is memory (escrowed items still go home on time); a protocol-7 client keeps M1's trust until it
 refreshes; the ~0.1 s before an escrow lands is the same small vendor-value window protocol 6 had.
 
-## M3 — Hearth protocol 9 (branch `m3`, 2026-10-26; hearth revision 00015 live)
+## M3 — Hearth protocol 9 (branch `m3`, 2026-10-26; hearth revision 00016 live)
 
 **What a player gets.** Every island, every cave and every dungeon floor is the room's, for everyone at once: a kill
 on Ember Mine −1 stays dead when you climb out and come back, and the Keeper who stayed sees the same. Creatures come
