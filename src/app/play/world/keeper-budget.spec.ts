@@ -5,10 +5,16 @@
 import { CLAIM_WINDOW_MS, ClaimGate, claimDpsCap } from '../social/coop-rules';
 import { keeperXpForLevel } from '../../shared/skills/keeper-level';
 import { packInventory } from '../../../../functions-game/src/trade-core';
+import { itemToRecord } from '../../shared/rpg/inventory-ops';
+import type { GameItem } from '../../shared/rpg/item.model';
 import { BUDGET_AOE, GUEST_LEVEL_CAP, MAX_GEAR_LIFT, REF_BOOST, budgetFor, guestBudget, huntingXp, keeperBudget, refDps, wornLift } from './keeper-budget';
 
-const worn = (stats: Record<string, number>, over: Record<string, unknown> = {}) => ({ id: `w${Object.keys(stats).join('')}`, kind: 'instance', location: { kind: 'equipped', slotId: 'weapon' }, revision: { hlc: 5 }, stats, ...over });
-const inv = (records: unknown[], tombstones: unknown[] = []) => ({ v: { records, tombstones }, updatedAt: '' });
+/** A worn wand's record as inventory-ops writes it (the room reads the save with the game's own parser). */
+const worn = (stats: Record<string, number>, over: Record<string, unknown> = {}) => ({
+  ...itemToRecord({ id: `w${Object.keys(stats).join('')}`, name: 'Ash Wand', type: 'artifact', rarity: 'common', stats, equipped: true, slot: 'weapon', sellValue: 0, lore: '', foundAt: '2026-10-01T00:00:00.000Z', soulbound: false } as GameItem),
+  revision: { hlc: 5, deviceId: 'd', sequence: 1 }, ...over,
+});
+const inv = (records: unknown[], tombstones: unknown[] = []) => ({ v: { version: 2, records, tombstones, stackOps: [], goldFromSales: 0, sold: 0, hlc: 1, legacyBackup: null, era: 0 }, updatedAt: '' });
 
 describe('keeper-budget (protocol 8: the budget from the save)', () => {
   it('reads the level from the Hunting XP on the game\'s own curve, never from what the presence says', () => {
@@ -25,10 +31,9 @@ describe('keeper-budget (protocol 8: the budget from the save)', () => {
     const strong = inv([worn({ spellDamage: 100, critChance: 20, castSpeed: 50 })]);
     expect(wornLift(strong)).toBeCloseTo(2 * 1.2 * 1.5, 5);
     // The same save in the packed cloud format (save format 3) reads the same.
-    const full = { version: 2, records: [{ ...worn({ spellDamage: 100, critChance: 20, castSpeed: 50 }), revision: { hlc: 5, deviceId: 'd', sequence: 1 } }], tombstones: [] };
-    expect(wornLift({ v: packInventory(full), updatedAt: '' })).toBeCloseTo(2 * 1.2 * 1.5, 5);
+    expect(wornLift({ v: packInventory(strong.v as never), updatedAt: '' })).toBeCloseTo(2 * 1.2 * 1.5, 5);
     expect(wornLift(inv([worn({ attackDamage: 100 }, { location: { kind: 'bag' } })]))).toBe(1);
-    expect(wornLift(inv([worn({ attackDamage: 100 })], [{ id: 'wattackDamage', revision: { hlc: 9 } }]))).toBe(1);
+    expect(wornLift(inv([worn({ attackDamage: 100 })], [{ id: 'wattackDamage', revision: { hlc: 9, deviceId: 'd', sequence: 2 }, deletedAt: 1 }]))).toBe(1);
     expect(budgetFor(30, REF_BOOST * 100)).toBe(Math.round(BUDGET_AOE * refDps(30) * MAX_GEAR_LIFT));
   });
 
