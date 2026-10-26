@@ -340,7 +340,7 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
 
-### Protocol 9 (M3 of the room-run world, 2026-10-26 — deployed: revision 00015)
+### Protocol 9 (M3 of the room-run world, 2026-10-26 — deployed: revision 00015; 00016 with the fixes merge)
 
 `/health` and `/join` report `protocol: 9`; `/health world` adds `every`, `loaded`, `creatures`, `resting`, `bosses`,
 `step` and `rssMB`/`heapMB`. A client that says `protocol: 9` is hosted in every area (each continent and every floor),

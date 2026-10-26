@@ -435,7 +435,7 @@ window and from a second Drop; the shop does not check) — as protocol 6. The b
 `stats` (upgrade multipliers, sets and uniques ride inside the ×4 headroom). A protocol-7 client keeps M1's trust until
 it refreshes.
 
-**M3 as built (protocol 9, 2026-10-26, branch `m3`; hearth revision 00015 live).** Owner: *"the game server and all zones should be on at the same
+**M3 as built (protocol 9, 2026-10-26, branch `m3`; hearth revision 00016 live).** Owner: *"the game server and all zones should be on at the same
 time … monsters respawn at random times … bosses once an hour … world bosses for OP items … more monsters, hot spots."*
 
 | | |
