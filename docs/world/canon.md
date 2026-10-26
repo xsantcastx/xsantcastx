@@ -513,7 +513,7 @@ writes your name, a Brand only the healer can lift).
 - **The Psalm Heard Through Water**, an amulet. "She sang it wrong for so long that it became a different hymn, and
   that one works."
 
-### 5.7 Creatures added 2026-10-26 (planned, monsters-abilities.md §2)
+### 5.7 Creatures added 2026-10-26 (shipped 2026-10-26 on branch `mobs`, S6; monsters-abilities.md §2)
 - **Ashsinger** / *Cantaceniza* (orc, 12–18, the Deep Charwood and the Obsidian Badlands). The clans' shaman sings the
   fallen back up (*vael osk teth*), D2's Fallen Shaman: "The clans bury no one. The Ashsinger sings them back up
   instead, and charges the family for the verse."

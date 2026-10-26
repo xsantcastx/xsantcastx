@@ -18,11 +18,12 @@
  * its own creatures (life, elite tags, spawn keys and the half-life change kept) and the AI resumes; ids stay, so the
  * others keep their glides.
  */
-import { MOBS, type CoopKeeper, type CoopLink, type DeathBurst, type Mob, type MobDef, type MobShot, type MobSystem } from './td-mobs';
+import { MOBS, abilityFlags, fieldEvent, mirrorAbilityFlags, type CoopKeeper, type CoopLink, type DeathBurst, type Mob, type MobDef, type MobShot, type MobSystem } from './td-mobs';
 import { SEAM_ID, seamEaterAt } from './td-seam';
 import { atZoneLevel } from './td-zones';
 import { eliteStats, lootRank, type EliteAffix, type EliteTag } from './td-elites';
 import { hardened } from './td-phases';
+import { STATUS_WIRE } from './td-abilities';
 import { TILE } from './td-art';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { DamageType } from '../../shared/loot/damage.model';
@@ -82,6 +83,8 @@ export function replicaDef(s: Pick<CoopMobState, 't' | 'm' | 'l' | 'e'>, phase: 
 
 /** How long a world area waits on the room's listing before this screen raises its own creatures there (ms). */
 export const EXPECT_MS = 5000;
+/** A kill's XP factor that says it owes nothing (a raised one, a mirror; S6). */
+export const NOTHING_OWED = .001;
 
 export class TdCoop implements CoopLink {
   role: CoopRole = 'solo';
@@ -271,7 +274,7 @@ export class TdCoop implements CoopLink {
     return {
       i: this.nid(m), t: m.def.id, ...(KEY_OK.test(m.key) ? { k: m.key } : {}), x: m.x, y: m.y, f: m.face, h: Math.max(0, m.hp), m: m.def.hp, l: Math.max(1, Math.min(999, m.def.level)),
       e: wireElite(m.elite), tl: m.tell > 0 ? m.tell * 10 : 0, ax: m.tell > 0 && m.aim ? m.aim.x : 0, ay: m.tell > 0 && m.aim ? m.aim.y : 0,
-      fl: (m.halved ? FL_HALVED : 0) | (m.summoned ? FL_SUMMONED : 0) | ((m.chantT ?? 0) > 0 ? FL_CHANT : 0),
+      fl: (m.halved ? FL_HALVED : 0) | (m.summoned ? FL_SUMMONED : 0) | ((m.chantT ?? 0) > 0 ? FL_CHANT : 0) | abilityFlags(m),
     };
   }
   /** The shots and bursts in flight that the others have not been shown yet (pictures only: the host decides hits). */
@@ -287,6 +290,11 @@ export class TdCoop implements CoopLink {
       if (this.sentFx.has(b)) continue;
       this.sentFx.add(b);
       if (seen(b.x, b.y)) out.push({ k: 'burst', x: b.x, y: b.y, r: Math.max(1, Math.min(400, Math.round(b.r))), t: Math.max(0, Math.min(10, b.t)), ...(b.el ? { el: b.el } : {}) });
+    }
+    for (const h of this.mobs.hazards) {
+      if (this.sentFx.has(h)) continue;
+      this.sentFx.add(h);
+      if (seen(h.x, h.y)) out.push(fieldEvent(h));
     }
     return out;
   }
@@ -310,9 +318,9 @@ export class TdCoop implements CoopLink {
     }, () => { this.sending = false; this.enc.keyframe(); });
   }
   /** CoopLink: a creature struck another member (host). */
-  bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean): void {
+  bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean, st?: string): void {
     if (this.role !== 'host' || !this.party.includes(to) || to === this.me) return;
-    this.pending.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d: Math.max(1, Math.min(100000, Math.round(dmg))), ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}) });
+    this.pending.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d: Math.max(1, Math.min(100000, Math.round(dmg))), ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}), ...(st && STATUS_WIRE.test(st) ? { st } : {}) });
   }
   /** CoopLink: a creature fell on the host; the party hears who fought it. */
   killed(m: Mob, by: string[]): void {
@@ -322,6 +330,8 @@ export class TdCoop implements CoopLink {
       k: 'kill', i: this.nid(m), t: m.def.id, l: Math.max(1, Math.min(999, m.def.level)), h: Math.max(1, Math.min(100000, base)),
       by: by.filter(id => this.party.includes(id) && id !== this.me).slice(0, 4), x: m.x, y: m.y,
       ...(m.elite ? { e: wireElite(m.elite)! } : {}), ...(KEY_OK.test(m.key) ? { key: m.key } : {}),
+      // S6: a raised one or a mirror owes nothing (the members pay no XP and roll no loot for it).
+      ...(m.raised || m.mirror ? { xp: NOTHING_OWED } : {}),
     });
   }
   /** The room handed over members' claims (host): each through the gate, then the creature's own path. */
@@ -392,6 +402,7 @@ export class TdCoop implements CoopLink {
     m.chantT = s.fl & FL_CHANT ? Math.max(m.chantT ?? 0, .3) : 0;
     m.chantText = m.halved ? m.def.half?.chant ?? m.def.chant : m.def.chant;
     m.elite = s.e ? { rank: s.e.r, role: s.e.o, affixes: s.e.a as EliteAffix[], name: s.e.n ?? null } : undefined;
+    mirrorAbilityFlags(m, s.fl);
   }
   private placeReplicas(): void {
     const now = this.hooks.now();
@@ -406,7 +417,7 @@ export class TdCoop implements CoopLink {
     if (e.k === 'bite') {
       if (e.to !== this.me) return;
       const from = e.i ? this.replicas.get(e.i) ?? null : null;
-      this.mobs.coopBite(e.d, e.ty as DamageType, from, !!e.b, !!e.c);
+      this.mobs.coopBite(e.d, e.ty as DamageType, from, !!e.b, !!e.c, e.st);
       return;
     }
     if (e.k === 'shot') {
@@ -414,7 +425,13 @@ export class TdCoop implements CoopLink {
       return;
     }
     if (e.k === 'burst') {
-      this.mobs.bursts.push({ x: e.x, y: e.y, t: e.t, r: e.r, dmg: 0, ...(e.el ? { el: e.el as DeathBurst['el'] } : {}) });
+      // S6: an ability's ring wears its tone; a raise's sigil is a picture (its corpse goes when it ends).
+      const tone = e.el && e.el !== 'ember' && e.el !== 'shadow' ? e.el : undefined;
+      this.mobs.bursts.push({ x: e.x, y: e.y, t: e.t, r: e.r, dmg: 0, ...(e.el ? { el: e.el as DeathBurst['el'] } : {}), ...(tone && tone !== 'raise' ? { tone: tone as DeathBurst['tone'], delay: e.t } : {}), ...(tone === 'raise' ? { fx: true, delay: e.t, tone: 'bone' as const } : {}) });
+      return;
+    }
+    if (e.k === 'field') {
+      this.mobs.fieldSeen(e);
       return;
     }
     // A kill: this Keeper's reward is the HUD's call; the creature leaves the world here either way.
@@ -422,7 +439,9 @@ export class TdCoop implements CoopLink {
     const cap = !def ? 0 : def.rank === 'boss' || e.t === SEAM_ID ? 100000 : def.hp * 6;
     const hp = Math.max(1, Math.min(cap || 1, e.h));
     const kill: CoopKill = { id: `${msg.from}:${msg.term}:${msg.seq}:${e.i}`, from: msg.from, area: msg.area, x: e.x, y: e.y, by: e.by, creature: e.t, level: e.l, hp, elite: e.e ?? null };
-    const reward = def ? this.hooks.killed(kill) : 'none';
+    // S6: a raised one or a mirror owes nothing (its corpse still falls here).
+    const owed = !(e.xp !== undefined && e.xp <= NOTHING_OWED);
+    const reward = def && owed ? this.hooks.killed(kill) : 'none';
     let m = this.replicas.get(e.i) ?? null;
     if (!m && reward === 'full' && def) {
       // Never drawn here (it fell as this Keeper arrived): its spoils still land where it fell.

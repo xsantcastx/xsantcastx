@@ -358,28 +358,30 @@ export function fight(k, enc, seed, state = null, max = 600) {
         decided.add(m.aim);
         if (rand() < DODGE) { const a = Math.atan2(keeper.y - m.y, keeper.x - m.x) + (rand() < .5 ? 1 : -1) * Math.PI / 2; dodge = { x: keeper.x + Math.cos(a) * 34, y: keeper.y + Math.sin(a) * 34 }; }
       }
-      const fresh = sys.bursts.filter(b => !decided.has(b));
+      // (A raise's sigil or a mending ring is a picture: nothing to step out of.)
+      const fresh = sys.bursts.filter(b => !decided.has(b) && !b.fx);
       if (fresh.length) {
         fresh.forEach(b => decided.add(b));
         if (rand() < DODGE) {
           let best = null, score = -Infinity;
           for (let i = 0; i < 8; i++) {
             const a = i * Math.PI / 4, x = keeper.x + Math.cos(a) * 40, y = keeper.y + Math.sin(a) * 40;
-            const s = Math.min(...sys.bursts.map(b => Math.hypot(b.x - x, b.y - y) - b.r));
+            const s = Math.min(...sys.bursts.filter(b => !b.fx).map(b => Math.hypot(b.x - x, b.y - y) - b.r));
             if (s > score) { score = s; best = { x, y }; }
           }
           dodge = best;
         }
       }
       // Feet: out of a telegraph, else into reach of the target.
-      const step = A.walk * (1 - sys.chill) * dt;
+      // Stunned, frozen or rooted by a creature's ability (S6): his feet stay where they are, as the engine's do.
+      const step = A.walk * (1 - sys.chill) * (sys.held ? 0 : 1) * dt;
       if (dodge) {
         const dx = dodge.x - keeper.x, dy = dodge.y - keeper.y, d = Math.hypot(dx, dy);
         if (d <= step) { keeper.x = dodge.x; keeper.y = dodge.y; dodge = null; } else { keeper.x += dx / d * step; keeper.y += dy / d * step; }
       } else if (kiter && (chaser = sys.mobs.find(m => m.def.speed * ZONE.gapPace(ZONE.levelGap(k.level, m.def.level)) < A.walk * .85 && Math.hypot(m.x - keeper.x, m.y - keeper.y) < KITE))) {
         // A ranged Keeper keeps a slower creature off him: he backs away round it (circling, so he stays near the fight).
         const ax = keeper.x - chaser.x, ay = keeper.y - chaser.y, d = Math.hypot(ax, ay) || 1;
-        const vx = ax / d + (-ay / d) * orbit, vy = ay / d + (ax / d) * orbit, n = Math.hypot(vx, vy);
+        const vx = ax / d + (-ay / d) * orbit, vy = ay / d + (ax / d) * orbit, n = Math.hypot(vx, vy) || 1;
         keeper.x += vx / n * step; keeper.y += vy / n * step;
       } else if (foe) {
         const want = sys.melee ? sys.range - 2 : sys.range - 10, dx = foe.x - keeper.x, dy = foe.y - keeper.y, d = Math.hypot(dx, dy);
@@ -486,6 +488,18 @@ function packOf(rank, seed) {
     : ELITE.makePack('champion', ELITE.rollAffixes(r, 1), null, 1 + Math.floor(r() * 3)));
 }
 
+/** An Aura Enchanted unique pack (S6): its aura the i-th of the thirteen, the rest of its affixes rolled for the band. */
+const PACK_AURA = load('src/app/play/td/td-pack-aura.ts');
+function auraPackOf(def, level, seed, i) {
+  return seeded(`aura|${seed}`, r => {
+    const o = { level, ranged: !!def.ranged, bone: def.id.startsWith('bone'), fresh: true };
+    const n = ELITE.affixCount('unique', r, o), aura = PACK_AURA.PACK_AURA_IDS[i % PACK_AURA.PACK_AURA_IDS.length];
+    const rest = ELITE.rollAffixes(r, n - 1, o).filter(a => ELITE.affixAllowed(a, [`aura-${aura}`], o));
+    const affixes = [`aura-${aura}`, ...rest];
+    return ELITE.makePack('unique', affixes, 'Sim the Bearer', ELITE.packFollowers('unique', 2 + Math.floor(r() * 3), affixes.length));
+  });
+}
+
 // ── Measurements ────────────────────────────────────────────────────────────────────────────────────────────────
 
 const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
@@ -558,6 +572,9 @@ function cell(voc, level, runs) {
     normal: { id, ...attempts(voc, level, tier, i => ({ def: pick(i) }), runs) },
     champion: { id, ...attempts(voc, level, tier, i => ({ def: pickPack(i), pack: packOf('champion', `${voc}|${level}|${i}`) }), runs) },
     unique: { id, ...attempts(voc, level, tier, i => ({ def: pickPack(i), pack: packOf('unique', `${voc}|${level}|${i}`) }), runs) },
+    // S6 (monsters-abilities.md §4): an Aura Enchanted unique pack with the zone band's affix count, the new affixes in
+    // the pool — its aura cycling through the thirteen, so every one is fought somewhere in the table.
+    aura: { id, ...attempts(voc, level, tier, i => { const def = pickPack(i); return { def, pack: auraPackOf(def, level, `${voc}|${level}|${i}`, i) }; }, runs) },
     hunt: (() => { const hs = Array.from({ length: QUICK ? 2 : 4 }, (_, i) => hunt(voc, level, HUNT_SECS, i)); return { xph: mean(hs.map(h => h.xph)), goldh: mean(hs.map(h => h.goldh)), killsh: mean(hs.map(h => h.killsh)), deathsh: mean(hs.map(h => h.deathsh)) }; })(),
   };
 }
@@ -747,7 +764,8 @@ for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const pack = band => voc === 'ashguard' ? [band[0] * BANDS.ashPackFloor, band[1]] : band;
   if (!inBand(c.champion.ttk, pack(BANDS.champion))) fails.push(`${voc} L${L}: a champion pack takes ${fmt(c.champion.ttk)} s (band ${pack(BANDS.champion).join('–')} s)`);
   if (!inBand(c.unique.ttk, pack(BANDS.unique))) fails.push(`${voc} L${L}: a unique pack takes ${fmt(c.unique.ttk)} s (band ${pack(BANDS.unique).join('–')} s)`);
-  for (const [what, x] of [['champion pack', c.champion], ['unique pack', c.unique]]) if (x.death > BANDS.packDeath) fails.push(`${voc} L${L}: a ${what} kills him ${pct(x.death)} of the time (≤ ${pct(BANDS.packDeath)})`);
+  if (c.aura && !inBand(c.aura.ttk, pack(BANDS.unique))) fails.push(`${voc} L${L}: an Aura Enchanted unique pack takes ${fmt(c.aura.ttk)} s (band ${pack(BANDS.unique).join('–')} s)`);
+  for (const [what, x] of [['champion pack', c.champion], ['unique pack', c.unique], ['pack that bears an aura', c.aura ?? { death: 0 }]]) if (x.death > BANDS.packDeath) fails.push(`${voc} L${L}: a ${what} kills him ${pct(x.death)} of the time (≤ ${pct(BANDS.packDeath)})`);
 }
 for (const voc of VOCATIONS) table[voc].bosses.forEach(b => {
   if (!inBand(b.ttk, BANDS.boss)) fails.push(`${voc}: ${b.id} (L${b.level}) takes ${fmt(b.ttk, 0)} s (band ${BANDS.boss.join('–')} s)`);

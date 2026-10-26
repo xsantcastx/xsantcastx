@@ -105,4 +105,24 @@ describe('RoomWorld (protocol 7: the room simulates)', () => {
     for (let i = 0; i < 8; i++) a.sys.update(.5);
     expect(a.taken.length).toBe(1);
   });
+
+  it('S6: the room\'s creature casts its ability; the member sees the ring and takes the blow and its stun through the bite', () => {
+    let now = 1_800_000_000_000;
+    const room = new RoomWorld({ area: AREA, seed: 'spec-s6', now: () => now, boot: 'k6' });
+    const at = openSpot(room);
+    room.fxQuiet();
+    room.keeper({ id: 'A', x: at.x, y: at.y, level: 30 });
+    room.fxLay('obsidian-golem', at.x + 26, at.y);
+    const golem = room.mobs.mobs[0];
+    golem.ab = [0]; golem.cd = 99;
+    const a = member();
+    a.me.x = at.x; a.me.y = at.y;
+    a.coop.setAreas({ [AREA]: { host: ROOM_HOST, term: room.term, members: ['A'] } }, 'A', []);
+    a.coop.before(.016, AREA, []);
+    const snap = () => { const b = room.snapFor('A')!; a.coop.snap({ ...b, from: ROOM_HOST, term: room.term }); };
+    let sawRing = false;
+    for (let i = 0; i < 40; i++) { now += 50; room.tick(.05); snap(); if (a.sys.bursts.some(b => b.tone === 'glass')) sawRing = true; }
+    expect(sawRing).toBeTrue();
+    expect(a.sys.kst.stun > 0 || a.sys.kst.immune > 0).toBeTrue();
+  });
 });

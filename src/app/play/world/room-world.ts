@@ -18,7 +18,9 @@
  * Every random draw inside a tick or a claim comes from this world's own seeded stream (Math.random is lent to it for
  * the call), so a world built with the same seed and fed the same intents plays out the same.
  */
-import { MOBS, MobSystem, type CoopLink, type Drop, type Mob } from '../td/td-mobs';
+import { MOBS, MobSystem, abilityFlags, fieldEvent, type CoopLink, type Drop, type Mob } from '../td/td-mobs';
+import { STATUS_WIRE } from '../td/td-abilities';
+import { landOf } from '../td/td-pack-aura';
 import { TdWorld } from '../td/td-world';
 import { HandLevel, type TdLevel } from '../td/td-level';
 import { CONTINENTS, LEVELS } from '../td/td-levels';
@@ -31,7 +33,7 @@ import { TILE } from '../td/td-art';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from '../td/td-seam';
 import { seamLevelFor } from '../td/td-zones';
 import type { ContinentDef } from '../td/continent';
-import { wireElite } from '../td/td-coop';
+import { NOTHING_OWED, wireElite } from '../td/td-coop';
 import {
   COOP_MAX_EVENTS, COOP_MAX_MOBS, COOP_RANGE_TILES, CoopEncoder, FL_CHANT, FL_HALVED, FL_SUMMONED,
   type CoopEvent, type CoopHit, type CoopMobState, type CoopSnapBody,
@@ -162,6 +164,8 @@ export class RoomWorld implements CoopLink {
       safeAt: (x, y) => !!surfaceWorld && surfaceWorld.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
     });
     this.mobs.selfAway = true;
+    // S6: the land its packs' auras come from (td-pack-aura landOf).
+    this.mobs.land = landOf(this.levelId, def ? opts.area : '');
     // Elite packs as on every screen (td-elites.ts), and protocol 9's rest: each fallen spawn draws its own time
     // (respawn.ts: an ordinary creature 60–90 s, an elite longer, a boss about an hour) from this world's stream.
     this.mobs.elites = true;
@@ -382,10 +386,10 @@ export class RoomWorld implements CoopLink {
   // ── CoopLink (the creatures tell the room) ──
   private nid(m: Mob): string { return m.nid ??= (this.nidSeq++).toString(36); }
   /** A creature struck a Keeper: that Keeper's next snapshot carries it (it lands through its own defenses). */
-  bite(to: string, from: Mob | null, dmg: number, type: string, burn: boolean, curse: boolean): void {
+  bite(to: string, from: Mob | null, dmg: number, type: string, burn: boolean, curse: boolean, st?: string): void {
     const v = this.viewers.get(to);
     if (!v) return;
-    v.ev.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d: Math.max(1, Math.min(100000, Math.round(dmg))), ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}) });
+    v.ev.push({ k: 'bite', to, ...(from ? { i: this.nid(from) } : {}), d: Math.max(1, Math.min(100000, Math.round(dmg))), ty: type, ...(burn ? { b: true } : {}), ...(curse ? { c: true } : {}), ...(st && STATUS_WIRE.test(st) ? { st } : {}) });
   }
   /** A creature fell: every Keeper near hears who fought it; its loot (rolled next, in spoils) is theirs first. */
   killed(m: Mob, by: string[]): void {
@@ -397,6 +401,8 @@ export class RoomWorld implements CoopLink {
     const ev: CoopEvent = {
       k: 'kill', i: nid, t: m.def.id, l: Math.max(1, Math.min(999, m.def.level)), h: Math.max(1, Math.min(100000, base)), by: fought,
       x: Math.round(m.x), y: Math.round(m.y), ...(m.elite ? { e: wireElite(m.elite)! } : {}), ...(/^[a-z0-9:,~._-]{1,80}$/.test(m.key) ? { key: m.key } : {}),
+      // S6: a raised one or a mirror owes nothing.
+      ...(m.raised || m.mirror ? { xp: NOTHING_OWED } : {}),
     };
     const reach = COOP_RANGE_TILES * TILE;
     for (const [id, v] of this.viewers) {
@@ -427,7 +433,7 @@ export class RoomWorld implements CoopLink {
         if (m && d <= CLAIM_RANGE_TILES * TILE && d > LOS_FREE && !this.mobs.sight.sees(k.x, k.y, m.x, m.y)) { refused++; this.stats.refusedSight++; continue; }
         const r = this.gate.check(h, { id: from, x: k.x, y: k.y, level: k.level, ...(k.dps ? { dps: k.dps } : {}) }, m ? { x: m.x, y: m.y, hp: m.hp } : null, now);
         if (!r.ok || !m) { refused++; if (!r.ok && r.why === 'far') this.stats.refusedFar++; if (!r.ok && r.why === 'cap') this.stats.refusedCap++; continue; }
-        landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c);
+        landed++; dmg += this.mobs.applyClaim(m, r.dmg, from, !!h.c, h.el);
       }
     });
     this.stats.claimsIn += landed; this.stats.claimsRefused += refused;
@@ -459,6 +465,12 @@ export class RoomWorld implements CoopLink {
       v.fx.add(b);
       if (Math.hypot(b.x - k.x, b.y - k.y) <= reach) v.ev.push({ k: 'burst', x: Math.round(b.x), y: Math.round(b.y), r: Math.max(1, Math.min(400, Math.round(b.r))), t: Math.max(0, Math.min(10, b.t)), ...(b.el ? { el: b.el } : {}) });
     }
+    // S6: hostile ground (pictures and statuses; the room decides damage).
+    for (const h of this.mobs.hazards) {
+      if (v.fx.has(h)) continue;
+      v.fx.add(h);
+      if (Math.hypot(h.x - k.x, h.y - k.y) <= reach) v.ev.push(fieldEvent(h));
+    }
     // Bites and kills first; pictures fill what room is left (a picture that does not fit is simply not shown).
     const firm = v.ev.filter(e => e.k === 'bite' || e.k === 'kill'), soft = v.ev.filter(e => e.k !== 'bite' && e.k !== 'kill');
     const ev = [...firm, ...soft].slice(0, COOP_MAX_EVENTS);
@@ -470,7 +482,7 @@ export class RoomWorld implements CoopLink {
     return {
       i: this.nid(m), t: m.def.id, ...(/^[a-z0-9:,~._-]{1,80}$/.test(m.key) ? { k: m.key } : {}), x: m.x, y: m.y, f: m.face, h: Math.max(0, m.hp), m: m.def.hp,
       l: Math.max(1, Math.min(999, m.def.level)), e: wireElite(m.elite), tl: m.tell > 0 ? m.tell * 10 : 0, ax: m.tell > 0 && m.aim ? m.aim.x : 0, ay: m.tell > 0 && m.aim ? m.aim.y : 0,
-      fl: (m.halved ? FL_HALVED : 0) | (m.summoned ? FL_SUMMONED : 0) | ((m.chantT ?? 0) > 0 ? FL_CHANT : 0),
+      fl: (m.halved ? FL_HALVED : 0) | (m.summoned ? FL_SUMMONED : 0) | ((m.chantT ?? 0) > 0 ? FL_CHANT : 0) | abilityFlags(m),
     };
   }
 

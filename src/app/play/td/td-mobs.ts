@@ -26,7 +26,7 @@ import { AURA_PULSE, auraEffect, type AuraEffect, type AuraId } from '../../shar
 import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
-import { AFFIX_DEFS, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
+import { AFFIX_DEFS, TD_RANK_HP, BRUTAL, EMBER_HEART, GRAVE_CALL, KIN_SHIELD, LIGHTLESS_R, MIRROR_SHARE, MULTISHOT, VAMPIRIC, WHISPER_HUSH, auraAffix, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
 import { extraSpawn, hardened, nightType, rollTouched, rulesOf, skyVars, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
@@ -41,6 +41,9 @@ import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, 
 import { CORPSE_REACH, corpseSeed, layCorpse, weatherCorpses, type Corpse } from './td-corpse';
 import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
+import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
+import { BLEED_MOVING, abilitiesOf, FL_AB0, FL_AB1, FL_AURA_OFF, FL_HIDDEN, FL_WARDED, KEEPER_CC_IMMUNE, KEEPER_ROOT_MAX, KEEP_WALKING, SPORE_WEAKEN, T as ATILE, TRUE_LIGHT_CUT, castable, decodeStatus, encodeStatus, tierCd, type AbilityDef, type KeeperStatus, type StatusLay, type TellTone } from './td-abilities';
+import { PACK_AURA_REACH, PACK_PULSE, PACK_PULSE_TYPE, PACK_STRIP_SECS, fixedAura, halvedBy, landOf, packAuraFx, packAuraLevel, packAuraPool, type PackAuraFx, type PackAuraId } from './td-pack-aura';
 
 export interface MobDef {
   id: string;
@@ -1503,6 +1506,93 @@ function rootwyrm(c: CanvasRenderingContext2D, f: number): void {
 function paintRootwyrm(c: CanvasRenderingContext2D, f: number): void { grown(1.25, 0, 4, () => rootwyrm(c, f)); }
 
 /** Every creature as written, with its authored life (MOBS below is what rises: td-life lifeScale). */
+// ── Slice 6: the Ashsinger and the Bone Priest (docs/design/monsters-abilities.md §2.6–2.7) ──────────────────────────
+
+/**
+ * The Ashsinger (26×36): the Cinder clans' shaman, smaller and leaner than the Firecaller. Bare-headed, ash-streaked,
+ * mouth open mid-verse; an ash-grey cloak, an ember-rope sash, a drum at the hip, a bone-and-ash fetish pole in the far
+ * hand and a cinder lifted on the raised near hand. It sings the fallen back up, so its mouth works on the passing frames.
+ */
+function paintAshsinger(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], s = STEP[f], farOrc: Ramp = [R.orc[1], R.orc[2], R.orc[3], R.orc[3]];
+  // Boots under the hem.
+  px(c, 7 + s / 2, 34, 5, 2, R.char[1]); px(c, 7 + s / 2, 34, 5, 1, R.char[0]);
+  px(c, 14 - s / 2, 34, 5, 2, R.char[2]);
+  // The far arm, round a fetish pole: a bone cross-piece, a small skull, ash tufts hung from the bar.
+  limb(c, [6, 20 + b], [3, 25 + b], 2, farOrc); orb(c, 3, 26 + b, 1.6, 1.6, R.orc);
+  limb(c, [3, 27 + b], [3, 12 + b], 1, R.wood);
+  px(c, 0, 14 + b, 7, 1, R.bone[1]); dot(c, 0, 14 + b, R.bone[0]);
+  orb(c, 3.5, 11.5 + b, 2.2, 2, R.bone); dot(c, 2, 11 + b, R.void[1]); dot(c, 4, 11 + b, R.void[1]);
+  dot(c, 1, 15 + b + (f % 2), R.ash[0]); dot(c, 5, 15 + b + (1 - f % 2), R.ash[1]); dot(c, 1, 16 + b + (f % 2), R.bone[2]);
+  // The cloak: ash-grey, a ragged hem edged in ember, a slit up the front showing the dark inside.
+  poly(c, [[8, 18 + b], [18, 18 + b], [21, 35], [5, 35]], R.ashDk);
+  poly(c, [[9, 19 + b], [17, 19 + b], [19, 34], [7, 34]], R.ash);
+  poly(c, [[12, 27 + b], [14, 27 + b], [15, 34], [11, 34]], R.ashDk);
+  px(c, 5, 34, 16, 1, EMBER[2]); for (let i = 0; i < 4; i++) dot(c, 6 + i * 4 + (f % 2), 34, EMBER[1]);
+  dot(c, 7, 33, R.ashDk[3]); dot(c, 10, 33, R.ashDk[3]); dot(c, 16, 33, R.ashDk[3]); dot(c, 18, 33, R.ashDk[3]);
+  // The drum at the hip: a hide head, a dark wooden barrel, bone-pale lacing in a zigzag.
+  px(c, 6, 27 + b, 7, 4, R.char[1]); px(c, 6, 27 + b, 7, 1, R.char[0]); px(c, 6, 30 + b, 7, 1, R.char[3]);
+  orb(c, 9.5, 27 + b, 3.6, 1.6, R.bone);
+  for (let i = 0; i < 3; i++) { dot(c, 7 + i * 2, 28 + b, R.bone[2]); dot(c, 8 + i * 2, 29 + b, R.bone[2]); }
+  // Shoulders, and the ember-rope sash across the chest, a cinder caught in each knot.
+  orb(c, 13, 20 + b, 6, 3, R.ashDk);
+  line(c, [9, 19 + b], [17, 27 + b], EMBER[3]); line(c, [10, 19 + b], [18, 27 + b], EMBER[2]);
+  for (const [x, y] of [[11, 21], [14, 24], [17, 26]]) dot(c, x, y + b, EMBER[f % 2 ? 0 : 1]);
+  // The head: bare, a small ear-flick up, ash war-streaks, tusks, a verse in the mouth.
+  poly(c, [[7, 9 + b], [4, 5 + b], [5, 10 + b], [7, 12 + b]], R.orc);
+  poly(c, [[19, 9 + b], [22, 5 + b], [21, 10 + b], [19, 12 + b]], farOrc);
+  orb(c, 13, 10 + b, 6.4, 6.6, R.orc);
+  px(c, 9, 7 + b, 3, 1, R.orc[3]); px(c, 14, 7 + b, 3, 1, R.orc[3]);
+  glow(c, 9, 8 + b, 1.4, EMBER); glow(c, 15, 8 + b, 1.4, EMBER);
+  px(c, 8, 11 + b, 1, 3, R.ash[0]); px(c, 18, 11 + b, 1, 3, R.ash[0]); dot(c, 9, 14 + b, R.ash[1]); dot(c, 17, 14 + b, R.ash[1]);
+  const wide = f % 2 ? 2 : 1;
+  px(c, 11, 13 + b, 4, wide + 1, R.void[1]); dot(c, 12, 12 + b + wide, EMBER[2]);
+  dot(c, 10, 13 + b, R.bone[0]); dot(c, 16, 13 + b, R.bone[0]);
+  // A topknot bound with bone, a feather of ash.
+  poly(c, [[11, 5 + b], [12, 2 + b], [14, 2 + b], [15, 5 + b]], R.char); dot(c, 12, 4 + b, R.bone[1]); dot(c, 14, 4 + b, R.bone[1]); dot(c, 13, 1 + b, R.ash[0]);
+  // The near arm raised to the song: a cinder lifted on the hand, sparks climbing away.
+  limb(c, [18, 19 + b], [22, 15 + b], 2, R.orc); limb(c, [22, 15 + b], [22, 11 + b], 2, R.orc);
+  orb(c, 22, 10 + b, 1.8, 1.8, R.orc);
+  glow(c, 21, 6 + b, 2, EMBER);
+  dot(c, 20 + (f % 3), 3 + b - (f % 2), EMBER[1]); dot(c, 24 - (f % 2), 5 + b - f % 3, EMBER[2]); dot(c, 19, 4 + b + (f >> 1), R.ash[0]);
+}
+
+/**
+ * The Bone Priest (24×38): the Ashen Bastion's chaplain. A tidy, bleached skeleton in a tattered dusk-violet cope and
+ * mitre, a pale stole fringed in old gold, grave-light eyes, and a censer swung on a chain that breathes the same cold
+ * light. No gore: it is the one thing in the Crypt that is still neat.
+ */
+function paintBonePriest(c: CanvasRenderingContext2D, f: number): void {
+  grown(1, 0, 3, () => {
+    const b = BOB[f], o = 2, sw = [0, 1, 0, -1][f];
+    skeleton(c, f, o, { bone: R.bone, eye: GRAVELIGHT });
+    // The cope: a dusk-violet drape from each shoulder, torn into points at the hem; the ribs show down the middle.
+    poly(c, [[o + 4, 14 + b], [o + 8, 13 + b], [o + 8, 26 + b], [o + 6, 29 + b], [o + 5, 26 + b], [o + 3, 30 + b], [o + 2, 24 + b]], R.wraith);
+    poly(c, [[o + 13, 13 + b], [o + 17, 14 + b], [o + 19, 24 + b], [o + 18, 29 + b], [o + 16, 26 + b], [o + 15, 30 + b], [o + 13, 25 + b]], R.wraith);
+    line(c, [o + 4, 15 + b], [o + 3, 24 + b], R.wraith[0]);
+    // The collar, round the neck under the jaw, a gold edge.
+    poly(c, [[o + 5, 14 + b], [o + 16, 14 + b], [o + 15, 17 + b], [o + 6, 17 + b]], R.wraith);
+    line(c, [o + 6, 14 + b], [o + 15, 14 + b], R.gold[1]);
+    // The stole: a pale strip down the front to the knee, gold fringe, a ragged tail.
+    poly(c, [[o + 9, 15 + b], [o + 12, 15 + b], [o + 12, 28 + b], [o + 11, 30 + b], [o + 10, 28 + b], [o + 9, 29 + b]], R.bone);
+    line(c, [o + 10, 17 + b], [o + 10, 27 + b], R.bone[0]);
+    px(c, o + 9, 20 + b, 3, 1, R.gold[1]); px(c, o + 9, 24 + b, 3, 1, R.gold[1]);
+    dot(c, o + 10, 30 + b, R.gold[1]); dot(c, o + 9, 29 + b, R.gold[2]);
+    // The mitre: a short cap of the cope's cloth on the skull, a gold band.
+    poly(c, [[o + 6, 5 + b], [o + 7.5, 1 + b], [o + 10.5, -2 + b], [o + 13.5, 1 + b], [o + 15, 5 + b]], R.wraith);
+    px(c, o + 6, 4 + b, 9, 1, R.gold[1]); dot(c, o + 10, -1 + b, R.gold[0]); dot(c, o + 10, 1 + b, R.gold[1]);
+    // The near arm, down to the hand; the censer swung on its chain, gravelight leaking up as smoke.
+    boneArm(c, f, o, o + 17, 24, R.bone);
+    const hx = o + 17, hy = 25 + b;
+    line(c, [hx, hy], [hx + 1 + sw, hy + 4], R.iron[0]);
+    orb(c, hx + 1 + sw, hy + 6, 2.3, 2, R.iron); px(c, hx + sw - 1, hy + 4, 5, 1, R.iron[1]); dot(c, hx + 1 + sw, hy + 3, R.iron[0]);
+    glow(c, hx + sw, hy + 6, 1, GRAVELIGHT);
+    dot(c, hx + 1 + sw, hy + 1 - (f % 2), GRAVELIGHT[1]);
+    dot(c, hx + 3 - (f >> 1), hy - (f % 3), GRAVELIGHT[2]);
+  });
+}
+export const S6_PAINTERS = { 'ashsinger': paintAshsinger, 'bone-priest': paintBonePriest } as const;
+
 const AUTHORED: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10, hits: 'fire',
@@ -1561,6 +1651,13 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     charge: { min: 28, rate: 6, dmg: [10, 17], speed: 200, kind: 'charge', chant: 'osk mur' },
     chant: 'osk teth', ghost: true, summon: { type: 'bone-walker', count: 2, at: .5 },
   },
+  // S6 (§2.6): the Bastion's chaplain, still calling the roll in the Ashen Crypt.
+  'bone-priest': {
+    id: 'bone-priest', name: 'Bone Priest', hp: 150, speed: 26, dmg: [6, 10], rate: 1.6, sight: 150, level: 16,
+    lore: 'The Bastion\'s chaplain swore to keep the watch mustered. He still calls the roll, and the roll still answers.',
+    drops: [{ material: 'ember-residue', qty: 1, chance: .5 }, { material: 'world-root-bark', qty: 1, chance: .3 }], paint: paintBonePriest, w: 24, h: 38,
+    ranged: { range: 100, keep: 80, rate: 2.4, dmg: [7, 11], speed: 105, kind: 'ink' },
+  },
   'bone-archer': {
     id: 'bone-archer', name: 'Bone Archer', hp: 85, speed: 30, dmg: [3, 6], rate: 1.5, sight: 140, level: 8,
     lore: 'A bow strung with something that is not quite sinew. It only ever aims at the lantern you carry.',
@@ -1593,6 +1690,13 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     id: 'orc-warlord', name: 'Orc Warlord', hp: 440, speed: 32, dmg: [15, 24], rate: 1.5, sight: 140, level: 16,
     lore: 'Scarred, crowned in a smithing helm, and followed by every drum in the Badlands. It has never once asked for directions.',
     drops: [{ material: 'cinder-ore', qty: 3, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .15 }], paint: paintWarlord, w: 42, h: 52, rank: 'champion',
+  },
+  // S6 (monsters-abilities.md §2.7): the clans' shaman, D2's Fallen Shaman — the reason to dive the back line.
+  'ashsinger': {
+    id: 'ashsinger', name: 'Ashsinger', hp: 104, speed: 30, dmg: [4, 6], rate: 1.6, sight: 150, level: 14, hits: 'fire',
+    lore: 'The clans bury no one. The Ashsinger sings them back up instead, and charges the family for the verse.',
+    drops: [{ material: 'ember-residue', qty: 2, chance: .6 }, { material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintAshsinger, w: 26, h: 36,
+    ranged: { range: 96, keep: 80, rate: 2.6, dmg: [5, 8], speed: 110, kind: 'fire' },
   },
   'ember-drake': {
     id: 'ember-drake', name: 'Ember Drake', hp: 320, speed: 40, dmg: [12, 18], rate: 1.4, sight: 150, level: 18,
@@ -1654,6 +1758,8 @@ const AUTHORED: Readonly<Record<string, MobDef>> = {
     id: 'rootglass-hart', name: 'Rootglass Hart', hp: 460, speed: 44, dmg: [18, 27], rate: 1.4, sight: 150, level: 24,
     lore: 'The Rootglass Stags that live long enough stop being shy. Their antlers ring like glass when they lower their heads.',
     drops: [{ material: 'world-root-bark', qty: 1, chance: .5 }, { material: 'verdant-sap', qty: 2, chance: .6 }], paint: paintRootglassHart, w: 40, h: 38,
+    // Lowered Antlers (S6 §2.2): the shipped gap-closer, given to the hart (1.8B across 5 tiles).
+    charge: { min: 40, rate: 8, dmg: [32, 49], speed: 220, kind: 'charge' },
   },
   'thorn-weaver': {
     id: 'thorn-weaver', name: 'Thorn Weaver', hp: 380, speed: 30, dmg: [14, 21], rate: 1.5, sight: 150, level: 28,
@@ -1941,6 +2047,77 @@ export interface Mob {
   stripped?: { affix: string; t: number } | null;
   /** A shared creature (a room's or a host's): the skill whose blow this Keeper last landed on it, for its fall's marks. */
   lastSrc?: SkillId | null;
+  // ── S6 (td-abilities, td-pack-aura, the new affixes) ──
+  /** Each castable ability's cooldown (seconds left), by its index in castable(). */
+  ab?: number[];
+  /** The ability whose tell is running (its index), with `tell` and `aim`. */
+  abCast?: number;
+  /** Underground (a burrow): seconds left (not drawn, not struck). */
+  hidden?: number;
+  /** A Bone Ward on it: absorb left, seconds left. */
+  ward?: number; wardT?: number;
+  /** Moss Mending on it: seconds left and the share of its life a second. */
+  mendT?: number; mendPct?: number;
+  /** Pack Howl on it: seconds of +speed left. */
+  howlT?: number;
+  /** Its next bite lays these (Will-o'-the-Fen). */
+  emberBite?: readonly StatusLay[];
+  /** Raised by a singer, or a Mirrored copy: no loot, no XP, never raised again. */
+  raised?: boolean;
+  mirror?: boolean;
+  /** Its trail's next mark (a passive trail), and where it last laid one. */
+  trailT?: number; trailAt?: { x: number; y: number };
+  /** The pack aura it carries (a bearer) and the one blessing it now (at its level, from whom). */
+  aura?: PackAuraId | null;
+  bless?: { id: PackAuraId; L: number; by: Mob; fx: PackAuraFx } | null;
+  /** Stripped (Unmaking, Strip, Banish): seconds before its pack aura comes back. */
+  auraOffT?: number;
+  /** A pulse aura's next pulse. */
+  pulseT?: number;
+  /** Brutal: its blows since the last heavy one. */
+  blows?: number;
+  /** The Ashsinger has raised one (its Fanaticism wakes). */
+  raisedOne?: boolean;
+  /** Grave-called: its call is spent. */
+  graveCalled?: boolean;
+}
+
+/** S6: a creature's ability state on the wire (CoopMobState.fl's high bits; td-coop and room-world stateOf). */
+export function abilityFlags(m: Mob): number {
+  return (m.tell > 0 && m.abCast === 0 ? FL_AB0 : 0) | (m.tell > 0 && m.abCast === 1 ? FL_AB1 : 0) | ((m.hidden ?? 0) > 0 ? FL_HIDDEN : 0) | ((m.ward ?? 0) > 0 ? FL_WARDED : 0) | ((m.auraOffT ?? 0) > 0 ? FL_AURA_OFF : 0);
+}
+/** A member reads them back (td-coop mirror): the ability telling, underground, warded, its aura stripped. */
+export function mirrorAbilityFlags(m: Mob, fl: number): void {
+  const ab = m.tell > 0 ? (fl & FL_AB0 ? 0 : fl & FL_AB1 ? 1 : undefined) : undefined;
+  m.abCast = ab;
+  if (ab !== undefined) { const a = castable(m.def.id)[ab]; if (a?.words) { m.chantT = Math.max(m.chantT ?? 0, .3); m.chantText = a.words; } }
+  m.hidden = fl & FL_HIDDEN ? 1 : 0;
+  m.ward = fl & FL_WARDED ? 1 : 0;
+  m.auraOffT = fl & FL_AURA_OFF ? 1 : 0;
+}
+/** A patch of hostile ground on the wire (CoopEvent 'field'). */
+export function fieldEvent(h: Hazard): { k: 'field'; x: number; y: number; r: number; t: number; tn: string; st?: string } {
+  return { k: 'field', x: Math.round(h.x), y: Math.round(h.y), r: Math.max(1, Math.min(200, Math.round(h.r))), t: Math.max(0, Math.min(30, Math.round(h.t * 10) / 10)), tn: h.tone, ...(h.st ? { st: h.st } : {}) };
+}
+/**
+ * The life a pack's heal is a share of (Prayer, Moss Mending, Redemption): an elite's ordinary self, not its rank's
+ * many lives (tuned on combat-sim: a unique leader at ×9 mending 2.8% of all of it a second never fell).
+ */
+export function healBase(m: Mob): number { return m.elite && m.elite.role !== 'minion' ? m.def.hp / TD_RANK_HP[m.elite.rank] : m.def.hp; }
+/** A pack's root key: a leader's key, its followers' `<key>~<gen>e<i>`. */
+export function packRoot(key: string): string { const i = key.indexOf('~'); return i < 0 ? key : key.slice(0, i); }
+/** The aura a creature carries now: its fixed one, else an Aura Enchanted leader's (td-elites auraAffix). */
+export function bearerAura(m: Mob, levelId: string): PackAuraId | null {
+  if ((m.auraOffT ?? 0) > 0 || m.hp <= 0) return null;
+  const fixed = fixedAura(m.def.id, levelId, !!m.raisedOne);
+  if (fixed) return fixed;
+  return m.elite && m.elite.role === 'leader' ? auraAffix(m.elite.affixes) : null;
+}
+/** Is `m` of `bearer`'s own pack (its elite pack, or for a fixed bearer with none, its family round it)? */
+export function samePack(bearer: Mob, m: Mob): boolean {
+  if (m === bearer) return true;
+  if (bearer.elite) return !!m.elite && packRoot(m.key) === packRoot(bearer.key);
+  return !m.elite && creatureProfile(m.def.id).family === creatureProfile(bearer.def.id).family;
 }
 
 /**
@@ -1958,10 +2135,20 @@ export function isConstruct(creature: string): boolean {
 export interface DeathBurst {
   x: number; y: number; t: number; r: number; dmg: number;
   /** A boss's ground warning (the Seam Eater's Rend): its whole tell (FIRE_BURST.delay when unset), its tone and type. */
-  delay?: number; el?: 'ember' | 'shadow'; type?: DamageType;
+  delay?: number; el?: 'ember' | 'shadow' | TellTone | 'raise'; type?: DamageType;
   /** The level of the creature it came from (td-zones level gap); unset: none. */
   lv?: number;
+  /**
+   * S6 (td-abilities): a creature's ability ring — who cast it (an interrupt takes it back; a pull leans toward it),
+   * the statuses it lays on a Keeper it catches (td-abilities encodeStatus), a pull (+) or push (−) in tiles, the ground
+   * it leaves (fire ground, a web, a cloud), its tell's tones; `fx`: a picture only (a raise's sigil), it strikes nothing.
+   */
+  by?: Mob; st?: string; pull?: number; tone?: TellTone; fx?: boolean;
+  after?: { r: number; t: number; dps: number; st?: KeeperStatus; tone: TellTone };
 }
+
+/** S6: a lasting patch of hostile ground (fire ground, crust, an ink trail, a web, a spore cloud). */
+export interface Hazard { x: number; y: number; r: number; t: number; life: number; dps: number; st?: KeeperStatus; tone: TellTone; tick: number; lv?: number; type?: DamageType; by?: Mob }
 
 /**
  * A boss's tell (docs/design/effects-spec.md, fourth pass): the seconds between the wind-up showing on the ground and
@@ -1975,10 +2162,10 @@ export const CHANT_SECS = 1.2;
 /** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
 export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
 /** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
-export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number }
+export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number; /** S6 raise: who sings it up (an interrupt takes it back), the corpse it rises from, the share of life it rises with. */ by?: Mob; corpse?: string; pct?: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot extends Lofted { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean }
+export interface MobShot extends Lofted { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean; /** S6: statuses it lays (td-abilities encodeStatus). */ st?: string }
 
 /**
  * A shot's height over the ground it flies above (art px): `lift` where it left the hand, `land` where it was aimed,
@@ -2014,6 +2201,8 @@ export interface Minion {
   life: number;
   hit: number;
   target: Mob | null;
+  /** td-roam: its stroll while the Keeper stands still. */
+  roam?: RoamState;
   /** The Ashbone Phylactery: its first blow (a breath of fire) is spent. */
   breathed?: boolean;
   /** Captain of the Dead (a mark): the one raised twice as strong, and seconds to its next taunt. */
@@ -2168,6 +2357,8 @@ export interface WildBeast {
   x: number; y: number; t: number; cd: number; face: 1 | -1; age: number;
   dmg: [number, number];
   target: Mob | null;
+  /** td-roam: its stroll while the Keeper stands still. */
+  roam?: RoamState;
   /** A stampede's run: its step a second, how far it still goes, the foes it has trampled, its knock (px). */
   vx?: number; vy?: number; left?: number; hit?: Mob[]; knock?: number;
 }
@@ -2247,6 +2438,19 @@ export interface MobHost {
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
+/** An ability ring's tone as a wave's element (td-engine's ground waves know five). */
+function waveEl(el: string | undefined): NonNullable<Effect['el']> {
+  switch (el) {
+    case 'shadow': case 'ink': return 'shadow';
+    case 'frost': case 'water': return 'shadow';
+    case 'life': case 'moss': return 'life';
+    case 'bone': case 'glass': case 'dust': case 'parchment': return 'bone';
+    default: return 'ember';
+  }
+}
+/** A creature's passive abilities that ride its bite (Scrape's bleed). */
+const ABIL_PASSIVE = (id: string) => abilitiesOf(id).filter(a => a.kind === 'passive' && a.st);
+const ABIL_PASSIVE_ID = (id: string, ab: string) => abilitiesOf(id).some(a => a.id === ab);
 /** A point's distance from a segment (Through the Ranks: what stood on the charge's path). */
 function segDist(ax: number, ay: number, bx: number, by: number, px: number, py: number): number {
   const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
@@ -2286,7 +2490,8 @@ export function goldDropFor(def: Pick<MobDef, 'level' | 'rank'>, rng: () => numb
  * a claim instead of damage.
  */
 export interface CoopLink {
-  bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean): void;
+  /** `st` (S6): statuses the blow lays (td-abilities encodeStatus), and a pull/push toward its caster. */
+  bite(to: string, from: Mob | null, dmg: number, type: DamageType, burn: boolean, curse: boolean, st?: string): void;
   killed(m: Mob, by: string[]): void;
   claim(m: Mob, dmg: number, crit: boolean, color: string): void;
 }
@@ -2695,7 +2900,12 @@ export class MobSystem {
   /** Does this spawn come up as an elite pack (td-elites.ts)? Never in a safe square, only where its level suits. */
   private eliteFor(s: MobSpawn, def: MobDef): ElitePack | null {
     if (!eliteEligible({ level: def.level, rank: def.rank, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
-    return rollElite(`${this.eliteSalt}|${this.host.levelId()}|${s.key}|${this.fallen.get(s.key) ?? 0}`);
+    // S6 (§4): more affixes in higher zones, the new ones in the pool, Aura Enchanted from the zone's list.
+    const lid = this.host.levelId(), land = landOf(lid, this.land);
+    return rollElite(`${this.eliteSalt}|${lid}|${s.key}|${this.fallen.get(s.key) ?? 0}`, undefined, {
+      level: def.level, ranged: !!def.ranged, bone: creatureProfile(def.id).family === 'bone', levelId: lid, tier: this.tier.id, fresh: true,
+      auras: packAuraPool(land, def.level, { levelId: lid, storm: this.storm }),
+    });
   }
   /**
    * Bring a pack to life round (x, y): the leader on the spawn itself (key `key`), its champions or minions beside it.
@@ -2714,6 +2924,14 @@ export class MobSystem {
       m.elite = tag; m.take = st.take;
       if (tag.affixes.includes('teleport')) { m.blinkCd = TELEPORT.cd * .5; m.blinkT = 0; m.blinkTo = null; }
       this.mobs.push(m); out.push(m);
+      // Mirrored (S6): a copy at its side that dies in one hit and bites for half (Glim dims beside it: the canon tell).
+      if (tag.affixes.includes('mirrored') && role !== 'minion') {
+        const cx = px + 14, cy = py + 4, at = this.free(cx, cy) ? { x: cx, y: cy } : { x: px - 14, y: py };
+        const half: MobDef = { ...own, hp: 1, dmg: [Math.max(1, Math.round(own.dmg[0] * MIRROR_SHARE)), Math.max(1, Math.round(own.dmg[1] * MIRROR_SHARE))], drops: [] };
+        const cp = this.spawnMob(`${k}~m`, half, at.x, at.y);
+        cp.hp = 1; cp.mirror = true; cp.def = { ...cp.def, hp: 1 };
+        this.mobs.push(cp); out.push(cp);
+      }
     };
     make(key, 'leader', x, y);
     for (let i = 0; i < pack.followers; i++) {
@@ -2752,6 +2970,13 @@ export class MobSystem {
 
   /** The Keeper's pace a moment ago (art px/s, smoothed): a gap-closer leads him by it. */
   private readonly pv = { x: 0, y: 0, lx: NaN, ly: NaN };
+  /** Where the Keeper stands (td-roam): the raised and the called roam while he is calm; `heelT` is a call keeping them at heel. */
+  private readonly stand = new Stand();
+  private heelT = 0;
+  /** The Keeper calls his raised and called back to his side (the pet card's Follow / Fight). */
+  callBack(): void { this.heelT = ROAM.heelFor; }
+  /** Called back right now (the pet in the engine reads it). */
+  get heeling(): boolean { return this.heelT > 0; }
   update(dt: number): void {
     this.clock += dt;
     this.sight.tick(dt, this.host.levelId());
@@ -2762,12 +2987,15 @@ export class MobSystem {
       this.pv.x += ((p.x - this.pv.lx) / dt - this.pv.x) * k; this.pv.y += ((p.y - this.pv.ly) / dt - this.pv.y) * k;
     }
     this.pv.lx = p.x; this.pv.ly = p.y;
+    this.stand.update(p, dt, Math.hypot(this.pv.x, this.pv.y) > STILL_PACE);
+    this.heelT = Math.max(0, this.heelT - dt);
     this.swing = Math.max(0, this.swing - dt);
     // The Keeper's attack: the target, or with the key held the nearest creature in reach.
     if (this.target && (this.target.hp <= 0 || !this.mobs.includes(this.target))) this.target = null;
     // Away in a menu (a host keeping the shared creatures alive): no swing of its own.
-    let foe = this.selfAway ? null : this.target;
-    if (!foe && this.attacking && !this.selfAway) {
+    // Stunned or frozen (a creature's ability, S6): his hands rest too.
+    let foe = this.selfAway || this.dazed ? null : this.target;
+    if (!foe && this.attacking && !this.selfAway && !this.dazed) {
       let bd = this.range;
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd && this.sees(m)) { bd = d; foe = m; } }
     }
@@ -2929,9 +3157,15 @@ export class MobSystem {
     this.updateArrows(dt);
     if (this.thorn || this.beasts.length) this.tickThorn(dt);
     this.updateZones(dt);
+    // S6: his statuses, the pack auras, the hostile ground.
+    this.tickKeeper(dt);
+    this.tickPackAuras(dt);
+    this.tickHazards(dt);
     this.curseT = Math.max(0, this.curseT - dt);
     // The Cold Aura: within its reach the Keeper's step is slowed (the engine reads `chill`).
     this.chill = this.mobs.some(m => m.elite?.affixes.includes('cold-aura') && Math.hypot(m.x - p.x, m.y - p.y) <= COLD_AURA_R && this.sees(m)) ? COLD_SLOW : 0;
+    // S6: a chill an ability laid on him, and Holy Freeze's reach.
+    this.chill = Math.max(this.chill, this.kst.chill > 0 ? CHILL_SLOW : 0, this.packSlow);
     // Mend the Mind (the Hearth Circle's mark): inside the circle no cold takes hold of him.
     if (this.chill > 0 && this.inCircle && this.mk('hearth-circle', 'noChill')) this.chill = 0;
     this.tickEchoes(dt);
@@ -2940,11 +3174,13 @@ export class MobSystem {
     for (const m of [...this.mobs]) {
       // A Chill (a mark's): its blows and shots come slower too.
       const slow = (m.chillT ?? 0) > 0 ? 1 - CHILL_SLOW : 1;
-      m.t += dt; m.cd -= dt * slow; m.rcd -= dt * slow; m.hit = Math.max(0, m.hit - dt);
+      // Fanaticism (a pack aura): its bites come quicker.
+      m.t += dt; m.cd -= dt * slow * (m.bless?.fx.rate ?? 1); m.rcd -= dt * slow; m.hit = Math.max(0, m.hit - dt);
       // A member under a host: the host moves, aims and bites with it (td-coop.ts places it each frame).
       if (this.replica) continue;
-      // Stunned (a Shield Bash): it stands where it is, does nothing, and its blow waits.
-      if ((m.stun ?? 0) > 0) { m.stun = Math.max(0, (m.stun ?? 0) - dt); m.cd = Math.max(m.cd, .2); continue; }
+      this.tickMobS6(m, dt);
+      // Stunned (a Shield Bash): it stands where it is, does nothing, and its blow waits — and a cast in its tell is cancelled.
+      if ((m.stun ?? 0) > 0) { if (m.abCast !== undefined) this.interruptCast(m); m.stun = Math.max(0, (m.stun ?? 0) - dt); m.cd = Math.max(m.cd, .2); continue; }
       // Teleport: a short wind-up where it stands, then it is at its prey's side.
       if (m.blinkT !== undefined && m.blinkT > 0) {
         m.blinkT -= dt;
@@ -2963,7 +3199,8 @@ export class MobSystem {
         m.tell -= dt;
         if (m.tell <= 0) {
           m.tell = 0;
-          if (m.charging && m.aim && m.def.charge) { const to = { x: m.aim.x, y: m.aim.y + 12 }; m.dash = { ...to, t: Math.hypot(to.x - m.x, to.y - m.y) / m.def.charge.speed + .15 }; }
+          if (m.abCast !== undefined) this.releaseAbility(m);
+          else if (m.charging && m.aim && m.def.charge) { const to = { x: m.aim.x, y: m.aim.y + 12 }; m.dash = { ...to, t: Math.hypot(to.x - m.x, to.y - m.y) / m.def.charge.speed + .15 }; }
           else if (m.aim) this.loose(m, m.aim.x, m.aim.y);
           m.aim = null; m.charging = false;
         } else continue;
@@ -3029,6 +3266,8 @@ export class MobSystem {
           if (ch.chant) { m.chantT = CHANT_SECS; m.chantText = ch.chant; }
           continue;
         }
+        // S6 (td-abilities): its own abilities — a tell, then the blow; it stands while the tell runs.
+        if (seen && m.tell <= 0 && !this.hushed(m) && this.tryAbility(m, px0, py0, d)) continue;
       } else {
         // Roam near home: a short stroll, a pause, another.
         if (!m.wander) {
@@ -3054,18 +3293,21 @@ export class MobSystem {
       // A bite when its prey is in reach — and in sight (no bite through a wall's corner).
       if (seen && !afraid && d <= MOB_REACH && m.cd <= 0) {
         m.cd = m.def.rate;
-        // Blinded (Afterimage): half its blows go astray.
-        if ((m.blindT ?? 0) > 0 && Math.random() < BLIND_MISS) { this.float(m.x, m.y - m.def.h, 'miss', '#9a948a'); continue; }
-        let n = rnd(m.def.dmg[0], m.def.dmg[1]);
+        // Brutal (an affix): every third blow is a heavy one, after a red arc on the ground in front of it.
+        if (m.elite?.affixes.includes('brutal') && (m.blows = (m.blows ?? 0) + 1) % BRUTAL.every === 0) { m.abCast = -1; m.tell = BRUTAL.tell; m.aim = { x: px0, y: py0 - 12 }; continue; }
+        // Blinded (Afterimage): half its blows go astray (Blessed Aim steadies them).
+        if ((m.blindT ?? 0) > 0 && Math.random() < BLIND_MISS * (1 - (m.bless?.fx.aim ?? 0))) { this.float(m.x, m.y - m.def.h, 'miss', '#9a948a'); continue; }
+        // Might (a pack aura) lifts its blow.
+        let n = Math.round(rnd(m.def.dmg[0], m.def.dmg[1]) * (m.bless?.fx.blow ?? 1));
         // A cursed foe bites weaker.
         const weak = this.weakOf(m);
         if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
         if (other) {
           const ax = m.elite?.affixes ?? [];
           (m.coopBy ??= new Set()).add(other.id);
-          this.coop?.bite(other.id, m, n, this.blowType(m), ax.includes('mana-burn'), ax.includes('cursed'));
-        } else if (prey) this.hurtMinion(prey, n);
-        else { this.biteKeeper(n, this.blowType(m), m); this.eliteBlow(m); this.struckBy(m); }
+          this.coop?.bite(other.id, m, n, this.blowType(m), ax.includes('mana-burn'), ax.includes('cursed'), this.biteRiders(m, n, false) || undefined);
+        } else if (prey) { this.hurtMinion(prey, n); this.biteRiders(m, n, false); }
+        else { this.biteKeeper(n, this.blowType(m), m); this.layOn(this.biteRiders(m, n, true), m); this.eliteBlow(m); this.struckBy(m); }
       }
     }
     // A pack stays a pack, not one sprite: creatures standing on each other ease apart (never into a wall).
@@ -3076,10 +3318,15 @@ export class MobSystem {
       b.t -= dt;
       if (b.t > 0) continue;
       this.bursts.splice(i, 1);
-      this.effects.push({ kind: 'wave', el: b.el ?? 'ember', r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
+      // S6: a raise's sigil or a mending ring is a picture only; an ability ring wears its tone.
+      if (b.fx) { this.effects.push({ kind: b.el === 'life' ? 'heal' : 'raise', x: b.x, y: b.y, age: 0, life: .5, dir: 1 }); if (b.el === 'raise' && this.replica) this.raiseSeen(b.x, b.y); continue; }
+      this.effects.push({ kind: 'wave', el: waveEl(b.el), r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
       // A member under a host only sees the burst: the host decides who it caught (a bite, below, on the host's side).
       if (this.replica) continue;
+      // The ground it leaves (fire ground, a web, a spore cloud).
+      if (b.after) this.layHazard({ x: b.x, y: b.y, r: b.after.r, t: b.after.t, dps: b.after.dps, ...(b.after.st ? { st: b.after.st } : {}), tone: b.after.tone, ...(b.lv ? { lv: b.lv } : {}), type: b.type ?? 'fire', ...(b.by ? { by: b.by } : {}) });
       // Only what it can reach from its centre: a ring by a wall does not burst into the room behind it.
+      if (b.tone) { for (const k of this.keepersIn(b.x, b.y, b.r)) this.strikeKeeper(k, b.dmg, b.type ?? 'fire', b.by ?? null, b.st ?? '', b.lv); continue; }
       if (!this.selfAway && Math.hypot(p.x - b.x, p.y - b.y) <= b.r && this.reaches(b.x, b.y, p)) this.biteKeeper(b.dmg, b.type ?? 'fire', undefined, b.lv);
       for (const o of this.others) if (Math.hypot(o.x - b.x, o.y - b.y) <= b.r && this.reaches(b.x, b.y, o)) this.coop?.bite(o.id, null, b.dmg, b.type ?? 'fire', false, false);
     }
@@ -3088,6 +3335,19 @@ export class MobSystem {
       k.t -= dt;
       if (k.t > 0) continue;
       this.calls.splice(i, 1);
+      // S6: a raise — the singer must still stand, the corpse still lie; it rises at its share of life, owing nothing.
+      if (k.corpse) {
+        const ci = this.remains.findIndex(cp => cp.id === k.corpse);
+        if ((k.by && !this.mobs.includes(k.by)) || ci < 0 || !MOBS[k.type]) continue;
+        const cp = this.remains[ci];
+        this.remains.splice(ci, 1);
+        const rd = atZoneLevel(MOBS[k.type], k.level ?? (cp.def as MobDef).level ?? MOBS[k.type].level), rm = this.spawnMob(k.key, rd, k.x, k.y);
+        rm.hp = Math.max(1, Math.round(rm.def.hp * (k.pct ?? .5))); rm.raised = true; rm.face = cp.face;
+        this.mobs.push(rm);
+        if (k.by) k.by.raisedOne = true;
+        this.effects.push({ kind: 'raise', x: k.x, y: k.y, age: 0, life: .5, dir: 1 });
+        continue;
+      }
       // Eclipse-touched summons (the Seam Eater's call) climb out as lone touched champions (td-elites touchPack).
       if (MOBS[k.type]) { const cd = k.level ? atZoneLevel(MOBS[k.type], k.level) : MOBS[k.type]; if (k.touched) this.spawnPack(k.key, cd, k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, cd, k.x, k.y)); }
       this.effects.push({ kind: 'spark', x: k.x, y: k.y - 6, age: 0, life: .3, dir: 1 });
@@ -3125,6 +3385,416 @@ export class MobSystem {
       this.haste = Math.max(0, this.haste - dt);
       if (Math.random() < dt * 8) this.effects.push({ kind: 'dust', x: p.x + rnd(-4, 4), y: p.y, age: 0, life: .4, dir: 1 });
     }
+  }
+
+  // ── S6: creature abilities, pack auras and the new affixes (docs/design/monsters-abilities.md) ───────────────────
+  /** The land this area belongs to (the engine and the room hand it in): the zone's aura list reads it. */
+  land = '';
+  /** A thunderstorm over the area (Holy Shock joins the Wilds' list). */
+  storm = false;
+  /** Lasting hostile ground: fire ground, crust, an ink trail, a web, a spore cloud (a member draws the host's). */
+  readonly hazards: Hazard[] = [];
+  /** Hush owed to the engine's dark layer (Whispering blows): it drains it each frame. */
+  hushOwed = 0;
+  /**
+   * The Keeper's own statuses from creatures' abilities (seconds left): stunned and frozen (he stands, he does
+   * nothing), rooted (he stands), chilled, blinded (half his blows go astray), wet, weakened, his light cut; a burn
+   * and a bleed (whole damage a second); and the immunity a Stun or a Freeze leaves (§1.8).
+   */
+  readonly kst = { stun: 0, freeze: 0, root: 0, chill: 0, blind: 0, wet: 0, weak: 0, dark: 0, immune: 0, burn: { t: 0, dps: 0, tick: 1 }, bleed: { t: 0, dps: 0, tick: 1 } };
+  /** He cannot step (stunned, frozen, rooted): the engine and the sim read it. */
+  get held(): boolean { return this.kst.stun > 0 || this.kst.freeze > 0 || this.kst.root > 0; }
+  /** He cannot act (stunned, frozen). */
+  get dazed(): boolean { return this.kst.stun > 0 || this.kst.freeze > 0; }
+  /** Pack auras on him now (§3): every resist lower (Conviction), his step slower (Holy Freeze), his light shorter (Lightless, True Light; tiles). */
+  packResist = 0;
+  packSlow = 0;
+  lightCut = 0;
+  /** Abilities cast so far, by id (the specs and the sim's tally read it). */
+  readonly casts = new Map<string, number>();
+
+  /** One creature's blow (B, §1): its own roll, Might-lifted, weakened by a curse. */
+  private blowB(m: Mob): number {
+    let n = rnd(m.def.dmg[0], m.def.dmg[1]) * (m.bless?.fx.blow ?? 1);
+    const weak = this.weakOf(m);
+    if (weak > 0) n *= 1 - weak / 100;
+    return Math.max(1, n);
+  }
+  /** Every Keeper inside a ring at (x, y): this one (unless away) and the party's others; only what the centre reaches. */
+  private keepersIn(x: number, y: number, r: number): { self: boolean; id: string; x: number; y: number }[] {
+    const out: { self: boolean; id: string; x: number; y: number }[] = [], p = this.host.player();
+    if (!this.selfAway && Math.hypot(p.x - x, p.y - y) <= r && this.reaches(x, y, p)) out.push({ self: true, id: '', x: p.x, y: p.y });
+    for (const o of this.others) if (Math.hypot(o.x - x, o.y - y) <= r && this.reaches(x, y, o)) out.push({ self: false, id: o.id, x: o.x, y: o.y });
+    return out;
+  }
+  /** An ability's statuses at its caster's blow (a burn's damage a second in B), as the wire carries them. */
+  private statusOf(list: readonly StatusLay[] | undefined, B: number, pull = 0): string {
+    const out: { s: KeeperStatus; t: number; dps?: number }[] = (list ?? []).map(x => ({ s: x.s, t: x.t, ...(x.b ? { dps: x.b * B } : {}) }));
+    if (pull) out.push({ s: pull > 0 ? 'pull' : 'push', t: Math.abs(pull) });
+    return encodeStatus(out);
+  }
+  /** An ability lands on one Keeper: its damage through his defenses, its statuses, a pull toward (or a push from) `from`. */
+  private strikeKeeper(k: { self: boolean; id: string }, raw: number, type: DamageType, from: Mob | null, st: string, lv?: number): void {
+    if (k.self) {
+      if (raw > 0) this.biteKeeper(raw, type, from ?? undefined, lv ?? from?.def.level);
+      this.layOn(st, from);
+      if (from && this.coop && !this.replica) (from.coopBy ??= new Set()).add('');
+      return;
+    }
+    if (raw > 0 || st) this.coop?.bite(k.id, from, Math.max(1, raw), type, false, false, st || undefined);
+  }
+  /** Statuses arrive on this Keeper (an ability of a creature here, or the room's bite): the CC rules hold (§1.8). */
+  layOn(st: string | undefined, from?: { x: number; y: number } | null): void {
+    if (!st) return;
+    const k = this.kst, p = this.host.player();
+    for (const x of decodeStatus(st)) {
+      switch (x.s) {
+        case 'stun': case 'freeze':
+          if (k.immune > 0) break;
+          k[x.s] = Math.max(k[x.s], x.t); k.immune = x.t + KEEPER_CC_IMMUNE;
+          this.effects.push({ kind: 'spark', x: p.x, y: p.y - 40, age: 0, life: .4, dir: 1 });
+          break;
+        case 'frost':
+          // Gloam Blizzard: a Wet Keeper freezes on the first pulse; a dry one is only chilled.
+          if (k.wet > 0 && k.immune <= 0) { k.freeze = Math.max(k.freeze, 1); k.immune = 1 + KEEPER_CC_IMMUNE; } else k.chill = Math.max(k.chill, x.t);
+          break;
+        case 'root': k.root = Math.max(k.root, Math.min(KEEPER_ROOT_MAX, x.t)); break;
+        case 'chill': case 'blind': case 'wet': case 'weak': case 'dark': k[x.s] = Math.max(k[x.s], x.t); break;
+        case 'burn': case 'bleed': { const d = k[x.s]; if (d.t <= 0) d.tick = 1; d.t = Math.max(d.t, x.t); d.dps = Math.max(d.t > 0 ? d.dps : 0, x.dps); break; }
+        case 'pull': case 'push': {
+          if (!from || !this.host.dash) break;
+          const dx = from.x - p.x, dy = from.y - p.y, len = Math.hypot(dx, dy) || 1;
+          const go = x.s === 'pull' ? Math.min(x.t * TILE, Math.max(0, len - 14)) : -x.t * TILE;
+          if (go) this.host.dash(p.x + dx / len * go, p.y + dy / len * go);
+          break;
+        }
+      }
+    }
+  }
+  /** His statuses run down; a burn and a bleed bite once a second (a bleed twice as hard while he moves). */
+  private tickKeeper(dt: number): void {
+    const k = this.kst;
+    for (const s of ['stun', 'freeze', 'root', 'chill', 'blind', 'wet', 'weak', 'dark', 'immune'] as const) if (k[s] > 0) k[s] = Math.max(0, k[s] - dt);
+    if (this.selfAway) return;
+    const moving = Math.hypot(this.pv.x, this.pv.y) > STILL_PACE;
+    for (const [s, type] of [['burn', 'fire'], ['bleed', 'physical']] as const) {
+      const d = k[s];
+      if (d.t <= 0) continue;
+      d.t -= dt; d.tick -= dt;
+      if (d.tick <= 0 || d.t <= 0) {
+        d.tick = 1;
+        const n = Math.round(d.dps * (s === 'bleed' && moving ? BLEED_MOVING : 1));
+        if (n > 0) { this.biteKeeper(n, type); this.effects.push({ kind: s === 'burn' ? 'flame' : 'bleed', x: this.host.player().x, y: this.host.player().y - 10, age: 0, life: .4, dir: 1 }); }
+      }
+      if (d.t <= 0) d.dps = 0;
+    }
+  }
+
+  /**
+   * The pack auras (§3), every frame and on every screen: who carries one, who it blesses (its own pack within 4
+   * tiles), and what it does to this Keeper standing in its reach (Conviction, Holy Freeze, Lightless; his own aura of
+   * the opposite kind halves it). The simulating side also pulses Holy Fire and Holy Shock and mends with Prayer.
+   */
+  private tickPackAuras(dt: number): void {
+    const lid = this.host.levelId(), p = this.host.player(), here = !this.selfAway;
+    this.packResist = 0; this.packSlow = 0;
+    let dark = this.kst.dark > 0 ? TRUE_LIGHT_CUT : 0;
+    const bearers: Mob[] = [];
+    for (const m of this.mobs) {
+      m.bless = null;
+      if (!this.replica && (m.auraOffT ?? 0) > 0) m.auraOffT = Math.max(0, (m.auraOffT ?? 0) - dt);
+      m.aura = bearerAura(m, lid);
+      if (m.aura) bearers.push(m);
+      // The Lightless affix: its own body snuffs the light near it.
+      if (here && m.elite?.affixes.includes('lightless') && Math.hypot(m.x - p.x, m.y - p.y) <= LIGHTLESS_R) dark = Math.max(dark, packAuraFx('lightless', packAuraLevel(m.def.level, this.tier.id)).dark * (halvedBy(this.aura, 'lightless') ? .5 : 1));
+    }
+    for (const b of bearers) {
+      const id = b.aura!, L = packAuraLevel(b.def.level, this.tier.id), fx = packAuraFx(id, L);
+      for (const m of this.mobs) if (!m.bless && samePack(b, m) && Math.hypot(m.x - b.x, m.y - b.y) <= PACK_AURA_REACH) m.bless = { id, L, by: b, fx };
+      if (here && Math.hypot(b.x - p.x, b.y - p.y) <= PACK_AURA_REACH) {
+        const half = halvedBy(this.aura, id) ? .5 : 1;
+        if (fx.resistLower) this.packResist = Math.max(this.packResist, fx.resistLower * half);
+        if (fx.slow) this.packSlow = Math.max(this.packSlow, fx.slow * half);
+        if (fx.dark) dark = Math.max(dark, fx.dark * half);
+      }
+      if (this.replica) continue;
+      const type = PACK_PULSE_TYPE[id];
+      if (type) {
+        b.pulseT = (b.pulseT ?? PACK_PULSE) - dt;
+        if (b.pulseT <= 0) {
+          b.pulseT = PACK_PULSE;
+          const B = (b.def.dmg[0] + b.def.dmg[1]) / 2, hit = this.keepersIn(b.x, b.y, PACK_AURA_REACH);
+          if (hit.length) this.effects.push({ kind: 'wave', el: type === 'fire' ? 'ember' : 'brass', r: PACK_AURA_REACH, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
+          for (const k of hit) {
+            let raw = B * (fx.pulse[0] + Math.random() * (fx.pulse[1] - fx.pulse[0]));
+            if (type === 'lightning' && k.self && this.kst.wet > 0) raw *= 1.25;
+            this.strikeKeeper(k, raw, type, b, '');
+          }
+        }
+      }
+    }
+    if (!this.replica) for (const m of this.mobs) if (m.bless?.fx.regen && m.hp < m.def.hp) m.hp = Math.min(m.def.hp, m.hp + healBase(m) * m.bless.fx.regen * dt);
+    this.lightCut = dark;
+  }
+
+  /** A creature's own S6 clocks each frame (simulating side): underground, a ward, a mending, a howl, its trail. */
+  private tickMobS6(m: Mob, dt: number): void {
+    if ((m.hidden ?? 0) > 0) m.hidden = Math.max(0, (m.hidden ?? 0) - dt);
+    if ((m.wardT ?? 0) > 0) { m.wardT = Math.max(0, (m.wardT ?? 0) - dt); if (m.wardT <= 0) m.ward = 0; }
+    if ((m.howlT ?? 0) > 0) m.howlT = Math.max(0, (m.howlT ?? 0) - dt);
+    if ((m.mendT ?? 0) > 0) { m.mendT = Math.max(0, (m.mendT ?? 0) - dt); m.hp = Math.min(m.def.hp, m.hp + healBase(m) * (m.mendPct ?? 0) * dt); }
+    if (m.ab) for (let i = 0; i < m.ab.length; i++) if (m.ab[i] > 0) m.ab[i] = Math.max(0, m.ab[i] - dt);
+    // A trail (Crust, Ink Trail): a patch where it walked, every so often while it moves.
+    const trail = castable(m.def.id).find(a => a.kind === 'trail');
+    if (trail?.after) {
+      m.trailT = (m.trailT ?? 0) - dt;
+      const at = m.trailAt, moved = !at || Math.hypot(m.x - at.x, m.y - at.y) > 7;
+      if (m.trailT <= 0 && moved) {
+        m.trailT = trail.cd; m.trailAt = { x: m.x, y: m.y };
+        this.layHazard({ x: m.x, y: m.y, r: trail.after.r * ATILE, t: trail.after.t, dps: 0, ...(trail.after.st ? { st: trail.after.st } : {}), tone: trail.tone, by: m });
+      }
+    }
+  }
+  /** Lasting hostile ground (capped: the oldest give way). */
+  private layHazard(h: Omit<Hazard, 'life' | 'tick'>): void {
+    this.hazards.push({ ...h, life: h.t, tick: .5 });
+    if (this.hazards.length > 48) this.hazards.splice(0, this.hazards.length - 48);
+  }
+  /** Hostile ground runs down; fire ground burns who stands in it (simulating side), and every patch lays its status on this Keeper. */
+  private tickHazards(dt: number): void {
+    const p = this.host.player();
+    for (let i = this.hazards.length - 1; i >= 0; i--) {
+      const h = this.hazards[i];
+      h.t -= dt; h.tick -= dt;
+      if (h.t <= 0) { this.hazards.splice(i, 1); continue; }
+      // Any fire on a web or a spore cloud clears it (the web burns; the cloud bursts, design-bible §4.7).
+      if (h.tick > 0) continue;
+      h.tick = .5;
+      // His own status inside it, on any screen (a member draws the host's patches and feels them here).
+      if (h.st && !this.selfAway && Math.hypot(p.x - h.x, p.y - h.y) <= h.r) this.layOn(encodeStatus([{ s: h.st, t: .7 }]));
+      if (this.replica || !(h.dps > 0)) continue;
+      for (const k of this.keepersIn(h.x, h.y, h.r)) this.strikeKeeper(k, h.dps * .5, h.type ?? 'fire', null, '', h.lv);
+    }
+  }
+  /** The Keeper's fire clears a web or a spore cloud it touches (the counters "burn it"). */
+  private burnHazards(x: number, y: number, r: number): void {
+    for (let i = this.hazards.length - 1; i >= 0; i--) { const h = this.hazards[i]; if ((h.tone === 'moss' || h.tone === 'life') && Math.hypot(h.x - x, h.y - y) <= h.r + r) this.hazards.splice(i, 1); }
+  }
+
+  /**
+   * Try one of a hunting creature's abilities (the first ready one whose reach its prey is in): it begins its tell and
+   * the creature stands while the tell runs (true), or it acts at once and goes on (a flee, a passive: false).
+   */
+  private tryAbility(m: Mob, px: number, py: number, d: number): boolean {
+    const list = castable(m.def.id);
+    if (!list.length) return false;
+    m.ab ??= list.map(a => a.cd * (.4 + Math.random() * .4));
+    const lid = this.host.levelId();
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      if ((m.ab[i] ?? 0) > 0 || a.kind === 'trail') continue;
+      if (a.only && !a.only.some(o => lid.startsWith(o))) continue;
+      if (d > a.reach * ATILE + 4) continue;
+      const cd = tierCd(a.cd, this.tier.id) * (m.bless?.fx.cd ?? 1);
+      if (a.kind === 'flee') { m.ab[i] = cd; m.fearT = Math.min(3, 6 * ATILE / Math.max(20, m.def.speed)); this.counted(a); return false; }
+      if (!this.ready(m, a)) continue;
+      m.ab[i] = cd;
+      this.counted(a);
+      if (a.words) { m.chantT = CHANT_SECS; m.chantText = a.words; }
+      if (Math.abs(px - m.x) > 2) m.face = px < m.x ? -1 : 1;
+      m.abCast = i; m.tell = Math.max(a.tell, .3); m.aim = { x: px, y: py - 12 };
+      this.beginAbility(m, a, px, py);
+      return true;
+    }
+    return false;
+  }
+  private counted(a: AbilityDef): void { this.casts.set(a.id, (this.casts.get(a.id) ?? 0) + 1); }
+  /** Whether it has something to cast on (a corpse to raise, a kin to ward, mend or howl with). */
+  private ready(m: Mob, a: AbilityDef): boolean {
+    if (a.kind === 'raise') return this.raisable(m, a).length > 0;
+    if (a.kind === 'ward') return !!this.kinOf(m, (a.r ?? 5) * ATILE).find(k => k !== m && !(k.ward ?? 0) && k.hp < k.def.hp);
+    if (a.kind === 'mend') return this.kinOf(m, (a.r ?? 4) * ATILE).some(k => k.hp < k.def.hp * .85);
+    if (a.kind === 'howl') return this.kinOf(m, (a.r ?? 6) * ATILE).some(k => k !== m && k.def.id === m.def.id);
+    return true;
+  }
+  /** Its kin near it: the same family, not hidden. */
+  private kinOf(m: Mob, r: number): Mob[] {
+    const fam = creatureProfile(m.def.id).family;
+    // Never a boss (a mending priest does not keep a floor's boss alive: its party form will, §5).
+    return this.mobs.filter(k => k.hp > 0 && k.def.rank !== 'boss' && !k.def.bound && Math.hypot(k.x - m.x, k.y - m.y) <= r && creatureProfile(k.def.id).family === fam);
+  }
+  /** The corpses a raiser may bring back: its own keys, fresh enough, not ash, not laid to rest, not already called. */
+  private raisable(m: Mob, a: AbilityDef): Corpse[] {
+    const r = a.raise!, called = new Set(this.calls.map(k => k.corpse).filter(Boolean));
+    return this.remains.filter(cp => r.keys.includes(cp.kind.id) && !cp.ash && !cp.rested && !called.has(cp.id) && this.clock - cp.born < 130 && Math.hypot(cp.x - m.x, cp.y - m.y) <= r.from * ATILE)
+      .sort((p, q) => Math.hypot(p.x - m.x, p.y - m.y) - Math.hypot(q.x - m.x, q.y - m.y)).slice(0, r.most);
+  }
+  /** The tell begins: rings on the ground (they strike for themselves), a sigil over each corpse, a ward chosen. */
+  private beginAbility(m: Mob, a: AbilityDef, px: number, py: number): void {
+    const B = this.blowB(m), type: DamageType = a.el ?? this.blowType(m), lv = m.def.level, r = (a.r ?? 1) * ATILE;
+    const st = this.statusOf(a.st, B, a.pull ?? 0);
+    const after = a.after ? { r: a.after.r * ATILE, t: a.after.t, dps: a.after.b * B, ...(a.after.st ? { st: a.after.st } : {}), tone: a.tone } : undefined;
+    const ring = (x: number, y: number, t: number, dmg: number, extra: Partial<DeathBurst> = {}) =>
+      this.bursts.push({ x, y, t, delay: t, r, dmg: Math.round(dmg), lv, type, el: a.tone, tone: a.tone, by: m, ...(st ? { st } : {}), ...(after ? { after } : {}), ...extra } as DeathBurst);
+    switch (a.kind) {
+      case 'smash': ring(m.x, m.y, a.tell, B * (a.b ?? 1)); break;
+      case 'burrow': m.hidden = a.tell + .15; ring(px, py, a.tell, B * (a.b ?? 1)); break;
+      case 'field': ring(px, py, a.tell, 0); break;
+      case 'drop': {
+        const n = a.n ?? 1;
+        if (a.over) {
+          // A blizzard: its pulses fall on the same ring, one after another; Gloam Blizzard freezes the Wet.
+          for (let i = 0; i < n; i++) ring(px, py, a.tell + i * a.over / n, B * (a.b ?? 1), a.id === 'gloam-blizzard' ? { st: 'frost:20' } : {});
+        } else for (let i = 0; i < n; i++) {
+          const ox = n > 1 ? (i - (n - 1) / 2) * 22 : 0, oy = n > 1 ? (i % 2 ? 8 : -8) : 0;
+          ring(px + ox, py + oy, a.tell, B * (a.b ?? 1));
+        }
+        break;
+      }
+      case 'cracks': {
+        const n = a.n ?? 3, dx = px - m.x, dy = py - m.y, len = Math.max(1, Math.hypot(dx, dy)), step = Math.max(18, len / n);
+        for (let i = 0; i < n; i++) { const k = Math.min(len + 10, step * (i + 1)); ring(m.x + dx / len * k, m.y + dy / len * k, a.tell + i * (a.over ?? .2), B * (a.b ?? 1)); }
+        break;
+      }
+      case 'raise':
+        for (const [i, cp] of this.raisable(m, a).entries()) {
+          this.calls.push({ x: cp.x, y: cp.y, type: cp.kind.id, key: `${m.key}:raise${i}:${Math.round(this.clock * 10)}`, t: a.tell, level: m.def.level, by: m, corpse: cp.id, pct: a.raise!.pct });
+          this.bursts.push({ x: cp.x, y: cp.y, t: a.tell, delay: a.tell, r: 11, dmg: 0, el: 'raise', tone: a.tone, by: m, fx: true });
+        }
+        break;
+      case 'mend': {
+        const kin = this.kinOf(m, (a.r ?? 4) * ATILE).sort((p, q) => p.hp / p.def.hp - q.hp / q.def.hp)[0];
+        if (kin) this.bursts.push({ x: kin.x, y: kin.y, t: a.tell, delay: a.tell, r: 12, dmg: 0, el: 'life', tone: 'life', by: m, fx: true });
+        break;
+      }
+      default: break;
+    }
+  }
+  /** The tell ran out: the line strikes, the cone breathes, the fan looses, the ward lands, the bat shrieks. */
+  private releaseAbility(m: Mob): void {
+    const i = m.abCast!, a = castable(m.def.id)[i];
+    m.abCast = undefined;
+    if (i === -1 && m.aim) {
+      // Brutal's heavy blow: whoever still stands where the red arc pointed.
+      const ax = m.aim.x, ay = m.aim.y + 12, B = this.blowB(m) * BRUTAL.share;
+      this.effects.push({ kind: 'slash', x: ax, y: ay - 10, age: 0, life: .25, dir: m.face });
+      for (const k of this.keepersIn(ax, ay, MOB_REACH + 8)) this.strikeKeeper(k, B, this.blowType(m), m, '');
+      return;
+    }
+    if (!a) return;
+    const aim = m.aim ?? { x: m.x + m.face * 20, y: m.y - 12 }, ax = aim.x, ay = aim.y + 12;
+    const B = this.blowB(m), type: DamageType = a.el ?? this.blowType(m), st = this.statusOf(a.st, B, a.pull ?? 0);
+    switch (a.kind) {
+      case 'spit': case 'fan': case 'wave': {
+        const n = a.kind === 'spit' ? 1 : a.n ?? 3, step = (a.spread ?? 15) * Math.PI / 180, speed = a.kind === 'wave' ? 130 : 150;
+        const kind: MobShot['kind'] = a.kind === 'wave' ? 'breath' : type === 'fire' ? 'fire' : 'arrow';
+        const sx = m.x + m.face * m.def.w * .3, lift = m.def.h * .55, range = (a.r ?? a.reach) * ATILE;
+        for (let k = 0; k < n; k++) {
+          const s = aimShot(sx, m.y - lift, ax, ay - 12, speed * (m.bless?.fx.shotSpeed ?? 1), range / 1.4, Math.round(B * (a.b ?? 1)), kind, (k - (n - 1) / 2) * step);
+          this.shots.push({ ...s, lift, land: 12, reach: Math.hypot(ax - sx, ay - m.y), type, lv: m.def.level, ...(st ? { st } : {}) });
+        }
+        break;
+      }
+      case 'line': {
+        const dx = ax - m.x, dy = ay - m.y, len = Math.max(1, Math.hypot(dx, dy)), far = (a.reach + .5) * ATILE;
+        const ex = m.x + dx / len * far, ey = m.y + dy / len * far, half = (a.r ?? .6) * ATILE;
+        this.effects.push({ kind: 'slash', x: (m.x + ex) / 2, y: (m.y + ey) / 2 - 6, age: 0, life: .25, dir: m.face });
+        const p = this.host.player();
+        const targets = [...(!this.selfAway ? [{ self: true, id: '', x: p.x, y: p.y }] : []), ...this.others.map(o => ({ self: false, id: o.id, x: o.x, y: o.y }))];
+        for (const k of targets) if (segDist(m.x, m.y, ex, ey, k.x, k.y) <= half && this.sight.sees(m.x, m.y, k.x, k.y)) this.strikeKeeper(k, B * (a.b ?? 0), type, m, st);
+        break;
+      }
+      case 'burrow': {
+        // It rises where the stir was (the ring has struck already).
+        // A body-width to the side of the stir it broke (never inside the Keeper it came up under).
+        const rx = ax + (m.x <= ax ? -1 : 1) * Math.max(10, m.def.w * .4);
+        if (this.free(rx, ay, m.def.floats)) { m.x = rx; m.y = ay; } else if (this.free(ax, ay + 10, m.def.floats)) { m.x = ax; m.y = ay + 10; }
+        m.hidden = 0;
+        for (let k = 0; k < 4; k++) this.effects.push({ kind: 'dust', x: m.x + rnd(-6, 6), y: m.y, age: 0, life: .5, dir: 1 });
+        break;
+      }
+      case 'ward': {
+        const kin = this.kinOf(m, (a.r ?? 5) * ATILE).filter(k => k !== m && !(k.ward ?? 0)).sort((p, q) => p.hp / p.def.hp - q.hp / q.def.hp)[0];
+        if (kin) { kin.ward = Math.round(B * (a.amt ?? 3)); kin.wardT = a.secs ?? 6; this.effects.push({ kind: 'ward', x: kin.x, y: kin.y - kin.def.h / 2, age: 0, life: .5, dir: 1 }); }
+        break;
+      }
+      case 'mend':
+        for (const k of this.kinOf(m, (a.r ?? 4) * ATILE)) { k.mendT = a.secs ?? 3; k.mendPct = a.amt ?? .06; this.effects.push({ kind: 'heal', x: k.x, y: k.y - k.def.h / 2, age: 0, life: .5, dir: 1 }); }
+        break;
+      case 'howl':
+        for (const k of this.kinOf(m, (a.r ?? 6) * ATILE)) if (k.def.id === m.def.id) k.howlT = a.secs ?? 4;
+        this.effects.push({ kind: 'cry', x: m.x, y: m.y, r: (a.r ?? 6) * ATILE, age: 0, life: .4, dir: 1 });
+        break;
+      case 'shriek':
+        this.effects.push({ kind: 'cry', x: m.x, y: m.y, r: (a.r ?? 2) * ATILE, age: 0, life: .4, dir: 1 });
+        for (const k of this.keepersIn(m.x, m.y, (a.r ?? 2) * ATILE)) this.strikeKeeper(k, 0, type, m, st);
+        break;
+      case 'blink': {
+        const dx = ax - m.x, dy = ay - m.y, len = Math.max(1, Math.hypot(dx, dy)), go = Math.min((a.r ?? 3) * ATILE, Math.max(0, len - 16));
+        const bx = m.x + dx / len * go, by = m.y + dy / len * go;
+        if (this.free(bx, by, m.def.floats)) { this.effects.push({ kind: 'spark', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .3, dir: 1 }); m.x = bx; m.y = by; }
+        m.emberBite = a.st;
+        break;
+      }
+      default: break;
+    }
+  }
+  /** A Stun, a Freeze or a Hush in a cast's tell (§1.2): it is cancelled, its rings and sigils taken back, its cooldown at half. */
+  private interruptCast(m: Mob): void {
+    const i = m.abCast;
+    if (i === undefined) return;
+    const a = castable(m.def.id)[i];
+    m.abCast = undefined; m.tell = 0; m.aim = null; m.hidden = 0;
+    if (a && m.ab) m.ab[i] = tierCd(a.cd, this.tier.id) * .5;
+    for (let k = this.bursts.length - 1; k >= 0; k--) if (this.bursts[k].by === m) this.bursts.splice(k, 1);
+    for (let k = this.calls.length - 1; k >= 0; k--) if (this.calls[k].by === m) this.calls.splice(k, 1);
+    this.float(m.x, m.y - m.def.h - 6, '!', '#f3e7cf');
+  }
+  /** A blow lands from `m`: what it lays (Scrape's bleed, Will-o'-the-Fen's burn), heals (Vampiric), wakes (Whispering). */
+  private biteRiders(m: Mob, n: number, self: boolean): string {
+    const lays: { s: KeeperStatus; t: number; dps?: number }[] = [];
+    const B = (m.def.dmg[0] + m.def.dmg[1]) / 2;
+    for (const a of ABIL_PASSIVE(m.def.id)) for (const x of a.st ?? []) lays.push({ s: x.s, t: x.t, ...(x.b ? { dps: x.b * B } : {}) });
+    if (m.emberBite) { for (const x of m.emberBite) lays.push({ s: x.s, t: x.t, ...(x.b ? { dps: x.b * B } : {}) }); m.emberBite = undefined; }
+    const ax = m.elite?.affixes;
+    if (ax?.includes('vampiric')) m.hp = Math.min(m.def.hp, m.hp + n * VAMPIRIC);
+    if (self && ax?.includes('whispering')) this.hushOwed += WHISPER_HUSH;
+    return lays.length ? encodeStatus(lays) : '';
+  }
+  /** A member: the host's hostile ground, to draw and to feel (its statuses land here; its damage is the host's). */
+  fieldSeen(e: { x: number; y: number; r: number; t: number; tn: string; st?: string }): void {
+    const st = e.st && /^(stun|root|chill|freeze|blind|wet|weak|dark)$/.test(e.st) ? e.st as KeeperStatus : undefined;
+    this.layHazard({ x: e.x, y: e.y, r: e.r, t: e.t, dps: 0, ...(st ? { st } : {}), tone: e.tn as TellTone });
+  }
+  /** Test hooks only (the S6 shots): it lies down dead where it stands — a corpse, no loot, no XP. */
+  fxLayDead(m: Mob): void {
+    const i = this.mobs.indexOf(m);
+    if (i >= 0) this.mobs.splice(i, 1);
+    this.leaveCorpse(m);
+  }
+  /** Test hooks only (the S6 shots, `?fxs6=`): a creature begins one of its abilities at (x, y) now, as if it had chosen to. */
+  fxCast(m: Mob, i: number, x: number, y: number): boolean {
+    const a = castable(m.def.id)[i];
+    if (!a || !this.ready(m, a)) return false;
+    if (a.words) { m.chantT = CHANT_SECS; m.chantText = a.words; }
+    m.face = x < m.x ? -1 : 1;
+    m.abCast = i; m.tell = Math.max(a.tell, .3); m.aim = { x, y: y - 12 };
+    (m.ab ??= castable(m.def.id).map(() => 0))[i] = a.cd;
+    this.beginAbility(m, a, x, y);
+    return true;
+  }
+  /** A member saw the room raise one: the corpse there is up and walking (its own copy goes). */
+  raiseSeen(x: number, y: number): void {
+    let bi = -1, bd = 12;
+    this.remains.forEach((cp, i) => { const d = Math.hypot(cp.x - x, cp.y - y); if (d < bd) { bd = d; bi = i; } });
+    if (bi >= 0) this.remains.splice(bi, 1);
+  }
+  /** A pack aura's strip (Unmaking, Strip, Banish the Bearer): its aura ends a while (§3, bosses 1/5). */
+  stripAura(m: Mob): void {
+    const bearer = m.aura ? m : m.bless?.by;
+    if (!bearer) return;
+    bearer.auraOffT = ccSecs(PACK_STRIP_SECS, bearer.def.rank);
+    this.effects.push({ kind: 'pulse', el: 'shadow', x: bearer.x, y: bearer.y, age: 0, life: .5, dir: 1 });
   }
 
   /** A gap-closer crossing (MobDef.charge): on to its spot, then the blow lands on whatever stands there. */
@@ -3170,6 +3840,12 @@ export class MobSystem {
     if ((foe.revealT ?? 0) > 0) raw *= 1 + DAWN_REVEAL / 100;
     // The worn aura: Might lifts every hit; Conviction's lost resistance is that much more damage on a foe near.
     if (this.itemAura) { raw *= this.itemAura.fx.damage; if (this.itemAura.fx.resistLower > 0 && this.inItemAura(foe)) raw *= 1 + this.itemAura.fx.resistLower / 100; }
+    // S6: blinded, half his own blows go astray; weakened (a spore cloud), they land softer.
+    if (this.claimFrom === '' && this.kst.blind > 0 && Math.random() < .5) { this.float(foe.x, foe.y - foe.def.h, 'miss', '#9a948a'); return 0; }
+    if (this.kst.weak > 0) raw *= 1 - SPORE_WEAKEN;
+    // His fire turns what it fells to ash (nothing raises it) and clears a web or a cloud it touches.
+    this.fireBlow = !!src && FIRE_SKILLS.has(src);
+    if (this.fireBlow) this.burnHazards(foe.x, foe.y, 8);
     const crit = this.forceCrit || (this.crit > 0 && Math.random() < this.crit);
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
@@ -3201,10 +3877,12 @@ export class MobSystem {
     if (this.replica) foe.lastSrc = src;
     this.killSrc = src;
     const dealt = this.hurtMob(foe, dmg, color, crit);
-    this.killSrc = null;
+    this.killSrc = null; this.fireBlow = false;
     if (was && dealt > 0 && src) this.markHit(foe, src, raw, dealt);
     return dealt;
   }
+  /** The blow landing now is fire (a fire skill, a member's fire claim): its fall leaves ash. */
+  private fireBlow = false;
   /** A sure crit on the next hit (a mark's: Hunter's Rhythm, Leaf-Shadow) while it is set. */
   private forceCrit = false;
   /** The Keeper's life as a share of his most (1 when the host cannot say). */
@@ -3340,6 +4018,7 @@ export class MobSystem {
       case 'hush':
         m.hushT = Math.max(m.hushT ?? 0, cc);
         // An interrupt: a boss's wind-up in progress is cancelled (skills-100.md §0.4).
+        if (m.abCast !== undefined) this.interruptCast(m);
         if (m.tell > 0) { m.tell = 0; m.aim = null; m.charging = false; }
         break;
       case 'taunt': m.taunt = Math.max(m.taunt ?? 0, cc); break;
@@ -3354,6 +4033,8 @@ export class MobSystem {
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
   private hurtMob(foe: Mob, dmg: number, color: string, crit = false, exact = false): number {
     if (foe.hp <= 0) return 0;
+    // Underground (a burrow, S6): nothing reaches it until it rises.
+    if ((foe.hidden ?? 0) > 0 && !exact) return 0;
     // The level gap (td-zones LEVEL_GAP): a creature above the Keeper is missed more and hurt less (D2's to-hit by level).
     // `exact`: a test hook's blow (smite, wound) lands as written.
     // A member's claim landing on the host was already cut by that member's own gap (td-coop: claimFrom).
@@ -3377,9 +4058,21 @@ export class MobSystem {
     if (this.coop) (foe.coopBy ??= new Set()).add(this.claimFrom);
     // Stone Skin turns part of every hit aside.
     if (foe.take !== undefined && foe.take < 1) dmg = Math.max(1, Math.round(dmg * foe.take));
+    // S6: Shielded by Kin (a follower near: half), a Bone Ward drinking first, Thorns returning a melee blow.
+    if (foe.elite?.affixes.includes('shielded-by-kin') && this.mobs.some(k => k !== foe && samePack(foe, k) && Math.hypot(k.x - foe.x, k.y - foe.y) <= KIN_SHIELD.r)) dmg = Math.max(1, Math.round(dmg * KIN_SHIELD.take));
+    if ((foe.ward ?? 0) > 0) { const soak = Math.min(foe.ward ?? 0, dmg); foe.ward = (foe.ward ?? 0) - soak; dmg -= soak; this.float(foe.x - 8, foe.y - foe.def.h - 4, `-${soak}`, '#e8e1cf'); if (dmg <= 0) { foe.hit = .1; return 0; } }
+    if (foe.bless?.fx.thorns) this.thornsBack(foe, dmg);
     foe.hp -= dmg; foe.hit = .18;
     this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
     if (foe.hp <= 0) { this.kill(foe); return dmg; }
+    // Grave-called (an affix): at half its life it calls two Bone Walkers up out of the ground.
+    if (foe.elite?.affixes.includes('grave-called') && !foe.graveCalled && foe.hp <= foe.def.hp * GRAVE_CALL.at && MOBS['bone-walker']) {
+      foe.graveCalled = true;
+      for (let i = 0; i < GRAVE_CALL.count; i++) {
+        const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 12), y = foe.y + 8, at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
+        this.calls.push({ x: at.x, y: at.y, type: 'bone-walker', key: `${foe.key}:grave${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: Math.max(1, foe.def.level - GRAVE_CALL.under) });
+      }
+    }
     const call = foe.def.summon;
     if (call && !foe.summoned && foe.hp <= foe.def.hp * call.at && MOBS[call.type]) {
       foe.summoned = true;
@@ -3404,6 +4097,15 @@ export class MobSystem {
     }
     return dmg;
   }
+  /** Thorns (a pack aura): a share of a melee blow comes back on the striker standing at its side (at most its own blow). */
+  private thornsBack(foe: Mob, dmg: number): void {
+    const fx = foe.bless!.fx, back = Math.min(foe.def.dmg[1], dmg * fx.thorns);
+    if (!(back >= 1)) return;
+    const near = 36;
+    if (this.claimFrom) { const o = this.others.find(k => k.id === this.claimFrom); if (o && Math.hypot(o.x - foe.x, o.y - foe.y) <= near) this.coop?.bite(o.id, foe, back, 'physical', false, false); return; }
+    const p = this.host.player();
+    if (!this.selfAway && Math.hypot(p.x - foe.x, p.y - foe.y) <= near) { this.biteKeeper(back, 'physical'); this.effects.push({ kind: 'bone-chips', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 1 }); }
+  }
   /**
    * A blow or a shot landing on the Keeper (§6): worn Defense turns a share of a physical one aside, a worn resist
    * of an element's; the Dark Ward drinks what it can. The number floats in the type's colour (physical stays red).
@@ -3419,9 +4121,10 @@ export class MobSystem {
     if (from && from.hp > 0 && this.relics.thorns > 0 && raw > 0) this.hurtMob(from, Math.max(1, Math.round(raw * this.relics.thorns / 100)), '#e0b25a');
     // Cursed (an elite's mark): every resist lower and every blow a little harder while it lasts.
     const cursed = this.curseT > 0;
-    // The marks' resists (Ember Shield, Kindled, Shield of Light, Fur and Leaf) while their aura runs.
-    const res = this.markResist();
-    const resists = cursed || res.fire || res.all ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - (cursed ? CURSE_RESIST : 0) + res.all + (k === 'fire' ? res.fire : 0)])) as Partial<Record<Element, number>> : this.resists;
+    // The marks' resists (Ember Shield, Kindled, Shield of Light, Fur and Leaf) while their aura runs; a pack's
+    // Conviction (S6) takes its points off every one while he stands in its reach.
+    const res = this.markResist(), conv = this.packResist;
+    const resists = cursed || res.fire || res.all || conv ? Object.fromEntries(Object.entries(this.resists).map(([k, v]) => [k, (v ?? 0) - (cursed ? CURSE_RESIST : 0) - conv + res.all + (k === 'fire' ? res.fire : 0)])) as Partial<Record<Element, number>> : this.resists;
     // Hearth Bond (Hearthlight's mark): more Defense a while after the heal.
     const def = (this.melee ? this.guardDefense() : this.defense) * (this.defBuffT > 0 ? 1 + this.defBuffPct / 100 : 1);
     let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, def, atk ?? this.keeperLevel, resists);
@@ -3548,15 +4251,17 @@ export class MobSystem {
   private loose(m: Mob, tx: number, ty: number): void {
     const shoot = m.def.ranged;
     if (!shoot) return;
-    const n = shoot.spread ?? 1;
+    // Multishot (an affix): three shots, 15° apart, each a share of one. Blessed Aim: they fly faster.
+    const multi = (shoot.spread ?? 1) === 1 && !!m.elite?.affixes.includes('multishot');
+    const n = multi ? MULTISHOT.n : shoot.spread ?? 1, turn = multi ? MULTISHOT.deg * Math.PI / 180 : .22, speed = shoot.speed * (m.bless?.fx.shotSpeed ?? 1);
     for (let i = 0; i < n; i++) {
-      let dmg = rnd(shoot.dmg[0], shoot.dmg[1]);
+      let dmg = Math.round(rnd(shoot.dmg[0], shoot.dmg[1]) * (multi ? MULTISHOT.share : 1) * (m.bless?.fx.blow ?? 1));
       const weak = this.weakOf(m);
       if (weak > 0) dmg = Math.max(1, Math.round(dmg * (1 - weak / 100)));
       const ax = m.elite?.affixes ?? [];
       // Its ground track (td-sight): from the creature's feet to the prey's, so a wall between stops it.
       const sx = m.x + m.face * m.def.w * .3, lift = m.def.h * .55, reach = Math.hypot(tx - sx, ty + 12 - m.y);
-      this.shots.push({ ...aimShot(sx, m.y - lift, tx, ty, shoot.speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * .22), lift, land: 12, reach, type: this.blowType(m), lv: m.def.level, ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
+      this.shots.push({ ...aimShot(sx, m.y - lift, tx, ty, speed, shoot.range, dmg, shoot.kind, (i - (n - 1) / 2) * turn), lift, land: 12, reach, type: this.blowType(m), lv: m.def.level, ...(ax.includes('mana-burn') ? { burn: true } : {}), ...(ax.includes('cursed') ? { curse: true } : {}) });
     }
   }
 
@@ -3578,10 +4283,10 @@ export class MobSystem {
         // Wisp Ward (Lamp-Wisp's mark): a wisp at his shoulder takes the shot instead, once each.
         const ward = this.mk('lamp-wisp', 'wispWard') ? this.wisps.find(w => w.ward) : undefined;
         if (ward) { ward.ward = false; this.effects.push({ kind: 'kindle-hit', x: ward.x, y: ward.y, age: 0, life: .3, dir: 1 }); continue; }
-        this.biteKeeper(s.dmg, s.type ?? 'physical', undefined, s.lv); this.shotAffixes(s); continue;
+        this.biteKeeper(s.dmg, s.type ?? 'physical', undefined, s.lv); this.shotAffixes(s); this.layOn(s.st); continue;
       }
       const o = this.others.find(k => shotHits(s, k.x, k.y - 12, reach));
-      if (o) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.coop?.bite(o.id, null, s.dmg, s.type ?? 'physical', !!s.burn, !!s.curse); continue; }
+      if (o) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .3, dir: 1 }); this.coop?.bite(o.id, null, s.dmg, s.type ?? 'physical', !!s.burn, !!s.curse, s.st); continue; }
       const k = this.minions.find(mn => shotHits(s, mn.x, mn.y - 10, 7));
       if (k) { this.shots.splice(i, 1); this.effects.push({ kind: 'spark', x: s.x, y: s.y, age: 0, life: .25, dir: 1 }); this.hurtMinion(k, s.dmg); }
     }
@@ -3677,11 +4382,14 @@ export class MobSystem {
       if (Math.hypot(k.x - p.x, k.y - p.y) > MINION_LEASH * 1.6) { const at = this.slotOpen(formationSpot(slot, p, face)); k.x = at.x; k.y = at.y; k.target = null; }
       const t = k.target;
       if (!t || t.hp <= 0 || !this.mobs.includes(t) || Math.hypot(t.x - p.x, t.y - p.y) > MINION_LEASH || !this.sight.sees(k.x, k.y, t.x, t.y, true)) k.target = pickMinionTarget(k, this.mobs, p, MINION_SIGHT, MINION_LEASH, m => this.sight.sees(k.x, k.y, m.x, m.y, false));
-      const foe = k.target, reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
-      const spot = foe ? this.fanFor(k, foe, fans) : formationSpot(slot, p, face), stop = foe ? 2 : 3;
+      // td-roam: hunting the foe it sees, else roaming near the Keeper while he stands, else the formation.
+      const rm = this.roamOf(k, k.target, dt);
+      const foe = rm.mode === 'hunt' ? k.target : null, reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
+      if (!foe) k.target = null;
+      const spot = foe ? this.fanFor(k, foe, fans) : rm.idle ? k : rm.goal ?? formationSpot(slot, p, face), stop = foe ? 2 : 3;
       const dx = spot.x - k.x, dy = spot.y - k.y, len = Math.hypot(dx, dy);
       if (len > stop) {
-        const step = Math.min(len - stop, MINION_SPEED * this.pace * (foe ? 1 : len > 40 ? 1.6 : 1) * dt), vx = dx / len * step, vy = dy / len * step;
+        const step = Math.min(len - stop, MINION_SPEED * this.pace * (foe ? 1 : rm.mode === 'roam' ? rm.pace : len > 40 ? 1.6 : 1) * dt), vx = dx / len * step, vy = dy / len * step;
         if (this.free(k.x + vx, k.y)) k.x += vx;
         if (this.free(k.x, k.y + vy)) k.y += vy;
       }
@@ -3700,6 +4408,14 @@ export class MobSystem {
       }
     });
     this.spreadKin(dt);
+  }
+
+  /** td-roam: what a companion does this frame (hunt `foe`, stroll, run back, or travel in the formation). */
+  private roamOf(c: { x: number; y: number; roam?: RoamState }, foe: Mob | null, dt: number): ReturnType<typeof stepRoam> {
+    return stepRoam(c.roam ??= newRoam(), {
+      me: c, keeper: this.host.player(), stand: this.stand, dt, foe, called: this.heelT > 0,
+      free: (x, y) => this.free(x, y), sees: (ax, ay, bx, by) => this.sight.sees(ax, ay, bx, by, false), rng: Math.random,
+    });
   }
 
   // ── The crowd (td-sight.ts) ──
@@ -4308,7 +5024,9 @@ export class MobSystem {
   }
   /** A creature's pace: a Hearth Circle's ground slows whatever walks in it. */
   private paceOf(m: Mob): number {
-    return this.groundPace(m) * ((m.chillT ?? 0) > 0 ? 1 - CHILL_SLOW : 1) * this.firebreak(m);
+    // S6: Pack Howl, and a pack's Vigor or Fanaticism.
+    const s6 = ((m.howlT ?? 0) > 0 ? 1.2 : 1) * (m.bless?.fx.walk ?? 1);
+    return this.groundPace(m) * ((m.chillT ?? 0) > 0 ? 1 - CHILL_SLOW : 1) * this.firebreak(m) * s6;
   }
   /** Firebreak (Flame Wall's mark): a creature in the fire walks slower. */
   private firebreak(m: Mob): number {
@@ -4635,12 +5353,15 @@ export class MobSystem {
       const sent = this.commanded;
       if (sent) b.target = sent;
       else if (!b.target || b.target.hp <= 0 || !this.mobs.includes(b.target) || Math.hypot(b.target.x - p.x, b.target.y - p.y) > MINION_LEASH || !this.sight.sees(b.x, b.y, b.target.x, b.target.y, true)) b.target = pickMinionTarget(b, this.mobs, p, MINION_SIGHT, MINION_LEASH, m => this.sight.sees(b.x, b.y, m.x, m.y, false));
+      // td-roam: a Command sends it in; else it hunts, strolls near the Keeper while he stands, or keeps to the formation.
+      const rm = sent ? null : this.roamOf(b, b.target, dt);
+      if (rm && rm.mode !== 'hunt') b.target = null;
       const foe = b.target;
       const reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
-      const { x: tx, y: ty } = foe ? this.fanFor(b, foe, fans) : home;
+      const { x: tx, y: ty } = foe ? this.fanFor(b, foe, fans) : rm?.idle ? b : rm?.goal ?? home;
       const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy);
       if (len > 2) {
-        const quick = this.calledKind === 'hart' ? 1 + (this.mk('call-of-the-wilds', 'wolfBearHart')?.s ?? 0) / 100 : 1;
+        const quick = (this.calledKind === 'hart' ? 1 + (this.mk('call-of-the-wilds', 'wolfBearHart')?.s ?? 0) / 100 : 1) * (!foe && rm?.mode === 'roam' ? rm.pace : 1);
         const step = Math.min(len, BEAST_SPEED * this.pace * quick * dt), mx = dx / len * step, my = dy / len * step;
         if (this.free(b.x + mx, b.y)) b.x += mx;
         if (this.free(b.x, b.y + my)) b.y += my;
@@ -4750,6 +5471,8 @@ export class MobSystem {
 
   /** An elite's first affix taken away for a while (Unmaking, Banish the Bearer: marks); it comes back after. */
   private strip(m: Mob, secs: number): void {
+    // S6: a pack aura ends a while too (Unmaking, Strip, Banish the Bearer; §3).
+    if (secs > 0) this.stripAura(m);
     const ax = m.elite?.affixes;
     if (!ax?.length || m.stripped || !(secs > 0)) return;
     m.stripped = { affix: ax[0], t: ccSecs(secs, m.def.rank) };
@@ -5005,6 +5728,11 @@ export class MobSystem {
     if (m.elite?.role === 'leader' || !m.elite) this.fallen.set(m.key, (this.fallen.get(m.key) ?? 0) + 1);
     // Fire Enchanted: it bursts where it fell, after its ring has shown the reach.
     if (m.elite?.affixes.includes('fire-enchanted')) this.bursts.push({ x: m.x, y: m.y, t: FIRE_BURST.delay, r: FIRE_BURST.r, dmg: Math.round(m.def.dmg[1] * FIRE_BURST.share), lv: m.def.level });
+    // Ember-hearted (S6): a bigger burst, later, its ring on the ground first.
+    if (m.elite?.affixes.includes('ember-hearted')) this.bursts.push({ x: m.x, y: m.y, t: EMBER_HEART.delay, delay: EMBER_HEART.delay, r: EMBER_HEART.r, dmg: Math.round(m.def.dmg[1] * EMBER_HEART.share), lv: m.def.level, type: 'fire', el: 'ember', tone: 'ember' });
+    // Redemption (a pack aura, S6): a fall in its reach heals the rest of the pack, and lays this one to rest.
+    const redeem = m.bless?.id === 'redemption' && m.bless.by !== m && m.bless.by.hp > 0 ? m.bless.fx.redeem : 0;
+    if (redeem > 0) for (const k of this.mobs) if (k.bless?.by === m.bless!.by) { k.hp = Math.min(k.def.hp, k.hp + healBase(k) * redeem); this.effects.push({ kind: 'heal', x: k.x, y: k.y - k.def.h / 2, age: 0, life: .5, dir: 1 }); }
     // Redemption (a worn aura): a creature that falls near the Keeper heals him.
     if (this.itemAura && this.itemAura.fx.healPerCorpse > 0 && this.inItemAura(m)) this.host.healPlayer(this.itemAura.fx.healPerCorpse);
     // Soul Harvest (passive): every kill gives back mana.
@@ -5020,7 +5748,17 @@ export class MobSystem {
     const by = m.coopBy ? [...m.coopBy].filter(i => i) : [];
     const fought = !this.coop || !m.coopBy || m.coopBy.has('');
     if (this.coop) this.coop.killed(m, by);
-    this.spoils(m, fought || this.roomLoot ? 'own' : 'share', undefined, this.leaveCorpse(m).id);
+    // S6: fire leaves ash (nothing raises it); Redemption lays it to rest; a raised one or a mirror never rises twice.
+    const cp = m.mirror ? null : this.leaveCorpse(m);
+    if (cp && (this.fireBlow || (m.scorchT ?? 0) > 0 || (m.brandT ?? 0) > 0 || (m.singeT ?? 0) > 0)) cp.ash = true;
+    if (cp && (redeem > 0 || m.raised)) cp.rested = true;
+    // Keep Walking (the Bone Walker): one in four stand up once more, unless burnt or broken.
+    if (cp && !cp.ash && !cp.rested && ABIL_PASSIVE_ID(m.def.id, 'keep-walking') && Math.random() < KEEP_WALKING.chance) {
+      this.calls.push({ x: m.x, y: m.y, type: m.def.id, key: `${m.key}~kw${Math.round(this.clock * 10)}`, t: KEEP_WALKING.after, level: m.def.level, corpse: cp.id, pct: KEEP_WALKING.pct });
+    }
+    // The raised and the mirrored owe nothing: no XP, no loot (the singer's verse is not a second kill).
+    if (m.raised || m.mirror) return;
+    this.spoils(m, fought || this.roomLoot ? 'own' : 'share', undefined, cp?.id ?? '');
   }
   /**
    * What a fall pays this Keeper (onKill: Hunting XP, the Bestiary, the tasks) and leaves on the ground (Gold, materials,
@@ -5083,14 +5821,17 @@ export class MobSystem {
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
   }
   /** The host: a member's claim that passed the gate lands through the creature's own path (Stone Skin, its call, its half-life change, its fall). */
-  applyClaim(m: Mob, dmg: number, from: string, crit = false): number {
+  applyClaim(m: Mob, dmg: number, from: string, crit = false, el = ''): number {
     if (!this.mobs.includes(m) || m.hp <= 0) return 0;
-    this.claimFrom = from;
-    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; }
+    this.claimFrom = from; this.fireBlow = el === 'fire';
+    if (this.fireBlow) this.burnHazards(m.x, m.y, 8);
+    try { return this.hurtMob(m, Math.max(1, Math.round(dmg)), '#a8e6c4', crit); } finally { this.claimFrom = ''; this.fireBlow = false; }
   }
   /** A member: the host says a creature struck this Keeper. It lands through this Keeper's own defenses, resists and wards. */
-  coopBite(dmg: number, type: DamageType, from: Mob | null, burn: boolean, curse: boolean): void {
-    this.biteKeeper(dmg, type, from ?? undefined);
+  coopBite(dmg: number, type: DamageType, from: Mob | null, burn: boolean, curse: boolean, st?: string): void {
+    // A status-only blow (an ability's chill, a shriek) carries one point: it lands as the status alone.
+    if (!(st && dmg <= 1)) this.biteKeeper(dmg, type, from ?? undefined);
+    this.layOn(st, from);
     if (burn || curse) this.shotAffixes({ burn, curse });
   }
   /**
