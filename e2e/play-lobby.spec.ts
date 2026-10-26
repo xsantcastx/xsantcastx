@@ -270,3 +270,64 @@ test.describe('login on a phone', () => {
     }
   });
 });
+
+// SECURITY (owner 2026-10-26): "in a browser that was ever signed in, choosing Guest loads that account's roster and
+// saves and lets the guest play them". The guest gets its own namespace; the account's Keepers stay invisible to it.
+test.describe('guest isolation and one live session', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('Play offline on a browser an account signed in on: none of the account\'s Keepers, and its saves untouched', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await legacySave(page);
+    // The account's: Aster (#1) and a second Keeper, with this browser marked as signed in before (now signed out).
+    await page.evaluate(() => {
+      localStorage.setItem('eclipse-account-seen', '1');
+      localStorage.setItem('godforge-keeper-look@k2cole00', JSON.stringify({ version: 1, made: true, prompted: true, name: 'Cole', updatedAt: 1 }));
+      localStorage.setItem('eclipse-characters', JSON.stringify({ v: 1, chars: {
+        c1: { id: 'c1', name: 'Aster', vocation: 'warlock', level: 7, area: '', look: null, createdAt: 1, updatedAt: Date.now() },
+        k2cole00: { id: 'k2cole00', name: 'Cole', vocation: 'warlock', level: 1, area: '', look: null, createdAt: 2, updatedAt: Date.now() },
+      } }));
+    });
+    await page.goto('/play?td=1&hour=12');
+    await expect(lobby(page, 'title')).toBeVisible({ timeout: 20000 });
+    await page.locator('[data-lobby-guest]').click();
+    const list = lobby(page, 'select');
+    await expect(list).toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(800);
+    await expect(list.locator('[data-character]')).toHaveCount(0);
+    await expect(list.getByText('Aster')).toHaveCount(0);
+    await expect(list.getByText('Cole')).toHaveCount(0);
+    // The account's Keepers are still all there, in the account's own keys; the guest wrote only its own.
+    const keys = await page.evaluate(() => ({
+      roster: Object.keys(JSON.parse(localStorage.getItem('eclipse-characters') || '{"chars":{}}').chars ?? {}).sort(),
+      aster: JSON.parse(localStorage.getItem('godforge-keeper-look') || '{}').name,
+      cole: JSON.parse(localStorage.getItem('godforge-keeper-look@k2cole00') || '{}').name,
+      guestRoster: Object.keys(JSON.parse(localStorage.getItem('guest~eclipse-characters') || '{"chars":{}}').chars ?? {}).filter(id => id === 'k2cole00'),
+    }));
+    expect(keys).toEqual({ roster: ['c1', 'k2cole00'], aster: 'Aster', cole: 'Cole', guestRoster: [] });
+  });
+
+  test('a second tab of the same account sees "Play here?", and taking over stops the first', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+    await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA) });
+    await page.goto('/play?td=1&hour=12');
+    await inWorld(page);
+    const second = await page.context().newPage();
+    await second.emulateMedia({ reducedMotion: 'reduce' });
+    await second.goto('/play?td=1&hour=12');
+    const screen = second.locator('[data-session-elsewhere]');
+    await expect(screen).toBeVisible({ timeout: 30000 });
+    await expect(screen).toContainText('playing in another tab');
+    await expect(second.locator('.viewport canvas')).toHaveCount(0);
+    await second.screenshot({ path: 'output/fixes/session-elsewhere.jpg', type: 'jpeg', quality: 82 });
+    await screen.locator('[data-session-play-here]').click();
+    await inWorld(second);
+    // The first tab gave way: no world, the takeover screen instead.
+    await expect(page.locator('[data-session-elsewhere]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.viewport canvas')).toHaveCount(0);
+    await second.close();
+  });
+});

@@ -43,6 +43,7 @@ import { TranslationService } from '../../translation.service';
 import { GameStateGateway } from './game-state.gateway';
 import { DeviceLeaseService } from './device-lease.service';
 import { LeaseState } from './device-lease';
+import { PlaySessionService } from './play-session.service';
 
 @Component({
   selector: 'app-device-lease-banner',
@@ -50,7 +51,7 @@ import { LeaseState } from './device-lease';
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (state.role === 'passive') {
+    @if (state.role === 'passive' && !session.elsewhere) {
       <div class="dlb" role="status" aria-live="polite">
         <div class="dlb__panel">
           <span class="dlb__dot" aria-hidden="true"></span>
@@ -171,6 +172,8 @@ import { LeaseState } from './device-lease';
 export class DeviceLeaseBannerComponent {
   private readonly leases = inject(DeviceLeaseService);
   private readonly gateway = inject(GameStateGateway);
+  /** The play shell's takeover screen says it in full ("Play here?"): the strip stays out of its way. */
+  readonly session = inject(PlaySessionService);
   private readonly i18n = inject(TranslationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -179,6 +182,7 @@ export class DeviceLeaseBannerComponent {
   claiming = false;
 
   constructor() {
+    this.session.state$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.cdr.markForCheck());
     this.leases.state$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(state => {
