@@ -74,6 +74,7 @@ function load(rel) {
 const MOBS_M = load('src/app/play/td/td-mobs.ts');
 const SK = load('src/app/play/td/td-skills.ts');
 const TREE = load('src/app/play/td/td-tree.ts');
+const MARKS = load('src/app/play/td/td-marks.ts');
 const ELITE = load('src/app/play/td/td-elites.ts');
 const SEAM = load('src/app/play/td/td-seam.ts');
 const MELEE = load('src/app/play/td/td-melee.ts');
@@ -139,22 +140,25 @@ const WALK = 74; // td-engine SPEED, art px a second
 
 /**
  * Where each vocation spends its skill points (in order; each [skill, rank] is bought up to that rank before the next,
- * a skill whose tier or prerequisite is not open yet is passed over until it is). D2's habit: the basic attack and one
- * main spell first, their synergies after.
+ * a skill whose level or "a rank above it" is not open yet is passed over until it is). D2's habit: the basic attack and
+ * one main spell first, their synergies after. The Skill Book's marks (td-marks, skill-book.md) read `skill#slot`
+ * (one point each, as soon as the row's rank allows): the main row's A1 → A2 → its star, then the basic attack's, then
+ * the second row's (skills-100.md §7) — each calling's stars named here, so the sim reads the build players will copy.
  */
 export const PATHS = {
-  warlock: [['ember-bolt', 4], ['hellfire-nova', 3], ['cinder-rain', 1], ['ember-mastery', 1], ['flame-wall', 1], ['meteor', 1],
-    ['ember-bolt', 10], ['hellfire-nova', 8], ['ember-mastery', 6], ['meteor', 8], ['ember-bolt', 20], ['ember-mastery', 20],
+  warlock: [['ember-bolt', 4], ['hellfire-nova', 3], ['ember-bolt#a1'], ['cinder-rain', 1], ['flame-wall', 1], ['meteor', 1], ['meteor#a1'],
+    ['ember-bolt', 10], ['hellfire-nova', 8], ['ember-bolt#a2'], ['ember-bolt#a3'], ['hellfire-nova#a1'], ['meteor', 8], ['meteor#a2'],
+    ['ember-bolt', 20], ['meteor', 10], ['meteor#b1'], ['meteor#b2'], ['meteor#b3'], ['hellfire-nova', 10], ['hellfire-nova#a2'], ['hellfire-nova#a3'],
     ['meteor', 20], ['hellfire-nova', 20], ['aura-embers', 20]],
-  ashguard: [['watch-blade', 4], ['ember-brand', 2], ['cinder-cleave', 3], ['aura-watchfire', 2], ['ember-blood', 1], ['whirl-of-cinders', 1],
-    ['watch-blade', 10], ['cinder-cleave', 10], ['ember-brand', 8], ['whirl-of-cinders', 8], ['hold-the-line', 3], ['watch-blade', 20],
-    ['cinder-cleave', 20], ['whirl-of-cinders', 20], ['ember-brand', 20], ['aura-watchfire', 20]],
-  lanternwright: [['kindle', 4], ['hearthlight', 2], ['lamp-wisp', 3], ['moth-kin', 1], ['banish', 1], ['beacon', 1],
-    ['kindle', 10], ['banish', 8], ['lamp-wisp', 8], ['moth-kin', 8], ['dawn-at-noon', 1], ['kindle', 20], ['banish', 20],
-    ['dawn-at-noon', 10], ['moth-kin', 20], ['lamp-wisp', 20], ['dawn-at-noon', 20]],
-  thornstrider: [['thorn-shot', 4], ['barbed-shot', 3], ['volley', 2], ['pack-bond', 2], ['heartwood', 1], ['wild-heart', 1],
-    ['thorn-shot', 10], ['heartwood', 8], ['barbed-shot', 8], ['call-of-the-wilds', 1], ['command', 5], ['stampede', 1],
-    ['thorn-shot', 20], ['heartwood', 20], ['barbed-shot', 20], ['wild-heart', 10], ['stampede', 10], ['volley', 10], ['command', 10]],
+  ashguard: [['watch-blade', 4], ['watch-blade#a1'], ['ember-brand', 2], ['cinder-cleave', 3], ['cinder-cleave#a1'], ['aura-watchfire', 2], ['aura-watchfire#a1'], ['whirl-of-cinders', 1],
+    ['watch-blade', 10], ['cinder-cleave', 10], ['cinder-cleave#a2'], ['ember-brand', 8], ['whirl-of-cinders', 8],
+    ['shield-oath#a1'], ['watch-blade#b1'], ['watch-blade#b2'], ['watch-blade#b3'], ['watch-blade', 20], ['cinder-cleave', 20], ['whirl-of-cinders', 20], ['ember-brand', 20], ['aura-watchfire', 20]],
+  lanternwright: [['kindle', 4], ['kindle#a1'], ['hearthlight', 2], ['lamp-wisp', 3], ['lamp-wisp#a1'], ['banish', 1], ['banish#a1'], ['beacon', 1],
+    ['kindle', 10], ['kindle#a2'], ['banish', 8], ['lamp-wisp', 8], ['dawn-at-noon', 1], ['kindle', 20], ['banish', 20], ['banish#a2'],
+    ['dawn-at-noon', 10], ['dawn-at-noon#a1'], ['lamp-wisp', 20], ['lamp-wisp#b1'], ['lamp-wisp#b2'], ['lamp-wisp#b3'], ['dawn-at-noon', 20]],
+  thornstrider: [['thorn-shot', 4], ['thorn-shot#a1'], ['barbed-shot', 3], ['barbed-shot#a1'], ['volley', 2], ['pack-bond', 2], ['pack-bond#a1'],
+    ['thorn-shot', 10], ['thorn-shot#a2'], ['thorn-shot#a3'], ['barbed-shot', 8], ['call-of-the-wilds', 1], ['command', 5], ['command#a1'], ['stampede', 1],
+    ['thorn-shot', 20], ['barbed-shot', 20], ['barbed-shot#a2'], ['stampede', 10], ['volley', 10], ['command', 10]],
 };
 /** The bar each vocation wants, best first; the first four it holds a rank in go on the keys. */
 const BARS = {
@@ -232,16 +236,24 @@ function skillTree(voc, level) {
   let tree = { spent: {}, free: [], at: 0 };
   for (let guard = 0; guard < 400; guard++) {
     let bought = false;
-    for (const [id, want] of PATHS[voc]) {
+    for (const [step, want] of PATHS[voc]) {
+      const [id, slot] = step.split('#');
+      if (slot) {
+        // A mark: taken once, as soon as the row's rank and the points allow.
+        if (TREE.marksOf(tree, voc, id) & MARKS.MARK_BIT[slot]) continue;
+        const next = TREE.buyMark(tree, voc, id, slot, level);
+        if (next) { tree = next; bought = true; break; }
+        continue;
+      }
       if (TREE.rankOf(tree, voc, id) >= want) continue;
       const next = TREE.buyRank(tree, voc, id, level);
       if (next) { tree = next; bought = true; break; }
     }
     if (!bought) break;
   }
-  const ranks = TREE.effectiveRanks(tree, voc), bought = TREE.boughtRanks(tree, voc);
+  const ranks = TREE.effectiveRanks(tree, voc), bought = TREE.boughtRanks(tree, voc), marks = TREE.effectiveMarks(tree, voc);
   const bar = BARS[voc].filter(id => (ranks[id] ?? 0) > 0).slice(0, 4);
-  return { ranks, bought, bar, aura: SK.defaultAura(voc), spent: TREE.pointsSpent(tree), earned: PTS.skillPointsEarned(level) };
+  return { ranks, bought, marks, bar, aura: SK.defaultAura(voc), spent: TREE.pointsSpent(tree), earned: PTS.skillPointsEarned(level) };
 }
 
 export function keeper(voc, level, tier = 'normal', seed = 0, resist = null) {
@@ -275,7 +287,7 @@ function arena(k, state) {
   const sys = new MobSystem(host);
   sys.vocation = k.voc;
   sys.setTier(DIFF.DIFFICULTIES[k.tier]);
-  sys.setRanks(k.tree.ranks, k.tree.bought);
+  sys.setRanks(k.tree.ranks, k.tree.bought, k.tree.marks);
   sys.aura = k.tree.aura && sys.rank(k.tree.aura) > 0 ? k.tree.aura : null;
   const f = k.fight;
   sys.keeperMaxHp = f.maxHp; sys.maxMana = f.maxMana; sys.mana = state?.mana ?? f.maxMana;
@@ -378,7 +390,7 @@ export function fight(k, enc, seed, state = null, max = 600) {
       gcd -= dt;
       if (gcd <= 0 && foe) {
         for (const id of k.tree.bar) {
-          if ((sys.cooldowns[id] ?? 0) > 0 || sys.mana < SK.SKILLS[id].mana) continue;
+          if ((sys.cooldowns[id] ?? 0) > 0 || sys.mana < sys.manaOf(id)) continue;
           if (DEFENSIVE.has(id) && (!near(4 * TILE) || sys.ward > 0 || sys.blockT > 0 || sys.lampWard > 0 || sys.bone > 0 || sys.guardT > 0)) continue;
           if (id === 'hearthlight' && life.hp > f.maxHp * .7) continue;
           if (id === 'life-tap' && (sys.mana > f.maxMana * .3 || life.hp < f.maxHp * .6)) continue;

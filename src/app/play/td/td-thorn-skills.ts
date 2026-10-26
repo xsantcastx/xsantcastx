@@ -35,7 +35,7 @@ export const THORN_SKILLS: Readonly<Record<ThornSkillId, SkillDef>> = {
     vars: { min: 8, max: 12, dps: 4, secs: 5 }, grow: { min: 2, max: 3, dps: 1 }, tree: 'thorn', tier: 0, col: 1, req: null,
     icon: I('<rect x="2" y="12" width="2" height="2" fill="#4a3420"/><rect x="4" y="10" width="2" height="2" fill="#7a5a32"/><rect x="6" y="8" width="2" height="2" fill="#7a5a32"/><rect x="8" y="6" width="2" height="2" fill="#a07a4a"/><rect x="10" y="3" width="3" height="3" fill="#e8f5b0"/><rect x="9" y="4" width="1" height="1" fill="#6eae52"/><rect x="11" y="6" width="1" height="1" fill="#6eae52"/><rect x="13" y="2" width="1" height="1" fill="#ffffff"/><rect x="12" y="8" width="2" height="2" fill="#c43a3a"/><rect x="13" y="11" width="1" height="2" fill="#c43a3a"/><rect x="11" y="12" width="1" height="1" fill="#8a2020"/><rect x="14" y="9" width="1" height="1" fill="#8a2020"/>'),
     words: 'thar un sha',
-    syn: [{ from: 'heartwood', per: 5, what: 'dmg' }],
+    syn: [{ from: 'thorn-shot', per: 5, what: 'dmg' }],
   },
   'volley': {
     id: 'volley', kind: 'active', mana: 14, cd: 6, nameKey: 'skill.volley', textKey: 'skill.volley.text',
@@ -46,7 +46,7 @@ export const THORN_SKILLS: Readonly<Record<ThornSkillId, SkillDef>> = {
   },
   'heartwood': {
     id: 'heartwood', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.heartwood', textKey: 'skill.heartwood.text',
-    vars: { pct: 10, pierce: 5 }, grow: { pct: 3, pierce: 1 }, tree: 'thorn', tier: 2, col: 1, req: 'barbed-shot',
+    vars: { pct: 5 }, grow: { pct: 1.5 }, tree: 'thorn', tier: 2, col: 1, req: 'barbed-shot',
     icon: I('<rect x="9" y="1" width="2" height="14" fill="#7a5a32"/><rect x="9" y="1" width="1" height="14" fill="#a07a4a"/><rect x="7" y="2" width="2" height="2" fill="#7a5a32"/><rect x="5" y="4" width="2" height="3" fill="#7a5a32"/><rect x="4" y="7" width="2" height="2" fill="#7a5a32"/><rect x="5" y="9" width="2" height="3" fill="#7a5a32"/><rect x="7" y="12" width="2" height="2" fill="#7a5a32"/><rect x="5" y="5" width="1" height="6" fill="#e8dcc0"/><rect x="11" y="6" width="3" height="3" fill="#6eae52"/><rect x="12" y="7" width="1" height="1" fill="#b4e08a"/><rect x="11" y="10" width="2" height="2" fill="#467a38"/><rect x="2" y="7" width="2" height="1" fill="#e8f5b0"/>'),
   },
   // ── Wild: the beast ──
@@ -55,7 +55,7 @@ export const THORN_SKILLS: Readonly<Record<ThornSkillId, SkillDef>> = {
     vars: { pct: 60, secs: 6 }, grow: { pct: 6, secs: .2 }, tree: 'wild', tier: 0, col: 0, req: null,
     icon: I('<rect x="2" y="9" width="7" height="4" fill="#4cb898"/><rect x="2" y="9" width="7" height="1" fill="#9af0d0"/><rect x="7" y="6" width="4" height="4" fill="#4cb898"/><rect x="8" y="6" width="2" height="1" fill="#9af0d0"/><rect x="7" y="4" width="1" height="2" fill="#2a7a64"/><rect x="10" y="4" width="1" height="2" fill="#2a7a64"/><rect x="11" y="8" width="2" height="1" fill="#2a7a64"/><rect x="9" y="7" width="1" height="1" fill="#f0fff8"/><rect x="2" y="13" width="1" height="2" fill="#2a7a64"/><rect x="7" y="13" width="1" height="2" fill="#2a7a64"/><rect x="0" y="9" width="2" height="1" fill="#2a7a64"/><rect x="12" y="2" width="1" height="4" fill="#e8f5b0"/><rect x="13" y="1" width="2" height="1" fill="#e8f5b0"/><rect x="14" y="2" width="1" height="1" fill="#e8f5b0"/>'),
     words: 'thar sha teth',
-    syn: [{ from: 'wild-heart', per: 3, what: 'dur' }],
+    syn: [{ from: 'pack-bond', per: 3, what: 'dur' }],
   },
   'pack-bond': {
     id: 'pack-bond', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.pack-bond', textKey: 'skill.pack-bond.text',
@@ -72,7 +72,7 @@ export const THORN_SKILLS: Readonly<Record<ThornSkillId, SkillDef>> = {
   },
   'wild-heart': {
     id: 'wild-heart', kind: 'passive', mana: 0, cd: 0, nameKey: 'skill.wild-heart', textKey: 'skill.wild-heart.text',
-    vars: { pct: 10 }, grow: { pct: 3 }, tree: 'wild', tier: 2, col: 2, req: 'pack-bond',
+    vars: { pct: 10 }, grow: { pct: 1.5 }, tree: 'wild', tier: 2, col: 2, req: 'pack-bond',
     icon: I('<rect x="3" y="4" width="4" height="4" fill="#6eae52"/><rect x="9" y="4" width="4" height="4" fill="#6eae52"/><rect x="2" y="5" width="12" height="4" fill="#6eae52"/><rect x="3" y="9" width="10" height="2" fill="#467a38"/><rect x="5" y="11" width="6" height="2" fill="#467a38"/><rect x="7" y="13" width="2" height="1" fill="#2a5226"/><rect x="4" y="5" width="2" height="1" fill="#b4e08a"/><rect x="7" y="6" width="2" height="3" fill="#9af0d0"/><rect x="6" y="7" width="4" height="1" fill="#9af0d0"/><rect x="1" y="2" width="1" height="1" fill="#e8f5b0"/><rect x="14" y="2" width="1" height="1" fill="#e8f5b0"/>'),
   },
   'stampede': {
@@ -80,7 +80,7 @@ export const THORN_SKILLS: Readonly<Record<ThornSkillId, SkillDef>> = {
     vars: { min: 40, max: 60, count: 5, length: 7, knock: 1 }, grow: { min: 8, max: 12, count: .1 }, tree: 'wild', tier: 4, col: 1, req: 'call-of-the-wilds',
     icon: I('<rect x="1" y="1" width="14" height="14" fill="#14261a"/><rect x="2" y="4" width="5" height="2" fill="#4cb898"/><rect x="6" y="3" width="2" height="2" fill="#4cb898"/><rect x="5" y="8" width="5" height="2" fill="#9af0d0"/><rect x="9" y="7" width="2" height="2" fill="#9af0d0"/><rect x="2" y="11" width="5" height="2" fill="#4cb898"/><rect x="6" y="10" width="2" height="2" fill="#4cb898"/><rect x="10" y="6" width="1" height="1" fill="#f0fff8"/><rect x="11" y="9" width="3" height="1" fill="#e8f5b0"/><rect x="8" y="4" width="2" height="1" fill="#b4e08a"/><rect x="8" y="12" width="2" height="1" fill="#b4e08a"/><rect x="12" y="4" width="2" height="1" fill="#2a7a64"/><rect x="12" y="12" width="2" height="1" fill="#2a7a64"/>'),
     words: 'thar ul teth',
-    syn: [{ from: 'call-of-the-wilds', per: 5, what: 'dmg' }, { from: 'wild-heart', per: 4, what: 'dmg' }],
+    syn: [{ from: 'call-of-the-wilds', per: 5, what: 'dmg' }, { from: 'pack-bond', per: 4, what: 'dmg' }],
   },
   // ── Briar: the ground ──
   'thornroot-snare': {

@@ -82,10 +82,10 @@ describe('SpellstoneService and GraveGoodsService', () => {
   it('inscribing takes a blank from the satchel and the Soul, and the stone keeps the rank', () => {
     const { stones } = boot();
     stones.setSoulForTest(20);
-    expect(stones.inscribe('hellfire-nova', 4, 25)).toBe('blank');
+    expect(stones.cut('hellfire-nova', 4, 0, 25)).toBe('blank');
     inventory.grantStack('g1', BLANK_ID, 2);
-    expect(stones.inscribe('hellfire-nova', 0, 25)).toBe('rank');
-    expect(stones.inscribe('hellfire-nova', 4, 25)).toBe('ok');
+    expect(stones.cut('hellfire-nova', 0, 0, 25)).toBe('rank');
+    expect(stones.cut('hellfire-nova', 4, 0, 25)).toBe('ok');
     expect(inventory.stackOf(BLANK_ID)).toBe(1);
     expect(stones.state.soul).toBe(15);
     // A satchel stone (the grid release): spell, rank and marks in its recipe, its charges on the item.
@@ -93,14 +93,14 @@ describe('SpellstoneService and GraveGoodsService', () => {
     expect(inventory.charges('hellfire-nova@4#0')).toBe(4);
     expect(stones.state.slot).toBe('hellfire-nova@4#0');
     stones.setSoulForTest(2);
-    expect(stones.inscribe('hellfire-nova', 4, 25)).toBe('soul');
+    expect(stones.cut('hellfire-nova', 4, 0, 25)).toBe('soul');
     expect(inventory.stackOf(BLANK_ID)).toBe(1);
   });
 
   it('a cast hands the engine the stone\'s spell and rank; only a cast that went off spends a charge; one stone a second', () => {
     const { stones } = boot();
     stones.setSoulForTest(20); inventory.grantStack('g1', BLANK_ID, 1);
-    stones.inscribe('dark-ward', 9, 20);
+    stones.cut('dark-ward', 9, 0, 20);
     const casts: string[] = [];
     expect(stones.use('dark-ward@9#0', 10, () => 'nofoe')).toBe('nofoe');
     expect(inventory.charges('dark-ward@9#0')).toBe(5);

@@ -1,0 +1,270 @@
+/* The Skill Book (K): an open book cut from the town's timber (docs/design/skill-book.md, docs/handoff/cozy-ui.md).
+   Colours only from the cozy tokens (src/styles/tokens/_cozy.css). Square corners, 2px stepped edges, no soft blur.
+   Numbers are set in --cozy-font-read: the pixel face draws 2 and 5 like 8 under 13px. */
+:host {
+  display: flex; flex-direction: column; min-height: 0;
+  --page: var(--cozy-parch);
+  --page-shade: var(--cozy-parch-shade);
+  --ink: var(--cozy-ink);
+  --ink-soft: var(--cozy-ink-soft);
+  --node: 36px;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0;
+}
+:host * { font-variant-ligatures: none !important; box-sizing: border-box; }
+/* A plain element selector (Angular scopes it to [_ngcontent], so each button's own class still wins on font). */
+button { font: 700 14px/1 var(--font-pixel); border: 0; border-radius: 0; cursor: pointer; }
+:host button:focus-visible { outline: 3px solid var(--cozy-glow); outline-offset: 2px; }
+button:disabled { cursor: default; }
+
+.book { position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 0; height: 100%; }
+
+/* ── The tabs over the book: one wooden chip a tree, the open one raised and brass-rimmed ── */
+.book__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; flex: none; }
+.book__tabs { display: flex; align-items: flex-end; gap: 6px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 4px 2px 0; }
+.book__tabs::-webkit-scrollbar { display: none; }
+.book__tab {
+  position: relative; flex: none; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 48px; height: 48px; padding: 4px 8px;
+  background: linear-gradient(180deg, var(--cozy-wood-2), var(--cozy-wood-1));
+  color: color-mix(in srgb, var(--cozy-cream) 72%, transparent);
+  box-shadow: 0 -2px 0 0 var(--cozy-wood-0), -2px 0 0 0 var(--cozy-wood-0), 2px 0 0 0 var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 35%, transparent);
+  font: 700 13px/1 var(--font-pixel); letter-spacing: .03em;
+}
+.book__tab:hover { color: var(--cozy-cream); background: linear-gradient(180deg, var(--cozy-wood-3), var(--cozy-wood-2)); }
+.book__tab[aria-selected="true"] {
+  height: 52px; color: var(--cozy-glow);
+  background: linear-gradient(180deg, var(--cozy-wood-4), var(--cozy-wood-3));
+  box-shadow: 0 -2px 0 0 var(--cozy-wood-0), -2px 0 0 0 var(--cozy-wood-0), 2px 0 0 0 var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-wood-hi), inset 0 -3px 0 0 var(--cozy-brass);
+}
+.book__tab-icon { display: block; width: 30px; height: 30px; padding: 2px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-0); }
+.book__tab:not([aria-selected="true"]) .book__tab-icon { filter: saturate(.55) brightness(.85); }
+.book__tab-n {
+  position: absolute; top: 2px; right: 2px; min-width: 18px; padding: 2px 3px; text-align: center;
+  font: 700 11px/1 var(--cozy-font-read); background: var(--cozy-wood-0); color: var(--cozy-brass-hi);
+}
+.book__tab[aria-selected="true"] .book__tab-n { background: var(--cozy-brass); color: var(--cozy-wood-0); }
+.book__keys-glyph { display: grid; place-items: center; width: 30px; height: 30px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-0); font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.book__tools { display: flex; align-items: center; gap: 6px; flex: none; }
+.book__help { min-width: 44px; min-height: 44px; }
+
+.book__helpcard {
+  margin: 0; padding: 10px 12px; background: var(--page); color: var(--ink);
+  box-shadow: 0 0 0 2px var(--cozy-parch-edge), 0 0 0 4px var(--cozy-wood-0);
+  font: 500 14px/1.35 var(--font-game);
+}
+
+/* ── The spread: two parchment pages, a dark spine between, the wood cover round them ── */
+.book__scroll {
+  flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  padding: 10px; background: var(--cozy-wood-1);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 4px var(--cozy-wood-3), inset 0 0 0 6px var(--cozy-wood-0);
+}
+.book__spread { position: relative; display: grid; grid-template-columns: 1fr 1fr; min-height: 100%; }
+/* The spine: a dark fold down the middle, stepped. */
+.book__spread::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 14px; translate: -50% 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cozy-wood-0) 40%, transparent) 30%, color-mix(in srgb, var(--cozy-wood-0) 70%, transparent) 50%, color-mix(in srgb, var(--cozy-wood-0) 40%, transparent) 70%, transparent);
+}
+.book__leaf {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 12px 18px 12px 16px;
+  background: linear-gradient(90deg, var(--page) 85%, var(--page-shade));
+  box-shadow: inset 0 0 0 2px var(--cozy-parch-edge);
+  color: var(--ink);
+}
+.book__leaf--right { padding: 12px 16px 12px 18px; background: linear-gradient(90deg, var(--page-shade), var(--page) 15%); }
+.book__keys { grid-column: 1 / -1; min-height: 100%; }
+
+/* The ribbon title: the tree's name on a bookmark ribbon, its tagline in italics. */
+.book__ribbon { display: grid; justify-items: start; gap: 2px; margin: 0 0 4px; }
+.book__ribbon span {
+  padding: 5px 16px 5px 12px; font: 700 18px/1 var(--font-display, var(--font-pixel)); color: var(--cozy-cream);
+  background: var(--cozy-berry); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -3px 0 0 color-mix(in srgb, var(--cozy-wood-0) 35%, transparent);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%);
+}
+.book__ribbon em { font: italic 500 15px/1.2 var(--font-lore, var(--font-game)); color: var(--ink-soft); }
+
+/* ── A row: one skill, its rank and [+], and its six marks beneath ── */
+.brow { position: relative; display: grid; gap: 4px; padding: 6px 0 8px; border-bottom: 2px solid color-mix(in srgb, var(--cozy-parch-edge) 70%, transparent); }
+.brow:last-child { border-bottom: 0; }
+.brow__top { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 44px auto; align-items: center; gap: 8px; }
+.brow__icon {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 2px; background: var(--cozy-well);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass-lo);
+}
+.brow__icon > span { display: block; width: 36px; height: 36px; filter: grayscale(.85) brightness(.62); }
+.brow__icon--lit { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass); }
+.brow__icon--lit > span { filter: none; }
+.brow__name { min-width: 0; display: grid; gap: 2px; }
+.brow__name b { font: 700 15px/1.1 var(--font-game); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brow__name small { font: 500 13px/1.15 var(--font-game); color: var(--ink-soft); }
+.brow--shut .brow__name b { color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.brow__rank { display: flex; align-items: center; gap: 4px; }
+.brow__rank b { font: 700 13px/1 var(--cozy-font-read); color: var(--ink); white-space: nowrap; }
+.brow__rank--pending b { color: var(--cozy-berry); }
+.brow__minus, .brow__plus, .brow__stone {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  font: 700 22px/1 var(--cozy-font-read);
+}
+.brow__minus { width: 32px; background: var(--cozy-parch-shade); color: var(--ink); box-shadow: 0 0 0 2px var(--cozy-parch-edge); }
+.brow__plus { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo); }
+.brow__plus:hover:not(:disabled) { background: var(--cozy-brass-hi); }
+.brow__plus:disabled { background: var(--cozy-parch-shade); color: color-mix(in srgb, var(--ink) 35%, transparent); box-shadow: 0 0 0 2px var(--cozy-parch-edge); }
+.brow__stone { background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 45%, transparent); }
+.brow__stone[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-glow); }
+/* A basalt stone with a "+": the per-row Spellstone hook (S2). */
+.brow__stone i { position: relative; display: block; width: 20px; height: 16px; background: var(--cozy-loot-common); clip-path: polygon(20% 0, 80% 0, 100% 35%, 100% 75%, 75% 100%, 25% 100%, 0 75%, 0 35%); }
+.brow__stone i::after { content: ''; position: absolute; inset: 4px 7px; background: var(--cozy-wood-1); clip-path: polygon(40% 0, 60% 0, 60% 40%, 100% 40%, 100% 60%, 60% 60%, 60% 100%, 40% 100%, 40% 60%, 0 60%, 0 40%, 40% 40%); }
+
+/* The marks: two branches of three, joined by ink strokes; a 16px gap between the branches. */
+.brow__marks { display: flex; gap: 16px; padding-left: 52px; }
+.brow__branch { display: grid; gap: 1px; }
+.brow__blabel { font: 700 11px/1 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.brow__nodes { position: relative; display: flex; gap: 2px; }
+.brow__nodes::before { content: ''; position: absolute; left: 22px; right: 22px; top: 50%; height: 2px; translate: 0 -50%; background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.brow__common { margin: 0; padding-left: 52px; font: italic 500 14px/1.3 var(--font-game); color: var(--ink-soft); }
+
+/* A mark: a 36px diamond in a 44px hit area. */
+.bmark { position: relative; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; background: transparent; }
+.bmark::before {
+  content: ''; position: absolute; width: var(--node); height: var(--node); rotate: 45deg; scale: .72;
+  background: var(--cozy-parch-shade); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 40%, transparent);
+}
+.bmark--star::before { rotate: 0deg; scale: .9; clip-path: polygon(50% 0, 63% 25%, 92% 15%, 80% 42%, 100% 50%, 80% 58%, 92% 85%, 63% 75%, 50% 100%, 37% 75%, 8% 85%, 20% 58%, 0 50%, 20% 42%, 8% 15%, 37% 25%); box-shadow: none; background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.bmark--star::after { content: ''; position: absolute; width: 26px; height: 26px; clip-path: polygon(50% 0, 63% 25%, 92% 15%, 80% 42%, 100% 50%, 80% 58%, 92% 85%, 63% 75%, 50% 100%, 37% 75%, 8% 85%, 20% 58%, 0 50%, 20% 42%, 8% 15%, 37% 25%); background: var(--cozy-parch-shade); }
+.bmark__glyph { position: relative; z-index: 2; display: block; width: 14px; height: 14px; background: color-mix(in srgb, var(--ink) 55%, transparent); }
+/* Open: a brass outline that breathes. */
+.bmark--open::before { background: var(--page); box-shadow: 0 0 0 3px var(--cozy-brass); animation: bmark-breathe 2s ease-in-out infinite; }
+.bmark--open.bmark--star::before { background: var(--cozy-brass); }
+.bmark--open .bmark__glyph { background: var(--cozy-brass-lo); }
+@keyframes bmark-breathe { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 4px var(--cozy-glow)); } }
+/* Taken: filled brass, the glyph in cream. Pending: the same with a dashed cream rim. */
+.bmark--taken::before, .bmark--pending::before { background: var(--cozy-brass); box-shadow: 0 0 0 3px var(--cozy-wood-0); }
+.bmark--taken.bmark--star::before, .bmark--pending.bmark--star::before { background: var(--cozy-wood-0); }
+.bmark--taken.bmark--star::after, .bmark--pending.bmark--star::after { background: var(--cozy-brass); }
+.bmark--taken .bmark__glyph, .bmark--pending .bmark__glyph { background: var(--cozy-cream); }
+.bmark--pending::before { outline: 2px dashed var(--cozy-cream); outline-offset: 1px; }
+/* Blocked by the star rule: a small ink cross over it. */
+.bmark--blocked .bmark__glyph { background: color-mix(in srgb, var(--ink) 35%, transparent); clip-path: polygon(15% 0, 50% 35%, 85% 0, 100% 15%, 65% 50%, 100% 85%, 85% 100%, 50% 65%, 15% 100%, 0 85%, 35% 50%, 0 15%); }
+.bmark--locked::before, .bmark--closed::before { opacity: .55; }
+.bmark--picked::before { box-shadow: 0 0 0 3px var(--cozy-glow); }
+.bmark:hover::before { filter: brightness(1.08); }
+
+/* The glyph vocabulary (skill-book.md §1): pixel shapes, one per node verb. */
+.bmark__glyph[data-glyph="up"] { clip-path: polygon(50% 0, 100% 45%, 70% 45%, 70% 100%, 30% 100%, 30% 45%, 0 45%); }
+.bmark__glyph[data-glyph="ring"] { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 28%, 28% 28%, 28% 72%, 72% 72%, 72% 28%, 0 28%); }
+.bmark__glyph[data-glyph="time"] { clip-path: polygon(0 0, 100% 0, 60% 50%, 100% 100%, 0 100%, 40% 50%); }
+.bmark__glyph[data-glyph="cd"] { clip-path: polygon(0 20%, 30% 20%, 50% 55%, 70% 20%, 100% 20%, 50% 90%); }
+.bmark__glyph[data-glyph="mana"] { clip-path: polygon(50% 0, 85% 50%, 85% 80%, 65% 100%, 35% 100%, 15% 80%, 15% 50%); }
+.bmark__glyph[data-glyph="status"] { clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+.bmark__glyph[data-glyph="shape"] { clip-path: polygon(40% 100%, 40% 55%, 0 15%, 15% 0, 50% 35%, 85% 0, 100% 15%, 60% 55%, 60% 100%); }
+.bmark__glyph[data-glyph="spark"] { clip-path: polygon(40% 0, 60% 0, 60% 40%, 100% 40%, 100% 60%, 60% 60%, 60% 100%, 40% 100%, 40% 60%, 0 60%, 0 40%, 40% 40%); }
+.bmark__glyph[data-glyph="party"] { clip-path: polygon(0 30%, 40% 30%, 40% 100%, 0 100%, 0 30%, 60% 0, 100% 0, 100% 70%, 60% 70%); }
+.bmark__glyph[data-glyph="fold"] { clip-path: polygon(0 10%, 45% 20%, 50% 25%, 55% 20%, 100% 10%, 100% 90%, 55% 100%, 45% 100%, 0 90%); }
+
+/* The Spellstone placeholder card under a row (today's inscribing; S2 makes stones satchel items). */
+.bstone {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; margin-left: 52px; padding: 8px 10px;
+  background: var(--page-shade); box-shadow: 0 0 0 2px var(--cozy-parch-edge);
+  font: 500 13px/1.3 var(--font-game); color: var(--ink);
+}
+.bstone__art { grid-row: span 2; image-rendering: pixelated; }
+.bstone p { margin: 0; }
+.bstone__why { grid-column: 1 / -1; color: var(--cozy-berry); }
+.bstone__acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.bstone__cut, .bstone__belt, .bkey__key, .bkey__aura, .bask__yes, .bask__no, .bcard__act {
+  min-height: 44px; padding: 0 14px; font: 700 13px/1 var(--font-pixel); letter-spacing: .04em;
+}
+.bstone__cut, .bask__yes, .bcard__act { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo); }
+.bstone__cut:disabled { background: var(--cozy-parch-shade); color: color-mix(in srgb, var(--ink) 45%, transparent); box-shadow: 0 0 0 2px var(--cozy-parch-edge); }
+.bstone__belt, .bask__no { background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 45%, transparent); }
+
+/* The Keys tab. */
+.bkey { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 2px solid color-mix(in srgb, var(--cozy-parch-edge) 70%, transparent); }
+.bkey__name { font: 700 15px/1.15 var(--font-game); color: var(--ink); }
+.bkey__name small { display: block; font: 500 12px/1 var(--font-game); color: var(--ink-soft); }
+.bkey__keys { display: flex; gap: 6px; }
+.bkey__key { width: 44px; padding: 0; font: 700 15px/1 var(--cozy-font-read); }
+.bkey__key, .bkey__aura { background: var(--cozy-parch-shade); color: var(--ink); box-shadow: 0 0 0 2px var(--cozy-parch-edge); }
+.bkey__key--on { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+
+/* ── The foot: Unused points in a sunk well, Accept (brass), Cancel (wood) or Reset (ink) ── */
+.book__foot { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 52px; padding: 4px 2px 0; }
+.book__unused { display: flex; align-items: center; gap: 8px; margin-right: auto; }
+.book__unused small { font: 700 13px/1 var(--font-pixel); color: var(--cozy-cream); }
+.book__unused b {
+  display: grid; place-items: center; min-width: 54px; height: 40px; padding: 0 10px; background: var(--cozy-well);
+  box-shadow: var(--px-cell-rim, inset 0 0 0 2px var(--cozy-wood-0)); font: 700 18px/1 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent);
+}
+.book__unused--has b { color: var(--cozy-glow); }
+.book__pending { font: 600 13px/1 var(--font-game); color: var(--cozy-brass-hi); }
+.book__accept, .book__cancel, .book__reset { min-width: 96px; min-height: 44px; padding: 0 16px; font: 700 14px/1 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; }
+.book__accept { background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo); }
+.book__accept:hover:not(:disabled) { background: var(--cozy-brass-hi); }
+.book__accept:disabled { background: var(--cozy-wood-2); color: color-mix(in srgb, var(--cozy-cream) 40%, transparent); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.book__cancel { background: var(--cozy-wood-2); color: var(--cozy-cream); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 45%, transparent); }
+.book__reset { min-width: 0; background: transparent; color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Accept's soft brass flash along the book. */
+.book--flash .book__scroll { animation: book-flash .7s ease-out; }
+@keyframes book-flash { 0% { box-shadow: inset 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 4px var(--cozy-glow), inset 0 0 0 6px var(--cozy-wood-0); } 100% { box-shadow: inset 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 4px var(--cozy-wood-3), inset 0 0 0 6px var(--cozy-wood-0); } }
+
+/* ── The hover card: a parchment card over the other page ── */
+.bcard {
+  position: absolute; z-index: 5; top: 60px; right: 18px; width: min(320px, calc(50% - 30px)); max-height: calc(100% - 130px); overflow: auto;
+  display: grid; gap: 4px; padding: 10px 12px 12px; background: var(--page); color: var(--ink);
+  box-shadow: 0 0 0 2px var(--cozy-parch-edge), 0 0 0 4px var(--cozy-wood-0), 4px 4px 0 4px color-mix(in srgb, var(--cozy-wood-0) 40%, transparent);
+}
+.bcard--left { right: auto; left: 18px; }
+.bcard__x { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; background: transparent; color: var(--ink); font: 700 20px/1 var(--cozy-font-read); }
+.bcard p { margin: 0; }
+.bcard__name { margin: 0 40px 0 0; font: 700 17px/1.15 var(--font-game); color: var(--ink); }
+.bcard__name--star { color: var(--cozy-brass-lo); }
+.bcard__kind { font: 600 12px/1.2 var(--font-game); color: var(--ink-soft); }
+.bcard__words { font: italic 500 14px/1.2 var(--font-lore, var(--font-game)); color: var(--cozy-berry); }
+.bcard__head { margin-top: 4px !important; font: 700 12px/1 var(--font-pixel); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-soft); }
+.bcard__line { font: 500 14px/1.35 var(--cozy-font-read); }
+.bcard__next, .bcard__syn, .bcard__extra { font: 500 13px/1.3 var(--cozy-font-read); color: var(--ink-soft); }
+.bcard__syn--live { color: var(--cozy-leaf); }
+.bcard__need { font: 600 13px/1.3 var(--cozy-font-read); color: var(--cozy-berry); }
+.bcard__act { justify-self: start; margin-top: 6px; }
+
+/* Confirms and the one-time note: a parchment slip over the book. */
+.bask {
+  position: absolute; z-index: 6; left: 50%; top: 50%; translate: -50% -50%; width: min(380px, calc(100% - 32px)); display: grid; gap: 10px; padding: 14px;
+  background: var(--page); color: var(--ink); box-shadow: 0 0 0 2px var(--cozy-parch-edge), 0 0 0 4px var(--cozy-wood-0), 6px 6px 0 4px color-mix(in srgb, var(--cozy-wood-0) 45%, transparent);
+}
+.bask p { margin: 0; font: 600 15px/1.35 var(--font-game); }
+.bask__acts { display: flex; flex-wrap: wrap; gap: 10px; }
+.bnote { position: absolute; z-index: 7; inset: 0; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--cozy-wood-0) 55%, transparent); }
+.bnote__parch {
+  width: min(440px, 100%); display: grid; gap: 10px; padding: 18px 18px 16px; background: var(--page); color: var(--ink);
+  box-shadow: 0 0 0 2px var(--cozy-parch-edge), 0 0 0 4px var(--cozy-wood-0);
+}
+.bnote__parch h4 { margin: 0; font: 700 18px/1.15 var(--font-display, var(--font-pixel)); color: var(--cozy-berry); }
+.bnote__parch p { margin: 0; font: 500 15px/1.4 var(--font-game); }
+.bnote__parch button { justify-self: start; }
+
+/* ── Phones: one page at a time, scrolling inside its own window; the foot stays put ── */
+@media (max-width: 760px) {
+  .book__spread { grid-template-columns: 1fr; }
+  .book__spread::after { display: none; }
+  .book__leaf, .book__leaf--right { padding: 10px 10px; background: var(--page); }
+  .book__leaf--right { border-top: 2px solid var(--cozy-parch-edge); }
+  .book__scroll { padding: 6px; }
+  .brow__top { grid-template-columns: 44px minmax(0, 1fr) auto 44px auto; gap: 6px; }
+  .brow__marks { padding-left: 0; gap: 12px; justify-content: flex-start; }
+  .brow__nodes { gap: 6px; }
+  .brow__common, .bstone { padding-left: 0; margin-left: 0; }
+  .book__foot { gap: 8px; }
+  .book__accept, .book__cancel, .book__reset { min-width: 0; padding: 0 12px; }
+  .book__unused small { display: none; }
+  .book__pending { display: none; }
+  /* The card is a bottom sheet over the page, half the window at most, above the foot. */
+  .bcard, .bcard--left { left: 6px; right: 6px; top: auto; bottom: 58px; width: auto; max-height: 50%; }
+}
+@media (max-width: 340px) { .brow__blabel { display: none; } .brow__marks { gap: 8px; } .brow__nodes { gap: 2px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bmark--open::before { animation: none; }
+  .book--flash .book__scroll { animation: none; }
+}

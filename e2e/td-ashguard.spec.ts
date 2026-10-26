@@ -8,7 +8,7 @@
  * depends on where the town's spawns happen to be. Screenshots: docs/handoff/cozy-ui/ashguard-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { ERA, pickSkill, seed } from './play-helpers';
+import { ERA, pickSkill, seed, learnRanks, putOnKey } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { keeperXpForLevel } from '../src/app/shared/skills/keeper-level';
@@ -123,20 +123,18 @@ test.describe('the Ashguard', () => {
     await page.keyboard.press('k');
     await expect(page.locator('.sbt')).toBeVisible();
     await expect(page.locator('#spellbook-title')).toContainText('Ashguard');
-    await expect(page.locator('.sbt__tab')).toHaveCount(4);
-    await expect(page.locator('.sbt__tab[data-tree="brand"]')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('.sbt__tab[data-tree="ember"]')).toHaveCount(0);
-    await expect(page.locator('.sbt__node[data-skill="watch-blade"] .sbt__badge')).toHaveText('1');
+    await expect(page.locator('.book__tab:not(.book__tab--keys)')).toHaveCount(4);
+    await expect(page.locator('[data-book-tab="brand"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-book-tab="ember"]')).toHaveCount(0);
+    await expect(page.locator('.brow[data-row="watch-blade"] .brow__rank b')).toHaveText('r 1/20');
     await pickSkill(page, 'ember-brand');
-    await expect(page.locator('.sbt__detail .sbt__cant q')).toHaveText('brann vael sha');
-    await page.screenshot({ path: `${SHOTS}/ashguard-tree-brand.jpg`, type: 'jpeg', quality: 85 });
+    await expect(page.locator('.bcard .bcard__words')).toHaveText('brann vael sha');
     for (const tree of ['oath', 'ash'] as const) {
-      await page.locator(`.sbt__tab[data-tree="${tree}"]`).click();
-      await expect(page.locator('.sbt__tree')).toHaveAttribute('data-tree', tree);
+      await page.locator(`[data-book-tab="${tree}"]`).click();
+      await expect(page.locator('.book__spread')).toHaveAttribute('data-tree', tree);
       await pickSkill(page, tree === 'oath' ? 'shield-oath' : 'last-watch');
-      await page.screenshot({ path: `${SHOTS}/ashguard-tree-${tree}.jpg`, type: 'jpeg', quality: 85 });
     }
-    await expect(page.locator('.sbt__node[data-skill="last-watch"] .sbt__need')).toHaveText('Lv 24');
+    await expect(page.locator('.brow[data-row="last-watch"] .brow__name small')).toHaveText('Opens at level 24');
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
@@ -158,13 +156,11 @@ test.describe('the Ashguard', () => {
     await expect(page.locator('.sbt')).toBeVisible();
     // Cinder Cleave → key 1, the Whirl → key 2 (it needs the Cleave), the Watch Cry → key 3.
     for (const [skill, key, ranks] of [['cinder-cleave', 1, 2], ['whirl-of-cinders', 2, 1], ['watch-cry', 3, 1]] as const) {
-      await pickSkill(page, skill);
-      for (let i = 0; i < ranks; i++) await page.locator('.sbt__detail .sbt__learn').click();
-      await page.locator('.sbt__detail .sb__keys button', { hasText: String(key) }).click();
+      await learnRanks(page, skill, ranks);
+      await putOnKey(page, skill, key);
     }
     const sheet = (await page.locator('.sbt').boundingBox())!;
     expect(sheet.x + sheet.width).toBeLessThanOrEqual(390);
-    await page.screenshot({ path: `${SHOTS}/ashguard-tree-phone.jpg`, type: 'jpeg', quality: 85 });
     await page.locator('.spellbook .win-x').click();
 
     for (const [key, words, shot] of [['3', 'brann orum', 'cry'], ['1', 'brann vael mur', 'cleave'], ['2', 'vael orum brann', 'whirl']] as const) {

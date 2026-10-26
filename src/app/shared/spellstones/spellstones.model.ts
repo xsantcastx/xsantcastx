@@ -186,35 +186,11 @@ export function gainSoul(s: SpellstoneSave, n: number, cap: number): SpellstoneS
   return soul === s.soul ? s : { ...s, soul };
 }
 
-/**
- * Inscribe: spend the recipe's Soul, add its charges to the stone at (skill, rank). Null when the Soul is short or the
- * rank is 0 (a spell the Keeper does not hold). The blank is the satchel's to take (the service does, first).
- */
-export function inscribe(s: SpellstoneSave, skill: string, rank: number, recipe: StoneRecipe): SpellstoneSave | null {
-  if (!(rank >= 1) || s.soul < recipe.soul) return null;
-  const key = stoneKey(skill, rank);
-  return {
-    ...s, soul: s.soul - recipe.soul, inscribed: s.inscribed + 1,
-    pouch: { ...s.pouch, [key]: Math.min(MAX_CHARGES, (s.pouch[key] ?? 0) + recipe.charges) },
-    // The first stone made goes on the belt by itself.
-    slot: s.slot && (s.pouch[s.slot] ?? 0) > 0 ? s.slot : key,
-  };
-}
-
-/** One charge of the stone at `key` spent. Null when there is none. An emptied stone leaves the pouch (and the slot). */
-export function spendCharge(s: SpellstoneSave, key: string): SpellstoneSave | null {
-  const left = s.pouch[key] ?? 0;
-  if (left <= 0) return null;
-  const pouch = { ...s.pouch };
-  if (left > 1) pouch[key] = left - 1; else delete pouch[key];
-  return { ...s, pouch, slot: s.slot === key && left <= 1 ? null : s.slot };
-}
-
 /** What check-meaning reads: the blank's and the stones' source, use and lore. */
 export const SPELLSTONE_MEANING = {
   blank: {
     sources: ['creature drops (any creature, 1 in 20; bosses two)', 'Edrin Kade sells it (Material Vendor, priced on the hunt)'],
-    uses: ['inscribed with a ranked spell and Soul in the Spellbook: a Spellstone'],
+    uses: ['cut with a ranked spell and Soul in the Skill Book (Create Spellstone): a satchel Spellstone'],
     lore: 'The Seamworks scribes cut the cant into basalt because basalt remembers being fire.',
   },
   stone: {

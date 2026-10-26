@@ -32,17 +32,8 @@ describe('td-lantern: the book as data', () => {
     expect(bookTrees('lanternwright')).toEqual(['lamp', 'hearth', 'moth', 'common']);
     expect(LAMP.length).toBe(13);
     expect(CLASS_SKILLS.lanternwright.length).toBe(16); // + the common page: Light, the Seek, the Waygate
-    for (const tr of LAMP_TREES) {
-      const ids = treeSkills('lanternwright', tr);
-      expect(ids.length).withContext(tr).toBeGreaterThanOrEqual(3);
-      for (const id of ids) {
-        const req = SKILLS[id].req;
-        if (!req) continue;
-        expect(SKILLS[req].tree).withContext(id).toBe(tr);
-        expect(SKILLS[req].tier).withContext(id).toBeLessThan(SKILLS[id].tier);
-      }
-      expect(new Set(ids.map(id => `${SKILLS[id].tier}:${SKILLS[id].col}`)).size).withContext(tr).toBe(ids.length);
-    }
+    // The book's rows (skills-100.md §6): Lamp 6, Hearth 3 (Last Light is Lantern Ward's mark), Moth 2 (Moth-Kin, Lamp-Wisp's).
+    expect(LAMP_TREES.map(tr => treeSkills('lanternwright', tr).length)).toEqual([6, 3, 2]);
     for (const id of LAMP) {
       expect(CLASS_SKILLS.warlock).not.toContain(id);
       expect(CLASS_SKILLS.ashguard).not.toContain(id);
@@ -457,13 +448,12 @@ describe('td-lantern: the trees and the saves', () => {
     expect(clampTree(t, 'lanternwright', 10).spent).toEqual({ 'hearth-circle': 2 });
     expect(clampTree(t, 'warlock', 30).spent).toEqual({ 'bone-spear': 3 });
     expect(clampTree(t, 'ashguard', 30).spent).toEqual({ 'watch-blade': 2 });
-    // Dawn needs Banish; Banish needs the flash (free in the kit).
-    expect(rankBlock(empty(), 'lanternwright', 'dawn-at-noon', 30)).toBe('req');
-    let tree: KeeperSkillTree | null = buyRank(empty(), 'lanternwright', 'banish', 30);
-    expect(tree).not.toBeNull();
-    tree = buyRank(tree!, 'lanternwright', 'dawn-at-noon', 30);
+    // The book's rule: a rank anywhere above it on its page opens a row (the kit's Kindle is free), so Dawn opens at its level.
+    expect(rankBlock(empty(), 'lanternwright', 'dawn-at-noon', 30)).toBeNull();
+    expect(rankBlock(empty(), 'lanternwright', 'moth-kin', 30)).toBe('folded');
+    const tree = buyRank(empty(), 'lanternwright', 'dawn-at-noon', 30);
     expect(rankOf(tree!, 'lanternwright', 'dawn-at-noon')).toBe(1);
-    expect(clampTree({ spent: { 'dawn-at-noon': 2 }, free: [], at: 0 }, 'lanternwright', 30).spent).toEqual({});
+    expect(clampTree({ spent: { 'dawn-at-noon': 2, 'last-light': 3 }, free: [], at: 0 }, 'lanternwright', 30).spent).toEqual({ 'dawn-at-noon': 2 });
     for (let lv = 1; lv <= 30; lv++) expect(pointsSpent(clampTree(t, 'lanternwright', lv))).toBeLessThanOrEqual(skillPointsEarned(lv));
     expect(rankBlock(empty(), 'lanternwright', 'bone-spear', 30)).toBe('class');
     expect(rankOf(empty(), 'lanternwright', 'shutter-lantern')).toBe(1);

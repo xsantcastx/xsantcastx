@@ -32,8 +32,8 @@ export const THORN_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   },
   'skill.heartwood': { en: 'Heartwood', es: 'Duramen' },
   'skill.heartwood.text': {
-    en: 'A bow of the old wood: every arrow you loose hits {{pct}}% harder and is {{pierce}}% likelier to pierce.',
-    es: 'Un arco de madera vieja: cada flecha que sueltas golpea un {{pct}}% mas fuerte y tiene un {{pierce}}% mas de atravesar.',
+    en: 'A bow of the old wood: every arrow you loose hits {{pct}}% harder.',
+    es: 'Un arco de madera vieja: cada flecha que sueltas golpea un {{pct}}% mas fuerte.',
   },
   'skill.command': { en: 'Command', es: 'Ordenar' },
   'skill.command.text': {

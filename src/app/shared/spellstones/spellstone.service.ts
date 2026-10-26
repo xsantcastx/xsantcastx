@@ -5,7 +5,7 @@
  *
  *  - kill()      a kill's Soul (soulForKill), never past the level's cap
  *  - cut()       1 Basalt Blank from the satchel + the recipe's Soul → a Spellstone in the SATCHEL (skill-book.md §4):
- *                a 1×1 item recording the spell, rank, marks and charges (inscribe() is cut() with no marks)
+ *                a 1×1 item recording the spell, rank, marks and charges
  *  - use()       one charge of a satchel stone of the slotted recipe, after the shared one-second cooldown; the play
  *                view hands the spell to the engine (castStone) and only then is the charge spent
  *  - migration   a v1 save's hidden pouch becomes satchel stones on load, once (version 2), merge-safe: each stone's id
@@ -66,11 +66,6 @@ export class SpellstoneService {
     if (next === s) return 0;
     this.write({ ...next, at: Math.max(at, s.at + 1) });
     return next.soul - s.soul;
-  }
-
-  /** Inscribe a Spellstone of `skill` at `rank` with no marks (the pre-book path): `cut` with marks 0. */
-  inscribe(skill: string, rank: number, mana: number, at = Date.now()): InscribeCode {
-    return this.cut(skill, rank, 0, mana, at);
   }
 
   /**

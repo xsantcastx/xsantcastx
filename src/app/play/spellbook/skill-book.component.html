@@ -1,0 +1,221 @@
+<!-- The Skill Book (K): docs/design/skill-book.md. An open book cut from the town's timber — the tree tabs over the
+     spread, one skill a row with its six marks beneath, Unused points, Accept and Cancel at the foot. -->
+<div class="book" [class.book--flash]="flashOn" (pointerdown)="pointer($event)">
+  <header class="book__head">
+    <div class="book__tabs" role="tablist" [attr.aria-label]="t('book.title')">
+      @for (tb of tabs; track tb.id; let i = $index) {
+        <button type="button" role="tab" class="book__tab" [attr.data-book-tab]="tb.id" [attr.aria-selected]="tab === tb.id" [attr.tabindex]="tab === tb.id ? 0 : -1"
+          [title]="t('play.td.tree.' + tb.id)" [attr.aria-label]="t('play.td.tree.' + tb.id)" (click)="openTab(tb.id)" (keydown)="tabKey(i, $event)">
+          <span class="book__tab-icon" [innerHTML]="treeIcon(tb.id)"></span>
+          @if (tb.spent > 0) { <b class="book__tab-n" aria-hidden="true">{{ tb.spent }}</b> }
+        </button>
+      }
+      <button type="button" role="tab" class="book__tab book__tab--keys" data-book-tab="keys" [attr.aria-selected]="tab === 'keys'" [attr.tabindex]="tab === 'keys' ? 0 : -1"
+        [title]="t('book.tab.keys')" (click)="openTab('keys')" (keydown)="tabKey(tabs.length, $event)">
+        <span class="book__keys-glyph" aria-hidden="true">1·4</span><span class="book__tab-word">{{ t('book.tab.keys') }}</span>
+      </button>
+    </div>
+    <div class="book__tools">
+      <button type="button" class="px-help book__help" [attr.aria-expanded]="help" [attr.aria-label]="t('book.title')" (click)="help = !help">?</button>
+    </div>
+  </header>
+
+  @if (help) { <p class="book__helpcard" role="note">{{ t('book.help') }}</p> }
+
+  <div class="book__scroll">
+    @if (page; as pg) {
+      <div class="book__spread" [attr.data-tree]="pg.tree">
+        @for (half of halves; track $index; let side = $index) {
+          <section class="book__leaf" [class.book__leaf--right]="side === 1">
+            @if (side === 0) {
+              <h3 class="book__ribbon"><span>{{ t('play.td.tree.' + pg.tree) }}</span><em>{{ t('book.tagline.' + pg.tree) }}</em></h3>
+            }
+            @for (row of half; track row.id) {
+              <article class="brow" [class.brow--shut]="!row.open && !row.rank" [class.brow--zero]="row.rank === 0" [attr.data-row]="row.id">
+                <div class="brow__top">
+                  <button type="button" class="brow__icon" [class.brow__icon--lit]="row.rank > 0" [attr.aria-label]="row.name"
+                    (mouseenter)="hover(row)" (mouseleave)="hide()" (focus)="hover(row)" (click)="showRow(row, true)">
+                    <span [innerHTML]="icon(row.id)"></span>
+                  </button>
+                  <div class="brow__name">
+                    <b>{{ row.name }}</b>
+                    <small>{{ row.open || row.rank ? t('book.kind.' + row.kind) : row.why }}</small>
+                  </div>
+                  @if (row.open || row.rank) {
+                    <div class="brow__rank" [class.brow__rank--pending]="row.rank !== row.savedRank">
+                      @if (row.canDrop) {
+                        <button type="button" class="brow__minus" [attr.aria-label]="t('book.rankDown', { name: row.name })" (click)="rankDown(row)">&minus;</button>
+                      }
+                      <b>{{ rankLabel(row) }}</b>
+                    </div>
+                    <button type="button" class="brow__plus" [disabled]="!row.canRank" [attr.data-plus]="row.id"
+                      [title]="row.canRank ? t('book.rankUp', { name: row.name }) : row.why" [attr.aria-label]="t('book.rankUp', { name: row.name })" (click)="rankUp(row)">+</button>
+                    @if (row.stone) {
+                      <!-- "Create Spellstone" (S2, skill-book.md §4.2): its card confirms, Cut makes a satchel stone that
+                           records this row's rank and marks (SpellstoneService.cut). -->
+                      <button type="button" class="brow__stone" [attr.aria-label]="t('book.stone.title')" [title]="t('book.stone.title')" [attr.aria-expanded]="stoneRow === row.id" (click)="openStone(row)">
+                        <i aria-hidden="true"></i>
+                      </button>
+                    }
+                  }
+                </div>
+                @if (row.marks; as marks) {
+                  @if (row.open || row.rank) {
+                    <div class="brow__marks">
+                      @for (g of ['a', 'b']; track g) {
+                        <div class="brow__branch">
+                          <small class="brow__blabel" aria-hidden="true">{{ t(g === 'a' ? 'book.edge' : 'book.craft') }}</small>
+                          <div class="brow__nodes">
+                            @for (m of marks; track m.slot) {
+                              @if (m.branch === g) {
+                                <button type="button" class="bmark" [class]="'bmark bmark--' + m.state" [class.bmark--star]="m.star" [class.bmark--picked]="isPicked(row, m)"
+                                  [attr.data-mark]="row.id + '.' + m.slot" [attr.aria-label]="markLabel(m)" [attr.aria-pressed]="m.state === 'taken' || m.state === 'pending'"
+                                  (mouseenter)="showMark(row, m)" (mouseleave)="hide()" (focus)="showMark(row, m)" (click)="markTap(row, m)">
+                                  <i class="bmark__glyph" [attr.data-glyph]="m.glyph" aria-hidden="true"></i>
+                                </button>
+                              }
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                } @else if (pg.common && (row.open || row.rank)) {
+                  <p class="brow__common">{{ t('book.common') }}</p>
+                }
+                @if (stoneRow === row.id) {
+                  <div class="bstone" role="group" data-inscribe [attr.data-stone-held]="stone?.held ?? 0" [attr.aria-label]="t('book.stone.title')">
+                    @if (stone; as st) {
+                      @if (stoneArt) { <img class="bstone__art" [src]="stoneArt(row.id)" alt="" width="32" height="32" /> }
+                      <p class="bstone__gives">{{ t('play.stone.gives', { n: st.charges, rank: st.rank }) }}</p>
+                      <p class="bstone__have">{{ t('play.stone.have', { blanks: st.blanks, soul: st.soul, held: st.held }) }}</p>
+                      @if (pending) { <p class="bstone__why">{{ t('book.stone.accept') }}</p> }
+                      @else if (st.why) { <p class="bstone__why">{{ st.why }}</p> }
+                      <div class="bstone__acts">
+                        <button type="button" class="bstone__cut" data-inscribe-btn [disabled]="!!st.why || pending > 0" (click)="cut.emit(row.id)">{{ t('play.stone.inscribe', { soul: st.soul }) }}</button>
+                        @if (st.held > 0) {
+                          <button type="button" class="bstone__belt" [disabled]="st.onBelt" (click)="belt.emit(row.id)">{{ st.onBelt ? t('play.stone.onBelt') : t('play.stone.belt') }}</button>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </section>
+        }
+      </div>
+    } @else {
+      <!-- The Keys tab: keys 1–4 and the running aura (today's key picker, moved here). -->
+      <section class="book__leaf book__keys">
+        <h3 class="book__ribbon"><span>{{ t('book.keys.title') }}</span><em>{{ t('book.keys.help') }}</em></h3>
+        @if (!actives.length) { <p class="brow__common">{{ t('book.keys.none') }}</p> }
+        @for (a of actives; track a.id) {
+          <div class="bkey" [attr.data-key-row]="a.id">
+            <span class="brow__icon brow__icon--lit" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
+            <b class="bkey__name">{{ a.name }}</b>
+            <div class="bkey__keys" role="group" [attr.aria-label]="a.name">
+              @for (k of keys; track k) {
+                <button type="button" class="bkey__key" [class.bkey__key--on]="a.slot === k" [attr.aria-pressed]="a.slot === k" (click)="assign.emit({ id: a.id, slot: k })">{{ k }}</button>
+              }
+            </div>
+          </div>
+        }
+        @for (a of auras; track a.id) {
+          <div class="bkey">
+            <span class="brow__icon brow__icon--lit" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
+            <b class="bkey__name">{{ a.name }} <small>{{ t('book.keys.aura') }}</small></b>
+            <button type="button" class="bkey__aura" [attr.data-aura-row]="a.id" [class.bkey__key--on]="a.on" [attr.aria-pressed]="a.on" (click)="toggleAura.emit(a.id)">{{ a.on ? t('book.keys.on') : t('book.keys.off') }}</button>
+          </div>
+        }
+      </section>
+    }
+  </div>
+
+  <!-- The foot: Unused points, Accept, Cancel (or Reset when nothing is pending). Sticky on a phone. -->
+  <footer class="book__foot">
+    <div class="book__unused" [class.book__unused--has]="unused > 0"><small>{{ t('book.unused') }}</small><b data-book-unused>{{ unused }}</b></div>
+    @if (pending) {
+      <span class="book__pending">{{ t('book.pendingN', { n: pending }) }}</span>
+      <button type="button" class="book__accept" data-book-accept (click)="doAccept()">{{ t('book.accept') }}</button>
+      <button type="button" class="book__cancel" data-book-cancel (click)="doCancel()">{{ t('book.cancel') }}</button>
+    } @else {
+      <button type="button" class="book__accept" data-book-accept disabled>{{ t('book.accept') }}</button>
+      <button type="button" class="book__reset" (click)="resetAsk = true">{{ t('book.reset') }}</button>
+    }
+  </footer>
+
+  <!-- The hover card (D2-style, small): over the other page on a desk, a bottom sheet on a phone. -->
+  @if (card; as c) {
+    <aside class="bcard" [class.bcard--left]="sideOf(c.row.id) === 1" [attr.data-card]="c.kind === 'row' ? c.row.id : c.row.id + '.' + c.mark.slot" role="dialog" [attr.aria-label]="c.kind === 'row' ? c.row.name : c.mark.name"
+      (pointerdown)="$event.stopPropagation()">
+      <button type="button" class="px-x bcard__x" [attr.aria-label]="t('book.close')" (click)="closeCard()">&times;</button>
+      @if (c.kind === 'row') {
+        <h4 class="bcard__name">{{ c.row.name }}</h4>
+        <p class="bcard__kind">{{ t('book.kind.' + c.row.kind) }}@if (c.row.cost) { · {{ c.row.cost }} }</p>
+        @if (c.row.words) { <p class="bcard__words">{{ c.row.words }}</p> }
+        <p class="bcard__head">{{ c.row.rank > 0 ? t('book.now', { n: c.row.castRank }) : t('book.first') }}</p>
+        <p class="bcard__line">{{ c.row.now }}</p>
+        @if (c.row.next.length) {
+          <p class="bcard__head">{{ t('book.next') }}</p>
+          @for (l of c.row.next; track l) { <p class="bcard__next">{{ l }}</p> }
+        }
+        @if (c.row.syn.length) {
+          <p class="bcard__head">{{ t('book.syn') }}</p>
+          @for (s of c.row.syn; track s.from) { <p class="bcard__syn" [attr.data-syn]="s.from" [class.bcard__syn--live]="s.live">{{ s.text }}</p> }
+        }
+        @for (l of c.row.extra; track l) { <p class="bcard__extra">{{ l }}</p> }
+        @if (c.row.gear > 0) { <p class="bcard__extra">{{ t('book.gear', { n: c.row.gear }) }}</p> }
+        @if (!c.row.canRank && c.row.why) { <p class="bcard__need">{{ c.row.why }}</p> }
+      } @else {
+        <h4 class="bcard__name" [class.bcard__name--star]="c.mark.star">{{ c.mark.name }}</h4>
+        <p class="bcard__kind">{{ t(c.mark.star ? 'book.mark.star' : 'book.mark.step', { branch: t(c.mark.branch === 'a' ? 'book.edge' : 'book.craft'), n: c.mark.step }) }} · {{ t('book.mark.cost') }}</p>
+        <p class="bcard__line">{{ c.mark.line }}</p>
+        @if (c.mark.need) { <p class="bcard__need">{{ c.mark.need }}</p> }
+        @if (c.mark.note) { <p class="bcard__extra">{{ c.mark.note }}</p> }
+        @if (c.mark.state === 'open' || c.mark.state === 'pending' || c.mark.state === 'blocked') {
+          <button type="button" class="bcard__act" (click)="act(c.row, c.mark); picked = null">
+            {{ c.mark.state === 'open' ? t('book.mark.take') : c.mark.state === 'pending' ? t('book.mark.drop') : t('book.mark.swapYes') }}
+          </button>
+        }
+      }
+    </aside>
+  }
+
+  @if (swap; as s) {
+    <div class="bask" role="alertdialog" [attr.aria-label]="t('book.mark.swap', { a: s.from, b: s.to })">
+      <p>{{ t('book.mark.swap', { a: s.from, b: s.to }) }}</p>
+      <div class="bask__acts">
+        <button type="button" class="bask__yes" (click)="confirmSwap()">{{ t('book.mark.swapYes') }}</button>
+        <button type="button" class="bask__no" (click)="swap = null">{{ t('book.cancel') }}</button>
+      </div>
+    </div>
+  }
+  @if (resetAsk) {
+    <div class="bask" role="alertdialog" [attr.aria-label]="t('book.resetAsk')">
+      <p>{{ t('book.resetAsk') }}</p>
+      <div class="bask__acts">
+        <button type="button" class="bask__yes" data-book-reset-yes (click)="confirmReset()">{{ t('book.resetYes') }}</button>
+        <button type="button" class="bask__no" (click)="resetAsk = false">{{ t('book.resetNo') }}</button>
+      </div>
+    </div>
+  }
+  @if (discardAsk) {
+    <div class="bask" role="alertdialog" [attr.aria-label]="t('book.discardAsk')">
+      <p>{{ t('book.discardAsk') }}</p>
+      <div class="bask__acts">
+        <button type="button" class="bask__yes" (click)="dropAndClose()">{{ t('book.discardYes') }}</button>
+        <button type="button" class="bask__no" (click)="discardAsk = false">{{ t('book.discardNo') }}</button>
+      </div>
+    </div>
+  }
+  @if (rebound !== null) {
+    <div class="bnote" role="dialog" aria-labelledby="book-rebound-title">
+      <div class="bnote__parch">
+        <h4 id="book-rebound-title">{{ t('book.rebound.title') }}</h4>
+        <p>{{ t('book.rebound.text', { n: unused }) }}</p>
+        <button type="button" class="bask__yes" data-book-note (click)="readNote()">{{ t('book.rebound.ok') }}</button>
+      </div>
+    </div>
+  }
+</div>

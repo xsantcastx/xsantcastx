@@ -104,7 +104,7 @@ describe('td-relics: the signatures the fight applies', () => {
     wear(sys, 'unique-crown-banked-coal');
     expect(sys.fireMult).toBeCloseTo(1.15, 5);
     sys.setRanks({ 'ember-bolt': 1, 'ember-mastery': 3 });
-    expect(sys.fireMult).toBeCloseTo(1.16 * 1.15, 5);
+    expect(sys.fireMult).toBeCloseTo(1.045 * 1.15, 5);
     sys.setRanks({ 'ember-bolt': 1 });
     const m = mobAt(sys, 'obsidian-golem', 30, 0);
     m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 999;
