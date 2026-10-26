@@ -48,7 +48,7 @@ function clump(put: (x: number, y: number, v: number) => void, cx: number, cy: n
 }
 
 let grassTex: Uint8Array | null = null, dirtTex: Uint8Array | null = null;
-function grass(): Uint8Array {
+export function grass(): Uint8Array {
   return grassTex ??= texture(11, 2, (put, get) => {
     // Calm (owner 2026-10-26, "the environment looks too much"): fewer, softer clumps and a few blades, not a carpet.
     const n = 300, pts: [number, number, number, number][] = [];
@@ -64,7 +64,7 @@ function grass(): Uint8Array {
     }
   });
 }
-function dirt(): Uint8Array {
+export function dirt(): Uint8Array {
   return dirtTex ??= texture(23, 2, (put, get) => {
     // Packed earth: soft lighter patches (the worn top), darker ruts, pebbles with a lit cap and a dark foot, grit.
     for (let i = 0; i < 90; i++) {
@@ -85,7 +85,7 @@ function dirt(): Uint8Array {
 }
 
 /** Smooth value noise in [0, 1] over world pixels, lattice `s` px (the meadow's light and dark patches). */
-function meadow(x: number, y: number, s: number, salt: number): number {
+export function meadow(x: number, y: number, s: number, salt: number): number {
   const gx = Math.floor(x / s), gy = Math.floor(y / s), fx = x / s - gx, fy = y / s - gy;
   const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
   const a = hash(gx, gy, salt), b = hash(gx + 1, gy, salt), c = hash(gx, gy + 1, salt), d = hash(gx + 1, gy + 1, salt);
@@ -103,7 +103,7 @@ const CALM = [1, 2, 2, 3, 3, 4] as const;
 /** The meadow's light and dark patches, sampled once per 4×4 block (it changes over 72 px; per pixel was the bake's cost). */
 let meadowKey = NaN, meadowVal = 0;
 /** The grass ramp index at a world pixel, the meadow's patches gently dithered in. */
-function grassAt(wx: number, wy: number): number {
+export function grassAt(wx: number, wy: number): number {
   let i: number = CALM[grass()[((wy & MASK) * T) + (wx & MASK)]];
   const key = (wx >> 2) * 65536 + (wy >> 2);
   if (key !== meadowKey) { meadowKey = key; meadowVal = meadow(wx & ~3, wy & ~3, 72, 5); }
@@ -244,11 +244,11 @@ function wornExtras(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy
   if (r(80) < .025) { const [x, y] = at(81, 82, 7); rect(c, x, y, 4, 1, '#d8d0bc'); rect(c, x, y + 1, 4, 1, '#8a8270'); rect(c, x - 1, y, 1, 2, '#e8e1cf'); rect(c, x + 4, y, 1, 2, '#e8e1cf'); }
 }
 /** A bloom's petals (lit, shade) and heart. White, yellow, violet, blue, rose — the reference's meadow. */
-const FLOWERS: readonly (readonly [string, string, string])[] = [
+export const FLOWERS: readonly (readonly [string, string, string])[] = [
   ['#ffffff', '#c9c6dc', '#f2c94c'], ['#ffe066', '#d9a52a', '#fff6c8'], ['#b57ee8', '#7a4cb0', '#f3e2ff'],
   ['#7fb4ff', '#4a78c8', '#e8f2ff'], ['#ff8fb0', '#c8506e', '#fff0c8'], ['#ffffff', '#c9c6dc', '#f2c94c'],
 ];
-function flower(c: Ctx, x: number, y: number, k: number): void {
+export function flower(c: Ctx, x: number, y: number, k: number): void {
   const [lit, shade, heart] = FLOWERS[k];
   c.fillStyle = GRASS_RAMP[0]; c.fillRect(x, y + 2, 2, 1);
   c.fillStyle = lit; c.fillRect(x, y, 1, 1); c.fillRect(x + 1, y - 1, 1, 1); c.fillRect(x - 1, y + 1, 1, 1);
@@ -256,7 +256,7 @@ function flower(c: Ctx, x: number, y: number, k: number): void {
   c.fillStyle = heart; c.fillRect(x + 1, y, 1, 1);
 }
 /** A small grey stone `w` px wide: a lit cap, a shaded body, a dark foot (and its shadow on the ground). */
-function stone(c: Ctx, x: number, y: number, w: number, onDirt: boolean, under?: string, tones: readonly string[] = ['#3e3a44', '#7f7a86', '#a9a4b0', '#d4d0da', '#5a5662']): void {
+export function stone(c: Ctx, x: number, y: number, w: number, onDirt: boolean, under?: string, tones: readonly string[] = ['#3e3a44', '#7f7a86', '#a9a4b0', '#d4d0da', '#5a5662']): void {
   const h = w >= 4 ? 3 : 2;
   c.fillStyle = under ?? (onDirt ? DIRT_RAMP[0] : GRASS_RAMP[0]); c.fillRect(x, y + h, w + 1, 1);
   c.fillStyle = tones[0]; c.fillRect(x, y, w, h); c.fillRect(x - 1, y + 1, 1, h - 1); c.fillRect(x + w, y + 1, 1, h - 1);

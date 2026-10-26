@@ -28,6 +28,9 @@ import * as ART from ${src('play/td/td-art')};
 import { paintRichGround } from ${src('play/td/td-ground')};
 import { petSheet, PET_W, PET_H } from ${src('play/td/td-pet-art')};
 import * as HD from ${src('play/td/td-hd-art')};
+import { paintFieldTile } from ${src('play/td/td-terrain')};
+import { paintGround, paintEdge } from ${src('play/td/td-art')};
+import { richEdge } from ${src('play/td/td-ground')};
 const S = ${Number(scaleArg) || 4};
 const wrap = document.createElement('div'); wrap.className = 'row'; document.body.appendChild(wrap);
 function card(title: string, w: number, h: number, paint: (c: CanvasRenderingContext2D) => void) {
@@ -55,6 +58,39 @@ const tr = ART.tree('oak', 1);
 card('Oak now', 56, 64, c => { c.drawImage(tr.img, 28 - tr.ax, 60 - tr.ay); c.drawImage(tr.roof!.img, 28 + tr.roof!.x, 60 + tr.roof!.y); });
 const ho = HD.hdOak(1) as any;
 card('Oak HD', 56, 64, c => { c.drawImage(ho.img, 28 - ho.ax / 2, 60 - ho.ay / 2, ho.img.width / 2, ho.img.height / 2); c.drawImage(ho.roof.img, 28 + ho.roof.x, 60 + ho.roof.y, ho.roof.img.width / 2, ho.roof.img.height / 2); });
+// Terrain: the same patch painted square (now) and organic (td-terrain), at 2 px a world px.
+const MAP = [
+  'wwwwwwwwwssgggggggggggggg',
+  'wwwwwwwwsssggggggdggggggg',
+  'wwwwwwwssggggggggdgggfggg',
+  'wwwwwwsssgggggggdddggfffg',
+  'wwwwwwssgggggggddgggggfgg',
+  'wwwwwssgggggggddggggggggg',
+  'wwwwwsgggggggddgggccccggg',
+  'wwwwssggggggddggggccccggg',
+  'wwwsssggggggdgggggccccggg',
+  'wwwssgggsggddgggggggggggg',
+  'wwssgggggddgggggwwggggggg',
+  'wwssggggddggggggwwwgggggg',
+];
+const KIND: any = { w: 'water', s: 'sand', g: 'grass', d: 'dirt', c: 'cobble', f: 'flowers' };
+const kAt = (q: number, r: number) => KIND[(MAP[Math.max(0, Math.min(MAP.length - 1, r))] ?? '')[Math.max(0, Math.min(MAP[0].length - 1, q))]] ?? 'grass';
+const terr = document.createElement('div'); terr.className = 'row'; document.body.appendChild(terr);
+for (const organicOn of [false, true]) {
+  const W = MAP[0].length * 16, H = MAP.length * 16, el = document.createElement('canvas'); el.width = W * 2; el.height = H * 2;
+  const g = el.getContext('2d')!; g.imageSmoothingEnabled = false;
+  const t = document.createElement('canvas'); t.width = 16; t.height = 16; const tg = t.getContext('2d')!;
+  for (let r = 0; r < MAP.length; r++) for (let q = 0; q < MAP[0].length; q++) {
+    const k = kAt(q, r) as any, nb = (dx: number, dy: number) => kAt(q + dx, r + dy) as any;
+    if (organicOn && paintFieldTile(g, k, q + 40, r + 60, q * 32, r * 32, nb, 0)) continue;
+    tg.clearRect(0, 0, 16, 16);
+    if (!paintRichGround(tg, k, q + 40, r + 60, 0, 0, nb, 0)) paintGround(tg, k, q + 40, r + 60, 0, 0, 0);
+    for (const [dx, dy, side] of [[0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e']] as const) if (!richEdge(k, nb(dx, dy))) paintEdge(tg, k, nb(dx, dy), side, q + 40, r + 60, 0, 0);
+    g.drawImage(t, q * 32, r * 32, 32, 32);
+  }
+  const f = document.createElement('figure'); el.style.width = (W * 3) + 'px'; el.style.height = (H * 3) + 'px';
+  const cap = document.createElement('figcaption'); cap.textContent = organicOn ? 'terrain: organic (td-terrain)' : 'terrain: now (square seams)'; f.append(el, cap); terr.appendChild(f);
+}
 const raw = document.createElement('div'); raw.className = 'row'; document.body.appendChild(raw);
 for (const cv of [hk, hs, hp]) { const el = document.createElement('canvas'); el.width = cv.width * 2; el.height = cv.height * 2; const g = el.getContext('2d')!; g.imageSmoothingEnabled = false; g.fillStyle = '#4c8c36'; g.fillRect(0, 0, el.width, el.height); g.drawImage(cv, 0, 0, el.width, el.height); el.style.width = el.width + 'px'; raw.appendChild(el); }
 (window as any).done = true;

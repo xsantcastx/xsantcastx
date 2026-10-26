@@ -76,8 +76,9 @@ function dome(cx: number, cy: number, rx: number, ry: number, cut: number): Pt[]
   return pts;
 }
 
-function keeperFront(q: KPose): HTMLCanvasElement {
-  const s = new Sculpt(KW, KH), b = q.bob, cx = 41, br = q.breath, sw = q.sway;
+function keeperFront(q: KPose, tn = 0): HTMLCanvasElement {
+  // tn 1: turned a quarter toward the viewer's right (the isometric SE facing; mirrored for SW).
+  const s = new Sculpt(KW, KH), b = q.bob, cx = 41, br = q.breath, sw = q.sway - tn, hc = cx + tn * 1.5, fc = cx + tn * 3;
   // The cape behind everything: flares from the shoulders to just over the boots, swaying.
   s.poly([[cx - 17, 50 + b], [cx + 17, 50 + b], [cx + 27 + sw, 106 + b], [cx + 15 + sw, 110 + b], [cx, 107 + b], [cx - 15 + sw, 110 + b], [cx - 27 + sw, 106 + b]], M.capeIn, { g: 1 });
   // Its outer folds either side of the legs (lit on the left).
@@ -107,7 +108,7 @@ function keeperFront(q: KPose): HTMLCanvasElement {
   // The torso: a gambeson, a steel breastplate over it, the belt.
   s.poly([[cx - 17, 51 + b], [cx + 17, 51 + b], [cx + 17, 75 + b], [cx - 17, 75 + b]], M.tunic, { g: 60 });
   s.poly([[cx - 15, 52 + b - br], [cx + 15, 52 + b - br], [cx + 14, 66 + b], [cx + 9, 73 + b], [cx - 9, 73 + b], [cx - 14, 66 + b]], M.steel, { g: 61 });
-  s.line([cx, 55 + b - br], [cx, 71 + b], M.steel.ramp[2]);
+  s.line([cx + tn * 2, 55 + b - br], [cx + tn * 2, 71 + b], M.steel.ramp[2]);
   s.rect(cx - 17, 72 + b, 34, 4, M.leather, { g: 62 });
   // Pauldrons, layered plates.
   for (const side of [-1, 1] as const) {
@@ -130,36 +131,37 @@ function keeperFront(q: KPose): HTMLCanvasElement {
   s.ellipse(hx - ux * 8.5, hy - uy * 8.5, 2.6, 2.6, M.brass, { g: 93 });
   s.ellipse(hx, hy, 4.2, 4, M.skin, { g: 94 });
   // The neck and the head (big: about a third of the figure, the references' proportion).
-  s.rect(cx - 5, 44 + b, 11, 9, M.skin, { g: 100, bias: -1 });
-  s.ellipse(cx, 33 + b, 17.5, 16, M.skin, { g: 101 });
-  s.ellipse(cx - 17, 36 + b, 2.8, 4, M.skin, { g: 102, bias: .2 }); s.ellipse(cx + 17, 36 + b, 2.8, 4, M.skin, { g: 103, bias: -.3 });
+  s.rect(hc - 5, 44 + b, 11, 9, M.skin, { g: 100, bias: -1 });
+  s.ellipse(hc, 33 + b, 17.5, 16, M.skin, { g: 101 });
+  s.ellipse(hc - 17, 36 + b, 2.8, 4, M.skin, { g: 102, bias: .2 }); if (!tn) s.ellipse(hc + 17, 36 + b, 2.8, 4, M.skin, { g: 103, bias: -.3 });
   // Hair: dark curls at the temples under the helm.
-  for (const [x, y, r] of [[-16, 27, 4.6], [-17, 33, 3.6], [16, 27, 4.6], [17, 33, 3.6], [-12, 25, 4], [12, 25, 4], [-6, 25, 3.4], [6, 25, 3.4]] as const) s.ellipse(cx + x, y + b, r, r, M.hair, { g: 110 + x });
+  for (const [x, y, r] of [[-16, 27, 4.6], [-17, 33, 3.6], [16, 27, 4.6], [17, 33, 3.6], [-12, 25, 4], [12, 25, 4], [-6, 25, 3.4], [6, 25, 3.4]] as const) s.ellipse(hc + x - (x > 0 ? tn : 0), y + b, r, r, M.hair, { g: 110 + x });
   // The half-helm: a steel dome, a darker rim with an ember band, a short wine plume.
-  s.poly(dome(cx, 21 + b, 19, 14.5, 23 + b), M.steel, { g: 120 });
-  s.poly([[cx - 19.5, 18 + b], [cx + 19.5, 18 + b], [cx + 19, 23 + b], [cx - 19, 23 + b]], M.dsteel, { g: 121 });
-  s.rect(cx - 18, 19 + b, 36, 2, M.ember, { g: 122 });
-  s.limb([cx, 8 + b], [cx, 18 + b], 1.8, 1.8, M.dsteel, { g: 123 });
-  s.stroke([[cx + 1, 8 + b], [cx + 7, 3 + b], [cx + 13, 2 + b], [cx + 19 - sw, 7 + b]], 3.8, 1.8, M.cape, { g: 124 });
+  s.poly(dome(hc, 21 + b, 19, 14.5, 23 + b), M.steel, { g: 120 });
+  s.poly([[hc - 19.5, 18 + b], [hc + 19.5, 18 + b], [hc + 19, 23 + b], [hc - 19, 23 + b]], M.dsteel, { g: 121 });
+  s.rect(hc - 18, 19 + b, 36, 2, M.ember, { g: 122 });
+  s.limb([hc, 8 + b], [hc, 18 + b], 1.8, 1.8, M.dsteel, { g: 123 });
+  s.stroke([[hc + 1, 8 + b], [hc + 7, 3 + b], [hc + 13, 2 + b], [hc + 19 - sw, 7 + b]], 3.8, 1.8, M.cape, { g: 124 });
   // The face: brows, big eyes with a glint, a nose shade, a small mouth, a little blush.
   const ey = 35 + b;
   for (const side of [-1, 1] as const) {
-    const ex = cx + side * 7;
+    const ex = fc + side * (tn && side < 0 ? 6 : 7), narrow = tn && side < 0 ? 1 : 0;
     s.dot(ex - 3, ey - 6, '#3a2220', 6, 1); s.dot(ex - 3 + (side > 0 ? 5 : 0), ey - 7, '#3a2220');
-    s.dot(ex - 2, ey - 3, EYE, 5, 8); s.dot(ex - 3, ey - 2, EYE, 1, 6); s.dot(ex + 3, ey - 2, EYE, 1, 6);
+    s.dot(ex - 2 + narrow, ey - 3, EYE, 5 - narrow, 8); if (!narrow) s.dot(ex - 3, ey - 2, EYE, 1, 6); s.dot(ex + 3, ey - 2, EYE, 1, 6);
     s.dot(ex - 1, ey, '#6a4a2a', 3, 4); s.dot(ex, ey + 2, '#a8784a', 2, 1);
     s.dot(ex - 1, ey - 2, SHINE, 2, 2); s.dot(ex + 1, ey + 3, '#e8d8c8');
     s.dot(ex - 2 + side * 2, ey + 8, BLUSH, 3, 1);
   }
-  s.dot(cx, ey + 4, mix(M.skin.ramp[2], M.skin.ramp[1], .5), 1, 2);
-  s.dot(cx - 2, ey + 9, MOUTH, 4, 1); s.dot(cx - 1, ey + 10, '#b85a5a', 2, 1);
+  s.dot(fc + tn, ey + 4, mix(M.skin.ramp[2], M.skin.ramp[1], .5), 1, 2);
+  s.dot(fc - 2, ey + 9, MOUTH, 4, 1); s.dot(fc - 1, ey + 10, '#b85a5a', 2, 1);
   s.dot(cx - 2, 73 + b, M.brass.ramp[5], 4, 2); s.dot(cx - 1, 73 + b, M.brass.ramp[2], 2, 1);
   s.dot(cx - 10, 56 + b - br, M.steel.ramp[5]); s.dot(cx + 10, 56 + b - br, M.steel.ramp[3]);
   return s.render();
 }
 
-function keeperBack(q: KPose): HTMLCanvasElement {
-  const s = new Sculpt(KW, KH), b = q.bob, cx = 41, sw = q.sway;
+function keeperBack(q: KPose, tn = 0): HTMLCanvasElement {
+  // tn 1: turned a quarter toward the viewer's right (the isometric NE facing; mirrored for NW): a cheek and ear show.
+  const s = new Sculpt(KW, KH), b = q.bob, cx = 41, sw = q.sway + tn, hc = cx + tn * 1.5;
   const leg = (side: -1 | 1, lift: number, step: number) => {
     const x = cx + side * 7 + step * side * .3, top = 86 + b, foot = 113 - lift;
     s.limb([x, top + 8], [x + side * .5, foot - 9], 5.2, 5, M.dsteel, { g: 20 + side, bias: side > 0 ? -.3 : 0 });
@@ -175,23 +177,25 @@ function keeperBack(q: KPose): HTMLCanvasElement {
   for (const fx of [-9, 0, 9]) s.poly([[cx + fx - 1, 62 + b], [cx + fx + 1, 62 + b], [cx + fx * 1.4 + 2.5 + sw, 107 + b], [cx + fx * 1.4 - 2.5 + sw, 107 + b]], M.capeIn, { g: 51 + fx });
   for (const side of [-1, 1] as const) s.ellipse(cx + side * 17, 53 + b, 8.5, 6.8, M.steel, { g: 60 + side });
   s.ellipse(cx, 49 + b, 15, 5.5, M.cape, { g: 62 });
-  s.ellipse(cx, 33 + b, 17.5, 16, M.hair, { g: 70 });
+  if (tn) { s.ellipse(hc + 13, 37 + b, 6, 9, M.skin, { g: 69, bias: -.4 }); s.ellipse(hc + 17, 36 + b, 2.8, 4, M.skin, { g: 68, bias: -.3 }); }
+  s.ellipse(hc - tn * 2, 33 + b, 17.5 - tn * 2, 16, M.hair, { g: 70 });
   for (const [x, y] of [[-12, 41], [-4, 44], [4, 44], [12, 41]] as const) s.ellipse(cx + x, y + b, 4.6, 4, M.hair, { g: 71 + x });
-  s.poly(dome(cx, 21 + b, 19, 14.5, 24 + b), M.steel, { g: 80 });
-  s.poly([[cx - 19.5, 18 + b], [cx + 19.5, 18 + b], [cx + 19, 24 + b], [cx - 19, 24 + b]], M.dsteel, { g: 81 });
-  s.rect(cx - 18, 20 + b, 36, 2, M.ember, { g: 82 });
-  s.stroke([[cx - 1, 8 + b], [cx - 7, 3 + b], [cx - 13, 2 + b], [cx - 19 + sw, 7 + b]], 3.8, 1.8, M.cape, { g: 83 });
+  s.poly(dome(hc, 21 + b, 19, 14.5, 24 + b), M.steel, { g: 80 });
+  s.poly([[hc - 19.5, 18 + b], [hc + 19.5, 18 + b], [hc + 19, 24 + b], [hc - 19, 24 + b]], M.dsteel, { g: 81 });
+  s.rect(hc - 18, 20 + b, 36, 2, M.ember, { g: 82 });
+  s.stroke([[hc - 1, 8 + b], [hc - 7, 3 + b], [hc - 13, 2 + b], [hc - 19 + sw, 7 + b]], 3.8, 1.8, M.cape, { g: 83 });
   return s.render();
 }
 
 let keeperSheet: HTMLCanvasElement | null = null;
-/** The Keeper's HD sheet: row 0 facing the camera, row 1 facing away; six frames (KPOSES). */
+/** The Keeper's HD sheet: four rows (front, back, front turned right, back turned right); six frames (KPOSES). */
 export function hdKeeperSheet(): HTMLCanvasElement {
   if (keeperSheet) return keeperSheet;
   const W = HD_KEEPER.w, H = HD_KEEPER.h, el = document.createElement('canvas');
-  el.width = W * KPOSES.length; el.height = H * 2;
+  el.width = W * KPOSES.length; el.height = H * 4;
   const g = el.getContext('2d')!;
-  KPOSES.forEach((q, i) => { g.drawImage(keeperFront(q), i * W, 0); g.drawImage(keeperBack(q), i * W, H); });
+  // Rows: 0 facing the camera, 1 away, 2 turned a quarter right toward the camera (iso SE), 3 away and right (iso NE).
+  KPOSES.forEach((q, i) => { g.drawImage(keeperFront(q), i * W, 0); g.drawImage(keeperBack(q), i * W, H); g.drawImage(keeperFront(q, 1), i * W, 2 * H); g.drawImage(keeperBack(q, 1), i * W, 3 * H); });
   return (keeperSheet = el);
 }
 /** The frame for a time: breath now and then standing, the four-step walk moving. */
@@ -205,7 +209,8 @@ const SW = 64, SH = 106;
 export const HD_SKEL = { w: SW + 2, h: SH + 2 } as const;
 const SBOB = [0, -2, 0, -2], SSTEP = [3, 0, -3, 0];
 
-function skeletonFrame(f: number): HTMLCanvasElement {
+/** `view` 0 facing the camera, 1 turned a quarter right (iso SE), 2 from behind and right (iso NE). */
+function skeletonFrame(f: number, view = 0): HTMLCanvasElement {
   const s = new Sculpt(SW, SH), b = SBOB[f], st = SSTEP[f], cx = 30;
   // The round shield on the far arm (viewer's left), planks and an iron rim, behind the body.
   const shx = cx - 18, shy = 66 + b;
@@ -255,14 +260,22 @@ function skeletonFrame(f: number): HTMLCanvasElement {
   // The skull: big and round, a jaw, deep sockets with ember eyes.
   s.ellipse(cx, 24 + b, 17, 16, M.skull, { g: 80 });
   s.poly([[cx - 10, 33 + b], [cx + 10, 33 + b], [cx + 9, 44 + b], [cx - 9, 44 + b]], M.skull, { g: 80 });
-  s.rect(cx - 7, 40 + b, 14, 1, M.void, { g: 81 });
-  for (let i = 0; i < 5; i++) s.dot(cx - 6 + i * 3, 39 + b, M.skull.ramp[1], 1, 4);
-  for (const side of [-1, 1] as const) {
-    s.ellipse(cx + side * 6.5, 27 + b, 5.2, 4.8, M.void, { g: 82 + side });
-    s.dot(cx + side * 6.5 - 1, 27 + b, '#ffb040', 3, 3); s.dot(cx + side * 6.5 - 1, 27 + b, '#fff0b0');
-    s.dot(cx + side * 6 - 2, 30 + b, '#a03a1a', 1, 1);
+  const fx = cx + (view === 1 ? 3 : 0);
+  if (view === 2) {
+    // From behind: the round back of the skull, a hairline crack, the jaw's hinge either side.
+    s.line([cx + 3, 13 + b], [cx + 1, 20 + b], M.skull.ramp[1]); s.line([cx + 1, 20 + b], [cx + 4, 25 + b], M.skull.ramp[1]);
+    s.dot(cx - 9, 38 + b, M.skull.ramp[1], 2, 3); s.dot(cx + 8, 38 + b, M.skull.ramp[1], 2, 3);
+  } else {
+    s.rect(fx - 7, 40 + b, 14, 1, M.void, { g: 81 });
+    for (let i = 0; i < 5; i++) s.dot(fx - 6 + i * 3, 39 + b, M.skull.ramp[1], 1, 4);
+    for (const side of [-1, 1] as const) {
+      const ex = fx + side * (view === 1 && side < 0 ? 5.5 : 6.5), rx = view === 1 && side < 0 ? 4 : 5.2;
+      s.ellipse(ex, 27 + b, rx, 4.8, M.void, { g: 82 + side });
+      s.dot(ex - 1, 27 + b, '#ffb040', 3, 3); s.dot(ex - 1, 27 + b, '#fff0b0');
+      s.dot(ex - 2, 30 + b, '#a03a1a', 1, 1);
+    }
+    s.poly([[fx - 1.5, 33 + b], [fx + 1.5, 33 + b], [fx, 36 + b]], M.void, { g: 85 });
   }
-  s.poly([[cx - 1.5, 33 + b], [cx + 1.5, 33 + b], [cx, 36 + b]], M.void, { g: 85 });
   s.dot(cx - 10, 17 + b, M.skull.ramp[5], 3, 1); s.dot(cx - 11, 18 + b, M.skull.ramp[5]);
   return s.render();
 }
@@ -271,9 +284,10 @@ let skelSheet: HTMLCanvasElement | null = null;
 /** The Bone Walker's HD sheet: four frames (td-mobs' MOB_FRAMES), facing right like the game's. */
 export function hdSkeletonSheet(): HTMLCanvasElement {
   if (skelSheet) return skelSheet;
-  const el = document.createElement('canvas'); el.width = HD_SKEL.w * 4; el.height = HD_SKEL.h;
+  const el = document.createElement('canvas'); el.width = HD_SKEL.w * 4; el.height = HD_SKEL.h * 3;
   const g = el.getContext('2d')!;
-  for (let f = 0; f < 4; f++) g.drawImage(skeletonFrame(f), f * HD_SKEL.w, 0);
+  // Rows: 0 facing the camera, 1 turned right (iso SE), 2 from behind (iso NE).
+  for (let v = 0; v < 3; v++) for (let f = 0; f < 4; f++) g.drawImage(skeletonFrame(f, v), f * HD_SKEL.w, v * HD_SKEL.h);
   return (skelSheet = el);
 }
 
