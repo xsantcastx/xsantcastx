@@ -31,7 +31,8 @@ import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-i
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
-import { HD_KEEPER, HD_PET, HD_PET_ID, HD_SKEL, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
+import { HD_PET, HD_PET_ID, HD_SKEL, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
+import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdWalkFrame, type HdView } from './td-hd-keeper';
 import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { skillKit, type KeeperAnim } from './td-skill-kit';
@@ -631,6 +632,8 @@ export class TopDownEngine {
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
       motes: () => this.auraFx.alive,
+      // The HD figures' cached sheets (td-hd-keeper.ts), bytes: the phone memory check.
+      hdBytes: () => hdFigureBytes(),
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
@@ -5251,19 +5254,19 @@ export class TopDownEngine {
     if (!p.painter) return;
     // The Keeper's aura (td-aura.ts): the figure drawn once on a scratch canvas, its silhouette laid round it as a rim-glow.
     const look = p === this.player ? this.auraLook() : null;
-    // The art-direction prototype (td-artopt.ts B/C): the Ashguard Keeper in HD, its rim at the HD pixel.
-    if (p === this.player && this.hdKeeper()) {
+    // HD figures (td-hd-keeper.ts; iso, and the B/C prototypes): every Keeper and townsperson, its rim at the HD pixel.
+    if (this.hdFigures()) {
       if (look) {
         const sc = this.hdScratch ??= document.createElement('canvas');
         if (sc.width !== 160) { sc.width = 160; sc.height = 150; }
         const g = sc.getContext('2d')!;
         g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sc.width, sc.height); g.imageSmoothingEnabled = false;
-        this.paintHdKeeper(g, p, 80, 140, 1);
+        this.paintHdPerson(g, p, 80, 140, 1);
         const c = this.ctx; c.save(); c.scale(.5, .5);
         rimGlow(c, sc, 80, 140, Math.round(p.x) * 2, Math.round(p.y) * 2, look, this.time, this.still, envDetail() === 'low');
         c.restore();
       }
-      this.paintHdKeeper(this.ctx, p, Math.round(p.x), Math.round(p.y), .5);
+      this.paintHdPerson(this.ctx, p, Math.round(p.x), Math.round(p.y), .5);
       return;
     }
     if (look) {
@@ -5363,7 +5366,7 @@ export class TopDownEngine {
   private readonly isoQ = new IsoQueue();
   private readonly isoFaces = new WeakMap<object, { x: number; y: number; row: number; flip: boolean; turned: boolean; front: boolean }>();
   /** A view object for the peers' painter, reused. */
-  private readonly isoPeerView = { scale: 1, camX: 0, camY: 0, time: 0, still: false };
+  private readonly isoPeerView: { scale: number; camX: number; camY: number; time: number; still: boolean; hd?: (p: { x: number; y: number; dir: 'side' | 'down' | 'up'; face: 1 | -1 }) => { view: HdView; flip: boolean } } = { scale: 1, camX: 0, camY: 0, time: 0, still: false, hd: p => this.hdFacing(p) };
   /** The perf probe (webdriver only): ms per drawIso section, the last slot the frame count. */
   private readonly isoProf = new Float64Array(11);
   private isoMark = 0;
@@ -5693,23 +5696,27 @@ export class TopDownEngine {
     }
   }
 
-  // ── The art-direction prototype's HD figures (td-artopt.ts, td-hd-art.ts) ──
+  // ── HD figures (td-hd-keeper.ts) ──
   private hdScratch: HTMLCanvasElement | null = null;
-  /** The HD Keeper is drawn (B/C, an Ashguard: the one vocation the prototype repainted). */
-  private hdKeeper(): boolean { return optHdFigures() && this.mobs.vocation === 'ashguard' && envDetail() !== 'low'; }
-  /** The HD Keeper with its feet at (x, y), at `k` (½ on the world: one sheet px is half a world px; 1 on a scratch). */
-  private paintHdKeeper(c: CanvasRenderingContext2D, p: Person, x: number, y: number, k: number): void {
-    const sheet = hdKeeperSheet(), K = HD_KEEPER, f = hdKeeperFrame(this.time + p.t, p.moving);
-    let row = p.dir === 'up' ? 1 : 0, flip = p.dir === 'side' && p.face < 0;
-    // Isometric: the four sheet rows give six facings (front, back, each turned a quarter, mirrored for the left).
-    if (optIso()) { const fc = this.isoFace(p, p.x, p.y); row = (fc.front ? 0 : 1) + (fc.turned ? 2 : 0); flip = fc.flip; }
-    if (flip) {
-      c.save(); c.translate(x, y); c.scale(-1, 1);
-      c.drawImage(sheet, f * K.w, row * K.h, K.w, K.h, -K.ax * k, -K.ay * k, K.w * k, K.h * k);
-      c.restore();
-      return;
+  /** Keepers and townsfolk drawn in HD: always at the isometric angle (it has no other six-facing art), else B/C above Low. */
+  private hdFigures(): boolean { return optIso() || (optHdFigures() && envDetail() !== 'low'); }
+  /** Which sheet row and mirror a figure shows: iso from how it last moved; top-down from its dir and face. */
+  private hdFacing(p: { x: number; y: number; dir: 'side' | 'down' | 'up'; face: 1 | -1 }, o: object = p): { view: HdView; flip: boolean } {
+    if (optIso()) { const fc = this.isoFace(o, p.x, p.y); return { view: ((fc.front ? 0 : 1) + (fc.turned ? 2 : 0)) as HdView, flip: fc.flip }; }
+    return p.dir === 'side' ? { view: 2, flip: p.face < 0 } : { view: p.dir === 'up' ? 1 : 0, flip: false };
+  }
+  /** One person in HD with its feet at (x, y), at `k` (½ on the world: one sheet px is half a world px; 1 on a scratch). */
+  private paintHdPerson(c: CanvasRenderingContext2D, p: Person, x: number, y: number, k: number): void {
+    if (!p.painter) return;
+    const fig = hdFigure(p.painter), { view, flip } = this.hdFacing(p);
+    let fr = hdWalkFrame(this.time + p.t, p.moving);
+    if (p === this.player) {
+      if (this.waking) fr = this.waking.t < .35 ? HF.kneel : HF.down;
+      else if (this.actT > 0) { const t = 1 - this.actT / .3; fr = hdCasts(p.painter) ? hdCastFrame(t) : hdAttackFrame(t); }
+      else if (this.time - this.lastHurt < .18) fr = HF.hit;
+      else if (this.still && !p.moving) fr = HF.idle;
     }
-    c.drawImage(sheet, f * K.w, row * K.h, K.w, K.h, x - K.ax * k, y - K.ay * k, K.w * k, K.h * k);
+    fig.draw(c, x, y, k, view, fr, flip);
   }
 
   // ── The aura look (td-aura.ts) ──
