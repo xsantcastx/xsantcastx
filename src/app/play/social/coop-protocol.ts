@@ -50,9 +50,11 @@ export type CoopMobWire = Partial<CoopMobState> & { i: string };
 /** Things that happen between snapshots. `kill`: the host's creature fell; `bite`: a creature struck a member. */
 export type CoopEvent =
   | { k: 'kill'; i: string; t: string; l: number; h: number; xp?: number; by: string[]; x: number; y: number; e?: CoopElite; key?: string }
-  | { k: 'bite'; to: string; i?: string; d: number; ty: string; b?: boolean; c?: boolean }
+  | { k: 'bite'; to: string; i?: string; d: number; ty: string; b?: boolean; c?: boolean; /** S6: statuses it lays (td-abilities encodeStatus). */ st?: string }
   | { k: 'shot'; x: number; y: number; vx: number; vy: number; s: string; l: number }
-  | { k: 'burst'; x: number; y: number; r: number; t: number; el?: string };
+  | { k: 'burst'; x: number; y: number; r: number; t: number; el?: string }
+  /** S6: a patch of hostile ground (fire ground, crust, ink, a web, a cloud): its tone and the status it lays (pictures and statuses; the host decides damage). */
+  | { k: 'field'; x: number; y: number; r: number; t: number; tn: string; st?: string };
 
 /** What the host posts (and the room relays, with `from`, `term`). */
 export interface CoopSnapBody { area: string; seq: number; kf: boolean; mobs: CoopMobWire[]; gone: string[]; ev: CoopEvent[]; tier?: string }

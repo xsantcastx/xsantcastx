@@ -160,11 +160,11 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
     h: { types: ['lava-hound', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'orc-warlord'], chance: .65 },
     v: { types: ['cinder-imp', 'obsidian-golem', 'ember-drake'], chance: .65 },
   },
-  // Lairs (canon §8.2): the orc camps of the Deep Charwood and the Badlands, the drakes' nests in the Molten Fields,
+  // Lairs (canon §8.2): the orc camps (each with its Ashsinger, S6: monsters-abilities §2.7) of the Deep Charwood and the Badlands, the drakes' nests in the Molten Fields,
   // the hounds' runs through the burnt Charwood.
   hotspots: [
-    { region: 'F', chance: .5, types: ['cinder-orc', 'cinder-orc', 'orc-firecaller'], count: 5 },
-    { region: 'h', chance: .45, types: ['cinder-orc', 'orc-firecaller', 'orc-warlord', 'cinder-orc'], count: 5 },
+    { region: 'F', chance: .5, types: ['cinder-orc', 'cinder-orc', 'orc-firecaller', 'ashsinger'], count: 5 },
+    { region: 'h', chance: .45, types: ['cinder-orc', 'orc-firecaller', 'orc-warlord', 'cinder-orc', 'ashsinger'], count: 5 },
     { region: 'v', chance: .35, types: ['ember-drake', 'lava-hound', 'cinder-imp'], count: 4 },
     { region: 'f', chance: .4, types: ['lava-hound', 'ash-wolf'], count: 4 },
     { region: '.', chance: .15, types: ['lava-hound', 'rivet-maw'], count: 3 },

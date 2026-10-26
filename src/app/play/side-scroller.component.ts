@@ -89,6 +89,9 @@ import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord
 import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/unique-items';
 import type { CorpseView, SeekAnswer } from './engine/engine.model';
 import { CORPSE_I18N } from './td/td-corpse.i18n';
+import { ABILITIES_I18N } from './td/td-abilities.i18n';
+import { abilitiesOf } from './td/td-abilities';
+import { fixedAura } from './td/td-pack-aura';
 import { GAME_MENU_I18N } from './world/game-menu.i18n';
 import { HudBarComponent } from './hud-bar/hud-bar.component';
 import { ControlsSheetComponent } from './keys/controls-sheet.component';
@@ -1644,6 +1647,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TD_UX_I18N);
     this.i18n.register(WORLD_I18N);
     this.i18n.register(CORPSE_I18N);
+    this.i18n.register(ABILITIES_I18N);
     this.i18n.register(GAME_MENU_I18N);
     this.i18n.register(KEYS_I18N);
     this.i18n.register(FEEDBACK_I18N);
@@ -3164,6 +3168,17 @@ export class SideScrollerComponent implements OnDestroy {
     if (z.safe) return this.t('play.zone.safe');
     return this.bandLabel(z.band);
   }
+  /** S6: a creature's abilities for its Bestiary card (name and the counter line), and a fixed bearer's pack aura. */
+  mobAbilities(id: string): { id: string; name: string; counter: string }[] {
+    return abilitiesOf(id).map(a => ({ id: a.id, name: this.t('ab.name.' + a.id), counter: this.t('ab.counter.' + a.id) }));
+  }
+  mobAura(id: string): string | null {
+    const a = fixedAura(id, id === 'drowned-acolyte' ? 'drowned-crypts' : '', true);
+    return a ? this.t('aura.' + a) : null;
+  }
+  /** A creature's name in the player's language where the table has one (the new S6 creatures), else its own. */
+  mobName(e: { id: string; name: string }): string { const k = 'mob.name.' + e.id, v = this.t(k); return v && v !== k ? v : e.name; }
+  mobLore(e: { id: string; lore: string }): string { const k = 'mob.lore.' + e.id, v = this.t(k); return v && v !== k ? v : e.lore; }
   bandLabel(band: readonly [number, number]): string {
     return band[0] === band[1] ? this.t('play.zone.one', { n: band[0] }) : this.t('play.zone.band', { lo: band[0], hi: band[1] });
   }
@@ -3744,7 +3759,11 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.petFeel(event.kind === 'trick' ? 'trick' : event.kind === 'love' ? 'love' : 'happy');
   }
   /** A command from the pet card (Follow / Stay / Fight / Gather / Play). */
-  petCommanded(): void { this.petKey = ''; this.pushPet(); }
+  petCommanded(cmd?: string): void {
+    this.petKey = ''; this.pushPet();
+    // Follow / Fight call the pet, the raised and the called back to his side (td-roam); the rest then roam again when he stands still.
+    if (cmd === 'follow' || cmd === 'fight') (this.engine as unknown as { callCompanions?: () => void } | undefined)?.callCompanions?.();
+  }
 
   // ── The bond with Glim (shared/glim/glim-bond.ts) ──
 

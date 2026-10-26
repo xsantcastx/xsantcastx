@@ -297,7 +297,7 @@ whatever S-work has landed.
   - a level-30 Lanternwright keeps a level-30 Ashguard alive against a level-30 floor boss in the party sim;
   - without her, the party falls ≥ 70%.
 
-#### S6 [spec'd]: Monster abilities batch 1, the raisers, and pack auras (M + M + M, monster lane)
+#### S6 [built 2026-10-26, branch `mobs`, docs/handoff/mobs.md]: Monster abilities batch 1, the raisers, and pack auras (M + M + M, monster lane)
 - **What.** monsters-abilities.md §7 steps 1–5:
   - `MobDef.ability` with the kinds `wave`, `drop`, `smash`, `field`, `raise`;
   - every Ember Isle and Reach creature's ability (§2.1–2.7);

@@ -125,14 +125,14 @@ export function bossTelling(k: { x: number; y: number }, mobs: readonly Mob[], w
  * The foe a pet nips: the Keeper's own target while it is near him, else the nearest foe already at his side. Never one
  * winding up a tell, never one out past the engage range (it stays by the Keeper).
  */
-export function pickNipTarget(k: { x: number; y: number }, target: Mob | null, mobs: readonly Mob[], engage: number = TD_PET.engage): Mob | null {
+export function pickNipTarget(k: { x: number; y: number }, target: Mob | null, mobs: readonly Mob[], engage: number = TD_PET.engage, near: number = 3 * TILE, sees?: (m: Mob) => boolean): Mob | null {
   const ok = (m: Mob) => m.hp > 0 && m.tell <= 0 && Math.hypot(m.x - k.x, m.y - k.y) <= engage;
   if (target && mobs.includes(target) && ok(target)) return target;
-  let best: Mob | null = null, bd = 3 * TILE;
+  let best: Mob | null = null, bd = near;
   for (const m of mobs) {
     if (!ok(m)) continue;
     const d = Math.hypot(m.x - k.x, m.y - k.y);
-    if (d <= bd) { bd = d; best = m; }
+    if (d <= bd && (!sees || sees(m))) { bd = d; best = m; }
   }
   return best;
 }
