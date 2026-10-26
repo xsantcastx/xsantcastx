@@ -54,6 +54,25 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
   let awake = false, emptySince = 0;
   /** The sessions of the last step (the omens go to every protocol-9 Keeper of the world). */
   let seen = [];
+  /**
+   * Weather v1 (shared/weather): the room owns the sky's roll. Each window (6 real minutes) it sends every protocol-9
+   * Keeper in the world the window and each land's roll from its own clock, and sends it again to a stream that opens;
+   * so two devices whose clocks disagree still see one sky. The rules and the look are the client's (weather.model).
+   */
+  let weatherSent = -1;
+  const weatherMsg = () => {
+    if (typeof sim?.weatherRolls !== 'function') return null;
+    const t = now(), window = sim.weatherWindow(t);
+    return { type: 'world-weather', window, now: t, lands: sim.weatherRolls(window) };
+  };
+  const weather = (force = null) => {
+    const msg = weatherMsg();
+    if (!msg) return;
+    if (force) { if (force.world && force.p9 && force.stream) send(force, msg); return; }
+    if (msg.window === weatherSent) return;
+    weatherSent = msg.window;
+    for (const s of seen) if (s.world && s.p9 && s.stream) send(s, msg);
+  };
   /** The room's own cost: the last minute's step times (ms) and how many areas it stepped. */
   const cost = { steps: 0, ms: 0, maxMs: 0, at: now() };
   const areasOf = s => (s?.p9 ? everyArea : worldAreas);
@@ -156,6 +175,8 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
   const step = (sessions, ms = null) => {
     const changed = sync(sessions);
     const t = now(), t0 = performance.now();
+    // The sky's window turned: every Keeper in the world hears the new roll; a Keeper who just joined hears it now.
+    if (enabled) { weather(); for (const s of changed) weather(s); }
     // Nobody left anywhere in the world for its grace: every area is written (what changed) and the room sleeps.
     if (awake && emptySince && t - emptySince >= T.sleepMs) {
       awake = false; emptySince = 0;
@@ -216,7 +237,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
     viewFor(s) { const room = roomOf(s); return room && room.members.has(s.player.id) ? { [room.area]: viewOf(room) } : {}; },
     sync, step,
     /** A stream (re)opened: the next snapshot is whole, and the ground is sent. */
-    opened(s) { const room = roomOf(s); if (room?.world) { room.world.resync(s.player.id); groundTo(s, room.world); } },
+    opened(s) { const room = roomOf(s); if (room?.world) { room.world.resync(s.player.id); groundTo(s, room.world); } weather(s); },
     /** A Keeper's blows (the `/coop/hits` body's hits, already validated field by field). */
     claims(s, hits) {
       const room = roomOf(s);
@@ -276,6 +297,8 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
     /** The specs: an area's world, or null. */
     worldOf(area) { return rooms.get(area)?.world ?? null; },
     rooms,
+    /** The weather the room sends now (the specs and /health). */
+    weatherNow: () => weatherMsg(),
     /** The specs: what the room feeds the world for this Keeper (its level and claim budget). */
     keeperOf,
   };

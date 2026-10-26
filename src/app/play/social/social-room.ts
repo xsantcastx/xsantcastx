@@ -150,6 +150,8 @@ export interface RoomOptions {
   onGroundNote?: (note: RoomGroundNote) => void;
   /** Protocol 9: a world boss's omen (it rose, fell or left). */
   onWorldOmen?: (omen: RoomWorldOmen) => void;
+  /** Weather v1: the room owns the sky's roll (shared/weather): the window and each land's roll, from the room's clock. */
+  onWorldWeather?: (weather: RoomWorldWeather) => void;
   /** The same account joined the room from somewhere else (`replaced`): this session is out of the room. */
   onReplaced?: () => void;
 }
@@ -169,6 +171,8 @@ export const ROOM_SETTLE_PROTOCOL = 8;
 export const ROOM_EVERYWHERE_PROTOCOL = 9;
 /** A world boss rose, fell or left unfound (protocol 9; play/world/world-bosses.ts): the omen line is the client's. */
 export interface RoomWorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone'; level: number }
+/** The room's weather (scripts/social-world.mjs `world-weather`): a window and each land's roll in it (0..1). */
+export interface RoomWorldWeather { window: number; lands: Record<string, number>; now: number }
 /** What the room accepts as a character id (character-scope.ts). */
 const CHARACTER_ID = /^[a-z0-9]{2,16}$/;
 export const ROOM_DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-9]{1,12}$/;
@@ -448,6 +452,12 @@ export class SocialRoom {
     }
     if (data['type'] === 'world-omen' && typeof data['boss'] === 'string' && /^[a-z0-9-]{1,40}$/.test(data['boss'] as string) && (data['at'] === 'rise' || data['at'] === 'fall' || data['at'] === 'gone')) {
       this.options.onWorldOmen?.({ boss: data['boss'] as string, name: String(data['name'] ?? '').slice(0, 40), area: String(data['area'] ?? '').slice(0, 40), at: data['at'] as RoomWorldOmen['at'], level: Number(data['level']) || 1 });
+    }
+    // Weather v1: the room's roll for the window (every land's), so every Keeper sees one sky whatever their clock says.
+    if (data['type'] === 'world-weather' && Number.isInteger(data['window']) && data['lands'] && typeof data['lands'] === 'object') {
+      const lands: Record<string, number> = {};
+      for (const [k, v] of Object.entries(data['lands'] as Record<string, unknown>)) if (/^[a-z-]{1,40}$/.test(k) && typeof v === 'number' && v >= 0 && v < 1) lands[k] = v;
+      this.options.onWorldWeather?.({ window: data['window'] as number, lands, now: Number(data['now']) || Date.now() });
     }
   }
   /** The room runs the world (protocol 7) and this Keeper is in it. */

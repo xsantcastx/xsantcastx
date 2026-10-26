@@ -652,10 +652,27 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
 
 | Skill | How | Trainer and home | Lore line |
 |---|---|---|---|
-| **Fishing** | at **marked fishing spots** (a ripple tile with a float), not any water. Mirrorfin, Lampfish, the Moonwake catch under an eclipse. | Old Netter Pell (Cinderport), Netmender Wenna Brisk (Mossharbor) | "The sea is warmer. The fish know first." |
+| **Fishing** | at **marked fishing spots** (a ripple tile with a float), not any water. Mirrorfin, Lampfish, the Moonbelly (*Panzaluna*) under an eclipse. | Old Netter Pell (Cinderport), Netmender Wenna Brisk (Mossharbor) | "The sea is warmer. The fish know first." |
 | **Woodcutting** | at named trees by band: Ember Isle ashwood → Charwood char-oak → Verdant rootglass boughs (never the Bole) → Umbral cypress | Woodward Hesk Ashby (Ashgrove) | "Take the fallen first. The Charwood keeps count." |
 | **Firemaking** | logs plus a tinderbox light a **campfire**: a small hearth for 2 min that quiets the Hush and keeps dark-born back | Maud Kiln (Ashgrove) | "Every fire you light is a small hearth. The dark minds its manners round one." |
 | **Cooking** | at a hearth or a lit campfire: fish and game become **Hearth meals** (regen, Hearthwarmth) | Edrin Kade (Seamworks), Agathe Sorrel (Thornwick) | "You hunt better on a night's sleep and a full belly." |
+
+**Built 2026-10-26 (branch `gather`, `docs/handoff/gather.md`; the names below are now canon):**
+- **Logs** by land (Woodcutting cut / Firemaking light): **Ashwood Log** (Ember Isle, 1), **Char-oak Log** (Infernal
+  Reach, 15), **Rootglass Bough** (Verdant Wilds, 30: a bough the wood let go of, never the Bole's), **Cypress Log**
+  (Umbral Marches, 45). A **Tinderbox** (the General Store) is never used up.
+- **Fish at marked spots** (a ripple with a float, half a tile out from the bank): **Ash Perch** (lakes, Fishing 1),
+  **Mirrorfin** (the Burning Sea, 5), **Rootling Eel** (rivers, 10), **Mire Carp** (marsh water, 20), **Lampfish**
+  (lakes and marsh, by night, 25), **Moonbelly** (any water, under an eclipse, 40; the DM renamed world-acts' fish "Moonwake" so it never clashes with the Moonwake Bloom). The handed-down Worn Rod reaches the
+  lakes only; the sea wants the Fishing Store's Root Rod; rivers and marsh its Seam Rod.
+- **Hearth meals** (Cooking at a campfire or a lit hearth, which burns less): **Baked Ash Perch**, **Seared Mirrorfin**,
+  **Smoked Rootling Eel** (the Rootwater ferrymen's way), **Mire Carp Supper** (a pilgrim's supper), **Lampfish Fry**,
+  **Moonbelly Fillet**. A fish that burns is a **Burnt Fish** (the weakest bait). A meal mends slowly (12 s); potions
+  stay the fight's sip.
+- **Campfires**: two minutes (one in the rain); a small hearth: the Hush cannot rise beside one and the dark-born keep
+  back from its light.
+- **Skill titles past 99** (skill-titles.i18n.ts): Firemaking *Spark-Striker … Eclipse Lightbearer*; Cooking
+  *Pan-Minder … Eclipse Cook*.
 
 **Themed shops by district** (Tibia-style, Gold only; each keeper says what they sell and *don't*):
 
@@ -684,6 +701,12 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
   them. A thunderstorm's strike never takes a Keeper below a tenth of their life.
 - Lore: "Ask the sky; sometimes it answers." The Canopy Wardens read it; **Odette Pryor** forecasts it from the
   Pyre Spire (the smoke-leans thread pays off here first, §9).
+- **Built (v1, 2026-10-26, branch `gather`):** Clear, Overcast, Rain, Thunderstorm (flash only; strikes are S8) and Fog,
+  rolled per land each 6 minutes; **the Hearth room owns the roll** (it sends each window's rolls from its own clock;
+  alone, the device's world clock gives the same). The land specials (Ashfall, Spore drift, Mist-rain) read as Overcast
+  until S8. Wet: lightning taken +25%, fire dealt and taken −15%, a cold hit freezes; a chill on a creature in the rain
+  freezes it a moment. Rain: fish bite 25% sooner, campfires burn twice as fast. Old Netter Pell's rain line and Glim's
+  first-rain line ship.
 
 ### 6.7b Skill Book marks and their stand-ins (2026-10-26, `docs/design/skill-book-stand-ins.md`)
 - A mark's **name is canon and its group effect is the promise**. Where a group system is missing, the mark carries a

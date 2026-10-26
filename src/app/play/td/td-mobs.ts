@@ -39,6 +39,7 @@ import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
 import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
 import { CORPSE_REACH, corpseSeed, layCorpse, weatherCorpses, type Corpse } from './td-corpse';
+import { WET } from '../../shared/weather/weather.model';
 import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
@@ -2666,11 +2667,18 @@ export class MobSystem {
   }
   /** The spawn rules in force here and now (the open wilds only; day's under a roof). */
   private get wildRules() { return rulesOf(this.open ? this.phase : 'day'); }
+  /**
+   * Weather v1 (shared/weather): rain falls on the open land where the Keeper stands (td-engine sets it). A chill laid on a
+   * creature standing in it freezes it a moment (the Wet rule; bosses take Wet in full).
+   */
+  weatherWet = false;
   /** Ember Mastery: what fire's damage is multiplied by. */
   get fireMult(): number {
     // Hearth-Heat (the Aura of Embers' mark): while the aura runs, all his fire burns hotter.
     const hh = this.aura === 'aura-embers' ? this.mk('aura-embers', 'fireUp') : null;
-    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1);
+    // Wet: fire dealt by the Wet burns 15% lower (the Ashguard's Ember Brand, the Warlock's embers in the rain).
+    const wet = this.kst.wet > 0 ? WET.fireDealt : 1;
+    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1) * wet;
   }
   /**
    * The marks' quicker feet (a share of pace; td-engine walkSpeed multiplies by 1 + this): Walking Whirl while the whirl
@@ -3526,8 +3534,8 @@ export class MobSystem {
           const B = (b.def.dmg[0] + b.def.dmg[1]) / 2, hit = this.keepersIn(b.x, b.y, PACK_AURA_REACH);
           if (hit.length) this.effects.push({ kind: 'wave', el: type === 'fire' ? 'ember' : 'brass', r: PACK_AURA_REACH, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
           for (const k of hit) {
-            let raw = B * (fx.pulse[0] + Math.random() * (fx.pulse[1] - fx.pulse[0]));
-            if (type === 'lightning' && k.self && this.kst.wet > 0) raw *= 1.25;
+            // (A Wet Keeper's lightning is taken deeper in biteKeeper, the one Wet rule.)
+            const raw = B * (fx.pulse[0] + Math.random() * (fx.pulse[1] - fx.pulse[0]));
             this.strikeKeeper(k, raw, type, b, '');
           }
         }
@@ -4011,7 +4019,8 @@ export class MobSystem {
         m.bleedT = b.t; m.bleedDps = b.dps; m.bleedTick = (m.bleedTick ?? 0) > 0 ? m.bleedTick : 1;
         break;
       }
-      case 'chill': m.chillT = Math.max(m.chillT ?? 0, cc); break;
+      // A chill on a creature standing in the rain freezes it a moment (Wet), then chills it as ever.
+      case 'chill': if (this.weatherWet) m.stun = Math.max(m.stun ?? 0, ccSecs(1, m.def.rank)); m.chillT = Math.max(m.chillT ?? 0, cc); break;
       case 'stun': m.stun = Math.max(m.stun ?? 0, cc); break;
       case 'root': m.rootT = Math.max(m.rootT ?? 0, cc); break;
       case 'blind': m.blindT = Math.max(m.blindT ?? 0, cc); break;
@@ -4128,6 +4137,12 @@ export class MobSystem {
     // Hearth Bond (Hearthlight's mark): more Defense a while after the heal.
     const def = (this.melee ? this.guardDefense() : this.defense) * (this.defBuffT > 0 ? 1 + this.defBuffPct / 100 : 1);
     let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, def, atk ?? this.keeperLevel, resists);
+    // Wet (shared/weather): lightning bites deeper, fire burns lower, and a cold hit freezes the Keeper a moment.
+    if (this.kst.wet > 0 && n > 0) {
+      if (type === 'lightning') n = Math.round(n * WET.lightningTaken);
+      else if (type === 'fire') n = Math.max(1, Math.round(n * WET.fireTaken));
+      else if (type === 'cold' && this.kst.immune <= 0) { this.kst.freeze = Math.max(this.kst.freeze, 1); this.kst.immune = 1 + KEEPER_CC_IMMUNE; }
+    }
     // A worn shield's Block (§3.6): the blow is turned aside whole.
     if (n > 0 && this.gearBlock > 0 && Math.random() < this.gearBlock) {
       this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
