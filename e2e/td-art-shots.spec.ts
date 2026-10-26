@@ -40,7 +40,7 @@ for (const size of SIZES) {
       const at = (process.env['ART_AT'] ?? '58,62').split(',').map(Number);
       await zones(page, new Function('z', `return z.to(${at[0]}, ${at[1]})`) as (z: Zones) => unknown);
       // Beside a worn road, when the build can find one (window.__tdArt.road).
-      if (process.env['ART_ROAD'] !== '0') console.log('road', JSON.stringify(await page.evaluate(() => (window as unknown as { __tdArt?: { road(dc: number): unknown } }).__tdArt?.road?.(0))));
+      if (process.env['ART_ROAD'] !== '0') console.warn('road', JSON.stringify(await page.evaluate(() => (window as unknown as { __tdArt?: { road(dc: number): unknown } }).__tdArt?.road?.(0))));
       await page.waitForTimeout(600);
       await zones(page, z => { z.foe('bone-walker', 3, -50, -28); z.foe('bone-walker', 3, 50, -34); z.foe('bone-walker', 3, -46, 30); return true; });
       await page.evaluate(() => { const a = (window as unknown as { __tdArt?: { aura(on: boolean): void } }).__tdArt; a?.aura(true); });
