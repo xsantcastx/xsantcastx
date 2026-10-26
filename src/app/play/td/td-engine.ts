@@ -32,7 +32,7 @@ import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { AuraFx as LookAuraFx, rimGlow as lookRimGlow } from './td-aura-look';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
 import { HD_PET, HD_PET_ID, HD_SKEL, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
-import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdWalkFrame, type HdView } from './td-hd-keeper';
+import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdStill, hdWalkFrame, type HdView } from './td-hd-keeper';
 import { paintRichGroundHd } from './td-ground';
 import { organic, paintFieldTile } from './td-terrain';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
@@ -169,6 +169,8 @@ export interface TdMapView {
 }
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
+/** The HD faces (isometric graphics), per painter. */
+const hdPortraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 /** The most ground chunks kept baked (≈ 0.26 MB each, four for water): the view and its ring, with room to turn back. */
 const CHUNK_CAP = 40;
@@ -1447,6 +1449,12 @@ export class TopDownEngine {
   heroPortrait(): string {
     const painter = this.player.painter;
     if (!painter || typeof document === 'undefined') return '';
+    // Isometric (HD figures): the HD face, 44 px square (the HUD shows it at ×1, the classic one at ×2: the same size).
+    if (optIso()) {
+      let hd = hdPortraits.get(painter);
+      if (!hd) { const out = document.createElement('canvas'); out.width = out.height = 44; hdStill(painter, out, 'bust'); hd = out.toDataURL(); hdPortraits.set(painter, hd); }
+      return hd;
+    }
     let url = portraits.get(painter);
     if (url) return url;
     const sheet = frontSheet(painter, true), out = document.createElement('canvas');

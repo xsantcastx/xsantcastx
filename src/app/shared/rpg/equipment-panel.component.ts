@@ -5,6 +5,9 @@
  * expanded row. Charms cannot be worn. Overlays render only when a slot
  * has an approved mapping and is filled.
  */
+import { optIso } from '../../play/td/td-artopt';
+import { hdStill } from '../../play/td/td-hd-keeper';
+import { vocationLook } from '../keeper-look/vocation-look';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, ElementRef, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
@@ -191,14 +194,17 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   private paintDoll(): void {
     if (!this.isBrowser) return;
     const painter = new KeeperPainter(this.looks.look, wornGear(this.snap.equipped));
-    if (painter.key === this.dollKey) return;
+    // Isometric graphics: the HD Keeper (td-hd-keeper.ts), so the doll matches the world.
+    const hd = optIso(), key = hd ? `${painter.key}|hd` : painter.key;
+    if (key === this.dollKey) return;
     try {
       const el = document.createElement('canvas');
       el.width = el.height = 352;
-      painter.still(el);
+      // The HD doll wears the class's own kit under what is worn (as the world draws the Keeper).
+      if (hd) { const v = vocationLook(this.looks.look.vocation, painter.gear); hdStill(new KeeperPainter(this.looks.look, v.gear, v.garb), el, 'full'); } else painter.still(el);
       this.dollSrc = el.toDataURL('image/png');
       this.dollSrcset = null;
-      this.dollKey = painter.key;
+      this.dollKey = key;
     } catch { /* no 2D canvas (an old test browser): the painted Keeper stays */ }
   }
 

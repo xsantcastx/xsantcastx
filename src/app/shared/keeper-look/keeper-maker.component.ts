@@ -22,6 +22,8 @@ import { KeeperPainter, PaintState } from './keeper-paint';
 import { KeeperGear, gearKey, keeperAction } from './keeper-gear';
 import { wornGear } from './worn-gear';
 import { vocationLook } from './vocation-look';
+import { optIso } from '../../play/td/td-artopt';
+import { hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdWalkFrame } from '../../play/td/td-hd-keeper';
 
 /** The preview's loop: stand, run, swing. Seconds. */
 const LOOP = [{ action: 'idle', for: 1.8 }, { action: 'run', for: 1.6 }, { action: 'attack', for: .55 }, { action: 'idle', for: .6 }] as const;
@@ -151,6 +153,15 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
       reduced: this.reduced, weapon: true,
     };
     c.clearRect(0, 0, el.width, el.height);
+    // Isometric graphics: the HD Keeper (td-hd-keeper.ts), turning through the facings it shows in the world.
+    if (optIso()) {
+      const fr = step.action === 'attack' ? (hdCasts(this.painter) ? hdCastFrame(state.attackT) : hdAttackFrame(state.attackT)) : hdWalkFrame(this.reduced ? 0 : seconds, step.action === 'run');
+      const turn = this.reduced ? 0 : Math.floor(seconds / LOOP_TOTAL) % 3, view = ([0, 2, 0] as const)[turn], k = Math.max(1, Math.floor(el.height / 112));
+      c.imageSmoothingEnabled = false;
+      hdFigure(this.painter).draw(c, el.width / 2, el.height - k * 3, k, view, fr, turn === 2);
+      el.setAttribute('data-look-key', key);
+      return;
+    }
     // The chibi Keeper is ~31 art px tall: frame 40 art px (6 px each on the 240 canvas) so it fills the glass.
     const scale = Math.max(1, Math.floor(el.width / 40));
     c.save();

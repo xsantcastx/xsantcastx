@@ -318,7 +318,8 @@ import { PlayLedgerService } from '../shared/games/play-ledger.service';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
 import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
-import { onIsoSlow, setGraphics } from './td/td-artopt';
+import { onIsoSlow, optIso, setGraphics } from './td/td-artopt';
+import { HD_CROPS, hdStill } from './td/td-hd-keeper';
 import { WorldFeelBus, type CraftedFeel } from '../shared/sound/world-feel.bus';
 import { materialOf, REALM_IDS, TOWN_GROUND, type RealmId } from '../shared/sound/sound-palette';
 import { LevelUpAudioService } from '../shared/activity/level-up-audio.service';
@@ -5875,7 +5876,7 @@ export class SideScrollerComponent implements OnDestroy {
   private pushKeeper(): void {
     const look = this.looks.look;
     const gear = wornGear(this.inventory.snapshot.equipped);
-    const key = `${look.vocation}:${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
+    const key = `${look.vocation}:${lookKey(look)}#${gearKey(gear)}#${this.topDown ? optIso() ? 'iso' : 'td' : 'side'}`;
     this.keeperName = look.made ? look.name : '';
     this.lookNudge = !look.made && !look.prompted;
     // In the world with a name now: the Hearth joins (or keeps the room told who the Keeper is).
@@ -5917,7 +5918,11 @@ export class SideScrollerComponent implements OnDestroy {
       const el = document.createElement('canvas');
       el.width = el.height = 176;
       const v = vocationLook(look.vocation, gear);
-      if (this.topDown) {
+      if (this.topDown && optIso()) {
+        // Isometric graphics: the HD Keeper (td-hd-keeper.ts), one sheet px a canvas px; the doll's CSS grows it, pixelated.
+        el.width = el.height = HD_CROPS.full.h;
+        hdStill(new KeeperPainter(look, v.gear, v.garb), el, 'full');
+      } else if (this.topDown) {
         // The top-down game's doll is the Keeper the world shows (owner 2026-10-20): the front sprite, class garb and
         // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
         const painter = new KeeperPainter(look, v.gear, v.garb);
