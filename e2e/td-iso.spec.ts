@@ -87,3 +87,17 @@ test('Isometric draws every place without a frame error: rain on the road, a nov
   await page.waitForTimeout(1200);
   await expect(canvas(page)).toHaveAttribute('data-graphics', 'iso');
 });
+
+test('Isometric: a pile on the ground opens its list where it is drawn (its ×N badge and plates stand on its projected tile)', async ({ page }) => {
+  test.setTimeout(90000);
+  await open(page, 'hour=12&artopt=iso');
+  await page.evaluate(() => (window as unknown as { __tdZones: { to(c: number, r: number): boolean } }).__tdZones.to(58, 62));
+  await page.waitForTimeout(400);
+  type G = { lay(k: 'gold' | 'ore', dx: number, dy?: number, n?: number): { id: string }; piles(): { n: number; px: number; py: number }[] };
+  await page.evaluate(() => { const g = (window as unknown as { __tdGround: G }).__tdGround; g.lay('ore', 48, 0, 3); g.lay('ore', 48, 0, 4); });
+  await page.waitForTimeout(400);
+  const pile = await page.evaluate(() => (window as unknown as { __tdGround: G }).__tdGround.piles().find(p => p.n >= 2)!);
+  expect(pile).toBeTruthy();
+  await page.mouse.click(pile.px, pile.py, { button: 'right' });
+  await expect(page.locator('[data-pile-window] [data-pile-take]')).toHaveCount(2, { timeout: 5000 });
+});
