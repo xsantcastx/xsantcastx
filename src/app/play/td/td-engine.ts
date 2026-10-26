@@ -1222,7 +1222,7 @@ export class TopDownEngine {
     if (t) this.startChop(t.c, t.r, t.x, t.y);
   }
   /** The skills on keys 1–4 (the Spellbook assigns them). */
-  private bar: SkillId[] = defaultBar('warlock');
+  private bar: (SkillId | null)[] = defaultBar('warlock');
   /** Use a skill on the bar (by id, or by slot '1'–'4'). Returns why not, or null when it went off. */
   useAbility(idOrSlot: string): ReturnType<MobSystem['useAbility']> {
     const id = /^[1-8]$/.test(idOrSlot) ? this.bar[Number(idOrSlot) - 1] : idOrSlot as SkillId;
@@ -1244,7 +1244,7 @@ export class TopDownEngine {
   }
   /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
   get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
-    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / this.mobs.cdOf(id)) : 0, mana: this.mobs.manaOf(id), ready: this.mobs.mana >= this.mobs.manaOf(id) }));
+    return this.bar.flatMap((id, i) => id ? [{ id, key: String(i + 1), left: SKILLS[id].cd ? Math.min(1, (this.mobs.cooldowns[id] ?? 0) * (1 + this.mobs.castSpeed) / this.mobs.cdOf(id)) : 0, mana: this.mobs.manaOf(id), ready: this.mobs.mana >= this.mobs.manaOf(id) }] : []);
   }
   get mana(): number { return this.mobs.mana; }
   get maxMana(): number { return this.mobs.maxMana; }
@@ -1302,7 +1302,8 @@ export class TopDownEngine {
   get ward(): number { return this.mobs.ward; }
   /** The Spellbook's choices: the bar (up to eight actives) and the running aura (a skill at rank 0 cannot sit there). */
   setSkillLoadout(bar: readonly string[], aura: string | null): void {
-    this.bar = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active' && this.mobs.rank(id as SkillId) > 0).slice(0, 8);
+    // Keys keep their places: an empty or unusable key is a hole (null), so the skill on 7 still answers 7.
+    this.bar = bar.slice(0, 8).map(id => id in SKILLS && SKILLS[id as SkillId].kind === 'active' && this.mobs.rank(id as SkillId) > 0 ? id as SkillId : null);
     this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' && this.mobs.rank(aura as SkillId) > 0 ? aura as SkillId : null;
   }
   /** The trees' ranks (td-tree effectiveRanks): every skill's numbers follow its rank; the book's marks (effectiveMarks) ride along. */

@@ -12,7 +12,7 @@
       }
       <button type="button" role="tab" class="book__tab book__tab--keys" data-book-tab="keys" [attr.aria-selected]="tab === 'keys'" [attr.tabindex]="tab === 'keys' ? 0 : -1"
         [title]="t('book.tab.keys')" (click)="openTab('keys')" (keydown)="tabKey(tabs.length, $event)">
-        <span class="book__keys-glyph" aria-hidden="true">1·4</span><span class="book__tab-word">{{ t('book.tab.keys') }}</span>
+        <span class="book__keys-glyph" aria-hidden="true">1·8</span><span class="book__tab-word">{{ t('book.tab.keys') }}</span>
       </button>
     </div>
     <div class="book__tools">
@@ -106,7 +106,7 @@
         }
       </div>
     } @else {
-      <!-- The Keys tab: keys 1–4 and the running aura (today's key picker, moved here). -->
+      <!-- The Keys tab: the bar's eight keys, the running aura, and the belt's keys (every key the bottom bar has). -->
       <section class="book__leaf book__keys">
         <h3 class="book__ribbon"><span>{{ t('book.keys.title') }}</span><em>{{ t('book.keys.help') }}</em></h3>
         @if (!actives.length) { <p class="brow__common">{{ t('book.keys.none') }}</p> }
@@ -116,7 +116,8 @@
             <b class="bkey__name">{{ a.name }}</b>
             <div class="bkey__keys" role="group" [attr.aria-label]="a.name">
               @for (k of keys; track k) {
-                <button type="button" class="bkey__key" [class.bkey__key--on]="a.slot === k" [attr.aria-pressed]="a.slot === k" (click)="assign.emit({ id: a.id, slot: k })">{{ k }}</button>
+                <button type="button" class="bkey__key" [attr.data-slot]="k" [class.bkey__key--on]="a.slot === k" [attr.aria-pressed]="a.slot === k"
+                        [attr.aria-label]="t('book.keys.put', { name: a.name, key: cap('skill' + k) })" (click)="assign.emit({ id: a.id, slot: k })">{{ cap('skill' + k) }}</button>
               }
             </div>
           </div>
@@ -126,6 +127,15 @@
             <span class="brow__icon brow__icon--lit" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
             <b class="bkey__name">{{ a.name }} <small>{{ t('book.keys.aura') }}</small></b>
             <button type="button" class="bkey__aura" [attr.data-aura-row]="a.id" [class.bkey__key--on]="a.on" [attr.aria-pressed]="a.on" (click)="toggleAura.emit(a.id)">{{ a.on ? t('book.keys.on') : t('book.keys.off') }}</button>
+          </div>
+        }
+        <!-- The belt: potions and the Spellstone answer their own keys (Menu → Controls rebinds them). -->
+        <h3 class="book__ribbon book__ribbon--sub" data-book-belt><span>{{ t('book.keys.belt') }}</span><em>{{ t('book.keys.beltHelp') }}</em></h3>
+        @for (b of beltKeys; track b.action) {
+          <div class="bkey bkey--belt" [attr.data-belt-key]="b.kind">
+            <span class="bkey__belt-ico" [attr.data-kind]="b.kind" aria-hidden="true"></span>
+            <b class="bkey__name">{{ t('keys.action.' + b.action) }}</b>
+            <kbd class="bkey__cap">{{ cap(b.action) }}</kbd>
           </div>
         }
       </section>
