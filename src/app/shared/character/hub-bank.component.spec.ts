@@ -1,3 +1,5 @@
+import { gridLayout } from '../rpg/inventory-grid';
+import { emptyInventoryLedger } from '../rpg/inventory-ops';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject, of } from 'rxjs';
 
@@ -20,7 +22,7 @@ function snap(quantity: number, extra: InventorySnapshot['stacks'] = []): Invent
     goldFromSales: 0,
     sold: 0,
     usedRows: 1 + extra.length,
-    satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false,
+    satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false, grid: gridLayout(emptyInventoryLedger()), held: 0, vaultStacks: [],
   };
 }
 

@@ -23,7 +23,18 @@ class FakeInventory {
   stacks: Record<string, number> = {};
   ops = new Set<string>();
   items: GameItem[] = [];
-  get snapshot() { return { items: this.items }; }
+  get snapshot() { return { items: this.items, bag: this.items.filter(i => !i.equipped && !i.explorerId) }; }
+  init(): void { /* the real one hydrates */ }
+  canPickUp(): boolean { return true; }
+  add(item: GameItem): GameItem { this.items.push(item); return item; }
+  addMigrated(items: GameItem[]): boolean { for (const i of items) if (!this.itemById(i.id)) this.items.push(i); return true; }
+  spendCharge(id: string): boolean {
+    const i = this.items.findIndex(x => x.id === id);
+    if (i < 0 || !(this.items[i].charges! > 0)) return false;
+    if (this.items[i].charges === 1) this.items.splice(i, 1); else this.items[i] = { ...this.items[i], charges: this.items[i].charges! - 1 };
+    return true;
+  }
+  charges(recipe: string): number { return this.items.filter(i => i.definitionId === `spellstone:${recipe}`).reduce((n, i) => n + (i.charges ?? 0), 0); }
   stackOf(id: string): number { return this.stacks[id] ?? 0; }
   hasStackOp(id: string): boolean { return this.ops.has(id); }
   grantStack(id: string, key: string, n: number): boolean { this.ops.add(id); this.stacks[key] = (this.stacks[key] ?? 0) + n; return true; }
@@ -77,8 +88,10 @@ describe('SpellstoneService and GraveGoodsService', () => {
     expect(stones.inscribe('hellfire-nova', 4, 25)).toBe('ok');
     expect(inventory.stackOf(BLANK_ID)).toBe(1);
     expect(stones.state.soul).toBe(15);
-    expect(stones.state.pouch).toEqual({ 'hellfire-nova@4': 4 });
-    expect(stones.state.slot).toBe('hellfire-nova@4');
+    // A satchel stone (the grid release): spell, rank and marks in its recipe, its charges on the item.
+    expect(stones.state.pouch).toEqual({});
+    expect(inventory.charges('hellfire-nova@4#0')).toBe(4);
+    expect(stones.state.slot).toBe('hellfire-nova@4#0');
     stones.setSoulForTest(2);
     expect(stones.inscribe('hellfire-nova', 4, 25)).toBe('soul');
     expect(inventory.stackOf(BLANK_ID)).toBe(1);
@@ -89,13 +102,13 @@ describe('SpellstoneService and GraveGoodsService', () => {
     stones.setSoulForTest(20); inventory.grantStack('g1', BLANK_ID, 1);
     stones.inscribe('dark-ward', 9, 20);
     const casts: string[] = [];
-    expect(stones.use('dark-ward@9', 10, () => 'nofoe')).toBe('nofoe');
-    expect(stones.state.pouch['dark-ward@9']).toBe(5);
-    expect(stones.use('dark-ward@9', 10, (s, r) => { casts.push(`${s}@${r}`); return null; })).toBe('ok');
-    expect(casts).toEqual(['dark-ward@9']);
-    expect(stones.state.pouch['dark-ward@9']).toBe(4);
-    expect(stones.use('dark-ward@9', 10.5, () => null)).toBe('cooldown');
-    expect(stones.use('dark-ward@9', 11.1, () => null)).toBe('ok');
+    expect(stones.use('dark-ward@9#0', 10, () => 'nofoe')).toBe('nofoe');
+    expect(inventory.charges('dark-ward@9#0')).toBe(5);
+    expect(stones.use('dark-ward@9#0', 10, (s, r, m) => { casts.push(`${s}@${r}#${m}`); return null; })).toBe('ok');
+    expect(casts).toEqual(['dark-ward@9#0']);
+    expect(inventory.charges('dark-ward@9#0')).toBe(4);
+    expect(stones.use('dark-ward@9#0', 10.5, () => null)).toBe('cooldown');
+    expect(stones.use('dark-ward@9#0', 11.1, () => null)).toBe('ok');
     expect(stones.use('meteor@3', 20, () => null)).toBe('none');
   });
 

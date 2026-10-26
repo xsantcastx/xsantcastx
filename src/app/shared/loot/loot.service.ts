@@ -117,6 +117,8 @@ export class LootService {
       // Rolled once, here, off the same seeded stream: a replayed pickup mints the very same thing.
       const grave = rollGrave({ rarity: minted.rarity, unique: !!drop.item.unique || isUnique(minted), itemLevel: minted.itemLevel, levelId: dropLevel(dropId) }, rng);
       const item: GameItem = { ...minted, ...grave };
+      // A full satchel refuses the pickup: it stays shining on the ground (docs/design/inventory-grid.md §2.4).
+      if (!this.inventory.canPickUp(item)) return this.inventory.refusePickup();
       const landed = this.inventory.add(item);
       if (!landed) return false;
       this.granted.add(dropId);

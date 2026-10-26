@@ -19,6 +19,9 @@ import { TradeBackendService } from './trade-backend.service';
 import { GroundFlow, TradeFlow } from './trade-flow';
 import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, itemFromOffer, offerItemOf, tradeBlock, type OfferItem } from './trade-items';
 import { TRADE_I18N } from './trade.i18n';
+import { DropTargetDirective } from '../../shared/inventory-grid/drop-target.directive';
+import { ItemDragService, type DragHeld, type DropTarget } from '../../shared/inventory-grid/item-drag.service';
+import { footprintOf } from '../../shared/rpg/item-footprint';
 
 /** An item's card as the HUD draws it in the satchel (name, what it is, its lines, how it compares). */
 export interface TradeCard { name: string; kicker: string; tone?: string | null; note: string; stats: string[]; compare?: { label?: string; text?: string }[]; compareLabel?: string }
@@ -35,6 +38,7 @@ const mark = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map
 @Component({
   selector: 'app-trade-hud',
   standalone: true,
+  imports: [DropTargetDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './trade-hud.component.html',
   styleUrl: './trade-hud.component.css',
@@ -52,6 +56,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly backend = inject(TradeBackendService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly drag = inject(ItemDragService);
   private readonly roomVerbs = {
     tradeConfirm: (t: string, rev: number, done: boolean) => this.room?.tradeConfirm(t, rev, done) ?? Promise.resolve('offline'),
     tradeCancel: (t: string, why?: string, outcome?: 'cancelled' | 'void') => this.room?.tradeCancel(t, why, outcome) ?? Promise.resolve('offline'),
@@ -146,6 +151,26 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     return { id: item.id, name: (item.upgradeLevel ?? 0) > 0 ? `${item.name} +${item.upgradeLevel}` : item.name, art: itemArt(item)?.src ?? '', mark: mark(item.name), tone: tone(item.rarity), item };
   }
   emptySlots(n: number): number[] { return Array.from({ length: Math.max(0, Math.min(TRADE_MAX_ITEMS, 4) - n) }, (_, i) => i); }
+
+  /** The window is a drop target: a satchel item dragged onto it is offered (docs/design/inventory-grid.md §3). */
+  readonly offerTarget: DropTarget = {
+    accepts: (held: DragHeld) => !this.locked && held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held') && !tradeBlock(held.item),
+    drop: (held: DragHeld) => {
+      if (!held.item) return false;
+      void this.add(this.cell(held.item));
+      return true;
+    },
+  };
+
+  /** The window's own satchel cells are the satchel too: a drag from one onto "You offer" (or the window) offers it. */
+  pressBag(ev: PointerEvent, c: Cell): void {
+    if (c.block || this.locked) return;
+    const fp = footprintOf(c.item);
+    this.drag.press(ev, {
+      ref: { kind: 'instance', ids: [c.id] }, from: 'b', w: fp.w, h: fp.h, grabDx: 0, grabDy: 0,
+      name: c.name, art: c.art, mark: c.mark, tone: c.tone, qty: 1, item: c.item,
+    });
+  }
 
   async add(c: Cell): Promise<void> {
     const t = this.trade;
@@ -295,6 +320,9 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   async pickup(id: string): Promise<void> {
     const g = this.social?.ground?.items.find(x => x.id === id);
     if (!g) return;
+    // A full satchel refuses the pickup: it stays on the ground (docs/design/inventory-grid.md §2.4).
+    const stub = { id: g.id, name: g.name, type: 'artifact', rarity: g.rarity, definitionId: g.def, stats: {}, sellValue: 0, equipped: false, foundAt: new Date(0).toISOString(), soulbound: false } as GameItem;
+    if (!this.inventory.canPickUp(stub)) { this.said.emit(this.t('trade.satchelFull')); return; }
     const out = await this.groundFlow.pickup(g);
     this.said.emit(out.ok ? this.t('trade.picked', { name: g.name }) : this.t('trade.pickFailed', { why: this.whyText(out.why) }));
     this.cdr.markForCheck();

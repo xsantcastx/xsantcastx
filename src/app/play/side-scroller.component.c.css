@@ -905,3 +905,32 @@
 .stage--bar .prompt { bottom: 132px; }
 .stage--bar .td-toast { bottom: 190px; }
 .stage--bar .vitals .meter { display: none; }
+
+/* ── The grid satchel (docs/design/inventory-grid.md): the grid itself is shared/inventory-grid; these are its neighbours. ── */
+.book .satchel-grid { display: block; max-width: 100%; overflow-x: auto; }
+.book .book-belt { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+.book .book-belt__slot {
+  position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: var(--cozy-well);
+  outline: 2px solid var(--cozy-wood-0); box-shadow: inset 0 0 0 1px var(--cozy-wood-1);
+}
+.book .book-belt__slot img { width: 30px; height: 30px; image-rendering: pixelated; }
+.book .book-belt__slot b { position: absolute; right: 2px; bottom: 0; font: 700 10px var(--cozy-font-read); color: var(--cozy-cream); }
+.book .book-belt__slot kbd { position: absolute; left: 2px; top: 0; font: 9px var(--font-game); color: var(--cozy-brass-hi); }
+.book .book-belt__slot.is-drop-over, .book .well.is-drop-over { outline-color: var(--cozy-brass-hi); }
+.book .no-room { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0 0; color: var(--cozy-berry); font: 12px var(--font-game); }
+.book .no-room__piece {
+  width: 44px; height: 44px; display: grid; place-items: center; padding: 2px; background: var(--cozy-well);
+  border: 1px dashed var(--cozy-berry); color: var(--cozy-cream); touch-action: pan-y;
+}
+.book .no-room__piece img { max-width: 100%; max-height: 100%; image-rendering: pixelated; pointer-events: none; }
+.book .grid-note, .book .drag-bar {
+  margin: 0 0 4px; padding: 6px 8px; background: var(--cozy-parch); color: var(--cozy-ink); font: 12px var(--font-game);
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.book .grid-note__ok, .book .drag-bar__x {
+  min-height: 44px; padding: 0 12px; background: var(--cozy-brass); color: var(--cozy-ink); border: 2px solid var(--cozy-brass-lo);
+  font: 700 12px var(--font-game); cursor: pointer;
+}
+canvas.is-drop-over { outline: 3px dashed var(--cozy-brass-hi); outline-offset: -3px; }
+/* The grid sizes its cells to the column it sits in (item-grid.component: 100cqi / 10). */
+.book .book-bag { container-type: inline-size; }

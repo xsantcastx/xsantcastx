@@ -11,7 +11,7 @@
 
 <!-- The trade window: what you offer, what they offer, your satchel; Accept, then Confirm (Tibia / Diablo II). -->
 @if (trade; as tr) {
-  <section class="trade" role="dialog" aria-modal="true" aria-labelledby="trade-title" data-trade-window [attr.data-trade-stage]="flow.status.stage" [attr.data-trade-room-stage]="tr.stage" data-engine-ignore>
+  <section class="trade" role="dialog" aria-modal="true" aria-labelledby="trade-title" [appDropTarget]="offerTarget" data-trade-window [attr.data-trade-stage]="flow.status.stage" [attr.data-trade-room-stage]="tr.stage" data-engine-ignore>
     <header class="trade-head">
       <h2 id="trade-title">{{ t('trade.title', { name: theirName }) }}</h2>
       <button type="button" class="trade-x" data-trade-cancel-x (click)="cancel()" [attr.aria-label]="t('trade.close')">&times;</button>
@@ -25,7 +25,7 @@
               <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-mine]="c.id" [disabled]="locked"
                       (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
                       (click)="tap(c, 'remove', $event)" [attr.aria-label]="t('trade.remove', { name: c.name })">
-                @if (c.art) { <img [src]="c.art" alt=""> } @else { <em>{{ c.mark }}</em> }
+                @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
               </button>
             }
             @for (n of emptySlots(mine.length); track n) { <span class="trade-cell trade-cell--empty" aria-hidden="true"></span> }
@@ -43,7 +43,7 @@
               <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-theirs]="c.id"
                       (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
                       (click)="tap(c, 'look', $event)" [attr.aria-label]="c.name">
-                @if (c.art) { <img [src]="c.art" alt=""> } @else { <em>{{ c.mark }}</em> }
+                @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
               </button>
             }
             @if (!theirs.length) { <p class="trade-none">{{ t('trade.nothing') }}</p> }
@@ -57,10 +57,10 @@
           @if (!satchel.length) { <p class="trade-none">{{ t('trade.satchelEmpty') }}</p> }
           <div class="trade-grid trade-grid--bag">
             @for (c of satchel; track c.id) {
-              <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-bag]="c.id" [disabled]="!!c.block"
+              <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-bag]="c.id" [disabled]="!!c.block" (pointerdown)="pressBag($event, c)"
                       (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
                       (click)="tap(c, 'add', $event)" [attr.aria-label]="c.block ? c.name + ', ' + t('trade.block.' + c.block) : t('trade.add', { name: c.name })">
-                @if (c.art) { <img [src]="c.art" alt=""> } @else { <em>{{ c.mark }}</em> }
+                @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
                 @if (c.block) { <small class="trade-block">{{ t('trade.block.' + c.block) }}</small> }
               </button>
             }

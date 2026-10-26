@@ -885,11 +885,11 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   /** One offered item: the fields the Function re-checks, and what draws its card. Unknown keys refused. */
   const offerItem = raw => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) tradeBad();
-    for (const k of Object.keys(raw)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged'].includes(k)) tradeBad();
+    for (const k of Object.keys(raw)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged', 'ch'].includes(k)) tradeBad();
     if (typeof raw.id !== 'string' || !OFFER_ID.test(raw.id) || ![raw.def, raw.name, raw.type, raw.rarity].every(OFFER_TEXT)) tradeBad();
     const out = { id: raw.id, def: raw.def, name: raw.name, type: raw.type, rarity: raw.rarity, stats: offerNums(raw.stats, -1e7, 1e7) };
     if (raw.roll !== undefined) out.roll = offerNums(raw.roll, 0, 1);
-    for (const [k, lo, hi] of [['ilvl', 1, 99], ['up', 0, 100], ['reforged', 0, 10000]]) if (raw[k] !== undefined) { if (!Number.isInteger(raw[k]) || raw[k] < lo || raw[k] > hi) tradeBad(); out[k] = raw[k]; }
+    for (const [k, lo, hi] of [['ilvl', 1, 99], ['up', 0, 100], ['reforged', 0, 10000], ['ch', 1, 100]]) if (raw[k] !== undefined) { if (!Number.isInteger(raw[k]) || raw[k] < lo || raw[k] > hi) tradeBad(); out[k] = raw[k]; }
     if (raw.sockets !== undefined) {
       if (!Array.isArray(raw.sockets) || raw.sockets.length > 8 || raw.sockets.some(x => x !== null && (typeof x !== 'string' || !OFFER_ID.test(x)))) tradeBad();
       out.sockets = [...raw.sockets];

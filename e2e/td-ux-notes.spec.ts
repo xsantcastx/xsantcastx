@@ -53,8 +53,10 @@ for (const size of [{ width: 1280, height: 720 }, { width: 1440, height: 800 }])
     await page.keyboard.press('i');
     const pockets = page.locator('button.pocket');
     await expect(pockets.first()).toBeVisible({ timeout: 10000 });
-    // The last cell on the page sits in the grid's bottom row.
-    const cell = pockets.last();
+    // The gear piece lowest in the grid (its bottom row): the card must still fit.
+    const lowest = await page.locator('#satchel-book button.pocket[data-ids^="c"]').evaluateAll(els =>
+      els.map(e => [e.getAttribute('data-ids'), (e as HTMLElement).getBoundingClientRect().bottom] as const).sort((a, b) => b[1] - a[1])[0][0]);
+    const cell = page.locator(`#satchel-book button.pocket[data-ids="${lowest}"]`);
     const name = await cell.getAttribute('aria-label');
     await cell.click();
     const card = page.locator('.d2tip--pinned');

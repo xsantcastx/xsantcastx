@@ -6,7 +6,18 @@
  */
 :host { display: block; }
 
-.vs-hero { display: grid; gap: var(--space-3); min-width: 0; }
+.vs-hero { display: flex; flex-wrap: wrap; gap: var(--space-3); min-width: 0; align-items: flex-start; }
+.vs-side { display: grid; gap: var(--space-2); min-width: 0; flex: 1 1 260px; max-width: 380px; container-type: inline-size; }
+.vs-h { margin: 0; color: var(--text-heading); font: var(--weight-bold) var(--text-sm) var(--font-display, var(--font-ui)); }
+.vs-overflow { display: flex; flex-wrap: wrap; gap: 2px; max-width: calc(10 * 38px); }
+.vs-over {
+  position: relative; width: var(--tap-min); height: var(--tap-min); padding: 2px; display: grid; place-items: center;
+  background: var(--cozy-well); border: 1px solid var(--cozy-wood-1); color: var(--cozy-cream); cursor: grab; touch-action: pan-y;
+}
+.vs-over img { max-width: 100%; max-height: 100%; image-rendering: pixelated; pointer-events: none; }
+.vs-over b { position: absolute; right: 2px; bottom: 1px; font: 700 10px var(--cozy-font-read); }
+.vs-card, .vs-hold { flex-basis: 100%; margin: 0; color: var(--text-body); font-size: var(--text-sm); }
+.vs-card b { color: var(--rim, var(--text-heading)); }
 
 /* Search + sort: one row, both full tap height. */
 .vs-find { display: flex; gap: var(--space-2); min-width: 0; }

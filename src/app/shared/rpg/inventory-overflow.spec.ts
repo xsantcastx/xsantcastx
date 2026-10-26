@@ -137,22 +137,36 @@ describe('Inventory: nothing is ever deleted for space', () => {
   });
 });
 
-describe('Inventory: the Vault (stow / take out)', () => {
-  it('stows without paying "item equipped", and takes back out', () => {
+describe('Inventory: the Vault (drag only, only at a Vault)', () => {
+  it('moves between the satchel and a Vault tab only while standing at one, without paying "item equipped"', () => {
     const memory = new MemoryGateway();
     const { inventory } = configure(memory);
     inventory.add(gear('helm'));
     const equipped = jasmine.createSpy('equipped');
     inventory.equipped$.subscribe(equipped);
-    expect(inventory.stow('helm')).toBeTrue();
+    expect(inventory.moveTo({ kind: 'instance', ids: ['helm'] }, { container: 'general-1', cell: 0 })).toBe('vault-closed');
+    expect(inventory.itemById('helm')?.explorerId).toBeUndefined();
+    inventory.setAtVault(true);
+    expect(inventory.moveTo({ kind: 'instance', ids: ['helm'] }, { container: 'general-1', cell: 0 })).toBe('ok');
     expect(inventory.itemById('helm')?.explorerId).toBe(vaultHolder('general-1'));
     expect(inventory.snapshot.bag.some(i => i.id === 'helm')).toBeFalse();
     expect(inventory.vaultItems('general-1').map(i => i.id)).toEqual(['helm']);
-    expect(inventory.stow('helm')).toBeFalse();
-    expect(inventory.stow('nope', 'gear')).toBeFalse();
     expect(equipped).not.toHaveBeenCalled();
-    expect(inventory.takeOut('helm')).toBeTrue();
+    expect(inventory.moveTo({ kind: 'instance', ids: ['helm'] }, { container: 'b', cell: 5 })).toBe('ok');
     expect(inventory.snapshot.bag.some(i => i.id === 'helm')).toBeTrue();
+    inventory.setAtVault(false);
+  });
+
+  it('a stack pile moves into the Vault as a consume and a grant: the bench sees only what is carried', () => {
+    const memory = new MemoryGateway();
+    const { inventory } = configure(memory);
+    inventory.grantStack('g1', 'cinder-ore', 30);
+    inventory.setAtVault(true);
+    expect(inventory.moveTo({ kind: 'stack', storeKey: 'cinder-ore', qty: 30, pile: 0 }, { container: 'general-1', cell: 3 })).toBe('ok');
+    expect(inventory.stackOf('cinder-ore')).toBe(0);
+    expect(inventory.snapshot.vaultStacks.find(s => s.stackKey === 'cinder-ore')?.quantity).toBe(30);
+    expect(inventory.snapshot.grid.tabs['general-1'].pieces.find(p => p.stackKey === 'cinder-ore')?.cell).toBe(3);
+    inventory.setAtVault(false);
   });
 });
 

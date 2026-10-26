@@ -1,3 +1,5 @@
+import { gridLayout } from './inventory-grid';
+import { emptyInventoryLedger } from './inventory-ops';
 /**
  * equipment-comparison.spec.ts — the picker's "is this better than what I wear".
  *
@@ -40,7 +42,7 @@ function snapshotWith(equipped: Partial<Record<SlotId, GameItem>>): InventorySna
   return {
     items: [], bag: [], stacks: [], equipped,
     totals: { goldPerSec: 0, goldFind: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0, life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0, fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0, attackDamage: 0, attackSpeed: 0, minDamage: 0, maxDamage: 0, lifeLeech: 0, pierceChance: 0, blockChance: 0, skillRanks: 0 },
-    goldFromSales: 0, sold: 0, usedRows: 0, satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false,
+    goldFromSales: 0, sold: 0, usedRows: 0, satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false, grid: gridLayout(emptyInventoryLedger()), held: 0, vaultStacks: [],
   };
 }
 

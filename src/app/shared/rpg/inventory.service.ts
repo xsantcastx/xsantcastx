@@ -102,25 +102,35 @@ import {
   INSTANCE_RECORD_BUDGET,
   VAULT_LIVE,
   dropLegacySigils,
-  identityOfRecord,
   instanceRecordCount,
-  layoutOf,
   ledgerCapacity,
-  occupancyOf,
-  routeFor,
-  settle,
-  stowPlan,
-  tabHasRoomFor,
-  takeOutPlan,
   slotClassOf,
   vaultHolder,
   vaultTabOf,
   type Capacity,
-  type Layout,
   type VaultTabId,
 } from './inventory-layout';
 
+import {
+  Board, GRID_TABS, dropFits, ensureStackRecord, gridLayout, isVaultStackKey, landingFor, migrateGrid, parseVaultStackKey,
+  pileKeyOfRecord, stackLanding, vaultStackKey, containerOfLocation,
+  type ContainerId, type GridLayout, type GridView, type Piece,
+} from './inventory-grid';
+import { footprintOf } from './item-footprint';
+import { recordToItem } from './inventory-ops';
+import type { GridPos } from './inventory.model';
+
 export const INVENTORY_KEY = 'godforge-inventory';
+
+/** What a grid move names: a pile of instances, or a pile of a stack (its ledger key and how many). */
+export type GridRef =
+  | { kind: 'instance'; ids: readonly string[] }
+  | { kind: 'stack'; storeKey: string; qty: number; pile?: number };
+/** Where it goes: a grid and the top-left cell. */
+export interface GridTarget { container: ContainerId; cell: number }
+export type GridMoveResult = 'ok' | 'blocked' | 'vault-closed' | 'gone' | 'worn' | 'persist';
+/** The one-time list → grid layout, when it moved anything to the Vault (the note the satchel shows once). */
+export interface GridMigrationNote { items: number; stacks: number }
 
 /**
  * The retired 250-row ceiling, still read by a few displays (`used / cap`).
@@ -161,6 +171,12 @@ export interface InventorySnapshot {
   inVault: number;
   /** True at the record budget: Gold purchases that mint an item are refused. */
   full: boolean;
+  /** The grids (docs/design/inventory-grid.md): the satchel, each Vault tab, Overflow. */
+  grid: GridLayout;
+  /** Satchel things with no room (the "no room" strip): never moved anywhere by themselves. */
+  held: number;
+  /** Stacks resting in the Vault, by their plain key (benches never read these). */
+  vaultStacks: InventoryStackView[];
 }
 
 export type StackPlace = 'satchel' | 'quest' | VaultTabId;
@@ -208,8 +224,15 @@ export class InventoryService {
   private readonly equipped$$ = new Subject<GameItem>();
   private readonly improved$$ = new Subject<GameItem>();
   private readonly routed$$ = new Subject<VaultRouted>();
-  /** Items `settle` moved during the current write; announced by `publish()` once it lands. */
-  private routeQueue: string[] = [];
+  private readonly gridMigrated$$ = new BehaviorSubject<GridMigrationNote | null>(null);
+  /** The one-time list → grid layout's note (null when it moved nothing). Replayed: the satchel shows it once. */
+  readonly gridMigrated$: Observable<GridMigrationNote | null> = this.gridMigrated$$.asObservable();
+  /** Standing at a Vault: only then do things move between the satchel and the stash (the Vault station sets it). */
+  private atVault = false;
+  setAtVault(open: boolean): void { this.atVault = open; }
+  get vaultOpen(): boolean { return this.atVault; }
+  /** Why the last pickup was turned away: the satchel had no room. Read by the HUD for its line. */
+  lastRefusal: 'full' | null = null;
 
   readonly snapshot$: Observable<InventorySnapshot> = this.snapshot$$.asObservable();
   /** One per item that lands. Drives the drop toast. */
@@ -238,7 +261,7 @@ export class InventoryService {
   readonly equipped$: Observable<GameItem> = this.equipped$$.asObservable();
   /** One per successful upgrade or temper, for the same reason. */
   readonly improved$: Observable<GameItem> = this.improved$$.asObservable();
-  /** One per arrival a full satchel turned away to the Vault. Never on load or a merge. */
+  /** Retired with the grid: nothing goes to the Vault by itself any more. Kept (silent) for old subscribers. */
   readonly routed$: Observable<VaultRouted> = this.routed$$.asObservable();
 
   get snapshot(): InventorySnapshot { return this.snapshot$$.value; }
@@ -347,7 +370,7 @@ export class InventoryService {
     for (const row of ledger.records) {
       if (row.kind === 'stack' && row.source === 'inventory') stacks[row.stackKey] = this.stackOf(row.stackKey);
     }
-    const layout = layoutOf(ledger, this.capacity());
+    const grid = gridLayout(ledger);
     return {
       instances,
       where,
@@ -357,8 +380,8 @@ export class InventoryService {
       checkpoints: (ledger.stackFolds ?? []).length,
       bytes: JSON.stringify(ledger).length,
       budgetLeft: this.instanceRoom(),
-      satchel: { used: layout.satchelUsed, cap: this.capacity().satchel },
-      overflow: layout.tabs.overflow.length,
+      satchel: { used: grid.bag.used, cap: grid.bag.w * grid.bag.h },
+      overflow: grid.overflow.length,
     };
   }
 
@@ -375,12 +398,175 @@ export class InventoryService {
   add(item: GameItem): GameItem | null {
     if (!this.isBrowser) return null;
 
-    const incoming = this.withRevision(itemToRecord(item));
-    this.ledger = this.settled(upsertRecord(this.ledger, incoming));
+    const incoming = this.placedArrival(this.withRevision(itemToRecord(item)));
+    this.ledger = upsertRecord(this.ledger, incoming);
     this.save();
     this.publish();
     this.acquired$$.next(item);
     return item;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The grid (docs/design/inventory-grid.md)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /** A satchel arrival with its landing cell written (a pile to join, else the first free spot); none when full. */
+  private placedArrival(row: OwnedItemInstance): OwnedItemInstance {
+    if (row.location.kind !== 'bag' || row.pos) return row;
+    const land = landingFor(gridLayout(this.ledger).bag, footprintOf(recordToItem(row)), pileKeyOfRecord(row));
+    if (!land) return row;
+    return { ...row, pos: { k: 'b', c: [land.cell], r: this.advanceRevision().revision } };
+  }
+
+  /** Would this item fit the satchel right now (a free spot, or a pile with room)? A pickup asks first. */
+  canPickUp(item: GameItem): boolean {
+    const row = itemToRecord({ ...item, equipped: false, explorerId: undefined });
+    return !!landingFor(this.snapshot.grid.bag, footprintOf(item), pileKeyOfRecord(row));
+  }
+
+  /** Would `qty` of a stack fit the satchel (topping up its piles, then free cells)? */
+  canTakeStack(stackKey: string, qty: number): boolean {
+    if (!stackTakesCellKey(stackKey)) return true;
+    return !!stackLanding(this.snapshot.grid.bag, stackKey, qty);
+  }
+
+  /** Note a refused pickup (the HUD says "Your satchel is full"). */
+  refusePickup(): false { this.lastRefusal = 'full'; return false; }
+
+  /**
+   * Move a pile in the grids: within the satchel or a tab, satchel ↔ Vault (only while standing at one), worn → a
+   * satchel cell. Optimistic and local: one ledger write, no round trip. A move between places is a location write
+   * (instances) or a consume and a grant (stacks); a move inside one place writes only the place.
+   */
+  moveTo(ref: GridRef, to: GridTarget): GridMoveResult {
+    if (!this.isBrowser) return 'gone';
+    const grid = this.snapshot.grid;
+    const view = to.container === 'b' ? grid.bag : grid.tabs[to.container];
+    if (!view || to.container === 'overflow') return 'blocked';
+    const previous = this.ledger;
+    if (ref.kind === 'instance') {
+      const rows = ref.ids.map(id => this.instanceRow(id)).filter((r): r is OwnedItemInstance => !!r);
+      if (!rows.length) return 'gone';
+      const first = rows[0];
+      if (first.location.kind === 'explorer' && !containerOfLocation(first.location)) return 'worn';
+      const from = first.location.kind === 'equipped' ? 'b' : containerOfLocation(first.location);
+      if ((from !== 'b' || to.container !== 'b') && from !== to.container && !this.atVault) return 'vault-closed';
+      const fp = footprintOf(recordToItem(first));
+      const own = [...view.pieces, ...view.held].find(p => p.kind === 'instance' && p.ids.includes(first.id));
+      const fit = dropFits(view, { key: own?.key ?? 'drag', kind: 'instance', w: fp.w, h: fp.h, pileKey: pileKeyOfRecord(first), qty: rows.length }, to.cell);
+      if (!fit) return 'blocked';
+      const location: OwnedItemInstance['location'] = to.container === 'b' ? { kind: 'bag' } : { kind: 'explorer', explorerId: vaultHolder(to.container) };
+      for (const row of rows) {
+        const moved = row.location.kind !== location.kind || (row.location.kind === 'explorer' && location.kind === 'explorer' && row.location.explorerId !== location.explorerId);
+        const base = moved ? this.withRevision({ ...row, location }) : row;
+        this.ledger = upsertRecord(this.ledger, { ...base, pos: { k: to.container, c: [to.cell], r: this.advanceRevision().revision } });
+      }
+      if (!this.save()) { this.ledger = previous; return 'persist'; }
+      this.publish();
+      return 'ok';
+    }
+    const fromTab = parseVaultStackKey(ref.storeKey)?.tab ?? null;
+    const from: ContainerId | 'overflow' = fromTab ?? 'b';
+    const plain = parseVaultStackKey(ref.storeKey)?.key ?? ref.storeKey;
+    if (from !== to.container && !this.atVault) return 'vault-closed';
+    const qty = Math.min(Math.floor(ref.qty), this.stackOf(ref.storeKey));
+    if (!(qty > 0)) return 'gone';
+    const key = `s:${ref.storeKey}#${ref.pile ?? 0}`;
+    const fit = dropFits(view, { key, kind: 'stack', w: 1, h: 1, pileKey: null, qty, stackKey: plain }, to.cell);
+    if (!fit) return 'blocked';
+    const into = to.container === 'b' ? plain : vaultStackKey(to.container, plain);
+    if (into === ref.storeKey) {
+      if (fit === 'join') return 'ok';
+      const piles = view.pieces.filter(p => p.kind === 'stack' && p.storeKey === ref.storeKey).sort((a, b) => (a.pile ?? 0) - (b.pile ?? 0));
+      const cells = piles.map(p => (p.pile === (ref.pile ?? 0) ? to.cell : p.cell));
+      this.setStackPos(ref.storeKey, to.container, cells);
+    } else {
+      for (const [kind, k] of [['consume', ref.storeKey], ['grant', into]] as const) {
+        const stepped = this.advanceRevision();
+        this.ledger = { ...this.ledger, stackOps: applyStackOp(this.ledger.stackOps, {
+          id: `move:${ref.storeKey}>${into}:${stepped.revision.hlc.toString(36)}.${stepped.revision.sequence}`, stackKey: k, kind, quantity: qty,
+          hlc: stepped.revision.hlc, deviceId: stepped.revision.deviceId, sequence: stepped.revision.sequence,
+        }) };
+      }
+      this.ledger = ensureStackRecord(this.ledger, into, this.deviceId, Date.now(), fit === 'join' ? null : to.cell, to.container);
+      if (this.stackOf(ref.storeKey) < 0) { this.ledger = previous; return 'gone'; }
+    }
+    if (!this.save()) { this.ledger = previous; return 'persist'; }
+    this.publish();
+    return 'ok';
+  }
+
+  private setStackPos(storeKey: string, container: ContainerId, cells: number[]): void {
+    const row = this.ledger.records.find((r): r is OwnedItemStack => r.kind === 'stack' && r.stackKey === storeKey && r.source === 'inventory');
+    if (!row) return;
+    const pos: GridPos = { k: container, c: cells, r: this.advanceRevision().revision };
+    this.ledger = { ...this.ledger, records: this.ledger.records.map(r => (r === row ? { ...row, pos } : r)) };
+  }
+
+  /** Spend one charge of a Spellstone (shared/spellstones); the stone is gone at 0. */
+  spendCharge(itemId: string): boolean {
+    if (!this.isBrowser) return false;
+    const row = this.instanceRow(itemId);
+    if (!row || !((row.charges ?? 0) > 0)) return false;
+    const previous = this.ledger;
+    const left = (row.charges ?? 1) - 1;
+    if (left <= 0) {
+      const gone = this.advanceRevision(row.revision);
+      this.ledger = tombstoneRecord(this.ledger, itemId, gone.revision, Date.now());
+    } else {
+      const per = row.charges ? row.sellValue / row.charges : 0;
+      this.ledger = upsertRecord(this.ledger, this.withRevision({ ...row, charges: left, sellValue: Math.floor(per * left) }));
+    }
+    if (!this.save()) { this.ledger = previous; return false; }
+    this.publish();
+    return true;
+  }
+
+  /**
+   * Land items a migration mints (the Spellstone pouch → satchel, skill-book.md §6.3), in ONE write. Each keeps the id
+   * the migration derived; one already here, or already gone (tombstoned), is skipped, so a second device running the
+   * same migration adds nothing. Revisions sit at the old save's time (never above a later edit). Placed in the
+   * satchel; what does not fit goes to the Vault (the migration rule, once), Overflow last. False on a failed save.
+   */
+  addMigrated(items: readonly GameItem[], at: number): boolean {
+    if (!this.isBrowser) return false;
+    const previous = this.ledger;
+    const hlc = Math.max(1, Math.floor(at) || 0, (this.ledger.tombFloor ?? 0) + 1);
+    let grid = gridLayout(this.ledger);
+    let added = 0;
+    for (const item of items) {
+      if (this.ledger.records.some(r => r.id === item.id) || this.ledger.tombstones.some(t => t.id === item.id)) continue;
+      const revision = { hlc, deviceId: 'migrate', sequence: 1 };
+      let row: OwnedItemInstance = { ...itemToRecord({ ...item, equipped: false, explorerId: undefined }), revision };
+      const fp = footprintOf(item), pk = pileKeyOfRecord(row);
+      const bagLand = landingFor(grid.bag, fp, pk);
+      if (bagLand) row = { ...row, pos: { k: 'b', c: [bagLand.cell], r: revision } };
+      else {
+        const tab = GRID_TABS.find(t => this.capacity().tabs.has(t) && landingFor(grid.tabs[t], fp, pk));
+        const land = tab ? landingFor(grid.tabs[tab], fp, pk) : null;
+        row = { ...row, location: { kind: 'explorer', explorerId: vaultHolder(tab ?? 'overflow') }, ...(tab && land ? { pos: { k: tab, c: [land.cell], r: revision } } : {}) };
+      }
+      this.ledger = upsertRecord(this.ledger, row);
+      grid = gridLayout(this.ledger);
+      added++;
+    }
+    if (!added) return true;
+    if (!this.save()) { this.ledger = previous; return false; }
+    this.publish();
+    return true;
+  }
+
+  /** The grid a container shows (the satchel, or a Vault tab). */
+  gridOf(container: ContainerId): GridView { return container === 'b' ? this.snapshot.grid.bag : this.snapshot.grid.tabs[container]; }
+
+  /** Take a worn piece off into a chosen satchel cell (a drag from the doll). */
+  unequipTo(itemId: string, cell: number): GridMoveResult {
+    const item = this.itemById(itemId);
+    if (!item?.equipped) return 'gone';
+    const fp = footprintOf(item);
+    const row = this.instanceRow(itemId);
+    if (!row || !dropFits(this.snapshot.grid.bag, { key: 'drag', kind: 'instance', w: fp.w, h: fp.h, pileKey: null, qty: 1 }, cell)) return 'blocked';
+    return this.unequip(itemId, cell) ? 'ok' : 'blocked';
   }
 
   /** Count of a material stack derived from grant/consume ops. */
@@ -390,7 +576,7 @@ export class InventoryService {
 
   /**
    * Always true: a stack grant never refuses for space (inventory spec §2.6).
-   * Where the stack *shows* is derived (`layoutOf`); benches read the total.
+   * Where the stack *shows* is the grid's (inventory-grid.ts); benches read the satchel's key.
    * Kept as a method so the callers' "save failed vs full" branches still read.
    */
   canAcceptStackGrant(_stackKey: string): boolean {
@@ -440,7 +626,6 @@ export class InventoryService {
     }
     this.publish();
     this.stackGranted$$.next({ stackKey, quantity });
-    this.announceStack(stackKey);
     return true;
   }
 
@@ -512,7 +697,7 @@ export class InventoryService {
       });
     }
     this.ledger = { ...this.ledger, stackOps };
-    this.ledger = this.settled(upsertRecord(this.ledger, this.withRevision(itemToRecord(item))));
+    this.ledger = upsertRecord(this.ledger, this.placedArrival(this.withRevision(itemToRecord(item))));
     if (this.stackOf(CINDER_ORE_ID) < 0 || this.stackOf(EMBER_RESIDUE_ID) < 0) {
       this.ledger = previous;
       return { ok: false, code: 'missing' };
@@ -605,9 +790,8 @@ export class InventoryService {
     }
     this.ledger = { ...this.ledger, stackOps };
     for (const item of minted) {
-      this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(item)));
+      this.ledger = upsertRecord(this.ledger, this.placedArrival(this.withRevision(itemToRecord(item))));
     }
-    this.ledger = this.settled(this.ledger);
     // Re-read rather than trust the pre-flight: two ingredients that resolve to
     // the same stack key, or an op the ledger already carried, would both pass
     // the loop above and still overdraw.
@@ -1414,13 +1598,12 @@ export class InventoryService {
         return false;
       }
     }
-    if (handsOut.size && occupancyOf(this.ledger).slots.bag > this.capacity().satchel) {
+    if (handsOut.size && gridLayout(this.ledger).bag.held.length > gridLayout(previous).bag.held.length) {
       this.ledger = previous;
       this.equipRefusal = 'hands-full';
       return false;
     }
-    // A displaced occupant that grows a full satchel goes to the Vault.
-    this.ledger = this.settled(this.ledger);
+    // Whatever came off lands in the satchel, where it was if it has a place, else the first free spot.
     if (!this.save()) {
       this.ledger = previous;
       return false;
@@ -1432,18 +1615,23 @@ export class InventoryService {
     return true;
   }
 
-  unequip(itemId: string): boolean {
+  unequip(itemId: string, cell?: number): boolean {
     if (!this.isBrowser) return false;
     const item = this.itemById(itemId);
     if (!item || (!item.equipped && !item.explorerId)) return false;
+    if (item.explorerId && vaultTabOf({ kind: 'explorer', explorerId: item.explorerId })) return false;
 
     // Taking the weapon off puts the kit's back in hand: a two-handed kit (the hunting bow) takes the off-hand too.
     const off = item.equipped && item.slot === 'weapon' && this.kitHands === 2
       ? this.items.find(i => i.equipped && i.slot === 'off-hand' && !i.explorerId) : undefined;
     const previous = this.ledger;
-    this.ledger = this.settled(this.mapInstances(row =>
+    this.ledger = this.mapInstances(row =>
       row.id === itemId || row.id === off?.id ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row,
-    ));
+    );
+    if (cell !== undefined) {
+      const row = this.instanceRow(itemId);
+      if (row) this.ledger = upsertRecord(this.ledger, { ...row, pos: { k: 'b', c: [cell], r: this.advanceRevision().revision } });
+    }
     if (!this.save()) {
       this.ledger = previous;
       return false;
@@ -1510,86 +1698,6 @@ export class InventoryService {
   // The Vault
   // ───────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Send a satchel item to the Vault: `tab`, or the routing rule when omitted.
-   * A plain location write — deliberately not `equipOnExplorer`, which emits
-   * `equipped$` and would pay the Contract Board's "item equipped" for a stow.
-   */
-  stow(itemId: string, tab?: VaultTabId): boolean {
-    if (!this.isBrowser) return false;
-    const row = this.instanceRow(itemId);
-    if (!row || row.location.kind !== 'bag') return false;
-    const capacity = this.capacity();
-    if (tab && !tabHasRoomFor(this.ledger, capacity, tab, row)) return false;
-    const route = tab ?? routeFor(occupancyOf(this.ledger), capacity, identityOfRecord(row));
-    return this.relocate(row, { kind: 'explorer', explorerId: vaultHolder(route) });
-  }
-
-  /**
-   * Take an item out of the Vault (Overflow included) into the satchel, if it
-   * fits: a free slot, or a slot an identical group there still has room in.
-   */
-  takeOut(itemId: string): boolean {
-    if (!this.isBrowser) return false;
-    const row = this.instanceRow(itemId);
-    if (!row || !vaultTabOf(row.location)) return false;
-    if (!takeOutPlan(this.ledger, this.capacity(), [itemId]).length) return false;
-    return this.relocate(row, { kind: 'bag' });
-  }
-
-  /**
-   * How many of these Vault pieces the satchel can take right now, identical
-   * pieces sharing slots (20 to a slot). What a "Take out N" button says.
-   */
-  takeOutRoom(itemIds: readonly string[]): number {
-    return takeOutPlan(this.ledger, this.capacity(), itemIds).length;
-  }
-
-  /**
-   * Send several satchel items to the Vault in ONE write — a "×7" row's
-   * button. Each is routed in turn (Gear, General, Overflow), exactly as seven
-   * single sends would be. Ids not loose in the satchel (already moved, worn,
-   * gone) are skipped, so a replayed press moves nothing twice. Returns the
-   * ids moved; on a failed save nothing moves.
-   */
-  stowMany(itemIds: readonly string[]): string[] {
-    if (!this.isBrowser) return [];
-    const plan = stowPlan(this.ledger, this.capacity(), itemIds);
-    return this.relocateMany(plan.flatMap(({ id, tab }) => {
-      const row = this.instanceRow(id);
-      return row ? [{ row, location: { kind: 'explorer' as const, explorerId: vaultHolder(tab) } }] : [];
-    }));
-  }
-
-  /**
-   * Take several items out of the Vault in ONE write, as many as fit in the
-   * satchel (identical pieces share slots, 20 to a slot; the rest stay where
-   * they are). Returns the ids moved.
-   */
-  takeOutMany(itemIds: readonly string[]): string[] {
-    if (!this.isBrowser) return [];
-    const plan = takeOutPlan(this.ledger, this.capacity(), itemIds);
-    return this.relocateMany(plan.flatMap(id => {
-      const row = this.instanceRow(id);
-      return row ? [{ row, location: { kind: 'bag' as const } }] : [];
-    }));
-  }
-
-  private relocateMany(moves: { row: OwnedItemInstance; location: OwnedItemInstance['location'] }[]): string[] {
-    if (!moves.length) return [];
-    const previous = this.ledger;
-    const updated = moves.map(({ row, location }) => this.withRevision({ ...row, location }));
-    let next = this.ledger;
-    for (const row of updated) next = upsertRecord(next, row);
-    this.ledger = next;
-    if (!this.save()) {
-      this.ledger = previous;
-      return [];
-    }
-    this.publish();
-    return updated.map(row => row.id);
-  }
-
   /** Items in the Vault, by tab. */
   vaultItems(tab: VaultTabId): GameItem[] {
     return this.items.filter(item => item.explorerId && item.explorerId === vaultHolder(tab));
@@ -1598,17 +1706,6 @@ export class InventoryService {
   private instanceRow(itemId: string): OwnedItemInstance | undefined {
     const row = this.ledger.records.find(entry => entry.id === itemId);
     return row && row.kind === 'instance' && row.source === 'inventory' ? row : undefined;
-  }
-
-  private relocate(row: OwnedItemInstance, location: OwnedItemInstance['location']): boolean {
-    const previous = this.ledger;
-    this.ledger = upsertRecord(this.ledger, this.withRevision({ ...row, location }));
-    if (!this.save()) {
-      this.ledger = previous;
-      return false;
-    }
-    this.publish();
-    return true;
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1806,30 +1903,6 @@ export class InventoryService {
 
   private publish(): void {
     this.snapshot$$.next(this.snapshotOf(this.ledger));
-    // Announce only what is in the Vault now: a write that failed and rolled
-    // back after settling must not report a move that never happened.
-    const queued = this.routeQueue;
-    this.routeQueue = [];
-    for (const id of queued) {
-      const row = this.instanceRow(id);
-      const tab = row ? vaultTabOf(row.location) : null;
-      if (row && tab) this.routed$$.next({ kind: 'item', id, name: row.name ?? id, tab });
-    }
-  }
-
-  /** A stack that landed outside the satchel because the satchel is full, not because it has its own tab. */
-  private announceStack(stackKey: string): void {
-    const place = this.snapshot.stackPlace[stackKey];
-    if (!place || place === 'satchel' || place === 'quest') return;
-    const cls = slotClassOf(stackKey);
-    const home = cls === 'material' ? 'materials' : cls === 'supply' ? 'supplies' : null;
-    if (place !== home) this.routed$$.next({ kind: 'stack', stackKey, tab: place });
-  }
-
-  /** The current placement of everything, for the Vault station. */
-  vaultLayout(): { layout: Layout; capacity: Capacity } {
-    const capacity = this.capacity();
-    return { layout: layoutOf(this.ledger, capacity), capacity };
   }
 
   private snapshotOf(ledger: InventoryLedger): InventorySnapshot {
@@ -1862,22 +1935,35 @@ export class InventoryService {
     stacks.sort((a, b) => a.stackKey.localeCompare(b.stackKey));
 
     const capacity = this.capacityFor(ledger);
-    const layout = layoutOf(ledger, capacity);
+    const grid = gridLayout(ledger, capacity);
+    const vaultStacks: InventoryStackView[] = [];
+    const bagStacks = stacks.filter(row => {
+      const v = parseVaultStackKey(row.stackKey);
+      if (v) vaultStacks.push({ ...row, stackKey: v.key });
+      return !v;
+    });
+    const stackPlace: Record<string, StackPlace> = {};
+    for (const row of bagStacks) stackPlace[row.stackKey] = slotClassOf(row.stackKey) === 'quest' ? 'quest' : 'satchel';
+    for (const row of stacks) { const v = parseVaultStackKey(row.stackKey); if (v && !(v.key in stackPlace)) stackPlace[v.key] = v.tab; }
+    const inVault = items.filter(i => i.explorerId && vaultTabOf({ kind: 'explorer', explorerId: i.explorerId })).length;
 
     return {
       items,
       bag: items.filter(i => !i.equipped && !i.explorerId),
-      stacks,
+      stacks: bagStacks,
+      vaultStacks,
       equipped,
       totals: sumStats(wornBlocks),
       goldFromSales: ledger.goldFromSales,
       sold: ledger.sold,
-      usedRows: layout.satchelUsed,
-      satchelCap: capacity.satchel,
-      overflow: layout.tabs.overflow.length,
-      stackPlace: placesOf(layout),
-      inVault: Object.values(layout.instancesIn).reduce((sum, n) => sum + n, 0),
+      usedRows: grid.bag.used,
+      satchelCap: grid.bag.w * grid.bag.h,
+      overflow: grid.overflow.length,
+      stackPlace,
+      inVault: inVault + vaultStacks.length,
       full: instanceRecordCount(ledger) >= INSTANCE_RECORD_BUDGET,
+      grid,
+      held: grid.bag.held.length,
     };
   }
 
@@ -1895,7 +1981,13 @@ export class InventoryService {
   private normalised(ledger: InventoryLedger): InventoryLedger {
     // A two-handed weapon worn beside an off-hand (a save from before hands, item-hands.ts): the off-hand comes off.
     const now = Date.now();
-    return this.settled(mendHands(dropLegacySigils(ledger, this.deviceId, now), this.deviceId, now), false);
+    const mended = mendHands(dropLegacySigils(ledger, this.deviceId, now), this.deviceId, now);
+    // The one-time list → grid layout (inventory-grid.ts migrateGrid): what does not fit goes to the Vault, once.
+    const migrated = migrateGrid(mended, this.capacityFor(mended), this.deviceId, now);
+    if (migrated.movedItems.length || migrated.movedStacks.length) {
+      this.gridMigrated$$.next({ items: migrated.movedItems.length, stacks: migrated.movedStacks.length });
+    }
+    return migrated.ledger;
   }
 
   /**
@@ -1903,10 +1995,10 @@ export class InventoryService {
    * moving, never deleting. What it moved is announced on `routed$` by the
    * next `publish()` (a write that fails never publishes).
    */
-  private settled(ledger: InventoryLedger, announce = true): InventoryLedger {
-    const result = settle(ledger, this.capacityFor(ledger), this.deviceId, Date.now());
-    if (announce && result.moved.length) this.routeQueue.push(...result.moved);
-    return result.ledger;
+  private settled(ledger: InventoryLedger): InventoryLedger {
+    // The grid (docs/design/inventory-grid.md): nothing is moved to the Vault by itself any more. A satchel with no
+    // room keeps the newcomer on its "no room" strip until the player makes room.
+    return ledger;
   }
 
   private mapInstances(
@@ -1940,14 +2032,9 @@ export class InventoryService {
   }
 }
 
-function placesOf(layout: Layout): Record<string, StackPlace> {
-  const out: Record<string, StackPlace> = {};
-  for (const cell of layout.satchel) if (cell.kind === 'stack') out[cell.key] = 'satchel';
-  for (const cell of layout.quest) out[cell.key] = 'quest';
-  for (const [tab, cells] of Object.entries(layout.tabs) as [VaultTabId, Layout['satchel']][]) {
-    for (const cell of cells) if (cell.kind === 'stack') out[cell.key] = tab;
-  }
-  return out;
+function stackTakesCellKey(stackKey: string): boolean {
+  const cls = slotClassOf(stackKey);
+  return cls === 'material' || cls === 'supply';
 }
 
 /**

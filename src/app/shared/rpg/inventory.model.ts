@@ -94,6 +94,18 @@ export type ItemLocation =
   | { kind: 'equipped'; slotId: SlotId }
   | { kind: 'explorer'; explorerId: string };
 
+/**
+ * Where a thing sits in its grid (docs/design/inventory-grid.md §2): the satchel (`k: 'b'`) or a Vault tab
+ * (`k: <tab id>`), and the top-left cell of each pile (`c`: one for an instance; one per pile for a stack; cell =
+ * row * GRID_W + column). Its own revision `r`, merged by itself (the newer `pos` wins, whatever record copy wins),
+ * so a move never fights an upgrade made on another device. Absent: placed by the rule (first fit), never stored.
+ */
+export interface GridPos {
+  k: string;
+  c: number[];
+  r: InventoryRevision;
+}
+
 export interface OwnedItemBase {
   id: string;
   definitionId: string;
@@ -104,6 +116,8 @@ export interface OwnedItemBase {
   acquiredAt: string;
   revision: InventoryRevision;
   source: InventoryRecordSource;
+  /** Its place in the grid; see {@link GridPos}. */
+  pos?: GridPos;
 }
 
 export interface OwnedItemInstance extends OwnedItemBase {
@@ -139,6 +153,8 @@ export interface OwnedItemInstance extends OwnedItemBase {
   curse?: GraveCurse;
   /** A whispering item's voice and progress. See `GameItem.whisper`. */
   whisper?: GraveWhisper;
+  /** A Spellstone's charges left (1..100). See `GameItem.charges`. */
+  charges?: number;
 }
 
 export interface OwnedItemStack extends OwnedItemBase {
@@ -227,6 +243,11 @@ export interface InventoryLedger {
    * same stale-device window the economy ledger's checkpoint uses.
    */
   tombFloor?: number;
+  /**
+   * The grid version this ledger was laid out under (docs/design/inventory-grid.md §4). Absent: a list-era save, laid
+   * out once on load (what does not fit goes to the Vault, once, with a note). Merged by max.
+   */
+  grid?: number;
 }
 
 export type EconomyProjectionInput = {
