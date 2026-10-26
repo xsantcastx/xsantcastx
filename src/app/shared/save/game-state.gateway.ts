@@ -106,6 +106,7 @@ import {
   resetVerdict,
 } from './save-reset';
 import {
+  ACCOUNT_WIDE_KEYS,
   ACTIVE_CHARACTER_KEY,
   CHARACTER_ROSTER_KEY,
   CLOUD_PENDING_KEY,
@@ -117,6 +118,9 @@ import {
   isCharacterId,
   isCharacterScoped,
   readActiveCharacter,
+  bootProfile,
+  profileKey,
+  type SaveProfile,
 } from './character-scope';
 
 /**
@@ -323,13 +327,20 @@ export class GameStateGateway {
    * The character this page plays, fixed at boot. Choosing another reloads the page (see character-scope.ts for why
    * it never changes mid-page). Character #1 maps every key and path to exactly what the single save used.
    */
-  readonly character: string = this.isBrowser ? readActiveCharacter(safeStorage()) : PRIMARY_CHARACTER;
+  /**
+   * Whose saves this page plays, fixed at boot (character-scope.ts "Profiles"): the account's, or the guest's own
+   * namespace. A guest page never reads or writes the account's keys and never attaches to the cloud.
+   */
+  readonly profile: SaveProfile = this.isBrowser ? bootProfile() : 'account';
+  readonly character: string = this.isBrowser ? readActiveCharacter(safeStorage(), this.profile) : PRIMARY_CHARACTER;
   /** Set by {@link retireCharacter}: this page's character is being deleted, so its writes go nowhere. */
   private retired = false;
 
   /** The localStorage key holding logical `key` for this page's character. */
   private sk(key: string): string {
-    return isCharacterScoped(key, STATE_KEYS) ? characterStorageKey(key, this.character) : key;
+    if (isCharacterScoped(key, STATE_KEYS)) return characterStorageKey(key, this.character, this.profile);
+    // The account-wide saved keys (the roster, the found secrets, the sound) are the guest's own too.
+    return STATE_KEYS.has(key) || ACCOUNT_WIDE_KEYS.has(key) ? profileKey(key, this.profile) : key;
   }
   /** Firestore path segments (after `users/{uid}`) of an entry's document for this page's character. */
   private docPath(entry: Pick<StateEntry, 'key' | 'collection' | 'doc'>): string[] {
@@ -347,7 +358,7 @@ export class GameStateGateway {
 
   /** An IndexedDB name for this page's character (the world's far regions). */
   scopedDbName(name: string): string {
-    return characterDbName(name, this.character);
+    return characterDbName(name, this.character, this.profile);
   }
 
   /**
@@ -358,7 +369,7 @@ export class GameStateGateway {
     if (!this.isBrowser || !isCharacterId(character)) return null;
     if (character === this.character) return this.read(key);
     try {
-      const storageKey = isCharacterScoped(key, STATE_KEYS) ? characterStorageKey(key, character) : key;
+      const storageKey = isCharacterScoped(key, STATE_KEYS) ? characterStorageKey(key, character, this.profile) : this.sk(key);
       const raw = localStorage.getItem(storageKey);
       return raw === null ? null : JSON.parse(raw);
     } catch {
@@ -372,7 +383,7 @@ export class GameStateGateway {
     try {
       for (const entry of STATE_ENTRIES) {
         if (!isCharacterScoped(entry.key, STATE_KEYS)) continue;
-        if (localStorage.getItem(characterStorageKey(entry.key, character)) !== null) return true;
+        if (localStorage.getItem(characterStorageKey(entry.key, character, this.profile)) !== null) return true;
       }
     } catch { /* private mode */ }
     return false;
@@ -384,7 +395,7 @@ export class GameStateGateway {
    */
   selectCharacter(character: string): void {
     if (!this.isBrowser || !isCharacterId(character)) return;
-    try { localStorage.setItem(ACTIVE_CHARACTER_KEY, character); } catch { /* private mode: stays on this one */ }
+    try { localStorage.setItem(profileKey(ACTIVE_CHARACTER_KEY, this.profile), character); } catch { /* private mode: stays on this one */ }
   }
 
   /**
@@ -406,12 +417,12 @@ export class GameStateGateway {
     if (character === this.character && !this.retired) this.retireCharacter();
     const keys = [...STATE_ENTRIES.map(e => e.key), ...LOCAL_CHARACTER_KEYS].filter(k => isCharacterScoped(k, STATE_KEYS));
     try {
-      for (const key of keys) localStorage.removeItem(characterStorageKey(key, character));
+      for (const key of keys) localStorage.removeItem(characterStorageKey(key, character, this.profile));
     } catch { /* private mode */ }
     // The world's far regions live in IndexedDB (delve-save.service). A delete on an open database waits for the
     // page holding it to go, which is the reload that follows deleting the active character.
     try {
-      for (const db of ['eclipse-world', 'eclipse-delve']) globalThis.indexedDB?.deleteDatabase(characterDbName(db, character));
+      for (const db of ['eclipse-world', 'eclipse-delve']) globalThis.indexedDB?.deleteDatabase(characterDbName(db, character, this.profile));
     } catch { /* no IndexedDB */ }
     const uid = this.uid, fs = this.fs;
     if (!uid || !fs) return;
@@ -993,6 +1004,9 @@ export class GameStateGateway {
     // automatic flushes until the merge choice is known — a four-second
     // upload started during the dialog is what used to swallow Keep This
     // Device / Merge Best while the header said Synced.
+    // A guest page (character-scope "Profiles") holds the guest's saves, never an account's: it must not merge them
+    // into one. Signing in from a guest page reloads into the account's profile first (cloud-save bind).
+    if (this.profile === 'guest') return { adopted: [], seeded: false };
     this.uid = uid;
     this.fs = fs;
     this.decisionPending = true;
@@ -1143,7 +1157,7 @@ export class GameStateGateway {
         const row = chars[id];
         if (isRecord(row) && typeof row['deletedAt'] === 'number' && row['deletedAt'] > 0) continue;
         if (!this.hasLocalSave(id)) continue;
-        if (sweep || localStorage.getItem(characterStorageKey(CLOUD_PENDING_KEY, id)) !== null) ids.push(id);
+        if (sweep || localStorage.getItem(characterStorageKey(CLOUD_PENDING_KEY, id, this.profile)) !== null) ids.push(id);
       }
     } catch {
       return;
@@ -1153,7 +1167,7 @@ export class GameStateGateway {
       if (this.fs !== fs || this.uid !== uid) return;
       try {
         await this.zone.runOutsideAngular(() => this.pushCharacter(uid, fs, id));
-        try { localStorage.removeItem(characterStorageKey(CLOUD_PENDING_KEY, id)); } catch { /* private mode */ }
+        try { localStorage.removeItem(characterStorageKey(CLOUD_PENDING_KEY, id, this.profile)); } catch { /* private mode */ }
       } catch {
         ok = false; // Offline or refused: the mark stays, the next attach tries again.
       }
@@ -1178,12 +1192,12 @@ export class GameStateGateway {
       });
     }
     // Wiped on another device after this device's copy: the character's own page adopts the wipe; pushing would undo it.
-    const localAt = Number(localStorage.getItem(characterStorageKey(RESET_STAMP_KEY, id)));
+    const localAt = Number(localStorage.getItem(characterStorageKey(RESET_STAMP_KEY, id, this.profile)));
     if (resetAt > (Number.isFinite(localAt) ? localAt : 0)) return;
 
     const writes: { path: string[]; body: Record<string, unknown> }[] = [];
     for (const entry of entries) {
-      const raw = localStorage.getItem(characterStorageKey(entry.key, id));
+      const raw = localStorage.getItem(characterStorageKey(entry.key, id, this.profile));
       const local = raw === null ? null : safeParse(raw);
       if (local === null) continue;
       const held = cloud.get(entry.key) ?? null;
@@ -1873,7 +1887,9 @@ export class GameStateGateway {
   private lifecycleBound = false;
 
   private readonly onHide = (): void => {
-    if (document.visibilityState === 'hidden') this.onLeave();
+    // Hidden is not leaving (owner 2026-10-26: the game never pauses): send what is queued, but keep the lease — this
+    // tab is still the session that plays. Only pagehide hands it on.
+    if (document.visibilityState === 'hidden') { this.flushOwners(); void this.pushDirty({ batched: true }).catch(() => { /* the queue holds */ }); }
     else {
       // Renew before re-pulling. A device coming back into view is the case the
       // lease is built around — somebody has put one device down and picked

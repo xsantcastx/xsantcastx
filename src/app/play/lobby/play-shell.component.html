@@ -1,12 +1,22 @@
 <noscript>
   <section class="noscript-intro">
     <h1>Eclipse Realms</h1>
-    <p>A free pixel-art RPG you play in the browser, with no download and no sign-up. Mine, forge and craft in five realms, dig the endless Delve, build a Homestead, and meet the people of the Seamworks.</p>
+    <p>A pixel-art online RPG you play in your browser: a Tibia-like world of hand-made maps, warm towns and dark dungeons, with Diablo-like loot. Choose a calling (Warlock, Ashguard, Lanternwright or Thornstrider), set out from Ember Isle as a Keeper, and party or trade with other Keepers.</p>
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
 @if (mode === 'game') {
-  <app-side-scroller />
+  @if (worldGate === 'play') {
+    <app-side-scroller />
+  } @else if (worldGate === 'elsewhere') {
+    <section class="lobby lobby--elsewhere" data-lobby="elsewhere" data-session-elsewhere [attr.data-session-why]="sessionState.why">
+      <div class="elsewhere px-win" role="alertdialog" aria-labelledby="elsewhere-title" aria-describedby="elsewhere-line">
+        <h1 id="elsewhere-title" class="elsewhere__title">{{ t('lobby.session.title') }}</h1>
+        <p id="elsewhere-line" class="elsewhere__line">{{ elsewhereLine }}</p>
+        <button type="button" class="btn btn--brass" data-session-play-here (click)="playHere()" [disabled]="takingOver">{{ takingOver ? t('lobby.session.taking') : t('lobby.session.playHere') }}</button>
+      </div>
+    </section>
+  }
 } @else {
   <section class="lobby" [attr.data-lobby]="mode" [attr.aria-busy]="busy || mode === 'boot'">
     <canvas #art class="lobby__art" aria-hidden="true"></canvas>

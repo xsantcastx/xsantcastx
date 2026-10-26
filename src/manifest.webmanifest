@@ -2,7 +2,7 @@
   "id": "/eclipse-realms",
   "name": "Eclipse Realms",
   "short_name": "Eclipse Realms",
-  "description": "A free RPG you play in your browser or as an installed app. Strike the forge, craft gear with rolled stats, send explorers into five realms, and walk the Seamworks. Your progress stays on your device and syncs when you sign in.",
+  "description": "A pixel-art online RPG in your browser or as an installed app: a Tibia-like world, dark dungeons and Diablo-like loot. Your Keepers sync to every device when you sign in.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/play",

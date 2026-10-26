@@ -144,3 +144,4 @@ test('two Keepers trade items and Gold atomically, then one drops an item the ot
   await shot(bryn, 'picked');
   await phone.close();
 });
+
