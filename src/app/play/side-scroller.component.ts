@@ -48,7 +48,9 @@ import { artFor, REALM_ART } from '../shared/art/art';
 import { ItemGridComponent, type GridPick, type PieceLook } from '../shared/inventory-grid/item-grid.component';
 import { ItemDragService, type DragHeld, type DropTarget } from '../shared/inventory-grid/item-drag.service';
 import { DropTargetDirective } from '../shared/inventory-grid/drop-target.directive';
-import { pieceLookOf } from '../shared/inventory-grid/piece-look';
+import { itemNameTone, pieceLookOf } from '../shared/inventory-grid/piece-look';
+import { RUNEWORDS_I18N } from '../shared/enchanting/runewords.i18n';
+import type { SocketDrop } from '../shared/enchanting/socketing.service';
 import { footprintOf } from '../shared/rpg/item-footprint';
 import type { Piece } from '../shared/rpg/inventory-grid';
 import type { GridMigrationNote, GridMoveResult } from '../shared/rpg/inventory.service';
@@ -57,12 +59,14 @@ import { itemFromOffer } from './trade/trade-items';
 import { iconOf } from '../shared/art/item-icons';
 import type { IconKind } from '../shared/art/item-icon-shapes';
 import { SheetDragDirective } from './sheet-drag.directive';
-import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
+import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL, IN_WORLD_STATION } from '../shared/in-world-panel';
 import { areaOf, findStation, LootRarity, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { slotsForGroup } from '../shared/rpg/item-groups';
-import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
+import { RUNE_TIER_ORDER, STRIKE_COST, runeById, tierOf } from '../shared/rune-forge/rune.model';
+import { runeOfStack } from '../shared/rune-forge/rune-stack';
+import { runeLines } from '../shared/enchanting/rune-lines';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
 import { IMPLICIT_BY_SLOT, affixRange, implicitOf, isAffixKey, isAffixSlot, type AffixSlot } from '../shared/rpg/item-affixes';
 import { FAMILY_FAVOURED, OLD_ROLL_TWIN, statUse } from '../shared/rpg/item-calling';
@@ -281,7 +285,7 @@ import { VoyageComponent } from './harbour/voyage.component';
 import { pierById, pierOfMaster, type BoardRow } from './td/td-harbour';
 import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
 import { installStonesHook } from '../shared/grave-goods/stones-test-hook';
-import { RUNG_LEVEL, lootEntry } from '../shared/loot/drop-tables';
+import { RUNE_LEVEL, RUNG_LEVEL, lootEntry } from '../shared/loot/drop-tables';
 import { mfTowardUnique } from '../shared/loot/magic-find-curve';
 import { DIFFICULTIES } from '../shared/loot/difficulty.model';
 import { itemAuras } from '../shared/loot/aura-sources';
@@ -1504,6 +1508,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(WORLD_BOSSES_I18N);
     this.i18n.register(LORE_I18N);
     this.i18n.register(HUD_I18N);
+    this.i18n.register(RUNEWORDS_I18N);
     this.i18n.register(ASHGUARD_I18N);
     this.i18n.register(LANTERN_I18N);
     this.i18n.register(THORN_I18N);
@@ -2407,8 +2412,6 @@ export class SideScrollerComponent implements OnDestroy {
     }
     const entry = station.panel ? PANEL_REGISTRY[station.panel] : undefined;
     if (!entry) return;
-    // Found the Rune Forge on their own: the one-time hint has nothing left to say.
-    if (station.panel === 'runes') this.markRuneHintSeen();
     const home = homeStationOf(station.id);
     if (home) {
       // No "Open full page": the routed bench would drop the home tier.
@@ -2416,9 +2419,23 @@ export class SideScrollerComponent implements OnDestroy {
       this.loadPanel(entry, this.homeInjector);
       return;
     }
+    if (station.panel === 'shop') {
+      // A district shop (shared/shops): one panel at many stalls; the stall says which shop and which keeper.
+      const injector = Injector.create({
+        providers: [{ provide: IN_WORLD_STATION, useValue: { id: station.id, label: station.label, keeper: station.keeper } }],
+        parent: this.panelInjector,
+      });
+      this.showPanel({ kind: 'page', stationId: station.id, title: this.titleCase(station.label), kicker: entry.kicker });
+      this.loadPanel(entry, injector);
+      return;
+    }
     this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker });
     this.noteVisit(entry.route);
     this.loadPanel(entry, this.panelInjector);
+  }
+  /** "EDRIN KADE'S GENERAL STORE" → "Edrin Kade's General Store" (a stall's label as a window title). */
+  private titleCase(label: string): string {
+    return label.toLowerCase().replace(/(^|[\s-])([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase());
   }
   /**
    * Character → Stats in the world: the Character page in the place panel,
@@ -3287,7 +3304,7 @@ export class SideScrollerComponent implements OnDestroy {
 
   /** A task giver was spoken to (their own spot: beside a keeper's counter, or where they stand). A stall keeper keeps a Trade button. */
   private talkTo(keeperId: string): boolean {
-    // The Archivist (shared/grave-goods): no tasks; speaking to him opens his desk, where whispers are silenced.
+    // The Archivist (shared/grave-goods): no tasks; speaking to them opens their desk, where whispers are silenced.
     if (this.topDown && keeperId === 'archivist') { this.openGraveDesk('archivist'); return true; }
     // A Harbourmaster (td-harbour): the Sailing Board for their pier.
     if (this.topDown && pierOfMaster(keeperId)) { this.openHarbour(pierOfMaster(keeperId)!.id); return true; }
@@ -5121,6 +5138,16 @@ export class SideScrollerComponent implements OnDestroy {
       : (() => { const item = this.inventory.snapshot.items.find(r => r.id === p.ids[0]); return item ? this.itemSlip(item, item.equipped) : null; })();
     this.hoverTip = row ? { row, at: pointAt(ev) } : null;
   }
+  /** A rune dropped onto a satchel item: set (at an Enchanting Table) or refused, said in one line. */
+  gridSocketed(out: SocketDrop): void {
+    const item = out.item ? itemNameTone(out.item).name : '';
+    const rune = out.rune ? `${out.rune.name} Rune` : '';
+    const key = out.code === 'ok' ? (out.word ? 'sock.word' : 'sock.done')
+      : out.code === 'not-at-table' ? 'sock.notAtTable' : out.code === 'no-sockets' ? 'sock.noSockets' : out.code === 'full' ? 'sock.full'
+      : out.code === 'worn' ? 'sock.worn' : out.code === 'no-rune' ? 'sock.noRune' : 'sock.failed';
+    this.message = this.t(key, { item, rune, word: out.word?.name ?? '' });
+    if (out.code === 'ok') this.sound.sfx('equip');
+  }
   gridMoved(ev: { result: GridMoveResult; held: DragHeld }): void {
     if (ev.result === 'ok') { this.sound.sfx('equip'); this.pick = null; return; }
     this.message = this.t(ev.result === 'vault-closed' ? 'play.grid.vaultClosed' : ev.result === 'persist' ? 'play.hud.msg.stowFailed' : 'play.grid.blocked', { name: ev.held.name });
@@ -5388,6 +5415,24 @@ export class SideScrollerComponent implements OnDestroy {
         },
       };
     }
+    const rune = runeOfStack(stackKey);
+    if (rune) {
+      // A rune (canon §6.2: monster drops only): its two lines, D2's way, and where it is set.
+      const lines = runeLines(rune.id);
+      const kicker = this.t('sock.card.rune', { name: rune.name, tier: tierOf(rune.tier).label });
+      const found = rune.tier === 'singular' ? this.t('sock.card.foundVoid') : rune.tier === 'mythic' ? this.t('sock.card.foundMythic') : this.t('sock.card.found', { n: RUNE_LEVEL[rune.tier] });
+      const specials = [this.t('sock.card.weapon', { line: lines.weapon }), this.t('sock.card.armor', { line: lines.armor }), found, this.t('sock.card.runeUse'), rune.lore];
+      return {
+        name, art: display?.art ?? '', mark: monogram(name), kicker,
+        note: `${this.t('sock.card.runeUse')} ${rune.lore}`,
+        stats: [this.t('play.hud.slip.held', { n: stack.quantity }), ...specials.slice(0, 2)],
+        canWear: false, canStow: false, compare: [], compareLabel: '',
+        tip: {
+          rarity: 'material', typeLine: kicker, rarityWord: '', head: null, affixes: [],
+          specials, sockets: [], value: 0, bound: false, tempered: 0, itemLevel: 0, tag: null,
+        },
+      };
+    }
     if (potion) {
       const does = this.potionLine(potion.id);
       const key = potion.kind === 'rejuv' ? 'Q · R' : potion.kind === 'health' ? 'Q' : 'R';
@@ -5450,12 +5495,15 @@ export class SideScrollerComponent implements OnDestroy {
         canWear: false, canStow: worn, canSend: !worn, compare: [], compareLabel: '',
       };
     }
+    // D2's colours (docs/design/runewords.md §2): a runeword gold under its word's name, a socketed normal base grey.
+    const shown = itemNameTone(item);
+    const wells = socketCountFor(item);
     return {
-      name: level > 0 ? `${item.name} +${level}` : item.name,
+      name: shown.name,
       art: itemArt(item)?.src ?? '',
       mark: monogram(item.name),
-      kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
-      tone: lootColor(item.rarity),
+      kicker: worn ? this.t('play.hud.book.worn') : shown.word ? `${this.t('sock.card.runeword')} · ${item.name}` : wells && item.rarity === 'common' ? this.t('sock.card.sockets', { n: wells }) : rarityLabel(item.rarity),
+      tone: shown.word || (wells && item.rarity === 'common') ? shown.tone : lootColor(item.rarity),
       note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
       // A D2-style aura the piece carries (its Socket Word or its name; shared/loot/aura-sources.ts).
       stats: [...stats, ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level }))],
@@ -5515,7 +5563,7 @@ export class SideScrollerComponent implements OnDestroy {
     const headAs: keyof GameItem['stats'] = headKey === 'maxDamage' ? 'minDamage' : headKey;
     const head = held.includes(headAs) ? line(headAs) : null;
     const wells = socketCountFor(item);
-    const sockets = Array.from({ length: wells }, (_, i) => item.sockets?.[i] ?? null).map(id => (id ? materialDisplay(id)?.name ?? id : null));
+    const sockets = Array.from({ length: wells }, (_, i) => item.sockets?.[i] ?? null).map(id => (id ? runeById(id)?.name ?? id : null));
     const affixes = held.filter(key => key !== head?.key).map(line);
     const favoured = family ? FAMILY_FAVOURED[family] : null;
     const calling = favoured ? {

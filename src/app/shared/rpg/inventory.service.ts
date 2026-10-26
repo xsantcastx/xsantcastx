@@ -46,6 +46,7 @@ import {
   wornGoldFind,
 } from './item.model';
 import { wornStats } from '../enchanting/socket-words';
+import { socketsOf } from '../enchanting/socket.model';
 import { oldRollTwins } from './item-calling';
 import { itemAffixFamily } from './item-base';
 import {
@@ -64,6 +65,8 @@ import {
   itemsFromLedger,
   nextRevision,
   restoreCharms,
+  socketOpId,
+  socketRefunds,
   stackQuantityOf,
   ledgerKnowsOp,
   tombstoneRecord,
@@ -1014,6 +1017,50 @@ export class InventoryService {
     // watchers both listen for "this item changed" and neither cares how.
     this.improved$$.next(stored);
     return { ok: true, item: stored };
+  }
+
+  /**
+   * Set one rune from the satchel into the item's next empty well (D2: left to right; runes never come out). ONE
+   * ledger write: the rune's consume op (`sock:<item>:<well>:<rune>`, idempotent) and the record's new wells, so a
+   * failed save leaves both untouched and a replay is a no-op. Only a satchel item (not worn, not in the Vault) takes
+   * a rune; where it may happen (an Enchanting Table) is the caller's (socketing.ts).
+   */
+  socketRune(itemId: string, runeStack: string, runeId: string):
+    | { ok: true; item: GameItem; well: number; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'missing' | 'no-sockets' | 'full' | 'worn' | 'no-rune' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const item = this.itemById(itemId);
+    if (!item) return { ok: false, code: 'missing' };
+    if (item.equipped || item.explorerId) return { ok: false, code: 'worn' };
+    const wells = socketsOf(item);
+    if (!wells.length) return { ok: false, code: 'no-sockets' };
+    const well = wells.indexOf(null);
+    if (well < 0) return { ok: false, code: 'full' };
+    const opId = socketOpId(itemId, well, runeId);
+    if (ledgerKnowsOp(this.ledger, opId)) return { ok: true, item, well, replayed: true };
+    if (this.stackOf(runeStack) < 1) return { ok: false, code: 'no-rune' };
+    const previous = this.ledger;
+    const stepped = this.advanceRevision();
+    wells[well] = runeId;
+    const next: GameItem = { ...item, sockets: wells };
+    this.ledger = {
+      ...upsertRecord(this.ledger, this.withRevision(itemToRecord(next))),
+    };
+    this.ledger = {
+      ...this.ledger,
+      stackOps: applyStackOp(this.ledger.stackOps, {
+        id: opId, stackKey: runeStack, kind: 'consume', quantity: 1,
+        hlc: stepped.revision.hlc, deviceId: stepped.revision.deviceId, sequence: stepped.revision.sequence,
+      }),
+    };
+    if (this.stackOf(runeStack) < 0 || !this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: this.stackOf(runeStack) < 0 ? 'no-rune' : 'persist' };
+    }
+    this.publish();
+    const stored = this.itemById(itemId) ?? next;
+    this.improved$$.next(stored);
+    return { ok: true, item: stored, well, replayed: false };
   }
 
   /**
@@ -1987,7 +2034,19 @@ export class InventoryService {
     if (migrated.movedItems.length || migrated.movedStacks.length) {
       this.gridMigrated$$.next({ items: migrated.movedItems.length, stacks: migrated.movedStacks.length });
     }
-    return migrated.ledger;
+    return this.withSocketRefunds(migrated.ledger, now);
+  }
+
+  /** A merge that left a socketed rune without its well refunds it, once (inventory-ops `socketRefunds`). */
+  private withSocketRefunds(ledger: InventoryLedger, now: number): InventoryLedger {
+    const refunds = socketRefunds(ledger);
+    if (!refunds.length) return ledger;
+    let stackOps = ledger.stackOps;
+    let seq = 0;
+    for (const r of refunds) {
+      stackOps = applyStackOp(stackOps, { id: r.id, stackKey: r.stackKey, kind: 'grant', quantity: 1, hlc: Math.max(now, ledger.hlc + 1), deviceId: this.deviceId, sequence: ++seq });
+    }
+    return { ...ledger, stackOps };
   }
 
   /**

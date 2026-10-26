@@ -31,7 +31,7 @@ export const SEXTON_PAGE: Readonly<{ c: number; r: number }> = { c: nook.nook.c 
 /** Where the Row-Walker rises: between the plot's rows, south of the door. */
 export const WALKER_AT: Readonly<{ c: number; r: number }> = { c: barrow.c, r: barrow.r + 1 };
 /** Seconds before a Row-Walker that fell (and was not credited) rises again; how near the plot the Keeper must be. */
-export const WALKER = { again: 20, reach: 30, name: 'Hollis the Row-Walker' } as const;
+export const WALKER = { again: 20, reach: 30, name: 'Hollis Vane' } as const;
 
 /** A tile of the vault map holding `ch` (its first), in tiles. */
 function vaultTile(ch: string): { c: number; r: number } {

@@ -395,12 +395,12 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
   soul.lore = !!SS.SPELLSTONE_MEANING.soul.lore;
   if (!HUD.includes('data-soul')) { soul.visible = false; soul.notes.push('no Soul on the HUD'); }
 }
-// The Waygate Scroll (shared/waygate/waygate-scroll.ts): Edrin Kade's counter; read from the satchel's item card
+// The Waygate Scroll (shared/waygate/waygate-scroll.ts): the General Stores (shared/shops); read from the satchel's item card
 // (side-scroller readScroll → engine openWaygate). Lore on its meaning table.
 {
   const WS = L('shared/waygate/waygate-scroll.ts');
   const HUD = read('play/side-scroller.component.html') + read('play/side-scroller.component.ts');
-  const VENDOR = read('shared/vendor/material-vendor.component.ts');
+  const VENDOR = read('shared/shops/shop.service.ts');
   const n = thing(WS.WAYGATE_SCROLL_ID);
   if (VENDOR.includes('buyWaygateScrolls(')) for (const s of WS.WAYGATE_SCROLL_MEANING.sources) src(WS.WAYGATE_SCROLL_ID, s);
   if (HUD.includes('readScroll(') && HUD.includes('openWaygate')) for (const u of WS.WAYGATE_SCROLL_MEANING.uses) use(WS.WAYGATE_SCROLL_ID, u);
@@ -474,7 +474,8 @@ for (const key of ITEM_STAT_KEYS) {
   if (key === 'strikePower' || key === 'ward') readersOf(/\bkeeperCombatStats\(/).filter(f => !/keeper-combat\.ts$/.test(f)).forEach(f => keeper.add(f));
   // A weapon's own +min–max Damage (item-affixes §3.6) is read off the held weapon, not the worn total: the play screen
   // hands it to the engine's setWeapon, whose weaponSwing feeds the swing and the arrow (td-melee).
-  if (key === 'minDamage' || key === 'maxDamage') readersOf(/\bweaponSwing\(w\)/).filter(f => !/td-melee\.ts$/.test(f)).forEach(f => keeper.add(f));
+  // A weapon's Strike is its power in the swing (td-melee weaponSwing: a point past the first adds damage).
+  if (key === 'minDamage' || key === 'maxDamage' || key === 'strikePower') readersOf(/\bweaponSwing\(w\)/).filter(f => !/td-melee\.ts$/.test(f)).forEach(f => keeper.add(f));
   KEEPER_READS[key] = [...keeper];
   ANY_READS[key] = [...readersOf(new RegExp(`\\.${key}\\b`)), ...goldFind];
 }

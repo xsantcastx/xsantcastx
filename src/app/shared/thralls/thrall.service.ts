@@ -711,7 +711,8 @@ export class ThrallService {
     this.publish();
 
     // Last, and outside this service's own write. See the method note.
-    this.runeForge.grant(rune, rng);
+    // Runes drop only from monsters (canon §6.2): a thrall's find is paid as the rune's worth.
+    this.runeForge.payInstead(rune, 'thrall');
     this.find$$.next(entry);
     return true;
   }

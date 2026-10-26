@@ -22,7 +22,7 @@ export const CODEX_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'codex.reward':           { en: 'Reward', es: 'Recompensa' },
   'codex.foundOn':          { en: 'Found', es: 'Hallado' },
   'codex.part':             { en: 'Part {{n}}', es: 'Parte {{n}}' },
-  'codex.scrollSealed':     { en: 'Sealed. Fragments come off the Rune Forge anvil with a rune.', es: 'Sellado. Los fragmentos salen del yunque de la Forja de Runas.' },
+  'codex.scrollSealed':     { en: 'Sealed. Fragments turn up with the runes creatures drop.', es: 'Sellado. Los fragmentos aparecen con las runas que sueltan las criaturas.' },
   'codex.inscription':      { en: 'Delve inscription', es: 'Inscripcion del Abismo' },
   'codex.notCopied':        { en: 'Not yet copied. Somewhere in the {{place}}.', es: 'Aun sin copiar. En algun lugar de {{place}}.' },
   'codex.socketWord':       { en: 'Socket word', es: 'Palabra de engarce' },

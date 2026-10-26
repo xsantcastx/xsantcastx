@@ -1,43 +1,13 @@
 /**
- * enchanting.gateway.ts — the sole writer of a socket, an unsocket and a brew.
+ * enchanting.gateway.ts — the Enchanting Table's writes: setting a rune and brewing a potion (infusion).
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHY A GATEWAY
- * ─────────────────────────────────────────────────────────────────────────────
- * Same rule the crafting bench follows: a feature may only write through an
- * owning service or a documented gateway, and every one of these three actions
- * touches ledgers that nobody owns together.
+ *   socket → inventory (one write: the rune's consume op and the item's new wells; InventoryService.socketRune)
+ *   brew   → inventory (materials) + infusion ledger (start the timer)
  *
- *   socket   → rune ledger (spend)      + inventory (rewrite the wells)
- *   unsocket → economy (Gold)           + inventory + rune ledger (return)
- *   brew     → inventory (materials)    + infusion ledger (start the timer)
+ * Runes never come out (canon §6.2), so there is no unsocket.
  *
- * The component holds no write of its own.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * THE ORDER, AND WHY IT IS THIS ORDER
- * ─────────────────────────────────────────────────────────────────────────────
- * Every one of the three takes the *reversible* half first and the irreversible
- * half second, so that the failure the player can actually hit leaves them with
- * their property rather than with a receipt.
- *
- * SOCKET: spend the rune, then write the wells. A rune ledger write that
- * succeeds and an inventory write that fails would eat the rune, so the
- * inventory failure path returns it — `returnRune` is the exact inverse of
- * `spendRune` and neither touches first-found dates.
- *
- * UNSOCKET: write the wells, then return the rune, then take the Gold. Gold
- * last for the reason the bench gives: affordability is checked in the
- * pre-flight and taken in the same synchronous tick with no await between, so
- * nothing can spend it in between, and in the impossible case that the debit
- * still fails the player keeps their rune. A free unsocket is a strictly better
- * bug than a charged player whose rune is still in the sword.
- *
- * BREW: consume the materials, then start the timer. Reversed, a timer that
- * started and materials that failed to consume would be a free infusion on
- * every retry. If the timer refuses after the materials are gone the gateway
- * says so and the materials are lost — which is why `blocker` checks the timer
- * side *first*, in the pre-flight, where nothing has been spent yet.
+ * BREW: consume the materials, then start the timer. `blocker` checks the timer side first, where nothing has been
+ * spent yet.
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -47,12 +17,8 @@ import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { runeById } from '../rune-forge/rune.model';
-import {
-  isSocketable,
-  socketCountFor,
-  socketsOf,
-  unsocketCost,
-} from './socket.model';
+import { firstEmptyWell, isSocketable } from './socket.model';
+import { SocketingService } from './socketing.service';
 import { matchSocketWord, type SocketWord } from './socket-words';
 import { InfusionService } from './infusion.service';
 import { infusionById, type Infusion } from './infusion.model';
@@ -106,6 +72,7 @@ export class EnchantingGateway {
   private readonly runes = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
   private readonly infusions = inject(InfusionService);
+  private readonly socketing = inject(SocketingService);
 
   init(): void {
     if (!this.isBrowser) return;
@@ -118,101 +85,25 @@ export class EnchantingGateway {
   // ── Sockets ────────────────────────────────────────────────────────────────
 
   /**
-   * Set one rune into one well.
-   *
-   * The rune leaves the drawer and lives in the item until it is pulled. It is
-   * not destroyed — `unsocket` gives it back — so a player who sets a Mythic
-   * into the wrong sword has an expensive mistake rather than a permanent one.
+   * Set one rune into the item's next empty well (runes never come out: canon §6.2). The table's button path; the
+   * drag path is SocketingService.drop. Both are InventoryService.socketRune: one write.
    */
-  socket(itemId: string, well: number, runeId: string): SocketResult {
+  socket(itemId: string, runeId: string): SocketResult {
     if (!this.isBrowser) return { ok: false, code: 'ssr' };
     this.init();
-
     const item = this.inventory.itemById(itemId);
     if (!item) return { ok: false, code: 'missing' };
     if (!isSocketable(item)) return { ok: false, code: 'not-socketable' };
-    if (!Number.isInteger(well) || well < 0 || well >= socketCountFor(item)) {
-      return { ok: false, code: 'bad-well' };
-    }
-    if (!runeById(runeId)) return { ok: false, code: 'unknown-rune' };
-
-    const wells = socketsOf(item);
-    if (wells[well] !== null) return { ok: false, code: 'occupied' };
+    const rune = runeById(runeId);
+    if (!rune) return { ok: false, code: 'unknown-rune' };
+    if (firstEmptyWell(item) < 0) return { ok: false, code: 'occupied' };
     if (this.runes.countOf(runeId) < 1) return { ok: false, code: 'no-rune' };
-
     const before = matchSocketWord(item);
-    if (!this.runes.spendRune(runeId)) return { ok: false, code: 'no-rune' };
-
-    wells[well] = runeId;
-    const written = this.inventory.setSockets(itemId, wells);
-    if (!written.ok) {
-      // The one rollback that matters: the drawer has already given the rune
-      // up. Putting it back is exact — `returnRune` adds one to the count and
-      // touches nothing else.
-      this.runes.returnRune(runeId);
-      return { ok: false, code: written.code === 'missing' ? 'missing' : 'persist' };
-    }
-
-    const after = matchSocketWord(written.item);
-    return {
-      ok: true,
-      item: written.item,
-      word: after,
-      discovered: !!after && after.id !== before?.id,
-      goldSpent: 0,
-    };
+    const done = this.socketing.set(itemId, rune);
+    if (done.code !== 'ok' || !done.item) return { ok: false, code: done.code === 'no-rune' ? 'no-rune' : done.code === 'missing' ? 'missing' : 'persist' };
+    const after = matchSocketWord(done.item);
+    return { ok: true, item: done.item, word: after, discovered: !!after && after.id !== before?.id, goldSpent: 0 };
   }
-
-  /** Gold to pull whatever is in that well. Zero when the well is empty. */
-  unsocketPrice(item: GameItem, well: number): number {
-    const runeId = socketsOf(item)[well];
-    return runeId ? unsocketCost(runeId) : 0;
-  }
-
-  /**
-   * Pull one rune back out. Costs Gold; the rune returns to the drawer.
-   *
-   * Any Socket Word the item was carrying stops paying the moment the well
-   * empties, which is the whole tension of the feature: a word is not a thing
-   * you own, it is a thing your gear is currently spelling.
-   */
-  unsocket(itemId: string, well: number): SocketResult {
-    if (!this.isBrowser) return { ok: false, code: 'ssr' };
-    this.init();
-
-    const item = this.inventory.itemById(itemId);
-    if (!item) return { ok: false, code: 'missing' };
-    if (!isSocketable(item)) return { ok: false, code: 'not-socketable' };
-    if (!Number.isInteger(well) || well < 0 || well >= socketCountFor(item)) {
-      return { ok: false, code: 'bad-well' };
-    }
-
-    const wells = socketsOf(item);
-    const runeId = wells[well];
-    if (!runeId) return { ok: false, code: 'empty' };
-
-    const cost = unsocketCost(runeId);
-    if (this.economy.snapshot.gold < cost) return { ok: false, code: 'funds' };
-
-    wells[well] = null;
-    const written = this.inventory.setSockets(itemId, wells);
-    if (!written.ok) {
-      return { ok: false, code: written.code === 'missing' ? 'missing' : 'persist' };
-    }
-    this.runes.returnRune(runeId);
-    // Last, and in the same tick as the check above — see the header.
-    const paid = cost === 0 || this.economy.spendGold(cost, 'unsocket');
-
-    return {
-      ok: true,
-      item: written.item,
-      word: matchSocketWord(written.item),
-      discovered: false,
-      goldSpent: paid ? cost : 0,
-    };
-  }
-
-  // ── Infusions ──────────────────────────────────────────────────────────────
 
   /** What this infusion is still short of, for the card's material row. */
   missing(id: string): { id: string; need: number; have: number }[] {

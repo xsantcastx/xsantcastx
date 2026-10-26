@@ -640,6 +640,17 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     if (pos && pos !== record.pos) byId.set(id, { ...record, pos });
   }
 
+  // Sockets only ever fill (runes never come out: docs/design/runewords.md §2), so a well set on either copy stays
+  // set, whichever copy of the record won. Two devices that filled one well with different runes keep the winner's;
+  // the other rune is refunded by `socketRefunds` (its consume op names the well it went into).
+  for (const record of [...a.records, ...b.records]) {
+    if (record.kind !== 'instance' || !record.sockets?.length) continue;
+    const held = byId.get(record.id);
+    if (!held || held === record || held.kind !== 'instance' || !held.sockets || held.sockets.length !== record.sockets.length) continue;
+    if (!held.sockets.some((w, i) => w === null && record.sockets![i])) continue;
+    byId.set(record.id, { ...held, sockets: held.sockets.map((w, i) => w ?? record.sockets![i] ?? null) });
+  }
+
   const stacks = mergeStackHistory(a.stackOps, b.stackOps, a.stackFolds ?? [], b.stackFolds ?? []);
   // A pure union: a merge never tombstones a live record. The satchel's limit
   // is held by `settle` (inventory-layout.ts), which only moves things.
@@ -1201,4 +1212,31 @@ function finiteNumber(value: unknown): number {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The consume op that sets a rune into a well: `sock:<itemId>:<well>:<runeId>` (one op per well, ever). */
+export function socketOpId(itemId: string, well: number, runeId: string): string { return `sock:${itemId}:${well}:${runeId}`; }
+const SOCKET_OP = /^sock:(.+):(\d+):([a-z]+)$/;
+
+/**
+ * Runes a merge left without a well: two devices filled the same well offline with different runes, and the winning
+ * record holds the other one. Each such consume op is refunded once, as a grant `sockback:<op id>` of that rune's
+ * stack (`rune-<id>`), so nothing is lost. A rune whose item is gone (sold, traded) went with the item.
+ */
+export function socketRefunds(ledger: InventoryLedger): { id: string; stackKey: string }[] {
+  const out: { id: string; stackKey: string }[] = [];
+  const known = new Set(ledger.stackOps.map(op => op.id));
+  for (const op of ledger.stackOps) {
+    if (op.kind !== 'consume') continue;
+    const m = SOCKET_OP.exec(op.id);
+    if (!m) continue;
+    const refund = `sockback:${op.id}`;
+    if (known.has(refund)) continue;
+    const record = ledger.records.find(row => row.id === m[1]);
+    if (!record || record.kind !== 'instance') continue;
+    const well = Number(m[2]);
+    if (record.sockets?.[well] === m[3]) continue;
+    out.push({ id: refund, stackKey: op.stackKey });
+  }
+  return out;
 }

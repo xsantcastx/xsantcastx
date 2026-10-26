@@ -556,9 +556,9 @@ test('every built town has a waystone, and every material a zone drops is catalo
 test('the station nearest the Keeper wins, and a click hits a station by its footprint', () => {
   const stations = world.TOWNS.infernal.stations;
   assert.equal(world.nearestStation(stations, 1230).id, 'crafting');
-  assert.equal(world.nearestStation(stations, 1360), null, 'between stations nothing is in reach');
-  assert.equal(world.stationAt(stations, 1500, 560, 610).id, 'runes');
-  assert.equal(world.stationAt(stations, 1500, 200, 610), null, 'the sky above a stall is not the stall');
+  assert.equal(world.nearestStation(stations, 1450), null, 'between stations nothing is in reach');
+  assert.equal(world.stationAt(stations, 2320, 560, 610).id, 'shop-wood');
+  assert.equal(world.stationAt(stations, 2320, 200, 610), null, 'the sky above a stall is not the stall');
 });
 
 test('clientToWorld undoes the canvas offset, CSS stretch, scale and camera', () => {
@@ -2341,7 +2341,7 @@ test('life: every panel station has a keeper beside it, never on a footprint or 
     }
   }
   const at = (realm, id) => life.placeKeepers(world.TOWNS[realm]).find(p => p.def.id === id);
-  assert.equal(at('infernal', 'kael').station.id, 'runes', 'Kael at the Rune Forge');
+  assert.equal(at('infernal', 'kael').station.id, 'crafting', 'Kael at his anvil');
   assert.equal(at('luminous', 'merchant').station.id, 'market', 'the Merchant at the Market');
   assert.equal(at('celestial', 'archivist').station.id, 'codex', 'the Archivist at the Codex');
   assert.ok(at('luminous', 'aureth'), 'Aureth stands in Luminous');
@@ -2472,7 +2472,7 @@ test('life: off-camera figures are culled; keepers face the Keeper; chatter is o
   const kx = tl.keepers[kael].x;
   let t = 0;
   const step = x => { t += 1 / 60; tl.update(1 / 60, x, t); };
-  for (let n = 0; n < 30; n++) step(kx + 1000);
+  for (let n = 0; n < 30; n++) step(kx + 1500);
   assert.equal(tl.speaking, null);
   step(kx + 60);
   assert.deepEqual(tl.speaking, { keeper: 'kael', line: 'play.life.line.kael.1' });
@@ -2490,7 +2490,7 @@ test('life: off-camera figures are culled; keepers face the Keeper; chatter is o
 test('life (S3): people wear their name with the role title under it; every keeper has 4-8 lines and a People entry', () => {
   const keeperLinesMod = loadTs(path.resolve(__dirname, '../src/app/play/world/keeper-lines.ts'));
   const people = loadTs(path.resolve(__dirname, '../src/app/codex/people.i18n.ts')).PEOPLE_I18N;
-  const named = { 'bench-smith': ['Mara Voss', 'Bench Smith'], 'buyback-clerk': ['Edrin Kade', 'Buyback Clerk'], tomas: ['Tomas Rill', 'Lantern Keeper'],
+  const named = { 'bench-smith': ['Mara Voss', 'Seamwright'], 'buyback-clerk': ['Edrin Kade', 'General Store'], tomas: ['Tomas Rill', 'Lantern Keeper'],
     ilyra: ['Ilyra Venn', 'Archive Listener'], sera: ['Sera Quill', 'Chief Meridian'], 'chart-clerk': ['Nox Aster', 'Chart Clerk'], rook: ['Rook Sable', 'Veil Cartographer'],
     broker: ['Amina Thorne', 'Exchange Broker'], 'lodge-warden': ['Kesh Arbo', 'Lodge Warden'], steward: ['Siv Moss', 'Expedition Steward'],
     'vault-clerk': ['Orla Stave', 'Vault Clerk'], enchanter: ['Idris Calder', 'Enchanter'], croupier: ['Lune Coyne', 'Croupier'],
@@ -2523,7 +2523,7 @@ test('life (S3): a keeper says the newest thing first, never a line for a beat o
   const mx = tl.keepers[mara].x;
   let t = 0;
   const step = x => { t += 1 / 60; tl.update(1 / 60, x, t); };
-  const approach = () => { for (let n = 0; n < 60 * 25; n++) step(mx + 2000); step(mx + 60); return tl.speaking; };
+  const approach = () => { for (let n = 0; n < 60 * 25; n++) step(mx + 2000); step(mx - 120); return tl.speaking; };
   assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.1' }, 'a fresh save hears the first line');
   // A first craft: the next approach hears about it, not the next line in turn.
   tl.setContext({ beats: new Set(), deeds: new Set(['crafted']) });
@@ -2546,7 +2546,7 @@ test('life: the engine stands keepers in towns only, and a click on a keeper ope
   const { engine } = fixture();
   assert.ok(engine.life.keepers.length >= 4, 'the Seamworks is staffed');
   const kael = engine.life.keepers.find(p => p.def.id === 'kael');
-  assert.equal(engine.life.stationAt(kael.x, LIFE_FLOOR - 80).id, 'runes');
+  assert.equal(engine.life.stationAt(kael.x, LIFE_FLOOR - 80).id, 'crafting');
   assert.equal(engine.life.stationAt(kael.x, LIFE_FLOOR - 400), null, 'above the head is sky');
   engine.player.x = stationX(engine, 'passage');
   engine.setProgress({ equipped: true, restored: true });

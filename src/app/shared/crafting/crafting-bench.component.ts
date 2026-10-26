@@ -40,6 +40,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  InjectionToken,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
@@ -84,6 +85,8 @@ import { CraftingService } from './crafting.service';
 import {
   CRAFTING_CATEGORIES,
   CRAFTING_RECIPES,
+  recipesAt,
+  type CraftStation,
   MASTERY_THRESHOLD,
   MAX_CRAFTING_LEVEL,
   craftXpFor,
@@ -143,6 +146,9 @@ const REJECT_COPY: Readonly<Record<CraftReject, string>> = {
 /** Radius of the level dial, for the dash offset. */
 const DIAL_R = 46;
 
+/** Which station a bench serves (crafting.model recipeStation). Absent: Kael's Anvil. */
+export const CRAFT_STATION = new InjectionToken<CraftStation>('CRAFT_STATION');
+
 @Component({
   selector: 'app-crafting-bench',
   standalone: true,
@@ -196,7 +202,10 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   readonly masteryThreshold = MASTERY_THRESHOLD;
   readonly dialCircumference = 2 * Math.PI * DIAL_R;
   readonly dialR = DIAL_R;
-  readonly totalRecipes = CRAFTING_RECIPES.length;
+  /** Which station's recipes this bench shows (crafting.model recipeStation): Kael's Anvil by default. */
+  protected readonly station: CraftStation = inject(CRAFT_STATION, { optional: true }) ?? 'anvil';
+  protected get recipes(): readonly CraftingRecipe[] { return recipesAt(this.station); }
+  get totalRecipes(): number { return this.recipes.length; }
 
   // ── Filters ────────────────────────────────────────────────────────────────
   categoryFilter: CraftingCategory | 'all' = 'all';
@@ -214,7 +223,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   mastered = 0;
 
   cards: RecipeCard[] = [];
-  selected: CraftingRecipe | null = CRAFTING_RECIPES[0] ?? null;
+  selected: CraftingRecipe | null = null;
   slots: SlotView[] = [];
 
   /** True once the player picked a recipe themselves; until then we pick the best one for them. */
@@ -274,6 +283,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(MINIGAMES_I18N);
     this.forgeTabs = forgeTabs(key => this.t(key));
+    this.selected = this.recipes[0] ?? null;
     this.tools = [{ kind: 'item', id: 'iron-hammer', label: this.t('crafting.tool.anvil'), need: 0, have: 0, art: artFor('iron-hammer') }];
     this.cards = this.buildCards();
     this.slots = this.buildSlots();
@@ -513,7 +523,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.journalTabs = [
       { id: 'ready', label: this.t('crafting.tab.ready'), badge: ready.length || null },
       { id: 'all', label: this.t('crafting.all') },
-      ...this.categories.map(cat => ({ id: cat.id, label: cat.label })),
+      ...this.categories.filter(cat => this.cards.some(card => card.recipe.category === cat.id)).map(cat => ({ id: cat.id, label: cat.label })),
     ];
     if (browser && !this.userPicked) this.journalTab = ready.length || this.focus === 'ready' ? 'ready' : 'all';
     const readyIds = new Set(ready.map(card => card.recipe.id));
@@ -750,7 +760,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 
   private buildCards(): RecipeCard[] {
     const browser = this.isBrowser && this.hydrated;
-    return CRAFTING_RECIPES.map(recipe => {
+    return this.recipes.map(recipe => {
       const def = itemDefinitionById(recipe.output.itemId);
       const crafted = browser ? this.crafting.craftedCount(recipe.id) : 0;
       const ready = browser

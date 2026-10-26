@@ -7,7 +7,7 @@
  */
 import type { StationDef } from '../../world/world.model';
 import type { LegendEntry, TdMapDef } from '../td-level';
-import { buildTown } from '../town-builder';
+import { buildTown, shopStation } from '../town-builder';
 
 export const LODGE_DOOR: StationDef = { id: 'lodge-door', x: 0, label: "THE WOODWARD'S LODGE", kind: 'passage', blurb: "The Charwood's woodwards live here." };
 const LODGE_OUT: StationDef = { id: 'lodge-out', x: 0, label: 'DOOR', kind: 'passage', blurb: 'Back out to Ashgrove.' };
@@ -39,7 +39,8 @@ export const buildAshgrove = () => buildTown({
     { c: 6, r: 3, w: 5, d: 3, roof: 'thatch', wall: 'timber', door: LODGE_DOOR }, { c: 21, r: 3, w: 4, d: 3, roof: 'thatch', wall: 'timber' },
     { c: 6, r: 12, w: 4, d: 2, roof: 'thatch', wall: 'timber' }, { c: 21, r: 12, w: 5, d: 2, roof: 'red', wall: 'timber' },
   ],
-  stalls: [],
+  // Woodward Hesk Ashby's Woodcutting Store, at the Charwood's edge by his lodge (shared/shops; canon §6.5).
+  stalls: [{ station: shopStation('shop-wood', "HESK ASHBY'S WOODCUTTING STORE", 'hesk-ashby'), c: 2, r: 10, w: 4, palette: 0, goods: 'tools' }],
   props: [
     { kind: 'forge', c: 10, r: 8 }, { kind: 'forge', c: 18, r: 8 }, { kind: 'hearth', c: 14, r: 6 },
     { kind: 'bench', c: 12, r: 4 }, { kind: 'bench', c: 16, r: 4 }, { kind: 'flowerbed', c: 9, r: 6 }, { kind: 'flowerbed', c: 19, r: 6 },

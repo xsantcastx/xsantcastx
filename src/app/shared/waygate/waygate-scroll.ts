@@ -27,8 +27,8 @@ export function waygateScrollPrice(level: number): number {
 
 /** Its Found in / sources / uses / lore (check-meaning.js and the item card). */
 export const WAYGATE_SCROLL_MEANING = {
-  sources: ['Edrin Kade sells it (Material Vendor, Potions tab), priced on the hunt'],
-  foundIn: ['Seamworks: Edrin Kade\'s counter (the Material Vendor, Potions tab)'],
+  sources: ['the General Stores sell it (Edrin Kade in the Seamworks, Garrick Dross in Pyrehold), priced on the hunt'],
+  foundIn: ['Seamworks: Edrin Kade\'s General Store (the market)', 'Pyrehold: Garrick Dross\'s General Store (the plaza)'],
   uses: ['read from the satchel: opens a Waygate where you stand, to the nearest town hearth and back (no mana)'],
   lore: 'Three words in the Seamworks scribes\' hand, ul hesk vesh, pressed into rag paper with basalt dust. Read aloud, the seam opens just wide enough for one Keeper and the way home.',
 } as const;

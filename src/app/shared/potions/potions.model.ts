@@ -43,42 +43,43 @@ export const POTION_POUR_SECS = 1;
 export const POTION_KEYS: Readonly<Record<'health' | 'mana', string>> = { health: 'Q', mana: 'R' };
 
 const DROP = 'Creatures of the Emberwood, the Quarry and the deeps: now and then (stronger creatures drop better ones)';
-const SHOP = 'Seamworks: Edrin Kade\'s counter (the Material Vendor) sells it for Gold';
+const SHOP = 'Seamworks: Edrin Kade\'s General Store (the market) sells it for Gold; Pyrehold: the Alchemist (the plaza)';
+const ALCH = 'Pyrehold: Apothecary Juno Marl, the Alchemist (the plaza), sells it for Gold';
 
 export const POTIONS: readonly PotionDef[] = [
   {
     id: 'minor-health-potion', name: 'Minor Health Potion', kind: 'health', tier: 1, amount: 50, price: 25,
-    foundIn: [SHOP, DROP], sources: ['town task dailies (a small chance on a hand-in)', 'creature drops (any creature, low chance)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [SHOP, DROP], sources: ['town task dailies (a small chance on a hand-in)', 'creature drops (any creature, low chance)', 'Edrin Kade\'s General Store and the Pyrehold Alchemist sell it'],
     uses: ['drunk from the belt (Q): mends 50 life over a second'],
     lore: 'Edrin Kade boils these on the forge\'s spare heat: emberwood bark, a pinch of ash, and more sugar than he admits.',
   },
   {
     id: 'lesser-health-potion', name: 'Lesser Health Potion', kind: 'health', tier: 2, amount: 110, price: 90,
-    foundIn: [SHOP, DROP], sources: ['creature drops (level 8 and up)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [SHOP, DROP], sources: ['creature drops (level 8 and up)', 'Edrin Kade\'s General Store and the Pyrehold Alchemist sell it'],
     uses: ['drunk from the belt (Q): mends 110 life over a second'],
     lore: 'Brewed twice, so the bark gives up its warmth. Miners keep one in a boot for the walk home.',
   },
   {
     id: 'greater-health-potion', name: 'Greater Health Potion', kind: 'health', tier: 3, amount: 220, price: 300,
-    foundIn: [SHOP, DROP], sources: ['creature drops (level 16 and up)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [ALCH, DROP], sources: ['creature drops (level 16 and up)', 'the Pyrehold Alchemist sells it'],
     uses: ['drunk from the belt (Q): mends 220 life over a second'],
     lore: 'Steeped on a heartstone overnight. It tastes of a warm kitchen, which is the point.',
   },
   {
     id: 'minor-mana-potion', name: 'Minor Mana Potion', kind: 'mana', tier: 1, amount: 30, price: 25,
-    foundIn: [SHOP, DROP], sources: ['town task dailies (a small chance on a hand-in)', 'creature drops (any creature, low chance)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [SHOP, DROP], sources: ['town task dailies (a small chance on a hand-in)', 'creature drops (any creature, low chance)', 'Edrin Kade\'s General Store and the Pyrehold Alchemist sell it'],
     uses: ['drunk from the belt (R): pours back 30 mana over a second'],
     lore: 'Cold water from the Seamworks well, left one night under the open sky. It hums if you hold it to your ear.',
   },
   {
     id: 'lesser-mana-potion', name: 'Lesser Mana Potion', kind: 'mana', tier: 2, amount: 70, price: 90,
-    foundIn: [SHOP, DROP], sources: ['creature drops (level 8 and up)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [SHOP, DROP], sources: ['creature drops (level 8 and up)', 'Edrin Kade\'s General Store and the Pyrehold Alchemist sell it'],
     uses: ['drunk from the belt (R): pours back 70 mana over a second'],
     lore: 'Well water that sat out through a whole turn of the stars. The Archive swears it is only water.',
   },
   {
     id: 'greater-mana-potion', name: 'Greater Mana Potion', kind: 'mana', tier: 3, amount: 140, price: 300,
-    foundIn: [SHOP, DROP], sources: ['creature drops (level 16 and up)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [ALCH, DROP], sources: ['creature drops (level 16 and up)', 'the Pyrehold Alchemist sells it'],
     uses: ['drunk from the belt (R): pours back 140 mana over a second'],
     lore: 'Caught the night of an eclipse, stoppered before dawn could reach it. The glass is always cold.',
   },

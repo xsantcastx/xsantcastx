@@ -140,12 +140,17 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
   infernal: [
     // Orla Stave, Edrin Kade's cousin: a stave is a notched tally stick, and she has her grandmother's.
     keeper('vault-clerk', 'vault', 'Orla Stave', P.infernal[2], 'coat', -1, 'npc-vault-clerk-figure', undefined, 'Vault Clerk'),
-    keeper('buyback-clerk', 'vendor', 'Edrin Kade', P.infernal[1], 'coat', 1, 'npc-material-vendor-figure', undefined, 'Buyback Clerk'),
-    keeper('bench-smith', 'crafting', 'Mara Voss', P.infernal[2], 'smith', 1, 'npc-bench-smith-figure', undefined, 'Bench Smith'),
-    // Kael's sprite brief stands him at the Rune Forge.
-    keeper('kael', 'runes', 'Kael', KAEL, 'smith', 1, 'npc-kael-figure', 'kael', 'the Broken Flame'),
+    keeper('buyback-clerk', 'shop-general', 'Edrin Kade', P.infernal[1], 'coat', 1, 'npc-material-vendor-figure', undefined, 'General Store'),
+    // Kael keeps his anvil (the Rune Forge is gone: canon §6.2); Mara, his best student, works beside it now the bench is gone.
+    // Mara first: two keepers at one counter both in earshot, the later one speaks, and the anvil is Kael's.
+    keeper('bench-smith', 'crafting', 'Mara Voss', P.infernal[2], 'smith', 1, 'npc-bench-smith-figure', undefined, 'Seamwright'),
+    keeper('kael', 'crafting', 'Kael', KAEL, 'smith', 1, 'npc-kael-figure', 'kael', 'the Broken Flame'),
     // Idris Calder trained in the Archive before the Seamworks; sockets are promises.
-    keeper('enchanter', 'enchanting', 'Idris Calder', P.infernal[0], 'robe', -1, 'npc-enchanter-figure', undefined, 'Enchanter'),
+    { ...keeper('enchanter', 'enchanting', 'Idris Calder', P.infernal[0], 'robe', -1, 'npc-enchanter-figure', undefined, 'Enchanter'), serves: ['brews'] },
+    // The district shops (shared/shops; canon §6.5): Odd Tarn's nephew at the tackle shed by the river, the forester
+    // at the north orchard's woodcutting store.
+    keeper('davy-tarn', 'shop-fishing', 'Davy Tarn', P.infernal[1], 'coat', 1, 'npc-davy-tarn-figure', undefined, 'Tackle Shed'),
+    keeper('abe-thatch', 'shop-wood', 'Forester Abe Thatch', P.infernal[2], 'smith', -1, 'npc-abe-thatch-figure', undefined, 'Woodcutting Store'),
   ],
   luminous: [
     keeper('merchant', 'market', 'The Merchant', MERCHANT, 'coat', 1, 'npc-merchant-figure', 'merchant', 'of the long till'),

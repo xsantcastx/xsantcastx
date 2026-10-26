@@ -98,9 +98,13 @@ export const SHIFT_STEP = 1.6;
 export const RUNE_WEIGHTS: Readonly<Record<RuneTier, number>> = {
   common: 1, uncommon: 0.16, rare: 0.012, epic: 0.002, legendary: 0.0003, mythic: 0.00004, singular: 0.000002,
 };
-/** The level a rune tier starts dropping at. */
+/**
+ * The zone level a rune tier starts dropping at: canon §6.2's ladder (common Ember Isle 1+, uncommon the Reach 8+,
+ * rare the Wilds 15+, epic the Marches 26+, legendary the Peaks 35+, mythic the Expanse 45+). The Void is singular:
+ * only Hell's cap (DIFFICULTIES.runeCap) lets it fall, at 45+ there. Runes drop ONLY from monsters.
+ */
 export const RUNE_LEVEL: Readonly<Record<RuneTier, number>> = {
-  common: 0, uncommon: 3, rare: 8, epic: 20, legendary: 30, mythic: 45, singular: 55,
+  common: 1, uncommon: 8, rare: 15, epic: 26, legendary: 35, mythic: 45, singular: 45,
 };
 
 /**

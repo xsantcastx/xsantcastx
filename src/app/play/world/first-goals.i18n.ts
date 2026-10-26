@@ -39,7 +39,7 @@ export const FIRST_GOALS_I18N: Readonly<Record<string, { en: string; es: string 
 
   // After the four goals: the Rune Forge, surfaced once, the first time a strike is affordable.
   'play.goal.next': { en: 'Next step', es: 'Siguiente paso' },
-  'play.goal.rune.town': { en: 'You can afford a rune strike. Try your luck at the Rune Forge.', es: 'Ya te alcanza para un golpe de runa. Prueba suerte en la Rune Forge.' },
+  'play.goal.rune.town': { en: 'Runes drop from creatures. Set them at the Enchanting Table.', es: 'Las runas caen de las criaturas. Engarzalas en la Mesa de Encantar.' },
   'play.goal.hide': { en: 'Not now', es: 'Ahora no' },
 
   'play.goal.away': { en: 'Your first goals are in the Basalt Seamworks. Take the Waystone to Infernal.', es: 'Tus primeros objetivos estan en Basalt Seamworks. Toma el Waystone a Infernal.' },

@@ -135,6 +135,8 @@ export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   'bench-smith': [L(1), L(2), L(3), L(4, { deed: 'crafted' }), L(5), L(6, { beat: 'p.edge' }), L(7, { beat: 'a1.hammer' }), L(8, { beat: 'a1.break' })],
   kael: [L(1), L(2), L(3, { deed: 'slated' }), L(4, { deed: 'struck' }), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.hammer' }), L(7, { beat: 'a1.break' }), L(8)],
   enchanter: [L(1), L(2), L(3), L(4, { deed: 'socketed' }), L(5), L(6), L(7, { beat: 'p.words' })],
+  'davy-tarn': [L(1), L(2), L(3), L(4, { deed: 'sold' })],
+  'abe-thatch': [L(1), L(2), L(3), L(4, { deed: 'sold' })],
   // ── Luminous: Heliograph Court ──
   merchant: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6, { beat: 'a1.prices' }), L(7, { beat: 'a1.break' }), L(8)],
   aureth: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6), L(7, { beat: 'a1.break' }), L(8, { beat: 'a2.prism' })],

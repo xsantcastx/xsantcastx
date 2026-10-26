@@ -1,5 +1,5 @@
 <app-station-shell class="cb"
-                   [title]="t('crafting.name')"
+                   [title]="t(station === 'enchanting' ? 'crafting.name.enchanting' : 'crafting.name')"
                    [showTitle]="!inWorld"
                    [detailsHint]="t('crafting.details.hint')"
                    [(detailsOpen)]="detailsOpen">
