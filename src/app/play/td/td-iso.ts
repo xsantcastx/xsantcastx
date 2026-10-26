@@ -22,38 +22,6 @@ export function isoOf(x: number, y: number): { X: number; Y: number } { return {
 /** Iso → world. */
 export function worldOfIso(X: number, Y: number): { x: number; y: number } { return { x: Y + X / 2, y: Y - X / 2 }; }
 
-// ── Ground: square HD chunks resampled into diamonds ──
-const VOID: readonly [number, number, number] = [11, 7, 16];
-
-export interface IsoChunk { canvas: HTMLCanvasElement; X: number; Y: number }
-
-/**
- * Resample a square ground chunk (`src`: HD, `hd` px a world px, covering world [x0, x0 + span)²) into its iso diamond.
- * `solid(c, r)` darkens wall and rock tiles (the blocks stand on them).
- */
-export function isoChunk(src: HTMLCanvasElement, x0: number, y0: number, span: number, hd: number, solid: (c: number, r: number) => boolean): IsoChunk {
-  const sg = src.getContext('2d', { willReadFrequently: true })!, sw = src.width, sd = sg.getImageData(0, 0, sw, src.height).data;
-  // The diamond's bounding box in iso px.
-  const X0 = x0 - (y0 + span), Y0 = (x0 + y0) / 2, W = span * 2, H = span;
-  const out = document.createElement('canvas'); out.width = W * hd; out.height = H * hd;
-  const g = out.getContext('2d')!, img = g.createImageData(out.width, out.height), d = img.data;
-  let lastC = NaN, lastR = NaN, lastSolid = false;
-  for (let j = 0; j < out.height; j++) {
-    const Y = Y0 + (j + .5) / hd;
-    for (let i = 0; i < out.width; i++) {
-      const X = X0 + (i + .5) / hd, x = Y + X / 2, y = Y - X / 2, lx = x - x0, ly = y - y0;
-      if (lx < 0 || ly < 0 || lx >= span || ly >= span) continue;
-      const o = (j * out.width + i) * 4, tc = Math.floor(x / TILE), tr = Math.floor(y / TILE);
-      if (tc !== lastC || tr !== lastR) { lastC = tc; lastR = tr; lastSolid = solid(tc, tr); }
-      if (lastSolid) { d[o] = VOID[0]; d[o + 1] = VOID[1]; d[o + 2] = VOID[2]; d[o + 3] = 255; continue; }
-      const k = (Math.floor(ly * hd) * sw + Math.floor(lx * hd)) * 4;
-      d[o] = sd[k]; d[o + 1] = sd[k + 1]; d[o + 2] = sd[k + 2]; d[o + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  return { canvas: out, X: X0, Y: Y0 };
-}
-
 // ── Sculpting at this angle ──
 /** An iso sprite: HD (2 px an iso px), its foot at (ax, ay) in sprite px; lights as iso-px offsets from the foot. */
 export interface IsoSprite { img: HTMLCanvasElement; ax: number; ay: number; lights?: readonly { x: number; y: number; r: number }[] }
@@ -169,54 +137,38 @@ const PROPS: Record<string, () => IsoSprite> = {
   },
 };
 
-// ── Walls ──
-/** A wall's height in iso px, and the stub a cut-away wall is cut down to. */
-export const WALL_H = 46, STUB_H = 6;
-const blocks = new Map<string, IsoSprite>();
-const PLASTER = rampOf('#cbb28e', { cool: '#2e2028', warm: '#fff0d8', hi: .3, deep: .5 }), TIMBER = rampOf('#5a3a26', { cool: '#120808', warm: '#e8c098', hi: .3 });
-const CAP = rampOf('#4a3024', { cool: '#0e0608', warm: '#e8c8a0', hi: .35 });
-const rgb = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)] as const;
+// ── The depth queue ──
 /**
- * A wall block: `south` / `east` its faces that show (each faces a floor tile), `cut` the cut-away stub, `post` a timber
- * post at its left seam on that face. HD sprite, foot at the tile's centre.
+ * Everything standing, sorted back to front by depth (iso Y of the foot, the front edge for a wide thing's strip) with no
+ * allocation per frame: a pool of records refilled each frame and one typed-array sort of packed keys.
  */
-export function isoWall(south: boolean, east: boolean, cut: boolean, postS: boolean, postE: boolean): IsoSprite {
-  const key = `${+south}${+east}${+cut}${+postS}${+postE}`;
-  let b = blocks.get(key);
-  if (b) return b;
-  const H = cut ? STUB_H : WALL_H, K = 2, W = 34 * K, HH = (18 + H) * K, ox = 17 * K, oy = (H + 9) * K;
-  const el = document.createElement('canvas'); el.width = W; el.height = HH;
-  const g = el.getContext('2d')!, img = g.createImageData(W, HH), d = img.data;
-  const put = (i: number, j: number, c: readonly number[], a = 255) => { if (i < 0 || j < 0 || i >= W || j >= HH) return; const o = (j * W + i) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = a; };
-  const tex = (u: number, v: number, lit: number, post: boolean): readonly number[] => {
-    // v: height above the floor (iso px), u: 0…1 along the face. Wainscot to 12, plaster above, a beam at the top.
-    const k = lit;
-    if (cut) return rgb(v > H - 2 ? CAP[4] : TIMBER[Math.max(0, 2 + k)]);
-    if (v > H - 4) return rgb(TIMBER[Math.max(0, Math.min(5, 3 + k + (v > H - 1.5 ? 1 : 0)))]);
-    if (post && u < .14) return rgb(TIMBER[Math.max(0, Math.min(5, (u < .05 ? 4 : 2) + k))]);
-    if (v < 12) { const board = Math.floor(u * 6) !== Math.floor((u + .03) * 6); return rgb(TIMBER[Math.max(0, Math.min(5, (board ? 0 : v > 10.5 ? 4 : 2) + k))]); }
-    // Plaster, darker toward the floor and with a soft grime, a little mottled.
-    const m = ((Math.sin(u * 37 + v * 3.1) + Math.sin(u * 11 - v * 1.7)) * .25 + .5) > .78 ? -1 : 0;
-    return rgb(PLASTER[Math.max(0, Math.min(5, 3 + k + m + (v < 16 ? -1 : 0)))]);
-  };
-  for (let j = 0; j < HH; j++) for (let i = 0; i < W; i++) {
-    const X = (i + .5) / K - ox / K, Y = (j + .5) / K - oy / K;
-    // South face: between the left corner (−16, 0) and the bottom (0, 8), rising H.
-    if (south && X >= -16 && X <= 0) { const base = (X + 16) / 2, v = base - Y; if (v >= 0 && v <= H) { put(i, j, tex((X + 16) / 16, v, 0, postS)); continue; } }
-    if (east && X >= 0 && X <= 16) { const base = 8 - X / 2, v = base - Y; if (v >= 0 && v <= H) { put(i, j, tex(X / 16, v, -2, postE)); continue; } }
-    // The cap: the tile's diamond raised by H.
-    const ty = Y + H;
-    if (Math.abs(X) / 16 + Math.abs(ty) / 8 <= 1) { const edge = Math.abs(X) / 16 + Math.abs(ty) / 8 > .82; put(i, j, rgb(cut ? CAP[edge ? 2 : 4] : CAP[edge ? 1 : 3])); }
+export class IsoQueue {
+  n = 0;
+  readonly kind: Uint8Array;
+  readonly ref: unknown[];
+  readonly a: Float64Array;
+  readonly b: Float64Array;
+  readonly c: Float64Array;
+  private readonly keys: Float64Array;
+  constructor(readonly max = 4096) {
+    this.kind = new Uint8Array(max); this.ref = new Array<unknown>(max).fill(null);
+    this.a = new Float64Array(max); this.b = new Float64Array(max); this.c = new Float64Array(max); this.keys = new Float64Array(max);
   }
-  // A dark line where the two faces meet, and the outline along the cap's front edges.
-  g.putImageData(img, 0, 0);
-  g.fillStyle = '#1a0e10';
-  if (south && east) g.fillRect(ox - 1, oy + 16 - H * K, 2, H * K);
-  b = { img: el, ax: ox, ay: oy };
-  blocks.set(key, b);
-  return b;
+  reset(): void { for (let i = 0; i < this.n; i++) this.ref[i] = null; this.n = 0; }
+  /** Add an item at `depth` (iso px); returns its slot, or −1 when full. */
+  push(kind: number, depth: number, ref: unknown, a = 0, b = 0, c = 0): number {
+    const i = this.n;
+    if (i >= this.max) return -1;
+    this.kind[i] = kind; this.ref[i] = ref; this.a[i] = a; this.b[i] = b; this.c[i] = c;
+    // Depth in 1/16 px, the slot breaking ties (so equal depths keep their push order).
+    this.keys[i] = Math.floor(depth * 16) * 8192 + i;
+    this.n++;
+    return i;
+  }
+  /** Sort; then `at(k)` is the k-th slot back to front. */
+  sort(): void { this.keys.subarray(0, this.n).sort(); }
+  at(k: number): number { const v = this.keys[k]; return v - Math.floor(v / 8192) * 8192; }
 }
-
 // ── Light ──
 let lightCv: HTMLCanvasElement | null = null;
 /**
@@ -245,4 +197,25 @@ export function lightPass(c: CanvasRenderingContext2D, w: number, h: number, amb
   // A faint warm bloom where the light is strongest.
   c.globalCompositeOperation = 'lighter'; c.globalAlpha = .12; c.drawImage(L, 0, 0, lw * q, lh * q);
   c.restore();
+}
+
+// ── Flat things, projected once ──
+const flats = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+/**
+ * A picture that lies on the ground (a tree's shadow, a floor decal), its top-down image (`w × h` world px) laid onto the
+ * iso floor once and cached: a frame then draws it axis-aligned (a rotated draw every frame is the software
+ * rasteriser's slow path). Drawn at iso (X − h, Y) for the image's top-left world corner at iso (X, Y), size
+ * (w + h) × (w + h) / 2.
+ */
+export function isoFlat(img: HTMLCanvasElement): HTMLCanvasElement {
+  let f = flats.get(img);
+  if (f) return f;
+  const w = img.width, h = img.height, K = 2;
+  f = document.createElement('canvas'); f.width = Math.max(1, (w + h) * K); f.height = Math.max(1, Math.ceil((w + h) / 2) * K);
+  const g = f.getContext('2d')!;
+  g.imageSmoothingEnabled = false;
+  g.setTransform(K, K / 2, -K, K / 2, h * K, 0);
+  g.drawImage(img, 0, 0);
+  flats.set(img, f);
+  return f;
 }
