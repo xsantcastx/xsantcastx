@@ -1952,6 +1952,12 @@ export interface MobSpawn { key: string; type: string; x: number; y: number; lev
 export interface Mob {
   key: string;
   def: MobDef;
+  /**
+   * A personal (phased) creature: raised by this screen for this Keeper alone (a quest's foe, the Sexton's Row-Walker),
+   * never the room's and never on the wire. On a member it is still simulated, wounded and felled here, so a quest
+   * step the room cannot see stays playable online (docs/design/online.md §4d, "Personal creatures").
+   */
+  personal?: boolean;
   x: number; y: number;
   hx: number; hy: number;
   hp: number;
@@ -2173,7 +2179,7 @@ export const CHANT_SECS = 1.2;
 /** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
 export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
 /** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
-export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number; /** S6 raise: who sings it up (an interrupt takes it back), the corpse it rises from, the share of life it rises with. */ by?: Mob; corpse?: string; pct?: number }
+export interface Call { x: number; y: number; type: string; key: string; t: number; touched?: boolean; /** Called up by a personal creature (Mob.personal): it is personal too. */ personal?: boolean; /** The level it comes at (td-zones callLevel). */ level?: number; /** S6 raise: who sings it up (an interrupt takes it back), the corpse it rises from, the share of life it rises with. */ by?: Mob; corpse?: string; pct?: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
 export interface MobShot extends Lofted { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink' | 'shard' | 'spore'; type?: DamageType; /** Its shooter's level (td-zones level gap). */ lv?: number; /** An elite's affixes riding the shot (Mana Burn, Cursed). */ burn?: boolean; curse?: boolean; /** S6: statuses it lays (td-abilities encodeStatus). */ st?: string }
@@ -3137,7 +3143,7 @@ export class MobSystem {
           m.bleedTick = 1;
           this.effects.push({ kind: 'bleed', x: m.x + rnd(-3, 3), y: m.y - m.def.h / 2, age: 0, life: .45, dir: 1 });
           // Protocol 10: the room ticks it (a member only shows it); in the room, the tick is its Keeper's blow.
-          if (!(this.replica && this.roomTicks)) this.dotTick(m, m.bleedDps ?? 0, '#d0504a', m.bleedBy);
+          if (!(this.replica && this.roomTicks && !m.personal)) this.dotTick(m, m.bleedDps ?? 0, '#d0504a', m.bleedBy);
           if (m.hp <= 0) continue;
         }
       }
@@ -3147,7 +3153,7 @@ export class MobSystem {
         if (m.scorchTick <= 0) {
           m.scorchTick = 1;
           this.effects.push({ kind: 'flame', x: m.x + rnd(-3, 3), y: m.y - 2, age: 0, life: .4, dir: 1 });
-          if (!(this.replica && this.roomTicks)) this.dotTick(m, m.scorchDps ?? 0, '#ff9a4a', m.scorchBy, null);
+          if (!(this.replica && this.roomTicks && !m.personal)) this.dotTick(m, m.scorchDps ?? 0, '#ff9a4a', m.scorchBy, null);
           if (m.hp <= 0) continue;
         }
       }
@@ -3211,8 +3217,9 @@ export class MobSystem {
       const slow = (m.chillT ?? 0) > 0 ? 1 - CHILL_SLOW : 1;
       // Fanaticism (a pack aura): its bites come quicker.
       m.t += dt; m.cd -= dt * slow * (m.bless?.fx.rate ?? 1); m.rcd -= dt * slow; m.hit = Math.max(0, m.hit - dt);
-      // A member under a host: the host moves, aims and bites with it (td-coop.ts places it each frame).
-      if (this.replica) continue;
+      // A member under a host: the host moves, aims and bites with it (td-coop.ts places it each frame) — bar a
+      // personal creature, which is this screen's alone.
+      if (this.replica && !m.personal) continue;
       this.tickMobS6(m, dt);
       // Stunned (a Shield Bash): it stands where it is, does nothing, and its blow waits — and a cast in its tell is cancelled.
       if ((m.stun ?? 0) > 0) { if (m.abCast !== undefined) this.interruptCast(m); m.stun = Math.max(0, (m.stun ?? 0) - dt); m.cd = Math.max(m.cd, .2); continue; }
@@ -3380,14 +3387,14 @@ export class MobSystem {
         const cp = this.remains[ci];
         this.remains.splice(ci, 1);
         const rd = atZoneLevel(MOBS[k.type], k.level ?? (cp.def as MobDef).level ?? MOBS[k.type].level), rm = this.spawnMob(k.key, rd, k.x, k.y);
-        rm.hp = Math.max(1, Math.round(rm.def.hp * (k.pct ?? .5))); rm.raised = true; rm.face = cp.face;
+        rm.hp = Math.max(1, Math.round(rm.def.hp * (k.pct ?? .5))); rm.raised = true; rm.face = cp.face; if (k.personal) rm.personal = true;
         this.mobs.push(rm);
         if (k.by) k.by.raisedOne = true;
         this.effects.push({ kind: 'raise', x: k.x, y: k.y, age: 0, life: .5, dir: 1 });
         continue;
       }
       // Eclipse-touched summons (the Seam Eater's call) climb out as lone touched champions (td-elites touchPack).
-      if (MOBS[k.type]) { const cd = k.level ? atZoneLevel(MOBS[k.type], k.level) : MOBS[k.type]; if (k.touched) this.spawnPack(k.key, cd, k.x, k.y, touchPack(null, touchedRandom(k.key))); else this.mobs.push(this.spawnMob(k.key, cd, k.x, k.y)); }
+      if (MOBS[k.type]) { const cd = k.level ? atZoneLevel(MOBS[k.type], k.level) : MOBS[k.type]; const up = k.touched ? this.spawnPack(k.key, cd, k.x, k.y, touchPack(null, touchedRandom(k.key))) : [this.spawnMob(k.key, cd, k.x, k.y)]; if (!k.touched) this.mobs.push(up[0]); if (k.personal) for (const u of up) u.personal = true; }
       this.effects.push({ kind: 'spark', x: k.x, y: k.y - 6, age: 0, life: .3, dir: 1 });
     }
     this.updateShots(dt);
@@ -3696,7 +3703,7 @@ export class MobSystem {
       }
       case 'raise':
         for (const [i, cp] of this.raisable(m, a).entries()) {
-          this.calls.push({ x: cp.x, y: cp.y, type: cp.kind.id, key: `${m.key}:raise${i}:${Math.round(this.clock * 10)}`, t: a.tell, level: m.def.level, by: m, corpse: cp.id, pct: a.raise!.pct });
+          this.calls.push({ x: cp.x, y: cp.y, type: cp.kind.id, key: `${m.key}:raise${i}:${Math.round(this.clock * 10)}`, t: a.tell, level: m.def.level, by: m, corpse: cp.id, pct: a.raise!.pct, ...(m.personal ? { personal: true } : {}) });
           this.bursts.push({ x: cp.x, y: cp.y, t: a.tell, delay: a.tell, r: 11, dmg: 0, el: 'raise', tone: a.tone, by: m, fx: true });
         }
         break;
@@ -4159,7 +4166,8 @@ export class MobSystem {
       if (dmg <= 0) { foe.hit = .1; return 0; }
     }
     // A member under a host: the blow is shown here and claimed from the host, which decides (td-coop.ts, ClaimGate).
-    if (this.replica) {
+    // A personal creature is not the host's: its blows land here, as alone.
+    if (this.replica && !foe.personal) {
       const n = Math.max(1, Math.round(dmg));
       foe.hit = .18;
       this.float(foe.x, foe.y - foe.def.h, crit ? `${n}!` : `${n}`, color);
@@ -4182,7 +4190,7 @@ export class MobSystem {
       foe.graveCalled = true;
       for (let i = 0; i < GRAVE_CALL.count; i++) {
         const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 12), y = foe.y + 8, at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
-        this.calls.push({ x: at.x, y: at.y, type: 'bone-walker', key: `${foe.key}:grave${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: Math.max(1, foe.def.level - GRAVE_CALL.under) });
+        this.calls.push({ x: at.x, y: at.y, type: 'bone-walker', key: `${foe.key}:grave${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: Math.max(1, foe.def.level - GRAVE_CALL.under), ...(foe.personal ? { personal: true } : {}) });
       }
     }
     const call = foe.def.summon;
@@ -4192,7 +4200,7 @@ export class MobSystem {
         const side = i % 2 ? -1 : 1, x = foe.x + side * (foe.def.w / 2 + 10), y = foe.y + 6;
         const at = this.free(x, y) ? { x, y } : { x: foe.x, y: foe.y };
         // A sigil first, where it will stand (CALL_TELL); it climbs out when the sigil runs out (update).
-        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: callLevel(foe.def, MOBS[call.type]), ...(call.touched ? { touched: true } : {}) });
+        this.calls.push({ x: at.x, y: at.y, type: call.type, key: `${foe.key}:call${i}:${Math.round(this.clock * 10)}`, t: CALL_TELL, level: callLevel(foe.def, MOBS[call.type]), ...(call.touched ? { touched: true } : {}), ...(foe.personal ? { personal: true } : {}) });
       }
     }
     // The half-life change (MobDef.half): a wider, quicker breath, more rings, sooner; its call spoken.
@@ -5874,7 +5882,7 @@ export class MobSystem {
     if (cp && (redeem > 0 || m.raised)) cp.rested = true;
     // Keep Walking (the Bone Walker): one in four stand up once more, unless burnt or broken.
     if (cp && !cp.ash && !cp.rested && ABIL_PASSIVE_ID(m.def.id, 'keep-walking') && Math.random() < KEEP_WALKING.chance) {
-      this.calls.push({ x: m.x, y: m.y, type: m.def.id, key: `${m.key}~kw${Math.round(this.clock * 10)}`, t: KEEP_WALKING.after, level: m.def.level, corpse: cp.id, pct: KEEP_WALKING.pct });
+      this.calls.push({ x: m.x, y: m.y, type: m.def.id, key: `${m.key}~kw${Math.round(this.clock * 10)}`, t: KEEP_WALKING.after, level: m.def.level, corpse: cp.id, pct: KEEP_WALKING.pct, ...(m.personal ? { personal: true } : {}) });
     }
     // The raised and the mirrored owe nothing: no XP, no loot (the singer's verse is not a second kill).
     if (m.raised || m.mirror) return;

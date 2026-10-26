@@ -494,6 +494,19 @@ the room's word on life follows ~200 ms later (one POST + the next snapshot) and
 shared and persistent for now, Tibia-style. PvP (world-acts §6) now has its prerequisite: Keeper life, deaths and
 claims are the room's. WebSocket once the bill or the profile asks.
 
+**Personal creatures (quest foes the room cannot see).** A quest step is per character (the chain's facts live in
+that Keeper's save), so the room does not know who should meet a quest's foe. Such a foe is raised by the Keeper's
+own screen and marked `Mob.personal` (td-mobs): on a member it keeps its mind, takes this screen's blows directly,
+falls through the screen's own kill path (its loot is the Keeper's own, as solo), and it is never put on the wire
+(td-coop `visible()` skips it), so every Keeper on the step meets their own and nobody else sees it: a per-player
+phase. What it can earn is bounded: it rises only while the step waits on it, and the step moves on at its fall, so
+it pays one kill per character; the reward is a quest fact, not an item that trades. Its bites still reach the
+room's life (LifeMirror claims the harm). Only the Sexton's Row-Walker (Hollis Vane) is one today. The bug it fixes:
+before 2026-10-26 the Row-Walker was a plain local creature, which on a member stood frozen (a replica's mind
+sleeps) and whose every blow was a claim naming no room creature, so it never fell and Barrow Key 1 never came. A
+new quest foe raised by the screen must set `personal`; a foe everyone shares belongs in the room's spawns instead.
+Tests: karma `td-coop.spec.ts` "personal creatures"; e2e `e2e/td-sexton-online.spec.ts`.
+
 **Next.** PvP on the room (Keeper-to-Keeper claims through the same gate and KeeperLife); retire protocol 7–9's
 trust once old clients are gone; party-private instances if the shared floors crowd.
 

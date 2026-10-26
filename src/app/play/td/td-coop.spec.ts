@@ -7,6 +7,7 @@
 import type { EngineOptions, KillEvent } from '../engine/engine.model';
 import { MOBS, MobSystem, type MobHost } from './td-mobs';
 import { TdCoop, type CoopKill, type CoopRole } from './td-coop';
+import { makePack } from './td-elites';
 import { CoopRewards, coopBossLife } from '../social/coop-rules';
 import type { CoopAreas, CoopHit, CoopSnapBody, CoopSnapMsg } from '../social/coop-protocol';
 
@@ -252,5 +253,58 @@ describe('td-coop: shared creatures between a host and a member', () => {
     coop.before(1 / 60, 'ember-isle', []);
     expect(coop.role).toBe('solo');
     expect(sys.replica).toBeFalse();
+  });
+
+  // The Sexton's Count online ("the key just won't drop"): the Row-Walker is raised by the Keeper's own screen for the
+  // chain's step, which the room cannot see. On a member it stood frozen and took no blow (its claims named no room
+  // creature), so the 'key' fact was never recorded. A personal creature is simulated, wounded and felled here.
+  describe('personal creatures (a quest foe the room never sees)', () => {
+    const raise = (b: Side, personal: boolean) => {
+      const pack = b.sys.spawnPack('sexton:row-walker', MOBS['bone-walker'], 40, 0, makePack('unique', ['extra-strong'], 'Hollis Vane', 1));
+      if (personal) for (const m of pack) m.personal = true;
+      return pack;
+    };
+
+    it('the old way (not personal) reproduces the bug: on a member a local foe takes no blow and never falls', async () => {
+      const { b, run, roles } = rig();
+      await run(.3);
+      expect(roles()).toEqual(['host', 'member']);
+      const [walker] = raise(b, false);
+      const hp = walker.hp;
+      b.sys.wound(walker, hp + 50);
+      await run(.3);
+      expect(walker.hp).toBe(hp);
+      expect(b.kills.length).toBe(0);
+    });
+
+    it('a member fells its own Row-Walker: the blow lands here, the kill is its own (the host credits the key), with loot', async () => {
+      const { a, b, run } = rig();
+      await run(.3);
+      expect(b.coop.role).toBe('member');
+      const [walker, follower] = raise(b, true);
+      expect(follower.personal).toBeTrue();
+      await run(.3);
+      // Snapshots from the room do not sweep it, and the host never hears of it.
+      expect(b.sys.mobs).toContain(walker);
+      expect(a.sys.mobs.some(m => m.key.startsWith('sexton:'))).toBeFalse();
+      b.sys.wound(walker, walker.hp + 50);
+      await run(.1);
+      expect(b.sys.mobs).not.toContain(walker);
+      const kill = b.kills.find(k => k.creature === 'bone-walker');
+      expect(kill).toBeDefined();
+      expect(kill!.id).toMatch(/^td:surface:sexton:row-walker:/);  // side-scroller hunted(): sextonSaw({ kind: 'walker' })
+      expect(kill!.share).toBeUndefined();
+      expect(kill!.coop).toBeUndefined();
+      expect(b.sys.drops.length).toBeGreaterThan(0);               // its Gold and materials lie here, this Keeper's own
+    });
+
+    it('a personal foe moves and bites the member on its own screen', async () => {
+      const { b, run } = rig();
+      await run(.3);
+      b.me.x = 30;
+      raise(b, true);
+      await run(3);
+      expect(b.hurt.length).toBeGreaterThan(0);
+    });
   });
 });
