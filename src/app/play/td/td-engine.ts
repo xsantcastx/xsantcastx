@@ -31,7 +31,10 @@ import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './t
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { AuraFx as LookAuraFx, rimGlow as lookRimGlow } from './td-aura-look';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
-import { HD_KEEPER, HD_PET, HD_PET_ID, HD_SKEL, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet, hdSkeletonSheet } from './td-hd-art';
+import { HD_KEEPER, HD_PET, HD_PET_ID, hdKeeperFrame, hdKeeperSheet, hdPetFrameIndex, hdPetSheet } from './td-hd-art';
+import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdStats } from './td-hd-mob';
+import { facingRow } from './td-hd-rig';
+import type { Anim } from './td-hd-creatures';
 import { paintRichGroundHd } from './td-ground';
 import { organic, paintFieldTile } from './td-terrain';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
@@ -609,6 +612,9 @@ export class TopDownEngine {
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
       motes: () => this.auraFx.alive,
+      // Isometric B's HD creatures: the contact sheet, and the baked cells (count, pixels, kinds) for the memory check.
+      hdGallery: (ids?: string[], anims?: Anim[], k?: number) => hdGallery(ids, anims, k),
+      hdStats: () => hdStats(),
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts), a pulse now.
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
       pulse: () => { this.lookAura.pulse(1.3); this.auraBeat = this.time; return this.lookAura.pulsing; },
@@ -4133,20 +4139,19 @@ export class TopDownEngine {
     if (m.mirror) c.globalAlpha *= .62;
     // Teleport's wind-up: it thins out where it stands before it is gone.
     if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
-    // The art-direction prototype (td-artopt.ts B/C): the Bone Walker in HD, half a world px a sheet px, feet where its cell's are.
-    if (optHdFigures() && m.def.id === 'bone-walker' && envDetail() !== 'low') {
-      const hs = hdSkeletonSheet(), S = HD_SKEL, hf = Math.floor(m.t * 6) % 4;
-      let row = 0;
-      if (optIso()) {
-        // Isometric: square on, turned a quarter, or from behind; mirrored by the screen's left and right, not the world's.
-        const fc = this.isoFace(m, m.x, m.y);
-        row = !fc.front ? 2 : fc.turned ? 1 : 0;
-        if (m.face < 0) c.scale(-1, 1);
-        if (fc.flip) c.scale(-1, 1);
-      }
-      c.drawImage(hs, hf * S.w, row * S.h, S.w, S.h, -S.w / 4, d.h - S.h / 2 + 1, S.w / 2, S.h / 2);
+    // Isometric B's HD creatures (td-hd-creatures.ts): posed per clip, the true facing baked (never a mirror).
+    if (optHdFigures() && hasHdModel(m.def.id) && envDetail() !== 'low') {
+      c.restore(); c.save();
+      c.translate(Math.round(m.x), Math.round(m.y) + 1 - lift);
+      if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14;
+      if (m.mirror) c.globalAlpha *= .62;
+      if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
+      const clip = hdClip(m, this.time);
+      this.paintHdCreature(c, m.def.id, this.hdRow(m, m.x, m.y, m.face), clip.anim, clip.f, eliteTint(m), m.hit > 0, d.ghost);
       c.restore();
       if (m.elite) drawAffixTells(c, m, this.time, this.still);
+      drawBodyTell(c, m, this.time, this.still);
+      drawMobS6Air(c, m, this.time, this.still);
       return;
     }
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
@@ -4166,6 +4171,17 @@ export class TopDownEngine {
   private drawRaised(k: Minion): void {
     const c = this.ctx, d = this.vis(RAISED_SKELETON), sheet = mobSheet(RAISED_SKELETON), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
+    // Isometric B: the HD raised skeleton, climbing out of the ground (clipped at the feet) for its first half second.
+    if (optHdFigures() && envDetail() !== 'low') {
+      const rise = Math.max(0, 1 - k.t / .5), hd = d.h;
+      c.save();
+      c.translate(Math.round(k.x), Math.round(k.y) + 1);
+      if (rise > 0) { c.beginPath(); c.rect(-40, -200, 80, 200); c.clip(); c.translate(0, Math.round(rise * hd * .7)); }
+      if (k.life < 3) c.globalAlpha = .4 + .6 * (k.life / 3);
+      const clip = hdClip({ x: k.x, y: k.y, t: k.t, cd: k.cd, rcd: 9, tell: 0, def: RAISED_SKELETON }, this.time);
+      this.paintHdCreature(c, RAISED_SKELETON.id, this.hdRow(k, k.x, k.y, k.face), clip.anim, clip.f, null, k.hit > 0);
+      c.restore();
+    } else {
     c.save();
     // Rising out of the ground for its first half second; fading as its time runs out.
     const rise = Math.max(0, 1 - k.t / .5);
@@ -4175,6 +4191,7 @@ export class TopDownEngine {
     c.drawImage(sheet, f * d.w, 0, d.w, Math.round(d.h * (1 - rise * .6)), -Math.floor(d.w / 2), 0, d.w, Math.round(d.h * (1 - rise * .6)));
     if (k.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .6; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
     c.restore();
+    }
     const w = 14, frac = Math.max(0, k.hp / k.maxHp);
     c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - d.h - 5), w + 2, 3);
     c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - d.h - 4), Math.round(w * frac), 1);
@@ -4225,13 +4242,22 @@ export class TopDownEngine {
   private drawCorpse(cp: Corpse): void {
     const age = this.mobs.age - cp.born, stage = corpseStage(age, cp.boss);
     if (stage === 'gone') return;
-    const c = this.ctx, sprite = corpseSprite(cp, stage), x = Math.round(cp.x), y = Math.round(cp.y);
+    const c = this.ctx, x = Math.round(cp.x), y = Math.round(cp.y);
     c.globalAlpha = corpseAlpha(age, cp.boss);
-    c.save();
-    c.translate(x, y + 2 - sprite.height);
-    if (cp.face < 0) c.scale(-1, 1);
-    c.drawImage(sprite, -Math.floor(sprite.width / 2), 0);
-    c.restore();
+    if (optHdFigures() && hasHdModel(cp.kind.id) && envDetail() !== 'low') {
+      // Isometric B: the HD creature's own death clip, then its last frame lies there; rot darkens it, the bones bleach.
+      c.save(); c.translate(x, y + 1);
+      const tone = stage === 'rotting' ? { color: '#2a1c22', alpha: .4 } : stage === 'bones' ? { color: '#d8cfc0', alpha: .45 } : null;
+      this.paintHdCreature(c, cp.kind.id, facingRow(true, true, cp.face < 0), 'death', this.still ? 3 : hdDeathFrame(age), tone, false, cp.kind.ghost);
+      c.restore();
+    } else {
+      const sprite = corpseSprite(cp, stage);
+      c.save();
+      c.translate(x, y + 2 - sprite.height);
+      if (cp.face < 0) c.scale(-1, 1);
+      c.drawImage(sprite, -Math.floor(sprite.width / 2), 0);
+      c.restore();
+    }
     c.globalAlpha = 1;
     // Flies over the rotting (a few dark pixels with a flicker of wing); none under reduced motion.
     if (stage === 'rotting' && !this.still) for (const f of flyDots(cp, this.time)) {
@@ -5543,6 +5569,31 @@ export class TopDownEngine {
       return;
     }
     c.drawImage(sheet, f * K.w, row * K.h, K.w, K.h, x - K.ax * k, y - K.ay * k, K.w * k, K.h * k);
+  }
+
+  /** The HD creatures' row: iso's six facings by its steps; top-down, turned toward its face. */
+  private hdRow(o: object, x: number, y: number, face: number): number {
+    if (optIso()) { const fc = this.isoFace(o, x, y); return facingRow(fc.front, fc.turned, fc.flip); }
+    return facingRow(true, true, face < 0);
+  }
+  private hdTintCv: HTMLCanvasElement | null = null;
+  /** One HD creature cell with its feet at the origin, half a world px a sheet px; an elite's tone and a hit's flash on its own pixels. */
+  private paintHdCreature(c: CanvasRenderingContext2D, id: string, row: number, anim: Anim, f: number, tint: { color: string; alpha: number } | null, hit: boolean, ghost?: boolean): void {
+    const cell = hdCell(id, row, anim, f, this.time);
+    if (!cell) return;
+    const w = cell.img.width, h = cell.img.height, x = -cell.ax / 2, y = -cell.ay / 2;
+    c.drawImage(cell.img, 0, 0, w, h, x, y, w / 2, h / 2);
+    const layers: [string, number][] = [];
+    if (tint) layers.push([tint.color, tint.alpha * (ghost ? .7 : 1)]);
+    if (hit) layers.push(['#ffffff', .7]);
+    for (const [col, a] of layers) {
+      const t = this.hdTintCv ??= document.createElement('canvas');
+      if (t.width < w || t.height < h) { t.width = Math.max(t.width, w); t.height = Math.max(t.height, h); }
+      const g = t.getContext('2d')!;
+      g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, t.width, t.height); g.drawImage(cell.img, 0, 0);
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = col; g.fillRect(0, 0, w, h);
+      const was = c.globalAlpha; c.globalAlpha = was * a; c.drawImage(t, 0, 0, w, h, x, y, w / 2, h / 2); c.globalAlpha = was;
+    }
   }
 
   // ── The aura look (td-aura.ts) ──
