@@ -100,8 +100,9 @@ describe('Glim: the hint ladder', () => {
         if (g) expect(ladderTop(g.key)).withContext(`${areaId} ${g.key}`).toBeGreaterThan(0);
       }
     }
-    const rune = runeForgeHint({ goalsDone: true, gold: 1e6, strikeCost: 600, seen: false, areaId: 'infernal' });
-    expect(ladderTop(rune!.key)).toBe(3);
+    // The Rune Forge hint is retired (runes drop only from monsters): its ladder stays for an old save's line.
+    expect(runeForgeHint({ goalsDone: true, gold: 1e6, strikeCost: 600, seen: false, areaId: 'infernal' })).toBeNull();
+    expect(ladderTop('play.goal.rune.town')).toBe(3);
   });
 
   it('never ladders a secret: Codex secrets, inscriptions, the Nameless, the Void', () => {

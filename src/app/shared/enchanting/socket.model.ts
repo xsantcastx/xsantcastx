@@ -1,33 +1,16 @@
 /**
- * socket.model.ts — sockets on equipment, and what a rune set into one does.
+ * socket.model.ts — sockets on equipment (D2's rule, docs/design/runewords.md §2), and what a rune set into one does.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * WHY THE SOCKET COUNT IS DERIVED AND NOT STORED
+ * THE SOCKET COUNT IS THE LENGTH OF `GameItem.sockets`
  * ─────────────────────────────────────────────────────────────────────────────
- * An item's socket count is a pure function of what the item *is* — its slot and
- * its rarity — so it is computed on read rather than written at mint. The
- * alternative would mean every one of the thousands of items already in players'
- * saves has no socket field, and back-filling it means inventing a number and
- * then living with two sources for it forever. Deriving means a Legendary sword
- * minted eighteen releases ago has three sockets the first time this page loads,
- * which is the correct outcome: the player earned the Legendary.
+ * A normal (white) base rolls its sockets ONCE, at the drop (`rollSockets`: by base type and item level, canon
+ * §6.2), and they are written as that many empty wells: `sockets: [null, null, null]`. The array's length is the
+ * count, so the save, the packed v3 format (`so`) and trade-core (≤ 8 wells) carry it with no new field. An item
+ * with no array has no sockets. Old saves keep every rune they had set: an array that holds runes keeps its length.
  *
- * What *is* stored is the contents — `GameItem.sockets`, a sparse array of rune
- * ids and nulls. Its length is not authoritative; `socketCountFor` is. A save
- * whose array is longer than the derived count (because the ladder was retuned
- * downward) has its tail ignored by `socketsOf`, not thrown away, so retuning
- * back up returns the runes rather than having eaten them.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHY THE EFFECT TABLE IS PER-STAT AND NOT A SINGLE TIER MULTIPLIER
- * ─────────────────────────────────────────────────────────────────────────────
- * The obvious build is one ladder — "a Mythic rune is worth 32× a Common" — and
- * it works for Gold/sec, which is unbounded, and destroys every percentage stat,
- * which is not: 32× a one-point Magic Find roll is a 32-point Magic Find rune
- * that outclasses every item in the game. So each stat carries its own ladder,
- * and the shape of that ladder is a property of the stat rather than of the
- * rune. Adding a rune is one row in `SOCKET_CHANNEL`; retuning a stat is one
- * row in `SOCKET_LADDER`.
+ * Runes fill the wells in order, left to right, and never come out (canon: "a rune in a socket is a promise the gear
+ * has to keep"). Setting one happens only at an Enchanting Table (socketing.ts).
  *
  * Pure data and pure functions — no browser APIs, safe on an SSR path.
  */
@@ -36,53 +19,25 @@ import {
   LEGACY_STAT_KEYS,
   type LegacyStatKey,
   type GameItem,
-  type ItemRarity,
   type ItemStats,
   type SlotId,
 } from '../rpg/item.model';
 import { itemDefinitionById } from '../rpg/item-definition';
+import { itemBase } from '../rpg/item-base';
+import type { GearBase } from '../art/gear-icons';
 import { runeById, type RuneTier } from '../rune-forge/rune.model';
+import { parseToolId } from '../skills/tool-items';
 
-/** Which ladder an item's socket count is read off. */
+/** Which family an item's runes are read against: weapons give the rune's line, armour its resist. */
 export type SocketFrame = 'weapon' | 'armor' | 'none';
 
-/**
- * The armour wells. Everything the paper doll draws that is not the weapon.
- *
- * `off-hand` counts as armour rather than as a second weapon: it accepts the
- * same item types the chest does, and giving it three sockets would make the
- * cheapest three-socket word a shield rather than a sword.
- */
 const ARMOR_SLOTS: readonly SlotId[] = [
   'head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket',
 ];
 
-/**
- * Sockets per rarity, per frame.
- *
- * The brief is "weapons 1–3, armour 1–2", spread across the seven-rung rune
- * ladder rather than a three-rung one. A weapon reaches three at Legendary,
- * which is where the three-rune words start; armour reaches two at Epic.
- */
-const WEAPON_SOCKETS: Record<ItemRarity, number> = {
-  common: 1, uncommon: 1, rare: 2, epic: 2, legendary: 3, mythic: 3, singular: 3,
-};
+/** The most wells any item can hold (a staff or a shield at item level 30+). */
+export const MAX_SOCKETS = 5;
 
-const ARMOR_SOCKETS: Record<ItemRarity, number> = {
-  common: 1, uncommon: 1, rare: 1, epic: 2, legendary: 2, mythic: 2, singular: 2,
-};
-
-export const MAX_SOCKETS = 3;
-
-/**
- * Which frame this item is read against.
- *
- * The slot comes from the authored definition when there is one, and from where
- * the item is currently worn when there is not. Both are needed: a bagged item
- * has no `slot`, and a save old enough to predate `definitionId` has no
- * definition. An item that answers neither is unsocketable, which is the right
- * answer for a charm, a loose rune or a crafted Runeword.
- */
 export function socketFrameOf(item: Pick<GameItem, 'type' | 'slot' | 'definitionId'>): SocketFrame {
   if (item.type === 'charm' || item.type === 'rune' || item.type === 'runeword') return 'none';
   const slot = itemDefinitionById(item.definitionId ?? '')?.slot ?? item.slot;
@@ -91,30 +46,18 @@ export function socketFrameOf(item: Pick<GameItem, 'type' | 'slot' | 'definition
   return ARMOR_SLOTS.includes(slot) ? 'armor' : 'none';
 }
 
-/** How many wells this item has. Zero for anything that cannot be socketed. */
-export function socketCountFor(
-  item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'rarity'>,
-): number {
-  const frame = socketFrameOf(item);
-  if (frame === 'none') return 0;
-  const table = frame === 'weapon' ? WEAPON_SOCKETS : ARMOR_SOCKETS;
-  return table[item.rarity] ?? 0;
+/** How many wells this item has: the length of its socket array. Zero for anything that cannot be socketed. */
+export function socketCountFor(item: Pick<GameItem, 'type' | 'slot' | 'definitionId'> & { sockets?: readonly (string | null)[] }): number {
+  if (socketFrameOf(item) === 'none') return 0;
+  return Math.min(MAX_SOCKETS + 1, Math.max(0, item.sockets?.length ?? 0));
 }
 
-export function isSocketable(
-  item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'rarity'>,
-): boolean {
+export function isSocketable(item: Pick<GameItem, 'type' | 'slot' | 'definitionId'> & { sockets?: readonly (string | null)[] }): boolean {
   return socketCountFor(item) > 0;
 }
 
-/**
- * This item's wells, normalised to the derived count.
- *
- * Always returns exactly `socketCountFor` entries — short arrays are padded
- * with nulls and long ones are truncated for reading only. Ids that are not
- * runes any more read as empty rather than as a rune nobody can name.
- */
-export function socketsOf(item: GameItem): (string | null)[] {
+/** This item's wells: exactly `socketCountFor` entries; ids that are not runes read as empty. */
+export function socketsOf(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'sockets'>): (string | null)[] {
   const count = socketCountFor(item);
   const stored = item.sockets ?? [];
   const wells: (string | null)[] = [];
@@ -125,19 +68,83 @@ export function socketsOf(item: GameItem): (string | null)[] {
   return wells;
 }
 
-/** Every rune actually set into this item, in socket order. */
-export function socketedRunes(item: GameItem): string[] {
+export function socketedRunes(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'sockets'>): string[] {
   return socketsOf(item).filter((id): id is string => id !== null);
 }
 
-export function emptySocketCount(item: GameItem): number {
+export function emptySocketCount(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'sockets'>): number {
   return socketsOf(item).filter(id => id === null).length;
 }
 
-/** True when every well on this item holds a rune. */
-export function isFullySocketed(item: GameItem): boolean {
+/** The next well a rune goes into (D2: left to right), or -1 when there is none. */
+export function firstEmptyWell(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'sockets'>): number {
+  return socketsOf(item).indexOf(null);
+}
+
+export function isFullySocketed(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'sockets'>): boolean {
   const count = socketCountFor(item);
   return count > 0 && emptySocketCount(item) === 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rolling sockets on a white base (canon §6.2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The most wells a base type can ever hold (Diablo II's per-base caps, in this game's bases). Hand-sized things hold
+ * few, long two-handers and body armour hold many; gloves, boots, belts, jewellery and tools hold none.
+ */
+export const BASE_SOCKET_MAX: Readonly<Partial<Record<GearBase, number>>> = {
+  dagger: 2, wand: 2,
+  sword: 3, mace: 3, axe: 3,
+  greatsword: 4, hammer: 4, spear: 4, bow: 4, crossbow: 4, staff: 5,
+  shield: 4, tome: 2,
+  helm: 3, hood: 2, crown: 3, circlet: 2,
+  plate: 4, robe: 3, coat: 3, legs: 2,
+};
+
+/** Bases canon gives one more well than the item level allows ("shields and staves get +1"). */
+const PLUS_ONE: ReadonlySet<GearBase> = new Set<GearBase>(['shield', 'staff']);
+
+/** Canon's item-level cap: 1–14 up to 2, 15–29 up to 3, 30+ up to 4. */
+export function socketCapForLevel(itemLevel: number): number {
+  return itemLevel >= 30 ? 4 : itemLevel >= 15 ? 3 : 2;
+}
+
+/** The most wells this base can roll at this item level (0: it cannot be socketed). */
+export function maxSocketsFor(base: GearBase | null, itemLevel: number): number {
+  if (!base) return 0;
+  const byBase = BASE_SOCKET_MAX[base] ?? 0;
+  if (!byBase) return 0;
+  return Math.min(byBase, socketCapForLevel(itemLevel) + (PLUS_ONE.has(base) ? 1 : 0), MAX_SOCKETS);
+}
+
+/** The chance a dropped white base comes up socketed (D2's "Socketed" normals: about one in three). */
+export const WHITE_SOCKET_CHANCE = 0.34;
+
+/**
+ * Roll a white drop's wells: null when it comes up plain (or is not a normal, socketable base), else that many
+ * empty wells. Uniform from 1 to the cap, so a full-width base is as rare as D2 makes it. `rng` is the drop's own
+ * seeded stream (LootService), so a replayed pickup rolls the same sockets.
+ */
+export function rollSockets(
+  item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'rarity' | 'name' | 'id' | 'itemLevel'>,
+  rng: () => number,
+  chance = WHITE_SOCKET_CHANCE,
+): (string | null)[] | null {
+  if (item.rarity !== 'common' || socketFrameOf(item) === 'none') return null;
+  // Tools (pickaxes, axes, sickles, staves of the gathering ladder) are tools, not bases.
+  if (parseToolId(item.definitionId) || parseToolId(item.id)) return null;
+  const max = maxSocketsFor(itemBase(item), item.itemLevel ?? 1);
+  if (max <= 0) return null;
+  if (rng() >= chance) return null;
+  const n = 1 + Math.min(max - 1, Math.floor(rng() * max));
+  return Array.from({ length: n }, () => null);
+}
+
+/** A socketed normal base (grey-named, D2): a white item with at least one well. */
+export function isSocketedNormal(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'rarity' | 'sockets'>): boolean {
+  return item.rarity === 'common' && socketCountFor(item) > 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,7 +236,7 @@ export function socketEffectOf(runeId: string): ItemStats {
 }
 
 /** Everything this item's runes contribute, summed. Empty when unsocketed. */
-export function socketStats(item: GameItem): ItemStats {
+export function socketStats(item: Pick<GameItem, 'type' | 'slot' | 'definitionId' | 'sockets'>): ItemStats {
   const total: ItemStats = {};
   for (const runeId of socketedRunes(item)) {
     const effect = socketEffectOf(runeId);
@@ -244,22 +251,4 @@ export function socketStats(item: GameItem): ItemStats {
 
 function round(carried: number, add: number): number {
   return Math.round((carried + add) * 100) / 100;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Unsocketing
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** A quarter of what the rune is worth at the anvil. */
-export const UNSOCKET_COST_RATIO = 0.25;
-
-/**
- * Gold to pull one rune back out, which scales with the rune rather than with
- * the item. Pulling a Common costs 150; pulling the Void costs 1.5 million (economy v3),
- * which is the point: the last rune in the game should be a decision.
- */
-export function unsocketCost(runeId: string): number {
-  const rune = runeById(runeId);
-  if (!rune) return 0;
-  return Math.ceil(rune.forgeCost * UNSOCKET_COST_RATIO);
 }

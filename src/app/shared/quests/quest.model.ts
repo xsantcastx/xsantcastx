@@ -305,7 +305,7 @@ export const DAILY_QUESTS: QuestDefinition[] = [
     description: 'Enter the Forge.',
     loreText: 'The anvil does not ask what you came to make. It only asks that you stand close enough to hear it.',
     type: 'daily',
-    condition: { type: 'page-visit', paths: ['/forge/runes'], count: 1 },
+    condition: { type: 'page-visit', paths: ['/forge/crafting'], count: 1 },
     rewards: { xp: 20 },
     rarity: 'eclipsed',
   },
@@ -419,7 +419,7 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
     type: 'weekly',
     condition: {
       type: 'page-visit',
-      paths: ['/play', '/character', '/forge/runes', '/world/quests', '/world/trials'],
+      paths: ['/play', '/character', '/forge/crafting', '/world/quests', '/world/trials'],
       count: 5,
     },
     rewards: { xp: 80 },

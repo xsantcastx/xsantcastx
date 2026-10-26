@@ -348,9 +348,7 @@ export class CodexComponent implements OnInit, OnDestroy {
         id: word.id,
         name: found.has(word.id) ? word.name : '???',
         found: found.has(word.id),
-        frame: word.frame === 'weapon' ? 'Weapon only'
-          : word.frame === 'armor' ? 'Armour only'
-          : 'Any piece',
+        frame: word.bases.map(b => b[0].toUpperCase() + b.slice(1)).join(', '),
         wells: word.runes.length === 1 ? '1 well' : `${word.runes.length} wells`,
         tier: RUNE_TIERS[tier].label,
         color: RUNE_TIERS[tier].color,

@@ -109,13 +109,21 @@ describe('drop tables and rates', () => {
     }
   });
 
-  it('the rune ceiling is the difficulty\'s: Normal never drops past Rare', () => {
-    expect(runeCeiling(200, 'normal')).toBe('rare');
-    expect(runeCeiling(200, 'nightmare')).toBe('legendary');
+  it('the rune ladder is the zone\'s (canon §6.2: common 1, uncommon 8, rare 15, epic 26, legendary 35, mythic 45); the Void only in Hell', () => {
+    expect(runeCeiling(1, 'normal')).toBe('common');
+    expect(runeCeiling(7, 'normal')).toBe('common');
+    expect(runeCeiling(8, 'normal')).toBe('uncommon');
+    expect(runeCeiling(15, 'normal')).toBe('rare');
+    expect(runeCeiling(26, 'normal')).toBe('epic');
+    expect(runeCeiling(35, 'normal')).toBe('legendary');
+    expect(runeCeiling(45, 'normal')).toBe('mythic');
+    expect(runeCeiling(200, 'normal')).toBe('mythic');
+    expect(runeCeiling(200, 'nightmare')).toBe('mythic');
     expect(runeCeiling(200, 'hell')).toBe('singular');
-    expect(runeCeiling(1, 'hell')).toBe('common');
-    const o = runeOdds(200, 'normal');
-    expect(o.epic + o.legendary + o.mythic + o.singular).toBe(0);
+    expect(runeOdds(200, 'normal').singular).toBe(0);
+    expect(runeOdds(200, 'hell').singular).toBeGreaterThan(0);
+    const o = runeOdds(10, 'normal');
+    expect(o.rare + o.epic + o.legendary + o.mythic + o.singular).toBe(0);
   });
 
   it('a seeded sample agrees with the analytic per-hour table', () => {
@@ -173,20 +181,21 @@ describe('damage, resists and auras', () => {
 });
 
 describe('Socket Words assemble auras; armour runes ward', () => {
-  it('a rare weapon spelling Verdict (Hollow · Sigil) carries Conviction at the word\'s tier', () => {
-    const blade = socketed('eclipse-longblade', 'rare', ['hollow', 'sigil']);
+  it('a normal greatsword spelling Brandoath (Thorn · Scorch · Ember) carries Might at the word\'s tier', () => {
+    const blade = socketed('eclipse-longblade', 'common', ['thorn', 'scorch', 'ember']);
     const auras = itemAuras(blade);
     expect(auras.length).toBe(1);
-    expect(auras[0].aura).toBe('conviction');
-    expect(auras[0].level).toBe(AURA_LEVEL_BY_TIER.rare);
-    // Order matters: the reverse spells nothing.
-    expect(itemAuras(socketed('eclipse-longblade', 'rare', ['sigil', 'hollow'])).length).toBe(0);
+    expect(auras[0].aura).toBe('might');
+    expect(auras[0].level).toBe(AURA_LEVEL_BY_TIER.uncommon);
+    // Order matters: the reverse spells nothing. A magic base spells nothing either (runewords need a normal base).
+    expect(itemAuras(socketed('eclipse-longblade', 'common', ['ember', 'scorch', 'thorn'])).length).toBe(0);
+    expect(itemAuras(socketed('eclipse-longblade', 'rare', ['thorn', 'scorch', 'ember'])).length).toBe(0);
     // Tempering lifts it a level per three.
-    expect(itemAuras({ ...blade, upgradeLevel: 6 })[0].level).toBe(AURA_LEVEL_BY_TIER.rare + 2);
+    expect(itemAuras({ ...blade, upgradeLevel: 6 })[0].level).toBe(AURA_LEVEL_BY_TIER.uncommon + 2);
   });
 
   it('only what the Keeper wears counts (not the bag, not an explorer)', () => {
-    const worn = socketed('eclipse-longblade', 'rare', ['hollow', 'sigil']);
+    const worn = socketed('eclipse-longblade', 'common', ['thorn', 'scorch', 'ember']);
     expect(wornAuraSources([worn]).length).toBe(1);
     expect(wornAuraSources([{ ...worn, equipped: false }]).length).toBe(0);
     expect(wornAuraSources([{ ...worn, explorerId: 'x1' }]).length).toBe(0);

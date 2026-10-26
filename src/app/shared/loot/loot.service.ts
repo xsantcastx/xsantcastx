@@ -6,7 +6,7 @@
  *  - rollLoot(): what a kill drops on top of its area table (drop-tables.ts),
  *    seeded from the player's loot seed and the kill, so it is reproducible;
  *  - grantDrop(): a picked-up item is minted HERE, once (its roll grade frozen
- *    at mint, item-quality.ts), and a rune goes to the Forge ledger;
+ *    at mint, item-quality.ts), and a rune goes into the satchel as a stack (rune-forge/rune-stack.ts);
  *  - combatRules(): what the engine needs from the worn loadout (aura, resists);
  *  - fall()/recover(): the corpse run's purse.
  *
@@ -26,6 +26,8 @@ import { mintEquipment } from '../rpg/item-definition';
 import { dropLevel, rollGrave } from '../grave-goods/grave-goods.model';
 import { isUnique } from '../rpg/unique-items';
 import { runeById } from '../rune-forge/rune.model';
+import { rollSockets } from '../enchanting/socket.model';
+import { runeStackKey } from '../rune-forge/rune-stack';
 import type { GameItem } from '../rpg/item.model';
 import { pickAura, type AuraId, type AuraSource } from './auras';
 import { wornAuraSources, wornResists } from './aura-sources';
@@ -102,8 +104,8 @@ export class LootService {
   }
 
   /**
-   * A gear or rune drop was walked over or tapped: mint it into the satchel
-   * (an item) or the Forge ledger (a rune). False leaves it on the ground.
+   * A gear or rune drop was walked over or tapped: mint it into the satchel (an item, a white one maybe socketed)
+   * or land it as a satchel rune stack. False leaves it on the ground.
    */
   grantDrop(dropId: string, drop: { item?: { definitionId: string; rarity: LootTier; level?: number; unique?: boolean }; rune?: string }): GameItem | true | false {
     if (!this.isBrowser) return false;
@@ -116,7 +118,10 @@ export class LootService {
       // A grave-good (shared/grave-goods): in the crypts a rare+ piece may come up Cursed; anywhere it may whisper.
       // Rolled once, here, off the same seeded stream: a replayed pickup mints the very same thing.
       const grave = rollGrave({ rarity: minted.rarity, unique: !!drop.item.unique || isUnique(minted), itemLevel: minted.itemLevel, levelId: dropLevel(dropId) }, rng);
-      const item: GameItem = { ...minted, ...grave };
+      // A normal (white) base may come up socketed (D2; canon §6.2: by base type and item level), off its own
+      // seeded stream so the stats and the grave roll above do not move.
+      const wells = rollSockets(minted, seededRandom(hashSeed(`${this.seed()}|sock|${dropId}`)));
+      const item: GameItem = { ...minted, ...grave, ...(wells ? { sockets: wells } : {}) };
       // A full satchel refuses the pickup: it stays shining on the ground (docs/design/inventory-grid.md §2.4).
       if (!this.inventory.canPickUp(item)) return this.inventory.refusePickup();
       const landed = this.inventory.add(item);
@@ -127,8 +132,10 @@ export class LootService {
     if (drop.rune) {
       const rune = runeById(drop.rune);
       if (!rune) return false;
+      // A rune is a 1×1 satchel stack: a full satchel with no pile of it refuses the pickup (it stays on the ground).
+      if (!this.inventory.canTakeStack(runeStackKey(rune.id), 1)) return this.inventory.refusePickup();
       const rng = seededRandom(hashSeed(`${this.seed()}|rune|${dropId}`));
-      if (!this.runes.grant(rune, rng)) return false;
+      if (!this.runes.grant(rune, rng, `drop:${dropId}`)) return false;
       this.granted.add(dropId);
       return true;
     }

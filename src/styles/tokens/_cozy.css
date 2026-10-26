@@ -44,6 +44,10 @@
   --cozy-loot-legendary: #ff9a3c;
   --cozy-loot-mythic: #ffd25a;
   --cozy-loot-material: #e9cf9a;
+  /* D2: a socketed normal base reads grey; a runeword reads gold (docs/design/runewords.md). */
+  --cozy-loot-socketed: #9a958a;
+  --cozy-loot-runeword: #d9b45a;
+  --cozy-loot-rune: #f0a64a;
   /* The game's lettering: Pixelify Sans (tokens/fonts.css), like the references' quest scroll. */
   --font-game: var(--font-pixel);
   /* Small stat lines (item cards): a clean sans, since the pixel face draws 2 like 8 under 13px. */

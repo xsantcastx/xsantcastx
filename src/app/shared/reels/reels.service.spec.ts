@@ -42,7 +42,7 @@ describe('ReelsService', () => {
         ReelsService, PlayLedgerService, EconomyService, LocalSaveRegistry,
         { provide: GameStateGateway, useValue: memory },
         { provide: InventoryService, useValue: { init: () => undefined, grantStack } },
-        { provide: RuneForgeService, useValue: { init: () => undefined, grant } },
+        { provide: RuneForgeService, useValue: { init: () => undefined, payInstead: grant } },
       ],
     });
     const economy = TestBed.inject(EconomyService);
@@ -70,7 +70,7 @@ describe('ReelsService', () => {
     expect(grantStack.calls.argsFor(0)[2]).toBe(1);
   });
 
-  it('banks a rune prize in the Rune Forge ledger once', () => {
+  it('pays a rune prize in Gold once (runes drop only from monsters)', () => {
     const n = nonceWithPrize('rune', 50, 'rune');
     memory.write(GAMES_KEY, { version: 1, secret: 'rune', nonce: n, plays: {}, totals: {} });
     const { reels } = setup(1_000);

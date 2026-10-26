@@ -735,6 +735,21 @@ export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));
 
+/**
+ * Which station makes a recipe, now the crafting bench is gone (docs/design/runewords.md §5; canon §6.2): Kael's
+ * Anvil makes what is smithed (weapons, armour, tools, the Delve kit, the rods and keys), Idris Calder's Enchanting
+ * Table what is enchanted or brewed (charms, elixirs, oils and scrolls). Every recipe has exactly one home.
+ */
+export type CraftStation = 'anvil' | 'enchanting';
+export function recipeStation(recipe: Pick<CraftingRecipe, 'category' | 'output'>): CraftStation {
+  if (recipe.category === 'charm' || recipe.category === 'consumable') return 'enchanting';
+  if (recipe.output.itemId === 'lampfish-oil') return 'enchanting';
+  return 'anvil';
+}
+export function recipesAt(station: CraftStation): readonly CraftingRecipe[] {
+  return CRAFTING_RECIPES.filter(r => recipeStation(r) === station);
+}
+
 export function craftingRecipeById(id: string): CraftingRecipe | undefined {
   return RECIPE_BY_ID.get(id);
 }

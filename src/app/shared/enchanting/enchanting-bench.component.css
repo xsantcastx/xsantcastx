@@ -147,3 +147,11 @@
 @media (max-width: 480px) {
   .eb-sum { grid-template-columns: 1fr; }
 }
+
+/* The satchel at the table (docs/design/runewords.md §3): drag a rune onto a socketed piece. */
+.eb-grid { display: grid; gap: var(--space-2); min-width: 0; container-type: inline-size; }
+.eb-hold { margin: 0; color: var(--text-heading); font-size: var(--text-sm); }
+/* The Add-runes tab: the satchel grid, then the selected piece (a phone stacks them; a desktop sets them side by side). */
+.eb-runes { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; min-width: 0; }
+.eb-runes .eb-grid { flex: 1 1 260px; max-width: 380px; }
+.eb-runes .eb-detail--runes { flex: 1 1 240px; min-width: 0; }

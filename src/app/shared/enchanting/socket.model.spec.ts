@@ -1,40 +1,41 @@
 /**
- * socket.model.spec.ts — the derived socket count, and what a rune is worth.
- *
- * The invariants worth pinning are the ones that would quietly change what
- * every save is holding: a rarity whose socket count moved, a rune whose
- * channel changed, and the padding rule that decides whether a retune eats
- * somebody's Mythic.
+ * socket.model.spec.ts — sockets are the length of `GameItem.sockets` (rolled once, on a white drop), and what a rune
+ * is worth in a well (docs/design/runewords.md §2).
  */
 import { RUNES, RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
 import { SOCKET_WORDS } from './socket-words';
-import { ITEM_STAT_KEYS, LEGACY_STAT_KEYS, type GameItem, type ItemRarity } from '../rpg/item.model';
+import { ITEM_STAT_KEYS, LEGACY_STAT_KEYS, type GameItem } from '../rpg/item.model';
+import { seededRandom } from '../loot/champions';
 import {
+  BASE_SOCKET_MAX,
   MAX_SOCKETS,
   SOCKET_CHANNEL,
   SOCKET_LADDER,
   emptySocketCount,
+  firstEmptyWell,
   isFullySocketed,
   isSocketable,
+  isSocketedNormal,
+  maxSocketsFor,
+  rollSockets,
+  socketCapForLevel,
   socketCountFor,
   socketEffectOf,
-  socketFrameOf,
   socketStats,
   socketedRunes,
   socketsOf,
-  unsocketCost,
 } from './socket.model';
 
 function item(over: Partial<GameItem> = {}): GameItem {
   return {
     id: 'spec-item',
-    name: 'Spec Blade',
+    name: 'Eclipse Longblade',
     type: 'artifact',
-    rarity: 'rare',
+    rarity: 'common',
     stats: {},
     sellValue: 0,
-    equipped: true,
-    slot: 'weapon',
+    equipped: false,
+    definitionId: 'eclipse-longblade',
     foundAt: new Date(0).toISOString(),
     soulbound: false,
     ...over,
@@ -42,58 +43,81 @@ function item(over: Partial<GameItem> = {}): GameItem {
 }
 
 describe('socket counts', () => {
-  it('gives a weapon one, two or three wells and never more', () => {
-    for (const rarity of RUNE_TIER_ORDER) {
-      const count = socketCountFor(item({ rarity: rarity as ItemRarity }));
-      expect(count).toBeGreaterThanOrEqual(1);
-      expect(count).toBeLessThanOrEqual(MAX_SOCKETS);
+  it('reads the count off the array: no array, no sockets', () => {
+    expect(socketCountFor(item())).toBe(0);
+    expect(isSocketable(item())).toBe(false);
+    expect(socketCountFor(item({ sockets: [null, null] }))).toBe(2);
+    expect(socketsOf(item({ sockets: [null, null] }))).toEqual([null, null]);
+  });
+
+  it('keeps every rune an old save had set (a legacy socketed piece keeps its wells)', () => {
+    const old = item({ rarity: 'legendary', sockets: ['ash', 'ember'] });
+    expect(socketedRunes(old)).toEqual(['ash', 'ember']);
+    expect(isFullySocketed(old)).toBe(true);
+  });
+
+  it('refuses charms and loose runes whatever they carry', () => {
+    expect(socketCountFor(item({ type: 'charm', sockets: [null] }))).toBe(0);
+    expect(socketCountFor(item({ type: 'rune', sockets: [null] }))).toBe(0);
+  });
+
+  it('fills left to right and reads a retired rune id as empty', () => {
+    const it2 = item({ sockets: ['ash', 'not-a-rune', null] });
+    expect(socketsOf(it2)).toEqual(['ash', null, null]);
+    expect(firstEmptyWell(it2)).toBe(1);
+    expect(emptySocketCount(it2)).toBe(2);
+  });
+
+  it('names a socketed white a socketed normal (grey), and a magic piece not', () => {
+    expect(isSocketedNormal(item({ sockets: [null] }))).toBe(true);
+    expect(isSocketedNormal(item({ rarity: 'rare', sockets: [null] }))).toBe(false);
+    expect(isSocketedNormal(item())).toBe(false);
+  });
+});
+
+describe('rolling sockets on a white drop (canon §6.2)', () => {
+  it('caps by item level: 1–14 two, 15–29 three, 30+ four', () => {
+    expect(socketCapForLevel(1)).toBe(2);
+    expect(socketCapForLevel(14)).toBe(2);
+    expect(socketCapForLevel(15)).toBe(3);
+    expect(socketCapForLevel(29)).toBe(3);
+    expect(socketCapForLevel(30)).toBe(4);
+  });
+
+  it('gives shields and staves one more, and never passes the base or MAX_SOCKETS', () => {
+    expect(maxSocketsFor('shield', 10)).toBe(3);
+    expect(maxSocketsFor('staff', 30)).toBe(5);
+    expect(maxSocketsFor('dagger', 60)).toBe(2);
+    expect(maxSocketsFor('ring', 60)).toBe(0);
+    expect(maxSocketsFor('gloves', 60)).toBe(0);
+    for (const [base, max] of Object.entries(BASE_SOCKET_MAX)) {
+      expect(maxSocketsFor(base as never, 99)).withContext(base).toBeLessThanOrEqual(Math.min(max!, MAX_SOCKETS));
     }
-    expect(socketCountFor(item({ rarity: 'common' }))).toBe(1);
-    expect(socketCountFor(item({ rarity: 'rare' }))).toBe(2);
-    expect(socketCountFor(item({ rarity: 'legendary' }))).toBe(3);
   });
 
-  it('caps armour at two, so the three-rune words stay weapon words', () => {
-    for (const rarity of RUNE_TIER_ORDER) {
-      const count = socketCountFor(item({ slot: 'chest', rarity: rarity as ItemRarity }));
-      expect(count).toBeGreaterThanOrEqual(1);
-      expect(count).toBeLessThanOrEqual(2);
+  it('rolls only on whites, in range, about a third of the time, and the same on the same seed', () => {
+    const rng = seededRandom(7);
+    let socketed = 0;
+    const N = 3000;
+    for (let i = 0; i < N; i++) {
+      const wells = rollSockets(item({ itemLevel: 10 }), rng);
+      if (!wells) continue;
+      socketed++;
+      expect(wells.length).toBeGreaterThanOrEqual(1);
+      expect(wells.length).toBeLessThanOrEqual(2);
+      expect(wells.every(w => w === null)).toBe(true);
     }
-    expect(socketCountFor(item({ slot: 'chest', rarity: 'rare' }))).toBe(1);
-    expect(socketCountFor(item({ slot: 'chest', rarity: 'epic' }))).toBe(2);
+    expect(socketed / N).toBeGreaterThan(0.28);
+    expect(socketed / N).toBeLessThan(0.40);
+    expect(rollSockets(item({ rarity: 'rare', itemLevel: 40 }), () => 0)).toBeNull();
+    const a = rollSockets(item({ itemLevel: 40 }), seededRandom(99));
+    const b = rollSockets(item({ itemLevel: 40 }), seededRandom(99));
+    expect(a).toEqual(b);
   });
 
-  it('refuses charms, loose runes and crafted Runewords', () => {
-    expect(isSocketable(item({ type: 'charm', slot: 'charm1' }))).toBe(false);
-    expect(isSocketable(item({ type: 'rune' }))).toBe(false);
-    expect(isSocketable(item({ type: 'runeword' }))).toBe(false);
-    expect(socketFrameOf(item({ type: 'charm', slot: 'charm1' }))).toBe('none');
-  });
-
-  it('refuses a piece with no slot at all, rather than guessing one', () => {
-    expect(isSocketable(item({ slot: undefined, equipped: false }))).toBe(false);
-  });
-
-  it('reads a Legendary minted before sockets existed as three empty wells', () => {
-    // The whole reason the count is derived. An old save carries no `sockets`
-    // field and must not therefore carry no sockets.
-    const old = item({ rarity: 'legendary', sockets: undefined });
-    expect(socketsOf(old)).toEqual([null, null, null]);
-    expect(emptySocketCount(old)).toBe(3);
-    expect(isFullySocketed(old)).toBe(false);
-  });
-
-  it('truncates a longer stored array for reading without discarding it', () => {
-    const shrunk = item({ rarity: 'common', sockets: ['ash', 'ember', 'void'] });
-    expect(socketsOf(shrunk)).toEqual(['ash']);
-    // The record itself is untouched, so raising the ladder back returns them.
-    expect(shrunk.sockets).toEqual(['ash', 'ember', 'void']);
-  });
-
-  it('reads a retired rune id as an empty well rather than shifting the rest', () => {
-    const stale = item({ rarity: 'legendary', sockets: ['ash', 'not-a-rune', 'ember'] });
-    expect(socketsOf(stale)).toEqual(['ash', null, 'ember']);
-    expect(socketedRunes(stale)).toEqual(['ash', 'ember']);
+  it('never sockets a tool or a ring', () => {
+    expect(rollSockets(item({ definitionId: 'axe-1', id: 'axe-1', name: 'Axe' }), () => 0)).toBeNull();
+    expect(rollSockets(item({ definitionId: 'anchor-ring', name: 'Anchor Ring' }), () => 0)).toBeNull();
   });
 });
 
@@ -149,15 +173,10 @@ describe('socket effects', () => {
   });
 
   it('sums the wells and ignores the empty ones', () => {
-    const sword = item({ rarity: 'legendary', sockets: ['ash', null, 'ash'] });
+    const sword = item({ slot: 'weapon', sockets: ['ash', null, 'ash'] });
     // Two Commons on the Gold Find channel: 1 + 1.
     expect(socketStats(sword).goldFind).toBe(2);
     expect(socketStats(sword).magicFind).toBeUndefined();
   });
 
-  it('prices an unsocket off the rune rather than off the item', () => {
-    expect(unsocketCost('ash')).toBe(Math.ceil(runeById('ash')!.forgeCost * 0.25));
-    expect(unsocketCost('void')).toBeGreaterThan(unsocketCost('godstone'));
-    expect(unsocketCost('not-a-rune')).toBe(0);
-  });
 });

@@ -90,6 +90,21 @@ export function buildTown(spec: TownSpec): TdMap {
   return { id: spec.id, cols, rows, ground, objects, stalls, spawn: { x: tx(spec.spawn.c), y: ty(spec.spawn.r) }, walkable };
 }
 
+/**
+ * A district shop's stall in this town (shared/shops): the Seamworks station of that shop (its id, its panel, so
+ * `?at=` and the nav audit keep working) with this town's label and keeper (StationDef.keeper; none: unnamed yet).
+ */
+const SHOP_BLURBS: Readonly<Record<string, string>> = {
+  'shop-smith': 'Plain socketed steel for the Enchanting Table. Buys ore and gear.',
+  'shop-alchemist': 'Every potion on the shelf. Buys herbs.',
+};
+export function shopStation(id: string, label: string, keeper?: string): StationDef {
+  const base = INFERNAL_TOWN.stations.find(d => d.id === id);
+  const def: StationDef = base ? { ...base, label } : { id, x: 0, label, kind: 'panel', panel: 'shop', width: 110, blurb: SHOP_BLURBS[id] ?? '' };
+  if (keeper) def.keeper = keeper; else delete def.keeper;
+  return def;
+}
+
 /** A town task giver as a stall with nobody's counter: their station (kind 'quest', so it is never a panel) and them. */
 export function giverStall(id: string, name: string, blurb: string, x: number, y: number): TdStall {
   return { station: { id: `giver-${id}`, x: 0, label: name.toUpperCase(), kind: 'quest', blurb }, x, y: y + 8, keeper: { id, name, x, y } };

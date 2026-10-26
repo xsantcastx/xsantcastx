@@ -45,3 +45,14 @@ export const HOME_FORGE = new InjectionToken<HomeForgeContext>('HOME_FORGE');
 export function injectHomeForge(): HomeForgeContext | null {
   return inject(HOME_FORGE, { optional: true }) ?? null;
 }
+
+/**
+ * IN_WORLD_STATION: the station a panel was opened from (its id, its label, its keeper), for a panel one component
+ * serves at many stations (the district shops, shared/shops). Absent when the panel was opened another way.
+ */
+export interface InWorldStation { id: string; label: string; keeper?: string }
+export const IN_WORLD_STATION = new InjectionToken<InWorldStation>('IN_WORLD_STATION');
+
+export function injectInWorldStation(): InWorldStation | null {
+  return inject(IN_WORLD_STATION, { optional: true }) ?? null;
+}

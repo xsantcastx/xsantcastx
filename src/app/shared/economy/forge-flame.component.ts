@@ -209,41 +209,6 @@ interface LootDrop {
            — above is the only side with room on both layouts. Everything that
            used to sit at "just above the button" (the HUD, the banner, the
            shout) is offset past it in the CSS. -->
-      <div class="ff__controls">
-        <!-- Bulk, from the corner. The Rune Forge page grew x10 / x100 / x1000
-             in v2.64.0 and the ember is the same anvil; ten is the one worth
-             putting on a widget. x100 from a 64px corner control is a five-
-             figure spend behind a single tap with no reveal to read, and the
-             page — one hold away — is where a run that size belongs.
-
-             Only in anvil mode, and disabled when the purse cannot pay for a
-             single strike. Ten strikes is ~12ms even on the eviction path, so
-             this runs straight through rather than chunking the way the page
-             does for its thousand. -->
-        @if (anvil) {
-          <button
-            type="button"
-            class="ff__bulk"
-            [disabled]="!canForge"
-            [attr.aria-label]="bulkLabel"
-            (click)="onBulk()">x10</button>
-        }
-
-        <button
-          type="button"
-          class="ff__mode"
-          role="switch"
-          [attr.aria-checked]="anvil"
-          [attr.aria-label]="modeLabel"
-          (click)="toggleMode()">
-          <span class="ff__mode-track" aria-hidden="true">
-            <span class="ff__mode-icon ff__mode-icon--gold">✦</span>
-            <span class="ff__mode-icon ff__mode-icon--anvil">⚒</span>
-            <span class="ff__mode-knob"></span>
-          </span>
-        </button>
-      </div>
-
       @for (s of shouts; track s.key) {
         <span class="ff__shout" [attr.data-tone]="s.tone" [class.ff__shout--grand]="s.grand" aria-hidden="true">
           {{ s.text }}
@@ -276,18 +241,10 @@ interface LootDrop {
         @if (snap.autoPerSecond > 0) {
           <span class="ff__hud-auto">⚙ Auto: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'click' : 'clicks' }}/sec</span>
         }
-        @if (anvil) {
-          <span class="ff__hud-cost" [class.ff__hud-cost--broke]="!canForge">
-            ⚒ {{ strikeCost }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.webp" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> a strike
-          </span>
-          <span class="ff__hud-hint">Click to strike a rune · hold for the anvil</span>
-        } @else {
-          <span class="ff__hud-hint">Click to forge · hold for runes</span>
-        }
+        <span class="ff__hud-hint">Click to forge</span>
         @if (snap.essence > 0) {
           <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.webp" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
         }
-        <a class="ff__hud-forge" routerLink="/forge/runes">Strike the Rune Forge &rarr;</a>
         <a class="ff__hud-market" routerLink="/market">Open the Market &rarr;</a>
       </div>
 
@@ -1523,7 +1480,8 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
   // ── The switch ─────────────────────────────────────────────────────────────
 
   /** True while the anvil is up. Read by half the template. */
-  get anvil(): boolean { return this.mode === 'anvil'; }
+  /** The anvil mode retired with the Rune Forge (runes drop only from monsters). */
+  get anvil(): boolean { return false; }
 
   /** What one anvil strike costs, formatted. Flat — the anvil does not scale. */
   get strikeCost(): string { return formatCurrency(STRIKE_COST); }
@@ -1817,18 +1775,9 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
    * spends and rolls in one step, and a x10 begun with nine strikes' worth of
    * Gold should bank nine runes, not none.
    */
-  private anvilStrike(count: number): void {
-    if (!this.isBrowser) return;
-
-    const finds: RuneFind[] = [];
-    for (let i = 0; i < count; i++) {
-      const find = this.runes.strike();
-      if (!find) break;
-      finds.push(find);
-    }
-
-    if (!finds.length) { this.deny(); return; }
-    this.landHaul(finds);
+  private anvilStrike(_count: number): void {
+    // The Rune Forge is retired (runes drop only from monsters, canon §6.2): the anvil mode strikes nothing.
+    this.deny();
   }
 
   /** Name every rune that landed, sound the best one, and pay the streak. */

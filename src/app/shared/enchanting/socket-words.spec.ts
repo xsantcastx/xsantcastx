@@ -1,169 +1,128 @@
 /**
- * socket-words.spec.ts — the catalogue's own consistency, and the match rule.
- *
- * A word that cannot be assembled is worse than no word: it is a clue the
- * player will keep trying. So the catalogue is checked against the socket
- * ladder it has to fit into, not only against itself.
+ * socket-words.spec.ts — the runewords (docs/design/runewords.md): the catalogue's own consistency against the
+ * socket ladder it has to fit, and the match rule (a normal base of the word's type, exactly its wells, in order).
  */
 import { runeById } from '../rune-forge/rune.model';
-import type { GameItem, ItemRarity } from '../rpg/item.model';
-import { SOCKET_WORDS, matchSocketWord, wordTier, wornStats } from './socket-words';
-import { MAX_SOCKETS, socketCountFor } from './socket.model';
+import type { GameItem } from '../rpg/item.model';
+import { itemBase } from '../rpg/item-base';
+import { ITEM_DEFINITIONS, itemDefinitionById } from '../rpg/item-definition';
+import { SOCKET_WORDS, matchSocketWord, wordTier, wordsForBase, wornStats } from './socket-words';
+import { MAX_SOCKETS, maxSocketsFor } from './socket.model';
 
 function item(over: Partial<GameItem> = {}): GameItem {
   return {
     id: 'spec-item',
-    name: 'Spec Blade',
+    name: 'Eclipse Longblade',
     type: 'artifact',
-    rarity: 'legendary',
+    rarity: 'common',
     stats: {},
     sellValue: 0,
-    equipped: true,
-    slot: 'weapon',
+    equipped: false,
+    definitionId: 'eclipse-longblade',
     foundAt: new Date(0).toISOString(),
     soulbound: false,
     ...over,
   };
 }
 
-/** The cheapest rarity whose frame gives exactly `wells` wells, or null. */
-function rarityWith(slot: 'weapon' | 'chest', wells: number): ItemRarity | null {
-  const order: ItemRarity[] = [
-    'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular',
-  ];
-  return order.find(r => socketCountFor(item({ slot, rarity: r })) === wells) ?? null;
-}
+const staff = (sockets: (string | null)[], over: Partial<GameItem> = {}) =>
+  item({ id: 'spec-staff', name: 'Keeper Staff', definitionId: 'keeper-staff', sockets, ...over });
 
-describe('the Socket Word catalogue', () => {
-  // Fifteen economy words plus the six aura words (loot-and-combat): a wall the Codex can still clue.
-  it('ships between ten and twenty-four words', () => {
-    expect(SOCKET_WORDS.length).toBeGreaterThanOrEqual(10);
-    expect(SOCKET_WORDS.length).toBeLessThanOrEqual(24);
+describe('the runeword catalogue', () => {
+  it('ships twelve to twenty words', () => {
+    expect(SOCKET_WORDS.length).toBeGreaterThanOrEqual(12);
+    expect(SOCKET_WORDS.length).toBeLessThanOrEqual(20);
   });
 
   it('names only runes that exist', () => {
-    for (const word of SOCKET_WORDS) {
-      for (const id of word.runes) {
-        expect(runeById(id)).withContext(`${word.id} wants ${id}`).toBeTruthy();
-      }
+    for (const w of SOCKET_WORDS) for (const id of w.runes) expect(runeById(id)).withContext(`${w.id} -> ${id}`).toBeTruthy();
+  });
+
+  it('has unique ids, and no two words share a rune sequence on a shared base', () => {
+    expect(new Set(SOCKET_WORDS.map(w => w.id)).size).toBe(SOCKET_WORDS.length);
+    for (const a of SOCKET_WORDS) for (const b of SOCKET_WORDS) {
+      if (a === b || a.runes.join() !== b.runes.join()) continue;
+      expect(a.bases.some(x => b.bases.includes(x))).withContext(`${a.id} / ${b.id}`).toBe(false);
     }
   });
 
-  it('has unique ids and no two words with the same sequence and frame', () => {
-    const ids = new Set(SOCKET_WORDS.map(w => w.id));
-    expect(ids.size).toBe(SOCKET_WORDS.length);
-
-    const shapes = SOCKET_WORDS.map(w => `${w.frame}:${w.runes.join('>')}`);
-    // Two words with the same sequence in the same frame would make
-    // `matchSocketWord` return whichever came first in the array, which is not
-    // a rule anybody could reason about.
-    expect(new Set(shapes).size).toBe(shapes.length);
-  });
-
-  it('never asks for more wells than any piece can have', () => {
-    for (const word of SOCKET_WORDS) {
-      expect(word.runes.length).withContext(word.id).toBeGreaterThanOrEqual(1);
-      expect(word.runes.length).withContext(word.id).toBeLessThanOrEqual(MAX_SOCKETS);
+  it('fits every word into a base that can hold that many wells, and a base of that type exists', () => {
+    for (const w of SOCKET_WORDS) {
+      expect(w.runes.length).toBeLessThanOrEqual(MAX_SOCKETS);
+      expect(w.bases.some(b => maxSocketsFor(b, 99) >= w.runes.length)).withContext(w.id).toBe(true);
+      expect(w.bases.some(b => ITEM_DEFINITIONS.some(d => d.family === 'equipment' && itemBase({ definitionId: d.id, name: d.name, type: d.type }) === b)))
+        .withContext(`${w.id}: no base of ${w.bases.join('/')}`).toBe(true);
     }
   });
 
-  it('fits every word into a frame that can actually hold it', () => {
-    for (const word of SOCKET_WORDS) {
-      const weapon = rarityWith('weapon', word.runes.length);
-      const armor = rarityWith('chest', word.runes.length);
-      const fits = word.frame === 'weapon' ? !!weapon
-        : word.frame === 'armor' ? !!armor
-        : !!weapon || !!armor;
-      expect(fits)
-        .withContext(`${word.id} needs ${word.runes.length} wells in ${word.frame}`)
-        .toBe(true);
-    }
-  });
-
-  it('gives every word a clue, and never puts its runes in it', () => {
-    for (const word of SOCKET_WORDS) {
-      expect(word.clue.length).withContext(word.id).toBeGreaterThan(10);
-      for (const id of word.runes) {
-        const name = runeById(id)!.name.toLowerCase();
-        // A clue that names the rune is not a clue, it is the answer. The
-        // Godforge Seal's clue may describe a Godstone; it may not say
-        // "Godstone".
-        expect(word.clue.toLowerCase().includes(name))
-          .withContext(`${word.id} clue names ${name}`)
-          .toBe(false);
-      }
+  it('gives every word stats, a lore line and a clue that never spells the runes', () => {
+    for (const w of SOCKET_WORDS) {
+      expect(Object.keys(w.stats).length).withContext(w.id).toBeGreaterThan(0);
+      expect(w.lore.length).withContext(w.id).toBeGreaterThan(20);
+      for (const id of w.runes) expect(w.clue.toLowerCase().includes(runeById(id)!.name.toLowerCase())).withContext(`${w.id} clue says ${id}`).toBe(false);
     }
   });
 
   it('derives its tier from the rarest rune it demands', () => {
     expect(wordTier(SOCKET_WORDS.find(w => w.id === 'cinderling')!)).toBe('common');
     expect(wordTier(SOCKET_WORDS.find(w => w.id === 'voidmark')!)).toBe('singular');
-    expect(wordTier(SOCKET_WORDS.find(w => w.id === 'eclipse-blade')!)).toBe('legendary');
+  });
+
+  it('keeps the Void for Hell: the only word that asks for it is Voidmark', () => {
+    expect(SOCKET_WORDS.filter(w => w.runes.includes('void')).map(w => w.id)).toEqual(['voidmark']);
   });
 });
 
 describe('matching', () => {
-  it('seats a word only when every well is full', () => {
-    const partial = item({ rarity: 'legendary', sockets: ['eclipse', 'nox', null] });
-    expect(matchSocketWord(partial)).toBeNull();
-
-    const seated = item({ rarity: 'legendary', sockets: ['eclipse', 'nox', 'fracture'] });
-    expect(matchSocketWord(seated)?.id).toBe('eclipse-blade');
+  it('makes Ashwake from Ember then Drift in a two-well normal staff', () => {
+    expect(itemDefinitionById('keeper-staff')).toBeTruthy();
+    expect(matchSocketWord(staff(['ember', 'drift']))?.id).toBe('ashwake');
   });
 
-  it('is ordered — the same runes the other way round are not the word', () => {
-    const reversed = item({ rarity: 'legendary', sockets: ['fracture', 'nox', 'eclipse'] });
-    expect(matchSocketWord(reversed)).toBeNull();
+  it('is ordered: the same runes the other way round are not the word', () => {
+    expect(matchSocketWord(staff(['drift', 'ember']))).toBeNull();
+  });
+
+  it('seats a word only when every well is full', () => {
+    expect(matchSocketWord(staff(['ember', null]))).toBeNull();
   });
 
   it('will not let a spare well satisfy a shorter word', () => {
-    // Ashwake is a two-well weapon word. A three-well Legendary carrying its
-    // sequence plus an empty well is not carrying Ashwake.
-    const three = item({ rarity: 'legendary', sockets: ['ash', 'ember', null] });
-    expect(matchSocketWord(three)).toBeNull();
-
-    const two = item({ rarity: 'rare', sockets: ['ash', 'ember'] });
-    expect(matchSocketWord(two)?.id).toBe('ashwake');
+    expect(matchSocketWord(staff(['ember', 'drift', null]))).toBeNull();
   });
 
-  it('respects the frame — an armour word does not seat in a weapon', () => {
-    // Dustmark is Drift in one armour well.
-    expect(matchSocketWord(item({ rarity: 'common', sockets: ['drift'] }))).toBeNull();
-    expect(
-      matchSocketWord(item({ slot: 'chest', rarity: 'common', sockets: ['drift'] }))?.id,
-    ).toBe('dustmark');
+  it('needs a normal (white) base: a magic staff with the same runes spells nothing', () => {
+    expect(matchSocketWord(staff(['ember', 'drift'], { rarity: 'uncommon' }))).toBeNull();
+  });
+
+  it('respects the base type: a blade word does not seat in a staff', () => {
+    expect(matchSocketWord(item({ sockets: ['ember', 'ash'] }))?.id).toBe('cinderling');
+    expect(matchSocketWord(staff(['ember', 'ash']))).toBeNull();
+  });
+
+  it('lists the words a base can hold', () => {
+    expect(wordsForBase('staff').map(w => w.id)).toContain('ashwake');
+    expect(wordsForBase('staff', 2).every(w => w.runes.length === 2)).toBe(true);
+    expect(wordsForBase(null)).toEqual([]);
   });
 });
 
-describe('effective stats', () => {
-  it('adds the runes to the base roll', () => {
-    const sword = item({ rarity: 'rare', stats: { goldFind: 10 }, sockets: ['ash', null] });
-    // Ash is +1% Gold Find at Common. No word — one well is empty.
-    expect(wornStats(sword).goldFind).toBe(11);
+describe('what a runeword pays', () => {
+  it('adds the runes and the word\'s fixed stats to the base roll', () => {
+    const worn = wornStats(staff(['ember', 'drift'], { stats: { spellDamage: 5 } }));
+    // Ashwake: +20% spell damage on the 5 rolled; Ember adds +1 Strike, Drift +1 Magic Find.
+    expect(worn.spellDamage).toBe(25);
+    expect(worn.strikePower).toBe(1);
+    expect(worn.magicFind).toBe(1);
+    expect(worn.castSpeed).toBe(8);
   });
 
-  it('multiplies the whole sum, not just the base roll', () => {
-    // Eclipse Blade is ×1.5 and carries no flat stats of its own. Its three
-    // runes are Magic Find (Eclipse, epic 7), Magic Find (Nox, legendary 12)
-    // and Strike (Fracture, epic 3).
-    const sword = item({
-      rarity: 'legendary',
-      stats: { goldFind: 100, magicFind: 10 },
-      sockets: ['eclipse', 'nox', 'fracture'],
-    });
-    const worn = wornStats(sword);
-    expect(matchSocketWord(sword)?.id).toBe('eclipse-blade');
-    expect(worn.goldFind).toBe(150);
-    expect(worn.magicFind).toBe((10 + 7 + 12) * 1.5);
-    expect(worn.strikePower).toBe(3 * 1.5);
+  it('adds only the runes when the wells spell no word', () => {
+    expect(wornStats(staff(['ash', null], { stats: { goldFind: 10 } })).goldFind).toBe(11);
   });
 
-  it('leaves an unsocketable piece exactly as it rolled', () => {
-    const charm = item({ type: 'charm', slot: 'charm1', stats: { magicFind: 5 } });
-    expect(wornStats(charm)).toEqual({ magicFind: 5 });
-  });
-
-  it('drops zeroes rather than printing them', () => {
-    expect(wornStats(item({ rarity: 'common', stats: {} }))).toEqual({});
+  it('leaves an unsocketable piece exactly as it rolled, and drops zeroes', () => {
+    expect(wornStats(item({ type: 'charm', slot: 'charm1', stats: { magicFind: 5 } }))).toEqual({ magicFind: 5 });
+    expect(wornStats(item({ stats: {} }))).toEqual({});
   });
 });

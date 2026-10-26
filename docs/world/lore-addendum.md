@@ -1770,6 +1770,31 @@ carries its own uniques (world-bosses.ts `loot.uniques`). DM review 2026-10-26: 
 clash), Lastwarden's lore re-homed to him, six uniques' lore cleared of "Realm" for a land (canon §10 C-17). Lines live in
 `play/world/world-bosses.i18n.ts`. Lairs (hot spots) per zone: td-world hotspots, td-levels FLOOR_LAIRS (canon §8).
 
+## Runes, runewords and the district shops (2026-10-26) — shipped, owner reviews in play
+
+The Rune Forge is cold and the crafting bench is gone (canon §6.2). Runes are splinters of the line the Keepers drew,
+caught in the creatures nearest the seam, so they only ever come off a kill: the deeper the zone, the heavier the rune.
+Kael keeps his anvil ("No more striking for runes. They come off the things that live near the seam. Idris sets
+them."); Mara Voss works beside it as his Seamwright ("The bench is gone. Kael's anvil does the smithing now, and I keep
+his seams honest."). Idris Calder now says the Rune Forge's old line at his table: "Every rune in here was somebody's
+bad week made useful." A rune set in a socket never comes out.
+
+Eighteen runewords (`docs/design/runewords.md` §6), the DM's names, each with a lore line and a clue in
+`shared/enchanting/runewords.i18n.ts`: Cinderling, Hearthguard, Wayfarer, Mothlight, Ashwake, Brandoath, Stormglass,
+Rimeveil, Mercyroot, Vigil (the Seamworks night watch), the Archivist's Ledger, Verdict, Riftwalk, Emberseam, Daybreak,
+Eclipse Blade, Godforge Weld ("the seam, welded") and Voidmark (Hell only).
+
+New keepers (canon §5): **Davy Tarn**, Odd Tarn's nephew, at the Seamworks tackle shed ("Uncle says the sea's warm.
+Uncle says a lot."); **Forester Abe Thatch** at the north orchard's woodcutting store ("Take the fallen first. Then ask
+me."); **Apothecary Juno Marl**, Pyrehold's Alchemist ("Everything here is brewed. Not the Rejuvenations. Nobody here
+brews those." — the Act III mystery stays open). Shop lines for Edrin Kade, Garrick Dross, Ysolde Marr, Netter Pell and
+Hesk Ashby live in `shared/shops/shop.i18n.ts`; keeper lines in `play/world/life.i18n.ts`.
+
+New keepers, same day (DM): **Provisioner Teo Alder** (Rootglass general store: "The Bole's not for sale; I get
+asked."), **Seedwife Rue Hazel** (Herb and Seed: "The wood's been forgetful." — the Act II copied-trees seed),
+**Chandler Odo Murk** (Gloamhaven's general store and chandlery: "In the Marches that is the general store.") and
+**Fishmonger Dace Morrow** (the west jetty: "Don't ask what they eat.").
+
 ## The raisers and the pack auras (2026-10-26, S6) — shipped, owner reviews in play
 
 The **Ashsinger** (*Cantaceniza*) stands with every Cinder-clan camp of three or more in the Deep Charwood and the

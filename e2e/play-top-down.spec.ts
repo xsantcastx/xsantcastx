@@ -32,10 +32,10 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect.poll(() => py(page)).toBeGreaterThan(y0 + 5);
     });
 
-    test('E opens the stall in reach (the Material Vendor) through its usual panel', async ({ page }) => {
+    test('E opens the stall in reach (Edrin Kade\'s General Store) through its usual panel', async ({ page }) => {
       await openTopDown(page);
       await page.keyboard.press('e');
-      await expect(page).toHaveURL(/[?&]at=vendor/, { timeout: 10000 });
+      await expect(page).toHaveURL(/[?&]at=shop-general/, { timeout: 10000 });
     });
 
     test('the side view\'s arrow and jump buttons are not shown', async ({ page }) => {
@@ -176,7 +176,7 @@ test('a ship from Ember Harbour to Pyrehold on the mainland, and back', async ({
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
-  await go(/crafting bench/i, /pyrehold/i);
+  await go(/kael's anvil/i, /pyrehold/i);
   await page.keyboard.press('Escape');
   await sail(page, /ember harbour/i, /ember harbour/i);
   expect(errors, errors.join('\n')).toEqual([]);

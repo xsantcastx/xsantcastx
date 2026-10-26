@@ -1,6 +1,6 @@
 /**
- * enchanting.gateway.spec.ts — one socket, one pull and one brew, across four
- * ledgers.
+ * enchanting.gateway.spec.ts — setting runes (one write: the rune leaves the satchel as it enters the well) and
+ * brewing, across the ledgers.
  *
  * The invariants worth a test are the ones that cost a player something when
  * they break: a rune that leaves the drawer and does not arrive in the item, a
@@ -20,7 +20,9 @@ import { EnchantingGateway } from './enchanting.gateway';
 import { InfusionService } from './infusion.service';
 import { INFUSIONS, infusionById } from './infusion.model';
 import { matchSocketWord } from './socket-words';
-import { socketsOf, unsocketCost } from './socket.model';
+import { socketsOf } from './socket.model';
+import { SocketingService } from './socketing.service';
+import { runeStackKey } from '../rune-forge/rune-stack';
 
 class MemoryGateway {
   private readonly bag = new Map<string, string>();
@@ -35,19 +37,20 @@ class MemoryGateway {
   remove(key: string): void { this.bag.delete(key); }
 }
 
-/** A three-well weapon, put straight into the bag. */
-function legendaryBlade(id = 'spec-blade'): GameItem {
+/** A normal (white) staff with two empty wells, put straight into the bag: a runeword base. */
+function socketedStaff(id = 'spec-staff', wells = 2): GameItem {
   return {
     id,
-    name: 'Spec Blade',
+    name: 'Keeper Staff',
     type: 'artifact',
-    rarity: 'legendary',
-    stats: { goldPerSec: 100 },
-    sellValue: 0,
+    rarity: 'common',
+    stats: { spellDamage: 3 },
+    sellValue: 10,
     equipped: false,
     foundAt: new Date(T0).toISOString(),
     soulbound: false,
-    definitionId: 'basalt-edge',
+    definitionId: 'keeper-staff',
+    sockets: Array.from({ length: wells }, () => null),
   };
 }
 
@@ -69,11 +72,12 @@ describe('EnchantingGateway', () => {
   let runes: RuneForgeService;
   let economy: EconomyService;
   let infusions: InfusionService;
-  let blade: GameItem;
+  let staff: GameItem;
+  let socketing: SocketingService;
 
-  /** Put `count` of a rune in the drawer, through the ledger's own writer. */
+  /** Put `count` of a rune in the satchel, as a stack (runes are satchel stacks now). */
   function stockRune(id: string, count = 1): void {
-    runes.returnRune(id, count);
+    inventory.grantStack(`spec-rune-${id}-${count}-${++mutation}`, runeStackKey(id), count);
   }
 
   beforeEach(() => {
@@ -94,135 +98,75 @@ describe('EnchantingGateway', () => {
     runes = TestBed.inject(RuneForgeService);
     economy = TestBed.inject(EconomyService);
     infusions = TestBed.inject(InfusionService);
+    socketing = TestBed.inject(SocketingService);
     gateway.init();
     economy.earnGold(500_000_000, 'spec');
-    blade = inventory.add(legendaryBlade())!;
+    staff = inventory.add(socketedStaff())!;
   });
 
-  // ── Sockets ────────────────────────────────────────────────────────────────
+  // ── Runes into wells (docs/design/runewords.md §3) ─────────────────────────
 
-  it('moves the rune out of the drawer and into the well, once', () => {
-    stockRune('ash', 1);
-    const result = gateway.socket(blade.id, 0, 'ash');
-
+  it('sets a rune into the next empty well, and it leaves the satchel in the same write', () => {
+    stockRune('ember');
+    const result = gateway.socket(staff.id, 'ember');
     expect(result.ok).withContext(JSON.stringify(result)).toBe(true);
-    expect(runes.countOf('ash')).toBe(0);
-    expect(socketsOf(inventory.itemById(blade.id)!)).toEqual(['ash', null, null]);
+    expect(socketsOf(inventory.itemById(staff.id)!)).toEqual(['ember', null]);
+    expect(runes.countOf('ember')).toBe(0);
   });
 
-  it('refuses a rune the drawer does not hold, and takes nothing', () => {
-    const result = gateway.socket(blade.id, 0, 'godstone');
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.code).toBe('no-rune');
-    expect(socketsOf(inventory.itemById(blade.id)!)).toEqual([null, null, null]);
+  it('completes a runeword with the right runes in the right order, and only then', () => {
+    stockRune('drift'); stockRune('ember');
+    // Wrong order first: Drift then Ember spells nothing.
+    gateway.socket(staff.id, 'drift');
+    const wrong = gateway.socket(staff.id, 'ember');
+    expect(wrong.ok).toBe(true);
+    expect(matchSocketWord(inventory.itemById(staff.id)!)).toBeNull();
+
+    const other = inventory.add(socketedStaff('spec-staff-2'))!;
+    stockRune('ember'); stockRune('drift');
+    gateway.socket(other.id, 'ember');
+    const right = gateway.socket(other.id, 'drift');
+    expect(right.ok).toBe(true);
+    if (right.ok) {
+      expect(right.word?.id).toBe('ashwake');
+      expect(right.discovered).toBe(true);
+    }
   });
 
-  it('refuses a well that is already set rather than overwriting it', () => {
-    stockRune('ash', 2);
-    gateway.socket(blade.id, 0, 'ash');
-    const second = gateway.socket(blade.id, 0, 'ash');
-    expect(second.ok).toBe(false);
-    if (!second.ok) expect(second.code).toBe('occupied');
-    // The refused rune is still in the drawer.
+  it('refuses a full item: runes never come out, and none is spent', () => {
+    stockRune('ash', 3);
+    gateway.socket(staff.id, 'ash');
+    gateway.socket(staff.id, 'ash');
+    const third = gateway.socket(staff.id, 'ash');
+    expect(third.ok).toBe(false);
+    if (!third.ok) expect(third.code).toBe('occupied');
     expect(runes.countOf('ash')).toBe(1);
   });
 
-  it('refuses a well the piece does not have', () => {
-    stockRune('ash', 1);
-    const result = gateway.socket(blade.id, 3, 'ash');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('bad-well');
-    expect(runes.countOf('ash')).toBe(1);
-  });
-
-  it('refuses a piece that holds no runes at all', () => {
-    const charm = inventory.add({
-      ...legendaryBlade('spec-charm'), type: 'charm', name: 'Spec Charm',
-    })!;
-    stockRune('ash', 1);
-    const result = gateway.socket(charm.id, 0, 'ash');
+  it('refuses a piece with no sockets', () => {
+    const plain = inventory.add({ ...socketedStaff('spec-plain'), sockets: undefined })!;
+    stockRune('ash');
+    const result = gateway.socket(plain.id, 'ash');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe('not-socketable');
-  });
-
-  it('reports the word the third rune seats, and only on the change that seats it', () => {
-    stockRune('eclipse', 1);
-    stockRune('nox', 1);
-    stockRune('fracture', 1);
-
-    const first = gateway.socket(blade.id, 0, 'eclipse');
-    expect(first.ok && first.discovered).toBe(false);
-    const second = gateway.socket(blade.id, 1, 'nox');
-    expect(second.ok && second.discovered).toBe(false);
-    const third = gateway.socket(blade.id, 2, 'fracture');
-
-    expect(third.ok).toBe(true);
-    if (!third.ok) return;
-    expect(third.discovered).toBe(true);
-    expect(third.word?.id).toBe('eclipse-blade');
-    expect(matchSocketWord(inventory.itemById(blade.id)!)?.id).toBe('eclipse-blade');
-  });
-
-  it('pays the word into the worn total when the piece is equipped', () => {
-    stockRune('eclipse', 1);
-    stockRune('nox', 1);
-    stockRune('fracture', 1);
-    gateway.socket(blade.id, 0, 'eclipse');
-    gateway.socket(blade.id, 1, 'nox');
-    gateway.socket(blade.id, 2, 'fracture');
-    expect(inventory.equip(blade.id, 'weapon')).toBe(true);
-
-    // 100 base Gold/sec × the word's 1.5.
-    expect(inventory.equippedTotals.goldPerSec).toBe(150);
-    // Eclipse (epic MF 7) + Nox (legendary MF 12), also × 1.5.
-    expect(inventory.equippedTotals.magicFind).toBe(28.5);
-  });
-
-  // ── Unsocketing ────────────────────────────────────────────────────────────
-
-  it('gives the rune back and charges the rune price', () => {
-    stockRune('ash', 1);
-    gateway.socket(blade.id, 0, 'ash');
-    const goldBefore = economy.snapshot.gold;
-
-    const result = gateway.unsocket(blade.id, 0);
-    expect(result.ok).withContext(JSON.stringify(result)).toBe(true);
-    if (!result.ok) return;
-    expect(result.goldSpent).toBe(unsocketCost('ash'));
-    expect(economy.snapshot.gold).toBe(goldBefore - unsocketCost('ash'));
     expect(runes.countOf('ash')).toBe(1);
-    expect(socketsOf(inventory.itemById(blade.id)!)).toEqual([null, null, null]);
   });
 
-  it('unseats the word the moment a well empties', () => {
-    stockRune('eclipse', 1);
-    stockRune('nox', 1);
-    stockRune('fracture', 1);
-    gateway.socket(blade.id, 0, 'eclipse');
-    gateway.socket(blade.id, 1, 'nox');
-    gateway.socket(blade.id, 2, 'fracture');
-
-    const pulled = gateway.unsocket(blade.id, 1);
-    expect(pulled.ok && pulled.word).toBeNull();
-    expect(matchSocketWord(inventory.itemById(blade.id)!)).toBeNull();
-  });
-
-  it('refuses an empty well, and refuses when the Gold is not there', () => {
-    expect((gateway.unsocket(blade.id, 0) as { code: string }).code).toBe('empty');
-
-    stockRune('godstone', 1);
-    gateway.socket(blade.id, 0, 'godstone');
-    const cost = unsocketCost('godstone');
-    // Spend down to one Gold under the price.
-    economy.spendGold(economy.snapshot.gold - (cost - 1), 'spec');
-
-    const result = gateway.unsocket(blade.id, 0);
+  it('refuses a rune the satchel does not hold', () => {
+    const result = gateway.socket(staff.id, 'godstone');
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('funds');
-    // Refused before anything moved: the rune is still in the sword.
-    expect(socketsOf(inventory.itemById(blade.id)!)[0]).toBe('godstone');
-    expect(runes.countOf('godstone')).toBe(0);
+    if (!result.ok) expect(result.code).toBe('no-rune');
+  });
+
+  it('the drag sets a rune only at an Enchanting Table', () => {
+    stockRune('ember');
+    socketing.setAtTable(false);
+    expect(socketing.drop(staff.id, runeStackKey('ember')).code).toBe('not-at-table');
+    expect(runes.countOf('ember')).toBe(1);
+    socketing.setAtTable(true);
+    expect(socketing.drop(staff.id, runeStackKey('ember')).code).toBe('ok');
+    expect(socketsOf(inventory.itemById(staff.id)!)[0]).toBe('ember');
+    socketing.setAtTable(false);
   });
 
   // ── Infusions ──────────────────────────────────────────────────────────────

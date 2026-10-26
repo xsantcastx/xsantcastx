@@ -106,6 +106,16 @@ export const NPC_LOOKS: Readonly<Record<string, NpcLook>> = {
     gear: gear(piece('chest', 'robe', 'infernal', BASALT, EMBER), piece('weapon', 'wand', 'infernal', IRON, EMBER_HI), piece('off-hand', 'orb', 'infernal', IRON, AMETHYST)),
     garb: { skin: '#d9a07a', hair: '#1d1a1f', tunic: BASALT, trim: EMBER, trousers: IRON },
   },
+  'davy-tarn': {
+    look: look({ body: 'slight', hair: 'curls', face: 'freckles' }),
+    gear: gear(piece('chest', 'coat', 'infernal', '#3f5560', '#c9b88e'), piece('off-hand', 'lantern', 'infernal', IRON, EMBER_HI)),
+    garb: { skin: '#e8b48e', hair: '#a8552a', tunic: '#3f5560', trim: STONE_HI, trousers: BASALT, sash: '#6b8f9a' },
+  },
+  'abe-thatch': {
+    look: look({ body: 'sturdy', hair: 'long', face: 'beard' }),
+    gear: gear(piece('weapon', 'axe', 'infernal', IRON, '#8a6a3a'), piece('hands', 'wrap', 'infernal', LEATHER, '#6b5148')),
+    garb: { skin: '#c99272', hair: '#5a4a3a', tunic: '#4f5a36', trim: '#8a6a3a', trousers: BASALT, apron: LEATHER },
+  },
   // ── Heliograph Court ──
   merchant: {
     look: look({ body: 'sturdy', hair: 'curls', eyes: 'bright', eyeColor: 3 }),
@@ -196,7 +206,7 @@ export const NPC_LOOKS: Readonly<Record<string, NpcLook>> = {
     gear: gear(piece('chest', 'coat', 'infernal', '#4b3a36', '#b6683a'), piece('off-hand', 'lantern', 'infernal', IRON, EMBER_HI), piece('feet', 'boots', 'infernal', IRON)),
     garb: { skin: '#c99272', hair: '#6b4226', tunic: '#4b3a36', trim: '#b6683a', trousers: BASALT, hat: 'cap', hatColor: BASALT_HI, sack: STONE, elder: true },
   },
-  'harbourmaster-hale-dross': {
+  'harbourmaster-garrick-dross': {
     look: look({ body: 'broad', hair: 'cropped', face: 'beard' }),
     gear: gear(piece('chest', 'coat', 'infernal', BASALT_HI, EMBER), piece('off-hand', 'scroll', 'infernal', IVORY, EMBER_HI), piece('feet', 'boots', 'infernal', IRON)),
     garb: { skin: '#e0b08a', hair: '#9aa0ad', tunic: BASALT_HI, trim: EMBER, trousers: BASALT, sash: '#8d4f58' },

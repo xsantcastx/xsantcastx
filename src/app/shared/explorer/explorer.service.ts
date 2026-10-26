@@ -583,28 +583,12 @@ export class ExplorerService implements OnDestroy {
         energy: realm?.energy ?? 'aether',
       });
 
-      // The runes go into the Rune Forge's ledger, not ours — that is where
-      // duplicates are counted, Runewords are crafted and the Codex reads from.
-      // One grant per inventory slot that hit, so a Mythic explorer banks six.
-      const items: string[] = [];
       for (const runeId of landing.reward.runes) {
         const rune = runeById(runeId);
         if (!rune) continue;
-        // `grant` also rolls the rune's Lore Scroll, mints the matching
-        // equippable and banks both, so the scroll and the item on the reward
-        // are read back off what it returned rather than rolled here — one
-        // find, one roll, one set of shelf rules.
-        const find = this.runeForge.grant(rune);
-        if (find?.scroll) {
-          landing.reward.scroll = find.scroll.id;
-          scrollsFound++;
-        }
-        if (find?.item) {
-          items.push(find.item.id);
-          itemsFound++;
-        }
+        // Runes drop only from monsters (canon §6.2): an expedition's rune is sold for its worth.
+        this.runeForge.payInstead(rune, 'expedition');
       }
-      if (items.length) landing.reward.items = items;
 
       // Materials go into the bag as stacks, keyed off the expedition id so a
       // settlement replayed by a cloud merge lands once. `grantStack` never
@@ -630,7 +614,7 @@ export class ExplorerService implements OnDestroy {
       this.roster.recordExpedition(landing.explorer.explorerId, {
         xp: explorerXpFor(landing.reward.xp, landing.explorer.bonus ?? neutralBonus()),
         gold: landing.reward.gold,
-        finds: landing.reward.runes.length + items.length
+        finds: landing.reward.runes.length
           + (landing.reward.scroll ? 1 : 0),
         bestTier: bestTier >= 0 ? bestTier : undefined,
         durationMs: landing.explorer.duration,

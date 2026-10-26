@@ -1148,7 +1148,7 @@
                a phone long-presses to pick up and taps where it goes. -->
           <app-item-grid class="satchel-grid" container="b" [view]="inventory.snapshot.grid.bag" [look]="pieceLook" [label]="t('play.hud.book.pocketsLabel')"
                          [newKeys]="newPieces" [pickedKey]="pickedPieceKey" (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)"
-                         (hoverMove)="moveTip($event)" (unhover)="hoverTip = null" (moved)="gridMoved($event)" />
+                         (hoverMove)="moveTip($event)" (unhover)="hoverTip = null" (moved)="gridMoved($event)" (socketed)="gridSocketed($event)" />
           @if (inventory.snapshot.grid.bag.held.length) {
             <!-- No room: things that arrived to a full satchel wait here (never sent anywhere by themselves). -->
             <div class="no-room" data-no-room role="group" [attr.aria-label]="t('play.grid.noRoom')">

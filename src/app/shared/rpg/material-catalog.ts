@@ -11,7 +11,9 @@
  * Names still live here rather than in the manifest: the importer knows about
  * files, not about what a thing is called in either language.
  */
-import { itemIcon } from '../art/item-icons';
+import { itemIcon, runeIcon } from '../art/item-icons';
+import { RUNES } from '../rune-forge/rune.model';
+import { runeStackKey } from '../rune-forge/rune-stack';
 import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { artFor, type ArtEntry } from '../art/art';
 import { ITEM_DEFINITIONS } from './item-definition';
@@ -227,6 +229,12 @@ for (const def of ARTBIBLE_DEFINITIONS) {
   if (def.family !== 'material' && def.family !== 'consumable') continue;
   const row = displayFor(def.id, def.name, artFor(def.id));
   if (row) BY_ID[def.id] = row;
+}
+
+// Runes are satchel stacks (`rune-<id>`, rune-forge/rune-stack.ts): each paints as its pixel tablet.
+for (const rune of RUNES) {
+  const row = displayFor(runeStackKey(rune.id), `${rune.name} Rune`, runeIcon(rune.id));
+  if (row) BY_ID[row.id] = row;
 }
 
 export const CINDER_ORE_DISPLAY = BY_ID['cinder-ore'];
