@@ -23,6 +23,8 @@ import { HudDragDirective, resetHudLayout } from './hud-drag.directive';
 import { TdMapWindowComponent } from './td-map-window.component';
 import type { TdMapSection } from './td/td-map';
 import { activeCharacterKey } from '../shared/save/character-scope';
+import { PlaySessionService } from '../shared/save/play-session.service';
+import { HiddenStreamCap } from './social/hidden-cap';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperSkillTree, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
 import { ATTR_STEP, GEAR_CAPS, RESIST_STAT, defenseReduction, fightStats, wornCombat } from './td/td-skills';
 import { wornResists } from '../shared/loot/aura-sources';
@@ -590,6 +592,7 @@ export class SideScrollerComponent implements OnDestroy {
   readonly keymap = inject(KeymapService);
   /** The signed-in account (the Hearth's identity, protocol 4: friends, blocks that last). */
   private readonly cloud = inject(CloudSaveService);
+  private readonly session = inject(PlaySessionService);
   private readonly feel = inject(WorldFeelBus);
   private readonly levelAudio = inject(LevelUpAudioService);
   private readonly forgeAudio = inject(ForgeAudioService);
@@ -885,7 +888,7 @@ export class SideScrollerComponent implements OnDestroy {
   /**
    * The Hearth, always on (owner 2026-10-21: "the chat should always be connected to online, unless they decide to
    * ignore the chat"): entering the top-down world joins the room under the Keeper's name, class, look and level;
-   * the room keeps itself joined (social-room keepAlive), pauses while the page is out of sight and leaves on pagehide.
+   * the room keeps itself joined (social-room keepAlive), stays joined while the page is out of sight and leaves on pagehide.
    * Settings → Chat: Ignore leaves and never joins. An automated browser joins only when a spec names a local room.
    */
   private ensureHearth(): void {
@@ -893,7 +896,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.hearthWired) this.wireHearth();
     this.room.setProfile(this.hearthProfile());
     const want = this.chatSetting === 'on' && this.hearthAllowed();
-    if (want && !this.room.wants && !this.room.isPaused && document.visibilityState !== 'hidden') void this.joinRoom(this.keeperName || 'Keeper');
+    // A tab opened in the background joins too: the world runs while hidden (never pause, owner 2026-10-26).
+    if (want && !this.room.wants && !this.room.isPaused && this.session.mayJoinHearth) void this.joinRoom(this.keeperName || 'Keeper');
     else if (!want && this.room.wants) this.room.leave();
   }
   /** The room is joined or being joined (the template's "Join" button hides meanwhile). */
@@ -910,7 +914,21 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private wireHearth(): void {
     this.hearthWired = true;
-    const visible = (): void => { if (document.visibilityState === 'hidden') this.room?.pause(); else { this.room?.resume(); this.ensureHearth(); } };
+    // Never pause (owner 2026-10-26): the stream stays open while the tab is hidden or switched away, so the others
+    // keep seeing this Keeper and the room keeps it in the world (td-engine steps the world on a timer meanwhile).
+    // Coming back only makes sure it is joined (a phone that slept may have lost the connection).
+    // Only for HIDDEN_STREAM_CAP_MS (30 min, the Hearth's Cloud Run budget): past that the stream closes, and the room
+    // is joined afresh the moment the tab is seen again (hidden-cap.ts). The world on this screen never stops.
+    const cap = new HiddenStreamCap(() => this.room);
+    // Opened in a background tab: the cap runs from the start.
+    if (document.visibilityState === 'hidden') cap.hidden();
+    const visible = (): void => {
+      if (document.visibilityState === 'hidden') { cap.hidden(); return; }
+      const wasCapped = cap.capped;
+      cap.shown();
+      if (!wasCapped) this.room?.resume();
+      this.ensureHearth();
+    };
     const hide = (): void => { this.room?.leave(); };
     const show = (event: PageTransitionEvent): void => { if (event.persisted) this.ensureHearth(); };
     document.addEventListener('visibilitychange', visible);
@@ -945,6 +963,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.unbindHearth = () => {
       vv?.removeEventListener('resize', keyboard); vv?.removeEventListener('scroll', keyboard);
       document.removeEventListener('visibilitychange', visible);
+      cap.dispose();
       window.removeEventListener('pagehide', hide);
       window.removeEventListener('pageshow', show);
       sub.unsubscribe(); privacySub.unsubscribe(); idSub.unsubscribe();
@@ -979,8 +998,13 @@ export class SideScrollerComponent implements OnDestroy {
     // Shared creatures (protocol 4): the room's election, or nothing (an older room, no party: solo as before).
     // Protocol 7: where the room runs the world it hosts every Keeper there, party or not (its election rides along).
     const roomRun = (snapshot.protocol ?? 0) >= WORLD_PROTOCOL && snapshot.world === true && !!snapshot.coop && Object.values(snapshot.coop).some(a => a.host === ROOM_HOST);
-    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[]) => void } | undefined)
-      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && (snapshot.party || roomRun) ? snapshot.coop ?? null : null, snapshot.id, snapshot.party?.members ?? []);
+    // Connected to a room that runs the world: its areas are the room's from the first step in (td-coop expects it),
+    // so stepping out of a dungeon onto the island never raises creatures of this screen's own that the room's replace.
+    const worldOn = snapshot.connected && (snapshot.protocol ?? 0) >= WORLD_PROTOCOL && snapshot.world === true;
+    // Protocol 9 (the server-run world): the room hosts every surface and floor, not only the first island.
+    const everywhere = worldOn && (snapshot.protocol ?? 0) >= 9;
+    (this.engine as unknown as { setCoop?: (a: RoomSnapshot['coop'], me: string, party: readonly string[], world?: boolean, everywhere?: boolean) => void } | undefined)
+      ?.setCoop?.((snapshot.protocol ?? 0) >= COOP_ROOM_PROTOCOL && (snapshot.party || roomRun || worldOn) ? snapshot.coop ?? {} : null, snapshot.id, snapshot.party?.members ?? [], worldOn, everywhere);
     let freshParty = 0;
     for (const m of snapshot.partyMessages ?? []) {
       if (this.seenPartyLines.has(m.id)) continue;
@@ -1596,6 +1620,9 @@ export class SideScrollerComponent implements OnDestroy {
         onGroundNote: note => this.zone.run(() => { void this.tradeHud?.groundNoted(note); }),
         // Protocol 9: a world boss's omen, heard the world over (play/world/world-bosses.ts).
         onWorldOmen: omen => this.zone.run(() => this.worldOmen(omen)),
+        // One live session per account: the room says another session of this account joined. If this one still holds
+        // the save's lease it plays on (and takes the room back); otherwise the play shell shows "Play here?".
+        onReplaced: () => { void this.session.hearthReplaced().then(still => this.zone.run(() => { if (still) this.ensureHearth(); })); },
       });
       this.mountEngine();
       // The realm the Keeper wakes in counts as its old hall (see noteVisit).

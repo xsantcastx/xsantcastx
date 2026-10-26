@@ -20,6 +20,58 @@
  * a whole other character mid-flight.
  */
 
+// ── Profiles: the account's saves, and the guest's (owner 2026-10-26, security) ─────────────────────────────────
+// A browser that was ever signed in holds the account's roster and per-character blobs. A guest ("Play offline") used
+// to boot into those same keys and play the account's Keepers. Now a guest has its OWN namespace: every saved key it
+// reads or writes is prefixed {@link GUEST_PREFIX} (the roster and the active-character choice too), and the IndexedDB
+// names as well, so a guest can never read, play or write a signed-in account's characters — and the account's pushes
+// (pushOtherCharacters) never see the guest's. The profile is fixed at page boot, like the character.
+
+/** The guest's namespace prefix for every saved key and database name. */
+export const GUEST_PREFIX = 'guest~';
+/** The lobby's "this browser chose Play offline" flag (play-lobby.service LOBBY_GUEST_KEY; spelled here to stay a leaf). */
+export const GUEST_FLAG_KEY = 'eclipse-lobby-guest';
+/** cloud-save.service's binding (spelled here to stay a leaf): a bound browser plays the account, never the guest. */
+export const BOUND_ACCOUNT_KEY = 'cloud-save-uid';
+export type SaveProfile = 'account' | 'guest';
+
+/**
+ * Set on this browser's first sign-in, never cleared: from then on its unprefixed saves are an account's. (A browser
+ * that has never signed in keeps its guest's saves unprefixed, as before: they are nobody else's, and signing in for
+ * the first time carries them into the account, which is the person's own choice.)
+ */
+export const ACCOUNT_SEEN_KEY = 'eclipse-account-seen';
+/** gateway SEED_SWEEP_KEY, written on every attach since before ACCOUNT_SEEN_KEY existed (a browser signed in earlier). */
+const SWEPT_KEY = 'godforge-seed-sweep';
+
+/**
+ * Which profile a page with this storage plays: the guest's own namespace when Play offline was chosen, no account is
+ * bound now, and an account has ever been signed in here (its characters sit in the unprefixed keys).
+ */
+export function readProfile(storage: Pick<Storage, 'getItem'> | null): SaveProfile {
+  try {
+    if (!storage || storage.getItem(GUEST_FLAG_KEY) !== '1' || storage.getItem(BOUND_ACCOUNT_KEY) !== null) return 'account';
+    return storage.getItem(ACCOUNT_SEEN_KEY) !== null || storage.getItem(SWEPT_KEY) !== null ? 'guest' : 'account';
+  } catch {
+    return 'account';
+  }
+}
+
+let bootProfileCache: SaveProfile | null = null;
+/** This page's profile, read once (the gateway reads it first, at construction) and fixed for the page's life. */
+export function bootProfile(): SaveProfile {
+  if (bootProfileCache) return bootProfileCache;
+  let storage: Storage | null = null;
+  try { storage = typeof localStorage !== 'undefined' ? localStorage : null; } catch { storage = null; }
+  return (bootProfileCache = storage ? readProfile(storage) : 'account');
+}
+/** Specs only: forget the cached profile (the next bootProfile() reads storage again). */
+export function resetBootProfileForTest(profile: SaveProfile | null = null): void { bootProfileCache = profile; }
+/** `key` in `profile`'s namespace (the account keeps the bare key). */
+export function profileKey(key: string, profile: SaveProfile = bootProfile()): string {
+  return profile === 'guest' ? GUEST_PREFIX + key : key;
+}
+
 /** Device-local: which character this browser boots into. Never synced (each device picks its own). */
 export const ACTIVE_CHARACTER_KEY = 'eclipse-active-character';
 /** The account's character list (synced, account-wide): see characters/character-roster.model.ts. */
@@ -85,13 +137,13 @@ export function isCharacterScoped(key: string, stateKeys: ReadonlySet<string>): 
 }
 
 /** The localStorage key holding `key` for character `id` (character #1 keeps the old key). */
-export function characterStorageKey(key: string, id: string): string {
-  return id === PRIMARY_CHARACTER ? key : `${key}@${id}`;
+export function characterStorageKey(key: string, id: string, profile: SaveProfile = bootProfile()): string {
+  return profileKey(id === PRIMARY_CHARACTER ? key : `${key}@${id}`, profile);
 }
 
 /** An IndexedDB name for character `id` (the world's far regions): character #1 keeps the old name. */
-export function characterDbName(name: string, id: string): string {
-  return id === PRIMARY_CHARACTER ? name : `${name}@${id}`;
+export function characterDbName(name: string, id: string, profile: SaveProfile = bootProfile()): string {
+  return profileKey(id === PRIMARY_CHARACTER ? name : `${name}@${id}`, profile);
 }
 
 /** The Firestore path segments of a per-character document, after `users/{uid}`. */
@@ -100,9 +152,9 @@ export function characterDocPath(id: string, collection: string, doc: string): s
 }
 
 /** The character this browser boots into: the stored choice, else character #1. */
-export function readActiveCharacter(storage: Pick<Storage, 'getItem'> | null): string {
+export function readActiveCharacter(storage: Pick<Storage, 'getItem'> | null, profile: SaveProfile = bootProfile()): string {
   try {
-    const id = storage?.getItem(ACTIVE_CHARACTER_KEY);
+    const id = storage?.getItem(profileKey(ACTIVE_CHARACTER_KEY, profile));
     return isCharacterId(id) ? id : PRIMARY_CHARACTER;
   } catch {
     return PRIMARY_CHARACTER;

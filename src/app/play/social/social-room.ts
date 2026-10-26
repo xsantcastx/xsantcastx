@@ -150,6 +150,8 @@ export interface RoomOptions {
   onGroundNote?: (note: RoomGroundNote) => void;
   /** Protocol 9: a world boss's omen (it rose, fell or left). */
   onWorldOmen?: (omen: RoomWorldOmen) => void;
+  /** The same account joined the room from somewhere else (`replaced`): this session is out of the room. */
+  onReplaced?: () => void;
 }
 /** The room's shared creatures (protocol 4). */
 export const COOP_ROOM_PROTOCOL = 5;
@@ -643,6 +645,7 @@ export class SocialRoom {
       clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
       this.generation++; this.stream?.abort(); this.stream = undefined; this.token = '';
       this.publish({ connected: false, players: [], barred, status: barred ? 'This account is barred from the hearth.' : 'You joined the hearth from another window.' });
+      if (!barred) this.options.onReplaced?.();
       return true;
     }
     return false;
@@ -724,6 +727,17 @@ export class SocialRoom {
     clearTimeout(this.rejoinTimer); this.rejoinTimer = undefined;
     this.reconnectAttempts = 0; this.updating = false;
     if (this.snapshot.connected) this.publish({ connected: false, status: 'Paused while the game is out of sight.' });
+  }
+  /**
+   * Back after a long time away (hidden-cap.ts): the old session has idled out on the server, so join again at once —
+   * presence, the party and a whole world snapshot come back with the new stream.
+   */
+  rejoinNow(): void {
+    this.paused = false;
+    this.rejoinAttempts = 0;
+    if (!this.wanted) return;
+    this.drop();
+    void this.connect();
   }
   /** Back in sight: reopen the stream with the same session, or join again if there is none. */
   resume(): void {

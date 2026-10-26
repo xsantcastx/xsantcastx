@@ -67,3 +67,28 @@ test('a tap on the giver\'s own body still goes to the giver, not the Keeper bes
   // The Keeper sets off toward the giver.
   await expect.poll(async () => Number(await canvas(page).getAttribute('data-player-x')), { timeout: 8000 }).toBeGreaterThan(x0 + 6);
 });
+
+// Owner 2026-10-26: "Keepers walk through each other, Tibia-style". A second tap on a Keeper whose card is up walks
+// there, and the Keeper ends up standing on the very spot the other one stands on (no collision between Keepers).
+test('Keepers never block: a second tap on a Keeper walks onto their spot', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+  await seed(page, { 'eclipse-td': '1' });
+  await page.goto('/play?td=1&hour=12&fxpeer=1');
+  await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
+  await page.waitForFunction(() => !!(window as unknown as { __tdPeer?: unknown }).__tdPeer);
+  await page.addStyleTag({ content: '.glim-say, .lvl-banner, .area-card, .guide { visibility: hidden !important; }' });
+  // Wick stands 40 px to the Keeper's left, clear of the giver (who is 70 px to the right).
+  const laid = await page.evaluate(() => (window as unknown as { __tdPeer: { lay: (n: string, dx: number) => { gx: number; gy: number } | null } }).__tdPeer.lay('Wick', -110));
+  expect(laid).not.toBeNull();
+  await page.waitForTimeout(700);
+  const wickX = laid!.gx - 110;
+  const first = (await hook(page, h => h.page('Wick', 0)))!;
+  await page.mouse.click(first.x, first.y);
+  await expect(page.locator('[data-peer-card] h2')).toHaveText('Wick', { timeout: 5000 });
+  const again = (await hook(page, h => h.page('Wick', 0)))!;
+  await page.mouse.click(again.x, again.y);
+  await expect.poll(async () => Math.abs(Number(await canvas(page).getAttribute('data-player-x')) - wickX), { timeout: 8000 }).toBeLessThan(6);
+});

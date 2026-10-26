@@ -426,3 +426,17 @@
   .title { margin-bottom: 20dvh; }
   .win { padding: 6px; }
 }
+
+/* One live session per account: the takeover window (play-session.service.ts). One plain line, one brass button. */
+.lobby--elsewhere { place-items: center; background: var(--cozy-wood-0); }
+.elsewhere {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(420px, calc(100% - 32px));
+  padding: 18px 16px;
+  text-align: center;
+}
+.elsewhere__title { margin: 0; font-family: var(--font-display); font-size: 1.4rem; color: var(--cozy-glow); }
+.elsewhere__line { margin: 0; font-family: var(--font-game); line-height: 1.45; color: var(--cozy-cream, var(--cozy-ink)); }
+.elsewhere .btn { min-height: 44px; min-width: 160px; }
