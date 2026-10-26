@@ -696,8 +696,10 @@ export class KeeperPainter {
       if (pose === 'death') art = this.lying(fine);
       else if (fine) {
         // Grown onto the fine grid first, then outlined and lit there (a finer outline, a smoother relief).
+        this.faceSpot = null;
         const raw = this.paintBody(bodyFrame(pose, frame), pose, face), up = canvas(CELL_K, CELL_K), g = up.getContext('2d')!;
         g.imageSmoothingEnabled = false; g.drawImage(raw, 0, 0, CELL_K, CELL_K);
+        this.fineFace(raw, g);
         art = volumize(outlined(up), { depth: 7 });
       } else art = volumize(outlined(this.paintBody(bodyFrame(pose, frame), pose, face)));
       slot = slots.size;
@@ -986,6 +988,7 @@ export class KeeperPainter {
     const ey = y + 6;
     this.eye(c, x + 7, ey, face, false);
     this.eye(c, x + 11, ey, face, true);
+    this.faceSpot = { x, y, face };
     if (garb?.eyeGlow && face !== 'blink') {
       // One eye burns (Kael's forge eye): the front eye is the ember, a spark at its corner.
       px(c, x + 11, ey + 1, 2, 2, garb.eyeGlow); px(c, x + 11, ey + 1, 1, 1, '#ffffff'); px(c, x + 13, ey, 1, 1, garb.eyeGlow);
@@ -1021,6 +1024,40 @@ export class KeeperPainter {
     // Head gear over the hair; a town hat when there is none.
     if (head) this.headGear(c, x, y, head);
     else if (garb?.hat) this.hat(c, x, y, garb.hat, garb.hatColor ?? pal.trim);
+  }
+
+  /** Where the last painted body's face was (art px: the head's left, top; the face it showed), for the fine face. */
+  private faceSpot: { x: number; y: number; face: KeeperFace } | null = null;
+  /**
+   * The side face again on the fine grid (the art style upgrade): each open eye a lidded iris with a pupil and a
+   * catch-light, a brow over the near one, the mouth a line with a lit lip — only where the art grid's eye still shows
+   * (a visor or a mirror face is left alone).
+   */
+  private fineFace(raw: HTMLCanvasElement, g: Ctx): void {
+    const f = this.faceSpot;
+    if (!f || f.face !== 'open' || this.look.eyes === 'narrow') return;
+    const pal = this.pal, K = FIGURE_K, rc = raw.getContext('2d', { willReadFrequently: true });
+    if (!rc) return;
+    const shows = (ax: number, ay: number) => {
+      try {
+        const d = rc.getImageData(ax, ay, 1, 1).data, e = parseInt(pal.eyeDk.slice(1), 16);
+        return d && d[3] > 0 && d[0] === (e >> 16) && d[1] === ((e >> 8) & 255) && d[2] === (e & 255);
+      } catch { return false; }
+    };
+    const P = (x: number, y: number, w: number, h: number, col: string) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    const ey = f.y + 6;
+    for (const [ex, front] of [[f.x + 7, false], [f.x + 11, true]] as const) {
+      if (!shows(ex, ey + 1)) continue;
+      const X = Math.round(ex * K), Y = Math.round(ey * K);
+      P(X, Y, 3, 5, pal.eyeDk);
+      P(X + 1, Y + 1, 2, 4, pal.eye); P(X + 1, Y + 1, 2, 1, mix(pal.eye, pal.eyeDk, .45)); P(X + 1, Y + 4, 2, 1, pal.eyeHi);
+      P(X + 2, Y + 2, 1, 2, mix(pal.eyeDk, OUTLINE, .6));
+      P(X + 1, Y + 1, 1, 1, '#ffffff');
+      P(X - 1, Y - 1, 5, 1, pal.eyeDk);
+      if (front) { P(X + 3, Y - 2, 1, 1, pal.eyeDk); P(X, Y - 3, 4, 1, dark(pal.hair, .3)); }
+    }
+    const mx = Math.round((f.x + 10) * K), my = Math.round((f.y + 11) * K);
+    if (shows(f.x + 7, ey + 1) || shows(f.x + 11, ey + 1)) { P(mx, my, 3, 1, this.look.form === 'fem' ? mix(pal.mouth, '#e0607a', .55) : pal.mouth); P(mx, my + 1, 2, 1, pal.skinHi); }
   }
 
   /** One big eye (2×3) at (ex, ey), with a white highlight; `front` is the nearer eye. */

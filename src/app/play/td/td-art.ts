@@ -8,7 +8,7 @@
  * a 1px dark outline on objects and none on ground tiles. Original art only —
  * the owner's references set the bar, not the pixels.
  */
-import { broadleafTree, clumpRamp, domeClumps, paintClump, paintClumps, pineTree, shadowSprite } from './td-flora';
+import { broadleafTree, clumpRamp, paintClump, paintClumps, pineTree, shadowSprite } from './td-flora';
 import { volumize } from '../../shared/keeper-look/keeper-volume';
 
 export const TILE = 16;
@@ -459,8 +459,37 @@ export interface Sprite {
 const cache = new Map<string, Sprite>();
 function cached(key: string, make: () => Sprite): Sprite {
   let s = cache.get(key);
-  if (!s) { s = make(); cache.set(key, s); }
+  if (!s) { s = make(); if (GROWN.has(key.replace(/[-:].*$/, '')) && !NOT_GROWN.some(n => key.startsWith(n))) s = grownSprite(s); cache.set(key, s); }
   return s;
+}
+
+/**
+ * The props that stand beside a Keeper (the art style upgrade, 2026-10-26: figures are painted 1.5× finer, keeper-paint
+ * FIGURE_K): a barrel, a lamp, a bench, a sign, a station's anvil or hearth, a grave, a bush… are grown by the same 1.5
+ * so they keep their size beside him, then lit round (the volume pass) and given a soft shadow on the ground. Their
+ * blocked tiles are unchanged. Buildings, walls, gates, stairs, ships and trees keep their own footprint (not here).
+ */
+const GROWN: ReadonlySet<string> = new Set(['lamp', 'bench', 'barrel', 'crate', 'cart', 'hearth', 'signpost', 'forge', 'waystone', 'ore', 'beacon',
+  'boulder', 'bush', 'torch', 'bones', 'chest', 'stump', 'ruin', 'stone', 'anvil', 'grave', 'table', 'bed', 'shelf', 'counter', 'root', 'pillar',
+  'fern', 'lantern', 'reeds', 'gloomcap', 'great', 'fountain']);
+/** Buildings that share a grown prop's first word. */
+const NOT_GROWN = ['lantern-tower', 'forge-gate'];
+const PROP_K = 1.5;
+function grownSprite(sp: Sprite): Sprite {
+  const up = (src: HTMLCanvasElement) => {
+    const out = cv(Math.round(src.width * PROP_K), Math.round(src.height * PROP_K)), g = out.getContext('2d')!;
+    g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, out.width, out.height);
+    return volumize(out, { depth: 4, light: .24, shade: .3 });
+  };
+  const k = (v: number) => Math.round(v * PROP_K);
+  const img = up(sp.img), sw = Math.max(8, Math.round(img.width * .78));
+  return {
+    img, ax: k(sp.ax), ay: k(sp.ay),
+    ...(sp.roof ? { roof: { img: up(sp.roof.img), x: k(sp.roof.x), y: k(sp.roof.y) } } : {}),
+    ...(sp.lights ? { lights: sp.lights.map(l => ({ ...l, x: k(l.x), y: k(l.y), r: k(l.r) })) } : {}),
+    ...(sp.smoke ? { smoke: sp.smoke.map(m => ({ x: k(m.x), y: k(m.y) })) } : {}),
+    shadow: sp.shadow ? { img: up(sp.shadow.img), x: k(sp.shadow.x), y: k(sp.shadow.y) } : { img: shadowSprite(sw, Math.max(4, Math.round(sw * .32))), x: -Math.round(sw / 2) + 1, y: -Math.round(sw * .2) },
+  };
 }
 
 export type RoofStyle = 'red' | 'slate' | 'thatch' | 'leaf' | 'gloam';
@@ -475,42 +504,50 @@ const roofRamp = (s: RoofStyle) => (s === 'red' ? PAL.roofRed : s === 'slate' ? 
  */
 export function house(w: number, d: number, roof: RoofStyle, wall: WallStyle, chimney = true, seed = 0): Sprite {
   return cached(`house:${w}:${d}:${roof}:${wall}:${chimney}:${seed}`, () => {
-    const W = w * TILE, wallH = 22, roofH = d * TILE + 6, H = roofH + wallH;
+    // The art style upgrade: the front wall stands as tall as a fine-grid Keeper and a head more (40 px, was 22), its
+    // door a head over him; timber, plaster, stone and basalt courses shaded from the upper left; windows framed, lit.
+    const W = w * TILE, wallH = 40, roofH = d * TILE + 6, H = roofH + wallH;
     const body = cv(W, H);
     const c = body.getContext('2d')!;
-    // Front wall.
     const wy = roofH;
     if (wall === 'timber') {
-      rect(c, 0, wy, W, wallH, PAL.plaster[0]);
-      for (let x = 0; x < W; x += 12) rect(c, x, wy, 2, wallH, PAL.wood[2]);
-      rect(c, 0, wy, W, 2, PAL.wood[2]); rect(c, 0, wy + wallH - 3, W, 3, PAL.wood[2]);
-      rect(c, 0, wy + 10, W, 1, PAL.wood[1]);
+      // Plaster with a little grain, a timber frame: posts, a mid rail, braces, a sill beam.
+      for (let y = 0; y < wallH; y++) for (let x = 0; x < W; x++) rect(c, x, wy + y, 1, 1, hash(x, y, seed + 21) > .9 ? PAL.plaster[1] : hash(x, y, seed + 22) > .96 ? PAL.plaster[2] : PAL.plaster[0]);
+      for (let x = 0; x < W; x += 16) { rect(c, x, wy, 3, wallH, PAL.wood[2]); rect(c, x, wy, 1, wallH, PAL.wood[1]); }
+      rect(c, 0, wy, W, 3, PAL.wood[2]); rect(c, 0, wy, W, 1, PAL.wood[1]);
+      rect(c, 0, wy + 19, W, 2, PAL.wood[2]); rect(c, 0, wy + 19, W, 1, PAL.wood[1]);
+      for (let x = 3; x + 13 < W; x += 32) for (let yy = 0; yy < 15; yy++) { rect(c, x + Math.round(yy * .85), wy + 21 + yy, 3, 1, PAL.wood[2]); rect(c, x + Math.round(yy * .85), wy + 21 + yy, 1, 1, PAL.wood[1]); }
+      rect(c, 0, wy + wallH - 4, W, 4, PAL.wood[2]); rect(c, 0, wy + wallH - 4, W, 1, PAL.wood[1]);
     } else {
       const ramp = wall === 'stone' ? PAL.stone : PAL.basalt;
-      rect(c, 0, wy, W, wallH, ramp[0]);
-      for (let y = 0; y < wallH; y += 4) for (let x = (y / 4) % 2 ? 0 : 4; x < W; x += 8) {
-        rect(c, x, wy + y, 7, 3, pick(ramp, hash(x, y, seed)));
-        rect(c, x, wy + y, 7, 1, ramp[3]);
+      rect(c, 0, wy, W, wallH, ramp[2]);
+      for (let y = 0; y < wallH; y += 5) for (let x = (y / 5) % 2 ? -4 : 0; x < W; x += 9) {
+        rect(c, x, wy + y, 8, 4, pick(ramp, hash(x, y, seed)));
+        rect(c, x, wy + y, 8, 1, ramp[3]); rect(c, x + 7, wy + y, 1, 4, ramp[2]);
+        if (hash(x, y, seed + 5) > .85) rect(c, x + 2, wy + y + 2, 2, 1, ramp[2]);
       }
+      rect(c, 0, wy + wallH - 3, W, 3, ramp[2]);
     }
-    // Door, centred, with a step and a lamp.
-    const dx = Math.floor(W / 2) - 5;
-    rect(c, dx - 1, wy + 5, 12, 17, PAL.wood[2]);
-    rect(c, dx, wy + 6, 10, 16, PAL.wood[0]);
-    rect(c, dx + 2, wy + 8, 6, 5, PAL.wood[1]);
-    rect(c, dx + 7, wy + 14, 1, 2, '#e6c35a');
-    // Windows (warm light comes from the night pass via `lights`).
+    // Door, centred: planks in a dark frame, iron straps, a ring, a stone step, a lit lintel.
+    const dw = 14, dh = 31, dx = Math.floor(W / 2) - dw / 2, dyy = wy + wallH - dh - 2;
+    rect(c, dx - 2, dyy - 2, dw + 4, dh + 2, PAL.wood[2]); rect(c, dx - 2, dyy - 2, dw + 4, 1, PAL.wood[3]);
+    for (let i = 0; i < dw; i += 3) { rect(c, dx + i, dyy, 3, dh, i % 6 ? PAL.wood[0] : PAL.wood[1]); rect(c, dx + i, dyy, 1, dh, PAL.wood[3]); }
+    rect(c, dx, dyy + 6, dw, 2, '#4a4450'); rect(c, dx, dyy + dh - 9, dw, 2, '#4a4450'); rect(c, dx, dyy + 6, dw, 1, '#7a7484');
+    rect(c, dx + dw - 4, dyy + 15, 2, 3, '#e6c35a'); rect(c, dx + dw - 4, dyy + 15, 1, 1, '#fff0a8');
+    rect(c, dx - 3, wy + wallH - 2, dw + 6, 2, PAL.stone[1]); rect(c, dx - 3, wy + wallH - 2, dw + 6, 1, PAL.stone[3]);
+    // Windows (warm light comes from the night pass via `lights`): a frame, four panes, a sill, shutters, a flower box.
     const wins: { x: number; y: number; r: number; warm?: boolean }[] = [];
-    for (let x = 6; x + 10 < W; x += 22) {
-      if (Math.abs(x + 5 - (dx + 5)) < 12) continue;
-      rect(c, x - 1, wy + 6, 12, 10, PAL.wood[2]);
-      rect(c, x, wy + 7, 10, 8, PAL.windowDark);
-      rect(c, x + 4, wy + 7, 1, 8, PAL.wood[2]); rect(c, x, wy + 10, 10, 1, PAL.wood[2]);
-      rect(c, x + 1, wy + 8, 2, 2, '#6f6aa0');
-      rect(c, x - 1, wy + 15, 12, 2, PAL.wood[1]);
-      // Flower box under some windows.
-      if (hash(x, seed, 9) > .4) for (let i = 0; i < 5; i++) rect(c, x + i * 2, wy + 14, 2, 2, pick(PAL.flower, hash(x + i, seed, 11)));
-      wins.push({ x: x + 5 - W / 2, y: wy + 11 - H, r: 14, warm: true });
+    for (let x = 6; x + 12 < W; x += 24) {
+      if (Math.abs(x + 6 - (dx + dw / 2)) < 16) continue;
+      const y0 = wy + 7;
+      rect(c, x - 3, y0 - 1, 3, 15, PAL.awning[(seed + x) % PAL.awning.length][0]); rect(c, x + 12, y0 - 1, 3, 15, PAL.awning[(seed + x) % PAL.awning.length][0]);
+      rect(c, x - 1, y0 - 1, 14, 15, PAL.wood[2]);
+      rect(c, x, y0, 12, 13, PAL.windowDark);
+      rect(c, x + 1, y0 + 1, 3, 3, '#6f6aa0'); rect(c, x + 7, y0 + 1, 2, 2, '#6f6aa0');
+      rect(c, x + 5, y0, 2, 13, PAL.wood[2]); rect(c, x, y0 + 6, 12, 1, PAL.wood[2]);
+      rect(c, x - 2, y0 + 13, 16, 2, PAL.wood[1]); rect(c, x - 2, y0 + 13, 16, 1, PAL.wood[3]);
+      if (hash(x, seed, 9) > .4) for (let i = 0; i < 6; i++) { rect(c, x + i * 2, y0 + 11, 2, 2, pick(PAL.flower, hash(x + i, seed, 11))); rect(c, x + i * 2, y0 + 12, 1, 1, PAL.leaf[1]); }
+      wins.push({ x: x + 6 - W / 2, y: y0 + 6 - H, r: 16, warm: true });
     }
     // Roof (separate layer): a 3/4 gable — the near slope big, ridge line, shingles.
     const roofImg = cv(W + 4, roofH + 4);
@@ -535,8 +572,8 @@ export function house(w: number, d: number, roof: RoofStyle, wall: WallStyle, ch
       rect(rc, cx + 1, 1, 6, 1, '#2a2430');
       smoke.push({ x: cx + 4 - W / 2 - 2, y: -H });
     }
-    // Eave shadow on the wall top.
-    rect(c, 0, wy, W, 3, 'rgba(0,0,0,.18)');
+    // The eave's shadow on the wall top: two steps.
+    rect(c, 0, wy, W, 4, 'rgba(0,0,0,.24)'); rect(c, 0, wy + 4, W, 2, 'rgba(0,0,0,.1)');
     const outlined = outline(body);
     const roofOut = outline(roofImg);
     return {
@@ -550,25 +587,26 @@ export function house(w: number, d: number, roof: RoofStyle, wall: WallStyle, ch
 /** A market stall: a striped awning over a counter of goods, string lights along its front. */
 export function stall(widthTiles: number, palette: number, goods: 'pots' | 'bread' | 'gems' | 'tools' | 'books' | 'fish', seed = 0): Sprite {
   return cached(`stall:${widthTiles}:${palette}:${goods}:${seed}`, () => {
-    const W = widthTiles * TILE, H = 34;
+    // Taller than it was (the art style upgrade): the counter stands at a fine-grid Keeper's waist, the awning over his head.
+    const G = 20, W = widthTiles * TILE, H = 34 + G;
     const img = cv(W, H);
     const c = img.getContext('2d')!;
     const [a, b] = PAL.awning[palette % PAL.awning.length];
-    // Posts.
-    rect(c, 1, 10, 2, 24, PAL.wood[2]); rect(c, W - 3, 10, 2, 24, PAL.wood[2]);
-    // Counter.
-    rect(c, 0, 22, W, 12, PAL.wood[1]); rect(c, 0, 22, W, 2, PAL.wood[3]); rect(c, 0, 31, W, 3, PAL.wood[2]);
-    for (let x = 4; x < W - 4; x += 8) rect(c, x, 25, 1, 6, PAL.wood[2]);
+    // Posts, lit on their left.
+    rect(c, 1, 10, 3, 24 + G, PAL.wood[2]); rect(c, 1, 10, 1, 24 + G, PAL.wood[3]); rect(c, W - 4, 10, 3, 24 + G, PAL.wood[2]); rect(c, W - 4, 10, 1, 24 + G, PAL.wood[1]);
+    // Counter: planks with grain, a lit top board, a dark kick board.
+    rect(c, 0, 22 + G, W, 12, PAL.wood[1]); rect(c, 0, 22 + G, W, 2, PAL.wood[3]); rect(c, 0, 24 + G, W, 1, PAL.plank[2]); rect(c, 0, 31 + G, W, 3, PAL.wood[2]);
+    for (let x = 4; x < W - 4; x += 8) { rect(c, x, 25 + G, 1, 6, PAL.wood[2]); rect(c, x + 3, 27 + G, 2, 1, PAL.wood[0]); }
     // Goods on the counter.
     const lights: { x: number; y: number; r: number; warm?: boolean }[] = [];
     for (let x = 4; x < W - 5; x += 5) {
       const r = hash(x, seed, 3);
-      if (goods === 'pots') { const col = pick(['#8a4fb0', '#e8506a', '#4b90d6', '#5a9a49', '#f2c94c'], r); rect(c, x, 17, 4, 5, col); rect(c, x + 1, 15, 2, 2, col); rect(c, x + 1, 17, 1, 2, '#ffffff99'); }
-      if (goods === 'bread') { rect(c, x, 18, 5, 4, pick(['#c98a45', '#d9a35c', '#b0763a'], r)); rect(c, x + 1, 18, 3, 1, '#e8c07a'); }
-      if (goods === 'gems') { rect(c, x + 1, 17, 3, 4, pick(['#7fd5ff', '#ff6dd7', '#a48bff', '#4dffe0'], r)); rect(c, x + 1, 17, 1, 1, '#ffffff'); }
-      if (goods === 'tools') { rect(c, x + 2, 13, 1, 9, PAL.wood[2]); rect(c, x, 13, 5, 2, '#9aa2ad'); }
-      if (goods === 'books') { rect(c, x, 17, 4, 5, pick(['#8f3524', '#3f78b5', '#5a9a49', '#8a4fb0'], r)); rect(c, x, 17, 4, 1, '#f3e7cf'); }
-      if (goods === 'fish') { rect(c, x, 19, 5, 2, pick(['#9fb7c9', '#c9a26f', '#7fa3c2'], r)); rect(c, x + 4, 18, 1, 4, '#9fb7c9'); }
+      if (goods === 'pots') { const col = pick(['#8a4fb0', '#e8506a', '#4b90d6', '#5a9a49', '#f2c94c'], r); rect(c, x, 17 + G, 4, 5, col); rect(c, x + 1, 15 + G, 2, 2, col); rect(c, x + 1, 17 + G, 1, 2, '#ffffff99'); }
+      if (goods === 'bread') { rect(c, x, 18 + G, 5, 4, pick(['#c98a45', '#d9a35c', '#b0763a'], r)); rect(c, x + 1, 18 + G, 3, 1, '#e8c07a'); }
+      if (goods === 'gems') { rect(c, x + 1, 17 + G, 3, 4, pick(['#7fd5ff', '#ff6dd7', '#a48bff', '#4dffe0'], r)); rect(c, x + 1, 17 + G, 1, 1, '#ffffff'); }
+      if (goods === 'tools') { rect(c, x + 2, 13 + G, 1, 9, PAL.wood[2]); rect(c, x, 13 + G, 5, 2, '#9aa2ad'); }
+      if (goods === 'books') { rect(c, x, 17 + G, 4, 5, pick(['#8f3524', '#3f78b5', '#5a9a49', '#8a4fb0'], r)); rect(c, x, 17 + G, 4, 1, '#f3e7cf'); }
+      if (goods === 'fish') { rect(c, x, 19 + G, 5, 2, pick(['#9fb7c9', '#c9a26f', '#7fa3c2'], r)); rect(c, x + 4, 18 + G, 1, 4, '#9fb7c9'); }
     }
     // Awning: scalloped stripes.
     for (let x = 0; x < W; x += 4) {
@@ -712,11 +750,12 @@ export function cart(): Sprite {
 /** A short run of fence along x (tiles). */
 export function fence(tiles: number): Sprite {
   return cached(`fence:${tiles}`, () => {
-    const W = tiles * TILE, img = cv(W, 12);
+    // Hip-high to a fine-grid Keeper (the art style upgrade): two lit rails, posts with a pointed lit cap and a dark foot.
+    const W = tiles * TILE, img = cv(W, 18);
     const c = img.getContext('2d')!;
-    rect(c, 0, 3, W, 2, PAL.wood[1]); rect(c, 0, 7, W, 2, PAL.wood[1]);
-    for (let x = 0; x < W; x += 8) { rect(c, x, 0, 3, 12, PAL.wood[0]); rect(c, x, 0, 3, 1, PAL.wood[3]); }
-    return { img: outline(img), ax: W / 2 + 1, ay: 13 };
+    for (const y of [5, 11]) { rect(c, 0, y, W, 3, PAL.wood[1]); rect(c, 0, y, W, 1, PAL.wood[3]); rect(c, 0, y + 2, W, 1, PAL.wood[2]); }
+    for (let x = 0; x < W; x += 8) { rect(c, x, 1, 3, 17, PAL.wood[0]); rect(c, x + 1, 0, 1, 1, PAL.wood[3]); rect(c, x, 1, 1, 16, PAL.wood[3]); rect(c, x + 2, 2, 1, 15, PAL.wood[2]); rect(c, x, 16, 3, 2, PAL.wood[2]); }
+    return { img: outline(img), ax: W / 2 + 1, ay: 19 };
   });
 }
 
