@@ -20,6 +20,15 @@ export const LOBBY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'lobby.session.playHere': { en: 'Play here', es: 'Jugar aqui' },
   'lobby.session.taking': { en: 'Taking over…', es: 'Tomando el control…' },
 
+  // Recovery: a Keeper played in this device's guest saves (play-shell adoptGuest).
+  'lobby.found.title': { en: 'A Keeper found on this device', es: 'Un Guardian encontrado en este dispositivo' },
+  'lobby.found.mine': { en: '{{name}} was played on this device while your account was signed in, but saved only here. Bring them into your account?', es: '{{name}} se jugo en este dispositivo con tu cuenta abierta, pero solo se guardo aqui. ¿Traerlo a tu cuenta?' },
+  'lobby.found.guest': { en: '{{name}} was played offline on this device. If they are yours, bring them into your account.', es: '{{name}} se jugo sin conexion en este dispositivo. Si es tuyo, traelo a tu cuenta.' },
+  'lobby.found.adopt': { en: 'Bring to my account', es: 'Traer a mi cuenta' },
+  'lobby.found.dismiss': { en: 'Not mine', es: 'No es mio' },
+  'lobby.found.done': { en: '{{name}} is now one of your Keepers.', es: '{{name}} ahora es uno de tus Guardianes.' },
+  'lobby.found.failed': { en: 'That Keeper could not be moved. Try again.', es: 'No se pudo mover a ese Guardian. Intentalo de nuevo.' },
+
   'lobby.select.title': { en: 'Choose your Keeper', es: 'Elige a tu Guardian' },
   'lobby.select.slots': { en: '{{n}} of {{max}} Keepers', es: '{{n}} de {{max}} Guardianes' },
   'lobby.select.empty': { en: 'No Keeper has answered the hearth yet. Make one to begin.', es: 'Ningun Guardian ha respondido al hogar aun. Crea uno para empezar.' },

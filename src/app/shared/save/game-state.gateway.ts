@@ -205,6 +205,10 @@ const PENDING_DELETE_KEY = 'godforge-pending-deletes';
  * {@link GameStateGateway.pushOtherCharacters}). Saves older than the per-character pending mark are pushed once.
  */
 export const SEED_SWEEP_KEY = 'godforge-seed-sweep';
+/** Guest namespace: the account a guest-profile page found itself signed in as (recovery, noteSignedIn). */
+export const GUEST_PLAYED_AS_KEY = 'eclipse-guest-played-as';
+/** Guest namespace: guest Keepers the account said were not theirs (never offered again). */
+export const GUEST_DISMISSED_KEY = 'eclipse-guest-dismissed';
 
 export const STATE_ENTRIES: readonly StateEntry[] = [
   ...SYNCED_BLOBS.map((b: SyncedBlob): StateEntry => ({
@@ -375,6 +379,79 @@ export class GameStateGateway {
     } catch {
       return null;
     }
+  }
+
+  // ── Recovery: Keepers played in the guest's saves while signed in (owner bug 2026-10-26) ───────────────────────
+  /**
+   * A guest-profile page found itself signed in as `uid` (cloud-save recoverAttach): stamp the guest's saves "played
+   * while signed in as uid". The account's page offers those Keepers back to that account ({@link guestKeepers}).
+   */
+  noteSignedIn(uid: string): void {
+    if (!this.isBrowser || this.profile !== 'guest' || !uid) return;
+    try { localStorage.setItem(profileKey(GUEST_PLAYED_AS_KEY, 'guest'), uid); } catch { /* private mode */ }
+  }
+
+  /**
+   * The made Keepers in this device's guest saves, for the account's page to offer back (never on a guest page).
+   * `playedAs` is the account the guest saves were stamped with ({@link noteSignedIn}), or null (played as a guest).
+   */
+  guestKeepers(): { id: string; name: string; vocation: string; playedAs: string | null }[] {
+    if (!this.isBrowser || this.profile !== 'account') return [];
+    try {
+      const roster = JSON.parse(localStorage.getItem(profileKey(CHARACTER_ROSTER_KEY, 'guest')) ?? 'null') as { chars?: Record<string, { deletedAt?: number }> } | null;
+      const ids = new Set<string>(Object.entries(roster?.chars ?? {}).filter(([, r]) => !r?.deletedAt).map(([id]) => id));
+      if (localStorage.getItem(characterStorageKey('godforge-keeper-look', PRIMARY_CHARACTER, 'guest')) !== null) ids.add(PRIMARY_CHARACTER);
+      const playedAs = localStorage.getItem(profileKey(GUEST_PLAYED_AS_KEY, 'guest'));
+      const dismissed = new Set<string>(JSON.parse(localStorage.getItem(profileKey(GUEST_DISMISSED_KEY, 'guest')) ?? '[]') as string[]);
+      const out: { id: string; name: string; vocation: string; playedAs: string | null }[] = [];
+      for (const id of ids) {
+        if (!isCharacterId(id) || dismissed.has(id)) continue;
+        const look = JSON.parse(localStorage.getItem(characterStorageKey('godforge-keeper-look', id, 'guest')) ?? 'null') as { made?: boolean; name?: string; vocation?: string } | null;
+        if (!look?.made) continue;
+        out.push({ id, name: typeof look.name === 'string' ? look.name.slice(0, 24) : '', vocation: typeof look.vocation === 'string' ? look.vocation : 'warlock', playedAs });
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Bring guest Keeper `guestId` into this account as a NEW character `newId`: its saved keys are copied into the
+   * account's namespace under `newId` (nothing of it is merged into any Keeper the account already has, so nothing
+   * of the account can be overwritten), marked for the cloud (the attached page pushes it), and the guest's copy is
+   * dropped from this device (discardLocal semantics: local only; a guest has no cloud copy). The caller adds the
+   * roster row. Account page only.
+   */
+  adoptGuestKeeper(guestId: string, newId: string): boolean {
+    if (!this.isBrowser || this.profile !== 'account' || !isCharacterId(guestId) || !isCharacterId(newId) || newId === PRIMARY_CHARACTER) return false;
+    if (this.hasLocalSave(newId)) return false;
+    const keys = [...STATE_ENTRIES.map(e => e.key), ...LOCAL_CHARACTER_KEYS]
+      .filter(k => isCharacterScoped(k, STATE_KEYS) && k !== CLOUD_PENDING_KEY && k !== PENDING_DELETE_KEY && k !== RESET_STAMP_KEY && k !== SAVE_BACKUP_KEY);
+    try {
+      for (const key of keys) {
+        const raw = localStorage.getItem(characterStorageKey(key, guestId, 'guest'));
+        if (raw !== null) localStorage.setItem(characterStorageKey(key, newId, 'account'), raw);
+      }
+      localStorage.setItem(characterStorageKey(CLOUD_PENDING_KEY, newId, 'account'), '1');
+      for (const key of [...keys, CLOUD_PENDING_KEY, PENDING_DELETE_KEY, RESET_STAMP_KEY, SAVE_BACKUP_KEY]) localStorage.removeItem(characterStorageKey(key, guestId, 'guest'));
+      const rosterKey = profileKey(CHARACTER_ROSTER_KEY, 'guest');
+      const roster = JSON.parse(localStorage.getItem(rosterKey) ?? 'null') as { chars?: Record<string, unknown> } | null;
+      if (roster?.chars && guestId in roster.chars) { delete roster.chars[guestId]; localStorage.setItem(rosterKey, JSON.stringify(roster)); }
+    } catch {
+      return false;
+    }
+    return true;
+  }
+
+  /** "Not mine": never offer guest Keeper `guestId` to an account again on this device. */
+  dismissGuestKeeper(guestId: string): void {
+    try {
+      const key = profileKey(GUEST_DISMISSED_KEY, 'guest');
+      const ids = new Set<string>(JSON.parse(localStorage.getItem(key) ?? '[]') as string[]);
+      ids.add(guestId);
+      localStorage.setItem(key, JSON.stringify([...ids]));
+    } catch { /* offered again next time */ }
   }
 
   /** Does this device hold any of `character`'s save? */

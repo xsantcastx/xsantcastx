@@ -105,4 +105,44 @@ describe('guest profile (gateway)', () => {
     expect(gateway.character).toBe('k2abc');
     expect(gateway.read('godforge-inventory')).toEqual(JSON.parse(account['godforge-inventory@k2abc']));
   });
+
+  // Recovery (owner bug 2026-10-26): play that landed in the guest's saves while signed in comes back as a NEW Keeper.
+  it('the account\'s page offers a guest Keeper and adopts it as a new Keeper of its own, never over one it has', () => {
+    localStorage.removeItem(GUEST_FLAG_KEY);
+    resetBootProfileForTest();
+    localStorage.setItem(GUEST_PREFIX + 'godforge-keeper-look', JSON.stringify({ version: 1, made: true, name: 'Lost', vocation: 'ashguard' }));
+    localStorage.setItem(GUEST_PREFIX + 'godforge-inventory', JSON.stringify({ v: { records: ['found while stuck'] } }));
+    localStorage.setItem(GUEST_PREFIX + 'eclipse-guest-played-as', 'u1');
+    const gateway = TestBed.inject(GameStateGateway);
+    expect(gateway.profile).toBe('account');
+    expect(gateway.guestKeepers()).toEqual([{ id: 'c1', name: 'Lost', vocation: 'ashguard', playedAs: 'u1' }]);
+    expect(gateway.adoptGuestKeeper('c1', 'k7lost00')).toBeTrue();
+    // A new Keeper of the account's, under its own keys; the account's own Keepers untouched; the guest copy gone.
+    expect(localStorage.getItem('godforge-inventory@k7lost00')).toContain('found while stuck');
+    expect(localStorage.getItem('godforge-keeper-look@k7lost00')).toContain('Lost');
+    expect(localStorage.getItem('godforge-cloud-pending@k7lost00')).toBe('1');
+    for (const [k, v] of Object.entries(account)) expect(localStorage.getItem(k)).withContext(k).toBe(v);
+    expect(localStorage.getItem(GUEST_PREFIX + 'godforge-inventory')).toBeNull();
+    expect(gateway.guestKeepers()).toEqual([]);
+    // Never into a slot that already holds a save, never c1.
+    expect(gateway.adoptGuestKeeper('c1', 'k7lost00')).toBeFalse();
+    expect(gateway.adoptGuestKeeper('c1', 'c1')).toBeFalse();
+    for (const k of ['godforge-inventory@k7lost00', 'godforge-keeper-look@k7lost00', 'godforge-cloud-pending@k7lost00']) localStorage.removeItem(k);
+  });
+
+  it('"Not mine" is never offered again; a guest page is never offered anything', () => {
+    localStorage.setItem(GUEST_PREFIX + 'godforge-keeper-look', JSON.stringify({ version: 1, made: true, name: 'Stranger', vocation: 'warlock' }));
+    const guestPage = TestBed.inject(GameStateGateway);
+    expect(guestPage.profile).toBe('guest');
+    expect(guestPage.guestKeepers()).toEqual([]);
+    expect(guestPage.adoptGuestKeeper('c1', 'k9x00000')).toBeFalse();
+    TestBed.resetTestingModule(); TestBed.configureTestingModule({});
+    localStorage.removeItem(GUEST_FLAG_KEY);
+    resetBootProfileForTest();
+    const gateway = TestBed.inject(GameStateGateway);
+    expect(gateway.guestKeepers().map(k => k.name)).toEqual(['Stranger']);
+    expect(gateway.guestKeepers()[0].playedAs).toBeNull();
+    gateway.dismissGuestKeeper('c1');
+    expect(gateway.guestKeepers()).toEqual([]);
+  });
 });
