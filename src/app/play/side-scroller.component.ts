@@ -485,7 +485,8 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 /** The pointer as a zero-size box (the hover card sits beside it). */
 const pointAt = (ev: PointerEvent): FitAnchor => ({ left: ev.clientX, top: ev.clientY, right: ev.clientX, bottom: ev.clientY });
 function titleCase(label: string): string {
-  return label.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+  // Not after an apostrophe: "KAEL'S ANVIL" reads "Kael's Anvil", never "Kael'S".
+  return label.toLowerCase().replace(/(^|[^\w'])(\w)/g, (_m, p: string, c: string) => p + c.toUpperCase());
 }
 
 function monogram(name: string): string {
@@ -4722,7 +4723,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (got.final) this.gotItem(1, this.t(`cabinet.item.${got.final.item}`), got.final.item);
     this.pushCabinets(this.cabinets.openedSet());
   }
-  /** Lune's counter rides her own panels; Kael's rides the Rune Forge (the stations themselves are untouched). */
+  /** Lune's counter rides her own panels; Kael's rides his anvil (KAEL_STATION, the crafting panel; the stations themselves are untouched). */
 
   get slateCounter(): 'croupier' | 'kael' | null {
     const id = this.panel?.kind === 'page' ? this.panel.stationId : null;

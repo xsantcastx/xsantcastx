@@ -35,7 +35,7 @@ export const SANCTUM_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'sanctum.landing.levelUp':  { en: 'Level {{n}}', es: 'Nivel {{n}}' },
   'sanctum.landing.level':    { en: 'level {{n}}', es: 'nivel {{n}}' },
   'sanctum.landing.runeTier': { en: '{{tier}} rune', es: 'Runa {{tier}}' },
-  'sanctum.landing.runeForge': { en: 'Craft with it at the Rune Forge →', es: 'Fabrica con ella en la Forja de Runas →' },
+  'sanctum.landing.runeForge': { en: 'Set it at the Enchanting Table →', es: 'Engarzala en la Mesa de Encantar →' },
   'sanctum.landing.equip':    { en: 'Equip it in the loadout →', es: 'Equípalo en el equipo →' },
   'sanctum.landing.inSatchel': { en: 'It is in your satchel →', es: 'Está en tu mochila →' },
   'sanctum.landing.codex':    { en: 'Read it on the Codex wall →', es: 'Léelo en el muro del Códice →' },
@@ -146,7 +146,7 @@ export const SANCTUM_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'sanctum.links.market':     { en: 'The Market', es: 'El Mercado' },
   'sanctum.links.character':  { en: 'Your Character', es: 'Tu personaje' },
   'sanctum.links.quests':     { en: 'Quest board', es: 'Tablón de misiones' },
-  'sanctum.links.runeForge':  { en: 'Rune Forge', es: 'Forja de Runas' },
+  'sanctum.links.runeForge':  { en: 'Enchanting Table', es: 'Mesa de Encantar' },
   'sanctum.links.codex':      { en: 'The Codex', es: 'El Códice' },
   'sanctum.links.world':      { en: 'The World', es: 'El Mundo' },
 

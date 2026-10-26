@@ -62,10 +62,10 @@ test.describe('Waystone travel and ?at= deep links', () => {
   });
 
   for (const at of [
-    { id: 'crafting', title: 'Crafting Bench' },
+    { id: 'crafting', title: "Kael's Anvil" },
     { id: 'enchanting', title: 'Enchanting Table' },
-    { id: 'runes', title: 'Rune Forge' },
-    { id: 'vendor', title: 'Material Vendor' },
+    { id: 'brews', title: 'Charms and Brews' },
+    { id: 'shop-general', title: "Edrin Kade's General Store" },
   ]) {
     test(`?at=${at.id} opens ${at.title} in the Infernal town`, async ({ page }) => {
       await seed(page);

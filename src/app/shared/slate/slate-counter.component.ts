@@ -6,7 +6,7 @@
  *  - Lune Coyne (her counter and her four tables), while the Keeper holds no
  *    Slate: how many plays are left before she hands it over, and ONE small
  *    button to buy it instead.
- *  - Kael (the Rune Forge), while the Keeper holds a tier I Slate: what the
+ *  - Kael (at his anvil), while the Keeper holds a tier I Slate: what the
  *    second face needs (chips, have / need), and ONE button to bind it.
  *
  * The button is never disabled: a press while short says why (the station

@@ -36,8 +36,8 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.card.act1.kicker': { en: 'The Prologue ends', es: 'Termina el Prologo' },
   'story.card.act1.title': { en: 'Act I · The Old Seam', es: 'Acto I · La vieja veta' },
   'story.card.act1.p1': {
-    en: 'Kael, from the Rune Forge, without looking up: "You read it. Most people step over it."',
-    es: 'Kael, desde la Rune Forge, sin levantar la vista: "Lo leiste. Casi todos pasan por encima."',
+    en: 'Kael, from his anvil, without looking up: "You read it. Most people step over it."',
+    es: 'Kael, desde su yunque, sin levantar la vista: "Lo leiste. Casi todos pasan por encima."',
   },
   'story.card.act1.p2': {
     en: 'The crack under the Seamworks goes further down than anyone has charted. Someone went down it before you, and kept count.',
@@ -103,7 +103,7 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.beat.p.dig.title': { en: 'Down is a fact', es: 'Abajo es un hecho' },
   'story.beat.p.dig.text': { en: "You cut ore from the island's own rock, down where the Ember Mine breathes warm. Down is a fact. Glim became your lantern.", es: 'Sacaste mineral de la roca de la isla, alla abajo donde respira la Ember Mine. Abajo es un hecho. Glim se volvio tu linterna.' },
   'story.beat.p.words.title': { en: 'Most people step over it', es: 'Casi todos pasan por encima' },
-  'story.beat.p.words.text': { en: 'You read your first carving in the Delve. Kael noticed, without looking up from the Rune Forge.', es: 'Leiste tu primer grabado en la Sima. Kael se dio cuenta, sin levantar la vista de la Rune Forge.' },
+  'story.beat.p.words.text': { en: 'You read your first carving in the Delve. Kael noticed, without looking up from his anvil.', es: 'Leiste tu primer grabado en la Sima. Kael se dio cuenta, sin levantar la vista de su yunque.' },
   'story.beat.a1.shadow.title': { en: 'Do not count them', es: 'No las cuentes' },
   'story.beat.a1.shadow.text': { en: 'You brought Verrin cuttings of the World-Root\'s shadow. Verrin asked you to look at the marks by the old root, and not to count them.', es: 'Le llevaste a Verrin esquejes de la sombra de la World-Root. Verrin te pidio que miraras las marcas junto a la vieja raiz, y que no las contaras.' },
   'story.beat.a1.tally.title': { en: 'Five marks at Keeper height', es: 'Cinco marcas a la altura de un Guardian' },
@@ -238,7 +238,7 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.lead.a1.fresh': { en: 'Read what is carved deepest in the Magma Halls. Glim says the deepest carving is the newest.', es: 'Lee lo que esta grabado mas hondo en Magma Halls. Glim dice que el grabado mas hondo es el mas nuevo.' },
   'story.lead.a1.dated': { en: 'The Archivist wants every carving in the Delve copied.', es: 'El Archivista quiere copiados todos los grabados de la Sima.' },
   'story.lead.a1.break': { en: 'Bring Kael the Godforge Fragment from the Magma Halls.', es: 'Llevale a Kael el Godforge Fragment de Magma Halls.' },
-  'story.lead.a2.under': { en: 'Kael has something to say about the floor of the fragment chamber. Ask him at the Rune Forge.', es: 'Kael tiene algo que decir sobre el suelo de la camara del fragmento. Preguntale en la Rune Forge.' },
+  'story.lead.a2.under': { en: 'Kael has something to say about the floor of the fragment chamber. Ask him at his anvil.', es: 'Kael tiene algo que decir sobre el suelo de la camara del fragmento. Preguntale en su yunque.' },
   'story.lead.a2.marks': { en: 'Four Keepers worked in the Underhearth. Kael wants to know where they stood.', es: 'Cuatro Guardianes trabajaron en el Bajohogar. Kael quiere saber donde estuvieron.' },
   'story.lead.a2.furnace': { en: 'Verrin has an ending to file, at the bottom of Kael\'s old rail.', es: 'Verrin tiene un final que archivar, al fondo del viejo rail de Kael.' },
   'story.lead.a2.ink': { en: 'Verrin\'s realm has an underside. Its Rift Gate stands in the Underhearth, west of the Landing: ask Verrin.', es: 'El reino de Verrin tiene un reverso. Su Rift Gate esta en el Bajohogar, al oeste del Rellano: pregunta a Verrin.' },
