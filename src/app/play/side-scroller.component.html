@@ -701,7 +701,7 @@
           @for (e of bs.entries; track e.id) {
             <li class="td-best__card" [attr.data-creature]="e.id" [attr.data-known]="e.kills > 0" [attr.data-rank]="e.rank" [attr.aria-label]="e.kills > 0 ? null : t('play.best.cardAria', { n: e.level })">
               <div class="td-best__art"><img [src]="e.kills > 0 ? e.lit : e.dark" alt="" draggable="false"></div>
-              <h3>{{ e.kills > 0 ? e.name : t('play.best.unknown') }}</h3>
+              <h3>{{ e.kills > 0 ? mobName(e) : t('play.best.unknown') }}</h3>
               <p class="td-best__meta">
                 <span data-best-lv>{{ bandLabel(e.levels) }}</span>
                 @if (e.rank !== 'normal') { <b class="td-best__rank">{{ t(e.rank === 'boss' ? 'play.best.rank.boss' : 'play.best.rank.champion') }}</b> }
@@ -726,7 +726,14 @@
                   <!-- An item set's creature (set-items.ts): the set whose pieces its kills may drop. -->
                   <p class="td-best__relic" [attr.data-set]="st.id"><small>{{ t('play.best.set') }}</small> <b>{{ t('play.set.name.' + st.id) }}</b></p>
                 }
-                <p class="td-best__lore">{{ e.lore }}</p>
+                @if (mobAbilities(e.id).length) {
+                  <!-- S6 (monsters-abilities.md §1.2): every ability names its counter, one line each. -->
+                  <p class="td-best__abilities" data-best-abilities><small>{{ t('play.best.abilities') }}</small>
+                    @for (a of mobAbilities(e.id); track a.id) { <span [attr.data-ability]="a.id"><b>{{ a.name }}</b> · <em>{{ a.counter }}</em></span> }
+                    @if (mobAura(e.id); as au) { <span data-best-aura>{{ t('play.best.aura', { aura: au }) }}</span> }
+                  </p>
+                }
+                <p class="td-best__lore">{{ mobLore(e) }}</p>
               } @else {
                 <p class="td-best__lore td-best__lore--hidden">{{ t('play.best.unknown') }}</p>
               }
@@ -1073,7 +1080,7 @@
 
   <!-- The Satchel's pet well, opened (shared/pets): your pets, one card, one primary action. -->
   @if (petsOpen) {
-    <div class="pet-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" (commanded)="petCommanded()" /></div>
+    <div class="pet-host win-host" data-engine-ignore appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" (commanded)="petCommanded($event)" /></div>
   }
 
   @if (bagOpen) {

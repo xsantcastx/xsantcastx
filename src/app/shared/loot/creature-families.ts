@@ -84,6 +84,8 @@ export const CREATURE_PROFILES: readonly CreatureProfile[] = [
   P('cinder-orc', 'orc', 'melee', 10),
   P('orc-firecaller', 'orc', 'ranged', 13, { hits: 'fire' }),
   P('orc-warlord', 'orc', 'melee', 16, { resists: { physical: 15 } }),
+  P('ashsinger', 'orc', 'summoner', 14, { hits: 'fire' }),
+  P('bone-priest', 'bone', 'summoner', 16),
   P('ember-drake', 'ember', 'ranged', 18),
   P('bone-dragon', 'bone', 'summoner', 25, { boss: true, hits: 'fire' }),
   // The Molten Deep's lower floors and the Forge of the Four.
