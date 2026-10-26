@@ -30,6 +30,14 @@ export interface ContinentWay {
   at?: readonly [number, number];
 }
 
+/**
+ * A hot spot (owner, 2026-10-26: "more combat zones, like hot spots"): in a chunk of `region`, at `chance`, a lair —
+ * bones round a cleared ring — with `count` of `types` close round it (each its own spawn, falling and rising on its own).
+ * `count` stays ≤ 5: at the room's ~75 s rest a lair of five feeds one Keeper the sims' 240 kills an hour, no more
+ * (combat-sim TRAVEL; scripts/social-m3.test.mjs checks it).
+ */
+export interface ContinentHotspot { region: Region; chance: number; types: readonly string[]; count: number }
+
 export interface ContinentDef {
   id: string;
   /** One character per BLOCK×BLOCK tiles; block (ox, oy) holds tile (0, 0), the town's corner. */
@@ -41,6 +49,8 @@ export interface ContinentDef {
   /** What each region is called (a region the continent does not use needs no name). */
   names: Readonly<Partial<Record<Region, string>>>;
   mobs: Partial<Record<Region, { types: readonly string[]; chance: number }>>;
+  /** Lairs: denser packs round a feature, per region (td-world makeChunk). */
+  hotspots?: readonly ContinentHotspot[];
   town: () => TdMap;
   townName: string;
   /** The town's two main streets (tiles): roads near them are cobbled. */

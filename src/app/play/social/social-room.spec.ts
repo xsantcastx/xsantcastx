@@ -262,7 +262,7 @@ describe('SocialRoom (the Hearth room client)', () => {
     const commits: unknown[] = [], gnotes: unknown[] = [];
     const r = new SocialRoom(s => { state = s; }, { keepAlive: true, endpoint: 'http://room', fetch: transport, now: () => clock, idToken: async () => 'tok', character: () => 'c2', onTradeCommit: c => commits.push(c), onGroundNote: n => gnotes.push(n) });
     await r.join('Arin'); await settle();
-    expect(fake.requests[0].body).toEqual(jasmine.objectContaining({ protocol: 8, character: 'c2' }));
+    expect(fake.requests[0].body).toEqual(jasmine.objectContaining({ protocol: 9, character: 'c2' }));
     expect(r.canSettle).toBeTrue();
     const push = async (value: unknown) => { fake.streams[0].enqueue(new TextEncoder().encode(`data: ${JSON.stringify(value)}\n\n`)); await settle(); };
     await push({ type: 'party', party: { id: 'p', leader: 'me', members: ['me'], offline: [{ id: 'r1', name: 'Mira' }, { id: 7, name: 'bad' }] } });

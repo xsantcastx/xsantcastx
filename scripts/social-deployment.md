@@ -340,6 +340,31 @@ curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expec
 To turn the world off without a rebuild, add `|SOCIAL_WORLD=0` to the env string (the room is then protocol 7 with
 every area on protocol 6 behaviour).
 
+### Protocol 9 (M3 of the room-run world, 2026-10-26 — deployed: revision 00015; 00016 with the fixes merge)
+
+`/health` and `/join` report `protocol: 9`; `/health world` adds `every`, `loaded`, `creatures`, `resting`, `bosses`,
+`step` and `rssMB`/`heapMB`. A client that says `protocol: 9` is hosted in every area (each continent and every floor),
+hears `world-omen`; protocol 7/8 clients keep the island only. The image is the same five files; the deploy command is
+protocol 8's exactly (the bundle carries the new modules):
+
+```sh
+node scripts/world-sim-build.mjs
+gcloud builds submit --project xsantcastx-1694b --config scripts/social-cloudbuild.yaml --ignore-file scripts/social-gcloudignore .
+gcloud run deploy eclipse-hearth \
+  --project xsantcastx-1694b --region us-central1 \
+  --image gcr.io/xsantcastx-1694b/eclipse-hearth:latest \
+  --allow-unauthenticated --max-instances 1 --concurrency 80 --timeout 3600 --session-affinity \
+  --set-env-vars '^|^SOCIAL_ORIGINS=https://xsantcastx.com,https://www.xsantcastx.com,https://xsantcastx-1694b.web.app,https://xsantcastx-1694b.firebaseapp.com|SOCIAL_FIREBASE_PROJECT=xsantcastx-1694b'
+curl -s https://eclipse-hearth-773269119730.us-central1.run.app/health   # expect "protocol":9 and "every":51
+```
+
+Firestore: the same `world-rooms/{area}` documents, now one per area (51), by the service account; rules unchanged
+(deny-all covers them). A wake reads each area once (≤ 51 reads per cold start); writes stay "a changed area at most once
+a minute, and once at sleep". Billing: no CPU, memory, instance, region or billing flag changes (00015's annotations
+checked after the deploy: max 1, min 0, cpu-throttling on, 1 vCPU / 512 Mi — as 00014, which was a console redeploy).
+Live check: a protocol-8 join is answered (`protocol: 9`, `world: true`, `settles`); one protocol-9 stream woke all 51
+areas in under 7 s, rss 107 MB.
+
 ### Protocol 8 (M2 of the room-run world, 2026-10-22 — deployed: revision 00011)
 
 `/health` and `/join` report `protocol: 8`; `/health` adds `economy` (the room's settles, commits, escrows and picks

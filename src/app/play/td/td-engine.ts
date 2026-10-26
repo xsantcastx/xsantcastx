@@ -28,39 +28,18 @@ import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
-import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
-import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
-import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
-import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
-import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3, MOLTEN_DEEP_4, MOLTEN_DEEP_5, MOLTEN_DEEP_6 } from './maps/molten-deep';
-import { FORGE_OF_FOUR_1, FORGE_OF_FOUR_2, FORGE_OF_FOUR_3 } from './maps/forge-of-four';
-import { ASHEN_CRYPT_1, ASHEN_CRYPT_2 } from './maps/ashen-crypt';
-import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
-import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
-import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
-import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
-import { VERDANT_WILDS_DEF } from './maps/verdant-wilds';
-import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 } from './maps/rootglass-bole';
-import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3, OVERGROWN_TEMPLE_4, OVERGROWN_TEMPLE_5 } from './maps/overgrown-temple';
-import { ROOT_HOLLOWS_1, ROOT_HOLLOWS_2, ROOT_HOLLOWS_3 } from './maps/root-hollows';
-import { HERBAL_0, HERBAL_1, NETLOFT_1, NETLOFT_2 } from './maps/verdant-houses';
-import { UMBRAL_MARCHES_DEF } from './maps/umbral-marches';
-import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lantern-tower';
-import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
-import { BARROW_DOOR_ID, HUSHED_BARROW_1 } from './maps/hushed-barrow';
+import { BLOCK } from './maps/ember-isle';
+import { BARROW_DOOR_ID } from './maps/hushed-barrow';
 import { SEXTON_CONTINENT, SEXTON_PAGE, SEXTON_STONES, SEXTON_VAULT, VAULT_GRAVE, VAULT_KEYHOLE, WALKER, WALKER_AT, chalkMark, ledgerPage, pageShown, seekSpot, stallSpot } from './td-sexton';
 import type { ContinentDef } from './continent';
+import { CONTINENTS, LEVELS } from './td-levels';
+export { CONTINENTS, LEVELS };
 import type { TdMapDef } from './td-level';
 
 /** Out of the fight (4 s unhurt) the Keeper mends this much life a second, unless a curse's drain outweighs his regeneration. */
 export const MEND_PER_SEC = 6;
 /** The out-of-fight mend now (life a second): 6 after 4 s unhurt, none while a curse's drain outweighs regeneration. */
 export function outOfFightMend(regen: number, unhurtSecs: number): number { return regen >= 0 && unhurtSecs > 4 ? MEND_PER_SEC : 0; }
-
-/** Every hand-drawn level under (or over) the surface, by id. */
-/** Every continent, by id (ships sail between them). */
-export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
-  'umbral-marches': UMBRAL_MARCHES_DEF };
 
 /** The most creatures the minimap marks at once (owner's player notes 2026-10-21: "cap the count for performance"). */
 const MINI_MOBS = 40;
@@ -72,21 +51,6 @@ const BG_CATCHUP_SECS = 60;
 /** A second tap on the Keeper whose card a tap just opened walks there (s). */
 const PEER_AGAIN_SECS = 3;
 
-export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
-  'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
-  'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
-  'molten-deep-4': MOLTEN_DEEP_4, 'molten-deep-5': MOLTEN_DEEP_5, 'molten-deep-6': MOLTEN_DEEP_6,
-  'forge-of-four-1': FORGE_OF_FOUR_1, 'forge-of-four-2': FORGE_OF_FOUR_2, 'forge-of-four-3': FORGE_OF_FOUR_3,
-  'ashen-crypt-1': ASHEN_CRYPT_1, 'ashen-crypt-2': ASHEN_CRYPT_2,
-  'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2,
-  'rootglass-bole-0': ROOTGLASS_BOLE_0, 'rootglass-bole-1': ROOTGLASS_BOLE_1, 'rootglass-bole-2': ROOTGLASS_BOLE_2, 'rootglass-bole-3': ROOTGLASS_BOLE_3,
-  'overgrown-temple-1': OVERGROWN_TEMPLE_1, 'overgrown-temple-2': OVERGROWN_TEMPLE_2, 'overgrown-temple-3': OVERGROWN_TEMPLE_3,
-  'lantern-tower-0': LANTERN_TOWER_0, 'lantern-tower-1': LANTERN_TOWER_1, 'lantern-tower-2': LANTERN_TOWER_2,
-  'drowned-crypts-1': DROWNED_CRYPTS_1, 'drowned-crypts-2': DROWNED_CRYPTS_2, 'drowned-crypts-3': DROWNED_CRYPTS_3,
-  'overgrown-temple-4': OVERGROWN_TEMPLE_4, 'overgrown-temple-5': OVERGROWN_TEMPLE_5,
-  'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
-  'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0,
-  'hushed-barrow-1': HUSHED_BARROW_1 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 /** The Seam-Cant's tone per tree: each element's body tone (effects-spec rule 2), so the words read as the spell's. */
 const CANT_TONE: Readonly<Record<TreeId, string>> = {
