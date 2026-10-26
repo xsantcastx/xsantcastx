@@ -2493,6 +2493,14 @@ export class MobSystem {
   /** Seconds this system has run (the corpses' clock). */
   get age(): number { return this.clock; }
   /**
+   * How long a fallen spawn rests before it rises again (seconds). Unset: RESPAWN, as every screen has always had it.
+   * The room-run world sets its own (world/respawn.ts: ordinary creatures 60–90 s each, elites longer, a boss about an
+   * hour), drawing from its seeded stream.
+   */
+  respawnOf: ((m: Mob) => number) | null = null;
+  /** Time passes with nobody here (a room-run area nobody stands in): the fallen rest on, nothing moves. */
+  idle(dt: number): void { if (dt > 0) this.clock += dt; }
+  /**
    * Elite packs (td-elites.ts): off until the host turns them on (the engine does; the specs choose), so a fixed spawn
    * list stays exactly itself. `eliteSalt` varies the rolls between sessions; `fallen` counts each spawn's deaths, so a
    * pack re-rolls only once it has been killed.
@@ -4203,7 +4211,7 @@ export class MobSystem {
     // A worn unique (unique-items.ts reforge-memory): every kill gives back mana.
     if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
     if (this.target === m) this.target = null;
-    this.deadUntil.set(m.key, this.clock + RESPAWN);
+    this.deadUntil.set(m.key, this.clock + (this.respawnOf?.(m) ?? RESPAWN));
     // Fresh dead, for Raise Skeleton.
     this.corpses.push({ x: m.x, y: m.y, at: this.clock });
     if (this.corpses.length > 12) this.corpses.shift();

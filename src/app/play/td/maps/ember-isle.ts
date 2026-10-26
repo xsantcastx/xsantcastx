@@ -1,4 +1,4 @@
-import type { ContinentDef, ContinentPlace, Region } from '../continent';
+import type { ContinentDef, ContinentHotspot, ContinentPlace, Region } from '../continent';
 import { buildSeamworksSquare } from '../seamworks-square';
 import { CAVE_IN } from './slagstone-cave';
 import { BARROW_IN } from './hushed-barrow';
@@ -80,12 +80,25 @@ export const REGION_NAMES: Readonly<Partial<Record<Region, string>>> = {
 };
 /** Who lives where (td-mobs MOBS ids) and how thick: packs per 16×16-tile chunk, as a chance. */
 export const REGION_MOBS: Partial<Record<Region, { types: readonly string[]; chance: number }>> = {
-  f: { types: ['ash-wolf'], chance: .3 },
-  F: { types: ['ash-wolf', 'ash-wolf', 'rivet-maw'], chance: .5 },
-  h: { types: ['rivet-maw'], chance: .45 },
-  v: { types: ['cinder-imp', 'cinder-bailiff'], chance: .55 },
-  '.': { types: ['rivet-maw'], chance: .08 },
+  f: { types: ['ash-wolf'], chance: .5 },
+  F: { types: ['ash-wolf', 'ash-wolf', 'rivet-maw'], chance: .6 },
+  h: { types: ['rivet-maw'], chance: .65 },
+  v: { types: ['cinder-imp', 'cinder-bailiff'], chance: .75 },
+  '.': { types: ['rivet-maw'], chance: .15 },
 };
+/**
+ * The isle's lairs (canon §8.1): wolf dens in the Emberwood, where the Ash Wolves gather after the last ember fades;
+ * the rivet dumps in the hills the Maws chew; the slag-cart heaps of the Ashfields where the Imps and the Bailiffs keep
+ * their writs.
+ */
+export const REGION_HOTSPOTS: readonly ContinentHotspot[] = [
+  { region: 'F', chance: .45, types: ['ash-wolf', 'ash-wolf', 'rivet-maw'], count: 5 },
+  { region: 'f', chance: .3, types: ['ash-wolf'], count: 4 },
+  { region: 'h', chance: .45, types: ['rivet-maw'], count: 5 },
+  { region: 'v', chance: .5, types: ['cinder-imp', 'cinder-bailiff', 'cinder-imp'], count: 5 },
+  // A few Maw nests out in the meadows, small (a starter's first pack fight).
+  { region: '.', chance: .12, types: ['rivet-maw'], count: 3 },
+];
 
 /** The ship from Ember Harbour to Pyrehold, and back. */
 export const SHIP_TO_REACH: StationDef = { id: 'ship-reach', x: 0, label: 'SHIP TO PYREHOLD', kind: 'passage', blurb: 'Sail to Pyrehold, the capital of Infernal Reach.' };
@@ -93,7 +106,7 @@ export const SHIP_TO_REACH: StationDef = { id: 'ship-reach', x: 0, label: 'SHIP 
 export const SHIP_TO_MOSSHARBOR: StationDef = { id: 'ship-isle-verdant', x: 0, label: 'SHIP TO MOSSHARBOR', kind: 'passage', blurb: 'Sail the long way round to Mossharbor, on the jungle continent. Its creatures start at level 15.' };
 
 export const EMBER_ISLE_DEF: ContinentDef = {
-  id: 'ember-isle', map: EMBER_ISLE, ox: OX, oy: OY, roads: ROADS, places: PLACES, names: REGION_NAMES, mobs: REGION_MOBS,
+  id: 'ember-isle', map: EMBER_ISLE, ox: OX, oy: OY, roads: ROADS, places: PLACES, names: REGION_NAMES, mobs: REGION_MOBS, hotspots: REGION_HOTSPOTS,
   town: buildSeamworksSquare, townName: 'Basalt Seamworks', streets: { row: 15, col: 22 }, river: true,
   ways: [
     { place: 'cave', station: CAVE_IN, to: 'slagstone-cave', arrive: 'cave-out' },
