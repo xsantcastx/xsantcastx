@@ -31,6 +31,13 @@ export const WORLD_TIMING = Object.freeze({
   saveMs: 60000,
   /** A wake waits at most this long for the store (ms); then the area wakes empty. */
   loadMs: 5000,
+  /** Protocol 10: an owed credit waits this long for the screen's own number before the room pays its base (ms). */
+  askWaitMs: 2500,
+  /** At most one credit transaction per Keeper this often (ms); a save not written yet is tried again after retryMs. */
+  creditGapMs: 1500,
+  retryMs: 5000,
+  /** A batch the store never takes is given up after this long (ms). */
+  giveUpMs: 600000,
 });
 /** A Keeper's level, as the room believes it, may rise at most this much a minute (a forged jump is not believed). */
 export const LEVEL_RISE_PER_MIN = 3;
@@ -41,8 +48,18 @@ const DROP_ID = /^td:[a-z0-9-]{1,40}:w\.[a-z0-9_-]{1,40}\.[a-z0-9]{1,12}\.[a-z0-
  * `sim`: the bundled module (RoomWorld, WORLD_AREAS) or null (the world is off: every area behaves as protocol 6).
  * `send(session, value)`: an event down one stream. `store`: worldLoad/worldSave (social-identity.mjs).
  */
-export function createWorldRooms({ sim = null, core = null, store = null, now = Date.now, send, log = () => {}, areas = null, allAreas = null, timing = {}, seed = () => Math.random().toString(36).slice(2), fx = false } = {}) {
+export function createWorldRooms({ sim = null, core = null, store = null, db = null, now = Date.now, send, log = () => {}, areas = null, allAreas = null, timing = {}, seed = () => Math.random().toString(36).slice(2), fx = false } = {}) {
   const T = { ...WORLD_TIMING, ...timing };
+  /** Protocol 10: the life, status and credit modules (bundled with the world; absent: the room is protocol 9 for all). */
+  const M = sim?.KeeperLife ? sim : core?.KeeperLife ? core : null;
+  /** The room's credit transaction (room-credit.ts creditRoom) and the Db it writes through (trade-core's). */
+  const credit = typeof M?.creditRoom === 'function' && db ? M.creditRoom : null;
+  /** This process's boot, woven into credit batch ids (unique across restarts). */
+  const bootId = Math.random().toString(36).slice(2, 10);
+  /** Sessions by player id (the world's life accessor), refreshed each step. */
+  const byId = new Map();
+  /** Kills the room paid lately (a party mate's share is asked for by id): id → {k, area, at}. */
+  const recentKills = new Map();
   /** Protocol 7/8 clients: the island only (M1). Protocol 9: every continent and every floor (M3). */
   const worldAreas = new Set(areas ?? sim?.WORLD_AREAS ?? []);
   const everyArea = new Set([...worldAreas, ...(allAreas ?? sim?.WORLD_AREAS_ALL ?? [])]);
@@ -75,6 +92,93 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
     return {};
   };
   const keeperOf = s => ({ id: s.player.id, x: s.player.x, y: s.player.y, level: s.stats?.level ?? levelOf(s), ...dpsOf(s) });
+
+  // ── Protocol 10: the Keeper's life on the room (keeper-life.ts) ──
+  /** The room keeps this Keeper's life: a protocol-10 client of the world (an older one keeps its own). */
+  const lifeOn = s => !!M && enabled && s.world && s.p10;
+  /** The most its declared guard may reach: its save's (signed in, read on join), else its level's (a guest). */
+  const ceilingOf = s => s.stats?.guard ?? M.guestGuard(s.stats?.level ?? levelOf(s));
+  const lifeOf = s => {
+    if (!lifeOn(s)) return null;
+    if (!s.life) {
+      s.life = new M.KeeperLife(M.clampGuard(s.guardSaid ?? null, ceilingOf(s)), Number.isInteger(s.player.hp) && s.player.hp > 0 ? s.player.hp : undefined);
+      s.lifeStats = s.stats;
+    } else if (s.lifeStats !== s.stats) {
+      // The save was read (again): the ceiling may have moved.
+      s.lifeStats = s.stats;
+      s.life.setGuard(M.clampGuard(s.guardSaid ?? null, ceilingOf(s)));
+    }
+    return s.life;
+  };
+  const lifeById = id => { const s = byId.get(id); return s ? lifeOf(s) : null; };
+
+  // ── Protocol 10: XP and Gold paid by the room (room-credit.ts) ──
+  /** The room pays this Keeper: protocol 10, signed in, its character named, a store to write to. */
+  const creditsOn = s => !!credit && s.p10 && !!s.uid && !!s.character;
+  const owedOf = s => (s.owed ??= { items: new Map(), seq: 0, busy: false, lastAt: 0, retryAt: 0, batch: null, done: new Set() });
+  const addOwed = (s, item) => {
+    const o = owedOf(s);
+    if (o.done.has(item.id) || o.items.has(item.id) || o.batch?.items.some(i => i.id === item.id)) return false;
+    o.items.set(item.id, { ...item, ask: item.ask ?? null, at: now() });
+    return true;
+  };
+  /** A kill the room just paid out: each fighter that the room credits is owed its XP (the base until it asks). */
+  const collectKills = room => {
+    const list = room.world?.flushKills?.() ?? [];
+    const t = now();
+    for (const k of list) {
+      recentKills.set(k.id, { k, area: room.area, at: t });
+      for (const id of k.by) {
+        const s = byId.get(id);
+        if (!s || !creditsOn(s)) continue;
+        const base = M.fighterXp(k.hp, k.xpK, s.stats?.level ?? levelOf(s), k.level);
+        addOwed(s, { id: k.id, kind: 'xp', base, cap: base * M.XP_CAP });
+      }
+    }
+    if (recentKills.size > 2048 || list.length) for (const [id, r] of recentKills) if (t - r.at > 60000) recentKills.delete(id);
+  };
+  /** Pay what is due (asked for, or waited on long enough), one transaction per Keeper at a time. */
+  const payOwed = (s, force = false) => {
+    const o = s.owed;
+    if (!o || o.busy || !credit) return null;
+    const t = now();
+    if (!force && t < o.retryAt) return null;
+    if (!o.batch) {
+      // Owed so long the store never took it (a save never written): given up.
+      for (const [id, i] of o.items) if (t - i.at >= T.giveUpMs) { o.items.delete(id); creditStats.failed++; }
+      if (!o.items.size || (!force && t - o.lastAt < T.creditGapMs)) return null;
+      const due = [...o.items.values()].filter(i => force || i.ask !== null || t - i.at >= T.askWaitMs).slice(0, 64);
+      if (!due.length) return null;
+      for (const i of due) o.items.delete(i.id);
+      o.batch = { id: `b.${bootId}.${s.uid.slice(0, 12)}.${++o.seq}`, at: t, area: s.player.area,
+        items: due.map(i => ({ id: i.id, ...(i.kind === 'xp' ? { xp: M.owed(i.base, i.cap, i.ask) } : { gold: M.owed(i.base, i.cap, i.ask) }) })) };
+    }
+    if (!o.batch.items.length) { o.batch = null; return null; }
+    const b = o.batch;
+    o.busy = true; o.lastAt = t;
+    const t0 = performance.now();
+    return credit(db, { uid: s.uid, character: s.character, batch: b.id, area: b.area, items: b.items }, t).then(r => {
+      o.batch = null;
+      // An id whose document is not written yet (its purse, its activity) waits for the next batch.
+      const kept = new Set(r.kept ?? []);
+      for (const i of b.items) {
+        if (kept.has(i.id)) { o.items.set(i.id, { id: i.id, kind: i.xp ? 'xp' : 'gold', base: i.xp ?? i.gold, cap: i.xp ?? i.gold, ask: i.xp ?? i.gold, at: b.at }); continue; }
+        o.done.add(i.id); if (o.done.size > 2000) o.done.delete(o.done.values().next().value);
+      }
+      if (kept.size) o.retryAt = now() + T.retryMs;
+      creditStats.batches++; creditStats.xp += r.xp; creditStats.gold += r.gold; creditStats.dup += r.dup.length; creditStats.ms = Math.round((creditStats.ms * 4 + (performance.now() - t0)) / 5 * 10) / 10;
+      send(s, { type: 'world-credit', ok: true, xp: r.xp, gold: r.gold, debt: r.debtPaid, ids: [...r.paid, ...r.dup] });
+    }, e => {
+      // A save the client has not written yet, or an answer lost on the way (the commit may have landed): kept and tried
+      // again — the same batch, so it can never pay twice (room-credit.ts: the ring). A refusal the save gave is final.
+      const final = typeof e?.status === 'number' && e.status < 500 && e.code !== 'no-save';
+      if (!final && now() - b.at < T.giveUpMs) { o.retryAt = now() + T.retryMs; creditStats.retries++; return; }
+      o.batch = null; creditStats.failed++;
+      log('room credit failed', e);
+      send(s, { type: 'world-credit', ok: false, xp: 0, gold: 0, debt: 0, ids: b.items.map(i => i.id), why: e?.code ?? 'failed' });
+    }).finally(() => { o.busy = false; });
+  };
+  const creditStats = { batches: 0, xp: 0, gold: 0, dup: 0, retries: 0, failed: 0, ms: 0 };
   /** The level the room believes: the one reported, but never more than LEVEL_RISE_PER_MIN above what it believed a minute ago. */
   const levelOf = s => {
     const said = Number.isInteger(s.player.level) ? s.player.level : 1;
@@ -92,7 +196,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
     rooms.set(area, room);
     const ready = saved => {
       if (rooms.get(area) !== room) return;
-      const w = new sim.RoomWorld({ area, seed: `${seed()}|${term}`, now });
+      const w = new sim.RoomWorld({ area, seed: `${seed()}|${term}`, now, life: lifeById });
       w.term = term;
       try { w.load(saved); } catch (e) { log('world load failed', e); }
       room.world = w; room.loading = false; room.last = now();
@@ -129,6 +233,8 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
     const changed = new Set();
     const want = new Map();
     seen = [...sessions];
+    byId.clear();
+    for (const s of seen) byId.set(s.player.id, s);
     let anyone = false;
     for (const s of seen) {
       if (enabled && s.world && s.stream) anyone = true;
@@ -179,12 +285,16 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
       for (const s of room.members.values()) w.keeper(keeperOf(s));
       try { w.tick(dt); } catch (e) { log('world tick failed', e); }
       omens(room);
+      // Protocol 10: a Keeper at zero past its grace is down (everyone near sees it); the kills' credit is owed.
+      for (const s of room.members.values()) if (lifeOf(s)?.tick(t)) w.downed(s.player.id);
+      collectKills(room);
       room.snapAcc += dt * 1000;
       // The ground goes right after the snapshots, never before: the kill that left it reaches each screen first, so
       // the loot lies beside a corpse that is already there.
       if (room.snapAcc >= T.snapMs) { room.snapAcc = 0; snaps(room); flush(room); }
       if (w.dirty && t - room.savedAt >= T.saveMs) void persist(room);
     }
+    for (const s of seen) if (s.owed) void payOwed(s);
     const spent = performance.now() - t0;
     cost.steps++; cost.ms += spent; cost.maxMs = Math.max(cost.maxMs, spent);
     if (t - cost.at >= 60000) { cost.last = { steps: cost.steps, avgMs: Math.round(cost.ms / Math.max(1, cost.steps) * 1000) / 1000, maxMs: Math.round(cost.maxMs * 1000) / 1000 }; cost.steps = 0; cost.ms = 0; cost.maxMs = 0; cost.at = t; }
@@ -217,14 +327,72 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
     sync, step,
     /** A stream (re)opened: the next snapshot is whole, and the ground is sent. */
     opened(s) { const room = roomOf(s); if (room?.world) { room.world.resync(s.player.id); groundTo(s, room.world); } },
-    /** A Keeper's blows (the `/coop/hits` body's hits, already validated field by field). */
-    claims(s, hits) {
+    /**
+     * A Keeper's blows (the `/coop/hits` body's hits, already validated field by field) and, protocol 10, its statuses.
+     * The answer names what the room refused and why (the screen's small cue).
+     */
+    claims(s, hits, st = []) {
       const room = roomOf(s);
       if (!room?.world || !room.members.has(s.player.id)) throw fail(409, 'Not in the world.');
       room.world.keeper(keeperOf(s));
       // (What a kill left is told after the next snapshot carries the kill: step.)
-      return room.world.claims(s.player.id, hits);
+      const r = hits.length ? room.world.claims(s.player.id, hits) : { landed: 0, refused: 0, dmg: 0, no: [] };
+      const out = s.p10 ? r : { landed: r.landed, refused: r.refused, dmg: r.dmg };
+      if (s.p10 && st.length && room.world.statuses) out.st = room.world.statuses(s.player.id, st);
+      collectKills(room);
+      return out;
     },
+    /** Protocol 10: the room keeps this Keeper's life. */
+    lifeOn: s => !!lifeOf(s),
+    /** Protocol 10: the room pays this Keeper's XP and Gold. */
+    creditsOn,
+    /**
+     * Protocol 10: a Keeper's life claims (keeper-life.ts) and its declared guard. Answered with its life as the room
+     * keeps it now.
+     */
+    life(s, data) {
+      const L = lifeOf(s);
+      if (!L) throw fail(409, 'Update the game to have your life kept.');
+      if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some(k => k !== 'g' && k !== 'c')) throw fail(400, 'Invalid life.');
+      if (data.g !== undefined) {
+        const g = M.parseGuard(data.g);
+        if (!g) throw fail(400, 'Invalid guard.');
+        s.guardSaid = g;
+        L.setGuard(M.clampGuard(g, ceilingOf(s)));
+      }
+      const list = data.c ?? [];
+      if (!Array.isArray(list) || list.length > 24) throw fail(400, 'Invalid life.');
+      const claims = list.map(c => M.parseLifeClaim(c));
+      if (claims.some(c => !c)) throw fail(400, 'Invalid life claim.');
+      const t = now(), r = claims.map(c => L.claim(c, t).n);
+      return { ok: true, me: L.view(), n: r };
+    },
+    /**
+     * Protocol 10: the screen's own numbers for what it is owed (a kill's XP with its worn XP and boons, a pile's Gold
+     * with its Gold Find and potion) — never past the cap — and a party mate's share of a kill it stood by.
+     */
+    ask(s, list) {
+      if (!creditsOn(s)) return { ok: false, n: 0 };
+      if (!Array.isArray(list) || list.length > 32) throw fail(400, 'Invalid credit.');
+      let n = 0;
+      const o = owedOf(s);
+      for (const a of list) {
+        if (!a || typeof a !== 'object' || typeof a.id !== 'string' || !/^[A-Za-z0-9:._~-]{1,96}$/.test(a.id) || !Number.isInteger(a.n) || a.n < 0 || a.n > 1e7) throw fail(400, 'Invalid credit.');
+        const it = o.items.get(a.id);
+        if (it) { it.ask = a.n; n++; continue; }
+        if (a.s !== 1) continue;
+        // A party mate's share: it stood near a kill one of its party fought, and did not fight it itself.
+        const rk = recentKills.get(a.id);
+        if (!rk || rk.k.by.includes(s.player.id) || s.player.area !== rk.area || !s.party) continue;
+        if (!rk.k.by.some(id => byId.get(id)?.party === s.party)) continue;
+        if (Math.hypot(s.player.x - rk.k.x, s.player.y - rk.k.y) > 24 * 16) continue;
+        const base = Math.max(1, Math.round(M.fighterXp(rk.k.hp, rk.k.xpK, s.stats?.level ?? levelOf(s), rk.k.level) * M.SHARE));
+        if (addOwed(s, { id: a.id, kind: 'xp', base, cap: base * M.XP_CAP, ask: a.n })) n++;
+      }
+      return { ok: true, n };
+    },
+    /** The Keeper left: whatever it is owed is paid now (best effort). */
+    left(s) { return s.owed ? payOwed(s, true) : null; },
     /** A Keeper reaches for a piece of the ground. */
     take(s, id) {
       const room = roomOf(s);
@@ -233,6 +401,11 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
       room.world.keeper(keeperOf(s));
       const r = room.world.take(id, s.player.id);
       flush(room);
+      // Protocol 10: its Gold is the room's to pay (the base pile until the screen asks for its own number).
+      if (r.ok && r.drop.coins > 0 && creditsOn(s)) {
+        addOwed(s, { id: r.drop.id, kind: 'gold', base: r.drop.coins, cap: M.goldCap(r.drop.coins) });
+        return { ...r, pays: true };
+      }
       return r;
     },
     /** The taker's satchel could not hold it: it lies again. */
@@ -256,7 +429,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
         if (typeof type !== 'string' || !/^[a-z0-9-]{1,40}$/.test(type) || !Number.isFinite(dx) || !Number.isFinite(dy) || Math.abs(dx) > 400 || Math.abs(dy) > 400) throw fail(400, 'Invalid lay.');
         id = room.world.fxLay(type, s.player.x + dx, s.player.y + dy, calm === true);
       }
-      return { ok: true, id, stats: { ...room.world.stats }, mobs: room.world.mobs.mobs.map(m => ({ id: m.nid ?? '', t: m.def.id, hp: Math.round(m.hp), x: Math.round(m.x), y: Math.round(m.y) })), ground: room.world.groundList() };
+      return { ok: true, id, stats: { ...room.world.stats }, mobs: room.world.mobs.mobs.map(m => ({ id: m.nid ?? '', t: m.def.id, hp: Math.round(m.hp), x: Math.round(m.x), y: Math.round(m.y), st: room.world.statusBits?.(m) ?? 0 })), ground: room.world.groundList() };
     },
     /** The health line: the areas awake and their Keepers. */
     health() {
@@ -269,10 +442,11 @@ export function createWorldRooms({ sim = null, core = null, store = null, now = 
         bosses: all.flatMap(r => (r.world?.bossesUp?.() ?? []).map(b => ({ area: r.area, ...b }))),
         step: cost.last ?? { steps: cost.steps, avgMs: Math.round(cost.ms / Math.max(1, cost.steps) * 1000) / 1000, maxMs: Math.round(cost.maxMs * 1000) / 1000 },
         rssMB: Math.round(mem.rss / 1048576), heapMB: Math.round(mem.heapUsed / 1048576),
+        ...(credit ? { credits: { ...creditStats } } : {}),
       };
     },
     /** Save every awake area (shutdown: Cloud Run's SIGTERM gives ten seconds). */
-    async saveAll() { await Promise.all([...rooms.values()].map(persist)); },
+    async saveAll() { await Promise.all([...rooms.values()].map(persist), ...seen.filter(s => s.owed).map(s => payOwed(s, true))); },
     /** The specs: an area's world, or null. */
     worldOf(area) { return rooms.get(area)?.world ?? null; },
     rooms,

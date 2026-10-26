@@ -26,7 +26,7 @@ const floorSpot = w => { const s = w.level.spawnsIn().find(x => w.mobs && sim.MO
 const fell = (w, m, by = 'a') => { w.mobs.applyClaim(m, 1e9, by); w.tick(.05); };
 
 test('protocol 9: every continent and every floor is a world area; protocol 7/8 keep the island', () => {
-  assert.equal(PROTOCOL, 9);
+  assert.ok(PROTOCOL >= 9);
   assert.deepEqual([...WORLD_AREAS], ['ember-isle']);
   for (const a of [...Object.keys(CONTINENTS), ...Object.keys(LEVELS)]) assert.ok(WORLD_AREAS_ALL.includes(a), a);
   // A floor's world is its hand-drawn level: all of it raised at once, its ground ids its own.
@@ -266,7 +266,7 @@ test('protocol 9: kill on a floor, leave, return — still dead; another Keeper 
   await step(4);
   assert.ok(w.mobs.mobs.some(x => x.key === key), 'risen');
   const health = await (await fetch(`http://127.0.0.1:${r.server.address().port}/health`)).json();
-  assert.equal(health.protocol, 9);
+  assert.ok(health.protocol >= 9);
   assert.equal(health.world.loaded, WORLD_AREAS_ALL.length);
 });
 

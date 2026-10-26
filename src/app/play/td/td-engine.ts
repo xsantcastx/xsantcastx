@@ -110,6 +110,9 @@ import { relicRegen, relicTotals } from '../../shared/rpg/boss-uniques';
 import { chestSetPiece } from '../../shared/rpg/set-items';
 import { PARTY_PLATE, PEER_PLATE, TdPeers } from './td-peers';
 import { TdCoop, type CoopRole } from './td-coop';
+import { LifeMirror } from '../world/life-mirror';
+import type { LifeView } from '../world/keeper-life';
+import { ELEMENTS } from '../../shared/loot/damage.model';
 import type { CoopAreas, CoopHitsMsg, CoopSnapMsg } from '../social/coop-protocol';
 import type { WorldDrop } from '../social/world-protocol';
 import { PAL_HEARTBEAT_MS, PAL_MS, PalBook, cleanPals, decodePresencePals, encodePresencePals, type CoopPal } from '../social/coop-pals';
@@ -395,6 +398,27 @@ export class TopDownEngine {
   private purse: { area: string; x: number; y: number; gold: number } | null = null;
   private waking: { t: number; moved: boolean } | null = null;
   private hearthSeen = '';
+  /**
+   * Protocol 10 (play/world/keeper-life.ts): the room keeps this Keeper's life. The screen still shows every blow,
+   * heal and potion at once; what the room did not see goes to it as claims (LifeMirror), each snapshot's word is the
+   * truth plus what is still on its way, and the fall is the room's call (`roomDown`).
+   */
+  private life: LifeMirror | null = null;
+  /** Life after the last accounting; a room blow's local share since; other harm since; regen's fractions. */
+  private lifeMark = 0;
+  private lifeBiteLocal = 0;
+  private lifeHurt = 0;
+  private lifeFrac = 0;
+  private inRoomBite = false;
+  private lifeBusy = false;
+  private lifeSentAt = 0;
+  private lifeGuardSent = '';
+  /** The room holds this Keeper down (its fall is under way until a hearth wakes it). */
+  private roomDown = false;
+  /** The room's most life (it may clamp the screen's). */
+  private roomMax = 0;
+  /** The wake claim's sequence: the room's "down" from before it took the wake is old news. */
+  private wakeQ = 0;
   /** For the hearth specs (`?fxfall=1`, only under an automated browser): `window.__tdHearth` can fell the Keeper and stand him at a hearth. */
   /** For the party spec (`?fxparty=1`, only under an automated browser): `window.__tdParty` fells the nearest creature (the real kill path) or hurts the Keeper. */
   private readonly fxParty = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxparty=1\b/.test(location.search);
@@ -475,6 +499,7 @@ export class TopDownEngine {
       hurtPlayer: n => this.hurt(n),
       healPlayer: n => { this.hp = Math.min(this.maxHp, this.hp + n); },
       playerHp: () => this.hp,
+      lifeBite: (cut, land) => this.roomBite(cut, land),
       hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember' || this.level.ground(c, r) === 'blackwater',
       passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall' && g !== 'vinewall' && g !== 'bark'; },
       // Sight (td-sight.ts): whatever the walkability map keeps feet off stops a ray and a shot — walls, rock, stalls,
@@ -508,6 +533,9 @@ export class TopDownEngine {
       phase: () => (this.pinned !== null ? phaseOfHour(this.pinned) : this.skyPhase),
       still: () => this.still,
       role: (role, was) => this.coopRole(role, was),
+      cue: why => this.options.cueText?.(why) ?? '',
+      life: me => this.lifeHeard(me),
+      down: (to, x, y, self) => this.coopDown(to, x, y, self),
     });
     this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -789,6 +817,11 @@ export class TopDownEngine {
       // Protocol 7: the room's ground as this screen holds it, and a walk onto one piece of it (the real pick path).
       ground: () => this.mobs.drops.filter(d => d.room).map(d => ({ id: d.id, x: Math.round(d.x), y: Math.round(d.y), coins: d.coins, label: d.label, hold: Math.round((d.room?.hold ?? 0) * 10) / 10, corpse: d.corpse ?? '' })),
       walkTo: (id: string) => { const g = this.mobs.drops.find(d => d.id === id); if (!g) return false; this.player.x = g.x; this.player.y = g.y; return true; },
+      // Protocol 10: cast a skill through the real path (a status it lays on a room creature is claimed), the life the
+      // room keeps as this screen mirrors it, and harm the room did not deal (claimed as such).
+      cast: (id: string) => this.mobs.useAbility(id as SkillId),
+      life: () => this.lifeView(),
+      harm: (n: number) => { this.hurt(n); return Math.round(this.hp); },
     };
   }
 
@@ -1049,8 +1082,17 @@ export class TopDownEngine {
    * A drink from the potion belt (the host consumed the potion; potions.model.ts potionEffect): life and mana pour in
    * over `secs` (a gentle fill), or at once when `secs` is 0. A green sparkle rises and the amount floats up.
    */
-  drinkPotion(heal: number, mana: number, secs: number): void {
+  drinkPotion(heal: number, mana: number, secs: number, id = ''): void {
     const p = this.player;
+    // Protocol 10: the room keeps the life — the potion fills it at once here and is claimed (its id: the room checks it).
+    if (this.life && heal > 0) {
+      this.lifeAccount();
+      const before = this.hp;
+      this.hp = Math.min(this.roomMax || this.maxHp, this.hp + heal);
+      this.lifeMark += this.hp - before;
+      this.life.claim('potion', heal, id || undefined);
+      heal = 0;
+    }
     this.mobs.effects.push({ kind: 'heal', x: p.x, y: p.y, age: 0, life: .7, dir: 1 });
     if (heal > 0) this.mobs.floaters.push({ x: p.x - 6, y: p.y - 36, text: `+${Math.round(heal)}`, color: '#7fe08a', age: 0 });
     if (mana > 0) this.mobs.floaters.push({ x: p.x + 6, y: p.y - 30, text: `+${Math.round(mana)}`, color: '#7fb8ff', age: 0 });
@@ -1367,9 +1409,22 @@ export class TopDownEngine {
    */
   private hurt(n: number): void {
     if (this.waking) return;
+    if (this.life && !this.roomDown) {
+      // Protocol 10: shown at once, never the last point — the room decides the fall (lifeHeard → fallNow).
+      if (this.inRoomBite) this.lifeBiteLocal += n; else this.lifeHurt += n;
+      this.hp = Math.max(1, this.hp - n);
+      this.lastHurt = this.time;
+      return;
+    }
     this.hp = Math.max(0, this.hp - n);
     this.lastHurt = this.time;
     if (this.hp > 0) return;
+    this.fallNow();
+  }
+  /** The Keeper falls (life at zero; or, protocol 10, the room's word): the purse left, the dark, the hearth. */
+  private fallNow(): void {
+    if (this.waking) return;
+    this.hp = 0;
     const w = this.whereabouts;
     this.mobs.target = null; this.path = []; this.arrive = null; this.keys.clear(); this.joy = null; this.chop = null;
     this.waking = { t: 0, moved: false };
@@ -1563,6 +1618,8 @@ export class TopDownEngine {
     }
     if (!woke) { this.enter(this.world, ''); this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y; }
     this.hp = this.maxHp; this.mobs.mana = this.mobs.maxMana; this.mobs.target = null;
+    // Protocol 10: back on its feet at the hearth, whole — the room is told (it held the Keeper down until now).
+    if (this.life) { this.wakeQ = this.life.claim('wake', this.maxHp); this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0; this.roomDown = false; }
     this.player.dir = 'down';
     this.placeCompanions();
     this.options.onWoke?.({ hearth: woke?.id ?? null, town: woke?.town ?? this.world.def.townName });
@@ -3188,6 +3245,78 @@ export class TopDownEngine {
     try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
     this.coop.after(dt);
     this.tickPals(dt);
+    this.lifeFrame();
+  }
+
+  // ── Protocol 10: the life the room keeps (play/world/keeper-life.ts, life-mirror.ts) ──
+  /** Protocol 10: the room lays this Keeper's statuses on its creatures (and tells it what it refused). */
+  setRoomStatus(on: boolean): void { this.coop.setStatusOn(on); }
+  /** The room keeps this Keeper's life (the HUD: connected to a protocol-10 room that said so), or no longer. */
+  setRoomLife(on: boolean): void {
+    if (on === !!this.life) return;
+    if (on) { this.life = new LifeMirror(); this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0; this.lifeFrac = 0; this.lifeGuardSent = ''; this.roomMax = 0; }
+    else { this.life = null; this.roomDown = false; this.roomMax = 0; }
+    this.canvas.setAttribute('data-room-life', on ? 'on' : '');
+  }
+  /** A room's blow: the room cut `cut`; the screen lands it through its own wards and claims the difference. */
+  private roomBite(cut: number, land: () => void): void {
+    if (!this.life) { land(); return; }
+    const before = this.lifeBiteLocal;
+    this.inRoomBite = true;
+    try { land(); } finally { this.inRoomBite = false; }
+    const local = this.lifeBiteLocal - before, d = Math.round(cut - local);
+    if (d > 0) this.life.claim('soak', d); else if (d < 0) this.life.claim('hurt', -d);
+  }
+  /** What moved the life since the last look that the room did not see: a heal (regen, leech, a skill) or harm. */
+  private lifeAccount(): void {
+    if (!this.life) return;
+    const healed = this.hp - this.lifeMark + this.lifeBiteLocal + this.lifeHurt + this.lifeFrac;
+    const whole = Math.trunc(healed);
+    this.lifeFrac = healed - whole;
+    if (whole > 0) this.life.claim('heal', whole); else if (whole < 0) this.life.claim('hurt', -whole);
+    if (this.lifeHurt >= 1) this.life.claim('hurt', this.lifeHurt);
+    this.lifeMark = this.hp; this.lifeBiteLocal = 0; this.lifeHurt = 0;
+  }
+  /** Each frame: account, and send what is due (the guard when it changed; claims at most every 150 ms). */
+  private lifeFrame(): void {
+    if (!this.life || !this.options.onLife) return;
+    this.lifeAccount();
+    const g = { m: Math.round(this.maxHp), d: Math.round(this.mobs.defense), r: ELEMENTS.map(el => Math.max(-200, Math.min(100, Math.round(this.mobs.resists[el] ?? 0)))) };
+    const key = `${g.m}|${g.d}|${g.r.join(',')}`;
+    const now = performance.now();
+    // In a fight the room hears every 150 ms; out of it (regeneration) once a second; a potion or a wake at once.
+    const gap = this.life.urgent ? 0 : this.time - this.lastHurt < 5 ? 150 : 1000;
+    if (this.lifeBusy || (!this.life.queued && key === this.lifeGuardSent) || now - this.lifeSentAt < gap) return;
+    const life = this.life, c = life.drain(now), send = key !== this.lifeGuardSent;
+    this.lifeBusy = true; this.lifeSentAt = now;
+    void this.options.onLife({ ...(send ? { g } : {}), c }).then(me => {
+      if (this.life !== life) return;
+      if (!me) { life.requeue(c); return; }
+      if (send) this.lifeGuardSent = key;
+      this.lifeHeard(me);
+    }, () => { if (this.life === life) life.requeue(c); }).finally(() => { this.lifeBusy = false; });
+  }
+  /** The room's word on this Keeper's life (a snapshot's `me`, a claim's answer). */
+  private lifeHeard(me: LifeView): void {
+    if (!this.life) return;
+    this.lifeAccount();
+    const v = this.life.reconcile(me, performance.now());
+    if (v === null) return;
+    this.roomMax = me.m;
+    this.canvas.setAttribute('data-room-hp', `${me.h}/${me.m}`);
+    if (me.d) { if (!this.roomDown && !this.waking && me.q >= this.wakeQ) { this.roomDown = true; this.fallNow(); } return; }
+    if (this.waking || this.roomDown) return;
+    this.hp = Math.max(1, Math.min(this.maxHp, me.m, v));
+    this.lifeMark = this.hp;
+  }
+  /** The room holds a Keeper down: this one falls (its own word follows in `me`); another near is shown fallen. */
+  private coopDown(to: string, x: number, y: number, self: boolean): void {
+    if (self) { if (this.life && !this.roomDown && !this.waking) { this.roomDown = true; this.fallNow(); } return; }
+    this.options.onPeerDown?.(to, x, y);
+  }
+  /** The e2e's view of the life the room keeps: the room's word, claims in flight, round trips (ms). */
+  lifeView(): { on: boolean; hp: number; room: LifeView | null; inFlight: number; rtt: number[]; down: boolean } {
+    return { on: !!this.life, hp: Math.round(this.hp), room: this.life?.room ?? null, inFlight: this.life?.inFlight ?? 0, rtt: [...(this.life?.rtt ?? [])], down: this.roomDown };
   }
 
   private updateFight(dt: number): void {
@@ -3248,6 +3377,7 @@ export class TopDownEngine {
     if (regen > 0 && this.hp > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + regen * dt);
     // A Grave-cold curse (shared/grave-goods) drains slowly: never the last point of life.
     else if (regen < 0 && this.hp > 1) this.hp = Math.max(1, this.hp + regen * dt);
+    this.lifeFrame();
   }
 
   // ── Smoke ──────────────────────────────────────────────────────────────────

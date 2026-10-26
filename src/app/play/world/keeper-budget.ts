@@ -22,6 +22,11 @@
 import { claimDpsCap } from '../social/coop-rules';
 import { unpackInventory } from '../../../../functions-game/src/trade-core';
 import { keeperLevelForXp } from '../../shared/skills/keeper-level';
+import { fightStats } from '../td/td-skills';
+import { addSetBonuses } from '../../shared/rpg/set-items';
+import type { ItemStats } from '../../shared/rpg/item.model';
+import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
+import { slackGuard, type KeeperGuard } from './keeper-life';
 
 /**
  * The simulated Keeper's sustained damage a second on one creature, by level (combat-sim.mjs --dps, 2026-10-22: the
@@ -60,6 +65,14 @@ export interface KeeperBudget {
   boost: number;
   /** Damage a second the room believes, over the claim gate's window. */
   dps: number;
+  /**
+   * Protocol 10: the most the Keeper's declared guard may stand at (keeper-life.ts) — its save's own life, Defense and
+   * resists (td-skills fightStats on its level, attributes and worn gear with their sets), lifted by the slack.
+   */
+  guard: KeeperGuard;
+  /** Protocol 10: the worn gear's Gold Find and XP (%), for the room's credit caps (room-credit.ts). */
+  goldFind: number;
+  xpBonus: number;
 }
 
 type Rec = Record<string, unknown>;
@@ -76,27 +89,49 @@ export function huntingXp(activity: unknown): number {
   return Math.max(0, num(by?.['hunting']));
 }
 
-/** The worn gear's damage, crit and speed (the best family: the room does not need to know which one the calling reads). */
-export function wornLift(inventory: unknown): number {
+/** The worn records' summed stats and their definition ids (tombstoned and past-16 records left out). */
+export function wornTotals(inventory: unknown): { stats: Record<string, number>; ids: string[] } {
   // The cloud document may be in the packed format (save format 3): read it as the v2 ledger it encodes.
   const v = unwrap(unpackInventory(unwrap(inventory)));
   const records = v && Array.isArray(v['records']) ? v['records'] as unknown[] : [];
   const tombs = new Map<string, number>();
   for (const t of v && Array.isArray(v['tombstones']) ? v['tombstones'] as unknown[] : []) if (isObj(t) && typeof t['id'] === 'string') tombs.set(t['id'], num(isObj(t['revision']) ? t['revision']['hlc'] : 0));
-  const sum: Record<string, number> = {};
+  const stats: Record<string, number> = {}, ids: string[] = [];
   let worn = 0;
   for (const r of records) {
     if (!isObj(r) || r['kind'] !== 'instance' || !isObj(r['location']) || r['location']['kind'] !== 'equipped') continue;
     const id = String(r['id']);
     if (tombs.has(id) && (tombs.get(id) ?? 0) >= num(isObj(r['revision']) ? r['revision']['hlc'] : 0)) continue;
     if (++worn > 16) break;
-    const stats = isObj(r['stats']) ? r['stats'] : {};
-    for (const k of ['attackDamage', 'spellDamage', 'critChance', 'attackSpeed', 'castSpeed']) sum[k] = (sum[k] ?? 0) + Math.max(0, Math.min(1000, num(stats[k])));
+    if (typeof r['definitionId'] === 'string') ids.push(r['definitionId']);
+    const st = isObj(r['stats']) ? r['stats'] : {};
+    for (const [k, n] of Object.entries(st)) if (/^[A-Za-z]{1,32}$/.test(k)) stats[k] = (stats[k] ?? 0) + Math.max(-1000, Math.min(10000, num(n)));
   }
-  const dmg = Math.min(500, Math.max(sum['attackDamage'] ?? 0, sum['spellDamage'] ?? 0));
-  const crit = Math.min(100, sum['critChance'] ?? 0);
-  const speed = Math.min(200, Math.max(sum['attackSpeed'] ?? 0, sum['castSpeed'] ?? 0));
+  return { stats, ids };
+}
+
+/** The worn gear's damage, crit and speed (the best family: the room does not need to know which one the calling reads). */
+export function wornLift(inventory: unknown): number {
+  const sum = wornTotals(inventory).stats;
+  const g = (k: string) => Math.max(0, Math.min(1000, sum[k] ?? 0));
+  const dmg = Math.min(500, Math.max(g('attackDamage'), g('spellDamage')));
+  const crit = Math.min(100, g('critChance'));
+  const speed = Math.min(200, Math.max(g('attackSpeed'), g('castSpeed')));
   return (1 + dmg / 100) * (1 + crit / 100) * (1 + speed / 100);
+}
+
+const VOCS: readonly string[] = ['warlock', 'ashguard', 'lanternwright', 'thornstrider'];
+/** The guard the Keeper's save allows (before the slack): fightStats on its level, attributes and worn gear. */
+export function saveGuard(level: number, look: unknown, inventory: unknown): KeeperGuard {
+  const l = unwrap(look);
+  const voc = (l && typeof l['vocation'] === 'string' && VOCS.includes(l['vocation']) ? l['vocation'] : 'warlock') as Vocation;
+  const st = l && isObj(l['stats']) ? l['stats'] : {};
+  const pts = (k: string) => Math.max(0, Math.min(5000, Math.floor(num(st[k]))));
+  const stats: KeeperStats = { vit: pts('vit'), ene: pts('ene'), spi: pts('spi'), agi: pts('agi') };
+  const worn = wornTotals(inventory);
+  const gear = addSetBonuses(worn.stats as Partial<ItemStats>, worn.ids);
+  const f = fightStats(level, stats, gear, voc, 0);
+  return { max: f.maxHp, defense: f.defense, resists: { ...f.resists }, level };
 }
 
 /** Damage a second the room allows a Keeper of `level` whose gear lifts it by `boost`. Never below protocol 5's. */
@@ -114,5 +149,9 @@ export function keeperBudget(save: { activity?: unknown; look?: unknown; invento
   const look = unwrap(save.look);
   const vocation = look && typeof look['vocation'] === 'string' && /^[a-z]{1,16}$/.test(look['vocation']) ? look['vocation'] : '';
   const boost = wornLift(save.inventory);
-  return { level, vocation, boost, dps: budgetFor(level, boost) };
+  const sum = wornTotals(save.inventory).stats;
+  return {
+    level, vocation, boost, dps: budgetFor(level, boost), guard: slackGuard(saveGuard(level, save.look, save.inventory)),
+    goldFind: Math.max(0, num(sum['goldFind'])), xpBonus: Math.max(0, num(sum['xpBonus'])),
+  };
 }
