@@ -473,9 +473,13 @@ export type IsoSpec =
   | { kind: 'stall'; w: number; palette: number; goods: 'pots' | 'bread' | 'gems' | 'tools' | 'books' | 'fish'; seed: number };
 
 const cache = new Map<string, Sprite>();
+/** Each cached sprite's key (its painter and seed): the isometric view finds its own art by it (td-iso-props.ts). */
+const KEYS = new WeakMap<Sprite, string>();
+/** The cache key a sprite was painted under (`tree:oak:3`, `barrel`, `fence:3`…), or undefined for one painted fresh. */
+export function spriteKey(sp: Sprite): string | undefined { return KEYS.get(sp); }
 function cached(key: string, make: () => Sprite): Sprite {
   let s = cache.get(key);
-  if (!s) { s = make(); if (GROWN.has(key.replace(/[-:].*$/, '')) && !NOT_GROWN.some(n => key.startsWith(n))) s = grownSprite(s); cache.set(key, s); }
+  if (!s) { s = make(); if (GROWN.has(key.replace(/[-:].*$/, '')) && !NOT_GROWN.some(n => key.startsWith(n))) s = grownSprite(s); cache.set(key, s); KEYS.set(s, key); }
   return s;
 }
 
@@ -636,7 +640,7 @@ export function tree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
   const v = ((seed % 6) + 6) % 6;
   // Environment detail Low (td-detail.ts): the old clean tree with just a soft shadow.
   // The art-direction prototype's option B (td-artopt.ts): the HD oak.
-  if (optHdWorld() && kind !== 'pine' && envDetail() !== 'low') { const key = `hd-tree:${v}`; let sp = cache.get(key); if (!sp) cache.set(key, sp = hdOak(v)); return sp; }
+  if (optHdWorld() && kind !== 'pine' && envDetail() !== 'low') { const key = `hd-tree:${v}`; let sp = cache.get(key); if (!sp) { cache.set(key, sp = hdOak(v)); KEYS.set(sp, key); } return sp; }
   if (envDetail() === 'low') return cached(`low-tree:${kind}:${v}`, () => ({ ...flatTree(kind, v), shadow: { img: shadowSprite(kind === 'pine' ? 26 : 34, 11), x: kind === 'pine' ? -10 : -14, y: -7 } }));
   return cached(`tree:${kind}:${v}`, () => kind === 'pine' ? pineTree(v) : broadleafTree(kind, v));
 }
