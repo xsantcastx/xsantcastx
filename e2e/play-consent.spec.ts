@@ -44,6 +44,8 @@ async function firstVisit(page: Page): Promise<void> {
     const keepLobby = localStorage.getItem('eclipse-lobby');
     localStorage.clear();
     if (keepLobby) localStorage.setItem('eclipse-lobby', keepLobby);
+    // The bar's layout is measured against the Classic canvas; Isometric adds layered canvases.
+    localStorage.setItem('eclipse-td-graphics', 'classic');
     sessionStorage.clear();
     // The tutorial stays seen, so the first-arrival "Make your Keeper" offer does not open over the bar.
     localStorage.setItem('eclipse-onboarding', keepOnboarding ?? JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }));
