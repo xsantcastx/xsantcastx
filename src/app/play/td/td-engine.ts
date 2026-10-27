@@ -28,6 +28,7 @@ import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './t
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
 import { offerClassic, onGraphics, optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
+import { behindCrown, crownFade, drawContact, drawIsoArt, drawIsoIcon, drawIsoShadow, fenceJoins, isoArt, isoIcon, isoPartDepth, isoParts, isoPropBakes, isoPropPixels, isoPropsFrame } from './td-iso-props';
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { bakedStructure, drawIsoBeacon, drawStructFloor, drawIsoHearth, drawIsoPurse, drawIsoShrine, drawIsoWaygate, isoStructure, keeperBehind, stepStructures, stripDepth, structDither } from './td-hd-structures';
@@ -217,7 +218,7 @@ const FLOAT_LIFT = 20;
 /** Iso: a roofed floor's own warm dark (an inn's, a lodge's), lit by its lamps (drawLight). */
 const INDOOR: NightPass = { rgb: [34, 20, 34], alpha: .5, warm: .9, amount: 1 };
 /** The iso depth queue's item kinds (td-iso.ts IsoQueue). */
-const K = { wall: 1, prop: 2, obj: 3, person: 4, mob: 5, raised: 6, pet: 7, corpse: 8, drop: 9, hearth: 10, shrine: 11, chalk: 12, purse: 13, gate: 14, beacon: 15, beast: 16, pal: 17, peer: 18, fire: 19, struct: 20 } as const;
+const K = { wall: 1, prop: 2, obj: 3, person: 4, mob: 5, raised: 6, pet: 7, corpse: 8, drop: 9, hearth: 10, shrine: 11, chalk: 12, purse: 13, gate: 14, beacon: 15, beast: 16, pal: 17, peer: 18, fire: 19, struct: 20, art: 21 } as const;
 const MOTES = 10;              // an aura's motes alive at once (spec: ≤ 10)
 const SHARDS = 8;
 /** A loot pop: the small burst when gear lands on the ground or goes into the satchel (spec §Loot). */
@@ -648,6 +649,8 @@ export class TopDownEngine {
       hdIds: () => hdIds(),
       // The HD figures' cached sheets (td-hd-keeper.ts), bytes: the phone memory check.
       hdBytes: () => hdFigureBytes(),
+      // The ground dressing's isometric twins (td-iso-props.ts): bakes so far, their ms, and the baked canvas pixels.
+      isoProps: () => ({ ...isoPropBakes(), px: isoPropPixels() }),
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
@@ -1810,7 +1813,7 @@ export class TopDownEngine {
   }
   /** The pet's face for the HUD chip (a data URL, made once per pet). */
   /** The HUD chip's face: the HD bust (isometric B), else the classic face. */
-  petFace(): string { if (!this.pet) return ''; if (optHdFigures() && envDetail() !== 'low' && hasHdModel(`pet:${this.pet.id}`)) return hdPetBust(this.pet.id) || petFace(this.pet.id); return petFace(this.pet.id); }
+  petFace(): string { if (!this.pet) return ''; if (this.hdFigures() && hasHdModel(`pet:${this.pet.id}`)) return hdPetBust(this.pet.id) || petFace(this.pet.id); return petFace(this.pet.id); }
   get realm(): null { return null; }
   get placeable(): null { return null; }
   /** Walk to a station and open it on arrival (`instant`: stand there now). */
@@ -2006,7 +2009,7 @@ export class TopDownEngine {
       glowSquare(c, gx, gy, 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, .32);
       c.globalCompositeOperation = 'source-over';
       const fl = this.still ? 'mid' : GLIM_FLAP[Math.floor(time * 8) % 4];
-      if (optHdFigures() && envDetail() !== 'low') { const g2 = hdGlim(fl, 'calm'); c.drawImage(g2.img, 0, 0, g2.img.width, g2.img.height, gx - g2.ax / 2, gy + 5 - g2.ay / 2, g2.img.width / 2, g2.img.height / 2); }
+      if (this.hdFigures()) { const g2 = hdGlim(fl, 'calm'); c.drawImage(g2.img, 0, 0, g2.img.width, g2.img.height, gx - g2.ax / 2, gy + 5 - g2.ay / 2, g2.img.width / 2, g2.img.height / 2); }
       else { const sprite = glimFrame(fl, 'calm'); if (sprite) c.drawImage(sprite, gx - Math.floor((GLIM_W + 2) / 2), gy - Math.floor((GLIM_H + 2) / 2)); }
     }
   }
@@ -3084,7 +3087,8 @@ export class TopDownEngine {
     // A blow it took: it blinks (never a body flash over the floor).
     if (b.hurtT > 0 && Math.floor(b.hurtT * 20) % 2) return;
     // Isometric B: the pet in HD (td-hd-pets.ts), its true facing; a flier's hover is in its own model.
-    if (optHdFigures() && hasHdModel(`pet:${b.id}`) && envDetail() !== 'low') {
+    // Isometric draws pets in HD at every detail (as the Keepers): Low only drops it on the top-down B/C prototype.
+    if (this.hdFigures() && hasHdModel(`pet:${b.id}`)) {
       const clip = petClip(frame);
       c.save(); c.translate(x, y + 1 + hop);
       this.paintHdCreature(c, `pet:${b.id}`, this.hdRow(b, b.x, b.y, b.face), clip.anim, clip.f, null, false);
@@ -3142,7 +3146,7 @@ export class TopDownEngine {
       c.globalCompositeOperation = 'lighter';
       glowSquare(c, x, y, this.glimBright ? 9 : 7, { core: '#fff2c4', body: '#ffd98a', edge: '#c88a2a' }, this.glimBright ? .5 : .32);
       c.globalCompositeOperation = 'source-over';
-      if (optHdFigures() && envDetail() !== 'low') {
+      if (this.hdFigures()) {
         // Isometric B: Glim at the HD pixel, half a world px a sheet px, its body on (x, y).
         const g2 = hdGlim(flap, this.glimMoodNow());
         c.drawImage(g2.img, 0, 0, g2.img.width, g2.img.height, x - g2.ax / 2, y + 5 - g2.ay / 2, g2.img.width / 2, g2.img.height / 2);
@@ -4429,7 +4433,8 @@ export class TopDownEngine {
     if (this.iso) {
       this.isoScreen();
       const flat = (img: HTMLCanvasElement, x: number, y: number) => { const X = x - y, Y = (x + y) / 2, f = isoFlat(img); c.drawImage(f, X - img.height, Y, f.width / 2, f.height / 2); };
-      for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow; if (fl) flat(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (sh) flat(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
+      // An object with an isometric twin (td-iso-props.ts) casts its own shadow down and to the right.
+      for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow, ia = isoArt(sp); if (fl) flat(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (ia) drawIsoShadow(c, ia, o.x, o.y); else if (sh) flat(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
     } else for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow; if (fl) c.drawImage(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (sh) c.drawImage(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
     const surface = this.level === this.world;
     if (surface) {
@@ -4738,7 +4743,10 @@ export class TopDownEngine {
         circlePixels(7 + r * 3).forEach((q, i) => { if ((i + r) % 2 === 0) c.fillRect(X + q.x, Y - 5 + Math.round(q.y / 2), 1, 1); });
       }
       c.globalAlpha = 1;
-      if (icon) {
+      if (icon && this.iso) {
+        // Iso: tipped back onto the floor with a pixel of thickness, a soft contact shadow under it (td-iso-props).
+        drawContact(c, X, Y - 1, 7); drawIsoIcon(c, isoIcon(icon), X, Y, !!(seed & 1));
+      } else if (icon) {
         // Its own shape, lying on the ground: a one-pixel dark shadow under it, mirrored by the drop's seed.
         const S = icon.width, x0 = X - (S >> 1), y0 = Y - S + 1;
         c.fillStyle = '#2a1a24'; c.globalAlpha = .55; c.fillRect(x0 + 1, Y - 1, S - 2, 2); c.globalAlpha = 1;
@@ -4763,12 +4771,16 @@ export class TopDownEngine {
       }
     } else if (g.coins > 0) {
       const beat = this.still ? .05 : ((this.time + (this.dropSeed(g) % 97) / 31) % 2.4) / 2.4;
+      if (this.iso) drawContact(c, X, Y - 1, 7);
       drawGoldPile(c, X, Y, goldPileSize(g.coins), beat < .12);
+    } else if (this.dropSprite(g) && this.iso) {
+      drawContact(c, X, Y - 1, 7); drawIsoIcon(c, isoIcon(this.dropSprite(g)!), X, Y, false);
     } else if (this.dropSprite(g)) {
       const icon = this.dropSprite(g)!, S = icon.width;
       c.fillStyle = '#2a1a24'; c.globalAlpha = .55; c.fillRect(X - (S >> 1) + 1, Y - 1, S - 2, 2); c.globalAlpha = 1;
       c.drawImage(icon, X - (S >> 1), Y - S + 1);
     } else {
+      if (this.iso) drawContact(c, X, Y - 1, 6);
       c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 8, 8, 8); c.fillStyle = '#a8743f'; c.fillRect(X - 3, Y - 7, 6, 6); c.fillStyle = '#c99657'; c.fillRect(X - 3, Y - 7, 6, 2);
     }
   }
@@ -5638,6 +5650,9 @@ export class TopDownEngine {
   private readonly isoQ = new IsoQueue();
   /** Iso: a frame counter (the structures' look-ahead runs every eighth frame). */
   private isoTick = 0;
+  /** The iso feet a crown fades for this frame (x, y pairs) and how many. */
+  private readonly isoFadePts = new Float64Array(64);
+  private isoFadeN = 0;
   private readonly isoFaces = new WeakMap<object, { x: number; y: number; row: number; flip: boolean; turned: boolean; front: boolean }>();
   /** A view object for the peers' painter, reused. */
   private readonly isoPeerView: { scale: number; camX: number; camY: number; time: number; still: boolean; hd?: (p: { x: number; y: number; dir: 'side' | 'down' | 'up'; face: 1 | -1 }) => { view: HdView; flip: boolean } } = { scale: 1, camX: 0, camY: 0, time: 0, still: false, hd: p => this.hdFacing(p) };
@@ -5694,6 +5709,8 @@ export class TopDownEngine {
     return X > ic.x - pad && X < ic.x + ic.w + pad && Y > ic.y - pad && Y < ic.y + ic.h + pad * 2;
   };
   private readonly isoNear = (x: number, y: number): boolean => this.isoIn(x, y, 60);
+  /** The level's objects in a world box (a fence run looks for the next run along it, td-iso-props fenceJoins). */
+  private readonly isoNearObjs = (x0: number, y0: number, x1: number, y1: number) => this.level.objectsIn(x0, y0, x1, y1);
   /**
    * Iso's two layers over the world canvas (DOM siblings, no pointer events): the light map, drawn at its own low
    * resolution and scaled up by the compositor (on a phone the GPU) instead of composited over every pixel by the 2D
@@ -5722,6 +5739,8 @@ export class TopDownEngine {
     if (this.perf) { if (this.isoFlush) this.ctx.getImageData(0, 0, 1, 1); this.isoMark = performance.now(); this.isoProf[10]++; }
     const PX = Math.round(p.x) - Math.round(p.y), PY = (Math.round(p.x) + Math.round(p.y)) / 2;
     ic.w = cw / s; ic.h = ch / s;
+    // The isometric twins (td-iso-props.ts) bake on first sight, within this much of the frame.
+    isoPropsFrame(this.frameAt + 7, !p.moving && !this.path.length);
     ic.x = Math.round(PX - ic.w / 2); ic.y = Math.round(PY - up(20) - ic.h / 2);
     // The world under the view: the bounding box of its four corners (and a margin below for tall things standing just off it).
     { const t = ic.y - 60, b = ic.y + ic.h + 140, l = ic.x - 40, r = ic.x + ic.w + 40, W = this.isoWorld;
@@ -5775,6 +5794,8 @@ export class TopDownEngine {
       const sp = o.sprite(), st = sp.iso ? isoStructure(sp) : null;
       // A house or a stall built at this angle (td-hd-structures.ts), in 16-px strips sorted at its front edge.
       if (st) { const ox = Math.round(o.x), oy = Math.round(o.y), L = ox - oy - st.ax / 2, Wd = st.img.width / 2; for (let sx = 0; sx < Wd; sx += 16) q.push(K.struct, stripDepth(st, ox, oy, L + sx + 8), o, sx, Math.min(16, Wd - sx)); continue; }
+      const ia = isoArt(sp);
+      if (ia) { const j = ia.run ? fenceJoins(o, ia, this.isoNearObjs) : false; for (let k = 0, n = isoParts(ia); k < n; k++) q.push(K.art, isoPartDepth(ia, o.x, o.y, k), o, k, j ? 1 : 0); continue; }
       const k = sp.k ?? 1, w = sp.img.width / k, b = o.block;
       if (!b || (b.w <= 1 && b.h <= 1) || w <= 40) { q.push(K.obj, (o.x + o.y) / 2, o, -1, 0); continue; }
       // A wide object in 16-px strips, each sorted at the front edge of the footprint under it.
@@ -5830,6 +5851,12 @@ export class TopDownEngine {
       }
     }
     q.push(K.person, PY, p, p.moving ? 2 : 0);
+    // What a tree's crown fades for (td-iso-props behindCrown): the Keeper, the target, hostiles within six tiles.
+    { const F = this.isoFadePts, tg = this.mobs.target; let n = 0;
+      const add = (x: number, y: number) => { if (n < 32) { F[n * 2] = Math.round(x) - Math.round(y); F[n * 2 + 1] = (Math.round(x) + Math.round(y)) / 2; n++; } };
+      add(p.x, p.y); if (tg) add(tg.x, tg.y);
+      for (const m of this.mobs.mobs) if (m !== tg && Math.abs(m.x - p.x) < 96 && Math.abs(m.y - p.y) < 96) add(m.x, m.y);
+      this.isoFadeN = n; }
     for (const f of this.gather.fires) if (f.lv === this.level.id && inView(f.x, f.y)) q.push(K.fire, (f.x + f.y) / 2, f);
     q.sort();
     this.prof(2);
@@ -5958,6 +5985,15 @@ export class TopDownEngine {
         }
         return;
       }
+      case K.art: {
+        const o = ref as TdObject, ia = isoArt(o.sprite());
+        if (!ia) return;
+        const p = this.player, jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
+        this.isoScreen();
+        const fade = ia.fades ? crownFade(o, behindCrown(ia, o.x, o.y, this.isoFadePts, this.isoFadeN), this.frameDt, this.still) : 1;
+        drawIsoArt(c, ia, o.x, o.y, q.a[i], this.time, this.still, jig, fade, q.b[i] === 1);
+        return;
+      }
       case K.person: { const pp = ref as Person; this.isoAt(pp.x, pp.y); this.drawPerson(pp, q.a[i] === 2 ? 'run' : q.a[i] === 1 ? 'walk' : 'idle'); return; }
       case K.mob: { const m = ref as Mob; this.isoAt(m.x, m.y); this.drawMob(m); return; }
       case K.raised: { const m = ref as Minion; this.isoAt(m.x, m.y); this.drawRaised(m); return; }
@@ -5967,7 +6003,7 @@ export class TopDownEngine {
       case K.struct: { this.isoDrawStrip(ref as TdObject, q.a[i], q.b[i]); return; }
       case K.hearth: { const h = ref as TdHearth; this.isoAt(h.x, h.y); drawIsoHearth(c, h.x, h.y, this.hearthLit.has(h.id), this.time, this.still); return; }
       case K.shrine: { const h = ref as { x: number; y: number }; this.isoAt(h.x, h.y); drawIsoShrine(c, h.x, h.y, this.hearthBlessed, this.time, this.still); return; }
-      case K.chalk: { const st = ref as { n: number }, x = q.a[i], y = q.b[i]; this.isoAt(x, y); chalkMark(c, x, y, this.sexton.facts.has(`stone-${st.n}`), this.time, this.still || this.sexton.step !== 'stones'); return; }
+      case K.chalk: { const st = ref as { n: number }, x = q.a[i], y = q.b[i]; this.isoAt(x, y); c.translate(Math.round(x), Math.round(y) - 9); c.transform(1, .5, 0, 1, 0, 0); c.translate(-Math.round(x), 9 - Math.round(y)); chalkMark(c, x, y, this.sexton.facts.has(`stone-${st.n}`), this.time, this.still || this.sexton.step !== 'stones'); return; }
       case K.purse: { const f = ref as { x: number; y: number }; this.isoAt(f.x, f.y); drawIsoPurse(c, f.x, f.y, this.time, this.still); return; }
       case K.gate: { const g = ref as { x: number; y: number; fade: number; party: boolean }; this.isoAt(g.x, g.y); drawIsoWaygate(c, g.x, g.y, this.time, this.still, g.fade, g.party); return; }
       case K.beacon: { const b = ref as Parameters<typeof drawBeacon>[1]; this.isoAt(b.x, b.y); drawIsoBeacon(c, b, this.time, this.still); return; }
