@@ -117,15 +117,23 @@ export class IsoGround {
 
   /**
    * After a draw, until `deadline` (performance.now ms): the first frame of each chunk in the ring round the view (so a
-   * walk never meets unpainted ground), then the view's water frames, then the ring's.
+   * walk never meets unpainted ground), then the view's water frames, then the ring's. `idle` (the Keeper standing, the
+   * frame cheap): then a second ring's first frames too, so the first few seconds of the next walk bake nothing.
    */
-  prefetch(X0: number, Y0: number, w: number, h: number, deadline: number): void {
+  prefetch(X0: number, Y0: number, w: number, h: number, deadline: number, idle = false): void {
     const i0 = Math.floor(X0 * 2 / CW), i1 = Math.floor((X0 + w) * 2 / CW), j0 = Math.floor(Y0 * 2 / CH), j1 = Math.floor((Y0 + h) * 2 / CH);
     for (let pass = 0; pass < 3; pass++) for (let J = j0 - 1; J <= j1 + 1; J++) for (let I = i0 - 1; I <= i1 + 1; I++) {
       const inView = I >= i0 && I <= i1 && J >= j0 && J <= j1;
       if ((pass === 1) !== inView) continue;
       const ch = this.chunk(I, J), upto = pass === 0 ? 1 : ch.nf;
       if (!this.ready(ch, upto - 1) && !this.bake(ch, deadline, upto)) return;
+    }
+    if (!idle) return;
+    this.cap = Math.max(this.cap, (i1 - i0 + 5) * (j1 - j0 + 5) + 4);
+    for (let J = j0 - 2; J <= j1 + 2; J++) for (let I = i0 - 2; I <= i1 + 2; I++) {
+      if (I >= i0 - 1 && I <= i1 + 1 && J >= j0 - 1 && J <= j1 + 1) continue;
+      const ch = this.chunk(I, J);
+      if (!this.ready(ch, 0) && !this.bake(ch, deadline, 1)) return;
     }
   }
 

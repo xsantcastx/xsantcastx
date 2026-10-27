@@ -46,6 +46,8 @@ const PLACES: Record<string, { hour?: number; query?: string; go: string }> = {
   night: { hour: 23, go: 'w => true' },
   // Ashwater Lake's Nightroad (td-dark NIGHTROADS): its planks across the water only at night, nothing there by day.
   nightroad: { query: 'phase=night&fxdark=1', go: "w => w.__tdDark.road('ashwater', 'shore')" },
+  // The Seamworks' hearth at night (the owner's screenshot: the hearth's stone and the town's walls round it).
+  hearth: { query: 'phase=night&fxfall=1', go: "w => w.__tdHearth.at('hearth')" },
   nightroadday: { query: 'phase=day&fxdark=1', go: "w => w.__tdDark.road('ashwater', 'shore')" },
 };
 
