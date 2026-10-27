@@ -1114,13 +1114,13 @@ export class HdFigure {
 }
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-/** The bake budget: at most ~6 ms of sculpting in any 16 ms window (a crowd appearing spreads over a few frames). */
+/** The bake budget: at most ~3 ms of sculpting in any 16 ms window (a crowd appearing spreads over a few frames; the iso ground bakes in the same frame). */
 let windowAt = 0, spent = 0;
-function budget(): boolean { const t = now(); if (t - windowAt > 16) { windowAt = t; spent = 0; } return spent < 6; }
+function budget(): boolean { const t = now(); if (t - windowAt > 16) { windowAt = t; spent = 0; } return spent < 3; }
 
 /** Figures by source key, least recently used last out (a town square's crowd and the party fit; the rest re-bake). */
 const figures = new Map<string, HdFigure>();
-const KEEP = 28;
+const KEEP = 48;
 export function hdFigure(src: HdSource): HdFigure {
   let f = figures.get(src.key);
   if (f) { figures.delete(src.key); figures.set(src.key, f); return f; }

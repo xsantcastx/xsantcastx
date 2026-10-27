@@ -5878,7 +5878,7 @@ export class TopDownEngine {
     this.prof(6);
     // The budget: what is left of ISO_FRAME_MS since the frame began (the canvas still has to be rasterised after this),
     // never under BAKE_MS — a quiet frame bakes more, so a walk across a river stays ahead of the view.
-    ground.prefetch(ic.x, ic.y, ic.w, ic.h, Math.max(performance.now() + BAKE_MS, this.frameAt + ISO_FRAME_MS));
+    ground.prefetch(ic.x, ic.y, ic.w, ic.h, Math.max(performance.now() + BAKE_MS, this.frameAt + ISO_FRAME_MS), !p.moving && !this.path.length);
     this.prof(7);
     if (this.perf) this.bakeMs += ground.bakeMs;
   }

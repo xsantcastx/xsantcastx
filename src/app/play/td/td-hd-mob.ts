@@ -17,8 +17,8 @@ export interface HdCell { img: HTMLCanvasElement; ax: number; ay: number }
 
 const cells = new Map<string, HdCell>();
 let budget = 0, budgetAt = -1;
-/** Cells baked per drawn frame before the rest wait (each is a few ms on a phone). */
-const BAKES_PER_FRAME = 3;
+/** Cells baked per drawn frame before the rest wait (each is a few ms on a phone; the iso ground and the HD Keepers bake in the same frame). */
+const BAKES_PER_FRAME = 1;
 
 /** Every creature with an HD model (the contact sheets). */
 export const hdIds = (): string[] => Object.keys(HD_MODELS);
