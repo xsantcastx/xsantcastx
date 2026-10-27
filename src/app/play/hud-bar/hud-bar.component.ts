@@ -43,6 +43,6 @@ export class HudBarComponent {
   /** The orb's well is 32 cells tall inside the 36-cell frame: the top of the fill, in cells. */
   top(f: number): number { return 2 + 32 * (1 - f); }
   /** The ability on a slot (1–8), if one is put there. */
-  ability(n: number) { return this.hud.tdAbilities[n - 1] ?? null; }
+  ability(n: number) { return this.hud.tdAbilities.find(a => a.key === String(n)) ?? null; }
   t(key: string, params?: Record<string, string | number>): string { return this.hud.t(key, params); }
 }

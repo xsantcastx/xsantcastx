@@ -1365,3 +1365,9 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
   .stage--td [data-hud-drag].is-dragging { z-index: 40; }
   .stage--td [data-hud-drag].is-dragging > .hud-grip { cursor: grabbing; }
 }
+
+/* ── UI system (docs/design/ui-system.md §2 Type): the game is set in sentence case ──
+   Pixelify's capital C is Inter's (styles/tokens/fonts.css: it drew C like O), so a label upper-cased by CSS came out
+   in two faces ("SELECCION" read "seleCCion"). Hierarchy in the game comes from size, weight and colour, never caps.
+   Keycaps keep the case they are written in. */
+app-play-shell :not(kbd, .kc) { text-transform: none !important; }

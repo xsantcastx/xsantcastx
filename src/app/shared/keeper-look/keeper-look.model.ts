@@ -215,12 +215,20 @@ export function pointsLeft(level: number, stats: KeeperStats, earned = (Math.max
 }
 
 /** Any stored value → a valid look (junk and unknown ids fall back to the default). */
+/** A bar without its trailing empty keys (an all-empty bar is []: the class's default bar then shows). */
+export function trimBar(bar: readonly string[]): string[] {
+  const out = [...bar];
+  while (out.length && !out[out.length - 1]) out.pop();
+  return out;
+}
+
 export function coerceLook(raw: unknown): KeeperLook {
   const d = defaultLook();
   if (!raw || typeof raw !== 'object') return d;
   const r = raw as Record<string, unknown>;
   // A key holding Life Tap is emptied (skill-book.md §6.2: it is Dark Ward's mark now, never a key).
-  const bar = Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x) && x !== 'life-tap').slice(0, 8) : [];
+  // Keys 1–8 keep their places: '' is an empty key (a skill on 7 with 5 and 6 empty stays on 7); trailing empties trim.
+  const bar = Array.isArray(r['bar']) ? trimBar((r['bar'] as unknown[]).slice(0, 8).map(x => typeof x === 'string' && SKILL_ID.test(x) && x !== 'life-tap' ? x : '')) : [];
   const aura = typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '';
   return {
     version: 1,

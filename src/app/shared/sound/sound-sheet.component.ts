@@ -145,21 +145,21 @@ function readWeatherShow(): WeatherShow {
     .ss__head h2 { flex: 1; text-transform: uppercase; text-shadow: 2px 2px 0 var(--obsidian-0); }
     .ss__helpcard { display: grid; gap: 6px; padding: 10px 12px; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
     .ss__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; margin-bottom: 4px; box-shadow: var(--px-groove); }
-    .ss__head h2 { margin: 0; font: 700 15px/1.1 var(--font-game); letter-spacing: .08em; color: var(--adventure-beacon-text); }
+    .ss__head h2 { margin: 0; font: 700 16px/1.1 var(--font-pixel); letter-spacing: 0; color: var(--adventure-beacon-text); }
     .ss__lead, .ss__note, .ss__saved { margin: 0; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
     .ss__saved { font-size: 13px; opacity: .75; }
     .ss__row { display: grid; grid-template-columns: 88px 1fr 44px; align-items: center; gap: 10px; min-height: 44px; }
     .ss__row--off { opacity: .5; }
-    .ss__name { font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
-    .ss__val { font: 600 12px var(--font-game); text-align: right; color: var(--adventure-ember); }
+    .ss__name { font: 600 13px/1.2 var(--cozy-font-read); letter-spacing: 0; }
+    .ss__val { font: 600 13px var(--cozy-font-read); text-align: right; color: var(--adventure-ember); }
     .ss__row input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--adventure-ember); cursor: pointer; }
-    .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
+    .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 13px var(--cozy-font-read); letter-spacing: 0; }
     .ss__hush { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 4px 10px; }
     .ss__seg { display: flex; gap: 4px; }
-    .ss__seg button { flex: 1; min-height: 44px; padding: 0 6px; border: 0; cursor: pointer; font: 600 12px var(--font-game); letter-spacing: .06em; text-transform: uppercase;
+    .ss__seg button { flex: 1; min-height: 44px; padding: 0 6px; border: 0; cursor: pointer; font: 600 13px/1.15 var(--font-pixel); letter-spacing: 0;
       color: var(--adventure-parchment); background: var(--obsidian-2); box-shadow: inset 0 0 0 2px var(--gold-deep); }
     .ss__seg button.on { color: var(--obsidian-0); background: var(--adventure-ember); }
-    .ss__hushline { grid-column: 2; font: italic 400 13px/1.3 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
+    .ss__hushline { grid-column: 2; font: 400 12px/1.35 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); }
     .ss__mute input { width: 22px; height: 22px; accent-color: var(--adventure-ember); }
   `],
 })

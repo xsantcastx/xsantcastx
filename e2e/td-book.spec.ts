@@ -93,9 +93,13 @@ test('the book on a desk: rows and marks, staged until Accept, Cancel undoes, a 
   await page.mouse.move(2, 2);
   await page.locator('.brow[data-row="hellfire-nova"] .brow__icon').click();
   await page.screenshot({ path: 'docs/handoff/book/book-desktop.png' });
-  // The Keys tab: today's key picker.
+  // The Keys tab: all eight keys of the bar (it showed 1–4 while the bar has 8), and the belt's three keys.
   await page.locator('[data-book-tab="keys"]').click();
-  await expect(page.locator('[data-key-row="hellfire-nova"] .bkey__key')).toHaveCount(4);
+  await expect(page.locator('[data-key-row="hellfire-nova"] .bkey__key')).toHaveCount(8);
+  await expect(page.locator('[data-belt-key]')).toHaveCount(3);
+  // A skill put on 7 stays on 7 (the bar used to compact it to the first free key).
+  await page.locator('[data-key-row="hellfire-nova"] .bkey__key[data-slot="7"]').click();
+  await expect(page.locator('[data-key-row="hellfire-nova"] .bkey__key[data-slot="7"]')).toHaveAttribute('aria-pressed', 'true');
   // With nothing pending the X closes at once; with something pending it asks first.
   await page.locator('[data-book-tab="ember"]').click();
   await page.locator('[data-plus="ember-bolt"]').click();

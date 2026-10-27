@@ -257,7 +257,7 @@ import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
 import { KeeperLookService } from '../shared/keeper-look/keeper-look.service';
 import { KEEPER_LOOK_I18N } from '../shared/keeper-look/keeper-look.i18n';
-import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.model';
+import { lookKey, trimBar, type KeeperLook } from '../shared/keeper-look/keeper-look.model';
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
 import { packWorn } from '../shared/keeper-look/worn-looks';
@@ -544,7 +544,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 
 @Component({
   selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SkillBookComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
-  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css'],
+  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css', './side-scroller.component.ui.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
   @ViewChild('worldCanvas') canvas!: ElementRef<HTMLCanvasElement>;
@@ -3281,7 +3281,8 @@ export class SideScrollerComponent implements OnDestroy {
   private get skillRanks(): Record<SkillId, number> { return this.skillTree.ranks; }
   private ranked(id: string): boolean { return (this.skillRanks[id as SkillId] ?? 0) > 0; }
   /** Keys 1–4: what the look holds (or the class default), only skills with a rank and only actives (Life Tap, a mark now, never sits on a key). */
-  protected get loadoutBar(): string[] { const b = this.looks.look.bar; return (b.length ? b : defaultBar(this.looks.look.vocation)).filter(id => this.ranked(id) && TD_SKILLS[id as SkillId]?.kind === 'active'); }
+  /** Keys 1–8 in place: '' is an empty key (never compacted, so a skill put on 7 stays on 7). */
+  protected get loadoutBar(): string[] { const b = this.looks.look.bar; return trimBar((b.length ? b : defaultBar(this.looks.look.vocation)).map(id => id && this.ranked(id) && TD_SKILLS[id as SkillId]?.kind === 'active' ? id : '')); }
   protected get loadoutAura(): string | null {
     const a = this.looks.look.aura, id = a === 'none' ? null : a || defaultAura(this.looks.look.vocation);
     return id && this.ranked(id) ? id : null;
@@ -3369,14 +3370,15 @@ export class SideScrollerComponent implements OnDestroy {
     this.closeBookNow();
   }
   closeBookNow(): void { this.spellbookOpen = false; this.bookDirty = false; this.focusWorld(); }
-  /** Put a skill on a key (1–4); whatever sat there swaps to where this one was. */
+  /** Put a skill on a key (1–8); whatever sat there swaps to where this one was (an empty key stays empty in place). */
   assignSkill(id: string, slot: number): void {
-    if (!this.ranked(id)) return;
+    if (!this.ranked(id) || slot < 1 || slot > 8) return;
     const bar = [...this.loadoutBar];
-    const from = bar.indexOf(id), was = bar[slot - 1];
+    while (bar.length < slot) bar.push('');
+    const from = bar.indexOf(id), was = bar[slot - 1] ?? '';
     bar[slot - 1] = id;
     if (from >= 0 && from !== slot - 1) bar[from] = was;
-    this.looks.setLoadout(bar.filter(Boolean), this.looks.look.aura);
+    this.looks.setLoadout(trimBar(bar), this.looks.look.aura);
     this.tickAbilities();
   }
   /** Choose the running aura (one at a time); choosing the running one turns it off. */
