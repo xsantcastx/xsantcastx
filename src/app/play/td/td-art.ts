@@ -464,7 +464,13 @@ export interface Sprite {
   floor?: { img: HTMLCanvasElement; x: number; y: number };
   /** Image px per world px (the art-direction prototype's HD sprites, td-hd-art.ts): `img`/`roof` drawn at 1/k; ax, ay in image px. */
   k?: number;
+  /** What it is, for the isometric view's own structure (td-hd-structures.ts): a house or a stall built at that angle. */
+  iso?: IsoSpec;
 }
+/** A structure the isometric view builds itself (td-hd-structures.ts) instead of standing this sprite up. */
+export type IsoSpec =
+  | { kind: 'house'; w: number; d: number; roof: RoofStyle; wall: WallStyle; chimney: boolean; seed: number }
+  | { kind: 'stall'; w: number; palette: number; goods: 'pots' | 'bread' | 'gems' | 'tools' | 'books' | 'fish'; seed: number };
 
 const cache = new Map<string, Sprite>();
 function cached(key: string, make: () => Sprite): Sprite {
@@ -577,6 +583,7 @@ export function house(w: number, d: number, roof: RoofStyle, wall: WallStyle, ch
       img: outlined, ax: W / 2 + 1, ay: H + 1,
       roof: { img: roofOut, x: -(W / 2) - 3, y: -H - 3 },
       lights: wins, smoke,
+      iso: { kind: 'house', w, d, roof, wall, chimney, seed },
     };
   });
 }
@@ -619,7 +626,7 @@ export function stall(widthTiles: number, palette: number, goods: 'pots' | 'brea
       lights.push({ x: x + 1 - W / 2, y: 14 - H, r: 6, warm: true });
     }
     const out = outline(img);
-    return { img: out, ax: W / 2 + 1, ay: H + 1, lights };
+    return { img: out, ax: W / 2 + 1, ay: H + 1, lights, iso: { kind: 'stall', w: widthTiles, palette, goods, seed } };
   });
 }
 

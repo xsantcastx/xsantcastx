@@ -17,7 +17,8 @@
  * Least-recently-drawn out, capped at `cap` chunks. No allocation per frame once the view's chunks are baked.
  */
 import { TILE, type Ground } from './td-art';
-import { isoBlock, wallMat, type IsoBlock } from './td-iso-walls';
+import { planWalls, type IsoWall } from './td-iso-walls';
+export type { IsoWall } from './td-iso-walls';
 
 /** A chunk's size in HD px (256 × 128 iso px: 8 tiles across a row of diamonds, 16 rows). */
 export const CW = 512, CH = 256;
@@ -57,9 +58,6 @@ export const BLOCK_GROUND: ReadonlySet<Ground> = new Set<Ground>(['rock', 'wall'
 const LIQUID: ReadonlySet<Ground> = new Set<Ground>(['water', 'ember', 'blackwater']);
 /** The dark a block stands on (ABGR, little-endian RGBA). */
 const VOID = 0xff100b0f;
-
-/** A wall block standing on a chunk (td-iso-walls.ts): its tile, its foot in iso px, its full and cut-away sprites. */
-export interface IsoWall { c: number; r: number; X: number; Y: number; full: IsoBlock; stub: IsoBlock }
 
 interface Chunk {
   I: number; J: number;
@@ -174,19 +172,8 @@ export class IsoGround {
       if (moves) { anim.push(list.length - 2); if (LIQUID.has(g(c, r))) liquid = true; }
     }
     const nf = liquid ? 4 : 1;
-    // The blocks whose foot (the tile's centre) lies in this chunk: each block belongs to exactly one chunk.
-    const walls: IsoWall[] = [], block = (c: number, r: number) => BLOCK_GROUND.has(g(c, r));
-    for (let i = 0; i < list.length; i += 2) {
-      const c = list[i], r = list[i + 1], k = g(c, r);
-      if (!BLOCK_GROUND.has(k)) continue;
-      const X = (c - r) * 16, Y = (c + r + 1) * 8;
-      if (X * 2 < X0 || X * 2 >= X0 + CW || Y * 2 < Y0 || Y * 2 >= Y0 + CH) continue;
-      const so = !block(c, r + 1), ea = !block(c + 1, r);
-      // Inside the rock, or a back wall's top that nothing sees past: no block.
-      if (!so && !ea && block(c, r - 1) && block(c - 1, r)) continue;
-      const m = wallMat(k);
-      walls.push({ c, r, X, Y, full: isoBlock(m, so, ea, false, c % 3 === 0, r % 3 === 0), stub: isoBlock(m, so, ea, true, c % 3 === 0, r % 3 === 0) });
-    }
+    // The blocks (and doorway lintels) whose foot lies in this chunk: each belongs to exactly one chunk (td-iso-walls.ts).
+    const walls = planWalls(list, X0, Y0, CW, CH, (c, r) => BLOCK_GROUND.has(g(c, r)), g);
     return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), frame: 0, next: 0, img: null, px: null, base: null };
   }
 

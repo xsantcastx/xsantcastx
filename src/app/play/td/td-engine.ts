@@ -30,6 +30,7 @@ import { offerClassic, onGraphics, optCamera, optHdFigures, optHdWorld, optIso }
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
+import { bakedStructure, drawIsoBeacon, drawStructFloor, drawIsoHearth, drawIsoPurse, drawIsoShrine, drawIsoWaygate, isoStructure, keeperBehind, stepStructures, stripDepth, structDither } from './td-hd-structures';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
 import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdStill, hdWalkFrame, type HdView } from './td-hd-keeper';
 import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdGlim, hdIds, hdPetBust, hdStats } from './td-hd-mob';
@@ -216,7 +217,7 @@ const FLOAT_LIFT = 20;
 /** Iso: a roofed floor's own warm dark (an inn's, a lodge's), lit by its lamps (drawLight). */
 const INDOOR: NightPass = { rgb: [34, 20, 34], alpha: .5, warm: .9, amount: 1 };
 /** The iso depth queue's item kinds (td-iso.ts IsoQueue). */
-const K = { wall: 1, prop: 2, obj: 3, person: 4, mob: 5, raised: 6, pet: 7, corpse: 8, drop: 9, hearth: 10, shrine: 11, chalk: 12, purse: 13, gate: 14, beacon: 15, beast: 16, pal: 17, peer: 18, fire: 19 } as const;
+const K = { wall: 1, prop: 2, obj: 3, person: 4, mob: 5, raised: 6, pet: 7, corpse: 8, drop: 9, hearth: 10, shrine: 11, chalk: 12, purse: 13, gate: 14, beacon: 15, beast: 16, pal: 17, peer: 18, fire: 19, struct: 20 } as const;
 const MOTES = 10;              // an aura's motes alive at once (spec: ≤ 10)
 const SHARDS = 8;
 /** A loot pop: the small burst when gear lands on the ground or goes into the satchel (spec §Loot). */
@@ -4047,7 +4048,7 @@ export class TopDownEngine {
     if (this.puffs.length > 60) return;
     for (const o of this.visible) {
       const s = o.sprite();
-      for (const m of s.smoke ?? []) if (Math.random() < dt * 1.4) this.puffs.push({ x: o.x + m.x, y: o.y + m.y, age: 0, life: 2.8 + Math.random(), r: Math.random() * 6 });
+      for (const m of (this.iso && s.iso ? bakedStructure(s)?.smoke : s.smoke) ?? []) if (Math.random() < dt * 1.4) this.puffs.push({ x: o.x + m.x, y: o.y + m.y, age: 0, life: 2.8 + Math.random(), r: Math.random() * 6 });
     }
   }
 
@@ -5635,6 +5636,8 @@ export class TopDownEngine {
   };
   private readonly isoCut = new IsoCutaway();
   private readonly isoQ = new IsoQueue();
+  /** Iso: a frame counter (the structures' look-ahead runs every eighth frame). */
+  private isoTick = 0;
   private readonly isoFaces = new WeakMap<object, { x: number; y: number; row: number; flip: boolean; turned: boolean; front: boolean }>();
   /** A view object for the peers' painter, reused. */
   private readonly isoPeerView: { scale: number; camX: number; camY: number; time: number; still: boolean; hd?: (p: { x: number; y: number; dir: 'side' | 'down' | 'up'; face: 1 | -1 }) => { view: HdView; flip: boolean } } = { scale: 1, camX: 0, camY: 0, time: 0, still: false, hd: p => this.hdFacing(p) };
@@ -5769,7 +5772,10 @@ export class TopDownEngine {
       if (!inView(o.x, o.y, 120)) continue;
       const ip = o.id ? isoProp(o.id) : null;
       if (ip) { q.push(K.prop, (o.x + o.y - TILE / 2) / 2, o, 0, 0); continue; }
-      const sp = o.sprite(), k = sp.k ?? 1, w = sp.img.width / k, b = o.block;
+      const sp = o.sprite(), st = sp.iso ? isoStructure(sp) : null;
+      // A house or a stall built at this angle (td-hd-structures.ts), in 16-px strips sorted at its front edge.
+      if (st) { const ox = Math.round(o.x), oy = Math.round(o.y), L = ox - oy - st.ax / 2, Wd = st.img.width / 2; for (let sx = 0; sx < Wd; sx += 16) q.push(K.struct, stripDepth(st, ox, oy, L + sx + 8), o, sx, Math.min(16, Wd - sx)); continue; }
+      const k = sp.k ?? 1, w = sp.img.width / k, b = o.block;
       if (!b || (b.w <= 1 && b.h <= 1) || w <= 40) { q.push(K.obj, (o.x + o.y) / 2, o, -1, 0); continue; }
       // A wide object in 16-px strips, each sorted at the front edge of the footprint under it.
       const x0 = o.x - b.w * TILE / 2, x1 = o.x + b.w * TILE / 2, y0 = o.y - b.h * TILE, y1 = o.y, Xc = x1 - y1, Xf = Math.round(o.x) - Math.round(o.y);
@@ -5879,6 +5885,10 @@ export class TopDownEngine {
     // The budget: what is left of ISO_FRAME_MS since the frame began (the canvas still has to be rasterised after this),
     // never under BAKE_MS — a quiet frame bakes more, so a walk across a river stays ahead of the view.
     ground.prefetch(ic.x, ic.y, ic.w, ic.h, Math.max(performance.now() + BAKE_MS, this.frameAt + ISO_FRAME_MS), !p.moving && !this.path.length);
+    // Houses and stalls (td-hd-structures.ts): queued a screen ahead of the walk every eighth frame, painted a step at a
+    // time in what is left of the frame.
+    if (((this.isoTick = (this.isoTick + 1) & 7)) === 0) for (const o of this.level.objectsIn(W.x - 240, W.y - 240, W.x + W.w + 240, W.y + W.h + 240)) if (o.kind === 'building' || o.kind === 'stall') isoStructure(o.sprite());
+    stepStructures(this.frameAt + ISO_FRAME_MS);
     this.prof(7);
     if (this.perf) this.bakeMs += ground.bakeMs;
   }
@@ -5916,8 +5926,7 @@ export class TopDownEngine {
   private readonly isoWallEach = (wl: IsoWall): void => {
     const ic = this.isoCam;
     if (wl.X < ic.x - 40 || wl.X > ic.x + ic.w + 40 || wl.Y < ic.y - 24 || wl.Y > ic.y + ic.h + WALL_H + 24) return;
-    const b = this.isoCut.cut(wl.c, wl.r) ? wl.stub : wl.full;
-    this.isoQ.push(K.wall, wl.Y, b, wl.X, wl.Y);
+    this.isoQ.push(K.wall, wl.Y, this.isoCut.pick(wl), wl.X, wl.Y);
   };
   /** Draw queue slot `i`. */
   private isoDrawItem(i: number): void {
@@ -5955,12 +5964,13 @@ export class TopDownEngine {
       case K.pet: { const b = ref as PetBody; this.isoAt(b.x, b.y); this.drawPet(b); return; }
       case K.corpse: { const cp = ref as Corpse; this.isoAt(cp.x, cp.y); this.drawCorpse(cp); return; }
       case K.drop: { const g = ref as Drop; this.isoAt(g.x, g.y); this.drawDrop(g); return; }
-      case K.hearth: { const h = ref as TdHearth; this.isoAt(h.x, h.y); drawHearth(c, h.x, h.y, this.hearthLit.has(h.id), this.time, this.still); return; }
-      case K.shrine: { const h = ref as { x: number; y: number }; this.isoAt(h.x, h.y); drawShrine(c, h.x, h.y, this.hearthBlessed, this.time, this.still); return; }
+      case K.struct: { this.isoDrawStrip(ref as TdObject, q.a[i], q.b[i]); return; }
+      case K.hearth: { const h = ref as TdHearth; this.isoAt(h.x, h.y); drawIsoHearth(c, h.x, h.y, this.hearthLit.has(h.id), this.time, this.still); return; }
+      case K.shrine: { const h = ref as { x: number; y: number }; this.isoAt(h.x, h.y); drawIsoShrine(c, h.x, h.y, this.hearthBlessed, this.time, this.still); return; }
       case K.chalk: { const st = ref as { n: number }, x = q.a[i], y = q.b[i]; this.isoAt(x, y); chalkMark(c, x, y, this.sexton.facts.has(`stone-${st.n}`), this.time, this.still || this.sexton.step !== 'stones'); return; }
-      case K.purse: { const f = ref as { x: number; y: number }; this.isoAt(f.x, f.y); drawPurse(c, f.x, f.y, this.time, this.still); return; }
-      case K.gate: { const g = ref as { x: number; y: number; fade: number; party: boolean }; this.isoAt(g.x, g.y); drawWaygate(c, g.x, g.y, this.time, this.still, g.fade, g.party); return; }
-      case K.beacon: { const b = ref as Parameters<typeof drawBeacon>[1]; this.isoAt(b.x, b.y); drawBeacon(c, b, this.time, this.still); return; }
+      case K.purse: { const f = ref as { x: number; y: number }; this.isoAt(f.x, f.y); drawIsoPurse(c, f.x, f.y, this.time, this.still); return; }
+      case K.gate: { const g = ref as { x: number; y: number; fade: number; party: boolean }; this.isoAt(g.x, g.y); drawIsoWaygate(c, g.x, g.y, this.time, this.still, g.fade, g.party); return; }
+      case K.beacon: { const b = ref as Parameters<typeof drawBeacon>[1]; this.isoAt(b.x, b.y); drawIsoBeacon(c, b, this.time, this.still); return; }
       case K.beast: { const b = ref as Parameters<typeof drawBeast>[1]; this.isoAt(b.x, b.y); drawBeast(c, b, this.time, this.still); return; }
       case K.pal: { const x = q.a[i], y = q.b[i]; this.isoAt(x, y); this.drawPal(ref as CoopPal, x, y, q.c[i] === 1); return; }
       case K.peer: {
@@ -5972,6 +5982,35 @@ export class TopDownEngine {
       }
       case K.fire: { const f = ref as { x: number; y: number }; this.isoAt(f.x, f.y); this.gather.drawFire(c, ref as Campfire, this.time, this.still); return; }
     }
+  }
+
+  /**
+   * Iso: one 16-px strip of a structure (td-hd-structures.ts): its walls, and over them its roof (so each strip sorts
+   * whole). With the Keeper behind it the roof lifts away and the walls over him go see-through (Low: only the roof).
+   */
+  private isoDrawStrip(o: TdObject, sx: number, sw: number): void {
+    const st = bakedStructure(o.sprite());
+    if (!st) return;
+    const c = this.ctx, ox = Math.round(o.x), oy = Math.round(o.y), L = ox - oy - st.ax / 2, T = (ox + oy) / 2 - st.ay / 2, h = st.img.height;
+    const p = this.player, PX = Math.round(p.x) - Math.round(p.y), PY = (Math.round(p.x) + Math.round(p.y)) / 2;
+    const behind = keeperBehind(st, ox, oy, PX, PY);
+    this.isoScreen();
+    if (!behind) {
+      c.drawImage(st.img, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2);
+      if (st.roof) c.drawImage(st.roof, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2);
+      return;
+    }
+    // Behind: the roof is off (a plank floor shows the room) and nothing is drawn over the Keeper's own figure, so he
+    // stays solid; the walls near him go see-through (Low: solid).
+    c.save();
+    c.beginPath();
+    c.rect(L + sx, T - 2, sw, h / 2 + 4);
+    c.rect(PX - 10, PY - 46, 20, 49);
+    c.clip('evenodd');
+    if (st.roof) drawStructFloor(c, st, ox, oy);
+    const body = Math.abs(L + sx + 8 - PX) < 28 && envDetail() !== 'low' ? structDither(st) : st.img;
+    c.drawImage(body, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2);
+    c.restore();
   }
 
   // ── HD figures (td-hd-keeper.ts) ──
@@ -6199,7 +6238,13 @@ export class TopDownEngine {
         for (const l of ip.lights ?? []) { holeAt(X + l.x, Y + l.y * .5, l.r * 1.6, 1); glows.push({ X: X + l.x, Y: Y + l.y * .5, r: l.r * .45 }); }
         continue;
       }
-      const sp = o.sprite();
+      const sp = o.sprite(), st = iso && sp.iso ? bakedStructure(sp) : null;
+      if (st) {
+        // A structure built at this angle (td-hd-structures.ts): its windows and lamps in iso px from its foot.
+        const X = Math.round(o.x) - Math.round(o.y), Y = (Math.round(o.x) + Math.round(o.y)) / 2;
+        for (const l of st.lights) { holeAt(X + l.x, Y + l.y, l.r * 1.6, 1); glows.push({ X: X + l.x, Y: Y + l.y, r: l.r * .45 }); }
+        continue;
+      }
       for (const l of sp.lights ?? []) { hole(o.x + l.x, o.y, l.r * 2, 1, -l.y); if (l.warm) glow(o.x + l.x, o.y, l.r, -l.y); }
     }
     // The Keeper's own light: a modest circle, wider while the Light spell burns and with a boss unique's (the Warden's
