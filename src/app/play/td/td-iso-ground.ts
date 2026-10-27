@@ -18,6 +18,7 @@
  */
 import { TILE, type Ground } from './td-art';
 import { isoBlock, wallMat, type IsoBlock } from './td-iso-walls';
+import { IsoTiles } from './td-iso-tiles';
 
 /** A chunk's size in HD px (256 × 128 iso px: 8 tiles across a row of diamonds, 16 rows). */
 export const CW = 512, CH = 256;
@@ -50,6 +51,11 @@ export interface IsoGroundSource {
   ground(c: number, r: number): Ground;
   /** Paint tile (c, r) as the HD square (32 × 32 px at (0, 0) on `g`), at water frame `f`, its neighbours read by `at`. */
   paint(g: CanvasRenderingContext2D, k: Ground, c: number, r: number, f: number, at: (c: number, r: number) => Ground): void;
+  /**
+   * The iso-native painter's settings (td-iso-tiles.ts), read when the cache is cleared: off to fall back on the square
+   * painters above; `surface` (the cave floor reads as ash), `low` (Environment detail Low).
+   */
+  native?(): { on: boolean; surface: boolean; low: boolean };
 }
 
 /** Ground drawn as a block (td-iso-walls.ts): its own ground is the dark under the block. */
@@ -72,6 +78,8 @@ interface Chunk {
   tiles: Int32Array;
   /** Indexes into `tiles` of those that move with the water (frames 1–3 repaint only these). */
   anim: Int32Array;
+  /** Deck tiles whose faces and posts hang into this chunk, as [c, r] pairs (laid after every frame's tiles). */
+  faces: Int32Array;
   frame: number; next: number;
   img: ImageData | null; px: Uint32Array | null;
   /** Frame 0's pixels, kept until the water frames are baked from them. */
@@ -92,10 +100,18 @@ export class IsoGround {
   readonly stats = new Float64Array(6);
 
   private readonly at = (c: number, r: number): Ground => this.src.ground(c, r);
-  constructor(private readonly src: IsoGroundSource) {}
+  /** The iso-native painter (td-iso-tiles.ts); null while the source asks for the square painters. */
+  tiles: IsoTiles | null = null;
+  constructor(private readonly src: IsoGroundSource) { this.configure(); }
 
   /** Forget everything (a new level, a new detail setting). */
-  clear(): void { this.chunks.clear(); this.atlas.clear(); }
+  clear(): void { this.chunks.clear(); this.atlas.clear(); this.configure(); }
+  private configure(): void {
+    const n = this.src.native?.();
+    if (!n?.on) { this.tiles = null; return; }
+    this.tiles ??= new IsoTiles(this.at);
+    this.tiles.clear(); this.tiles.surface = n.surface; this.tiles.low = n.low;
+  }
 
   /**
    * Draw the ground under the iso view (`X0, Y0` its top-left in iso px, `w × h` iso px) at `s` backing px per iso px,
@@ -174,6 +190,14 @@ export class IsoGround {
       if (moves) { anim.push(list.length - 2); if (LIQUID.has(g(c, r))) liquid = true; }
     }
     const nf = liquid ? 4 : 1;
+    // Deck faces hang up to FACE + POST + 4 px under a diamond: the deck tiles a row or two above the chunk count too.
+    const faces: number[] = [], t = this.tiles;
+    if (t) for (let b = b0 - 2; b <= b1; b++) for (let a = a0; a <= a1; a++) {
+      if (((a + b) & 1) !== 0) continue;
+      if ((a + 1) * 32 <= X0 || (a - 1) * 32 >= X0 + CW || b * 16 + 56 <= Y0 || b * 16 >= Y0 + CH) continue;
+      const c = (a + b) / 2, r = (b - a) / 2;
+      if (t.hasFaces(c, r)) faces.push(c, r);
+    }
     // The blocks whose foot (the tile's centre) lies in this chunk: each block belongs to exactly one chunk.
     const walls: IsoWall[] = [], block = (c: number, r: number) => BLOCK_GROUND.has(g(c, r));
     for (let i = 0; i < list.length; i += 2) {
@@ -187,7 +211,7 @@ export class IsoGround {
       const m = wallMat(k);
       walls.push({ c, r, X, Y, full: isoBlock(m, so, ea, false, c % 3 === 0, r % 3 === 0), stub: isoBlock(m, so, ea, true, c % 3 === 0, r % 3 === 0) });
     }
-    return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), frame: 0, next: 0, img: null, px: null, base: null };
+    return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), faces: Int32Array.from(faces), frame: 0, next: 0, img: null, px: null, base: null };
   }
 
   /** Paint chunk `ch` a tile at a time until its first `upto` frames are done or `deadline` passes; true when they are. */
@@ -208,7 +232,11 @@ export class IsoGround {
         ch.next++;
         if (performance.now() > deadline) { this.bakeMs += performance.now() - t0; return false; }
       }
-      // The frame is whole: onto its canvas (opaque), and on to the next.
+      // Decks' faces and posts over what lies under them, then the frame is whole: onto its canvas (opaque), and on.
+      if (this.tiles) for (let i = 0; i < ch.faces.length; i += 2) {
+        const c = ch.faces[i], r = ch.faces[i + 1];
+        this.tiles.faces(ch.px!, CW, CH, (c - r - 1) * 32 - ch.I * CW, (c + r) * 16 - ch.J * CH, c, r, f);
+      }
       const tp = performance.now();
       const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
       cv.getContext('2d', { alpha: false })!.putImageData(ch.img, 0, 0);
@@ -228,6 +256,11 @@ export class IsoGround {
     const k = this.src.ground(c, r), px = ch.px!;
     const ox = (c - r - 1) * 32 - ch.I * CW, oy = (c + r) * 16 - ch.J * CH;
     if (BLOCK_GROUND.has(k)) { fill(px, ox, oy, VOID); return; }
+    // Iso-native: painted straight into the diamond (td-iso-tiles.ts), no square, no read-back.
+    if (this.tiles) {
+      const t0 = performance.now();
+      if (this.tiles.lay(px, CW, CH, ox, oy, c, r, f)) { this.stats[0]++; this.stats[2] += performance.now() - t0; return; }
+    }
     // The atlas: open deep water (no land within two tiles) looks the same wherever it lies, given its place in an 8×8
     // pattern; painted once per (kind, frame, place).
     let key: string | null = null;
