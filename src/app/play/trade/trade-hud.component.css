@@ -55,6 +55,19 @@
   position: absolute; left: 2px; right: 2px; bottom: 2px; font-size: .58rem; line-height: 1.1;
   background: var(--cozy-wood-4); color: var(--cozy-cream); border-radius: 3px; text-align: center;
 }
+.trade-n {
+  position: absolute; right: 2px; bottom: 1px; font-size: .72rem; line-height: 1; font-weight: 700;
+  color: var(--cozy-cream); text-shadow: 1px 0 0 var(--cozy-wood-4), -1px 0 0 var(--cozy-wood-4), 0 1px 0 var(--cozy-wood-4), 0 -1px 0 var(--cozy-wood-4);
+}
+.trade-cell:disabled .trade-n { bottom: auto; top: 1px; }
+/* "How many?" for a pile or a stack (Split): one row that wraps on a phone. */
+.trade-amount {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; padding: 6px;
+  background: var(--cozy-well); border: 2px solid var(--cozy-wood-3); border-radius: 6px;
+}
+.trade-amount__name { flex: 1 1 100%; font-weight: 700; color: var(--cozy-cream); }
+.trade-amount input { width: 5.5em; min-height: 44px; font: inherit; text-align: center; }
+.trade-amount__step { min-width: 44px; padding: 0 10px; }
 .trade-none { margin: 4px 0; font-size: .85rem; color: var(--cozy-ink-soft); grid-column: 1 / -1; }
 
 .trade-gold { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-weight: 700; flex-wrap: wrap; }

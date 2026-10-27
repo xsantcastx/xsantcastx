@@ -956,7 +956,7 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
   /** One offered item: the fields the Function re-checks, and what draws its card. Unknown keys refused. */
   const offerItem = raw => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) tradeBad();
-    for (const k of Object.keys(raw)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged', 'ch'].includes(k)) tradeBad();
+    for (const k of Object.keys(raw)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged', 'ch', 'sk', 'qty'].includes(k)) tradeBad();
     if (typeof raw.id !== 'string' || !OFFER_ID.test(raw.id) || ![raw.def, raw.name, raw.type, raw.rarity].every(OFFER_TEXT)) tradeBad();
     const out = { id: raw.id, def: raw.def, name: raw.name, type: raw.type, rarity: raw.rarity, stats: offerNums(raw.stats, -1e7, 1e7) };
     if (raw.roll !== undefined) out.roll = offerNums(raw.roll, 0, 1);
@@ -964,6 +964,11 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     if (raw.sockets !== undefined) {
       if (!Array.isArray(raw.sockets) || raw.sockets.length > 8 || raw.sockets.some(x => x !== null && (typeof x !== 'string' || !OFFER_ID.test(x)))) tradeBad();
       out.sockets = [...raw.sockets];
+    }
+    // A satchel stack (trade-core OfferItem.sk / qty, 2026-10-27): its plain key and how many; its id is `stack:<sk>`.
+    if (raw.sk !== undefined || raw.qty !== undefined) {
+      if (typeof raw.sk !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(raw.sk) || raw.id !== `stack:${raw.sk}` || !Number.isInteger(raw.qty) || raw.qty < 1 || raw.qty > 1e6) tradeBad();
+      out.sk = raw.sk; out.qty = raw.qty;
     }
     return out;
   };
