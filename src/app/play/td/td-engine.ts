@@ -6174,7 +6174,7 @@ export class TopDownEngine {
     const holeAt = (X: number, Y: number, r: number, w: number) => {
       if (!onBuf(X, Y, iso ? r * 1.3 : r)) return;
       d.globalAlpha = w;
-      if (iso) { const R = Math.max(1, Math.round(r * .62)), cx = bx(X), cy = by(Y); d.drawImage(this.holeSprite(R, (cx + cy) & 1), cx - R, cy - (R >> 1), R * 2 + 1, R + 1); }
+      if (iso) { const R = Math.max(1, Math.round(r * .62)), cx = bx(X), cy = by(Y); d.drawImage(this.holeSprite(R, (cx + cy) & 1, true), cx - R, cy - (R >> 1)); }
       else { const R = Math.max(1, Math.round(r / 2)), cx = bx(X), cy = by(Y); d.drawImage(this.holeSprite(R, (cx + cy) & 1), cx - R, cy - R); }
     };
     const hole = (x: number, y: number, r: number, w = 1, lift = 0) => {
@@ -6263,7 +6263,7 @@ export class TopDownEngine {
       const r = g.r * 1.8;
       if (!onBuf(g.X, g.Y, r)) continue;
       const R = Math.max(1, Math.round(r / 2));
-      if (iso) d.drawImage(this.warmSprite(R), bx(g.X) - R, by(g.Y) - (R >> 1), R * 2 + 1, R + 1);
+      if (iso) d.drawImage(this.warmSprite(R, true), bx(g.X) - R, by(g.Y) - (R >> 1));
       else d.drawImage(this.warmSprite(R), bx(g.X) - R, by(g.Y) - R);
     }
     d.globalAlpha = 1;
@@ -6285,30 +6285,35 @@ export class TopDownEngine {
   }
 
   /** A light's hole at buffer radius R: the stepped falloff (td-night lightOpen), the rim dithered on the world checker. */
-  private holeSprite(R: number, parity: number): HTMLCanvasElement {
-    const key = R * 2 + parity;
+  private holeSprite(R: number, parity: number, flat = false): HTMLCanvasElement {
+    const key = (R * 2 + parity) * 2 + (flat ? 1 : 0);
     let sp = this.holeSprites.get(key);
     if (sp) return sp;
     if (this.holeSprites.size > 160) this.holeSprites.clear();
-    sp = this.stepSprite(R, (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)]);
+    sp = this.stepSprite(R, (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)], flat);
     this.holeSprites.set(key, sp);
     return sp;
   }
   /** A warm wash at buffer radius R: stepped bands of the Hearth palette, a brass-cream heart (td-night warmAt). */
-  private warmSprite(R: number): HTMLCanvasElement {
-    let sp = this.warmSprites.get(R);
+  private warmSprite(R: number, flat = false): HTMLCanvasElement {
+    const key = R * 2 + (flat ? 1 : 0);
+    let sp = this.warmSprites.get(key);
     if (sp) return sp;
     if (this.warmSprites.size > 80) this.warmSprites.clear();
-    sp = this.stepSprite(R, f => f <= .35 ? [255, 210, 122, warmAt(f)] : [255, 179, 71, warmAt(f)]);
-    this.warmSprites.set(R, sp);
+    sp = this.stepSprite(R, f => f <= .35 ? [255, 210, 122, warmAt(f)] : [255, 179, 71, warmAt(f)], flat);
+    this.warmSprites.set(key, sp);
     return sp;
   }
-  private stepSprite(R: number, px: (f: number, x: number, y: number) => readonly [number, number, number, number]): HTMLCanvasElement {
-    const n = R * 2 + 1, el = document.createElement('canvas');
-    el.width = el.height = n;
-    const g = el.getContext('2d')!, img = g.createImageData(n, n);
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      const f = Math.hypot(x - R, y - R) / (R + .5);
+  /**
+   * A stepped round sprite of radius R. `flat` (the isometric light map): a 2:1 ellipse painted at its own size — squashing
+   * the round one by dropping rows turned its checker dither into vertical stripes (2026-10-27).
+   */
+  private stepSprite(R: number, px: (f: number, x: number, y: number) => readonly [number, number, number, number], flat = false): HTMLCanvasElement {
+    const n = R * 2 + 1, m = flat ? R + 1 : n, cy = flat ? R / 2 : R, el = document.createElement('canvas');
+    el.width = n; el.height = m;
+    const g = el.getContext('2d')!, img = g.createImageData(n, m);
+    for (let y = 0; y < m; y++) for (let x = 0; x < n; x++) {
+      const f = Math.hypot(x - R, (y - cy) * (flat ? 2 : 1)) / (R + .5);
       if (f > 1) continue;
       const [r, gg, b, a] = px(f, x, y), i = (y * n + x) * 4;
       img.data[i] = r; img.data[i + 1] = gg; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);

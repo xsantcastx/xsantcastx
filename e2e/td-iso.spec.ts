@@ -123,3 +123,25 @@ test('Isometric: the floor pass (an open Nightroad, auras, sigils, tells) lies o
     f!.got.forEach((v, i) => expect(Math.abs(v - f!.want[i]), `matrix[${i}] at step ${step}`).toBeLessThan(.01));
   }
 });
+
+test('Isometric at night: the light map dithers on the world checker, never in vertical stripes', async ({ page }) => {
+  test.setTimeout(90000);
+  // 2026-10-27: the round light sprites were squashed to 2:1 by dropping rows, which turned the rim's checker dither
+  // into vertical stripe bands across the scene. The pools are now painted as ellipses at their own size.
+  await open(page, 'phase=night&artopt=iso');
+  await expect(page.locator('canvas[data-iso-layer="light"]')).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(800);
+  const score = await page.evaluate(() => {
+    const el = document.querySelector('canvas[data-iso-layer="light"]') as HTMLCanvasElement, g = el.getContext('2d')!;
+    const { width: w, height: h } = el, d = g.getImageData(0, 0, w, h).data, a = (x: number, y: number) => d[(y * w + x) * 4 + 3];
+    let edges = 0, stripes = 0;
+    for (let y = 0; y < h - 1; y++) for (let x = 0; x < w - 1; x++) {
+      if (a(x, y) === a(x + 1, y)) continue;
+      edges++;
+      if (a(x, y) === a(x, y + 1) && a(x + 1, y) === a(x + 1, y + 1)) stripes++;
+    }
+    return edges ? stripes / edges : 0;
+  });
+  console.warn(`[iso] light-map stripe score ${score.toFixed(2)}`);
+  expect(score).toBeLessThan(.3);
+});
