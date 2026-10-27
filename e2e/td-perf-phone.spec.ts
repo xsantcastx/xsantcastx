@@ -18,7 +18,7 @@ const on = process.env['TD_PERF'] ? test.describe : test.describe.skip;
 const CPU = Number(process.env['TD_CPU'] ?? 6);
 type W = {
   __tdZones: { to(c: number, r: number): boolean; foe(type: string, level: number, dx?: number, dy?: number): number | null };
-  __tdArt: { aura(on: boolean): void; road(dc: number): unknown; visit(l: string, c: number, r: number, k?: string): boolean; perf?(): [number, number, number][]; isoProf?(): number[]; isoBake?(): number[] };
+  __tdArt: { isoProps?(): { n: number; ms: number; px: number }; aura(on: boolean): void; road(dc: number): unknown; visit(l: string, c: number, r: number, k?: string): boolean; perf?(): [number, number, number][]; isoProf?(): number[]; isoBake?(): number[] };
   __made: HTMLCanvasElement[];
 };
 
@@ -60,6 +60,7 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
       const work = w.__tdArt.perf?.() ?? [];
       const ip = w.__tdArt.isoProf?.() ?? [];
       const ib = w.__tdArt.isoBake?.() ?? [];
+      const props = w.__tdArt.isoProps?.();
       const bakeS = ib.length ? ` | bake tiles ${ib[0]} atlas ${ib[1]} paint ${ib[2].toFixed(0)} read ${ib[3].toFixed(0)} lay ${ib[4].toFixed(0)} put ${ib[5].toFixed(0)} ms` : '';
       const isoS = ip.length && ip[ip.length - 1] ? ip.slice(0, 8).map(v => (v / ip[ip.length - 1]).toFixed(2)).join('/') + bakeS : '';
       const tot = work.map(f => f[0] + f[1]).sort((a, b) => a - b), bake = work.map(f => f[2]);
@@ -70,7 +71,7 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
         mean: mean(d), p95: q(.95), max: s[s.length - 1], over33: d.filter(x => x > 33.4).length, frames: d.length,
         workMean: mean(tot), workP95: tot[Math.floor(tot.length * .95)] ?? 0, workMax: tot[tot.length - 1] ?? 0,
         update: mean(work.map(f => f[0])), draw: mean(work.map(f => f[1])), bakeMax: Math.max(0, ...bake), bakeSum: bake.reduce((a, b) => a + b, 0),
-        iso: isoS as unknown as number, mpx: px / 1e6, backing: cv.width * cv.height / 1e6, heap: mem / 1048576,
+        iso: (isoS + (props ? ` | props baked ${props.n} (${props.ms} ms), ${(props.px / 1e6).toFixed(2)} Mpx` : '')) as unknown as number, mpx: px / 1e6, backing: cv.width * cv.height / 1e6, heap: mem / 1048576,
       });
     };
     requestAnimationFrame(tick);
