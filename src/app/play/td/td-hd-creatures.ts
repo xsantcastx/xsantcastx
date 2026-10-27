@@ -275,6 +275,8 @@ export interface QuadLook {
   eye: readonly string[]; nose: string; claw: string;
   /** The barrel's own material (a bone dragon's dark hollow under its ribs); the body's when unset. */
   barrelMat?: Mat;
+  /** A long head (a dragon's): its radii (forward, side, up) instead of a ball, and its own material for head and muzzle. */
+  headEgg?: V3; headMat?: Mat;
   /** Extra dressing in the body frame (embers in the ruff, magma cracks, a flame mane). */
   dress?: (r: Rig, p: Pose, q: { chest: V3; hip: V3; head: V3; jaw: number; dir: V3 }) => void;
 }
@@ -315,10 +317,11 @@ export function quadruped(r: Rig, p: Pose, L: QuadLook): void {
   const reach = atk === 1 ? 8 : atk === 2 ? 5 : atk === 0 ? -3 : 0, dip = atk === 1 ? -6 : atk === 0 ? 2 : 0;
   const head: V3 = add(chest, [L.headAt[0] + reach, 0, L.headAt[2] + dip + (walk ? Math.cos(ph * 2) * .8 : br * .5)]);
   r.limb(add(chest, [2, 0, 3]), head, L.chest * .8, L.head * .7, L.body, { g: 201 });
-  r.ball(head, L.head, L.body, { g: 210 });
+  if (L.headEgg) r.egg(head, L.headEgg[0], L.headEgg[1], L.headEgg[2], L.headMat ?? L.body, { g: 210 });
+  else r.ball(head, L.head, L.body, { g: 210 });
   const jaw = atk === 1 ? 4 : atk === 2 ? 2 : atk === 0 ? 1 : 0;
   const mz: V3 = add(head, [L.head * .6 + L.muzzle * .5, 0, -L.head * .25]);
-  r.egg(mz, L.muzzle * .62, L.muzzleR, L.muzzleR * .8, L.body, { g: 210 });
+  r.egg(mz, L.muzzle * .62, L.muzzleR, L.muzzleR * .8, L.headMat ?? L.body, { g: 210 });
   if (jaw) {
     r.egg(add(mz, [-1, 0, -L.muzzleR * .9 - jaw * .8]), L.muzzle * .5, L.muzzleR * .8, L.muzzleR * .4, L.dark, { g: 211, z: -.4 });
     r.egg(add(mz, [0, 0, -L.muzzleR * .55 - jaw * .4]), L.muzzle * .45, L.muzzleR * .65, jaw * .45, HM.void, { g: 212, z: -.2 });
@@ -965,11 +968,21 @@ function wings(r: Rig, root: V3, span: number, beat: number, skin: Mat, bone: Ma
 }
 function drake(r: Rig, p: Pose, bone = false): void {
   const ph = p.f / FRAMES * TAU, beat = Math.sin(ph) * (p.anim === 'walk' ? 1 : .5) + (p.anim === 'attack' && p.f === 0 ? .6 : 0);
-  const L: QuadLook = { ...WOLFLIKE, len: 18, hipU: 23, leg: 10.5, legR: 4.8, barrel: [21, 13, 12], chest: 14, haunch: 13, head: 8, headAt: [22, 0, 24], muzzle: 20, muzzleR: 4.8, ear: .01,
+  const L: QuadLook = { ...WOLFLIKE, len: 18, hipU: 23, leg: 10.5, legR: 4.8, barrel: [21, 12, 11], chest: 11.5, haunch: 12, head: 8, headAt: [20, 0, 31], muzzle: 22, muzzleR: 4.2, ear: .01, headEgg: [11, 7, 6.5], headMat: bone ? HM.skull : undefined,
     tail: [[-4, 0, 2], [-16, 0, 2], [-28, 4, 0], [-38, 2, -4]], tailR: 6.5,
     body: bone ? HM.bone : BB.drake, barrelMat: bone ? HM.void : undefined, under: bone ? HM.boneDk : BB.belly, dark: bone ? HM.boneDk : mat('#9c2e1c', { cool: '#1a0408' }, { round: 4 }), eye: bone ? EYE.violet : EYE.ember, nose: '#2a0a08', claw: '#fff0d0',
     dress: (rr, pp, q) => {
-      for (const side of [-1, 1] as const) rr.chain([add(q.head, [-6, side * 5, 6]), add(q.head, [-12, side * 7, 10]), add(q.head, [-17, side * 6, 9])], 2.4, .8, HM.horn, { z: .5 });
+      // A dragon's head: brow ridges over the eyes, swept-back horns, a cheek spike, nostrils at the snout's tip, teeth.
+      const hm = bone ? HM.skull : BB.drake;
+      for (const side of [-1, 1] as const) {
+        rr.egg(add(q.head, [3, side * 4.6, 4.2]), 5, 2.2, 1.8, hm, { g: 215 + side, z: .4 });
+        if (bone) rr.egg(add(q.head, [4.5, side * 4.4, 1.6]), 2.6, 2.4, 2.6, HM.void, { g: 217 + side, z: .5 });
+        rr.chain([add(q.head, [-4, side * 4, 5]), add(q.head, [-12, side * 6, 9]), add(q.head, [-20, side * 6, 10]), add(q.head, [-25, side * 4, 7])], 2.8, .7, bone ? HM.bone : HM.horn, { z: .6 });
+        rr.chain([add(q.head, [-3, side * 6, -1]), add(q.head, [-9, side * 9, -2])], 1.8, .6, bone ? HM.bone : HM.horn, { z: .5 });
+        const tip = add(q.head, [11 + 22 * .9, side * 1.6, 1.4]);
+        if (rr.faces([1, side * .4, .3])) rr.mark(tip, '#1a0408', 1, 1, { always: true });
+        for (let i = 0; i < 4; i++) rr.mark(add(q.head, [13 + i * 4.2, side * 3.4, -3.4 - q.jaw * .5]), '#fff6e0', 1, 2, { n: [0, side, 0] });
+      }
       for (let i = 0; i < 6; i++) rr.plate([add(q.hip, [i * 7, -1, 12]), add(q.hip, [i * 7 + 4, 1, 12]), add(q.hip, [i * 7 + 1, 0, 18 - (i % 2) * 2])], HM.horn, { z: .5 });
       wings(rr, add(q.chest, [-6, 0, 10]), 48, beat + .35, bone ? { ...BB.membrane, ramp: BB.membrane.ramp.map(c => mix(c, '#6b3aa0', .25)) } : BB.membrane, bone ? HM.bone : BB.drake);
       if (bone) {
