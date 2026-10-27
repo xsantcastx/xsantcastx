@@ -9,7 +9,7 @@ import { test } from '@playwright/test';
 import { existsSync, readFileSync } from 'node:fs';
 
 const DIR = 'docs/handoff/ui2';
-const SHEETS: { name: string; shot: string; title: string; notes: string[] }[] = [
+const SHEETS: { name: string; shot: string; title: string; notes: string[]; from?: string }[] = [
   { name: 'hud-desktop', shot: 'xp-1280x800-es', title: 'Desktop HUD, 1280 × 800 (ES), XP bar hovered', notes: [
     '1 XP tooltip no longer covers the Interact prompt: the prompt and toasts sit above a reserved lane over the bar',
     '2 Unit frame: Cormorant old-style digits ("I22", "7o") gone; name in Pixelify, Soul labelled ("Alma 0")',
@@ -45,6 +45,21 @@ const SHEETS: { name: string; shot: string; title: string; notes: string[] }[] =
   { name: 'sheet', shot: 'sheet-1280x800-es', title: 'Character sheet, 1280 × 800 (ES)', notes: [
     '1 The sheet ends above the bottom bar (it covered the belt and the mana orb)',
   ] },
+  // Loot (84b7e739) and the Graphics Beta (ad2c7716), merged into ui2: "before" is the merged build without this pass.
+  { name: 'settings-graphics', from: 'merged', shot: 'settings-390x844-es', title: 'Settings with the Graphics row, 390 × 844 (ES)', notes: [
+    '1 Row names in Inter 13 (were 12 px capitals with wide tracking); choices in Pixelify 13, sentence case',
+    '2 Explanations in Inter 12 (were Cormorant italic): the system keeps the serif for lore',
+  ] },
+  { name: 'vault-actions', from: 'merged', shot: 'vault-390x844-es', title: 'Vault: Deposit all · Take all · Sort, 390 × 844 (ES)', notes: [
+    '1 One brass primary (Deposit all) with the brass chip; the rest wood chips, all 44 px, Pixelify 14',
+  ] },
+  { name: 'satchel-sort', from: 'merged', shot: 'satchel-1280x800-es', title: 'Satchel Sort, 1280 × 800 (ES)', notes: [
+    '1 Sort is a wood secondary with the chip edge, Pixelify 14 (was a flat 12 px box)',
+  ] },
+  { name: 'phone-belt', from: 'merged', shot: 'hud-360x640-es', title: 'Phone belt with the labels toggle, 360 × 640 (ES)', notes: [
+    '1 With four belt slots the column ran off a 640 px screen: spells and belt now stand as one column on the middle',
+    '2 The labels toggle lights with a brass ring while on (the system’s selected state)',
+  ] },
 ];
 
 const url = (p: string) => `data:image/jpeg;base64,${readFileSync(p).toString('base64')}`;
@@ -52,7 +67,7 @@ const url = (p: string) => `data:image/jpeg;base64,${readFileSync(p).toString('b
 for (const s of SHEETS) {
   test(s.name, async ({ page }) => {
     test.skip(!process.env['UI2_COMPOSE'], 'set UI2_COMPOSE=1');
-    const before = `${DIR}/before/${s.shot}.jpg`, after = `${DIR}/after/${s.shot}.jpg`;
+    const before = `${DIR}/${s.from ?? 'before'}/${s.shot}.jpg`, after = `${DIR}/after/${s.shot}.jpg`;
     test.skip(!existsSync(before) || !existsSync(after), 'shots missing');
     const [w, h] = s.shot.split('-')[1].split('x').map(Number);
     const scale = w > 1400 ? .5 : w > 900 ? .75 : 1;
@@ -61,7 +76,7 @@ for (const s of SHEETS) {
     await page.setContent(`<!doctype html><html><body style="margin:0;background:#24150c;color:#f6e7c8;font:14px/1.4 Inter,system-ui,sans-serif">
       <div style="padding:16px 24px 8px;font:700 18px system-ui;color:#ffd27a">${s.title}</div>
       <div style="display:flex;gap:24px;padding:0 24px">
-        ${[['Before (live 05ad60f0)', before], ['After (ui2)', after]].map(([label, p]) => `
+        ${[[s.from ? 'Before (main ad2c7716, merged)' : 'Before (live 05ad60f0)', before], ['After (ui2)', after]].map(([label, p]) => `
           <figure style="margin:0"><figcaption style="padding:4px 0 6px;font:700 14px system-ui;color:${label.startsWith('After') ? '#6fd36a' : '#c99a3e'}">${label}</figcaption>
           <img src="${url(p)}" style="display:block;width:${cw}px;height:${ch}px;image-rendering:auto;outline:2px solid #6e4526"></figure>`).join('')}
       </div>

@@ -27,3 +27,16 @@ side-by-sides.
 
     UI2_SHOTS=after PW_PORT=4711 npx playwright test --project=chromium --reporter=line e2e/ui2-shots
     UI2_COMPOSE=1 PW_PORT=4711 npx playwright test --project=chromium --reporter=line e2e/ui2-compose
+
+## After merging loot (84b7e739) and the Graphics Beta (ad2c7716)
+
+| Was | Now | Where |
+|---|---|---|
+| Settings rows (Graphics among them): 12 px Pixelify capitals with wide tracking; explanations in Cormorant italic | Names in Inter 13, choices in Pixelify 13 in sentence case, explanations in Inter 12 | `sound-sheet.component.ts` |
+| Vault actions: the primary was `--gold-bright` (a retired token) and the others were thin outlines | Deposit all is brass with the brass chip; Take all and both Sorts are wood chips; all 44 px, Pixelify 14 | `vault-station.component.css` |
+| Satchel Sort was a flat 12 px box | A wood secondary with the chip edge, Pixelify 14 | ui.css |
+| A fourth belt slot (the labels toggle) pushed the phone column off a 640 px screen | Spells and belt stand as one column on the screen's middle; the toggle lights with a brass ring while on | ui.css |
+| The ground list showed a bare count beside its close button | The title says what it is; rows in Inter 13 | ui.css |
+
+`e2e/ui2-shots` now pins Classic graphics, because Isometric (the new default) layers extra canvases and the before
+set was Classic. Before shots of the new bits are under `docs/handoff/ui2/merged/`.
