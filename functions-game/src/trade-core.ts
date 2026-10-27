@@ -141,14 +141,6 @@ const STAT_KEY = /^[A-Za-z]{1,32}$/;
 /** A plain satchel stack key: no `:` (Vault keys `v:<tab>:<key>`, `storage:*` entitlements) and no `|` (packed ops). */
 const STACK_KEY = /^[a-z0-9][a-z0-9-]{0,63}$/;
 export const STACK_OFFER_MAX = 1_000_000;
-/** inventory-layout.ts QUEST_STACKS (pinned by trade-merge.spec): quest finds stay with their Keeper. */
-export const QUEST_STACK_KEYS: ReadonlySet<string> = new Set([
-  'kaels-hammer', 'godforge-fragment', 'shadow-root-cutting', 'rift-key', 'worn-rod', 'mirror-slate', 'mirror-slate-ii',
-  'four-hammer-marks',
-  'curio-unstruck-bell', 'curio-jar-of-noon', 'curio-blank-page', 'curio-lost-moon', 'curio-stubborn-seed', 'curio-tally-stick',
-  'curio-blinking-mirror', 'curio-unsigned-letter', 'curio-pressed-rose', 'curio-moss-locket', 'curio-lamp-wick', 'curio-kept-coal',
-  'curio-clean-ink', 'curio-backward-rings', 'curio-folded-shadow', 'curio-last-chart', 'hatbox-of-small-crowns', 'curators-loupe',
-]);
 /** True for a stack offer (`sk` + `qty`). */
 export const isStackOffer = (o: OfferItem): boolean => typeof o.sk === 'string';
 const numMap = (raw: unknown, what: string, lo: number, hi: number): Record<string, number> => {
@@ -562,13 +554,15 @@ function liveRecord(inv: Doc, id: string): Doc | null {
   if (tomb && cmpRev(revOf(tomb['revision']), revOf(rec['revision'])) >= 0) return null;
   return rec;
 }
-/** Why an item cannot change hands, or null. Only loose gear in the satchel: never worn, lent, vaulted, bound or a quest piece. */
+/**
+ * Why an item cannot change hands, or null. Owner rule (2026-10-27): everything a Keeper holds is tradable — soulbound,
+ * the starter tools, quest pieces and worn gear alike (worn gear comes off as it goes). Only what is not in hand cannot:
+ * the Vault (take it out first) and kit lent to an explorer on an expedition.
+ */
 export function untradeable(rec: Doc): string | null {
   if (rec['kind'] !== 'instance' || rec['source'] !== 'inventory') return 'That cannot be traded.';
-  if (!isObj(rec['location']) || (rec['location'] as Doc)['kind'] !== 'bag') return 'Take it out of the Vault and off your Keeper first.';
-  if (rec['soulbound'] === true) return 'Soulbound items stay with their Keeper.';
-  if (rec['category'] === 'quest') return 'Quest items stay with their Keeper.';
-  if (String(rec['id']).startsWith('starter-')) return 'Every Keeper keeps their worn tools.';
+  const where = isObj(rec['location']) ? (rec['location'] as Doc)['kind'] : null;
+  if (where !== 'bag' && where !== 'equipped') return 'Take it out of the Vault and off your explorers first.';
   return null;
 }
 /** Take a held item out of a save, merge-proof (see the header). Returns the record as it was. */
@@ -630,11 +624,10 @@ function pushStackOp(inv: Doc, id: string, stackKey: string, kind: 'grant' | 'co
   inv['stackOps'] = [...ops, { id, stackKey, kind, quantity, hlc, deviceId: TRADE_DEVICE, sequence }];
   inv['hlc'] = hlc;
 }
-/** Why a stack cannot change hands, or null: quest finds stay; the satchel's own key only (never a Vault key). */
+/** Why a stack cannot change hands, or null: the satchel's own keys only (never a Vault key or an entitlement). Quest
+ *  finds trade like anything else (owner 2026-10-27); their quests follow whoever holds them. */
 export function untradeableStack(stackKey: string): string | null {
-  if (!STACK_KEY.test(stackKey)) return 'That cannot be traded.';
-  if (QUEST_STACK_KEYS.has(stackKey)) return 'Quest items stay with their Keeper.';
-  return null;
+  return STACK_KEY.test(stackKey) ? null : 'That cannot be traded.';
 }
 /** Take `offered.qty` of a satchel stack out of a save: one consume op (`opId`), refused when it is no longer held. */
 export function takeStack(inv: Doc, offered: OfferItem, who: string, opId: string, now: number): void {
@@ -978,6 +971,8 @@ export async function dropItem(db: Db, uid: string, body: unknown, now: number):
     const n = inWindow ? num(rate?.['n']) : 0;
     if (n >= GROUND_RATE_MAX) refuse(429, 'slow-down', 'You are dropping things too fast. Wait a moment.');
     const inv = readInventory(invDoc, 'You');
+    const held = liveRecord(inv, offered.id);
+    if (held && isObj(held['location']) && (held['location'] as Doc)['kind'] !== 'bag') refuse(409, 'untradeable', 'Take it off your Keeper first.');
     const rec = takeItem(inv, offered, 'You', now);
     bumpServerSeq(inv);
     const ground: GroundDoc = {

@@ -17,7 +17,7 @@ import { TranslationService } from '../../translation.service';
 import type { RoomGround, RoomGroundNote, RoomSnapshot, RoomTrade, RoomTradeAsk, RoomTradeCommit, RoomTradeEnd, SocialRoom } from '../social/social-room';
 import { TradeBackendService } from './trade-backend.service';
 import { GroundFlow, TradeFlow } from './trade-flow';
-import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, groupOffers, satchelGroups, itemFromOffer, offerItemOf, stackOfferOf, tradeBlock, type OfferItem } from './trade-items';
+import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, groupOffers, satchelGroups, itemFromOffer, offerItemOf, stackOfferOf, dropBlock, tradeTag, type OfferItem } from './trade-items';
 import { TRADE_I18N } from './trade.i18n';
 import { DropTargetDirective } from '../../shared/inventory-grid/drop-target.directive';
 import { ItemDragService, type DragHeld, type DropTarget } from '../../shared/inventory-grid/item-drag.service';
@@ -39,7 +39,7 @@ interface GroundEngine {
  * One entry in a window: a single item, a pile of identical ones, or a stack (`sk`), with how many (`qty`) — the satchel's
  * own grouping, so a stack of 5 potions is one entry ×5, never five, and never missing (owner 2026-10-27).
  */
-interface Cell { id: string; name: string; art: string; mark: string; tone: string; item: GameItem | null; block?: string | null; qty: number; ids: string[]; sk?: string }
+interface Cell { id: string; name: string; art: string; mark: string; tone: string; item: GameItem | null; tag?: 'worn' | 'quest' | null; qty: number; ids: string[]; sk?: string }
 
 const tone = (rarity: string) => `var(--cozy-loot-${rarity}, var(--cozy-loot-common))`;
 const mark = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '·';
@@ -176,10 +176,13 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     const quest = snap.stacks.filter(st => slotClassOf(st.stackKey) === 'quest');
     const out: Cell[] = [];
     for (const g of satchelGroups(grid, quest, mine, id => this.groundFlow.isPending(id))) {
-      if (g.sk) { out.push({ ...this.stackCell(g.sk, g.qty), ...(g.quest ? { block: 'quest' } : {}) }); continue; }
+      if (g.sk) { out.push({ ...this.stackCell(g.sk, g.qty), ...(g.quest ? { tag: 'quest' as const } : {}) }); continue; }
       const item = snap.items.find(i => i.id === g.ids[0]);
-      if (item) out.push({ ...this.cell(item), ids: g.ids, qty: g.qty, block: tradeBlock(item) });
+      if (item) out.push({ ...this.cell(item), ids: g.ids, qty: g.qty });
     }
+    // What the Keeper wears is theirs to trade too (owner 2026-10-27): tagged Worn, taken off when it is offered.
+    const offered = new Set(mine.map(o => o.id));
+    for (const item of Object.values(snap.equipped)) if (item && !item.explorerId && !offered.has(item.id)) out.push({ ...this.cell(item), tag: tradeTag(item) });
     return out;
   }
   /** A window's offers as entries: a stack once with its amount, identical instances once with every id. */
@@ -201,7 +204,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
 
   /** The window is a drop target: a satchel item dragged onto it is offered (docs/design/inventory-grid.md §3). */
   readonly offerTarget: DropTarget = {
-    accepts: (held: DragHeld) => !this.locked && held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held') && !tradeBlock(held.item),
+    accepts: (held: DragHeld) => !this.locked && held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held'),
     drop: (held: DragHeld) => {
       if (!held.item) return false;
       const id = held.item.id;
@@ -212,7 +215,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
 
   /** The window's own satchel cells are the satchel too: a drag from one onto "You offer" (or the window) offers it. */
   pressBag(ev: PointerEvent, c: Cell): void {
-    if (c.block || this.locked || !c.item) return;
+    if (this.locked || !c.item || c.tag === 'worn') return;
     const fp = footprintOf(c.item);
     this.drag.press(ev, {
       ref: { kind: 'instance', ids: [c.id] }, from: 'b', w: fp.w, h: fp.h, grabDx: 0, grabDy: 0,
@@ -223,13 +226,13 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   /** Offer an entry: one thing at once; a pile or a stack asks how many first (all of it to start). */
   async add(c: Cell): Promise<void> {
     const t = this.trade;
-    if (!t || this.locked || c.block) return;
+    if (!t || this.locked) return;
     if (c.qty > 1) { this.amount = { cell: c, n: c.qty }; this.cdr.markForCheck(); this.showAmount(); return; }
     await this.offer(c, 1);
   }
   /** Offer `n` of an entry: a stack as one offer of n (joining what is already offered), a pile as n of its pieces. */
   async offer(c: Cell, n: number): Promise<void> {
-    if (!this.trade || this.locked || c.block) return;
+    if (!this.trade || this.locked) return;
     n = Math.max(1, Math.min(c.qty, Math.floor(n) || 1));
     let next: OfferItem[];
     if (c.sk) {
@@ -237,7 +240,9 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
       const entry = stackOfferOf(c.sk, c.name, (had?.qty ?? 0) + n);
       next = had ? this.mine.map(o => (o === had ? entry : o)) : [...this.mine, entry];
     } else {
-      const items = c.ids.slice(0, n).map(id => (c.item?.id === id ? c.item : this.inventory.itemById(id))).filter((i): i is GameItem => !!i);
+      // Worn gear comes off first (it lands in the satchel), then goes in the window as it now is.
+      for (const id of c.ids.slice(0, n)) if (this.inventory.itemById(id)?.equipped && !this.inventory.unequip(id)) { this.said.emit(this.t('trade.wornStuck', { name: c.name })); return; }
+      const items = c.ids.slice(0, n).map(id => this.inventory.itemById(id)).filter((i): i is GameItem => !!i);
       next = [...this.mine, ...items.map(offerItemOf)];
     }
     if (next.length > TRADE_MAX_ITEMS) { this.said.emit(this.t('trade.full', { n: TRADE_MAX_ITEMS })); return; }
@@ -398,7 +403,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   // ── Ground drops ──
   /** Put a satchel item on the ground at the Keeper's feet (the card's Drop, or a drag onto the world). */
   async drop(item: GameItem): Promise<boolean> {
-    if (tradeBlock(item) || this.groundFlow.isPending(item.id)) return false;
+    if (dropBlock(item) || this.groundFlow.isPending(item.id)) return false;
     const eng = this.engine as GroundEngine | undefined;
     const here = eng?.peerPresence?.();
     if (!here) return false;
@@ -420,6 +425,6 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     this.cdr.markForCheck();
   }
   canDrop(item: GameItem | null | undefined): boolean {
-    return !!item && !tradeBlock(item) && !this.groundFlow.isPending(item.id) && !!this.social?.connected && (this.social.protocol ?? 0) >= 6;
+    return !!item && !dropBlock(item) && !this.groundFlow.isPending(item.id) && !!this.social?.connected && (this.social.protocol ?? 0) >= 6;
   }
 }

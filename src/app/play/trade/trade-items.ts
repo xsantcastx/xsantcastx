@@ -106,14 +106,16 @@ export function itemFromOffer(o: OfferItem): GameItem {
 }
 
 /**
- * Why this item cannot be traded or dropped (the window greys it with the reason), or null. The same rules the
- * server enforces (trade-core untradeable): loose gear in the satchel only.
+ * Owner rule (2026-10-27): everything a Keeper holds can be traded — soulbound, the starter tools, quest pieces and worn
+ * gear alike (trade-core untradeable refuses only the Vault and an explorer's kit). The window tags worn gear ("Worn": it
+ * comes off when offered); nothing is greyed.
  */
-export function tradeBlock(item: GameItem): 'worn' | 'bound' | 'starter' | null {
-  if (item.equipped || item.explorerId) return 'worn';
-  if (item.soulbound) return 'bound';
-  if (item.id.startsWith('starter-')) return 'starter';
-  return null;
+export function tradeTag(item: GameItem): 'worn' | null {
+  return item.equipped && !item.explorerId ? 'worn' : null;
+}
+/** Why this item cannot go on the ground from here, or null: only a loose satchel item is set down. */
+export function dropBlock(item: GameItem): 'worn' | null {
+  return item.equipped || item.explorerId ? 'worn' : null;
 }
 
 /** JSON with sorted keys: both windows' copies of the same terms compare equal (trade-core canonical). */
