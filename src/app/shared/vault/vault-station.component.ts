@@ -24,6 +24,9 @@ import { ItemGridComponent, type GridPick, type PieceLook } from '../inventory-g
 import { ItemDragService, type DragHeld } from '../inventory-grid/item-drag.service';
 import { pieceLookOf } from '../inventory-grid/piece-look';
 import { StorageService, type StorageId } from './storage.service';
+import { PotionService } from '../potions/potion.service';
+import { SpellstoneService } from '../spellstones/spellstone.service';
+import { recipeOfDef } from '../spellstones/spellstones.model';
 import { VAULT_STATION_I18N } from './vault-station.i18n';
 
 export type VaultView = VaultTabId;
@@ -51,6 +54,8 @@ export class VaultStationComponent implements OnInit, OnDestroy {
   private readonly storage = inject(StorageService);
   readonly drag = inject(ItemDragService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly potions = inject(PotionService);
+  private readonly stones = inject(SpellstoneService);
   private subs: Subscription[] = [];
 
   view: VaultView = 'general-1';
@@ -119,6 +124,36 @@ export class VaultStationComponent implements OnInit, OnDestroy {
 
   moved(ev: { result: GridMoveResult; held: DragHeld }): void {
     this.announce = ev.result === 'ok' ? '' : this.t(`vault.why.${ev.result === 'vault-closed' ? 'blocked' : ev.result === 'persist' ? 'failed' : 'blocked'}`);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * "Deposit all" (owner 2026-10-26): the whole satchel into the stash, each piece into the first owned tab with room.
+   * What the belt draws from stays (the potions on Q and R, the Spellstone on F); worn things are not in the satchel and
+   * quest finds have no cell. What has no room stays, and the line says so.
+   */
+  depositAll(): void {
+    const belt = this.potions.belt(0).map(b => b.potion?.id).filter((id): id is string => !!id);
+    const slot = this.stones.state.slot;
+    const keepIds = new Set(this.inventory.snapshot.bag.filter(i => slot && recipeOfDef(i.definitionId) === slot).map(i => i.id));
+    const out = this.inventory.depositAll({ stackKeys: new Set(belt), itemIds: keepIds });
+    this.said(out, 'vault.done.deposit');
+  }
+  /** "Take all" from the open tab: into the satchel's free cells, as many as fit. */
+  takeAll(): void {
+    if (this.view === 'overflow') return;
+    this.said(this.inventory.takeAllFrom(this.view), 'vault.done.take');
+  }
+  /** "Sort" one grid (type, rarity, name): only when pressed. */
+  sort(container: 'b' | VaultTabId): void {
+    const r = this.inventory.sortGrid(container);
+    this.announce = r === 'ok' ? this.t('vault.done.sort') : this.t('vault.why.failed');
+    this.cdr.markForCheck();
+  }
+  private said(out: { moved: number; left: number; code: GridMoveResult }, done: string): void {
+    this.announce = out.code === 'persist' ? this.t('vault.why.failed')
+      : out.left ? this.t('vault.done.left', { n: out.moved, left: out.left })
+      : this.t(done, { n: out.moved });
     this.cdr.markForCheck();
   }
 

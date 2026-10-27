@@ -73,7 +73,7 @@ describe('keymap model', () => {
 
   it('saves only what changed, and reads it back', () => {
     expect(toOverrides(defaultBindings())).toEqual({});
-    const changed = rebind(defaultBindings(), 'lore', 0, 'KeyN').bindings;
+    const changed = rebind(defaultBindings(), 'lore', 0, 'KeyU').bindings;
     const sparse = toOverrides(changed);
     expect(Object.keys(sparse)).toEqual(['lore']);
     expect(resolveBindings(sparse)).toEqual(changed);

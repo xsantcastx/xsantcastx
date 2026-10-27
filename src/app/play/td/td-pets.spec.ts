@@ -84,18 +84,21 @@ describe('td-pets: what a pet fetches', () => {
     expect(pickFetchTarget(K, [common, rare], TD_PET.fetchReach, 'hide-common')?.id).toBe('r');
     expect(fetchable(drop('p', 0, 0, { material: 'health-potion-minor' }), 'rare-plus')).toBeTrue();
   });
-  it('a drop set at the Keeper\'s feet is taken by his own pick-up (onLoot), like walking over it', () => {
+  it('a drop set at the Keeper\'s feet waits for his hand (only Gold is walked up); the pet\'s delivery takes it through onLoot', () => {
     const got: string[] = [];
     const sys = mobs({ x: 0, y: 0 }, loot => { got.push(loot.material ?? ''); return true; });
     sys.layDrop('fetched', 0, 0, 'ember-residue', 1, 'ember residue');
     sys.update(.05);
+    expect(got).toEqual([]);
+    expect(sys.drops.length).toBe(1);
+    expect(sys.takeDrop('fetched')).toBeTrue();
     expect(got).toEqual(['ember-residue']);
     expect(sys.drops.length).toBe(0);
   });
   it('a full satchel leaves it lying (the pet lets it be)', () => {
     const sys = mobs({ x: 0, y: 0 }, () => false);
     sys.layDrop('fetched', 0, 0, 'ember-residue', 1, 'ember residue');
-    sys.update(.05);
+    expect(sys.takeDrop('fetched')).toBeFalse();
     expect(sys.drops.length).toBe(1);
   });
 });

@@ -215,4 +215,44 @@ describe('TradeFlow / GroundFlow — protocol 8: the room settles and lays', () 
     expect(await flow.pickup({ id: 'g2', area: 'ember-isle', x: 0, y: 0, name: 'x', rarity: 'rare', def: 'd', until: 0 })).toEqual({ ok: false, why: 'gone' });
     expect(r.log).not.toContain('function-drop');
   });
+
+  it('the satchel lets go the instant a drop is asked for: pending while the room answers, back on a refusal, held until the escrowed save is re-read', async () => {
+    const r = rig();
+    let answer!: (v: Awaited<ReturnType<NonNullable<TradeRoom['groundLay']>>>) => void;
+    r.room.groundLay = () => new Promise(res => { answer = res; });
+    const flow = new GroundFlow(r.backend, r.room);
+    const item = core.offerOf(rec('s7') as unknown as core.Doc);
+    // Refused: hidden while asking, back the moment the room says no.
+    const refused = flow.drop(item, { area: 'ember-isle', x: 1, y: 2 });
+    expect(flow.isPending('s7')).toBeTrue();
+    answer({ why: 'no-room' });
+    expect(await refused).toEqual({ ok: false, why: 'no-room' });
+    expect(flow.isPending('s7')).toBeFalse();
+    // Laid: hidden throughout, and still hidden while the escrowed save is being re-read.
+    const laid = flow.drop(item, { area: 'ember-isle', x: 1, y: 2 });
+    expect(flow.isPending('s7')).toBeTrue();
+    answer({ why: '', ground: { id: 'g7', area: 'ember-isle', x: 1, y: 2, name: item.name, rarity: item.rarity, def: item.def, until: 0, pending: true } });
+    expect(await laid).toEqual({ ok: true, id: 'g7' });
+    expect(flow.isPending('s7')).toBeTrue();
+    let release!: () => void;
+    r.backend.settle = () => new Promise<void>(res => { release = res; });
+    const noted = flow.noted({ kind: 'escrowed', id: 'g7', name: item.name });
+    expect(flow.isPending('s7')).toBeTrue();
+    release();
+    await noted;
+    expect(flow.isPending('s7')).toBeFalse();
+  });
+
+  it('an escrowed drop is let go of for good once the save is re-read (a stale copy cannot bring it back); a returned one is kept', async () => {
+    const r = rig();
+    const forgot: string[] = [];
+    const flow = new GroundFlow(r.backend, r.room, id => forgot.push(id));
+    const item = core.offerOf(rec('s5') as unknown as core.Doc);
+    expect((await flow.drop(item, { area: 'ember-isle', x: 1, y: 2 })).ok).toBeTrue();
+    await flow.noted({ kind: 'returned', id: 'g1', name: item.name, why: 'no' });
+    expect(forgot).toEqual([]);
+    expect((await flow.drop(item, { area: 'ember-isle', x: 1, y: 2 })).ok).toBeTrue();
+    await flow.noted({ kind: 'escrowed', id: 'g1', name: item.name });
+    expect(forgot).toEqual(['s5']);
+  });
 });

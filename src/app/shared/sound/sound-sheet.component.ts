@@ -14,6 +14,7 @@ import { SoundService } from './sound.service';
 import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, SOUND_CHANNELS, type ChatSetting, type HushSetting, type InviteSetting, type NightSetting, type PresenceSetting, type SoundChannel, type SoundSettings } from './sound-settings.model';
 import { SOUND_I18N } from './sound.i18n';
 import { ENV_DETAILS, envDetail, onEnvDetail, setEnvDetail, type EnvDetail } from '../../play/td/td-detail';
+import { GRAPHICS, graphics, onGraphics, setGraphics, type Graphics } from '../../play/td/td-artopt';
 import { WEATHER_SHOWS, WEATHER_SHOW_KEY, type WeatherShow } from '../weather/weather-show';
 
 function readWeatherShow(): WeatherShow {
@@ -64,6 +65,16 @@ function readWeatherShow(): WeatherShow {
           }
         </span>
         <small class="ss__hushline">{{ t('play.sound.night.' + s.night + '.line') }}</small>
+      </div>
+      <!-- Graphics (play/td/td-artopt.ts): Classic or the Isometric Beta, this device's choice, not synced. -->
+      <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.graphics')">
+        <span class="ss__name">{{ t('play.sound.graphics') }}</span>
+        <span class="ss__seg">
+          @for (g of graphicsAll; track g) {
+            <button type="button" role="radio" [attr.aria-checked]="graphics === g" [class.on]="graphics === g" [attr.data-graphics-setting]="g" (click)="setGraphics(g)">{{ t('play.sound.graphics.' + g) }}</button>
+          }
+        </span>
+        <small class="ss__hushline">{{ t('play.sound.graphics.' + graphics + '.line') }}</small>
       </div>
       <!-- Environment detail (play/td/td-detail.ts): this device's choice, not synced — the characters keep their look on both. -->
       <div class="ss__hush" role="radiogroup" [attr.aria-label]="t('play.sound.detail')">
@@ -164,6 +175,8 @@ export class SoundSheetComponent implements OnDestroy {
   readonly chats = CHAT_SETTINGS;
   readonly details = ENV_DETAILS;
   detail: EnvDetail = envDetail();
+  readonly graphicsAll = GRAPHICS;
+  graphics: Graphics = graphics();
   readonly weathers = WEATHER_SHOWS;
   weather: WeatherShow = readWeatherShow();
   readonly presences = PRESENCE_SETTINGS;
@@ -178,6 +191,8 @@ export class SoundSheetComponent implements OnDestroy {
     this.subs.add(this.sound.settings$.subscribe(s => { this.s = s; this.cdr.markForCheck(); }));
     const off = onEnvDetail(d => { this.detail = d; this.cdr.markForCheck(); });
     this.subs.add(() => off());
+    const offG = onGraphics(g => { this.graphics = g; this.cdr.markForCheck(); });
+    this.subs.add(() => offG());
     this.subs.add(this.sound.status$.subscribe(st => { this.status = st; this.cdr.markForCheck(); }));
   }
 
@@ -200,6 +215,7 @@ export class SoundSheetComponent implements OnDestroy {
   setNight(n: NightSetting): void { this.sound.setNight(n); this.sound.sfx('tap'); }
 
   setDetail(d: EnvDetail): void { setEnvDetail(d); this.detail = d; this.sound.sfx('tap'); }
+  setGraphics(g: Graphics): void { setGraphics(g); this.graphics = g; this.sound.sfx('tap'); }
   /** Weather: full, soft or off (plain localStorage, a device preference like Environment detail; the play view reads it each second). */
   setWeather(w: WeatherShow): void { try { localStorage.setItem(WEATHER_SHOW_KEY, w); } catch { /* private mode */ } this.weather = w; this.sound.sfx('tap'); }
   setChat(c: ChatSetting): void { this.sound.setChat(c); this.sound.sfx('tap'); }

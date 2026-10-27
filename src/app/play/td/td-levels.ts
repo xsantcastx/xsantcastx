@@ -9,6 +9,8 @@ import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
 import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
 import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
+import { ARTOPT_TAVERN } from './maps/artopt-tavern';
+import { artOptParam, optCamera } from './td-artopt';
 import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
 import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3, MOLTEN_DEEP_4, MOLTEN_DEEP_5, MOLTEN_DEEP_6 } from './maps/molten-deep';
 import { FORGE_OF_FOUR_1, FORGE_OF_FOUR_2, FORGE_OF_FOUR_3 } from './maps/forge-of-four';
@@ -46,7 +48,9 @@ const DRAWN: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1
   'overgrown-temple-4': OVERGROWN_TEMPLE_4, 'overgrown-temple-5': OVERGROWN_TEMPLE_5,
   'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
   'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0,
-  'hushed-barrow-1': HUSHED_BARROW_1 };
+  'hushed-barrow-1': HUSHED_BARROW_1,
+  // The isometric prototype's tavern (td-artopt.ts): only with ?artopt= in an automated browser or on localhost.
+  ...(optCamera() && artOptParam() ? { 'artopt-tavern': ARTOPT_TAVERN } : {}) };
 
 /**
  * Each dungeon floor's lair (td-level TdMapDef.lair; owner 2026-10-26: "more combat zones, like hot spots"): its own

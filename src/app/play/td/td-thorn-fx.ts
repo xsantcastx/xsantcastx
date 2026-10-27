@@ -16,6 +16,10 @@ import { mobCell } from './td-mobs';
 import { burst, drawBurst, glowSquare, groundRing, linePixels, type Tones } from './td-fx';
 import { PET_H, PET_W, petFrameIndex, petSheet, type TdPetFrame } from './td-pet-art';
 import { SPIRIT_BEAST } from './td-thorn';
+import { optHdFigures } from './td-artopt';
+import { envDetail } from './td-detail';
+import { hdCell } from './td-hd-mob';
+import { facingRow } from './td-hd-rig';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -163,8 +167,10 @@ export function drawThornAir(c: Ctx, e: FxLike, still: boolean, overFoe: (x: num
  * What lasts: thorned roots round a rooted creature's feet, a blood drop by a bleeding one, Command's chevron over the
  * sent-at foe, and Pack Bond's thread — a dotted line of green light from the Keeper to his beast while the bond holds.
  */
-export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded: MobLike | null; bond: { x: number; y: number } | null; keeper: { x: number; y: number } }, time: number, still: boolean): void {
+/** `at` (the isometric view): stand what follows on the given foot (each creature's marks; the bond from the Keeper's). */
+export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded: MobLike | null; bond: { x: number; y: number } | null; keeper: { x: number; y: number } }, time: number, still: boolean, at?: (x: number, y: number) => void): void {
   for (const m of st.mobs) {
+    at?.(m.x, m.y);
     const X = Math.round(m.x), Y = Math.round(m.y);
     if ((m.rootT ?? 0) > 0) {
       const w = Math.max(5, Math.round(mobCell(m.def).w / 3));
@@ -183,12 +189,14 @@ export function drawThornState(c: Ctx, st: { mobs: readonly MobLike[]; commanded
   }
   const f = st.commanded;
   if (f) {
+    at?.(f.x, f.y);
     const X = Math.round(f.x), Y = Math.round(f.y - mobCell(f.def).h - 6), bob = still ? 0 : Math.round(Math.sin(time * 6));
     for (let i = 0; i < 3; i++) { c.fillStyle = i ? LEAF : LEAF_HI; c.fillRect(X - 3 + i, Y + bob + i, 1, 1); c.fillRect(X + 3 - i, Y + bob + i, 1, 1); }
     c.fillStyle = THORN_FX.wild.core; c.fillRect(X, Y + bob + 3, 1, 1);
   }
   const b = st.bond;
   if (b) {
+    at?.(st.keeper.x, st.keeper.y);
     // Every third pixel of the line, turning slowly along it (still: fixed), at half strength.
     const pts = linePixels(st.keeper.x, st.keeper.y - 6, b.x, b.y - 6), shift = still ? 0 : Math.floor(time * 8);
     c.globalAlpha = .45;
@@ -206,6 +214,9 @@ export function drawBeast(c: Ctx, b: { x: number; y: number; face: number; age: 
   c.globalAlpha = .35; c.fillStyle = THORN_FX.wild.edge;
   c.fillRect(X - 6, Y - 1, 12, 2);
   c.globalAlpha = run ? .62 : .78;
+  // Isometric B: the spirit beast's kin in HD (td-hd-pets.ts), turned toward its run.
+  const hd = optHdFigures() && envDetail() !== 'low' ? hdCell(`pet:${SPIRIT_BEAST}`, facingRow(true, true, b.face < 0), 'walk', petFrameIndex(frame), time) : null;
+  if (hd) { c.drawImage(hd.img, 0, 0, hd.img.width, hd.img.height, X - hd.ax / 2, Y + 1 - hd.ay / 2, hd.img.width / 2, hd.img.height / 2); c.globalAlpha = 1; return; }
   c.save();
   c.translate(X, Y - PET_H + 1);
   if (b.face < 0) c.scale(-1, 1);

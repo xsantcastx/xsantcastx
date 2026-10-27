@@ -31,6 +31,9 @@ export async function seed(page: Page, blobs: Blobs = {}): Promise<void> {
     sessionStorage.setItem('visit-counted', '1');
     // The side view's specs keep the side view (top-down is the default since 2026-10-19); a top-down spec seeds 'eclipse-td': '1'.
     localStorage.setItem('eclipse-td', '0');
+    // Isometric is the default since 2026-10-27: a top-down spec keeps testing the top-down (Classic) view; an iso spec
+    // seeds 'eclipse-td-graphics': 'iso' or uses ?artopt=iso.
+    localStorage.setItem('eclipse-td-graphics', 'classic');
     for (const [key, value] of Object.entries(entries)) {
       localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
     }

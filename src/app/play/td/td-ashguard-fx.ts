@@ -116,7 +116,9 @@ export interface AshState {
  * What lasts while it holds: the blade burning (embers climbing the steel at the Keeper's hand), the Shield Oath's rim
  * (a dashed brass frame round him), the Vow's brass corners, the stun stars and the taunt's "!" over creatures.
  */
-export function drawAshState(c: Ctx, s: AshState, p: { x: number; y: number; face: number }, time: number, still: boolean): void {
+/** `at` (the isometric view): stand what follows on the given foot (the Keeper's marks, then each creature's). */
+export function drawAshState(c: Ctx, s: AshState, p: { x: number; y: number; face: number }, time: number, still: boolean, at?: (x: number, y: number) => void): void {
+  at?.(p.x, p.y);
   const X = Math.round(p.x), Y = Math.round(p.y);
   if (s.brandT > 0) {
     for (let i = 0; i < 3; i++) {
@@ -142,6 +144,7 @@ export function drawAshState(c: Ctx, s: AshState, p: { x: number; y: number; fac
     }
   }
   for (const m of s.mobs) {
+    at?.(m.x, m.y);
     const top = Math.round(m.y - mobCell(m.def).h - 6), mx = Math.round(m.x);
     if ((m.stun ?? 0) > 0) {
       // Three brass stars circling over its head (a CC pip, design-bible §4.7).

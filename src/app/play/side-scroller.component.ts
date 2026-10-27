@@ -54,7 +54,7 @@ import type { SocketDrop } from '../shared/enchanting/socketing.service';
 import { footprintOf } from '../shared/rpg/item-footprint';
 import type { GridView, Piece } from '../shared/rpg/inventory-grid';
 import type { GridMigrationNote, GridMoveResult } from '../shared/rpg/inventory.service';
-import { recipeKey, recipeOfDef } from '../shared/spellstones/spellstones.model';
+import { parseRecipeKey, recipeKey, recipeOfDef } from '../shared/spellstones/spellstones.model';
 import { itemFromOffer } from './trade/trade-items';
 import { iconOf } from '../shared/art/item-icons';
 import type { IconKind } from '../shared/art/item-icon-shapes';
@@ -63,6 +63,7 @@ import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL, IN_WORLD_STATION } from '..
 import { areaOf, findStation, LootRarity, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
+import { stackTakesCell } from '../shared/rpg/inventory-grid';
 import { slotsForGroup } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST, runeById, tierOf } from '../shared/rune-forge/rune.model';
 import { runeOfStack } from '../shared/rune-forge/rune-stack';
@@ -91,7 +92,7 @@ import { MOBS, mobCell, mobSheet } from './td/td-mobs';
 import { bossUniqueById, relicTotals, type BossUnique, type RelicTotals } from '../shared/rpg/boss-uniques';
 import { chestsHolding, setCounts, setOfPiece, setPieceById, setSigIds, tierWord } from '../shared/rpg/set-items';
 import { relicSigOf, sigIds, uniqueById, type UniqueItem } from '../shared/rpg/unique-items';
-import type { CorpseView, SeekAnswer } from './engine/engine.model';
+import type { CorpseView, PileRow, SeekAnswer } from './engine/engine.model';
 import { CORPSE_I18N } from './td/td-corpse.i18n';
 import { ABILITIES_I18N } from './td/td-abilities.i18n';
 import { abilitiesOf } from './td/td-abilities';
@@ -318,6 +319,8 @@ import { PlayLedgerService } from '../shared/games/play-ledger.service';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
 import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
+import { onIsoSlow, optIso, setGraphics } from './td/td-artopt';
+import { HD_CROPS, hdStill } from './td/td-hd-keeper';
 import { WorldFeelBus, type CraftedFeel } from '../shared/sound/world-feel.bus';
 import { materialOf, REALM_IDS, TOWN_GROUND, type RealmId } from '../shared/sound/sound-palette';
 import { LevelUpAudioService } from '../shared/activity/level-up-audio.service';
@@ -412,6 +415,10 @@ interface BagSlip {
   canEat?: boolean;
   canLight?: boolean;
   canCook?: boolean;
+  /** A Spellstone (shared/spellstones): "Put on belt" slots its recipe on F; "Use" casts it now. Never "Equip". */
+  stone?: { recipe: string; onBelt: boolean };
+  /** A potion: "Put on belt" pins it to its key (Q health, R mana; a rejuvenation to Q). */
+  potion?: { id: string; kind: 'health' | 'mana' };
   /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
   count?: number;
   /** Wearing it, against what that place holds now. Empty for worn items and materials. */
@@ -1389,11 +1396,106 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Drop the picked satchel item on the ground at the Keeper's feet (protocol 6: everyone here sees it). */
   async dropPicked(): Promise<void> {
+    const pick = this.pick;
+    if (pick?.kind === 'stack') {
+      const p = this.inventory.snapshot.grid.bag.pieces.find(x => x.kind === 'stack' && x.stackKey === pick.ref);
+      if (p && this.dropStackToGround(p.stackKey ?? '', p.qty)) this.pick = null;
+      return;
+    }
     const item = this.selectedGear();
-    if (!item || !this.tradeHud) return;
-    if (await this.tradeHud.drop(item)) this.pick = null;
+    if (!item || item.equipped) return;
+    if (await this.dropToGround(item)) this.pick = null;
   }
-  get pickCanDrop(): boolean { return !!this.tradeHud?.canDrop(this.selectedGear()) && this.topDown; }
+  get pickCanDrop(): boolean {
+    if (!this.topDown || !this.pick) return false;
+    if (this.pick.kind === 'stack') return stackTakesCell(this.pick.ref);
+    const item = this.selectedGear();
+    return !!item && !item.equipped && !this.tradeHud?.dropPending(item.id);
+  }
+  /**
+   * Let go of a satchel item at the Keeper's feet (the card's Drop, or a drag onto the world). Online, a tradeable piece
+   * lies for the whole room (protocol 6+); otherwise it lies on this screen only, on the tile the Keeper stands on, to
+   * be taken back by hand. Either way it leaves the satchel at once and nothing else in the grid moves.
+   */
+  async dropToGround(item: GameItem): Promise<boolean> {
+    if (!this.topDown) return false;
+    if (this.tradeHud?.canDrop(item)) return this.tradeHud.drop(item);
+    const lay = (this.engine as unknown as { layOwn?: (own: string, label: string, rarity: string | null, qty?: number, art?: string) => string } | undefined)?.layOwn;
+    if (!lay) return false;
+    const token = `i${++this.ownSeq}`;
+    const kept: GameItem = { ...item, equipped: false, explorerId: undefined };
+    if (!this.inventory.drop(item.id)) { this.message = this.t('play.hud.msg.stowFailed', { name: item.name }); return false; }
+    this.ownGround.set(token, { item: kept });
+    const look = itemNameTone(item);
+    lay.call(this.engine, token, look.name, item.rarity, 1, recipeOfDef(item.definitionId) ? this.stoneArt(parseRecipeKey(recipeOfDef(item.definitionId)!)?.skill ?? '') : itemArt(item)?.src ?? '');
+    this.message = this.t('trade.dropped', { name: look.name });
+    this.sound.sfx('equip');
+    return true;
+  }
+  /** A stack pile let go of (a fish, logs, ore): on this screen's ground, taken back by hand. */
+  dropStackToGround(stackKey: string, qty: number): boolean {
+    if (!this.topDown || !stackKey || !(qty > 0)) return false;
+    const lay = (this.engine as unknown as { layOwn?: (own: string, label: string, rarity: string | null, qty?: number, art?: string) => string } | undefined)?.layOwn;
+    if (!lay) return false;
+    const have = Math.min(qty, this.inventory.stackOf(stackKey));
+    if (!(have > 0) || !this.inventory.dropStack(stackKey, have)) return false;
+    const token = `s${++this.ownSeq}`;
+    this.ownGround.set(token, { stack: stackKey, qty: have });
+    const d = materialDisplay(stackKey);
+    const name = d?.name ?? stackKey;
+    lay.call(this.engine, token, have > 1 ? `${name} ×${have}` : name, null, have, d?.art ?? '');
+    this.message = this.t('trade.dropped', { name });
+    this.sound.sfx('equip');
+    return true;
+  }
+  /** What this screen's own drops were (td-mobs Drop.own): memory only, like a D2 game's floor. */
+  private readonly ownGround = new Map<string, { item?: GameItem; stack?: string; qty?: number }>();
+  private ownSeq = 0;
+  /** Take an own drop back: the same item (a fresh id, its roll and charges kept) or the same stack. False: no room. */
+  private reclaimOwn(token: string): boolean {
+    const was = this.ownGround.get(token);
+    if (!was) return true;
+    if (was.item) {
+      const n = this.ownSeq++;
+      const base = was.item.id.replace(/~g[0-9a-z]+$/, '');
+      const item: GameItem = { ...was.item, id: `${base}~g${Date.now().toString(36)}${n.toString(36)}`.slice(-96), equipped: false, gridPos: undefined };
+      if (!this.inventory.canPickUp(item)) return this.satchelFull();
+      if (!this.inventory.add(item)) return this.satchelFull();
+      this.ownGround.delete(token);
+      const p = this.inventory.snapshot.grid.bag.pieces.find(x => x.ids.includes(item.id));
+      if (p) this.markNew([p.key]);
+      this.message = this.t('play.loot.picked', { name: itemNameTone(item).name });
+    } else if (was.stack) {
+      const qty = was.qty ?? 1;
+      if (!this.inventory.canTakeStack(was.stack, qty)) return this.satchelFull();
+      if (!this.inventory.grantStack(`own-ground:${token}:${Date.now().toString(36)}`, was.stack, qty)) return this.satchelFull();
+      this.ownGround.delete(token);
+    }
+    this.sound.sfx('pickup');
+    this.pulseSatchel();
+    return true;
+  }
+  // ── Ground piles (td-ground-pile.ts): a right-click / long-press / tap on a tile of several things lists them. ──
+  pileView: { at: FitAnchor; items: readonly PileRow[] } | null = null;
+  private get pileEngine(): { takeFromPile?: (id: string) => void; takePileAll?: () => void; openPileRows?: () => PileRow[]; closePile?: () => void; setLootLabels?: (on: boolean) => void } | undefined {
+    return this.topDown ? this.engine as unknown as { takeFromPile?: (id: string) => void; takePileAll?: () => void; openPileRows?: () => PileRow[]; closePile?: () => void; setLootLabels?: (on: boolean) => void } : undefined;
+  }
+  private openPile(pile: { at: { x: number; y: number }; items: readonly PileRow[] }): void {
+    this.pileView = { at: { left: pile.at.x, top: pile.at.y, right: pile.at.x + 4, bottom: pile.at.y + 4 }, items: pile.items };
+  }
+  pileRowLabel(r: PileRow): string { return r.coins > 0 ? this.t('play.pile.gold', { n: r.coins }) : r.label; }
+  takePileRow(r: PileRow): void { this.pileEngine?.takeFromPile?.(r.id); setTimeout(() => this.zone.run(() => this.refreshPile()), 350); }
+  takePileAll(): void { this.pileEngine?.takePileAll?.(); setTimeout(() => this.zone.run(() => this.refreshPile()), 350); }
+  closePileView(): void { this.pileView = null; this.pileEngine?.closePile?.(); }
+  private refreshPile(): void {
+    if (!this.pileView) return;
+    const rows = this.pileEngine?.openPileRows?.() ?? [];
+    if (!rows.length) { this.closePileView(); return; }
+    if (rows.length !== this.pileView.items.length || rows.some((r, i) => r.id !== this.pileView!.items[i]?.id)) this.pileView = { ...this.pileView, items: rows };
+  }
+  /** Phones: the ground's name plates on or off (Alt does it on a keyboard). */
+  lootLabelsOn = false;
+  toggleLootLabels(): void { this.lootLabelsOn = !this.lootLabelsOn; this.pileEngine?.setLootLabels?.(this.lootLabelsOn); }
   /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
@@ -1504,6 +1606,11 @@ export class SideScrollerComponent implements OnDestroy {
   private makerWait = 0;
   /** The one gentle nudge: a lit dot on the Places button until the list is opened (existing saves). */
   lookNudge = false;
+  /** Isometric runs slowly on this device (td-artopt offerClassic): a one-tap way back to Classic. */
+  isoSlow = false;
+  private readonly offIsoSlow = onIsoSlow(() => this.zone.run(() => { this.isoSlow = true; }));
+  /** The slow-device card's primary: Classic graphics on this device, at once. */
+  isoClassic(): void { setGraphics('classic'); this.isoSlow = false; }
   /** The open Places list carries the nudge line this once. */
   lookNudgeShown = false;
   /** The Keeper's chosen name (the vitals label), or '' for "Keeper". */
@@ -1682,7 +1789,7 @@ export class SideScrollerComponent implements OnDestroy {
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
       this.routedSub.add(this.inventory.gridMigrated$.subscribe(note => { if (note) this.gridNote = note; }));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); this.tickPartyTop(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickTasks(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); this.tickPartyTop(); this.refreshPile(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1808,6 +1915,8 @@ export class SideScrollerComponent implements OnDestroy {
       onCorpse: view => this.zone.run(() => { this.corpseView = view; }),
       // A shared ground item (protocol 6): the Keeper walked to it; reach for it.
       onGroundTap: id => this.zone.run(() => { void this.tradeHud?.pickup(id); }),
+      // A pile on the ground opened (td-ground-pile.ts): its RuneScape-style list.
+      onPileOpen: pile => this.zone.run(() => this.openPile(pile)),
       // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
       onSexton: event => this.zone.run(() => this.sextonSaw(event.kind === 'stone' ? { kind: 'stone', n: event.n ?? 1 } : event.kind === 'page' ? { kind: 'page', dark: !!event.dark } : { kind: event.kind })),
       // Each player digs their own Delve: seed and dug cells from the save.
@@ -2108,7 +2217,8 @@ export class SideScrollerComponent implements OnDestroy {
    * frozen then) or grants the rune. False leaves it shining on the ground.
    */
   /** A pickup lands (a drop walked over or tapped, a corpse's, the room's): gear, a rune, a Gold pile, a material. False: it stays. */
-  private grantLoot(loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string; pays?: boolean }): boolean {
+  private grantLoot(loot: { id: string; coins: number; own?: string; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string; pays?: boolean }): boolean {
+    if (loot.own) return this.reclaimOwn(loot.own);
     return loot.item || loot.rune ? this.collectGear(loot.id, loot)
       : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins, loot.pays === true) : true)
       && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore));
@@ -2426,6 +2536,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Menu → Loot & Combat. */
   openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
+    this.offIsoSlow();
     this.unStonesHook();
     this.inventory.setWearCheck(null);
     this.inventory.setKitHands(1);
@@ -2808,6 +2919,36 @@ export class SideScrollerComponent implements OnDestroy {
   stoneArt(skill: string): string { return this.art(stoneIcon(TD_SKILLS[skill as SkillId]?.tree ?? 'common')); }
   stoneTitle(st: { skill: string; rank: number; charges: number } | null): string {
     if (!st) return this.t('play.stone.slotEmpty');
+    return this.t('play.stone.slotTitle', { name: this.t(`skill.${st.skill}`), rank: st.rank, n: st.charges });
+  }
+  /** The potion card's "Put on belt": Q (health) or R (mana) drinks it from now on. */
+  beltPickedPotion(): void {
+    const p = this.slip?.potion;
+    if (!p) return;
+    this.potions.pin(p.kind, p.id);
+    this.message = this.t('play.grid.beltPotion', { name: this.slip?.name ?? '', key: p.kind === 'health' ? 'Q' : 'R' });
+    this.tickAbilities();
+    this.sound.sfx('equip');
+  }
+  /** The Spellstone card's "Put on belt": its recipe goes on the belt's F slot. */
+  beltPickedStone(): void {
+    const recipe = this.slip?.stone?.recipe;
+    if (!recipe) return;
+    this.spellstones.slot(recipe);
+    const st = this.spellstones.slotted(performance.now() / 1000);
+    this.message = st ? this.slotTitleOf(st) : this.t('play.stone.slotEmpty');
+    this.sound.sfx('equip');
+  }
+  /** The Spellstone card's "Use": slot it and cast it at once (the same path as F). */
+  usePickedStone(): void {
+    const recipe = this.slip?.stone?.recipe;
+    if (!recipe) return;
+    this.spellstones.slot(recipe);
+    this.pick = null;
+    this.closeBag();
+    this.useStone();
+  }
+  private slotTitleOf(st: { skill: string; rank: number; charges: number }): string {
     return this.t('play.stone.slotTitle', { name: this.t(`skill.${st.skill}`), rank: st.rank, n: st.charges });
   }
   /** F, or the belt's stone: the slotted Spellstone's spell at its rank, no mana. A charge is spent only if it went off. */
@@ -5253,6 +5394,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.message = this.t(key, { item, rune, word: out.word?.name ?? '' });
     if (out.code === 'ok') this.sound.sfx('equip');
   }
+  /** The satchel's Sort button: kind, rarity, name. */
+  sortSatchel(): void {
+    const r = this.inventory.sortGrid('b');
+    this.message = this.t(r === 'ok' ? 'play.grid.sorted' : 'play.hud.msg.stowFailed', { name: '' });
+    if (r === 'ok') this.sound.sfx('equip');
+  }
   gridMoved(ev: { result: GridMoveResult; held: DragHeld }): void {
     if (ev.result === 'ok') { this.sound.sfx('equip'); this.pick = null; return; }
     this.message = this.t(ev.result === 'vault-closed' ? 'play.grid.vaultClosed' : ev.result === 'persist' ? 'play.hud.msg.stowFailed' : 'play.grid.blocked', { name: ev.held.name });
@@ -5338,10 +5485,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The world: a satchel item dropped on it lies at the Keeper's feet for everyone in the room (top-down, online). */
   readonly worldTarget: DropTarget = {
-    accepts: held => this.topDown && held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held') && !!this.tradeHud?.canDrop(held.item),
+    accepts: held => this.topDown && (held.from === 'b' || held.from === 'held') && (held.ref.kind === 'instance' ? !!held.item && !this.tradeHud?.dropPending(held.item.id) : held.ref.kind === 'stack' && stackTakesCell(held.stackKey ?? '')),
     drop: held => {
-      if (!held.item || !this.tradeHud) return false;
-      void this.tradeHud.drop(held.item);
+      if (held.ref.kind === 'stack') return this.dropStackToGround(held.stackKey ?? '', held.qty);
+      if (!held.item) return false;
+      void this.dropToGround(held.item);
       return true;
     },
   };
@@ -5550,6 +5698,7 @@ export class SideScrollerComponent implements OnDestroy {
         note: `${does} ${potion.lore}`,
         stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
         canWear: false, canStow: false, compare: [], compareLabel: '',
+        potion: { id: potion.id, kind: potion.kind === 'mana' ? 'mana' : 'health' },
         tip: {
           rarity: 'material', typeLine: kicker, rarityWord: '', head: null, affixes: [],
           specials: [does, this.t('play.potion.drinkKey', { key }), potion.lore],
@@ -5588,6 +5737,27 @@ export class SideScrollerComponent implements OnDestroy {
     return { name, art: '', mark: monogram(name), kicker: this.t('play.hud.book.worn'), note, stats: shut ? [shut] : [], canWear: false, canStow: false, compare: [], compareLabel: '' };
   }
   private itemSlip(item: GameItem, worn: boolean): BagSlip {
+    // A Spellstone is a satchel stone, not gear: its picture, its spell and charges, and belt / use (never Equip).
+    const recipe = recipeOfDef(item.definitionId);
+    if (recipe) {
+      const r = parseRecipeKey(recipe);
+      const skill = r?.skill ?? '';
+      const spell = this.t(`skill.${skill}`);
+      const charges = this.spellstones.chargesOf(recipe);
+      const name = this.t('play.grid.stone', { name: spell });
+      const kicker = this.t('play.stone.title');
+      const lines = [this.t('play.stone.gives', { n: charges, rank: r?.rank ?? 1 }), this.t('play.stone.lore')];
+      return {
+        name, art: this.stoneArt(skill), mark: monogram(name), kicker, tone: lootColor('rare'),
+        note: lines.join(' '), stats: [this.t('play.hud.slip.held', { n: charges })],
+        canWear: false, canStow: false, canSend: !worn, compare: [], compareLabel: '',
+        stone: { recipe, onBelt: this.spellstones.state.slot === recipe },
+        tip: {
+          rarity: 'rare', typeLine: kicker, rarityWord: '', head: null, affixes: [],
+          specials: lines, sockets: [], value: 0, bound: !!item.soulbound, tempered: 0, itemLevel: 0, tag: null,
+        },
+      };
+    }
     const def = definitionFor(item);
     const stats = ITEM_STAT_KEYS.filter(key => (item.stats[key] ?? 0) !== 0).map(key => formatItemMod(key, item.stats[key]!));
     const level = item.upgradeLevel ?? 0;
@@ -5885,7 +6055,7 @@ export class SideScrollerComponent implements OnDestroy {
   private pushKeeper(): void {
     const look = this.looks.look;
     const gear = wornGear(this.inventory.snapshot.equipped);
-    const key = `${look.vocation}:${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
+    const key = `${look.vocation}:${lookKey(look)}#${gearKey(gear)}#${this.topDown ? optIso() ? 'iso' : 'td' : 'side'}`;
     this.keeperName = look.made ? look.name : '';
     this.lookNudge = !look.made && !look.prompted;
     // In the world with a name now: the Hearth joins (or keeps the room told who the Keeper is).
@@ -5927,7 +6097,11 @@ export class SideScrollerComponent implements OnDestroy {
       const el = document.createElement('canvas');
       el.width = el.height = 176;
       const v = vocationLook(look.vocation, gear);
-      if (this.topDown) {
+      if (this.topDown && optIso()) {
+        // Isometric graphics: the HD Keeper (td-hd-keeper.ts), one sheet px a canvas px; the doll's CSS grows it, pixelated.
+        el.width = el.height = HD_CROPS.full.h;
+        hdStill(new KeeperPainter(look, v.gear, v.garb), el, 'full');
+      } else if (this.topDown) {
         // The top-down game's doll is the Keeper the world shows (owner 2026-10-20): the front sprite, class garb and
         // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
         const painter = new KeeperPainter(look, v.gear, v.garb);

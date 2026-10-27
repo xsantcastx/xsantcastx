@@ -224,7 +224,11 @@ export class GroundFlow {
   busy = false;
   /** Protocol 8: this Keeper's drops the room has not escrowed yet: ground id → item id. */
   readonly pending = new Map<string, string>();
-  constructor(private readonly backend: TradeBackend, private readonly room: TradeRoom) {}
+  /**
+   * `forget`: once the room has escrowed a drop and the save was re-read, the satchel lets go of the item for good
+   * (a tombstone), so a stale copy of the save (another tab, a late merge) can never bring it back into the grid.
+   */
+  constructor(private readonly backend: TradeBackend, private readonly room: TradeRoom, private readonly forget?: (itemId: string) => void) {}
 
   /** Put a satchel item on the ground at the Keeper's feet. */
   async drop(item: OfferItem, at: { area: string; x: number; y: number }): Promise<GroundResult> {
@@ -258,8 +262,14 @@ export class GroundFlow {
 
   /** Protocol 8: the room's word on a drop: escrowed → re-read the save (the item has left it); handed back → it stays. */
   async noted(note: RoomGroundNote): Promise<void> {
-    this.pending.delete(note.id);
-    if (note.kind === 'escrowed') await this.backend.settle().catch(() => {});
+    // Escrowed: the piece stays hidden until the re-read save no longer holds it (letting go first would flash it back).
+    const itemId = this.pending.get(note.id);
+    try {
+      if (note.kind === 'escrowed') {
+        await this.backend.settle().catch(() => {});
+        if (itemId) this.forget?.(itemId);
+      }
+    } finally { this.pending.delete(note.id); }
   }
   /** Is this satchel item on its way to the ground (laid, not yet escrowed)? */
   isPending(itemId: string): boolean { for (const v of this.pending.values()) if (v === itemId) return true; return false; }

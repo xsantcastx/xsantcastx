@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { altar, brazier, brokenStatue, cage, chains, cobweb, inscription, oldStain, rime, ritualCircle, anvil, barrowDoor, bed, bones, boulder, chest, gravestone, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
+import { barrel, bench, crate, lamp, altar, brazier, brokenStatue, cage, chains, cobweb, inscription, oldStain, rime, ritualCircle, anvil, barrowDoor, bed, bones, boulder, chest, gravestone, counter, forgeHearth, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, templePillar, rootLamp, lanternPost, greatLantern, torchPost, SOLID_GROUND, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 import { zoneLevel, zoneOf } from './td-zones';
@@ -39,11 +39,14 @@ export interface TdExit {
 
 export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth' | 'forge' | 'anvil' | 'pillar' | 'rootlamp' | 'lantern' | 'great-lantern' | 'grave'
   // The atmosphere pass's set dressing (docs/world/campaign.md queue #4; td-dressing.ts): painted, placed by the pass.
-  | 'altar' | 'brazier' | 'brazier-lit' | 'cage' | 'chains' | 'statue-broken' | 'cobweb' | 'circle' | 'inscription' | 'stain' | 'rime';
+  | 'altar' | 'brazier' | 'brazier-lit' | 'cage' | 'chains' | 'statue-broken' | 'cobweb' | 'circle' | 'inscription' | 'stain' | 'rime'
+  // The isometric prototype's tavern (maps/artopt-tavern.ts).
+  | 'barrel' | 'crate' | 'bench' | 'lamp';
 const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire, forge: forgeHearth, anvil, pillar: () => templePillar(1), rootlamp: rootLamp, lantern: lanternPost, 'great-lantern': greatLantern, grave: () => gravestone(1),
-  altar, brazier: () => brazier(false), 'brazier-lit': () => brazier(true), cage, chains, 'statue-broken': brokenStatue, cobweb: () => cobweb('nw'), circle: ritualCircle, inscription, stain: oldStain, rime };
+  altar, brazier: () => brazier(false), 'brazier-lit': () => brazier(true), cage, chains, 'statue-broken': brokenStatue, cobweb: () => cobweb('nw'), circle: ritualCircle, inscription, stain: oldStain, rime,
+  barrel, crate, bench, lamp };
 const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true, forge: true, anvil: true, pillar: true, rootlamp: true, lantern: true, 'great-lantern': true, grave: true,
-  altar: true, brazier: true, 'brazier-lit': true, cage: true, 'statue-broken': true };
+  altar: true, brazier: true, 'brazier-lit': true, cage: true, 'statue-broken': true, barrel: true, crate: true, bench: true, lamp: true };
 /** Objects wider than their tile block the tiles either side too (a forge is three tiles of stone). */
 const WIDE: Partial<Record<MapObject, number>> = { forge: 1, 'great-lantern': 1 };
 
@@ -139,7 +142,7 @@ export class HandLevel implements TdLevel {
         const x = c * T + T / 2, y = r * T + T;
         if (e.object && LAIR_FEATURES.includes(e.object)) features.push({ c, r, rank: LAIR_FEATURES.indexOf(e.object) });
         if (e.object) {
-          this.objects.push({ sprite: SPRITES[e.object], x, y, kind: 'prop', ...(BLOCKS[e.object] ? { block: { w: 1, h: 1 } } : {}) });
+          this.objects.push({ sprite: SPRITES[e.object], x, y, kind: 'prop', id: e.object, ...(BLOCKS[e.object] ? { block: { w: 1, h: 1 } } : {}) });
           if (BLOCKS[e.object]) for (let dc = -(WIDE[e.object] ?? 0); dc <= (WIDE[e.object] ?? 0); dc++) if (c + dc >= 0 && c + dc < this.cols) this.blocked.add(r * this.cols + c + dc);
         }
         if (e.station) this.stalls.push({ station: e.station, x, y: y + 6 });
