@@ -868,14 +868,14 @@
       </div>
     }
     <div class="vital">
-      <label>{{ keeperName || t('play.hud.keeper') }}@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span>@if (keeperTitle) { <small class="vital__title" data-keeper-title>{{ keeperTitle }}</small> } } <b>{{ hpShown }}</b></label>
+      <label><span class="vital__name">{{ keeperName || t('play.hud.keeper') }}</span>@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span>@if (keeperTitle) { <small class="vital__title" data-keeper-title>{{ keeperTitle }}</small> } } <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></s><i [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></i></div>
     </div>
     @if (topDown) {
       <div class="vital vital--mana">
-        <label>{{ t('play.td.mana') }} <b>{{ tdMana }}</b>
+        <label><span class="vital__what">{{ t('play.td.mana') }}</span> <b>{{ tdMana }}</b>
           <!-- Soul (shared/spellstones): kills near the Keeper's level fill it; Spellstones are inscribed with it. -->
-          <span class="vital__soul" data-soul [attr.data-soul-n]="tdSoul" [attr.aria-label]="t('play.stone.soulAria', { n: tdSoul, cap: soulMax })" [title]="t('play.stone.soulTitle', { n: tdSoul, cap: soulMax })"><i class="soul-pip" aria-hidden="true"></i>{{ tdSoul }}</span>
+          <span class="vital__soul" data-soul [attr.data-soul-n]="tdSoul" [attr.aria-label]="t('play.stone.soulAria', { n: tdSoul, cap: soulMax })" [title]="t('play.stone.soulTitle', { n: tdSoul, cap: soulMax })"><i class="soul-pip" aria-hidden="true"></i><span class="vital__soul-word">{{ t('play.stone.soul') }} </span>{{ tdSoul }}</span>
         </label>
         <div class="meter mana"><i [style.--fill]="tdMana / tdMaxMana"></i></div>
       </div>

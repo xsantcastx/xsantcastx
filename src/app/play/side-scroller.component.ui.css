@@ -1,0 +1,108 @@
+/* ── UI system, HUD layer (docs/design/ui-system.md) ─────────────────────────────────────────────────────────────────
+   Loaded LAST of the play view's sheets, so it is the one place the HUD's type, spacing and lanes are settled.
+   Tokens: _cozy.css only. Type: Pixelify (--font-pixel) for names and titles at 14 px and up, never upper-cased (its
+   capital C is Inter's, so upper-casing it mixes two faces); Inter (--cozy-font-read) for numbers and anything at 13 px
+   and under. Spacing on the 4 px grid. */
+
+/* ── Lanes on desktop with the bottom bar: nothing stacks on the XP strip's tooltip ──
+   The bar is 116 px; its XP tooltip opens up to 56 px above it. The prompt and the toast sit above that lane. */
+.stage--bar .prompt { bottom: 184px; }
+.stage--bar .td-toast { bottom: 240px; }
+
+/* ── The interact prompt: a readable sentence, not 8 px capitals ── */
+.stage--td .prompt strong { font: 600 13px/1.2 var(--cozy-font-read); letter-spacing: 0; text-transform: none; }
+
+/* ── Top-left unit frame (desktop): face, name, title, Soul. Numbers in Inter (Cormorant's old-style 1 read as I). ── */
+.stage--td .vitals label { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin: 0;
+  font: 400 14px/1.2 var(--font-pixel); letter-spacing: 0; text-transform: none; color: var(--cozy-cream); white-space: nowrap; }
+.stage--td .vitals .vital__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: var(--cozy-glow); }
+.stage--td .vitals .vital__what { color: var(--cozy-cream); }
+.stage--td .vitals b { margin-left: auto; font: 700 13px/1 var(--cozy-font-read); color: var(--cozy-cream); }
+.stage--td .vitals .vital__title { font: 600 12px/1.2 var(--cozy-font-read); }
+.stage--td .vital__soul { display: inline-flex; align-items: center; gap: 4px; margin-left: 0; font: 600 12px/1 var(--cozy-font-read); color: var(--cozy-mana-text); }
+.stage--td .vital__soul .soul-pip { margin-right: 0; }
+/* With the orbs (desktop bar) the plate does not repeat life and mana: the name row and the Soul row remain. */
+.stage--bar .vitals .vital > label > b,
+.stage--bar .vitals .vital--mana .vital__what { display: none; }
+.stage--bar .vitals .vital--mana label { gap: 0; }
+@media (min-width: 901px) and (min-height: 501px) {
+  .stage--bar .vitals { width: auto; min-width: 176px; max-width: 280px; row-gap: 4px; padding: 8px 12px 8px 8px; }
+}
+
+/* ── The Game Menu: sentence-case labels at a readable size, the group heads small capitals in Inter ── */
+.game-menu li button strong { font: 600 14px/1.2 var(--font-pixel); letter-spacing: 0; text-transform: none; }
+.game-menu li button { min-height: 44px; padding: 8px 8px 8px 12px; align-items: center; }
+.game-menu .kc { align-self: center; }
+.game-menu__group { margin: 12px 0 4px; font: 700 11px/1.2 var(--cozy-font-read); letter-spacing: .08em; }
+
+/* ── The chat box: when quiet it steps back (never to a ghost: the tabs stay readable), and an empty log takes no room ── */
+.td-chat--quiet { opacity: .82; }
+.td-chat--quiet .td-chat__log:has(.td-chat__empty) { min-height: 0; }
+.td-chat--quiet .td-chat__empty { display: none; }
+.td-chat__log li { font: 500 12px/1.35 var(--cozy-font-read); text-shadow: 1px 1px 0 var(--cozy-wood-0), -1px 0 0 var(--cozy-wood-0), 0 -1px 0 var(--cozy-wood-0); }
+
+/* ── The XP strip's tooltip sits over everything near it ── */
+.td-xp__tip { z-index: 45; }
+
+/* ── Phones: lanes that do not cross ── */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* The spell column and its belt own the left 64 px: the prompt and Glim's line start right of it. */
+  .stage--td .prompt { left: auto; max-width: calc(100% - 78px); }
+  .stage--td .prompt strong { font-size: 12px; }
+  /* The XP tooltip on a phone opens above the chat and the menu tabs, centred, inside the screen. */
+  .stage--td .td-xp__tip { bottom: calc(2 * var(--tab, 50px) + 28px); white-space: normal; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
+}
+/* Portrait: Glim's line clears the spell column. The spells and the belt (four slots since the labels toggle joined it)
+   stand as one column centred on the screen's middle, so the belt never runs off a 640 px screen. */
+@media (max-width: 900px) and (orientation: portrait) {
+  .stage.stage--td .glim-say { left: 72px; }
+  .stage--td .td-skills { top: calc(50% - 4px); translate: 0 -100%; }
+  .stage--td .td-belt { top: calc(50% + 4px); }
+}
+
+/* ── Loot (2026-10-26): the ground list, the satchel's Sort ── */
+/* The pile window's head: the title says what it is; a bare count beside the close read as a stray number. */
+.td-pile .td-peer__head small { visibility: hidden; }
+.td-pile h2 { font: 700 16px/1.2 var(--font-pixel); }
+.td-pile .td-corpse__row span { font: 600 13px/1.2 var(--cozy-font-read); }
+.td-pile .td-corpse__row small { font: 600 12px/1 var(--cozy-font-read); letter-spacing: 0; }
+/* Sort is a secondary: wood, the chip edge, the pixel face at 14. */
+.book .grid-sort { border: 0; background: var(--cozy-wood-2); box-shadow: var(--cozy-chip); font: 600 14px/1 var(--font-pixel); padding: 0 12px; }
+.book .grid-sort:hover, .book .grid-sort:focus-visible { background: var(--cozy-wood-3); outline: 2px solid var(--cozy-glow); outline-offset: 0; }
+/* The labels toggle on the belt: lit (brass ring) while the plates show. */
+.td-labels.td-labels--on { outline: 0; box-shadow: inset 0 0 0 2px var(--cozy-brass-hi), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent) !important; }
+/* Landscape phones: Glim's line goes to the top, between the left column and the orbs + minimap; never over the belt. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px), (max-width: 900px) and (orientation: landscape) {
+  .stage.stage--td .glim-say { top: calc(var(--hud-safe-t) + 8px); left: 64px; right: 176px; }
+}
+
+/* ── Big screens (1700 × 980 and up): the HUD one step larger, like the bottom bar (play/hud-bar) ── */
+@media (min-width: 1700px) and (min-height: 980px) {
+  .stage--td :is(.vitals, .satchel, .top-actions, .glim-hud, .glim-say, .td-chat, .td-chat-tab, .prompt, .td-toast) { zoom: 1.25; }
+}
+
+/* ── Docked windows end above the bottom bar (desktop): the bar, the orbs and the belt stay in reach while a sheet is open ── */
+.stage--bar .ksheet { max-height: calc(100% - 112px - 128px); }
+.stage--bar .game-menu { max-height: calc(100% - 56px - 128px); }
+@media (min-width: 1700px) and (min-height: 980px) {
+  .stage--bar .ksheet { max-height: calc(100% - 112px - 160px); }
+  .stage--bar .game-menu { max-height: calc(100% - 56px - 160px); }
+}
+
+/* ── The Game Menu's grid: two columns at most (three cramped Spanish labels into 100 px), Resume full width ── */
+.game-menu .win-body ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.game-menu .win-body ul.game-menu__resume { grid-template-columns: minmax(0, 1fr); }
+.game-menu li button strong { min-width: 0; overflow-wrap: break-word; hyphens: manual; }
+@media (min-width: 901px) and (min-height: 501px) {
+  .game-menu { width: min(440px, calc(100% - 32px)); }
+  .game-menu li button strong { font-size: 13px; }
+}
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .game-menu li button strong { font-size: 13px; }
+}
+
+/* ── The character sheet's tabs on a phone: four tabs share 360 px, so the words wrap rather than clip ── */
+@media (max-width: 520px) {
+  .ks__tabs { gap: 4px; }
+  .ks__tabs button { padding: 4px; font: 600 12px/1.15 var(--cozy-font-read); overflow-wrap: anywhere; }
+}
