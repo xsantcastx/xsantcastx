@@ -29,18 +29,19 @@ const SIZES = [
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
-async function enterWorld(page: Page, lang: string): Promise<void> {
+async function enterWorld(page: Page, lang: string, query = ''): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const base = ledger({ 'cinder-ore': 24, 'minor-health-potion': 5, 'minor-mana-potion': 3 }) as Record<string, unknown>;
   await seed(page, {
-    'eclipse-td': '1', 'preferred-language': lang, 'godforge-realm-era': String(ERA), 'godforge-inventory': base,
+    // Classic graphics: the Isometric Beta (the default) layers extra canvases; the before set was Classic.
+    'eclipse-td': '1', 'eclipse-td-graphics': 'classic', 'preferred-language': lang, 'godforge-realm-era': String(ERA), 'godforge-inventory': base,
     ...purse(124_350), ...activity({ hunting: xpForLevel(24) + 4321 }),
     'godforge-keeper-look': {
       version: 1, made: true, prompted: true, name: 'Tomasina', vocation: 'warlock', skin: 2, hair: 'cropped', updatedAt: 1,
       tree: { spent: {}, free: ['bone-spear', 'raise-skeleton', 'aura-siphon'], at: 1 },
     },
   });
-  await page.goto('/play?td=1&hour=12');
+  await page.goto(`/play?td=1&hour=12${query}`);
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
   await page.waitForTimeout(3500);
 }
@@ -50,7 +51,7 @@ async function shot(page: Page, scene: string, size: string, lang: string): Prom
   await page.screenshot({ path: `${OUT}/${scene}-${size}-${lang}.jpg`, type: 'jpeg', quality: 78 });
 }
 
-const SCENES: { id: string; run: (page: Page, phone: boolean) => Promise<void> }[] = [
+const SCENES: { id: string; query?: string; run: (page: Page, phone: boolean) => Promise<void> }[] = [
   { id: 'hud', run: async () => {} },
   { id: 'xp', run: async (page, phone) => {
     const bar = page.locator('[data-xp-bar]').first();
@@ -70,6 +71,24 @@ const SCENES: { id: string; run: (page: Page, phone: boolean) => Promise<void> }
     await page.keyboard.press('c');
     await page.waitForTimeout(600);
   } },
+  { id: 'settings', run: async page => {
+    await openMenu(page);
+    await page.locator('#game-menu [data-open="sound"]').click();
+    await expect(page.locator('[data-graphics-setting]').first()).toBeVisible();
+    await page.locator('[data-graphics-setting]').first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+  } },
+  { id: 'satchel', run: async page => {
+    await canvas(page).focus();
+    await page.keyboard.press('i');
+    await expect(page.locator('[data-satchel-sort]')).toBeVisible({ timeout: 10000 });
+    await page.waitForTimeout(300);
+  } },
+  { id: 'vault', query: '&at=vault', run: async page => {
+    await expect(page.locator('[data-vault-actions]')).toBeVisible({ timeout: 10000 });
+    await page.locator('[data-vault-actions]').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+  } },
 ];
 
 for (const size of SIZES) {
@@ -81,7 +100,7 @@ for (const size of SIZES) {
         test(scene.id, async ({ page }) => {
           test.skip(!PREFIX, 'set UI2_SHOTS to take the screenshots');
           test.setTimeout(90000);
-          await enterWorld(page, lang);
+          await enterWorld(page, lang, scene.query ?? '');
           try { await scene.run(page, size.phone); } catch { /* shoot what is there */ }
           await shot(page, scene.id, size.tag, lang);
         });

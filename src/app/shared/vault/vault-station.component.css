@@ -83,5 +83,12 @@
 }
 
 /* Deposit all · Take all · Sort (owner 2026-10-26): one brass primary, the rest quiet chips; wraps on a phone. */
-.vs-actions { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.vs-chip--primary { background: var(--gold-bright); color: var(--cozy-wood-0); }
+/* docs/design/ui-system.md §6: the primary is brass with the brass chip, the others wood with the wood chip, 44 px. */
+.vs-actions { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+.vs-actions .vs-chip { min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; font: 600 14px/1 var(--font-pixel); letter-spacing: 0; cursor: pointer;
+  color: var(--cozy-cream); background: var(--cozy-wood-2);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent), inset 0 -2px 0 0 var(--cozy-plate-seam); }
+.vs-actions .vs-chip:hover, .vs-actions .vs-chip:focus-visible { background: var(--cozy-wood-3); outline: 2px solid var(--cozy-glow); outline-offset: 0; }
+.vs-actions .vs-chip--primary { color: var(--cozy-wood-0); background: var(--cozy-brass);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo); }
+.vs-actions .vs-chip--primary:hover, .vs-actions .vs-chip--primary:focus-visible { background: var(--cozy-brass-hi); }
