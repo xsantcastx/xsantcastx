@@ -1385,6 +1385,11 @@ export class SideScrollerComponent implements OnDestroy {
     const slip = this.itemSlip(item, false);
     return { name: slip.name, kicker: slip.kicker, tone: slip.tone ?? null, note: slip.note, stats: slip.stats };
   };
+  /** A satchel stack's card for the trade window (potions, fish, runes, materials): the satchel's own. */
+  readonly tradeStackCard = (stackKey: string): TradeCard | null => {
+    const slip = this.stackSlip(stackKey);
+    return slip ? { name: slip.name, kicker: slip.kicker, tone: slip.tone ?? null, note: slip.note, stats: slip.stats } : null;
+  };
   /** A trade line: the message strip (which lands in the Game tab by itself). */
   tradeSaid(line: string): void { this.message = line; }
   /** "Trade" on the Keeper's card. */
