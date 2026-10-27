@@ -632,6 +632,8 @@ export class TopDownEngine {
       // shadows, floor's ground effects) and, last, the frames.
       // Iso: skip sections of drawIso (1 ground, 2 floor, 4 standing, 8 air, 16 fog/light, 32 world UI) to price each.
       isoSkip: (mask: number) => { this.isoSkip = mask; },
+      // The transform the floor pass (Nightroad planks, auras, tells) last drew under, and the floor plane's own.
+      isoFloor: () => { const m = this.isoFloorAt, s = this.scale, ic = this.isoCam; return m ? { got: [m.a, m.b, m.c, m.d, m.e, m.f], want: [s, s / 2, -s, s / 2, -ic.x * s, -ic.y * s] } : null; },
       // Where a world foot (lifted `lift` px) is on the page, either projection; and what the Keeper is targeting.
       pageOf: (x: number, y: number, lift = 0) => this.clientOf(x, y, lift),
       target: () => { const m = this.mobs.target; return m ? { x: Math.round(m.x), y: Math.round(m.y), h: m.def.h } : null; },
@@ -5640,6 +5642,8 @@ export class TopDownEngine {
   private readonly isoProf = new Float64Array(11);
   private isoMark = 0;
   private isoSkip = 0;
+  /** The probe: the transform the floor's effects were drawn under last frame (webdriver only). */
+  private isoFloorAt: DOMMatrix | null = null;
   /** The probe's flush: each section's drawing rasterised before its time is taken (so a section's ms include its raster). */
   private isoFlush = false;
   private prof(i: number): void { if (!this.perf) return; if (this.isoFlush) this.ctx.getImageData(0, 0, 1, 1); const t = performance.now(); this.isoProf[i] += t - this.isoMark; this.isoMark = t; }
@@ -5738,6 +5742,11 @@ export class TopDownEngine {
     if (!(this.isoSkip & 2)) {
     this.drawShadows(visible, inView);
     this.prof(8);
+    // Back onto the floor: the figures' shadows above leave the last one's upright anchor set, and everything below lies
+    // on the projected ground (an open Nightroad's planks, auras, sigils, tells) — under that anchor it rode along with
+    // whoever was drawn last (the Keeper), the night bridge and the sliding auras of 2026-10-27.
+    this.plane();
+    if (this.perf) this.isoFloorAt = c.getTransform();
     if (surface) this.darkLayer.drawGround(c, this.world.continent, (x, y) => inView(x, y, 32));
     this.drawGroundFx();
     this.prof(9);
