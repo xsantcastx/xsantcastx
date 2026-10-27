@@ -9,7 +9,7 @@
  * the crowd fights instead). Prints the rAF frame deltas (mean / p95 / worst, the count over 33 ms), the engine's own
  * work per frame (window.__tdArt.perf(): update, draw, of which ground baking), the paint caches' canvas pixels, the
  * main canvas's backing pixels and the JS heap. Printed, not asserted. TD_DETAIL=low|normal picks the setting;
- * TD_WEATHER=rain|storm|fog pins the weather (the rain streaks, puddles and fog on top of every scene).
+ * TD_VIEW=desktop measures a 1280×800 DPR 2 laptop instead. ARTOPT=a|b|c|iso photographs the art-direction prototype's look (td-artopt.ts). TD_WEATHER=rain|storm|fog pins the weather (the rain streaks, puddles and fog on top of every scene).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { seed } from './play-helpers';
@@ -18,7 +18,7 @@ const on = process.env['TD_PERF'] ? test.describe : test.describe.skip;
 const CPU = Number(process.env['TD_CPU'] ?? 6);
 type W = {
   __tdZones: { to(c: number, r: number): boolean; foe(type: string, level: number, dx?: number, dy?: number): number | null };
-  __tdArt: { aura(on: boolean): void; road(dc: number): unknown; visit(l: string, c: number, r: number, k?: string): boolean; perf?(): [number, number, number][] };
+  __tdArt: { aura(on: boolean): void; road(dc: number): unknown; visit(l: string, c: number, r: number, k?: string): boolean; perf?(): [number, number, number][]; isoProf?(): number[]; isoBake?(): number[] };
   __made: HTMLCanvasElement[];
 };
 
@@ -35,14 +35,14 @@ async function open(page: Page): Promise<void> {
   }, detail ?? '');
   // TD_WEATHER=rain|storm|fog pins the sky (shared/weather) so the rain's cost is measured on top of the scene's.
   const weather = process.env['TD_WEATHER'];
-  await page.goto(`/play?td=1&hour=12${weather ? `&weather=${weather}` : ''}`);
+  await page.goto(`/play?td=1&hour=12${weather ? `&weather=${weather}` : ''}${process.env['ARTOPT'] ? `&artopt=${process.env['ARTOPT']}` : ''}`);
   await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
   await page.waitForFunction(() => !!(window as unknown as Partial<W>).__tdZones && !!(window as unknown as Partial<W>).__tdArt);
   await page.waitForTimeout(2500);
 }
 
 async function measure(page: Page, label: string, walk: boolean, ms = 5000): Promise<void> {
-  await page.evaluate(() => (window as unknown as W).__tdArt.perf?.());
+  await page.evaluate(() => { (window as unknown as W).__tdArt.perf?.(); (window as unknown as W).__tdArt.isoProf?.(); (window as unknown as W).__tdArt.isoBake?.(); });
   const r = await page.evaluate(([walk, ms]) => new Promise<Record<string, number>>(done => {
     const w = window as unknown as W, d: number[] = [];
     const cv = document.querySelector('canvas')!;
@@ -58,6 +58,10 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
       if (t - t0 < ms) { requestAnimationFrame(tick); return; }
       const s = [...d].sort((a, b) => a - b), q = (p: number) => s[Math.min(s.length - 1, Math.floor(s.length * p))];
       const work = w.__tdArt.perf?.() ?? [];
+      const ip = w.__tdArt.isoProf?.() ?? [];
+      const ib = w.__tdArt.isoBake?.() ?? [];
+      const bakeS = ib.length ? ` | bake tiles ${ib[0]} atlas ${ib[1]} paint ${ib[2].toFixed(0)} read ${ib[3].toFixed(0)} lay ${ib[4].toFixed(0)} put ${ib[5].toFixed(0)} ms` : '';
+      const isoS = ip.length && ip[ip.length - 1] ? ip.slice(0, 8).map(v => (v / ip[ip.length - 1]).toFixed(2)).join('/') + bakeS : '';
       const tot = work.map(f => f[0] + f[1]).sort((a, b) => a - b), bake = work.map(f => f[2]);
       const mean = (a: number[]) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
       const px = w.__made.reduce((a, c) => a + c.width * c.height, 0);
@@ -66,17 +70,18 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
         mean: mean(d), p95: q(.95), max: s[s.length - 1], over33: d.filter(x => x > 33.4).length, frames: d.length,
         workMean: mean(tot), workP95: tot[Math.floor(tot.length * .95)] ?? 0, workMax: tot[tot.length - 1] ?? 0,
         update: mean(work.map(f => f[0])), draw: mean(work.map(f => f[1])), bakeMax: Math.max(0, ...bake), bakeSum: bake.reduce((a, b) => a + b, 0),
-        mpx: px / 1e6, backing: cv.width * cv.height / 1e6, heap: mem / 1048576,
+        iso: isoS as unknown as number, mpx: px / 1e6, backing: cv.width * cv.height / 1e6, heap: mem / 1048576,
       });
     };
     requestAnimationFrame(tick);
   }), [walk, ms] as const);
   const f = (n: number, p = 1) => n.toFixed(p);
-  console.warn(`[td-perf] ${label}: frame mean ${f(r['mean'], 2)} p95 ${f(r['p95'])} worst ${f(r['max'])} ms, ${r['over33']}/${r['frames']} over 33 ms | work mean ${f(r['workMean'], 2)} p95 ${f(r['workP95'])} worst ${f(r['workMax'])} (update ${f(r['update'], 2)}, draw ${f(r['draw'], 2)}; bake worst ${f(r['bakeMax'])}, total ${f(r['bakeSum'], 0)}) | caches ${f(r['mpx'], 2)} Mpx, backing ${f(r['backing'], 2)} Mpx, heap ${f(r['heap'], 0)} MB`);
+  console.warn(`[td-perf] ${label}: frame mean ${f(r['mean'], 2)} p95 ${f(r['p95'])} worst ${f(r['max'])} ms, ${r['over33']}/${r['frames']} over 33 ms | work mean ${f(r['workMean'], 2)} p95 ${f(r['workP95'])} worst ${f(r['workMax'])} (update ${f(r['update'], 2)}, draw ${f(r['draw'], 2)}; bake worst ${f(r['bakeMax'])}, total ${f(r['bakeSum'], 0)}) | caches ${f(r['mpx'], 2)} Mpx, backing ${f(r['backing'], 2)} Mpx, heap ${f(r['heap'], 0)} MB${r['iso'] ? ` | iso ground/floor/queue/draw/air/light/ui/bake ${r['iso']}` : ''}`);
 }
 
 on('phone perf (390×844, DPR 3)', () => {
-  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  // TD_VIEW=desktop: a 1280×800 laptop at DPR 2 instead (with TD_CPU=1, the desktop's smoothness check).
+  test.use(process.env['TD_VIEW'] === 'desktop' ? { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 } : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   const places: [string, (p: Page) => Promise<void>][] = [
     ['road', p => p.evaluate(() => { const w = window as unknown as W; w.__tdZones.to(58, 62); w.__tdArt.road(0); w.__tdArt.aura(true); })],
     ['town', async () => undefined],
@@ -90,7 +95,7 @@ on('phone perf (390×844, DPR 3)', () => {
     await page.waitForTimeout(2000);
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
-    if (process.env['TD_TRACE'] === name) await page.context().browser()!.startTracing(page, { path: `test-results/td-trace-${name}.json`, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink', 'cc', 'gpu', 'v8'] });
+    if (process.env['TD_TRACE'] === name) await page.context().browser()!.startTracing(page, { path: `${process.env['TD_TRACE_DIR'] ?? 'test-results'}/td-trace-${name}.json`, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink', 'cc', 'gpu', 'v8'] });
     await measure(page, `${name} standing ×${CPU}`, false, 4000);
     if (process.env['TD_TRACE'] === name) await page.context().browser()!.stopTracing();
     await measure(page, `${name} walking ×${CPU}`, true);
@@ -110,5 +115,24 @@ on('phone perf (390×844, DPR 3)', () => {
     await measure(page, `hot spot fighting (18 walkers) ×${CPU}`, false);
     await measure(page, `hot spot walking ×${CPU}`, true);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  });
+  // Isometric B's HD creatures (ARTOPT=iso): twelve kinds at once, each baking its own frames; the baked cells' pixels.
+  test('hot spot, many kinds', async ({ page }) => {
+    test.setTimeout(180000);
+    await open(page);
+    await page.evaluate(() => {
+      const w = window as unknown as W;
+      w.__tdZones.to(58, 62); w.__tdArt.road(0);
+      const kinds = ['bone-walker', 'ash-wolf', 'rivet-maw', 'cinder-imp', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'lava-hound', 'thorn-weaver', 'gloam-witch', 'ember-drake', 'sporecap'];
+      for (let i = 0; i < 18; i++) w.__tdZones.foe(kinds[i % kinds.length], 3, Math.round(Math.cos(i * .7) * (40 + i * 4)), Math.round(Math.sin(i * .7) * (30 + i * 3)));
+    });
+    await page.waitForTimeout(1500);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+    await measure(page, `many kinds fighting (18 of 12 kinds) ×${CPU}`, false);
+    await measure(page, `many kinds walking ×${CPU}`, true);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    const hd = await page.evaluate(() => (window as unknown as { __tdArt: { hdStats?: () => unknown } }).__tdArt.hdStats?.());
+    console.warn(`[td-perf] HD creature cells: ${JSON.stringify(hd)}`);
   });
 });

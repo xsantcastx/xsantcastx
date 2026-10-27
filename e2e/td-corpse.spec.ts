@@ -1,20 +1,23 @@
 /**
  * td-corpse.spec.ts — corpses, Tibia-style (owner's backlog 2026-10-21). A slain creature lies where it fell and rots
- * (fresh → rotting → bones → gone); the loot lies beside it, still picked up by walking over it, and E (or a tap on the
- * corpse) opens a small window to see and take what is left. The window scrolls and reaches its last control on a phone.
+ * (fresh → rotting → bones → gone); the loot lies beside it — only its Gold is picked up by walking over it, the rest is
+ * taken by hand (a click on it walks there and takes it, the Pick-up key takes the nearest in reach) — and E (or a tap
+ * on the corpse) opens a small window to see and take what is left. The window scrolls and reaches its last control on a phone.
  *
  * `?fxparty=1` (honoured only under an automated browser) fells a creature through the real kill, lays a heap of ember
  * residue in its corpse and moves the corpse clock forward, so the three-and-a-half-minute decay runs in a moment.
  * Screenshots: docs/handoff/cozy-ui/corpse-{fresh,rotting,bones,open,open-phone}.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { seed } from './play-helpers';
+import { seed, stackQty } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('.viewport canvas');
 interface CorpseRow { id: string; kind: string; stage: string; loot: number; x: number; y: number; px: number; py: number; scale: number }
-type Hook = { smite: (type: string, dx: number) => string | null; corpses: () => CorpseRow[]; age: (s: number) => number; stock: () => boolean };
+interface LootRow { id: string; label: string; coins: number; corpse: string; far: number; px: number; py: number }
+type Hook = { smite: (type: string, dx: number) => string | null; corpses: () => CorpseRow[]; age: (s: number) => number; stock: () => boolean; loot: () => LootRow[] };
 const hook = <T>(page: Page, fn: (h: Hook) => T) => page.evaluate(`(${fn.toString()})(window.__tdParty)`) as Promise<T>;
 const corpses = (page: Page) => hook(page, h => h.corpses());
+const loot = (page: Page) => hook(page, h => h.loot());
 
 async function boot(page: Page, size = { width: 1280, height: 800 }): Promise<void> {
   await page.setViewportSize(size);
@@ -57,7 +60,7 @@ test('a slain creature lies where it fell and rots through its stages', async ({
   await expect.poll(async () => (await corpses(page)).length).toBe(0);
 });
 
-test('E opens the corpse, the loot can be taken out of it, and the walk-over pickup still works', async ({ page }) => {
+test('E opens the corpse, and the loot can be taken out of it', async ({ page }) => {
   test.setTimeout(90_000);
   await boot(page);
   await hook(page, h => h.smite('ash-wolf', 24));
@@ -96,4 +99,30 @@ test('walking away shuts the window, and a tap on the corpse walks up and opens 
   await canvas(page).evaluate(el => (el as HTMLCanvasElement).focus({ preventScroll: true }));
   await page.keyboard.down('a'); await page.waitForTimeout(1400); await page.keyboard.up('a');
   await expect(win).toHaveCount(0, { timeout: 5000 });
+});
+
+test('only Gold is walked up: an item waits, a click on it walks there and takes it, and the Pick-up key takes the nearest', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+  await hook(page, h => h.smite('ash-wolf', 70));
+  await expect.poll(async () => (await corpses(page)).length).toBe(1);
+  expect(await hook(page, h => h.stock())).toBe(true);
+  // The Gold comes by itself; the residue does not, however long the Keeper stands there.
+  await expect.poll(async () => (await loot(page)).filter(d => d.coins > 0).length, { timeout: 8000 }).toBe(0);
+  await page.waitForTimeout(1500);
+  const heap = (await loot(page)).find(d => d.id.startsWith('fx-stock'))!;
+  expect(heap, 'the residue still lies there').toBeTruthy();
+  expect(heap.far, 'out of reach').toBeGreaterThan(28);
+  const before = await stackQty(page, 'ember-residue');
+  // A click on it: the Keeper walks over and takes it into the satchel.
+  await page.mouse.click(heap.px, heap.py);
+  await expect.poll(async () => (await loot(page)).some(d => d.id === heap.id), { timeout: 10000 }).toBe(false);
+  await expect.poll(() => stackQty(page, 'ember-residue'), { timeout: 8000 }).toBe(before + 2);
+  // Another heap where he stands: the Pick-up key (N) takes it.
+  expect(await hook(page, h => h.stock())).toBe(true);
+  const next = (await loot(page)).find(d => d.id.startsWith('fx-stock'))!;
+  expect(next.far).toBeLessThanOrEqual(28);
+  await key(page, 'n');
+  await expect.poll(async () => (await loot(page)).some(d => d.id === next.id), { timeout: 5000 }).toBe(false);
+  await expect.poll(() => stackQty(page, 'ember-residue'), { timeout: 8000 }).toBe(before + 4);
 });

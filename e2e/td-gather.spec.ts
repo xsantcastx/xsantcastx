@@ -76,8 +76,9 @@ test.describe('gathering and weather', () => {
 
   test('walk to a lake spot and fish until the satchel is full', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    // 51 rings and the starter tools fill 59 cells; the 60th holds 19 Ash Perch, so one more fits and the next does not.
-    const rings = Array.from({ length: 51 }, (_, i) => gear(`g-r${String(i).padStart(2, '0')}`, i));
+    // 56 rings and the three starter tools (one cell each since the 1×1 grid) fill 59 cells; the 60th holds 19 Ash
+    // Perch, so one more fits and the next does not.
+    const rings = Array.from({ length: 56 }, (_, i) => gear(`g-r${String(i).padStart(2, '0')}`, i));
     await enter(page, { 'godforge-inventory': inventory(rings, { 'ash-perch': 19, 'worn-rod': 1 }) }, '&weather=clear');
     const spot = await nearLake(page);
     // The fish under the water show round the float.

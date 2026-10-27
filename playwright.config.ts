@@ -45,6 +45,9 @@ const ONBOARDING_SEEN = {
         // The title / character select (play/lobby) is skipped the same way: every spec written before it lands
         // straight in the world. e2e/play-lobby.spec.ts removes it to test the lobby itself.
         { name: 'eclipse-lobby', value: 'skip' },
+        // Isometric is every player's default since 2026-10-27; the suite's specs were written for the top-down
+        // (Classic) view and keep testing it. e2e/td-iso.spec.ts removes this to prove a fresh player gets Isometric.
+        { name: 'eclipse-td-graphics', value: 'classic' },
       ],
     },
   ],

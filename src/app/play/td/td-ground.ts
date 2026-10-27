@@ -265,3 +265,65 @@ export function stone(c: Ctx, x: number, y: number, w: number, onDirt: boolean, 
   c.fillStyle = tones[3]; c.fillRect(x, y, 1, 1);
   c.fillStyle = tones[4]; c.fillRect(x + w - 1, y + 1, 1, h - 1);
 }
+
+/**
+ * The art-direction prototype's finer ground (td-artopt.ts option B, docs/handoff/artopt/): grass, flower beds and
+ * worn dirt baked at HD_K pixels per world pixel — the same textures sampled at the finer pixel, so every clump, blade,
+ * pebble, bloom and edge is half the size and twice as many. (ox, oy) are the tile's corner in the HD chunk's pixels.
+ * Returns false for any other ground (the engine paints it at the art grid and scales it up).
+ */
+let hdScratch: ImageData | null = null;
+export function paintRichGroundHd(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, nb: (dx: number, dy: number) => Ground, K = 2): boolean {
+  if (envDetail() === 'low') return false;
+  const worn = kind === 'dirt' ? RGB.dirt : null, lush = GRASSY.get(kind);
+  if (!worn && (kind === 'moss' || !lush)) return false;
+  const S = TILE * K, img = hdScratch && hdScratch.width === S ? hdScratch : (hdScratch = c.createImageData(S, S));
+  const d = img.data, wx0 = tx * S, wy0 = ty * S;
+  if (worn) {
+    const g = (dx: number, dy: number) => GRASSY.has(nb(dx, dy));
+    const n = g(0, -1), s = g(0, 1), w = g(-1, 0), e = g(1, 0), nw = g(-1, -1), ne = g(1, -1), sw = g(-1, 1), se = g(1, 1);
+    const reach = (a: number, salt: number) => (1.4 + meadow(a / K, salt, 7, 41) * 1.6) * K;
+    const dirtT = dirt(), idx = new Int8Array(S * S);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const wx = wx0 + x, wy = wy0 + y;
+      let grassy = false;
+      if (n && y < reach(wx, ty * TILE)) grassy = true;
+      else if (s && S - 1 - y < reach(wx, ty * TILE + TILE) - .6 * K) grassy = true;
+      else if (w && x < reach(wy, tx * TILE + 7)) grassy = true;
+      else if (e && S - 1 - x < reach(wy, tx * TILE + TILE + 7)) grassy = true;
+      else {
+        const cr = (cx: number, cy: number) => Math.hypot(x + .5 - cx, y + .5 - cy) < 3 * K;
+        if ((nw && !n && !w && cr(0, 0)) || (ne && !n && !e && cr(S, 0)) || (sw && !s && !w && cr(0, S)) || (se && !s && !e && cr(S, S))) grassy = true;
+      }
+      idx[y * S + x] = grassy ? -1 - grassAt(wx, wy) : dirtT[((wy & MASK) * T) + (wx & MASK)];
+    }
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const k = y * S + x, v = idx[k];
+      if (v < 0) {
+        let gi = -1 - v;
+        const below = y + 1 < S ? idx[k + S] : 0, above = y > 0 ? idx[k - S] : -1;
+        if (below >= 0 && y + 1 < S) gi = Math.min(gi, 1);
+        else if (above >= 0 && y > 0) gi = Math.max(gi, 4);
+        put(d, k, RGB.grass[gi]);
+      } else {
+        let di = v;
+        const up = y > 0 ? idx[k - S] : 0, up2 = y > 1 ? idx[k - 2 * S] : 0, up3 = y > 2 ? idx[k - 3 * S] : 0, left = x > 0 ? idx[k - 1] : 0, right = x + 1 < S ? idx[k + 1] : 0;
+        if (up < 0 || up2 < 0) di = 0;
+        else if (up3 < 0 || left < 0) di = Math.min(di, 1);
+        else if (right < 0) di = Math.min(di, 2);
+        put(d, k, worn[di]);
+      }
+    }
+    c.putImageData(img, ox, oy);
+    const r = (q: number) => hash(tx, ty, q);
+    for (let i = 0; i < 2; i++) if (r(61 + i * 7) < .12) stone(c, ox + 6 + Math.floor(r(62 + i * 7) * 18), oy + 8 + Math.floor(r(63 + i * 7) * 16), r(64 + i * 7) < .5 ? 2 : 3, true);
+    return true;
+  }
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) put(d, y * S + x, lush![grassAt(wx0 + x, wy0 + y)]);
+  c.putImageData(img, ox, oy);
+  // Twice the pixels, so the same calm count of blooms and stones reads as finer, not busier.
+  const blooms = kind === 'flowers' ? (hash(tx, ty, 70) < .5 ? 2 : 1) : hash(tx, ty, 71) < .04 ? 1 : 0;
+  for (let i = 0; i < blooms; i++) flower(c, ox + 2 + Math.floor(hash(tx, ty, 73 + i) * 27), oy + 2 + Math.floor(hash(tx, ty, 80 + i) * 26), Math.floor(hash(tx, ty, 87 + i) * FLOWERS.length));
+  if (hash(tx, ty, 95) < .02) stone(c, ox + 6 + Math.floor(hash(tx, ty, 96) * 18), oy + 8 + Math.floor(hash(tx, ty, 97) * 16), hash(tx, ty, 98) < .4 ? 4 : 3, false);
+  return true;
+}

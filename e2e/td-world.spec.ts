@@ -21,8 +21,8 @@ test.beforeAll(async ({}, info) => { hearth = await startHearth(String(info.proj
 test.afterAll(async () => { await hearth?.stop(); });
 
 interface WorldView { role: string; host: string | null; area: string; mobs: { id: string; t: string; x: number; y: number; hp: number; max: number }[] }
-interface Ground { id: string; x: number; y: number; coins: number; label: string; hold: number; corpse: string }
-type Hooks = { __tdCoop: { view: () => WorldView; hit: (id: string, n: number) => boolean; ground: () => Ground[]; walkTo: (id: string) => boolean } };
+interface Ground { id: string; x: number; y: number; coins: number; label: string; hold: number; corpse: string; px: number; py: number }
+type Hooks = { __tdCoop: { view: () => WorldView; hit: (id: string, n: number) => boolean; ground: () => Ground[] } };
 
 const canvas = (page: Page) => page.locator('.viewport canvas');
 const view = (page: Page) => page.evaluate(() => (window as unknown as Hooks).__tdCoop.view());
@@ -93,10 +93,11 @@ test('the room runs the island: two Keepers see the same creature die and the sa
     await a.screenshot({ path: 'output/world/aster-drop.png' });
     await b.screenshot({ path: 'output/world/bryn-drop.png' });
 
-    // ── Aster walks onto one piece: gone from Aster's screen at once, the room says yes, gone from Bryn's ──
-    const piece = ga[0];
-    await a.evaluate(id => (window as unknown as Hooks).__tdCoop.walkTo(id), piece.id);
-    await expect.poll(async () => (await ground(a)).some(g => g.id === piece.id), { timeout: 3000 }).toBe(false);
+    // ── Aster clicks one piece (an item, not the Gold that comes by itself): she walks to it and takes it — gone from
+    //    her screen at once, the room says yes, gone from Bryn's ──
+    const piece = (await ground(a)).find(g => !g.coins) ?? (await ground(a))[0];
+    await a.mouse.click(piece.px, piece.py);
+    await expect.poll(async () => (await ground(a)).some(g => g.id === piece.id), { timeout: 8000 }).toBe(false);
     await expect(canvas(a)).toHaveAttribute('data-world-take', /^ok:/, { timeout: 10000 });
     await expect.poll(async () => (await ground(b)).some(g => g.id === piece.id), { timeout: 10000 }).toBe(false);
     const took = (await canvas(a).getAttribute('data-world-take')) ?? '';
