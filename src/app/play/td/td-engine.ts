@@ -32,7 +32,7 @@ import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './t
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { backing, baseZoom, zoomFactor } from './td-zoom';
 import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdStill, hdWalkFrame, type HdView } from './td-hd-keeper';
-import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdGlim, hdIds, hdStats } from './td-hd-mob';
+import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdGlim, hdIds, hdPetBust, hdStats } from './td-hd-mob';
 import { facingRow } from './td-hd-rig';
 import { petClip } from './td-hd-pets';
 import type { Anim } from './td-hd-creatures';
@@ -1805,7 +1805,8 @@ export class TopDownEngine {
     };
   }
   /** The pet's face for the HUD chip (a data URL, made once per pet). */
-  petFace(): string { return this.pet ? petFace(this.pet.id) : ''; }
+  /** The HUD chip's face: the HD bust (isometric B), else the classic face. */
+  petFace(): string { if (!this.pet) return ''; if (optHdFigures() && envDetail() !== 'low' && hasHdModel(`pet:${this.pet.id}`)) return hdPetBust(this.pet.id) || petFace(this.pet.id); return petFace(this.pet.id); }
   get realm(): null { return null; }
   get placeable(): null { return null; }
   /** Walk to a station and open it on arrival (`instant`: stand there now). */

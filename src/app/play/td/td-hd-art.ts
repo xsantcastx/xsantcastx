@@ -5,12 +5,10 @@
  * the world and gets four times the pixels.
  *
  * - the Keeper as an Ashguard (front and back; walk and breath), a wine-dark watch cape, a steel half-helm, a sword;
- * - the Bone Walker (sword and round shield, ember eyes), four frames like td-mobs' sheet;
- * - the shade-kit pet (eight frames like td-pet-art's sheet, facing right);
  * - the oak (a crown of lit leaf clusters over a barked trunk, with its roof layer and ground shadow).
  *
- * Everything is sculpted (td-hd-sculpt.ts) and baked once. A decision prototype, not a rollout: other vocations,
- * creatures and trees keep the game's art.
+ * Everything is sculpted (td-hd-sculpt.ts) and baked once. The creatures, pets and Glim live in td-hd-creatures.ts and
+ * td-hd-pets.ts; the Keepers and townsfolk in td-hd-keeper.ts.
  */
 import { Sculpt, mix, rampOf, type Mat, type Pt } from './td-hd-sculpt';
 import type { Sprite } from './td-art';
@@ -203,162 +201,6 @@ export function hdKeeperFrame(time: number, moving: boolean): number {
   if (moving) return 2 + Math.floor(time * 9) % 4;
   return Math.floor(time * 1.4) % 4 === 3 ? 1 : 0;
 }
-
-// ── The Bone Walker ──
-const SW = 64, SH = 106;
-export const HD_SKEL = { w: SW + 2, h: SH + 2 } as const;
-const SBOB = [0, -2, 0, -2], SSTEP = [3, 0, -3, 0];
-
-/** `view` 0 facing the camera, 1 turned a quarter right (iso SE), 2 from behind and right (iso NE). */
-function skeletonFrame(f: number, view = 0): HTMLCanvasElement {
-  const s = new Sculpt(SW, SH), b = SBOB[f], st = SSTEP[f], cx = 30;
-  // The round shield on the far arm (viewer's left), planks and an iron rim, behind the body.
-  const shx = cx - 18, shy = 66 + b;
-  // The far leg, darker.
-  s.limb([cx - 5.5, 78 + b], [cx - 5.5 - st * .5, 90 + b], 3.4, 3, M.bone, { g: 1, bias: -.8 });
-  s.limb([cx - 5.5 - st * .5, 90 + b], [cx - 5.5 - st, 101 - (f === 2 ? 2 : 0)], 3, 2.8, M.bone, { g: 2, bias: -.8 });
-  s.ellipse(cx - 6.5 - st, 103 - (f === 2 ? 2 : 0), 4.8, 2.6, M.bone, { g: 3, bias: -.8 });
-  // The spine and pelvis.
-  s.limb([cx, 46 + b], [cx, 78 + b], 3.2, 3.2, M.bone, { g: 10 });
-  s.poly([[cx - 9, 74 + b], [cx + 9, 74 + b], [cx + 7, 82 + b], [cx + 2, 80 + b], [cx - 2, 80 + b], [cx - 7, 82 + b]], M.bone, { g: 11 });
-  // The red rag at the hips, torn.
-  s.poly([[cx - 10, 75 + b], [cx + 10, 75 + b], [cx + 10, 82 + b], [cx + 6, 80 + b], [cx + 4, 86 + b], [cx + 1, 81 + b], [cx - 3, 85 + b], [cx - 5, 80 + b], [cx - 10, 83 + b]], M.rag, { g: 12 });
-  // The ribcage: four ribs either side of the sternum, dark between.
-  s.ellipse(cx, 59 + b, 13, 11, M.void, { g: 20 });
-  for (let i = 0; i < 4; i++) {
-    const y = 51 + i * 4.6 + b, w = 13 - i * 1.3;
-    s.stroke([[cx - 1, y], [cx - w * .7, y + 1], [cx - w, y + 3.2]], 2.1, 1.7, M.bone, { g: 21 + i });
-    s.stroke([[cx + 1, y], [cx + w * .7, y + 1], [cx + w, y + 3.2]], 2.1, 1.7, M.bone, { g: 31 + i, bias: -.3 });
-  }
-  s.limb([cx, 50 + b], [cx, 68 + b], 2.4, 2, M.bone, { g: 40 });
-  // Collarbones.
-  s.limb([cx - 14, 48 + b], [cx + 14, 48 + b], 2.4, 2.4, M.bone, { g: 41 });
-  // The near leg.
-  s.limb([cx + 5.5, 78 + b], [cx + 5.5 + st * .5, 90 + b], 3.4, 3, M.bone, { g: 50 });
-  s.ellipse(cx + 5.5 + st * .5, 90 + b, 3.8, 3.2, M.bone, { g: 51 });
-  s.limb([cx + 5.5 + st * .5, 90 + b], [cx + 5.5 + st, 101], 3, 2.8, M.bone, { g: 52 });
-  s.ellipse(cx + 6.5 + st, 103, 5, 2.7, M.bone, { g: 53 });
-  // The far arm holding the shield (the shield in front of it).
-  s.limb([cx - 14, 49 + b], [cx - 16, 60 + b], 2.9, 2.6, M.bone, { g: 60, bias: -.4 });
-  s.ellipse(shx, shy, 12.5, 13.5, M.iron, { g: 61 });
-  s.ellipse(shx, shy, 10.5, 11.5, M.wood, { g: 62 });
-  for (const dx of [-4.5, 0, 4.5]) s.line([shx + dx, shy - 9 + Math.abs(dx) * .3], [shx + dx, shy + 9 - Math.abs(dx) * .3], M.wood.ramp[1]);
-  s.ellipse(shx, shy, 3.8, 3.8, M.iron, { g: 63 });
-  // The sword arm (viewer's right): upper arm, forearm, hand on the grip, the blade upright.
-  const hx = cx + 18, hy = 70 + b;
-  s.limb([cx + 14, 49 + b], [cx + 16, 60 + b], 2.9, 2.6, M.bone, { g: 70 });
-  s.ellipse(cx + 16, 60 + b, 3.4, 3.1, M.bone, { g: 71 });
-  s.limb([cx + 16, 60 + b], [hx, hy - 2], 2.7, 2.4, M.bone, { g: 72 });
-  s.poly([[hx - 2.8, hy - 6], [hx + 2.8, hy - 6], [hx + 2.6, hy - 48], [hx, hy - 54], [hx - 2.6, hy - 48]], M.iron, { g: 73 });
-  s.line([hx, hy - 8], [hx, hy - 44], M.iron.ramp[1]);
-  s.line([hx - 1, hy - 9], [hx - 1, hy - 43], M.iron.ramp[5]);
-  s.dot(hx + 1, hy - 26, '#ff9a4a'); s.dot(hx + 1, hy - 25, '#c8502a');
-  s.limb([hx - 6, hy - 6], [hx + 6, hy - 6], 1.6, 1.6, M.iron, { g: 74 });
-  s.limb([hx, hy - 5], [hx, hy + 2], 1.7, 1.7, M.grip, { g: 75 });
-  s.ellipse(hx, hy - 2, 3.8, 3.5, M.bone, { g: 76 });
-  s.ellipse(hx, hy + 4, 1.8, 1.8, M.iron, { g: 77 });
-  // The skull: big and round, a jaw, deep sockets with ember eyes.
-  s.ellipse(cx, 24 + b, 17, 16, M.skull, { g: 80 });
-  s.poly([[cx - 10, 33 + b], [cx + 10, 33 + b], [cx + 9, 44 + b], [cx - 9, 44 + b]], M.skull, { g: 80 });
-  const fx = cx + (view === 1 ? 3 : 0);
-  if (view === 2) {
-    // From behind: the round back of the skull, a hairline crack, the jaw's hinge either side.
-    s.line([cx + 3, 13 + b], [cx + 1, 20 + b], M.skull.ramp[1]); s.line([cx + 1, 20 + b], [cx + 4, 25 + b], M.skull.ramp[1]);
-    s.dot(cx - 9, 38 + b, M.skull.ramp[1], 2, 3); s.dot(cx + 8, 38 + b, M.skull.ramp[1], 2, 3);
-  } else {
-    s.rect(fx - 7, 40 + b, 14, 1, M.void, { g: 81 });
-    for (let i = 0; i < 5; i++) s.dot(fx - 6 + i * 3, 39 + b, M.skull.ramp[1], 1, 4);
-    for (const side of [-1, 1] as const) {
-      const ex = fx + side * (view === 1 && side < 0 ? 5.5 : 6.5), rx = view === 1 && side < 0 ? 4 : 5.2;
-      s.ellipse(ex, 27 + b, rx, 4.8, M.void, { g: 82 + side });
-      s.dot(ex - 1, 27 + b, '#ffb040', 3, 3); s.dot(ex - 1, 27 + b, '#fff0b0');
-      s.dot(ex - 2, 30 + b, '#a03a1a', 1, 1);
-    }
-    s.poly([[fx - 1.5, 33 + b], [fx + 1.5, 33 + b], [fx, 36 + b]], M.void, { g: 85 });
-  }
-  s.dot(cx - 10, 17 + b, M.skull.ramp[5], 3, 1); s.dot(cx - 11, 18 + b, M.skull.ramp[5]);
-  return s.render();
-}
-
-let skelSheet: HTMLCanvasElement | null = null;
-/** The Bone Walker's HD sheet: four frames (td-mobs' MOB_FRAMES), facing right like the game's. */
-export function hdSkeletonSheet(): HTMLCanvasElement {
-  if (skelSheet) return skelSheet;
-  const el = document.createElement('canvas'); el.width = HD_SKEL.w * 4; el.height = HD_SKEL.h * 3;
-  const g = el.getContext('2d')!;
-  // Rows: 0 facing the camera, 1 turned right (iso SE), 2 from behind (iso NE).
-  for (let v = 0; v < 3; v++) for (let f = 0; f < 4; f++) g.drawImage(skeletonFrame(f, v), f * HD_SKEL.w, v * HD_SKEL.h);
-  return (skelSheet = el);
-}
-
-// ── The shade-kit (pet) ──
-const PWD = 70, PHT = 58;
-export const HD_PET = { w: PWD + 2, h: PHT + 2 } as const;
-type PetFrame = 'walk0' | 'walk1' | 'walk2' | 'walk3' | 'sit0' | 'sit1' | 'sleep' | 'happy';
-const PET_ORDER: readonly PetFrame[] = ['walk0', 'walk1', 'walk2', 'walk3', 'sit0', 'sit1', 'sleep', 'happy'];
-
-function petFrame(f: PetFrame): HTMLCanvasElement {
-  const s = new Sculpt(PWD, PHT);
-  if (f === 'sleep') {
-    s.stroke([[12, 50], [8, 44], [14, 38], [24, 40]], 6, 3, M.fur, { g: 1 });
-    s.ellipse(30, 46, 17, 9, M.fur, { g: 2 });
-    s.ellipse(44, 44, 11, 9.5, M.fur, { g: 3 });
-    s.poly([[38, 38], [40, 27], [46, 36]], M.fur, { g: 4 }); s.poly([[46, 36], [52, 28], [53, 39]], M.fur, { g: 5 });
-    s.ellipse(44, 49, 6, 4, M.furLt, { g: 6 });
-    s.dot(39, 44, EYE, 4, 1); s.dot(47, 44, EYE, 4, 1);
-    s.dot(13, 37, '#e8c8ff', 2, 2);
-    return s.render();
-  }
-  const sit = f === 'sit0' || f === 'sit1', walk = f.startsWith('walk'), wi = walk ? Number(f[4]) : 0;
-  const bob = f === 'happy' ? -5 : walk && wi % 2 ? -2 : 0, wag = f === 'sit1' || wi === 1 ? 3 : f === 'happy' ? -2 : 0;
-  // The tail: a big smoky brush curling up behind, a pale tip.
-  s.stroke([[18, 42 + bob], [8, 38 + bob], [5 + wag, 26 + bob], [10 + wag, 16 + bob]], 6.5, 4.5, M.fur, { g: 1 });
-  s.ellipse(11 + wag, 14 + bob, 4.5, 4, M.furLt, { g: 2 });
-  // Far legs.
-  const legs = (bias: number, g: number, dx: number) => {
-    if (sit) { s.ellipse(22 + dx, 52, 6, 4, M.furDk, { g, bias }); return; }
-    const a = walk ? [3, 0, -3, 0][wi] : 0;
-    s.limb([20 + dx, 44 + bob], [20 + dx - a, 55], 3.2, 2.6, M.furDk, { g, bias }); s.limb([40 + dx, 44 + bob], [40 + dx + a, 55], 3.2, 2.6, M.furDk, { g: g + 1, bias });
-  };
-  legs(-.6, 10, 3);
-  // The body: sitting tall, or long and low.
-  if (sit) { s.ellipse(28, 42, 12, 12, M.fur, { g: 20 }); s.ellipse(36, 44, 6.5, 9, M.furLt, { g: 21 }); }
-  else { s.ellipse(30, 42 + bob, 16, 9.5, M.fur, { g: 20 }); s.ellipse(40, 45 + bob, 7, 6, M.furLt, { g: 21 }); }
-  legs(0, 30, 0);
-  // The head: big and round, a short pointed muzzle, two tall ears with pink insides.
-  const hx = sit ? 40 : 46, hy = (sit ? 22 : 26) + bob;
-  s.poly([[hx - 9, hy - 6], [hx - 8, hy - 21], [hx - 1, hy - 9]], M.fur, { g: 40 });
-  s.poly([[hx - 7, hy - 8], [hx - 7, hy - 17], [hx - 3, hy - 9]], M.furLt, { g: 41, bias: -.6 });
-  s.ellipse(hx, hy, 12, 10.5, M.fur, { g: 42 });
-  s.poly([[hx + 2, hy - 9], [hx + 9, hy - 22], [hx + 11, hy - 6]], M.fur, { g: 43, bias: -.2 });
-  s.poly([[hx + 4, hy - 9], [hx + 9, hy - 18], [hx + 9, hy - 8]], M.furLt, { g: 44, bias: -.6 });
-  s.ellipse(hx + 9, hy + 4, 7, 4.6, M.furLt, { g: 45 });
-  s.ellipse(hx + 15, hy + 3, 1.8, 1.6, M.void, { g: 46 });
-  // Eyes: big, a violet glow, two glints; shut and smiling when happy.
-  if (f === 'happy') { s.line([hx - 3, hy - 1], [hx - 1, hy - 3], EYE); s.line([hx - 1, hy - 3], [hx + 1, hy - 1], EYE); s.line([hx + 5, hy - 1], [hx + 7, hy - 3], EYE); s.line([hx + 7, hy - 3], [hx + 9, hy - 1], EYE); }
-  else {
-    const look = f === 'sit1' ? -1 : 0;
-    for (const ex of [hx - 2 + look, hx + 6 + look]) {
-      s.dot(ex - 1, hy - 4, EYE, 4, 6); s.dot(ex, hy - 2, '#8a52e0', 2, 3); s.dot(ex, hy - 3, '#c8a0ff', 1, 1);
-      s.dot(ex - 1, hy - 4, SHINE, 1, 2); s.dot(ex + 1, hy + 1, '#e8d8ff');
-    }
-  }
-  s.dot(hx - 4, hy + 4, BLUSH, 3, 1); s.dot(hx + 8, hy + 3, BLUSH, 2, 1);
-  if (f === 'happy') s.dot(hx + 10, hy + 6, MOUTH, 3, 1);
-  return s.render();
-}
-
-let petHd: HTMLCanvasElement | null = null;
-/** The shade-kit's HD sheet: td-pet-art's eight frames in order, facing right. */
-export function hdPetSheet(): HTMLCanvasElement {
-  if (petHd) return petHd;
-  const el = document.createElement('canvas'); el.width = HD_PET.w * PET_ORDER.length; el.height = HD_PET.h;
-  const g = el.getContext('2d')!;
-  PET_ORDER.forEach((f, i) => g.drawImage(petFrame(f), i * HD_PET.w, 0));
-  return (petHd = el);
-}
-export const hdPetFrameIndex = (f: string): number => Math.max(0, PET_ORDER.indexOf(f as PetFrame));
-export const HD_PET_ID = 'shade-kit';
 
 // ── The oak ──
 /**

@@ -122,3 +122,28 @@ export function hdGlim(frame: 'up' | 'mid' | 'down', mood: GlimHdMood): HdCell {
   glims.set(key, c);
   return c;
 }
+
+const busts = new Map<string, string>();
+/**
+ * A pet's HD bust for the HUD chip (a data URL, made once per pet): its sitting frame, turned a quarter toward the
+ * viewer, the top of it (the head and shoulders) on a 72 px square — two sheet px a CSS px in the 36 px chip.
+ */
+export function hdPetBust(id: string): string {
+  const got = busts.get(id);
+  if (got !== undefined) return got;
+  const cell = bakeHdCell(`pet:${id}`, 2, 'idle', 0);
+  if (!cell) { busts.set(id, ''); return ''; }
+  // The head and shoulders: the top 36 sheet px, centred on what is there, doubled (whole pixels) onto 72.
+  const S = 72, C = 36, img = cell.img, rows = Math.min(C, img.height);
+  const px = img.getContext('2d', { willReadFrequently: true })!.getImageData(0, 0, img.width, rows).data;
+  let x0 = img.width, x1 = -1;
+  for (let y = 0; y < rows; y++) for (let x = 0; x < img.width; x++) if (px[(y * img.width + x) * 4 + 3]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+  const cx = x1 >= 0 ? Math.round((x0 + x1 + 1) / 2) : Math.round(img.width / 2), sx = Math.max(0, Math.min(img.width - Math.min(C, img.width), cx - C / 2));
+  const out = document.createElement('canvas'); out.width = out.height = S;
+  const g = out.getContext('2d')!; g.imageSmoothingEnabled = false;
+  const w = Math.min(C, img.width);
+  g.drawImage(img, sx, 0, w, rows, Math.round((C - w) / 2) * 2, (C - rows) * 2, w * 2, rows * 2);
+  const url = out.toDataURL();
+  busts.set(id, url);
+  return url;
+}
