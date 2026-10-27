@@ -37,7 +37,12 @@ describe('td-hd-keeper', () => {
     const f = hdFigure(s);
     expect(hdFigure(s)).toBe(f);
     f.bake(0, HF.idle);
-    expect(f.bytes).toBe(HD_FIG.w * 6 * HD_FIG.h * 4);
+    // Each view a townsperson has shown is one strip of six frames (the cache now outlives the specs before this one,
+    // which may have shown it from other sides: a whole number of six-frame strips, at most four).
+    const strip = HD_FIG.w * 6 * HD_FIG.h * 4;
+    expect(f.bytes % strip).toBe(0);
+    expect(f.bytes / strip).toBeGreaterThanOrEqual(1);
+    expect(f.bytes / strip).toBeLessThanOrEqual(4);
   });
 
   it('reads the frame for walking, swinging and casting', () => {
