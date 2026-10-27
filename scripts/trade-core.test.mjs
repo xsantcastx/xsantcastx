@@ -118,10 +118,31 @@ test('refused when an offered item changed after it was offered: nothing moves, 
   assert.equal(db.docs.get('trades/t1').status, 'void');
 });
 
-test('refused when an item is gone, worn, soulbound or a starter tool; when the windows disagree; or for a stranger', async () => {
+test('everything in hand trades (owner 2026-10-27): worn gear, soulbound, a starter tool, a quest piece', async () => {
   for (const change of [
     r => ({ ...r, location: { kind: 'equipped', slotId: 'weapon' } }),
     r => ({ ...r, soulbound: true }),
+    r => ({ ...r, category: 'quest', tags: ['quest'] }),
+  ]) {
+    const db = world();
+    const inv = db.docs.get('users/uidA/progress/inventory');
+    inv.v.records[0] = change(inv.v.records[0]);
+    const terms = { a: { items: [offerOf(db, 'a', 's1')], gold: 0 }, b: { items: [], gold: 0 } };
+    const { second } = await both(db, terms);
+    assert.equal(second.status, 'done');
+    assert.ok(!live(invA(db)).includes('s1'));
+    const got = invB(db).records.find(r => r.id === second.received.items[0]);
+    assert.deepEqual(got.location, { kind: 'bag' }, 'worn gear arrives loose in the satchel');
+  }
+  const db = world({ aItems: ['starter-pickaxe:v1'] });
+  const terms = { a: { items: [offerOf(db, 'a', 'starter-pickaxe:v1')], gold: 0 }, b: { items: [], gold: 0 } };
+  assert.equal((await both(db, terms)).second.status, 'done');
+});
+
+test('refused when an item is gone, in the Vault or lent to an explorer; when the windows disagree; or for a stranger', async () => {
+  for (const change of [
+    r => ({ ...r, location: { kind: 'explorer', explorerId: 'vault:general-1' } }),
+    r => ({ ...r, location: { kind: 'explorer', explorerId: 'thrall-1' } }),
     null,
   ]) {
     const db = world();
@@ -133,9 +154,6 @@ test('refused when an item is gone, worn, soulbound or a starter tool; when the 
     assert.equal(second.status, 'void');
     assert.ok(live(invB(db)).length === 1);
   }
-  const db = world({ aItems: ['starter-pickaxe:v1'] });
-  const terms = { a: { items: [offerOf(db, 'a', 'starter-pickaxe:v1')], gold: 0 }, b: { items: [], gold: 0 } };
-  assert.equal((await both(db, terms)).second.status, 'void');
   const db2 = world();
   const t1 = { a: { items: [offerOf(db2, 'a', 's1')], gold: 0 }, b: { items: [], gold: 0 } };
   await core.executeTrade(db2, 'uidA', { trade: 't1', character: 'c1', terms: t1 }, T0 + 1);
