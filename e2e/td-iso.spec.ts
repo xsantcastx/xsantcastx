@@ -106,3 +106,20 @@ test('Isometric: a pile on the ground opens its list where it is drawn (its ×N 
   await page.mouse.click(pile.px, pile.py, { button: 'right' });
   await expect(page.locator('[data-pile-window] [data-pile-take]')).toHaveCount(2, { timeout: 5000 });
 });
+
+test('Isometric: the floor pass (an open Nightroad, auras, sigils, tells) lies on the projected ground, not on whoever was drawn last', async ({ page }) => {
+  test.setTimeout(90000);
+  // 2026-10-27: the figures' shadows left the Keeper's upright anchor set, so the night's bridge of planks and every
+  // creature's aura rode along with him as the camera moved.
+  await open(page, 'hour=0&artopt=iso');
+  type F = { isoFloor(): { got: number[]; want: number[] } | null };
+  const floor = () => page.evaluate(() => (window as unknown as { __tdArt: F }).__tdArt.isoFloor());
+  await page.evaluate(() => { const z = (window as unknown as { __tdZones: { to(c: number, r: number): boolean; foe(t: string, l: number, dx: number, dy: number): number | null } }).__tdZones; z.to(58, 62); z.foe('bone-walker', 3, 40, 10); });
+  await page.waitForTimeout(500);
+  for (const step of [0, 1, 2]) {
+    if (step) { await page.evaluate(s => { const z = (window as unknown as { __tdZones: { to(c: number, r: number): boolean } }).__tdZones; z.to(58 + s * 2, 62 + s); }, step); await page.waitForTimeout(300); }
+    const f = await floor();
+    expect(f, 'the floor pass ran').not.toBeNull();
+    f!.got.forEach((v, i) => expect(Math.abs(v - f!.want[i]), `matrix[${i}] at step ${step}`).toBeLessThan(.01));
+  }
+});
