@@ -230,12 +230,17 @@ export class DarkLayer {
   // ── Paint ──────────────────────────────────────────────────────────────────
 
   /** Under everything (the ground layer): an open Nightroad's planks. World transform set. */
-  drawGround(c: CanvasRenderingContext2D, continent: string, inView: (x: number, y: number) => boolean): void {
+  drawGround(c: CanvasRenderingContext2D, continent: string, inView: (x: number, y: number) => boolean, deck?: (c: number, r: number, run: number, s: boolean, e: boolean) => void): void {
     for (const n of NIGHTROADS) {
       const a = this.roadAlphaOf(n.id);
       if (n.continent !== continent || a <= .01) continue;
       c.globalAlpha = a;
-      for (const [tc, tr] of n.road) if (inView(tc * TILE, tr * TILE)) plank(c, tc * TILE, tr * TILE, tc + tr);
+      if (deck) {
+        // The isometric view: a ghost deck per tile (td-iso-tiles), back to front, its faces and posts where the road ends.
+        const on = new Set(n.road.map(([x, y]) => `${x},${y}`)), has = (x: number, y: number) => on.has(`${x},${y}`);
+        const along = n.road.length > 1 && n.road[0][1] === n.road[1][1] ? 0 : 1;
+        for (const [tc, tr] of [...n.road].sort((p, q) => p[0] + p[1] - q[0] - q[1])) if (inView(tc * TILE, tr * TILE)) deck(tc, tr, along, !has(tc, tr + 1), !has(tc + 1, tr));
+      } else for (const [tc, tr] of n.road) if (inView(tc * TILE, tr * TILE)) plank(c, tc * TILE, tr * TILE, tc + tr);
       c.globalAlpha = 1;
     }
     // The nook's note: a pale page weighted with a stone (always there; only the road comes and goes).
