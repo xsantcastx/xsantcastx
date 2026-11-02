@@ -51,7 +51,7 @@
 .trade-cell:disabled { cursor: default; opacity: .55; }
 .trade-cell:focus-visible, .trade-btn:focus-visible, .trade-x:focus-visible { outline: 3px solid var(--cozy-glow); outline-offset: 2px; }
 .trade-cell--empty { cursor: default; background: color-mix(in srgb, var(--cozy-well) 45%, transparent); border-style: dashed; border-color: var(--cozy-parch-edge); }
-.trade-block {
+.trade-tag {
   position: absolute; left: 2px; right: 2px; bottom: 2px; font-size: .58rem; line-height: 1.1;
   background: var(--cozy-wood-4); color: var(--cozy-cream); border-radius: 3px; text-align: center;
 }

@@ -8,9 +8,8 @@
  * then merged the way a device merges).
  */
 import * as core from '../../../../functions-game/src/trade-core';
-import { emptyInventoryLedger, mergeInventoryLedgers, opIdHash, stackQuantityOf } from '../../shared/rpg/inventory-ops';
+import { emptyInventoryLedger, mergeInventoryLedgers, nextGrantId, opIdHash, stackQuantityOf } from '../../shared/rpg/inventory-ops';
 import { gridLayout } from '../../shared/rpg/inventory-grid';
-import { QUEST_STACKS } from '../../shared/rpg/inventory-layout';
 import type { InventoryLedger, OwnedItemInstance, OwnedItemStack } from '../../shared/rpg/inventory.model';
 import { groupOffers, satchelGroups, stackOfferOf, type OfferItem } from './trade-items';
 
@@ -111,19 +110,43 @@ describe('a stack changes hands by amount (trade-core × the client merge)', () 
     expect(stackQuantityOf(mergeInventoryLedgers(r.invB, emptyInventoryLedger()), 'ironwood')).toBe(9);
   });
 
-  it('more than is held, a quest find, or a Vault key: refused, nothing moves', async () => {
+  it('more than is held, or a Vault key: refused, nothing moves', async () => {
     const short = await settle(satchel([], { ironwood: 3 }), satchel([], {}), { a: [stackOfferOf('ironwood', 'Ironwood', 4)], b: [] });
     expect(short.out.status).toBe('void');
     expect(stackQuantityOf(mergeInventoryLedgers(short.invA, emptyInventoryLedger()), 'ironwood')).toBe(3);
-    const quest = await settle(satchel([], { 'worn-rod': 1 }), satchel([], {}), { a: [stackOfferOf('worn-rod', 'Worn Rod', 1)], b: [] });
-    expect(quest.out.status).toBe('void');
     expect(() => core.parseOfferItem({ ...stackOfferOf('ironwood', 'Ironwood', 1), id: 'stack:v:general-1:ironwood', sk: 'v:general-1:ironwood' })).toThrow();
+    expect(() => core.parseOfferItem({ ...stackOfferOf('storage:satchel-row', 'Row', 1) })).toThrow();
     expect(() => core.parseOfferItem({ ...stackOfferOf('ironwood', 'Ironwood', 1), id: 'x' })).toThrow();
     expect(() => core.parseOfferItem({ ...stackOfferOf('ironwood', 'Ironwood', 1), qty: 0 })).toThrow();
   });
 
-  it('the server\'s copies of the client rules stay pinned: quest finds, the fold hash', () => {
-    expect([...core.QUEST_STACK_KEYS].sort()).toEqual([...QUEST_STACKS].sort());
+  it('everything held trades (owner 2026-10-27): a quest find, a soulbound piece, worn gear', async () => {
+    const quest = await settle(satchel([], { 'worn-rod': 1, 'kaels-hammer': 1 }), satchel([], {}), { a: [stackOfferOf('kaels-hammer', "Kael's Hammer", 1)], b: [] });
+    expect(quest.out.status).toBe('done');
+    expect(stackQuantityOf(mergeInventoryLedgers(quest.invB, emptyInventoryLedger()), 'kaels-hammer')).toBe(1);
+    expect(stackQuantityOf(mergeInventoryLedgers(quest.invA, emptyInventoryLedger()), 'kaels-hammer')).toBe(0);
+    const bound = inst('b1', 'astral-helm', { soulbound: true, name: 'Bound Helm', stats: { defense: 2 } });
+    const worn = inst('w1', 'keepers-cowl', { name: 'Worn Cowl', stats: { defense: 5 }, location: { kind: 'equipped', slotId: 'head' } });
+    const a = satchel([bound, worn], {});
+    const offer = (r: OwnedItemInstance) => core.offerOf(r as unknown as Record<string, unknown>) as OfferItem;
+    const gear = await settle(a, satchel([], {}), { a: [offer(bound), offer(worn)], b: [] });
+    expect(gear.out.status).toBe('done');
+    const got = mergeInventoryLedgers(gear.invB, emptyInventoryLedger()).records.filter(r => r.kind === 'instance') as OwnedItemInstance[];
+    expect(got.length).toBe(2);
+    for (const r of got) expect(r.location).toEqual({ kind: 'bag' });
+    expect(mergeInventoryLedgers(gear.invA, a).records.filter(r => r.kind === 'instance' && ['b1', 'w1'].includes(r.id)).length).toBe(0);
+  });
+
+  it('a once-only grant given away comes back under the next free id; a retry of the same grant stays a replay', () => {
+    const used = new Set<string>();
+    expect(nextGrantId('starter-rod:v1', id => used.has(id))).toBe('starter-rod:v1');
+    used.add('starter-rod:v1');
+    expect(nextGrantId('starter-rod:v1', id => used.has(id))).toBe('starter-rod:v1:2');
+    used.add('starter-rod:v1:2');
+    expect(nextGrantId('starter-rod:v1', id => used.has(id))).toBe('starter-rod:v1:3');
+  });
+
+  it('the server\'s copy of the fold hash stays pinned to the client\'s', () => {
     for (const id of ['x', 'g-ironwood', 'tabc123', 'trade:9:stack:minor-health-potion']) expect(core.opIdHash(id)).toBe(opIdHash(id));
   });
 });

@@ -10,6 +10,7 @@
  * Every grant follows the house order: receipt (or idempotent key) first,
  * then pay.
  */
+import { nextGrantId } from '../rpg/inventory-ops';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
@@ -107,12 +108,15 @@ export class FishingService {
     return { tier: rod.works.tier, liquids: rod.works.liquids, bite, name: rod.name, works: rod.works.name };
   }
 
-  /** The Worn Rod: given once, like the Worn Pickaxe (a fixed grant id, so never twice). */
+  /**
+   * The Worn Rod: every Keeper without a rod holds one. The first under its fixed grant id; one traded away (owner
+   * 2026-10-27: everything is tradable) comes back under the next free id, so a Keeper can never be left unable to fish.
+   */
   ensureWornRod(): void {
     if (!this.isBrowser) return;
     this.inventory.init();
     if (this.inventory.stackOf('worn-rod') > 0 || this.inventory.stackOf('root-rod') > 0 || this.inventory.stackOf('seam-rod') > 0 || this.inventory.stackOf('glowline-rod') > 0) return;
-    this.inventory.grantStack(WORN_ROD_GRANT, 'worn-rod', 1);
+    this.inventory.grantStack(nextGrantId(WORN_ROD_GRANT, id => this.inventory.hasStackOp(id)), 'worn-rod', 1);
   }
 
   /**

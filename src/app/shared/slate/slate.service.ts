@@ -27,6 +27,7 @@ import { InventoryService } from '../rpg/inventory.service';
 import { EconomyService } from '../economy/economy.service';
 import { PlayLedgerService } from '../games/play-ledger.service';
 import { MIRROR_SLATE } from '../economy/economy-curve';
+import { nextGrantId } from '../rpg/inventory-ops';
 import { MIRROR_SLATE_ID, MIRROR_SLATE_II_ID, SLATE_UPGRADE_INPUTS } from './slate-items.model';
 import {
   SlateNeed, SlateOffer, SlateTier, slateAwardDue, slateOffer, slateTier, slateUpgradeNeeds, tablesPlayed,
@@ -110,14 +111,17 @@ export class SlateService {
     return 'ok';
   }
 
-  /** Kael binds tier II. Replay-safe on its one id. */
+  /**
+   * Kael binds tier II. Replay-safe: a bind already made answers `replayed` while its pane is held. A Keeper who traded
+   * the tier II pane away (owner 2026-10-27: everything is tradable) can bind another, under the next free id.
+   */
   upgrade(): SlateUpgradeCode {
     if (!this.browser) return 'ssr';
-    if (this.inventory.stackCraftedFor(SLATE_UPGRADE_ID)) return 'replayed';
     const tier = this.tier();
-    if (tier >= 2) return 'done';
+    if (tier >= 2) return this.inventory.stackCraftedFor(SLATE_UPGRADE_ID) ? 'replayed' : 'done';
     if (tier < 1) return 'no-slate';
-    const res = this.inventory.craftStack(SLATE_UPGRADE_ID, SLATE_UPGRADE_INPUTS, MIRROR_SLATE_II_ID, 1);
+    const id = nextGrantId(SLATE_UPGRADE_ID, used => this.inventory.stackCraftedFor(used));
+    const res = this.inventory.craftStack(id, SLATE_UPGRADE_INPUTS, MIRROR_SLATE_II_ID, 1);
     if (res.ok) return res.replayed ? 'replayed' : 'ok';
     return res.code === 'missing' ? 'missing' : 'failed';
   }

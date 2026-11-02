@@ -114,6 +114,7 @@ import { heldToolPieces, heldToolsKey, type HeldToolKind } from '../shared/skill
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
 import { CharacterHubService } from '../shared/character/character-hub.service';
 import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
+import { nextGrantId } from '../shared/rpg/inventory-ops';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
 import { SKILLS, skillForDiscipline, skillLevel, skillView, skillXp } from '../shared/skills/skill.model';
 import { keeperDeeds } from './world/keeper-lines';
@@ -342,7 +343,11 @@ const HEARTH_OPEN_KEY = 'eclipse-hearth-open';
 const STORY_CATCH_UP_MS = 1500;
 /** The one-time Rune Forge hint (world/first-goals.ts runeForgeHint) was followed or dismissed. A UI note, like the Hearth's. */
 const RUNE_HINT_KEY = 'eclipse-rune-hint-seen';
-const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
+/**
+ * Once-per-player finds, and the mission each is for. Everything is tradable (owner 2026-10-27): a Keeper who gave one
+ * away before handing it in finds it again (the rock answers while the mission is open and the find is not in hand).
+ */
+const ONCE_PER_PLAYER: ReadonlyMap<string, string> = new Map([['godforge-fragment', 'delve-fracture'], ['kaels-hammer', 'delve-kael-seam']]);
 
 /** Where Delve swings are recorded in the activity ledger. */
 const EMBER_DELVE_LOCATION = 'infernal/ember-delve';
@@ -5920,8 +5925,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /**
    * Every Keeper holds a Worn Pickaxe, Axe and Sickle: a fresh save gets them,
-   * and one that lost one gets it back. Fixed instance ids, so this can never
-   * mint a second copy; skipped when the satchel has no room (never evicts).
+   * and one that lost one (or traded it away: everything is tradable, owner
+   * 2026-10-27) gets it back. Held is by definition, wherever it is (worn, in the
+   * satchel or the Vault), so a second copy is never minted while one is held; a
+   * new one takes the first free id (the traded one's id is tombstoned and would
+   * eat it). Skipped when the save is at its record budget (never evicts).
    */
   private starterAsked = 0;
   private ensureStarterTools(): void {
@@ -5931,8 +5939,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (now - this.starterAsked < 1000) return;
     this.starterAsked = now;
     for (const family of STARTER_FAMILIES) {
-      const id = starterInstanceId(family);
-      if (this.inventory.itemById(id) || !this.inventory.canAcceptInstance()) continue;
+      const def = starterToolId(family);
+      if (this.inventory.snapshot.items.some(i => i.definitionId === def) || !this.inventory.canAcceptInstance()) continue;
+      const id = nextGrantId(starterInstanceId(family), used => this.inventory.idUsed(used));
       const item = mintEquipment(starterToolId(family), 'common', Math.random, new Date().toISOString(), id);
       if (item) this.inventory.add(item);
     }
@@ -6780,7 +6789,7 @@ export class SideScrollerComponent implements OnDestroy {
     // A once-per-player find already paid (its diff was lost, or a second device
     // still showed it): the rock breaks, nothing is paid twice.
     const once = event.materialId && ONCE_PER_PLAYER.has(event.materialId) ? event.materialId : null;
-    if (once && this.delve.isClaimed(once)) {
+    if (once && this.delve.isClaimed(once) && (this.inventory.stackOf(once) > 0 || this.quests.isMissionDone(ONCE_PER_PLAYER.get(once) ?? ''))) {
       this.message = this.t('play.hud.msg.echo', { name: materialDisplay(once)?.name ?? once });
       return true;
     }
@@ -6971,6 +6980,13 @@ export class SideScrollerComponent implements OnDestroy {
         if (result.ok) this.toastLoot(`+${HAMMER_MARK_XP} Delving XP`);
       }
       const n = HAMMER_MARK_FLAGS.filter(flag => this.delve.isClaimed(flag)).length;
+      // The rubbings were Kael's reward; given away (everything is tradable, owner 2026-10-27), a mark gives them again,
+      // so the Banked Furnace never stays cold for good.
+      if (!fresh && n === HAMMER_MARK_FLAGS.length && this.quests.isMissionDone('kael-four-2') && this.inventory.stackOf(FOUR_HAMMER_MARKS) < 1
+        && this.inventory.grantStack(nextGrantId('hammer-marks:again', id => this.inventory.hasStackOp(id)), FOUR_HAMMER_MARKS, 1)) {
+        this.gotItem(1, materialDisplay(FOUR_HAMMER_MARKS)?.name ?? FOUR_HAMMER_MARKS, FOUR_HAMMER_MARKS);
+        return;
+      }
       this.message = this.t(fresh ? 'play.uh.mark.filed' : 'play.uh.mark.again', { n });
       return;
     }

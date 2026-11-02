@@ -511,6 +511,16 @@ export function dropLegacyBackup(ledger: InventoryLedger): InventoryLedger {
 }
 
 /**
+ * The first of `base`, `base:2`, `base:3`… that `used` says is free: a once-only grant (the Worn Rod, a quest piece) that
+ * the Keeper has since traded away is given again under a new id, while a retry of the same grant stays a replay.
+ */
+export function nextGrantId(base: string, used: (id: string) => boolean): string {
+  if (!used(base)) return base;
+  for (let n = 2; n < 1000; n++) if (!used(`${base}:${n}`)) return `${base}:${n}`;
+  return `${base}:${Date.now().toString(36)}`;
+}
+
+/**
  * A short, stable hash of an op id (53-bit cyrb53, base 36): what a fold keeps
  * of each op it folds, so a replay of that id is still recognised. A false
  * match needs two of ~10^16 values to collide among a few thousand.
