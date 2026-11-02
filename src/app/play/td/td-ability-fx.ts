@@ -48,9 +48,10 @@ function patch(R: number, a: string, b: string | null): HTMLCanvasElement | null
   const g = cv.getContext('2d')!;
   for (let y = -RY; y <= RY; y++) for (let x = -R; x <= R; x++) {
     if (x * x + (y * y) / (k * k) > R * R) continue;
-    if (b === null) { if (((x + y) & 1) === 0) { g.fillStyle = a; g.fillRect(x + R, y + RY, 1, 1); } continue; }
+    // The dither: a checker top-down; on the isometric floor a 2-px lattice (a world checker projects into stripes).
+    if (b === null) { if (k === 1 ? ((x | y) & 1) === 0 : ((x + y) & 1) === 0) { g.fillStyle = a; g.fillRect(x + R, y + RY, 1, 1); } continue; }
     const n = (x * 7 + y * 13) & 3;
-    if (n === 3) continue;
+    if (n === 3 || (k === 1 && ((x | y) & 1))) continue;
     g.fillStyle = n === 0 ? a : b; g.fillRect(x + R, y + RY, 1, 1);
   }
   if (PATCHES.size > 96) PATCHES.clear();
@@ -76,7 +77,7 @@ export function drawAbilityRing(c: Ctx, b: DeathBurst, time: number, still: bool
     return;
   }
   const pt = patch(R, tn.edge, null);
-  c.globalAlpha = .4;
+  c.globalAlpha = onIsoFloor() ? .6 : .4;
   if (pt) c.drawImage(pt, X - R, Y - Math.floor(R * sq(.5)));
   c.globalAlpha = .65; c.fillStyle = HOSTILE_EDGE;
   for (const q of groundRing(R + 1)) c.fillRect(X + q.x, Y + q.y + 1, 1, 1);
@@ -116,7 +117,7 @@ export function drawHazard(c: Ctx, h: Hazard, time: number, still: boolean): voi
   const tn = toneOf(h.tone), X = Math.round(h.x), Y = Math.round(h.y) - 1, R = Math.max(2, Math.round(h.r));
   const fade = Math.min(1, h.t / .8, (h.life - h.t) / .2 + .2), flick = still ? 1 : .85 + .15 * Math.sin(time * 5 + h.x);
   const pt = patch(R, tn.body, tn.edge);
-  c.globalAlpha = .38 * fade * flick;
+  c.globalAlpha = (onIsoFloor() ? .6 : .38) * fade * flick;
   if (pt) c.drawImage(pt, X - R, Y - Math.floor(R * sq(.5)));
   c.globalAlpha = .6 * fade;
   groundRing(R).forEach((q, i) => { if (i % 3 === 0) { c.fillStyle = tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); } });
@@ -143,7 +144,7 @@ export function drawCastTell(c: Ctx, m: Mob, time: number, still: boolean): void
   const k = still ? .7 : Math.max(0, Math.min(1, 1 - m.tell / Math.max(.3, a.tell))), dir = Math.atan2(ay - oy, ax - ox);
   if (a.kind === 'wave') {
     const len = (a.r ?? 3) * T, half = (a.spread ?? 25) * Math.PI / 180, cone = conePixels(len, half, dir), fr = Math.max(4, Math.round(k * len));
-    for (const q of cone.fill) { const near = q.x * q.x + q.y * q.y < fr * fr; c.globalAlpha = (near ? .6 : .32) * beat; c.fillStyle = near ? tn.body : tn.edge; c.fillRect(ox + q.x, oy + q.y, 1, 1); }
+    for (const q of cone.fill) { const near = q.x * q.x + q.y * q.y < fr * fr; c.globalAlpha = (near ? .6 : .32) * beat * (onIsoFloor() ? .6 : 1); c.fillStyle = near ? tn.body : tn.edge; c.fillRect(ox + q.x, oy + q.y, 1, 1); }
     c.globalAlpha = .9 * beat;
     for (const q of cone.edge) { c.fillStyle = HOSTILE_EDGE; c.fillRect(ox + q.x, oy + q.y + 1, 1, 1); }
     cone.edge.forEach((q, i) => { c.fillStyle = i % 3 ? tn.edge : tn.body; c.fillRect(ox + q.x, oy + q.y, 1, 1); });
@@ -258,7 +259,7 @@ export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still
     // Its reach, briefly: a light ring every 3.2 s (each bearer on its own beat). None under reduced motion.
     if (!still) {
       const k = ((time + (m.hx % 13) * .25) % 3.2) / AURA_PULSE_LIFE;
-      if (k < 1) auraWave(c, X, Y, PACK_AURA_REACH, k, look, m.aura === 'lightless' ? .6 : .8);
+      if (k < 1) auraWave(c, X, Y, PACK_AURA_REACH, k, look, (m.aura === 'lightless' ? .6 : .8) * (onIsoFloor() ? .55 : 1));
     }
   }
 }
