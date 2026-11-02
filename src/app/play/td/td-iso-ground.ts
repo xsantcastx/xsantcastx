@@ -11,8 +11,9 @@
  *   a chunk is opaque, wastes nothing on a diamond's empty corners, and a frame is a handful of plain blits. A chunk is
  *   baked a tile at a time inside a budget (`bake`), the ring round the view ahead of the walk (`prefetch`), like the
  *   square ground's calm bake (docs/handoff/calm.md); a chunk in view is never drawn half-painted.
- * - **Water.** A chunk with liquid in it keeps four frames, but frames 1–3 start as a copy of frame 0 and repaint only
- *   the tiles that move (liquid, or a shore whose foam laps), so the animation costs one blit a frame like dry ground.
+ * - **Water.** A chunk with liquid in it keeps four frames, but frames 1–3 lay only the tiles that move (liquid, or a
+ *   shore whose foam laps) on a clear buffer, put over a copy of frame 0's canvas, so the animation costs one blit a
+ *   frame like dry ground and no chunk keeps a copy of its pixels on the heap.
  *
  * Least-recently-drawn out, capped at `cap` chunks. No allocation per frame once the view's chunks are baked.
  */
@@ -80,8 +81,6 @@ interface Chunk {
   faces: Int32Array;
   frame: number; next: number;
   img: ImageData | null; px: Uint32Array | null;
-  /** Frame 0's pixels, kept until the water frames are baked from them. */
-  base: Uint32Array | null;
 }
 
 export class IsoGround {
@@ -100,6 +99,9 @@ export class IsoGround {
   private readonly at = (c: number, r: number): Ground => this.src.ground(c, r);
   /** The iso-native painter (td-iso-tiles.ts); null while the source asks for the square painters. */
   tiles: IsoTiles | null = null;
+  /** Spare chunk pixel buffers, and the canvas a water frame's moving tiles are put on before they go over frame 0. */
+  private readonly pool: ImageData[] = [];
+  private scratch: HTMLCanvasElement | null = null;
   constructor(private readonly src: IsoGroundSource) { this.configure(); }
 
   /** Forget everything (a new level, a new detail setting). */
@@ -198,7 +200,7 @@ export class IsoGround {
     }
     // The blocks (and doorway lintels) whose foot lies in this chunk: each belongs to exactly one chunk (td-iso-walls.ts).
     const walls = planWalls(list, X0, Y0, CW, CH, (c, r) => BLOCK_GROUND.has(g(c, r)), g);
-    return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), faces: Int32Array.from(faces), frame: 0, next: 0, img: null, px: null, base: null };
+    return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), faces: Int32Array.from(faces), frame: 0, next: 0, img: null, px: null };
   }
 
   /** Paint chunk `ch` a tile at a time until its first `upto` frames are done or `deadline` passes; true when they are. */
@@ -207,9 +209,11 @@ export class IsoGround {
     const t0 = performance.now();
     while (ch.frame < upto) {
       if (!ch.img) {
-        ch.img = new ImageData(CW, CH);
+        // A pooled buffer (a chunk's pixels are 512 KB of heap: allocated per frame they were the phone's heap growth).
+        // Water frames 1–3 start clear: only the tiles that move are laid, then put over a copy of frame 0.
+        ch.img = this.pool.pop() ?? new ImageData(CW, CH);
         ch.px = new Uint32Array(ch.img.data.buffer);
-        if (ch.frame > 0 && ch.base) ch.px.set(ch.base);
+        if (ch.frame > 0) ch.px.fill(0);
         ch.next = 0;
       }
       const f = ch.frame, list = f === 0 ? null : ch.anim, n = list ? list.length : ch.tiles.length / 2;
@@ -226,12 +230,18 @@ export class IsoGround {
       }
       const tp = performance.now();
       const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
-      cv.getContext('2d', { alpha: false })!.putImageData(ch.img, 0, 0);
+      const g = cv.getContext('2d', { alpha: false })!;
+      if (f === 0) g.putImageData(ch.img, 0, 0);
+      else {
+        const t = this.scratch ??= Object.assign(document.createElement('canvas'), { width: CW, height: CH });
+        const tg = t.getContext('2d')!;
+        tg.putImageData(ch.img, 0, 0);
+        g.drawImage(ch.frames[0]!, 0, 0); g.drawImage(t, 0, 0);
+      }
       this.stats[5] += performance.now() - tp;
       ch.frames[f] = cv;
-      if (f === 0 && ch.nf > 1) ch.base = ch.px!.slice();
+      if (this.pool.length < 2) this.pool.push(ch.img);
       ch.img = null; ch.px = null; ch.frame++;
-      if (ch.frame >= ch.nf) ch.base = null;
       if (performance.now() > deadline) { this.bakeMs += performance.now() - t0; return ch.frame >= upto; }
     }
     this.bakeMs += performance.now() - t0;

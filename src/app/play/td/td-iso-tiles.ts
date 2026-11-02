@@ -148,12 +148,14 @@ interface Look {
   /** The ordinary ramp range (shading steps stay inside it). */
   lo: number; hi: number;
   liquid: boolean; deck: boolean;
+  /** The ramp index of the warm step this ground takes beside lava (the bank's glow), if any. */
+  warm?: number;
 }
 const look = (s: S, r: readonly string[], rank: number, cls: number, o: Partial<Look> = {}): Look =>
   ({ s, ramp: ramp(r), rank, spreads: rank >= 0, cls, lo: 0, hi: r.length - 1, liquid: false, deck: false, ...o });
 
 /** Ash (the volcanic lands' surface floor), then its ember glints. */
-const ASH_RAMP = ['#1c181b', '#262124', '#312a2d', '#3d3437', '#4a4043', '#5a4f50', '#e2552a', '#ffb04a'];
+const ASH_RAMP = ['#1c181b', '#262124', '#312a2d', '#3d3437', '#4a4043', '#5a4f50', '#e2552a', '#ffb04a', '#5a3a30'];
 /** Snow, shadow blue to sunlit white. */
 const SNOW_RAMP = ['#7d8cab', '#9aabc8', '#b9c8de', '#d3dfee', '#e8f0f8', '#f8fbff'];
 const COBBLE_RAMP = ['#5e524c', '#7a6c62', '#968678', '#a8988a', '#b8a894', '#c8b8a2'];
@@ -167,7 +169,7 @@ const WATER_RAMP = ['#1a3458', '#21466c', '#285a80', '#317092', '#4a92aa', '#78b
 const LAVA_RAMP = ['#3a1410', '#5a2418', '#7a3220', '#9e2e1c', '#e2552a', '#ff8a2e', '#ffd25a', '#fff2a8'];
 const BLACK_RAMP = ['#0b1016', '#121a22', '#1a2530', '#2c3c4a', '#3e5a3a', '#557a4c', '#ffc65a'];
 /** The Nightroad's ghost planks (td-dark-layer): violet shadow wood. */
-const NIGHT_RAMP = ['#140e18', '#2a1f2e', '#3a2c3c', '#4a3c4e', '#5a4a5e', '#6b5a6e', '#7a6a7e', '#8a7a8c'];
+const NIGHT_RAMP = ['#140e18', '#2a1f2e', '#3a2c3c', '#4a3c4e', '#5a4a5e', '#6a4e8a', '#7e62a0', '#9a80c0'];
 
 const LOOKS = new Map<string, Look>([
   ['grass', look(S.Grass, GRASS_RAMP, 8, 1, { lo: 1, hi: 4 })],
@@ -178,8 +180,8 @@ const LOOKS = new Map<string, Look>([
   ['flagstone', look(S.Slab, TEMPLE_RAMP, 5, 5, { spreads: false, hi: 5 })],
   ['wetstone', look(S.Slab, WET_RAMP, 5, 6, { spreads: false, hi: 5 })],
   ['dirt', look(S.Dirt, DIRT_RAMP, 4, 7)],
-  ['cave', look(S.Dirt, CAVE_RAMP, 3, 8)],
-  ['ash', look(S.Dirt, ASH_RAMP, 3, 9, { hi: 5 })],
+  ['cave', look(S.Dirt, [...CAVE_RAMP, '#4a2a24'], 3, 8, { hi: 5, warm: 6 })],
+  ['ash', look(S.Dirt, ASH_RAMP, 3, 9, { hi: 4, warm: 8 })],
   ['mire', look(S.Dirt, MIRE_RAMP, 2, 10)],
   ['sand', look(S.Sand, SAND_RAMP, 1, 11)],
   ['water', look(S.Water, WATER_RAMP, 0, 12, { spreads: false, liquid: true, hi: 5 })],
@@ -196,7 +198,7 @@ const BLOCKS: ReadonlySet<string> = new Set(['rock', 'wall', 'vinewall', 'drownw
 const FOAM = 6, FOAM2 = 7, WAVE = 8, UNDER = 9;
 const CALM = Uint8Array.from([1, 2, 2, 3, 3, 4]);
 /** Snow drifts on the dirt texture: its ruts the blue shade, its worn top the sunlit crust. */
-const SNOWI = Uint8Array.from([2, 2, 3, 4, 4, 5]);
+const SNOWI = Uint8Array.from([3, 3, 4, 4, 4, 5]);
 /** Beam face and post heights (HD px). */
 const FACE = 6, POST = 9;
 
@@ -256,12 +258,16 @@ export class IsoTiles {
     // textures' repeat (512 × 256): cached per look, place in the repeat and frame, and copied.
     let key = -1;
     if (!mixed && !shade && (me.s === S.Grass || me.s === S.Dirt || me.s === S.Sand || me.s === S.Snow || me.s === S.Cobble || me.s === S.Canopy || me.s === S.Black
-      || (me.s === S.Water && Math.min(d00, d10, d01, d11) >= 38 && !low))) key = ((me.cls * 4 + (me.liquid ? f : 0)) * 16 + ((c - r) & 15)) * 16 + ((c + r) & 15) + (low ? 1 << 20 : 0);
+      || (me.s === S.Water && Math.min(d00, d10, d01, d11) >= 38 && !low))) {
+      // Open water repeats every 4 tiles along each diagonal (the wavelets' 128 × 64): 64 entries, not 1 024 (which churned the cache).
+      const m = me.s === S.Water ? 3 : 15;
+      key = ((me.cls * 4 + (me.liquid ? f : 0)) * 16 + ((c - r) & m)) * 16 + ((c + r) & m) + (low ? 1 << 20 : 0);
+    }
     let px = dst, W = DWd, H = DHd, ox = dox, oy = doy;
     if (key >= 0) {
       const hit = this.plain.get(key);
       if (hit) { copyBox(dst, DWd, DHd, dox, doy, hit); if (!low) this.dress(dst, DWd, DHd, dox, doy, c, r, g, me); return true; }
-      px = new Uint32Array(DW * DH); W = DW; H = DH; ox = 0; oy = 0;
+      px = this.box; W = DW; H = DH; ox = 0; oy = 0;
     }
     const ph = f * Math.PI / 2, rt = ripples(), deckRun = me.deck ? this.run(c, r) : 0;
     const qk = this.qk, qw = this.qw;
@@ -307,9 +313,13 @@ export class IsoTiles {
           if (idx < 4 && rt[((Y & 63) << 7) | ((X + f) & 127)] === f + 1) idx = WAVE;
         } else {
           idx = this.sample(L, X, Y, U, V, c, r, f, gt, dt, pt, L === me ? deckRun : 0);
+          // Low: lava still glows along its bank (a 1 px rim on the diamond's edge), so the hazard reads at every detail.
+          if (low && L.s === S.Lava) for (let q = 0; q < 4; q++) if (DIST[q * 1024 + k] < 1.2 && this.at(c + DX[q], r + DY[q]) !== 'ember') idx = 6;
           if (O !== L && e < 3.2) {
             if (L.liquid) idx = L.s === S.Lava ? (e < 1.6 ? 6 : Math.max(idx, 5)) : 2;
-            else if (O.liquid) { if (e < 3) idx = Math.max(L.lo, idx - 1); }
+            else if (O.liquid) { if (O.s === S.Lava && L.warm !== undefined) { if (e < 1.5) idx = L.warm; } else if (e < 3) idx = Math.max(L.lo, idx - 1); }
+            // Snow drifts over what it meets with a shaded lip; other grounds a dark foot (above) or a lit edge (below).
+            else if (L.s === S.Snow) { if (e < 1.6) idx = 1; else if (e < 2.6) idx = 2; }
             else if (L.rank > O.rank) { if (e < 1.6) idx = below ? Math.max(L.lo, idx - 1) : Math.min(L.hi, idx + 1); }
             else if (!below && e < 2.6) idx = Math.max(0, idx - (e < 1.2 ? 2 : 1));
           }
@@ -322,8 +332,8 @@ export class IsoTiles {
       }
     }
     if (key >= 0) {
-      // About 4 KB a tile: a thousand of them (every look a level shows, every place in the repeat) is ~4 MB.
-      if (this.plain.size >= 1024) this.plain.delete(this.plain.keys().next().value!);
+      // About 4 KB a tile: 512 of them (the looks a view shows, each place in the repeat) is ~2 MB.
+      if (this.plain.size >= 512) this.plain.delete(this.plain.keys().next().value!);
       const t = pack(px);
       this.plain.set(key, t); copyBox(dst, DWd, DHd, dox, doy, t);
     }
@@ -333,6 +343,8 @@ export class IsoTiles {
   private readonly nbr: Look[] = new Array<Look>(9);
   /** Plain tiles' box pixels, by look, frame and place in the textures' repeat (`lay`). */
   private readonly plain = new Map<number, Uint32Array>();
+  /** The box a plain tile is painted in before it is packed into the cache. */
+  private readonly box = new Uint32Array(DW * DH);
   private readonly qk: Look[] = new Array<Look>(4);
   private readonly qw = new Float32Array(8);
 
@@ -345,7 +357,7 @@ export class IsoTiles {
       case S.Canopy: return CALM[gt[(((Y >> 1) & 127) << 7) | ((X >> 1) & 127)]] + (p > 0 ? 1 : 0);
       case S.Dirt: { const i = dt[((Y & 127) << 7) | (X & 127)] + (p < 0 ? -1 : 0); return i < 0 ? 0 : i > L.hi ? L.hi : i; }
       case S.Sand: { const i = dt[((Y & 127) << 7) | (X & 127)] + 1 + (p < 0 ? -1 : 0); return i > 5 ? 5 : i; }
-      case S.Snow: { const i = SNOWI[dt[((Y & 127) << 7) | (X & 127)]] + p; return i < 1 ? 1 : i > 5 ? 5 : i; }
+      case S.Snow: { const i = SNOWI[dt[(((Y >> 1) & 127) << 7) | ((X >> 1) & 127)]] + p; return i < 1 ? 1 : i > 5 ? 5 : i; }
       case S.Cobble: return cobbles()[((Y & 63) << 7) | (X & 127)];
       case S.Slab: {
         // Two slabs a tile each way; the joint dark, the slab's upper edges (toward the light) lit.
@@ -374,7 +386,8 @@ export class IsoTiles {
       }
       case S.Lava: {
         const v = dt[((((Y + (f >> 1)) & 127)) << 7) | ((X + f) & 127)];
-        return v >= 4 ? 3 : v === 3 ? 4 : v === 2 ? 4 : v === 1 ? 5 : (hash(X >> 1, Y, 451 + f) > .9 ? 7 : 6);
+        // A dark, slow body (darker than the imps over it), sparse crust, the brightness kept for cracks and banks.
+        return v >= 4 ? 1 : v === 3 ? 2 : v === 2 ? 3 : v === 1 ? 4 : (hash(X >> 1, Y, 451 + f) > .9 ? 6 : 5);
       }
       case S.Black: return ripples()[((Y & 63) << 7) | ((X + (f >> 1)) & 127)] === f + 1 ? 3 : p > 0 ? 2 : 1;
       default: return 0;
@@ -536,7 +549,7 @@ function deckFaces(px: Uint32Array, W: number, H: number, ox: number, oy: number
     for (let n = 0; n < 32; n++) {
       const i = side === 0 ? n : 32 + n, top = side === 0 ? 16 + (n >> 1) + 1 : 32 - (n >> 1);
       for (let d = 0; d < fh; d++) {
-        const idx = d === 0 ? body + 2 : d === fh - 1 ? 0 : (n & 7) === (side === 0 ? 7 : 0) ? 1 : d === 1 ? body + 1 : body;
+        const idx = d === 0 ? (sprite ? 7 : body + 2) : d === fh - 1 ? 0 : (n & 7) === (side === 0 ? 7 : 0) ? 1 : d === 1 ? body + 1 : body;
         put(i, top + d, ramp[idx]);
       }
       if (wt && !low) for (let d = fh; d < fh + 4; d++) if (d < fh + 2 || ((i + d) & 1)) shadow(i, top + d);

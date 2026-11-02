@@ -8,7 +8,7 @@
  * Town, forest, harbour, dungeon, the night bridge (Ashwater Lake's Nightroad), the ash lands (Ember Isle's
  * Ashfields) and the snow (Ember Isle reskinned through `__tdArt.isoLand('snow')`: no map lays snow yet), at
  * 390×844 DPR 3 and 1280×800 DPR 2, into output/iso-ground/<scene>-<size>-<tag>.png (not committed). A camera, not a
- * test.
+ * test. ISO_GROUND_DETAIL=low photographs Environment detail Low.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { seed } from './play-helpers';
@@ -27,6 +27,8 @@ const run = (page: Page, fn: string) => page.evaluate(f => new Function('w', `re
 
 async function open(page: Page, query: string): Promise<void> {
   await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+  // ISO_GROUND_DETAIL=low: Environment detail Low (the hard-edged, undressed ground).
+  if (process.env['ISO_GROUND_DETAIL']) await page.addInitScript(d => localStorage.setItem('eclipse-td-detail', d), process.env['ISO_GROUND_DETAIL']);
   await seed(page, {
     'eclipse-td': '1',
     'godforge-keeper-look': { version: 1, made: true, prompted: true, name: 'Brann', vocation: 'ashguard', skin: 1, hair: 'curls', hairColor: 0, outfit: 3, updatedAt: 1 },
