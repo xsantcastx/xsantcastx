@@ -12,7 +12,7 @@
  */
 import { AFFIX_DEFS, COLD_AURA_R, ELITE_TONES, TELEPORT, TOUCHED_TONES, affixLine, isTouched, type EliteAffix } from './td-elites';
 import { mobCell, type DeathBurst, type Mob } from './td-mobs';
-import { FX, HOSTILE_EDGE, circlePixels, groundRing, ringDash } from './td-fx';
+import { FX, HOSTILE_EDGE, circlePixels, deco, groundRing, ringDash, sq } from './td-fx';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -22,7 +22,7 @@ export function drawEliteGround(c: Ctx, m: Mob, time: number, still: boolean): v
   if (!tag) return;
   const X = Math.round(m.x), Y = Math.round(m.y) - 1;
   if (tag.role !== 'minion') {
-    const tn = ELITE_TONES[tag.rank], r = Math.max(6, Math.min(16, Math.round(mobCell(m.def).w / 3)));
+    const tn = ELITE_TONES[tag.rank], r = deco(Math.max(6, Math.min(16, Math.round(mobCell(m.def).w / 3))));
     const pts = groundRing(r), shift = still ? 0 : Math.floor(time * 6);
     c.globalAlpha = .55; c.fillStyle = HOSTILE_EDGE;
     for (const q of groundRing(r + 1)) c.fillRect(X + q.x, Y + q.y, 1, 1);
@@ -31,7 +31,7 @@ export function drawEliteGround(c: Ctx, m: Mob, time: number, still: boolean): v
   }
   if (tag.affixes.includes('cold-aura')) {
     // Its reach on the ground: a frost ring turning slowly, dark-edged (the Keeper's step slows inside it).
-    const turn = still ? 0 : time / 14, ry = .55;
+    const turn = still ? 0 : time / 14, ry = sq(.55);
     for (const q of ringDash(COLD_AURA_R, turn, 8, 4)) {
       const x = X + q.x, y = Y + Math.round(q.y * ry);
       c.globalAlpha = .5; c.fillStyle = HOSTILE_EDGE; c.fillRect(x, y + 1, 1, 1);
@@ -50,16 +50,16 @@ export function drawBurstTell(c: Ctx, b: DeathBurst, delay: number, time: number
   // A boss's ring is a patch of ground to leave: its inside dithered in the edge tone, so it reads on lit grass too.
   if (b.el === 'shadow') {
     c.globalAlpha = .45; c.fillStyle = tn.edge;
-    for (let y = -b.r; y <= b.r; y++) for (let x = -b.r; x <= b.r; x++) if (((x + y) & 1) === 0 && x * x + y * y <= b.r * b.r) c.fillRect(X + x, Y + Math.round(y * .55), 1, 1);
+    for (let y = -b.r; y <= b.r; y++) for (let x = -b.r; x <= b.r; x++) if (((x + y) & 1) === 0 && x * x + y * y <= b.r * b.r) c.fillRect(X + x, Y + Math.round(y * sq(.55)), 1, 1);
   }
   c.globalAlpha = .6; c.fillStyle = HOSTILE_EDGE;
-  for (const q of circlePixels(b.r + 1)) c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1);
+  for (const q of circlePixels(b.r + 1)) c.fillRect(X + q.x, Y + Math.round(q.y * sq(.55)), 1, 1);
   c.globalAlpha = .85 * pulse;
-  circlePixels(b.r).forEach((q, i) => { if (i % 2) return; c.fillStyle = i % 4 ? tn.body : tn.edge; c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1); });
+  circlePixels(b.r).forEach((q, i) => { if (i % 2) return; c.fillStyle = i % 4 ? tn.body : tn.edge; c.fillRect(X + q.x, Y + Math.round(q.y * sq(.55)), 1, 1); });
   // The front closing in: when it reaches the middle, the fire (or the void) goes off.
   const inner = Math.max(2, Math.round(b.r * (1 - k)));
   c.fillStyle = tn.core;
-  circlePixels(inner).forEach((q, i) => { if (i % 3 === 0) c.fillRect(X + q.x, Y + Math.round(q.y * .55), 1, 1); });
+  circlePixels(inner).forEach((q, i) => { if (i % 3 === 0) c.fillRect(X + q.x, Y + Math.round(q.y * sq(.55)), 1, 1); });
   c.globalAlpha = 1;
 }
 

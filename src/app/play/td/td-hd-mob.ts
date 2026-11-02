@@ -16,7 +16,7 @@ const modelOf = (id: string): HdModel | undefined => (id.startsWith('pet:') ? HD
 export interface HdCell { img: HTMLCanvasElement; ax: number; ay: number }
 
 const cells = new Map<string, HdCell>();
-let budget = 0, budgetAt = -1;
+let budget = 0, budgetAt = -1, nextAt = 0;
 /** Cells baked per drawn frame before the rest wait (each is a few ms on a phone; the iso ground and the HD Keepers bake in the same frame). */
 const BAKES_PER_FRAME = 1;
 
@@ -51,11 +51,14 @@ export function hdCell(id: string, row: number, anim: Anim, f: number, frameNo: 
   const got = cells.get(key);
   if (got) return got;
   if (budgetAt !== frameNo) { budgetAt = frameNo; budget = BAKES_PER_FRAME; }
-  if (budget <= 0) {
+  // And a share of the wall clock: after a bake of d ms the next waits about 12·d (a thirteenth of the time, on a slow phone).
+  const t = typeof performance !== 'undefined' ? performance.now() : 0;
+  if (budget <= 0 || t < nextAt) {
     for (let k = 0; k < FRAMES; k++) { const c = cells.get(`${id}|${row}|${anim}|${k}`) ?? cells.get(`${id}|${row}|idle|${k}`); if (c) return c; }
   }
   budget--;
   const c = bakeHdCell(id, row, anim, f);
+  if (typeof performance !== 'undefined') { const e = performance.now(); nextAt = e + Math.min(160, (e - t) * 12); }
   if (c) cells.set(key, c);
   return c;
 }

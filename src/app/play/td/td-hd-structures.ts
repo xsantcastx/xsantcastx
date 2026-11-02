@@ -96,6 +96,26 @@ export interface IsoStruct {
   low: boolean;
   /** Which iso px of the picture (body or roof) are solid: (img.width / 2) × (img.height / 2), one byte each. */
   mask: Uint8Array;
+  /**
+   * Each 16-iso-px strip's painted rows (HD px), body then roof: [y0, y1) pairs, four numbers a strip (y0 = y1 when the
+   * strip is empty), so a frame blits only what it paints (td-engine isoDrawStrip).
+   */
+  rows?: Int16Array;
+}
+/** The painted rows of each 32-HD-px column band of a body and a roof (IsoStruct.rows). */
+function stripRows(img: HTMLCanvasElement, roof: HTMLCanvasElement | null): Int16Array {
+  const w = img.width, h = img.height, n = Math.ceil(w / 32), out = new Int16Array(n * 4);
+  const scan = (cv: HTMLCanvasElement, o: number) => {
+    const d = cv.getContext('2d')!.getImageData(0, 0, w, h).data;
+    for (let k = 0; k < n; k++) {
+      let y0 = h, y1 = 0;
+      for (let y = 0; y < h; y++) for (let x = k * 32, xe = Math.min(w, x + 32); x < xe; x++) if (d[(y * w + x) * 4 + 3]) { if (y < y0) y0 = y; y1 = y + 1; break; }
+      out[k * 4 + o] = y1 > y0 ? y0 : 0; out[k * 4 + o + 1] = y1 > y0 ? y1 : 0;
+    }
+  };
+  scan(img, 0);
+  if (roof) scan(roof, 2);
+  return out;
 }
 /** The solid-pixel mask of a body and a roof (iso px: one per 2×2 HD px). */
 function maskOf(a: Buf, b: Buf | null): Uint8Array {
@@ -152,17 +172,22 @@ export function isoStructure(sp: Sprite): IsoStruct | null {
  * queue always moves. False while any is left.
  */
 export function stepStructures(deadline: number): boolean {
-  let first = true;
+  // A frame already past its budget (a slow phone) steps only every STRUCT_STARVE frames: the queue still moves, a screen
+  // ahead of the walk, without a paint step landing on every frame.
+  let first = ++starved >= STRUCT_STARVE;
+  if (!pending.size) { starved = 0; return true; }
   for (const [key, gen] of pending) {
     while (first || performance.now() < deadline) {
-      first = false;
+      first = false; starved = 0;
       const r = gen.next();
-      if (r.done) { byKey.set(key, r.value); pending.delete(key); break; }
+      if (r.done) { const st = r.value; st.rows = stripRows(st.img, st.roof); byKey.set(key, st); pending.delete(key); break; }
     }
     if (performance.now() >= deadline) break;
   }
   return pending.size === 0;
 }
+let starved = 0;
+const STRUCT_STARVE = 4;
 /** The structure already baked for a sprite (never bakes: for the update's smoke). */
 export function bakedStructure(sp: Sprite): IsoStruct | null { return structs.get(sp) ?? null; }
 
@@ -369,6 +394,46 @@ function* paintHouse(s: HouseSpec, low: boolean): Generator<void, IsoStruct, voi
 type StallSpec = Extract<IsoSpec, { kind: 'stall' }>;
 const AWNING = PAL.awning.map(([a, b]) => [R6(a, { cool: '#1a0a14', warm: '#fff4d8', hi: .35 }), R6(b, { cool: '#3a2a30', warm: '#ffffff', hi: .3, deep: .4 })] as const);
 
+/** One piece of a stall's goods standing at buffer px (X, Y) (its foot), at the HD pixel, lit from the upper left. */
+function goodsPiece(b: Buf, kind: StallSpec['goods'], X: number, Y: number, r: readonly Rgb[], v: number, low: boolean): void {
+  const p = (i: number, j: number, c: Rgb) => b.put(X + i, Y + j, c);
+  const rows = (w: readonly number[], top: number, tone: (i: number, j: number, w: number) => Rgb) => w.forEach((hw, j) => { for (let i = -hw; i < hw; i++) p(i, top + j, tone(i, j, hw)); });
+  const lit = (i: number, hw: number) => (i < -hw + 1 ? 4 : i >= hw - 1 ? 1 : i < 0 ? 3 : 2);
+  if (kind === 'pots') {
+    if (v < .5) {
+      // A bottle: a round body, a neck, a cork, a glint.
+      rows([1, 1, 1, 2, 3, 3, 3, 3, 3, 2], -10, (i, j, hw) => j < 2 ? at(WOOD, j ? 2 : 3) : at(r, lit(i, hw)));
+      if (!low) p(-2, -6, at(r, 5));
+    } else {
+      // A jar: squat, a cloth lid tied with string.
+      rows([3, 4, 4, 4, 4, 4, 3], -7, (i, j, hw) => j === 0 ? at(WARM, i < 0 ? 4 : 3) : at(r, lit(i, hw)));
+      if (!low) { p(-3, -5, at(r, 5)); for (let i = -3; i < 3; i++) p(i, -6, at(WOOD_DK, 1)); }
+    }
+  } else if (kind === 'bread') {
+    if (v < .55) rows([3, 5, 5, 4], -4, (i, j, hw) => at(r, j === 0 ? 5 : lit(i, hw) + (j === 1 ? 1 : 0)));
+    else rows([2, 3, 3, 2], -4, (i, j, hw) => at(r, j === 0 ? 5 : lit(i, hw)));
+    if (!low && v < .55) { p(-2, -3, at(r, 1)); p(1, -3, at(r, 1)); }
+  } else if (kind === 'gems') {
+    // A cut stone on a little cloth: a diamond, the upper left facet bright, one white glint.
+    rows([3, 3], -1, () => at(WOOD_DK, 2));
+    rows([1, 2, 3, 2, 1], -6, (i, j) => at(r, j < 2 ? (i < 0 ? 5 : 3) : (i < 0 ? 3 : 1)));
+    if (!low) p(-1, -6, [255, 255, 255]);
+  } else if (kind === 'books') {
+    // Two or three books stacked, cream page edges toward the light.
+    const n = v < .4 ? 3 : 2;
+    for (let k = 0; k < n; k++) rows([4, 4], -2 - k * 2, (i, j) => (i > 2 ? [232, 220, 196] as Rgb : at(r, j ? 2 : 4)));
+  } else if (kind === 'fish') {
+    // A fish laid on the board: a lit back, a pale belly, a tail.
+    for (let i = -4; i < 3; i++) { p(i, -2, at(r, 4)); p(i, -1, at(r, 2)); }
+    p(3, -3, at(r, 3)); p(3, 0, at(r, 3)); p(4, -2, at(r, 2)); p(4, -1, at(r, 2));
+    if (!low) p(-3, -2, [20, 12, 28]);
+  } else {
+    // A hammer leaning on the counter: a wooden handle, an iron head.
+    for (let j = -8; j < 0; j++) p(0, j, at(WOOD, 3));
+    rows([2, 2], -10, (i) => at(IRON, i < 0 ? 4 : 2));
+  }
+}
+
 function* paintStall(s: StallSpec, low: boolean): Generator<void, IsoStruct, void> {
   const x0 = -s.w * TILE / 2 + 1, x1 = s.w * TILE / 2 - 1, y0 = -TILE + 1, y1 = -1, fw = x1 - x0;
   const CH = 15, POST = 54, AF = 50, AB = 58, ay1 = y1 + 4, ay0 = y0 + 4;
@@ -401,12 +466,15 @@ function* paintStall(s: StallSpec, low: boolean): Generator<void, IsoStruct, voi
     pots: ['#8a4fb0', '#e8506a', '#4b90d6', '#5a9a49', '#f2c94c'], bread: ['#c98a45', '#d9a35c', '#b0763a'], gems: ['#7fd5ff', '#ff6dd7', '#a48bff', '#4dffe0'],
     tools: ['#9aa2ad', '#7a828d'], books: ['#8f3524', '#3f78b5', '#5a9a49', '#8a4fb0'], fish: ['#9fb7c9', '#c9a26f', '#7fa3c2'],
   };
-  for (let x = x0 + 2.5, i = 0; x < x1 - 3; x += 4, i++) {
-    const ramp = R6(cols[goods][Math.floor(hash(i, s.seed, 3) * cols[goods].length)], { cool: '#1a0a14', warm: '#ffffff', hi: .4 });
-    const gy = y1 - 3 - (i & 1) * 1.5, tall = goods === 'pots' ? 5 : goods === 'books' ? 4 : goods === 'tools' ? 7 : 2.5;
-    const wdt = goods === 'tools' ? 1 : goods === 'fish' ? 3.5 : 2.4;
-    box(body, x, gy - 1.5, x + wdt, gy, CH, CH + tall, ramp);
-    if (goods === 'tools') box(body, x - 1, gy - 1.5, x + 2, gy, CH + tall - 1.5, CH + tall, IRON);
+  // Each piece is painted at the HD pixel standing on the counter top (back row first): bottles and jars, loaves and
+  // buns, cut gems, tied books, laid fish, a hammer — never a coloured bar (Director, iso-walls review).
+  const items: { x: number; gy: number; i: number }[] = [];
+  for (let x = x0 + 2.5, i = 0; x < x1 - 3; x += 4, i++) items.push({ x, gy: y1 - 3 - (i & 1) * 1.5, i });
+  items.sort((a, b) => a.gy - b.gy || a.x - b.x);
+  for (const it of items) {
+    const ramp = R6(cols[goods][Math.floor(hash(it.i, s.seed, 3) * cols[goods].length)], { cool: '#1a0a14', warm: '#ffffff', hi: .4 });
+    const [px, py] = P(it.x + 1, it.gy - .75, CH), X = Math.round(px), Y = Math.round(py);
+    goodsPiece(body, goods, X, Y, ramp, hash(it.i, s.seed, 5), low);
   }
   box(body, x0, y1 - 2, x0 + 2, y1, 0, POST - 4, WOOD);
   box(body, x1 - 2, y1 - 2, x1, y1, 0, POST - 4, WOOD);
@@ -438,6 +506,7 @@ const MT = {
   stoneDk: mat('#5e5450', { round: 2, gain: .7 }, { cool: '#100c14', warm: '#d8ccc0' }),
   log: mat('#7a5232'), charred: mat('#3a3038', {}, { cool: '#0a0810', warm: '#a09098' }),
   ash: mat('#8a8090', { round: 3, gain: .4 }, { cool: '#2a2430', warm: '#e8e0f0' }),
+  emberAsh: mat('#8a5a48', { round: 3, gain: .5 }, { cool: '#2a1418', warm: '#ffc890' }),
   brass: mat('#d0a048', { round: 1, shine: true, gain: .8 }, { cool: '#3a1c08', warm: '#fff8d0', hi: .6 }),
   iron: mat('#5a5660', { round: 1, shine: true, gain: .8 }, { cool: '#100e16', warm: '#f0f0ff', hi: .5 }),
   leather: mat('#8a5a34', { round: 2.5 }),
@@ -488,7 +557,11 @@ function hearthBack(lit: boolean): Pic {
     const L = lit ? MT.log : MT.charred;
     s.limb(P(-5, -3, 1.5), P(5, 3, 1.5), 2.2, 2, L, { g: 50 });
     s.limb(P(-5, 3, 1.5), P(5, -3, 3), 2.2, 2, L, { g: 52 });
-    if (!lit) { const [x, y] = P(0, 0, 2.5); s.dot(x - 1, y - 1, '#7a2a1a', 3, 2); s.dot(x, y - 1, '#c8502a', 1, 1); }
+    if (!lit) {
+      // Cold, it still keeps a warm heart: a bed of rust-and-ember ash under the logs, then the one coal.
+      s.ellipse(...P(0, 0, .4), 8, 3.5, MT.emberAsh, { g: 45, bias: .2 });
+      const [x, y] = P(0, 0, 2.5); s.dot(x - 1, y - 1, '#7a2a1a', 3, 2); s.dot(x, y - 1, '#c8502a', 1, 1);
+    }
     else { const [x, y] = P(0, 0, 1); s.dot(x - 6, y, '#ff8a3a', 3, 1); s.dot(x + 4, y + 1, '#ffb340', 2, 1); }
     // The tripod's back leg.
     s.limb(P(-8, -8, 0), P(0, 0, 27), 1, .8, MT.iron, { g: 60 });
@@ -512,6 +585,13 @@ function hearthFront(): Pic {
  */
 export function drawIsoHearth(c: CanvasRenderingContext2D, X: number, Y: number, lit: boolean, time: number, still: boolean): void {
   const low = envDetail() === 'low';
+  // Its contact shadow: a dark 2:1 pool under the ring, a step darker at its heart (the ring sits on the ground).
+  c.fillStyle = '#140c1c';
+  for (const [rx, a] of [[18, .22], [13, .2]] as const) {
+    c.globalAlpha = a;
+    for (let j = -rx / 2; j <= rx / 2; j += .5) { const w = rx * Math.sqrt(Math.max(0, 1 - (2 * j / rx) ** 2)); c.fillRect(Math.round((X + .5 - w) * 2) / 2, Y + .5 + j, Math.round(w * 4) / 2, .5); }
+  }
+  c.globalAlpha = 1;
   blit(c, hearthBack(lit), X, Y);
   if (lit) isoFlame(c, X, Y - 2.5, 7, 14, time, still, low);
   else if (!still && !low) {
