@@ -50,8 +50,21 @@ the top-down painters keep their own squash.
   - **Structure paint steps** on a frame already over budget run only every 4th frame (`STRUCT_STARVE`).
   - **Iso twin bakes** are two steps on two frames (shapes, then shading). While the Keeper stands, the spare frames
     bake the twins a screen ahead (`isoPropsBusy` look-ahead).
-- **Numbers:** see the final report (A/B against 8071ca89, interleaved, `TD_PERF=1 ARTOPT=iso TD_WEATHER=clear`).
-  This machine was loaded by other sessions, so compare the engine's `work mean`, not the frame mean.
+- **Numbers** (`TD_PERF=1 ARTOPT=iso TD_WEATHER=clear`, phone ×6, run back to back against 8071ca89, the pre-walls and
+  pre-props baseline, on a quiet machine). Mean frame ms walking, this branch vs the baseline:
+
+  | Scene | This branch | Baseline |
+  |---|---|---|
+  | road | 19.8 | 34.7 |
+  | town | 24.1 | 29.4 |
+  | harbour | 18.9 | 19.3 |
+  | dungeon | 19.8 | 21.5 |
+  | hot spot | 21.2 | 24.3 |
+  | many kinds | 22.3 | 25.5 |
+
+  Standing is level, 16.7–18.8 against 16.7–22.0. Engine work per frame, walking: town 11.1 vs 16.7 ms, road 8.5 vs
+  19.0 ms. Earlier runs under load from other sessions were 3–6× noisier, so read the engine's `work mean`, not the
+  frame mean.
 
 ## Low (Environment detail)
 - The floor projector draws what Low already drew: the same pixels, just placed crisply.
