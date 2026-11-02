@@ -147,7 +147,7 @@ import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
 import { DarkLayer, type DarkFrame } from './td-dark-layer';
-import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, bayer4, eyeGlow, findEyes, isoLightOpen, isoWarmAt, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
+import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, bayer4, eyeGlow, findEyes, isoLightOpen, isoLightSmooth, isoWarmAt, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
 import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
 import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/keymap.model';
@@ -5130,7 +5130,8 @@ export class TopDownEngine {
       const fr = Math.max(4, Math.round((this.still ? .7 : k) * len));
       for (const q of cone.fill) {
         const near = q.x * q.x + q.y * q.y < fr * fr;
-        c.globalAlpha = (near ? .6 : .35) * beat; c.fillStyle = near ? tn.body : tn.edge;
+        // Iso: the fill a step quieter (each world pixel covers two iso px there); the outline and front stay bright.
+        c.globalAlpha = (near ? .6 : .35) * beat * (this.iso ? .6 : 1); c.fillStyle = near ? tn.body : tn.edge;
         c.fillRect(ox + q.x, oy + q.y, 1, 1);
       }
       c.globalAlpha = .9 * beat;
@@ -6057,7 +6058,14 @@ export class TopDownEngine {
         const p = this.player, jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
         this.isoScreen();
         const fade = ia.fades ? crownFade(o, behindCrown(ia, o.x, o.y, this.isoFadePts, this.isoFadeN), this.frameDt, this.still) : 1;
+        // A tall post (a street lamp, a torch, a lantern post) the Keeper stands just behind goes see-through, like a
+        // wall in the wedge (Director, iso-fx review): never a pole across his face.
+        const b = ia.base, X = Math.round(o.x) - Math.round(o.y), Y = (Math.round(o.x) + Math.round(o.y)) / 2;
+        const PXk = Math.round(p.x) - Math.round(p.y), PYk = (Math.round(p.x) + Math.round(p.y)) / 2;
+        const ghost = !ia.fades && !ia.run && !!b && b.ay > 56 && b.img.width < 60 && PYk < Y && PYk > Y - b.ay / 2 + 8 && Math.abs(PXk - X) < 12;
+        if (ghost) c.globalAlpha = .45;
         drawIsoArt(c, ia, o.x, o.y, q.a[i], this.time, this.still, jig, fade, q.b[i] === 1);
+        if (ghost) c.globalAlpha = 1;
         return;
       }
       case K.person: { const pp = ref as Person; this.isoAt(pp.x, pp.y); this.drawPerson(pp, q.a[i] === 2 ? 'run' : q.a[i] === 1 ? 'walk' : 'idle'); return; }
@@ -6402,6 +6410,9 @@ export class TopDownEngine {
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r) { const b = lootBeam(r); hole(g.x, g.y, b.light + b.h / 2, 1, 3 + b.h / 2); } }
     for (const m of this.mobs.mobs) if (m.tell > 0 && m.aim && windsUp(m.def)) { hole(m.x + m.face * m.def.w * .3, m.y, 40, 1, m.def.h * .55); hole((m.x + m.aim.x) / 2, (m.y + m.aim.y + 12) / 2, 70); }
     for (const k of this.mobs.calls) hole(k.x, k.y, 30);
+    // Iso: the actors carry the detail, so a creature in view keeps a little light on its own body (a boss more) — the
+    // dark falls on the room, not on what fights in it (Director, iso-fx review). Its eyes-in-the-dark still show past it.
+    if (iso) for (const m of this.mobs.mobs) if ((m.hidden ?? 0) <= 0 && onBuf(PX(m.x, m.y), PY(m.x, m.y, 0), 80)) hole(m.x, m.y, Math.max(24, m.def.w * .9), m.def.rank === 'boss' ? .55 : .35, m.def.h / 2);
     // Glim lights the dark a little wider than the Keeper's own (much wider below ground, wider still with its lamp
     // while he rests); a light pet its own.
     if (this.glim.shown) {
@@ -6443,13 +6454,13 @@ export class TopDownEngine {
   private holeSprite(R: number, parity: number, flat = false, mode: 0 | 1 | 2 = 0): HTMLCanvasElement {
     // `mode` 0: the rim on the checker (top-down; `parity` its cell). 1 (iso, fine light map): `parity` is the sprite's
     // corner mod 4 (x | y << 2), its Bayer dither pinned to the world. 2 (iso, the half-resolution light map of phones
-    // and Low): flat steps, no dither (a 2-px checker over HD walls read as a coarse mesh).
+    // and Low): the falloff unstepped (a 2-px checker over HD walls read as a coarse mesh, wide flat steps as a mosaic).
     const key = ((R * 16 + parity) * 2 + (flat ? 1 : 0)) * 3 + mode;
     let sp = this.holeSprites.get(key);
     if (sp) return sp;
     if (this.holeSprites.size > 320) this.holeSprites.clear();
     const px = parity & 3, py = parity >> 2;
-    sp = this.stepSprite(R, mode === 1 ? (f, x, y) => [0, 0, 0, isoLightOpen(f, bayer4(x + px, y + py))] : mode === 2 ? f => [0, 0, 0, isoLightOpen(f, .5)] : (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)], flat);
+    sp = this.stepSprite(R, mode === 1 ? (f, x, y) => [0, 0, 0, isoLightOpen(f, bayer4(x + px, y + py))] : mode === 2 ? f => [0, 0, 0, isoLightSmooth(f)] : (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)], flat);
     this.holeSprites.set(key, sp);
     return sp;
   }

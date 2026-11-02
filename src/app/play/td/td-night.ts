@@ -86,6 +86,8 @@ const OPEN_LEVELS = [1, .8, .5, LIGHT_RIM[0], LIGHT_RIM[1], 0];
  * and rim as `lightOpen`, but each step's edge and the rim's fade are a fine ordered dither (`t`, bayer4) instead of a
  * hard band edge and a coarse checker — the dungeon's walls fade into the dark a pixel at a time.
  */
+/** The same falloff unquantized (the half-resolution iso light map: its 2-px cells carry the steps without bands). */
+export function isoLightSmooth(f: number): number { return f > 1 ? 0 : curve(ISO_OPEN, f); }
 export function isoLightOpen(f: number, t: number): number { return f > 1 ? 0 : stepDither(curve(ISO_OPEN, f), OPEN_LEVELS, t); }
 const ISO_WARM: readonly (readonly [number, number])[] = [[0, .26], [.31, .26], [.39, .17], [.56, .17], [.64, .09], [.8, .09], [.9, 0], [1, 0]];
 const WARM_LEVELS = [.26, .17, .09, 0];

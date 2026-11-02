@@ -61,6 +61,6 @@ export function layDressing(objects: TdObject[], p: At): number {
   put(-3, -2, altar, 'altar'); put(3, -2, () => brazier(true), 'brazier-lit'); put(-3, 2, () => brazier(false), 'brazier');
   put(0, -4, cage, 'cage'); put(2, -4, chains, 'chains', false); put(4, 1, brokenStatue, 'statue');
   put(-1, -3, () => cobweb('nw'), 'cobweb', false); put(-5, 0, stairsDown, 'down', false); put(5, 3, stairsUp, 'up', false);
-  put(-4, 4, ladderUp, 'ladder', false); put(1, 4, () => ruinWall(0), 'ruin-0'); put(3, 5, () => ruinWall(1), 'ruin-1'); put(-1, 5, () => ruinWall(2), 'ruin-2');
+  put(2, 2, ladderUp, 'ladder', false); put(1, 4, () => ruinWall(0), 'ruin-0'); put(3, 5, () => ruinWall(1), 'ruin-1'); put(-1, 5, () => ruinWall(2), 'ruin-2');
   return objects.length;
 }
