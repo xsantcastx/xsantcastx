@@ -18,6 +18,7 @@
  * Keeper to every device. Only the pure keymap model is imported: cloud-save.model.ts is eager and imports this merge.
  */
 import { cleanOverrides, type KeyOverrides } from '../keys/keymap.model';
+import { cleanBelt } from '../belt/quick-belt-slots';
 
 export const SOUND_KEY = 'godforge-sound';
 
@@ -73,6 +74,8 @@ export interface SoundSettings {
   invites: InviteSetting;
   /** The player's key bindings: only the actions they changed (an older save without it: the defaults). */
   keys: KeyOverrides;
+  /** The belt's item hotkeys: a stack key per slot or null (shared/belt/quick-belt-slots.ts; an older save: all empty). */
+  belt: (string | null)[];
   /** When this choice was made (ms); the later one wins a merge. 0 = never touched. */
   updatedAt: number;
 }
@@ -81,7 +84,7 @@ export interface SoundSettings {
 export const QUIET_LEVELS: Readonly<Record<SoundChannel, number>> = { music: .35, ambience: .4, effects: .5 };
 
 export function defaultSound(): SoundSettings {
-  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', keys: {}, updatedAt: 0 };
+  return { version: 1, ...QUIET_LEVELS, muted: false, hush: 'full', night: 'full', chat: 'on', presence: 'online', invites: 'everyone', keys: {}, belt: cleanBelt(null), updatedAt: 0 };
 }
 
 /** A level is 0..1 on a 5% grid (a slider step), so two devices never disagree by a hair. */
@@ -107,6 +110,7 @@ export function coerceSound(raw: unknown): SoundSettings {
     presence: PRESENCE_SETTINGS.includes(r.presence as PresenceSetting) ? r.presence as PresenceSetting : 'online',
     invites: INVITE_SETTINGS.includes(r.invites as InviteSetting) ? r.invites as InviteSetting : 'everyone',
     keys: cleanOverrides(r.keys),
+    belt: cleanBelt(r.belt),
     updatedAt: at,
   };
 }

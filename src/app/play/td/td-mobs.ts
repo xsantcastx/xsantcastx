@@ -2889,6 +2889,8 @@ export class MobSystem {
   flares = 0;
   /** Hearthlight's heal, paid a tick a second. */
   private hot: HealOverTime | null = null;
+  /** Seconds of Hearthlight's mending left (the status badge over the Keeper, td-status-icons). */
+  get mending(): number { return this.hot && this.hot.left > 0 ? this.hot.left : 0; }
   /** The Lantern Ward: what it can still drink, and seconds left. */
   lampWard = 0;
   lampWardT = 0;

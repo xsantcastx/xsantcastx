@@ -210,6 +210,9 @@ import { FISHING_I18N } from '../shared/fishing/fishing.i18n';
 import { LineTensionComponent } from '../shared/fishing/line-tension.component';
 import { reelDuration } from '../shared/fishing/fishing-reel';
 import { catchById, CRATE_IDS, fishingPerks, LODGE_CHARMS } from '../shared/fishing/fishing.model';
+import { QuickBeltService } from '../shared/belt/quick-belt.service';
+import { beltUseOf, type QuickSlot } from '../shared/belt/quick-belt.model';
+import { QUICK_ACTIONS } from '../shared/belt/quick-belt-slots';
 import { InfusionService } from '../shared/enchanting/infusion.service';
 import { DROWNED_LAMP_FLAG } from './world/towns/infernal';
 import type { BucketEvent, BucketId, FishEvent, HandToolId } from './engine/engine';
@@ -241,7 +244,7 @@ import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 // The Mirror Slate (docs/handoff/mirror-slate.md): the HUD button, P, the busy rule, Lune's and Kael's counters.
 import { SlateService } from '../shared/slate/slate.service';
 import { PotionService, type BeltSlot } from '../shared/potions/potion.service';
-import { potionById, potionEffect } from '../shared/potions/potions.model';
+import { potionById, potionEffect, type PotionDef } from '../shared/potions/potions.model';
 // The world clock (docs/handoff/world-clock.md): the sky, the hour the world keeps, the eclipse and Sera Quill's ledger.
 import { WorldClockService } from '../shared/world-clock/world-clock.service';
 import { EclipseService } from '../shared/world-clock/eclipse.service';
@@ -1442,9 +1445,27 @@ export class SideScrollerComponent implements OnDestroy {
     this.sound.sfx('equip');
     return true;
   }
-  /** A stack pile let go of (a fish, logs, ore): on this screen's ground, taken back by hand. */
+  /**
+   * A stack let go of (potions, fish, logs, runes, ore). More than one held: "How many … to drop?" first (the trade
+   * window's bar). Online (a room that trades, signed in) the pile lies ×N on the room's ground for anyone to take
+   * (verb-matrix T1); otherwise on this screen's ground, taken back by hand.
+   */
   dropStackToGround(stackKey: string, qty: number): boolean {
     if (!this.topDown || !stackKey || !(qty > 0)) return false;
+    const max = this.inventory.stackOf(stackKey) - (this.tradeHud?.heldBack(stackKey) ?? 0);
+    if (!(max > 0)) return false;
+    const hud = this.tradeHud;
+    if (hud && max > 1) {
+      const name = materialDisplay(stackKey)?.name ?? stackKey;
+      hud.askDrop(stackKey, name, Math.min(qty, max), max, n => { this.layStack(stackKey, n); });
+      return true;
+    }
+    return this.layStack(stackKey, Math.min(qty, max));
+  }
+  /** Lay `qty` of a stack: on the room's ground when it can take it, else on this screen's. */
+  private layStack(stackKey: string, qty: number): boolean {
+    const name = materialDisplay(stackKey)?.name ?? stackKey;
+    if (this.tradeHud?.canDropStack()) { void this.tradeHud.dropStack(stackKey, name, qty); this.sound.sfx('equip'); return true; }
     const lay = (this.engine as unknown as { layOwn?: (own: string, label: string, rarity: string | null, qty?: number, art?: string) => string } | undefined)?.layOwn;
     if (!lay) return false;
     const have = Math.min(qty, this.inventory.stackOf(stackKey));
@@ -1452,7 +1473,6 @@ export class SideScrollerComponent implements OnDestroy {
     const token = `s${++this.ownSeq}`;
     this.ownGround.set(token, { stack: stackKey, qty: have });
     const d = materialDisplay(stackKey);
-    const name = d?.name ?? stackKey;
     lay.call(this.engine, token, have > 1 ? `${name} ×${have}` : name, null, have, d?.art ?? '');
     this.message = this.t('trade.dropped', { name });
     this.sound.sfx('equip');
@@ -1984,12 +2004,12 @@ export class SideScrollerComponent implements OnDestroy {
         this.soundScene(state);
         // Presence: top-down, the area id (a continent or a floor) and the way the Keeper faces; it goes in `zone` too,
         // so a v1 room (no protocol-2 fields) still lines Keepers up by area. Side view: the WORLD, or the area's name.
-        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string; gatePresence?: () => string } | undefined) : undefined;
+        const td = this.topDown ? (this.engine as unknown as { peerPresence?: () => { area: string; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; moving: boolean }; peersOnScreen?: () => { name: string; x: number; y: number; waving: boolean }[]; selfWaving?: boolean; palsPresence?: () => string; gatePresence?: () => string; statusPresence?: () => string } | undefined) : undefined;
         const here = td?.peerPresence?.();
         if (here) {
           // Life for the party frames, in twentieths of the most (a regenerating Keeper does not send every point).
           const maxHp = Math.max(1, Math.round(this.tdMaxHp)), hp = Math.round(Math.round(Math.max(0, Math.min(1, state.hp / maxHp)) * 20) / 20 * maxHp);
-          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '', gate: td?.gatePresence?.() ?? '' });
+          this.room?.update(here.x, here.y, here.area, here.face, here.moving ? 'run' : 'idle', { area: here.area, dir: here.dir, moving: here.moving, hp, maxHp, pals: td?.palsPresence?.() ?? '', gate: td?.gatePresence?.() ?? '', sts: td?.statusPresence?.() ?? '' });
           if (el) {
             el.setAttribute('data-peers', (td?.peersOnScreen?.() ?? []).map(p => `${p.name}@${p.x},${p.y}${p.waving ? '~' : ''}`).join(';'));
             el.setAttribute('data-self-waving', td?.selfWaving ? 'true' : 'false');
@@ -2022,6 +2042,8 @@ export class SideScrollerComponent implements OnDestroy {
       (window as unknown as Record<string, unknown>)['__tdGrid'] = {
         pickup: (def: string) => this.zone.run(() => this.collectGear(`fx-grid-${Date.now().toString(36)}-${++n}`, { item: { definitionId: def, rarity: 'rare', unique: false, level: 3 } })),
         toVault: (id: string) => this.inventory.moveTo({ kind: 'instance', ids: [id] }, { container: 'general-1', cell: 0 }),
+        // A stack arriving (as a catch, a cooked meal or a pickup would): the item hotkeys fill again by themselves.
+        stack: (key: string, qty: number) => this.zone.run(() => this.inventory.grantStack(`fx-grid:${key}:${Date.now().toString(36)}:${++n}`, key, qty)),
       };
     }
     this.bindPointer(canvas);
@@ -2892,6 +2914,7 @@ export class SideScrollerComponent implements OnDestroy {
     (this.engine as unknown as { setRelics?: (ids: readonly string[]) => void } | undefined)?.setRelics?.(this.wornRelics);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     this.tdBelt = this.potions.belt(performance.now() / 1000);
+    this.tdQuick = this.quickBelt.slots(this.quickLook);
     this.tdStone = this.spellstones.slotted(performance.now() / 1000);
     this.tdSoul = this.spellstones.state.soul;
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
@@ -2906,17 +2929,87 @@ export class SideScrollerComponent implements OnDestroy {
   /** Drink the best potion of a kind (shared/potions): the satchel pays one, the engine pours it in. */
   drinkPotion(kind: 'health' | 'mana'): void {
     if (!this.topDown) return;
-    const res = this.potions.drink(kind, performance.now() / 1000);
+    this.poured(this.potions.drink(kind, performance.now() / 1000), kind);
+  }
+  /** A sip's outcome: the engine pours it in (ok) or the strip says why not. */
+  private poured(res: { code: string; potion: PotionDef | null }, kind: 'health' | 'mana' | 'rejuv'): void {
     if (res.code === 'ok' && res.potion) {
       const fx = potionEffect(res.potion, this.tdMaxHp, this.tdMaxMana);
       (this.engine as unknown as { drinkPotion?: (heal: number, mana: number, secs: number, id?: string) => void } | undefined)?.drinkPotion?.(fx.heal, fx.mana, fx.secs, res.potion.id);
       this.message = this.t('play.potion.drank', { name: res.potion.name });
       this.sound.sfx('splash');
-    } else if (res.code === 'none') this.message = this.t(kind === 'health' ? 'play.potion.noneHealth' : 'play.potion.noneMana');
+    } else if (res.code === 'none') this.message = kind === 'rejuv' ? this.t('play.belt.none', { name: res.potion?.name ?? '' }) : this.t(kind === 'health' ? 'play.potion.noneHealth' : 'play.potion.noneMana');
     else if (res.code === 'cooldown') this.message = this.t('play.potion.cooldown');
     else if (res.code === 'failed') this.message = this.t('play.potion.failed');
     this.tickAbilities();
     this.focusWorld();
+  }
+  // ── The belt's item hotkeys (shared/belt; verb-matrix "Belt / hotkey") ──
+  private readonly quickBelt = inject(QuickBeltService);
+  /** The item hotkeys as the HUD draws them: the kind, how many are held (0: greyed), its key. */
+  tdQuick: QuickSlot[] = [];
+  private quickLook = (k: string): { art: string; name: string } => {
+    const d = materialDisplay(k);
+    return { art: d?.art || this.art(k), name: d?.name ?? potionById(k)?.name ?? k };
+  };
+  /** The slots that hold a kind (a phone's HUD shows only those; the satchel's belt shows all three). */
+  get tdQuickHeld(): QuickSlot[] { return this.tdQuick.filter(q => q.stackKey); }
+  quickTitle(q: QuickSlot): string {
+    if (!q.stackKey) return this.t('play.belt.empty', { key: q.key });
+    return `${q.name} (${q.key}) · ${q.count ? this.t(`play.belt.use.${q.use}`) : this.t('play.belt.none', { name: q.name })}`;
+  }
+  /** Use an item hotkey: exactly what its card's one action does (drink, eat, cook, read, light, open). */
+  useQuick(i: number): void {
+    if (!this.topDown) return;
+    const q = this.quickBelt.slots(this.quickLook)[i];
+    if (!q?.stackKey) { this.message = this.t('play.belt.empty', { key: q?.key ?? '' }); this.focusWorld(); return; }
+    this.useStack(q.stackKey);
+    this.tickAbilities();
+    this.focusWorld();
+  }
+  /** A stack's one use, from a hotkey (and the card's buttons go the same way). */
+  useStack(stackKey: string): void {
+    const use = beltUseOf(stackKey), name = this.quickLook(stackKey).name;
+    if (!use) return;
+    if (this.inventory.stackOf(stackKey) < 1) { this.message = this.t('play.belt.none', { name }); return; }
+    if (use === 'drink') { const p = potionById(stackKey); this.poured(this.potions.drinkId(stackKey, performance.now() / 1000), p?.kind ?? 'rejuv'); return; }
+    if (use === 'eat') { this.eatStack(stackKey); return; }
+    if (use === 'cook') { this.cookHere(); return; }
+    if (use === 'read') { this.readScroll(); return; }
+    if (use === 'light') { this.lightStack(stackKey); return; }
+    this.openCrateOf(stackKey);
+  }
+  /** The card's "Put on hotkey" (or "Off the hotkey" when it is already there). */
+  quickPicked(): void {
+    const pick = this.pick;
+    if (pick?.kind !== 'stack' || !beltUseOf(pick.ref)) return;
+    const at = this.quickBelt.slotOf(pick.ref), name = this.quickLook(pick.ref).name;
+    if (at >= 0) { this.quickBelt.clear(at); this.message = this.t('play.belt.off', { name }); }
+    else { const i = this.quickBelt.put(pick.ref); this.message = this.t('play.belt.on', { name, key: this.keymap.cap(QUICK_ACTIONS[i]) }); }
+    this.tickAbilities();
+    this.sound.sfx('equip');
+  }
+  /** Is the picked stack on an item hotkey (the card's button reads "Off the hotkey")? */
+  get pickOnQuick(): boolean { return this.pick?.kind === 'stack' && this.quickBelt.slotOf(this.pick.ref) >= 0; }
+  get pickCanQuick(): boolean { return this.topDown && this.pick?.kind === 'stack' && !!beltUseOf(this.pick.ref); }
+  /** An item hotkey as a drop target: any satchel stack with a use (drag on desktop; tap the piece, then the slot). */
+  private readonly quickTargets = new Map<number, DropTarget>();
+  quickTarget(i: number): DropTarget {
+    let t = this.quickTargets.get(i);
+    if (!t) {
+      t = {
+        accepts: held => held.ref.kind === 'stack' && (held.from === 'b' || held.from === 'held') && !!beltUseOf(held.stackKey),
+        drop: held => {
+          if (!this.quickBelt.assign(i, held.stackKey ?? '')) return false;
+          this.message = this.t('play.belt.on', { name: held.name, key: this.keymap.cap(QUICK_ACTIONS[i]) });
+          this.tickAbilities();
+          this.sound.sfx('equip');
+          return true;
+        },
+      };
+      this.quickTargets.set(i, t);
+    }
+    return t;
   }
   // ── Spellstones (shared/spellstones) ──
   private readonly spellstones = inject(SpellstoneService);
@@ -4614,6 +4707,8 @@ export class SideScrollerComponent implements OnDestroy {
     }
     // The belt's Spellstone slot (shared/spellstones): the Stone key casts the slotted stone.
     else if (is('stone') && this.topDown) { event.preventDefault(); this.useStone(); }
+    // The belt's item hotkeys (shared/belt): whatever stack the Keeper put there, used as its card would.
+    else if (this.topDown && QUICK_ACTIONS.some(a => is(a))) { event.preventDefault(); this.useQuick(QUICK_ACTIONS.findIndex(a => is(a))); }
     else if (is('sheet') && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     else if (this.topDown && this.worldHotkey(event)) { /* handled */ }
     // One World: the map key is the Travel map (the world's map with its stones); it opens the full map from there.
@@ -5353,15 +5448,24 @@ export class SideScrollerComponent implements OnDestroy {
   get bagView(): GridView {
     const src = this.inventory.snapshot.grid.bag;
     const gone = new Set(src.pieces.flatMap(p => p.ids).filter(id => this.tradeHud?.dropPending(id)));
-    const sig = [...gone].join(',');
+    // Stack piles on their way to the room's ground (verb-matrix T1): that many fewer, taken off the kind's last cells.
+    const back = new Map<string, number>();
+    for (const p of src.pieces) if (p.kind === 'stack' && p.stackKey && !back.has(p.stackKey)) { const n = this.tradeHud?.heldBack(p.stackKey) ?? 0; if (n > 0) back.set(p.stackKey, n); }
+    const sig = [...gone].join(',') + '|' + [...back].map(([k, n]) => `${k}:${n}`).join(',');
     if (this.bagViewMemo && this.bagViewMemo.src === src && this.bagViewMemo.sig === sig) return this.bagViewMemo.view;
-    const view: GridView = !gone.size ? src : {
+    const left = new Map(back);
+    const view: GridView = !gone.size && !back.size ? src : {
       ...src,
-      pieces: src.pieces.flatMap(p => {
+      pieces: [...src.pieces].reverse().flatMap(p => {
+        if (p.kind === 'stack' && p.stackKey && (left.get(p.stackKey) ?? 0) > 0) {
+          const take = Math.min(p.qty, left.get(p.stackKey)!);
+          left.set(p.stackKey, left.get(p.stackKey)! - take);
+          return p.qty - take > 0 ? [{ ...p, qty: p.qty - take }] : [];
+        }
         if (p.kind !== 'instance' || !p.ids.some(id => gone.has(id))) return [p];
         const ids = p.ids.filter(id => !gone.has(id));
         return ids.length ? [{ ...p, ids, qty: ids.length }] : [];
-      }),
+      }).reverse(),
     };
     this.bagViewMemo = { src, sig, view };
     return view;
@@ -6393,14 +6497,19 @@ export class SideScrollerComponent implements OnDestroy {
   openCrate(): void {
     const pick = this.pick;
     if (pick?.kind !== 'stack' || !CRATE_IDS.includes(pick.ref)) return;
-    const got = this.fishing.openCrate(pick.ref);
+    this.openCrateOf(pick.ref);
+    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
+  }
+  /** Open one crate of a kind (the card's Open, or its hotkey). */
+  private openCrateOf(key: string): void {
+    if (!CRATE_IDS.includes(key)) return;
+    const got = this.fishing.openCrate(key);
     if (!got) { this.message = this.t('play.delve.chest.saveFailed'); return; }
     // A Seam Crate is where the Ember Newt lays its egg (pets.model.ts).
-    if (pick.ref === 'seam-crate') { this.pets.count('crate:seam-crate'); this.petsAt = 0; this.tickPets(); }
+    if (key === 'seam-crate') { this.pets.count('crate:seam-crate'); this.petsAt = 0; this.tickPets(); }
     const items = got.map(row => `${row.qty} ${materialDisplay(row.id)?.name ?? row.id}`).join(', ');
     this.message = this.t('play.fish.ui.opened', { items });
     this.toastLoot(items);
-    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
   }
   /** The picked stack is a crate (the slip shows Open). */
   get pickIsCrate(): boolean { return this.pick?.kind === 'stack' && CRATE_IDS.includes(this.pick.ref); }
@@ -6418,31 +6527,45 @@ export class SideScrollerComponent implements OnDestroy {
   eatPicked(): void {
     const pick = this.pick;
     if (pick?.kind !== 'stack') return;
-    const meal = this.gathering.eat(pick.ref, `eat:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e6).toString(36)}`);
+    this.eatStack(pick.ref);
+    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
+  }
+  /** Eat one of a meal (the card's Eat, or its hotkey): it mends its life over twelve seconds. */
+  private eatStack(key: string): void {
+    const meal = this.gathering.eat(key, `eat:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e6).toString(36)}`);
     if (!meal) { this.message = this.t('gather.eat.none'); return; }
     (this.engine as unknown as { eat?: (heal: number) => void } | undefined)?.eat?.(meal.heal);
     this.message = this.t('gather.eat.ate', { name: materialDisplay(meal.id)?.name ?? meal.name, heal: meal.heal });
     this.sound.sfx('equip');
-    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
   }
   /** Light the picked log at the Keeper's feet (a tinderbox, the Firemaking level): the engine strikes the light. */
   lightPicked(): void {
     const pick = this.pick;
     if (pick?.kind !== 'stack') return;
-    const why = this.gathering.lightRefusal(pick.ref);
-    if (why) { this.message = why; return; }
-    const r = (this.engine as unknown as { lightFire?: (log: string) => 'water' | 'busy' | null } | undefined)?.lightFire?.(pick.ref);
-    if (r) { this.message = this.t(`gather.fire.${r}`); return; }
-    this.message = this.t('gather.fire.striking');
+    if (!this.lightStack(pick.ref)) return;
     this.pick = null;
     this.closeBag();
   }
+  /** Light a log at the Keeper's feet (the card's Light, or its hotkey). True: the strike began. */
+  private lightStack(key: string): boolean {
+    const why = this.gathering.lightRefusal(key);
+    if (why) { this.message = why; return false; }
+    const r = (this.engine as unknown as { lightFire?: (log: string) => 'water' | 'busy' | null } | undefined)?.lightFire?.(key);
+    if (r) { this.message = this.t(`gather.fire.${r}`); return false; }
+    this.message = this.t('gather.fire.striking');
+    return true;
+  }
   /** Cook at the fire (or the lit hearth) in reach. */
   cookPicked(): void {
-    const r = (this.engine as unknown as { startCooking?: () => 'nofire' | null } | undefined)?.startCooking?.();
-    if (r) { this.message = this.t('gather.cook.nofire'); return; }
+    if (!this.cookHere()) return;
     this.pick = null;
     this.closeBag();
+  }
+  /** Cook the best fish held at the fire in reach (the card's Cook, or a raw fish's hotkey). True: cooking began. */
+  private cookHere(): boolean {
+    const r = (this.engine as unknown as { startCooking?: () => 'nofire' | null } | undefined)?.startCooking?.();
+    if (r) { this.message = this.t('gather.cook.nofire'); return false; }
+    return true;
   }
   /** The weather's clock: the room's while it has spoken lately (it owns the roll), else this device's world clock. */
   private tickWeather(ms: number): void {

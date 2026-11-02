@@ -19,6 +19,7 @@ import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { cleanOverrides, type KeyOverrides } from '../keys/keymap.model';
+import { cleanBelt } from '../belt/quick-belt-slots';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { CHAT_SETTINGS, HUSH_SETTINGS, INVITE_SETTINGS, NIGHT_SETTINGS, PRESENCE_SETTINGS, type ChatSetting, type InviteSetting, type PresenceSetting, SOUND_KEY, type HushSetting, type NightSetting, type SoundChannel, type SoundSettings, clampLevel, coerceSound, defaultSound } from './sound-settings.model';
@@ -199,6 +200,13 @@ export class SoundService {
     this.hydrate();
     const cur = this.subject.value;
     this.save({ ...cur, keys: cleanOverrides(keys), updatedAt: Math.max(at, cur.updatedAt + 1) });
+  }
+
+  /** Save the belt's item hotkeys (shared/belt/quick-belt-slots.ts) with the rest of the settings. */
+  setBelt(belt: readonly (string | null)[], at = Date.now()): void {
+    this.hydrate();
+    const cur = this.subject.value;
+    this.save({ ...cur, belt: cleanBelt(belt), updatedAt: Math.max(at, cur.updatedAt + 1) });
   }
 
   /** iOS: a silent buffer played inside a gesture unlocks the context for good; then resume. */

@@ -10,6 +10,7 @@
  */
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import type { SideScrollerComponent } from '../side-scroller.component';
+import { DropTargetDirective } from '../../shared/inventory-grid/drop-target.directive';
 
 /** A filled pixel disc of `d` cells, as one path of row spans (crisp at any scale), offset by `off` cells. */
 function disc(d: number, off: number): string {
@@ -27,6 +28,7 @@ const SLOTS_TOP = [5, 6, 7, 8], SLOTS_BOTTOM = [1, 2, 3, 4];
 @Component({
   selector: 'app-hud-bar',
   standalone: true,
+  imports: [DropTargetDirective],
   changeDetection: ChangeDetectionStrategy.Default,
   templateUrl: './hud-bar.component.html',
   styleUrls: ['./hud-bar.component.css'],

@@ -85,6 +85,15 @@
         @else { <img class="td-stone__blank" [src]="art('basalt-blank')" alt="" draggable="false"> }
         <b class="td-pot__n">{{ tdStone?.charges ?? 0 }}</b><kbd>F</kbd>
       </button>
+      <!-- The item hotkeys that hold something (shared/belt): a tap uses it as its card would; the count on the glass,
+           greyed at none (it fills again when more is picked up). The satchel's belt holds all three to fill. -->
+      @for (q of tdQuickHeld; track q.i) {
+        <button type="button" class="td-pot td-quick" [attr.data-quick]="q.i" [attr.data-quick-key]="q.stackKey" [attr.data-quick-n]="q.count" [class.td-pot--empty]="!q.count" [class.td-quick--out]="!q.count"
+                [appDropTarget]="quickTarget(q.i)" (click)="useQuick(q.i)" [attr.aria-label]="quickTitle(q)" [title]="quickTitle(q)">
+          @if (q.art) { <img [src]="q.art" alt="" draggable="false"> }
+          <b class="td-pot__n">{{ q.count }}</b><kbd>{{ q.key }}</kbd>
+        </button>
+      }
       <!-- Phones: the ground's name plates on or off (Alt held does it on a keyboard). -->
       <button type="button" class="td-pot td-labels" data-loot-labels [class.td-labels--on]="lootLabelsOn" [attr.aria-pressed]="lootLabelsOn"
               (click)="toggleLootLabels()" [attr.aria-label]="t('play.pile.labels')" [title]="t('play.pile.labels') + ' (Alt)'">
@@ -1166,6 +1175,14 @@
                   <b>{{ b.n }}</b><kbd>{{ b.key }}</kbd>
                 </span>
               }
+              <!-- The item hotkeys: drag any usable stack here (or tap it, then tap the slot); its key uses it. -->
+              @for (q of tdQuick; track q.i) {
+                <button type="button" class="book-belt__slot book-belt__quick" [attr.data-belt]="'quick' + q.i" [attr.data-quick-key]="q.stackKey" [attr.data-quick-n]="q.count"
+                        [class.is-out]="!!q.stackKey && !q.count" [appDropTarget]="quickTarget(q.i)" (click)="useQuick(q.i)" [attr.aria-label]="quickTitle(q)" [title]="quickTitle(q)">
+                  @if (q.art) { <img [src]="q.art" alt="" draggable="false"> }
+                  @if (q.stackKey) { <b>{{ q.count }}</b> }<kbd>{{ q.key }}</kbd>
+                </button>
+              }
             </div>
           </div>
           }
@@ -1314,9 +1331,10 @@
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }
-          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook || row.stone || row.potion || pickCanDrop) {
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook || row.stone || row.potion || pickCanDrop || pickCanQuick) {
             <div class="d2tip__actions">
               @if (row.potion) { <button type="button" class="wear" data-potion-belt (click)="beltPickedPotion()">{{ t('play.stone.beltPut') }}</button> }
+              @if (pickCanQuick) { <button type="button" class="wear" data-quick-belt (click)="quickPicked()">{{ pickOnQuick ? t('play.belt.take') : t('play.belt.put') }}</button> }
               @if (row.stone; as st) {
                 @if (topDown) { <button type="button" class="wear" data-stone-use (click)="usePickedStone()">{{ t('play.stone.use') }}</button> }
                 <button type="button" class="wear" data-stone-belt [disabled]="st.onBelt" (click)="beltPickedStone()">{{ st.onBelt ? t('play.stone.onBelt') : t('play.stone.beltPut') }}</button>

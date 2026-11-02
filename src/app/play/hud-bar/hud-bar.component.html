@@ -85,6 +85,14 @@
           @else { <img class="td-stone__blank" [src]="hud.art('basalt-blank')" alt="" draggable="false"> }
           <b class="td-pot__n">{{ hud.tdStone?.charges ?? 0 }}</b><kbd>{{ hud.keymap.cap('stone') }}</kbd>
         </button>
+        <!-- The item hotkeys (shared/belt): drag any usable stack from the satchel onto one; its key uses it. -->
+        @for (q of hud.tdQuick; track q.i) {
+          <button type="button" class="td-pot td-quick" [attr.data-quick]="q.i" [attr.data-quick-key]="q.stackKey" [attr.data-quick-n]="q.count" [class.td-pot--empty]="!q.count" [class.td-quick--out]="!!q.stackKey && !q.count" [class.td-quick--free]="!q.stackKey"
+                  [appDropTarget]="hud.quickTarget(q.i)" (click)="hud.useQuick(q.i)" [attr.aria-label]="hud.quickTitle(q)" [attr.data-tip]="hud.quickTitle(q)">
+            @if (q.art) { <img [src]="q.art" alt="" draggable="false"> }
+            @if (q.stackKey) { <b class="td-pot__n">{{ q.count }}</b> }<kbd>{{ q.key }}</kbd>
+          </button>
+        }
       </div>
     </div>
   </div>

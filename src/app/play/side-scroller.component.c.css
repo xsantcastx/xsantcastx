@@ -70,6 +70,8 @@
 .td-pot__n { position: absolute; left: 2px; top: 2px; min-width: 14px; padding: 1px 2px; font: 700 12px/1 var(--cozy-font-read); font-style: normal; text-align: center; color: var(--cozy-cream); background: var(--cozy-wood-0); }
 .td-pot kbd { position: absolute; right: 2px; bottom: 1px; font: 700 10px/1 var(--font-pixel); color: var(--cozy-brass-hi); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
 .td-pot--empty svg, .td-pot--empty .td-pot__n { opacity: .55; }
+/* The item hotkeys (shared/belt): one run out is greyed until more of it is picked up. */
+.td-quick--out img { filter: grayscale(1); opacity: .45; }
 .td-pot:active { translate: 0 2px; }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .td-belt { left: 8px; bottom: auto; top: calc(50% + 113px); padding: 4px; flex-direction: column; }
@@ -930,6 +932,9 @@
 .book .book-belt__slot b { position: absolute; right: 2px; bottom: 0; font: 700 10px var(--cozy-font-read); color: var(--cozy-cream); }
 .book .book-belt__slot kbd { position: absolute; left: 2px; top: 0; font: 9px var(--font-game); color: var(--cozy-brass-hi); }
 .book .book-belt__slot.is-drop-over, .book .well.is-drop-over { outline-color: var(--cozy-brass-hi); }
+.book .book-belt__quick { padding: 0; border: 0; cursor: pointer; font: inherit; }
+.book .book-belt__quick:not([data-quick-key]) { background: color-mix(in srgb, var(--cozy-well) 55%, transparent); }
+.book .book-belt__quick.is-out img { filter: grayscale(1); opacity: .45; }
 .book .no-room { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0 0; color: var(--cozy-berry); font: 12px var(--font-game); }
 .book .no-room__piece {
   width: 44px; height: 44px; display: grid; place-items: center; padding: 2px; background: var(--cozy-well);
