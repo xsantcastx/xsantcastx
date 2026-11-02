@@ -247,6 +247,43 @@ test('protocol 8: a drop lies on everyone\'s ground at once; the escrow lands be
   assert.equal((await post('/ground/pick', { id: gid }, guest.token)).status, 403);
 });
 
+test('protocol 8: a stack lies as one pile ×N on everyone\'s ground; the room re-counts the dropper; the first allowed take wins', async t => {
+  const ctx = await trading(t);
+  const { post, a, b, store, stream, join } = ctx;
+  // Aster holds 5 Minor Health potions (one stack record, one grant op).
+  const inv = store.docs.get('users/u1/progress/inventory').v;
+  inv.records.push({ id: 'stack:minor-health', definitionId: 'minor-health', kind: 'stack', category: 'materials', tags: ['material', 'minor-health'], soulbound: false, acquiredAt: new Date(T0 - 1000).toISOString(), revision: { hlc: T0 - 1000, deviceId: 'dev', sequence: 1 }, source: 'inventory', stackKey: 'minor-health', location: { kind: 'bag' } });
+  inv.stackOps.push({ id: 'buy:1', stackKey: 'minor-health', kind: 'grant', quantity: 5, hlc: T0 - 900, deviceId: 'dev', sequence: 1 });
+  await at(a, 100, 100, post); await at(b, 120, 100, post);
+  const sa = await stream(a), sb = await stream(b);
+  const item = { id: 'stack:minor-health', def: 'minor-health', name: 'Minor Health Potion', type: 'material', rarity: 'common', stats: {}, sk: 'minor-health', qty: 3 };
+  // No press name: refused (two drops of a kind must be two piles).
+  assert.equal((await post('/ground/drop', { area: AREA, x: 100, y: 106, item }, a.token)).status, 400);
+  const dropped = await post('/ground/drop', { area: AREA, x: 100, y: 106, item, n: 'press-1' }, a.token);
+  assert.equal(dropped.status, 201);
+  const gid = dropped.body.ground.id;
+  assert.equal(gid, C.dropGroundId('u1', item, 'press-1'));
+  const seen = await sb.until(() => sb.all('ground').flatMap(e => e.add ?? []).find(g => g.id === gid));
+  assert.equal(seen.sk, 'minor-health');
+  assert.equal(seen.qty, 3);
+  assert.ok(await sa.until(() => sa.all('ground-note').find(e => e.note.kind === 'escrowed' && e.note.id === gid)));
+  assert.equal(C.stackHeld(store.docs.get('users/u1/progress/inventory').v, 'minor-health'), 2);
+  // A forged pile (more than is held now): it shows, then goes back with the room's word; nothing moves.
+  const forged = await post('/ground/drop', { area: AREA, x: 100, y: 106, item: { ...item, qty: 4 }, n: 'press-2' }, a.token);
+  assert.equal(forged.status, 201);
+  assert.ok(await sa.until(() => sa.all('ground-note').find(e => e.note.kind === 'returned' && e.note.id === forged.body.ground.id), 6000));
+  assert.equal(C.stackHeld(store.docs.get('users/u1/progress/inventory').v, 'minor-health'), 2);
+  // Bryn and Cora reach for the pile at once: one wins it whole.
+  const third = await join('Cora', 'u3');
+  store.docs.set('users/u3/progress/inventory', inventory([]));
+  await at(third, 110, 100, post);
+  const [pb, pc] = await Promise.all([post('/ground/pick', { id: gid }, b.token), post('/ground/pick', { id: gid }, third.token)]);
+  assert.deepEqual([pb.body.ok, pc.body.ok].sort(), [false, true]);
+  const winner = pb.body.ok ? 'u2' : 'u3';
+  assert.equal(C.stackHeld(store.docs.get(`users/${winner}/progress/inventory`).v, 'minor-health'), 3);
+  assert.equal(store.docs.get(`ground-items/${gid}`), undefined);
+});
+
 test('protocol 8: an escrow waits for the dropper\'s save; a forged or unsynced drop goes back with a clear word', async t => {
   const ctx = await trading(t);
   const { post, a, store, stream } = ctx;

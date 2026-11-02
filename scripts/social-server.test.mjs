@@ -614,6 +614,13 @@ test('protocol 5: a town portal travels in presence (td-waygate encodeGate); any
   assert.throws(() => presenceFields({ worn: '<img>' }), /Invalid presence/);
   assert.throws(() => presenceFields({ worn: 'h'.repeat(241) }), /Invalid presence/);
   assert.equal(presenceFields({}).worn, undefined);
+  // Status badges over a Keeper's head (play/td/td-status-icons.ts encodeStatuses): codes and seconds, '' for none.
+  assert.equal(presenceFields({ sts: 'bu4,ch2,sh12' }).sts, 'bu4,ch2,sh12');
+  assert.equal(presenceFields({ sts: '' }).sts, '');
+  assert.throws(() => presenceFields({ sts: '<b>' }), /Invalid presence/);
+  assert.throws(() => presenceFields({ sts: 'bu4'.repeat(20) }), /Invalid presence/);
+  assert.throws(() => presenceFields({ sts: 3 }), /Invalid presence/);
+  assert.equal(presenceFields({}).sts, undefined);
 });
 
 // ── Protocol 6: trading and ground drops (relay only; the trade Function moves things) ──

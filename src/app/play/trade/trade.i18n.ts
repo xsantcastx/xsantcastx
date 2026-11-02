@@ -68,6 +68,8 @@ export const TRADE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'trade.dropFailed': { en: 'Could not drop it: {{why}}', es: 'No se pudo soltar: {{why}}' },
   'trade.picked': { en: 'You picked up {{name}}.', es: 'Recogiste {{name}}.' },
   'trade.pickFailed': { en: 'Could not pick it up: {{why}}', es: 'No se pudo recoger: {{why}}' },
+  'trade.dropAmount.label': { en: 'How many {{name}} to drop?', es: '¿Cuántos {{name}} soltar?' },
+  'trade.dropAmount.ok': { en: 'Drop', es: 'Soltar' },
   'trade.dropZone': { en: 'Drop here to put it on the ground', es: 'Suelta aquí para dejarlo en el suelo' },
   'trade.satchelFull': { en: 'Too much baggage — your satchel is full. Make room, then pick it up.', es: 'Demasiado equipaje: tu mochila esta llena. Haz sitio y luego recogelo.' },
 };

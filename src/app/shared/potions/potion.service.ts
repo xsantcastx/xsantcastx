@@ -66,6 +66,20 @@ export class PotionService {
     return { code: 'ok', potion };
   }
 
+  /** Drink one particular potion (an item hotkey holds it): the same shared cooldown and the same one-sip ledger. */
+  drinkId(id: string, now: number): { code: DrinkCode; potion: PotionDef | null } {
+    if (!this.browser) return { code: 'ssr', potion: null };
+    const potion = potionById(id) ?? null;
+    if (!potion || this.qty(potion.id) < 1) return { code: 'none', potion };
+    if (potionCooldownLeft(this.lastAt, now) > 0) return { code: 'cooldown', potion };
+    const res = this.inventory.consumeStacks(`potion:drink:${potion.id}:${Date.now().toString(36)}:${++this.sips}`, [{ id: potion.id, count: 1 }]);
+    if (!res.ok) return { code: 'failed', potion };
+    this.lastAt = now;
+    return { code: 'ok', potion };
+  }
+  /** The shared cooldown left (0–1), for a hotkey holding a potion. */
+  cooldown(now: number): number { return potionCooldownLeft(this.lastAt, now) / POTION_COOLDOWN; }
+
   /** Buy `n` of a potion from the counter. `pressId` names the press: a retry of the same press is a replay. */
   buy(id: string, n: number, pressId: string): PotionBuyCode {
     if (!this.browser) return 'ssr';

@@ -1,3 +1,18 @@
+<!-- "How many … to drop?" (verb-matrix T1): a stack let go of to the ground; the same bar as the trade window's. -->
+@if (dropAmount; as d) {
+  <section class="trade-drop" role="dialog" aria-modal="false" [attr.aria-label]="t('trade.dropAmount.label', { name: d.name })" data-drop-amount data-drag-pass data-engine-ignore>
+    <div class="trade-amount">
+      <span class="trade-amount__name">{{ t('trade.dropAmount.label', { name: d.name }) }}</span>
+      <button type="button" class="trade-btn trade-amount__step" (click)="stepDropAmount(-1)" [disabled]="d.n <= 1" [attr.aria-label]="t('trade.amount.less')">&minus;</button>
+      <input type="number" inputmode="numeric" min="1" [max]="d.max" step="1" [value]="d.n" data-drop-amount-n (input)="setDropAmount($any($event.target).value)" (keydown.enter)="confirmDropAmount()" [attr.aria-label]="t('trade.dropAmount.label', { name: d.name })">
+      <button type="button" class="trade-btn trade-amount__step" (click)="stepDropAmount(1)" [disabled]="d.n >= d.max" [attr.aria-label]="t('trade.amount.more')">+</button>
+      <button type="button" class="trade-btn trade-amount__step" data-drop-amount-all (click)="setDropAmount(d.max)">{{ t('trade.amount.all', { n: d.max }) }}</button>
+      <button type="button" class="trade-btn trade-btn--go" data-drop-amount-ok (click)="confirmDropAmount()">{{ t('trade.dropAmount.ok') }}</button>
+      <button type="button" class="trade-x" data-drop-amount-x (click)="closeDropAmount()" [attr.aria-label]="t('trade.amount.close')">&times;</button>
+    </div>
+  </section>
+}
+
 <!-- A Keeper asks to trade: a cozy toast with the two answers (it lapses by itself). -->
 @if (ask; as a) {
   <section class="trade-ask" role="alertdialog" aria-labelledby="trade-ask-title" data-trade-ask data-engine-ignore>
