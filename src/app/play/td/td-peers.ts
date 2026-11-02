@@ -22,6 +22,7 @@ import { defaultLook, VOCATIONS, type KeeperLook, type Vocation } from '../../sh
 import { PeerTracker, type PeerShown } from '../social/peer-tracker';
 import { unpackLook } from '../social/peer-look';
 import type { RoomPlayer } from '../social/social-room';
+import { decodeStatuses, type StatusShown } from './td-status-icons';
 
 /** How long a Wave hangs over a head (seconds). */
 export const WAVE_SECS = 3;
@@ -48,6 +49,9 @@ export class TdPeers {
 
   set(players: readonly RoomPlayer[], selfId = ''): void {
     this.raw = players.filter(p => p && p.id !== selfId);
+    // Status badges: when each Keeper's word last changed, so its seconds run down here between words.
+    const at = typeof performance === 'undefined' ? 0 : performance.now() / 1000;
+    for (const p of this.raw) { const w = typeof p.sts === 'string' ? p.sts : '', was = this.stsHeard.get(p.id); if (!was || was.word !== w) this.stsHeard.set(p.id, { word: w, at }); }
     this.tracker.set(players, selfId);
     const keep = new Set(players.map(p => p.id));
     for (const id of [...this.painters.keys()]) if (!keep.has(id)) this.painters.delete(id);
@@ -61,6 +65,14 @@ export class TdPeers {
 
   get drawn(): readonly PeerShown[] { return this.shown; }
   /** A Keeper's cosmetic companions string (presence `pals`, protocol 5): its pet and Glim beside it. */
+  private readonly stsHeard = new Map<string, { word: string; at: number }>();
+  /** Another Keeper's status badges (its presence's `sts`), each run down since the word was heard. */
+  statusesOf(id: string, nowSecs: number): StatusShown[] {
+    const h = this.stsHeard.get(id);
+    if (!h?.word) return [];
+    const gone = Math.max(0, nowSecs - h.at);
+    return decodeStatuses(h.word).map(s => ({ ...s, left: s.left - gone })).filter(s => s.left > 0);
+  }
   palsOf(id: string): string { const p = this.raw.find(x => x.id === id); return typeof p?.pals === 'string' ? p.pals : ''; }
   /** The party members' town portals (presence `gate`, td-waygate.ts): cosmetic and travel only. */
   partyGates(): { id: string; gate: string }[] {

@@ -302,30 +302,3 @@ export function drawAuraPip(c: Ctx, m: Mob, barX: number, barY: number): void {
   c.fillStyle = tn.body; c.fillRect(barX, barY, 3, 3); c.fillStyle = tn.core; c.fillRect(barX, barY, 1, 1);
 }
 
-/** The Keeper's statuses as glyphs over his head: stars (stunned), ice (frozen), vines (rooted), frost, flame, drop… */
-export function drawKeeperStatus(c: Ctx, sys: MobSystem, x: number, y: number, time: number, still: boolean): void {
-  const k = sys.kst, list: [string, string][] = [];
-  if (k.stun > 0) list.push(['stun', '#ffe36d']);
-  if (k.freeze > 0) list.push(['freeze', '#bfe6ff']);
-  if (k.root > 0) list.push(['root', '#7fe08a']);
-  if (k.chill > 0) list.push(['chill', '#9fd8ff']);
-  if (k.burn.t > 0) list.push(['burn', '#ff8a3d']);
-  if (k.bleed.t > 0) list.push(['bleed', '#8a4b3a']);
-  if (k.blind > 0) list.push(['blind', '#f3e7cf']);
-  if (k.wet > 0) list.push(['wet', '#7fc8e8']);
-  if (k.weak > 0) list.push(['weak', '#9ac870']);
-  if (k.dark > 0 || sys.lightCut > 0) list.push(['dark', '#6e54c8']);
-  if (!list.length) return;
-  const X = Math.round(x) - list.length * 4 + 2, Y = Math.round(y);
-  list.forEach(([s, col], i) => {
-    const px = X + i * 8, bob = still ? 0 : Math.round(Math.sin(time * 4 + i));
-    c.fillStyle = HOSTILE_EDGE; c.fillRect(px - 1, Y - 1 + bob, 7, 7);
-    c.fillStyle = col;
-    if (s === 'stun') { const a = still ? 0 : Math.floor(time * 8) % 2; c.fillRect(px + 2, Y + bob, 1, 5); c.fillRect(px, Y + 2 + bob, 5, 1); if (a) { c.fillRect(px + 1, Y + 1 + bob, 1, 1); c.fillRect(px + 3, Y + 3 + bob, 1, 1); } }
-    else if (s === 'root') { c.fillRect(px, Y + 4 + bob, 5, 1); c.fillRect(px + 1, Y + 1 + bob, 1, 3); c.fillRect(px + 3, Y + bob, 1, 4); }
-    else if (s === 'burn') { c.fillRect(px + 1, Y + 2 + bob, 3, 3); c.fillRect(px + 2, Y + bob, 1, 2); c.fillStyle = '#fff2a8'; c.fillRect(px + 2, Y + 3 + bob, 1, 1); }
-    else if (s === 'bleed') { c.fillRect(px + 2, Y + bob, 1, 1); c.fillRect(px + 1, Y + 1 + bob, 3, 3); c.fillRect(px + 2, Y + 4 + bob, 1, 1); }
-    else if (s === 'wet') { c.fillRect(px + 2, Y + bob, 1, 2); c.fillRect(px + 1, Y + 2 + bob, 3, 3); }
-    else { c.fillRect(px, Y + bob, 5, 5); c.fillStyle = HOSTILE_EDGE; c.fillRect(px + 1, Y + 1 + bob, 3, 3); c.fillStyle = col; c.fillRect(px + 2, Y + 2 + bob, 1, 1); }
-  });
-}

@@ -44,7 +44,7 @@ export interface TradeRoom {
   /** Protocol 8: the room settles and lays (absent or false: protocol 6's Function path). */
   canSettle?(): boolean;
   tradeStatus?(trade: string): Promise<RoomTradeStatus>;
-  groundLay?(g: { area: string; x: number; y: number; item: OfferItem }): Promise<{ why: string; ground?: RoomGround }>;
+  groundLay?(g: { area: string; x: number; y: number; item: OfferItem; n?: string }): Promise<{ why: string; ground?: RoomGround }>;
   groundSynced?(id: string): void;
   groundPick?(area: string, id: string): Promise<RoomPick>;
 }
@@ -260,16 +260,69 @@ export class GroundFlow {
     } catch { return { ok: false, why: 'offline' }; } finally { this.busy = false; }
   }
 
+  /**
+   * Stack piles on their way to the ground (verb-matrix T1): ground id (or `pre:<n>` while asked) → kind and amount. The
+   * satchel shows that many fewer at once; the save itself loses them only when the server's consume op is read back
+   * (never a second, local consume: the merge would take them twice).
+   */
+  readonly pendingStacks = new Map<string, { sk: string; qty: number }>();
+  private stackSeq = 0;
+  /** Ground ids the room has already given its word on (a note may arrive before the lay's own answer). */
+  private readonly heard = new Set<string>();
+  /** How many of a stack kind are on their way to the ground (not yet out of the re-read save). */
+  heldBack(sk: string): number { let n = 0; for (const v of this.pendingStacks.values()) if (v.sk === sk) n += v.qty; return n; }
+  /**
+   * Put `item.qty` of a satchel stack on the shared ground as one pile (×N). The server re-counts what the save holds
+   * and takes the amount out as one consume op; anyone in the room may take the pile, the first allowed take wins.
+   */
+  async dropStack(item: OfferItem, at: { area: string; x: number; y: number }): Promise<GroundResult> {
+    const sk = item.sk, qty = item.qty ?? 0;
+    if (!sk || !(qty > 0)) return { ok: false, why: 'failed' };
+    const blocked = this.backend.blocked();
+    if (blocked) return { ok: false, why: blocked };
+    // One name per press: two drops of a kind are two piles, and a retried press finds its own.
+    const n = `${Date.now().toString(36)}${(++this.stackSeq).toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 40);
+    const pre = `pre:${n}`;
+    this.pendingStacks.set(pre, { sk, qty });
+    if (this.room.canSettle?.() && this.room.groundLay) {
+      let laid: Awaited<ReturnType<NonNullable<TradeRoom['groundLay']>>>;
+      try { laid = await this.room.groundLay({ area: at.area, x: at.x, y: at.y, item, n }); } finally { this.pendingStacks.delete(pre); }
+      if (laid.why || !laid.ground) return { ok: false, why: laid.why || 'failed' };
+      const id = laid.ground.id;
+      // The room's word may outrun its own answer: already escrowed (or handed back) is not held back again.
+      if (!this.heard.has(id)) {
+        this.pendingStacks.set(id, { sk, qty });
+        // Never held back for good: a note lost on the way lets go after a while (the next re-read is the truth).
+        setTimeout(() => this.pendingStacks.delete(id), 30_000);
+      }
+      void this.backend.prepare().then(() => this.room.groundSynced?.(id), () => this.room.groundSynced?.(id));
+      return { ok: true, id };
+    }
+    if (this.busy) { this.pendingStacks.delete(pre); return { ok: false, why: 'busy' }; }
+    this.busy = true;
+    try {
+      await this.backend.prepare();
+      const res = await this.backend.call('drop', { character: this.backend.character, area: at.area, item, x: at.x, y: at.y, n });
+      if (res.status !== 200 || res.body['status'] !== 'dropped') return { ok: false, why: typeof res.body['error'] === 'string' ? res.body['error'] : 'failed' };
+      const g = res.body['ground'] as { id: string; x: number; y: number };
+      await this.backend.settle().catch(() => {});
+      await this.room.groundDrop({ id: g.id, area: at.area, x: g.x, y: g.y, name: item.name, rarity: item.rarity, def: item.def });
+      return { ok: true, id: g.id };
+    } catch { return { ok: false, why: 'offline' }; } finally { this.busy = false; this.pendingStacks.delete(pre); }
+  }
+
   /** Protocol 8: the room's word on a drop: escrowed → re-read the save (the item has left it); handed back → it stays. */
   async noted(note: RoomGroundNote): Promise<void> {
     // Escrowed: the piece stays hidden until the re-read save no longer holds it (letting go first would flash it back).
     const itemId = this.pending.get(note.id);
+    this.heard.add(note.id);
+    if (this.heard.size > 64) this.heard.delete(this.heard.values().next().value as string);
     try {
       if (note.kind === 'escrowed') {
         await this.backend.settle().catch(() => {});
         if (itemId) this.forget?.(itemId);
       }
-    } finally { this.pending.delete(note.id); }
+    } finally { this.pending.delete(note.id); this.pendingStacks.delete(note.id); }
   }
   /** Is this satchel item on its way to the ground (laid, not yet escrowed)? */
   isPending(itemId: string): boolean { for (const v of this.pending.values()) if (v === itemId) return true; return false; }

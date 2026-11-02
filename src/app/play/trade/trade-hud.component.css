@@ -14,6 +14,15 @@
   box-shadow: 0 0 0 2px var(--cozy-wood-4), 0 10px 24px color-mix(in srgb, var(--cozy-wood-4) 60%, transparent);
 }
 .trade-ask p { margin: 0 0 10px; font-weight: 700; }
+/* "How many … to drop?": a small wood window above the HUD's foot, clear of the screen's centre on a phone. */
+.trade-drop {
+  position: fixed; z-index: 10; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 132px); transform: translateX(-50%);
+  width: min(380px, calc(100vw - 24px)); padding: 6px;
+  font-family: var(--cozy-font-read, inherit); color: var(--cozy-ink);
+  background: var(--cozy-wood-1); border: 3px solid var(--cozy-wood-3); border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--cozy-wood-4), inset 0 2px 0 var(--cozy-wood-hi);
+}
+.trade-drop .trade-amount { margin: 0; }
 
 .trade {
   position: fixed; z-index: 9; left: 50%; top: 50%; transform: translate(-50%, -50%);

@@ -937,10 +937,20 @@ export async function cancelTrade(db: Db, uid: string, body: unknown, now: numbe
 export interface GroundDoc {
   id: string; area: string; x: number; y: number; item: Doc; name: string; rarity: string; def: string;
   owner: { uid: string; character: string }; droppedAt: number; expiresAt: number;
+  /** A stack pile (verb-matrix T1, 2026-11-02): its plain stack key and how many lie in it; `item` is then a stub. */
+  sk?: string; qty?: number;
 }
-export interface DropBody { character: string; area: string; item: unknown; x: number; y: number }
+/** `n`: a stack drop's own name (one per press), so two drops of the same kind are two piles and a retry finds its own. */
+export interface DropBody { character: string; area: string; item: unknown; x: number; y: number; n?: string }
 /** The id a dropped item lies under: one per (account, item), so a retried drop finds its own. */
 export const groundId = (uid: string, itemId: string) => `g${hashId(`${uid}:${itemId}`)}`;
+const DROP_NONCE = /^[A-Za-z0-9_-]{4,40}$/;
+/** A drop's ground id: an instance's by its item; a stack's by its kind AND the press (`n`), which a stack must carry. */
+export function dropGroundId(uid: string, offered: OfferItem, n: unknown): string {
+  if (!isStackOffer(offered)) return groundId(uid, offered.id);
+  if (typeof n !== 'string' || !DROP_NONCE.test(n)) refuse(400, 'bad-request', 'Invalid drop.');
+  return groundId(uid, `${offered.id}~${n as string}`);
+}
 /** The id an item takes in whoever picks it up (its dropper included: the old id is tombstoned there). */
 export const pickedId = (gid: string) => `p${hashId(gid)}`;
 
@@ -953,10 +963,11 @@ export async function dropItem(db: Db, uid: string, body: unknown, now: number):
   const character = typeof b['character'] === 'string' && CHARACTER.test(b['character']) ? b['character'] as string : refuse(400, 'bad-request', 'Invalid character.');
   const area = typeof b['area'] === 'string' && AREA.test(b['area']) ? b['area'] as string : refuse(400, 'bad-request', 'Invalid area.');
   const offered = parseOfferItem(b['item']);
-  // A stack on the shared ground is not built yet (verb-matrix T1): only a held instance is dropped here.
-  if (isStackOffer(offered)) refuse(400, 'bad-request', 'Stacks are set down on your own ground for now.');
+  // A stack (verb-matrix T1, 2026-11-02) lies as one pile of `qty`: the dropper's save is re-counted (folds included)
+  // inside the transaction, and the amount leaves it as one consume op; more than is held is refused.
+  const stack = isStackOffer(offered);
   const x = coord(b['x']) as number, y = coord(b['y']) as number;
-  const gid = groundId(uid, offered.id);
+  const gid = dropGroundId(uid, offered, b['n']);
   return db.run(async tx => {
     const already = await tx.get(groundItemPath(gid));
     const areaDoc = await tx.get(groundAreaPath(area));
@@ -971,19 +982,26 @@ export async function dropItem(db: Db, uid: string, body: unknown, now: number):
     const n = inWindow ? num(rate?.['n']) : 0;
     if (n >= GROUND_RATE_MAX) refuse(429, 'slow-down', 'You are dropping things too fast. Wait a moment.');
     const inv = readInventory(invDoc, 'You');
-    const held = liveRecord(inv, offered.id);
-    if (held && isObj(held['location']) && (held['location'] as Doc)['kind'] !== 'bag') refuse(409, 'untradeable', 'Take it off your Keeper first.');
-    const rec = takeItem(inv, offered, 'You', now);
+    let rec: Doc;
+    if (stack) {
+      takeStack(inv, offered, 'You', `drop:${gid}`, now);
+      rec = { kind: 'stack', stackKey: offered.sk, quantity: offered.qty };
+    } else {
+      const held = liveRecord(inv, offered.id);
+      if (held && isObj(held['location']) && (held['location'] as Doc)['kind'] !== 'bag') refuse(409, 'untradeable', 'Take it off your Keeper first.');
+      rec = takeItem(inv, offered, 'You', now);
+    }
     bumpServerSeq(inv);
     const ground: GroundDoc = {
       id: gid, area, x, y, item: rec, name: offered.name, rarity: offered.rarity, def: offered.def,
       owner: { uid, character }, droppedAt: now, expiresAt: now + GROUND_TTL_MS,
+      ...(stack ? { sk: offered.sk, qty: offered.qty } : {}),
     };
     tx.set(inventoryPath(uid, character), inventoryEnvelope(inv, now));
     tx.set(groundItemPath(gid), ground as unknown as Doc);
     tx.set(groundAreaPath(area), { count: count + 1, updatedAt: now });
     tx.set(groundRatePath(uid), { start: inWindow ? windowStart : now, n: n + 1 });
-    tx.set(auditPath(`drop-${gid}-${now}`), { kind: 'drop', at: now, ground: gid, area, uid, character, item: offered.id, name: offered.name, rarity: offered.rarity });
+    tx.set(auditPath(`drop-${gid}-${now}`), { kind: 'drop', at: now, ground: gid, area, uid, character, item: offered.id, name: offered.name, rarity: offered.rarity, ...(stack ? { qty: offered.qty } : {}) });
     return { status: 'dropped', ground };
   });
 }
@@ -992,7 +1010,9 @@ export async function dropItem(db: Db, uid: string, body: unknown, now: number):
 function landGround(tx: Tx, g: GroundDoc, areaDoc: Doc | null, invDoc: Doc | null, to: { uid: string; character: string }, now: number, kind: 'pickup' | 'return'): string {
   const inv = readInventory(invDoc, kind === 'return' ? 'The dropper' : 'You');
   const newId = pickedId(g.id);
-  giveItem(inv, g.item, newId, now);
+  // A stack pile lands as one grant op under the picked id (a retry lands nothing twice); an item as its record.
+  if (typeof g.sk === 'string' && Number.isInteger(g.qty) && (g.qty as number) > 0) giveStack(inv, g.sk, g.qty as number, newId, now);
+  else giveItem(inv, g.item, newId, now);
   bumpServerSeq(inv);
   tx.set(inventoryPath(to.uid, to.character), inventoryEnvelope(inv, now));
   tx.delete(groundItemPath(g.id));

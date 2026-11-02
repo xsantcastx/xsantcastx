@@ -132,7 +132,9 @@ test.describe('keys', () => {
     const bar = page.locator('[data-hud-bar]');
     await expect(bar).toBeVisible();
     await expect(bar.locator('.hb__slotkey')).toHaveText(['5', '6', '7', '8', '1', '2', '3', '4']);
-    await expect(bar.locator('.td-pot')).toHaveCount(3);
+    // The belt: Q, R, F and the three item hotkeys (9, 0, -; shared/belt).
+    await expect(bar.locator('.td-pot')).toHaveCount(6);
+    await expect(bar.locator('.td-quick kbd')).toHaveText(['9', '0', '-']);
     await expect(bar.locator('[data-xp-bar]')).toBeVisible();
     await expect(bar.locator('.td-dock button')).toHaveCount(8);
     await expect(bar.locator('[data-orb="hp"]')).toBeVisible();

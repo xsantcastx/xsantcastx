@@ -36,6 +36,10 @@ export const KEY_ACTIONS: readonly KeyActionDef[] = [
   { id: 'potionHealth', group: 'combat', codes: ['KeyQ'] },
   { id: 'potionMana', group: 'combat', codes: ['KeyR'] },
   { id: 'stone', group: 'combat', codes: ['KeyF'] },
+  // The belt's item hotkeys (shared/belt): whatever usable stack the Keeper put there (a meal, a scroll, a potion…).
+  { id: 'quick1', group: 'combat', codes: ['Digit9'] },
+  { id: 'quick2', group: 'combat', codes: ['Digit0'] },
+  { id: 'quick3', group: 'combat', codes: ['Minus'] },
   { id: 'waygate', group: 'combat', codes: ['KeyV'] },
   { id: 'seek', group: 'combat', codes: ['KeyX'] },
   { id: 'interact', group: 'world', codes: ['KeyE'] },

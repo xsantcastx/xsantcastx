@@ -88,6 +88,8 @@ const DIRS = new Set(['side', 'down', 'up']);
 const PALS = /^[a-z0-9:,-]{0,96}$/;
 /** Protocol 5: a town portal in presence (play/td/td-waygate.ts encodeGate: continent:level:x:y:townX:townY:secondsLeft). */
 const GATE = /^[a-z0-9:-]{0,96}$/;
+/** Status badges over a Keeper's head (play/td/td-status-icons.ts encodeStatuses: "bu4,ch2"; '' when none). Cosmetic. */
+const STS = /^[a-z0-9,]{0,48}$/;
 const EMOTES = new Set(['wave']);
 
 /**
@@ -113,6 +115,8 @@ export function presenceFields(data) {
   if (data.pals !== undefined) { if (typeof data.pals !== 'string' || !PALS.test(data.pals)) bad(); out.pals = data.pals; }
   // Protocol 5: the Keeper's town portal, for the party to step through (travel only; '' when none stands).
   if (data.gate !== undefined) { if (typeof data.gate !== 'string' || !GATE.test(data.gate)) bad(); out.gate = data.gate; }
+  // The status badges over its head, for everyone's screen (cosmetic; '' when nothing lies on it).
+  if (data.sts !== undefined) { if (typeof data.sts !== 'string' || !STS.test(data.sts)) bad(); out.sts = data.sts; }
   return out;
 }
 
@@ -1110,9 +1114,10 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     const C = economy.core;
     if (!session.uid) throw fail(403, 'Sign in to drop things.');
     if (!session.character) throw fail(409, 'Update the game to drop things.');
-    let item;
-    try { item = C.parseOfferItem(data.item); } catch (e) { tradeBad(e?.message ?? 'Invalid drop.'); }
-    const gid = C.groundId(session.uid, item.id);
+    let item, gid;
+    // A stack (verb-matrix T1, 2026-11-02) lies as one pile of `qty`, named by the press (`n`): two presses, two piles.
+    try { item = C.parseOfferItem(data.item); gid = C.dropGroundId(session.uid, item, data.n); } catch (e) { tradeBad(e?.message ?? 'Invalid drop.'); }
+    const stack = C.isStackOffer(item);
     const list = ground.get(area) ?? new Map();
     ground.set(area, list);
     for (const [id, x] of list) if (x.until <= now()) list.delete(id);
@@ -1122,11 +1127,11 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     // Where it lands: at the Keeper's feet as the room last saw it (a claim further off is pulled back to them).
     const pl = session.player;
     const near = (v, at) => (Number.isFinite(v) && Math.abs(v - at) <= 48 ? Math.round(v) : Math.round(at));
-    const g = { id: gid, area, x: near(data.x, pl.x), y: near(data.y, pl.y), name: item.name, rarity: item.rarity, def: item.def, until: now() + C.GROUND_TTL_MS, by: pl.name, byId: pl.id, pending: true, room: true };
+    const g = { id: gid, area, x: near(data.x, pl.x), y: near(data.y, pl.y), name: item.name, rarity: item.rarity, def: item.def, until: now() + C.GROUND_TTL_MS, by: pl.name, byId: pl.id, pending: true, room: true, ...(stack ? { sk: item.sk, qty: item.qty } : {}) };
     list.set(gid, g);
     groundTell(area, { add: [g] });
     reply(201, { ground: g });
-    escrow(g, session, { character: session.character, area, item, x: g.x, y: g.y });
+    escrow(g, session, { character: session.character, area, item, x: g.x, y: g.y, ...(stack ? { n: data.n } : {}) });
   };
   /** Take a drop (protocol 8): the first Keeper in memory wins; the pickup transaction behind it makes it so. */
   const pickDrop = async (session, data, reply) => {
@@ -1305,7 +1310,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       ground.set(area, list);
       for (const [id, g] of list) if (g.until <= now()) list.delete(id);
       if (list.size >= 60 && !list.has(data.id)) throw fail(429, 'The ground here is covered.');
-      const g = { id: data.id, area, x: Math.round(held.x ?? data.x), y: Math.round(held.y ?? data.y), name: data.name, rarity: data.rarity, def: data.def, until: Number(held.expiresAt) || now() + 10 * 60000, by: session.player.name };
+      // A stack pile's kind and count are the escrow's word, never the body's.
+      const pile = typeof held.sk === 'string' && Number.isInteger(held.qty) && held.qty > 0 ? { sk: held.sk, qty: held.qty } : {};
+      const g = { id: data.id, area, x: Math.round(held.x ?? data.x), y: Math.round(held.y ?? data.y), name: data.name, rarity: data.rarity, def: data.def, until: Number(held.expiresAt) || now() + 10 * 60000, by: session.player.name, ...pile };
       list.set(g.id, g);
       groundTell(area, { add: [g] });
       reply(201, { ground: g }); return;
