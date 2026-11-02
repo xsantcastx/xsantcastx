@@ -24,6 +24,8 @@ export interface RoomPlayer {
   gate?: string;
   /** What it wears, as worn-look ids (shared/keeper-look/worn-looks.ts packWorn): drawn on its sprite. An older room drops it. */
   worn?: string;
+  /** Its statuses as badges over its head (play/td/td-status-icons.ts encodeStatuses: "bu4,ch2"); cosmetic. */
+  sts?: string;
 }
 export interface RoomMessage { id: string; playerId: string; name: string; text: string; at: number }
 /** A Wave (protocol 2): from one Keeper, at another (or nobody in particular). */
@@ -92,7 +94,11 @@ export type RoomTradeStatus = { status: 'done'; received: { items: string[]; gol
  * An item on the ground, as the room was told by the one who dropped it (checked against the escrow). Protocol 8:
  * `pending` — laid by the room and still being escrowed (nobody can have it yet); `room` — the room's to clear.
  */
-export interface RoomGround { id: string; area: string; x: number; y: number; name: string; rarity: string; def: string; until: number; by?: string; pending?: boolean; room?: boolean }
+export interface RoomGround {
+  id: string; area: string; x: number; y: number; name: string; rarity: string; def: string; until: number; by?: string; pending?: boolean; room?: boolean;
+  /** A stack pile (verb-matrix T1, 2026-11-02): its stack key and how many lie in it (the escrow's count). */
+  sk?: string; qty?: number;
+}
 /** Protocol 8: the room's word on this Keeper's drop: escrowed (out of the save, safe on the ground) or handed back. */
 export interface RoomGroundNote { kind: 'escrowed' | 'returned'; id: string; name: string; why?: string }
 /** Protocol 8: a pick's answer — the new id the item took in this save, or why not. */
@@ -115,7 +121,7 @@ export type ReportReason = 'spam' | 'abuse' | 'cheating' | 'name' | 'other';
 /** Who the Keeper is, sent on join and with every presence update (protocol 2; a v1 server ignores it). */
 export interface RoomProfile { vocation?: string; look?: string; level?: number; worn?: string }
 /** The top-down presence beyond x/y/zone/facing/animation. */
-export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string; gate?: string }
+export interface RoomPresence extends RoomProfile { area?: string; dir?: 'side' | 'down' | 'up'; moving?: boolean; hp?: number; maxHp?: number; pals?: string; gate?: string; sts?: string }
 export interface RoomOptions {
   /**
    * Always on (owner 2026-10-21: "the chat should always be connected"): a dropped stream, an expired session or a
@@ -255,6 +261,8 @@ export function cleanPresence(p: RoomPresence): RoomPresence {
   if (typeof p.pals === 'string' && /^[a-z0-9:,-]{0,96}$/.test(p.pals)) out.pals = p.pals;
   // A town portal (protocol 5, td-waygate encodeGate): the same plain characters ('' when none stands).
   if (typeof p.gate === 'string' && /^[a-z0-9:-]{0,96}$/.test(p.gate)) out.gate = p.gate;
+  // Status badges (td-status-icons encodeStatuses; '' when none): cosmetic, an older room drops it.
+  if (typeof p.sts === 'string' && /^[a-z0-9,]{0,48}$/.test(p.sts)) out.sts = p.sts;
   return out;
 }
 
@@ -644,12 +652,12 @@ export class SocialRoom {
    * Lay an item at this Keeper's feet: on this screen at once (pending), on everyone's when the room hears it; the room
    * escrows it behind (out of the save) and says so with a ground note. '' when the room took it, else its words.
    */
-  async groundLay(g: { area: string; x: number; y: number; item: OfferItem }): Promise<{ why: string; ground?: RoomGround }> {
+  async groundLay(g: { area: string; x: number; y: number; item: OfferItem; n?: string }): Promise<{ why: string; ground?: RoomGround }> {
     if (!this.canSettle || !this.token) return { why: 'offline' };
     try {
       const response = await this.send(`${this.endpoint}/ground/drop`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
-        body: JSON.stringify({ area: g.area, x: g.x, y: g.y, item: g.item }), signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ area: g.area, x: g.x, y: g.y, item: g.item, ...(g.n ? { n: g.n } : {}) }), signal: AbortSignal.timeout(8000),
       });
       const out = await response.json().catch(() => null) as { ground?: RoomGround; error?: unknown } | null;
       if (!response.ok || !out?.ground) return { why: typeof out?.error === 'string' && out.error ? out.error.slice(0, 160) : 'failed' };

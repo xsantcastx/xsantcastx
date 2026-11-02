@@ -278,6 +278,66 @@ test('ground caps: per area, and a per-account drop rate', async () => {
   assert.ok(live(invA(db)).includes(ids[10]));
 });
 
+// ── Stacks on the shared ground (verb-matrix T1, 2026-11-02) ──
+function stackRecord(sk) {
+  return { id: `stack:${sk}`, definitionId: sk, kind: 'stack', category: 'materials', tags: ['material', sk], soulbound: false, acquiredAt: new Date(T0 - 1000).toISOString(), revision: { hlc: T0 - 1000, deviceId: 'dev-a', sequence: 1 }, source: 'inventory', stackKey: sk, location: { kind: 'bag' } };
+}
+function stackWorld(qty = 5, sk = 'minor-health') {
+  const db = world();
+  const a = invA(db);
+  a.records.push(stackRecord(sk));
+  a.stackOps.push({ id: 'buy:1', stackKey: sk, kind: 'grant', quantity: qty, hlc: T0 - 900, deviceId: 'dev-a', sequence: 1 });
+  return db;
+}
+const stackOffer = (sk, qty, name = 'Minor Health Potion') => ({ id: `stack:${sk}`, def: sk, name, type: 'material', rarity: 'common', stats: {}, sk, qty });
+
+test('ground stacks: a pile of N leaves the dropper as one consume op, the server re-counts, another Keeper takes it whole', async () => {
+  const db = stackWorld(5);
+  const drop = await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('minor-health', 3), x: 10, y: 20, n: 'press1' }, T0);
+  assert.equal(drop.ground.sk, 'minor-health');
+  assert.equal(drop.ground.qty, 3);
+  assert.equal(drop.ground.id, core.dropGroundId('uidA', stackOffer('minor-health', 3), 'press1'));
+  assert.equal(core.stackHeld(invA(db), 'minor-health'), 2);
+  // A retried press finds its own pile and takes nothing twice.
+  assert.equal((await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('minor-health', 3), x: 10, y: 20, n: 'press1' }, T0 + 5)).ground.id, drop.ground.id);
+  assert.equal(core.stackHeld(invA(db), 'minor-health'), 2);
+  // The server counts what the save holds, never the screen's word: 3 more than the 2 left is refused, nothing moves.
+  await assert.rejects(core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('minor-health', 3), x: 0, y: 0, n: 'press2' }, T0 + 10), e => e.code === 'item-gone');
+  assert.equal(core.stackHeld(invA(db), 'minor-health'), 2);
+  // A second press of the same kind is a second pile.
+  const two = await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('minor-health', 2), x: 0, y: 0, n: 'press3' }, T0 + 20);
+  assert.notEqual(two.ground.id, drop.ground.id);
+  assert.equal(core.stackHeld(invA(db), 'minor-health'), 0);
+  assert.equal(db.docs.get('ground/ember-isle').count, 2);
+  // Bryn takes the first pile whole: one grant op of 3, under the picked id.
+  const got = await core.pickupItem(db, 'uidB', { character: 'kb2', ground: drop.ground.id }, T0 + 1000);
+  assert.equal(got.status, 'picked');
+  assert.equal(core.stackHeld(invB(db), 'minor-health'), 3);
+  assert.ok(invB(db).records.some(r => r.kind === 'stack' && r.stackKey === 'minor-health'));
+  assert.equal(db.docs.get(`ground-items/${drop.ground.id}`), undefined);
+  // A stack drop must name its press.
+  await assert.rejects(core.dropItem(db, 'uidB', { character: 'kb2', area: 'ember-isle', item: stackOffer('minor-health', 1), x: 0, y: 0 }, T0 + 2000), e => e.code === 'bad-request');
+});
+
+test('ground stacks: two Keepers reach for one pile at once, the first allowed take wins; an untaken pile goes home whole', async () => {
+  const db = stackWorld(30, 'ashwood-log');
+  db.docs.set('users/uidC/progress/inventory', inventory([]));
+  const pile = await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('ashwood-log', 20, 'Ashwood Log'), x: 0, y: 0, n: 'logs1' }, T0);
+  const [b, c] = await Promise.all([
+    core.pickupItem(db, 'uidB', { character: 'kb2', ground: pile.ground.id }, T0 + 10),
+    core.pickupItem(db, 'uidC', { character: 'c1', ground: pile.ground.id }, T0 + 10),
+  ]);
+  assert.deepEqual([b.status, c.status].sort(), ['gone', 'picked']);
+  const total = core.stackHeld(invB(db), 'ashwood-log') + core.stackHeld(db.docs.get('users/uidC/progress/inventory').v, 'ashwood-log');
+  assert.equal(total, 20);
+  // Conservation: what lies, what was taken and what is held add up to the 30 there were.
+  const rest = await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('ashwood-log', 10, 'Ashwood Log'), x: 0, y: 0, n: 'logs2' }, T0 + 20);
+  assert.equal(core.stackHeld(invA(db), 'ashwood-log'), 0);
+  assert.equal(await core.returnExpired(db, T0 + core.GROUND_TTL_MS + 30), 1);
+  assert.equal(core.stackHeld(invA(db), 'ashwood-log'), 10);
+  assert.equal(db.docs.get(`ground-items/${rest.ground.id}`), undefined);
+});
+
 test('handle(): refusals are words and statuses, never a crash', async () => {
   const db = world();
   assert.equal((await core.handle(db, 'execute', 'uidA', { trade: 'nope', character: 'c1', terms: { a: { items: [], gold: 0 }, b: { items: [], gold: 0 } } }, T0)).status, 404);

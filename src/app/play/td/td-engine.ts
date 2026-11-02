@@ -42,7 +42,8 @@ import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { skillKit, type KeeperAnim } from './td-skill-kit';
 import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
-import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawKeeperStatus, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
+import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
+import { StatusPeaks, decodeStatuses, drawStatusIcons, encodeStatuses, keeperStatuses, mobStatuses, type StatusShown } from './td-status-icons';
 import { castable } from './td-abilities';
 import { creatureProfile } from '../../shared/loot/creature-families';
 import { AURA_NAMES_EN } from './td-elites';
@@ -780,6 +781,15 @@ export class TopDownEngine {
       has: (id: string) => this.mobs.drops.some(g => g.id === id),
       walk: (dx: number, dy: number) => { this.walkTo(this.player.x + dx, this.player.y + dy); return true; },
     };
+    // The status badges' e2e and shots (webdriver only): statuses laid on the Keeper and on the fx creatures beside him.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdStatus'] = {
+      lay: () => {
+        const s = this.mobs, k = s.kst;
+        k.burn.t = 6; k.chill = 4; k.weak = 5; s.curseT = 3; s.ward = 40; s.wardT = 9;
+        for (const m of s.mobs) if (m.key.startsWith('fx-ash:')) { m.stun = 9; m.scorchT = 5; m.bleedT = 4; m.slowT = 4; m.taunt = 3; m.cursed = 1.2; m.cd = 9; }
+        return this.canvas.getAttribute('data-status-badges') ?? '';
+      },
+    };
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdAsh'] = {
       foe: (type = 'ash-wolf', dx = 22) => { const def = MOBS[type]; if (!def) return null; const p = this.player; this.mobs.place(`fx-ash:${type}:${Math.round(this.time * 100)}`, def, p.x + dx, p.y); return this.mobs.mobs.length; },
       foes: () => this.mobs.mobs.filter(m => m.key.startsWith('fx-ash:')).length,
@@ -1067,6 +1077,7 @@ export class TopDownEngine {
     if (this.fxCoop) delete (window as unknown as Record<string, unknown>)['__tdCoop'];
     delete (window as unknown as Record<string, unknown>)['__tdDark'];
     delete (window as unknown as Record<string, unknown>)['__tdAsh'];
+    delete (window as unknown as Record<string, unknown>)['__tdStatus'];
     delete (window as unknown as Record<string, unknown>)['__tdSexton'];
     delete (window as unknown as Record<string, unknown>)['__tdLamp'];
     delete (window as unknown as Record<string, unknown>)['__tdThorn'];
@@ -1967,6 +1978,34 @@ export class TopDownEngine {
   }
   /** Presence's cosmetic companions (the pet and Glim as offsets: everyone sees them, party or not). */
   palsPresence(): string { return encodePresencePals(this.player, this.myPals()); }
+  // ── Status badges over heads (td-status-icons.ts) ──
+  private readonly statusPeaks = new StatusPeaks();
+  /** The Keeper's own badges now. */
+  keeperBadges(): StatusShown[] { return keeperStatuses(this.mobs, this.statusPeaks, { meal: this.gather.meal?.left ?? 0 }); }
+  private stsWord = { word: '', at: 0, kinds: '' };
+  /**
+   * The Keeper's statuses for the presence (`sts`), so the others draw them over him. Rewritten only when what lies on
+   * him changes or one is laid again (each screen runs the seconds down itself), so standing in a fire sends no stream.
+   */
+  statusPresence(): string {
+    const list = this.keeperBadges(), kinds = list.map(s => s.k).join(',');
+    const w = this.stsWord, since = this.time - w.at;
+    // Laid again: more seconds left than the last word promised by now.
+    const said = new Map(decodeStatuses(w.word).map(s => [s.k, s.left - since]));
+    const reapplied = list.some(s => s.left > (said.get(s.k) ?? 0) + 1.5);
+    if (kinds !== w.kinds || reapplied) this.stsWord = { word: encodeStatuses(list), at: this.time, kinds };
+    return this.stsWord.word;
+  }
+  /** For the specs and the shots: what badges each head shows ("me:bu,ch;m:<key>:st;p:<id>:bu"). */
+  private badgeSeen = '';
+  private badgeNote: string[] = [];
+  private noteBadges(who: string, list: readonly StatusShown[]): void { if (list.length) this.badgeNote.push(`${who}:${list.map(s => s.k).join(',')}`); }
+  /** Draw a head's badges with its foot at (x, y), after the caller's anchor (iso or top-down). */
+  private badges(list: readonly StatusShown[], x: number, y: number): void {
+    // A phone draws the world small (under 2 css px a world px): the badges go up a whole step to stay readable.
+    const css = this.scale * this.canvas.clientWidth / Math.max(1, this.canvas.width);
+    drawStatusIcons(this.ctx, list, x, y, this.time, { still: this.still, low: envDetail() === 'low', k: css < 2 ? 2 : 1 });
+  }
   /** This Keeper's own companions as the party sees them: each owner is the authority for its own. */
   private myPals(): CoopPal[] {
     const out: CoopPal[] = [];
@@ -4398,6 +4437,9 @@ export class TopDownEngine {
         c.fillStyle = '#1a1210'; c.fillRect(bx - 1, by - 1, w + 2, 4);
         c.fillStyle = al.d ? '#6b5f58' : k < .35 ? '#e2452a' : '#7fe08a'; c.fillRect(bx, by, Math.round(w * k), 2);
       }
+      // Its statuses (its own screen's word in its presence), over its plate.
+      const pst = this.peers.statusesOf(p.id, performance.now() / 1000);
+      if (pst.length) { this.badges(pst, p.x, p.y - up(42) - (this.platesOn ? 9 : 0)); this.noteBadges(`p:${p.id}`, pst); }
       if (this.peers.waving(p.id, this.time)) this.peers.drawWave(c, p.x, p.y - up(52), this.time, this.still);
     }
     if (this.peers.waving('', this.time)) { this.at(this.player.x, this.player.y); this.peers.drawWave(c, this.player.x, this.player.y - up(46), this.time, this.still); }
@@ -4641,9 +4683,12 @@ export class TopDownEngine {
    * a plate in its rarity colour), but never taken by walking over them: a tap walks there and the HUD asks the trade
    * Function, which gives it to whoever reaches it first.
    */
-  setSharedGround(items: readonly { id: string; x: number; y: number; name: string; rarity: string; def: string }[]): void {
+  setSharedGround(items: readonly { id: string; x: number; y: number; name: string; rarity: string; def: string; sk?: string; qty?: number }[]): void {
     const rung = (r: string): LootRung => (r in LOOT ? r as LootRung : 'common');
-    this.shared = items.map(g => ({ id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: 1, item: { definitionId: g.def, rarity: rung(g.rarity), unique: false }, rarity: rung(g.rarity), label: g.name, color: LOOT[rung(g.rarity)].body, age: 99 }));
+    // A stack pile (verb-matrix T1) lies as its material, "Name ×N", with no rarity beam (as a stack drop from the fight).
+    this.shared = items.map(g => g.sk && (g.qty ?? 0) > 0
+      ? { id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: g.qty!, material: g.sk, label: g.qty! > 1 ? `${g.name} ×${g.qty}` : g.name, color: '#d8cfb8', age: 99 }
+      : { id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: 1, item: { definitionId: g.def, rarity: rung(g.rarity), unique: false }, rarity: rung(g.rarity), label: g.name, color: LOOT[rung(g.rarity)].body, age: 99 });
     this.canvas.setAttribute('data-ground', items.map(g => g.id).join(','));
   }
   /**
@@ -5442,7 +5487,11 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
-        if (inView(m.x, m.y) && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240) { this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5)); }
+        if (inView(m.x, m.y) && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240) {
+          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
+          const st = mobStatuses(m, this.statusPeaks);
+          if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
+        }
         continue;
       }
       if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
@@ -5452,6 +5501,9 @@ export class TopDownEngine {
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
       // S6: a pack aura's pip beside the bar (the bearer's and each one it blesses).
       if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x + w / 2) + 3, Math.round(top) - 1);
+      // What lies on it (stunned, burning, taunted…): badges over its name (a minion's over its bar).
+      const st = mobStatuses(m, this.statusPeaks);
+      if (st.length) { this.badges(st, m.x, top - (m.elite?.role === 'minion' ? 2 : 9)); this.noteBadges(`m:${m.key}`, st); }
       // A unique's minions follow its name: a bar each, no name of their own.
       if (m.elite?.role === 'minion') continue;
       // Its name in the colour of its level against the Keeper's (td-zones gapTone, Tibia): grey trivial, cream even,
@@ -5502,8 +5554,15 @@ export class TopDownEngine {
     const k = this.cant;
     this.at(this.player.x, this.player.y);
     if (k) this.speech(k.text, this.player.x, this.player.y - up(44), k.age, k.color);
-    // S6: what creatures' abilities laid on him, over his head.
-    drawKeeperStatus(c, this.mobs, this.player.x, this.player.y - up(52), this.time, this.still);
+    // What lies on him (creatures' abilities, his wards, the healer's mending, a meal), as badges over his head.
+    const mine = this.keeperBadges();
+    if (mine.length) {
+      // Just over his head: the painter's own top (hats, helms, hair), and the HD figure's taller sculpt in Isometric.
+      const head = (this.player.painter?.top ?? 31) * FIGURE_K + (this.iso ? 8 : 3);
+      this.at(this.player.x, this.player.y); this.badges(mine, this.player.x, this.player.y - head); this.noteBadges('me', mine);
+    }
+    const seen = this.badgeNote.join(';'); this.badgeNote = [];
+    if (seen !== this.badgeSeen) { this.badgeSeen = seen; this.canvas.setAttribute('data-status-badges', seen); }
     // For the specs and the shots (S6): which abilities are telling now, and which auras stand here.
     { const tell = this.mobs.mobs.filter(m => m.tell > 0 && m.abCast !== undefined).map(m => m.abCast === -1 ? 'brutal' : castable(m.def.id)[m.abCast!]?.id ?? '').filter(Boolean).sort().join(',');
       const auras = [...new Set(this.mobs.mobs.map(m => m.aura).filter(Boolean))].sort().join(',');

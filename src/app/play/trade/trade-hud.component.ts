@@ -359,6 +359,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   escape(): boolean {
     if (this.card) { this.card = null; this.cdr.markForCheck(); return true; }
     if (this.amount) { this.closeAmount(); return true; }
+    if (this.dropAmount) { this.closeDropAmount(); return true; }
     if (this.trade) { void this.cancel(); return true; }
     const a = this.ask;
     if (a) { void this.answer(a, false); return true; }
@@ -413,10 +414,56 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     this.cdr.markForCheck();
     return out.ok;
   }
+  /**
+   * Put `qty` of a satchel stack on the room's ground as one pile ×N (verb-matrix T1): the satchel shows that many fewer
+   * at once; the server re-counts what the save holds and takes them out; the first allowed take wins it whole.
+   */
+  async dropStack(sk: string, name: string, qty: number): Promise<boolean> {
+    const have = this.inventory.stackOf(sk) - this.groundFlow.heldBack(sk);
+    const n = Math.min(Math.floor(qty), have);
+    if (!sk || !(n > 0)) return false;
+    const eng = this.engine as GroundEngine | undefined;
+    const here = eng?.peerPresence?.();
+    if (!here) return false;
+    const spot = eng?.dropSpot?.() ?? { x: here.x, y: here.y + 6 };
+    const out = await this.groundFlow.dropStack(stackOfferOf(sk, name, n), { area: here.area, x: spot.x, y: spot.y });
+    this.said.emit(out.ok ? this.t('trade.dropped', { name: n > 1 ? `${name} ×${n}` : name }) : this.t('trade.dropFailed', { why: this.whyText(out.why) }));
+    this.cdr.markForCheck();
+    return out.ok;
+  }
+  /** "How many … to drop?" (verb-matrix T1): a stack being let go of, the amount chosen, and where it goes once chosen. */
+  dropAmount: { sk: string; name: string; max: number; n: number; done: (n: number) => void } | null = null;
+  /** Ask how many of a stack to drop (starts at `start`, at most `max`); `done` lays that many. */
+  askDrop(sk: string, name: string, start: number, max: number, done: (n: number) => void): void {
+    this.dropAmount = { sk, name, max, n: Math.max(1, Math.min(max, Math.floor(start))), done };
+    this.cdr.markForCheck();
+  }
+  setDropAmount(raw: string | number): void {
+    const a = this.dropAmount;
+    if (!a) return;
+    a.n = Math.max(1, Math.min(a.max, Math.floor(Number(raw) || 1)));
+    this.cdr.markForCheck();
+  }
+  stepDropAmount(by: number): void { if (this.dropAmount) this.setDropAmount(this.dropAmount.n + by); }
+  confirmDropAmount(): void { const a = this.dropAmount; this.dropAmount = null; if (a) a.done(a.n); this.cdr.markForCheck(); }
+  closeDropAmount(): void { this.dropAmount = null; this.cdr.markForCheck(); }
+  /** How many of a stack kind are on their way to the ground (the satchel shows that many fewer). */
+  heldBack(sk: string): number { return this.groundFlow.heldBack(sk); }
+  /** A stack can lie on the room's ground: online, signed in, a room that trades. */
+  canDropStack(): boolean { return !!this.social?.connected && (this.social.protocol ?? 0) >= 6 && !this.social.guest; }
   /** The engine walked the Keeper to a ground item that was tapped: reach for it. */
   async pickup(id: string): Promise<void> {
     const g = this.social?.ground?.items.find(x => x.id === id);
     if (!g) return;
+    // A pile ×N: the satchel must hold all of it (a full satchel refuses, it stays on the ground).
+    if (g.sk && g.qty) {
+      if (!this.inventory.canTakeStack(g.sk, g.qty)) { this.said.emit(this.t('play.grid.full')); return; }
+      const out = await this.groundFlow.pickup(g);
+      const label = g.qty > 1 ? `${g.name} ×${g.qty}` : g.name;
+      this.said.emit(out.ok ? this.t('trade.picked', { name: label }) : this.t('trade.pickFailed', { why: this.whyText(out.why) }));
+      this.cdr.markForCheck();
+      return;
+    }
     // A full satchel refuses the pickup: it stays on the ground (docs/design/inventory-grid.md §2.4).
     const stub = { id: g.id, name: g.name, type: 'artifact', rarity: g.rarity, definitionId: g.def, stats: {}, sellValue: 0, equipped: false, foundAt: new Date(0).toISOString(), soulbound: false } as GameItem;
     if (!this.inventory.canPickUp(stub)) { this.said.emit(this.t('play.grid.full')); return; }
