@@ -26,6 +26,7 @@
                       (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
                       (click)="tap(c, 'remove', $event)" [attr.aria-label]="t('trade.remove', { name: c.name })">
                 @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
+                @if (c.qty > 1) { <b class="trade-n" data-trade-n>×{{ c.qty }}</b> }
               </button>
             }
             @for (n of emptySlots(mine.length); track n) { <span class="trade-cell trade-cell--empty" aria-hidden="true"></span> }
@@ -44,6 +45,7 @@
                       (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
                       (click)="tap(c, 'look', $event)" [attr.aria-label]="c.name">
                 @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
+                @if (c.qty > 1) { <b class="trade-n" data-trade-n>×{{ c.qty }}</b> }
               </button>
             }
             @if (!theirs.length) { <p class="trade-none">{{ t('trade.nothing') }}</p> }
@@ -55,12 +57,24 @@
         <div class="trade-satchel">
           <h3>{{ t('trade.satchel') }}</h3>
           @if (!satchel.length) { <p class="trade-none">{{ t('trade.satchelEmpty') }}</p> }
+          @if (amount; as a) {
+            <div class="trade-amount" data-trade-amount role="group" [attr.aria-label]="t('trade.amount.label', { name: a.cell.name })">
+              <span class="trade-amount__name">{{ t('trade.amount.label', { name: a.cell.name }) }}</span>
+              <button type="button" class="trade-btn trade-amount__step" (click)="stepAmount(-1)" [disabled]="a.n <= 1" [attr.aria-label]="t('trade.amount.less')">&minus;</button>
+              <input type="number" inputmode="numeric" min="1" [max]="a.cell.qty" step="1" [value]="a.n" (input)="setAmount($any($event.target).value)" (keydown.enter)="confirmAmount()" [attr.aria-label]="t('trade.amount.label', { name: a.cell.name })">
+              <button type="button" class="trade-btn trade-amount__step" (click)="stepAmount(1)" [disabled]="a.n >= a.cell.qty" [attr.aria-label]="t('trade.amount.more')">+</button>
+              <button type="button" class="trade-btn trade-amount__step" data-trade-amount-all (click)="setAmount(a.cell.qty)">{{ t('trade.amount.all', { n: a.cell.qty }) }}</button>
+              <button type="button" class="trade-btn trade-btn--go" data-trade-amount-ok (click)="confirmAmount()">{{ t('trade.amount.ok') }}</button>
+              <button type="button" class="trade-x" data-trade-amount-x (click)="closeAmount()" [attr.aria-label]="t('trade.amount.close')">&times;</button>
+            </div>
+          }
           <div class="trade-grid trade-grid--bag">
             @for (c of satchel; track c.id) {
               <button type="button" class="trade-cell" [style.--rim]="c.tone" [attr.data-trade-bag]="c.id" [disabled]="!!c.block" (pointerdown)="pressBag($event, c)"
                       (pointerenter)="showCard(c, $event)" (pointerleave)="hideCard()" (focus)="showCard(c, $event)" (blur)="hideCard()"
-                      (click)="tap(c, 'add', $event)" [attr.aria-label]="c.block ? c.name + ', ' + t('trade.block.' + c.block) : t('trade.add', { name: c.name })">
+                      (click)="tap(c, 'add', $event)" [attr.aria-label]="c.block ? (c.qty > 1 ? c.name + ' ×' + c.qty : c.name) + ', ' + t('trade.block.' + c.block) : t('trade.add', { name: c.qty > 1 ? c.name + ' ×' + c.qty : c.name })">
                 @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
+                @if (c.qty > 1) { <b class="trade-n" data-trade-n>×{{ c.qty }}</b> }
                 @if (c.block) { <small class="trade-block">{{ t('trade.block.' + c.block) }}</small> }
               </button>
             }

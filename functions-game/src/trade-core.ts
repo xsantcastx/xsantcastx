@@ -127,11 +127,30 @@ export interface OfferItem {
   roll?: Record<string, number>; ilvl?: number; up?: number; sockets?: (string | null)[]; reforged?: number;
   /** A Spellstone's charges (the grid release): re-checked like the roll, so a stone used since it was offered is refused. */
   ch?: number;
+  /**
+   * A satchel STACK (potions, fish, meals, logs, runes, materials; 2026-10-27): its plain stack key and how many. Its id
+   * is `stack:<sk>`. The swap re-counts the stack (folds included) and moves `qty` as one consume op on the giver and
+   * one grant op on the taker, so a merge can never make or lose any.
+   */
+  sk?: string; qty?: number;
 }
 export interface Offer { items: OfferItem[]; gold: number }
 export interface Terms { a: Offer; b: Offer }
 
 const STAT_KEY = /^[A-Za-z]{1,32}$/;
+/** A plain satchel stack key: no `:` (Vault keys `v:<tab>:<key>`, `storage:*` entitlements) and no `|` (packed ops). */
+const STACK_KEY = /^[a-z0-9][a-z0-9-]{0,63}$/;
+export const STACK_OFFER_MAX = 1_000_000;
+/** inventory-layout.ts QUEST_STACKS (pinned by trade-merge.spec): quest finds stay with their Keeper. */
+export const QUEST_STACK_KEYS: ReadonlySet<string> = new Set([
+  'kaels-hammer', 'godforge-fragment', 'shadow-root-cutting', 'rift-key', 'worn-rod', 'mirror-slate', 'mirror-slate-ii',
+  'four-hammer-marks',
+  'curio-unstruck-bell', 'curio-jar-of-noon', 'curio-blank-page', 'curio-lost-moon', 'curio-stubborn-seed', 'curio-tally-stick',
+  'curio-blinking-mirror', 'curio-unsigned-letter', 'curio-pressed-rose', 'curio-moss-locket', 'curio-lamp-wick', 'curio-kept-coal',
+  'curio-clean-ink', 'curio-backward-rings', 'curio-folded-shadow', 'curio-last-chart', 'hatbox-of-small-crowns', 'curators-loupe',
+]);
+/** True for a stack offer (`sk` + `qty`). */
+export const isStackOffer = (o: OfferItem): boolean => typeof o.sk === 'string';
 const numMap = (raw: unknown, what: string, lo: number, hi: number): Record<string, number> => {
   if (!isObj(raw)) refuse(400, 'bad-terms', `Invalid ${what}.`);
   const out: Record<string, number> = {};
@@ -155,7 +174,7 @@ const text = (v: unknown, max: number): string => {
 export function parseOfferItem(raw: unknown): OfferItem {
   if (!isObj(raw)) refuse(400, 'bad-terms', 'Invalid item.');
   const r = raw as Doc;
-  for (const k of Object.keys(r)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged', 'ch'].includes(k)) refuse(400, 'bad-terms', 'Invalid item.');
+  for (const k of Object.keys(r)) if (!['id', 'def', 'name', 'type', 'rarity', 'stats', 'roll', 'ilvl', 'up', 'sockets', 'reforged', 'ch', 'sk', 'qty'].includes(k)) refuse(400, 'bad-terms', 'Invalid item.');
   if (typeof r['id'] !== 'string' || !ID.test(r['id'])) refuse(400, 'bad-terms', 'Invalid item.');
   const out: OfferItem = {
     id: r['id'] as string, def: text(r['def'], 96), name: text(r['name'], 80), type: text(r['type'], 16), rarity: text(r['rarity'], 24),
@@ -170,6 +189,11 @@ export function parseOfferItem(raw: unknown): OfferItem {
     const s = r['sockets'];
     if (!Array.isArray(s) || s.length > 8 || s.some(x => x !== null && (typeof x !== 'string' || !ID.test(x)))) refuse(400, 'bad-terms', 'Invalid item.');
     out.sockets = (s as (string | null)[]).map(x => x ?? null);
+  }
+  if (r['sk'] !== undefined || r['qty'] !== undefined) {
+    const sk = r['sk'], qty = r['qty'];
+    if (typeof sk !== 'string' || !STACK_KEY.test(sk) || out.id !== `stack:${sk}` || !Number.isInteger(qty) || (qty as number) < 1 || (qty as number) > STACK_OFFER_MAX) refuse(400, 'bad-terms', 'Invalid item.');
+    out.sk = sk as string; out.qty = qty as number;
   }
   return out;
 }
@@ -187,7 +211,8 @@ export function parseOffer(raw: unknown): Offer {
 export function parseTerms(raw: unknown): Terms {
   if (!isObj(raw)) refuse(400, 'bad-terms', 'Invalid terms.');
   const t = { a: parseOffer((raw as Doc)['a']), b: parseOffer((raw as Doc)['b']) };
-  const ids = [...t.a.items, ...t.b.items].map(i => i.id);
+  // Both may offer the same kind of stack (each its own); an instance is only ever on one side.
+  const ids = [...t.a.items, ...t.b.items].filter(i => !isStackOffer(i)).map(i => i.id);
   if (new Set(ids).size !== ids.length) refuse(400, 'bad-terms', 'An item is offered twice.');
   return t;
 }
@@ -559,6 +584,82 @@ export function takeItem(inv: Doc, offered: OfferItem, who: string, now: number)
   inv['tombstones'] = tombs;
   return rec!;
 }
+// ── Stacks (2026-10-27): inventory-ops stackQuantity / grantStack, raw ────────────────────────────────────────────
+/** inventory-ops.ts opIdHash (pinned by trade-merge.spec): what a fold keeps of each op id it folded. */
+export function opIdHash(id: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < id.length; i++) {
+    const ch = id.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const stackOpsOf = (inv: Doc): Doc[] => (Array.isArray(inv['stackOps']) ? (inv['stackOps'] as Doc[]).filter(isObj) : []);
+const foldsOf = (inv: Doc): Doc[] => (Array.isArray(inv['stackFolds']) ? (inv['stackFolds'] as Doc[]).filter(isObj) : []);
+/** inventory-ops stackQuantity: every device's folded net plus the live ops no fold already counts, clamped at zero. */
+export function stackHeld(inv: Doc, stackKey: string): number {
+  const folds = foldsOf(inv);
+  const hashes = new Set(folds.flatMap(f => (Array.isArray(f['ids']) ? f['ids'] as string[] : [])));
+  let qty = 0;
+  for (const f of folds) qty += isObj(f['net']) ? num((f['net'] as Doc)[stackKey]) : 0;
+  const seen = new Set<string>();
+  for (const op of stackOpsOf(inv)) {
+    const id = String(op['id']);
+    if (op['stackKey'] !== stackKey || seen.has(id)) continue;
+    seen.add(id);
+    const own = folds.find(f => f['deviceId'] === op['deviceId']);
+    if ((own && num(op['hlc']) <= num(own['upToHlc'])) || (folds.length && hashes.has(opIdHash(id)))) continue;
+    qty += op['kind'] === 'grant' ? num(op['quantity']) : -num(op['quantity']);
+  }
+  return Math.max(0, qty);
+}
+/** True when an op with this id already landed on this save (live or folded): a retried swap never moves twice. */
+function knowsOp(inv: Doc, id: string): boolean {
+  if (stackOpsOf(inv).some(op => op['id'] === id)) return true;
+  return foldsOf(inv).some(f => Array.isArray(f['ids']) && (f['ids'] as string[]).includes(opIdHash(id)));
+}
+function pushStackOp(inv: Doc, id: string, stackKey: string, kind: 'grant' | 'consume', quantity: number, now: number): void {
+  if (knowsOp(inv, id)) return;
+  const ops = stackOpsOf(inv);
+  const hlc = Math.max(now, num(inv['hlc']) + 1);
+  const sequence = Math.max(0, ...ops.filter(o => o['deviceId'] === TRADE_DEVICE).map(o => num(o['sequence']))) + 1;
+  inv['stackOps'] = [...ops, { id, stackKey, kind, quantity, hlc, deviceId: TRADE_DEVICE, sequence }];
+  inv['hlc'] = hlc;
+}
+/** Why a stack cannot change hands, or null: quest finds stay; the satchel's own key only (never a Vault key). */
+export function untradeableStack(stackKey: string): string | null {
+  if (!STACK_KEY.test(stackKey)) return 'That cannot be traded.';
+  if (QUEST_STACK_KEYS.has(stackKey)) return 'Quest items stay with their Keeper.';
+  return null;
+}
+/** Take `offered.qty` of a satchel stack out of a save: one consume op (`opId`), refused when it is no longer held. */
+export function takeStack(inv: Doc, offered: OfferItem, who: string, opId: string, now: number): void {
+  const sk = offered.sk ?? '', qty = offered.qty ?? 0;
+  const why = untradeableStack(sk);
+  if (why) refuse(409, 'untradeable', why);
+  if (knowsOp(inv, opId)) return;
+  if (stackHeld(inv, sk) < qty) refuse(409, 'item-gone', `${who} no longer holds ${qty} ${offered.name}.`);
+  pushStackOp(inv, opId, sk, 'consume', qty, now);
+}
+/** Put `qty` of a stack into a save: one grant op (`opId`), and the stack's record if it never held that kind. */
+export function giveStack(inv: Doc, stackKey: string, qty: number, opId: string, now: number): void {
+  const records = inv['records'] as Doc[];
+  const live = records.some(r => isObj(r) && r['kind'] === 'stack' && r['stackKey'] === stackKey && r['source'] === 'inventory');
+  if (!live) {
+    const hlc = Math.max(now, num(inv['hlc']) + 1);
+    inv['records'] = [...records, {
+      id: `stack:${stackKey}`, definitionId: stackKey, kind: 'stack', category: 'materials', tags: ['material', stackKey], soulbound: false,
+      acquiredAt: new Date(now).toISOString(), revision: { hlc, deviceId: TRADE_DEVICE, sequence: 1 }, source: 'inventory', stackKey, location: { kind: 'bag' },
+    }];
+    inv['hlc'] = hlc;
+  }
+  pushStackOp(inv, opId, stackKey, 'grant', qty, now);
+}
+
 /** Put an item into a save as a fresh record under `newId`, in the satchel. */
 export function giveItem(inv: Doc, rec: Doc, newId: string, now: number): void {
   const instances = (inv['records'] as Doc[]).filter(r => r['kind'] === 'instance').length;
@@ -718,9 +819,16 @@ async function swap(
   try {
     const inv = { a: readInventory(invA, nameOf('a')), b: readInventory(invB, nameOf('b')) };
     const eco = movesGold ? { a: readEconomy(ecoA, nameOf('a')), b: readEconomy(ecoB, nameOf('b')) } : null;
-    const taken = { a: terms.a.items.map(i => takeItem(inv.a, i, nameOf('a'), now)), b: terms.b.items.map(i => takeItem(inv.b, i, nameOf('b'), now)) };
-    taken.a.forEach((rec, i) => giveItem(inv.b, rec, `t${hashId(`${tradeId}:${terms.a.items[i].id}`)}`, now));
-    taken.b.forEach((rec, i) => giveItem(inv.a, rec, `t${hashId(`${tradeId}:${terms.b.items[i].id}`)}`, now));
+    // An instance moves as its record; a stack as one consume op on the giver and one grant op (the received id) on the taker.
+    const take = (s: 'a' | 'b') => terms[s].items.map(i => (isStackOffer(i)
+      ? (takeStack(inv[s], i, nameOf(s), `x${hashId(`${tradeId}:${s}:${i.id}`)}`, now), null)
+      : takeItem(inv[s], i, nameOf(s), now)));
+    const taken = { a: take('a'), b: take('b') };
+    const give = (from: 'a' | 'b', to: 'a' | 'b') => taken[from].forEach((rec, i) => {
+      const o = terms[from].items[i], newId = `t${hashId(`${tradeId}:${o.id}`)}`;
+      if (rec) giveItem(inv[to], rec, newId, now); else giveStack(inv[to], o.sk!, o.qty!, newId, now);
+    });
+    give('a', 'b'); give('b', 'a');
     if (eco) {
       // Each must hold what it offers; only the difference moves (one op a side, never a debit that cannot land).
       if (spendableGold(eco.a) < terms.a.gold) refuse(409, 'gold', `${nameOf('a')} does not hold that much Gold.`);
@@ -741,8 +849,8 @@ async function swap(
     tx.set(tradePath(tradeId), { ...trade, ...extra, status: 'done', confirms, terms, doneAt: now } as unknown as Doc);
     tx.set(auditPath(`trade-${tradeId}`), {
       kind: 'trade', at: now, trade: tradeId, ...extra,
-      a: { uid: trade.a.uid, character: chars.a, name: nameOf('a'), gave: terms.a.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity })), gold: terms.a.gold },
-      b: { uid: trade.b.uid, character: chars.b, name: nameOf('b'), gave: terms.b.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity })), gold: terms.b.gold },
+      a: { uid: trade.a.uid, character: chars.a, name: nameOf('a'), gave: terms.a.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity, ...(i.qty ? { qty: i.qty } : {}) })), gold: terms.a.gold },
+      b: { uid: trade.b.uid, character: chars.b, name: nameOf('b'), gave: terms.b.items.map(i => ({ id: i.id, name: i.name, rarity: i.rarity, ...(i.qty ? { qty: i.qty } : {}) })), gold: terms.b.gold },
     });
     return { status: 'done', received: { items: receivedIds(tradeId, terms[other]), gold: terms[other].gold } };
   } catch (e) {
@@ -852,6 +960,8 @@ export async function dropItem(db: Db, uid: string, body: unknown, now: number):
   const character = typeof b['character'] === 'string' && CHARACTER.test(b['character']) ? b['character'] as string : refuse(400, 'bad-request', 'Invalid character.');
   const area = typeof b['area'] === 'string' && AREA.test(b['area']) ? b['area'] as string : refuse(400, 'bad-request', 'Invalid area.');
   const offered = parseOfferItem(b['item']);
+  // A stack on the shared ground is not built yet (verb-matrix T1): only a held instance is dropped here.
+  if (isStackOffer(offered)) refuse(400, 'bad-request', 'Stacks are set down on your own ground for now.');
   const x = coord(b['x']) as number, y = coord(b['y']) as number;
   const gid = groundId(uid, offered.id);
   return db.run(async tx => {
