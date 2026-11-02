@@ -1114,9 +1114,13 @@ export class HdFigure {
 }
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-/** The bake budget: at most ~3 ms of sculpting in any 16 ms window (a crowd appearing spreads over a few frames; the iso ground bakes in the same frame). */
-let windowAt = 0, spent = 0;
-function budget(): boolean { const t = now(); if (t - windowAt > 16) { windowAt = t; spent = 0; } return spent < 3; }
+/**
+ * The bake budget, a share of the wall clock: sculpting may take a twentieth of the time (≈0.8 ms each 16 ms, banked up to
+ * 3 ms), and a bake that ran long is paid back before the next starts. A window reset every 16 ms let a slow phone (a
+ * frame of 60–100 ms, one cell 20+ ms at CPU ×6) bake a cell on every frame of a town's crowd (iso perf, 2026-11-02).
+ */
+let bank = 3, bankAt = 0, spent = 0;
+function budget(): boolean { const t = now(); bank = Math.min(3, bank + (t - bankAt) * .05 - spent); spent = 0; bankAt = t; return bank > 0; }
 
 /** Figures by source key, least recently used last out (a town square's crowd and the party fit; the rest re-bake). */
 const figures = new Map<string, HdFigure>();
