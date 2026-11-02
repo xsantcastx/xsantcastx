@@ -182,7 +182,7 @@
     }
   }
   <!-- Trading and ground drops (Hearth protocol 6): the window, the "wants to trade" toast, the ground's pictures. -->
-  @if (topDown) { <app-trade-hud [room]="tradeRoom" [social]="social" [engine]="tradeEngine" [cardFor]="tradeCard" (said)="tradeSaid($event)" /> }
+  @if (topDown) { <app-trade-hud [room]="tradeRoom" [social]="social" [engine]="tradeEngine" [cardFor]="tradeCard" [stackCardFor]="tradeStackCard" (said)="tradeSaid($event)" /> }
   <!-- Another Keeper, tapped in the world (td-peers): who they are, and a Wave that shows over both of you. -->
   @if (topDown && peerCard; as pc) {
     <section class="td-peer" role="dialog" aria-modal="false" aria-labelledby="td-peer-name" data-peer-card [attr.data-peer-id]="pc.id" data-engine-ignore>

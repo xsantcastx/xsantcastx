@@ -17,11 +17,14 @@ import { TranslationService } from '../../translation.service';
 import type { RoomGround, RoomGroundNote, RoomSnapshot, RoomTrade, RoomTradeAsk, RoomTradeCommit, RoomTradeEnd, SocialRoom } from '../social/social-room';
 import { TradeBackendService } from './trade-backend.service';
 import { GroundFlow, TradeFlow } from './trade-flow';
-import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, itemFromOffer, offerItemOf, tradeBlock, type OfferItem } from './trade-items';
+import { TRADE_MAX_GOLD, TRADE_MAX_ITEMS, groupOffers, satchelGroups, itemFromOffer, offerItemOf, stackOfferOf, tradeBlock, type OfferItem } from './trade-items';
 import { TRADE_I18N } from './trade.i18n';
 import { DropTargetDirective } from '../../shared/inventory-grid/drop-target.directive';
 import { ItemDragService, type DragHeld, type DropTarget } from '../../shared/inventory-grid/item-drag.service';
 import { footprintOf } from '../../shared/rpg/item-footprint';
+import { pieceLookOf } from '../../shared/inventory-grid/piece-look';
+import { slotClassOf } from '../../shared/rpg/inventory-layout';
+import type { GridView, Piece } from '../../shared/rpg/inventory-grid';
 
 /** An item's card as the HUD draws it in the satchel (name, what it is, its lines, how it compares). */
 export interface TradeCard { name: string; kicker: string; tone?: string | null; note: string; stats: string[]; compare?: { label?: string; text?: string }[]; compareLabel?: string }
@@ -32,7 +35,11 @@ interface GroundEngine {
   dropSpot?: () => { x: number; y: number };
   setSharedGround?: (items: readonly RoomGround[]) => void;
 }
-interface Cell { id: string; name: string; art: string; mark: string; tone: string; item: GameItem; block?: string | null }
+/**
+ * One entry in a window: a single item, a pile of identical ones, or a stack (`sk`), with how many (`qty`) — the satchel's
+ * own grouping, so a stack of 5 potions is one entry ×5, never five, and never missing (owner 2026-10-27).
+ */
+interface Cell { id: string; name: string; art: string; mark: string; tone: string; item: GameItem | null; block?: string | null; qty: number; ids: string[]; sk?: string }
 
 const tone = (rarity: string) => `var(--cozy-loot-${rarity}, var(--cozy-loot-common))`;
 const mark = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '·';
@@ -50,6 +57,8 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   @Input() social: RoomSnapshot | null = null;
   @Input() engine: unknown;
   @Input() cardFor: ((item: GameItem) => TradeCard) | null = null;
+  /** A satchel stack's card (its satchel card), or null for a kind this Keeper does not hold. */
+  @Input() stackCardFor: ((stackKey: string) => TradeCard | null) | null = null;
   /** A line for the Game log (and the message strip). */
   @Output() readonly said = new EventEmitter<string>();
 
@@ -81,6 +90,8 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   card: { card: TradeCard; left: number; top: number } | null = null;
   goldDraft = 0;
   busy = false;
+  /** The "how many?" bar for a pile or a stack (Split): which entry, and the amount chosen (all of it to start). */
+  amount: { cell: Cell; n: number } | null = null;
   private goldTimer?: ReturnType<typeof setTimeout>;
   private askTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -143,14 +154,48 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   get theirs(): OfferItem[] { return this.trade ? this.trade.offers[this.other].items : []; }
   get locked(): boolean { const t = this.trade; return !t || t.confirmed.a || t.confirmed.b || !['open', 'confirm'].includes(this.flow.status.stage); }
   get purse(): number { return Math.floor(this.economy.snapshot.gold); }
-  /** The satchel's loose items, offered ones left out; the ones that cannot be traded say why. */
+  /**
+   * The WHOLE satchel as its grid holds it (inventory-grid.ts), in grid order: every instance pile and every stack, one
+   * entry per kind with its count, what is already offered taken off. A pile of identical things is one entry, a stack
+   * one entry with its total. What cannot be traded stays listed, greyed, saying why (worn, bound, kept tools, quest
+   * finds). It used to read `snapshot.bag` — the gear instances alone, one cell each — so every stack was missing and
+   * every pile came apart.
+   */
   get satchel(): Cell[] {
-    const offered = new Set(this.mine.map(i => i.id));
-    return (this.inventory.snapshot.bag ?? []).filter(i => !offered.has(i.id) && !this.groundFlow.isPending(i.id)).map(i => ({ ...this.cell(i), block: tradeBlock(i) }));
+    const snap = this.inventory.snapshot, grid = snap.grid.bag, mine = this.mine;
+    const pending = grid.pieces.concat(grid.held).flatMap(p => p.ids).filter(id => this.groundFlow.isPending(id)).join(',');
+    const memo = this.satchelMemo;
+    if (memo && memo.grid === grid && memo.mine === mine && memo.pending === pending && memo.stacks === snap.stacks) return memo.cells;
+    const cells = this.satchelCells(grid, mine);
+    this.satchelMemo = { grid, mine, pending, stacks: snap.stacks, cells };
+    return cells;
   }
-  cellsOf(items: OfferItem[]): Cell[] { return items.map(o => this.cell(itemFromOffer(o))); }
+  private satchelMemo: { grid: GridView; mine: OfferItem[]; pending: string; stacks: unknown; cells: Cell[] } | null = null;
+  private satchelCells(grid: GridView, mine: OfferItem[]): Cell[] {
+    const snap = this.inventory.snapshot;
+    const quest = snap.stacks.filter(st => slotClassOf(st.stackKey) === 'quest');
+    const out: Cell[] = [];
+    for (const g of satchelGroups(grid, quest, mine, id => this.groundFlow.isPending(id))) {
+      if (g.sk) { out.push({ ...this.stackCell(g.sk, g.qty), ...(g.quest ? { block: 'quest' } : {}) }); continue; }
+      const item = snap.items.find(i => i.id === g.ids[0]);
+      if (item) out.push({ ...this.cell(item), ids: g.ids, qty: g.qty, block: tradeBlock(item) });
+    }
+    return out;
+  }
+  /** A window's offers as entries: a stack once with its amount, identical instances once with every id. */
+  cellsOf(items: OfferItem[]): Cell[] {
+    return groupOffers(items).map(g => (g.first.sk
+      ? this.stackCell(g.first.sk, g.qty, g.first.name)
+      : { ...this.cell(itemFromOffer(g.first)), ids: g.ids, qty: g.qty }));
+  }
   private cell(item: GameItem): Cell {
-    return { id: item.id, name: (item.upgradeLevel ?? 0) > 0 ? `${item.name} +${item.upgradeLevel}` : item.name, art: itemArt(item)?.src ?? '', mark: mark(item.name), tone: tone(item.rarity), item };
+    return { id: item.id, name: (item.upgradeLevel ?? 0) > 0 ? `${item.name} +${item.upgradeLevel}` : item.name, art: itemArt(item)?.src ?? '', mark: mark(item.name), tone: tone(item.rarity), item, ids: [item.id], qty: 1 };
+  }
+  private stackCell(sk: string, qty: number, offeredName = ''): Cell {
+    const piece: Piece = { key: `s:${sk}#0`, kind: 'stack', ids: [], storeKey: sk, stackKey: sk, pile: 0, qty, w: 1, h: 1, cell: -1, pileKey: null, rev: null };
+    const look = pieceLookOf(this.inventory.snapshot, piece);
+    const name = (look.name && look.name !== sk ? look.name : offeredName) || look.name || sk;
+    return { id: `stack:${sk}`, name, art: look.art, mark: look.mark, tone: look.tone ?? tone('common'), item: null, qty, ids: [`stack:${sk}`], sk };
   }
   emptySlots(n: number): number[] { return Array.from({ length: Math.max(0, Math.min(TRADE_MAX_ITEMS, 4) - n) }, (_, i) => i); }
 
@@ -159,14 +204,15 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     accepts: (held: DragHeld) => !this.locked && held.ref.kind === 'instance' && !!held.item && (held.from === 'b' || held.from === 'held') && !tradeBlock(held.item),
     drop: (held: DragHeld) => {
       if (!held.item) return false;
-      void this.add(this.cell(held.item));
+      const id = held.item.id;
+      void this.add(this.satchel.find(c => c.ids.includes(id)) ?? this.cell(held.item));
       return true;
     },
   };
 
   /** The window's own satchel cells are the satchel too: a drag from one onto "You offer" (or the window) offers it. */
   pressBag(ev: PointerEvent, c: Cell): void {
-    if (c.block || this.locked) return;
+    if (c.block || this.locked || !c.item) return;
     const fp = footprintOf(c.item);
     this.drag.press(ev, {
       ref: { kind: 'instance', ids: [c.id] }, from: 'b', w: fp.w, h: fp.h, grabDx: 0, grabDy: 0,
@@ -174,15 +220,49 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     });
   }
 
+  /** Offer an entry: one thing at once; a pile or a stack asks how many first (all of it to start). */
   async add(c: Cell): Promise<void> {
     const t = this.trade;
     if (!t || this.locked || c.block) return;
-    if (this.mine.length >= TRADE_MAX_ITEMS) { this.said.emit(this.t('trade.full', { n: TRADE_MAX_ITEMS })); return; }
-    await this.sendOffer([...this.mine, offerItemOf(c.item)], this.goldDraft);
+    if (c.qty > 1) { this.amount = { cell: c, n: c.qty }; this.cdr.markForCheck(); this.showAmount(); return; }
+    await this.offer(c, 1);
   }
+  /** Offer `n` of an entry: a stack as one offer of n (joining what is already offered), a pile as n of its pieces. */
+  async offer(c: Cell, n: number): Promise<void> {
+    if (!this.trade || this.locked || c.block) return;
+    n = Math.max(1, Math.min(c.qty, Math.floor(n) || 1));
+    let next: OfferItem[];
+    if (c.sk) {
+      const had = this.mine.find(o => o.sk === c.sk);
+      const entry = stackOfferOf(c.sk, c.name, (had?.qty ?? 0) + n);
+      next = had ? this.mine.map(o => (o === had ? entry : o)) : [...this.mine, entry];
+    } else {
+      const items = c.ids.slice(0, n).map(id => (c.item?.id === id ? c.item : this.inventory.itemById(id))).filter((i): i is GameItem => !!i);
+      next = [...this.mine, ...items.map(offerItemOf)];
+    }
+    if (next.length > TRADE_MAX_ITEMS) { this.said.emit(this.t('trade.full', { n: TRADE_MAX_ITEMS })); return; }
+    this.amount = null;
+    await this.sendOffer(next, this.goldDraft);
+  }
+  setAmount(raw: string | number): void {
+    const a = this.amount;
+    if (!a) return;
+    a.n = Math.max(1, Math.min(a.cell.qty, Math.floor(Number(raw) || 1)));
+    this.cdr.markForCheck();
+  }
+  stepAmount(by: number): void { if (this.amount) this.setAmount(this.amount.n + by); }
+  confirmAmount(): void { const a = this.amount; if (a) void this.offer(a.cell, a.n); }
+  closeAmount(): void { this.amount = null; this.cdr.markForCheck(); }
+  /** The bar opens under the entry's list; on a phone the list may be scrolled away from it. */
+  private showAmount(): void {
+    if (typeof document === 'undefined') return;
+    setTimeout(() => document.querySelector('[data-trade-amount]')?.scrollIntoView?.({ block: 'nearest' }), 0);
+  }
+  /** Take an entry back: all of it (every piece of a pile, the whole amount of a stack). */
   async remove(c: Cell): Promise<void> {
     if (!this.trade || this.locked) return;
-    await this.sendOffer(this.mine.filter(i => i.id !== c.id), this.goldDraft);
+    const ids = new Set(c.ids);
+    await this.sendOffer(this.mine.filter(i => !ids.has(i.id)), this.goldDraft);
   }
   setGold(raw: string | number): void {
     const n = Math.max(0, Math.min(this.purse, TRADE_MAX_GOLD, Math.floor(Number(raw) || 0)));
@@ -273,6 +353,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   /** Esc: the card, then the window (a Cancel), then the toast (Not now). True when something was put away. */
   escape(): boolean {
     if (this.card) { this.card = null; this.cdr.markForCheck(); return true; }
+    if (this.amount) { this.closeAmount(); return true; }
     if (this.trade) { void this.cancel(); return true; }
     const a = this.ask;
     if (a) { void this.answer(a, false); return true; }
@@ -282,7 +363,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   // ── Cards ──
   showCard(c: Cell, ev: PointerEvent | FocusEvent): void {
     if (ev instanceof PointerEvent && ev.pointerType !== 'mouse') return;
-    const card = this.cardFor?.(c.item);
+    const card = this.cardOf(c);
     if (!card) return;
     const el = ev.currentTarget as HTMLElement | null;
     const r = el?.getBoundingClientRect?.();
@@ -292,13 +373,20 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     this.card = { card, left, top };
   }
   hideCard(): void { this.card = null; }
+  /** An entry's card: an item's satchel card, a stack's satchel card, or (a kind this Keeper does not hold) its name and count. */
+  private cardOf(c: Cell): TradeCard | null {
+    if (c.item) return this.cardFor?.(c.item) ?? null;
+    const own = c.sk ? this.stackCardFor?.(c.sk) ?? null : null;
+    const n = this.t('trade.count', { n: c.qty });
+    return own ? { ...own, stats: [n, ...own.stats] } : { name: c.name, kicker: this.t('trade.stackKicker'), tone: c.tone, note: '', stats: [n] };
+  }
   /** A tap on a phone: the card first; a second tap on the same cell acts (offer / take back). */
   private tapped = '';
   tap(c: Cell, act: 'add' | 'remove' | 'look', ev: Event): void {
     const touch = (ev as PointerEvent).pointerType && (ev as PointerEvent).pointerType !== 'mouse';
     if (touch && this.tapped !== c.id) {
       this.tapped = c.id;
-      const card = this.cardFor?.(c.item);
+      const card = this.cardOf(c);
       if (card) this.card = { card, left: 8, top: 8 };
       return;
     }

@@ -464,12 +464,22 @@ export interface Sprite {
   floor?: { img: HTMLCanvasElement; x: number; y: number };
   /** Image px per world px (the art-direction prototype's HD sprites, td-hd-art.ts): `img`/`roof` drawn at 1/k; ax, ay in image px. */
   k?: number;
+  /** What it is, for the isometric view's own structure (td-hd-structures.ts): a house or a stall built at that angle. */
+  iso?: IsoSpec;
 }
+/** A structure the isometric view builds itself (td-hd-structures.ts) instead of standing this sprite up. */
+export type IsoSpec =
+  | { kind: 'house'; w: number; d: number; roof: RoofStyle; wall: WallStyle; chimney: boolean; seed: number }
+  | { kind: 'stall'; w: number; palette: number; goods: 'pots' | 'bread' | 'gems' | 'tools' | 'books' | 'fish'; seed: number };
 
 const cache = new Map<string, Sprite>();
+/** Each cached sprite's key (its painter and seed): the isometric view finds its own art by it (td-iso-props.ts). */
+const KEYS = new WeakMap<Sprite, string>();
+/** The cache key a sprite was painted under (`tree:oak:3`, `barrel`, `fence:3`…), or undefined for one painted fresh. */
+export function spriteKey(sp: Sprite): string | undefined { return KEYS.get(sp); }
 function cached(key: string, make: () => Sprite): Sprite {
   let s = cache.get(key);
-  if (!s) { s = make(); if (GROWN.has(key.replace(/[-:].*$/, '')) && !NOT_GROWN.some(n => key.startsWith(n))) s = grownSprite(s); cache.set(key, s); }
+  if (!s) { s = make(); if (GROWN.has(key.replace(/[-:].*$/, '')) && !NOT_GROWN.some(n => key.startsWith(n))) s = grownSprite(s); cache.set(key, s); KEYS.set(s, key); }
   return s;
 }
 
@@ -577,6 +587,7 @@ export function house(w: number, d: number, roof: RoofStyle, wall: WallStyle, ch
       img: outlined, ax: W / 2 + 1, ay: H + 1,
       roof: { img: roofOut, x: -(W / 2) - 3, y: -H - 3 },
       lights: wins, smoke,
+      iso: { kind: 'house', w, d, roof, wall, chimney, seed },
     };
   });
 }
@@ -619,7 +630,7 @@ export function stall(widthTiles: number, palette: number, goods: 'pots' | 'brea
       lights.push({ x: x + 1 - W / 2, y: 14 - H, r: 6, warm: true });
     }
     const out = outline(img);
-    return { img: out, ax: W / 2 + 1, ay: H + 1, lights };
+    return { img: out, ax: W / 2 + 1, ay: H + 1, lights, iso: { kind: 'stall', w: widthTiles, palette, goods, seed } };
   });
 }
 
@@ -629,7 +640,7 @@ export function tree(kind: 'oak' | 'pine' | 'fruit', seed = 0): Sprite {
   const v = ((seed % 6) + 6) % 6;
   // Environment detail Low (td-detail.ts): the old clean tree with just a soft shadow.
   // The art-direction prototype's option B (td-artopt.ts): the HD oak.
-  if (optHdWorld() && kind !== 'pine' && envDetail() !== 'low') { const key = `hd-tree:${v}`; let sp = cache.get(key); if (!sp) cache.set(key, sp = hdOak(v)); return sp; }
+  if (optHdWorld() && kind !== 'pine' && envDetail() !== 'low') { const key = `hd-tree:${v}`; let sp = cache.get(key); if (!sp) { cache.set(key, sp = hdOak(v)); KEYS.set(sp, key); } return sp; }
   if (envDetail() === 'low') return cached(`low-tree:${kind}:${v}`, () => ({ ...flatTree(kind, v), shadow: { img: shadowSprite(kind === 'pine' ? 26 : 34, 11), x: kind === 'pine' ? -10 : -14, y: -7 } }));
   return cached(`tree:${kind}:${v}`, () => kind === 'pine' ? pineTree(v) : broadleafTree(kind, v));
 }
