@@ -13,7 +13,7 @@
  * `drawArrow` (one in flight) and `drawBeast` (a called beast or one of the stampede, y-sorted with the world).
  */
 import { mobCell } from './td-mobs';
-import { burst, drawBurst, glowSquare, groundRing, linePixels, type Tones } from './td-fx';
+import { burst, drawBurst, glowSquare, groundRing, layFlat, linePixels, standAt, type Tones } from './td-fx';
 import { PET_H, PET_W, petFrameIndex, petSheet, type TdPetFrame } from './td-pet-art';
 import { SPIRIT_BEAST } from './td-thorn';
 import { optHdFigures } from './td-artopt';
@@ -66,6 +66,7 @@ export function drawThornZones(c: Ctx, zones: readonly ZoneLike[], time: number,
         const X = Math.round(q.x), Y = Math.round(q.y), f = still ? 0 : Math.floor(time * 3 + i) % 2;
         c.globalAlpha = .7 * fade; c.fillStyle = THORN_FX.briar.edge; c.fillRect(X - 6, Y - 1, 12, 3);
         c.globalAlpha = fade;
+        standAt(c, X, Y);
         for (const [dx, h] of [[-5, 4], [-2, 6], [1, 5], [4, 3]] as const) {
           const hh = h + (dx % 2 ? f : 0);
           c.fillStyle = THORN_FX.briar.body; c.fillRect(X + dx, Y - hh, 1, hh);
@@ -73,6 +74,7 @@ export function drawThornZones(c: Ctx, zones: readonly ZoneLike[], time: number,
           c.fillStyle = THORN_FX.briar.edge; c.fillRect(X + dx + 1, Y - hh + 2, 1, 1);
         }
         c.fillStyle = LEAF; c.fillRect(X - 3, Y - 3, 2, 1); c.fillStyle = LEAF_HI; c.fillRect(X + 2, Y - 4, 1, 1);
+        layFlat(c);
       });
     } else if (z.kind === 'trap') {
       // A trap: a ring of bramble on the ground, its jaws of thorn closed, a faint ring of where it reaches.
@@ -80,10 +82,12 @@ export function drawThornZones(c: Ctx, zones: readonly ZoneLike[], time: number,
       c.globalAlpha = .35 * fade;
       for (const [i, q] of groundRing(R).entries()) if (i % 4 === 0) { c.fillStyle = THORN_FX.briar.core; c.fillRect(X + q.x, Y + q.y, 1, 1); }
       c.globalAlpha = fade;
+      standAt(c, X, Y);
       c.fillStyle = THORN_FX.briar.edge; c.fillRect(X - 5, Y - 2, 10, 4);
       c.fillStyle = THORN_FX.briar.body; c.fillRect(X - 4, Y - 2, 8, 3);
       for (const dx of [-4, -1, 2]) { c.fillStyle = THORN_FX.briar.core; c.fillRect(X + dx, Y - 4, 1, 2); c.fillRect(X + dx + 1, Y + 1, 1, 2); }
       c.fillStyle = LEAF; c.fillRect(X - 1, Y - 1, 2, 1);
+      layFlat(c);
     }
   }
   c.globalAlpha = 1;

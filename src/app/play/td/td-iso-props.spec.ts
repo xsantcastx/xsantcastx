@@ -20,6 +20,8 @@ describe('td-iso-props: the isometric twins', () => {
   it('a twin is found from the top-down sprite (its cache key), and none for an unknown painter', () => {
     isoPropsFrame(performance.now() + 1000);
     expect(spriteKey(barrel())).toBe('barrel');
+    // A bake is two steps on two frames: the shapes, then the shading.
+    if (!isoArt(barrel())) { isoPropsFrame(performance.now() + 1000); }
     expect(isoArt(barrel())).not.toBeNull();
     isoPropsFrame(performance.now() + 1000);
     expect(isoArt({ img: document.createElement('canvas'), ax: 0, ay: 0 })).toBeNull();

@@ -18,7 +18,8 @@
  *   on the camera's side (its north or west neighbour is the room's floor) drops to a stub, so the room shows its inside;
  *   its back walls stand.
  * - Anywhere, the walls in a short wedge in front of the Keeper are **dithered** (every other iso px cleared, the classic
- *   see-through), so he is never hidden and the wall still reads; Low cuts them to stubs instead.
+ *   see-through), so he is never hidden and the wall still reads; Low cuts them to stubs instead, and a free-standing
+ *   post or one-tile pillar always drops to its stub (a dithered column reads as a ghost).
  * The room is found again only when the Keeper changes tile (a flood fill of at most ROOM_CAP tiles).
  */
 import { rampOf } from './td-hd-sculpt';
@@ -217,7 +218,7 @@ function paintBlock(mat: Mat, sh: WallShape, H: number, h0: number, cut: boolean
 const CYC = [7, 6, 8] as const;
 
 /** A wall block standing on the floor: its tile, its foot in iso px, the full block and the stub; a doorway's lintel its axis. */
-export interface IsoWall { c: number; r: number; X: number; Y: number; full: IsoBlock; stub: IsoBlock; lintel?: 'x' | 'y' }
+export interface IsoWall { c: number; r: number; X: number; Y: number; full: IsoBlock; stub: IsoBlock; lintel?: 'x' | 'y'; /** A free-standing post or one-tile pillar (no wall runs on from it west or north). */ post?: boolean }
 
 /**
  * The wall blocks (and doorway lintels) among the tiles `list` (c, r pairs) whose foot lies in the HD rectangle
@@ -246,7 +247,9 @@ export function planWalls(list: ArrayLike<number>, X0: number, Y0: number, w: nu
     if (!so && !ea && block(c, r - 1) && block(c - 1, r)) continue;
     const m = wallMat(ground(c, r));
     const sh: WallShape = { south: so, east: ea, postS: c % 3 === 0, postE: r % 3 === 0, endS: so && !block(c - 1, r), endE: ea && !block(c, r - 1), v: ((c * 7 + r * 13) % 4 + 4) % 4 };
-    walls.push({ c, r, X, Y, full: isoBlock(m, sh, false), stub: isoBlock(m, sh, true) });
+    // A post: both faces show and no wall runs on from it, west or north (an inn's pillar, a lone stub of wall).
+    const post = so && ea && !block(c - 1, r) && !block(c, r - 1);
+    walls.push({ c, r, X, Y, full: isoBlock(m, sh, false), stub: isoBlock(m, sh, true), ...(post ? { post } : {}) });
   }
   return walls;
 }
@@ -309,7 +312,8 @@ export class IsoCutaway {
       const b = wl.lintel === 'x' ? this.state(wl.c + 1, wl.r) : this.state(wl.c, wl.r + 1);
       s = Math.max(s, a, b) as 0 | 1 | 2;
     }
-    return s === 2 ? wl.stub : s === 1 ? (envDetail() === 'low' ? wl.stub : isoDither(wl.full)) : wl.full;
+    // In the wedge a post drops to its stub (a dithered pillar is a ghost column in front of the Keeper, Director 2026-10-27).
+    return s === 2 ? wl.stub : s === 1 ? (wl.post || envDetail() === 'low' ? wl.stub : isoDither(wl.full)) : wl.full;
   }
 }
 // Neighbours: north, south, west, east.

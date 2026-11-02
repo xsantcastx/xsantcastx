@@ -16,7 +16,7 @@
  *   nothing. Reduced motion: no pulses and no motes; only the rim.
  * All whole pixels; nothing is cached per frame but a ring's pixel list per size, and two small scratch canvases.
  */
-import type { Tones } from './td-fx';
+import { sq, type Tones } from './td-fx';
 
 export interface AuraLook {
   /** White-hot core, body, edge: the element's three tones (effects-spec rule 2). */
@@ -81,7 +81,7 @@ export const AURA_PULSE_LIFE = .75;
  */
 export function auraWave(c: CanvasRenderingContext2D, X: number, Y: number, reach: number, k: number, look: AuraLook, strength = 1): void {
   if (k <= 0 || k >= 1) return;
-  const e = 1 - (1 - k) * (1 - k), rx = Math.max(3, Math.round(4 + (reach - 4) * e)), ry = Math.max(2, Math.round(rx * .48));
+  const e = 1 - (1 - k) * (1 - k), rx = Math.max(3, Math.round(4 + (reach - 4) * e)), ry = Math.max(2, Math.round(rx * sq(.48)));
   const fade = (k < .15 ? k / .15 : 1) * (1 - k) * (1 - k * .3);
   const was = c.globalAlpha, op = c.globalCompositeOperation, I = Math.min(1.2, look.intensity) * strength;
   c.globalCompositeOperation = 'lighter';

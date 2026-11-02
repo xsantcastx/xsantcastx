@@ -13,7 +13,7 @@
  * `drawKindle` (a flare in flight).
  */
 import { mobCell } from './td-mobs';
-import { burst, circlePixels, discRows, drawBurst, drawRing, glowSquare, groundRing, type Tones } from './td-fx';
+import { burst, circlePixels, discRows, drawBurst, drawRing, glowSquare, groundRing, layFlat, sq, standAt, type Tones } from './td-fx';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -57,7 +57,7 @@ export function drawLampZones(c: Ctx, zones: readonly ZoneLike[], time: number, 
       // A warm floor, stepped (brighter toward the fire), then a ring of warm light just inside the stones.
       for (const [k, al] of [[1, .14], [.6, .14]] as const) {
         c.globalAlpha = al * fade; c.fillStyle = LAMP_FX.hearth.body;
-        for (const row of discRows(Math.round(R * k))) c.fillRect(X - row.w, Y + Math.round(row.y / 2), row.w * 2 + 1, 1);
+        for (const row of discRows(Math.round(R * k))) c.fillRect(X - row.w, Y + Math.round(row.y * sq(.5)), row.w * 2 + 1, 1);
       }
       const ring = groundRing(R);
       c.globalAlpha = .55 * fade;
@@ -67,21 +67,23 @@ export function drawLampZones(c: Ctx, zones: readonly ZoneLike[], time: number, 
       ring.forEach((q, i) => { if (i % 5) return; c.fillStyle = STONE_LO; c.fillRect(X + q.x - 2, Y + q.y - 1, 4, 3); c.fillStyle = STONE; c.fillRect(X + q.x - 2, Y + q.y - 1, 3, 2); c.fillStyle = '#efe6dc'; c.fillRect(X + q.x - 2, Y + q.y - 1, 1, 1); });
       // The little fire: logs, then a flame stepping between two heights.
       const f = still ? 0 : Math.floor(time * 6) % 2;
+      standAt(c, X, Y);
       c.fillStyle = POLE; c.fillRect(X - 4, Y - 1, 8, 2); c.fillStyle = POLE_HI; c.fillRect(X - 4, Y - 1, 3, 1);
       c.fillStyle = LAMP_FX.hearth.edge; c.fillRect(X - 3, Y - 4 - f, 6, 3 + f);
       c.fillStyle = LAMP_FX.hearth.body; c.fillRect(X - 2, Y - 6 - f, 4, 4 + f);
       c.fillStyle = LAMP_FX.hearth.core; c.fillRect(X - 1, Y - 5 - f, 2, 3);
+      layFlat(c);
     } else if (z.kind === 'dawn') {
       // Three stepped discs of daylight, the inner ones on top, then the turning sun-ring.
       const steps: [number, string, number][] = [[1, LAMP_FX.lamp.body, .22], [.66, LAMP_FX.lamp.core, .28], [.33, '#ffffff', .36]];
       for (const [k, col, a] of steps) {
         c.globalAlpha = a * fade; c.fillStyle = col;
-        for (const row of discRows(Math.round(R * k))) c.fillRect(X - row.w, Y + Math.round(row.y / 2), row.w * 2 + 1, 1);
+        for (const row of discRows(Math.round(R * k))) c.fillRect(X - row.w, Y + Math.round(row.y * sq(.5)), row.w * 2 + 1, 1);
       }
       c.globalAlpha = fade;
       const turn = still ? 0 : time * .4;
       for (let i = 0; i < 12; i++) {
-        const a = turn + i / 12 * Math.PI * 2, sx = Math.round(X + Math.cos(a) * R), sy = Math.round(Y + Math.sin(a) * R / 2);
+        const a = turn + i / 12 * Math.PI * 2, sx = Math.round(X + Math.cos(a) * R), sy = Math.round(Y + Math.sin(a) * R * sq(.5));
         c.fillStyle = BRASS; c.fillRect(sx - 1, sy, 3, 1); c.fillStyle = LAMP_FX.lamp.core; c.fillRect(sx, sy - 1, 1, 3);
       }
     }
