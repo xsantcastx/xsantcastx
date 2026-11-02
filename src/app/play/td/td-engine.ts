@@ -641,6 +641,7 @@ export class TopDownEngine {
       target: () => { const m = this.mobs.target; return m ? { x: Math.round(m.x), y: Math.round(m.y), h: m.def.h } : null; },
       isoFlush: (on: boolean) => { this.isoFlush = on; },
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
+      isoLand: (g: string | null) => { this.isoLand = g as Ground | null; this.isoGen++; },
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
       motes: () => this.auraFx.alive,
       // Isometric B's HD creatures: the contact sheet, and the baked cells (count, pixels, kinds) for the memory check.
@@ -5643,8 +5644,21 @@ export class TopDownEngine {
   /** Bumped when the ground must be baked again (a new level, a new detail setting). */
   private isoGen = 0;
   private readonly isoSource: IsoGroundSource = {
-    ground: (c, r) => this.level.ground(c, r),
+    ground: (c, r) => { const g = this.level.ground(c, r); return this.isoLand && (g === 'grass' || g === 'flowers' || g === 'moss') ? this.isoLand : g; },
     paint: (g, k, c, r, f, at) => this.bakeTileHd(g, k, c, r, 0, 0, at, f),
+    // Iso-native tiles (td-iso-tiles.ts); the cave floor reads as ash under the open sky.
+    native: () => ({ on: true, surface: this.level === this.world, low: envDetail() === 'low' }),
+  };
+  /** The ground preview (webdriver only, `__tdArt.isoLand`): the meadows drawn as another ground (snow: no map lays it yet). */
+  private isoLand: Ground | null = null;
+  /** The Nightroad's ghost deck at tile (c, r) (td-iso-tiles deckSprite), drawn on the iso screen, then back on the floor. */
+  private readonly isoDeck = (tc: number, tr: number, run: number, s: boolean, e: boolean): void => {
+    const t = this.isoGround?.tiles;
+    if (!t) return;
+    this.isoScreen();
+    const sp = t.deckSprite(run, s, e, tc + tr);
+    this.ctx.drawImage(sp, (tc - tr - 1) * 16, (tc + tr) * 8, sp.width / 2, sp.height / 2);
+    this.plane();
   };
   private readonly isoCut = new IsoCutaway();
   private readonly isoQ = new IsoQueue();
@@ -5769,7 +5783,7 @@ export class TopDownEngine {
     // whoever was drawn last (the Keeper), the night bridge and the sliding auras of 2026-10-27.
     this.plane();
     if (this.perf) this.isoFloorAt = c.getTransform();
-    if (surface) this.darkLayer.drawGround(c, this.world.continent, (x, y) => inView(x, y, 32));
+    if (surface) this.darkLayer.drawGround(c, this.world.continent, (x, y) => inView(x, y, 32), this.isoDeck);
     this.drawGroundFx();
     this.prof(9);
     this.plane();
