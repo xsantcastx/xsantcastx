@@ -258,7 +258,8 @@ export class DarkLayer {
       const a = this.roadAlphaOf(n.id);
       if (n.continent !== f.continent || a <= .01) continue;
       c.globalAlpha = .55 * a * Math.max(.3, f.night);
-      c.fillStyle = CORE;
+      // Iso: the nails in the deck's own violet (white read as stars on the ghost planks).
+      c.fillStyle = proj ? '#b8a0e0' : CORE;
       for (const [tc, tr] of n.road) if (inView(tc * TILE, tr * TILE)) for (const [dx, dy] of [[2, 3], [13, 3], [2, 12], [13, 12]]) c.fillRect(tc * TILE + dx, tr * TILE + dy, 1, 1);
       c.globalAlpha = 1;
     }
