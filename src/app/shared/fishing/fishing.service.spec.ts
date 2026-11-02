@@ -99,4 +99,14 @@ describe('FishingService', () => {
     expect(inventory.stackOf('worn-rod')).toBe(1);
     expect(fishing.rod()!.liquids).toEqual(['water']);
   });
+
+  it('a Worn Rod traded away comes back (a Keeper is never left unable to fish), once each time', () => {
+    fishing.ensureWornRod();
+    inventory.consumeStacks('trade:gave-rod', [{ id: 'worn-rod', count: 1 }]);
+    expect(inventory.stackOf('worn-rod')).toBe(0);
+    fishing.ensureWornRod();
+    expect(inventory.stackOf('worn-rod')).toBe(1);
+    fishing.ensureWornRod();
+    expect(inventory.stackOf('worn-rod')).toBe(1);
+  });
 });

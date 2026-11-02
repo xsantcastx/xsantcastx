@@ -18,8 +18,8 @@ import { enterAs, newContext, startHearth, type Hearth } from './hearth-helpers'
 test.use({ actionTimeout: 10000 });
 
 let hearth: Hearth;
-test.beforeAll(async ({}, info) => { hearth = await startHearth(String(info.project.use.baseURL), undefined, { SOCIAL_FAKE_AUTH: '1', SOCIAL_FAKE_TRADE: '1' }); });
-test.afterAll(async () => { await hearth?.stop(); });
+test.beforeEach(async ({}, info) => { hearth = await startHearth(String(info.project.use.baseURL), undefined, { SOCIAL_FAKE_AUTH: '1', SOCIAL_FAKE_TRADE: '1' }); });
+test.afterEach(async () => { await hearth?.stop(); });
 
 const rec = (id: string, name: string, def: string, rarity: string, extra: Record<string, unknown> = {}) => ({
   id, definitionId: def, kind: 'instance', category: 'equipment', tags: ['artifact'], rarity, soulbound: false,
@@ -113,7 +113,7 @@ test('the trade window lists the whole satchel, stacks as ×N, and a partial amo
   await shot(page, 'window-1280'); await shot(bryn, 'window-390');
 
   // Aster's whole satchel: gear, the Spellstone pile as one ×2, every stack as one ×N, the bound locket greyed with why.
-  // (The free starter tools are listed too, greyed: "Keeps".) Before the fix: 7 entries, no stacks, two loose stones.
+  // (The free starter tools are listed too, offerable like anything else.) Before the fix: 7 entries, no stacks, two loose stones.
   for (const key of ['s1', 'st-1', 'b1', 'stack:minor-health-potion', 'stack:baked-ash-perch', 'stack:rune-ash', 'stack:ironwood']) await expect(page.locator(`[data-trade-bag="${key}"]`)).toHaveCount(1);
   await expect(page.locator('[data-trade-bag="st-2"]')).toHaveCount(0);
   await expect(page.locator('[data-trade-bag="s1"]')).toBeEnabled();
@@ -122,8 +122,10 @@ test('the trade window lists the whole satchel, stacks as ×N, and a partial amo
   expect(await qtyOf(page, '[data-trade-bag="stack:baked-ash-perch"]')).toBe('×7');
   expect(await qtyOf(page, '[data-trade-bag="stack:rune-ash"]')).toBe('×3');
   expect(await qtyOf(page, '[data-trade-bag="stack:ironwood"]')).toBe('×30');
-  await expect(page.locator('[data-trade-bag="b1"]')).toBeDisabled();
-  await expect(page.locator('[data-trade-bag="b1"]')).toContainText('Soulbound');
+  // Everything held is offerable (owner 2026-10-27): the soulbound locket is not greyed, and carries no tag.
+  await expect(page.locator('[data-trade-bag="b1"]')).toBeEnabled();
+  await expect(page.locator('[data-trade-bag="b1"]')).not.toHaveAttribute('data-trade-tag', /./);
+  await expect(page.locator('[data-trade-bag="starter-pickaxe:v1"]')).toBeEnabled();
 
   // A stack asks how many (Split): 2 of the 5 potions.
   await page.locator('[data-trade-bag="stack:minor-health-potion"]').click();
@@ -170,5 +172,59 @@ test('the trade window lists the whole satchel, stacks as ×N, and a partial amo
   await expect.poll(() => save(page), { timeout: 10000 }).toEqual({ names: ['Ash Blade', 'Bound Locket', 'Spellstone', 'Spellstone', 'Tide Ring'], potion: 3, ironwood: 0 });
   await expect.poll(() => save(bryn), { timeout: 10000 }).toMatchObject({ potion: 3, ironwood: 34 });
   expect((await save(bryn)).names).not.toContain('Tide Ring');
+  await phone.close();
+});
+
+/** Live instance names, starter tools included, and one stack, as this browser's save holds them. */
+const held = (page: Page, sk: string) => page.evaluate(key => {
+  const raw = JSON.parse(localStorage.getItem('godforge-inventory') ?? '{}');
+  const inv = raw && 'v' in raw && 'updatedAt' in raw ? raw.v : raw;
+  const tomb = new Map((inv.tombstones ?? []).map((t: { id: string; revision: { hlc: number } }) => [t.id, t.revision.hlc]));
+  const live = (inv.records ?? []).filter((r: { id: string; kind: string; revision: { hlc: number } }) => r.kind === 'instance' && !((tomb.get(r.id) as number ?? -1) >= r.revision.hlc));
+  let n = 0;
+  for (const f of inv.stackFolds ?? []) n += (f.net as Record<string, number>)[key] ?? 0;
+  for (const o of inv.stackOps ?? []) if (o.stackKey === key) n += o.kind === 'grant' ? o.quantity : -o.quantity;
+  return { names: live.map((r: { name: string }) => r.name).sort(), worn: live.filter((r: { location: { kind: string } }) => r.location?.kind === 'equipped').map((r: { name: string }) => r.name).sort(), stack: n };
+}, sk);
+
+test('everything held trades: a quest item, a soulbound piece and worn gear (owner 2026-10-27)', async ({ page, browser }, info) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Fresh accounts and names: the room still holds the first test's saves and sessions.
+  await enterAs(page, hearth.port, 'Cael', 'ashguard', keeper('uc', [
+    rec('b1', 'Bound Locket', 'keepers-cowl', 'uncommon', { soulbound: true }),
+    rec('w1', 'Worn Cowl', 'keepers-cowl', 'rare', { stats: { magicFind: 4 }, location: { kind: 'equipped', slotId: 'head' } }),
+  ], { 'kaels-hammer': 1 }, 100));
+  const phone = await newContext(browser, info, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const bryn = await phone.newPage();
+  await enterAs(bryn, hearth.port, 'Dara', 'thornstrider', keeper('ud', [], {}, 10));
+  expect((await held(page, 'kaels-hammer')).worn).toEqual(['Worn Cowl']);
+
+  const c = await card(page, 'Dara');
+  await c.locator('[data-peer-trade]').click();
+  await expect(bryn.locator('[data-trade-ask]')).toBeVisible({ timeout: 10000 });
+  await bryn.locator('[data-trade-ask-yes]').tap();
+  await expect(page.locator('[data-trade-window]')).toBeVisible({ timeout: 10000 });
+
+  // The quest find and the worn cowl are listed with a small tag, and offerable; the soulbound locket too.
+  await expect(page.locator('[data-trade-bag="stack:kaels-hammer"]')).toHaveAttribute('data-trade-tag', 'quest');
+  await expect(page.locator('[data-trade-bag="w1"]')).toHaveAttribute('data-trade-tag', 'worn');
+  await expect(page.locator('[data-trade-bag="w1"]')).toContainText('Worn');
+  await page.mouse.move(5, 5); await page.waitForTimeout(200);
+  await shot(page, 'everything-1280');
+  for (const key of ['stack:kaels-hammer', 'w1', 'b1']) await page.locator(`[data-trade-bag="${key}"]`).click();
+  for (const key of ['stack:kaels-hammer', 'w1', 'b1']) await expect(bryn.locator(`[data-trade-theirs="${key}"]`)).toBeVisible({ timeout: 10000 });
+  // Offering the cowl took it off (it is in the satchel now, not worn).
+  await expect.poll(async () => (await held(page, 'kaels-hammer')).worn, { timeout: 5000 }).toEqual([]);
+
+  await page.locator('[data-trade-accept]').click();
+  await bryn.locator('[data-trade-accept]').tap();
+  await expect(page.locator('[data-trade-confirm]')).toBeVisible({ timeout: 10000 });
+  await page.locator('[data-trade-confirm]').click();
+  await bryn.locator('[data-trade-confirm]').tap();
+  await expect(page.locator('[data-trade-window]')).toHaveAttribute('data-trade-stage', 'done', { timeout: 15000 });
+  await expect(bryn.locator('[data-trade-window]')).toHaveAttribute('data-trade-stage', 'done', { timeout: 15000 });
+  await expect.poll(async () => { const h = await held(page, 'kaels-hammer'); return { stack: h.stack, has: h.names.filter(n => n === 'Bound Locket' || n === 'Worn Cowl') }; }, { timeout: 10000 }).toEqual({ stack: 0, has: [] });
+  await expect.poll(async () => { const h = await held(bryn, 'kaels-hammer'); return { stack: h.stack, has: h.names.filter(n => n === 'Bound Locket' || n === 'Worn Cowl') }; }, { timeout: 10000 }).toEqual({ stack: 1, has: ['Bound Locket', 'Worn Cowl'] });
   await phone.close();
 });

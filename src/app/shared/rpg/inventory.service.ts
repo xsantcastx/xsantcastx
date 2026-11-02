@@ -313,6 +313,11 @@ export class InventoryService {
   // Reads
   // ───────────────────────────────────────────────────────────────────────────
 
+  /** True when this instance id was ever used in this save (held, or deleted: a tombstone would eat a new copy). */
+  idUsed(id: string): boolean {
+    return this.ledger.records.some(r => r.id === id) || this.ledger.tombstones.some(t => t.id === id);
+  }
+
   itemById(id: string): GameItem | undefined {
     return this.items.find(i => i.id === id);
   }

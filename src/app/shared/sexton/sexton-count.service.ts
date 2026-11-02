@@ -21,6 +21,7 @@ import { mintEquipment } from '../rpg/item-definition';
 import { curseFor } from '../grave-goods/grave-goods.model';
 import { seededRandom, hashSeed } from '../loot/champions';
 import { TownTaskService } from '../town-tasks/town-tasks.service';
+import type { GameItem } from '../rpg/item.model';
 import {
   SEXTON_CHAIN, SEXTON_COWL, SEXTON_GIVER, SEXTON_REWARD, type JournalEntry, type SextonEvent, type SextonFacts, type SextonStep,
   journalIndex, sextonChoice, sextonEvent, sextonGold, sextonJournal, sextonStep, stonesRead,
@@ -56,7 +57,7 @@ export class SextonCountService {
     const facts = this.facts;
     return {
       step: sextonStep(facts), facts, journal: sextonJournal(facts), index: journalIndex(facts), stones: stonesRead(facts),
-      choice: sextonChoice(facts), cowlHeld: !!this.inventory.itemById(SEXTON_COWL.itemId),
+      choice: sextonChoice(facts), cowlHeld: !!this.heldCowl(),
     };
   }
 
@@ -90,7 +91,7 @@ export class SextonCountService {
   choose(choice: 'kept' | 'rested', now = Date.now()): SextonClaim | null {
     if (!this.isBrowser) return null;
     if (sextonStep(this.facts) !== 'return') return null;
-    const cowl = this.inventory.itemById(SEXTON_COWL.itemId);
+    const cowl = this.heldCowl();
     if (choice === 'rested' && !cowl) return null;
     // The receipt: written before a coin moves (a reload after this can never pay again: the step is 'done').
     if (!this.tasks.markChain(SEXTON_CHAIN, [choice], now).length) return null;
@@ -102,9 +103,18 @@ export class SextonCountService {
     return { choice, gold, xp: SEXTON_REWARD.huntingXp, cleansed };
   }
 
+  /**
+   * The cowl in hand, by what it is, not by its id: one traded to this Keeper (everything is tradable, owner 2026-10-27)
+   * arrives under a new id and still lays the chain to rest. Never re-minted: a cowl given away stays given (the chain
+   * can still end, "kept").
+   */
+  private heldCowl(): GameItem | undefined {
+    return this.inventory.itemById(SEXTON_COWL.itemId) ?? this.inventory.snapshot.items.find(i => i.definitionId === SEXTON_COWL.defId);
+  }
+
   /** The cowl from the forty-first grave: the boss unique, cursed (its Hollow Ward frozen at the find), one only. */
   private giveCowl(now: number): void {
-    if (this.inventory.itemById(SEXTON_COWL.itemId)) { this.tasks.markChain(SEXTON_CHAIN, ['cowl'], now); return; }
+    if (this.heldCowl()) { this.tasks.markChain(SEXTON_CHAIN, ['cowl'], now); return; }
     const rng = seededRandom(hashSeed(`${SEXTON_CHAIN}|cowl`));
     const minted = mintEquipment(SEXTON_COWL.defId, SEXTON_COWL.rarity, rng, new Date(now).toISOString(), SEXTON_COWL.itemId, SEXTON_COWL.level);
     if (!minted) return;

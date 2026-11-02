@@ -160,4 +160,16 @@ describe('SlateService (the Mirror Slate)', () => {
     expect(inventory.stackCraftedFor(SLATE_UPGRADE_ID)).toBeTrue();
     expect(inventory.stackOf(MIRROR_SLATE_II_ID)).toBe(1);
   });
+
+  it('a Keeper who traded the tier II pane away can have Kael bind another (everything is tradable, 2026-10-27)', () => {
+    const { slate } = setup(0);
+    inventory.grantStack('t:slate', MIRROR_SLATE_ID, 1);
+    for (const input of SLATE_UPGRADE_INPUTS.slice(1)) inventory.grantStack(`t:${input.id}`, input.id, input.count * 2);
+    expect(slate.upgrade()).toBe('ok');
+    inventory.consumeStacks('trade:gave', [{ id: MIRROR_SLATE_II_ID, count: 1 }]);
+    expect(slate.tier()).toBe(0);
+    inventory.grantStack('t:slate-2', MIRROR_SLATE_ID, 1);
+    expect(slate.upgrade()).toBe('ok');
+    expect(slate.tier()).toBe(2);
+  });
 });

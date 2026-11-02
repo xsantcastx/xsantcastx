@@ -21,6 +21,7 @@ class FakeInventory {
   full = false;
   stackOf(): number { return 0; }
   itemById(id: string) { return this.items.get(id); }
+  get snapshot() { return { items: [...this.items.values()] }; }
   add(item: GameItem) { if (this.full) return null; this.items.set(item.id, item); return item; }
   setGrave(id: string, patch: { curse?: GameItem['curse'] | null }) {
     const item = this.items.get(id);
@@ -122,6 +123,18 @@ describe('SextonCountService (the Sexton\'s Count)', () => {
     expect(sexton.choose('kept')).toBeNull();
     expect(boot().choose('kept')).toBeNull();
     expect(economy.earned.length).toBe(1);
+  });
+
+  it('a cowl traded in (a new id, the same cowl) lays the chain to rest; a cowl traded away is never minted again', () => {
+    walkToGrave();
+    const cowl = inventory.items.get(SEXTON_COWL.itemId)!;
+    inventory.items.delete(SEXTON_COWL.itemId);
+    sexton.event({ kind: 'grave' });
+    expect(inventory.items.size).toBe(0);
+    inventory.items.set('t123', { ...cowl, id: 't123' });
+    expect(sexton.view().cowlHeld).toBeTrue();
+    expect(sexton.choose('rested', 80)?.choice).toBe('rested');
+    expect(inventory.items.get('t123')?.curse?.cleansed).toBeTrue();
   });
 
   it('keeping it: the curse stays; laying it to rest needs the cowl in hand', () => {

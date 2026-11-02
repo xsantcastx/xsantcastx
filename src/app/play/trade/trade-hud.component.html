@@ -75,7 +75,7 @@
                       (click)="tap(c, 'add', $event)" [attr.aria-label]="t('trade.add', { name: (c.qty > 1 ? c.name + ' ×' + c.qty : c.name) + (c.tag ? ' (' + t('trade.tag.' + c.tag) + ')' : '') })">
                 @if (c.art) { <img [src]="c.art" alt="" draggable="false"> } @else { <em>{{ c.mark }}</em> }
                 @if (c.qty > 1) { <b class="trade-n" data-trade-n>×{{ c.qty }}</b> }
-                @if (c.tag) { <small class="trade-block">{{ t('trade.tag.' + c.tag) }}</small> }
+                @if (c.tag) { <small class="trade-tag">{{ t('trade.tag.' + c.tag) }}</small> }
               </button>
             }
           </div>

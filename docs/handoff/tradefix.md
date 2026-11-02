@@ -22,6 +22,24 @@ Owner reports (live main 84e22a7c): "when trading, it's not showing my inventory
   client by `trade-stacks.spec.ts`). Quest keys and Vault keys are refused; more than held voids the trade. Both sides
   may offer the same stack kind. `dropItem` refuses a stack (the ground half of T1 is still open).
 
+## Everything is tradable (owner rule, 2026-10-27; second commit on this branch)
+- Server `trade-core.ts untradeable`: refuses only the Vault and kit lent to an explorer. Soulbound, the starter tools,
+  quest pieces and worn gear trade (worn gear arrives loose in the satchel). Quest stack keys are no longer refused. A
+  ground drop still refuses worn gear ("Take it off your Keeper first.").
+- Client: nothing greyed. Worn gear is listed with a "Worn" tag and comes off when offered (`inventory.unequip`); quest
+  stacks carry a "Quest" tag. `tradeBlock` became `tradeTag` (display) and `dropBlock` (ground only).
+- Quests follow possession; nothing is lost for good (audit of every QUEST_STACKS key, the starter tools and the
+  Sexton's cowl):
+  - Worn Rod (`fishing.service ensureWornRod`) and the starter tools (`side-scroller ensureStarterTools`): given again
+    under the next free id (`inventory-ops nextGrantId`); starter tools are "held" by definition, so never doubled.
+  - Kael's Hammer, the Godforge Fragment: the once-per-player guard lets the find pay again while it is not in hand
+    and its mission (`delve-kael-seam`, `delve-fracture`) is open.
+  - The Four Hammer-Marks: a hammer-mark gives them again once "Four Hammers" (`kael-four-2`) is done and they are gone.
+  - Mirror Slate II: Kael binds another under a fresh craft id (the Slate itself was already re-buyable from Lune).
+  - Sexton's cowl: held by definition (a traded-in copy lays the chain to rest); never minted twice.
+  - Curios, Hatbox, Loupe: trophies, bonuses follow the holder; cabinet progress is the opener's flag. No canon entry
+    requires a quest piece to stay unique per Keeper (`docs/world/canon.md`).
+
 ## Deploy
 Room and server code changed: **the hearth needs a redeploy** (`scripts/social-server.mjs` + the bundled trade-core),
 and the **trade Function** (`functions-game`, protocol 6 path) too. Until then the live room refuses a stack offer
@@ -30,4 +48,5 @@ and the **trade Function** (`functions-game`, protocol 6 path) too. Until then t
 ## Tests
 - Karma `src/app/play/trade/trade-stacks.spec.ts`; e2e `e2e/td-trade-satchel.spec.ts` (two Keepers, 1280×800 and
   390×844; `TRADE_SHOTS=before|after` writes the screenshots below).
-- Screenshots: `docs/handoff/tradefix/{before,after}-window-{1280,390}.jpg`, `after-amount-{1280,390}.jpg`.
+- Screenshots: `docs/handoff/tradefix/{before,after}-window-{1280,390}.jpg`, `after-amount-{1280,390}.jpg`,
+  `after-everything-1280.jpg` (Worn and Quest tags).
