@@ -12,7 +12,7 @@
  * tell's glow, and the Keeper's own statuses as small glyphs over his head.
  * Reduced motion: still rings, solid lines, no motes. All whole pixels; nothing is created per frame.
  */
-import { HOSTILE_EDGE, circlePixels, conePixels, groundRing, linePixels, ringArc, type Tones } from './td-fx';
+import { HOSTILE_EDGE, circlePixels, conePixels, deco, groundRing, linePixels, onIsoFloor, ringArc, sq, type Tones } from './td-fx';
 import { AURA_PULSE_LIFE, AuraFx, auraFrom, auraWave, type AuraLook } from './td-aura';
 import { castable, T, type TellTone } from './td-abilities';
 import { PACK_AURA_LOOKS, PACK_AURA_REACH, type PackAuraId, type PackSigil } from './td-pack-aura';
@@ -40,17 +40,19 @@ const toneOf = (t: string | undefined): Tones => TELL_TONES[(t ?? 'ember') as Te
 /** A dithered flattened disc of radius R in one or two colours, baked once (a tell's patch, a hazard's stain). */
 const PATCHES = new Map<string, HTMLCanvasElement | null>();
 function patch(R: number, a: string, b: string | null): HTMLCanvasElement | null {
-  const key = `${R}|${a}|${b}`;
+  // On the isometric floor the disc is round (the projection squashes it); top-down it is laid at half height.
+  const k = sq(.5), RY = Math.floor(R * k), key = `${R}|${a}|${b}|${k}`;
   if (PATCHES.has(key)) return PATCHES.get(key)!;
   if (typeof document === 'undefined') { PATCHES.set(key, null); return null; }
-  const cv = document.createElement('canvas'); cv.width = R * 2 + 1; cv.height = R + 1;
+  const cv = document.createElement('canvas'); cv.width = R * 2 + 1; cv.height = RY * 2 + 1;
   const g = cv.getContext('2d')!;
-  for (let y = -Math.floor(R / 2); y <= Math.floor(R / 2); y++) for (let x = -R; x <= R; x++) {
-    if (x * x + y * y * 4 > R * R) continue;
-    if (b === null) { if (((x + y) & 1) === 0) { g.fillStyle = a; g.fillRect(x + R, y + Math.floor(R / 2), 1, 1); } continue; }
+  for (let y = -RY; y <= RY; y++) for (let x = -R; x <= R; x++) {
+    if (x * x + (y * y) / (k * k) > R * R) continue;
+    // The dither: a checker top-down; on the isometric floor a 2-px lattice (a world checker projects into stripes).
+    if (b === null) { if (k === 1 ? ((x | y) & 1) === 0 : ((x + y) & 1) === 0) { g.fillStyle = a; g.fillRect(x + R, y + RY, 1, 1); } continue; }
     const n = (x * 7 + y * 13) & 3;
-    if (n === 3) continue;
-    g.fillStyle = n === 0 ? a : b; g.fillRect(x + R, y + Math.floor(R / 2), 1, 1);
+    if (n === 3 || (k === 1 && ((x | y) & 1))) continue;
+    g.fillStyle = n === 0 ? a : b; g.fillRect(x + R, y + RY, 1, 1);
   }
   if (PATCHES.size > 96) PATCHES.clear();
   PATCHES.set(key, cv);
@@ -69,14 +71,14 @@ export function drawAbilityRing(c: Ctx, b: DeathBurst, time: number, still: bool
     const a0 = still ? 0 : time * 2;
     for (let i = 0; i < 5; i++) {
       const a = a0 + i * Math.PI * 4 / 5, b2 = a0 + (i + 1) * Math.PI * 4 / 5;
-      linePixels(Math.cos(a) * (R - 2), Math.sin(a) * (R - 2) * .5, Math.cos(b2) * (R - 2), Math.sin(b2) * (R - 2) * .5).forEach((q, j) => { c.fillStyle = j % 2 ? tn.body : tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
+      linePixels(Math.cos(a) * (R - 2), Math.sin(a) * (R - 2) * sq(.5), Math.cos(b2) * (R - 2), Math.sin(b2) * (R - 2) * sq(.5)).forEach((q, j) => { c.fillStyle = j % 2 ? tn.body : tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
     }
     c.globalAlpha = 1;
     return;
   }
   const pt = patch(R, tn.edge, null);
-  c.globalAlpha = .4;
-  if (pt) c.drawImage(pt, X - R, Y - Math.floor(R / 2));
+  c.globalAlpha = onIsoFloor() ? .6 : .4;
+  if (pt) c.drawImage(pt, X - R, Y - Math.floor(R * sq(.5)));
   c.globalAlpha = .65; c.fillStyle = HOSTILE_EDGE;
   for (const q of groundRing(R + 1)) c.fillRect(X + q.x, Y + q.y + 1, 1, 1);
   c.globalAlpha = .9 * pulse;
@@ -89,7 +91,7 @@ export function drawAbilityRing(c: Ctx, b: DeathBurst, time: number, still: bool
   if (b.tone === 'ember' || b.tone === 'frost' || b.tone === 'ink') {
     const s = Math.max(1, Math.round(R * .35 * (still ? .6 : k)));
     c.globalAlpha = .5; c.fillStyle = HOSTILE_EDGE;
-    for (let y = -s; y <= s; y++) { const w = Math.round(s * Math.sqrt(Math.max(0, 1 - (y / s) * (y / s)))); c.fillRect(X - w, Y + Math.round(y / 2), w * 2 + 1, 1); }
+    for (let y = -s; y <= s; y++) { const w = Math.round(s * Math.sqrt(Math.max(0, 1 - (y / s) * (y / s)))); c.fillRect(X - w, Y + Math.round(y * sq(.5)), w * 2 + 1, 1); }
   }
   c.globalAlpha = 1;
 }
@@ -115,8 +117,8 @@ export function drawHazard(c: Ctx, h: Hazard, time: number, still: boolean): voi
   const tn = toneOf(h.tone), X = Math.round(h.x), Y = Math.round(h.y) - 1, R = Math.max(2, Math.round(h.r));
   const fade = Math.min(1, h.t / .8, (h.life - h.t) / .2 + .2), flick = still ? 1 : .85 + .15 * Math.sin(time * 5 + h.x);
   const pt = patch(R, tn.body, tn.edge);
-  c.globalAlpha = .38 * fade * flick;
-  if (pt) c.drawImage(pt, X - R, Y - Math.floor(R / 2));
+  c.globalAlpha = (onIsoFloor() ? .6 : .38) * fade * flick;
+  if (pt) c.drawImage(pt, X - R, Y - Math.floor(R * sq(.5)));
   c.globalAlpha = .6 * fade;
   groundRing(R).forEach((q, i) => { if (i % 3 === 0) { c.fillStyle = tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); } });
   c.globalAlpha = 1;
@@ -130,9 +132,9 @@ export function drawCastTell(c: Ctx, m: Mob, time: number, still: boolean): void
     // Brutal: a red arc on the ground in front of it.
     const ax = Math.round(m.aim.x), ay = Math.round(m.aim.y + 12), a = Math.atan2(ay - m.y, ax - m.x);
     c.globalAlpha = .9 * beat;
-    c.fillStyle = HOSTILE_EDGE; for (const q of ringArc(15, a, .9)) c.fillRect(Math.round(m.x) + q.x, Math.round(m.y) + Math.round(q.y * .6) + 1, 1, 1);
-    c.fillStyle = '#c2402a'; for (const q of ringArc(14, a, .9)) c.fillRect(Math.round(m.x) + q.x, Math.round(m.y) + Math.round(q.y * .6), 1, 1);
-    c.fillStyle = '#ff8a6a'; for (const q of ringArc(12, a, .6)) c.fillRect(Math.round(m.x) + q.x, Math.round(m.y) + Math.round(q.y * .6), 1, 1);
+    c.fillStyle = HOSTILE_EDGE; for (const q of ringArc(15, a, .9)) c.fillRect(Math.round(m.x) + q.x, Math.round(m.y) + Math.round(q.y * sq(.6)) + 1, 1, 1);
+    c.fillStyle = '#c2402a'; for (const q of ringArc(14, a, .9)) c.fillRect(Math.round(m.x) + q.x, Math.round(m.y) + Math.round(q.y * sq(.6)), 1, 1);
+    c.fillStyle = '#ff8a6a'; for (const q of ringArc(12, a, .6)) c.fillRect(Math.round(m.x) + q.x, Math.round(m.y) + Math.round(q.y * sq(.6)), 1, 1);
     c.globalAlpha = 1;
     return;
   }
@@ -142,7 +144,7 @@ export function drawCastTell(c: Ctx, m: Mob, time: number, still: boolean): void
   const k = still ? .7 : Math.max(0, Math.min(1, 1 - m.tell / Math.max(.3, a.tell))), dir = Math.atan2(ay - oy, ax - ox);
   if (a.kind === 'wave') {
     const len = (a.r ?? 3) * T, half = (a.spread ?? 25) * Math.PI / 180, cone = conePixels(len, half, dir), fr = Math.max(4, Math.round(k * len));
-    for (const q of cone.fill) { const near = q.x * q.x + q.y * q.y < fr * fr; c.globalAlpha = (near ? .6 : .32) * beat; c.fillStyle = near ? tn.body : tn.edge; c.fillRect(ox + q.x, oy + q.y, 1, 1); }
+    for (const q of cone.fill) { const near = q.x * q.x + q.y * q.y < fr * fr; c.globalAlpha = (near ? .6 : .32) * beat * (onIsoFloor() ? .6 : 1); c.fillStyle = near ? tn.body : tn.edge; c.fillRect(ox + q.x, oy + q.y, 1, 1); }
     c.globalAlpha = .9 * beat;
     for (const q of cone.edge) { c.fillStyle = HOSTILE_EDGE; c.fillRect(ox + q.x, oy + q.y + 1, 1, 1); }
     cone.edge.forEach((q, i) => { c.fillStyle = i % 3 ? tn.edge : tn.body; c.fillRect(ox + q.x, oy + q.y, 1, 1); });
@@ -239,14 +241,16 @@ export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still
     if (m.aura === 'lightless') {
       // A small dark smudge, its rim a ring of dark pixels.
       c.globalAlpha = .55; c.fillStyle = p.dark;
-      for (let y = -4; y <= 4; y++) { const w = Math.round(9 * Math.sqrt(Math.max(0, 1 - (y / 4.5) * (y / 4.5)))); c.fillRect(X - w, Y + y, w * 2 + 1, 1); }
+      const rx = deco(9), ry = onIsoFloor() ? rx : 4, rr = ry + .5;
+      for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / rr) * (y / rr)))); c.fillRect(X - w, Y + y, w * 2 + 1, 1); }
     } else {
       // The sigil: 7×7 grown ×2, turning one step every half second (a mirror flip on odd steps).
-      const rows = SIGILS[p.sigil], flip = !still && Math.floor(time * 2) % 2 === 1;
+      // The isometric floor: a square sigil of 1.5-px cells, which the projection lays on the floor as a diamond.
+      const rows = SIGILS[p.sigil], flip = !still && Math.floor(time * 2) % 2 === 1, iso = onIsoFloor();
       c.globalAlpha = .75;
       for (let r = 0; r < 7; r++) for (let q = 0; q < 7; q++) {
         if (rows[r][flip ? 6 - q : q] !== '#') continue;
-        const sx = X - 7 + q * 2, sy = Y - 3 + Math.round(r * 1.1);
+        const sx = iso ? X - 5 + Math.round(q * 1.5) : X - 7 + q * 2, sy = iso ? Y - 5 + Math.round(r * 1.5) : Y - 3 + Math.round(r * 1.1);
         c.fillStyle = HOSTILE_EDGE; c.fillRect(sx + 1, sy + 1, 2, 1);
         c.fillStyle = r < 2 ? p.tones.core : p.tones.body; c.fillRect(sx, sy, 2, 1);
       }
@@ -255,7 +259,7 @@ export function drawPackGround(c: Ctx, mobs: readonly Mob[], time: number, still
     // Its reach, briefly: a light ring every 3.2 s (each bearer on its own beat). None under reduced motion.
     if (!still) {
       const k = ((time + (m.hx % 13) * .25) % 3.2) / AURA_PULSE_LIFE;
-      if (k < 1) auraWave(c, X, Y, PACK_AURA_REACH, k, look, m.aura === 'lightless' ? .6 : .8);
+      if (k < 1) auraWave(c, X, Y, PACK_AURA_REACH, k, look, (m.aura === 'lightless' ? .6 : .8) * (onIsoFloor() ? .55 : 1));
     }
   }
 }

@@ -1,7 +1,8 @@
 /**
  * td-iso-props.ts — everything that stands on the ground in the isometric view (Beta), except walls and buildings:
  * trees and bushes in every land, the towns' props (barrels, crates, benches, lamps, signs, fences, the cart, the
- * fountain…), the wilds' rocks, reeds, ferns and mushrooms, and the dungeons' torches, graves, chests and bones.
+ * fountain…), the wilds' rocks, reeds, ferns and mushrooms, the dungeons' torches, graves, chests and bones, the dungeon
+ * dressing (altar, braziers, cage, chains, statue, cobwebs), the ruin walls, and the stairs and ladders between floors.
  *
  * The top-down painters (td-art.ts) stay what Classic draws. Here each one has an isometric twin, sculpted at the HD
  * pixel (td-hd-sculpt.ts, two sheet px a world px) at the Diablo II angle with the same materials and the same light as
@@ -106,6 +107,8 @@ export interface IsoArt {
   shadow: IsoPart | null;
   /** Tile segments along +x (a fence): the parts are laid a tile at a time, `seg` the post-and-rails piece, `cap` the end post. */
   run?: { tiles: number; seg: IsoPart; cap: IsoPart };
+  /** Sorted this far (world px) behind its foot: a thing at the tile's back (a cobweb in its corner, chains on the wall) or in the floor (stairs down), so what stands on the tile draws over it. */
+  back?: number;
 }
 
 /** Trim a sculpt's canvas to what it painted; (ax, ay) the foot in the trimmed canvas. */
@@ -217,12 +220,12 @@ function trunk(s: Sculpt, X: number, Y: number, w0: number, w1: number, top: num
   s.dot(X - w0 + 2, Y - top + 12, m.ramp[5], 1, Math.max(4, Math.round(top * .4)));
 }
 
-interface Built { base?: Sculpt | null; baseFoot?: [number, number]; sway?: Sculpt | null; swayFoot?: [number, number]; amp?: number; fades?: boolean; shadow?: IsoPart | null }
+interface Built { back?: number; base?: Sculpt | null; baseFoot?: [number, number]; sway?: Sculpt | null; swayFoot?: [number, number]; amp?: number; fades?: boolean; shadow?: IsoPart | null }
 /** Render, trim and finish a built twin. */
 function finish(b: Built, low: boolean): IsoArt {
   const base = b.base ? trim(b.base.render(), b.baseFoot![0] + 1, b.baseFoot![1] + 1) : null;
   const sw = b.sway ? trim(b.sway.render(), b.swayFoot![0] + 1, b.swayFoot![1] + 1) : null;
-  return { base, sway: sw ? swayFrames(sw, b.amp ?? 0, low || !b.amp ? 1 : 3) : [], fades: !!b.fades, shadow: b.shadow ?? null };
+  return { base, sway: sw ? swayFrames(sw, b.amp ?? 0, low || !b.amp ? 1 : 3) : [], fades: !!b.fades, shadow: b.shadow ?? null, ...(b.back ? { back: b.back } : {}) };
 }
 
 // ── Trees ──
@@ -690,6 +693,145 @@ function fenceSeg(cap: boolean): Built {
   return { base: s, baseFoot: [14, 54] };
 }
 
+// ── The dungeon dressing, the ruins and the ways between floors (td-dressing.ts, td-build.ts) ──
+const cloth = mat('#6e3a4a', 2, .7, { cool: '#1a0a12', warm: '#e8b0b8' });
+const candle = mat('#e8dcb8', 1, .7, { cool: '#5a4a38', warm: '#fffbe8', hi: .5 });
+const bronze = { ramp: rampOf('#a07a3a', { cool: '#2a1608', warm: '#ffe8a8', hi: .55 }), round: 1, shine: true, gain: .8 } as Mat;
+const daylight = { ramp: ['#8a8470', '#b0a888', '#c9bb8e', '#e9dcae', '#f6ebc4', '#fff3c9'], round: 4, gain: .3, soft: true } as Mat;
+const ashBed = mat('#8a8090', 3, .4, { cool: '#2a2430', warm: '#e8e0f0' });
+const dark = { ramp: ['#050308', '#08060c', '#0c0a12', '#100e16', '#14121a', '#1a1620'], round: 3, gain: .2 } as Mat;
+
+/** An altar: a block of old stone on a step, a wine-dark runner hanging over its front, two cold candles, a bronze dish. */
+function altar(): Built {
+  const s = new Sculpt(110, 100), P = proj(55, 80);
+  box(s, P, -11, -7, 11, 7, 0, 2.5, M.stoneDk, 2);
+  box(s, P, -9, -5, 9, 5, 2.5, 15, M.stone, 10);
+  for (const h of [7, 11]) s.lineOn(P(-9, 5, h), P(9, 5, h), M.stone.ramp[1]);
+  s.lineOn(P(-2, 5, 2.5), P(-2, 5, 7), M.stone.ramp[1]); s.lineOn(P(4, 5, 7), P(4, 5, 11), M.stone.ramp[1]);
+  box(s, P, -10.5, -6, 10.5, 6, 15, 17, M.stone, 20);
+  // The runner over the top and hanging down the south face in folds.
+  box(s, P, -5, -6.2, 5, 6.2, 17, 17.4, cloth, 30);
+  poly3(s, P, [[-5, 6.3, 17.4], [5, 6.3, 17.4], [5, 6.3, 9], [3, 6.3, 7.5], [1, 6.3, 9], [-1.5, 6.3, 7], [-3.5, 6.3, 8.5], [-5, 6.3, 7.5]], cloth, 31, .3);
+  for (const x of [-3, -.5, 2, 4]) s.lineOn(P(x, 6.3, 16.5), P(x, 6.3, 9), cloth.ramp[1]);
+  for (const x of [-8, 8]) { cyl(s, P, x, 0, 1, 17, 22, candle, 40 + x, candle, .6); s.dot(...P(x, 0, 22.6), '#2a2026', 1, 2); }
+  cyl(s, P, 0, -1, 2.6, 17.4, 18.6, bronze, 50, bronze, .8);
+  return { base: s, baseFoot: [55, 80], shadow: castShadow(28, 11, 8, 4) };
+}
+/** An iron brazier on three legs: cold ash and a coal, or (lit) a stepped fire with a hot heart. */
+function brazierIso(lit: boolean): Built {
+  const s = new Sculpt(70, 120), P = proj(35, 100);
+  for (const a of [0, 2.1, 4.2]) s.limb(P(Math.cos(a) * 6, Math.sin(a) * 6, 0), P(Math.cos(a) * 3, Math.sin(a) * 3, 16), 1, .9, M.ironBk, { g: 10 + Math.round(a * 3) });
+  cyl(s, P, 0, 0, 7.5, 16, 21, M.ironBk, 20, M.iron, .7);
+  const [tx, ty] = P(0, 0, 21);
+  s.ellipse(tx, ty, 19, 9, lit ? M.ember : ashBed, { g: 30, bias: .4 });
+  for (const dx of [-12, 0, 12]) s.dot(tx + dx, ty + 8 + Math.abs(dx) * -.2, M.iron.ramp[4]);
+  if (lit) {
+    s.ellipse(tx, ty - 10, 11, 14, M.ember, { g: 40 }); s.ellipse(tx - 1, ty - 13, 7, 10, M.glow, { g: 41 }); s.ellipse(tx - 2, ty - 15, 3, 5, { ...M.glow, ramp: M.glow.ramp.map(() => '#fffbe8') }, { g: 42 });
+  } else { s.dot(tx - 2, ty - 1, '#7a2a1a', 4, 2); s.dot(tx - 1, ty - 1, '#c8502a', 2, 1); }
+  return { base: s, baseFoot: [35, 100], shadow: castShadow(12, 6, 10, 4, 5) };
+}
+/** A hanging iron cage: a chain up into the dark, a domed hood, bars, old bones inside. */
+function cageIso(): Built {
+  const s = new Sculpt(70, 140), P = proj(35, 124);
+  const top = 58;
+  for (let h = top + 6; h < top + 24; h += 2.5) s.ellipse(...P(0, 0, h), 1.6, 2.2, M.ironBk, { g: 5 });
+  s.ellipse(...P(0, 0, 3.5), 6, 6, M.bone, { g: 8 }); s.limb(P(-4, 2, 1.5), P(3, -1, 1.5), 1.2, 1, M.bone, { g: 9 });
+  cyl(s, P, 0, 0, 7, 0, 2, M.ironBk, 10, M.iron, .5);
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = Math.cos(a) * 7, y = Math.sin(a) * 7; if (x + y < -2) s.limb(P(x, y, 2), P(x, y, top), .6, .6, M.ironBk, { g: 12 }); }
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = Math.cos(a) * 7, y = Math.sin(a) * 7; if (x + y >= -2) s.limb(P(x, y, 2), P(x, y, top), .7, .7, M.ironBk, { g: 30 + i, bias: x < y ? .4 : -.4 }); }
+  cyl(s, P, 0, 0, 7.5, top, top + 2, M.ironBk, 50, M.iron, .6);
+  s.ellipse(...P(0, 0, top + 4), 14, 7, M.ironBk, { g: 52, bias: .5 });
+  return { base: s, baseFoot: [35, 124], shadow: castShadow(14, 6, 6, 3) };
+}
+/** Two chains hung on a wall's face, sagging, a ring at each top (they stand against the tile's north edge). */
+function chainsIso(): Built {
+  const s = new Sculpt(60, 110), P = proj(30, 96);
+  for (const [x, len, sway] of [[-4, 22, 1.5], [4, 16, -1.5]] as const) {
+    s.ellipse(...P(x, -7, 40), 2.6, 2.6, M.iron, { g: 10 });
+    for (let i = 0; i < len; i += 1.6) { const k = i / len, dx = Math.sin(k * Math.PI) * sway; s.ellipse(...P(x + dx, -7, 39 - i), (i | 0) % 2 ? 1.2 : 1.8, 1.6, M.ironBk, { g: 12 + i, bias: .3 }); }
+  }
+  return { base: s, baseFoot: [30, 96], back: 14 };
+}
+/** A broken statue on its pedestal: a robed figure cut off at the chest, the head fallen at its foot. */
+function statueIso(): Built {
+  const s = new Sculpt(90, 150), P = proj(45, 128);
+  box(s, P, -8, -8, 8, 8, 0, 3, M.stoneDk, 2);
+  box(s, P, -6.5, -6.5, 6.5, 6.5, 3, 16, M.stone, 6);
+  box(s, P, -7.5, -7.5, 7.5, 7.5, 16, 18, M.stone, 10);
+  for (let x = -4; x <= 4; x += 2) s.lineOn(P(x, 6.5, 9), P(x + 1, 6.5, 9), M.stone.ramp[1]);
+  s.poly([P(-5, 3, 18), P(5, 3, 18), P(4, 2, 38), P(1.5, 1, 44), P(-3, 1.5, 41), P(-4.5, 2, 36)], M.stone, { g: 20, bias: .2 });
+  s.poly([P(5, -4, 18), P(5, 3, 18), P(4, 2, 38), P(3.5, -2, 40)], M.stone, { g: 21, bias: -.8 });
+  for (const x of [-3, 0, 3]) s.lineOn(P(x, 3, 19), P(x * .7, 2, 37), M.stone.ramp[1]);
+  s.ellipse(...P(-1, 1.5, 42), 4, 3, M.stone, { g: 22, bias: .7 });
+  s.ellipse(...P(10, 6, 2.5), 5, 4.5, M.stone, { g: 30, bias: .3 }); s.dot(...P(9, 7, 3), M.stone.ramp[0], 2, 1);
+  s.ellipse(...P(-6, 5, 18.5), 3, 1.5, M.moss, { g: 40 });
+  return { base: s, baseFoot: [45, 128], shadow: castShadow(16, 7, 12, 5, 7) };
+}
+/** A cobweb strung across the room's corner (the tile's north corner), its threads catching the light. */
+function cobwebIso(ne: boolean): Built {
+  const s = new Sculpt(60, 110), P = proj(30, 96), F = ne ? -1 : 1;
+  // The corner where two walls meet (the tile's north corner): threads run along each wall and down to the floor.
+  const silk = '#e2deec', faint = '#a8a4b8';
+  const hub: Pt = P(-8 + 4 * F, -8 + 4, 24);
+  const anchors: Pt[] = [P(-8, -8, 36), P(-8 + 12 * F, -8, 34), P(-8, -8 + 12, 33), P(-8 + 8 * F, -8, 18), P(-8, -8 + 8, 16), P(-8, -8, 10)];
+  for (const a of anchors) s.line(hub, a, silk);
+  for (const r of [.35, .65, .9]) for (let i = 0; i + 1 < anchors.length; i++) {
+    const a = anchors[i], b = anchors[i + 1], pa: Pt = [hub[0] + (a[0] - hub[0]) * r, hub[1] + (a[1] - hub[1]) * r], pb: Pt = [hub[0] + (b[0] - hub[0]) * r, hub[1] + (b[1] - hub[1]) * r];
+    s.line(pa, [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2 + 1.5], faint); s.line([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2 + 1.5], pb, faint);
+  }
+  s.dot(hub[0], hub[1], '#ffffff');
+  return { base: s, baseFoot: [30, 96], back: 15 };
+}
+/** Stairs cut down into the floor: a dark well, its steps going down toward the north, a stone kerb round it. */
+function stairsDownIso(): Built {
+  const s = new Sculpt(80, 64), P = proj(40, 40);
+  box(s, P, -8, -16, 8, 0, -.5, 0, M.stoneDk, 2, M.basalt);
+  poly3(s, P, [[-6, -14, 0], [6, -14, 0], [6, -1, 0], [-6, -1, 0]], dark, 4);
+  for (let i = 0; i < 5; i++) {
+    const y = -2 - i * 2.4, d = -1.6 - i * 1.6;
+    poly3(s, P, [[-6, y, d], [6, y, d], [6, y - 2.4, d], [-6, y - 2.4, d]], i < 2 ? M.stone : M.stoneDk, 10 + i, .9 - i * .3);
+    poly3(s, P, [[-6, y, d], [6, y, d], [6, y, d + 1.6], [-6, y, d + 1.6]], M.stoneDk, 20 + i, .2 - i * .2);
+  }
+  for (const [x0, y0, x1, y1] of [[-8, -16, 8, -14], [-8, -14, -6, 0], [6, -14, 8, 0], [-8, -1, 8, 0]] as const) box(s, P, x0, y0, x1, y1, 0, 1.5, M.stone, 30, M.stone);
+  return { base: s, baseFoot: [40, 40], back: 16 };
+}
+/** Stairs going up out of the floor: stone steps climbing north into a shaft of pale light. */
+function stairsUpIso(): Built {
+  const s = new Sculpt(80, 120), P = proj(40, 96);
+  poly3(s, P, [[-6, -15, 0], [6, -15, 0], [6, -15, 40], [-6, -15, 40]], daylight, 2, .3);
+  for (let i = 0; i < 7; i++) {
+    const y = -i * 2.1, h = i * 3.4;
+    box(s, P, -6, y - 2.1, 6, y, 0, h + 3.4, i > 4 ? M.stone : M.stoneDk, 10 + i * 3, M.stone);
+  }
+  for (const x of [-7, 6]) box(s, P, x, -15, x + 1, 0, 0, 3, M.stoneDk, 40, M.stone);
+  return { base: s, baseFoot: [40, 96], shadow: castShadow(12, 6, 6, 3) };
+}
+/** A ladder up out of the floor: two rails and rungs against a pale shaft of daylight from the hatch above. */
+function ladderIso(): Built {
+  const s = new Sculpt(60, 160), P = proj(30, 140);
+  poly3(s, P, [[-5, -6, 0], [5, -6, 0], [5, -6, 64], [-5, -6, 64]], daylight, 2, .2);
+  s.ellipse(...P(0, -6, 0), 14, 5, { ...daylight, gain: .2 }, { g: 3 });
+  for (const x of [-4, 4]) s.limb(P(x, -3, 0), P(x, -6, 62), 1.1, 1.1, M.wood, { g: 10 + x, bias: x < 0 ? .3 : -.3 });
+  for (let h = 6; h < 60; h += 7) s.limb(P(-4, -3 - h * .05, h), P(4, -3 - h * .05, h), .8, .8, M.woodLt, { g: 20 + h, bias: .5 });
+  return { base: s, baseFoot: [30, 140] };
+}
+/** A broken wall of an old building: staggered stone courses with a jagged top, moss in its cracks (three shapes). */
+function ruinIso(v: number): Built {
+  const s = new Sculpt(110, 120), P = proj(55, 96);
+  const tops = [[-12, 14 + v * 3], [-7, 22 - v * 2], [-2, 10 + v * 4], [3, 18], [8, 12 + v * 2], [12, 8]];
+  for (let i = 0; i + 1 < tops.length; i++) {
+    const [xa, ha] = tops[i], [xb, hb] = tops[i + 1];
+    poly3(s, P, [[xa, 2.5, 0], [xb, 2.5, 0], [xb, 2.5, hb], [(xa + xb) / 2, 2.5, (ha + hb) / 2 + (hash(i, v, 3) - .5) * 4], [xa, 2.5, ha]], M.stone, 10 + i, .2);
+    poly3(s, P, [[xa, -2.5, ha], [xb, -2.5, hb], [xb, 2.5, hb], [xa, 2.5, ha]], M.stone, 20 + i, .9);
+  }
+  poly3(s, P, [[12, -2.5, 0], [12, 2.5, 0], [12, 2.5, 8], [12, -2.5, 8]], M.stone, 30, -.8);
+  for (let h = 4; h < 22; h += 4.5) for (let x = -12 + ((h / 4.5) % 2) * 3; x < 12; x += 6) s.lineOn(P(x, 2.5, h), P(x, 2.5, h + 4.5), M.stone.ramp[1]);
+  for (let h = 4; h < 22; h += 4.5) s.lineOn(P(-12, 2.5, h), P(12, 2.5, h), M.stone.ramp[1]);
+  for (let i = 0; i < 4; i++) s.ellipse(...P(-10 + i * 6 + hash(i, v, 5) * 3, 2.6, 2 + hash(i, v, 6) * 8), 3, 2, M.moss, { g: 40 + i });
+  for (let i = 0; i < 3; i++) s.ellipse(...P(-14 + i * 11, 4 + hash(i, v, 8) * 2, .5), 3.5, 2, M.stoneDk, { g: 50 + i });
+  return { base: s, baseFoot: [55, 96], shadow: castShadow(30, 9, 10, 4) };
+}
+
 // ── The registry: top-down cache key → twin ──
 const seedOf = (k: string): number => Number(k.split(/[-:]/).pop()) || 0;
 type Make = (key: string, low: boolean) => Built;
@@ -714,6 +856,10 @@ const MAKERS: readonly [RegExp, Make][] = [
   [/^waystone$/, waystone], [/^beacon$/, beacon], [/^torch-post$/, torch], [/^root-lamp$/, rootLamp], [/^lantern-post$/, lanternPost],
   [/^great-lantern$/, greatLantern], [/^fountain$/, fountain], [/^hearth$/, hearthRing], [/^forge$/, forge], [/^anvil$/, anvil],
   [/^chest$/, chest], [/^bones$/, bones], [/^stump$/, stump],
+  // The dungeon dressing (td-dressing.ts), the ruins and the ways between floors (td-build.ts).
+  [/^altar$/, altar], [/^brazier-[01]$/, k => brazierIso(k.endsWith('1'))], [/^cage$/, cageIso], [/^chains$/, chainsIso],
+  [/^statue-broken$/, statueIso], [/^cobweb-(nw|ne)$/, k => cobwebIso(k.endsWith('ne'))], [/^stairs-down$/, stairsDownIso],
+  [/^stairs-up$/, stairsUpIso], [/^ladder-up$/, ladderIso], [/^ruin-\d+$/, k => ruinIso(seedOf(k))],
 ];
 /** Every top-down key with an isometric twin (the gallery and the spec walk it). */
 export const ISO_PROP_KEYS: readonly string[] = [
@@ -722,9 +868,12 @@ export const ISO_PROP_KEYS: readonly string[] = [
   ...['bush', 'fern', 'reeds', 'gloomcap', 'boulder', 'stone', 'grave', 'pillar'].flatMap(k => [0, 1, 2].map(v => `${k}-${v}`)),
   'flowerbed:2:3', 'fence:3', 'ore-seam', 'barrel', 'crate', 'bench', 'lamp', 'signpost', 'cart', 'waystone', 'beacon', 'torch-post', 'root-lamp',
   'lantern-post', 'great-lantern', 'fountain', 'hearth', 'forge', 'anvil', 'chest', 'bones', 'stump',
+  'altar', 'brazier-0', 'brazier-1', 'cage', 'chains', 'statue-broken', 'cobweb-nw', 'cobweb-ne', 'stairs-down', 'stairs-up', 'ladder-up', 'ruin-0', 'ruin-1', 'ruin-2',
 ];
 
 const arts = new Map<string, IsoArt | null>();
+/** Twins half baked: their shapes laid, waiting for the next frame's shading (isoArt). */
+const building = new Map<string, Built>();
 let budgetEnd = 0;
 let starved = 0;
 let idle = false;
@@ -736,6 +885,8 @@ const STARVE = 24;
  * new wood still fills in.
  */
 export function isoPropsFrame(deadline: number, still = false): void { budgetEnd = deadline; idle = still; starved++; }
+/** Has this frame's bake budget been spent (a look-ahead stops asking)? */
+export function isoPropsBusy(): boolean { return !idle && performance.now() > budgetEnd; }
 /**
  * The twin a top-down key shares: the six seeds of a tree kind fold onto three sculpts (the bake is the cost, and three
  * read as varied in a wood), the dead cypresses onto one, the palms keep their two.
@@ -775,15 +926,21 @@ export function isoArt(sp: Sprite): IsoArt | null {
   const key = canonKey(raw), k = `${low ? 'L' : 'N'}|${key}`;
   let art = arts.get(k);
   if (art === undefined) {
-    if (!/^fence:/.test(key) && !MAKERS.some(([re]) => re.test(key))) art = null;
+    const mk = /^fence:/.test(key) ? null : MAKERS.find(([re]) => re.test(key));
+    if (!mk && !/^fence:/.test(key)) art = null;
     else {
       if (typeof document === 'undefined') return null;
       if (!idle && performance.now() > budgetEnd && starved < STARVE) return null;
       starved = 0;
       const t0 = performance.now();
-      art = isoArtByKey(key, low);
+      // A bake is two steps on two frames (each about half the cost): the shapes laid, then shaded, trimmed and swayed.
+      // A fence (a few small pieces) bakes in one.
+      const half = mk ? building.get(k) : undefined;
+      if (mk && !half) { building.set(k, mk[1](key, low)); bakeMs += performance.now() - t0; budgetEnd = 0; idle = false; return null; }
+      if (half) { building.delete(k); art = finish(half, low); arts.set(k, art); }
+      else art = isoArtByKey(key, low);
       bakes++; bakeMs += performance.now() - t0;
-      // One bake spends the rest of the frame's budget.
+      // One step spends the rest of the frame's budget.
       budgetEnd = 0; idle = false;
     }
   }
@@ -806,7 +963,7 @@ export function isoPropPixels(): number {
 export function isoParts(art: IsoArt): number { return art.run ? art.run.tiles + 1 : 1; }
 /** Queue depth (iso Y) of part `i` of a twin standing at world foot (x, y). */
 export function isoPartDepth(art: IsoArt, x: number, y: number, i: number): number {
-  if (!art.run) return (x + y) / 2;
+  if (!art.run) return (x + y - (art.back ?? 0)) / 2;
   const x0 = x - art.run.tiles * TILE / 2, xi = x0 + i * TILE + TILE / 2;
   return (xi + y) / 2;
 }

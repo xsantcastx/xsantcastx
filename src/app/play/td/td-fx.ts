@@ -24,6 +24,27 @@ export const HOSTILE_EDGE = '#140c1c';
 
 export interface Px { x: number; y: number }
 
+// ── The isometric floor (td-iso-fx.ts) ──
+let isoFloor = false;
+/**
+ * The isometric renderer's floor pass (td-iso-fx IsoFloorFx): the ground painters lay their rings in world px and the
+ * projector squashes them, so the 3/4 view's own squash (a ring at half height) must not be applied a second time.
+ */
+export function setIsoFloor(on: boolean): void { isoFloor = on; }
+/** On the isometric floor this frame? */
+export function onIsoFloor(): boolean { return isoFloor; }
+/** A squash the 3/4 view lays on the floor (`k`, e.g. 0.5); 1 on the isometric floor, where the projection does it. */
+export function sq(k: number): number { return isoFloor ? 1 : k; }
+/**
+ * A dressing ring's radius (a ring under a creature, a loot ring, a sigil): on the isometric floor a world circle of
+ * r/√2 spans on the screen what groundRing(r) spans top-down. A reach (an aura's, a tell's) keeps its true radius.
+ */
+export function deco(r: number): number { return isoFloor ? Math.max(1, Math.round(r * .71)) : r; }
+/** On the isometric floor, the next pixels stand upright at world point (x, y) (a thorn, a flame) until `layFlat`. */
+export function standAt(c: CanvasRenderingContext2D, x: number, y: number): void { if (isoFloor) (c as unknown as { stand?(x: number, y: number): void }).stand?.(x, y); }
+/** Back to lying on the floor (after `standAt`). */
+export function layFlat(c: CanvasRenderingContext2D): void { if (isoFloor) (c as unknown as { stand?(x: number, y: number): void }).stand?.(NaN, NaN); }
+
 const circleCache = new Map<number, Px[]>();
 /**
  * The outline of a circle of radius r as whole pixels (midpoint circle), each
@@ -258,6 +279,7 @@ export function beamMotes(h: number, n: number, t: number, seed = 0): Px[] {
 
 /** A ring laid on the ground: a circle squashed to half its height (the floor seen at three quarters), each pixel once. */
 export function groundRing(r: number): Px[] {
+  if (isoFloor) return circlePixels(r);
   const seen = new Set<string>(), out: Px[] = [];
   for (const p of circlePixels(r)) { const q = { x: p.x, y: Math.round(p.y / 2) }, k = `${q.x},${q.y}`; if (!seen.has(k)) { seen.add(k); out.push(q); } }
   return out;

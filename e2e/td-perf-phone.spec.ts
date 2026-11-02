@@ -42,7 +42,7 @@ async function open(page: Page): Promise<void> {
 }
 
 async function measure(page: Page, label: string, walk: boolean, ms = 5000): Promise<void> {
-  await page.evaluate(() => { (window as unknown as W).__tdArt.perf?.(); (window as unknown as W).__tdArt.isoProf?.(); (window as unknown as W).__tdArt.isoBake?.(); });
+  await page.evaluate(() => { const a = (window as unknown as W).__tdArt as W['__tdArt'] & { isoKinds?(): unknown; isoProps?(): { n: number; ms: number; px: number } }; a.perf?.(); a.isoProf?.(); a.isoBake?.(); a.isoKinds?.(); (window as unknown as { __props0?: unknown }).__props0 = a.isoProps?.(); });
   const r = await page.evaluate(([walk, ms]) => new Promise<Record<string, number>>(done => {
     const w = window as unknown as W, d: number[] = [];
     const cv = document.querySelector('canvas')!;
@@ -60,7 +60,9 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
       const work = w.__tdArt.perf?.() ?? [];
       const ip = w.__tdArt.isoProf?.() ?? [];
       const ib = w.__tdArt.isoBake?.() ?? [];
-      const props = w.__tdArt.isoProps?.();
+      const p1 = w.__tdArt.isoProps?.(), p0 = (window as unknown as { __props0?: { n: number; ms: number } }).__props0;
+      const props = p1 && p0 ? { ...p1, n: p1.n - p0.n, ms: p1.ms - p0.ms } : p1;
+      const kinds = (w.__tdArt as { isoKinds?(): Record<string, [number, number]> }).isoKinds?.();
       const bakeS = ib.length ? ` | bake tiles ${ib[0]} atlas ${ib[1]} paint ${ib[2].toFixed(0)} read ${ib[3].toFixed(0)} lay ${ib[4].toFixed(0)} put ${ib[5].toFixed(0)} ms` : '';
       const isoS = ip.length && ip[ip.length - 1] ? ip.slice(0, 8).map(v => (v / ip[ip.length - 1]).toFixed(2)).join('/') + bakeS : '';
       const tot = work.map(f => f[0] + f[1]).sort((a, b) => a - b), bake = work.map(f => f[2]);
@@ -71,7 +73,7 @@ async function measure(page: Page, label: string, walk: boolean, ms = 5000): Pro
         mean: mean(d), p95: q(.95), max: s[s.length - 1], over33: d.filter(x => x > 33.4).length, frames: d.length,
         workMean: mean(tot), workP95: tot[Math.floor(tot.length * .95)] ?? 0, workMax: tot[tot.length - 1] ?? 0,
         update: mean(work.map(f => f[0])), draw: mean(work.map(f => f[1])), bakeMax: Math.max(0, ...bake), bakeSum: bake.reduce((a, b) => a + b, 0),
-        iso: (isoS + (props ? ` | props baked ${props.n} (${props.ms} ms), ${(props.px / 1e6).toFixed(2)} Mpx` : '')) as unknown as number, mpx: px / 1e6, backing: cv.width * cv.height / 1e6, heap: mem / 1048576,
+        iso: (isoS + (props ? ` | props baked ${props.n} (${props.ms} ms), ${(props.px / 1e6).toFixed(2)} Mpx` : '') + (kinds ? ` | kinds ${Object.entries(kinds).map(([k, [ms, n]]) => `${k} ${(ms / Math.max(1, d.length)).toFixed(1)}ms/${Math.round(n / Math.max(1, d.length))}`).join(' ')}` : '')) as unknown as number, mpx: px / 1e6, backing: cv.width * cv.height / 1e6, heap: mem / 1048576,
       });
     };
     requestAnimationFrame(tick);

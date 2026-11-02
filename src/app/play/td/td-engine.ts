@@ -28,7 +28,10 @@ import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './t
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
 import { offerClassic, onGraphics, optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
-import { behindCrown, crownFade, drawContact, drawIsoArt, drawIsoIcon, drawIsoShadow, fenceJoins, isoArt, isoIcon, isoPartDepth, isoParts, isoPropBakes, isoPropPixels, isoPropsFrame } from './td-iso-props';
+import { behindCrown, crownFade, drawContact, drawIsoArt, drawIsoIcon, drawIsoShadow, fenceJoins, isoArt, isoIcon, isoPartDepth, isoParts, isoPropBakes, isoPropPixels, isoPropsBusy, isoPropsFrame } from './td-iso-props';
+import { IsoFloorFx, airFoot, liftShadow } from './td-iso-fx';
+import { layBoss, layDressing, layFight } from './td-iso-fx-show';
+import { deco, setIsoFloor } from './td-fx';
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { bakedStructure, drawIsoBeacon, drawStructFloor, drawIsoHearth, drawIsoPurse, drawIsoShrine, drawIsoWaygate, isoStructure, keeperBehind, stepStructures, stripDepth, structDither } from './td-hd-structures';
@@ -145,7 +148,7 @@ import { relicSigOf } from '../../shared/rpg/unique-items';
 import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
 import { CHEST_GOLD_PILES, HUSH_CAPS, NIGHTROADS, SHADE_CHESTS, hushBand, type HushCap, type LightSpot } from './td-dark';
 import { DarkLayer, type DarkFrame } from './td-dark-layer';
-import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, eyeGlow, findEyes, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
+import { GLIM_OPEN_LIGHT, KEEPER_LIGHT, bayer4, eyeGlow, findEyes, isoLightOpen, isoLightSmooth, isoWarmAt, lightOpen, litAt, nightPass, skyOfHour, warmAt, type EyeSpot, type NightLight, type NightPass, type NightSetting } from './td-night';
 import { floorEliteRows, guaranteeMagic } from './td-elites';
 import { goldDropFor } from './td-mobs';
 import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/keymap.model';
@@ -423,6 +426,8 @@ export class TopDownEngine {
   private readonly unbind: (() => void)[] = [];
   /** The Slate is open: the Keeper faces the camera and looks at it in their hands. */
   private phone = false;
+  /** The iso light map at one buffer px an iso px (a fine pointer and more than four cores: a desktop); else at two. */
+  private readonly fineLight = typeof matchMedia !== 'undefined' && !matchMedia('(pointer: coarse)').matches && (typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 8) > 4);
   private frameError = false;
   /** The objects drawn this frame (smoke, lights and fireflies read them). */
   private visible: TdObject[] = [];
@@ -532,6 +537,8 @@ export class TopDownEngine {
   private walkerT = 0;
   private walkerUp = false;
   private fxSextonCalm = false;
+  /** The effects' photographs: the fight held still (webdriver only, __tdArt.freeze). */
+  private fxFreeze = false;
   /** For the chain's e2e (`?fxsexton=1`, only under an automated browser): `window.__tdSexton` walks the Keeper to each place of it. */
   private readonly fxSexton = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxsexton=1\b/.test(location.search);
   /**
@@ -642,6 +649,8 @@ export class TopDownEngine {
       target: () => { const m = this.mobs.target; return m ? { x: Math.round(m.x), y: Math.round(m.y), h: m.def.h } : null; },
       isoFlush: (on: boolean) => { this.isoFlush = on; },
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
+      // The standing pass per kind since the last call: { kind: [ms, items] } (td-engine K).
+      isoKinds: () => { const out: Record<string, [number, number]> = {}, pk = this.isoKindMs; for (const [name, k] of Object.entries(K)) if (pk[k * 2 + 1]) out[name] = [Math.round(pk[k * 2]), pk[k * 2 + 1]]; if (pk[61]) out['structBake'] = [Math.round(pk[60]), pk[61]]; pk.fill(0); return out; },
       isoLand: (g: string | null) => { this.isoLand = g as Ground | null; this.isoGen++; },
       isoBake: () => { const st = this.isoGround?.stats; const r = st ? Array.from(st) : []; st?.fill(0); return r; },
       motes: () => this.auraFx.alive,
@@ -653,6 +662,12 @@ export class TopDownEngine {
       hdBytes: () => hdFigureBytes(),
       // The ground dressing's isometric twins (td-iso-props.ts): bakes so far, their ms, and the baked canvas pixels.
       isoProps: () => ({ ...isoPropBakes(), px: isoPropPixels() }),
+      // The effects' photographs (td-iso-fx-show.ts; e2e/td-iso-fx-shots.spec.ts): a fight, a boss's telegraph, the
+      // dungeon dressing round the Keeper; `freeze` holds the fight still (no creature or effect steps) for the camera.
+      fight: () => layFight(this.mobs, this.player),
+      boss: () => layBoss(this.mobs, this.player),
+      dress: () => this.level instanceof HandLevel ? layDressing((this.level as unknown as { objects: TdObject[] }).objects, this.player) : 0,
+      freeze: (on: boolean) => { this.fxFreeze = on; },
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
@@ -3884,7 +3899,7 @@ export class TopDownEngine {
     this.coop.before(dt, this.peerArea(), this.peers.drawn.filter(p => this.peers.party.has(p.id)).map(p => ({ id: p.id, x: p.x, y: p.y })));
     this.peers.step(dt, this.peerArea(), this.player, this.still);
     this.mobs.selfAway = true;
-    try { this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
+    try { if (!this.fxFreeze) this.mobs.update(dt); } finally { this.mobs.selfAway = false; }
     this.fightFx(dt);
     this.coop.after(dt);
     this.tickPals(dt);
@@ -4058,7 +4073,7 @@ export class TopDownEngine {
     }
     // S6: the land its packs' auras come from (td-pack-aura).
     this.mobs.land = this.world.continent;
-    this.mobs.update(dt);
+    if (!this.fxFreeze) this.mobs.update(dt);
     this.fightFx(dt);
     this.coop.after(dt);
     // Whispering (an elite affix, S6): its blows feed the Hush.
@@ -4477,7 +4492,7 @@ export class TopDownEngine {
       this.isoScreen();
       const flat = (img: HTMLCanvasElement, x: number, y: number) => { const X = x - y, Y = (x + y) / 2, f = isoFlat(img); c.drawImage(f, X - img.height, Y, f.width / 2, f.height / 2); };
       // An object with an isometric twin (td-iso-props.ts) casts its own shadow down and to the right.
-      for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow, ia = isoArt(sp); if (fl) flat(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (ia) drawIsoShadow(c, ia, o.x, o.y); else if (sh) flat(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
+      for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow, ia = isoArt(sp); if (fl && !ia) flat(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (ia) drawIsoShadow(c, ia, o.x, o.y); else if (sh) flat(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
     } else for (const o of visible) { const sp = o.sprite(), fl = sp.floor, sh = sp.shadow; if (fl) c.drawImage(fl.img, Math.round(o.x + fl.x), Math.round(o.y + fl.y)); if (sh) c.drawImage(sh.img, Math.round(o.x + sh.x), Math.round(o.y + sh.y)); }
     const surface = this.level === this.world;
     if (surface) {
@@ -5108,7 +5123,7 @@ export class TopDownEngine {
       const r = rungOf(g), beam = r ? lootBeam(r) : null;
       if (!r || !beam?.ring || g.x < cam.x - 20 || g.x > cam.x + cam.w + 20 || g.y < cam.y - 20 || g.y > cam.y + cam.h + 60) continue;
       const tn = LOOT[r], X = Math.round(g.x), Y = Math.round(g.y) - 2, seed = this.dropSeed(g);
-      const rr = beam.ring + (this.still ? 0 : Math.round(Math.sin(this.time * 2.6 + seed % 7)));
+      const rr = deco(beam.ring) + (this.still ? 0 : Math.round(Math.sin(this.time * 2.6 + seed % 7)));
       c.globalAlpha = .3; c.fillStyle = tn.edge;
       for (const q of groundRing(rr + 1)) c.fillRect(X + q.x, Y + q.y, 1, 1);
       c.globalAlpha = .75;
@@ -5160,7 +5175,8 @@ export class TopDownEngine {
       const fr = Math.max(4, Math.round((this.still ? .7 : k) * len));
       for (const q of cone.fill) {
         const near = q.x * q.x + q.y * q.y < fr * fr;
-        c.globalAlpha = (near ? .6 : .35) * beat; c.fillStyle = near ? tn.body : tn.edge;
+        // Iso: the fill a step quieter (each world pixel covers two iso px there); the outline and front stay bright.
+        c.globalAlpha = (near ? .6 : .35) * beat * (this.iso ? .6 : 1); c.fillStyle = near ? tn.body : tn.edge;
         c.fillRect(ox + q.x, oy + q.y, 1, 1);
       }
       c.globalAlpha = .9 * beat;
@@ -5173,9 +5189,10 @@ export class TopDownEngine {
     for (const k of this.mobs.calls) {
       const t = 1 - k.t / CALL_TELL, X = Math.round(k.x), Y = Math.round(k.y), tn = FX.ember;
       c.globalAlpha = this.still ? 1 : Math.min(1, t * 5) * (Math.floor(this.time * 8) % 2 ? 1 : .75);
-      c.fillStyle = HOSTILE_EDGE; for (const q of groundRing(11)) c.fillRect(X + q.x, Y + q.y + 1, 1, 1);
-      c.fillStyle = tn.edge; for (const q of groundRing(11)) c.fillRect(X + q.x, Y + q.y, 1, 1);
-      groundRing(8).forEach((q, i) => { if (i % 2) return; c.fillStyle = tn.body; c.fillRect(X + q.x, Y + q.y, 1, 1); });
+      const R1 = deco(11), R2 = deco(8);
+      c.fillStyle = HOSTILE_EDGE; for (const q of groundRing(R1)) c.fillRect(X + q.x, Y + q.y + 1, 1, 1);
+      c.fillStyle = tn.edge; for (const q of groundRing(R1)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+      groundRing(R2).forEach((q, i) => { if (i % 2) return; c.fillStyle = tn.body; c.fillRect(X + q.x, Y + q.y, 1, 1); });
       // A turning three-point mark inside, closing in as the creature comes.
       const pts = polyPoints(3, 7 - t * 3, 3.5 - t * 1.5, this.still ? 0 : this.time * 3);
       for (let i = 0; i < 3; i++) linePixels(pts[i].x, pts[i].y, pts[(i + 1) % 3].x, pts[(i + 1) % 3].y).forEach((q, j) => { c.fillStyle = j % 2 ? tn.edge : tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
@@ -5202,7 +5219,9 @@ export class TopDownEngine {
     const c = this.ctx, p = this.player;
     for (const e of this.mobs.effects) {
       if (e.age < 0 || e.kind === 'pulse' || e.kind === 'wave') continue;
-      this.at(e.x, e.y);
+      // Iso: on the floor under it (a spark at a foe's chest stands on the foe's foot, not half its height to the right).
+      if (this.iso) this.isoAt(e.x, airFoot(e, this.mobs.mobs, this.player));
+      else this.at(e.x, e.y);
       if (drawAshAir(c, e, this.still, this.overFoe)) continue;
       if (drawLampAir(c, e, this.still, this.overFoe)) continue;
       if (drawThornAir(c, e, this.still, this.overFoe)) continue;
@@ -5731,6 +5750,8 @@ export class TopDownEngine {
   private readonly isoPeerView: { scale: number; camX: number; camY: number; time: number; still: boolean; hd?: (p: { x: number; y: number; dir: 'side' | 'down' | 'up'; face: 1 | -1 }) => { view: HdView; flip: boolean } } = { scale: 1, camX: 0, camY: 0, time: 0, still: false, hd: p => this.hdFacing(p) };
   /** The perf probe (webdriver only): ms per drawIso section, the last slot the frame count. */
   private readonly isoProf = new Float64Array(11);
+  /** The standing pass's ms and count per queue kind (K), for __tdArt.isoKinds. */
+  private readonly isoKindMs = new Float64Array(64);
   private isoMark = 0;
   private isoSkip = 0;
   /** The probe: the transform the floor's effects were drawn under last frame (webdriver only). */
@@ -5843,7 +5864,7 @@ export class TopDownEngine {
     this.plane();
     if (this.perf) this.isoFloorAt = c.getTransform();
     if (surface) this.darkLayer.drawGround(c, this.world.continent, (x, y) => inView(x, y, 32), this.isoDeck);
-    this.drawGroundFx();
+    this.isoGroundFx();
     this.prof(9);
     this.plane();
     if (surface) {
@@ -5866,7 +5887,8 @@ export class TopDownEngine {
       if (ip) { q.push(K.prop, (o.x + o.y - TILE / 2) / 2, o, 0, 0); continue; }
       const sp = o.sprite(), st = sp.iso ? isoStructure(sp) : null;
       // A house or a stall built at this angle (td-hd-structures.ts), in 16-px strips sorted at its front edge.
-      if (st) { const ox = Math.round(o.x), oy = Math.round(o.y), L = ox - oy - st.ax / 2, Wd = st.img.width / 2; for (let sx = 0; sx < Wd; sx += 16) q.push(K.struct, stripDepth(st, ox, oy, L + sx + 8), o, sx, Math.min(16, Wd - sx)); continue; }
+      // Strips off the view's sides are not queued at all (a long house at the edge of the screen).
+      if (st) { const ox = Math.round(o.x), oy = Math.round(o.y), L = ox - oy - st.ax / 2, Wd = st.img.width / 2; for (let sx = 0; sx < Wd; sx += 16) { const X = L + sx; if (X + 16 < ic.x || X > ic.x + ic.w) continue; q.push(K.struct, stripDepth(st, ox, oy, X + 8), o, sx, Math.min(16, Wd - sx)); } continue; }
       const ia = isoArt(sp);
       if (ia) { const j = ia.run ? fenceJoins(o, ia, this.isoNearObjs) : false; for (let k = 0, n = isoParts(ia); k < n; k++) q.push(K.art, isoPartDepth(ia, o.x, o.y, k), o, k, j ? 1 : 0); continue; }
       const k = sp.k ?? 1, w = sp.img.width / k, b = o.block;
@@ -5933,7 +5955,11 @@ export class TopDownEngine {
     for (const f of this.gather.fires) if (f.lv === this.level.id && inView(f.x, f.y)) q.push(K.fire, (f.x + f.y) / 2, f);
     q.sort();
     this.prof(2);
-    if (!(this.isoSkip & 4)) for (let i = 0; i < q.n; i++) this.isoDrawItem(q.at(i));
+    if (!(this.isoSkip & 4)) {
+      // The perf probe (__tdArt.isoKinds): ms per item kind, and how many, so the standing pass can be priced.
+      if (this.perf) { const pk = this.isoKindMs; for (let i = 0; i < q.n; i++) { const k = q.at(i), t0 = performance.now(); this.isoDrawItem(k); pk[q.kind[k] * 2] += performance.now() - t0; pk[q.kind[k] * 2 + 1]++; } }
+      else for (let i = 0; i < q.n; i++) this.isoDrawItem(q.at(i));
+    }
     this.prof(3);
     if (!(this.isoSkip & 8)) {
     // The air over the floor: the fishing floats and line, a light being struck (flat), the aura's motes, the pack
@@ -5988,9 +6014,36 @@ export class TopDownEngine {
     // Houses and stalls (td-hd-structures.ts): queued a screen ahead of the walk every eighth frame, painted a step at a
     // time in what is left of the frame.
     if (((this.isoTick = (this.isoTick + 1) & 7)) === 0) for (const o of this.level.objectsIn(W.x - 240, W.y - 240, W.x + W.w + 240, W.y + W.h + 240)) if (o.kind === 'building' || o.kind === 'stall') isoStructure(o.sprite());
-    stepStructures(this.frameAt + ISO_FRAME_MS);
+    // The ground dressing's twins a screen ahead (td-iso-props): while the Keeper stands, the spare frames bake what he
+    // will walk into next, so a new wood is mostly baked before he gets there.
+    if (this.isoTick === 4 && !p.moving && !this.path.length) for (const o of this.level.objectsIn(W.x - 240, W.y - 240, W.x + W.w + 240, W.y + W.h + 240)) if (o.kind !== 'building' && o.kind !== 'stall' && !isoArt(o.sprite()) && isoPropsBusy()) break;
+    { const t0 = this.perf ? performance.now() : 0; stepStructures(this.frameAt + ISO_FRAME_MS); if (this.perf) { this.isoKindMs[60] += performance.now() - t0; this.isoKindMs[61]++; } }
     this.prof(7);
     if (this.perf) this.bakeMs += ground.bakeMs;
+  }
+  /** The floor projector (td-iso-fx.ts): the ground effects' world pixels laid as crisp iso pixels. */
+  private readonly isoFloorFx = new IsoFloorFx();
+  /**
+   * Iso: the floor's effects (auras, novas, tells, hazards, a boss's cone, the loot rings, the class zones) through the
+   * projector, their rings laid in world px (td-fx setIsoFloor) so the projection squashes them once; then the shadows
+   * of what flies over the floor (bolts, shots, spears, arrows, a falling meteor), so their height reads.
+   */
+  private isoGroundFx(): void {
+    const real = this.ctx, ic = this.isoCam;
+    this.ctx = this.isoFloorFx.bind(real, this.scale, ic.x, ic.y).ctx;
+    setIsoFloor(true);
+    try { this.drawGroundFx(); } finally { setIsoFloor(false); this.ctx = real; }
+    this.isoScreen();
+    const c = real, low = envDetail() === 'low', sh = (x: number, y: number, lift: number, size: number) => {
+      if (lift > 2 && this.isoNear(x, y)) liftShadow(c, Math.round(x) - Math.round(y), (Math.round(x) + Math.round(y)) / 2, lift, size, low);
+    };
+    for (const b of this.mobs.bolts) { const l = b.lift ?? 22; sh(b.x, b.y + l, l, 2); }
+    for (const q of this.mobs.shots) { const l = q.lift ?? 0; sh(q.x, q.y + l, l, q.kind === 'breath' ? 3 : 2); }
+    for (const q of this.mobs.spears) { const l = q.lift ?? 0; sh(q.x, q.y + l, l, 2); }
+    for (const a of this.mobs.arrows) { const l = a.lift ?? 12; sh(a.x, a.y + l, l, 1.5); }
+    // A meteor's stone coming down onto its ring: the shadow gathers as it falls.
+    for (const e of this.mobs.effects) if (e.kind === 'meteor' && e.age >= 0) { const k = this.still ? .6 : e.age / e.life; sh(e.x, e.y, 2.5 + (1 - k) * 50, 2 + k * 3); }
+    this.plane();
   }
   /** Iso: the passes over the light go onto the UI layer while the light map is up (cleared each frame it is used). */
   private isoUi(): void {
@@ -6064,7 +6117,14 @@ export class TopDownEngine {
         const p = this.player, jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
         this.isoScreen();
         const fade = ia.fades ? crownFade(o, behindCrown(ia, o.x, o.y, this.isoFadePts, this.isoFadeN), this.frameDt, this.still) : 1;
+        // A tall post (a street lamp, a torch, a lantern post) the Keeper stands just behind goes see-through, like a
+        // wall in the wedge (Director, iso-fx review): never a pole across his face.
+        const b = ia.base, X = Math.round(o.x) - Math.round(o.y), Y = (Math.round(o.x) + Math.round(o.y)) / 2;
+        const PXk = Math.round(p.x) - Math.round(p.y), PYk = (Math.round(p.x) + Math.round(p.y)) / 2;
+        const ghost = !ia.fades && !ia.run && !!b && b.ay > 56 && b.img.width < 60 && PYk < Y && PYk > Y - b.ay / 2 + 8 && Math.abs(PXk - X) < 12;
+        if (ghost) c.globalAlpha = .45;
         drawIsoArt(c, ia, o.x, o.y, q.a[i], this.time, this.still, jig, fade, q.b[i] === 1);
+        if (ghost) c.globalAlpha = 1;
         return;
       }
       case K.person: { const pp = ref as Person; this.isoAt(pp.x, pp.y); this.drawPerson(pp, q.a[i] === 2 ? 'run' : q.a[i] === 1 ? 'walk' : 'idle'); return; }
@@ -6105,8 +6165,12 @@ export class TopDownEngine {
     const behind = keeperBehind(st, ox, oy, PX, PY);
     this.isoScreen();
     if (!behind) {
-      c.drawImage(st.img, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2);
-      if (st.roof) c.drawImage(st.roof, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2);
+      // Only the rows the strip paints (IsoStruct.rows): most of a body's strip above its walls, and of a roof's below
+      // its eaves, is empty, and a blit costs by the pixels it covers.
+      const R = st.rows, k = (sx >> 4) * 4;
+      if (!R) { c.drawImage(st.img, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2); if (st.roof) c.drawImage(st.roof, sx * 2, 0, sw * 2, h, L + sx, T, sw, h / 2); return; }
+      if (R[k + 1] > R[k]) c.drawImage(st.img, sx * 2, R[k], sw * 2, R[k + 1] - R[k], L + sx, T + R[k] / 2, sw, (R[k + 1] - R[k]) / 2);
+      if (st.roof && R[k + 3] > R[k + 2]) c.drawImage(st.roof, sx * 2, R[k + 2], sw * 2, R[k + 3] - R[k + 2], L + sx, T + R[k + 2] / 2, sw, (R[k + 3] - R[k + 2]) / 2);
       return;
     }
     // Behind: the roof is off (a plank floor shows the room) and nothing is drawn over the Keeper's own figure, so he
@@ -6298,9 +6362,13 @@ export class TopDownEngine {
     // The buffer covers the view: top-down the world itself, iso the iso plane (the one light map: night, a dungeon's
     // dark, an inn's warm dark — one low-resolution layer and one composite).
     const cam = this.cam, s = this.scale, V = iso ? this.isoCam : cam;
-    // The buffer's origin sits on an even art pixel, so its 2×2 cells (and the rim's dither) stay put on the ground.
-    const ox = Math.floor(V.x / 2) * 2, oy = Math.floor(V.y / 2) * 2;
-    const bw = Math.max(1, Math.ceil(V.w / 2) + 2), bh = Math.max(1, Math.ceil(V.h / 2) + 2);
+    // One buffer pixel is Q art px: 2 top-down; 1 in iso (Normal), where the HD walls and figures fade into the dark
+    // through a fine ordered dither (td-night isoLightOpen) instead of 2-px bands and a coarse checker. Low and phones
+    // keep 2 (a quarter of the light map's pixels).
+    const Q = iso && this.fineLight && envDetail() !== 'low' ? 1 : 2, fine = Q === 1;
+    // The buffer's origin sits on a whole cell, so its cells (and the rim's dither) stay put on the ground.
+    const ox = Math.floor(V.x / Q) * Q, oy = Math.floor(V.y / Q) * Q;
+    const bw = Math.max(1, Math.ceil(V.w / Q) + 2), bh = Math.max(1, Math.ceil(V.h / Q) + 2);
     // Iso: drawn straight onto the light layer (isoLayer), which the compositor scales over the world.
     const layer = iso ? this.isoLayer() : null;
     let buf: HTMLCanvasElement;
@@ -6316,13 +6384,13 @@ export class TopDownEngine {
     d.globalCompositeOperation = 'destination-out';
     // A light's spot on the buffer's plane: top-down the world point itself; iso its foot projected and lifted straight up.
     const PX = (x: number, y: number) => iso ? x - y : x, PY = (x: number, y: number, lift: number) => iso ? (x + y) / 2 - lift : y - lift;
-    const bx = (X: number) => Math.round((X - ox) / 2), by = (Y: number) => Math.round((Y - oy) / 2);
-    const onBuf = (X: number, Y: number, r: number) => X + r > ox && X - r < ox + bw * 2 && Y + r > oy && Y - r < oy + bh * 2;
+    const bx = (X: number) => Math.round((X - ox) / Q), by = (Y: number) => Math.round((Y - oy) / Q);
+    const onBuf = (X: number, Y: number, r: number) => X + r > ox && X - r < ox + bw * Q && Y + r > oy && Y - r < oy + bh * Q;
     // A hole of radius r (art px) at foot (x, y) lifted `lift`: the stepped sprite at its own size (no blur); iso a 2:1 pool.
     const holeAt = (X: number, Y: number, r: number, w: number) => {
       if (!onBuf(X, Y, iso ? r * 1.3 : r)) return;
       d.globalAlpha = w;
-      if (iso) { const R = Math.max(1, Math.round(r * .62)), cx = bx(X), cy = by(Y); d.drawImage(this.holeSprite(R, (cx + cy) & 1, true), cx - R, cy - (R >> 1)); }
+      if (iso) { const R = Math.max(1, Math.round(r * 1.24 / Q)), cx = bx(X), cy = by(Y); d.drawImage(this.holeSprite(R, fine ? ((cx - R) & 3) | (((cy - (R >> 1)) & 3) << 2) : 0, true, fine ? 1 : 2), cx - R, cy - (R >> 1)); }
       else { const R = Math.max(1, Math.round(r / 2)), cx = bx(X), cy = by(Y); d.drawImage(this.holeSprite(R, (cx + cy) & 1), cx - R, cy - R); }
     };
     const hole = (x: number, y: number, r: number, w = 1, lift = 0) => {
@@ -6333,7 +6401,7 @@ export class TopDownEngine {
     // A ring the dark opens along (an aura's reach, a nova's front): a circle on the ground, a 2:1 ellipse in iso.
     const ring = (x: number, y: number, r: number) => {
       d.beginPath();
-      if (iso) d.ellipse(bx(PX(x, y)), by(PY(x, y, 0)), r * .71, r * .355, 0, 0, Math.PI * 2);
+      if (iso) d.ellipse(bx(PX(x, y)), by(PY(x, y, 0)), r * 1.42 / Q, r * .71 / Q, 0, 0, Math.PI * 2);
       else d.arc(bx(x), by(y), r / 2, 0, Math.PI * 2);
       d.stroke();
     };
@@ -6381,7 +6449,7 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) if (m.def.id === SEAM_ID) hole(m.x, m.y, m.def.w * .9, 1, m.def.h / 2);
     // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
     if (this.mobs.aura) {
-      d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 3;
+      d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 6 / Q;
       ring(this.player.x, this.player.y, this.mobs.auraRadius);
       hole(this.player.x, this.player.y, this.mobs.auraRadius * 2 + 16, .2);
     }
@@ -6390,7 +6458,7 @@ export class TopDownEngine {
       const t = e.age / e.life;
       if (e.kind === 'wave' && t < .5) {
         const k = t / .5, r = 6 + ((e.r ?? NOVA_R) - 6) * (1 - (1 - k) * (1 - k));
-        d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 3;
+        d.globalAlpha = .9 * (1 - k * .5); d.strokeStyle = '#000'; d.lineWidth = 6 / Q;
         ring(e.x, e.y, r);
       } else if (e.kind === 'bolt-hit' || e.kind === 'raise' || e.kind === 'flash' || e.kind === 'flame' || e.kind === 'kindle-hit' || e.kind === 'banish') hole(e.x, e.y, 28);
       else if ((e.kind === 'lamp-flash' || e.kind === 'lward-break') && t < .6) hole(e.x, e.y, (e.r ?? 48) * 2 * (1 - t));
@@ -6401,6 +6469,9 @@ export class TopDownEngine {
     for (const g of this.groundLoot()) { const r = rungOf(g); if (r) { const b = lootBeam(r); hole(g.x, g.y, b.light + b.h / 2, 1, 3 + b.h / 2); } }
     for (const m of this.mobs.mobs) if (m.tell > 0 && m.aim && windsUp(m.def)) { hole(m.x + m.face * m.def.w * .3, m.y, 40, 1, m.def.h * .55); hole((m.x + m.aim.x) / 2, (m.y + m.aim.y + 12) / 2, 70); }
     for (const k of this.mobs.calls) hole(k.x, k.y, 30);
+    // Iso: the actors carry the detail, so a creature in view keeps a little light on its own body (a boss more) — the
+    // dark falls on the room, not on what fights in it (Director, iso-fx review). Its eyes-in-the-dark still show past it.
+    if (iso) for (const m of this.mobs.mobs) if ((m.hidden ?? 0) <= 0 && onBuf(PX(m.x, m.y), PY(m.x, m.y, 0), 80)) hole(m.x, m.y, Math.max(24, m.def.w * .9), m.def.rank === 'boss' ? .55 : .35, m.def.h / 2);
     // Glim lights the dark a little wider than the Keeper's own (much wider below ground, wider still with its lamp
     // while he rests); a light pet its own.
     if (this.glim.shown) {
@@ -6416,16 +6487,16 @@ export class TopDownEngine {
     for (const g of glows) {
       const r = g.r * 1.8;
       if (!onBuf(g.X, g.Y, r)) continue;
-      const R = Math.max(1, Math.round(r / 2));
-      if (iso) d.drawImage(this.warmSprite(R, true), bx(g.X) - R, by(g.Y) - (R >> 1));
+      const R = Math.max(1, Math.round(r / Q));
+      if (iso) { const cx = bx(g.X) - R, cy = by(g.Y) - (R >> 1); d.drawImage(this.warmSprite(R, true, fine ? (cx & 3) | ((cy & 3) << 2) : -1), cx, cy); }
       else d.drawImage(this.warmSprite(R), bx(g.X) - R, by(g.Y) - R);
     }
     d.globalAlpha = 1;
     if (layer) {
       // Placed over the world canvas in CSS px (the world canvas's backing px × its CSS scale).
       const k = this.canvas.clientWidth / Math.max(1, this.canvas.width), st = layer.light.style;
-      const css = `${bw * 2 * s * k}px:${bh * 2 * s * k}px`;
-      if (css !== layer.css) { layer.css = css; st.width = `${bw * 2 * s * k}px`; st.height = `${bh * 2 * s * k}px`; }
+      const css = `${bw * Q * s * k}px:${bh * Q * s * k}px`;
+      if (css !== layer.css) { layer.css = css; st.width = `${bw * Q * s * k}px`; st.height = `${bh * Q * s * k}px`; }
       st.transform = `translate(${Math.round((ox - V.x) * s) * k}px, ${Math.round((oy - V.y) * s) * k}px)`;
       if (st.display !== 'block') st.display = 'block';
       layer.lit = true;
@@ -6434,27 +6505,33 @@ export class TopDownEngine {
     const c = this.ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.imageSmoothingEnabled = false;
-    c.drawImage(buf, Math.round((ox - V.x) * s), Math.round((oy - V.y) * s), bw * 2 * s, bh * 2 * s);
+    c.drawImage(buf, Math.round((ox - V.x) * s), Math.round((oy - V.y) * s), bw * Q * s, bh * Q * s);
     if (!iso) c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
   }
 
   /** A light's hole at buffer radius R: the stepped falloff (td-night lightOpen), the rim dithered on the world checker. */
-  private holeSprite(R: number, parity: number, flat = false): HTMLCanvasElement {
-    const key = (R * 2 + parity) * 2 + (flat ? 1 : 0);
+  private holeSprite(R: number, parity: number, flat = false, mode: 0 | 1 | 2 = 0): HTMLCanvasElement {
+    // `mode` 0: the rim on the checker (top-down; `parity` its cell). 1 (iso, fine light map): `parity` is the sprite's
+    // corner mod 4 (x | y << 2), its Bayer dither pinned to the world. 2 (iso, the half-resolution light map of phones
+    // and Low): the falloff unstepped (a 2-px checker over HD walls read as a coarse mesh, wide flat steps as a mosaic).
+    const key = ((R * 16 + parity) * 2 + (flat ? 1 : 0)) * 3 + mode;
     let sp = this.holeSprites.get(key);
     if (sp) return sp;
-    if (this.holeSprites.size > 160) this.holeSprites.clear();
-    sp = this.stepSprite(R, (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)], flat);
+    if (this.holeSprites.size > 320) this.holeSprites.clear();
+    const px = parity & 3, py = parity >> 2;
+    sp = this.stepSprite(R, mode === 1 ? (f, x, y) => [0, 0, 0, isoLightOpen(f, bayer4(x + px, y + py))] : mode === 2 ? f => [0, 0, 0, isoLightSmooth(f)] : (f, x, y) => [0, 0, 0, lightOpen(f, ((x + y + parity) & 1) === 1)], flat);
     this.holeSprites.set(key, sp);
     return sp;
   }
   /** A warm wash at buffer radius R: stepped bands of the Hearth palette, a brass-cream heart (td-night warmAt). */
-  private warmSprite(R: number, flat = false): HTMLCanvasElement {
-    const key = R * 2 + (flat ? 1 : 0);
+  private warmSprite(R: number, flat = false, at = -1): HTMLCanvasElement {
+    // `at` ≥ 0 (iso Normal): the sprite's corner mod 4 (x | y << 2); its bands' edges are a Bayer dither pinned to the world.
+    const key = (R * 2 + (flat ? 1 : 0)) * 17 + at + 1;
     let sp = this.warmSprites.get(key);
     if (sp) return sp;
-    if (this.warmSprites.size > 80) this.warmSprites.clear();
-    sp = this.stepSprite(R, f => f <= .35 ? [255, 210, 122, warmAt(f)] : [255, 179, 71, warmAt(f)], flat);
+    if (this.warmSprites.size > 240) this.warmSprites.clear();
+    const px = at & 3, py = at >> 2;
+    sp = this.stepSprite(R, at >= 0 ? (f, x, y) => [255, f <= .35 ? 210 : 179, f <= .35 ? 122 : 71, isoWarmAt(f, bayer4(x + px, y + py))] : f => f <= .35 ? [255, 210, 122, warmAt(f)] : [255, 179, 71, warmAt(f)], flat);
     this.warmSprites.set(key, sp);
     return sp;
   }
@@ -6489,6 +6566,18 @@ export class TopDownEngine {
       const k = eyeGlow(this.night.alpha, litAt(this.nightLights, m.x, m.y - m.def.h / 2));
       if (k <= .02) continue;
       this.at(m.x, m.y);
+      // Iso's HD creatures: the silhouette from the HD cell it is drawn with. The classic sheet's frame (a different
+      // size, and for some kinds a filled cell) stood as a translucent blue box over the dark (iso-walls review).
+      if (this.iso && optHdFigures() && hasHdModel(m.def.id) && envDetail() !== 'low') {
+        const clip = hdClip(m, this.time), cell = hdCell(m.def.id, this.hdRow(m, m.x, m.y, m.face), clip.anim, clip.f, this.time);
+        if (cell) {
+          const lift = this.vis(m.def).floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
+          c.globalAlpha = .28 * k * (this.vis(m.def).ghost ? .6 : 1);
+          c.drawImage(this.hdShade(cell.img), Math.round(m.x) - cell.ax / 2, Math.round(m.y) + 1 - lift - cell.ay / 2, cell.img.width / 2, cell.img.height / 2);
+          c.globalAlpha = 1;
+        }
+        continue;
+      }
       const d = this.vis(m.def), sheet = mobSheet(m.def), frames = Math.max(1, Math.round(sheet.width / d.w)), f = Math.floor(m.t * 6) % frames;
       const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
       const X = Math.round(m.x), Y = Math.round(m.y - d.h - lift), left = -Math.floor(d.w / 2);
@@ -6517,6 +6606,18 @@ export class TopDownEngine {
     for (let f = 0; f < frames; f++) eyes.push(findEyes(g.getImageData(f * def.w, 0, def.w, def.h).data, def.w, def.h));
     this.mobEyes.set(def.id, eyes);
     return eyes;
+  }
+  private readonly hdShades = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+  /** An HD cell's silhouette in the night tone (made once per cell). */
+  private hdShade(img: HTMLCanvasElement): HTMLCanvasElement {
+    let sh = this.hdShades.get(img);
+    if (sh) return sh;
+    sh = document.createElement('canvas'); sh.width = img.width; sh.height = img.height;
+    const g = sh.getContext('2d')!;
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = '#4a4480'; g.fillRect(0, 0, sh.width, sh.height);
+    this.hdShades.set(img, sh);
+    return sh;
   }
   private mobShade(def: Mob['def'], sheet: HTMLCanvasElement): HTMLCanvasElement {
     let sh = this.mobShades.get(def.id);

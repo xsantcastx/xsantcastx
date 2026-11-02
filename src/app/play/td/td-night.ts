@@ -63,6 +63,37 @@ export function lightOpen(f: number, odd = false): number {
   return odd ? LIGHT_RIM[1] : LIGHT_RIM[0];
 }
 
+/** A 4×4 ordered-dither (Bayer) threshold at buffer pixel (x, y), in (0, 1). */
+export function bayer4(x: number, y: number): number { return (BAYER4[((y & 3) << 2) | (x & 3)] + .5) / 16; }
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+/** Pick one of the stepped `levels` (descending) for a continuous value `v`, ordered-dithered by threshold `t`. */
+function stepDither(v: number, levels: readonly number[], t: number): number {
+  for (let i = 0; i < levels.length - 1; i++) {
+    const a = levels[i], b = levels[i + 1];
+    if (v <= a && v >= b) return t < (v - b) / Math.max(1e-6, a - b) ? a : b;
+  }
+  return v > levels[0] ? levels[0] : levels[levels.length - 1];
+}
+/** A curve through (f, v) points, linear between them. */
+function curve(pts: readonly (readonly [number, number])[], f: number): number {
+  for (let i = 1; i < pts.length; i++) if (f <= pts[i][0]) { const [f0, v0] = pts[i - 1], [f1, v1] = pts[i]; return v0 + (v1 - v0) * (f - f0) / Math.max(1e-6, f1 - f0); }
+  return pts[pts.length - 1][1];
+}
+const ISO_OPEN: readonly (readonly [number, number])[] = [[0, 1], [.41, 1], [.49, .8], [.61, .8], [.69, .5], [.79, .5], [.87, .3], [.94, .08], [1, 0]];
+const OPEN_LEVELS = [1, .8, .5, LIGHT_RIM[0], LIGHT_RIM[1], 0];
+/**
+ * The isometric light map's falloff (one buffer pixel an iso pixel, td-engine drawLight): the same clear core, two steps
+ * and rim as `lightOpen`, but each step's edge and the rim's fade are a fine ordered dither (`t`, bayer4) instead of a
+ * hard band edge and a coarse checker — the dungeon's walls fade into the dark a pixel at a time.
+ */
+/** The same falloff unquantized (the half-resolution iso light map: its 2-px cells carry the steps without bands). */
+export function isoLightSmooth(f: number): number { return f > 1 ? 0 : curve(ISO_OPEN, f); }
+export function isoLightOpen(f: number, t: number): number { return f > 1 ? 0 : stepDither(curve(ISO_OPEN, f), OPEN_LEVELS, t); }
+const ISO_WARM: readonly (readonly [number, number])[] = [[0, .26], [.31, .26], [.39, .17], [.56, .17], [.64, .09], [.8, .09], [.9, 0], [1, 0]];
+const WARM_LEVELS = [.26, .17, .09, 0];
+/** The warm wash's bands on the isometric light map, their edges ordered-dithered (`t`, bayer4) like isoLightOpen. */
+export function isoWarmAt(f: number, t: number): number { return f > 1 ? 0 : stepDither(curve(ISO_WARM, f), WARM_LEVELS, t); }
+
 /** The warm wash a lamp, hearth or window lays inside its light (alpha by band; the colour is the Hearth palette). */
 export const WARM_STEPS: readonly (readonly [number, number])[] = [[.35, .26], [.6, .17], [.85, .09]];
 export function warmAt(f: number): number {
