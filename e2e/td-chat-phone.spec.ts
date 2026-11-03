@@ -31,8 +31,8 @@ for (const size of SIZES) {
     test('input and Send in one row inside the box, reachable, clear of the controls', async ({ page }) => {
       test.setTimeout(90_000);
       await enterAs(page, hearth.port, 'Aster', 'warlock');
-      // Portrait: the chat is a sheet, opened from the ticker.
-      if (await page.locator('.th-ticker').count()) await page.locator('.th-ticker').tap();
+      // Portrait: the chat is a sheet, opened from ☰ More (or the ticker; a tap on Glim's line opens Glim instead).
+      if (await page.locator('[data-th="more"]').count()) { await page.locator('[data-th="more"]').tap(); await page.locator('[data-tile="chat"]').tap(); }
       await page.locator('.td-chat__tabs [role=tab]').nth(1).tap();
       const input = page.locator('.td-chat__say input'), send = page.locator('.td-chat__say button');
       await expect(input).toBeVisible();

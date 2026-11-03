@@ -202,7 +202,7 @@ test.describe('Nearby online', () => {
     // Bryn drops the ring at his feet (the satchel card's Drop).
     await bryn.waitForTimeout(500);
     if (await bryn.locator('.menu-scrim').count()) await bryn.locator('.menu-scrim').click({ position: { x: 4, y: 4 } });
-    await bryn.getByRole('button', { name: /^Satchel/ }).first().click();
+    await bryn.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
     await bryn.locator('#satchel-book [data-grid="b"] [data-ids="r1"]').click();
     await bryn.locator('.d2tip--pinned [data-drop-item]').click();
     await expect.poll(async () => (await canvas(bryn).getAttribute('data-ground')) ?? '', { timeout: 20000 }).toMatch(/^g/);

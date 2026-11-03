@@ -43,7 +43,8 @@ test('the Map on a phone: the map above, the key below, everything reachable', a
   await seed(page, { 'eclipse-td': '1' });
   await page.goto('/play?td=1&hour=12');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
-  await page.locator('.td-dock button').last().click();
+  // A portrait phone has the thumb HUD's Map (docs/design/ui-pass-3.md §A.2), a wider one the dock's.
+  await (await page.locator('[data-th="map"]').count() ? page.locator('[data-th="map"]') : page.locator('.td-dock button').last()).click();
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
   await page.waitForTimeout(500);

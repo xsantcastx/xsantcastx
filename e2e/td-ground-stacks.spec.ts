@@ -54,7 +54,7 @@ test('online, two Keepers: 3 of 5 potions dropped through "How many?" lie as one
   await enterAs(bryn, hearth.port, 'Bryn', 'thornstrider', keeper('us2', 0));
 
   await calm(page);
-  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
   const book = page.locator('#satchel-book');
   await expect(book.locator(`[data-grid="b"] [data-stack="${SK}"]`).first()).toBeVisible({ timeout: 10000 });
   await book.locator(`[data-grid="b"] [data-stack="${SK}"]`).first().click();

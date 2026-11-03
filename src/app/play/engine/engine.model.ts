@@ -384,12 +384,15 @@ export interface EngineOptions {
   /** Top-down: another Keeper (the Hearth room) was tapped — the HUD shows their card. */
   onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
   /**
-   * The Nearby tab's partial take of the Keeper's own stack (td-engine takeNearby): split `n` off the token's stack and
-   * return the new token (the host keeps what each own drop was), or null to refuse.
+   * The Nearby tab (td-engine takeNearby) takes `n` of the Keeper's own stack pile through the host's reusable partial
+   * take (side-scroller takeOwnStack, which trims the pile with trimOwn). False: no room.
    */
-  onSplitOwn?: (own: string, n: number) => string | null;
-  /** A split own piece the satchel refused goes back onto its stack: fold token `from` into `into`. */
-  onMergeOwn?: (from: string, into: string) => void;
+  onTakeOwnStack?: (own: string, n: number) => boolean;
+  /**
+   * The Nearby tab takes another Keeper's piece through the room: a stack by the reusable take (trade-hud takeFromPile,
+   * `qty` of it, all when omitted, never a picker), an item by pickup.
+   */
+  onTakeShared?: (id: string, qty?: number) => void;
   /** A shared ground item (Hearth protocol 6) was tapped: the Keeper walked to it; the HUD picks it up. */
   onGroundTap?: (id: string) => void;
   /**

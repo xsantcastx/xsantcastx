@@ -69,6 +69,14 @@
     @else { <img class="td-stone__blank" [src]="hud.art('basalt-blank')" alt="" draggable="false"> }
     <b class="td-pot__n">{{ hud.tdStone?.charges ?? 0 }}</b><kbd>F</kbd>
   </button>
+  <!-- The item hotkeys that hold something (9 / 0 / −; verb-matrix T3): beside the Health slot, a tap uses it. -->
+  @for (q of hud.tdQuickHeld; track q.i; let qi = $index) {
+    <button type="button" class="td-pot td-quick th-slot th-quick" [attr.data-qi]="qi" [attr.data-quick]="q.i" [attr.data-quick-key]="q.stackKey" [attr.data-quick-n]="q.count"
+            [class.td-pot--empty]="!q.count" [class.td-quick--out]="!q.count" [appDropTarget]="hud.quickTarget(q.i)" (click)="hud.useQuick(q.i)" [attr.aria-label]="hud.quickTitle(q)" [title]="hud.quickTitle(q)">
+      @if (q.art) { <img [src]="q.art" alt="" draggable="false"> }
+      <b class="td-pot__n">{{ q.count }}</b><kbd>{{ q.key }}</kbd>
+    </button>
+  }
 </div>
 
 <nav class="th-bag" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore data-world-rail>

@@ -27,7 +27,8 @@ async function open(page: Page): Promise<void> {
 }
 /** Mara Voss takes the ore and pays (the td-quests path): 40 Hunting XP crosses level 10. */
 async function handInOre(page: Page, phone: boolean): Promise<void> {
-  if (phone) await page.locator('.td-dock button').last().click();
+  // A portrait phone has the thumb HUD's Map (docs/design/ui-pass-3.md §A.2), a wider one the dock's.
+  if (phone) await (await page.locator('[data-th="map"]').count() ? page.locator('[data-th="map"]') : page.locator('.td-dock button').last()).click();
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
   await page.locator('#places-list [data-map-find]').fill('mara voss');
   await page.locator('#places-list.td-map .td-map__key button[data-kind="npc"]', { hasText: /mara voss/i }).click();

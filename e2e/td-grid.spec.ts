@@ -209,11 +209,14 @@ test.describe('the Vault: a stash grid beside the satchel, only at a Vault', () 
     await page.waitForTimeout(600);
     await touch('touchEnd', ring.x + 8, ring.y + 8);
     await expect(stash.locator('.vs-hold')).toBeVisible();
+    // A portrait phone: the held ring goes onto the Vault chip (its first free cell); elsewhere onto a cell of the tab.
     if (await page.locator('[data-seg="vault"]').count()) await touchTap(page, cdp, '[data-seg="vault"]');
-    await tab.scrollIntoViewIfNeeded();
-    const t = (await tab.boundingBox())!;
-    await touch('touchStart', t.x + 60, t.y + 60);
-    await touch('touchEnd', t.x + 60, t.y + 60);
+    else {
+      await tab.scrollIntoViewIfNeeded();
+      const t = (await tab.boundingBox())!;
+      await touch('touchStart', t.x + 60, t.y + 60);
+      await touch('touchEnd', t.x + 60, t.y + 60);
+    }
     await expect.poll(async () => (await rec(page, 'g-ring'))?.location).toEqual({ kind: 'explorer', explorerId: 'vault:general-1' });
     await ctx.close();
   });
@@ -242,7 +245,7 @@ test('360×640, by touch: every control of the satchel and the Vault can be reac
     return misses;
   }, sel);
   await enter(page, { 'godforge-inventory': inventory(BASIC, { 'minor-health-potion': 3 }) });
-  await page.getByRole('button', { name: /^Satchel/ }).first().tap();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().tap();
   await expect(page.locator('#satchel-book [data-grid="b"]')).toBeVisible();
   expect(await reachAll('#satchel-book')).toEqual([]);
   await page.goto('/play?td=1&hour=12&at=vault');
@@ -255,7 +258,7 @@ test('390×844: the satchel grid on a phone (screenshot)', async ({ browser }) =
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   await enter(page, { 'godforge-inventory': inventory(BASIC, { 'minor-health-potion': 3, 'basalt-blank': 2 }) });
-  await page.getByRole('button', { name: /^Satchel/ }).first().tap();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().tap();
   await expect(page.locator('#satchel-book [data-grid="b"]')).toBeVisible();
   await page.waitForTimeout(600);
   await shot(page, 'satchel-390');

@@ -166,7 +166,7 @@ test.describe('a 360×640 touch phone', () => {
     await expect.poll(() => stackQty(page, 'ash-perch'), { timeout: 40000 }).toBeGreaterThanOrEqual(1);
     // Off the shore, into the satchel: the log's card, Light.
     await page.evaluate(() => (window as unknown as { __tdArt: { road(dc: number): unknown } }).__tdArt.road(1));
-    await page.getByRole('button', { name: /^Satchel/ }).first().tap();
+    await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().tap();
     const cell = page.locator('#satchel-book [data-stack="ashwood-log"]');
     await expect(cell).toBeVisible();
     await cell.tap();
