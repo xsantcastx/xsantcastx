@@ -149,7 +149,7 @@ export interface SeekAnswer {
 }
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' } | { kind: 'seam' };
-export interface EngineSfx { kind: 'farbell' | 'whisper' | 'warhorn' | 'crackle' | 'cart-roll' | 'drum' | 'glass-ping' | 'lava-hiss' | 'march' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
+export interface EngineSfx { kind: 'farbell' | 'whisper' | 'strike-hum' | 'thunder-near' | 'thunder-far' | 'count-bell' | 'present' | 'warhorn' | 'crackle' | 'cart-roll' | 'drum' | 'glass-ping' | 'lava-hiss' | 'march' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -351,6 +351,12 @@ export interface EngineOptions {
    * felling, a struck light, each fish in the pan. The host books each step and answers whether the loop goes on.
    */
   onGather?: (event: GatherEvent) => GatherAnswer;
+  /**
+   * S8, the sky and the night (shared/weather, shared/night-events): a storm's first tell (Glim calls it), a strike
+   * that hit the Keeper; the self-lit kiln asked to be lit (the answer is the refusal's words, or null: lit); whether a
+   * night's reward (its drop id) is already booked, so it is never laid twice.
+   */
+  onSky?: (event: { kind: 'tell' } | { kind: 'struck'; n: number } | { kind: 'kiln' } | { kind: 'claimed'; id: string }) => string | boolean | null | void;
   /**
    * One World: a Waystone. 'seen': it came into view for the first time this
    * session (the host keeps the save's `seen`); 'light': E was held at an

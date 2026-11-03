@@ -24,6 +24,7 @@ import { LevelUpService } from '../activity/level-up.service';
 import { CraftingService } from '../crafting/crafting.service';
 import { skillDef, skillXp, type SkillId } from './skill.model';
 import { KeeperLevelService } from './keeper-level.service';
+import { MealBuffService } from '../gathering/meal-buffs.service';
 
 export interface SkillActionInput {
   mutationId: string;
@@ -44,9 +45,12 @@ export class SkillActionService {
   private readonly levelUp = inject(LevelUpService);
   private readonly crafting = inject(CraftingService);
   private readonly keeperLevel = inject(KeeperLevelService);
+  private readonly meals = inject(MealBuffService);
 
   act(input: SkillActionInput): WorldActionResult {
     this.activity.init();
+    // A Cold Miner's Pasty (S8): Mining XP a tenth higher while it lasts.
+    if (input.skill === 'mining' && input.xp > 0) { const k = this.meals.miningMult(input.now); if (k > 1) input = { ...input, xp: Math.round(input.xp * k) }; }
     const bench = input.skill === 'smithing' ? this.crafting.xp() : 0;
     const before = skillXp(this.activity.snapshot.progress, input.skill, bench);
     const result = this.activity.resolveWorldAction({
