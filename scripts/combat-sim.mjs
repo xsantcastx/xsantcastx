@@ -122,7 +122,8 @@ function seeded(seed, fn) { const r = mulberry(hash(String(seed))); Math.random 
 // ── The simulated Keeper ─────────────────────────────────────────────────────────────────────────────────────────
 
 export const VOCATIONS = ['warlock', 'ashguard', 'lanternwright', 'thornstrider'];
-export const LEVELS = [5, 10, 20, 30, 40, 60];
+// S9 (campaign.md): the 50 cell bands the rows 30–50 of every calling (the Ink Abbess's level, where content stops today).
+export const LEVELS = [5, 10, 20, 30, 40, 50, 60];
 /** Share of telegraphed attacks (a breath's tell, a Rend ring, a burst's ring) the Keeper steps out of. */
 export const DODGE = .5;
 /** Seconds between one kill and the next pull on a hunt: walking to it, picking the loot (leveling.md §1's 240 kills an hour at a 3 s kill). */
@@ -148,24 +149,28 @@ const WALK = 74; // td-engine SPEED, art px a second
 export const PATHS = {
   warlock: [['ember-bolt', 4], ['hellfire-nova', 3], ['ember-bolt#a1'], ['cinder-rain', 1], ['flame-wall', 1], ['meteor', 1], ['meteor#a1'],
     ['ember-bolt', 10], ['hellfire-nova', 8], ['ember-bolt#a2'], ['ember-bolt#a3'], ['hellfire-nova#a1'], ['meteor', 8], ['meteor#a2'],
-    ['ember-bolt', 20], ['meteor', 10], ['meteor#b1'], ['meteor#b2'], ['meteor#b3'], ['hellfire-nova', 10], ['hellfire-nova#a2'], ['hellfire-nova#a3'],
+    ['ember-bolt', 20],
+    // S9: past level 40 the rows 30–50 come in (skills-100.md §7: the sim reads the build players will copy).
+    ['rime-lance', 5], ['raise-grave-mage', 1], ['meteor', 10], ['meteor#b1'], ['meteor#b2'], ['meteor#b3'], ['hellfire-nova', 10], ['hellfire-nova#a2'], ['hellfire-nova#a3'],
     ['meteor', 20], ['hellfire-nova', 20], ['aura-embers', 20]],
   ashguard: [['watch-blade', 4], ['watch-blade#a1'], ['ember-brand', 2], ['cinder-cleave', 3], ['cinder-cleave#a1'], ['aura-watchfire', 2], ['aura-watchfire#a1'], ['whirl-of-cinders', 1],
     ['watch-blade', 10], ['cinder-cleave', 10], ['cinder-cleave#a2'], ['ember-brand', 8], ['whirl-of-cinders', 8],
     ['shield-oath#a1'], ['watch-blade#b1'], ['watch-blade#b2'], ['watch-blade#b3'], ['watch-blade', 20], ['cinder-cleave', 20], ['whirl-of-cinders', 20], ['ember-brand', 20], ['aura-watchfire', 20]],
   lanternwright: [['kindle', 4], ['kindle#a1'], ['hearthlight', 2], ['lamp-wisp', 3], ['lamp-wisp#a1'], ['banish', 1], ['banish#a1'], ['beacon', 1],
-    ['kindle', 10], ['kindle#a2'], ['banish', 8], ['lamp-wisp', 8], ['dawn-at-noon', 1], ['kindle', 20], ['banish', 20], ['banish#a2'],
+    ['kindle', 10], ['kindle#a2'], ['banish', 8], ['lamp-wisp', 8], ['dawn-at-noon', 1], ['kindle', 20],
+    ['chain-of-lamps', 5], ['moth-swarm', 1], ['glims-margin', 1], ['banish', 20], ['banish#a2'],
     ['dawn-at-noon', 10], ['dawn-at-noon#a1'], ['lamp-wisp', 20], ['lamp-wisp#b1'], ['lamp-wisp#b2'], ['lamp-wisp#b3'], ['dawn-at-noon', 20]],
   thornstrider: [['thorn-shot', 4], ['thorn-shot#a1'], ['barbed-shot', 3], ['barbed-shot#a1'], ['volley', 2], ['pack-bond', 2], ['pack-bond#a1'],
     ['thorn-shot', 10], ['thorn-shot#a2'], ['thorn-shot#a3'], ['barbed-shot', 8], ['call-of-the-wilds', 1], ['command', 5], ['command#a1'], ['stampede', 1],
-    ['thorn-shot', 20], ['barbed-shot', 20], ['barbed-shot#a2'], ['stampede', 10], ['volley', 10], ['command', 10]],
+    ['thorn-shot', 20], ['barbed-shot', 20],
+    ['hunters-mark', 1], ['thornrain', 1], ['barbed-shot#a2'], ['stampede', 10], ['volley', 10], ['command', 10]],
 };
 /** The bar each vocation wants, best first; the first four it holds a rank in go on the keys. */
 const BARS = {
-  warlock: ['meteor', 'hellfire-nova', 'ember-curse', 'dark-ward', 'drain-life'],
+  warlock: ['meteor', 'hellfire-nova', 'ember-curse', 'rime-lance', 'dark-ward', 'drain-life'],
   ashguard: ['cinder-cleave', 'whirl-of-cinders', 'ember-brand', 'shield-oath', 'ash-stride', 'shield-bash'],
-  lanternwright: ['banish', 'lamp-wisp', 'hearthlight', 'dawn-at-noon', 'beacon', 'blinding-flash', 'lantern-ward'],
-  thornstrider: ['barbed-shot', 'volley', 'command', 'stampede', 'call-of-the-wilds', 'thornroot-snare'],
+  lanternwright: ['banish', 'lamp-wisp', 'chain-of-lamps', 'hearthlight', 'dawn-at-noon', 'beacon', 'blinding-flash', 'lantern-ward'],
+  thornstrider: ['hunters-mark', 'barbed-shot', 'volley', 'command', 'stampede', 'call-of-the-wilds', 'thornroot-snare'],
 };
 /** What each stat is worth to any vocation when it picks the better of its drops (its own damage family below). */
 const WANT_ALL = {
@@ -638,7 +643,9 @@ function plusCell(voc, level, lift, runs) {
 const THREAT = load('src/app/play/td/td-threat.ts');
 /** The party's level and its boss: the floor boss nearest that level, its life lifted for three Keepers (td-coop rules). */
 export const PARTY_LEVEL = 30;
-const PARTY_BOSS = () => BOSSES.reduce((a, b) => (Math.abs(b.level - PARTY_LEVEL) < Math.abs(a.level - PARTY_LEVEL) ? b : a));
+/** S9: the party again at the rows' top, level 50 (campaign.md S9: "the party cell holds at 50"). */
+export const PARTY_LEVEL_LATE = 50;
+const PARTY_BOSS = (L = PARTY_LEVEL) => BOSSES.reduce((a, b) => (Math.abs(b.level - L) < Math.abs(a.level - L) ? b : a));
 const PARTY_LIFE = n => 1 + .6 * (n - 1);
 /** The tier the party meets it on (argv --party-tier; Nightmare is where the party forms live, monsters-abilities §5.3). */
 const PARTY_TIER = String(argv['party-tier'] ?? 'nightmare');
@@ -651,8 +658,8 @@ const PARTY_BEHIND = { heal: 34, dps: 70 };
  * damage as its allies: her Hearthlight, Hearth Circle and Lantern Ward pick the lowest and go out as ally claims,
  * which land here (life, wards) with their threat (×0.5, split). `healer: false`: nobody heals but the belt.
  */
-function partyRun(seed, { healer = true, tank = true, tier = PARTY_TIER } = {}) {
-  const L = PARTY_LEVEL, def0 = PARTY_BOSS();
+function partyRun(seed, { healer = true, tank = true, tier = PARTY_TIER, level = PARTY_LEVEL } = {}) {
+  const L = level, def0 = PARTY_BOSS(L);
   const n = 1 + (healer ? 1 : 0) + (tank ? 1 : 0);
   const def = { ...def0, hp: Math.round(def0.hp * PARTY_LIFE(n)) };
   // Without a tank the damage stands in front (the warlock as the arena's Keeper); with one, the Ashguard does.
@@ -734,14 +741,14 @@ function partyRun(seed, { healer = true, tank = true, tier = PARTY_TIER } = {}) 
       return fell;
     },
   };
-  const r = fight(front, { def }, `party|${seed}|${healer}|${tank}`, null, 600, party);
+  const r = fight(front, { def }, `party|${L === PARTY_LEVEL ? '' : `${L}|`}${seed}|${healer}|${tank}`, null, 600, party);
   return { ...r, fell: r.died, healerUp: !mates.heal?.down, held: r.struck / Math.max(1, r.struck + othersStruck) };
 }
 const PARTY_DPS = {};
 /** The party cells: the full party, and the party without its healer (and without its tank), over `runs` seeds. */
-function partyCell(runs) {
-  const one = o => { const out = []; for (let i = 0; i < runs; i++) out.push(partyRun(i, o)); return { fell: out.filter(r => r.fell).length / out.length, ttk: iqm(out.filter(r => r.cleared).map(r => r.secs)), cleared: out.filter(r => r.cleared).length / out.length, held: mean(out.map(r => r.held)) }; };
-  return { boss: PARTY_BOSS().id, level: PARTY_BOSS().level, full: one({}), noHealer: one({ healer: false }), noTank: one({ tank: false }) };
+function partyCell(runs, level = PARTY_LEVEL) {
+  const one = o => { const out = []; for (let i = 0; i < runs; i++) out.push(partyRun(i, { ...o, level })); return { fell: out.filter(r => r.fell).length / out.length, ttk: iqm(out.filter(r => r.cleared).map(r => r.secs)), cleared: out.filter(r => r.cleared).length / out.length, held: mean(out.map(r => r.held)) }; };
+  return { at: level, boss: PARTY_BOSS(level).id, level: PARTY_BOSS(level).level, full: one({}), noHealer: one({ healer: false }), noTank: one({ tank: false }) };
 }
 
 const GAP_SECS = 60;
@@ -835,9 +842,10 @@ if (argv.dps) {
 }
 if (argv.party) {
   // --party: the S5 party cells alone (a tank, a healer and the damage against a floor boss at PARTY_LEVEL).
-  const c = partyCell(RUNS);
-  console.log(`Party at L${PARTY_LEVEL} vs ${c.boss} (L${c.level}), ${RUNS} runs: falls · cleared · time to kill`);
-  for (const [k, x] of Object.entries({ full: c.full, 'no healer': c.noHealer, 'no tank': c.noTank })) console.log(`  ${k.padEnd(10)} ${Math.round(x.fell * 100)}% · ${Math.round(x.cleared * 100)}% · ${Number.isFinite(x.ttk) ? x.ttk.toFixed(0) : '—'} s · the front Keeper took ${Math.round(x.held * 100)}% of the blows`);
+  for (const c of [partyCell(RUNS), partyCell(RUNS, PARTY_LEVEL_LATE)]) {
+    console.log(`Party at L${c.at} vs ${c.boss} (L${c.level}), ${RUNS} runs: falls · cleared · time to kill`);
+    for (const [k, x] of Object.entries({ full: c.full, 'no healer': c.noHealer, 'no tank': c.noTank })) console.log(`  ${k.padEnd(10)} ${Math.round(x.fell * 100)}% · ${Math.round(x.cleared * 100)}% · ${Number.isFinite(x.ttk) ? x.ttk.toFixed(0) : '—'} s · the front Keeper took ${Math.round(x.held * 100)}% of the blows`);
+  }
   process.exit(0);
 }
 if (argv.trace) {
@@ -866,6 +874,8 @@ for (const voc of VOCATIONS) {
 }
 // S5: the party cells (a tank, a healer and the damage against a floor boss at L30, on Nightmare).
 const party = partyCell(QUICK ? 6 : 12);
+// S9: and again at level 50, against the Ink Abbess.
+const partyLate = partyCell(QUICK ? 6 : 12, PARTY_LEVEL_LATE);
 const secs = (Date.now() - t0) / 1000;
 
 const fmt = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) : '—';
@@ -904,14 +914,19 @@ for (const voc of VOCATIONS) {
   say(`  ${voc.padEnd(14)} L20 vs L40: a blow ${pct(g.oneShot.blow)} of his life · falls ${pct(g.oneShot.death)} in ${fmt(g.oneShot.blows, 0)} blow(s) · wins ${pct(g.oneShot.won)} · deals ${pct(g.oneShot.dealt)}   ${g.plus5.map(p => `L${p.level} hunting L${p.level + GAP_HUNT.lift}: falls in ${pct(p.death)} of hunts`).join('   ')}`);
 }
 
-say(`\nThe party at L${PARTY_LEVEL} on ${PARTY_TIER} vs ${party.boss} (L${party.level}): falls · cleared · time to kill`);
-for (const [k, x] of Object.entries({ full: party.full, 'no healer': party.noHealer, 'no tank': party.noTank })) say(`  ${k.padEnd(10)} ${pct(x.fell)} · ${pct(x.cleared)} · ${fmt(x.ttk, 0)} s`);
+for (const pc of [party, partyLate]) {
+  say(`\nThe party at L${pc.at} on ${PARTY_TIER} vs ${pc.boss} (L${pc.level}): falls · cleared · time to kill`);
+  for (const [k, x] of Object.entries({ full: pc.full, 'no healer': pc.noHealer, 'no tank': pc.noTank })) say(`  ${k.padEnd(10)} ${pct(x.fell)} · ${pct(x.cleared)} · ${fmt(x.ttk, 0)} s`);
+}
 
 // ── The check ──
 // S5 (campaign.md): a level-30 Lanternwright keeps a level-30 Ashguard alive against the floor boss; without her the
 // party falls in at least 70% of the runs (the boss needs a healer).
-if (party.full.fell > BANDS.bossDeath) fails.push(`the L${PARTY_LEVEL} party (tank, healer, damage) falls to ${party.boss} ${pct(party.full.fell)} of the time (≤ ${pct(BANDS.bossDeath)})`);
-if (party.noHealer.fell < BANDS.partyNoHealer) fails.push(`the L${PARTY_LEVEL} party without its healer falls to ${party.boss} only ${pct(party.noHealer.fell)} of the time (≥ ${pct(BANDS.partyNoHealer)})`);
+// S9: the same holds at level 50.
+for (const pc of [party, partyLate]) {
+  if (pc.full.fell > BANDS.bossDeath) fails.push(`the L${pc.at} party (tank, healer, damage) falls to ${pc.boss} ${pct(pc.full.fell)} of the time (≤ ${pct(BANDS.bossDeath)})`);
+  if (pc.noHealer.fell < BANDS.partyNoHealer) fails.push(`the L${pc.at} party without its healer falls to ${pc.boss} only ${pct(pc.noHealer.fell)} of the time (≥ ${pct(BANDS.partyNoHealer)})`);
+}
 for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);

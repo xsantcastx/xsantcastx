@@ -62,7 +62,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, rain: .3, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -276,6 +276,8 @@ export class SoundDirector {
       case 'lightning-cast': return this.glide(t, 'sawtooth', 100 * up, 900 * up, .045, .3);
       case 'lightning-hit': this.noiseHit(t, 'highpass', 900, .5, .14, .04, this.sfxBus); return this.rumble(t + .02, 120, .16, .6);
       case 'wind': return this.whoosh(t, 400 * up, 1100 * up, .4, .12);
+      // S9 (skills-100.md §0.6): the rain's hiss bed, a long high-passed breath (Call the Rain).
+      case 'rain': this.noiseHit(t, 'highpass', 2600 * up, .5, .1, .55, this.sfxBus); return this.noiseHit(t + .05, 'bandpass', 5200, .7, .05, .4, this.sfxBus);
       case 'blade': this.partial(t, 'sine', 920 * up, .08, .3, .001, this.sfxBus); this.partial(t, 'sine', 1385 * up, .045, .2, .001, this.sfxBus); return this.noiseHit(t, 'highpass', 3000, .7, .09, .02, this.sfxBus);
       case 'shield': this.tone(t, 'triangle', 180 * up, .14, .16, .002); return this.noiseHit(t, 'bandpass', 600 * up, 1.4, .12, .05, this.sfxBus);
       case 'arrow': this.tone(t, 'sawtooth', 220 * up, .05, .07, .001); return this.whoosh(t + .02, 3200, 2200, .12, .04);

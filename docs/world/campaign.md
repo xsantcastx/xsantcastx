@@ -280,7 +280,7 @@ whatever S-work has landed.
   - at most 14 fish shadows (8 on a phone);
   - a jump at a spot shortens the next bite by 2 s.
 
-#### S5 [built 2026-10-26, branch `s5`, docs/handoff/s5-party-kits.md — the healer and tank rows, threat, ally claims on the room, the 23 swaps; the Thornstrider's rows wait]: The healer and tank kit to level 30 (M, book lane)
+#### S5 [built 2026-10-26, branch `s5`, docs/handoff/s5-party-kits.md — the healer and tank rows, threat, ally claims on the room, the 23 swaps; the Thornstrider's rows (Hunter's Mark, Pinning Shot, Feral Leap, Call the Rain) and Moth Dust built in S9, docs/handoff/s9rows.md]: The healer and tank kit to level 30 (M, book lane)
 - **What.** skills-100.md §2 and §3 rows up to level 30, plus the Thornstrider's interrupts:
   - **ally targeting** (§3, one rule), with Hearthlight and the Hearth Circle reworked to allies and the level factor;
   - **Cleanse** (18) and **Rekindle** (30, only where a fall costs);
@@ -342,7 +342,7 @@ whatever S-work has landed.
 - **Accept when** each event is seeded per land and night (a party sees the same), never hurts or chases, and pays its
   reward.
 
-#### S9 [spec'd]: Rows 30–50 for every calling (L, book lane)
+#### S9 [built 2026-11-03, branch `s9rows`, docs/handoff/s9rows.md — 19 rows (the 16 named, plus Heartseeker, Moth Dust and Hunter's Mark/Pinning Shot/Feral Leap/Call the Rain from S5's wait), 114 marks, FX + sound, the L50 sim cell and the L50 party cell]: Rows 30–50 for every calling (L, book lane)
 - **What.** skills-100.md §8 step 4: Rime Lance, Raise Grave-Mage, Kiln Breath, Pyre Strike, Hold the Gate, Watchquake,
   Chain of Lamps, Hearthsong, Moth Swarm, Glim's Margin, Fogwalk, Lightning Call, Thornrain, Elder Beast, Ossuary
   Golem. Each comes with its nodes, FX and sound (S3's kit).

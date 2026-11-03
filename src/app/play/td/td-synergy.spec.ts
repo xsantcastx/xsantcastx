@@ -7,7 +7,8 @@ import type { KeeperSkillTree } from '../../shared/keeper-look/keeper-look.model
 import { MAX_RANK, SKILLS, STARTER_RANKS, SYN_CAP, skillVars, synergies, type SkillId } from './td-skills';
 import { boughtRanks, clampTree, effectiveRanks } from './td-tree';
 
-const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul'];
+// The cant's roots (canon §6.1), with the sky's `vor` and the cold's `rim` (added 2026-10-26 for S9's weather and rime).
+const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul', 'vor', 'rim'];
 const SHAPES = ['sha', 'orum', 'dra', 'mur', 'ka', 'teth', 'vesh', 'un'];
 const ALL = Object.keys(SKILLS) as SkillId[];
 

@@ -20,7 +20,8 @@ import { skyVars, spellMult } from './td-phases';
 import { TILE } from './td-art';
 import { skillPointsEarned } from '../../shared/keeper-look/skill-points';
 
-const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul'];
+// The cant's roots (canon §6.1), with the sky's `vor` and the cold's `rim` (added 2026-10-26 for S9's weather and rime).
+const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul', 'vor', 'rim'];
 const SHAPES = ['sha', 'orum', 'dra', 'mur', 'ka', 'teth', 'vesh', 'un'];
 const LAMP = Object.keys(LANTERN_SKILLS) as LampSkillId[];
 const empty = (): KeeperSkillTree => ({ spent: {}, free: [], at: 0 });
@@ -30,11 +31,11 @@ describe('td-lantern: the book as data', () => {
     expect(VOCATIONS).toContain('lanternwright');
     expect(CLASS_TREES.lanternwright).toEqual(['lamp', 'hearth', 'moth']);
     expect(bookTrees('lanternwright')).toEqual(['lamp', 'hearth', 'moth', 'common']);
-    expect(LAMP.length).toBe(16);
-    expect(CLASS_SKILLS.lanternwright.length).toBe(19); // + the common page: Light, the Seek, the Waygate
+    expect(LAMP.length).toBe(20);
+    expect(CLASS_SKILLS.lanternwright.length).toBe(23); // + the common page: Light, the Seek, the Waygate
     // The book's rows (skills-100.md §6): Lamp 6, Hearth 6 (Last Light is Lantern Ward's mark; S5: Cleanse, Rekindle,
     // Hearthsong), Moth 2 (Moth-Kin, Lamp-Wisp's).
-    expect(LAMP_TREES.map(tr => treeSkills('lanternwright', tr).length)).toEqual([6, 6, 2]);
+    expect(LAMP_TREES.map(tr => treeSkills('lanternwright', tr).length)).toEqual([7, 6, 5]);
     for (const id of LAMP) {
       expect(CLASS_SKILLS.warlock).not.toContain(id);
       expect(CLASS_SKILLS.ashguard).not.toContain(id);

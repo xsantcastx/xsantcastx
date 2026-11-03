@@ -374,6 +374,19 @@ to level 100 (`docs/design/skills-100.md`); each has a level-100 capstone that i
 the sixth tally): *Noon Goes Black* (Warlock), *Kept by One* (Ashguard, from the Watch's "kept by one"), *The Sixth
 Light* (Lanternwright), *Eye of the Storm* (Thornstrider).
 
+**The rows to level 50 (S9, shipped 2026-11-03, `docs/handoff/s9rows.md`).** Every calling's book is whole to 50:
+- **Warlock:** *Rime Lance* (*rim sha*, the grave-cold of the Shadow page); *Kiln Breath* (*vael sha mur*); *Raise
+  Grave-Mage*, the Ashen Bastion's war-mages, who "kept standing the watch": the Warlock gives them a reason, and their
+  lantern takes the colour of his lead page; the *Ossuary Golem*, built of the fresh dead's bones round him, whose
+  *Forty Strong* mark is the Hushed Barrow's forty graves.
+- **Ashguard:** *Pyre Strike* (a leap and the Watch's overhead blow) and the *Watchquake* (the gate's stamp).
+- **Lanternwright:** *Moth Dust*, the *Moth Swarm* (Glim's cousins), *Chain of Lamps* (*lum vor*, the sky's lamp) and
+  *Glim's Margin*: Glim flies the margin of the map she keeps and dims beside false things (the canon tell for a
+  Mirrored copy).
+- **Thornstrider:** *Hunter's Mark* speaks *thar un vesh* (skills-100.md wrote *thar vesh*, which the shipped Rootwalk
+  already speaks; no two spells share words), *Pinning Shot*, *Heartseeker*, *Thornrain*, *Feral Leap*, the *Elder
+  Beast*, and the sky's three: *Call the Rain* (*vor dra*), *Fogwalk* (*vor nyr*) and *Lightning Call* (*lum vor dra*).
+
 **Why these roles (lore).** The Watch holds the gate, so the Ashguard stands in front. The lamp-keepers bring people
 home: "the first five didn't come home, so the sixth brings them home", so the Lanternwright mends and **Rekindles**
 the fallen. The Warlock spends the fire inside on many at once. The Canopy Wardens read the weather in the wood, so
@@ -724,6 +737,8 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
 - The DM ruled all 58 listed stand-ins: 18 permanent, 6 replaced now, 34 swapped later (S4, S5, S6, S8, S10).
 - A mark's name must not promise what its effect is not: Watchfire B1 is **Tempered Fire / Fuego templado**
   (was Wide Fire, which gave armour, not reach).
+- S9 (2026-11-03) adds the marks of the 19 rows to level 50, named as skills-100.md names them (ES by the builder, "Cheap"
+  as **Frugal**). Thorn Shot B3 **Mark-Seeker** is swapped: the bow seeks the Marked foe first, its +15% on the Bleeding kept.
 - The Spanish mark names were the builder's; 16 rows (21 marks) are re-named: "Cheap" is **Frugal** in ES
   (never "Barato", a shop word); "Rally" is **Cerrar filas**; wisps are **fuegos fatuos**.
 

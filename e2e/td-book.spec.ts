@@ -38,7 +38,7 @@ test('the book on a desk: rows and marks, staged until Accept, Cancel undoes, a 
   // The Warlock's three pages and the Common page, Ember open; one row a skill, in the order they open.
   await expect(page.locator('.book__tab:not(.book__tab--keys)')).toHaveCount(4);
   await expect(page.locator('[data-book-tab="ember"]')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.brow')).toHaveCount(6);
+  await expect(page.locator('.brow')).toHaveCount(7);   // Ember: six shipped rows and S9's Kiln Breath
   await expect(page.locator('.brow').first()).toHaveAttribute('data-row', 'ember-bolt');
   await expect(page.locator('.brow[data-row="ember-bolt"] .brow__rank b')).toHaveText('r 1/20');
   await expect(page.locator('.brow[data-row="meteor"] .brow__name small')).toHaveText('Opens at level 24');
@@ -146,8 +146,9 @@ test.describe('the book on a phone', () => {
       const scroll = page.locator('.sbook .book__scroll');
       // The page is longer than the window: it scrolls inside it (not the whole screen).
       expect(await scroll.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
-      // The last row on the page: a rank, then its first mark (a tap picks it and shows its card; the card's Take takes it).
-      const last = page.locator('.brow').last();
+      // The last open row on the page (S9's rows past level 30 sit locked below it): a rank, then its first mark (a tap
+      // picks it and shows its card; the card's Take takes it).
+      const last = page.locator('.brow:has(.brow__plus)').last();
       const id = await last.getAttribute('data-row');
       await last.scrollIntoViewIfNeeded();
       await last.locator('.brow__plus').tap();
