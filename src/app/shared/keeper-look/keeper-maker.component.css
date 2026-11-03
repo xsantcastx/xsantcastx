@@ -107,7 +107,9 @@
 :host-context(.place) .km__class { grid-area: class; }
 :host-context(.place) .km__class .km__label { grid-area: auto; position: static; padding: 0; font: 700 11px/1 var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
 @container km (min-width: 460px) {
-  :host-context(.place) .km { grid-template-areas: "class class" "stage fields" "name fields" "actions fields"; }
+  /* Become at the top of the left column, then the name, then the preview: the one primary in view on opening. */
+  :host-context(.place) .km { grid-template-areas: "class class" "actions fields" "name fields" "stage fields"; }
+  :host-context(.place) .km__actions { align-self: start; }
 }
 @container km (max-width: 380px) { :host-context(.place) .km__more { display: none; } }
 
@@ -145,13 +147,7 @@
   :host(.km--fire) .km__class > .km__label { display: none; }
   :host(.km--fire) .km__classcard { min-height: 56px; padding: 4px 2px; }
 }
-/* In the world's Glass (a made Keeper: the calling is fixed), sideways or wide: Become at the top of the left column,
-   then the name, then the preview, so the one primary is in view the moment the window opens. */
-@container km (min-width: 460px) {
-  :host-context(.place):host(:not(.km--fire)) .km { grid-template-areas: "class class" "actions fields" "name fields" "stage fields"; }
-  :host-context(.place):host(:not(.km--fire)) .km__actions { align-self: start; }
-}
+/* In the world's Glass (a made Keeper: the calling is fixed), on a short screen: the chips only, no class card. */
 @media (max-height: 520px) {
-  :host-context(.place):host(:not(.km--fire)) .km__card { display: none; }
-  :host-context(.place):host(:not(.km--fire)) .km__class > .km__label { display: none; }
+  :host(:not(.km--fire)) .km__card, :host(:not(.km--fire)) .km__class > .km__label { display: none; }
 }
