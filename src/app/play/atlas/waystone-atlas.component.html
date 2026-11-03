@@ -1,0 +1,22 @@
+<div class="wa" data-atlas-body [attr.data-stones]="stones.length">
+  <p class="wa__lead">{{ t('atlas.lead') }}</p>
+  <ul class="wa__list" role="radiogroup" [attr.aria-label]="t('atlas.aria')">
+    @for (s of stones; track s.id) {
+      <li>
+        <button type="button" class="wa__row" role="radio" data-atlas-row [attr.data-stone]="s.id" [attr.data-state]="s.here ? 'here' : s.known ? 'known' : 'unknown'"
+                [attr.aria-checked]="s.id === pick" [disabled]="!s.known || s.here" (click)="choose(s)">
+          <span class="wa__gem" aria-hidden="true"></span>
+          <span class="wa__name">@if (s.known || s.here) { {{ s.name }} } @else { ??? }</span>
+          <span class="wa__where">{{ s.section }}</span>
+          <span class="wa__band">@if (s.safe) { {{ t('atlas.safe') }} } @else if (s.band) { {{ t('atlas.band', { lo: s.band[0], hi: s.band[1] }) }} }</span>
+          <span class="wa__chip">{{ s.here ? t('atlas.here') : s.known ? t('atlas.known') : t('atlas.unknown') }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+  <div class="wa__foot">
+    <button type="button" class="wa__go" data-atlas-go [disabled]="!canGo" (click)="go()">
+      {{ canGo && picked ? t('atlas.travel', { name: picked.name }) : t('atlas.pick') }}
+    </button>
+  </div>
+</div>

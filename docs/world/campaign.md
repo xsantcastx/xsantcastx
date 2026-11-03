@@ -313,7 +313,7 @@ whatever S-work has landed.
   - an Aura Enchanted unique pack sits in 30–75 s;
   - every ability over 25% of a Keeper's life shows a ≥ 0.6 s tell on a phone.
 
-#### S7 [spec'd]: The Infernal Reach as an act, with sections, connectors and hot spots (L, world lane)
+#### S7 [built 2026-11-03, branch `s7reach`, docs/handoff/s7reach.md]: The Infernal Reach as an act, with sections, connectors and hot spots (L, world lane)
 - **What.** world-acts.md §1.2 and §2.2:
   - the nine section areas (`infernal-reach:<section>`), with `td-zones` rows;
   - **the Kiln Tunnels** and **the Glass Throat** −1…−2, to their zone briefs (canon §8.5);

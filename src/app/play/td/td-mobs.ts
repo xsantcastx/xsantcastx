@@ -28,7 +28,7 @@ import { AURA_PULSE, auraEffect, type AuraEffect, type AuraId } from '../../shar
 import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
-import { AFFIX_DEFS, TD_RANK_HP, BRUTAL, EMBER_HEART, GRAVE_CALL, KIN_SHIELD, LIGHTLESS_R, MIRROR_SHARE, MULTISHOT, VAMPIRIC, WHISPER_HUSH, auraAffix, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, type ElitePack, type EliteTag } from './td-elites';
+import { AFFIX_DEFS, TD_RANK_HP, BRUTAL, EMBER_HEART, GRAVE_CALL, KIN_SHIELD, LIGHTLESS_R, MIRROR_SHARE, MULTISHOT, VAMPIRIC, WHISPER_HUSH, auraAffix, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, UNIQUE_SHARE, type ElitePack, type EliteTag } from './td-elites';
 import { extraSpawn, hardened, nightType, rollTouched, rulesOf, skyVars, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
@@ -2424,6 +2424,11 @@ export const CHARGE_HIT = 22;
 /** How far ahead of a moving Keeper a gap-closer aims, at most (art px). */
 export const CHARGE_LEAD = 72;
 const RESPAWN = 75;        // seconds until a spawn comes back
+/** A camp rises together this long after its last falls (world-acts.md §2); its fallen wait at most CAMP_HOLD for the rest. */
+export const CAMP_REST = 90;
+const CAMP_HOLD = 3600;
+/** A champion ground's packs (world-acts.md §2: the Scorch Rings): 1 in 4 spawns, not td-elites' 1 in 16. */
+export const CHAMPION_GROUND = 1 / 4;
 /** Seconds a drop lies on the ground: ten minutes, now that only Gold is picked up by walking over it. */
 export const DESPAWN = 600;
 /** How near the Keeper a piece is taken by hand (the Pick-up key, the end of a walk to a clicked piece; art px). */
@@ -3054,10 +3059,24 @@ export class MobSystem {
     if (!eliteEligible({ level: def.level, rank: def.rank, safe: !!this.host.safeAt?.(s.x, s.y) })) return null;
     // S6 (§4): more affixes in higher zones, the new ones in the pool, Aura Enchanted from the zone's list.
     const lid = this.host.levelId(), land = landOf(lid, this.land);
-    return rollElite(`${this.eliteSalt}|${lid}|${s.key}|${this.fallen.get(s.key) ?? 0}`, undefined, {
+    // A named hot spot (world-acts.md §2, td-world stampCamp): a den's heart is always a unique pack (a named leader and
+    // its followers); a champion ground rolls a pack 1 in 4, not 1 in 16.
+    const chance = /^den:/.test(s.key) ? 1 / UNIQUE_SHARE : /^cg:/.test(s.key) ? CHAMPION_GROUND : undefined;
+    return rollElite(`${this.eliteSalt}|${lid}|${s.key}|${this.fallen.get(s.key) ?? 0}`, chance, {
       level: def.level, ranged: !!def.ranged, bone: creatureProfile(def.id).family === 'bone', levelId: lid, tier: this.tier.id, fresh: true,
       auras: packAuraPool(land, def.level, { levelId: lid, storm: this.storm }),
     });
+  }
+  /**
+   * A camp (world-acts.md §2: 6–12 round a fire or a totem) rises together, CAMP_REST seconds after the last of it
+   * falls: while any of it stands, its fallen wait; the last fall sets every member's clock at once.
+   */
+  private campFell(key: string): void {
+    const camp = /^(camp:[a-z0-9-]+):\d+$/.exec(key)?.[1];
+    if (!camp) return;
+    const own = (k: string) => k.startsWith(`${camp}:`) && /^camp:[a-z0-9-]+:\d+$/.test(k);
+    if (this.mobs.some(o => o.key !== key && o.hp > 0 && own(o.key))) { this.deadUntil.set(key, this.clock + CAMP_HOLD); return; }
+    for (const k of this.deadUntil.keys()) if (own(k)) this.deadUntil.set(k, this.clock + CAMP_REST);
   }
   /**
    * Bring a pack to life round (x, y): the leader on the spawn itself (key `key`), its champions or minions beside it.
@@ -6542,6 +6561,7 @@ export class MobSystem {
     if (this.relics.manaKill > 0) this.mana = Math.min(this.maxMana, this.mana + this.relics.manaKill);
     if (this.target === m) this.target = null;
     this.deadUntil.set(m.key, this.clock + (this.respawnOf?.(m) ?? RESPAWN));
+    this.campFell(m.key);
     // Fresh dead, for Raise Skeleton.
     this.corpses.push({ x: m.x, y: m.y, at: this.clock });
     if (this.corpses.length > 12) this.corpses.shift();

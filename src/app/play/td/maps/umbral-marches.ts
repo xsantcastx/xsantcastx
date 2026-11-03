@@ -279,7 +279,7 @@ export const UMBRAL_MARCHES_DEF: ContinentDef = {
   ],
   villages: [
     // Mirewatch's ketch sails from the pier's end (the village's tile 15, 16) to Pyrehold Harbour.
-    { name: 'Mirewatch', c: 8, r: 76, build: buildMirewatch, ways: [{ station: MIREWATCH_SHIP, c: 15, r: 16, to: 'infernal-reach', arrive: 'ship-umbral', ship: true }] },
+    { name: 'Mirewatch', c: 8, r: 76, build: buildMirewatch, ways: [{ station: MIREWATCH_SHIP, c: 15, r: 16, to: 'infernal-reach-pyrehold', arrive: 'ship-umbral', ship: true }] },
     { name: 'Lanternfen', c: -124, r: -6, build: buildLanternfen },
   ],
 };

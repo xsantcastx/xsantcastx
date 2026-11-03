@@ -196,15 +196,17 @@ The finale is at the **Godforge threshold**: a ring of five sockets under the ch
   the Caldera, the Ninefold Stones, Ember Harbour.
 - Nightroads: Ashwater Lake, the Barrow's sea jetty, the steps below the Ember Shrine.
 
-**Infernal Reach**
-- Pyrehold: safe.
+**Infernal Reach** (an act of sections since S7, 2026-11-03: each section its own area `infernal-reach-<section>`,
+`maps/reach-sections.ts`; Waystones and seams below, §3.4b)
+- Pyrehold: safe. Cinderport and Ashgrove: safe sections of their own.
 - 8–10: the Ashen Shore, Glasswater.
 - 8–11: the Cinder Steppe.
 - 10–13: the Charwood.
 - 13–16: the Deep Charwood.
 - 15–18: the Obsidian Badlands.
 - 18–21: the Molten Fields.
-- 19–22: the Pyre Peaks.
+- 19–22: the Pyre Peaks (the Bastion Road, the Caldera Rim).
+- Connectors: the Kiln Tunnels 12–14; the Glass Throat −1 17–18, −2 18–19.
 - Forge of the Four: −1 the Ash Gate 12–14, −2 the Four Smithies 14–16, −3 the First Anvil 16–18 (Anvil-Warden 18).
   The Fifth Smithy [Q2] is 16–17 (the Unfinished Warden 17).
 - Ashen Crypt: −1 the Ossuary 14–17, −2 the Bone Hall 22–25 (Ashbone Dragon 25).
@@ -281,7 +283,7 @@ The Delve strata are retired: Root Hollows (Delve), Basalt Caverns, Glowcap Grot
 Starfall Deep, the Void Shore and the Unmade. Their **ideas** move into the Realms (realms-endgame.md §3.4). The name
 **Root Hollows** now means only the Verdant dungeon.
 
-### 3.4b The acts as long lands (planned, 2026-10-26, `docs/design/world-acts.md` §1)
+### 3.4b The acts as long lands (planned 2026-10-26, `docs/design/world-acts.md` §1; **the Reach built 2026-11-03, S7**)
 Each land becomes a D2-style act: a chain of long surface **sections** (one room area each, `<land>:<section>`), each
 with a **Waystone** (a stone that remembers who touched it), joined by **connector caves** that are the only way on,
 and ending at the land's harbour (the Harbourmasters, §3.3).
@@ -296,8 +298,16 @@ and ending at the land's harbour (the Harbourmasters, §3.3).
 - **Umbral Marches**: the Gloaming Shore → the Fen → **the Pilgrims' Boardwalk** → the Sunken Belfry (connector,
   upper half only; the fifth bell stays sealed for campaign #12) → the Black Meres → the Deep Fen → **the Bog
   Galleries** −1…−2 (connector, the peat-cutters') → the Drowned Ruins.
+- **The Reach as built (S7)**: Pyrehold's north gate → the Cinder Steppe (its south-east road to Cinderport, its shore
+  path to the Ashen Shore and Glasswater, a dead end) → the Charwood (its west road to Ashgrove) → the Kiln Tunnels → the
+  Deep Charwood → the east pass → the Obsidian Badlands (the Forge of the Four's gate) → the Glass Throat −1…−2 → the
+  Molten Fields (the Great Caldera) → the switchbacks → the Pyre Peaks (the Ring of Pyres, the Bastion Road to the Ashen
+  Bastion and its crypt, the Ember Altar, the Caldera Rim and the Molten Deep's mouth). About 13 minutes' walk, plaza to
+  rim. The seams are road gates and passes in the land's rock: Pyrehold's North Gate, the Steppe's South Gate, West Road,
+  South-East Road and Shore Path, the Charwood's East and West Roads, the East and West Passes, the Switchbacks.
 - **Waystone names**: Meadow, Woodcutter's, Rockslide, Sexton's, Slag-Cart (Ember Isle); Watch Cairn, Glasswater,
-  Kiln, Clan, Spill, Drake, Pyre (Reach); Net, Bell-Post, Plank, Mere, Copy-Tree, Heartroot, Pillar (Wilds); Corvane,
+  Kiln, Clan, Spill, Drake, Pyre (Reach; built S7, with **the Plaza Stone** in Pyrehold, **the Harbour Stone** in
+  Cinderport and **the Green Stone** in Ashgrove: "a stone that remembers who touched it"); Net, Bell-Post, Plank, Mere, Copy-Tree, Heartroot, Pillar (Wilds); Corvane,
   Wick, Prayer-Board, Mere-Lamp, Lost-Lantern, Abbey-Slab (Marches).
 - **Hot spots**: the Slag-Cart Graveyard, the Wolf-Run; Kettle Camp, the Scorch Rings, the Drake Nests, the Watch's
   Last Cairn; the Weaver Canopy, the Hart Meadow, the Bell-less Square; the Lure Pools, the Knights' Causeway, the
@@ -1000,7 +1010,32 @@ atmosphere pass adds:
 
 ---
 
-### 8.5 Connector caves (planned, 2026-10-26; full briefs in `docs/design/world-acts.md` §1)
+### 8.5 Connector caves (planned 2026-10-26; full briefs in `docs/design/world-acts.md` §1; the Kiln Tunnels and the Glass Throat built 2026-11-03, S7)
+
+**The Reach's sections, the zone bible's check (S7, `td-sections.ts` REACH_BIBLE).** Each has one thing to read, one
+sealed thing (a promise for later; none opens yet) and one sound:
+- Pyrehold: the Watch bell's plaque; the Watch strongbox (Captain Vey keeps its only key); the Watch bell.
+- the Cinder Steppe: a Watch cairn ("Struck by five, kept by one. The road is held from here."); a beacon tower bricked
+  from inside; a war-horn far off.
+- the Ashen Shore: a fisher's tide-board; a sea-cave shut with drowned glass (the shore's side cave, for later);
+  the surf.
+- the Charwood: Hesk Ashby's tally post ("Burnt 112. Planted 9."); a bricked kiln, warm; a fire's crackle.
+- the Kiln Tunnels: the cart tally (the fourth row stops at two); the bricked arch "BURNERS ONLY" (the chest behind it
+  is reached from the far side); a cart rolling with nobody pushing it.
+- the Deep Charwood: the stolen Watch kettle at Kettle Camp ("PYRE WATCH — RATIONS — FORTY MEN"); a cold kiln with nine
+  days tallied on it (the night event *The Kiln That Lights Itself* will use it); a clan drum.
+- the Obsidian Badlands: *vael dra* cut over and over at the Scorch Rings; a rusted sluice-gate of the Forge's spill;
+  the Forge's hammer from nowhere.
+- the Glass Throat −1: a Firecaller's ring, *vael dra* half melted; a side tube choked with glass. −2: footprints fused
+  into the floor, all going in; a wall of glass that shows only the Keeper's own light (the cache behind it). Glass
+  pinging as it cools.
+- the Molten Fields: a Watch warning post ("DRAKES NEST SOUTH. KEEP THE ROAD." — "they know the road."); a
+  drake-catcher's cage rusted shut; lava hissing.
+- the Pyre Peaks: a Bastion milestone with "Present." under the distance; the Bastion's great gate, barred from inside
+  (the garrison is still behind it); feet marching in step.
+- Cinderport: the tide board ("The lamp stays lit till the last ketch is in.", §10 C-10 kept); Marit's padlocked
+  sea-chest; the surf. Ashgrove: Maud Kiln's board ("Nine days a clamp."); a smoking clamp; a fire's crackle.
+
 - **The Kiln Tunnels** (Reach, 12–14). *Built by* the charcoal burners to haul under the orc raids; *fell* when the clans
   found them and the burners bricked their end. *Lair*: Cinder Imps in cold kilns, Ash Ghouls (burners who never came
   up). *Mood*: soot-black, one cold kiln-glow per chamber. *Dressing*: cart rails, "BURNERS ONLY" chalked on a bricked
