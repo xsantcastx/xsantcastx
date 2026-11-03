@@ -703,6 +703,16 @@ export class TopDownEngine {
       boss: () => layBoss(this.mobs, this.player),
       dress: () => this.level instanceof HandLevel ? layDressing((this.level as unknown as { objects: TdObject[] }).objects, this.player) : 0,
       freeze: (on: boolean) => { this.fxFreeze = on; },
+      // S9's photographs (e2e/td-s9-shots.spec.ts): the given rows at their rank (the Keeper's own calling), a full purse
+      // of mana, the nearest creature targeted, and the row cast. Returns why not, or null.
+      cast: (ranks: Record<string, number>, id: string, marks: Record<string, number> = {}) => {
+        this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>, null, marks as Partial<Record<SkillId, number>>);
+        this.mobs.maxMana = Math.max(this.mobs.maxMana, 9999); this.mobs.mana = this.mobs.maxMana; this.mobs.cooldowns[id as SkillId] = 0;
+        if (!this.mobs.target) { let best: Mob | null = null, bd = Infinity; for (const m of this.mobs.mobs) { const d = Math.hypot(m.x - this.player.x, m.y - this.player.y); if (d < bd) { bd = d; best = m; } } this.mobs.target = best; }
+        return this.mobs.useAbility(id as SkillId);
+      },
+      // What S9's photographs can read back: the effects and zones alive now, by kind.
+      fx: () => ({ effects: this.mobs.effects.map(e => e.kind + ':' + Math.round(e.x) + ',' + Math.round(e.y) + ':' + (e.r ?? '') + ':' + (e.w ?? '')), player: [Math.round(this.player.x), Math.round(this.player.y)], zones: this.mobs.zones.map(z => z.kind), kiln: !!this.mobs.kiln }),
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
@@ -4709,14 +4719,16 @@ export class TopDownEngine {
       c.fillStyle = THORN_FX.wild.body; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - 25), Math.round(w * frac), 1);
       return;
     }
-    if (k.kind === 'golem') { const c = this.ctx; c.save(); c.translate(Math.round(k.x), Math.round(k.y)); c.scale(2, 2); c.translate(-Math.round(k.x), -Math.round(k.y)); this.drawRaisedBody({ ...k, kind: undefined }); c.restore(); return; }
+    if (k.kind === 'golem') { const c = this.ctx, g = optHdFigures() && envDetail() !== 'low' ? 1.35 : 2; c.save(); c.translate(Math.round(k.x), Math.round(k.y)); c.scale(g, g); c.translate(-Math.round(k.x), -Math.round(k.y)); this.drawRaisedBody({ ...k, kind: undefined }); c.restore(); return; }
     this.drawRaisedBody(k);
     if (k.kind === 'mage') {
       // Its small lantern, in the colour of its element.
+      // (The HD figure stands about twice as tall: the lantern hangs at its hand either way.)
       const c = this.ctx, col = k.el === 'fire' ? '#ff8a2e' : k.el === 'cold' ? '#8fd8ff' : k.el === 'arrow' ? '#8fc25a' : '#b06bff';
-      c.fillStyle = '#5a4020'; c.fillRect(Math.round(k.x + k.face * 5), Math.round(k.y - 14), 1, 4);
-      c.fillStyle = col; c.fillRect(Math.round(k.x + k.face * 5) - 1, Math.round(k.y - 17), 3, 3);
-      c.fillStyle = '#fffbe8'; c.fillRect(Math.round(k.x + k.face * 5), Math.round(k.y - 16), 1, 1);
+      const hd = optHdFigures() && envDetail() !== 'low', u = hd ? 2 : 1, lx = Math.round(k.x + k.face * 5 * u), ly = Math.round(k.y - 17 * u);
+      c.fillStyle = '#5a4020'; c.fillRect(lx, ly + 3 * u, u, 4 * u);
+      c.fillStyle = col; c.fillRect(lx - u, ly, 3 * u, 3 * u);
+      c.fillStyle = '#fffbe8'; c.fillRect(lx, ly + u, u, u);
     }
   }
   private drawRaisedBody(k: Minion): void {
@@ -5363,7 +5375,7 @@ export class TopDownEngine {
       if (drawAshAir(c, e, this.still, this.overFoe)) continue;
       if (drawLampAir(c, e, this.still, this.overFoe)) continue;
       if (drawThornAir(c, e, this.still, this.overFoe)) continue;
-      if (drawLateAir(c, e, this.still, this.overFoe)) continue;
+      if (drawLateAir(c, this.iso ? this.isoLateFx(e) : e, this.still, this.overFoe)) continue;
       // Reduced motion: a burst is one still frame, never no burst.
       const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), bt = this.still ? .5 : t, seed = (X * 7 + Y * 13) | 0;
       c.globalAlpha = Math.max(0, 1 - t);
@@ -5931,6 +5943,17 @@ export class TopDownEngine {
     const cx = rx - (rx - ry - this.isoCam.x), cy = ry - ((rx + ry) / 2 - this.isoCam.y);
     this.cam.x = cx; this.cam.y = cy;
     this.ctx.setTransform(s, 0, 0, s, -cx * s, -cy * s);
+  }
+  /**
+   * S9's air pictures in iso (td-late-fx): drawn in the anchor's upright frame, so a far end (a lightning leap's, a leap's
+   * landing) goes where it projects, and a direction (Kiln Breath's cone, Moth Dust's puff) turns as the floor turns.
+   */
+  private isoLateFx(e: MobSystem['effects'][number]): MobSystem['effects'][number] {
+    if (e.tx === undefined && e.a === undefined) return e;
+    const X = Math.round(e.x), Y = Math.round(e.y), out = { ...e };
+    if (e.tx !== undefined && e.ty !== undefined) { out.tx = X + (e.tx - e.ty) - (X - Y); out.ty = Y + (e.tx + e.ty - X - Y) / 2; }
+    if (e.a !== undefined && (e.kind === 'lc-cone' || e.kind === 'lc-dust')) { const dx = Math.cos(e.a), dy = Math.sin(e.a); out.a = Math.atan2((dx + dy) / 2, dx - dy); }
+    return out;
   }
   /** Anchor an upright drawing at world point (x, y) (iso: where it projects; top-down: nothing to do). */
   private at(x: number, y: number): void { if (this.iso) this.isoAt(x, y); }
