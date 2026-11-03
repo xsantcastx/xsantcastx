@@ -1149,8 +1149,17 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
     const e = escrows.get(g.id);
     if (e) { const out = await e.done; if (!out.ok) { reply(200, { ok: false, why: 'gone' }); return; } }
     let out;
-    try { out = await C.pickupItem(economy.db, session.uid, { character: session.character, ground: g.id }, now()); }
+    // A partial take of a stack pile (polish2): `qty` of it, named by the press (`n`); the rest stays on the ground.
+    const part = Number.isInteger(data.qty) && data.qty >= 1 && g.sk && data.qty < g.qty ? { qty: data.qty, n: data.n } : {};
+    try { out = await C.pickupItem(economy.db, session.uid, { character: session.character, ground: g.id, ...part }, now()); }
     catch (err) { putBack(); if (err?.status && err.status < 500) { reply(200, { ok: false, why: err.message, ...(err.code ? { code: err.code } : {}) }); return; } log('pickup failed', err); reply(200, { ok: false, why: 'offline' }); return; }
+    if (out.status === 'picked' && Number.isInteger(out.left) && out.left > 0) {
+      // Part of the pile: it lies there still, smaller, and comes back on everyone's ground.
+      g.qty = out.left; g.claim = null; groundTell(area, { add: [g] });
+      econStats.picked++; avg('pickMs', performance.now() - t0, econStats.picked);
+      reply(200, { ok: true, item: out.item, left: out.left, ms: Math.round((performance.now() - t0) * 10) / 10 });
+      return;
+    }
     ground.get(area)?.delete(g.id);
     if (out.status !== 'picked') { reply(200, { ok: false, why: out.why ?? 'gone' }); return; }
     econStats.picked++; avg('pickMs', performance.now() - t0, econStats.picked);

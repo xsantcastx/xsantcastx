@@ -319,6 +319,32 @@ test('ground stacks: a pile of N leaves the dropper as one consume op, the serve
   await assert.rejects(core.dropItem(db, 'uidB', { character: 'kb2', area: 'ember-isle', item: stackOffer('minor-health', 1), x: 0, y: 0 }, T0 + 2000), e => e.code === 'bad-request');
 });
 
+test('ground stacks: a partial take lands part in the picker\'s save and leaves the rest lying (over-asks and bad amounts refused)', async () => {
+  const db = stackWorld(10);
+  const pile = await core.dropItem(db, 'uidA', { character: 'c1', area: 'ember-isle', item: stackOffer('minor-health', 10), x: 0, y: 0, n: 'part1' }, T0);
+  const gid = pile.ground.id;
+  const first = await core.pickupItem(db, 'uidB', { character: 'kb2', ground: gid, qty: 4, n: 'take1' }, T0 + 100);
+  assert.equal(first.status, 'picked');
+  assert.equal(first.left, 6);
+  assert.equal(core.stackHeld(invB(db), 'minor-health'), 4);
+  assert.equal(db.docs.get(`ground-items/${gid}`).qty, 6);
+  assert.equal(db.docs.get('ground/ember-isle').count, 1);
+  // A second press is a second grant.
+  const second = await core.pickupItem(db, 'uidB', { character: 'kb2', ground: gid, qty: 2, n: 'take2' }, T0 + 200);
+  assert.equal(second.left, 4);
+  assert.equal(core.stackHeld(invB(db), 'minor-health'), 6);
+  // Asking for as many as lie (or more) takes the whole pile, and the pile leaves the ground.
+  const rest = await core.pickupItem(db, 'uidB', { character: 'kb2', ground: gid, qty: 99, n: 'take3' }, T0 + 300);
+  assert.equal(rest.status, 'picked');
+  assert.equal(rest.left, undefined);
+  assert.equal(core.stackHeld(invB(db), 'minor-health'), 10);
+  assert.equal(db.docs.get(`ground-items/${gid}`), undefined);
+  // A partial take must be a whole number and name its press.
+  const again = await core.dropItem(db, 'uidB', { character: 'kb2', area: 'ember-isle', item: stackOffer('minor-health', 3), x: 0, y: 0, n: 'part2' }, T0 + 400);
+  await assert.rejects(core.pickupItem(db, 'uidA', { character: 'c1', ground: again.ground.id, qty: 1.5, n: 'x1x1' }, T0 + 500), e => e.code === 'bad-request');
+  await assert.rejects(core.pickupItem(db, 'uidA', { character: 'c1', ground: again.ground.id, qty: 1 }, T0 + 500), e => e.code === 'bad-request');
+});
+
 test('ground stacks: two Keepers reach for one pile at once, the first allowed take wins; an untaken pile goes home whole', async () => {
   const db = stackWorld(30, 'ashwood-log');
   db.docs.set('users/uidC/progress/inventory', inventory([]));
