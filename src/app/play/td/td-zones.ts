@@ -77,6 +77,7 @@ export const ZONES: Readonly<Record<string, Zone>> = {
   'infernal-reach-deep-charwood:T': { band: [13, 16], safe: true }, // the Clan Stone
   'infernal-reach-deep-charwood:F': { band: [13, 16] },        // The Deep Charwood
   'infernal-reach-deep-charwood:f': { band: [13, 16] },
+  'infernal-reach-deep-charwood:.': { band: [13, 16] },        // Kettle Camp's clearing
   'infernal-reach-deep-charwood:m': { band: [13, 16] },
   'infernal-reach-deep-charwood:~': { band: [13, 16] },
   'infernal-reach-badlands:T': { band: [15, 18], safe: true }, // the Spill Stone

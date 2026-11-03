@@ -3910,6 +3910,8 @@ export class TopDownEngine {
     this.spawnFolk();
   }
   private spawnFolk(): void {
+    // A Waystone camp (an act's section, td-sections.ts) is safe ground, not a town: nobody lives there.
+    if (this.world.def.townKind === 'camp') return;
     const m = this.map;
     for (let i = 0; i < m.ground.length; i++) {
       const g = m.ground[i];
@@ -5747,7 +5749,7 @@ export class TopDownEngine {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
         if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true)) {
-          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
+          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
           const st = mobStatuses(m, this.statusPeaks);
           if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
         }
@@ -6030,6 +6032,8 @@ export class TopDownEngine {
     this.cam.x = cx; this.cam.y = cy;
     this.ctx.setTransform(s, 0, 0, s, -cx * s, -cy * s);
   }
+  /** The HUD's top-right corner (the minimap and its clock, ~170 CSS px) in canvas px: a creature's plate stays left of it. */
+  private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
   /** Anchor an upright drawing at world point (x, y) (iso: where it projects; top-down: nothing to do). */
   private at(x: number, y: number): void { if (this.iso) this.isoAt(x, y); }
   private readonly isoAtFn = (x: number, y: number): void => this.isoAt(x, y);

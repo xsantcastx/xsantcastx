@@ -72,6 +72,8 @@ export interface ContinentDef {
   title?: string;
   /** What the town at (0, 0) is: a capital (its hearth has the Shrine; the default), a village, or a Waystone camp (no hearth). */
   townKind?: 'capital' | 'village' | 'camp';
+  /** Ash country (the Reach's Badlands, Molten Fields and Pyre Peaks): obsidian dirt and basalt, no grass, more lava showing. */
+  ash?: boolean;
   /** Chunks round the town where no pack spawns (default 3; a Waystone camp keeps 1). */
   quiet?: number;
   /** The town's own ways on (a ship from its own pier, when the town is a harbour village), at tiles of the town. */

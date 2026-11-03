@@ -53,8 +53,8 @@ const CAMP_ROWS: readonly string[] = [
   'gggg........gggg',
 ];
 /** A Waystone camp (world-acts.md §0): safe ground round the stone, one lamp, a bench to rest at. Its stone is ContinentDef.stone. */
-const buildCamp = (id: string) => (): TdMap => buildTown({
-  id, rows: CAMP_ROWS, legend: { '.': 'dirt', g: 'grass' }, houses: [], stalls: [],
+const buildCamp = (id: string, ash = false) => (): TdMap => buildTown({
+  id, rows: CAMP_ROWS, legend: { '.': 'dirt', g: ash ? 'cave' : 'grass' }, houses: [], stalls: [],
   props: [{ kind: 'waystone', c: 8, r: 4 }, { kind: 'lamp', c: 10, r: 4 }, { kind: 'bench', c: 6, r: 6 }, { kind: 'signpost', c: 12, r: 8 }],
   spawn: { c: 8, r: 7 },
 });
@@ -174,14 +174,14 @@ export const CHARWOOD_SECTION: ContinentDef = {
 const D = blocks(14, 12);
 export const DEEP_CHARWOOD_SECTION: ContinentDef = {
   id: REACH_DEEP_CHARWOOD, land: LAND, title: 'The Deep Charwood', ox: 14, oy: 12, townKind: 'camp', quiet: 1,
-  map: paint(40, 26, 'F', 'm', [['T', 14, 12, 15, 13], ['f', 2, 2, 7, 8], ['f', 30, 15, 37, 22]]),
+  map: paint(40, 26, 'F', 'm', [['T', 14, 12, 15, 13], ['f', 2, 2, 7, 8], ['f', 30, 15, 37, 22], ['.', 24, 4, 28, 8]]),
   roads: [
     [[-76, -58], [-50, -30], [-60, 10], [-80, 50], [-20, 40], [8, 6], [40, -20], [80, 10], [70, 50], [60, 80], [120, 70], [150, 40], [190, 52], [197, 52]],
     // A side track up toward Kettle Camp (it stops short: a camp sits off the road, world-acts.md §2).
     [[80, 10], [96, -26]],
   ],
   places: [{ kind: 'cave', c: D(4, 4)[0], r: D(4, 4)[1], name: 'The Far Mouth' }],
-  names: { F: 'The Deep Charwood', f: 'The Deep Charwood', m: 'The Deep Charwood', T: 'The Clan Stone' },
+  names: { F: 'The Deep Charwood', f: 'The Deep Charwood', '.': 'The Deep Charwood', m: 'The Deep Charwood', T: 'The Clan Stone' },
   mobs: {
     F: { types: ['ash-wolf', 'lava-hound', 'cinder-orc', 'cinder-orc', 'orc-firecaller'], chance: .65 },
     f: { types: ['ash-wolf', 'lava-hound'], chance: .5 },
@@ -202,7 +202,7 @@ export const DEEP_CHARWOOD_SECTION: ContinentDef = {
 // ── The Obsidian Badlands (15–18): the Forge's spill, the Scorch Rings ──────────────────────────────────────────────
 const B = blocks(6, 13);
 export const BADLANDS_SECTION: ContinentDef = {
-  id: REACH_BADLANDS, land: LAND, title: 'The Obsidian Badlands', ox: 6, oy: 13, townKind: 'camp', quiet: 1,
+  id: REACH_BADLANDS, land: LAND, ash: true, title: 'The Obsidian Badlands', ox: 6, oy: 13, townKind: 'camp', quiet: 1,
   map: paint(44, 26, 'h', 'm', [['T', 6, 13, 7, 14], ['m', 8, 2, 11, 5], ['m', 30, 2, 34, 4], ['m', 12, 19, 15, 22]]),
   roads: [
     [[-37, 4], [-30, 4], [-10, 8], [8, 6], [40, -30], [50, -70], [80, -40], [100, 10], [140, 36], [180, 10], [230, 0], [250, 30], [240, 60], [276, 58]],
@@ -216,7 +216,7 @@ export const BADLANDS_SECTION: ContinentDef = {
   names: { h: 'The Obsidian Badlands', m: 'The Obsidian Badlands', T: 'The Spill Stone' },
   mobs: { h: { types: ['lava-hound', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'orc-warlord'], chance: .65 } },
   hotspots: [{ region: 'h', chance: .35, types: ['cinder-orc', 'orc-firecaller', 'orc-warlord', 'cinder-orc', 'ashsinger'], count: 5 }],
-  town: buildCamp('spill-stone'), townName: 'The Spill Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'dirt', far: 'dirt' },
+  town: buildCamp('spill-stone', true), townName: 'The Spill Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'dirt', far: 'dirt' },
   ways: [
     { place: 'forge', station: FORGE_IN, to: 'forge-of-four-1', arrive: 'forge-out' },
     { place: 'cave', station: THROAT_IN, to: 'glass-throat-1', arrive: 'throat-up' },
@@ -234,7 +234,7 @@ export const BADLANDS_SECTION: ContinentDef = {
 // ── The Molten Fields (18–21): drakes, lava rivers, the Drake Nests ─────────────────────────────────────────────────
 const M = blocks(8, 12);
 export const MOLTEN_FIELDS_SECTION: ContinentDef = {
-  id: REACH_MOLTEN_FIELDS, land: LAND, title: 'The Molten Fields', ox: 8, oy: 12, townKind: 'camp', quiet: 1,
+  id: REACH_MOLTEN_FIELDS, land: LAND, ash: true, title: 'The Molten Fields', ox: 8, oy: 12, townKind: 'camp', quiet: 1,
   map: paint(42, 26, 'v', 'm', [['T', 8, 12, 9, 13], ['h', 2, 14, 8, 22], ['h', 2, 2, 6, 6], ['m', 16, 2, 20, 6]]),
   roads: [[[-36, -58], [-10, -30], [-40, 10], [8, 6], [30, 50], [80, 60], [120, 30], [110, -10], [150, -40], [200, -20], [230, -50], [254, -44], [261, -44]]],
   places: [
@@ -244,7 +244,7 @@ export const MOLTEN_FIELDS_SECTION: ContinentDef = {
   names: { v: 'The Molten Fields', h: 'The Molten Fields', m: 'The Molten Fields', T: 'The Drake Stone' },
   mobs: { v: { types: ['cinder-imp', 'obsidian-golem', 'ember-drake'], chance: .65 }, h: { types: ['lava-hound', 'cinder-imp'], chance: .5 } },
   hotspots: [{ region: 'v', chance: .3, types: ['ember-drake', 'lava-hound', 'cinder-imp'], count: 4 }],
-  town: buildCamp('drake-stone'), townName: 'The Drake Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'dirt', far: 'dirt' },
+  town: buildCamp('drake-stone', true), townName: 'The Drake Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'dirt', far: 'dirt' },
   ways: [{ place: 'cave', station: THROAT_OUT_IN, to: 'glass-throat-2', arrive: 'throat-out' }],
   seams: [seam('molten-fields-e', ...M(39, 6, 6), 'e', REACH_PYRE_PEAKS, 'pyre-peaks-w', 'THE SWITCHBACKS: THE PYRE PEAKS', 'pass')],
   stone: { id: 'reach:drake', c: 8, r: 4, name: 'The Drake Stone' },
@@ -258,7 +258,7 @@ export const MOLTEN_FIELDS_SECTION: ContinentDef = {
 // ── The Pyre Peaks (19–22): the Bastion Road, the Ring of Pyres, the Caldera Rim and the Molten Deep ────────────────
 const P = blocks(8, 16);
 export const PYRE_PEAKS_SECTION: ContinentDef = {
-  id: REACH_PYRE_PEAKS, land: LAND, title: 'The Pyre Peaks', ox: 8, oy: 16, townKind: 'camp', quiet: 1,
+  id: REACH_PYRE_PEAKS, land: LAND, ash: true, title: 'The Pyre Peaks', ox: 8, oy: 16, townKind: 'camp', quiet: 1,
   map: paint(40, 28, 'h', 'm', [['T', 8, 16, 9, 17], ['m', 14, 2, 20, 8], ['m', 30, 18, 34, 22], ['v', 30, 2, 37, 10]]),
   roads: [
     [[-53, 36], [-46, 36], [-30, 30], [8, 6], [40, -10], [70, 30], [110, 40], [150, 0], [120, -30], [150, -60], [190, -50], [230, -60], [212, -74]],
@@ -276,7 +276,7 @@ export const PYRE_PEAKS_SECTION: ContinentDef = {
   names: { h: 'The Bastion Road', m: 'The Pyre Peaks', v: 'The Caldera Rim', T: 'The Pyre Stone' },
   mobs: { h: { types: ['bone-walker', 'lava-hound', 'obsidian-golem', 'cinder-wraith'], chance: .55 }, v: { types: ['cinder-imp', 'obsidian-golem', 'lava-hound'], chance: .55 } },
   hotspots: [{ region: 'h', chance: .3, types: ['bone-walker', 'bone-archer', 'cinder-wraith'], count: 4 }],
-  town: buildCamp('pyre-stone'), townName: 'The Pyre Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'dirt', far: 'dirt' },
+  town: buildCamp('pyre-stone', true), townName: 'The Pyre Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'dirt', far: 'dirt' },
   ways: [
     { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
     { place: 'crypt', station: CRYPT_IN, to: 'ashen-crypt-1', arrive: 'crypt-out' },

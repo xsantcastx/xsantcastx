@@ -3671,10 +3671,11 @@ export class SideScrollerComponent implements OnDestroy {
     const paid = this.waystones.light(e.id, `td/${e.area}`);
     this.waystones.markSeen(e.id);
     const eng = this.engine as unknown as { landStones?: () => { id: string; name: string; area: string }[] } | undefined;
-    const known = new Set([...this.waystones.state.lit, e.id]);
+    // The land's capital stone is the trunk: always touched (world-acts.md §0, "to the capital's for free").
+    const known = new Set([...this.waystones.state.lit, e.id, 'reach:pyrehold']);
     const stones = (eng?.landStones?.() ?? []).map((s): AtlasStone => {
       const z = TD_ZONES[`${s.area}:T`], def = CONTINENTS[s.area];
-      return { id: s.id, name: s.name, section: def?.title ?? s.name, band: z?.band ?? null, safe: def?.townKind !== 'camp', known: known.has(s.id), here: s.id === e.id };
+      return { id: s.id, name: s.name, section: def?.title ?? s.name, hint: this.t(`atlas.near.${s.id.replace(/^reach:/, '')}`), band: z?.band ?? null, safe: def?.townKind !== 'camp', known: known.has(s.id), here: s.id === e.id };
     });
     if (paid?.xp) this.message = this.t('atlas.touched', { name: stones.find(s => s.id === e.id)?.name ?? '', xp: LIGHT_XP });
     this.atlas = { land: e.land, here: e.id, stones };
@@ -4610,6 +4611,8 @@ export class SideScrollerComponent implements OnDestroy {
     // A town task giver (shared/town-tasks).
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     // An act's section (td-sections.ts): its Waystone, a thing to read, a sealed thing, a seam's gate.
+    // The gathering skills' own targets in the world (a tree to chop, a spot to fish, a fire to cook at).
+    if (this.state?.nearby === 'td-tree' || this.state?.nearby === 'td-spot' || this.state?.nearby === 'td-fire') return this.t(`reach.act.${this.state.nearby.slice(3)}`);
     const reachAct = /^(tdstone|read|sealed|seam):/.exec(this.state?.nearby ?? '')?.[1];
     if (reachAct) return this.t(`reach.act.${reachAct}`, { name: titleCase(this.state.nearbyLabel ?? '') });
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
