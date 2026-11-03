@@ -7,7 +7,7 @@
  * priced in the hunt (huntGold), a level band, and a state. Nothing here touches the DOM or the engine.
  */
 import type { ContinentDef } from './continent';
-import { CONTINENT_BANDS } from './td-zones';
+import { CONTINENT_BANDS, landOfArea } from './td-zones';
 import { huntGold } from '../../shared/economy/economy-curve';
 
 /** A pier with a Harbourmaster on it. */
@@ -27,8 +27,8 @@ export interface Pier {
 
 export const PIERS: readonly Pier[] = [
   { id: 'ember-harbour', name: 'Ember Harbour', continent: 'ember-isle', village: null, stations: ['ship-reach', 'ship-isle-verdant'], master: { id: 'harbourmaster-odd-tarn', name: 'Odd Tarn' }, at: { c: 1, r: 2 } },
-  { id: 'pyrehold', name: 'Pyrehold', continent: 'infernal-reach', village: null, stations: ['ship-isle', 'ship-verdant', 'ship-umbral'], master: { id: 'harbourmaster-garrick-dross', name: 'Garrick Dross' }, at: { c: 1, r: 2 } },
-  { id: 'cinderport', name: 'Cinderport', continent: 'infernal-reach', village: 'Cinderport', stations: ['ship-cinderport'], master: { id: 'harbourmaster-marit-salt', name: 'Marit Salt' }, at: { c: 16, r: 12 } },
+  { id: 'pyrehold', name: 'Pyrehold', continent: 'infernal-reach-pyrehold', village: null, stations: ['ship-isle', 'ship-verdant', 'ship-umbral'], master: { id: 'harbourmaster-garrick-dross', name: 'Garrick Dross' }, at: { c: 1, r: 2 } },
+  { id: 'cinderport', name: 'Cinderport', continent: 'infernal-reach-cinderport', village: 'Cinderport', stations: ['ship-cinderport'], master: { id: 'harbourmaster-marit-salt', name: 'Marit Salt' }, at: { c: 16, r: 12 } },
   { id: 'mossharbor', name: 'Mossharbor', continent: 'verdant-wilds', village: 'Mossharbor', stations: ['ship-mossharbor', 'ship-mossharbor-isle'], master: { id: 'harbourmaster-sunny-pell', name: 'Sunny Pell' }, at: { c: 12, r: 12 } },
   { id: 'mirewatch', name: 'Mirewatch', continent: 'umbral-marches', village: 'Mirewatch', stations: ['ship-mirewatch'], master: { id: 'harbourmaster-old-corvane', name: 'Old Corvane' }, at: { c: 17, r: 12 } },
 ];
@@ -47,10 +47,17 @@ const GATES: Readonly<Record<string, string | null>> = { 'ember-isle': null, 'in
 /** The bands are td-zones' own (CONTINENT_BANDS), so a ship's board and the Map's titles never disagree; the entry is the band's floor. */
 export const LANDS: Readonly<Record<string, LandFacts>> = Object.fromEntries(Object.entries(CONTINENT_BANDS).map(([id, band]) => [id, { band, entry: band[0], gate: GATES[id] ?? null }]));
 /**
- * The story gates are a data hook, not a wall: until the acts that set them are tracked, every route that is reachable
- * today stays reachable. Flip this on (and pass `cleared`) when the story spine lands.
+ * The story gates are a data hook, not a wall, until each act's end is built: every route reachable today stays
+ * reachable. Flip this on (and pass `cleared`) when the whole story spine lands.
  */
 export const STORY_LOCKS_ENFORCED = false;
+/**
+ * The act ends that are built, and so hold their ships (world-acts.md §0: "soft-warned, hard-gated: the board shows the
+ * ship and says what must fall first"), by pier → the boss that holds it. Act I (S7, campaign.md): Garrick Dross's board
+ * at Pyrehold does not sail for the Verdant Wilds until the Cinder Sovereign falls. (Ember Harbour's long-way ketch to
+ * Mossharbor is not held yet: the DM's call, logged in docs/handoff/s7reach.md.)
+ */
+export const ACT_GATES_ENFORCED: Readonly<Record<string, string>> = { pyrehold: 'cinder-sovereign' };
 
 /** The long way round (two minutes by sea in the doc): a boat that skips a whole continent. */
 const LONG_WAY: ReadonlySet<string> = new Set(['ship-isle-verdant', 'ship-mossharbor-isle']);
@@ -68,6 +75,7 @@ export interface Route { from: string; to: string; arrive: string; destPier: str
 function shipWays(def: ContinentDef): { village: string | null; station: string; to: string; arrive: string }[] {
   const out: { village: string | null; station: string; to: string; arrive: string }[] = [];
   for (const w of def.ways) if (w.ship) out.push({ village: null, station: w.station.id, to: w.to, arrive: w.arrive });
+  for (const w of def.townWays ?? []) if (w.ship) out.push({ village: def.townName, station: w.station.id, to: w.to, arrive: w.arrive });
   for (const v of def.villages ?? []) for (const w of v.ways ?? []) if (w.ship) out.push({ village: v.name, station: w.station.id, to: w.to, arrive: w.arrive });
   return out;
 }
@@ -118,11 +126,12 @@ export interface BoardOpts {
 export function buildBoard(pierId: string, o: BoardOpts): BoardRow[] {
   const enforce = o.enforceStory ?? STORY_LOCKS_ENFORCED;
   const rows = routesFrom(pierId, o.continents).map((r): BoardRow => {
-    const dest = pierById(r.destPier)!, land = LANDS[dest.continent] ?? { band: [1, 1], entry: 1, gate: null };
+    // A section's pier sails for its land (the Reach's two harbours are sections of the one land).
+    const dest = pierById(r.destPier)!, landId = landOfArea(dest.continent), land = LANDS[landId] ?? { band: [1, 1], entry: 1, gate: null };
     const fare = fareFor(land.entry);
-    const locked = enforce && !!land.gate && !(o.cleared?.has(land.gate));
+    const locked = (enforce || (!!land.gate && ACT_GATES_ENFORCED[pierId] === land.gate)) && !!land.gate && !(o.cleared?.has(land.gate));
     return {
-      id: r.from, destPier: r.destPier, continent: dest.continent, band: land.band, entry: land.entry, fare, long: r.long, to: r.to, arrive: r.arrive,
+      id: r.from, destPier: r.destPier, continent: landId, band: land.band, entry: land.entry, fare, long: r.long, to: r.to, arrive: r.arrive,
       gate: land.gate, state: locked ? 'locked' : o.gold >= fare ? 'ok' : 'broke', warn: o.level < land.entry,
     };
   });
@@ -131,5 +140,5 @@ export function buildBoard(pierId: string, o: BoardOpts): BoardRow[] {
 
 /** The cheapest fare out of a pier (the hover card on its map pin). */
 export function cheapestFare(pierId: string, continents: Readonly<Record<string, ContinentDef>>): number {
-  return Math.min(...routesFrom(pierId, continents).map(r => fareFor(LANDS[pierById(r.destPier)!.continent]?.entry ?? 1)));
+  return Math.min(...routesFrom(pierId, continents).map(r => fareFor(LANDS[landOfArea(pierById(r.destPier)!.continent)]?.entry ?? 1)));
 }

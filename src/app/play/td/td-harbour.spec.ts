@@ -9,7 +9,7 @@ import { footFree, standNear } from './td-level';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { huntGold } from '../../shared/economy/economy-curve';
 import { HARBOUR_I18N } from '../harbour/harbour.i18n';
-import { CONTINENT_BANDS } from './td-zones';
+import { CONTINENT_BANDS, landOfArea } from './td-zones';
 import { LANDS, PIERS, STORY_LOCKS_ENFORCED, buildBoard, cheapestFare, fareFor, isBerth, pierById, pierOfMaster, pierOfStation, routesFrom } from './td-harbour';
 
 describe('td: harbour fares', () => {
@@ -43,7 +43,7 @@ describe('td: the piers and their Harbourmasters', () => {
   it('every station a pier names is a real ship way on its continent, and every route lands at a pier', () => {
     for (const pier of PIERS) {
       const def = CONTINENTS[pier.continent];
-      const ways = [...def.ways, ...(def.villages ?? []).flatMap(v => v.ways ?? [])];
+      const ways = [...def.ways, ...(def.townWays ?? []), ...(def.villages ?? []).flatMap(v => v.ways ?? [])];
       for (const st of pier.stations) expect(ways.some(w => w.station.id === st && w.ship)).withContext(`${pier.id}: ${st}`).toBeTrue();
       const routes = routesFrom(pier.id, CONTINENTS);
       expect(routes.length).withContext(pier.id).toBe(pier.stations.length);
@@ -84,12 +84,14 @@ describe('td: the piers and their Harbourmasters', () => {
     for (const [id, band] of Object.entries(CONTINENT_BANDS)) expect(LANDS[id].band).toEqual(band);
   });
   it('every land has its text and a band', () => {
-    for (const id of Object.keys(CONTINENTS)) { expect(LANDS[id]).withContext(id).toBeDefined(); expect(HARBOUR_I18N[`harbour.land.${id}`]).withContext(id).toBeDefined(); }
+    // An act's sections share their land's (the Reach's two harbours sail for the one land).
+    for (const id of new Set(Object.keys(CONTINENTS).map(landOfArea))) { expect(LANDS[id]).withContext(id).toBeDefined(); expect(HARBOUR_I18N[`harbour.land.${id}`]).withContext(id).toBeDefined(); }
   });
 });
 
 describe('td: the Sailing Board', () => {
-  const base = { continents: CONTINENTS, level: 30, gold: 100_000 };
+  // The Cinder Sovereign felled: Act I's end (Garrick Dross's Verdant ship, td-harbour ACT_GATES_ENFORCED) is open.
+  const base = { continents: CONTINENTS, level: 30, gold: 100_000, cleared: new Set(['cinder-sovereign']) };
   it('Pyrehold lists three ships, the cheapest (home) first', () => {
     const rows = buildBoard('pyrehold', base);
     expect(rows.map(r => r.destPier)).toEqual(['ember-harbour', 'mossharbor', 'mirewatch']);
@@ -99,7 +101,7 @@ describe('td: the Sailing Board', () => {
   it('each row carries its destination, its continent, its band and the way the engine sails it', () => {
     const rows = buildBoard('ember-harbour', base);
     const reach = rows.find(r => r.destPier === 'pyrehold')!;
-    expect(reach).toEqual(jasmine.objectContaining({ continent: 'infernal-reach', band: CONTINENT_BANDS['infernal-reach'], entry: 8, to: 'infernal-reach', arrive: 'ship-isle', id: 'ship-reach' }));
+    expect(reach).toEqual(jasmine.objectContaining({ continent: 'infernal-reach', band: CONTINENT_BANDS['infernal-reach'], entry: 8, to: 'infernal-reach-pyrehold', arrive: 'ship-isle', id: 'ship-reach' }));
     const wilds = rows.find(r => r.destPier === 'mossharbor')!;
     expect(wilds.long).toBeTrue();
     expect(wilds.arrive).toBe('ship-mossharbor-isle');
@@ -120,6 +122,8 @@ describe('td: the Sailing Board', () => {
   it('the story locks are a data hook: nothing is locked today, and they bite only when enforced', () => {
     expect(STORY_LOCKS_ENFORCED).toBeFalse();
     expect(buildBoard('pyrehold', base).some(r => r.state === 'locked')).toBeFalse();
+    // Act I's end is built (S7): Garrick Dross's Verdant ship waits on the Cinder Sovereign.
+    expect(buildBoard('pyrehold', { ...base, cleared: new Set<string>() }).find(r => r.destPier === 'mossharbor')!.state).toBe('locked');
     const locked = buildBoard('pyrehold', { ...base, enforceStory: true, cleared: new Set<string>() });
     expect(locked.find(r => r.destPier === 'mirewatch')).toEqual(jasmine.objectContaining({ state: 'locked', gate: 'elder-rootwyrm' }));
     expect(locked.find(r => r.destPier === 'ember-harbour')!.state).toBe('ok');   // sailing home is never gated
