@@ -12,7 +12,7 @@
  * Glim's ring, the hunter's leaf, a leap's arc) and `drawLateState` (what lasts: the leaf over the Marked, a Shock's
  * spark, a Wet foe's droplet, a revealed foe's cream corners).
  */
-import { conePixels, groundRing, linePixels, layFlat, sq, standAt, type Tones } from './td-fx';
+import { conePixels, groundRing, linePixels, sq, type Tones } from './td-fx';
 import { envDetail } from './td-detail';
 
 type Ctx = CanvasRenderingContext2D;
@@ -25,12 +25,13 @@ export const LATE_FX: Readonly<Record<'storm' | 'rime' | 'moth' | 'fog' | 'rain'
   fog: { core: '#e4eaf0', body: '#c4ced8', edge: '#8a96a6' },
   rain: { core: '#e8f6ff', body: '#a8c8e8', edge: '#5a7a9a' },
   leaf: { core: '#e8f5b0', body: '#8fc25a', edge: '#4a6b2a' },
-  stone: { core: '#e0d4b8', body: '#a89a7a', edge: '#5a4a32' },
+  stone: { core: '#fffbe8', body: '#f0d890', edge: '#a8874a' },
   ember: { core: '#fff2a8', body: '#ffb347', edge: '#e2552a' },
 };
 
-const AIR = new Set(['lc-cone', 'lc-chain', 'lc-strike', 'lc-tell', 'lc-dust', 'lc-glim', 'lc-leaf', 'lc-leap']);
-const GROUND = new Set(['lc-quake', 'lc-rime']);
+const WILD: Tones = { core: '#f0fff8', body: '#9af0d0', edge: '#4cb898' };
+const AIR = new Set(['lc-quake', 'lc-cone', 'lc-chain', 'lc-strike', 'lc-tell', 'lc-dust', 'lc-glim', 'lc-leaf', 'lc-leap']);
+const GROUND = new Set(['lc-rime']);
 export function isLateFx(kind: string): boolean { return AIR.has(kind) || GROUND.has(kind); }
 const low = () => envDetail() === 'low';
 
@@ -63,18 +64,6 @@ export function drawLateZones(c: Ctx, zones: readonly ZoneLike[], time: number, 
       // A grey disc of shadow on the ground, slanted streaks of rain inside it, a few puddle dots.
       c.globalAlpha = .4 * fade; c.fillStyle = LATE_FX.rain.edge;
       for (const [i, q] of groundRing(R).entries()) if (i % 2 === 0) c.fillRect(X + q.x, Y + q.y, 1, 1);
-      c.globalAlpha = .55 * fade;
-      const n = lo ? 6 : 16;
-      for (let i = 0; i < n; i++) {
-        const a = i * 2.39996, d = (i / n) * R * .9, sx = X + Math.round(Math.cos(a) * d), sy = Y + Math.round(Math.sin(a) * d * sq(.5));
-        const f = still ? 0 : Math.floor(time * 12 + i * 3) % 6;
-        // Each streak stands upright over its spot (iso), slanting as it falls; a puddle dot where it lands.
-        standAt(c, sx, sy);
-        c.fillStyle = i % 3 ? LATE_FX.rain.body : LATE_FX.rain.core;
-        c.fillRect(sx - f, sy - 14 + f * 2, 1, 3); c.fillRect(sx - f - 1, sy - 11 + f * 2, 1, 2);
-        layFlat(c);
-        if (!lo && i % 4 === 0) { c.fillStyle = LATE_FX.rain.edge; c.fillRect(sx, sy, 2, 1); }
-      }
     } else if (z.kind === 'fog') {
       // Two stepped bands of the fog's grey, a soft-edged disc (stepped alpha, never a blur).
       const rows = lo ? 3 : 6;
@@ -84,31 +73,13 @@ export function drawLateZones(c: Ctx, zones: readonly ZoneLike[], time: number, 
         c.fillRect(X - rr + drift, Y - Math.round(rr * sq(.5)), rr * 2, Math.max(1, Math.round(rr * sq(.5) * 2)));
       }
     } else if (z.kind === 'moths') {
-      // 12–17 cream moths (3×2, two-frame flap) on a slow orbit round the swarm's middle.
-      const n = Math.max(4, Math.min(17, z.every ?? 12)), shown = lo ? Math.ceil(n / 3) : n;
-      c.globalAlpha = fade;
-      for (let i = 0; i < shown; i++) {
-        const a = (still ? 0 : time * .9) + i / shown * Math.PI * 2, rr = R * (.7 + (i % 3) * .12);
-        const mx = X + Math.round(Math.cos(a) * rr), foot = Y + Math.round(Math.sin(a) * rr * sq(.5)), flap = still ? 0 : Math.floor(time * 10 + i) % 2;
-        // Each moth flies at chest height over its spot of the orbit.
-        standAt(c, mx, foot);
-        const my = foot - 10;
-        // A moth: two wings either side of a body, the wings up on the flap (3×2 art px, doubled to read at the iso zoom).
-        c.fillStyle = LATE_FX.moth.edge; c.fillRect(mx - 2, my + 2, 5, 1);
-        c.fillStyle = flap ? LATE_FX.moth.body : LATE_FX.moth.core; c.fillRect(mx - 2, my - flap, 2, 2); c.fillRect(mx + 1, my - flap, 2, 2); c.fillStyle = LATE_FX.moth.edge; c.fillRect(mx, my, 1, 2);
-        layFlat(c);
-      }
+      // The swarm's reach on the floor: a faint cream ring (the moths themselves fly in the air pass, drawLateZoneAir).
+      c.globalAlpha = .35 * fade; c.fillStyle = LATE_FX.moth.body;
+      for (const [i, q] of groundRing(R).entries()) if (i % (lo ? 6 : 3) === 0) c.fillRect(X + q.x, Y + q.y, 2, 1);
     } else if (z.kind === 'thornrain') {
-      // The ring it falls in (a dashed green edge), and green streaks coming down on it.
-      c.globalAlpha = .4 * fade; c.fillStyle = LATE_FX.leaf.body;
-      for (const [i, q] of groundRing(R).entries()) if (i % 4 === 0) c.fillRect(X + q.x, Y + q.y, 1, 1);
-      if (!lo) {
-        c.globalAlpha = .8 * fade;
-        for (let i = 0; i < 6; i++) {
-          const a = i * 2.39996 + (still ? 0 : time * 3), d = ((i * 37) % 10) / 10 * R, sx = X + Math.round(Math.cos(a) * d), f = still ? 4 : Math.floor(time * 20 + i * 5) % 10;
-          c.fillStyle = LATE_FX.leaf.core; c.fillRect(sx, Y + Math.round(Math.sin(a) * d * sq(.5)) - 20 + f * 2, 1, 3);
-        }
-      }
+      // The ring it falls in: a 2-px green edge, every other step lit (the thorns fall in the air pass).
+      c.globalAlpha = .75 * fade;
+      for (const [i, q] of groundRing(R).entries()) if (i % (lo ? 4 : 2) === 0) { c.fillStyle = i % 4 ? LATE_FX.leaf.body : LATE_FX.leaf.core; c.fillRect(X + q.x, Y + q.y, 2, 1); }
     } else if (z.kind === 'thorny') {
       c.globalAlpha = .6 * fade;
       for (const [i, q] of groundRing(Math.max(4, R - 4)).entries()) if (i % (lo ? 9 : 5) === 0) { c.fillStyle = i % 2 ? LATE_FX.leaf.edge : LATE_FX.stone.body; c.fillRect(X + q.x, Y + q.y - 2, 1, 2); }
@@ -122,16 +93,7 @@ export function drawLateGround(c: Ctx, e: FxLike, still: boolean): boolean {
   if (!GROUND.has(e.kind)) return false;
   if (e.age < 0) return true;
   const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), fade = still ? 1 : Math.max(0, 1 - t), lo = low();
-  if (e.kind === 'lc-quake') {
-    // A ring of cracked ground opening out, dust kicked up at its edge (the ember's tones for Pyre Strike, bone for the Golem).
-    const tn = e.el === 'ember' ? LATE_FX.ember : LATE_FX.stone, R = e.r ?? 24, r = Math.max(3, Math.round(R * (still ? 1 : Math.min(1, t * 2.5))));
-    c.globalAlpha = still ? 1 : Math.min(1, 1.6 * (1 - t));
-    for (const [i, q] of groundRing(r).entries()) {
-      if (i % (lo ? 4 : 2)) continue;
-      c.fillStyle = i % 4 ? tn.body : tn.edge; c.fillRect(X + q.x, Y + q.y, 2, 1);
-      if (!lo && i % 6 === 0) { c.fillStyle = tn.core; c.fillRect(X + q.x, Y + q.y - Math.round((still ? .5 : t) * 4), 1, 1); }
-    }
-  } else if (e.kind === 'lc-rime') {
+  if (e.kind === 'lc-rime') {
     // Rime where the lance passed: four pale pixels on the ground, a second.
     c.globalAlpha = .8 * fade; c.fillStyle = LATE_FX.rime.body;
     c.fillRect(X - 3, Y, 2, 1); c.fillRect(X + 1, Y + 1, 2, 1);
@@ -147,7 +109,26 @@ export function drawLateAir(c: Ctx, e: FxLike, still: boolean, overFoe: (x: numb
   if (GROUND.has(e.kind) || e.age < 0) return true;
   const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), fade = still ? 1 : Math.max(0, 1 - t), lo = low();
   const a = (x: number, y: number, k = 1) => (overFoe(x, y) ? Math.min(.6, k * fade) : k * fade);
-  if (e.kind === 'lc-cone') {
+  if (e.kind === 'lc-quake') {
+    // A shockwave on the ground: a low-alpha filled disc, a bright 2-px ring running out with a hot rim, and 6–8 pieces
+    // thrown up (embers for Pyre Strike, dust and grit for the Watchquake and the Golem, leaves for the Elder Beast).
+    // Its 3–4 frame pulse: it runs out in the first 40% of its life and fades after. Reduced motion: full size, held.
+    const tn = e.el === 'ember' ? LATE_FX.ember : e.el === 'life' ? WILD : LATE_FX.stone, R = e.r ?? 24;
+    const k = still ? 1 : Math.min(1, t / .4), r = Math.max(3, Math.round(R * (.25 + .75 * (1 - (1 - k) * (1 - k))))), f = still ? 1 : t < .4 ? 1 : 1 - (t - .4) / .6;
+    const ring = groundRing(r);
+    if (!lo) { c.globalAlpha = .3 * f; c.fillStyle = tn.body; for (let yy = -Math.round(r / 2); yy <= Math.round(r / 2); yy += 2) { const w = Math.round(Math.sqrt(Math.max(0, 1 - (2 * yy / r) ** 2)) * r); c.fillRect(X - w, Y + yy, w * 2, 1); } }
+    c.globalAlpha = Math.min(1, .95 * f);
+    for (const [i, q] of ring.entries()) { if (lo && i % 2) continue; c.fillStyle = i % 3 ? tn.body : tn.edge; c.fillRect(X + q.x - 1, Y + q.y - 1, 3, 2); }
+    // The crack behind the wave: a second, darker ring a little inside it.
+    if (!lo && r > 8) { c.fillStyle = tn.edge; for (const [i, q] of groundRing(r - 5).entries()) if (i % 2 === 0) c.fillRect(X + q.x, Y + q.y, 2, 1); }
+    if (!lo) { c.fillStyle = tn.core; for (const [i, q] of ring.entries()) if (i % 3 === 0) c.fillRect(X + q.x, Y + q.y - 1, 1, 1); }
+    const bits = lo ? 3 : 7;
+    for (let i = 0; i < bits; i++) {
+      const ang = i / bits * Math.PI * 2 + (X % 7), d = r * (.6 + (i % 3) * .15), up = Math.round((still ? .5 : Math.min(1, t * 2)) * (6 + (i % 3) * 3));
+      c.globalAlpha = f; c.fillStyle = i % 2 ? tn.core : tn.body;
+      c.fillRect(X + Math.round(Math.cos(ang) * d), Y + Math.round(Math.sin(ang) * d / 2) - up, 2, 2);
+    }
+  } else if (e.kind === 'lc-cone') {
     // Kiln Breath: the cone filled in stepped bands of flame, cream at the mouth, orange, then red at the tips, its edge
     // in the ember's dark. The bands are cut once per angle step (coneBands), drawn one fillStyle a band; the fill sits at
     // 60% (it covers bodies: effects-spec rule 3), so no per-pixel test is needed.
@@ -163,8 +144,13 @@ export function drawLateAir(c: Ctx, e: FxLike, still: boolean, overFoe: (x: numb
     // A lightning leap (or Heartseeker's white line, `dir` 2; an archer's arrow, 3): a jagged 1-px line, redrawn each frame.
     const tx = Math.round(e.tx ?? X), ty = Math.round(e.ty ?? Y);
     c.globalAlpha = a(tx, ty);
-    if (e.dir >= 2) { c.fillStyle = e.dir === 3 ? LATE_FX.leaf.core : '#ffffff'; for (const q of linePixels(X, Y, tx, ty)) c.fillRect(q.x, q.y, 1, 1); }
-    else bolt(c, X, Y, tx, ty, Math.floor(e.age * 60), LATE_FX.storm, still);
+    if (e.dir >= 2) { c.fillStyle = e.dir === 3 ? LATE_FX.leaf.core : '#ffffff'; for (const q of linePixels(X, Y, tx, ty)) c.fillRect(q.x, q.y, 2, 1); }
+    else if (lo) { c.globalAlpha = Math.max(.6, a(tx, ty)); c.fillStyle = LATE_FX.storm.edge; for (const q of linePixels(X, Y, tx, ty)) c.fillRect(q.x, q.y, 2, 2); }
+    else {
+      bolt(c, X, Y, tx, ty, Math.floor(e.age * 60), LATE_FX.storm, still);
+      // Chain of Lamps: lamp-lit links strung along the leap (a brass ring every few pixels).
+      if (e.dir === 1) { const L = linePixels(X, Y, tx, ty); c.fillStyle = '#ffd27a'; for (let i = 3; i < L.length - 2; i += 6) { const q = L[i]; c.fillRect(q.x - 1, q.y - 1, 3, 1); c.fillRect(q.x - 1, q.y + 1, 3, 1); c.fillRect(q.x - 1, q.y, 1, 1); c.fillRect(q.x + 1, q.y, 1, 1); } }
+    }
     if (!lo) { c.fillStyle = LATE_FX.storm.core; c.fillRect(tx - 1, ty - 1, 3, 1); c.fillRect(tx, ty - 2, 1, 3); }
   } else if (e.kind === 'lc-strike') {
     // A strike from the top of the screen: a three-segment vertical bolt and a scorch; the flash is a white square at
@@ -220,6 +206,57 @@ function coneBands(L: number, half: number, a: number, n: number): { bands: { x:
   const out = { bands, edge: cone.edge };
   bandCache.set(key, out);
   return out;
+}
+
+/**
+ * What flies over S9's zones, upright (the air pass, anchored per piece through `at`): the Moth Swarm's moths (4–6 px,
+ * pale, flickering wings; Low: three still moths), the Thornrain's falling thorns with bright tips (Low: three), and the
+ * rain cloud's streaks. Reduced motion: every piece still, where it was.
+ */
+export function drawLateZoneAir(c: Ctx, zones: readonly ZoneLike[], time: number, still: boolean, at?: (x: number, y: number) => void): void {
+  const lo = low();
+  for (const z of zones) {
+    const X = Math.round(z.x), Y = Math.round(z.y), R = Math.round(z.r), fade = Math.min(1, z.t / .5);
+    if (z.kind === 'moths') {
+      const n = Math.max(4, Math.min(17, z.every ?? 12)), shown = lo ? 3 : n;
+      for (let i = 0; i < shown; i++) {
+        const ang = (still || lo ? 0 : time * .9) + i / shown * Math.PI * 2, rr = R * (.7 + (i % 3) * .12);
+        const mx = X + Math.round(Math.cos(ang) * rr), foot = Y + Math.round(Math.sin(ang) * rr * .5), flap = still || lo ? 0 : Math.floor(time * 12 + i) % 2;
+        at?.(mx, foot);
+        const my = foot - 12 - (i % 3) * 2;
+        c.globalAlpha = fade;
+        // Two pale wings (3×2 each) either side of a dark body: up on one frame, spread on the next.
+        c.fillStyle = LATE_FX.moth.edge; c.fillRect(mx, my - 1, 1, 4);
+        c.fillStyle = flap ? LATE_FX.moth.body : LATE_FX.moth.core;
+        if (flap) { c.fillRect(mx - 3, my - 3, 3, 2); c.fillRect(mx + 1, my - 3, 3, 2); }
+        else { c.fillRect(mx - 3, my, 3, 2); c.fillRect(mx + 1, my, 3, 2); }
+        c.fillStyle = '#ffffff'; c.fillRect(mx - 2, flap ? my - 3 : my, 1, 1); c.fillRect(mx + 2, flap ? my - 3 : my, 1, 1);
+      }
+    } else if (z.kind === 'thornrain') {
+      const n = lo ? 3 : 8;
+      for (let i = 0; i < n; i++) {
+        const ang = i * 2.39996, d = ((i * 37) % 10) / 10 * R, sx = X + Math.round(Math.cos(ang) * d), sy = Y + Math.round(Math.sin(ang) * d * .5);
+        const f = still || lo ? .5 : ((time * 2.4 + i * .37) % 1);
+        at?.(sx, sy);
+        const top = sy - Math.round(30 * (1 - f)) - 4;
+        c.globalAlpha = fade;
+        // A thorn: a 1-px green shaft 4 long, its bright tip below, a darker fletch above.
+        c.fillStyle = LATE_FX.leaf.edge; c.fillRect(sx, top - 2, 1, 2);
+        c.fillStyle = LATE_FX.leaf.body; c.fillRect(sx, top, 1, 4);
+        c.fillStyle = LATE_FX.leaf.core; c.fillRect(sx, top + 4, 1, 2); c.fillStyle = '#ffffff'; c.fillRect(sx, top + 5, 1, 1);
+      }
+    } else if (z.kind === 'cloud') {
+      const n = lo ? 4 : 12;
+      for (let i = 0; i < n; i++) {
+        const ang = i * 2.39996, d = (i / n) * R * .9, sx = X + Math.round(Math.cos(ang) * d), sy = Y + Math.round(Math.sin(ang) * d * .5);
+        const f = still || lo ? 2 : Math.floor(time * 12 + i * 3) % 6;
+        at?.(sx, sy);
+        c.globalAlpha = .8 * fade; c.fillStyle = i % 3 ? LATE_FX.rain.body : LATE_FX.rain.core;
+        c.fillRect(sx - f, sy - 18 + f * 3, 1, 4);
+      }
+    }
+  }
+  c.globalAlpha = 1;
 }
 
 /** The hunter's leaf sigil: a green leaf of five pixels, turning slowly (`turn` in radians). */
