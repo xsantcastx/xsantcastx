@@ -28,14 +28,14 @@ import { AURA_LOOKS, AuraFx, rimGlow, type AuraLook, type AuraLookId } from './t
 // The art-direction prototype (td-artopt.ts, docs/handoff/artopt/): only reachable with ?artopt= in an automated browser.
 import { offerClassic, onGraphics, optCamera, optHdFigures, optHdWorld, optIso } from './td-artopt';
 import { IsoQueue, isoFlat, isoOf, isoProp, lightPass, worldOfIso } from './td-iso';
-import { behindCrown, crownFade, drawContact, drawIsoArt, drawIsoIcon, drawIsoShadow, fenceJoins, isoArt, isoIcon, isoPartDepth, isoParts, isoPropBakes, isoPropPixels, isoPropsBusy, isoPropsFrame } from './td-iso-props';
+import { behindCrown, crownFade, drawContact, inBarReach, drawIsoArt, drawIsoIcon, drawIsoShadow, fenceJoins, isoArt, isoIcon, isoPartDepth, isoParts, isoPropBakes, isoPropPixels, isoPropsBusy, isoPropsFrame } from './td-iso-props';
 import { IsoFloorFx, airFoot, liftShadow } from './td-iso-fx';
 import { layBoss, layDressing, layFight } from './td-iso-fx-show';
 import { deco, setIsoFloor } from './td-fx';
 import { BLOCK_GROUND, IsoGround, type IsoGroundSource, type IsoWall } from './td-iso-ground';
 import { IsoCutaway, WALL_H, type IsoBlock } from './td-iso-walls';
 import { bakedStructure, drawIsoBeacon, drawStructFloor, drawIsoHearth, drawIsoPurse, drawIsoShrine, drawIsoWaygate, isoStructure, keeperBehind, stepStructures, stripDepth, structDither } from './td-hd-structures';
-import { backing, baseZoom, zoomFactor } from './td-zoom';
+import { backing, baseZoom, followShift, zoomFactor } from './td-zoom';
 import { HF, hdAttackFrame, hdCastFrame, hdCasts, hdFigure, hdFigureBytes, hdStill, hdWalkFrame, type HdView } from './td-hd-keeper';
 import { hasHdModel, hdCell, hdClip, hdDeathFrame, hdGallery, hdGlim, hdIds, hdPetBust, hdStats } from './td-hd-mob';
 import { facingRow } from './td-hd-rig';
@@ -379,6 +379,18 @@ export class TopDownEngine {
   private pinned: number | null = null;
   private scale = 2;
   private cam = { x: 0, y: 0, w: 0, h: 0 };
+  /**
+   * The HUD over the world (docs/handoff/dirfix.md), measured four times a second: the side rails' depth into the
+   * canvas (`[data-world-rail]`, css px: the phone's skill column and potion belt), and the boxes the world's name
+   * plates keep clear of (`[data-world-avoid]`, the armed Interact prompt; backing px from the canvas's corner).
+   */
+  private readonly hud = { l: 0, r: 0, at: -1, n: 0, avoid: new Float64Array(16) };
+  /**
+   * How far the follow point sits right of the canvas's centre (art px; negative: left): half the rails' difference,
+   * so the Keeper stands in the middle of the world the rails leave, plus what it takes to bring the target out from
+   * under a rail. Eased; snapped under reduced motion.
+   */
+  private viewShift = 0;
   private stateTimer = 0;
   private message = '';
   private nearby: TdStall | null = null;
@@ -647,6 +659,28 @@ export class TopDownEngine {
       // Where a world foot (lifted `lift` px) is on the page, either projection; and what the Keeper is targeting.
       pageOf: (x: number, y: number, lift = 0) => this.clientOf(x, y, lift),
       target: () => { const m = this.mobs.target; return m ? { x: Math.round(m.x), y: Math.round(m.y), h: m.def.h } : null; },
+      // The follow point's shift (art px) and the rails measured (css px): e2e/td-dirfix.spec.ts.
+      view: () => ({ shift: this.viewShift, l: this.hud.l, r: this.hud.r, avoid: this.hud.n, faded: this.isoFaded }),
+      // Target the creature placed last (or the i-th from the end): the camera's framing spec.
+      aim: (i = 1) => { const m = this.mobs.mobs[this.mobs.mobs.length - i]; this.mobs.target = m ?? null; return !!m; },
+      // The name plates drawn last frame, page px [left, top, right, bottom] each (the Interact prompt spec).
+      plates: () => { const r = this.canvas.getBoundingClientRect(), k = this.canvas.width / Math.max(1, r.width), out: number[][] = [];
+        for (let i = 0; i + 3 < this.plateLog.length; i += 4) out.push([r.left + this.plateLog[i] / k, r.top + this.plateLog[i + 1] / k, r.left + this.plateLog[i + 2] / k, r.top + this.plateLog[i + 3] / k]);
+        return out; },
+      // Iso: a calm creature standing just behind the nearest tree whose crown fades, `min`–`reach` px from the Keeper
+      // (`back` px up the screen behind its trunk); the tree's foot and the creature's, or null (e2e/td-dirfix.spec.ts).
+      behindTree: (type: string, level: number, min = 24, reach = 160, back = 10) => {
+        const def = MOBS[type], p = this.player; if (!def) return null;
+        let best: TdObject | null = null, bd = Infinity;
+        for (const o of this.level.objectsIn(p.x - reach, p.y - reach, p.x + reach, p.y + reach)) {
+          const ia = o.kind === 'tree' ? isoArt(o.sprite()) : null, d = Math.hypot(o.x - p.x, o.y - p.y);
+          if (ia?.fades && d > min && d < reach && d < bd) { best = o; bd = d; }
+        }
+        if (!best) return null;
+        const m = this.mobs.place(`fx-behind:${type}:${this.mobs.mobs.length}`, { ...atZoneLevel(def, level), sight: 0 }, best.x - back, best.y - back);
+        m.wait = 1e9;
+        return { tree: { x: best.x, y: best.y }, mob: { x: m.x, y: m.y } };
+      },
       isoFlush: (on: boolean) => { this.isoFlush = on; },
       isoProf: () => { const r = Array.from(this.isoProf); this.isoProf.fill(0); return r; },
       // The standing pass per kind since the last call: { kind: [ms, items] } (td-engine K).
@@ -4141,7 +4175,7 @@ export class TopDownEngine {
     this.scale = Math.max(1, Math.round(css * dpr));
     this.cam.w = w / this.scale; this.cam.h = h / this.scale;
     // No edge to clamp to: the world runs on in every direction.
-    this.cam.x = Math.round(this.player.x - this.cam.w / 2);
+    this.cam.x = Math.round(this.player.x - this.cam.w / 2 - this.viewShift);
     this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
   }
 
@@ -4166,8 +4200,64 @@ export class TopDownEngine {
     this.scale = fit.scale;
     this.chunkCap = Math.max(CHUNK_CAP, (Math.ceil(w / this.scale / (CHUNK * TILE)) + 3) * (Math.ceil(h / this.scale / (CHUNK * TILE)) + 3) + 6);
     this.cam.w = w / this.scale; this.cam.h = h / this.scale;
-    this.cam.x = Math.round(this.player.x - this.cam.w / 2);
+    this.cam.x = Math.round(this.player.x - this.cam.w / 2 - this.viewShift);
     this.cam.y = Math.round(this.player.y - up(20) - this.cam.h / 2);
+  }
+  /**
+   * Measure the HUD over the world (this.hud), at most four times a second: a couple of rects, never per frame.
+   * A rail is a `[data-world-rail]` hugging the canvas's left or right edge across its middle third (a bottom bar's
+   * buttons, a portrait phone's corner cluster, are not rails); every shown `[data-world-avoid]` is a box the plates
+   * keep clear of.
+   */
+  private measureHud(): void {
+    const h = this.hud;
+    if (typeof document === 'undefined' || (h.at >= 0 && this.time >= h.at && this.time - h.at < .25)) return;
+    h.at = this.time; h.l = 0; h.r = 0; h.n = 0;
+    const c = this.canvas.getBoundingClientRect();
+    if (c.width < 1 || c.height < 1) return;
+    const k = this.canvas.width / c.width;
+    for (const el of Array.from(document.querySelectorAll('[data-world-rail]'))) {
+      const b = el.getBoundingClientRect();
+      if (b.width < 1 || b.height < 1 || b.bottom < c.top + c.height / 3 || b.top > c.top + c.height * 2 / 3) continue;
+      if (b.left - c.left < c.width * .3 && b.right - c.left < c.width * .4) h.l = Math.max(h.l, b.right - c.left);
+      else if (c.right - b.right < c.width * .3 && c.right - b.left < c.width * .4) h.r = Math.max(h.r, c.right - b.left);
+    }
+    for (const el of Array.from(document.querySelectorAll('[data-world-avoid]'))) {
+      const b = el.getBoundingClientRect();
+      if (b.width < 1 || b.height < 1 || h.n >= 4) continue;
+      const a = h.avoid, i = h.n++ * 4;
+      a[i] = (b.left - c.left) * k; a[i + 1] = (b.top - c.top) * k; a[i + 2] = (b.right - c.left) * k; a[i + 3] = (b.bottom - c.top) * k;
+    }
+  }
+  /**
+   * The follow point's shift this frame (this.viewShift, art px): the rails' half difference, and — when the target
+   * stands (by its body's half width, or its name's: 24 px) under a rail or past the side the rails leave — as much again as brings it out,
+   * never more than a fifth of the view (the Keeper stays well inside it).
+   */
+  private stepViewShift(): void {
+    this.measureHud();
+    const cw = this.canvas.clientWidth, vw = this.canvas.width / this.scale, k = cw > 0 ? this.canvas.width / cw / this.scale : 0;
+    const t = this.mobs.target, p = this.player;
+    const want = followShift(vw, this.hud.l * k, this.hud.r * k, t ? { d: optIso() ? (t.x - t.y) - (p.x - p.y) : t.x - p.x, hw: Math.max(this.vis(t.def).w / 2, 24) } : null);
+    const gap = want - this.viewShift;
+    this.viewShift = this.still || Math.abs(gap) > vw / 2 ? want : this.viewShift + gap * Math.min(1, this.frameDt * 5);
+    if (Math.abs(want - this.viewShift) < .5) this.viewShift = want;
+  }
+  /**
+   * How far (art px, up: ≤ 0) a name plate whose box is (x0, y0)–(x1, y1) under the current world transform must lift
+   * to clear the HUD's avoid boxes (the Interact prompt): its bottom one art px over the box's top. 0 when clear.
+   */
+  private hudLift(x0: number, y0: number, x1: number, y1: number): number {
+    const h = this.hud;
+    if (!h.n) return 0;
+    const s = this.scale, cx = this.cam.x, cy = this.cam.y, a = h.avoid;
+    let lift = 0;
+    for (let i = 0; i < h.n; i++) {
+      const j = i * 4, X0 = (x0 - cx) * s, X1 = (x1 - cx) * s, Y0 = (y0 + lift - cy) * s, Y1 = (y1 + lift - cy) * s;
+      if (X1 <= a[j] || X0 >= a[j + 2] || Y1 <= a[j + 1] || Y0 >= a[j + 3]) continue;
+      lift += (a[j + 1] - Y1) / s - 1;
+    }
+    return Math.floor(lift);
   }
   /** The ground cache's size for this view (the prototype's camera frames more chunks). */
   private chunkCap = CHUNK_CAP;
@@ -4271,6 +4361,7 @@ export class TopDownEngine {
   }
 
   private draw(): void {
+    this.stepViewShift();
     this.resize();
     this.iso = optIso();
     if (this.iso !== this.isoSeen) { this.isoSeen = this.iso; this.canvas.setAttribute('data-graphics', this.iso ? 'iso' : 'classic'); }
@@ -4449,6 +4540,7 @@ export class TopDownEngine {
   /** World UI over the world: name plates, Waves, task marks, the effects, the way, names and bars, labels. */
   private drawWorldUi(inView: (x: number, y: number, pad?: number) => boolean, fallen: { x: number; y: number; gold: number } | null): void {
     const c = this.ctx, s = this.scale, cam = this.cam;
+    this.plateLog.length = 0;
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
@@ -5519,16 +5611,20 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
-        if (inView(m.x, m.y) && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240) {
+        if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true)) {
           this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
           const st = mobStatuses(m, this.statusPeaks);
           if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
         }
         continue;
       }
-      if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
+      if (!inView(m.x, m.y) || !inBarReach(m.x - this.player.x, m.y - this.player.y, false)) continue;
       this.at(m.x, m.y);
-      const top = m.y - this.vis(m.def).h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
+      // Its bar and name (a box about 60 px wide over the bar, 88 with an aura's name) lift clear of the Interact prompt
+      // (Director, dirfix).
+      let top = m.y - this.vis(m.def).h - 3;
+      if (this.hud.n) { const hw = m.aura ? 44 : 30; top += this.hudLift(m.x - hw, top - 10, m.x + hw, top + 3); }
+      const w = 18, frac = Math.max(0, m.hp / m.def.hp);
       c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
       // S6: a pack aura's pip beside the bar (the bearer's and each one it blesses).
@@ -5543,6 +5639,7 @@ export class TopDownEngine {
       // A fixed aura-bearer names its aura on its plate (Orc Warlord · Might).
       const tone = gapTone(this.mobs.keeperLevel, m.def.level), label = m.aura ? `${m.def.name} ${m.def.level} · ${AURA_NAMES_EN[m.aura]}` : `${m.def.name} ${m.def.level}`;
       c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(label, Math.round(m.x) + 1, Math.round(top) - 1);
+      if (this.logPlates) { const lw = c.measureText(label).width / 2; this.logPlate(m.x - lw, top - 8, m.x + lw, top + 3); }
       c.fillStyle = m === this.mobs.target && tone === 'even' ? '#ff8a7a' : GAP_TONES[tone]; c.fillText(label, Math.round(m.x), Math.round(top) - 2);
       if (tone === 'deadly') {
         // A skull, 5×5 pixels, left of the name.
@@ -5757,6 +5854,8 @@ export class TopDownEngine {
   /** The iso feet a crown fades for this frame (x, y pairs) and how many. */
   private readonly isoFadePts = new Float64Array(64);
   private isoFadeN = 0;
+  /** How many crowns were drawn faded last frame (for the specs: __tdArt.view). */
+  private isoFaded = 0;
   private readonly isoFaces = new WeakMap<object, { x: number; y: number; row: number; flip: boolean; turned: boolean; front: boolean }>();
   /** A view object for the peers' painter, reused. */
   private readonly isoPeerView: { scale: number; camX: number; camY: number; time: number; still: boolean; hd?: (p: { x: number; y: number; dir: 'side' | 'down' | 'up'; face: 1 | -1 }) => { view: HdView; flip: boolean } } = { scale: 1, camX: 0, camY: 0, time: 0, still: false, hd: p => this.hdFacing(p) };
@@ -5847,7 +5946,7 @@ export class TopDownEngine {
     ic.w = cw / s; ic.h = ch / s;
     // The isometric twins (td-iso-props.ts) bake on first sight, within this much of the frame.
     isoPropsFrame(this.frameAt + 7, !p.moving && !this.path.length);
-    ic.x = Math.round(PX - ic.w / 2); ic.y = Math.round(PY - up(20) - ic.h / 2);
+    ic.x = Math.round(PX - ic.w / 2 - this.viewShift); ic.y = Math.round(PY - up(20) - ic.h / 2);
     // The world under the view: the bounding box of its four corners (and a margin below for tall things standing just off it).
     { const t = ic.y - 60, b = ic.y + ic.h + 140, l = ic.x - 40, r = ic.x + ic.w + 40, W = this.isoWorld;
       W.x = t + l / 2; W.w = b + r / 2 - W.x; W.y = t - r / 2; W.h = b - l / 2 - W.y; }
@@ -5958,12 +6057,14 @@ export class TopDownEngine {
       }
     }
     q.push(K.person, PY, p, p.moving ? 2 : 0);
-    // What a tree's crown fades for (td-iso-props behindCrown): the Keeper, the target, hostiles within six tiles.
+    // What a tree's crown fades for (td-iso-props behindCrown): the Keeper, the target, and every hostile in view near
+    // enough to wear its bar (inBarReach: the bar and the body read together, never a bar over a tree; Director, dirfix).
+    // A town has none, so the Town scene pays nothing more.
     { const F = this.isoFadePts, tg = this.mobs.target; let n = 0;
       const add = (x: number, y: number) => { if (n < 32) { F[n * 2] = Math.round(x) - Math.round(y); F[n * 2 + 1] = (Math.round(x) + Math.round(y)) / 2; n++; } };
       add(p.x, p.y); if (tg) add(tg.x, tg.y);
-      for (const m of this.mobs.mobs) if (m !== tg && Math.abs(m.x - p.x) < 96 && Math.abs(m.y - p.y) < 96) add(m.x, m.y);
-      this.isoFadeN = n; }
+      for (const m of this.mobs.mobs) if (m !== tg && inBarReach(m.x - p.x, m.y - p.y, !!m.elite && m.elite.role !== 'minion') && inView(m.x, m.y)) add(m.x, m.y);
+      this.isoFadeN = n; this.isoFaded = 0; }
     for (const f of this.gather.fires) if (f.lv === this.level.id && inView(f.x, f.y)) q.push(K.fire, (f.x + f.y) / 2, f);
     q.sort();
     this.prof(2);
@@ -6129,6 +6230,7 @@ export class TopDownEngine {
         const p = this.player, jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
         this.isoScreen();
         const fade = ia.fades ? crownFade(o, behindCrown(ia, o.x, o.y, this.isoFadePts, this.isoFadeN), this.frameDt, this.still) : 1;
+        if (fade < 1) this.isoFaded++;
         // A tall post (a street lamp, a torch, a lantern post) the Keeper stands just behind goes see-through, like a
         // wall in the wedge (Director, iso-fx review): never a pole across his face.
         const b = ia.base, X = Math.round(o.x) - Math.round(o.y), Y = (Math.round(o.x) + Math.round(o.y)) / 2;
@@ -6273,10 +6375,20 @@ export class TopDownEngine {
     c.fillText(text, Math.round(x + 2), Math.round(y));
     c.textAlign = 'center';
   }
+  /** The specs' record of the name plates drawn this frame (backing px; webdriver only, __tdArt.plates). */
+  private readonly plateLog: number[] = [];
+  private readonly logPlates = typeof navigator !== 'undefined' && !!navigator.webdriver;
+  private logPlate(x0: number, y0: number, x1: number, y1: number): void {
+    const s = this.scale, cx = this.cam.x, cy = this.cam.y;
+    this.plateLog.push((x0 - cx) * s, (y0 - cy) * s, (x1 - cx) * s, (y1 - cy) * s);
+  }
   private plate(text: string, x: number, y: number, color: string): void {
     const c = this.ctx;
     c.font = '7px "Pixelify Sans", monospace';
     const w = Math.ceil(c.measureText(text).width) + 6;
+    // Never under the Interact prompt (Director, dirfix): lifted clear of it while the two would meet.
+    y += this.hudLift(x - w / 2, y - 9, x + w / 2, y);
+    if (this.logPlates) this.logPlate(x - w / 2, y - 9, x + w / 2, y);
     c.fillStyle = 'rgba(26,16,30,.82)';
     c.fillRect(Math.round(x - w / 2), Math.round(y - 9), w, 9);
     c.fillStyle = color;
