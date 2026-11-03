@@ -89,6 +89,13 @@ Spec: `docs/design/ui-pass-3.md` §A.0–A.6. Screens: `output/uiwa/before/` (fr
 - **Screenshots:** they are in `output/uiwa/` (coordinator's instruction), not `docs/handoff/uiwa/` as Accept 20 asks.
 
 ## Tests
+- **Phone specs updated:** specs that reached for the dock, the corner ☰, the chat box, the side-by-side Vault or
+  the left skill rail now use the thumb HUD's Bag, Map and More and the Vault | Satchel switch. The files are td-grid,
+  td-loot-ground, td-chat-phone, td-friends, td-party, td-keys, td-leveling, td-map, td-quests, td-sexton,
+  td-ux-notes, td-book, td-bestiary, td-quick-belt, onboarding and play-top-down.
+- **td-dirfix:** its camera-clears-the-rail test is skipped on portrait, because the rail is gone (the skills sit
+  under the right thumb).
+- **Watch:** the level-up banner can open over the satchel, for example after a Nearby take crosses a level.
 - `e2e/play-thumb-hud.spec.ts` (Accept 1–7): 360×640 and 390×844, Isometric and Classic, EN and ES, the square and a
   hunt, plus 844×390 unchanged.
 - `e2e/td-satchel-phone.spec.ts` (Accept 8–13).

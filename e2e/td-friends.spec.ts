@@ -67,8 +67,14 @@ async function card(page: Page, name: string) {
   return c;
 }
 const gameLog = (page: Page) => page.locator('.td-chat__log');
-const toGame = async (page: Page) => { await page.locator('.td-chat__tabs [role=tab]').first().click(); };
-const toChat = async (page: Page) => { await page.locator('.td-chat__tabs [role=tab]').nth(1).click(); };
+/** A portrait phone keeps the chat as a sheet behind ☰ More (docs/design/ui-pass-3.md §A.2): open it first. */
+const chatUp = async (page: Page) => {
+  if (await page.locator('[data-th="more"]').count() && !(await page.locator('.td-chat__tabs').isVisible())) {
+    await page.locator('[data-th="more"]').click(); await page.locator('[data-tile="chat"]').click();
+  }
+};
+const toGame = async (page: Page) => { await chatUp(page); await page.locator('.td-chat__tabs [role=tab]').first().click(); };
+const toChat = async (page: Page) => { await chatUp(page); await page.locator('.td-chat__tabs [role=tab]').nth(1).click(); };
 async function openFriends(page: Page) {
   await calm(page);
   await key(page, 'm');
