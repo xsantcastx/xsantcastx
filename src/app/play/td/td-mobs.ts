@@ -6476,7 +6476,7 @@ export class MobSystem {
           this.hitFoe(m, rnd(v['min'], v['max']) * this.fireMult, '#ff9a4a', 'kiln-breath');
           if (me && m.hp > 0) { m.meltPct = Math.min(me.m ?? 25, (m.meltPct ?? 0) + (me.n ?? 0)); m.meltT = MELT_SECS; }
         }
-        this.effects.push({ kind: 'lc-cone', x: p.x, y: p.y - 12, age: 0, life: KILN_TICK + .05, dir: 1, a: kb.aim, w: v['arc'], r: Math.round(reach) });
+        this.effects.push({ kind: 'lc-cone', x: p.x, y: p.y - 2, age: 0, life: KILN_TICK + .02, dir: 1, a: kb.aim, w: v['arc'], r: Math.round(reach) });
       }
       if (kb.t <= 0) {
         this.kiln = null;
