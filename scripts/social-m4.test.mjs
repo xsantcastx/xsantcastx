@@ -435,7 +435,7 @@ test('protocol 10: the credit is batched — one transaction per Keeper per wind
   // Another kill, then into another area: paid as it leaves, not 20 s later.
   const before = commits;
   await fell();
-  await post('/update', { x: 0, y: 0, facing: 1, animation: 'idle', zone: 'x', area: 'infernal-reach', level: 20 }, a.token);
+  await post('/update', { x: 0, y: 0, facing: 1, animation: 'idle', zone: 'x', area: 'infernal-reach-pyrehold', level: 20 }, a.token);
   await step(2);
   await sa.until(() => commits > before);
   assert.equal(commits, before + 1, 'paid on the area change');

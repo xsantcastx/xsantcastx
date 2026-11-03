@@ -324,3 +324,13 @@ export async function openMenu(page: Page): Promise<void> {
   }
   await expect(menu).toBeVisible();
 }
+
+/**
+ * Stand the Keeper on the surface of a section of the Infernal Reach (an act of sections since S7, docs/design/world-acts.md
+ * §1.2: `infernal-reach-<section>`) at tile (c, r), or the nearest free spot; the Map then finds that section's places.
+ */
+export async function toSection(page: Page, area: string, c: number, r: number): Promise<void> {
+  await page.waitForFunction(() => !!(window as unknown as { __tdArt?: unknown }).__tdArt);
+  const ok = await page.evaluate(([a, cc, rr]) => (window as unknown as { __tdArt: { visit: (l: string, c: number, r: number, k: string) => boolean } }).__tdArt.visit('surface', cc as number, rr as number, a as string), [area, c, r] as const);
+  expect(ok, `${area} ${c},${r}`).toBe(true);
+}

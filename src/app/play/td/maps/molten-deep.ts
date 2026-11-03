@@ -23,8 +23,8 @@ import type { LegendEntry, TdMapDef } from '../td-level';
 
 const ore = INFERNAL_TOWN.stations.find(s => s.id === 'ore')!;
 /** The way in, in the Molten Fields (td-world places it at the cave mouth). */
-export const DEEP_IN: StationDef = { id: 'molten-deep', x: 0, label: 'THE MOLTEN DEEP', kind: 'passage', blurb: 'A burning dungeon under the Molten Fields. Dangerous below level 12.' };
-const DEEP_OUT: StationDef = { id: 'deep-out', x: 0, label: 'CAVE MOUTH', kind: 'passage', blurb: 'Back out to the Molten Fields.' };
+export const DEEP_IN: StationDef = { id: 'molten-deep', x: 0, label: 'THE MOLTEN DEEP', kind: 'passage', blurb: 'A burning dungeon under the Caldera Rim. Dangerous below level 12.' };
+const DEEP_OUT: StationDef = { id: 'deep-out', x: 0, label: 'CAVE MOUTH', kind: 'passage', blurb: 'Back out to the Caldera Rim.' };
 const D1_DOWN: StationDef = { id: 'deep1-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Glass Halls (floor 2).' };
 const D2_UP: StationDef = { id: 'deep2-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Scorched Throat (floor 1).' };
 const D2_DOWN: StationDef = { id: 'deep2-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: "Down to the Tyrant's Caldera (floor 3)." };

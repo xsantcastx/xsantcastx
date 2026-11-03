@@ -633,8 +633,8 @@ a room ground pile with an owner window (the shipped `world-ground` `own[]` + `f
 | 1 | **Weather v1**: the deterministic roll, Clear/Overcast/Rain/Fog, Wet, the rain and fog visuals, the rain bed, the HUD pip, Menu → Weather; the weight table as data (`td-weather.ts`) | M | none | high: every outdoor minute changes |
 | 2 | **Fish shadows** at fishing spots and deep water, jumps, the bite tell | S | none | high for cozy feel |
 | 3 | **Thunderstorm** strikes (tell, cap at 10%, flash rules), Ashfall, Spore drift, Mist-rain, thunder cues, the NPC lines, Odette's forecast | M | 1 | medium |
-| 4 | **Infernal Reach as sections**: split into the nine areas (ids above), the Kiln Tunnels and the Glass Throat (zone briefs §1.2), the Waystones, the section seams, `td-zones` rows | L | the room's per-area worlds (M1 shipped) | very high: the act feels long |
-| 5 | **Hot spots** for the Reach (§2.2), then each land as it is re-drawn | S each | 4 (works on today's map too) | high |
+| 4 | **[built 2026-11-03, S7, `docs/handoff/s7reach.md`] Infernal Reach as sections**: split into the nine areas (ids above), the Kiln Tunnels and the Glass Throat (zone briefs §1.2), the Waystones, the section seams, `td-zones` rows | L | the room's per-area worlds (M1 shipped) | very high: the act feels long |
+| 5 | **[the Reach's built 2026-11-03, S7] Hot spots** for the Reach (§2.2), then each land as it is re-drawn | S each | 4 (works on today's map too) | high |
 | 6 | **Night events** batch 1: the Late Shift, the Count Goes On, the Relief Column, the Kiln That Lights Itself | M | none | high for mystery |
 | 7 | **Ember Isle grows** to 40 × 30 with the rockslide and Slagstone Cave as the connector | M | none | medium (first impression) |
 | 8 | **Verdant Wilds as sections**, the Root Hollows −3 exit, the thorn hedge; its hot spots and events | L | 4's tooling | high |

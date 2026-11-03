@@ -5,7 +5,7 @@
  * and jump buttons give way to the drag joystick, and nothing ever drops the Keeper into the old 2D view.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { pickSkill, purse, sail, seed, mapFind, bookAura, putOnKey } from './play-helpers';
+import { pickSkill, purse, sail, seed, mapFind, bookAura, putOnKey, toSection } from './play-helpers';
 import { activity, xpForLevel } from './play-delve-fixtures';
 
 const canvas = (page: Page) => page.locator('canvas').first();
@@ -13,7 +13,8 @@ const px = async (page: Page) => Number(await canvas(page).getAttribute('data-pl
 const py = async (page: Page) => Number(await canvas(page).getAttribute('data-player-y'));
 
 async function openTopDown(page: Page, extra: Record<string, string> = {}): Promise<void> {
-  await seed(page, { 'eclipse-td': '1', ...purse(100_000), ...extra });
+  // The Cinder Sovereign felled (the Bestiary): Garrick Dross's board sails for the Verdant Wilds (S7, the end of Act I).
+  await seed(page, { 'eclipse-td': '1', ...purse(100_000), 'eclipse-bestiary-v1': JSON.stringify({ version: 1, kills: { 'cinder-sovereign': 1 } }), ...extra });
   await page.goto('/play?td=1&hour=12');
   // The top-down engine reports a position inside the square (the side view starts on its floor at y 610).
   await expect.poll(() => py(page), { timeout: 20000 }).toBeLessThan(560);
@@ -241,6 +242,8 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // The Molten Deep's mouth is on the Caldera Rim, in the Pyre Peaks (a section of the Reach since S7).
+  await toSection(page, 'infernal-reach-pyre-peaks', 200, -70);
   await go(/the molten deep/i, /scorched throat/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-floor-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /glass halls/i);
@@ -249,7 +252,7 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
   await page.screenshot({ path: 'docs/handoff/cozy-ui/deep-floor-3.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs up/i, /glass halls/i);
   await go(/stairs up/i, /scorched throat/i);
-  await go(/cave mouth/i, /^(The Molten Deep|The Molten Fields)$/);
+  await go(/cave mouth/i, /^(The Molten Deep|The Caldera Rim)$/);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -266,6 +269,7 @@ test('the Molten Deep\'s lower floors: past the Tyrant to the Slag Rivers, the G
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
+  await toSection(page, 'infernal-reach-pyre-peaks', 200, -70);
   await go(/the molten deep/i, /scorched throat/i);
   await go(/stairs down/i, /glass halls/i);
   await go(/stairs down/i, /caldera/i);
@@ -296,6 +300,8 @@ test('the Forge of the Four in the Obsidian Badlands: in by its gate, down to th
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // The Forge's gate is in the Obsidian Badlands (a section of the Reach since S7).
+  await toSection(page, 'infernal-reach-badlands', 140, -56);
   await go(/the forge of the four/i, /ash gate/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/forge-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /four smithies/i);
@@ -322,11 +328,13 @@ test('a ship from Cinderport\'s pier back to Ember Isle', async ({ page }) => {
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // Cinderport is a section of its own since S7, down the Steppe's south-east road.
+  await toSection(page, 'infernal-reach-cinderport', 14, 8);
   // Into Cinderport by its tavern door and out again, so the Keeper stands in the town.
   await go(/the salted ember/i, /^The Salted Ember$/);
   await go(/^door/i, /^Cinderport$/);
   // Walk east along the street to the pier's head, then down the planks to the ship, for the picture.
-  const T = 16, pierX = (92 + 15) * T + T / 2, pierY = (34 + 14) * T + T;
+  const T = 16, pierX = 15 * T + T / 2, pierY = 14 * T + T;
   const step = async (key: string) => { await page.keyboard.down(key); await page.waitForTimeout(70); await page.keyboard.up(key); await page.waitForTimeout(40); };
   for (let i = 0; i < 120 && Math.abs(await px(page) - pierX) > 5; i++) await step(await px(page) < pierX ? 'd' : 'a');
   for (let i = 0; i < 120 && await py(page) < pierY; i++) await step('s');
@@ -349,6 +357,8 @@ test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone 
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // The crypt door is under the Ashen Bastion, up the Bastion Road in the Pyre Peaks (S7).
+  await toSection(page, 'infernal-reach-pyre-peaks', -6, -78);
   await go(/the ashen crypt/i, /ossuary/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/crypt-floor-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /bone hall/i);
@@ -373,11 +383,13 @@ test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to wa
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
+  await toSection(page, 'infernal-reach-cinderport', 14, 8);
   await go(/the salted ember/i, /^The Salted Ember$/);
   await go(/stairs down/i, /cellar/i);
   await go(/stairs up/i, /^The Salted Ember$/);
   await go(/^door/i, /^Cinderport$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/cinderport.jpg', type: 'jpeg', quality: 72 });
+  await toSection(page, 'infernal-reach-ashgrove', 14, 8);
   await go(/woodward/i, /^The Woodward's Lodge$/);
   await go(/stairs up/i, /loft/i);
   await go(/stairs down/i, /^The Woodward's Lodge$/);

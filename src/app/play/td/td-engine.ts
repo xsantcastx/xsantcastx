@@ -58,7 +58,8 @@ import { BLOCK } from './maps/ember-isle';
 import { BARROW_DOOR_ID } from './maps/hushed-barrow';
 import { SEXTON_CONTINENT, SEXTON_PAGE, SEXTON_STONES, SEXTON_VAULT, VAULT_GRAVE, VAULT_KEYHOLE, WALKER, WALKER_AT, chalkMark, ledgerPage, pageShown, seekSpot, stallSpot } from './td-sexton';
 import type { ContinentDef } from './continent';
-import { CONTINENTS, LEVELS } from './td-levels';
+import { CONTINENTS, LEVELS, RENAMED_CONTINENTS } from './td-levels';
+import { REACH_BIBLE, SEAM_VEIL, seamArrival, seamPast } from './td-sections';
 export { CONTINENTS, LEVELS };
 import type { TdMapDef } from './td-level';
 
@@ -110,7 +111,7 @@ import { ELITE_TONES, FIRE_BURST, makePack, touchPack } from './td-elites';
 import { mapSections, zoneLabels, type BandOverride, type LevelBand, type TdMapSection, type TdZoneLabel } from './td-map';
 import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
-import { GAP_TONES, atZoneLevel, gapTone, graveyardZone, regionZone, seamLevelFor, zoneOf } from './td-zones';
+import { GAP_TONES, atZoneLevel, gapTone, graveyardZone, landOfArea, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { weaponSwing, type HeldWeapon } from './td-melee';
@@ -772,6 +773,25 @@ export class TopDownEngine {
       zone: () => this.zoneHere(),
       keeperLevel: () => this.mobs.keeperLevel,
     };
+    // The Reach as an act's e2e (webdriver only; td-sections.ts): where the Keeper is, a seam's gate to walk at, the
+    // creatures near (the arrival rule), a hot spot's pack, the section's stones.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdReach'] = {
+      here: () => ({ area: this.world.continent, level: this.level === this.world ? 'surface' : this.level.id, c: Math.floor(this.player.x / TILE), r: Math.floor((this.player.y - 1) / TILE), land: this.land, veil: !!this.sectionVeil }),
+      seams: () => (this.world.def.seams ?? []).map(sm => ({ ...sm })),
+      // Stand `k` tiles inside a seam's gate, on its road (the spec then walks out through it).
+      atSeam: (id: string, k = 3) => {
+        const sm = this.world.def.seams?.find(x => x.id === id);
+        if (!sm || this.level !== this.world) return false;
+        const a = seamArrival(sm), d = { c: Math.sign(a.c - sm.c), r: Math.sign(a.r - sm.r) };
+        const spot = standNear(this.world, (sm.c + d.c * k) * TILE + TILE / 2, (sm.r + d.r * k) * TILE + TILE - 2);
+        this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
+        return true;
+      },
+      near: (tiles = 8) => this.mobs.mobs.filter(m => m.hp > 0 && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= tiles * TILE).map(m => m.key),
+      camp: (id: string) => this.mobs.mobs.filter(m => m.hp > 0 && new RegExp(`^(camp|den|cg):${id}:\\d+$`).test(m.key)).map(m => ({ key: m.key, type: m.def.id, rank: m.elite?.rank ?? null, level: m.def.level })),
+      campAt: (id: string) => { const k = this.world.def.camps?.find(x => x.id === id); return k ? { c: k.c, r: k.r, n: k.spawns.length } : null; },
+      stones: () => this.landStones(),
+    };
     // Sight's e2e (webdriver only; td-sight.ts): a wall between the Keeper and a calm boss, a raw bolt thrown at it
     // anyway, the raised laid on one spot to watch them spread.
     if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdLos'] = {
@@ -1176,7 +1196,7 @@ export class TopDownEngine {
     else {
       const ms = this.weatherIn.ms + (this.time - this.weatherIn.at) * 1000;
       const region = outdoors ? this.world.regionAt(Math.floor(k.x / TILE), Math.floor(k.y / TILE)) : '*';
-      now = weatherAt({ land: this.world.continent, region, ms, rolls: this.weatherIn.rolls, indoors: !outdoors });
+      now = weatherAt({ land: this.land, region, ms, rolls: this.weatherIn.rolls, indoors: !outdoors });
     }
     this.weatherFx.now = now;
     const tag = `${now.state}:${now.level.toFixed(1)}`;
@@ -1651,7 +1671,7 @@ export class TopDownEngine {
     // The host says whether (Woodcutting for this land's log, room in the satchel) and how many swings it takes.
     let swings: number | undefined;
     if (this.options.onGather) {
-      const a = this.options.onGather({ kind: 'chop', phase: 'start', land: this.world.continent, mutationId: this.gatherId('chop') });
+      const a = this.options.onGather({ kind: 'chop', phase: 'start', land: this.land, mutationId: this.gatherId('chop') });
       if (!a.ok) { this.tell(a.text); return; }
       swings = a.swings;
     }
@@ -1672,7 +1692,7 @@ export class TopDownEngine {
     if (ch.hits < (ch.swings ?? 4)) return;
     // Felled: the land's log (shared/gathering LOGS) through the host; a full satchel leaves the tree standing.
     if (this.options.onGather) {
-      const a = this.options.onGather({ kind: 'chop', phase: 'fell', land: this.world.continent, mutationId: `td-chop:${ch.c},${ch.r}:${Date.now().toString(36)}` });
+      const a = this.options.onGather({ kind: 'chop', phase: 'fell', land: this.land, mutationId: `td-chop:${ch.c},${ch.r}:${Date.now().toString(36)}` });
       if (a.ok) { this.world.fell(ch.c, ch.r, 90_000); this.mobs.floaters.push({ x: this.player.x, y: this.player.y - 34, text: a.label ?? '', color: '#d8c8a0', age: 0 }); }
       else this.tell(a.text);
       this.chop = null;
@@ -1700,6 +1720,11 @@ export class TopDownEngine {
     // The mystery layer: a shy chest (only opens in the dark), a Nightroad's note.
     if (id.startsWith('shade:')) { this.openShade(id.slice(6)); return; }
     if (id.startsWith('nightnote:')) { this.readNightNote(id.slice(10)); return; }
+    // An act's section (world-acts.md §0): a seam walked through by E, a Waystone touched, a thing read, a thing sealed.
+    if (id.startsWith('seam:') && this.level === this.world) { this.crossSeam(id.slice(5)); return; }
+    if (id.startsWith('tdstone:')) { this.options.onWaystone?.({ id: id.slice(8), area: this.world.continent, land: this.land }); return; }
+    if (id.startsWith('read:')) { this.say(`reach.read.${id.slice(5)}`); this.messageAge = -6; return; }
+    if (id.startsWith('sealed:')) { this.say(`reach.sealed.${id.slice(7)}`); this.messageAge = -3; return; }
     if (id.startsWith('shrine:')) { const h = this.hearths.find(x => x.shrine?.id === id); this.options.onShrine?.({ id, town: h?.town ?? '' }); return; }
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
@@ -1713,6 +1738,8 @@ export class TopDownEngine {
     if (this.level instanceof HandLevel) {
       // A ladder, stairs or a hole: to the level it names, in front of its own way back.
       const exit = this.level.exits.get(id);
+      // A connector cave's far mouth opens onto another section of the land (td-level TdExit.continent).
+      if (exit && exit.to === 'surface' && exit.continent && exit.continent !== this.world.continent && CONTINENTS[exit.continent]) { this.walkInto(exit.continent, exit.arrive); return; }
       if (exit) { this.enter(exit.to === 'surface' ? this.world : this.handLevel(exit.to), exit.arrive); return; }
     }
     if (id === 'ore' || id === 'forge' || id === 'beacon') this.options.onInteract?.(id);
@@ -1849,8 +1876,12 @@ export class TopDownEngine {
    * a continent or level that no longer exists — keeps the arrival square; a spot a map change walled in becomes the
    * nearest free one (standNear), never a wall.
    */
-  restoreWhereabouts(w: { continent?: unknown; level?: unknown; x?: unknown; y?: unknown }): boolean {
-    if (typeof w.continent !== 'string' || typeof w.level !== 'string' || typeof w.x !== 'number' || typeof w.y !== 'number' || !Number.isFinite(w.x) || !Number.isFinite(w.y)) return false;
+  restoreWhereabouts(raw: { continent?: unknown; level?: unknown; x?: unknown; y?: unknown }): boolean {
+    if (typeof raw.continent !== 'string' || typeof raw.level !== 'string' || typeof raw.x !== 'number' || typeof raw.y !== 'number' || !Number.isFinite(raw.x) || !Number.isFinite(raw.y)) return false;
+    let w = { continent: raw.continent, level: raw.level, x: raw.x, y: raw.y };
+    // The old single-area Reach is sections now: a save there wakes in Pyrehold's square (its spots are elsewhere).
+    const renamed = RENAMED_CONTINENTS[w.continent];
+    if (renamed) { const d = CONTINENTS[renamed]; if (!d) return false; const t = buildTownSpawn(d); w = { continent: renamed, level: 'surface', x: t.x, y: t.y }; }
     const def = CONTINENTS[w.continent];
     if (!def || (w.level !== 'surface' && !LEVELS[w.level])) return false;
     if (w.continent !== this.world.continent) {
@@ -1917,7 +1948,7 @@ export class TopDownEngine {
   private harbourBlurb(pierId: string): string {
     const routes = routesFrom(pierId, CONTINENTS);
     const names = routes.map(r => pierById(r.destPier)?.name ?? r.destPier);
-    const low = Math.min(...routes.map(r => fareFor(LANDS[pierById(r.destPier)!.continent]?.entry ?? 1)));
+    const low = Math.min(...routes.map(r => fareFor(LANDS[landOfArea(pierById(r.destPier)!.continent)]?.entry ?? 1)));
     return routes.length ? `Sailing board: ${names.join(', ')}. Fares from ${low} gold.` : 'The sailing board.';
   }
   /** Sail to another continent: its surface becomes the world, its town's people come out, the Keeper steps ashore. */
@@ -1931,6 +1962,104 @@ export class TopDownEngine {
     this.populate();
     this.enter(next, arrive);
     this.say('play.td.sailed');
+  }
+
+  // ── An act's sections (docs/design/world-acts.md §0; td-sections.ts) ─────────────────────────────────────────
+
+  /** The land the Keeper is on (an act's section belongs to its land: weather, the Hush, pack auras, the Seam Eater). */
+  private get land(): string { return landOfArea(this.world.continent); }
+  /** The section veil (SEAM_VEIL: 0.4 s, dark at its middle, where the area changes); null when none is up. */
+  private sectionVeil: { t: number; go: (() => void) | null } | null = null;
+  /** Seconds to this section's next sound (td-sections REACH_BIBLE). */
+  private sectionSoundT = 6;
+  /** Stepping past a seam's gate crosses it (never an invisible wall: the gate is a place you walk through). */
+  private stepSeams(): void {
+    if (this.level !== this.world || this.sectionVeil || !this.world.def.seams?.length) return;
+    const c = Math.floor(this.player.x / TILE), r = Math.floor((this.player.y - 1) / TILE);
+    for (const sm of this.world.def.seams) if (seamPast(sm, c, r)) { this.crossSeam(sm.id); return; }
+  }
+  /** Cross a seam of this section: the veil falls, the far section is loaded at its middle, the Keeper stands 6 tiles inside. */
+  crossSeam(id: string): boolean {
+    const sm = this.world.def.seams?.find(x => x.id === id);
+    if (!sm || !CONTINENTS[sm.to]) return false;
+    this.path = []; this.arrive = null;
+    this.veil(() => {
+      const def = CONTINENTS[sm.to], back = def.seams?.find(x => x.id === sm.arrive);
+      const from = this.world.continent;
+      this.switchWorld(sm.to);
+      this.enter(this.world, '');
+      const at = back ? seamArrival(back) : { c: Math.floor(this.map.spawn.x / TILE), r: Math.floor(this.map.spawn.y / TILE) };
+      const spot = standNear(this.world, at.c * TILE + TILE / 2, at.r * TILE + TILE - 2);
+      this.player.x = spot.x; this.player.y = spot.y;
+      this.placeCompanions(); this.report();
+      this.options.onSection?.({ from, to: sm.to });
+    });
+    return true;
+  }
+  /** Out of a connector cave onto another section's surface, in front of its way back in. */
+  private walkInto(continent: string, arrive: string): void {
+    this.veil(() => {
+      const from = this.world.continent;
+      this.switchWorld(continent);
+      this.enter(this.world, arrive);
+      this.options.onSection?.({ from, to: continent });
+    });
+  }
+  /** Travel by an act's Waystone to another of the land's stones (the host records them; the engine stands the Keeper there). */
+  travelToStone(stone: string): boolean {
+    const id = Object.keys(CONTINENTS).find(k => CONTINENTS[k].stone?.id === stone);
+    if (!id || landOfArea(id) !== this.land) return false;
+    this.path = []; this.arrive = null;
+    this.veil(() => {
+      const from = this.world.continent;
+      this.switchWorld(id);
+      this.enter(this.world, `tdstone:${stone}`);
+      this.options.onSection?.({ from, to: id });
+    });
+    return true;
+  }
+  /** The Waystones of this land the Map and the Atlas may list: id, name, the section it stands in. */
+  landStones(): { id: string; name: string; area: string }[] {
+    const land = this.land;
+    return Object.values(CONTINENTS).filter(d => d.stone && landOfArea(d.id) === land).map(d => ({ id: d.stone!.id, name: d.stone!.name, area: d.id }));
+  }
+  /** Make `id` the world (its surface built once and kept, like a continent sailed to). */
+  private switchWorld(id: string): void {
+    if (id === this.world.continent) return;
+    let next = this.continents.get(id);
+    if (!next) { next = new TdWorld(CONTINENTS[id]); this.continents.set(id, next); }
+    this.world = next; this.map = next.town;
+    this.populate();
+  }
+  /** Run `go` under the veil (its dark middle); reduced motion: at once, no fade. */
+  private veil(go: () => void): void {
+    if (this.still) { go(); return; }
+    if (this.sectionVeil) return;
+    this.sectionVeil = { t: 0, go };
+  }
+  private stepSectionVeil(dt: number): void {
+    const v = this.sectionVeil;
+    if (!v) return;
+    v.t += dt;
+    if (v.go && v.t >= SEAM_VEIL / 2) { const go = v.go; v.go = null; go(); }
+    if (v.t >= SEAM_VEIL) this.sectionVeil = null;
+  }
+  /** The section veil's darkness now (0–1): up to full at its middle, then back. */
+  private sectionDark(): number {
+    const v = this.sectionVeil;
+    if (!v) return 0;
+    const k = Math.min(1, v.t / (SEAM_VEIL / 2));
+    return v.t < SEAM_VEIL / 2 ? k : Math.max(0, 1 - (v.t - SEAM_VEIL / 2) / (SEAM_VEIL / 2));
+  }
+  /** This area's one sound (the zone bible's check), now and then. */
+  private stepSectionSound(dt: number): void {
+    const area = this.level === this.world ? this.world.continent : this.level.id, b = REACH_BIBLE[area];
+    if (!b) return;
+    this.sectionSoundT -= dt;
+    if (this.sectionSoundT > 0) return;
+    const [lo, hi] = b.sound.every;
+    this.sectionSoundT = lo + Math.random() * (hi - lo);
+    this.options.onSfx?.({ kind: b.sound.cue as EngineSfx['kind'] });
   }
 
   /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */
@@ -2282,7 +2411,7 @@ export class TopDownEngine {
   setDarkWords(w: { whispers: readonly string[]; name: string }): void { this.darkLayer.setWords(w); }
   /** The Hush for the HUD: awake or not, its level (0–100, never shown as a number), band, and the last omen. */
   get hushView(): { on: boolean; level: number; band: number; omen: { kind: string; seq: number } | null } {
-    const on = this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent });
+    const on = this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.land });
     return { on, level: Math.round(this.darkLayer.hush), band: on ? this.darkLayer.band : 0, omen: this.darkLayer.omen };
   }
   /** Where the Lanternwright's lantern hangs (the head of the lamp-staff): right of him facing down, left facing up. */
@@ -2382,7 +2511,7 @@ export class TopDownEngine {
     if (!NIGHTROADS.some(n => n.id === id)) return;
     this.say(`dark.note.${id}`);
     this.messageAge = -6;
-    this.darkLayer.hush = Math.min(100, this.darkLayer.hush + (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent }) ? 3 : 0));
+    this.darkLayer.hush = Math.min(100, this.darkLayer.hush + (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.land }) ? 3 : 0));
   }
   // ── The Sexton's Count (shared/sexton; td-sexton.ts) ────────────────────────────────────────────────────────
 
@@ -3331,7 +3460,10 @@ export class TopDownEngine {
       const speed = this.walkSpeed;
       this.tryMove(vx * speed * dt, 0);
       this.tryMove(0, vy * speed * dt);
+      this.stepSeams();
     }
+    this.stepSectionVeil(dt);
+    this.stepSectionSound(dt);
     // The Keeper's stillness (the companions idle by it) and his breadcrumbs (the pet's way round a corner).
     this.stillT = this.player.moving || this.mobs.target || this.chop || this.gather.busy ? 0 : this.stillT + dt;
     const crumb = this.trail[this.trail.length - 1];
@@ -3789,6 +3921,8 @@ export class TopDownEngine {
     this.spawnFolk();
   }
   private spawnFolk(): void {
+    // A Waystone camp (an act's section, td-sections.ts) is safe ground, not a town: nobody lives there.
+    if (this.world.def.townKind === 'camp') return;
     const m = this.map;
     for (let i = 0; i < m.ground.length; i++) {
       const g = m.ground[i];
@@ -4129,13 +4263,13 @@ export class TopDownEngine {
       else this.path = [];
     }
     // S6: the land its packs' auras come from (td-pack-aura).
-    this.mobs.land = this.world.continent;
+    this.mobs.land = this.land;
     if (!this.fxFreeze) this.mobs.update(dt);
     this.fightFx(dt);
     this.coop.after(dt);
     // Whispering (an elite affix, S6): its blows feed the Hush.
     if (this.mobs.hushOwed > 0) {
-      if (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent })) this.darkLayer.hush = Math.min(100, this.darkLayer.hush + this.mobs.hushOwed);
+      if (this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.land })) this.darkLayer.hush = Math.min(100, this.darkLayer.hush + this.mobs.hushOwed);
       this.mobs.hushOwed = 0;
     }
     // A potion pouring in: its share of what is left this frame.
@@ -4623,10 +4757,13 @@ export class TopDownEngine {
   private drawScreenFx(): void {
     const c = this.ctx;
     // The Hush at its deepest: the edge of the world thins (screen space, two art pixels).
-    if (this.darkLayer.band >= 3 && this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.world.continent })) { c.setTransform(1, 0, 0, 1, 0, 0); this.darkLayer.drawEdge(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.still); }
+    if (this.darkLayer.band >= 3 && this.darkLayer.awake({ keeperLevel: this.mobs.keeperLevel, continent: this.land })) { c.setTransform(1, 0, 0, 1, 0, 0); this.darkLayer.drawEdge(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.still); }
     // The wake veil over everything (screen space).
     const veil = this.wakeVeil();
     if (veil.dark > 0 || veil.warm > 0) { c.setTransform(1, 0, 0, 1, 0, 0); drawWakeVeil(c, this.canvas.width, this.canvas.height, veil.dark, veil.warm); }
+    // The section veil (a seam crossed, a Waystone travelled): a plain fade to night and back, 0.4 s.
+    const sd = this.sectionDark();
+    if (sd > 0) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = sd; c.fillStyle = '#05030a'; c.fillRect(0, 0, this.canvas.width, this.canvas.height); c.globalAlpha = 1; }
   }
   /** The ground pass's shadows: each object's own (a tree's), then a soft one under every Keeper, creature and pet. */
   private drawShadows(visible: readonly TdObject[], inView: (x: number, y: number, pad?: number) => boolean): void {
@@ -5653,7 +5790,7 @@ export class TopDownEngine {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
         if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true)) {
-          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
+          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
           const st = mobStatuses(m, this.statusPeaks);
           if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
         }
@@ -5937,6 +6074,8 @@ export class TopDownEngine {
     this.cam.x = cx; this.cam.y = cy;
     this.ctx.setTransform(s, 0, 0, s, -cx * s, -cy * s);
   }
+  /** The HUD's top-right corner (the minimap and its clock, ~170 CSS px) in canvas px: a creature's plate stays left of it. */
+  private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
   /** Anchor an upright drawing at world point (x, y) (iso: where it projects; top-down: nothing to do). */
   private at(x: number, y: number): void { if (this.iso) this.isoAt(x, y); }
   private readonly isoAtFn = (x: number, y: number): void => this.isoAt(x, y);
@@ -6804,6 +6943,9 @@ export class TopDownEngine {
  * harmless no-op (undefined / null), so the component's wiring stays intact
  * while the phases fill them in (docs/design/top-down.md §5).
  */
+/** A continent's arrival square (its town's spawn) without building its surface. */
+function buildTownSpawn(def: ContinentDef): { x: number; y: number } { return def.town().spawn; }
+
 export function createTopDownEngine(canvas: HTMLCanvasElement, options: EngineOptions): TopDownEngine {
   const engine = new TopDownEngine(canvas, options);
   const noop = () => undefined;

@@ -149,7 +149,7 @@ export interface SeekAnswer {
 }
 /** A moment Glim notices in the world (EngineOptions.onGlimCue). */
 export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' } | { kind: 'spotted' } | { kind: 'seam' };
-export interface EngineSfx { kind: 'farbell' | 'whisper' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
+export interface EngineSfx { kind: 'farbell' | 'whisper' | 'warhorn' | 'crackle' | 'cart-roll' | 'drum' | 'glass-ping' | 'lava-hiss' | 'march' | 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic' | CombatCue; node?: string; /** Semitones (a fight cue's variation, td-skill-kit). */ pitch?: number }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -227,6 +227,13 @@ export interface EngineOptions {
   onHearth?: (event: { id: string; town: string; capital: boolean }) => void;
   /** Top-down only: a capital's Hearth Shrine was used (the host opens the blessings). */
   onShrine?: (event: { id: string; town: string }) => void;
+  /**
+   * Top-down only, an act's Waystone (docs/design/world-acts.md §0): the Keeper touched the stone `id` (`reach:kiln`)
+   * standing in area `area`. The host records it and opens the stones of its land.
+   */
+  onWaystone?: (event: { id: string; area: string; land: string }) => void;
+  /** Top-down only: the Keeper crossed a seam into another section of the land (the veil is the engine's). */
+  onSection?: (event: { from: string; to: string }) => void;
   onInteract: (target: InteractionTarget) => void;
   /** A panel or waystone station was interacted with. The host opens its panel. */
   onStation?: (station: StationDef) => void;
