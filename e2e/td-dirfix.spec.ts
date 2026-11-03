@@ -62,6 +62,9 @@ for (const size of [{ width: 360, height: 640 }, { width: 390, height: 844 }]) {
     test('the camera clears the skill rail, and brings a Lava Hound target out from under it', async ({ page }) => {
       test.setTimeout(90000);
       await open(page);
+      // A portrait phone's thumb HUD (docs/design/ui-pass-3.md §A.2) keeps the skills under the right thumb and nothing
+      // on the left over the play centre: there is no rail for the camera to clear (play-thumb-hud.spec.ts pins it).
+      test.skip(await page.locator('.stage--thumb').count() > 0, 'no left skill rail on a portrait phone');
       const rail = await page.locator('.td-skills').boundingBox();
       expect(rail, 'the phone skill rail is shown').not.toBeNull();
       await expect.poll(async () => (await art<View>(page, 'view')).l, { timeout: 5000 }).toBeGreaterThan(40);

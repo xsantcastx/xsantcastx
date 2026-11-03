@@ -58,7 +58,7 @@ test('the Bestiary on a phone: two columns, scrolls inside, nothing wider than t
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
   // A portrait phone has the thumb HUD's Map (docs/design/ui-pass-3.md §A.2); a wider one the dock's.
-  await (await page.locator('[data-th="map"]').count() ? page.locator('[data-th="map"]') : page.locator('.td-dock button').last()).click();
+  await (await page.locator('[data-th="map"]').count() ? page.locator('[data-th="map"]') : page.locator('[data-th="map"], .td-dock button:last-child').last()).click();
   await openMenu(page);
   await page.locator('#game-menu [data-open="bestiary"]').click();
   const best = page.locator('.td-best');
