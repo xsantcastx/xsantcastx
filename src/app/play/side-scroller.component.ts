@@ -1533,7 +1533,7 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly ownGround = new Map<string, { item?: GameItem; stack?: string; qty?: number }>();
   private ownSeq = 0;
   /** Take an own drop back: the same item (a fresh id, its roll and charges kept) or the same stack. False: no room. */
-  private reclaimOwn(token: string): boolean {
+  private reclaimOwn(token: string, ask = true): boolean {
     const was = this.ownGround.get(token);
     if (!was) return true;
     if (was.item) {
@@ -1548,9 +1548,40 @@ export class SideScrollerComponent implements OnDestroy {
       this.message = this.t('play.loot.picked', { name: itemNameTone(item).name });
     } else if (was.stack) {
       const qty = was.qty ?? 1;
-      if (!this.inventory.canTakeStack(was.stack, qty)) return this.satchelFull();
-      if (!this.inventory.grantStack(`own-ground:${token}:${Date.now().toString(36)}`, was.stack, qty)) return this.satchelFull();
+      // A pile of several asks "How many?" first (polish2); the pile stays lying until the answer.
+      if (ask && qty > 1 && this.tradeHud) {
+        let lo = 0, hi = qty;
+        while (lo < hi) { const mid = Math.ceil((lo + hi) / 2); if (this.inventory.canTakeStack(was.stack, mid)) lo = mid; else hi = mid - 1; }
+        if (lo < 1) return this.satchelFull();
+        const stack = was.stack;
+        this.tradeHud.askTake(stack, materialDisplay(stack)?.name ?? stack, lo, n => { this.zone.run(() => { this.takeOwnStack(token, n); }); });
+        return false;
+      }
+      if (!this.takeOwnStack(token, qty)) return false;
+      return true;
+    }
+    this.sound.sfx('pickup');
+    this.pulseSatchel();
+    return true;
+  }
+  /**
+   * Take `n` of this screen's own stack pile back into the satchel; what is left lies on (the reusable partial take
+   * for the offline ground — a Nearby list calls it with the pile's own token). False: no room, or no such pile.
+   */
+  takeOwnStack(token: string, n: number): boolean {
+    const was = this.ownGround.get(token);
+    if (!was?.stack) return false;
+    const have = was.qty ?? 1, take = Math.max(1, Math.min(have, Math.floor(n)));
+    if (!this.inventory.canTakeStack(was.stack, take)) return this.satchelFull();
+    if (!this.inventory.grantStack(`own-ground:${token}:${Date.now().toString(36)}`, was.stack, take)) return this.satchelFull();
+    const left = have - take;
+    if (left > 0) {
+      was.qty = left;
+      const name = materialDisplay(was.stack)?.name ?? was.stack;
+      (this.engine as unknown as { trimOwn?: (own: string, left: number, label: string) => void } | undefined)?.trimOwn?.(token, left, left > 1 ? `${name} ×${left}` : name);
+    } else {
       this.ownGround.delete(token);
+      (this.engine as unknown as { trimOwn?: (own: string, left: number, label: string) => void } | undefined)?.trimOwn?.(token, 0, '');
     }
     this.sound.sfx('pickup');
     this.pulseSatchel();

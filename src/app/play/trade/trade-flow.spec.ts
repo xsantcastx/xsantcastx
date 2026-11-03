@@ -151,7 +151,7 @@ describe('TradeFlow / GroundFlow — protocol 8: the room settles and lays', () 
       async tradeStatus() { log.push('status'); return status; },
       async groundLay(g) { log.push(`lay:${g.item.id}`); return { why: '', ground: { id: 'g1', area: g.area, x: g.x, y: g.y, name: g.item.name, rarity: g.item.rarity, def: g.item.def, until: 0, pending: true } }; },
       groundSynced(id) { log.push(`synced:${id}`); },
-      async groundPick(_a, id) { log.push(`pick:${id}`); return id === 'g1' ? { ok: true, item: 'pX' } : { ok: false, why: 'gone' }; },
+      async groundPick(_a, id, part) { log.push(`pick:${id}${part ? `:${part.qty}` : ''}`); return id === 'g1' ? { ok: true, item: 'pX' } : { ok: false, why: 'gone' }; },
     };
     return { log, backend, room, setStatus: (s: typeof status) => { status = s; } };
   }
@@ -212,6 +212,12 @@ describe('TradeFlow / GroundFlow — protocol 8: the room settles and lays', () 
     expect(r.log.filter(x => x === 'settle').length).toBe(settles);
     // Picks: the first wins (the save re-read), a gone one says so.
     expect(await flow.pickup({ id: 'g1', area: 'ember-isle', x: 0, y: 0, name: 'x', rarity: 'rare', def: 'd', until: 0 })).toEqual({ ok: true, id: 'pX' });
+    // Part of a stack pile: the room is asked for that many; a whole-pile ask (or more) takes it whole.
+    const pile = { id: 'g1', area: 'ember-isle', x: 0, y: 0, name: 'Log', rarity: 'common', def: 'ashwood-log', until: 0, sk: 'ashwood-log', qty: 9 };
+    expect(await flow.pickup(pile, 4)).toEqual({ ok: true, id: 'pX' });
+    expect(await flow.pickup(pile, 9)).toEqual({ ok: true, id: 'pX' });
+    expect(r.log).toContain('pick:g1:4');
+    expect(r.log.filter(x => x === 'pick:g1:9').length).toBe(0);
     expect(await flow.pickup({ id: 'g2', area: 'ember-isle', x: 0, y: 0, name: 'x', rarity: 'rare', def: 'd', until: 0 })).toEqual({ ok: false, why: 'gone' });
     expect(r.log).not.toContain('function-drop');
   });
