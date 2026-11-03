@@ -102,7 +102,7 @@ export interface RoomGround {
 /** Protocol 8: the room's word on this Keeper's drop: escrowed (out of the save, safe on the ground) or handed back. */
 export interface RoomGroundNote { kind: 'escrowed' | 'returned'; id: string; name: string; why?: string }
 /** Protocol 8: a pick's answer — the new id the item took in this save, or why not. */
-export type RoomPick = { ok: true; item: string; ms?: number } | { ok: false; why: string; code?: string };
+export type RoomPick = { ok: true; item: string; ms?: number; left?: number } | { ok: false; why: string; code?: string };
 /** The room's party verbs (protocol 3). */
 export const PARTY_PROTOCOL = 3;
 /** The room's social graph (protocol 4): who is signed in, friends, whispers, block, report, privacy. */
@@ -669,18 +669,23 @@ export class SocialRoom {
   /** This Keeper's save reached the cloud: an escrow waiting on it may land now (fire and forget). */
   groundSynced(id: string): void { void this.tradeCall('ground/synced', { id }); }
   /** Reach for a ground item: off this screen at once; the first Keeper the room hears wins; its pickup is committed. */
-  async groundPick(area: string, id: string): Promise<RoomPick> {
+  async groundPick(area: string, id: string, part?: { qty: number; n: string }): Promise<RoomPick> {
     if (!this.canSettle || !this.token) return { ok: false, why: 'offline' };
     const held = this.snapshot.ground?.area === area ? this.snapshot.ground.items : [];
     const was = held.find(g => g.id === id);
-    if (was) this.publish({ ground: { area, items: held.filter(g => g.id !== id) } });
+    // A part of a stack pile leaves the pile lying there (smaller, when the room says how much is left).
+    if (was && !part) this.publish({ ground: { area, items: held.filter(g => g.id !== id) } });
     try {
       const response = await this.send(`${this.endpoint}/ground/pick`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
-        body: JSON.stringify({ id }), signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ id, ...(part ?? {}) }), signal: AbortSignal.timeout(15000),
       });
-      const out = await response.json().catch(() => null) as { ok?: boolean; item?: unknown; why?: unknown; error?: unknown; ms?: number } | null;
-      if (response.ok && out?.ok === true && typeof out.item === 'string') return { ok: true, item: out.item, ...(typeof out.ms === 'number' ? { ms: out.ms } : {}) };
+      const out = await response.json().catch(() => null) as { ok?: boolean; item?: unknown; why?: unknown; error?: unknown; ms?: number; left?: number } | null;
+      if (response.ok && out?.ok === true && typeof out.item === 'string') {
+        const left = typeof out.left === 'number' && out.left > 0 ? out.left : 0;
+        if (left && was && this.snapshot.ground?.area === area) this.publish({ ground: { area, items: this.snapshot.ground.items.map(g => g.id === id ? { ...g, qty: left } : g) } });
+        return { ok: true, item: out.item, ...(typeof out.ms === 'number' ? { ms: out.ms } : {}), ...(left ? { left } : {}) };
+      }
       const code = (out as { code?: unknown } | null)?.code;
       return { ok: false, why: typeof out?.why === 'string' ? out.why : typeof out?.error === 'string' ? out.error : 'failed', ...(typeof code === 'string' ? { code } : {}) };
     } catch { return { ok: false, why: 'offline' }; }

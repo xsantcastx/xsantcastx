@@ -101,6 +101,8 @@ export interface IsoArt {
   base: IsoPart | null;
   /** The part that sways (a crown, reeds): one frame still, three swaying (0 rest, 1 right, 2 left). */
   sway: IsoPart[];
+  /** The swaying part is a flame: its frames cycle quickly (about seven a second) instead of leaning now and then. */
+  flicker?: boolean;
   /** The crown fades while the Keeper stands behind it (trees). */
   fades: boolean;
   /** The shadow on the floor (HD), anchored at the foot like the parts. */
@@ -220,12 +222,12 @@ function trunk(s: Sculpt, X: number, Y: number, w0: number, w1: number, top: num
   s.dot(X - w0 + 2, Y - top + 12, m.ramp[5], 1, Math.max(4, Math.round(top * .4)));
 }
 
-interface Built { back?: number; base?: Sculpt | null; baseFoot?: [number, number]; sway?: Sculpt | null; swayFoot?: [number, number]; amp?: number; fades?: boolean; shadow?: IsoPart | null }
+interface Built { back?: number; base?: Sculpt | null; baseFoot?: [number, number]; sway?: Sculpt | null; swayFoot?: [number, number]; amp?: number; flicker?: boolean; fades?: boolean; shadow?: IsoPart | null }
 /** Render, trim and finish a built twin. */
 function finish(b: Built, low: boolean): IsoArt {
   const base = b.base ? trim(b.base.render(), b.baseFoot![0] + 1, b.baseFoot![1] + 1) : null;
   const sw = b.sway ? trim(b.sway.render(), b.swayFoot![0] + 1, b.swayFoot![1] + 1) : null;
-  return { base, sway: sw ? swayFrames(sw, b.amp ?? 0, low || !b.amp ? 1 : 3) : [], fades: !!b.fades, shadow: b.shadow ?? null, ...(b.back ? { back: b.back } : {}) };
+  return { base, sway: sw ? swayFrames(sw, b.amp ?? 0, low || !b.amp ? 1 : 3) : [], fades: !!b.fades, shadow: b.shadow ?? null, ...(b.back ? { back: b.back } : {}), ...(b.flicker ? { flicker: true } : {}) };
 }
 
 // ── Trees ──
@@ -726,8 +728,12 @@ function brazierIso(lit: boolean): Built {
   s.ellipse(tx, ty, 19, 9, lit ? M.ember : ashBed, { g: 30, bias: .4 });
   for (const dx of [-12, 0, 12]) s.dot(tx + dx, ty + 8 + Math.abs(dx) * -.2, M.iron.ramp[4]);
   if (lit) {
-    s.ellipse(tx, ty - 10, 11, 14, M.ember, { g: 40 }); s.ellipse(tx - 1, ty - 13, 7, 10, M.glow, { g: 41 }); s.ellipse(tx - 2, ty - 15, 3, 5, { ...M.glow, ramp: M.glow.ramp.map(() => '#fffbe8') }, { g: 42 });
-  } else { s.dot(tx - 2, ty - 1, '#7a2a1a', 4, 2); s.dot(tx - 1, ty - 1, '#c8502a', 2, 1); }
+    // The flame is its own part: three frames (the tip leaning one way, the other, upright) cycled quickly (`flicker`).
+    const f = new Sculpt(70, 120);
+    f.ellipse(tx, ty - 10, 11, 14, M.ember, { g: 40 }); f.ellipse(tx - 1, ty - 13, 7, 10, M.glow, { g: 41 }); f.ellipse(tx - 2, ty - 15, 3, 5, { ...M.glow, ramp: M.glow.ramp.map(() => '#fffbe8') }, { g: 42 });
+    return { base: s, baseFoot: [35, 100], sway: f, swayFoot: [35, 100], amp: 3, flicker: true, shadow: castShadow(12, 6, 10, 4, 5) };
+  }
+  s.dot(tx - 2, ty - 1, '#7a2a1a', 4, 2); s.dot(tx - 1, ty - 1, '#c8502a', 2, 1);
   return { base: s, baseFoot: [35, 100], shadow: castShadow(12, 6, 10, 4, 5) };
 }
 /** A hanging iron cage: a chain up into the dark, a domed hood, bars, old bones inside. */
@@ -985,7 +991,10 @@ export function drawIsoArt(c: CanvasRenderingContext2D, art: IsoArt, x: number, 
   const n = art.sway.length;
   if (!n) return;
   let f = 0;
-  if (n > 1 && !still) {
+  if (n > 1 && !still && art.flicker) {
+    // A flame: upright, left, upright, right — each its own phase so a row of braziers does not pulse together.
+    f = FLICKER[(Math.floor(t * 7 + hash(rx, ry, 78) * 4)) & 3];
+  } else if (n > 1 && !still) {
     // Each its own slow beat; most of the time at rest, a lean one way or the other now and then.
     const ph = hash(rx, ry, 77) * 6.28, w = Math.sin(t * .9 + ph) + .45 * Math.sin(t * 2.1 + ph * 1.7);
     f = w > .95 ? 1 : w < -.95 ? 2 : 0;
@@ -994,6 +1003,7 @@ export function drawIsoArt(c: CanvasRenderingContext2D, art: IsoArt, x: number, 
   put(c, art.sway[f], X, Y);
   if (fade < 1) c.globalAlpha = 1;
 }
+const FLICKER = [0, 1, 0, 2];
 /** The twin's shadow on the floor (iso screen transform), at world foot (x, y). */
 export function drawIsoShadow(c: CanvasRenderingContext2D, art: IsoArt, x: number, y: number, alpha = .3): void {
   if (!art.shadow) return;
