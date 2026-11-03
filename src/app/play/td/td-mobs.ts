@@ -41,7 +41,9 @@ import { livedHp, lifeScale } from './td-life';
 import { SEAM_ID, seamStats } from './td-seam';
 import { atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace, levelGap, zoneXp } from './td-zones';
 import { CORPSE_REACH, corpseSeed, layCorpse, weatherCorpses, type Corpse } from './td-corpse';
-import { WET } from '../../shared/weather/weather.model';
+import { SPORE_BURST, STRIKE, WET, strikeOnCreature, strikeOnKeeper } from '../../shared/weather/weather.model';
+/** The hues a fire hit floats in (Spore drift's burst reads them: S8). */
+const FIRE_HUES: ReadonlySet<string> = new Set(['#ff9a4a', '#ff8a2e', '#ff8a3d']);
 import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondShare, fanAngles, knockFor, pierces, stampedeLanes, thornPetBlow } from './td-thorn';
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
@@ -1966,6 +1968,8 @@ export interface Mob {
   x: number; y: number;
   hx: number; hy: number;
   hp: number;
+  /** S8: when Spore drift last burst round it (the mob clock), so a burst never chains. */
+  sporeAt?: number;
   /** Ember Curse: seconds left, and the burn's tick timer. */
   cursed: number;
   burnT: number;
@@ -2785,15 +2789,23 @@ export class MobSystem {
    * creature standing in it freezes it a moment (the Wet rule; bosses take Wet in full).
    */
   weatherWet = false;
+  /**
+   * S8 (world-acts §3.2): Mist-rain wets at half strength (`wetHalf`); Ashfall lifts fire a tenth (`skyFire`); Spore drift
+   * makes a fire hit on a creature burst once round it (`sporeSky`); a Thundercake's lightning resist (% while it lasts).
+   */
+  wetHalf = false;
+  skyFire = 1;
+  sporeSky = false;
+  mealLightning = 0;
   /** Ember Mastery: what fire's damage is multiplied by. */
   get fireMult(): number {
     // Hearth-Heat (the Aura of Embers' mark): while the aura runs, all his fire burns hotter.
     const hh = this.aura === 'aura-embers' ? this.mk('aura-embers', 'fireUp') : null;
     // Wet: fire dealt by the Wet burns 15% lower (the Ashguard's Ember Brand, the Warlock's embers in the rain).
-    const wet = this.kst.wet > 0 ? WET.fireDealt : 1;
+    const wet = this.kst.wet > 0 ? (this.wetHalf ? 1 - (1 - WET.fireDealt) / 2 : WET.fireDealt) : 1;
     // S5: an ally's Hearth-Heat over him lifts his fire too.
     const ally = this.allyFlags & AURA_F.fireUp ? 1 + ALLY_HEARTH_HEAT / 100 : 1;
-    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1) * wet * ally;
+    return (this.rank('ember-mastery') > 0 ? 1 + this.v('ember-mastery')['pct'] / 100 : 1) * (1 + this.relics.fire / 100) * (hh ? 1 + (hh.n ?? 0) / 100 : 1) * wet * ally * this.skyFire;
   }
   /**
    * The marks' quicker feet (a share of pace; td-engine walkSpeed multiplies by 1 + this): Walking Whirl while the whirl
@@ -4333,6 +4345,30 @@ export class MobSystem {
   cue(m: Mob, text: string, color = '#c9c2b0'): void { this.float(m.x, m.y - m.def.h - 10, text, color); }
   /** Test hooks only (the chain's e2e): fell a creature at once, through the real kill (onKill, its Gold and loot). */
   smite(m: Mob): void { this.hurtMob(m, Math.max(1, m.hp), '#ffffff', false, true); }
+  /**
+   * A storm's strike lands at (x, y) (S8; shared/weather STRIKE): every creature within STRIKE.radius tiles takes 8% of
+   * its life as lightning (deeper if it stands in the rain), in full; the Keeper there takes 8% of his, never below a
+   * tenth of his life. Returns what it hit, for the tests and the HUD.
+   */
+  stormStrike(x: number, y: number): { mobs: number; keeper: number } {
+    const r = STRIKE.radius * TILE, wet = this.weatherWet ? (this.wetHalf ? .5 : 1) : 0;
+    let mobs = 0, keeper = 0;
+    for (const m of [...this.mobs]) {
+      if (m.hp <= 0 || Math.hypot(m.x - x, m.y - y) > r) continue;
+      // A creature Wet under a rain cloud (S9's Call the Rain) is as wet as the rain makes it.
+      const mw = Math.max(wet, ((m as { wetT?: number }).wetT ?? 0) > 0 ? 1 : 0);
+      this.hurtMob(m, strikeOnCreature(m.def.hp, mw), DAMAGE_COLORS.lightning, false, true);
+      mobs++;
+    }
+    const p = this.host.player();
+    if (!this.selfAway && Math.hypot(p.x - x, p.y - y) <= r) {
+      const hp = this.host.playerHp?.() ?? this.keeperMaxHp;
+      const wk = this.kst.wet > 0 ? (this.wetHalf ? .5 : 1) : 0;
+      keeper = strikeOnKeeper(hp, this.keeperMaxHp, { wet: wk, resist: (this.resists.lightning ?? 0) + this.mealLightning });
+      if (keeper > 0) { this.host.hurtPlayer(keeper); this.float(p.x, p.y - 34, `${keeper}`, DAMAGE_COLORS.lightning); }
+    }
+    return { mobs, keeper };
+  }
   /** Test hooks only (the seam specs): one blow of `n` on a creature, through the real path (its call, its half-life change, its fall). */
   wound(m: Mob, n: number): number { return this.hurtMob(m, Math.max(1, Math.round(n)), '#ffffff', false, true); }
   /** Damage dealt to a creature (by the Keeper's spells or his raised): the number floats, a boss may call help, it may fall. */
@@ -4340,6 +4376,8 @@ export class MobSystem {
     if (foe.hp <= 0) return 0;
     // Underground (a burrow, S6): nothing reaches it until it rises.
     if ((foe.hidden ?? 0) > 0 && !exact) return 0;
+    // Spore drift (S8): a fire hit on a creature in the drift bursts once round it (creatures only; a short gap).
+    if (this.sporeSky && FIRE_HUES.has(color) && this.clock - (foe.sporeAt ?? -99) >= SPORE_BURST.gap) this.sporeBurst(foe);
     // The level gap (td-zones LEVEL_GAP): a creature above the Keeper is missed more and hurt less (D2's to-hit by level).
     // `exact`: a test hook's blow (smite, wound) lands as written.
     // A member's claim landing on the host was already cut by that member's own gap (td-coop: claimFrom).
@@ -4441,10 +4479,14 @@ export class MobSystem {
     let n = incomingDamage(cursed ? raw * (1 + CURSE_HURT) : raw, type, def, atk ?? this.keeperLevel, resists);
     // Wet (shared/weather): lightning bites deeper, fire burns lower, and a cold hit freezes the Keeper a moment.
     if (this.kst.wet > 0 && n > 0) {
-      if (type === 'lightning') n = Math.round(n * WET.lightningTaken);
-      else if (type === 'fire') n = Math.max(1, Math.round(n * WET.fireTaken));
+      // Mist-rain (S8) wets at half strength: half the lightning's bite and half the fire's cut.
+      const half = this.wetHalf ? .5 : 1;
+      if (type === 'lightning') n = Math.round(n * (1 + (WET.lightningTaken - 1) * half));
+      else if (type === 'fire') n = Math.max(1, Math.round(n * (1 - (1 - WET.fireTaken) * half)));
       else if (type === 'cold' && this.kst.immune <= 0) { this.kst.freeze = Math.max(this.kst.freeze, 1); this.kst.immune = 1 + KEEPER_CC_IMMUNE; }
     }
+    // A Thundercake (S8): lightning taken a little less while it lasts.
+    if (type === 'lightning' && this.mealLightning > 0 && n > 0) n = Math.max(1, Math.round(n * (1 - this.mealLightning / 100)));
     // A worn shield's Block (§3.6): the blow is turned aside whole.
     if (n > 0 && this.gearBlock > 0 && Math.random() < this.gearBlock) {
       this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .3, dir: 2 });
@@ -4516,6 +4558,12 @@ export class MobSystem {
       this.effects.push({ kind: 'oath', x: p.x, y: p.y - 16, age: 0, life: .5, dir: 2 });
     }
     if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, type === 'physical' ? '#ff5a4a' : DAMAGE_COLORS[type]); }
+  }
+  /** The drift's burst (SPORE_BURST): 8 to every creature a tile round the one the fire hit, a pale-green puff. */
+  private sporeBurst(foe: Mob): void {
+    foe.sporeAt = this.clock;
+    this.effects.push({ kind: 'pulse', el: 'life', x: foe.x, y: foe.y - 4, age: 0, life: .35, dir: 1 });
+    for (const m of [...this.mobs]) if (m.hp > 0 && Math.hypot(m.x - foe.x, m.y - foe.y) <= SPORE_BURST.r * TILE + 4) { m.sporeAt = this.clock; this.hurtMob(m, SPORE_BURST.dmg, '#c8ffe0', false, true); }
   }
   /** Hearth Bond (a mark): seconds of more Defense left, and how much more (%). */
   defBuffT = 0;

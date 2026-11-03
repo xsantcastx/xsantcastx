@@ -19,7 +19,7 @@ import { TranslationService } from '../../translation.service';
 import { materialDisplay } from '../rpg/material-catalog';
 import {
   BURNT_FISH_ID, SPOT_GATE, TINDERBOX_ID, fishHere, baitOf, biteSpeed, burnChance, chopSwings, cookRefusal, cookable, fireRefusal, logById, logForLand,
-  mealById, rodTierOf, rollWorldFish, spotRefusal, type GatherAnswer, type GatherEvent, type MealDef,
+  mealById, rodTierOf, rollWorldFish, spotRefusal, stormCatch, type GatherAnswer, type GatherEvent, type MealDef,
 } from './gathering.model';
 import { GATHER_PILE_CAP } from './gather-keys';
 
@@ -83,7 +83,8 @@ export class GatheringService {
     if (spotRefusal(e.water, level, rod.tier)) return { ok: false, text: this.t('gather.fish.needRod') };
     const sky = this.clock.sky();
     const bait = baitOf(this.stackOf);
-    const fish = rollWorldFish(e.water, level, { dark: sky.dark, eclipse: sky.eclipseOn }, bait?.power ?? 0, this.random);
+    // A thunderstorm at sea: one cast in forty lands a Stormscale (world-acts §3.7), else the usual roll.
+    const fish = stormCatch(e.water, level, e.weather, this.random) ?? rollWorldFish(e.water, level, { dark: sky.dark, eclipse: sky.eclipseOn }, bait?.power ?? 0, this.random);
     if (!fish) return { ok: false, text: this.t('gather.fish.nothing') };
     // A full satchel refuses the catch before anything is written: the fish goes back, the line comes in.
     if (!this.fits(fish.id)) return { ok: false, text: this.t('play.grid.full') };
@@ -142,7 +143,7 @@ export class GatheringService {
     const level = this.level('cooking');
     const list = cookable(this.stackOf, level);
     if (!list.length) {
-      const any = ['ash-perch', 'mirrorfin', 'rootling-eel', 'mire-carp', 'lampfish', 'moonwake'].some(id => this.stackOf(id) > 0);
+      const any = ['ash-perch', 'mirrorfin', 'rootling-eel', 'mire-carp', 'lampfish', 'moonwake', 'stormscale'].some(id => this.stackOf(id) > 0);
       return { ok: false, text: this.t(any ? 'gather.cook.needLevel' : 'gather.cook.nothing') };
     }
     return { ok: true, text: this.t(range ? 'gather.cook.startRange' : 'gather.cook.start') };

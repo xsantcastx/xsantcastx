@@ -47,6 +47,9 @@ export type SfxCue =
   // The Infernal Reach's sections, one sound each (td-sections REACH_BIBLE; canon §8.2): a war-horn far off, a fire's
   // crackle, a cart rolling with nobody pushing it, a clan drum, cooling glass, lava hissing, feet marching in step.
   | 'warhorn' | 'crackle' | 'cart-roll' | 'drum' | 'glass-ping' | 'lava-hiss' | 'march'
+  // S8, the storm and the night (world-acts §3.5, §5): a strike's rising hum (the tell), the near thunder's crack and roll,
+  // the far one's roll; the Barrow's bell counting; a grey voice answering "Present."
+  | 'strike-hum' | 'thunder-near' | 'thunder-far' | 'count-bell' | 'present'
   // The fight (combat-cues.ts, skills-100.md §0.6): a cast cue and a hit cue per skill, a bite per creature family.
   | CombatCue;
 
@@ -62,7 +65,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, 'strike-hum': 1, 'thunder-near': 2.5, 'thunder-far': 3, 'count-bell': 1, present: 1.5, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -245,6 +248,12 @@ export class SoundDirector {
       case 'cluster': return this.arpeggio(t, [76, 79, 84].map(n => n + (opts.pitch ?? 0)), 'bell', .05, .22, true);
       // A rising fanfare of bells, then the top note again: a Big, Mega or Epic win.
       // A bell far off: one low strike and its fifth, a long dying tail, very soft.
+      // S8: the tell hums up over its 1.2 s; the near thunder cracks, then rolls 2.5 s; a far one only rolls, 4 s.
+      case 'strike-hum': return this.glide(t, 'sine', 90, 360, .05, 1.15);
+      case 'thunder-near': this.noiseHit(t, 'highpass', 1800, .6, .22, .1, this.sfxBus); return this.rumble(t + .05, 180, .3, 2.5);
+      case 'thunder-far': return this.rumble(t, 110, .16, 4);
+      case 'count-bell': this.tone(t, 'sine', 196, .035, 1.4, .01); return this.tone(t, 'triangle', 392, .01, .9, .01);
+      case 'present': return this.noiseHit(t, 'bandpass', 520, 2.2, .045, .35, this.sfxBus, .05);
       case 'farbell': this.tone(t, 'sine', 146.8, .05, 3.2, .02); this.tone(t, 'sine', 220, .025, 2.6, .02); return this.tone(t, 'triangle', 293.7, .012, 1.8, .02);
       // ── The Reach's section sounds: each far off and soft, a floor of the place, never a warning ──
       // A war-horn far off: one long low note, swelling and dying, with its fifth faint above.

@@ -155,10 +155,13 @@ import { goldDropFor } from './td-mobs';
 import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/keymap.model';
 import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate';
 import { FISH_REACH, GatherRuntime, SHADOW_CAP, SHADOW_CAP_LOW, type Campfire } from './td-gather';
-import { WeatherFx } from './td-weather-fx';
+import { WeatherFx, type StrikeGround } from './td-weather-fx';
+import { KILN_STATION, NIGHT_PLACES, NightEvents, nightLabel, type NightNews } from './td-night-events';
+import { NIGHT_EVENT_IDS, NIGHT_REWARDS, nightRewardKey, type NightEventId } from '../../shared/night-events/night-events.model';
+import { WEATHER_BARKS, ODETTE_BOARD, barkFor } from './td-sky-lines';
 import type { FishSpot } from './td-world';
 import { FIRE_WARM } from '../../shared/gathering/gathering.model';
-import { WEATHER_STATES, WET_LINGER_SECS, fireSecs, fogExtra, isWet, weatherAt, type WeatherNow, type WeatherShow, type WeatherState } from '../../shared/weather/weather.model';
+import { ASHFALL, STRIKE, WEATHER_STATES, WET_LINGER_SECS, fireSecs, fogExtra, forecast, isWet, weatherAt, type WeatherNow, type WeatherShow, type WeatherState } from '../../shared/weather/weather.model';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 export const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
@@ -285,6 +288,8 @@ export class TopDownEngine {
   private messageAge = 0;
   /** The engine's own line, as an i18n key the HUD translates (engineMessage). */
   private messageKey = '';
+  /** The keyed line's words to fill in (Odette's board: the two states), cleared with it. */
+  private messageVars: Record<string, string> | null = null;
   private spawnTimer = 0;
   private chaseTimer = 0;
   /** The swing being played (seconds left) and which way it faces. */
@@ -305,6 +310,19 @@ export class TopDownEngine {
   /** `?weather=rain|storm|fog|overcast|clear`: the sky pinned for screenshots and tests. */
   private readonly weatherPin: WeatherState | null = typeof location !== 'undefined' ? ((WEATHER_STATES as readonly string[]).includes(new URLSearchParams(location.search).get('weather') ?? '') ? new URLSearchParams(location.search).get('weather') as WeatherState : null) : null;
   private weatherSeen = '';
+  /** S8: the night events (td-night-events.ts), seeded per land and night; the storm's open ground; the weather's barks heard (npc|window). */
+  private readonly nightEvents = new NightEvents();
+  private readonly strikeGround: StrikeGround = {
+    pick: rnd => this.strikeTile(rnd),
+    onScreen: (x, y) => Math.abs(x - this.player.x) < 200 && Math.abs(y - this.player.y) < 140,
+  };
+  private readonly barked = new Set<string>();
+  private barkT = 0;
+  /** A strike's flash for the dark-born (they step back from it as from any light): where, and how long it lasts. */
+  private strikeLight: { x: number; y: number; t: number } | null = null;
+  /** A Thundercake's lightning resist (S8): seconds left. */
+  private mealResistT = 0;
+  private nightEventsSeen = '';
   private gatherSeen = '';
   private gatherSeq = 0;
   /** The spots in view this frame (the draw's; the tap and the prompt read them). */
@@ -722,6 +740,25 @@ export class TopDownEngine {
         }
         return null;
       },
+    };
+    // S8's e2e (webdriver only): a night event forced on now, a strike's tell on the Keeper (or beside him), what the
+    // sky and the night are doing, and a step to an event's place.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdS8'] = {
+      night: (id: string) => { if (!(NIGHT_EVENT_IDS as readonly string[]).includes(id)) return false; this.nightEvents.forced = { id: id as NightEventId, at: this.nightClock() }; return true; },
+      strike: (dx = 0, dy = 0) => { this.weatherFx.rings.push({ x: this.player.x + dx, y: this.player.y + dy, t: 0, seed: 7 }); this.options.onSky?.({ kind: 'tell' }); return true; },
+      soon: () => { this.weatherFx.strikeSoon(); return true; },
+      places: () => ({ ...NIGHT_PLACES }),
+      barks: () => WEATHER_BARKS.map(b => b.npc),
+      state: () => ({
+        events: this.nightEvents.now.map(e => ({ id: e.id, t: Math.round(e.t * 10) / 10, night: e.night })),
+        tracks: Object.fromEntries((NIGHT_EVENT_IDS as readonly NightEventId[]).map(id => [id, this.nightEvents.trackOf(id)])),
+        strikes: this.weatherFx.strikes, rings: this.weatherFx.rings.length, flashes: this.weatherFx.flashes, flash: this.weatherFx.flash,
+        weather: this.weatherFx.now.state, hp: Math.round(this.hp), maxHp: this.maxHp, wet: this.mobs.kst.wet > 0,
+        fire: this.mobs.skyFire, spores: this.mobs.sporeSky, wetHalf: this.mobs.wetHalf, mealLightning: this.mobs.mealLightning,
+        drops: this.mobs.drops.filter(d => d.id.startsWith('night:')).map(d => ({ id: d.id, x: Math.round(d.x), y: Math.round(d.y) })),
+        message: this.messageKey || this.message, area: this.world.continent, level: this.level.id,
+        x: Math.round(this.player.x), y: Math.round(this.player.y),
+      }),
     };
     // The gathering e2e (webdriver only): the spots near the Keeper and where their floats are on the page, a step to near
     // one (the spec still taps the float, and the Keeper still walks to its shore), and what the loops are doing.
@@ -1200,6 +1237,112 @@ export class TopDownEngine {
     const tag = `${now.state}:${now.level.toFixed(1)}`;
     if (tag !== this.weatherSeen) { this.weatherSeen = tag; this.canvas.setAttribute('data-weather', tag); }
   }
+  // ── S8: the storm's strikes, the land specials' rules, the weather's lines, the night events ─────────────────
+
+  /** The world clock now (the room's while it speaks), or null before the host has said. */
+  private get skyMs(): number | null { return this.weatherIn ? this.weatherIn.ms + (this.time - this.weatherIn.at) * 1000 : null; }
+  /** An open tile for a strike: within STRIKE.reach tiles of the Keeper, on ground he could stand on (a few tries). */
+  private strikeTile(rnd: () => number): { x: number; y: number } | null {
+    if (this.level !== this.world) return null;
+    const k = this.player;
+    for (let i = 0; i < 8; i++) {
+      const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * STRIKE.reach * TILE;
+      const x = k.x + Math.cos(a) * d, y = k.y + Math.sin(a) * d;
+      const c = Math.floor(x / TILE), r = Math.floor((y - 1) / TILE);
+      if (this.world.walkable(c, r) && !this.world.safeAt(c, r)) return { x: c * TILE + TILE / 2, y: r * TILE + TILE / 2 };
+    }
+    return null;
+  }
+  private updateSky(dt: number): void {
+    const now = this.weatherFx.now, outdoors = this.level === this.world && now.level > .3, st = outdoors ? now.state : 'clear';
+    // The land specials' rules (world-acts §3.2): Mist-rain wets at half; Ashfall lifts fire; Spore drift bursts it.
+    this.mobs.wetHalf = st === 'mistrain';
+    this.mobs.skyFire = st === 'ashfall' ? ASHFALL.fire : 1;
+    this.mobs.sporeSky = st === 'spores';
+    // A Thundercake's lightning resist runs out.
+    if (this.mealResistT > 0) { this.mealResistT = Math.max(0, this.mealResistT - dt); if (this.mealResistT <= 0) this.mobs.mealLightning = 0; }
+    if (this.strikeLight) { this.strikeLight.t -= dt; if (this.strikeLight.t <= 0) this.strikeLight = null; }
+    // The storm: a tell's hum (and Glim's warning the first time), then the strike: what stands there takes it.
+    for (const n of this.weatherFx.news()) {
+      if (n.kind === 'tell') {
+        if (Math.hypot(n.x - this.player.x, n.y - this.player.y) < 8 * TILE) this.options.onSfx?.({ kind: 'strike-hum' });
+        this.options.onSky?.({ kind: 'tell' });
+      } else if (n.kind === 'strike') {
+        const hit = this.mobs.stormStrike(n.x, n.y);
+        if (hit.keeper > 0) { this.shake = Math.max(this.shake, .18); this.options.onSky?.({ kind: 'struck', n: hit.keeper }); }
+        this.strikeLight = { x: n.x, y: n.y, t: 1 };
+        // The thunder: a crack a breath after a near flash, then the roll; a far one only rolls, late.
+        const cue = n.near ? 'thunder-near' : 'thunder-far';
+        setTimeout(() => this.options.onSfx?.({ kind: cue }), n.near ? 100 : 1500 + Math.random() * 2500);
+      } else setTimeout(() => this.options.onSfx?.({ kind: 'thunder-far' }), 1500 + Math.random() * 2500);
+    }
+    // What people say about it (world-acts §3.6): once a window, when the Keeper walks near one who says it.
+    this.barkT -= dt;
+    if (this.barkT <= 0 && outdoors) {
+      this.barkT = .5;
+      const k = this.player;
+      for (const p of this.keepers) {
+        const key = barkFor(p.kid, st);
+        if (!key || Math.hypot(p.x - k.x, p.y - k.y) > 5 * TILE) continue;
+        const tag = `${p.kid}|${now.window}`;
+        if (this.barked.has(tag)) continue;
+        this.barked.add(tag);
+        this.say(key); this.messageAge = -3;
+        break;
+      }
+    }
+    // The night events (shared/night-events): seeded per land and night, walked and drawn here; the rewards laid down.
+    const news = this.nightEvents.update({ ms: this.skyMs, rolls: this.weatherIn?.rolls ?? null, area: this.world.continent, surface: this.level === this.world, keeper: this.player, dt });
+    for (const n of news) this.nightNews(n);
+    const short = this.nightEvents.now.map(e => e.id).join(',');
+    if (short !== this.nightEventsSeen) { this.nightEventsSeen = short; this.canvas.setAttribute('data-night-events', short); }
+  }
+  private nightNews(n: NightNews): void {
+    if (n.kind === 'sfx') { this.options.onSfx?.({ kind: n.cue }); return; }
+    if (n.kind === 'line') { this.say(n.key); this.messageAge = -5; return; }
+    // A reward: laid on the ground where the event ends, once a night (the host says if it is already booked).
+    const r = NIGHT_REWARDS[n.id];
+    r.stacks.forEach((row, i) => {
+      const id = nightRewardKey(n.id, n.night, row.id);
+      if (this.options.onSky?.({ kind: 'claimed', id }) === true || this.mobs.drops.some(d => d.id === id)) return;
+      this.mobs.drops.push({ id, x: n.x + i * 9, y: n.y + (i % 2) * 4, coins: 0, material: row.id, qty: row.qty, label: row.qty > 1 ? `${row.qty} ${nightLabel(row.id)}` : nightLabel(row.id), color: '#e8dcc0', age: 0 });
+    });
+    if (r.gold > 0) {
+      const id = nightRewardKey(n.id, n.night, 'gold');
+      if (!this.mobs.drops.some(d => d.id === id)) this.mobs.drops.push({ id, x: n.x, y: n.y, coins: r.gold, qty: 0, label: `${r.gold} Gold`, color: GOLD_RAMP[0], age: 0 });
+    }
+    this.glimBurst(n.x, n.y - 8, 6);
+  }
+  /**
+   * Over the night pass (so a tell is never lost in the dark): the storm's rings and scorches on the ground, a strike's
+   * bolt, and the night events' figures. `proj`: iso's flat / upright anchors (top-down: the world transform as it is).
+   */
+  private drawSkyOver(inView: (x: number, y: number, pad?: number) => boolean, proj?: { flat(): void; at(x: number, y: number): void }): void {
+    const c = this.ctx, near = (x: number, y: number) => inView(x, y, 40);
+    if (this.weatherFx.rings.length || this.weatherFx.scorches.length) {
+      proj?.flat();
+      this.weatherFx.drawGround(c, near, this.still);
+      this.weatherFx.drawBolts(c, near, this.still, proj?.at);
+    }
+    if (this.nightEvents.now.length) { proj?.flat(); this.nightEvents.draw(c, near, this.time, this.still, proj?.at, proj?.flat); }
+  }
+  /** The night events' own clock (seconds; a forced event counts from here). */
+  private nightClock(): number { return this.nightEvents.clock; }
+  /** The self-lit kiln: the host says whether this Keeper can light it (a tinderbox); lit, its cache is laid down. */
+  private lightKiln(): void {
+    const why = this.options.onSky?.({ kind: 'kiln' });
+    if (typeof why === 'string' && why) { this.tell(why); return; }
+    this.nightEvents.lightKiln();
+    this.options.onSfx?.({ kind: 'crackle' });
+  }
+  /** Odette Pryor's board (world-acts §3.6): the next two windows over the Reach, one line from the same roll. */
+  private readBoard(): void {
+    const ms = this.skyMs;
+    if (ms === null) { this.say('weather.board.none'); return; }
+    const [a, b] = forecast(ODETTE_BOARD.land, ms, this.weatherIn?.rolls ?? null);
+    this.message = 'weather.board'; this.messageKey = 'weather.board'; this.messageVars = { a, b }; this.messageAge = -6;
+  }
+
   /** Rain on the Keeper now (outdoors, the sky wet). */
   private get rainedOn(): boolean { return this.level === this.world && isWet(this.weatherFx.now.state) && this.weatherFx.now.level > .3; }
 
@@ -1274,7 +1417,11 @@ export class TopDownEngine {
     return null;
   }
   /** A meal eaten from the satchel: it mends `heal` life over twelve seconds (a new one replaces the old). */
-  eat(heal: number): void { this.gather.eat(heal); }
+  eat(heal: number, buff?: { kind: string; pct: number; secs: number }): void {
+    this.gather.eat(heal);
+    // A Thundercake (S8): lightning taken less for its ten minutes.
+    if (buff?.kind === 'lightning-resist') { this.mobs.mealLightning = buff.pct; this.mealResistT = buff.secs; }
+  }
   private updateGather(dt: number): void {
     this.gather.lv = this.level.id;
     const out = this.gather.update(dt, this.time, this.player, this.rainedOn);
@@ -1648,7 +1795,7 @@ export class TopDownEngine {
     this.mobs.mana = Math.min(this.mobs.maxMana, this.mobs.mana + mana);
   }
 
-  private say(key: string): void { this.messageKey = key; this.message = key; this.messageAge = 0; }
+  private say(key: string): void { this.messageKey = key; this.message = key; this.messageAge = 0; this.messageVars = null; }
 
   // ── Woodcutting ────────────────────────────────────────────────────────────
 
@@ -1722,6 +1869,10 @@ export class TopDownEngine {
     if (id.startsWith('seam:') && this.level === this.world) { this.crossSeam(id.slice(5)); return; }
     if (id.startsWith('tdstone:')) { this.options.onWaystone?.({ id: id.slice(8), area: this.world.continent, land: this.land }); return; }
     if (id.startsWith('read:')) { this.say(`reach.read.${id.slice(5)}`); this.messageAge = -6; return; }
+    // S8: the Deep Charwood's cold kiln while it glows (the night event): light it before it fades (the host allows it).
+    if (id === KILN_STATION && this.level === this.world && this.nightEvents.kilnLive()) { this.lightKiln(); return; }
+    // S8: Odette Pryor's board in the Pyre Spire's Study: the next two windows over the Reach.
+    if (id === ODETTE_BOARD.id) { this.readBoard(); return; }
     if (id.startsWith('sealed:')) { this.say(`reach.sealed.${id.slice(7)}`); this.messageAge = -3; return; }
     if (id.startsWith('shrine:')) { const h = this.hearths.find(x => x.shrine?.id === id); this.options.onShrine?.({ id, town: h?.town ?? '' }); return; }
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
@@ -2436,6 +2587,11 @@ export class TopDownEngine {
     for (const d of this.mobs.dawns) out.push({ x: d.x, y: d.y, r: d.r * 1.4 });
     // Every campfire is a small hearth (canon §6.5): the dark-born keep back from its light.
     out.push(...this.gather.lights());
+    // S8: a strike's flash, a moment (the dark-born step back from it as from any light); the night events' lamps and kiln.
+    if (this.level === this.world) {
+      if (this.strikeLight) out.push({ x: this.strikeLight.x, y: this.strikeLight.y, r: 80 * this.strikeLight.t });
+      this.nightEvents.lights(out);
+    }
     return out;
   }
   private darkFrame(dt: number): DarkFrame {
@@ -3499,14 +3655,15 @@ export class TopDownEngine {
     // Weather v1 (once a second: the window, the section underfoot) and the gathering loops.
     this.weatherT -= dt;
     if (this.weatherT <= 0) { this.weatherT = 1; this.stepWeather(); }
-    this.weatherFx.update(dt, this.time, Math.random, this.still);
+    this.weatherFx.update(dt, this.time, Math.random, this.still, this.level === this.world ? this.strikeGround : undefined);
     // Wet (the weather's rule): rain on the Keeper keeps him Wet, and a few seconds after (td-mobs reads kst.wet).
     if (this.rainedOn) this.mobs.kst.wet = Math.max(this.mobs.kst.wet, WET_LINGER_SECS);
     this.mobs.weatherWet = this.rainedOn;
+    this.updateSky(dt);
     this.updateGather(dt);
     this.actT = Math.max(0, this.actT - dt); this.shake = Math.max(0, this.shake - dt);
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
-    if (this.message || this.messageKey) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageKey = ''; this.messageAge = 0; } }
+    if (this.message || this.messageKey) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageKey = ''; this.messageAge = 0; this.messageVars = null; } }
     this.stateTimer -= dt;
     if (this.stateTimer <= 0) { this.stateTimer = .1; if (!this.catchingUp) this.report(); }
   }
@@ -3539,7 +3696,7 @@ export class TopDownEngine {
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
-      paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message, ...(this.messageKey ? { messageKey: this.messageKey } : {}),
+      paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message, ...(this.messageKey ? { messageKey: this.messageKey } : {}), ...(this.messageKey && this.messageVars ? { messageVars: this.messageVars } : {}),
     };
     this.options.onState(state);
   }
@@ -4677,6 +4834,7 @@ export class TopDownEngine {
       if (inView(px, py, 40)) ledgerPage(c, px, py, 1, this.time, this.still);
     }
     this.darkLayer.drawOver(this.ctx, { levelId: this.level.id, continent: this.world.continent, surface: this.level === this.world, time: this.time, still: this.still, night: this.level.dark ? 1 : this.darkness }, (x, y) => inView(x, y, 40));
+    if (this.level === this.world) this.drawSkyOver(inView);
     this.drawFireflies();
     // The isometric prototype's tavern seen top-down (td-artopt.ts B): the same warm dark and pools of light as iso, so
     // the two projections are compared on the art, not on the lighting.
@@ -6286,6 +6444,7 @@ export class TopDownEngine {
     }
     this.plane();
     this.darkLayer.drawOver(this.ctx, { levelId: this.level.id, continent: this.world.continent, surface, time: this.time, still: this.still, night: this.level.dark ? 1 : this.darkness }, (x, y) => inView(x, y, 40), this.isoProj);
+    if (surface) this.drawSkyOver(inView, this.isoProj);
     this.drawFireflies();
     if (surface) this.weatherFx.drawScreen(this.ctx, cw, ch, s, this.time, this.frameDt, { still: this.still, low: lowDetail, phone: this.phone, night: this.darkness });
     this.prof(5);
