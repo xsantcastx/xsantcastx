@@ -71,6 +71,15 @@ HUD, trade, chat. The satchel grid inside a shop is still `app-item-grid` (Wave 
   click, then press `[data-map-walk]`. `crafting-bench.spec` reads "need 6 · have 18".
 - Unit: `ux-notes.spec` (wholeScale/coverScale/stepScale, cullLabels, the `shop` pin), `shops.spec` (maxAffordable).
 
+## Gate (after merging origin/main 9ce0ea9b)
+
+check:meaning ✓ · tsc app + spec ✓ · CI node --test line 337/337 ✓ · ds / i18n / nav / economy / combat sims ✓ ·
+build ✓ (initial 1.39 MB) · CSP ✓ · test:ci 4386/4386 ✓ · chromium e2e (play-top-down, td-*, play-hud,
+play-mobile-hud, menus-reach, onboarding, orientation, wave-b, lobby, harbour, crafting-bench, economy, slate):
+332 passed; the remaining reds all fail identically on the base build 18ff0bdc (crafting-bench "18/6" not found,
+play-menus-orientation sound/runes/vendor/enchanting + satchel pockets 31 px, play-slate-phone, one td-dirfix crown/plate
+and the two-Keeper td-world, which passes alone).
+
 ## Not done / next
 
 - Satchel dimming of what a shop will not buy (needs a per-piece dim in `app-item-grid`, Wave A's component).
@@ -78,3 +87,4 @@ HUD, trade, chat. The satchel grid inside a shop is still `app-item-grid` (Wave 
 - Map: long-press the minimap for quest pins; "Sail · 40 Gold" on a harbour card (it says Walk here; the board prices).
 - Station primaries (`.ab__btn`) are still the remapped pale gold, not `--cozy-brass` — a Director call.
 - The floor part of the area picker remains alongside the floor rail (kept for compatibility).
+- At 844×390 the sticky Become row brushes the bottom of the name field (about 10 px); the name stays tappable.
