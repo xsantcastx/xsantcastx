@@ -5,7 +5,7 @@
  * docs/handoff/cozy-ui/fx-*.jpg. Nothing here asserts on a fight's outcome.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { SKILLS_LEARNED, pickSkill, purse, sail, seed, bookAura, putOnKey } from './play-helpers';
+import { SKILLS_LEARNED, pickSkill, purse, sail, seed, bookAura, putOnKey, toSection } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -34,6 +34,9 @@ async function toMoltenDeep(page: Page): Promise<void> {
   await page.keyboard.press('m');
   const map = page.locator('#places-list.td-map');
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // The Molten Deep's mouth is on the Caldera Rim, in the Pyre Peaks (a section of the Reach since S7).
+  await toSection(page, 'infernal-reach-pyre-peaks', 200, -70);
+  await canvas(page).focus();
   await page.keyboard.press('m');
   await page.locator('#places-list [data-map-find]').fill('the molten deep');
   await map.locator('.td-map__key button', { hasText: /the molten deep/i }).click();

@@ -18,7 +18,9 @@ import { ASHEN_CRYPT_1, ASHEN_CRYPT_2 } from './maps/ashen-crypt';
 import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
 import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
 import { EMBER_ISLE_DEF } from './maps/ember-isle';
-import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
+import { REACH_SECTIONS } from './maps/reach-sections';
+import { KILN_TUNNELS_1 } from './maps/kiln-tunnels';
+import { GLASS_THROAT_1, GLASS_THROAT_2 } from './maps/glass-throat';
 import { VERDANT_WILDS_DEF } from './maps/verdant-wilds';
 import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 } from './maps/rootglass-bole';
 import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3, OVERGROWN_TEMPLE_4, OVERGROWN_TEMPLE_5 } from './maps/overgrown-temple';
@@ -29,9 +31,16 @@ import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lanter
 import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
 import { HUSHED_BARROW_1 } from './maps/hushed-barrow';
 
-/** Every continent, by id (ships sail between them). */
-export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF, 'verdant-wilds': VERDANT_WILDS_DEF,
+/**
+ * Every continent, by id (ships sail between them). The Infernal Reach is an act of sections (maps/reach-sections.ts):
+ * each section is a continent of its own here, so the room runs it as its own area; their land is `infernal-reach`.
+ */
+export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, ...REACH_SECTIONS, 'verdant-wilds': VERDANT_WILDS_DEF,
   'umbral-marches': UMBRAL_MARCHES_DEF };
+/** A save or a link that still names the old single-area Reach lands in Pyrehold. */
+export const RENAMED_CONTINENTS: Readonly<Record<string, string>> = { 'infernal-reach': 'infernal-reach-pyrehold' };
+/** The land a continent (or an act's section) belongs to. */
+export function landOf(continent: string): string { return CONTINENTS[continent]?.land ?? continent; }
 
 /** Every hand-drawn level under (or over) the surface, by id. */
 const DRAWN: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
@@ -49,6 +58,8 @@ const DRAWN: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1
   'root-hollows-1': ROOT_HOLLOWS_1, 'root-hollows-2': ROOT_HOLLOWS_2, 'root-hollows-3': ROOT_HOLLOWS_3,
   'netloft-1': NETLOFT_1, 'netloft-2': NETLOFT_2, 'herbal-cottage-1': HERBAL_1, 'herbal-cottage-0': HERBAL_0,
   'hushed-barrow-1': HUSHED_BARROW_1,
+  // The Reach's connector caves (world-acts.md §1.2): the only ways into the Deep Charwood and the Molten Fields.
+  'kiln-tunnels-1': KILN_TUNNELS_1, 'glass-throat-1': GLASS_THROAT_1, 'glass-throat-2': GLASS_THROAT_2,
   // The isometric prototype's tavern (td-artopt.ts): only with ?artopt= in an automated browser or on localhost.
   ...(optCamera() && artOptParam() ? { 'artopt-tavern': ARTOPT_TAVERN } : {}) };
 
@@ -75,6 +86,10 @@ export const FLOOR_LAIRS: Readonly<Record<string, NonNullable<TdMapDef['lair']>>
   'forge-of-four-1': { types: ['cinder-bailiff', 'cinder-imp'], count: 4 },
   'forge-of-four-2': { types: ['obsidian-golem', 'cinder-bailiff'], count: 4 },
   'forge-of-four-3': { types: ['cinder-bailiff'], count: 3 },
+  // The connectors: imps in the cold kilns and the burners who never came up; the Sentinels that lost the way home.
+  'kiln-tunnels-1': { types: ['cinder-imp', 'ash-ghoul'], count: 4 },
+  'glass-throat-1': { types: ['glass-sentinel', 'slag-crawler'], count: 4 },
+  'glass-throat-2': { types: ['glass-sentinel', 'slag-crawler'], count: 3 },
   // The Ashen Crypt: the garrison still standing its watch.
   // The Bone Priest (S6, monsters-abilities §2.6): one a floor, calling the roll.
   'ashen-crypt-1': { types: ['bone-walker', 'bone-archer', 'ash-ghoul', 'bone-priest'], count: 5 },

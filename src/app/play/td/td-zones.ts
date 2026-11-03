@@ -51,17 +51,61 @@ export const ZONES: Readonly<Record<string, Zone>> = {
   'ember-inn-1': { band: [1, 2], safe: true },
   'ember-inn-2': { band: [1, 2], safe: true },
 
-  // ── Infernal Reach (8–30): the volcanic mainland ──
-  'infernal-reach:T': { band: [8, 10], safe: true },  // Pyrehold
-  'infernal-reach:.': { band: [8, 11] },              // The Cinder Steppe, round Pyrehold
-  'infernal-reach:,': { band: [8, 10] },              // The Ashen Shore
-  'infernal-reach:l': { band: [8, 10] },              // Glasswater
-  'infernal-reach:~': { band: [8, 10] },
-  'infernal-reach:f': { band: [10, 13] },             // The Charwood
-  'infernal-reach:F': { band: [13, 16] },             // The Deep Charwood
-  'infernal-reach:h': { band: [15, 18] },             // The Obsidian Badlands
-  'infernal-reach:v': { band: [18, 21] },             // The Molten Fields
-  'infernal-reach:m': { band: [19, 22] },             // The Pyre Peaks
+  // ── Infernal Reach (8–30): the volcanic mainland, an act of sections (world-acts.md §1.2; one room area each) ──
+  'infernal-reach-pyrehold:T': { band: [8, 10], safe: true },  // Pyrehold
+  'infernal-reach-pyrehold:.': { band: [8, 10], safe: true },  // Pyrehold's walls and the harbour road
+  'infernal-reach-pyrehold:,': { band: [8, 10], safe: true },
+  'infernal-reach-pyrehold:~': { band: [8, 10], safe: true },
+  'infernal-reach-pyrehold:m': { band: [8, 10], safe: true },
+  'infernal-reach-steppe:T': { band: [8, 11], safe: true },    // the Watch Cairn
+  'infernal-reach-steppe:.': { band: [8, 11] },                // The Cinder Steppe
+  'infernal-reach-steppe:m': { band: [8, 11] },
+  'infernal-reach-steppe:,': { band: [8, 11] },
+  'infernal-reach-steppe:~': { band: [8, 11] },
+  'infernal-reach-shore:T': { band: [8, 10], safe: true },     // the Glasswater Stone
+  'infernal-reach-shore:,': { band: [8, 10] },                 // The Ashen Shore
+  'infernal-reach-shore:l': { band: [8, 10] },                 // Glasswater
+  'infernal-reach-shore:.': { band: [8, 10] },
+  'infernal-reach-shore:m': { band: [8, 10] },
+  'infernal-reach-shore:~': { band: [8, 10] },
+  'infernal-reach-charwood:T': { band: [10, 13], safe: true }, // the Kiln Stone
+  'infernal-reach-charwood:f': { band: [10, 13] },             // The Charwood
+  'infernal-reach-charwood:.': { band: [10, 13] },
+  'infernal-reach-charwood:m': { band: [10, 13] },
+  'infernal-reach-charwood:~': { band: [10, 13] },
+  'kiln-tunnels-1': { band: [12, 14] },                        // the Kiln Tunnels (connector)
+  'infernal-reach-deep-charwood:T': { band: [13, 16], safe: true }, // the Clan Stone
+  'infernal-reach-deep-charwood:F': { band: [13, 16] },        // The Deep Charwood
+  'infernal-reach-deep-charwood:f': { band: [13, 16] },
+  'infernal-reach-deep-charwood:m': { band: [13, 16] },
+  'infernal-reach-deep-charwood:~': { band: [13, 16] },
+  'infernal-reach-badlands:T': { band: [15, 18], safe: true }, // the Spill Stone
+  'infernal-reach-badlands:h': { band: [15, 18] },             // The Obsidian Badlands
+  'infernal-reach-badlands:m': { band: [15, 18] },
+  'infernal-reach-badlands:~': { band: [15, 18] },
+  'glass-throat-1': { band: [17, 18] },                        // the Glass Throat (connector)
+  'glass-throat-2': { band: [18, 19] },
+  'infernal-reach-molten-fields:T': { band: [18, 21], safe: true }, // the Drake Stone
+  'infernal-reach-molten-fields:v': { band: [18, 21] },        // The Molten Fields
+  'infernal-reach-molten-fields:h': { band: [18, 21] },
+  'infernal-reach-molten-fields:m': { band: [18, 21] },
+  'infernal-reach-molten-fields:~': { band: [18, 21] },
+  'infernal-reach-pyre-peaks:T': { band: [19, 22], safe: true },    // the Pyre Stone
+  'infernal-reach-pyre-peaks:m': { band: [19, 22] },           // The Pyre Peaks
+  'infernal-reach-pyre-peaks:h': { band: [19, 22] },           // the Bastion Road
+  'infernal-reach-pyre-peaks:v': { band: [19, 22] },           // the Caldera Rim
+  'infernal-reach-pyre-peaks:~': { band: [19, 22] },
+  'infernal-reach-pyre-peaks:graveyard': { band: [19, 22] },
+  'infernal-reach-cinderport:T': { band: [8, 10], safe: true },  // Cinderport
+  'infernal-reach-cinderport:.': { band: [8, 10], safe: true },
+  'infernal-reach-cinderport:,': { band: [8, 10], safe: true },
+  'infernal-reach-cinderport:~': { band: [8, 10], safe: true },
+  'infernal-reach-cinderport:m': { band: [8, 10], safe: true },
+  'infernal-reach-ashgrove:T': { band: [10, 13], safe: true },   // Ashgrove
+  'infernal-reach-ashgrove:f': { band: [10, 13], safe: true },
+  'infernal-reach-ashgrove:.': { band: [10, 13], safe: true },
+  'infernal-reach-ashgrove:m': { band: [10, 13], safe: true },
+  'infernal-reach-ashgrove:~': { band: [10, 13], safe: true },
   'forge-of-four-1': { band: [12, 14] },
   'forge-of-four-2': { band: [14, 16] },
   'forge-of-four-3': { band: [16, 18] },              // the Anvil-Warden, 18
@@ -124,6 +168,17 @@ export const ZONES: Readonly<Record<string, Zone>> = {
   'lantern-tower-2': { band: [26, 28], safe: true },
 };
 
+/** The lands, in act order. A section's area id is its land's, a hyphen, and the section (`infernal-reach-charwood`). */
+export const LANDS_IN_ORDER: readonly string[] = ['ember-isle', 'infernal-reach', 'verdant-wilds', 'umbral-marches'];
+/**
+ * The land an area (a continent or an act's section) belongs to: `infernal-reach-steppe` → `infernal-reach`. The area
+ * ids keep to `[a-z0-9-]` (the Hearth's AREA grammar, the drop and hearth ids), so a section is `<land>-<section>`.
+ */
+export function landOfArea(id: string): string {
+  for (const land of LANDS_IN_ORDER) if (id === land || id.startsWith(`${land}-`)) return land;
+  return id;
+}
+
 /** Each continent's band, end to end (the Map's title, a ship's blurb). */
 export const CONTINENT_BANDS: Readonly<Record<string, readonly [number, number]>> = {
   'ember-isle': [1, 10], 'infernal-reach': [8, 30], 'verdant-wilds': [15, 40], 'umbral-marches': [26, 50],
@@ -137,7 +192,7 @@ export const SEAM_LEVELS: Readonly<Record<string, number>> = {
   'ember-isle': 20, 'infernal-reach': 30, 'verdant-wilds': 40, 'umbral-marches': 55,
 };
 /** The Seam Eater's level on a continent (a continent without one: the lowest). */
-export function seamLevelFor(continent: string): number { return SEAM_LEVELS[continent] ?? SEAM_LEVELS['ember-isle']; }
+export function seamLevelFor(continent: string): number { return SEAM_LEVELS[landOfArea(continent)] ?? SEAM_LEVELS['ember-isle']; }
 
 /** A wild region's zone key. */
 export function regionZone(continent: string, region: string): string { return `${continent}:${region}`; }

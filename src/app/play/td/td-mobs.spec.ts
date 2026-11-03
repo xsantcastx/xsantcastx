@@ -253,7 +253,7 @@ describe('td-mobs: where the new creatures live', () => {
     for (const s of dead) expect(isle.walkable(Math.floor(s.x / TILE), Math.floor((s.y - 1) / TILE))).withContext(s.key).toBeTrue();
   });
   it('no wild pack spawns within eight tiles of the Ashen Crypt\'s door', () => {
-    const reach = new TdWorld(CONTINENTS['infernal-reach']);
+    const reach = new TdWorld(CONTINENTS['infernal-reach-pyre-peaks']);
     const door = reach.def.places.find(p => p.kind === 'crypt')!;
     const x = door.c * TILE, y = door.r * TILE;
     const near = reach.spawnsIn(x - 12 * TILE, y - 12 * TILE, x + 12 * TILE, y + 12 * TILE)

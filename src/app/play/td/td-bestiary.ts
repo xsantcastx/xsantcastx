@@ -11,7 +11,7 @@ import { huntGoldRange } from '../../shared/economy/economy-curve';
 import { MIN_PACK_LEVEL } from '../../shared/loot/champions';
 import { NIGHT_TABLES } from './td-phases';
 import { SEAM_ID, riftPlace } from './td-seam';
-import { graveyardZone, regionZone, seamLevelFor, zoneOf } from './td-zones';
+import { graveyardZone, landOfArea, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import { bossUniqueFor } from '../../shared/rpg/boss-uniques';
 import { ITEM_SETS } from '../../shared/rpg/set-items';
 
@@ -21,7 +21,7 @@ export interface BestiaryBlob { version: 1; kills: Record<string, number> }
 
 /** Continent display names (the defs carry the town's name, not the land's). */
 const CONTINENT_NAMES: Readonly<Record<string, string>> = { 'ember-isle': 'Ember Isle', 'infernal-reach': 'Infernal Reach', 'verdant-wilds': 'The Verdant Wilds', 'umbral-marches': 'The Umbral Marches' };
-const continentName = (id: string): string => CONTINENT_NAMES[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const continentName = (id: string): string => CONTINENT_NAMES[landOfArea(id)] ?? id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export interface BestiaryDrop { name: string; qty: number; chance: number }
 export interface BestiaryEntry {
@@ -80,6 +80,8 @@ export function creatureHauntBands(): Map<string, { where: string; band: readonl
       const name = c.names[h.region as keyof typeof c.names] ?? c.townName;
       for (const id of h.types) add(id, `${name}, ${land}`, regionZone(c.id, h.region));
     }
+    // The named hot spots (world-acts.md §2: Kettle Camp, the Scorch Rings, the Drake Nests, the Watch's Last Cairn).
+    for (const k of c.camps ?? []) for (const id of k.spawns) add(id, `${k.name}, ${land}`, regionZone(c.id, c.map[Math.floor(k.r / 8) + c.oy]?.[Math.floor(k.c / 8) + c.ox] ?? '.'));
     // A graveyard's own dead are Bone Walkers (td-world.ts).
     for (const p of c.places) if (p.kind === 'graveyard') add('bone-walker', `${p.name}, ${land}`, graveyardZone(c.id));
     // The Seam Eater rises at each continent's rift, its standing stones, under an eclipse (td-seam.ts).

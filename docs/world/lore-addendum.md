@@ -1822,3 +1822,20 @@ the dark step back from its light. Raw fish cook at it, or at a lit town hearth,
 its own lore line (EN + ES) in `shared/gathering/gathering.i18n.ts` (`gather.lore.*`). "You hunt better on a night's
 sleep and a full belly." The words for Wet: lightning bites deeper, fire burns lower, cold freezes.
 
+## The Reach as an act (2026-11-03, S7, branch `s7reach`) — shipped, owner reviews in play
+
+The Infernal Reach is a long road now (world-acts.md §1.2, canon §3.4b): out of **Pyrehold's North Gate** onto the
+Cinder Steppe, west to the Charwood, down the charcoal burners' **Kiln Tunnels** (the only way into the Deep Charwood),
+over the East Pass into the Obsidian Badlands, through **the Glass Throat** (the only way to the Molten Fields), up the
+Switchbacks to the Pyre Peaks and the Caldera Rim. Every section has a **Waystone**, "a stone that remembers who touched
+it": the Watch Cairn, the Glasswater Stone, the Kiln Stone, the Clan Stone (an orc totem with a Watch plaque nailed over
+it), the Spill Stone, the Drake Stone, the Pyre Stone, and in the towns the Plaza Stone, the Harbour Stone (Cinderport)
+and the Green Stone (Ashgrove). Touch one and it remembers you (+15 Delving XP once); from any of them, travel free to
+any other you have touched. The hot spots are on the land: **Kettle Camp** (the clans boil slag in a stolen Watch
+kettle; it is stamped "PYRE WATCH — RATIONS — FORTY MEN"), **the Scorch Rings** (where the Firecallers sing the lava
+up: *vael dra*, cut until there is more cut than stone), **the Drake Nests** (a named drake and its brood in the warm
+basalt) and **the Watch's Last Cairn** (the Bastion's dead, marching to relieve a post that fell before they were
+born). Each section's thing to read and sealed thing are listed in canon §8.5; the words are
+`play/td/td-reach.i18n.ts` (EN + ES). Garrick Dross's board now holds the Verdant ship: "The captains will not sail
+until the Cinder Sovereign falls."
+
