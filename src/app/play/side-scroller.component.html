@@ -56,7 +56,7 @@
     </button>
   }
   @if (topDown && tdAbilities.length && !panel && !hudBar) {
-    <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore>
+    <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore data-world-rail>
       @for (a of tdAbilities; track a.key) {
         <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left" (click)="useAbility(a.key)"
                 [attr.aria-label]="t('skill.' + a.id) + ' (' + a.key + ')'" [title]="t('skill.' + a.id) + ' (' + a.key + ') · ' + a.mana + ' ' + t('play.td.mana')"
@@ -67,7 +67,7 @@
   <!-- Top-down: the potion belt (shared/potions): Q drinks the best Health potion held, R the best Mana potion; the count
        on the glass, the shared cooldown sweeping back. Two buttons on phones. -->
   @if (topDown && tdBelt.length && !panel && !hudBar) {
-    <div class="td-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore>
+    <div class="td-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore data-world-rail>
       @for (b of tdBelt; track b.kind) {
         <button type="button" class="td-pot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
                 (click)="drinkPotion(b.kind)" [attr.aria-label]="beltTitle(b)" [title]="beltTitle(b)">
@@ -1390,7 +1390,7 @@
     </section>
   }
 
-  <div class="prompt" [class.armed]="!!state.nearby || !!fishPrompt" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+  <div class="prompt" [class.armed]="!!state.nearby || !!fishPrompt" [attr.data-world-avoid]="state.nearby || fishPrompt ? '' : null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     @if (!state.nearby && fishPrompt; as fish) {
       <strong>{{ fish }}</strong>
       <button type="button" class="fish-go" [title]="fishInfo"
@@ -1497,7 +1497,7 @@
       }
     </div>
     }
-    <div class="touch-act">
+    <div class="touch-act" data-world-rail>
       @if (!topDown) {
       <button type="button" class="tb tb--jump" [attr.aria-label]="t('play.hud.touch.jump')" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)"><span class="tl">{{ t('play.hud.touch.jump') }}</span><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 3 4 12h5v8h6v-8h5z"/></svg></button>
       }

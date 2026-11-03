@@ -85,3 +85,19 @@ export function backing(z: number, dpr: number, cap: number): Backing {
   const ratio = scale / z, q = dpr / ratio;
   return { scale, ratio, crisp: Math.abs(q - Math.round(q)) < 1e-3 };
 }
+
+/**
+ * The follow point's shift (art px, + right of the canvas's centre) for a view `vw` art px wide with side rails `l`
+ * and `r` art px deep over it (the phone's skill column and potion belt; Director, dirfix): half the rails' difference,
+ * so the Keeper stands in the middle of the world they leave; and with a target `d` art px right of the Keeper on the
+ * screen, `hw` its half width, as much again as brings its body out from under a rail (4 px clear) — never more than
+ * a fifth of the view, so the Keeper stays well inside it. No rails, no shift (a target off screen is the player's to
+ * walk to, not the camera's).
+ */
+export function followShift(vw: number, l: number, r: number, target: { d: number; hw: number } | null): number {
+  const base = (l - r) / 2;
+  if (!target || (l <= 0 && r <= 0)) return base;
+  const at = base + target.d, lo = -vw / 2 + l + 4, hi = vw / 2 - r - 4;
+  const extra = at - target.hw < lo ? lo - (at - target.hw) : at + target.hw > hi ? hi - (at + target.hw) : 0;
+  return base + Math.max(-vw / 5, Math.min(vw / 5, extra));
+}
