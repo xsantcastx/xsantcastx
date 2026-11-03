@@ -31,6 +31,17 @@ async function open(page: Page): Promise<void> {
   await page.addStyleTag({ content: '.guide, .glim-say, .area-card, .lvl-banner { visibility: hidden !important; }' });
   await page.waitForTimeout(1200);
 }
+/** Every visible HUD button standing over the world (not inside a panel or window), as [x0, y0, x1, y1] css px. */
+const hudButtons = (page: Page): Promise<number[][]> => page.evaluate(() => {
+  const out: number[][] = [];
+  for (const el of Array.from(document.querySelectorAll('.stage button'))) {
+    if (el.closest('dialog, [role=dialog], .place')) continue;
+    const b = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    if (b.width < 2 || b.height < 2 || cs.visibility === 'hidden' || cs.display === 'none' || b.right < 0 || b.left > innerWidth || b.bottom < 0 || b.top > innerHeight) continue;
+    out.push([b.left, b.top, b.right, b.bottom]);
+  }
+  return out;
+});
 const player = async (page: Page): Promise<Pt> => ({ x: Number(await canvas(page).getAttribute('data-player-x')), y: Number(await canvas(page).getAttribute('data-player-y')) });
 /** CSS px per art px, from the projection itself. */
 const cssPerArt = async (page: Page, p: Pt): Promise<number> => {
@@ -93,7 +104,7 @@ for (const size of [{ width: 844, height: 390, touch: true }, { width: 1280, hei
       await open(page);
       const prompt = page.locator('.prompt.armed');
       await expect(prompt).toBeVisible({ timeout: 10000 });
-      await expect.poll(async () => (await art<View>(page, 'view')).avoid, { timeout: 5000 }).toBe(1);
+      await expect.poll(async () => (await art<View>(page, 'view')).avoid, { timeout: 5000 }).toBeGreaterThanOrEqual(1);
       const pr = (await prompt.boundingBox())!;
       const p = await player(page), c = await cssPerArt(page, p), here = await art<Pt>(page, 'pageOf', p.x, p.y);
       // An Ash Wolf whose name would sit right in the prompt's middle (its name ~ its height + 6 px over its foot).
@@ -121,6 +132,11 @@ for (const size of [{ width: 844, height: 390, touch: true }, { width: 1280, hei
       // The wolf's own name stands just over the prompt (lifted, not lost).
       expect(plates.some(a => a[0] < pr.x + pr.width && a[2] > pr.x && a[3] <= pr.y + .5 && a[3] > pr.y - 4 * c)).toBe(true);
       if (SHOTS) await page.screenshot({ path: `${SHOTS}/after-prompt-${size.width}x${size.height}.png` });
+      // No plate lands against ANY HUD button (the campfire / anchor buttons, the rails, the attack cluster).
+      const buttons = await hudButtons(page);
+      expect(buttons.length).toBeGreaterThan(0);
+      const hit = plates.filter(a => buttons.some(b => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]));
+      expect(hit, `plates ${JSON.stringify(plates)} clear of the HUD buttons ${JSON.stringify(buttons)}`).toEqual([]);
     });
   });
 }

@@ -40,6 +40,12 @@ describe('td-iso-props: the isometric twins', () => {
     expect(behindCrown(normal, x, y, [X, Y + 8, X + 4, Y - 20], 2)).toBeTrue();
     // A lamp is static, a top-down tree key reaches the same twin.
     expect(isoArtByKey('lamp', false)!.sway.length).toBe(0);
+    // A lit brazier's flame is three baked frames cycled quickly (no per-frame bake); a cold one and Low stay still.
+    const lit = isoArtByKey('brazier-1', false)!;
+    expect(lit.flicker).toBeTrue();
+    expect(lit.sway.length).toBe(3);
+    expect(isoArtByKey('brazier-1', true)!.sway.length).toBe(1);
+    expect(isoArtByKey('brazier-0', false)!.sway.length).toBe(0);
     isoPropsFrame(performance.now() + 1000);
     expect(spriteKey(tree('oak', 2))).toMatch(/tree:oak:2$/);
     expect(spriteKey(lamp())).toBe('lamp');
