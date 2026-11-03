@@ -954,6 +954,10 @@ export class TopDownEngine {
           px: this.clientOf(c.x, c.y, 6).x, py: this.clientOf(c.x, c.y, 6).y, scale: this.scale / k,
         }));
       },
+      // Goes to a floor ('surface' or a level id) at a point, as a Keeper going down a stair and up again does (the corpse run-round spec).
+      warp: (level: string, x: number, y: number) => { const lv = level === 'surface' ? this.world : LEVELS[level] ? this.handLevel(level) : null; if (!lv) return false; this.enter(lv, ''); const at = standNear(lv, x, y); this.player.x = at.x; this.player.y = at.y; this.placeCompanions(); this.report(); return true; },
+      // Clears whatever the kill dropped beside the newest corpse (its roll is random, and a piece lying under the finger takes the tap before the corpse does): a spec that taps the corpse itself starts from a bare one.
+      bare: () => { const c = this.mobs.remains[this.mobs.remains.length - 1]; if (!c) return 0; const ds = this.mobs.drops; let n = 0; for (let i = ds.length - 1; i >= 0; i--) if (ds[i].corpse === c.id) { ds.splice(i, 1); n++; } return n; },
       // A heap of ember residue laid in the nearest corpse (the loot a walk-over would not reach).
       stock: () => { const c = this.mobs.remains[this.mobs.remains.length - 1]; if (!c) return false; this.mobs.drops.push({ id: `fx-stock:${this.mobs.drops.length}`, x: c.x + 8, y: c.y + 2, coins: 0, material: 'ember-residue', qty: 2, label: 'ember residue', color: '#c8c0b0', age: 1, corpse: c.id }); return true; },
       age: (secs: number) => { for (const c of this.mobs.remains) c.born -= secs; return this.mobs.remains.length; },
@@ -1404,6 +1408,8 @@ export class TopDownEngine {
   }
   /** Own drops left on other floors (memory only, like a D2 game's floor). */
   private readonly ownByLevel = new Map<string, Drop[]>();
+  /** The corpses (and the loot lying in them) of a floor the Keeper has left: back there, they are still there, rotting on the one clock the whole time. */
+  private readonly corpsesByLevel = new WeakMap<TdLevel, { remains: Corpse[]; drops: Drop[] }>();
   /** The tile whose list is open (a row taken from it refreshes the list). */
   private pileOpen: string | null = null;
   /** What still lies on the open pile's tile (the HUD's list after a take). */
@@ -1886,6 +1892,10 @@ export class TopDownEngine {
   private enter(level: TdLevel, at: string): void {
     // A Keeper's own drops stay on the floor they were let go on (td-ground-pile.ts): back there, they are still there.
     if (this.level) this.ownByLevel.set(this.level.id, this.mobs.drops.filter(g => g.own));
+    // The fallen lie where they fell: a way down a ladder and back up must not sweep them away (Tibia). The decay clock
+    // (MobSystem.age) never stops, so what is stashed here has rotted by the time the Keeper is back.
+    if (this.level) this.corpsesByLevel.set(this.level, { remains: [...this.mobs.remains], drops: this.mobs.drops.filter(g => g.corpse && !g.own && !g.room) });
+    this.closeCorpse();
     this.level = level;
     // The last area's shared creatures go with it, at once (td-coop left): a late snapshot of it is refused here.
     this.coop?.left(this.peerArea());
@@ -1895,6 +1905,8 @@ export class TopDownEngine {
     this.mobs.enterLevel(level === this.world || this.coop?.roomRuns(this.peerArea()) ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
     this.mobs.drops.push(...(this.ownByLevel.get(level.id) ?? []));
     this.ownByLevel.delete(level.id);
+    const lying = this.corpsesByLevel.get(level);
+    if (lying) { this.mobs.remains.push(...lying.remains); this.mobs.drops.push(...lying.drops); this.corpsesByLevel.delete(level); }
     // The Row-Walker was swept away with the last level's creatures, not felled: it may rise again at once.
     this.walkerUp = false; this.walkerT = 0;
     // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).

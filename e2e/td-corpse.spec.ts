@@ -14,7 +14,7 @@ import { seed, stackQty } from './play-helpers';
 const canvas = (page: Page) => page.locator('.viewport canvas');
 interface CorpseRow { id: string; kind: string; stage: string; loot: number; x: number; y: number; px: number; py: number; scale: number }
 interface LootRow { id: string; label: string; coins: number; corpse: string; far: number; px: number; py: number }
-type Hook = { smite: (type: string, dx: number) => string | null; corpses: () => CorpseRow[]; age: (s: number) => number; stock: () => boolean; loot: () => LootRow[] };
+type Hook = { smite: (type: string, dx: number) => string | null; corpses: () => CorpseRow[]; age: (s: number) => number; stock: () => boolean; loot: () => LootRow[]; bare: () => number; warp: (level: string, x: number, y: number) => boolean };
 const hook = <T>(page: Page, fn: (h: Hook) => T) => page.evaluate(`(${fn.toString()})(window.__tdParty)`) as Promise<T>;
 const corpses = (page: Page) => hook(page, h => h.corpses());
 const loot = (page: Page) => hook(page, h => h.loot());
@@ -90,6 +90,9 @@ test('walking away shuts the window, and a tap on the corpse walks up and opens 
   await boot(page);
   await hook(page, h => h.smite('ash-wolf', 60));
   await expect.poll(async () => (await corpses(page)).length).toBe(1);
+  // The kill's own drops are random and lie across the small wolf: a piece under the finger takes the tap (walks over and
+  // picks it up) before the corpse does. Start from a bare corpse with the one known heap, so the tap is on the corpse.
+  await hook(page, h => h.bare());
   await hook(page, h => h.stock());
   const c = (await corpses(page))[0];
   await page.mouse.click(c.px, c.py);
@@ -125,4 +128,39 @@ test('only Gold is walked up: an item waits, a click on it walks there and takes
   await key(page, 'n');
   await expect.poll(async () => (await loot(page)).some(d => d.id === next.id), { timeout: 5000 }).toBe(false);
   await expect.poll(() => stackQty(page, 'ember-residue'), { timeout: 8000 }).toBe(before + 4);
+});
+
+/** Travel by the Places list (reduced motion: instant): the way into a dungeon floor and back up. */
+test('a corpse is still there, and still lootable, after a trip into a dungeon and back', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+  await hook(page, h => h.smite('ash-wolf', 60));
+  await expect.poll(async () => (await corpses(page)).length).toBe(1);
+  await hook(page, h => h.bare());
+  await hook(page, h => h.stock());
+  const fell = (await corpses(page))[0];
+
+  // Down the stair into the cave and up again (the same warp the floor change makes): the surface is left and re-entered.
+  expect(await hook(page, h => h.warp('slagstone-cave', 0, 0))).toBe(true);
+  await expect(canvas(page)).toHaveAttribute('data-area', /slagstone cave/i, { timeout: 15000 });
+  expect(await corpses(page), 'the corpse belongs to the floor it fell on').toHaveLength(0);
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(`window.__tdParty.warp('surface', ${fell.x - 40}, ${fell.y})`)).toBe(true);
+  await expect(canvas(page)).not.toHaveAttribute('data-area', /slagstone cave/i, { timeout: 15000 });
+
+  await expect.poll(async () => (await corpses(page)).map(c => c.id)).toEqual([fell.id]);
+  const back = (await corpses(page))[0];
+  expect(back.loot, 'its loot is still in it').toBe(1);
+  // And lootable: E opens it and the heap can be taken.
+  // The camera glides to the Keeper on arrival: tap only once the corpse has stopped moving on screen.
+  let last = '';
+  await expect.poll(async () => { const c = (await corpses(page))[0]; const now = `${c.px},${c.py}`; const still = now === last; last = now; return still; }, { intervals: [250] }).toBe(true);
+  const tap = (await corpses(page))[0];
+  await page.mouse.click(tap.px, tap.py);
+  const win = page.locator('[data-corpse-window]');
+  await expect(win).toBeVisible({ timeout: 10000 });
+  const take = win.locator('[data-corpse-take]', { hasText: /ember residue/i });
+  await expect(take).toBeVisible();
+  await take.click();
+  await expect.poll(async () => (await corpses(page))[0].loot).toBe(0);
 });
