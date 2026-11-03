@@ -70,7 +70,7 @@ test('guest on a browser the account used, then Sign in: into the account\'s sav
   // The drop: needs the binding (the fake cloud on), and it goes.
   await page.waitForTimeout(600);
   if (await page.locator('.menu-scrim').count()) await page.locator('.menu-scrim').click({ position: { x: 4, y: 4 } });
-  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
   await page.locator('#satchel-book .pocket[aria-label^="Ember Charm"]').click();
   await page.locator('[data-drop-item]').first().click();
   await expect.poll(() => items(page), { timeout: 15000 }).toEqual([]);

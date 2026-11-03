@@ -81,7 +81,7 @@ test('drag a satchel piece onto the world: it lies on the ground for the room; o
 
   // ── Drop: the Ember Charm from the grid onto the world (left of the satchel). ──
   await calm(page);
-  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
   const book = page.locator('#satchel-book');
   const charm = book.locator('[data-grid="b"] [data-ids="s2"]');
   await expect(charm).toBeVisible();
@@ -146,7 +146,7 @@ test('online, two browsers: three drops lie on one tile as one pile on the other
   const bryn = await other.newPage();
   await enterAs(bryn, hearth.port, 'Bryn', 'thornstrider', keeper('ub2', [], 20));
   await calm(page);
-  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
   const book = page.locator('#satchel-book');
   for (const id of ['p1', 'p2', 'p3']) {
     await book.locator(`[data-grid="b"] [data-ids="${id}"]`).click();

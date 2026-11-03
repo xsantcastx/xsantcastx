@@ -60,13 +60,15 @@ Spec: `docs/design/ui-pass-3.md` §A.0–A.6. Screens: `output/uiwa/before/` (fr
   - `Drop.by`, set from the room's `by`, names online piles.
 - Vault: `shared/vault/vault-station.*`, using the new `InventoryService.movePieceInto`.
 
-## For the merge with polish2
-- **The take API:** Nearby's take is `engine.takeNearby` behind the host's `takeNear` / `takeNearPick`. Partial own
-  stacks go through the engine options `onSplitOwn` / `onMergeOwn` (the host's `splitOwn` / `mergeOwn`).
-  - polish2 adds `TradeHudComponent.takeFromPile`, `pickup(id, qty)` and `takeOwnStack` / `trimOwn`.
-  - To unify: route `takeNearby`'s shared and own branches there. Pass an explicit qty for Take all so no picker
-    opens per stack.
-  - Online piles currently take whole (`onGroundTap`).
+## Takes (merged with polish2, 9ce0ea9b)
+- **The engine:** Nearby's take is `engine.takeNearby` behind the host's `takeNear` / `takeNearPick`.
+- **polish2's reusable takes:**
+  - The Keeper's own stack piles go through the engine option `onTakeOwnStack`, which calls the host's
+    `takeOwnStack(token, n)` and so `trimOwn`.
+  - Another Keeper's pieces go through `onTakeShared`. A stack uses `TradeHudComponent.takeFromPile(id, qty)` with an
+    explicit amount, so Take all never opens a picker. An item uses `pickup(id)`.
+- **What Nearby still does itself:** a partial take of a corpse's or the fight's own stack splits the drop
+  (`splitDrop`) and takes the split part.
 - **Nameplates:** every new HUD button is `data-world-rail` and the ticker is `data-world-avoid`.
 
 ## Departures from the spec

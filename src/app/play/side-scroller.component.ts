@@ -2028,8 +2028,11 @@ export class SideScrollerComponent implements OnDestroy {
       onCorpse: view => this.zone.run(() => { this.corpseView = view; }),
       // A shared ground item (protocol 6): the Keeper walked to it; reach for it.
       onGroundTap: id => this.zone.run(() => { void this.tradeHud?.pickup(id); }),
-      onSplitOwn: (own, n) => this.splitOwn(own, n),
-      onMergeOwn: (from, into) => this.mergeOwn(from, into),
+      onTakeOwnStack: (own, n) => this.zone.run(() => this.takeOwnStack(own, n)),
+      onTakeShared: (id, qty) => this.zone.run(() => {
+        const g = this.social.ground?.items.find(x => x.id === id);
+        if (g?.sk) void this.tradeHud?.takeFromPile(id, qty ?? g.qty); else void this.tradeHud?.pickup(id);
+      }),
       // A pile on the ground opened (td-ground-pile.ts): its RuneScape-style list.
       onPileOpen: pile => this.zone.run(() => this.openPile(pile)),
       // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
@@ -5738,21 +5741,6 @@ export class SideScrollerComponent implements OnDestroy {
   /** A freshly fallen corpse (the last 30 s) in reach: the satchel opens on Nearby. */
   private freshCorpseNear(): boolean {
     return (this.nearEngine?.nearbyContainers?.() ?? []).some(c => c.kind === 'corpse' && c.inReach && c.age < 30);
-  }
-  /** The engine's partial take of an own stack: split the token's count (td-engine splitDrop). */
-  private splitOwn(own: string, n: number): string | null {
-    const was = this.ownGround.get(own);
-    if (!was?.stack || !(n > 0) || n >= (was.qty ?? 1)) return null;
-    const token = `s${++this.ownSeq}`;
-    this.ownGround.set(own, { ...was, qty: (was.qty ?? 1) - n });
-    this.ownGround.set(token, { stack: was.stack, qty: n });
-    return token;
-  }
-  private mergeOwn(from: string, into: string): void {
-    const a = this.ownGround.get(from), b = this.ownGround.get(into);
-    if (!a?.stack || !b?.stack) return;
-    this.ownGround.set(into, { ...b, qty: (b.qty ?? 0) + (a.qty ?? 0) });
-    this.ownGround.delete(from);
   }
   get pocketFill(): number {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;

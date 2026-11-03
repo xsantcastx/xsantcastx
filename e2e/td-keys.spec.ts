@@ -147,7 +147,9 @@ test.describe('keys on a phone', () => {
   test('the Controls list is read-only, there is no desktop bar', async ({ page }) => {
     await enter(page);
     await expect(page.locator('[data-hud-bar]')).toHaveCount(0);
-    await page.locator('[data-game-menu-toggle]').first().tap();
+    // A portrait phone reaches the Game Menu through ☰ More's "All menus" tile (docs/design/ui-pass-3.md §A.2).
+    if (await page.locator('[data-th="more"]').count()) { await page.locator('[data-th="more"]').tap(); await page.locator('[data-tile="menu"]').tap(); }
+    else await page.locator('[data-game-menu-toggle]').first().tap();
     await page.locator('#game-menu [data-open="controls"]').tap();
     await expect(page.locator('[data-controls]')).toBeVisible();
     await expect(page.locator('[data-controls] button[data-slot]')).toHaveCount(0);

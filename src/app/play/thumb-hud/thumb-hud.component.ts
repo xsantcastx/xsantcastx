@@ -13,6 +13,7 @@
  */
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import type { SideScrollerComponent } from '../side-scroller.component';
+import { DropTargetDirective } from '../../shared/inventory-grid/drop-target.directive';
 
 /** The verb the disc shows. */
 export type ThumbVerb = 'attack' | 'enter' | 'talk' | 'loot' | 'take' | 'read' | 'use';
@@ -54,6 +55,7 @@ export function tickerLines(src: {
 @Component({
   selector: 'app-thumb-hud',
   standalone: true,
+  imports: [DropTargetDirective],
   changeDetection: ChangeDetectionStrategy.Default,
   templateUrl: './thumb-hud.component.html',
   styleUrls: ['./thumb-hud.component.css'],

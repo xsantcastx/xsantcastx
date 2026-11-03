@@ -4839,7 +4839,11 @@ export class TopDownEngine {
     let out: 'taken' | 'full' = 'taken';
     for (const it of c.items) {
       if (what !== 'all' && it.id !== what) continue;
-      if (it.shared) { this.options.onGroundTap?.(it.id.slice('shared:'.length)); continue; }
+      // Another Keeper's piece, and the Keeper's own stack pile: polish2's reusable takes (an explicit amount, so
+      // Take all never opens a picker per stack).
+      if (it.shared) { const sid = it.id.slice('shared:'.length); if (this.options.onTakeShared) this.options.onTakeShared(sid, qty); else this.options.onGroundTap?.(sid); continue; }
+      const own = this.mobs.drops.find(d => d.id === it.id)?.own;
+      if (own && it.stack && this.options.onTakeOwnStack) { if (!this.options.onTakeOwnStack(own, qty ?? it.qty)) { out = 'full'; break; } continue; }
       const id = qty && it.stack && qty < it.qty ? this.splitDrop(it.id, qty) : it.id;
       if (!id) continue;
       const g = this.mobs.drops.find(d => d.id === id);
@@ -4852,18 +4856,16 @@ export class TopDownEngine {
   }
   /**
    * Split `n` off a stack lying on the ground (a partial take): the new drop lies where it was and is returned; the
-   * rest stays as it was, its count redrawn. An own drop asks the host to split its token (splitOwn) first.
+   * rest stays as it was, its count redrawn (a corpse's or the fight's stack; own piles go through onTakeOwnStack).
    */
   private splitDrop(id: string, n: number): string | null {
     const g = this.mobs.drops.find(d => d.id === id);
-    if (!g || !(n > 0) || n >= g.qty || g.room) return null;
-    let own: string | undefined;
-    if (g.own) { own = this.options.onSplitOwn?.(g.own, n) ?? undefined; if (!own) return null; }
-    const nid = own ? `own:${own}` : `${g.id}~p${++this.splitSeq}`;
+    if (!g || !(n > 0) || n >= g.qty || g.room || g.own) return null;
+    const nid = `${g.id}~p${++this.splitSeq}`;
     const name = stackName(g.label);
     g.qty -= n;
     g.label = g.qty > 1 ? `${name} ×${g.qty}` : name;
-    this.mobs.drops.push({ ...g, id: nid, qty: n, label: n > 1 ? `${name} ×${n}` : name, ...(own ? { own } : {}) });
+    this.mobs.drops.push({ ...g, id: nid, qty: n, label: n > 1 ? `${name} ×${n}` : name });
     return nid;
   }
   private splitSeq = 0;
@@ -4872,7 +4874,6 @@ export class TopDownEngine {
     const i = this.mobs.drops.findIndex(d => d.id === from), g = this.mobs.drops.find(d => d.id === into);
     if (i < 0 || !g) return;
     const f = this.mobs.drops[i];
-    if (f.own && g.own) this.options.onMergeOwn?.(f.own, g.own);
     this.mobs.drops.splice(i, 1);
     g.qty += f.qty;
     const name = stackName(g.label);
