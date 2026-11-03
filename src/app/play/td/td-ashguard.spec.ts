@@ -17,7 +17,8 @@ import { boughtRanks, buyRank, clampTree, effectiveRanks, pointsSpent, rankBlock
 import { TILE } from './td-art';
 import { skillPointsEarned } from '../../shared/keeper-look/skill-points';
 
-const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul'];
+// The cant's roots (canon §6.1), with the sky's `vor` and the cold's `rim` (added 2026-10-26 for S9's weather and rime).
+const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul', 'vor', 'rim'];
 const SHAPES = ['sha', 'orum', 'dra', 'mur', 'ka', 'teth', 'vesh', 'un'];
 const ASH = Object.keys(ASHGUARD_SKILLS) as AshSkillId[];
 const empty = (): KeeperSkillTree => ({ spent: {}, free: [], at: 0 });
@@ -28,11 +29,11 @@ describe('td-ashguard: the book as data', () => {
     expect(CLASS_TREES.ashguard).toEqual(['brand', 'oath', 'ash']);
     expect(bookTrees('ashguard')).toEqual(['brand', 'oath', 'ash', 'common']);
     expect(bookTrees('warlock')).toEqual(['ember', 'bone', 'shadow', 'common']);
-    expect(ASH.length).toBe(18);
-    expect(CLASS_SKILLS.ashguard.length).toBe(21); // + the common page: Light, the Seek, the Waygate
+    expect(ASH.length).toBe(20);
+    expect(CLASS_SKILLS.ashguard.length).toBe(23); // + the common page: Light, the Seek, the Waygate
     // The book's rows (skills-100.md §6): Brand 5 (S5: Brand Throw), Oath 6 (Hold the Line is Shield Oath's mark; S5:
     // the Banner, Intercept, the Gate), Ash 5 (Ember Blood, the Watchfire's; S5: Cinder Skin, Second Wind).
-    expect(ASH_TREES.map(tr => treeSkills('ashguard', tr).length)).toEqual([5, 6, 5]);
+    expect(ASH_TREES.map(tr => treeSkills('ashguard', tr).length)).toEqual([6, 6, 6]);
     // No Ashguard skill sits in a Warlock book, and the reverse.
     for (const id of ASH) expect(CLASS_SKILLS.warlock).not.toContain(id);
   });

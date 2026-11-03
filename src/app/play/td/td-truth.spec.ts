@@ -25,8 +25,8 @@ import { ASHGUARD_I18N } from './td-ashguard.i18n';
 import { LANTERN_I18N } from './td-lantern.i18n';
 import { THORN_I18N } from './td-thorn.i18n';
 import { TILE } from './td-art';
-import { brandedBlow, meleeBlow } from './td-melee';
-import { ITEM_AURA_REACH, MOBS, MobSystem, type Mob, type MobDef, type MobHost } from './td-mobs';
+import { arrowBlow, brandedBlow, meleeBlow } from './td-melee';
+import { ITEM_AURA_REACH, MOBS, MobSystem, type Minion, type Mob, type MobDef, type MobHost } from './td-mobs';
 import { TdWaygates } from './td-waygate';
 import { auraEffect, type AuraId } from '../../shared/loot/auras';
 import { skyVars, spellMult } from './td-phases';
@@ -763,6 +763,245 @@ const PROBES: Record<SkillId, Probe> = {
     const pct = w.sys.rootwalkPct;
     // The track is lost: a creature that would hunt the Keeper from a few tiles off does not come.
     return { pct, secs: timeUntil(w, () => w.sys.rootwalkT === 0) };
+  },
+  // ── S9: rows 30–50 for every calling, and the Thornstrider's rows S5 left waiting ──
+  'kiln-breath': (r, o) => {
+    const make = () => world('warlock', { 'kiln-breath': r }, o), v = make().sys.v('kiln-breath');
+    const hits: number[] = [];
+    let walk = NaN;
+    for (let i = 0; i < 4; i++) { const w = make(), m = dummy(w, TILE); cast(w, 'kiln-breath'); walk = Math.round(w.sys.footing * 100); hits.push(...hitsOn(w, m, v['secs'] + .3)); }
+    const x = make(); dummy(x, TILE); cast(x, 'kiln-breath');
+    const secs = timeUntil(x, () => !x.sys.kiln);
+    const length = edge(v['length'], d => { const y = make(), t = dummy(y, d); cast(y, 'kiln-breath'); y.sys.update(.02); return t.hp < 1e7; }, DUMMY.w / 4);
+    const at = (deg: number) => { const y = make(), t = dummy(y, 2 * TILE), s = dummy(y, Math.cos(deg * Math.PI / 180) * 3 * TILE, Math.sin(deg * Math.PI / 180) * 3 * TILE); y.sys.target = t; cast(y, 'kiln-breath'); y.sys.update(.02); return s.hp < 1e7; };
+    return { ...pair(rangeOf(hits, ...k2(v))), secs, length, walk, arc: at(v['arc'] / 2 - 3) && !at(v['arc'] / 2 + 4) ? v['arc'] : NaN };
+  },
+  'raise-grave-mage': (r, o) => {
+    const make = () => world('warlock', { 'raise-grave-mage': r }, o), v = make().sys.v('raise-grave-mage');
+    const mages = (w: World) => w.sys.minions.filter(k => k.kind === 'mage');
+    const w = make(); cast(w, 'raise-grave-mage');
+    const count = mages(w).length, hp = mages(w)[0]?.maxHp ?? NaN;
+    for (let i = 0; i < 6; i++) cast(w, 'raise-grave-mage');
+    const cap = mages(w).length;
+    const x = make(); cast(x, 'raise-grave-mage');
+    const secs = timeUntil(x, () => mages(x).length === 0, 200);
+    // Its bolts: their rolls, and the seconds between them.
+    const hits: number[] = [], when: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const y = make(); cast(y, 'raise-grave-mage');
+      const k = mages(y)[0], m = dummy(y, k.x + 3 * TILE, k.y);
+      for (let t = 0; t < 12; t += .02) { const at = y.blows.length; y.sys.update(.02); for (const b of y.blows.slice(at)) if (b.m === m) { hits.push(b.n); if (i === 0) when.push(t); } }
+    }
+    const gaps = when.slice(1).map((t, i) => Math.round((t - when[i]) * 50) / 50);
+    const rate = gaps.length > 2 && gaps.every(g => Math.abs(g - v['rate']) <= .03) ? v['rate'] : NaN;
+    const range = edge(v['range'], d => { const z = make(); cast(z, 'raise-grave-mage'); const k = mages(z)[0]; dummy(z, k.x + d, k.y); run(z, .6); return z.sys.bolts.length > 0 || z.blows.length > 0; });
+    return { count, cap, hp, secs, rate, range, ...pair(rangeOf(hits, ...k2(v))) };
+  },
+  'ossuary-golem': (r, o) => {
+    const make = () => world('warlock', { 'ossuary-golem': r }, o), v = make().sys.v('ossuary-golem');
+    const strike = (w: World, k: Minion, m: Mob) => (w.sys as unknown as { lateMinionBlow(k: Minion, m: Mob): void }).lateMinionBlow(k, m);
+    const w = make(); cast(w, 'ossuary-golem');
+    const g = w.sys.minions[0], hp = g.maxHp;
+    w.sys.update(.02);
+    const taunt = Math.round((g.tauntCd ?? 0) * 100) / 100;
+    const reach = edge(v['reach'], d => { const x = make(); cast(x, 'ossuary-golem'); const k = x.sys.minions[0], f = dummy(x, k.x + d, k.y); x.sys.update(.02); return (f.taunt ?? 0) > 0; });
+    const hits: number[] = [];
+    let rate = NaN;
+    for (let i = 0; i < 300; i++) { const x = make(); cast(x, 'ossuary-golem'); const k = x.sys.minions[0], f = dummy(x, k.x, k.y); strike(x, k, f); hits.push(1e7 - f.hp); rate = k.cd; }
+    const radius = edge(v['radius'], d => { const x = make(); cast(x, 'ossuary-golem'); const k = x.sys.minions[0], near = dummy(x, k.x, k.y), far = dummy(x, k.x + d, k.y); strike(x, k, near); return far.hp < 1e7; }, DUMMY.w / 4);
+    return { hp, taunt, reach, rate, radius, ...pair(rangeOf(hits, ...k2(v))) };
+  },
+  'rime-lance': (r, o) => {
+    const make = () => world('warlock', { 'rime-lance': r }, o), v = make().sys.v('rime-lance');
+    const hits: number[] = [];
+    for (let i = 0; i < 200; i++) { const w = make(), m = dummy(w, 2 * TILE, SPEAR_Y); w.sys.target = m; cast(w, 'rime-lance'); hits.push(...hitsOn(w, m, .4)); }
+    const range = edge(v['range'], d => { const w = make(), t = dummy(w, TILE, SPEAR_Y), far = dummy(w, d, SPEAR_Y); w.sys.target = t; cast(w, 'rime-lance'); run(w, 2, .004); return far.hp < 1e7; }, Math.max(9, DUMMY.w / 3));
+    const w = make(), m = dummy(w, 2 * TILE, SPEAR_Y); w.sys.target = m; cast(w, 'rime-lance');
+    timeUntil(w, () => m.hp < 1e7, 2, .004);
+    const chill = timeUntil(w, () => (m.chillT ?? 0) === 0, 30);
+    return { ...pair(rangeOf(hits, ...k2(v))), range, chill };
+  },
+  'pyre-strike': (r, o) => {
+    const make = () => world('ashguard', { 'watch-blade': 1, 'pyre-strike': r }, o), w0 = make(), v = w0.sys.v('pyre-strike'), b = w0.sys.v('watch-blade');
+    const range = edge(v['range'], d => { const x = make(); dummy(x, d); return cast(x, 'pyre-strike') === null; }, TILE + DUMMY.w / 4);
+    const first: number[] = [], ring: number[] = [];
+    let stun = NaN;
+    for (let i = 0; i < 300; i++) { const x = make(), t = dummy(x, 2 * TILE), s = dummy(x, 2 * TILE + TILE, 0); cast(x, 'pyre-strike'); first.push(1e7 - t.hp); ring.push(1e7 - s.hp); stun = t.stun ?? NaN; }
+    const radius = edge(v['radius'], d => { const x = make(), t = dummy(x, 2 * TILE), s = dummy(x, 2 * TILE + d, 0); void t; cast(x, 'pyre-strike'); return s.hp < 1e7; }, DUMMY.w / 4);
+    const pctOf = (hits: number[], pct: number, k = 1) => { const lo = Math.round(meleeBlow(b['min'], b['min'], pct) * k), hi = Math.round(meleeBlow(b['max'], b['max'], pct) * k); return rangeOf(hits, lo, hi)[0] === lo ? pct : NaN; };
+    return { range, radius, stun, pct: pctOf(first, v['pct']), ring: pctOf(ring, v['ring'], w0.sys.fireMult) };
+  },
+  'watchquake': (r, o) => {
+    const make = () => world('ashguard', { 'watch-blade': 1, 'watchquake': r }, o), w0 = make(), v = w0.sys.v('watchquake'), b = w0.sys.v('watch-blade');
+    const hits: number[] = [];
+    let stun = NaN, hush = NaN;
+    for (let i = 0; i < 300; i++) { const x = make(), m = dummy(x, TILE); cast(x, 'watchquake'); hits.push(1e7 - m.hp); stun = m.stun ?? NaN; hush = m.hushT ?? NaN; }
+    const radius = edge(v['radius'], d => { const x = make(), f = dummy(x, d); cast(x, 'watchquake'); return f.hp < 1e7; }, DUMMY.w / 4);
+    const lo = meleeBlow(b['min'], b['min'], v['pct']), hi = meleeBlow(b['max'], b['max'], v['pct']);
+    return { radius, stun, hush, pct: rangeOf(hits, lo, hi)[0] === lo ? v['pct'] : NaN };
+  },
+  // ── The Lanternwright ──
+  'chain-of-lamps': (r, o) => {
+    const make = () => world('lanternwright', { 'chain-of-lamps': r }, o), v = make().sys.v('chain-of-lamps');
+    const firsts: number[] = [], seconds: number[] = [];
+    let shock = NaN;
+    for (let i = 0; i < 300; i++) { const x = make(), a = dummy(x, 2 * TILE), b = dummy(x, 4 * TILE); x.sys.target = a; cast(x, 'chain-of-lamps'); firsts.push(1e7 - a.hp); seconds.push(1e7 - b.hp); shock = a.shockT ?? NaN; }
+    const row = make(), line = Array.from({ length: 12 }, (_, i) => dummy(row, 2 * TILE + i * 2 * TILE)); row.sys.target = line[0]; cast(row, 'chain-of-lamps');
+    const jumps = line.filter(m => m.hp < 1e7).length;
+    const gap = edge(v['gap'], d => { const x = make(), a = dummy(x, 2 * TILE), b = dummy(x, 2 * TILE + d); x.sys.target = a; cast(x, 'chain-of-lamps'); return b.hp < 1e7; });
+    const mean = (a: number[]) => a.reduce((s, n) => s + n, 0) / a.length, ratio = mean(seconds) / mean(firsts);
+    return { ...pair(rangeOf(firsts, ...k2(v))), jumps, gap, shock, fall: Math.abs(ratio - (1 - v['fall'] / 100)) <= .03 ? v['fall'] : Math.round((1 - ratio) * 100) };
+  },
+  'moth-dust': (r, o) => {
+    const make = () => world('lanternwright', { 'moth-dust': r }, o), v = make().sys.v('moth-dust');
+    const w = make(), m = dummy(w, TILE); w.sys.target = m; cast(w, 'moth-dust');
+    const length = edge(v['length'], d => { const x = make(), f = dummy(x, d); cast(x, 'moth-dust'); return (f.blindT ?? 0) > 0; }, DUMMY.w / 4);
+    return { length, blind: m.blindT ?? NaN, weaken: m.weakPct ?? NaN, secs: m.weak ?? NaN };
+  },
+  'moth-swarm': (r, o) => {
+    const make = () => world('lanternwright', { 'moth-swarm': r }, o), v = make().sys.v('moth-swarm');
+    const w = make(); cast(w, 'moth-swarm');
+    const count = w.sys.zones.find(z => z.kind === 'moths')?.every ?? NaN;
+    const secs = timeUntil(w, () => !w.sys.zones.some(z => z.kind === 'moths'));
+    const radius = edge(v['radius'], d => { const x = make(), f = dummy(x, d); cast(x, 'moth-swarm'); x.sys.update(.02); return (f.blindT ?? 0) > 0; }, DUMMY.w / 4);
+    const y = make(), m = dummy(y, TILE); cast(y, 'moth-swarm'); y.sys.update(.02);
+    const blind = Math.round((m.blindT ?? 0) * 100) / 100;
+    const hits: number[] = [];
+    for (let i = 0; i < 6; i++) { const x = make(), f = dummy(x, TILE); cast(x, 'moth-swarm'); hits.push(...hitsOn(x, f, v['secs'])); }
+    return { count, secs, radius, blind, ...pair(rangeOf(hits, ...k2(v))) };
+  },
+  'glims-margin': (r, o) => {
+    const make = () => world('lanternwright', { 'glims-margin': r }, o), v = make().sys.v('glims-margin');
+    const radius = edge(v['radius'], d => { const x = make(), f = dummy(x, d); cast(x, 'glims-margin'); return (f.glimT ?? 0) > 0; });
+    const w = make(); dummy(w, TILE); cast(w, 'glims-margin');
+    const secs = timeUntil(w, () => w.sys.marginT === 0);
+    // The revealed are critted `crit`% more often (the Keeper's own crit is 0 here).
+    const x = make(), m = dummy(x, TILE); cast(x, 'glims-margin');
+    let crits = 0;
+    const n = 4000, hit = x.sys as unknown as { hitFoe(m: Mob, raw: number, c: string, s: SkillId | null): number };
+    for (let i = 0; i < n; i++) { m.glimT = 1; x.sys.marginT = 1; if (hit.hitFoe(m, 100, '#ffffff', null) > 120) crits++; }
+    const got = crits / n * 100;
+    return { radius, secs, crit: Math.abs(got - v['crit']) <= 2.5 ? v['crit'] : got };
+  },
+  // ── The Thornstrider ──
+  'hunters-mark': (r, o) => {
+    const make = () => world('thornstrider', { 'hunters-mark': r }, o), v = make().sys.v('hunters-mark');
+    const range = edge(v['range'], d => { const x = make(); dummy(x, d); return cast(x, 'hunters-mark') === null; }, DUMMY.w / 4);
+    const w = make(), m = dummy(w, 2 * TILE); cast(w, 'hunters-mark');
+    const dealt = (w.sys as unknown as { hitFoe(m: Mob, raw: number, c: string, s: SkillId | null): number }).hitFoe(m, 1000, '#ffffff', null);
+    const secs = timeUntil(w, () => w.sys.huntT === 0);
+    return { range, secs, pct: (dealt - 1000) / 10 };
+  },
+  'pinning-shot': (r, o) => {
+    const make = () => world('thornstrider', { 'pinning-shot': r }, o), v = make().sys.v('pinning-shot'), tv = make().sys.v('thorn-shot');
+    const firsts: number[] = [];
+    let root = NaN, hush = NaN;
+    for (let i = 0; i < 200; i++) {
+      const w = make(), m = dummy(w, 2 * TILE, ARROW_Y); w.sys.target = m; cast(w, 'pinning-shot');
+      timeUntil(w, () => m.hp < 1e7, 2, .01);
+      firsts.push(1e7 - m.hp);
+      if (i === 0) {
+        // Each status's seconds, from the hit to the frame it runs out.
+        let t = 0;
+        for (; t < 6 && ((m.rootT ?? 0) > 0 || (m.hushT ?? 0) > 0); t += .02) { w.sys.update(.02); if ((m.hushT ?? 0) === 0 && Number.isNaN(hush)) hush = Math.round((t + .02) * 100) / 100; if ((m.rootT ?? 0) === 0 && Number.isNaN(root)) root = Math.round((t + .02) * 100) / 100; }
+      }
+    }
+    const lo = Math.round(arrowBlow(tv['min'], tv['min']) * v['pct'] / 100), hi = Math.round(arrowBlow(tv['max'], tv['max']) * v['pct'] / 100);
+    return { pct: rangeOf(firsts, lo, hi)[0] === lo ? v['pct'] : NaN, root: Math.abs(root - v['root']) <= .03 ? v['root'] : root, hush: Math.abs(hush - v['hush']) <= .03 ? v['hush'] : hush };
+  },
+  'heartseeker': (r, o) => {
+    const make = () => world('thornstrider', { 'heartseeker': r }, o), v = make().sys.v('heartseeker'), tv = make().sys.v('thorn-shot');
+    const w = make(), m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'heartseeker');
+    const draw = timeUntil(w, () => m.hp < 1e7, 4);
+    const plain: number[] = [], marked: number[] = [];
+    for (let i = 0; i < 400; i++) {
+      for (const mk of [false, true]) {
+        const x = make(), f = dummy(x, 2 * TILE); x.sys.target = f;
+        if (mk) { x.sys.hunted = f; x.sys.huntT = 99; x.sys.huntPct = 0; }
+        cast(x, 'heartseeker'); run(x, v['draw'] + .05); (mk ? marked : plain).push(1e7 - f.hp);
+      }
+    }
+    const range = edge(v['range'], d => { const x = make(), t = dummy(x, 2 * TILE), far = dummy(x, d); x.sys.target = t; cast(x, 'heartseeker'); run(x, v['draw'] + .05); return far.hp < 1e7; }, Math.max(8, DUMMY.w / 3));
+    const lo = Math.round(arrowBlow(tv['min'], tv['min']) * v['pct'] / 100), hi = Math.round(arrowBlow(tv['max'], tv['max']) * v['pct'] / 100);
+    const mean = (a: number[]) => a.reduce((s, n) => s + n, 0) / a.length, ratio = mean(marked) / mean(plain);
+    return { draw, range, pct: rangeOf(plain, lo, hi)[0] === lo ? v['pct'] : NaN, marked: Math.abs(ratio - v['marked']) <= .1 ? v['marked'] : ratio };
+  },
+  'thornrain': (r, o) => {
+    const make = () => world('thornstrider', { 'thornrain': r }, o), v = make().sys.v('thornrain');
+    const w = make(), m = dummy(w, 3 * TILE); w.sys.target = m; cast(w, 'thornrain');
+    const z = w.sys.zones.find(q => q.kind === 'thornrain')!, cx = z.x, cy = z.y;
+    // Every arrow that lands (its spot): how many a second, and how far from the middle.
+    const seen = new Set<object>(), spots: { x: number; y: number }[] = [];
+    const secs = timeUntil(w, () => { for (const e of w.sys.effects) if (e.kind === 'arrow-hit' && !seen.has(e)) { seen.add(e); spots.push({ x: e.x, y: e.y + 2 }); } return !w.sys.zones.some(q => q.kind === 'thornrain'); });
+    const far = Math.max(...spots.map(s => Math.hypot(s.x - cx, s.y - cy)));
+    const hits: number[] = [];
+    for (let i = 0; i < 8; i++) { const x = make(), f = dummy(x, 3 * TILE); x.sys.target = f; cast(x, 'thornrain'); hits.push(...hitsOn(x, f, v['secs'] + .1)); }
+    return {
+      secs, rate: Math.abs(spots.length / v['secs'] - v['rate']) <= .5 ? v['rate'] : spots.length / v['secs'],
+      radius: far <= v['radius'] * TILE + .01 && far >= v['radius'] * TILE * .8 ? v['radius'] : far / TILE, ...pair(rangeOf(hits, ...k2(v))),
+    };
+  },
+  'feral-leap': (r, o) => {
+    const make = () => world('thornstrider', { 'feral-leap': r }, o), v = make().sys.v('feral-leap'), cw = make().sys.v('call-of-the-wilds');
+    const w = make(), m = dummy(w, TILE); cast(w, 'feral-leap');
+    const length = Math.round(Math.hypot(w.keeper.x, w.keeper.y) / TILE * 100) / 100, root = m.rootT ?? NaN;
+    const hits: number[] = [];
+    for (let i = 0; i < 300; i++) { const x = make(), f = dummy(x, TILE); cast(x, 'feral-leap'); hits.push(1e7 - f.hp); }
+    const lo = Math.round(cw['min'] * v['pct'] / 100), hi = Math.round(cw['max'] * v['pct'] / 100);
+    return { length, root, pct: rangeOf(hits, lo, hi)[0] === lo ? v['pct'] : NaN };
+  },
+  'elder-beast': (r, o) => {
+    const make = () => { const w = world('thornstrider', { 'elder-beast': r, 'call-of-the-wilds': 1 }, o); cast(w, 'call-of-the-wilds'); return w; };
+    const v = make().sys.v('elder-beast');
+    const w = make(), was = w.sys.beasts.find(b => b.kind === 'called')!.dmg;
+    cast(w, 'elder-beast');
+    const k = w.sys.minions.find(q => q.kind === 'elder')!;
+    const life = k.maxHp / 5000 * 100;
+    const lift = k.dmg[1] / was[1] - 1;
+    const secs = timeUntil(w, () => !w.sys.minions.some(q => q.kind === 'elder'), 60);
+    const strike = (x: World, e: Minion, f: Mob) => (x.sys as unknown as { lateMinionBlow(k: Minion, m: Mob): void }).lateMinionBlow(e, f);
+    const radius = edge(v['radius'], d => { const x = make(); cast(x, 'elder-beast'); const e = x.sys.minions[0], near = dummy(x, e.x + 8, e.y), farF = dummy(x, e.x + 8 + d, e.y); strike(x, e, near); return farF.hp < 1e7; }, DUMMY.w / 4);
+    return { life, secs, radius, bite: Math.abs(lift * 100 - v['bite']) <= 100 / Math.max(1, was[1]) + .5 ? v['bite'] : lift * 100 };
+  },
+  'call-the-rain': (r, o) => {
+    const make = () => { const w = world('thornstrider', { 'call-the-rain': r }, o); w.sys.weatherWet = true; return w; };
+    const v = make().sys.v('call-the-rain');
+    const w = make(), m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'call-the-rain');
+    const every = timeUntil(w, () => m.hp < 1e7, 10);
+    const x = make(); dummy(x, 2 * TILE); cast(x, 'call-the-rain');
+    const secs = timeUntil(x, () => !x.sys.zones.some(z => z.kind === 'cloud'), 40);
+    const radius = edge(v['radius'], d => { const y = make(), t = dummy(y, 2 * TILE), s = dummy(y, 2 * TILE + d, 0); y.sys.target = t; cast(y, 'call-the-rain'); y.sys.update(.02); return (s.wetT ?? 0) > 0; }, DUMMY.w / 4);
+    const hits: number[] = [];
+    for (let i = 0; i < 4; i++) { const y = make(), f = dummy(y, 2 * TILE); y.sys.target = f; cast(y, 'call-the-rain'); hits.push(...hitsOn(y, f, v['secs'])); }
+    return { every, secs, radius, ...pair(rangeOf(hits, ...k2(v))) };
+  },
+  'fogwalk': (r, o) => {
+    const make = () => world('thornstrider', { 'fogwalk': r }, o), v = make().sys.v('fogwalk');
+    const radius = edge(v['radius'], d => { const x = make(); cast(x, 'fogwalk'); x.keeper.x = d; return !!x.sys.fogAround(); });
+    const w = make(); cast(w, 'fogwalk');
+    const secs = timeUntil(w, () => !w.sys.zones.some(z => z.kind === 'fog'), 40);
+    const lostAt = (d: number) => { const x = make(), m = dummy(x, d); cast(x, 'fogwalk'); return (x.sys as unknown as { lostInFog(m: Mob, d: number, k: boolean): boolean }).lostInFog(m, d, true); };
+    const lose = edge(v['lose'], d => !lostAt(d));
+    // Its first arrow from inside strikes harder; the next does not.
+    const a: number[] = [], b: number[] = [];
+    for (let i = 0; i < 300; i++) {
+      const x = make(), f = dummy(x, 2 * TILE, ARROW_Y); cast(x, 'fogwalk'); x.sys.target = f;
+      const at = x.blows.length; run(x, 2.5); const got = x.blows.slice(at).filter(q => q.m === f).map(q => q.n);
+      if (got.length >= 2) { a.push(got[0]); b.push(got[1]); }
+    }
+    const mean = (q: number[]) => q.reduce((s, n) => s + n, 0) / q.length, ratio = mean(a) / mean(b) - 1;
+    return { radius, secs, lose, first: Math.abs(ratio * 100 - v['first']) <= 6 ? v['first'] : ratio * 100 };
+  },
+  'lightning-call': (r, o) => {
+    const make = () => world('thornstrider', { 'lightning-call': r }, o), v = make().sys.v('lightning-call');
+    const w = make(), m = dummy(w, 3 * TILE); w.sys.target = m; cast(w, 'lightning-call');
+    const tell = timeUntil(w, () => m.hp < 1e7, 4);
+    const hits: number[] = [];
+    for (let i = 0; i < 300; i++) { const x = make(), f = dummy(x, 3 * TILE); x.sys.target = f; cast(x, 'lightning-call'); run(x, v['tell'] + .05); hits.push(1e7 - f.hp); }
+    const radius = edge(v['radius'], d => { const x = make(), t = dummy(x, 3 * TILE), s = dummy(x, 3 * TILE + d, 0); x.sys.target = t; cast(x, 'lightning-call'); run(x, v['tell'] + .05); return s.hp < 1e7; }, DUMMY.w / 4);
+    // On a Wet foe it chains on: the foes past its ring, each within reach of the last, struck one by one.
+    const y = make(), t = dummy(y, 3 * TILE), rest = Array.from({ length: 8 }, (_, i) => dummy(y, 3 * TILE + (i + 1) * 40)); t.wetT = 99; y.sys.target = t; cast(y, 'lightning-call'); run(y, v['tell'] + .05);
+    return { tell, radius, chain: rest.filter(q => q.hp < 1e7).length, ...pair(rangeOf(hits, ...k2(v))) };
   },
 };
 

@@ -16,15 +16,16 @@ const NEW_SKILLS: SkillId[] = ['cinder-rain', 'flame-wall', 'ember-mastery', 'me
 
 describe('td-tree: the trees themselves', () => {
   it('three pages of 5–6 rows each, in the book order (the level each opens at); the folded passives have no row', () => {
-    // skills-100.md §6: Ember 6 rows, Bone 5, Shadow 6 (Ember Mastery, Soul Harvest, Skeleton Mastery and Life Tap are marks now).
-    expect(TREES.map(tr => treeSkills('warlock', tr).length)).toEqual([6, 5, 6]);
+    // skills-100.md §6: Ember 7 rows, Bone 7, Shadow 7 (Ember Mastery, Soul Harvest, Skeleton Mastery and Life Tap are marks
+    // now; S9 adds Kiln Breath, Raise Grave-Mage, the Ossuary Golem and Rime Lance).
+    expect(TREES.map(tr => treeSkills('warlock', tr).length)).toEqual([7, 7, 7]);
     for (const tr of TREES) {
       const ids = treeSkills('warlock', tr);
       for (let i = 1; i < ids.length; i++) expect(levelFor(ids[i])).withContext(`${tr} ${ids[i]}`).toBeGreaterThanOrEqual(levelFor(ids[i - 1]));
       for (const id of ids) expect(FOLDED[id]).withContext(id).toBeUndefined();
     }
-    // 21 records in the three trees (four of them folded into marks), and the common page's three.
-    expect(CLASS_SKILLS.warlock.length).toBe(24);
+    // 25 records in the three trees (four of them folded into marks), and the common page's three.
+    expect(CLASS_SKILLS.warlock.length).toBe(28);
   });
 
   it('the starting kit sits in the first tier (a new Warlock fights as before)', () => {

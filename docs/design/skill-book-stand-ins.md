@@ -94,6 +94,8 @@ line, and moves the mark off this list. No saved mask changes (a mark is a bit, 
 - **Beacon B2 Waymark** (you): (c) S5. Allies within 4 of the pole walk 10% faster for the same time.
 
 ## Thornstrider
+- **Done (S9, 2026-11-03):** Thorn Shot B3 Mark-Seeker. Hunter's Mark shipped; the bow seeks the Marked foe first while
+  it is in reach (`markSeek`), and the +15% on Bleeding foes stays.
 - **Thorn Shot B3 Mark-Seeker** (+15% on Bleeding foes): (c) S5. When Hunter's Mark ships, the shot seeks the
   Marked foe; +15% stays.
 - **Command A3 Hold Them** (the commanded foe bites 20% weaker): (a).

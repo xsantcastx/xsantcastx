@@ -118,6 +118,7 @@ import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
 import { THORN_FX, drawArrow, drawBeast, drawThornAir, drawThornGround, drawThornState, drawThornZones } from './td-thorn-fx';
+import { drawLateAir, drawLateGround, drawLateState, drawLateZones } from './td-late-fx';
 import { SPIRIT_BEAST, THORN_PET, bondShare, spiritLevel, thornPetRest } from './td-thorn';
 import { dropGlow, dropIconSrc } from './td-drop-art';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
@@ -2074,7 +2075,8 @@ export class TopDownEngine {
     const b = this.pet;
     if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
     this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
-    for (const k of this.mobs.minions) out.push({ i: minionPalId(k), k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    // S9: only the skeletons go to the room as kin (a Grave-Mage, the Golem and an Elder Beast are this screen's own: skills-100.md §1.2 "solo only").
+    for (const k of this.mobs.minions) if (!k.kind) out.push({ i: minionPalId(k), k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
     this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
     this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
     if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
@@ -3362,6 +3364,10 @@ export class TopDownEngine {
     // Wet (the weather's rule): rain on the Keeper keeps him Wet, and a few seconds after (td-mobs reads kst.wet).
     if (this.rainedOn) this.mobs.kst.wet = Math.max(this.mobs.kst.wet, WET_LINGER_SECS);
     this.mobs.weatherWet = this.rainedOn;
+    // S9: the sky the Thornstrider's weather rows read (outdoors only): a thunderstorm, the world's fog.
+    const outdoors = this.level === this.world && this.weatherFx.now.level > .3;
+    this.mobs.stormSky = outdoors && this.weatherFx.now.state === 'storm';
+    this.mobs.skyFog = outdoors && this.weatherFx.now.state === 'fog';
     this.updateGather(dt);
     this.actT = Math.max(0, this.actT - dt); this.shake = Math.max(0, this.shake - dt);
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
@@ -4689,6 +4695,31 @@ export class TopDownEngine {
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
+    // S9: an Elder Beast is the called beast grown ×1.5 with moss on its back; a Grave-Mage a skeleton with its lantern;
+    // the Ossuary Golem a skeleton built twice as big of tidy ivory bones.
+    if (k.kind === 'elder') {
+      const c = this.ctx;
+      c.save(); c.translate(Math.round(k.x), Math.round(k.y)); c.scale(1.5, 1.5);
+      drawBeast(c, { x: 0, y: 0, face: k.face, age: 1, kind: 'called' }, this.time, this.still);
+      c.fillStyle = THORN_FX.wild.edge; c.fillRect(-4, -11, 8, 1); c.fillStyle = '#6eae52'; c.fillRect(-3, -12, 2, 1); c.fillRect(1, -12, 2, 1);
+      c.fillStyle = '#c9a66b'; c.fillRect(k.face * 4, -15, 1, 3); c.fillRect(k.face * 6, -15, 1, 2);
+      c.restore();
+      const w = 18, frac = Math.max(0, k.hp / k.maxHp);
+      c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - 26), w + 2, 3);
+      c.fillStyle = THORN_FX.wild.body; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - 25), Math.round(w * frac), 1);
+      return;
+    }
+    if (k.kind === 'golem') { const c = this.ctx; c.save(); c.translate(Math.round(k.x), Math.round(k.y)); c.scale(2, 2); c.translate(-Math.round(k.x), -Math.round(k.y)); this.drawRaisedBody({ ...k, kind: undefined }); c.restore(); return; }
+    this.drawRaisedBody(k);
+    if (k.kind === 'mage') {
+      // Its small lantern, in the colour of its element.
+      const c = this.ctx, col = k.el === 'fire' ? '#ff8a2e' : k.el === 'cold' ? '#8fd8ff' : k.el === 'arrow' ? '#8fc25a' : '#b06bff';
+      c.fillStyle = '#5a4020'; c.fillRect(Math.round(k.x + k.face * 5), Math.round(k.y - 14), 1, 4);
+      c.fillStyle = col; c.fillRect(Math.round(k.x + k.face * 5) - 1, Math.round(k.y - 17), 3, 3);
+      c.fillStyle = '#fffbe8'; c.fillRect(Math.round(k.x + k.face * 5), Math.round(k.y - 16), 1, 1);
+    }
+  }
+  private drawRaisedBody(k: Minion): void {
     const c = this.ctx, d = this.vis(RAISED_SKELETON), sheet = mobSheet(RAISED_SKELETON), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
     // Isometric B: the HD raised skeleton, climbing out of the ground (clipped at the feet) for its first half second.
@@ -5176,9 +5207,12 @@ export class TopDownEngine {
     if (this.mobs.zones.length) drawLampZones(c, this.mobs.zones, this.time, this.still);
     // The Thornstrider's on the floor: the snare's thorns, a hidden trap.
     if (this.mobs.zones.length) drawThornZones(c, this.mobs.zones, this.time, this.still);
+    // S9's on the floor: a rain cloud, a fog bank, the moths, the thornrain, thorny ground.
+    if (this.mobs.zones.length) drawLateZones(c, this.mobs.zones, this.time, this.still);
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
       if (drawAshGround(c, e, this.still)) continue;
+      if (drawLateGround(c, e, this.still)) continue;
       if (drawLampGround(c, e, this.still)) continue;
       if (drawThornGround(c, e, this.still)) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
@@ -5329,6 +5363,7 @@ export class TopDownEngine {
       if (drawAshAir(c, e, this.still, this.overFoe)) continue;
       if (drawLampAir(c, e, this.still, this.overFoe)) continue;
       if (drawThornAir(c, e, this.still, this.overFoe)) continue;
+      if (drawLateAir(c, e, this.still, this.overFoe)) continue;
       // Reduced motion: a burst is one still frame, never no burst.
       const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), bt = this.still ? .5 : t, seed = (X * 7 + Y * 13) | 0;
       c.globalAlpha = Math.max(0, 1 - t);
@@ -5464,6 +5499,8 @@ export class TopDownEngine {
       const pb = this.pet;
       drawThornState(c, { mobs: this.mobs.mobs, commanded: this.mobs.commanded, bond: this.mobs.bonded && pb ? { x: pb.x, y: pb.y } : null, keeper: this.player }, this.time, this.still, this.isoAtHook());
     }
+    // S9: the leaf over the Marked, a Shock's spark, a Wet foe's droplet, the revealed's corners.
+    if (this.mobs.hunted || this.mobs.mobs.some(m => (m.shockT ?? 0) > 0 || (m.wetT ?? 0) > 0 || (m.glimT ?? 0) > 0)) drawLateState(c, { mobs: this.mobs.mobs, hunted: this.mobs.huntT > 0 ? this.mobs.hunted : null }, this.time, this.still, this.isoAtHook());
     // The Thornstrider's arrows in flight.
     for (const a of this.mobs.arrows) { this.at(a.x, a.y); drawArrow(c, a.x, a.y, a.vx, a.vy); }
     // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).

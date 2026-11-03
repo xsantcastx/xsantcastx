@@ -117,6 +117,26 @@ export const SKILL_KIT: Readonly<Record<string, SkillKit>> = {
   'thornroot-snare': K('cast-slam', 'wind', 'arrow', 'physical', -3),
   'bramble-trap': K('throw', 'wind', 'arrow', 'physical', 2),
   'rootwalk': K('cast-raise', 'wind', null, 'physical', -2),
+  // ── S9: rows 30–50 for every calling (and the Thornstrider's S5 rows) ──
+  'kiln-breath': K('channel', 'fire-cast', 'fire-hit', 'fire', -4),
+  'raise-grave-mage': K('kneel', 'bone-cast', 'light-hit', 'arcane', -5),
+  'ossuary-golem': K('cast-slam', 'bone-cast', 'bone-hit', 'arcane', -8),
+  'rime-lance': K('cast-push', 'frost-cast', 'frost-hit', 'cold', 1),
+  'pyre-strike': K('heavy', 'wind', 'fire-hit', 'fire', -4),
+  'watchquake': K('heavy', 'shield', 'blade', 'physical', -10),
+  'chain-of-lamps': K('cast-push', 'lightning-cast', 'lightning-hit', 'lightning', 2),
+  'moth-dust': K('throw', 'wind', null, 'arcane', 8),
+  'moth-swarm': K('cast-raise', 'light-cast', 'light-hit', 'arcane', 6),
+  'glims-margin': K('cast-raise', 'light-cast', null, 'arcane', 9),
+  'hunters-mark': K('whistle', 'wind', null, 'physical', 7),
+  'pinning-shot': K('draw', 'arrow', 'arrow', 'physical', -3),
+  'heartseeker': K('draw', 'arrow', 'arrow', 'physical', -6),
+  'thornrain': K('draw', 'wind', 'arrow', 'physical', 4),
+  'feral-leap': K('throw', 'wind', 'beast', 'physical', 3),
+  'elder-beast': K('whistle', 'beast', 'beast', 'physical', -9),
+  'call-the-rain': K('cast-raise', 'rain', 'lightning-hit', 'lightning', 0),
+  'fogwalk': K('cast-raise', 'wind', null, 'cold', -6),
+  'lightning-call': K('cast-raise', 'lightning-cast', 'lightning-hit', 'lightning', -2),
 };
 
 /** A row's kit; a row without one still casts with a readable raise and a soft chime (the spec flags it). */
