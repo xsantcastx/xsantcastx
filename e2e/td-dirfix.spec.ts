@@ -133,10 +133,16 @@ test.describe('crowns', () => {
     const r = await art<{ tree: Pt; mob: Pt } | null>(page, 'behindTree', 'ash-wolf', 1, 0, 3000, 10);
     expect(r, 'a tree whose crown fades on this map').not.toBeNull();
     // The Keeper eight tiles south-east of the tree (in front of it on the screen, out of the old six-tile reach).
-    const d = 128 / Math.SQRT2;
-    await page.evaluate(([x, y]) => (window as unknown as { __tdZones: { to(c: number, r: number): boolean } }).__tdZones.to(Math.floor(x / 16), Math.floor(y / 16)), [r!.tree.x + d, r!.tree.y + d]);
-    const p = await player(page);
-    const dist = Math.hypot(r!.mob.x - p.x, r!.mob.y - p.y);
+    // The tile eight tiles off can be blocked (a rock, another tree) and the jump then lands further away, so try the
+    // spots round it until the Keeper stands outside the old reach but inside the bar's.
+    let p = await player(page), dist = Infinity;
+    for (const [dx, dy] of [[0, 0], [16, 0], [0, 16], [-16, 0], [0, -16], [16, 16], [-16, -16], [32, 0], [0, 32]]) {
+      const d = 128 / Math.SQRT2;
+      await page.evaluate(([x, y]) => (window as unknown as { __tdZones: { to(c: number, r: number): boolean } }).__tdZones.to(Math.floor(x / 16), Math.floor(y / 16)), [r!.tree.x + d + dx, r!.tree.y + d + dy]);
+      p = await player(page);
+      dist = Math.hypot(r!.mob.x - p.x, r!.mob.y - p.y);
+      if (dist <= 150 && Math.max(Math.abs(r!.mob.x - p.x), Math.abs(r!.mob.y - p.y)) > 96) break;
+    }
     expect(Math.max(Math.abs(r!.mob.x - p.x), Math.abs(r!.mob.y - p.y))).toBeGreaterThan(96);
     expect(dist).toBeLessThanOrEqual(150);
     await expect.poll(async () => (await art<View>(page, 'view')).faded, { timeout: 5000 }).toBeGreaterThan(0);
