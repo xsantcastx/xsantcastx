@@ -6,6 +6,17 @@
  */
 export const VAULT_STATION_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'vault.title': { en: 'The Vault', es: 'La Bóveda' },
+  // A portrait phone (docs/design/ui-pass-3.md §A.5): one grid at a time behind a Vault | Satchel switch.
+  'vault.seg.label': { en: 'Show the Vault or the Satchel', es: 'Mostrar la Bóveda o la Mochila' },
+  'vault.seg.vault': { en: 'Vault', es: 'Bóveda' },
+  'vault.seg.satchel': { en: 'Satchel', es: 'Mochila' },
+  'vault.page.prev': { en: 'Pocket 1', es: 'Bolsillo 1' },
+  'vault.page.next': { en: 'Pocket 2', es: 'Bolsillo 2' },
+  'vault.page.label': { en: 'Pages of this grid', es: 'Páginas de esta cuadrícula' },
+  'vault.act.depositOne': { en: 'Deposit', es: 'Guardar' },
+  'vault.act.takeOne': { en: 'Take', es: 'Sacar' },
+  'vault.act.buyNext': { en: '+ · {{price}} Gold', es: '+ · {{price}} de oro' },
+  'vault.act.buyNextAria': { en: 'Buy the {{tab}} tab for {{price}} Gold', es: 'Comprar la pestaña {{tab}} por {{price}} de oro' },
   'vault.purpose': { en: 'Drag things between your satchel and the stash. Nothing comes here by itself.', es: 'Arrastra cosas entre tu mochila y el baul. Nada llega aqui por si solo.' },
   'vault.tabs': { en: 'Vault tabs', es: 'Pestañas de la Bóveda' },
   'vault.tab.general-1': { en: 'General I', es: 'General I' },

@@ -141,7 +141,9 @@ test.describe('the book on a phone', () => {
       test.setTimeout(120_000);
       await page.setViewportSize(size);
       await open(page, { level: 30, key: false });
-      await page.locator('[data-hb="spellbook"]:visible, .td-dock button[title*="(K)"]:visible').first().tap();
+      // A portrait phone: the Skill Book is a tile of ☰ More (docs/design/ui-pass-3.md §A.2).
+      if (await page.locator('[data-th="more"]').count()) { await page.locator('[data-th="more"]').tap(); await page.locator('[data-tile="book"]').tap(); }
+      else await page.locator('[data-hb="spellbook"]:visible, .td-dock button[title*="(K)"]:visible').first().tap();
       await expect(page.locator('.sbook .book')).toBeVisible();
       const scroll = page.locator('.sbook .book__scroll');
       // The page is longer than the window: it scrolls inside it (not the whole screen).

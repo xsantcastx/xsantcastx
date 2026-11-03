@@ -21,7 +21,9 @@ import { GRID_TABS, type GridView, type Piece } from '../rpg/inventory-grid';
 import { SATCHEL_MAX_ROWS, VAULT_TABS, type VaultTabId } from '../rpg/inventory-layout';
 import { STATION_UI, STATION_UI_I18N, type StationCost, type StationTab } from '../station-ui';
 import { ItemGridComponent, type GridPick, type PieceLook } from '../inventory-grid/item-grid.component';
-import { ItemDragService, type DragHeld } from '../inventory-grid/item-drag.service';
+import { ItemDragService, type DragHeld, type DropTarget } from '../inventory-grid/item-drag.service';
+import { DropTargetDirective } from '../inventory-grid/drop-target.directive';
+import { onPage } from '../inventory-grid/grid-pages';
 import { pieceLookOf } from '../inventory-grid/piece-look';
 import { StorageService, type StorageId } from './storage.service';
 import { PotionService } from '../potions/potion.service';
@@ -40,7 +42,7 @@ function mutationId(id: string): string {
 @Component({
   selector: 'app-vault-station',
   standalone: true,
-  imports: [...STATION_UI, ItemGridComponent],
+  imports: [...STATION_UI, ItemGridComponent, DropTargetDirective],
   templateUrl: './vault-station.component.html',
   styleUrls: ['./vault-station.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,6 +77,80 @@ export class VaultStationComponent implements OnInit, OnDestroy {
   card: { look: PieceLook; piece: Piece } | null = null;
   private pending = new Map<StorageId, string>();
 
+  // ── A phone (docs/design/ui-pass-3.md §A.5): one grid at a time (Vault | Satchel), each as two 5-column pages ──
+  private portraitMq: MediaQueryList | null = null;
+  private pagedMq: MediaQueryList | null = null;
+  /** A portrait phone: one grid at a time behind the Vault | Satchel switch, and the tab row as wood chips. */
+  get portrait(): boolean { return !!this.portraitMq?.matches; }
+  /** A phone either way up: both grids draw as two pages of ≥ 44 px cells. */
+  get paged(): boolean { return !!this.pagedMq?.matches; }
+  seg: 'vault' | 'satchel' = 'vault';
+  vaultPage = 0;
+  bagPage = 0;
+  setSeg(s: 'vault' | 'satchel'): void { if (this.seg === s) return; this.seg = s; this.card = null; this.cdr.markForCheck(); }
+  flip(which: 'vault' | 'satchel', d: 1 | -1): void {
+    if (which === 'vault') this.vaultPage = Math.max(0, Math.min(1, this.vaultPage + d)); else this.bagPage = Math.max(0, Math.min(1, this.bagPage + d));
+    this.cdr.markForCheck();
+  }
+  setPage(which: 'vault' | 'satchel', n: number): void { if (which === 'vault') this.vaultPage = n; else this.bagPage = n; this.cdr.markForCheck(); }
+  count(view: GridView | null, page: number): number { return view ? view.pieces.filter(p => onPage(p.cell, p.w, page, view.w)).length : 0; }
+  private readonly arrows = new Map<string, DropTarget>();
+  /** Rest a held piece on ◀ / ▶ for 400 ms: the page flips (a tap flips at once). */
+  arrow(which: 'vault' | 'satchel', d: 1 | -1): DropTarget {
+    const k = `${which}${d}`;
+    let t = this.arrows.get(k);
+    if (!t) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      t = {
+        accepts: () => this.drag.mode === 'drag',
+        over: () => { if (!timer) timer = setTimeout(() => { timer = undefined; this.flip(which, d); }, 400); },
+        leave: () => { clearTimeout(timer); timer = undefined; },
+        drop: () => { clearTimeout(timer); timer = undefined; return false; },
+      };
+      this.arrows.set(k, t);
+    }
+    return t;
+  }
+  private readonly segTargets = new Map<string, DropTarget>();
+  /** The other segment's chip: rest a held piece there (400 ms) to switch, or drop it there for its first free cell. */
+  segTarget(s: 'vault' | 'satchel'): DropTarget {
+    let t = this.segTargets.get(s);
+    if (!t) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const from = (held: DragHeld) => (s === 'vault' ? held.from === 'b' : held.from !== 'b' && held.from !== 'slot');
+      t = {
+        accepts: held => this.seg !== s && from(held) && held.ref.kind !== 'slot' && !(s === 'vault' && this.locked),
+        over: () => { if (!timer) timer = setTimeout(() => { timer = undefined; this.setSeg(s); }, 400); },
+        leave: () => { clearTimeout(timer); timer = undefined; },
+        drop: held => {
+          clearTimeout(timer); timer = undefined;
+          const view = held.from === 'b' ? this.satchel : this.stash;
+          const piece = view?.pieces.find(p => p.key === held.pieceKey);
+          return piece ? this.moveOne(piece, s === 'vault' ? 'vault' : 'satchel') : false;
+        },
+      };
+      this.segTargets.set(s, t);
+    }
+    return t;
+  }
+  /** The card's primary on a phone: Deposit (a satchel piece into the open tab) or Take (a Vault piece into the satchel). */
+  cardFrom(): 'satchel' | 'vault' | null {
+    const c = this.card;
+    if (!c) return null;
+    return this.satchel?.pieces.some(p => p.key === c.piece.key) ? 'satchel' : 'vault';
+  }
+  cardMove(): void { const c = this.card, from = this.cardFrom(); if (c && from) this.moveOne(c.piece, from === 'satchel' ? 'vault' : 'satchel'); }
+  private moveOne(piece: Piece, to: 'vault' | 'satchel'): boolean {
+    if (to === 'vault' && (this.view === 'overflow' || this.locked)) { this.announce = this.t('vault.why.blocked'); this.cdr.markForCheck(); return false; }
+    const r = this.inventory.movePieceInto(piece, to === 'vault' ? [this.view as VaultTabId] : ['b']);
+    this.announce = r === 'ok' ? '' : this.t(r === 'persist' ? 'vault.why.failed' : 'vault.why.blocked');
+    if (r === 'ok') this.card = null;
+    this.cdr.markForCheck();
+    return r === 'ok';
+  }
+  /** The next tab to buy, for the + chip ("+ · 5,000 Gold"). */
+  get nextOffer(): Offer | null { return this.offers.find(o => o.id !== 'satchel-row' && !o.owned && o.price !== null) ?? null; }
+
   readonly look = (p: Piece): PieceLook => pieceLookOf(this.inventory.snapshot, p);
   /** Only grids moves land in the stash; the stash takes nothing from a worn slot. */
   readonly stashAccepts = (held: DragHeld): boolean => held.ref.kind !== 'slot' && !this.locked;
@@ -88,6 +164,10 @@ export class VaultStationComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (!this.isBrowser) { this.refresh(); return; }
+    if (typeof matchMedia === 'function') {
+      this.portraitMq = matchMedia('(max-width: 900px) and (orientation: portrait)');
+      this.pagedMq = matchMedia('(max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px)');
+    }
     this.inventory.init();
     this.inventory.setAtVault(true);
     this.subs.push(this.economy.snapshot$.subscribe(snap => { this.gold = snap.gold; this.hydrated = true; this.refresh(); }));

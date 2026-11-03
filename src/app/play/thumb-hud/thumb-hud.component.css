@@ -1,0 +1,148 @@
+/* The portrait phone's thumb-zone HUD (docs/design/ui-pass-3.md §A.2). Every offset is CSS px from the safe area.
+   Two size classes: regular (390×844 and up) and compact (W < 380 or H < 700, the host's .stage--compact). Tokens:
+   _cozy.css only. Square corners and 2 px stepped edges, except the disc and the orbs (the only round controls). */
+:host {
+  display: contents;
+  --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px);
+  --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
+  /* Regular. */
+  --key: 52px; --disc: 76px; --disc-r: 16px; --slot: 52px; --edge: 16px; --gap: 4px;
+  --belt-1: 76px; --belt-2: 132px; --belt-3: 188px;
+  --k0r: 140px; --k0b: 28px; --k1r: 138px; --k1b: 84px; --k2r: 84px; --k2b: 138px; --k3r: 28px; --k3b: 140px; --pg: 79px;
+  --tick-top: 108px; --tick-right: 112px; --tick-lines: 3;
+}
+:host-context(.stage--compact) {
+  --key: 48px; --disc: 64px; --disc-r: 12px; --slot: 48px; --edge: 12px;
+  --belt-1: 68px; --belt-2: 120px; --belt-3: 172px;
+  --k0r: 124px; --k0b: 20px; --k1r: 122px; --k1b: 72px; --k2r: 72px; --k2b: 112px; --k3r: 20px; --k3b: 124px; --pg: 66px;
+  --tick-top: 104px; --tick-right: 104px; --tick-lines: 2;
+}
+
+/* ── Shared: a wooden 2 px-stepped button ── */
+.th-face, .th-btn, .th-page, .th-tile, .th-fan__btn, .th-key, .th-slot {
+  margin: 0; padding: 0; border: 0; border-radius: 0; font: inherit; color: var(--cozy-cream); cursor: pointer;
+  background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+:is(.th-face, .th-btn, .th-page, .th-tile, .th-fan__btn, .th-key, .th-slot):focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
+:is(.th-btn, .th-page, .th-tile, .th-fan__btn, .th-key, .th-slot):active { translate: 0 2px; }
+.th-dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; background: var(--cozy-brass-hi); box-shadow: 0 0 0 2px var(--cozy-wood-0); pointer-events: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── Row A: the face chip ── */
+.th-face { position: absolute; z-index: 7; left: calc(var(--sl) + 8px); top: calc(var(--st) + 8px); width: 44px; height: 44px; overflow: visible;
+  background: var(--cozy-well); }
+.th-face__pic { position: absolute; inset: 2px; overflow: hidden; pointer-events: none; }
+.th-face__pic img { position: absolute; left: 50%; top: -6px; width: 80px; height: 80px; translate: -50% 0; image-rendering: pixelated; }
+.th-face__lv { position: absolute; right: -6px; bottom: -6px; min-width: 20px; height: 20px; padding: 0 3px; display: grid; place-items: center;
+  font: 700 12px/1 var(--cozy-font-read); color: var(--cozy-ink); background: var(--cozy-brass-hi); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+
+/* ── Row C: the ticker ── */
+.th-ticker { position: absolute; z-index: 6; left: calc(var(--sl) + 8px); right: calc(var(--sr) + var(--tick-right)); top: calc(var(--st) + var(--tick-top));
+  display: flex; flex-direction: column; gap: 0; max-height: calc(var(--tick-lines) * 16px + 8px); overflow: hidden; padding: 4px 8px; cursor: pointer;
+  background: color-mix(in srgb, var(--cozy-plate) 70%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
+.th-ticker:empty { display: none; }
+.th-line { margin: 0; min-height: 16px; font: 500 12px/16px var(--cozy-font-read); color: var(--cozy-cream); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.th-line b { margin-right: 4px; font-weight: 700; color: var(--cozy-glow); }
+.th-line[data-th-line='area'] { font: 400 14px/16px var(--font-pixel); color: var(--cozy-brass-hi); }
+.th-line[data-th-line='armed'] { color: var(--cozy-glow); font-weight: 700; }
+.th-line[data-th-line='log'], .th-line[data-th-line='chat'] { animation: thFade 6s linear both; }
+
+/* ── Right thumb: the arc of skill keys round the disc ──
+   The spec's arc (radius 112 at 180°, 150°, 120°, 90°) is drawn for round keys: square keys there overlap at their
+   corners. Keys 2 and 3 sit on the same arc pulled to a 4 px square gap (centres 110,56 and 56,110 from the disc's
+   centre), and the ⇅ chip at 135°, radius 66, so no two boxes meet (compact: key 3 drops to clear the centre, the chip sits at radius 62). */
+.th-arc { position: absolute; z-index: 6; right: var(--sr); bottom: var(--sb); width: 0; height: 0; pointer-events: none; }
+.th-key { position: absolute; display: grid; place-items: center; width: var(--key); height: var(--key); pointer-events: auto; background: var(--cozy-well);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-1), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent), 0 0 0 2px var(--cozy-wood-0); }
+.th-key[data-arc='0'] { right: var(--k0r); bottom: var(--k0b); }
+.th-key[data-arc='1'] { right: var(--k1r); bottom: var(--k1b); }
+.th-key[data-arc='2'] { right: var(--k2r); bottom: var(--k2b); }
+.th-key[data-arc='3'] { right: var(--k3r); bottom: var(--k3b); }
+.th-key__ico { display: grid; place-items: center; pointer-events: none; }
+.th-key::after { content: ""; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.th-key kbd { position: absolute; right: 3px; bottom: 2px; font: 700 10px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.th-key.td-skill--dry { filter: saturate(.4) brightness(.8); }
+.th-key--empty { cursor: default; opacity: .55; }
+.th-page { position: absolute; z-index: 6; right: calc(var(--sr) + var(--pg)); bottom: calc(var(--sb) + var(--pg)); width: 44px; height: 44px; display: grid; place-items: center; }
+.th-page[aria-pressed='true'] { box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
+.th-page__badge { position: absolute; left: 50%; top: -12px; translate: -50% 0; padding: 1px 3px; font: 700 10px/1 var(--cozy-font-read); color: var(--cozy-ink); background: var(--cozy-brass-hi); box-shadow: 0 0 0 2px var(--cozy-wood-0); white-space: nowrap; }
+
+/* The disc: the one round wooden control (besides the orbs), Attack or the verb in reach. */
+.th-disc { position: absolute; z-index: 6; right: calc(var(--sr) + var(--disc-r)); bottom: calc(var(--sb) + var(--disc-r)); width: var(--disc); height: var(--disc);
+  margin: 0; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; align-content: center; gap: 0; cursor: pointer;
+  color: var(--cozy-cream); background: radial-gradient(circle at 35% 30%, var(--cozy-wood-3), var(--cozy-wood-2) 60%, var(--cozy-wood-1));
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 5px var(--cozy-wood-hi), 0 0 0 7px var(--cozy-wood-0), inset 0 -4px 0 0 color-mix(in srgb, var(--cozy-wood-0) 45%, transparent);
+  touch-action: none; -webkit-tap-highlight-color: transparent; }
+.th-disc svg { image-rendering: pixelated; pointer-events: none; }
+.th-disc--verb { box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 5px var(--cozy-brass-hi), 0 0 0 7px var(--cozy-wood-0), inset 0 -4px 0 0 color-mix(in srgb, var(--cozy-wood-0) 45%, transparent); }
+.th-disc__verb { font: 400 12px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); pointer-events: none; white-space: nowrap; }
+.th-disc:active { translate: 0 2px; }
+.th-disc:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 8px; }
+.th-fan { position: absolute; z-index: 8; right: calc(var(--sr) + 8px); bottom: calc(var(--sb) + var(--disc) + var(--disc-r) + 16px); display: flex; gap: 8px; }
+.th-fan__btn { min-width: 76px; min-height: 44px; padding: 0 12px; font: 400 14px/1 var(--font-pixel); }
+
+/* ── Left thumb: the belt column over the bag row ── */
+.th-belt { position: absolute; z-index: 6; left: var(--sl); bottom: var(--sb); width: 0; height: 0; pointer-events: none; }
+.th-slot { position: absolute; left: var(--edge); width: var(--slot); height: var(--slot); display: grid; place-items: center; pointer-events: auto; background: var(--cozy-well);
+  box-shadow: inset 0 0 0 2px var(--pot, var(--cozy-wood-1)), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent), 0 0 0 2px var(--cozy-wood-0); }
+.th-slot[data-kind='health'] { --pot: color-mix(in srgb, var(--cozy-berry) 70%, var(--cozy-wood-1)); bottom: var(--belt-1); }
+.th-slot[data-kind='mana'] { --pot: color-mix(in srgb, var(--cozy-mana) 70%, var(--cozy-wood-1)); bottom: var(--belt-2); }
+.th-slot[data-kind='stone'] { --pot: color-mix(in srgb, var(--cozy-loot-rune) 60%, var(--cozy-wood-1)); bottom: var(--belt-3); }
+.th-slot img { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
+.th-slot.td-pot--empty img, .th-slot.td-pot--empty svg { opacity: .5; }
+.th-slot::after { content: ""; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.th-slot .td-pot__n { position: absolute; left: 4px; top: 3px; font: 700 12px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); pointer-events: none; }
+.th-slot kbd { position: absolute; right: 3px; bottom: 2px; font: 700 10px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+
+.th-bag { position: absolute; z-index: 6; left: calc(var(--sl) + var(--edge)); bottom: calc(var(--sb) + var(--edge)); display: flex; gap: var(--gap); }
+.th-btn { position: relative; width: var(--slot); height: var(--slot); display: grid; place-items: center; align-content: center; gap: 0; }
+.th-btn svg { image-rendering: pixelated; pointer-events: none; }
+.th-btn__label { font: 400 12px/1 var(--font-pixel); text-shadow: 1px 1px 0 var(--cozy-wood-0); pointer-events: none; white-space: nowrap; }
+.th-btn[aria-expanded='true'] { box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
+/* Compact: icons only at 48 (the name is the aria-label). */
+:host-context(.stage--compact) .th-btn__label { display: none; }
+:host-context(.stage--compact) .th-btn svg { width: 30px; height: 30px; }
+
+/* ── ☰ More: a wooden tile sheet from the bottom-left ── */
+.th-scrim { position: absolute; inset: 0; z-index: 28; background: color-mix(in srgb, var(--cozy-wood-0) 35%, transparent); }
+.th-more { position: absolute; z-index: 29; left: calc(var(--sl) + 8px); bottom: calc(var(--sb) + var(--edge) + var(--slot) + 8px);
+  width: min(calc(100% - 16px - var(--sl) - var(--sr)), 328px); max-height: 50%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  padding: 0 12px 12px; box-sizing: border-box; background: var(--px-win-planks), var(--cozy-plate);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-wood-hi), 0 0 0 6px var(--cozy-wood-3), 0 0 0 8px var(--cozy-wood-0); }
+.th-more__head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin: 0 -12px 8px; padding: 0 4px 0 12px;
+  background: var(--cozy-plate); box-shadow: var(--px-groove); }
+.th-more__head h2 { margin: 0; font: 400 16px/1.2 var(--font-display, var(--font-pixel)); color: var(--cozy-cream); }
+.th-more__x { width: 44px; height: 44px; }
+.th-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.th-tile { position: relative; width: 100%; min-height: 72px; display: grid; justify-items: center; align-content: center; gap: 4px; padding: 6px 4px; }
+.th-tile span { font: 400 12px/1.15 var(--font-pixel); text-align: center; overflow-wrap: anywhere; }
+.th-tile[aria-pressed='true'] { box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
+.th-tile__ico { width: 32px; height: 32px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); position: relative; }
+/* Each tile's 32 px icon: a few pixel blocks in the tile's colour (one grid, light from the upper left). */
+.th-tile__ico::before, .th-tile__ico::after { content: ""; position: absolute; }
+.th-tile__ico::before { inset: 8px; background: var(--ico, var(--cozy-cream)); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.th-tile__ico::after { left: 8px; top: 8px; width: 6px; height: 6px; background: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.th-tile__ico[data-ico='book'] { --ico: var(--cozy-loot-epic); }
+.th-tile__ico[data-ico='character'] { --ico: var(--cozy-leaf); }
+.th-tile__ico[data-ico='journal'] { --ico: var(--cozy-parch); }
+.th-tile__ico[data-ico='chat'] { --ico: var(--cozy-mana); }
+.th-tile__ico[data-ico='friends'] { --ico: var(--cozy-glow); }
+.th-tile__ico[data-ico='bestiary'] { --ico: var(--cozy-berry); }
+.th-tile__ico[data-ico='settings'] { --ico: var(--cozy-wood-hi); }
+.th-tile__ico[data-ico='loot'] { --ico: var(--cozy-loot-rare); }
+.th-tile__ico[data-ico='names'] { --ico: var(--cozy-brass-hi); }
+.th-tile__ico[data-ico='lore'] { --ico: var(--cozy-loot-legendary); }
+.th-tile__ico[data-ico='account'] { --ico: var(--cozy-river); }
+.th-tile__ico[data-ico='feedback'] { --ico: var(--cozy-loot-uncommon); }
+.th-tile__ico[data-ico='menu'] { --ico: var(--cozy-cream); }
+.th-tile__ico[data-ico='slate'] { --ico: var(--cozy-loot-rune); }
+
+@keyframes thFade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .th-line[data-th-line='log'], .th-line[data-th-line='chat'] { animation: thFade 6s steps(4, end) both; }
+  .th-btn:active, .th-key:active, .th-disc:active, .th-page:active, .th-tile:active, .th-slot:active { translate: none; }
+}

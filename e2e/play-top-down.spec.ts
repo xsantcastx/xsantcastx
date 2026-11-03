@@ -49,7 +49,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
 test('the Cinder Ore seam is mined in the square (no detour into the old view)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openTopDown(page);
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, /cinder ore/i);
   await page.locator('#places-list button', { hasText: /cinder ore/i }).first().click();
   await expect(page.locator('.td-toast')).toBeVisible({ timeout: 20000 });
@@ -62,13 +62,13 @@ test('down the mine shaft to the hand-drawn Ember Mine and up its ladder, all to
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await openTopDown(page);
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, /ember delve/i);
   await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', /ember mine/i, { timeout: 20000 });
   await expect(page.locator('.stage')).toHaveClass(/stage--td/);
   await expect(page.locator('.stage')).not.toHaveClass(/stage--delve/);
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, /ladder up/i);
   await page.locator('#places-list button', { hasText: /ladder up/i }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', /basalt seamworks/i, { timeout: 20000 });
@@ -83,7 +83,7 @@ test('in the Ember Mine a Rivet Maw fights back, falls, and its coins are picked
   // balance pass; this test is about a fight that falls and coins on the floor, not a close one. The era stamp keeps
   // the seeded ledger (the game wipes a ledger it cannot date).
   await openTopDown(page, { 'godforge-realm-era': '55', ...activity({ hunting: xpForLevel(6) }) });
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, /ember delve/i);
   await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', /ember mine/i, { timeout: 20000 });
@@ -107,7 +107,7 @@ test('the Ember Mine goes down by its stairs to floor 2 and floor 3, where the W
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 45000 });
@@ -125,11 +125,11 @@ test('Slagstone Cave on the island: in by its mouth on the mountain, out the sam
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, /slagstone cave/i);
   await page.locator('#places-list button', { hasText: /slagstone cave/i }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', /slagstone cave/i, { timeout: 30000 });
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, /cave mouth/i);
   await page.locator('#places-list button', { hasText: /cave mouth/i }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', /slagstone/i, { timeout: 30000 });
@@ -170,7 +170,7 @@ test('a ship from Ember Harbour to Pyrehold on the mainland, and back', async ({
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -189,7 +189,7 @@ test('the Ember Inn: in by its door, up its stairs to the rooms, down, and out t
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -210,7 +210,7 @@ test('the Pyre Spire in Pyrehold: in by its door and up all three floors to the 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -235,7 +235,7 @@ test('the Molten Deep in Infernal Reach: in by its cave mouth, down three floors
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -260,7 +260,7 @@ test('the Molten Deep\'s lower floors: past the Tyrant to the Slag Rivers, the G
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -290,7 +290,7 @@ test('the Forge of the Four in the Obsidian Badlands: in by its gate, down to th
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -316,7 +316,7 @@ test('a ship from Cinderport\'s pier back to Ember Isle', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -343,7 +343,7 @@ test('the Ashen Crypt under the Ashen Bastion: in by its door, down to the Bone 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -367,7 +367,7 @@ test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to wa
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -393,7 +393,7 @@ test('the Verdant Wilds: a ship from Pyrehold to Mossharbor, up the Rootglass Bo
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -431,7 +431,7 @@ test('the Overgrown Temple in the Sunken Courts: in by its gate, down to the Hea
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -459,7 +459,7 @@ test('the Umbral Marches: a ship from Pyrehold to Mirewatch, up the Lantern Towe
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -494,7 +494,7 @@ test('the Drowned Crypts in the Umbral Marches: in by their door, down to the Ab
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -517,7 +517,7 @@ test('the Drowned Crypts in the Umbral Marches: in by their door, down to the Ab
 
 /** Travel by the Map's key (reduced motion: at once) and wait for the area to change. */
 const travel = (page: Page) => async (place: RegExp, area: RegExp) => {
-  await page.locator('.places-toggle').first().click();
+  await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
   await mapFind(page, place);
   await page.locator('#places-list button', { hasText: place }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -610,7 +610,7 @@ test('through every door and stair the Keeper lands free and can walk away (neve
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
@@ -642,7 +642,7 @@ test('a reload resumes where the Keeper stood — another continent, inside a bu
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openTopDown(page);
   const go = async (place: RegExp, area: RegExp) => {
-    await page.locator('.places-toggle').first().click();
+    await page.locator('.places-toggle:visible, [data-th="map"]').first().click();
     await mapFind(page, place);
     await page.locator('#places-list button', { hasText: place }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
