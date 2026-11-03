@@ -112,7 +112,7 @@ export const EMBER_ISLE_DEF: ContinentDef = {
     { place: 'cave', station: CAVE_IN, to: 'slagstone-cave', arrive: 'cave-out' },
     // Down under the Hushed Barrow's plot to its vault (the Sexton's Count): the door stands where the plot's stone did.
     { place: 'graveyard', station: BARROW_IN, to: 'hushed-barrow-1', arrive: 'barrow-up', at: [0, -4] },
-    { place: 'harbour', station: SHIP_TO_REACH, to: 'infernal-reach', arrive: 'ship-isle', ship: true },
+    { place: 'harbour', station: SHIP_TO_REACH, to: 'infernal-reach-pyrehold', arrive: 'ship-isle', ship: true },
     { place: 'harbour', station: SHIP_TO_MOSSHARBOR, to: 'verdant-wilds', arrive: 'ship-mossharbor-isle', ship: true, along: -3 },
   ],
 };

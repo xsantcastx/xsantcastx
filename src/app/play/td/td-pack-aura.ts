@@ -110,7 +110,7 @@ export const PACK_AURA_LOOKS: Readonly<Record<PackAuraId, PackAuraLook>> = {
 /** The land an area belongs to: a continent for the surface, a floor by its dungeon's land. */
 const FLOOR_LANDS: readonly [RegExp, string][] = [
   [/^(ember-mine|slagstone|ember-inn|hushed-barrow)/, 'ember-isle'],
-  [/^(molten-deep|forge-of-four|ashen-crypt|pyre-spire|salted-ember|woodward)/, 'infernal-reach'],
+  [/^(molten-deep|forge-of-four|ashen-crypt|pyre-spire|salted-ember|woodward|kiln-tunnels|glass-throat)/, 'infernal-reach'],
   [/^(overgrown-temple|root-hollows|rootglass|netloft|herbal)/, 'verdant-wilds'],
   [/^(drowned-crypts|lantern-tower)/, 'umbral-marches'],
 ];

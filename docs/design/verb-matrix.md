@@ -90,3 +90,18 @@ names its ticket. Everything else is expected to work as written.
   gear change hands, the cowl coming off as it is offered), `td-loot-ground.spec.ts` (piles, pickup, labels, full satchel, Spellstone and potion cards, tap-to-move,
   Deposit all, Sort, 360×640 touch), `td-grid-online.spec.ts` (two browsers, one pile), `td-grid.spec.ts`.
 - A data-driven matrix spec for the other columns is the next QA deliverable (the Belt / hotkey column has one).
+
+## World verbs (2026-11-03, S7, branch `s7reach`)
+- **Walk a seam:** an act's section ends at a road gate or a pass in the land's rock or sea (never an invisible wall).
+  Walking two tiles past the gate crosses; so does E (or a tap, or the Map's way pin) at the gate. A 0.4 s veil (at once
+  under reduced motion), then the Keeper stands 6 tiles inside the far gate, on its road, with no creature within 8.
+  Tests: `td-sections.spec.ts`, `e2e/td-reach.spec.ts`.
+- **Take a connector:** a connector cave's far mouth (E, a tap, the Map) opens onto the next section, whichever section
+  the Keeper came in from. Tests: the same.
+- **Touch a Waystone:** E (a tap, the Map's pin) at a section's stone records it (once: +15 Delving XP, receipt first,
+  `godforge-waystones`) and opens the Atlas: every stone of the land, the touched ones lit. One button: Travel (free) to
+  the picked touched stone; Esc or × closes. Busy states are the engine's (the veil). Tests: the same, and
+  `e2e/menus-reach.spec.ts` (the Atlas at 390×844, 360×640, 844×390).
+- **Read / sealed:** E at a plaque, sign or altar reads its line (the toast); at a sealed door, cage or arch, says why it
+  is shut. Every section has one of each (td-sections REACH_BIBLE). Tests: `td-sections.spec.ts`, `e2e/td-reach.spec.ts`.
+

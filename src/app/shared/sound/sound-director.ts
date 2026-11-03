@@ -44,6 +44,9 @@ export type SfxCue =
   | 'tumble' | 'cluster' | 'bigwin'
   // The Hush's omens (play/td/td-dark.ts): a bell far off, a breath of whispering. Sound only, never a warning of harm.
   | 'farbell' | 'whisper'
+  // The Infernal Reach's sections, one sound each (td-sections REACH_BIBLE; canon §8.2): a war-horn far off, a fire's
+  // crackle, a cart rolling with nobody pushing it, a clan drum, cooling glass, lava hissing, feet marching in step.
+  | 'warhorn' | 'crackle' | 'cart-roll' | 'drum' | 'glass-ping' | 'lava-hiss' | 'march'
   // The fight (combat-cues.ts, skills-100.md §0.6): a cast cue and a hit cue per skill, a bite per creature family.
   | CombatCue;
 
@@ -59,7 +62,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -243,6 +246,21 @@ export class SoundDirector {
       // A rising fanfare of bells, then the top note again: a Big, Mega or Epic win.
       // A bell far off: one low strike and its fifth, a long dying tail, very soft.
       case 'farbell': this.tone(t, 'sine', 146.8, .05, 3.2, .02); this.tone(t, 'sine', 220, .025, 2.6, .02); return this.tone(t, 'triangle', 293.7, .012, 1.8, .02);
+      // ── The Reach's section sounds: each far off and soft, a floor of the place, never a warning ──
+      // A war-horn far off: one long low note, swelling and dying, with its fifth faint above.
+      case 'warhorn': this.tone(t, 'sawtooth', 110, .018, 2.4, .5); return this.tone(t, 'triangle', 164.8, .01, 2, .6);
+      // A fire's crackle: a few short bright pops at odd gaps.
+      case 'crackle': for (let i = 0; i < 5; i++) this.noiseHit(t + i * .07 + (i % 2) * .03, 'highpass', 2400 + i * 300, 1, .05, .015, this.sfxBus); return;
+      // A cart rolling somewhere with nobody pushing it: a low rumble with its wheels' slow clack.
+      case 'cart-roll': this.rumble(t, 70, .08, 2.2); for (let i = 0; i < 6; i++) this.noiseHit(t + .3 + i * .32, 'bandpass', 500, 4, .04, .02, this.sfxBus); return;
+      // A clan drum, three slow beats.
+      case 'drum': for (let i = 0; i < 3; i++) this.thump(t + i * .5, 62, .16, .3); return;
+      // Glass pinging as it cools: two high notes, a little out of tune with each other.
+      case 'glass-ping': this.tone(t, 'sine', 2349, .03, .5, .002); return this.tone(t + .21, 'sine', 2489, .018, .4, .002);
+      // Lava hissing: a soft breath of noise, rising.
+      case 'lava-hiss': return this.whoosh(t, 700, 2600, .9, .05);
+      // Feet marching in step, far off: eight soft treads, then nothing.
+      case 'march': for (let i = 0; i < 8; i++) this.noiseHit(t + i * .42, 'lowpass', 300, 1, .07, .05, this.sfxBus); return;
       // Something whispers: two breaths of filtered air, the second lower.
       case 'whisper': this.whoosh(t, 3200, 1900, .7, .03); return this.whoosh(t + .55, 2600, 1500, .8, .025);
       // ── The fight (skills-100.md §0.6's recipes; `pitch` is the row's variation) ──
