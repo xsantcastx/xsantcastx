@@ -81,46 +81,77 @@
   :host-context(.place) .km__actions { grid-template-columns: 1fr; align-self: start; }
 }
 
-/* The class: one card per calling (the Warlock first), the chosen one lit. */
-.km__class { display: grid; gap: 6px; }
-.km__classcard { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px; min-height: 56px; padding: 8px 10px; text-align: left;
-  border: 0; border-radius: 0; background: var(--px-cell-bg, var(--obsidian-1)); box-shadow: var(--px-cell-rim); color: inherit; cursor: pointer; }
-.km__classcard[aria-checked="true"] { box-shadow: var(--px-on-rim); }
-.km__classcard b { display: block; font: 700 16px/1.1 var(--font-game, inherit); color: var(--gold-bright); }
-.km__classcard small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.3; opacity: .85; }
-.km__more { font-size: 11px; opacity: .6; }
-/* The callings side by side (one column when narrow); a made Keeper's other callings rest, dimmed. */
-.km__classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px; }
+/* ── The class (ui-pass-3 §14, Diablo Immortal / Lost Ark): a row of four portrait chips, then the chosen calling's
+   card (its name, one line, three tags). Chips stay four abreast at every width; no description squeezed into a chip. ── */
+.km__class { display: grid; gap: 6px; min-width: 0; }
+.km__classes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.km__classcard {
+  display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 64px; min-width: 44px; padding: 6px 2px; margin: 0;
+  border: 0; border-radius: 0; background: var(--cozy-wood-1); color: var(--cozy-cream); cursor: pointer; touch-action: manipulation;
+  box-shadow: inset 0 2px 0 0 var(--cozy-wood-2), inset 0 -2px 0 0 var(--cozy-plate-seam), 0 0 0 2px var(--cozy-wood-0);
+}
+.km__classcard svg { width: 32px; height: 32px; flex: none; }
+.km__cname { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 11px/1.1 var(--font-game); letter-spacing: .02em; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
+.km__classcard:hover { background: var(--cozy-wood-2); }
+.km__classcard[aria-checked="true"] { background: var(--cozy-wood-3);
+  box-shadow: inset 0 2px 0 0 var(--cozy-wood-hi), inset 0 -3px 0 0 var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass); }
+.km__classcard[aria-checked="true"] .km__cname { color: var(--cozy-glow); }
+.km__classcard:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 4px; }
 .km__classcard:disabled { opacity: .45; cursor: default; }
-/* The class row heads the window, full width: the label, the card, the promise of more. */
+.km__card { display: grid; gap: 3px; min-width: 0; padding: 8px 10px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); }
+.km__cardname { font: 700 16px/1.1 var(--font-game); color: var(--cozy-glow); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.km__role { font: 500 13px/1.35 var(--cozy-font-read); color: var(--cozy-cream); }
+.km__tags { font: 700 12px/1.3 var(--cozy-font-read); letter-spacing: .02em; color: var(--cozy-brass-hi); }
+.km__more { font: 500 12px/1.3 var(--cozy-font-read); color: color-mix(in srgb, var(--cozy-cream) 65%, transparent); }
 :host-context(.place) .km { grid-template-areas: "class class" "stage name" "stage actions" "fields fields"; }
-:host-context(.place) .km__class { grid-area: class; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-:host-context(.place) .km__class .km__label { grid-area: auto; position: static; padding: 0; font: 600 9px/1 var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
-:host-context(.place) .km__more { white-space: nowrap; }
+:host-context(.place) .km__class { grid-area: class; }
+:host-context(.place) .km__class .km__label { grid-area: auto; position: static; padding: 0; font: 700 11px/1 var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
 @container km (min-width: 460px) {
   :host-context(.place) .km { grid-template-areas: "class class" "stage fields" "name fields" "actions fields"; }
 }
-@container km (max-width: 380px) {
-  :host-context(.place) .km__class { grid-template-columns: minmax(0, 1fr); }
-  :host-context(.place) .km__more { display: none; }
-}
+@container km (max-width: 380px) { :host-context(.place) .km__more { display: none; } }
 
-/* Phones (a narrow window): the callings take less room — two to a row, only the chosen one spells out what it is
-   (it spans the row); the others are a name and an icon. With four callings the looks and Become stay near the top. */
-@container km (max-width: 480px) {
-  :host-context(.place) .km__classes { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 6px; }
-  :host-context(.place) .km__classcard { grid-template-columns: 28px minmax(0, 1fr); gap: 6px; min-height: 48px; padding: 6px 8px; }
-  :host-context(.place) .km__classcard svg { width: 28px; height: 28px; }
-  :host-context(.place) .km__classcard b { font-size: 14px; }
-  :host-context(.place) .km__classcard[aria-checked="false"] small { display: none; }
-  :host-context(.place) .km__classcard[aria-checked="true"] { grid-column: 1 / -1; }
-}
+/* No text under 11 px in the window (ui-pass-3 §14): the field labels, the name label. */
+:host-context(.place) .km__name { font: 700 11px/1.2 var(--font-game); color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+:host-context(.place) .km__name input { font: 600 16px/1.2 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-well); min-height: 44px; }
+:host-context(.place) .km__label { font: 700 11px/1 var(--font-game); }
+:host-context(.place) .km__row { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+:host-context(.place) .km__step { width: 44px; min-height: 44px; background: var(--cozy-wood-2); color: var(--cozy-cream); }
+:host-context(.place) .km__value { padding-top: 13px; font: 600 12px/1.2 var(--cozy-font-read); color: var(--cozy-cream); }
+:host-context(.place) .km__row { background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); }
+/* The one primary is brass; Surprise me is a quiet link above it (ui-system §6: one brass per surface). */
+:host-context(.place) .km__keep { min-height: 52px; font: 700 14px/1 var(--font-game); color: var(--cozy-wood-0); background: var(--cozy-brass);
+  box-shadow: inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo), 0 0 0 2px var(--cozy-wood-0); }
+:host-context(.place) .km__keep:hover { background: var(--cozy-brass-hi); }
+:host-context(.place) .km__random { min-height: 44px; background: none; box-shadow: none; color: var(--cozy-cream); text-decoration: underline; text-underline-offset: 3px;
+  font: 700 12px/1 var(--font-game); text-transform: none; letter-spacing: .02em; }
+:host-context(.place) .km__random:hover { color: var(--cozy-glow); }
 
-/* ── By the fire (the lobby's Glass): the campfire paints the Keeper being made, so no preview here; the name and
-   Become sit straight under the class, and Become stays in reach (sticky) while the looks below scroll. ── */
+/* ── By the fire (the lobby's Glass): the campfire paints the Keeper being made, so no preview here. One column:
+   the callings, the card, the name, the looks two by two; Become rides the window's foot (sticky), Surprise me above it. ── */
 :host(.km--fire) .km__stage { display: none; }
-:host(.km--fire) .km { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "class class" "name name" "actions actions" "fields fields"; }
-:host(.km--fire) .km__actions { position: sticky; bottom: 0; z-index: 1; padding: 4px 2px; background: var(--cozy-plate, var(--obsidian-1)); }
-@media (min-width: 560px) {
-  :host(.km--fire) .km { grid-template-areas: "class class" "name actions" "fields fields"; }
+:host(.km--fire) .km { grid-template-columns: minmax(0, 1fr); grid-template-areas: "class" "name" "fields" "actions"; gap: 10px; }
+:host(.km--fire) .km__actions { position: sticky; bottom: 0; z-index: 1; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 4px 2px 2px;
+  background: var(--cozy-plate, var(--obsidian-1)); box-shadow: 0 -2px 0 0 var(--cozy-plate-seam); }
+:host(.km--fire) .km__fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* A short screen (a phone, either way): Surprise me and Become share one row, so the sticky foot is one button tall and
+   the class card and the name stay in view above it. */
+@media (max-height: 720px) {
+  :host(.km--fire) .km__actions { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: center; gap: 8px; }
+  :host(.km--fire) .km__more { display: none; }
+}
+@media (max-height: 520px) {
+  :host(.km--fire) .km { gap: 8px; }
+  :host(.km--fire) .km__class > .km__label { display: none; }
+  :host(.km--fire) .km__classcard { min-height: 56px; padding: 4px 2px; }
+}
+/* In the world's Glass (a made Keeper: the calling is fixed), sideways or wide: Become at the top of the left column,
+   then the name, then the preview, so the one primary is in view the moment the window opens. */
+@container km (min-width: 460px) {
+  :host-context(.place):host(:not(.km--fire)) .km { grid-template-areas: "class class" "actions fields" "name fields" "stage fields"; }
+  :host-context(.place):host(:not(.km--fire)) .km__actions { align-self: start; }
+}
+@media (max-height: 520px) {
+  :host-context(.place):host(:not(.km--fire)) .km__card { display: none; }
+  :host-context(.place):host(:not(.km--fire)) .km__class > .km__label { display: none; }
 }

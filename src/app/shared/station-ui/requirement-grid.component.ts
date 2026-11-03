@@ -10,10 +10,12 @@
  * `minCells` pads with empty slots so the box keeps its shape, the way a
  * journal page does. `showCount=false` for tools (owned or not, no numbers).
  */
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 
 import { artFor } from '../art/art';
+import { TranslationService } from '../../translation.service';
+import { STATION_UI_I18N } from './station-ui.i18n';
 import { costShort, formatAmount, type StationArt, type StationCost } from './station-ui.model';
 
 interface Cell { cost: StationCost; art: StationArt | null; met: boolean; have: string; need: string }
@@ -61,7 +63,8 @@ interface Cell { cost: StationCost; art: StationArt | null; met: boolean; have: 
       <span class="rg__text">
         <span class="rg__name">{{ cell.cost.label }}</span>
         @if (showCount()) {
-          <span class="rg__count">@if (pending()) { {{ cell.need }} } @else { {{ cell.have }}/<wbr>{{ cell.need }} }</span>
+          <!-- "need 2 · have 24" (ui-pass-3 §5, Stardew): the ask first, then what you hold; leaf when met, berry when short. -->
+          <span class="rg__count">@if (pending()) { {{ cell.need }} } @else { {{ t('stationUi.needHave', { need: cell.need, have: cell.have }) }} }</span>
         }
       </span>
     </ng-template>
@@ -70,6 +73,9 @@ interface Cell { cost: StationCost; art: StationArt | null; met: boolean; have: 
   styleUrls: ['./station-tokens.css', './requirement-grid.component.css'],
 })
 export class RequirementGridComponent {
+  private readonly i18n = inject(TranslationService);
+  constructor() { this.i18n.register(STATION_UI_I18N); }
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
   readonly title = input.required<string>();
   readonly costs = input<readonly StationCost[]>([]);
   readonly minCells = input(0);

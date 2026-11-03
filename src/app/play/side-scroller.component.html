@@ -1643,11 +1643,12 @@
           </section>
         </div>
       }
-      <!-- Lune's Slate offer on her counter and tables; Kael's binding at the Rune Forge (shared/slate). -->
-      @if (slateCounter; as who) { <app-slate-counter [who]="who" /> }
       @if (panelLoading) { <p class="place-note" role="status">{{ t('play.hud.panel.opening', { title: panel?.title ?? '' }) }}</p> }
       @if (panelError) { <p class="place-note" role="alert">{{ panelError }}</p> }
       <ng-container #panelHost></ng-container>
+      <!-- Lune's Slate offer on her counter and tables; Kael's binding at his anvil (shared/slate): a card in the body,
+           under the station, with a wood button (ui-pass-3 §5: the station's own action is the window's one brass). -->
+      @if (slateCounter; as who) { <app-slate-counter [who]="who" /> }
     </div>
   </section>
 </section>

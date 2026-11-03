@@ -5,6 +5,11 @@
  * the satchel, or by its options card (a click or a right-click); sell by dragging a satchel piece back onto the
  * shelf, or by its card. A phone long-presses to pick up and taps where it goes (ItemDragService). Hover shows the
  * card. Every write is ShopService's; Gold only.
+ *
+ * ui-pass-3 §4 (Wave B): every shelf tile shows its price (berry when the Keeper cannot afford it); a tap opens ONE buy
+ * card with a 1 · 5 · 10 · Max row and one brass "Buy N · X Gold", pinned to the window's foot so it is in view without
+ * scrolling; a narrow window (a phone) switches Shelf | Satchel instead of stacking both; a desktop hover shows the full
+ * card at the pointer ("Click to buy · Shift-click buys 5"). The keeper's line waits behind the ?.
  */
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -34,10 +39,17 @@ import { SHOP_I18N } from './shop.i18n';
 import { ShopService, type ShopBuyCode, type ShopSellCode } from './shop.service';
 import { SHOPS, SHOP_KEEPERS, shopOfStation, type ShopId, type ShopOffer } from './shops.model';
 
-const SHELF_W = 10;
-
 /** One offer on the shelf grid. */
 export interface ShelfPiece { offer: ShopOffer; cell: number; w: number; h: number; name: string; art: string; mark: string; tone: string; price: number; item: GameItem | null }
+
+/** The quantity steps on the buy card (Max is the most the purse covers). */
+export const BUY_STEPS = [1, 5, 10] as const;
+/** The most one press buys (a stack's sane ceiling; the satchel's room is ShopService's to refuse). */
+export const BUY_CAP = 99;
+/** How many the purse covers at `price` each, capped (0 when not even one). */
+export function maxAffordable(gold: number, price: number, cap = BUY_CAP): number {
+  return price > 0 ? Math.max(0, Math.min(cap, Math.floor(gold / price))) : cap;
+}
 
 /** The card for what is under the pointer or tapped: an offer, or a satchel piece. */
 export type ShopCard =
@@ -75,16 +87,24 @@ export class ShopComponent implements OnInit, OnDestroy {
   gold = 0;
   walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
   shelf: ShelfPiece[] = [];
-  shelfRows = 1;
   satchel: GridView | null = null;
   card: ShopCard | null = null;
   /** The card was opened by a click (it has buttons and stays); a hover card follows the pointer. */
   pinned = false;
+  /** The desktop hover card (separate from the pinned one, so hovering never moves the buy card), at the pointer. */
+  hover: ShopCard | null = null;
+  hoverX = 0;
+  hoverY = 0;
+  /** The buy card's quantity step (Max re-reads the purse, so it follows a sale or a buy). */
+  qtyPick: number | 'max' = 1;
+  readonly steps = BUY_STEPS;
+  /** A narrow window (a phone) shows one side at a time: the shelf, or the satchel to sell from. */
+  seg: 'shelf' | 'satchel' = 'shelf';
   announce = '';
   shelfOver = false;
 
   readonly look = (p: Piece): PieceLook => pieceLookOf(this.inventory.snapshot, p);
-  readonly shelfCells: number[] = [];
+  readonly coin = artFor('gold')?.src ?? '';
 
   /** The satchel takes a shelf offer: that is a buy. */
   readonly buyDrop = (held: DragHeld): boolean => {
@@ -135,28 +155,9 @@ export class ShopComponent implements OnInit, OnDestroy {
 
   // ── The shelf ────────────────────────────────────────────────────────────
 
+  /** The shelf in stock order: one priced tile per offer (a 2×3 blade shows its art inside the same tile). */
   private buildShelf(): void {
-    const taken = new Set<number>();
-    const fits = (cell: number, w: number, h: number) => {
-      const x = cell % SHELF_W, y = Math.floor(cell / SHELF_W);
-      if (x + w > SHELF_W) return false;
-      for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) if (taken.has((y + dy) * SHELF_W + x + dx)) return false;
-      return true;
-    };
-    const out: ShelfPiece[] = [];
-    let rows = 1;
-    for (const offer of SHOPS[this.shopId].stock) {
-      const view = this.offerView(offer);
-      let cell = 0;
-      while (!fits(cell, view.w, view.h)) cell++;
-      for (let dy = 0; dy < view.h; dy++) for (let dx = 0; dx < view.w; dx++) taken.add(cell + dy * SHELF_W + dx);
-      rows = Math.max(rows, Math.floor(cell / SHELF_W) + view.h);
-      out.push({ ...view, offer, cell });
-    }
-    this.shelf = out;
-    this.shelfRows = rows;
-    this.shelfCells.length = 0;
-    for (let i = 0; i < rows * SHELF_W; i++) this.shelfCells.push(i);
+    this.shelf = SHOPS[this.shopId].stock.map((offer, cell) => ({ ...this.offerView(offer), offer, cell }));
   }
 
   private offerView(offer: ShopOffer): Omit<ShelfPiece, 'offer' | 'cell'> {
@@ -175,9 +176,6 @@ export class ShopComponent implements OnInit, OnDestroy {
     return { w: 1, h: 1, name, art, mark: mark(name), tone: 'var(--cozy-loot-material)', price, item: null };
   }
 
-  shelfX(p: ShelfPiece): number { return p.cell % SHELF_W; }
-  shelfY(p: ShelfPiece): number { return Math.floor(p.cell / SHELF_W); }
-
   /** An offer is a drag source: `ref: { kind: 'shop', offerId }` (docs/handoff/grid.md). */
   pressOffer(ev: PointerEvent, p: ShelfPiece): void {
     this.drag.press(ev, {
@@ -188,24 +186,66 @@ export class ShopComponent implements OnInit, OnDestroy {
 
   pickOffer(p: ShelfPiece, ev?: Event): void {
     ev?.preventDefault();
+    // Desktop: shift-click buys five at once (a stack), the hover card says so.
+    if (ev instanceof MouseEvent && ev.type === 'click' && ev.shiftKey && p.offer.kind !== 'item') { this.buy(p.offer.id, 5); return; }
+    const same = this.card?.kind === 'offer' && this.card.piece.offer.id === p.offer.id;
     this.card = { kind: 'offer', piece: p, lines: this.offerLines(p) };
+    if (!same) this.qtyPick = 1;
     this.pinned = true;
+    this.hover = null;
     this.cdr.markForCheck();
   }
 
   hoverOffer(p: ShelfPiece, ev: PointerEvent): void {
-    if (ev.pointerType !== 'mouse' || this.pinned) return;
-    this.card = { kind: 'offer', piece: p, lines: this.offerLines(p) };
-    this.cdr.markForCheck();
+    if (ev.pointerType !== 'mouse') return;
+    this.hover = { kind: 'offer', piece: p, lines: this.offerLines(p) };
+    this.placeHover(ev);
   }
 
   unhover(): void {
-    if (this.pinned) return;
-    this.card = null;
+    if (!this.hover) return;
+    this.hover = null;
+    this.cdr.markForCheck();
+  }
+
+  /** The hover card sits beside the pointer, inside the shop (a fixed box would escape into a transformed panel). */
+  private placeHover(ev: PointerEvent): void {
+    const hero = (ev.currentTarget as HTMLElement | null)?.closest('.sh-hero') as HTMLElement | null;
+    const r = hero?.getBoundingClientRect();
+    const t = (ev.currentTarget as HTMLElement | null)?.getBoundingClientRect();
+    if (r && t) {
+      const w = 264;
+      this.hoverX = Math.max(0, Math.min(r.width - w, t.right - r.left + 8 > r.width - w ? t.left - r.left - w - 8 : t.right - r.left + 8));
+      this.hoverY = Math.max(0, t.top - r.top);
+    }
     this.cdr.markForCheck();
   }
 
   closeCard(): void { this.card = null; this.pinned = false; this.cdr.markForCheck(); }
+
+  setSeg(seg: 'shelf' | 'satchel'): void {
+    if (this.seg === seg) return;
+    this.seg = seg;
+    this.closeCard();
+  }
+
+  /** The buy card's quantity: 1 · 5 · 10 · Max (Max: what the purse covers, at least one). */
+  setQty(n: number | 'max'): void {
+    this.qtyPick = n;
+    this.cdr.markForCheck();
+  }
+  /** How many a press of Buy buys: the step, Max as what the purse covers (at least one), a minted item always one. */
+  buyCount(p: ShelfPiece): number {
+    if (p.offer.kind === 'item') return 1;
+    return this.qtyPick === 'max' ? Math.max(1, this.maxFor(p)) : this.qtyPick;
+  }
+  isCardOf(p: ShelfPiece): boolean { return this.card?.kind === 'offer' && this.card.piece.offer.id === p.offer.id; }
+  maxFor(p: ShelfPiece): number { return p.offer.kind === 'item' ? 1 : maxAffordable(this.gold, p.price); }
+  canAfford(p: ShelfPiece, n = 1): boolean { return this.gold >= p.price * n; }
+  /** How many of this the Keeper already carries (a stack or a potion; gear has no count). */
+  owned(p: ShelfPiece): number { return p.offer.kind === 'item' ? 0 : this.inventory.stackOf(p.offer.key); }
+  /** Stacks buy in a number; a minted item (a tool, a socketed base) is always one. */
+  stacks(p: ShelfPiece): boolean { return p.offer.kind !== 'item'; }
 
   private offerLines(p: ShelfPiece): string[] {
     const lines: string[] = [];
@@ -225,6 +265,7 @@ export class ShopComponent implements OnInit, OnDestroy {
 
   pickPiece(ev: GridPick): void {
     ev.ev.preventDefault?.();
+    this.hover = null;
     this.card = this.pieceCard(ev.piece);
     this.pinned = true;
     this.cdr.markForCheck();
@@ -232,8 +273,8 @@ export class ShopComponent implements OnInit, OnDestroy {
 
   hoverPiece(piece: Piece, ev: PointerEvent): void {
     if (ev.pointerType !== 'mouse' || this.pinned) return;
-    this.card = this.pieceCard(piece);
-    this.cdr.markForCheck();
+    this.hover = this.pieceCard(piece);
+    this.placeHover(ev);
   }
 
   private pieceCard(piece: Piece): ShopCard {
@@ -257,9 +298,9 @@ export class ShopComponent implements OnInit, OnDestroy {
     return out.code === 'ok' || out.code === 'replayed';
   }
 
-  buyCard(n: number): void {
+  buyCard(n?: number): void {
     if (this.card?.kind !== 'offer') return;
-    this.buy(this.card.piece.offer.id, n);
+    this.buy(this.card.piece.offer.id, n ?? this.buyCount(this.card.piece));
   }
 
   sellCard(all: boolean): void {

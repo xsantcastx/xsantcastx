@@ -62,6 +62,11 @@ const placesItem = (key: string) => async (page: Page) => {
 };
 const station = (at: string, primary = '.place .ab__btn'): Menu => ({ id: at, query: `?at=${at}`, root: '.place', close: '.place-close', primary });
 const openSlate = async (page: Page) => { await page.locator('.slate-btn').click(); };
+/** A district shop with an offer tapped (ui-pass-3 §4): its buy card's Buy must be in view at scrollTop 0. */
+const shop = (at: string, offer = 0): Menu => ({
+  id: `${at}-card`, query: `?at=${at}`, root: '.place', close: '.place-close', primary: '.place [data-shop-buy]', noScroll: true,
+  open: async page => { await page.locator('.place [data-shop-shelf] [data-offer]').nth(offer).click(); await page.locator('.place [data-shop-card]').waitFor(); },
+});
 
 export const MENUS: Menu[] = [
   { id: 'places', open: page => page.locator('.places-toggle').first().click(), root: '#places-list', close: '.places-close' },
@@ -86,10 +91,11 @@ export const MENUS: Menu[] = [
   },
   { id: 'sound', open: placesItem('sound'), root: '.sound-host .ss', close: '.sound-host .ss__done' },
   { id: 'loot', open: placesItem('loot'), root: '.sound-host .ls', close: '.sound-host .ls__done' },
-  { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close' },
+  { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close', primary: '.place .km__keep', noScroll: true },
   { id: 'character', open: placesItem('character'), root: '.place', close: '.place-close' },
   { ...station('crafting'), noScroll: true }, { ...station('runes'), noScroll: true }, { ...station('enchanting'), noScroll: true }, station('vault', ''),
   { ...station('vendor'), noScroll: true }, { ...station('gambler'), noScroll: true },
+  shop('shop-general', 2), shop('shop-fishing'), shop('shop-wood'),
   // The Exchange left the world with the game-only shell's deep clean (no station, no ?at=exchange).
   station('market', ''), station('quests', ''), station('codex', ''), station('skills', ''),
   station('waystone', ''), station('reels', '.place .rl-spin, .place .ab__btn'),

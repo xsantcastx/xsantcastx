@@ -141,9 +141,9 @@ test.describe('the crafting bench', () => {
     await expect(reward).toContainText('Smithing XP');
 
     // 24 - 6, 12 - 3, 8 - 2 — the Required items grid (Gold is cell 0).
-    await expect(itemCounts(page).nth(1)).toHaveText('18/6');
-    await expect(itemCounts(page).nth(2)).toHaveText('9/3');
-    await expect(itemCounts(page).nth(3)).toHaveText('6/2');
+    await expect(itemCounts(page).nth(1)).toHaveText('need 6 · have 18');
+    await expect(itemCounts(page).nth(2)).toHaveText('need 3 · have 9');
+    await expect(itemCounts(page).nth(3)).toHaveText('need 2 · have 6');
 
     // One craft, one recipe known, XP on the board, mastery counting.
     await openDetails(page);
