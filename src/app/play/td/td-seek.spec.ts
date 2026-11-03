@@ -94,7 +94,7 @@ describe('td-seek: the world it reads', () => {
     expect(links.get('ember-mine-1')).toEqual(jasmine.objectContaining({ continent: 'ember-isle', floor: -1 }));
     expect(links.get('ember-mine-3')?.floor).toBe(-3);
     expect(links.get('molten-deep-6')?.floor).toBe(-6);
-    expect(links.get('molten-deep-6')?.continent).toBe('infernal-reach');
+    expect(links.get('molten-deep-6')?.continent).toBe('infernal-reach-pyre-peaks');
     // Every floor of one dungeon shares its way in.
     expect(links.get('molten-deep-6')?.ax).toBe(links.get('molten-deep-1')?.ax);
     // The Hushed Barrow's vault: under the plot's door, one floor down, on Ember Isle.
