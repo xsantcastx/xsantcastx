@@ -802,7 +802,15 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.goalOpen) this.goalTimer = setTimeout(() => this.zone.run(() => { this.goalOpen = false; }), 8000);
   }
   /** What the hand reaches for with no hostile near (the disc's verb), or null when nothing is in reach. */
+  /** Open the satchel on its Nearby tab (the disc's Loot, a corpse tapped on a portrait phone). */
+  openNearby(): void {
+    if (!this.bagOpen) this.toggleBag();
+    this.setBagTab('nearby');
+  }
   get thumbArmedVerb(): ThumbVerb | null {
+    // A corpse with loot in reach is the hand's first verb (the disc's Loot opens Nearby on it).
+    const hand = (this.engine as unknown as { handVerb?: () => 'loot' | 'take' | null } | undefined)?.handVerb?.() ?? null;
+    if (hand === 'loot') return 'loot';
     const s = this.state, n = s?.nearby;
     if (n) {
       if (n.startsWith('giver-') || s.nearbyKind === 'quest') return 'talk';
@@ -811,7 +819,7 @@ export class SideScrollerComponent implements OnDestroy {
       return 'use';
     }
     if (this.fishPrompt) return 'use';
-    return (this.engine as unknown as { handVerb?: () => 'loot' | 'take' | null } | undefined)?.handVerb?.() ?? null;
+    return hand;
   }
   /** The disc: Attack while a hostile is near (or nothing else is in reach), else the verb in reach. */
   get thumbVerb(): ThumbVerb {
@@ -2033,7 +2041,11 @@ export class SideScrollerComponent implements OnDestroy {
       // Another Keeper tapped in the world (top-down, td-peers): their card.
       onPeerTap: peer => this.zone.run(() => this.peerTapped(peer)),
       // A corpse opened in the world (td-corpse): the loot still in it, and null once it is shut or gone.
-      onCorpse: view => this.zone.run(() => { this.corpseView = view; }),
+      onCorpse: view => this.zone.run(() => {
+        // A portrait phone (ui-pass-3 §A.4): a corpse opens the satchel on Nearby, never the small window over the HUD.
+        if (view && this.thumb) { this.corpseEngine?.closeCorpse?.(); this.corpseView = null; this.openNearby(); return; }
+        this.corpseView = view;
+      }),
       // A shared ground item (protocol 6): the Keeper walked to it; reach for it.
       onGroundTap: id => this.zone.run(() => { void this.tradeHud?.pickup(id); }),
       onTakeOwnStack: (own, n) => this.zone.run(() => this.takeOwnStack(own, n)),
@@ -3388,6 +3400,16 @@ export class SideScrollerComponent implements OnDestroy {
   milestonePage = -1;
   /** The level-up banner while it shows. */
   levelBanner: { level: number; big: boolean; lines: string[]; points: boolean; skill: boolean } | null = null;
+  /** A level gained while the phone's satchel was open: its card waits for the satchel to close. */
+  private levelBannerHeld: { level: number; big: boolean; lines: string[]; points: boolean; skill: boolean } | null = null;
+  private showHeldLevel(): void {
+    const held = this.levelBannerHeld;
+    if (!held) return;
+    this.levelBannerHeld = null;
+    this.levelBanner = held;
+    clearTimeout(this.levelBannerTimer);
+    this.levelBannerTimer = setTimeout(() => this.zone.run(() => { this.levelBanner = null; }), held.big ? 16000 : 10000);
+  }
   private levelBannerTimer?: ReturnType<typeof setTimeout>;
   /** The portrait's level badge bounces for a moment after a level-up. */
   lvPulse = false;
@@ -3443,7 +3465,13 @@ export class SideScrollerComponent implements OnDestroy {
       const paid = e.paid.find(p => p.level === m.level);
       lines.push(this.t('play.lvl.milestone', { n: m.level }) + ' ' + this.milestoneLines(m, paid?.gold).join(' · '));
     }
-    this.levelBanner = { level: e.level, big, lines, points: e.points > 0, skill: e.skillPoints > 0 };
+    const banner = { level: e.level, big, lines, points: e.points > 0, skill: e.skillPoints > 0 };
+    // A portrait phone with the satchel open (ui-pass-3 Director note): the card would cover Nearby's nearest row, so
+    // the level goes to the ticker now and the card opens when the satchel closes.
+    if (this.thumb && this.bagOpen) {
+      this.levelBannerHeld = banner;
+      this.logGame([this.t('play.lvl.banner', { n: e.level }), ...(e.skillPoints > 0 ? [this.t(e.skillPoints === 1 ? 'play.lvl.gain.skill1' : 'play.lvl.gain.skill', { n: e.skillPoints })] : [])].join(' · '));
+    } else this.levelBanner = banner;
     this.message = this.t('play.lvl.log', { n: e.level });
     this.sound.sfx('levelup');
     (this.engine as unknown as { levelPillar?: (big: boolean) => void } | undefined)?.levelPillar?.(big);
@@ -5538,10 +5566,12 @@ export class SideScrollerComponent implements OnDestroy {
     const book = this.browser ? document.getElementById('satchel-book') : null;
     const inside = !!book && book.contains(document.activeElement);
     this.bagOpen = false;
+    this.showHeldLevel();
     if (inside) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.clasp')?.focus({ preventScroll: true }));
   }
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
+    if (!this.bagOpen) this.showHeldLevel();
     // Opens on the doll and the pockets alone: the card waits for a tap.
     if (this.bagOpen) this.pick = null;
     // A phone: the Bag tab, or Nearby when a corpse fell within reach in the last 30 s (§A.4).
@@ -5709,7 +5739,14 @@ export class SideScrollerComponent implements OnDestroy {
   /** The bottom card docks to the window's top when the picked cell sits in the lower half of the grid (it stays in view). */
   get cardTop(): boolean {
     if (!this.thumb || typeof window === 'undefined') return false;
-    return (this.pickAt.top + this.pickAt.bottom) / 2 > window.innerHeight * .5;
+    // Whichever side of the tapped piece has more room: below it (the window's foot) or above it (under the head).
+    return this.pickAt.top - 62 > window.innerHeight - this.pickAt.bottom;
+  }
+  /** The card's height on a phone: at most 55% of the screen, and never over the tapped piece. */
+  get cardMax(): number | null {
+    if (!this.thumb || typeof window === 'undefined') return null;
+    const H = window.innerHeight, room = this.cardTop ? this.pickAt.top - 62 - 8 : H - this.pickAt.bottom - 18;
+    return Math.max(160, Math.min(Math.round(H * .55), Math.round(room)));
   }
 
   // ── Nearby (docs/design/ui-pass-3.md §A.4): corpses and piles within 8 tiles, nearest first ──

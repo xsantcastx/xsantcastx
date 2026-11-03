@@ -106,7 +106,7 @@
     <ul class="th-tiles">
       @for (tile of tiles; track tile.id) {
         <li><button type="button" class="th-tile" [attr.data-tile]="tile.id" [attr.aria-pressed]="tile.pressed ?? null" (click)="tapTile(tile)">
-          <i class="th-tile__ico" [attr.data-ico]="tile.id" aria-hidden="true"></i>
+          <i class="th-tile__ico" [attr.data-ico]="tile.id" aria-hidden="true">@if (tile.icon) { <img [src]="tile.icon" alt="" width="32" height="32" draggable="false"> }</i>
           <span>{{ tile.label }}</span>
           @if (tile.badge) { <i class="th-dot" aria-hidden="true"></i><span class="sr">{{ t('thumb.tile.news') }}</span> }
         </button></li>

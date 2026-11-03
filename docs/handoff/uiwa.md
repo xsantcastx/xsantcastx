@@ -102,3 +102,28 @@ Spec: `docs/design/ui-pass-3.md` §A.0–A.6. Screens: `output/uiwa/before/` (fr
 - `e2e/td-nearby.spec.ts` (Accept 14–18, with 17 online).
 - `e2e/menus-reach.spec.ts` gains the Wave A targets (Accept 19).
 - Unit: `grid-pages.spec.ts` and `td-nearby.spec.ts`.
+
+## Director fixes (review of de2b9a9b)
+1. **Aura badge:** a 32 px integer sprite with no zoom, moved to the left column under the pet chip.
+2. **Goal chip:** the "Step n of 7" words give way to a 1/7 badge (the progress bar carries the count), and the goal
+   runs to two lines of Inter 12/16.
+   - While Glim speaks he has the whole ticker and is never cut.
+3. **More tiles:** real 16 px pixel icons from the item icon set (`iconOf`), drawn at 2×. The title is Pixelify 16, and
+   ES "Todo" became "Menú".
+4. **Portrait satchel:** anchored to the bottom, as tall as its content, so the tabs come down into thumb reach.
+5. **Item card:** docks on whichever side of the tapped piece has more room, and its height fits that room. Equip sits
+   first in the card's sticky foot.
+   - The "vs <worn>" chip lives in the card head and names the slot the body compares.
+6. **Level-ups while the phone satchel is open:** a ticker line ("Level 21 · +1 skill point"); the card waits until
+   the satchel closes. The rot bar is a clear 4 px bar that turns berry near crumbling.
+7. **Corpses on a portrait phone:** opening one opens the satchel on Nearby instead of the small window. The disc says
+   Loot when a corpse with loot is in reach, and a tap opens Nearby.
+8. **Sideways pages:** the buttons read "◀ 1" / "2 ▶", never wrap, and keep their full aria-labels. A 12 px fade at the
+   foot of the bag column says more rows wait below.
+- **Also:** the area ticker line shows the time ("… · 19:02").
+- **Not done (nice-to-haves):**
+  - A sticky Vault head and switch.
+  - A centred Vault grid.
+  - Vault Sort behind Details.
+  - The charm row and book slot on the Worn tab.
+  - Docking the sideways card in the left panel.

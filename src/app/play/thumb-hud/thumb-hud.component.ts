@@ -14,6 +14,26 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import type { SideScrollerComponent } from '../side-scroller.component';
 import { DropTargetDirective } from '../../shared/inventory-grid/drop-target.directive';
+import { iconOf } from '../../shared/art/item-icons';
+import type { IconKind } from '../../shared/art/item-icon-shapes';
+
+/** Each More tile's 16-px pixel icon (the item icon set, drawn at 2× in a 32 px well): never a flat swatch. */
+const TILE_ICON: Readonly<Record<string, readonly [IconKind, string]>> = {
+  book: ['book', 'amethyst'], character: ['helm', 'steel'], journal: ['scroll', 'paper'], chat: ['quill', 'ivory'],
+  friends: ['heart', 'rose'], bestiary: ['crest', 'crimson'], settings: ['gear', 'brass'], loot: ['chest', 'wood'],
+  names: ['lens', 'glass'], lore: ['inkwell', 'midnight'], account: ['key', 'gold'], feedback: ['page', 'paper'],
+  menu: ['compass', 'brass'], slate: ['mirror', 'glass'],
+};
+const tileArt = new Map<string, string>();
+function tileIcon(id: string): string {
+  let src = tileArt.get(id);
+  if (src === undefined) {
+    const k = TILE_ICON[id];
+    try { src = k ? iconOf(k[0], k[1] as never).src : ''; } catch { src = ''; }
+    tileArt.set(id, src);
+  }
+  return src;
+}
 
 /** The verb the disc shows. */
 export type ThumbVerb = 'attack' | 'enter' | 'talk' | 'loot' | 'take' | 'read' | 'use';
@@ -22,7 +42,7 @@ export type ThumbVerb = 'attack' | 'enter' | 'talk' | 'loot' | 'take' | 'read' |
 export interface TickerLine { key: string; kind: 'glim' | 'area' | 'armed' | 'log' | 'chat'; text: string; who?: string }
 
 /** A More tile. */
-interface Tile { id: string; label: string; badge: boolean; pressed?: boolean; go: () => void }
+interface Tile { id: string; label: string; badge: boolean; pressed?: boolean; go: () => void; icon?: string }
 
 /** A ticker log line lives this long (ms). */
 export const TICKER_MS = 6000;
@@ -39,8 +59,9 @@ export function tickerLines(src: {
   chat?: readonly { id: string; at: number; name: string; text: string }[];
   now: number; max: number;
 }): TickerLine[] {
+  // While Glim speaks he has the whole ticker (the reach line, the area and the log yield): his line is never cut.
+  if (src.glim) return [{ key: `g${src.glim.key}`, kind: 'glim', who: src.glim.who, text: src.glim.text }];
   const out: TickerLine[] = [];
-  if (src.glim) out.push({ key: `g${src.glim.key}`, kind: 'glim', who: src.glim.who, text: src.glim.text });
   if (src.area) out.push({ key: `a${src.area}`, kind: 'area', text: src.area });
   if (src.armed) out.push({ key: `p${src.armed}`, kind: 'armed', text: src.armed });
   const fresh = [
@@ -110,11 +131,11 @@ export class ThumbHudComponent implements OnInit, OnDestroy {
   discUp(ev: PointerEvent): void {
     clearTimeout(this.discTimer);
     if (this.verb === 'attack') { this.hud.input(ev, 'attack', false); return; }
-    if (!this.discLong && ev.type === 'pointerup') this.hud.interact();
+    if (!this.discLong && ev.type === 'pointerup') { if (this.verb === 'loot') this.hud.openNearby(); else this.hud.interact(); }
   }
   discCancel(ev: PointerEvent): void { clearTimeout(this.discTimer); if (this.verb === 'attack') this.hud.input(ev, 'attack', false); }
   fanAttack(ev: PointerEvent): void { this.fan = false; this.hud.input(ev, 'attack', true); setTimeout(() => this.hud.input(ev, 'attack', false), 180); }
-  fanVerb(): void { this.fan = false; this.hud.interact(); }
+  fanVerb(): void { this.fan = false; if (this.hud.thumbArmedVerb === 'loot') this.hud.openNearby(); else this.hud.interact(); }
   get armedLabel(): string { const v = this.hud.thumbArmedVerb; return v ? this.t('thumb.verb.' + v) : ''; }
 
   // ── The ticker ──
@@ -123,7 +144,7 @@ export class ThumbHudComponent implements OnInit, OnDestroy {
     const say = h.glimVoice.speech;
     const glim = say ? { key: String(say.seq), who: h.sayer?.name ?? h.glimNpc?.name ?? 'Glim', text: h.t(say.key, say.vars) } : null;
     const card = h.areaCard;
-    const area = card ? `${card.title} · ${card.danger ? h.t('play.zone.danger') : h.t('thumb.safe')}` : null;
+    const area = card ? [card.title, card.danger ? h.t('play.zone.danger') : h.t('thumb.safe'), h.skyClock].filter(Boolean).join(' · ') : null;
     const armed = h.state?.nearby || h.fishPrompt ? h.actionLabel : null;
     const chat = h.chatSetting === 'on' ? h.social.messages.filter(m => !h.muted.has(m.playerId)).slice(-3).map(m => ({ id: m.id, at: m.at, name: m.name, text: m.text })) : [];
     return tickerLines({ glim, area, armed, log: h.gameLog.slice(-6), chat, now: this.now, max: this.compact ? 2 : 3 });
@@ -159,6 +180,7 @@ export class ThumbHudComponent implements OnInit, OnDestroy {
     if (h.slateTier > 0) out.push({ id: 'slate', label: this.t('thumb.tile.slate'), badge: false, go: close(() => h.toggleSlate()) });
     // Everything else the ☰ Game Menu holds (the Glass, Controls, Character select): one tile to it.
     out.push({ id: 'menu', label: this.t('thumb.tile.menu'), badge: false, go: close(() => h.toggleGameMenu()) });
+    for (const tile of out) tile.icon = tileIcon(tile.id);
     return out;
   }
   /** Any tile has news (read once a second: the sheet's points are not free to work out every frame). */
