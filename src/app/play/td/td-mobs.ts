@@ -2107,6 +2107,21 @@ export interface Mob {
   /** Whose burn and whose bleed it carries (the room: each tick is that Keeper's blow, charged to its budget). */
   scorchBy?: string;
   bleedBy?: string;
+  // ── S9 (skills-100.md §0.4 and the rows 30–50) ──
+  /** Shocked: seconds left, how much harder its next hit taken lands (%), and whether the spark has jumped on. */
+  shockT?: number;
+  shockPct?: number;
+  /** The spark that Shocked it jumped here: spent, it jumps no further. */
+  shockHop?: boolean;
+  /** Wet (a rain cloud's, Call the Rain): seconds left. Lightning bites deeper, a cold hit freezes it. */
+  wetT?: number;
+  /** Kiln Breath's Melting (a mark): the share more of the Keeper's fire it takes (%), and seconds that holds. */
+  meltPct?: number;
+  meltT?: number;
+  /** Revealed (Glim's Margin, a Moth Swarm's Glim's Cousins): seconds it stays outlined, its hiding undone. */
+  glimT?: number;
+  /** Thornrain's thorny ground (a mark) has rooted it once. */
+  thornedOnce?: boolean;
 }
 
 /** S6: a creature's ability state on the wire (CoopMobState.fl's high bits; td-coop and room-world stateOf). */
@@ -2235,6 +2250,18 @@ export interface Minion {
   /** Captain of the Dead (a mark): the one raised twice as strong, and seconds to its next taunt. */
   captain?: boolean;
   tauntCd?: number;
+  /**
+   * S9: what was raised. A Grave-Mage stands back and casts (its bolt's element, its bolts so far), the Ossuary Golem
+   * strikes round itself and taunts (`forty`: Forty Strong's lift so far, %), an Elder Beast is the Thornstrider's
+   * called beast grown (its seconds are `life`, its called seconds still owed `owed`).
+   */
+  kind?: 'mage' | 'golem' | 'elder';
+  el?: 'fire' | 'arcane' | 'cold' | 'arrow';
+  bolts?: number;
+  forty?: number;
+  owed?: number;
+  /** The Elder Beast's first bite has been given (Wake the Wood). */
+  woke?: boolean;
 }
 
 /** A raised skeleton's life and blow: Raise Skeleton's numbers grown with the Keeper's level and spell power. */
@@ -2246,7 +2273,12 @@ export function raisedStats(level: number, power: number, v: Readonly<Record<str
 }
 /** Keep at most `cap` raised: the oldest crumble first. Returns the ones let go. */
 export function capMinions(list: Minion[], cap: number): Minion[] {
-  return list.length > cap ? list.splice(0, list.length - cap) : [];
+  // S9: only the skeletons count against Raise Skeleton's cap (a Grave-Mage, the Golem, an Elder Beast keep their own).
+  const skel = list.filter(k => !k.kind);
+  if (skel.length <= cap) return [];
+  const gone = skel.slice(0, skel.length - cap);
+  for (const k of gone) list.splice(list.indexOf(k), 1);
+  return gone;
 }
 /**
  * The foe a raised skeleton goes for: the nearest within its sight that is also within the leash of the Keeper — and,
@@ -2269,6 +2301,8 @@ export interface Spear extends Lofted {
   src?: SkillId;
   /** Return of the Bone (a mark): this share of a blow when it has flown its length and comes back (once). */
   back?: number;
+  /** S9: a Rime Lance's splinter (Splintering: it does not split again, nor burst a Frost Nova). */
+  splinter?: boolean;
 }
 
 /**
@@ -2282,7 +2316,9 @@ export interface Zone {
     // The Thornstrider (td-thorn-skills): a Thornroot Snare's line of thorns, a Bramble Trap hidden on the ground.
     | 'snare' | 'trap'
     // A mark's burning ground (td-marks `field`): fire a second, at a share of the hit that laid it.
-    | 'field';
+    | 'field'
+    // S9 (td-late-fx.ts): a rain cloud, a fog bank, a moth swarm, a rain of thorns, thorny ground.
+    | 'cloud' | 'fog' | 'moths' | 'thornrain' | 'thorny';
   x: number; y: number;
   /** Radius (art px): the rain's circle, the meteor's blast; a wall's reach either side of its line. */
   r: number;
@@ -2301,6 +2337,12 @@ export interface Zone {
   frag?: boolean;
   /** Seconds to the snare's next grasp (Grasping, a mark). */
   regrasp?: number;
+  /** S9: what it follows (the Keeper, the Marked, the target), and the creatures already inside it (a swarm's Blind on entry). */
+  follow?: 'self' | 'mark' | 'foe';
+  inside?: Set<Mob>;
+  /** S9: its own rhythm (a cloud's strike, an arrow of the thornrain), and its share (a cloud thundering in a clear sky). */
+  every?: number;
+  share?: number;
 }
 
 export interface Drop {
@@ -2356,7 +2398,10 @@ export interface Effect {
     // Sight (td-sight.ts): a shot breaking on a wall — a puff of grit in the shot's own colour (`el`).
     | 'puff'
     // S3 (skills-100.md §0.6): every hit's 2–3 frame impact spark in its element's colour (`c`).
-    | 'impact';
+    | 'impact'
+    // S9 (td-late-fx.ts): a lightning leap (to tx, ty), a strike from the sky, its ring tell, a cone of flame, a cracked
+    // ground ring, rime on the ground, a puff of moth dust, Glim's ring, the hunter's leaf over the Marked, a leap's arc.
+    | 'lc-chain' | 'lc-strike' | 'lc-tell' | 'lc-cone' | 'lc-quake' | 'lc-rime' | 'lc-dust' | 'lc-glim' | 'lc-leaf' | 'lc-leap';
   x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number;
   /** An impact's colour (DAMAGE_COLORS of the blow's element). */
   c?: string;
@@ -2370,7 +2415,7 @@ export interface Effect {
 }
 
 /** A bolt in flight toward a creature. */
-export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean; /** Its height over its ground track (art px; 22, the staff's tip, when unset): a wall stops the track. */ lift?: number; /** The skill that sent it (Ember Bolt, Kindle, a wisp's or a beacon's mote), and a mark's heal on landing (Kindling Light, % of the hit). */ src?: SkillId; heal?: number }
+export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number; lamp?: boolean; /** Its height over its ground track (art px; 22, the staff's tip, when unset): a wall stops the track. */ lift?: number; /** The skill that sent it (Ember Bolt, Kindle, a wisp's or a beacon's mote), and a mark's heal on landing (Kindling Light, % of the hit). */ src?: SkillId; heal?: number; /** S9: a Grave-Mage's bolt — its element, and which mage loosed it (Grave-Curse's beat). */ mage?: 'fire' | 'arcane' | 'cold' | 'arrow'; from?: number }
 
 /** A lamp-wisp at the Lanternwright's shoulder (td-lantern-skills): seconds left, its next mote, where it circles. */
 export interface Wisp { x: number; y: number; t: number; cd: number; a: number; /** Lantern Swarm (a mark): this wisp's motes at this share. Wisp Ward: it still holds a shot off. */ k?: number; ward?: boolean }
@@ -2387,6 +2432,8 @@ export interface Arrow extends Lofted {
   to: Mob | null; hit: Mob[]; pierce: number; knock: number; barb?: { dps: number; secs: number };
   /** The skill that loosed it; a mark's sure crit (Hunter's Rhythm, Leaf-Shadow); the most foes it may strike (a Volley's Pierce). */
   src?: SkillId; crit?: boolean; most?: number;
+  /** S9: loosed from inside his fog (Fog-Arrows: it Chills). */
+  fog?: boolean;
 }
 /**
  * A beast of the wild (td-thorn-skills): one answering the Call of the Wilds (it hunts by the Keeper, `t` seconds), or
@@ -2522,6 +2569,49 @@ export const CAPTAIN_REACH = 4;
 /** S5: the tank's and the healer's new rows (td-mobs useTankSkill / useHealSkill). */
 const TANK_ROWS: ReadonlySet<string> = new Set(['brand-throw', 'cinder-skin', 'second-wind', 'intercept', 'hold-the-gate']);
 const HEAL_ROWS: ReadonlySet<string> = new Set(['cleanse', 'rekindle', 'hearthsong']);
+/** S9: the rows 30–50 of every calling, and the Thornstrider's rows S5 left waiting (td-mobs useLateSkill). */
+const LATE_ROWS: ReadonlySet<string> = new Set(['kiln-breath', 'raise-grave-mage', 'ossuary-golem', 'rime-lance', 'pyre-strike', 'watchquake',
+  'chain-of-lamps', 'moth-dust', 'moth-swarm', 'glims-margin', 'hunters-mark', 'pinning-shot', 'heartseeker', 'thornrain', 'feral-leap', 'elder-beast',
+  'call-the-rain', 'fogwalk', 'lightning-call']);
+/** S9: the blows a beast gives (Beast's Prey), the arrows (Nailed), the Lanternwright's light (Itching). */
+const BEAST_SRC: ReadonlySet<SkillId> = new Set<SkillId>(['call-of-the-wilds', 'stampede', 'feral-leap', 'elder-beast']);
+const ARROW_SRC: ReadonlySet<SkillId> = new Set<SkillId>(['thorn-shot', 'barbed-shot', 'volley', 'pinning-shot', 'heartseeker', 'thornrain']);
+const LIGHT_SRC: ReadonlySet<SkillId> = new Set<SkillId>(['kindle', 'blinding-flash', 'banish', 'lamp-wisp', 'beacon', 'dawn-at-noon', 'chain-of-lamps', 'moth-swarm']);
+/** S9's zones (td-mobs lateZone). */
+const LATE_ZONES: ReadonlySet<string> = new Set(['cloud', 'fog', 'moths', 'thornrain', 'thorny']);
+/** Shock (skills-100.md §0.4): the next hit taken lands this much harder (%), the spark's seconds, and its jump (tiles). */
+export const SHOCK_PCT = 20;
+export const SHOCK_SECS = 4;
+export const SHOCK_JUMP_TILES = 3;
+/** Kiln Breath: a tick every quarter second; Melting's lift lasts this long after the last tick. */
+export const KILN_TICK = .25;
+const MELT_SECS = 3;
+/** The Ossuary Golem gathers the fresh dead within this many tiles. */
+const GOLEM_GATHER = 6;
+/** Moth Dust's cone (degrees). */
+export const MOTH_DUST_ARC = 70;
+/** Splintering's three splinters fly this far apart (radians: 30°). */
+const SPLINTER_SPREAD = Math.PI / 6;
+/** The Golem's taunt and the Elder Beast's each hold this long (s). */
+const GOLEM_TAUNT_SECS = 3;
+const ELDER_TAUNT_SECS = 2;
+/** Rallying Fall's ward lasts this long (s). */
+const RALLY_WARD_SECS = 6;
+/** A Lightning Call chains this far from a Wet foe (tiles). */
+const LIGHTNING_CHAIN_TILES = 3;
+/** Heartseeker's draw breaks on a step past this (art px). */
+const DRAW_SLACK = 3;
+/** Wet under a rain cloud: while under it, and this long after (skills-100.md §0.4 "rain: while in it +5 s"). */
+export const WET_UNDER_CLOUD = 5;
+/** Fire on the ground under a rain cloud goes out within this (s). */
+const RAIN_DOUSE = 2;
+/** Cold Rain's chill (s). */
+const CHILL_SECS = 3;
+/** Moth Wall catches a shot this near the swarm's edge (art px). */
+const MOTH_WALL_BAND = 6;
+/** A Thornrain arrow strikes what stands within this of where it lands (art px; ¾ of a tile). */
+const THORNRAIN_STEP = 12;
+
 /** A Keeper near, as a heal or a guard sees it (td-engine fills MobSystem.allies from the room's word). */
 export interface AllyNear { id: string; x: number; y: number; h: number; m: number; down?: boolean }
 /** A tap on an ally picks it this long (s). The Hearth's heals lift 3% a level (skills-100.md §3). */
@@ -3191,6 +3281,8 @@ export class MobSystem {
       }
       foe = null;
     }
+    // Mark-Seeker (Thorn Shot's mark, with Hunter's Mark): the bow seeks the Marked foe first while it is in reach.
+    if (this.thorn && foe && this.hunted && this.isHunted(this.hunted) && this.mk('thorn-shot', 'markSeek') && Math.hypot(this.hunted.x - p.x, this.hunted.y - p.y) <= this.range && this.sees(this.hunted)) foe = this.hunted;
     // The Thornstrider's bow: an arrow at the foe in its long reach (Thorn Shot); it may pierce, it knocks back.
     if (this.thorn) {
       if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
@@ -3243,6 +3335,7 @@ export class MobSystem {
           continue;
         }
         this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .3, dir: 1 });
+        if (b.mage) { this.mageHit(this.minions.find(k => k.id === b.from) ?? null, b.to, b.dmg, b.mage); continue; }
         this.hitFoe(b.to, b.dmg, '#ffd25a', 'ember-bolt');
         // The Crown of the Banked Coal: the bolt leaves its foe smouldering.
         if (this.relics.singe && b.to.hp > 0) { b.to.singeT = this.relics.singe.secs; b.to.singeTick = b.to.singeTick && b.to.singeTick > 0 ? b.to.singeTick : 1; }
@@ -3293,6 +3386,11 @@ export class MobSystem {
         }
       }
       if ((m.chillT ?? 0) > 0) m.chillT = Math.max(0, (m.chillT ?? 0) - dt);
+      // S9: a Shock, Wet, Melting, Glim's reveal run out.
+      if ((m.shockT ?? 0) > 0) m.shockT = Math.max(0, (m.shockT ?? 0) - dt);
+      if ((m.wetT ?? 0) > 0) m.wetT = Math.max(0, (m.wetT ?? 0) - dt);
+      if ((m.meltT ?? 0) > 0) { m.meltT = Math.max(0, (m.meltT ?? 0) - dt); if (m.meltT <= 0) m.meltPct = 0; }
+      if ((m.glimT ?? 0) > 0) m.glimT = Math.max(0, (m.glimT ?? 0) - dt);
       if ((m.blindT ?? 0) > 0) m.blindT = Math.max(0, (m.blindT ?? 0) - dt);
       if ((m.hushT ?? 0) > 0) m.hushT = Math.max(0, (m.hushT ?? 0) - dt);
       if ((m.fearT ?? 0) > 0) m.fearT = Math.max(0, (m.fearT ?? 0) - dt);
@@ -3344,6 +3442,7 @@ export class MobSystem {
     if (this.lamp) this.tickLamp(dt);
     this.updateArrows(dt);
     if (this.thorn || this.beasts.length) this.tickThorn(dt);
+    this.tickLate(dt);
     this.updateZones(dt);
     // S6: his statuses, the pack auras, the hostile ground.
     this.tickKeeper(dt);
@@ -3442,7 +3541,7 @@ export class MobSystem {
       m.chaseT = seen ? CHASE_MEMORY : Math.max(0, (m.chaseT ?? 0) - dt);
       const body = other ?? prey ?? kinPrey, px0 = body ? body.x : p.x, py0 = body ? body.y : p.y;
       // Rootwalk: the forest closes behind the Keeper — a creature loses his track unless he is at its very side.
-      const lost = this.rootwalkT > 0 && !prey && !kinPrey && !other && d > MOB_REACH * 2;
+      const lost = (this.rootwalkT > 0 && !prey && !kinPrey && !other && d > MOB_REACH * 2) || this.lostInFog(m, d, !prey && !kinPrey && !other);
       // A world boss (bound): never past its leash from the rift, never after prey standing on a town's safe ground.
       const bound = m.def.bound, held = !!bound && (Math.hypot(m.x - m.hx, m.y - m.hy) > bound.leash * TILE || !!this.host.safeAt?.(px0, py0));
       // The Lanternwright's shutters (marks): Quiet Hands shortens how far a creature notices him; in Moth Hours the
@@ -3463,7 +3562,7 @@ export class MobSystem {
         if (Math.abs(px0 - m.x) > 2) m.face = px0 < m.x ? -1 : 1;
         // A shot at where the prey stands now: a step aside and it flies by. A boss winds up first (BOSS_TELL):
         // it aims now and looses when the tell runs out, so the ground warning is where the breath goes.
-        if (shoot && seen && d <= shoot.range && m.rcd <= 0 && m.tell <= 0 && !this.shrouded(d)) {
+        if (shoot && seen && d <= shoot.range && m.rcd <= 0 && m.tell <= 0 && !this.shrouded(d) && !(other || prey || kinPrey ? false : this.fogHides(m))) {
           m.rcd = shoot.rate;
           if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; if (m.def.chant) { m.chantT = CHANT_SECS; m.chantText = m.def.chant; } }
           else this.loose(m, px0, py0 - 12);
@@ -3520,7 +3619,7 @@ export class MobSystem {
           const ax = m.elite?.affixes ?? [];
           (m.coopBy ??= new Set()).add(other.id);
           this.coop?.bite(other.id, m, n, this.blowType(m), ax.includes('mana-burn'), ax.includes('cursed'), this.biteRiders(m, n, false) || undefined);
-        } else if (prey) { this.hurtMinion(prey, n); this.biteRiders(m, n, false); }
+        } else if (prey) { this.hurtMinion(prey, n, m); this.biteRiders(m, n, false); }
         else if (kinPrey) this.biteKin(kinPrey, m, n);
         else { this.biteKeeper(n, this.blowType(m), m); this.layOn(this.biteRiders(m, n, true), m); this.eliteBlow(m); this.struckBy(m); }
       }
@@ -4045,6 +4144,8 @@ export class MobSystem {
   private hitFoe(foe: Mob, raw: number, color: string, src: SkillId | null = this.src): number {
     // The Skill Book's marks: what makes this hit land harder (td-marks; markHitMult says each).
     if (foe.hp > 0) raw *= this.markHitMult(foe, src);
+    // S9: the Mark, a Shock spent, Melting, and the rows' own lifts (lateHitMult says each).
+    if (foe.hp > 0) raw *= this.lateHitMult(foe, src);
     // A worn unique's echo (unique-items.ts strike-double): every n-th hit the Keeper lands, each piece on its own beat.
     if (this.relics.echo.length && foe.hp > 0) {
       this.hitCount++;
@@ -4070,7 +4171,9 @@ export class MobSystem {
     // His fire turns what it fells to ash (nothing raises it) and clears a web or a cloud it touches.
     this.fireBlow = !!src && FIRE_SKILLS.has(src);
     if (this.fireBlow) this.burnHazards(foe.x, foe.y, 8);
-    const crit = this.forceCrit || (this.crit > 0 && Math.random() < this.crit);
+    // Glim's Margin: the revealed are critted more often while the margin holds.
+    const glim = this.marginT > 0 && (foe.glimT ?? 0) > 0 ? this.v('glims-margin')['crit'] / 100 : 0;
+    const crit = this.forceCrit || (this.crit + glim > 0 && Math.random() < this.crit + glim);
     const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     if (this.aura === 'aura-siphon' && this.rank('aura-siphon') > 0) {
       // Vampire's Patience (a mark): twice as much while the Keeper's life runs low.
@@ -4109,7 +4212,38 @@ export class MobSystem {
     this.killSrc = null; this.fireBlow = false;
     if (dealt > 0) this.hitFx(foe, src, crit);
     if (was && dealt > 0 && src) this.markHit(foe, src, raw, dealt);
+    // Hunter's Share (Hunter's Mark's mark): a blow on the Marked mends him a share of it.
+    if (dealt > 0 && this.isHunted(foe)) { const hs = this.mk('hunters-mark', 'hunterShare'); if (hs) this.healOwed(dealt * (hs.n ?? 0) / 100); }
     return dealt;
+  }
+  /**
+   * S9's lifts on a hit (skills-100.md §0.4 and the rows 30–50): the Marked takes more from him and his beasts (Beast's
+   * Prey more still); a Shock is spent by the hit and its spark jumps on once; Melting lifts his fire; Nailed his arrows on
+   * the rooted; Itching his light on the blinded; Grave-Frost his rime on the fire-born.
+   */
+  private lateHitMult(foe: Mob, src: SkillId | null): number {
+    let k = 1;
+    if (this.isHunted(foe)) {
+      k *= 1 + this.huntPct / 100;
+      const bp = src && BEAST_SRC.has(src) ? this.mk('hunters-mark', 'beastsPrey') : null;
+      if (bp) k *= 1 + (bp.n ?? 0) / 100;
+    }
+    if ((foe.shockT ?? 0) > 0) {
+      k *= 1 + (foe.shockPct ?? SHOCK_PCT) / 100;
+      foe.shockT = 0;
+      if (!foe.shockHop) {
+        let next: Mob | null = null, bd = SHOCK_JUMP_TILES * TILE;
+        for (const m of this.mobs) { if (m === foe || m.hp <= 0) continue; const d = Math.hypot(m.x - foe.x, m.y - foe.y); if (d <= bd && this.sight.sees(foe.x, foe.y, m.x, m.y)) { bd = d; next = m; } }
+        if (next) { this.layShock(next, SHOCK_SECS, foe.shockPct ?? SHOCK_PCT); next.shockHop = true; this.effects.push({ kind: 'lc-chain', x: foe.x, y: foe.y - foe.def.h / 2, tx: next.x, ty: next.y - next.def.h / 2, age: 0, life: .12, dir: 0 }); }
+      }
+      foe.shockHop = false;
+    }
+    if (!src) return k;
+    if ((foe.meltT ?? 0) > 0 && FIRE_SKILLS.has(src)) k *= 1 + (foe.meltPct ?? 0) / 100;
+    if ((foe.rootT ?? 0) > 0 && ARROW_SRC.has(src)) { const na = this.mk('pinning-shot', 'nailed'); if (na) k *= 1 + (na.n ?? 0) / 100; }
+    if ((foe.blindT ?? 0) > 0 && LIGHT_SRC.has(src)) { const it = this.mk('moth-dust', 'itching'); if (it) k *= 1 + (it.n ?? 0) / 100; }
+    if (src === 'rime-lance' && this.fireBorn(foe)) { const gf = this.mk('rime-lance', 'vsFire'); if (gf) k *= 1 + (gf.n ?? 0) / 100; }
+    return k;
   }
   /** The blow landing now is fire (a fire skill, a member's fire claim): its fall leaves ash. */
   private fireBlow = false;
@@ -4243,7 +4377,7 @@ export class MobSystem {
         break;
       }
       // A chill on a creature standing in the rain freezes it a moment (Wet), then chills it as ever.
-      case 'chill': if (this.weatherWet) m.stun = Math.max(m.stun ?? 0, ccSecs(1, m.def.rank)); m.chillT = Math.max(m.chillT ?? 0, cc); break;
+      case 'chill': if (this.weatherWet || (m.wetT ?? 0) > 0) m.stun = Math.max(m.stun ?? 0, ccSecs(1, m.def.rank)); m.chillT = Math.max(m.chillT ?? 0, cc); break;
       case 'stun': m.stun = Math.max(m.stun ?? 0, cc); break;
       case 'root': m.rootT = Math.max(m.rootT ?? 0, cc); break;
       case 'blind': m.blindT = Math.max(m.blindT ?? 0, cc); break;
@@ -4585,7 +4719,8 @@ export class MobSystem {
     const hold = this.rank('hold-the-line') > 0 ? { below: this.v('hold-the-line')['below'], pct: this.v('hold-the-line')['pct'] } : null;
     return guardedDefense(this.defense, aura, this.host.playerHp?.() ?? this.keeperMaxHp, this.keeperMaxHp, hold);
   }
-  private hurtMinion(k: Minion, n: number): void {
+  private hurtMinion(k: Minion, n: number, by: Mob | null = null): void {
+    if (k.kind) n = this.lateMinionStruck(k, n, by);
     // Shared Bones (Bone Armor's mark): while the armour holds, the raised take less.
     const kg = this.bone > 0 ? this.mk('bone-armor', 'kinGuard') : null;
     if (kg) n = Math.max(1, Math.round(n * (1 - (kg.n ?? 0) / 100)));
@@ -4652,10 +4787,17 @@ export class MobSystem {
         // Pierce (Bone Storm's mark): each foe a spear has already passed through makes it strike the next harder.
         const ps = s.src === 'bone-storm' ? this.mk('bone-storm', 'pierceStack') : null;
         const lift = ps ? 1 + Math.min(ps.m ?? 0, (ps.n ?? 0) * (s.hit.length - 1)) / 100 : 1;
+        if (s.src === 'rime-lance') { this.rimeHit(s, m); continue; }
         this.hitFoe(m, (s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max'])) * lift, '#e9dcff', s.src ?? 'bone-spear');
       }
       if (s.age > s.life) {
         this.spears.splice(i, 1);
+        // Splintering (Rime Lance's mark): at the end of its flight it splits, the splinters flying on at their share.
+        const sp = s.src === 'rime-lance' && !s.splinter ? this.mk('rime-lance', 'splinter') : null;
+        if (sp && s.dmg) {
+          const n = sp.m ?? 3, a0 = Math.atan2(s.vy, s.vx), spd = Math.hypot(s.vx, s.vy);
+          for (let j = 0; j < n; j++) { const a = a0 + (j - (n - 1) / 2) * SPLINTER_SPREAD; this.spears.push({ x: s.x, y: s.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, age: 0, life: (sp.s ?? 4) * TILE / spd, hit: [...s.hit], dmg: [Math.max(1, Math.round(s.dmg[0] * (sp.n ?? 50) / 100)), Math.max(1, Math.round(s.dmg[1] * (sp.n ?? 50) / 100))], lift: s.lift, src: 'rime-lance', splinter: true }); }
+        }
         // Return of the Bone (a mark): the spear turns at its length and flies back, striking again at its share.
         if (s.back && s.dmg) this.spears.push({ x: s.x, y: s.y, vx: -s.vx, vy: -s.vy, age: 0, life: s.life, hit: [], dmg: [Math.max(1, Math.round(s.dmg[0] * s.back)), Math.max(1, Math.round(s.dmg[1] * s.back))], lift: s.lift, src: s.src });
       }
@@ -4673,6 +4815,8 @@ export class MobSystem {
     this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
     // A Thornstrider's beast is one of the pack: its bite grows with him and with every Wild skill he holds.
     if (this.thorn) dmg = thornPetBlow(dmg, { level: this.keeperLevel, pct: this.beastPct(foe === this.commandFoe && this.commandT > 0) }) * (1 + this.damagePct * BEAST_DAMAGE_SHARE / 100);
+    // Hunter's Mark: the Marked takes more from his beasts too (Beast's Prey more still).
+    if (this.isHunted(foe)) dmg *= (1 + this.huntPct / 100) * (1 + (this.mk('hunters-mark', 'beastsPrey')?.n ?? 0) / 100);
     const dealt = this.hurtMob(foe, Math.max(1, Math.round(dmg)), this.thorn ? '#9af0d0' : '#ffd98a');
     if (this.thorn && foe.hp > 0) {
       // Hamstring (Command's mark): the commanded foe's bites chill it. Wild Blood (Pack Bond's): the bite heals him.
@@ -4702,9 +4846,12 @@ export class MobSystem {
     const p = this.host.player();
     for (let i = this.minions.length - 1; i >= 0; i--) {
       const k = this.minions[i];
+      // S9: a Grave-Mage's or an Elder Beast's seconds run out.
+      if (k.kind && Number.isFinite(k.life) && k.hp > 0) { k.life -= dt; if (k.life <= 0) k.hp = 0; }
       if (k.hp > 0) continue;
       this.minions.splice(i, 1);
       for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
+      if (k.kind) { this.lateMinionGone(k); continue; }
       // Ember Bones (a mark): a skeleton that crumbles bursts into fire round where it stood.
       const cr = this.mk('raise-skeleton', 'crumble');
       if (cr) {
@@ -4716,6 +4863,8 @@ export class MobSystem {
     const face = this.formFace(), fans = this.fanCounts();
     this.minions.forEach((k, slot) => {
       k.t += dt; k.cd -= dt; k.hit = Math.max(0, k.hit - dt);
+      // S9: a Grave-Mage keeps the formation and casts; the Golem and the Elder taunt and strike round themselves.
+      if (k.kind && this.lateMinion(k, slot, dt)) return;
       // Captain of the Dead (a mark): every few seconds it taunts what stands near it.
       const cap = k.captain ? this.mk('raise-skeleton', 'captain') : null;
       if (cap) {
@@ -4745,7 +4894,8 @@ export class MobSystem {
       }
       if (foe) k.face = foe.x < k.x ? -1 : 1; else if (Math.abs(dx) > 2) k.face = dx < 0 ? -1 : 1;
       // Its blow only ever lands on a creature it can see: the Keeper is never its foe, a wall never lets it through.
-      if (foe && Math.hypot(foe.x - k.x, foe.y - k.y) <= reach + 2 && k.cd <= 0 && this.sight.sees(k.x, k.y, foe.x, foe.y)) {
+      if (foe && k.kind && Math.hypot(foe.x - k.x, foe.y - k.y) <= reach + 2 + (k.kind === 'golem' ? TILE : 0) && k.cd <= 0 && this.sight.sees(k.x, k.y, foe.x, foe.y)) { this.lateMinionBlow(k, foe); return; }
+      if (foe && !k.kind && Math.hypot(foe.x - k.x, foe.y - k.y) <= reach + 2 && k.cd <= 0 && this.sight.sees(k.x, k.y, foe.x, foe.y)) {
         k.cd = RAISED_SKELETON.rate;
         this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .2, dir: k.face });
         // The Ashbone Phylactery: each skeleton's first blow is a breath of fire.
@@ -4760,6 +4910,121 @@ export class MobSystem {
       }
     });
     this.spreadKin(dt);
+  }
+
+  /**
+   * S9's raised, each frame before the shared walk: a Grave-Mage holds its place in the formation and looses a bolt at
+   * a foe in its range (true: it took its turn); the Ossuary Golem and an Elder Beast taunt what stands near on their
+   * clock (the Golem's Bonemeal and the Elder's Mossback mend them), then walk and strike as the raised do.
+   */
+  private lateMinion(k: Minion, slot: number, dt: number): boolean {
+    const p = this.host.player();
+    if (k.kind === 'mage') {
+      const v = this.v('raise-grave-mage'), ar = this.mk('raise-grave-mage', 'archers');
+      const range = (ar ? ar.s ?? 8 : v['range']) * TILE;
+      const home = formationSpot(slot, p, this.formFace());
+      if (Math.hypot(k.x - p.x, k.y - p.y) > MINION_LEASH * 1.6) { const at = this.slotOpen(home); k.x = at.x; k.y = at.y; }
+      const dx = home.x - k.x, dy = home.y - k.y, len = Math.hypot(dx, dy);
+      if (len > 3) { const step = Math.min(len - 3, MINION_SPEED * this.pace * dt); if (this.free(k.x + dx / len * step, k.y)) k.x += dx / len * step; if (this.free(k.x, k.y + dy / len * step)) k.y += dy / len * step; }
+      if (k.cd > 0) return true;
+      let foe: Mob | null = null, bd = range;
+      for (const m of this.mobs) { if (m.hp <= 0) continue; const d = Math.hypot(m.x - k.x, m.y - k.y); if (d <= bd && this.sight.sees(k.x, k.y, m.x, m.y)) { bd = d; foe = m; } }
+      if (!foe) return true;
+      k.cd = v['rate']; k.bolts = (k.bolts ?? 0) + 1; k.face = foe.x < k.x ? -1 : 1;
+      const raw = rnd(k.dmg[0], k.dmg[1]) * (k.el === 'fire' ? this.fireMult : 1);
+      if (k.el === 'arrow') {
+        // The Bastion's Archers (a mark): a physical arrow through its foe and the next ones in line.
+        const a = Math.atan2(foe.y - k.y, foe.x - k.x), ex = k.x + Math.cos(a) * range, ey = k.y + Math.sin(a) * range;
+        const line = this.mobs.filter(m => m.hp > 0 && segDist(k.x, k.y, ex, ey, m.x, m.y) <= Math.max(8, m.def.w / 3) && this.sight.sees(k.x, k.y, m.x, m.y))
+          .sort((a2, b2) => Math.hypot(a2.x - k.x, a2.y - k.y) - Math.hypot(b2.x - k.x, b2.y - k.y)).slice(0, 1 + (ar?.m ?? 2));
+        this.effects.push({ kind: 'lc-chain', x: k.x, y: k.y - 14, tx: ex, ty: ey - 14, age: 0, life: .12, dir: 3 });
+        for (const m of line) this.mageHit(k, m, raw);
+      } else {
+        this.bolts.push({ x: k.x, y: k.y - 16, to: foe, dmg: raw, age: 0, lift: 16, src: 'raise-grave-mage', mage: k.el ?? 'arcane', from: k.id });
+      }
+      return true;
+    }
+    // The Golem and the Elder: their taunt on its clock (the Golem's every few seconds, the Elder's on each bite).
+    if (k.kind === 'golem') {
+      const v = this.v('ossuary-golem');
+      k.tauntCd = (k.tauntCd ?? 0) - dt;
+      if (k.tauntCd <= 0) {
+        k.tauntCd = v['taunt'];
+        for (const m of this.mobs) if (m.hp > 0 && Math.hypot(m.x - k.x, m.y - k.y) <= v['reach'] * TILE) { this.applyStatus(m, 'taunt', GOLEM_TAUNT_SECS); if (!this.replica && (m.taunt ?? 0) > 0) m.tauntBy = kinKey('', minionPalId(k)); }
+        this.effects.push({ kind: 'cry', x: k.x, y: k.y, r: v['reach'] * TILE, age: 0, life: .4, dir: 1 });
+      }
+    }
+    if (k.kind === 'elder') { const mb = this.mk('elder-beast', 'mossback'); if (mb) k.hp = Math.min(k.maxHp, k.hp + k.maxHp * (mb.n ?? 0) / 100 * dt); }
+    return false;
+  }
+  /** A Grave-Mage's bolt (or an archer's arrow) lands: its element's blow, Rime's chill, Grave-Curse's Weaken on the beat. */
+  private mageHit(k: Minion | null, m: Mob, raw: number, el: Minion['el'] = k?.el): void {
+    if (m.hp <= 0) return;
+    const color = el === 'fire' ? '#ff9a4a' : el === 'cold' ? '#8fd8ff' : el === 'arrow' ? '#d8f0a8' : '#c88bff';
+    this.hitFoe(m, raw, color, 'raise-grave-mage');
+    if (m.hp <= 0) return;
+    if (el === 'cold') this.applyStatus(m, 'chill', 1);
+    const gc = this.mk('raise-grave-mage', 'graveCurse');
+    if (gc && k && (k.bolts ?? 0) % (gc.m ?? 4) === 0 && this.rank('weaken') > 0) { const w = this.v('weaken'); m.weak = Math.max(m.weak ?? 0, w['secs']); m.weakPct = Math.max(m.weakPct ?? 0, w['weaken']); this.effects.push({ kind: 'curse', x: m.x, y: m.y - m.def.h - 4, age: 0, life: .6, dir: 1 }); }
+  }
+  /** The Golem's blow round itself, an Elder Beast's bite round its foe (and its taunt). */
+  private lateMinionBlow(k: Minion, foe: Mob): void {
+    if (k.kind === 'golem') {
+      const v = this.v('ossuary-golem');
+      k.cd = v['rate'];
+      const k40 = 1 + (k.forty ?? 0) / 100;
+      this.effects.push({ kind: 'lc-quake', x: k.x, y: k.y, age: 0, life: .45, dir: 1, r: Math.round(v['radius'] * TILE), el: 'bone' });
+      this.blowKin = minionPalId(k);
+      try {
+        for (const m of [...this.mobs]) {
+          if (m.hp <= 0 || Math.hypot(m.x - k.x, m.y - k.y) > v['radius'] * TILE + m.def.w / 4 || !this.sight.sees(k.x, k.y, m.x, m.y)) continue;
+          const was = m.hp;
+          this.hurtMob(m, Math.max(1, Math.round(rnd(k.dmg[0], k.dmg[1]) * k40 * Math.max(.1, this.power))), '#efe6dc');
+          // Forty Strong (a mark): each foe it fells adds to its blows until it falls.
+          const fs = this.mk('ossuary-golem', 'fortyStrong');
+          if (fs && was > 0 && m.hp <= 0) k.forty = Math.min(fs.m ?? 40, (k.forty ?? 0) + (fs.n ?? 1));
+        }
+      } finally { this.blowKin = null; }
+      // Bonemeal (a mark): each blow mends it.
+      const bm = this.mk('ossuary-golem', 'bonemeal');
+      if (bm) k.hp = Math.min(k.maxHp, k.hp + Math.round(k.maxHp * (bm.n ?? 0) / 100));
+      this.sfxCue('bone-hit', -8);
+      return;
+    }
+    // The Elder Beast: its bite strikes everything round its foe, and taunts what it strikes onto it.
+    const v = this.v('elder-beast');
+    k.cd = BEAST_REST;
+    this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .2, dir: k.face });
+    const wake = !k.woke && this.mk('elder-beast', 'wakeWood');
+    k.woke = true;
+    for (const m of [...this.mobs]) {
+      if (m.hp <= 0 || Math.hypot(m.x - foe.x, m.y - foe.y) > v['radius'] * TILE + m.def.w / 4 || !this.sight.sees(k.x, k.y, m.x, m.y)) continue;
+      this.blowKin = minionPalId(k);
+      try { this.hitFoe(m, rnd(k.dmg[0], k.dmg[1]) * (1 + this.beastPct(false) / 100), '#9af0d0', 'elder-beast'); } finally { this.blowKin = null; }
+      if (m.hp > 0) { this.applyStatus(m, 'taunt', ELDER_TAUNT_SECS); if (!this.replica && (m.taunt ?? 0) > 0) m.tauntBy = kinKey('', minionPalId(k)); }
+    }
+    // Wake the Wood (a mark): the first bite calls a Stampede at its share (if he holds the row).
+    if (wake && this.rank('stampede') > 0) this.freeCast('stampede', ((this.mk('elder-beast', 'wakeWood')?.n) ?? 50) / 100);
+  }
+  /** One of S9's raised is gone: an Elder goes back to a called beast for what it still owed; the Golem's Funeral Pyre. */
+  private lateMinionGone(k: Minion): void {
+    if (k.kind === 'elder' && (k.owed ?? 0) > 0) {
+      const d = this.minions.length; void d;
+      this.beasts.push({ kind: 'called', x: k.x, y: k.y, t: k.owed ?? 0, cd: .4, face: k.face, age: 0, dmg: [Math.max(1, Math.round(k.dmg[0] / (1 + this.v('elder-beast')['bite'] / 100))), Math.max(1, Math.round(k.dmg[1] / (1 + this.v('elder-beast')['bite'] / 100)))], target: null });
+    }
+    if (k.kind === 'golem') {
+      const fp = this.mk('ossuary-golem', 'funeralPyre');
+      if (fp) {
+        const v = this.v('ossuary-golem'), dps = Math.max(1, Math.round((v['min'] + v['max']) / 2 * (fp.n ?? 0) / 100));
+        this.zones.push({ kind: 'wall', x: k.x, y: k.y, r: TILE * .7, t: fp.s ?? 6, tick: 0, min: dps, max: dps, pts: this.ringPts(k.x, k.y, (fp.m ?? 2) * TILE), src: 'ossuary-golem' });
+      }
+    }
+  }
+  /** Thorny Ribs (the Golem's mark), Thick Hide (the Elder's): what a creature's blow on one of them does back, and less. */
+  private lateMinionStruck(k: Minion, n: number, by: Mob | null): number {
+    if (k.kind === 'golem' && by && by.hp > 0) { const tr = this.mk('ossuary-golem', 'thornyRibs'); if (tr) this.hurtMob(by, Math.max(1, Math.round(n * (tr.n ?? 0) / 100)), '#efe6dc'); }
+    if (k.kind === 'elder') { const th = this.mk('elder-beast', 'thickHide'); if (th) return Math.max(1, Math.round(n * (1 - (th.n ?? 0) / 100))); }
+    return n;
   }
 
   /** td-roam: what a companion does this frame (hunt `foe`, stroll, run back, or travel in the formation). */
@@ -4869,19 +5134,20 @@ export class MobSystem {
   }
 
   /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
-  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | 'waytown' | 'wayboss' | 'wayseam' | 'noally' | 'nofallen' | null {
+  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | 'locked' | 'nocorpse' | 'life' | 'noseek' | 'waytown' | 'wayboss' | 'wayseam' | 'noally' | 'nofallen' | 'nobeast' | null {
     const sk = SKILLS[id];
     if (!sk || sk.kind !== 'active') return null;
     if (this.rank(id) < 1) return 'locked';
     // Double Stride (Ash Stride's mark): a second charge soon after the first is free.
-    const free = id === 'ash-stride' && this.strideFreeT > 0;
+    // Double Leap (Feral Leap's mark) the same; Fogwalk in the world's fog costs no mana.
+    const free = (id === 'ash-stride' && this.strideFreeT > 0) || (id === 'feral-leap' && this.leapFreeT > 0);
     if (!free && (this.cooldowns[id] ?? 0) > 0) return 'cooldown';
-    const cost = free ? 0 : this.manaOf(id);
+    const cost = free || (id === 'fogwalk' && this.skyFog) ? 0 : this.manaOf(id);
     if (this.mana < cost) return 'mana';
     const why = this.castBody(id);
     if (why) return why;
     this.mana -= cost;
-    if (free) { this.strideFreeT = 0; return null; }
+    if (free) { if (id === 'feral-leap') this.leapFreeT = 0; else this.strideFreeT = 0; return null; }
     // Swift Shutter (a mark): the shutters toggle with no cooldown.
     this.cooldowns[id] = id === 'shutter-lantern' && this.mk(id, 'freeToggle') ? 0 : this.cdOf(id) / (1 + this.castSpeed);
     // The marks that follow a cast: an echo (Twin Nova, Twin Impact, Return Charge…), Double Stride's free window.
@@ -4889,6 +5155,10 @@ export class MobSystem {
     if (echo) this.echoes.push({ id, t: echo.s ?? 0, k: (echo.n ?? 100) / 100, left: Math.max(0, (echo.m ?? 1) - 1), gap: echo.s ?? 0 });
     const again = this.mk(id, 'again');
     if (again) this.strideFreeT = again.s ?? 0;
+    const dl = this.mk(id, 'doubleLeap');
+    if (dl) this.leapFreeT = dl.s ?? 0;
+    // Lightning Call: in a thunderstorm its cooldown is halved.
+    if (id === 'lightning-call' && this.stormSky) this.cooldowns[id] = (this.cooldowns[id] ?? 0) / 2;
     return null;
   }
   /** Double Stride's window: seconds a free second Ash Stride stays open. */
@@ -5059,8 +5329,9 @@ export class MobSystem {
    * The trees' new skills (docs/design/skill-trees.md). Each is small and self-contained: it reads its numbers at its
    * rank, leaves its picture with the td-fx kit, and says why not (no foe, no corpse, too little life) like the rest.
    */
-  private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | 'noally' | 'nofallen' | null {
+  private useTreeSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nocorpse' | 'life' | 'noally' | 'nofallen' | 'nobeast' | null {
     const p = this.host.player();
+    if (LATE_ROWS.has(id)) return this.useLateSkill(id, v, foeInRange);
     if (TANK_ROWS.has(id)) return this.useTankSkill(id, v);
     if (HEAL_ROWS.has(id)) return this.useHealSkill(id, v);
     if (id in ASHGUARD_SKILLS) return this.useAshSkill(id, v);
@@ -5421,6 +5692,8 @@ export class MobSystem {
     if (hl && this.beacons.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= (hl.n ?? 0) * TILE)) return true;
     // No Shadow (Dawn at Noon's mark): while the dawn holds.
     if (this.mk('dawn-at-noon', 'hearth') && this.zones.some(z => z.kind === 'dawn')) return true;
+    // Hush in the Fog (Fogwalk's mark): inside his own fog.
+    if (this.mk('fogwalk', 'hearth') && this.fogAround()) return true;
     return this.rootwalkT > 0 && !!this.mk('rootwalk', 'hearth');
   }
   /** The discs of Dawn at Noon now burning (the engine paints the daylight and the dark layer unveils inside them). */
@@ -5676,6 +5949,9 @@ export class MobSystem {
     if (this.kneel) return 0;
     if (this.song) return this.mk('hearthsong', 'walkingSong') ? (this.mk('hearthsong', 'walkingSong')!.n ?? 0) / 100 : 0;
     if (this.gateT > 0) return this.mk('hold-the-gate', 'mobileGate') ? (this.mk('hold-the-gate', 'mobileGate')!.n ?? 0) / 100 : 0;
+    // S9: Kiln Breath's walk while it breathes; Heartseeker's draw (Steady, a mark: he walks at its share).
+    if (this.kiln) return this.v('kiln-breath')['walk'] / 100;
+    if (this.draw) return this.mk('heartseeker', 'steadyDraw') ? (this.mk('heartseeker', 'steadyDraw')!.n ?? 0) / 100 : 1;
     return 1;
   }
   /**
@@ -5840,7 +6116,535 @@ export class MobSystem {
     let k = 1;
     if (this.aura === 'banner-of-the-watch' && this.rank('banner-of-the-watch') > 0) k *= 1 - this.v('banner-of-the-watch')['self'] / 100;
     if (this.gateT > 0) k *= 1 - this.v('hold-the-gate')['cut'] / 100;
+    // Shield First (Pyre Strike's mark): a moment's guard after landing.
+    if (this.shieldFirstT > 0) k *= 1 - (this.mk('pyre-strike', 'shieldFirst')?.n ?? 0) / 100;
     return k < 1 ? Math.max(1, Math.round(n * k)) : n;
+  }
+
+  // ── S9: rows 30–50 for every calling (skills-100.md §1–§4; docs/handoff/s9rows.md) ──
+
+  /** Hunter's Mark: the one Marked foe, its seconds and how much more it takes from this Keeper and his beasts (%). */
+  hunted: Mob | null = null;
+  huntT = 0;
+  huntPct = 0;
+  /** Kiln Breath's channel: seconds left, its next tick, the way it faces. */
+  kiln: { t: number; tick: number; aim: number } | null = null;
+  /** Heartseeker's draw: seconds left, its foe, where the Keeper stood when it began. */
+  draw: { t: number; foe: Mob; x: number; y: number } | null = null;
+  /** Pyre Strike's charge (Meteor of the Watch): seconds left, its foe. */
+  private pyreCharge: { t: number; foe: Mob } | null = null;
+  /** Shield First (Pyre Strike's mark): seconds he takes less after landing. */
+  shieldFirstT = 0;
+  /** Things set to happen a moment later (an Aftershock, a Lightning Call's strike), each with its clock. */
+  private later: { t: number; go: () => void }[] = [];
+  /** Fogwalk's first arrow from inside is armed; Into the Leaves' seconds of being lost to the creatures. */
+  private fogShot = false;
+  leafT = 0;
+  /** Feral Leap's Double Leap: seconds a free second leap stays open. */
+  private leapFreeT = 0;
+  /** Glim's Margin: seconds it holds, where its circle stands. */
+  marginT = 0;
+  private marginAt: { x: number; y: number } | null = null;
+  /** Margin Note: the day (UTC) it last pointed at something hidden. */
+  private marginDay = -1;
+  /** The sky the engine reads off the weather here (outdoors only): a thunderstorm, the world's fog. */
+  stormSky = false;
+  skyFog = false;
+
+  /** Is this foe the Marked (Hunter's Mark, Marked Page) while the mark holds? */
+  isHunted(m: Mob): boolean { return this.huntT > 0 && this.hunted === m && m.hp > 0; }
+  /** Mark a foe (one at a time): `pct` more from this Keeper and his beasts for `secs`. */
+  private markFoe(m: Mob, secs: number, pct: number): void {
+    this.hunted = m; this.huntT = Math.max(secs, this.hunted === m ? this.huntT : 0); this.huntPct = pct;
+    this.effects.push({ kind: 'lc-leaf', x: m.x, y: m.y - m.def.h - 6, age: 0, life: .8, dir: 1 });
+  }
+  /** Shock a foe (skills-100.md §0.4): its next hit taken lands `pct` harder, then the spark jumps to one foe near, once. */
+  private layShock(m: Mob, secs: number, pct = SHOCK_PCT): void {
+    if (m.hp <= 0) return;
+    m.shockT = Math.max(m.shockT ?? 0, secs); m.shockPct = Math.max((m.shockT ?? 0) > 0 ? m.shockPct ?? 0 : 0, pct);
+  }
+  /** Is it Wet: under a rain cloud, or in the world's rain where the Keeper stands? */
+  private wetFoe(m: Mob): boolean { return (m.wetT ?? 0) > 0 || this.weatherWet || this.stormSky; }
+  /** A creature of fire (Grave-Frost's mark): the ember-born and the flame families. */
+  private fireBorn(m: Mob): boolean { return creatureProfile(m.def.id).family === 'ember'; }
+  /** The rows S9 builds, dispatched from useTreeSkill. */
+  private useLateSkill(id: SkillId, v: Record<string, number>, foeInRange: () => Mob | null): 'nofoe' | 'nobeast' | null {
+    const p = this.host.player(), face: 1 | -1 = (p.face ?? 1) < 0 ? -1 : 1;
+    const towards = (foe: Mob | null) => foe ? Math.atan2(foe.y - p.y, foe.x - p.x) : face < 0 ? Math.PI : 0;
+    if (id === 'kiln-breath') {
+      const foe = foeInRange();
+      this.kiln = { t: v['secs'], tick: 0, aim: towards(foe) };
+      this.host.swung(foe);
+    } else if (id === 'raise-grave-mage') {
+      // The element of the Warlock's lead page; cold when Rime Lance outranks both (skills-100.md §1.2).
+      const lead = (tree: string) => Math.max(0, ...(Object.keys(SKILLS) as SkillId[]).filter(s => SKILLS[s].tree === tree).map(s => this.rank(s)));
+      const archers = !!this.mk(id, 'archers');
+      const el: Minion['el'] = archers ? 'arrow' : this.rank('rime-lance') > Math.max(lead('ember'), lead('bone')) ? 'cold' : lead('ember') >= lead('bone') ? 'fire' : 'arcane';
+      const hp = Math.round(v['hp'] * Math.max(.1, this.power));
+      for (let i = 0; i < Math.max(1, v['count']); i++) {
+        const at = this.slotOpen(formationSpot(this.minions.length, p, this.formFace()));
+        this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp, maxHp: hp, dmg: [v['min'], v['max']], cd: .5 + i * .3, t: 0, face, life: v['secs'], hit: 0, target: null, kind: 'mage', el, bolts: 0 });
+        this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
+      }
+      // At most `cap` mages stand: the oldest crumbles first (the skeletons keep their own count).
+      const mages = this.minions.filter(k => k.kind === 'mage');
+      for (const k of mages.slice(0, Math.max(0, mages.length - v['cap']))) this.minions.splice(this.minions.indexOf(k), 1);
+      this.host.swung(null);
+    } else if (id === 'ossuary-golem') {
+      // One at a time: a new one is built from the old one's bones. The fresh dead near give up theirs (they are spent).
+      for (let i = this.minions.length - 1; i >= 0; i--) if (this.minions[i].kind === 'golem') this.minions.splice(i, 1);
+      const near = this.corpses.filter(cp => this.clock - cp.at <= CORPSE_SECS && Math.hypot(cp.x - p.x, cp.y - p.y) <= GOLEM_GATHER * TILE);
+      for (const cp of near) { this.effects.push({ kind: 'drain', x: cp.x, y: cp.y - 4, tx: p.x + face * 16, ty: p.y - 10, age: 0, life: .8, dir: 1 }); this.corpses.splice(this.corpses.indexOf(cp), 1); }
+      const at = this.slotOpen({ x: p.x + face * 16, y: p.y });
+      const hp = Math.round(v['hp'] * Math.max(.1, this.power));
+      this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp, maxHp: hp, dmg: [v['min'], v['max']], cd: .8, t: 0, face, life: Infinity, hit: 0, target: null, kind: 'golem', tauntCd: 0, forty: 0 });
+      this.effects.push({ kind: 'lc-quake', x: at.x, y: at.y, age: 0, life: .8, dir: 1, r: 18, el: 'bone' });
+      this.host.swung(null);
+    } else if (id === 'rime-lance') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      const sx = p.x, sy = p.y - 16, a = Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
+      this.spears.push({ x: sx, y: sy, vx: Math.cos(a) * SPEAR_SPEED, vy: Math.sin(a) * SPEAR_SPEED, age: 0, life: v['range'] * TILE / SPEAR_SPEED, hit: [], dmg: [v['min'], v['max']], lift: 16, land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y), src: id });
+      this.host.swung(foe);
+    } else if (id === 'pyre-strike') {
+      const foe = this.foeWithin(v['range'] * TILE + TILE);
+      if (!foe) return 'nofoe';
+      const mw = this.mk(id, 'meteorWatch');
+      if (mw && this.echoK === 1) { this.pyreCharge = { t: mw.s ?? 1.5, foe }; this.keeperAnim = 'heavy'; this.host.swung(foe); return null; }
+      this.pyreFall(foe, v, 1, 0);
+      this.host.swung(foe);
+    } else if (id === 'watchquake') {
+      const fl = this.mk(id, 'faultLine');
+      if (fl) {
+        // Fault Line (a mark): a crack runs from his feet toward the foe instead of a ring.
+        const aim = towards(this.foeWithin(fl.m! * TILE)), len = (fl.m ?? 6) * TILE;
+        for (const m of [...this.mobs]) if (segDist(p.x, p.y, p.x + Math.cos(aim) * len, p.y + Math.sin(aim) * len, m.x, m.y) <= TILE * .8 && this.sees(m)) this.quakeOn(m, v, (fl.n ?? 100) / 100);
+        for (let i = 1; i <= (fl.m ?? 6); i++) this.effects.push({ kind: 'lc-quake', x: p.x + Math.cos(aim) * i * TILE, y: p.y + Math.sin(aim) * i * TILE, age: -i * .03, life: .5, dir: 1, r: 6 });
+      } else this.quakeRing(p.x, p.y, v['radius'], v, 1);
+      const af = this.mk(id, 'aftershock');
+      if (af) { const x = p.x, y = p.y; this.later.push({ t: af.s ?? .6, go: () => this.quakeRing(x, y, af.m ?? 4, v, (af.n ?? 50) / 100) }); }
+      this.host.swung(null);
+    } else if (id === 'chain-of-lamps') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      const storm = this.weatherWet || this.stormSky, sl = storm ? this.mk(id, 'stormLantern') : null;
+      const most = Math.max(1, v['jumps'] + (sl?.n ?? 0)), st = this.mk(id, 'static'), ha = this.mk(id, 'healingArc');
+      let at = foe, k = 1, from = { x: p.x, y: p.y - 30 };
+      const hit = new Set<Mob>();
+      for (let i = 0; i < most && at; i++) {
+        hit.add(at);
+        this.effects.push({ kind: 'lc-chain', x: from.x, y: from.y, tx: at.x, ty: at.y - at.def.h / 2, age: 0, life: .4, dir: 1 });
+        const dealt = this.hitFoe(at, rnd(v['min'], v['max']) * k, '#ffe36d');
+        if (at.hp > 0) this.layShock(at, st ? st.s ?? v['shock'] : v['shock'], st ? st.n ?? SHOCK_PCT : SHOCK_PCT);
+        // Healing Arc (a mark): each leap mends the lowest ally a share of it (the Keeper, alone).
+        if (ha && dealt > 0) { const a = this.allies.length ? this.lowestAlly(ALLY_KIN_TILES * 2) : null; if (a) this.mendAlly(a, dealt * (ha.n ?? 0) / 100, id); else this.healOwed(dealt * (ha.n ?? 0) / 100); }
+        if (!sl) k *= 1 - v['fall'] / 100;
+        from = { x: at.x, y: at.y - at.def.h / 2 };
+        const last = at;
+        let next: Mob | null = null, bd = v['gap'] * TILE;
+        for (const m of this.mobs) { if (hit.has(m) || m.hp <= 0) continue; const d = Math.hypot(m.x - last.x, m.y - last.y); if (d <= bd && this.sight.sees(last.x, last.y, m.x, m.y)) { bd = d; next = m; } }
+        if (!next || i === most - 1) {
+          // Grounded (a mark): the last leap bursts round where it ends.
+          const gr = this.mk(id, 'grounded');
+          if (gr) { for (const m of [...this.mobs]) if (m !== last && m.hp > 0 && Math.hypot(m.x - last.x, m.y - last.y) <= (gr.m ?? 2) * TILE && this.reaches(last.x, last.y, m)) this.hitFoe(m, rnd(v['min'], v['max']) * (gr.n ?? 0) / 100, '#ffe36d'); this.effects.push({ kind: 'wave', x: last.x, y: last.y, age: 0, life: .5, dir: 1, r: Math.round((gr.m ?? 2) * TILE), el: 'lamp' }); }
+          break;
+        }
+        at = next;
+      }
+      this.host.swung(foe);
+    } else if (id === 'moth-dust') {
+      const foe = foeInRange(), aim = towards(foe), ds = this.mk(id, 'dustStorm'), gd = this.mk(id, 'glimDust');
+      const reach = (ds ? ds.n ?? 3 : v['length']) * TILE;
+      for (const m of [...this.mobs]) {
+        if (Math.hypot(m.x - p.x, m.y - p.y) > reach + m.def.w / 4 || !this.sees(m)) continue;
+        if (!ds && !inArc(p.x, p.y, aim, reach, MOTH_DUST_ARC, m.x, m.y, m.def.w / 2)) continue;
+        // Glim's Dust (a mark): a boss is Blinded for a share of the time, not a fifth.
+        if (gd && m.def.rank === 'boss') m.blindT = Math.max(m.blindT ?? 0, v['blind'] * (gd.n ?? 50) / 100); else this.applyStatus(m, 'blind', v['blind']);
+        m.weak = Math.max(m.weak ?? 0, v['secs']); m.weakPct = Math.max((m.weak ?? 0) > 0 ? m.weakPct ?? 0 : 0, v['weaken']);
+      }
+      this.effects.push({ kind: 'lc-dust', x: p.x + Math.cos(aim) * 12, y: p.y - 10, age: 0, life: .7, dir: ds ? 2 : 1, a: aim, r: Math.round(reach) });
+      this.host.swung(foe);
+    } else if (id === 'moth-swarm') {
+      const goes = !!this.mk(id, 'swarmGoes'), foe = goes ? foeInRange() : null;
+      this.zones.push({ kind: 'moths', x: foe ? foe.x : p.x, y: foe ? foe.y : p.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['min'], max: v['max'], src: id, follow: foe ? 'foe' : 'self', inside: new Set(), every: v['count'], ...(foe ? { caught: [foe] } : {}) });
+      this.host.swung(foe);
+    } else if (id === 'glims-margin') {
+      this.marginT = v['secs']; this.marginAt = { x: p.x, y: p.y };
+      this.marginLook(v);
+      // Margin Note (a mark): once a day, Glim points at the nearest hidden thing (the Seek's arrow).
+      const mn = this.mk(id, 'marginNote'), day = Math.floor(Date.now() / 86_400_000);
+      if (mn && this.marginDay !== day && this.host.seek?.(v['secs'])) this.marginDay = day;
+      this.effects.push({ kind: 'lc-glim', x: p.x, y: p.y, age: 0, life: 1, dir: 1, r: Math.round(v['radius'] * TILE) });
+      this.host.swung(null);
+    } else if (id === 'hunters-mark') {
+      const foe = this.target && this.target.hp > 0 && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= v['range'] * TILE && this.sees(this.target) ? this.target : this.foeWithin(v['range'] * TILE);
+      if (!foe) return 'nofoe';
+      this.markFoe(foe, v['secs'], v['pct']);
+      // Strip (a mark): marking a pack's aura bearer ends its aura a while (a boss a fifth as long).
+      const sp = this.mk(id, 'strip');
+      if (sp) this.strip(foe, sp.s ?? 0);
+      this.host.swung(foe);
+    } else if (id === 'pinning-shot') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      const tv = this.v('thorn-shot');
+      this.looseArrow(foe, this.shotBlow(tv['min'], tv['max']) * v['pct'] / 100, { src: id, ...(this.mk(id, 'pinTwo') ? { pierce: 100, most: 2 } : { pierce: 0 }) });
+      this.host.swung(foe);
+    } else if (id === 'heartseeker') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      this.draw = { t: v['draw'], foe, x: p.x, y: p.y };
+      this.keeperAnim = 'draw';
+      this.host.swung(foe);
+    } else if (id === 'thornrain') {
+      const fm = this.mk(id, 'followMark'), foe = fm && this.huntT > 0 && this.hunted && this.hunted.hp > 0 ? this.hunted : foeInRange();
+      if (!foe) return 'nofoe';
+      this.zones.push({ kind: 'thornrain', x: foe.x, y: foe.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['min'], max: v['max'], src: id, every: v['rate'], ...(fm ? { follow: 'mark' as const } : {}) });
+      this.host.swung(foe);
+    } else if (id === 'feral-leap') {
+      const near = this.foeWithin(this.range), from = { x: p.x, y: p.y };
+      const away = near ? Math.atan2(p.y - near.y, p.x - near.x) : face < 0 ? 0 : Math.PI;
+      const len = v['length'] * TILE;
+      let tx = p.x + Math.cos(away) * len, ty = p.y + Math.sin(away) * len;
+      for (let k = 1; k > 0 && (this.sight.wallAt(tx, ty - 1) || !this.free(tx, ty)); k -= .25) { tx = p.x + Math.cos(away) * len * k; ty = p.y + Math.sin(away) * len * k; }
+      this.host.dash?.(tx, ty);
+      this.effects.push({ kind: 'lc-leap', x: from.x, y: from.y, tx, ty, age: 0, life: .45, dir: 1 });
+      if (near) {
+        const cw = this.v('call-of-the-wilds');
+        this.hitFoe(near, rnd(cw['min'], cw['max']) * (1 + this.beastPct(false) / 100) * v['pct'] / 100, '#9af0d0');
+        if (near.hp > 0) this.applyStatus(near, 'root', v['root']);
+        // Parting Shot (a mark): a free Thorn Shot at the top of the leap.
+        if (this.mk(id, 'partingShot') && near.hp > 0) { const tv = this.v('thorn-shot'); this.looseArrow(near, this.shotBlow(tv['min'], tv['max']), { src: 'thorn-shot' }); }
+      }
+      // Into the Leaves (a mark): on landing the creatures lose him a moment.
+      const il = this.mk(id, 'intoLeaves');
+      if (il) this.leafT = Math.max(this.leafT, il.s ?? 0);
+      this.host.swung(near);
+    } else if (id === 'elder-beast') {
+      const b = this.beasts.find(x => x.kind === 'called');
+      if (!b) return 'nobeast';
+      this.beasts.splice(this.beasts.indexOf(b), 1);
+      const hp = Math.max(1, Math.round(this.keeperMaxHp * v['life'] / 100)), k = 1 + v['bite'] / 100;
+      this.minions.push({ id: this.minionSeq++, x: b.x, y: b.y, hp, maxHp: hp, dmg: [Math.max(1, Math.round(b.dmg[0] * k)), Math.max(1, Math.round(b.dmg[1] * k))], cd: .3, t: 1, face: b.face, life: v['secs'], hit: 0, target: b.target, kind: 'elder', owed: Math.max(0, b.t - v['secs']) });
+      this.effects.push({ kind: 'wild-call', x: b.x, y: b.y, age: 0, life: .8, dir: 2 });
+      // A teal flash on the ground where it grows.
+      this.effects.push({ kind: 'lc-quake', x: b.x, y: b.y, age: 0, life: .6, dir: 1, r: 26, el: 'life' });
+      this.host.swung(null);
+    } else if (id === 'call-the-rain') {
+      const fm = this.mk(id, 'followMark'), foe = fm && this.huntT > 0 && this.hunted && this.hunted.hp > 0 ? this.hunted : foeInRange();
+      const cx = foe ? foe.x : p.x + face * 2 * TILE, cy = foe ? foe.y : p.y;
+      const raining = this.weatherWet || this.stormSky, hr = this.mk(id, 'heavyRain');
+      this.zones.push({ kind: 'cloud', x: cx, y: cy, r: v['radius'] * TILE, t: v['secs'], tick: v['every'], min: v['min'], max: v['max'], src: id, every: v['every'], share: raining ? 1 : hr ? (hr.n ?? 0) / 100 : 0, ...(fm ? { follow: 'mark' as const } : {}), regrasp: 0 });
+      this.host.swung(foe);
+    } else if (id === 'fogwalk') {
+      this.zones.push({ kind: 'fog', x: p.x, y: p.y, r: v['radius'] * TILE, t: v['secs'], tick: 0, min: v['lose'], max: v['first'], src: id, ...(this.mk(id, 'followSelf') ? { follow: 'self' as const } : {}) });
+      this.fogShot = true;
+      this.host.swung(null);
+    } else if (id === 'lightning-call') {
+      const bm = this.mk(id, 'boltOfMark'), foe = bm && this.huntT > 0 && this.hunted && this.hunted.hp > 0 && this.sees(this.hunted) ? this.hunted : foeInRange();
+      if (!foe) return 'nofoe';
+      const tell = this.stormSky && this.mk(id, 'quickSky') ? 0 : v['tell'], x = foe.x, y = foe.y;
+      this.effects.push({ kind: 'lc-tell', x, y, age: 0, life: Math.max(.15, tell), dir: 1, r: Math.round(v['radius'] * TILE) });
+      const fk = this.mk(id, 'fork'), k = this.echoK;
+      const go = () => {
+        // Bolt of the Mark (a mark): it lands where the Marked has walked to in the tell.
+        const at = bm && this.isHunted(foe) ? { x: foe.x, y: foe.y } : { x, y };
+        if (fk) for (const s of [-1, 1]) this.lightningAt(at.x + s * (fk.m ?? 1) * TILE / 2, at.y, v, (fk.n ?? 100) / 100 * k);
+        else this.lightningAt(at.x, at.y, v, k);
+      };
+      if (tell <= 0) go(); else this.later.push({ t: tell, go });
+      this.host.swung(foe);
+    }
+    return null;
+  }
+  /** An arrow of S9's lands: Pinning Shot's root and hush (Thorn Ground's snare), Fog-Arrows' chill. */
+  private lateArrowHit(a: Arrow, m: Mob): void {
+    const fa = a.fog ? this.mk('fogwalk', 'fogArrows') : null;
+    if (fa) this.applyStatus(m, 'chill', fa.s ?? 3);
+    if (a.src !== 'pinning-shot') return;
+    const v = this.v('pinning-shot');
+    this.applyStatus(m, 'root', v['root']);
+    this.applyStatus(m, 'hush', v['hush']);
+    this.effects.push({ kind: 'snare-rise', x: m.x, y: m.y, age: 0, life: .5, dir: 1 });
+    // Thorn Ground (a mark): the pinned spot grows a Thornroot Snare a while (the snare's own numbers).
+    const tg = this.mk('pinning-shot', 'thornGround');
+    if (tg) { const sv = this.v('thornroot-snare'); this.zones.push({ kind: 'snare', x: m.x, y: m.y, r: TILE * .8, t: tg.s ?? 3, tick: 0, min: sv['min'], max: sv['max'], pts: [{ x: m.x, y: m.y }], caught: [m] }); }
+  }
+  /** A Rime Lance (or a splinter) pierces a foe: its cold blow, the Chill, Deep Chill's freeze, Frost Nova's burst on its first hit. */
+  private rimeHit(s: Spear, m: Mob): void {
+    const v = this.v('rime-lance'), raw = s.dmg ? rnd(s.dmg[0], s.dmg[1]) : rnd(v['min'], v['max']);
+    this.effects.push({ kind: 'lc-rime', x: m.x, y: m.y, age: 0, life: 1, dir: 1 });
+    const chilled = (m.chillT ?? 0) > 0;
+    this.hitFoe(m, raw, '#8fd8ff', 'rime-lance');
+    if (m.hp <= 0) return;
+    // Deep Chill (a mark): a foe struck while already Chilled is Frozen a moment.
+    const dc = this.mk('rime-lance', 'deepChill');
+    if (dc && chilled) this.applyStatus(m, 'stun', dc.s ?? 1);
+    this.applyStatus(m, 'chill', v['chill']);
+    // Frost Nova (a mark): its first hit bursts round the foe, at its share, and Chills.
+    const fn = !s.splinter && s.hit.length === 1 ? this.mk('rime-lance', 'frostNova') : null;
+    if (fn) {
+      for (const o of [...this.mobs]) if (o !== m && o.hp > 0 && Math.hypot(o.x - m.x, o.y - m.y) <= (fn.m ?? 2) * TILE && this.reaches(m.x, m.y, o)) { this.hitFoe(o, raw * (fn.n ?? 0) / 100, '#8fd8ff', 'rime-lance'); if (o.hp > 0) this.applyStatus(o, 'chill', v['chill']); }
+      this.effects.push({ kind: 'wave', x: m.x, y: m.y, age: 0, life: .5, dir: 1, r: Math.round((fn.m ?? 2) * TILE), el: 'life' });
+    }
+  }
+  /** Pyre Strike lands: the leap to the foe, the blow, the fire ring, the stun, and its marks. */
+  private pyreFall(foe: Mob, v: Record<string, number>, k: number, extraR: number): void {
+    const p = this.host.player(), from = { x: p.x, y: p.y };
+    if (Math.hypot(foe.x - p.x, foe.y - p.y) > 14) { const to = strideEnd(p.x, p.y, foe.x, foe.y, 14); this.host.dash?.(to.x, to.y); }
+    const at = this.host.player();
+    this.effects.push({ kind: 'lc-leap', x: from.x, y: from.y, tx: at.x, ty: at.y, age: 0, life: .35, dir: 2 });
+    const blade = this.v('watch-blade'), r = (v['radius'] + extraR) * TILE;
+    const blow = (pct: number) => meleeBlow(blade['min'], blade['max'], pct, Math.random, this.weaponSwing);
+    this.hitFoe(foe, blow(v['pct'] * k), '#ffb347');
+    if (foe.hp > 0) this.applyStatus(foe, 'stun', v['stun']);
+    for (const m of [...this.mobs]) {
+      if (m === foe || m.hp <= 0 || Math.hypot(m.x - foe.x, m.y - foe.y) > r + m.def.w / 4 || !this.reaches(foe.x, foe.y, m)) continue;
+      this.hitFoe(m, blow(v['ring'] * k) * this.fireMult, '#ff9a4a');
+      if (m.hp > 0) this.applyStatus(m, 'stun', v['stun']);
+    }
+    this.effects.push({ kind: 'lc-quake', x: foe.x, y: foe.y, age: 0, life: .6, dir: 1, r: Math.round(r), el: 'ember' });
+    const sf = this.mk('pyre-strike', 'shieldFirst');
+    if (sf) this.shieldFirstT = sf.s ?? 0;
+    // Rallying Fall (a mark): a ward of a share of life on him and each ally near.
+    const rf = this.mk('pyre-strike', 'rallyingFall');
+    if (rf && this.echoK === 1) {
+      const n = Math.round(this.keeperMaxHp * (rf.n ?? 0) / 100);
+      this.markShield = Math.max(this.markShield, n); this.markShieldT = Math.max(this.markShieldT, RALLY_WARD_SECS);
+      for (const a of this.alliesNear(rf.m ?? 4)) this.allyOut.push({ k: 'ward', s: 'pyre-strike', to: a.id, n: Math.round(a.m * (rf.n ?? 0) / 100), t: RALLY_WARD_SECS * 10 });
+    }
+  }
+  /** One foe the Watchquake strikes: its share of the blow, the stun, the hush, and Unsteady Ground's chill (a rider). */
+  private quakeOn(m: Mob, v: Record<string, number>, k: number): void {
+    const blade = this.v('watch-blade');
+    this.hitFoe(m, meleeBlow(blade['min'], blade['max'], v['pct'], Math.random, this.weaponSwing) * k, '#e0b25a', 'watchquake');
+    if (m.hp <= 0) return;
+    this.applyStatus(m, 'stun', v['stun']);
+    this.applyStatus(m, 'hush', v['hush']);
+  }
+  private quakeRing(x: number, y: number, radius: number, v: Record<string, number>, k: number): void {
+    for (const m of [...this.mobs]) if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) <= radius * TILE + m.def.w / 4 && this.reaches(x, y, m)) this.quakeOn(m, v, k);
+    this.effects.push({ kind: 'lc-quake', x, y, age: 0, life: .6, dir: 1, r: Math.round(radius * TILE) });
+  }
+  /** A Lightning Call strike at (x, y): everything in its ring, and a chain on from a Wet foe. */
+  private lightningAt(x: number, y: number, v: Record<string, number>, k: number): void {
+    const was = this.src;
+    this.src = 'lightning-call';
+    try {
+      this.effects.push({ kind: 'lc-strike', x, y, age: 0, life: .35, dir: 1 });
+      const struck: Mob[] = [];
+      for (const m of [...this.mobs]) if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) <= v['radius'] * TILE + m.def.w / 4 && !this.sight.wallAt(x, y - 1)) { this.hitFoe(m, rnd(v['min'], v['max']) * k, '#fff2a8'); struck.push(m); }
+      // On a Wet foe it chains on (one more in a storm).
+      const wet = struck.find(m => this.wetFoe(m));
+      if (wet) {
+        let from = wet;
+        const hit = new Set(struck);
+        for (let i = 0; i < v['chain'] + (this.stormSky ? 1 : 0); i++) {
+          let next: Mob | null = null, bd = LIGHTNING_CHAIN_TILES * TILE;
+          for (const m of this.mobs) { if (hit.has(m) || m.hp <= 0) continue; const d = Math.hypot(m.x - from.x, m.y - from.y); if (d <= bd && this.sight.sees(from.x, from.y, m.x, m.y)) { bd = d; next = m; } }
+          if (!next) break;
+          hit.add(next);
+          this.effects.push({ kind: 'lc-chain', x: from.x, y: from.y - from.def.h / 2, tx: next.x, ty: next.y - next.def.h / 2, age: 0, life: .25, dir: 0 });
+          this.hitFoe(next, rnd(v['min'], v['max']) * k, '#fff2a8');
+          from = next;
+        }
+      }
+      // Afterclap (a mark): everything near the strike is Shocked.
+      const ac = this.mk('lightning-call', 'afterclap');
+      if (ac) for (const m of this.mobs) if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) <= (ac.n ?? 3) * TILE) this.layShock(m, SHOCK_SECS);
+    } finally { this.src = was; }
+  }
+  /** Glim's Margin's look: everything hidden inside is shown — the burrowed come up, a Mirrored copy dims. */
+  private marginLook(v: Record<string, number>): void {
+    const at = this.marginAt;
+    if (!at) return;
+    const mp = this.mk('glims-margin', 'markedPage');
+    for (const m of this.mobs) {
+      if (m.hp <= 0 || Math.hypot(m.x - at.x, m.y - at.y) > v['radius'] * TILE) continue;
+      const hiding = (m.hidden ?? 0) > 0 || !!m.mirror || (m.glimT ?? 0) <= 0;
+      if ((m.hidden ?? 0) > 0) m.hidden = 0;
+      m.glimT = Math.max(m.glimT ?? 0, Math.min(1, this.marginT));
+      if (mp && hiding && !this.isHunted(m)) this.markFoe(m, mp.s ?? 6, mp.n ?? 12);
+    }
+  }
+  /** The S9 rows' timers each frame: the channel, the draw, the charge, the later strikes, the mark, the margin. */
+  private tickLate(dt: number): void {
+    const p = this.host.player();
+    for (let i = this.later.length - 1; i >= 0; i--) { const l = this.later[i]; l.t -= dt; if (l.t <= 0) { this.later.splice(i, 1); l.go(); } }
+    if (this.huntT > 0) { this.huntT = Math.max(0, this.huntT - dt); if (this.huntT <= 0 || !this.hunted || this.hunted.hp <= 0 || !this.mobs.includes(this.hunted)) { if (this.huntT <= 0) this.hunted = null; } }
+    if (this.shieldFirstT > 0) this.shieldFirstT = Math.max(0, this.shieldFirstT - dt);
+    if (this.leafT > 0) this.leafT = Math.max(0, this.leafT - dt);
+    if (this.leapFreeT > 0) this.leapFreeT = Math.max(0, this.leapFreeT - dt);
+    if (this.marginT > 0) {
+      this.marginT = Math.max(0, this.marginT - dt);
+      if (this.mk('glims-margin', 'followSelf') && this.marginAt) { this.marginAt.x = p.x; this.marginAt.y = p.y; }
+      this.marginLook(this.v('glims-margin'));
+      if (this.marginT <= 0) this.marginAt = null;
+    }
+    if (this.kiln) {
+      const kb = this.kiln, v = this.v('kiln-breath');
+      kb.t -= dt; kb.tick -= dt;
+      this.keeperAnim = 'channel';
+      const cost = this.manaOf('kiln-breath') * dt;
+      if (this.mana < cost) kb.t = 0; else this.mana -= cost;
+      // It turns with the target while it breathes.
+      if (this.target && this.target.hp > 0) kb.aim = Math.atan2(this.target.y - p.y, this.target.x - p.x);
+      if (kb.tick <= 0 && kb.t > -1e-6) {
+        kb.tick += KILN_TICK;
+        const reach = v['length'] * TILE, me = this.mk('kiln-breath', 'melting');
+        for (const m of [...this.mobs]) {
+          if (m.hp <= 0 || !inArc(p.x, p.y, kb.aim, reach, v['arc'], m.x, m.y, m.def.w / 2) || !this.sees(m)) continue;
+          this.hitFoe(m, rnd(v['min'], v['max']) * this.fireMult, '#ff9a4a', 'kiln-breath');
+          if (me && m.hp > 0) { m.meltPct = Math.min(me.m ?? 25, (m.meltPct ?? 0) + (me.n ?? 0)); m.meltT = MELT_SECS; }
+        }
+        this.effects.push({ kind: 'lc-cone', x: p.x, y: p.y - 2, age: 0, life: KILN_TICK + .02, dir: 1, a: kb.aim, w: v['arc'], r: Math.round(reach) });
+      }
+      if (kb.t <= 0) {
+        this.kiln = null;
+        // Kiln Seal (a mark): a Flame Wall across the cone's mouth.
+        const ks = this.mk('kiln-breath', 'kilnSeal');
+        if (ks) {
+          const cx = p.x + Math.cos(kb.aim) * v['length'] * TILE, cy = p.y + Math.sin(kb.aim) * v['length'] * TILE, a = kb.aim + Math.PI / 2, n = 3, pts: { x: number; y: number }[] = [];
+          for (let j = 0; j < n; j++) { const o = (j - (n - 1) / 2) * TILE, q = { x: cx + Math.cos(a) * o, y: cy + Math.sin(a) * o }; if (!this.sight.wallAt(q.x, q.y - 1)) pts.push(q); }
+          const dps = Math.max(1, Math.round(this.v('flame-wall')['dps'] * (ks.n ?? 0) / 100));
+          this.zones.push({ kind: 'wall', x: cx, y: cy, r: TILE * .7, t: ks.s ?? 3, tick: 0, min: dps, max: dps, pts, src: 'kiln-breath' });
+        }
+      }
+    }
+    if (this.pyreCharge) {
+      const c = this.pyreCharge;
+      c.t -= dt;
+      this.keeperAnim = 'heavy';
+      if (c.t <= 0) {
+        this.pyreCharge = null;
+        const mw = this.mk('pyre-strike', 'meteorWatch');
+        if (c.foe.hp > 0 && this.mobs.includes(c.foe)) { const was = this.src; this.src = 'pyre-strike'; try { this.pyreFall(c.foe, this.v('pyre-strike'), mw?.n ?? 2, Math.max(0, (mw?.m ?? 3) - this.v('pyre-strike')['radius'])); } finally { this.src = was; } }
+      }
+    }
+    if (this.draw) {
+      const d = this.draw, v = this.v('heartseeker');
+      d.t -= dt;
+      this.keeperAnim = 'draw';
+      // A step spoils the draw — unless Steady (a mark) holds it while he walks.
+      if (!this.mk('heartseeker', 'steadyDraw') && Math.hypot(p.x - d.x, p.y - d.y) > DRAW_SLACK) this.draw = null;
+      else if (d.foe.hp <= 0 || !this.mobs.includes(d.foe)) this.draw = null;
+      else if (d.t <= 0) {
+        this.draw = null;
+        const wb = this.stormSky ? this.mk('heartseeker', 'windborne') : null, tv = this.v('thorn-shot');
+        const hw = this.rank('heartwood') > 0 ? this.v('heartwood')['pct'] : 0;
+        const range = (v['range'] + (wb?.m ?? 0)) * TILE, blow = this.shotBlow(tv['min'], tv['max']) * v['pct'] / 100 * (1 + (wb?.n ?? 0) / 100) * (1 + hw / 100);
+        const a = Math.atan2(d.foe.y - p.y, d.foe.x - p.x), ex = p.x + Math.cos(a) * range, ey = p.y + Math.sin(a) * range;
+        const hc = !!this.mk('heartseeker', 'heartCrit');
+        const was = this.src; this.src = 'heartseeker';
+        try {
+          for (const m of [...this.mobs]) {
+            if (m.hp <= 0 || segDist(p.x, p.y, ex, ey, m.x, m.y) > Math.max(8, m.def.w / 3) || !this.sees(m)) continue;
+            const marked = this.isHunted(m);
+            this.forceCrit = hc && marked;
+            try { this.hitFoe(m, blow * (marked ? v['marked'] : 1), '#d8f0a8'); } finally { this.forceCrit = false; }
+          }
+        } finally { this.src = was; }
+        this.effects.push({ kind: 'lc-chain', x: p.x, y: p.y - 20, tx: ex, ty: ey - 20, age: 0, life: .2, dir: 2 });
+        this.sfxCue('arrow', -6);
+      }
+    }
+  }
+  /** One S9 zone's frame (updateZones calls it after the clocks): true when it is done. */
+  private lateZone(z: Zone, dt: number): boolean {
+    const p = this.host.player();
+    if (z.follow === 'self') { z.x = p.x; z.y = p.y; }
+    else if (z.follow === 'mark' && this.huntT > 0 && this.hunted && this.hunted.hp > 0) { z.x = this.hunted.x; z.y = this.hunted.y; }
+    else if (z.follow === 'foe' && z.caught?.[0]) { const f = z.caught[0]; if (f.hp > 0 && this.mobs.includes(f)) { z.x = f.x; z.y = f.y; } }
+    const inside = (m: Mob) => m.hp > 0 && Math.hypot(m.x - z.x, m.y - z.y) <= z.r + m.def.w / 4;
+    if (z.kind === 'cloud') {
+      // A rain cloud: Wet below it, fire on the ground under it out within 2 s, a strike every few seconds where it thunders.
+      for (const m of this.mobs) if (inside(m)) m.wetT = Math.max(m.wetT ?? 0, WET_UNDER_CLOUD);
+      if (Math.hypot(p.x - z.x, p.y - z.y) <= z.r) this.kst.wet = Math.max(this.kst.wet, WET_UNDER_CLOUD);
+      for (const f of this.zones) if ((f.kind === 'field' || f.kind === 'wall') && Math.hypot(f.x - z.x, f.y - z.y) <= z.r) f.t = Math.min(f.t, RAIN_DOUSE);
+      for (const h of this.hazards) if (h.type === 'fire' && Math.hypot(h.x - z.x, h.y - z.y) <= z.r) h.t = Math.min(h.t, RAIN_DOUSE);
+      const cr = this.mk('call-the-rain', 'coldRain');
+      if (cr) { z.regrasp = (z.regrasp ?? 0) - dt; if ((z.regrasp ?? 0) <= 0) { z.regrasp = cr.s ?? 3; for (const m of this.mobs) if (inside(m)) this.applyStatus(m, 'chill', CHILL_SECS); } }
+      if ((z.share ?? 0) > 0 && z.tick <= 0) {
+        z.tick = z.every ?? 2;
+        const under = this.mobs.filter(inside);
+        if (under.length) {
+          const m = under[Math.floor(Math.random() * under.length)];
+          this.effects.push({ kind: 'lc-strike', x: m.x, y: m.y, age: 0, life: .35, dir: 1 });
+          this.hitFoe(m, rnd(z.min, z.max) * (z.share ?? 1), '#fff2a8', 'call-the-rain');
+        }
+      }
+      return z.t <= 0;
+    }
+    if (z.kind === 'fog') return z.t <= 0;
+    if (z.kind === 'moths') {
+      const v = this.v('moth-swarm');
+      for (const m of this.mobs) {
+        if (!inside(m)) { z.inside?.delete(m); continue; }
+        if (!z.inside?.has(m)) { z.inside?.add(m); this.applyStatus(m, 'blind', v['blind']); }
+        // Glim's Cousins (a mark): the burrowed come up, the Mirrored show.
+        if (this.mk('moth-swarm', 'reveal')) { if ((m.hidden ?? 0) > 0) m.hidden = 0; m.glimT = Math.max(m.glimT ?? 0, .5); }
+      }
+      if (z.tick <= 0) {
+        z.tick = 1;
+        for (const m of [...this.mobs]) if (inside(m) && this.reaches(z.x, z.y, m)) this.hitFoe(m, rnd(z.min, z.max), '#e9dcc0', 'moth-swarm');
+        // Gentle Wings (a mark): he and his allies inside mend a little.
+        const gw = this.mk('moth-swarm', 'gentleWings');
+        if (gw) {
+          if (Math.hypot(p.x - z.x, p.y - z.y) <= z.r) this.healOwed(this.keeperMaxHp * (gw.n ?? 0) / 100);
+          for (const a of this.alliesNear(z.r / TILE, z.x, z.y)) this.mendAlly(a, a.m * (gw.n ?? 0) / 100, 'moth-swarm');
+        }
+      }
+      // Moth Wall (a mark): a creature's shot that crosses the swarm is caught in it.
+      if (this.mk('moth-swarm', 'mothWall')) for (let i = this.shots.length - 1; i >= 0; i--) { const s = this.shots[i]; if (Math.abs(Math.hypot(s.x - z.x, s.y - z.y) - z.r) <= MOTH_WALL_BAND) { this.shots.splice(i, 1); this.effects.push({ kind: 'lc-dust', x: s.x, y: s.y, age: 0, life: .4, dir: 0, r: 6 }); } }
+      return z.t <= 0;
+    }
+    if (z.kind === 'thornrain') {
+      if (z.t > 0) {
+        // `rate` arrows a second, each on a random tile in the ring, striking what stands within a step of it.
+        z.share = (z.share ?? 0) + dt * (z.every ?? 8);
+        while ((z.share ?? 0) >= 1) {
+          z.share = (z.share ?? 0) - 1;
+          const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * z.r, x = z.x + Math.cos(a) * rr, y = z.y + Math.sin(a) * rr;
+          this.effects.push({ kind: 'arrow-hit', x, y: y - 2, age: 0, life: .3, dir: 1, a: Math.PI / 2 });
+          const ww = this.weatherWet || this.stormSky ? this.mk('thornrain', 'wetWood') : null;
+          for (const m of [...this.mobs]) if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) <= THORNRAIN_STEP + m.def.w / 4) {
+            this.hitFoe(m, rnd(z.min, z.max), '#d8f0a8', 'thornrain');
+            if (ww && m.hp > 0) this.hitFoe(m, rnd(z.min, z.max) * (ww.n ?? 0) / 100, '#fff2a8', 'thornrain');
+          }
+        }
+        return false;
+      }
+      // Thorn Ground (a mark): the ground stays thorny a while.
+      const tg = this.mk('thornrain', 'thornyGround');
+      if (tg) this.zones.push({ kind: 'thorny', x: z.x, y: z.y, r: z.r, t: tg.s ?? 3, tick: 0, min: tg.n ?? .5, max: 0, src: 'thornrain' });
+      return true;
+    }
+    if (z.kind === 'thorny') {
+      for (const m of this.mobs) if (inside(m) && !m.thornedOnce) { m.thornedOnce = true; this.applyStatus(m, 'root', z.min); }
+      return z.t <= 0;
+    }
+    return z.t <= 0;
+  }
+  /**
+   * Fogwalk and Into the Leaves: a creature hunting this Keeper loses him — in the leaves (Feral Leap's mark) unless it
+   * stands at his side, in his fog unless it is within the bank's tiles of him.
+   */
+  private lostInFog(m: Mob, d: number, onKeeper: boolean): boolean {
+    if (!onKeeper) return false;
+    if (this.leafT > 0 && d > MOB_REACH * 2) return true;
+    const fog = this.fogAround();
+    return !!fog && d > fog.min * TILE;
+  }
+  /** A creature outside his fog cannot aim a shot into it. */
+  private fogHides(m: Mob): boolean {
+    const fog = this.fogAround();
+    return !!fog && Math.hypot(m.x - fog.x, m.y - fog.y) > fog.r;
+  }
+  /** Is the Keeper inside one of his fog banks (Fogwalk)? The bank's `min` is how near a creature must be to keep him. */
+  fogAround(): Zone | null {
+    const p = this.host.player();
+    for (const z of this.zones) if (z.kind === 'fog' && Math.hypot(p.x - z.x, p.y - z.y) <= z.r) return z;
+    return null;
   }
 
   /** The tank's new rows (S5). */
@@ -6062,13 +6866,16 @@ export class MobSystem {
     const p = this.host.player(), face = p.face ?? 1, sx = p.x + face * 7, sy = p.y - 20;
     const tv = this.v('thorn-shot'), hw = this.rank('heartwood') > 0 ? this.v('heartwood') : null;
     const aim = o.angle ?? Math.atan2(foe.y - foe.def.h / 2 - sy, foe.x - sx);
+    // Fogwalk: the first arrow from inside his fog strikes harder; Fog-Arrows (a mark): every arrow from inside Chills.
+    const fog = this.fogAround();
+    if (fog && this.fogShot) { dmg *= 1 + fog.max / 100; this.fogShot = false; }
     this.arrows.push({
       // Its ground track (td-sight): from the bow, 20 px up, down to the foe's middle.
       lift: 20, land: foe.def.h / 2, reach: Math.hypot(foe.x - sx, foe.y - p.y),
       x: sx, y: sy, vx: Math.cos(aim) * ARROW_SPEED, vy: Math.sin(aim) * ARROW_SPEED, age: 0, life: (this.range + 2 * TILE) / ARROW_SPEED,
       dmg: dmg * (1 + (hw?.['pct'] ?? 0) / 100), to: o.angle === undefined ? foe : null, hit: [],
       pierce: o.pierce ?? tv['pierce'] + (hw?.['pierce'] ?? 0) + this.gearPierce, knock: tv['knock'], ...(o.barb ? { barb: o.barb } : {}),
-      src: o.src ?? this.src ?? 'thorn-shot', ...(o.crit ? { crit: true } : {}), ...(o.most ? { most: o.most } : {}),
+      src: o.src ?? this.src ?? 'thorn-shot', ...(o.crit ? { crit: true } : {}), ...(o.most ? { most: o.most } : {}), ...(fog ? { fog: true } : {}),
     });
     this.loosed++;
     this.effects.push({ kind: 'loose', x: sx, y: sy, age: 0, life: .2, dir: face, a: aim });
@@ -6113,6 +6920,7 @@ export class MobSystem {
           m.bleedT = b.t; m.bleedDps = b.dps; m.bleedTick = (m.bleedTick ?? 0) > 0 ? m.bleedTick : 1;
           this.effects.push({ kind: 'bleed', x: m.x, y: m.y - m.def.h / 2, age: 0, life: .45, dir: 1 });
         }
+        if (m.hp > 0) this.lateArrowHit(a, m);
         if (m.hp > 0) this.knock(m, ux, uy, knockFor(a.knock, m.def.rank));
         // Through and on to the next foe in its line, a little spent — or it stays in this one.
         if (a.hit.length < (a.most ?? PIERCE_MAX) && pierces(a.pierce, Math.random())) { a.to = null; a.dmg *= PIERCE_KEEP; continue; }
@@ -6156,11 +6964,13 @@ export class MobSystem {
       const home = formationSpot(slot++, p, face);
       // Left far behind: it steps out of the green at the Keeper's side again.
       if (Math.hypot(b.x - p.x, b.y - p.y) > MINION_LEASH * 1.6) { const at = this.slotOpen(home); b.x = at.x; b.y = at.y; b.target = null; }
+      // Beast's Prey (Hunter's Mark's mark): the beasts go for the Marked, wherever it is.
+      const prey = this.hunted && this.isHunted(this.hunted) && this.mk('hunters-mark', 'beastsPrey') ? this.hunted : null;
       const sent = this.commanded;
-      if (sent) b.target = sent;
+      if (sent) b.target = sent; else if (prey) b.target = prey;
       else if (!b.target || b.target.hp <= 0 || !this.mobs.includes(b.target) || Math.hypot(b.target.x - p.x, b.target.y - p.y) > MINION_LEASH || !this.sight.sees(b.x, b.y, b.target.x, b.target.y, true)) b.target = pickMinionTarget(b, this.mobs, p, MINION_SIGHT, MINION_LEASH, m => this.sight.sees(b.x, b.y, m.x, m.y, false));
       // td-roam: a Command sends it in; else it hunts, strolls near the Keeper while he stands, or keeps to the formation.
-      const rm = sent ? null : this.roamOf(b, b.target, dt);
+      const rm = sent || prey ? null : this.roamOf(b, b.target, dt);
       if (rm && rm.mode !== 'hunt') b.target = null;
       const foe = b.target;
       const reach = foe ? MOB_REACH + foe.def.w / 4 : 0;
@@ -6292,6 +7102,13 @@ export class MobSystem {
    * burn (Brand Spreads), the bleed (Spreading Barbs), and a Doom that bursts anyway (Hour of Doom).
    */
   private markKill(m: Mob, src: SkillId | null): void {
+    // Moving Mark (Hunter's Mark's mark): when the Marked falls, the mark moves to the nearest foe.
+    if (this.hunted === m && this.huntT > 0) {
+      const mv = this.mk('hunters-mark', 'movingMark');
+      let next: Mob | null = null, bd = Infinity;
+      if (mv) for (const o of this.mobs) { if (o === m || o.hp <= 0) continue; const d = Math.hypot(o.x - m.x, o.y - m.y); if (d < bd && this.sight.sees(m.x, m.y, o.x, o.y)) { bd = d; next = o; } }
+      if (next) this.markFoe(next, this.huntT, this.huntPct); else { this.hunted = null; this.huntT = 0; }
+    }
     if (!this.marks) return;
     const kill = src ? this.mk(src, 'kill') : null;
     if (kill) this.mana = Math.min(this.maxMana, this.mana + (kill.n ?? 0));
@@ -6336,6 +7153,7 @@ export class MobSystem {
     for (let i = this.zones.length - 1; i >= 0; i--) {
       const z = this.zones[i];
       z.t -= dt; z.tick -= dt;
+      if (LATE_ZONES.has(z.kind)) { if (this.lateZone(z, dt)) this.zones.splice(i, 1); continue; }
       if (z.kind === 'meteor') {
         if (z.t > 0) continue;
         this.zones.splice(i, 1);

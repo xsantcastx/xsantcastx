@@ -8,7 +8,7 @@
  */
 
 /** The casts: one per skill use (never capped, only spaced by CUE_GAP). */
-export const CAST_CUES = ['fire-cast', 'frost-cast', 'bone-cast', 'shadow-cast', 'light-cast', 'lightning-cast', 'wind', 'shield', 'heal', 'ward', 'revive', 'ultimate'] as const;
+export const CAST_CUES = ['fire-cast', 'frost-cast', 'bone-cast', 'shadow-cast', 'light-cast', 'lightning-cast', 'wind', 'rain', 'shield', 'heal', 'ward', 'revive', 'ultimate'] as const;
 /** The hits: one per blow that lands (capped together). */
 export const HIT_CUES = ['fire-hit', 'frost-hit', 'bone-hit', 'light-hit', 'lightning-hit', 'blade', 'arrow', 'beast'] as const;
 /** A creature's blow on a Keeper, by family: maw clank, beast snarl, bone rattle, orc grunt, shade hiss. */

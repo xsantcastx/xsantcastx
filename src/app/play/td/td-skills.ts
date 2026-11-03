@@ -27,6 +27,8 @@ export type SkillId =
   | 'cinder-rain' | 'flame-wall' | 'ember-mastery' | 'meteor'
   | 'corpse-burst' | 'skeleton-mastery' | 'bone-armor' | 'bone-storm'
   | 'weaken' | 'life-tap' | 'doom'
+  // S9 (skills-100.md §1): the Warlock's rows 30–50.
+  | 'rime-lance' | 'raise-grave-mage' | 'kiln-breath' | 'ossuary-golem'
   // The spells every vocation learns (design-bible §4.6, roadmap §10 item 6): Glim's Light and Lumvesh, the Seek.
   | 'light' | 'seek' | 'waygate'
   // The Ashguard's book (td-ashguard-skills.ts, design-bible §4.4).
@@ -240,6 +242,33 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     words: 'nyr un ul',
     syn: [{ from: 'weaken', per: 6, what: 'dmg' }, { from: 'ember-curse', per: 4, what: 'dmg' }],
   },
+  // ── S9: the Warlock's rows 30–50 (skills-100.md §1) ──
+  'kiln-breath': {
+    id: 'kiln-breath', kind: 'active', mana: 8, cd: 6, nameKey: 'skill.kiln-breath', textKey: 'skill.kiln-breath.text',
+    vars: { min: 18, max: 26, length: 5, arc: 60, secs: 4, walk: 40 }, grow: { min: 3, max: 4 }, tree: 'ember', tier: 4, col: 2, req: null, level: 42,
+    icon: I('<rect x="1" y="6" width="3" height="4" fill="#6b3aa0"/><rect x="4" y="5" width="3" height="6" fill="#fff2c8"/><rect x="7" y="4" width="3" height="8" fill="#ffd25a"/><rect x="10" y="3" width="3" height="10" fill="#ff8a2e"/><rect x="13" y="2" width="2" height="12" fill="#e2552a"/><rect x="12" y="1" width="1" height="1" fill="#ffd25a"/><rect x="14" y="14" width="1" height="1" fill="#ffd25a"/>'),
+    words: 'vael sha mur',
+    syn: [{ from: 'flame-wall', per: 4, what: 'dmg' }],
+  },
+  'raise-grave-mage': {
+    id: 'raise-grave-mage', kind: 'active', mana: 40, cd: 14, nameKey: 'skill.raise-grave-mage', textKey: 'skill.raise-grave-mage.text',
+    vars: { count: 1, cap: 2, min: 16, max: 24, range: 6, rate: 1.6, hp: 120, secs: 45 }, grow: { cap: .1, min: 3, max: 4, hp: 15 }, tree: 'bone', tier: 4, col: 2, req: null, level: 30,
+    icon: I('<rect x="5" y="1" width="6" height="5" fill="#e9dcc0"/><rect x="6" y="3" width="1" height="1" fill="#2a1a24"/><rect x="9" y="3" width="1" height="1" fill="#2a1a24"/><rect x="4" y="6" width="8" height="8" fill="#a99b84"/><rect x="5" y="7" width="6" height="6" fill="#6e6252"/><rect x="12" y="7" width="3" height="3" fill="#ff8a2e"/><rect x="13" y="8" width="1" height="1" fill="#fff2c8"/><rect x="12" y="10" width="1" height="5" fill="#8a6a3a"/>'),
+    words: 'osk vael teth',
+  },
+  'ossuary-golem': {
+    id: 'ossuary-golem', kind: 'active', mana: 60, cd: 60, nameKey: 'skill.ossuary-golem', textKey: 'skill.ossuary-golem.text',
+    vars: { hp: 600, min: 30, max: 45, radius: 3, rate: 1.4, reach: 4, taunt: 6 }, grow: { hp: 60, min: 5, max: 7 }, tree: 'bone', tier: 4, col: 0, req: null, level: 50,
+    icon: I('<rect x="5" y="1" width="6" height="4" fill="#efe6dc"/><rect x="6" y="2" width="1" height="1" fill="#b06bff"/><rect x="9" y="2" width="1" height="1" fill="#b06bff"/><rect x="3" y="5" width="10" height="6" fill="#d8ccb8"/><rect x="4" y="6" width="8" height="1" fill="#8a7e6a"/><rect x="4" y="8" width="8" height="1" fill="#8a7e6a"/><rect x="1" y="5" width="2" height="6" fill="#efe6dc"/><rect x="13" y="5" width="2" height="6" fill="#efe6dc"/><rect x="4" y="11" width="3" height="4" fill="#d8ccb8"/><rect x="9" y="11" width="3" height="4" fill="#d8ccb8"/>'),
+    words: 'osk mur teth',
+  },
+  'rime-lance': {
+    id: 'rime-lance', kind: 'active', mana: 18, cd: 2.5, nameKey: 'skill.rime-lance', textKey: 'skill.rime-lance.text',
+    vars: { min: 26, max: 38, range: 9, chill: 3 }, grow: { min: 5, max: 7 }, tree: 'shadow', tier: 4, col: 2, req: null, level: 30,
+    icon: I('<rect x="1" y="13" width="2" height="2" fill="#4a6a9a"/><rect x="3" y="11" width="2" height="2" fill="#8fd8ff"/><rect x="5" y="9" width="2" height="2" fill="#8fd8ff"/><rect x="7" y="7" width="2" height="2" fill="#cfefff"/><rect x="9" y="5" width="2" height="2" fill="#cfefff"/><rect x="11" y="3" width="2" height="2" fill="#ffffff"/><rect x="13" y="1" width="2" height="2" fill="#ffffff"/><rect x="4" y="5" width="1" height="1" fill="#cfefff"/><rect x="10" y="11" width="1" height="1" fill="#cfefff"/>'),
+    words: 'rim sha',
+    syn: [{ from: 'weaken', per: 5, what: 'dmg' }, { from: 'dark-ward', per: 3, what: 'dmg' }],
+  },
   // ── Common: the spells every vocation learns (design-bible §4.6) ──
   'light': {
     id: 'light', kind: 'active', mana: 10, cd: 3, nameKey: 'skill.light', textKey: 'skill.light.text',
@@ -269,7 +298,7 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
 };
 
 /** Vars that count whole things (skeletons, spears, the most raised at once): a rank adds a fraction, the fight takes the whole part. */
-const WHOLE_VARS = new Set(['count', 'cap', 'length', 'soul']);
+const WHOLE_VARS = new Set(['count', 'cap', 'length', 'soul', 'jumps']);
 /** The synergies a skill gets now: each source, its bought ranks, and the % it adds (0 when none are bought). */
 export function synergies(id: SkillId, bought: Readonly<Partial<Record<SkillId, number>>> | null = null): { from: SkillId; per: number; what: SynergyVar; ranks: number; pct: number }[] {
   return (SKILLS[id].syn ?? []).map(s => {
@@ -354,7 +383,7 @@ export function rowKind(id: SkillId): RowKind {
 /** The Ashguard's skills that strike with a share of the Watch Blade's blow (their damage is the blade's, td-mobs strike). */
 export const BLADE_SHARE: ReadonlySet<SkillId> = new Set<SkillId>(['ember-brand', 'cinder-cleave', 'whirl-of-cinders', 'ash-stride']);
 /** The skills whose damage is fire (td-mobs fireMult: Ember Mastery and worn fire lift them). */
-export const FIRE_SKILLS: ReadonlySet<SkillId> = new Set<SkillId>(['ember-bolt', 'hellfire-nova', 'aura-embers', 'cinder-rain', 'flame-wall', 'meteor', 'ember-curse', 'ember-brand', 'cinder-cleave', 'whirl-of-cinders']);
+export const FIRE_SKILLS: ReadonlySet<SkillId> = new Set<SkillId>(['ember-bolt', 'hellfire-nova', 'aura-embers', 'cinder-rain', 'flame-wall', 'meteor', 'ember-curse', 'ember-brand', 'cinder-cleave', 'whirl-of-cinders', 'kiln-breath', 'pyre-strike']);
 /**
  * Does the skill's damage land through the fight's hit (td-mobs hitFoe), so spell power and crits lift it? Anything
  * with damage numbers on its card, and the blade's shares. (A raised skeleton's blow has the power baked in already.)
@@ -378,6 +407,8 @@ export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
   // The first four actives are the default bar; Bone Spear and Raise Skeleton wait in the Spellbook to be put on a key.
   warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'bone-spear', 'raise-skeleton', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest',
     'cinder-rain', 'flame-wall', 'ember-mastery', 'meteor', 'corpse-burst', 'skeleton-mastery', 'bone-armor', 'bone-storm', 'weaken', 'life-tap', 'doom',
+    // S9: the rows 30–50.
+    'rime-lance', 'raise-grave-mage', 'kiln-breath', 'ossuary-golem',
     // The common page (every vocation's): Light, the Seek and the Waygate.
     'light', 'seek', 'waygate'],
   ashguard: [...ASHGUARD_BOOK, 'light', 'seek', 'waygate'],
