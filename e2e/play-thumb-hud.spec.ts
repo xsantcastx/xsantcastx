@@ -113,15 +113,23 @@ for (const size of SIZES) {
 
     test('the disc: Enter at Edrin Kade\'s stall opens the General Store; Attack with a hostile near', async ({ page }) => {
       test.setTimeout(90_000);
-      await boot(page, { gfx: 'iso', lang: 'en', query: '&fxcoop=1' });
+      await boot(page, { gfx: 'iso', lang: 'en', query: '&fxcoop=1&fxparty=1' });
       // The Keeper starts at Edrin Kade's stall.
       await expect(page.locator('.th-disc')).toHaveAttribute('data-verb', 'enter', { timeout: 10000 });
       await expect(page.locator('.th-disc .th-disc__verb')).toHaveText('Enter');
-      await expect(page.locator('.th-ticker [data-th-line="armed"]')).toContainText(/Edrin Kade's General Store/);
+      // Glim's greeting has the whole ticker first; then the reach line names the stall.
+      await expect(page.locator('.th-ticker [data-th-line="armed"]')).toContainText(/Edrin Kade's General Store/, { timeout: 30000 });
       await page.locator('.th-disc').tap();
       await expect(page.locator('.place:not([hidden]) h2').first()).toContainText(/General Store|Edrin/i, { timeout: 10000 });
       await page.keyboard.press('Escape');
       await expect(page.locator('.place:not([hidden])')).toHaveCount(0, { timeout: 5000 });
+      // A corpse with loot in reach: the disc says Loot, and a tap opens the satchel on Nearby (§A.4).
+      await page.waitForFunction(() => !!(window as unknown as { __tdParty?: unknown }).__tdParty);
+      await page.evaluate(() => { const h = (window as unknown as { __tdParty: { smite: (t: string, dx: number) => unknown; stock: () => unknown } }).__tdParty; h.smite('ash-wolf', 20); h.stock(); });
+      await expect(page.locator('.th-disc')).toHaveAttribute('data-verb', 'loot', { timeout: 5000 });
+      await page.locator('.th-disc').tap();
+      await expect(page.locator('#satchel-book')).toHaveAttribute('data-bag-tab', 'nearby');
+      await page.locator('#satchel-book .book-close').tap();
       // A hostile near: the disc is Attack again.
       await page.waitForFunction(() => !!(window as unknown as { __tdCoop?: unknown }).__tdCoop);
       await page.evaluate(() => (window as unknown as { __tdCoop: { lay: (t: string, dx: number, dy: number, calm: boolean) => unknown } }).__tdCoop.lay('ash-wolf', 40, 0, true));
@@ -140,6 +148,7 @@ for (const size of SIZES) {
       };
       await more.tap();
       await expect(sheet).toBeVisible();
+      if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: `${SHOTS}/more-${size.name}.png` }); }
       const ids = await sheet.locator('[data-tile]').evaluateAll(els => els.map(e => e.getAttribute('data-tile')!));
       expect(ids.slice(0, 12)).toEqual(['book', 'character', 'journal', 'chat', 'friends', 'bestiary', 'settings', 'loot', 'names', 'lore', 'account', 'feedback']);
       // The sheet scrolls inside itself when taller than half the screen; its last tile is reachable.
@@ -195,6 +204,12 @@ for (const size of SIZES) {
       expect(hit, 'Glim is never covered').toBe(true);
       // Glim's greeting and the area title arrive as ticker lines; the centre cards are not drawn.
       await expect(page.locator('.th-ticker [data-th-line="glim"]')).toBeVisible({ timeout: 10000 });
+      // While Glim speaks he has the ticker to himself, uncut.
+      await expect(page.locator('.th-ticker .th-line')).toHaveCount(1);
+      expect(await page.locator('.th-ticker [data-th-line="glim"]').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+      // The goal chip: no "Step 1 of 7" words in view (the bar and a 1/7 badge carry it), the goal itself on two lines.
+      await expect(guide.locator('.guide-text b')).toBeHidden();
+      await expect(guide.locator('.guide-text')).toHaveAttribute('data-step', '1/7');
       await expect(page.locator('.glim-say')).toBeHidden();
       await expect(page.locator('.area-card')).toBeHidden();
       const tick = (await page.locator('.th-ticker').boundingBox())!;

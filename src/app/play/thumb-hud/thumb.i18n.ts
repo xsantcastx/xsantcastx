@@ -22,7 +22,7 @@ export const THUMB_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'thumb.tile.lore': { en: 'Lore', es: 'Saber' },
   'thumb.tile.account': { en: 'Account', es: 'Cuenta' },
   'thumb.tile.feedback': { en: 'Feedback', es: 'Opinión' },
-  'thumb.tile.menu': { en: 'All menus', es: 'Todo' },
+  'thumb.tile.menu': { en: 'All menus', es: 'Menú' },
   'thumb.tile.slate': { en: 'Slate', es: 'Pizarra' },
   'thumb.tile.news': { en: 'news', es: 'novedad' },
   // ── The combat cluster ──

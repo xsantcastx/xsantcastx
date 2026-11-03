@@ -250,7 +250,9 @@ for (const size of SIZES) {
       await page.evaluate(() => { const h = (window as unknown as { __tdParty: { smite: (t: string, dx: number) => unknown; stock: () => unknown } }).__tdParty; h.smite('ash-wolf', 24); h.stock(); });
       await page.waitForTimeout(900);
       await key('e');
-      await check(page, 'corpse window', '[data-corpse-window]');
+      // A portrait phone opens the satchel on Nearby instead of the small corpse window (docs/design/ui-pass-3.md §A.4).
+      if (size.height > size.width) await check(page, 'corpse on Nearby', '#satchel-book');
+      else await check(page, 'corpse window', '[data-corpse-window]');
       await closeAll(page);
 
       // The Hearth Shrine, stood at.

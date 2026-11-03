@@ -47,6 +47,9 @@
 .th-line b { margin-right: 4px; font-weight: 700; color: var(--cozy-glow); }
 .th-line[data-th-line='area'] { font: 400 14px/16px var(--font-pixel); color: var(--cozy-brass-hi); }
 .th-line[data-th-line='armed'] { color: var(--cozy-glow); font-weight: 700; }
+/* Glim's line has the whole ticker and is never cut: it may run a line past the strip, still above the play centre. */
+.th-line[data-th-line='glim'] { display: block; -webkit-line-clamp: none; overflow: visible; }
+.th-ticker:has(.th-line[data-th-line='glim']) { max-height: calc(var(--tick-lines) * 16px + 24px); }
 .th-line[data-th-line='log'], .th-line[data-th-line='chat'] { animation: thFade 6s linear both; }
 
 /* ── Right thumb: the arc of skill keys round the disc ──
@@ -123,31 +126,15 @@
   box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-wood-hi), 0 0 0 6px var(--cozy-wood-3), 0 0 0 8px var(--cozy-wood-0); }
 .th-more__head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin: 0 -12px 8px; padding: 0 4px 0 12px;
   background: var(--cozy-plate); box-shadow: var(--px-groove); }
-.th-more__head h2 { margin: 0; font: 400 16px/1.2 var(--font-display, var(--font-pixel)); color: var(--cozy-cream); }
+.th-more__head h2 { margin: 0; font: 400 16px/1.2 var(--font-pixel); color: var(--cozy-cream); text-transform: none; }
 .th-more__x { width: 44px; height: 44px; }
 .th-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .th-tile { position: relative; width: 100%; min-height: 72px; display: grid; justify-items: center; align-content: center; gap: 4px; padding: 6px 4px; }
 .th-tile span { font: 400 12px/1.15 var(--font-pixel); text-align: center; overflow-wrap: anywhere; }
 .th-tile[aria-pressed='true'] { box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
-.th-tile__ico { width: 32px; height: 32px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); position: relative; }
-/* Each tile's 32 px icon: a few pixel blocks in the tile's colour (one grid, light from the upper left). */
-.th-tile__ico::before, .th-tile__ico::after { content: ""; position: absolute; }
-.th-tile__ico::before { inset: 8px; background: var(--ico, var(--cozy-cream)); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
-.th-tile__ico::after { left: 8px; top: 8px; width: 6px; height: 6px; background: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
-.th-tile__ico[data-ico='book'] { --ico: var(--cozy-loot-epic); }
-.th-tile__ico[data-ico='character'] { --ico: var(--cozy-leaf); }
-.th-tile__ico[data-ico='journal'] { --ico: var(--cozy-parch); }
-.th-tile__ico[data-ico='chat'] { --ico: var(--cozy-mana); }
-.th-tile__ico[data-ico='friends'] { --ico: var(--cozy-glow); }
-.th-tile__ico[data-ico='bestiary'] { --ico: var(--cozy-berry); }
-.th-tile__ico[data-ico='settings'] { --ico: var(--cozy-wood-hi); }
-.th-tile__ico[data-ico='loot'] { --ico: var(--cozy-loot-rare); }
-.th-tile__ico[data-ico='names'] { --ico: var(--cozy-brass-hi); }
-.th-tile__ico[data-ico='lore'] { --ico: var(--cozy-loot-legendary); }
-.th-tile__ico[data-ico='account'] { --ico: var(--cozy-river); }
-.th-tile__ico[data-ico='feedback'] { --ico: var(--cozy-loot-uncommon); }
-.th-tile__ico[data-ico='menu'] { --ico: var(--cozy-cream); }
-.th-tile__ico[data-ico='slate'] { --ico: var(--cozy-loot-rune); }
+.th-tile__ico { width: 32px; height: 32px; display: grid; place-items: center; }
+/* Each tile's icon is a 16-px pixel sprite at exactly 2× (crisp, never resampled). */
+.th-tile__ico img { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
 
 @keyframes thFade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {

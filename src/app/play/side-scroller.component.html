@@ -330,7 +330,7 @@
     </aside>
   }
   <!-- The level-up fanfare (docs/design/leveling.md §4): what the level gave, exactly, and where to spend it. -->
-  @if (levelBanner; as lb) {
+  @if (thumb && bagOpen ? null : levelBanner; as lb) {
     <section class="lvl-banner" [class.lvl-banner--big]="lb.big" role="status" aria-live="polite" data-level-banner [attr.data-level]="lb.level" data-engine-ignore>
       <header class="win-head">
         <h2>{{ t('play.lvl.banner', { n: lb.level }) }}</h2>
@@ -480,7 +480,7 @@
       <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp" (click)="thumb && drinkPotion('health')"><b>{{ hpShown }}</b></i>
       <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana" (click)="thumb && drinkPotion('mana')"><b>{{ tdMana }}</b></i>
       <i class="td-soul" data-soul-orb><i class="soul-pip"></i>@if (thumb) { <span class="td-soul__label">{{ t('thumb.soul', { n: tdSoul }) }}</span> } @else { {{ tdSoul }} }</i>
-      @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura)"></i> }
+      @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura, thumb ? 32 : 28)"></i> }
       <!-- The Ember debt on a phone (the plates are hidden there): a small brass tag under the orbs while it is owed. -->
       @if (emberDebt > 0) { <i class="td-debt" data-ember-debt-orb>{{ t('play.coldHearth.debt.hud') }} {{ xpText(emberDebt) }}</i> }
     </div>
@@ -558,7 +558,7 @@
           }
         }
       }
-      <p class="guide-text"><b>{{ goal.n ? t(topDown ? 'play.pro.label' : 'play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span data-goal-text>{{ t(goal.key, goal.vars) }}</span></p>
+      <p class="guide-text" [attr.data-step]="goal.n ? goal.n + '/' + goal.total : null"><b>{{ goal.n ? t(topDown ? 'play.pro.label' : 'play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span data-goal-text>{{ t(goal.key, goal.vars) }}</span></p>
       @if (goal.target) {
         <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key, goal.vars) })">{{ t('play.goal.go') }}</button>
       }
@@ -1314,8 +1314,8 @@
           @if (gridPaged) {
             <!-- The grid's two pages (grid-pages.ts): ◀ Pocket 1 · Pocket 2 ▶; resting a held piece on an arrow flips. -->
             <nav class="book-pages" [attr.aria-label]="t('play.hud.book.pocketsLabel')" data-bag-pages [attr.data-page]="bagPage + 1">
-              <button type="button" class="px-arrow book-page" data-page-prev [attr.aria-pressed]="bagPage === 0" [appDropTarget]="pageArrow(-1)" (click)="setBagPage(0)">◀ {{ t('thumb.pocketPrev') }}<i class="book-page__dot" [attr.aria-label]="t('thumb.pocketCount', { n: pageCount(0) })">{{ pageCount(0) }}</i></button>
-              <button type="button" class="px-arrow book-page" data-page-next [attr.aria-pressed]="bagPage === 1" [appDropTarget]="pageArrow(1)" (click)="setBagPage(1)">{{ t('thumb.pocketNext') }} ▶<i class="book-page__dot" [attr.aria-label]="t('thumb.pocketCount', { n: pageCount(1) })">{{ pageCount(1) }}</i></button>
+              <button type="button" class="px-arrow book-page" data-page-prev [attr.aria-pressed]="bagPage === 0" [attr.aria-label]="t('thumb.pocketPrev') + ', ' + t('thumb.pocketCount', { n: pageCount(0) })" [appDropTarget]="pageArrow(-1)" (click)="setBagPage(0)">◀ {{ thumb ? t('thumb.pocketPrev') : '1' }}<i aria-hidden="true" class="book-page__dot">{{ pageCount(0) }}</i></button>
+              <button type="button" class="px-arrow book-page" data-page-next [attr.aria-pressed]="bagPage === 1" [attr.aria-label]="t('thumb.pocketNext') + ', ' + t('thumb.pocketCount', { n: pageCount(1) })" [appDropTarget]="pageArrow(1)" (click)="setBagPage(1)">{{ thumb ? t('thumb.pocketNext') : '2' }} ▶<i aria-hidden="true" class="book-page__dot">{{ pageCount(1) }}</i></button>
             </nav>
           }
           @if (gridNote; as gn) {
@@ -1356,7 +1356,7 @@
       </div>
       <!-- The item card's body: shared by the hover card and the card pinned by a click (owner: "when you click on the item
            … this huge UI that is really ugly" — a click now pins this same small card with its actions). -->
-      <ng-template #cardBody let-row>
+      <ng-template #cardBody let-row let-pinned="pinned">
           <header class="d2tip__head">
             <div class="d2tip__icon" aria-hidden="true">
               @if (row.art) { <img [src]="row.art" alt=""> } @else { <em>{{ row.mark }}</em> }
@@ -1366,6 +1366,10 @@
               @if (row.tip?.typeLine) { <span>{{ row.tip?.typeLine }}</span> }
               @if (row.tip?.rarityWord) { <span class="d2tip__rarity">{{ row.tip?.rarityWord }}</span> }
               @if (row.tip?.value) { <span class="d2tip__worth"><i class="coin" aria-hidden="true"></i>{{ row.tip!.value.toLocaleString('en-US') }}</span> }
+              @if (pinned && thumb && cardAgainst; as ag) {
+                <!-- The worn piece the compare strip below is against (the same slot): a tap opens its own card. -->
+                <button type="button" class="d2tip__against" data-card-against (click)="openAgainst()">{{ t('thumb.verdict.vs', { name: ag.name }) }}</button>
+              }
             </div>
           </header>
           @if (row.tip; as it) {
@@ -1457,19 +1461,20 @@
       }
       @if (topDown && slip; as row) {
         <!-- A click pins the same card beside the item, with its actions under it. -->
-        <div class="d2tip d2tip--pinned" data-drag-pass role="dialog" [attr.aria-label]="row.name" [appFitViewport]="thumb ? null : pickAt" fitMode="side" [class.d2tip--sheet]="thumb" [class.d2tip--top]="cardTop" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
+        <div class="d2tip d2tip--pinned" data-drag-pass role="dialog" [attr.aria-label]="row.name" [appFitViewport]="thumb ? null : pickAt" fitMode="side" [class.d2tip--sheet]="thumb" [class.d2tip--top]="cardTop" [style.max-height.px]="cardMax" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           @if (thumb && cardVerdict; as v) {
             <!-- The compare verdict (PoE2 / D4 delta lines), then the strip; the worn piece's name opens its own card. -->
-            <p class="d2tip__verdict" data-card-verdict [attr.data-tone]="v.tone">{{ v.text }}@if (cardAgainst; as ag) { <button type="button" class="d2tip__against" data-card-against (click)="openAgainst()">{{ t('thumb.verdict.vs', { name: ag.name }) }}</button> }</p>
+            <p class="d2tip__verdict" data-card-verdict [attr.data-tone]="v.tone">{{ v.text }}</p>
           }
-          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
+          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row, pinned: true }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }
-          @if (thumb && cardPrimary; as cp) {
-            <button type="button" class="wear d2tip__primary" [attr.data-card-primary]="cp.attr" [disabled]="cp.attr === 'equip' && !!row.wearBlocked" (click)="cp.act()">{{ cp.label }}</button>
-          }
-          @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook || row.stone || row.potion || pickCanDrop || pickCanQuick) {
+          @if ((thumb && cardPrimary) || row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook || row.stone || row.potion || pickCanDrop || pickCanQuick) {
             <div class="d2tip__actions">
+              @if (thumb && cardPrimary; as cp) {
+                <!-- The one primary (§A.3), first in the card's foot so it never scrolls out of reach. -->
+                <button type="button" class="wear d2tip__primary" [attr.data-card-primary]="cp.attr" [disabled]="cp.attr === 'equip' && !!row.wearBlocked" (click)="cp.act()">{{ cp.label }}</button>
+              }
               @if (row.potion) { <button type="button" class="wear" data-potion-belt (click)="beltPickedPotion()">{{ t('play.stone.beltPut') }}</button> }
               @if (pickCanQuick) { <button type="button" class="wear" data-quick-belt (click)="quickPicked()">{{ pickOnQuick ? t('play.belt.take') : t('play.belt.put') }}</button> }
               @if (row.stone; as st) {
