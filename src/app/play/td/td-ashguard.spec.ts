@@ -234,7 +234,13 @@ describe('td-ashguard: the fight', () => {
   });
 
   it('a held weapon hits harder than bare hands in the fight itself', () => {
+    // Deterministic: every arm draws the same seeded rolls for its n-th sample (common random numbers), so the means
+    // compare the weapons, never the dice (it was a 30-sample Math.random probe that failed now and then).
+    let seed = 0;
+    spyOn(Math, 'random').and.callFake(() => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; });
+    let n = 0;
     const hit = (w: Parameters<typeof weaponSwing>[0]): number => {
+      seed = 0x9e3779b9 ^ Math.imul(++n % 30 + 1, 0x85ebca6b);
       const { sys } = world();
       sys.weaponSwing = weaponSwing(w);
       sys.place('f', MOBS['bone-walker'], 18, 0);

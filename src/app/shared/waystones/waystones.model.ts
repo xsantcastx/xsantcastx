@@ -26,8 +26,11 @@ export interface WaystonesState {
   marks: string[];
 }
 
-/** `<world>:<name>` or `<world>:ws:<sector column>` (a wild stone). */
-const STONE_ID = /^(ember|ink|root|prism|orrery):(ws:-?\d{1,6}|[a-z][a-z-]{1,30})$/;
+/**
+ * `<world>:<name>` or `<world>:ws:<sector column>` (a wild stone). `reach:` is the top-down Infernal Reach's own: one
+ * Waystone a section (docs/design/world-acts.md §0; td-sections.ts), recorded by touching it.
+ */
+const STONE_ID = /^(ember|ink|root|prism|orrery|reach):(ws:-?\d{1,6}|[a-z][a-z-]{1,30})$/;
 const MARK_ID = /^[a-z][a-z-]{1,30}$/;
 /** Wild stones are endless; a save keeps at most this many of each list. */
 const MAX_IDS = 512;

@@ -15,7 +15,8 @@ describe('td-hearth (the hearths of the top-down world)', () => {
       const world = new TdWorld(def);
       const hs = hearthsOf(world);
       expect(hs.length).withContext(id).toBe(world.settlements.length);
-      expect(hs.filter(h => h.capital).length).withContext(id).toBe(1);
+      // A capital has its Shrine; a village that is a section of its own (Cinderport, Ashgrove) and a Waystone camp have none.
+      expect(hs.filter(h => h.capital).length).withContext(id).toBe((def.townKind ?? 'capital') === 'capital' ? 1 : 0);
       for (const h of hs) {
         expect(isHearthId(h.id)).withContext(h.id).toBeTrue();
         expect(hearthContinent(h.id)).toBe(id);
@@ -42,7 +43,7 @@ describe('td-hearth (the hearths of the top-down world)', () => {
       expect(hearthsOf(new TdWorld(def)).map(h => `${h.id}@${h.x},${h.y}`)).toEqual(hs.map(h => `${h.id}@${h.x},${h.y}`));
     }
     expect(new Set(all).size).toBe(all.length);
-    expect(all).toContain('hearth:infernal-reach:pyrehold');
+    expect(all).toContain('hearth:infernal-reach-pyrehold:pyrehold');
     expect(all).toContain('hearth:ember-isle:basalt-seamworks');
   });
 });
