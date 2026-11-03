@@ -296,6 +296,11 @@ import { GraveGoodsService } from '../shared/grave-goods/grave-goods.service';
 import { GRAVE_I18N } from '../shared/grave-goods/grave-goods.i18n';
 import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
 import { SailingBoardComponent } from './harbour/sailing-board.component';
+import { WaystoneAtlasComponent, type AtlasStone } from './atlas/waystone-atlas.component';
+import { REACH_I18N } from './td/td-reach.i18n';
+import { LIGHT_XP } from '../shared/waystones/waystones.model';
+import { ZONES as TD_ZONES } from './td/td-zones';
+import { CONTINENTS } from './td/td-levels';
 import { VoyageComponent } from './harbour/voyage.component';
 import { pierById, pierOfMaster, type BoardRow } from './td/td-harbour';
 import { CURSES, WHISPERS, WHISPER_COST, isCurseId, isWhisperId, nextWhisperAt, whisperStage, type CurseId, type WhisperId } from '../shared/grave-goods/grave-goods.model';
@@ -551,7 +556,7 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, VoyageComponent, SextonJournalComponent, SkillBookComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, WaystoneAtlasComponent, VoyageComponent, SextonJournalComponent, SkillBookComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css', './side-scroller.component.ui.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -1737,6 +1742,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(DARK_I18N);
     this.i18n.register(SEAM_I18N);
     this.i18n.register(ZONES_I18N);
+    this.i18n.register(REACH_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
@@ -1927,6 +1933,8 @@ export class SideScrollerComponent implements OnDestroy {
       onRekindle: () => this.zone.run(() => this.tdRekindled()),
       onHearth: event => this.zone.run(() => this.hearthLit(event)),
       onShrine: event => this.zone.run(() => this.openShrine(event)),
+      // An act's Waystone touched (td-sections.ts): recorded, then the land's stones (the Atlas).
+      onWaystone: event => this.zone.run(() => this.openAtlas(event)),
       onWorldAction: event => this.zone.run(() => {
         const result = this.worldAction(event);
         // A generated Delve cell broke (it paid XP, or would have): the Board Herald's dig bounties count it.
@@ -3687,6 +3695,41 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setPaused(true);
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-harbour [data-harbour-row][aria-checked="true"], .td-harbour .places-close')?.focus());
   }
+  /** The Waystones' Atlas (play/atlas): the land's stones, the one touched lit; null when shut. */
+  atlas: { land: string; here: string; stones: AtlasStone[] } | null = null;
+  /** An act's Waystone was touched: record it (receipt first, +15 Delving XP once: WaystoneService.light), then show the land's stones. */
+  private openAtlas(e: { id: string; area: string; land: string }): void {
+    const paid = this.waystones.light(e.id, `td/${e.area}`);
+    this.waystones.markSeen(e.id);
+    const eng = this.engine as unknown as { landStones?: () => { id: string; name: string; area: string }[] } | undefined;
+    // The land's capital stone is the trunk: always touched (world-acts.md §0, "to the capital's for free").
+    const known = new Set([...this.waystones.state.lit, e.id, 'reach:pyrehold']);
+    const stones = (eng?.landStones?.() ?? []).map((s): AtlasStone => {
+      const z = TD_ZONES[`${s.area}:T`], def = CONTINENTS[s.area];
+      return { id: s.id, name: s.name, section: def?.title ?? s.name, hint: this.t(`atlas.near.${s.id.replace(/^reach:/, '')}`), band: z?.band ?? null, safe: def?.townKind !== 'camp', known: known.has(s.id), here: s.id === e.id };
+    });
+    if (paid?.xp) this.message = this.t('atlas.touched', { name: stones.find(s => s.id === e.id)?.name ?? '', xp: LIGHT_XP });
+    this.atlas = { land: e.land, here: e.id, stones };
+    this.engine?.setPaused(true);
+    this.sound.sfx('portal');
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.td-atlas [data-atlas-row][aria-checked="true"], .td-atlas .places-close')?.focus());
+  }
+  closeAtlas(): void {
+    if (!this.atlas) return;
+    this.atlas = null;
+    if (!this.voyage && !this.panel && !this.map.open && !this.storyCard && !this.storyScene && !this.taskTalk && !this.harbourBoard) this.engine?.setPaused(false);
+    this.focusWorld();
+  }
+  /** Travel by the Waystones to a touched stone of this land (free): the engine's veil, then the stone. */
+  atlasTravel(id: string): void {
+    this.closeAtlas();
+    (this.engine as unknown as { travelToStone?: (id: string) => boolean } | undefined)?.travelToStone?.(id);
+  }
+  /** The bosses felled (the Bestiary's kills): the Sailing Board opens an act's ship once its act boss is down. */
+  get clearedBosses(): string[] {
+    const kills = readKills(this.store.read(BESTIARY_KEY));
+    return Object.keys(kills).filter(id => (kills[id] ?? 0) > 0);
+  }
   closeHarbour(): void {
     if (!this.harbourBoard) return;
     this.harbourBoard = null;
@@ -4598,6 +4641,11 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.state?.nearby?.startsWith('shrine:')) return this.t('play.coldHearth.act.shrine');
     // A town task giver (shared/town-tasks).
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
+    // An act's section (td-sections.ts): its Waystone, a thing to read, a sealed thing, a seam's gate.
+    // The gathering skills' own targets in the world (a tree to chop, a spot to fish, a fire to cook at).
+    if (this.state?.nearby === 'td-tree' || this.state?.nearby === 'td-spot' || this.state?.nearby === 'td-fire') return this.t(`reach.act.${this.state.nearby.slice(3)}`);
+    const reachAct = /^(tdstone|read|sealed|seam):/.exec(this.state?.nearby ?? '')?.[1];
+    if (reachAct) return this.t(`reach.act.${reachAct}`, { name: titleCase(this.state.nearbyLabel ?? '') });
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
     const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;
     if (gather) {
@@ -4671,6 +4719,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The crossing owns the keyboard: Escape skips it. The Sailing Board folds on Escape too.
     if (this.voyage) { if (event.key === 'Escape') event.preventDefault(); return; }
     if (this.harbourBoard) { if (event.key === 'Escape') { event.preventDefault(); this.closeHarbour(); } return; }
+    if (this.atlas) { if (event.key === 'Escape') { event.preventDefault(); this.closeAtlas(); } return; }
     // A story card owns the keyboard: Escape (or Enter on Continue) closes it.
     if (this.storyCard) {
       if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
@@ -6760,10 +6809,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
   /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
-  get menuOpen(): boolean { return !!this.taskTalk || !!this.harbourBoard || this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.controlsOpen || this.feedbackOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  get menuOpen(): boolean { return !!this.taskTalk || !!this.harbourBoard || !!this.atlas || this.bagOpen || this.placesOpen || this.gameMenuOpen || this.bestiaryOpen || this.soundOpen || this.controlsOpen || this.feedbackOpen || this.friendsOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
   /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
   dismissMenu(): void {
     if (this.harbourBoard) this.closeHarbour();
+    else if (this.atlas) this.closeAtlas();
     else if (this.taskTalk) this.closeTalk();
     else if (this.petsOpen) this.closePets();
     else if (this.bestiaryOpen) this.closeBestiary();

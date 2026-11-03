@@ -12,7 +12,7 @@ import { bestiaryEntries } from './td-bestiary';
 import { SEAM_BAND, seamEaterAt, SEAM_ID } from './td-seam';
 import {
   CONTINENT_BANDS, DANGER_GAP, LEVEL_GAP, SEAM_LEVELS, XP_FALLOFF, ZONES, atZoneLevel, callLevel, gapDealt, gapHurt, gapMiss, gapPace,
-  gapTone, graveyardZone, levelGap, regionZone, seamLevelFor, zoneDanger, zoneLevel, zoneOf, zoneXp,
+  gapTone, graveyardZone, landOfArea, levelGap, regionZone, seamLevelFor, zoneDanger, zoneLevel, zoneOf, zoneXp,
 } from './td-zones';
 
 function system(keeperLevel: number): MobSystem {
@@ -32,8 +32,9 @@ describe('td-zones: every area has a fixed band', () => {
       const regions = new Set([...Object.keys(c.names), ...Object.keys(c.mobs)]);
       for (const r of regions) expect(zoneOf(regionZone(c.id, r))).withContext(`${c.id}:${r}`).not.toBeNull();
       if (c.places.some(p => p.kind === 'graveyard')) expect(zoneOf(graveyardZone(c.id))).withContext(`${c.id} graveyard`).not.toBeNull();
-      expect(CONTINENT_BANDS[c.id]).withContext(`${c.id} continent band`).toBeDefined();
-      expect(SEAM_LEVELS[c.id]).withContext(`${c.id} Seam Eater`).toBeDefined();
+      // An act's section (the Reach's) takes its land's band and rift level.
+      expect(CONTINENT_BANDS[landOfArea(c.id)]).withContext(`${c.id} continent band`).toBeDefined();
+      expect(SEAM_LEVELS[landOfArea(c.id)]).withContext(`${c.id} Seam Eater`).toBeDefined();
     }
     for (const id of Object.keys(LEVELS)) expect(zoneOf(id)).withContext(id).not.toBeNull();
     for (const [id, z] of Object.entries(ZONES)) {
@@ -91,7 +92,8 @@ describe('td-zones: creatures spawn at the zone\'s level, never the Keeper\'s', 
   });
 
   it('a level-1 and a level-50 Keeper see the same creature levels in the same zone', () => {
-    for (const c of Object.values(CONTINENTS)) {
+    // A town that is a section of its own (Pyrehold, Cinderport, Ashgrove) is safe ground: nothing spawns there.
+    for (const c of Object.values(CONTINENTS).filter(d => Object.keys(d.mobs).length)) {
       const world = new TdWorld(c), span = 220 * TILE;
       const spawns = world.spawnsIn(-span, -span, span, span).filter(s => s.level !== undefined);
       expect(spawns.length).withContext(c.id).toBeGreaterThan(5);

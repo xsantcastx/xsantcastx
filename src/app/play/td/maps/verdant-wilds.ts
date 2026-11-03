@@ -287,7 +287,7 @@ export const VERDANT_WILDS_DEF: ContinentDef = {
     // Mossharbor's sloop sails from the pier's end (the village's tile 15, 16) to Pyrehold Harbour.
     // Its ketch sails from the west finger (tile 8, 16) the long way round to Ember Harbour.
     { name: 'Mossharbor', c: 40, r: 78, build: buildMossharbor, ways: [
-      { station: MOSSHARBOR_SHIP, c: 15, r: 16, to: 'infernal-reach', arrive: 'ship-verdant', ship: true },
+      { station: MOSSHARBOR_SHIP, c: 15, r: 16, to: 'infernal-reach-pyrehold', arrive: 'ship-verdant', ship: true },
       { station: MOSSHARBOR_ISLE_SHIP, c: 8, r: 16, to: 'ember-isle', arrive: 'ship-isle-verdant', ship: true },
     ] },
     { name: 'Thornwick', c: -112, r: 4, build: buildThornwick },

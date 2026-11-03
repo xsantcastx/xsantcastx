@@ -713,12 +713,23 @@
 
   @if (harbourBoard; as hb) {
     <!-- A Harbourmaster's Sailing Board (play/harbour/sailing-board.component.ts): every ship out of the pier, its fare, its band, its state. -->
-    <section class="places win td-map td-harbour" role="dialog" aria-modal="true" [attr.aria-label]="t('harbour.aria', { name: pierName(hb) })" data-harbour [attr.data-pier]="hb" data-engine-ignore (keydown.escape)="closeHarbour()">
+    <section class="places win td-map td-harbour" role="dialog" aria-modal="true" [attr.aria-label]="t('harbour.aria', { name: pierName(hb) })" data-harbour [attr.data-pier]="hb" data-engine-ignore>
       <header class="win-head">
         <h2>{{ t('harbour.title', { pier: pierName(hb) }) }}</h2>
         <button type="button" class="win-x places-close" (click)="closeHarbour()" [attr.aria-label]="t('harbour.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('harbour.close') }}</span></button>
       </header>
-      <app-sailing-board [pier]="hb" [level]="huntingLevel" (sail)="sailFrom($event)" />
+      <app-sailing-board [pier]="hb" [level]="huntingLevel" [cleared]="clearedBosses" (sail)="sailFrom($event)" />
+    </section>
+  }
+
+  @if (atlas; as at) {
+    <!-- The Waystones of a land (play/atlas/waystone-atlas.component.ts): one stone a section; travel to any touched one, free. -->
+    <section class="places win td-map td-atlas" role="dialog" aria-modal="true" [attr.aria-label]="t('atlas.aria')" data-atlas [attr.data-here]="at.here" data-engine-ignore>
+      <header class="win-head">
+        <h2>{{ t('atlas.title', { land: t('atlas.land.' + at.land) }) }}</h2>
+        <button type="button" class="win-x places-close" (click)="closeAtlas()" [attr.aria-label]="t('atlas.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('atlas.close') }}</span></button>
+      </header>
+      <app-waystone-atlas [stones]="at.stones" (travel)="atlasTravel($event)" />
     </section>
   }
 

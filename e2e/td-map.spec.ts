@@ -4,7 +4,7 @@
  * small key; a pin travels. Screenshots: docs/handoff/cozy-ui/map-*.jpg.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { mapFind, purse, sail, seed } from './play-helpers';
+import { mapFind, purse, sail, seed, toSection } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -27,7 +27,14 @@ test('the Map: M opens it, pins and the key go places, on an island, a continent
   await page.keyboard.press('m');
   await expect(map).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/map-infernal-reach.jpg', type: 'jpeg', quality: 78 });
-  // The key travels too: into the Molten Deep, whose floor is a map of its own.
+  // The key travels too: into the Molten Deep, whose floor is a map of its own (its mouth is in the Pyre Peaks, a
+  // section of the Reach since S7: each section's Map is its own).
+  await page.keyboard.press('Escape');
+  await expect(map).toHaveCount(0);
+  await toSection(page, 'infernal-reach-pyre-peaks', 200, -70);
+  await canvas(page).focus();
+  await page.keyboard.press('m');
+  await expect(map).toBeVisible();
   await page.locator('#places-list [data-map-find]').fill('the molten deep');
   await map.locator('.td-map__key button', { hasText: /the molten deep/i }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', /scorched throat/i, { timeout: 30000 });
