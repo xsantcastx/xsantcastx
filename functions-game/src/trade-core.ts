@@ -1021,13 +1021,19 @@ function landGround(tx: Tx, g: GroundDoc, areaDoc: Doc | null, invDoc: Doc | nul
   return newId;
 }
 
-export type PickupResult = { status: 'picked'; item: string; ground: string } | { status: 'gone'; ground: string; why: string };
+/** `left`: a partial take of a stack pile (polish2) — how many still lie there; absent when the whole pile was taken. */
+export type PickupResult = { status: 'picked'; item: string; ground: string; left?: number } | { status: 'gone'; ground: string; why: string };
 /** Take a ground item. Only one picker can win: the transaction reads the ground document, and the loser finds it gone. */
 export async function pickupItem(db: Db, uid: string, body: unknown, now: number): Promise<PickupResult> {
   if (!isObj(body)) refuse(400, 'bad-request', 'Invalid request.');
   const b = body as Doc;
   const character = typeof b['character'] === 'string' && CHARACTER.test(b['character']) ? b['character'] as string : refuse(400, 'bad-request', 'Invalid character.');
   const gid = typeof b['ground'] === 'string' && ID.test(b['ground']) ? b['ground'] as string : refuse(400, 'bad-request', 'Invalid item.');
+  // A partial take of a stack pile (polish2): `qty` of its `qty` (a whole-number amount), named by the press (`n`) so a
+  // retry finds its own and two takes of one pile are two grants. Anything else takes the whole pile, as ever.
+  const want = b['qty'] === undefined ? 0 : Number.isInteger(b['qty']) && (b['qty'] as number) >= 1 && (b['qty'] as number) <= 1e6 ? b['qty'] as number : refuse(400, 'bad-request', 'Invalid amount.');
+  if (want && (typeof b['n'] !== 'string' || !DROP_NONCE.test(b['n']))) refuse(400, 'bad-request', 'Invalid take.');
+  const nonce = want ? b['n'] as string : '';
   return db.run(async tx => {
     const g = await tx.get(groundItemPath(gid)) as unknown as GroundDoc | null;
     if (!g) return { status: 'gone', ground: gid, why: 'Someone else picked that up.' };
@@ -1042,6 +1048,19 @@ export async function pickupItem(db: Db, uid: string, body: unknown, now: number
     }
     const target = { uid, character };
     const invDoc = await tx.get(inventoryPath(uid, character));
+    const total = typeof g.sk === 'string' && Number.isInteger(g.qty) ? g.qty as number : 0;
+    if (want && total > want) {
+      // Part of the pile: `want` lands in the picker's save, the rest stays lying there (same owner, same clock).
+      const inv = readInventory(invDoc, 'You');
+      const newId = pickedId(`${g.id}~${nonce}`);
+      giveStack(inv, g.sk as string, want, newId, now);
+      bumpServerSeq(inv);
+      const left = total - want;
+      tx.set(inventoryPath(uid, character), inventoryEnvelope(inv, now));
+      tx.set(groundItemPath(g.id), { ...clone(g as unknown as Doc), qty: left, item: { ...clone(g.item), quantity: left } } as unknown as Doc);
+      tx.set(auditPath(`pickpart-${g.id}-${now}`), { kind: 'pickup', at: now, ground: g.id, area: g.area, from: g.owner, to: target, item: newId, name: g.name, rarity: g.rarity, qty: want, left });
+      return { status: 'picked', item: newId, ground: gid, left };
+    }
     const item = landGround(tx, g, areaDoc, invDoc, target, now, 'pickup');
     return { status: 'picked', item, ground: gid };
   });

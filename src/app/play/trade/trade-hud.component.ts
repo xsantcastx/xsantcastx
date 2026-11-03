@@ -78,7 +78,7 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     tradeStatus: (t: string) => this.room?.tradeStatus(t) ?? Promise.resolve({ status: 'offline' as const }),
     groundLay: (g: Parameters<SocialRoom['groundLay']>[0]) => this.room?.groundLay(g) ?? Promise.resolve({ why: 'offline' }),
     groundSynced: (id: string) => this.room?.groundSynced(id),
-    groundPick: (area: string, id: string) => this.room?.groundPick(area, id) ?? Promise.resolve({ ok: false as const, why: 'offline' }),
+    groundPick: (area: string, id: string, part?: { qty: number; n: string }) => this.room?.groundPick(area, id, part) ?? Promise.resolve({ ok: false as const, why: 'offline' }),
   };
   readonly flow = new TradeFlow(this.backend, this.roomVerbs, () => this.cdr.markForCheck());
   readonly groundFlow = new GroundFlow(this.backend, this.roomVerbs, id => { if (this.inventory.itemById(id)) this.inventory.drop(id); });
@@ -432,10 +432,18 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
     return out.ok;
   }
   /** "How many … to drop?" (verb-matrix T1): a stack being let go of, the amount chosen, and where it goes once chosen. */
-  dropAmount: { sk: string; name: string; max: number; n: number; done: (n: number) => void } | null = null;
+  dropAmount: { sk: string; name: string; max: number; n: number; done: (n: number) => void; take?: boolean } | null = null;
   /** Ask how many of a stack to drop (starts at `start`, at most `max`); `done` lays that many. */
   askDrop(sk: string, name: string, start: number, max: number, done: (n: number) => void): void {
     this.dropAmount = { sk, name, max, n: Math.max(1, Math.min(max, Math.floor(start))), done };
+    this.cdr.markForCheck();
+  }
+  /**
+   * "How many … to take?" (polish2): the same bar, for taking part of a stack lying on the ground. Reusable: the world tap,
+   * the ground pile list and the inventory's Nearby panel all ask through it. `done` takes that many.
+   */
+  askTake(sk: string, name: string, max: number, done: (n: number) => void): void {
+    this.dropAmount = { sk, name, max, n: max, done, take: true };
     this.cdr.markForCheck();
   }
   setDropAmount(raw: string | number): void {
@@ -451,17 +459,43 @@ export class TradeHudComponent implements OnChanges, OnDestroy {
   heldBack(sk: string): number { return this.groundFlow.heldBack(sk); }
   /** A stack can lie on the room's ground: online, signed in, a room that trades. */
   canDropStack(): boolean { return !!this.social?.connected && (this.social.protocol ?? 0) >= 6 && !this.social.guest; }
-  /** The engine walked the Keeper to a ground item that was tapped: reach for it. */
-  async pickup(id: string): Promise<void> {
+  /** The most of a stack the satchel can take now (0..want): it fills by whole cells, so find the largest that fits. */
+  private fitting(sk: string, want: number): number {
+    let lo = 0, hi = want;
+    while (lo < hi) { const mid = Math.ceil((lo + hi) / 2); if (this.inventory.canTakeStack(sk, mid)) lo = mid; else hi = mid - 1; }
+    return lo;
+  }
+  /**
+   * Take `qty` of a ground stack pile (all of it when omitted) into the satchel; what is left lies on. The reusable
+   * action behind the world tap and any other list of nearby piles. True when it landed.
+   */
+  async takeFromPile(id: string, qty?: number): Promise<boolean> {
+    const g = this.social?.ground?.items.find(x => x.id === id);
+    if (!g?.sk || !g.qty) return false;
+    const take = Math.max(1, Math.min(g.qty, Math.floor(qty ?? g.qty)));
+    if (!this.inventory.canTakeStack(g.sk, take)) { this.said.emit(this.t('play.grid.full')); return false; }
+    const out = await this.groundFlow.pickup(g, take < g.qty ? take : undefined);
+    const label = take > 1 ? `${g.name} ×${take}` : g.name;
+    this.said.emit(out.ok ? this.t('trade.picked', { name: label }) : this.t('trade.pickFailed', { why: this.whyText(out.why) }));
+    this.cdr.markForCheck();
+    return out.ok;
+  }
+  /**
+   * Reach for a ground pile. A stack of several (and a room that settles) asks "How many?" first, at most what the satchel
+   * can hold; otherwise the whole thing is taken at once. With `qty` it takes that many without asking.
+   */
+  async pickup(id: string, qty?: number): Promise<void> {
     const g = this.social?.ground?.items.find(x => x.id === id);
     if (!g) return;
-    // A pile ×N: the satchel must hold all of it (a full satchel refuses, it stays on the ground).
     if (g.sk && g.qty) {
-      if (!this.inventory.canTakeStack(g.sk, g.qty)) { this.said.emit(this.t('play.grid.full')); return; }
-      const out = await this.groundFlow.pickup(g);
-      const label = g.qty > 1 ? `${g.name} ×${g.qty}` : g.name;
-      this.said.emit(out.ok ? this.t('trade.picked', { name: label }) : this.t('trade.pickFailed', { why: this.whyText(out.why) }));
-      this.cdr.markForCheck();
+      if (qty === undefined && g.qty > 1 && this.canDropStack() && (this.social?.protocol ?? 0) >= 8) {
+        const max = this.fitting(g.sk, g.qty);
+        if (max < 1) { this.said.emit(this.t('play.grid.full')); return; }
+        if (max > 1) { this.askTake(g.sk, g.name, max, n => { void this.takeFromPile(id, n); }); return; }
+        void this.takeFromPile(id, 1);
+        return;
+      }
+      await this.takeFromPile(id, qty);
       return;
     }
     // A full satchel refuses the pickup: it stays on the ground (docs/design/inventory-grid.md §2.4).

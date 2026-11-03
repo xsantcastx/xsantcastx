@@ -15,7 +15,7 @@ let hearth: Hearth;
 test.beforeAll(async ({}, info) => { hearth = await startHearth(String(info.project.use.baseURL), undefined, { SOCIAL_FAKE_AUTH: '1', SOCIAL_FAKE_TRADE: '1' }); });
 test.afterAll(async () => { await hearth?.stop(); });
 
-const OUT = 'output/quickwins';
+const OUT = 'output/polish2';
 const shot = async (page: Page, name: string) => { fs.mkdirSync(OUT, { recursive: true }); await page.screenshot({ path: `${OUT}/${name}.png` }); };
 const SK = 'minor-health-potion';
 const stackLedger = (sk: string, qty: number) => ({
@@ -84,9 +84,25 @@ test('online, two Keepers: 3 of 5 potions dropped through "How many?" lie as one
   const win = bryn.locator('[data-pile-window]');
   await expect(win).toBeVisible();
   await win.locator('[data-pile-take]').first().click();
+  // A pile of three asks "How many … to take?" (polish2): two it is; one lies on, and nobody lost or gained a potion.
+  const take = bryn.locator('[data-drop-amount]');
+  await expect(take).toBeVisible();
+  await expect(take.locator('[data-drop-amount-n]')).toHaveValue('3');
+  await take.locator('[data-drop-amount-n]').fill('2');
+  await shot(bryn, 'ground-stack-take-howmany-1280');
+  await take.locator('[data-drop-amount-ok]').click();
+  await expect.poll(() => held(bryn), { timeout: 20000 }).toBe(2);
+  const rest = (p: P) => p.labels.some(l => l === 'Minor Health Potion');
+  await expect.poll(async () => (await piles()).some(rest), { timeout: 10000 }).toBe(true);
+  expect(await held(page)).toBe(2);
+  // The last one (a pile of one asks nothing) is taken whole: the pile leaves both screens.
+  await calm(bryn);
+  const last = (await piles()).find(rest)!;
+  await bryn.mouse.click(last.px, last.py, { button: 'right' });
+  await expect(bryn.locator('[data-pile-window]')).toBeVisible();
+  await bryn.locator('[data-pile-window] [data-pile-take]').first().click();
   await expect.poll(() => held(bryn), { timeout: 20000 }).toBe(3);
-  // Gone from both screens; Aster keeps her two.
-  await expect.poll(async () => (await piles()).some(ours), { timeout: 10000 }).toBe(false);
+  await expect.poll(async () => (await piles()).some(rest), { timeout: 10000 }).toBe(false);
   expect(await held(page)).toBe(2);
   await other.close();
 });

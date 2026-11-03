@@ -192,6 +192,8 @@ const hdPortraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 /** The most ground chunks kept baked (≈ 0.26 MB each, four for water): the view and its ring, with room to turn back. */
 const CHUNK_CAP = 40;
+/** Most HUD boxes the plates keep clear of (the prompt and every HUD button over the world). */
+const AVOID_MAX = 32;
 /** Grounds the HD painter (option B) paints edge to edge with each other. */
 const GRASSY_HD = new Set<Ground>(['grass', 'flowers']);
 /** Ground baking's share of a frame (ms) after the draw (docs/handoff/calm.md). */
@@ -386,7 +388,7 @@ export class TopDownEngine {
    * canvas (`[data-world-rail]`, css px: the phone's skill column and potion belt), and the boxes the world's name
    * plates keep clear of (`[data-world-avoid]`, the armed Interact prompt; backing px from the canvas's corner).
    */
-  private readonly hud = { l: 0, r: 0, at: -1, n: 0, avoid: new Float64Array(16) };
+  private readonly hud = { l: 0, r: 0, at: -1, n: 0, avoid: new Float64Array(AVOID_MAX * 4) };
   /**
    * How far the follow point sits right of the canvas's centre (art px; negative: left): half the rails' difference,
    * so the Keeper stands in the middle of the world the rails leave, plus what it takes to bring the target out from
@@ -1497,6 +1499,13 @@ export class TopDownEngine {
     const id = `own:${own}`;
     this.mobs.drops.push({ id, x: at.x + o.dx, y: at.y + o.dy, coins: 0, qty, label, color, age: 1, own, ...(art ? { art } : {}), ...(rung ? { rarity: rung } : {}) });
     return id;
+  }
+  /** A partial take of an own stack pile: `left` still lies there (relabelled), or none (gone from the ground). */
+  trimOwn(own: string, left: number, label: string): void {
+    const i = this.mobs.drops.findIndex(d => d.own === own);
+    if (i < 0) return;
+    if (left <= 0) { this.mobs.drops.splice(i, 1); return; }
+    this.mobs.drops[i].qty = left; this.mobs.drops[i].label = label;
   }
   /** Where the Keeper's next own drop lands (the tile centre at their feet): the room is told the same spot. */
   dropSpot(): { x: number; y: number } {
@@ -4224,11 +4233,27 @@ export class TopDownEngine {
       if (b.left - c.left < c.width * .3 && b.right - c.left < c.width * .4) h.l = Math.max(h.l, b.right - c.left);
       else if (c.right - b.right < c.width * .3 && c.right - b.left < c.width * .4) h.r = Math.max(h.r, c.right - b.left);
     }
-    for (const el of Array.from(document.querySelectorAll('[data-world-avoid]'))) {
-      const b = el.getBoundingClientRect();
-      if (b.width < 1 || b.height < 1 || h.n >= 4) continue;
+    const put = (b: DOMRect): void => {
+      if (h.n >= AVOID_MAX) return;
       const a = h.avoid, i = h.n++ * 4;
       a[i] = (b.left - c.left) * k; a[i + 1] = (b.top - c.top) * k; a[i + 2] = (b.right - c.left) * k; a[i + 3] = (b.bottom - c.top) * k;
+    };
+    const boxes: DOMRect[] = [];
+    for (const el of Array.from(document.querySelectorAll('[data-world-avoid]'))) {
+      const b = el.getBoundingClientRect();
+      if (b.width >= 1 && b.height >= 1) { boxes.push(b); put(b); }
+    }
+    // Every other shown HUD button standing over the world (the rails, the dock, the chat tabs, the top bar's buttons):
+    // a plate never lands against one (polish2). Windows' own buttons are not HUD; a button inside a box above is covered.
+    for (const el of Array.from(document.querySelectorAll('.stage button'))) {
+      if (h.n >= AVOID_MAX) break;
+      const b = el.getBoundingClientRect();
+      if (b.width < 2 || b.height < 2 || b.right <= c.left || b.left >= c.right || b.bottom <= c.top || b.top >= c.bottom) continue;
+      if (boxes.some(o => b.left >= o.left - 1 && b.right <= o.right + 1 && b.top >= o.top - 1 && b.bottom <= o.bottom + 1)) continue;
+      if (el.closest('.place, [role="dialog"], dialog, [inert], [hidden], [aria-hidden="true"]')) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.pointerEvents === 'none' || Number(cs.opacity) < .1) continue;
+      put(b);
     }
   }
   /**
@@ -4245,20 +4270,34 @@ export class TopDownEngine {
     this.viewShift = this.still || Math.abs(gap) > vw / 2 ? want : this.viewShift + gap * Math.min(1, this.frameDt * 5);
     if (Math.abs(want - this.viewShift) < .5) this.viewShift = want;
   }
+  /** The sideways nudge (art px) that goes with the last `hudLift`. */
+  private hudDx = 0;
   /**
    * How far (art px, up: ≤ 0) a name plate whose box is (x0, y0)–(x1, y1) under the current world transform must lift
-   * to clear the HUD's avoid boxes (the Interact prompt): its bottom one art px over the box's top. 0 when clear.
+   * to clear the HUD's avoid boxes (the Interact prompt, every HUD button): its bottom one art px over a box's top —
+   * or, when that costs much more than sliding clear of the box, it slides sideways instead (`this.hudDx`, art px;
+   * callers add it to the plate's x). 0 and 0 when clear.
    */
   private hudLift(x0: number, y0: number, x1: number, y1: number): number {
     const h = this.hud;
+    this.hudDx = 0;
     if (!h.n) return 0;
     const s = this.scale, cx = this.cam.x, cy = this.cam.y, a = h.avoid;
-    let lift = 0;
-    for (let i = 0; i < h.n; i++) {
-      const j = i * 4, X0 = (x0 - cx) * s, X1 = (x1 - cx) * s, Y0 = (y0 + lift - cy) * s, Y1 = (y1 + lift - cy) * s;
-      if (X1 <= a[j] || X0 >= a[j + 2] || Y1 <= a[j + 1] || Y0 >= a[j + 3]) continue;
-      lift += (a[j + 1] - Y1) / s - 1;
+    let lift = 0, dx = 0;
+    for (let pass = 0; pass < 6; pass++) {
+      let moved = false;
+      for (let i = 0; i < h.n; i++) {
+        const j = i * 4, X0 = (x0 + dx - cx) * s, X1 = (x1 + dx - cx) * s, Y0 = (y0 + lift - cy) * s, Y1 = (y1 + lift - cy) * s;
+        if (X1 <= a[j] || X0 >= a[j + 2] || Y1 <= a[j + 1] || Y0 >= a[j + 3]) continue;
+        const up = (a[j + 1] - Y1) / s - 1, left = (a[j] - X1) / s - 1, right = (a[j + 2] - X0) / s + 1;
+        // Up is the habit (the prompt); a sideways slide wins only when clearly shorter.
+        const side = Math.abs(left) < right ? left : right;
+        if (Math.abs(side) * 1.5 < -up) dx += side; else lift += up;
+        moved = true;
+      }
+      if (!moved) break;
     }
+    this.hudDx = Math.round(dx);
     return Math.floor(lift);
   }
   /** The ground cache's size for this view (the prototype's camera frames more chunks). */
@@ -5625,27 +5664,28 @@ export class TopDownEngine {
       // Its bar and name (a box about 60 px wide over the bar, 88 with an aura's name) lift clear of the Interact prompt
       // (Director, dirfix).
       let top = m.y - this.vis(m.def).h - 3;
-      if (this.hud.n) { const hw = m.aura ? 44 : 30; top += this.hudLift(m.x - hw, top - 10, m.x + hw, top + 3); }
+      let mx = m.x;
+      if (this.hud.n) { const hw = m.aura ? 44 : 30; top += this.hudLift(mx - hw, top - 10, mx + hw, top + 3); mx += this.hudDx; }
       const w = 18, frac = Math.max(0, m.hp / m.def.hp);
-      c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
-      c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
+      c.fillStyle = '#1a1014'; c.fillRect(Math.round(mx - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
+      c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(mx - w / 2), Math.round(top), Math.round(w * frac), 2);
       // S6: a pack aura's pip beside the bar (the bearer's and each one it blesses).
-      if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x + w / 2) + 3, Math.round(top) - 1);
+      if (m.aura || m.bless) drawAuraPip(c, m, Math.round(mx + w / 2) + 3, Math.round(top) - 1);
       // What lies on it (stunned, burning, taunted…): badges over its name (a minion's over its bar).
       const st = mobStatuses(m, this.statusPeaks);
-      if (st.length) { this.badges(st, m.x, top - (m.elite?.role === 'minion' ? 2 : 9)); this.noteBadges(`m:${m.key}`, st); }
+      if (st.length) { this.badges(st, mx, top - (m.elite?.role === 'minion' ? 2 : 9)); this.noteBadges(`m:${m.key}`, st); }
       // A unique's minions follow its name: a bar each, no name of their own.
       if (m.elite?.role === 'minion') continue;
       // Its name in the colour of its level against the Keeper's (td-zones gapTone, Tibia): grey trivial, cream even,
       // yellow +3, orange +6, red with a skull from +10 — the one-shot range.
       // A fixed aura-bearer names its aura on its plate (Orc Warlord · Might).
       const tone = gapTone(this.mobs.keeperLevel, m.def.level), label = m.aura ? `${m.def.name} ${m.def.level} · ${AURA_NAMES_EN[m.aura]}` : `${m.def.name} ${m.def.level}`;
-      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(label, Math.round(m.x) + 1, Math.round(top) - 1);
-      if (this.logPlates) { const lw = c.measureText(label).width / 2; this.logPlate(m.x - lw, top - 8, m.x + lw, top + 3); }
-      c.fillStyle = m === this.mobs.target && tone === 'even' ? '#ff8a7a' : GAP_TONES[tone]; c.fillText(label, Math.round(m.x), Math.round(top) - 2);
+      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(label, Math.round(mx) + 1, Math.round(top) - 1);
+      if (this.logPlates) { const lw = c.measureText(label).width / 2; this.logPlate(mx - lw, top - 8, mx + lw, top + 3); }
+      c.fillStyle = m === this.mobs.target && tone === 'even' ? '#ff8a7a' : GAP_TONES[tone]; c.fillText(label, Math.round(mx), Math.round(top) - 2);
       if (tone === 'deadly') {
         // A skull, 5×5 pixels, left of the name.
-        const sx = Math.round(m.x - c.measureText(label).width / 2) - 8, sy = Math.round(top) - 8;
+        const sx = Math.round(mx - c.measureText(label).width / 2) - 8, sy = Math.round(top) - 8;
         c.fillStyle = '#1a1014'; c.fillRect(sx, sy, 6, 6);
         c.fillStyle = GAP_TONES.deadly; c.fillRect(sx + 1, sy, 4, 3); c.fillRect(sx, sy + 1, 6, 2); c.fillRect(sx + 1, sy + 3, 4, 1); c.fillRect(sx + 1, sy + 4, 1, 1); c.fillRect(sx + 3, sy + 4, 1, 1);
         c.fillStyle = '#1a1014'; c.fillRect(sx + 1, sy + 1, 1, 1); c.fillRect(sx + 4, sy + 1, 1, 1);
@@ -6390,6 +6430,7 @@ export class TopDownEngine {
     const w = Math.ceil(c.measureText(text).width) + 6;
     // Never under the Interact prompt (Director, dirfix): lifted clear of it while the two would meet.
     y += this.hudLift(x - w / 2, y - 9, x + w / 2, y);
+    x += this.hudDx;
     if (this.logPlates) this.logPlate(x - w / 2, y - 9, x + w / 2, y);
     c.fillStyle = 'rgba(26,16,30,.82)';
     c.fillRect(Math.round(x - w / 2), Math.round(y - 9), w, 9);

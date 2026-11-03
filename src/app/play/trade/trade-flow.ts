@@ -46,7 +46,7 @@ export interface TradeRoom {
   tradeStatus?(trade: string): Promise<RoomTradeStatus>;
   groundLay?(g: { area: string; x: number; y: number; item: OfferItem; n?: string }): Promise<{ why: string; ground?: RoomGround }>;
   groundSynced?(id: string): void;
-  groundPick?(area: string, id: string): Promise<RoomPick>;
+  groundPick?(area: string, id: string, part?: { qty: number; n: string }): Promise<RoomPick>;
 }
 /** How long a settled trade waits for its commit's word before it asks the room again (ms). */
 export const COMMIT_WAIT_MS = 8000;
@@ -328,15 +328,19 @@ export class GroundFlow {
   isPending(itemId: string): boolean { for (const v of this.pending.values()) if (v === itemId) return true; return false; }
 
   /** Reach for a ground item: one picker wins; the loser's screen just loses it. */
-  async pickup(g: RoomGround): Promise<GroundResult> {
+  async pickup(g: RoomGround, take?: number): Promise<GroundResult> {
     const blocked = this.backend.blocked();
     if (blocked) return { ok: false, why: blocked };
+    // Part of a stack pile (polish2): the room settles it (the pile stays, smaller); older paths take whole piles only.
+    const part = take !== undefined && g.sk && g.qty && take >= 1 && take < g.qty
+      ? { qty: Math.floor(take), n: `${Date.now().toString(36)}${(++this.stackSeq).toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 40) } : undefined;
+    if (part && !(this.room.canSettle?.() && this.room.groundPick)) return { ok: false, why: 'offline' };
     if (this.room.canSettle?.() && this.room.groundPick) {
-      let out = await this.room.groundPick(g.area, g.id);
+      let out = await this.room.groundPick(g.area, g.id, part);
       // This save is not in the cloud yet (a first sign-in, a save from an older build): push it and reach again once.
       if (!out.ok && (out.code === 'no-save' || out.code === 'stale-save')) {
         try { await this.backend.prepare(); } catch { return { ok: false, why: out.why }; }
-        out = await this.room.groundPick(g.area, g.id);
+        out = await this.room.groundPick(g.area, g.id, part);
       }
       if (!out.ok) return { ok: false, why: out.why };
       await this.backend.settle().catch(() => {});
