@@ -47,6 +47,9 @@ export const ALLY_SKILLS: Readonly<Partial<Record<SkillId, AllySkill>>> = {
   'cleanse': { kinds: ['cleanse', 'heal'], reach: 12 },
   'rekindle': { kinds: ['rekindle'], reach: 3, maxN: 70 },
   'hearthsong': { kinds: ['heal', 'cleanse'], reach: 8 },
+  // S9: Chain of Lamps' Healing Arc, the Moth Swarm's Gentle Wings (heals); Pyre Strike's Rallying Fall (a ward).
+  'chain-of-lamps': { kinds: ['heal'], reach: 12 },
+  'moth-swarm': { kinds: ['heal'], reach: 8 },
   // The stand-ins S5 swaps in (skill-book-stand-ins.md): the marks that now reach allies.
   'kindle': { kinds: ['heal'], reach: 6 },
   'blinding-flash': { kinds: ['heal'], reach: 6 },
@@ -68,6 +71,7 @@ export const ALLY_SKILLS: Readonly<Partial<Record<SkillId, AllySkill>>> = {
   'aura-watchfire': { kinds: ['aura', 'heal'], reach: 5, maxN: 0, maxT: 3, maxR: 5 },
   'last-watch': { kinds: ['ward'], reach: 7, maxN: 0, maxT: 5 },
   'cinder-skin': { kinds: ['aura'], reach: 0, maxN: 40, maxT: 160, maxR: 4 },
+  'pyre-strike': { kinds: ['ward'], reach: 6, maxT: 7 },
   // ── The Thornstrider ──
   'rootwalk': { kinds: ['aura'], reach: 0, maxN: 20, maxT: 120, maxR: 5 },
 };

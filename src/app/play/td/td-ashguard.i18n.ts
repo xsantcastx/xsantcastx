@@ -116,4 +116,17 @@ export const ASHGUARD_I18N: Readonly<Record<string, { en: string; es: string }>>
     en: 'Plant the shield for {{secs}} seconds: you cannot move, you take {{cut}}% less, and every foe within {{radius}} tiles is Taunted {{taunt}} seconds, again every 2 seconds.',
     es: 'Planta el escudo durante {{secs}} segundos: no puedes moverte, recibes un {{cut}}% menos y cada enemigo a {{radius}} casillas queda Provocado {{taunt}} segundos, otra vez cada 2 segundos.',
   },
+  // ── S9: rows 30–50 (skills-100.md §2) ──
+  'play.td.tree.var.ring': { en: 'Ring (%)', es: 'Anillo (%)' },
+  'play.td.tree.var.hush': { en: 'Hush (s)', es: 'Silencio (s)' },
+  'skill.pyre-strike': { en: 'Pyre Strike', es: 'Golpe de pira' },
+  'skill.pyre-strike.text': {
+    en: 'Leap up to {{range}} tiles onto a foe and bring the blade down: {{pct}}% of your blow to it and {{ring}}% as fire to everything within {{radius}} tiles; all it strikes are Stunned {{stun}} s.',
+    es: 'Salta hasta {{range}} casillas sobre un enemigo y baja la hoja: el {{pct}}% de tu golpe a el y el {{ring}}% como fuego a todo lo que este a {{radius}} casillas; todo lo que golpea queda Aturdido {{stun}} s.',
+  },
+  'skill.watchquake': { en: 'Watchquake', es: 'Temblor de la guardia' },
+  'skill.watchquake.text': {
+    en: 'Stamp the ground: everything within {{radius}} tiles takes {{pct}}% of your blow, is Stunned {{stun}} s and Hushed {{hush}} s (a cast in its wind-up is broken).',
+    es: 'Pisa fuerte el suelo: todo lo que este a {{radius}} casillas recibe el {{pct}}% de tu golpe, queda Aturdido {{stun}} s y Silenciado {{hush}} s (un conjuro a medio preparar se rompe).',
+  },
 };
