@@ -30,6 +30,8 @@ export class SailingBoardComponent implements OnChanges, OnDestroy {
   @Input() pier = '';
   /** The Keeper's level (the soft warning). */
   @Input() level = 1;
+  /** The bosses the Keeper has felled (the Bestiary): an act's end opens its harbour's ship (td-harbour ACT_GATES_ENFORCED). */
+  @Input() cleared: readonly string[] = [];
   /** The Keeper chose a ship and paid: the host runs the crossing. */
   @Output() readonly sail = new EventEmitter<{ row: BoardRow; fare: number }>();
 
@@ -46,7 +48,7 @@ export class SailingBoardComponent implements OnChanges, OnDestroy {
   ngOnChanges(): void { this.rebuild(); this.said = ''; }
 
   private rebuild(): void {
-    this.rows = this.pier ? buildBoard(this.pier, { continents: CONTINENTS, level: this.level, gold: this.gold }) : [];
+    this.rows = this.pier ? buildBoard(this.pier, { continents: CONTINENTS, level: this.level, gold: this.gold, cleared: new Set(this.cleared) }) : [];
     if (!this.rows.some(r => r.id === this.pick)) this.pick = (this.rows.find(r => r.state === 'ok') ?? this.rows[0])?.id ?? '';
   }
 

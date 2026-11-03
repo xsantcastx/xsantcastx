@@ -45,7 +45,7 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     loot: { rolls: 3, chance: .5, uniques: ['unique-cinderwake', 'unique-mourners-ledger', 'unique-quiet-cuirass'] },
   },
   {
-    id: 'gharak-emberjaw', name: 'Gharak Emberjaw', area: 'infernal-reach', regions: ['h', 'F'], base: 'orc-warlord', level: 32,
+    id: 'gharak-emberjaw', name: 'Gharak Emberjaw', area: 'infernal-reach-badlands', regions: ['h'], base: 'orc-warlord', level: 32,
     life: 6, blows: 1.35, affixes: ['extra-strong', 'fire-enchanted'], followers: 3, every: [4, 6], stay: 2,
     loot: { rolls: 4, chance: .45, uniques: ['unique-goldmouth', 'unique-ashen-covenant', 'unique-pyrograph-scroll-case'] },
   },

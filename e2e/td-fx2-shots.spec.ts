@@ -7,7 +7,7 @@
  * every rung round the Keeper, a second after each arrival, drawn and never pickable.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { mapFind, purse, sail, seed } from './play-helpers';
+import { mapFind, purse, sail, seed, toSection } from './play-helpers';
 
 const canvas = (page: Page) => page.locator('canvas').first();
 
@@ -57,6 +57,8 @@ test('loot on the ground: every rung of the ladder, by day in town and on a dark
   // A dark floor: the Ashen Crypt's first (no creatures by its stair).
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // The crypt door is up the Bastion Road, in the Pyre Peaks (a section of the Reach since S7).
+  await toSection(page, 'infernal-reach-pyre-peaks', -6, -78);
   await go(page, /the ashen crypt/i, /ossuary/i);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   // Each drop lands a second after the arrival, popping in its colour.
@@ -73,6 +75,8 @@ test('a boss\'s tell: the Ashbone Dragon winds up before its breath', async ({ p
   test.setTimeout(120000);
   await open(page, 'hour=12');
   await sail(page, /pyrehold/i, /pyrehold/i);
+  // The crypt door is up the Bastion Road, in the Pyre Peaks (a section of the Reach since S7).
+  await toSection(page, 'infernal-reach-pyre-peaks', -6, -78);
   await go(page, /the ashen crypt/i, /ossuary/i);
   await go(page, /stairs down/i, /bone hall/i);
   await page.emulateMedia({ reducedMotion: 'no-preference' });

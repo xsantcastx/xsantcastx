@@ -11,7 +11,7 @@
  *
  * Menus: the title, the character list (the campfire), the Glass (New Keeper), the delete confirm; in the world the Spellbook, the
  * Satchel, the character sheet, the Bestiary, the Map, the Hearth Shrine, Sexton Wren's talk window, the settings
- * (sound) sheet, the Sexton's journal and a Harbourmaster's Sailing Board.
+ * (sound) sheet, the Sexton's journal, a Harbourmaster's Sailing Board and an act's Waystones (the Atlas).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { ERA, openMenu, seed } from './play-helpers';
@@ -245,6 +245,15 @@ for (const size of SIZES) {
       await check(page, 'Sailing Board', '.td-harbour');
       await page.keyboard.press('Escape');
       await expect(page.locator('.td-harbour')).toHaveCount(0);
+
+      // An act's Waystone (S7, the Infernal Reach): touched (E), it opens the land's stones, the Atlas.
+      await closeAll(page);
+      await page.evaluate(() => (window as unknown as { __tdArt: { visit: (l: string, c: number, r: number, k: string) => boolean } }).__tdArt.visit('surface', 8, 5, 'infernal-reach-steppe'));
+      await expect(page.locator('.prompt.armed')).toContainText(/watch cairn/i, { timeout: 5000 });
+      await key('e');
+      await check(page, 'Waystones Atlas', '.td-atlas');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.td-atlas')).toHaveCount(0);
     });
   });
 }

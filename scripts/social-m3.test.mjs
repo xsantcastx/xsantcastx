@@ -249,7 +249,7 @@ test('protocol 9: kill on a floor, leave, return — still dead; another Keeper 
   await step(4);
   for (const s of [sa, sb]) assert.ok(await s.until(() => s.all('coop-snap').flatMap(e => e.ev).find(e => e.k === 'kill' && e.key === key)), 'both saw it fall');
   // Aster climbs out to the surface for half a minute; the floor runs on dormant (Bryn leaves too).
-  await move(a, 300, 300, 'infernal-reach'); await move(b, 300, 300, 'infernal-reach');
+  await move(a, 300, 300, 'infernal-reach-pyre-peaks'); await move(b, 300, 300, 'infernal-reach-pyre-peaks');
   await step(1);
   for (let i = 0; i < 30; i++) await step(1, 1000);
   assert.ok(r.rooms.worldOf(FLOOR), 'the floor stayed loaded');
@@ -286,10 +286,16 @@ test('protocol 9: every area loaded with Keepers spread over them stays well ins
   const t = { now: T0 };
   const heap0 = process.memoryUsage().heapUsed;
   const all = WORLD_AREAS_ALL.map(a => world(a, t, `cpu|${a}`));
-  // 12 Keepers: three on each continent's surface (walking), the rest on floors with creatures; every other area dormant.
-  const busy = [];
-  for (const w of all) {
-    if (w.surface) for (let i = 0; i < 3; i++) busy.push({ w, id: `${w.area}-${i}`, x: (i - 1) * 400, y: 600 + i * 200 });
+  // 12 Keepers: three on each land's surface (walking; an act of sections — the Reach — gets one in each of three of its
+  // wild sections, S7), the rest on floors with creatures; every other area dormant.
+  const busy = [], landOf = a => CONTINENTS[a]?.land ?? a, wild = w => Object.keys(CONTINENTS[w.area]?.mobs ?? {}).length > 0;
+  const lands = new Map();
+  for (const w of all) if (w.surface && wild(w)) lands.set(landOf(w.area), [...(lands.get(landOf(w.area)) ?? []), w]);
+  for (const ws of lands.values()) for (let i = 0; i < 3; i++) {
+    const w = ws.length > 1 ? ws[i % ws.length] : ws[0], ox = ws.length > 1 ? 0 : (i - 1) * 400, oy = ws.length > 1 ? 0 : 600 + i * 200;
+    // In a section, the Keeper walks its through-road (its camp at the Waystone is safe ground, quiet round it).
+    const road = CONTINENTS[w.area].roads?.[0], mid = road && ws.length > 1 ? road[Math.floor(road.length / 3)] : null;
+    busy.push({ w, id: `${w.area}-${i}`, x: mid ? mid[0] * 16 : ox, y: mid ? mid[1] * 16 : oy });
   }
   for (const w of all.filter(x => !x.surface && x.level.spawnsIn().length).slice(0, 8)) { const s = w.level.spawnsIn()[0]; busy.push({ w, id: `${w.area}-k`, x: s.x + 8, y: s.y }); }
   const live = new Set(busy.map(k => k.w));
