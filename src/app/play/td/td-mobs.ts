@@ -6214,7 +6214,7 @@ export class MobSystem {
       const hit = new Set<Mob>();
       for (let i = 0; i < most && at; i++) {
         hit.add(at);
-        this.effects.push({ kind: 'lc-chain', x: from.x, y: from.y, tx: at.x, ty: at.y - at.def.h / 2, age: 0, life: .15, dir: 1 });
+        this.effects.push({ kind: 'lc-chain', x: from.x, y: from.y, tx: at.x, ty: at.y - at.def.h / 2, age: 0, life: .4, dir: 1 });
         const dealt = this.hitFoe(at, rnd(v['min'], v['max']) * k, '#ffe36d');
         if (at.hp > 0) this.layShock(at, st ? st.s ?? v['shock'] : v['shock'], st ? st.n ?? SHOCK_PCT : SHOCK_PCT);
         // Healing Arc (a mark): each leap mends the lowest ally a share of it (the Keeper, alone).
@@ -6308,6 +6308,8 @@ export class MobSystem {
       const hp = Math.max(1, Math.round(this.keeperMaxHp * v['life'] / 100)), k = 1 + v['bite'] / 100;
       this.minions.push({ id: this.minionSeq++, x: b.x, y: b.y, hp, maxHp: hp, dmg: [Math.max(1, Math.round(b.dmg[0] * k)), Math.max(1, Math.round(b.dmg[1] * k))], cd: .3, t: 1, face: b.face, life: v['secs'], hit: 0, target: b.target, kind: 'elder', owed: Math.max(0, b.t - v['secs']) });
       this.effects.push({ kind: 'wild-call', x: b.x, y: b.y, age: 0, life: .8, dir: 2 });
+      // A teal flash on the ground where it grows.
+      this.effects.push({ kind: 'lc-quake', x: b.x, y: b.y, age: 0, life: .6, dir: 1, r: 26, el: 'life' });
       this.host.swung(null);
     } else if (id === 'call-the-rain') {
       const fm = this.mk(id, 'followMark'), foe = fm && this.huntT > 0 && this.hunted && this.hunted.hp > 0 ? this.hunted : foeInRange();
@@ -6423,7 +6425,7 @@ export class MobSystem {
           for (const m of this.mobs) { if (hit.has(m) || m.hp <= 0) continue; const d = Math.hypot(m.x - from.x, m.y - from.y); if (d <= bd && this.sight.sees(from.x, from.y, m.x, m.y)) { bd = d; next = m; } }
           if (!next) break;
           hit.add(next);
-          this.effects.push({ kind: 'lc-chain', x: from.x, y: from.y - from.def.h / 2, tx: next.x, ty: next.y - next.def.h / 2, age: 0, life: .15, dir: 1 });
+          this.effects.push({ kind: 'lc-chain', x: from.x, y: from.y - from.def.h / 2, tx: next.x, ty: next.y - next.def.h / 2, age: 0, life: .25, dir: 0 });
           this.hitFoe(next, rnd(v['min'], v['max']) * k, '#fff2a8');
           from = next;
         }

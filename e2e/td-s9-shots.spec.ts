@@ -26,7 +26,7 @@ const SHOTS_ALL: Shot[] = [
   { voc: 'ashguard', id: 'pyre-strike', wait: 120 },
   { voc: 'ashguard', id: 'watchquake', wait: 150 },
   { voc: 'lanternwright', id: 'moth-swarm', wait: 900 },
-  { voc: 'lanternwright', id: 'chain-of-lamps', wait: 60, foes: [[40, 0], [70, 20], [100, -10], [130, 15]] },
+  { voc: 'lanternwright', id: 'chain-of-lamps', wait: 60, foes: [[40, 0], [62, 20], [84, -10], [106, 15]] },
   { voc: 'thornstrider', id: 'elder-beast', ranks: { 'call-of-the-wilds': 10 }, before: 'call-of-the-wilds', wait: 900 },
   { voc: 'thornstrider', id: 'thornrain', wait: 900 },
   { voc: 'thornstrider', id: 'lightning-call', wait: 680 },
@@ -55,6 +55,8 @@ on('S9 rows in the running game', () => {
         test.setTimeout(600000);
         const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: view.width, height: view.height }, ...(view.mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) });
         const page = await ctx.newPage();
+        if (process.env['S9_DEBUG']) page.on('console', m => { if (m.type() === 'error') console.warn('CONSOLE', m.text().slice(0, 300)); });
+        page.on('pageerror', e => console.warn('PAGEERROR', String(e).slice(0, 300)));
         for (const s of SHOTS) {
           await open(page, s.voc, look, false);
           await shoot(page, s, `output/s9rows/${view.name}-${look === 'iso' ? 'iso' : 'classic'}-${s.id}.png`);
@@ -63,11 +65,21 @@ on('S9 rows in the running game', () => {
       });
     }
   }
+  test('Reduced motion: Pyre Strike and the Moth Swarm', async ({ browser }) => {
+    test.setTimeout(300000);
+    const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    for (const s of SHOTS_ALL.filter(x => x.id === 'pyre-strike' || x.id === 'moth-swarm')) {
+      await open(page, s.voc, 'iso', false);
+      await shoot(page, s, `output/s9rows/desk-iso-still-${s.id}.png`);
+    }
+    await ctx.close();
+  });
   test('Low detail: the Moth Swarm and Chain of Lamps', async ({ browser }) => {
     test.setTimeout(300000);
     const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
-    for (const s of SHOTS.filter(x => x.id === 'moth-swarm' || x.id === 'chain-of-lamps')) {
+    for (const s of SHOTS_ALL.filter(x => x.id === 'moth-swarm' || x.id === 'chain-of-lamps' || x.id === 'thornrain' || x.id === 'watchquake')) {
       await open(page, s.voc, 'iso', true);
       await shoot(page, s, `output/s9rows/desk-iso-low-${s.id}.png`);
     }
@@ -76,7 +88,7 @@ on('S9 rows in the running game', () => {
 });
 
 async function shoot(page: Page, s: Shot, path: string): Promise<void> {
-  const foes = s.foes ?? [[48, 0], [64, 26], [30, -30]];
+  const foes = (s.foes ?? [[48, 0], [64, 26], [30, -30]]).map(([x, y]) => [-x, y]);   // to the west: the open road, no trees in front
   await page.evaluate(f => { const w = window as unknown as W; for (const [dx, dy] of f) w.__tdZones.foe('bone-walker', 40, dx, dy); w.__tdArt.aim(f.length); }, foes);
   const ranks = { [s.id]: 10, ...(s.ranks ?? {}) };
   if (s.before) expect(await page.evaluate(([r, id]) => (window as unknown as W).__tdArt.cast(r as Record<string, number>, id as string), [ranks, s.before] as const)).toBeNull();
@@ -84,7 +96,8 @@ async function shoot(page: Page, s: Shot, path: string): Promise<void> {
   const why = await page.evaluate(([r, id]) => (window as unknown as W).__tdArt.cast(r as Record<string, number>, id as string), [ranks, s.id] as const);
   expect(why, s.id).toBeNull();
   await page.waitForTimeout(s.wait);
-  if (process.env['S9_FREEZE']) await page.evaluate(() => (window as unknown as { __tdArt: { freeze(on: boolean): void } }).__tdArt.freeze(true));
+  // The world held still for the camera (short effects otherwise end before the frame is captured). S9_LIVE=1: not.
+  if (!process.env['S9_LIVE']) await page.evaluate(() => (window as unknown as { __tdArt: { freeze(on: boolean): void } }).__tdArt.freeze(true));
   if (process.env['S9_DEBUG']) console.warn(s.id, JSON.stringify(await page.evaluate(() => (window as unknown as { __tdArt: { fx(): unknown } }).__tdArt.fx())));
   await page.screenshot({ path });
   // And close on the Keeper (the camera holds him at the canvas's middle).
