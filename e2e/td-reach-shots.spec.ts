@@ -29,7 +29,8 @@ async function open(page: Page, graphics: 'iso' | 'classic'): Promise<void> {
   await page.goto('/play?td=1&hour=12');
   await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
   await page.waitForFunction(() => !!(window as unknown as { __tdArt?: unknown }).__tdArt);
-  await page.addStyleTag({ content: '.lvl-banner, .glim-say, .area-card { visibility: hidden !important; }' });
+  // The tutorial panel (the prologue's goal list) is dismissed: these are photographs of the land, not of the HUD.
+  await page.addStyleTag({ content: '.lvl-banner, .glim-say, .area-card, .guide { visibility: hidden !important; }' });
   // A level-1 Keeper in a level-20 zone would not live to the next photograph: the fight is held still for the camera.
   await page.evaluate(() => (window as unknown as { __tdArt: { freeze: (on: boolean) => void } }).__tdArt.freeze(true));
 }

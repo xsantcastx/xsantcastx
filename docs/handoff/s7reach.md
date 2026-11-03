@@ -54,6 +54,21 @@ Branch `s7reach` (off main `a4a2435d`), 2026-11-03. Spec: `docs/world/campaign.m
 - `scripts/social-m3.test.mjs`: the room-cost test spreads its 12 surface Keepers by land (three sections of the Reach),
   not three on each of 13 surfaces (measured 2.05 ms a step; main 5.0 ms).
 
+## Director review fixes (round 2)
+- Townsfolk no longer spawn on a Waystone camp's dirt (`spawnFolk` skips `townKind: 'camp'`): the crowds at the Watch
+  Cairn and the Drake Stone were real.
+- Kettle Camp stands in its own clearing ('.' blocks round it), no other pack within 18 tiles of any hot spot, its
+  pack spread 2–6 tiles out and never two within 1.5 tiles; CAMP_CLEAR 9.
+- The prompt names the gathering targets (chop / fish / cook) instead of "Walk closer to a landmark".
+- Elite name and affix lines slide left of the HUD's top-right corner (all elite plates, `drawElitePlate` reserve).
+- Ash country (`ContinentDef.ash`: Badlands, Molten Fields, Pyre Peaks): no grass, basalt and obsidian dirt, more lava
+  on the molten ground (none at a place); the camps there are ash too.
+- Rock wall caps lifted (`td-iso-walls` rock cap ramp) so the tunnels' tops read against the dark.
+- Tamsin Coyle moved to Cinderport (20,8) so her plate clears Marit Salt's (canon §5.2 updated).
+- Atlas: muted parchment for untouched rows, a "where to look" hint on each, Pyrehold's Plaza Stone always touched.
+- The Sailing Board's Escape is handled once (its section no longer also closes it; the Game Menu stays shut).
+- `td-ashguard` "a held weapon hits harder" made deterministic (seeded rolls, the same for every arm); unrelated to S7.
+
 ## Gate (2026-11-03, this branch)
 check:meaning clean; tsc app + spec clean; `npm run test:ci` 4404/4404; CI's node line 336/336, delve-endless 31/31;
 ds-adherence, i18n keys, nav audit, economy-sim and combat-sim --check pass; build initial 1.39 MB; CSP hashes match.

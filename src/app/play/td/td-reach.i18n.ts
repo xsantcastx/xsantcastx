@@ -39,6 +39,9 @@ export const REACH_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'reach.act.read': { en: 'Read {{name}}', es: 'Leer {{name}}' },
   'reach.act.sealed': { en: 'Look at {{name}}', es: 'Mirar {{name}}' },
   'reach.act.seam': { en: 'Walk on: {{name}}', es: 'Seguir: {{name}}' },
+  'reach.act.tree': { en: 'Chop the tree', es: 'Talar el arbol' },
+  'reach.act.spot': { en: 'Fish here', es: 'Pescar aqui' },
+  'reach.act.fire': { en: 'Cook at the fire', es: 'Cocinar en el fuego' },
 
   // ── The Waystones' Atlas (one a section; world-acts.md §0) ──
   'atlas.title': { en: 'The Waystones of {{land}}', es: 'Las Piedras de Camino de {{land}}' },
@@ -53,5 +56,15 @@ export const REACH_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'atlas.safe': { en: 'Safe', es: 'Seguro' },
   'atlas.touched': { en: 'The {{name}} remembers you now. +{{xp}} Delving XP.', es: 'La {{name}} ya te recuerda. +{{xp}} PX de Exploracion.' },
   'atlas.aria': { en: 'Waystones', es: 'Piedras de Camino' },
+  'atlas.near.pyrehold': { en: 'on the plaza', es: 'en la plaza' },
+  'atlas.near.watch-cairn': { en: 'up the north road from Pyrehold', es: 'subiendo el camino norte de Pyrehold' },
+  'atlas.near.glasswater': { en: 'down the Steppe\'s shore path', es: 'bajando el sendero de la costa de la Estepa' },
+  'atlas.near.kiln': { en: 'past the Steppe\'s west road', es: 'pasado el camino oeste de la Estepa' },
+  'atlas.near.clan': { en: 'out of the Kiln Tunnels\' far mouth', es: 'saliendo por la boca lejana de los Tuneles del Horno' },
+  'atlas.near.spill': { en: 'over the Deep Charwood\'s east pass', es: 'tras el paso este del Carbonal Profundo' },
+  'atlas.near.drake': { en: 'out of the Glass Throat', es: 'saliendo de la Garganta de Vidrio' },
+  'atlas.near.pyre': { en: 'up the switchbacks, by the Ring of Pyres', es: 'subiendo las curvas, junto al Anillo de Piras' },
+  'atlas.near.cinderport': { en: 'down the Steppe\'s south-east road', es: 'bajando el camino sureste de la Estepa' },
+  'atlas.near.ashgrove': { en: 'down the Charwood\'s west road', es: 'bajando el camino oeste del Carbonal' },
   'atlas.land.infernal-reach': { en: 'the Infernal Reach', es: 'Infernal Reach' },
 };

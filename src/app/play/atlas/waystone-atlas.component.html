@@ -7,7 +7,7 @@
                 [attr.aria-checked]="s.id === pick" [disabled]="!s.known || s.here" (click)="choose(s)">
           <span class="wa__gem" aria-hidden="true"></span>
           <span class="wa__name">@if (s.known || s.here) { {{ s.name }} } @else { ??? }</span>
-          <span class="wa__where">{{ s.section }}</span>
+          <span class="wa__where">{{ s.section }}@if (!s.known && !s.here) { <i class="wa__hint" data-atlas-hint>· {{ s.hint }}</i> }</span>
           <span class="wa__band">@if (s.safe) { {{ t('atlas.safe') }} } @else if (s.band) { {{ t('atlas.band', { lo: s.band[0], hi: s.band[1] }) }} }</span>
           <span class="wa__chip">{{ s.here ? t('atlas.here') : s.known ? t('atlas.known') : t('atlas.unknown') }}</span>
         </button>

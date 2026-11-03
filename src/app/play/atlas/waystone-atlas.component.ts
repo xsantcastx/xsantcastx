@@ -10,7 +10,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 import { TranslationService } from '../../translation.service';
 
 /** One stone of the land as the Atlas lists it. */
-export interface AtlasStone { id: string; name: string; section: string; band: readonly [number, number] | null; safe: boolean; known: boolean; here: boolean }
+export interface AtlasStone { id: string; name: string; section: string; /** Where to look for it (an untouched stone's row). */ hint: string; band: readonly [number, number] | null; safe: boolean; known: boolean; here: boolean }
 
 @Component({
   selector: 'app-waystone-atlas',

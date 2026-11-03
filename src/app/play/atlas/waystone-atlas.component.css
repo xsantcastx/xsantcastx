@@ -12,7 +12,8 @@
 .wa__row[aria-checked='true'] { background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass); }
 .wa__row:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
 .wa__row:disabled { cursor: default; }
-.wa__row[data-state='unknown'] { opacity: .6; }
+.wa__row[data-state='unknown'] .wa__name, .wa__row[data-state='unknown'] .wa__where { color: var(--cozy-parch-shade); }
+.wa__hint { font-style: normal; }
 .wa__gem { grid-area: gem; width: 14px; height: 18px; --stone: var(--cozy-brass);
   background: linear-gradient(var(--cozy-cream), var(--stone) 45%, var(--cozy-wood-0)); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
 .wa__row[data-state='here'] .wa__gem { --stone: var(--cozy-leaf); }
@@ -22,7 +23,7 @@
 .wa__band { grid-area: band; padding: 3px 7px; font: 700 11px/1.2 var(--font-pixel); background: var(--cozy-wood-0); color: var(--cozy-cream); white-space: nowrap; }
 .wa__band:empty { display: none; }
 .wa__chip { grid-area: chip; justify-self: end; font: 700 11px/1.2 var(--font-pixel); letter-spacing: .04em; text-transform: uppercase; color: var(--cozy-leaf); }
-.wa__row[data-state='unknown'] .wa__chip { color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.wa__row[data-state='unknown'] .wa__chip { color: var(--cozy-parch-shade); }
 .wa__row[data-state='here'] .wa__chip { color: var(--cozy-brass-hi); }
 .wa__foot { position: sticky; bottom: 0; z-index: 1; margin: 0 -14px; padding: 10px 14px calc(12px + var(--hud-safe-b, 0px)); background: var(--cozy-wood-1);
   box-shadow: 0 -2px 0 0 var(--cozy-wood-0); }

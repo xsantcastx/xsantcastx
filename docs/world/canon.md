@@ -455,7 +455,7 @@ world now.
 - **Garrick Dross** (was Hale Dross; C-20), Brannoc's quartermaster and Harbourmaster; keeps the General Store on the
   plaza (23,22). *Pyrehold pier.* "I only write down the ones that come
   back."
-- **Harbourmaster Tamsin Coyle**. *Cinderport (18,10).* "Nothing docks in Cinderport without her nod." Task giver.
+- **Harbourmaster Tamsin Coyle**. *Cinderport (20,8).* "Nothing docks in Cinderport without her nod." Task giver.
 - **Marit Salt**, the Salted Ember tavern-keeper's sister. *Cinderport pier, the Sailing Board.* "The Salted Ember
   keeps the lamp lit till the last ketch is in. Nobody asks why." See §10 C-10.
 - **Old Netter Pell**. *Cinderport (9,11).* Mends nets. **Thread**: the Mirrorfin bite further south each year, because

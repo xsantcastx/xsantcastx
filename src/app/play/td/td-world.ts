@@ -215,8 +215,9 @@ export class TdWorld implements TdLevel {
     switch (reg) {
       case 'l': return fbm(c / 6, r / 6, 31) > .78 ? 'sand' : 'water';
       case 'm': return 'rock';
-      case 'h': return fbm(c / 7, r / 7, 211) > .45 ? 'dirt' : 'grass';
-      case 'v': return fbm(c / 6, r / 6, 401) > .74 ? 'ember' : 'cave';
+      // Ash country (ContinentDef.ash): obsidian dirt over basalt, no grass; the molten ground shows more of its lava.
+      case 'h': return fbm(c / 7, r / 7, 211) > .45 ? 'dirt' : this.def.ash ? 'cave' : 'grass';
+      case 'v': return this.def.ash ? (fbm(c / 6, r / 6, 401) > .66 && !this.nearPlace(c, r) ? 'ember' : 'cave') : fbm(c / 6, r / 6, 401) > .74 ? 'ember' : 'cave';
       case '.': return fbm(c / 10, r / 10, 307) > .64 && hash(c, r, 41) > .5 ? 'flowers' : 'grass';
       // The jungle: moss underfoot, a grassy break now and then; deeper in, moss only. The ruins: old flagstones in it.
       case 'j': return fbm(c / 8, r / 8, 601) > .66 ? 'grass' : 'moss';
@@ -229,7 +230,8 @@ export class TdWorld implements TdLevel {
       case 'Q': return fbm(c / 5, r / 5, 709) > .6 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
       case 'k': return fbm(c / 6, r / 6, 719) > .7 || this.nearPlace(c, r) ? 'mire' : 'blackwater';
       case 'x': return fbm(c / 5, r / 5, 727) > .52 ? 'wetstone' : fbm(c / 7, r / 7, 733) > .72 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
-      default: return 'grass';
+      // Ash country has no grass anywhere (round its Waystone camp too).
+      default: return this.def.ash ? 'dirt' : 'grass';
     }
   }
 
@@ -341,6 +343,8 @@ export class TdWorld implements TdLevel {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave') && Math.hypot(c - p.c, r - p.r) < 9) return true;
     // The arrival rule (world-acts.md §0): nothing within SEAM_CLEAR tiles of where a seam sets the Keeper down.
     for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 1 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
+    // A named hot spot keeps its own pack and no other (its ring stays readable: world-acts.md §2).
+    for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) < 18) return true;
     // A Waystone is safe ground: no pack round it.
     if (this.def.stone && Math.hypot(c - this.def.stone.c, r - this.def.stone.r) < 12) return true;
     return false;
@@ -564,9 +568,10 @@ export class TdWorld implements TdLevel {
     if (!inChunk(k.c, k.r)) return;
     const prefix = k.kind === 'camp' ? 'camp' : k.kind === 'den' ? 'den' : 'cg', zone = regionZone(this.def.id, this.regionAt(k.c, k.r));
     for (let i = 0, tries = 0; i < k.spawns.length && tries < 64; tries++) {
-      const a = tries * 2.39996, d = 2 + (tries % 3);
+      // Spread over the clearing (2–6 tiles out, never two within a tile and a half), so the pack reads as figures.
+      const a = tries * 2.39996, d = 2 + (tries % 5);
       const c = Math.round(k.c + Math.cos(a) * d), r = Math.round(k.r + Math.sin(a) * d);
-      if (!this.walkableGround(c, r) || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || spawns.some(s => s.x === c * TILE + TILE / 2 && s.y === r * TILE + TILE)) continue;
+      if (!this.walkableGround(c, r) || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || spawns.some(s => Math.hypot(s.x - (c * TILE + TILE / 2), s.y - (r * TILE + TILE)) < TILE * 1.5)) continue;
       const key = `${prefix}:${k.id}:${i}`;
       spawns.push({ key, type: k.spawns[i], x: c * TILE + TILE / 2, y: r * TILE + TILE, ...this.zoned(zone, key) });
       i++;
@@ -598,7 +603,7 @@ export class TdWorld implements TdLevel {
 /** Tiles round a lair's heart kept clear of trees, rocks and bushes. */
 const HOT_CLEAR = 5;
 /** Tiles round a named hot spot's heart kept clear (its pack has room to fight; the champion ground's ring stands at its edge). */
-const CAMP_CLEAR = 7;
+const CAMP_CLEAR = 9;
 /** What a mark looks like (section marks: a plaque on a cairn, a signpost, an altar stone, a sealed door, a cage…). */
 const MARK_LOOK: Readonly<Record<SectionMark['look'], () => import('./td-art').Sprite>> = {
   plaque: () => standingStone(1), sign: signpost, altar, door: cryptDoor, cage, chest, statue: brokenStatue,
