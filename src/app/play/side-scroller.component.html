@@ -7,7 +7,7 @@
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
-<section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" [class.stage--thumb]="thumb" [class.stage--compact]="thumb && thumbCompact" [class.stage--chat]="thumb && thumbChat" [class.stage--goal-open]="thumb && goalOpen" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [appDropTarget]="worldTarget" data-drop-world [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -55,7 +55,7 @@
       <span>{{ t('play.td.raised.release', { n: tdRaised }) }}</span>
     </button>
   }
-  @if (topDown && tdAbilities.length && !panel && !hudBar) {
+  @if (topDown && tdAbilities.length && !panel && !hudBar && !thumb) {
     <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore data-world-rail>
       @for (a of tdAbilities; track a.key) {
         <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left" (click)="useAbility(a.key)"
@@ -66,7 +66,7 @@
   }
   <!-- Top-down: the potion belt (shared/potions): Q drinks the best Health potion held, R the best Mana potion; the count
        on the glass, the shared cooldown sweeping back. Two buttons on phones. -->
-  @if (topDown && tdBelt.length && !panel && !hudBar) {
+  @if (topDown && tdBelt.length && !panel && !hudBar && !thumb) {
     <div class="td-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore data-world-rail>
       @for (b of tdBelt; track b.kind) {
         <button type="button" class="td-pot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
@@ -105,7 +105,10 @@
        icon buttons with their names, the key on hover. -->
   <!-- Desktop: one bottom bar (play/hud-bar) holds the orbs, the XP strip, the small menu buttons, the eight skill slots and the belt. -->
   @if (hudBar && !panel) { <app-hud-bar [hud]="this" /> }
+  <!-- A portrait phone: the thumb-zone HUD (play/thumb-hud; docs/design/ui-pass-3.md §A.2) holds the skills, the belt and the bag row. -->
+  @if (thumb && !panel) { <app-thumb-hud [hud]="this" /> }
   @if (topDown && !panel && !hudBar) {
+    @if (!thumb) {
     <nav class="td-dock" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore>
       <button type="button" (click)="toggleBag()" [attr.aria-expanded]="bagOpen" [title]="t('play.td.dock.bag') + ' (I)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
@@ -131,6 +134,7 @@
         <span>{{ t('play.td.dock.places') }}</span><kbd>M</kbd>
       </button>
     </nav>
+    }
     <!-- The experience bar (Diablo II, owner's player notes 2026-10-21): the whole width of the HUD's foot, how far into
          this Keeper level; a hover (or a tap) shows the XP in the level, the level's span and the percent. -->
     @if (xpBar; as xb) {
@@ -154,7 +158,7 @@
           @if (social.party) {
             <button type="button" role="tab" data-party-tab [attr.aria-selected]="chatTab === 'party'" (click)="openPartyChat()">{{ t('play.party.tab') }}@if (partyUnread) { <span class="td-chat__unread" data-party-unread [attr.aria-label]="t('play.chat.unread', { n: partyUnread })">{{ partyUnread }}</span> }</button>
           }
-          <button type="button" class="td-chat__x" (click)="chatHidden = true" [attr.aria-label]="t('play.chat.hide')">&minus;</button>
+          <button type="button" class="td-chat__x" (click)="chatHidden = true; thumbChat = false" [attr.aria-label]="t('play.chat.hide')">&minus;</button>
         </header>
         <ol class="td-chat__log" aria-live="polite">
           @if (chatTab === 'game') {
@@ -456,7 +460,7 @@
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
-    <div class="td-mini" aria-hidden="true" data-engine-ignore appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
+    <div class="td-mini" aria-hidden="true" data-engine-ignore (click)="thumb && togglePlaces()" appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
       <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
       @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}@if (weatherNow && weatherNow.state !== 'clear') {<i class="td-mini__wx" data-weather-pip [attr.data-wx]="weatherNow.state" role="img" [attr.aria-label]="weatherLabel" [title]="weatherLabel"></i>}</span> }
     </div>
@@ -473,9 +477,9 @@
     }
     <!-- Phones (OSRS mobile): life and mana as round orbs beside the minimap; the plates are desktop's. -->
     <div class="td-orbs" aria-hidden="true" data-engine-ignore>
-      <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
-      <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana"><b>{{ tdMana }}</b></i>
-      <i class="td-soul" data-soul-orb><i class="soul-pip"></i>{{ tdSoul }}</i>
+      <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp" (click)="thumb && drinkPotion('health')"><b>{{ hpShown }}</b></i>
+      <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana" (click)="thumb && drinkPotion('mana')"><b>{{ tdMana }}</b></i>
+      <i class="td-soul" data-soul-orb><i class="soul-pip"></i>@if (thumb) { <span class="td-soul__label">{{ t('thumb.soul', { n: tdSoul }) }}</span> } @else { {{ tdSoul }} }</i>
       @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura)"></i> }
       <!-- The Ember debt on a phone (the plates are hidden there): a small brass tag under the orbs while it is owed. -->
       @if (emberDebt > 0) { <i class="td-debt" data-ember-debt-orb>{{ t('play.coldHearth.debt.hud') }} {{ xpText(emberDebt) }}</i> }
@@ -529,7 +533,7 @@
 
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
-    <div class="guide" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
+    <div class="guide" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" (click)="toggleGoal($event)" [class.guide--open]="thumb && goalOpen" [style.--goal-p]="goal.n && goal.total ? (goal.n - 1) / goal.total : null" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
       <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
       <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
       <!-- Glim voices the goal; a press opens its hint ladder one step at a time (shared/glim/glim.ts). -->
@@ -576,7 +580,7 @@
     </div>
   } @else if (topDown && taskRows.length) {
     <!-- The first goals done: the scroll keeps only the town tasks under way. -->
-    <div class="guide guide--list guide--tasks" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+    <div class="guide guide--list guide--tasks" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" (click)="toggleGoal($event)" [class.guide--open]="thumb && goalOpen" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
       <p class="guide-text"><b>{{ t('play.task.tasks') }}</b></p>
       <!-- Town tasks under way (shared/town-tasks): one row each, its count, a tick when it is ready to hand in. -->
       @if (topDown && taskRows.length) {
@@ -1126,19 +1130,36 @@
   @if (bagOpen) {
     <!-- The satchel, Diablo II-style: what the Keeper wears, and the pockets. Nothing else
          until you tap something — then one card with one primary action. -->
-    <section id="satchel-book" class="book win" [class.book--card]="!!slip" aria-labelledby="satchel-title" appSheetDrag (sheetDismiss)="closeBag()">
+    <section id="satchel-book" class="book win" [class.book--card]="!!slip" [class.book--thumb]="thumb" [class.book--paged]="gridPaged" [class.book--walking]="!!nearWalking" [attr.data-bag-tab]="topDown ? bagTab : null" aria-labelledby="satchel-title" appSheetDrag (sheetDismiss)="closeBag()">
       <!-- The window's title bar: the name, the doll's two faces (Worn | Stats), one × close. -->
       <header class="book-head win-head">
         <h2 id="satchel-title">{{ t('play.hud.satchel') }}</h2>
+        @if (thumb) {
+          <!-- A portrait phone (docs/design/ui-pass-3.md §A.3): Bag | Worn | Nearby, one at a time; a piece rests on a chip to go there. -->
+          <div class="book-tabs" role="tablist" [attr.aria-label]="t('thumb.tabsAria')" data-bag-tabs>
+            @for (tb of bagTabs; track tb) {
+              <button type="button" role="tab" class="book-tab" [attr.data-bag-tab]="tb" [attr.aria-selected]="bagTab === tb" [class.is-on]="bagTab === tb" [appDropTarget]="tabTarget(tb)" (click)="setBagTab(tb)">{{ t('thumb.tab.' + tb) }}@if (tb === 'nearby' && nearbyBadge) {<b class="book-tab__n" data-near-badge>{{ nearbyBadge }}</b>}</button>
+            }
+          </div>
+        } @else {
         <div class="book-faces" role="group" [attr.aria-label]="t('play.hud.book.worn')">
-          <button type="button" class="book-face" [class.is-on]="!bookStats" [attr.aria-pressed]="!bookStats" (click)="bookStats = false">{{ t('play.hud.book.wornShort') }}</button>
-          <button type="button" class="book-face book-more" [class.is-on]="bookStats" [attr.aria-pressed]="bookStats" aria-controls="satchel-stats" [attr.aria-label]="t('play.hud.book.stats')" (click)="bookStats = true">{{ t('play.hud.book.statsShort') }}</button>
+          <button type="button" class="book-face" data-bag-tab="worn" [class.is-on]="!bookStats && bagTab !== 'nearby'" [attr.aria-pressed]="!bookStats && bagTab !== 'nearby'" (click)="setBagTab('worn'); bookStats = false">{{ t('play.hud.book.wornShort') }}</button>
+          <button type="button" class="book-face book-more" data-bag-tab="stats" [class.is-on]="bookStats && bagTab !== 'nearby'" [attr.aria-pressed]="bookStats && bagTab !== 'nearby'" aria-controls="satchel-stats" [attr.aria-label]="t('play.hud.book.stats')" (click)="setBagTab('worn'); bookStats = true">{{ t('play.hud.book.statsShort') }}</button>
+          @if (topDown) {
+            <!-- Nearby (§A.4): the corpses and piles within 8 tiles, in the doll's panel (Tibia's side containers). -->
+            <button type="button" class="book-face" data-bag-tab="nearby" [class.is-on]="bagTab === 'nearby'" [attr.aria-pressed]="bagTab === 'nearby'" [appDropTarget]="tabTarget('nearby')" (click)="setBagTab('nearby')">{{ t('thumb.tab.nearby') }}@if (nearbyBadge) {<b class="book-tab__n" data-near-badge>{{ nearbyBadge }}</b>}</button>
+          }
         </div>
+        }
         <button type="button" class="book-close win-x" (click)="closeBag()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </header>
       <!-- One scroller. Portrait: the doll, then the bag. Landscape: the doll on the left (it stays), the bag on the right. -->
       <div class="book-body">
-        <div class="book-doll">
+        <div class="book-doll" [hidden]="thumb ? bagTab !== 'worn' : bagTab === 'nearby'">
+          @if (thumb) {
+            <!-- Stats live behind a pixel ? on the Worn tab (never a third tab in the head). -->
+            <button type="button" class="px-help book-stats-help" data-book-stats [attr.aria-pressed]="bookStats" [attr.aria-label]="t('thumb.statsHelp')" (click)="bookStats = !bookStats">?</button>
+          }
           @if (bookStats) {
             <!-- The doll's other face: the live stat sheet and where the rest of your things are. -->
             <div id="satchel-stats" class="book-detail">
@@ -1151,7 +1172,7 @@
               <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
               <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
               @for (well of wells; track well.id) {
-                <button type="button" class="well" [appDropTarget]="wellTarget(well.id)" (pointerdown)="pressWell($event, well)" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.blocked]="!!well.blocked" [attr.data-blocked]="well.blocked ? '1' : null" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.blocked ? well.label : well.name">
+                <button type="button" class="well" [appDropTarget]="wellTarget(well.id)" (pointerdown)="pressWell($event, well)" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.blocked]="!!well.blocked" [attr.data-blocked]="well.blocked ? '1' : null" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [class.is-pulse]="wornPulse === well.id" [class.is-filter]="wornFilter === well.id" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.blocked ? well.label : well.name">
                   @if (well.filled && well.art) {
                     <img [src]="well.art" alt="" draggable="false">
                   } @else if (well.filled) {
@@ -1167,6 +1188,17 @@
                 @if (petWellArt) { <img [src]="petWellArt" alt=""> } @else { <img class="well-ghost" [src]="petGhost" alt=""> }
               </button>
             </div>
+            @if (thumb && wornFilter) {
+              <!-- An empty slot tapped: what in the satchel fits it, best first (a tap opens its card, Equip first). -->
+              <div class="book-fits" role="group" data-worn-fits [attr.aria-label]="t('thumb.fitsHere')">
+                @for (f of wornFits; track f.piece.key) {
+                  <button type="button" class="book-fit pocket" [attr.data-fit]="f.item.id" [style.--rim]="f.tone" [attr.aria-label]="f.name" (click)="pickFit(f, $event)">
+                    @if (f.art) { <img [src]="f.art" alt="" draggable="false"> } @else { <em>{{ f.name.slice(0, 2) }}</em> }
+                  </button>
+                } @empty { <p class="book-fits__none">{{ t('thumb.fitsNone') }}</p> }
+              </div>
+            }
+            @if (!thumb) {
             <!-- The belt, in the book: drag a potion onto Q or R (that key drinks it), a Spellstone onto F. -->
             <div class="book-belt" role="group" [attr.aria-label]="t('play.potion.belt')">
               @for (b of bookBelt; track b.kind) {
@@ -1184,17 +1216,104 @@
                 </button>
               }
             </div>
+            }
           </div>
           }
         </div>
-        <div class="book-bag">
+        @if (topDown && bagTab === 'nearby') {
+          <!-- Nearby (§A.4; Tibia's open containers, Diablo Immortal's loot list): every corpse and pile within 8 tiles,
+               nearest first. Within 3 tiles Take takes now; further, it walks there and takes on arrival. -->
+          <div class="book-near" data-nearby [attr.data-near-count]="nearbyRows.length">
+            @if (!nearbyRows.length) {
+              <p class="near__empty" data-near-empty>{{ t('thumb.near.empty') }}
+                <button type="button" class="px-help" [attr.aria-expanded]="nearHelp" [attr.aria-label]="t('thumb.near.help')" (click)="nearHelp = !nearHelp">?</button></p>
+              @if (nearHelp) { <p class="px-parch near__help">{{ t('thumb.near.help') }}</p> }
+            }
+            @if (nearNote || (bagFull && nearbyRows.length)) { <p class="near__note" role="status" data-near-full>{{ nearNote || t('play.grid.full') }}</p> }
+            @for (c of nearbyRows; track c.id; let i = $index) {
+              <article class="near-row" [attr.data-near]="c.id" [attr.data-dist]="c.dist.toFixed(0)" [attr.data-near-kind]="c.kind" [attr.data-in-reach]="c.inReach ? '1' : '0'" [attr.data-near-name]="nearName(c)" [class.is-far]="!c.inReach" [class.is-gone]="c.gone">
+                <header class="near-row__head">
+                  <i class="near-row__ico" aria-hidden="true">@if (c.items[0]?.art) { <img [src]="c.items[0].art" alt=""> }</i>
+                  <span class="near-row__who"><b>{{ nearName(c) }}</b>
+                    <small>{{ nearDist(c) }}</small>
+                    @if (c.kind === 'corpse') { <i class="near-rot" role="meter" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="(c.rot * 100).toFixed(0)" [attr.aria-label]="t('thumb.near.rot')" [class.is-late]="c.rot > .8"><i [style.--rot]="c.rot"></i></i> }
+                  </span>
+                  @if (c.gone) {
+                    <span class="near-row__looted" data-near-looted>{{ t('thumb.near.looted') }}</span>
+                  } @else if (!c.inReach) {
+                    <button type="button" class="near-walk" data-near-walk (click)="takeNear(c, 'all')">{{ nearWalking === c.id ? t('thumb.near.walking') : t('thumb.near.walk', { n: c.tiles }) }}</button>
+                  } @else {
+                    <button type="button" class="near-all" data-near-all [disabled]="bagFull && !c.items.every(it => it.coins > 0)" (click)="takeNear(c, 'all')">{{ t('thumb.near.takeAll') }}</button>
+                  }
+                  @if (nearbyRows.length > 3 && !c.gone) {
+                    <button type="button" class="near-row__exp" [attr.aria-expanded]="nearOpen(c, i)" [attr.aria-label]="t('thumb.near.expand', { name: nearName(c) })" (click)="toggleNear(c, i)"><i aria-hidden="true">▸</i></button>
+                  }
+                </header>
+                @if (nearOpen(c, i) && !c.gone) {
+                  <div class="near-row__body" role="group" [attr.aria-label]="nearName(c)">
+                    @for (it of c.items; track it.id) {
+                      <button type="button" class="near-cell pocket" [attr.data-near-item]="it.id" [attr.data-qty]="it.qty" [style.--rim]="nearTone(it)" [class.is-sel]="nearPick?.item?.id === it.id"
+                              [attr.aria-label]="it.coins > 0 ? t('thumb.near.gold', { n: it.coins }) : it.label" (click)="pickNear(c, it)">
+                        @if (it.art) { <img [src]="it.art" alt="" draggable="false"> } @else if (it.coins > 0) { <i class="purse-coin" aria-hidden="true"></i> } @else { <em>{{ it.label.slice(0, 2) }}</em> }
+                        @if (it.coins > 0) { <b>{{ it.coins }}</b> } @else if (it.qty > 1) { <b>{{ it.qty }}</b> }
+                      </button>
+                    }
+                  </div>
+                }
+              </article>
+            }
+            @if (nearPick; as np) {
+              <!-- The piece's card: its name, a stepper for a partial take of a stack, one Take. -->
+              <div class="near-card" role="dialog" [attr.aria-label]="np.item.label" data-near-card [style.--rim]="nearTone(np.item)">
+                <header class="near-card__head"><b>{{ np.item.coins > 0 ? t('thumb.near.gold', { n: np.item.coins }) : np.item.label }}</b>
+                  <button type="button" class="px-x" (click)="nearPick = null" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button></header>
+                @if (np.item.stack && np.item.qty > 1) {
+                  <div class="near-step" role="group" [attr.aria-label]="t('thumb.near.how')" data-near-stepper>
+                    <button type="button" data-near-less (click)="stepNear(-1)" [attr.aria-label]="t('thumb.near.less')">&minus;</button>
+                    <output data-near-qty>{{ nearQty }}</output>
+                    <button type="button" data-near-more (click)="stepNear(1)" [attr.aria-label]="t('thumb.near.more')">+</button>
+                    <button type="button" data-near-max (click)="nearQty = np.item.qty">{{ t('thumb.near.max') }}</button>
+                  </div>
+                }
+                <button type="button" class="wear near-card__take" data-near-take [disabled]="bagFull && np.item.coins <= 0" (click)="takeNearPick()">{{ t('thumb.near.take') }}</button>
+              </div>
+            }
+          </div>
+        }
+        <div class="book-bag" [hidden]="thumb && bagTab !== 'bag'">
+          @if (thumb) {
+            <!-- The belt strip (§A.3): the six belt keys; a piece dropped on one goes on that key. -->
+            <div class="book-belt book-belt--strip" role="group" [attr.aria-label]="t('play.potion.belt')" data-belt-strip>
+              <span class="book-belt__label" aria-hidden="true">{{ t('thumb.belt') }}</span>
+              @for (b of bookBelt; track b.kind) {
+                <span class="book-belt__slot" [attr.data-belt]="b.kind" [appDropTarget]="beltTarget(b.kind)" [attr.aria-label]="b.label" [title]="b.label" role="img">
+                  @if (b.art) { <img [src]="b.art" alt="" draggable="false"> }
+                  <b>{{ b.n }}</b><kbd>{{ b.key }}</kbd>
+                </span>
+              }
+              @for (q of tdQuick; track q.i) {
+                <button type="button" class="book-belt__slot book-belt__quick" [attr.data-belt]="'quick' + q.i" [attr.data-quick-key]="q.stackKey" [attr.data-quick-n]="q.count"
+                        [class.is-out]="!!q.stackKey && !q.count" [appDropTarget]="quickTarget(q.i)" (click)="useQuick(q.i)" [attr.aria-label]="quickTitle(q)" [title]="quickTitle(q)">
+                  @if (q.art) { <img [src]="q.art" alt="" draggable="false"> }
+                  @if (q.stackKey) { <b>{{ q.count }}</b> }<kbd>{{ q.key }}</kbd>
+                </button>
+              }
+            </div>
+          }
+          @if (gridPaged) {
+            <!-- The grid's two pages (grid-pages.ts): ◀ Pocket 1 · Pocket 2 ▶; resting a held piece on an arrow flips. -->
+            <nav class="book-pages" [attr.aria-label]="t('play.hud.book.pocketsLabel')" data-bag-pages [attr.data-page]="bagPage + 1">
+              <button type="button" class="px-arrow book-page" data-page-prev [attr.aria-pressed]="bagPage === 0" [appDropTarget]="pageArrow(-1)" (click)="setBagPage(0)">◀ {{ t('thumb.pocketPrev') }}<i class="book-page__dot" [attr.aria-label]="t('thumb.pocketCount', { n: pageCount(0) })">{{ pageCount(0) }}</i></button>
+              <button type="button" class="px-arrow book-page" data-page-next [attr.aria-pressed]="bagPage === 1" [appDropTarget]="pageArrow(1)" (click)="setBagPage(1)">{{ t('thumb.pocketNext') }} ▶<i class="book-page__dot" [attr.aria-label]="t('thumb.pocketCount', { n: pageCount(1) })">{{ pageCount(1) }}</i></button>
+            </nav>
+          }
           @if (gridNote; as gn) {
             <!-- The one-time list → grid layout moved things to the Vault (docs/design/inventory-grid.md §4): said once. -->
             <p class="grid-note" role="status" data-grid-note>{{ t('play.grid.migrated', { n: gn.items + gn.stacks }) }} <button type="button" class="grid-note__ok" (click)="dismissGridNote()">{{ t('play.grid.ok') }}</button></p>
           }
           <!-- The satchel: one D2 grid, every piece 1×1. Drag a thing to move it, onto the doll to wear it, onto the world
                to drop it; or tap it (it lights up) and tap where it goes. -->
-          <app-item-grid class="satchel-grid" container="b" [view]="bagView" [look]="pieceLook" [label]="t('play.hud.book.pocketsLabel')"
+          <app-item-grid class="satchel-grid" container="b" [view]="bagView" [look]="pieceLook" [label]="t('play.hud.book.pocketsLabel')" [page]="gridPaged ? bagPage : null" (flip)="flipBag($event)"
                          [newKeys]="newPieces" [pickedKey]="pickedPieceKey" (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)"
                          (hoverMove)="moveTip($event)" (unhover)="hoverTip = null" (moved)="gridMoved($event)" (socketed)="gridSocketed($event)" />
           @if (inventory.snapshot.grid.bag.held.length) {
@@ -1327,10 +1446,17 @@
       }
       @if (topDown && slip; as row) {
         <!-- A click pins the same card beside the item, with its actions under it. -->
-        <div class="d2tip d2tip--pinned" data-drag-pass role="dialog" [attr.aria-label]="row.name" [appFitViewport]="pickAt" fitMode="side" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
+        <div class="d2tip d2tip--pinned" data-drag-pass role="dialog" [attr.aria-label]="row.name" [appFitViewport]="thumb ? null : pickAt" fitMode="side" [class.d2tip--sheet]="thumb" [class.d2tip--top]="cardTop" [attr.data-rarity]="row.tip?.rarity ?? 'material'">
           <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
+          @if (thumb && cardVerdict; as v) {
+            <!-- The compare verdict (PoE2 / D4 delta lines), then the strip; the worn piece's name opens its own card. -->
+            <p class="d2tip__verdict" data-card-verdict [attr.data-tone]="v.tone">{{ v.text }}@if (cardAgainst; as ag) { <button type="button" class="d2tip__against" data-card-against (click)="openAgainst()">{{ t('thumb.verdict.vs', { name: ag.name }) }}</button> }</p>
+          }
           <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
           @if (row.canWear && row.wearBlocked) { <p class="d2tip__why" role="note">{{ row.wearBlocked }}</p> }
+          @if (thumb && cardPrimary; as cp) {
+            <button type="button" class="wear d2tip__primary" [attr.data-card-primary]="cp.attr" [disabled]="cp.attr === 'equip' && !!row.wearBlocked" (click)="cp.act()">{{ cp.label }}</button>
+          }
           @if (row.canWear || row.canStow || row.canSend || pickIsCrate || row.canRead || row.canEat || row.canLight || row.canCook || row.stone || row.potion || pickCanDrop || pickCanQuick) {
             <div class="d2tip__actions">
               @if (row.potion) { <button type="button" class="wear" data-potion-belt (click)="beltPickedPotion()">{{ t('play.stone.beltPut') }}</button> }
@@ -1344,8 +1470,8 @@
               @if (row.canEat) { <button type="button" class="wear" data-eat (click)="eatPicked()">{{ t('gather.card.eat') }}</button> }
               @if (row.canLight) { <button type="button" class="wear" data-light (click)="lightPicked()">{{ t('gather.card.light') }}</button> }
               @if (row.canCook) { <button type="button" class="wear" data-cook (click)="cookPicked()">{{ t('gather.card.cook') }}</button> }
-              @if (row.canWear) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
-              @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
+              @if (row.canWear && !(thumb && cardPrimary?.attr === 'equip')) { <button type="button" class="wear" [disabled]="!!row.wearBlocked" [attr.title]="row.wearBlocked ?? null" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
+              @if (row.canStow && !(thumb && cardPrimary?.attr === 'unequip')) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
               @if (pickCanDrop) { <button type="button" class="to-vault" data-drop-item [title]="t('trade.dropHint')" (click)="dropPicked()">{{ t('trade.drop') }}</button> }
             </div>
           }

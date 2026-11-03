@@ -56,6 +56,14 @@ const save = (page: Page) => page.evaluate(() => {
   const raw = JSON.parse(localStorage.getItem('godforge-inventory') || 'null');
   return raw && 'v' in raw && 'updatedAt' in raw ? raw.v : raw;
 });
+/** A touch tap through CDP (the held piece's tap handler sees a real pointer stream). */
+const touchTap = async (page: Page, cdp: import('@playwright/test').CDPSession, sel: string) => {
+  const b = (await page.locator(sel).boundingBox())!;
+  const x = b.x + b.width / 2, y = b.y + b.height / 2;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(150);
+};
 const rec = async (page: Page, id: string) => ((await save(page))?.records ?? []).find((r: { id: string }) => r.id === id);
 
 async function openSatchel(page: Page): Promise<Locator> {
@@ -191,6 +199,8 @@ test.describe('the Vault: a stash grid beside the satchel, only at a Vault', () 
     await expect(stash).toBeVisible({ timeout: 20000 });
     const tab = stash.locator('[data-grid="general-1"]'), bag = stash.locator('[data-grid="b"]');
     await shot(page, 'vault-390');
+    // A portrait phone shows one grid at a time (docs/design/ui-pass-3.md §A.5): the Satchel first, then the Vault.
+    if (await page.locator('[data-seg="satchel"]').count()) await page.locator('[data-seg="satchel"]').tap();
     await bag.locator('[data-ids="g-ring"]').scrollIntoViewIfNeeded();
     const ring = (await bag.locator('[data-ids="g-ring"]').boundingBox())!;
     const cdp = await ctx.newCDPSession(page);
@@ -199,6 +209,7 @@ test.describe('the Vault: a stash grid beside the satchel, only at a Vault', () 
     await page.waitForTimeout(600);
     await touch('touchEnd', ring.x + 8, ring.y + 8);
     await expect(stash.locator('.vs-hold')).toBeVisible();
+    if (await page.locator('[data-seg="vault"]').count()) await touchTap(page, cdp, '[data-seg="vault"]');
     await tab.scrollIntoViewIfNeeded();
     const t = (await tab.boundingBox())!;
     await touch('touchStart', t.x + 60, t.y + 60);

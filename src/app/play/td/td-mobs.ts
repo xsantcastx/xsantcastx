@@ -2331,6 +2331,8 @@ export interface Drop {
   own?: string;
   /** The picture an own drop lies as (the satchel's icon for it). */
   art?: string;
+  /** An online pile (protocol 6): the name of the Keeper who laid it ("Bryn's drop" in the Nearby tab). */
+  by?: string;
 }
 
 export interface Floater { x: number; y: number; text: string; color: string; age: number }

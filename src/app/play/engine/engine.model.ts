@@ -383,6 +383,13 @@ export interface EngineOptions {
   onCorpse?: (view: CorpseView | null) => void;
   /** Top-down: another Keeper (the Hearth room) was tapped — the HUD shows their card. */
   onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
+  /**
+   * The Nearby tab's partial take of the Keeper's own stack (td-engine takeNearby): split `n` off the token's stack and
+   * return the new token (the host keeps what each own drop was), or null to refuse.
+   */
+  onSplitOwn?: (own: string, n: number) => string | null;
+  /** A split own piece the satchel refused goes back onto its stack: fold token `from` into `into`. */
+  onMergeOwn?: (from: string, into: string) => void;
   /** A shared ground item (Hearth protocol 6) was tapped: the Keeper walked to it; the HUD picks it up. */
   onGroundTap?: (id: string) => void;
   /**
