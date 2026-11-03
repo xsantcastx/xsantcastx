@@ -4,7 +4,7 @@
  * join across a one-tile gap, and a loot icon lies tipped onto the floor.
  */
 import { barrel, fence, lamp, tree, spriteKey, TILE } from './td-art';
-import { ISO_PROP_KEYS, CROWN_FADE, behindCrown, crownFade, fenceJoins, isoArt, isoArtByKey, isoIcon, isoPartDepth, isoParts, isoPropsFrame } from './td-iso-props';
+import { ISO_PROP_KEYS, BAR_REACH, CROWN_FADE, ELITE_BAR_REACH, behindCrown, inBarReach, crownFade, fenceJoins, isoArt, isoArtByKey, isoIcon, isoPartDepth, isoParts, isoPropsFrame } from './td-iso-props';
 
 describe('td-iso-props: the isometric twins', () => {
   it('every listed top-down key has a twin with pixels in it', () => {
@@ -43,6 +43,16 @@ describe('td-iso-props: the isometric twins', () => {
     isoPropsFrame(performance.now() + 1000);
     expect(spriteKey(tree('oak', 2))).toMatch(/tree:oak:2$/);
     expect(spriteKey(lamp())).toBe('lamp');
+  });
+
+  it('a crown fades for every hostile that wears its bar, never a bar over a tree with nothing under it (Director, dirfix)', () => {
+    // A wolf seven tiles off (past the old six-tile reach) still wears its bar, so a crown fades for it.
+    expect(inBarReach(80, 80, false)).toBeTrue();
+    expect(inBarReach(BAR_REACH, 0, false)).toBeTrue();
+    expect(inBarReach(BAR_REACH + 1, 0, false)).toBeFalse();
+    // An elite's plate reads from further, and so does its crown.
+    expect(inBarReach(200, 0, true)).toBeTrue();
+    expect(inBarReach(ELITE_BAR_REACH + 1, 0, true)).toBeFalse();
   });
 
   it('a crown eases toward its fade and back, and snaps under reduced motion', () => {

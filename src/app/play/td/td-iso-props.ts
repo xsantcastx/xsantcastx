@@ -1017,6 +1017,17 @@ export function fenceJoins(o: { x: number; y: number }, art: IsoArt, near: (x0: 
   joined.set(o, j);
   return j;
 }
+/**
+ * How far from the Keeper a creature's bar and name are drawn (td-engine drawFightUi), an elite's from further — and so
+ * how far a crown fades for a hostile behind it: a bar over a tree with nothing under it read as a bug (Director, dirfix:
+ * a wolf six to nine tiles off showed only its bar).
+ */
+export const BAR_REACH = 150, ELITE_BAR_REACH = 240;
+/** Is a creature `dx`, `dy` from the Keeper near enough to wear its bar (and so to have a crown fade for it)? */
+export function inBarReach(dx: number, dy: number, elite: boolean): boolean {
+  const r = elite ? ELITE_BAR_REACH : BAR_REACH;
+  return dx * dx + dy * dy <= r * r;
+}
 /** How far a crown fades while something that matters stands behind it: still reads as a tree, never fog. */
 export const CROWN_FADE = .45;
 /**
