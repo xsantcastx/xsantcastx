@@ -12,6 +12,7 @@ import {
 import { CONTINENTS } from './td-engine';
 import { TdWorld } from './td-world';
 import { TILE } from './td-art';
+import { landOfArea } from './td-zones';
 import { DIFFICULTIES, TD_GATE_BOSS, unlockedBy } from '../../shared/loot/difficulty.model';
 import { bossUniqueFor, relicTotals, rollBossUnique } from '../../shared/rpg/boss-uniques';
 import { rollCreatureLoot } from '../../shared/loot/drop-tables';
@@ -55,8 +56,12 @@ describe('td-seam: when and where it rises', () => {
     for (const phase of ['day', 'dusk', 'night', 'dawn']) expect(seamLeaves(phase)).withContext(phase).toBeTrue();
   });
 
-  it('every continent has a rift at its standing stones, on open ground clear of every town and village', () => {
-    for (const def of Object.values(CONTINENTS)) {
+  it('every land has one rift at its standing stones, on open ground clear of every town and village', () => {
+    // An act of sections (the Reach, S7) has its rift in one section: the Ring of Pyres, in the Pyre Peaks.
+    const lands = new Map<string, number>();
+    for (const def of Object.values(CONTINENTS)) lands.set(landOfArea(def.id), (lands.get(landOfArea(def.id)) ?? 0) + (riftPlace(def) ? 1 : 0));
+    for (const [land, n] of lands) expect(n).withContext(land).toBe(1);
+    for (const def of Object.values(CONTINENTS).filter(d => riftPlace(d))) {
       const at = riftPlace(def);
       expect(at).withContext(def.id).not.toBeNull();
       const w = new TdWorld(def), t = riftTile(w, at!);
@@ -274,7 +279,7 @@ describe('td-seam: the Bestiary and the Lore', () => {
     expect(e.rank).toBe('boss');
     expect(e.relic?.id).toBe('unique-seamstitch-grips');
     expect(e.haunts).toContain('The Ninefold Stones, Ember Isle (under an eclipse)');
-    expect(e.haunts.length).toBe(Object.keys(CONTINENTS).length);
+    expect(e.haunts.length).toBe(new Set(Object.keys(CONTINENTS).map(landOfArea)).size);
     expect(e.lore.length).toBeGreaterThan(40);
   });
 

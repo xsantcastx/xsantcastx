@@ -32,7 +32,7 @@ import { uniqueById } from '../../shared/rpg/unique-items';
 import { TILE } from '../td/td-art';
 import { KIN_DEAD_MS, kinGuard, weighKin, type KinHeld, type KinRefusal, type KinWord } from './room-kin';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from '../td/td-seam';
-import { seamLevelFor } from '../td/td-zones';
+import { landOfArea, seamLevelFor } from '../td/td-zones';
 import type { ContinentDef } from '../td/continent';
 import { NOTHING_OWED, wireElite } from '../td/td-coop';
 import {
@@ -211,7 +211,7 @@ export class RoomWorld implements CoopLink {
     });
     this.mobs.selfAway = true;
     // S6: the land its packs' auras come from (td-pack-aura landOf).
-    this.mobs.land = landOf(this.levelId, def ? opts.area : '');
+    this.mobs.land = landOf(this.levelId, def ? landOfArea(opts.area) : '');
     // Elite packs as on every screen (td-elites.ts), and protocol 9's rest: each fallen spawn draws its own time
     // (respawn.ts: an ordinary creature 60–90 s, an elite longer, a boss about an hour) from this world's stream.
     this.mobs.elites = true;

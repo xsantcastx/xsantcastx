@@ -77,7 +77,8 @@ export function hearthsOf(world: TdWorld): TdHearth[] {
   if (known) return known;
   const out: TdHearth[] = [];
   world.settlements.forEach((s, i) => {
-    const map = s.map, capital = i === 0;
+    // The continent's own town is its capital (the Shrine beside its hearth), unless it is a village that is a section of its own.
+    const map = s.map, capital = i === 0 && s.map === world.town && (world.def.townKind ?? 'capital') === 'capital';
     const sc = Math.floor(s.map.spawn.x / TILE), sr = Math.floor((s.map.spawn.y - 1) / TILE);
     const taken: { c: number; r: number }[] = [{ c: sc, r: sr }];
     const fire = nearestOpen(map, sc, sr, 2, 9, taken);

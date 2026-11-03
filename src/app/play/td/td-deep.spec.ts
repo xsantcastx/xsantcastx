@@ -67,7 +67,7 @@ describe('td: the ways down and the ship', () => {
     }
   });
   it('no wild pack spawns within eight tiles of the Forge of the Four\'s gate, and the gate is a way in', () => {
-    const reach = new TdWorld(CONTINENTS['infernal-reach']);
+    const reach = new TdWorld(CONTINENTS['infernal-reach-badlands']);
     const gate = reach.def.places.find(p => p.kind === 'forge')!;
     const x = gate.c * TILE, y = gate.r * TILE;
     const near = reach.spawnsIn(x - 12 * TILE, y - 12 * TILE, x + 12 * TILE, y + 12 * TILE).filter(s => Math.hypot(s.x / TILE - gate.c, s.y / TILE - gate.r) < 8);
@@ -75,7 +75,7 @@ describe('td: the ways down and the ship', () => {
     expect(reach.ways.get('forge-of-four')?.to).toBe('forge-of-four-1');
   });
   it('Cinderport\'s ship sails to Ember Isle, into Ember Harbour, boarded from its own pier', () => {
-    const reach = new TdWorld(CONTINENTS['infernal-reach']);
+    const reach = new TdWorld(CONTINENTS['infernal-reach-cinderport']);
     const way = reach.ways.get('ship-cinderport')!;
     expect(way).toEqual({ to: 'ember-isle', arrive: 'ship-reach', ship: true });
     const isle = new TdWorld(CONTINENTS['ember-isle']);

@@ -8,9 +8,10 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
+import { altar, brazier, brokenStatue, cage, chest, signpost, beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
-import type { ContinentDef, ContinentHotspot, Region } from './continent';
+import type { ContinentDef, ContinentHotspot, Region, SectionCamp, SectionMark } from './continent';
+import { SEAM_CLEAR, seamArrival } from './td-sections';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
@@ -102,6 +103,16 @@ export class TdWorld implements TdLevel {
       this.allStalls.push({ station: w.station, ...at });
       this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
     }
+    // The town's own ways (a harbour village that is a section of its own: Cinderport's ketch), at a tile of the town.
+    for (const w of def.townWays ?? []) {
+      this.allStalls.push({ station: w.station, x: w.c * TILE + TILE / 2, y: w.r * TILE + TILE });
+      this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
+    }
+    // An act's section (world-acts.md §0): its seams (walked gates to the land's other sections), its Waystone, and
+    // its thing to read and its sealed thing (the zone bible's check), each a station on its own tile.
+    for (const sm of def.seams ?? []) this.allStalls.push({ station: { id: `seam:${sm.id}`, x: 0, label: sm.label, kind: 'passage', blurb: 'Walk on through.' }, x: sm.c * TILE + TILE / 2, y: sm.r * TILE + TILE });
+    if (def.stone) this.allStalls.push({ station: { id: `tdstone:${def.stone.id}`, x: 0, label: def.stone.name.toUpperCase(), kind: 'resource', blurb: 'A stone that remembers who touched it.' }, x: def.stone.c * TILE + TILE / 2, y: def.stone.r * TILE + TILE + 6 });
+    for (const mk of def.marks ?? []) this.allStalls.push({ station: { id: mk.id, x: 0, label: mk.label, kind: 'resource', blurb: mk.kind === 'read' ? 'Something to read.' : 'Shut fast.' }, x: mk.c * TILE + TILE / 2, y: mk.r * TILE + TILE + 6 });
     // A village's own ways (Cinderport's ship from its pier), at a tile of the village.
     for (const v of def.villages ?? []) for (const w of v.ways ?? []) {
       this.allStalls.push({ station: w.station, x: (v.c + w.c) * TILE + TILE / 2, y: (v.r + w.r) * TILE + TILE });
@@ -110,8 +121,10 @@ export class TdWorld implements TdLevel {
     // The Harbourmaster of each pier on this continent (td-harbour): beside the pier's head, talked to like a task giver.
     for (const pier of PIERS) {
       if (pier.continent !== def.id) continue;
-      const v = pier.village ? (def.villages ?? []).find(x => x.name === pier.village) : null, p = pier.village ? null : def.places.find(pl => pl.kind === 'harbour');
-      const c0 = v ? v.c : p ? p.c : null, r0 = v ? v.r : p ? p.r : null;
+      // A harbour village that is its own section has its pier in its town, at (0, 0).
+      const own = !!pier.village && pier.village === def.townName;
+      const v = pier.village && !own ? (def.villages ?? []).find(x => x.name === pier.village) : null, p = pier.village ? null : def.places.find(pl => pl.kind === 'harbour');
+      const c0 = own ? 0 : v ? v.c : p ? p.c : null, r0 = own ? 0 : v ? v.r : p ? p.r : null;
       if (c0 === null || r0 === null) continue;
       const x = (c0 + pier.at.c) * TILE + TILE / 2, y = (r0 + pier.at.r) * TILE + TILE, who = pier.master;
       this.allStalls.push({ station: { id: `giver-${who.id}`, x: 0, label: who.name.toUpperCase(), kind: 'quest', blurb: `${who.name} keeps the sailing board.` }, x, y: y + 8, keeper: { id: who.id, name: who.name, x, y } });
@@ -147,7 +160,9 @@ export class TdWorld implements TdLevel {
   get stalls(): readonly TdStall[] { return this.allStalls; }
   /** The town and each village, with the tile their map's (0, 0) lies on: where the hearths are placed (td-hearth.ts). */
   get settlements(): readonly { name: string; map: TdMap; c0: number; r0: number }[] {
-    return [{ name: this.def.townName, map: this.town, c0: 0, r0: 0 }, ...this.villages.map(v => ({ name: v.name, map: v.map, c0: v.c0, r0: v.r0 }))];
+    // A Waystone camp is safe ground, not a settlement: it has no hearth (world-acts.md §0).
+    const town = this.def.townKind === 'camp' ? [] : [{ name: this.def.townName, map: this.town, c0: 0, r0: 0 }];
+    return [...town, ...this.villages.map(v => ({ name: v.name, map: v.map, c0: v.c0, r0: v.r0 }))];
   }
   /** A stall added after the continent was built (a hearth, a shrine: td-hearth.ts). */
   addStall(stall: TdStall): void { this.allStalls.push(stall); }
@@ -200,8 +215,9 @@ export class TdWorld implements TdLevel {
     switch (reg) {
       case 'l': return fbm(c / 6, r / 6, 31) > .78 ? 'sand' : 'water';
       case 'm': return 'rock';
-      case 'h': return fbm(c / 7, r / 7, 211) > .45 ? 'dirt' : 'grass';
-      case 'v': return fbm(c / 6, r / 6, 401) > .74 ? 'ember' : 'cave';
+      // Ash country (ContinentDef.ash): obsidian dirt over basalt, no grass; the molten ground shows more of its lava.
+      case 'h': return fbm(c / 7, r / 7, 211) > .45 ? 'dirt' : this.def.ash ? 'cave' : 'grass';
+      case 'v': return this.def.ash ? (fbm(c / 6, r / 6, 401) > .66 && !this.nearPlace(c, r) ? 'ember' : 'cave') : fbm(c / 6, r / 6, 401) > .74 ? 'ember' : 'cave';
       case '.': return fbm(c / 10, r / 10, 307) > .64 && hash(c, r, 41) > .5 ? 'flowers' : 'grass';
       // The jungle: moss underfoot, a grassy break now and then; deeper in, moss only. The ruins: old flagstones in it.
       case 'j': return fbm(c / 8, r / 8, 601) > .66 ? 'grass' : 'moss';
@@ -214,7 +230,8 @@ export class TdWorld implements TdLevel {
       case 'Q': return fbm(c / 5, r / 5, 709) > .6 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
       case 'k': return fbm(c / 6, r / 6, 719) > .7 || this.nearPlace(c, r) ? 'mire' : 'blackwater';
       case 'x': return fbm(c / 5, r / 5, 727) > .52 ? 'wetstone' : fbm(c / 7, r / 7, 733) > .72 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
-      default: return 'grass';
+      // Ash country has no grass anywhere (round its Waystone camp too).
+      default: return this.def.ash ? 'dirt' : 'grass';
     }
   }
 
@@ -291,6 +308,7 @@ export class TdWorld implements TdLevel {
     const v = this.villageAt(c, r, 6);
     if (v) return v.name;
     for (const p of this.def.places) if (Math.hypot(p.c - c, p.r - r) < 10) return p.name;
+    for (const k of this.def.camps ?? []) if (Math.hypot(k.c - c, k.r - r) < 10) return k.name;
     return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)] ?? this.def.townName;
   }
 
@@ -314,11 +332,21 @@ export class TdWorld implements TdLevel {
   private inClearing(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge' || p.kind === 'temple') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
     for (const p of this.def.places) if (p.kind === 'cave' && Math.abs(c - p.c) <= 3 && Math.abs(r - p.r) <= 3) return true;
+    // A hot spot's ring (world-acts.md §2), a seam's gate and a mark stand in the open.
+    for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) <= CAMP_CLEAR) return true;
+    for (const sm of this.def.seams ?? []) if (Math.abs(c - sm.c) <= 5 && Math.abs(r - sm.r) <= 5) return true;
+    for (const mk of this.def.marks ?? []) if (Math.abs(c - mk.c) <= 2 && Math.abs(r - mk.r) <= 2) return true;
     return false;
   }
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
   private nearWayIn(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave') && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    // The arrival rule (world-acts.md §0): nothing within SEAM_CLEAR tiles of where a seam sets the Keeper down.
+    for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 1 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
+    // A named hot spot keeps its own pack and no other (its ring stays readable: world-acts.md §2).
+    for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) < 18) return true;
+    // A Waystone is safe ground: no pack round it.
+    if (this.def.stone && Math.hypot(c - this.def.stone.c, r - this.def.stone.r) < 12) return true;
     return false;
   }
   private walkableGround(c: number, r: number): boolean {
@@ -450,6 +478,8 @@ export class TdWorld implements TdLevel {
         } else stamp(0, -4, () => standingStone(2));
       }
     }
+    // A section's seams, marks and hot spots (world-acts.md §0, §2), stamped where the map puts them.
+    this.stampSection(x0, y0, objects, blocked, spawns);
     // The graveyards' own dead: a few Bone Walkers between the graves, back again after each falls.
     for (const p of this.def.places) {
       if (p.kind !== 'graveyard') continue;
@@ -463,7 +493,7 @@ export class TdWorld implements TdLevel {
     const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
     const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), table = this.def.mobs[mid];
     const nearVillage = this.villages.some(v => Math.max(Math.abs(cx - Math.floor((v.c0 + v.map.cols / 2) / WORLD_CHUNK)), Math.abs(cy - Math.floor((v.r0 + v.map.rows / 2) / WORLD_CHUNK))) < 2);
-    if (table && !nearVillage && Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= 3 && hash(cx, cy, 77) < table.chance) {
+    if (table && !nearVillage && Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= this.quiet && hash(cx, cy, 77) < table.chance) {
       // Two to four a chunk (was one to three: owner 2026-10-26, "we need more monsters over all the map").
       const pack = 2 + Math.floor(hash(cx, cy, 78) * 3);
       for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
@@ -506,6 +536,48 @@ export class TdWorld implements TdLevel {
     }
     return { objects, blocked, spawns, spots };
   }
+  /** Chunks round the town where no pack spawns (a Waystone camp keeps fewer clear than a town). */
+  private get quiet(): number { return this.def.quiet ?? 3; }
+
+  /**
+   * One chunk's share of the section: each seam's gate (two posts across the road and a signpost: a place you walk
+   * through, never an invisible wall), each mark (a plaque, a sign, a sealed door or cage), and each hot spot's ring
+   * with its pack (keys `camp:`/`den:`/`cg:` + its id + an index: td-mobs reads the kind from the key).
+   */
+  private stampSection(x0: number, y0: number, objects: TdObject[], blocked: Set<number>, spawns: MobSpawn[]): void {
+    const inChunk = (c: number, r: number) => c >= x0 && c < x0 + WORLD_CHUNK && r >= y0 && r < y0 + WORLD_CHUNK;
+    const put = (c: number, r: number, sprite: () => import('./td-art').Sprite, block = true) => {
+      if (!inChunk(c, r)) return;
+      objects.push({ sprite, x: c * TILE + TILE / 2, y: r * TILE + TILE, ...(block ? { block: { w: 1, h: 1 } } : {}), kind: 'prop' });
+      if (block) blocked.add(this.key(c, r));
+    };
+    for (const sm of this.def.seams ?? []) {
+      const across = sm.dir === 'n' || sm.dir === 's', post = sm.kind === 'pass' ? () => boulder(1) : () => standingStone(2);
+      for (const side of [-1, 1]) put(across ? sm.c + side * 3 : sm.c, across ? sm.r : sm.r + side * 3, post);
+      put(across ? sm.c - 4 : sm.c - 1, across ? sm.r + 1 : sm.r - 4, signpost, false);
+    }
+    for (const mk of this.def.marks ?? []) put(mk.c, mk.r, MARK_LOOK[mk.look]);
+    for (const k of this.def.camps ?? []) this.stampCamp(k, inChunk, put, blocked, spawns);
+  }
+  /** A hot spot: its heart's dressing (a fire for a camp, bones for a den, a ring of scorched stones for a champion ground) and its pack round it. */
+  private stampCamp(k: SectionCamp, inChunk: (c: number, r: number) => boolean, put: (c: number, r: number, s: () => import('./td-art').Sprite, block?: boolean) => void, blocked: Set<number>, spawns: MobSpawn[]): void {
+    if (k.kind === 'camp') { put(k.c, k.r, () => brazier(true)); put(k.c - 2, k.r + 1, bones, false); put(k.c + 3, k.r - 1, bones, false); }
+    else if (k.kind === 'den') { put(k.c, k.r, bones, false); put(k.c - 2, k.r + 1, bones, false); put(k.c + 2, k.r - 1, bones, false); put(k.c + 4, k.r + 2, () => boulder(2)); put(k.c - 4, k.r - 2, () => boulder(0)); }
+    else for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; put(Math.round(k.c + Math.cos(a) * 6), Math.round(k.r + Math.sin(a) * 4), () => standingStone(i)); }
+    // The pack is laid by the chunk its heart is in (so it is laid once), in a ring round the heart.
+    if (!inChunk(k.c, k.r)) return;
+    const prefix = k.kind === 'camp' ? 'camp' : k.kind === 'den' ? 'den' : 'cg', zone = regionZone(this.def.id, this.regionAt(k.c, k.r));
+    for (let i = 0, tries = 0; i < k.spawns.length && tries < 64; tries++) {
+      // Spread over the clearing (2–6 tiles out, never two within a tile and a half), so the pack reads as figures.
+      const a = tries * 2.39996, d = 2 + (tries % 5);
+      const c = Math.round(k.c + Math.cos(a) * d), r = Math.round(k.r + Math.sin(a) * d);
+      if (!this.walkableGround(c, r) || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || spawns.some(s => Math.hypot(s.x - (c * TILE + TILE / 2), s.y - (r * TILE + TILE)) < TILE * 1.5)) continue;
+      const key = `${prefix}:${k.id}:${i}`;
+      spawns.push({ key, type: k.spawns[i], x: c * TILE + TILE / 2, y: r * TILE + TILE, ...this.zoned(zone, key) });
+      i++;
+    }
+  }
+
   /** This chunk's lair, if it has one (continent hotspots): its heart (tiles) near the chunk's middle, in the open wilds. */
   private hotspotOf(cx: number, cy: number): { c: number; r: number; spot: ContinentHotspot } | null {
     const list = this.def.hotspots;
@@ -513,7 +585,9 @@ export class TdWorld implements TdLevel {
     const mid = this.regionAt(cx * WORLD_CHUNK + 8, cy * WORLD_CHUNK + 8), spot = list.find(h => h.region === mid);
     if (!spot || hash(cx, cy, 91) >= spot.chance) return null;
     const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
-    if (Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) < 3) return null;
+    if (Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) < this.quiet) return null;
+    // A named hot spot's chunk keeps to its own pack.
+    if ((this.def.camps ?? []).some(k => Math.floor(k.c / WORLD_CHUNK) === cx && Math.floor(k.r / WORLD_CHUNK) === cy)) return null;
     if (this.villages.some(v => Math.max(Math.abs(cx - Math.floor((v.c0 + v.map.cols / 2) / WORLD_CHUNK)), Math.abs(cy - Math.floor((v.r0 + v.map.rows / 2) / WORLD_CHUNK))) < 2)) return null;
     const c0 = cx * WORLD_CHUNK + 8 + Math.floor(hash(cx, cy, 92) * 5) - 2, r0 = cy * WORLD_CHUNK + 8 + Math.floor(hash(cy, cx, 92) * 5) - 2;
     // The nearest open tile to that heart (rock, water or a road under it moves the lair, never cancels it).
@@ -528,3 +602,11 @@ export class TdWorld implements TdLevel {
 }
 /** Tiles round a lair's heart kept clear of trees, rocks and bushes. */
 const HOT_CLEAR = 5;
+/** Tiles round a named hot spot's heart kept clear (its pack has room to fight; the champion ground's ring stands at its edge). */
+const CAMP_CLEAR = 9;
+/** What a mark looks like (section marks: a plaque on a cairn, a signpost, an altar stone, a sealed door, a cage…). */
+const MARK_LOOK: Readonly<Record<SectionMark['look'], () => import('./td-art').Sprite>> = {
+  plaque: () => standingStone(1), sign: signpost, altar, door: cryptDoor, cage, chest, statue: brokenStatue,
+  ruin: () => ruinWall(1), cave: caveMouth, kiln: () => brazier(false), mound: () => boulder(2),
+};
+
