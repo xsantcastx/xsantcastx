@@ -241,9 +241,11 @@ test('the Map: zoom, pan, a cave floor, pins that never move, a pin that travels
   await page.locator('[data-map-find]').fill('vault');
   await expect(page.locator('[data-map-results] button').first()).toContainText(/vault/i);
   await page.locator('[data-map-find]').fill('');
-  // A click on a pin goes there: the Map folds and the Keeper walks.
+  // A click on a pin opens its card; its Walk here goes there: the Map folds and the Keeper walks.
   const ship = view.locator('.mw__pin[data-kind="harbour"]').first();
-  await ship.click();
+  await ship.dispatchEvent('click');
+  await expect(page.locator('[data-map-card]')).toBeVisible();
+  await page.locator('[data-map-walk]').click();
   await expect(page.locator('#places-list')).toHaveCount(0);
 });
 

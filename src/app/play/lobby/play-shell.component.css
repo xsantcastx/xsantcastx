@@ -169,7 +169,7 @@
 }
 .win__x:hover:not(:disabled), .win__x:focus-visible { background: var(--cozy-wood-3); }
 .win__x:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
-.win__body--maker { padding: 10px 8px; }
+.win__body--maker { padding: 10px 8px 0; }
 .win__foot { display: grid; gap: 8px; padding: 10px 6px 4px; border-top: 2px solid var(--cozy-plate-seam); }
 .win__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
@@ -283,15 +283,20 @@
    sideways and on a wide screen. The stage clips its figures' buttons so none reaches over the window. */
 .camp__stage--glass { grid-area: auto; display: block; align-self: stretch; justify-self: stretch; overflow: hidden; }
 .lobby[data-lobby="create"] {
-  grid-template-rows: clamp(150px, 27dvh, 300px) minmax(0, 1fr);
+  grid-template-rows: clamp(120px, 24dvh, 300px) minmax(0, 1fr);
   row-gap: 8px;
   place-items: stretch;
 }
 .lobby[data-lobby="create"] .create { justify-self: center; min-height: 0; }
 @media (orientation: landscape) and (max-height: 520px) {
-  .lobby[data-lobby="create"] { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(0, 470px); column-gap: 10px; }
-  .create__foot { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-  .create .win__head { padding: 4px 8px 6px; }
+  /* A phone held sideways (ui-pass-3 §14): the fire on the left 45%, the Glass on the right 55%, scrolling. */
+  .lobby[data-lobby="create"] { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 45fr) minmax(340px, 55fr); column-gap: 10px; }
+  .lobby[data-lobby="create"] .create { width: 100%; }
+  .create .win__head { padding: 2px 8px 4px; grid-template-columns: 1fr auto; }
+  .create .win__brand { display: none; }
+  .create .win__title { grid-row: 2; font-size: 1.2rem; }
+  .create .win__body--maker { padding: 6px 6px 0; }
+  .create__foot { padding-top: 4px; }
 }
 @media (min-width: 900px) and (min-height: 560px) {
   .lobby[data-lobby="create"] { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(0, 680px); column-gap: 16px; }
@@ -407,6 +412,22 @@
 
 /* ── The Glass ─────────────────────────────────────────────────────────── */
 .create { width: min(680px, 100%); }
+/* The foot: the skip toggle and the way back on one row, so the Glass keeps its height for the class and the name. */
+.create__foot { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.create__foot .btn--quiet { min-height: 44px; }
+/* A phone: the window's × already leaves without making anyone, so the window has no foot (the skip toggle rides
+   the maker's own sticky foot). */
+@media (max-height: 520px), (max-width: 520px) {
+  .create__foot { display: none; }
+}
+/* The Glass's scroller ends flush with its sticky foot, and a focused field scrolls clear of it. */
+.win__body--maker { padding-bottom: 0; scroll-padding-bottom: 128px; }
+.create__foot { grid-template-columns: auto; justify-content: end; }
+/* The toggle rides the maker's foot under Surprise me and Become, the whole width. */
+.create__skip { grid-column: 1 / -1; min-height: 44px; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .lobby[data-lobby="create"] .create { max-height: calc(100dvh - 24px); align-self: center; }
+}
 .create__skip {
   display: flex;
   align-items: center;
@@ -418,7 +439,19 @@
   color: var(--cozy-cream);
   cursor: pointer;
 }
-.create__skip input { width: 22px; height: 22px; margin: 0; accent-color: var(--cozy-brass); flex: none; }
+/* The skip-tutorial checkbox as a 44 px toggle (a real checkbox, drawn as a pixel switch). */
+.create__skip { font-size: .85rem; line-height: 1.25; }
+.create__skip input {
+  -webkit-appearance: none; appearance: none; position: relative; flex: none; width: 52px; height: 44px; margin: 0; cursor: pointer;
+  background: none; border: 0;
+}
+.create__skip input::before { content: ''; position: absolute; left: 2px; right: 2px; top: 10px; bottom: 10px; background: var(--cozy-wood-1);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-plate-seam); }
+.create__skip input::after { content: ''; position: absolute; left: 6px; top: 14px; width: 18px; height: 16px; background: var(--cozy-cream);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0); transition: left var(--dur-base, 150ms) ease; }
+.create__skip input:checked::before { background: var(--cozy-leaf); }
+.create__skip input:checked::after { left: 28px; }
+@media (prefers-reduced-motion: reduce) { .create__skip input::after { transition: none; } }
 .create__skip input:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
 
 @media (max-width: 480px) {
@@ -445,3 +478,9 @@
 .select__found { display: grid; gap: 8px; margin: 8px 0; padding: 8px 10px; background: var(--cozy-parch); color: var(--cozy-ink); border: 2px solid var(--cozy-parch-edge); }
 .select__found .plate__line { color: var(--cozy-ink); }
 .select__found .btn { min-height: 44px; }
+/* A small phone: the Glass's head is one line (the kicker steps aside), so the name stays clear of the foot. */
+@media (max-width: 400px) and (max-height: 700px) {
+  .create .win__brand { display: none; }
+  .create .win__title { grid-row: 2; font-size: 1.25rem; }
+  .create .win__head { padding: 4px 8px 6px; }
+}

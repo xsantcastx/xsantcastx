@@ -94,9 +94,10 @@ test.describe('the Thornstrider', () => {
     await expect(glass.locator('.km__classcard').nth(3)).toHaveAttribute('data-vocation', 'thornstrider');
     await expect(warlock).toHaveAttribute('aria-checked', 'true');
     await expect(ts).toContainText('Thornstrider');
-    await expect(ts).toContainText('bow');
     await ts.click();
     await expect(ts).toHaveAttribute('aria-checked', 'true');
+    // The chosen calling's card says what it is (ui-pass-3 §14: the chips carry only the name).
+    await expect(glass.locator('[data-class-card]')).toContainText('bow');
     await expect(warlock).toHaveAttribute('aria-checked', 'false');
     await glass.locator('.km__name input').fill('Ilsa');
     await page.waitForTimeout(300);

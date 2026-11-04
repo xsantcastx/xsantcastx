@@ -18,6 +18,7 @@ export const STATION_UI_I18N: Readonly<Record<string, { en: string; es: string }
   'stationUi.nice':          { en: 'Nice!', es: '¡Genial!' },
   'stationUi.youGot':        { en: 'You got', es: 'Conseguiste' },
   'stationUi.have':          { en: 'You have {{n}}', es: 'Tienes {{n}}' },
+  'stationUi.needHave':      { en: 'need {{need}} · have {{have}}', es: 'pide {{need}} · tienes {{have}}' },
   'stationUi.gold':          { en: 'Gold', es: 'Oro' },
   'stationUi.level':         { en: 'Level', es: 'Nivel' },
   'stationUi.quantity':      { en: 'How many', es: 'Cuantos' },
