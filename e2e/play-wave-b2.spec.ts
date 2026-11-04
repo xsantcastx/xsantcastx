@@ -62,6 +62,12 @@ for (const size of SIDEWAYS) {
       expect(c.r, 'the card sits in the left panel').toBeLessThanOrEqual(grid.l + 1);
       expect(c.t).toBeGreaterThanOrEqual(win.t);
       expect(c.b).toBeLessThanOrEqual(size.height);
+      // Carrying it, the carry bar docks in the left panel, never over the grid's rows (Director fix).
+      if (await page.locator('#satchel-book .drag-bar').isVisible()) {
+        const bar = await rect(page, '#satchel-book .drag-bar');
+        expect(bar.r, 'the carry bar sits in the left panel').toBeLessThanOrEqual(grid.l + 1);
+        expect(bar.t, 'under the card').toBeGreaterThanOrEqual((await rect(page, '.d2tip--pinned')).b - 1);
+      }
       // The piece it describes stays in view and uncovered.
       const hit = await pieces.first().evaluate(el => { const r = el.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!h && el.contains(h); });
       expect(hit, 'the tapped piece is not under its card').toBe(true);
@@ -131,7 +137,13 @@ for (const size of [{ width: 360, height: 640, arc: true }, { width: 390, height
       await keysTab.tap();
       await expect(page.locator(size.arc ? '[data-keys-arc]' : '[data-keys-bar]')).toBeVisible();
       await expect(page.locator('[data-belt-key]')).toHaveCount(3);
+      // The belt keys draw what the HUD's belt draws: the art (or the empty flask) and the count.
+      await expect(page.locator('[data-belt-key] :is(img, svg)')).toHaveCount(3);
+      await expect(page.locator('[data-belt-key] .bkeys__beltn')).toHaveCount(3);
       await expect(page.locator('[data-keys-pic] [data-key-slot]')).toHaveCount(size.arc ? 4 : 8);
+      // The first row of skills is in view at scrollTop 0 (sideways the picture stays pinned while they scroll).
+      const first = await rect(page, '[data-key-skill]'), scroller = await rect(page, '.book__scroll');
+      expect(first.t + 44, 'the first skill row shows').toBeLessThanOrEqual(scroller.b);
       for (const b of await page.locator('[data-keys-pic] button, [data-key-skill]').evaluateAll(els => els.map(e => e.getBoundingClientRect()).map(r => Math.min(r.width, r.height)))) expect(b).toBeGreaterThanOrEqual(44);
       // Tap Bone Spear, then key 2 (and on the arc, key 6 on its second page).
       await page.locator('[data-key-skill="bone-spear"]').tap();
@@ -186,6 +198,7 @@ for (const size of [{ width: 360, height: 640 }, { width: 390, height: 844 }, { 
       const c = await rect(page, '.td-chat');
       expect(Math.round(size.height - c.b), 'anchored to the foot').toBeLessThanOrEqual(10);
       if (size.height > size.width) expect(c.h / size.height).toBeGreaterThan(.55);
+      else expect(c.r, 'sideways the sheet stops short of the Keeper at the centre').toBeLessThanOrEqual(size.width / 2);
       for (const h of await chat.locator('.td-chat__tabs button').evaluateAll(els => els.map(e => e.getBoundingClientRect().height))) expect(h).toBeGreaterThanOrEqual(44);
       // The Chat tab: the room's line (or the Join button) at 44.
       await chat.locator('.td-chat__tabs [role="tab"]').nth(1).tap();

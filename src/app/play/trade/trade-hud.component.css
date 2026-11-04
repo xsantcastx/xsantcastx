@@ -131,3 +131,10 @@
   .trade-grid--bag { max-height: 112px; }
 }
 @media (prefers-reduced-motion: reduce) { .trade, .trade-ask { transition: none; } }
+
+/* A short screen (a sideways phone): the confirm stage is the summary, the status and the buttons only, so "You get"
+   and "Both accepted…" are never cut; the offer rows wait above until a change reopens them. */
+@media (max-height: 460px) {
+  .trade[data-trade-room-stage='confirm']:not([data-trade-stage='done']):not([data-trade-stage='failed']) .trade-sides { display: none; }
+  .trade[data-trade-room-stage='confirm'] .trade-sum { margin-top: 0; }
+}

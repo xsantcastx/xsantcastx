@@ -447,7 +447,7 @@
       </header>
       @defer (on immediate) {
         <app-skill-book class="sbook__book" [tree]="bookSaved" [level]="huntingLevel" [vocation]="bookVocation" [sig]="gearSig" [gearRanks]="bookGearRanks"
-          [castSpeed]="bookCastSpeed" [extra]="bookExtra" [bar]="loadoutBar" [layout]="thumb ? 'arc' : 'bar'" [aura]="loadoutAura" [stoneFor]="bookStone" [stoneArt]="bookStoneArt" [closeAsk]="bookCloseAsk"
+          [castSpeed]="bookCastSpeed" [extra]="bookExtra" [bar]="loadoutBar" [layout]="thumb ? 'arc' : 'bar'" [beltPics]="bookBelt" [aura]="loadoutAura" [stoneFor]="bookStone" [stoneArt]="bookStoneArt" [closeAsk]="bookCloseAsk"
           (accept)="acceptBook($event)" (assign)="assignSkill($event.id, $event.slot)" (toggleAura)="toggleAura($event)" (cut)="cutStone($event)"
           (belt)="beltStone($event)" (closed)="closeBookNow()" (dirty)="bookDirty = $event" />
       } @placeholder {

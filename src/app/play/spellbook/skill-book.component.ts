@@ -50,6 +50,9 @@ export class SkillBookComponent implements OnChanges {
   @Input() bar: readonly string[] = [];
   /** Which picture the Keys tab draws: the portrait phone's arc round the disc, or the bar's eight keys. */
   @Input() layout: 'arc' | 'bar' = 'bar';
+  /** The belt as the HUD draws it (each kind's art and count), for the Keys picture. */
+  @Input() beltPics: readonly { kind: string; art: string; n: number }[] = [];
+  beltPic(kind: string) { return this.beltPics.find(b => b.kind === kind) ?? null; }
   @Input() aura: string | null = null;
   /** The per-row Spellstone card: the recipe, the Soul and Blanks held, the charges of this recipe in the satchel. */
   @Input() stoneFor: ((id: string) => SpellbookStone | null) | null = null;
