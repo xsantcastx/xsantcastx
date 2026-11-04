@@ -12,7 +12,9 @@ export type Region = '~' | ',' | '.' | 'f' | 'F' | 'h' | 'm' | 'v' | 'l' | 'T'
   | 'j' | 'J' | 'r' | 'u'
   // The Umbral Marches (maps/umbral-marches.ts): the fen, the deep fen, black-water meres, the drowned ruins.
   | 'q' | 'Q' | 'k' | 'x';
-export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard' | 'forge' | 'temple';
+export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard' | 'forge' | 'temple'
+  /** S10: the Storm-Struck Oak (the Greenwood's heart, monsters-abilities §6.3): a split glassy giant in a ring of stumps. */
+  | 'storm-oak';
 
 export interface ContinentPlace { kind: PlaceKind; c: number; r: number; name: string }
 /** A way on from a place: a cave mouth into a hand-drawn level, a ship to another continent. */

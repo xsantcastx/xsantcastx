@@ -45,6 +45,8 @@ import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { skillKit, type KeeperAnim } from './td-skill-kit';
 import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
+import { drawPartyMarks } from './td-party-fx';
+import { WORLD_BOSSES, WORLD_BOSS_KEY, formedBossDef } from '../world/world-bosses';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { StatusPeaks, decodeStatuses, drawStatusIcons, encodeStatuses, keeperStatuses, mobStatuses, type StatusShown } from './td-status-icons';
 import { castable } from './td-abilities';
@@ -790,6 +792,38 @@ export class TopDownEngine {
         message: this.messageKey || this.message, area: this.world.continent, level: this.level.id,
         x: Math.round(this.player.x), y: Math.round(this.player.y),
       }),
+    };
+    // S10's screenshots (webdriver only): the Antlered Storm raised beside the Keeper with its party form (offline it
+    // is the room's alone), the Keeper at the Storm-Struck Oak, party-mates pinned beside him, and what the form shows.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) (window as unknown as Record<string, unknown>)['__tdS10'] = {
+      oak: () => {
+        const b = WORLD_BOSSES.find(x => x.id === 'antlered-storm');
+        if (!b?.at || this.world.continent !== b.weather?.land || this.level !== this.world) return null;
+        const spot = standNear(this.world, b.at.c * TILE + TILE / 2, (b.at.r + 5) * TILE + TILE);
+        this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
+        return { c: Math.floor(spot.x / TILE), r: Math.floor(spot.y / TILE) };
+      },
+      storm: (share = 1, dx = 64, dy = -8) => {
+        const b = WORLD_BOSSES.find(x => x.id === 'antlered-storm');
+        if (!b) return null;
+        const def = formedBossDef(b, atZoneLevel(MOBS[b.base], b.level));
+        const m = this.mobs.place(WORLD_BOSS_KEY(b.id), def, this.player.x + dx, this.player.y + dy);
+        m.form = b.form; m.elite = { rank: 'unique', role: 'leader', affixes: [], name: b.name };
+        m.hp = Math.max(1, Math.round(def.hp * share) - 1);
+        return { hp: m.hp, max: m.def.hp };
+      },
+      mates: (names: string[] = ['Bryn', 'Odo', 'Sela']) => {
+        this.peers.pinned.length = 0;
+        const at = [[-64, -40], [-86, 34], [6, 70]];
+        names.forEach((name, i) => this.peers.pinned.push({ id: `fx-${name}`, name, x: this.player.x + at[i % 3][0], y: this.player.y + at[i % 3][1], face: 1, dir: 'down', moving: false, vocation: (['ashguard', 'lanternwright', 'thornstrider'] as const)[i % 3], level: 42, look: '', area: this.peerArea() }));
+        this.mobs.others = this.peers.pinned.map(p => ({ id: p.id, x: p.x, y: p.y }));
+        return names.length;
+      },
+      mark: (e: Parameters<MobSystem['partySeen']>[0]) => { this.mobs.partySeen(e); return true; },
+      state: () => {
+        const m = this.mobs.mobs.find(x => x.form);
+        return { up: !!m, phase: m?.pb?.phase ?? -1, hp: m ? Math.round(m.hp) : 0, rings: this.mobs.bursts.filter(b => b.pb).length, ringsAt: this.mobs.bursts.filter(b => b.pb).map(b => ({ x: Math.round(b.x), y: Math.round(b.y), r: b.r, t: b.t, tone: b.tone })), others: this.mobs.others.length, cam: { x: Math.round(this.cam.x), y: Math.round(this.cam.y), w: this.cam.w, h: this.cam.h }, marks: this.mobs.partyFx.map(f => f.m), x: Math.round(this.player.x), y: Math.round(this.player.y), stats: m?.pb?.stats ?? null };
+      },
     };
     // The gathering e2e (webdriver only): the spots near the Keeper and where their floats are on the page, a step to near
     // one (the spec still taps the float, and the Keeper still walks to its shore), and what the loops are doing.
@@ -5669,6 +5703,8 @@ export class TopDownEngine {
     this.auraWas = !!look;
     this.drawLootRings();
     this.drawTells();
+    // S10: a party boss's marks — the fixate pip, a Brand, a Tether, a channel's bar, the storm's eye (td-party-fx).
+    if (this.mobs.partyFx.length) drawPartyMarks(c, this.mobs.partyFx, id => (id === '' ? this.player : this.peers.drawn.find(q => q.id === id) ?? null), this.time, this.still || envDetail() === 'low');
     // Elite packs: the aura ring under each member, a Cold Aura's reach, a Fire Enchanted's burst on its way.
     const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80;
     for (const m of this.mobs.mobs) if (m.elite && near(m.x, m.y)) drawEliteGround(c, m, this.time, this.still);

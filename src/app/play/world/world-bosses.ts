@@ -35,7 +35,20 @@ export interface WorldBossDef {
   /** Hours it waits to be found before it leaves unfelled. */
   stay: number;
   /** Its own loot: `rolls` more gear rolls on its fall, and at `chance` one of `uniques` (unique-items ids). */
-  loot: { rolls: number; chance: number; uniques: readonly string[] };
+  loot: { rolls: number; chance: number; uniques: readonly string[]; mats?: readonly { material: string; qty: number }[] };
+  /**
+   * S10 (monsters-abilities §6): a weather-born party boss. It rises only while its land's weather is `weather`, at its
+   * landmark `at` (tiles), with its party form (td-party-boss PARTY_FORMS[form]); it leaves with the weather unfelled;
+   * once felled it cannot rise again in this world for `cooldown` real hours (`every` and `stay` unused).
+   */
+  weather?: { land: string; region: string; state: string };
+  at?: { c: number; r: number };
+  form?: string;
+  cooldown?: number;
+  /** Its own name (a formed boss is not an elite leader: its def carries it). */
+  rank?: 'boss';
+  /** Where it stands, as its unique's card names it ("Found in"). */
+  lair?: string;
 }
 
 export const WORLD_BOSSES: readonly WorldBossDef[] = [
@@ -53,6 +66,14 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     id: 'the-copied-hart', name: 'The Copied Hart', area: 'verdant-wilds', regions: ['J'], base: 'rootglass-hart', level: 42,
     life: 6, blows: 1.35, affixes: ['teleport', 'stone-skin'], followers: 2, every: [5, 7], stay: 2,
     loot: { rolls: 4, chance: .4, uniques: ['unique-heartwood-of-the-verge', 'unique-spore-crown', 'unique-thornroot-greaves'] },
+  },
+  {
+    // S10, §6.3: the oldest Rootglass Hart, struck under the Storm-Struck Oak by the first thunderstorm after the Lock.
+    // It rises with a Greenwood thunderstorm at the Oak (VERDANT_PLACES 'storm-oak'), a party boss of four.
+    id: 'antlered-storm', name: 'The Antlered Storm', area: 'verdant-wilds', regions: ['j'], base: 'rootglass-hart', level: 42,
+    life: 125, blows: 4.2, affixes: [], followers: 0, every: [2, 2], stay: 0.1,
+    loot: { rolls: 3, chance: .1, uniques: ['unique-crown-of-the-antlered-storm'], mats: [{ material: 'verdant-sap', qty: 4 }, { material: 'world-root-bark', qty: 3 }] },
+    weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: 64, r: 24 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
   },
   {
     id: 'ser-wickless', name: 'Ser Wickless', area: 'umbral-marches', regions: ['x', 'Q'], base: 'drowned-knight', level: 55,
@@ -100,3 +121,11 @@ export function fastForward(b: WorldBossDef, c: WorldBossClock, now: number, rng
 
 /** The omen and fall lines, by boss (LAZY i18n: world-bosses.i18n.ts). */
 export const omenKey = (id: string, at: 'rise' | 'fall' | 'gone'): string => `play.worldBoss.${id}.${at}`;
+
+/**
+ * A formed world boss's own creature (S10): its base at its level, its life and blows its own, a boss (CC a fifth as
+ * long, the boss plate), its gap-closer handed to its party form (Lowered Antlers is the form's, so it never strikes twice).
+ */
+export function formedBossDef<D extends { id: string; name: string; hp: number; dmg: readonly [number, number] | [number, number]; rank?: string; charge?: unknown }>(b: WorldBossDef, atLevel: D): D {
+  return { ...atLevel, name: b.name, rank: 'boss', hp: Math.round(atLevel.hp * b.life), dmg: [Math.round(atLevel.dmg[0] * b.blows), Math.round(atLevel.dmg[1] * b.blows)], charge: undefined, bound: { leash: 14 }, ...(b.loot.mats ? { drops: b.loot.mats.map(m => ({ ...m, chance: 1 })) } : {}) } as D;
+}

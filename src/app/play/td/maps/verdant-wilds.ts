@@ -237,6 +237,9 @@ export const VERDANT_PLACES: readonly ContinentPlace[] = [
   { kind: 'shrine', c: 4, r: -30, name: 'The Moss Altar' },
   { kind: 'ruins', c: 80, r: 40, name: 'The Drowned Aqueduct' },
   { kind: 'standing-stones', c: -56, r: 44, name: 'The Ring of Thorns' },
+  // S10: the Storm-Struck Oak, the Greenwood's oldest tree, split by the first thunderstorm after the Lock; the Antlered
+  // Storm rises here in a thunderstorm (world-bosses.ts). Its arena: a 10-tile ring of split stumps, kept clear.
+  { kind: 'storm-oak', c: 64, r: 24, name: 'The Storm-Struck Oak' },
   // The Root Hollows' root-hole in the Deep Wilds, up a track off the Thornwick road.
   { kind: 'cave', c: -80, r: -22, name: 'The Root Hollows' },
 ];

@@ -144,7 +144,7 @@ import {
 import { EMBER_DELVE } from './world/towns/infernal';
 import { HEARTH_I18N } from './world/hearth.i18n';
 import { WORLD_BOSSES_I18N } from './world/world-bosses.i18n';
-import { omenKey } from './world/world-bosses';
+import { WORLD_BOSSES, omenKey } from './world/world-bosses';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { THUMB_I18N } from './thumb-hud/thumb.i18n';
@@ -2506,6 +2506,8 @@ export class SideScrollerComponent implements OnDestroy {
   private worldOmen(omen: RoomWorldOmen): void {
     const key = omenKey(omen.boss, omen.at), line = this.t(key);
     if (line === key) return;
+    // S10: a weather-born world boss rising — Glim says what it sees (its line, once per rising).
+    if (omen.at === 'rise' && this.glimVoice.met) { const gk = `play.worldBoss.${omen.boss}.glim`; if (this.t(gk) !== gk) this.glimVoice.bond({ id: `wb-rise-${omen.boss}-${Math.floor(Date.now() / 600000)}`, key: gk }); }
     const danger = omen.at === 'rise' && omen.level > Math.max(1, this.huntingLevel || 1) + 3;
     this.toastLoot(danger ? `${line} (${this.t('play.zone.danger')})` : line);
   }
@@ -3334,6 +3336,9 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private uniqueLines(u: UniqueItem | undefined): string[] {
     if (!u?.sig || u.set) return [];
+    // S10: a world boss's own (the Antlered Storm's Crown): its boss, where it stands, its odds.
+    const wb = u.boss ? WORLD_BOSSES.find(b => b.id === u.boss) : undefined;
+    if (wb) return [this.t('play.relic.used', { text: this.t('play.relic.sig.' + u.id) }), this.t('play.relic.found', { boss: wb.name, where: wb.lair ?? '', n: Math.round(1 / Math.max(.01, wb.loot.chance)) })];
     return [
       this.t('play.relic.used', { text: this.t('play.relic.sig.' + u.id) }),
       this.t('play.unique.found', { rarity: rarityLabel(u.rarity), level: Math.max(1, RUNG_LEVEL[u.rarity]) }),

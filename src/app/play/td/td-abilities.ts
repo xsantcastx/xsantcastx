@@ -28,7 +28,9 @@ export type KeeperStatus = 'stun' | 'root' | 'chill' | 'freeze' | 'blind' | 'wet
 export interface StatusLay { s: KeeperStatus; t: number; b?: number }
 
 /** The tones a tell is drawn in (td-ability-fx TELL_TONES). */
-export type TellTone = 'ember' | 'frost' | 'glass' | 'water' | 'bone' | 'life' | 'ink' | 'dust' | 'parchment' | 'gold' | 'moss' | 'shadow';
+export type TellTone = 'ember' | 'frost' | 'glass' | 'water' | 'bone' | 'life' | 'ink' | 'dust' | 'parchment' | 'gold' | 'moss' | 'shadow'
+  /** S10: lightning (the Antlered Storm's strikes): white on pale blue. */
+  | 'storm';
 
 export type AbilityKind =
   /** A body-cast shot along a line (a rivet). */

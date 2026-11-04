@@ -68,6 +68,8 @@ export const WORN_LOOK_TABLE: Readonly<Record<string, WornLookSpec>> = {
   'unique-crown-of-borrowed-noon': { shape: 'crown', pal: 'brass', accent: '#5fb6ff', runes: '#00d4ff', fx: { kind: 'motes', color: MOTE_GOLD } },
   'unique-nameless-crown': { shape: 'crown', pal: 'grey', accent: VOID_PINK, horns: '#5c5359', fx: { kind: 'mist', color: '#2a1a3a' } },
   'unique-spore-crown': { shape: 'crown', pal: 'moss', accent: '#7fd5a3', runes: '#c4ffe0', fx: { kind: 'motes', color: SPORE } },
+  // S10: a circlet of glassy rootglass antlers, a faint white spark running along them.
+  'unique-crown-of-the-antlered-storm': { shape: 'crown', pal: 'moss', accent: '#eafff6', runes: '#cfe8ff', horns: '#7affd0', fx: { kind: 'motes', color: '#ffffff' } },
   // Chest
   'unique-ashfall-wrap': { shape: 'robe', pal: 'ash', accent: EMBER_HOT, seam: '#7a2a12' },
   'unique-quiet-cuirass': { shape: 'plate', pal: 'obsidian', accent: '#b8bcd8', runes: '#8a90b0' },

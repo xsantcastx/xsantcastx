@@ -229,10 +229,14 @@ for (const u of UNIQUE_ITEMS) if (!u.boss && !u.set && boxRarities.has(u.rarity)
 {
   const MOBS_SRC = read('play/td/td-mobs.ts');
   const HUD_WORDS = read('play/world/hud.i18n.ts');
+  const WB_SRC = read('play/world/world-bosses.ts');
   for (const u of UNIQUE_ITEMS) {
     if (!u.boss) continue;
     const def = new RegExp(`\\bid: '${u.boss}'[^\\n]*\\n(?:[^\\n]*\\n){0,4}?[^\\n]*rank: 'boss'`).test(MOBS_SRC);
+    // S10: a world boss's own (play/world/world-bosses.ts names it in its loot's uniques): the room drops it there.
+    const wb = new RegExp(`\\bid: '${u.boss}'[^\\n]*\\n(?:[^\\n]*\\n){0,4}?[^\\n]*uniques: \\[[^\\]]*'${u.id}'`).test(WB_SRC);
     if (def) src(u.id, `boss ${u.boss} (1 in ${u.oneIn})`);
+    else if (wb) src(u.id, `world boss ${u.boss} (world-bosses.ts loot)`);
     else violationsLater.push(['item', 'no-source', u.id, `its boss ${u.boss} is not a td-mobs.ts boss`]);
     if (u.sig && Object.keys(u.sig).length) use(u.id, `signature (td-mobs relics): ${Object.keys(u.sig).join(', ')}`);
     if (!HUD_WORDS.includes(`'play.relic.sig.${u.id}'`)) violationsLater.push(['item', 'not-visible', u.id, 'no play.relic.sig line for its card']);
