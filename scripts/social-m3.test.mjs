@@ -117,8 +117,9 @@ test('protocol 9: the dormant tick — nobody there, the fallen rest on and rise
 });
 
 test('protocol 9: world bosses — data per boss, rise with an omen, fall or leave, timers of hours, fast-forward', () => {
-  assert.equal(WORLD_BOSSES.length, 4);
-  for (const b of WORLD_BOSSES) {
+  // Four timed world bosses, and S10's weather-born ones (their own test: social-s10.test.mjs).
+  assert.equal(WORLD_BOSSES.filter(b => !b.weather).length, 4);
+  for (const b of WORLD_BOSSES.filter(x => !x.weather)) {
     assert.ok(CONTINENTS[b.area] && sim.MOBS[b.base], b.id);
     assert.ok(b.every[0] >= 2 && b.every[1] > b.every[0] && b.stay > 0, `${b.id} rises every ${b.every} h`);
     assert.ok(b.loot.uniques.length && b.loot.uniques.every(u => sim.uniqueById(u)), `${b.id}'s uniques exist`);

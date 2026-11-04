@@ -544,6 +544,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.relic.sig.unique-pyrograph-scroll-case': { en: 'every kill gives 12% more Hunting XP.', es: 'cada presa da un 12% mas de XP de caza.' },
   'play.relic.sig.unique-mirror-meridians': { en: 'a creature that strikes you in melee takes 30% of its blow back.', es: 'una criatura que te golpea cuerpo a cuerpo recibe de vuelta el 30% de su golpe.' },
   'play.relic.sig.unique-spore-crown': { en: '+2 life a second, always.', es: '+2 de vida por segundo, siempre.' },
+  'play.relic.sig.unique-crown-of-the-antlered-storm': { en: 'Lightning Call and Chain of Lamps +3 ranks and 30% harder; in rain or a thunderstorm your lightning chains to one more foe, and Wet cannot freeze you.', es: 'Llamada del Rayo y Cadena de Faroles +3 rangos y un 30% mas fuertes; con lluvia o tormenta tu rayo salta a un enemigo mas, y Mojado no puede congelarte.' },
   'play.relic.sig.unique-eclipse-hourglass': { en: 'named uniques are 60% likelier on every kill\'s loot roll.', es: 'los unicos con nombre son un 60% mas probables en el botin de cada presa.' },
   'play.relic.sig.unique-ashen-covenant': { en: 'once every 90 seconds, a blow that would fell you leaves you standing on one point of life.', es: 'una vez cada 90 segundos, un golpe que te derribaria te deja en pie con un punto de vida.' },
   'play.relic.sig.unique-aureths-mantle': { en: 'every kill\'s Gold pile is 30% bigger.', es: 'el monton de Oro de cada presa es un 30% mayor.' },

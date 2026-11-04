@@ -159,6 +159,7 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-crown-of-borrowed-noon': I('crown', 'brass', 'orbit'),
   'unique-nameless-crown': I('crown', 'grey', 'void'),
   'unique-spore-crown': I('crown', 'moss', 'bio'),
+  'unique-crown-of-the-antlered-storm': I('crown', 'moss', 'glass'),
   // ── chest ──
   'infernal-cuirass': I('cuirass', 'iron', 'ember'),
   'starplate-cuirass': I('cuirass', 'midnight', 'orbit'),

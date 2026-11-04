@@ -29,7 +29,9 @@ export const ENTRIES = ['src/app/play/world/room-world.ts', 'src/app/play/social
   // S5: heals, wards and the tank's guards on allies, weighed by the room; threat (creatures go for the top).
   'src/app/play/world/ally-claims.ts', 'src/app/play/td/td-threat.ts',
   // The Keepers' summons hunted by the room's creatures (the "minions" fix).
-  'src/app/play/world/room-kin.ts'];
+  'src/app/play/world/room-kin.ts',
+  // S10: the party bosses' mechanics (the Antlered Storm, the floor bosses' party forms).
+  'src/app/play/td/td-party-boss.ts'];
 /**
  * Modules exported whole under one name (protocol 8): the trade Function's own core (functions-game/src/trade-core.ts),
  * so the room settles trades and escrows ground drops with the very code the Function runs — never a copy.

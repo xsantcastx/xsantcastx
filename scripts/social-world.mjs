@@ -346,7 +346,7 @@ export function createWorldRooms({ sim = null, core = null, store = null, db = n
   const snaps = room => {
     for (const s of room.members.values()) {
       if (!s.stream) { room.world.resync(s.player.id); continue; }
-      const body = room.world.snapFor(s.player.id);
+      const body = room.world.snapFor(s.player.id, s.mech === true);
       if (body) send(s, { type: 'coop-snap', from: ROOM_HOST, term: room.world.term, ...body });
     }
   };

@@ -320,7 +320,7 @@ and ending at the land's harbour (the Harbourmasters, §3.3).
   Wick, Prayer-Board, Mere-Lamp, Lost-Lantern, Abbey-Slab (Marches).
 - **Hot spots**: the Slag-Cart Graveyard, the Wolf-Run; Kettle Camp, the Scorch Rings, the Drake Nests, the Watch's
   Last Cairn; the Weaver Canopy, the Hart Meadow, the Bell-less Square; the Lure Pools, the Knights' Causeway, the
-  Witch's Island. New landmarks: **the Storm-Struck Oak** (the Greenwood) and **the three dead lantern posts** of the
+  Witch's Island. New landmarks: **the Storm-Struck Oak** (the Greenwood, tile 64,24; built S10: a split glassy giant in a ring of eighteen split stumps, the Antlered Storm's arena) and **the three dead lantern posts** of the
   Black Meres.
 - **New fish**: Ash Perch, Rootling Eel, Mire Carp, **Stormscale** (a Mirrorfin caught in thunder). Mirrorfin, Lampfish
   and Moonwake keep their waters.
@@ -501,7 +501,7 @@ world now.
 - **Herbalist Agathe Sorrel**. *Thornwick (4,7), the Herbalist's Cottage.* She has her grandmother's memory and most of
   her temper. Choir witness [Q2]. Planned **Cooking** trainer (herbs) for the Wilds.
 - **Sunny Pell**, Netter Pell's niece and Harbourmaster. *Mossharbor pier.*
-- **Provisioner Teo Alder**, Rootglass's general store. *The boardwalk market (4,16).* "Rope, oil, a lamp that won't
+- **Provisioner Teo Alder**, Rootglass's general store. *The boardwalk market (4,16).* In a thunderstorm (S10): "My cousin saw it once. Said it was beautiful. Said it twice, slowly." "Rope, oil, a lamp that won't
   scorch the boardwalk. The Bole's not for sale; I get asked." (DM, 2026-10-26.)
 - **Seedwife Rue Hazel**, Herb and Seed. *The Bole (18,8).* "Plant what you buy here and it grows true. Mostly. The
   wood's been forgetful." (DM, 2026-10-26: a quiet seed for Act II's copied trees.)
@@ -548,14 +548,14 @@ Merchant buy anything". This is canon; the Merchant *weighs and takes in*, the C
 | (planned) Mirror Parliament ~55 | the Ink Deeps | The four Keepers' consensus, copied and left to vote forever. |
 | (planned) Perihelion Engine; Pale Refrain; Unbound Pattern | Acts IV, V, Finale | design-bible.md §3.3 |
 | (planned) **The Last Siege** ~32, world boss | the Obsidian Badlands, ashfall nights | the Ashen Bastion's siege tower, still rolling toward a war that ended. It is not angry; it is late. If it reaches the Bastion's ruin it salutes and leaves. |
-| (planned) **The Antlered Storm** ~42, world boss | the Storm-Struck Oak, the Greenwood, thunderstorms | the oldest Rootglass Hart, struck by the first storm after the Lock; the lightning stayed. The wood remembering it was weather before it was a wood. |
+| **The Antlered Storm** 42, world boss (built S10, branch `s10boss`; the room's) | the Storm-Struck Oak, the Greenwood, thunderstorms; 2 h cooldown a world | the oldest Rootglass Hart, struck by the first storm after the Lock; the lightning stayed. The wood remembering it was weather before it was a wood. |
 | (planned) **The Fogmother** ~54, world boss | the Black Meres, fog at night | what the fog keeps when a lantern gutters, wrapped in the drowned sisters' habits. Lighting the three dead posts first prevents her. She is **not** what the fog thins round (Act III's Second Lantern). |
 
-**Party forms** (planned, monsters-abilities.md §5.3). On Nightmare and Hell, a party meets each floor boss's party
+**Party forms** (built S10 as data and in every simulating MobSystem; td-party-boss.ts; monsters-abilities.md §5.3). On Nightmare and Hell, a party meets each floor boss's party
 form: its reason made visible as a mechanic (the Anvil-Warden's Sunder is the hammer on the anvil; the Ink Abbess
 writes your name, a Brand only the healer can lift).
 
-**World-boss uniques** (planned; worldbound: one trade binds):
+**World-boss uniques** (the Crown built S10, Legendary only, from the Antlered Storm alone at 1 in 10; the others planned; everything is tradable, owner 2026-10-27, so "worldbound" is not built):
 - **The Wall That Kept Walking**, a shield. "It held the line so well that it carried the line with it."
 - **Crown of the Antlered Storm**, a helm. "The hart wanted to be a tree. The tree wanted to be the storm. Neither
   asked the antlers."

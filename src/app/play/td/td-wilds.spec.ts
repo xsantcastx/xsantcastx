@@ -192,6 +192,21 @@ describe('S11: the Verdant Wilds as an act of sections', () => {
     expect([...new HandLevel(LEVELS['overgrown-temple-1']).exits.values()].some(e => e.continent === 'verdant-wilds-courts')).toBeTrue();
     expect(WORLD_BOSSES.find(b => b.id === 'the-copied-hart')!.area).toBe('verdant-wilds-deep-wilds');
     expect(CONTINENTS['verdant-wilds-courts'].places.some(p => p.kind === 'standing-stones' && p.name === 'The Ring of Thorns')).toBeTrue();
+    // S10's Storm-Struck Oak stands in the Greenwood, its ring in a clearing off every road and clear of the hot spots.
+    const green = CONTINENTS['verdant-wilds-greenwood'], oak = green.places.find(p => p.kind === 'storm-oak')!;
+    const storm = WORLD_BOSSES.find(b => b.id === 'antlered-storm')!;
+    expect(storm.area).toBe('verdant-wilds-greenwood');
+    expect([storm.at!.c, storm.at!.r]).toEqual([oak.c, oak.r]);
+    for (const road of green.roads) for (let i = 1; i < road.length; i++) {
+      const [x0, y0] = road[i - 1], [x1, y1] = road[i], L = Math.hypot(x1 - x0, y1 - y0) || 1;
+      const t = Math.max(0, Math.min(1, ((oak.c - x0) * (x1 - x0) + (oak.r - y0) * (y1 - y0)) / (L * L)));
+      expect(Math.hypot(oak.c - (x0 + (x1 - x0) * t), oak.r - (y0 + (y1 - y0) * t))).withContext(`oak road ${i}`).toBeGreaterThanOrEqual(14);
+    }
+    for (const k of green.camps ?? []) expect(Math.hypot(k.c - oak.c, k.r - oak.r)).toBeGreaterThan(40);
+    for (const g of green.glades ?? []) expect(Math.hypot(g.c - oak.c, g.r - oak.r)).toBeGreaterThan(30);
+    const gw = new TdWorld(green);
+    expect(gw.walkable(oak.c, oak.r + 3)).toBeTrue();
+    expect(gw.spawnsIn((oak.c - 14) * TILE, (oak.r - 14) * TILE, (oak.c + 14) * TILE, (oak.r + 14) * TILE).filter(s => Math.hypot(s.x / TILE - oak.c, s.y / TILE - oak.r) < 12).map(s => s.key)).toEqual([]);
   });
 
   it('Sunny Pell\'s fen-barge holds for Mirewatch until the Elder Rootwyrm falls (the end of Act II)', () => {

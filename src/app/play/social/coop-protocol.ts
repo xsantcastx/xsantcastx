@@ -69,7 +69,12 @@ export type CoopEvent =
    * The room (`kin` on): a creature `i` (none: a shot) struck this Keeper's summon `p` (its companion id) for `d`, through
    * its Shared Bones; `x` it fell. Only ever sent to its owner, and only to an owner that told the room its summons.
    */
-  | { k: 'kin'; to: string; p: string; d: number; i?: string; x?: 1 };
+  | { k: 'kin'; to: string; p: string; d: number; i?: string; x?: 1 }
+  /**
+   * S10: a party boss's mark (td-party-boss PartyMark), a picture: the fixate pip (`a`), a Brand (`a`), a Tether (`a`–`b`),
+   * a channel's bar (`w` its words), the storm's eye, Sunder's stacks (`n`), a phase (`w` its id). `t` seconds, 0 ends it.
+   */
+  | { k: 'mech'; m: 'fix' | 'brand' | 'tether' | 'cast' | 'eye' | 'sunder' | 'phase'; i: string; t: number; a?: string; b?: string; n?: number; w?: string; x?: number; y?: number };
 
 /** What the host posts (and the room relays, with `from`, `term`). */
 export interface CoopSnapBody {

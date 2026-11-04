@@ -34,6 +34,7 @@ export const TELL_TONES: Readonly<Record<TellTone, Tones>> = {
   gold: { core: '#fff6c8', body: '#ffd25a', edge: '#b0812a' },
   moss: { core: '#e8f8d0', body: '#9ac870', edge: '#4a7a3a' },
   shadow: { core: '#f0e0ff', body: '#b06bff', edge: '#6b3aa0' },
+  storm: { core: '#ffffff', body: '#cfe8ff', edge: '#5f86d8' },
 };
 const toneOf = (t: string | undefined): Tones => TELL_TONES[(t ?? 'ember') as TellTone] ?? TELL_TONES.ember;
 

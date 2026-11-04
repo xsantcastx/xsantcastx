@@ -1905,3 +1905,22 @@ The first Wilds night event: **the Walking Tree** (the Greenwood's glade; night,
 Pair is somewhere else each time the Keeper looks away, never in sight, never within six tiles. After its third move
 Glim drifts to it and dims ("That one is the copy. Strike it."); one blow and it is only a tree, and a **Copy-Seed** drops
 ("Plant it and it grows true, Rue Hazel says. Mostly."). A clue for campaign #7, the Graft Crown.
+
+## The Antlered Storm and the party bosses (2026-11-04, S10, branch `s10boss`) — shipped, owner reviews in play
+- **The Storm-Struck Oak** stands in the Greenwood (S11's section `verdant-wilds-greenwood`, tile −10,−112, a clearing off the road west of the Copied Pair): a split giant, its split glassy rootglass with a
+  white spark in it, half its crown bare, in a ring of eighteen split stumps that is its arena (nothing else spawns there).
+- **The Antlered Storm** (42) rises there while a thunderstorm holds over the Greenwood, and only in the room-run world
+  (everyone sees the same one). It leaves with the weather if not felled; felled, it cannot rise again in that world for
+  two real hours. Its words are the canon roots: *lum vor dra* (Strike), *lum vor orum* (the Chain and the room's bolt),
+  *vor mur* (the Tether, "the storm reaches for whoever mends"), *vor teth* (the bats and harts it calls), *vor dra* (the
+  bolt meant for the tree), *vor nyr* (its mending channel in the eye).
+- **Glim**, when it rises: "Every strike is landing in the same place. The Greenwood's oldest tree. Something is
+  standing up there." The omens: it stands up / it is down, "under the Oak the rain is only rain again" / the thunder
+  moves off and it goes with it.
+- **Rumours** in a Wilds thunderstorm: Canopy Warden Ilsa Fenn ("When the antlers ring…") and Provisioner Teo Alder,
+  the boardwalk trader ("My cousin saw it once…").
+- **Crown of the Antlered Storm** (Legendary only, 1 in 10 from it): Lightning Call and Chain of Lamps +3 ranks and 30%
+  harder; in rain or a storm the Keeper's lightning chains to one more foe and Wet cannot freeze him. Departure: the
+  spec's "Wet cannot slow you" reads as "cannot freeze you" (Wet slows nobody in the build; it freezes on a cold hit).
+- **Party forms** of the ten floor bosses (monsters-abilities §5.3) are data and run on Nightmare and Hell with two or
+  more Keepers wherever the fight is simulated by a screen (a party host); the room runs no tiers yet.

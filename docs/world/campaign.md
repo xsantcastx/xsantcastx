@@ -348,7 +348,7 @@ whatever S-work has landed.
   Golem. Each comes with its nodes, FX and sound (S3's kit).
 - **Accept when** combat-sim's 50 cell is banded for all four callings, and the party cell holds at 50.
 
-#### S10 [spec'd]: Threat, party forms, and the first world boss (L, monster lane; needs online M2)
+#### S10 [built 2026-11-04, branch `s10boss`, docs/handoff/s10boss.md — the nine mechanics on the room-hosted boss (td-party-boss.ts), the ten floor bosses' party forms (they wake on a screen-simulated Nightmare/Hell fight; the room runs no tiers), the Antlered Storm with the Storm-Struck Oak, its Crown, Glim and the rumours; the Last Siege and the Fogmother NOT built]: Threat, party forms, and the first world boss (L, monster lane; needs online M2)
 - **What:**
   - monsters-abilities.md §5, the threat table and the nine mechanics, on the room-hosted boss;
   - §5.3, the ten floor bosses' party forms on Nightmare and Hell;

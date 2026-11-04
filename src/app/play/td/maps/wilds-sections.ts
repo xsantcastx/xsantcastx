@@ -23,6 +23,9 @@ import { MOSSHARBOR_ISLE_SHIP, MOSSHARBOR_SHIP, buildMossharbor, buildRootglass,
 import { HOLLOWS_IN, RAMP_IN } from './root-hollows';
 import { TEMPLE_IN } from './overgrown-temple';
 
+/** The Storm-Struck Oak's tile in the Greenwood (S10's world boss, the Antlered Storm, rises there). */
+export const STORM_OAK_AT = { c: -10, r: -112 } as const;
+
 /** Sunny Pell's third ship, off the long pier's east end: to Mirewatch, the Umbral Marches (end of Act II). */
 export const MOSSHARBOR_MARCHES_SHIP: StationDef = { id: 'ship-mossharbor-marches', x: 0, label: 'SHIP TO MIREWATCH', kind: 'passage', blurb: 'A low fen-barge with a lantern at its prow, bound for Mirewatch in the Umbral Marches.' };
 
@@ -186,7 +189,13 @@ export const GREENWOOD_SECTION: ContinentDef = {
     // The old road north to the Deep Wilds: grown shut with thorns where it enters the wood's wall.
     [[100, -96], [100, -120], [100, -160]],
   ],
-  places: [{ kind: 'cave', c: 228, r: -118, name: 'The Root Hollows' }],
+  places: [
+    { kind: 'cave', c: 228, r: -118, name: 'The Root Hollows' },
+    // S10: the Storm-Struck Oak, the Greenwood's oldest tree, split by the first thunderstorm after the Lock; the Antlered
+    // Storm rises here in a thunderstorm (world-bosses.ts STORM_OAK_AT). Its 10-tile ring of stumps stands in a clearing
+    // off the road, clear of the Copied Pair's glade and the Weaver Canopy.
+    { kind: 'storm-oak', c: STORM_OAK_AT.c, r: STORM_OAK_AT.r, name: 'The Storm-Struck Oak' },
+  ],
   names: { j: 'The Greenwood', '.': 'The Greenwood', m: 'The Greenwood', T: 'The Copy-Tree Stone' },
   mobs: { j: { types: ['canopy-bat', 'moss-stalker', 'moss-stalker', 'vine-lasher'], chance: .6 }, '.': { types: ['canopy-bat'], chance: .3 } },
   hotspots: [{ region: 'j', chance: .3, types: ['moss-stalker', 'canopy-bat', 'moss-stalker'], count: 4 }],
