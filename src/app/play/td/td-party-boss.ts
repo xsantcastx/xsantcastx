@@ -19,6 +19,12 @@ import type { CoopEvent } from '../social/coop-protocol';
 /** Tiles to art px (td-art TILE; kept local so this module stays importable anywhere). */
 const T = 16;
 
+/**
+ * How a ring reads (td-party-fx drawPartyRing; on the wire as the burst's `el`): `pbhit` a blow to step out of (red),
+ * `pbsoak` one to step into (gold), `pbspread` one on everyone to keep apart (storm blue).
+ */
+export type PartyRingKind = 'pbhit' | 'pbsoak' | 'pbspread';
+export const PARTY_RINGS: readonly string[] = ['pbhit', 'pbsoak', 'pbspread'];
 export type PartyMech = 'fixate' | 'sunder' | 'burn-room' | 'brand' | 'adds' | 'interrupt' | 'soak' | 'tether' | 'spread' | 'strike' | 'charge';
 
 /** One mechanic as a phase uses it. */
@@ -226,7 +232,7 @@ export interface PartyArena {
   /** A blow on one Keeper (through its defenses), with a status maybe. */
   strike(k: PartyKeeper, raw: number, type: DamageType): void;
   /** A ring on the ground (picture; the director decides what it hits). */
-  ring(x: number, y: number, r: number, t: number, tone: TellTone): void;
+  ring(x: number, y: number, r: number, t: number, tone: TellTone, kind: PartyRingKind): void;
   mark(e: PartyMark): void;
   say(words: string): void;
   /** Bring `n` creatures of `type` in at the arena's edge (two doors), at `level`. */
@@ -370,7 +376,7 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
     case 'burn-room': {
       // The whole arena: a ring round the boss as wide as the room, then the blow and the burn.
       const R = s.form.arena * T;
-      A.ring(boss.x, boss.y, R, MECH.burnTell, u.tone);
+      A.ring(boss.x, boss.y, R, MECH.burnTell, u.tone, 'pbhit');
       s.rings.push({ m: 'burn-room', x: boss.x, y: boss.y, r: R, t: MECH.burnTell, dmg: (u.b ?? MECH.burnB) * B, type });
       return;
     }
@@ -400,7 +406,7 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
       const on = ks.find(k => k.id === s.fixOn) ?? ks[0];
       if (!on) return;
       const R = MECH.soakR * T;
-      A.ring(on.x, on.y, R, MECH.soakTell, u.tone);
+      A.ring(on.x, on.y, R, MECH.soakTell, u.tone, 'pbsoak');
       s.rings.push({ m: 'soak', x: on.x, y: on.y, r: R, t: MECH.soakTell, dmg: (u.b ?? MECH.soakB) * B, type });
       return;
     }
@@ -416,7 +422,7 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
     }
     case 'spread': {
       const R = MECH.spreadR * T;
-      for (const k of ks) { A.ring(k.x, k.y, R, MECH.spreadTell, u.tone); s.rings.push({ m: 'spread', x: k.x, y: k.y, r: R, t: MECH.spreadTell, dmg: (u.b ?? MECH.spreadB) * B, type: u.el ?? 'lightning', on: k.id }); }
+      for (const k of ks) { A.ring(k.x, k.y, R, MECH.spreadTell, u.tone, 'pbspread'); s.rings.push({ m: 'spread', x: k.x, y: k.y, r: R, t: MECH.spreadTell, dmg: (u.b ?? MECH.spreadB) * B, type: u.el ?? 'lightning', on: k.id }); }
       return;
     }
     case 'strike': {
@@ -424,7 +430,7 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
       const pool = [...ks];
       for (let c = 0; c < (u.n ?? 3) && pool.length; c++) {
         const k = pool.splice(Math.floor(A.rng() * pool.length), 1)[0], R = MECH.strikeR * T;
-        A.ring(k.x, k.y, R, MECH.strikeTell, u.tone);
+        A.ring(k.x, k.y, R, MECH.strikeTell, u.tone, 'pbhit');
         s.rings.push({ m: 'strike', x: k.x, y: k.y, r: R, t: MECH.strikeTell, dmg: (u.b ?? 1.6) * B, type });
       }
       return;
@@ -435,7 +441,7 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
       for (const k of ks) { const d = dist(k, boss); if (d > fd) { fd = d; far = k; } }
       if (!far || ks.length < 2 && fd < 3 * T) return;
       const R = MECH.chargeR * T;
-      A.ring(far.x, far.y, R, MECH.chargeTell, u.tone);
+      A.ring(far.x, far.y, R, MECH.chargeTell, u.tone, 'pbhit');
       s.rings.push({ m: 'charge', x: far.x, y: far.y, r: R, t: MECH.chargeTell, dmg: (u.b ?? 2) * B, type });
       return;
     }

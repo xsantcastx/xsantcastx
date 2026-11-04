@@ -11,7 +11,7 @@
  * Reduced motion: the same shapes, still.
  */
 import { AFFIX_DEFS, COLD_AURA_R, ELITE_TONES, TELEPORT, TOUCHED_TONES, affixLine, isTouched, type EliteAffix } from './td-elites';
-import { mobCell, type DeathBurst, type Mob } from './td-mobs';
+import { mobCell, mobScale, type DeathBurst, type Mob } from './td-mobs';
 import { FX, HOSTILE_EDGE, circlePixels, deco, groundRing, ringDash, sq } from './td-fx';
 
 type Ctx = CanvasRenderingContext2D;
@@ -201,7 +201,7 @@ export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight =
     return cx === sx ? x : Math.round((cx - t.e) / t.a);
   };
   const tag = m.elite!;
-  const tn = ELITE_TONES[tag.rank], X = Math.round(m.x), top = Math.round(m.y - mobCell(m.def).h - 4);
+  const tn = ELITE_TONES[tag.rank], X = Math.round(m.x), top = Math.round(m.y - mobCell(m.def).h * mobScale(m) - 4);
   const w = tag.role === 'leader' ? 26 : 22, frac = Math.max(0, m.hp / m.def.hp), x0 = X - Math.round(w / 2);
   // The frame: dark outline, a rank-toned frame, dark inside, the life itself; a unique's corners carry studs.
   c.fillStyle = HOSTILE_EDGE; c.fillRect(x0 - 2, top - 2, w + 4, 6);

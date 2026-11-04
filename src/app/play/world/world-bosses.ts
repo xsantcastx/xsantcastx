@@ -49,6 +49,8 @@ export interface WorldBossDef {
   rank?: 'boss';
   /** Where it stands, as its unique's card names it ("Found in"). */
   lair?: string;
+  /** Drawn this many times its creature's size (an integer, nearest-neighbour: a world boss reads as one). */
+  scale?: number;
 }
 
 export const WORLD_BOSSES: readonly WorldBossDef[] = [
@@ -73,7 +75,7 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     id: 'antlered-storm', name: 'The Antlered Storm', area: 'verdant-wilds', regions: ['j'], base: 'rootglass-hart', level: 42,
     life: 125, blows: 4.2, affixes: [], followers: 0, every: [2, 2], stay: 0.1,
     loot: { rolls: 3, chance: .1, uniques: ['unique-crown-of-the-antlered-storm'], mats: [{ material: 'verdant-sap', qty: 4 }, { material: 'world-root-bark', qty: 3 }] },
-    weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: 64, r: 24 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
+    weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: 64, r: 24 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', scale: 3, lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
   },
   {
     id: 'ser-wickless', name: 'Ser Wickless', area: 'umbral-marches', regions: ['x', 'Q'], base: 'drowned-knight', level: 55,
@@ -128,4 +130,10 @@ export const omenKey = (id: string, at: 'rise' | 'fall' | 'gone'): string => `pl
  */
 export function formedBossDef<D extends { id: string; name: string; hp: number; dmg: readonly [number, number] | [number, number]; rank?: string; charge?: unknown }>(b: WorldBossDef, atLevel: D): D {
   return { ...atLevel, name: b.name, rank: 'boss', hp: Math.round(atLevel.hp * b.life), dmg: [Math.round(atLevel.dmg[0] * b.blows), Math.round(atLevel.dmg[1] * b.blows)], charge: undefined, bound: { leash: 14 }, ...(b.loot.mats ? { drops: b.loot.mats.map(m => ({ ...m, chance: 1 })) } : {}) } as D;
+}
+
+/** How many times its creature's size a creature with this spawn key is drawn (a scaled world boss's; else 1). */
+export function worldBossScale(key: string): number {
+  if (!key.startsWith('wb:')) return 1;
+  return worldBossOfKey(key)?.scale ?? 1;
 }

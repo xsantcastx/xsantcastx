@@ -26,7 +26,7 @@ import { hardened } from './td-phases';
 import { STATUS_WIRE } from './td-abilities';
 import { TILE } from './td-art';
 import { isAshSkill } from './td-threat';
-import { mechEvent } from './td-party-boss';
+import { PARTY_RINGS, mechEvent } from './td-party-boss';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { DamageType } from '../../shared/loot/damage.model';
 import {
@@ -561,6 +561,11 @@ export class TdCoop implements CoopLink {
     }
     if (e.k === 'shot') {
       this.mobs.shots.push({ x: e.x, y: e.y, vx: e.vx, vy: e.vy, dmg: 0, age: 0, life: e.l, kind: e.s as MobShot['kind'] });
+      return;
+    }
+    if (e.k === 'burst' && e.el && PARTY_RINGS.includes(e.el)) {
+      // S10: a party boss's ring (a picture: the host or the room settles it; td-party-fx draws it over the rain).
+      this.mobs.bursts.push({ x: e.x, y: e.y, t: e.t, r: e.r, dmg: 0, el: e.el as DeathBurst['el'], tone: 'storm', delay: e.t, pb: true });
       return;
     }
     if (e.k === 'burst') {
