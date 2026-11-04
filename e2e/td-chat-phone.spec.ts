@@ -17,7 +17,8 @@ const SIZES = [
   { name: '360x640', width: 360, height: 640 },
   { name: '844x390', width: 844, height: 390 },
 ];
-const KEEP_CLEAR = ['.touch-move', '.touch-act', '.td-skills', '.td-belt', '.td-dock'];
+// Portrait phones draw the thumb-zone HUD (docs/design/ui-pass-3.md §A.2): its keys, belt slots, bag row and disc too.
+const KEEP_CLEAR = ['.touch-move', '.touch-act', '.td-skills', '.td-belt', '.td-dock', '.th-arc .th-key', '.th-belt .th-slot', '.th-bag', '.th-disc'];
 
 let hearth: Hearth;
 test.beforeAll(async ({}, info) => { hearth = await startHearth(String(info.project.use.baseURL)); });
@@ -30,6 +31,8 @@ for (const size of SIZES) {
     test('input and Send in one row inside the box, reachable, clear of the controls', async ({ page }) => {
       test.setTimeout(90_000);
       await enterAs(page, hearth.port, 'Aster', 'warlock');
+      // Portrait: the chat is a sheet, opened from ☰ More (or the ticker; a tap on Glim's line opens Glim instead).
+      if (await page.locator('[data-th="more"]').count()) { await page.locator('[data-th="more"]').tap(); await page.locator('[data-tile="chat"]').tap(); }
       await page.locator('.td-chat__tabs [role=tab]').nth(1).tap();
       const input = page.locator('.td-chat__say input'), send = page.locator('.td-chat__say button');
       await expect(input).toBeVisible();
@@ -63,7 +66,7 @@ for (const size of SIZES) {
         const meets = ring.l < o.r - .5 && o.l < ring.r - .5 && ring.t < o.b - .5 && o.t < ring.b - .5;
         expect(meets, `the chat meets ${o.sel} (${Math.round(o.l)},${Math.round(o.t)}–${Math.round(o.r)},${Math.round(o.b)})`).toBe(false);
       }
-      expect(m.others.some(o => o.sel === '.td-skills'), 'the spell bar is on screen').toBe(true);
+      expect(m.others.some(o => o.sel === '.td-skills' || o.sel === '.th-arc .th-key'), 'the spell bar is on screen').toBe(true);
       // Typing: the input takes focus and a line goes out from the row.
       await input.tap();
       await expect(input).toBeFocused();
@@ -83,6 +86,9 @@ test.describe('the phone chat lifts over the on-screen keyboard', () => {
   test('--kb-inset follows the visual viewport', async ({ page }) => {
     test.setTimeout(60_000);
     await enterAs(page, hearth.port, 'Aster', 'warlock');
+    // A portrait phone: the chat is a sheet under the top band, opened from the ticker; it shrinks over the keyboard.
+    const sheet = !!(await page.locator('[data-th="more"]').count());
+    if (sheet) { await page.locator('[data-th="more"]').tap(); await page.locator('[data-tile="chat"]').tap(); }
     const before = (await page.locator('.td-chat').boundingBox())!;
     // The keyboard (Android Chrome: the visual viewport shrinks, the layout does not): 300px of it.
     await page.evaluate(() => {
@@ -90,7 +96,8 @@ test.describe('the phone chat lifts over the on-screen keyboard', () => {
       Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 300 });
       vv.dispatchEvent(new Event('resize'));
     });
-    await expect.poll(async () => (await page.locator('.td-chat').boundingBox())!.y).toBeLessThan(before.y - 250);
+    if (!sheet) await expect.poll(async () => (await page.locator('.td-chat').boundingBox())!.y).toBeLessThan(before.y - 250);
+    else await expect.poll(async () => { const b = (await page.locator('.td-chat').boundingBox())!; return b.y + b.height; }).toBeLessThanOrEqual(844 - 300 + 1);
     const after = (await page.locator('.td-chat').boundingBox())!;
     expect(after.y + after.height).toBeLessThanOrEqual(844 - 300 + 1);
   });

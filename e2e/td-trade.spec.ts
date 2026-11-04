@@ -124,7 +124,7 @@ test('two Keepers trade items and Gold atomically, then one drops an item the ot
   // A missed tap earlier can have walked Aster into a task giver's talk: put it away first.
   if (await page.locator('.td-talk').count()) await page.keyboard.press('Escape');
   await calm(page);
-  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
   const charm = page.locator('#satchel-book .pocket[aria-label^="Ember Charm"]');
   await charm.click();
   await page.locator('[data-drop-item]').first().click();

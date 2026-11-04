@@ -108,7 +108,8 @@ test.describe('phone', () => {
   test('tap the meal, tap the satchel belt\'s slot; the HUD\'s slot eats it at a tap', async ({ page }) => {
     test.setTimeout(90000);
     await open(page);
-    await page.locator('.td-dock button').first().tap();
+    // A portrait phone opens the satchel from the thumb HUD's Bag (docs/design/ui-pass-3.md §A.2).
+    await (await page.locator('[data-th="bag"]').count() ? page.locator('[data-th="bag"]') : page.locator('.td-dock button').first()).tap();
     const piece = page.locator(`#satchel-book [data-grid="b"] [data-stack="${MEAL}"]`).first();
     await expect(piece).toBeVisible({ timeout: 10000 });
     await piece.tap();

@@ -223,15 +223,22 @@ test.describe('phones', () => {
     const stash = page.locator('[data-vault-stash]');
     await expect(stash).toBeVisible({ timeout: 20000 });
     const tab = stash.locator('[data-grid="general-1"]'), bag = stash.locator('[data-grid="b"]');
-    // Tap the ring: it lights up; tap a cell of the stash: it moves there.
+    // A portrait phone shows one grid at a time (docs/design/ui-pass-3.md §A.5): the Satchel, then a tap on the Vault chip.
+    const seg = !!(await page.locator('[data-vault-switch]').count());
+    if (seg) await page.locator('[data-seg="satchel"]').tap();
+    // Tap the ring: it lights up; tap a cell of the stash (or the Vault chip): it moves there.
     await bag.locator('[data-ids="d-ring"]').scrollIntoViewIfNeeded();
     await bag.locator('[data-ids="d-ring"]').tap();
     await expect(bag.locator('[data-ids="d-ring"]')).toHaveClass(/is-sel/);
     await shot(page, 'tap-select-390');
-    await tab.scrollIntoViewIfNeeded();
-    const t = (await tab.boundingBox())!;
-    await page.touchscreen.tap(t.x + t.width - 8, t.y + 8);
+    if (seg) await page.locator('[data-seg="vault"]').tap();
+    else {
+      await tab.scrollIntoViewIfNeeded();
+      const t = (await tab.boundingBox())!;
+      await page.touchscreen.tap(t.x + t.width - 8, t.y + 8);
+    }
     await expect.poll(async () => ((await save(page)).records.find((r: { id: string }) => r.id === 'd-ring'))?.location).toEqual({ kind: 'explorer', explorerId: 'vault:general-1' });
+    if (seg) await page.locator('[data-seg="satchel"]').tap();
     // Tapping a piece twice lets it go (nothing moves).
     await bag.locator('[data-ids="d-helm"]').tap();
     await expect(bag.locator('[data-ids="d-helm"]')).toHaveClass(/is-sel/);
@@ -245,7 +252,12 @@ test.describe('phones', () => {
     await expect(tab.locator('[data-stack="cinder-ore"]')).toHaveAttribute('data-qty', '4');
     // Sort the tab: kind, then rarity, then name (the ore, a material, goes last).
     await page.locator('[data-vault-sort]').tap();
-    const order = await tab.locator('.ig-piece').evaluateAll(els => els.map(e => ({ cell: Number(e.getAttribute('data-cell')), stack: e.getAttribute('data-stack') })).sort((a, b) => a.cell - b.cell));
+    // A phone draws the tab as two pages (docs/design/ui-pass-3.md §A.5): read both.
+    const read = () => tab.locator('.ig-piece').evaluateAll(els => els.map(e => ({ cell: Number(e.getAttribute('data-cell')), stack: e.getAttribute('data-stack') })));
+    if (seg) await page.locator('[data-seg="vault"]').tap();
+    let order = await read();
+    if (seg) { await page.locator('[data-vault-pages] .vs-page').nth(1).tap(); order = [...order, ...await read()]; await page.locator('[data-vault-pages] .vs-page').nth(0).tap(); }
+    order.sort((a, b) => a.cell - b.cell);
     expect(order[0].cell).toBe(0);
     expect(order.map(o => o.cell)).toEqual(order.map((_, i) => i));
     expect(order[order.length - 1].stack).toBe('cinder-ore');
@@ -259,7 +271,8 @@ test.describe('phones', () => {
   test('360×640 touch: drop two, tap the pile, Take all; the labels toggle', async ({ browser }) => {
     const { ctx, page } = await touchCtx(browser, 360, 640);
     await enter(page, { 'godforge-inventory': inventory([FIVE[0], FIVE[2], KEEP]) });
-    await page.getByRole('button', { name: /^Satchel/ }).first().tap();
+    // A portrait phone: the thumb HUD's Bag (docs/design/ui-pass-3.md §A.2).
+    await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().tap();
     const book = page.locator('#satchel-book');
     await expect(book.locator('[data-grid="b"]')).toBeVisible();
     for (const id of ['d-helm', 'd-ring']) {
@@ -277,8 +290,9 @@ test.describe('phones', () => {
     await win.locator('[data-pile-all]').tap();
     await expect.poll(() => bagIds(page).then(ids => ids.sort()), { timeout: 8000 }).toHaveLength(3);
     await expect.poll(async () => (await piles(page)).length).toBe(0);
-    // The labels toggle (Alt's place on a phone).
-    const toggle = page.locator('button[data-loot-labels]');
+    // The labels toggle (Alt's place on a phone): a portrait phone keeps it in ☰ More (docs/design/ui-pass-3.md §A.2).
+    if (await page.locator('[data-th="more"]').count()) await page.locator('[data-th="more"]').tap();
+    const toggle = page.locator('button[data-loot-labels], [data-tile="names"]').first();
     await toggle.tap();
     await expect.poll(() => g(page, h => h.labels())).toBe(true);
     await toggle.tap();
