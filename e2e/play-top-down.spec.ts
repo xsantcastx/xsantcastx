@@ -434,6 +434,8 @@ test('the Verdant Wilds: a ship from Pyrehold to Mossharbor, up the Rootglass Bo
   await go(/stairs down/i, /root hall/i);
   await go(/^door/i, /^Rootglass$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-rootglass.jpg', type: 'jpeg', quality: 72 });
+  // Back down to Sunny Pell's pier on the Mossy Shore (Rootglass has no harbour of its own now), and home.
+  await toSection(page, 'verdant-wilds-shore', 79, 70);
   await sail(page, /pyrehold/i, /pyrehold/i);
   expect(errors, errors.join('\n')).toEqual([]);
 });
