@@ -3,6 +3,11 @@
  * falls, or leaves unfound. Lazy: registered by the side-scroller (play chunk), checked by scripts/check-i18n-keys.js.
  */
 export const WORLD_BOSSES_I18N: Readonly<Record<string, { en: string; es: string }>> = {
+  // S10 (monsters-abilities §6.3): the Antlered Storm, the first weather-born world boss, and Glim's call when it rises.
+  'play.worldBoss.antlered-storm.rise': { en: 'Every strike lands on the Storm-Struck Oak in the Greenwood. The Antlered Storm stands up.', es: 'Cada rayo cae sobre el Roble Fulminado del Bosque Verde. La Tormenta Astada se levanta.' },
+  'play.worldBoss.antlered-storm.fall': { en: 'The Antlered Storm is down. Under the Oak the rain is only rain again.', es: 'La Tormenta Astada ha caido. Bajo el Roble la lluvia vuelve a ser solo lluvia.' },
+  'play.worldBoss.antlered-storm.gone': { en: 'The thunder moves off the Greenwood, and the Antlered Storm goes with it.', es: 'El trueno se aleja del Bosque Verde, y la Tormenta Astada se va con el.' },
+  'play.worldBoss.antlered-storm.glim': { en: 'Every strike is landing in the same place. The Greenwood\'s oldest tree. Something is standing up there.', es: 'Cada rayo cae en el mismo sitio. El arbol mas viejo del Bosque Verde. Algo se esta levantando alli.' },
   'play.worldBoss.old-greymaw.rise': { en: 'The Emberwood has gone quiet. The wolves are waiting for someone: Old Greymaw walks.', es: 'El Bosque de Ascuas guarda silencio. Los lobos esperan a alguien: la Vieja Fauces Grises camina.' },
   'play.worldBoss.old-greymaw.fall': { en: 'Old Greymaw is down. The Emberwood breathes again.', es: 'La Vieja Fauces Grises ha caido. El Bosque de Ascuas respira otra vez.' },
   'play.worldBoss.old-greymaw.gone': { en: 'The wolves scatter. Old Greymaw has gone back into the Emberwood.', es: 'Los lobos se dispersan. La Vieja Fauces Grises ha vuelto al Bosque de Ascuas.' },

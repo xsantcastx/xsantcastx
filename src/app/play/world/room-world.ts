@@ -27,7 +27,9 @@ import { CONTINENTS, LEVELS } from '../td/td-levels';
 import { atZoneLevel } from '../td/td-zones';
 import { makePack } from '../td/td-elites';
 import { respawnSecs } from './respawn';
-import { WORLD_BOSS_KEY, fastForward, firstRising, nextRising, worldBossOfKey, worldBossesIn, type WorldBossClock, type WorldBossDef } from './world-bosses';
+import { WORLD_BOSS_KEY, fastForward, firstRising, formedBossDef, nextRising, worldBossOfKey, worldBossesIn, type WorldBossClock, type WorldBossDef } from './world-bosses';
+import { weatherAt } from '../../shared/weather/weather.model';
+import { mechEvent, type PartyMark } from '../td/td-party-boss';
 import { uniqueById } from '../../shared/rpg/unique-items';
 import { TILE } from '../td/td-art';
 import { KIN_DEAD_MS, kinGuard, weighKin, type KinHeld, type KinRefusal, type KinWord } from './room-kin';
@@ -142,6 +144,8 @@ export class RoomWorld implements CoopLink {
   /** The spots each world boss may rise at (tiles), found once from the continent's map. */
   private wbSpots: { c: number; r: number }[] | null = null;
   private bossT = 0;
+  /** S10: the party bosses' marks of the last two seconds (each viewer near is sent each once: td-party-boss). */
+  private marks: (PartyMark & { by: Mob; at: number })[] = [];
   readonly stats = { ticks: 0, kills: 0, claimsIn: 0, claimsRefused: 0, refusedFar: 0, refusedSight: 0, refusedCap: 0, drops: 0, takes: 0, takeRefused: 0, statusIn: 0, statusRefused: 0 };
   /** Protocol 10: the Keepers' life (null: none kept here), the kills since the last flush, when each held one may be held again. */
   private readonly life: (id: string) => KeeperLife | null;
@@ -315,6 +319,8 @@ export class RoomWorld implements CoopLink {
       this.bosses(d);
       this.mobs.update(d);
     });
+    for (const e of this.mobs.flushParty()) this.marks.push({ ...e, at: this.clockMs });
+    if (this.marks.length) this.marks = this.marks.filter(e => this.clockMs - e.at < 2000).slice(-64);
     this.harvest();
     this.expire();
   }
@@ -344,6 +350,7 @@ export class RoomWorld implements CoopLink {
     const now = this.now();
     for (const b of worldBossesIn(this.area)) {
       if (!this.surface) continue;
+      if (b.weather) { this.weatherBoss(b, now); continue; }
       let c = this.wb.get(b.id);
       if (!c) { c = { next: firstRising(b, now, Math.random) }; this.wb.set(b.id, c); this.dirty = true; }
       const m = this.wbUp.get(b.id);
@@ -373,10 +380,51 @@ export class RoomWorld implements CoopLink {
       this.dirty = true;
     }
   }
+  /**
+   * S10: a weather-born world boss (the Antlered Storm): it rises at its landmark while its land's weather holds (and its
+   * cooldown since the last fall is over), leaves with the weather unfelled (no kill, no loot), and once felled stays
+   * down `cooldown` real hours in this world, whoever felled it.
+   */
+  private weatherBoss(b: WorldBossDef, now: number): void {
+    const w = b.weather!, c = this.wb.get(b.id) ?? { next: 0 }, m = this.wbUp.get(b.id);
+    if (!this.wb.has(b.id)) this.wb.set(b.id, c);
+    const sky = weatherAt({ land: w.land, region: w.region, ms: now });
+    const holds = sky.state === w.state;
+    if (m && !this.mobs.mobs.includes(m)) {
+      this.wbUp.delete(b.id);
+      if (m.hp <= 0) { this.omen(b, 'fall', m.x, m.y); this.wb.set(b.id, { next: now + (b.cooldown ?? 2) * 3600000 }); }
+      else this.wb.set(b.id, { next: now });
+      this.dirty = true;
+      return;
+    }
+    if (m && !holds) {
+      for (const o of [...this.mobs.mobs]) if (o === m || o.key.startsWith(`${m.key}~`)) this.mobs.banish(o);
+      this.wbUp.delete(b.id);
+      this.omen(b, 'gone', m.x, m.y);
+      this.wb.set(b.id, { next: now }); this.dirty = true;
+      return;
+    }
+    if (m) { c.up = { until: now + sky.leftMs, x: Math.round(m.x), y: Math.round(m.y) }; return; }
+    if (!holds || now < c.next || !b.at) return;
+    const x = b.at.c * TILE + TILE / 2, y = (b.at.r + 2) * TILE + TILE;
+    this.wb.set(b.id, { next: c.next, up: { until: now + sky.leftMs, x, y } });
+    this.raiseBoss(b, x, y, !c.up);
+    this.dirty = true;
+  }
   /** A world boss rises at (x, y): a named unique leader of its creature, its life and blows its own, its pack beside it. */
   private raiseBoss(b: WorldBossDef, x: number, y: number, announce: boolean): Mob | null {
     const base = MOBS[b.base];
     if (!base) return null;
+    if (b.form) {
+      // S10: a formed party boss — its own creature (formedBossDef), its party form awake from the first blow.
+      const fm = this.mobs.place(WORLD_BOSS_KEY(b.id), formedBossDef(b, atZoneLevel(base, b.level)), x, y);
+      fm.form = b.form;
+      // Its name over its head on every screen (the elite plate; its loot is a boss's, by its def's rank).
+      fm.elite = { rank: 'unique', role: 'leader', affixes: [], name: b.name };
+      this.wbUp.set(b.id, fm);
+      if (announce) this.omen(b, 'rise', x, y);
+      return fm;
+    }
     const def = { ...atZoneLevel(base, b.level), bound: { leash: 18 } };
     const pack = this.mobs.spawnPack(WORLD_BOSS_KEY(b.id), def, x, y, makePack('unique', b.affixes, b.name, b.followers));
     const m = pack[0];
@@ -461,7 +509,7 @@ export class RoomWorld implements CoopLink {
   private scaleBosses(): void {
     const reach = COOP_RANGE_TILES * TILE;
     for (const m of this.mobs.mobs) {
-      if (m.def.rank !== 'boss' && m.def.id !== SEAM_ID) continue;
+      if (m.def.rank !== 'boss' && m.def.id !== SEAM_ID && !m.form) continue;
       let n = 0;
       for (const k of this.keepers.values()) if (Math.hypot(k.x - m.x, k.y - m.y) <= reach) n++;
       n = Math.max(1, Math.min(4, n));
@@ -739,6 +787,8 @@ export class RoomWorld implements CoopLink {
         log.push({ at: now, n: want });
         this.allyStats.healed += n;
         healThreat(this.mobs.mobs, to!.id, from, n);
+        // S10: a party boss learns who mends (its Tether reaches for the healer).
+        this.mobs.partyHeal(from, n);
         if (n > 0) this.tell(to!.id, { k: 'ally', to: to!.id, a: 'heal', by: from, s: c.s, n });
         out.push(n);
       } else if (c.k === 'ward') {
@@ -749,6 +799,8 @@ export class RoomWorld implements CoopLink {
         this.tell(to!.id, { k: 'ally', to: to!.id, a: 'ward', by: from, s: c.s, n: c.n, t: c.t ?? 120, ...(c.f ? { f: c.f } : {}) });
         out.push(c.n);
       } else if (c.k === 'cleanse') {
+        // S10: a party boss's Brand on the cleansed is lifted (td-party-boss partyCleanse).
+        this.mobs.partyCleansed(to!.id);
         this.tell(to!.id, { k: 'ally', to: to!.id, a: 'cleanse', by: from, s: c.s, n: c.n, ...(c.f ? { f: c.f } : {}), ...(c.t ? { t: c.t } : {}) });
         out.push(1);
       } else if (c.k === 'bond') {
@@ -775,7 +827,7 @@ export class RoomWorld implements CoopLink {
 
   // ── Snapshots ──
   /** What one Keeper is sent now: the creatures near it (nearest first), as a delta on what it was last sent. */
-  snapFor(id: string): CoopSnapBody | null {
+  snapFor(id: string, mech = false): CoopSnapBody | null {
     const v = this.viewers.get(id), k = this.keepers.get(id);
     if (!v || !k) return null;
     const reach = COOP_RANGE_TILES * TILE;
@@ -796,6 +848,12 @@ export class RoomWorld implements CoopLink {
       if (v.fx.has(b)) continue;
       v.fx.add(b);
       if (Math.hypot(b.x - k.x, b.y - k.y) <= reach) v.ev.push({ k: 'burst', x: Math.round(b.x), y: Math.round(b.y), r: Math.max(1, Math.min(400, Math.round(b.r))), t: Math.max(0, Math.min(10, b.t)), ...(b.el ? { el: b.el } : {}) });
+    }
+    // S10: a party boss's marks (a tether, a brand, the fixate pip, a cast's bar) to the Keepers in its reach.
+    for (const e of mech ? this.marks : []) {
+      if (v.fx.has(e)) continue;
+      v.fx.add(e);
+      if (Math.hypot(e.by.x - k.x, e.by.y - k.y) <= reach) v.ev.push(mechEvent(e, this.nid(e.by)));
     }
     // S6: hostile ground (pictures and statuses; the room decides damage).
     for (const h of this.mobs.hazards) {
@@ -955,7 +1013,7 @@ export class RoomWorld implements CoopLink {
       const b = worldBossesIn(this.area).find(x => x.id === id);
       if (!b || !c || !(Number(c.next) > 0 || c.up)) continue;
       const clock: WorldBossClock = { next: Number(c.next) || now, ...(c.up && Number(c.up.until) > 0 ? { up: { until: Number(c.up.until), x: Number(c.up.x) || 0, y: Number(c.up.y) || 0 } } : {}) };
-      this.wb.set(id, this.seeded(() => fastForward(b, clock, now, Math.random)));
+      this.wb.set(id, b.weather ? { next: clock.next } : this.seeded(() => fastForward(b, clock, now, Math.random)));
     }
   }
 
@@ -993,4 +1051,5 @@ export const WORLD_AREAS_ALL: readonly string[] = [...Object.keys(CONTINENTS), .
 export { MOBS } from '../td/td-mobs';
 export { uniqueById } from '../../shared/rpg/unique-items';
 /** Weather v1 (shared/weather): the room owns the sky's roll, every land's for a window, from its own clock. */
-export { weatherRolls, weatherWindow, WEATHER_WINDOW_MS } from '../../shared/weather/weather.model';
+export { weatherAt, weatherRolls, weatherWindow, WEATHER_WINDOW_MS } from '../../shared/weather/weather.model';
+

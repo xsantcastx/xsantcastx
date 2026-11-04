@@ -671,7 +671,7 @@ function partyRun(seed, { healer = true, tank = true, tier = PARTY_TIER, level =
   const mate = (id, k) => ({ id, k, hp: k.fight.maxHp, max: k.fight.maxHp, x: 0, y: 0, down: false });
   if (healer) mates.heal = mate('heal', kHeal);
   if (tank) mates.dps = mate('dps', kDps);
-  let hsys = null, hostH = null, dpsT = 0, fell = false, othersStruck = 0;
+  let hsys = null, hostH = null, dpsT = 0, fell = false, othersStruck = 0, cleanseT = 0;
   const party = {
     get fell() { return fell; },
     setup(A) {
@@ -711,6 +711,11 @@ function partyRun(seed, { healer = true, tank = true, tier = PARTY_TIER, level =
       const ax = boss ? keeper.x - boss.x : -1, ay = boss ? keeper.y - boss.y : 0, d = Math.hypot(ax, ay) || 1;
       for (const m of Object.values(mates)) { const b = PARTY_BEHIND[m.id]; m.x = keeper.x + ax / d * b; m.y = keeper.y + ay / d * b + (m.id === 'heal' ? 8 : -8); }
       sys.others = Object.values(mates).filter(m => !m.down).map(m => ({ id: m.id, x: m.x, y: m.y }));
+      // S10: a party form's channel is stunned by the tank (Shield Bash's Concussion), its Brand cleansed by the healer.
+      const pb = boss?.pb;
+      if (pb?.cast && !pb.cast.tried) { pb.cast.seen ??= 0; pb.cast.seen += dt; if (pb.cast.seen >= INTERRUPT.react) { pb.cast.tried = true; if (tank && Math.random() < INTERRUPT.p) sys.roomStatus(boss, 'stun', 1, { by: '', at: keeper }); } }
+      const branded = pb?.dots.find(x => x.brand);
+      if (branded && hsys && !mates.heal.down && (cleanseT -= dt) <= 0 && hsys.mana >= 14) { sys.partyCleansed(branded.id); hsys.mana -= 14; cleanseT = 8; }
       // The damage: its sustained dps, claimed twice a second (threat ×1 on the boss's ledger).
       if (mates.dps && !mates.dps.down && boss && boss.hp > 0) {
         dpsT += dt;
@@ -750,6 +755,184 @@ function partyCell(runs, level = PARTY_LEVEL) {
   const one = o => { const out = []; for (let i = 0; i < runs; i++) out.push(partyRun(i, { ...o, level })); return { fell: out.filter(r => r.fell).length / out.length, ttk: iqm(out.filter(r => r.cleared).map(r => r.secs)), cleared: out.filter(r => r.cleared).length / out.length, held: mean(out.map(r => r.held)) }; };
   return { at: level, boss: PARTY_BOSS(level).id, level: PARTY_BOSS(level).level, full: one({}), noHealer: one({ healer: false }), noTank: one({ tank: false }) };
 }
+
+// ── S10: the Antlered Storm, the first world boss (monsters-abilities.md §5, §6.3; campaign.md S10) ─────────────
+// The room's own setup: a MobSystem with no Keeper of its own (selfAway), every Keeper one of its `others`, the boss's
+// bites landing through each one's defenses, its party form (td-party-boss.ts) run by the real MobSystem. The four
+// stand round it as a party does (the tank at its face, the healer behind, the damage at its flanks), step out of a
+// ring they see (STORM_DODGE), and answer the mechanics their calling answers: the Lanternwright's heals as ally
+// claims from a real healer's MobSystem (S5), and her Cleanse on a Brand; the Ashguard's book makes threat ×2, he
+// taunts with Brand Throw and drops Sunder with the Shield Oath at four stacks; whoever can stun lands it on a channel
+// (Shield Bash's Concussion, Pinning Shot); the Warlock's fire falls on the whole Add wave, the others strike one at a
+// time. Each deals its calling's sustained damage a second (the `dps` cell) as claims.
+const WB = load('src/app/play/world/world-bosses.ts');
+const COOP = load('src/app/play/social/coop-rules.ts');
+const STORM = WB.WORLD_BOSSES.find(b => b.id === 'antlered-storm');
+const stormDef = () => WB.formedBossDef(STORM, atZone(STORM.base, STORM.level));
+/** A party sees a ring for its whole tell: it steps out of most (a solo Keeper too). */
+const STORM_DODGE = .8;
+/** The Ashguard's guard in a party fight (the Shield Oath, the Banner, his block) on top of his Defense. */
+const TANK_GUARD = .55;
+/** The Warlock's fire on an Add wave: this share of his damage on each creature in it. The others: one at a time. */
+const AOE_EACH = .6;
+/** A stun on a channel: who can (the Ashguard's Shield Bash, the Thornstrider's Pinning Shot), how often in time. */
+const INTERRUPT = { p: .85, react: .9 };
+const STORM_MAX = 480;
+/** A Keeper the boss is fixed on who is not its tank backs away as it swings: this share of his damage lands. */
+const FIXED_KITE = .6;
+const STORM_PARTY = [['tank', 'ashguard'], ['healer', 'lanternwright'], ['aoe', 'warlock'], ['dps', 'thornstrider']];
+const STORM_DPS = {};
+/** Where each stands round the boss (tiles, from its face toward the party). */
+const STORM_AT = { tank: [-.9, 0], healer: [-5, .5], aoe: [-4, 3.6], dps: [-4, -3.6], solo: [-.9, 0] };
+function stormRun(seed, { without = null, solo = null } = {}) {
+  return seeded(`storm|${seed}|${without}|${solo}`, rand => {
+    const L = STORM.level;
+    const roles = solo ? [{ role: 'solo', voc: solo }] : STORM_PARTY.filter(([r]) => r !== without).map(([role, voc]) => ({ role, voc }));
+    const mates = roles.map((r, i) => {
+      const k = keeper(r.voc, L, 'normal', seed * 7 + i, null, r.role === 'tank' ? 'tank' : r.role === 'healer' ? 'healer' : null);
+      const rate = STORM_DPS[r.voc] ??= mean([0, 1].map(s => dps(r.voc, L, s)));
+      return { id: r.role, role: r.role, voc: r.voc, k, hp: k.fight.maxHp, max: k.fight.maxHp, down: false, x: 0, y: 0, belt: BELT, potCd: 0, ward: 0, dps: rate, dodge: null, soak: null };
+    });
+    const by = id => mates.find(m => m.id === id);
+    const host = {
+      options: { onKill: () => undefined, rollLoot: () => [], onLoot: () => true }, walkable: () => true, levelId: () => 'sim',
+      player: () => ({ x: 1e7, y: 1e7, face: 1 }), hurtPlayer: () => undefined, healPlayer: () => undefined, swung: () => undefined,
+      playerHp: () => 1, dash: () => undefined, seek: () => false, say: () => undefined,
+    };
+    const sys = new MobSystem(host);
+    sys.selfAway = true; sys.elites = false; sys.levelGap = true;
+    sys.setTier(DIFF.DIFFICULTIES.normal);
+    sys.coop = {
+      bite: (to, from, dmg, type) => {
+        const m = by(to);
+        if (!m || m.down) return;
+        const atk = from?.def.level ?? L;
+        let n = SK.incomingDamage(dmg * ZONE.gapHurt(ZONE.levelGap(m.k.level, atk)), type, m.k.fight.defense, atk, m.k.fight.resists);
+        if (m.role === 'tank') n *= TANK_GUARD;
+        if (m.ward > 0) { const w = Math.min(m.ward, n); m.ward -= w; n -= w; }
+        m.hp -= n;
+        if (m.hp <= 0) { m.down = true; for (const x of sys.mobs) THREAT.forgetThreat(x, m.id); }
+      },
+      killed: () => undefined, claim: () => undefined,
+    };
+    const def = stormDef();
+    const boss = sys.place(`wb:${STORM.id}`, def, 0, 0);
+    boss.form = STORM.form;
+    sys.scaleBoss(boss, COOP.coopBossLife(def.hp, mates.length), mates.length);
+    // The healer: a real Lanternwright's MobSystem, her party the others (S5's).
+    const healer = mates.find(m => m.role === 'healer' || (m.role === 'solo' && m.voc === 'lanternwright'));
+    let hsys = null;
+    if (healer) {
+      const kH = healer.k;
+      hsys = new MobSystem({
+        options: { onKill: () => undefined }, walkable: () => true, levelId: () => 'sim', player: () => healer,
+        hurtPlayer: n => { healer.hp -= n; }, healPlayer: n => { const g = Math.min(n, healer.max - healer.hp); healer.hp += g; sys.partyHeal(healer.id, g); }, swung: () => undefined,
+        playerHp: () => healer.hp, dash: () => undefined, seek: () => false, say: () => undefined,
+      });
+      hsys.vocation = 'lanternwright';
+      hsys.setRanks(kH.tree.ranks, kH.tree.bought, kH.tree.marks);
+      hsys.aura = kH.tree.aura;
+      const f = kH.fight;
+      hsys.keeperMaxHp = f.maxHp; hsys.maxMana = f.maxMana; hsys.mana = f.maxMana; hsys.power = f.power; hsys.regen = f.regen; hsys.castSpeed = f.castSpeed;
+      hsys.keeperLevel = L; hsys.defense = f.defense; hsys.resists = f.resists;
+    }
+    const hpPot = POTION('health')(POT.dropTier(L));
+    const decided = new WeakSet();
+    let t = 0, cleanseCd = 0, tauntCd = 0, oathCd = 0, castSeen = null, castAt = 0;
+    const dt = .05;
+    for (; t < STORM_MAX; t += dt) {
+      if (boss.hp <= 0 || !sys.mobs.includes(boss)) break;
+      const live = mates.filter(m => !m.down);
+      if (!live.length) break;
+      // Feet: round the boss, facing the party (+x is the boss's back).
+      for (const m of live) {
+        const [ax, ay] = STORM_AT[m.role];
+        let x = ax * TILE, y = ay * TILE;
+        if (m.soak) { x = m.soak.x; y = m.soak.y; if ((m.soak.t -= dt) <= 0) m.soak = null; }
+        else if (m.dodge) { x += m.dodge.dx; y += m.dodge.dy; if ((m.dodge.t -= dt) <= 0) m.dodge = null; }
+        m.x = x; m.y = y;
+      }
+      sys.others = live.map(m => ({ id: m.id, x: m.x, y: m.y }));
+      // The rings they see: out of a strike or a charge's end; two step into a soak (the tank, and the healthiest other).
+      const pb = boss.pb;
+      if (pb) for (const r of pb.rings) {
+        if (decided.has(r)) continue;
+        decided.add(r);
+        if (r.m === 'strike' || r.m === 'charge') {
+          for (const m of live) if (Math.hypot(m.x - r.x, m.y - r.y) <= r.r && rand() < STORM_DODGE) { const a = rand() * Math.PI * 2; m.dodge = { dx: Math.cos(a) * (r.r + 10), dy: Math.sin(a) * (r.r + 10), t: r.t + .2 }; }
+        } else if (r.m === 'soak') {
+          const helper = live.filter(m => m.role !== 'tank' && Math.hypot(m.x - r.x, m.y - r.y) > r.r).sort((a, b) => b.hp / b.max - a.hp / a.max)[0];
+          if (helper && rand() < STORM_DODGE) helper.soak = { x: r.x + 6, y: r.y, t: r.t + .1 };
+        }
+      }
+      // A channel: whoever can stun lands it (a moment to react).
+      if (pb?.cast && castSeen !== pb.cast) { castSeen = pb.cast; castAt = t; castSeen.tried = false; }
+      if (pb?.cast && !pb.cast.tried && t - castAt >= INTERRUPT.react) {
+        pb.cast.tried = true;
+        const stunner = live.find(m => m.role === 'tank' || m.role === 'dps' || (m.role === 'solo' && (m.voc === 'ashguard' || m.voc === 'thornstrider')));
+        if (stunner && rand() < INTERRUPT.p) sys.roomStatus(boss, 'stun', 1, { by: stunner.id, at: { x: stunner.x, y: stunner.y } });
+      }
+      // The tank's hands: Brand Throw to hold it, the Oath at four Sunder stacks.
+      const tank = live.find(m => m.role === 'tank');
+      tauntCd -= dt; oathCd -= dt;
+      if (tank && tauntCd <= 0 && boss.threatOn && boss.threatOn !== tank.id) { sys.roomStatus(boss, 'taunt', 3, { by: tank.id, at: { x: tank.x, y: tank.y } }); tauntCd = 6; }
+      if (tank && oathCd <= 0 && (pb?.sunder.get(tank.id)?.[0] ?? 0) >= 4) { sys.partyGuarded(tank.id); oathCd = 12; }
+      // The damage, twice a second: the boss, or the Add wave (the Warlock's fire on all of it).
+      const adds = sys.mobs.filter(m => m !== boss && m.hp > 0);
+      for (const m of live) {
+        if (m.role === 'healer') continue;
+        m.acc = (m.acc ?? 0) + dt;
+        if (m.acc < .5) continue;
+        const n = m.dps * m.acc * (boss.threatOn === m.id && m.role !== 'tank' && m.role !== 'solo' ? FIXED_KITE : 1); m.acc = 0;
+        const aoe = m.role === 'aoe' || (m.role === 'solo' && m.voc === 'warlock');
+        if (adds.length && aoe) for (const a of adds) sys.applyClaim(a, n * AOE_EACH, m.id, false, 'fire');
+        else if (adds.length && m.role !== 'tank') sys.applyClaim(adds.reduce((x, y) => (y.hp < x.hp ? y : x)), n, m.id, false, 'physical');
+        else sys.applyClaim(boss, n, m.id, false, 'physical', m.role === 'tank' ? 'watch-blade' : '');
+      }
+      // The healer's hands (S5's): the Ward on the one held, the Hearth when two are hurt, Hearthlight on the lowest; Cleanse on a Brand.
+      if (hsys && !healer.down) {
+        const others = live.filter(m => m !== healer);
+        hsys.allies = others.map(m => ({ id: m.id, x: m.x, y: m.y, h: Math.max(0, m.hp), m: m.max }));
+        const share = a => a.h / a.m, me = healer.hp / healer.max;
+        const front = hsys.allies.find(a => a.id === (boss.threatOn ?? 'tank')) ?? hsys.allies[0];
+        const low = Math.min(me, ...hsys.allies.map(share)), hurt = hsys.allies.filter(a => share(a) < .9).length + (me < .9 ? 1 : 0);
+        hsys.gcd = (hsys.gcd ?? 0) - dt; cleanseCd -= dt;
+        const branded = pb?.dots.find(d => d.brand);
+        if (branded && cleanseCd <= 0 && hsys.mana >= 14) { sys.partyCleansed(branded.id); hsys.mana -= 14; cleanseCd = 8; hsys.gcd = .4; }
+        if (hsys.gcd <= 0) {
+          const tryCast = id => (hsys.rank(id) > 0 && (hsys.cooldowns[id] ?? 0) <= 0 && hsys.mana >= hsys.manaOf(id) && hsys.useAbility(id) === null);
+          if ((front && share(front) < .6 && tryCast('lantern-ward')) || ((hurt >= 2 || (front && share(front) < .7)) && tryCast('hearth-circle')) || (low < .85 && tryCast('hearthlight'))) hsys.gcd = .4;
+        }
+        hsys.update(dt);
+        for (const c of hsys.allyOut.splice(0)) {
+          const m = by(c.to);
+          if (!m || m.down) continue;
+          if (c.k === 'heal') { const n = Math.min(c.n, m.max - m.hp); m.hp += n; THREAT.healThreat(sys.mobs, m.id, healer.id, n); sys.partyHeal(healer.id, n); }
+          else if (c.k === 'ward') m.ward = Math.max(m.ward, c.n);
+        }
+      }
+      // The belt.
+      for (const m of live) { m.potCd -= dt; if (m.hp < m.max * .4 && m.belt > 0 && m.potCd <= 0 && hpPot) { m.belt--; m.potCd = POT.POTION_COOLDOWN; m.hp = Math.min(m.max, m.hp + hpPot.amount); } }
+      sys.update(dt);
+    }
+    const won = boss.hp <= 0 || !sys.mobs.includes(boss);
+    return { won, secs: t, fell: mates.filter(m => m.down).length, st: boss.pb?.stats ?? null };
+  });
+}
+/** The S10 cells: the four (one per calling), each of tank, healer and AoE removed, and each calling alone. */
+export function stormCell(runs) {
+  const one = o => {
+    const out = [];
+    for (let i = 0; i < runs; i++) out.push(stormRun(i, o));
+    const won = out.filter(r => r.won);
+    return { won: won.length / out.length, ttk: iqm(won.map(r => r.secs)), fell: mean(out.map(r => r.fell)) };
+  };
+  return { boss: STORM.id, level: STORM.level, full: one({}), noTank: one({ without: 'tank' }), noHealer: one({ without: 'healer' }), noAoe: one({ without: 'aoe' }), solo: Object.fromEntries(VOCATIONS.map(v => [v, one({ solo: v })])) };
+}
+const stormSay = (c, log) => {
+  log(`\nS10: the ${c.boss} (L${c.level}), a world boss: wins · time to kill (s, interquartile mean) · Keepers fallen`);
+  for (const [k, x] of [['party of four', c.full], ['no tank', c.noTank], ['no healer', c.noHealer], ['no AoE', c.noAoe], ...Object.entries(c.solo).map(([v, x]) => [`solo ${v}`, x])]) log(`  ${k.padEnd(20)} ${Math.round(x.won * 100)}% · ${Number.isFinite(x.ttk) ? x.ttk.toFixed(0) : '—'} s · ${x.fell.toFixed(1)}`);
+};
 
 const GAP_SECS = 60;
 function gapCell(voc, level, gap, count, runs) {
@@ -791,6 +974,8 @@ export const BANDS = {
   normalDeath: .02, packDeath: .1, bossDeath: .3, seamDeath: .3,
   /** S5: without its healer, the party falls to the floor boss at least this often (skills-100.md §7). */
   partyNoHealer: .7,
+  /** S10: a world boss — the four win at least this often, in this many seconds; without a role at most this; alone at most this. */
+  stormParty: .7, stormTtk: [180, 360], stormRoleless: .3, stormSolo: .15,
   /** A kiting ranged Keeper is struck at least this many times a boss fight (no boss can be walked away from). */
   kitedStruck: 4,
   /** The Seam Eater on Nightmare (a Keeper 5 levels above it) and Hell (15 above), both in resist gear. */
@@ -848,6 +1033,11 @@ if (argv.party) {
   }
   process.exit(0);
 }
+if (argv.storm) {
+  // --storm: the S10 cells alone (the Antlered Storm: the four, each role removed, each calling alone).
+  stormSay(stormCell(RUNS), console.log);
+  process.exit(0);
+}
 if (argv.trace) {
   // --trace=<vocation>,<level>,<creature id>[,<tier>]: one fight, its Keeper and its outcome.
   const [voc, L, id, tier = 'normal'] = String(argv.trace).split(',');
@@ -876,6 +1066,8 @@ for (const voc of VOCATIONS) {
 const party = partyCell(QUICK ? 6 : 12);
 // S9: and again at level 50, against the Ink Abbess.
 const partyLate = partyCell(QUICK ? 6 : 12, PARTY_LEVEL_LATE);
+// S10: the Antlered Storm (the four; each of tank, healer and AoE removed; each calling alone).
+const storm = stormCell(QUICK ? 6 : 12);
 const secs = (Date.now() - t0) / 1000;
 
 const fmt = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) : '—';
@@ -919,6 +1111,8 @@ for (const pc of [party, partyLate]) {
   for (const [k, x] of Object.entries({ full: pc.full, 'no healer': pc.noHealer, 'no tank': pc.noTank })) say(`  ${k.padEnd(10)} ${pct(x.fell)} · ${pct(x.cleared)} · ${fmt(x.ttk, 0)} s`);
 }
 
+stormSay(storm, say);
+
 // ── The check ──
 // S5 (campaign.md): a level-30 Lanternwright keeps a level-30 Ashguard alive against the floor boss; without her the
 // party falls in at least 70% of the runs (the boss needs a healer).
@@ -927,6 +1121,12 @@ for (const pc of [party, partyLate]) {
   if (pc.full.fell > BANDS.bossDeath) fails.push(`the L${pc.at} party (tank, healer, damage) falls to ${pc.boss} ${pct(pc.full.fell)} of the time (≤ ${pct(BANDS.bossDeath)})`);
   if (pc.noHealer.fell < BANDS.partyNoHealer) fails.push(`the L${pc.at} party without its healer falls to ${pc.boss} only ${pct(pc.noHealer.fell)} of the time (≥ ${pct(BANDS.partyNoHealer)})`);
 }
+// S10 (campaign.md): a party of four, one per calling, wins ≥ 70% in 3–6 min; removing the healer, the tank or the AoE
+// each fails it; a solo Keeper wins ≤ 15%.
+if (!(storm.full.won >= BANDS.stormParty)) fails.push(`the party of four wins against the ${storm.boss} only ${pct(storm.full.won)} of the time (≥ ${pct(BANDS.stormParty)})`);
+if (!(storm.full.ttk >= BANDS.stormTtk[0] && storm.full.ttk <= BANDS.stormTtk[1])) fails.push(`the party of four fells the ${storm.boss} in ${fmt(storm.full.ttk, 0)} s (${BANDS.stormTtk.join('–')} s)`);
+for (const [k, x] of [['tank', storm.noTank], ['healer', storm.noHealer], ['AoE', storm.noAoe]]) if (x.won > BANDS.stormRoleless) fails.push(`without its ${k} the party still wins against the ${storm.boss} ${pct(x.won)} of the time (≤ ${pct(BANDS.stormRoleless)})`);
+for (const [v, x] of Object.entries(storm.solo)) if (x.won > BANDS.stormSolo) fails.push(`a solo ${v} wins against the ${storm.boss} ${pct(x.won)} of the time (≤ ${pct(BANDS.stormSolo)})`);
 for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);

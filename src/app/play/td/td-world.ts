@@ -8,6 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
+import { splitStump, stormOak } from './td-art';
 import { altar, brazier, brokenStatue, cage, chest, signpost, beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, ContinentHotspot, Region, SectionCamp, SectionMark } from './continent';
@@ -19,6 +20,8 @@ import { graveyardZone, regionZone, zoneLevel, zoneOf } from './td-zones';
 import { onNightroad, onNook } from './td-dark';
 import { PIERS } from './td-harbour';
 import type { SpotWater } from '../../shared/gathering/gathering.model';
+/** S10: the Storm-Struck Oak's arena radius (tiles): its ring of split stumps. */
+export const STORM_OAK_R = 10;
 
 export const WORLD_CHUNK = 16;
 /** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
@@ -332,6 +335,8 @@ export class TdWorld implements TdLevel {
   private inClearing(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge' || p.kind === 'temple') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
     for (const p of this.def.places) if (p.kind === 'cave' && Math.abs(c - p.c) <= 3 && Math.abs(r - p.r) <= 3) return true;
+    // The Storm-Struck Oak's arena (S10): the ring of stumps and everything inside it stand in the open.
+    for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) <= STORM_OAK_R + 1) return true;
     // A hot spot's ring (world-acts.md §2), a seam's gate and a mark stand in the open.
     for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) <= CAMP_CLEAR) return true;
     for (const sm of this.def.seams ?? []) if (Math.abs(c - sm.c) <= 5 && Math.abs(r - sm.r) <= 5) return true;
@@ -341,6 +346,8 @@ export class TdWorld implements TdLevel {
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
   private nearWayIn(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave') && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    // The Oak's arena: only its storm stands there.
+    for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) < STORM_OAK_R + 3) return true;
     // The arrival rule (world-acts.md §0): nothing within SEAM_CLEAR tiles of where a seam sets the Keeper down.
     for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 1 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
     // A named hot spot keeps its own pack and no other (its ring stays readable: world-acts.md §2).
@@ -457,6 +464,12 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'standing-stones') { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; stamp(Math.round(Math.cos(a) * 4), Math.round(Math.sin(a) * 3), () => standingStone(i)); } }
       else if (p.kind === 'shrine') { stamp(0, 0, beaconPillar); stamp(-2, 1, () => flowerbed(2, 3), false); stamp(2, 1, () => flowerbed(2, 5), false); }
       else if (p.kind === 'cave') { stamp(0, 0, caveMouth); }
+      else if (p.kind === 'storm-oak') {
+        // The split glassy giant (three tiles wide, its roots its walls) and the ring of split stumps round its arena.
+        stamp(0, 0, stormOak);
+        for (const dc of [-1, 1]) { const c = p.c + dc; if (c >= x0 && c < x0 + WORLD_CHUNK && p.r >= y0 && p.r < y0 + WORLD_CHUNK) blocked.add(this.key(c, p.r)); }
+        for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; stamp(Math.round(Math.cos(a) * STORM_OAK_R), Math.round(Math.sin(a) * STORM_OAK_R * .8), () => splitStump(i), false); }
+      }
       else if (p.kind === 'caldera') { stamp(-3, 0, () => standingStone(2)); stamp(3, 0, () => standingStone(0)); }
       else if (p.kind === 'harbour') { stamp(3, PIER - 2, ship, false); stamp(-2, 1, () => standingStone(1)); }
       else if (p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple') {

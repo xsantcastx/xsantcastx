@@ -56,6 +56,10 @@ export interface RelicSig {
   manaKill?: number;
   /** % likelier that a loot roll landing on a rung with named uniques is one of them (drop-tables UNIQUE_SHARE). */
   named?: number;
+  /** S10 (the Crown of the Antlered Storm): % more lightning damage (Lightning Call, Chain of Lamps). */
+  lightning?: number;
+  /** S10: in rain or a thunderstorm the Keeper's lightning chains to this many more foes, and Wet cannot freeze him. */
+  storm?: number;
 }
 
 /** A boss unique: a UniqueItem with the boss it drops from, its chance (1 in `oneIn`), where it is and its signature. */
@@ -169,10 +173,11 @@ export interface RelicTotals {
   breath: number; fire: number; singe: { dps: number; secs: number } | null; regen: number; stillRegen: number;
   spears: number; spearRange: number; ink: { pct: number; secs: number } | null; mf: number; umbra: number;
   xp: number; gold: number; thorns: number; echo: readonly { every: number; pct: number }[]; mercy: number; manaKill: number; named: number;
+  lightning: number; storm: number;
 }
 export const NO_RELICS: RelicTotals = Object.freeze({
   light: 0, ranks: {}, cdCut: {}, construct: 0, raisedMax: 0, breath: 0, fire: 0, singe: null, regen: 0, stillRegen: 1,
-  spears: 0, spearRange: 0, ink: null, mf: 0, umbra: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0,
+  spears: 0, spearRange: 0, ink: null, mf: 0, umbra: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0, lightning: 0, storm: 0,
 }) as RelicTotals;
 
 export function relicTotals(ids: readonly string[], extra?: (id: string) => RelicSig | undefined): RelicTotals {
@@ -205,6 +210,8 @@ export function relicTotals(ids: readonly string[], extra?: (id: string) => Reli
     if (s.mercy) out.mercy = out.mercy > 0 ? Math.min(out.mercy, s.mercy) : s.mercy;
     out.manaKill += s.manaKill ?? 0;
     out.named += s.named ?? 0;
+    out.lightning += s.lightning ?? 0;
+    out.storm += s.storm ?? 0;
   }
   return out;
 }

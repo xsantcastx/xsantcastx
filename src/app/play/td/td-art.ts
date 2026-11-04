@@ -1122,6 +1122,48 @@ export function giantTree(seed = 0): Sprite {
 }
 
 /**
+ * S10: the Storm-Struck Oak (monsters-abilities §6.3) — the Greenwood's oldest giant, split down the middle by the first
+ * thunderstorm after the Lock. The lightning stayed: the split is glassy rootglass, a white spark runs along it, and
+ * the crown is half bare. Three tiles wide; its roots are its walls.
+ */
+export function stormOak(): Sprite {
+  return cached('storm-oak', () => {
+    const W = 96, H = 112, trunk = cv(W, H), c = trunk.getContext('2d')!;
+    buttressTrunk(c, 48, 36, H, 24, 14);
+    // The split: a jagged glassy seam from the crown to the roots, white at its heart.
+    let x = 47;
+    for (let y = 36; y < H - 10; y += 4) { x += ((y / 4) % 3) - 1; rect(c, x - 2, y, 5, 4, PAL.rootglass[2]); rect(c, x - 1, y, 3, 4, PAL.rootglass[1]); rect(c, x, y + 1, 1, 2, PAL.rootglass[0]); }
+    // Scorch round the split, a few glass shards in the roots.
+    for (let y = 44; y < H - 14; y += 9) { rect(c, 38, y, 3, 3, '#1c120c'); rect(c, 55, y + 4, 3, 3, '#1c120c'); }
+    for (const [sx, sy] of [[24, H - 6], [70, H - 5], [34, H - 3], [62, H - 2]] as const) { rect(c, sx, sy - 4, 2, 4, PAL.rootglass[1]); rect(c, sx, sy - 4, 1, 1, PAL.rootglass[0]); }
+    const crown = cv(W, 70), k = crown.getContext('2d')!;
+    // Half the crown: the struck side is bare boughs.
+    for (const [bx, by, r] of [[30, 40, 24], [16, 30, 14], [36, 18, 14], [52, 22, 10]] as const) leafBlob(k, bx, by, r, PAL.jungle, 47);
+    for (const [x0, y0, x1, y1] of [[60, 50, 82, 18], [66, 40, 90, 34], [62, 30, 74, 6]] as const) {
+      const n = 10;
+      for (let i = 0; i <= n; i++) rect(k, Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 3, 3, PAL.bark[2]);
+    }
+    for (let i = 0; i < 6; i++) rect(k, 58 + Math.floor(hash(i, 4, 17) * 30), 10 + Math.floor(hash(i, 4, 18) * 40), 2, 2, PAL.rootglass[0]);
+    return {
+      img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 },
+      lights: [{ x: 0, y: -60, r: 18 }, { x: 0, y: -24, r: 12 }], shadow: { img: shadowSprite(84, 24), x: -38, y: -14 },
+    };
+  });
+}
+/** A split stump of the Oak's ring: struck and glassy at the break (three shapes). */
+export function splitStump(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`split-stump-${v}`, () => {
+    const W = 16, H = 14 + v * 2, img = cv(W, H), c = img.getContext('2d')!;
+    rect(c, 3, 4, 10, H - 4, PAL.trunk[0]); rect(c, 3, 4, 2, H - 4, PAL.trunk[2]);
+    // The break: a jagged top, rootglass in the split.
+    rect(c, 3, 2, 4, 3, PAL.trunk[0]); rect(c, 9, 0, 4, 5, PAL.trunk[0]); rect(c, 7, 2, 2, H - 6, PAL.rootglass[2]); rect(c, 7, 3, 1, 3, PAL.rootglass[1]);
+    rect(c, 1, H - 2, 4, 2, PAL.trunk[2]); rect(c, 11, H - 2, 4, 2, PAL.trunk[2]);
+    return { img: outline(img), ax: 8, ay: H };
+  });
+}
+
+/**
  * The Rootglass Bole, Rootglass's heart: a giant tree the town is built round, a door between its roots, lit windows
  * up its trunk where the floors go up into the canopy (maps/rootglass-bole.ts), a crown that roofs the whole plaza.
  */
