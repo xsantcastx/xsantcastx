@@ -12,14 +12,54 @@
  *  - **sunder**: one pip a stack beside the stacked Keeper.
  */
 import { MECH, type PartyMark } from './td-party-boss';
+import type { DeathBurst } from './td-mobs';
 import { groundRing, linePixels } from './td-fx';
 
 type Ctx = CanvasRenderingContext2D;
 type At = (id: string) => { x: number; y: number } | null;
 const T = 16;
 const RED = { core: '#ffe0d8', body: '#ff5a4a', edge: '#7a1a14' };
+const RED_HIT = { core: '#ffd0a0', body: '#ff4a1a', edge: '#c02a10' };
 const EMBER = { core: '#fff2a8', body: '#ffb347', edge: '#e2552a' };
-const STORM = { core: '#ffffff', body: '#cfe8ff', edge: '#5f86d8' };
+const STORM = { core: '#ffffff', body: '#8fd0ff', edge: '#3a6ad0' };
+const GOLD = { core: '#fff6c8', body: '#ffd25a', edge: '#b0812a' };
+/** The dark 2-px outline every party ring and line wears (it reads on rain, moss and water alike). */
+const DARK = '#140c1c';
+/** How high over a Keeper's feet the pips over his head sit (world px; the chibi figure's top). */
+export const PARTY_HEAD = 46;
+
+/**
+ * A party boss's ring (td-party-boss PartyRingKind, the burst's `el`): `pbhit` a blow to step out of — saturated red
+ * over orange, a 25% fill growing from the middle over the tell; `pbsoak` one to step into — gold, filled from the start;
+ * `pbspread` the ring on each Keeper — storm blue. A 2-px dark outline on every one. Low / reduced motion: no pulse.
+ */
+export function drawPartyRing(c: Ctx, b: DeathBurst, time: number, still: boolean): void {
+  const tn = b.el === 'pbsoak' ? GOLD : b.el === 'pbspread' ? STORM : RED_HIT, X = Math.round(b.x), Y = Math.round(b.y) - 1, R = Math.max(4, Math.round(b.r));
+  const k = Math.max(0, Math.min(1, 1 - b.t / (b.delay ?? .6))), pulse = still ? 1 : .8 + .2 * Math.sin(time * 18);
+  const pts = groundRing(R), ry = Math.max(1, ...pts.map(q => Math.abs(q.y)));
+  // The fill: grows from the middle as the tell runs (a soak's is whole: step in).
+  const f = b.el === 'pbsoak' ? 1 : Math.max(.15, k);
+  c.globalAlpha = .25; c.fillStyle = tn.body;
+  c.beginPath(); c.ellipse(X, Y, R * f, ry * f, 0, 0, Math.PI * 2); c.fill();
+  // The 2-px dark outline, then the ring.
+  c.globalAlpha = .9; c.fillStyle = DARK;
+  for (const r of [R + 1, R + 2]) for (const q of groundRing(r)) c.fillRect(X + q.x, Y + q.y, 1, 1);
+  c.globalAlpha = pulse;
+  pts.forEach((q, i) => { c.fillStyle = i % 4 ? tn.body : tn.core; c.fillRect(X + q.x, Y + q.y, 1, 1); });
+  for (const q of groundRing(R - 1)) { c.fillStyle = tn.edge; c.fillRect(X + q.x, Y + q.y, 1, 1); }
+  c.globalAlpha = 1;
+}
+/** Over the head: a red down-arrow on the one it is fixed on; an ember brand sigil on the Branded. */
+export function drawHeadPip(c: Ctx, x: number, y: number, m: 'fix' | 'brand', time: number, still: boolean): void {
+  const X = Math.round(x), Y = Math.round(y) - (still ? 0 : Math.round(Math.sin(time * 4)));
+  const tn = m === 'fix' ? RED_HIT : EMBER;
+  c.globalAlpha = 1; c.fillStyle = DARK;
+  c.fillRect(X - 5, Y - 6, 11, 5); c.fillRect(X - 3, Y - 1, 7, 2); c.fillRect(X - 1, Y + 1, 3, 2);
+  c.fillStyle = tn.body;
+  c.fillRect(X - 4, Y - 5, 9, 3); c.fillRect(X - 2, Y - 2, 5, 2); c.fillRect(X, Y, 1, 2);
+  c.fillStyle = tn.core; c.fillRect(X - 1, Y - 5, 3, 1);
+  if (m === 'brand') { c.fillStyle = DARK; c.fillRect(X, Y - 5, 1, 3); }
+}
 
 function ring(c: Ctx, x: number, y: number, r: number, col: string, every = 1, alpha = 1): void {
   c.globalAlpha = alpha; c.fillStyle = col;
@@ -53,8 +93,10 @@ export function drawPartyMarks(c: Ctx, fx: readonly (PartyMark & { left: number 
       const a = at(f.a), b = at(f.b); if (!a || !b) continue;
       const d = Math.hypot(a.x - b.x, a.y - b.y) / T, bad = d > MECH.tetherFar - .5 || d < MECH.tetherNear;
       const col = bad ? RED : STORM, line = linePixels(Math.round(a.x), Math.round(a.y - 2), Math.round(b.x), Math.round(b.y - 2));
-      c.globalAlpha = bad ? beat : .85;
-      line.forEach((q, i) => { if (i % 3 === 2) return; c.fillStyle = i % 3 ? col.body : col.core; c.fillRect(q.x, q.y, 1, 1); });
+      c.globalAlpha = .9; c.fillStyle = DARK;
+      for (const q of line) c.fillRect(q.x - 1, q.y - 1, 4, 4);
+      c.globalAlpha = bad ? beat : 1;
+      line.forEach((q, i) => { c.fillStyle = i % 4 === 0 ? col.core : col.body; c.fillRect(q.x, q.y, 2, 2); });
     } else if (f.m === 'cast' && f.x !== undefined && f.y !== undefined) {
       // The bar: a ring round the boss filling clockwise as the channel runs.
       const X = Math.round(f.x), Y = Math.round(f.y), pts = groundRing(18), done = 1 - Math.max(0, f.left) / Math.max(.1, f.t);

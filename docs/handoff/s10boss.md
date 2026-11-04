@@ -42,6 +42,17 @@ learns its healer from heal claims), `partyGuard` (the Oath drops Sunder), `MECH
   fall), `formedBossDef` (world-bosses.ts: its life ×125, blows ×4.2, boss rank, its gap-closer handed to the form, its
   materials), boss scaling includes formed bosses, Cleanse / heal claims reach the form, marks per viewer.
 
+## Director pass (2026-11-04)
+- **The boss reads as a world boss:** the Hart drawn ×3 (HD/iso) or ×2 (flat; ×3 filled the view), integer
+  nearest-neighbour round its feet (`worldBossScale` / `mobScale`; its plate, its pick and its tells follow), with the
+  Oak's glass-vein cyan and white sparks flickering at its antler tips (steady on Low / reduced motion).
+- **Telegraphs:** party rings are drawn by `drawPartyRing` over the rain and the plates (`drawPartyOver`, both views):
+  a blow to step out of (Strike, Lowered Antlers, the heavy, Burn the Room) is saturated red-orange with a 2-px dark
+  outline and a 25% fill growing over its tell; a Soak is gold, Spread storm blue. On the wire the ring's kind is the
+  burst's `el` (`pbhit`, `pbsoak`, `pbspread`). The Tether is a 2-px line with a dark outline. A red arrow over the
+  fixated Keeper's head and an ember one over the Branded, beside their floor marks.
+- Not done (nice-to-haves): the place title card's size and timing; the Crown's Used-for on two lines.
+
 ## Balance (combat-sim, `--storm`; part of `--check`)
 The room's own set-up: a MobSystem with no Keeper of its own, all four as `others`, the boss's AI and form real; the
 healer is a real Lanternwright MobSystem (S5); damage is each calling's sustained dps as claims (the Warlock's fire on
@@ -77,6 +88,5 @@ then the client. No rules, no functions.
 - A Brand on the healer herself cleanses only through an ally claim (a self-Cleanse is not told to the room).
 - The fixate pip is on the floor under the Keeper, not on the boss's plate (the plate is DOM; the floor reads on phones).
 - Phase names (`phase` marks) are sent but not shown; the Stormglass Antler material is not built (no use yet).
-- The boss is drawn as a Rootglass Hart (its plate names it); a larger figure waits for the art pass.
 - "Worldbound" is not built (everything is tradable, owner 2026-10-27).
 - The e2e photographs the form on this screen (`__tdS10`); the room path is covered by the node test, not a two-browser e2e.

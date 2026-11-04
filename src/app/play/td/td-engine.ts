@@ -45,7 +45,7 @@ import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { skillKit, type KeeperAnim } from './td-skill-kit';
 import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
-import { drawPartyMarks } from './td-party-fx';
+import { PARTY_HEAD, drawHeadPip, drawPartyMarks, drawPartyRing } from './td-party-fx';
 import { WORLD_BOSSES, WORLD_BOSS_KEY, formedBossDef } from '../world/world-bosses';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { StatusPeaks, decodeStatuses, drawStatusIcons, encodeStatuses, keeperStatuses, mobStatuses, type StatusShown } from './td-status-icons';
@@ -105,7 +105,7 @@ import { nearbyList, nearbySig, stackName, type LooseDrop, type NearbyContainer,
 import { heapOffset, pileAt, pilesOf, tileCentre, tileKey } from './td-ground-pile';
 import type { PileRow } from '../engine/engine.model';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, PICK_REACH, RAISED_SKELETON, minionPalId, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, CHARGE_HIT, MOBS, MobSystem, mobScale, setMobScaleCap, PICK_REACH, RAISED_SKELETON, minionPalId, mobCell, mobSheet, windsUp, type AllyNear, type Drop, type Minion, type Mob } from './td-mobs';
 import type { AllyClaim } from '../world/ally-claims';
 /** S5: the Keepers within this many tiles are the heals' and guards' allies; at most this many ally claims a send. */
 const ALLY_SEEN_TILES = 14;
@@ -1396,6 +1396,33 @@ export class TopDownEngine {
       this.weatherFx.drawBolts(c, near, this.still, proj?.at);
     }
     if (this.nightEvents.now.length) { proj?.flat(); this.nightEvents.draw(c, near, this.time, this.still, proj?.at, proj?.flat, envDetail() === 'low'); }
+  }
+  /**
+   * S10: a party boss's rings and marks (td-party-fx), over the rain and the plates (the Director: the fatal ring must
+   * never read as decoration): the floor pass for rings, the Tether, Brands and the fixate ring; upright for the pips
+   * over the heads of the fixated and the Branded.
+   */
+  private drawPartyOver(inView: (x: number, y: number, pad?: number) => boolean, proj?: { flat(): void; at(x: number, y: number): void }): void {
+    const fx = this.mobs.partyFx, rings = this.mobs.bursts.filter(b => b.pb);
+    if (!fx.length && !rings.length) return;
+    const c = this.ctx, still = this.still || envDetail() === 'low', cam0 = { x: this.cam.x, y: this.cam.y };
+    c.save();
+    if (!proj) { const s = this.scale; c.setTransform(s, 0, 0, s, -this.cam.x * s, -this.cam.y * s); }
+    proj?.flat();
+    for (const b of rings) if (inView(b.x, b.y, 60)) drawPartyRing(c, b, this.time, still);
+    const at = (id: string) => (id === '' ? this.player : this.peers.drawn.find(q => q.id === id) ?? null);
+    if (fx.length) {
+      drawPartyMarks(c, fx, at, this.time, still);
+      for (const f of fx) {
+        if ((f.m !== 'fix' && f.m !== 'brand') || f.a === undefined) continue;
+        const p = at(f.a);
+        if (!p || !inView(p.x, p.y, 40)) continue;
+        if (proj) proj.at(p.x, p.y); else { const s = this.scale; c.setTransform(s, 0, 0, s, -this.cam.x * s, -this.cam.y * s); }
+        drawHeadPip(c, p.x, p.y - PARTY_HEAD, f.m, this.time, still);
+      }
+    }
+    c.restore();
+    this.cam.x = cam0.x; this.cam.y = cam0.y;
   }
   /** The night events' own clock (seconds; a forced event counts from here). */
   private nightClock(): number { return this.nightEvents.clock; }
@@ -4927,6 +4954,7 @@ export class TopDownEngine {
     if (this.level === this.world) this.weatherFx.drawScreen(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.frameDt, { still: this.still, low: lowDetail, phone: this.phone, night: this.darkness });
     this.drawJoystick();
     this.drawWorldUi(inView, fallen);
+    this.drawPartyOver(inView);
     this.drawScreenFx();
   }
   /** The drag joystick: a ring where the thumb landed and a knob under it (screen space). */
@@ -5054,6 +5082,31 @@ export class TopDownEngine {
   }
   private drawMob(m: Mob): void {
     // Underground (a burrow, S6): only the stir on the ground shows where it will rise.
+    if ((m.hidden ?? 0) > 0) return;
+    // S10: a scaled world boss (the Antlered Storm, ×3): the same figure, nearest-neighbour, round its feet.
+    setMobScaleCap(optHdFigures() && envDetail() !== 'low' ? 3 : 2);
+    const S = mobScale(m);
+    if (S !== 1) { this.ctx.save(); this.ctx.translate(Math.round(m.x), Math.round(m.y)); this.ctx.scale(S, S); this.ctx.translate(-Math.round(m.x), -Math.round(m.y)); try { this.drawMobBody(m); } finally { this.ctx.restore(); } this.drawStormMark(m, S); return; }
+    this.drawMobBody(m);
+  }
+  /** S10: what the Antlered Storm is — white sparks at its antler tips and the Oak's glass-vein cyan along them. */
+  private drawStormMark(m: Mob, S: number): void {
+    if (m.def.id !== 'rootglass-hart') return;
+    const c = this.ctx, h = mobCell(m.def).h * S, X = Math.round(m.x), Y = Math.round(m.y - h), f = m.face, still = this.still || envDetail() === 'low';
+    const tips: [number, number][] = [[-10, 2], [-4, -2], [4, -2], [10, 2], [-14, 8], [14, 8]];
+    c.save();
+    c.fillStyle = '#7affd0'; c.globalAlpha = .85;
+    for (const [dx, dy] of tips) { const x = X + dx * f + f * 8, y = Y + dy + 6; c.fillRect(x, y, 2, 4); }
+    for (let i = 0; i < tips.length; i++) {
+      const [dx, dy] = tips[i], on = still || Math.floor(this.time * 5 + i * 1.7) % 3 !== 0;
+      if (!on) continue;
+      const x = X + dx * f + f * 8, y = Y + dy + 4;
+      c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(x, y, 2, 2);
+      c.globalAlpha = .5; c.fillStyle = '#cfe8ff'; c.fillRect(x - 1, y + 1, 4, 1); c.fillRect(x + 1, y - 1, 1, 4);
+    }
+    c.restore();
+  }
+  private drawMobBody(m: Mob): void {
     if ((m.hidden ?? 0) > 0) return;
     const c = this.ctx, d = this.vis(m.def), sheet = mobSheet(m.def), f = Math.floor(m.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     // The target stands in a red pixel square (Tibia).
@@ -5707,8 +5760,6 @@ export class TopDownEngine {
     this.auraWas = !!look;
     this.drawLootRings();
     this.drawTells();
-    // S10: a party boss's marks — the fixate pip, a Brand, a Tether, a channel's bar, the storm's eye (td-party-fx).
-    if (this.mobs.partyFx.length) drawPartyMarks(c, this.mobs.partyFx, id => (id === '' ? this.player : this.peers.drawn.find(q => q.id === id) ?? null), this.time, this.still || envDetail() === 'low');
     // Elite packs: the aura ring under each member, a Cold Aura's reach, a Fire Enchanted's burst on its way.
     const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80;
     for (const m of this.mobs.mobs) if (m.elite && near(m.x, m.y)) drawEliteGround(c, m, this.time, this.still);
@@ -5716,7 +5767,7 @@ export class TopDownEngine {
     for (const h of this.mobs.hazards) if (near(h.x, h.y)) drawHazard(c, h, this.time, this.still);
     drawPackGround(c, this.mobs.mobs, this.time, this.still, near, envDetail() === 'low');
     for (const m of this.mobs.mobs) if (m.tell > 0 && m.abCast !== undefined && near(m.x, m.y)) drawCastTell(c, m, this.time, this.still);
-    for (const b of this.mobs.bursts) if (near(b.x, b.y)) { if (b.tone) drawAbilityRing(c, b, this.time, this.still); else drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still); }
+    for (const b of this.mobs.bursts) if (!b.pb && near(b.x, b.y)) { if (b.tone) drawAbilityRing(c, b, this.time, this.still); else drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still); }
     // The Lanternwright's circles on the floor: the Hearth Circle, the disc of Dawn at Noon.
     if (this.mobs.zones.length) drawLampZones(c, this.mobs.zones, this.time, this.still);
     // The Thornstrider's on the floor: the snare's thorns, a hidden trap.
@@ -6109,14 +6160,14 @@ export class TopDownEngine {
     // Doom: a pale skull-mark ticking over the doomed.
     for (const m of this.mobs.mobs) if ((m.doom ?? 0) > 0) {
       this.at(m.x, m.y);
-      const X = Math.round(m.x), Y = Math.round(m.y - this.vis(m.def).h - 10);
+      const X = Math.round(m.x), Y = Math.round(m.y - this.vis(m.def).h * mobScale(m) - 10);
       c.fillStyle = Math.floor(this.time * 4) % 2 ? FX.shadow.body : FX.shadow.edge; c.fillRect(X - 3, Y - 3, 6, 5);
       c.fillStyle = FX.shadow.core; c.fillRect(X - 2, Y - 2, 1, 1); c.fillRect(X + 1, Y - 2, 1, 1);
     }
     for (const m of this.mobs.mobs) if (m.cursed > 0) {
       this.at(m.x, m.y);
       c.fillStyle = Math.floor(this.time * 6) % 2 ? '#b06bff' : '#ff6a2a';
-      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - this.vis(m.def).h - 8 - (this.time * 8) % 6), 2, 2);
+      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - this.vis(m.def).h * mobScale(m) - 8 - (this.time * 8) % 6), 2, 2);
     }
   }
 
@@ -6165,9 +6216,9 @@ export class TopDownEngine {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
         if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true)) {
-          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h - 5));
+          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h * mobScale(m) - 5));
           const st = mobStatuses(m, this.statusPeaks);
-          if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
+          if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h * mobScale(m) - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
         }
         continue;
       }
@@ -6175,7 +6226,7 @@ export class TopDownEngine {
       this.at(m.x, m.y);
       // Its bar and name (a box about 60 px wide over the bar, 88 with an aura's name) lift clear of the Interact prompt
       // (Director, dirfix).
-      let top = m.y - this.vis(m.def).h - 3;
+      let top = m.y - this.vis(m.def).h * mobScale(m) - 3;
       let mx = m.x;
       if (this.hud.n) { const hw = m.aura ? 44 : 30; top += this.hudLift(mx - hw, top - 10, mx + hw, top + 3); mx += this.hudDx; }
       const w = 18, frac = Math.max(0, m.hp / m.def.hp);
@@ -6232,7 +6283,7 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       const words = m.chantText ?? m.def.chant;
       // The Seam Eater speaks in the eclipse's pale violet; the rest of the bosses in ember.
-      if (m.chantT && words && inView(m.x, m.y)) { this.at(m.x, m.y); this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - this.vis(m.def).h - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID || creatureProfile(m.def.id).family === 'shade' || m.def.ghost ? '#d8c0ff' : '#ff8a7a'); }
+      if (m.chantT && words && inView(m.x, m.y)) { this.at(m.x, m.y); this.speech(words, m.x, Math.max(this.cam.y + 28, m.y - this.vis(m.def).h * mobScale(m) - 12), CHANT_SECS - m.chantT, m.def.id === SEAM_ID || creatureProfile(m.def.id).family === 'shade' || m.def.ghost ? '#d8c0ff' : '#ff8a7a'); }
     }
     const k = this.cant;
     this.at(this.player.x, this.player.y);
@@ -6680,7 +6731,9 @@ export class TopDownEngine {
     this.prof(5);
     this.drawJoystick();
     // World UI over everything: plates, task marks, effects, the way, names and bars, labels.
+    // (S10: a party boss's rings and marks go over them and the rain: drawPartyOver, after the world UI below.)
     if (!(this.isoSkip & 32)) this.drawWorldUi(inView, fallen);
+    if (surface || this.mobs.partyFx.length) this.drawPartyOver(inView, this.isoProj);
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.drawScreenFx();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);

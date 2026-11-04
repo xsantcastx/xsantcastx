@@ -29,6 +29,7 @@ import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
 import { makePack } from './td-elites';
+import { worldBossScale } from '../world/world-bosses';
 import { AFFIX_DEFS, TD_RANK_HP, BRUTAL, EMBER_HEART, GRAVE_CALL, KIN_SHIELD, LIGHTLESS_R, MIRROR_SHARE, MULTISHOT, VAMPIRIC, WHISPER_HUSH, auraAffix, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, UNIQUE_SHARE, type ElitePack, type EliteTag } from './td-elites';
 import { extraSpawn, hardened, nightType, rollTouched, rulesOf, skyVars, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
@@ -1934,6 +1935,11 @@ function outline(img: ImageData, rim?: string): void {
  */
 export function mobK(def: { w?: number }): number { const w = def.w ?? 0; return w >= 60 ? 1.15 : w >= 40 ? 1.3 : 1.5; }
 /** A creature's cell in its sheet (fine-grid px): its art box grown by mobK, rounded up. */
+/** S10: how many times its size a creature is drawn (a world boss, by its spawn key); its plate, its pick and its tells follow. */
+export function mobScale(m: { key: string }): number { return Math.min(scaleCap, worldBossScale(m.key)); }
+let scaleCap = 3;
+/** The flat figures are drawn bigger than the HD ones: a world boss is ×2 there (×3 would fill the view), ×3 in HD. */
+export function setMobScaleCap(n: number): void { scaleCap = Math.max(1, Math.round(n)); }
 export function mobCell(def: { w?: number; h: number }): { w: number; h: number } { const k = mobK(def); return { w: Math.ceil((def.w ?? 0) * k), h: Math.ceil(def.h * k) }; }
 export function mobSheet(def: MobDef): HTMLCanvasElement {
   let s = sheets.get(def.id);
@@ -2187,7 +2193,7 @@ export function isConstruct(creature: string): boolean {
 export interface DeathBurst {
   x: number; y: number; t: number; r: number; dmg: number;
   /** A boss's ground warning (the Seam Eater's Rend): its whole tell (FIRE_BURST.delay when unset), its tone and type. */
-  delay?: number; el?: 'ember' | 'shadow' | TellTone | 'raise'; type?: DamageType;
+  delay?: number; el?: 'ember' | 'shadow' | TellTone | 'raise' | 'pbhit' | 'pbsoak' | 'pbspread'; type?: DamageType;
   /** The level of the creature it came from (td-zones level gap); unset: none. */
   lv?: number;
   /**
@@ -3248,7 +3254,7 @@ export class MobSystem {
   /** The creature under a point (its middle within 18 px). `rel` (the isometric view): the point as seen against each foot. */
   mobAt(x: number, y: number, rel?: (fx: number, fy: number) => { x: number; y: number }): Mob | null {
     let best: Mob | null = null, bd = 18;
-    for (const m of this.mobs) { const q = rel ? rel(m.x, m.y) : null, px = q ? q.x : x, py = q ? q.y : y; const d = Math.hypot(m.x - px, m.y - m.def.h / 2 - py); if (d < bd) { bd = d; best = m; } }
+    for (const m of this.mobs) { const q = rel ? rel(m.x, m.y) : null, px = q ? q.x : x, py = q ? q.y : y; const S = mobScale(m), d = Math.hypot(m.x - px, m.y - m.def.h * S / 2 - py) / S; if (d < bd) { bd = d; best = m; } }
     return best;
   }
 
@@ -3638,7 +3644,7 @@ export class MobSystem {
         const weak = this.weakOf(m);
         if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
         // S10: a party boss's blow on its fixated (Fixate's every-4th heavy, Sunder's stacks).
-        if (m.pb && !prey && !kinPrey) n = Math.round(partyBite(m.pb, other ? other.id : '', n, blowOf(m), () => this.bursts.push({ x: other ? other.x : p.x, y: (other ? other.y : p.y), t: MECH.heavyTell, delay: MECH.heavyTell, r: 22, dmg: 0, el: 'ember', tone: 'ember', pb: true })));
+        if (m.pb && !prey && !kinPrey) n = Math.round(partyBite(m.pb, other ? other.id : '', n, blowOf(m), () => this.bursts.push({ x: other ? other.x : p.x, y: (other ? other.y : p.y), t: MECH.heavyTell, delay: MECH.heavyTell, r: 22, dmg: 0, el: 'pbhit', tone: 'ember', pb: true })));
         if (other) {
           const ax = m.elite?.affixes ?? [];
           (m.coopBy ??= new Set()).add(other.id);
@@ -4137,7 +4143,7 @@ export class MobSystem {
       const A: PartyArena = {
         keepers: () => this.partyKeepers(m, reach),
         strike: (k, raw, type) => this.strikeKeeper(k, Math.max(1, Math.round(raw)), type, m, '', m.def.level),
-        ring: (x, y, r, t, tone) => { this.bursts.push({ x, y, t, delay: t, r, dmg: 0, el: tone, tone, pb: true, by: m }); },
+        ring: (x, y, r, t, tone, kind) => { this.bursts.push({ x, y, t, delay: t, r, dmg: 0, el: kind, tone, pb: true, by: m }); },
         mark: e => { this.partyOut.push({ ...e, by: m }); if (this.partyOut.length > 48) this.partyOut.splice(0, this.partyOut.length - 48); this.partySeen(e); },
         say: w => { m.chantT = CHANT_SECS * 1.5; m.chantText = w; },
         adds: (type, n, level, elite) => {
