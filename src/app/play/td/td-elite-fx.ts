@@ -188,14 +188,17 @@ export function drawAffixTells(c: Ctx, m: Mob, time: number, still: boolean): vo
  * An elite's plate over its head, from the bar up: the framed life bar, then (leaders only) the affixes in small
  * pixel text, then the name. Returns nothing; draws in world coordinates (textAlign center, baseline bottom).
  */
-export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight = 0): void {
+export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight = 0, reserveBottom = Infinity): void {
   // A name or affix line is kept on the screen and left of the HUD's top-right corner (the minimap): its centre slides
-  // in, never the bar (screen px from the canvas's own transform; `reserveRight` is the corner's width in canvas px).
-  const keep = (x: number, text: string): number => {
+  // in, never the bar (screen px from the canvas's own transform; `reserveRight` is the corner's width and
+  // `reserveBottom` its height in canvas px). It slides only when the line actually reaches into the corner's box, and
+  // only as far as it must (S10, the Director: a name slid with nothing near reads as another's title).
+  const keep = (x: number, text: string, y: number): number => {
     const t = c.getTransform();
     if (!t.a) return x;
-    const half = c.measureText(text).width * t.a / 2 + 6, sx = t.a * x + t.e, W = c.canvas.width;
-    const lo = half, hi = W - Math.max(0, reserveRight) - half;
+    const half = c.measureText(text).width * t.a / 2 + 6, sx = t.a * x + t.e, W = c.canvas.width, sy = t.d * y + t.f;
+    const inCorner = sy - 10 * t.d < reserveBottom;
+    const lo = half, hi = W - (inCorner ? Math.max(0, reserveRight) : 0) - half;
     if (hi <= lo) return x;
     const cx = Math.max(lo, Math.min(hi, sx));
     return cx === sx ? x : Math.round((cx - t.e) / t.a);
@@ -217,7 +220,7 @@ export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight =
   let y = top - 4;
   if (tag.role === 'leader' && tag.affixes.some(a => !a.startsWith('aura-'))) {
     c.font = '6px "Pixelify Sans", monospace';
-    const line = affixLine(tag.affixes.filter(a => !a.startsWith('aura-'))), LX = keep(X, line);
+    const line = affixLine(tag.affixes.filter(a => !a.startsWith('aura-'))), LX = keep(X, line, y);
     c.fillStyle = HOSTILE_EDGE; c.fillText(line, LX + 1, y + 1);
     c.fillStyle = '#d9cfe6'; c.fillText(line, LX, y);
     y -= 7;
@@ -227,7 +230,7 @@ export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight =
   // Its pack aura on the name line (§3: "Grimfang the Hollow · Might").
   const au = tag.affixes.find(a => a.startsWith('aura-')), name = `${tag.name ?? m.def.name}${au ? ` · ${AFFIX_DEFS[au].name}` : ''}`;
   c.font = 'bold 8px "Pixelify Sans", monospace';
-  const NX = keep(X, name);
+  const NX = keep(X, name, y);
   c.fillStyle = HOSTILE_EDGE;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [1, 1]]) c.fillText(name, NX + dx, y + dy);
   c.fillStyle = targeted ? '#ff8a7a' : tn.body; c.fillText(name, NX, y);
