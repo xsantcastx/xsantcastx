@@ -130,3 +130,25 @@ strike through the usual claim path (`hurtMob` on a replica claims to the host).
   - the Count, the Relief Column (marching and at the gate), the Kiln.
 - For the Director: the self-lit kiln reads small among the Deep Charwood's trees, and the Late Shift's lamps are
   subtle in the lit Seamworks square.
+
+## Director fixes (2026-11-04, after the first review)
+- **Kiln:**
+  - warm ground three tiles round, a light column over the mouth, a white-hot heart;
+  - sparks and a slow pulse (1.6 rad/s), held still on Low and under reduced motion;
+  - the light radius it gives the night pass is 96.
+- **Late Shift:**
+  - lamps rise 2.5 s apart at 1 tile/s, so all six are on the lane at once (about 12.5–14 s in);
+  - each lamp has a 2-tile halo and warm light on the ground, drawn with additive blending so it reads in the lit
+    square;
+  - each flares as it goes out, and leaves a curl of smoke.
+- **The Count:** a solid ring at the lych-gate and a large count on a dark plate with a bell mark.
+- **Relief Column:** brighter figures. **Ashfall and Spore drift:** 48 / 28 / 16 motes (Normal / phone / Low), each
+  with a dark under-edge so it shows on light ground, and stronger films. **Scorch:** a tile-wide burn with cracks and
+  early embers.
+- **Odette's board:**
+  - reads on its own parchment card (`[data-board-card]`, a pixel ×, closes itself after 12 s);
+  - in reach, the prompt says **Read the board**.
+- The soft green circle round the Keeper in storm, count and kiln shots is the night pass's own light round the
+  Keeper (td-night, existing). It is not S8's.
+- Shots are taken in iso (`artopt=iso`; the e2e browser's default is classic), with the area name card faded and the
+  scene's creatures held calm (`__tdS8.calm`, webdriver only).

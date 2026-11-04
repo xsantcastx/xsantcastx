@@ -356,7 +356,7 @@ export interface EngineOptions {
    * that hit the Keeper; the self-lit kiln asked to be lit (the answer is the refusal's words, or null: lit); whether a
    * night's reward (its drop id) is already booked, so it is never laid twice.
    */
-  onSky?: (event: { kind: 'tell' } | { kind: 'struck'; n: number } | { kind: 'kiln' } | { kind: 'claimed'; id: string }) => string | boolean | null | void;
+  onSky?: (event: { kind: 'tell' } | { kind: 'struck'; n: number } | { kind: 'kiln' } | { kind: 'claimed'; id: string } | { kind: 'board'; a: string; b: string }) => string | boolean | null | void;
   /**
    * One World: a Waystone. 'seen': it came into view for the first time this
    * session (the host keeps the save's `seen`); 'light': E was held at an

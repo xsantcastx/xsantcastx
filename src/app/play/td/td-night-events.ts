@@ -53,6 +53,19 @@ export interface NightFrame {
 
 interface Track { near: number; seen: number; paid: boolean; bell: number; full: boolean; lit: boolean; said: number }
 
+/**
+ * A stepped disc of light (2-px rows, no soft blur). `floor`: it lies on the ground (iso's floor plane squashes it 2:1
+ * itself; top-down sees the ground from above), so it is drawn round either way; the flag documents the call.
+ */
+function disc(c: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number, floor: boolean): void {
+  if (alpha <= .005 || r < 1) return;
+  c.globalAlpha = alpha;
+  // Top-down the floor is seen from above (round); iso's floor plane squashes it itself.
+  void floor;
+  const ry = r;
+  for (let dy = -ry; dy < ry; dy += 2) { const w = Math.round(r * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2))); if (w > 0) c.fillRect(Math.round(x - w), Math.round(y + dy), w * 2, 2); }
+}
+
 /** Polyline helpers: total length and the point `d` px along it. */
 function lengthOf(path: readonly { x: number; y: number }[]): number { let n = 0; for (let i = 1; i < path.length; i++) n += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y); return n; }
 function along(path: readonly { x: number; y: number }[], d: number, out: { x: number; y: number }): { x: number; y: number } {
@@ -178,7 +191,7 @@ export class NightEvents {
   /** The Late Shift's lamp `i` at `t` s (null before it rises or after it goes out). */
   lampAt(t: number, i: number): { x: number; y: number } | null {
     const s = t - i * SHIFT.gap;
-    if (s < 0 || s > SHIFT_WALK) return null;
+    if (s < 0 || s > SHIFT_WALK + SHIFT.out) return null;
     return along(SHIFT_PATH, s * SHIFT.speed * TILE, this.tmp);
   }
   /** The column's soldier `i` (0 the head) at `t` s: in file behind the head, halting in place at the gate. */
@@ -194,8 +207,8 @@ export class NightEvents {
   /** The lights the dark reads (the dark-born keep back; the night pass opens round them): the lamps and the kiln. */
   lights(out: { x: number; y: number; r: number }[]): void {
     for (const e of this.now) {
-      if (e.id === 'late-shift') for (let i = 0; i < SHIFT.lamps; i++) { const p = this.lampAt(e.t, i); if (p) out.push({ x: p.x, y: p.y - 12, r: 28 }); }
-      else if (e.id === 'self-lit-kiln' && e.t < KILN.glow) { const kp = px(NIGHT_PLACES.kiln); out.push({ x: kp.x, y: kp.y - 8, r: 60 * this.kilnGlow(e) }); }
+      if (e.id === 'late-shift') for (let i = 0; i < SHIFT.lamps; i++) { const p = this.lampAt(e.t, i); if (p) out.push({ x: p.x, y: p.y - 12, r: 44 }); }
+      else if (e.id === 'self-lit-kiln' && e.t < KILN.glow) { const kp = px(NIGHT_PLACES.kiln); out.push({ x: kp.x, y: kp.y - 8, r: 96 * this.kilnGlow(e) }); }
     }
   }
   private kilnGlow(e: NightEventNow): number {
@@ -217,40 +230,62 @@ export class NightEvents {
    * Over the night pass (so the dark never hides them): every figure upright where it stands (`at` anchors iso), a
    * faint ring at the lych-gate, the bell's count over it, "Present." over the gate. World space.
    */
-  draw(c: CanvasRenderingContext2D, inView: (x: number, y: number) => boolean, time: number, still: boolean, at?: (x: number, y: number) => void, flat?: () => void): void {
+  draw(c: CanvasRenderingContext2D, inView: (x: number, y: number) => boolean, time: number, still: boolean, at?: (x: number, y: number) => void, flat?: () => void, low = false): void {
+    // Low detail and reduced motion: the same glows, held still (no pulse, no sparks, no swing).
+    const calm = still || low;
     for (const e of this.now) {
       if (e.id === 'late-shift') {
         for (let i = 0; i < SHIFT.lamps; i++) {
+          const s0 = e.t - i * SHIFT.gap;
           const p = this.lampAt(e.t, i);
           if (!p || !inView(p.x, p.y)) continue;
           const x = Math.round(p.x), y = Math.round(p.y);
+          // Fading in at the shaft; at the walk's end it flares once and goes out (SHIFT.out s), a curl of smoke after it.
+          const out = s0 > SHIFT_WALK ? (s0 - SHIFT_WALK) / SHIFT.out : 0;
+          const a = out > 0 ? Math.max(0, 1 - out) : Math.min(1, s0 / 1.2);
+          const flare = out > 0 && out < .3 ? 1 + (1 - out / .3) * .6 : 1;
+          const sw = calm || out > 0 ? 0 : Math.round(Math.sin(time * 3 + i) * 1), lx = x + 3 + sw, ly = y - 14;
+          // The warm light it throws on the ground, two tiles round (flat on the floor).
+          flat?.();
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = '#ffb060';
+          disc(c, x, y, 30 * flare, .16 * a, !flat);
+          disc(c, x, y, 14 * flare, .18 * a, !flat);
           at?.(x, y);
-          // A fading-in lamp at the shaft, a fading-out one where the walk ends; between, a lamp at hip height, swinging.
-          const s = e.t - i * SHIFT.gap, a = Math.min(1, s / 1.5, (SHIFT_WALK - s) / 1.5);
-          const sw = still ? 0 : Math.round(Math.sin(time * 3 + i) * 1), lx = x + 3 + sw, ly = y - 14;
-          // The one carrying it is the faintest grey, a miner's shape; the lamp itself is what is seen from afar.
-          c.globalAlpha = .16 * a; c.fillStyle = '#b8b0bc';
-          c.fillRect(x - 3, y - 24, 6, 6); c.fillRect(x - 4, y - 18, 8, 12); c.fillRect(x - 3, y - 6, 2, 6); c.fillRect(x + 1, y - 6, 2, 6);
-          // A stepped glow round the lamp, then the lamp: a dark frame, a warm pane, its bright wick.
+          // The halo round the lamp itself: two to three tiles across, stepped, then the bright heart.
           c.fillStyle = '#ffd36d';
-          c.globalAlpha = .14 * a; c.fillRect(lx - 9, ly - 6, 18, 14); c.fillRect(lx - 6, ly - 9, 12, 20);
-          c.globalAlpha = .22 * a; c.fillRect(lx - 5, ly - 4, 10, 10);
-          c.globalAlpha = .95 * a; c.fillStyle = '#3a3048'; c.fillRect(lx - 2, ly - 3, 5, 7); c.fillRect(lx, ly - 5, 1, 2);
-          c.fillStyle = '#ffd36d'; c.fillRect(lx - 1, ly - 2, 3, 5);
-          c.fillStyle = '#fff2c8'; c.fillRect(lx, ly - 1, 1, 2);
+          disc(c, lx, ly, 34 * flare, .2 * a, false);
+          disc(c, lx, ly, 18 * flare, .3 * a, false);
+          disc(c, lx, ly, 8 * flare, .55 * a, false);
+          c.globalCompositeOperation = 'source-over';
+          if (out <= 0) {
+            // The miner carrying it: the faintest grey; the lamp: a dark frame, a warm pane, the wick.
+            c.globalAlpha = .22 * a; c.fillStyle = '#b8b0bc';
+            c.fillRect(x - 3, y - 24, 6, 6); c.fillRect(x - 4, y - 18, 8, 12); c.fillRect(x - 3, y - 6, 2, 6); c.fillRect(x + 1, y - 6, 2, 6);
+          }
+          c.globalAlpha = a; c.fillStyle = '#2a2030'; c.fillRect(lx - 3, ly - 4, 7, 9); c.fillRect(lx, ly - 6, 1, 2);
+          c.fillStyle = '#ffd36d'; c.fillRect(lx - 2, ly - 3, 5, 7);
+          c.fillStyle = '#fff8e0'; c.fillRect(lx - 1, ly - 1, 3, 3);
+          if (out > .3 && !calm) { const k = (out - .3) / .7; c.globalAlpha = .5 * (1 - k); c.fillStyle = '#b8b0bc'; c.fillRect(lx + Math.round(Math.sin(k * 6) * 2), ly - 8 - Math.round(k * 12), 2, 2); }
+          c.globalAlpha = 1;
         }
       } else if (e.id === 'count-goes-on') {
         const g = px(NIGHT_PLACES.gate);
         if (!inView(g.x, g.y)) continue;
         const bell = countBell(e.t), beat = still ? 0 : 1 - ((e.t % COUNT.step) / COUNT.step);
         flat?.();
-        c.globalAlpha = .2 + .25 * beat; c.fillStyle = '#e8e4ef';
-        for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; c.fillRect(Math.round(g.x + Math.cos(a) * COUNT_GATE * TILE), Math.round(g.y + Math.sin(a) * COUNT_GATE * TILE), 1, 1); }
+        // The gate's ring, where a Keeper stands to keep the count: a solid stepped circle, brighter on each bell.
+        c.fillStyle = '#e8e4ef';
+        c.globalAlpha = .35 + .4 * beat;
+        for (let i = 0; i < 72; i++) { const a = i / 72 * Math.PI * 2; c.fillRect(Math.round(g.x + Math.cos(a) * COUNT_GATE * TILE), Math.round(g.y + Math.sin(a) * COUNT_GATE * TILE), 1, 1); }
         at?.(g.x, g.y);
         if (bell <= COUNT.bells) {
-          c.font = '8px "Pixelify Sans", monospace'; c.textAlign = 'center'; c.textBaseline = 'bottom';
-          c.globalAlpha = .6; c.fillStyle = '#140a1f'; c.fillText(String(bell), Math.round(g.x) + 1, Math.round(g.y) - 29);
-          c.globalAlpha = .55 + .4 * beat; c.fillStyle = '#e8e4ef'; c.fillText(String(bell), Math.round(g.x), Math.round(g.y) - 30 - Math.round(beat * 2));
+          // The count itself, large over the gate on a small dark plate (a bell's mark beside it).
+          const y1 = Math.round(g.y) - 44 - Math.round(beat * 2), txt = String(bell);
+          c.font = 'bold 12px "Pixelify Sans", monospace'; c.textAlign = 'center'; c.textBaseline = 'bottom';
+          c.globalAlpha = .7; c.fillStyle = '#140a1f'; c.fillRect(Math.round(g.x) - 13, y1 - 13, 26, 15);
+          c.globalAlpha = .9; c.fillStyle = '#e8e4ef'; c.fillRect(Math.round(g.x) - 11, y1 - 11, 3, 3); c.fillRect(Math.round(g.x) - 12, y1 - 8, 5, 2);
+          c.globalAlpha = .65 + .35 * beat; c.fillStyle = '#fff2c8'; c.fillText(txt, Math.round(g.x) + 3, y1);
         }
       } else if (e.id === 'relief-column') {
         for (let i = 0; i < COLUMN.soldiers; i++) {
@@ -261,9 +296,9 @@ export class NightEvents {
           const marching = e.t < COLUMN_MARCH && !still, bob = marching && Math.floor(time * 4 + i) % 2 ? 1 : 0;
           const fade = e.t > COLUMN_CALLS_END ? Math.max(0, 1 - (e.t - COLUMN_CALLS_END) / 4) : Math.min(1, e.t / 2);
           // Grey, half-seen: helm, shoulders, a spear; no face.
-          c.globalAlpha = .38 * fade; c.fillStyle = '#b8b0bc';
+          c.globalAlpha = .55 * fade; c.fillStyle = '#c8c2cc';
           c.fillRect(x - 3, y - 22 - bob, 6, 5); c.fillRect(x - 4, y - 17 - bob, 8, 9); c.fillRect(x - 3, y - 8, 2, 8 - bob); c.fillRect(x + 1, y - 8, 2, 8 - (1 - bob));
-          c.globalAlpha = .5 * fade; c.fillStyle = '#e8e4ef'; c.fillRect(x + 5, y - 30 - bob, 1, 26); c.fillRect(x + 4, y - 31 - bob, 3, 2);
+          c.globalAlpha = .7 * fade; c.fillStyle = '#e8e4ef'; c.fillRect(x + 5, y - 30 - bob, 1, 26); c.fillRect(x + 4, y - 31 - bob, 3, 2);
         }
         if (e.t >= COLUMN_MARCH && e.t < COLUMN_CALLS_END) {
           const gate = COLUMN_PATH[COLUMN_PATH.length - 1];
@@ -277,21 +312,31 @@ export class NightEvents {
       } else if (e.id === 'self-lit-kiln') {
         const kp = px(NIGHT_PLACES.kiln);
         if (!inView(kp.x, kp.y)) continue;
-        const g = this.kilnGlow(e), fl = still ? 1 : .8 + .2 * Math.sin(time * 9) * Math.sin(time * 3.7);
+        // A slow pulse (held still on Low and under reduced motion); a warm ground three tiles round; a column of
+        // light over the mouth so it reads from six tiles off; the mouth itself white-hot at its heart.
+        const g = this.kilnGlow(e), fl = calm ? 1 : .85 + .15 * Math.sin(time * 1.6);
         const x0 = Math.round(kp.x), y0 = Math.round(kp.y);
         flat?.();
-        // The warm ground round the kiln mouth, stepped (no soft blur): a wide faint ring, a brighter heart.
+        c.globalCompositeOperation = 'lighter';
         c.fillStyle = '#ff8a3d';
-        c.globalAlpha = .18 * g * fl; c.fillRect(x0 - 22, y0 - 6, 44, 12); c.fillRect(x0 - 16, y0 - 10, 32, 20);
-        c.globalAlpha = .3 * g * fl; c.fillRect(x0 - 10, y0 - 5, 20, 10);
+        disc(c, x0, y0, 48 * fl, .14 * g, !flat);
+        disc(c, x0, y0, 28 * fl, .2 * g, !flat);
+        disc(c, x0, y0, 12, .3 * g, !flat);
         at?.(kp.x, kp.y);
-        // The kiln's mouth lit, and sparks lifting off its crown.
-        c.globalAlpha = .9 * g * fl; c.fillStyle = '#ffb060'; c.fillRect(x0 - 4, y0 - 11, 8, 6);
-        c.globalAlpha = g; c.fillStyle = '#ffe9a8'; c.fillRect(x0 - 2, y0 - 10, 4, 3);
-        if (!still) for (let i = 0; i < 4; i++) {
-          const k = (time * .7 + i / 4) % 1, sx = x0 + Math.round(Math.sin(time * 2 + i * 1.7) * 4), sy = y0 - 18 - Math.round(k * 22);
-          c.globalAlpha = .8 * g * (1 - k); c.fillStyle = i % 2 ? '#ffd36d' : '#ff8a3d'; c.fillRect(sx, sy, 1, 1);
+        c.fillStyle = '#ffb060';
+        disc(c, x0, y0 - 10, 30 * fl, .2 * g, false);
+        disc(c, x0, y0 - 10, 14 * fl, .35 * g, false);
+        c.globalAlpha = .12 * g * fl; c.fillRect(x0 - 5, y0 - 52, 10, 42); c.fillRect(x0 - 3, y0 - 70, 6, 18);
+        c.globalCompositeOperation = 'source-over';
+        c.globalAlpha = g; c.fillStyle = '#2a1a18'; c.fillRect(x0 - 7, y0 - 14, 14, 10);
+        c.fillStyle = '#ff8a3d'; c.fillRect(x0 - 5, y0 - 12, 10, 7);
+        c.fillStyle = '#ffd36d'; c.fillRect(x0 - 3, y0 - 11, 6, 5);
+        c.fillStyle = '#fff8e0'; c.fillRect(x0 - 1, y0 - 10, 2, 3);
+        if (!calm) for (let i = 0; i < 5; i++) {
+          const k = (time * .6 + i / 5) % 1, sx = x0 + Math.round(Math.sin(time * 2 + i * 1.7) * 5), sy = y0 - 18 - Math.round(k * 34);
+          c.globalAlpha = .9 * g * (1 - k); c.fillStyle = i % 2 ? '#ffd36d' : '#ff8a3d'; c.fillRect(sx, sy, 2, 2);
         }
+        c.globalAlpha = 1;
         // The burners' shadows working it, leaving before it fades (never once it is lit: they have gone home).
         if (!this.track(e).lit && e.t < KILN.glow * .75) for (let i = 0; i < 2; i++) {
           const ph = still ? i * 2 : time * .6 + i * Math.PI, bx = Math.round(kp.x + Math.cos(ph) * 16), by = Math.round(kp.y + 6 + Math.sin(ph) * 5);
