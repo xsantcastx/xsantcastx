@@ -1,5 +1,7 @@
-<!-- A district shop: the shelf and your satchel, two grids. Drag an offer into the satchel to buy, a satchel piece onto
-     the shelf to sell; a click or right-click opens its card (a phone: long-press to pick up, tap where it goes). -->
+<!-- A district shop (ui-pass-3 §4): the shelf as priced tiles beside your satchel. Tap a tile for its buy card
+     (1 · 5 · 10 · Max, one brass "Buy N · X Gold"), pinned to the window's foot so Buy is in view the moment it opens.
+     Drag an offer into the satchel to buy, a satchel piece onto the shelf to sell (a phone: long-press to pick up). A
+     narrow window switches Shelf | Satchel; a desktop hover shows the whole card at the pointer. -->
 <app-station-shell class="sh"
                    [title]="title"
                    [purpose]="t('shop.purpose')"
@@ -9,67 +11,105 @@
 
   <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
-  <div stationHero class="sh-hero" [attr.data-shop]="shopId">
-    @if (keeperName) { <p class="sh-keeper" data-shop-keeper><b>{{ keeperName }}</b> {{ keeperLine }}</p> }
+  <div stationHero class="sh-hero" [attr.data-shop]="shopId" [attr.data-seg]="seg" [class.has-card]="!!card">
+    <div class="sh-seg" role="tablist" [attr.aria-label]="t('shop.seg')" data-shop-seg>
+      <button type="button" role="tab" class="sh-segbtn" data-seg="shelf" [attr.aria-selected]="seg === 'shelf'" (click)="setSeg('shelf')">{{ t('shop.seg.shelf') }}</button>
+      <button type="button" role="tab" class="sh-segbtn" data-seg="satchel" [attr.aria-selected]="seg === 'satchel'" (click)="setSeg('satchel')">{{ t('shop.seg.satchel') }}</button>
+    </div>
 
-    <section class="sh-side" [attr.aria-label]="t('shop.shelf')">
-      <h3 class="sh-h">{{ t('shop.shelf') }} <span class="sh-buys">{{ buysLine }}</span></h3>
-      <div class="sh-shelf" role="grid" data-shop-shelf [class.is-over]="shelfOver" [attr.aria-label]="t('shop.shelf')"
-           [style.--rows]="shelfRows" [appDropTarget]="sellTarget">
-        @for (c of shelfCells; track c) { <span class="sh-cell" aria-hidden="true"></span> }
+    <section class="sh-side sh-side--shelf" [attr.aria-label]="t('shop.shelf')">
+      <h3 class="sh-h">{{ t('shop.shelf') }}</h3>
+      <div class="sh-shelf" role="grid" data-shop-shelf [class.is-over]="shelfOver" [attr.aria-label]="t('shop.shelf')" [appDropTarget]="sellTarget">
         @for (p of shelf; track p.offer.id) {
-          <button type="button" class="sh-offer" role="gridcell" [attr.data-offer]="p.offer.id"
-                  [style.--x]="shelfX(p)" [style.--y]="shelfY(p)" [style.--w]="p.w" [style.--h]="p.h" [style.--rim]="p.tone"
-                  [attr.aria-label]="p.name + ', ' + t('shop.price', { n: fmt(p.price) })"
+          <button type="button" class="sh-offer" role="gridcell" [attr.data-offer]="p.offer.id" [style.--rim]="p.tone"
+                  [class.is-poor]="!canAfford(p)" [class.is-on]="isCardOf(p)"
+                  [attr.aria-label]="canAfford(p) ? p.name + ', ' + t('shop.price', { n: fmt(p.price) }) : t('shop.tilePoor', { name: p.name, n: fmt(p.price) })"
                   (pointerdown)="pressOffer($event, p)" (click)="pickOffer(p, $event)" (contextmenu)="pickOffer(p, $event)"
                   (pointerenter)="hoverOffer(p, $event)" (pointerleave)="unhover()">
-            @if (p.art) { <img [src]="p.art" alt="" draggable="false"> } @else { <em>{{ p.mark }}</em> }
-            <b class="sh-price">{{ fmt(p.price) }}</b>
+            <span class="sh-icon">@if (p.art) { <img [src]="p.art" alt="" draggable="false"> } @else { <em>{{ p.mark }}</em> }</span>
+            <b class="sh-price" data-shop-price>@if (coin) { <img class="sh-coin" [src]="coin" alt="" draggable="false"> }{{ fmt(p.price) }}</b>
           </button>
         }
       </div>
     </section>
 
-    <section class="sh-side" [attr.aria-label]="t('shop.satchel')">
-      <h3 class="sh-h">{{ t('shop.satchel') }}</h3>
+    <section class="sh-side sh-side--satchel" [attr.aria-label]="t('shop.satchel')">
+      <h3 class="sh-h">{{ t('shop.satchel') }} <span class="sh-buys">{{ buysLine }}</span></h3>
       @if (satchel) {
         <app-item-grid container="b" [view]="satchel" [look]="look" [label]="t('shop.satchel')" [extraDrop]="buyDrop"
                        (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)" (unhover)="unhover()" />
       }
     </section>
 
+    <!-- The pinned card: the buy card for an offer, the sell card for a satchel piece. -->
     @if (card; as c) {
       <div class="sh-card" role="dialog" data-shop-card [style.--rim]="c.kind === 'offer' ? c.piece.tone : c.look.tone" [attr.aria-label]="c.kind === 'offer' ? c.piece.name : c.look.name">
-        @if (pinned) { <button type="button" class="px-x sh-x" (click)="closeCard()" [attr.aria-label]="t('shop.close')"><i aria-hidden="true">&times;</i></button> }
+        <button type="button" class="px-x sh-x" (click)="closeCard()" [attr.aria-label]="t('shop.close')"><i aria-hidden="true">&times;</i></button>
         @if (c.kind === 'offer') {
-          <b class="sh-name">{{ c.piece.name }}</b>
-          <span class="sh-line">{{ t(c.piece.offer.kind === 'item' ? 'shop.price' : 'shop.priceEach', { n: fmt(c.piece.price) }) }}</span>
-          @for (l of c.lines; track $index) { <span class="sh-line">{{ l }}</span> }
-          @if (pinned) {
-            <div class="sh-acts">
-              <button type="button" class="sh-btn is-primary" data-shop-buy (click)="buyCard(1)">{{ t('shop.buy', { n: fmt(c.piece.price) }) }}</button>
-              @if (c.piece.offer.kind !== 'item') {
-                <button type="button" class="sh-btn" data-shop-buy5 (click)="buyCard(5)">{{ t('shop.buyN', { q: 5, n: fmt(c.piece.price * 5) }) }}</button>
+          <div class="sh-cardhead">
+            <span class="sh-cardicon">@if (c.piece.art) { <img [src]="c.piece.art" alt=""> } @else { <em>{{ c.piece.mark }}</em> }</span>
+            <div class="sh-cardtitle">
+              <b class="sh-name">{{ c.piece.name }}</b>
+              <span class="sh-meta">{{ t(stacks(c.piece) ? 'shop.priceEach' : 'shop.price', { n: fmt(c.piece.price) }) }}@if (stacks(c.piece) && owned(c.piece)) { · {{ t('shop.have', { n: fmt(owned(c.piece)) }) }} }</span>
+            </div>
+          </div>
+          @if (c.lines.length) { <div class="sh-lines">@for (l of c.lines; track $index) { <span class="sh-line">{{ l }}</span> }</div> }
+          @if (stacks(c.piece)) {
+            <div class="sh-qty" role="group" [attr.aria-label]="t('shop.qty')" data-shop-qty>
+              @for (n of steps; track n) {
+                <button type="button" class="sh-step" [attr.data-qty]="n" [attr.aria-pressed]="qtyPick === n" (click)="setQty(n)">{{ n }}</button>
               }
+              <button type="button" class="sh-step" data-qty="max" [attr.aria-pressed]="qtyPick === 'max'" (click)="setQty('max')">{{ t('shop.max') }}</button>
             </div>
           }
+          <button type="button" class="sh-btn is-primary" data-shop-buy [attr.aria-disabled]="canAfford(c.piece, buyCount(c.piece)) ? null : 'true'" (click)="buyCard()">
+            {{ buyCount(c.piece) > 1 ? t('shop.buyN', { q: buyCount(c.piece), n: fmt(c.piece.price * buyCount(c.piece)) }) : t('shop.buy', { n: fmt(c.piece.price) }) }}
+          </button>
+          @if (!canAfford(c.piece, buyCount(c.piece))) { <span class="sh-why" data-shop-why>{{ t('shop.short', { n: fmt(c.piece.price * buyCount(c.piece) - gold) }) }}</span> }
         } @else {
-          <b class="sh-name">{{ c.look.name }}@if (c.qty > 1) { <span> ×{{ c.qty }}</span> }</b>
-          @for (l of c.lines; track $index) { <span class="sh-line">{{ l }}</span> }
+          <div class="sh-cardhead">
+            <span class="sh-cardicon">@if (c.look.art) { <img [src]="c.look.art" alt=""> } @else { <em>{{ c.look.mark }}</em> }</span>
+            <div class="sh-cardtitle">
+              <b class="sh-name">{{ c.look.name }}@if (c.qty > 1) { <span> ×{{ c.qty }}</span> }</b>
+              @if (c.unit > 0) { <span class="sh-meta">{{ t('shop.priceEach', { n: fmt(c.unit) }) }}</span> }
+            </div>
+          </div>
+          @if (c.lines.length) { <div class="sh-lines">@for (l of c.lines; track $index) { <span class="sh-line">{{ l }}</span> }</div> }
           @if (c.unit > 0) {
-            @if (pinned) {
-              <div class="sh-acts">
-                <button type="button" class="sh-btn is-primary" data-shop-sell (click)="sellCard(false)">{{ t('shop.sell', { n: fmt(c.unit) }) }}</button>
-                @if (c.qty > 1) {
-                  <button type="button" class="sh-btn" data-shop-sellall (click)="sellCard(true)">{{ t('shop.sellAll', { q: c.qty, n: fmt(c.unit * c.qty) }) }}</button>
-                }
-              </div>
-            } @else {
-              <span class="sh-line">{{ t('shop.sell', { n: fmt(c.unit) }) }}</span>
-            }
+            <div class="sh-acts">
+              <button type="button" class="sh-btn is-primary" data-shop-sell (click)="sellCard(false)">{{ t('shop.sell', { n: fmt(c.unit) }) }}</button>
+              @if (c.qty > 1) {
+                <button type="button" class="sh-btn" data-shop-sellall (click)="sellCard(true)">{{ t('shop.sellAll', { q: c.qty, n: fmt(c.unit * c.qty) }) }}</button>
+              }
+            </div>
           } @else {
             <span class="sh-line sh-muted">{{ t('shop.noBuy', { keeper: keeperName || title }) }}</span>
           }
+        }
+      </div>
+    }
+
+    <!-- The desktop hover card: the whole card at the pointer, and how to buy. It never takes a click. -->
+    @if (hover; as h) {
+      <div class="sh-tip" data-shop-tip aria-hidden="true" [style.--rim]="h.kind === 'offer' ? h.piece.tone : h.look.tone" [style.left.px]="hoverX" [style.top.px]="hoverY">
+        @if (h.kind === 'offer') {
+          <div class="sh-cardhead">
+            <span class="sh-cardicon">@if (h.piece.art) { <img [src]="h.piece.art" alt=""> } @else { <em>{{ h.piece.mark }}</em> }</span>
+            <div class="sh-cardtitle">
+              <b class="sh-name">{{ h.piece.name }}</b>
+              <span class="sh-meta" [class.is-poor]="!canAfford(h.piece)">@if (coin) { <img class="sh-coin" [src]="coin" alt=""> }{{ t(stacks(h.piece) ? 'shop.priceEach' : 'shop.price', { n: fmt(h.piece.price) }) }}</span>
+            </div>
+          </div>
+          @for (l of h.lines; track $index) { <span class="sh-line">{{ l }}</span> }
+          <span class="sh-hint">{{ t(stacks(h.piece) ? 'shop.hint' : 'shop.hintOne') }}</span>
+        } @else {
+          <div class="sh-cardhead">
+            <span class="sh-cardicon">@if (h.look.art) { <img [src]="h.look.art" alt=""> } @else { <em>{{ h.look.mark }}</em> }</span>
+            <div class="sh-cardtitle"><b class="sh-name">{{ h.look.name }}@if (h.qty > 1) { <span> ×{{ h.qty }}</span> }</b></div>
+          </div>
+          @for (l of h.lines; track $index) { <span class="sh-line">{{ l }}</span> }
+          @if (h.unit > 0) { <span class="sh-hint">{{ t('shop.sell', { n: fmt(h.unit) }) }} · {{ t('shop.hintSell') }}</span> }
+          @else { <span class="sh-line sh-muted">{{ t('shop.noBuy', { keeper: keeperName || title }) }}</span> }
         }
       </div>
     }
@@ -80,8 +120,10 @@
     @if (announce) { <p class="sh-announce" role="status" data-shop-announce>{{ announce }}</p> }
   </div>
 
+  <!-- Behind the ?: the keeper's line, what this shop buys, how prices work. -->
   <div stationDetails class="sh-more">
-    <p>{{ t('shop.details.how') }}</p>
+    @if (keeperName) { <p class="sh-keeper" data-shop-keeper><b>{{ keeperName }}</b> {{ keeperLine }}</p> }
     <p>{{ buysLine }}</p>
+    <p>{{ t('shop.details.how') }}</p>
   </div>
 </app-station-shell>
