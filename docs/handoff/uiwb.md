@@ -64,7 +64,7 @@ HUD, trade, chat. The satchel grid inside a shop is still `app-item-grid` (Wave 
 - **G1** The skip toggle is projected into the maker's sticky `.km__actions` (`[kmFoot]`), one opaque foot; the lobby
   window has no foot on phones (× leaves); the scroller has no bottom padding and `scroll-padding-bottom`; shorter
   chips and a name-less card on phones. Test: the name input's bottom edge hit-tests to the input at 844×390 and 360×640.
-- **G2** Calling names wrap to two 11px lines (hyphenated), never an ellipsis. **G3** Stepper labels have their own
+- **G2** At ≤400px the callings sit 2×2 (icon beside the name, one line each at 11px, no word broken, EN and ES); wider, four abreast with up to two hyphenated lines. On a small phone the Glass's kicker and the name's label step aside so the name stays clear of the foot. **G3** Stepper labels have their own
   14px row; under 420px a swatch reads "3/10".
 - **M1** Rails hold whole chips only (`--rail-max`, snap); a short map folds the filters into one Filters chip.
   **M2** Filter on = lit wood + full-colour glyph, off = wood-1 + glyph at 40%. **M3** `map-floor-<size>.png` shots.
