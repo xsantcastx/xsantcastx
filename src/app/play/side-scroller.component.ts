@@ -839,6 +839,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (n) {
       // S11: the Walking Tree waiting for its blow.
       if (n === 'td-walker') return 'strike';
+      // S11 part 2: the Bell Under the Water asks only that the Keeper keep still (no disc verb).
+      if (n === 'td-underbell') return hand;
       if (n.startsWith('giver-') || s.nearbyKind === 'quest') return 'talk';
       if (n === 'inscription' || (n === 'height' && s.height?.kind === 'carving')) return 'read';
       if (s.nearbyKind === 'panel' || s.nearbyKind === 'waystone' || s.nearbyKind === 'passage' || n === 'delve' || n === 'passage' || n.startsWith('shrine:')) return 'enter';
@@ -4764,10 +4766,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     // An act's section (td-sections.ts): its Waystone, a thing to read, a sealed thing, a seam's gate.
     // The gathering skills' own targets in the world (a tree to chop, a spot to fish, a fire to cook at).
-    if (this.state?.nearby === 'td-tree' || this.state?.nearby === 'td-spot' || this.state?.nearby === 'td-fire' || this.state?.nearby === 'td-walker') return this.t(`reach.act.${this.state.nearby.slice(3)}`);
+    if (this.state?.nearby === 'td-tree' || this.state?.nearby === 'td-spot' || this.state?.nearby === 'td-fire' || this.state?.nearby === 'td-walker' || this.state?.nearby === 'td-underbell') return this.t(`reach.act.${this.state.nearby.slice(3)}`);
     const reachAct = /^(tdstone|read|sealed|seam):/.exec(this.state?.nearby ?? '')?.[1];
     // A boardwalk or a ford across the water is crossed, not walked on (S11 part 2: the Marches' seams).
     if (reachAct === 'seam' && this.seamKind(this.state?.nearby ?? '') === 'ford') return this.t('reach.act.cross', { name: titleCase(this.state.nearbyLabel ?? '') });
+    // The fifth bell's door says what it is (S11 part 2, campaign #12): sealed, not a thing to open.
+    if (this.state?.nearby === 'sealed:belfry-fifth-door') return this.t('reach.act.sealed-fifth', { name: titleCase(this.state.nearbyLabel ?? '') });
     if (reachAct) return this.t(`reach.act.${reachAct}`, { name: titleCase(this.state.nearbyLabel ?? '') });
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
     const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;

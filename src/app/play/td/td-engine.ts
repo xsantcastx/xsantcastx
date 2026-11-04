@@ -160,8 +160,8 @@ import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/key
 import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate';
 import { FISH_REACH, GatherRuntime, SHADOW_CAP, SHADOW_CAP_LOW, type Campfire } from './td-gather';
 import { WeatherFx, type StrikeGround } from './td-weather-fx';
-import { KILN_STATION, NIGHT_PLACES, NightEvents, WALKER_AREA, WALKER_SEED, nightLabel, type NightNews } from './td-night-events';
-import { NIGHT_EVENT_IDS, NIGHT_REWARDS, nightRewardKey, type NightEventId } from '../../shared/night-events/night-events.model';
+import { KILN_STATION, NIGHT_PLACES, NightEvents, UNDERBELL_AREA, WALKER_AREA, WALKER_SEED, nightLabel, type NightNews } from './td-night-events';
+import { NIGHT_EVENT_IDS, NIGHT_REWARDS, UNDERBELL, nightRewardKey, type NightEventId } from '../../shared/night-events/night-events.model';
 import { WEATHER_BARKS, ODETTE_BOARD, barkFor } from './td-sky-lines';
 import type { FishSpot } from './td-world';
 import { FIRE_WARM } from '../../shared/gathering/gathering.model';
@@ -425,7 +425,7 @@ export class TopDownEngine {
    * canvas (`[data-world-rail]`, css px: the phone's skill column and potion belt), and the boxes the world's name
    * plates keep clear of (`[data-world-avoid]`, the armed Interact prompt; backing px from the canvas's corner).
    */
-  private readonly hud = { l: 0, r: 0, at: -1, n: 0, avoid: new Float64Array(AVOID_MAX * 4) };
+  private readonly hud = { l: 0, r: 0, at: -1, n: 0, avoid: new Float64Array(AVOID_MAX * 4), en: 0, elite: new Float64Array(AVOID_MAX * 4) };
   /**
    * How far the follow point sits right of the canvas's centre (art px; negative: left): half the rails' difference,
    * so the Keeper stands in the middle of the world the rails leave, plus what it takes to bring the target out from
@@ -1401,6 +1401,14 @@ export class TopDownEngine {
     if (this.level !== this.world || this.world.continent !== WALKER_AREA) return false;
     const w = this.nightEvents.walker();
     return w.ready && Math.hypot(w.x - this.player.x, w.y - this.player.y) <= 3 * TILE;
+  }
+  /** The Bell Under the Water waits for its note, or rings now, and the Keeper stands on the Belfry's roof boards. */
+  private underbellNear(): boolean {
+    if (this.level !== this.world || this.world.continent !== UNDERBELL_AREA) return false;
+    const u = this.nightEvents.underbell();
+    if (!u || u.keyhole || u.age > UNDERBELL.still) return false;
+    const [c, r] = NIGHT_PLACES.roof;
+    return Math.hypot(c * TILE + TILE / 2 - this.player.x, r * TILE + TILE - this.player.y) < UNDERBELL.near * TILE;
   }
   private nightNews(n: NightNews): void {
     if (n.kind === 'sfx') { this.options.onSfx?.({ kind: n.cue }); return; }
@@ -3836,10 +3844,11 @@ export class TopDownEngine {
     const s = this.nearby;
     // Nothing to use: the gathering skills' own (a fire to cook at, a spot to fish, a tree to chop).
     // The Walking Tree waiting for its blow comes first (it is what the night is about); then the gathering targets.
-    const gx = this.walkerNear() ? 'td-walker' : s ? null : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
+    // The Bell Under the Water: by the Belfry's roof, before and through its note, the prompt says what to do (nothing).
+    const gx = this.walkerNear() ? 'td-walker' : s ? null : this.underbellNear() ? 'td-underbell' : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
     const state: EngineState = {
       hp: Math.round(this.hp), enemyHp: 0, nearby: gx === 'td-walker' ? gx : s ? s.station.id : gx,
-      nearbyLabel: gx === 'td-walker' ? 'STRIKE THE TREE' : s ? s.station.label : gx === 'td-fire' ? 'COOK' : gx === 'td-spot' ? 'FISH' : gx === 'td-tree' ? 'CHOP TREE' : undefined, nearbyKind: gx === 'td-walker' ? 'resource' : s?.station.kind ?? (gx ? 'resource' : undefined),
+      nearbyLabel: gx === 'td-walker' ? 'STRIKE THE TREE' : gx === 'td-underbell' ? 'STAND STILL' : s ? s.station.label : gx === 'td-fire' ? 'COOK' : gx === 'td-spot' ? 'FISH' : gx === 'td-tree' ? 'CHOP TREE' : undefined, nearbyKind: gx === 'td-walker' ? 'resource' : s?.station.kind ?? (gx ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
@@ -4659,7 +4668,7 @@ export class TopDownEngine {
   private measureHud(): void {
     const h = this.hud;
     if (typeof document === 'undefined' || (h.at >= 0 && this.time >= h.at && this.time - h.at < .25)) return;
-    h.at = this.time; h.l = 0; h.r = 0; h.n = 0;
+    h.at = this.time; h.l = 0; h.r = 0; h.n = 0; h.en = 0;
     const c = this.canvas.getBoundingClientRect();
     if (c.width < 1 || c.height < 1) return;
     const k = this.canvas.width / c.width;
@@ -4690,6 +4699,16 @@ export class TopDownEngine {
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.pointerEvents === 'none' || Number(cs.opacity) < .1) continue;
       put(b);
+    }
+    // The elite plates' own list (S11 part 2, the Director): every box above, and the HUD's wide panels a plain plate
+    // may still pass under — the minimap's clock row, the chat box, the hotbar, the belt, the dock.
+    h.elite.set(h.avoid.subarray(0, h.n * 4)); h.en = h.n;
+    for (const el of Array.from(document.querySelectorAll('.td-mini, .td-mini__sky, .td-chat, .hotbar, .td-belt, .td-dock, .td-chat-tab'))) {
+      if (h.en >= AVOID_MAX) break;
+      const b = el.getBoundingClientRect();
+      if (b.width < 2 || b.height < 2 || b.right <= c.left || b.left >= c.right || b.bottom <= c.top || b.top >= c.bottom) continue;
+      const e = h.elite, i = h.en++ * 4;
+      e[i] = (b.left - c.left) * k; e[i + 1] = (b.top - c.top) * k; e[i + 2] = (b.right - c.left) * k; e[i + 3] = (b.bottom - c.top) * k;
     }
   }
   /**
@@ -6258,7 +6277,7 @@ export class TopDownEngine {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
         if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true) && !this.plateOnKeeper(m, m.x, m.y - this.vis(m.def).h * mobScale(m) - 4, 18, 18)) {
-          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx(), this.hudCornerBottomPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h * mobScale(m) - 5));
+          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx(), this.hudCornerBottomPx(), { boxes: this.hud.elite, n: this.hud.en }); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h * mobScale(m) - 5));
           const st = mobStatuses(m, this.statusPeaks);
           if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h * mobScale(m) - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
         }

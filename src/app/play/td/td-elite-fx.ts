@@ -188,7 +188,54 @@ export function drawAffixTells(c: Ctx, m: Mob, time: number, still: boolean): vo
  * An elite's plate over its head, from the bar up: the framed life bar, then (leaders only) the affixes in small
  * pixel text, then the name. Returns nothing; draws in world coordinates (textAlign center, baseline bottom).
  */
-export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight = 0, reserveBottom = Infinity): void {
+export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight = 0, reserveBottom = Infinity, avoid?: EliteAvoid): void {
+  const off = avoid && avoid.n ? eliteClamp(c, m, avoid) : null;
+  if (!off) { drawElitePlateAt(c, m, targeted, reserveRight, reserveBottom); return; }
+  c.save(); c.translate(off[0], off[1]);
+  drawElitePlateAt(c, m, targeted, reserveRight, reserveBottom);
+  c.restore();
+}
+/** The HUD's boxes over the world (canvas px, [x0, y0, x1, y1] × n): the minimap and its clock, the chat, the bars. */
+export interface EliteAvoid { boxes: ArrayLike<number>; n: number }
+/**
+ * Where an elite's whole plate (bar, affix line, name) must shift (world px under the current transform) to stand clear
+ * of every HUD box by a few px (S11 part 2, the Director): a box in the top half of the screen (the minimap's corner) is
+ * slid past sideways, one lower down (the chat, the hotbar, the belt) lifted over; never off the screen. Null when clear.
+ */
+function eliteClamp(c: Ctx, m: Mob, av: EliteAvoid): [number, number] | null {
+  const t = c.getTransform();
+  if (!t.a || !t.d) return null;
+  const tag = m.elite!, X = Math.round(m.x), top = Math.round(m.y - mobCell(m.def).h * mobScale(m) - 4);
+  let half = (tag.role === 'leader' ? 26 : 22) / 2 + 2, up = 4;
+  if (tag.role === 'leader') {
+    const aff = tag.affixes.filter(a => !a.startsWith('aura-'));
+    c.font = '6px "Pixelify Sans", monospace';
+    if (aff.length) { half = Math.max(half, c.measureText(affixLine(aff)).width / 2); up += 7; }
+    const au = tag.affixes.find(a => a.startsWith('aura-'));
+    c.font = 'bold 8px "Pixelify Sans", monospace';
+    half = Math.max(half, c.measureText(`${tag.name ?? m.def.name}${au ? ` · ${AFFIX_DEFS[au].name}` : ''}`).width / 2 + 1);
+    up += 10;
+  }
+  const W = c.canvas.width, H = c.canvas.height, M = 6 * Math.abs(t.a), b = av.boxes;
+  const x0 = t.a * (X - half) + t.e, x1 = t.a * (X + half) + t.e, y0 = t.d * (top - up) + t.f, y1 = t.d * (top + 5) + t.f;
+  let dx = 0, dy = 0;
+  for (let pass = 0; pass < 6; pass++) {
+    let moved = false;
+    for (let i = 0; i < av.n; i++) {
+      const L = b[i * 4] - M, T = b[i * 4 + 1] - M, R = b[i * 4 + 2] + M, B = b[i * 4 + 3] + M;
+      if (x1 + dx <= L || x0 + dx >= R || y1 + dy <= T || y0 + dy >= B) continue;
+      const left = L - (x1 + dx), right = R - (x0 + dx), lift = T - (y1 + dy), drop = B - (y0 + dy);
+      const side = x0 + dx + left >= 0 && (Math.abs(left) <= right || x1 + dx + right > W) ? left : right;
+      if (T < H * .4) { if (x0 + dx + side >= 0 && x1 + dx + side <= W) dx += side; else dy += drop; }
+      else if (Math.abs(side) * 1.5 < -lift || y0 + dy + lift < 0) dx += side; else dy += lift;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  if (!dx && !dy) return null;
+  return [Math.round(dx / t.a), Math.round(dy / t.d)];
+}
+function drawElitePlateAt(c: Ctx, m: Mob, targeted: boolean, reserveRight: number, reserveBottom: number): void {
   // A name or affix line is kept on the screen and left of the HUD's top-right corner (the minimap): its centre slides
   // in, never the bar (screen px from the canvas's own transform; `reserveRight` is the corner's width and
   // `reserveBottom` its height in canvas px). It slides only when the line actually reaches into the corner's box, and
