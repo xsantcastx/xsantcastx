@@ -8,6 +8,7 @@
  * and the per-row Spellstone button (`cut` / `belt`: a satchel stone recording the row's rank and marks, S2).
  */
 import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { TranslationService } from '../../translation.service';
 import { KeymapService } from '../../shared/keys/keymap.service';
@@ -24,6 +25,7 @@ type Card = { kind: 'row'; row: BookRow } | { kind: 'mark'; row: BookRow; mark: 
 @Component({
   selector: 'app-skill-book',
   standalone: true,
+  imports: [NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.Default,
   templateUrl: './skill-book.component.html',
   styleUrl: './skill-book.component.css',
@@ -44,8 +46,13 @@ export class SkillBookComponent implements OnChanges {
   @Input() gearRanks = 0;
   @Input() castSpeed = 0;
   @Input() extra: ((id: SkillId) => string[]) | null = null;
-  /** Keys 1–4 and the running aura (the Keys tab). */
+  /** Keys 1–8 and the running aura (the Keys tab). */
   @Input() bar: readonly string[] = [];
+  /** Which picture the Keys tab draws: the portrait phone's arc round the disc, or the bar's eight keys. */
+  @Input() layout: 'arc' | 'bar' = 'bar';
+  /** The belt as the HUD draws it (each kind's art and count), for the Keys picture. */
+  @Input() beltPics: readonly { kind: string; art: string; n: number }[] = [];
+  beltPic(kind: string) { return this.beltPics.find(b => b.kind === kind) ?? null; }
   @Input() aura: string | null = null;
   /** The per-row Spellstone card: the recipe, the Soul and Blanks held, the charges of this recipe in the satchel. */
   @Input() stoneFor: ((id: string) => SpellbookStone | null) | null = null;
@@ -234,7 +241,7 @@ export class SkillBookComponent implements OnChanges {
   }
 
   // ── Tabs ──
-  openTab(id: TreeId | 'keys'): void { this.tab = id; this.card = null; this.picked = null; this.stoneRow = null; this.pinned = false; }
+  openTab(id: TreeId | 'keys'): void { this.tab = id; this.card = null; this.picked = null; this.stoneRow = null; this.pinned = false; this.keyPick = null; this.keyDone = null; }
   tabKey(i: number, ev: KeyboardEvent): void {
     const step = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
     if (!step) return;
@@ -268,6 +275,103 @@ export class SkillBookComponent implements OnChanges {
       .map(id => ({ id, name: this.t(SKILLS[id].nameKey), on: this.aura === id }));
   }
   private rankSaved(id: SkillId): number { return rankOf(this.tree, this.vocation, id); }
+  skillName(id: string): string { const sk = SKILLS[id as SkillId]; return sk ? this.t(sk.nameKey) : id; }
+
+  // ── The Keys picture (ui-pass-3 §9c): tap a skill then a key (or a key then a skill), or drag a skill onto a key ──
+  /** The arc's page: 0 shows keys 1–4 round the disc, 1 shows 5–8 (the HUD's ⇅ chip). */
+  arcPage = 0;
+  get arcKeys(): number[] { return this.arcPage ? [5, 6, 7, 8] : [1, 2, 3, 4]; }
+  keyPick: { kind: 'skill'; id: string } | { kind: 'key'; slot: number } | null = null;
+  private keyDone: { id: string; slot: number } | null = null;
+  pickedSkill(id: string): boolean { const p = this.keyPick; return p?.kind === 'skill' && p.id === id; }
+  pickedKey(slot: number): boolean { const p = this.keyPick; return p?.kind === 'key' && p.slot === slot; }
+  get keysHint(): string {
+    const p = this.keyPick;
+    if (p?.kind === 'skill') return this.t('book.keys.pickSkill', { name: this.skillName(p.id) });
+    if (p?.kind === 'key') return this.t('book.keys.pickKey', { key: this.cap('skill' + p.slot) });
+    if (this.keyDone) return this.t('book.keys.done', { name: this.skillName(this.keyDone.id), key: this.cap('skill' + this.keyDone.slot) });
+    return '';
+  }
+  private putKey(id: string, slot: number): void {
+    this.keyPick = null;
+    this.keyDone = { id, slot };
+    this.assign.emit({ id, slot });
+  }
+  tapSkill(id: string): void {
+    if (this.dragMoved) { this.dragMoved = false; return; }
+    const p = this.keyPick;
+    if (p?.kind === 'key') { this.putKey(id, p.slot); return; }
+    this.keyDone = null;
+    this.keyPick = p?.kind === 'skill' && p.id === id ? null : { kind: 'skill', id };
+  }
+  tapKey(slot: number): void {
+    const p = this.keyPick;
+    if (p?.kind === 'skill') { this.putKey(p.id, slot); return; }
+    this.keyDone = null;
+    this.keyPick = p?.kind === 'key' && p.slot === slot ? null : { kind: 'key', slot };
+  }
+  /** A skill being dragged (its id), where its ghost is, and the key under it. */
+  dragId: string | null = null;
+  dragAt = { x: 0, y: 0 };
+  dragOver: number | null = null;
+  private dragFrom: { id: string; x: number; y: number; touch: boolean; lifted: boolean; pid: number } | null = null;
+  private dragTimer?: ReturnType<typeof setTimeout>;
+  private dragMoved = false;
+  /** A mouse drags at once (past 4 px); a finger lifts after a 250 ms press, so a swipe still scrolls the grid. */
+  dragStart(ev: PointerEvent, id: string): void {
+    if (ev.button > 0) return;
+    const touch = ev.pointerType !== 'mouse';
+    this.dragFrom = { id, x: ev.clientX, y: ev.clientY, touch, lifted: !touch, pid: ev.pointerId };
+    this.dragMoved = false;
+    clearTimeout(this.dragTimer);
+    if (!touch) try { (ev.currentTarget as Element | null)?.setPointerCapture?.(ev.pointerId); } catch { /* a pointer the page lost */ }
+    if (touch) this.dragTimer = setTimeout(() => {
+      const f = this.dragFrom;
+      if (!f) return;
+      f.lifted = true; this.dragId = f.id; this.placeGhost(f.x, f.y);
+      try { navigator.vibrate?.(8); } catch { /* not every phone */ }
+    }, 250);
+  }
+  /** While a finger holds a lifted skill, the page does not scroll under it. */
+  dragTouch(ev: TouchEvent): void { if (this.dragId && ev.cancelable) ev.preventDefault(); }
+  dragMove(ev: PointerEvent): void {
+    const f = this.dragFrom;
+    if (!f || ev.pointerId !== f.pid) return;
+    const far = Math.hypot(ev.clientX - f.x, ev.clientY - f.y) > 4;
+    if (!f.lifted) { if (f.touch && far) { clearTimeout(this.dragTimer); this.dragFrom = null; } return; }
+    if (!this.dragId && !far) return;
+    this.dragId = f.id; this.dragMoved = true;
+    this.placeGhost(ev.clientX, ev.clientY);
+    this.dragOver = this.keyAt(ev.clientX, ev.clientY);
+  }
+  dragEnd(ev: PointerEvent): void {
+    const f = this.dragFrom;
+    clearTimeout(this.dragTimer);
+    if (f && this.dragId) {
+      const slot = this.keyAt(ev.clientX, ev.clientY);
+      if (slot) this.putKey(f.id, slot);
+      this.dragMoved = true;
+      // The click that follows the lift is the drag's own: it must not also pick the skill.
+      setTimeout(() => { this.dragMoved = false; }, 0);
+    }
+    this.dragFrom = null; this.dragId = null; this.dragOver = null;
+  }
+  dragCancel(): void { clearTimeout(this.dragTimer); this.dragFrom = null; this.dragId = null; this.dragOver = null; }
+  private placeGhost(x: number, y: number): void {
+    // The ghost floats above a finger (never under it), beside a mouse pointer.
+    const touch = this.dragFrom?.touch;
+    this.dragAt = { x: x - 28, y: touch ? y - 84 : y - 28 };
+  }
+  private keyAt(x: number, y: number): number | null {
+    if (typeof document === 'undefined') return null;
+    const el = document.elementFromPoint(x, y)?.closest('[data-key-slot]');
+    const n = Number(el?.getAttribute('data-key-slot'));
+    return el && this.host.nativeElement.contains(el) && n >= 1 && n <= 8 ? n : null;
+  }
+
+  // ── The tree tabs scroll sideways: a fade at the right edge while more wait ──
+  treesMore = true;
+  treesScroll(ev: Event): void { const el = ev.target as HTMLElement; this.treesMore = el.scrollLeft + el.clientWidth < el.scrollWidth - 2; }
 
   // ── Pictures ──
   icon(id: string): SafeHtml {

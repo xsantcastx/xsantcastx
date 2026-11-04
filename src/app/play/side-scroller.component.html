@@ -7,7 +7,7 @@
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
-<section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" [class.stage--thumb]="thumb" [class.stage--compact]="thumb && thumbCompact" [class.stage--chat]="thumb && thumbChat" [class.stage--goal-open]="thumb && goalOpen" aria-labelledby="game-title">
+<section class="stage" [class.stage--td]="topDown" [class.stage--bar]="hudBar && !panel" [class.stage--menu]="bagOpen || placesOpen || gameMenuOpen || bestiaryOpen || soundOpen || controlsOpen || feedbackOpen || friendsOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" [class.stage--thumb]="thumbHud" [class.stage--land]="thumbLand" [class.stage--compact]="thumbHud && thumbCompact" [class.stage--chat]="thumbHud && thumbChat" [class.stage--goal-open]="thumbHud && goalOpen" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [appDropTarget]="worldTarget" data-drop-world [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-y]="petAt?.y ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -63,7 +63,7 @@
       <span>{{ t('play.td.raised.release', { n: tdRaised }) }}</span>
     </button>
   }
-  @if (topDown && tdAbilities.length && !panel && !hudBar && !thumb) {
+  @if (topDown && tdAbilities.length && !panel && !hudBar && !thumbHud) {
     <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore data-world-rail>
       @for (a of tdAbilities; track a.key) {
         <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left" (click)="useAbility(a.key)"
@@ -74,7 +74,7 @@
   }
   <!-- Top-down: the potion belt (shared/potions): Q drinks the best Health potion held, R the best Mana potion; the count
        on the glass, the shared cooldown sweeping back. Two buttons on phones. -->
-  @if (topDown && tdBelt.length && !panel && !hudBar && !thumb) {
+  @if (topDown && tdBelt.length && !panel && !hudBar && !thumbHud) {
     <div class="td-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore data-world-rail>
       @for (b of tdBelt; track b.kind) {
         <button type="button" class="td-pot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
@@ -114,9 +114,9 @@
   <!-- Desktop: one bottom bar (play/hud-bar) holds the orbs, the XP strip, the small menu buttons, the eight skill slots and the belt. -->
   @if (hudBar && !panel) { <app-hud-bar [hud]="this" /> }
   <!-- A portrait phone: the thumb-zone HUD (play/thumb-hud; docs/design/ui-pass-3.md §A.2) holds the skills, the belt and the bag row. -->
-  @if (thumb && !panel) { <app-thumb-hud [hud]="this" /> }
+  @if (thumbHud && !panel) { <app-thumb-hud [hud]="this" /> }
   @if (topDown && !panel && !hudBar) {
-    @if (!thumb) {
+    @if (!thumbHud) {
     <nav class="td-dock" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore>
       <button type="button" (click)="toggleBag()" [attr.aria-expanded]="bagOpen" [title]="t('play.td.dock.bag') + ' (I)'">
         <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
@@ -447,7 +447,7 @@
       </header>
       @defer (on immediate) {
         <app-skill-book class="sbook__book" [tree]="bookSaved" [level]="huntingLevel" [vocation]="bookVocation" [sig]="gearSig" [gearRanks]="bookGearRanks"
-          [castSpeed]="bookCastSpeed" [extra]="bookExtra" [bar]="loadoutBar" [aura]="loadoutAura" [stoneFor]="bookStone" [stoneArt]="bookStoneArt" [closeAsk]="bookCloseAsk"
+          [castSpeed]="bookCastSpeed" [extra]="bookExtra" [bar]="loadoutBar" [layout]="thumb ? 'arc' : 'bar'" [beltPics]="bookBelt" [aura]="loadoutAura" [stoneFor]="bookStone" [stoneArt]="bookStoneArt" [closeAsk]="bookCloseAsk"
           (accept)="acceptBook($event)" (assign)="assignSkill($event.id, $event.slot)" (toggleAura)="toggleAura($event)" (cut)="cutStone($event)"
           (belt)="beltStone($event)" (closed)="closeBookNow()" (dirty)="bookDirty = $event" />
       } @placeholder {
@@ -468,7 +468,7 @@
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
-    <div class="td-mini" aria-hidden="true" data-engine-ignore (click)="thumb && togglePlaces()" appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
+    <div class="td-mini" aria-hidden="true" data-engine-ignore (click)="thumbHud && togglePlaces()" appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
       <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
       @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}@if (weatherNow && weatherNow.state !== 'clear') {<i class="td-mini__wx" data-weather-pip [attr.data-wx]="weatherNow.state" role="img" [attr.aria-label]="weatherLabel" [title]="weatherLabel"></i>}</span> }
     </div>
@@ -485,9 +485,9 @@
     }
     <!-- Phones (OSRS mobile): life and mana as round orbs beside the minimap; the plates are desktop's. -->
     <div class="td-orbs" aria-hidden="true" data-engine-ignore>
-      <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp" (click)="thumb && drinkPotion('health')"><b>{{ hpShown }}</b></i>
-      <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana" (click)="thumb && drinkPotion('mana')"><b>{{ tdMana }}</b></i>
-      <i class="td-soul" data-soul-orb><i class="soul-pip"></i>@if (thumb) { <span class="td-soul__label">{{ t('thumb.soul', { n: tdSoul }) }}</span> } @else { {{ tdSoul }} }</i>
+      <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp" (click)="thumbHud && drinkPotion('health')"><b>{{ hpShown }}</b></i>
+      <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana" (click)="thumbHud && drinkPotion('mana')"><b>{{ tdMana }}</b></i>
+      <i class="td-soul" data-soul-orb><i class="soul-pip"></i>@if (thumbHud) { <span class="td-soul__label">{{ t('thumb.soul', { n: tdSoul }) }}</span> } @else { {{ tdSoul }} }</i>
       @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura, thumb ? 32 : 28)"></i> }
       <!-- The Ember debt on a phone (the plates are hidden there): a small brass tag under the orbs while it is owed. -->
       @if (emberDebt > 0) { <i class="td-debt" data-ember-debt-orb>{{ t('play.coldHearth.debt.hud') }} {{ xpText(emberDebt) }}</i> }
@@ -541,7 +541,7 @@
 
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
-    <div class="guide" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" (click)="toggleGoal($event)" [class.guide--open]="thumb && goalOpen" [style.--goal-p]="goal.n && goal.total ? (goal.n - 1) / goal.total : null" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
+    <div class="guide" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" (click)="toggleGoal($event)" [class.guide--open]="thumbHud && goalOpen" [style.--goal-p]="goal.n && goal.total ? (goal.n - 1) / goal.total : null" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
       <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
       <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
       <!-- Glim voices the goal; a press opens its hint ladder one step at a time (shared/glim/glim.ts). -->
@@ -588,7 +588,7 @@
     </div>
   } @else if (topDown && taskRows.length) {
     <!-- The first goals done: the scroll keeps only the town tasks under way. -->
-    <div class="guide guide--list guide--tasks" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" (click)="toggleGoal($event)" [class.guide--open]="thumb && goalOpen" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+    <div class="guide guide--list guide--tasks" appHudDrag="guide" [hudDragLabel]="t('ux.hud.drag')" (click)="toggleGoal($event)" [class.guide--open]="thumbHud && goalOpen" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
       <p class="guide-text"><b>{{ t('play.task.tasks') }}</b></p>
       <!-- Town tasks under way (shared/town-tasks): one row each, its count, a tick when it is ready to hand in. -->
       @if (topDown && taskRows.length) {
