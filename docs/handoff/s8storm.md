@@ -95,3 +95,38 @@ strike through the usual claim path (`hurtMob` on a replica claims to the host).
 - The pasty's Mining XP covers every Mining step through `SkillActionService.act`, which includes ore pickups and
   world nodes. It does not cover the Seamworks seam's `resolveMine`.
 - The Count and the Kiln read the weather with fixed regions (`F`), so they are the same for everyone on the land.
+
+## Gate and perf (2026-11-04, after merging main a295087d)
+- Passing:
+  - tsc (app and spec);
+  - `npm run test:ci`, 4606/4607. The one failure is `td-truth-marks` `thornrain.b3:wetWood`, a stochastic
+    12-sample mean from S9. It fails about 2 runs in 5 here and passes on rerun. 4/4 clean on main is too few runs
+    to rule out the same flake there; S8 touches nothing it reads.
+  - the build: initial 1.39 MB;
+  - check:meaning;
+  - CI's `node --test` line, 337/337;
+  - ds, i18n, nav, economy and combat sims, and the CSP hashes;
+  - chromium e2e play-top-down, td-*, play-hud, play-mobile-hud, menus-reach and onboarding: 280 passed. The one
+    failure, `td-world` "the room runs the island", passes alone.
+- `e2e/td-s8storm.spec.ts`: 8 passed.
+- Phone profile: `TD_PERF=1 ARTOPT=iso`, CPU ×6, run interleaved against a build of main, engine work per frame
+  (ms). The machine was shared with other agents' builds and e2e, so it is noisy:
+
+  | Scene | s8 run 1 | main run 1 | s8 run 2 | main run 2 |
+  |---|---|---|---|---|
+  | road, standing | 6.55 | 14.42 | 11.26 | 10.12 |
+  | road, walking | 16.94 | 21.26 | 16.59 | 15.50 |
+  | town, standing | 22.08 | 23.75 | 21.16 | 22.26 |
+  | town, walking | 26.33 | 29.33 | 25.13 | 20.26 |
+
+  These show no systematic regression; the swings are the shared machine and the night-pass "light" share. A pinned
+  storm on s8 with strikes landing measured road 5.91 / 13.32 and town 8.94 / 13.57 (standing / walking). The night
+  events ask the model twice a second, and a strike's ring is about 120 fillRects for 1.2 s.
+- Screenshots are in `output/s8storm/` (not committed):
+  - storm tell and scorch, iso and classic, plus a phone shot;
+  - Ashfall, Spore drift, Mist-rain, plus Mist-rain on a phone;
+  - Odette's board;
+  - the Late Shift, plus a phone shot;
+  - the Count, the Relief Column (marching and at the gate), the Kiln.
+- For the Director: the self-lit kiln reads small among the Deep Charwood's trees, and the Late Shift's lamps are
+  subtle in the lit Seamworks square.
