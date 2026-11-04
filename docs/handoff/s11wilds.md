@@ -87,3 +87,27 @@ economy-sim and combat-sim --check pass; build initial 1.39 MB; CSP hashes match
 play-hud, play-mobile-hud, menus-reach, onboarding, play-thumb-hud; PW_PORT=4696): 321 passed, 191 skipped, 2 failed on
 the full run — play-top-down's Verdant trip still sailing home from Rootglass (fixed: it walks back to the Shore's pier;
 green on rerun) and td-dirfix "a wolf behind a tree" (passes alone). `e2e/td-wilds.spec.ts` 5/5, shots 7/7.
+
+## S10 merge and Director fixes (round 2)
+- **S10 reconciled** (merged 1be211e2): the Storm-Struck Oak is a `storm-oak` place in `verdant-wilds-greenwood`
+  (`STORM_OAK_AT` −10,−112: a clearing ≥14 tiles off every road, >40 from the Weaver Canopy, >30 from the Copied Pair's
+  glade; its ring keeps every spawn out). The Antlered Storm's `area` is the Greenwood's id, so the room's `weatherBoss`
+  raises it there; `__tdS10.oak` keys on the area; `social-s10.test.mjs` and `e2e/td-s10boss.spec.ts` use the section.
+- **Strike the tree** on every surface: the phone disc has its own verb (`thumb.verb.strike`, a sword with a leaf), the
+  walker's reach is 3 tiles, and the e2e asserts the prompt's words.
+- **The hedge in iso**: each clump a tall bramble (a tile and a half), lighter leaf, a lit top edge, long pale thorns.
+- **The Wilds' wall in iso**: on the surface a `vinewall` is drawn as the new `wild` material (td-iso-walls) — leaf-green
+  bulges and root ropes, no courses or seams, a brighter lit lip, vines hanging 3+ rows. The temple keeps its masonry.
+- **Plates**: a creature's plate is not drawn while it would print over the Keeper's body (`plateOnKeeper`, in the
+  plate's own frame, iso and classic); the minimap is a `[data-world-avoid]` box, so plain plates slide clear of it as
+  of the prompt (and of every HUD button); elite lines keep an 8 px margin round the corner box.
+- Glim dimmed beside the Walking Tree: a pale dot with a slow ring breathing out (static on Low / reduced motion).
+- Not done (nice-to-haves): Glim's chat line on phone during the event; a wanderer-free radius at hot-spot hearts;
+  the Keeper's occlusion fade at the Bell-less Square's pillars.
+
+Gate (round 2, after the S10 merge 1be211e2 and the Director fixes): check:meaning, i18n, ds clean; CI node line incl.
+social-s10 340/340; delve-endless 31/31; combat-sim --check holds; karma 4652/4652 twice; build 1.39 MB, CSP match.
+Chromium set (incl. td-s10boss): 324 passed, 191 skipped, 4 failed on the full run — onboarding (a) and td-coop
+companions pass alone; td-quick-belt's iso badges were the plate rule hiding a creature two tiles beside the Keeper
+(narrowed to the body; green). Rerun of quick-belt, dirfix, td-wilds, td-wilds-shots, td-s10boss, onboarding, td-coop:
+32/32.

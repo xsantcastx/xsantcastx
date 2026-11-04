@@ -36,6 +36,8 @@ export const THUMB_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'thumb.verb.take': { en: 'Take', es: 'Coger' },
   'thumb.verb.read': { en: 'Read', es: 'Leer' },
   'thumb.verb.use': { en: 'Use', es: 'Usar' },
+  // S11: the Walking Tree, Glim dimmed beside it.
+  'thumb.verb.strike': { en: 'Strike', es: 'Golpear' },
   'thumb.fan': { en: 'Attack or {{verb}}', es: 'Atacar o {{verb}}' },
   'thumb.face': { en: 'Character, level {{n}}', es: 'Personaje, nivel {{n}}' },
   'thumb.ticker': { en: 'What just happened. Tap to open the chat.', es: 'Lo último que pasó. Toca para abrir el chat.' },

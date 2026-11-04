@@ -160,6 +160,8 @@ test('the Walking Tree: it moves while unseen, three times; Glim dims beside it;
   await expect.poll(async () => (await tree()).ready, { timeout: 6000 }).toBe(true);
   await expect(page.locator('.td-toast')).toContainText(/glim dims beside the tree/i, { timeout: 10000 });
   await toSection(page, 'verdant-wilds-greenwood', at.c + 1, at.r + 1);
+  // The prompt names the verb: Strike the tree (never Chop).
+  await expect(page.getByText('Strike the tree').first()).toBeVisible({ timeout: 5000 });
   await canvas(page).focus();
   await page.keyboard.press('e');
   await expect.poll(async () => (await tree()).struck, { timeout: 5000 }).toBe(true);

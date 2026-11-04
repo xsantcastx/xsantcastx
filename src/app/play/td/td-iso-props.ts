@@ -409,18 +409,35 @@ function bush(v: number, low: boolean): Built {
   if (v === 2) for (const [x, y] of [[-8, -24], [8, -16]] as const) if (s.solid(X + x, Y + y)) s.dot(X + x, Y + y, '#f2c94c', 2, 2);
   return { sway: s, swayFoot: [X, Y], amp: 1, shadow: castShadow(20, 8, 6, 3) };
 }
-/** The Greenwood's thorn hedge (td-art thornHedge): a dark bramble, wider than a bush, pale thorns out of its rim. */
+/**
+ * The Greenwood's thorn hedge (td-art thornHedge): a tall bramble, a tile and a half high, each clump its own shape — lit
+ * leaf with a bright top edge, long pale thorns standing out of its rim, twisted stems through it, dull berries.
+ */
 function thornHedgeIso(v: number, low: boolean): Built {
-  const W = 72, H = 60, X = 36, Y = 54;
+  const W = 76, H = 104, X = 38, Y = 98;
   const s = new Sculpt(W, H);
-  const dark: Mat = { ramp: ['#14260f', '#1c3418', '#24421f', '#2e5228', '#3a6232', '#4c763e'], round: 6, gain: .9 };
-  leafCrown(s, X, Y - 20, 30, 19, dark, M.leafDeep, v + 120, low ? 13 : 9, '#6e8a54');
-  for (const [x, y, dx, dy] of [[-28, -22, -3, -2], [-14, -36, -1, -3], [10, -38, 1, -3], [28, -24, 3, -1], [-30, -10, -3, 0], [26, -8, 3, 1], [0, -40, 0, -3]] as const) {
-    if (!s.solid(X + x, Y + y)) continue;
-    s.line([X + x, Y + y], [X + x + dx, Y + y + dy], '#e8dcc0'); s.dot(X + x, Y + y, '#a37a52');
+  const leaf: Mat = { ramp: ['#24421c', '#30562a', '#3c6a32', '#4a7e3c', '#5a9248', '#74ac5a'], round: 6, gain: 1 };
+  const deep: Mat = { ramp: ['#14260f', '#1a3016', '#22401c', '#2a4c22', '#325a2a', '#3c6632'], round: 7, gain: .7 };
+  // Each clump stands a little differently (three seeds): taller left, taller right, or a split crown.
+  const lean = v === 0 ? -4 : v === 1 ? 4 : 0, cy = Y - 40;
+  leafCrown(s, X + lean, cy, 25, 34, leaf, deep, v + 120, low ? 13 : 9, '#a8d878');
+  if (v === 2) leafCrown(s, X + 10, cy - 14, 14, 16, leaf, deep, v + 131, low ? 13 : 9, '#a8d878');
+  // A lit top edge: the bramble's upper rim catches the light.
+  for (let i = -18; i <= 18; i += 2) {
+    const x = Math.round(X + lean + i), top = (() => { for (let y = 0; y < H; y++) if (s.solid(x, y)) return y; return -1; })();
+    if (top >= 0) { s.dot(x, top, '#c8ec98', 2, 1); s.dot(x, top + 1, '#94c46a', 2, 1); }
   }
-  if (v === 1) for (const [x, y] of [[-10, -18], [8, -26], [16, -14]] as const) if (s.solid(X + x, Y + y)) s.dot(X + x, Y + y, '#7a2a3a', 2, 2);
-  return { sway: s, swayFoot: [X, Y], amp: 0, shadow: castShadow(24, 9, 6, 3) };
+  // Thorns: long pale spikes out of the rim (a dark root, a pale point), and stems twisting up through the leaf.
+  const spikes: readonly (readonly [number, number, number, number])[] = [[-24, -34, -5, -3], [-26, -54, -5, -1], [-18, -70, -3, -4], [-6, -76, -1, -5], [8, -74, 2, -5], [20, -64, 4, -3],
+    [26, -44, 5, -1], [24, -24, 5, 2], [-22, -14, -5, 2], [0, -50, 2, -3], [-12, -40, -3, -2], [12, -30, 3, -2]];
+  for (const [x, y, dx, dy] of spikes) {
+    const px = X + lean + x, py = Y + y;
+    if (!s.solid(px, py) && !s.solid(px - Math.sign(dx), py - Math.sign(dy))) continue;
+    s.line([px, py], [px + dx, py + dy], '#efe4c8'); s.dot(px, py, '#6a4a2e', 2, 2);
+  }
+  if (!low) for (const [x0, y0, x1, y1] of [[-10, -6, -4, -40], [8, -8, 2, -46]] as const) s.line([X + lean + x0, Y + y0], [X + lean + x1, Y + y1], '#5a3e26');
+  if (v === 1) for (const [x, y] of [[-10, -28], [8, -46], [16, -22]] as const) if (s.solid(X + lean + x, Y + y)) s.dot(X + lean + x, Y + y, '#8a2a3a', 2, 2);
+  return { sway: s, swayFoot: [X, Y], amp: 0, shadow: castShadow(26, 10, 7, 4) };
 }
 function fern(v: number, low: boolean): Built {
   const W = 80, H = 56, X = 40, Y = 50;

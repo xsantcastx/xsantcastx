@@ -74,7 +74,7 @@ for (const view of VIEWS) {
       await expect.poll(async () => { const t = await tree(page); return t.c !== was.c || t.r !== was.r; }, { timeout: 6000 }).toBe(true);
     }
     const at = await tree(page);
-    await visit(page, { name: 'walker', level: 'surface', area: 'verdant-wilds-greenwood', c: at.c + 4, r: at.r + 3 });
+    await visit(page, { name: 'walker', level: 'surface', area: 'verdant-wilds-greenwood', c: at.c + 2, r: at.r + 1 });
     await expect.poll(async () => (await tree(page)).ready, { timeout: 6000 }).toBe(true);
     await page.waitForTimeout(2500);
     await page.screenshot({ path: `${OUT}/walking-tree-glim-${view.tag}.jpg`, type: 'jpeg', quality: 80 });

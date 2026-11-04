@@ -152,7 +152,7 @@ export const KILN = { glow: 120 } as const;
  * The Walking Tree: it moves only while unseen, never to within `keep` tiles of the Keeper; after `moves` moves Glim dims
  * beside it, and a blow within `reach` tiles makes it a plain tree. It is "seen" once it has stood in view `look` s.
  */
-export const WALKER = { moves: 3, keep: 6, reach: 2, look: .6 } as const;
+export const WALKER = { moves: 3, keep: 6, reach: 2.5, look: .6 } as const;
 
 // ── What following pays (once per night, per Keeper; the host books it) ────
 
