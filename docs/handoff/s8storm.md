@@ -152,3 +152,15 @@ strike through the usual claim path (`hurtMob` on a replica claims to the host).
   Keeper (td-night, existing). It is not S8's.
 - Shots are taken in iso (`artopt=iso`; the e2e browser's default is classic), with the area name card faded and the
   scene's creatures held calm (`__tdS8.calm`, webdriver only).
+
+## Director re-check fixes (2026-11-04)
+- **Ashfall:** 40 / 30 / 16 flakes (Normal / phone / Low). Each is a 4×3 grey flake with a pale top and a dark
+  underside, drifting down-left. The ground gets a 28% warm-grey film (`#8a7c74`).
+- **Spore drift:** 40 / 30 / 16 green-gold 4×4 motes, each with a pale heart and a soft square glow, rising and
+  swaying, over a 10% green tint. They differ from the ambient fireflies in colour, size and direction.
+- **Scorch:** a black char core, a brown scorched ring, cracks, and an ember rim that cools over 8 s.
+- **The night's ring round the Keeper** was the running aura's reach, opened in the dark as a 6-px stroke
+  (`drawLight` `ring`). It is now one wide even pool (`auraRadius × 2.4`, 30%) with no edge.
+  - The iso light map's falloff (`isoLightSmooth`, `isoLightOpen`, `isoWarmAt`) is now a smoothstep from a clear
+    core, dithered between the levels, with no plateaus.
+  - `td-iso-fx.spec` now pins an even fade instead of the old step match.
