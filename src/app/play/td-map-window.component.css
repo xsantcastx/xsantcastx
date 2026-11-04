@@ -72,6 +72,7 @@
 [data-cat='way'] { --pin: var(--cozy-cream); --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10 2h4v12H2v-3h3V8h3V5h2z'/%3E%3C/svg%3E"); }
 [data-cat='ship'] { --pin: var(--cozy-loot-rare); --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v8H7zM9 2h4v6H9zM1 10h14v2h-1v1h-1v1H3v-1H2v-1H1z'/%3E%3C/svg%3E"); }
 [data-cat='harbour'] { --pin: var(--cozy-loot-rare); --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7 1h2v2h-2zM6 3h4v2H9v7h2V10h2v3H9v1H7v-1H3v-3h2v2h2V5H6z'/%3E%3C/svg%3E"); }
+[data-cat='filter'] { --pin: var(--cozy-cream); --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M1 2h14v2l-5 5v5H6V9L1 4z'/%3E%3C/svg%3E"); }
 [data-cat='town'] { --pin: var(--cozy-cream); --ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M7 1h2v1h1v1h1v1h1v1h1v1h1v2h-1v6H3V8H2V6h1V5h1V4h1V3h1V2h1zM7 10v4h2v-4z'/%3E%3C/svg%3E"); }
 /* A bare icon: the glyph alone in cream (rail chips), or in its kind's colour (the key, the results, the card). */
 .mw__ico { display: inline-block; flex: none; width: 20px; height: 20px; background: var(--cozy-cream); -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
@@ -113,17 +114,25 @@
 .mw__rail { position: absolute; z-index: 6; display: flex; flex-direction: column; gap: 6px; padding: 2px; overflow-y: auto; overscroll-behavior: contain;
   scrollbar-width: none; touch-action: pan-y; }
 .mw__rail::-webkit-scrollbar { display: none; }
-.mw__rail--filter { left: 8px; top: 8px; bottom: 62px; }
-.mw__rail--floor { right: 8px; top: 8px; bottom: 62px; }
+.mw__rail--filter { left: 8px; top: 8px; max-height: var(--rail-max, calc(100% - 64px)); scroll-snap-type: y mandatory; }
+/* A short map: one Filters chip; pressed, the rail opens under it on dark wood and scrolls. */
+.mw__filtertoggle { position: absolute; z-index: 7; left: 8px; top: 8px; }
+.mw__filtertoggle[aria-expanded='true'] { background: var(--cozy-wood-3); }
+.mw__rail--compact { top: 58px; max-height: calc(var(--rail-max, 100%) - 50px); z-index: 8; padding: 4px; background: var(--cozy-wood-0); }
+.mw__rail[hidden] { display: none; }
+.mw__rail--floor { right: 8px; top: 8px; max-height: var(--rail-max, calc(100% - 64px)); scroll-snap-type: y mandatory; }
+.mw__rail .mw__chip { scroll-snap-align: start; }
 .mw__chip, .mw__zoom button { position: relative; display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 0; cursor: pointer;
   font: 700 16px/1 var(--font-pixel); color: var(--cozy-cream); background: var(--cozy-wood-1); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam);
   touch-action: manipulation; }
 .mw__chip:hover, .mw__zoom button:hover:not(:disabled) { background: var(--cozy-wood-3); }
 .mw__chip:focus-visible, .mw__zoom button:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
-/* A filter that is off: dimmed glyph on dark wood. */
-.mw__rail--filter .mw__chip[aria-pressed='false'] { background: var(--cozy-wood-0); }
-.mw__rail--filter .mw__chip[aria-pressed='false'] .mw__ico { opacity: .35; }
+/* A filter that is on: lit wood and its glyph in full colour; off: plain dark wood, the glyph at 40% (ui-pass-3 M2). */
+.mw__rail--filter .mw__chip[aria-pressed='true'] { background: var(--cozy-wood-3); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-wood-hi), inset 0 -2px 0 0 var(--cozy-glow); }
 .mw__rail--filter .mw__chip[aria-pressed='true'] .mw__ico { background: var(--pin); }
+.mw__rail--filter .mw__chip[aria-pressed='false'] { background: var(--cozy-wood-1); }
+.mw__rail--filter .mw__chip[aria-pressed='false'] .mw__ico { opacity: .4; }
+.mw__floor--danger { color: var(--cozy-berry); }
 /* The floor shown: brass-rimmed. The Keeper's floor: a small berry pip. */
 .mw__floor[aria-pressed='true'] { background: var(--cozy-wood-3); box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass); }
 .mw__floorme { position: absolute; right: 3px; top: 3px; width: 6px; height: 6px; background: var(--cozy-berry); box-shadow: 0 0 0 1px var(--cozy-wood-0); }

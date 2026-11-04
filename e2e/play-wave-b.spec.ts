@@ -164,6 +164,38 @@ test.describe('the shops (ui-pass-3 §4)', () => {
   }
 });
 
+for (const size of [{ width: 844, height: 390 }, { width: 360, height: 640 }]) {
+  test.describe(`the Glass's foot at ${size.width}x${size.height} (ui-pass-3 G1)`, () => {
+    test.use({ viewport: size, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
+    test('the name field is not under the foot; the toggle rides the same opaque foot as Become', async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'preferred-language': 'en' });
+      await page.evaluate(() => { localStorage.removeItem('eclipse-lobby'); localStorage.removeItem('godforge-keeper-look'); });
+      await page.goto('/play?td=1&hour=12');
+      await page.locator('.lobby[data-lobby="title"] [data-lobby-guest]').tap();
+      await page.waitForTimeout(800);
+      if (await page.locator('.lobby[data-lobby="select"] [data-lobby-new]').count()) await page.locator('.lobby[data-lobby="select"] [data-lobby-new]').tap();
+      const glass = page.locator('.lobby[data-lobby="create"]');
+      await expect(glass).toBeVisible({ timeout: 30000 });
+      await page.waitForTimeout(600);
+      const hit = await glass.locator('.km__name input').evaluate(el => {
+        const r = el.getBoundingClientRect();
+        const at = document.elementFromPoint(r.left + r.width / 2, r.bottom - 1);
+        return { ok: at === el, under: (at as HTMLElement | null)?.className?.toString() ?? '' };
+      });
+      expect(hit.ok, `the name's bottom edge is under ${hit.under}`).toBe(true);
+      // The toggle is inside the maker's foot, with Become; the window has no second foot on a phone.
+      await expect(glass.locator('.km__actions [data-lobby-skip-tut]')).toBeVisible();
+      await expect(glass.locator('.create__foot')).toBeHidden();
+      // No calling's name is cut with an ellipsis.
+      const cut = await glass.locator('.km__cname').evaluateAll(els => els.filter(e => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).textOverflow === 'ellipsis').map(e => e.textContent));
+      expect(cut).toEqual([]);
+      await page.screenshot({ path: `output/uiwb/after-test/glass-${size.width}x${size.height}.png` }).catch(() => null);
+    });
+  });
+}
+
 test.describe('the Glass at 844×390 (ui-pass-3 §14)', () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
   test('the class card is at least 300 px wide, the name is above the fold, Become is brass, no text under 11 px', async ({ page }) => {
@@ -254,10 +286,27 @@ test.describe('the map (ui-pass-3 §8)', () => {
         expect(m.shown, 'some labels show').toBeGreaterThan(0);
         expect(m.whole, `whole-pixel scale (${m.scale})`).toBe(true);
         // The filter rail: a press hides that kind of pin and shows it again.
+        // A short map folds the rail into one Filters chip (ui-pass-3 M1); open it first.
+        const fold = page.locator('[data-map-filter-toggle]');
+        if (await fold.count()) { await fold.click(); await expect(page.locator('[data-map-filters]')).toBeVisible(); }
         const chip = page.locator('[data-map-filters] [data-filter]').nth(1);
         const kind = await chip.getAttribute('data-filter');
+        // On and off read apart: lit wood with the glyph in colour, or dark wood with it dimmed.
+        const look = () => chip.evaluate(el => ({ bg: getComputedStyle(el).backgroundColor, op: getComputedStyle(el.querySelector('.mw__ico')!).opacity }));
+        const on = await look();
         await chip.click();
         await expect(chip).toHaveAttribute('aria-pressed', 'false');
+        const offLook = await look();
+        expect(offLook.bg).not.toBe(on.bg);
+        expect(Number(offLook.op)).toBeLessThan(.5);
+        // Every rail chip shown sits inside the map (none cut mid-chip, none under the Key).
+        const cut = await page.evaluate(() => {
+          const v = document.querySelector('[data-map-view]')!.getBoundingClientRect(), key = document.querySelector('.mw__legend')!.getBoundingClientRect();
+          const rail = document.querySelector('[data-map-filters]') as HTMLElement;
+          const rr = rail.getBoundingClientRect();
+          return rr.bottom > v.bottom + 1 || (rr.bottom > key.top && rr.left < key.right && rr.right > key.left) ? `rail ${Math.round(rr.top)}..${Math.round(rr.bottom)} key ${Math.round(key.top)}` : '';
+        });
+        expect(cut).toBe('');
         await chip.click();
         await expect(chip).toHaveAttribute('aria-pressed', 'true');
         expect(kind).toBeTruthy();
@@ -270,6 +319,24 @@ test.describe('the map (ui-pass-3 §8)', () => {
         expect(wb.y + wb.height).toBeLessThanOrEqual(size.height);
         expect(wb.height).toBeGreaterThanOrEqual(44);
         await page.screenshot({ path: `output/uiwb/after-test/map-card-${size.tag}.png` }).catch(() => null);
+      });
+
+      test('the floor rail on Ember Mine −1, and an area picker with no floors in it', async ({ page }) => {
+        test.setTimeout(90_000);
+        await seed(page, STASH);
+        await openPlay(page, '?td=1&hour=12');
+        await canvas(page).evaluate(c => (c as HTMLCanvasElement).focus({ preventScroll: true }));
+        await page.keyboard.press('m');
+        const labels = await page.locator('[data-map-section] option').evaluateAll(os => (os as HTMLOptionElement[]).map(o => o.textContent ?? ''));
+        expect(labels.some(l => /Surface/.test(l)), 'no "Surface" in the picker').toBe(false);
+        expect(new Set(labels).size).toBe(labels.length);
+        await page.locator('[data-map-section]').selectOption('ember-mine-1');
+        const rail = page.locator('[data-map-floors]');
+        await expect(rail.locator('[data-floor="ember-mine-1"]')).toHaveAttribute('aria-pressed', 'true');
+        const chips = await rail.locator('[data-floor]').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return Math.min(r.width, r.height); }));
+        for (const c of chips) expect(c).toBeGreaterThanOrEqual(size.touch ? 44 : 36);
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: `output/uiwb/after-test/map-floor-${size.tag}.png` }).catch(() => null);
       });
     });
   }
@@ -303,6 +370,32 @@ test.describe('the map (ui-pass-3 §8)', () => {
   });
 });
 
+test.describe('the title row stays with the × (ui-pass-3 S1)', () => {
+  test.use({ viewport: { width: 360, height: 640 }, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
+  test('scrolled to the end, the name, the Gold and the × are still one row at the top', async ({ page }) => {
+    test.setTimeout(120_000);
+    for (const at of ['gambler', 'market', 'shop-general', 'crafting']) {
+      await seed(page, STASH);
+      await openPlay(page, `?at=${at}`);
+      await expect(place(page)).toBeVisible({ timeout: 15000 });
+      if (at === 'shop-general') await place(page).locator('[data-shop-shelf] [data-offer]').nth(2).tap();
+      const r = await page.evaluate(async () => {
+        const body = document.querySelector('.place-body') as HTMLElement;
+        body.scrollTop = body.scrollHeight;
+        await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+        const head = document.querySelector('.place .ss__head')!.getBoundingClientRect(), x = document.querySelector('.place .place-close')!.getBoundingClientRect();
+        const b = body.getBoundingClientRect();
+        const atX = document.elementFromPoint(x.left + x.width / 2, x.top + x.height / 2);
+        return { headTop: Math.round(head.top - b.top), sameRow: x.top < head.bottom && x.bottom > head.top, xHit: !!atX?.closest('.place-close'), scrolled: body.scrollTop };
+      });
+      expect(r.headTop, `${at}: the title row at the top`).toBeLessThanOrEqual(1);
+      expect(r.sameRow, `${at}: the × on the title row`).toBe(true);
+      expect(r.xHit, `${at}: the × answers a tap`).toBe(true);
+      if (at === 'gambler') await page.screenshot({ path: 'output/uiwb/after-test/gambler-360x640-end.png' }).catch(() => null);
+    }
+  });
+});
+
 test.describe('the station kit (ui-pass-3 §5)', () => {
   for (const size of [{ tag: '360x640', width: 360, height: 640 }, { tag: '844x390', width: 844, height: 390 }]) {
     test.describe(size.tag, () => {
@@ -326,6 +419,9 @@ test.describe('the station kit (ui-pass-3 §5)', () => {
           // One row of tabs per tab bar (Market's ten scroll sideways instead of taking 40% of a phone).
           const rows = await page.evaluate(() => [...document.querySelectorAll('.place [role=tablist]')].map(l => new Set([...l.querySelectorAll('[role=tab]')].map(t => Math.round(t.getBoundingClientRect().top))).size));
           for (const r of rows) expect(r, `${at}: tab rows`).toBe(1);
+          // The one primary is brass (Director 2026-11-03), unless it is blocked (plain wood, then).
+          const prim = await page.evaluate(() => [...document.querySelectorAll('.place .ab__btn')].map(b => ({ bg: getComputedStyle(b).backgroundColor, blocked: b.classList.contains('is-blocked') })));
+          for (const p of prim) if (!p.blocked) expect(p.bg, `${at}: a brass primary`).toBe('rgb(201, 154, 62)');
           // At scrollTop max, the body's last element is fully in view and is what a tap there would hit.
           const end = await page.evaluate(async () => {
             const body = document.querySelector('.place-body') as HTMLElement | null;

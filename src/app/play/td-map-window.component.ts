@@ -77,17 +77,10 @@ const FILTERS: readonly { id: string; cats: readonly PinCat[] }[] = [
     <div class="mw__bar">
       <label class="mw__area">
         <span class="mw__sr">{{ t('ux.map.section') }}</span>
+        <!-- The area picker: the continent and each cave or dungeon, never a floor (the floors live on the rail). -->
         <select data-map-section [attr.aria-label]="t('ux.map.section')" (change)="pickSection($any($event.target).value)">
-          @for (g of groups; track g.name) {
-            @if (g.rows.length === 1 && g.rows[0].id === 'surface') {
-              <option [value]="g.rows[0].id" [selected]="view.section === g.rows[0].id">{{ g.rows[0].name }} · {{ t('ux.map.surface') }}{{ g.rows[0].id === view.here ? ' · ' + t('ux.map.here') : '' }}</option>
-            } @else {
-              <optgroup [label]="g.name">
-                @for (r of g.rows; track r.id) {
-                  <option [value]="r.id" [selected]="view.section === r.id" [class.mw__opt--danger]="danger(r.band)" [attr.data-danger]="danger(r.band) || null">{{ floorName(r) }}{{ r.band ? ' · ' + bandText(r.band) : '' }}{{ danger(r.band) ? ' · ' + t('play.zone.danger') : '' }}{{ r.id === view.here ? ' · ' + t('ux.map.here') : '' }}</option>
-                }
-              </optgroup>
-            }
+          @for (g of areas; track g.id) {
+            <option [value]="g.id" [selected]="g.shown" [class.mw__opt--danger]="danger(g.band)" [attr.data-danger]="danger(g.band) || null">{{ g.name }}{{ g.band ? ' · ' + bandText(g.band) : '' }}{{ g.here ? ' · ' + t('ux.map.here') : '' }}</option>
           }
         </select>
       </label>
@@ -141,7 +134,10 @@ const FILTERS: readonly { id: string; cats: readonly PinCat[] }[] = [
             <span class="td-map__me mw__me" data-map-me [style.--u]="me.u" [style.--v]="me.v"><i aria-hidden="true"></i><small>{{ t('ux.map.here') }}</small></span>
           }
           <!-- The filter rail (left edge): one 44px chip per kind of pin on this map; a press hides or shows them. -->
-          <div class="mw__rail mw__rail--filter" role="group" [attr.aria-label]="t('ux.map.filter')" data-map-filters>
+          @if (compactRail) {
+            <button type="button" class="mw__chip mw__filtertoggle" data-map-filter-toggle [attr.aria-expanded]="railOpen" [attr.aria-label]="t('ux.map.filter')" [title]="t('ux.map.filter')" (click)="railOpen = !railOpen"><i class="mw__ico" data-cat="filter" aria-hidden="true"></i></button>
+          }
+          <div class="mw__rail mw__rail--filter" role="group" [attr.aria-label]="t('ux.map.filter')" data-map-filters [class.mw__rail--compact]="compactRail" [hidden]="compactRail && !railOpen">
             @for (f of filters; track f.id) {
               <button type="button" class="mw__chip" [attr.data-filter]="f.id" [attr.aria-pressed]="!off(f.id)" [attr.aria-label]="t('ux.map.legend.' + f.id)" [title]="t('ux.map.legend.' + f.id)" (click)="toggle(f.id)"><i class="mw__ico" [attr.data-cat]="f.id" aria-hidden="true"></i></button>
             }
@@ -150,7 +146,7 @@ const FILTERS: readonly { id: string; cats: readonly PinCat[] }[] = [
           @if (floors.length > 1) {
             <div class="mw__rail mw__rail--floor" role="group" [attr.aria-label]="t('ux.map.floors')" data-map-floors>
               @for (f of floors; track f.id) {
-                <button type="button" class="mw__chip mw__floor" [attr.data-floor]="f.id" [attr.aria-pressed]="view.section === f.id" [attr.aria-label]="f.label" [title]="f.label" (click)="pickSection(f.id)">{{ f.short }}@if (f.id === view.here) {<i class="mw__floorme" aria-hidden="true"></i>}</button>
+                <button type="button" class="mw__chip mw__floor" [attr.data-floor]="f.id" [attr.aria-pressed]="view.section === f.id" [attr.aria-label]="f.label" [title]="f.label" [class.mw__floor--danger]="danger(f.band)" [attr.data-danger]="danger(f.band) || null" (click)="pickSection(f.id)">{{ f.short }}@if (f.id === view.here) {<i class="mw__floorme" aria-hidden="true"></i>}</button>
               }
             </div>
           }
@@ -255,14 +251,33 @@ export class TdMapWindowComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** The floors of the shown section's cave or dungeon, top to bottom, with the surface above them. */
-  get floors(): { id: string; short: string; label: string }[] {
+  get floors(): { id: string; short: string; label: string; band: { min: number; max: number } | null }[] {
     const shown = this.sections.find(r => r.id === this.view.section);
     if (!shown || shown.id === 'surface') return [];
     const rows = this.sections.filter(r => r.group === shown.group && r.id !== 'surface').sort((a, b) => b.floor - a.floor);
     const surface = this.sections.find(r => r.id === 'surface');
-    const out = rows.map(r => ({ id: r.id, short: r.floor > 0 ? `+${r.floor}` : r.floor < 0 ? `−${-r.floor}` : '0', label: r.name }));
-    return surface ? [{ id: 'surface', short: '0', label: `${surface.name} · ${this.t('ux.map.surface')}` }, ...out] : out;
+    const out = rows.map(r => ({
+      id: r.id, short: r.floor > 0 ? `+${r.floor}` : r.floor < 0 ? `−${-r.floor}` : '0', band: r.band,
+      label: [r.name, r.band ? this.bandText(r.band) : '', this.danger(r.band) ? this.t('play.zone.danger') : '', r.id === this.view.here ? this.t('ux.map.here') : ''].filter(Boolean).join(' · '),
+    }));
+    return surface ? [{ id: 'surface', short: '0', band: null, label: `${surface.name} · ${this.t('ux.map.surface')}` }, ...out] : out;
   }
+  /** The area picker's rows: the continent, then each cave or dungeon once (its band across its floors). */
+  get areas(): { id: string; name: string; band: { min: number; max: number } | null; shown: boolean; here: boolean }[] {
+    const shownGroup = this.sections.find(r => r.id === this.view.section)?.group;
+    return this.groups.map(g => {
+      const rows = g.rows, here = rows.some(r => r.id === this.view.here), surface = rows[0]?.id === 'surface';
+      const bands = rows.map(r => r.band).filter((b): b is { min: number; max: number } => !!b);
+      const band = bands.length ? { min: Math.min(...bands.map(b => b.min)), max: Math.max(...bands.map(b => b.max)) } : null;
+      const shown = surface ? this.view.section === 'surface' : !!shownGroup && rows.some(r => r.id === this.view.section);
+      // Opening a cave from the picker shows the floor the Keeper is on there, else its top floor.
+      const id = surface ? 'surface' : (rows.find(r => r.id === this.view.here) ?? [...rows].sort((a, b) => b.floor - a.floor)[0]).id;
+      return { id: shown ? this.view.section : id, name: surface ? rows[0].name : g.name, band, shown, here };
+    });
+  }
+  /** A short map: the filter rail folds into one Filters chip that opens it (ui-pass-3 M1). */
+  compactRail = false;
+  railOpen = false;
 
   get groups(): { name: string; rows: TdMapSection[] }[] {
     const out: { name: string; rows: TdMapSection[] }[] = [];
@@ -386,6 +401,10 @@ export class TdMapWindowComponent implements AfterViewInit, OnChanges, OnDestroy
     if (side !== this.side) this.zone.run(() => { this.side = side; this.cdr.markForCheck(); });
     const w = el.clientWidth, h = el.clientHeight;
     if (!w || !h) return;
+    const compact = h < this.filters.length * 50 + 70;
+    // The rails hold whole chips only (a chip is 44 + 6): never one cut through the middle.
+    el.style.setProperty('--rail-max', `${Math.max(50, Math.floor((h - 64) / 50) * 50)}px`);
+    if (compact !== this.compactRail) this.zone.run(() => { this.compactRail = compact; if (!compact) this.railOpen = false; this.cdr.markForCheck(); });
     const { w: ow, h: oh } = this.size();
     const cu = ow > 1 ? (this.vw / 2 - this.mx) / ow : .5, cv = oh > 1 ? (this.vh / 2 - this.my) / oh : .5;
     this.vw = w; this.vh = h;
@@ -457,7 +476,7 @@ export class TdMapWindowComponent implements AfterViewInit, OnChanges, OnDestroy
       return { x: cx - sz.w / 2, y: cy - sz.h / 2, w: sz.w, h: sz.h };
     });
     const vr = el.getBoundingClientRect();
-    const blocked = Array.from(el.querySelectorAll<HTMLElement>('.mw__rail, .mw__zoom, .mw__legend > summary')).map(c => {
+    const blocked = Array.from(el.querySelectorAll<HTMLElement>('.mw__rail:not([hidden]), .mw__filtertoggle, .mw__zoom, .mw__legend > summary')).map(c => {
       const r = c.getBoundingClientRect();
       return { x: r.left - vr.left, y: r.top - vr.top, w: r.width, h: r.height };
     });
@@ -476,7 +495,7 @@ export class TdMapWindowComponent implements AfterViewInit, OnChanges, OnDestroy
     this.zoomTo(p.x, p.y, this.want);
   }
   private down(e: PointerEvent): void {
-    if ((e.target as HTMLElement).closest('.mw__zoom, .mw__legend, .mw__rail')) return;
+    if ((e.target as HTMLElement).closest('.mw__zoom, .mw__legend, .mw__rail, .mw__filtertoggle')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     this.pointers.set(e.pointerId, this.local(e));
     this.startGesture();

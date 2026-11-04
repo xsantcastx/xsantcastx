@@ -854,7 +854,7 @@
   position: absolute;
   top: var(--wp-t);
   right: calc(var(--wp-x) - 8px);
-  z-index: 3;
+  z-index: 5; /* over the station's sticky title row (station-shell), whose end it sits at */
   min-height: 44px;
   margin: 0;
   box-shadow: none;

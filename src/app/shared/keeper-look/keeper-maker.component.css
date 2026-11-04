@@ -91,7 +91,8 @@
   box-shadow: inset 0 2px 0 0 var(--cozy-wood-2), inset 0 -2px 0 0 var(--cozy-plate-seam), 0 0 0 2px var(--cozy-wood-0);
 }
 .km__classcard svg { width: 32px; height: 32px; flex: none; }
-.km__cname { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 11px/1.1 var(--font-game); letter-spacing: .02em; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
+/* The calling's name on its chip: two lines at 11px when it must (Lanternwright, Caminaespinas), never an ellipsis. */
+.km__cname { display: block; max-width: 100%; white-space: normal; overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; text-align: center; font: 700 11px/1.1 var(--font-game); letter-spacing: 0; color: color-mix(in srgb, var(--cozy-cream) 85%, transparent); }
 .km__classcard:hover { background: var(--cozy-wood-2); }
 .km__classcard[aria-checked="true"] { background: var(--cozy-wood-3);
   box-shadow: inset 0 2px 0 0 var(--cozy-wood-hi), inset 0 -3px 0 0 var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-brass); }
@@ -151,3 +152,50 @@
 @media (max-height: 520px) {
   :host(:not(.km--fire)) .km__card, :host(:not(.km--fire)) .km__class > .km__label { display: none; }
 }
+
+/* ── ui-pass-3 G1/G3 (Director, 2026-11-03) ── */
+/* One opaque foot: Surprise me, Become, and the host's toggle (the lobby's "played before"), nothing between them. */
+:host(.km--fire) .km__actions { grid-template-columns: minmax(0, 1fr); padding: 6px 2px 4px; }
+:host(.km--fire) .km__actions > [kmFoot] { grid-column: 1 / -1; }
+@media (max-height: 720px) {
+  :host(.km--fire) .km__actions { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+}
+:host-context(.place) .km__keep { font-size: 15px; }
+/* A little air under the name, so the sticky foot never sits on it. */
+:host-context(.place) .km__name { margin-bottom: 6px; }
+/* The steppers: the label in its own 14px row above the ‹ value ›, never over the value. */
+:host-context(.place) .km__row { grid-template-columns: 44px minmax(0, 1fr) 44px; grid-template-rows: 14px 44px; grid-template-areas: "label label label" "prev value next"; row-gap: 2px; }
+:host-context(.place) .km__row > .km__label { grid-area: label; align-self: center; padding: 0; z-index: auto; }
+:host-context(.place) .km__value { padding-top: 0; }
+.km__vshort { display: none; }
+/* A narrow window: a swatch reads "3/10", not "Shade 3 of 10". */
+@container km (max-width: 420px) {
+  :host-context(.place) .km__row[data-swatch] .km__vfull { display: none; }
+  :host-context(.place) .km__row[data-swatch] .km__vshort { display: inline; }
+}
+/* A phone held sideways: shorter chips, the card without its name (the lit chip names it). */
+@media (max-height: 520px) {
+  :host(.km--fire) .km__classcard { min-height: 48px; gap: 2px; }
+  :host(.km--fire) .km__classcard svg { width: 24px; height: 24px; }
+  :host(.km--fire) .km__cardname { display: none; }
+  :host(.km--fire) .km__card { padding: 6px 10px; }
+}
+/* A phone (narrow or short): the chips say "Class" by themselves and the lit chip names the calling, so the card is
+   the role and the tags only; the chips' icons shrink a step. */
+@media (max-width: 520px), (max-height: 520px) {
+  :host(.km--fire) .km__class > .km__label, :host(.km--fire) .km__more, :host(.km--fire) .km__cardname { display: none; }
+  :host(.km--fire) .km__classcard { min-height: 56px; padding: 4px 2px; gap: 2px; }
+  :host(.km--fire) .km__classcard svg { width: 26px; height: 26px; }
+  :host(.km--fire) .km__card { padding: 6px 10px; }
+  :host(.km--fire) .km { gap: 8px; }
+}
+/* Sideways: the shortest chips (still 44+), so the name stays clear of the foot. */
+@media (max-height: 520px) {
+  :host(.km--fire) .km__classcard { min-height: 46px; padding: 2px; }
+  :host(.km--fire) .km__classcard svg { width: 22px; height: 22px; }
+  :host(.km--fire) .km__card { padding: 4px 10px; gap: 1px; }
+  :host(.km--fire) .km__actions { padding-top: 4px; }
+}
+/* Surprise me never wraps; Become takes the rest of the row. */
+:host(.km--fire) .km__random { white-space: nowrap; padding: 0 8px; }
+@media (max-height: 720px) { :host(.km--fire) .km__actions { grid-template-columns: auto minmax(0, 1fr); } }
