@@ -199,7 +199,8 @@ export class IsoGround {
       if (t.hasFaces(c, r)) faces.push(c, r);
     }
     // The blocks (and doorway lintels) whose foot lies in this chunk: each belongs to exactly one chunk (td-iso-walls.ts).
-    const walls = planWalls(list, X0, Y0, CW, CH, (c, r) => BLOCK_GROUND.has(g(c, r)), g);
+    // Out under the sky a vine wall is the wood's own edge (S11, the Wilds' rim), not the temple's masonry.
+    const walls = planWalls(list, X0, Y0, CW, CH, (c, r) => BLOCK_GROUND.has(g(c, r)), g, !!this.src.native?.().surface);
     return { I, J, walls, frames: new Array<HTMLCanvasElement | null>(nf).fill(null), nf, tiles: Int32Array.from(list), anim: Int32Array.from(liquid ? anim : []), faces: Int32Array.from(faces), frame: 0, next: 0, img: null, px: null };
   }
 

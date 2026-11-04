@@ -9,7 +9,7 @@
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
 import { splitStump, stormOak } from './td-art';
-import { altar, brazier, brokenStatue, cage, chest, signpost, beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
+import { altar, brazier, brokenStatue, cage, chest, signpost, thornHedge, beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, ContinentHotspot, Region, SectionCamp, SectionMark } from './continent';
 import { SEAM_CLEAR, seamArrival } from './td-sections';
@@ -217,7 +217,7 @@ export class TdWorld implements TdLevel {
     if (reg === ',' || this.regionAt(c + 2, r) === '~' || this.regionAt(c - 2, r) === '~' || this.regionAt(c, r + 2) === '~' || this.regionAt(c, r - 2) === '~') return 'sand';
     switch (reg) {
       case 'l': return fbm(c / 6, r / 6, 31) > .78 ? 'sand' : 'water';
-      case 'm': return 'rock';
+      case 'm': return this.def.rim ?? 'rock';
       // Ash country (ContinentDef.ash): obsidian dirt over basalt, no grass; the molten ground shows more of its lava.
       case 'h': return fbm(c / 7, r / 7, 211) > .45 ? 'dirt' : this.def.ash ? 'cave' : 'grass';
       case 'v': return this.def.ash ? (fbm(c / 6, r / 6, 401) > .66 && !this.nearPlace(c, r) ? 'ember' : 'cave') : fbm(c / 6, r / 6, 401) > .74 ? 'ember' : 'cave';
@@ -248,9 +248,15 @@ export class TdWorld implements TdLevel {
     return !this.chunkAt(Math.floor(c / WORLD_CHUNK), Math.floor(r / WORLD_CHUNK)).blocked.has(this.key(c, r));
   }
 
+  /**
+   * Things that move about the wilds and are drawn as the wilds' own (sorted, lit and shaded with them): the Greenwood's
+   * walking copied tree (td-night-events, the engine moves it). Never blocking, never on the room's world.
+   */
+  readonly extra: TdObject[] = [];
   /** Every object whose foot lies in the rectangle (art px): the town's, then the wilds' chunk by chunk. */
   objectsIn(x0: number, y0: number, x1: number, y1: number): TdObject[] {
     const out: TdObject[] = [];
+    for (const o of this.extra) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
     for (const o of this.town.objects) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
     for (const v of this.villages) for (const o of v.objects) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
     const span = WORLD_CHUNK * TILE, now = Date.now();
@@ -341,6 +347,8 @@ export class TdWorld implements TdLevel {
     for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) <= CAMP_CLEAR) return true;
     for (const sm of this.def.seams ?? []) if (Math.abs(c - sm.c) <= 5 && Math.abs(r - sm.r) <= 5) return true;
     for (const mk of this.def.marks ?? []) if (Math.abs(c - mk.c) <= 2 && Math.abs(r - mk.r) <= 2) return true;
+    for (const t of this.def.trees ?? []) if (Math.abs(c - t.c) <= 3 && Math.abs(r - t.r) <= 3) return true;
+    for (const g of this.def.glades ?? []) if (Math.hypot(c - g.c, r - g.r) <= g.size) return true;
     return false;
   }
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
@@ -411,7 +419,12 @@ export class TdWorld implements TdLevel {
         const treeAt = (kind: 'oak' | 'pine' | 'fruit') => { const seed = Math.floor(hash(c, r, 6) * 6); put({ sprite: () => tree(kind, seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r); };
         if (reg === 'F') { if (roll < .26) treeAt(treeKind(.6)); else if (roll > .975) put({ sprite: () => bush(1), x, y, kind: 'prop' }, c, r); }
         else if (reg === 'f') { if (roll < .1) treeAt(treeKind(.25)); else if (roll > .98) put({ sprite: () => bush(Math.floor(hash(c, r, 8) * 3)), x, y, kind: 'prop' }, c, r); }
-        else if (reg === '.') {
+        else if (reg === '.' && this.def.land === 'verdant-wilds') {
+          // The Wilds' glades (the Fernglades, a meadow in the deep wood): jungle trees few and far, ferns, flowers.
+          if (roll < .015) put({ sprite: () => jungleTree(Math.floor(hash(c, r, 6) * 6)), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
+          else if (roll > .955) put({ sprite: () => fern(Math.floor(hash(c, r, 8) * 3)), x, y, kind: 'prop' }, c, r);
+          else if (g === 'flowers' && roll > .94) put({ sprite: () => flowerbed(2, (c * 31 + r) & 7), x, y, kind: 'prop' }, c, r);
+        } else if (reg === '.') {
           if (roll < .015) treeAt(treeKind(.1));
           else if (roll > .992) put({ sprite: () => bush(2), x, y, kind: 'prop' }, c, r);
           else if (g === 'flowers' && roll > .975) put({ sprite: () => flowerbed(2, (c * 31 + r) & 7), x, y, kind: 'prop' }, c, r);
@@ -569,8 +582,13 @@ export class TdWorld implements TdLevel {
       for (const side of [-1, 1]) put(across ? sm.c + side * 3 : sm.c, across ? sm.r : sm.r + side * 3, post);
       put(across ? sm.c - 4 : sm.c - 1, across ? sm.r + 1 : sm.r - 4, signpost, false);
     }
-    for (const mk of this.def.marks ?? []) put(mk.c, mk.r, MARK_LOOK[mk.look]);
+    for (const mk of this.def.marks ?? []) {
+      if (!mk.span) { put(mk.c, mk.r, MARK_LOOK[mk.look]); continue; }
+      // A hedge grown across a road: every tile of it blocks (the station stands on its nearest row's middle).
+      for (let k = 0; k < mk.span.rows; k++) for (let d = -mk.span.w; d <= mk.span.w; d++) { const sd = Math.abs(d * 7 + k * 3); put(mk.c + d, mk.r + k * mk.span.dir, () => MARK_LOOK[mk.look](sd)); }
+    }
     for (const k of this.def.camps ?? []) this.stampCamp(k, inChunk, put, blocked, spawns);
+    for (const t of this.def.trees ?? []) put(t.c, t.r, () => jungleTree(t.seed));
   }
   /** A hot spot: its heart's dressing (a fire for a camp, bones for a den, a ring of scorched stones for a champion ground) and its pack round it. */
   private stampCamp(k: SectionCamp, inChunk: (c: number, r: number) => boolean, put: (c: number, r: number, s: () => import('./td-art').Sprite, block?: boolean) => void, blocked: Set<number>, spawns: MobSpawn[]): void {
@@ -608,6 +626,8 @@ export class TdWorld implements TdLevel {
       if (Math.max(Math.abs(dc), Math.abs(dr)) !== d) continue;
       const c = c0 + dc, r = r0 + dr;
       if (!this.walkableGround(c, r) || this.nearWayIn(c, r) || this.nearTown(c, r) || this.roads.has(this.key(c, r))) continue;
+      // A lair's ring reaches a few tiles out: its heart keeps far enough off a named hot spot that none of it is within 18.
+      if ((this.def.camps ?? []).some(k => Math.hypot(c - k.c, r - k.r) < 18 + HOT_CLEAR)) return null;
       return { c, r, spot };
     }
     return null;
@@ -618,8 +638,8 @@ const HOT_CLEAR = 5;
 /** Tiles round a named hot spot's heart kept clear (its pack has room to fight; the champion ground's ring stands at its edge). */
 const CAMP_CLEAR = 9;
 /** What a mark looks like (section marks: a plaque on a cairn, a signpost, an altar stone, a sealed door, a cage…). */
-const MARK_LOOK: Readonly<Record<SectionMark['look'], () => import('./td-art').Sprite>> = {
+const MARK_LOOK: Readonly<Record<SectionMark['look'], (seed?: number) => import('./td-art').Sprite>> = {
   plaque: () => standingStone(1), sign: signpost, altar, door: cryptDoor, cage, chest, statue: brokenStatue,
-  ruin: () => ruinWall(1), cave: caveMouth, kiln: () => brazier(false), mound: () => boulder(2),
+  ruin: () => ruinWall(1), cave: caveMouth, kiln: () => brazier(false), mound: () => boulder(2), hedge: (seed = 0) => thornHedge(seed),
 };
 

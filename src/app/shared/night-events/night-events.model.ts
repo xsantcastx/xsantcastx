@@ -17,6 +17,9 @@
  *                           the chalked name and a Margin Note scrap (canon §9, Doors in the dark).
  *   The Kiln That Lights    the Reach, the Deep Charwood          night and Ashfall     the cold kiln glows for two
  *   Itself                  minutes; light it (a tinderbox) before it fades for the burners' cache.
+ *   The Walking Tree        the Wilds, the Greenwood's glade      night, or fog         (S11) one of a pair of copied
+ *                           trees is somewhere else each time the Keeper looks away; after three moves Glim dims beside
+ *                           it, and one blow makes it a plain tree, leaving a copy-seed (a clue for campaign #7).
  *
  * Pure: no Angular, no DOM. The engine (play/td/td-night-events.ts) draws and walks them; the host pays.
  */
@@ -25,8 +28,8 @@ import { huntGold } from '../economy/economy-curve';
 import { DAWN_START, NIGHT_START, msAt, worldTime } from '../world-clock/world-clock.model';
 import { WEATHER_WINDOW_MS, weatherAt, weatherWindow, type WeatherInput, type WeatherState } from '../weather/weather.model';
 
-export type NightEventId = 'late-shift' | 'count-goes-on' | 'relief-column' | 'self-lit-kiln';
-export const NIGHT_EVENT_IDS: readonly NightEventId[] = ['late-shift', 'count-goes-on', 'relief-column', 'self-lit-kiln'];
+export type NightEventId = 'late-shift' | 'count-goes-on' | 'relief-column' | 'self-lit-kiln' | 'walking-tree';
+export const NIGHT_EVENT_IDS: readonly NightEventId[] = ['late-shift', 'count-goes-on', 'relief-column', 'self-lit-kiln', 'walking-tree'];
 
 export interface NightEventDef {
   id: NightEventId;
@@ -48,6 +51,8 @@ export const NIGHT_EVENTS: readonly NightEventDef[] = [
   { id: 'count-goes-on', land: 'ember-isle', area: 'ember-isle', region: 'F', needs: 'fog', secs: 0 },
   { id: 'relief-column', land: 'infernal-reach', area: 'infernal-reach-pyre-peaks', region: 'h', secs: 120 },
   { id: 'self-lit-kiln', land: 'infernal-reach', area: 'infernal-reach-deep-charwood', region: 'F', needs: 'ashfall', secs: 120 },
+  // The Walking Tree (S11): all night, and by day while the Greenwood's fog holds; it waits for the Keeper to look away.
+  { id: 'walking-tree', land: 'verdant-wilds', area: 'verdant-wilds-greenwood', region: 'j', secs: 0 },
 ];
 const BY_ID = new Map(NIGHT_EVENTS.map(e => [e.id, e]));
 export function nightEventDef(id: string): NightEventDef | undefined { return BY_ID.get(id as NightEventId); }
@@ -99,10 +104,18 @@ export function nightEventStart(def: NightEventDef, night: number, rolls?: Weath
  */
 export function nightEventsAt(area: string, ms: number, rolls?: WeatherInput['rolls']): NightEventNow[] {
   const night = nightOf(ms);
-  if (night === null) return [];
   const out: NightEventNow[] = [];
+  // The Walking Tree also walks in a day's fog: that day's fog and the night after it are one night's event (one seed).
   for (const def of NIGHT_EVENTS) {
-    if (def.area !== area) continue;
+    if (def.area !== area || def.id !== 'walking-tree') continue;
+    const fog = weatherAt({ land: def.land, region: def.region, ms, rolls: rolls ?? null }).state === 'fog';
+    if (night === null && !fog) continue;
+    const n = night ?? worldTime(ms).day, startMs = night !== null ? nightSpan(night).start : weatherWindow(ms) * WEATHER_WINDOW_MS;
+    out.push({ id: def.id, night: n, startMs, t: (ms - startMs) / 1000, secs: 0 });
+  }
+  if (night === null) return out;
+  for (const def of NIGHT_EVENTS) {
+    if (def.area !== area || def.id === 'walking-tree') continue;
     if (def.id === 'count-goes-on') {
       if (weatherAt({ land: def.land, region: def.region, ms, rolls: rolls ?? null }).state !== 'fog') continue;
       const startMs = Math.floor(ms / COUNT_CYCLE_MS) * COUNT_CYCLE_MS;
@@ -135,6 +148,12 @@ export const COLUMN = { soldiers: 10, gap: 1.2, speed: 1.6, calls: 20, callEvery
 /** The Kiln: it glows the event's two minutes; lit before it fades, it pays once. */
 export const KILN = { glow: 120 } as const;
 
+/**
+ * The Walking Tree: it moves only while unseen, never to within `keep` tiles of the Keeper; after `moves` moves Glim dims
+ * beside it, and a blow within `reach` tiles makes it a plain tree. It is "seen" once it has stood in view `look` s.
+ */
+export const WALKER = { moves: 3, keep: 6, reach: 2.5, look: .6 } as const;
+
 // ── What following pays (once per night, per Keeper; the host books it) ────
 
 export interface NightReward { stacks: readonly { id: string; qty: number }[]; gold: number }
@@ -144,6 +163,7 @@ export const NIGHT_REWARDS: Readonly<Record<NightEventId, NightReward>> = {
   'count-goes-on': { stacks: [], gold: Math.floor(huntGold(6, 3 * 60)) },
   'relief-column': { stacks: [{ id: 'margin-note-scrap', qty: 1 }], gold: 0 },
   'self-lit-kiln': { stacks: [{ id: 'charcoal', qty: 10 }, { id: 'basalt-blank', qty: 1 }], gold: 0 },
+  'walking-tree': { stacks: [{ id: 'copy-seed', qty: 1 }], gold: 0 },
 };
 /** The one key a night's reward is booked under (a drop id: a second claim the same night is the same write). */
 export function nightRewardKey(id: NightEventId, night: number, part = ''): string { return `night:${id}:${night}${part ? `:${part}` : ''}`; }

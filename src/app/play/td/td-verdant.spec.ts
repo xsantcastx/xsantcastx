@@ -57,7 +57,7 @@ describe('td: the Verdant Wilds, deeper', () => {
       for (let f = 1; f < floors; f++) expect([...new HandLevel(LEVELS[`${base}-${f}`]).exits.values()].some(e => e.to === `${base}-${f + 1}`)).withContext(`${base} ${f}`).toBeTrue();
     }
     expect(new HandLevel(LEVELS['overgrown-temple-5']).spawnsIn().some(s => s.type === 'elder-rootwyrm')).toBeTrue();
-    expect([...new HandLevel(LEVELS['root-hollows-1']).exits.values()]).toContain({ to: 'surface', arrive: 'root-hollows' });
+    expect([...new HandLevel(LEVELS['root-hollows-1']).exits.values()]).toContain({ to: 'surface', arrive: 'root-hollows', continent: 'verdant-wilds-greenwood' });
     for (const type of ['rootgnaw', 'sporecap']) expect([1, 2, 3].some(f => new HandLevel(LEVELS[`root-hollows-${f}`]).spawnsIn().some(s => s.type === type))).withContext(type).toBeTrue();
   });
   for (const id of NEW_LEVELS) {
@@ -68,8 +68,8 @@ describe('td: the Verdant Wilds, deeper', () => {
       }
     });
   }
-  it('the Root Hollows open off the Deep Wilds, with no wild pack within eight tiles of the root-hole', () => {
-    const wilds = new TdWorld(CONTINENTS['verdant-wilds']);
+  it('the Root Hollows open off the Greenwood (S11: their connector), with no wild pack within eight tiles of the root-hole', () => {
+    const wilds = new TdWorld(CONTINENTS['verdant-wilds-greenwood']);
     expect(wilds.ways.get('root-hollows')).toEqual({ to: 'root-hollows-1', arrive: 'hollows-out', ship: false });
     const hole = wilds.def.places.find(p => p.kind === 'cave')!;
     const x = hole.c * TILE, y = hole.r * TILE;
@@ -80,9 +80,9 @@ describe('td: the Verdant Wilds, deeper', () => {
     expect(footFree(wilds, spot.x, spot.y)).toBeTrue();
   });
   it('Mossharbor\'s ketch sails to Ember Harbour from its west finger, and Ember Harbour\'s second ship sails back', () => {
-    const wilds = new TdWorld(CONTINENTS['verdant-wilds']), isle = new TdWorld(CONTINENTS['ember-isle']);
+    const wilds = new TdWorld(CONTINENTS['verdant-wilds-shore']), isle = new TdWorld(CONTINENTS['ember-isle']);
     expect(wilds.ways.get('ship-mossharbor-isle')).toEqual({ to: 'ember-isle', arrive: 'ship-isle-verdant', ship: true });
-    expect(isle.ways.get('ship-isle-verdant')).toEqual({ to: 'verdant-wilds', arrive: 'ship-mossharbor-isle', ship: true });
+    expect(isle.ways.get('ship-isle-verdant')).toEqual({ to: 'verdant-wilds-shore', arrive: 'ship-mossharbor-isle', ship: true });
     for (const [world, id, place] of [[wilds, 'ship-mossharbor-isle', 'Mossharbor'], [isle, 'ship-isle-verdant', null]] as const) {
       const st = world.stalls.find(s => s.station.id === id)!;
       const spot = standNear(world, st.x, st.y + 10);

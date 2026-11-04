@@ -65,17 +65,17 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     loot: { rolls: 4, chance: .45, uniques: ['unique-goldmouth', 'unique-ashen-covenant', 'unique-pyrograph-scroll-case'] },
   },
   {
-    id: 'the-copied-hart', name: 'The Copied Hart', area: 'verdant-wilds', regions: ['J'], base: 'rootglass-hart', level: 42,
+    id: 'the-copied-hart', name: 'The Copied Hart', area: 'verdant-wilds-deep-wilds', regions: ['J'], base: 'rootglass-hart', level: 42,
     life: 6, blows: 1.35, affixes: ['teleport', 'stone-skin'], followers: 2, every: [5, 7], stay: 2,
     loot: { rolls: 4, chance: .4, uniques: ['unique-heartwood-of-the-verge', 'unique-spore-crown', 'unique-thornroot-greaves'] },
   },
   {
     // S10, §6.3: the oldest Rootglass Hart, struck under the Storm-Struck Oak by the first thunderstorm after the Lock.
-    // It rises with a Greenwood thunderstorm at the Oak (VERDANT_PLACES 'storm-oak'), a party boss of four.
-    id: 'antlered-storm', name: 'The Antlered Storm', area: 'verdant-wilds', regions: ['j'], base: 'rootglass-hart', level: 42,
+    // It rises with a Greenwood thunderstorm at the Oak (wilds-sections STORM_OAK_AT, 'storm-oak'), a party boss of four.
+    id: 'antlered-storm', name: 'The Antlered Storm', area: 'verdant-wilds-greenwood', regions: ['j'], base: 'rootglass-hart', level: 42,
     life: 125, blows: 4.2, affixes: [], followers: 0, every: [2, 2], stay: 0.1,
     loot: { rolls: 3, chance: .1, uniques: ['unique-crown-of-the-antlered-storm'], mats: [{ material: 'verdant-sap', qty: 4 }, { material: 'world-root-bark', qty: 3 }] },
-    weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: 64, r: 24 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', scale: 3, lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
+    weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: -10, r: -112 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', scale: 3, lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
   },
   {
     id: 'ser-wickless', name: 'Ser Wickless', area: 'umbral-marches', regions: ['x', 'Q'], base: 'drowned-knight', level: 55,

@@ -36,7 +36,7 @@ function tileIcon(id: string): string {
 }
 
 /** The verb the disc shows. */
-export type ThumbVerb = 'attack' | 'enter' | 'talk' | 'loot' | 'take' | 'read' | 'use';
+export type ThumbVerb = 'attack' | 'enter' | 'talk' | 'loot' | 'take' | 'read' | 'use' | 'strike';
 
 /** One ticker line. */
 export interface TickerLine { key: string; kind: 'glim' | 'area' | 'armed' | 'log' | 'chat'; text: string; who?: string }
