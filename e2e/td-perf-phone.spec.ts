@@ -18,7 +18,7 @@ const on = process.env['TD_PERF'] ? test.describe : test.describe.skip;
 const CPU = Number(process.env['TD_CPU'] ?? 6);
 type W = {
   __tdZones: { to(c: number, r: number): boolean; foe(type: string, level: number, dx?: number, dy?: number): number | null };
-  __tdArt: { isoProps?(): { n: number; ms: number; px: number }; aura(on: boolean): void; road(dc: number): unknown; visit(l: string, c: number, r: number, k?: string): boolean; perf?(): [number, number, number][]; isoProf?(): number[]; isoBake?(): number[] };
+  __tdArt: { cast?(ranks: Record<string, number>, id: string): string | null; aim?(i?: number): boolean; isoProps?(): { n: number; ms: number; px: number }; aura(on: boolean): void; road(dc: number): unknown; visit(l: string, c: number, r: number, k?: string): boolean; perf?(): [number, number, number][]; isoProf?(): number[]; isoBake?(): number[] };
   __made: HTMLCanvasElement[];
 };
 
@@ -117,6 +117,30 @@ on('phone perf (390×844, DPR 3)', () => {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
     await measure(page, `hot spot fighting (18 walkers) ×${CPU}`, false);
     await measure(page, `hot spot walking ×${CPU}`, true);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  });
+  // S9 (docs/handoff/s9rows.md): the hot spot's crowd with the heaviest of the rows 30–50 firing over it, recast as they
+  // end — a Moth Swarm, a rain cloud, a Thornrain, a fog bank, Kiln Breath's cone, Chain of Lamps and Lightning Call.
+  test('hot spot, S9 effects', async ({ page }) => {
+    test.setTimeout(180000);
+    await open(page);
+    // TD_S9=off: the same scene, the same target held, nothing cast (what the rows themselves cost is the difference).
+    await page.evaluate(cast => {
+      const w = window as unknown as W;
+      w.__tdZones.to(58, 62); w.__tdArt.road(0); w.__tdArt.aura(true);
+      for (let i = 0; i < 18; i++) w.__tdZones.foe('bone-walker', 40, Math.round(Math.cos(i * .7) * (40 + i * 4)), Math.round(Math.sin(i * .7) * (30 + i * 3)));
+      w.__tdArt.aim?.(1);
+      const ranks = { 'moth-swarm': 10, 'call-the-rain': 10, 'thornrain': 10, 'fogwalk': 10, 'kiln-breath': 10, 'chain-of-lamps': 10, 'lightning-call': 10 };
+      const ids = Object.keys(ranks);
+      let i = 0;
+      // One row every 0.4 s, round and round: the zones overlap, the cone and the bolts keep coming.
+      w.__tdArt.cast?.(ranks, 'nothing-cast');
+      if (cast) setInterval(() => { w.__tdArt.cast?.(ranks, ids[i++ % ids.length]); }, 400);
+    }, process.env['TD_S9'] !== 'off');
+    await page.waitForTimeout(3000);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+    await measure(page, `hot spot + S9 effects${process.env['TD_S9'] === 'off' ? ' (off)' : ''}${process.env['TD_DETAIL'] ? ` [${process.env['TD_DETAIL']}]` : ''} (18 walkers) ×${CPU}`, false);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   });
   // Isometric B's HD creatures (ARTOPT=iso): twelve kinds at once, each baking its own frames; the baked cells' pixels.

@@ -78,7 +78,19 @@ export type MarkFlag =
   | 'steadyBreath' | 'lastBreath' | 'breathRoom' | 'battleBreath' | 'rescue' | 'bondOath' | 'twoBonds'
   | 'spikes' | 'gateGuard' | 'mobileGate' | 'gateOpens'
   // S5: the healer's new rows
-  | 'warmHands' | 'cleanseCircle' | 'dryCloak' | 'steadyHands' | 'twoLamps' | 'steadySong' | 'choir' | 'walkingSong' | 'keptNote';
+  | 'warmHands' | 'cleanseCircle' | 'dryCloak' | 'steadyHands' | 'twoLamps' | 'steadySong' | 'choir' | 'walkingSong' | 'keptNote'
+  // S9: the Warlock's rows 30–50
+  | 'melting' | 'kilnSeal' | 'graveCurse' | 'archers' | 'bonemeal' | 'fortyStrong' | 'thornyRibs' | 'funeralPyre'
+  | 'deepChill' | 'frostNova' | 'vsFire' | 'splinter'
+  // S9: the Ashguard's
+  | 'meteorWatch' | 'shieldFirst' | 'rallyingFall' | 'aftershock' | 'faultLine'
+  // S9: the Lanternwright's
+  | 'static' | 'stormLantern' | 'healingArc' | 'grounded' | 'itching' | 'dustStorm' | 'glimDust' | 'reveal' | 'swarmGoes'
+  | 'gentleWings' | 'mothWall' | 'markedPage' | 'marginNote'
+  // S9 (and S5's wait): the Thornstrider's
+  | 'hunterShare' | 'movingMark' | 'beastsPrey' | 'nailed' | 'pinTwo' | 'thornGround' | 'heartCrit' | 'steadyDraw' | 'windborne'
+  | 'thornyGround' | 'followMark' | 'wetWood' | 'partingShot' | 'doubleLeap' | 'intoLeaves' | 'thickHide' | 'wakeWood' | 'mossback'
+  | 'heavyRain' | 'coldRain' | 'fogArrows' | 'afterclap' | 'fork' | 'quickSky' | 'boltOfMark' | 'markSeek';
 
 export interface MarkDef {
   slot: MarkSlot;
@@ -159,7 +171,8 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   'lamp-wisp': [[FOLD('moth-kin')], [F('moteHeal', { n: 1 })], [F('swarm', { m: 2, n: 50 })], [A('secs', 15)], [MN(-30)], [F('wispWard')]],
   'beacon': [[P(15, 'dmg')], [F('poleRegen', { n: 1, m: 3 })], [F('twoBeacons', { n: 2 })], [A('secs', 6)], [F('poleSpeed', { n: 10, m: 4 })], [F('hearthNear', { n: 3 })]],
   // ── Thornstrider · Thorn ──
-  'thorn-shot': [[FOLD('heartwood')], [R('bleed', 2, 20, 20)], [F('nthCrit', { m: 5 })], [A('range', 2)], [A('pierce', 10)], [F('vsStatus', { st: 'bleed', n: 15 })]],
+  // Mark-Seeker (B3): +15% on the Bleeding, and since Hunter's Mark (S9) the bow seeks the Marked foe first.
+  'thorn-shot': [[FOLD('heartwood')], [R('bleed', 2, 20, 20)], [F('nthCrit', { m: 5 })], [A('range', 2)], [A('pierce', 10)], [F('vsStatus', { st: 'bleed', n: 15 }), F('markSeek')]],
   'barbed-shot': [[P(20, 'dps')], [F('vuln', { st: 'bleed', n: 10 })], [R('hush', 1.5)], [CD(-1.5)], [F('twinArrow', { n: 50 })], [F('bleedSpread', { m: 2, s: 3 })]],
   'volley': [[P(15, 'dmg')], [F('pierce', { n: 1 })], [F('ringFan')], [A('count', 2)], [MN(-25)], [P(-55, 'dmg'), F('echo', { n: 100, s: .3, m: 2 })]],
   // ── Thornstrider · Wild ──
@@ -171,6 +184,30 @@ const ROWS: Readonly<Partial<Record<SkillId, Row>>> = {
   'thornroot-snare': [[P(20, 'dmg')], [F('regrasp', { s: 3 })], [F('ring', { n: 2 })], [A('length', 2)], [A('secs', 4)], [A('root', .5)]],
   'bramble-trap': [[P(15, 'dmg')], [R('bleed', 3, 15)], [F('traps', { n: 3 })], [A('radius', .5)], [F('throwTrap', { n: 5 })], [R('stun', 1)]],
   'rootwalk': [[A('pct', 10)], [F('leafCrit')], [F('walkGuard', { n: 15 })], [A('secs', 2)], [CD(-4)], [F('hearth')]],
+  // ── S9: rows 30–50 for every calling (skills-100.md §1–§4), with the Thornstrider's rows S5 left waiting ──
+  // Warlock
+  'kiln-breath': [[P(15, 'dmg')], [F('melting', { n: 5, m: 25 })], [A('arc', 30), A('length', 1)], [MN(-25)], [A('walk', 30)], [F('kilnSeal', { n: 50, s: 3 })]],
+  'raise-grave-mage': [[P(15, 'dmg')], [F('graveCurse', { m: 4 })], [F('jump', { n: 50, m: 1, s: 3, c: 100 })], [A('secs', 20)], [A('count', 1)], [F('archers', { m: 2, s: 8 })]],
+  'ossuary-golem': [[P(20, 'hp')], [F('bonemeal', { n: 5 })], [F('fortyStrong', { n: 1, m: 40 })], [CD(-20)], [F('thornyRibs', { n: 15 })], [F('funeralPyre', { n: 50, m: 2, s: 6 })]],
+  'rime-lance': [[P(15, 'dmg')], [F('deepChill', { s: 1 })], [F('frostNova', { n: 60, m: 2 })], [A('range', 3)], [MN(-20), F('vsFire', { n: 20 })], [F('splinter', { n: 50, m: 3, s: 4 })]],
+  // Ashguard
+  'pyre-strike': [[P(15, 'pct')], [R('burn', 3, 20)], [F('meteorWatch', { n: 2, m: 3, s: 1.5 })], [A('range', 2)], [F('shieldFirst', { n: 30, s: 2 })], [F('rallyingFall', { n: 10, m: 4 })]],
+  'watchquake': [[P(15, 'pct')], [F('aftershock', { n: 50, m: 4, s: .6 })], [F('faultLine', { n: 130, m: 6 })], [A('radius', 1)], [CD(-3)], [R('chill', 3)]],
+  // Lanternwright
+  'chain-of-lamps': [[P(15, 'dmg')], [F('static', { n: 30, s: 6 })], [F('stormLantern', { n: 2 })], [A('gap', 1)], [F('healingArc', { n: 10 })], [F('grounded', { n: 60, m: 2 })]],
+  'moth-dust': [[A('blind', 1)], [F('itching', { n: 10 })], [F('dustStorm', { n: 3 })], [A('length', 2)], [MN(-40)], [F('glimDust', { n: 50 })]],
+  'moth-swarm': [[P(15, 'dmg')], [F('reveal')], [F('swarmGoes')], [A('secs', 4)], [F('gentleWings', { n: .5 })], [F('mothWall')]],
+  'glims-margin': [[P(20, 'crit')], [F('markedPage', { n: 12, s: 6 })], [F('marginNote', { n: 12 })], [A('radius', 3)], [CD(-8)], [F('followSelf')]],
+  // Thornstrider
+  'hunters-mark': [[A('pct', 5)], [F('hunterShare', { n: 2 })], [F('strip', { s: 6 })], [A('secs', 8)], [F('movingMark')], [F('beastsPrey', { n: 25 })]],
+  'pinning-shot': [[P(15, 'pct')], [F('nailed', { n: 15 })], [F('pinTwo')], [A('root', 1)], [CD(-2)], [F('thornGround', { s: 3 })]],
+  'heartseeker': [[P(15, 'pct')], [R('bleed', 4, 10)], [F('heartCrit')], [A('draw', -.4)], [F('steadyDraw', { n: 50 })], [F('windborne', { n: 40, m: 4 })]],
+  'thornrain': [[P(15, 'dmg')], [F('thornyGround', { n: .5, s: 3 })], [A('radius', 1), A('secs', 1)], [F('followMark')], [MN(-25)], [F('wetWood', { n: 30 })]],
+  'feral-leap': [[A('pct', 30)], [F('partingShot')], [F('doubleLeap', { s: 2 })], [A('length', 2)], [CD(-3)], [F('intoLeaves', { s: 1.5 })]],
+  'elder-beast': [[A('bite', 20)], [F('thickHide', { n: 20 })], [F('wakeWood', { n: 50 })], [A('secs', 8)], [CD(-20)], [F('mossback', { n: 2 })]],
+  'call-the-rain': [[F('heavyRain', { n: 50 })], [F('coldRain', { s: 3 })], [A('radius', 2)], [A('secs', 5)], [MN(-30)], [F('followMark')]],
+  'fogwalk': [[S('lose', 1)], [F('fogArrows', { s: 3 })], [F('followSelf')], [A('radius', 2)], [A('secs', 5)], [F('hearth')]],
+  'lightning-call': [[P(15, 'dmg')], [F('afterclap', { n: 3 })], [F('fork', { n: 70, m: 1 })], [F('quickSky')], [MN(-25)], [F('boltOfMark')]],
 };
 
 /** Every mark of every row, built once. */
@@ -255,6 +292,8 @@ const ADD_UNIT: Readonly<Record<string, string>> = {
   'raise-skeleton.count': 'book.unit.skeletons', 'bone-storm.count': 'book.unit.spears', 'volley.count': 'book.unit.arrows',
   'aura-siphon.heal': 'book.unit.siphon', 'last-watch.heal': 'book.unit.vowHeal', 'banish.below': 'book.unit.below',
   'second-wind.heal': 'book.unit.windHeal',
+  'raise-grave-mage.count': 'book.unit.mages', 'hunters-mark.pct': 'book.unit.markPct', 'feral-leap.pct': 'book.unit.bitePct',
+  'elder-beast.bite': 'book.unit.bitePct',
 };
 /**
  * A mark's line as the book shows it, as i18n calls: each effect one phrase (`book.fx.*`), joined. Built from the same

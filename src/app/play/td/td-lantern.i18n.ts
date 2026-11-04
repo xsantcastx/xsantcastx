@@ -101,4 +101,25 @@ export const LANTERN_I18N: Readonly<Record<string, { en: string; es: string }>> 
     en: 'Sing up to {{secs}} seconds, standing still, mana every second: every half second you and every ally within {{radius}} tiles mend {{heal}}% of their life and {{flat}} more. A blow ends the song.',
     es: 'Canta hasta {{secs}} segundos, quieto, gastando mana cada segundo: cada medio segundo tu y cada aliado a {{radius}} casillas recuperais el {{heal}}% de vuestra vida y {{flat}} mas. Un golpe acaba la cancion.',
   },
+  // ── S9: rows 6–50 (skills-100.md §3) ──
+  'skill.chain-of-lamps': { en: 'Chain of Lamps', es: 'Cadena de faroles' },
+  'skill.chain-of-lamps.text': {
+    en: 'A lamp-bolt of lightning strikes a foe and leaps on, {{jumps}} foes in all, each within {{gap}} tiles of the last: {{min}}–{{max}}, {{fall}}% less a leap. Each is Shocked {{shock}} s: its next hit taken is 20% harder, and the spark jumps on once.',
+    es: 'Un rayo de farol golpea a un enemigo y salta, {{jumps}} enemigos en total, cada uno a {{gap}} casillas del anterior: {{min}}–{{max}}, un {{fall}}% menos por salto. Cada uno queda con Descarga {{shock}} s: el siguiente golpe que recibe es un 20% mas fuerte, y la chispa salta una vez.',
+  },
+  'skill.moth-dust': { en: 'Moth Dust', es: 'Polvo de polilla' },
+  'skill.moth-dust.text': {
+    en: 'Throw moth dust in a cone {{length}} tiles deep: everything in it is Blinded {{blind}} s and deals {{weaken}}% less for {{secs}} s.',
+    es: 'Lanza polvo de polilla en un cono de {{length}} casillas: todo lo que hay dentro queda Cegado {{blind}} s y hace un {{weaken}}% menos de dano durante {{secs}} s.',
+  },
+  'skill.moth-swarm': { en: 'Moth Swarm', es: 'Enjambre de polillas' },
+  'skill.moth-swarm.text': {
+    en: '{{count}} moths circle you {{radius}} tiles wide for {{secs}} s: a foe that comes inside is Blinded {{blind}} s, and every foe inside is nibbled for {{min}}–{{max}} a second.',
+    es: '{{count}} polillas te rodean a {{radius}} casillas durante {{secs}} s: un enemigo que entra queda Cegado {{blind}} s, y cada enemigo dentro recibe {{min}}–{{max}} de mordiscos por segundo.',
+  },
+  'skill.glims-margin': { en: 'Glim\'s Margin', es: 'El margen de Glim' },
+  'skill.glims-margin.text': {
+    en: 'Glim flies a circle of {{radius}} tiles round you: for {{secs}} s every hidden thing inside is revealed (a burrowed creature comes up, a Mirrored copy dims), and your blows on the revealed crit {{crit}}% more often.',
+    es: 'Glim vuela un circulo de {{radius}} casillas a tu alrededor: durante {{secs}} s todo lo oculto dentro queda revelado (una criatura enterrada sale, una copia Reflejada se apaga), y tus golpes contra lo revelado son criticos un {{crit}}% mas a menudo.',
+  },
 };

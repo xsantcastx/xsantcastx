@@ -119,6 +119,7 @@ import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
 import { LAMP_FX, drawBeacon, drawKindle, drawLampAir, drawLampGround, drawLampState, drawLampZones } from './td-lantern-fx';
 import { THORN_FX, drawArrow, drawBeast, drawThornAir, drawThornGround, drawThornState, drawThornZones } from './td-thorn-fx';
+import { drawLateAir, drawLateGround, drawLateState, drawLateZoneAir, drawLateZones } from './td-late-fx';
 import { SPIRIT_BEAST, THORN_PET, bondShare, spiritLevel, thornPetRest } from './td-thorn';
 import { dropGlow, dropIconSrc } from './td-drop-art';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
@@ -229,6 +230,9 @@ const FLOAT_LIFT = 20;
 const INDOOR: NightPass = { rgb: [34, 20, 34], alpha: .5, warm: .9, amount: 1 };
 /** The iso depth queue's item kinds (td-iso.ts IsoQueue). */
 const K = { wall: 1, prop: 2, obj: 3, person: 4, mob: 5, raised: 6, pet: 7, corpse: 8, drop: 9, hearth: 10, shrine: 11, chalk: 12, purse: 13, gate: 14, beacon: 15, beast: 16, pal: 17, peer: 18, fire: 19, struct: 20, art: 21 } as const;
+/** The ally mark's violet (the Warlock's shadow tone, effects-spec), and how much the Elder Beast grows. */
+const ALLY_VIOLET = '#b06bff';
+const ELDER_SCALE = 3;
 const MOTES = 10;              // an aura's motes alive at once (spec: ≤ 10)
 const SHARDS = 8;
 /** A loot pop: the small burst when gear lands on the ground or goes into the satchel (spec §Loot). */
@@ -723,6 +727,16 @@ export class TopDownEngine {
       boss: () => layBoss(this.mobs, this.player),
       dress: () => this.level instanceof HandLevel ? layDressing((this.level as unknown as { objects: TdObject[] }).objects, this.player) : 0,
       freeze: (on: boolean) => { this.fxFreeze = on; },
+      // S9's photographs (e2e/td-s9-shots.spec.ts): the given rows at their rank (the Keeper's own calling), a full purse
+      // of mana, the nearest creature targeted, and the row cast. Returns why not, or null.
+      cast: (ranks: Record<string, number>, id: string, marks: Record<string, number> = {}) => {
+        this.mobs.setRanks(ranks as Partial<Record<SkillId, number>>, null, marks as Partial<Record<SkillId, number>>);
+        this.mobs.maxMana = Math.max(this.mobs.maxMana, 9999); this.mobs.mana = this.mobs.maxMana; this.mobs.cooldowns[id as SkillId] = 0;
+        if (!this.mobs.target) { let best: Mob | null = null, bd = Infinity; for (const m of this.mobs.mobs) { const d = Math.hypot(m.x - this.player.x, m.y - this.player.y); if (d < bd) { bd = d; best = m; } } this.mobs.target = best; }
+        return this.mobs.useAbility(id as SkillId);
+      },
+      // What S9's photographs can read back: the effects and zones alive now, by kind.
+      fx: () => ({ effects: this.mobs.effects.map(e => e.kind + ':' + Math.round(e.x) + ',' + Math.round(e.y) + ':' + (e.r ?? '') + ':' + (e.w ?? '')), player: [Math.round(this.player.x), Math.round(this.player.y)], zones: this.mobs.zones.map(z => z.kind), minions: this.mobs.minions.map(k => `${k.kind ?? 'skel'}@${Math.round(k.x)},${Math.round(k.y)}`), beasts: this.mobs.beasts.map(b => `${b.kind}@${Math.round(b.x)},${Math.round(b.y)}`) }),
       // The art-direction prototype's photographs: a pet at the Keeper's side (td-artopt.ts).
       pet: (id: string) => { this.setPet({ id, name: 'Kit', hat: false, ability: 'none' as unknown as PetAbility, level: 3, command: 'stay' as PetCommand }); return !!this.pet; },
       // Stand the Keeper on a hand-made level (or the surface) of this continent (or another), at tile (c, r) or the nearest free spot.
@@ -2377,7 +2391,8 @@ export class TopDownEngine {
     const b = this.pet;
     if (b) out.push({ i: 'p', k: 'pet', t: b.id, x: b.x, y: b.y, f: b.face, a: b.doing === 'fight' });
     this.mobs.beasts.forEach((w, n) => { if (w.age >= 0) out.push({ i: `b${n}`, k: w.kind === 'stampede' ? 'stampede' : 'beast', x: w.x, y: w.y, f: w.face, a: !!w.target }); });
-    for (const k of this.mobs.minions) out.push({ i: minionPalId(k), k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
+    // S9: only the skeletons go to the room as kin (a Grave-Mage, the Golem and an Elder Beast are this screen's own: skills-100.md §1.2 "solo only").
+    for (const k of this.mobs.minions) if (!k.kind) out.push({ i: minionPalId(k), k: 'skel', x: k.x, y: k.y, f: k.face, h: k.hp, m: k.maxHp, a: !!k.target });
     this.mobs.wisps.forEach((w, n) => out.push({ i: `w${n}`, k: 'wisp', x: w.x, y: w.y, f: 1 }));
     this.mobs.beacons.forEach((w, n) => out.push({ i: `c${n}`, k: 'beacon', x: w.x, y: w.y, f: 1 }));
     if (this.glim.shown) out.push({ i: 'g', k: 'glim', x: this.glim.x, y: this.glim.y, f: 1 });
@@ -3673,6 +3688,10 @@ export class TopDownEngine {
     // Wet (the weather's rule): rain on the Keeper keeps him Wet, and a few seconds after (td-mobs reads kst.wet).
     if (this.rainedOn) this.mobs.kst.wet = Math.max(this.mobs.kst.wet, WET_LINGER_SECS);
     this.mobs.weatherWet = this.rainedOn;
+    // S9: the sky the Thornstrider's weather rows read (outdoors only): a thunderstorm, the world's fog.
+    const outdoors = this.level === this.world && this.weatherFx.now.level > .3;
+    this.mobs.stormSky = outdoors && this.weatherFx.now.state === 'storm';
+    this.mobs.skyFog = outdoors && this.weatherFx.now.state === 'fog';
     this.updateSky(dt);
     this.updateGather(dt);
     this.actT = Math.max(0, this.actT - dt); this.shake = Math.max(0, this.shake - dt);
@@ -4778,7 +4797,7 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     for (const b of this.mobs.beacons) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeacon(c, b, this.time, this.still) });
-    for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => drawBeast(c, b, this.time, this.still) });
+    for (const b of this.mobs.beasts) if (inView(b.x, b.y)) items.push({ y: b.y, draw: () => { drawBeast(c, b, this.time, this.still); if (b.kind === 'called') this.allyMark(b.x, b.y, 26); } });
     const pet = this.pet;
     if (pet && inView(pet.x, pet.y)) items.push({ y: pet.y, draw: () => this.drawPet(pet) });
     // Other Keepers' companions (coop-pals.ts), each with its owner's painter.
@@ -5037,6 +5056,47 @@ export class TopDownEngine {
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
+    // S9: an Elder Beast is the called beast grown ×1.5 with moss on its back; a Grave-Mage a skeleton with its lantern;
+    // the Ossuary Golem a skeleton built twice as big of tidy ivory bones.
+    if (k.kind === 'elder') {
+      // Grown: half again the Keeper's height (the spirit beast's frame is 30 art px, drawn at half in HD: ×3 stands about 1.5 Keepers).
+      const c = this.ctx;
+      c.save(); c.translate(Math.round(k.x), Math.round(k.y)); c.scale(ELDER_SCALE, ELDER_SCALE);
+      drawBeast(c, { x: 0, y: 0, face: k.face, age: 1, kind: 'called' }, this.time, this.still);
+      c.fillStyle = THORN_FX.wild.edge; c.fillRect(-4, -11, 8, 1); c.fillStyle = '#6eae52'; c.fillRect(-3, -12, 2, 1); c.fillRect(1, -12, 2, 1);
+      c.fillStyle = '#c9a66b'; c.fillRect(k.face * 4, -15, 1, 3); c.fillRect(k.face * 6, -15, 1, 2);
+      c.restore();
+      const w = 18, frac = Math.max(0, k.hp / k.maxHp);
+      c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - 30 * ELDER_SCALE - 5), w + 2, 3);
+      c.fillStyle = THORN_FX.wild.body; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - 30 * ELDER_SCALE - 4), Math.round(w * frac), 1);
+      this.allyMark(k.x, k.y, 30 * ELDER_SCALE, 14);
+      return;
+    }
+    if (k.kind === 'golem') { const c = this.ctx, g = optHdFigures() && envDetail() !== 'low' ? 1.35 : 2; c.save(); c.translate(Math.round(k.x), Math.round(k.y)); c.scale(g, g); c.translate(-Math.round(k.x), -Math.round(k.y)); this.drawRaisedBody({ ...k, kind: undefined }); c.restore(); this.allyMark(k.x, k.y, (optHdFigures() && envDetail() !== 'low' ? 56 : 30) * g, 16); return; }
+    this.drawRaisedBody(k);
+    this.allyMark(k.x, k.y, optHdFigures() && envDetail() !== 'low' ? 56 : 30);
+    if (k.kind === 'mage') {
+      // Its small lantern, in the colour of its element.
+      // (The HD figure stands about twice as tall: the lantern hangs at its hand either way.)
+      const c = this.ctx, col = k.el === 'fire' ? '#ff8a2e' : k.el === 'cold' ? '#8fd8ff' : k.el === 'arrow' ? '#8fc25a' : '#b06bff';
+      const hd = optHdFigures() && envDetail() !== 'low', u = hd ? 2 : 1, lx = Math.round(k.x + k.face * 5 * u), ly = Math.round(k.y - 17 * u);
+      c.fillStyle = '#5a4020'; c.fillRect(lx, ly + 3 * u, u, 4 * u);
+      c.fillStyle = col; c.fillRect(lx - u, ly, 3 * u, 3 * u);
+      c.fillStyle = '#fffbe8'; c.fillRect(lx, ly + u, u, u);
+    }
+  }
+  /**
+   * The ally mark every summon and called beast of this Keeper wears (the Director, S9 review: ally from enemy at a
+   * glance): a violet ring at its feet and a violet pip over its head. Low: the ring only, every other step.
+   */
+  private allyMark(x: number, y: number, h: number, r = 9): void {
+    const c = this.ctx, X = Math.round(x), Y = Math.round(y), low = envDetail() === 'low';
+    c.globalAlpha = .85; c.fillStyle = ALLY_VIOLET;
+    for (const [i, q] of groundRing(r).entries()) if (!low || i % 2 === 0) c.fillRect(X + q.x, Y + q.y, 1, 1);
+    if (!low) { const top = Math.round(y - h - 6); c.fillRect(X - 1, top, 3, 1); c.fillRect(X, top - 1, 1, 3); c.fillStyle = '#efe0ff'; c.fillRect(X, top, 1, 1); }
+    c.globalAlpha = 1;
+  }
+  private drawRaisedBody(k: Minion): void {
     const c = this.ctx, d = this.vis(RAISED_SKELETON), sheet = mobSheet(RAISED_SKELETON), f = Math.floor(k.t * 6) % Math.max(1, Math.round(sheet.width / d.w));
     c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
     // Isometric B: the HD raised skeleton, climbing out of the ground (clipped at the feet) for its first half second.
@@ -5524,9 +5584,12 @@ export class TopDownEngine {
     if (this.mobs.zones.length) drawLampZones(c, this.mobs.zones, this.time, this.still);
     // The Thornstrider's on the floor: the snare's thorns, a hidden trap.
     if (this.mobs.zones.length) drawThornZones(c, this.mobs.zones, this.time, this.still);
+    // S9's on the floor: a rain cloud, a fog bank, the moths, the thornrain, thorny ground.
+    if (this.mobs.zones.length) drawLateZones(c, this.mobs.zones, this.time, this.still);
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
       if (drawAshGround(c, e, this.still)) continue;
+      if (drawLateGround(c, e, this.still)) continue;
       if (drawLampGround(c, e, this.still)) continue;
       if (drawThornGround(c, e, this.still)) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
@@ -5677,6 +5740,7 @@ export class TopDownEngine {
       if (drawAshAir(c, e, this.still, this.overFoe)) continue;
       if (drawLampAir(c, e, this.still, this.overFoe)) continue;
       if (drawThornAir(c, e, this.still, this.overFoe)) continue;
+      if (drawLateAir(c, this.iso ? this.isoLateFx(e) : e, this.still, this.overFoe)) continue;
       // Reduced motion: a burst is one still frame, never no burst.
       const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y), bt = this.still ? .5 : t, seed = (X * 7 + Y * 13) | 0;
       c.globalAlpha = Math.max(0, 1 - t);
@@ -5812,6 +5876,10 @@ export class TopDownEngine {
       const pb = this.pet;
       drawThornState(c, { mobs: this.mobs.mobs, commanded: this.mobs.commanded, bond: this.mobs.bonded && pb ? { x: pb.x, y: pb.y } : null, keeper: this.player }, this.time, this.still, this.isoAtHook());
     }
+    // S9: what flies over its zones (moths, falling thorns, rain), upright.
+    if (this.mobs.zones.length) drawLateZoneAir(c, this.mobs.zones, this.time, this.still, this.isoAtHook());
+    // S9: the leaf over the Marked, a Shock's spark, a Wet foe's droplet, the revealed's corners.
+    if (this.mobs.hunted || this.mobs.mobs.some(m => (m.shockT ?? 0) > 0 || (m.wetT ?? 0) > 0 || (m.glimT ?? 0) > 0)) drawLateState(c, { mobs: this.mobs.mobs, hunted: this.mobs.huntT > 0 ? this.mobs.hunted : null }, this.time, this.still, this.isoAtHook());
     // The Thornstrider's arrows in flight.
     for (const a of this.mobs.arrows) { this.at(a.x, a.y); drawArrow(c, a.x, a.y, a.vx, a.vy); }
     // A boss winding up: a stepped glow gathering at its jaws (over its own body: never above 60%).
@@ -6246,6 +6314,17 @@ export class TopDownEngine {
   }
   /** The HUD's top-right corner (the minimap and its clock, ~170 CSS px) in canvas px: a creature's plate stays left of it. */
   private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
+  /**
+   * S9's air pictures in iso (td-late-fx): drawn in the anchor's upright frame, so a far end (a lightning leap's, a leap's
+   * landing) goes where it projects, and a direction (Kiln Breath's cone, Moth Dust's puff) turns as the floor turns.
+   */
+  private isoLateFx(e: MobSystem['effects'][number]): MobSystem['effects'][number] {
+    if (e.tx === undefined && e.a === undefined) return e;
+    const X = Math.round(e.x), Y = Math.round(e.y), out = { ...e };
+    if (e.tx !== undefined && e.ty !== undefined) { out.tx = X + (e.tx - e.ty) - (X - Y); out.ty = Y + (e.tx + e.ty - X - Y) / 2; }
+    if (e.a !== undefined && (e.kind === 'lc-cone' || e.kind === 'lc-dust')) { const dx = Math.cos(e.a), dy = Math.sin(e.a); out.a = Math.atan2((dx + dy) / 2, dx - dy); }
+    return out;
+  }
   /** Anchor an upright drawing at world point (x, y) (iso: where it projects; top-down: nothing to do). */
   private at(x: number, y: number): void { if (this.iso) this.isoAt(x, y); }
   private readonly isoAtFn = (x: number, y: number): void => this.isoAt(x, y);
@@ -6606,7 +6685,7 @@ export class TopDownEngine {
       case K.purse: { const f = ref as { x: number; y: number }; this.isoAt(f.x, f.y); drawIsoPurse(c, f.x, f.y, this.time, this.still); return; }
       case K.gate: { const g = ref as { x: number; y: number; fade: number; party: boolean }; this.isoAt(g.x, g.y); drawIsoWaygate(c, g.x, g.y, this.time, this.still, g.fade, g.party); return; }
       case K.beacon: { const b = ref as Parameters<typeof drawBeacon>[1]; this.isoAt(b.x, b.y); drawIsoBeacon(c, b, this.time, this.still); return; }
-      case K.beast: { const b = ref as Parameters<typeof drawBeast>[1]; this.isoAt(b.x, b.y); drawBeast(c, b, this.time, this.still); return; }
+      case K.beast: { const b = ref as Parameters<typeof drawBeast>[1]; this.isoAt(b.x, b.y); drawBeast(c, b, this.time, this.still); if (b.kind === 'called') this.allyMark(b.x, b.y, 26); return; }
       case K.pal: { const x = q.a[i], y = q.b[i]; this.isoAt(x, y); this.drawPal(ref as CoopPal, x, y, q.c[i] === 1); return; }
       case K.peer: {
         const pp = ref as { x: number; y: number }, v = this.isoPeerView;

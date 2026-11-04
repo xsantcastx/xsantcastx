@@ -19,7 +19,9 @@ export type LampSkillId =
   | 'hearthlight' | 'hearth-circle' | 'lantern-ward' | 'last-light'
   | 'lamp-wisp' | 'moth-kin' | 'beacon'
   // S5 (skills-100.md §3): the healer's kit to level 30, and Hearthsong (42).
-  | 'cleanse' | 'rekindle' | 'hearthsong';
+  | 'cleanse' | 'rekindle' | 'hearthsong'
+  // S9 (skills-100.md §3): Moth Dust (6, S5's wait), Moth Swarm (30), Chain of Lamps (36), Glim's Margin (50).
+  | 'moth-dust' | 'moth-swarm' | 'chain-of-lamps' | 'glims-margin';
 
 /** The Lanternwright's three trees (D2's three tabs): the light as a weapon, the hearth, the lantern's kin. */
 export const LAMP_TREES = ['lamp', 'hearth', 'moth'] as const;
@@ -134,12 +136,38 @@ export const LANTERN_SKILLS: Readonly<Record<LampSkillId, SkillDef>> = {
     words: 'hesk orum lum',
     syn: [{ from: 'hearth-circle', per: 4, what: 'heal' }],
   },
+  // ── S9: rows 6–50 (skills-100.md §3) ──
+  'chain-of-lamps': {
+    id: 'chain-of-lamps', kind: 'active', mana: 20, cd: 4, nameKey: 'skill.chain-of-lamps', textKey: 'skill.chain-of-lamps.text',
+    vars: { jumps: 4, min: 28, max: 40, gap: 3, fall: 10, shock: 4 }, grow: { jumps: .15, min: 5, max: 7 }, tree: 'lamp', tier: 4, col: 2, req: null, level: 36,
+    icon: I('<rect x="1" y="2" width="3" height="3" fill="#ffd27a"/><rect x="4" y="4" width="2" height="2" fill="#fffbe8"/><rect x="6" y="6" width="2" height="2" fill="#ffe36d"/><rect x="8" y="4" width="2" height="2" fill="#fffbe8"/><rect x="10" y="6" width="2" height="2" fill="#ffe36d"/><rect x="12" y="8" width="3" height="3" fill="#ffd27a"/><rect x="7" y="10" width="2" height="2" fill="#fffbe8"/><rect x="6" y="12" width="3" height="3" fill="#ffd27a"/>'),
+    words: 'lum vor sha',
+    syn: [{ from: 'kindle', per: 5, what: 'dmg' }],
+  },
+  'moth-dust': {
+    id: 'moth-dust', kind: 'active', mana: 10, cd: 6, nameKey: 'skill.moth-dust', textKey: 'skill.moth-dust.text',
+    vars: { length: 3, blind: 2, weaken: 20, secs: 4 }, grow: { blind: .05 }, tree: 'moth', tier: 1, col: 1, req: null, level: 6,
+    icon: I('<rect x="2" y="7" width="3" height="2" fill="#e9dcc0"/><rect x="5" y="5" width="2" height="2" fill="#cfc4ac"/><rect x="5" y="9" width="2" height="2" fill="#cfc4ac"/><rect x="8" y="3" width="2" height="2" fill="#e9dcc0"/><rect x="8" y="7" width="2" height="2" fill="#fffbe8"/><rect x="8" y="11" width="2" height="2" fill="#e9dcc0"/><rect x="11" y="2" width="1" height="1" fill="#cfc4ac"/><rect x="12" y="6" width="2" height="1" fill="#cfc4ac"/><rect x="12" y="10" width="2" height="1" fill="#cfc4ac"/><rect x="11" y="13" width="1" height="1" fill="#cfc4ac"/>'),
+    words: 'lum un sha',
+  },
+  'moth-swarm': {
+    id: 'moth-swarm', kind: 'active', mana: 24, cd: 12, nameKey: 'skill.moth-swarm', textKey: 'skill.moth-swarm.text',
+    vars: { count: 12, radius: 3, secs: 6, min: 6, max: 9, blind: 1 }, grow: { count: .3, min: 1, max: 2 }, tree: 'moth', tier: 4, col: 0, req: null, level: 30,
+    icon: I('<rect x="7" y="7" width="2" height="2" fill="#ffd27a"/><rect x="3" y="3" width="3" height="2" fill="#e9dcc0"/><rect x="10" y="2" width="3" height="2" fill="#e9dcc0"/><rect x="12" y="8" width="3" height="2" fill="#e9dcc0"/><rect x="9" y="12" width="3" height="2" fill="#e9dcc0"/><rect x="2" y="11" width="3" height="2" fill="#e9dcc0"/><rect x="1" y="7" width="2" height="1" fill="#cfc4ac"/><rect x="7" y="1" width="2" height="1" fill="#cfc4ac"/>'),
+    words: 'lum teth orum',
+  },
+  'glims-margin': {
+    id: 'glims-margin', kind: 'active', mana: 30, cd: 20, nameKey: 'skill.glims-margin', textKey: 'skill.glims-margin.text',
+    vars: { radius: 8, secs: 6, crit: 15 }, grow: { secs: .2 }, tree: 'moth', tier: 4, col: 2, req: null, level: 50,
+    icon: I('<rect x="2" y="2" width="12" height="12" fill="#3a2a14"/><rect x="3" y="3" width="10" height="10" fill="#e9dcc0"/><rect x="4" y="4" width="8" height="8" fill="#fffbe8"/><rect x="5" y="6" width="5" height="1" fill="#8a7e6a"/><rect x="5" y="8" width="4" height="1" fill="#8a7e6a"/><rect x="11" y="9" width="3" height="3" fill="#ffd27a"/><rect x="12" y="10" width="1" height="1" fill="#ffffff"/>'),
+    words: 'lum vesh ka',
+  },
 };
 
 /** The Lanternwright's book in the order the bar fills: the first four actives are the default keys 1–4. */
 export const LANTERN_BOOK: readonly LampSkillId[] = [
   'hearthlight', 'blinding-flash', 'lamp-wisp', 'shutter-lantern', 'banish', 'hearth-circle', 'lantern-ward', 'beacon', 'dawn-at-noon',
-  'cleanse', 'rekindle', 'hearthsong',
+  'cleanse', 'rekindle', 'hearthsong', 'moth-dust', 'moth-swarm', 'chain-of-lamps', 'glims-margin',
   'lantern-aura', 'kindle', 'moth-kin', 'last-light',
 ];
 /** What a new Lanternwright holds free at rank 1: the flare, the four keys and the lantern's aura. */

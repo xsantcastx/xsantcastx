@@ -20,7 +20,8 @@ import { THORN_I18N } from './td-thorn.i18n';
 import { BOOK_I18N } from '../spellbook/book.i18n';
 import { markLine } from '../spellbook/book-model';
 import { TILE } from './td-art';
-import { MOBS, MobSystem, type Mob, type MobDef, type MobHost } from './td-mobs';
+import { MOBS, MobSystem, type Minion, type Mob, type MobDef, type MobHost } from './td-mobs';
+import { creatureProfile } from '../../shared/loot/creature-families';
 import { CLASS_SKILLS, NO_GEAR_SIG, SKILLS, castCd, castVars, rowKind, type SkillId } from './td-skills';
 import { FOLDED, MARKS, MARK_BIT, MARK_SLOTS, applyMarkVars, markFlags, markRiders, type MarkDef, type MarkFlag, type MarkFx, type MarkSlot, type MarkStatus } from './td-marks';
 import { bookRows, buyMark, buyRank, clampTree, dropMark, effectiveMarks, effectiveRanks, markBlock, pointsSpent, rankOf, swapStar } from './td-tree';
@@ -58,6 +59,8 @@ const R10 = (id: SkillId, extra: Partial<Record<SkillId, number>> = {}) => ({ [i
 const withMarks = (id: SkillId, mask: number, extra: Partial<Record<SkillId, number>> = {}) => world(VOC_OF(id), R10(id, extra), mask ? { [id]: mask } : {});
 const DUMMY = MOBS['ash-wolf'];
 const DEAD = MOBS['bone-walker'];
+/** A creature of fire (Grave-Frost's foe): the first of the ember family. */
+const FIRE_DEF = Object.values(MOBS).find(d => creatureProfile(d.id).family === 'ember')!;
 const SPEAR_Y = -16 + DUMMY.h / 2, ARROW_Y = -20 + DUMMY.h / 2;
 function dummy(w: World, x: number, y = 0, def: MobDef = DUMMY, hp = 1e7): Mob {
   const m = w.sys.place(`d${w.sys.mobs.length}:${x},${y}`, { ...def, hp: Math.max(hp, def.hp), sight: 0, dmg: [0, 0], rate: 999, speed: 0 }, x, y);
@@ -118,6 +121,10 @@ const TOUCH: Partial<Record<SkillId, { at?: [number, number]; def?: MobDef; go: 
   'thornroot-snare': { at: [2 * TILE, 0], go: (w, m) => { w.sys.target = m; cast(w, 'thornroot-snare'); run(w, .2); } },
   'bramble-trap': { at: [6, 2], go: (w) => { cast(w, 'bramble-trap'); run(w, .2); } },
   'brand-throw': { at: [2 * TILE, 0], go: (w) => { cast(w, 'brand-throw'); run(w, .1); } },
+  // S9: the rows whose marks lay a rider.
+  'pyre-strike': { at: [2 * TILE, 0], go: (w) => { cast(w, 'pyre-strike'); } },
+  'watchquake': { at: [TILE, 0], go: (w) => { cast(w, 'watchquake'); } },
+  'heartseeker': { at: [2 * TILE, 0], go: (w, m) => { w.sys.target = m; cast(w, 'heartseeker'); w.sys.target = null; run(w, 1.2); } },
 };
 /** The row touches a fresh dummy; the dummy is handed back (with `track` watching its statuses all the while). */
 function touch(id: SkillId, mask: number, extra: Partial<Record<SkillId, number>> = {}): { w: World; m: Mob; seen: Set<MarkStatus> } {
@@ -149,7 +156,7 @@ describe('td-truth-marks 1: the book holds six marks a row, each named and said 
       if (kind === 'folded' || SKILLS[id].tree === 'common') expect(MARKS[id]).withContext(id).toBeUndefined();
       else expect(MARKS[id]?.length).withContext(id).toBe(6);
     }
-    expect(ROWS.length).toBe(57);
+    expect(ROWS.length).toBe(76);
   });
 
   it('the ten folds sit where skills-100.md §6 puts them, and the save knows the same ten', () => {
@@ -1193,6 +1200,317 @@ const RULES: Partial<Record<string, RuleProbe>> = {
     const w = withMarks('hearthsong', bit('b3'), { 'hearth-circle': 1 }); cast(w, 'hearthsong'); run(w, w.sys.v('hearthsong')['secs'] + .1);
     const z = w.sys.zones.find(x => x.kind === 'hearth');
     expect(z).toBeDefined(); expect(z!.t).toBeLessThanOrEqual(fx.s ?? 0);
+  },
+  // ── S9: rows 30–50 for every calling, and the Thornstrider's rows S5 left waiting ──
+  // The Warlock
+  'kiln-breath.a2:melting': fx => {
+    const w = withMarks('kiln-breath', bit('a2')), m = dummy(w, TILE), behind = dummy(w, -3 * TILE);
+    cast(w, 'kiln-breath'); run(w, .6);
+    const melt = m.meltPct ?? 0;
+    expect(melt).toBeGreaterThan(0); expect(melt).toBeLessThanOrEqual(fx.m ?? 0);
+    expect(blow(w, m, 'kiln-breath') / blow(w, behind, 'kiln-breath')).toBeCloseTo(1 + melt / 100, 1);
+  },
+  'kiln-breath.b3:kilnSeal': fx => {
+    const seal = (mask: number) => { const w = withMarks('kiln-breath', mask); dummy(w, TILE); cast(w, 'kiln-breath'); run(w, w.sys.v('kiln-breath')['secs'] + .1); return w.sys.zones.find(z => z.kind === 'wall' && z.src === 'kiln-breath'); };
+    expect(seal(0)).toBeUndefined();
+    const z = seal(bit('b3'));
+    expect(z).toBeDefined(); expect(z!.t).toBeLessThanOrEqual(fx.s ?? 0);
+  },
+  'raise-grave-mage.a2:graveCurse': fx => {
+    const curses = (mask: number) => {
+      const w = withMarks('raise-grave-mage', mask, { weaken: 1 }); cast(w, 'raise-grave-mage');
+      const k = w.sys.minions[0], m = dummy(w, k.x + 2 * TILE, k.y);
+      run(w, w.sys.v('raise-grave-mage')['rate'] * (fx.m ?? 4) + 1.2);
+      return (m.weak ?? 0) > 0;
+    };
+    expect(curses(0)).toBeFalse(); expect(curses(bit('a2'))).toBeTrue();
+  },
+  'raise-grave-mage.a3:jump': () => {
+    const leaps = (mask: number) => { const w = withMarks('raise-grave-mage', mask); cast(w, 'raise-grave-mage'); const k = w.sys.minions[0]; dummy(w, k.x + 2 * TILE, k.y); const b = dummy(w, k.x + 2 * TILE + 20, k.y); run(w, 3); return lost(b) > 0; };
+    expect(leaps(0)).toBeFalse(); expect(leaps(bit('a3'))).toBeTrue();
+  },
+  'raise-grave-mage.b3:archers': fx => {
+    const through = (mask: number) => { const w = withMarks('raise-grave-mage', mask); cast(w, 'raise-grave-mage'); const k = w.sys.minions[0]; dummy(w, k.x + 2 * TILE, k.y); const b = dummy(w, k.x + 3 * TILE, k.y); run(w, 1.2); return { b: lost(b) > 0, el: k.el }; };
+    expect(through(0).b).toBeFalse();
+    const a = through(bit('b3'));
+    expect(a.b).toBeTrue(); expect(a.el).toBe('arrow');
+    expect(fx.s).toBe(8);
+  },
+  'ossuary-golem.a2:bonemeal': fx => {
+    const w = withMarks('ossuary-golem', bit('a2')); cast(w, 'ossuary-golem');
+    const k = w.sys.minions[0], m = dummy(w, k.x, k.y); k.hp = 100;
+    (w.sys as unknown as { lateMinionBlow(k: Minion, m: Mob): void }).lateMinionBlow(k, m);
+    expect(k.hp).toBe(100 + Math.round(k.maxHp * n_(fx) / 100));
+  },
+  'ossuary-golem.a3:fortyStrong': fx => {
+    const w = withMarks('ossuary-golem', bit('a3')); cast(w, 'ossuary-golem');
+    const k = w.sys.minions[0], m = dummy(w, k.x, k.y, DUMMY, 1);
+    (w.sys as unknown as { lateMinionBlow(k: Minion, m: Mob): void }).lateMinionBlow(k, m);
+    expect(m.hp).toBeLessThanOrEqual(0); expect(k.forty).toBe(n_(fx));
+  },
+  'ossuary-golem.b2:thornyRibs': fx => {
+    const w = withMarks('ossuary-golem', bit('b2')); cast(w, 'ossuary-golem');
+    const k = w.sys.minions[0], m = dummy(w, k.x + TILE, k.y);
+    (w.sys as unknown as { hurtMinion(k: Minion, n: number, by: Mob | null): void }).hurtMinion(k, 100, m);
+    expect(lost(m)).toBe(n_(fx));
+  },
+  'ossuary-golem.b3:funeralPyre': fx => {
+    const w = withMarks('ossuary-golem', bit('b3')); cast(w, 'ossuary-golem');
+    w.sys.minions[0].hp = 0; w.sys.update(.02);
+    const z = w.sys.zones.find(q => q.kind === 'wall' && q.src === 'ossuary-golem');
+    expect(z).toBeDefined(); expect(z!.t).toBeLessThanOrEqual(fx.s ?? 0);
+  },
+  'rime-lance.a2:deepChill': fx => {
+    const freezes = (mask: number) => { const w = withMarks('rime-lance', mask), m = dummy(w, 2 * TILE, SPEAR_Y); m.chillT = 5; w.sys.target = m; cast(w, 'rime-lance'); for (let i = 0; i < 100 && lost(m) === 0; i++) w.sys.update(.004); return m.stun ?? 0; };
+    expect(freezes(0)).toBe(0);
+    expect(freezes(bit('a2'))).toBeCloseTo(fx.s ?? 0, 1);
+  },
+  'rime-lance.a3:frostNova': () => {
+    const bursts = (mask: number) => { const w = withMarks('rime-lance', mask), a = dummy(w, 2 * TILE, SPEAR_Y), b = dummy(w, 2 * TILE, SPEAR_Y + 22); w.sys.target = a; cast(w, 'rime-lance'); run(w, .3, .004); return lost(b) > 0 && (b.chillT ?? 0) > 0; };
+    expect(bursts(0)).toBeFalse(); expect(bursts(bit('a3'))).toBeTrue();
+  },
+  'rime-lance.b2:vsFire': fx => {
+    const w = withMarks('rime-lance', bit('b2')), fire = dummy(w, TILE, 0, FIRE_DEF), plain = dummy(w, 2 * TILE);
+    expect(blow(w, fire, 'rime-lance')).toBe(100 + n_(fx));
+    expect(blow(w, plain, 'rime-lance')).toBe(100);
+  },
+  'rime-lance.b3:splinter': fx => {
+    const most = (mask: number) => { const w = withMarks('rime-lance', mask), m = dummy(w, 2 * TILE, SPEAR_Y); w.sys.target = m; cast(w, 'rime-lance'); let n = 0; for (let i = 0; i < 200; i++) { w.sys.update(.01); n = Math.max(n, w.sys.spears.filter(s => s.splinter).length); } return n; };
+    expect(most(0)).toBe(0); expect(most(bit('b3'))).toBe(fx.m ?? 3);
+  },
+  // The Ashguard
+  'pyre-strike.a3:meteorWatch': fx => {
+    const w = withMarks('pyre-strike', bit('a3'), { 'watch-blade': 1 }), m = dummy(w, 2 * TILE); cast(w, 'pyre-strike');
+    expect(lost(m)).toBe(0);
+    run(w, (fx.s ?? 1.5) + .05);
+    expect(lost(m)).toBeGreaterThan(0);
+    const w0 = withMarks('pyre-strike', 0, { 'watch-blade': 1 }), m0 = dummy(w0, 2 * TILE); cast(w0, 'pyre-strike');
+    expect(lost(m0)).toBeGreaterThan(0);
+  },
+  'pyre-strike.b2:shieldFirst': fx => {
+    const [a, b] = ab('pyre-strike', 'b2', w => { dummy(w, 2 * TILE); cast(w, 'pyre-strike'); return w.sys.shieldFirstT; }, { 'watch-blade': 1 });
+    expect(a).toBe(0); expect(b).toBe(fx.s ?? 0);
+    const [h0, h1] = ab('pyre-strike', 'b2', w => { dummy(w, 2 * TILE); cast(w, 'pyre-strike'); (w.sys as unknown as { biteKeeper(n: number, t: string): void }).biteKeeper(1000, 'physical'); return w.hurt[0] ?? 0; }, { 'watch-blade': 1 });
+    expect(h1 / h0).toBeCloseTo(1 - n_(fx) / 100, 1);
+  },
+  'pyre-strike.b3:rallyingFall': fx => {
+    const w = withMarks('pyre-strike', bit('b3'), { 'watch-blade': 1 }); dummy(w, 2 * TILE); ally(w, 2 * TILE); cast(w, 'pyre-strike');
+    expect(w.sys.allyOut.some(x => x.k === 'ward' && x.to === 'a' && x.s === 'pyre-strike')).toBeTrue();
+    expect(w.sys.markShield).toBe(Math.round(5000 * n_(fx) / 100));
+  },
+  'watchquake.a2:aftershock': fx => {
+    const reaches = (mask: number) => { const w = withMarks('watchquake', mask, { 'watch-blade': 1 }), m = dummy(w, 3.7 * TILE); cast(w, 'watchquake'); run(w, (fx.s ?? .6) + .1); return lost(m) > 0; };
+    expect(reaches(0)).toBeFalse(); expect(reaches(bit('a2'))).toBeTrue();
+  },
+  'watchquake.a3:faultLine': fx => {
+    const reaches = (mask: number) => { const w = withMarks('watchquake', mask, { 'watch-blade': 1 }), m = dummy(w, ((fx.m ?? 6) - 1) * TILE); cast(w, 'watchquake'); return lost(m) > 0; };
+    expect(reaches(0)).toBeFalse(); expect(reaches(bit('a3'))).toBeTrue();
+  },
+  // The Lanternwright
+  'chain-of-lamps.a2:static': fx => {
+    const w = withMarks('chain-of-lamps', bit('a2')), m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'chain-of-lamps');
+    expect(m.shockT).toBe(fx.s ?? 0); expect(m.shockPct).toBe(n_(fx));
+  },
+  'chain-of-lamps.a3:stormLantern': fx => {
+    const struck = (mask: number) => { const w = withMarks('chain-of-lamps', mask); w.sys.weatherWet = true; const row = Array.from({ length: 14 }, (_, i) => dummy(w, 2 * TILE + i * 2 * TILE)); w.sys.target = row[0]; cast(w, 'chain-of-lamps'); return row.filter(m => lost(m) > 0).length; };
+    expect(struck(bit('a3'))).toBe(struck(0) + n_(fx));
+  },
+  'chain-of-lamps.b2:healingArc': () => {
+    const heals = (mask: number) => { const w = withMarks('chain-of-lamps', mask); w.life.hp = 1000; const m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'chain-of-lamps'); return w.healed.length; };
+    expect(heals(0)).toBe(0); expect(heals(bit('b2'))).toBeGreaterThan(0);
+    const w = withMarks('chain-of-lamps', bit('b2')); ally(w, TILE); const m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'chain-of-lamps');
+    expect(w.sys.allyOut.some(x => x.k === 'heal' && x.to === 'a' && x.s === 'chain-of-lamps')).toBeTrue();
+  },
+  'chain-of-lamps.b3:grounded': () => {
+    const mean = (mask: number) => { let s = 0; for (let i = 0; i < 40; i++) { const w = withMarks('chain-of-lamps', mask), a = dummy(w, 2 * TILE); dummy(w, 3 * TILE); w.sys.target = a; cast(w, 'chain-of-lamps'); s += lost(a); } return s / 40; };
+    expect(mean(bit('b3'))).toBeGreaterThan(mean(0) * 1.3);
+  },
+  'moth-dust.a2:itching': fx => {
+    const w = withMarks('moth-dust', bit('a2')), m = dummy(w, TILE), plain = dummy(w, 3 * TILE); m.blindT = 5;
+    expect(blow(w, m, 'kindle')).toBe(100 + n_(fx));
+    expect(blow(w, plain, 'kindle')).toBe(100);
+  },
+  'moth-dust.a3:dustStorm': () => {
+    const behindBlind = (mask: number) => { const w = withMarks('moth-dust', mask), front = dummy(w, 2 * TILE), back = dummy(w, -2 * TILE); w.sys.target = front; cast(w, 'moth-dust'); return (back.blindT ?? 0) > 0; };
+    expect(behindBlind(0)).toBeFalse(); expect(behindBlind(bit('a3'))).toBeTrue();
+  },
+  'moth-dust.b3:glimDust': fx => {
+    const BOSS = { ...DUMMY, rank: 'boss' as const };
+    const blind = (mask: number) => { const w = withMarks('moth-dust', mask), m = dummy(w, TILE, 0, BOSS); cast(w, 'moth-dust'); return m.blindT ?? 0; };
+    const v = withMarks('moth-dust', 0).sys.v('moth-dust');
+    expect(blind(bit('b3'))).toBeCloseTo(v['blind'] * n_(fx) / 100, 2);
+    expect(blind(0)).toBeLessThan(blind(bit('b3')));
+  },
+  'moth-swarm.a2:reveal': () => {
+    const shows = (mask: number) => { const w = withMarks('moth-swarm', mask), m = dummy(w, TILE); m.hidden = 5; cast(w, 'moth-swarm'); w.sys.update(.02); return (m.hidden ?? 0) === 0 && (m.glimT ?? 0) > 0; };
+    expect(shows(0)).toBeFalse(); expect(shows(bit('a2'))).toBeTrue();
+  },
+  'moth-swarm.a3:swarmGoes': () => {
+    const at = (mask: number) => { const w = withMarks('moth-swarm', mask), m = dummy(w, 4 * TILE); w.sys.target = m; cast(w, 'moth-swarm'); w.sys.update(.02); return w.sys.zones.find(z => z.kind === 'moths')!.x; };
+    expect(at(0)).toBe(0); expect(at(bit('a3'))).toBe(4 * TILE);
+  },
+  'moth-swarm.b2:gentleWings': () => {
+    const mends = (mask: number) => { const w = withMarks('moth-swarm', mask); w.life.hp = 1000; ally(w, TILE); cast(w, 'moth-swarm'); run(w, 1.1); return { me: w.healed.length > 0, ally: w.sys.allyOut.some(x => x.k === 'heal' && x.to === 'a') }; };
+    expect(mends(0)).toEqual({ me: false, ally: false }); expect(mends(bit('b2'))).toEqual({ me: true, ally: true });
+  },
+  'moth-swarm.b3:mothWall': () => {
+    const caught = (mask: number) => {
+      const w = withMarks('moth-swarm', mask); cast(w, 'moth-swarm');
+      const r = w.sys.zones.find(z => z.kind === 'moths')!.r;
+      w.sys.shots.push({ x: r + 1, y: 0, vx: -60, vy: 0, dmg: 10, age: 0, life: 3, kind: 'arrow' });
+      w.sys.update(.02);
+      return w.sys.shots.length === 0 && w.hurt.length === 0;
+    };
+    expect(caught(0)).toBeFalse(); expect(caught(bit('b3'))).toBeTrue();
+  },
+  'glims-margin.a2:markedPage': fx => {
+    const marks = (mask: number) => { const w = withMarks('glims-margin', mask), m = dummy(w, TILE); m.hidden = 3; cast(w, 'glims-margin'); return w.sys.hunted === m ? w.sys.huntPct : 0; };
+    expect(marks(0)).toBe(0); expect(marks(bit('a2'))).toBe(n_(fx));
+  },
+  'glims-margin.a3:marginNote': () => {
+    const points = (mask: number) => { const w = withMarks('glims-margin', mask); cast(w, 'glims-margin'); return (w.sys as unknown as { marginDay: number }).marginDay; };
+    expect(points(0)).toBe(-1); expect(points(bit('a3'))).toBe(Math.floor(Date.now() / 86_400_000));
+  },
+  'glims-margin.b3:followSelf': () => {
+    const follows = (mask: number) => { const w = withMarks('glims-margin', mask), far = dummy(w, 20 * TILE); cast(w, 'glims-margin'); w.keeper.x = 20 * TILE; w.sys.update(.02); return (far.glimT ?? 0) > 0; };
+    expect(follows(0)).toBeFalse(); expect(follows(bit('b3'))).toBeTrue();
+  },
+  // The Thornstrider
+  'hunters-mark.a2:hunterShare': fx => {
+    const w = withMarks('hunters-mark', bit('a2')), m = dummy(w, 2 * TILE); w.life.hp = 1000; cast(w, 'hunters-mark');
+    const dealt = blow(w, m, null);
+    expect(w.healed.reduce((s, n) => s + n, 0)).toBe(Math.floor(dealt * n_(fx) / 100));
+  },
+  'hunters-mark.a3:strip': fx => {
+    const w = withMarks('hunters-mark', bit('a3')), m = dummy(w, 2 * TILE);
+    m.elite = { rank: 'champion', role: 'leader', affixes: ['stone-skin'] } as unknown as NonNullable<Mob['elite']>;
+    cast(w, 'hunters-mark');
+    expect(m.elite!.affixes.length).toBe(0);
+    run(w, (fx.s ?? 0) + .5);
+    expect(m.elite!.affixes).toContain('stone-skin' as never);
+  },
+  'hunters-mark.b2:movingMark': () => {
+    const moves = (mask: number) => { const w = withMarks('hunters-mark', mask), a = dummy(w, 2 * TILE), b = dummy(w, 3 * TILE); cast(w, 'hunters-mark'); w.sys.smite(a); return w.sys.hunted === b; };
+    expect(moves(0)).toBeFalse(); expect(moves(bit('b2'))).toBeTrue();
+  },
+  'hunters-mark.b3:beastsPrey': fx => {
+    const w = withMarks('hunters-mark', bit('b3')), m = dummy(w, 2 * TILE); cast(w, 'hunters-mark');
+    const pct = w.sys.huntPct;
+    expect(blow(w, m, 'call-of-the-wilds')).toBe(Math.round(100 * (1 + pct / 100) * (1 + n_(fx) / 100)));
+    expect(blow(w, m, null)).toBe(Math.round(100 * (1 + pct / 100)));
+  },
+  'pinning-shot.a2:nailed': fx => {
+    const w = withMarks('pinning-shot', bit('a2')), m = dummy(w, TILE), plain = dummy(w, 3 * TILE); m.rootT = 5;
+    expect(blow(w, m, 'thorn-shot')).toBe(100 + n_(fx));
+    expect(blow(w, plain, 'thorn-shot')).toBe(100);
+  },
+  'pinning-shot.a3:pinTwo': () => {
+    const pins = (mask: number) => { const w = withMarks('pinning-shot', mask), a = dummy(w, 2 * TILE, ARROW_Y), b = dummy(w, 3 * TILE, ARROW_Y); w.sys.target = a; cast(w, 'pinning-shot'); w.sys.target = null; run(w, .6); return (b.rootT ?? 0) > 0; };
+    expect(pins(0)).toBeFalse(); expect(pins(bit('a3'))).toBeTrue();
+  },
+  'pinning-shot.b3:thornGround': fx => {
+    const w = withMarks('pinning-shot', bit('b3')), m = dummy(w, 2 * TILE, ARROW_Y); w.sys.target = m; cast(w, 'pinning-shot'); run(w, .4);
+    const z = w.sys.zones.find(q => q.kind === 'snare');
+    expect(z).toBeDefined(); expect(z!.t).toBeLessThanOrEqual(fx.s ?? 0);
+  },
+  'heartseeker.a3:heartCrit': () => {
+    const crits = (mask: number) => { const w = withMarks('heartseeker', mask), m = dummy(w, 2 * TILE); w.sys.hunted = m; w.sys.huntT = 99; w.sys.target = m; cast(w, 'heartseeker'); w.sys.target = null; let c = false; for (let i = 0; i < 80 && !c; i++) { w.sys.update(.02); c = w.sys.effects.some(e => e.kind === 'crit'); } return c; };
+    expect(crits(0)).toBeFalse(); expect(crits(bit('a3'))).toBeTrue();
+  },
+  'heartseeker.b2:steadyDraw': fx => {
+    const looses = (mask: number) => { const w = withMarks('heartseeker', mask), m = dummy(w, 3 * TILE); w.sys.target = m; cast(w, 'heartseeker'); w.sys.target = null; const foot = w.sys.footing; w.keeper.y = 8; run(w, w.sys.v('heartseeker')['draw'] + .1); return { hit: lost(m) > 0, foot }; };
+    expect(looses(0).hit).toBeFalse();
+    const s = looses(bit('b2'));
+    expect(s.hit).toBeTrue(); expect(s.foot).toBe(n_(fx) / 100);
+  },
+  'heartseeker.b3:windborne': fx => {
+    const far = (mask: number) => { const w = withMarks('heartseeker', mask); w.sys.stormSky = true; const v = w.sys.v('heartseeker'), t = dummy(w, 2 * TILE), f = dummy(w, (v['range'] + (fx.m ?? 0) / 2) * TILE); w.sys.target = t; cast(w, 'heartseeker'); w.sys.target = null; run(w, v['draw'] + .1); return lost(f) > 0; };
+    expect(far(0)).toBeFalse(); expect(far(bit('b3'))).toBeTrue();
+  },
+  'thornrain.a2:thornyGround': fx => {
+    const w = withMarks('thornrain', bit('a2')), m = dummy(w, 3 * TILE); w.sys.target = m; cast(w, 'thornrain'); run(w, w.sys.v('thornrain')['secs'] + .1);
+    const z = w.sys.zones.find(q => q.kind === 'thorny');
+    expect(z).toBeDefined(); expect(z!.t).toBeLessThanOrEqual(fx.s ?? 0);
+    expect(m.thornedOnce).toBeTrue();
+  },
+  'thornrain.b1:followMark': () => {
+    const at = (mask: number) => { const w = withMarks('thornrain', mask, { 'hunters-mark': 1 }), m = dummy(w, 3 * TILE); cast(w, 'hunters-mark'); w.sys.target = m; cast(w, 'thornrain'); m.x = 5 * TILE; w.sys.update(.02); return w.sys.zones.find(z => z.kind === 'thornrain')!.x; };
+    expect(at(0)).toBe(3 * TILE); expect(at(bit('b1'))).toBe(5 * TILE);
+  },
+  'thornrain.b3:wetWood': () => {
+    const mean = (mask: number) => { let s = 0; for (let i = 0; i < 12; i++) { const w = withMarks('thornrain', mask); w.sys.weatherWet = true; const m = dummy(w, 3 * TILE); w.sys.target = m; cast(w, 'thornrain'); w.sys.target = null; run(w, 3.1); s += lost(m); } return s / 12; };
+    expect(mean(bit('b3'))).toBeGreaterThan(mean(0) * 1.1);
+  },
+  'feral-leap.a2:partingShot': () => {
+    const [a, b] = ab('feral-leap', 'a2', w => { dummy(w, TILE); cast(w, 'feral-leap'); return w.sys.arrows.length; });
+    expect(a).toBe(0); expect(b).toBe(1);
+  },
+  'feral-leap.a3:doubleLeap': () => {
+    const again = (mask: number) => { const w = withMarks('feral-leap', mask); dummy(w, TILE); w.sys.mana = 1000; w.sys.cooldowns['feral-leap'] = 0; w.sys.useAbility('feral-leap'); const m = w.sys.mana; return w.sys.useAbility('feral-leap') === null && w.sys.mana === m; };
+    expect(again(0)).toBeFalse(); expect(again(bit('a3'))).toBeTrue();
+  },
+  'feral-leap.b3:intoLeaves': fx => {
+    const [a, b] = ab('feral-leap', 'b3', w => { dummy(w, TILE); cast(w, 'feral-leap'); return w.sys.leafT; });
+    expect(a).toBe(0); expect(b).toBe(fx.s ?? 0);
+  },
+  'elder-beast.a2:thickHide': fx => {
+    const w = withMarks('elder-beast', bit('a2'), { 'call-of-the-wilds': 1 }); cast(w, 'call-of-the-wilds'); cast(w, 'elder-beast');
+    const k = w.sys.minions[0], hp = k.hp;
+    (w.sys as unknown as { hurtMinion(k: Minion, n: number, by: Mob | null): void }).hurtMinion(k, 100, null);
+    expect(hp - k.hp).toBe(100 - n_(fx));
+  },
+  'elder-beast.a3:wakeWood': () => {
+    const calls = (mask: number) => { const w = withMarks('elder-beast', mask, { 'call-of-the-wilds': 1, 'stampede': 1 }); cast(w, 'call-of-the-wilds'); cast(w, 'elder-beast'); const k = w.sys.minions[0], m = dummy(w, k.x + 8, k.y); (w.sys as unknown as { lateMinionBlow(k: Minion, m: Mob): void }).lateMinionBlow(k, m); return w.sys.beasts.some(b => b.kind === 'stampede'); };
+    expect(calls(0)).toBeFalse(); expect(calls(bit('a3'))).toBeTrue();
+  },
+  'elder-beast.b3:mossback': fx => {
+    const w = withMarks('elder-beast', bit('b3'), { 'call-of-the-wilds': 1 }); cast(w, 'call-of-the-wilds'); cast(w, 'elder-beast');
+    const k = w.sys.minions[0]; k.hp = 1; run(w, 1);
+    expect(k.hp - 1).toBeCloseTo(k.maxHp * n_(fx) / 100, -1);
+  },
+  'call-the-rain.a1:heavyRain': () => {
+    const thunders = (mask: number) => { const w = withMarks('call-the-rain', mask), m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'call-the-rain'); w.sys.target = null; run(w, w.sys.v('call-the-rain')['every'] + .1); return lost(m) > 0; };
+    expect(thunders(0)).toBeFalse(); expect(thunders(bit('a1'))).toBeTrue();
+  },
+  'call-the-rain.a2:coldRain': () => {
+    const chills = (mask: number) => { const w = withMarks('call-the-rain', mask), m = dummy(w, 2 * TILE); w.sys.target = m; cast(w, 'call-the-rain'); w.sys.update(.02); return { chill: (m.chillT ?? 0) > 0, freeze: (m.stun ?? 0) > 0 }; };
+    expect(chills(0)).toEqual({ chill: false, freeze: false }); expect(chills(bit('a2'))).toEqual({ chill: true, freeze: true });
+  },
+  'call-the-rain.b3:followMark': () => {
+    const at = (mask: number) => { const w = withMarks('call-the-rain', mask, { 'hunters-mark': 1 }), m = dummy(w, 3 * TILE); cast(w, 'hunters-mark'); w.sys.target = m; cast(w, 'call-the-rain'); m.x = 5 * TILE; w.sys.update(.02); return w.sys.zones.find(z => z.kind === 'cloud')!.x; };
+    expect(at(0)).toBe(3 * TILE); expect(at(bit('b3'))).toBe(5 * TILE);
+  },
+  'fogwalk.a2:fogArrows': fx => {
+    const chills = (mask: number) => { const w = withMarks('fogwalk', mask), m = dummy(w, 2 * TILE, ARROW_Y); cast(w, 'fogwalk'); w.sys.target = m; run(w, .8); return m.chillT ?? 0; };
+    expect(chills(0)).toBe(0); expect(chills(bit('a2'))).toBeGreaterThan(0); expect(chills(bit('a2'))).toBeLessThanOrEqual(fx.s ?? 0);
+  },
+  'fogwalk.a3:followSelf': () => {
+    const inside = (mask: number) => { const w = withMarks('fogwalk', mask); cast(w, 'fogwalk'); w.keeper.x = 10 * TILE; w.sys.update(.02); return !!w.sys.fogAround(); };
+    expect(inside(0)).toBeFalse(); expect(inside(bit('a3'))).toBeTrue();
+  },
+  'fogwalk.b3:hearth': () => {
+    const [a, b] = ab('fogwalk', 'b3', w => { cast(w, 'fogwalk'); return w.sys.inHearth ? 1 : 0; });
+    expect(a).toBe(0); expect(b).toBe(1);
+  },
+  'lightning-call.a2:afterclap': fx => {
+    const shocks = (mask: number) => { const w = withMarks('lightning-call', mask), t = dummy(w, 3 * TILE), s = dummy(w, 3 * TILE, (n_(fx) - .5) * TILE); w.sys.target = t; cast(w, 'lightning-call'); w.sys.target = null; run(w, w.sys.v('lightning-call')['tell'] + .05); return (s.shockT ?? 0) > 0; };
+    expect(shocks(0)).toBeFalse(); expect(shocks(bit('a2'))).toBeTrue();
+  },
+  'lightning-call.a3:fork': () => {
+    const strikes = (mask: number) => { const w = withMarks('lightning-call', mask), t = dummy(w, 3 * TILE); w.sys.target = t; cast(w, 'lightning-call'); w.sys.target = null; let n = 0; const seen = new Set<object>(); for (let i = 0; i < 40; i++) { w.sys.update(.02); for (const e of w.sys.effects) if (e.kind === 'lc-strike' && !seen.has(e)) { seen.add(e); n++; } } return n; };
+    expect(strikes(0)).toBe(1); expect(strikes(bit('a3'))).toBe(2);
+  },
+  'lightning-call.b1:quickSky': () => {
+    const now = (mask: number) => { const w = withMarks('lightning-call', mask), t = dummy(w, 3 * TILE); w.sys.stormSky = true; w.sys.target = t; cast(w, 'lightning-call'); w.sys.target = null; return lost(t) > 0; };
+    expect(now(0)).toBeFalse(); expect(now(bit('b1'))).toBeTrue();
+  },
+  'lightning-call.b3:boltOfMark': () => {
+    const lands = (mask: number) => { const w = withMarks('lightning-call', mask, { 'hunters-mark': 1 }), t = dummy(w, 3 * TILE); cast(w, 'hunters-mark'); w.sys.target = t; cast(w, 'lightning-call'); w.sys.target = null; t.x = 6 * TILE; run(w, w.sys.v('lightning-call')['tell'] + .05); return lost(t) > 0; };
+    expect(lands(0)).toBeFalse(); expect(lands(bit('b3'))).toBeTrue();
+  },
+  'thorn-shot.b3:markSeek': () => {
+    const seeks = (mask: number) => { const w = withMarks('thorn-shot', mask, { 'hunters-mark': 1 }), near = dummy(w, 2 * TILE, ARROW_Y), far = dummy(w, 2 * TILE, ARROW_Y + 3 * TILE); w.sys.target = far; cast(w, 'hunters-mark'); w.sys.target = near; run(w, .8); return lost(far) > 0; };
+    expect(seeks(0)).toBeFalse(); expect(seeks(bit('b3'))).toBeTrue();
   },
 };
 

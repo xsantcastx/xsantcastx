@@ -26,7 +26,8 @@ import { hasTdPetArt } from './td-pet-art';
 import { skillPointsEarned } from '../../shared/keeper-look/skill-points';
 import { PET_LEVEL_MAX } from '../../shared/pets/pet-roles';
 
-const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul'];
+// The cant's roots (canon §6.1), with the sky's `vor` and the cold's `rim` (added 2026-10-26 for S9's weather and rime).
+const ROOTS = ['vael', 'osk', 'nyr', 'lum', 'hesk', 'thar', 'brann', 'ul', 'vor', 'rim'];
 const SHAPES = ['sha', 'orum', 'dra', 'mur', 'ka', 'teth', 'vesh', 'un'];
 const THORN = Object.keys(THORN_SKILLS) as ThornSkillId[];
 const empty = (): KeeperSkillTree => ({ spent: {}, free: [], at: 0 });
@@ -37,10 +38,11 @@ describe('td-thorn: the book as data', () => {
     expect(VOCATIONS.indexOf('thornstrider')).toBe(3);
     expect(CLASS_TREES.thornstrider).toEqual(['thorn', 'wild', 'briar']);
     expect(bookTrees('thornstrider')).toEqual(['thorn', 'wild', 'briar', 'common']);
-    expect(THORN.length).toBe(12);
-    expect(CLASS_SKILLS.thornstrider.length).toBe(15); // + the common page: Light, the Seek, the Waygate
-    // The book's rows (skills-100.md §6): Thorn 3 (Heartwood is Thorn Shot's mark), Wild 4 (Wild Heart, Pack Bond's), Briar 3.
-    expect(THORN_TREES.map(tr => treeSkills('thornstrider', tr).length)).toEqual([3, 4, 3]);
+    expect(THORN.length).toBe(21);
+    expect(CLASS_SKILLS.thornstrider.length).toBe(24); // + the common page: Light, the Seek, the Waygate
+    // The book's rows (skills-100.md §6): Thorn 7 (Heartwood is Thorn Shot's mark), Wild 6 (Wild Heart, Pack Bond's), Briar & Sky 6 —
+    // S9's rows to level 50 in (and the Thornstrider's rows S5 left waiting).
+    expect(THORN_TREES.map(tr => treeSkills('thornstrider', tr).length)).toEqual([7, 6, 6]);
     for (const tr of THORN_TREES) {
       const ids = treeSkills('thornstrider', tr);
       expect(new Set(ids.map(id => `${SKILLS[id].tier}:${SKILLS[id].col}`)).size).withContext(tr).toBe(ids.length);
@@ -54,13 +56,16 @@ describe('td-thorn: the book as data', () => {
     expect(SKILLS['pack-bond'].kind).toBe('aura');
   });
 
-  it('every spell speaks valid Seam-Cant opening with the wild\'s root; passives speak nothing but the shot', () => {
+  it('every spell speaks valid Seam-Cant with the wild\'s root (the sky\'s spells: the weather\'s); passives speak nothing but the shot', () => {
     for (const id of THORN) {
       const sk = SKILLS[id];
       if (sk.kind === 'passive' && id !== 'thorn-shot') { expect(sk.words).withContext(id).toBeUndefined(); continue; }
       expect(sk.words).withContext(id).toMatch(/^[a-z]+( [a-z]+)*$/);
       const parts = sk.words!.split(' ');
-      expect(parts[0]).withContext(id).toBe('thar');
+      // The bow and the beast open with the wild's `thar`; the sky's spells of Briar & Sky speak the weather's `vor`
+      // (canon §6.1: rain *vor dra*, fog *vor nyr*, lightning *lum vor*).
+      if (parts.includes('vor')) expect(SKILLS[id].tree).withContext(id).toBe('briar');
+      else expect(parts[0]).withContext(id).toBe('thar');
       for (const w of parts) expect([...ROOTS, ...SHAPES]).withContext(`${id}: ${w}`).toContain(w);
     }
     expect(SKILLS['stampede'].words).toBe('thar ul teth');
@@ -457,6 +462,8 @@ describe('td-thorn: the fight', () => {
       sys.place('a', MOBS['bone-walker'], 40, 0);
       sys.place('b', MOBS['ash-wolf'], 44, 8);
       sys.target = sys.mobs[0];
+      // The Elder Beast grows a called beast: call one first.
+      if (id === 'elder-beast') expect(sys.useAbility('call-of-the-wilds')).toBeNull();
       expect(sys.useAbility(id)).withContext(id).toBeNull();
       expect(() => run(sys, 3)).not.toThrow();
     });
