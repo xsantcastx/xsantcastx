@@ -658,6 +658,20 @@ function lanternPost(): Built {
   s.limb(P(-.5, .5, 22), P(-.5, .5, 14), 1, .7, M.hangmoss, { g: 30 });
   return { base: s, baseFoot: [22, 100], shadow: castShadow(5, 2.5, 14, 6, 5) };
 }
+/** S10b: a dark lantern post of the Three Posts: the fen post's twin, its glass grey and cold. */
+function darkPostIso(): Built {
+  const s = new Sculpt(60, 110), P = proj(22, 100);
+  s.stroke([P(0, 0, 0), P(.5, 0, 16), P(-.3, 0, 32), P(.2, 0, 42)], 2.4, 1.8, mat('#2a2026', 2, .8, { cool: '#08060a', warm: '#a89098' }), { g: 10 });
+  s.stroke([P(.2, 0, 41), P(4, 0, 43), P(8, 0, 41)], 1.4, 1.1, mat('#2a2026', 1, .8, { cool: '#08060a', warm: '#a89098' }), { g: 12 });
+  const [hx, hy] = P(8, 0, 40);
+  s.line([hx, hy], [hx, hy + 3], '#1c1418');
+  s.rect(hx - 4, hy + 3, 9, 2, M.ironBk, { g: 20 });
+  s.rect(hx - 3, hy + 5, 7, 10, mat('#5a5666', 2, .8, { cool: '#1c1824', warm: '#9a96a4' }), { g: 21 });
+  for (const dx of [-3, 0, 3]) s.line([hx + dx, hy + 5], [hx + dx, hy + 14], '#1c1418');
+  s.rect(hx - 4, hy + 15, 9, 2, M.ironBk, { g: 22 });
+  s.limb(P(-.5, .5, 22), P(-.5, .5, 14), 1, .7, M.hangmoss, { g: 30 });
+  return { base: s, baseFoot: [22, 100], shadow: castShadow(5, 2.5, 14, 6, 5) };
+}
 function greatLantern(): Built {
   const s = new Sculpt(130, 140), P = proj(65, 120);
   const tim = mat('#3b2f36', 2, .7, { cool: '#08060a', warm: '#b8a0a8' });
@@ -917,7 +931,7 @@ const MAKERS: readonly [RegExp, Make][] = [
   [/^pillar-\d+$/, k => pillar(seedOf(k))],
   [/^ore-seam$/, oreSeam],
   [/^barrel$/, barrel], [/^crate$/, crate], [/^bench$/, bench], [/^lamp$/, lamp], [/^signpost$/, signpost], [/^cart$/, cart],
-  [/^waystone$/, waystone], [/^beacon$/, beacon], [/^torch-post$/, torch], [/^root-lamp$/, rootLamp], [/^lantern-post$/, lanternPost],
+  [/^waystone$/, waystone], [/^beacon$/, beacon], [/^torch-post$/, torch], [/^root-lamp$/, rootLamp], [/^lantern-post$/, lanternPost], [/^dark-post$/, darkPostIso],
   [/^great-lantern$/, greatLantern], [/^fountain$/, fountain], [/^hearth$/, hearthRing], [/^forge$/, forge], [/^anvil$/, anvil],
   [/^chest$/, chest], [/^bones$/, bones], [/^stump$/, stump],
   // The dungeon dressing (td-dressing.ts), the ruins and the ways between floors (td-build.ts).
@@ -931,7 +945,7 @@ export const ISO_PROP_KEYS: readonly string[] = [
   ...[0, 1, 2, 3, 4, 5].map(v => `jungle:${v}`), ...[0, 1, 2].map(v => `giant:${v}`), ...[0, 1, 2, 3, 4, 5].map(v => `swamp-tree:${v}`),
   ...['bush', 'thorn-hedge', 'fern', 'reeds', 'gloomcap', 'boulder', 'stone', 'grave', 'pillar'].flatMap(k => [0, 1, 2].map(v => `${k}-${v}`)),
   'flowerbed:2:3', 'fence:3', 'ore-seam', 'barrel', 'crate', 'bench', 'lamp', 'signpost', 'cart', 'waystone', 'beacon', 'torch-post', 'root-lamp',
-  'lantern-post', 'great-lantern', 'fountain', 'hearth', 'forge', 'anvil', 'chest', 'bones', 'stump', 'storm-oak', 'split-stump-0', 'split-stump-1', 'split-stump-2',
+  'lantern-post', 'great-lantern', 'fountain', 'hearth', 'forge', 'anvil', 'chest', 'bones', 'stump', 'storm-oak', 'split-stump-0', 'split-stump-1', 'split-stump-2', 'dark-post',
   'altar', 'brazier-0', 'brazier-1', 'cage', 'chains', 'statue-broken', 'cobweb-nw', 'cobweb-ne', 'stairs-down', 'stairs-up', 'ladder-up', 'ruin-0', 'ruin-1', 'ruin-2',
 ];
 

@@ -223,7 +223,7 @@ export function coopEvent(raw, members, host) {
   if (raw.k === 'mech') {
     // S10: a party boss's mark (td-party-boss PartyMark): a picture, about members of the party only.
     coopKeys(raw, ['k', 'm', 'i', 't', 'a', 'b', 'n', 'w', 'x', 'y']);
-    if (!['fix', 'brand', 'tether', 'cast', 'eye', 'sunder', 'phase'].includes(raw.m) || typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
+    if (!['fix', 'brand', 'tether', 'cast', 'eye', 'sunder', 'phase', 'wrap', 'post', 'settle'].includes(raw.m) || typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
     const out = { k: 'mech', m: raw.m, i: raw.i, t: Math.max(0, coopNum(raw.t, 600)) };
     for (const f of ['a', 'b']) if (raw[f] !== undefined) { if (!member(raw[f])) coopBad(); out[f] = raw[f]; }
     if (raw.n !== undefined) out.n = coopInt(raw.n, 0, 99);

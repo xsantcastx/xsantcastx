@@ -1167,7 +1167,7 @@ const RULES: Partial<Record<string, RuleProbe>> = {
   },
   'cleanse.a3:cleanseCircle': fx => {
     const w = withMarks('cleanse', bit('a3')); w.sys.allies = [{ id: 'a', x: 2 * TILE, y: 0, h: 10, m: 100 }, { id: 'b', x: 2 * TILE + (n_(fx) - .5) * TILE, y: 0, h: 90, m: 100 }]; cast(w, 'cleanse');
-    expect(w.sys.allyOut.filter(x => x.k === 'cleanse').map(x => x.to).sort()).toEqual(['a', 'b']);
+    expect(w.sys.allyOut.filter(x => x.k === 'cleanse' && x.to).map(x => x.to).sort()).toEqual(['a', 'b']);
   },
   'cleanse.b3:dryCloak': fx => {
     const w = withMarks('cleanse', bit('b3')); w.sys.layOn('wet:30'); cast(w, 'cleanse');

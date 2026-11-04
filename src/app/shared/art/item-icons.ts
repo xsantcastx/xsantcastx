@@ -160,6 +160,9 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-nameless-crown': I('crown', 'grey', 'void'),
   'unique-spore-crown': I('crown', 'moss', 'bio'),
   'unique-crown-of-the-antlered-storm': I('crown', 'moss', 'glass'),
+  // S10b: the Last Siege's mantlet (ash-grey timber, iron bands, the Watch badge) and the Fogmother's grey stone bell.
+  'unique-wall-that-kept-walking': I('shield', 'ash', 'iron', 'gold'),
+  'unique-psalm-heard-through-water': I('pendant', 'stone', 'glass', 'grey'),
   // ── chest ──
   'infernal-cuirass': I('cuirass', 'iron', 'ember'),
   'starplate-cuirass': I('cuirass', 'midnight', 'orbit'),

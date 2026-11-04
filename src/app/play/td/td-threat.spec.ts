@@ -172,7 +172,8 @@ describe('S5: every ally claim the screen makes is one the room accepts', () => 
         seen++;
         const wire = parseAllyClaim(JSON.parse(JSON.stringify(c)));
         expect(wire).withContext(`${id} ${mask}: ${JSON.stringify(c)}`).not.toBeNull();
-        const to = c.to ? { id: c.to, x: TILE, y: 0, level: 100 } : null;
+        // (A Cleanse with no one named is the healer's own: the room reads it as on herself, S10b.)
+        const to = c.to ? { id: c.to, x: TILE, y: 0, level: 100 } : c.k === 'cleanse' ? { id: 'me', x: 0, y: 0, level: 100 } : null;
         expect(allyLegal(wire!, { id: 'me', x: 0, y: 0, level: 100 }, to)).withContext(`${id} ${mask}: ${JSON.stringify(c)}`).toBeNull();
       }
     }

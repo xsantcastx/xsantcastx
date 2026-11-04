@@ -1953,3 +1953,36 @@ It stopped."). Once an eclipse. A clue for campaign #12.
   spec's "Wet cannot slow you" reads as "cannot freeze you" (Wet slows nobody in the build; it freezes on a cold hit).
 - **Party forms** of the ten floor bosses (monsters-abilities §5.3) are data and run on Nightmare and Hell with two or
   more Keepers wherever the fight is simulated by a screen (a party host); the room runs no tiers yet.
+
+## The Last Siege and the Fogmother (2026-11-04, S10b, branch `s10b`) — shipped, owner reviews in play
+- **The Siege Trench** (the Pyre Peaks, tile 110,40): the old sappers' trench at the Bastion Road's foot, broken wall on
+  either side and bones in it. **Departure:** §6.2 puts the Last Siege on "the Obsidian Badlands' northern ash flats";
+  since the Reach became section areas the Bastion's ruin stands in the Pyre Peaks, so its track runs up the Bastion
+  Road there (110,40 → 70,30 → 40,-10 → 30,-40 → 0,-60 → -8,-80, the Bastion's milestone), one room's area.
+- **The Last Siege** (32) rolls out of the trench on an ashfall night and stands as long as the ash falls. It never
+  turns and never chases: a tile every four seconds, one a second on its Last Turn. Its words: *osk brann sha* (the
+  Ossuary Watch's crossbows, a bolt each), *brann vael dra* (Load the Catapult), *osk teth* (the garrison down the
+  ladders), *vael orum* and *brann dra* (the burning room, the ram's soak). If it reaches the road's end, the omen: "The
+  tower stops at the Bastion. The garrison salutes, and it is gone. The war is over. It knows now."
+- **Glim** as it rises: "The ash is falling the wrong way. Something big is rolling through it, toward the Bastion."
+  **Rumours** on ashfall nights: Captain Brannoc Vey ("do not salute it") and **Garrick Dross** (Pyrehold's general
+  store; §6.2's "Pyrehold innkeeper" — Pyrehold has no inn, so the grandmother line is his).
+- **The Three Posts** (the Black Meres, tile -4,-12): the widest pool, firm mire and reed islands to eleven tiles, three
+  dark lantern posts at its edge (Old Corvane's). **The Fogmother** (54) gathers a minute on a foggy night and stands;
+  a Keeper standing three seconds at each post lights it, and all three lit before she stands keep her down until dawn
+  (the omen: "The three posts on the Black Meres burn again. The fog lies down until dawn."). Lit in the fight, each is
+  a light she will not stand in; all three lit in her last phase, she deals a quarter less. Her words: *vor nyr mur*
+  (Wrap), *nyr sha* (She Sings Your Name), *rim vor dra* (Gloam Blizzard), *osk brann teth* (the acolytes calling the
+  Watch), *nyr orum* (Settle), *rim orum* and *rim dra*. Departure: her own Lightless aura is left off (on a foggy
+  night it blacked the view entirely); the Settle is how her darkness reads.
+- **Glim**: "The fog over the meres is getting thicker in one place. It's not thicker. It's standing." **Rumours** on
+  foggy nights: Old Corvane ("Three posts on the Black Meres went out tonight…") and **Dace Morrow**, Gloamhaven's
+  fishmonger ("Fog's singing again…").
+- **The Wall That Kept Walking** (Legendary only, 1 in 10 from the Last Siege): block, Defense, fire resist, life
+  (a shield rolls no attack damage, so §6.2's +12% is left off); standing still 2 s, he and the party within 3 tiles take 15% less. **The Psalm Heard Through Water**
+  (Legendary only, 1 in 10 from the Fogmother): cold and lightning resist, mana, cast speed, 25% more healing; a heal on
+  a Keeper in fog or darkness lifts Chill and lends +1 light for 4 s. Departure: the Psalm's "+20% cold/lightning
+  resist" are its rolled resists; its healing bonus is its signature (no healing stat exists).
+- Not built: the Ossuary Watch badge (campaign #11 is not built: no use yet), the Sister's Grey Thread (no use yet).
+- The phase names of every party form now show on the message line as the phase begins (S10's gap).
+

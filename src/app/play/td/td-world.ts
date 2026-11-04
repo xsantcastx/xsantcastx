@@ -8,7 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { splitStump, stormOak } from './td-art';
+import { darkPost, splitStump, stormOak } from './td-art';
 import { altar, brazier, brokenStatue, cage, chest, signpost, thornHedge, beaconPillar, bones, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, ContinentHotspot, Region, SectionCamp, SectionMark } from './continent';
@@ -22,6 +22,10 @@ import { PIERS } from './td-harbour';
 import type { SpotWater } from '../../shared/gathering/gathering.model';
 /** S10: the Storm-Struck Oak's arena radius (tiles): its ring of split stumps. */
 export const STORM_OAK_R = 10;
+/** S10b: the Three Posts' pool (tiles): firm mire and reed islands to this radius; its posts stand at its edge. */
+export const MERE_POSTS_R = 11;
+/** S10b: the three posts round the pool's middle (tiles; world-bosses.ts fogmother `posts` is the same three). */
+export const MERE_POSTS: readonly (readonly [number, number])[] = [[0, -10], [9, 5], [-9, 5]];
 
 export const WORLD_CHUNK = 16;
 /** A graveyard's stones (tiles from its centre), and where its Bone Walkers rise between them. */
@@ -232,7 +236,7 @@ export class TdWorld implements TdLevel {
       case 'q': return fbm(c / 6, r / 6, 701) > .66 && !this.firmAt(c, r) ? 'blackwater' : 'mire';
       case 'Q': return fbm(c / 5, r / 5, 709) > .6 && !this.firmAt(c, r) ? 'blackwater' : 'mire';
       // Past a broken boardwalk's end the water is deep all round (no hummock to step on past it).
-      case 'k': return this.pastBreak(c, r) ? 'blackwater' : fbm(c / 6, r / 6, 719) > .7 || this.firmAt(c, r) ? 'mire' : 'blackwater';
+      case 'k': return this.pastBreak(c, r) ? 'blackwater' : fbm(c / 6, r / 6, 719) > .7 || this.firmAt(c, r) || this.onMerePool(c, r) ? 'mire' : 'blackwater';
       case 'x': return fbm(c / 5, r / 5, 727) > .52 ? 'wetstone' : fbm(c / 7, r / 7, 733) > .72 && !this.firmAt(c, r) ? 'blackwater' : 'mire';
       // Ash country has no grass anywhere (round its Waystone camp too).
       default: return this.def.ash ? 'dirt' : 'grass';
@@ -344,6 +348,8 @@ export class TdWorld implements TdLevel {
     for (const p of this.def.places) if ((p.kind === 'cave' || p.kind === 'belfry') && Math.abs(c - p.c) <= (p.kind === 'belfry' ? 5 : 3) && Math.abs(r - p.r) <= (p.kind === 'belfry' ? 4 : 3)) return true;
     // The Storm-Struck Oak's arena (S10): the ring of stumps and everything inside it stand in the open.
     for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) <= STORM_OAK_R + 1) return true;
+    // S10b: the Three Posts' pool and the Siege Trench's yard stand in the open.
+    for (const p of this.def.places) if ((p.kind === 'mere-posts' && Math.hypot(c - p.c, r - p.r) <= MERE_POSTS_R + 1) || (p.kind === 'siege-trench' && Math.hypot(c - p.c, r - p.r) <= 8)) return true;
     // A hot spot's ring (world-acts.md §2), a seam's gate and a mark stand in the open.
     for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) <= CAMP_CLEAR) return true;
     for (const sm of this.def.seams ?? []) if (Math.abs(c - sm.c) <= 5 && Math.abs(r - sm.r) <= 5) return true;
@@ -357,6 +363,7 @@ export class TdWorld implements TdLevel {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave' || p.kind === 'belfry') && Math.hypot(c - p.c, r - p.r) < 9) return true;
     // The Oak's arena: only its storm stands there.
     for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) < STORM_OAK_R + 3) return true;
+    for (const p of this.def.places) if ((p.kind === 'mere-posts' && Math.hypot(c - p.c, r - p.r) < MERE_POSTS_R + 3) || (p.kind === 'siege-trench' && Math.hypot(c - p.c, r - p.r) < 10)) return true;
     // The arrival rule (world-acts.md §0): nothing within SEAM_CLEAR tiles of where a seam sets the Keeper down.
     for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 1 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
     // A named hot spot keeps its own pack and no other (its ring stays readable: world-acts.md §2).
@@ -389,6 +396,11 @@ export class TdWorld implements TdLevel {
     return false;
   }
   /** Within eight tiles of a place worth finding (the Marches keep their bog firm there). */
+  /** S10b: inside the Three Posts' pool (its reed islands and shallows hold a Keeper). */
+  private onMerePool(c: number, r: number): boolean {
+    for (const p of this.def.places) if (p.kind === 'mere-posts' && Math.hypot(c - p.c, r - p.r) <= MERE_POSTS_R + 1) return true;
+    return false;
+  }
   private nearPlace(c: number, r: number): boolean {
     for (const p of this.def.places) if (Math.abs(c - p.c) <= 8 && Math.abs(r - p.r) <= 8) return true;
     return false;
@@ -509,6 +521,16 @@ export class TdWorld implements TdLevel {
         stamp(0, 0, stormOak);
         for (const dc of [-1, 1]) { const c = p.c + dc; if (c >= x0 && c < x0 + WORLD_CHUNK && p.r >= y0 && p.r < y0 + WORLD_CHUNK) blocked.add(this.key(c, p.r)); }
         for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; stamp(Math.round(Math.cos(a) * STORM_OAK_R), Math.round(Math.sin(a) * STORM_OAK_R * .8), () => splitStump(i), false); }
+      }
+      else if (p.kind === 'mere-posts') {
+        // The three dark posts at the pool's edge, reeds on its islands.
+        for (const [dc, dr] of MERE_POSTS) stamp(dc, dr, darkPost);
+        for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 + .4, d = 4 + (i % 3) * 2; stamp(Math.round(Math.cos(a) * d), Math.round(Math.sin(a) * d * .8), () => reeds(i), false); }
+      }
+      else if (p.kind === 'siege-trench') {
+        // The old trench the Bastion's sappers dug: a line of broken wall either side of the road's foot, bones in it.
+        for (let i = -4; i <= 4; i++) if (Math.abs(i) > 1) { stamp(i * 2, -6, () => ruinWall(i + 4)); stamp(i * 2, 6, () => ruinWall(i + 7)); }
+        stamp(-3, -4, bones, false); stamp(4, 4, bones, false);
       }
       else if (p.kind === 'caldera') { stamp(-3, 0, () => standingStone(2)); stamp(3, 0, () => standingStone(0)); }
       else if (p.kind === 'harbour') { stamp(3, PIER - 2, ship, false); stamp(-2, 1, () => standingStone(1)); }

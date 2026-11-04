@@ -42,8 +42,8 @@ const RIM = 'blackwater' as const;
 const FOG = .55;
 
 /**
- * The Black Meres' widest pool, kept open for the Three Posts (S10b's Fogmother, branch s10b): no road, camp, stone or
- * seam within 30 tiles, the bog firm round it. Its place and posts are S10b's to lay here when it merges.
+ * The Black Meres' widest pool, the Three Posts (S10b's Fogmother): no road, camp, stone or seam within 30 tiles, the
+ * bog firm round it; its three posts and its spawn-free ring are td-world's (`mere-posts`).
  */
 export const THREE_POSTS_AT = { c: 96, r: -52 } as const;
 /** Where the fifth bell rings under the Meres (world-acts.md §5.4, the Bell Under the Water): over the Belfry's roof. */
@@ -172,8 +172,15 @@ export const MERES_SECTION: ContinentDef = {
     [[BELFRY_ROOF_AT.c, BELFRY_ROOF_AT.r + 1], [-20, -10], [2, 4], [8, 8], [30, 40], [70, 64], [110, 50], [100, 20], [140, 0], [130, -30], [170, -40], [200, -60], [230, -80], [250, -56], [232, -34], [222, -12], [236, -10], [252, -10], [270, -10]],
     // A boardwalk out toward the Lure Pools (they learned that Keepers walk toward lanterns).
     [[110, 50], [150, 56], [190, 54]],
+    // Old Corvane's boards out to the Three Posts, ending at the pool's edge (he rows the last of it to light them).
+    [[130, -30], [116, -42], [107, -48]],
   ],
-  places: [{ kind: 'belfry', c: BELFRY_ROOF_AT.c, r: BELFRY_ROOF_AT.r, name: "The Belfry's Roof" }],
+  places: [
+    { kind: 'belfry', c: BELFRY_ROOF_AT.c, r: BELFRY_ROOF_AT.r, name: "The Belfry's Roof" },
+    // S10b: the Three Posts, the Meres' widest pool, its reed islands and the three lantern posts Old Corvane has lit since
+    // he was a boy; on a foggy night with them out the Fogmother rises here (world-bosses.ts).
+    { kind: 'mere-posts', c: THREE_POSTS_AT.c, r: THREE_POSTS_AT.r, name: 'The Three Posts' },
+  ],
   names: { k: 'The Black Meres', q: 'The Black Meres', m: 'The Black Meres', T: 'The Mere-Lamp Stone' },
   mobs: { k: { types: ['lantern-wisp', 'mire-lurker', 'mire-lurker'], chance: .5 }, q: { types: ['mire-lurker', 'lantern-wisp'], chance: .5 } },
   town: buildHummock('mere-lamp-stone'), townName: 'The Mere-Lamp Stone', streets: { row: 6, col: 8 }, river: false, roadGround: { near: 'boardwalk', far: 'boardwalk' },
@@ -186,7 +193,7 @@ export const MERES_SECTION: ContinentDef = {
   ],
   camps: [{ id: 'lure-pools', name: 'The Lure Pools', kind: 'camp', c: 200, r: 52,
     spawns: ['mire-lurker', 'mire-lurker', 'mire-lurker', 'mire-lurker', 'mire-lurker', 'mire-lurker', 'mire-lurker', 'mire-lurker'] }],
-  // The Three Posts' pool, kept open for S10b (THREE_POSTS_AT).
+  // The Three Posts' pool (THREE_POSTS_AT): its glade keeps the wilds' trees and rocks off it.
   glades: [{ c: THREE_POSTS_AT.c, r: THREE_POSTS_AT.r, size: 14 }],
 };
 
