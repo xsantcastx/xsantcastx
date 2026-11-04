@@ -60,6 +60,10 @@ export interface RelicSig {
   lightning?: number;
   /** S10: in rain or a thunderstorm the Keeper's lightning chains to this many more foes, and Wet cannot freeze him. */
   storm?: number;
+  /** S10b (The Wall That Kept Walking): % less damage taken while he has not moved for 2 s, he and the party within 3 tiles. */
+  holdLine?: number;
+  /** S10b (The Psalm Heard Through Water): % more healing done; a heal on a Keeper in fog or the dark lifts Chill and lends him +1 light for 4 s. */
+  psalm?: number;
 }
 
 /** A boss unique: a UniqueItem with the boss it drops from, its chance (1 in `oneIn`), where it is and its signature. */
@@ -173,11 +177,11 @@ export interface RelicTotals {
   breath: number; fire: number; singe: { dps: number; secs: number } | null; regen: number; stillRegen: number;
   spears: number; spearRange: number; ink: { pct: number; secs: number } | null; mf: number; umbra: number;
   xp: number; gold: number; thorns: number; echo: readonly { every: number; pct: number }[]; mercy: number; manaKill: number; named: number;
-  lightning: number; storm: number;
+  lightning: number; storm: number; holdLine: number; psalm: number;
 }
 export const NO_RELICS: RelicTotals = Object.freeze({
   light: 0, ranks: {}, cdCut: {}, construct: 0, raisedMax: 0, breath: 0, fire: 0, singe: null, regen: 0, stillRegen: 1,
-  spears: 0, spearRange: 0, ink: null, mf: 0, umbra: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0, lightning: 0, storm: 0,
+  spears: 0, spearRange: 0, ink: null, mf: 0, umbra: 0, xp: 0, gold: 0, thorns: 0, echo: [], mercy: 0, manaKill: 0, named: 0, lightning: 0, storm: 0, holdLine: 0, psalm: 0,
 }) as RelicTotals;
 
 export function relicTotals(ids: readonly string[], extra?: (id: string) => RelicSig | undefined): RelicTotals {
@@ -212,6 +216,8 @@ export function relicTotals(ids: readonly string[], extra?: (id: string) => Reli
     out.named += s.named ?? 0;
     out.lightning += s.lightning ?? 0;
     out.storm += s.storm ?? 0;
+    out.holdLine = Math.max(out.holdLine, s.holdLine ?? 0);
+    out.psalm += s.psalm ?? 0;
   }
   return out;
 }

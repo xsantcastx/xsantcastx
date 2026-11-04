@@ -74,7 +74,7 @@ export type CoopEvent =
    * S10: a party boss's mark (td-party-boss PartyMark), a picture: the fixate pip (`a`), a Brand (`a`), a Tether (`a`–`b`),
    * a channel's bar (`w` its words), the storm's eye, Sunder's stacks (`n`), a phase (`w` its id). `t` seconds, 0 ends it.
    */
-  | { k: 'mech'; m: 'fix' | 'brand' | 'tether' | 'cast' | 'eye' | 'sunder' | 'phase'; i: string; t: number; a?: string; b?: string; n?: number; w?: string; x?: number; y?: number };
+  | { k: 'mech'; m: 'fix' | 'brand' | 'tether' | 'cast' | 'eye' | 'sunder' | 'phase' | 'wrap' | 'post' | 'settle'; i: string; t: number; a?: string; b?: string; n?: number; w?: string; x?: number; y?: number };
 
 /** What the host posts (and the room relays, with `from`, `term`). */
 export interface CoopSnapBody {

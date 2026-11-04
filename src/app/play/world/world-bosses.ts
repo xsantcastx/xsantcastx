@@ -51,6 +51,20 @@ export interface WorldBossDef {
   lair?: string;
   /** Drawn this many times its creature's size (an integer, nearest-neighbour: a world boss reads as one). */
   scale?: number;
+  /** S10b: it rises only at night (the Last Siege's ashfall nights, the Fogmother's foggy ones). */
+  night?: boolean;
+  /** S10b: its own body (td-mobs BOSS_LOOKS: the siege tower, the Fogmother), drawn in place of its creature's. */
+  look?: string;
+  /**
+   * S10b: it rolls this track (tiles; the Last Siege): it rises at the first point, never turns or chases, rolls a tile
+   * every few seconds (its form's phase `step`), and at the last point it stops and leaves unfelled (`exit` its line).
+   */
+  track?: readonly { c: number; r: number }[];
+  /**
+   * S10b: the lantern posts round its arena (tiles; the Fogmother's three). All lit before it rises and it does not
+   * rise that night (the posts stay lit until dawn); lit in the fight, each is a light it will not stand in.
+   */
+  posts?: readonly { c: number; r: number }[];
 }
 
 export const WORLD_BOSSES: readonly WorldBossDef[] = [
@@ -76,6 +90,25 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     life: 125, blows: 4.2, affixes: [], followers: 0, every: [2, 2], stay: 0.1,
     loot: { rolls: 3, chance: .1, uniques: ['unique-crown-of-the-antlered-storm'], mats: [{ material: 'verdant-sap', qty: 4 }, { material: 'world-root-bark', qty: 3 }] },
     weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: 64, r: 24 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', scale: 3, lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
+  },
+  {
+    // S10b, §6.2: the Ashen Bastion's siege tower, still rolling toward the Cinder clans' camps one turn of the wheel a
+    // night; it comes out in an ashfall at night and rolls up the Bastion Road (the Pyre Peaks) toward the Bastion's ruin.
+    id: 'last-siege', name: 'The Last Siege', area: 'infernal-reach-pyre-peaks', regions: ['h'], base: 'bone-walker', level: 32,
+    life: 150, blows: 3.8, affixes: [], followers: 0, every: [3, 3], stay: 0.1,
+    loot: { rolls: 3, chance: .1, uniques: ['unique-wall-that-kept-walking'], mats: [{ material: 'cinder-ore', qty: 4 }, { material: 'infernal-heartstone', qty: 2 }] },
+    weather: { land: 'infernal-reach', region: 'h', state: 'ashfall' }, night: true, at: { c: 110, r: 40 }, form: 'last-siege', cooldown: 3, rank: 'boss', scale: 3, look: 'last-siege',
+    track: [{ c: 110, r: 40 }, { c: 70, r: 30 }, { c: 40, r: -10 }, { c: 30, r: -40 }, { c: 0, r: -60 }, { c: -8, r: -80 }],
+    lair: 'the Bastion Road, the Pyre Peaks (ashfall nights)',
+  },
+  {
+    // S10b, §6.4: what the fog keeps of everyone it ever hid, risen on the Black Meres where three lantern posts went out.
+    id: 'fogmother', name: 'The Fogmother', area: 'umbral-marches', regions: ['k'], base: 'drowned-knight', level: 54,
+    life: 80, blows: 3.6, affixes: [], followers: 0, every: [4, 4], stay: 0.1,
+    loot: { rolls: 3, chance: .1, uniques: ['unique-psalm-heard-through-water'], mats: [{ material: 'umbral-ink', qty: 5 }, { material: 'nightglass', qty: 3 }, { material: 'inkstone', qty: 2 }] },
+    weather: { land: 'umbral-marches', region: 'k', state: 'fog' }, night: true, at: { c: -4, r: -12 }, form: 'fogmother', cooldown: 4, rank: 'boss', scale: 3, look: 'fogmother',
+    posts: [{ c: -4, r: -22 }, { c: 5, r: -7 }, { c: -13, r: -7 }],
+    lair: 'the Black Meres, the Umbral Marches (foggy nights)',
   },
   {
     id: 'ser-wickless', name: 'Ser Wickless', area: 'umbral-marches', regions: ['x', 'Q'], base: 'drowned-knight', level: 55,
@@ -122,7 +155,7 @@ export function fastForward(b: WorldBossDef, c: WorldBossClock, now: number, rng
 }
 
 /** The omen and fall lines, by boss (LAZY i18n: world-bosses.i18n.ts). */
-export const omenKey = (id: string, at: 'rise' | 'fall' | 'gone'): string => `play.worldBoss.${id}.${at}`;
+export const omenKey = (id: string, at: 'rise' | 'fall' | 'gone' | 'kept' | 'home'): string => `play.worldBoss.${id}.${at}`;
 
 /**
  * A formed world boss's own creature (S10): its base at its level, its life and blows its own, a boss (CC a fifth as

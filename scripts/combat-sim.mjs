@@ -768,7 +768,12 @@ function partyCell(runs, level = PARTY_LEVEL) {
 const WB = load('src/app/play/world/world-bosses.ts');
 const COOP = load('src/app/play/social/coop-rules.ts');
 const STORM = WB.WORLD_BOSSES.find(b => b.id === 'antlered-storm');
-const stormDef = () => WB.formedBossDef(STORM, atZone(STORM.base, STORM.level));
+const stormDef = (B = STORM) => WB.formedBossDef(B, atZone(B.base, B.level));
+// S10b: the Last Siege (a tower on its track: it leaves if it reaches the Bastion) and the Fogmother (her posts).
+const SIEGE = WB.WORLD_BOSSES.find(b => b.id === 'last-siege');
+const FOGM = WB.WORLD_BOSSES.find(b => b.id === 'fogmother');
+/** The Fogmother's Last phase: the light-bearer (the Thornstrider, else whoever is up) lights the three posts, one after another, this long a post with the walk. */
+const POST_WALK = 1.5;
 /** A party sees a ring for its whole tell: it steps out of most (a solo Keeper too). */
 const STORM_DODGE = .8;
 /** The Ashguard's guard in a party fight (the Shield Oath, the Banner, his block) on top of his Defense. */
@@ -784,13 +789,13 @@ const STORM_PARTY = [['tank', 'ashguard'], ['healer', 'lanternwright'], ['aoe', 
 const STORM_DPS = {};
 /** Where each stands round the boss (tiles, from its face toward the party). */
 const STORM_AT = { tank: [-.9, 0], healer: [-5, .5], aoe: [-4, 3.6], dps: [-4, -3.6], solo: [-.9, 0] };
-function stormRun(seed, { without = null, solo = null } = {}) {
-  return seeded(`storm|${seed}|${without}|${solo}`, rand => {
-    const L = STORM.level;
+function stormRun(seed, { without = null, solo = null } = {}, B = STORM) {
+  return seeded(`${B === STORM ? 'storm' : B.id}|${seed}|${without}|${solo}`, rand => {
+    const L = B.level;
     const roles = solo ? [{ role: 'solo', voc: solo }] : STORM_PARTY.filter(([r]) => r !== without).map(([role, voc]) => ({ role, voc }));
     const mates = roles.map((r, i) => {
       const k = keeper(r.voc, L, 'normal', seed * 7 + i, null, r.role === 'tank' ? 'tank' : r.role === 'healer' ? 'healer' : null);
-      const rate = STORM_DPS[r.voc] ??= mean([0, 1].map(s => dps(r.voc, L, s)));
+      const rate = STORM_DPS[`${r.voc}|${L}`] ??= mean([0, 1].map(s => dps(r.voc, L, s)));
       return { id: r.role, role: r.role, voc: r.voc, k, hp: k.fight.maxHp, max: k.fight.maxHp, down: false, x: 0, y: 0, belt: BELT, potCd: 0, ward: 0, dps: rate, dodge: null, soak: null };
     });
     const by = id => mates.find(m => m.id === id);
@@ -815,9 +820,14 @@ function stormRun(seed, { without = null, solo = null } = {}) {
       },
       killed: () => undefined, claim: () => undefined,
     };
-    const def = stormDef();
-    const boss = sys.place(`wb:${STORM.id}`, def, 0, 0);
-    boss.form = STORM.form;
+    const def = stormDef(B);
+    const boss = sys.place(`wb:${B.id}`, def, 0, 0);
+    boss.form = B.form;
+    // S10b: the tower's track (from where it rises), the Fogmother's posts (round where she rises).
+    const t0 = B.track?.[0];
+    if (B.track) boss.track = { pts: B.track.map(p => ({ x: (p.c - t0.c) * TILE, y: (p.r - t0.r) * TILE })), i: 1, t: 0 };
+    if (B.posts) boss.posts = B.posts.map(p => ({ x: (p.c - B.at.c) * TILE, y: (p.r - B.at.r) * TILE, lit: false, hold: 0 }));
+    let home = false;
     sys.scaleBoss(boss, COOP.coopBossLife(def.hp, mates.length), mates.length);
     // The healer: a real Lanternwright's MobSystem, her party the others (S5's).
     const healer = mates.find(m => m.role === 'healer' || (m.role === 'solo' && m.voc === 'lanternwright'));
@@ -842,12 +852,19 @@ function stormRun(seed, { without = null, solo = null } = {}) {
     const dt = .05;
     for (; t < STORM_MAX; t += dt) {
       if (boss.hp <= 0 || !sys.mobs.includes(boss)) break;
+      if (boss.track?.done) { home = true; break; }
       const live = mates.filter(m => !m.down);
       if (!live.length) break;
-      // Feet: round the boss, facing the party (+x is the boss's back).
+      // The Fogmother's last phase: the light-bearer goes post to post (standing at each until it lights).
+      const bearer = boss.posts && boss.pb?.phase === 2 ? live.find(m => m.role === 'dps') ?? null : null;
+      const post = bearer ? boss.posts.find(p => !p.lit) ?? null : null;
+      // Feet: round the boss, facing the party (+x is the boss's back); round the tower where it has rolled to.
+      const ox = boss.track ? boss.x : 0, oy = boss.track ? boss.y : 0;
       for (const m of live) {
         const [ax, ay] = STORM_AT[m.role];
-        let x = ax * TILE, y = ay * TILE;
+        let x = ox + ax * TILE, y = oy + ay * TILE;
+        if (m === bearer && post) { m.walk = (m.walk ?? 0) + dt; if (m.walk >= POST_WALK) { x = post.x; y = post.y; } else { x = m.x; y = m.y; } m.x = x; m.y = y; continue; }
+        if (m === bearer) m.walk = 0;
         if (m.soak) { x = m.soak.x; y = m.soak.y; if ((m.soak.t -= dt) <= 0) m.soak = null; }
         else if (m.dodge) { x += m.dodge.dx; y += m.dodge.dy; if ((m.dodge.t -= dt) <= 0) m.dodge = null; }
         m.x = x; m.y = y;
@@ -883,6 +900,7 @@ function stormRun(seed, { without = null, solo = null } = {}) {
         if (m.role === 'healer') continue;
         m.acc = (m.acc ?? 0) + dt;
         if (m.acc < .5) continue;
+        if (m === bearer && post) { m.acc = 0; continue; }
         const n = m.dps * m.acc * (boss.threatOn === m.id && m.role !== 'tank' && m.role !== 'solo' ? FIXED_KITE : 1); m.acc = 0;
         const aoe = m.role === 'aoe' || (m.role === 'solo' && m.voc === 'warlock');
         if (adds.length && aoe) for (const a of adds) sys.applyClaim(a, n * AOE_EACH, m.id, false, 'fire');
@@ -915,23 +933,23 @@ function stormRun(seed, { without = null, solo = null } = {}) {
       for (const m of live) { m.potCd -= dt; if (m.hp < m.max * .4 && m.belt > 0 && m.potCd <= 0 && hpPot) { m.belt--; m.potCd = POT.POTION_COOLDOWN; m.hp = Math.min(m.max, m.hp + hpPot.amount); } }
       sys.update(dt);
     }
-    const won = boss.hp <= 0 || !sys.mobs.includes(boss);
-    return { won, secs: t, fell: mates.filter(m => m.down).length, st: boss.pb?.stats ?? null };
+    const won = !home && (boss.hp <= 0 || !sys.mobs.includes(boss));
+    return { won, secs: t, fell: mates.filter(m => m.down).length, home, st: boss.pb?.stats ?? null };
   });
 }
 /** The S10 cells: the four (one per calling), each of tank, healer and AoE removed, and each calling alone. */
-export function stormCell(runs) {
+export function stormCell(runs, B = STORM) {
   const one = o => {
     const out = [];
-    for (let i = 0; i < runs; i++) out.push(stormRun(i, o));
+    for (let i = 0; i < runs; i++) out.push(stormRun(i, o, B));
     const won = out.filter(r => r.won);
-    return { won: won.length / out.length, ttk: iqm(won.map(r => r.secs)), fell: mean(out.map(r => r.fell)) };
+    return { won: won.length / out.length, ttk: iqm(won.map(r => r.secs)), fell: mean(out.map(r => r.fell)), home: out.filter(r => r.home).length / out.length };
   };
-  return { boss: STORM.id, level: STORM.level, full: one({}), noTank: one({ without: 'tank' }), noHealer: one({ without: 'healer' }), noAoe: one({ without: 'aoe' }), solo: Object.fromEntries(VOCATIONS.map(v => [v, one({ solo: v })])) };
+  return { boss: B.id, level: B.level, full: one({}), noTank: one({ without: 'tank' }), noHealer: one({ without: 'healer' }), noAoe: one({ without: 'aoe' }), solo: Object.fromEntries(VOCATIONS.map(v => [v, one({ solo: v })])) };
 }
 const stormSay = (c, log) => {
-  log(`\nS10: the ${c.boss} (L${c.level}), a world boss: wins · time to kill (s, interquartile mean) · Keepers fallen`);
-  for (const [k, x] of [['party of four', c.full], ['no tank', c.noTank], ['no healer', c.noHealer], ['no AoE', c.noAoe], ...Object.entries(c.solo).map(([v, x]) => [`solo ${v}`, x])]) log(`  ${k.padEnd(20)} ${Math.round(x.won * 100)}% · ${Number.isFinite(x.ttk) ? x.ttk.toFixed(0) : '—'} s · ${x.fell.toFixed(1)}`);
+  log(`\nS10: the ${c.boss} (L${c.level}), a world boss: wins · time to kill (s, interquartile mean) · Keepers fallen${c.boss === 'last-siege' ? ' · reached the Bastion' : ''}`);
+  for (const [k, x] of [['party of four', c.full], ['no tank', c.noTank], ['no healer', c.noHealer], ['no AoE', c.noAoe], ...Object.entries(c.solo).map(([v, x]) => [`solo ${v}`, x])]) log(`  ${k.padEnd(20)} ${Math.round(x.won * 100)}% · ${Number.isFinite(x.ttk) ? x.ttk.toFixed(0) : '—'} s · ${x.fell.toFixed(1)}${c.boss === 'last-siege' ? ` · ${Math.round(x.home * 100)}%` : ''}`);
 };
 
 const GAP_SECS = 60;
@@ -1038,6 +1056,11 @@ if (argv.storm) {
   stormSay(stormCell(RUNS), console.log);
   process.exit(0);
 }
+if (argv.siege || argv.fog) {
+  // --siege / --fog: the S10b cells alone (the Last Siege, the Fogmother).
+  stormSay(stormCell(RUNS, argv.siege ? SIEGE : FOGM), console.log);
+  process.exit(0);
+}
 if (argv.trace) {
   // --trace=<vocation>,<level>,<creature id>[,<tier>]: one fight, its Keeper and its outcome.
   const [voc, L, id, tier = 'normal'] = String(argv.trace).split(',');
@@ -1068,6 +1091,8 @@ const party = partyCell(QUICK ? 6 : 12);
 const partyLate = partyCell(QUICK ? 6 : 12, PARTY_LEVEL_LATE);
 // S10: the Antlered Storm (the four; each of tank, healer and AoE removed; each calling alone).
 const storm = stormCell(QUICK ? 6 : 12);
+// S10b: the Last Siege and the Fogmother, the same cells.
+const siege = stormCell(QUICK ? 6 : 12, SIEGE), fogm = stormCell(QUICK ? 6 : 12, FOGM);
 const secs = (Date.now() - t0) / 1000;
 
 const fmt = (n, d = 1) => Number.isFinite(n) ? n.toFixed(d) : '—';
@@ -1112,6 +1137,8 @@ for (const pc of [party, partyLate]) {
 }
 
 stormSay(storm, say);
+stormSay(siege, say);
+stormSay(fogm, say);
 
 // ── The check ──
 // S5 (campaign.md): a level-30 Lanternwright keeps a level-30 Ashguard alive against the floor boss; without her the
@@ -1123,10 +1150,13 @@ for (const pc of [party, partyLate]) {
 }
 // S10 (campaign.md): a party of four, one per calling, wins ≥ 70% in 3–6 min; removing the healer, the tank or the AoE
 // each fails it; a solo Keeper wins ≤ 15%.
-if (!(storm.full.won >= BANDS.stormParty)) fails.push(`the party of four wins against the ${storm.boss} only ${pct(storm.full.won)} of the time (≥ ${pct(BANDS.stormParty)})`);
-if (!(storm.full.ttk >= BANDS.stormTtk[0] && storm.full.ttk <= BANDS.stormTtk[1])) fails.push(`the party of four fells the ${storm.boss} in ${fmt(storm.full.ttk, 0)} s (${BANDS.stormTtk.join('–')} s)`);
-for (const [k, x] of [['tank', storm.noTank], ['healer', storm.noHealer], ['AoE', storm.noAoe]]) if (x.won > BANDS.stormRoleless) fails.push(`without its ${k} the party still wins against the ${storm.boss} ${pct(x.won)} of the time (≤ ${pct(BANDS.stormRoleless)})`);
-for (const [v, x] of Object.entries(storm.solo)) if (x.won > BANDS.stormSolo) fails.push(`a solo ${v} wins against the ${storm.boss} ${pct(x.won)} of the time (≤ ${pct(BANDS.stormSolo)})`);
+// S10b: the same bands hold for the Last Siege and the Fogmother.
+for (const wb of [storm, siege, fogm]) {
+  if (!(wb.full.won >= BANDS.stormParty)) fails.push(`the party of four wins against the ${wb.boss} only ${pct(wb.full.won)} of the time (≥ ${pct(BANDS.stormParty)})`);
+  if (!(wb.full.ttk >= BANDS.stormTtk[0] && wb.full.ttk <= BANDS.stormTtk[1])) fails.push(`the party of four fells the ${wb.boss} in ${fmt(wb.full.ttk, 0)} s (${BANDS.stormTtk.join('–')} s)`);
+  for (const [k, x] of [['tank', wb.noTank], ['healer', wb.noHealer], ['AoE', wb.noAoe]]) if (x.won > BANDS.stormRoleless) fails.push(`without its ${k} the party still wins against the ${wb.boss} ${pct(x.won)} of the time (≤ ${pct(BANDS.stormRoleless)})`);
+  for (const [v, x] of Object.entries(wb.solo)) if (x.won > BANDS.stormSolo) fails.push(`a solo ${v} wins against the ${wb.boss} ${pct(x.won)} of the time (≤ ${pct(BANDS.stormSolo)})`);
+}
 for (const voc of VOCATIONS) for (const L of levels.filter(banded)) {
   const c = table[voc].levels[L];
   if (!inBand(c.normal.ttk, BANDS.normal)) fails.push(`${voc} L${L}: a creature at his level takes ${fmt(c.normal.ttk)} s (band ${BANDS.normal.join('–')} s)`);

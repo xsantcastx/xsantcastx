@@ -2,9 +2,9 @@ import { MECH, PARTY_FORMS, newPartyState, partyStep, type PartyArena, type Part
 
 /** A stand-in arena: Keepers where the test puts them, every blow and mark written down. */
 function arena(ks: PartyKeeper[], o: { stopped?: () => boolean } = {}) {
-  const hits: { id: string; n: number; type: string }[] = [], marks: PartyMark[] = [], heals: number[] = [], adds: string[] = [];
+  const hits: { id: string; n: number; type: string; st?: string }[] = [], marks: PartyMark[] = [], heals: number[] = [], adds: string[] = [];
   const A: PartyArena = {
-    keepers: () => ks, strike: (k, n, type) => hits.push({ id: k.id, n, type }), ring: () => undefined, mark: e => marks.push(e),
+    keepers: () => ks, strike: (k, n, type, st) => hits.push({ id: k.id, n, type, ...(st ? { st: st.s } : {}) }), ring: () => undefined, mark: e => marks.push(e),
     say: () => undefined, adds: type => adds.push(type), heal: n => heals.push(n), stopped: o.stopped ?? (() => false), rng: () => .3, cadence: 1,
   };
   return { A, hits, marks, heals, adds };
@@ -65,5 +65,35 @@ describe('td-party-boss (S10: the mechanic vocabulary)', () => {
     const bolt = r.hits.find(h => h.type === 'lightning');
     expect(bolt).toBeDefined();
     expect(bolt!.n).toBeCloseTo(1.6 * 100 * MECH.wetLightning, 0);
+  });
+
+  // ── S10b ──
+  it('the Last Siege: its crossbows at the top threat, its catapult on the healer\'s side, faster on its Last Turn', () => {
+    const ks = [{ id: 'tank', self: false, x: 20, y: 0 }, { id: 'heal', self: false, x: -90, y: 10 }];
+    const f = PARTY_FORMS['last-siege'];
+    expect(f.phases.map(p => p.step)).toEqual([MECH.towerStep, MECH.towerStep, MECH.lastTurnStep]);
+    const s = newPartyState(f), r = arena(ks);
+    run(s, boss(2, 2), r.A, 3);
+    // The volley: three bolts round the tank (0.8B each where they land).
+    expect(s.rings.filter(x => x.m === 'volley').length + r.hits.filter(h => h.id === 'tank').length).toBeGreaterThan(0);
+    const s2 = newPartyState(f), r2 = arena(ks);
+    s2.healed.set('heal', 500);
+    run(s2, boss(.5), r2.A, 4.3);
+    expect(r2.hits.some(h => h.id === 'heal' && h.type === 'fire')).toBeTrue();
+  });
+
+  it('the Fogmother: Wrap chills the one she holds, Gloam Blizzard frosts the farthest, Settle closes the fog', () => {
+    const ks = [{ id: 'tank', self: false, x: 16, y: 0 }, { id: 'far', self: false, x: 150, y: 0 }];
+    const s = newPartyState(PARTY_FORMS['fogmother']), r = arena(ks);
+    run(s, boss(2, 2), r.A, 3.2);
+    const wrap = r.hits.find(h => h.id === 'tank' && h.type === 'cold');
+    expect(wrap?.st).toBe('chill');
+    expect(r.marks.some(m => m.m === 'wrap' && m.a === 'tank')).toBeTrue();
+    const s2 = newPartyState(PARTY_FORMS['fogmother']), r2 = arena(ks);
+    run(s2, boss(.5), r2.A, 8.5);
+    expect(r2.hits.some(h => h.id === 'far' && h.st === 'frost')).toBeTrue();
+    const s3 = newPartyState(PARTY_FORMS['fogmother']), r3 = arena(ks);
+    run(s3, boss(.2), r3.A, 1);
+    expect(r3.marks.some(m => m.m === 'settle')).toBeTrue();
   });
 });

@@ -10,6 +10,10 @@
  *  - **cast**: a ring round the boss that fills as it channels (the bar; stun, freeze or hush it before it closes);
  *  - **eye**: the storm's eye, a faint white ring round the arena once phase 3 begins;
  *  - **sunder**: one pip a stack beside the stacked Keeper.
+ *  - **wrap** (S10b, the Fogmother): a grey 2-px line, dark-outlined, from her to the one she holds;
+ *  - **post**: a lit lantern post's light on the floor, a warm stepped ring r4 (she will not stand in it), and its flame;
+ *  - **settle**: the fog closing in, a grey veil over the floor with a hole of three tiles round this Keeper and one round
+ *    each lit post (two flat fills, hard-edged: one path each, phone-cheap; the same on Low, never pulsing).
  */
 import { MECH, type PartyMark } from './td-party-boss';
 import type { DeathBurst } from './td-mobs';
@@ -23,6 +27,8 @@ const RED_HIT = { core: '#ffd0a0', body: '#ff4a1a', edge: '#c02a10' };
 const EMBER = { core: '#fff2a8', body: '#ffb347', edge: '#e2552a' };
 const STORM = { core: '#ffffff', body: '#8fd0ff', edge: '#3a6ad0' };
 const GOLD = { core: '#fff6c8', body: '#ffd25a', edge: '#b0812a' };
+const FOG = { core: '#eef0f4', body: '#a6a2b0', edge: '#4a4654' };
+const LAMP = { core: '#fff6d0', body: '#ffc65a', edge: '#d98a2a' };
 /** The dark 2-px outline every party ring and line wears (it reads on rain, moss and water alike). */
 const DARK = '#140c1c';
 /** How high over a Keeper's feet the pips over his head sit (world px; the chibi figure's top). */
@@ -49,6 +55,14 @@ export function drawPartyRing(c: Ctx, b: DeathBurst, time: number, still: boolea
   for (const q of groundRing(R - 1)) { c.fillStyle = tn.edge; c.fillRect(X + q.x, Y + q.y, 1, 1); }
   c.globalAlpha = 1;
 }
+/** S10b: a lit lantern post's flame in its glass (upright, over the post's top: td-art darkPost's glass). */
+export function drawPostFlame(c: Ctx, x: number, y: number, time: number, still: boolean): void {
+  const X = Math.round(x) + 4, Y = Math.round(y) - 24, k = still ? 0 : Math.floor(time * 8) % 2;
+  c.globalAlpha = .35; c.fillStyle = LAMP.body; c.fillRect(X - 3, Y - 2, 11, 11);
+  c.globalAlpha = 1; c.fillStyle = LAMP.edge; c.fillRect(X, Y + 1, 5, 6);
+  c.fillStyle = LAMP.body; c.fillRect(X + 1, Y + 1 - k, 3, 5);
+  c.fillStyle = LAMP.core; c.fillRect(X + 2, Y + 2 - k, 1, 3);
+}
 /** Over the head: a red down-arrow on the one it is fixed on; an ember brand sigil on the Branded. */
 export function drawHeadPip(c: Ctx, x: number, y: number, m: 'fix' | 'brand', time: number, still: boolean): void {
   const X = Math.round(x), Y = Math.round(y) - (still ? 0 : Math.round(Math.sin(time * 4)));
@@ -71,6 +85,18 @@ export function drawPartyMarks(c: Ctx, fx: readonly (PartyMark & { left: number 
   if (!fx.length) return;
   const beat = still ? 1 : Math.floor(time * 6) % 2 ? 1 : .65;
   c.save();
+  // The Settle first (under everything): the fog closes to three tiles round this Keeper, open round each lit post.
+  const settle = fx.find(f => f.m === 'settle'), me = at('');
+  if (settle && me) {
+    const lit = fx.filter(f => f.m === 'post' && f.x !== undefined && f.y !== undefined), X = Math.round(me.x), Y = Math.round(me.y), W = 48 * T;
+    for (const [a, r] of [[.38, 3 * T + 10], [.62, 3 * T]] as const) {
+      c.beginPath(); c.rect(X - W, Y - W, W * 2, W * 2);
+      c.moveTo(X + r, Y); c.ellipse(X, Y, r, r * .62, 0, 0, Math.PI * 2, true);
+      for (const p of lit) { const R = MECH.postR * T - (r === 3 * T ? 0 : 10); c.moveTo(p.x! + R, p.y!); c.ellipse(p.x!, p.y!, R, R * .62, 0, 0, Math.PI * 2, true); }
+      c.globalAlpha = a * .7; c.fillStyle = FOG.edge; c.fill('evenodd');
+    }
+    c.globalAlpha = 1;
+  }
   for (const f of fx) {
     if (f.m === 'fix' && f.a !== undefined) {
       const p = at(f.a); if (!p) continue;
@@ -104,6 +130,20 @@ export function drawPartyMarks(c: Ctx, fx: readonly (PartyMark & { left: number 
       pts.forEach((q, i) => { c.fillStyle = i / pts.length < done ? EMBER.core : EMBER.edge; c.fillRect(X + q.x, Y + q.y, 1, 1); });
     } else if (f.m === 'eye' && f.x !== undefined && f.y !== undefined) {
       ring(c, Math.round(f.x), Math.round(f.y), 10 * T, STORM.body, 3, .35 * beat);
+    } else if (f.m === 'wrap' && f.a !== undefined && f.x !== undefined && f.y !== undefined) {
+      // Wrap: a grey line from her to the one she holds (the Chill is on him; the healer answers).
+      const p = at(f.a); if (!p) continue;
+      const line = linePixels(Math.round(f.x), Math.round(f.y - 6), Math.round(p.x), Math.round(p.y - 2));
+      c.globalAlpha = .9; c.fillStyle = DARK;
+      for (const q of line) c.fillRect(q.x - 1, q.y - 1, 4, 4);
+      c.globalAlpha = 1;
+      line.forEach((q, i) => { c.fillStyle = i % 5 === 0 ? FOG.core : FOG.body; c.fillRect(q.x, q.y, 2, 2); });
+    } else if (f.m === 'post' && f.x !== undefined && f.y !== undefined) {
+      // A lit post's light on the floor: a warm stepped ring she will not cross.
+      const X = Math.round(f.x), Y = Math.round(f.y), R = MECH.postR * T;
+      ring(c, X, Y + 1, R + 1, DARK, 1, .7);
+      ring(c, X, Y, R, LAMP.body, 2, .95);
+      ring(c, X, Y, R - 2, LAMP.edge, 3, .5);
     } else if (f.m === 'sunder' && f.a !== undefined && (f.n ?? 0) > 0) {
       const p = at(f.a); if (!p) continue;
       c.globalAlpha = .95; c.fillStyle = RED.body;
