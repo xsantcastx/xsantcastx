@@ -4,6 +4,8 @@
  */
 import { TestBed } from '@angular/core/testing';
 
+import { BUY_CAP, maxAffordable } from './shop.component';
+
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { EconomyService } from '../economy/economy.service';
@@ -119,5 +121,12 @@ describe('ShopService', () => {
     expect(shops.sellItem('alchemist', base.id).code).toBe('refused');
     expect(shops.sellItem('smith', base.id).code).toBe('ok');
     expect(inventory.itemById(base.id)).toBeUndefined();
+  });
+
+  it('the buy card\'s Max is what the purse covers, capped, and never below none', () => {
+    expect(maxAffordable(1000, 13)).toBe(76);
+    expect(maxAffordable(5000, 7)).toBe(BUY_CAP);
+    expect(maxAffordable(5, 13)).toBe(0);
+    expect(maxAffordable(100, 0)).toBe(BUY_CAP);
   });
 });

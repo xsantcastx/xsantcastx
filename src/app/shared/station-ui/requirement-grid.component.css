@@ -116,5 +116,7 @@ button.rg__cell.is-on {
 :host-context(.place) .rg__icon { width: 36px; height: 36px; background: none; }
 :host-context(.place) .rg__icon img { width: 32px; height: 32px; image-rendering: pixelated; }
 :host-context(.place) .rg__name { display: none; }
-:host-context(.place) .rg__count { font-size: var(--text-xs); text-shadow: 2px 2px 0 var(--obsidian-0); }
+:host-context(.place) .rg__count { font: 700 11px/1.2 var(--cozy-font-read); white-space: nowrap; text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+:host-context(.place) .is-met .rg__count { color: var(--cozy-leaf); }
+:host-context(.place) .is-short .rg__count { color: var(--cozy-berry); }
 :host-context(.place) .rg__cell--empty, :host-context(.place) .rg__grid > li:has(> .rg__cell--empty) { display: none; }

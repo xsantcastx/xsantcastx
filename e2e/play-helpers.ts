@@ -286,10 +286,12 @@ export async function sail(page: Page, dest: RegExp, area: RegExp, master?: RegE
   const cv = page.locator('canvas').first();
   const map = page.locator('#places-list.td-map');
   if (!(await map.isVisible())) { await cv.focus(); await page.keyboard.press('m'); }
-  // The new Map (td-map-window): a harbour pin is an anchor named for its keeper; a click on it walks there.
+  // The Map (td-map-window, ui-pass-3 §8): a harbour pin is an anchor named for its keeper; a tap opens its card
+  // (the pin may lie past the view's edge at the fit, so the tap is dispatched), and its Walk here goes there.
   const who = master ? master.source.replace(/\\/g, '').replace(/"/g, '') : '';
   const pin = map.locator(`.mw__pin[data-cat="harbour"]${who ? `[data-name*="${who}" i]` : ''}`).first();
-  await pin.click();
+  await pin.dispatchEvent('click');
+  await map.locator('[data-map-walk]').click();
   const board = page.locator('.td-harbour');
   await expect(board).toBeVisible({ timeout: 30000 });
   await board.locator('[data-harbour-row]', { hasText: dest }).first().click();

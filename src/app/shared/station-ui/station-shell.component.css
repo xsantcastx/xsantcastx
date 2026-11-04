@@ -82,6 +82,9 @@
   position: relative; display: flex; align-items: center; justify-content: space-between; gap: 4px;
   min-height: 44px; padding: 0 44px 0 0; margin-bottom: 4px; box-shadow: var(--px-groove);
 }
+/* The title row stays put while the window scrolls (ui-pass-3 S1): the name, the Gold and the ? stay with the window's
+   ×, which floats at this row's end; nothing scrolls out from under the ×. Opaque, over the tabs and the grid. */
+:host-context(.place) .ss__head { position: sticky; top: 0; z-index: 4; background: var(--cozy-plate); }
 :host-context(.place) .ss__copy { display: block; flex: 1 1 auto; min-width: 0; }
 :host-context(.place) h2.ss__sr {
   position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: hidden; white-space: normal;
