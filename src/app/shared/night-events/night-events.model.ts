@@ -127,7 +127,7 @@ export function countBell(t: number): number { return Math.min(COUNT.bells + 1, 
 export const COUNT_GATE = 3;
 
 /** The Late Shift: six lamps a few seconds apart, at a slow walk; each goes out where the walk ends. */
-export const SHIFT = { lamps: 6, gap: 5, speed: 1.4 } as const;
+export const SHIFT = { lamps: 6, gap: 2.5, speed: 1, out: 1.4 } as const;
 
 /** The Relief Column: soldiers in file, at a march; then the roll-call, "Present." twenty times. */
 export const COLUMN = { soldiers: 10, gap: 1.2, speed: 1.6, calls: 20, callEvery: 2, side: 5, share: .6 } as const;

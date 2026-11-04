@@ -731,6 +731,9 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly gathering = inject(GatheringService);
   /** A meal's lasting good (S8): the Cold Miner's Pasty's Mining XP. */
   private readonly mealBuffs = inject(MealBuffService);
+  /** Odette Pryor's board (S8), read: its one line on a parchment card, until closed or 12 s. */
+  boardCard: { line: string } | null = null;
+  private boardTimer: ReturnType<typeof setTimeout> | undefined;
   /** Glim's first-strike warning (world-acts §3.6): once a session. */
   private strikeSaid = false;
   /** The room's weather roll (it owns the sky while a Keeper is in its world), with when it was heard. */
@@ -4736,6 +4739,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.state?.nearby?.startsWith('hearth:')) return this.t(this.hearth.state.wake === this.state.nearby ? 'play.coldHearth.act.warm' : this.hearth.state.lit.includes(this.state.nearby) ? 'play.coldHearth.act.again' : 'play.coldHearth.act.light');
     if (this.state?.nearby?.startsWith('shrine:')) return this.t('play.coldHearth.act.shrine');
     // A town task giver (shared/town-tasks).
+    // S8: Odette Pryor's forecast board in the Pyre Spire's Study.
+    if (this.state?.nearby === 'odette:board') return this.t('weather.board.act');
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     // An act's section (td-sections.ts): its Waystone, a thing to read, a sealed thing, a seam's gate.
     // The gathering skills' own targets in the world (a tree to chop, a spot to fish, a fire to cook at).
@@ -6941,7 +6946,13 @@ export class SideScrollerComponent implements OnDestroy {
    * S8, the sky and the night: Glim calls the first strike's tell; the self-lit kiln is lit with a tinderbox; a night's
    * reward already booked (its drop's stack op) is never laid twice.
    */
-  private skySaw(e: { kind: 'tell' } | { kind: 'struck'; n: number } | { kind: 'kiln' } | { kind: 'claimed'; id: string }): string | boolean | null {
+  private skySaw(e: { kind: 'tell' } | { kind: 'struck'; n: number } | { kind: 'kiln' } | { kind: 'claimed'; id: string } | { kind: 'board'; a: string; b: string }): string | boolean | null {
+    if (e.kind === 'board') {
+      this.boardCard = { line: this.t('weather.board.line', { a: this.t(`weather.fc.${e.a}`), b: this.t(`weather.fc.${e.b}`) }) };
+      clearTimeout(this.boardTimer);
+      this.boardTimer = setTimeout(() => this.zone.run(() => { this.boardCard = null; }), 12000);
+      return null;
+    }
     if (e.kind === 'tell') {
       if (!this.strikeSaid && this.glimVoice.met) { this.strikeSaid = true; this.glimVoice.bond({ id: 'weather-first-strike', key: 'weather.glim.strike' }); }
       return null;
