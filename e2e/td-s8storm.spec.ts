@@ -102,8 +102,9 @@ test.describe('S8: the storm, the land weathers, the night events', () => {
 
   test('the storm on a phone, and in classic', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await enter(page, '&hour=21&weather=storm');
+    await enter(page, '&hour=23&weather=storm');
     await stand(page, 22, 40);
+    await page.waitForTimeout(3500);
     await s8(page, 'strike', 24, 0);
     await page.waitForTimeout(600);
     await shot(page, 'storm-phone-iso');
@@ -127,6 +128,10 @@ test.describe('S8: the storm, the land weathers, the night events', () => {
     await expect(page.locator('[data-weather-pip]')).toHaveAttribute('data-wx', 'ashfall');
     await page.waitForTimeout(4500);
     await shot(page, 'ashfall-iso');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(1500);
+    await shot(page, 'ashfall-phone');
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.evaluate(() => localStorage.setItem('eclipse-td-detail', 'low'));
     await page.reload();
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 30000 });
@@ -147,6 +152,10 @@ test.describe('S8: the storm, the land weathers, the night events', () => {
     expect((await st(page)).spores).toBe(true);
     await page.waitForTimeout(4500);
     await shot(page, 'spores-iso');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(1500);
+    await shot(page, 'spores-phone');
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/play?td=1&hour=15&weather=mistrain&artopt=iso');
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 30000 });
     await page.waitForFunction(() => !!(window as unknown as { __tdS8?: unknown }).__tdS8);
