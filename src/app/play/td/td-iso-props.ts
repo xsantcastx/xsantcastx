@@ -344,6 +344,32 @@ function giant(v: number, low: boolean): Built {
   { const x = Math.round(cx - 30 + hash(1, v, 9) * 60), y = cy + 10; if (c.solid(x, y)) { c.dot(x, y, '#7affd0', 2, 3); c.dot(x, y, '#eafff6'); } }
   return { base: t, baseFoot: [X, Y], sway: c, swayFoot: [cx, cy + 176], amp: 1.5, fades: true, shadow: castShadow(110, 46, 50, 24, 34) };
 }
+/** S10: the Storm-Struck Oak's twin — the giant split by lightning: a glassy seam up the trunk, half the crown bare. */
+function stormOakIso(low: boolean): Built {
+  const W = 200, H = 220, X = 100, Y = 212;
+  const t = new Sculpt(W, H);
+  trunk(t, X, Y, 30, 22, 120, M.barkJ, 7, 0, 3);
+  for (const [dx, dy, g] of [[-50, 12, 7], [50, 12, 8], [-30, -6, 9], [30, -6, 10]] as const) t.poly([[X + dx * .3, Y - 40], [X + dx, Y + dy], [X + dx * .6, Y + dy - 1], [X + dx * .2, Y - 18]], M.barkJ, { g, bias: dx < 0 ? .3 : -.5 });
+  // The split: a jagged rootglass seam from the crown to the roots, white at its heart.
+  let x = X;
+  for (let y = Y - 118; y < Y - 8; y += 6) { const nx = x + ((Math.floor(y / 6) % 3) - 1) * 2; t.ellipse(nx, y + 3, 3.2, 4, M.rootglass, { g: 30 }); t.dot(nx, y + 3, '#eafff6', 1, 2); x = nx; }
+  for (const [dx, dy] of [[-40, 4], [36, 6], [-18, 8], [22, 2]] as const) t.ellipse(X + dx, Y + dy - 3, 2, 4, M.rootglass, { g: 40 + dx });
+  const CW = 280, CH = 170, cx = 140, cy = 80;
+  const c = new Sculpt(CW, CH);
+  leafCrown(c, cx - 40, cy + 6, 78, 60, M.jungle, M.jungleDeep, 47, low ? 26 : 18, '#a8dc66');
+  // The struck side: bare boughs.
+  for (const [x1, y1] of [[80, -40], [100, -10], [56, -66]] as const) c.stroke([[cx + 6, cy + 40], [cx + x1 * .5, cy + 20 + y1 * .4], [cx + x1, cy + y1]], 3.2, 1.4, M.barkJ, { g: 60 + x1 });
+  if (!low) for (let i = 0; i < 5; i++) c.dot(cx + 20 + Math.floor(hash(i, 4, 17) * 80), cy - 40 + Math.floor(hash(i, 4, 18) * 60), '#eafff6', 2, 2);
+  return { base: t, baseFoot: [X, Y], sway: c, swayFoot: [cx, cy + 176], amp: 1, fades: true, shadow: castShadow(110, 46, 50, 24, 34) };
+}
+/** A split stump of the Oak's ring: struck, rootglass in the break. */
+function splitStumpIso(v: number): Built {
+  const s = new Sculpt(60, 52), P = proj(30, 42);
+  cyl(s, P, 0, 0, 6, 0, 8 + v * 2, M.bark, 10, M.bark, .6);
+  const [tx, ty] = P(0, 0, 8 + v * 2);
+  s.ellipse(tx + 1, ty, 2.4, 4, M.rootglass, { g: 20 }); s.dot(tx + 1, ty - 1, '#eafff6');
+  return { base: s, baseFoot: [30, 42], shadow: castShadow(16, 6, 6, 3) };
+}
 /** A Marches cypress: a flared, leaning trunk with knees in the mire, sparse grey-green clusters, moss hanging; bare when dead. */
 function cypress(v: number, low: boolean): Built {
   const dead = v === 4 || v === 5, lean = v % 2 ? 1 : -1;
@@ -860,6 +886,7 @@ const MAKERS: readonly [RegExp, Make][] = [
   [/^(?:low-)?tree:pine:\d+$/, (k, low) => pine(seedOf(k), low)],
   [/^jungle:\d+$/, (k, low) => jungle(seedOf(k), low)],
   [/^giant:\d+$/, (k, low) => giant(seedOf(k), low)],
+  [/^storm-oak$/, (_k, low) => stormOakIso(low)], [/^split-stump-\d$/, k => splitStumpIso(seedOf(k))],
   [/^swamp-tree:\d+$/, (k, low) => cypress(seedOf(k), low)],
   [/^bush-\d+$/, (k, low) => bush(seedOf(k), low)],
   [/^thorn-hedge-\d+$/, (k, low) => thornHedgeIso(seedOf(k), low)],
@@ -887,7 +914,7 @@ export const ISO_PROP_KEYS: readonly string[] = [
   ...[0, 1, 2, 3, 4, 5].map(v => `jungle:${v}`), ...[0, 1, 2].map(v => `giant:${v}`), ...[0, 1, 2, 3, 4, 5].map(v => `swamp-tree:${v}`),
   ...['bush', 'thorn-hedge', 'fern', 'reeds', 'gloomcap', 'boulder', 'stone', 'grave', 'pillar'].flatMap(k => [0, 1, 2].map(v => `${k}-${v}`)),
   'flowerbed:2:3', 'fence:3', 'ore-seam', 'barrel', 'crate', 'bench', 'lamp', 'signpost', 'cart', 'waystone', 'beacon', 'torch-post', 'root-lamp',
-  'lantern-post', 'great-lantern', 'fountain', 'hearth', 'forge', 'anvil', 'chest', 'bones', 'stump',
+  'lantern-post', 'great-lantern', 'fountain', 'hearth', 'forge', 'anvil', 'chest', 'bones', 'stump', 'storm-oak', 'split-stump-0', 'split-stump-1', 'split-stump-2',
   'altar', 'brazier-0', 'brazier-1', 'cage', 'chains', 'statue-broken', 'cobweb-nw', 'cobweb-ne', 'stairs-down', 'stairs-up', 'ladder-up', 'ruin-0', 'ruin-1', 'ruin-2',
 ];
 

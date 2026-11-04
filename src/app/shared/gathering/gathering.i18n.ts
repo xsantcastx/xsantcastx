@@ -118,6 +118,9 @@ export const GATHER_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'weather.bark.tarn': { en: '"No sailing in that. Not even for you." (Odd Tarn)', es: '"Con eso no se navega. Ni por ti." (Odd Tarn)' },
   'weather.bark.maud': { en: '"Light it under a roof or don\'t light it at all." (Maud Kiln)', es: '"Enciendelo bajo techo o no lo enciendas." (Maud Kiln)' },
   'weather.bark.vey': { en: '"The Peaks call the lightning down. Stay off the high stones." (Captain Brannoc Vey)', es: '"Los Picos llaman al rayo. Apartate de las piedras altas." (Captain Brannoc Vey)' },
+  // S10: the Antlered Storm's rumours (monsters-abilities §6.3), while a thunderstorm holds over the Wilds.
+  'weather.bark.fennStorm': { en: '"When the antlers ring, don\'t stand near anything taller than you. That includes me." (Canopy Warden Ilsa Fenn)', es: '"Cuando suenen las astas, no te quedes junto a nada mas alto que tu. Eso me incluye." (Canopy Warden Ilsa Fenn)' },
+  'weather.bark.alderStorm': { en: '"My cousin saw it once. Said it was beautiful. Said it twice, slowly." (Provisioner Teo Alder)', es: '"Mi prima lo vio una vez. Dijo que era precioso. Lo dijo dos veces, despacio." (Provisioner Teo Alder)' },
   'weather.bark.fenn': { en: '"Keep your fire in your pocket. The drift catches." (Canopy Warden Ilsa Fenn)', es: '"Guarda el fuego en el bolsillo. La deriva prende." (Canopy Warden Ilsa Fenn)' },
   'weather.bark.corvane': { en: '"The fog thins round a lantern. Mind what else it thins round." (Old Corvane)', es: '"La niebla se abre alrededor de un farol. Cuidado con que mas se abre." (Old Corvane)' },
   'weather.board': { en: 'Odette Pryor\'s board, in chalk: "{{a}} by the next bell. Then {{b}}."', es: 'La pizarra de Odette Pryor, en tiza: "{{a}} para la proxima campanada. Luego {{b}}."' },

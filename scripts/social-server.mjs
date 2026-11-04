@@ -220,6 +220,18 @@ export function coopEvent(raw, members, host) {
     if (!COOP_SHOTS.has(raw.s)) coopBad();
     return { k: 'shot', x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6), vx: coopNum(raw.vx, 2000), vy: coopNum(raw.vy, 2000), s: raw.s, l: Math.max(0, coopNum(raw.l, 10)) };
   }
+  if (raw.k === 'mech') {
+    // S10: a party boss's mark (td-party-boss PartyMark): a picture, about members of the party only.
+    coopKeys(raw, ['k', 'm', 'i', 't', 'a', 'b', 'n', 'w', 'x', 'y']);
+    if (!['fix', 'brand', 'tether', 'cast', 'eye', 'sunder', 'phase'].includes(raw.m) || typeof raw.i !== 'string' || !COOP_ID.test(raw.i)) coopBad();
+    const out = { k: 'mech', m: raw.m, i: raw.i, t: Math.max(0, coopNum(raw.t, 600)) };
+    for (const f of ['a', 'b']) if (raw[f] !== undefined) { if (!member(raw[f])) coopBad(); out[f] = raw[f]; }
+    if (raw.n !== undefined) out.n = coopInt(raw.n, 0, 99);
+    if (raw.w !== undefined) { if (typeof raw.w !== 'string' || !/^[a-z0-9 -]{1,32}$/.test(raw.w)) coopBad(); out.w = raw.w; }
+    if (raw.x !== undefined) out.x = coopNum(raw.x, 1e6);
+    if (raw.y !== undefined) out.y = coopNum(raw.y, 1e6);
+    return out;
+  }
   if (raw.k === 'burst') {
     coopKeys(raw, ['k', 'x', 'y', 'r', 't', 'el']);
     const out = { k: 'burst', x: coopNum(raw.x, 1e6), y: coopNum(raw.y, 1e6), r: coopInt(raw.r, 1, 400), t: Math.max(0, coopNum(raw.t, 10)) };
@@ -928,7 +940,9 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       if (data.tier !== undefined) { if (typeof data.tier !== 'string' || !COOP_FX.test(data.tier)) coopBad(); tier = data.tier; }
       session.coopSnapAt = now(); session.coopStale = false;
       const msg = { type: 'coop-snap', from: me, area, term: host.term, seq, kf: data.kf, mobs, gone, ev, ...(tier ? { tier } : {}) };
-      for (const s of others) if (s.stream) send(s.stream, msg);
+      // S10: an older client never hears a party boss's marks (it would read one as a kill).
+      const plain = ev.some(e => e.k === 'mech') ? { ...msg, ev: ev.filter(e => e.k !== 'mech') } : msg;
+      for (const s of others) if (s.stream) send(s.stream, s.mech ? msg : plain);
       reply(200, { ok: true, to: others.length }); return;
     }
     if (!host || host.host === me) throw fail(409, 'Nobody hosts here.');
@@ -1460,6 +1474,8 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
         session.p9 = Number.isInteger(data.protocol) && data.protocol >= 9;
         // Protocol 10: statuses, refusals, its life and its credit are the room's (social-world.mjs).
         session.p10 = Number.isInteger(data.protocol) && data.protocol >= 10;
+        // S10: a client that draws party bosses' marks (td-party-boss): only it is sent the `mech` events.
+        session.mech = data.mech === true;
         session.character = session.p8 && typeof data.character === 'string' && /^[a-z0-9]{2,16}$/.test(data.character) ? data.character : null;
         session.token = token;
         sessions.set(token, session);

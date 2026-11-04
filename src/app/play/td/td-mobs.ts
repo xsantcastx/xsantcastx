@@ -28,6 +28,8 @@ import { AURA_PULSE, auraEffect, type AuraEffect, type AuraId } from '../../shar
 import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
+import { makePack } from './td-elites';
+import { worldBossScale } from '../world/world-bosses';
 import { AFFIX_DEFS, TD_RANK_HP, BRUTAL, EMBER_HEART, GRAVE_CALL, KIN_SHIELD, LIGHTLESS_R, MIRROR_SHARE, MULTISHOT, VAMPIRIC, WHISPER_HUSH, auraAffix, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, UNIQUE_SHARE, type ElitePack, type EliteTag } from './td-elites';
 import { extraSpawn, hardened, nightType, rollTouched, rulesOf, skyVars, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
@@ -49,6 +51,7 @@ import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } fr
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
 import { BLEED_MOVING, abilitiesOf, FL_AB0, FL_AB1, FL_AURA_OFF, FL_HIDDEN, FL_WARDED, KEEPER_CC_IMMUNE, KEEPER_ROOT_MAX, KEEP_WALKING, SPORE_WEAKEN, T as ATILE, TRUE_LIGHT_CUT, castable, decodeStatus, encodeStatus, tierCd, type AbilityDef, type KeeperStatus, type StatusLay, type TellTone } from './td-abilities';
 import { AURA_F, CUT_AURAS, type AllyClaim } from '../world/ally-claims';
+import { MECH, blowOf, newPartyState, partyBite, partyCleanse, partyFormOf, partyGuard, partyHealed, partyStep, type PartyArena, type PartyKeeper, type PartyMark, type PartyState } from './td-party-boss';
 import { damageThreat, forgetThreat, healThreat, kinKey, pickByThreat, pickKin, tauntThreat, type KinCandidate, type ThreatBook, type ThreatCandidate } from './td-threat';
 import { biteCueOf, bitePitch, skillKit, type KeeperAnim } from './td-skill-kit';
 import { PACK_AURA_REACH, PACK_PULSE, PACK_PULSE_TYPE, PACK_STRIP_SECS, fixedAura, halvedBy, landOf, packAuraFx, packAuraLevel, packAuraPool, type PackAuraFx, type PackAuraId } from './td-pack-aura';
@@ -1932,6 +1935,11 @@ function outline(img: ImageData, rim?: string): void {
  */
 export function mobK(def: { w?: number }): number { const w = def.w ?? 0; return w >= 60 ? 1.15 : w >= 40 ? 1.3 : 1.5; }
 /** A creature's cell in its sheet (fine-grid px): its art box grown by mobK, rounded up. */
+/** S10: how many times its size a creature is drawn (a world boss, by its spawn key); its plate, its pick and its tells follow. */
+export function mobScale(m: { key: string }): number { return Math.min(scaleCap, worldBossScale(m.key)); }
+let scaleCap = 3;
+/** The flat figures are drawn bigger than the HD ones: a world boss is ×2 there (×3 would fill the view), ×3 in HD. */
+export function setMobScaleCap(n: number): void { scaleCap = Math.max(1, Math.round(n)); }
 export function mobCell(def: { w?: number; h: number }): { w: number; h: number } { const k = mobK(def); return { w: Math.ceil((def.w ?? 0) * k), h: Math.ceil(def.h * k) }; }
 export function mobSheet(def: MobDef): HTMLCanvasElement {
   let s = sheets.get(def.id);
@@ -2101,6 +2109,10 @@ export interface Mob {
   raisedOne?: boolean;
   /** Grave-called: its call is spent. */
   graveCalled?: boolean;
+  // ── S10: a party boss (td-party-boss.ts) ──
+  /** Its party form's id (a world boss's, set where it rises), and the form's state once it woke. */
+  form?: string;
+  pb?: PartyState;
   // ── Protocol 10 (the room's statuses; play/world/room-status.ts) ──
   /** Taunted by this Keeper (the room's id): it turns on that one. Feared away from this spot. */
   tauntBy?: string;
@@ -2181,7 +2193,7 @@ export function isConstruct(creature: string): boolean {
 export interface DeathBurst {
   x: number; y: number; t: number; r: number; dmg: number;
   /** A boss's ground warning (the Seam Eater's Rend): its whole tell (FIRE_BURST.delay when unset), its tone and type. */
-  delay?: number; el?: 'ember' | 'shadow' | TellTone | 'raise'; type?: DamageType;
+  delay?: number; el?: 'ember' | 'shadow' | TellTone | 'raise' | 'pbhit' | 'pbsoak' | 'pbspread'; type?: DamageType;
   /** The level of the creature it came from (td-zones level gap); unset: none. */
   lv?: number;
   /**
@@ -2191,6 +2203,8 @@ export interface DeathBurst {
    */
   by?: Mob; st?: string; pull?: number; tone?: TellTone; fx?: boolean;
   after?: { r: number; t: number; dps: number; st?: KeeperStatus; tone: TellTone };
+  /** S10 (td-party-boss): a party mechanic's ring — a picture; the director decides what it strikes. */
+  pb?: true;
 }
 
 /** S6: a lasting patch of hostile ground (fire ground, crust, an ink trail, a web, a spore cloud). */
@@ -2552,7 +2566,7 @@ function waveEl(el: string | undefined): NonNullable<Effect['el']> {
     case 'shadow': case 'ink': return 'shadow';
     case 'frost': case 'water': return 'shadow';
     case 'life': case 'moss': return 'life';
-    case 'bone': case 'glass': case 'dust': case 'parchment': return 'bone';
+    case 'bone': case 'glass': case 'dust': case 'parchment': case 'storm': return 'bone';
     default: return 'ember';
   }
 }
@@ -3240,7 +3254,7 @@ export class MobSystem {
   /** The creature under a point (its middle within 18 px). `rel` (the isometric view): the point as seen against each foot. */
   mobAt(x: number, y: number, rel?: (fx: number, fy: number) => { x: number; y: number }): Mob | null {
     let best: Mob | null = null, bd = 18;
-    for (const m of this.mobs) { const q = rel ? rel(m.x, m.y) : null, px = q ? q.x : x, py = q ? q.y : y; const d = Math.hypot(m.x - px, m.y - m.def.h / 2 - py); if (d < bd) { bd = d; best = m; } }
+    for (const m of this.mobs) { const q = rel ? rel(m.x, m.y) : null, px = q ? q.x : x, py = q ? q.y : y; const S = mobScale(m), d = Math.hypot(m.x - px, m.y - m.def.h * S / 2 - py) / S; if (d < bd) { bd = d; best = m; } }
     return best;
   }
 
@@ -3629,6 +3643,8 @@ export class MobSystem {
         // A cursed foe bites weaker.
         const weak = this.weakOf(m);
         if (weak > 0) n = Math.max(1, Math.round(n * (1 - weak / 100)));
+        // S10: a party boss's blow on its fixated (Fixate's every-4th heavy, Sunder's stacks).
+        if (m.pb && !prey && !kinPrey) n = Math.round(partyBite(m.pb, other ? other.id : '', n, blowOf(m), () => this.bursts.push({ x: other ? other.x : p.x, y: (other ? other.y : p.y), t: MECH.heavyTell, delay: MECH.heavyTell, r: 22, dmg: 0, el: 'pbhit', tone: 'ember', pb: true })));
         if (other) {
           const ax = m.elite?.affixes ?? [];
           (m.coopBy ??= new Set()).add(other.id);
@@ -3638,6 +3654,9 @@ export class MobSystem {
         else { this.biteKeeper(n, this.blowType(m), m); this.layOn(this.biteRiders(m, n, true), m); this.eliteBlow(m); this.struckBy(m); }
       }
     }
+    // S10: the party bosses' mechanics (td-party-boss), on the simulating side only.
+    if (!this.replica) this.updateParty(dt);
+    if (this.partyFx.length) this.tickPartyFx(dt);
     // A pack stays a pack, not one sprite: creatures standing on each other ease apart (never into a wall).
     if (!this.replica) this.spreadMobs(dt);
     // Fire Enchanted's last word: the burst leaves when its ring has shown its reach.
@@ -3650,7 +3669,8 @@ export class MobSystem {
       if (b.fx) { this.effects.push({ kind: b.el === 'life' ? 'heal' : 'raise', x: b.x, y: b.y, age: 0, life: .5, dir: 1 }); if (b.el === 'raise' && this.replica) this.raiseSeen(b.x, b.y); continue; }
       this.effects.push({ kind: 'wave', el: waveEl(b.el), r: b.r, x: b.x, y: b.y, age: 0, life: .5, dir: 1 });
       // A member under a host only sees the burst: the host decides who it caught (a bite, below, on the host's side).
-      if (this.replica) continue;
+      // S10: a party mechanic's ring is the director's to settle (td-party-boss).
+      if (this.replica || b.pb) continue;
       // The ground it leaves (fire ground, a web, a spore cloud).
       if (b.after) this.layHazard({ x: b.x, y: b.y, r: b.after.r, t: b.after.t, dps: b.after.dps, ...(b.after.st ? { st: b.after.st } : {}), tone: b.after.tone, ...(b.lv ? { lv: b.lv } : {}), type: b.type ?? 'fire', ...(b.by ? { by: b.by } : {}) });
       // Only what it can reach from its centre: a ring by a wall does not burst into the room behind it.
@@ -4086,6 +4106,84 @@ export class MobSystem {
     for (let k = this.calls.length - 1; k >= 0; k--) if (this.calls[k].by === m) this.calls.splice(k, 1);
     this.float(m.x, m.y - m.def.h - 6, '!', '#f3e7cf');
   }
+  // ── S10: party bosses (td-party-boss.ts; monsters-abilities.md §5, §6) ──
+  /** Allow party forms here (the sim's solo cells keep the shipped fight by turning it off). */
+  partyForms = true;
+  /** What the party bosses showed since the last flush (the room and a host send them; td-coop). */
+  readonly partyOut: (PartyMark & { by: Mob })[] = [];
+  /** What this screen draws: marks with their seconds left (td-party-fx). */
+  readonly partyFx: (PartyMark & { left: number })[] = [];
+  private pbSeq = 0;
+  /** The Keepers a party boss sees in its arena: this screen's own (unless away) and the others. */
+  private partyKeepers(m: Mob, reach: number): PartyKeeper[] {
+    const out: PartyKeeper[] = [], p = this.host.player();
+    if (!this.selfAway && Math.hypot(p.x - m.x, p.y - m.y) <= reach) out.push({ id: '', self: true, x: p.x, y: p.y });
+    for (const o of this.others) if (Math.hypot(o.x - m.x, o.y - m.y) <= reach) out.push({ id: o.id, self: false, x: o.x, y: o.y });
+    return out;
+  }
+  /** Its form, when it has one and it should wake: a world boss always, a floor boss on Nightmare or Hell with 2+ Keepers. */
+  private partyFormFor(m: Mob, keepers: number) {
+    const f = partyFormOf(m.form ?? (m.def.rank === 'boss' ? m.def.id : null));
+    if (!f) return null;
+    if (m.form) return f;
+    return this.tier.id !== 'normal' && keepers >= 2 ? f : null;
+  }
+  private updateParty(dt: number): void {
+    if (!this.partyForms) return;
+    for (const m of this.mobs) {
+      if (m.hp <= 0 || (m.def.rank !== 'boss' && !m.form)) continue;
+      const fm = m.pb?.form ?? partyFormOf(m.form ?? m.def.id);
+      if (!fm) continue;
+      const reach = (fm.arena + 4) * TILE, ks = this.partyKeepers(m, reach);
+      if (!m.pb) {
+        // It wakes when the fight starts (someone near has hurt it or it has a target), and stays awake.
+        if (!ks.length || m.hp >= m.def.hp || !this.partyFormFor(m, ks.length)) continue;
+        m.pb = newPartyState(fm);
+      }
+      const A: PartyArena = {
+        keepers: () => this.partyKeepers(m, reach),
+        strike: (k, raw, type) => this.strikeKeeper(k, Math.max(1, Math.round(raw)), type, m, '', m.def.level),
+        ring: (x, y, r, t, tone, kind) => { this.bursts.push({ x, y, t, delay: t, r, dmg: 0, el: kind, tone, pb: true, by: m }); },
+        mark: e => { this.partyOut.push({ ...e, by: m }); if (this.partyOut.length > 48) this.partyOut.splice(0, this.partyOut.length - 48); this.partySeen(e); },
+        say: w => { m.chantT = CHANT_SECS * 1.5; m.chantText = w; },
+        adds: (type, n, level, elite) => {
+          const def = MOBS[type];
+          if (!def) return;
+          const d = atZoneLevel(def, Math.max(1, level));
+          for (let i = 0; i < n; i++) {
+            // Two doors: either side of the arena, a little apart.
+            const side = (this.pbSeq++ % 2) ? 1 : -1, x = m.x + side * fm.arena * .8 * TILE, y = m.y + ((i % 3) - 1) * 1.5 * TILE;
+            const key = `${m.key}~pb${this.pbSeq}`;
+            if (elite && i === 0) { this.spawnPack(key, d, x, y, makePack('champion', ['extra-strong'], null, Math.max(0, n - 1))); return; }
+            this.place(key, d, x, y);
+          }
+        },
+        heal: n => { m.hp = Math.min(m.def.hp, m.hp + n); this.float(m.x, m.y - m.def.h - 8, `+${Math.round(n)}`, '#7fe08a'); },
+        stopped: () => (m.stun ?? 0) > 0 || (m.hushT ?? 0) > 0,
+        rng: Math.random,
+        cadence: tierCd(1, this.tier.id),
+      };
+      partyStep(m.pb, m, A, dt, m.threatOn ?? (ks.length === 1 ? ks[0].id : null));
+    }
+  }
+  /** The marks this screen draws run down (every screen, a member's too). */
+  private tickPartyFx(dt: number): void { for (let i = this.partyFx.length - 1; i >= 0; i--) { const f = this.partyFx[i]; f.left -= dt; if (f.left <= 0 || f.t === 0) this.partyFx.splice(i, 1); } }
+  /** The marks a party boss showed since the last call (the wire). */
+  flushParty(): (PartyMark & { by: Mob })[] { return this.partyOut.splice(0); }
+  /** A mark heard from the host or the room (a member draws it). */
+  partySeen(e: PartyMark): void {
+    if (e.t === 0) { for (let i = this.partyFx.length - 1; i >= 0; i--) { const f = this.partyFx[i]; if (f.m === e.m && (f.a ?? '') === (e.a ?? '')) this.partyFx.splice(i, 1); } return; }
+    // One of each a Keeper: a new pip, brand, stack count or bar replaces the last.
+    for (let i = this.partyFx.length - 1; i >= 0; i--) { const f = this.partyFx[i]; if (f.m === e.m && (f.a ?? '') === (e.a ?? '')) this.partyFx.splice(i, 1); }
+    if (this.partyFx.length < 32) this.partyFx.push({ ...e, left: e.t });
+  }
+  /** A Cleanse reached Keeper `id` ('' this screen's own): a party boss's Brand on it is lifted. */
+  partyCleansed(id: string): void { for (const m of this.mobs) if (m.pb) partyCleanse(m.pb, id, { mark: e => { this.partyOut.push({ ...e, by: m }); this.partySeen(e); } }); }
+  /** Keeper `by` mended `n`: the boss learns its healer (Tether's healer-tank). */
+  partyHeal(by: string, n: number): void { for (const m of this.mobs) if (m.pb) partyHealed(m.pb, by, n); }
+  /** Keeper `id` raised a guard (Shield Oath, a Vow, Hold the Gate): its Sunder falls. */
+  partyGuarded(id: string): void { for (const m of this.mobs) if (m.pb) partyGuard(m.pb, id); }
+
   /** A blow lands from `m`: what it lays (Scrape's bleed, Will-o'-the-Fen's burn), heals (Vampiric), wakes (Whispering). */
   private biteRiders(m: Mob, n: number, self: boolean): string {
     const lays: { s: KeeperStatus; t: number; dps?: number }[] = [];
@@ -4167,6 +4265,8 @@ export class MobSystem {
     }
     // Worn boss uniques: the Hammer bites constructs harder; the Censer's ink makes a stained foe take more, and stains.
     if (this.relics.construct > 0 && isConstruct(foe.def.id)) raw *= 1 + this.relics.construct / 100;
+    // The Crown of the Antlered Storm (S10): the Keeper's lightning harder.
+    if (this.relics.lightning > 0 && (src === 'lightning-call' || src === 'chain-of-lamps')) raw *= 1 + this.relics.lightning / 100;
     // The Seamstitch Grips (the Seam Eater's): every hit harder while the sky is dark (night, or an eclipse's noon).
     if (this.relics.umbra > 0 && (this.phase === 'night' || this.phase === 'eclipse')) raw *= 1 + this.relics.umbra / 100;
     const ink = this.relics.ink;
@@ -4619,7 +4719,7 @@ export class MobSystem {
       const half = this.wetHalf ? .5 : 1;
       if (type === 'lightning') n = Math.round(n * (1 + (WET.lightningTaken - 1) * half));
       else if (type === 'fire') n = Math.max(1, Math.round(n * (1 - (1 - WET.fireTaken) * half)));
-      else if (type === 'cold' && this.kst.immune <= 0) { this.kst.freeze = Math.max(this.kst.freeze, 1); this.kst.immune = 1 + KEEPER_CC_IMMUNE; }
+      else if (type === 'cold' && this.kst.immune <= 0 && !(this.relics.storm > 0)) { this.kst.freeze = Math.max(this.kst.freeze, 1); this.kst.immune = 1 + KEEPER_CC_IMMUNE; }
     }
     // A Thundercake (S8): lightning taken a little less while it lasts.
     if (type === 'lightning' && this.mealLightning > 0 && n > 0) n = Math.max(1, Math.round(n * (1 - this.mealLightning / 100)));
@@ -6278,7 +6378,7 @@ export class MobSystem {
       const foe = foeInRange();
       if (!foe) return 'nofoe';
       const storm = this.weatherWet || this.stormSky, sl = storm ? this.mk(id, 'stormLantern') : null;
-      const most = Math.max(1, v['jumps'] + (sl?.n ?? 0)), st = this.mk(id, 'static'), ha = this.mk(id, 'healingArc');
+      const most = Math.max(1, v['jumps'] + (sl?.n ?? 0) + (storm ? this.relics.storm : 0)), st = this.mk(id, 'static'), ha = this.mk(id, 'healingArc');
       let at = foe, k = 1, from = { x: p.x, y: p.y - 30 };
       const hit = new Set<Mob>();
       for (let i = 0; i < most && at; i++) {
@@ -6489,7 +6589,7 @@ export class MobSystem {
       if (wet) {
         let from = wet;
         const hit = new Set(struck);
-        for (let i = 0; i < v['chain'] + (this.stormSky ? 1 : 0); i++) {
+        for (let i = 0; i < v['chain'] + (this.stormSky ? 1 : 0) + (this.stormSky || this.weatherWet ? this.relics.storm : 0); i++) {
           let next: Mob | null = null, bd = LIGHTNING_CHAIN_TILES * TILE;
           for (const m of this.mobs) { if (hit.has(m) || m.hp <= 0) continue; const d = Math.hypot(m.x - from.x, m.y - from.y); if (d <= bd && this.sight.sees(from.x, from.y, m.x, m.y)) { bd = d; next = m; } }
           if (!next) break;

@@ -26,6 +26,7 @@ import { hardened } from './td-phases';
 import { STATUS_WIRE } from './td-abilities';
 import { TILE } from './td-art';
 import { isAshSkill } from './td-threat';
+import { PARTY_RINGS, mechEvent } from './td-party-boss';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { DamageType } from '../../shared/loot/damage.model';
 import {
@@ -402,6 +403,9 @@ export class TdCoop implements CoopLink {
       this.sentFx.add(h);
       if (seen(h.x, h.y)) out.push(fieldEvent(h));
     }
+    // S10: a party boss's marks (this host's own Keeper is '' here, its room id on the wire).
+    const me = (id: string | undefined) => (id === '' ? this.me : id);
+    for (const e of this.mobs.flushParty()) if (e.by.nid && seen(e.by.x, e.by.y)) out.push(mechEvent({ ...e, ...(e.a !== undefined ? { a: me(e.a) } : {}), ...(e.b !== undefined ? { b: me(e.b) } : {}) }, e.by.nid));
     return out;
   }
   private sendSnap(): void {
@@ -559,6 +563,11 @@ export class TdCoop implements CoopLink {
       this.mobs.shots.push({ x: e.x, y: e.y, vx: e.vx, vy: e.vy, dmg: 0, age: 0, life: e.l, kind: e.s as MobShot['kind'] });
       return;
     }
+    if (e.k === 'burst' && e.el && PARTY_RINGS.includes(e.el)) {
+      // S10: a party boss's ring (a picture: the host or the room settles it; td-party-fx draws it over the rain).
+      this.mobs.bursts.push({ x: e.x, y: e.y, t: e.t, r: e.r, dmg: 0, el: e.el as DeathBurst['el'], tone: 'storm', delay: e.t, pb: true });
+      return;
+    }
     if (e.k === 'burst') {
       // S6: an ability's ring wears its tone; a raise's sigil is a picture (its corpse goes when it ends).
       const tone = e.el && e.el !== 'ember' && e.el !== 'shadow' ? e.el : undefined;
@@ -567,6 +576,12 @@ export class TdCoop implements CoopLink {
     }
     if (e.k === 'field') {
       this.mobs.fieldSeen(e);
+      return;
+    }
+    if (e.k === 'mech') {
+      // S10: a party boss's mark — this Keeper's own id reads '' on this screen.
+      const own = (id: string | undefined) => (id === this.me ? '' : id);
+      this.mobs.partySeen({ m: e.m, i: e.i, t: e.t, ...(e.a !== undefined ? { a: own(e.a) } : {}), ...(e.b !== undefined ? { b: own(e.b) } : {}), ...(e.n !== undefined ? { n: e.n } : {}), ...(e.w ? { w: e.w } : {}), ...(e.x !== undefined ? { x: e.x } : {}), ...(e.y !== undefined ? { y: e.y } : {}) });
       return;
     }
     if (e.k === 'down') {

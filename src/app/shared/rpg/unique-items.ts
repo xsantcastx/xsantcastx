@@ -105,9 +105,10 @@ export interface UniqueItem {
    */
   aura?: AuraId;
   /**
-   * The boss it drops from, and from nothing else (boss-uniques.ts). Set only on
-   * the eight boss uniques; the Gambler and every creature's ordinary unique
-   * roll leave these out.
+   * The boss it drops from, and from nothing else (boss-uniques.ts). Set on the
+   * boss uniques and on a world boss's own (S10: the Antlered Storm's Crown, a
+   * world-bosses.ts id); the Gambler and every creature's ordinary unique roll
+   * leave these out.
    */
   boss?: string;
   /**
@@ -284,6 +285,16 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
 
   // ── Mythic: two, and they are meant to be talked about ───────────────────
+  {
+    // S10 (monsters-abilities §6.3): the Antlered Storm's own, 1 in 10 at its fall, only ever Legendary.
+    id: 'unique-crown-of-the-antlered-storm', name: 'Crown of the Antlered Storm', rarity: 'legendary', slot: 'head', style: 'verdant',
+    rollKeys: ['lightningResist', 'moveSpeed'], base: { lightningResist: 12, moveSpeed: 4 },
+    passive: { effect: 'relic', text: 'Lightning Call and Chain of Lamps +3 ranks and 30% harder; in rain or a thunderstorm your lightning chains to one more foe, and Wet cannot freeze you.' },
+    sig: { ranks: { 'lightning-call': 3, 'chain-of-lamps': 3 }, lightning: 30, storm: 1 },
+    // Its boss's alone (world-bosses.ts loot): never on an open unique roll, never the Gambler's.
+    boss: 'antlered-storm',
+    lore: 'The hart wanted to be a tree. The tree wanted to be the storm. Neither asked the antlers.',
+  },
   {
     id: 'unique-heartwood-of-the-verge', name: 'Heartwood of the Verge', rarity: 'mythic', slot: 'chest', style: 'verdant',
     rollKeys: ['ward', 'goldFind', 'xpBonus'], base: { ward: 9, goldFind: 5, xpBonus: 10 },

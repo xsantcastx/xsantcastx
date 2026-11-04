@@ -14,6 +14,9 @@ export const WEATHER_BARKS: readonly WeatherBark[] = [
   { npc: 'charburner-kiln', states: ['rain', 'storm', 'mistrain'], key: 'weather.bark.maud' },
   { npc: 'captain-vey', states: ['storm'], key: 'weather.bark.vey' },
   { npc: 'warden-fenn', states: ['spores'], key: 'weather.bark.fenn' },
+  // S10: the Antlered Storm's rumours (monsters-abilities §6.3): in a thunderstorm the Wilds talk about the Oak.
+  { npc: 'warden-fenn', states: ['storm'], key: 'weather.bark.fennStorm' },
+  { npc: 'teo-alder', states: ['storm'], key: 'weather.bark.alderStorm' },
   { npc: 'harbourmaster-old-corvane', states: ['fog', 'mistrain'], key: 'weather.bark.corvane' },
 ];
 /** How near (tiles) the Keeper walks for one of them to speak. */
