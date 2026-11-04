@@ -50,7 +50,7 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     loot: { rolls: 4, chance: .45, uniques: ['unique-goldmouth', 'unique-ashen-covenant', 'unique-pyrograph-scroll-case'] },
   },
   {
-    id: 'the-copied-hart', name: 'The Copied Hart', area: 'verdant-wilds', regions: ['J'], base: 'rootglass-hart', level: 42,
+    id: 'the-copied-hart', name: 'The Copied Hart', area: 'verdant-wilds-deep-wilds', regions: ['J'], base: 'rootglass-hart', level: 42,
     life: 6, blows: 1.35, affixes: ['teleport', 'stone-skin'], followers: 2, every: [5, 7], stay: 2,
     loot: { rolls: 4, chance: .4, uniques: ['unique-heartwood-of-the-verge', 'unique-spore-crown', 'unique-thornroot-greaves'] },
   },

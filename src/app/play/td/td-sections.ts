@@ -39,7 +39,13 @@ export function seamArrival(s: SectionSeam): { c: number; r: number } {
 }
 
 /** A section's one sound (the zone bible's "Sounds"): an engine cue, heard every `every` seconds or so, never in a town's square. */
-export interface SectionSound { cue: 'farbell' | 'warhorn' | 'splash' | 'crackle' | 'cart-roll' | 'drum' | 'clang' | 'glass-ping' | 'lava-hiss' | 'march'; every: readonly [number, number] }
+export interface SectionSound {
+  cue: 'farbell' | 'warhorn' | 'splash' | 'crackle' | 'cart-roll' | 'drum' | 'clang' | 'glass-ping' | 'lava-hiss' | 'march'
+    // The Verdant Wilds (canon §8.3): birds that stop all at once, frogs at the water, boughs creaking, weavers clicking,
+    // a hymn too faint to place; under the ground, chewing in the walls, a drip into the well, a heartbeat.
+    | 'birdstop' | 'frogs' | 'creak' | 'chitter' | 'hymn' | 'chew' | 'drip' | 'heartbeat';
+  every: readonly [number, number];
+}
 /** The zone bible's check (canon §8): every section has something to read, something sealed and its own sound. */
 export interface SectionBible { read: string; sealed: string; sound: SectionSound }
 
@@ -79,4 +85,41 @@ export const REACH_ROUTE: readonly { area: string; from?: string; to?: string }[
   { area: 'glass-throat-2', from: 'throat2-up', to: 'throat-out' },
   { area: 'infernal-reach-molten-fields' },
   { area: 'infernal-reach-pyre-peaks' },
+];
+
+/**
+ * The Verdant Wilds as an act (S11; world-acts.md §1.3; canon §8.3): its sections and the Root Hollows' floors (the
+ * connector), by area id, as REACH_BIBLE. Words: td-wilds.i18n.ts (`reach.read.<id>`, `reach.sealed.<id>`).
+ */
+export const WILDS_BIBLE: Readonly<Record<string, SectionBible>> = {
+  'verdant-wilds-shore': { read: 'read:shore-netpost', sealed: 'sealed:shore-hull', sound: { cue: 'splash', every: [12, 24] } },
+  'verdant-wilds-rootglass': { read: 'read:rootglass-lamproll', sealed: 'sealed:rootglass-rootdoor', sound: { cue: 'glass-ping', every: [18, 34] } },
+  'verdant-wilds-fernglades': { read: 'read:fern-bellpost', sealed: 'sealed:fern-bellhouse', sound: { cue: 'birdstop', every: [30, 55] } },
+  'verdant-wilds-rootwater': { read: 'read:ford-depthpost', sealed: 'sealed:ford-sluice', sound: { cue: 'frogs', every: [16, 30] } },
+  'verdant-wilds-glassmere': { read: 'read:mere-tally', sealed: 'sealed:mere-cave', sound: { cue: 'splash', every: [10, 22] } },
+  'verdant-wilds-greenwood': { read: 'read:hedge-cairn', sealed: 'sealed:thorn-hedge', sound: { cue: 'creak', every: [20, 38] } },
+  'root-hollows-1': { read: 'read:hollows-gnaw', sealed: 'sealed:hollows-packed', sound: { cue: 'chew', every: [14, 28] } },
+  'root-hollows-2': { read: 'read:hollows-rope', sealed: 'sealed:hollows-coffer', sound: { cue: 'drip', every: [6, 14] } },
+  'root-hollows-3': { read: 'read:heartroot-rings', sealed: 'sealed:heartroot-niche', sound: { cue: 'heartbeat', every: [12, 22] } },
+  'verdant-wilds-deep-wilds': { read: 'read:deep-lantern-hook', sealed: 'sealed:deep-spore-mouth', sound: { cue: 'chitter', every: [18, 34] } },
+  'verdant-wilds-courts': { read: 'read:courts-moss', sealed: 'sealed:courts-bellframe', sound: { cue: 'hymn', every: [40, 70] } },
+};
+/** Every act's zone bible, by area id (the engine's section sound reads it). */
+export const SECTION_BIBLE: Readonly<Record<string, SectionBible>> = { ...REACH_BIBLE, ...WILDS_BIBLE };
+
+/**
+ * The Wilds' road in order, Mossharbor's pier to the Overgrown Temple's gate (world-acts.md §1.3: about 14 minutes):
+ * the Mossy Shore, the Fernglades, the Rootwater Ford, the Greenwood, down the Root Hollows to the root-ramp, the Deep
+ * Wilds, the Sunken Courts.
+ */
+export const WILDS_ROUTE: readonly { area: string; from?: string; to?: string }[] = [
+  { area: 'verdant-wilds-shore' },
+  { area: 'verdant-wilds-fernglades' },
+  { area: 'verdant-wilds-rootwater' },
+  { area: 'verdant-wilds-greenwood' },
+  { area: 'root-hollows-1', from: 'hollows-out', to: 'hollows1-down' },
+  { area: 'root-hollows-2', from: 'hollows2-up', to: 'hollows2-down' },
+  { area: 'root-hollows-3', from: 'hollows3-up', to: 'hollows3-ramp' },
+  { area: 'verdant-wilds-deep-wilds' },
+  { area: 'verdant-wilds-courts' },
 ];

@@ -29,7 +29,7 @@ export const PIERS: readonly Pier[] = [
   { id: 'ember-harbour', name: 'Ember Harbour', continent: 'ember-isle', village: null, stations: ['ship-reach', 'ship-isle-verdant'], master: { id: 'harbourmaster-odd-tarn', name: 'Odd Tarn' }, at: { c: 1, r: 2 } },
   { id: 'pyrehold', name: 'Pyrehold', continent: 'infernal-reach-pyrehold', village: null, stations: ['ship-isle', 'ship-verdant', 'ship-umbral'], master: { id: 'harbourmaster-garrick-dross', name: 'Garrick Dross' }, at: { c: 1, r: 2 } },
   { id: 'cinderport', name: 'Cinderport', continent: 'infernal-reach-cinderport', village: 'Cinderport', stations: ['ship-cinderport'], master: { id: 'harbourmaster-marit-salt', name: 'Marit Salt' }, at: { c: 16, r: 12 } },
-  { id: 'mossharbor', name: 'Mossharbor', continent: 'verdant-wilds', village: 'Mossharbor', stations: ['ship-mossharbor', 'ship-mossharbor-isle'], master: { id: 'harbourmaster-sunny-pell', name: 'Sunny Pell' }, at: { c: 12, r: 12 } },
+  { id: 'mossharbor', name: 'Mossharbor', continent: 'verdant-wilds-shore', village: 'Mossharbor', stations: ['ship-mossharbor', 'ship-mossharbor-isle', 'ship-mossharbor-marches'], master: { id: 'harbourmaster-sunny-pell', name: 'Sunny Pell' }, at: { c: 12, r: 12 } },
   { id: 'mirewatch', name: 'Mirewatch', continent: 'umbral-marches', village: 'Mirewatch', stations: ['ship-mirewatch'], master: { id: 'harbourmaster-old-corvane', name: 'Old Corvane' }, at: { c: 17, r: 12 } },
 ];
 
@@ -54,10 +54,11 @@ export const STORY_LOCKS_ENFORCED = false;
 /**
  * The act ends that are built, and so hold their ships (world-acts.md §0: "soft-warned, hard-gated: the board shows the
  * ship and says what must fall first"), by pier → the boss that holds it. Act I (S7, campaign.md): Garrick Dross's board
- * at Pyrehold does not sail for the Verdant Wilds until the Cinder Sovereign falls. (Ember Harbour's long-way ketch to
+ * at Pyrehold does not sail for the Verdant Wilds until the Cinder Sovereign falls. Act II (S11): Sunny Pell's fen-barge
+ * at Mossharbor does not sail for Mirewatch until the Elder Rootwyrm falls. (Ember Harbour's long-way ketch to
  * Mossharbor is not held yet: the DM's call, logged in docs/handoff/s7reach.md.)
  */
-export const ACT_GATES_ENFORCED: Readonly<Record<string, string>> = { pyrehold: 'cinder-sovereign' };
+export const ACT_GATES_ENFORCED: Readonly<Record<string, string>> = { pyrehold: 'cinder-sovereign', mossharbor: 'elder-rootwyrm' };
 
 /** The long way round (two minutes by sea in the doc): a boat that skips a whole continent. */
 const LONG_WAY: ReadonlySet<string> = new Set(['ship-isle-verdant', 'ship-mossharbor-isle']);

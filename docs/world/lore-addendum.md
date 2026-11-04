@@ -1873,3 +1873,35 @@ vesh*), and the sky's three answer the Canopy Wardens: a rain cloud that thunder
 bank the creatures lose you in, and the sky's lamp, *lum vor*, that chains through the Wet. Names and lines:
 `play/td/*.i18n.ts`, `play/world/hud.i18n.ts`, marks in `play/spellbook/book.i18n.ts` (EN + ES).
 
+
+## The Wilds as an act (2026-11-04, S11 part 1, branch `s11wilds`) — shipped, owner reviews in play
+
+The Verdant Wilds are a long road of sections now (canon §3.4b), their edge the wood itself grown into a wall of vine and
+root. Mossharbor stands on **the Mossy Shore**; its north road climbs into **the Fernglades** (Thornwick on the east road,
+Rootglass down the west, the Moss Altar off the road); the ford road crosses **the Rootwater Ford** on its planks (the
+Drowned Aqueduct by the bank; the east path to **the Glassmere**, still water and a dead end); the north road runs into
+**the Greenwood**, where the old road to the Deep Wilds is grown shut with a **thorn hedge** ("The wood closes what it
+forgets."). The way on is under it: **the Root Hollows**, down to the Heartroot Cellar and up the dead tree's own
+**root-ramp** into **the Deep Wilds**, then east to **the Sunken Courts** and the Overgrown Temple's gate.
+
+New names (registered in canon §3.4b / §8.3): **the Boardwalk Stone** (Rootglass's Waystone); **the Copied Pair** (the
+two identical trees in the Greenwood's glade); Sunny Pell's **fen-barge** to Mirewatch (held until the Elder Rootwyrm
+falls). The rest are canon's already: the Net, Bell-Post, Plank, Mere, Copy-Tree, Heartroot and Pillar Stones; the
+Weaver Canopy, the Hart Meadow, the Bell-less Square.
+
+Things to read, one a section and one a floor: Wenna's net-post ("Mirrorfin, none since the bells stopped"); the
+lamplighters' roll in Rootglass (nine Fenns, the tenth line waiting); a priests' bell-post ("Rung at the turn of the light,
+so the wood remembers its shape"); the Rootwater's depth post; a fisher's tally at the mere ("Something under the planks
+that was not a fish, 1"); the cairn by the thorns; gnaw-marks in rows of five; a woodward's cut rope at the Sporewell's
+lip; the heartroot's rings with "tomorrow" scratched in the last; a lantern hook nailed higher than any arm, the sap run
+round it (the tree that wears a lantern, campaign #7); moss in rows straight as verse near the Courts.
+
+Sealed things: a moss-shut hull on the shore; a door in Rootglass's roots the Bole closed itself; a bell-house with no
+bell and no rope; a root-choked sluice of the Aqueduct; a root-woven cave in the mere's bank; the thorn hedge; a side
+tunnel packed by small hands; the woodward's swollen chest; a root that shivers at a light (the Hollows' hidden cache);
+a spore-choked hollow the motes drift toward at night (the Spore Lights, later); a bell-frame the vines hold up.
+
+The first Wilds night event: **the Walking Tree** (the Greenwood's glade; night, or the Greenwood's fog). One of the Copied
+Pair is somewhere else each time the Keeper looks away, never in sight, never within six tiles. After its third move
+Glim drifts to it and dims ("That one is the copy. Strike it."); one blow and it is only a tree, and a **Copy-Seed** drops
+("Plant it and it grows true, Rue Hazel says. Mostly."). A clue for campaign #7, the Graft Crown.

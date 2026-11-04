@@ -20,7 +20,7 @@ import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, drawWorn
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
-import { PAL, SOLID_GROUND, hash, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
+import { PAL, SOLID_GROUND, hash, jungleTree, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { paintRichGround, richEdge } from './td-ground';
 import { organic, paintFieldTile } from './td-terrain';
 import { castShadow } from './td-shade';
@@ -59,7 +59,7 @@ import { BARROW_DOOR_ID } from './maps/hushed-barrow';
 import { SEXTON_CONTINENT, SEXTON_PAGE, SEXTON_STONES, SEXTON_VAULT, VAULT_GRAVE, VAULT_KEYHOLE, WALKER, WALKER_AT, chalkMark, ledgerPage, pageShown, seekSpot, stallSpot } from './td-sexton';
 import type { ContinentDef } from './continent';
 import { CONTINENTS, LEVELS, RENAMED_CONTINENTS } from './td-levels';
-import { REACH_BIBLE, SEAM_VEIL, seamArrival, seamPast } from './td-sections';
+import { SECTION_BIBLE, SEAM_VEIL, seamArrival, seamPast } from './td-sections';
 export { CONTINENTS, LEVELS };
 import type { TdMapDef } from './td-level';
 
@@ -158,7 +158,7 @@ import { actionFor, defaultBindings, type Bindings } from '../../shared/keys/key
 import { TdWaygates, bossFighting, drawWaygate, waygateLeft } from './td-waygate';
 import { FISH_REACH, GatherRuntime, SHADOW_CAP, SHADOW_CAP_LOW, type Campfire } from './td-gather';
 import { WeatherFx, type StrikeGround } from './td-weather-fx';
-import { KILN_STATION, NIGHT_PLACES, NightEvents, nightLabel, type NightNews } from './td-night-events';
+import { KILN_STATION, NIGHT_PLACES, NightEvents, WALKER_AREA, WALKER_SEED, nightLabel, type NightNews } from './td-night-events';
 import { NIGHT_EVENT_IDS, NIGHT_REWARDS, nightRewardKey, type NightEventId } from '../../shared/night-events/night-events.model';
 import { WEATHER_BARKS, ODETTE_BOARD, barkFor } from './td-sky-lines';
 import type { FishSpot } from './td-world';
@@ -861,6 +861,8 @@ export class TopDownEngine {
       camp: (id: string) => this.mobs.mobs.filter(m => m.hp > 0 && new RegExp(`^(camp|den|cg):${id}:\\d+$`).test(m.key)).map(m => ({ key: m.key, type: m.def.id, rank: m.elite?.rank ?? null, level: m.def.level })),
       campAt: (id: string) => { const k = this.world.def.camps?.find(x => x.id === id); return k ? { c: k.c, r: k.r, n: k.spawns.length } : null; },
       stones: () => this.landStones(),
+      // S11, the Walking Tree: where the copy stands, whether it waits for its blow, whether it has had it.
+      walker: () => ({ ...this.nightEvents.walker(), c: Math.floor(this.nightEvents.walker().x / TILE), r: Math.floor((this.nightEvents.walker().y - 1) / TILE) }),
     };
     // Sight's e2e (webdriver only; td-sight.ts): a wall between the Keeper and a calm boss, a raw bolt thrown at it
     // anyway, the raised laid on one spot to watch them spread.
@@ -1328,13 +1330,37 @@ export class TopDownEngine {
       }
     }
     // The night events (shared/night-events): seeded per land and night, walked and drawn here; the rewards laid down.
-    const news = this.nightEvents.update({ ms: this.skyMs, rolls: this.weatherIn?.rolls ?? null, area: this.world.continent, surface: this.level === this.world, keeper: this.player, dt });
+    const news = this.nightEvents.update({ ms: this.skyMs, rolls: this.weatherIn?.rolls ?? null, area: this.world.continent, surface: this.level === this.world, keeper: this.player, dt, seen: this.onScreen });
     for (const n of news) this.nightNews(n);
+    this.placeWalker();
     const short = this.nightEvents.now.map(e => e.id).join(',');
     if (short !== this.nightEventsSeen) { this.nightEventsSeen = short; this.canvas.setAttribute('data-night-events', short); }
   }
+  /** Is a world point on screen now (a tree's crown counted: it reaches up)? The Walking Tree only moves while unseen. */
+  private readonly onScreen = (x: number, y: number): boolean => {
+    if (this.iso) return this.isoIn(x, y, 24) || this.isoIn(x, y - 48, 24);
+    const cam = this.cam;
+    return x > cam.x - 24 && x < cam.x + cam.w + 24 && y > cam.y - 24 && y < cam.y + cam.h + 64;
+  };
+  /** The Greenwood's copied tree (S11, the Walking Tree): one of the wilds' own trees, wherever the night event has it. */
+  private walkerObj: TdObject | null = null;
+  private placeWalker(): void {
+    if (this.world.continent !== WALKER_AREA) return;
+    const at = this.nightEvents.walker();
+    if (!this.walkerObj) { this.walkerObj = { sprite: () => jungleTree(WALKER_SEED), x: at.x, y: at.y, kind: 'prop' }; }
+    if (!this.world.extra.includes(this.walkerObj)) this.world.extra.push(this.walkerObj);
+    this.walkerObj.x = at.x; this.walkerObj.y = at.y;
+  }
+  /** The copy waits for its blow, and the Keeper stands within reach of it. */
+  private walkerNear(): boolean {
+    if (this.level !== this.world || this.world.continent !== WALKER_AREA) return false;
+    const w = this.nightEvents.walker();
+    return w.ready && Math.hypot(w.x - this.player.x, w.y - this.player.y) <= 2.5 * TILE;
+  }
   private nightNews(n: NightNews): void {
     if (n.kind === 'sfx') { this.options.onSfx?.({ kind: n.cue }); return; }
+    // Glim drifts to the copied tree and dims beside it (the Walking Tree, after its third move).
+    if (n.kind === 'line' && n.key === 'nightev.walker.dim') { const w = this.nightEvents.walker(); this.glimPoint(w.x + 14, w.y - 22, 3, false); }
     if (n.kind === 'line') { this.say(n.key); this.messageAge = -5; return; }
     // A reward: laid on the ground where the event ends, once a night (the host says if it is already booked).
     const r = NIGHT_REWARDS[n.id];
@@ -1559,6 +1585,8 @@ export class TopDownEngine {
     // A corpse with loot in reach beats a stall that is farther than it (the nearest thing wins).
     const cp = this.mobs.corpseNear(this.player.x, this.player.y);
     if (cp && (!this.nearby || Math.hypot(cp.x - this.player.x, cp.y - this.player.y) < Math.hypot(this.nearby.x - this.player.x, this.nearby.y - this.player.y))) { this.openCorpse(cp.id); return; }
+    // S11: the Walking Tree, Glim dimmed beside it: one blow and it is a plain tree again (it leaves a copy-seed).
+    if (this.walkerNear() && this.nightEvents.strikeWalker(this.player)) { this.options.onSfx?.({ kind: 'clang' }); this.shake = Math.max(this.shake, .12); return; }
     if (this.nearby) { this.use(this.nearby); return; }
     // The gathering skills: a fire in reach (cook), a fishing spot in reach (cast), then a tree (chop).
     const src = this.cookSourceNear(this.player.x, this.player.y);
@@ -2160,7 +2188,7 @@ export class TopDownEngine {
   private get land(): string { return landOfArea(this.world.continent); }
   /** The section veil (SEAM_VEIL: 0.4 s, dark at its middle, where the area changes); null when none is up. */
   private sectionVeil: { t: number; go: (() => void) | null } | null = null;
-  /** Seconds to this section's next sound (td-sections REACH_BIBLE). */
+  /** Seconds to this section's next sound (td-sections SECTION_BIBLE). */
   private sectionSoundT = 6;
   /** Stepping past a seam's gate crosses it (never an invisible wall: the gate is a place you walk through). */
   private stepSeams(): void {
@@ -2243,7 +2271,7 @@ export class TopDownEngine {
   }
   /** This area's one sound (the zone bible's check), now and then. */
   private stepSectionSound(dt: number): void {
-    const area = this.level === this.world ? this.world.continent : this.level.id, b = REACH_BIBLE[area];
+    const area = this.level === this.world ? this.world.continent : this.level.id, b = SECTION_BIBLE[area];
     if (!b) return;
     this.sectionSoundT -= dt;
     if (this.sectionSoundT > 0) return;
@@ -3735,10 +3763,11 @@ export class TopDownEngine {
   private report(): void {
     const s = this.nearby;
     // Nothing to use: the gathering skills' own (a fire to cook at, a spot to fish, a tree to chop).
-    const gx = s ? null : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
+    // The Walking Tree waiting for its blow comes first (it is what the night is about); then the gathering targets.
+    const gx = this.walkerNear() ? 'td-walker' : s ? null : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
     const state: EngineState = {
-      hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : gx,
-      nearbyLabel: s ? s.station.label : gx === 'td-fire' ? 'COOK' : gx === 'td-spot' ? 'FISH' : gx === 'td-tree' ? 'CHOP TREE' : undefined, nearbyKind: s?.station.kind ?? (gx ? 'resource' : undefined),
+      hp: Math.round(this.hp), enemyHp: 0, nearby: gx === 'td-walker' ? gx : s ? s.station.id : gx,
+      nearbyLabel: gx === 'td-walker' ? 'STRIKE THE TREE' : s ? s.station.label : gx === 'td-fire' ? 'COOK' : gx === 'td-spot' ? 'FISH' : gx === 'td-tree' ? 'CHOP TREE' : undefined, nearbyKind: gx === 'td-walker' ? 'resource' : s?.station.kind ?? (gx ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
@@ -3816,7 +3845,7 @@ export class TopDownEngine {
       // Space and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
       if ((e.code === 'Space' || e.code === 'Enter' || act === 'interact') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
       // E opens the stall in reach (the side view handled E inside its own engine). Enter is the chat's (the HUD).
-      if (down && !e.repeat && act === 'interact' && (this.nearby || this.mobs.corpseNear(this.player.x, this.player.y) || this.gatherNear() || this.mobs.dropNear(this.player.x, this.player.y) || this.sharedNear())) { e.preventDefault(); this.interact(); return; }
+      if (down && !e.repeat && act === 'interact' && (this.nearby || this.walkerNear() || this.mobs.corpseNear(this.player.x, this.player.y) || this.gatherNear() || this.mobs.dropNear(this.player.x, this.player.y) || this.sharedNear())) { e.preventDefault(); this.interact(); return; }
       if (act === 'pickup') { if (down && !e.repeat) { e.preventDefault(); this.pickNearest(); } return; }
       if (act === 'attack') { e.preventDefault(); this.mobs.attacking = down; return; }
       const slot = /^skill([1-8])$/.exec(act);

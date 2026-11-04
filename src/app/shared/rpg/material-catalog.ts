@@ -220,6 +220,7 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'thundercake': 'Thundercake',
   'cold-miners-pasty': 'Cold Miner\'s Pasty',
   'margin-note-scrap': 'Margin Note Scrap',
+  'copy-seed': 'Copy-Seed',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

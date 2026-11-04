@@ -419,6 +419,8 @@ test('the Verdant Wilds: a ship from Pyrehold to Mossharbor, up the Rootglass Bo
   await expect(page.locator('#places-list.td-map')).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-map.jpg', type: 'jpeg', quality: 78 });
   await page.keyboard.press('Escape');
+  // S11: Rootglass is its own section now, up the Shore's north road and the Fernglades' west road.
+  await toSection(page, 'verdant-wilds-rootglass', 24, 21);
   await go(/the rootglass bole/i, /root hall/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-root-hall.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs up/i, /lower boughs/i);
@@ -450,6 +452,8 @@ test('the Overgrown Temple in the Sunken Courts: in by its gate, down to the Hea
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
   await sail(page, /mossharbor/i, /^Mossharbor$/);
+  // S11: the temple's gate is at the Sunken Courts' far end, the act's last section.
+  await toSection(page, 'verdant-wilds-courts', 226, -30);
   await go(/the overgrown temple/i, /sunken narthex/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-temple-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /hall of roots/i);
@@ -553,6 +557,8 @@ test('the Verdant villages\' houses: the Net-Mender\'s Loft and its loft, the He
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-netloft-loft.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /^The Net-Mender's Loft$/);
   await go(/^door/i, /^Mossharbor$/);
+  // S11: Thornwick stands on the Fernglades' east road.
+  await toSection(page, 'verdant-wilds-fernglades', 96, 18);
   await go(/the herbalist's cottage/i, /^The Herbalist's Cottage$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-cottage.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /root cellar/i);
@@ -566,6 +572,7 @@ test('the Verdant villages\' houses: the Net-Mender\'s Loft and its loft, the He
 test('the Overgrown Temple goes deeper: past the Heart Shrine to the Drowned Vault and the Rootcradle, and back up', async ({ page }) => {
   const errors = await openVerdantTrip(page), go = travel(page);
   await sail(page, /mossharbor/i, /^Mossharbor$/);
+  await toSection(page, 'verdant-wilds-courts', 226, -30);
   await go(/the overgrown temple/i, /sunken narthex/i);
   await go(/stairs down/i, /hall of roots/i);
   await go(/stairs down/i, /heart shrine/i);
@@ -591,6 +598,8 @@ test('the Overgrown Temple goes deeper: past the Heart Shrine to the Drowned Vau
 test('the Root Hollows in the Deep Wilds: in by the root-hole, down three floors to the Heartroot Cellar, and back out', async ({ page }) => {
   const errors = await openVerdantTrip(page), go = travel(page);
   await sail(page, /mossharbor/i, /^Mossharbor$/);
+  // S11: the root-hole is the Greenwood's, at the end of its road (the connector into the Deep Wilds).
+  await toSection(page, 'verdant-wilds-greenwood', 228, -108);
   await go(/the root hollows/i, /gnawed galleries/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /sporewell/i);
@@ -603,7 +612,7 @@ test('the Root Hollows in the Deep Wilds: in by the root-hole, down three floors
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-3.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs up/i, /sporewell/i);
   await go(/stairs up/i, /gnawed galleries/i);
-  await go(/root-hole/i, /^(The Root Hollows|The Deep Wilds)$/);
+  await go(/root-hole/i, /^(The Root Hollows|The Greenwood)$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant2-hollows-mouth.jpg', type: 'jpeg', quality: 72 });
   expect(errors, errors.join('\n')).toEqual([]);
 });

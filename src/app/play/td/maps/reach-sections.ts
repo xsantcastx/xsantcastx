@@ -28,7 +28,7 @@ import { THROAT_IN, THROAT_OUT_IN } from './glass-throat';
 import { SHIP_TO_ISLE, SHIP_TO_UMBRAL, SHIP_TO_VERDANT, buildPyrehold } from './infernal-reach';
 
 /** The region map: `base` everywhere, rock (`edge`) two blocks deep round the border, then each stroke (a rectangle of blocks) in order. */
-function paint(w: number, h: number, base: string, edge: string, strokes: readonly (readonly [string, number, number, number, number])[]): string[] {
+export function paint(w: number, h: number, base: string, edge: string, strokes: readonly (readonly [string, number, number, number, number])[]): string[] {
   // Two blocks of rock (or sea) round every section: the border's wobble (td-world regionAt) never thins it to nothing.
   const rim = (x: number, y: number) => x < 2 || y < 2 || x >= w - 2 || y >= h - 2;
   const g = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (rim(x, y) ? edge : base)));
@@ -36,9 +36,9 @@ function paint(w: number, h: number, base: string, edge: string, strokes: readon
   return g.map(row => row.join(''));
 }
 /** Block (bx, by) of a map whose (0, 0) tile lies in block (ox, oy) → that block's tile (dx, dy) in the section's tiles. */
-const blocks = (ox: number, oy: number) => (bx: number, by: number, dx = 4, dy = 4): [number, number] => [(bx - ox) * 8 + dx, (by - oy) * 8 + dy];
+export const blocks = (ox: number, oy: number) => (bx: number, by: number, dx = 4, dy = 4): [number, number] => [(bx - ox) * 8 + dx, (by - oy) * 8 + dy];
 
-const CAMP_ROWS: readonly string[] = [
+export const CAMP_ROWS: readonly string[] = [
   'gggg........gggg',
   'gg............gg',
   'g..............g',
@@ -59,7 +59,7 @@ const buildCamp = (id: string, ash = false) => (): TdMap => buildTown({
   spawn: { c: 8, r: 7 },
 });
 /** The section a seam leads to, and its far gate (the arrival). */
-const seam = (id: string, c: number, r: number, dir: SectionSeam['dir'], to: string, arrive: string, label: string, kind: SectionSeam['kind'] = 'gate'): SectionSeam =>
+export const seam = (id: string, c: number, r: number, dir: SectionSeam['dir'], to: string, arrive: string, label: string, kind: SectionSeam['kind'] = 'gate'): SectionSeam =>
   ({ id, c, r, dir, to, arrive, label, kind });
 
 export const REACH_PYREHOLD = 'infernal-reach-pyrehold';
@@ -85,7 +85,7 @@ export const PYREHOLD_SECTION: ContinentDef = {
   town: buildPyrehold, townName: 'Pyrehold', streets: { row: 15, col: 23 }, river: false,
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
-    { place: 'harbour', station: SHIP_TO_VERDANT, to: 'verdant-wilds', arrive: 'ship-mossharbor', ship: true, along: -3 },
+    { place: 'harbour', station: SHIP_TO_VERDANT, to: 'verdant-wilds-shore', arrive: 'ship-mossharbor', ship: true, along: -3 },
     { place: 'harbour', station: SHIP_TO_UMBRAL, to: 'umbral-marches', arrive: 'ship-mirewatch', ship: true, along: 2 },
   ],
   seams: [seam('pyrehold-n', 23, -14, 'n', REACH_STEPPE, 'steppe-s', 'NORTH GATE: THE CINDER STEPPE')],
