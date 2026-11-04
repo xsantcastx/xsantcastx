@@ -344,3 +344,20 @@ button:disabled { cursor: default; }
 /* Beside the bar the belt is a row too (the desktop bar's own order: skills, then the belt). */
 .bkeys[data-keys-layout='bar'] .bkeys__pic { align-items: center; flex-wrap: wrap; }
 .bkeys[data-keys-layout='bar'] .bkeys__belt { grid-auto-flow: column; order: 2; }
+/* The belt keys as the HUD draws them: the potion (or stone) art and its count. */
+.bkeys__beltart { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
+.bkeys__beltn { position: absolute; left: 3px; top: 2px; font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+/* A short book (a sideways phone): the picture stays pinned at the scroller's top while the skills scroll under it, and
+   the hint words step aside so the first row of skills is in view. */
+@media (max-height: 500px) {
+  .bkeys .book__ribbon em { display: none; }
+  .bkeys .book__ribbon { margin-bottom: 0; }
+  .bkeys__pic { position: sticky; top: -10px; z-index: 3; padding: 6px; }
+  .bkeys[data-keys-layout='bar'] .bkeys__key { width: 48px; height: 48px; }
+  .bkeys[data-keys-layout='bar'] .bkeys__bar { grid-template-columns: repeat(8, 48px); }
+  .bkeys__hint { min-height: 0; }
+  .bkeys__hint:empty { display: none; }
+  .bkeys__skill { min-height: 84px; }
+  .bkeys__ico { width: 52px; height: 52px; padding: 6px; }
+}
+.bkeys__beltart--empty { width: 28px; height: 28px; opacity: .5; }

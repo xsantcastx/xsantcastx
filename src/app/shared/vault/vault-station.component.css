@@ -131,7 +131,7 @@
 /* Portrait: the Vault | Satchel switch and the tab chips stay under the window's title row while the window scrolls. */
 .vs-hero--phone .vs-seg { position: sticky; top: 48px; z-index: 3; background: var(--cozy-plate); box-shadow: 0 -4px 0 0 var(--cozy-plate), 0 4px 0 0 var(--cozy-plate); }
 /* The grid's own area is as tall as the screen leaves (never more than six rows): the whole window fits a 360×640. */
-.vs-hero--phone .vs-side app-item-grid { max-height: min(calc(6 * var(--cell) + 4px), max(calc(3 * var(--cell)), calc(100dvh - 300px))); }
+.vs-hero--phone .vs-side app-item-grid { max-height: calc(min(6 * var(--cell), max(3 * var(--cell), round(down, calc(100dvh - 300px), var(--cell)))) + 4px); }
 
 /* ── A sideways phone (§3c): the Vault on the left, the satchel on the right, each in two 5-column pages at 44 px;
    the Vault's tab chips above it (the kit's station tabs, one sideways row) ── */
@@ -142,6 +142,6 @@
   .vs-hero--paged:not(.vs-hero--phone) .vs-side:first-child .vs-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .vs-hero--paged:not(.vs-hero--phone) .vs-h { justify-self: stretch; min-height: 48px; margin: 0; display: grid; place-items: center; font: 400 14px/1.2 var(--font-pixel); color: var(--cozy-brass-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vs-tabrow--side { justify-self: stretch; min-height: 48px; box-sizing: border-box; align-items: center; }
-  .vs-hero--paged:not(.vs-hero--phone) app-item-grid { --cell: 44px; display: block; max-height: max(calc(2 * 44px), calc(100dvh - 222px)); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+  .vs-hero--paged:not(.vs-hero--phone) app-item-grid { --cell: 44px; display: block; max-height: calc(max(2 * 44px, round(down, calc(100dvh - 222px), 44px)) + 2px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
   .vs-hero--paged:not(.vs-hero--phone) > :not(.vs-side) { grid-column: 1 / -1; }
 }

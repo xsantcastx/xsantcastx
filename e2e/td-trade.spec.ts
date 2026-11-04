@@ -114,6 +114,15 @@ test('two Keepers trade items and Gold atomically, then one drops an item the ot
   await expect(bryn.locator('[data-trade-sum="give"]')).toContainText('Tide Ring');
   await expect(page.locator('[data-trade-sum="get"]')).toContainText('Tide Ring');
   await shot(bryn, 'window-phone');
+  // Turned sideways at the confirm stage: the summary, the status and Confirm all in view (the offer rows step aside).
+  await bryn.setViewportSize({ width: 844, height: 390 });
+  await bryn.waitForTimeout(400);
+  for (const sel of ['[data-trade-sum="get"]', '[data-trade-status]', '[data-trade-confirm]']) {
+    const b = (await bryn.locator(sel).boundingBox())!;
+    expect(b.y + b.height, `${sel} in view sideways`).toBeLessThanOrEqual(390);
+  }
+  await bryn.setViewportSize({ width: 390, height: 844 });
+  await bryn.waitForTimeout(300);
   await page.locator('[data-trade-confirm]').click();
   await expect(page.locator('[data-trade-window]')).toHaveAttribute('data-trade-stage', 'waiting', { timeout: 10000 });
   await bryn.locator('[data-trade-confirm]').tap();

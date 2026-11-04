@@ -80,6 +80,25 @@ SOCIAL_FAKE_TRADE) at 360×640, 390×844, 844×390 and 932×430.
 - **The settings sheet** in `play-menus-orientation`: it was never out of reach. The spec measured `.sound-host .ss`,
   whose scroll container is the host outside it, so it now measures `.sound-host`, the window a thumb scrolls.
 
+## Director FIX round (review of d9a4645a)
+1. **Sideways satchel carry bar.** "Holding … Put back" docks at the foot of the left panel, and the card shortens
+   above it; the grid's rows are never covered. The grid's height is a whole number of rows (`round(down, 100%,
+   --cell)`), and "3 / 60 slots" is 12 px. The card's lines sit at the top of the card (no stretched gaps).
+2. **The Keys picture's belt** draws what the HUD's belt draws: the potion or Spellstone art (or the HUD's empty
+   flask) with its count (`[beltPics]="bookBelt"`).
+3. **Keys tab sideways.** The picture is sticky at the scroller's top, the hint words and the tagline step aside, and
+   the keys are 48 px, so the first row of skills is in view at 844×390. The Skill Book is full width under the
+   sideways thumb HUD.
+4. **Chat sheet sideways:** `min(400px, 50% − 32px)`, short of the Keeper at the centre.
+5. **Trade confirm on a short screen** (≤ 460 px tall): the offer rows hide, leaving the summary, the status and the
+   buttons.
+6. **Evidence:** `output/uiwb2/after/`
+   - `chat-tab-{390x844,844x390,360x640}.png`: connected, a 16 px input, a 44 px brass Send;
+   - `chat-join-*.png`: the 44 px Join;
+   - `worn-*.png`: the charm row.
+- **Vault grids** are whole rows too (sideways and at 360).
+- **The enchanting 844×390 red** ("body scrolled 192px") was checked on the base build: see the report.
+
 ## Tests
 - `e2e/play-wave-b2.spec.ts` (new). It checks:
   - the sideways satchel (panel ≥ 300, cells 44–52, the card in the left panel, the piece uncovered);
