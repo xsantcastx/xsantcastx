@@ -78,8 +78,8 @@ export function drawLateZones(c: Ctx, zones: readonly ZoneLike[], time: number, 
       for (const [i, q] of groundRing(R).entries()) if (i % (lo ? 6 : 3) === 0) c.fillRect(X + q.x, Y + q.y, 2, 1);
     } else if (z.kind === 'thornrain') {
       // The ring it falls in: a 2-px green edge, every other step lit (the thorns fall in the air pass).
-      c.globalAlpha = .75 * fade;
-      for (const [i, q] of groundRing(R).entries()) if (i % (lo ? 4 : 2) === 0) { c.fillStyle = i % 4 ? LATE_FX.leaf.body : LATE_FX.leaf.core; c.fillRect(X + q.x, Y + q.y, 2, 1); }
+      c.globalAlpha = Math.max(.7, .85 * fade);
+      for (const [i, q] of groundRing(R).entries()) if (i % 2 === 0) { c.fillStyle = i % 4 ? LATE_FX.leaf.body : LATE_FX.leaf.core; c.fillRect(X + q.x, Y + q.y, 2, 1); }
     } else if (z.kind === 'thorny') {
       c.globalAlpha = .6 * fade;
       for (const [i, q] of groundRing(Math.max(4, R - 4)).entries()) if (i % (lo ? 9 : 5) === 0) { c.fillStyle = i % 2 ? LATE_FX.leaf.edge : LATE_FX.stone.body; c.fillRect(X + q.x, Y + q.y - 2, 1, 2); }
@@ -228,8 +228,10 @@ export function drawLateZoneAir(c: Ctx, zones: readonly ZoneLike[], time: number
         // Two pale wings (3×2 each) either side of a dark body: up on one frame, spread on the next.
         c.fillStyle = LATE_FX.moth.edge; c.fillRect(mx, my - 1, 1, 4);
         c.fillStyle = flap ? LATE_FX.moth.body : LATE_FX.moth.core;
-        if (flap) { c.fillRect(mx - 3, my - 3, 3, 2); c.fillRect(mx + 1, my - 3, 3, 2); }
-        else { c.fillRect(mx - 3, my, 3, 2); c.fillRect(mx + 1, my, 3, 2); }
+        // Low: three still moths, a pixel bigger each way so they read on their own.
+        const ww = lo ? 4 : 3, wh = lo ? 3 : 2;
+        if (flap) { c.fillRect(mx - ww, my - 3, ww, wh); c.fillRect(mx + 1, my - 3, ww, wh); }
+        else { c.fillRect(mx - ww, my, ww, wh); c.fillRect(mx + 1, my, ww, wh); }
         c.fillStyle = '#ffffff'; c.fillRect(mx - 2, flap ? my - 3 : my, 1, 1); c.fillRect(mx + 2, flap ? my - 3 : my, 1, 1);
       }
     } else if (z.kind === 'thornrain') {
@@ -238,12 +240,12 @@ export function drawLateZoneAir(c: Ctx, zones: readonly ZoneLike[], time: number
         const ang = i * 2.39996, d = ((i * 37) % 10) / 10 * R, sx = X + Math.round(Math.cos(ang) * d), sy = Y + Math.round(Math.sin(ang) * d * .5);
         const f = still || lo ? .5 : ((time * 2.4 + i * .37) % 1);
         at?.(sx, sy);
-        const top = sy - Math.round(30 * (1 - f)) - 4;
+        const top = sy - Math.round(30 * (1 - f)) - 12;
         c.globalAlpha = fade;
-        // A thorn: a 1-px green shaft 4 long, its bright tip below, a darker fletch above.
-        c.fillStyle = LATE_FX.leaf.edge; c.fillRect(sx, top - 2, 1, 2);
-        c.fillStyle = LATE_FX.leaf.body; c.fillRect(sx, top, 1, 4);
-        c.fillStyle = LATE_FX.leaf.core; c.fillRect(sx, top + 4, 1, 2); c.fillStyle = '#ffffff'; c.fillRect(sx, top + 5, 1, 1);
+        // A thorn (3 px wide, 11 tall; Low the same): a dark fletch, a green shaft with a dark edge, a bright cream-green tip.
+        c.fillStyle = LATE_FX.leaf.edge; c.fillRect(sx - 1, top, 3, 2); c.fillRect(sx - 1, top + 2, 1, 6);
+        c.fillStyle = LATE_FX.leaf.body; c.fillRect(sx, top + 2, 2, 6);
+        c.fillStyle = LATE_FX.leaf.core; c.fillRect(sx - 1, top + 8, 3, 2); c.fillStyle = '#fffbe8'; c.fillRect(sx, top + 10, 1, 1);
       }
     } else if (z.kind === 'cloud') {
       const n = lo ? 4 : 12;
