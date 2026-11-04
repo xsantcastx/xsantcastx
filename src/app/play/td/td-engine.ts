@@ -1704,6 +1704,8 @@ export class TopDownEngine {
     const cp = this.mobs.corpseNear(this.player.x, this.player.y);
     if (cp && (!this.nearby || Math.hypot(cp.x - this.player.x, cp.y - this.player.y) < Math.hypot(this.nearby.x - this.player.x, this.nearby.y - this.player.y))) { this.openCorpse(cp.id); return; }
     // S11: the Walking Tree, Glim dimmed beside it: one blow and it is a plain tree again (it leaves a copy-seed).
+    // The Bell Under the Water: E by the roof is no step down into the Belfry while the bell is listening (keep still).
+    if (this.underbellNear()) return;
     if (this.walkerNear() && this.nightEvents.strikeWalker(this.player)) { this.options.onSfx?.({ kind: 'clang' }); this.shake = Math.max(this.shake, .12); return; }
     if (this.nearby) { this.use(this.nearby); return; }
     // The gathering skills: a fire in reach (cook), a fishing spot in reach (cast), then a tree (chop).
@@ -3883,9 +3885,9 @@ export class TopDownEngine {
     // Nothing to use: the gathering skills' own (a fire to cook at, a spot to fish, a tree to chop).
     // The Walking Tree waiting for its blow comes first (it is what the night is about); then the gathering targets.
     // The Bell Under the Water: by the Belfry's roof, before and through its note, the prompt says what to do (nothing).
-    const gx = this.walkerNear() ? 'td-walker' : s ? null : this.underbellNear() ? 'td-underbell' : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
+    const gx = this.walkerNear() ? 'td-walker' : this.underbellNear() ? 'td-underbell' : s ? null : this.gather.busy ? null : this.gather.fireNear(this.player.x, this.player.y, 34) ? 'td-fire' : this.spotNear() ? 'td-spot' : this.treeNear() ? 'td-tree' : null;
     const state: EngineState = {
-      hp: Math.round(this.hp), enemyHp: 0, nearby: gx === 'td-walker' ? gx : s ? s.station.id : gx,
+      hp: Math.round(this.hp), enemyHp: 0, nearby: gx === 'td-walker' || gx === 'td-underbell' ? gx : s ? s.station.id : gx,
       nearbyLabel: gx === 'td-walker' ? 'STRIKE THE TREE' : gx === 'td-underbell' ? 'STAND STILL' : s ? s.station.label : gx === 'td-fire' ? 'COOK' : gx === 'td-spot' ? 'FISH' : gx === 'td-tree' ? 'CHOP TREE' : undefined, nearbyKind: gx === 'td-walker' ? 'resource' : s?.station.kind ?? (gx ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face, zone: this.zoneHere(),

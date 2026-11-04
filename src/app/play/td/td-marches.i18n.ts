@@ -36,6 +36,8 @@ export const MARCHES_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'reach.act.sealed-fifth': { en: 'Sealed: {{name}}', es: 'Sellada: {{name}}' },
   // ── The Atlas (where each Waystone stands) ──
   'atlas.land.umbral-marches': { en: 'the Marches', es: 'los Marches' },
+  // The Marches' Atlas title, short enough for one line on a 360 px phone.
+  'atlas.title.umbral-marches': { en: 'Marches Waystones', es: 'Piedras de los Marches' },
   'atlas.near.corvane': { en: 'up from Mirewatch\'s pier', es: 'subiendo desde el muelle de Mirewatch' },
   'atlas.near.gloamhaven': { en: 'on the drowned square', es: 'en la plaza ahogada' },
   'atlas.near.wick': { en: 'up the Shore\'s north boardwalk', es: 'subiendo la pasarela norte de la Costa' },
