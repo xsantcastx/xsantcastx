@@ -121,16 +121,21 @@ export class WeatherFx {
     const R = STRIKE.radius * TILE;
     for (const g of this.rings) {
       if (!inView(g.x, g.y)) continue;
-      const k = g.t / STRIKE.tell, pulse = still ? 1 : .55 + .45 * Math.abs(Math.sin(g.t * (6 + k * 10)));
+      const k = g.t / STRIKE.tell, pulse = still ? 1 : .7 + .3 * Math.abs(Math.sin(g.t * (6 + k * 10)));
+      const x0 = Math.round(g.x), y0 = Math.round(g.y);
+      // The ground it will hit, faintly lit; then the rim, a solid stepped circle of art pixels, and a second ring
+      // closing in on the middle as the strike nears (it reads as a countdown).
       c.fillStyle = '#ffffff';
-      c.globalAlpha = (.35 + .5 * k) * pulse;
-      // A stepped circle of single art pixels (32 of them), the rim; a second, tighter one closing in.
-      for (let i = 0; i < 32; i++) {
-        const a = i / 32 * Math.PI * 2;
-        c.fillRect(Math.round(g.x + Math.cos(a) * R), Math.round(g.y + Math.sin(a) * R), 1, 1);
-        if (i % 2 === 0) c.fillRect(Math.round(g.x + Math.cos(a) * R * (1 - k * .7)), Math.round(g.y + Math.sin(a) * R * (1 - k * .7)), 1, 1);
+      c.globalAlpha = (.08 + .14 * k) * pulse;
+      for (let dy = -R; dy <= R; dy += 2) { const w = Math.round(Math.sqrt(R * R - dy * dy)); c.fillRect(x0 - w, y0 + dy, w * 2, 2); }
+      c.globalAlpha = (.6 + .35 * k) * pulse;
+      const n = 96, r2 = R * (1 - k * .75);
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+        c.fillRect(Math.round(x0 + ca * R), Math.round(y0 + sa * R), 1, 1);
+        if (i % 2 === 0) c.fillRect(Math.round(x0 + ca * r2), Math.round(y0 + sa * r2), 1, 1);
       }
-      c.globalAlpha = .18 + .3 * k; c.fillRect(Math.round(g.x) - 1, Math.round(g.y) - 1, 2, 2);
+      c.fillStyle = '#ffe066'; c.globalAlpha = .5 + .4 * k; c.fillRect(x0 - 1, y0 - 1, 2, 2);
     }
     c.globalAlpha = 1;
   }
@@ -228,7 +233,7 @@ export class WeatherFx {
       if (m[j + 1] > h) m[j + 1] -= h; if (m[j + 1] < 0) m[j + 1] += h;
       if (m[j] < 0) m[j] += w; if (m[j] > w) m[j] -= w;
       c.globalAlpha = (up ? .5 : .6) * (.6 + .4 * k);
-      c.fillRect(Math.floor(m[j] / px) * px, Math.floor(m[j + 1] / px) * px, px * (up ? 1 : 2), px * (up ? 1 : 2));
+      c.fillRect(Math.floor(m[j] / px) * px, Math.floor(m[j + 1] / px) * px, px * 2, px * 2);
     }
   }
 

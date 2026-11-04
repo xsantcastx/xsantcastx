@@ -106,6 +106,7 @@ Built 2026-10-21: **Leveling to 10,000** (`docs/handoff/leveling.md`, design `do
 
 ## Daily review log
 
+- **2026-11-03** — S8 (`s8storm`): thunderstorm strikes, Ashfall / Spore drift / Mist-rain, weather lines, Odette Pryor's forecast board, Stormscale + Thundercake, night events batch 1 (Late Shift, Count Goes On, Relief Column, Kiln That Lights Itself). docs/handoff/s8storm.md.
 - **2026-10-26 (hotfix: loot on the ground, 1×1 satchel)** — Owner: "pile items in one tile like RuneScape", "only auto pickup gold", "too much baggage", "make all items 1×1", the Spellstone card. Branch `loot`: tile piles with a count and a right-click / long-press list (Take, Take all), Alt labels and a phone toggle, gold-only walk-over, own drops solo and online, every satchel piece 1×1 and pinned (nothing moves by itself; Sort is a button), tap-to-move on phones and desktop, Vault Deposit all / Take all / Sort, Spellstone and potion cards with Put on belt. No room change. `docs/handoff/loot.md`.
 - **2026-10-26 (gather: fishing, fire, cooking, weather)** — Owner: RuneScape-style gathering and weather v1 (S4). Built on branch `gather`: spot fishing to a full satchel, log tiers, campfires (a small hearth against the dark), cooking with a falling burn chance, slow-mending meals beside the potions, Firemaking and Cooking on the shared curve, Weather v1 with Wet and a room-owned roll (`world-weather`, protocol 9). `docs/handoff/gather.md`. Next: S8 (thunder strikes, the land specials, Odette Pryor's board), deep-water flavour shadows.
 

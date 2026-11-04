@@ -160,7 +160,7 @@ describe('gathering: fishing', () => {
 
 describe('gathering: cooking and fire', () => {
   it('the burn chance falls with level to nothing at the stop level, and a range burns less', () => {
-    for (const m of MEALS) {
+    for (const m of MEALS.filter(x => x.raw)) {
       let last = 1;
       for (let L = m.level; L <= m.stop + 2; L++) { const p = burnChance(L, m); expect(p).toBeLessThanOrEqual(last); last = p; }
       expect(burnChance(m.level, m)).toBeCloseTo(.55, 5);
@@ -234,7 +234,7 @@ describe('weather v1', () => {
     }
     // A room's roll wins over the device's own (a skewed clock still sees the room's sky).
     const forced = weatherAt({ land: 'ember-isle', region: '*', ms, rolls: { window: w, lands: { 'ember-isle': .999 } } });
-    expect(forced.state).toBe(stateFor(.999, weightsFor('ember-isle', '*', 'day'), false));
+    expect(forced.state).toBe(stateFor(.999, weightsFor('ember-isle', '*', 'day'), false, 'ashfall'));
   });
 
   it('every state shows up over a long run, Ember Isle\'s low ground never storms, and an eclipse hushes the sky', () => {
@@ -246,7 +246,7 @@ describe('weather v1', () => {
       seen.add(now.state);
       expect(weatherAt({ land: 'ember-isle', region: '*', ms }).state).not.toBe('storm');
     }
-    expect([...seen].sort()).toEqual(['clear', 'fog', 'overcast', 'rain', 'storm']);
+    expect([...seen].sort()).toEqual(['clear', 'fog', 'mistrain', 'overcast', 'rain', 'storm']);
     const ecl = nextEclipse(start);
     for (let ms = ecl.startMs + WEATHER_WINDOW_MS; ms < ecl.endMs - WEATHER_WINDOW_MS; ms += WEATHER_WINDOW_MS) {
       const mid = Math.floor(ms / WEATHER_WINDOW_MS) * WEATHER_WINDOW_MS + WEATHER_WINDOW_MS / 2;

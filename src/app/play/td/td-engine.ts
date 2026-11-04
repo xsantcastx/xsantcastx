@@ -747,6 +747,17 @@ export class TopDownEngine {
       night: (id: string) => { if (!(NIGHT_EVENT_IDS as readonly string[]).includes(id)) return false; this.nightEvents.forced = { id: id as NightEventId, at: this.nightClock() }; return true; },
       strike: (dx = 0, dy = 0) => { this.weatherFx.rings.push({ x: this.player.x + dx, y: this.player.y + dy, t: 0, seed: 7 }); this.options.onSky?.({ kind: 'tell' }); return true; },
       soon: () => { this.weatherFx.strikeSoon(); return true; },
+      take: (id: string) => this.mobs.takeDrop(id),
+      // Stand beside the Relief Column's fourth man (as one walking at its side would).
+      beside: () => {
+        const e = this.nightEvents.now.find(x => x.id === 'relief-column');
+        if (!e) return null;
+        const p = this.nightEvents.soldierAt(e.t, 3), spot = standNear(this.world, p.x + 24, p.y);
+        this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
+        return { t: e.t, c: Math.floor(p.x / TILE), r: Math.floor(p.y / TILE) };
+      },
+      kiln: () => { if (!this.nightEvents.kilnLive()) return false; this.lightKiln(); return true; },
+      board: () => { this.readBoard(); return this.messageKey; },
       places: () => ({ ...NIGHT_PLACES }),
       barks: () => WEATHER_BARKS.map(b => b.npc),
       state: () => ({
@@ -1319,6 +1330,9 @@ export class TopDownEngine {
    */
   private drawSkyOver(inView: (x: number, y: number, pad?: number) => boolean, proj?: { flat(): void; at(x: number, y: number): void }): void {
     const c = this.ctx, near = (x: number, y: number) => inView(x, y, 40);
+    // Top-down: the night pass may leave the screen transform up; the figures are drawn in the world's.
+    if (!proj) { const s = this.scale; c.setTransform(s, 0, 0, s, -this.cam.x * s, -this.cam.y * s); }
+    c.globalCompositeOperation = 'source-over';
     if (this.weatherFx.rings.length || this.weatherFx.scorches.length) {
       proj?.flat();
       this.weatherFx.drawGround(c, near, this.still);
