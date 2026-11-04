@@ -164,13 +164,13 @@ test.describe('the shops (ui-pass-3 §4)', () => {
   }
 });
 
-for (const size of [{ width: 844, height: 390 }, { width: 360, height: 640 }]) {
-  test.describe(`the Glass's foot at ${size.width}x${size.height} (ui-pass-3 G1)`, () => {
+for (const size of [{ width: 844, height: 390 }, { width: 360, height: 640 }, { width: 390, height: 844 }]) for (const lang of ['en', 'es']) {
+  test.describe(`the Glass's foot at ${size.width}x${size.height} ${lang} (ui-pass-3 G1)`, () => {
     test.use({ viewport: size, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
     test('the name field is not under the foot; the toggle rides the same opaque foot as Become', async ({ page }) => {
       test.setTimeout(90_000);
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'preferred-language': 'en' });
+      await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'preferred-language': lang });
       await page.evaluate(() => { localStorage.removeItem('eclipse-lobby'); localStorage.removeItem('godforge-keeper-look'); });
       await page.goto('/play?td=1&hour=12');
       await page.locator('.lobby[data-lobby="title"] [data-lobby-guest]').tap();
@@ -188,9 +188,19 @@ for (const size of [{ width: 844, height: 390 }, { width: 360, height: 640 }]) {
       // The toggle is inside the maker's foot, with Become; the window has no second foot on a phone.
       await expect(glass.locator('.km__actions [data-lobby-skip-tut]')).toBeVisible();
       await expect(glass.locator('.create__foot')).toBeHidden();
-      // No calling's name is cut with an ellipsis.
-      const cut = await glass.locator('.km__cname').evaluateAll(els => els.filter(e => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).textOverflow === 'ellipsis').map(e => e.textContent));
-      expect(cut).toEqual([]);
+      // No calling's name is cut or broken mid-word: one line each, at 11px or more, in English and Spanish.
+      {
+        const names = await glass.locator('.km__cname').evaluateAll(els => els.map(e => {
+          const cs = getComputedStyle(e), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.1;
+          return { t: e.textContent ?? '', lines: Math.round(e.getBoundingClientRect().height / lh), clipped: e.scrollWidth > e.clientWidth + 1, size: parseFloat(cs.fontSize) };
+        }));
+        for (const n of names) {
+          expect(n.clipped, `${lang} ${n.t}: clipped`).toBe(false);
+          expect(n.size, `${lang} ${n.t}: font`).toBeGreaterThanOrEqual(11);
+          if (size.width <= 400 || n.t.length < 12) expect(n.lines, `${lang} ${n.t}: lines`).toBe(1);
+        }
+        await page.screenshot({ path: `output/uiwb/after-test/glass-${size.width}x${size.height}-${lang}.png` }).catch(() => null);
+      }
       await page.screenshot({ path: `output/uiwb/after-test/glass-${size.width}x${size.height}.png` }).catch(() => null);
     });
   });
