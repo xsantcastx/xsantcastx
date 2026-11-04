@@ -212,7 +212,7 @@ export function affixFamilyOf(def: AffixBase | null | undefined): AffixFamily | 
       return 'martial';
     case 'off-hand':
       if (/quiver/.test(words)) return 'quiver';
-      if (/shield|buckler|aegis|bulwark|lastwarden|targe|pavise/.test(words)) return 'shield';
+      if (/shield|buckler|aegis|bulwark|lastwarden|targe|pavise|mantlet|wall-that-kept-walking/.test(words)) return 'shield';
       return 'focus';
     case 'trinket':
       return 'jewel';

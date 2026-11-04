@@ -45,7 +45,7 @@ import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { skillKit, type KeeperAnim } from './td-skill-kit';
 import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
-import { PARTY_HEAD, drawHeadPip, drawPartyMarks, drawPartyRing } from './td-party-fx';
+import { PARTY_HEAD, drawHeadPip, drawPartyMarks, drawPartyRing, drawPostFlame } from './td-party-fx';
 import { WORLD_BOSSES, WORLD_BOSS_KEY, formedBossDef } from '../world/world-bosses';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { StatusPeaks, decodeStatuses, drawStatusIcons, encodeStatuses, keeperStatuses, mobStatuses, type StatusShown } from './td-status-icons';
@@ -807,6 +807,35 @@ export class TopDownEngine {
         this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
         return { c: Math.floor(spot.x / TILE), r: Math.floor(spot.y / TILE) };
       },
+      // S10b: the same for the Last Siege and the Fogmother — to its arena (`go`), raised beside the Keeper (`raise`);
+      // the tower on its track (it rolls), the Fogmother with her three posts (lit with `light`).
+      go: (id: string) => {
+        const b = WORLD_BOSSES.find(x => x.id === id);
+        if (!b?.at || this.world.def.id !== b.area || this.level !== this.world) return null;
+        const at = b.track?.[1] ?? b.at, spot = standNear(this.world, at.c * TILE + TILE / 2, (at.r + (b.track ? 0 : 4)) * TILE + TILE);
+        this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
+        return { c: Math.floor(spot.x / TILE), r: Math.floor(spot.y / TILE) };
+      },
+      raise: (id: string, share = 1, dx = 72, dy = -16) => {
+        const b = WORLD_BOSSES.find(x => x.id === id);
+        if (!b) return null;
+        for (const o of [...this.mobs.mobs]) if (o.form) this.mobs.banish(o);
+        // (The photographs' Keeper is level 1: the level gap would make a form's 1-point blow fell him outright.)
+        this.mobs.levelGap = false;
+        const def = formedBossDef(b, atZoneLevel(MOBS[b.base], b.level));
+        const x = this.player.x + dx, y = this.player.y + dy, m = this.mobs.place(WORLD_BOSS_KEY(b.id), def, x, y);
+        m.form = b.form; m.elite = { rank: 'unique', role: 'leader', affixes: [...b.affixes], name: b.name };
+        m.hp = Math.max(1, Math.round(def.hp * share) - 1);
+        if (b.track) m.track = { pts: [{ x, y }, ...b.track.slice(2).map(p => ({ x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE }))], i: 1, t: 0 };
+        if (b.posts && b.at) m.posts = b.posts.map(p => ({ x: this.player.x + (p.c - b.at!.c) * TILE * .7, y: this.player.y + (p.r - b.at!.r) * TILE * .6, lit: false, hold: 0 }));
+        return { hp: m.hp, max: m.def.hp, look: m.def.sheet ?? null };
+      },
+      light: (n = 3) => {
+        const m = this.mobs.mobs.find(x => x.form && x.posts);
+        if (!m?.posts) return 0;
+        m.posts.slice(0, n).forEach((p, i) => { p.lit = true; this.mobs.partySeen({ m: 'post', n: i, x: p.x, y: p.y, t: 600 }); });
+        return n;
+      },
       storm: (share = 1, dx = 64, dy = -8) => {
         const b = WORLD_BOSSES.find(x => x.id === 'antlered-storm');
         if (!b) return null;
@@ -826,7 +855,7 @@ export class TopDownEngine {
       mark: (e: Parameters<MobSystem['partySeen']>[0]) => { this.mobs.partySeen(e); return true; },
       state: () => {
         const m = this.mobs.mobs.find(x => x.form);
-        return { up: !!m, phase: m?.pb?.phase ?? -1, hp: m ? Math.round(m.hp) : 0, rings: this.mobs.bursts.filter(b => b.pb).length, ringsAt: this.mobs.bursts.filter(b => b.pb).map(b => ({ x: Math.round(b.x), y: Math.round(b.y), r: b.r, t: b.t, tone: b.tone })), others: this.mobs.others.length, cam: { x: Math.round(this.cam.x), y: Math.round(this.cam.y), w: this.cam.w, h: this.cam.h }, marks: this.mobs.partyFx.map(f => f.m), x: Math.round(this.player.x), y: Math.round(this.player.y), stats: m?.pb?.stats ?? null };
+        return { look: m?.def.sheet ?? null, scale: m ? mobScale(m) : 0, track: m?.track ? { i: m.track.i, done: !!m.track.done } : null, posts: m?.pb?.posts.filter(p => p.lit).length ?? -1, cut: m?.pb?.cut ?? 1, up: !!m, phase: m?.pb?.phase ?? -1, hp: m ? Math.round(m.hp) : 0, rings: this.mobs.bursts.filter(b => b.pb).length, ringsAt: this.mobs.bursts.filter(b => b.pb).map(b => ({ x: Math.round(b.x), y: Math.round(b.y), r: b.r, t: b.t, tone: b.tone })), others: this.mobs.others.length, cam: { x: Math.round(this.cam.x), y: Math.round(this.cam.y), w: this.cam.w, h: this.cam.h }, marks: this.mobs.partyFx.map(f => f.m), x: Math.round(this.player.x), y: Math.round(this.player.y), stats: m?.pb?.stats ?? null };
       },
     };
     // The gathering e2e (webdriver only): the spots near the Keeper and where their floats are on the page, a step to near
@@ -1352,7 +1381,7 @@ export class TopDownEngine {
       this.barkT = .5;
       const k = this.player;
       for (const p of this.keepers) {
-        const key = barkFor(p.kid, st);
+        const key = barkFor(p.kid, st, this.phaseNow === 'night');
         if (!key || Math.hypot(p.x - k.x, p.y - k.y) > 5 * TILE) continue;
         const tag = `${p.kid}|${now.window}`;
         if (this.barked.has(tag)) continue;
@@ -1416,6 +1445,13 @@ export class TopDownEngine {
     if (fx.length) {
       drawPartyMarks(c, fx, at, this.time, still);
       for (const f of fx) {
+        // S10b: a lit lantern post's flame, upright in its glass.
+        if (f.m === 'post' && f.x !== undefined && f.y !== undefined) {
+          if (!inView(f.x, f.y, 40)) continue;
+          if (proj) proj.at(f.x, f.y); else { const s = this.scale; c.setTransform(s, 0, 0, s, -this.cam.x * s, -this.cam.y * s); }
+          drawPostFlame(c, f.x, f.y, this.time, still);
+          continue;
+        }
         if ((f.m !== 'fix' && f.m !== 'brand') || f.a === undefined) continue;
         const p = at(f.a);
         if (!p || !inView(p.x, p.y, 40)) continue;
@@ -5088,11 +5124,12 @@ export class TopDownEngine {
     // S10: a scaled world boss (the Antlered Storm, ×3): the same figure, nearest-neighbour, round its feet.
     setMobScaleCap(optHdFigures() && envDetail() !== 'low' ? 3 : 2);
     const S = mobScale(m);
-    if (S !== 1) { this.ctx.save(); this.ctx.translate(Math.round(m.x), Math.round(m.y)); this.ctx.scale(S, S); this.ctx.translate(-Math.round(m.x), -Math.round(m.y)); try { this.drawMobBody(m); } finally { this.ctx.restore(); } this.drawStormMark(m, S); return; }
+    if (S !== 1) { this.ctx.save(); this.ctx.imageSmoothingEnabled = false; this.ctx.translate(Math.round(m.x), Math.round(m.y)); this.ctx.scale(S, S); this.ctx.translate(-Math.round(m.x), -Math.round(m.y)); try { this.drawMobBody(m); } finally { this.ctx.restore(); } this.drawStormMark(m, S); return; }
     this.drawMobBody(m);
   }
   /** S10: what the Antlered Storm is — white sparks at its antler tips and the Oak's glass-vein cyan along them. */
   private drawStormMark(m: Mob, S: number): void {
+    if (m.def.sheet === 'last-siege' || m.def.sheet === 'fogmother') { this.drawNightBossMark(m, S); return; }
     if (m.def.id !== 'rootglass-hart') return;
     const c = this.ctx, h = mobCell(m.def).h * S, X = Math.round(m.x), Y = Math.round(m.y - h), f = m.face, still = this.still || envDetail() === 'low';
     const tips: [number, number][] = [[-10, 2], [-4, -2], [4, -2], [10, 2], [-14, 8], [14, 8]];
@@ -5105,6 +5142,30 @@ export class TopDownEngine {
       const x = X + dx * f + f * 8, y = Y + dy + 4;
       c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(x, y, 2, 2);
       c.globalAlpha = .5; c.fillStyle = '#cfe8ff'; c.fillRect(x - 1, y + 1, 4, 1); c.fillRect(x + 1, y - 1, 1, 4);
+    }
+    c.restore();
+  }
+  /**
+   * S10b: what the night's world bosses are, at a glance — the Last Siege: embers rising off the coal in its catapult's
+   * cup and a smoke curl; the Fogmother: three pale fog wisps slowly circling her hem. A few pixels each; steady on Low.
+   */
+  private drawNightBossMark(m: Mob, S: number): void {
+    const c = this.ctx, h = mobCell(m.def).h * S, X = Math.round(m.x), Y = Math.round(m.y), still = this.still || envDetail() === 'low';
+    c.save();
+    if (m.def.sheet === 'last-siege') {
+      const cx = X - m.face * Math.round(h * .3), cy = Math.round(Y - h);
+      for (let i = 0; i < 4; i++) {
+        const t = still ? i / 4 : (this.time * .7 + i / 4) % 1, x = cx + Math.round(Math.sin(t * 6 + i) * 3), y = cy - Math.round(t * 22);
+        c.globalAlpha = still ? .9 : 1 - t; c.fillStyle = i % 2 ? '#ffb347' : '#fff2a8'; c.fillRect(x, y, 2, 2);
+      }
+      c.globalAlpha = .5; c.fillStyle = '#6a625c';
+      for (let i = 0; i < 3; i++) c.fillRect(cx - 3 + i * 2, cy - 28 - i * 3, 3, 2);
+    } else {
+      for (let i = 0; i < 3; i++) {
+        const a = (still ? 0 : this.time * .6) + i * Math.PI * 2 / 3, x = X + Math.round(Math.cos(a) * 18 * S / 2), y = Y - 2 + Math.round(Math.sin(a) * 5);
+        c.globalAlpha = .55; c.fillStyle = '#4a4654'; c.fillRect(x - 5, y + 1, 11, 2);
+        c.globalAlpha = .8; c.fillStyle = '#d6d2da'; c.fillRect(x - 4, y, 9, 2); c.fillStyle = '#eef0f4'; c.fillRect(x - 1, y, 3, 1);
+      }
     }
     c.restore();
   }
@@ -5127,7 +5188,8 @@ export class TopDownEngine {
     // Teleport's wind-up: it thins out where it stands before it is gone.
     if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
     // Isometric B's HD creatures (td-hd-creatures.ts): posed per clip, the true facing baked (never a mirror).
-    if (optHdFigures() && hasHdModel(m.def.id) && envDetail() !== 'low') {
+    // (S10b: a world boss with its own body — the tower, the Fogmother — is drawn from its own sheet in both views.)
+    if (optHdFigures() && hasHdModel(m.def.id) && !m.def.sheet && envDetail() !== 'low') {
       c.restore(); c.save();
       c.translate(Math.round(m.x), Math.round(m.y) + 1 - lift);
       if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14;

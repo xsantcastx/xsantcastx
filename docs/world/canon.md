@@ -312,7 +312,8 @@ and ending at the land's harbour (the Harbourmasters, §3.3).
 - **Hot spots**: the Slag-Cart Graveyard, the Wolf-Run; Kettle Camp, the Scorch Rings, the Drake Nests, the Watch's
   Last Cairn; the Weaver Canopy, the Hart Meadow, the Bell-less Square; the Lure Pools, the Knights' Causeway, the
   Witch's Island. New landmarks: **the Storm-Struck Oak** (the Greenwood, tile 64,24; built S10: a split glassy giant in a ring of eighteen split stumps, the Antlered Storm's arena) and **the three dead lantern posts** of the
-  Black Meres.
+  Black Meres (built S10b as **the Three Posts**, round the meres' widest pool at tile -4,-12). The Reach's: **the Siege
+  Trench** (the Pyre Peaks, tile 110,40; built S10b), the old sappers' trench at the Bastion Road's foot.
 - **New fish**: Ash Perch, Rootling Eel, Mire Carp, **Stormscale** (a Mirrorfin caught in thunder). Mirrorfin, Lampfish
   and Moonwake keep their waters.
 - **Celestial and Luminous** section names are outlines only (world-acts.md §1.5–1.6); they are not canon until those
@@ -538,15 +539,15 @@ Merchant buy anything". This is canon; the Merchant *weighs and takes in*, the C
 | (planned) Graft Crown ~45 | the Rootcradle Below | The tree that wears a lantern: a copy that wants to be the original. |
 | (planned) Mirror Parliament ~55 | the Ink Deeps | The four Keepers' consensus, copied and left to vote forever. |
 | (planned) Perihelion Engine; Pale Refrain; Unbound Pattern | Acts IV, V, Finale | design-bible.md §3.3 |
-| (planned) **The Last Siege** ~32, world boss | the Obsidian Badlands, ashfall nights | the Ashen Bastion's siege tower, still rolling toward a war that ended. It is not angry; it is late. If it reaches the Bastion's ruin it salutes and leaves. |
+| **The Last Siege** 32, world boss (built S10b, branch `s10b`; the room's) | the Bastion Road, the Pyre Peaks (it rolls out of **the Siege Trench** at the road's foot, tile 110,40, up toward the Bastion's ruin), rises on ashfall nights; 3 h cooldown a world | the Ashen Bastion's siege tower, still rolling toward a war that ended. It is not angry; it is late. If it reaches the Bastion's ruin it salutes and leaves. |
 | **The Antlered Storm** 42, world boss (built S10, branch `s10boss`; the room's) | the Storm-Struck Oak, the Greenwood, thunderstorms; 2 h cooldown a world | the oldest Rootglass Hart, struck by the first storm after the Lock; the lightning stayed. The wood remembering it was weather before it was a wood. |
-| (planned) **The Fogmother** ~54, world boss | the Black Meres, fog at night | what the fog keeps when a lantern gutters, wrapped in the drowned sisters' habits. Lighting the three dead posts first prevents her. She is **not** what the fog thins round (Act III's Second Lantern). |
+| **The Fogmother** 54, world boss (built S10b, branch `s10b`; the room's) | **the Three Posts**, the Black Meres' widest pool (tile -4,-12), rises on foggy nights after a minute's gathering; 4 h cooldown a world | what the fog keeps when a lantern gutters, wrapped in the drowned sisters' habits. Lighting the three dead posts first prevents her. She is **not** what the fog thins round (Act III's Second Lantern). |
 
 **Party forms** (built S10 as data and in every simulating MobSystem; td-party-boss.ts; monsters-abilities.md §5.3). On Nightmare and Hell, a party meets each floor boss's party
 form: its reason made visible as a mechanic (the Anvil-Warden's Sunder is the hammer on the anvil; the Ink Abbess
 writes your name, a Brand only the healer can lift).
 
-**World-boss uniques** (the Crown built S10, Legendary only, from the Antlered Storm alone at 1 in 10; the others planned; everything is tradable, owner 2026-10-27, so "worldbound" is not built):
+**World-boss uniques** (all three built: the Crown S10, the Wall and the Psalm S10b; each Legendary only, from its boss alone at 1 in 10; everything is tradable, owner 2026-10-27, so "worldbound" is not built):
 - **The Wall That Kept Walking**, a shield. "It held the line so well that it carried the line with it."
 - **Crown of the Antlered Storm**, a helm. "The hart wanted to be a tree. The tree wanted to be the storm. Neither
   asked the antlers."

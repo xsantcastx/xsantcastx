@@ -272,6 +272,8 @@ export const PYRE_PEAKS_SECTION: ContinentDef = {
     { kind: 'standing-stones', c: 36, r: 20, name: 'The Ring of Pyres' },
     { kind: 'shrine', c: 132, r: 68, name: 'The Ember Altar' },
     { kind: 'cave', c: P(34, 6)[0], r: P(34, 6)[1], name: 'The Molten Deep' },
+    // S10b: the old siege trench at the Bastion Road's foot, where the Last Siege comes out of an ashfall night.
+    { kind: 'siege-trench', c: 110, r: 40, name: 'The Siege Trench' },
   ],
   names: { h: 'The Bastion Road', m: 'The Pyre Peaks', v: 'The Caldera Rim', T: 'The Pyre Stone' },
   mobs: { h: { types: ['bone-walker', 'lava-hound', 'obsidian-golem', 'cinder-wraith'], chance: .55 }, v: { types: ['cinder-imp', 'obsidian-golem', 'lava-hound'], chance: .55 } },

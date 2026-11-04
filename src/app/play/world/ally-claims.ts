@@ -105,16 +105,17 @@ export type AllyRefusal = 'illegal' | 'level' | 'far' | 'budget' | 'self' | 'nob
  * room's state: room-world `allies` checks them after this.)
  */
 export function allyLegal(c: AllyClaim, from: AllyKeeper, to: AllyKeeper | null): AllyRefusal | null {
-  const sk = ALLY_SKILLS[c.s as SkillId];
-  if (!sk || !(c.s in SKILLS) || !sk.kinds.includes(c.k)) return 'illegal';
-  if (from.level < rowLevel(c.s as SkillId)) return 'level';
+  const relic = ALLY_RELICS[c.s], sk = relic ?? ALLY_SKILLS[c.s as SkillId];
+  if (!sk || (!relic && !(c.s in SKILLS)) || !sk.kinds.includes(c.k)) return 'illegal';
+  if (from.level < (relic ? relic.level : rowLevel(c.s as SkillId))) return 'level';
   if (sk.maxN !== undefined && c.n > sk.maxN && c.k !== 'heal') return 'illegal';
   if (sk.maxT !== undefined && (c.t ?? 0) > sk.maxT * 10) return 'illegal';
   if (sk.maxR !== undefined && (c.r ?? 0) > (sk.maxR + ALLY_SLACK) * 10) return 'illegal';
   if (c.k === 'ward' && c.n > allyWardMax(from.level)) return 'budget';
   if (c.k === 'aura') return null;
   if (!to) return 'nobody';
-  if (to.id === from.id) return 'self';
+  // S10's gap: a healer's Cleanse on herself reaches the room too (a party boss's Brand on her is lifted).
+  if (to.id === from.id) return c.k === 'cleanse' && !relic ? null : 'self';
   if (c.k !== 'rekindle' && Math.hypot(to.x - from.x, to.y - from.y) > (sk.reach + ALLY_SLACK) * 16) return 'far';
   return null;
 }
@@ -132,7 +133,8 @@ export function parseAllyClaim(raw: unknown): AllyClaim | null {
   if (!int(o['n'], 0, 1e6)) return null;
   for (const k of ['t', 'r', 'f']) if (o[k] !== undefined && !int(o[k], 0, 10000)) return null;
   if (o['m'] !== undefined && (typeof o['m'] !== 'string' || !MARK_SLOTS.includes(o['m'] as MarkSlot))) return null;
-  if (o['k'] !== 'aura' && o['to'] === undefined) return null;
+  // (A Cleanse with no one named is the healer's own, S10b.)
+  if (o['k'] !== 'aura' && o['k'] !== 'cleanse' && o['to'] === undefined) return null;
   return {
     k: o['k'] as AllyKind, s: o['s'], n: o['n'] as number,
     ...(o['to'] !== undefined ? { to: o['to'] as string } : {}),
@@ -144,7 +146,17 @@ export function parseAllyClaim(raw: unknown): AllyClaim | null {
 /** Aura flags (`f`): what the ally's screen mirrors besides the damage cut. */
 export const AURA_F = Object.freeze({ steady: 1, resolve: 2, watchfire: 4, regen: 8, speed: 16, fireUp: 32, light: 64 });
 /** The auras whose `n` is a damage cut the room lays on the bites of those in reach (the rest lend other things). */
-export const CUT_AURAS: ReadonlySet<string> = new Set(['banner-of-the-watch', 'hold-the-gate', 'watch-cry', 'hearth-circle', 'rootwalk']);
+export const CUT_AURAS: ReadonlySet<string> = new Set(['banner-of-the-watch', 'hold-the-gate', 'watch-cry', 'hearth-circle', 'rootwalk', 'unique-wall-that-kept-walking']);
+/**
+ * S10b: a worn unique's reach on allies (it has no skill row): the Wall That Kept Walking's guard (an aura cut, 15% in
+ * 3 tiles), the Psalm Heard Through Water's lift (a cleanse of Chill only, `f` PSALM_F, within a heal's reach). The level
+ * is the unique's own item level.
+ */
+export const PSALM_F = 4;
+export const ALLY_RELICS: Readonly<Record<string, AllySkill & { level: number }>> = {
+  'unique-wall-that-kept-walking': { kinds: ['aura'], reach: 0, maxN: 15, maxT: 3, maxR: 3, level: 32 },
+  'unique-psalm-heard-through-water': { kinds: ['cleanse'], reach: 12, maxN: 1, maxT: 4, level: 54 },
+};
 
 /**
  * An effect the room laid on a Keeper from another (the snapshot event `ally` tells its screen; each screen mirrors it):

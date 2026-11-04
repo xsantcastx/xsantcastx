@@ -29,7 +29,7 @@ import { creatureProfile } from '../../shared/loot/creature-families';
 import { DAMAGE_COLORS, type DamageType, type Element } from '../../shared/loot/damage.model';
 import { creatureHits, isKnownCreature } from '../../shared/loot/creature-families';
 import { makePack } from './td-elites';
-import { worldBossScale } from '../world/world-bosses';
+import { worldBossOfKey, worldBossScale } from '../world/world-bosses';
 import { AFFIX_DEFS, TD_RANK_HP, BRUTAL, EMBER_HEART, GRAVE_CALL, KIN_SHIELD, LIGHTLESS_R, MIRROR_SHARE, MULTISHOT, VAMPIRIC, WHISPER_HUSH, auraAffix, COLD_AURA_R, COLD_SLOW, CURSE_HURT, CURSE_RESIST, CURSE_SECONDS, FIRE_BURST, MANA_BURN, SPECTRAL, TELEPORT, eliteEligible, eliteStats, floorEliteRows, guaranteeMagic, lootRank, rollElite, touchPack, UNIQUE_SHARE, type ElitePack, type EliteTag } from './td-elites';
 import { extraSpawn, hardened, nightType, rollTouched, rulesOf, skyVars, spellMult, touchedRandom } from './td-phases';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
@@ -50,8 +50,8 @@ import { BEAST_DAMAGE_SHARE, PIERCE_KEEP, PIERCE_MAX, THORN_PET, addBleed, bondS
 import { KEEPER_ELBOW, TdSight, fanSpot, formationSpot, separate, type Body } from './td-sight';
 import { ROAM, Stand, newRoam, stepRoam, type RoamState } from './td-roam';
 import { BLEED_MOVING, abilitiesOf, FL_AB0, FL_AB1, FL_AURA_OFF, FL_HIDDEN, FL_WARDED, KEEPER_CC_IMMUNE, KEEPER_ROOT_MAX, KEEP_WALKING, SPORE_WEAKEN, T as ATILE, TRUE_LIGHT_CUT, castable, decodeStatus, encodeStatus, tierCd, type AbilityDef, type KeeperStatus, type StatusLay, type TellTone } from './td-abilities';
-import { AURA_F, CUT_AURAS, type AllyClaim } from '../world/ally-claims';
-import { MECH, blowOf, newPartyState, partyBite, partyCleanse, partyFormOf, partyGuard, partyHealed, partyStep, type PartyArena, type PartyKeeper, type PartyMark, type PartyState } from './td-party-boss';
+import { AURA_F, CUT_AURAS, PSALM_F, type AllyClaim } from '../world/ally-claims';
+import { MECH, blowOf, newPartyState, partyBite, partyCleanse, partyFormOf, partyGuard, partyHealed, partyStep, type LanternPost, type PartyArena, type PartyKeeper, type PartyMark, type PartyState, outOfLight } from './td-party-boss';
 import { damageThreat, forgetThreat, healThreat, kinKey, pickByThreat, pickKin, tauntThreat, type KinCandidate, type ThreatBook, type ThreatCandidate } from './td-threat';
 import { biteCueOf, bitePitch, skillKit, type KeeperAnim } from './td-skill-kit';
 import { PACK_AURA_REACH, PACK_PULSE, PACK_PULSE_TYPE, PACK_STRIP_SECS, fixedAura, halvedBy, landOf, packAuraFx, packAuraLevel, packAuraPool, type PackAuraFx, type PackAuraId } from './td-pack-aura';
@@ -71,6 +71,8 @@ export interface MobDef {
   lore?: string;
   drops: readonly { material: string; qty: number; chance: number }[];
   paint: (c: CanvasRenderingContext2D, frame: number) => void;
+  /** S10b: its sheet's own key (a world boss with its own body, world-bosses.ts `look`): else its id. */
+  sheet?: string;
   w: number;
   h: number;
   /** Loot rank (shared/loot): a boss rolls more and better gear. Default 'normal'. */
@@ -1877,13 +1879,97 @@ export const RAISED_SKELETON: MobDef = {
   drops: [], paint: paintRaised, w: 22, h: 36,
 };
 
+
+// ── S10b: the world bosses' own bodies (world-bosses.ts `look`): drawn from their own sheets, scaled as world bosses ──
+const SIEGE_WOOD: Ramp = ['#a08870', '#76624e', '#524234', '#342a22'];
+/** Its timber is scorched near black (it reads against the ash it rolls through); ash settles pale on its ledges. */
+const SIEGE_ASH: Ramp = ['#8a7464', '#5a463a', '#3c2e26', '#261c18'];
+const SIEGE_PALE = '#d8d0c8';
+/**
+ * The Last Siege (§6.2): the Ashen Bastion's siege tower, ash-grey timber in iron bands, still rolling. A ram's iron
+ * head at its foot (the side it bites with), two of the Ossuary Watch's dead at the crossbow slits, the catapult's arm
+ * over its top deck with a coal in its cup, the Bastion's torn banner, four wheels that turn as it rolls.
+ */
+function paintSiegeTower(c: CanvasRenderingContext2D, f: number): void {
+  // The wheels: four, spokes turning by frame.
+  for (const wx of [5, 12, 20, 27]) {
+    orb(c, wx, 41, 3.4, 3.2, SIEGE_WOOD);
+    const a = f * Math.PI / 4;
+    line(c, [wx - Math.cos(a) * 2.6, 41 - Math.sin(a) * 2.6], [wx + Math.cos(a) * 2.6, 41 + Math.sin(a) * 2.6], R.iron[3]);
+    dot(c, wx, 41, R.iron[0]);
+  }
+  // The body: a tall frame narrowing to the top deck, planks and three iron bands.
+  poly(c, [[3, 38], [29, 38], [27, 10], [5, 10]], SIEGE_ASH);
+  for (const y of [16, 24, 32]) { px(c, 4, y, 24, 1, R.iron[2]); dot(c, 6, y, R.iron[0]); dot(c, 26, y, R.iron[0]); }
+  for (const x of [9, 16, 23]) line(c, [x, 11], [x, 37], SIEGE_ASH[3]);
+  // The crossbow slits, a dead watchman's skull at each and his bolt's glint.
+  for (const [x, y] of [[8, 19], [21, 19]] as const) { px(c, x, y, 4, 3, OUT); orb(c, x + 2, y + 1, 1.4, 1.2, R.bone); dot(c, x + 3, y + 1, '#ffd25a'); }
+  // The ram: an iron head on a beam out of its foot, the side it bites with.
+  limb(c, [14, 34], [33, 34], 3, SIEGE_WOOD);
+  poly(c, [[31, 31], [35, 32], [35, 36], [31, 37]], R.iron); dot(c, 34, 33, R.iron[0]);
+  // The top deck: battlements, the catapult's arm with a coal in its cup (it glows), the torn banner of the Bastion.
+  for (const x of [5, 10, 15, 20, 25]) px(c, x, 7, 3, 3, SIEGE_WOOD[1]);
+  px(c, 5, 9, 23, 2, SIEGE_WOOD[2]);
+  const arm = [0, 1, 2, 1][f];
+  limb(c, [12, 8], [3 - arm, 1], 2, SIEGE_WOOD); orb(c, 3 - arm, 1, 2, 1.6, R.iron);
+  glow(c, 2 - arm, 0, 2, EMBER);
+  limb(c, [26, 9], [26, -2], 1, SIEGE_WOOD);
+  poly(c, [[26, -2], [32, -1 + arm * .5], [30, 2], [32, 5 + arm * .5], [26, 4]], [R.cowl[0], R.cowl[1], R.cowl[2], R.cowl[3]]);
+  dot(c, 28, 1, '#e8e1cf');
+  // Ash settled on its ledges.
+  for (const [x, y] of [[6, 15], [19, 23], [11, 31], [24, 31]] as const) px(c, x, y, 3, 1, SIEGE_PALE);
+  // Embers glowing in its seams (the Bastion burned; the tower kept the coals).
+  for (const [x, y] of [[13, 28], [22, 14], [7, 35]] as const) dot(c, x, y, EMBER[1]);
+}
+const FOG_HABIT: Ramp = ['#d6d2da', '#a6a2b0', '#76727f', '#4a4654'];
+const FOG_VEIL: Ramp = ['#ece8f0', '#bcb8c6', '#8a8696', '#5a5666'];
+/**
+ * The Fogmother (§6.4): tall, patient, wrapped in the drowned sisters' grey habits, no feet (the fog is what stands),
+ * a veil over a face that is mostly not there, two cold lantern-points for eyes, water beading on the cloth. She hums,
+ * so her mouth is the one thing that moves.
+ */
+function paintFogmother(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], sw = [0, 1, 0, -1][f];
+  // The fog she stands on: a pale pool, tongues drifting off it.
+  orb(c, 13, 42, 12, 1.8, FOG_VEIL);
+  for (let i = 0; i < 5; i++) { const x = 3 + i * 5 + ((i + f) % 2); px(c, x, 40 + ((i + f) % 2), 3, 1, FOG_VEIL[1]); }
+  // The habit: narrow at the shoulders, falling wide and long, layered (one sister's over another's).
+  poly(c, [[9, 12 + b], [17, 12 + b], [22, 24 + b], [25, 41], [1, 41], [4, 24 + b]], FOG_HABIT);
+  poly(c, [[7, 22 + b], [19, 22 + b], [21, 40], [5, 40]], [FOG_HABIT[1], FOG_HABIT[2], FOG_HABIT[3], FOG_HABIT[3]]);
+  line(c, [11, 15 + b], [8, 39], FOG_HABIT[3]); line(c, [15, 15 + b], [18, 39], FOG_HABIT[3]);
+  // Water that never dries: beads down the cloth.
+  for (const [x, y] of [[6, 28], [19, 31], [12, 35], [9, 25]] as const) dot(c, x, y + ((f + x) % 2), '#cfe8ff');
+  // The sleeves: hands folded at her breast, long pale fingers.
+  limb(c, [8, 16 + b], [11, 21 + b], 3, FOG_HABIT); limb(c, [18, 16 + b], [15, 21 + b], 3, FOG_HABIT);
+  px(c, 11, 20 + b, 4, 2, '#e8e4ec');
+  // The veil and the face that is mostly not there: two cold points, a mouth humming.
+  orb(c, 13, 8 + b, 5.2, 5.4, FOG_VEIL);
+  poly(c, [[7, 6 + b], [19, 6 + b], [21, 15 + b], [5, 15 + b]], FOG_VEIL);
+  px(c, 9, 7 + b, 8, 5, '#2a2634');
+  dot(c, 10, 9 + b, '#dff4ff'); dot(c, 15, 9 + b, '#dff4ff');
+  px(c, 12, 11 + b, 2, sw ? 1 : 2, '#6a6676');
+  // The wimple's band, a lantern-glass bead at its knot (the abbey's).
+  px(c, 7, 5 + b, 12, 1, FOG_HABIT[3]); dot(c, 13, 5 + b, '#9ad8ff');
+}
+/** The bodies, by look (world-bosses.ts WorldBossDef.look): its painter and its art box. */
+const BOSS_LOOKS: Readonly<Record<string, { paint: MobDef['paint']; w: number; h: number }>> = {
+  'last-siege': { paint: (c, f) => grown(1, 0, 3, () => paintSiegeTower(c, f)), w: 36, h: 48 },
+  fogmother: { paint: paintFogmother, w: 26, h: 44 },
+};
+/** A world boss with its own look (S10b): the creature it is, drawn from its own sheet. */
+export function withLook(key: string, def: MobDef): MobDef {
+  if (!key.startsWith('wb:')) return def;
+  const look = worldBossOfKey(key)?.look, L = look ? BOSS_LOOKS[look] : null;
+  return L && def.sheet !== look ? { ...def, paint: L.paint, w: L.w, h: L.h, sheet: look } : def;
+}
+
 const sheets = new Map<string, HTMLCanvasElement>();
 /** Frames in a creature's sheet: a walk or a hover (contact, passing, contact, passing). The engine reads the count off the sheet. */
 export const MOB_FRAMES = 4;
 /** A boss's rim, in its element's colour (docs/design/effects-spec.md): fire for the forge-born, violet bone-light for the dragon. */
 const RIM: Readonly<Record<string, string>> = {
   'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
-  'mossbound-colossus': '#7affd0', 'ink-abbess': '#a48bff', 'elder-rootwyrm': '#7affd0', 'the-uncounted': '#b8e8d8',
+  'mossbound-colossus': '#7affd0', 'ink-abbess': '#a48bff', 'last-siege': '#ff8a2e', fogmother: '#cfe0f0', 'elder-rootwyrm': '#7affd0', 'the-uncounted': '#b8e8d8',
   'seam-eater-risen': '#f0e0ff',
 };
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
@@ -1942,7 +2028,7 @@ let scaleCap = 3;
 export function setMobScaleCap(n: number): void { scaleCap = Math.max(1, Math.round(n)); }
 export function mobCell(def: { w?: number; h: number }): { w: number; h: number } { const k = mobK(def); return { w: Math.ceil((def.w ?? 0) * k), h: Math.ceil(def.h * k) }; }
 export function mobSheet(def: MobDef): HTMLCanvasElement {
-  let s = sheets.get(def.id);
+  let s = sheets.get(def.sheet ?? def.id);
   if (s) return s;
   const { w, h } = mobCell(def), k = mobK(def);
   s = document.createElement('canvas'); s.width = w * MOB_FRAMES; s.height = h;
@@ -1954,10 +2040,10 @@ export function mobSheet(def: MobDef): HTMLCanvasElement {
     const img = c.getImageData(0, 0, w, h);
     // The volume pass (keeper-volume.ts), gentle: the creatures are already lit shape by shape; this rounds the whole.
     volumizeData(img.data, w, h, { light: .28, shade: .36, depth: 5, alphaMin: 200 });
-    outline(img, RIM[def.id]);
+    outline(img, RIM[def.sheet ?? def.id]);
     o.putImageData(img, f * w, 0);
   }
-  sheets.set(def.id, s);
+  sheets.set(def.sheet ?? def.id, s);
   return s;
 }
 
@@ -2113,6 +2199,13 @@ export interface Mob {
   /** Its party form's id (a world boss's, set where it rises), and the form's state once it woke. */
   form?: string;
   pb?: PartyState;
+  /**
+   * S10b: the track it rolls (art px; the Last Siege): the point it heads for, seconds into its step, and `done` once it
+   * stands at the last (the room sees it leave). It never chases; it bites what stands at its ram.
+   */
+  track?: { pts: { x: number; y: number }[]; i: number; t: number; done?: boolean };
+  /** S10b: the Fogmother's lantern posts (td-party-boss LanternPost), handed to its form when it wakes. */
+  posts?: LanternPost[];
   // ── Protocol 10 (the room's statuses; play/world/room-status.ts) ──
   /** Taunted by this Keeper (the room's id): it turns on that one. Feared away from this spot. */
   tauntBy?: string;
@@ -2486,6 +2579,8 @@ const BEAST_REST = 1.1;
 /** Dawn at Noon: % more every hit lands for on a creature the daylight has unveiled. */
 export const DAWN_REVEAL = 15;
 const MOB_REACH = 18;      // a creature's bite
+/** S10b: the Wall That Kept Walking holds once he has stood this long; the Psalm's light lasts this long. */
+const HOLD_LINE_SECS = 2, PSALM_LIGHT_SECS = 4;
 /** A gap-closer's blow lands on what stands this close to where it comes down (art px). */
 export const CHARGE_HIT = 22;
 /** How far ahead of a moving Keeper a gap-closer aims, at most (art px). */
@@ -2848,7 +2943,7 @@ export class MobSystem {
    */
   get lightBonus(): number {
     const aura = this.lamp && this.aura === 'lantern-aura' && this.rank('lantern-aura') > 0 ? this.v('lantern-aura')['light'] : 0;
-    const tiles = carriedLight({ vocation: this.vocation, shuttered: this.shuttered, aura, spell: this.lightT > 0 ? this.lightTiles : 0, relics: this.relics.light });
+    const tiles = carriedLight({ vocation: this.vocation, shuttered: this.shuttered, aura, spell: this.lightT > 0 ? this.lightTiles : 0, relics: this.relics.light + (this.psalmT > 0 ? 1 : 0) });
     // Kept Ember (a mark): shuttered, his light never falls under its tiles.
     const ke = this.lamp && this.shuttered ? this.mk('shutter-lantern', 'keptLight') : null;
     return ke ? Math.max(tiles, ke.n ?? 0) : tiles;
@@ -2895,6 +2990,12 @@ export class MobSystem {
    * creature standing in it freezes it a moment (the Wet rule; bosses take Wet in full).
    */
   weatherWet = false;
+  /** S10b: seconds he has stood still; the Wall's next aura claim; the Psalm's borrowed light. */
+  stillT = 0;
+  private holdSayT = 0;
+  psalmT = 0;
+  /** S10b: in the fog or the dark (the Psalm's rule): the world's fog, the night, or a Lightless snuff on him. */
+  private dimmed(): boolean { return this.skyFog || this.phase === 'night' || this.phase === 'eclipse' || this.kst.dark > 0; }
   /**
    * S8 (world-acts §3.2): Mist-rain wets at half strength (`wetHalf`); Ashfall lifts fire a tenth (`skyFire`); Spore drift
    * makes a fire hit on a creature burst once round it (`sporeSky`); a Thundercake's lightning resist (% while it lasts).
@@ -3235,7 +3336,7 @@ export class MobSystem {
   /** One ordinary creature, placed on purpose (the phase specs' showcase). */
   place(key: string, def: MobDef, x: number, y: number): Mob { const m = this.spawnMob(key, def, x, y); this.mobs.push(m); return m; }
   private spawnMob(key: string, def: MobDef, x: number, y: number): Mob {
-    def = tiered(def, this.tier);
+    def = tiered(withLook(key, def), this.tier);
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}), ...(def.charge ? { chargeCd: def.charge.rate * .5 } : {}) };
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
@@ -3620,6 +3721,9 @@ export class MobSystem {
       // Feared (Fear of Fire, Fearsome): it runs from the Keeper and strikes nothing.
       const afraid = (m.fearT ?? 0) > 0;
       if (afraid) { const f = m.fearFrom ?? p; tx = m.x + (m.x - f.x); ty = m.y + (m.y - f.y); stop = 0; }
+      // S10b: a boss on a track (the Last Siege) rolls it and nothing else; the Fogmother will not stand in a lit post's light.
+      if (m.track) { if (!rooted) this.rollTrack(m, dt); tx = null; ty = null; }
+      if (m.pb?.posts.length) { const o = outOfLight(m.pb.posts, m.x, m.y); if (o && this.free(o.x, o.y, m.def.floats)) { m.x = o.x; m.y = o.y; } }
       if (tx !== null && ty !== null && !rooted) {
         const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
         if (len > stop) {
@@ -3630,9 +3734,12 @@ export class MobSystem {
           if (!hunting && Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
         }
       }
-      if (seen && (d <= MOB_REACH || (shoot && d <= shoot.range))) this.holding.add(m);
+      // (The tower cannot turn to its prey: the ram strikes whoever it is fixed on at its front, and the garrison's
+      // crossbows whoever it is fixed on anywhere in its arena. Its blow reaches ten tiles.)
+      const reach = m.track ? TILE * 10 : MOB_REACH;
+      if (seen && (d <= reach || (shoot && d <= shoot.range))) this.holding.add(m);
       // A bite when its prey is in reach — and in sight (no bite through a wall's corner).
-      if (seen && !afraid && d <= MOB_REACH && m.cd <= 0) {
+      if (seen && !afraid && d <= reach && m.cd <= 0) {
         m.cd = m.def.rate;
         // Brutal (an affix): every third blow is a heavy one, after a red arc on the ground in front of it.
         if (m.elite?.affixes.includes('brutal') && (m.blows = (m.blows ?? 0) + 1) % BRUTAL.every === 0) { m.abCast = -1; m.tell = BRUTAL.tell; m.aim = { x: px0, y: py0 - 12 }; continue; }
@@ -3833,6 +3940,14 @@ export class MobSystem {
     for (const s of ['stun', 'freeze', 'root', 'chill', 'blind', 'wet', 'weak', 'dark', 'immune'] as const) if (k[s] > 0) k[s] = Math.max(0, k[s] - dt);
     if (this.selfAway) return;
     const moving = Math.hypot(this.pv.x, this.pv.y) > STILL_PACE;
+    // S10b: how long he has stood still (the Wall That Kept Walking holds the line for him and those beside him), and
+    // the Psalm's borrowed light running down.
+    this.stillT = moving ? 0 : this.stillT + dt;
+    if (this.psalmT > 0) this.psalmT = Math.max(0, this.psalmT - dt);
+    if (this.relics.holdLine > 0 && this.stillT >= HOLD_LINE_SECS && this.allies.length && (this.holdSayT -= dt) <= 0) {
+      this.holdSayT = 1.5;
+      this.allyOut.push({ k: 'aura', s: 'unique-wall-that-kept-walking', n: Math.min(15, this.relics.holdLine), r: 30, t: 20 });
+    }
     for (const [s, type] of [['burn', 'fire'], ['bleed', 'physical']] as const) {
       const d = k[s];
       if (d.t <= 0) continue;
@@ -4139,10 +4254,11 @@ export class MobSystem {
         // It wakes when the fight starts (someone near has hurt it or it has a target), and stays awake.
         if (!ks.length || m.hp >= m.def.hp || !this.partyFormFor(m, ks.length)) continue;
         m.pb = newPartyState(fm);
+        if (m.posts) m.pb.posts = m.posts;
       }
       const A: PartyArena = {
         keepers: () => this.partyKeepers(m, reach),
-        strike: (k, raw, type) => this.strikeKeeper(k, Math.max(1, Math.round(raw)), type, m, '', m.def.level),
+        strike: (k, raw, type, st) => this.strikeKeeper(k, Math.max(1, Math.round(raw)), type, m, st ? encodeStatus([st]) : '', m.def.level),
         ring: (x, y, r, t, tone, kind) => { this.bursts.push({ x, y, t, delay: t, r, dmg: 0, el: kind, tone, pb: true, by: m }); },
         mark: e => { this.partyOut.push({ ...e, by: m }); if (this.partyOut.length > 48) this.partyOut.splice(0, this.partyOut.length - 48); this.partySeen(e); },
         say: w => { m.chantT = CHANT_SECS * 1.5; m.chantText = w; },
@@ -4166,15 +4282,32 @@ export class MobSystem {
       partyStep(m.pb, m, A, dt, m.threatOn ?? (ks.length === 1 ? ks[0].id : null));
     }
   }
+  /** S10b: the tower rolls on toward its track's next point (its phase's seconds a tile); at the last it is done. */
+  private rollTrack(m: Mob, dt: number): void {
+    const tr = m.track!;
+    if (tr.done) return;
+    const to = tr.pts[tr.i];
+    if (!to) { tr.done = true; return; }
+    const step = m.pb?.form.phases[Math.max(0, m.pb.phase)]?.step ?? MECH.towerStep, go = TILE / step * dt;
+    const dx = to.x - m.x, dy = to.y - m.y, len = Math.hypot(dx, dy);
+    if (Math.abs(dx) > 1) m.face = dx < 0 ? -1 : 1;
+    if (len <= go) { m.x = to.x; m.y = to.y; tr.i++; if (tr.i >= tr.pts.length) tr.done = true; }
+    else { m.x += dx / len * go; m.y += dy / len * go; }
+    m.hx = m.x; m.hy = m.y;
+    tr.t += dt;
+  }
   /** The marks this screen draws run down (every screen, a member's too). */
   private tickPartyFx(dt: number): void { for (let i = this.partyFx.length - 1; i >= 0; i--) { const f = this.partyFx[i]; f.left -= dt; if (f.left <= 0 || f.t === 0) this.partyFx.splice(i, 1); } }
   /** The marks a party boss showed since the last call (the wire). */
   flushParty(): (PartyMark & { by: Mob })[] { return this.partyOut.splice(0); }
   /** A mark heard from the host or the room (a member draws it). */
   partySeen(e: PartyMark): void {
-    if (e.t === 0) { for (let i = this.partyFx.length - 1; i >= 0; i--) { const f = this.partyFx[i]; if (f.m === e.m && (f.a ?? '') === (e.a ?? '')) this.partyFx.splice(i, 1); } return; }
-    // One of each a Keeper: a new pip, brand, stack count or bar replaces the last.
-    for (let i = this.partyFx.length - 1; i >= 0; i--) { const f = this.partyFx[i]; if (f.m === e.m && (f.a ?? '') === (e.a ?? '')) this.partyFx.splice(i, 1); }
+    // S10's gap: a phase's name over the message line as it begins (world-bosses.i18n `pb.phase.<id>`).
+    if (e.m === 'phase' && e.t > 0 && e.w && /^[a-z]+-\d$/.test(e.w)) this.host.say?.(`pb.phase.${e.w}`);
+    // One of each a Keeper (a lantern post: one of each post): a new pip, brand, stack count or bar replaces the last.
+    const same = (f: PartyMark) => f.m === e.m && (f.a ?? '') === (e.a ?? '') && (e.m !== 'post' || f.n === e.n);
+    if (e.t === 0) { for (let i = this.partyFx.length - 1; i >= 0; i--) if (same(this.partyFx[i])) this.partyFx.splice(i, 1); return; }
+    for (let i = this.partyFx.length - 1; i >= 0; i--) if (same(this.partyFx[i])) this.partyFx.splice(i, 1);
     if (this.partyFx.length < 32) this.partyFx.push({ ...e, left: e.t });
   }
   /** A Cleanse reached Keeper `id` ('' this screen's own): a party boss's Brand on it is lifted. */
@@ -4749,6 +4882,8 @@ export class MobSystem {
     }
     // The marks' damage cuts: Shared Hurt (bonded), Rootwalk Party (while it runs), Warded Ground (in the circle).
     if (n > 0) n = this.markGuard(n);
+    // S10b: the Wall That Kept Walking — he has stood his ground 2 s: the blow lands lighter.
+    if (n > 0 && this.relics.holdLine > 0 && this.stillT >= HOLD_LINE_SECS) n = Math.max(1, Math.round(n * (1 - this.relics.holdLine / 100)));
     // S5: the tank's own cuts (the Banner's, the Gate's).
     if (n > 0 && this.melee) n = this.tankCut(n);
     // S5: a ward an ally laid round him (a Lantern Ward, a Shared Bones) drinks first of the wards.
@@ -6053,9 +6188,11 @@ export class MobSystem {
   pickAlly(id: string): void { this.allyPick = id ? { id, until: this.clock + ALLY_PICK_SECS } : null; }
   /** A heal of `n` on an ally now: a claim for the room, its picture at once. */
   private mendAlly(a: AllyNear, n: number, s: SkillId): void {
-    const v = Math.round(n);
+    const v = Math.round(n * (1 + this.relics.psalm / 100));
     if (!(v > 0)) return;
     this.allyOut.push({ k: 'heal', s, to: a.id, n: v });
+    // S10b: the Psalm Heard Through Water — a heal in the fog or the dark lifts the Chill and lends a little light.
+    if (this.relics.psalm > 0 && this.dimmed()) this.allyOut.push({ k: 'cleanse', s: 'unique-psalm-heard-through-water', to: a.id, n: 1, t: 40, f: PSALM_F });
     a.h = Math.min(a.m, a.h + v);
     this.float(a.x, a.y - 36, `+${v}`, '#7fe08a');
     this.effects.push({ kind: 'hearthglow', x: a.x, y: a.y, age: 0, life: .7, dir: 1 });
@@ -6070,8 +6207,9 @@ export class MobSystem {
       return;
     }
     if (to) { this.mendAlly(to, n, s); return; }
-    const p = this.host.player();
-    this.healMe(Math.round(n)); this.float(p.x, p.y - 36, `+${Math.round(n)}`, '#7fe08a');
+    const p = this.host.player(), v = Math.round(n * (1 + this.relics.psalm / 100));
+    if (this.relics.psalm > 0 && this.dimmed()) { this.kst.chill = 0; this.psalmT = PSALM_LIGHT_SECS; }
+    this.healMe(v); this.float(p.x, p.y - 36, `+${v}`, '#7fe08a');
   }
   /** Cleanse on this Keeper: every status of §0.4 but Wet (Dry Cloak: Wet too), then a grace. */
   cleanseMe(graceSecs: number, dry = 0): void {
@@ -6114,6 +6252,7 @@ export class MobSystem {
     if (e.a === 'heal') { this.float(p.x, p.y - 36, `+${e.n}`, '#7fe08a'); this.effects.push({ kind: 'hearthglow', x: p.x, y: p.y, age: 0, life: .7, dir: 1 }); this.sfxCue('heal'); this.allyHealed += e.n; }
     else if (e.a === 'ward' && ((e.f ?? 0) & ALLY_VOW)) { this.allyVowT = Math.max(this.allyVowT, (e.t ?? 40) / 10); this.effects.push({ kind: 'vow', x: p.x, y: p.y - 30, age: 0, life: .8, dir: 1 }); }
     else if (e.a === 'ward') { this.allyWard = Math.max(this.allyWard, e.n); this.allyWardT = Math.max(this.allyWardT, (e.t ?? 120) / 10); this.effects.push({ kind: 'lward', x: p.x, y: p.y - 16, age: 0, life: .5, dir: 1 }); this.sfxCue('ward'); }
+    else if (e.a === 'cleanse' && ((e.f ?? 0) & PSALM_F)) { this.kst.chill = 0; this.psalmT = PSALM_LIGHT_SECS; }
     else if (e.a === 'cleanse') { this.cleanseMe((e.t ?? 20) / 10, e.f ? DRY_CLOAK_SECS : 0); this.sfxCue('light-hit'); }
     else if (e.a === 'aura') this.allyAuras.set(e.s, { n: e.n, f: e.f ?? 0, t: Math.max(1, (e.t ?? 20) / 10) });
     else if (e.a === 'bond') { this.allyBond = { share: e.n, t: (e.t ?? 60) / 10, oath: e.f ?? 0 }; this.sfxCue('shield'); }
@@ -6907,6 +7046,8 @@ export class MobSystem {
           if (wh) this.mendAlly(a, a.m * (wh.n ?? 0) / 100, id);
         } else {
           this.cleanseMe(grace, dry ? dry.s ?? DRY_CLOAK_SECS : 0);
+          // S10's gap: alone, her Cleanse on herself reaches the room too (a party boss's Brand on her is lifted there).
+          this.allyOut.push({ k: 'cleanse', s: id, n: 1, t: Math.round(grace * 10) });
           if (wh) this.mendTo(null, this.keeperMaxHp * (wh.n ?? 0) / 100, id);
         }
       };
@@ -7607,6 +7748,7 @@ export class MobSystem {
   // ── Shared creatures (protocol 4; td-coop.ts) ──
   /** A creature as the host sent it, not tiered again (its numbers are the host's). */
   replicaMob(key: string, def: MobDef, x: number, y: number): Mob {
+    def = withLook(key, def);
     return { key, def, x, y, hx: x, hy: y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3, rcd: (def.ranged?.rate ?? 1) * (.5 + Math.random() * .5), summoned: false, tell: 0, aim: null, ...(def.rend ? { rendCd: def.rend.rate * .5 } : {}) };
   }
   /** The host: a member's claim that passed the gate lands through the creature's own path (Stone Skin, its call, its half-life change, its fall). */

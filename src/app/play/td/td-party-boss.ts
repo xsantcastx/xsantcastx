@@ -25,7 +25,9 @@ const T = 16;
  */
 export type PartyRingKind = 'pbhit' | 'pbsoak' | 'pbspread';
 export const PARTY_RINGS: readonly string[] = ['pbhit', 'pbsoak', 'pbspread'];
-export type PartyMech = 'fixate' | 'sunder' | 'burn-room' | 'brand' | 'adds' | 'interrupt' | 'soak' | 'tether' | 'spread' | 'strike' | 'charge';
+export type PartyMech = 'fixate' | 'sunder' | 'burn-room' | 'brand' | 'adds' | 'interrupt' | 'soak' | 'tether' | 'spread' | 'strike' | 'charge'
+  // S10b: the Last Siege's crossbows and catapult; the Fogmother's Wrap, Gloam Blizzard and Settle.
+  | 'volley' | 'meteor' | 'blizzard' | 'wrap' | 'settle';
 
 /** One mechanic as a phase uses it. */
 export interface MechUse {
@@ -52,6 +54,8 @@ export interface MechUse {
   count?: number;
   /** Add wave: levels under the boss's (default MECH.addsUnder). */
   under?: number;
+  /** Brand: the healer is always the first it marks (the Fogmother's She Sings Your Name). */
+  healerFirst?: boolean;
 }
 export interface PartyPhase {
   /** The phase holds while the boss's life share is above this (the last phase: 0). */
@@ -59,6 +63,8 @@ export interface PartyPhase {
   /** Its name's i18n tail (`pb.phase.<id>`), shown when it starts. */
   id: string;
   uses: readonly MechUse[];
+  /** S10b: a boss on a track (the Last Siege): seconds a tile it rolls on in this phase. */
+  step?: number;
 }
 export interface PartyForm {
   /** The boss's MOBS id (a floor boss), or a world boss's id. */
@@ -68,6 +74,12 @@ export interface PartyForm {
   phases: readonly PartyPhase[];
   /** The arena keeps everyone Wet (the Antlered Storm): lightning +25% (weather.model WET). */
   wet?: boolean;
+  /**
+   * S10b: the Fogmother's lantern posts (td-mobs hands their places in): a Keeper standing at a dark one for
+   * MECH.postLight seconds lights it; a lit one is a light she will not stand in; all lit in her last phase, she deals
+   * `cut` less ("the lanterns remember what she forgot").
+   */
+  posts?: { cut: number };
 }
 
 // ── The vocabulary's numbers (§5.1) ──────────────────────────────────────────────────────────────────────────────
@@ -96,6 +108,19 @@ export const MECH = Object.freeze({
   addsUnder: 4,
   /** A wet Keeper takes lightning ×1.25 (weather.model WET.lightningTaken). */
   wetLightning: 1.25,
+  // ── S10b (§6.2, §6.4) ──
+  /** The Garrison Rides: three crossbow bolts at the top threat, rings r1 round where he stands, a 0.8 s tell, 0.8B each. */
+  volleyR: 1, volleyTell: .8, volleyB: .8,
+  /** Load the Catapult: three meteor rings r2.5 on the healer's side, a 1.0 s tell, 2.5B fire each. */
+  meteorR: 2.5, meteorTell: 1, meteorB: 2.5,
+  /** Gloam Blizzard: rings r3 over the two farthest, a 1.2 s tell, 1.2B cold and Frost (a Wet Keeper freezes). */
+  blizzardR: 3, blizzardTell: 1.2, blizzardB: 1.2, blizzardFrost: 3,
+  /** Wrap: a grey line from her to the one she is fixed on, 0.5B cold and Chill 3 s (no step saves it: the healer does). */
+  wrapB: .5, wrapChill: 3,
+  /** The tower rolls one tile every 4 s; on its Last Turn one a second. */
+  towerStep: 4, lastTurnStep: 1,
+  /** A lantern post: a Keeper within 1.25 tiles for 3 s lights it; its light is r4 (she will not stand in it). */
+  postReach: 1.25, postLight: 3, postR: 4,
 });
 
 const F = (o: MechUse): MechUse => o;
@@ -172,6 +197,34 @@ export const PARTY_FORMS: Readonly<Record<string, PartyForm>> = {
       F({ m: 'burn-room', every: 15, first: 6, el: 'lightning', tone: 'storm', words: 'lum vor orum' }),
       F({ m: 'interrupt', every: 18, first: 9, words: 'vor nyr', heal: .08, tone: 'life' })] },
   ] },
+  // S10b, §6.2: the Last Siege, the Ashen Bastion's siege tower, still rolling toward the Cinder clans' camps. It
+  // cannot turn and never chases: it rolls its track (td-mobs Mob.track) one tile every 4 s, one a second at the end.
+  'last-siege': { id: 'last-siege', arena: 10, phases: [
+    { to: .65, id: 'siege-1', step: MECH.towerStep, uses: [FIX, SUNDER,
+      F({ m: 'volley', every: 6, first: 2, n: 3, b: MECH.volleyB, el: 'physical', tone: 'bone', words: 'osk brann sha' })] },
+    { to: .3, id: 'siege-2', step: MECH.towerStep, uses: [FIX, SUNDER,
+      F({ m: 'volley', every: 8, first: 4, n: 3, b: MECH.volleyB, el: 'physical', tone: 'bone' }),
+      F({ m: 'meteor', every: 10, first: 3, n: 3, b: MECH.meteorB, el: 'fire', tone: 'ember', words: 'brann vael dra' }),
+      F({ m: 'adds', first: 1, every: 20, under: 2, n: 8, adds: ['bone-walker', 'bone-walker', 'bone-walker', 'bone-priest'], tone: 'bone', words: 'osk teth' })] },
+    { to: 0, id: 'siege-3', step: MECH.lastTurnStep, uses: [FIX, SUNDER,
+      F({ m: 'burn-room', every: 15, first: 4, el: 'fire', tone: 'ember', words: 'vael orum' }),
+      F({ m: 'soak', every: 12, first: 7, el: 'fire', tone: 'gold', words: 'brann dra' })] },
+  ] },
+  // S10b, §6.4: the Fogmother, what the fog keeps of everyone it ever hid, risen where three lantern posts went out.
+  'fogmother': { id: 'fogmother', arena: 11, posts: { cut: .25 }, phases: [
+    { to: .65, id: 'fog-1', uses: [FIX,
+      F({ m: 'wrap', every: 9, first: 3, b: MECH.wrapB, el: 'cold', tone: 'shadow', words: 'vor nyr mur' })] },
+    { to: .3, id: 'fog-2', uses: [FIX,
+      F({ m: 'wrap', every: 12, first: 6, b: MECH.wrapB, el: 'cold', tone: 'shadow' }),
+      F({ m: 'brand', every: 15, first: 3, count: 2, healerFirst: true, el: 'cold', tone: 'shadow', words: 'nyr sha' }),
+      F({ m: 'blizzard', every: 11, first: 7, n: 2, b: MECH.blizzardB, el: 'cold', tone: 'frost', words: 'rim vor dra' }),
+      F({ m: 'adds', first: 1, every: 20, n: 8, adds: ['drowned-knight', 'drowned-knight', 'drowned-acolyte'], tone: 'water', words: 'osk teth' }),
+      F({ m: 'interrupt', every: 16, first: 5, words: 'osk brann teth', summon: 'drowned-knight', tone: 'water' })] },
+    { to: 0, id: 'fog-3', uses: [FIX,
+      F({ m: 'settle', first: .5, tone: 'shadow', words: 'nyr orum' }),
+      F({ m: 'burn-room', every: 15, first: 5, el: 'cold', tone: 'frost', words: 'rim orum' }),
+      F({ m: 'soak', every: 12, first: 8, el: 'cold', tone: 'frost', words: 'rim dra' })] },
+  ] },
 };
 
 export function partyFormOf(id: string | undefined | null): PartyForm | null { return id ? PARTY_FORMS[id] ?? null : null; }
@@ -180,10 +233,16 @@ export function partyFormOf(id: string | undefined | null): PartyForm | null { r
 
 /** A Keeper in the arena as the director sees it. */
 export interface PartyKeeper { id: string; self: boolean; x: number; y: number }
+/** S10b: one of the Fogmother's three lantern posts (art px). */
+export interface LanternPost { x: number; y: number; lit: boolean; hold: number }
+/** A status a mechanic lays with its blow (S10b: Wrap's Chill, Gloam Blizzard's Frost). */
+export interface PartyStatus { s: 'chill' | 'frost'; t: number }
 /** What a Keeper must see (pictures; the screen draws them, the director never does). */
 export interface PartyMark {
   /** fix: the boss is fixed on `a`. brand: `a` is Branded. tether: `a`–`b` are tied. cast: the boss channels (words). eye: the storm's eye is open. sunder: `a`'s stacks (`n`). */
-  m: 'fix' | 'brand' | 'tether' | 'cast' | 'eye' | 'sunder' | 'phase';
+  m: 'fix' | 'brand' | 'tether' | 'cast' | 'eye' | 'sunder' | 'phase'
+    /** S10b: wrap: the Fogmother's grey line to `a` (from x, y). post: lantern post `n` is lit at (x, y). settle: the fog closes round (x, y). */
+    | 'wrap' | 'post' | 'settle';
   /** The boss's own id on the wire (its nid), or the Mob itself on the simulating side. */
   i?: string;
   a?: string; b?: string;
@@ -216,11 +275,17 @@ export interface PartyState {
   dots: { id: string; t: number; dps: number; type: DamageType; brand?: boolean; tick: number }[];
   tether: { a: string; b: string; t: number; tick: number; dps: number; snap: number } | null;
   /** Rings waiting to burst (the director's own: soak, spread, strike, charge, the room's burn). */
-  rings: { m: PartyMech; x: number; y: number; r: number; t: number; dmg: number; type: DamageType; on?: string }[];
+  rings: { m: PartyMech; x: number; y: number; r: number; t: number; dmg: number; type: DamageType; on?: string; st?: PartyStatus }[];
   /** A channel under way: seconds left and what it does. */
   cast: { t: number; use: MechUse } | null;
   /** Healing each Keeper gave (the healer is the one who gives most). */
   healed: Map<string, number>;
+  /** S10b: the Fogmother's lantern posts (where, lit, how long a Keeper has stood at each); her damage factor now. */
+  posts: LanternPost[];
+  cut: number;
+  /** The long marks (a lit post, the Settle, the Eye), said again every few seconds so a Keeper who arrives late sees them. */
+  keep: Map<string, PartyMark>;
+  keepT: number;
   /** Stats (the sim reads them). */
   stats: { heavies: number; interrupted: number; casts: number; soaked: number; soakEmpty: number; snapped: number; overlaps: number; cleansed: number; brands: number; adds: number };
 }
@@ -230,7 +295,7 @@ export interface PartyArena {
   /** The living Keepers within the arena of the boss. */
   keepers(): PartyKeeper[];
   /** A blow on one Keeper (through its defenses), with a status maybe. */
-  strike(k: PartyKeeper, raw: number, type: DamageType): void;
+  strike(k: PartyKeeper, raw: number, type: DamageType, st?: PartyStatus): void;
   /** A ring on the ground (picture; the director decides what it hits). */
   ring(x: number, y: number, r: number, t: number, tone: TellTone, kind: PartyRingKind): void;
   mark(e: PartyMark): void;
@@ -250,8 +315,34 @@ export interface PartyBoss { x: number; y: number; hp: number; def: { hp: number
 export function newPartyState(form: PartyForm): PartyState {
   return {
     form, phase: -1, t: 0, next: [], bites: 0, heavyArc: false, fixOn: null, sunderShown: 0, fixT: 0, sunder: new Map(), dots: [], tether: null, rings: [], cast: null, healed: new Map(),
+    posts: [], cut: 1, keep: new Map(), keepT: 5,
     stats: { heavies: 0, interrupted: 0, casts: 0, soaked: 0, soakEmpty: 0, snapped: 0, overlaps: 0, cleansed: 0, brands: 0, adds: 0 },
   };
+}
+
+/**
+ * S10b: the lantern posts a frame on: a Keeper within MECH.postReach of a dark post for MECH.postLight seconds lights
+ * it (stepping off lets the count fall back). Returns the posts lit this frame. Pure: the room runs it before she rises
+ * (all three lit: she does not rise that night) and her form runs it in the fight.
+ */
+export function lightPosts(posts: LanternPost[], ks: readonly { x: number; y: number }[], dt: number): number[] {
+  const out: number[] = [];
+  posts.forEach((p, i) => {
+    if (p.lit) return;
+    const at = ks.some(k => Math.hypot(k.x - p.x, k.y - p.y) <= MECH.postReach * T);
+    p.hold = at ? p.hold + dt : Math.max(0, p.hold - dt * 2);
+    if (p.hold >= MECH.postLight) { p.lit = true; out.push(i); }
+  });
+  return out;
+}
+/** Where a body standing inside a lit post's light is pushed to: its edge (the Fogmother will not stand in it). */
+export function outOfLight(posts: readonly LanternPost[], x: number, y: number): { x: number; y: number } | null {
+  for (const p of posts) {
+    if (!p.lit) continue;
+    const d = Math.hypot(x - p.x, y - p.y), R = MECH.postR * T;
+    if (d < R) { const k = d > .5 ? R / d : 0; return k ? { x: p.x + (x - p.x) * k, y: p.y + (y - p.y) * k } : { x: p.x + R, y: p.y }; }
+  }
+  return null;
 }
 
 /** B: the boss's own blow (the mean of its roll, its tier and blows already in its def). */
@@ -293,12 +384,20 @@ export function partyStep(s: PartyState, boss: PartyBoss, A: PartyArena, dt: num
     const uses = s.form.phases[ph].uses;
     s.next = uses.map(u => u.first ?? (u.every ? u.every / 2 : 0));
     A.mark({ m: 'phase', w: s.form.phases[ph].id, t: 3 });
-    if (s.form.id === 'antlered-storm' && ph === 2) A.mark({ m: 'eye', t: 600, x: boss.x, y: boss.y });
+    if (s.form.id === 'antlered-storm' && ph === 2) hold(s, A, { m: 'eye', t: 600, x: boss.x, y: boss.y });
+    s.posts.forEach((p, i) => { if (p.lit) hold(s, A, { m: 'post', n: i, x: p.x, y: p.y, t: 600 }); });
   }
   const phase = s.form.phases[Math.max(0, s.phase)];
   s.t += dt;
+  s.keepT -= dt;
+  if (s.keepT <= 0) { s.keepT = 5; for (const e of s.keep.values()) A.mark(e); }
   const wet = s.form.wet ? MECH.wetLightning : 1;
-  const hit = (k: PartyKeeper, n: number, type: DamageType) => { if (n > 0) A.strike(k, n * (type === 'lightning' ? wet : 1), type); };
+  const hit = (k: PartyKeeper, n: number, type: DamageType, st?: PartyStatus) => { if (n > 0) A.strike(k, n * s.cut * (type === 'lightning' ? wet : 1), type, st); };
+  // S10b: the lantern posts — lit by a Keeper standing at one; all of them in her last phase cut what she deals.
+  if (s.posts.length) {
+    for (const i of lightPosts(s.posts, ks, dt)) hold(s, A, { m: 'post', n: i, x: s.posts[i].x, y: s.posts[i].y, t: 600 });
+    s.cut = s.form.posts && s.phase === s.form.phases.length - 1 && s.posts.every(p => p.lit) ? 1 - s.form.posts.cut : 1;
+  }
   // The channel: it runs unless stopped.
   if (s.cast) {
     if (A.stopped()) { s.cast = null; s.stats.interrupted++; A.mark({ m: 'cast', t: 0 }); }
@@ -340,7 +439,7 @@ export function partyStep(s: PartyState, boss: PartyBoss, A: PartyArena, dt: num
     } else if (r.m === 'burn-room') {
       for (const k of live) { hit(k, r.dmg, r.type); s.dots.push({ id: k.id, t: MECH.burnSecs, dps: MECH.burnDotB * B, type: r.type, tick: 1 }); }
     } else {
-      for (const k of live) if (dist(k, r) <= r.r) hit(k, r.dmg, r.type);
+      for (const k of live) if (dist(k, r) <= r.r) hit(k, r.dmg, r.type, r.st);
     }
   }
   // Burns and brands: once a second.
@@ -369,6 +468,9 @@ export function partyStep(s: PartyState, boss: PartyBoss, A: PartyArena, dt: num
   for (const [id, st] of s.sunder) { st[1] -= dt; if (st[1] <= 0) { s.sunder.delete(id); A.mark({ m: 'sunder', a: id, n: 0, t: 0 }); } }
 }
 
+/** A long mark: shown now and said again every few seconds while the fight lasts. */
+function hold(s: PartyState, A: Pick<PartyArena, 'mark'>, e: PartyMark): void { s.keep.set(`${e.m}:${e.n ?? ''}`, e); A.mark(e); }
+
 /** One use goes off. */
 function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeeper[], A: PartyArena, B: number, lv: number): void {
   const type = u.el ?? 'physical';
@@ -381,9 +483,10 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
       return;
     }
     case 'brand': {
-      const pool = ks.filter(k => k.id !== s.fixOn);
+      const pool = ks.filter(k => k.id !== s.fixOn), first = u.healerFirst ? healerOf(s, ks) : null;
       for (let c = 0; c < (u.count ?? 1) && pool.length; c++) {
-        const k = pool.splice(Math.floor(A.rng() * pool.length), 1)[0];
+        const hi = c === 0 && first ? pool.findIndex(k => k.id === first.id) : -1;
+        const k = pool.splice(hi >= 0 ? hi : Math.floor(A.rng() * pool.length), 1)[0];
         s.dots.push({ id: k.id, t: MECH.brandSecs, dps: (u.b ?? MECH.brandB) * B, type, brand: true, tick: 1 });
         s.stats.brands++;
         A.mark({ m: 'brand', a: k.id, t: MECH.brandSecs });
@@ -445,6 +548,51 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
       s.rings.push({ m: 'charge', x: far.x, y: far.y, r: R, t: MECH.chargeTell, dmg: (u.b ?? 2) * B, type });
       return;
     }
+    case 'volley': {
+      // The Garrison Rides: the crossbows on the tower at the top threat (rings round where he stands as they loose).
+      const on = ks.find(k => k.id === s.fixOn) ?? ks[0];
+      if (!on) return;
+      const R = MECH.volleyR * T;
+      for (let c = 0; c < (u.n ?? 3); c++) {
+        const a = A.rng() * Math.PI * 2, d = c ? (.6 + A.rng() * .8) * T : 0, x = on.x + Math.cos(a) * d, y = on.y + Math.sin(a) * d;
+        A.ring(x, y, R, MECH.volleyTell, u.tone, 'pbhit');
+        s.rings.push({ m: 'volley', x, y, r: R, t: MECH.volleyTell, dmg: (u.b ?? MECH.volleyB) * B, type });
+      }
+      return;
+    }
+    case 'meteor': {
+      // Load the Catapult: on the healer's side of the arena (where the one who mends stands, and round it).
+      const on = healerOf(s, ks);
+      if (!on) return;
+      const R = MECH.meteorR * T;
+      for (let c = 0; c < (u.n ?? 3); c++) {
+        const a = A.rng() * Math.PI * 2, d = c ? (2 + A.rng() * 1.5) * T : 0, x = on.x + Math.cos(a) * d, y = on.y + Math.sin(a) * d;
+        A.ring(x, y, R, MECH.meteorTell, u.tone, 'pbhit');
+        s.rings.push({ m: 'meteor', x, y, r: R, t: MECH.meteorTell, dmg: (u.b ?? MECH.meteorB) * B, type });
+      }
+      return;
+    }
+    case 'blizzard': {
+      // Gloam Blizzard over the farthest (the Wet freeze where it falls).
+      const far = [...ks].sort((a, b) => dist(b, boss) - dist(a, boss)).slice(0, u.n ?? 2), R = MECH.blizzardR * T;
+      for (const k of far) {
+        A.ring(k.x, k.y, R, MECH.blizzardTell, u.tone, 'pbhit');
+        s.rings.push({ m: 'blizzard', x: k.x, y: k.y, r: R, t: MECH.blizzardTell, dmg: (u.b ?? MECH.blizzardB) * B, type, st: { s: 'frost', t: MECH.blizzardFrost } });
+      }
+      return;
+    }
+    case 'wrap': {
+      // A grey line from her to the one she is fixed on: the cold reaches him wherever he stands.
+      const on = ks.find(k => k.id === s.fixOn);
+      if (!on) return;
+      A.mark({ m: 'wrap', a: on.id, x: boss.x, y: boss.y, t: MECH.wrapChill });
+      if (s.cut > 0) A.strike(on, (u.b ?? MECH.wrapB) * B * s.cut, type, { s: 'chill', t: MECH.wrapChill });
+      return;
+    }
+    case 'settle':
+      // The fog thickens over the arena (the screens close the sight to three tiles, but for the lit posts' rings).
+      hold(s, A, { m: 'settle', x: boss.x, y: boss.y, t: 600 });
+      return;
     default: return;
   }
 }
@@ -456,10 +604,10 @@ function use(s: PartyState, u: MechUse, boss: PartyBoss, ks: readonly PartyKeepe
  */
 export function partyBite(s: PartyState, to: string, n: number, B: number, arc?: () => void): number {
   const uses = s.form.phases[Math.max(0, s.phase)]?.uses ?? [];
-  let out = n;
+  let out = n * s.cut;
   if (to === s.fixOn && uses.some(u => u.m === 'fixate')) {
     s.bites++;
-    if (s.bites >= MECH.heavyEvery) { s.bites = 0; s.heavyArc = false; s.stats.heavies++; out = Math.max(out, MECH.heavyB * B); }
+    if (s.bites >= MECH.heavyEvery) { s.bites = 0; s.heavyArc = false; s.stats.heavies++; out = Math.max(out, MECH.heavyB * B * s.cut); }
     else if (s.bites === MECH.heavyEvery - 1 && !s.heavyArc) { s.heavyArc = true; arc?.(); }
   }
   if (uses.some(u => u.m === 'sunder')) {

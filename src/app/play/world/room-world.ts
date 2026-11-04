@@ -29,7 +29,7 @@ import { makePack } from '../td/td-elites';
 import { respawnSecs } from './respawn';
 import { WORLD_BOSS_KEY, fastForward, firstRising, formedBossDef, nextRising, worldBossOfKey, worldBossesIn, type WorldBossClock, type WorldBossDef } from './world-bosses';
 import { weatherAt } from '../../shared/weather/weather.model';
-import { mechEvent, type PartyMark } from '../td/td-party-boss';
+import { lightPosts, mechEvent, type LanternPost, type PartyMark } from '../td/td-party-boss';
 import { uniqueById } from '../../shared/rpg/unique-items';
 import { TILE } from '../td/td-art';
 import { KIN_DEAD_MS, kinGuard, weighKin, type KinHeld, type KinRefusal, type KinWord } from './room-kin';
@@ -46,11 +46,14 @@ import { GROUND_MS, OWN_MS, TAKE_REACH, type WorldDrop, type WorldTakeResult } f
 import { lootEntry, rollCreatureLoot, type LootDrop } from '../../shared/loot/drop-tables';
 import { CC_IMMUNE, DOT_SHARE, PULL_MAX_TILES, SLOW_MAX_PCT, STATUS_CAP, ST_BIT, statusLegal, type CoopStatus, type RoomStatusKind } from './room-status';
 import type { KeeperLife } from './keeper-life';
-import { CUT_AURAS, ALLY_PER_SEC, ALLY_WINDOW_MS, REKINDLE_MAX_MS, REKINDLE_MIN_CD_MS, REKINDLE_REACH, allyHealBudget, allyLegal, type AllyClaim, type AllyRefusal } from './ally-claims';
+import { CUT_AURAS, PSALM_F, ALLY_PER_SEC, ALLY_WINDOW_MS, REKINDLE_MAX_MS, REKINDLE_MIN_CD_MS, REKINDLE_REACH, allyHealBudget, allyLegal, type AllyClaim, type AllyRefusal } from './ally-claims';
 import { forgetThreat, healThreat, kinKey } from '../td/td-threat';
 import { hashSeed, seededRandom, type MonsterRank } from '../../shared/loot/champions';
 import { eclipseAt, worldTime, type SkyPhase } from '../../shared/world-clock/world-clock.model';
 import type { EngineOptions } from '../engine/engine.model';
+
+/** S10b: the Fogmother gathers this long in her fog before she stands (the time to light her three posts). */
+const FOG_GATHER_MS = 60000;
 
 /**
  * A Keeper in the area as the room knows it: where it last said it stands, and its level (the room's own record).
@@ -68,7 +71,7 @@ export interface RoomWorldSave {
   wb?: [string, WorldBossClock][];
 }
 /** A world boss rose, fell or left unfound (the room tells the whole world: an omen line). */
-export interface WorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone'; level: number; x: number; y: number }
+export interface WorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone' | 'kept' | 'home'; level: number; x: number; y: number }
 export interface RoomWorldOptions {
   area: string;
   /** The world's random stream (the room: a fresh secret per wake; the specs: a fixed string). */
@@ -139,6 +142,8 @@ export class RoomWorld implements CoopLink {
   /** The world bosses' clocks (protocol 9; world-bosses.ts), and the ones up now. */
   private readonly wb = new Map<string, WorldBossClock>();
   private readonly wbUp = new Map<string, Mob>();
+  /** S10b: the lantern posts of a world boss that has them (the Fogmother's), as this night has left them. */
+  private readonly wbPosts = new Map<string, { posts: LanternPost[]; since: number; kept: boolean }>();
   /** Omens since the last flush (the room tells everyone). */
   private omens: WorldOmen[] = [];
   /** The spots each world boss may rise at (tiles), found once from the continent's map. */
@@ -389,7 +394,13 @@ export class RoomWorld implements CoopLink {
     const w = b.weather!, c = this.wb.get(b.id) ?? { next: 0 }, m = this.wbUp.get(b.id);
     if (!this.wb.has(b.id)) this.wb.set(b.id, c);
     const sky = weatherAt({ land: w.land, region: w.region, ms: now });
+    // S10b: a night boss (the Last Siege, the Fogmother) rises only in its weather after dark, and stands for the rest
+    // of that weather's window (dawn does not send it home; the weather does).
+    const night = !b.night || this.sky() === 'night';
     const holds = sky.state === w.state;
+    // S10b: the lantern posts (the Fogmother's): dark again each dusk; lit by a Keeper standing at each, before she rises.
+    let lamps = this.wbPosts.get(b.id);
+    if (b.posts && (!lamps || !night)) { lamps = { posts: b.posts.map(p => ({ x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE, lit: false, hold: 0 })), since: 0, kept: false }; this.wbPosts.set(b.id, lamps); }
     if (m && !this.mobs.mobs.includes(m)) {
       this.wbUp.delete(b.id);
       if (m.hp <= 0) { this.omen(b, 'fall', m.x, m.y); this.wb.set(b.id, { next: now + (b.cooldown ?? 2) * 3600000 }); }
@@ -397,18 +408,33 @@ export class RoomWorld implements CoopLink {
       this.dirty = true;
       return;
     }
-    if (m && !holds) {
+    // S10b: the tower reached the end of its track (the Bastion's ruin): the garrison salutes and it leaves, unfelled.
+    const home = !!m?.track?.done;
+    if (m && (!holds || home)) {
       for (const o of [...this.mobs.mobs]) if (o === m || o.key.startsWith(`${m.key}~`)) this.mobs.banish(o);
       this.wbUp.delete(b.id);
-      this.omen(b, 'gone', m.x, m.y);
-      this.wb.set(b.id, { next: now }); this.dirty = true;
+      this.omen(b, home ? 'home' : 'gone', m.x, m.y);
+      // Home: not again in this window (it has only just arrived).
+      this.wb.set(b.id, { next: home ? now + sky.leftMs + 1000 : now }); this.dirty = true;
       return;
     }
     if (m) { c.up = { until: now + sky.leftMs, x: Math.round(m.x), y: Math.round(m.y) }; return; }
-    if (!holds || now < c.next || !b.at) return;
-    const x = b.at.c * TILE + TILE / 2, y = (b.at.r + 2) * TILE + TILE;
+    if (!holds || !night) { if (lamps) lamps.since = 0; return; }
+    if (now < c.next || !b.at) return;
+    if (lamps) {
+      // She gathers a minute before she stands (the fog thickens in one place): long enough to light the three.
+      if (lamps.kept) return;
+      if (!lamps.since) lamps.since = now;
+      lightPosts(lamps.posts, [...this.keepers.values()].filter(k => !this.life(k.id)?.down), 1);
+      if (lamps.posts.every(p => p.lit)) { lamps.kept = true; this.omen(b, 'kept', b.at.c * TILE, b.at.r * TILE); this.dirty = true; return; }
+      if (now - lamps.since < FOG_GATHER_MS) return;
+    }
+    const start = b.track?.[0] ?? null;
+    const x = (start ?? b.at).c * TILE + TILE / 2, y = start ? start.r * TILE + TILE : b.posts ? b.at.r * TILE + TILE : (b.at.r + 2) * TILE + TILE;
     this.wb.set(b.id, { next: c.next, up: { until: now + sky.leftMs, x, y } });
-    this.raiseBoss(b, x, y, !c.up);
+    const fm = this.raiseBoss(b, x, y, !c.up);
+    if (fm && b.track) fm.track = { pts: b.track.map(p => ({ x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE })), i: 1, t: 0 };
+    if (fm && lamps) fm.posts = lamps.posts;
     this.dirty = true;
   }
   /** A world boss rises at (x, y): a named unique leader of its creature, its life and blows its own, its pack beside it. */
@@ -420,7 +446,7 @@ export class RoomWorld implements CoopLink {
       const fm = this.mobs.place(WORLD_BOSS_KEY(b.id), formedBossDef(b, atZoneLevel(base, b.level)), x, y);
       fm.form = b.form;
       // Its name over its head on every screen (the elite plate; its loot is a boss's, by its def's rank).
-      fm.elite = { rank: 'unique', role: 'leader', affixes: [], name: b.name };
+      fm.elite = { rank: 'unique', role: 'leader', affixes: [...b.affixes], name: b.name };
       this.wbUp.set(b.id, fm);
       if (announce) this.omen(b, 'rise', x, y);
       return fm;
@@ -752,7 +778,8 @@ export class RoomWorld implements CoopLink {
     for (const c of list) {
       if (rate.length >= ALLY_PER_SEC) { nay('rate'); continue; }
       rate.push(now);
-      const to = c.to ? this.keepers.get(c.to) ?? null : null;
+      // (A Cleanse with no one named is the healer's own, S10's gap: it lifts a party boss's Brand on her.)
+      const to = c.to ? this.keepers.get(c.to) ?? null : c.k === 'cleanse' ? k : null;
       const why = allyLegal(c, k, to);
       if (why) { nay(why); continue; }
       this.allyStats.claims++;
@@ -799,8 +826,9 @@ export class RoomWorld implements CoopLink {
         this.tell(to!.id, { k: 'ally', to: to!.id, a: 'ward', by: from, s: c.s, n: c.n, t: c.t ?? 120, ...(c.f ? { f: c.f } : {}) });
         out.push(c.n);
       } else if (c.k === 'cleanse') {
-        // S10: a party boss's Brand on the cleansed is lifted (td-party-boss partyCleanse).
-        this.mobs.partyCleansed(to!.id);
+        // S10: a party boss's Brand on the cleansed is lifted (td-party-boss partyCleanse); the Psalm's lifts only Chill.
+        if (!((c.f ?? 0) & PSALM_F)) this.mobs.partyCleansed(to!.id);
+        if (to!.id === from) { out.push(1); continue; }
         this.tell(to!.id, { k: 'ally', to: to!.id, a: 'cleanse', by: from, s: c.s, n: c.n, ...(c.f ? { f: c.f } : {}), ...(c.t ? { t: c.t } : {}) });
         out.push(1);
       } else if (c.k === 'bond') {

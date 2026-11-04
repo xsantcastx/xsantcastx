@@ -1266,6 +1266,24 @@ export function lanternPost(): Sprite {
 }
 
 /**
+ * S10b: one of the three old lantern posts on the Black Meres (monsters-abilities §6.4), its light out: the same heron-
+ * necked post as the fen's, the glass gone grey and cold, a drowned ribbon on its arm. Lit (a Keeper stands at it, or
+ * the fight's `post` mark), td-party-fx lays its flame and its light over it.
+ */
+export function darkPost(): Sprite {
+  return cached('dark-post', () => {
+    const img = cv(14, 34), c = img.getContext('2d')!;
+    rect(c, 3, 8, 3, 23, '#2a2026'); rect(c, 3, 8, 1, 23, '#46363c'); rect(c, 1, 30, 7, 3, '#2a2026'); rect(c, 0, 31, 2, 2, PAL.mire[3]);
+    rect(c, 4, 6, 7, 2, '#2a2026'); rect(c, 10, 6, 1, 3, '#2a2026');
+    rect(c, 8, 9, 6, 2, '#1c1418'); rect(c, 8, 11, 6, 7, '#3a3644'); rect(c, 9, 11, 4, 6, '#5a5666'); rect(c, 9, 11, 1, 2, '#8a8696');
+    rect(c, 10, 11, 1, 6, '#2a2634'); rect(c, 8, 18, 6, 1, '#1c1418');
+    rect(c, 5, 8, 1, 5, '#9a96a4'); rect(c, 6, 12, 1, 3, '#76727f');
+    rect(c, 2, 20, 2, 3, PAL.hangmoss[1]); rect(c, 2, 23, 1, 2, PAL.hangmoss[2]);
+    return { img: outline(img), ax: 5, ay: 35 };
+  });
+}
+
+/**
  * Gloamhaven's Lantern Tower: a tall timber tower on stilts over the water, a gallery at each floor (it goes up two,
  * maps/lantern-tower.ts), shingles of gloam-violet, and at its top the Great Lantern that guides boats through the fog.
  */

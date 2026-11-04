@@ -236,6 +236,9 @@ export const UMBRAL_PLACES: readonly ContinentPlace[] = [
   { kind: 'shrine', c: -88, r: -16, name: 'The Gloam Shrine' },
   { kind: 'ruins', c: -36, r: 58, name: 'The Sunken Belfry' },
   { kind: 'standing-stones', c: 14, r: -30, name: 'The Lantern Ring' },
+  // S10b: the Three Posts, the Black Meres' widest pool, its reed islands and the three lantern posts Old Corvane has lit
+  // since he was a boy; on a foggy night with them out the Fogmother rises here (world-bosses.ts).
+  { kind: 'mere-posts', c: -4, r: -12, name: 'The Three Posts' },
 ];
 
 export const UMBRAL_NAMES: Readonly<Partial<Record<Region, string>>> = {

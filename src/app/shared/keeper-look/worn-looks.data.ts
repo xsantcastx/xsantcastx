@@ -70,6 +70,8 @@ export const WORN_LOOK_TABLE: Readonly<Record<string, WornLookSpec>> = {
   'unique-spore-crown': { shape: 'crown', pal: 'moss', accent: '#7fd5a3', runes: '#c4ffe0', fx: { kind: 'motes', color: SPORE } },
   // S10: a circlet of glassy rootglass antlers, a faint white spark running along them.
   'unique-crown-of-the-antlered-storm': { shape: 'crown', pal: 'moss', accent: '#eafff6', runes: '#cfe8ff', horns: '#7affd0', fx: { kind: 'motes', color: '#ffffff' } },
+  'unique-wall-that-kept-walking': { shape: 'shield', pal: 'ash', accent: '#e8b040', runes: '#7c7688' },
+  'unique-psalm-heard-through-water': { shape: 'pendant', pal: 'stone', accent: '#cfe8ff' },
   // Chest
   'unique-ashfall-wrap': { shape: 'robe', pal: 'ash', accent: EMBER_HOT, seam: '#7a2a12' },
   'unique-quiet-cuirass': { shape: 'plate', pal: 'obsidian', accent: '#b8bcd8', runes: '#8a90b0' },
