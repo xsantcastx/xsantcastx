@@ -9,7 +9,7 @@
 
   <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
-  @if (!portrait) {
+  @if (!portrait && !paged) {
     <app-station-tabs stationTabs class="vs-tabs" [tabs]="tabs" [active]="view" (activeChange)="setView($event)" [label]="t('vault.tabs')" />
   }
 
@@ -34,6 +34,17 @@
     }
     <section class="vs-side" [attr.aria-label]="t('vault.strip.vault', { tab: tabName(view) })" [hidden]="portrait && seg !== 'vault'">
       <h3 class="vs-h">{{ t('vault.strip.vault', { tab: tabName(view) }) }}</h3>
+      @if (paged && !portrait) {
+        <!-- Sideways (§3c): the Vault's tab chips head its own column; the satchel's column heads with its name. -->
+        <div class="vs-tabrow vs-tabrow--side" role="tablist" [attr.aria-label]="t('vault.tabs')" data-vault-tabs>
+          @for (tb of tabs; track tb.id) {
+            <button type="button" role="tab" class="vs-tabchip" [attr.data-vault-tab]="tb.id" [attr.aria-selected]="tb.id === view" (click)="setView(tb.id)">{{ tb.label }}</button>
+          }
+          @if (nextOffer; as o) {
+            <button type="button" class="vs-tabchip vs-tabchip--buy" data-vault-buy [attr.aria-label]="t('vault.act.buyNextAria', { tab: o.label, price: fmt(o.price ?? 0) })" (click)="buy(o.id)">{{ t('vault.act.buyNext', { price: fmt(o.price ?? 0) }) }}</button>
+          }
+        </div>
+      }
       @if (view === 'overflow') {
         <p class="vs-note">{{ t('vault.line.overflow') }}</p>
         <div class="vs-overflow" data-vault-overflow>
@@ -84,9 +95,7 @@
       <button type="button" class="vs-chip" [class.vs-chip--primary]="!portrait" data-vault-deposit (click)="depositAll()">{{ t('vault.act.deposit') }}</button>
       @if (view !== 'overflow' && stash && !locked) {
         <button type="button" class="vs-chip" data-vault-takeall (click)="takeAll()">{{ t('vault.act.takeAll') }}</button>
-        <button type="button" class="vs-chip" data-vault-sort (click)="sort(view)">{{ t('vault.act.sortTab') }}</button>
       }
-      <button type="button" class="vs-chip" data-vault-sort-bag (click)="sort('b')">{{ t('vault.act.sortBag') }}</button>
     </div>
     @if (drag.held && drag.mode === 'hold') {
       <p class="vs-hold" role="status">{{ t('vault.holding', { name: drag.held.name }) }} <button type="button" class="vs-chip" data-drag-cancel (click)="drag.cancel()">{{ t('vault.cancel') }}</button></p>
@@ -96,6 +105,13 @@
 
   <div stationDetails class="vs-more">
     <p>{{ t('vault.details.how') }}</p>
+    <!-- Sorting is rare (owner: stations stay dummy-simple): it waits here, behind the ?, never on the window's foot. -->
+    <div class="vs-sorts" data-vault-sorts>
+      @if (view !== 'overflow' && stash && !locked) {
+        <button type="button" class="vs-chip" data-vault-sort (click)="sort(view)">{{ t('vault.act.sortTab') }}</button>
+      }
+      <button type="button" class="vs-chip" data-vault-sort-bag (click)="sort('b')">{{ t('vault.act.sortBag') }}</button>
+    </div>
     <h3>{{ t('vault.details.prices') }}</h3>
     <ul class="vs-offers">
       @for (o of offers; track o.id) {
