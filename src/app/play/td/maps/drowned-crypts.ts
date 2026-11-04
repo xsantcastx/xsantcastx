@@ -38,7 +38,7 @@ const BASE: Readonly<Record<string, LegendEntry>> = {
 export const DROWNED_CRYPTS_1: TdMapDef = {
   id: 'drowned-crypts-1', name: 'The Drowned Crypts · Floor 1 · The Flooded Nave', outside: 'drownwall', dark: true, fog: .35,
   legend: { ...BASE,
-    '^': { ground: 'wetstone', object: 'up', station: CRYPTS_OUT, exit: { to: 'surface', arrive: 'drowned-crypts' } },
+    '^': { ground: 'wetstone', object: 'up', station: CRYPTS_OUT, exit: { to: 'surface', arrive: 'drowned-crypts', continent: 'umbral-marches-ruins' } },
     '>': { ground: 'wetstone', object: 'down', station: D1_DOWN, exit: { to: 'drowned-crypts-2', arrive: 'crypts2-up' } },
   },
   rows: [

@@ -20,16 +20,20 @@
  *   The Walking Tree        the Wilds, the Greenwood's glade      night, or fog         (S11) one of a pair of copied
  *                           trees is somewhere else each time the Keeper looks away; after three moves Glim dims beside
  *                           it, and one blow makes it a plain tree, leaving a copy-seed (a clue for campaign #7).
+ *   The Bell Under the Water the Marches, the Black Meres         an eclipse            (S11 part 2) a minute or two
+ *                           into the eclipse the fifth bell rings once under the water and every Lampfish in the Meres
+ *                           goes dark; a Keeper by the Belfry's roof who stands still through its ringing sees the
+ *                           fifth bell's keyhole glow, and takes a wax rubbing of it (a clue for campaign #12).
  *
  * Pure: no Angular, no DOM. The engine (play/td/td-night-events.ts) draws and walks them; the host pays.
  */
 import { hashSeed } from '../loot/champions';
 import { huntGold } from '../economy/economy-curve';
-import { DAWN_START, NIGHT_START, msAt, worldTime } from '../world-clock/world-clock.model';
+import { DAWN_START, NIGHT_START, eclipseAt, msAt, worldTime } from '../world-clock/world-clock.model';
 import { WEATHER_WINDOW_MS, weatherAt, weatherWindow, type WeatherInput, type WeatherState } from '../weather/weather.model';
 
-export type NightEventId = 'late-shift' | 'count-goes-on' | 'relief-column' | 'self-lit-kiln' | 'walking-tree';
-export const NIGHT_EVENT_IDS: readonly NightEventId[] = ['late-shift', 'count-goes-on', 'relief-column', 'self-lit-kiln', 'walking-tree'];
+export type NightEventId = 'late-shift' | 'count-goes-on' | 'relief-column' | 'self-lit-kiln' | 'walking-tree' | 'bell-under-water';
+export const NIGHT_EVENT_IDS: readonly NightEventId[] = ['late-shift', 'count-goes-on', 'relief-column', 'self-lit-kiln', 'walking-tree', 'bell-under-water'];
 
 export interface NightEventDef {
   id: NightEventId;
@@ -44,6 +48,8 @@ export interface NightEventDef {
   every?: number;
   /** How long it runs once it begins (s). The Count runs while its fog holds, in counts of forty. */
   secs: number;
+  /** It comes under an eclipse, not at night (the Bell Under the Water): one an eclipse, the eclipse's day its "night". */
+  eclipse?: boolean;
 }
 
 export const NIGHT_EVENTS: readonly NightEventDef[] = [
@@ -53,6 +59,8 @@ export const NIGHT_EVENTS: readonly NightEventDef[] = [
   { id: 'self-lit-kiln', land: 'infernal-reach', area: 'infernal-reach-deep-charwood', region: 'F', needs: 'ashfall', secs: 120 },
   // The Walking Tree (S11): all night, and by day while the Greenwood's fog holds; it waits for the Keeper to look away.
   { id: 'walking-tree', land: 'verdant-wilds', area: 'verdant-wilds-greenwood', region: 'j', secs: 0 },
+  // The Bell Under the Water (S11 part 2): once an eclipse, over the Sunken Belfry's roof on the Black Meres.
+  { id: 'bell-under-water', land: 'umbral-marches', area: 'umbral-marches-meres', region: 'k', secs: 0, eclipse: true },
 ];
 const BY_ID = new Map(NIGHT_EVENTS.map(e => [e.id, e]));
 export function nightEventDef(id: string): NightEventDef | undefined { return BY_ID.get(id as NightEventId); }
@@ -113,9 +121,15 @@ export function nightEventsAt(area: string, ms: number, rolls?: WeatherInput['ro
     const n = night ?? worldTime(ms).day, startMs = night !== null ? nightSpan(night).start : weatherWindow(ms) * WEATHER_WINDOW_MS;
     out.push({ id: def.id, night: n, startMs, t: (ms - startMs) / 1000, secs: 0 });
   }
+  // The Bell Under the Water keeps an eclipse, not the night: it runs from the eclipse's first minute to its last.
+  const ecl = eclipseAt(ms);
+  for (const def of NIGHT_EVENTS) {
+    if (def.area !== area || !def.eclipse || !ecl) continue;
+    out.push({ id: def.id, night: ecl.id, startMs: ecl.startMs, t: (ms - ecl.startMs) / 1000, secs: (ecl.endMs - ecl.startMs) / 1000 });
+  }
   if (night === null) return out;
   for (const def of NIGHT_EVENTS) {
-    if (def.area !== area || def.id === 'walking-tree') continue;
+    if (def.area !== area || def.id === 'walking-tree' || def.eclipse) continue;
     if (def.id === 'count-goes-on') {
       if (weatherAt({ land: def.land, region: def.region, ms, rolls: rolls ?? null }).state !== 'fog') continue;
       const startMs = Math.floor(ms / COUNT_CYCLE_MS) * COUNT_CYCLE_MS;
@@ -154,6 +168,17 @@ export const KILN = { glow: 120 } as const;
  */
 export const WALKER = { moves: 3, keep: 6, reach: 2.5, look: .6 } as const;
 
+/**
+ * The Bell Under the Water: the fifth bell rings once, `ring` s into the eclipse plus a seeded minute (a forced test
+ * event: `forced` s); every Lampfish in the Meres goes dark for `dark` s. A Keeper within `near` tiles of the Belfry's
+ * roof at the note who stays within `drift` tiles of where they stood for `still` s sees the keyhole glow (paid once).
+ */
+export const UNDERBELL = { ring: 60, spread: 60, forced: 3, dark: 60, still: 12, near: 10, drift: .6, heard: 40 } as const;
+/** The seconds into an eclipse the fifth bell rings (the same for every Keeper of the land). */
+export function underbellRing(eclipseDay: number): number {
+  return eclipseDay < 0 ? UNDERBELL.forced : UNDERBELL.ring + (nightSeed('umbral-marches', 'bell-under-water', eclipseDay) % UNDERBELL.spread);
+}
+
 // ── What following pays (once per night, per Keeper; the host books it) ────
 
 export interface NightReward { stacks: readonly { id: string; qty: number }[]; gold: number }
@@ -164,6 +189,7 @@ export const NIGHT_REWARDS: Readonly<Record<NightEventId, NightReward>> = {
   'relief-column': { stacks: [{ id: 'margin-note-scrap', qty: 1 }], gold: 0 },
   'self-lit-kiln': { stacks: [{ id: 'charcoal', qty: 10 }, { id: 'basalt-blank', qty: 1 }], gold: 0 },
   'walking-tree': { stacks: [{ id: 'copy-seed', qty: 1 }], gold: 0 },
+  'bell-under-water': { stacks: [{ id: 'keyhole-rubbing', qty: 1 }], gold: 0 },
 };
 /** The one key a night's reward is booked under (a drop id: a second claim the same night is the same write). */
 export function nightRewardKey(id: NightEventId, night: number, part = ''): string { return `night:${id}:${night}${part ? `:${part}` : ''}`; }

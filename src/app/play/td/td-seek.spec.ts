@@ -102,7 +102,7 @@ describe('td-seek: the world it reads', () => {
   });
 
   it('a tower climbs: through its door at the ground floor, up its stairs above it', () => {
-    const tower = levelLinks([{ level: 'lantern-tower-0', continent: 'umbral-marches', x: 0, y: 0 }], LEVELS);
+    const tower = levelLinks([{ level: 'lantern-tower-0', continent: 'umbral-marches-gloamhaven', x: 0, y: 0 }], LEVELS);
     expect(tower.get('lantern-tower-0')?.floor).toBe(0);
     expect(tower.get('lantern-tower-1')?.floor).toBe(1);
     expect(tower.get('lantern-tower-2')?.floor).toBe(2);

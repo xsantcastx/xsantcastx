@@ -51,6 +51,10 @@ export type SfxCue =
   // once, frogs at the water, a bough creaking, weavers clicking, a hymn too faint to place; chewing in the walls, a drip
   // into the well, a heartbeat.
   | 'birdstop' | 'frogs' | 'creak' | 'chitter' | 'hymn' | 'chew' | 'drip' | 'heartbeat'
+  // The Umbral Marches (S11 part 2; td-sections MARCHES_BIBLE; canon §8.4): loose boards knocking on the water, black
+  // water breathing, a voice calling too far off to make out; one slow bell under the water (the Belfry, and the Bell
+  // Under the Water); water seeping through peat; a spade striking peat, once.
+  | 'boards' | 'bubbles' | 'voice' | 'underbell' | 'seep' | 'spade'
   // S8, the storm and the night (world-acts §3.5, §5): a strike's rising hum (the tell), the near thunder's crack and roll,
   // the far one's roll; the Barrow's bell counting; a grey voice answering "Present."
   | 'strike-hum' | 'thunder-near' | 'thunder-far' | 'count-bell' | 'present'
@@ -69,7 +73,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, rain: .3, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, 'strike-hum': 1, 'thunder-near': 2.5, 'thunder-far': 3, 'count-bell': 1, present: 1.5, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, birdstop: 8, frogs: 5, creak: 5, chitter: 5, hymn: 12, chew: 4, drip: 2, heartbeat: 6, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, rain: .3, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, 'strike-hum': 1, 'thunder-near': 2.5, 'thunder-far': 3, 'count-bell': 1, present: 1.5, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, birdstop: 8, frogs: 5, creak: 5, chitter: 5, hymn: 12, chew: 4, drip: 2, heartbeat: 6, boards: 5, bubbles: 4, voice: 20, underbell: 8, seep: 4, spade: 12, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -291,6 +295,19 @@ export class SoundDirector {
       case 'drip': this.glide(t, 'sine', 1500, 900, .03, .12); return this.glide(t + .28, 'sine', 1300, 800, .01, .1);
       // A heartbeat, faint, at the heartroot: lub-dub.
       case 'heartbeat': this.thump(t, 48, .14, .22); return this.thump(t + .26, 44, .1, .2);
+      // ── The Marches' sounds (S11 part 2): low, wet and far, never a warning ──
+      // Two loose boards knocking on the water, hollow.
+      case 'boards': this.thump(t, 130, .05, .09); this.noiseHit(t, 'lowpass', 500, 1, .03, .05, this.sfxBus); return this.thump(t + .34, 110, .04, .09);
+      // Black water breathing: four small bubbles rising.
+      case 'bubbles': for (let i = 0; i < 4; i++) this.glide(t + i * .12 + (i % 2) * .03, 'sine', 280 + i * 40, 520 + i * 70, .01, .06); return;
+      // A voice calling across the fen, too far off to make out: two falling notes, breathy.
+      case 'voice': this.glide(t, 'triangle', 330, 300, .006, .6); this.whoosh(t, 1400, 900, .6, .006); return this.glide(t + .75, 'triangle', 300, 250, .005, .8);
+      // One slow bell under the water: a deep sine with a long tail, its partial a fifth up, dulled.
+      case 'underbell': this.tone(t, 'sine', 98, .05, 4.5, .02); this.tone(t, 'sine', 147, .016, 3.2, .04); return this.sweep(t, 'lowpass', 600, 180, 2, .02, 2.4);
+      // Water seeping through the peat: a long soft hiss falling away.
+      case 'seep': return this.sweep(t, 'bandpass', 900, 500, 4, .025, 1.4);
+      // A spade striking peat, once, far off.
+      case 'spade': this.noiseHit(t, 'bandpass', 600, 2, .05, .08, this.sfxBus); return this.thump(t, 88, .05, .12);
       // Something whispers: two breaths of filtered air, the second lower.
       case 'whisper': this.whoosh(t, 3200, 1900, .7, .03); return this.whoosh(t + .55, 2600, 1500, .8, .025);
       // ── The fight (skills-100.md §0.6's recipes; `pitch` is the row's variation) ──

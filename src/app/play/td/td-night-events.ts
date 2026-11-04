@@ -14,9 +14,10 @@
  */
 import { TILE } from './td-art';
 import {
-  COLUMN, COUNT, COUNT_GATE, KILN, NIGHT_REWARDS, SHIFT, WALKER, countBell, nightEventsAt, type NightEventId, type NightEventNow,
+  COLUMN, COUNT, COUNT_GATE, KILN, NIGHT_REWARDS, SHIFT, UNDERBELL, WALKER, countBell, nightEventsAt, underbellRing, type NightEventId, type NightEventNow,
 } from '../../shared/night-events/night-events.model';
 import { WALKER_GLADE } from './maps/wilds-sections';
+import { BELFRY_ROOF_AT } from './maps/umbral-sections';
 import type { WeatherInput } from '../../shared/weather/weather.model';
 
 type Pt = readonly [number, number];
@@ -38,17 +39,22 @@ export const NIGHT_PLACES = {
   // true twin by day; at night (or in fog) it is somewhere else each time the Keeper looks away.
   walker: [WALKER_GLADE.c, WALKER_GLADE.r] as Pt,
   walks: [[55, -73], [74, -56], [53, -57], [74, -73], [64, -52], [66, -77]] as readonly Pt[],
+  // S11 part 2, the Bell Under the Water: the Sunken Belfry's roof out of the Black Meres (umbral-sections BELFRY_ROOF_AT);
+  // the Keeper stands on the boards just south of it, where the fifth bell is heard best.
+  roof: [BELFRY_ROOF_AT.c, BELFRY_ROOF_AT.r + 2] as Pt,
 } as const;
 export const KILN_STATION = 'sealed:deep-kiln';
 /** The area the Walking Tree stands in (its copy is drawn there, day or night). */
 export const WALKER_AREA = 'verdant-wilds-greenwood';
 /** The copy's jungle tree: the true twin's seed (wilds-sections GREENWOOD_SECTION.trees), so the pair is identical. */
 export const WALKER_SEED = 2;
+/** The area the Bell Under the Water rings in (its Lampfish go dark there). */
+export const UNDERBELL_AREA = 'umbral-marches-meres';
 
 export type NightNews =
   | { kind: 'reward'; id: NightEventId; night: number; x: number; y: number }
   | { kind: 'line'; key: string }
-  | { kind: 'sfx'; cue: 'farbell' | 'march' | 'crackle' | 'count-bell' | 'present' | 'creak' };
+  | { kind: 'sfx'; cue: 'farbell' | 'march' | 'crackle' | 'count-bell' | 'present' | 'creak' | 'underbell' };
 
 export interface NightFrame {
   /** The world clock (the room's while it speaks), or null before the host has said. */
@@ -65,7 +71,9 @@ export interface NightFrame {
 /** The Walking Tree's night, for this Keeper: where it stands (-1 home), how often it moved, how long it has been looked at. */
 interface Walk { spot: number; moves: number; look: number; struck: boolean; told: boolean; dimmed: boolean }
 
-interface Track { near: number; seen: number; paid: boolean; bell: number; full: boolean; lit: boolean; said: number }
+interface Track { near: number; seen: number; paid: boolean; bell: number; full: boolean; lit: boolean; said: number;
+  /** The Bell Under the Water: where the Keeper stood when the note came (null: not near it, or moved since). */
+  still?: { x: number; y: number } | null }
 
 /**
  * A stepped disc of light (2-px rows, no soft blur). `floor`: it lies on the ground (iso's floor plane squashes it 2:1
@@ -131,7 +139,7 @@ export class NightEvents {
     }
     if (this.forced) {
       const t = this.clock - this.forced.at;
-      const secs = this.forced.id === 'count-goes-on' ? (COUNT.bells + 1) * COUNT.step : this.forced.id === 'relief-column' ? COLUMN_CALLS_END + 4 : this.forced.id === 'late-shift' ? SHIFT_END + 20 : KILN.glow;
+      const secs = this.forced.id === 'count-goes-on' ? (COUNT.bells + 1) * COUNT.step : this.forced.id === 'relief-column' ? COLUMN_CALLS_END + 4 : this.forced.id === 'late-shift' ? SHIFT_END + 20 : this.forced.id === 'bell-under-water' ? 120 : KILN.glow;
       if (!live.some(e => e.id === this.forced!.id)) live.push({ id: this.forced.id, night: -1, startMs: 0, t: this.forced.id === 'count-goes-on' ? t % secs : t, secs });
     }
     this.now = live;
@@ -186,6 +194,46 @@ export class NightEvents {
       const kp = px(NIGHT_PLACES.kiln);
       if (tr.said < 0 && Math.hypot(kp.x - k.x, kp.y - k.y) < 22 * TILE) { tr.said = 0; this.news.push({ kind: 'sfx', cue: 'crackle' }); }
     } else if (e.id === 'walking-tree') this.stepWalker(e, f);
+    else if (e.id === 'bell-under-water') this.stepUnderbell(e, f, tr);
+  }
+
+  /**
+   * The Bell Under the Water (world-acts.md §5.4): one note, `underbellRing` s into the eclipse. Heard across the Meres;
+   * a Keeper by the Belfry's roof then who stands still through its ringing sees the keyhole glow (once an eclipse).
+   * Nothing hurts or chases; walking away or moving simply ends it for that Keeper.
+   */
+  private stepUnderbell(e: NightEventNow, f: NightFrame, tr: Track): void {
+    const ring = underbellRing(e.night), roof = px(NIGHT_PLACES.roof), k = f.keeper, d = Math.hypot(roof.x - k.x, roof.y - k.y);
+    if (e.t < ring) {
+      // Before the note: the water holds its breath; Glim says so once to a Keeper on the roof's boards.
+      if (tr.said < 0 && d < UNDERBELL.near * TILE) { tr.said = 0; this.news.push({ kind: 'line', key: 'nightev.underbell.still' }); }
+      return;
+    }
+    if (tr.bell === 0) {
+      tr.bell = 1;
+      if (d < UNDERBELL.heard * TILE) this.news.push({ kind: 'sfx', cue: 'underbell' }, { kind: 'line', key: 'nightev.underbell.ring' });
+      tr.still = d < UNDERBELL.near * TILE ? { x: k.x, y: k.y } : null;
+      return;
+    }
+    if (!tr.still || tr.paid) return;
+    if (Math.hypot(tr.still.x - k.x, tr.still.y - k.y) > UNDERBELL.drift * TILE) { tr.still = null; this.news.push({ kind: 'line', key: 'nightev.underbell.moved' }); return; }
+    if (e.t >= ring + UNDERBELL.still) {
+      tr.paid = true;
+      this.news.push({ kind: 'reward', id: e.id, night: e.night, x: roof.x + 10, y: roof.y + 4 }, { kind: 'line', key: 'nightev.underbell.keyhole' });
+    }
+  }
+  /** Every Lampfish in the Meres has gone dark (the fifth bell's note, for UNDERBELL.dark s). */
+  lampsOut(): boolean {
+    const e = this.now.find(x => x.id === 'bell-under-water');
+    if (!e) return false;
+    const ring = underbellRing(e.night);
+    return e.t >= ring && e.t < ring + UNDERBELL.dark;
+  }
+  /** Where the fifth bell's note has got to (its ripple's age, s), and whether this Keeper's keyhole has glowed. */
+  underbell(): { age: number; keyhole: boolean } | null {
+    const e = this.now.find(x => x.id === 'bell-under-water');
+    if (!e) return null;
+    return { age: e.t - underbellRing(e.night), keyhole: this.track(e).paid };
   }
 
   /** This night's Walking Tree (a new night, a new walk from home). */
@@ -397,6 +445,38 @@ export class NightEvents {
         // Her wings, folded and grey: Glim herself, gone dim.
         c.globalAlpha = .5 * b; c.fillStyle = '#c8d0d8'; c.fillRect(gx - 6, gy - 3, 3, 3); c.fillRect(gx + 3, gy - 3, 3, 3);
         c.globalAlpha = 1;
+      } else if (e.id === 'bell-under-water') {
+        // The note's ripple: three pale-green rings spreading out from the Belfry's roof over the black water, thinning
+        // as they go (Low and reduced motion: one ring held still at its middle). Then, for a Keeper who stood still,
+        // the keyhole glowing under the roof: a small bell shape of green light, breathing slowly.
+        const ub = this.underbell(), roof = px(NIGHT_PLACES.roof);
+        if (!ub || !inView(roof.x, roof.y - 24)) continue;
+        const cx = Math.round(roof.x), cy = Math.round(roof.y - 32);
+        flat?.();
+        if (ub.age >= 0 && ub.age < 9) {
+          c.fillStyle = '#a8d8c0';
+          const rings = calm ? [.5] : [0, .33, .66];
+          for (const off of rings) {
+            const k = calm ? .45 : Math.min(1, Math.max(0, (ub.age / 9) - off * .4));
+            if (k <= 0) continue;
+            // A stepped ring of 2-px dots on the water, bright at first and thinning as it spreads (no soft blur).
+            const rr = 10 + k * 150, a = (calm ? .6 : .85) * (1 - k * .8), n = 48 + Math.round(rr * .6);
+            c.globalAlpha = a;
+            for (let i = 0; i < n; i++) { const ang = i / n * Math.PI * 2; c.fillRect(Math.round(cx + Math.cos(ang) * rr), Math.round(cy + 32 + Math.sin(ang) * rr * .5), 3, 2); }
+          }
+        }
+        if (ub.keyhole) {
+          at?.(cx, cy + 8);
+          const b = calm ? .85 : .7 + .3 * Math.sin(time * 1.1);
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = '#7fd5a3';
+          disc(c, cx, cy - 6, 14, .18 * b, false);
+          c.globalCompositeOperation = 'source-over';
+          // The bell-shaped keyhole: a round bowl, a flared lip, a tongue.
+          c.globalAlpha = .9 * b; c.fillStyle = '#c8f0dc';
+          c.fillRect(cx - 2, cy - 11, 4, 2); c.fillRect(cx - 3, cy - 9, 6, 4); c.fillRect(cx - 4, cy - 5, 8, 2); c.fillRect(cx - 1, cy - 3, 2, 2);
+        }
+        c.globalAlpha = 1;
       } else if (e.id === 'self-lit-kiln') {
         const kp = px(NIGHT_PLACES.kiln);
         if (!inView(kp.x, kp.y)) continue;
@@ -441,7 +521,7 @@ export class NightEvents {
 /** The names a night's reward floats under (the satchel's own names: material-catalog MATERIAL_NAMES). */
 const NAMES: Readonly<Record<string, string>> = {
   'cold-miners-pasty': 'Cold Miner\'s Pasty', 'margin-note-scrap': 'Margin Note Scrap', charcoal: 'Charcoal', 'basalt-blank': 'Basalt Blank',
-  'copy-seed': 'Copy-Seed',
+  'copy-seed': 'Copy-Seed', 'keyhole-rubbing': 'Keyhole Rubbing',
 };
 export function nightLabel(id: string): string { return NAMES[id] ?? id; }
 

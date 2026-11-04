@@ -121,6 +121,25 @@ const SCRAP: Shape = [
   '................',
   '................',
 ];
+/** A round of grey wax with a bell-shaped keyhole pressed into it, glowing faintly (S11 part 2: the Bell Under the Water). */
+const RUBBING: Shape = [
+  '................',
+  '................',
+  '.....oooooo.....',
+  '....obbbbbbo....',
+  '...obbbllbbbo...',
+  '..obbblffbbbbo..',
+  '..obbblffbbbbo..',
+  '..obblffffbbbo..',
+  '..obblffffbbbo..',
+  '..obbbbffbbbbo..',
+  '..obbbbffbbbdo..',
+  '...obbbbbbbdo...',
+  '....obbbbbddo...',
+  '.....oooooo.....',
+  '................',
+  '................',
+];
 /** A seed in its husk, a pale sprout of rootglass at its tip (S11: the Walking Tree's copy-seed). */
 const SEED: Shape = [
   '................',
@@ -170,6 +189,8 @@ export const GATHER_ICONS: Readonly<Record<string, Icon>> = {
   'margin-note-scrap': { shape: SCRAP, palette: { b: '#e8dcc0', f: '#4a3a5a', l: '#c8b890' } },
   // S11: the Walking Tree's copy-seed (the Greenwood, at night or in fog).
   'copy-seed': { shape: SEED, palette: { b: '#8a6a3a', d: '#5a4226', f: '#b08a50', l: '#7fd5a3' }, glow: '#7fd5a3' },
+  // S11 part 2: the Bell Under the Water's keyhole rubbing (the Black Meres, under an eclipse).
+  'keyhole-rubbing': { shape: RUBBING, palette: { b: '#8a8494', d: '#5a5466', f: '#c8e8d8', l: '#e8f4ee' }, glow: '#a8d8c0' },
   'burnt-fish': { shape: FISH, palette: { b: '#2a2024', l: '#3a3034', f: '#1a1418', e: '#c4501e', t: '#1a1418' } },
   'tinderbox': { shape: TINDER, palette: { b: '#6a6470', l: '#a8a2b0', e: '#c8bcb4', f: '#3a3440', d: '#c4501e' } },
 };

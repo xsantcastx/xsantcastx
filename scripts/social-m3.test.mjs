@@ -274,7 +274,7 @@ test('protocol 9: kill on a floor, leave, return — still dead; another Keeper 
 test('protocol 9: a world boss\'s omen reaches every protocol-9 Keeper anywhere in the world, never an older client', async t => {
   const { r, join, move, stream, step } = await room(t);
   const a = await join('Aster'), far = await join('Fen'), old = await join('Oskar', 8);
-  await move(a, 160, 610, 'ember-isle'); await move(far, 0, 0, 'umbral-marches'); await move(old, 160, 610, 'ember-isle');
+  await move(a, 160, 610, 'ember-isle'); await move(far, 0, 0, 'umbral-marches-gloamhaven'); await move(old, 160, 610, 'ember-isle');
   const sa = await stream(a), sf = await stream(far), so = await stream(old);
   await step(2); await new Promise(res => setTimeout(res, 30)); await step(2);
   r.rooms.worldOf('ember-isle').fxBossNow('old-greymaw');

@@ -360,13 +360,21 @@ whatever S-work has landed.
   - a solo Keeper wins ≤ 15%;
   - removing the healer, the tank or the AoE each fails the fight in the sim.
 
-#### S11 [part 1 built 2026-11-04, branch `s11wilds`: the Verdant Wilds; the Umbral Marches next]: The Verdant Wilds and the Umbral Marches as acts (L each, world lane)
+#### S11 [part 1 built 2026-11-04, branch `s11wilds`: the Verdant Wilds; part 2 built 2026-11-04, branch `s11marches`: the Umbral Marches]: The Verdant Wilds and the Umbral Marches as acts (L each, world lane)
 - **Built (part 1).** The Wilds' seven sections and Rootglass, the Root Hollows as the connector (−3's root-ramp), the
   thorn hedge, the Weaver Canopy / Hart Meadow / Bell-less Square, a read / sealed thing / sound per area, the Walking
   Tree (copy-seed, #7 clue), Sunny Pell's fen-barge held by the Elder Rootwyrm. Handoff `docs/handoff/s11wilds.md`.
-- **Left.** The Umbral Marches (all of it: the Pilgrims' Boardwalk, the Sunken Belfry's upper half with the fifth bell's
-  door sealed, the Bog Galleries, its hot spots and night events); the Wilds' Dusk Hymn and Spore Lights; the Ring of
-  Thorns' Eclipse-touched Canopy Bats; Ember Isle's growth (the rockslide, Slagstone Cave as the way east).
+- **Built (part 2).** The Marches' six sections and Gloamhaven (`umbral-marches-<section>`; the edge is black water, the
+  seams boardwalks); the Pilgrims' Boardwalk breaking off in the water; the Sunken Belfry (one floor, the only way past the
+  break) with **the fifth bell's door sealed** and the ringer's glove hidden; the Bog Galleries −1, −2 (the only way to the
+  Drowned Ruins); the Lure Pools / Knights' Causeway / Witch's Island; a read / sealed thing / sound per area (MARCHES_BIBLE,
+  EN + ES); the Bell Under the Water (eclipse, the Meres: the Lampfish go dark; stand still and the keyhole glows, a
+  Keyhole Rubbing, #12 clue); the Three Posts' pool kept open in the Meres for S10b's Fogmother. About 14 minutes
+  Mirewatch to the crypts' door. Also the Wilds' "noon is dusk" (ContinentDef.dim). Handoff `docs/handoff/s11marches.md`.
+- **Left.** The Marches' other night events (the Sisters' Procession, A Voice Calls a Name); the Bog Galleries' lantern
+  hooks lit with Firemaking and −2's sinking peat blocks; the Lantern Ring's Eclipse-touched Lantern Wisps; Old Corvane's
+  boat north (Act IV); the Wilds' Dusk Hymn and Spore Lights; the Ring of Thorns' Eclipse-touched Canopy Bats; Ember
+  Isle's growth (the rockslide, Slagstone Cave as the way east).
 - **What.** world-acts.md §1.3–1.4, §2.3–2.4 and §5.3–5.4:
   - the sections;
   - the Root Hollows' −3 root-ramp;

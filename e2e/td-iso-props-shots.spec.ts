@@ -47,7 +47,7 @@ const PLACES: Record<string, { query?: string; go: string }> = {
   loot: { query: '&fxloot=1', go: "w => { w.__tdGround.lay('ore', 34, 12, 5); w.__tdGround.lay('ore', 34, 12, 3); }" },
   // The Deep Wilds (wilds-sections.ts J) and the Marches' cypress fen (umbral-marches.ts Q).
   jungle: { go: "w => w.__tdArt.visit('surface', 40, -40, 'verdant-wilds-deep-wilds')" },
-  marsh: { go: "w => { w.__tdArt.visit('surface', 20, 20, 'umbral-marches'); setTimeout(() => w.__tdZones.to(-76, -28), 1500); }" },
+  marsh: { go: "w => { w.__tdArt.visit('surface', 20, 20, 'umbral-marches-fen'); setTimeout(() => w.__tdZones.to(-76, -28), 1500); }" },
 };
 
 const shots = ON ? test.describe : test.describe.skip;

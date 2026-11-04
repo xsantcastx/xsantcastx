@@ -187,14 +187,50 @@ export const ZONES: Readonly<Record<string, Zone>> = {
   'herbal-cottage-1': { band: [16, 18], safe: true },
   'herbal-cottage-0': { band: [16, 18], safe: true },
 
-  // ── The Umbral Marches (26–50): swamp and shadow ──
-  'umbral-marches:T': { band: [26, 28], safe: true }, // Gloamhaven
-  'umbral-marches:q': { band: [26, 29] },             // The Gloaming Fen, round Gloamhaven
-  'umbral-marches:,': { band: [26, 28] },             // The Gloaming Shore
-  'umbral-marches:~': { band: [26, 28] },
-  'umbral-marches:k': { band: [29, 32] },             // The Black Meres
-  'umbral-marches:Q': { band: [32, 36] },             // The Deep Fen
-  'umbral-marches:x': { band: [37, 41] },             // The Drowned Ruins
+  // ── The Umbral Marches (26–50): an act of sections (S11 part 2, maps/umbral-sections.ts) ──
+  'umbral-marches-shore:T': { band: [26, 28], safe: true },  // the Gloaming Shore (the Corvane Stone; Mirewatch)
+  'umbral-marches-shore:q': { band: [26, 28] },
+  'umbral-marches-shore:k': { band: [26, 28] },
+  'umbral-marches-shore:,': { band: [26, 28] },
+  'umbral-marches-shore:~': { band: [26, 28] },
+  'umbral-marches-shore:m': { band: [26, 28] },
+  'umbral-marches-gloamhaven:T': { band: [26, 28], safe: true },  // Gloamhaven
+  'umbral-marches-gloamhaven:q': { band: [26, 28], safe: true },
+  'umbral-marches-gloamhaven:m': { band: [26, 28], safe: true },
+  'umbral-marches-gloamhaven:~': { band: [26, 28], safe: true },
+  'umbral-marches-fen:T': { band: [26, 29], safe: true },  // the Gloaming Fen (the Wick Stone; Lanternfen)
+  'umbral-marches-fen:q': { band: [26, 29] },
+  'umbral-marches-fen:Q': { band: [26, 29] },
+  'umbral-marches-fen:k': { band: [26, 29] },
+  'umbral-marches-fen:m': { band: [26, 29] },
+  'umbral-marches-fen:~': { band: [26, 29] },
+  'umbral-marches-boardwalk:T': { band: [28, 30], safe: true },  // the Pilgrims' Boardwalk (the Prayer-Board Stone)
+  'umbral-marches-boardwalk:k': { band: [28, 30] },
+  'umbral-marches-boardwalk:q': { band: [28, 30] },
+  'umbral-marches-boardwalk:Q': { band: [28, 30] },
+  'umbral-marches-boardwalk:m': { band: [28, 30] },
+  'umbral-marches-boardwalk:~': { band: [28, 30] },
+  'umbral-marches-meres:T': { band: [29, 32], safe: true },  // the Black Meres (the Mere-Lamp Stone)
+  'umbral-marches-meres:k': { band: [29, 32] },
+  'umbral-marches-meres:q': { band: [29, 32] },
+  'umbral-marches-meres:m': { band: [29, 32] },
+  'umbral-marches-meres:~': { band: [29, 32] },
+  'umbral-marches-deep-fen:T': { band: [32, 36], safe: true },  // the Deep Fen (the Lost-Lantern Stone)
+  'umbral-marches-deep-fen:Q': { band: [32, 36] },
+  'umbral-marches-deep-fen:q': { band: [32, 36] },
+  'umbral-marches-deep-fen:k': { band: [32, 36] },
+  'umbral-marches-deep-fen:x': { band: [32, 36] },
+  'umbral-marches-deep-fen:m': { band: [32, 36] },
+  'umbral-marches-deep-fen:~': { band: [32, 36] },
+  'umbral-marches-ruins:T': { band: [37, 41], safe: true },  // the Drowned Ruins (the Abbey-Slab Stone)
+  'umbral-marches-ruins:x': { band: [37, 41] },
+  'umbral-marches-ruins:Q': { band: [37, 41] },
+  'umbral-marches-ruins:k': { band: [37, 41] },
+  'umbral-marches-ruins:m': { band: [37, 41] },
+  'umbral-marches-ruins:~': { band: [37, 41] },
+  'sunken-belfry-1': { band: [30, 32] },               // the Sunken Belfry (connector)
+  'bog-galleries-1': { band: [35, 37] },               // the Bog Galleries (connector)
+  'bog-galleries-2': { band: [36, 38] },
   'drowned-crypts-1': { band: [41, 43] },
   'drowned-crypts-2': { band: [43, 46] },
   'drowned-crypts-3': { band: [46, 50] },             // the Ink Abbess, 50

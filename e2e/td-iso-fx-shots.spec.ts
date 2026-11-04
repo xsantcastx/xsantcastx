@@ -60,7 +60,7 @@ const PLACES: Record<string, { query?: string; go: string; lay?: string }> = {
   // The Cold Hearth by day, unlit, the Keeper three tiles east of it.
   hearth: { query: 'phase=day&fxfall=1', go: "w => { w.__tdHearth.at('hearth'); return new Promise(done => setTimeout(() => { const cv = document.querySelector('canvas'); const c = Math.floor(+cv.getAttribute('data-player-x') / 16), r = Math.floor(+cv.getAttribute('data-player-y') / 16); done(w.__tdArt.visit('surface', c + 3, r + 2, 'ember-isle')); }, 500)); }" },
   // The Drowned Crypts' walls at the fog's edge.
-  crypt: { go: "w => w.__tdArt.visit('drowned-crypts-1', 24, 3, 'umbral-marches')" },
+  crypt: { go: "w => w.__tdArt.visit('drowned-crypts-1', 24, 3, 'umbral-marches-ruins')" },
   // The inn's upstairs: its posts and pillars in front of the Keeper.
   inn: { go: "w => w.__tdArt.visit('ember-inn-2', 8, 5, 'ember-isle')" },
 };

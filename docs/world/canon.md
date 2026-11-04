@@ -283,7 +283,7 @@ The Delve strata are retired: Root Hollows (Delve), Basalt Caverns, Glowcap Grot
 Starfall Deep, the Void Shore and the Unmade. Their **ideas** move into the Realms (realms-endgame.md §3.4). The name
 **Root Hollows** now means only the Verdant dungeon.
 
-### 3.4b The acts as long lands (planned 2026-10-26, `docs/design/world-acts.md` §1; **the Reach built 2026-11-03, S7; the Wilds 2026-11-04, S11**)
+### 3.4b The acts as long lands (planned 2026-10-26, `docs/design/world-acts.md` §1; **the Reach built 2026-11-03, S7; the Wilds 2026-11-04, S11; the Marches 2026-11-04, S11 part 2**)
 Each land becomes a D2-style act: a chain of long surface **sections** (one room area each, `<land>:<section>`), each
 with a **Waystone** (a stone that remembers who touched it), joined by **connector caves** that are the only way on,
 and ending at the land's harbour (the Harbourmasters, §3.3).
@@ -314,6 +314,18 @@ and ending at the land's harbour (the Harbourmasters, §3.3).
   minutes' walk, Mossharbor's pier to the temple gate. The land's edge here is no rock: it is **the wood grown into a wall
   of vine and root**. Sunny Pell's **fen-barge** sails from Mossharbor for Mirewatch, held until the Elder Rootwyrm falls.
   Rootglass's Waystone is **the Boardwalk Stone**.
+- **The Marches as built (S11 part 2)**: Mirewatch on the Gloaming Shore → the north boardwalk → the Gloaming Fen
+  (Lanternfen on its north-west road, the Gloam Shrine off it; the east boardwalk to **Gloamhaven**, its own safe
+  section) → the pilgrims' road → **the Pilgrims' Boardwalk**, half sunk, which **breaks off in the black water**: its
+  piles walk on toward the abbey with no boards on them. The way on is down through **the Sunken Belfry** lying on its
+  side beside the break (the bell-chamber end, the shaft where the stair runs along the wall, the tower's foot; **the
+  fifth bell's door sealed**, a keyhole the shape of a bell) → up through **the Belfry's Roof** onto the Black Meres
+  (**the Lure Pools**; the Three Posts' pool kept open for the Fogmother) → the east boardwalk → the Deep Fen (**the
+  Knights' Causeway**, lost lanterns on posts) → **the Peat-Cut** → the Bog Galleries −1 (the Cutters' Hall) and −2 (the
+  Flooded Cut) → **the Cutters' Stair** → the Drowned Ruins (**the Witch's Island**, the Lantern Ring, the Drowned
+  Crypts' door). About 14 minutes' walk, Mirewatch's pier to the crypts' door. The land's edge is **the fen too deep to
+  wade**: black water, its ways on boardwalks across it. Gloamhaven's Waystone is **the Square Stone**, on the drowned
+  square.
 - **Waystone names**: Meadow, Woodcutter's, Rockslide, Sexton's, Slag-Cart (Ember Isle); Watch Cairn, Glasswater,
   Kiln, Clan, Spill, Drake, Pyre (Reach; built S7, with **the Plaza Stone** in Pyrehold, **the Harbour Stone** in
   Cinderport and **the Green Stone** in Ashgrove: "a stone that remembers who touched it"); Net, Bell-Post, Plank, Mere, Copy-Tree, Heartroot, Pillar (Wilds); Corvane,
@@ -1078,6 +1090,28 @@ one sound each (words in `td/td-wilds.i18n.ts`):
   at a light (the hidden cache); a heartbeat.
 - the Deep Wilds: a lantern hook nailed higher than any arm (the tree that wears a lantern); a spore-choked hollow (the
   Spore Lights' way down, later); weavers clicking.
+
+**The Marches' sections, the zone bible's check (S11 part 2, `td-sections.ts` MARCHES_BIBLE).** One thing to read, one
+sealed thing, one sound each (words in `td/td-marches.i18n.ts`):
+- the Gloaming Shore: a post of wick-tags in Old Corvane's hand; a drowned watch-house, a trimmed lamp inside; the surf.
+  Gloamhaven: the lamplighters' round ("Never let one go out. Not one."); a chapel door under the boards, barred from
+  inside with a new bar; a lantern creaking on its hook.
+- the Gloaming Fen: an abbey boundary slab ("Pilgrim, keep to the boards." — "What boards."); a peat-cutter's hut nailed
+  shut, a wet spade at its door; frogs.
+- the Pilgrims' Boardwalk: a prayer-board, *lum vesh*, a sister's name burnt under it (**Elspeth Haddow**); **the broken
+  boardwalk** (the way on is down through the Belfry); loose boards knocking on the water.
+- the Sunken Belfry: the ringers' rota (**Cobb, Lisle, Teasel, Wyn**; the fifth name rubbed through the board); **the
+  fifth bell's door**, a keyhole the shape of a bell; one slow note under the water every forty seconds. Hidden: a
+  ringer's glove on its hook ("Pull on four. Never on five.").
+- the Black Meres: a lamp-stake ("Lampfish rise to a light. So do other things."); a punt chained under the water with
+  something still tied in it; black water breathing.
+- the Deep Fen: a lost lantern on a post, its wick-tag "Lit till they come home."; a chapel roof in the bog, its skylight
+  painted black from inside; a voice calling across the fen, too far to make out.
+- the Bog Galleries −1: the cutters' tally (the last row stops half cut); a flooded cut boarded across; water seeping.
+  −2: a wick-tag on a nail, "**Merrin Sedge**. Gone up for oil."; the abbey's sluice, bricked from the other side; a
+  spade striking peat, once.
+- the Drowned Ruins: an abbey slab with a new last line ("She is still at her prayers. Let her finish."); the abbey's
+  water-gate, the water higher behind it; a hymn too faint to place.
 - the Sunken Courts: moss in rows straight as verse; a bell-frame the vines hold up; a hymn too faint to place.
 
 - **The Kiln Tunnels** (Reach, 12–14). *Built by* the charcoal burners to haul under the orc raids; *fell* when the clans
@@ -1117,7 +1151,7 @@ one sound each (words in `td/td-wilds.i18n.ts`):
 | **The Late Shift** (night event, the Ember Mine head) | six lamp-lights walk up out of the shaft and go out at the fence: "Shift done. Nobody signed us out." | campaign #1 The Beacon Goes Down: the beacon leans down the shaft because something below is still working |
 | **The Ossuary Watch badge** | dropped by the Last Siege (1 in 3) | campaign #11 Barrow Door 2 |
 | **The copy-seed** | the Walking Tree (Greenwood night event; **built S11**: the Copied Pair's glade, a Copy-Seed once a night); the lantern hook the Deep Wilds' tree grew round | campaign #7, the Graft Crown |
-| **The bell-clapper and the bell under the water** | the Dusk Hymn (Sunken Courts); the Bell Under the Water (eclipse, the Black Meres); a ringer's glove: "Pull on four. Never on five." | campaign #12 Who Rings Under the Water |
+| **The bell-clapper and the bell under the water** | the Dusk Hymn (Sunken Courts); the Bell Under the Water (eclipse, the Black Meres; **built S11 part 2**: the fifth bell rings once over the Belfry's roof, the Lampfish go dark, and a Keeper standing still through it sees the keyhole glow and takes a **Keyhole Rubbing**); a ringer's glove: "Pull on four. Never on five." (built, the Sunken Belfry) | campaign #12 Who Rings Under the Water |
 | **A Voice Calls a Name** | the Deep Fen: on the third night it calls the Keeper's own name | a personal fixed light; ties to Old Corvane's lanterns (Act III) |
 | **The world counts** | PvP marks; Wren cuts a tally for every Red Keeper | the Tally Hall (Realm 7) may read the PvP counts; DM to decide when it is built |
 

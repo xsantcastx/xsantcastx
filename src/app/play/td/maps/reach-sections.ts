@@ -86,7 +86,7 @@ export const PYREHOLD_SECTION: ContinentDef = {
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
     { place: 'harbour', station: SHIP_TO_VERDANT, to: 'verdant-wilds-shore', arrive: 'ship-mossharbor', ship: true, along: -3 },
-    { place: 'harbour', station: SHIP_TO_UMBRAL, to: 'umbral-marches', arrive: 'ship-mirewatch', ship: true, along: 2 },
+    { place: 'harbour', station: SHIP_TO_UMBRAL, to: 'umbral-marches-shore', arrive: 'ship-mirewatch', ship: true, along: 2 },
   ],
   seams: [seam('pyrehold-n', 23, -14, 'n', REACH_STEPPE, 'steppe-s', 'NORTH GATE: THE CINDER STEPPE')],
   stone: { id: 'reach:pyrehold', c: 27, r: 10, name: 'The Plaza Stone' },

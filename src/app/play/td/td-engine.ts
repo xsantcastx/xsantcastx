@@ -367,8 +367,15 @@ export class TopDownEngine {
   private paused = false;
   private hour = 12;
   /** 0 day … 1 full night, from the world clock (setSky); `?hour=` pins it for screenshots and tests. */
-  private darkness = 0;
-  private dusk = 0;
+  /** The sky's own darkness and dusk gold (the world clock's, or a pinned hour's). */
+  private skyDark = 0;
+  private skyDusk = 0;
+  /**
+   * What the land is lit by now: the sky's, and under a section's canopy at least its own gloom (S11: the Deep Wilds,
+   * "noon is dusk" — ContinentDef.dim, on its surface only). The same night pass draws it, so Low pays nothing more.
+   */
+  private get darkness(): number { const d = this.level === this.world ? this.world.def.dim ?? 0 : 0; return Math.max(this.skyDark, d); }
+  private get dusk(): number { const d = this.level === this.world ? this.world.def.dim ?? 0 : 0; return Math.max(this.skyDusk, d * .7); }
   /** The sky's phase (setSky) and the eclipse's depth: the world clock as a rule (td-phases.ts) and the eclipse's tint. */
   private skyPhase: SkyPhase = 'day';
   private eclipseDepth = 0;
@@ -666,7 +673,7 @@ export class TopDownEngine {
     this.placeCompanions();
     this.populate();
     this.bindInput();
-    try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); const k = skyOfHour(this.pinned); this.darkness = k.darkness; this.dusk = k.glow; } } catch { /* no URL */ }
+    try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); const k = skyOfHour(this.pinned); this.skyDark = k.darkness; this.skyDusk = k.glow; } } catch { /* no URL */ }
     this.darkLayer.pinned = this.fxHush;
     if (this.fxDark || this.fxHush !== null) (window as unknown as Record<string, unknown>)['__tdDark'] = {
       chest: (id?: string) => this.fxToChest(id),
@@ -785,6 +792,8 @@ export class TopDownEngine {
       kiln: () => { if (!this.nightEvents.kilnLive()) return false; this.lightKiln(); return true; },
       board: () => { this.boardRead = ''; this.readBoard(); return this.boardRead || this.messageKey; },
       places: () => ({ ...NIGHT_PLACES }),
+      // S11 part 2, the Bell Under the Water: the note's age, the keyhole, the Lampfish out.
+      underbell: () => ({ ...(this.nightEvents.underbell() ?? { age: null, keyhole: false }), dark: this.nightEvents.lampsOut() }),
       barks: () => WEATHER_BARKS.map(b => b.npc),
       state: () => ({
         events: this.nightEvents.now.map(e => ({ id: e.id, t: Math.round(e.t * 10) / 10, night: e.night })),
@@ -1279,8 +1288,8 @@ export class TopDownEngine {
     if (this.pinned !== null) return;
     this.skyPhase = sky.phase ?? 'day';
     this.eclipseDepth = sky.eclipse;
-    this.darkness = Math.max(0, Math.min(1, 1 - sky.light));
-    this.dusk = sky.glow;
+    this.skyDark = Math.max(0, Math.min(1, 1 - sky.light));
+    this.skyDusk = sky.glow;
   }
   /**
    * The weather's clock (shared/weather): the host's world-clock ms, and the room's rolls while a Keeper is in its world
@@ -1367,6 +1376,8 @@ export class TopDownEngine {
     const news = this.nightEvents.update({ ms: this.skyMs, rolls: this.weatherIn?.rolls ?? null, area: this.world.continent, surface: this.level === this.world, keeper: this.player, dt, seen: this.onScreen });
     for (const n of news) this.nightNews(n);
     this.placeWalker();
+    // S11 part 2: the fifth bell's note puts every Lampfish in the Meres out.
+    this.gather.lampsOut = this.nightEvents.lampsOut();
     const short = this.nightEvents.now.map(e => e.id).join(',');
     if (short !== this.nightEventsSeen) { this.nightEventsSeen = short; this.canvas.setAttribute('data-night-events', short); }
   }
@@ -6548,7 +6559,14 @@ export class TopDownEngine {
   }
   private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
   /** The same corner's foot (the minimap, its clock and the Soul line, ~190 CSS px) in canvas px: below it a plate stays in its own column. */
-  private hudCornerBottomPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(190 * this.canvas.width / w); }
+  private hudCornerBottomPx(): number {
+    const w = this.canvas.clientWidth || this.canvas.width, k = this.canvas.width / w, cw = this.canvas.width, a = this.hud.avoid;
+    // At least as low as the corner's own shown boxes reach (the minimap and its clock row stand taller than 190 CSS px
+    // on a wide screen), with the plates' 8 px margin under them (S11 part 2, the Director's note).
+    let b = Math.round(190 * k);
+    for (let i = 0; i < this.hud.n; i++) if (a[i * 4 + 2] > cw - 40 * k && a[i * 4 + 1] < this.canvas.height * .4) b = Math.max(b, Math.round(a[i * 4 + 3] + 8 * k));
+    return b;
+  }
   /**
    * S9's air pictures in iso (td-late-fx): drawn in the anchor's upright frame, so a far end (a lightning leap's, a leap's
    * landing) goes where it projects, and a direction (Kiln Breath's cone, Moth Dust's puff) turns as the floor turns.
