@@ -92,7 +92,10 @@ describe('td-iso-fx: the iso light map', () => {
     for (let f = 0; f <= 1; f += .01) for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) expect(levels.has(isoLightOpen(f, bayer4(x, y)))).withContext(`${f}`).toBeTrue();
     expect(isoLightOpen(.2, .99)).toBe(1);
     expect(isoLightOpen(1.01, .5)).toBe(0);
-    expect(isoLightOpen(.55, .5)).toBe(lightOpen(.55));
+    // An even fade (owner: no ground rings): no plateau — the mean opening falls steadily from the core to the rim.
+    const mean = (f: number) => { let n = 0; for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) n += isoLightOpen(f, bayer4(x, y)); return n / 16; };
+    for (let f = .35; f < .98; f += .05) expect(mean(f + .05)).withContext(`${f}`).toBeLessThan(mean(f));
+    expect(lightOpen(.55)).toBe(.8);
     expect(isoWarmAt(.1, .5)).toBeCloseTo(.26, 5);
   });
 });

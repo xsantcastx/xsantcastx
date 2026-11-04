@@ -30,6 +30,8 @@ export interface LogDef {
   /** v2 price anchor (worth = anchor × ITEM_ECONOMY_SCALE; a shop pays 8% of worth). */
   anchor: number;
   lore: string;
+  /** Not felled from a tree: where it is found instead (charcoal). */
+  found?: string;
 }
 
 /** By band (canon §6.5): Ember Isle ashwood → the Charwood's char-oak → Verdant rootglass boughs (never the Bole) → Umbral cypress. */
@@ -42,11 +44,14 @@ export const LOGS: readonly LogDef[] = [
     lore: 'A bough the wood let go of. It burns green, and the Bole does not miss it.' },
   { id: 'cypress-log', name: 'Cypress Log', land: 'umbral-marches', cut: 45, burn: 45, cutXp: 100, burnXp: 135, anchor: 2_600,
     lore: 'Moss-hung and slow to catch. Once lit, the fog keeps a respectful distance.' },
+  // S8: the charcoal-burners' own (the Kiln That Lights Itself, the Deep Charwood). No tree gives it: `found` says where.
+  { id: 'charcoal', name: 'Charcoal', land: 'infernal-reach', cut: 99, burn: 1, cutXp: 0, burnXp: 30, anchor: 300, found: 'the Kiln That Lights Itself (the Deep Charwood, a night of Ashfall)',
+    lore: 'The burners of the Charwood still tally what they take. Somebody left this much over, and counted it.' },
 ];
 const LOG_BY_ID = new Map(LOGS.map(l => [l.id, l]));
 export function logById(id: string): LogDef | undefined { return LOG_BY_ID.get(id); }
 /** The log a tree on this land gives (Ember Isle's for anywhere unknown). */
-export function logForLand(land: string): LogDef { return LOGS.find(l => l.land === land) ?? LOGS[0]; }
+export function logForLand(land: string): LogDef { return LOGS.find(l => l.land === land && !l.found) ?? LOGS[0]; }
 /** Swings to fell a tree: four, one fewer for a Woodcutting 20 levels past its gate (never under two). */
 export function chopSwings(level: number, log: LogDef): number { return Math.max(2, 4 - Math.floor(Math.max(0, level - log.cut) / 20)); }
 
@@ -63,8 +68,8 @@ export interface WorldFishDef {
   /** Fishing level to catch it. */
   level: number;
   waters: readonly SpotWater[];
-  /** Only by night (or under an eclipse's dark), only under an eclipse, or any hour. */
-  when?: 'dark' | 'eclipse';
+  /** Only by night (or under an eclipse's dark), only under an eclipse, only in a thunderstorm (a 1 in 40 cast), or any hour. */
+  when?: 'dark' | 'eclipse' | 'storm';
   xp: number;
   /** Its cooked meal. */
   cooked: string;
@@ -90,6 +95,9 @@ export const WORLD_FISH: readonly WorldFishDef[] = [
     lore: 'Slow, heavy and old. The pilgrims fed the fen carp, and the carp remember who stopped.' },
   { id: 'lampfish', name: 'Lampfish', level: 25, waters: ['lake', 'marsh'], when: 'dark', xp: 70, cooked: 'lampfish-fry', anchor: 3_000, shadow: [6, 3], tone: 'warm',
     lore: 'A warm dot under black water. It is why the fen pilgrims hung their lanterns over the meres.' },
+  // S8 (world-acts §3.7): a Mirrorfin caught in thunder. Never in the common roll: 1 cast in 40 at sea in a storm.
+  { id: 'stormscale', name: 'Stormscale', level: 5, waters: ['sea'], when: 'storm', xp: 60, cooked: 'thundercake', anchor: 1_400, shadow: [8, 4], tone: 'silver',
+    lore: 'A Mirrorfin the lightning found first. Its scales still hold the flash, and it bites the hand that lands it.' },
   { id: 'moonbelly', name: 'Moonbelly', level: 40, waters: ['lake', 'sea', 'river', 'marsh'], when: 'eclipse', xp: 120, cooked: 'moonbelly-fillet', anchor: 3_500, shadow: [10, 5], tone: 'pale',
     lore: 'It only rises when the Moonwake opens and the moon stands in front of the sun, and it leaves a silver wake as if it were the moon.' },
 ];
@@ -120,13 +128,19 @@ export interface SkyNow { dark: boolean; eclipse: boolean }
 
 /** The fish that can bite at a spot now, for this Fishing level. */
 export function fishHere(water: SpotWater, level: number, sky: SkyNow): WorldFishDef[] {
-  return WORLD_FISH.filter(f => f.waters.includes(water) && f.level <= level
+  return WORLD_FISH.filter(f => f.waters.includes(water) && f.level <= level && f.when !== 'storm'
     && (!f.when || (f.when === 'dark' ? sky.dark : sky.eclipse)));
+}
+/** One cast in forty at sea in a thunderstorm lands a Stormscale instead (world-acts §3.7). */
+export const STORMSCALE_ODDS = 1 / 40;
+export function stormCatch(water: SpotWater, level: number, weather: WeatherState, rnd: () => number): WorldFishDef | null {
+  const f = FISH_BY_ID.get('stormscale')!;
+  return weather === 'storm' && f.waters.includes(water) && level >= f.level && rnd() < STORMSCALE_ODDS ? f : null;
 }
 
 /** The fish a spot's shadows show now (any level: seeing is half of catching). */
 export function shownHere(water: SpotWater, sky: SkyNow): WorldFishDef[] {
-  const all = WORLD_FISH.filter(f => f.waters.includes(water) && (!f.when || (f.when === 'dark' ? sky.dark : sky.eclipse)));
+  const all = WORLD_FISH.filter(f => f.waters.includes(water) && f.when !== 'storm' && (!f.when || (f.when === 'dark' ? sky.dark : sky.eclipse)));
   return all.length ? all : WORLD_FISH.filter(f => f.waters.includes(water) && !f.when);
 }
 
@@ -192,7 +206,12 @@ export interface MealDef {
   heal: number;
   anchor: number;
   lore: string;
+  /** A meal's lasting good (S8): lightning taken less (%), or Mining XP more (%), for `secs`. */
+  buff?: MealBuff;
+  /** Never cooked: where it is found instead (the Late Shift's lunch tin). */
+  found?: string;
 }
+export interface MealBuff { kind: 'lightning-resist' | 'mining-xp'; pct: number; secs: number }
 export const MEALS: readonly MealDef[] = [
   { id: 'baked-ash-perch', name: 'Baked Ash Perch', raw: 'ash-perch', level: 1, stop: 30, xp: 30, heal: 40, anchor: 900,
     lore: 'Every fire you light is a small hearth, and this is the smallest supper it can make.' },
@@ -204,11 +223,17 @@ export const MEALS: readonly MealDef[] = [
     lore: 'A pilgrim\'s supper. The fen says grace for you, if you wait long enough.' },
   { id: 'lampfish-fry', name: 'Lampfish Fry', raw: 'lampfish', level: 25, stop: 55, xp: 100, heal: 160, anchor: 3_900,
     lore: 'It glows a little on the plate. You hunt better on a full belly, and see better too.' },
+  { id: 'thundercake', name: 'Thundercake', raw: 'stormscale', level: 5, stop: 40, xp: 90, heal: 90, anchor: 3_000,
+    buff: { kind: 'lightning-resist', pct: 5, secs: 600 },
+    lore: 'Stormscale pressed into a cake and fried hard. It crackles on the tongue, and the next storm bites a little less.' },
+  { id: 'cold-miners-pasty', name: 'Cold Miner\'s Pasty', raw: '', level: 0, stop: 0, xp: 0, heal: 60, anchor: 1_200,
+    buff: { kind: 'mining-xp', pct: 10, secs: 600 }, found: 'the Late Shift\'s lunch tin (Ember Isle, by the mine head, at night)',
+    lore: 'Cold, wrapped in a rag, and packed for a shift that ended a long time ago. It still sets a miner right.' },
   { id: 'moonbelly-fillet', name: 'Moonbelly Fillet', raw: 'moonbelly', level: 40, stop: 70, xp: 160, heal: 240, anchor: 4_500,
     lore: 'Cooked under a dark noon, it tastes of the morning that was due and did not come.' },
 ];
 const MEAL_BY_ID = new Map(MEALS.map(m => [m.id, m]));
-const MEAL_BY_RAW = new Map(MEALS.map(m => [m.raw, m]));
+const MEAL_BY_RAW = new Map(MEALS.filter(m => m.raw).map(m => [m.raw, m]));
 export function mealById(id: string): MealDef | undefined { return MEAL_BY_ID.get(id); }
 export function mealOfRaw(raw: string): MealDef | undefined { return MEAL_BY_RAW.get(raw); }
 
@@ -244,7 +269,7 @@ export function cookRefusal(raw: string, level: number): 'notFood' | 'level' | n
 
 /** The raw fish held that the level can cook, best (highest gate) first. */
 export function cookable(stackOf: (id: string) => number, level: number): MealDef[] {
-  return MEALS.filter(m => stackOf(m.raw) > 0 && m.level <= level).sort((a, b) => b.level - a.level);
+  return MEALS.filter(m => m.raw && stackOf(m.raw) > 0 && m.level <= level).sort((a, b) => b.level - a.level);
 }
 
 /** A meal's mend per second. */
@@ -261,10 +286,16 @@ export function fireRefusal(log: string, level: number, tinderbox: boolean): 'no
 
 // ── The satchel ─────────────────────────────────────────────────────────────
 
+/**
+ * S8's night finds that are read, not used up (shared/night-events): a scrap of paper a night event leaves. Its card
+ * shows what it says; it is a clue to a thread of canon §9.
+ */
+export const SCRAP_ID = 'margin-note-scrap';
+
 /** Everything the gathering loops land: they pile 20 to a cell (a satchel fills, RuneScape's way). */
 export const GATHER_PILE = 20;
 export const GATHER_KEYS: ReadonlySet<string> = new Set([
-  ...LOGS.map(l => l.id), ...WORLD_FISH.map(f => f.id), ...MEALS.map(m => m.id), BURNT_FISH_ID,
+  ...LOGS.map(l => l.id), ...WORLD_FISH.map(f => f.id), ...MEALS.map(m => m.id), BURNT_FISH_ID, SCRAP_ID,
 ]);
 
 /** A gathered thing's worth (v3 Gold) for the shops' buyback, or 0 when it is not one of these. */
@@ -277,14 +308,17 @@ export function gatherAnchor(id: string): number {
 export interface GatherMeaning { id: string; name: string; sources: readonly string[]; uses: readonly string[]; lore: string }
 export const GATHER_MEANING: readonly GatherMeaning[] = [
   ...LOGS.map(l => ({ id: l.id, name: l.name, lore: l.lore,
-    sources: [`Woodcutting ${l.cut}: any tree on ${landName(l.land)} (td-engine chop)${l.id === 'rootglass-bough' ? ', a fallen bough, never the Rootglass Bole itself' : ''}`],
+    sources: [l.found ? `night event: ${l.found}` : `Woodcutting ${l.cut}: any tree on ${landName(l.land)} (td-engine chop)${l.id === 'rootglass-bough' ? ', a fallen bough, never the Rootglass Bole itself' : ''}`],
     uses: [`Firemaking ${l.burn}: a campfire, with a tinderbox (the satchel card's Light)`, 'the Woodcutting Store buys it'] })),
   ...WORLD_FISH.map(f => ({ id: f.id, name: f.name, lore: f.lore,
-    sources: [`Fishing ${f.level}: ${f.waters.join(', ')} spots${f.when === 'dark' ? ' by night' : f.when === 'eclipse' ? ' under an eclipse' : ''}`],
+    sources: [`Fishing ${f.level}: ${f.waters.join(', ')} spots${f.when === 'dark' ? ' by night' : f.when === 'eclipse' ? ' under an eclipse' : f.when === 'storm' ? ' in a thunderstorm (1 cast in 40)' : ''}`],
     uses: [`Cooking ${mealOfRaw(f.id)?.level ?? 1}: ${mealOfRaw(f.id)?.name ?? ''} at a campfire or a lit hearth`, 'the Fishing Store buys it'] })),
   ...MEALS.map(m => ({ id: m.id, name: m.name, lore: m.lore,
-    sources: [`Cooking ${m.level}: ${worldFishById(m.raw)?.name ?? m.raw} at a campfire or a lit hearth`],
-    uses: [`eaten from the satchel: mends ${m.heal} life over ${MEAL_SECS} s`] })),
+    sources: [m.found ? `night event: ${m.found}` : `Cooking ${m.level}: ${worldFishById(m.raw)?.name ?? m.raw} at a campfire or a lit hearth`],
+    uses: [`eaten from the satchel: mends ${m.heal} life over ${MEAL_SECS} s${m.buff ? `, then ${m.buff.kind === 'mining-xp' ? `+${m.buff.pct}% Mining XP` : `${m.buff.pct}% less lightning taken`} for ${m.buff.secs / 60} min` : ''}`] })),
+  { id: SCRAP_ID, name: 'Margin Note Scrap', lore: 'A corner torn from a page, in a hand nobody has matched. It names somebody who should not be forgotten.',
+    sources: ['night event: the Relief Column (the Pyre Peaks, at the Ashen Bastion\'s gate, at night)'],
+    uses: ['read from the satchel: a clue to the Ashen Crypt\'s sealed chapel (canon §9, Doors in the dark)'] },
   { id: BURNT_FISH_ID, name: 'Burnt Fish', lore: 'Charred past eating. The small fish do not mind; they come up to see what fell.',
     sources: ['Cooking: a fish that burns'], uses: ['fishing bait (the weakest)'] },
   { id: TINDERBOX_ID, name: 'Tinderbox', lore: 'Every fire you light is a small hearth. The dark minds its manners round one.',

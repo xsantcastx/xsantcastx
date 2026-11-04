@@ -724,6 +724,10 @@ RuneScape-style skills on the shared skill curve. Each has a home, a trainer and
   them. A thunderstorm's strike never takes a Keeper below a tenth of their life.
 - Lore: "Ask the sky; sometimes it answers." The Canopy Wardens read it; **Odette Pryor** forecasts it from the
   Pyre Spire (the smoke-leans thread pays off here first, §9).
+- **Built (S8, 2026-11-03, branch `s8storm`):** thunderstorm strikes (1.2 s ring, 8% of life, never below a tenth),
+  Ashfall, Spore drift and Mist-rain with their rules, the weather lines, **Odette Pryor's board** in the Pyre Spire's
+  Study, Stormscale and the Thundercake; night events batch 1 (the Late Shift, the Count Goes On, the Relief Column,
+  the Kiln That Lights Itself; docs/handoff/s8storm.md).
 - **Built (v1, 2026-10-26, branch `gather`):** Clear, Overcast, Rain, Thunderstorm (flash only; strikes are S8) and Fog,
   rolled per land each 6 minutes; **the Hearth room owns the roll** (it sends each window's rolls from its own clock;
   alone, the device's world clock gives the same). The land specials (Ashfall, Spore drift, Mist-rain) read as Overcast
@@ -1084,7 +1088,7 @@ sealed thing (a promise for later; none opens yet) and one sound:
 | **The Archive's struck names** | Odric, the Choir, the Wanewalkers | Act IV: the Archivist publishes the struck roll (their own first name last) |
 | **The Watch's hammer "struck by five"** | Brannoc Vey [Q2]; the Hammer of the First Watch | the Ashguard calling quest: re-swear the oath "struck by six" |
 | **Glim's first lamp** | Glim's margin tales | Finale egg (unchanged) |
-| **Doors in the dark** | sealed doors in the Ashen Crypt, Temple below −5, Drowned Crypts below −3; the Relief Column's chalked last name (night event) | Graft Crown, Ink Deeps, Ashguard quest |
+| **Doors in the dark** | sealed doors in the Ashen Crypt, Temple below −5, Drowned Crypts below −3; the Relief Column's chalked last name (night event, built S8: **Ensign Halden Rook**, and a Margin Note Scrap) | Graft Crown, Ink Deeps, Ashguard quest |
 | **The Late Shift** (night event, the Ember Mine head) | six lamp-lights walk up out of the shaft and go out at the fence: "Shift done. Nobody signed us out." | campaign #1 The Beacon Goes Down: the beacon leans down the shaft because something below is still working |
 | **The Ossuary Watch badge** | dropped by the Last Siege (1 in 3) | campaign #11 Barrow Door 2 |
 | **The copy-seed** | the Walking Tree (Greenwood night event) | campaign #7, the Graft Crown |

@@ -214,6 +214,12 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'moonbelly-fillet': 'Moonbelly Fillet',
   'burnt-fish': 'Burnt Fish',
   'tinderbox': 'Tinderbox',
+  // S8 (shared/night-events, world-acts §3.7 and §5): the storm's fish and cake, the night events' finds.
+  'charcoal': 'Charcoal',
+  'stormscale': 'Stormscale',
+  'thundercake': 'Thundercake',
+  'cold-miners-pasty': 'Cold Miner\'s Pasty',
+  'margin-note-scrap': 'Margin Note Scrap',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {
