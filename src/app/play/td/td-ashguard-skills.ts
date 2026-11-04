@@ -16,7 +16,9 @@ export type AshSkillId =
   | 'shield-bash' | 'shield-oath' | 'watch-cry' | 'hold-the-line'
   | 'ash-stride' | 'aura-watchfire' | 'ember-blood' | 'last-watch'
   // S5 (skills-100.md §2): the tank's kit to level 30, and the Gate (42).
-  | 'brand-throw' | 'cinder-skin' | 'banner-of-the-watch' | 'second-wind' | 'intercept' | 'hold-the-gate';
+  | 'brand-throw' | 'cinder-skin' | 'banner-of-the-watch' | 'second-wind' | 'intercept' | 'hold-the-gate'
+  // S9 (skills-100.md §2): Pyre Strike (36) and the Watchquake (50).
+  | 'pyre-strike' | 'watchquake';
 
 /** The Ashguard's three trees (D2's three tabs), in the bible's order of feel: the blade, the shield, the endurance. */
 export const ASH_TREES = ['brand', 'oath', 'ash'] as const;
@@ -141,12 +143,26 @@ export const ASHGUARD_SKILLS: Readonly<Record<AshSkillId, SkillDef>> = {
     words: 'brann mur orum',
     syn: [{ from: 'watch-cry', per: 3, what: 'dur' }],
   },
+  // ── S9: rows 30–50 (skills-100.md §2) ──
+  'pyre-strike': {
+    id: 'pyre-strike', kind: 'active', mana: 22, cd: 8, nameKey: 'skill.pyre-strike', textKey: 'skill.pyre-strike.text',
+    vars: { pct: 220, range: 4, ring: 100, radius: 2, stun: 1 }, grow: { pct: 8 }, tree: 'brand', tier: 4, col: 1, req: null, level: 36,
+    icon: I('<rect x="7" y="1" width="2" height="7" fill="#f2f5fa"/><rect x="6" y="2" width="1" height="5" fill="#c3cad6"/><rect x="5" y="8" width="6" height="2" fill="#8a6a2a"/><rect x="7" y="10" width="2" height="2" fill="#5a3a2a"/><rect x="1" y="13" width="14" height="2" fill="#9e2e1c"/><rect x="3" y="12" width="2" height="1" fill="#ff8a2e"/><rect x="11" y="12" width="2" height="1" fill="#ff8a2e"/><rect x="7" y="12" width="2" height="1" fill="#ffd25a"/>'),
+    words: 'vael dra brann',
+    syn: [{ from: 'whirl-of-cinders', per: 4, what: 'dmg' }],
+  },
+  'watchquake': {
+    id: 'watchquake', kind: 'active', mana: 28, cd: 12, nameKey: 'skill.watchquake', textKey: 'skill.watchquake.text',
+    vars: { pct: 150, radius: 3, stun: 1.2, hush: 1 }, grow: { pct: 5 }, tree: 'ash', tier: 4, col: 2, req: null, level: 50,
+    icon: I('<rect x="6" y="1" width="4" height="6" fill="#a89a90"/><rect x="5" y="7" width="6" height="3" fill="#5e5450"/><rect x="0" y="11" width="16" height="4" fill="#3e2a18"/><rect x="2" y="11" width="1" height="2" fill="#e0b25a"/><rect x="5" y="12" width="2" height="1" fill="#e0b25a"/><rect x="9" y="11" width="1" height="3" fill="#e0b25a"/><rect x="12" y="12" width="2" height="1" fill="#e0b25a"/><rect x="1" y="9" width="1" height="1" fill="#c9a66b"/><rect x="14" y="8" width="1" height="1" fill="#c9a66b"/>'),
+    words: 'brann orum dra',
+  },
 };
 
 /** The Ashguard's book in the order the bar fills: the first four actives are the default keys 1–4. */
 export const ASHGUARD_BOOK: readonly AshSkillId[] = [
   'shield-bash', 'ember-brand', 'ash-stride', 'shield-oath', 'cinder-cleave', 'watch-cry', 'whirl-of-cinders', 'last-watch',
-  'brand-throw', 'cinder-skin', 'second-wind', 'intercept', 'hold-the-gate',
+  'brand-throw', 'cinder-skin', 'second-wind', 'intercept', 'hold-the-gate', 'pyre-strike', 'watchquake',
   'aura-watchfire', 'banner-of-the-watch', 'watch-blade', 'hold-the-line', 'ember-blood',
 ];
 /** What a new Ashguard holds free at rank 1: the swing, the four keys and the watchfire. */

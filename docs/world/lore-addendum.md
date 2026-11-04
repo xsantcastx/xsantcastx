@@ -1860,3 +1860,16 @@ Night events, each once a night per land, seeded so a party sees the same:
   soldier of the Bastion's garrison; registered in canon §9) — and a **Margin Note Scrap** (Doors in the dark).
 - **The Kiln That Lights Itself** (the Deep Charwood's cold kiln; Ashfall): it glows two minutes while the burners'
   shadows work it. Light it: **Charcoal** ×10, a Basalt Blank, and a tenth stroke under the nine: "Ten days. Leave the rest."
+## The rows to level 50 (2026-11-03, branch `s9rows`) — shipped, owner reviews in play
+
+Every calling's book now runs whole to level 50 (canon §4.2). The Warlock raises the **Ashen Bastion's war-mages**:
+tattered cream robes, a small lantern in the colour of the page he leads with (fire, arcane, or the rime when his Rime
+Lance outranks both), still standing the watch they swore; his **Ossuary Golem** is built of the bones of the fresh dead
+round him, and its *Forty Strong* mark is the Hushed Barrow's forty graves: each foe it fells adds to its blows until it
+falls. The Lanternwright's **Glim's Margin** sends Glim round the edge of the map she keeps: what hides inside is shown,
+a burrowed creature comes up, a Mirrored copy gets her cream corners (she dims beside false things), and once a day
+*Margin Note* points at a hidden cache. The Thornstrider's Hunter's Mark lays a green leaf over the Marked (*thar un
+vesh*), and the sky's three answer the Canopy Wardens: a rain cloud that thunders where the world already rains, a fog
+bank the creatures lose you in, and the sky's lamp, *lum vor*, that chains through the Wet. Names and lines:
+`play/td/*.i18n.ts`, `play/world/hud.i18n.ts`, marks in `play/spellbook/book.i18n.ts` (EN + ES).
+
