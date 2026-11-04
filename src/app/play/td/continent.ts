@@ -80,6 +80,8 @@ export interface ContinentDef {
   townKind?: 'capital' | 'village' | 'camp';
   /** Ash country (the Reach's Badlands, Molten Fields and Pyre Peaks): obsidian dirt and basalt, no grass, more lava showing. */
   ash?: boolean;
+  /** What the land's edge (region 'm') is made of: rock (the default), or the Wilds' wall of vine and root. */
+  rim?: Ground;
   /** Chunks round the town where no pack spawns (default 3; a Waystone camp keeps 1). */
   quiet?: number;
   /** The town's own ways on (a ship from its own pier, when the town is a harbour village), at tiles of the town. */
@@ -92,6 +94,10 @@ export interface ContinentDef {
   marks?: readonly SectionMark[];
   /** Named hot spots (world-acts.md §2): camps, dens and champion grounds, at fixed tiles. */
   camps?: readonly SectionCamp[];
+  /** Trees that stand where the map says (a copied tree's true twin): jungle trees, blocking, never felled. */
+  trees?: readonly { c: number; r: number; seed: number }[];
+  /** Open glades kept clear of the wilds' own trees and rocks (tiles round (c, r)): where a night event walks. */
+  glades?: readonly { c: number; r: number; size: number }[];
 }
 
 /**
@@ -109,7 +115,13 @@ export interface SectionSeam {
   label: string;
 }
 /** A thing to read (a plaque, a tally, a note) or a sealed thing (a door, a cage, a bricked arch), at tile (c, r). */
-export interface SectionMark { id: string; kind: 'read' | 'sealed'; c: number; r: number; look: 'plaque' | 'sign' | 'altar' | 'door' | 'cage' | 'chest' | 'statue' | 'ruin' | 'cave' | 'kiln' | 'mound'; label: string }
+export interface SectionMark {
+  id: string; kind: 'read' | 'sealed'; c: number; r: number;
+  look: 'plaque' | 'sign' | 'altar' | 'door' | 'cage' | 'chest' | 'statue' | 'ruin' | 'cave' | 'kiln' | 'mound' | 'hedge';
+  label: string;
+  /** Rows of the look laid across a road (the Greenwood's thorn hedge): `w` tiles wide each side of (c, r), `rows` deep going away from the road's open end. */
+  span?: { w: number; rows: number; dir: -1 | 1 };
+}
 /**
  * A named hot spot: a camp (its pack rises together 90 s after the last falls), a den (a guaranteed unique pack), or a
  * champion ground (elite packs 1 in 4 instead of 1 in 16). `spawns` are laid in a ring round (c, r).

@@ -126,16 +126,50 @@ export const ZONES: Readonly<Record<string, Zone>> = {
   'woodward-lodge-1': { band: [10, 13], safe: true },
   'woodward-lodge-2': { band: [10, 13], safe: true },
 
-  // ── The Verdant Wilds (15–40): the jungle continent ──
-  'verdant-wilds:T': { band: [15, 17], safe: true },  // Rootglass
-  'verdant-wilds:.': { band: [15, 17] },              // The Fernglades, round Rootglass
-  'verdant-wilds:,': { band: [15, 17] },              // The Mossy Shore
-  'verdant-wilds:r': { band: [16, 18] },              // The Rootwater
-  'verdant-wilds:l': { band: [16, 18] },              // The Glassmere
-  'verdant-wilds:~': { band: [15, 17] },
-  'verdant-wilds:j': { band: [17, 20] },              // The Greenwood
-  'verdant-wilds:J': { band: [21, 25] },              // The Deep Wilds
-  'verdant-wilds:u': { band: [24, 28] },              // The Sunken Courts
+  // ── The Verdant Wilds (15–40): an act of sections (S11, maps/wilds-sections.ts) ──
+  'verdant-wilds-shore:T': { band: [15, 17], safe: true },  // the Mossy Shore (the Net Stone; Mossharbor)
+  'verdant-wilds-shore:,': { band: [15, 17] },
+  'verdant-wilds-shore:.': { band: [15, 17] },
+  'verdant-wilds-shore:j': { band: [15, 17] },
+  'verdant-wilds-shore:~': { band: [15, 17] },
+  'verdant-wilds-shore:m': { band: [15, 17] },
+  'verdant-wilds-rootglass:T': { band: [15, 17], safe: true },  // Rootglass
+  'verdant-wilds-rootglass:j': { band: [15, 17], safe: true },
+  'verdant-wilds-rootglass:m': { band: [15, 17], safe: true },
+  'verdant-wilds-rootglass:~': { band: [15, 17], safe: true },
+  'verdant-wilds-fernglades:T': { band: [15, 17], safe: true },  // the Fernglades (the Bell-Post Stone; Thornwick)
+  'verdant-wilds-fernglades:.': { band: [15, 17] },
+  'verdant-wilds-fernglades:j': { band: [15, 17] },
+  'verdant-wilds-fernglades:m': { band: [15, 17] },
+  'verdant-wilds-fernglades:~': { band: [15, 17] },
+  'verdant-wilds-rootwater:T': { band: [16, 18], safe: true },  // the Rootwater Ford (the Plank Stone)
+  'verdant-wilds-rootwater:.': { band: [16, 18] },
+  'verdant-wilds-rootwater:j': { band: [16, 18] },
+  'verdant-wilds-rootwater:r': { band: [16, 18] },
+  'verdant-wilds-rootwater:m': { band: [16, 18] },
+  'verdant-wilds-rootwater:~': { band: [16, 18] },
+  'verdant-wilds-glassmere:T': { band: [16, 18], safe: true },  // the Glassmere (the Mere Stone)
+  'verdant-wilds-glassmere:j': { band: [16, 18] },
+  'verdant-wilds-glassmere:.': { band: [16, 18] },
+  'verdant-wilds-glassmere:l': { band: [16, 18] },
+  'verdant-wilds-glassmere:m': { band: [16, 18] },
+  'verdant-wilds-glassmere:~': { band: [16, 18] },
+  'verdant-wilds-greenwood:T': { band: [17, 20], safe: true },  // the Greenwood (the Copy-Tree Stone)
+  'verdant-wilds-greenwood:j': { band: [17, 20] },
+  'verdant-wilds-greenwood:.': { band: [17, 20] },
+  'verdant-wilds-greenwood:m': { band: [17, 20] },
+  'verdant-wilds-greenwood:~': { band: [17, 20] },
+  'verdant-wilds-deep-wilds:T': { band: [21, 25], safe: true },  // the Deep Wilds (the Heartroot Stone)
+  'verdant-wilds-deep-wilds:J': { band: [21, 25] },
+  'verdant-wilds-deep-wilds:j': { band: [21, 25] },
+  'verdant-wilds-deep-wilds:.': { band: [21, 25] },
+  'verdant-wilds-deep-wilds:m': { band: [21, 25] },
+  'verdant-wilds-deep-wilds:~': { band: [21, 25] },
+  'verdant-wilds-courts:T': { band: [24, 28], safe: true },  // the Sunken Courts (the Pillar Stone)
+  'verdant-wilds-courts:u': { band: [24, 28] },
+  'verdant-wilds-courts:J': { band: [24, 28] },
+  'verdant-wilds-courts:m': { band: [24, 28] },
+  'verdant-wilds-courts:~': { band: [24, 28] },
   'root-hollows-1': { band: [19, 21] },
   'root-hollows-2': { band: [21, 23] },
   'root-hollows-3': { band: [23, 25] },

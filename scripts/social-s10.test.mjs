@@ -21,7 +21,7 @@ function storm(from) {
 }
 const T0 = storm(1_800_000_000_000);
 const oak = { x: STORM.at.c * 16 + 8, y: (STORM.at.r + 2) * 16 + 16 };
-const world = t => new RoomWorld({ area: 'verdant-wilds', seed: 's10', now: () => t.now, boot: 'b10' });
+const world = t => new RoomWorld({ area: 'verdant-wilds-greenwood', seed: 's10', now: () => t.now, boot: 'b10' });
 const up = w => w.mobs.mobs.find(m => m.key === 'wb:antlered-storm');
 
 test('S10: the Antlered Storm rises at the Oak in a Greenwood thunderstorm, with its omen and its party form', () => {

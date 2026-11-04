@@ -291,11 +291,13 @@ export function fireRefusal(log: string, level: number, tinderbox: boolean): 'no
  * shows what it says; it is a clue to a thread of canon §9.
  */
 export const SCRAP_ID = 'margin-note-scrap';
+/** S11: what the Walking Tree leaves when it is struck back into a plain tree (campaign #7, the Graft Crown). */
+export const COPY_SEED_ID = 'copy-seed';
 
 /** Everything the gathering loops land: they pile 20 to a cell (a satchel fills, RuneScape's way). */
 export const GATHER_PILE = 20;
 export const GATHER_KEYS: ReadonlySet<string> = new Set([
-  ...LOGS.map(l => l.id), ...WORLD_FISH.map(f => f.id), ...MEALS.map(m => m.id), BURNT_FISH_ID, SCRAP_ID,
+  ...LOGS.map(l => l.id), ...WORLD_FISH.map(f => f.id), ...MEALS.map(m => m.id), BURNT_FISH_ID, SCRAP_ID, COPY_SEED_ID,
 ]);
 
 /** A gathered thing's worth (v3 Gold) for the shops' buyback, or 0 when it is not one of these. */
@@ -319,6 +321,9 @@ export const GATHER_MEANING: readonly GatherMeaning[] = [
   { id: SCRAP_ID, name: 'Margin Note Scrap', lore: 'A corner torn from a page, in a hand nobody has matched. It names somebody who should not be forgotten.',
     sources: ['night event: the Relief Column (the Pyre Peaks, at the Ashen Bastion\'s gate, at night)'],
     uses: ['read from the satchel: a clue to the Ashen Crypt\'s sealed chapel (canon §9, Doors in the dark)'] },
+  { id: COPY_SEED_ID, name: 'Copy-Seed', lore: 'A seed from a tree that was not where it stood. Plant it and it grows true, Rue Hazel says. Mostly.',
+    sources: ['night event: the Walking Tree (the Greenwood, at night or in fog), struck back into a plain tree'],
+    uses: ['kept: the wood copying itself, carried to Rootglass (canon §9, The tree that wears a lantern; campaign #7, the Graft Crown)'] },
   { id: BURNT_FISH_ID, name: 'Burnt Fish', lore: 'Charred past eating. The small fish do not mind; they come up to see what fell.',
     sources: ['Cooking: a fish that burns'], uses: ['fishing bait (the weakest)'] },
   { id: TINDERBOX_ID, name: 'Tinderbox', lore: 'Every fire you light is a small hearth. The dark minds its manners round one.',

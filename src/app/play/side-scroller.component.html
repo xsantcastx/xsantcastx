@@ -468,7 +468,7 @@
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
-    <div class="td-mini" aria-hidden="true" data-engine-ignore (click)="thumbHud && togglePlaces()" appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
+    <div class="td-mini" aria-hidden="true" data-engine-ignore data-world-avoid (click)="thumbHud && togglePlaces()" appHudDrag="minimap" [hudDragLabel]="t('ux.hud.drag')"><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i>
       <!-- The sky's phase under the minimap (td-phases.ts): the hour and what part of the day it is. -->
       @if (skyClock) { <span class="td-mini__sky" [attr.data-sky-phase]="skyPhase"><i class="td-mini__ph"></i>{{ skyClock }} · {{ t('clock.phase.' + skyPhase) }}@if (weatherNow && weatherNow.state !== 'clear') {<i class="td-mini__wx" data-weather-pip [attr.data-wx]="weatherNow.state" role="img" [attr.aria-label]="weatherLabel" [title]="weatherLabel"></i>}</span> }
     </div>

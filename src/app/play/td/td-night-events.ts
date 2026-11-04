@@ -14,8 +14,9 @@
  */
 import { TILE } from './td-art';
 import {
-  COLUMN, COUNT, COUNT_GATE, KILN, NIGHT_REWARDS, SHIFT, countBell, nightEventsAt, type NightEventId, type NightEventNow,
+  COLUMN, COUNT, COUNT_GATE, KILN, NIGHT_REWARDS, SHIFT, WALKER, countBell, nightEventsAt, type NightEventId, type NightEventNow,
 } from '../../shared/night-events/night-events.model';
+import { WALKER_GLADE } from './maps/wilds-sections';
 import type { WeatherInput } from '../../shared/weather/weather.model';
 
 type Pt = readonly [number, number];
@@ -33,13 +34,21 @@ export const NIGHT_PLACES = {
   column: [[40, -10], [30, -40], [0, -60], [-12, -86]] as readonly Pt[],
   // The Deep Charwood's cold kiln (reach-sections `sealed:deep-kiln`, nine days tallied on it).
   kiln: [-42, -26] as Pt,
+  // S11, the Walking Tree: the Greenwood's glade (wilds-sections WALKER_GLADE). The copy stands three tiles east of its
+  // true twin by day; at night (or in fog) it is somewhere else each time the Keeper looks away.
+  walker: [WALKER_GLADE.c, WALKER_GLADE.r] as Pt,
+  walks: [[55, -73], [74, -56], [53, -57], [74, -73], [64, -52], [66, -77]] as readonly Pt[],
 } as const;
 export const KILN_STATION = 'sealed:deep-kiln';
+/** The area the Walking Tree stands in (its copy is drawn there, day or night). */
+export const WALKER_AREA = 'verdant-wilds-greenwood';
+/** The copy's jungle tree: the true twin's seed (wilds-sections GREENWOOD_SECTION.trees), so the pair is identical. */
+export const WALKER_SEED = 2;
 
 export type NightNews =
   | { kind: 'reward'; id: NightEventId; night: number; x: number; y: number }
   | { kind: 'line'; key: string }
-  | { kind: 'sfx'; cue: 'farbell' | 'march' | 'crackle' | 'count-bell' | 'present' };
+  | { kind: 'sfx'; cue: 'farbell' | 'march' | 'crackle' | 'count-bell' | 'present' | 'creak' };
 
 export interface NightFrame {
   /** The world clock (the room's while it speaks), or null before the host has said. */
@@ -49,7 +58,12 @@ export interface NightFrame {
   surface: boolean;
   keeper: { x: number; y: number };
   dt: number;
+  /** Is a point on screen now (the Walking Tree only moves while unseen)? Unset: within 14 tiles of the Keeper. */
+  seen?: (x: number, y: number) => boolean;
 }
+
+/** The Walking Tree's night, for this Keeper: where it stands (-1 home), how often it moved, how long it has been looked at. */
+interface Walk { spot: number; moves: number; look: number; struck: boolean; told: boolean; dimmed: boolean }
 
 interface Track { near: number; seen: number; paid: boolean; bell: number; full: boolean; lit: boolean; said: number }
 
@@ -93,6 +107,7 @@ export class NightEvents {
   /** Test hook: an event forced on, from this many seconds ago (`?night=<id>`, fxNight). */
   forced: { id: NightEventId; at: number } | null = null;
   private readonly tracks = new Map<string, Track>();
+  private walk: { night: number; w: Walk } | null = null;
   private askedKey = '';
   private asked: NightEventNow[] = [];
   private readonly news: NightNews[] = [];
@@ -170,7 +185,62 @@ export class NightEvents {
     } else if (e.id === 'self-lit-kiln') {
       const kp = px(NIGHT_PLACES.kiln);
       if (tr.said < 0 && Math.hypot(kp.x - k.x, kp.y - k.y) < 22 * TILE) { tr.said = 0; this.news.push({ kind: 'sfx', cue: 'crackle' }); }
+    } else if (e.id === 'walking-tree') this.stepWalker(e, f);
+  }
+
+  /** This night's Walking Tree (a new night, a new walk from home). */
+  private walkOf(e: NightEventNow): Walk {
+    if (!this.walk || this.walk.night !== e.night) this.walk = { night: e.night, w: { spot: -1, moves: 0, look: 0, struck: false, told: false, dimmed: false } };
+    return this.walk.w;
+  }
+  private walkerPos(w: Walk | null): { x: number; y: number } { return px(w && w.spot >= 0 ? NIGHT_PLACES.walks[w.spot] : NIGHT_PLACES.walker); }
+  /**
+   * The Walking Tree (world-acts.md §5.3): looked at, then looked away from, it is somewhere else — only while unseen,
+   * never within WALKER.keep tiles of the Keeper. After WALKER.moves moves it stops, and Glim dims beside it.
+   */
+  private stepWalker(e: NightEventNow, f: NightFrame): void {
+    const w = this.walkOf(e), k = f.keeper;
+    if (w.struck) return;
+    const at = this.walkerPos(w), d = Math.hypot(at.x - k.x, at.y - k.y);
+    const inView = f.seen ? f.seen(at.x, at.y) : d < 14 * TILE;
+    if (w.moves >= WALKER.moves) {
+      if (!w.dimmed && inView && d < 12 * TILE) { w.dimmed = true; this.news.push({ kind: 'line', key: 'nightev.walker.dim' }); }
+      return;
     }
+    if (inView) {
+      w.look += f.dt;
+      if (w.moves > 0 && !w.told && w.look >= WALKER.look) { w.told = true; this.news.push({ kind: 'line', key: 'nightev.walker.seen' }, { kind: 'sfx', cue: 'creak' }); }
+      return;
+    }
+    if (w.look < WALKER.look) return;
+    // Looked away from: it is somewhere else, out of sight, never close. Which spot is the night's own (seeded).
+    const n = NIGHT_PLACES.walks.length, from = (Math.abs(e.night) * 7 + w.moves * 3) % n;
+    for (let i = 0; i < n; i++) {
+      const j = (from + i) % n;
+      if (j === w.spot) continue;
+      const p = px(NIGHT_PLACES.walks[j]);
+      if (Math.hypot(p.x - k.x, p.y - k.y) < WALKER.keep * TILE || (f.seen ? f.seen(p.x, p.y) : Math.hypot(p.x - k.x, p.y - k.y) < 14 * TILE)) continue;
+      w.spot = j; w.moves++; w.look = 0;
+      return;
+    }
+  }
+  /**
+   * Where the copied tree stands now, in the Greenwood (home by day), and whether it waits for its blow (Glim has dimmed
+   * beside it) or has had it. The engine draws it as one of the wilds' own trees.
+   */
+  walker(): { x: number; y: number; ready: boolean; struck: boolean } {
+    const e = this.now.find(x => x.id === 'walking-tree'), w = e ? this.walkOf(e) : null, p = this.walkerPos(e ? w : null);
+    return { x: p.x, y: p.y, ready: !!w && !w.struck && w.moves >= WALKER.moves, struck: !!w?.struck };
+  }
+  /** A blow at the copy (the Keeper within WALKER.reach tiles, Glim dimmed): it is a plain tree again, and leaves a copy-seed. */
+  strikeWalker(k: { x: number; y: number }): boolean {
+    const e = this.now.find(x => x.id === 'walking-tree');
+    if (!e) return false;
+    const w = this.walkOf(e), p = this.walkerPos(w);
+    if (w.struck || w.moves < WALKER.moves || Math.hypot(p.x - k.x, p.y - k.y) > (WALKER.reach + .5) * TILE) return false;
+    w.struck = true;
+    this.news.push({ kind: 'reward', id: e.id, night: e.night, x: p.x + 14, y: p.y + 6 }, { kind: 'line', key: 'nightev.walker.struck' });
+    return true;
   }
 
   /** The kiln glows now (the Keeper may light it), and is not yet lit by this Keeper tonight. */
@@ -309,6 +379,24 @@ export class NightEvents {
           c.globalAlpha = .5 * a; c.fillStyle = '#140a1f'; c.fillText('Present.', Math.round(gate.x) + 1, Math.round(gate.y) - 37);
           c.globalAlpha = .85 * a; c.fillStyle = '#e8e4ef'; c.fillText('Present.', Math.round(gate.x), Math.round(gate.y) - 38 - (still ? 0 : Math.round(k * 4)));
         }
+      } else if (e.id === 'walking-tree') {
+        // Glim dims beside the copy (the tree itself is drawn as one of the wilds' own: td-world `extra`): a small pale
+        // light at its trunk, a third as bright as Glim, breathing slowly (held still on Low and under reduced motion).
+        const wk = this.walker();
+        if (!wk.ready || !inView(wk.x, wk.y)) continue;
+        const gx = Math.round(wk.x + 14), gy = Math.round(wk.y - 22 + (calm ? 0 : Math.sin(time * 1.2) * 2)), b = calm ? .8 : .7 + .3 * Math.sin(time * .9);
+        at?.(gx, gy + 22);
+        c.fillStyle = '#a8c8d8';
+        disc(c, gx, gy, 16, .14 * b, false);
+        disc(c, gx, gy, 8, .32 * b, false);
+        c.globalAlpha = .7 * b; c.fillStyle = '#d8e8f0'; c.fillRect(gx - 2, gy - 2, 4, 4);
+        // A slow ring breathing out from her (held at its middle on Low and under reduced motion): seen from across the glade.
+        const k = calm ? .5 : (time * .5) % 1, rr = 6 + k * 14;
+        c.globalAlpha = .45 * (1 - k); c.fillStyle = '#c8d4dc';
+        for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; c.fillRect(Math.round(gx + Math.cos(a) * rr), Math.round(gy + Math.sin(a) * rr * .8), 1, 1); }
+        // Her wings, folded and grey: Glim herself, gone dim.
+        c.globalAlpha = .5 * b; c.fillStyle = '#c8d0d8'; c.fillRect(gx - 6, gy - 3, 3, 3); c.fillRect(gx + 3, gy - 3, 3, 3);
+        c.globalAlpha = 1;
       } else if (e.id === 'self-lit-kiln') {
         const kp = px(NIGHT_PLACES.kiln);
         if (!inView(kp.x, kp.y)) continue;
@@ -353,6 +441,7 @@ export class NightEvents {
 /** The names a night's reward floats under (the satchel's own names: material-catalog MATERIAL_NAMES). */
 const NAMES: Readonly<Record<string, string>> = {
   'cold-miners-pasty': 'Cold Miner\'s Pasty', 'margin-note-scrap': 'Margin Note Scrap', charcoal: 'Charcoal', 'basalt-blank': 'Basalt Blank',
+  'copy-seed': 'Copy-Seed',
 };
 export function nightLabel(id: string): string { return NAMES[id] ?? id; }
 
