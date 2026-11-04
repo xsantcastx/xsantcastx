@@ -79,3 +79,11 @@ area.
   **Spore Lights** (the spore-choked hollow in the Deep Wilds is their sealed promise); the Ring of Thorns' Eclipse-touched
   Canopy Bats; the Deep Wilds' "noon is dusk" light; the Storm-Struck Oak landmark; **Ember Isle's growth** (the rockslide,
   Slagstone Cave as the way east: the filler was not reached).
+
+## Gate (2026-11-04, after merging origin/main d11376bc)
+check:meaning clean; tsc app + spec clean; `npm run test:ci` 4646/4646 twice; CI's node line 337/337, delve-endless
+31/31 (one timing test failed once while karma shared the CPU, passed alone); ds-adherence, i18n keys, nav audit,
+economy-sim and combat-sim --check pass; build initial 1.39 MB; CSP hashes match. Chromium e2e (play-top-down, td-*,
+play-hud, play-mobile-hud, menus-reach, onboarding, play-thumb-hud; PW_PORT=4696): 321 passed, 191 skipped, 2 failed on
+the full run — play-top-down's Verdant trip still sailing home from Rootglass (fixed: it walks back to the Shore's pier;
+green on rerun) and td-dirfix "a wolf behind a tree" (passes alone). `e2e/td-wilds.spec.ts` 5/5, shots 7/7.
