@@ -559,6 +559,21 @@ export class InventoryService {
     return { moved, left, code: 'ok' };
   }
 
+  /**
+   * One piece into the first of `into` with room (a pile of its kind, else its first free cell): the phone card's
+   * Deposit (satchel → the open Vault tab) and Take (a Vault tab → the satchel), docs/design/ui-pass-3.md §A.5. One write.
+   */
+  movePieceInto(p: Piece, into: readonly ContainerId[]): GridMoveResult {
+    if (!this.isBrowser) return 'gone';
+    if (into.some(c => c !== 'b') && !this.atVault) return 'vault-closed';
+    const previous = this.ledger;
+    if (!this.moveIntoTabs(p, into)) { this.ledger = previous; return 'blocked'; }
+    if (this.ledger === previous) return 'ok';
+    if (!this.save()) { this.ledger = previous; return 'persist'; }
+    this.publish();
+    return 'ok';
+  }
+
   /** Move one piece into the first of `into` with room (a pile of its kind, else the first free cell). */
   private moveIntoTabs(p: Piece, into: readonly ContainerId[]): boolean {
     const ref: GridRef = p.kind === 'instance' ? { kind: 'instance', ids: p.ids } : { kind: 'stack', storeKey: p.storeKey ?? '', pile: p.pile ?? 0, qty: p.qty };

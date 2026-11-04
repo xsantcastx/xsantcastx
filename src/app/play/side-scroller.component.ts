@@ -53,6 +53,8 @@ import { RUNEWORDS_I18N } from '../shared/enchanting/runewords.i18n';
 import type { SocketDrop } from '../shared/enchanting/socketing.service';
 import { footprintOf } from '../shared/rpg/item-footprint';
 import type { GridView, Piece } from '../shared/rpg/inventory-grid';
+import { onPage, PAGE_COLS } from '../shared/inventory-grid/grid-pages';
+import type { NearbyContainer, NearbyItem } from './td/td-nearby';
 import type { GridMigrationNote, GridMoveResult } from '../shared/rpg/inventory.service';
 import { parseRecipeKey, recipeKey, recipeOfDef } from '../shared/spellstones/spellstones.model';
 import { itemFromOffer } from './trade/trade-items';
@@ -145,6 +147,8 @@ import { WORLD_BOSSES_I18N } from './world/world-bosses.i18n';
 import { omenKey } from './world/world-bosses';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
+import { THUMB_I18N } from './thumb-hud/thumb.i18n';
+import { ThumbHudComponent, type ThumbVerb } from './thumb-hud/thumb-hud.component';
 import { ASHGUARD_I18N } from './td/td-ashguard.i18n';
 import { LANTERN_I18N } from './td/td-lantern.i18n';
 import { THORN_I18N } from './td/td-thorn.i18n';
@@ -556,8 +560,8 @@ const WORN_CAP: Partial<Record<keyof ItemStats, number>> = {
 };
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, WaystoneAtlasComponent, VoyageComponent, SextonJournalComponent, SkillBookComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective],
-  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css', './side-scroller.component.ui.css'],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, ControlsSheetComponent, HudBarComponent, FeedbackSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective, HearthShrineComponent, GraveDeskComponent, SailingBoardComponent, WaystoneAtlasComponent, VoyageComponent, SextonJournalComponent, SkillBookComponent, FitViewportDirective, HudDragDirective, TdMapWindowComponent, TradeHudComponent, ItemGridComponent, DropTargetDirective, ThumbHudComponent],
+  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css', './side-scroller.component.b.css', './side-scroller.component.c.css', './side-scroller.component.ui.css', './side-scroller.component.thumb.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
   @ViewChild('worldCanvas') canvas!: ElementRef<HTMLCanvasElement>;
@@ -771,6 +775,61 @@ export class SideScrollerComponent implements OnDestroy {
     return !!this.barMq?.matches;
   }
   private barMq?: MediaQueryList | null;
+  // ── The portrait phone's thumb-zone HUD (play/thumb-hud; docs/design/ui-pass-3.md §A.2) ──
+  private thumbMq?: MediaQueryList | null;
+  /** A portrait phone (900 px wide or less, taller than wide) in the top-down world: the thumb-zone HUD stands. */
+  get thumb(): boolean {
+    if (!this.topDown || this.hudBar) return false;
+    if (this.thumbMq === undefined) this.thumbMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(max-width: 900px) and (orientation: portrait)') : null;
+    return !!this.thumbMq?.matches;
+  }
+  /** The compact size class: W < 380 or H < 700 (360×640, 375×667). */
+  get thumbCompact(): boolean { return this.browser && (window.innerWidth < 380 || window.innerHeight < 700); }
+  /** The Chat sheet, opened from the ticker or ☰ More (a portrait phone has no chat box on the world). */
+  thumbChat = false;
+  openThumbChat(): void { this.thumbChat = true; this.chatHidden = false; this.chatLastAt = Date.now(); if (this.chatTab === 'public') this.chatUnread = 0; }
+  closeThumbChat(): void { this.thumbChat = false; }
+  thumbSfx(k: 'tap' | 'open'): void { this.sound.sfx(k); }
+  /** The goal chip, expanded into its parchment card (for 8 s at most, or until tapped away). */
+  goalOpen = false;
+  private goalTimer?: ReturnType<typeof setTimeout>;
+  toggleGoal(ev: Event): void {
+    if (!this.thumb) return;
+    // A press on a real control inside the card (▸, Skip, Glim) does its own thing.
+    if ((ev.target as Element | null)?.closest?.('button, [role="button"]')) return;
+    this.goalOpen = !this.goalOpen;
+    clearTimeout(this.goalTimer);
+    if (this.goalOpen) this.goalTimer = setTimeout(() => this.zone.run(() => { this.goalOpen = false; }), 8000);
+  }
+  /** What the hand reaches for with no hostile near (the disc's verb), or null when nothing is in reach. */
+  /** Open the satchel on its Nearby tab (the disc's Loot, a corpse tapped on a portrait phone). */
+  openNearby(): void {
+    if (!this.bagOpen) this.toggleBag();
+    this.setBagTab('nearby');
+  }
+  get thumbArmedVerb(): ThumbVerb | null {
+    // A corpse with loot in reach is the hand's first verb (the disc's Loot opens Nearby on it).
+    const hand = (this.engine as unknown as { handVerb?: () => 'loot' | 'take' | null } | undefined)?.handVerb?.() ?? null;
+    if (hand === 'loot') return 'loot';
+    const s = this.state, n = s?.nearby;
+    if (n) {
+      if (n.startsWith('giver-') || s.nearbyKind === 'quest') return 'talk';
+      if (n === 'inscription' || (n === 'height' && s.height?.kind === 'carving')) return 'read';
+      if (s.nearbyKind === 'panel' || s.nearbyKind === 'waystone' || s.nearbyKind === 'passage' || n === 'delve' || n === 'passage' || n.startsWith('shrine:')) return 'enter';
+      return 'use';
+    }
+    if (this.fishPrompt) return 'use';
+    return hand;
+  }
+  /** The disc: Attack while a hostile is near (or nothing else is in reach), else the verb in reach. */
+  get thumbVerb(): ThumbVerb {
+    if ((this.engine as unknown as { hostileNear?: () => boolean } | undefined)?.hostileNear?.()) return 'attack';
+    return this.thumbArmedVerb ?? 'attack';
+  }
+  /** The Skill Book has something new (a skill point to spend). */
+  get thumbBookNews(): boolean { return false; }
+  /** The Character sheet has attribute points to spend. */
+  get thumbSheetNews(): boolean { try { return this.topDown && this.sheet.left > 0; } catch { return false; } }
   /** The keys each prologue row asks for (owner's player notes 2026-10-21: "show the shortcut letters"). */
   readonly proKeys: Readonly<Record<string, readonly string[]>> = {
     'play.pro.title.walk': ['W', 'A', 'S', 'D'], 'play.pro.title.hearth': ['E'], 'play.pro.title.fight': ['1'],
@@ -1728,6 +1787,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(WORLD_BOSSES_I18N);
     this.i18n.register(LORE_I18N);
     this.i18n.register(HUD_I18N);
+    this.i18n.register(THUMB_I18N);
     this.i18n.register(RUNEWORDS_I18N);
     this.i18n.register(ASHGUARD_I18N);
     this.i18n.register(LANTERN_I18N);
@@ -1981,9 +2041,18 @@ export class SideScrollerComponent implements OnDestroy {
       // Another Keeper tapped in the world (top-down, td-peers): their card.
       onPeerTap: peer => this.zone.run(() => this.peerTapped(peer)),
       // A corpse opened in the world (td-corpse): the loot still in it, and null once it is shut or gone.
-      onCorpse: view => this.zone.run(() => { this.corpseView = view; }),
+      onCorpse: view => this.zone.run(() => {
+        // A portrait phone (ui-pass-3 §A.4): a corpse opens the satchel on Nearby, never the small window over the HUD.
+        if (view && this.thumb) { this.corpseEngine?.closeCorpse?.(); this.corpseView = null; this.openNearby(); return; }
+        this.corpseView = view;
+      }),
       // A shared ground item (protocol 6): the Keeper walked to it; reach for it.
       onGroundTap: id => this.zone.run(() => { void this.tradeHud?.pickup(id); }),
+      onTakeOwnStack: (own, n) => this.zone.run(() => this.takeOwnStack(own, n)),
+      onTakeShared: (id, qty) => this.zone.run(() => {
+        const g = this.social.ground?.items.find(x => x.id === id);
+        if (g?.sk) void this.tradeHud?.takeFromPile(id, qty ?? g.qty); else void this.tradeHud?.pickup(id);
+      }),
       // A pile on the ground opened (td-ground-pile.ts): its RuneScape-style list.
       onPileOpen: pile => this.zone.run(() => this.openPile(pile)),
       // The Sexton's Count (shared/sexton): a stone read, the page in the dark, Barrow Door 1, the forty-first grave.
@@ -3331,6 +3400,16 @@ export class SideScrollerComponent implements OnDestroy {
   milestonePage = -1;
   /** The level-up banner while it shows. */
   levelBanner: { level: number; big: boolean; lines: string[]; points: boolean; skill: boolean } | null = null;
+  /** A level gained while the phone's satchel was open: its card waits for the satchel to close. */
+  private levelBannerHeld: { level: number; big: boolean; lines: string[]; points: boolean; skill: boolean } | null = null;
+  private showHeldLevel(): void {
+    const held = this.levelBannerHeld;
+    if (!held) return;
+    this.levelBannerHeld = null;
+    this.levelBanner = held;
+    clearTimeout(this.levelBannerTimer);
+    this.levelBannerTimer = setTimeout(() => this.zone.run(() => { this.levelBanner = null; }), held.big ? 16000 : 10000);
+  }
   private levelBannerTimer?: ReturnType<typeof setTimeout>;
   /** The portrait's level badge bounces for a moment after a level-up. */
   lvPulse = false;
@@ -3386,7 +3465,13 @@ export class SideScrollerComponent implements OnDestroy {
       const paid = e.paid.find(p => p.level === m.level);
       lines.push(this.t('play.lvl.milestone', { n: m.level }) + ' ' + this.milestoneLines(m, paid?.gold).join(' · '));
     }
-    this.levelBanner = { level: e.level, big, lines, points: e.points > 0, skill: e.skillPoints > 0 };
+    const banner = { level: e.level, big, lines, points: e.points > 0, skill: e.skillPoints > 0 };
+    // A portrait phone with the satchel open (ui-pass-3 Director note): the card would cover Nearby's nearest row, so
+    // the level goes to the ticker now and the card opens when the satchel closes.
+    if (this.thumb && this.bagOpen) {
+      this.levelBannerHeld = banner;
+      this.logGame([this.t('play.lvl.banner', { n: e.level }), ...(e.skillPoints > 0 ? [this.t(e.skillPoints === 1 ? 'play.lvl.gain.skill1' : 'play.lvl.gain.skill', { n: e.skillPoints })] : [])].join(' · '));
+    } else this.levelBanner = banner;
     this.message = this.t('play.lvl.log', { n: e.level });
     this.sound.sfx('levelup');
     (this.engine as unknown as { levelPillar?: (big: boolean) => void } | undefined)?.levelPillar?.(big);
@@ -5481,18 +5566,25 @@ export class SideScrollerComponent implements OnDestroy {
     const book = this.browser ? document.getElementById('satchel-book') : null;
     const inside = !!book && book.contains(document.activeElement);
     this.bagOpen = false;
+    this.showHeldLevel();
     if (inside) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.clasp')?.focus({ preventScroll: true }));
   }
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
+    if (!this.bagOpen) this.showHeldLevel();
     // Opens on the doll and the pockets alone: the card waits for a tap.
     if (this.bagOpen) this.pick = null;
+    // A phone: the Bag tab, or Nearby when a corpse fell within reach in the last 30 s (§A.4).
+    if (this.bagOpen) { this.nearPick = null; this.nearNote = ''; this.wornFilter = null; this.wornPulse = null; this.bagTab = this.topDown && this.freshCorpseNear() ? 'nearby' : (this.thumb ? 'bag' : 'worn'); this.bookStats = false; if (this.bagTab === 'nearby') this.pollNearby(true); }
     // The book needs the room an open Hearth takes: fold it, like a station
     // does (the remembered choice stands for next time).
     if (this.bagOpen) this.hearthOpen = false;
   }
   /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
   chooseWell(well: BagWell, ev?: Event): void {
+    this.wornPulse = null;
+    // A portrait phone: an empty slot filters the bag to what fits there (§A.3); a worn one opens its card (Unequip).
+    if (this.thumb && !well.filled && !well.blocked) { this.wornFilter = this.wornFilter === well.id ? null : well.id; this.pick = null; return; }
     this.pick = (!well.filled && !well.blocked) || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
     this.placePick(ev);
   }
@@ -5507,6 +5599,235 @@ export class SideScrollerComponent implements OnDestroy {
   }
   unpick(): void { this.pick = null; }
   pickedWell(id: SlotId): boolean { return this.pick?.kind === 'slot' && this.pick.ref === id; }
+  // ── The satchel on a phone (docs/design/ui-pass-3.md §A.3–A.4): Bag | Worn | Nearby, the grid as two 5-column pages ──
+  /** The satchel's tab: a portrait phone shows one (Bag, Worn or Nearby); elsewhere the doll panel shows Worn, Stats or Nearby. */
+  bagTab: 'bag' | 'worn' | 'nearby' = 'bag';
+  readonly bagTabs = ['bag', 'worn', 'nearby'] as const;
+  /** The phone's page of the grid: 0 is columns 0–4 ("Pocket 1"), 1 is 5–9. */
+  bagPage = 0;
+  private pagedMq?: MediaQueryList | null;
+  /** A phone (portrait or sideways): the grid draws as two 5-column pages with ≥ 44 px cells, never ten cramped columns. */
+  get gridPaged(): boolean {
+    if (!this.topDown || this.hudBar) return false;
+    if (this.pagedMq === undefined) this.pagedMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px)') : null;
+    return !!this.pagedMq?.matches;
+  }
+  setBagTab(tab: 'bag' | 'worn' | 'nearby'): void {
+    if (this.bagTab === tab) { if (!this.thumb && tab !== 'nearby') this.bookStats = false; return; }
+    this.bagTab = tab;
+    this.pick = null;
+    this.wornFilter = null;
+    this.nearPick = null;
+    if (tab !== 'worn') this.bookStats = false;
+    if (tab === 'nearby') this.pollNearby(true);
+  }
+  flipBag(d: 1 | -1): void { this.setBagPage(this.bagPage + d); }
+  setBagPage(n: number): void { const next = Math.max(0, Math.min(1, n)); if (next !== this.bagPage) { this.bagPage = next; this.sound.sfx('tap'); } }
+  /** How many pieces lie on a page (the dot under each pocket name). */
+  pageCount(page: number): number { const v = this.bagView; return v.pieces.filter(p => onPage(p.cell, p.w, page, v.w)).length; }
+  /** Resting a held piece on ◀ or ▶ for 400 ms flips the page (PoE's stash-tab hover). A tap flips at once. */
+  private readonly arrowTargets = new Map<string, DropTarget>();
+  pageArrow(dir: 1 | -1, owner: 'bag' | 'vault' = 'bag', flip?: (d: 1 | -1) => void): DropTarget {
+    const k = `${owner}:${dir}`;
+    let t = this.arrowTargets.get(k);
+    if (!t) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const go = () => this.zone.run(() => (flip ?? (d => this.flipBag(d)))(dir));
+      t = {
+        accepts: () => this.drag.mode === 'drag',
+        over: () => { if (!timer) timer = setTimeout(() => { timer = undefined; go(); }, 400); },
+        leave: () => { clearTimeout(timer); timer = undefined; },
+        drop: () => { clearTimeout(timer); timer = undefined; return false; },
+      };
+      this.arrowTargets.set(k, t);
+    }
+    return t;
+  }
+  /** The slot a resting drag onto the Worn chip lights (the doll's right well pulses). */
+  wornPulse: SlotId | null = null;
+  /** A tab chip as a drop target: rest a held piece on Worn (it opens the doll, its slot pulses) or on Bag for 400 ms;
+   *  drop it on Nearby to lay it at the Keeper's feet (rare and above asks first). */
+  private readonly tabTargets = new Map<string, DropTarget>();
+  tabTarget(tab: 'bag' | 'worn' | 'nearby'): DropTarget {
+    let t = this.tabTargets.get(tab);
+    if (!t) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const rest = (held: DragHeld) => { if (!timer) timer = setTimeout(() => this.zone.run(() => {
+        timer = undefined;
+        this.setBagTab(tab);
+        if (tab === 'worn' && held.item) this.wornPulse = EQUIPMENT_SLOTS.find(sl => itemFitsSlot(sl.id, held.item!))?.id ?? null;
+      }), 400); };
+      t = tab === 'nearby' ? {
+        accepts: held => this.worldTarget.accepts(held),
+        drop: (held, x, y) => {
+          const rung = held.item?.rarity ?? '';
+          if (['rare', 'epic', 'legendary', 'mythic', 'singular'].includes(rung) && this.browser && !window.confirm(this.t('trade.dropHint'))) return false;
+          return this.worldTarget.drop(held, x, y);
+        },
+      } : {
+        accepts: held => this.drag.mode === 'drag' && (tab === 'bag' || (held.from === 'b' && held.ref.kind === 'instance' && !!held.item)),
+        over: (held) => rest(held),
+        leave: () => { clearTimeout(timer); timer = undefined; },
+        drop: () => { clearTimeout(timer); timer = undefined; return false; },
+      };
+      this.tabTargets.set(tab, t);
+    }
+    return t;
+  }
+  /** An empty well tapped on the Worn tab: the bag filtered to what fits there, best first (Diablo Immortal's slot filter). */
+  wornFilter: SlotId | null = null;
+  get wornFits(): { piece: Piece; item: GameItem; tone: string; art: string; name: string }[] {
+    const slot = this.wornFilter;
+    if (!slot) return [];
+    const rank: Record<string, number> = { singular: 7, mythic: 6, legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
+    const out: { piece: Piece; item: GameItem; tone: string; art: string; name: string; score: number }[] = [];
+    for (const p of this.inventory.snapshot.grid.bag.pieces) {
+      if (p.kind !== 'instance') continue;
+      const item = this.inventory.snapshot.items.find(i => i.id === p.ids[0]);
+      if (!item || item.equipped || item.explorerId || !itemFitsSlot(slot, item)) continue;
+      const look = this.pieceLook(p);
+      out.push({ piece: p, item, tone: lootColor(item.rarity), art: look.art, name: look.name, score: (rank[item.rarity] ?? 0) * 1000 + (item.itemLevel ?? 0) });
+    }
+    return out.sort((a, b) => b.score - a.score);
+  }
+  pickFit(f: { piece: Piece }, ev: Event): void { this.pick = { kind: 'item', ref: f.piece.ids[0] }; this.placePick(ev); }
+  /** The phone card's one primary verb (§A.3): Equip, Unequip, To belt, Deposit at a Vault; null for none. */
+  get cardPrimary(): { label: string; act: () => void; attr: string } | null {
+    const row = this.slip;
+    if (!row) return null;
+    if (this.inventory.vaultOpen && this.pick?.kind !== 'slot') {
+      const piece = this.pickedPiece;
+      if (piece) return { label: this.t('thumb.card.deposit'), attr: 'deposit', act: () => { const r = this.inventory.movePieceInto(piece, this.vaultIntoTabs()); if (r === 'ok') this.pick = null; else this.message = this.t('vault.why.blocked'); } };
+    }
+    if (row.canWear) return { label: this.t('thumb.card.equip'), attr: 'equip', act: () => this.wear() };
+    if (row.canStow) return { label: this.t('thumb.card.unequip'), attr: 'unequip', act: () => this.stow() };
+    if (row.potion) return { label: this.t('thumb.card.toBelt'), attr: 'belt', act: () => this.beltPickedPotion() };
+    if (row.stone && !row.stone.onBelt) return { label: this.t('thumb.card.toBelt'), attr: 'belt', act: () => this.beltPickedStone() };
+    return null;
+  }
+  private vaultIntoTabs(): ('general-1' | 'general-2' | 'general-3' | 'general-4')[] {
+    return (['general-1', 'general-2', 'general-3', 'general-4'] as const).filter(tab => tab === 'general-1' || this.inventory.snapshot.grid.tabs[tab]?.w);
+  }
+  /** The picked satchel piece itself. */
+  private get pickedPiece(): Piece | null {
+    const key = this.pickedPieceKey;
+    return key ? this.inventory.snapshot.grid.bag.pieces.find(p => p.key === key) ?? null : null;
+  }
+  /** The compare strip's verdict line (PoE2 / D4 delta lines): better, worse or a trade-off, with its biggest change. */
+  get cardVerdict(): { text: string; tone: 'up' | 'down' | 'mixed' | 'same' } | null {
+    const row = this.slip;
+    if (!row || !row.canWear || !row.compare.length) return null;
+    const ups = row.compare.filter(d => d.direction === 'up'), downs = row.compare.filter(d => d.direction === 'down');
+    const line = (ups[0] ?? downs[0])?.text ?? '';
+    if (!ups.length && !downs.length) return { text: this.t('thumb.verdict.same'), tone: 'same' };
+    if (ups.length && downs.length) return { text: this.t('thumb.verdict.mixed', { line }), tone: 'mixed' };
+    return ups.length ? { text: this.t('thumb.verdict.better', { line }), tone: 'up' } : { text: this.t('thumb.verdict.worse', { line }), tone: 'down' };
+  }
+  /** The worn piece the compare strip is against (a tap on its name opens its own card). */
+  get cardAgainst(): { slot: SlotId; name: string } | null {
+    const pick = this.pick;
+    if (pick?.kind !== 'item') return null;
+    const item = this.inventory.snapshot.items.find(i => i.id === pick.ref);
+    if (!item || item.equipped) return null;
+    // The slot wear() would fill (slipCompare's pick): only a worn piece there is something to compare against.
+    const equipped = this.inventory.snapshot.equipped, fits = (sl: SlotId) => itemFitsSlot(sl, item);
+    const target: SlotId | undefined = isBasaltEdge(item) ? 'weapon' : SLOT_IDS.find(sl => fits(sl) && !equipped[sl]) ?? SLOT_IDS.find(fits);
+    const worn = target ? equipped[target] : undefined;
+    return target && worn && !worn.explorerId ? { slot: target, name: itemNameTone(worn).name } : null;
+  }
+  openAgainst(): void { const a = this.cardAgainst; if (a) this.pick = { kind: 'slot', ref: a.slot }; }
+  /** The bottom card docks to the window's top when the picked cell sits in the lower half of the grid (it stays in view). */
+  get cardTop(): boolean {
+    if (!this.thumb || typeof window === 'undefined') return false;
+    // Whichever side of the tapped piece has more room: below it (the window's foot) or above it (under the head).
+    return this.pickAt.top - 62 > window.innerHeight - this.pickAt.bottom;
+  }
+  /** The card's height on a phone: at most 55% of the screen, and never over the tapped piece. */
+  get cardMax(): number | null {
+    if (!this.thumb || typeof window === 'undefined') return null;
+    const H = window.innerHeight, room = this.cardTop ? this.pickAt.top - 62 - 8 : H - this.pickAt.bottom - 18;
+    return Math.max(160, Math.min(Math.round(H * .55), Math.round(room)));
+  }
+
+  // ── Nearby (docs/design/ui-pass-3.md §A.4): corpses and piles within 8 tiles, nearest first ──
+  nearbyRows: (NearbyContainer & { gone?: boolean })[] = [];
+  private nearSig = '';
+  private nearTimer?: ReturnType<typeof setInterval>;
+  /** Containers emptied or rotted away fade for a second as "Looted" before they go. */
+  private nearGone = new Map<string, { row: NearbyContainer; until: number }>();
+  nearExpanded = new Set<string>();
+  nearCollapsed = new Set<string>();
+  nearPick: { c: string; item: NearbyItem } | null = null;
+  nearQty = 1;
+  nearNote = '';
+  nearHelp = false;
+  private get nearEngine(): { nearbyContainers?: () => NearbyContainer[]; nearbySignature?: () => string; takeNearby?: (c: string, what: string, qty?: number) => 'walk' | 'taken' | 'full' | 'gone'; nearbyWalking?: string | null } | undefined {
+    return this.topDown ? this.engine as never : undefined;
+  }
+  get nearWalking(): string | null { return this.nearEngine?.nearbyWalking ?? null; }
+  /** In-reach containers that still hold something (the Nearby chip's count). */
+  get nearbyBadge(): number { return this.nearbyRows.filter(c => c.inReach && !c.gone && c.items.length).length; }
+  /** 4 Hz while the tab is open, never while it is shut; the list re-renders only when its signature changes. */
+  pollNearby(start = false): void {
+    if (start && !this.nearTimer && this.browser) this.zone.runOutsideAngular(() => { this.nearTimer = setInterval(() => this.pollNearby(), 250); });
+    const open = this.bagOpen && this.bagTab === 'nearby';
+    if (!open) { clearInterval(this.nearTimer); this.nearTimer = undefined; return; }
+    const e = this.nearEngine;
+    const list = e?.nearbyContainers?.() ?? [];
+    const now = Date.now();
+    const sig = (e?.nearbySignature?.() ?? '') + `|w:${this.nearWalking ?? ''}|g:${[...this.nearGone.keys()].join(',')}`;
+    const goneBefore = this.nearGone.size;
+    for (const old of this.nearbyRows) if (!old.gone && !list.some(c => c.id === old.id)) this.nearGone.set(old.id, { row: old, until: now + 1000 });
+    for (const [id, g] of this.nearGone) if (g.until <= now || list.some(c => c.id === id)) this.nearGone.delete(id);
+    if (sig === this.nearSig && goneBefore === this.nearGone.size && !start) return;
+    this.zone.run(() => {
+      this.nearSig = sig;
+      this.nearbyRows = [...list, ...[...this.nearGone.values()].map(g => ({ ...g.row, gone: true }))];
+      if (this.nearPick && !list.some(c => c.id === this.nearPick!.c && c.items.some(i => i.id === this.nearPick!.item.id))) this.nearPick = null;
+    });
+  }
+  /** Rows start open when there are at most 3; with more, only the nearest is open and the rest fold to their head. */
+  nearOpen(c: NearbyContainer, i: number): boolean {
+    if (this.nearExpanded.has(c.id)) return true;
+    if (this.nearCollapsed.has(c.id)) return false;
+    return this.nearbyRows.length <= 3 || i === 0;
+  }
+  toggleNear(c: NearbyContainer, i: number): void {
+    const open = this.nearOpen(c, i);
+    this.nearExpanded.delete(c.id); this.nearCollapsed.delete(c.id);
+    (open ? this.nearCollapsed : this.nearExpanded).add(c.id);
+  }
+  nearName(c: NearbyContainer): string {
+    if (c.kind === 'corpse') return c.name;
+    if (c.by && c.by !== this.keeperName) return this.t('thumb.near.theirs', { name: c.by });
+    return c.own ? this.t('thumb.near.yours') : this.t('thumb.near.ground');
+  }
+  nearDist(c: NearbyContainer): string { return c.tiles === 1 ? this.t('thumb.near.tile') : this.t('thumb.near.tiles', { n: c.tiles }); }
+  nearTone(it: NearbyItem): string { return it.rarity ? lootColor(it.rarity) : 'var(--cozy-loot-material)'; }
+  pickNear(c: NearbyContainer, it: NearbyItem): void {
+    this.nearPick = this.nearPick?.item.id === it.id ? null : { c: c.id, item: it };
+    this.nearQty = it.qty;
+  }
+  stepNear(d: number): void { const max = this.nearPick?.item.qty ?? 1; this.nearQty = Math.max(1, Math.min(max, this.nearQty + d)); }
+  /** Take from a container: all of it, one piece, or `qty` of a stack. In reach it is taken now; further, the Keeper walks. */
+  takeNear(c: NearbyContainer, what: string, qty?: number): void {
+    if (c.inReach && this.bagFull && !c.items.every(i => i.coins > 0)) { this.nearNote = this.t('play.grid.full'); return; }
+    const out = this.nearEngine?.takeNearby?.(c.id, what, qty) ?? 'gone';
+    this.nearNote = out === 'full' ? this.t('play.grid.full') : '';
+    if (out === 'full') this.message = this.t('play.grid.full');
+    if (out !== 'walk') this.nearPick = null;
+    this.pollNearby(true);
+  }
+  takeNearPick(): void {
+    const np = this.nearPick;
+    const c = np ? this.nearbyRows.find(r => r.id === np.c) : undefined;
+    if (!np || !c) return;
+    this.takeNear(c, np.item.id, np.item.stack && this.nearQty < np.item.qty ? this.nearQty : undefined);
+  }
+  /** A freshly fallen corpse (the last 30 s) in reach: the satchel opens on Nearby. */
+  private freshCorpseNear(): boolean {
+    return (this.nearEngine?.nearbyContainers?.() ?? []).some(c => c.kind === 'corpse' && c.inReach && c.age < 30);
+  }
   get pocketFill(): number {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     return used <= 0 || !Number.isFinite(cap) ? 0 : Math.min(100, (used / cap) * 100);

@@ -30,7 +30,7 @@ async function open(page: Page, stacks: Record<string, number>, extra: Record<st
 }
 /** The Map's key travels to a giver (reduced motion: at once) and speaks to them. */
 async function travelTo(page: Page, name: RegExp, phone = false): Promise<void> {
-  if (phone) await page.locator('.td-dock button').last().click();
+  if (phone) await page.locator('[data-th="map"], .td-dock button:last-child').last().click();
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
   const map = page.locator('#places-list.td-map');
   await expect(map).toBeVisible();
@@ -97,7 +97,7 @@ test('a task giver of their own in Pyrehold, and the talk window on a phone', as
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, {});
   // Sail to Pyrehold (the Map's ship pin), then the captain of the Watch.
-  await page.locator('.td-dock button').last().click();
+  await page.locator('[data-th="map"], .td-dock button:last-child').last().click();
   await sail(page, /pyrehold/i, /pyrehold/i);
   await expect(canvas(page)).toHaveAttribute('data-task-marks', /captain-vey:!/, { timeout: 10000 });
   await travelTo(page, /brannoc vey/i, true);
@@ -112,6 +112,8 @@ test('a task giver of their own in Pyrehold, and the talk window on a phone', as
   for (const b of await talk.locator('.td-talk__acts button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-phone.jpg', type: 'jpeg', quality: 80 });
   await talk.locator('[data-talk-accept]').click();
+  // A portrait phone folds the task scroll into its goal chip (docs/design/ui-pass-3.md §A.2): a tap opens it.
+  if (await page.locator('.stage--thumb').count()) await page.locator('.guide .guide-text').first().click();
   await expect(page.locator('[data-tasks] li[data-task="pyre-vey-1"]')).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/quests-phone-scroll.jpg', type: 'jpeg', quality: 80 });
 });

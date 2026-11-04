@@ -297,7 +297,7 @@ test.describe('on a phone', () => {
   test('the Map fills the sheet, its pins take a finger, + and − zoom, no key caps', async ({ page }) => {
     await enter(page, '', true);
     await expect(page.locator('[data-guide-keys]')).toHaveCount(0);
-    await page.locator('.td-dock button').last().tap();
+    await page.locator('[data-th="map"], .td-dock button:last-child').last().tap();
     const view = page.locator('[data-map-view]');
     await expect(view).toBeVisible();
     await page.locator('[data-map-zoom-in]').tap();

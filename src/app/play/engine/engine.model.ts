@@ -390,6 +390,16 @@ export interface EngineOptions {
   onCorpse?: (view: CorpseView | null) => void;
   /** Top-down: another Keeper (the Hearth room) was tapped — the HUD shows their card. */
   onPeerTap?: (peer: { id: string; name: string; vocation: string; level: number }) => void;
+  /**
+   * The Nearby tab (td-engine takeNearby) takes `n` of the Keeper's own stack pile through the host's reusable partial
+   * take (side-scroller takeOwnStack, which trims the pile with trimOwn). False: no room.
+   */
+  onTakeOwnStack?: (own: string, n: number) => boolean;
+  /**
+   * The Nearby tab takes another Keeper's piece through the room: a stack by the reusable take (trade-hud takeFromPile,
+   * `qty` of it, all when omitted, never a picker), an item by pickup.
+   */
+  onTakeShared?: (id: string, qty?: number) => void;
   /** A shared ground item (Hearth protocol 6) was tapped: the Keeper walked to it; the HUD picks it up. */
   onGroundTap?: (id: string) => void;
   /**

@@ -9,10 +9,30 @@
 
   <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
-  <app-station-tabs stationTabs class="vs-tabs" [tabs]="tabs" [active]="view" (activeChange)="setView($event)" [label]="t('vault.tabs')" />
+  @if (!portrait) {
+    <app-station-tabs stationTabs class="vs-tabs" [tabs]="tabs" [active]="view" (activeChange)="setView($event)" [label]="t('vault.tabs')" />
+  }
 
-  <div stationHero class="vs-hero" data-vault-stash>
-    <section class="vs-side" [attr.aria-label]="t('vault.strip.vault', { tab: tabName(view) })">
+  <div stationHero class="vs-hero" data-vault-stash [class.vs-hero--phone]="portrait" [class.vs-hero--paged]="paged" [attr.data-vault-seg]="portrait ? seg : null">
+    @if (portrait) {
+      <!-- A portrait phone (§A.5, Diablo Immortal's stash): one grid at a time; a piece rests on the other chip to cross. -->
+      <div class="vs-seg" role="group" [attr.aria-label]="t('vault.seg.label')" data-vault-switch>
+        <button type="button" class="vs-segbtn" data-seg="vault" [attr.aria-pressed]="seg === 'vault'" [appDropTarget]="segTarget('vault')" (click)="setSeg('vault')">{{ t('vault.seg.vault') }}</button>
+        <button type="button" class="vs-segbtn" data-seg="satchel" [attr.aria-pressed]="seg === 'satchel'" [appDropTarget]="segTarget('satchel')" (click)="setSeg('satchel')">{{ t('vault.seg.satchel') }}</button>
+      </div>
+      @if (seg === 'vault') {
+        <!-- The Vault's tabs: a sideways row of wood chips (never a full-width brass bar); + buys the next. -->
+        <div class="vs-tabrow" role="tablist" [attr.aria-label]="t('vault.tabs')" data-vault-tabs>
+          @for (tb of tabs; track tb.id) {
+            <button type="button" role="tab" class="vs-tabchip" [attr.data-vault-tab]="tb.id" [attr.aria-selected]="tb.id === view" (click)="setView(tb.id)">{{ tb.label }}</button>
+          }
+          @if (nextOffer; as o) {
+            <button type="button" class="vs-tabchip vs-tabchip--buy" data-vault-buy [attr.aria-label]="t('vault.act.buyNextAria', { tab: o.label, price: fmt(o.price ?? 0) })" (click)="buy(o.id)">{{ t('vault.act.buyNext', { price: fmt(o.price ?? 0) }) }}</button>
+          }
+        </div>
+      }
+    }
+    <section class="vs-side" [attr.aria-label]="t('vault.strip.vault', { tab: tabName(view) })" [hidden]="portrait && seg !== 'vault'">
       <h3 class="vs-h">{{ t('vault.strip.vault', { tab: tabName(view) }) }}</h3>
       @if (view === 'overflow') {
         <p class="vs-note">{{ t('vault.line.overflow') }}</p>
@@ -29,28 +49,45 @@
         <p class="vs-locked">{{ t('vault.hint.locked') }}</p>
         <button type="button" class="vs-chip" (click)="buy(view)">{{ t('vault.act.buyTab', { tab: tabName(view) }) }}</button>
       } @else if (stash) {
-        <app-item-grid [container]="view" [view]="stash" [look]="look" [label]="tabName(view)" [accepts]="stashAccepts"
+        @if (paged) {
+          <nav class="vs-pages" [attr.aria-label]="t('vault.page.label')" data-vault-pages>
+            <button type="button" class="vs-page" [attr.aria-pressed]="vaultPage === 0" [appDropTarget]="arrow('vault', -1)" (click)="setPage('vault', 0)">◀ {{ t('vault.page.prev') }} <i>{{ count(stash, 0) }}</i></button>
+            <button type="button" class="vs-page" [attr.aria-pressed]="vaultPage === 1" [appDropTarget]="arrow('vault', 1)" (click)="setPage('vault', 1)">{{ t('vault.page.next') }} ▶ <i>{{ count(stash, 1) }}</i></button>
+          </nav>
+        }
+        <app-item-grid [container]="view" [view]="stash" [look]="look" [label]="tabName(view)" [accepts]="stashAccepts" [page]="paged ? vaultPage : null" (flip)="flip('vault', $event)"
                        (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)" (unhover)="unhover()" (moved)="moved($event)" />
       }
     </section>
-    <section class="vs-side" [attr.aria-label]="t('vault.strip.satchel')">
+    <section class="vs-side" [attr.aria-label]="t('vault.strip.satchel')" [hidden]="portrait && seg !== 'satchel'">
       <h3 class="vs-h">{{ t('vault.strip.satchel') }}</h3>
       @if (satchel) {
-        <app-item-grid container="b" [view]="satchel" [look]="look" [label]="t('vault.strip.satchel')"
+        @if (paged) {
+          <nav class="vs-pages" [attr.aria-label]="t('vault.page.label')" data-bag-pages>
+            <button type="button" class="vs-page" [attr.aria-pressed]="bagPage === 0" [appDropTarget]="arrow('satchel', -1)" (click)="setPage('satchel', 0)">◀ {{ t('vault.page.prev') }} <i>{{ count(satchel, 0) }}</i></button>
+            <button type="button" class="vs-page" [attr.aria-pressed]="bagPage === 1" [appDropTarget]="arrow('satchel', 1)" (click)="setPage('satchel', 1)">{{ t('vault.page.next') }} ▶ <i>{{ count(satchel, 1) }}</i></button>
+          </nav>
+        }
+        <app-item-grid container="b" [view]="satchel" [look]="look" [label]="t('vault.strip.satchel')" [page]="paged ? bagPage : null" (flip)="flip('satchel', $event)"
                        (pick)="pickPiece($event)" (hover)="hoverPiece($event.piece, $event.ev)" (unhover)="unhover()" (moved)="moved($event)" />
       }
     </section>
+    @if (card; as c) {
+      <p class="vs-card" role="status" data-vault-card [style.--rim]="c.look.tone"><b>{{ c.look.name }}</b>@if (c.piece.qty > 1) { <span> ×{{ c.piece.qty }}</span> }
+        @if (paged && cardFrom(); as from) {
+          <!-- The card's one primary on a phone: Deposit (from the satchel) or Take (from the Vault). -->
+          <button type="button" class="vs-chip vs-chip--primary vs-cardgo" data-drag-pass [attr.data-vault-move]="from" (click)="cardMove()">{{ t(from === 'satchel' ? 'vault.act.depositOne' : 'vault.act.takeOne') }}</button>
+        }
+      </p>
+    }
     <div class="vs-actions" data-vault-actions>
-      <button type="button" class="vs-chip vs-chip--primary" data-vault-deposit (click)="depositAll()">{{ t('vault.act.deposit') }}</button>
+      <button type="button" class="vs-chip" [class.vs-chip--primary]="!portrait" data-vault-deposit (click)="depositAll()">{{ t('vault.act.deposit') }}</button>
       @if (view !== 'overflow' && stash && !locked) {
         <button type="button" class="vs-chip" data-vault-takeall (click)="takeAll()">{{ t('vault.act.takeAll') }}</button>
         <button type="button" class="vs-chip" data-vault-sort (click)="sort(view)">{{ t('vault.act.sortTab') }}</button>
       }
       <button type="button" class="vs-chip" data-vault-sort-bag (click)="sort('b')">{{ t('vault.act.sortBag') }}</button>
     </div>
-    @if (card; as c) {
-      <p class="vs-card" role="status" data-vault-card [style.--rim]="c.look.tone"><b>{{ c.look.name }}</b>@if (c.piece.qty > 1) { <span> ×{{ c.piece.qty }}</span> }</p>
-    }
     @if (drag.held && drag.mode === 'hold') {
       <p class="vs-hold" role="status">{{ t('vault.holding', { name: drag.held.name }) }} <button type="button" class="vs-chip" data-drag-cancel (click)="drag.cancel()">{{ t('vault.cancel') }}</button></p>
     }
