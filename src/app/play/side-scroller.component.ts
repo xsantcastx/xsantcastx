@@ -783,7 +783,21 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.thumbMq === undefined) this.thumbMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(max-width: 900px) and (orientation: portrait)') : null;
     return !!this.thumbMq?.matches;
   }
-  /** The compact size class: W < 380 or H < 700 (360×640, 375×667). */
+  private thumbLandMq?: MediaQueryList | null;
+  /**
+   * A sideways phone (844×390, 932×430) in the top-down world: the thumb HUD's mirror (ui-pass-3 §1c, Wave B). The
+   * same pieces as portrait at the compact size, laid out for a short screen: the arc bottom-right, the belt a row
+   * bottom-left with the bag row above it, the ticker along the top. The satchel keeps its sideways layout.
+   */
+  get thumbLand(): boolean {
+    if (!this.topDown || this.hudBar) return false;
+    if (this.thumbLandMq === undefined) this.thumbLandMq = this.browser && typeof matchMedia === 'function'
+      ? matchMedia('(orientation: landscape) and (max-height: 500px) and (max-width: 1000px), (orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse)') : null;
+    return !!this.thumbLandMq?.matches;
+  }
+  /** The thumb-zone HUD stands: a portrait phone, or a sideways one. */
+  get thumbHud(): boolean { return this.thumb || this.thumbLand; }
+  /** The compact size class: W < 380 or H < 700 (360×640, 375×667, and every sideways phone). */
   get thumbCompact(): boolean { return this.browser && (window.innerWidth < 380 || window.innerHeight < 700); }
   /** The Chat sheet, opened from the ticker or ☰ More (a portrait phone has no chat box on the world). */
   thumbChat = false;
@@ -794,7 +808,7 @@ export class SideScrollerComponent implements OnDestroy {
   goalOpen = false;
   private goalTimer?: ReturnType<typeof setTimeout>;
   toggleGoal(ev: Event): void {
-    if (!this.thumb) return;
+    if (!this.thumbHud) return;
     // A press on a real control inside the card (▸, Skip, Glim) does its own thing.
     if ((ev.target as Element | null)?.closest?.('button, [role="button"]')) return;
     this.goalOpen = !this.goalOpen;
@@ -5606,9 +5620,15 @@ export class SideScrollerComponent implements OnDestroy {
   /** The phone's page of the grid: 0 is columns 0–4 ("Pocket 1"), 1 is 5–9. */
   bagPage = 0;
   private pagedMq?: MediaQueryList | null;
+  private landShortMq?: MediaQueryList | null;
   /** A phone (portrait or sideways): the grid draws as two 5-column pages with ≥ 44 px cells, never ten cramped columns. */
   get gridPaged(): boolean {
-    if (!this.topDown || this.hudBar) return false;
+    if (this.hudBar) return false;
+    // The side view's hearth pages its grid on a sideways phone too (never ten 31 px columns in a short window).
+    if (!this.topDown) {
+      if (this.landShortMq === undefined) this.landShortMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(orientation: landscape) and (max-height: 500px)') : null;
+      if (!this.landShortMq?.matches) return false;
+    }
     if (this.pagedMq === undefined) this.pagedMq = this.browser && typeof matchMedia === 'function' ? matchMedia('(max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px)') : null;
     return !!this.pagedMq?.matches;
   }
@@ -6053,7 +6073,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get wells(): BagWell[] {
     const snap = this.inventory.snapshot;
-    const charms = snap.items.some(item => item.type === 'charm' && !item.explorerId);
+    // A portrait phone's Worn tab always shows the charm row (ui-pass-3 Wave B: charm slots are never locked, so an empty
+    // row says where charms go); elsewhere it grows once a charm is owned.
+    const charms = this.thumb || snap.items.some(item => item.type === 'charm' && !item.explorerId);
     const slots = charms ? [...BELT, ...CHARM_SLOT_IDS] : BELT;
     const shut = this.offHandShut();
     return slots.map(id => {

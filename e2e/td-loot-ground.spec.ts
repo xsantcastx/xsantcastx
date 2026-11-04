@@ -251,7 +251,10 @@ test.describe('phones', () => {
     await expect(tab.locator('[data-ids="k-staff"]')).toHaveCount(1);
     await expect(tab.locator('[data-stack="cinder-ore"]')).toHaveAttribute('data-qty', '4');
     // Sort the tab: kind, then rarity, then name (the ore, a material, goes last).
+    // Sort waits behind the window's ? (ui-pass-3 Wave B: the foot keeps Deposit all and Take all only).
+    await page.locator('.place:not([hidden]) .ss__help').tap();
     await page.locator('[data-vault-sort]').tap();
+    await page.locator('.place:not([hidden]) .ss__helpx').tap();
     // A phone draws the tab as two pages (docs/design/ui-pass-3.md §A.5): read both.
     const read = () => tab.locator('.ig-piece').evaluateAll(els => els.map(e => ({ cell: Number(e.getAttribute('data-cell')), stack: e.getAttribute('data-stack') })));
     if (seg) await page.locator('[data-seg="vault"]').tap();

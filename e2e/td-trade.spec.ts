@@ -108,6 +108,11 @@ test('two Keepers trade items and Gold atomically, then one drops an item the ot
   await bryn.locator('[data-trade-accept]').tap();
   await expect(page.locator('[data-trade-confirm]')).toBeVisible({ timeout: 10000 });
   await expect(bryn.locator('[data-trade-confirm]')).toBeVisible();
+  // ui-pass-3 §6c: the confirm stage lists both sides in words (RuneScape's second screen), the Gold in big numbers.
+  await expect(bryn.locator('[data-trade-sum="get"]')).toContainText('Ash Blade');
+  await expect(bryn.locator('[data-trade-sum="get"]')).toContainText('50');
+  await expect(bryn.locator('[data-trade-sum="give"]')).toContainText('Tide Ring');
+  await expect(page.locator('[data-trade-sum="get"]')).toContainText('Tide Ring');
   await shot(bryn, 'window-phone');
   await page.locator('[data-trade-confirm]').click();
   await expect(page.locator('[data-trade-window]')).toHaveAttribute('data-trade-stage', 'waiting', { timeout: 10000 });

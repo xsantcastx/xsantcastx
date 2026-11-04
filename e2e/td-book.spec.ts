@@ -93,13 +93,15 @@ test('the book on a desk: rows and marks, staged until Accept, Cancel undoes, a 
   await page.mouse.move(2, 2);
   await page.locator('.brow[data-row="hellfire-nova"] .brow__icon').click();
   await page.screenshot({ path: 'docs/handoff/book/book-desktop.png' });
-  // The Keys tab: all eight keys of the bar (it showed 1–4 while the bar has 8), and the belt's three keys.
+  // The Keys tab: a picture of the bar's eight keys (ui-pass-3 §9c), the belt's three keys beside it.
   await page.locator('[data-book-tab="keys"]').click();
-  await expect(page.locator('[data-key-row="hellfire-nova"] .bkey__key')).toHaveCount(8);
+  await expect(page.locator('[data-keys-bar] [data-key-slot]')).toHaveCount(8);
   await expect(page.locator('[data-belt-key]')).toHaveCount(3);
-  // A skill put on 7 stays on 7 (the bar used to compact it to the first free key).
-  await page.locator('[data-key-row="hellfire-nova"] .bkey__key[data-slot="7"]').click();
-  await expect(page.locator('[data-key-row="hellfire-nova"] .bkey__key[data-slot="7"]')).toHaveAttribute('aria-pressed', 'true');
+  // A skill put on 7 stays on 7 (the bar used to compact it to the first free key): tap the skill, then key 7.
+  await page.locator('[data-key-skill="hellfire-nova"]').click();
+  await page.locator('[data-key-slot="7"]').click();
+  await expect(page.locator('[data-key-slot="7"]')).toHaveClass(/is-held/);
+  await expect(page.locator('[data-key-skill="hellfire-nova"] [data-key-on]')).toContainText('7');
   // With nothing pending the X closes at once; with something pending it asks first.
   await page.locator('[data-book-tab="ember"]').click();
   await page.locator('[data-plus="ember-bolt"]').click();
