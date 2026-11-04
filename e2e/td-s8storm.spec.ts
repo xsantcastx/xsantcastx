@@ -183,11 +183,14 @@ test.describe('S8: the storm, the land weathers, the night events', () => {
   });
 
   test('the Relief Column marches to the Bastion; walked beside, it leaves a Margin Note scrap', async ({ page }) => {
+    // The march and the roll-call run on the clock (about 100 s): give a loaded machine room.
+    test.setTimeout(300000);
     await page.setViewportSize({ width: 1280, height: 800 });
     await enter(page, '&hour=23');
     await toSection(page, 'infernal-reach-pyre-peaks', 38, -12);
     await page.waitForTimeout(1500);
     await stand(page, 38, -12);
+    await s8(page, 'calm');
     await s8(page, 'night', 'relief-column');
     await page.waitForTimeout(6000);
     await shot(page, 'relief-column-iso');
@@ -200,19 +203,33 @@ test.describe('S8: the storm, the land weathers, the night events', () => {
     }
     expect(last).not.toBeNull();
     await shot(page, 'relief-column-gate-iso');
-    await expect.poll(async () => (await st(page)).drops.map(d => d.id).join(','), { timeout: 60000, intervals: [1000] }).toMatch(/night:relief-column:.*:margin-note-scrap/);
+    await expect.poll(async () => (await st(page)).drops.map(d => d.id).join(','), { timeout: 90000, intervals: [1000] }).toMatch(/night:relief-column:.*:margin-note-scrap/);
   });
 
   test('the Kiln That Lights Itself: lit with a tinderbox before it fades, the burners\' cache', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await enter(page, '&hour=23&weather=ashfall', { tinderbox: 1 });
     const p = await places(page);
-    await toSection(page, 'infernal-reach-deep-charwood', p.kiln[0] + 2, p.kiln[1] + 2);
+    await s8(page, 'calm');
+    await toSection(page, 'infernal-reach-deep-charwood', 0, 0);
     await page.waitForTimeout(1500);
-    await stand(page, p.kiln[0] + 1, p.kiln[1] + 3);
-    await page.waitForTimeout(500);
+    // Beside the kiln (its mark keeps the wilds back two tiles round it): the first free foot south of it.
+    const besideKiln = async () => {
+      await stand(page, p.kiln[0] + 4, p.kiln[1] + 1);
+      await page.waitForTimeout(300);
+      const at = await st(page);
+      return Math.hypot(at.x / 16 - p.kiln[0], at.y / 16 - p.kiln[1]) < 6;
+    };
+    await page.waitForTimeout(2500);
+    expect(await besideKiln()).toBe(true);
+    await s8(page, 'calm');
+    const near = await st(page);
+    expect(Math.hypot(near.x / 16 - p.kiln[0], near.y / 16 - p.kiln[1])).toBeLessThan(6);
     await s8(page, 'night', 'self-lit-kiln');
     await page.waitForTimeout(3000);
+    await s8(page, 'calm');
+    // (The area's name card fades first.)
+    await page.waitForTimeout(4000);
     await shot(page, 'kiln-iso');
     expect(await s8(page, 'kiln')).toBe(true);
     await page.waitForTimeout(400);
