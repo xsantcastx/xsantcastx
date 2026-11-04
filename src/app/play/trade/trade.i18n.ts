@@ -29,6 +29,8 @@ export const TRADE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'trade.full': { en: 'Up to {{n}} items in one trade.', es: 'Hasta {{n}} objetos por comercio.' },
   'trade.accept': { en: 'Accept', es: 'Aceptar' },
   'trade.unaccept': { en: 'Not yet', es: 'Aún no' },
+  'trade.sum.give': { en: 'You give', es: 'Das' },
+  'trade.sum.get': { en: 'You get', es: 'Recibes' },
   'trade.confirm': { en: 'Confirm trade', es: 'Confirmar' },
   'trade.cancel': { en: 'Cancel', es: 'Cancelar' },
   'trade.hint.offer': { en: 'Both Keepers press Accept. Any change clears both.', es: 'Ambos pulsan Aceptar. Cualquier cambio lo reinicia.' },

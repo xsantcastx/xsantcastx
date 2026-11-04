@@ -13,7 +13,7 @@
  *   6. ☰ More opens the tile sheet, every tile opens its window, and the sheet scrolls to its last tile at 360×640;
  *   7. the tutorial step is the goal chip, Glim's button is never covered, and Glim's line and the area title are
  *      ticker lines, never centre cards.
- * Landscape (844×390) keeps its own HUD: the thumb HUD is not drawn there.
+ * Landscape (844×390, 932×430; Wave B): the mirror of the same HUD, the same rules.
  */
 import * as fs from 'fs';
 import { expect, test, type Page } from '@playwright/test';
@@ -161,8 +161,9 @@ for (const size of SIZES) {
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         return { scrolls, ok: !!hit && last.contains(hit), inside: r.bottom <= innerHeight && r.top >= 0, h: el.getBoundingClientRect().height };
       });
-      if (size.compact) expect(reach.scrolls, 'the More sheet scrolls at 360×640').toBe(true);
-      expect(reach.h).toBeLessThanOrEqual(size.height * .5 + 1);
+      // Wave B: the sheet is tall enough for every tile (five rows of three), so the 13th is never clipped at its foot.
+      expect(reach.scrolls, 'every tile in view without scrolling').toBe(false);
+      expect(reach.h).toBeLessThanOrEqual(size.height - 100);
       expect(reach.ok && reach.inside, 'the last tile is reachable').toBe(true);
       // The item-name toggle flips in place.
       const names = sheet.locator('[data-tile="names"]');
@@ -224,17 +225,51 @@ for (const size of SIZES) {
   });
 }
 
-test.describe('sideways phones keep their own HUD (844×390)', () => {
-  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
-  test('no thumb HUD, the touch row and dock as before', async ({ page }) => {
-    test.setTimeout(60_000);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'preferred-language': 'en' });
-    await page.goto('/play?td=1&hour=12');
-    await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
-    await expect(page.locator('.stage--thumb')).toHaveCount(0);
-    await expect(page.locator('.th-disc')).toHaveCount(0);
-    await expect(page.locator('.td-dock')).toBeVisible();
-    await expect(page.locator('.touch-act .tb--use')).toBeVisible();
+// ui-pass-3 Wave B (§1c): a sideways phone gets the thumb HUD's mirror. Accept: the same zones, sizes, no-overlap and
+// thumb-reach rules at 844×390 and 932×430, EN and ES; the belt is a row along the foot with the bag row above it; the
+// top band (face, Glim, goal chip, ticker) ends above the play centre; the old dock, touch row and chat box are gone.
+for (const size of [{ name: '844x390', width: 844, height: 390, compact: true }, { name: '932x430', width: 932, height: 430, compact: true }]) {
+  test.describe(`the thumb HUD's mirror at ${size.name} (Android, sideways)`, () => {
+    test.use({ viewport: { width: size.width, height: size.height }, isMobile: true, hasTouch: true, userAgent: ANDROID_UA });
+    for (const lang of ['en', 'es']) {
+      test(`zones, sizes, no overlap, thumb reach (${lang})`, async ({ page }) => {
+        test.setTimeout(120_000);
+        await boot(page, { gfx: 'iso', lang, query: '&fxcoop=1' });
+        await expect(page.locator('.stage.stage--thumb.stage--land')).toBeVisible();
+        await expect(page.locator('.td-dock')).toHaveCount(0);
+        await expect(page.locator('.touch-act')).toBeHidden();
+        await expect(page.locator('.td-chat')).toBeHidden();
+        await checkLayout(page, size, `sideways ${lang}`);
+        // The belt is a row along the foot; the bag row sits on it.
+        const belt = await boxes(page, ['.th-belt .th-slot']), bag = await boxes(page, ['.th-bag .th-btn']);
+        expect(new Set(belt.map(b => Math.round(b.t))).size, 'the belt is one row').toBe(1);
+        expect(Math.round(belt[0].b)).toBe(size.height - 12);
+        for (const b of bag) expect(b.b, 'the bag row sits above the belt').toBeLessThanOrEqual(belt[0].t - 4);
+        // The top band ends above the play centre (0.25H).
+        for (const b of await boxes(page, ['.th-ticker', '.guide', '.th-face', '.glim-hud'])) expect(b.b, `${b.sel} ends above the centre`).toBeLessThanOrEqual(size.height * .25);
+        if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: `${SHOTS}/hud-${size.name}-${lang}.png` }); }
+        // A hunt: a creature beside the Keeper, struck from the disc; the layout holds.
+        await page.waitForFunction(() => !!(window as unknown as { __tdCoop?: unknown }).__tdCoop);
+        await page.evaluate(() => (window as unknown as { __tdCoop: { lay: (t: string, dx: number, dy: number, calm: boolean) => unknown } }).__tdCoop.lay('ash-wolf', 36, 0, true));
+        await expect(page.locator('.th-disc')).toHaveAttribute('data-verb', 'attack', { timeout: 5000 });
+        await page.locator('.th-disc').tap();
+        await page.waitForTimeout(500);
+        await checkLayout(page, size, `sideways hunt ${lang}`);
+      });
+    }
+    test('☰ More: every tile in view at once, no scrolling; Chat opens as a sheet', async ({ page }) => {
+      test.setTimeout(90_000);
+      await boot(page, { gfx: 'classic', lang: 'es' });
+      await page.locator('[data-th="more"]').tap();
+      const sheet = page.locator('[data-th="more-sheet"]');
+      await expect(sheet).toBeVisible();
+      const m = await sheet.evaluate(el => {
+        const tiles = [...el.querySelectorAll('[data-tile]')].map(t => t.getBoundingClientRect());
+        return { scrolls: el.scrollHeight > el.clientHeight + 2, inside: tiles.every(r => r.top >= 0 && r.bottom <= innerHeight), small: tiles.filter(r => r.height < 44 || r.width < 44).length };
+      });
+      expect(m).toEqual({ scrolls: false, inside: true, small: 0 });
+      await sheet.locator('[data-tile="chat"]').tap();
+      await expect(page.locator('.td-chat')).toBeVisible();
+    });
   });
-});
+}

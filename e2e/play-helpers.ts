@@ -266,10 +266,14 @@ export async function learnRanks(page: Page, id: string, n = 1): Promise<void> {
   await page.locator('[data-book-accept]').click();
   await expect(page.locator('[data-book-accept]')).toBeDisabled();
 }
-/** The book's Keys tab: put a learnt skill on a key (1–4). */
+/** The book's Keys tab: put a learnt skill on a key (1–8): tap the skill, then the key on the picture (ui-pass-3 §9c). */
 export async function putOnKey(page: Page, id: string, key: number): Promise<void> {
   await page.locator('[data-book-tab="keys"]').click();
-  await page.locator(`[data-key-row="${id}"] .bkey__key`, { hasText: String(key) }).click();
+  await page.locator(`[data-key-skill="${id}"]`).click();
+  // The phone's arc shows four keys at a time: its page chip brings 5–8 (or 1–4) round.
+  const slot = page.locator(`[data-key-slot="${key}"]`);
+  if (!(await slot.count()) && (await page.locator('[data-keys-page]').count())) await page.locator('[data-keys-page]').click();
+  await slot.click();
 }
 /** The book's Keys tab: the running aura's switch for `id`. */
 export async function bookAura(page: Page, id: string): Promise<Locator> {

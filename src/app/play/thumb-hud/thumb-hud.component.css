@@ -121,7 +121,10 @@
 /* ── ☰ More: a wooden tile sheet from the bottom-left ── */
 .th-scrim { position: absolute; inset: 0; z-index: 28; background: color-mix(in srgb, var(--cozy-wood-0) 35%, transparent); }
 .th-more { position: absolute; z-index: 29; left: calc(var(--sl) + 8px); bottom: calc(var(--sb) + var(--edge) + var(--slot) + 8px);
-  width: min(calc(100% - 16px - var(--sl) - var(--sr)), 328px); max-height: 50%; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  width: min(calc(100% - 16px - var(--sl) - var(--sr)), 328px);
+  /* Tall enough for every tile (five rows of three) above the bag row and under the top band: the 13th tile's label never
+     sits clipped at the foot. Still scrolls inside itself if a phone is shorter than 640. */
+  max-height: calc(100% - var(--sb) - var(--edge) - var(--slot) - 8px - var(--st) - 100px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
   padding: 0 12px 12px; box-sizing: border-box; background: var(--px-win-planks), var(--cozy-plate);
   box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-wood-hi), 0 0 0 6px var(--cozy-wood-3), 0 0 0 8px var(--cozy-wood-0); }
 .th-more__head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin: 0 -12px 8px; padding: 0 4px 0 12px;
@@ -141,3 +144,30 @@
   .th-line[data-th-line='log'], .th-line[data-th-line='chat'] { animation: thFade 6s steps(4, end) both; }
   .th-btn:active, .th-key:active, .th-disc:active, .th-page:active, .th-tile:active, .th-slot:active { translate: none; }
 }
+
+/* ── A sideways phone (844×390, 932×430; ui-pass-3 §1c, Wave B): the mirror of the portrait layout ──
+   Always the compact sizes (H < 700). Right thumb: the same arc and disc. Left thumb: the belt as a row along the
+   foot (Health, Mana, Spellstone, then the item hotkeys), the bag row above it. Top band: the face chip and Glim, the
+   goal chip beside them, the ticker under them (two lines, the width of the screen between the face and the orbs).
+   The play centre (0.25W–0.75W × 0.25H–0.75H) is clear: the bag row's x ends at 164 (the centre starts at 211), the
+   belt row and the arc sit below y 0.75H or right of x 0.75W, the top band ends at 96 (the centre starts at 97.5). */
+:host-context(.stage--land) {
+  --tick-top: 56px; --tick-right: 152px; --tick-lines: 2; --bag-b: calc(var(--edge) + var(--slot) + 8px);
+}
+:host-context(.stage--land) .th-belt { bottom: calc(var(--sb) + var(--edge)); width: calc(6 * var(--slot) + 20px); height: var(--slot); }
+:host-context(.stage--land) .th-slot { bottom: 0 !important; }
+:host-context(.stage--land) .th-slot[data-kind='health'] { left: 0; }
+:host-context(.stage--land) .th-slot[data-kind='mana'] { left: calc(var(--slot) + 4px); }
+:host-context(.stage--land) .th-slot[data-kind='stone'] { left: calc(2 * (var(--slot) + 4px)); }
+:host-context(.stage--land) .th-quick[data-qi='0'] { left: calc(3 * (var(--slot) + 4px)); }
+:host-context(.stage--land) .th-quick[data-qi='1'] { left: calc(4 * (var(--slot) + 4px)); }
+:host-context(.stage--land) .th-quick[data-qi='2'] { display: grid; left: calc(5 * (var(--slot) + 4px)); }
+:host-context(.stage--land) .th-bag { bottom: calc(var(--sb) + var(--bag-b)); }
+/* The ticker: two lines, and Glim's line too (the strip is twice a portrait phone's width, so two lines hold it). */
+:host-context(.stage--land) .th-ticker:has(.th-line[data-th-line='glim']) { max-height: calc(var(--tick-lines) * 16px + 8px); }
+:host-context(.stage--land) .th-line[data-th-line='glim'] { display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden; }
+/* ☰ More: a side sheet from the left edge, five tiles a row, so all of them stand in view without scrolling. */
+:host-context(.stage--land) .th-more { top: auto; bottom: calc(var(--sb) + 8px); left: calc(var(--sl) + 8px);
+  width: min(calc(100% - 16px - var(--sl) - var(--sr)), calc(5 * 96px + 4 * 8px + 24px)); max-height: calc(100% - 16px - var(--st) - var(--sb)); }
+:host-context(.stage--land) .th-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+:host-context(.stage--land) .th-tile { min-height: 64px; }

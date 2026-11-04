@@ -67,9 +67,34 @@
 .stage--thumb .td-pet .td-pet__txt { display: none; }
 .stage--thumb .td-hush { left: calc(var(--th-sl) + 8px) !important; right: auto !important; top: calc(var(--th-st) + var(--th-party-top) + 100px) !important; translate: none !important; max-width: 88px; }
 
-/* ── The Chat sheet (from the ticker or ☰ More): a window under the top band, out of the thumbs' way ── */
-.stage--thumb.stage--chat .td-chat { position: absolute !important; z-index: 30; left: calc(var(--th-sl) + 8px) !important; right: calc(var(--th-sr) + 8px) !important;
-  top: calc(var(--th-st) + 108px) !important; bottom: auto !important; width: auto !important; max-width: none !important; max-height: min(52%, 420px, calc(100% - 124px - var(--kb-inset, 0px))); overflow-y: auto; opacity: 1 !important; translate: none !important; }
+/* ── The Chat sheet (ui-pass-3 §13c; from the ticker or ☰ More): one wooden window over the bottom 60% of a phone, the
+   OSRS-mobile full chat. Tabs at 44 (lit wood when chosen, never brass), the log fills the middle and scrolls, a 16 px
+   input (iOS never zooms) with Send as the one brass. Over the keyboard while typing. Sideways it keeps to the left
+   half, short of the middle, so the Keeper (at the centre) stays in sight. */
+.stage--thumb.stage--chat .td-chat { position: absolute !important; z-index: 30; box-sizing: border-box;
+  left: calc(var(--th-sl) + 8px) !important; right: calc(var(--th-sr) + 8px) !important; top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px)) !important;
+  width: auto !important; max-width: none !important; height: min(60%, calc(100% - 16px - var(--th-st) - var(--kb-inset, 0px))); max-height: none !important;
+  display: flex !important; flex-direction: column; gap: 6px !important; padding: 0 10px 10px !important; overflow: hidden; opacity: 1 !important; translate: none !important; zoom: 1 !important;
+  background: var(--px-win-planks), var(--cozy-plate) !important;
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--cozy-wood-hi), 0 0 0 6px var(--cozy-wood-3), 0 0 0 8px var(--cozy-wood-0) !important; }
+/* The sheet is modal: the thumb HUD steps back under it, and a window opened over it (the Game Menu, a station) hides it. */
+.stage--thumb.stage--chat app-thumb-hud { visibility: hidden; }
+.stage--thumb.stage--chat.stage--menu .td-chat { display: none !important; }
+.stage--thumb.stage--chat.stage--land .td-chat { right: auto !important; width: min(400px, calc(50% - 32px)) !important; }
+.stage--thumb.stage--chat .td-chat__tabs { flex: none; min-height: 52px; margin: 0 -10px; padding: 4px 4px 4px 10px; gap: 4px; background: var(--cozy-plate); box-shadow: var(--px-groove); }
+.stage--thumb.stage--chat .td-chat__tabs button { min-height: 44px !important; min-width: 64px; padding: 0 12px !important; font: 400 14px/1 var(--font-pixel) !important;
+  color: var(--cozy-cream) !important; background: var(--cozy-wood-2) !important; box-shadow: var(--px-btn-rim) !important; }
+.stage--thumb.stage--chat .td-chat__tabs button[aria-selected='true'] { color: var(--cozy-cream) !important; background: var(--cozy-wood-3) !important;
+  box-shadow: var(--px-btn-rim), inset 0 -3px 0 0 var(--cozy-glow) !important; }
+.stage--thumb.stage--chat .td-chat__tabs .td-chat__x { min-width: 44px !important; width: 44px; padding: 0 !important; font: 700 22px/1 var(--cozy-font-read) !important; }
+.stage--thumb.stage--chat .td-chat__log { flex: 1 1 auto; min-height: 0; max-height: none !important; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  align-content: start; padding: 6px 8px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); }
+.stage--thumb.stage--chat .td-chat__log li { font: 500 14px/1.4 var(--cozy-font-read); }
+.stage--thumb.stage--chat .td-chat__say { flex: none; gap: 6px; }
+.stage--thumb.stage--chat .td-chat__say input { min-height: 44px !important; font: 500 16px var(--cozy-font-read) !important; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); }
+.stage--thumb.stage--chat .td-chat__say button, .stage--thumb.stage--chat .td-chat__join { min-height: 44px !important; min-width: 76px; padding: 0 14px !important; border: 0 !important; border-radius: 0 !important;
+  font: 400 15px/1 var(--font-pixel) !important; color: var(--cozy-ink) !important; background: var(--cozy-brass-hi) !important; box-shadow: var(--px-btn-rim) !important; }
+.stage--thumb.stage--chat .td-chat__join { flex: none; width: 100%; }
 
 /* ── The satchel on a portrait phone (§A.3): a full-screen sheet, Bag | Worn | Nearby, the grid as two 5-column pages ──
    At 360×640 the Bag tab holds the head (52), the belt strip (56), the page header (44), six rows of 64 px cells (384)
@@ -204,3 +229,64 @@
   padding: 4px 9px 6px !important; border-radius: 0 !important; }
 /* The minimap on a portrait phone: a tap opens the Map. */
 .stage--thumb .td-mini { pointer-events: auto; cursor: pointer; }
+
+/* ── A sideways phone (ui-pass-3 §1c, Wave B): the thumb HUD's mirror ──
+   Row A: the face chip, Glim, then the goal chip (its own row would cross the play centre's top, 0.25H = 97.5 at 390).
+   Row B: the ticker (thumb-hud). Left column under the top band: the party frames, the pet chip and the aura beside
+   them; nothing reaches the centre's x (0.25W = 211 at 844). */
+.stage--thumb.stage--land { --th-party-top: 104px; --th-party-w: 120px; }
+.stage--thumb.stage--land .guide, .stage--thumb.stage--land .guide--list {
+  left: calc(var(--th-sl) + 108px) !important; top: calc(var(--th-st) + 8px) !important;
+  width: min(360px, calc(100% - 108px - 160px - var(--th-sl) - var(--th-sr))) !important; }
+.stage--thumb.stage--land .guide.guide--open { max-height: calc(100% - 24px); }
+/* The chapter tag would hang above the screen's top edge here: the chip's 1/7 badge already says where the step is. */
+.stage--thumb.stage--land .guide[data-chapter]::before { display: none; }
+.stage--thumb.stage--land .td-party { right: auto !important; left: calc(var(--th-sl) + 8px) !important; top: calc(var(--th-st) + var(--th-party-top)) !important; }
+.stage--thumb.stage--land .td-pet { left: calc(var(--th-sl) + 136px) !important; top: calc(var(--th-st) + var(--th-party-top)) !important; }
+.stage--thumb.stage--land .td-orbs .td-aura-badge { left: calc(var(--th-sl) + 140px - 100vw); top: calc(var(--th-st) + var(--th-party-top) + 52px); }
+.stage--thumb.stage--land .td-hush { left: calc(var(--th-sl) + 136px) !important; top: calc(var(--th-st) + var(--th-party-top) + 96px) !important; }
+
+/* ── The satchel on a sideways phone (ui-pass-3 §2c, Wave B): one window across the screen ──
+   The left panel (40%, at least 300) holds the doll's faces (Worn | Stats | Nearby), the belt and the purse; the item
+   card docks inside it, over the doll, so it never covers the grid. The right panel holds ◀ 1 · 2 ▶ and the grid in
+   two 5-column pages at 44–52 px (as much as six rows let the height give: 44 at 390 tall, 50 at 430). */
+@media (orientation: landscape) and (max-height: 500px) {
+  .stage--land .book.book--paged:not(.book--thumb) {
+    left: calc(8px + env(safe-area-inset-left, 0px)) !important; right: calc(8px + env(safe-area-inset-right, 0px)) !important; width: auto !important; max-width: none !important;
+    top: calc(6px + env(safe-area-inset-top, 0px)) !important; bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    --wp-t: 2px; --wp-b: 4px; padding-top: 2px !important; padding-bottom: 4px !important;
+    --cell: clamp(44px, round(down, calc((100dvh - 124px) / 6), 1px), 52px); --sp-left: max(300px, 40%);
+  }
+  .stage--land .book--paged:not(.book--thumb) .book-head { min-height: 44px; margin-bottom: 2px !important; }
+  .stage--land .book--paged:not(.book--thumb) .book-body { display: grid; overflow: hidden; -webkit-mask-image: none; mask-image: none; padding: 0 !important;
+    grid-template-columns: var(--sp-left) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "doll pages" "doll grid" "purse grid"; gap: 4px 16px; align-content: stretch; }
+  .stage--land .book--paged.book--card:not(.book--thumb) .book-body { padding-bottom: 0 !important; }
+  .stage--land .book--paged:not(.book--thumb) .book-doll, .stage--land .book--paged:not(.book--thumb) .book-near { grid-area: doll; position: static; align-self: stretch; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .stage--land .book--paged:not(.book--thumb) .book-doll .wells { --cell: 44px; padding: 0; }
+  .stage--land .book--paged:not(.book--thumb) .book-bag { display: contents; }
+  .stage--land .book--paged:not(.book--thumb) .book-pages { grid-area: pages; width: calc(5 * var(--cell) + 4px); justify-self: center; }
+  .stage--land .book--paged:not(.book--thumb) .satchel-grid { grid-area: grid; --cell: inherit; justify-self: center; align-self: start; max-height: calc(round(down, 100%, var(--cell)) + 4px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+  .stage--land .book--paged:not(.book--thumb) .book-purse { grid-area: purse; min-height: 52px; margin: 0 !important; }
+  .stage--land .book--paged:not(.book--thumb) .book-purse .grid-sort { min-height: 44px; }
+  .stage--land .book--paged:not(.book--thumb) .book-bag > :not(.book-pages, .satchel-grid, .book-purse) { grid-column: 2; }
+  .stage--land .book--paged:not(.book--thumb) .book-purse .capacity span { font-size: 12px; }
+  /* Carrying a piece: the carry bar ("Holding … Put back") docks at the foot of the left panel, under the card, never
+     over the grid's rows. */
+  .stage--land .book--paged:not(.book--thumb) .book-bag > .drag-bar { position: fixed; z-index: 32; margin: 0; box-sizing: border-box; min-height: 56px; max-height: 84px; overflow: hidden;
+    left: calc(20px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: calc(max(300px, 0.4 * (100vw - 40px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))) - 4px); }
+  .stage--land .book--paged:not(.book--thumb):has(.drag-bar) .d2tip.d2tip--pinned { bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important; }
+  .stage--land .book--paged:not(.book--thumb) .d2tip.d2tip--pinned { align-content: start; }
+  /* The card: in the left panel, over the doll, the head clear above it. */
+  .stage--land .book--paged:not(.book--thumb) .d2tip.d2tip--pinned { position: fixed; left: calc(20px + env(safe-area-inset-left, 0px)) !important; right: auto !important;
+    top: calc(64px + env(safe-area-inset-top, 0px)) !important; bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    width: calc(max(300px, 0.4 * (100vw - 40px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))) - 4px) !important; max-width: none !important; max-height: none !important; }
+}
+
+/* The purse is sticky at the bag column's foot: anything scrolled into view (a focused pocket, a thumb's target) stops
+   above it, never under it. */
+.book:not(.book--thumb) .book-body { scroll-padding-bottom: 64px; }
+
+/* Sideways the Skill Book takes the full width: the thumb HUD steps back under a window, so nothing needs clearing. */
+.stage--thumb.stage--land .spellbook.sbook { left: calc(8px + env(safe-area-inset-left, 0px)) !important; width: auto !important; }
