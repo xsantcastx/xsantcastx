@@ -241,7 +241,8 @@ test.describe('onboarding on a 390×844 phone', () => {
     await make(page, 'warlock', 'Wren', { tap: true });
     await expect.poll(() => step(page), { timeout: 15000 }).toBe('pro-walk');
     await expect(page.locator('.guide [data-goal-text]')).toContainText('Drag on the ground');
-    // The card's buttons are real targets on a phone.
+    // The card's buttons are real targets on a phone (a portrait phone keeps Skip inside the goal chip's card).
+    if (await page.locator('.stage--thumb').count()) await page.locator('.guide .guide-text').tap();
     for (const sel of ['[data-prologue-skip]']) {
       const box = (await page.locator(sel).boundingBox())!;
       expect(box.height, sel).toBeGreaterThanOrEqual(44);

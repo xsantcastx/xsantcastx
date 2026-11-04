@@ -162,6 +162,44 @@ for (const size of SIZES) {
       expect(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.km__keep'), { x: k.x + k.width / 2, y: k.y + k.height / 2 })).toBe(true);
     });
 
+    test('UI pass 3: the satchel\'s Bag, Worn and Nearby tabs, the Vault (both segments) and ☰ More', async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.addInitScript(() => localStorage.setItem('preferred-language', 'en'));
+      await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA) });
+      await page.goto('/play?td=1&hour=12&fxparty=1');
+      await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
+      await page.waitForFunction(() => !!(window as unknown as { __tdParty?: unknown }).__tdParty);
+      await page.addStyleTag({ content: '.lvl-banner, .glim-say { visibility: hidden !important; }' });
+      // Something to list on Nearby.
+      await page.evaluate(() => { const h = (window as unknown as { __tdParty: { smite: (t: string, dx: number) => unknown; stock: () => unknown } }).__tdParty; h.smite('ash-wolf', 24); h.stock(); });
+      await page.waitForTimeout(900);
+      const portrait = size.height > size.width;
+      await canvas(page).evaluate(c => (c as HTMLCanvasElement).focus({ preventScroll: true }));
+      await page.keyboard.press('i');
+      await expect(page.locator('#satchel-book')).toBeVisible();
+      for (const tab of portrait ? ['bag', 'worn', 'nearby'] : ['worn', 'stats', 'nearby']) {
+        await page.locator(`#satchel-book [data-bag-tab="${tab}"]`).tap();
+        await check(page, `Satchel · ${tab}`, '#satchel-book');
+      }
+      await closeAll(page);
+      if (portrait) {
+        await page.locator('[data-th="more"]').tap();
+        await check(page, '☰ More', '[data-th="more-sheet"]');
+        await page.locator('.th-more__x').tap();
+      }
+      await page.goto('/play?td=1&hour=12&at=vault');
+      await expect(page.locator('[data-vault-stash]')).toBeVisible({ timeout: 20000 });
+      if (portrait) {
+        for (const seg of ['vault', 'satchel']) {
+          await page.locator(`[data-seg="${seg}"]`).tap();
+          await check(page, `Vault · ${seg}`, '.place:not([hidden])');
+        }
+      } else {
+        await check(page, 'Vault', '.place:not([hidden])');
+      }
+    });
+
     test('the world: Spellbook, Satchel, sheet, Bestiary, Map, settings, friends, Shrine, Wren, journal', async ({ page }) => {
       test.setTimeout(180_000);
       await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -212,7 +250,9 @@ for (const size of SIZES) {
       await page.evaluate(() => { const h = (window as unknown as { __tdParty: { smite: (t: string, dx: number) => unknown; stock: () => unknown } }).__tdParty; h.smite('ash-wolf', 24); h.stock(); });
       await page.waitForTimeout(900);
       await key('e');
-      await check(page, 'corpse window', '[data-corpse-window]');
+      // A portrait phone opens the satchel on Nearby instead of the small corpse window (docs/design/ui-pass-3.md §A.4).
+      if (size.height > size.width) await check(page, 'corpse on Nearby', '#satchel-book');
+      else await check(page, 'corpse window', '[data-corpse-window]');
       await closeAll(page);
 
       // The Hearth Shrine, stood at.

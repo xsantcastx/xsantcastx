@@ -56,7 +56,7 @@ async function enterWorld(page: Page, query = '', blobs: Record<string, unknown>
 }
 
 async function openMapItem(page: Page, size: (typeof SIZES)[number], key: string): Promise<void> {
-  if (size.phone) await page.locator('.td-dock button').last().click();
+  if (size.phone) await page.locator('[data-th="map"], .td-dock button:last-child').last().click();
   else { await canvas(page).focus(); await page.keyboard.press('m'); }
   await openMenu(page);
   await page.locator(`#game-menu [data-open="${key}"]`).click();

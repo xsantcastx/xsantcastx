@@ -1,0 +1,116 @@
+<!-- Row A: the face chip (Character) — the level on its corner. Glim's button sits beside it (the play view's own). -->
+<button type="button" class="th-face" data-th="face" data-world-rail (click)="hud.openCharacter()" [attr.aria-label]="t('thumb.face', { n: level })">
+  <span class="th-face__pic" aria-hidden="true">@if (hud.dollFigure) { <img [src]="hud.dollFigure" alt="" draggable="false"> }</span>
+  <b class="th-face__lv" aria-hidden="true">{{ level }}</b>
+</button>
+
+<!-- Row C: the ticker, one stream (Glim, the area, what is in reach, loot, chat). A tap opens the Chat sheet. -->
+<div class="th-ticker" data-th="ticker" data-world-avoid role="log" aria-live="polite" [attr.aria-label]="t('thumb.ticker')" (click)="openChat()">
+  @for (l of lines; track l.key) {
+    <p class="th-line" [attr.data-th-line]="l.kind" (click)="tapLine($event, l)">@if (l.who) { <b>{{ l.who }}</b> }<span>{{ l.text }}</span></p>
+  }
+</div>
+
+<!-- Right thumb: the skill arc, the page chip and the disc. -->
+<div class="td-skills th-arc" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore data-world-rail [attr.data-th-page]="page + 1">
+  @for (n of slots; track n; let i = $index) {
+    @let a = ability(n);
+    @if (a) {
+      <button type="button" class="td-skill th-key" [attr.data-arc]="i" [attr.data-key]="n" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left"
+              (pointerdown)="keyDown()" (pointerup)="keyUp()" (pointercancel)="keyUp()" (click)="keyTap(n)"
+              [attr.aria-label]="t('skill.' + a.id) + ' (' + a.key + ')'" [title]="t('skill.' + a.id) + ' (' + a.key + ') · ' + a.mana + ' ' + t('play.td.mana')">
+        <span class="th-key__ico" [innerHTML]="hud.skillIcon(a.id)"></span><kbd>{{ n }}</kbd>
+      </button>
+    } @else {
+      <span class="td-skill th-key th-key--empty" [attr.data-arc]="i" [attr.data-key]="n" role="img" [attr.aria-label]="t('thumb.emptyKey', { n })"><kbd>{{ n }}</kbd></span>
+    }
+  }
+</div>
+@if (hasPage2 || page) {
+  <button type="button" class="th-page" data-th="page" data-world-rail (click)="flipPage()" [attr.aria-pressed]="page === 1"
+          [attr.aria-label]="t('thumb.page', { from: page ? 5 : 1, to: page ? 8 : 4 })">
+    <svg viewBox="0 0 16 16" width="20" height="20" shape-rendering="crispEdges" aria-hidden="true"><rect x="7" y="1" width="2" height="14" fill="#e9dcae"/><rect x="5" y="3" width="6" height="2" fill="#e9dcae"/><rect x="3" y="5" width="2" height="2" fill="#e9dcae"/><rect x="11" y="5" width="2" height="2" fill="#e9dcae"/><rect x="5" y="11" width="6" height="2" fill="#e9dcae"/><rect x="3" y="9" width="2" height="2" fill="#e9dcae"/><rect x="11" y="9" width="2" height="2" fill="#e9dcae"/></svg>
+    @if (page) { <b class="th-page__badge">{{ t('thumb.pageBadge') }}</b> }
+  </button>
+}
+<button type="button" class="th-disc" data-th="disc" data-world-rail [attr.data-verb]="verb" [attr.aria-label]="verbLabel" [class.th-disc--verb]="verb !== 'attack'"
+        (pointerdown)="discDown($event)" (pointerup)="discUp($event)" (pointercancel)="discCancel($event)" (lostpointercapture)="discCancel($event)">
+  @switch (verb) {
+    @case ('attack') { <svg viewBox="0 0 16 16" width="34" height="34" shape-rendering="crispEdges" aria-hidden="true"><rect x="11" y="1" width="4" height="2" fill="#e9e4f0"/><rect x="13" y="1" width="2" height="4" fill="#e9e4f0"/><rect x="9" y="3" width="4" height="2" fill="#c8c0d8"/><rect x="7" y="5" width="4" height="2" fill="#c8c0d8"/><rect x="5" y="7" width="4" height="2" fill="#c8c0d8"/><rect x="2" y="8" width="2" height="6" fill="#b07a44"/><rect x="2" y="12" width="6" height="2" fill="#b07a44"/><rect x="1" y="13" width="3" height="2" fill="#e6c35a"/></svg> }
+    @case ('enter') { <svg viewBox="0 0 16 16" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="2" width="10" height="13" fill="#5a3a22"/><rect x="4" y="3" width="8" height="12" fill="#8a5a32"/><rect x="5" y="4" width="6" height="5" fill="#b07a44"/><rect x="10" y="9" width="1" height="2" fill="#e6c35a"/></svg> }
+    @case ('talk') { <svg viewBox="0 0 16 16" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="3" width="12" height="8" fill="#e9dcae"/><rect x="4" y="11" width="3" height="2" fill="#e9dcae"/><rect x="4" y="6" width="2" height="2" fill="#5a3a22"/><rect x="7" y="6" width="2" height="2" fill="#5a3a22"/><rect x="10" y="6" width="2" height="2" fill="#5a3a22"/></svg> }
+    @case ('loot') { <svg viewBox="0 0 16 16" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/></svg> }
+    @case ('take') { <svg viewBox="0 0 16 16" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="2" height="8" fill="#e9dcae"/><rect x="7" y="4" width="2" height="6" fill="#e9dcae"/><rect x="9" y="5" width="2" height="5" fill="#e9dcae"/><rect x="11" y="6" width="2" height="5" fill="#e9dcae"/><rect x="3" y="8" width="2" height="4" fill="#e9dcae"/><rect x="4" y="11" width="9" height="3" fill="#e9dcae"/></svg> }
+    @case ('read') { <svg viewBox="0 0 16 16" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="3" width="12" height="10" fill="#e9dcae"/><rect x="7" y="3" width="2" height="10" fill="#b89a5a"/><rect x="3" y="5" width="3" height="1" fill="#5a3a22"/><rect x="3" y="8" width="3" height="1" fill="#5a3a22"/><rect x="10" y="5" width="3" height="1" fill="#5a3a22"/><rect x="10" y="8" width="3" height="1" fill="#5a3a22"/></svg> }
+    @default { <svg viewBox="0 0 16 16" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="2" width="4" height="4" fill="#e9dcae"/><rect x="4" y="6" width="8" height="8" fill="#e6c35a"/><rect x="6" y="8" width="4" height="4" fill="#5a3a22"/></svg> }
+  }
+  @if (verb !== 'attack') { <span class="th-disc__verb" aria-hidden="true">{{ verbLabel }}</span> }
+</button>
+@if (fan) {
+  <div class="th-fan" role="group" [attr.aria-label]="t('thumb.fan', { verb: armedLabel })" data-world-rail>
+    <button type="button" class="th-fan__btn" data-th="fan-attack" (pointerdown)="fanAttack($event)">{{ t('thumb.verb.attack') }}</button>
+    <button type="button" class="th-fan__btn" data-th="fan-verb" (click)="fanVerb()">{{ armedLabel }}</button>
+  </div>
+}
+
+<!-- Left thumb: the belt column (Health, Mana, Spellstone), then the bag row. -->
+<div class="td-belt th-belt" role="toolbar" [attr.aria-label]="t('play.potion.belt')" data-engine-ignore data-world-rail>
+  @for (b of hud.tdBelt; track b.kind) {
+    <button type="button" class="td-pot th-slot" [attr.data-kind]="b.kind" [class.td-pot--empty]="!b.potion" [class.td-skill--cool]="b.left > 0" [style.--cd]="b.left"
+            (click)="hud.drinkPotion(b.kind)" [attr.aria-label]="hud.beltTitle(b)" [title]="hud.beltTitle(b)">
+      @if (b.potion) { <img [src]="hud.art(b.potion.id)" alt="" draggable="false"> }
+      @else { <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="7" y="2" width="2" height="2" fill="#5a3a22"/><rect x="6" y="4" width="4" height="2" fill="#6a5a6a"/><rect x="4" y="6" width="8" height="7" fill="#3a2e3a"/><rect x="5" y="13" width="6" height="1" fill="#3a2e3a"/><rect x="5" y="7" width="1" height="3" fill="#6a5a6a"/></svg> }
+      <b class="td-pot__n">{{ b.count }}</b><kbd>{{ b.key }}</kbd>
+    </button>
+  }
+  <button type="button" class="td-pot td-stone th-slot" data-kind="stone" [attr.data-stone]="hud.tdStone?.key ?? ''" [class.td-pot--empty]="!hud.tdStone" [class.td-skill--cool]="(hud.tdStone?.left ?? 0) > 0" [style.--cd]="hud.tdStone?.left ?? 0"
+          (click)="hud.useStone()" [attr.aria-label]="hud.stoneTitle(hud.tdStone)" [title]="hud.stoneTitle(hud.tdStone)">
+    @if (hud.tdStone; as st) { <img [src]="hud.stoneArt(st.skill)" alt="" draggable="false"> }
+    @else { <img class="td-stone__blank" [src]="hud.art('basalt-blank')" alt="" draggable="false"> }
+    <b class="td-pot__n">{{ hud.tdStone?.charges ?? 0 }}</b><kbd>F</kbd>
+  </button>
+  <!-- The item hotkeys that hold something (9 / 0 / −; verb-matrix T3): beside the Health slot, a tap uses it. -->
+  @for (q of hud.tdQuickHeld; track q.i; let qi = $index) {
+    <button type="button" class="td-pot td-quick th-slot th-quick" [attr.data-qi]="qi" [attr.data-quick]="q.i" [attr.data-quick-key]="q.stackKey" [attr.data-quick-n]="q.count"
+            [class.td-pot--empty]="!q.count" [class.td-quick--out]="!q.count" [appDropTarget]="hud.quickTarget(q.i)" (click)="hud.useQuick(q.i)" [attr.aria-label]="hud.quickTitle(q)" [title]="hud.quickTitle(q)">
+      @if (q.art) { <img [src]="q.art" alt="" draggable="false"> }
+      <b class="td-pot__n">{{ q.count }}</b><kbd>{{ q.key }}</kbd>
+    </button>
+  }
+</div>
+
+<nav class="th-bag" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore data-world-rail>
+  <button type="button" class="th-btn" data-th="bag" (click)="hud.toggleBag()" [attr.aria-expanded]="hud.bagOpen" [attr.aria-label]="t('thumb.bag')">
+    <svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
+    <span class="th-btn__label">{{ t('thumb.bag') }}</span>
+    @if (hud.inventory.snapshot.overflow) { <i class="th-dot" aria-hidden="true"></i> }
+  </button>
+  <button type="button" class="th-btn" data-th="map" (click)="hud.togglePlaces()" [attr.aria-expanded]="hud.placesOpen" [attr.aria-label]="t('thumb.map')">
+    <svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
+    <span class="th-btn__label">{{ t('thumb.map') }}</span>
+  </button>
+  <button type="button" class="th-btn" data-th="more" (click)="toggleMore()" [attr.aria-expanded]="moreOpen" aria-controls="th-more" [attr.aria-label]="t('thumb.moreAria')">
+    <svg viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="3" width="10" height="2" fill="#e9dcae"/><rect x="3" y="7" width="10" height="2" fill="#e9dcae"/><rect x="3" y="11" width="10" height="2" fill="#e9dcae"/></svg>
+    <span class="th-btn__label">{{ t('thumb.more') }}</span>
+    @if (moreNews) { <i class="th-dot" data-th-news aria-hidden="true"></i> }
+  </button>
+</nav>
+
+@if (moreOpen) {
+  <div class="th-scrim" (click)="moreOpen = false" aria-hidden="true" data-engine-ignore></div>
+  <section id="th-more" class="th-more" role="dialog" aria-modal="false" aria-labelledby="th-more-title" data-th="more-sheet" data-engine-ignore>
+    <header class="th-more__head">
+      <h2 id="th-more-title">{{ t('thumb.moreTitle') }}</h2>
+      <button type="button" class="px-x th-more__x" (click)="moreOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
+    </header>
+    <ul class="th-tiles">
+      @for (tile of tiles; track tile.id) {
+        <li><button type="button" class="th-tile" [attr.data-tile]="tile.id" [attr.aria-pressed]="tile.pressed ?? null" (click)="tapTile(tile)">
+          <i class="th-tile__ico" [attr.data-ico]="tile.id" aria-hidden="true">@if (tile.icon) { <img [src]="tile.icon" alt="" width="32" height="32" draggable="false"> }</i>
+          <span>{{ tile.label }}</span>
+          @if (tile.badge) { <i class="th-dot" aria-hidden="true"></i><span class="sr">{{ t('thumb.tile.news') }}</span> }
+        </button></li>
+      }
+    </ul>
+  </section>
+}

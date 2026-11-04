@@ -7,9 +7,11 @@
  *
  *   mouse   press + move 4 px → a drag; the ghost follows; release over a target drops. A click is not a drag: the
  *           source's own click (options card) still runs.
- *   touch   a long-press (400 ms, still) picks the thing up: it is HELD (the ghost parks by the finger and a "Holding
- *           … · Cancel" bar shows). The next tap on a target places it there; a tap anywhere else, or Cancel, puts it
- *           back. No finger-dragging, so the window still scrolls.
+ *   touch   a long-press (250 ms, still) lifts the thing (docs/design/ui-pass-3.md §A.3): the ghost draws 1.25× above
+ *           the finger. Keep the finger down and move it: the ghost follows and lifting the finger over a target drops
+ *           it there (the page never scrolls while a piece is lifted). Lift the finger where it was: the piece stays
+ *           HELD (a "Holding … · Cancel" bar shows) and the next tap on a target places it; a tap anywhere else, or
+ *           Cancel, puts it back.
  *   tap     (owner 2026-10-26, phones and desktop alike) a tap or click on a piece SELECTS it: it is held in place with a
  *           clear highlight, no ghost. The next tap on a target (a cell, the Vault, a well, the belt) moves it there; a
  *           tap on the selected piece again, or anywhere else, puts it down. A tap on a `[data-drag-pass]` element (the
@@ -54,7 +56,9 @@ export interface DropTarget {
   drop(held: DragHeld, x: number, y: number): boolean | Promise<boolean>;
 }
 
-const LONG_PRESS_MS = 400;
+const LONG_PRESS_MS = 250;
+/** How far above a finger a lifted piece draws, so the finger never hides it. */
+const FINGER_LIFT_PX = 56;
 const MOVE_PX = 4;
 const TOUCH_SLOP_PX = 8;
 
@@ -79,7 +83,14 @@ export class ItemDragService implements OnDestroy {
   readonly said$ = new BehaviorSubject<string>('');
 
   private ghost: HTMLElement | null = null;
-  private pending: { held: DragHeld; x: number; y: number; pointerId: number; touch: boolean; timer?: ReturnType<typeof setTimeout> } | null = null;
+  private pending: { held: DragHeld; x: number; y: number; pointerId: number; touch: boolean; cell: number; timer?: ReturnType<typeof setTimeout> } | null = null;
+  /** A lifted piece the finger is still on (touch): moving it drags, lifting it where it was leaves it held. */
+  private finger: { x: number; y: number; moved: boolean } | null = null;
+  /** The pressed piece's cell size, so the ghost matches what was lifted (a phone's 64 px cell, a desktop's 34). */
+  private ghostCell = 34;
+  private touchHeld = false;
+  /** While a finger holds a lifted piece, the page must not scroll under it. */
+  private readonly onTouchMove = (ev: TouchEvent) => { if (this.finger && ev.cancelable) ev.preventDefault(); };
   private hover: { el: HTMLElement; target: DropTarget } | null = null;
   /** A click right after a drop must not also open the options card. */
   private swallowClickUntil = 0;
@@ -122,12 +133,15 @@ export class ItemDragService implements OnDestroy {
     if (!this.browser || ev.button > 0) return;
     if (this.held) return; // a tap while holding is a placement (handled by `tap`)
     const touch = ev.pointerType !== 'mouse';
-    this.pending = { held, x: ev.clientX, y: ev.clientY, pointerId: ev.pointerId, touch };
+    const box = (ev.currentTarget as HTMLElement | null)?.getBoundingClientRect?.();
+    const cell = box && box.width > 0 ? box.width / Math.max(1, held.w) : 34;
+    this.pending = { held, x: ev.clientX, y: ev.clientY, pointerId: ev.pointerId, touch, cell };
     if (touch) this.pending.timer = setTimeout(() => this.zone.run(() => this.pickUp('hold', ev.clientX, ev.clientY)), LONG_PRESS_MS);
     this.zone.runOutsideAngular(() => {
       window.addEventListener('pointermove', this.onMove, true);
       window.addEventListener('pointerup', this.onUp, true);
       window.addEventListener('pointercancel', this.onUp, true);
+      if (touch) window.addEventListener('touchmove', this.onTouchMove, { capture: true, passive: false });
     });
   }
 
@@ -159,10 +173,10 @@ export class ItemDragService implements OnDestroy {
   }
 
   /** Drop what is in hand on a target element directly (a keyboard or test path; also the touch tap). */
-  async dropOn(el: HTMLElement, x: number, y: number): Promise<boolean> {
+  async dropOn(el: HTMLElement, x: number, y: number, mode?: 'drag' | 'hold'): Promise<boolean> {
     const held = this.held, target = this.targetFor(el);
     if (!held || !target || !target.target.accepts(held)) return false;
-    this.dropMode = this.mode;
+    this.dropMode = mode ?? this.mode;
     this.leaveHover();
     this.held$$.next(null);
     this.mode = null;
@@ -178,20 +192,30 @@ export class ItemDragService implements OnDestroy {
     clearTimeout(p.timer);
     this.pending = null;
     this.mode = mode;
+    this.touchHeld = p.touch;
+    this.ghostCell = p.touch ? Math.round(p.cell * 1.25) : Math.round(p.cell) || 34;
     this.held$$.next(p.held);
     this.makeGhost(p.held, x, y);
     if (mode === 'hold') {
-      window.removeEventListener('pointermove', this.onMove, true);
-      window.removeEventListener('pointerup', this.onUp, true);
-      window.removeEventListener('pointercancel', this.onUp, true);
+      // The finger is still down: a move from here drags the lifted piece (move/up stay listened to); a lift where it
+      // was leaves it held for the next tap.
+      this.finger = { x, y, moved: false };
       // The lifting finger's own click must not place it; the next tap does.
       this.swallowClickUntil = Date.now() + 600;
-      setTimeout(() => this.zone.runOutsideAngular(() => window.addEventListener('pointerdown', this.onTap, true)), 0);
-      try { navigator.vibrate?.(15); } catch { /* not on this device */ }
+      try { navigator.vibrate?.(8); } catch { /* not on this device */ }
     }
   }
 
   private move(ev: PointerEvent): void {
+    const f = this.finger;
+    if (f && this.held) {
+      if (!f.moved && Math.hypot(ev.clientX - f.x, ev.clientY - f.y) <= TOUCH_SLOP_PX) return;
+      f.moved = true;
+      this.mode = 'drag';
+      this.placeGhost(ev.clientX, ev.clientY);
+      this.overAt(ev.clientX, ev.clientY);
+      return;
+    }
     const p = this.pending;
     if (p) {
       const d = Math.hypot(ev.clientX - p.x, ev.clientY - p.y);
@@ -205,6 +229,26 @@ export class ItemDragService implements OnDestroy {
   }
 
   private up(ev: PointerEvent): void {
+    const f = this.finger;
+    if (f && this.held) {
+      this.finger = null;
+      window.removeEventListener('pointermove', this.onMove, true);
+      window.removeEventListener('pointerup', this.onUp, true);
+      window.removeEventListener('pointercancel', this.onUp, true);
+      window.removeEventListener('touchmove', this.onTouchMove, true);
+      if (!f.moved) {
+        // Lifted and let go where it was: held, waiting for a tap on where it goes.
+        this.mode = 'hold';
+        setTimeout(() => this.zone.runOutsideAngular(() => { if (this.held) window.addEventListener('pointerdown', this.onTap, true); }), 0);
+        return;
+      }
+      const hit = ev.type === 'pointercancel' ? null : this.hitAt(ev.clientX, ev.clientY);
+      this.swallowClickUntil = Date.now() + 350;
+      this.dropMode = 'hold';
+      if (hit) void this.zone.run(() => this.dropOn(hit.el, ev.clientX, ev.clientY, 'hold'));
+      else this.zone.run(() => this.cancel());
+      return;
+    }
     const p = this.pending;
     if (p) { clearTimeout(p.timer); this.pending = null; this.teardown(); return; }
     if (this.mode !== 'drag' || !this.held) return;
@@ -277,7 +321,7 @@ export class ItemDragService implements OnDestroy {
     g.className = 'item-ghost';
     g.setAttribute('aria-hidden', 'true');
     g.setAttribute('data-item-ghost', held.name);
-    const cell = 34;
+    const cell = this.ghostCell || 34;
     Object.assign(g.style, {
       position: 'fixed', left: '0', top: '0', width: `${held.w * cell}px`, height: `${held.h * cell}px`, zIndex: '10000',
       pointerEvents: 'none', display: 'grid', placeItems: 'center', opacity: '0.85', imageRendering: 'pixelated',
@@ -301,7 +345,7 @@ export class ItemDragService implements OnDestroy {
 
   private placeGhost(x: number, y: number): void {
     if (!this.ghost) return;
-    const lift = this.mode === 'hold' ? 44 : 0; // held by a finger: shown just above it, never under it
+    const lift = this.touchHeld ? FINGER_LIFT_PX : 0; // held by a finger: shown above it, never under it
     this.ghost.style.transform = `translate(${Math.round(x - this.grab.dx)}px, ${Math.round(y - this.grab.dy - lift)}px)`;
   }
 
@@ -311,6 +355,8 @@ export class ItemDragService implements OnDestroy {
     window.removeEventListener('pointerup', this.onUp, true);
     window.removeEventListener('pointercancel', this.onUp, true);
     window.removeEventListener('pointerdown', this.onTap, true);
-    if (!this.held) { this.ghost?.remove(); this.ghost = null; }
+    window.removeEventListener('touchmove', this.onTouchMove, true);
+    this.finger = null;
+    if (!this.held) { this.ghost?.remove(); this.ghost = null; this.touchHeld = false; }
   }
 }

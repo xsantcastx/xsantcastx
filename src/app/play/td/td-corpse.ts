@@ -97,3 +97,12 @@ export function leavesAsh(id: string, ghost = false): boolean {
 
 /** The Keeper's reach to open a corpse (art px). */
 export const CORPSE_REACH = 26;
+/**
+ * The satchel's Nearby tab (docs/design/ui-pass-3.md §A.4): a container within this many art px of the Keeper's feet
+ * (3 tiles) is taken from at once; the corpse window already honours 2.4 × CORPSE_REACH (62), so this is no further.
+ */
+export const NEARBY_REACH = 48;
+/** Nearby lists containers out to 8 tiles; past NEARBY_REACH a Take walks there first. */
+export const NEARBY_LIST = 128;
+/** The share of a corpse's life gone, 0..1 (the Nearby row's rot bar). */
+export function corpseRot(age: number, boss: boolean): number { return Math.max(0, Math.min(1, age / corpseLife(boss))); }
