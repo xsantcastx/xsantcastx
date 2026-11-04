@@ -89,7 +89,8 @@ export const MENUS: Menu[] = [
     id: 'pets', root: '.pet-host .ps', close: '.pet-host .ps__x',
     open: async page => { await page.locator('.satchel .clasp').click(); await page.locator('#satchel-book .pet-well').click(); },
   },
-  { id: 'sound', open: placesItem('sound'), root: '.sound-host .ss', close: '.sound-host .ss__done' },
+  // The sheet is the host (it scrolls, the list inside it does not): measured as the window a thumb scrolls.
+  { id: 'sound', open: placesItem('sound'), root: '.sound-host', close: '.sound-host .ss__done' },
   { id: 'loot', open: placesItem('loot'), root: '.sound-host .ls', close: '.sound-host .ls__done' },
   { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close', primary: '.place .km__keep', noScroll: true },
   { id: 'character', open: placesItem('character'), root: '.place', close: '.place-close' },

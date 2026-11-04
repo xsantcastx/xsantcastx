@@ -183,11 +183,17 @@ for (const size of SIZES) {
         await check(page, `Satchel · ${tab}`, '#satchel-book');
       }
       await closeAll(page);
-      if (portrait) {
-        await page.locator('[data-th="more"]').tap();
-        await check(page, '☰ More', '[data-th="more-sheet"]');
-        await page.locator('.th-more__x').tap();
-      }
+      // ☰ More (portrait and, from Wave B, sideways), the Chat sheet, and the Skill Book's Keys picture.
+      await page.locator('[data-th="more"]').tap();
+      await check(page, '☰ More', '[data-th="more-sheet"]');
+      await page.locator('[data-tile="chat"]').tap();
+      await check(page, 'Chat sheet', '.td-chat');
+      await page.locator('.td-chat__x').tap();
+      await canvas(page).evaluate(c => (c as HTMLCanvasElement).focus({ preventScroll: true }));
+      await page.keyboard.press('k');
+      await page.locator('[data-book-tab="keys"]').tap();
+      await check(page, 'Skill Book · Keys', '.spellbook.sbt');
+      await closeAll(page);
       await page.goto('/play?td=1&hour=12&at=vault');
       await expect(page.locator('[data-vault-stash]')).toBeVisible({ timeout: 20000 });
       if (portrait) {
@@ -319,7 +325,9 @@ for (const size of [{ width: 844, height: 390 }, { width: 915, height: 412 }]) {
       await expect(canvas(page)).toHaveAttribute('data-player-y', /\d/, { timeout: 30000 });
       await page.waitForTimeout(600);
       const bad = await page.evaluate(() => {
-        const sels = ['.places-toggle', '.td-dock button', '.touch-act button', '.touch-move button', '.td-skills button', '.td-belt button', '.td-chat-tab'];
+        // ui-pass-3 Wave B: a sideways phone has the thumb HUD's mirror (the old dock and touch row are gone).
+        const sels = ['.places-toggle', '.td-dock button', '.touch-act button', '.touch-move button', '.td-skills button', '.td-belt button', '.td-chat-tab',
+          '.th-disc', '.th-page', '.th-bag .th-btn', '.th-face', '.glim-hud'];
         const out: string[] = [];
         for (const s of sels) for (const el of document.querySelectorAll(s)) {
           const r = el.getBoundingClientRect();
@@ -333,8 +341,10 @@ for (const size of [{ width: 844, height: 390 }, { width: 915, height: 412 }]) {
         return out;
       });
       expect(bad, bad.join('; ')).toEqual([]);
-      // And the Menu really opens from a tap.
-      await page.locator('.places-toggle').tap();
+      expect(await page.locator('.th-disc').count(), 'the thumb HUD stands sideways').toBe(1);
+      // And the Menu really opens from a tap: ☰ More → All menus.
+      await page.locator('[data-th="more"]').tap();
+      await page.locator('[data-tile="menu"]').tap();
       await expect(page.locator('#game-menu')).toBeVisible();
     });
   });

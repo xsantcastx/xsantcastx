@@ -3,13 +3,16 @@
 <div class="book" [class.book--flash]="flashOn" (pointerdown)="pointer($event)">
   <header class="book__head">
     <div class="book__tabs" role="tablist" [attr.aria-label]="t('book.title')">
-      @for (tb of tabs; track tb.id; let i = $index) {
-        <button type="button" role="tab" class="book__tab" [attr.data-book-tab]="tb.id" [attr.aria-selected]="tab === tb.id" [attr.tabindex]="tab === tb.id ? 0 : -1"
-          [title]="t('play.td.tree.' + tb.id)" [attr.aria-label]="t('play.td.tree.' + tb.id)" (click)="openTab(tb.id)" (keydown)="tabKey(i, $event)">
-          <span class="book__tab-icon" [innerHTML]="treeIcon(tb.id)"></span>
-          @if (tb.spent > 0) { <b class="book__tab-n" aria-hidden="true">{{ tb.spent }}</b> }
-        </button>
-      }
+      <!-- The trees scroll sideways (a fade at the edge says more wait); Keys is a chip of its own, always in view. -->
+      <div class="book__trees" role="none" [class.book__trees--more]="treesMore" (scroll)="treesScroll($event)">
+        @for (tb of tabs; track tb.id; let i = $index) {
+          <button type="button" role="tab" class="book__tab" [attr.data-book-tab]="tb.id" [attr.aria-selected]="tab === tb.id" [attr.tabindex]="tab === tb.id ? 0 : -1"
+            [title]="t('play.td.tree.' + tb.id)" [attr.aria-label]="t('play.td.tree.' + tb.id)" (click)="openTab(tb.id)" (keydown)="tabKey(i, $event)">
+            <span class="book__tab-icon" [innerHTML]="treeIcon(tb.id)"></span>
+            @if (tb.spent > 0) { <b class="book__tab-n" aria-hidden="true">{{ tb.spent }}</b> }
+          </button>
+        }
+      </div>
       <button type="button" role="tab" class="book__tab book__tab--keys" data-book-tab="keys" [attr.aria-selected]="tab === 'keys'" [attr.tabindex]="tab === 'keys' ? 0 : -1"
         [title]="t('book.tab.keys')" (click)="openTab('keys')" (keydown)="tabKey(tabs.length, $event)">
         <span class="book__keys-glyph" aria-hidden="true">1·8</span><span class="book__tab-word">{{ t('book.tab.keys') }}</span>
@@ -106,39 +109,70 @@
         }
       </div>
     } @else {
-      <!-- The Keys tab: the bar's eight keys, the running aura, and the belt's keys (every key the bottom bar has). -->
-      <section class="book__leaf book__keys">
-        <h3 class="book__ribbon"><span>{{ t('book.keys.title') }}</span><em>{{ t('book.keys.help') }}</em></h3>
-        @if (!actives.length) { <p class="brow__common">{{ t('book.keys.none') }}</p> }
-        @for (a of actives; track a.id) {
-          <div class="bkey" [attr.data-key-row]="a.id">
-            <span class="brow__icon brow__icon--lit" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
-            <b class="bkey__name">{{ a.name }}</b>
-            <div class="bkey__keys" role="group" [attr.aria-label]="a.name">
-              @for (k of keys; track k) {
-                <button type="button" class="bkey__key" [attr.data-slot]="k" [class.bkey__key--on]="a.slot === k" [attr.aria-pressed]="a.slot === k"
-                        [attr.aria-label]="t('book.keys.put', { name: a.name, key: cap('skill' + k) })" (click)="assign.emit({ id: a.id, slot: k })">{{ cap('skill' + k) }}</button>
-              }
+      <!-- The Keys tab (ui-pass-3 §9c, Diablo Immortal's model): a picture of the Keeper's own combat layout (the phone's
+           arc round the disc, or the bar's eight keys) with the belt beside it, over a grid of the learnt skills. Drag a
+           skill onto a key, or tap a skill and then a key (or a key, then a skill). -->
+      <section class="book__leaf book__keys bkeys" [attr.data-keys-layout]="layout" (pointermove)="dragMove($event)" (pointerup)="dragEnd($event)" (pointercancel)="dragCancel()">
+        <h3 class="book__ribbon"><span>{{ t('book.keys.title') }}</span><em>{{ t('book.keys.drag') }}</em></h3>
+        <div class="bkeys__pic" data-keys-pic [attr.aria-label]="t(layout === 'arc' ? 'book.keys.arc' : 'book.keys.bar')" role="group">
+          <div class="bkeys__belt" role="group" [attr.aria-label]="t('book.keys.belt')" data-book-belt>
+            @for (b of beltKeys; track b.action) {
+              <span class="bkeys__beltkey" [attr.data-belt-key]="b.kind" [attr.data-kind]="b.kind" role="img" [attr.aria-label]="t('keys.action.' + b.action) + ' · ' + cap(b.action)" [title]="t('keys.action.' + b.action)">
+                @let bp = beltPic(b.kind);
+                @if (bp?.art) { <img class="bkeys__beltart" [src]="bp!.art" alt="" draggable="false"> } @else { <svg class="bkeys__beltart bkeys__beltart--empty" viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="7" y="2" width="2" height="2" fill="#5a3a22"/><rect x="6" y="4" width="4" height="2" fill="#6a5a6a"/><rect x="4" y="6" width="8" height="7" fill="#3a2e3a"/><rect x="5" y="13" width="6" height="1" fill="#3a2e3a"/><rect x="5" y="7" width="1" height="3" fill="#6a5a6a"/></svg> }
+                @if (bp) { <b class="bkeys__beltn">{{ bp.n }}</b> }<kbd>{{ cap(b.action) }}</kbd>
+              </span>
+            }
+          </div>
+          @if (layout === 'arc') {
+            <div class="bkeys__arc" data-keys-arc [attr.data-page]="arcPage + 1">
+              @for (k of arcKeys; track k; let i = $index) { <ng-container *ngTemplateOutlet="keyBtn; context: { $implicit: k, arc: i }" /> }
+              <span class="bkeys__disc" aria-hidden="true"></span>
+              <button type="button" class="bkeys__page" data-keys-page [attr.aria-pressed]="arcPage === 1" [attr.aria-label]="t('book.keys.page', { from: arcPage ? 5 : 1, to: arcPage ? 8 : 4 })" (click)="arcPage = arcPage ? 0 : 1">{{ arcPage ? '5–8' : '1–4' }}</button>
             </div>
-          </div>
+          } @else {
+            <div class="bkeys__bar" data-keys-bar>
+              @for (k of keys; track k) { <ng-container *ngTemplateOutlet="keyBtn; context: { $implicit: k, arc: null }" /> }
+            </div>
+          }
+        </div>
+        <p class="bkeys__hint" role="status" aria-live="polite" data-keys-hint>{{ keysHint }}</p>
+        @if (!actives.length) { <p class="brow__common">{{ t('book.keys.none') }}</p> }
+        <div class="bkeys__skills" role="group" [attr.aria-label]="t('book.keys.learnt')" data-keys-skills>
+          @for (a of actives; track a.id) {
+            <button type="button" class="bkeys__skill" [attr.data-key-skill]="a.id" [attr.aria-pressed]="pickedSkill(a.id)" [class.is-drag]="dragId === a.id"
+                    [attr.aria-label]="a.slot ? t('book.keys.skillOn', { name: a.name, key: cap('skill' + a.slot) }) : a.name"
+                    (pointerdown)="dragStart($event, a.id)" (touchmove)="dragTouch($event)" (click)="tapSkill(a.id)">
+              <span class="bkeys__ico" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
+              <span class="bkeys__name">{{ a.name }}</span>
+              @if (a.slot) { <b class="bkeys__on" data-key-on aria-hidden="true">{{ t('book.keys.onKey', { key: cap('skill' + a.slot) }) }}</b> }
+            </button>
+          }
+        </div>
+        @if (auras.length) {
+          <h3 class="book__ribbon book__ribbon--sub"><span>{{ t('book.keys.auraTitle') }}</span></h3>
+          @for (a of auras; track a.id) {
+            <div class="bkey">
+              <span class="brow__icon brow__icon--lit" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
+              <b class="bkey__name">{{ a.name }} <small>{{ t('book.keys.aura') }}</small></b>
+              <button type="button" class="bkey__aura" [attr.data-aura-row]="a.id" [class.bkey__key--on]="a.on" [attr.aria-pressed]="a.on" (click)="toggleAura.emit(a.id)">{{ a.on ? t('book.keys.on') : t('book.keys.off') }}</button>
+            </div>
+          }
         }
-        @for (a of auras; track a.id) {
-          <div class="bkey">
-            <span class="brow__icon brow__icon--lit" aria-hidden="true"><span [innerHTML]="icon(a.id)"></span></span>
-            <b class="bkey__name">{{ a.name }} <small>{{ t('book.keys.aura') }}</small></b>
-            <button type="button" class="bkey__aura" [attr.data-aura-row]="a.id" [class.bkey__key--on]="a.on" [attr.aria-pressed]="a.on" (click)="toggleAura.emit(a.id)">{{ a.on ? t('book.keys.on') : t('book.keys.off') }}</button>
-          </div>
-        }
-        <!-- The belt: potions and the Spellstone answer their own keys (Menu → Controls rebinds them). -->
-        <h3 class="book__ribbon book__ribbon--sub" data-book-belt><span>{{ t('book.keys.belt') }}</span><em>{{ t('book.keys.beltHelp') }}</em></h3>
-        @for (b of beltKeys; track b.action) {
-          <div class="bkey bkey--belt" [attr.data-belt-key]="b.kind">
-            <span class="bkey__belt-ico" [attr.data-kind]="b.kind" aria-hidden="true"></span>
-            <b class="bkey__name">{{ t('keys.action.' + b.action) }}</b>
-            <kbd class="bkey__cap">{{ cap(b.action) }}</kbd>
-          </div>
+        @if (dragId; as d) {
+          <span class="bkeys__ghost" aria-hidden="true" [style.left.px]="dragAt.x" [style.top.px]="dragAt.y"><span [innerHTML]="icon(d)"></span></span>
         }
       </section>
+      <ng-template #keyBtn let-k let-arc="arc">
+        @let held = bar[k - 1];
+        <button type="button" class="bkeys__key" [attr.data-key-slot]="k" [attr.data-arc]="arc" [class.is-held]="!!held" [class.is-target]="dragOver === k"
+                [attr.aria-pressed]="pickedKey(k)"
+                [attr.aria-label]="held ? t('book.keys.keyHolds', { key: cap('skill' + k), name: skillName(held) }) : t('book.keys.keyEmpty', { key: cap('skill' + k) })"
+                (click)="tapKey(k)">
+          @if (held) { <span class="bkeys__keyico" aria-hidden="true"><span [innerHTML]="icon(held)"></span></span> }
+          <kbd>{{ cap('skill' + k) }}</kbd>
+        </button>
+      </ng-template>
     }
   </div>
 

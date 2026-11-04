@@ -21,8 +21,15 @@ button:disabled { cursor: default; }
 
 /* ── The tabs over the book: one wooden chip a tree, the open one raised and brass-rimmed ── */
 .book__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; flex: none; }
-.book__tabs { display: flex; align-items: flex-end; gap: 6px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 4px 2px 0; }
-.book__tabs::-webkit-scrollbar { display: none; }
+/* The tablist: the trees scroll sideways (snap, a fade at the right edge while more wait); Keys stands outside them,
+   always whole ("Ke…" never), right-aligned beside the ?. */
+.book__tabs { flex: 1 1 auto; display: flex; align-items: flex-end; gap: 6px; min-width: 0; padding: 4px 2px 0; }
+.book__trees { flex: 1 1 auto; display: flex; align-items: flex-end; gap: 6px; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  scroll-snap-type: x proximity; padding: 0 2px; margin: 0 -2px; }
+.book__trees::-webkit-scrollbar { display: none; }
+.book__trees > .book__tab { scroll-snap-align: start; }
+.book__trees--more { -webkit-mask-image: linear-gradient(90deg, var(--cozy-wood-0) calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, var(--cozy-wood-0) calc(100% - 24px), transparent); }
+.book__tab--keys { flex: none; margin-left: auto; white-space: nowrap; }
 .book__tab {
   position: relative; flex: none; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 48px; height: 48px; padding: 4px 8px;
   background: linear-gradient(180deg, var(--cozy-wood-2), var(--cozy-wood-1));
@@ -272,7 +279,10 @@ button:disabled { cursor: default; }
   .brow__common, .bstone { padding-left: 0; margin-left: 0; }
   .book__foot { gap: 8px; }
   .book__accept, .book__cancel, .book__reset { min-width: 0; padding: 0 12px; }
-  .book__unused small { display: none; }
+  /* "Unused points" keeps its words on a phone (two short lines beside the number), never a bare box. */
+  .book__unused { gap: 6px; }
+  .book__unused small { max-width: 64px; font-size: 12px; line-height: 1.15; white-space: normal; }
+  .book__unused b { min-width: 44px; padding: 0 8px; }
   .book__pending { display: none; }
   /* The card is a bottom sheet over the page, half the window at most, above the foot. */
   .bcard, .bcard--left { left: 6px; right: 6px; top: auto; bottom: 58px; width: auto; max-height: 50%; }
@@ -283,3 +293,71 @@ button:disabled { cursor: default; }
   .bmark--open::before { animation: none; }
   .book--flash .book__scroll { animation: none; }
 }
+
+/* ── The Keys tab as a picture (ui-pass-3 §9c): the Keeper's own combat layout over the learnt skills ── */
+.bkeys { gap: 8px; }
+.bkeys__pic { display: flex; align-items: flex-end; justify-content: center; gap: 16px; padding: 10px; background: var(--cozy-wood-1);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 4px var(--cozy-wood-3), inset 0 0 0 6px var(--cozy-wood-0); }
+/* The belt beside it: Health, Mana, the Spellstone, each with its key. */
+.bkeys__belt { flex: none; display: grid; gap: 6px; }
+.bkeys__beltkey { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: var(--cozy-well);
+  box-shadow: inset 0 0 0 2px var(--belt, var(--cozy-wood-1)), 0 0 0 2px var(--cozy-wood-0); }
+.bkeys__beltkey[data-kind='health'] { --belt: var(--cozy-berry); }
+.bkeys__beltkey[data-kind='mana'] { --belt: var(--cozy-mana); }
+.bkeys__beltkey[data-kind='stone'] { --belt: var(--cozy-brass); }
+.bkeys__beltkey .bkey__belt-ico { width: 24px; height: 24px; box-shadow: none; background: color-mix(in srgb, var(--belt) 45%, var(--cozy-well)); }
+.bkeys__beltkey kbd, .bkeys__key kbd { position: absolute; right: 3px; bottom: 2px; font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+/* A key: a sunk well with its skill's icon (or nothing), its cap in the corner. */
+.bkeys__key { position: relative; width: 52px; height: 52px; padding: 0; display: grid; place-items: center; background: var(--cozy-well); color: var(--cozy-cream);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-1), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent), 0 0 0 2px var(--cozy-wood-0); }
+.bkeys__key:not(.is-held) { opacity: .8; }
+.bkeys__keyico { width: 36px; height: 36px; display: block; pointer-events: none; }
+.bkeys__key[aria-pressed='true'], .bkeys__key.is-target { box-shadow: inset 0 0 0 3px var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0); opacity: 1; }
+/* The bar: eight keys in a row (two rows of four on a narrow book). */
+.bkeys__bar { display: grid; grid-template-columns: repeat(8, 52px); gap: 4px; }
+@media (max-width: 560px) { .bkeys__bar { grid-template-columns: repeat(4, 52px); } }
+/* The arc: the HUD's own geometry round a 76 px disc (thumb-hud.component.css), keys 1–4 or 5–8 and the page chip. */
+.bkeys__arc { position: relative; flex: none; width: 196px; height: 196px; }
+.bkeys__arc .bkeys__key { position: absolute; }
+.bkeys__arc .bkeys__key[data-arc='0'] { right: 140px; bottom: 28px; }
+.bkeys__arc .bkeys__key[data-arc='1'] { right: 138px; bottom: 84px; }
+.bkeys__arc .bkeys__key[data-arc='2'] { right: 84px; bottom: 138px; }
+.bkeys__arc .bkeys__key[data-arc='3'] { right: 28px; bottom: 140px; }
+.bkeys__disc { position: absolute; right: 16px; bottom: 16px; width: 76px; height: 76px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, var(--cozy-wood-3), var(--cozy-wood-2) 60%, var(--cozy-wood-1));
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 5px var(--cozy-wood-hi), 0 0 0 7px var(--cozy-wood-0); opacity: .75; }
+.bkeys__page { position: absolute; right: 79px; bottom: 79px; width: 44px; height: 44px; padding: 0; font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-cream);
+  background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 45%, transparent); }
+.bkeys__page[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass-hi); }
+.bkeys__hint { min-height: 18px; margin: 0; font: 600 13px/1.35 var(--cozy-font-read); color: var(--cozy-brass-lo); text-align: center; }
+/* The learnt skills: 64 px tiles, the name under, "on 3" when a key holds it; a lifted tile dims while its ghost flies. */
+.bkeys__skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.bkeys__skill { position: relative; min-height: 96px; padding: 6px 4px; display: grid; justify-items: center; align-content: start; gap: 4px; color: var(--ink);
+  background: var(--cozy-parch-shade); box-shadow: 0 0 0 2px var(--cozy-parch-edge); touch-action: pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.bkeys__skill[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 3px var(--cozy-brass); background: var(--cozy-parch); }
+.bkeys__skill.is-drag { opacity: .45; }
+.bkeys__ico { width: 64px; height: 64px; padding: 8px; display: block; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-0); pointer-events: none; }
+.bkeys__name { font: 700 12px/1.15 var(--font-game); text-align: center; overflow-wrap: break-word; hyphens: auto; pointer-events: none; }
+.bkeys__on { position: absolute; top: 2px; right: 2px; padding: 2px 4px; font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-wood-0); background: var(--cozy-brass-hi); box-shadow: 0 0 0 2px var(--cozy-wood-0); pointer-events: none; }
+.bkeys__ghost { position: fixed; z-index: 40; width: 56px; height: 56px; padding: 6px; pointer-events: none; background: var(--cozy-well); box-shadow: 0 0 0 2px var(--cozy-brass-hi), 0 0 0 4px var(--cozy-wood-0); }
+.bkeys__ghost > span, .bkeys__keyico > span, .bkeys__ico > span { display: block; width: 100%; height: 100%; }
+/* Beside the bar the belt is a row too (the desktop bar's own order: skills, then the belt). */
+.bkeys[data-keys-layout='bar'] .bkeys__pic { align-items: center; flex-wrap: wrap; }
+.bkeys[data-keys-layout='bar'] .bkeys__belt { grid-auto-flow: column; order: 2; }
+/* The belt keys as the HUD draws them: the potion (or stone) art and its count. */
+.bkeys__beltart { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
+.bkeys__beltn { position: absolute; left: 3px; top: 2px; font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+/* A short book (a sideways phone): the picture stays pinned at the scroller's top while the skills scroll under it, and
+   the hint words step aside so the first row of skills is in view. */
+@media (max-height: 500px) {
+  .bkeys .book__ribbon em { display: none; }
+  .bkeys .book__ribbon { margin-bottom: 0; }
+  .bkeys__pic { position: sticky; top: -10px; z-index: 3; padding: 6px; }
+  .bkeys[data-keys-layout='bar'] .bkeys__key { width: 48px; height: 48px; }
+  .bkeys[data-keys-layout='bar'] .bkeys__bar { grid-template-columns: repeat(8, 48px); }
+  .bkeys__hint { min-height: 0; }
+  .bkeys__hint:empty { display: none; }
+  .bkeys__skill { min-height: 84px; }
+  .bkeys__ico { width: 52px; height: 52px; padding: 6px; }
+}
+.bkeys__beltart--empty { width: 28px; height: 28px; opacity: .5; }

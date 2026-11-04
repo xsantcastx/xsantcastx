@@ -105,6 +105,8 @@ for (const size of [{ width: 844, height: 390, touch: true }, { width: 1280, hei
     test('a name plate under the Interact prompt is lifted clear of it', async ({ page }) => {
       test.setTimeout(90000);
       await open(page);
+      // A sideways phone's thumb HUD (ui-pass-3 Wave B) has no prompt bar: the disc and a ticker line name the verb.
+      test.skip(await page.locator('.stage--thumb').count() > 0, 'no Interact prompt under the thumb HUD');
       const prompt = page.locator('.prompt.armed');
       await expect(prompt).toBeVisible({ timeout: 10000 });
       await expect.poll(async () => (await art<View>(page, 'view')).avoid, { timeout: 5000 }).toBeGreaterThanOrEqual(1);
