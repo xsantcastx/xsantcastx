@@ -327,6 +327,8 @@ export class TopDownEngine {
   /** A Thundercake's lightning resist (S8): seconds left. */
   private mealResistT = 0;
   private nightEventsSeen = '';
+  /** Test hook only (`__tdS8.calm`): every creature calm, the Keeper whole. */
+  private fxS8Calm = false;
   private gatherSeen = '';
   private gatherSeq = 0;
   /** The spots in view this frame (the draw's; the tap and the prompt read them). */
@@ -762,6 +764,9 @@ export class TopDownEngine {
       strike: (dx = 0, dy = 0) => { this.weatherFx.rings.push({ x: this.player.x + dx, y: this.player.y + dy, t: 0, seed: 7 }); this.options.onSky?.({ kind: 'tell' }); return true; },
       soon: () => { this.weatherFx.strikeSoon(); return true; },
       take: (id: string) => this.mobs.takeDrop(id),
+      // Everything near stands calm (a photograph of a night event holds still; nothing bites the Keeper meanwhile).
+      // From now on every creature stands calm and the Keeper stays whole (a photograph in a high section holds still).
+      calm: () => { this.fxS8Calm = true; return true; },
       // Stand beside the Relief Column's fourth man (as one walking at its side would).
       beside: () => {
         const e = this.nightEvents.now.find(x => x.id === 'relief-column');
@@ -1279,6 +1284,7 @@ export class TopDownEngine {
     return null;
   }
   private updateSky(dt: number): void {
+    if (this.fxS8Calm) { for (const m of this.mobs.mobs) if (m.def.sight > 0) { m.def = { ...m.def, sight: 0, dmg: [0, 0] }; m.wait = 1e9; m.wander = null; } this.hp = this.maxHp; }
     const now = this.weatherFx.now, outdoors = this.level === this.world && now.level > .3, st = outdoors ? now.state : 'clear';
     // The land specials' rules (world-acts §3.2): Mist-rain wets at half; Ashfall lifts fire; Spore drift bursts it.
     this.mobs.wetHalf = st === 'mistrain';

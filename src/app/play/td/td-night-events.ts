@@ -202,7 +202,7 @@ export class NightEvents {
     const lit = this.track(e).lit;
     if (lit) return 1;
     const t = e.t / KILN.glow;
-    return t < .1 ? t / .1 : t > .8 ? Math.max(0, (1 - t) / .2) : 1;
+    return t < .025 ? t / .025 : t > .8 ? Math.max(0, (1 - t) / .2) : 1;
   }
 
   /** The tracks for tests (what this Keeper has done about an event tonight). */
@@ -278,11 +278,20 @@ export class NightEvents {
         const kp = px(NIGHT_PLACES.kiln);
         if (!inView(kp.x, kp.y)) continue;
         const g = this.kilnGlow(e), fl = still ? 1 : .8 + .2 * Math.sin(time * 9) * Math.sin(time * 3.7);
+        const x0 = Math.round(kp.x), y0 = Math.round(kp.y);
         flat?.();
-        c.globalAlpha = .28 * g * fl; c.fillStyle = '#ff8a3d'; c.fillRect(Math.round(kp.x) - 14, Math.round(kp.y) - 4, 28, 8);
+        // The warm ground round the kiln mouth, stepped (no soft blur): a wide faint ring, a brighter heart.
+        c.fillStyle = '#ff8a3d';
+        c.globalAlpha = .18 * g * fl; c.fillRect(x0 - 22, y0 - 6, 44, 12); c.fillRect(x0 - 16, y0 - 10, 32, 20);
+        c.globalAlpha = .3 * g * fl; c.fillRect(x0 - 10, y0 - 5, 20, 10);
         at?.(kp.x, kp.y);
-        c.globalAlpha = .75 * g * fl; c.fillStyle = '#ffb060'; c.fillRect(Math.round(kp.x) - 3, Math.round(kp.y) - 10, 6, 4);
-        c.globalAlpha = .9 * g; c.fillStyle = '#ffe9a8'; c.fillRect(Math.round(kp.x) - 1, Math.round(kp.y) - 9, 2, 2);
+        // The kiln's mouth lit, and sparks lifting off its crown.
+        c.globalAlpha = .9 * g * fl; c.fillStyle = '#ffb060'; c.fillRect(x0 - 4, y0 - 11, 8, 6);
+        c.globalAlpha = g; c.fillStyle = '#ffe9a8'; c.fillRect(x0 - 2, y0 - 10, 4, 3);
+        if (!still) for (let i = 0; i < 4; i++) {
+          const k = (time * .7 + i / 4) % 1, sx = x0 + Math.round(Math.sin(time * 2 + i * 1.7) * 4), sy = y0 - 18 - Math.round(k * 22);
+          c.globalAlpha = .8 * g * (1 - k); c.fillStyle = i % 2 ? '#ffd36d' : '#ff8a3d'; c.fillRect(sx, sy, 1, 1);
+        }
         // The burners' shadows working it, leaving before it fades (never once it is lit: they have gone home).
         if (!this.track(e).lit && e.t < KILN.glow * .75) for (let i = 0; i < 2; i++) {
           const ph = still ? i * 2 : time * .6 + i * Math.PI, bx = Math.round(kp.x + Math.cos(ph) * 16), by = Math.round(kp.y + 6 + Math.sin(ph) * 5);
