@@ -74,7 +74,7 @@ export const SHORE_SECTION: ContinentDef = {
     { name: 'Mossharbor', c: 64, r: 72, build: buildMossharbor, ways: [
       { station: MOSSHARBOR_SHIP, c: 15, r: 16, to: 'infernal-reach-pyrehold', arrive: 'ship-verdant', ship: true },
       { station: MOSSHARBOR_ISLE_SHIP, c: 8, r: 16, to: 'ember-isle', arrive: 'ship-isle-verdant', ship: true },
-      { station: MOSSHARBOR_MARCHES_SHIP, c: 22, r: 12, to: 'umbral-marches', arrive: 'ship-mirewatch', ship: true },
+      { station: MOSSHARBOR_MARCHES_SHIP, c: 22, r: 12, to: 'umbral-marches-shore', arrive: 'ship-mirewatch', ship: true },
     ] },
   ],
   seams: [seam('shore-n', 100, -46, 'n', WILDS_FERNGLADES, 'fernglades-s', 'NORTH ROAD: THE FERNGLADES')],
@@ -218,6 +218,8 @@ export const GREENWOOD_SECTION: ContinentDef = {
 // ── The Deep Wilds (21–25): noon is dusk; the Hart Meadow; up out of the Heartroot Cellar ──────────────────────────
 export const DEEP_SECTION: ContinentDef = {
   id: WILDS_DEEP, land: LAND, rim: RIM, title: 'The Deep Wilds', ox: 8, oy: 14, townKind: 'camp', quiet: 1,
+  // Noon is dusk under the old canopy (canon §8.3): the light never climbs past a dusk's (S11 part 2).
+  dim: .42,
   map: paint(44, 28, 'J', 'm', [['T', 8, 14, 9, 15], ['j', 2, 2, 7, 8], ['.', 24, 18, 29, 22], ['j', 34, 2, 41, 7]]),
   roads: [
     // From the root-ramp among the giant roots, down past the Heartroot Stone, east through the deep wood to the Courts.

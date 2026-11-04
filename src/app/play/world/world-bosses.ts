@@ -78,7 +78,7 @@ export const WORLD_BOSSES: readonly WorldBossDef[] = [
     weather: { land: 'verdant-wilds', region: 'j', state: 'storm' }, at: { c: -10, r: -112 }, form: 'antlered-storm', cooldown: 2, rank: 'boss', scale: 3, lair: 'the Storm-Struck Oak, the Greenwood (thunderstorms)',
   },
   {
-    id: 'ser-wickless', name: 'Ser Wickless', area: 'umbral-marches', regions: ['x', 'Q'], base: 'drowned-knight', level: 55,
+    id: 'ser-wickless', name: 'Ser Wickless', area: 'umbral-marches-ruins', regions: ['x', 'Q'], base: 'drowned-knight', level: 55,
     life: 6, blows: 1.35, affixes: ['spectral-hit', 'cold-aura'], followers: 3, every: [6, 8], stay: 2,
     loot: { rolls: 5, chance: .4, uniques: ['unique-mirror-of-small-mercies', 'unique-lastwarden', 'unique-shadowloom'] },
   },

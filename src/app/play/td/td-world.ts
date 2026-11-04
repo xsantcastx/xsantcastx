@@ -229,10 +229,11 @@ export class TdWorld implements TdLevel {
       // The Umbral Marches: the fen (bog, black pools), the deep fen (more water than land), the meres (black water,
       // a hummock here and there), the drowned ruins (old slabs half under the bog).
       // Round a place worth finding the bog holds firm (no black water at a door or a ring of stones).
-      case 'q': return fbm(c / 6, r / 6, 701) > .66 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
-      case 'Q': return fbm(c / 5, r / 5, 709) > .6 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
-      case 'k': return fbm(c / 6, r / 6, 719) > .7 || this.nearPlace(c, r) ? 'mire' : 'blackwater';
-      case 'x': return fbm(c / 5, r / 5, 727) > .52 ? 'wetstone' : fbm(c / 7, r / 7, 733) > .72 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
+      case 'q': return fbm(c / 6, r / 6, 701) > .66 && !this.firmAt(c, r) ? 'blackwater' : 'mire';
+      case 'Q': return fbm(c / 5, r / 5, 709) > .6 && !this.firmAt(c, r) ? 'blackwater' : 'mire';
+      // Past a broken boardwalk's end the water is deep all round (no hummock to step on past it).
+      case 'k': return this.pastBreak(c, r) ? 'blackwater' : fbm(c / 6, r / 6, 719) > .7 || this.firmAt(c, r) ? 'mire' : 'blackwater';
+      case 'x': return fbm(c / 5, r / 5, 727) > .52 ? 'wetstone' : fbm(c / 7, r / 7, 733) > .72 && !this.firmAt(c, r) ? 'blackwater' : 'mire';
       // Ash country has no grass anywhere (round its Waystone camp too).
       default: return this.def.ash ? 'dirt' : 'grass';
     }
@@ -340,7 +341,7 @@ export class TdWorld implements TdLevel {
   /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. A cave mouth gets a smaller one. */
   private inClearing(c: number, r: number): boolean {
     for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge' || p.kind === 'temple') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
-    for (const p of this.def.places) if (p.kind === 'cave' && Math.abs(c - p.c) <= 3 && Math.abs(r - p.r) <= 3) return true;
+    for (const p of this.def.places) if ((p.kind === 'cave' || p.kind === 'belfry') && Math.abs(c - p.c) <= (p.kind === 'belfry' ? 5 : 3) && Math.abs(r - p.r) <= (p.kind === 'belfry' ? 4 : 3)) return true;
     // The Storm-Struck Oak's arena (S10): the ring of stumps and everything inside it stand in the open.
     for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) <= STORM_OAK_R + 1) return true;
     // A hot spot's ring (world-acts.md §2), a seam's gate and a mark stand in the open.
@@ -353,13 +354,13 @@ export class TdWorld implements TdLevel {
   }
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
   private nearWayIn(c: number, r: number): boolean {
-    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave') && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple' || p.kind === 'cave' || p.kind === 'belfry') && Math.hypot(c - p.c, r - p.r) < 9) return true;
     // The Oak's arena: only its storm stands there.
     for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) < STORM_OAK_R + 3) return true;
     // The arrival rule (world-acts.md §0): nothing within SEAM_CLEAR tiles of where a seam sets the Keeper down.
     for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 1 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
     // A named hot spot keeps its own pack and no other (its ring stays readable: world-acts.md §2).
-    for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) < 18) return true;
+    for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) < 19) return true;
     // A Waystone is safe ground: no pack round it.
     if (this.def.stone && Math.hypot(c - this.def.stone.c, r - this.def.stone.r) < 12) return true;
     return false;
@@ -369,6 +370,24 @@ export class TdWorld implements TdLevel {
     return g !== 'water' && g !== 'ember' && !SOLID_GROUND.has(g);
   }
 
+  /**
+   * The Marches keep their bog firm round a place worth finding, round a named hot spot's clearing (its pack has
+   * ground to stand on), in a kept glade, and beside a mark (it can be walked up to and read).
+   */
+  private firmAt(c: number, r: number): boolean {
+    if (this.nearPlace(c, r)) return true;
+    for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) <= CAMP_CLEAR + 2) return true;
+    for (const g of this.def.glades ?? []) if (Math.hypot(c - g.c, r - g.r) <= g.size) return true;
+    for (const mk of this.def.marks ?? []) if (!mk.span && Math.abs(c - mk.c) <= 3 && Math.abs(r - mk.r) <= 3) return true;
+    // A seam's boardwalk lands on a firm hummock (the arrival rule's spot stands on ground, not in the water beside the boards).
+    for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= 3) return true; }
+    return false;
+  }
+  /** Within ten tiles of a broken boardwalk's piles (the Pilgrims' Boardwalk): deep water, nothing to step on. */
+  private pastBreak(c: number, r: number): boolean {
+    for (const mk of this.def.marks ?? []) if (mk.look === 'piles' && Math.hypot(c - mk.c, r - mk.r) <= 10 && r <= mk.r) return true;
+    return false;
+  }
   /** Within eight tiles of a place worth finding (the Marches keep their bog firm there). */
   private nearPlace(c: number, r: number): boolean {
     for (const p of this.def.places) if (Math.abs(c - p.c) <= 8 && Math.abs(r - p.r) <= 8) return true;
@@ -477,6 +496,14 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'standing-stones') { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; stamp(Math.round(Math.cos(a) * 4), Math.round(Math.sin(a) * 3), () => standingStone(i)); } }
       else if (p.kind === 'shrine') { stamp(0, 0, beaconPillar); stamp(-2, 1, () => flowerbed(2, 3), false); stamp(2, 1, () => flowerbed(2, 5), false); }
       else if (p.kind === 'cave') { stamp(0, 0, caveMouth); }
+      else if (p.kind === 'belfry') {
+        // The drowned bell-tower's end out of the water: its louvred mouth (the way down), the broken stonework either
+        // side of it, its old lamp post; reeds where the water laps at it.
+        stamp(0, 0, caveMouth);
+        for (const [dc, dr, sd] of [[-2, 0, 0], [2, 0, 2], [-1, -2, 1], [1, -2, 1], [-3, -1, 2], [3, -1, 0]] as const) stamp(dc, dr, () => ruinWall(sd));
+        stamp(4, 1, lanternPost);
+        for (let i = 0; i < 5; i++) stamp(-4 + i * 2, 3 + (i % 2), () => reeds(i), false);
+      }
       else if (p.kind === 'storm-oak') {
         // The split glassy giant (three tiles wide, its roots its walls) and the ring of split stumps round its arena.
         stamp(0, 0, stormOak);
@@ -585,7 +612,12 @@ export class TdWorld implements TdLevel {
     for (const mk of this.def.marks ?? []) {
       if (!mk.span) { put(mk.c, mk.r, MARK_LOOK[mk.look]); continue; }
       // A hedge grown across a road: every tile of it blocks (the station stands on its nearest row's middle).
-      for (let k = 0; k < mk.span.rows; k++) for (let d = -mk.span.w; d <= mk.span.w; d++) { const sd = Math.abs(d * 7 + k * 3); put(mk.c + d, mk.r + k * mk.span.dir, () => MARK_LOOK[mk.look](sd)); }
+      for (let k = 0; k < mk.span.rows; k++) for (let d = -mk.span.w; d <= mk.span.w; d++) {
+        // A broken boardwalk's piles stand in two lines either side of where its boards ran, a pair every other step
+        // (the water between them is deep: pastBreak); its nearest pile in the middle holds the station.
+        if (mk.look === 'piles' && (k === 0 ? d !== 0 : d === 0 || k % 2 === 1)) continue;
+        const sd = Math.abs(d * 7 + k * 3); put(mk.c + d, mk.r + k * mk.span.dir, () => MARK_LOOK[mk.look](sd));
+      }
     }
     for (const k of this.def.camps ?? []) this.stampCamp(k, inChunk, put, blocked, spawns);
     for (const t of this.def.trees ?? []) put(t.c, t.r, () => jungleTree(t.seed));
@@ -640,6 +672,6 @@ const CAMP_CLEAR = 9;
 /** What a mark looks like (section marks: a plaque on a cairn, a signpost, an altar stone, a sealed door, a cage…). */
 const MARK_LOOK: Readonly<Record<SectionMark['look'], (seed?: number) => import('./td-art').Sprite>> = {
   plaque: () => standingStone(1), sign: signpost, altar, door: cryptDoor, cage, chest, statue: brokenStatue,
-  ruin: () => ruinWall(1), cave: caveMouth, kiln: () => brazier(false), mound: () => boulder(2), hedge: (seed = 0) => thornHedge(seed),
+  ruin: () => ruinWall(1), cave: caveMouth, kiln: () => brazier(false), mound: () => boulder(2), hedge: (seed = 0) => thornHedge(seed), piles: () => stump(),
 };
 

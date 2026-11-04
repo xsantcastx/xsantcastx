@@ -1906,6 +1906,35 @@ Pair is somewhere else each time the Keeper looks away, never in sight, never wi
 Glim drifts to it and dims ("That one is the copy. Strike it."); one blow and it is only a tree, and a **Copy-Seed** drops
 ("Plant it and it grows true, Rue Hazel says. Mostly."). A clue for campaign #7, the Graft Crown.
 
+## The Marches as an act (2026-11-04, S11 part 2, branch `s11marches`) — shipped, owner reviews in play
+
+The Umbral Marches are a long road of sections now (canon §3.4b), their edge the fen too deep to wade: black water, the
+ways on boardwalks across it. Old Corvane's pier at Mirewatch lands on **the Gloaming Shore**; its north boardwalk crosses
+into **the Gloaming Fen** (Lanternfen up the north-west road, the Gloam Shrine off it, Gloamhaven down the east
+boardwalk); the pilgrims' road climbs onto **the Pilgrims' Boardwalk**, half sunk, until it **breaks off in the water**
+and its piles walk on toward the abbey with no boards on them. The abbey's bell-tower fell beside the break and lies on
+its side under the water: **the Sunken Belfry** is the way past, in at its bell-chamber end (the louvres are the floor
+now), along the shaft where the stair runs on the wall and the ropes hang sideways, out at its foot onto **the Black
+Meres**. East over the Meres to **the Deep Fen**, down **the Peat-Cut** into **the Bog Galleries** the cutters left with
+their spades standing, up **the Cutters' Stair** into **the Drowned Ruins**, and the Drowned Crypts' door.
+
+New names (registered in canon §3.4b / §8.5): **the Square Stone** (Gloamhaven's Waystone); **the Belfry's Roof**, **the
+Peat-Cut**, **the Cutters' Stair** (the connectors' mouths); the Bog Galleries' floors **the Cutters' Hall** and **the
+Flooded Cut**; **Elspeth Haddow** (a sister of the drowned abbey, her name burnt under a prayer-board); the ringers
+**Cobb, Lisle, Teasel and Wyn** (the Belfry's rota, the fifth name rubbed out); **Merrin Sedge** (a peat-cutter who "went
+up for oil"); the **Keyhole Rubbing**. The rest are canon's already: the Corvane, Wick, Prayer-Board, Mere-Lamp,
+Lost-Lantern and Abbey-Slab Stones; the Lure Pools, the Knights' Causeway, the Witch's Island; the Lantern Ring.
+
+The Sunken Belfry's **fifth bell's door** stays shut (campaign #12): a keyhole the shape of a bell, and past it, under the
+water, one slow note every forty seconds. A ringer's glove still hangs on its hook in a nook under the bell-chamber,
+"Pull on four. Never on five." stitched in the cuff.
+
+The first Marches night event: **the Bell Under the Water** (the Black Meres, under an eclipse). A minute or two into the
+eclipse the fifth bell rings once under the water and every Lampfish in the Meres goes dark. Glim, on the roof's boards:
+"Don't move. It's listening." A Keeper who stands still through its ringing sees the keyhole glow under the Belfry's
+roof, and presses wax to it: a **Keyhole Rubbing**, "the shape it kept is a bell's tongue". Moving ends it ("You moved.
+It stopped."). Once an eclipse. A clue for campaign #12.
+
 ## The Antlered Storm and the party bosses (2026-11-04, S10, branch `s10boss`) — shipped, owner reviews in play
 - **The Storm-Struck Oak** stands in the Greenwood (S11's section `verdant-wilds-greenwood`, tile −10,−112, a clearing off the road west of the Copied Pair): a split giant, its split glassy rootglass with a
   white spark in it, half its crown bare, in a ring of eighteen split stumps that is its arena (nothing else spawns there).

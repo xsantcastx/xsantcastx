@@ -31,7 +31,7 @@ const ROOM: Readonly<Record<string, LegendEntry>> = {
 export const LANTERN_TOWER_0: TdMapDef = {
   id: 'lantern-tower-0', name: "The Lantern Tower · The Keeper's Hall", outside: 'wall', dark: false,
   legend: { ...ROOM,
-    'D': { ground: 'plank', station: TOWER_OUT, exit: { to: 'surface', arrive: 'lantern-tower-door' } },
+    'D': { ground: 'plank', station: TOWER_OUT, exit: { to: 'surface', arrive: 'lantern-tower-door', continent: 'umbral-marches-gloamhaven' } },
     '>': { ground: 'plank', object: 'up', station: L0_UP, exit: { to: 'lantern-tower-1', arrive: 'lantern-1-down' } },
   },
   rows: [

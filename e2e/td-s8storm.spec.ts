@@ -159,7 +159,7 @@ test.describe('S8: the storm, the land weathers, the night events', () => {
     await page.goto('/play?td=1&hour=15&weather=mistrain&artopt=iso');
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 30000 });
     await page.waitForFunction(() => !!(window as unknown as { __tdS8?: unknown }).__tdS8);
-    await toSection(page, 'umbral-marches', 20, 30);
+    await toSection(page, 'umbral-marches-fen', 20, 30);
     await page.waitForTimeout(1500);
     const m = await st(page);
     expect(m.wetHalf).toBe(true);

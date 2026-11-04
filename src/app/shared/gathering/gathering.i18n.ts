@@ -92,7 +92,10 @@ export const GATHER_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'gather.found.margin-note-scrap': { en: 'Found in: the Relief Column, at the Ashen Bastion\'s gate (the Pyre Peaks, at night).', es: 'Se encuentra: la Columna de Relevo, a la puerta del Ashen Bastion (Pyre Peaks, de noche).' },
   'gather.found.copy-seed': { en: 'Found in: the Walking Tree, in the Greenwood (at night or in fog), struck back into a plain tree.', es: 'Se encuentra: el Arbol que Camina, en el Greenwood (de noche o con niebla), devuelto de un golpe a arbol corriente.' },
   'gather.use.copy-seed': { en: 'Used for: keeping. Proof that the wood copies itself; Rootglass will want to see it.', es: 'Sirve para: guardarla. Prueba de que el bosque se copia a si mismo; en Rootglass querran verla.' },
+  'gather.found.keyhole-rubbing': { en: 'Found in: the Bell Under the Water, on the Black Meres under an eclipse, standing still by the Belfry\'s roof while the fifth bell rings.', es: 'Se encuentra: la Campana Bajo el Agua, en los Meres Negros durante un eclipse, quieto junto al tejado del Campanario mientras suena la quinta campana.' },
+  'gather.use.keyhole-rubbing': { en: 'Used for: keeping. The fifth bell\'s door in the Sunken Belfry has a keyhole this shape.', es: 'Sirve para: guardarla. La puerta de la quinta campana del Campanario Hundido tiene una cerradura con esta forma.' },
   'gather.card.seed': { en: 'Seed · Keep it', es: 'Semilla · Guardala' },
+  'gather.card.rubbing': { en: 'Rubbing · Keep it', es: 'Calco · Guardalo' },
   'gather.use.margin-note-scrap': { en: 'Used for: reading. A clue to the sealed chapel of the Ashen Crypt.', es: 'Sirve para: leerlo. Una pista de la capilla sellada de la Ashen Crypt.' },
   'gather.use.buff.lightning-resist': { en: 'Then lightning bites {{pct}}% less for {{min}} minutes.', es: 'Despues el rayo muerde un {{pct}}% menos durante {{min}} minutos.' },
   'gather.use.buff.mining-xp': { en: 'Then +{{pct}}% Mining XP for {{min}} minutes.', es: 'Despues +{{pct}}% de XP de Mineria durante {{min}} minutos.' },
@@ -103,6 +106,7 @@ export const GATHER_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'gather.lore.thundercake': { en: 'Stormscale pressed into a cake and fried hard. It crackles on the tongue, and the next storm bites a little less.', es: 'Escama de tormenta prensada en un pastel y frita fuerte. Cruje en la lengua, y la proxima tormenta muerde un poco menos.' },
   'gather.lore.cold-miners-pasty': { en: 'Cold, wrapped in a rag, and packed for a shift that ended a long time ago. It still sets a miner right.', es: 'Fria, envuelta en un trapo, y preparada para un turno que acabo hace mucho. Aun pone en pie a un minero.' },
   'gather.lore.copy-seed': { en: 'A seed from a tree that was not where it stood. Plant it and it grows true, Rue Hazel says. Mostly.', es: 'Una semilla de un arbol que no estaba donde estaba. Plantala y crece fiel, dice Rue Hazel. Casi siempre.' },
+  'gather.lore.keyhole-rubbing': { en: 'Wax pressed over a keyhole the shape of a bell, while it glowed under the water. The shape it kept is a bell\'s tongue.', es: 'Cera apretada sobre una cerradura en forma de campana, mientras brillaba bajo el agua. La forma que guardo es la lengua de una campana.' },
   'gather.lore.margin-note-scrap': { en: 'A corner torn from a page, in a hand nobody has matched. It names somebody who should not be forgotten.', es: 'Una esquina arrancada de una pagina, con una letra que nadie ha reconocido. Nombra a alguien que no deberia olvidarse.' },
   // ── Weather v1 (shared/weather; world-acts §3) ──
   'weather.state.clear': { en: 'Clear', es: 'Despejado' },

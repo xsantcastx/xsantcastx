@@ -26,7 +26,9 @@ import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 
 import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3, OVERGROWN_TEMPLE_4, OVERGROWN_TEMPLE_5 } from './maps/overgrown-temple';
 import { ROOT_HOLLOWS_1, ROOT_HOLLOWS_2, ROOT_HOLLOWS_3 } from './maps/root-hollows';
 import { HERBAL_0, HERBAL_1, NETLOFT_1, NETLOFT_2 } from './maps/verdant-houses';
-import { UMBRAL_MARCHES_DEF } from './maps/umbral-marches';
+import { MARCHES_SECTIONS } from './maps/umbral-sections';
+import { SUNKEN_BELFRY_1 } from './maps/sunken-belfry';
+import { BOG_GALLERIES_1, BOG_GALLERIES_2 } from './maps/bog-galleries';
 import { LANTERN_TOWER_0, LANTERN_TOWER_1, LANTERN_TOWER_2 } from './maps/lantern-tower';
 import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/drowned-crypts';
 import { HUSHED_BARROW_1 } from './maps/hushed-barrow';
@@ -36,10 +38,9 @@ import { HUSHED_BARROW_1 } from './maps/hushed-barrow';
  * (maps/reach-sections.ts, maps/wilds-sections.ts): each section is a continent of its own here, so the room runs it as
  * its own area; their land is `infernal-reach` / `verdant-wilds`.
  */
-export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, ...REACH_SECTIONS, ...WILDS_SECTIONS,
-  'umbral-marches': UMBRAL_MARCHES_DEF };
-/** A save or a link that still names an old single-area land lands in its capital: Pyrehold, Rootglass. */
-export const RENAMED_CONTINENTS: Readonly<Record<string, string>> = { 'infernal-reach': 'infernal-reach-pyrehold', 'verdant-wilds': 'verdant-wilds-rootglass' };
+export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, ...REACH_SECTIONS, ...WILDS_SECTIONS, ...MARCHES_SECTIONS };
+/** A save or a link that still names an old single-area land lands in its capital: Pyrehold, Rootglass, Gloamhaven. */
+export const RENAMED_CONTINENTS: Readonly<Record<string, string>> = { 'infernal-reach': 'infernal-reach-pyrehold', 'verdant-wilds': 'verdant-wilds-rootglass', 'umbral-marches': 'umbral-marches-gloamhaven' };
 /** The land a continent (or an act's section) belongs to. */
 export function landOf(continent: string): string { return CONTINENTS[continent]?.land ?? continent; }
 
@@ -61,6 +62,8 @@ const DRAWN: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1
   'hushed-barrow-1': HUSHED_BARROW_1,
   // The Reach's connector caves (world-acts.md §1.2): the only ways into the Deep Charwood and the Molten Fields.
   'kiln-tunnels-1': KILN_TUNNELS_1, 'glass-throat-1': GLASS_THROAT_1, 'glass-throat-2': GLASS_THROAT_2,
+  // The Marches' connectors (S11 part 2, world-acts.md §1.4): the only way past the broken boardwalk, and to the Drowned Ruins.
+  'sunken-belfry-1': SUNKEN_BELFRY_1, 'bog-galleries-1': BOG_GALLERIES_1, 'bog-galleries-2': BOG_GALLERIES_2,
   // The isometric prototype's tavern (td-artopt.ts): only with ?artopt= in an automated browser or on localhost.
   ...(optCamera() && artOptParam() ? { 'artopt-tavern': ARTOPT_TAVERN } : {}) };
 
@@ -110,6 +113,11 @@ export const FLOOR_LAIRS: Readonly<Record<string, NonNullable<TdMapDef['lair']>>
   'drowned-crypts-2': { types: ['ink-hound', 'drowned-knight'], count: 4 },
   // The Acolytes who keep the watch mustered (S6: Call the Watch and Prayer in the Drowned Crypts).
   'drowned-crypts-3': { types: ['drowned-knight', 'drowned-acolyte', 'drowned-knight'], count: 3 },
+  // The Marches' connectors: the wisps that came in with the water and the acolytes still ringing; the hounds on the
+  // cutters' scent and the lurkers in the flooded cuts.
+  'sunken-belfry-1': { types: ['lantern-wisp', 'drowned-acolyte'], count: 4 },
+  'bog-galleries-1': { types: ['ink-hound', 'mire-lurker'], count: 4 },
+  'bog-galleries-2': { types: ['mire-lurker', 'ink-hound'], count: 4 },
 };
 
 /** Every hand-drawn level under (or over) the surface, by id (its lair woven in). */

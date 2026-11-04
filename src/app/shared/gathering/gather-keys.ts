@@ -15,4 +15,6 @@ export const GATHER_PILE_KEYS: ReadonlySet<string> = new Set([
   'charcoal', 'stormscale', 'thundercake', 'cold-miners-pasty', 'margin-note-scrap',
   // S11: the Walking Tree's copy-seed.
   'copy-seed',
+  // S11 part 2: the Bell Under the Water's keyhole rubbing.
+  'keyhole-rubbing',
 ]);

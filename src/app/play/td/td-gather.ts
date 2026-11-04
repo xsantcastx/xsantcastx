@@ -162,6 +162,8 @@ export class GatherRuntime {
    * The spots' floats and their shadows (under everything standing). `still`: reduced motion (the shadows hold their
    * places; jumps show as a ring only). `cap`: the most shadows drawn this frame, nearest the Keeper first.
    */
+  /** Every Lampfish's light is out (the Bell Under the Water's note, the Black Meres; the engine sets it each frame). */
+  lampsOut = false;
   drawWater(c: CanvasRenderingContext2D, spots: readonly FishSpot[], time: number, k: { x: number; y: number }, sky: SkyNow, cap: number, still: boolean, rainy: boolean): void {
     const tick = Math.floor(time * 15) / 15;   // 15 Hz
     const order = [...spots].sort((a, b) => Math.hypot(a.x - k.x, a.y - k.y) - Math.hypot(b.x - k.x, b.y - k.y));
@@ -181,7 +183,7 @@ export class GatherRuntime {
         if (dir < 0) { c.save(); c.translate(Math.round(x), 0); c.scale(-1, 1); c.drawImage(img, -Math.round(img.width / 2), Math.round(y - 2)); c.restore(); }
         else c.drawImage(img, Math.round(x - img.width / 2), Math.round(y - 2));
         // The Lampfish's warm dot: on a dark lake its light is the only light.
-        if (f.tone === 'warm') { c.globalAlpha = .9; c.fillStyle = TONE.warm; c.fillRect(Math.round(x + dir * 2), Math.round(y), 1, 1); }
+        if (f.tone === 'warm' && !this.lampsOut) { c.globalAlpha = .9; c.fillStyle = TONE.warm; c.fillRect(Math.round(x + dir * 2), Math.round(y), 1, 1); }
         drawn++;
       }
       c.globalAlpha = 1;

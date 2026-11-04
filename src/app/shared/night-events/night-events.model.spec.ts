@@ -117,7 +117,7 @@ describe('S8 — the night events', () => {
     };
     expect(run(true).length).toBe(1);
     expect(run(false).length).toBe(0);
-    expect(Object.keys(NIGHT_REWARDS).length).toBe(5);
+    expect(Object.keys(NIGHT_REWARDS).length).toBe(6);
     expect(nightRewardKey('late-shift', 12, 'cold-miners-pasty')).toBe('night:late-shift:12:cold-miners-pasty');
   });
 

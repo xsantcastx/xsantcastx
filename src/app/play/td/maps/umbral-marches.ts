@@ -12,38 +12,17 @@
  * Region legend: ~ the sea · , the shore · q the Gloaming Fen (bog, black pools) · Q the Deep Fen (more water than
  * land, the old cypresses) · k the Black Meres · x the Drowned Ruins (the abbey town's stones, half under the bog) ·
  * T Gloamhaven.
+ *
+ * S11 part 2: the Marches are an act of sections now (maps/umbral-sections.ts); this file keeps the three towns and
+ * Mirewatch's ship, which the sections stamp. The old single-area map is gone (td-levels RENAMED_CONTINENTS lands an old
+ * save in Gloamhaven).
  */
 import type { StationDef } from '../../world/world.model';
-import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown, shopStation } from '../town-builder';
 import { TOWER_DOOR } from './lantern-tower';
-import { CRYPTS_IN } from './drowned-crypts';
 
 /** Mirewatch's ship, at its pier's end: across the sea to Pyrehold (Pyrehold's own ship back is SHIP_TO_UMBRAL). */
 export const MIREWATCH_SHIP: StationDef = { id: 'ship-mirewatch', x: 0, label: 'SHIP TO PYREHOLD', kind: 'passage', blurb: 'A black-hulled ketch with a lantern at its bow, bound for Pyrehold in Infernal Reach.' };
-
-export const UMBRAL_MARCHES: readonly string[] = [
-  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-  '~~~~~~,,,,,,,,,~~~~~~~~~~~~,,,,,,,,,,,~~~~~~',
-  '~~~~,,qqqqqqqqq,,,,~~~~,,,,qqqqQQQQQQQ,,~~~~',
-  '~~~,qqqqQQQQqqqqqqq,,,,,qqqqqQQQQxxxxQQ,,~~~',
-  '~~,qqqQQQQQQQqqqkkkqqqqqqqqqqQQQxxxxxxQQ,~~~',
-  '~~,qqQQQQQQQQqqkkkkkqqqqqqqqqQQQQxxxxxQQQ,~~',
-  '~~,qqqQQQQQQqqqqkkkqqqqqqqqqqqQQQQQxxQQQQ,~~',
-  '~~,qqqqqQQQQqqqqqqqTTTTTTqqqqqqqQQQQQQQq,,~~',
-  '~~,qqqqqqqqqqqqqqqqTTTTTTqqqqqqqqQQQQQQqq,~~',
-  '~~,,qqqqqqkkqqqqqqqTTTTTTqqqqqqqqqqQQQqqq,~~',
-  '~~~,qqqqqkkkkqqqqqqTTTTTTqqqqkkkqqqqqqqqq,~~',
-  '~~~,qqqqqqkkqqqqqqqqqqqqqqqqkkkkkqqqqqq,,~~~',
-  '~~~,,qqqqqqqqqqqqqqqqqqqqqqqqkkkqqqqqqq,~~~~',
-  '~~~~,qqqqqqqqxxxqqqqqqqqqqqqqqqqqqqqqq,,~~~~',
-  '~~~~,,qqqqqqxxxxxqqqqqqqqqqqqqqqqqqqq,~~~~~~',
-  '~~~~~,,qqqqqqxxxqqqqqqqqqqqqqqqqqqq,,~~~~~~~',
-  '~~~~~~,,qqqqqqqqqqqqqqqqqqqqqqqqqq,,~~~~~~~~',
-  '~~~~~~~,,,qqqqqqqqqqqqqqqqqqqqqqqq,,~~~~~~~~',
-  '~~~~~~~~~~,,,,,,,,~~~~~~~~,,,,,,,,~~~~~~~~~~',
-  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-];
 
 const GLOAMHAVEN_ROWS: readonly string[] = [
   'wwwmmmmmwwwwwwwwwwwwww====wwwwwwwwwwwwwmmmmmmwww',
@@ -229,57 +208,3 @@ export const buildLanternfen = () => buildTown({
   ],
   spawn: { c: 13, r: 9 },
 });
-
-export const UMBRAL_PLACES: readonly ContinentPlace[] = [
-  // The Drowned Crypts' door in the drowned ruins, at the east road's end.
-  { kind: 'crypt', c: 128, r: -24, name: 'The Drowned Crypts' },
-  { kind: 'shrine', c: -88, r: -16, name: 'The Gloam Shrine' },
-  { kind: 'ruins', c: -36, r: 58, name: 'The Sunken Belfry' },
-  { kind: 'standing-stones', c: 14, r: -30, name: 'The Lantern Ring' },
-];
-
-export const UMBRAL_NAMES: Readonly<Partial<Record<Region, string>>> = {
-  '~': 'The Burning Sea', ',': 'The Gloaming Shore', q: 'The Gloaming Fen', Q: 'The Deep Fen', k: 'The Black Meres',
-  x: 'The Drowned Ruins', T: 'Gloamhaven',
-};
-
-export const UMBRAL_MARCHES_DEF: ContinentDef = {
-  id: 'umbral-marches', map: UMBRAL_MARCHES, ox: 19, oy: 7, fog: .55,
-  roads: [
-    // North up the boardwalk to the Lantern Ring, by the Black Meres.
-    [[23, 0], [22, -14], [16, -26]],
-    // West into the deep fen to Lanternfen, a branch on to the Gloam Shrine.
-    [[0, 18], [-30, 18], [-60, 10], [-96, 2]],
-    [[-60, 10], [-80, -4], [-88, -12]],
-    // East through the fen to the drowned ruins and the Drowned Crypts' door.
-    [[47, 18], [72, 14], [96, 2], [116, -12], [128, -19]],
-    // South down the boardwalk road to Mirewatch; a branch west to the Sunken Belfry.
-    [[23, 33], [24, 50], [22, 66], [23, 76]],
-    [[24, 50], [-6, 54], [-32, 58]],
-  ],
-  places: UMBRAL_PLACES, names: UMBRAL_NAMES,
-  mobs: {
-    q: { types: ['mire-lurker', 'mire-lurker', 'lantern-wisp'], chance: .5 },
-    Q: { types: ['mire-lurker', 'ink-hound', 'lantern-wisp', 'gloam-witch'], chance: .6 },
-    k: { types: ['lantern-wisp', 'mire-lurker'], chance: .5 },
-    x: { types: ['drowned-knight', 'gloam-witch', 'ink-hound', 'drowned-knight'], chance: .6 },
-  },
-  // Lairs (canon §8.4): the lurkers' lantern-lure pools of the fens, the Drowned Knights' patrol posts in the ruins,
-  // the wisps gathered over the Black Meres.
-  hotspots: [
-    { region: 'q', chance: .35, types: ['mire-lurker', 'lantern-wisp', 'mire-lurker'], count: 4 },
-    { region: 'Q', chance: .45, types: ['mire-lurker', 'ink-hound', 'gloam-witch'], count: 5 },
-    { region: 'x', chance: .5, types: ['drowned-knight', 'gloam-witch', 'drowned-knight'], count: 5 },
-    { region: 'k', chance: .4, types: ['lantern-wisp', 'mire-lurker'], count: 4 },
-  ],
-  town: buildGloamhaven, townName: 'Gloamhaven', streets: { row: 18, col: 23 }, river: false,
-  roadGround: { near: 'boardwalk', far: 'boardwalk' },
-  ways: [
-    { place: 'crypt', station: CRYPTS_IN, to: 'drowned-crypts-1', arrive: 'crypts-out' },
-  ],
-  villages: [
-    // Mirewatch's ketch sails from the pier's end (the village's tile 15, 16) to Pyrehold Harbour.
-    { name: 'Mirewatch', c: 8, r: 76, build: buildMirewatch, ways: [{ station: MIREWATCH_SHIP, c: 15, r: 16, to: 'infernal-reach-pyrehold', arrive: 'ship-umbral', ship: true }] },
-    { name: 'Lanternfen', c: -124, r: -6, build: buildLanternfen },
-  ],
-};

@@ -491,6 +491,8 @@ test('the Umbral Marches: a ship from Pyrehold to Mirewatch, up the Lantern Towe
   await expect(page.locator('#places-list.td-map')).toBeVisible();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-map.jpg', type: 'jpeg', quality: 78 });
   await page.keyboard.press('Escape');
+  // S11 part 2: Gloamhaven is its own section now, up the Shore's north boardwalk and the Fen's east boardwalk.
+  await toSection(page, 'umbral-marches-gloamhaven', 24, 21);
   await go(/the lantern tower/i, /keeper's hall/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-tower-0.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs up/i, /wick loft/i);
@@ -501,6 +503,8 @@ test('the Umbral Marches: a ship from Pyrehold to Mirewatch, up the Lantern Towe
   await go(/stairs down/i, /keeper's hall/i);
   await go(/^door/i, /^Gloamhaven$/);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-gloamhaven.jpg', type: 'jpeg', quality: 72 });
+  // S11 part 2: Mirewatch's pier is on the Gloaming Shore, not in Gloamhaven's section.
+  await toSection(page, 'umbral-marches-shore', -1, 70);
   await sail(page, /pyrehold/i, /pyrehold/i);
   expect(errors, errors.join('\n')).toEqual([]);
 });
@@ -519,6 +523,8 @@ test('the Drowned Crypts in the Umbral Marches: in by their door, down to the Ab
   };
   await sail(page, /pyrehold/i, /pyrehold/i);
   await sail(page, /mirewatch/i, /^Mirewatch$/);
+  // S11 part 2: the crypts' door is at the Drowned Ruins' far end, the act's last section.
+  await toSection(page, 'umbral-marches-ruins', 264, -42);
   await go(/the drowned crypts/i, /flooded nave/i);
   await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-crypt-1.jpg', type: 'jpeg', quality: 72 });
   await go(/stairs down/i, /sunken cloister/i);

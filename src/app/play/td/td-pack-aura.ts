@@ -112,7 +112,7 @@ const FLOOR_LANDS: readonly [RegExp, string][] = [
   [/^(ember-mine|slagstone|ember-inn|hushed-barrow)/, 'ember-isle'],
   [/^(molten-deep|forge-of-four|ashen-crypt|pyre-spire|salted-ember|woodward|kiln-tunnels|glass-throat)/, 'infernal-reach'],
   [/^(overgrown-temple|root-hollows|rootglass|netloft|herbal)/, 'verdant-wilds'],
-  [/^(drowned-crypts|lantern-tower)/, 'umbral-marches'],
+  [/^(drowned-crypts|lantern-tower|sunken-belfry|bog-galleries)/, 'umbral-marches'],
 ];
 export function landOf(levelId: string, continent: string): string {
   if (levelId === 'surface' || !levelId) return continent;

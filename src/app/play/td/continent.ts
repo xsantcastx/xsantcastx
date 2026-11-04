@@ -14,7 +14,9 @@ export type Region = '~' | ',' | '.' | 'f' | 'F' | 'h' | 'm' | 'v' | 'l' | 'T'
   | 'q' | 'Q' | 'k' | 'x';
 export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard' | 'forge' | 'temple'
   /** S10: the Storm-Struck Oak (the Greenwood's heart, monsters-abilities §6.3): a split glassy giant in a ring of stumps. */
-  | 'storm-oak';
+  | 'storm-oak'
+  /** S11 part 2: the Sunken Belfry's end out of the water (the Pilgrims' Boardwalk's break, the Black Meres): its way down. */
+  | 'belfry';
 
 export interface ContinentPlace { kind: PlaceKind; c: number; r: number; name: string }
 /** A way on from a place: a cave mouth into a hand-drawn level, a ship to another continent. */
@@ -76,7 +78,7 @@ export interface ContinentDef {
   townKind?: 'capital' | 'village' | 'camp';
   /** Ash country (the Reach's Badlands, Molten Fields and Pyre Peaks): obsidian dirt and basalt, no grass, more lava showing. */
   ash?: boolean;
-  /** What the land's edge (region 'm') is made of: rock (the default), or the Wilds' wall of vine and root. */
+  /** What the land's edge (region 'm') is made of: rock (the default), the Wilds' wall of vine and root, the Marches' deep black water. */
   rim?: Ground;
   /** Chunks round the town where no pack spawns (default 3; a Waystone camp keeps 1). */
   quiet?: number;
@@ -92,6 +94,8 @@ export interface ContinentDef {
   camps?: readonly SectionCamp[];
   /** Trees that stand where the map says (a copied tree's true twin): jungle trees, blocking, never felled. */
   trees?: readonly { c: number; r: number; seed: number }[];
+  /** The canopy's own gloom (0..1): the land is never lit brighter than this much dark (the Deep Wilds: noon is dusk). */
+  dim?: number;
   /** Open glades kept clear of the wilds' own trees and rocks (tiles round (c, r)): where a night event walks. */
   glades?: readonly { c: number; r: number; size: number }[];
 }
@@ -113,7 +117,9 @@ export interface SectionSeam {
 /** A thing to read (a plaque, a tally, a note) or a sealed thing (a door, a cage, a bricked arch), at tile (c, r). */
 export interface SectionMark {
   id: string; kind: 'read' | 'sealed'; c: number; r: number;
-  look: 'plaque' | 'sign' | 'altar' | 'door' | 'cage' | 'chest' | 'statue' | 'ruin' | 'cave' | 'kiln' | 'mound' | 'hedge';
+  look: 'plaque' | 'sign' | 'altar' | 'door' | 'cage' | 'chest' | 'statue' | 'ruin' | 'cave' | 'kiln' | 'mound' | 'hedge'
+    /** A broken boardwalk's piles standing out of the water, its boards gone (the Pilgrims' Boardwalk). */
+    | 'piles';
   label: string;
   /** Rows of the look laid across a road (the Greenwood's thorn hedge): `w` tiles wide each side of (c, r), `rows` deep going away from the road's open end. */
   span?: { w: number; rows: number; dir: -1 | 1 };

@@ -1,5 +1,5 @@
 /**
- * td-sections.ts — an act as a long land of sections (docs/design/world-acts.md §0 and §1.2; canon §3.4b). Pure: the
+ * td-sections.ts — an act as a long land of sections (docs/design/world-acts.md §0 and §1.2–§1.4; canon §3.4b). Pure: the
  * seam rules, the Waystones of the Reach, and the zone bible's check for every section (one thing to read, one sealed
  * thing, one sound). The maps are maps/reach-sections.ts; the engine walks the seams (td-engine `stepSeams`).
  *
@@ -43,7 +43,10 @@ export interface SectionSound {
   cue: 'farbell' | 'warhorn' | 'splash' | 'crackle' | 'cart-roll' | 'drum' | 'clang' | 'glass-ping' | 'lava-hiss' | 'march'
     // The Verdant Wilds (canon §8.3): birds that stop all at once, frogs at the water, boughs creaking, weavers clicking,
     // a hymn too faint to place; under the ground, chewing in the walls, a drip into the well, a heartbeat.
-    | 'birdstop' | 'frogs' | 'creak' | 'chitter' | 'hymn' | 'chew' | 'drip' | 'heartbeat';
+    | 'birdstop' | 'frogs' | 'creak' | 'chitter' | 'hymn' | 'chew' | 'drip' | 'heartbeat'
+    // The Umbral Marches (S11 part 2; canon §8.4): boards knocking on the water, black water breathing, a voice calling
+    // too far off to make out; in the Belfry, one slow note under the water; in the Galleries, seeping, a spade once.
+    | 'boards' | 'bubbles' | 'voice' | 'underbell' | 'seep' | 'spade';
   every: readonly [number, number];
 }
 /** The zone bible's check (canon §8): every section has something to read, something sealed and its own sound. */
@@ -104,8 +107,25 @@ export const WILDS_BIBLE: Readonly<Record<string, SectionBible>> = {
   'verdant-wilds-deep-wilds': { read: 'read:deep-lantern-hook', sealed: 'sealed:deep-spore-mouth', sound: { cue: 'chitter', every: [18, 34] } },
   'verdant-wilds-courts': { read: 'read:courts-moss', sealed: 'sealed:courts-bellframe', sound: { cue: 'hymn', every: [40, 70] } },
 };
+/**
+ * The Umbral Marches as an act (S11 part 2; world-acts.md §1.4; canon §8.4): its sections and its two connectors' floors,
+ * by area id, as REACH_BIBLE. Words: td-marches.i18n.ts (`reach.read.<id>`, `reach.sealed.<id>`). The Belfry's note
+ * comes every forty seconds, as the spec says (one slow note under the water past the fifth bell's door).
+ */
+export const MARCHES_BIBLE: Readonly<Record<string, SectionBible>> = {
+  'umbral-marches-shore': { read: 'read:shore-wickpost', sealed: 'sealed:shore-watchhouse', sound: { cue: 'splash', every: [12, 24] } },
+  'umbral-marches-gloamhaven': { read: 'read:gloamhaven-round', sealed: 'sealed:gloamhaven-chapel', sound: { cue: 'creak', every: [24, 44] } },
+  'umbral-marches-fen': { read: 'read:fen-boundary', sealed: 'sealed:fen-cutters-hut', sound: { cue: 'frogs', every: [16, 30] } },
+  'umbral-marches-boardwalk': { read: 'read:boardwalk-prayer', sealed: 'sealed:boardwalk-broken', sound: { cue: 'boards', every: [18, 32] } },
+  'sunken-belfry-1': { read: 'read:belfry-rota', sealed: 'sealed:belfry-fifth-door', sound: { cue: 'underbell', every: [40, 40] } },
+  'umbral-marches-meres': { read: 'read:meres-lampstake', sealed: 'sealed:meres-punt', sound: { cue: 'bubbles', every: [14, 26] } },
+  'umbral-marches-deep-fen': { read: 'read:deep-wicktag', sealed: 'sealed:deep-chapel', sound: { cue: 'voice', every: [50, 90] } },
+  'bog-galleries-1': { read: 'read:galleries-tally', sealed: 'sealed:galleries-boarded', sound: { cue: 'seep', every: [10, 20] } },
+  'bog-galleries-2': { read: 'read:galleries-wicktag', sealed: 'sealed:galleries-sluice', sound: { cue: 'spade', every: [45, 80] } },
+  'umbral-marches-ruins': { read: 'read:ruins-slab', sealed: 'sealed:ruins-watergate', sound: { cue: 'hymn', every: [40, 70] } },
+};
 /** Every act's zone bible, by area id (the engine's section sound reads it). */
-export const SECTION_BIBLE: Readonly<Record<string, SectionBible>> = { ...REACH_BIBLE, ...WILDS_BIBLE };
+export const SECTION_BIBLE: Readonly<Record<string, SectionBible>> = { ...REACH_BIBLE, ...WILDS_BIBLE, ...MARCHES_BIBLE };
 
 /**
  * The Wilds' road in order, Mossharbor's pier to the Overgrown Temple's gate (world-acts.md §1.3: about 14 minutes):
@@ -122,4 +142,21 @@ export const WILDS_ROUTE: readonly { area: string; from?: string; to?: string }[
   { area: 'root-hollows-3', from: 'hollows3-up', to: 'hollows3-ramp' },
   { area: 'verdant-wilds-deep-wilds' },
   { area: 'verdant-wilds-courts' },
+];
+
+/**
+ * The Marches' road in order, Mirewatch's pier to the Drowned Crypts' door (world-acts.md §1.4: about 15 minutes): the
+ * Gloaming Shore, the Fen, the Pilgrims' Boardwalk to its broken end, through the Sunken Belfry, the Black Meres, the
+ * Deep Fen to the peat-cut, down the Bog Galleries and up the cutters' stair, the Drowned Ruins.
+ */
+export const MARCHES_ROUTE: readonly { area: string; from?: string; to?: string }[] = [
+  { area: 'umbral-marches-shore' },
+  { area: 'umbral-marches-fen' },
+  { area: 'umbral-marches-boardwalk' },
+  { area: 'sunken-belfry-1', from: 'belfry-up', to: 'belfry-out' },
+  { area: 'umbral-marches-meres' },
+  { area: 'umbral-marches-deep-fen' },
+  { area: 'bog-galleries-1', from: 'galleries-out', to: 'galleries1-down' },
+  { area: 'bog-galleries-2', from: 'galleries2-up', to: 'galleries-far' },
+  { area: 'umbral-marches-ruins' },
 ];

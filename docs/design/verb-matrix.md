@@ -53,7 +53,7 @@ names its ticket. Everything else is expected to work as written.
 | Town Portal scrolls | Read, Put on hotkey, Drop | — | V, or an item hotkey (reads one) | Read | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Crates | Open, Put on hotkey, Drop | — | item hotkey (opens one) | Open | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Materials, Blanks | Drop | — | — (no use from the belt) | benches read the satchel | yes (room if online, a pile ×N) | yes (stack ×N, how many) | buyback floor | yes | — | **gap** (T2) | bank Drop |
-| Night scraps (S8: Margin Note Scrap; S11: Copy-Seed) | Drop (its card is the read: what it says, Found in, the thread) | — | — (nothing to use) | read on its card | yes (room if online, a pile ×N) | yes (stack ×N, how many) | never (no buyback) | yes | — | **gap** (T2) | bank Drop |
+| Night scraps (S8: Margin Note Scrap; S11: Copy-Seed, Keyhole Rubbing) | Drop (its card is the read: what it says, Found in, the thread) | — | — (nothing to use) | read on its card | yes (room if online, a pile ×N) | yes (stack ×N, how many) | never (no buyback) | yes | — | **gap** (T2) | bank Drop |
 | Quest items | — | — | — | the quest | never dropped | yes (tagged Quest; the quest follows possession) | never | stay (no cell) | — | — | never |
 | Gold | — | — | — | — | picked up by walking over it | yes (an amount, the window's Gold field) | — | — | — | — | — |
 
