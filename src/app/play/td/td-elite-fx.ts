@@ -235,3 +235,26 @@ export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight =
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [1, 1]]) c.fillText(name, NX + dx, y + dy);
   c.fillStyle = targeted ? '#ff8a7a' : tn.body; c.fillText(name, NX, y);
 }
+
+/**
+ * S10b (the Director): a world boss's name and life in screen space (identity transform, canvas px): `k` canvas px per
+ * CSS px. Never in world space under the HUD: the engine places it below the top band and the Glim toast, or, on a narrow
+ * screen, as a fixed bar under the minimap row. A dark outline, the unique leader's gold, the life bar 8 css px tall, its name 15.
+ */
+export function drawBossBar(c: Ctx, name: string, frac: number, cx: number, y: number, w: number, k: number, targeted: boolean): void {
+  const tn = ELITE_TONES.unique, H = Math.max(5, Math.round(8 * k)), x0 = Math.round(cx - w / 2), Y = Math.round(y);
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.textAlign = 'center'; c.textBaseline = 'bottom';
+  c.font = `bold ${Math.round(15 * k)}px "Pixelify Sans", monospace`;
+  c.fillStyle = HOSTILE_EDGE;
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, 1], [1, 1], [0, -1]]) c.fillText(name, Math.round(cx) + dx * Math.ceil(k), Y - 2 * k + dy * Math.ceil(k));
+  c.fillStyle = targeted ? '#ff8a7a' : tn.body; c.fillText(name, Math.round(cx), Y - 2 * k);
+  const b = Math.ceil(k);
+  c.fillStyle = HOSTILE_EDGE; c.fillRect(x0 - 2 * b, Y - b, w + 4 * b, H + 2 * b + b);
+  c.fillStyle = tn.edge; c.fillRect(x0 - b, Y, w + 2 * b, H + b);
+  c.fillStyle = '#1a1014'; c.fillRect(x0, Y + b, w, H - b);
+  c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(x0, Y + b, Math.round(w * Math.max(0, frac)), H - b);
+  c.restore();
+}
+
