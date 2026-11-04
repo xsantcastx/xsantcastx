@@ -96,7 +96,7 @@ export const WORLD_FISH: readonly WorldFishDef[] = [
   { id: 'lampfish', name: 'Lampfish', level: 25, waters: ['lake', 'marsh'], when: 'dark', xp: 70, cooked: 'lampfish-fry', anchor: 3_000, shadow: [6, 3], tone: 'warm',
     lore: 'A warm dot under black water. It is why the fen pilgrims hung their lanterns over the meres.' },
   // S8 (world-acts §3.7): a Mirrorfin caught in thunder. Never in the common roll: 1 cast in 40 at sea in a storm.
-  { id: 'stormscale', name: 'Stormscale', level: 5, waters: ['sea'], when: 'storm', xp: 60, cooked: 'thundercake', anchor: 2_400, shadow: [8, 4], tone: 'silver',
+  { id: 'stormscale', name: 'Stormscale', level: 5, waters: ['sea'], when: 'storm', xp: 60, cooked: 'thundercake', anchor: 1_400, shadow: [8, 4], tone: 'silver',
     lore: 'A Mirrorfin the lightning found first. Its scales still hold the flash, and it bites the hand that lands it.' },
   { id: 'moonbelly', name: 'Moonbelly', level: 40, waters: ['lake', 'sea', 'river', 'marsh'], when: 'eclipse', xp: 120, cooked: 'moonbelly-fillet', anchor: 3_500, shadow: [10, 5], tone: 'pale',
     lore: 'It only rises when the Moonwake opens and the moon stands in front of the sun, and it leaves a silver wake as if it were the moon.' },

@@ -1190,6 +1190,10 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .td-mini__wx[data-wx='overcast'] { height: 4px; margin-top: 2px; background: var(--cozy-cream); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
 .td-mini__wx[data-wx='rain'] { width: 4px; height: 6px; background: var(--cozy-river); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
 .td-mini__wx[data-wx='storm'] { width: 4px; height: 8px; background: var(--cozy-brass-hi); box-shadow: 2px 2px 0 0 var(--cozy-brass-hi), 0 0 0 1px var(--cozy-wood-0); }
+/* S8's land specials: an ash flake, a spore, a droplet with a fog line under it. */
+.td-mini__wx[data-wx='ashfall'] { width: 4px; height: 4px; margin-top: 2px; background: var(--cozy-cream); box-shadow: 3px 3px 0 -1px var(--cozy-cream), 0 0 0 1px var(--cozy-wood-0); }
+.td-mini__wx[data-wx='spores'] { width: 4px; height: 4px; margin-top: 2px; border-radius: 0; background: var(--cozy-leaf); box-shadow: 3px -3px 0 -1px var(--cozy-leaf), 0 0 0 1px var(--cozy-wood-0); }
+.td-mini__wx[data-wx='mistrain'] { width: 4px; height: 4px; background: var(--cozy-river); box-shadow: 0 4px 0 0 var(--cozy-cream), 0 0 0 1px var(--cozy-wood-0); }
 .td-mini__wx[data-wx='fog'] { height: 2px; margin-top: 1px; background: var(--cozy-cream); box-shadow: 0 3px 0 0 var(--cozy-cream), 0 0 0 1px var(--cozy-wood-0); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .td-mini__sky { bottom: -8px; padding: 1px 4px 1px 3px; font-size: 9px; gap: 3px; }

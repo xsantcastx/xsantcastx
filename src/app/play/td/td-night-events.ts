@@ -80,6 +80,8 @@ export class NightEvents {
   /** Test hook: an event forced on, from this many seconds ago (`?night=<id>`, fxNight). */
   forced: { id: NightEventId; at: number } | null = null;
   private readonly tracks = new Map<string, Track>();
+  private askedKey = '';
+  private asked: NightEventNow[] = [];
   private readonly news: NightNews[] = [];
   private readonly tmp = { x: 0, y: 0 };
   /** Seconds since the first frame (a forced event counts from here). */
@@ -89,7 +91,16 @@ export class NightEvents {
   update(f: NightFrame): NightNews[] {
     this.clock += f.dt;
     if (!f.surface) { this.now = []; return []; }
-    const live = f.ms === null ? [] : nightEventsAt(f.area, f.ms, f.rolls);
+    // Which events run is asked twice a second (the seeds and the weather walk are cheap, but not every frame's work);
+    // between asks each one's clock just moves on with the world's.
+    const ms = f.ms;
+    let live: NightEventNow[];
+    if (ms === null) live = [];
+    else {
+      const key = `${f.area}|${Math.floor(ms / 500)}`;
+      if (key !== this.askedKey) { this.askedKey = key; this.asked = nightEventsAt(f.area, ms, f.rolls); }
+      live = this.asked.map(e => ({ ...e, t: (ms - e.startMs) / 1000 }));
+    }
     if (this.forced) {
       const t = this.clock - this.forced.at;
       const secs = this.forced.id === 'count-goes-on' ? (COUNT.bells + 1) * COUNT.step : this.forced.id === 'relief-column' ? COLUMN_CALLS_END + 4 : this.forced.id === 'late-shift' ? SHIFT_END + 20 : KILN.glow;
@@ -216,12 +227,17 @@ export class NightEvents {
           at?.(x, y);
           // A fading-in lamp at the shaft, a fading-out one where the walk ends; between, a lamp at hip height, swinging.
           const s = e.t - i * SHIFT.gap, a = Math.min(1, s / 1.5, (SHIFT_WALK - s) / 1.5);
-          const sw = still ? 0 : Math.round(Math.sin(time * 3 + i) * 1);
-          c.globalAlpha = .22 * a; c.fillStyle = '#ffd36d'; c.fillRect(x - 5 + sw, y - 17, 10, 10);
-          c.globalAlpha = .9 * a; c.fillStyle = '#ffe9a8'; c.fillRect(x - 1 + sw, y - 13, 3, 3);
-          c.fillStyle = '#3a3048'; c.fillRect(x + sw, y - 16, 1, 3);
-          // Only the lamp is seen; the one carrying it is the faintest grey.
-          c.globalAlpha = .12 * a; c.fillStyle = '#b8b0bc'; c.fillRect(x - 2, y - 22, 4, 20);
+          const sw = still ? 0 : Math.round(Math.sin(time * 3 + i) * 1), lx = x + 3 + sw, ly = y - 14;
+          // The one carrying it is the faintest grey, a miner's shape; the lamp itself is what is seen from afar.
+          c.globalAlpha = .16 * a; c.fillStyle = '#b8b0bc';
+          c.fillRect(x - 3, y - 24, 6, 6); c.fillRect(x - 4, y - 18, 8, 12); c.fillRect(x - 3, y - 6, 2, 6); c.fillRect(x + 1, y - 6, 2, 6);
+          // A stepped glow round the lamp, then the lamp: a dark frame, a warm pane, its bright wick.
+          c.fillStyle = '#ffd36d';
+          c.globalAlpha = .14 * a; c.fillRect(lx - 9, ly - 6, 18, 14); c.fillRect(lx - 6, ly - 9, 12, 20);
+          c.globalAlpha = .22 * a; c.fillRect(lx - 5, ly - 4, 10, 10);
+          c.globalAlpha = .95 * a; c.fillStyle = '#3a3048'; c.fillRect(lx - 2, ly - 3, 5, 7); c.fillRect(lx, ly - 5, 1, 2);
+          c.fillStyle = '#ffd36d'; c.fillRect(lx - 1, ly - 2, 3, 5);
+          c.fillStyle = '#fff2c8'; c.fillRect(lx, ly - 1, 1, 2);
         }
       } else if (e.id === 'count-goes-on') {
         const g = px(NIGHT_PLACES.gate);

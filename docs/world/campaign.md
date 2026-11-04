@@ -328,7 +328,7 @@ whatever S-work has landed.
   - no section seam is an invisible wall;
   - every section has one thing to read, one sealed thing and one sound (the zone-bible check).
 
-#### S8 [spec'd]: Thunderstorms, the land weathers, and night events batch 1 (M + M, world lane)
+#### S8 [built 2026-11-03, branch `s8storm`, docs/handoff/s8storm.md]: Thunderstorms, the land weathers, and night events batch 1 (M + M, world lane)
 - **What.** world-acts.md §3.2–3.6:
   - Thunderstorm strikes: the 1.2 s tell; never below 10% life; the flash at ≤ 25% and ≤ 1 per 3 s, off under reduced
     motion;
