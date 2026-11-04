@@ -15,6 +15,10 @@ export type Region = '~' | ',' | '.' | 'f' | 'F' | 'h' | 'm' | 'v' | 'l' | 'T'
 export type PlaceKind = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones' | 'harbour' | 'crypt' | 'graveyard' | 'forge' | 'temple'
   /** S10: the Storm-Struck Oak (the Greenwood's heart, monsters-abilities §6.3): a split glassy giant in a ring of stumps. */
   | 'storm-oak'
+  /** S10b: the Last Siege's yard on the Bastion Road (§6.2): the old siege trench where the tower comes out of the ash. */
+  | 'siege-trench'
+  /** S10b: the Three Posts on the Black Meres (§6.4): the widest pool's reed islands, three old lantern posts at its edge. */
+  | 'mere-posts'
   /** S11 part 2: the Sunken Belfry's end out of the water (the Pilgrims' Boardwalk's break, the Black Meres): its way down. */
   | 'belfry';
 

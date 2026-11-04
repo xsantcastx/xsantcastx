@@ -237,10 +237,17 @@ describe('S11 part 2: the Umbral Marches as an act of sections', () => {
     expect(CONTINENTS['umbral-marches-ruins'].places.some(p => p.kind === 'standing-stones' && p.name === 'The Lantern Ring')).toBeTrue();
   });
 
-  it('the Black Meres keep the Three Posts\' pool open for S10b\'s Fogmother: no road, camp, stone or seam within 30 tiles', () => {
+  it('the Black Meres hold the Three Posts (S10b\'s Fogmother): no road but its own boards, camp, stone or seam within 30 tiles; walked to', () => {
     const m = MERES_SECTION;
     expect(m.map[Math.floor(THREE_POSTS_AT.r / 8) + m.oy][Math.floor(THREE_POSTS_AT.c / 8) + m.ox]).toBe('k');
-    for (const road of m.roads) for (let i = 1; i < road.length; i++) expect(segDist(THREE_POSTS_AT.c, THREE_POSTS_AT.r, road[i - 1], road[i])).withContext(`road ${i}`).toBeGreaterThan(30);
+    expect(m.places.some(p => p.kind === 'mere-posts' && p.c === THREE_POSTS_AT.c && p.r === THREE_POSTS_AT.r)).toBeTrue();
+    const fog = WORLD_BOSSES.find(b => b.id === 'fogmother')!;
+    expect(fog.area).toBe('umbral-marches-meres');
+    expect(fog.at).toEqual({ c: THREE_POSTS_AT.c, r: THREE_POSTS_AT.r });
+    expect(reachable('umbral-marches-meres', new TdWorld(m)).has(`${THREE_POSTS_AT.c},${THREE_POSTS_AT.r + 4}`)).toBeTrue();
+    const own = m.roads[m.roads.length - 1];
+    expect(Math.hypot(own[own.length - 1][0] - THREE_POSTS_AT.c, own[own.length - 1][1] - THREE_POSTS_AT.r)).toBeGreaterThanOrEqual(11);
+    for (const road of m.roads.slice(0, -1)) for (let i = 1; i < road.length; i++) expect(segDist(THREE_POSTS_AT.c, THREE_POSTS_AT.r, road[i - 1], road[i])).withContext(`road ${i}`).toBeGreaterThan(30);
     for (const k of m.camps ?? []) expect(Math.hypot(k.c - THREE_POSTS_AT.c, k.r - THREE_POSTS_AT.r)).toBeGreaterThan(30);
     for (const sm of m.seams ?? []) expect(Math.hypot(sm.c - THREE_POSTS_AT.c, sm.r - THREE_POSTS_AT.r)).toBeGreaterThan(30);
     expect(Math.hypot(m.stone!.c - THREE_POSTS_AT.c, m.stone!.r - THREE_POSTS_AT.r)).toBeGreaterThan(30);

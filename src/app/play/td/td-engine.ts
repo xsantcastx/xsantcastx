@@ -45,7 +45,7 @@ import { paintRichGroundHd } from './td-ground';
 import { autoLowerDetail, envDetail, onEnvDetail, underTest } from './td-detail';
 import { skillKit, type KeeperAnim } from './td-skill-kit';
 import { animFrame, animSecs, overlayRects, type AnimFrame } from './td-keeper-anim';
-import { PARTY_HEAD, drawHeadPip, drawPartyMarks, drawPartyRing } from './td-party-fx';
+import { PARTY_HEAD, drawHeadPip, drawPartyMarks, drawPartyRing, drawPostFlame } from './td-party-fx';
 import { WORLD_BOSSES, WORLD_BOSS_KEY, formedBossDef } from '../world/world-bosses';
 import { drawAbilityRing, drawAuraPip, drawBodyTell, drawCastTell, drawFalling, drawHazard, drawMobS6Air, drawPackAir, drawPackGround } from './td-ability-fx';
 import { StatusPeaks, decodeStatuses, drawStatusIcons, encodeStatuses, keeperStatuses, mobStatuses, type StatusShown } from './td-status-icons';
@@ -53,7 +53,7 @@ import { castable } from './td-abilities';
 import { creatureProfile } from '../../shared/loot/creature-families';
 import { AURA_NAMES_EN } from './td-elites';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
-import { TdWorld } from './td-world';
+import { MERE_POSTS, TdWorld } from './td-world';
 import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { BLOCK } from './maps/ember-isle';
@@ -116,7 +116,7 @@ import { hardened, phaseOfHour, touchedRandom } from './td-phases';
 import { SEAM_ID, riftPlace, riftTile, seamEaterAt, seamLeaves, seamRises } from './td-seam';
 import { GAP_TONES, atZoneLevel, gapTone, graveyardZone, landOfArea, regionZone, seamLevelFor, zoneOf } from './td-zones';
 import type { SkyPhase } from '../../shared/world-clock/world-clock.model';
-import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
+import { drawBossBar, drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { weaponSwing, type HeldWeapon } from './td-melee';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { ASH_FX, drawAshAir, drawAshGround, drawAshState } from './td-ashguard-fx';
@@ -268,6 +268,8 @@ function seekVector(dir: SeekReading['dir']): { x: number; y: number } | null {
   return V[dir];
 }
 
+/** S10b (the Director): the 1-px rim of a world boss's own body (td-mobs BOSS_LOOKS), so it holds outside the light. */
+const BOSS_RIM: Readonly<Record<string, string>> = { 'last-siege': '#f0a45a', fogmother: '#cfe3ff' };
 export class TopDownEngine {
   private ctx: CanvasRenderingContext2D;
   /** The world canvas's own context (`ctx` is swapped onto the iso UI layer for the passes over the light). */
@@ -816,6 +818,35 @@ export class TopDownEngine {
         this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
         return { c: Math.floor(spot.x / TILE), r: Math.floor(spot.y / TILE) };
       },
+      // S10b: the same for the Last Siege and the Fogmother — to its arena (`go`), raised beside the Keeper (`raise`);
+      // the tower on its track (it rolls), the Fogmother with her three posts (lit with `light`).
+      go: (id: string) => {
+        const b = WORLD_BOSSES.find(x => x.id === id);
+        if (!b?.at || this.world.def.id !== b.area || this.level !== this.world) return null;
+        const at = b.track?.[1] ?? b.at, spot = standNear(this.world, at.c * TILE + TILE / 2, (at.r + (b.track ? 0 : 4)) * TILE + TILE);
+        this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.placeCompanions();
+        return { c: Math.floor(spot.x / TILE), r: Math.floor(spot.y / TILE) };
+      },
+      raise: (id: string, share = 1, dx = 72, dy = -16) => {
+        const b = WORLD_BOSSES.find(x => x.id === id);
+        if (!b) return null;
+        for (const o of [...this.mobs.mobs]) if (o.form) this.mobs.banish(o);
+        // (The photographs' Keeper is level 1: the level gap would make a form's 1-point blow fell him outright.)
+        this.mobs.levelGap = false;
+        const def = formedBossDef(b, atZoneLevel(MOBS[b.base], b.level));
+        const x = this.player.x + dx, y = this.player.y + dy, m = this.mobs.place(WORLD_BOSS_KEY(b.id), def, x, y);
+        m.form = b.form; m.elite = { rank: 'unique', role: 'leader', affixes: [...b.affixes], name: b.name };
+        m.hp = Math.max(1, Math.round(def.hp * share) - 1);
+        if (b.track) m.track = { pts: [{ x, y }, ...b.track.slice(2).map(p => ({ x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE }))], i: 1, t: 0 };
+        if (b.posts && b.at) m.posts = b.posts.map(p => ({ x: this.player.x + (p.c - b.at!.c) * TILE * .7, y: this.player.y + (p.r - b.at!.r) * TILE * .6, lit: false, hold: 0 }));
+        return { hp: m.hp, max: m.def.hp, look: m.def.sheet ?? null };
+      },
+      light: (n = 3) => {
+        const m = this.mobs.mobs.find(x => x.form && x.posts);
+        if (!m?.posts) return 0;
+        m.posts.slice(0, n).forEach((p, i) => { p.lit = true; this.mobs.partySeen({ m: 'post', n: i, x: p.x, y: p.y, t: 600 }); });
+        return n;
+      },
       storm: (share = 1, dx = 64, dy = -8) => {
         const b = WORLD_BOSSES.find(x => x.id === 'antlered-storm');
         if (!b) return null;
@@ -835,7 +866,7 @@ export class TopDownEngine {
       mark: (e: Parameters<MobSystem['partySeen']>[0]) => { this.mobs.partySeen(e); return true; },
       state: () => {
         const m = this.mobs.mobs.find(x => x.form);
-        return { up: !!m, phase: m?.pb?.phase ?? -1, hp: m ? Math.round(m.hp) : 0, rings: this.mobs.bursts.filter(b => b.pb).length, ringsAt: this.mobs.bursts.filter(b => b.pb).map(b => ({ x: Math.round(b.x), y: Math.round(b.y), r: b.r, t: b.t, tone: b.tone })), others: this.mobs.others.length, cam: { x: Math.round(this.cam.x), y: Math.round(this.cam.y), w: this.cam.w, h: this.cam.h }, marks: this.mobs.partyFx.map(f => f.m), x: Math.round(this.player.x), y: Math.round(this.player.y), stats: m?.pb?.stats ?? null };
+        return { look: m?.def.sheet ?? null, scale: m ? mobScale(m) : 0, track: m?.track ? { i: m.track.i, done: !!m.track.done } : null, posts: m?.pb?.posts.filter(p => p.lit).length ?? -1, cut: m?.pb?.cut ?? 1, up: !!m, phase: m?.pb?.phase ?? -1, hp: m ? Math.round(m.hp) : 0, rings: this.mobs.bursts.filter(b => b.pb).length, ringsAt: this.mobs.bursts.filter(b => b.pb).map(b => ({ x: Math.round(b.x), y: Math.round(b.y), r: b.r, t: b.t, tone: b.tone })), others: this.mobs.others.length, cam: { x: Math.round(this.cam.x), y: Math.round(this.cam.y), w: this.cam.w, h: this.cam.h }, marks: this.mobs.partyFx.map(f => f.m), x: Math.round(this.player.x), y: Math.round(this.player.y), stats: m?.pb?.stats ?? null };
       },
     };
     // The gathering e2e (webdriver only): the spots near the Keeper and where their floats are on the page, a step to near
@@ -1363,7 +1394,7 @@ export class TopDownEngine {
       this.barkT = .5;
       const k = this.player;
       for (const p of this.keepers) {
-        const key = barkFor(p.kid, st);
+        const key = barkFor(p.kid, st, this.phaseNow === 'night');
         if (!key || Math.hypot(p.x - k.x, p.y - k.y) > 5 * TILE) continue;
         const tag = `${p.kid}|${now.window}`;
         if (this.barked.has(tag)) continue;
@@ -1461,6 +1492,13 @@ export class TopDownEngine {
     if (fx.length) {
       drawPartyMarks(c, fx, at, this.time, still);
       for (const f of fx) {
+        // S10b: a lit lantern post's flame, upright in its glass.
+        if (f.m === 'post' && f.x !== undefined && f.y !== undefined) {
+          if (!inView(f.x, f.y, 40)) continue;
+          if (proj) proj.at(f.x, f.y); else { const s = this.scale; c.setTransform(s, 0, 0, s, -this.cam.x * s, -this.cam.y * s); }
+          drawPostFlame(c, f.x, f.y, this.time, still);
+          continue;
+        }
         if ((f.m !== 'fix' && f.m !== 'brand') || f.a === undefined) continue;
         const p = at(f.a);
         if (!p || !inView(p.x, p.y, 40)) continue;
@@ -5013,9 +5051,11 @@ export class TopDownEngine {
     }
     // The weather over the world, under the HUD (td-weather-fx): the dimmed day, the rain, a storm's flash.
     if (this.level === this.world) this.weatherFx.drawScreen(c, this.canvas.width, this.canvas.height, this.scale, this.time, this.frameDt, { still: this.still, low: lowDetail, phone: this.phone, night: this.darkness });
+    if (this.level === this.world) this.drawBossesOver(inView, false);
     this.drawJoystick();
     this.drawWorldUi(inView, fallen);
     this.drawPartyOver(inView);
+    this.drawPostArrows(false);
     this.drawScreenFx();
   }
   /** The drag joystick: a ring where the thumb landed and a knob under it (screen space). */
@@ -5130,6 +5170,82 @@ export class TopDownEngine {
     return v;
   }
   private tintScratch: HTMLCanvasElement | null = null;
+  private rimScratch: HTMLCanvasElement | null = null;
+  /**
+   * S10b (the Director): while the Fogmother's Settle holds, each unlit lantern post off the screen (or within 16 css px of
+   * its edge) gets a gold edge arrow, 24+ css px, with a grey "unlit" pip and its distance in tiles. The posts are her
+   * own (this screen simulates her) or the Three Posts' on the map; lit ones are the `post` marks.
+   */
+  private drawPostArrows(iso: boolean): void {
+    if (!this.mobs.partyFx.some(f => f.m === 'settle') || this.level !== this.world) return;
+    const lit = this.mobs.partyFx.filter(f => f.m === 'post');
+    const own = this.mobs.mobs.find(m => m.pb?.posts.length)?.pb?.posts;
+    const place = this.world.def.places.find(p => p.kind === 'mere-posts');
+    const posts = own ? own.map((p, i) => ({ x: p.x, y: p.y, lit: p.lit || lit.some(f => f.n === i) }))
+      : place ? MERE_POSTS.map(([dc, dr], i) => ({ x: (place.c + dc) * TILE + TILE / 2, y: (place.r + dr) * TILE + TILE, lit: lit.some(f => f.n === i) })) : [];
+    if (!posts.some(p => !p.lit)) return;
+    const c = this.ctx, cv = this.canvas, k = cv.width / (cv.clientWidth || cv.width), W = cv.width, H = cv.height, m = 16 * k, A = 26 * k;
+    const toScreen = (x: number, y: number) => {
+      if (iso) { this.isoAt(x, y); return new DOMPoint(x, y).matrixTransform(c.getTransform()); }
+      return { x: (x - this.cam.x) * this.scale, y: (y - this.cam.y) * this.scale };
+    };
+    const cam0 = { x: this.cam.x, y: this.cam.y }, me = toScreen(this.player.x, this.player.y);
+    c.save();
+    for (const p of posts) {
+      if (p.lit) continue;
+      const q = toScreen(p.x, p.y);
+      if (q.x > m && q.x < W - m && q.y > m && q.y < H - m) continue;
+      const dx = q.x - me.x, dy = q.y - me.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+      // Where the line to it leaves the screen (inset by the arrow), the arrow pointing on.
+      const tx = ux > 0 ? (W - A - me.x) / ux : ux < 0 ? (A - me.x) / ux : Infinity, ty = uy > 0 ? (H - A - me.y) / uy : uy < 0 ? (A - me.y) / uy : Infinity;
+      const t = Math.min(tx, ty, len), ax = me.x + ux * t, ay = me.y + uy * t;
+      c.setTransform(ux * k, uy * k, -uy * k, ux * k, ax, ay);
+      c.fillStyle = '#140c1c'; c.beginPath(); c.moveTo(14, 0); c.lineTo(-10, -12); c.lineTo(-5, 0); c.lineTo(-10, 12); c.closePath(); c.fill();
+      c.fillStyle = '#ffd25a'; c.beginPath(); c.moveTo(11, 0); c.lineTo(-7, -9); c.lineTo(-3, 0); c.lineTo(-7, 9); c.closePath(); c.fill();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      // The "unlit" pip (a grey lantern glass) and the distance, toward the screen's middle from the arrow.
+      const bx = Math.round(ax - ux * 22 * k), by = Math.round(ay - uy * 22 * k);
+      c.fillStyle = '#140c1c'; c.fillRect(bx - 5 * k, by - 7 * k, 10 * k, 12 * k);
+      c.fillStyle = '#5a5666'; c.fillRect(bx - 3 * k, by - 5 * k, 6 * k, 8 * k); c.fillStyle = '#8a8696'; c.fillRect(bx - 2 * k, by - 4 * k, 2 * k, 2 * k);
+      const tiles = Math.round(Math.hypot(p.x - this.player.x, p.y - this.player.y) / TILE);
+      c.font = `bold ${Math.round(10 * k)}px "Pixelify Sans", monospace`; c.textAlign = 'center'; c.textBaseline = 'top';
+      c.fillStyle = '#140c1c'; c.fillText(`${tiles}`, bx + k, by + 7 * k);
+      c.fillStyle = '#ffd25a'; c.fillText(`${tiles}`, bx, by + 6 * k);
+    }
+    c.restore();
+    this.cam.x = cam0.x; this.cam.y = cam0.y;
+  }
+  /** A frame's silhouette in `color`, laid one px out on each side at the current origin (drawMob's): its rim. */
+  private rimFrame(sheet: HTMLCanvasElement, sx: number, w: number, h: number, color: string): void {
+    const t = this.rimScratch ??= document.createElement('canvas');
+    if (t.width < w || t.height < h) { t.width = Math.max(t.width, w); t.height = Math.max(t.height, h); }
+    const g = t.getContext('2d')!;
+    g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, t.width, t.height);
+    g.drawImage(sheet, sx, 0, w, h, 0, 0, w, h);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'source-over';
+    const c = this.ctx, x0 = -Math.floor(w / 2);
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) c.drawImage(t, 0, 0, w, h, x0 + dx, dy, w, h);
+  }
+  /**
+   * S10b (the Director): the world bosses' bodies drawn again over the night, the ash and the fog (after the weather's
+   * screen pass, before the plates), so their own colours and rims hold outside the Keeper's light; at 85% so a Keeper
+   * standing in front still shows through. Their identity marks ride on top.
+   */
+  private drawBossesOver(inView: (x: number, y: number, pad?: number) => boolean, iso: boolean): void {
+    const list = this.mobs.mobs.filter(m => m.hp > 0 && m.def.sheet && BOSS_RIM[m.def.sheet] && inView(m.x, m.y, 160));
+    if (!list.length) return;
+    const c = this.ctx, s = this.scale, cam0 = { x: this.cam.x, y: this.cam.y };
+    c.save();
+    for (const m of list) {
+      if (iso) this.isoAt(m.x, m.y); else c.setTransform(s, 0, 0, s, -this.cam.x * s, -this.cam.y * s);
+      c.globalAlpha = .85;
+      this.drawMob(m);
+      c.globalAlpha = 1;
+    }
+    c.restore();
+    this.cam.x = cam0.x; this.cam.y = cam0.y;
+  }
   /** Lay `color` at `alpha` over a sheet frame's own pixels only, at the current transform's origin (drawMob's). */
   private tintFrame(sheet: HTMLCanvasElement, sx: number, w: number, h: number, color: string, alpha: number): void {
     const t = this.tintScratch ??= document.createElement('canvas');
@@ -5147,11 +5263,12 @@ export class TopDownEngine {
     // S10: a scaled world boss (the Antlered Storm, ×3): the same figure, nearest-neighbour, round its feet.
     setMobScaleCap(optHdFigures() && envDetail() !== 'low' ? 3 : 2);
     const S = mobScale(m);
-    if (S !== 1) { this.ctx.save(); this.ctx.translate(Math.round(m.x), Math.round(m.y)); this.ctx.scale(S, S); this.ctx.translate(-Math.round(m.x), -Math.round(m.y)); try { this.drawMobBody(m); } finally { this.ctx.restore(); } this.drawStormMark(m, S); return; }
+    if (S !== 1) { this.ctx.save(); this.ctx.imageSmoothingEnabled = false; this.ctx.translate(Math.round(m.x), Math.round(m.y)); this.ctx.scale(S, S); this.ctx.translate(-Math.round(m.x), -Math.round(m.y)); try { this.drawMobBody(m); } finally { this.ctx.restore(); } this.drawStormMark(m, S); return; }
     this.drawMobBody(m);
   }
   /** S10: what the Antlered Storm is — white sparks at its antler tips and the Oak's glass-vein cyan along them. */
   private drawStormMark(m: Mob, S: number): void {
+    if (m.def.sheet === 'last-siege' || m.def.sheet === 'fogmother') { this.drawNightBossMark(m, S); return; }
     if (m.def.id !== 'rootglass-hart') return;
     const c = this.ctx, h = mobCell(m.def).h * S, X = Math.round(m.x), Y = Math.round(m.y - h), f = m.face, still = this.still || envDetail() === 'low';
     const tips: [number, number][] = [[-10, 2], [-4, -2], [4, -2], [10, 2], [-14, 8], [14, 8]];
@@ -5164,6 +5281,34 @@ export class TopDownEngine {
       const x = X + dx * f + f * 8, y = Y + dy + 4;
       c.globalAlpha = 1; c.fillStyle = '#ffffff'; c.fillRect(x, y, 2, 2);
       c.globalAlpha = .5; c.fillStyle = '#cfe8ff'; c.fillRect(x - 1, y + 1, 4, 1); c.fillRect(x + 1, y - 1, 1, 4);
+    }
+    c.restore();
+  }
+  /**
+   * S10b: what the night's world bosses are, at a glance — the Last Siege: embers rising off the coal in its catapult's
+   * cup and a smoke curl; the Fogmother: three pale fog wisps slowly circling her hem. A few pixels each; steady on Low.
+   */
+  private drawNightBossMark(m: Mob, S: number): void {
+    const c = this.ctx, h = mobCell(m.def).h * S, X = Math.round(m.x), Y = Math.round(m.y), still = this.still || envDetail() === 'low';
+    const px = (x: number, y: number, w: number, hh: number, col: string, a = 1) => { c.globalAlpha = a; c.fillStyle = '#140c1c'; c.fillRect(x - 1, y - 1, w + 2, hh + 2); c.fillStyle = col; c.fillRect(x, y, w, hh); };
+    c.save();
+    if (m.def.sheet === 'last-siege') {
+      // The coal in the catapult's cup (its top corner, the far side from the ram): embers rising, a smoke curl.
+      const cx = X - m.face * Math.round(h * .32), cy = Math.round(Y - h + 4);
+      px(cx - 3, cy - 3, 6, 5, '#ff8a2e'); px(cx - 1, cy - 2, 2, 2, '#fff2a8');
+      for (let i = 0; i < 4; i++) {
+        const t = still ? (i + 1) / 5 : (this.time * .7 + i / 4) % 1, x = cx + Math.round(Math.sin(t * 6 + i) * 4), y = cy - 4 - Math.round(t * 26);
+        px(x, y, 3, 3, i % 2 ? '#ffb347' : '#fff2a8', still ? 1 : Math.max(.3, 1 - t));
+      }
+      c.globalAlpha = .7; c.fillStyle = '#9a9088';
+      for (let i = 0; i < 3; i++) c.fillRect(cx - 4 + i * 3, cy - 34 - i * 4, 4, 3);
+    } else {
+      // Three fog wisps circling her hem, pale, outlined so they read on fog.
+      for (let i = 0; i < 3; i++) {
+        const a = (still ? .6 : this.time * .6) + i * Math.PI * 2 / 3, x = X + Math.round(Math.cos(a) * 9 * S), y = Y - 3 + Math.round(Math.sin(a) * 2 * S);
+        px(x - 7, y, 15, 3, '#d6d2da', .95); c.fillStyle = '#ffffff'; c.fillRect(x - 2, y, 5, 1);
+        px(x - 3 + (i % 2 ? 4 : -4), y - 3, 5, 2, '#eef0f4', .9);
+      }
     }
     c.restore();
   }
@@ -5186,7 +5331,8 @@ export class TopDownEngine {
     // Teleport's wind-up: it thins out where it stands before it is gone.
     if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
     // Isometric B's HD creatures (td-hd-creatures.ts): posed per clip, the true facing baked (never a mirror).
-    if (optHdFigures() && hasHdModel(m.def.id) && envDetail() !== 'low') {
+    // (S10b: a world boss with its own body — the tower, the Fogmother — is drawn from its own sheet in both views.)
+    if (optHdFigures() && hasHdModel(m.def.id) && !m.def.sheet && envDetail() !== 'low') {
       c.restore(); c.save();
       c.translate(Math.round(m.x), Math.round(m.y) + 1 - lift);
       if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14;
@@ -5200,6 +5346,9 @@ export class TopDownEngine {
       drawMobS6Air(c, m, this.time, this.still);
       return;
     }
+    // S10b (the Director): a world boss with its own body wears a 1-px rim of its colour, so it holds outside the light.
+    const rim = m.def.sheet ? BOSS_RIM[m.def.sheet] : undefined;
+    if (rim) this.rimFrame(sheet, f * d.w, d.w, d.h, rim);
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
     // An elite's body tone: a champion blue, a unique leader a breath of gold (never over 25 %).
     // The tints lie on the figure only (a scratch copy of its frame, tinted, laid over it): on the opaque world canvas a
@@ -6273,7 +6422,23 @@ export class TopDownEngine {
   private drawFightUi(inView: (x: number, y: number, pad?: number) => boolean): void {
     const c = this.ctx;
     c.textAlign = 'center'; c.textBaseline = 'bottom';
+    // S10b (the Director): a world boss's body is its own: no bystander's name or bar is drawn on it (within two tiles
+    // of it), and its own plate goes to screen space (drawWorldBossBar) — never under the HUD.
+    // (A world boss's key is `wb:<id>`; what it calls is `wb:<id>~…`, a bystander like any other.)
+    const isBoss = (m: Mob) => m.key.startsWith('wb:') && !m.key.includes('~');
+    const bosses = this.mobs.mobs.filter(m => m.hp > 0 && isBoss(m) && inView(m.x, m.y, 200));
+    const onBoss = (m: Mob) => !isBoss(m) && bosses.some(b => { const S = mobScale(b), d = this.vis(b.def), hw = d.w * S / 2 + 2 * TILE; return Math.abs(m.x - b.x) <= hw && m.y >= b.y - d.h * S - 2 * TILE && m.y <= b.y + 2 * TILE; });
+    let boss: { m: Mob; sx: number; sy: number } | null = null;
     for (const m of this.mobs.mobs) {
+      if (bosses.length && onBoss(m)) continue;
+      if (isBoss(m) && m.elite && m.hp > 0) {
+        if (inView(m.x, m.y, 200) && (!boss || Math.hypot(m.x - this.player.x, m.y - this.player.y) < Math.hypot(boss.m.x - this.player.x, boss.m.y - this.player.y))) {
+          this.at(m.x, m.y);
+          const p = new DOMPoint(m.x, m.y - this.vis(m.def).h * mobScale(m) - 6).matrixTransform(c.getTransform());
+          boss = { m, sx: p.x, sy: p.y };
+        }
+        continue;
+      }
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
         if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true) && !this.plateOnKeeper(m, m.x, m.y - this.vis(m.def).h * mobScale(m) - 4, 18, 18)) {
@@ -6369,6 +6534,7 @@ export class TopDownEngine {
     // For the screenshot spec (e2e/td-cant-shots.spec.ts): the canvas says what the Keeper is saying.
     const said = k?.text ?? '';
     if (said !== this.cantSeen) { this.cantSeen = said; this.canvas.setAttribute('data-cant', said); }
+    if (boss) this.drawWorldBossBar(boss.m, boss.sx, boss.sy);
   }
   /**
    * A spoken line (the Seam-Cant): pixel text in a tone, outlined one pixel in the night ink, that eases in, drifts up
@@ -6577,6 +6743,37 @@ export class TopDownEngine {
     return x - half < kx + 8 && x + half > kx - 8 && top - up < ky + 1 && top + 3 > ky - 30;
   }
   private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
+  /**
+   * S10b (the Director): a world boss's name and life, in screen space. Wide: over its head but never above the top band
+   * (64 css px) or the Glim toast's foot (+8), and left of the minimap's corner. Narrow (≤520 css px): a fixed bar under the
+   * minimap row and the toast. The same for every world boss (the Antlered Storm too).
+   */
+  private drawWorldBossBar(m: Mob, sx: number, sy: number): void {
+    const cv = this.canvas, cw = cv.clientWidth || cv.width, k = cv.width / cw, W = cv.width;
+    const r = this.hudReserve(), name = m.elite?.name ?? m.def.name, frac = m.hp / m.def.hp;
+    const narrow = cw <= 520, w = Math.round((narrow ? Math.min(cw * .7, 260) : 180) * k);
+    let cx = sx, y = sy;
+    // (Its name stands 18 css px over the bar: the bar's top is the HUD's foot + 8 + that.)
+    if (narrow) { cx = W / 2; y = (Math.min(260, Math.max(r.mini, r.toast, 64)) + 8 + 18) * k; }
+    else {
+      y = Math.max(y, (Math.max(64, r.toast) + 8 + 18) * k);
+      const half = Math.max(w / 2, 90 * k) + 6 * k, hi = W - (y < (r.mini + 16) * k ? this.hudCornerPx() : 0) - half;
+      cx = Math.max(half, Math.min(hi, cx));
+    }
+    drawBossBar(this.ctx, name, frac, cx, y, w, k, m === this.mobs.target);
+  }
+  private hudRes = { at: -1, mini: 0, toast: 0 };
+  /** The HUD's foot in css px from the canvas's top (re-measured twice a second): the minimap row's, the Glim toast's. */
+  private hudReserve(): { mini: number; toast: number } {
+    if (this.time - this.hudRes.at < .2 && this.hudRes.at >= 0) return this.hudRes;
+    const top = this.canvas.getBoundingClientRect().top, foot = (sel: string) => {
+      let b = 0;
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>(sel))) { const q = el.getBoundingClientRect(); if (q.height > 0 && q.top - top < 260) b = Math.max(b, q.bottom - top); }
+      return b;
+    };
+    this.hudRes = { at: this.time, mini: foot('.td-mini, .td-mini *, .soul-pip'), toast: foot('.glim-say, .glim-say *, .td-toast, .th-ticker, .th-ticker *') };
+    return this.hudRes;
+  }
   /** The same corner's foot (the minimap, its clock and the Soul line, ~190 CSS px) in canvas px: below it a plate stays in its own column. */
   private hudCornerBottomPx(): number {
     const w = this.canvas.clientWidth || this.canvas.width, k = this.canvas.width / w, cw = this.canvas.width, a = this.hud.avoid;
@@ -6812,12 +7009,14 @@ export class TopDownEngine {
     if (surface) this.drawSkyOver(inView, this.isoProj);
     this.drawFireflies();
     if (surface) this.weatherFx.drawScreen(this.ctx, cw, ch, s, this.time, this.frameDt, { still: this.still, low: lowDetail, phone: this.phone, night: this.darkness });
+    if (surface) this.drawBossesOver(inView, true);
     this.prof(5);
     this.drawJoystick();
     // World UI over everything: plates, task marks, effects, the way, names and bars, labels.
     // (S10: a party boss's rings and marks go over them and the rain: drawPartyOver, after the world UI below.)
     if (!(this.isoSkip & 32)) this.drawWorldUi(inView, fallen);
     if (surface || this.mobs.partyFx.length) this.drawPartyOver(inView, this.isoProj);
+    if (surface) this.drawPostArrows(true);
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.drawScreenFx();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);

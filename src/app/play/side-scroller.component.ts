@@ -3674,6 +3674,15 @@ export class SideScrollerComponent implements OnDestroy {
   get zoneDangerous(): boolean { const z = this.topDown ? this.state.zone : null; return !!z && !z.safe && zoneDanger(z.band, this.huntingLevel); }
   /** A band shown on the Map: is it dangerous for this Keeper? */
   bandDanger(band: readonly [number, number] | undefined): boolean { return zoneDanger(band, this.huntingLevel); }
+  /**
+   * The place card's small line: the land the Keeper stands in (top-down), else the realm town's. S10b fix: it read the
+   * realm town's label ("Infernal") over every land's places, the Three Posts and the Storm-Struck Oak included.
+   */
+  private get cardRealm(): string {
+    const at = this.topDown ? (this.engine as unknown as { whereabouts?: { continent: string } } | undefined)?.whereabouts?.continent ?? '' : '';
+    const land = (['ember-isle', 'infernal-reach', 'verdant-wilds', 'umbral-marches'] as const).find(l => at === l || at.startsWith(`${l}-`));
+    return land ? titleCase(land.replace(/-/g, ' ')) : this.realmLabel;
+  }
   private tickAreaCard(): void {
     const title = this.areaTitle;
     if (!title) return;
@@ -3681,7 +3690,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (title !== this.areaCardPending) { this.areaCardPending = title; this.areaCardSince = Date.now(); return; }
     if (title === this.areaCardSeen || Date.now() - this.areaCardSince < 1200) return;
     this.areaCardSeen = title;
-    this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1, lv: this.zoneLabel, danger: this.zoneDangerous };
+    this.areaCard = { title, realm: this.cardRealm, n: (this.areaCard?.n ?? 0) + 1, lv: this.zoneLabel, danger: this.zoneDangerous };
     clearTimeout(this.areaCardTimer);
     this.areaCardTimer = setTimeout(() => this.zone.run(() => { this.areaCard = null; }), 3600);
   }

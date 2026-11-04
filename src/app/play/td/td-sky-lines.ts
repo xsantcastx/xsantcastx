@@ -6,7 +6,7 @@
  */
 import type { WeatherState } from '../../shared/weather/weather.model';
 
-export interface WeatherBark { npc: string; states: readonly WeatherState[]; key: string }
+export interface WeatherBark { npc: string; states: readonly WeatherState[]; key: string; /** S10b: only after dark (a night boss's rumour). */ night?: boolean }
 
 /** By keeper id (the town maps' and the piers' givers), the weather they speak in, and their line's key. */
 export const WEATHER_BARKS: readonly WeatherBark[] = [
@@ -17,15 +17,21 @@ export const WEATHER_BARKS: readonly WeatherBark[] = [
   // S10: the Antlered Storm's rumours (monsters-abilities §6.3): in a thunderstorm the Wilds talk about the Oak.
   { npc: 'warden-fenn', states: ['storm'], key: 'weather.bark.fennStorm' },
   { npc: 'teo-alder', states: ['storm'], key: 'weather.bark.alderStorm' },
+  // S10b: the Last Siege's and the Fogmother's rumours (monsters-abilities §6.2, §6.4): ashfall nights in the Reach,
+  // foggy nights in the Marches (before the day's own lines, so a night's line wins after dark).
+  { npc: 'captain-vey', states: ['ashfall'], key: 'weather.bark.veySiege', night: true },
+  { npc: 'garrick-dross', states: ['ashfall'], key: 'weather.bark.drossSiege', night: true },
+  { npc: 'harbourmaster-old-corvane', states: ['fog'], key: 'weather.bark.corvaneFog', night: true },
+  { npc: 'dace-morrow', states: ['fog'], key: 'weather.bark.morrowFog', night: true },
   { npc: 'harbourmaster-old-corvane', states: ['fog', 'mistrain'], key: 'weather.bark.corvane' },
 ];
 /** How near (tiles) the Keeper walks for one of them to speak. */
 export const BARK_REACH = 5;
 
 /** The line a keeper says in this weather, or null. */
-export function barkFor(npc: string | undefined, state: WeatherState): string | null {
+export function barkFor(npc: string | undefined, state: WeatherState, night = false): string | null {
   if (!npc) return null;
-  const b = WEATHER_BARKS.find(x => x.npc === npc && x.states.includes(state));
+  const b = WEATHER_BARKS.find(x => x.npc === npc && x.states.includes(state) && (!x.night || night));
   return b ? b.key : null;
 }
 

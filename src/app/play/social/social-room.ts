@@ -196,7 +196,7 @@ export const ROOM_EVERYWHERE_PROTOCOL = 9;
  */
 export const ROOM_LIFE_PROTOCOL = 10;
 /** A world boss rose, fell or left unfound (protocol 9; play/world/world-bosses.ts): the omen line is the client's. */
-export interface RoomWorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone'; level: number }
+export interface RoomWorldOmen { boss: string; name: string; area: string; at: 'rise' | 'fall' | 'gone' | 'kept' | 'home'; level: number }
 /** The room's weather (scripts/social-world.mjs `world-weather`): a window and each land's roll in it (0..1). */
 export interface RoomWorldWeather { window: number; lands: Record<string, number>; now: number }
 /** What the room accepts as a character id (character-scope.ts). */
@@ -482,7 +482,7 @@ export class SocialRoom {
     if (data['type'] === 'world-credit' && typeof data['ok'] === 'boolean' && Array.isArray(data['ids'])) {
       this.options.onWorldCredit?.({ ok: data['ok'] as boolean, xp: Number(data['xp']) || 0, gold: Number(data['gold']) || 0, debt: Number(data['debt']) || 0, ids: (data['ids'] as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 64), ...(typeof data['why'] === 'string' ? { why: data['why'] as string } : {}) });
     }
-    if (data['type'] === 'world-omen' && typeof data['boss'] === 'string' && /^[a-z0-9-]{1,40}$/.test(data['boss'] as string) && (data['at'] === 'rise' || data['at'] === 'fall' || data['at'] === 'gone')) {
+    if (data['type'] === 'world-omen' && typeof data['boss'] === 'string' && /^[a-z0-9-]{1,40}$/.test(data['boss'] as string) && (data['at'] === 'rise' || data['at'] === 'fall' || data['at'] === 'gone' || data['at'] === 'kept' || data['at'] === 'home')) {
       this.options.onWorldOmen?.({ boss: data['boss'] as string, name: String(data['name'] ?? '').slice(0, 40), area: String(data['area'] ?? '').slice(0, 40), at: data['at'] as RoomWorldOmen['at'], level: Number(data['level']) || 1 });
     }
     // Weather v1: the room's roll for the window (every land's), so every Keeper sees one sky whatever their clock says.

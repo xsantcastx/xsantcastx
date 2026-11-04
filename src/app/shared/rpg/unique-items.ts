@@ -296,6 +296,24 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     lore: 'The hart wanted to be a tree. The tree wanted to be the storm. Neither asked the antlers.',
   },
   {
+    // S10b (monsters-abilities §6.2): the Last Siege's own, 1 in 10 at its fall, only ever Legendary.
+    id: 'unique-wall-that-kept-walking', name: 'The Wall That Kept Walking', rarity: 'legendary', slot: 'off-hand', style: 'infernal',
+    rollKeys: ['blockChance', 'defense', 'fireResist', 'life'], base: { blockChance: 16, defense: 7, fireResist: 10, life: 14 },
+    passive: { effect: 'relic', text: 'While you have not moved for 2 seconds, you and party members within 3 tiles take 15% less damage.' },
+    sig: { holdLine: 15 },
+    boss: 'last-siege',
+    lore: 'It held the line so well that it carried the line with it.',
+  },
+  {
+    // S10b (§6.4): the Fogmother's own, 1 in 10 at her fall, only ever Legendary.
+    id: 'unique-psalm-heard-through-water', name: 'The Psalm Heard Through Water', rarity: 'legendary', slot: 'trinket', style: 'umbral',
+    rollKeys: ['coldResist', 'lightningResist', 'mana', 'castSpeed'], base: { coldResist: 8, lightningResist: 8, mana: 16, castSpeed: 6 },
+    passive: { effect: 'relic', text: '25% more healing done; your heals on a Keeper standing in fog or darkness lift Chill and give them +1 light for 4 seconds.' },
+    sig: { psalm: 25 },
+    boss: 'fogmother',
+    lore: 'She sang it wrong for so long that it became a different hymn, and that one works.',
+  },
+  {
     id: 'unique-heartwood-of-the-verge', name: 'Heartwood of the Verge', rarity: 'mythic', slot: 'chest', style: 'verdant',
     rollKeys: ['ward', 'goldFind', 'xpBonus'], base: { ward: 9, goldFind: 5, xpBonus: 10 },
     passive: { effect: 'idle-drift', text: '+3 life a second, always.' },
