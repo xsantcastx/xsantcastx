@@ -1,0 +1,206 @@
+/* ── The portrait phone's thumb-zone HUD: the play view's own pieces, moved into their zones ──
+   docs/design/ui-pass-3.md §A.2. The pieces the thumb HUD draws itself (play/thumb-hud: the arc, the disc, the belt
+   column, the bag row, the ticker, the face chip, ☰ More) are styled there. This sheet, loaded last, moves the rest:
+   the minimap, the orbs and Soul, Glim, the goal chip, the party frames and the pet chip, and folds away what the
+   thumb HUD replaces (the chat box, the prompt bar, Glim's centre card, the area card, the top-right ☰, the dock).
+   Every offset is CSS px from the safe area. Regular and compact (.stage--compact: W < 380 or H < 700). Nothing
+   persistent intersects the play centre (0.25W–0.75W × 0.25H–0.75H). */
+.stage--thumb {
+  --th-sl: env(safe-area-inset-left, 0px); --th-sr: env(safe-area-inset-right, 0px); --th-st: env(safe-area-inset-top, 0px);
+  --th-mini: 96px; --th-party-top: 172px; --th-party-w: 132px;
+}
+.stage--thumb.stage--compact { --th-mini: 88px; --th-party-top: 156px; --th-party-w: 120px; }
+
+/* What the thumb HUD replaces on a portrait phone. */
+.stage--thumb .prompt, .stage--thumb .glim-say, .stage--thumb .area-card, .stage--thumb .td-toast, .stage--thumb .objective,
+.stage--thumb .top-actions, .stage--thumb .td-chat-tab, .stage--thumb .touch, .stage--thumb .guide-fold { display: none !important; }
+.stage--thumb:not(.stage--chat) .td-chat { display: none !important; }
+/* A window (the satchel, the map, a station) is a modal task: the thumb HUD steps back under it. */
+.stage--thumb.stage--menu app-thumb-hud { visibility: hidden; }
+
+/* ── Top band, right: the minimap, the orbs beside it, Soul and the XP strip under it ── */
+.stage--thumb .td-mini { top: calc(var(--th-st) + 8px) !important; right: calc(var(--th-sr) + 8px) !important; width: var(--th-mini) !important; height: var(--th-mini) !important; }
+.stage--thumb .td-mini__sky { display: none; }
+.stage--thumb .td-orbs { position: absolute; display: block; top: 0; right: 0; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.stage--thumb .td-orbs .td-orb { position: absolute; right: calc(var(--th-sr) + var(--th-mini) + 12px); width: 44px; height: 44px; pointer-events: auto; cursor: pointer; }
+.stage--thumb .td-orbs .td-orb--hp { top: calc(var(--th-st) + 8px); }
+.stage--thumb .td-orbs .td-orb--mana { top: calc(var(--th-st) + 56px); }
+.stage--thumb .td-orbs .td-soul { position: absolute; right: calc(var(--th-sr) + 8px); top: calc(var(--th-st) + 108px); width: var(--th-mini); height: 20px; box-sizing: border-box;
+  display: flex; align-items: center; gap: 6px; padding: 0 6px; font: 700 12px/1 var(--cozy-font-read); }
+.stage--thumb .td-orbs .td-soul .soul-pip { flex: none; }
+/* The running aura: an integer sprite (32 px, no zoom) in the left column under the pet chip, off the minimap's rim. */
+.stage--thumb .td-orbs .td-aura-badge { position: absolute; zoom: 1; width: 36px; height: 36px; right: auto; left: calc(var(--th-sl) + 12px - 100vw); top: calc(var(--th-st) + var(--th-party-top) + 52px); pointer-events: none; }
+.stage--thumb .td-orbs .td-debt { position: absolute; right: calc(var(--th-sr) + 8px); top: calc(var(--th-st) + 144px); width: var(--th-mini); box-sizing: border-box; max-width: none; }
+.stage--thumb .td-xp { position: absolute !important; left: auto !important; right: calc(var(--th-sr) + 8px) !important; top: calc(var(--th-st) + 132px) !important; bottom: auto !important;
+  width: var(--th-mini) !important; height: 8px !important; z-index: 6; }
+.stage--thumb .td-xp .td-xp__tip { top: 14px; bottom: auto; right: 0; left: auto; translate: none; }
+
+/* ── Top band, left: Glim beside the face chip; the goal chip under them ── */
+.stage--thumb .glim-hud { position: absolute !important; left: calc(var(--th-sl) + 56px) !important; top: calc(var(--th-st) + 8px) !important; right: auto !important; bottom: auto !important;
+  width: 44px !important; height: 44px !important; margin: 0 !important; z-index: 7; }
+.stage--thumb .guide, .stage--thumb .guide--list {
+  position: absolute !important; z-index: 7; left: calc(var(--th-sl) + 8px) !important; top: calc(var(--th-st) + 56px) !important; right: auto !important; bottom: auto !important;
+  width: calc(100% - 168px - var(--th-sl) - var(--th-sr)) !important; max-width: none !important; height: 44px !important; min-height: 0 !important; margin: 0 !important;
+  box-sizing: border-box; padding: 0 0 4px 8px !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 4px !important;
+  overflow: hidden !important; cursor: pointer; translate: none !important;
+}
+.stage--thumb .guide:not(.guide--open) > :not(.guide-text, .guide-go) { display: none !important; }
+.stage--thumb .guide:not(.guide--open) .guide-text { position: relative; flex: 1 1 auto; min-width: 0; margin: 0; padding-right: 0; font: 500 12px/16px var(--cozy-font-read) !important;
+  white-space: normal; overflow: hidden; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* The step's words ("Step 1 of 7") make way for the text: the bar under the chip carries the count, a 1/7 badge names it. */
+.stage--thumb .guide:not(.guide--open) .guide-text b { display: none; }
+.stage--thumb .guide:not(.guide--open) .guide-text[data-step]::before { content: attr(data-step); float: left; margin: 1px 6px 0 0; padding: 0 4px;
+  font: 700 11px/14px var(--cozy-font-read); color: var(--cozy-ink); background: var(--cozy-brass-hi); box-shadow: 0 0 0 1px var(--cozy-wood-0); }
+.stage--thumb .guide:not(.guide--open) .guide-go { flex: none; width: 44px; min-width: 44px; height: 40px; min-height: 0 !important; padding: 0 !important; font-size: 0 !important; display: grid; place-items: center; }
+.stage--thumb .guide:not(.guide--open) .guide-go::before { content: "▸"; font: 700 20px/1 var(--cozy-font-read); }
+/* The 4 px progress bar along the chip's foot: it carries the step count. */
+.stage--thumb .guide::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; pointer-events: none;
+  background: linear-gradient(90deg, var(--cozy-leaf) calc(var(--goal-p, 0) * 100%), color-mix(in srgb, var(--cozy-wood-0) 60%, transparent) 0); }
+.stage--thumb .guide.guide--open { height: auto !important; max-height: min(60%, 420px); overflow-y: auto !important; flex-direction: column !important; align-items: stretch !important;
+  padding: 8px 8px 12px !important; z-index: 20; cursor: default; }
+.stage--thumb .guide.guide--open .guide-list { display: block; }
+
+/* ── Party frames and the pet chip: outside the centre's x range ── */
+.stage--thumb .td-party { left: auto !important; right: calc(var(--th-sr) + 8px) !important; top: calc(var(--th-st) + var(--th-party-top)) !important; width: var(--th-party-w) !important; translate: none !important; }
+.stage--thumb .td-pet { position: absolute; left: calc(var(--th-sl) + 8px) !important; top: calc(var(--th-st) + var(--th-party-top)) !important; right: auto !important; bottom: auto !important;
+  width: 44px !important; height: 44px !important; min-width: 0 !important; padding: 2px !important; overflow: hidden; translate: none !important; }
+.stage--thumb .td-pet .td-pet__txt { display: none; }
+.stage--thumb .td-hush { left: calc(var(--th-sl) + 8px) !important; right: auto !important; top: calc(var(--th-st) + var(--th-party-top) + 100px) !important; translate: none !important; max-width: 88px; }
+
+/* ── The Chat sheet (from the ticker or ☰ More): a window under the top band, out of the thumbs' way ── */
+.stage--thumb.stage--chat .td-chat { position: absolute !important; z-index: 30; left: calc(var(--th-sl) + 8px) !important; right: calc(var(--th-sr) + 8px) !important;
+  top: calc(var(--th-st) + 108px) !important; bottom: auto !important; width: auto !important; max-width: none !important; max-height: min(52%, 420px, calc(100% - 124px - var(--kb-inset, 0px))); overflow-y: auto; opacity: 1 !important; translate: none !important; }
+
+/* ── The satchel on a portrait phone (§A.3): a full-screen sheet, Bag | Worn | Nearby, the grid as two 5-column pages ──
+   At 360×640 the Bag tab holds the head (52), the belt strip (56), the page header (44), six rows of 64 px cells (384)
+   and the foot (56) with no scrolling. */
+.book.book--thumb {
+  /* Anchored to the bottom, as tall as its content: the tabs come down into the thumb's reach on a tall phone. */
+  top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  left: calc(10px + env(safe-area-inset-left, 0px)) !important; right: calc(10px + env(safe-area-inset-right, 0px)) !important;
+  width: auto !important; max-width: none !important; height: auto !important; max-height: calc(100% - 18px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important; margin: 0 !important;
+  padding: 0 9px 6px !important; border: 0 !important; border-radius: 0 !important; gap: 4px !important; display: flex; flex-direction: column;
+  --cell: min(64px, round(down, calc((100vw - 40px) / 5), 1px));
+}
+.book.book--thumb .win-head::before { display: none; }
+.book--thumb .book-head { min-height: 52px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 !important; margin: 0 !important; }
+.book--thumb .book-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font: 400 16px/1.1 var(--font-pixel) !important; white-space: nowrap; overflow: hidden; }
+.stage--compact .book--thumb .book-head h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.book--thumb .book-head .win-x { flex: none; width: 44px; height: 44px; min-width: 44px; }
+.book--thumb .book-head .win-x__label { display: none; }
+.book-tabs { flex: none; display: flex; gap: 4px; margin-left: auto; }
+.book-tab { position: relative; min-width: 76px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 0; cursor: pointer;
+  font: 400 14px/1 var(--font-pixel); color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); white-space: nowrap; }
+.book-tab.is-on { background: var(--cozy-wood-3); box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
+.book-tab.is-drop-over { box-shadow: var(--px-btn-rim), inset 0 0 0 3px var(--cozy-glow); }
+.book-tab__n, .book-face .book-tab__n { position: absolute; top: -6px; right: -4px; min-width: 18px; height: 18px; padding: 0 3px; display: grid; place-items: center;
+  font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-ink); background: var(--cozy-brass-hi); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+.book-face { position: relative; }
+.book--thumb .book-body { flex: 1 1 auto; min-height: 0; display: flex !important; flex-direction: column; gap: 4px !important; overflow: auto; padding: 0 !important; }
+.book--thumb[data-bag-tab='bag'] .book-body { overflow: hidden; }
+.book--thumb .book-bag { gap: 4px !important; flex: 1 1 auto; min-height: 0; }
+.book--thumb .book-bag[hidden], .book--thumb .book-doll[hidden], .book-doll[hidden], .book-bag[hidden] { display: none !important; }
+/* The belt strip: the six belt keys as 48 px wells with their caps, the "Belt" label at 11. */
+.book--thumb .book-belt--strip { flex: none; height: 56px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.book--thumb .book-belt--strip .book-belt__label { flex: none; width: 24px; font: 600 11px/1 var(--cozy-font-read); color: var(--cozy-brass-hi); writing-mode: vertical-rl; rotate: 180deg; text-align: center; }
+.book--thumb .book-belt--strip .book-belt__slot { flex: 0 0 48px; width: 48px; height: 48px; }
+.book--thumb .book-belt--strip .book-belt__slot kbd { font: 700 10px/1 var(--cozy-font-read); }
+/* The page header: ◀ Pocket 1 · Pocket 2 ▶, each half 44 tall; the open page brass-rimmed, a count of its pieces. */
+.book-pages { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.book-pages .book-page { position: relative; width: auto; height: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px;
+  font: 400 14px/1 var(--font-pixel); color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
+.book-pages .book-page[aria-pressed='true'] { background: var(--cozy-wood-3); box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
+.book-pages .book-page.is-drop-over { box-shadow: var(--px-btn-rim), inset 0 0 0 3px var(--cozy-glow); }
+.book-page__dot { min-width: 18px; height: 18px; padding: 0 3px; display: inline-grid; place-items: center; font: 700 11px/1 var(--cozy-font-read); font-style: normal;
+  color: var(--cozy-cream); background: var(--cozy-wood-0); }
+/* The grid: 64 px cells (five across the window), six rows in view; bought rows scroll inside the grid's own area. */
+.book--thumb .satchel-grid { flex: none; --cell: inherit; align-self: center; max-height: calc(6 * var(--cell) + 4px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.book--thumb .book-purse { flex: none; min-height: 56px; margin: 0 !important; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 4px 8px !important; }
+.book--thumb .book-purse .purse-gold { font: 700 15px/1 var(--cozy-font-read); }
+.book--thumb .book-purse .grid-sort { min-height: 44px; }
+/* Sideways phones: two pages of 44 px cells beside the doll (Wave B finishes this layout). */
+.book--paged:not(.book--thumb) .satchel-grid { --cell: 44px; }
+.book--paged:not(.book--thumb) .book-pages .book-page { font-size: 13px; white-space: nowrap; }
+/* Sideways the bag column scrolls: a 12 px fade at its foot says more rows wait below. */
+.book--paged:not(.book--thumb) .book-body { -webkit-mask-image: linear-gradient(to bottom, var(--cozy-wood-0) calc(100% - 12px), transparent); mask-image: linear-gradient(to bottom, var(--cozy-wood-0) calc(100% - 12px), transparent); }
+
+/* The Worn tab: the doll with 64 px slots, the slot filter strip, the charms in a row that scrolls sideways. */
+.book--thumb .book-doll { position: relative; }
+.book--thumb .wells { --cell: 64px; }
+.book--thumb .book-stats-help { position: absolute; top: 0; right: 0; z-index: 2; color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
+.book--thumb .book-stats-help[aria-pressed='true'] { box-shadow: var(--px-btn-rim), inset 0 0 0 2px var(--cozy-brass-hi); }
+.book .well.is-pulse { animation: wellPulse .8s steps(2, end) 3; outline: 3px solid var(--cozy-glow); }
+.book .well.is-filter { outline: 3px solid var(--cozy-brass-hi); outline-offset: -3px; }
+.book-fits { display: flex; gap: 4px; width: 100%; padding: 4px 2px; overflow-x: auto; overscroll-behavior: contain; touch-action: pan-x; }
+.book-fit { flex: 0 0 64px; width: 64px; height: 64px; display: grid; place-items: center; padding: 0; border: 0; cursor: pointer; background: var(--cozy-well);
+  outline: 2px solid var(--rim, var(--cozy-wood-1)); outline-offset: -2px; }
+.book-fit img { max-width: 48px; max-height: 48px; image-rendering: pixelated; }
+.book-fits__none { margin: 0; font: 500 13px/1.3 var(--cozy-font-read); color: var(--cozy-cream); }
+
+/* The card as a bottom card (D4 mobile): at most 55% of the height; docked to the top when the piece is low. */
+.book--thumb .d2tip.d2tip--pinned.d2tip--sheet { left: 10px !important; right: 10px !important; width: auto !important; max-width: none !important; max-height: 55dvh;
+  top: auto !important; bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important; }
+.book--thumb .d2tip.d2tip--pinned.d2tip--sheet.d2tip--top { top: calc(10px + 52px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; }
+.book--thumb .d2tip--sheet .d2tip__title .d2tip__against { align-self: flex-start; margin: 4px 0 0; }
+.d2tip__verdict { margin: 0 32px 6px 0; font: 700 13px/1.3 var(--cozy-font-read); color: var(--cozy-glow); }
+.d2tip__verdict[data-tone='down'] { color: var(--cozy-berry); }
+.d2tip__verdict[data-tone='up'] { color: var(--cozy-leaf); }
+.d2tip__against { min-height: 44px; margin-left: 6px; padding: 0 8px; border: 0; cursor: pointer; font: 600 12px/1 var(--cozy-font-read); color: var(--cozy-cream);
+  background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
+.d2tip__primary { display: block; flex: 1 1 100%; width: 100%; min-height: 52px; margin: 0; font: 400 16px/1 var(--font-pixel) !important; }
+.book--thumb .d2tip--pinned .d2tip__actions { flex-wrap: wrap; }
+.book--thumb .d2tip--pinned .d2tip__actions .d2tip__primary { min-height: 52px; height: 52px; }
+.book--thumb .d2tip__actions button { min-height: 44px; }
+
+/* ── Nearby (§A.4): rows of containers, the nearest first ── */
+.book-near { display: flex; flex-direction: column; gap: 8px; min-width: 0; width: 100%; }
+.near__empty { display: flex; align-items: center; gap: 8px; margin: 8px 0; font: 500 13px/1.35 var(--cozy-font-read); color: var(--cozy-cream); }
+.near__empty .px-help { color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
+.near__help { margin: 0; padding: 8px 10px; font: 500 13px/1.35 var(--cozy-font-read); }
+.near__note { margin: 0; padding: 6px 8px; font: 600 13px/1.3 var(--cozy-font-read); color: var(--cozy-cream); background: color-mix(in srgb, var(--cozy-berry) 30%, var(--cozy-wood-0)); }
+.near-row { background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--cozy-wood-1); padding: 4px 6px 6px; transition: opacity .3s steps(3, end); }
+.near-row.is-gone { opacity: .45; }
+.near-row__head { min-height: 52px; display: flex; align-items: center; gap: 6px; }
+.near-row__ico { flex: none; width: 32px; height: 32px; display: grid; place-items: center; background: var(--cozy-wood-0); }
+.near-row__ico img { width: 28px; height: 28px; image-rendering: pixelated; }
+.near-row__who { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.near-row__who b { font: 400 14px/1.15 var(--font-pixel); color: var(--cozy-cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.near-row__who small { font: 600 12px/1 var(--cozy-font-read); color: var(--cozy-brass-hi); }
+.near-rot { display: block; height: 4px; min-height: 4px; width: 64px; background: var(--cozy-wood-0); box-shadow: 0 0 0 1px var(--cozy-wood-1); font-style: normal; }
+.near-rot > i { display: block; height: 100%; width: max(4px, calc(var(--rot, 0) * 100%)); background: var(--cozy-brass-hi); }
+.near-rot.is-late > i { background: var(--cozy-berry); }
+.near-all, .near-walk, .near-row__exp { flex: none; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 0; cursor: pointer; font: 400 14px/1 var(--font-pixel); }
+.near-all { color: var(--cozy-ink); background: var(--cozy-brass-hi); box-shadow: var(--px-btn-rim); }
+.near-all:disabled, .near-card__take:disabled { filter: grayscale(1); opacity: .55; cursor: not-allowed; }
+.near-walk, .near-row__exp { color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
+.near-row__exp[aria-expanded='true'] i { display: inline-block; rotate: 90deg; }
+.near-row__looted { font: 400 14px/1 var(--font-pixel); color: var(--cozy-brass-hi); }
+.near-row__body { display: grid; grid-template-columns: repeat(5, 52px); gap: 4px; justify-content: start; padding-top: 4px; }
+.near-cell { position: relative; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border: 0; cursor: pointer; background: var(--cozy-plate);
+  outline: 2px solid var(--rim, var(--cozy-loot-material)); outline-offset: -2px; }
+.near-cell.is-sel { outline-width: 3px; background: color-mix(in srgb, var(--cozy-brass-hi) 28%, var(--cozy-plate)); }
+.near-cell img { max-width: 40px; max-height: 40px; image-rendering: pixelated; pointer-events: none; }
+.near-cell em { font: 700 12px var(--font-pixel); font-style: normal; color: var(--cozy-cream); }
+.near-cell b { position: absolute; right: 3px; bottom: 2px; font: 700 11px/1 var(--cozy-font-read); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.near-card { position: sticky; bottom: 0; z-index: 3; padding: 8px 10px 10px; background: var(--cozy-wood-0); box-shadow: 0 0 0 2px var(--rim, var(--cozy-loot-material)); }
+.near-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.near-card__head b { font: 800 15px/1.2 var(--cozy-font-read); color: var(--rim, var(--cozy-cream)); }
+.near-step { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.near-step button { width: 44px; height: 44px; border: 0; cursor: pointer; font: 700 18px/1 var(--cozy-font-read); color: var(--cozy-cream); background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
+.near-step button[data-near-max] { width: auto; padding: 0 10px; font-size: 14px; }
+.near-step output { min-width: 44px; text-align: center; font: 700 16px/1 var(--cozy-font-read); color: var(--cozy-cream); }
+.near-card__take { display: block; width: 100%; min-height: 52px; margin-top: 6px; }
+/* A Take that walks: the satchel stays open over a lighter scrim, so the Keeper's walk is visible. */
+.book.book--walking { opacity: .6; }
+
+@keyframes wellPulse { 50% { outline-color: var(--cozy-brass-hi); } }
+@media (prefers-reduced-motion: reduce) { .book .well.is-pulse { animation: none; } .near-row { transition: none; } }
+
+/* ── The Vault on a portrait phone (§A.5): the whole screen, so the one grid shown is the whole grid ── */
+.stage--thumb .place:has([data-vault-stash]) {
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important; bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  left: calc(10px + env(safe-area-inset-left, 0px)) !important; right: calc(10px + env(safe-area-inset-right, 0px)) !important;
+  height: auto !important; max-height: none !important; width: auto !important; max-width: none !important; margin: 0 !important;
+  padding: 4px 9px 6px !important; border-radius: 0 !important; }
+/* The minimap on a portrait phone: a tap opens the Map. */
+.stage--thumb .td-mini { pointer-events: auto; cursor: pointer; }

@@ -195,7 +195,9 @@ test('the journal mid-chain, and Wren\'s choice on a phone', async ({ page }) =>
   });
   await open(page, 'hour=12', false);
   expect(await step(page)).toBe('uncounted');
-  // The journal from the quest scroll's row: four written, the vault under way, the last still blank.
+  // The journal from the quest scroll's row: four written, the vault under way, the last still blank. A portrait phone
+  // folds the scroll into its goal chip (docs/design/ui-pass-3.md §A.2): a tap opens it first.
+  if (await page.locator('.stage--thumb').count()) await page.locator('.guide .guide-text').click();
   await page.locator('[data-story-row]').first().click();
   const journal = page.locator('[data-journal]');
   await expect(journal).toHaveAttribute('data-journal', 'uncounted');
@@ -206,7 +208,7 @@ test('the journal mid-chain, and Wren\'s choice on a phone', async ({ page }) =>
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
   // Wren on a phone: the window fits and its buttons are thumb-sized.
-  await page.locator('.td-dock button').last().click();
+  await page.locator('[data-th="map"], .td-dock button:last-child').last().click();
   await page.locator('#places-list [data-map-find]').fill('aldous wren');
   await page.locator('#places-list.td-map .td-map__key button[data-kind="npc"]', { hasText: /aldous wren/i }).click();
   const talk = page.locator('.td-talk');

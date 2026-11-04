@@ -99,6 +99,8 @@ test('a party: invite, accept, frames, party chat, shared XP on a kill, leave', 
     await b.screenshot({ path: 'docs/handoff/cozy-ui/party-frames-phone.jpg', type: 'jpeg', quality: 82 });
 
     // ── Party chat: a Party tab beside Chat; the others get an unread count, then the line ──
+    // Bryn's portrait phone keeps the chat as a sheet behind ☰ More (docs/design/ui-pass-3.md §A.2).
+    if (await b.locator('[data-th="more"]').count()) { await b.locator('[data-th="more"]').click(); await b.locator('[data-tile="chat"]').click(); }
     await b.locator('[data-party-tab]').click();
     await b.locator('[data-party-say] input').fill('On my way, stay by the fire');
     await b.locator('[data-party-say] input').press('Enter');
@@ -130,6 +132,8 @@ test('a party: invite, accept, frames, party chat, shared XP on a kill, leave', 
     await calm(a);
     await a.locator('.td-chat__tabs [role=tab]').first().click({ timeout: 8000 });
     await expect(a.locator('.td-chat__log')).toContainText('Cora left the party.');
+    // The chat sheet (portrait) lies over the party frames: put it away first.
+    if (await b.locator('[data-th="more"]').count() && await b.locator('.td-chat__x').isVisible()) await b.locator('.td-chat__x').click();
     await b.locator('[data-party-leave]').click({ timeout: 10000 });
     await expect(a.locator('[data-party-frames]')).toHaveCount(0, { timeout: 10000 });
     await expect(a.locator('[data-party-tab]')).toHaveCount(0);

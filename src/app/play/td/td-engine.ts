@@ -98,7 +98,8 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
-import { CORPSE_REACH, corpseAlpha, corpseStage, type Corpse } from './td-corpse';
+import { CORPSE_REACH, NEARBY_LIST, NEARBY_REACH, corpseAlpha, corpseRot, corpseStage, type Corpse } from './td-corpse';
+import { nearbyList, nearbySig, stackName, type LooseDrop, type NearbyContainer, type NearbyItem } from './td-nearby';
 import { heapOffset, pileAt, pilesOf, tileCentre, tileKey } from './td-ground-pile';
 import type { PileRow } from '../engine/engine.model';
 import { corpseSize, corpseSprite, flyDots } from './td-corpse-art';
@@ -5163,6 +5164,96 @@ export class TopDownEngine {
     this.stepCorpse();
     return n;
   }
+  // ── The satchel's Nearby tab (td-nearby.ts; docs/design/ui-pass-3.md §A.4): corpses and piles within 8 tiles ──
+  /** Is a hostile in sight (the phone's context disc shows Attack while one is)? A target, or a live creature within 8 tiles. */
+  hostileNear(radius = 128): boolean {
+    if (this.mobs.target && this.mobs.target.hp > 0) return true;
+    const p = this.player;
+    return this.mobs.mobs.some(m => m.hp > 0 && Math.hypot(m.x - p.x, m.y - p.y) <= radius);
+  }
+  /** What the Keeper's hand reaches for now with no stall in reach: a corpse with loot ('loot'), a piece ('take'), or null. */
+  handVerb(): 'loot' | 'take' | null {
+    if (this.mobs.corpseNear(this.player.x, this.player.y, NEARBY_REACH)) return 'loot';
+    if (this.mobs.dropNear(this.player.x, this.player.y) || this.sharedNear()) return 'take';
+    return null;
+  }
+  private nearbyItem(g: Drop): NearbyItem {
+    return { id: g.id, label: g.label, qty: g.qty, coins: g.coins, rarity: g.rarity ?? null, color: g.color, art: g.art || dropIconSrc(g) || '', stack: (!!g.material || (!!g.own && g.qty > 1)) && !g.item && !g.rune, shared: g.id.startsWith('shared:') };
+  }
+  /** Every container within `radius` of the Keeper's feet, nearest first (the HUD polls it at 4 Hz while the tab is open). */
+  nearbyContainers(radius = NEARBY_LIST): NearbyContainer[] {
+    const p = this.player, now = this.mobs.age;
+    const corpses = this.mobs.remains.map(c => {
+      const age = now - c.born;
+      return { id: c.id, name: c.kind.name, x: c.x, y: c.y, stage: corpseStage(age, c.boss), rot: corpseRot(age, c.boss), age, items: this.mobs.corpseLoot(c.id).map(g => this.nearbyItem(g)) };
+    });
+    const loose: LooseDrop[] = [...this.mobs.drops.filter(g => !g.corpse && (g.coins > 0 || this.mobs.takeable(g))), ...this.shared].map(g => ({
+      ...this.nearbyItem(g), x: g.x, y: g.y, own: !!g.own, room: !!g.room, by: g.by ?? '',
+    }));
+    return nearbyList(p.x, p.y, corpses, loose, radius);
+  }
+  /** The Nearby list's signature (td-nearby nearbySig): the HUD redraws only when it changes. */
+  nearbySignature(radius = NEARBY_LIST): string { return nearbySig(this.nearbyContainers(radius)); }
+  /** The container a take is walking to (the row says "Walking…"). */
+  nearbyWalking: string | null = null;
+  /**
+   * Take from a Nearby container: one piece (its drop id, `qty` of a stack), or 'all'. In reach (≤ 48) it is taken now
+   * (the same grant path as the corpse window: takeDrop, a room piece through the room, another Keeper's through the
+   * HUD); within 8 tiles the Keeper walks there and takes on arrival. 'walk' | 'taken' | 'full' | 'gone'.
+   */
+  takeNearby(containerId: string, what: string, qty?: number): 'walk' | 'taken' | 'full' | 'gone' {
+    const c = this.nearbyContainers().find(x => x.id === containerId);
+    if (!c) return 'gone';
+    if (!c.inReach) {
+      this.nearbyWalking = containerId;
+      const arrive = () => { this.nearbyWalking = null; this.takeNearby(containerId, what, qty); };
+      if (!this.walkTo(c.x, c.y + 2, arrive)) { this.nearbyWalking = null; return 'gone'; }
+      return 'walk';
+    }
+    this.path = [];
+    let out: 'taken' | 'full' = 'taken';
+    for (const it of c.items) {
+      if (what !== 'all' && it.id !== what) continue;
+      // Another Keeper's piece, and the Keeper's own stack pile: polish2's reusable takes (an explicit amount, so
+      // Take all never opens a picker per stack).
+      if (it.shared) { const sid = it.id.slice('shared:'.length); if (this.options.onTakeShared) this.options.onTakeShared(sid, qty); else this.options.onGroundTap?.(sid); continue; }
+      const own = this.mobs.drops.find(d => d.id === it.id)?.own;
+      if (own && it.stack && this.options.onTakeOwnStack) { if (!this.options.onTakeOwnStack(own, qty ?? it.qty)) { out = 'full'; break; } continue; }
+      const id = qty && it.stack && qty < it.qty ? this.splitDrop(it.id, qty) : it.id;
+      if (!id) continue;
+      const g = this.mobs.drops.find(d => d.id === id);
+      if (g && g.coins > 0 && !g.room) { this.mobs.takeDrop(id); continue; }
+      // A refusal (a full satchel) stops the sweep: the host already said why, the rest stays on the ground.
+      if (!this.mobs.takeDrop(id)) { if (g?.room) continue; out = 'full'; if (id !== it.id) this.mergeDrop(id, it.id); break; }
+    }
+    if (this.corpseOpen) this.stepCorpse();
+    return out;
+  }
+  /**
+   * Split `n` off a stack lying on the ground (a partial take): the new drop lies where it was and is returned; the
+   * rest stays as it was, its count redrawn (a corpse's or the fight's stack; own piles go through onTakeOwnStack).
+   */
+  private splitDrop(id: string, n: number): string | null {
+    const g = this.mobs.drops.find(d => d.id === id);
+    if (!g || !(n > 0) || n >= g.qty || g.room || g.own) return null;
+    const nid = `${g.id}~p${++this.splitSeq}`;
+    const name = stackName(g.label);
+    g.qty -= n;
+    g.label = g.qty > 1 ? `${name} ×${g.qty}` : name;
+    this.mobs.drops.push({ ...g, id: nid, qty: n, label: n > 1 ? `${name} ×${n}` : name });
+    return nid;
+  }
+  private splitSeq = 0;
+  /** A split piece the satchel refused goes back onto its stack (an own drop's token too). */
+  private mergeDrop(from: string, into: string): void {
+    const i = this.mobs.drops.findIndex(d => d.id === from), g = this.mobs.drops.find(d => d.id === into);
+    if (i < 0 || !g) return;
+    const f = this.mobs.drops[i];
+    this.mobs.drops.splice(i, 1);
+    g.qty += f.qty;
+    const name = stackName(g.label);
+    g.label = g.qty > 1 ? `${name} ×${g.qty}` : name;
+  }
   /** Keep the window honest: shut when the Keeper walks off or the corpse is gone; tell the HUD when its contents change. */
   private stepCorpse(): void {
     if (!this.corpseOpen) return;
@@ -5217,12 +5308,12 @@ export class TopDownEngine {
    * a plate in its rarity colour), but never taken by walking over them: a tap walks there and the HUD asks the trade
    * Function, which gives it to whoever reaches it first.
    */
-  setSharedGround(items: readonly { id: string; x: number; y: number; name: string; rarity: string; def: string; sk?: string; qty?: number }[]): void {
+  setSharedGround(items: readonly { id: string; x: number; y: number; name: string; rarity: string; def: string; sk?: string; qty?: number; by?: string }[]): void {
     const rung = (r: string): LootRung => (r in LOOT ? r as LootRung : 'common');
     // A stack pile (verb-matrix T1) lies as its material, "Name ×N", with no rarity beam (as a stack drop from the fight).
     this.shared = items.map(g => g.sk && (g.qty ?? 0) > 0
-      ? { id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: g.qty!, material: g.sk, label: g.qty! > 1 ? `${g.name} ×${g.qty}` : g.name, color: '#d8cfb8', age: 99 }
-      : { id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: 1, item: { definitionId: g.def, rarity: rung(g.rarity), unique: false }, rarity: rung(g.rarity), label: g.name, color: LOOT[rung(g.rarity)].body, age: 99 });
+      ? { id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: g.qty!, material: g.sk, label: g.qty! > 1 ? `${g.name} ×${g.qty}` : g.name, color: '#d8cfb8', age: 99, ...(g.by ? { by: g.by } : {}) }
+      : { id: `shared:${g.id}`, x: g.x, y: g.y, coins: 0, qty: 1, item: { definitionId: g.def, rarity: rung(g.rarity), unique: false }, rarity: rung(g.rarity), label: g.name, color: LOOT[rung(g.rarity)].body, age: 99, ...(g.by ? { by: g.by } : {}) });
     this.canvas.setAttribute('data-ground', items.map(g => g.id).join(','));
   }
   /**

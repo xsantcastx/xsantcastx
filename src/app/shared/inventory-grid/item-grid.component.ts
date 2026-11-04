@@ -18,6 +18,7 @@ import { DropTargetDirective } from './drop-target.directive';
 import { ItemDragService, type DragHeld, type DropTarget } from './item-drag.service';
 import { SocketingService, type SocketDrop } from '../enchanting/socketing.service';
 import { isRuneStack } from '../rune-forge/rune-stack';
+import { PAGE_COLS, onPage } from './grid-pages';
 
 /** How a piece looks (the host knows the art and names). */
 export interface PieceLook { name: string; art: string; mark: string; tone: string | null; item?: import('../rpg/item.model').GameItem }
@@ -31,17 +32,18 @@ export interface GridPick { piece: Piece; el: HTMLElement; ev: Event }
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="ig" role="grid" [attr.aria-label]="label" [attr.data-grid]="container" [attr.data-cols]="view.w" [attr.data-rows]="view.h"
-         [style.--cols]="view.w" [style.--rows]="view.h" [appDropTarget]="target">
+         [attr.data-page]="page" [style.--cols]="shownCols" [style.--rows]="view.h" [appDropTarget]="target"
+         (pointerdown)="swipeStart($event)" (pointerup)="swipeEnd($event)" (pointercancel)="swipe = null">
       @for (c of cells; track c) { <span class="ig-cell" aria-hidden="true"></span> }
       @if (preview; as pv) {
         <i class="ig-preview" [class.is-ok]="pv.ok" [style.--x]="pv.x" [style.--y]="pv.y" [style.--w]="pv.w" [style.--h]="pv.h" aria-hidden="true"></i>
       }
-      @for (p of view.pieces; track p.key) {
+      @for (p of shownPieces; track p.key) {
         @let look = lookOf(p);
         <button type="button" class="ig-piece pocket" role="gridcell" [attr.data-piece]="p.key" [attr.data-cell]="p.cell" [attr.data-ids]="p.ids.join(',') || null"
                 [attr.data-stack]="p.stackKey ?? null" [attr.data-qty]="p.qty" [attr.data-w]="p.w" [attr.data-h]="p.h"
                 [class.is-held]="heldKey === p.key && !selecting" [class.is-sel]="heldKey === p.key && selecting" [attr.aria-pressed]="heldKey === p.key && selecting ? true : null" [class.is-new]="newKeys.has(p.key)" [class.is-picked]="pickedKey === p.key"
-                [style.--x]="p.cell % view.w" [style.--y]="row(p.cell)" [style.--w]="p.w" [style.--h]="p.h" [style.--rim]="look.tone"
+                [style.--x]="p.cell % view.w - colOff" [style.--y]="row(p.cell)" [style.--w]="p.w" [style.--h]="p.h" [style.--rim]="look.tone"
                 [attr.aria-label]="look.name + (p.qty > 1 ? ', ' + p.qty : '')"
                 (pointerdown)="press($event, p, look)" (click)="tapPiece($event, p, look)"
                 (contextmenu)="$event.preventDefault(); pick.emit({ piece: p, el: $any($event.currentTarget), ev: $event })"
@@ -106,6 +108,13 @@ export class ItemGridComponent implements OnChanges {
   @Output() readonly moved = new EventEmitter<{ result: GridMoveResult; held: DragHeld }>();
   /** A rune dropped onto a socketed item (set at an Enchanting Table, refused anywhere else): the host's line. */
   @Output() readonly socketed = new EventEmitter<SocketDrop>();
+  /**
+   * A phone's page (docs/design/ui-pass-3.md §A.3, grid-pages.ts): 0 draws columns 0–4, 1 draws 5–9 of the same grid;
+   * null (the default) draws the whole grid. A piece's stored cell never changes.
+   */
+  @Input() page: number | null = null;
+  /** A sideways swipe over the grid with nothing in hand: the host flips the page (+1 next, −1 back). */
+  @Output() readonly flip = new EventEmitter<1 | -1>();
 
   private readonly inventory = inject(InventoryService);
   private readonly drag = inject(ItemDragService);
@@ -147,8 +156,29 @@ export class ItemGridComponent implements OnChanges {
   }
 
   ngOnChanges(): void {
-    const n = this.view.w * this.view.h;
+    const n = this.shownCols * this.view.h;
     if (this.cells.length !== n) this.cells = Array.from({ length: n }, (_, i) => i);
+  }
+
+  private get paged(): boolean { return this.page !== null && this.view.w > PAGE_COLS; }
+  /** Columns drawn: a page's five, or the whole width. */
+  get shownCols(): number { return this.paged ? PAGE_COLS : this.view.w; }
+  /** The first stored column drawn. */
+  get colOff(): number { return this.paged ? (this.page ?? 0) * PAGE_COLS : 0; }
+  get shownPieces(): readonly Piece[] {
+    if (!this.paged) return this.view.pieces;
+    return this.view.pieces.filter(p => onPage(p.cell, p.w, this.page ?? 0, this.view.w));
+  }
+
+  /** A sideways swipe (nothing held, mostly horizontal, 40 px or more) flips the page. */
+  swipe: { x: number; y: number; t: number } | null = null;
+  swipeStart(ev: PointerEvent): void { this.swipe = this.paged && !this.drag.held ? { x: ev.clientX, y: ev.clientY, t: Date.now() } : null; }
+  swipeEnd(ev: PointerEvent): void {
+    const s = this.swipe;
+    this.swipe = null;
+    if (!s || this.drag.held || Date.now() - s.t > 900) return;
+    const dx = ev.clientX - s.x, dy = ev.clientY - s.y;
+    if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) this.flip.emit(dx < 0 ? 1 : -1);
   }
 
   row(cell: number): number { return Math.floor(cell / this.view.w); }
@@ -190,10 +220,10 @@ export class ItemGridComponent implements OnChanges {
     const grid = this.host.nativeElement.querySelector('.ig') as HTMLElement | null;
     if (!grid) return -1;
     const r = grid.getBoundingClientRect();
-    const cw = r.width / this.view.w, ch = r.height / this.view.h;
+    const cw = r.width / this.shownCols, ch = r.height / this.view.h;
     const col = Math.floor((x - r.left) / cw), row = Math.floor((y - r.top) / ch);
-    if (col < 0 || row < 0 || col >= this.view.w || row >= this.view.h) return -1;
-    return row * this.view.w + col;
+    if (col < 0 || row < 0 || col >= this.shownCols || row >= this.view.h) return -1;
+    return row * this.view.w + col + this.colOff;
   }
 
   private cellFor(held: DragHeld, x: number, y: number): number {
@@ -217,7 +247,7 @@ export class ItemGridComponent implements OnChanges {
   private socketPreview(held: DragHeld, x: number, y: number) {
     const p = this.runeTarget(held, x, y);
     if (!p) return null;
-    return { x: p.cell % this.view.w, y: this.row(p.cell), w: p.w, h: p.h, ok: this.socketing.accepts(p.ids[0], held.stackKey) && this.socketing.tableOpen };
+    return { x: p.cell % this.view.w - this.colOff, y: this.row(p.cell), w: p.w, h: p.h, ok: this.socketing.accepts(p.ids[0], held.stackKey) && this.socketing.tableOpen };
   }
 
   private previewFor(held: DragHeld, x: number, y: number) {
@@ -228,6 +258,6 @@ export class ItemGridComponent implements OnChanges {
       key: held.from === this.container ? held.pieceKey ?? 'drag' : 'drag', kind: ref.kind === 'stack' ? 'stack' : 'instance',
       w: held.w, h: held.h, pileKey: null, qty: held.qty, stackKey: held.stackKey,
     }, cell);
-    return { x: cell % this.view.w, y: this.row(cell), w: held.w, h: held.h, ok: !!fits };
+    return { x: cell % this.view.w - this.colOff, y: this.row(cell), w: held.w, h: held.h, ok: !!fits };
   }
 }

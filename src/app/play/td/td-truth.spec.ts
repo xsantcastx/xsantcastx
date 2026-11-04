@@ -989,7 +989,9 @@ const PROBES: Record<SkillId, Probe> = {
       const at = x.blows.length; run(x, 2.5); const got = x.blows.slice(at).filter(q => q.m === f).map(q => q.n);
       if (got.length >= 2) { a.push(got[0]); b.push(got[1]); }
     }
-    const mean = (q: number[]) => q.reduce((s, n) => s + n, 0) / q.length, ratio = mean(a) / mean(b) - 1;
+    // Medians, not means: a crit or two in 300 random blows swung the mean ratio past the 6-point band now and then.
+    const median = (q: number[]) => { const t = [...q].sort((x, y) => x - y), h = t.length >> 1; return t.length % 2 ? t[h] : (t[h - 1] + t[h]) / 2; };
+    const ratio = median(a) / median(b) - 1;
     return { radius, secs, lose, first: Math.abs(ratio * 100 - v['first']) <= 6 ? v['first'] : ratio * 100 };
   },
   'lightning-call': (r, o) => {
@@ -1051,6 +1053,9 @@ describe('td-truth A: every card names only numbers it has', () => {
 });
 
 describe('td-truth B: every number a card quotes is what the fight does', () => {
+  // Deterministic dice (as in td-ashguard): each probe draws the same seeded rolls every run, so a probe either holds
+  // or fails for good — never now and then because 12 or 300 random blows happened to crit.
+  beforeEach(() => { let seed = 0x9e3779b9; spyOn(Math, 'random').and.callFake(() => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }); });
   it('every skill has a probe (a new skill must say how its numbers are measured)', () => {
     for (const id of ALL) expect(PROBES[id]).withContext(id).toBeDefined();
   });

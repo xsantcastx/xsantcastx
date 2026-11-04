@@ -1515,6 +1515,9 @@ const RULES: Partial<Record<string, RuleProbe>> = {
 };
 
 describe('td-truth-marks 5: every named rule does what its line says', () => {
+  // Deterministic dice (as in td-ashguard): each probe draws the same seeded rolls every run, so a probe either holds
+  // or fails for good — never now and then because 12 or 300 random blows happened to crit.
+  beforeEach(() => { let seed = 0x9e3779b9; spyOn(Math, 'random').and.callFake(() => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }); });
   for (const id of ROWS) for (const d of MARKS[id]!) for (const fx of markFlags(id, bit(d.slot))) {
     const key = `${id}.${d.slot}:${fx.f}`;
     it(`${key} (${I18N[d.nameKey].en})`, () => {

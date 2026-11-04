@@ -92,3 +92,27 @@
 .vs-actions .vs-chip--primary { color: var(--cozy-wood-0); background: var(--cozy-brass);
   box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo); }
 .vs-actions .vs-chip--primary:hover, .vs-actions .vs-chip--primary:focus-visible { background: var(--cozy-brass-hi); }
+
+/* ── A portrait phone (docs/design/ui-pass-3.md §A.5): the Vault | Satchel switch, the tab chips, two-page grids ── */
+.vs-side[hidden] { display: none !important; }
+.vs-hero--phone .vs-side { max-width: none; flex-basis: 100%; --cell: min(64px, round(down, calc((100vw - 40px) / 5), 1px)); }
+.vs-hero--phone app-item-grid { --cell: inherit; }
+.vs-seg { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.vs-segbtn, .vs-tabchip, .vs-page { min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; cursor: pointer; font: 400 14px/1 var(--font-pixel); color: var(--cozy-cream);
+  background: var(--cozy-wood-2); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent), inset 0 -2px 0 0 var(--cozy-plate-seam); white-space: nowrap; }
+.vs-segbtn[aria-pressed='true'], .vs-tabchip[aria-selected='true'], .vs-page[aria-pressed='true'] { background: var(--cozy-wood-3); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass-hi); }
+.vs-segbtn.is-drop-over, .vs-page.is-drop-over { box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 3px var(--cozy-glow); }
+.vs-tabrow { flex-basis: 100%; display: flex; gap: 6px; padding: 2px; overflow-x: auto; overscroll-behavior: contain; }
+.vs-tabchip { flex: none; }
+.vs-tabchip--buy { color: var(--cozy-brass-hi); }
+.vs-pages { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.vs-page { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.vs-page i { font: 700 11px/1 var(--cozy-font-read); font-style: normal; padding: 2px 4px; background: var(--cozy-wood-0); }
+.vs-hero--paged:not(.vs-hero--phone) app-item-grid { --cell: 44px; }
+.vs-cardgo { margin-left: 8px; min-height: 44px; }
+.vs-card { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.vs-hero--phone { gap: 6px; }
+.vs-hero--phone .vs-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.vs-hero--phone .vs-side { gap: 4px; }
+/* A tall tab (General I is twelve rows) scrolls inside its own grid area: six rows of 64 px stand in view. */
+.vs-hero--phone .vs-side app-item-grid { display: block; max-height: calc(6 * var(--cell) + 4px); overflow-y: auto; overflow-x: hidden; }

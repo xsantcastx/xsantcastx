@@ -108,7 +108,7 @@ test('M2: a party, an instant drop picked up by the other, a fast trade, and a r
 
   // ── 2. A drop, on the other's ground at once ──
   await calm(page);
-  await page.getByRole('button', { name: /^Satchel/ }).first().click();
+  await page.getByRole('button', { name: /^(Satchel|Bag)/ }).first().click();
   await page.locator('#satchel-book .pocket[aria-label^="Ember Charm"]').click();
   await watch(bryn, 'data-ground', '^g');
   const dropBtn = page.locator('[data-drop-item]').first();
