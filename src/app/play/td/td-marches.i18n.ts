@@ -30,7 +30,12 @@ export const MARCHES_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'reach.sealed.ruins-watergate': { en: 'The abbey\'s water-gate, its portcullis rusted down into the silt. The water behind it is higher than the water in front.', es: 'La puerta de agua de la abadia, el rastrillo oxidado hasta el cieno. El agua de detras esta mas alta que la de delante.' },
   // ── A boardwalk or a ford across the water: the prompt names the verb ──
   'reach.act.cross': { en: 'Cross: {{name}}', es: 'Cruzar: {{name}}' },
+  // The Bell Under the Water: by the Belfry's roof the only thing to do is keep still.
+  'reach.act.underbell': { en: 'Stand still — listen', es: 'Quieto — escucha' },
+  // The fifth bell's door: it is sealed, and the prompt says so.
+  'reach.act.sealed-fifth': { en: 'Sealed: {{name}}', es: 'Sellada: {{name}}' },
   // ── The Atlas (where each Waystone stands) ──
+  'atlas.land.umbral-marches': { en: 'the Marches', es: 'los Marches' },
   'atlas.near.corvane': { en: 'up from Mirewatch\'s pier', es: 'subiendo desde el muelle de Mirewatch' },
   'atlas.near.gloamhaven': { en: 'on the drowned square', es: 'en la plaza ahogada' },
   'atlas.near.wick': { en: 'up the Shore\'s north boardwalk', es: 'subiendo la pasarela norte de la Costa' },

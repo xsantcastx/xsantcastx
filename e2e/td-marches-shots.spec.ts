@@ -47,7 +47,7 @@ async function open(page: Page, graphics: 'iso' | 'classic', query = '/play?td=1
 }
 const visit = (page: Page, s: Spot) => page.evaluate(v => (window as unknown as { __tdArt: { visit: (l: string, c: number, r: number, k: string) => boolean } }).__tdArt.visit(v.level, v.c, v.r, v.area), s);
 
-const VIEWS = [{ g: 'iso', w: 1280, h: 800, tag: 'iso' }, { g: 'classic', w: 1280, h: 800, tag: 'classic' }, { g: 'iso', w: 390, h: 844, tag: 'phone' }] as const;
+const VIEWS = [{ g: 'iso', w: 1280, h: 800, tag: 'iso' }, { g: 'classic', w: 1280, h: 800, tag: 'classic' }, { g: 'iso', w: 390, h: 844, tag: 'phone' }, { g: 'iso', w: 1920, h: 1080, tag: 'wide' }] as const;
 for (const view of VIEWS) {
   for (const time of [{ hour: 12, tag: 'day' }, { hour: 23, tag: 'night' }] as const) {
     test(`the Marches' new areas, ${view.tag}, ${time.tag}`, async ({ page }) => {
