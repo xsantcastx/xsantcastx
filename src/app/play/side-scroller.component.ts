@@ -207,7 +207,7 @@ import { DelveMapView } from './delve-map-view';
 import { FishingService, type PendingCatch } from '../shared/fishing/fishing.service';
 import { GatheringService } from '../shared/gathering/gathering.service';
 import { GATHER_I18N } from '../shared/gathering/gathering.i18n';
-import { BURNT_FISH_ID, SCRAP_ID, TINDERBOX_ID, logById, mealById, mealOfRaw, worldFishById, type GatherAnswer, type GatherEvent, type MealDef } from '../shared/gathering/gathering.model';
+import { BURNT_FISH_ID, COPY_SEED_ID, SCRAP_ID, TINDERBOX_ID, logById, mealById, mealOfRaw, worldFishById, type GatherAnswer, type GatherEvent, type MealDef } from '../shared/gathering/gathering.model';
 import { MealBuffService } from '../shared/gathering/meal-buffs.service';
 import { isWet, type WeatherNow, type WeatherShow, WEATHER_SHOW_KEY, WEATHER_SHOWS } from '../shared/weather/weather.model';
 import type { RoomWorldWeather } from './social/social-room';
@@ -303,6 +303,7 @@ import { GraveDeskComponent } from '../shared/grave-goods/grave-desk.component';
 import { SailingBoardComponent } from './harbour/sailing-board.component';
 import { WaystoneAtlasComponent, type AtlasStone } from './atlas/waystone-atlas.component';
 import { REACH_I18N } from './td/td-reach.i18n';
+import { WILDS_I18N } from './td/td-wilds.i18n';
 import { LIGHT_XP } from '../shared/waystones/waystones.model';
 import { ZONES as TD_ZONES } from './td/td-zones';
 import { CONTINENTS } from './td/td-levels';
@@ -835,6 +836,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (hand === 'loot') return 'loot';
     const s = this.state, n = s?.nearby;
     if (n) {
+      // S11: the Walking Tree waiting for its blow.
+      if (n === 'td-walker') return 'strike';
       if (n.startsWith('giver-') || s.nearbyKind === 'quest') return 'talk';
       if (n === 'inscription' || (n === 'height' && s.height?.kind === 'carving')) return 'read';
       if (s.nearbyKind === 'panel' || s.nearbyKind === 'waystone' || s.nearbyKind === 'passage' || n === 'delve' || n === 'passage' || n.startsWith('shrine:')) return 'enter';
@@ -1825,6 +1828,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(SEAM_I18N);
     this.i18n.register(ZONES_I18N);
     this.i18n.register(REACH_I18N);
+    this.i18n.register(WILDS_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
@@ -3816,10 +3820,10 @@ export class SideScrollerComponent implements OnDestroy {
     this.waystones.markSeen(e.id);
     const eng = this.engine as unknown as { landStones?: () => { id: string; name: string; area: string }[] } | undefined;
     // The land's capital stone is the trunk: always touched (world-acts.md §0, "to the capital's for free").
-    const known = new Set([...this.waystones.state.lit, e.id, 'reach:pyrehold']);
+    const known = new Set([...this.waystones.state.lit, e.id, 'reach:pyrehold', 'wilds:rootglass']);
     const stones = (eng?.landStones?.() ?? []).map((s): AtlasStone => {
       const z = TD_ZONES[`${s.area}:T`], def = CONTINENTS[s.area];
-      return { id: s.id, name: s.name, section: def?.title ?? s.name, hint: this.t(`atlas.near.${s.id.replace(/^reach:/, '')}`), band: z?.band ?? null, safe: def?.townKind !== 'camp', known: known.has(s.id), here: s.id === e.id };
+      return { id: s.id, name: s.name, section: def?.title ?? s.name, hint: this.t(`atlas.near.${s.id.replace(/^(reach|wilds):/, '')}`), band: z?.band ?? null, safe: def?.townKind !== 'camp', known: known.has(s.id), here: s.id === e.id };
     });
     if (paid?.xp) this.message = this.t('atlas.touched', { name: stones.find(s => s.id === e.id)?.name ?? '', xp: LIGHT_XP });
     this.atlas = { land: e.land, here: e.id, stones };
@@ -4758,7 +4762,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     // An act's section (td-sections.ts): its Waystone, a thing to read, a sealed thing, a seam's gate.
     // The gathering skills' own targets in the world (a tree to chop, a spot to fish, a fire to cook at).
-    if (this.state?.nearby === 'td-tree' || this.state?.nearby === 'td-spot' || this.state?.nearby === 'td-fire') return this.t(`reach.act.${this.state.nearby.slice(3)}`);
+    if (this.state?.nearby === 'td-tree' || this.state?.nearby === 'td-spot' || this.state?.nearby === 'td-fire' || this.state?.nearby === 'td-walker') return this.t(`reach.act.${this.state.nearby.slice(3)}`);
     const reachAct = /^(tdstone|read|sealed|seam):/.exec(this.state?.nearby ?? '')?.[1];
     if (reachAct) return this.t(`reach.act.${reachAct}`, { name: titleCase(this.state.nearbyLabel ?? '') });
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
@@ -7051,8 +7055,8 @@ export class SideScrollerComponent implements OnDestroy {
   get weatherLabel(): string { return this.weatherNow ? this.t('weather.pip', { state: this.t(`weather.state.${this.weatherNow.state}`) }) : ''; }
   /** The satchel card of a gathered thing: what it is, where it is found, what it is for, its lore, and its one action. */
   private gatherSlip(key: string, name: string, art: string, qty: number): BagSlip | null {
-    const log = logById(key), fish = worldFishById(key), meal = mealById(key), burnt = key === BURNT_FISH_ID, tinder = key === TINDERBOX_ID, scrap = key === SCRAP_ID;
-    if (!log && !fish && !meal && !burnt && !tinder && !scrap) return null;
+    const log = logById(key), fish = worldFishById(key), meal = mealById(key), burnt = key === BURNT_FISH_ID, tinder = key === TINDERBOX_ID, scrap = key === SCRAP_ID, seed = key === COPY_SEED_ID;
+    if (!log && !fish && !meal && !burnt && !tinder && !scrap && !seed) return null;
     const nm = (id: string) => materialDisplay(id)?.name ?? id;
     let kicker: string, found: string, use: string;
     if (log) { kicker = this.t('gather.card.log'); found = log.found ? this.t(`gather.found.${log.id}`) : log.id === 'rootglass-bough' ? this.t('gather.found.bough', { n: log.cut }) : this.t('gather.found.log', { land: this.t(`land.${log.land}`), n: log.cut }); use = this.t('gather.use.log', { n: log.burn }); }
@@ -7067,6 +7071,7 @@ export class SideScrollerComponent implements OnDestroy {
       use = this.t('gather.use.meal', { heal: meal.heal }) + (meal.buff ? ` ${this.t(`gather.use.buff.${meal.buff.kind}`, { pct: meal.buff.pct, min: meal.buff.secs / 60 })}` : '');
     }
     else if (scrap) { kicker = this.t('gather.card.scrap'); found = this.t('gather.found.margin-note-scrap'); use = this.t('gather.use.margin-note-scrap'); }
+    else if (seed) { kicker = this.t('gather.card.seed'); found = this.t('gather.found.copy-seed'); use = this.t('gather.use.copy-seed'); }
     else if (burnt) { kicker = this.t('gather.card.burnt'); found = this.t('gather.found.burnt'); use = this.t('gather.use.burnt'); }
     else { kicker = this.t('gather.card.tinder'); found = this.t('gather.found.tinder'); use = this.t('gather.use.tinder'); }
     const lore = this.t(`gather.lore.${key}`);

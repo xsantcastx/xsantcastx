@@ -197,8 +197,9 @@ export function drawElitePlate(c: Ctx, m: Mob, targeted: boolean, reserveRight =
     const t = c.getTransform();
     if (!t.a) return x;
     const half = c.measureText(text).width * t.a / 2 + 6, sx = t.a * x + t.e, W = c.canvas.width, sy = t.d * y + t.f;
-    const inCorner = sy - 10 * t.d < reserveBottom;
-    const lo = half, hi = W - (inCorner ? Math.max(0, reserveRight) : 0) - half;
+    // A margin round the corner box (S11, the Director: a banner never touches the minimap's frame).
+    const inCorner = sy - 12 * t.d < reserveBottom + 8 * t.d;
+    const lo = half, hi = W - (inCorner ? Math.max(0, reserveRight) + 8 * t.a : 0) - half;
     if (hi <= lo) return x;
     const cx = Math.max(lo, Math.min(hi, sx));
     return cx === sx ? x : Math.round((cx - t.e) / t.a);

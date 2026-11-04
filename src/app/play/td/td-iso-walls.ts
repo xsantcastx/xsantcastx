@@ -34,9 +34,9 @@ const LINTEL_H = 12;
 /** A room bigger than this is "the open". */
 const ROOM_CAP = 900;
 
-type Mat = 'plaster' | 'rock' | 'vine' | 'drown' | 'bark';
+type Mat = 'plaster' | 'rock' | 'vine' | 'drown' | 'bark' | 'wild';
 const MAT: Readonly<Record<string, Mat>> = { wall: 'plaster', rock: 'rock', vinewall: 'vine', drownwall: 'drown', bark: 'bark' };
-export const wallMat = (g: Ground): Mat => MAT[g] ?? 'rock';
+export const wallMat = (g: Ground, wild = false): Mat => (wild && g === 'vinewall' ? 'wild' : MAT[g] ?? 'rock');
 
 type Rgb = readonly [number, number, number];
 const rgb = (h: string): Rgb => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -48,6 +48,9 @@ const RAMPS: Readonly<Record<Mat, Ramps>> = {
   rock: { face: ramp('#6a5a52', { cool: '#120c14', warm: '#e8d4c0', hi: .32, deep: .62 }), trim: ramp('#4a3e3a', { cool: '#08060a', warm: '#b8a494', hi: .3 }), cap: ramp('#4c403c', { cool: '#0a0608', warm: '#c4ac9c', hi: .36 }), acc: ramp('#d0703a', { cool: '#3a1008', warm: '#ffe0a0', hi: .5 }) },
   vine: { face: ramp('#6c7462', { cool: '#0a120e', warm: '#e0ecc8', hi: .3, deep: .6 }), trim: ramp('#4a5a42', { cool: '#06100a', warm: '#b8d098', hi: .3 }), cap: ramp('#3a5a2a', { cool: '#040a06', warm: '#a8d888', hi: .35 }), acc: ramp('#4a8a3a', { cool: '#06140a', warm: '#c8f0a0', hi: .45 }) },
   drown: { face: ramp('#4e5a62', { cool: '#06080e', warm: '#c0d0d8', hi: .3, deep: .6 }), trim: ramp('#323c42', { cool: '#040608', warm: '#90a0a8', hi: .3 }), cap: ramp('#2a3236', { cool: '#020406', warm: '#788890', hi: .3 }), acc: ramp('#4a6a4a', { cool: '#060e08', warm: '#a8c8a0', hi: .35 }) },
+  // S11: the Verdant Wilds' edge on the surface (the same 'vinewall' ground as the temple's, but out under the sky): the
+  // wood itself grown solid — leaf and root, no masonry.
+  wild: { face: ramp('#3f7038', { cool: '#08140a', warm: '#d8f0a8', hi: .34, deep: .55 }), trim: ramp('#5a4630', { cool: '#0e0806', warm: '#d8b888', hi: .32 }), cap: ramp('#4c8a3a', { cool: '#06100a', warm: '#e0f8b0', hi: .45 }), acc: ramp('#6aa84a', { cool: '#08160a', warm: '#e8ffc0', hi: .5 }) },
   bark: { face: ramp('#6a4a30', { cool: '#120a06', warm: '#e8c8a0', hi: .3, deep: .55 }), trim: ramp('#4a3220', { cool: '#0a0604', warm: '#c8a078', hi: .3 }), cap: ramp('#3a5a2a', { cool: '#06100a', warm: '#a8d888', hi: .35 }), acc: ramp('#5a8a3a', { cool: '#06120a', warm: '#c8e898', hi: .4 }) },
 };
 /** The ink of an end piece's edge and an outer corner's shade. */
@@ -130,8 +133,8 @@ function paintBlock(mat: Mat, sh: WallShape, H: number, h0: number, cut: boolean
   /** The face's colour at (u along the face 0…16 world px, v above the floor in iso px); `lit` 0 south, −2 east. */
   const tex = (u: number, v: number, lit: number, post: boolean, end: boolean, s: 0 | 1): Rgb => {
     if (cut) return v > H - 2 ? at(R.cap, 4) : at(R.trim, 2 + lit);
-    // The cap's lip over the face, and the dark line of its shadow under it.
-    if (v > H - 3) return at(R.trim, (v > H - 1 ? 4 : 3) + lit);
+    // The cap's lip over the face, and the dark line of its shadow under it (the wild wood's lip: its lit leaf, brighter).
+    if (v > H - 3) return mat === 'wild' ? at(R.cap, (v > H - 1 ? 5 : 4) + (lit < 0 ? -1 : 0)) : at(R.trim, (v > H - 1 ? 4 : 3) + lit);
     if (v > H - 4) return at(R.face, 0 + lit);
     // An end piece: the inked edge (the run's far end: west on the south face, north on the east face).
     const ue = s === 0 ? u : 16 - u;
@@ -148,6 +151,16 @@ function paintBlock(mat: Mat, sh: WallShape, H: number, h0: number, cut: boolean
         if (v <= 12) { const seam = (u * 4) % 4 < .5; return at(R.acc, (seam ? 1 : v > 10 ? 3 : 2) + lit + ao); }
         const mot = !low && ((Math.sin(u * 3.7 + v * 1.9) + Math.sin(u * 1.1 - v * 2.3)) * .25 + .5) > .8 ? -1 : 0;
         return at(R.face, 3 + lit + mot + (v > H - 12 ? -1 : 0) + (v < 17 ? -1 : 0));
+      }
+      case 'wild': {
+        // Leaf and root grown into a wall: rounded bulges (no courses, no seams), a root rope twisting up through it,
+        // vines hanging from the lip three rows and more.
+        const col = Math.floor(u * 1.5), vine = low ? 0 : hash(col, 5, sh.v) > .45 ? 3 + hash(col, 6, sh.v) * (H - 16) : 0;
+        if (v > H - 4 - vine) return at(R.acc, ((Math.floor(v) + col) % 3 === 0 ? 5 : 3) + lit);
+        const rope = Math.abs(Math.sin(u * .55 + v * .09 + sh.v * 1.7));
+        if (!low && rope < .1) return at(R.trim, (rope < .04 ? 4 : 2) + lit + ao);
+        const lump = Math.sin(u * .85 + Math.sin(v * .33 + sh.v) * 1.5) + Math.sin(v * .52 + u * .27) * .7;
+        return at(R.face, (lump > .9 ? 4 : lump > -.2 ? 3 : lump > -1 ? 2 : 1) + lit + ao);
       }
       case 'bark': {
         const ridge = Math.sin(u * 2.4 + Math.sin(v * .25 + u) * 1.6), knot = !low && hash(Math.floor(u / 4), Math.floor(v / 9), sh.v) > .93;
@@ -224,7 +237,7 @@ export interface IsoWall { c: number; r: number; X: number; Y: number; full: Iso
  * The wall blocks (and doorway lintels) among the tiles `list` (c, r pairs) whose foot lies in the HD rectangle
  * (X0, Y0, w, h); `block(c, r)` says a tile stands as a block, `ground(c, r)` its ground (for the material).
  */
-export function planWalls(list: ArrayLike<number>, X0: number, Y0: number, w: number, h: number, block: (c: number, r: number) => boolean, ground: (c: number, r: number) => Ground): IsoWall[] {
+export function planWalls(list: ArrayLike<number>, X0: number, Y0: number, w: number, h: number, block: (c: number, r: number) => boolean, ground: (c: number, r: number) => Ground, wild = false): IsoWall[] {
   const walls: IsoWall[] = [];
   for (let i = 0; i < list.length; i += 2) {
     const c = list[i], r = list[i + 1];
@@ -239,13 +252,13 @@ export function planWalls(list: ArrayLike<number>, X0: number, Y0: number, w: nu
         && (!block(c - 1, r - 1) || !block(c - 1, r + 1)) && (!block(c + 1, r - 1) || !block(c + 1, r + 1));
       if (!ew && !ns) continue;
       const ax = ew ? 'x' : 'y';
-      walls.push({ c, r, X, Y, full: isoLintel(wallMat(ground(ew ? c - 1 : c, ew ? r : r - 1)), ax), stub: isoNone(), lintel: ax });
+      walls.push({ c, r, X, Y, full: isoLintel(wallMat(ground(ew ? c - 1 : c, ew ? r : r - 1), wild), ax), stub: isoNone(), lintel: ax });
       continue;
     }
     const so = !block(c, r + 1), ea = !block(c + 1, r);
     // Inside the rock, or a back wall's top that nothing sees past: no block.
     if (!so && !ea && block(c, r - 1) && block(c - 1, r)) continue;
-    const m = wallMat(ground(c, r));
+    const m = wallMat(ground(c, r), wild);
     const sh: WallShape = { south: so, east: ea, postS: c % 3 === 0, postE: r % 3 === 0, endS: so && !block(c - 1, r), endE: ea && !block(c, r - 1), v: ((c * 7 + r * 13) % 4 + 4) % 4 };
     // A post: both faces show and no wall runs on from it, west or north (an inn's pillar, a lone stub of wall).
     const post = so && ea && !block(c - 1, r) && !block(c, r - 1);

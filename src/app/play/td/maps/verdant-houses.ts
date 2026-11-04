@@ -34,7 +34,7 @@ const ROOM: Readonly<Record<string, LegendEntry>> = {
 export const NETLOFT_1: TdMapDef = {
   id: 'netloft-1', name: "The Net-Mender's Loft", outside: 'wall', dark: false,
   legend: { ...ROOM,
-    'D': { ground: 'plank', station: NETLOFT_OUT, exit: { to: 'surface', arrive: 'netloft-door' } },
+    'D': { ground: 'plank', station: NETLOFT_OUT, exit: { to: 'surface', arrive: 'netloft-door', continent: 'verdant-wilds-shore' } },
     '>': { ground: 'plank', object: 'up', station: NETLOFT_UP, exit: { to: 'netloft-2', arrive: 'netloft-down' } },
   },
   rows: [
@@ -69,7 +69,7 @@ export const NETLOFT_2: TdMapDef = {
 export const HERBAL_1: TdMapDef = {
   id: 'herbal-cottage-1', name: "The Herbalist's Cottage", outside: 'wall', dark: false,
   legend: { ...ROOM,
-    'D': { ground: 'plank', station: HERBAL_OUT, exit: { to: 'surface', arrive: 'herbal-door' } },
+    'D': { ground: 'plank', station: HERBAL_OUT, exit: { to: 'surface', arrive: 'herbal-door', continent: 'verdant-wilds-fernglades' } },
     '>': { ground: 'plank', object: 'down', station: HERBAL_DOWN, exit: { to: 'herbal-cottage-0', arrive: 'herbal-cellar-up' } },
   },
   rows: [

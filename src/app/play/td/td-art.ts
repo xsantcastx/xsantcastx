@@ -879,6 +879,24 @@ export function bush(seed = 0): Sprite {
   });
 }
 
+/**
+ * A clump of the Greenwood's thorn hedge (world-acts.md §1.3: "the wood closes what it forgets"): dark bramble wider
+ * than a bush, pale thorns standing out of it, a few dull berries. Three seeds, laid side by side across a road.
+ */
+export function thornHedge(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`thorn-hedge-${v}`, () => {
+    const W = 20, H = 18, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    paintClumps(c, [{ x: 5, y: 11, r: 5, tone: -1 }, { x: 14, y: 11, r: 5, tone: -1 }, { x: 10, y: 7, r: 5.5, tone: 0 }, { x: 10, y: 13, r: 4, tone: -1 }], clumpRamp(['#2a4a26', '#355a2e', '#1c3418', '#44683a']), v + 11);
+    // Thorns: pale spikes out of the bramble's edge, and twisted stems through it.
+    for (const [x, y, dx, dy] of [[2, 8, -1, -1], [6, 3, 0, -1], [13, 3, 1, -1], [18, 9, 1, 0], [1, 13, -1, 0], [17, 14, 1, 1], [9, 1, 0, -1]] as const) { rect(c, x, y, 1, 1, PAL.bark[3]); rect(c, x + dx, y + dy, 1, 1, '#e8dcc0'); }
+    for (let x = 3; x < 17; x += 4) rect(c, x, 10 + ((x + v) % 3), 3, 1, PAL.bark[2]);
+    if (v === 1) for (const [x, y] of [[6, 9], [12, 6], [14, 12]] as const) rect(c, x, y, 1, 1, '#7a2a3a');
+    return { img: outline(img), ax: 10, ay: 18, shadow: { img: shadowSprite(20, 6), x: -9, y: -4 } };
+  });
+}
+
 /** A ladder up out of a dungeon floor: rails and rungs against a pale shaft of daylight. */
 export function ladderUp(): Sprite {
   return cached('ladder-up', paintLadderUp);

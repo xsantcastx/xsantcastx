@@ -21,7 +21,7 @@ import { EMBER_ISLE_DEF } from './maps/ember-isle';
 import { REACH_SECTIONS } from './maps/reach-sections';
 import { KILN_TUNNELS_1 } from './maps/kiln-tunnels';
 import { GLASS_THROAT_1, GLASS_THROAT_2 } from './maps/glass-throat';
-import { VERDANT_WILDS_DEF } from './maps/verdant-wilds';
+import { WILDS_SECTIONS } from './maps/wilds-sections';
 import { ROOTGLASS_BOLE_0, ROOTGLASS_BOLE_1, ROOTGLASS_BOLE_2, ROOTGLASS_BOLE_3 } from './maps/rootglass-bole';
 import { OVERGROWN_TEMPLE_1, OVERGROWN_TEMPLE_2, OVERGROWN_TEMPLE_3, OVERGROWN_TEMPLE_4, OVERGROWN_TEMPLE_5 } from './maps/overgrown-temple';
 import { ROOT_HOLLOWS_1, ROOT_HOLLOWS_2, ROOT_HOLLOWS_3 } from './maps/root-hollows';
@@ -32,13 +32,14 @@ import { DROWNED_CRYPTS_1, DROWNED_CRYPTS_2, DROWNED_CRYPTS_3 } from './maps/dro
 import { HUSHED_BARROW_1 } from './maps/hushed-barrow';
 
 /**
- * Every continent, by id (ships sail between them). The Infernal Reach is an act of sections (maps/reach-sections.ts):
- * each section is a continent of its own here, so the room runs it as its own area; their land is `infernal-reach`.
+ * Every continent, by id (ships sail between them). The Infernal Reach and the Verdant Wilds are acts of sections
+ * (maps/reach-sections.ts, maps/wilds-sections.ts): each section is a continent of its own here, so the room runs it as
+ * its own area; their land is `infernal-reach` / `verdant-wilds`.
  */
-export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, ...REACH_SECTIONS, 'verdant-wilds': VERDANT_WILDS_DEF,
+export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, ...REACH_SECTIONS, ...WILDS_SECTIONS,
   'umbral-marches': UMBRAL_MARCHES_DEF };
-/** A save or a link that still names the old single-area Reach lands in Pyrehold. */
-export const RENAMED_CONTINENTS: Readonly<Record<string, string>> = { 'infernal-reach': 'infernal-reach-pyrehold' };
+/** A save or a link that still names an old single-area land lands in its capital: Pyrehold, Rootglass. */
+export const RENAMED_CONTINENTS: Readonly<Record<string, string>> = { 'infernal-reach': 'infernal-reach-pyrehold', 'verdant-wilds': 'verdant-wilds-rootglass' };
 /** The land a continent (or an act's section) belongs to. */
 export function landOf(continent: string): string { return CONTINENTS[continent]?.land ?? continent; }
 

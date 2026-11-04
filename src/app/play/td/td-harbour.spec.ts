@@ -57,7 +57,7 @@ describe('td: the piers and their Harbourmasters', () => {
     const edges = PIERS.flatMap(p => routesFrom(p.id, CONTINENTS).map(r => `${p.id}>${r.destPier}`)).sort();
     expect(edges).toEqual([
       'cinderport>ember-harbour', 'ember-harbour>mossharbor', 'ember-harbour>pyrehold', 'mirewatch>pyrehold',
-      'mossharbor>ember-harbour', 'mossharbor>pyrehold', 'pyrehold>ember-harbour', 'pyrehold>mirewatch', 'pyrehold>mossharbor',
+      'mossharbor>ember-harbour', 'mossharbor>mirewatch', 'mossharbor>pyrehold', 'pyrehold>ember-harbour', 'pyrehold>mirewatch', 'pyrehold>mossharbor',
     ]);
   });
   it('each Harbourmaster stands on their pier as a keeper the Keeper can stand in front of, with a look and a line', () => {
@@ -108,7 +108,8 @@ describe('td: the Sailing Board', () => {
   });
   it('short of gold is a state with its fare, never a hidden row', () => {
     const rows = buildBoard('mossharbor', { ...base, gold: 100 });
-    expect(rows.length).toBe(2);
+    // Three ships (S11: the fen-barge to Mirewatch is the third, held until the Elder Rootwyrm falls).
+    expect(rows.length).toBe(3);
     expect(rows.find(r => r.destPier === 'pyrehold')!.state).toBe('broke');
     expect(rows.find(r => r.destPier === 'ember-harbour')!.state).toBe('ok');
     expect(buildBoard('mossharbor', { ...base, gold: fareFor(8) }).find(r => r.destPier === 'pyrehold')!.state).toBe('ok');

@@ -31,7 +31,7 @@ const ROOM: Readonly<Record<string, LegendEntry>> = {
 export const ROOTGLASS_BOLE_0: TdMapDef = {
   id: 'rootglass-bole-0', name: 'The Rootglass Bole · Root Hall', outside: 'bark', dark: false,
   legend: { ...ROOM, '#': { ground: 'bark' },
-    'D': { ground: 'plank', station: BOLE_OUT, exit: { to: 'surface', arrive: 'bole-door' } },
+    'D': { ground: 'plank', station: BOLE_OUT, exit: { to: 'surface', arrive: 'bole-door', continent: 'verdant-wilds-rootglass' } },
     '>': { ground: 'plank', object: 'up', station: HALL_UP, exit: { to: 'rootglass-bole-1', arrive: 'bole-1-down' } },
   },
   rows: [
