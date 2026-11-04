@@ -149,6 +149,7 @@
   background: var(--cozy-wood-2); box-shadow: var(--px-btn-rim); }
 .d2tip__primary { display: block; flex: 1 1 100%; width: 100%; min-height: 52px; margin: 0; font: 400 16px/1 var(--font-pixel) !important; }
 .book--thumb .d2tip--pinned .d2tip__actions { flex-wrap: wrap; }
+.book--thumb .d2tip--pinned .d2tip__actions .d2tip__primary { min-height: 52px; height: 52px; }
 .book--thumb .d2tip__actions button { min-height: 44px; }
 
 /* ── Nearby (§A.4): rows of containers, the nearest first ── */

@@ -87,8 +87,8 @@ test.describe('the phone chat lifts over the on-screen keyboard', () => {
     test.setTimeout(60_000);
     await enterAs(page, hearth.port, 'Aster', 'warlock');
     // A portrait phone: the chat is a sheet under the top band, opened from the ticker; it shrinks over the keyboard.
-    const sheet = !!(await page.locator('.th-ticker').count());
-    if (sheet) await page.locator('.th-ticker').tap();
+    const sheet = !!(await page.locator('[data-th="more"]').count());
+    if (sheet) { await page.locator('[data-th="more"]').tap(); await page.locator('[data-tile="chat"]').tap(); }
     const before = (await page.locator('.td-chat').boundingBox())!;
     // The keyboard (Android Chrome: the visual viewport shrinks, the layout does not): 300px of it.
     await page.evaluate(() => {
