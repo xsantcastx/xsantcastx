@@ -365,7 +365,8 @@ export class TdWorld implements TdLevel {
     for (const p of this.def.places) if (p.kind === 'storm-oak' && Math.hypot(c - p.c, r - p.r) < STORM_OAK_R + 3) return true;
     for (const p of this.def.places) if ((p.kind === 'mere-posts' && Math.hypot(c - p.c, r - p.r) < MERE_POSTS_R + 3) || (p.kind === 'siege-trench' && Math.hypot(c - p.c, r - p.r) < 10)) return true;
     // The arrival rule (world-acts.md §0): nothing within SEAM_CLEAR tiles of where a seam sets the Keeper down.
-    for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 1 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
+    // A pack's followers stand a few tiles round its leader, so a leader keeps SEAM_CLEAR + 4 off (none of the pack is within SEAM_CLEAR).
+    for (const sm of this.def.seams ?? []) { const a = seamArrival(sm); if (Math.hypot(c - a.c, r - a.r) <= SEAM_CLEAR + 4 || Math.hypot(c - sm.c, r - sm.r) < 7) return true; }
     // A named hot spot keeps its own pack and no other (its ring stays readable: world-acts.md §2).
     for (const k of this.def.camps ?? []) if (Math.hypot(c - k.c, r - k.r) < 19) return true;
     // A Waystone is safe ground: no pack round it.

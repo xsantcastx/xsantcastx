@@ -70,13 +70,20 @@ sound per area.
   `world-bosses.ts`: Ser Wickless rises in the Ruins. `waystones.model.ts`: `marches:` stone ids.
 - Test hooks: `__tdS8.night('bell-under-water')` forces it (the note 3 s in); `__tdS8.underbell()` (webdriver only).
 
-## For main: the Fogmother (branch s10b)
-The Black Meres are `umbral-marches-meres` now. Its Waystone camp is the section's (0, 0), so the Three Posts cannot
-keep their old tile (−4, −12: it would be 12 tiles off the camp). The Meres keep **a pool open for them at tile
-(96, −52)** (`THREE_POSTS_AT`, region `k`, a 14-tile glade: no road, camp, stone or seam within 30 tiles; the bog firm
-round it; a karma test holds it). To reconcile s10b: put its `mere-posts` place in `MERES_SECTION.places` at
-`THREE_POSTS_AT`, set the Fogmother's `area: 'umbral-marches-meres'`, `at: { c: 96, r: -52 }` and its `posts` shifted
-by (+100, −40): (96, −62), (105, −47), (87, −47). Ser Wickless's area is `umbral-marches-ruins`.
+## The Fogmother (S10b, merged d6d56adc) and the Director's round 2
+- **Reconciled**: the Three Posts (`mere-posts`) stand in `MERES_SECTION.places` at (96, −52); the Fogmother rises in
+  `umbral-marches-meres` there, its posts (96, −62), (105, −47), (87, −47); Old Corvane's boards run out to the pool's
+  edge (it was unreachable over the black water); Ser Wickless in `umbral-marches-ruins`. `td-s10b` and
+  `social-s10b` point at the Meres section.
+- **Atlas title**: the Marches' land key, and a land may have its own short title (`atlas.title.<land>`): "Marches
+  Waystones", one line at 360 px.
+- **Elite plates** clamp as one (bar, affixes, name) clear of every HUD box by a few px — the minimap and its clock row,
+  the chat and its tab, the hotbar, the belt, the dock, the prompt and the HUD buttons (`eliteClamp`, the elite plate's
+  own list; plain plates unchanged): a box in the top half is passed sideways, one lower lifted over.
+- **The Bell Under the Water**: by the roof, before and through its note, the prompt says **Stand still — listen**
+  (no disc verb; E does nothing, never a step down into the Belfry then); the ripple is bright 3×2 dots on the water.
+- The fifth bell's door prompts **Sealed: The Fifth Bell's Door**; the shots spec has a 1920×1080 pass.
+- A seam's arrival keeps whole packs off (a leader SEAM_CLEAR + 4 away): a follower stood within 8 tiles once.
 
 ## Tests
 - karma `td/td-marches.spec.ts` (the accept-when list: one area each, zones in band, seams paired and walked with black

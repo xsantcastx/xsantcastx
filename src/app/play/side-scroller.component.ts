@@ -7071,6 +7071,11 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get weatherLabel(): string { return this.weatherNow ? this.t('weather.pip', { state: this.t(`weather.state.${this.weatherNow.state}`) }) : ''; }
   /** The satchel card of a gathered thing: what it is, where it is found, what it is for, its lore, and its one action. */
+  /** The Atlas's title: a land's own short one when it has one (it fits one line at 360 px), else the shared form. */
+  atlasTitle(land: string): string {
+    const own = `atlas.title.${land}`, v = this.t(own);
+    return v && v !== own ? v : this.t('atlas.title', { land: this.t('atlas.land.' + land) });
+  }
   /** What a section seam in reach is (td-sections; `seam:<id>`): a ford or a boardwalk across the water is crossed. */
   private seamKind(nearby: string): string | undefined {
     const id = nearby.slice(5);

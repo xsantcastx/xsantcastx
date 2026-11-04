@@ -738,7 +738,7 @@
     <!-- The Waystones of a land (play/atlas/waystone-atlas.component.ts): one stone a section; travel to any touched one, free. -->
     <section class="places win td-map td-atlas" role="dialog" aria-modal="true" [attr.aria-label]="t('atlas.aria')" data-atlas [attr.data-here]="at.here" data-engine-ignore>
       <header class="win-head">
-        <h2>{{ t('atlas.title', { land: t('atlas.land.' + at.land) }) }}</h2>
+        <h2>{{ atlasTitle(at.land) }}</h2>
         <button type="button" class="win-x places-close" (click)="closeAtlas()" [attr.aria-label]="t('atlas.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('atlas.close') }}</span></button>
       </header>
       <app-waystone-atlas [stones]="at.stones" (travel)="atlasTravel($event)" />
