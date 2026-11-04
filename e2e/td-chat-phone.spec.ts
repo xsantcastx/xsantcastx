@@ -66,7 +66,9 @@ for (const size of SIZES) {
         const meets = ring.l < o.r - .5 && o.l < ring.r - .5 && ring.t < o.b - .5 && o.t < ring.b - .5;
         expect(meets, `the chat meets ${o.sel} (${Math.round(o.l)},${Math.round(o.t)}–${Math.round(o.r)},${Math.round(o.b)})`).toBe(false);
       }
-      expect(m.others.some(o => o.sel === '.td-skills' || o.sel === '.th-arc .th-key'), 'the spell bar is on screen').toBe(true);
+      // The thumb HUD's Chat sheet (ui-pass-3 §13c) is modal over the bottom 60%: the HUD steps back under it.
+      if (!(await page.locator('.stage--thumb').count())) expect(m.others.some(o => o.sel === '.td-skills' || o.sel === '.th-arc .th-key'), 'the spell bar is on screen').toBe(true);
+      else expect(m.others.length, 'nothing of the HUD shows through the sheet').toBe(0);
       // Typing: the input takes focus and a line goes out from the row.
       await input.tap();
       await expect(input).toBeFocused();

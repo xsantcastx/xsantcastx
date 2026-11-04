@@ -68,7 +68,28 @@
           <p class="trade-gold trade-gold--theirs" data-trade-their-gold><i class="trade-coin" aria-hidden="true"></i>{{ tr.offers[other].gold.toLocaleString('en-US') }} {{ t('trade.gold') }}</p>
         </div>
       </div>
-      @if (!locked) {
+      @if (tr.stage === 'confirm' && flow.status.stage !== 'done' && flow.status.stage !== 'failed') {
+        <!-- The confirm stage (RuneScape's second screen, ui-pass-3 §6c): both sides in words, the Gold in big numbers,
+             so the one press that settles it is read, not guessed from pictures. -->
+        <div class="trade-sum" data-trade-summary>
+          <div class="trade-sum__side" data-trade-sum="give">
+            <h3>{{ t('trade.sum.give') }}</h3>
+            <ul>
+              @for (c of cellsOf(mine); track c.id) { <li [style.--rim]="c.tone">{{ c.name }}@if (c.qty > 1) { <span> ×{{ c.qty }}</span> }</li> }
+              @if (!mine.length && !tr.offers[tr.me].gold) { <li class="trade-sum__none">{{ t('trade.nothing') }}</li> }
+            </ul>
+            @if (tr.offers[tr.me].gold) { <p class="trade-sum__gold"><i class="trade-coin" aria-hidden="true"></i><b>{{ tr.offers[tr.me].gold.toLocaleString('en-US') }}</b> {{ t('trade.gold') }}</p> }
+          </div>
+          <div class="trade-sum__side" data-trade-sum="get">
+            <h3>{{ t('trade.sum.get') }}</h3>
+            <ul>
+              @for (c of cellsOf(theirs); track c.id) { <li [style.--rim]="c.tone">{{ c.name }}@if (c.qty > 1) { <span> ×{{ c.qty }}</span> }</li> }
+              @if (!theirs.length && !tr.offers[other].gold) { <li class="trade-sum__none">{{ t('trade.nothing') }}</li> }
+            </ul>
+            @if (tr.offers[other].gold) { <p class="trade-sum__gold"><i class="trade-coin" aria-hidden="true"></i><b>{{ tr.offers[other].gold.toLocaleString('en-US') }}</b> {{ t('trade.gold') }}</p> }
+          </div>
+        </div>
+      } @else if (!locked) {
         <div class="trade-satchel">
           <h3>{{ t('trade.satchel') }}</h3>
           @if (!satchel.length) { <p class="trade-none">{{ t('trade.satchelEmpty') }}</p> }
