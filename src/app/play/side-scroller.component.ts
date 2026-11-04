@@ -207,7 +207,8 @@ import { DelveMapView } from './delve-map-view';
 import { FishingService, type PendingCatch } from '../shared/fishing/fishing.service';
 import { GatheringService } from '../shared/gathering/gathering.service';
 import { GATHER_I18N } from '../shared/gathering/gathering.i18n';
-import { BURNT_FISH_ID, TINDERBOX_ID, logById, mealById, mealOfRaw, worldFishById, type GatherAnswer, type GatherEvent } from '../shared/gathering/gathering.model';
+import { BURNT_FISH_ID, SCRAP_ID, TINDERBOX_ID, logById, mealById, mealOfRaw, worldFishById, type GatherAnswer, type GatherEvent, type MealDef } from '../shared/gathering/gathering.model';
+import { MealBuffService } from '../shared/gathering/meal-buffs.service';
 import { isWet, type WeatherNow, type WeatherShow, WEATHER_SHOW_KEY, WEATHER_SHOWS } from '../shared/weather/weather.model';
 import type { RoomWorldWeather } from './social/social-room';
 import { FISHING_I18N } from '../shared/fishing/fishing.i18n';
@@ -728,6 +729,13 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly fishing = inject(FishingService);
   /** The gathering skills' writes (shared/gathering): each step of a loop the world runs (td-engine onGather). */
   private readonly gathering = inject(GatheringService);
+  /** A meal's lasting good (S8): the Cold Miner's Pasty's Mining XP. */
+  private readonly mealBuffs = inject(MealBuffService);
+  /** Odette Pryor's board (S8), read: its one line on a parchment card, until closed or 12 s. */
+  boardCard: { line: string } | null = null;
+  private boardTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Glim's first-strike warning (world-acts §3.6): once a session. */
+  private strikeSaid = false;
   /** The room's weather roll (it owns the sky while a Keeper is in its world), with when it was heard. */
   private roomWeather: (RoomWorldWeather & { at: number }) | null = null;
   /** Weather v1 now (the HUD's pip), read from the engine once a second. */
@@ -2011,6 +2019,7 @@ export class SideScrollerComponent implements OnDestroy {
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       // The gathering skills (shared/gathering): each step of a fishing, chopping, lighting or cooking loop.
       onGather: event => this.zone.run(() => this.gathered(event)),
+      onSky: event => this.zone.run(() => this.skySaw(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
       onCoopSnap: body => this.room?.coopSnap(body) ?? Promise.resolve(false),
       onCoopHits: body => this.room?.coopHits(body) ?? Promise.resolve(false),
@@ -4725,6 +4734,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.state?.nearby?.startsWith('hearth:')) return this.t(this.hearth.state.wake === this.state.nearby ? 'play.coldHearth.act.warm' : this.hearth.state.lit.includes(this.state.nearby) ? 'play.coldHearth.act.again' : 'play.coldHearth.act.light');
     if (this.state?.nearby?.startsWith('shrine:')) return this.t('play.coldHearth.act.shrine');
     // A town task giver (shared/town-tasks).
+    // S8: Odette Pryor's forecast board in the Pyre Spire's Study.
+    if (this.state?.nearby === 'odette:board') return this.t('weather.board.act');
     if (this.state?.nearby?.startsWith('giver-')) return this.t('play.task.talkTo', { name: titleCase(this.state.nearbyLabel ?? '') });
     // An act's section (td-sections.ts): its Waystone, a thing to read, a sealed thing, a seam's gate.
     // The gathering skills' own targets in the world (a tree to chop, a spot to fish, a fire to cook at).
@@ -6711,6 +6722,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (typeof vars['items'] === 'string') {
       vars['items'] = (vars['items'] as string).split(' and ').map(part => part === 'coins' ? this.t('play.hud.coins') : part).join(this.t('play.hud.and'));
     }
+    // Odette Pryor's board (S8): the two states it names, in the land's words.
+    if (key === 'weather.board') for (const k of ['a', 'b']) if (typeof vars[k] === 'string') vars[k] = this.t(`weather.fc.${vars[k]}`);
     const text = this.t(key, vars);
     return text === key ? this.state.message : text;
   }
@@ -6924,6 +6937,25 @@ export class SideScrollerComponent implements OnDestroy {
     if (a.ok && a.got) { this.pulseSatchel(); this.sound.sfx('pickup'); }
     return a;
   }
+  /**
+   * S8, the sky and the night: Glim calls the first strike's tell; the self-lit kiln is lit with a tinderbox; a night's
+   * reward already booked (its drop's stack op) is never laid twice.
+   */
+  private skySaw(e: { kind: 'tell' } | { kind: 'struck'; n: number } | { kind: 'kiln' } | { kind: 'claimed'; id: string } | { kind: 'board'; a: string; b: string }): string | boolean | null {
+    if (e.kind === 'board') {
+      this.boardCard = { line: this.t('weather.board.line', { a: this.t(`weather.fc.${e.a}`), b: this.t(`weather.fc.${e.b}`) }) };
+      clearTimeout(this.boardTimer);
+      this.boardTimer = setTimeout(() => this.zone.run(() => { this.boardCard = null; }), 12000);
+      return null;
+    }
+    if (e.kind === 'tell') {
+      if (!this.strikeSaid && this.glimVoice.met) { this.strikeSaid = true; this.glimVoice.bond({ id: 'weather-first-strike', key: 'weather.glim.strike' }); }
+      return null;
+    }
+    if (e.kind === 'kiln') return this.inventory.stackOf(TINDERBOX_ID) > 0 ? null : this.t('nightev.kiln.needTinderbox');
+    if (e.kind === 'claimed') return this.inventory.hasStackOp(`seamworks-loot:${e.id}`);
+    return null;
+  }
   /** Eat the picked meal: one is taken, and the Keeper mends its life over twelve seconds. */
   eatPicked(): void {
     const pick = this.pick;
@@ -6935,8 +6967,9 @@ export class SideScrollerComponent implements OnDestroy {
   private eatStack(key: string): void {
     const meal = this.gathering.eat(key, `eat:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e6).toString(36)}`);
     if (!meal) { this.message = this.t('gather.eat.none'); return; }
-    (this.engine as unknown as { eat?: (heal: number) => void } | undefined)?.eat?.(meal.heal);
-    this.message = this.t('gather.eat.ate', { name: materialDisplay(meal.id)?.name ?? meal.name, heal: meal.heal });
+    (this.engine as unknown as { eat?: (heal: number, buff?: MealDef['buff']) => void } | undefined)?.eat?.(meal.heal, meal.buff);
+    this.mealBuffs.start(meal.buff);
+    this.message = this.t(meal.buff ? `gather.eat.buff.${meal.buff.kind}` : 'gather.eat.ate', { name: materialDisplay(meal.id)?.name ?? meal.name, heal: meal.heal, pct: meal.buff?.pct ?? 0, min: (meal.buff?.secs ?? 0) / 60 });
     this.sound.sfx('equip');
   }
   /** Light the picked log at the Keeper's feet (a tinderbox, the Firemaking level): the engine strikes the light. */
@@ -6991,17 +7024,22 @@ export class SideScrollerComponent implements OnDestroy {
   get weatherLabel(): string { return this.weatherNow ? this.t('weather.pip', { state: this.t(`weather.state.${this.weatherNow.state}`) }) : ''; }
   /** The satchel card of a gathered thing: what it is, where it is found, what it is for, its lore, and its one action. */
   private gatherSlip(key: string, name: string, art: string, qty: number): BagSlip | null {
-    const log = logById(key), fish = worldFishById(key), meal = mealById(key), burnt = key === BURNT_FISH_ID, tinder = key === TINDERBOX_ID;
-    if (!log && !fish && !meal && !burnt && !tinder) return null;
+    const log = logById(key), fish = worldFishById(key), meal = mealById(key), burnt = key === BURNT_FISH_ID, tinder = key === TINDERBOX_ID, scrap = key === SCRAP_ID;
+    if (!log && !fish && !meal && !burnt && !tinder && !scrap) return null;
     const nm = (id: string) => materialDisplay(id)?.name ?? id;
     let kicker: string, found: string, use: string;
-    if (log) { kicker = this.t('gather.card.log'); found = log.id === 'rootglass-bough' ? this.t('gather.found.bough', { n: log.cut }) : this.t('gather.found.log', { land: this.t(`land.${log.land}`), n: log.cut }); use = this.t('gather.use.log', { n: log.burn }); }
+    if (log) { kicker = this.t('gather.card.log'); found = log.found ? this.t(`gather.found.${log.id}`) : log.id === 'rootglass-bough' ? this.t('gather.found.bough', { n: log.cut }) : this.t('gather.found.log', { land: this.t(`land.${log.land}`), n: log.cut }); use = this.t('gather.use.log', { n: log.burn }); }
     else if (fish) {
       const m = mealOfRaw(key);
       kicker = this.t('gather.card.fish');
       found = this.t('gather.found.fish', { waters: fish.waters.map(w => this.t(`gather.water.${w}`)).join(', '), n: fish.level, when: fish.when ? this.t(`gather.when.${fish.when}`) : '' });
       use = this.t('gather.use.fish', { meal: m ? nm(m.id) : '', n: m?.level ?? 1 });
-    } else if (meal) { kicker = this.t('gather.card.meal'); found = this.t('gather.found.meal', { n: meal.level, raw: nm(meal.raw) }); use = this.t('gather.use.meal', { heal: meal.heal }); }
+    } else if (meal) {
+      kicker = this.t('gather.card.meal');
+      found = meal.found ? this.t(`gather.found.${meal.id}`) : this.t('gather.found.meal', { n: meal.level, raw: nm(meal.raw) });
+      use = this.t('gather.use.meal', { heal: meal.heal }) + (meal.buff ? ` ${this.t(`gather.use.buff.${meal.buff.kind}`, { pct: meal.buff.pct, min: meal.buff.secs / 60 })}` : '');
+    }
+    else if (scrap) { kicker = this.t('gather.card.scrap'); found = this.t('gather.found.margin-note-scrap'); use = this.t('gather.use.margin-note-scrap'); }
     else if (burnt) { kicker = this.t('gather.card.burnt'); found = this.t('gather.found.burnt'); use = this.t('gather.use.burnt'); }
     else { kicker = this.t('gather.card.tinder'); found = this.t('gather.found.tinder'); use = this.t('gather.use.tinder'); }
     const lore = this.t(`gather.lore.${key}`);

@@ -20,6 +20,14 @@
       </div>
     }
   </div>
+  <!-- S8: Odette Pryor's forecast board, read (td-sky-lines ODETTE_BOARD): one line in chalk on a parchment card. -->
+  @if (boardCard; as bc) {
+    <section class="sky-card" role="status" aria-live="polite" data-board-card data-engine-ignore>
+      <h2>{{ t('weather.board.title') }}</h2>
+      <p class="px-parch sky-card__line">{{ bc.line }}</p>
+      <button type="button" class="px-x sky-card__x" [attr.aria-label]="t('weather.board.close')" (click)="boardCard = null"><i aria-hidden="true">&times;</i></button>
+    </section>
+  }
   <!-- The Cold Hearth (shared/hearth): after a fall, where the Keeper woke and what it cost. Nothing else is ever lost. -->
   @if (wakeCard; as wc) {
     <section class="wake-card" role="status" aria-live="polite" data-wake-card [attr.data-wake-hearth]="wc.hearth" data-engine-ignore>

@@ -15,6 +15,8 @@ const SPIRE_OUT: StationDef = { id: 'spire-out', x: 0, label: 'DOOR', kind: 'pas
 const HALL_UP: StationDef = { id: 'spire-1-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Study.' };
 const STUDY_DOWN: StationDef = { id: 'spire-2-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Watch Hall.' };
 const STUDY_UP: StationDef = { id: 'spire-2-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the Lookout.' };
+/** Odette Pryor's forecast board on the Study's wall (S8, canon §9 "The smoke leans"; td-sky-lines ODETTE_BOARD). */
+const ODETTE_BOARD_STATION: StationDef = { id: 'odette:board', x: 0, label: "ODETTE PRYOR'S BOARD", kind: 'resource', blurb: 'Chalk on slate: the smoke, the sky, and what the next two bells will bring.' };
 const LOOKOUT_DOWN: StationDef = { id: 'spire-3-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the Study.' };
 
 const ROOM: Readonly<Record<string, LegendEntry>> = {
@@ -50,10 +52,11 @@ export const PYRE_SPIRE_2: TdMapDef = {
   legend: { ...ROOM,
     '<': { ground: 'plank', object: 'down', station: STUDY_DOWN, exit: { to: 'pyre-spire-1', arrive: 'spire-1-up' } },
     '>': { ground: 'plank', object: 'up', station: STUDY_UP, exit: { to: 'pyre-spire-3', arrive: 'spire-3-down' } },
+    'B': { ground: 'plank', object: 'shelf', station: ODETTE_BOARD_STATION },
   },
   rows: [
     '########################',
-    '#######s..s..s..s#######',
+    '#######s..sB.s..s#######',
     '####..............s#####',
     '###.................<..#',
     '##.....rrrrrrrr........#',

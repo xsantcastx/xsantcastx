@@ -11,8 +11,9 @@
  * world: it sends the window and the rolls from its own clock (scripts/social-world.mjs `world-weather`), so two
  * devices with skewed clocks still see one sky. Alone, the device's world clock gives the same numbers.
  *
- * v1 ships Clear, Overcast, Rain, Thunderstorm and Fog. The land specials (Ashfall, Spore drift, Mist-rain: S8) read as
- * Overcast until they are built. An eclipse hushes the weather (Clear or Overcast only). Outdoors only.
+ * v1 shipped Clear, Overcast, Rain, Thunderstorm and Fog; S8 adds each land's special (Ashfall on Ember Isle and the
+ * Reach, Spore drift in the Wilds, Mist-rain in the Marches) and the storm's strikes (td-weather-fx). An eclipse hushes
+ * the weather (Clear or Overcast only). Outdoors only.
  *
  * Wet (the shared table, skills-100 §0.4): lightning taken +25%, fire dealt −15% and fire taken −15%, a cold hit on the
  * Wet freezes. Rain makes the fish bite 25% sooner; a campfire in the rain gutters out in 60 s.
@@ -22,8 +23,13 @@
 import { hashSeed } from '../loot/champions';
 import { eclipseAt, worldTime, type DayPhase } from '../world-clock/world-clock.model';
 
-export type WeatherState = 'clear' | 'overcast' | 'rain' | 'storm' | 'fog';
-export const WEATHER_STATES: readonly WeatherState[] = ['clear', 'overcast', 'rain', 'storm', 'fog'];
+export type WeatherState = 'clear' | 'overcast' | 'rain' | 'storm' | 'fog' | 'ashfall' | 'spores' | 'mistrain';
+export const WEATHER_STATES: readonly WeatherState[] = ['clear', 'overcast', 'rain', 'storm', 'fog', 'ashfall', 'spores', 'mistrain'];
+/** Each land's own weather (world-acts §3.2): the sixth column of its weights. */
+export type LandSpecial = 'ashfall' | 'spores' | 'mistrain';
+export const LAND_SPECIAL: Readonly<Record<string, LandSpecial>> = {
+  'ember-isle': 'ashfall', 'infernal-reach': 'ashfall', 'verdant-wilds': 'spores', 'umbral-marches': 'mistrain',
+};
 
 /** One weather window, in real ms (6 minutes). */
 export const WEATHER_WINDOW_MS = 360_000;
@@ -107,9 +113,9 @@ export function weightsFor(land: string, region: string, part: Daypart): Row {
   return mean as unknown as Row;
 }
 
-/** Walk the weights in order with the roll. The land special (S8) reads as Overcast in v1. */
-export function stateFor(roll: number, row: Row, eclipse: boolean): WeatherState {
-  const order: WeatherState[] = ['clear', 'overcast', 'rain', 'storm', 'fog', 'overcast'];
+/** Walk the weights in order with the roll; the sixth column is the land's special (Overcast where a land has none). */
+export function stateFor(roll: number, row: Row, eclipse: boolean, special: WeatherState = 'overcast'): WeatherState {
+  const order: WeatherState[] = ['clear', 'overcast', 'rain', 'storm', 'fog', special];
   const u = Math.max(0, Math.min(.999999, roll)) * 100;
   let acc = 0, pick: WeatherState = 'clear';
   for (let i = 0; i < 6; i++) { acc += row[i]; if (u < acc) { pick = order[i]; break; } }
@@ -147,7 +153,7 @@ function stateAt(land: string, region: string, window: number, rolls: WeatherInp
   const mid = window * WEATHER_WINDOW_MS + WEATHER_WINDOW_MS / 2;
   const part = daypartOf(worldTime(mid).phase);
   const roll = rolls && rolls.window === window && typeof rolls.lands[land] === 'number' ? rolls.lands[land] : weatherRoll(land, window);
-  return stateFor(roll, weightsFor(land, region, part), !!eclipseAt(mid));
+  return stateFor(roll, weightsFor(land, region, part), !!eclipseAt(mid), LAND_SPECIAL[land] ?? 'overcast');
 }
 
 /** The weather a Keeper stands in. Pure. */
@@ -167,8 +173,10 @@ export function weatherAt(i: WeatherInput): WeatherNow {
 
 // ── What the weather does (the rules) ────────────────────────────────────────
 
-/** Rain and Thunderstorm wet everything outdoors. */
-export function isWet(state: WeatherState): boolean { return state === 'rain' || state === 'storm'; }
+/** Rain, Thunderstorm and the Marches' Mist-rain wet everything outdoors. */
+export function isWet(state: WeatherState): boolean { return state === 'rain' || state === 'storm' || state === 'mistrain'; }
+/** Mist-rain is Rain's rules at half strength (world-acts §3.2): Wet, fire −8%, lightning +10%. */
+export function wetStrength(state: WeatherState): number { return state === 'mistrain' ? .5 : isWet(state) ? 1 : 0; }
 /** How long Wet lingers after the rain (s). */
 export const WET_LINGER_SECS = 5;
 
@@ -185,13 +193,60 @@ export function fireSecs(state: WeatherState): number { return isWet(state) ? FI
 
 /** Fog's added mist over a land with none of its own, and over one that has it (the Marches). */
 export function fogExtra(state: WeatherState, ownFog: number): number {
+  // Mist-rain thickens the Marches' own fog by a tenth.
+  if (state === 'mistrain') return .1;
   if (state !== 'fog') return 0;
   return ownFog > 0 ? .1 : .35;
 }
 
+/** Ashfall (Ember Isle, the Reach): fire burns a tenth hotter in the ash, cold a tenth weaker (world-acts §3.2). */
+export const ASHFALL = { fire: 1.1, cold: .9 } as const;
+/**
+ * Spore drift (the Wilds): a fire hit on anything inside the drift bursts once — twice the drift's 4 a second, one
+ * tile round (design-bible §4.7's Spore rule). Creatures only: the drift never hurts a Keeper.
+ */
+export const SPORE_BURST = { dmg: 8, r: 1, gap: 2 } as const;
+
+// ── The storm's strikes (world-acts §3.2, §3.4) ──────────────────────────────
+
+/**
+ * Every 20–40 s (seeded per Keeper) a strike lands on an open tile within 12 tiles: a 1.2 s ring is the tell, then 8%
+ * of max life as lightning to whatever stands within a tile. A strike never takes a Keeper below a tenth of their life;
+ * creatures take it in full.
+ */
+export const STRIKE = { every: [20, 40], reach: 12, tell: 1.2, pct: .08, floor: .1, radius: 1.25, scorch: 20 } as const;
+/** What a strike takes from a Keeper: 8% of max life, Wet ×1.25, a meal's resist off, never below the floor. */
+export function strikeOnKeeper(hp: number, maxHp: number, o: { wet: number; resist: number }): number {
+  const floor = Math.ceil(maxHp * STRIKE.floor);
+  if (hp <= floor) return 0;
+  const raw = maxHp * STRIKE.pct * (1 + (WET.lightningTaken - 1) * Math.max(0, Math.min(1, o.wet))) * (1 - Math.max(0, Math.min(.75, o.resist / 100)));
+  return Math.max(0, Math.min(hp - floor, Math.round(raw)));
+}
+/** What a strike takes from a creature: 8% of its life, deeper on the Wet. */
+export function strikeOnCreature(maxHp: number, wet: number): number {
+  return Math.max(1, Math.round(maxHp * STRIKE.pct * (1 + (WET.lightningTaken - 1) * Math.max(0, Math.min(1, wet)))));
+}
+
+// ── Odette Pryor's board (world-acts §3.6; canon §9 "The smoke leans") ───────
+
+/** The next two windows' weather for a land's default ground, from the same roll the sky uses. */
+export function forecast(land: string, ms: number, rolls?: WeatherInput['rolls']): [WeatherState, WeatherState] {
+  const w = weatherWindow(ms);
+  return [stateAt(land, '*', w + 1, rolls ?? null), stateAt(land, '*', w + 2, rolls ?? null)];
+}
+
 /** Overcast and Fog darken the day a little; a Thunderstorm more. */
 export function dayDim(state: WeatherState): number {
-  return state === 'overcast' ? .15 : state === 'fog' ? .1 : state === 'rain' ? .12 : state === 'storm' ? .25 : 0;
+  switch (state) {
+    case 'overcast': return .15;
+    case 'fog': return .1;
+    case 'rain': return .12;
+    case 'storm': return .25;
+    case 'ashfall': return .12;
+    case 'spores': return .06;
+    case 'mistrain': return .12;
+    default: return 0;
+  }
 }
 
 /** The player's choice (Menu → Settings → Weather): weather-show.ts. */
