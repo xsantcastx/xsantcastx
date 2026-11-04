@@ -222,6 +222,12 @@ for (const size of SIZES) {
       await closeAll(page);
       await key('m');
       await check(page, 'Map', '#places-list');
+      // ui-pass-3 Wave B: the Map with a search open (its results push the map down) and with a pin's card open.
+      await page.locator('#places-list [data-map-find]').fill('wren');
+      await check(page, 'Map, a search open', '#places-list');
+      await page.locator('#places-list [data-map-find]').fill('');
+      await page.locator('#places-list .mw__pin[data-cat="hearth"], #places-list .mw__pin').first().dispatchEvent('click');
+      await check(page, 'Map, a pin card open', '#places-list');
       await openMenu(page);
       await check(page, 'Game Menu', '#game-menu');
       await page.locator('#game-menu [data-open="bestiary"]').tap();
@@ -281,7 +287,8 @@ for (const size of SIZES) {
 
       // A Harbourmaster's Sailing Board (play/harbour), from the Map's anchor pin; Esc folds it.
       await key('m');
-      await page.locator('#places-list .mw__pin[data-cat="harbour"]').first().tap();
+      await page.locator('#places-list .mw__pin[data-cat="harbour"]').first().dispatchEvent('click');
+      await page.locator('#places-list [data-map-walk]').tap();
       await check(page, 'Sailing Board', '.td-harbour');
       await page.keyboard.press('Escape');
       await expect(page.locator('.td-harbour')).toHaveCount(0);

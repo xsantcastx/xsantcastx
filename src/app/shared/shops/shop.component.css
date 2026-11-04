@@ -1,52 +1,141 @@
 /**
- * shop.component.css — a district shop on the station kit: the shelf grid beside the satchel grid. Tokens only.
+ * shop.component.css — a district shop on the station kit (ui-pass-3 §4): priced shelf tiles beside the satchel grid,
+ * one buy card with a quantity row and one brass Buy. Colours from _cozy.css only.
  */
 :host { display: block; }
-.sh-hero { display: flex; flex-wrap: wrap; gap: var(--space-3); min-width: 0; align-items: flex-start; }
-.sh-keeper { flex-basis: 100%; margin: 0; color: var(--text-body); font-size: var(--text-sm); }
-.sh-keeper b { color: var(--text-heading); }
-.sh-side { display: grid; gap: var(--space-2); min-width: 0; flex: 1 1 260px; max-width: 380px; container-type: inline-size; }
-.sh-h { margin: 0; color: var(--text-heading); font: var(--weight-bold) var(--text-sm) var(--font-display, var(--font-ui)); }
-.sh-buys { display: block; color: var(--text-muted); font: var(--text-xs, 12px) var(--font-game, var(--font-ui)); }
 
+/* Wide (a desktop window): the shelf, the card under it, the satchel beside both. */
+.sh-hero {
+  position: relative; display: grid; gap: var(--space-2) var(--space-3); min-width: 0; align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  grid-template-areas: "shelf satchel" "card satchel";
+}
+.sh-seg { display: none; }
+.sh-side { display: grid; gap: var(--space-2); min-width: 0; align-content: start; }
+.sh-side--shelf { grid-area: shelf; }
+.sh-side--satchel { grid-area: satchel; max-width: 400px; container-type: inline-size; }
+.sh-hold, .sh-announce { grid-column: 1 / -1; margin: 0; color: var(--cozy-cream); font: 600 13px/1.3 var(--cozy-font-read); }
+.sh-h { margin: 0; color: var(--cozy-cream); font: 700 13px/1.2 var(--font-display, var(--font-game)); letter-spacing: .04em; text-transform: uppercase; }
+.sh-buys { display: block; margin-top: 2px; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); font: 500 12px/1.3 var(--cozy-font-read); text-transform: none; letter-spacing: 0; }
+
+/* ── The shelf: one priced tile per offer. The price under the icon, never a corner count (that reads as a stack). ── */
 .sh-shelf {
-  --cell: clamp(24px, calc(100cqi / 10), 38px);
-  position: relative; display: grid; width: calc(10 * var(--cell)); height: calc(var(--rows) * var(--cell));
-  grid-template-columns: repeat(10, var(--cell)); grid-auto-rows: var(--cell);
-  background: var(--cozy-well); outline: 2px solid var(--cozy-wood-0); box-shadow: inset 0 0 0 1px var(--cozy-wood-1);
+  --tile: 64px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr)); gap: 4px; padding: 4px;
+  background: var(--cozy-well); box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 1px var(--cozy-wood-1);
   touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
-.sh-shelf.is-over { outline-color: var(--cozy-brass-hi); }
-.sh-cell { border-right: 1px solid var(--cozy-plate-seam); border-bottom: 1px solid var(--cozy-plate-seam); }
+.sh-shelf.is-over { box-shadow: 0 0 0 2px var(--cozy-brass-hi), inset 0 0 0 1px var(--cozy-wood-1); }
 .sh-offer {
-  position: absolute; left: calc(var(--x) * var(--cell)); top: calc(var(--y) * var(--cell));
-  width: calc(var(--w) * var(--cell)); height: calc(var(--h) * var(--cell)); padding: 2px; margin: 0;
-  display: grid; place-items: center; cursor: grab; font: inherit; color: var(--cozy-cream);
-  background: color-mix(in srgb, var(--rim, var(--cozy-loot-common)) 14%, var(--cozy-plate));
-  border: 0; outline: 1px solid color-mix(in srgb, var(--rim, var(--cozy-loot-common)) 55%, transparent); outline-offset: -2px;
-  -webkit-touch-callout: none;
+  position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; align-items: center; gap: 2px;
+  min-width: 44px; min-height: 64px; aspect-ratio: 1 / 1.08; padding: 4px 2px 4px; margin: 0; box-sizing: border-box;
+  font: inherit; color: var(--cozy-cream); cursor: grab; border: 0; border-radius: 0;
+  background: color-mix(in srgb, var(--rim, var(--cozy-loot-common)) 10%, var(--cozy-plate));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rim, var(--cozy-loot-common)) 45%, var(--cozy-wood-0));
+  -webkit-touch-callout: none; touch-action: pan-y;
 }
-.sh-offer:hover, .sh-offer:focus-visible { outline: 2px solid var(--rim, var(--cozy-brass-hi)); }
-.sh-offer img { max-width: 100%; max-height: 100%; image-rendering: pixelated; pointer-events: none; }
-.sh-offer em { font: 700 11px var(--font-game); font-style: normal; }
-.sh-price { position: absolute; right: 2px; bottom: 1px; font: 700 9px var(--cozy-font-read); color: var(--cozy-brass-hi); text-shadow: 1px 1px 0 var(--cozy-wood-0); pointer-events: none; }
+.sh-offer:hover, .sh-offer:focus-visible { background: color-mix(in srgb, var(--rim, var(--cozy-loot-common)) 18%, var(--cozy-wood-1)); outline: none;
+  box-shadow: inset 0 0 0 2px var(--rim, var(--cozy-glow)), 0 0 0 2px var(--cozy-glow); }
+.sh-offer.is-on { box-shadow: inset 0 0 0 2px var(--rim, var(--cozy-glow)), 0 0 0 2px var(--cozy-brass-hi); background: var(--cozy-wood-1); }
+.sh-icon { display: grid; place-items: center; width: 100%; height: 100%; min-height: 0; overflow: hidden; pointer-events: none; }
+.sh-icon img { width: 32px; height: 32px; max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+.sh-icon em { font: 700 13px var(--font-game); font-style: normal; color: var(--cozy-cream); }
+.sh-price {
+  display: inline-flex; align-items: center; gap: 3px; pointer-events: none; white-space: nowrap;
+  font: 700 12px/1 var(--cozy-font-read); color: var(--cozy-glow); text-shadow: 1px 1px 0 var(--cozy-wood-0);
+}
+.sh-coin { width: 12px; height: 12px; image-rendering: pixelated; flex: none; }
+.sh-offer.is-poor .sh-price, .sh-meta.is-poor { color: var(--cozy-berry); text-shadow: none; }
 
-.sh-card {
-  position: relative; flex-basis: 100%; box-sizing: border-box; max-width: 100%; display: grid; gap: 2px; padding: var(--space-2) var(--space-3);
-  background: var(--cozy-plate); outline: 2px solid var(--rim, var(--cozy-wood-1)); color: var(--text-body); font-size: var(--text-sm);
+/* ── The buy card (and the sell card): the item, its meta line, 1 · 5 · 10 · Max, one brass action. ── */
+.sh-card, .sh-tip {
+  position: relative; box-sizing: border-box; min-width: 0; display: grid; gap: 6px; padding: 8px 10px 10px;
+  color: var(--cozy-cream); background: var(--cozy-plate);
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--rim, var(--cozy-wood-2)), inset 0 2px 0 4px var(--cozy-plate-seam);
 }
-.sh-name { color: var(--rim, var(--text-heading)); padding-right: var(--tap-min); }
-.sh-line { color: var(--text-body); }
-.sh-muted { color: var(--text-muted); }
-.sh-x { position: absolute; top: 0; right: 0; }
-.sh-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.sh-card { grid-area: card; }
+.sh-cardhead { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: center; padding-right: 44px; }
+.sh-cardicon { display: grid; place-items: center; width: 52px; height: 52px; background: var(--cozy-well); box-shadow: inset 0 0 0 2px var(--rim, var(--cozy-wood-2)); }
+.sh-cardicon img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; }
+.sh-cardicon em { font: 700 14px var(--font-game); font-style: normal; }
+.sh-cardtitle { display: grid; gap: 2px; min-width: 0; }
+.sh-name { color: var(--rim, var(--cozy-glow)); font: 800 15px/1.15 var(--cozy-font-read); text-shadow: 0 1px 0 var(--cozy-wood-0); overflow-wrap: anywhere; }
+.sh-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: color-mix(in srgb, var(--cozy-cream) 82%, transparent); font: 600 12px/1.3 var(--cozy-font-read); }
+.sh-lines { display: grid; gap: 1px; }
+.sh-line { color: var(--cozy-cream); font: 500 13px/1.3 var(--cozy-font-read); }
+.sh-muted { color: color-mix(in srgb, var(--cozy-cream) 65%, transparent); }
+.sh-hint { color: var(--cozy-glow); font: 600 12px/1.3 var(--cozy-font-read); }
+.sh-why { color: var(--cozy-berry); font: 600 12px/1.3 var(--cozy-font-read); text-align: center; }
+.sh-x { position: absolute; top: 2px; right: 2px; color: var(--cozy-cream); }
+
+.sh-qty { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 4px; }
+.sh-step, .sh-segbtn {
+  min-height: 44px; min-width: 44px; padding: 0 8px; border: 0; border-radius: 0; cursor: pointer; touch-action: manipulation;
+  font: 700 13px/1 var(--font-game); letter-spacing: .04em; color: color-mix(in srgb, var(--cozy-cream) 80%, transparent);
+  background: var(--cozy-wood-1); box-shadow: inset 0 2px 0 0 var(--cozy-wood-2), inset 0 -2px 0 0 var(--cozy-plate-seam), 0 0 0 2px var(--cozy-wood-0);
+}
+.sh-step:hover, .sh-segbtn:hover { background: var(--cozy-wood-2); color: var(--cozy-cream); }
+.sh-step[aria-pressed="true"], .sh-segbtn[aria-selected="true"] {
+  background: var(--cozy-wood-3); color: var(--cozy-cream);
+  box-shadow: inset 0 2px 0 0 var(--cozy-wood-hi), inset 0 -2px 0 0 var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0);
+}
+.sh-step:focus-visible, .sh-segbtn:focus-visible, .sh-btn:focus-visible { outline: 2px solid var(--cozy-glow); outline-offset: 2px; }
+
+.sh-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.sh-acts .sh-btn { flex: 1 1 140px; }
 .sh-btn {
-  min-height: var(--tap-min); min-width: var(--tap-min); padding: 0 var(--space-3);
-  border: 1px solid var(--cozy-wood-1); background: var(--cozy-well); color: var(--cozy-cream);
-  font: var(--weight-bold) var(--text-sm) var(--font-game, var(--font-ui)); cursor: pointer;
+  min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 0; cursor: pointer; touch-action: manipulation;
+  font: 700 13px/1.1 var(--font-game); letter-spacing: .03em; color: var(--cozy-cream);
+  background: var(--cozy-wood-2); box-shadow: inset 0 2px 0 0 var(--cozy-wood-3), inset 0 -2px 0 0 var(--cozy-wood-1), 0 0 0 2px var(--cozy-wood-0);
 }
-.sh-btn.is-primary { background: var(--cozy-brass); color: var(--cozy-wood-0); border-color: var(--cozy-brass-hi); }
-.sh-btn:focus-visible { outline: 2px solid var(--cozy-brass-hi); outline-offset: 2px; }
-.sh-hold, .sh-announce { flex-basis: 100%; margin: 0; color: var(--text-heading); font-size: var(--text-sm); }
-.sh-more { display: grid; gap: var(--space-2); color: var(--text-body); font-size: var(--text-sm); }
+.sh-btn:hover { background: var(--cozy-wood-3); }
+.sh-btn.is-primary {
+  min-height: 52px; width: 100%; font-size: 15px; color: var(--cozy-wood-0); background: var(--cozy-brass);
+  box-shadow: inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo), 0 0 0 2px var(--cozy-wood-0);
+}
+.sh-btn.is-primary:hover { background: var(--cozy-brass-hi); }
+.sh-btn.is-primary[aria-disabled="true"] { cursor: default; color: color-mix(in srgb, var(--cozy-cream) 40%, transparent); background: var(--cozy-wood-1);
+  box-shadow: inset 0 2px 0 0 var(--cozy-wood-2), 0 0 0 2px var(--cozy-wood-0); }
+.sh-btn:active { translate: 0 2px; }
+@media (prefers-reduced-motion: reduce) { .sh-btn:active { translate: none; } }
+
+/* The desktop hover card: at the pointer, never in the way of a click. */
+.sh-tip { position: absolute; z-index: 8; width: 264px; pointer-events: none; box-shadow: 0 0 0 2px var(--cozy-wood-0), 0 0 0 4px var(--rim, var(--cozy-brass)), 0 0 0 6px var(--cozy-wood-0); }
+.sh-tip .sh-cardhead { padding-right: 0; }
+
+.sh-more { display: grid; gap: var(--space-2); color: var(--cozy-cream); font: 500 13px/1.45 var(--cozy-font-read); }
 .sh-more p { margin: 0; }
+.sh-keeper b { color: var(--cozy-glow); }
+
+/* ── Narrow (a phone, held either way): Shelf | Satchel, one side at a time; the card rides the window's foot so its
+   Buy is in view the moment it opens (no scrolling to reach the station's one action). ── */
+@container station (max-width: 640px) {
+  .sh-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "seg" "side" "card"; }
+  .sh-seg { grid-area: seg; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 2px; }
+  .sh-side { grid-area: side; }
+  .sh-side--satchel { max-width: none; }
+  .sh-hero[data-seg="shelf"] .sh-side--satchel, .sh-hero[data-seg="satchel"] .sh-side--shelf { display: none; }
+  .sh-side--shelf .sh-h { display: none; }
+  .sh-shelf { --tile: 66px; }
+  .sh-offer .sh-icon img { width: 40px; height: 40px; }
+  .sh-card { position: sticky; bottom: 0; z-index: 3; }
+  .sh-tip { display: none; }
+}
+/* A phone held sideways: a short panel, so smaller tiles and a two-column card (the item | the row and Buy). */
+@media (max-height: 500px) {
+  .sh-shelf { --tile: 64px; }
+  .sh-offer { aspect-ratio: auto; min-height: 60px; }
+  .sh-offer .sh-icon img { width: 32px; height: 32px; }
+  .sh-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; column-gap: 10px; padding: 6px 8px 8px; }
+  .sh-card > .sh-cardhead, .sh-card > .sh-lines { grid-column: 1; }
+  .sh-card > .sh-qty, .sh-card > .sh-btn, .sh-card > .sh-why, .sh-card > .sh-acts { grid-column: 2; }
+  .sh-card > .sh-cardhead { grid-row: 1; padding-right: 0; }
+  .sh-card > .sh-qty, .sh-card > .sh-acts { grid-row: 1; margin-right: 44px; }
+  .sh-card > .sh-lines { grid-row: 2 / span 2; }
+  .sh-card > .sh-btn { grid-row: 2; min-height: 48px; }
+  .sh-card > .sh-why { grid-row: 3; }
+  .sh-cardhead { grid-template-columns: 44px minmax(0, 1fr); }
+  .sh-cardicon { width: 44px; height: 44px; }
+  .sh-cardicon img { width: 36px; height: 36px; }
+  .sh-lines { max-height: 60px; overflow: auto; }
+}

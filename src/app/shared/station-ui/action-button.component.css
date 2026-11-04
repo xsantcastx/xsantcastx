@@ -199,11 +199,24 @@
 }
 
 /* In the world: ONE big pixel Craft button; the stepper small; ALL only when it fits. */
-:host-context(.place) .ab__btn { min-height: 56px; padding: var(--space-2) var(--space-3); border: 0; border-radius: 0; background: var(--gold); color: var(--text-on-accent); text-shadow: none;
-  box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep), 0 6px 0 0 var(--obsidian-0), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 70%, transparent); }
-:host-context(.place) .ab__btn:active { transform: translateY(4px); box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep); }
-:host-context(.place) .ab__btn.is-blocked { background: var(--obsidian-3); color: var(--st-text-soft);
-  box-shadow: 0 -2px 0 0 var(--edge-raised), 0 2px 0 0 var(--edge-raised), -2px 0 0 0 var(--edge-raised), 2px 0 0 0 var(--edge-raised), 0 6px 0 0 var(--obsidian-0); }
+/* The one primary is brass (ui-system §6, Director 2026-11-03), the same as the Glass's Become: "Verb · N Gold" on one
+   line, the coin inline (no dark pill), wood-0 lettering. */
+:host-context(.place) .ab__btn { min-height: 52px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px;
+  padding: var(--space-2) var(--space-3); border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0); text-shadow: none; animation: none;
+  box-shadow: inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo), 0 0 0 2px var(--cozy-wood-0); }
+:host-context(.place) .ab__btn:hover { filter: none; background: var(--cozy-brass-hi); }
+:host-context(.place) .ab__btn:active { transform: translateY(2px); box-shadow: inset 0 2px 0 0 var(--cozy-brass-hi), 0 0 0 2px var(--cozy-wood-0); }
+:host-context(.place) .ab__label { font: 700 15px/1.15 var(--font-game); letter-spacing: .03em; }
+:host-context(.place) .ab__costs { gap: 2px 8px; align-items: center; }
+:host-context(.place) .ab__costs::before { content: '·'; font: 700 15px/1 var(--font-game); }
+:host-context(.place) .ab__costs ::ng-deep .chip { min-height: 0; padding: 0; gap: 4px; border: 0; background: none; box-shadow: none; animation: none;
+  color: inherit; font: 700 15px/1.1 var(--font-game); }
+:host-context(.place) .ab__costs ::ng-deep .chip__art { width: 16px; height: 16px; image-rendering: pixelated; }
+:host-context(.place) .ab__btn .ab__costs ::ng-deep .chip__label { color: inherit; font-weight: inherit; }
+/* Unable (ui-system §6 disabled): plain dark wood, cream at 40%, so it never reads as live; the why is the line under it. */
+:host-context(.place) .ab__btn.is-blocked { background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 40%, transparent); cursor: default;
+  box-shadow: inset 0 2px 0 0 var(--cozy-wood-2), 0 0 0 2px var(--cozy-wood-0); }
+:host-context(.place) .ab__btn.is-blocked :is(.chip, app-cost-chip) { opacity: .7; }
 :host-context(.place) .ab__row { flex-wrap: nowrap; gap: 10px; }
 :host-context(.place) .ab__row > .ab__btn { flex: 1 1 0; min-width: 0; }
 :host-context(.place) .ab__step { border: 0; border-radius: 0; background: var(--obsidian-1); box-shadow: 0 -2px 0 0 var(--edge-raised), 0 2px 0 0 var(--edge-raised), -2px 0 0 0 var(--edge-raised), 2px 0 0 0 var(--edge-raised); }
@@ -213,7 +226,7 @@
 @container station (max-width: 420px) { :host-context(.place) .ab__all { display: none; } }
 @media (max-height: 520px) and (orientation: landscape) { :host-context(.place) .ab__all { display: none; } }
 @media (max-height: 520px) and (orientation: landscape) {
-  :host-context(.place) .ab__stepbtn { width: 40px; min-height: 44px; }
+  :host-context(.place) .ab__stepbtn { width: 44px; min-height: 44px; }
   :host-context(.place) .ab__qty { min-width: 34px; }
   :host-context(.place) .ab__btn { min-height: 52px; }
   :host-context(.place) .ab__row { gap: 6px; }

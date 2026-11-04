@@ -1,6 +1,6 @@
 import { fitBox } from './fit-viewport.directive';
 import { HUD_LAYOUT_KEY, readHudLayout } from './hud-drag.directive';
-import { pinCat } from './td-map-window.component';
+import { coverScale, cullLabels, pinCat, stepScale, wholeScale } from './td-map-window.component';
 import { mapSections, zoneLabels } from './td/td-map';
 import { CONTINENTS, LEVELS } from './td/td-engine';
 import { MOBS } from './td/td-mobs';
@@ -38,6 +38,31 @@ describe('owner player notes 2026-10-21 (HUD helpers)', () => {
     expect(pinCat({ ...base, id: 'cave', kind: 'way', to: 'slagstone-cave' })).toBe('dungeon');
     expect(pinCat({ ...base, id: 'stairs', kind: 'way' })).toBe('way');
     expect(pinCat({ ...base, id: 'ship-a', kind: 'ship' })).toBe('ship');
+    expect(pinCat({ ...base, id: 'shop-general', kind: 'stall' })).toBe('shop');
+    expect(pinCat({ ...base, id: 'crafting', kind: 'stall' })).toBe('stall');
+  });
+
+  it('the Map draws at whole-pixel scales that always cover the frame (ui-pass-3 §8)', () => {
+    expect(wholeScale(2.4)).toBe(2);
+    expect(wholeScale(.45)).toBe(.5);
+    expect(wholeScale(.3)).toBeCloseTo(1 / 3);
+    // A 300-px art in a 1000 × 600 view: 4× covers it (1200 × 1200), 3× would not (900 wide).
+    expect(coverScale(1000, 600, 300, 300)).toBe(4);
+    // Art bigger than the view: the largest 1/n that still covers it.
+    const s = coverScale(300, 200, 1000, 500);
+    expect(s).toBe(1 / 2);
+    expect(1000 * s).toBeGreaterThanOrEqual(300);
+    expect(500 * s).toBeGreaterThanOrEqual(200);
+    expect(stepScale(1, 1)).toBe(2);
+    expect(stepScale(1, -1)).toBe(.5);
+    expect(stepScale(1 / 3, 1)).toBe(.5);
+    expect(stepScale(.5, 1)).toBe(1);
+  });
+
+  it('the Map culls a label that would overlap one drawn before it, or a control', () => {
+    const boxes = [{ x: 0, y: 0, w: 100, h: 20 }, { x: 50, y: 10, w: 100, h: 20 }, { x: 200, y: 0, w: 50, h: 20 }, { x: 0, y: 100, w: 40, h: 20 }];
+    const keep = cullLabels(boxes, [{ x: 190, y: 0, w: 20, h: 20 }]);
+    expect([...keep]).toEqual([0, 3]);
   });
 
   it('the Map lists the surface and every floor of Ember Isle, and names its regions with level bands', () => {

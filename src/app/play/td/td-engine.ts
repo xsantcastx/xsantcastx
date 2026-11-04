@@ -189,6 +189,8 @@ export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way
 /** The Map window's view of one section (td-engine mapView). `me` is null on a section the Keeper is not on. */
 export interface TdMapView {
   url: string; aspect: number; pins: TdMapPin[]; me: { u: number; v: number } | null;
+  /** The picture's span in tiles (the Map's distances: a tile is a metre). */
+  tiles?: { w: number; h: number };
   section: string; here: string; party: { id: string; name: string; u: number; v: number }[]; zones: TdZoneLabel[];
 }
 /** HUD portraits by look (heroPortrait). */
@@ -2092,7 +2094,7 @@ export class TopDownEngine {
     }
     const area = onWorld ? this.world.continent : lv.id;
     const party = this.peers.partyWhere().filter(p => p.area === area).map(p => ({ id: p.id, name: p.name, u: u(p.x), v: v(p.y) }));
-    return { url: mm.url, aspect: mm.w / mm.h, pins, me: want === here ? { u: u(this.player.x), v: v(this.player.y) } : null, section: want, here, party,
+    return { url: mm.url, aspect: mm.w / mm.h, tiles: { w: mm.w, h: mm.h }, pins, me: want === here ? { u: u(this.player.x), v: v(this.player.y) } : null, section: want, here, party,
       zones: onWorld ? zoneLabels(this.world.def, MOBS, { block: BLOCK }, this.zoneBands()) : [] };
   }
   /**

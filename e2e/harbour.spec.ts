@@ -23,7 +23,9 @@ async function toMaster(page: Page, who?: RegExp): Promise<void> {
   await canvas(page).focus();
   await page.keyboard.press('m');
   const src = who ? who.source.replace(/\\/g, '') : '';
-  await page.locator(`#places-list.td-map .mw__pin[data-cat="harbour"]${src ? `[data-name*="${src}" i]` : ''}`).first().click();
+  // A tap on the pin opens its card; Walk here goes (ui-pass-3 §8). Dispatched: at the fit the pin may lie past the view's edge.
+  await page.locator(`#places-list.td-map .mw__pin[data-cat="harbour"]${src ? `[data-name*="${src}" i]` : ''}`).first().dispatchEvent('click');
+  await page.locator('#places-list [data-map-walk]').click();
   await expect(board(page)).toBeVisible({ timeout: 40000 });
 }
 
