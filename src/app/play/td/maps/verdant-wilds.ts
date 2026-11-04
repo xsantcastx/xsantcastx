@@ -1,53 +1,21 @@
 /**
- * verdant-wilds.ts — the Verdant Wilds, the jungle continent, and Rootglass, its capital in the canopy
- * (docs/design/world-map.md: levels 15–40). Drawn by hand like Ember Isle and the Reach: the region map (one character
- * per 8×8 tiles), roads out of Rootglass's boardwalks, places worth finding, who lives where.
+ * verdant-wilds.ts — the Verdant Wilds' towns (docs/design/world-map.md: levels 15–40): Rootglass, its capital in the
+ * canopy, Mossharbor on the south shore, the hamlet of Thornwick. The land itself is an act of sections now (S11,
+ * maps/wilds-sections.ts): Rootglass is its own section, Mossharbor stands on the Mossy Shore, Thornwick on the
+ * Fernglades' east road.
  *
  * Rootglass is built on boardwalks over a marsh, round the Rootglass Bole — a giant tree whose floors go up into the
- * canopy (maps/rootglass-bole.ts). South down the boardwalk road lies Mossharbor, whose ship sails to Pyrehold; west,
- * past the Rootwater, the hamlet of Thornwick in the Fernglades; east, across the second river, the Sunken Courts and
- * the Overgrown Temple's gate (maps/overgrown-temple.ts); north-west, in the Deep Wilds, the root-hole into the Root
- * Hollows (maps/root-hollows.ts). Mossharbor's second ship sails to Ember Isle.
- *
- * Region legend: ~ the sea · , the mossy shore · . the Fernglades (grass and flowers) · j the Greenwood (jungle, moss
- * underfoot) · J the Deep Wilds (dense jungle, the giant trees) · r a river · l the Glassmere · u the Sunken Courts
- * (temple ruins) · T Rootglass.
+ * canopy (maps/rootglass-bole.ts). Mossharbor's ships sail to Pyrehold, the long way to Ember Isle, and to Mirewatch.
  */
 import type { StationDef } from '../../world/world.model';
-import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown, shopStation } from '../town-builder';
 import { BOLE_DOOR } from './rootglass-bole';
-import { TEMPLE_IN } from './overgrown-temple';
-import { HOLLOWS_IN } from './root-hollows';
 import { HERBAL_DOOR, NETLOFT_DOOR } from './verdant-houses';
 
 /** Mossharbor's ship, at its pier's end: across the sea to Pyrehold (Pyrehold's own ship back is SHIP_TO_VERDANT). */
 export const MOSSHARBOR_SHIP: StationDef = { id: 'ship-mossharbor', x: 0, label: 'SHIP TO PYREHOLD', kind: 'passage', blurb: 'A moss-sailed sloop bound for Pyrehold, in Infernal Reach.' };
 /** Mossharbor's second ship, off the west finger of its pier: the long way round to Ember Harbour (ember-isle.ts SHIP_TO_MOSSHARBOR back). */
 export const MOSSHARBOR_ISLE_SHIP: StationDef = { id: 'ship-mossharbor-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'A rootwood ketch that sails the long way round to Ember Harbour.' };
-
-export const VERDANT_WILDS: readonly string[] = [
-  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-  '~~~~~~,,,,,,,,r,,,~~~~~~~~~~~,,,,,,,,,~~~~~~',
-  '~~~~,,jjjjjjjjrjj,,,,~~~~,,,,rjJJuuuuJ,,~~~~',
-  '~~~,,jjJJJJJjjrjjjj..,,,,jjjjrJJuuuuuuJJ,~~~',
-  '~~,,jjJJJJJJJjjrjj....jjjjjjjrJJuuuuuuuJJ,~~',
-  '~~,jj..JJJJJJjjrj.....jjjjjjjrJJJuuuuuJJJ,~~',
-  '~~,j....JJJJJjjjr.....jjjjjjjrJJJJJuuJJJJ,~~',
-  '~~,.......JJJJjjr.TTTTTTjjjjjjrJJJJJJJJJj,~~',
-  '~~,......jjJJJjjr.TTTTTTjjjjjjjrJJJJJJJjj,~~',
-  '~~,,......jjjjjjr.TTTTTTjjjjjjjrjjJJJJjjj,~~',
-  '~~~,......jjjjjr..TTTTTTjjjjjjjrjjjjJJjjj,~~',
-  '~~~,.......jjjjr..TTTTTTjjjjjjjrjjjjjjjj,,~~',
-  '~~~,,......jjjr........jjjjjjjjrjjjjjjj,~~~~',
-  '~~~~,.......jjr.......jjjjjlljjrjjjjjj,,~~~~',
-  '~~~~,,......jr........jjjjllljjrJJJjjj,~~~~~',
-  '~~~~~,,.....r........jjjjjjjjjjrJJJjj,,~~~~~',
-  '~~~~~~,,...r........jjjjjjjjjjjrjjj,,~~~~~~~',
-  '~~~~~~~,,,r,,......jjj,,,,,,jjjr,,,~~~~~~~~~',
-  '~~~~~~~~~~r~~,,,,,,,,~~~~~~~,,,r~~~~~~~~~~~~',
-  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-];
 
 const ROOTGLASS_ROWS: readonly string[] = [
   '......................====......................',
@@ -158,8 +126,9 @@ const MOSSHARBOR_ROWS: readonly string[] = [
 ];
 
 /**
- * Mossharbor, on the south shore: a boardwalk street, leaf-roofed houses, a pier out to the moss-sailed ship and a west
- * finger to the ketch for Ember Isle; the Net-Mender's Loft to walk into (verdant-houses.ts), its mender outside.
+ * Mossharbor, on the south shore: a boardwalk street, leaf-roofed houses, a pier out to the moss-sailed ship, a west
+ * finger to the ketch for Ember Isle, the fen-barge for Mirewatch off the long pier's east end; the Net-Mender's Loft
+ * to walk into (verdant-houses.ts), its mender outside.
  */
 export const buildMossharbor = () => buildTown({
   id: 'mossharbor',
@@ -175,7 +144,7 @@ export const buildMossharbor = () => buildTown({
     { kind: 'barrel', c: 12, r: 11 }, { kind: 'barrel', c: 11, r: 11 }, { kind: 'crate', c: 18, r: 11 }, { kind: 'crate', c: 19, r: 11 },
     { kind: 'signpost', c: 12, r: 1 }, { kind: 'bench', c: 10, r: 8 }, { kind: 'waystone', c: 19, r: 2 },
     { kind: 'jungle', c: 1, r: 2 }, { kind: 'jungle', c: 30, r: 1 }, { kind: 'jungle', c: 9, r: 1 }, { kind: 'fern', c: 21, r: 8 }, { kind: 'fern', c: 2, r: 8 },
-    { kind: 'verdant-ship', c: 19, r: 16 }, { kind: 'verdant-ship', c: 4, r: 16 },
+    { kind: 'verdant-ship', c: 19, r: 16 }, { kind: 'verdant-ship', c: 4, r: 16 }, { kind: 'verdant-ship', c: 26, r: 15 },
   ],
   // Town task givers (shared/town-tasks): the net-mender outside her loft.
   givers: [
@@ -230,69 +199,3 @@ export const buildThornwick = () => buildTown({
   ],
   spawn: { c: 13, r: 9 },
 });
-
-export const VERDANT_PLACES: readonly ContinentPlace[] = [
-  // The Overgrown Temple's stepped gate in the Sunken Courts, at the east road's end.
-  { kind: 'temple', c: 150, r: -20, name: 'The Overgrown Temple' },
-  { kind: 'shrine', c: 4, r: -30, name: 'The Moss Altar' },
-  { kind: 'ruins', c: 80, r: 40, name: 'The Drowned Aqueduct' },
-  { kind: 'standing-stones', c: -56, r: 44, name: 'The Ring of Thorns' },
-  // S10: the Storm-Struck Oak, the Greenwood's oldest tree, split by the first thunderstorm after the Lock; the Antlered
-  // Storm rises here in a thunderstorm (world-bosses.ts). Its arena: a 10-tile ring of split stumps, kept clear.
-  { kind: 'storm-oak', c: 64, r: 24, name: 'The Storm-Struck Oak' },
-  // The Root Hollows' root-hole in the Deep Wilds, up a track off the Thornwick road.
-  { kind: 'cave', c: -80, r: -22, name: 'The Root Hollows' },
-];
-
-export const VERDANT_NAMES: Readonly<Partial<Record<Region, string>>> = {
-  '~': 'The Verdant Sea', ',': 'The Mossy Shore', '.': 'The Fernglades', j: 'The Greenwood', J: 'The Deep Wilds',
-  r: 'The Rootwater', l: 'The Glassmere', u: 'The Sunken Courts', T: 'Rootglass',
-};
-
-export const VERDANT_WILDS_DEF: ContinentDef = {
-  id: 'verdant-wilds', map: VERDANT_WILDS, ox: 18, oy: 7,
-  roads: [
-    // North to the Moss Altar.
-    [[23, 0], [20, -14], [6, -26]],
-    // West over the Rootwater to Thornwick.
-    [[0, 18], [-24, 20], [-56, 14], [-84, 12]],
-    // East over the second river, through the Greenwood, to the temple's gate.
-    [[47, 18], [76, 14], [100, 4], [124, -6], [146, -10], [150, -14]],
-    // South down the boardwalk road to Mossharbor.
-    [[23, 33], [24, 48], [36, 62], [55, 77]],
-    // A branch off the east road to the Drowned Aqueduct.
-    [[76, 14], [80, 36]],
-    // A track off the Thornwick road, north into the Deep Wilds, to the Root Hollows.
-    [[-56, 14], [-66, -2], [-80, -18]],
-  ],
-  places: VERDANT_PLACES, names: VERDANT_NAMES,
-  mobs: {
-    '.': { types: ['canopy-bat', 'moss-stalker'], chance: .3 },
-    j: { types: ['canopy-bat', 'moss-stalker', 'moss-stalker', 'vine-lasher'], chance: .6 },
-    J: { types: ['vine-lasher', 'moss-stalker', 'rootglass-hart', 'thorn-weaver'], chance: .6 },
-    u: { types: ['thorn-weaver', 'vine-lasher', 'canopy-bat'], chance: .6 },
-  },
-  // Lairs (canon §8.3): the Thorn Weavers' webs strung between trunks in the Deep Wilds, the stalkers' runs through the
-  // Greenwood, the broken statues of the Sunken Courts the lashers have taken.
-  hotspots: [
-    { region: 'J', chance: .45, types: ['thorn-weaver', 'vine-lasher', 'moss-stalker'], count: 5 },
-    { region: 'j', chance: .35, types: ['moss-stalker', 'canopy-bat', 'moss-stalker'], count: 4 },
-    { region: 'u', chance: .5, types: ['thorn-weaver', 'vine-lasher'], count: 5 },
-    { region: '.', chance: .15, types: ['canopy-bat', 'moss-stalker'], count: 3 },
-  ],
-  town: buildRootglass, townName: 'Rootglass', streets: { row: 18, col: 23 }, river: false,
-  roadGround: { near: 'plank', far: 'dirt' },
-  ways: [
-    { place: 'temple', station: TEMPLE_IN, to: 'overgrown-temple-1', arrive: 'temple-out' },
-    { place: 'cave', station: HOLLOWS_IN, to: 'root-hollows-1', arrive: 'hollows-out' },
-  ],
-  villages: [
-    // Mossharbor's sloop sails from the pier's end (the village's tile 15, 16) to Pyrehold Harbour.
-    // Its ketch sails from the west finger (tile 8, 16) the long way round to Ember Harbour.
-    { name: 'Mossharbor', c: 40, r: 78, build: buildMossharbor, ways: [
-      { station: MOSSHARBOR_SHIP, c: 15, r: 16, to: 'infernal-reach-pyrehold', arrive: 'ship-verdant', ship: true },
-      { station: MOSSHARBOR_ISLE_SHIP, c: 8, r: 16, to: 'ember-isle', arrive: 'ship-isle-verdant', ship: true },
-    ] },
-    { name: 'Thornwick', c: -112, r: 4, build: buildThornwick },
-  ],
-};

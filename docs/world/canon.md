@@ -283,7 +283,7 @@ The Delve strata are retired: Root Hollows (Delve), Basalt Caverns, Glowcap Grot
 Starfall Deep, the Void Shore and the Unmade. Their **ideas** move into the Realms (realms-endgame.md §3.4). The name
 **Root Hollows** now means only the Verdant dungeon.
 
-### 3.4b The acts as long lands (planned 2026-10-26, `docs/design/world-acts.md` §1; **the Reach built 2026-11-03, S7**)
+### 3.4b The acts as long lands (planned 2026-10-26, `docs/design/world-acts.md` §1; **the Reach built 2026-11-03, S7; the Wilds 2026-11-04, S11**)
 Each land becomes a D2-style act: a chain of long surface **sections** (one room area each, `<land>:<section>`), each
 with a **Waystone** (a stone that remembers who touched it), joined by **connector caves** that are the only way on,
 and ending at the land's harbour (the Harbourmasters, §3.3).
@@ -305,6 +305,15 @@ and ending at the land's harbour (the Harbourmasters, §3.3).
   Bastion and its crypt, the Ember Altar, the Caldera Rim and the Molten Deep's mouth). About 13 minutes' walk, plaza to
   rim. The seams are road gates and passes in the land's rock: Pyrehold's North Gate, the Steppe's South Gate, West Road,
   South-East Road and Shore Path, the Charwood's East and West Roads, the East and West Passes, the Switchbacks.
+- **The Wilds as built (S11)**: Mossharbor on the Mossy Shore → the north road → the Fernglades (Thornwick on its east
+  road, the Moss Altar off it; the west road to **Rootglass**, its own safe section) → the ford road → the Rootwater Ford
+  (the planks, the Drowned Aqueduct; the mere path east to the Glassmere, fishing, a dead end) → the north road → the
+  Greenwood (the Copy-Tree Stone, the Weaver Canopy, **the Copied Pair** in a glade; the old road north is **grown shut
+  with the thorn hedge**) → the root-hole → the Root Hollows −1…−3 → the **root-ramp** → the Deep Wilds (the Hart Meadow)
+  → the east road → the Sunken Courts (the Bell-less Square, the Ring of Thorns, the Overgrown Temple's gate). About 13
+  minutes' walk, Mossharbor's pier to the temple gate. The land's edge here is no rock: it is **the wood grown into a wall
+  of vine and root**. Sunny Pell's **fen-barge** sails from Mossharbor for Mirewatch, held until the Elder Rootwyrm falls.
+  Rootglass's Waystone is **the Boardwalk Stone**.
 - **Waystone names**: Meadow, Woodcutter's, Rockslide, Sexton's, Slag-Cart (Ember Isle); Watch Cairn, Glasswater,
   Kiln, Clan, Spill, Drake, Pyre (Reach; built S7, with **the Plaza Stone** in Pyrehold, **the Harbour Stone** in
   Cinderport and **the Green Stone** in Ashgrove: "a stone that remembers who touched it"); Net, Bell-Post, Plank, Mere, Copy-Tree, Heartroot, Pillar (Wilds); Corvane,
@@ -1056,6 +1065,22 @@ sealed thing (a promise for later; none opens yet) and one sound:
 - Cinderport: the tide board ("The lamp stays lit till the last ketch is in.", §10 C-10 kept); Marit's padlocked
   sea-chest; the surf. Ashgrove: Maud Kiln's board ("Nine days a clamp."); a smoking clamp; a fire's crackle.
 
+**The Wilds' sections, the zone bible's check (S11, `td-sections.ts` WILDS_BIBLE).** One thing to read, one sealed thing,
+one sound each (words in `td/td-wilds.i18n.ts`):
+- the Mossy Shore: Wenna's net-post; a moss-shut sloop hull; the surf. Rootglass: the lamplighters' roll (nine Fenns);
+  a door in the roots the Bole closed itself; rootglass pinging.
+- the Fernglades: a priests' bell-post; a bell-house with no bell and no rope; birds that stop all at once.
+- the Rootwater Ford: the depth post ("Cross at the planks"); a root-choked sluice of the Drowned Aqueduct; frogs.
+- the Glassmere: a fisher's tally ("not a fish, 1"); a root-woven cave in the bank (the side cave, for later); a splash.
+- the Greenwood: the cairn by the thorns ("The wood closes what it forgets."); **the thorn hedge** across the old road;
+  creaking boughs.
+- the Root Hollows −1: gnaw-marks in fives; a tunnel packed by small hands; chewing in the walls. −2: the woodward's cut
+  rope at the Sporewell's lip; his swollen chest; a slow drip. −3: the heartroot's rings, "tomorrow"; a root that shivers
+  at a light (the hidden cache); a heartbeat.
+- the Deep Wilds: a lantern hook nailed higher than any arm (the tree that wears a lantern); a spore-choked hollow (the
+  Spore Lights' way down, later); weavers clicking.
+- the Sunken Courts: moss in rows straight as verse; a bell-frame the vines hold up; a hymn too faint to place.
+
 - **The Kiln Tunnels** (Reach, 12–14). *Built by* the charcoal burners to haul under the orc raids; *fell* when the clans
   found them and the burners bricked their end. *Lair*: Cinder Imps in cold kilns, Ash Ghouls (burners who never came
   up). *Mood*: soot-black, one cold kiln-glow per chamber. *Dressing*: cart rails, "BURNERS ONLY" chalked on a bricked
@@ -1092,7 +1117,7 @@ sealed thing (a promise for later; none opens yet) and one sound:
 | **Doors in the dark** | sealed doors in the Ashen Crypt, Temple below −5, Drowned Crypts below −3; the Relief Column's chalked last name (night event, built S8: **Ensign Halden Rook**, and a Margin Note Scrap) | Graft Crown, Ink Deeps, Ashguard quest |
 | **The Late Shift** (night event, the Ember Mine head) | six lamp-lights walk up out of the shaft and go out at the fence: "Shift done. Nobody signed us out." | campaign #1 The Beacon Goes Down: the beacon leans down the shaft because something below is still working |
 | **The Ossuary Watch badge** | dropped by the Last Siege (1 in 3) | campaign #11 Barrow Door 2 |
-| **The copy-seed** | the Walking Tree (Greenwood night event) | campaign #7, the Graft Crown |
+| **The copy-seed** | the Walking Tree (Greenwood night event; **built S11**: the Copied Pair's glade, a Copy-Seed once a night); the lantern hook the Deep Wilds' tree grew round | campaign #7, the Graft Crown |
 | **The bell-clapper and the bell under the water** | the Dusk Hymn (Sunken Courts); the Bell Under the Water (eclipse, the Black Meres); a ringer's glove: "Pull on four. Never on five." | campaign #12 Who Rings Under the Water |
 | **A Voice Calls a Name** | the Deep Fen: on the third night it calls the Keeper's own name | a personal fixed light; ties to Old Corvane's lanterns (Act III) |
 | **The world counts** | PvP marks; Wren cuts a tally for every Red Keeper | the Tally Hall (Realm 7) may read the PvP counts; DM to decide when it is built |

@@ -121,6 +121,25 @@ const SCRAP: Shape = [
   '................',
   '................',
 ];
+/** A seed in its husk, a pale sprout of rootglass at its tip (S11: the Walking Tree's copy-seed). */
+const SEED: Shape = [
+  '................',
+  '................',
+  '.......oo.......',
+  '......olo.......',
+  '......olo.......',
+  '.....ooloo......',
+  '....obbbbbo.....',
+  '...obbfbbbbo....',
+  '...obfbbbbbo....',
+  '...obbbbbbdo....',
+  '...obbbbbddo....',
+  '....obbbddo.....',
+  '.....odddo......',
+  '......ooo.......',
+  '................',
+  '................',
+];
 const RAW = (b: string, l: string, f: string, t: string): Icon => ({ shape: FISH, palette: { b, l, f, e: '#140a1f', t } });
 const LOGP = (b: string, d: string, l: string, f: string, e: string, glow?: string): Icon => ({ shape: LOG, palette: { b, d, l, f, e }, ...(glow ? { glow } : {}) });
 const MEALP = (b: string, f: string, glow?: string): Icon => ({ shape: MEAL, palette: { b, f, l: '#8a5a32', d: '#6a4424', e: '#e8e4ef' }, ...(glow ? { glow } : {}) });
@@ -149,6 +168,8 @@ export const GATHER_ICONS: Readonly<Record<string, Icon>> = {
   'thundercake': MEALP('#d8b860', '#ffe066', '#ffe066'),
   'cold-miners-pasty': MEALP('#c89058', '#8a5a32'),
   'margin-note-scrap': { shape: SCRAP, palette: { b: '#e8dcc0', f: '#4a3a5a', l: '#c8b890' } },
+  // S11: the Walking Tree's copy-seed (the Greenwood, at night or in fog).
+  'copy-seed': { shape: SEED, palette: { b: '#8a6a3a', d: '#5a4226', f: '#b08a50', l: '#7fd5a3' }, glow: '#7fd5a3' },
   'burnt-fish': { shape: FISH, palette: { b: '#2a2024', l: '#3a3034', f: '#1a1418', e: '#c4501e', t: '#1a1418' } },
   'tinderbox': { shape: TINDER, palette: { b: '#6a6470', l: '#a8a2b0', e: '#c8bcb4', f: '#3a3440', d: '#c4501e' } },
 };

@@ -47,9 +47,9 @@ async function enter(page: Page, size: { width: number; height: number }, items:
   await page.waitForFunction(() => !!(window as unknown as { __tdS10?: unknown }).__tdS10, null, { timeout: 15000 });
 }
 
-/** To the Greenwood's heart, at the Storm-Struck Oak. */
+/** To the Storm-Struck Oak, in the Greenwood (S11's section). */
 async function toOak(page: Page): Promise<void> {
-  await toSection(page, 'verdant-wilds', 64, 30);
+  await toSection(page, 'verdant-wilds-greenwood', -10, -104);
   await page.waitForTimeout(800);
   const at = await s10<{ c: number; r: number } | null>(page, 'oak');
   expect(at, 'the Oak stands in the Wilds').not.toBeNull();
