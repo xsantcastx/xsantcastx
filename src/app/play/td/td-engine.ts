@@ -1389,7 +1389,7 @@ export class TopDownEngine {
   private walkerNear(): boolean {
     if (this.level !== this.world || this.world.continent !== WALKER_AREA) return false;
     const w = this.nightEvents.walker();
-    return w.ready && Math.hypot(w.x - this.player.x, w.y - this.player.y) <= 2.5 * TILE;
+    return w.ready && Math.hypot(w.x - this.player.x, w.y - this.player.y) <= 3 * TILE;
   }
   private nightNews(n: NightNews): void {
     if (n.kind === 'sfx') { this.options.onSfx?.({ kind: n.cue }); return; }
@@ -6246,7 +6246,7 @@ export class TopDownEngine {
     for (const m of this.mobs.mobs) {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
-        if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true)) {
+        if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true) && !this.plateOnKeeper(m, m.x, m.y - this.vis(m.def).h * mobScale(m) - 4, 18, 18)) {
           this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx(), this.hudCornerBottomPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h * mobScale(m) - 5));
           const st = mobStatuses(m, this.statusPeaks);
           if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h * mobScale(m) - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
@@ -6260,6 +6260,9 @@ export class TopDownEngine {
       let top = m.y - this.vis(m.def).h * mobScale(m) - 3;
       let mx = m.x;
       if (this.hud.n) { const hw = m.aura ? 44 : 30; top += this.hudLift(mx - hw, top - 10, mx + hw, top + 3); mx += this.hudDx; }
+      // (The minimap is a `[data-world-avoid]` box too, S11: a plate under it slides clear like one under the prompt.)
+      // Never on the Keeper himself (S11, the Director): a plate that would print over his body waits till it clears.
+      if (this.plateOnKeeper(m, mx, top, m.aura ? 30 : 16, 8)) continue;
       const w = 18, frac = Math.max(0, m.hp / m.def.hp);
       c.fillStyle = '#1a1014'; c.fillRect(Math.round(mx - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(mx - w / 2), Math.round(top), Math.round(w * frac), 2);
@@ -6532,6 +6535,17 @@ export class TopDownEngine {
     this.ctx.setTransform(s, 0, 0, s, -cx * s, -cy * s);
   }
   /** The HUD's top-right corner (the minimap and its clock, ~170 CSS px) in canvas px: a creature's plate stays left of it. */
+  /**
+   * A creature's plate (`half` wide, `up` tall over its bar at `top`) would print over the Keeper's body: it is not drawn
+   * until it clears (the Director, S11: a name never lands on the Keeper).
+   */
+  private plateOnKeeper(m: Mob, x: number, top: number, half: number, up: number): boolean {
+    // In the plate's own frame (the creature's anchor; iso draws it upright there), where the Keeper's body stands.
+    const p = this.player, dx = m.x - p.x, dy = m.y - p.y;
+    const sx = this.iso ? dx - dy : dx, sy = this.iso ? (dx + dy) / 2 : dy;
+    const kx = m.x - sx, ky = m.y - sy;
+    return x - half < kx + 8 && x + half > kx - 8 && top - up < ky + 1 && top + 3 > ky - 30;
+  }
   private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
   /** The same corner's foot (the minimap, its clock and the Soul line, ~190 CSS px) in canvas px: below it a plate stays in its own column. */
   private hudCornerBottomPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(190 * this.canvas.width / w); }

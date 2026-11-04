@@ -390,6 +390,10 @@ export class NightEvents {
         disc(c, gx, gy, 16, .14 * b, false);
         disc(c, gx, gy, 8, .32 * b, false);
         c.globalAlpha = .7 * b; c.fillStyle = '#d8e8f0'; c.fillRect(gx - 2, gy - 2, 4, 4);
+        // A slow ring breathing out from her (held at its middle on Low and under reduced motion): seen from across the glade.
+        const k = calm ? .5 : (time * .5) % 1, rr = 6 + k * 14;
+        c.globalAlpha = .45 * (1 - k); c.fillStyle = '#c8d4dc';
+        for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; c.fillRect(Math.round(gx + Math.cos(a) * rr), Math.round(gy + Math.sin(a) * rr * .8), 1, 1); }
         // Her wings, folded and grey: Glim herself, gone dim.
         c.globalAlpha = .5 * b; c.fillStyle = '#c8d0d8'; c.fillRect(gx - 6, gy - 3, 3, 3); c.fillRect(gx + 3, gy - 3, 3, 3);
         c.globalAlpha = 1;

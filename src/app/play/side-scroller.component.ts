@@ -822,6 +822,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (hand === 'loot') return 'loot';
     const s = this.state, n = s?.nearby;
     if (n) {
+      // S11: the Walking Tree waiting for its blow.
+      if (n === 'td-walker') return 'strike';
       if (n.startsWith('giver-') || s.nearbyKind === 'quest') return 'talk';
       if (n === 'inscription' || (n === 'height' && s.height?.kind === 'carving')) return 'read';
       if (s.nearbyKind === 'panel' || s.nearbyKind === 'waystone' || s.nearbyKind === 'passage' || n === 'delve' || n === 'passage' || n.startsWith('shrine:')) return 'enter';
