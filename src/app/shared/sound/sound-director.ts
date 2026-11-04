@@ -47,6 +47,10 @@ export type SfxCue =
   // The Infernal Reach's sections, one sound each (td-sections REACH_BIBLE; canon §8.2): a war-horn far off, a fire's
   // crackle, a cart rolling with nobody pushing it, a clan drum, cooling glass, lava hissing, feet marching in step.
   | 'warhorn' | 'crackle' | 'cart-roll' | 'drum' | 'glass-ping' | 'lava-hiss' | 'march'
+  // The Verdant Wilds' sections and the Root Hollows (S11; td-sections WILDS_BIBLE; canon §8.3): birdsong that stops all at
+  // once, frogs at the water, a bough creaking, weavers clicking, a hymn too faint to place; chewing in the walls, a drip
+  // into the well, a heartbeat.
+  | 'birdstop' | 'frogs' | 'creak' | 'chitter' | 'hymn' | 'chew' | 'drip' | 'heartbeat'
   // S8, the storm and the night (world-acts §3.5, §5): a strike's rising hum (the tell), the near thunder's crack and roll,
   // the far one's roll; the Barrow's bell counting; a grey voice answering "Present."
   | 'strike-hum' | 'thunder-near' | 'thunder-far' | 'count-bell' | 'present'
@@ -65,7 +69,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, rain: .3, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, 'strike-hum': 1, 'thunder-near': 2.5, 'thunder-far': 3, 'count-bell': 1, present: 1.5, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { 'fire-cast': .08, 'frost-cast': .08, 'bone-cast': .08, 'shadow-cast': .08, 'light-cast': .08, 'lightning-cast': .08, wind: .1, rain: .3, heal: .12, ward: .2, revive: .5, ultimate: .5, shield: .06, farbell: 6, whisper: 3, 'strike-hum': 1, 'thunder-near': 2.5, 'thunder-far': 3, 'count-bell': 1, present: 1.5, warhorn: 6, crackle: 2, 'cart-roll': 6, drum: 6, 'glass-ping': 2, 'lava-hiss': 3, march: 8, birdstop: 8, frogs: 5, creak: 5, chitter: 5, hymn: 12, chew: 4, drip: 2, heartbeat: 6, tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -270,6 +274,23 @@ export class SoundDirector {
       case 'lava-hiss': return this.whoosh(t, 700, 2600, .9, .05);
       // Feet marching in step, far off: eight soft treads, then nothing.
       case 'march': for (let i = 0; i < 8; i++) this.noiseHit(t + i * .42, 'lowpass', 300, 1, .07, .05, this.sfxBus); return;
+      // ── The Wilds' section sounds (S11): far off and soft, a floor of the place, never a warning ──
+      // Birds that stop all at once: five quick high chirps, then nothing at all.
+      case 'birdstop': for (let i = 0; i < 5; i++) this.glide(t + i * .13 + (i % 2) * .04, 'sine', 2600 + (i % 3) * 300, 3400 + (i % 2) * 200, .012, .08); return;
+      // Frogs at the water: three low croaks, a little apart.
+      case 'frogs': for (let i = 0; i < 3; i++) this.noiseHit(t + i * .34, 'bandpass', 320 + i * 40, 6, .05, .12, this.sfxBus); return;
+      // A bough creaking: a slow low glide down, scratchy.
+      case 'creak': this.sweep(t, 'bandpass', 420, 260, 9, .06, 1.1); return this.glide(t, 'sawtooth', 96, 78, .006, 1);
+      // Thorn Weavers clicking somewhere in the canopy: six dry ticks.
+      case 'chitter': for (let i = 0; i < 6; i++) this.noiseHit(t + i * .07 + (i > 2 ? .25 : 0), 'highpass', 3800, 1, .03, .015, this.sfxBus); return;
+      // The temple's hymn, too faint to place: two soft sustained notes a fifth apart.
+      case 'hymn': this.tone(t, 'sine', 220, .012, 2.8, .9); return this.tone(t + .6, 'sine', 330, .008, 2.4, 1);
+      // Something chewing in the walls: a burst of small gnaws.
+      case 'chew': for (let i = 0; i < 7; i++) this.noiseHit(t + i * .09, 'bandpass', 1400 + (i % 2) * 300, 3, .025, .03, this.sfxBus); return;
+      // A slow drip into the well: one bright plink, a softer echo.
+      case 'drip': this.glide(t, 'sine', 1500, 900, .03, .12); return this.glide(t + .28, 'sine', 1300, 800, .01, .1);
+      // A heartbeat, faint, at the heartroot: lub-dub.
+      case 'heartbeat': this.thump(t, 48, .14, .22); return this.thump(t + .26, 44, .1, .2);
       // Something whispers: two breaths of filtered air, the second lower.
       case 'whisper': this.whoosh(t, 3200, 1900, .7, .03); return this.whoosh(t + .55, 2600, 1500, .8, .025);
       // ── The fight (skills-100.md §0.6's recipes; `pitch` is the row's variation) ──

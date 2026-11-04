@@ -13,4 +13,6 @@ export const GATHER_PILE_KEYS: ReadonlySet<string> = new Set([
   'burnt-fish',
   // S8: charcoal, the storm's fish and its cake, the Late Shift's pasty, a Margin Note scrap.
   'charcoal', 'stormscale', 'thundercake', 'cold-miners-pasty', 'margin-note-scrap',
+  // S11: the Walking Tree's copy-seed.
+  'copy-seed',
 ]);

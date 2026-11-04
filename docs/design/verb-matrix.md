@@ -53,7 +53,7 @@ names its ticket. Everything else is expected to work as written.
 | Town Portal scrolls | Read, Put on hotkey, Drop | — | V, or an item hotkey (reads one) | Read | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Crates | Open, Put on hotkey, Drop | — | item hotkey (opens one) | Open | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Materials, Blanks | Drop | — | — (no use from the belt) | benches read the satchel | yes (room if online, a pile ×N) | yes (stack ×N, how many) | buyback floor | yes | — | **gap** (T2) | bank Drop |
-| Night scraps (S8: Margin Note Scrap) | Drop (its card is the read: what it says, Found in, the thread) | — | — (nothing to use) | read on its card | yes (room if online, a pile ×N) | yes (stack ×N, how many) | never (no buyback) | yes | — | **gap** (T2) | bank Drop |
+| Night scraps (S8: Margin Note Scrap; S11: Copy-Seed) | Drop (its card is the read: what it says, Found in, the thread) | — | — (nothing to use) | read on its card | yes (room if online, a pile ×N) | yes (stack ×N, how many) | never (no buyback) | yes | — | **gap** (T2) | bank Drop |
 | Quest items | — | — | — | the quest | never dropped | yes (tagged Quest; the quest follows possession) | never | stay (no cell) | — | — | never |
 | Gold | — | — | — | — | picked up by walking over it | yes (an amount, the window's Gold field) | — | — | — | — | — |
 
@@ -105,4 +105,15 @@ names its ticket. Everything else is expected to work as written.
   `e2e/menus-reach.spec.ts` (the Atlas at 390×844, 360×640, 844×390).
 - **Read / sealed:** E at a plaque, sign or altar reads its line (the toast); at a sealed door, cage or arch, says why it
   is shut. Every section has one of each (td-sections REACH_BIBLE). Tests: `td-sections.spec.ts`, `e2e/td-reach.spec.ts`.
+
+## World verbs (2026-11-04, S11, branch `s11wilds`)
+- The Verdant Wilds' sections walk, connect, touch and read exactly as the Reach's (the verbs above); their bible is
+  td-sections WILDS_BIBLE, their edge the wood's own wall of vine and root. The Root Hollows are a connector: in by the
+  Greenwood's root-hole, out up floor 3's root-ramp into the Deep Wilds (E, a tap, the Map). The thorn hedge is a sealed
+  thing (E says why it is shut and where the way on is); it blocks its road from wall to wall. Tests: `td-wilds.spec.ts`,
+  `e2e/td-wilds.spec.ts`.
+- **Strike the Walking Tree:** at night (or in the Greenwood's fog) the copied tree in the glade moves while unseen; after
+  its third move Glim dims beside it, and in reach (2.5 tiles) the prompt says **Strike the tree** (E, a tap). One blow:
+  it is a plain tree for the rest of the night and a Copy-Seed lies at its foot, once a night (`night:walking-tree:<n>`).
+  Before that, E near it does what E does anywhere else. Tests: the same.
 

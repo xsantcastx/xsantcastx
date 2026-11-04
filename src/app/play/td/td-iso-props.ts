@@ -383,6 +383,19 @@ function bush(v: number, low: boolean): Built {
   if (v === 2) for (const [x, y] of [[-8, -24], [8, -16]] as const) if (s.solid(X + x, Y + y)) s.dot(X + x, Y + y, '#f2c94c', 2, 2);
   return { sway: s, swayFoot: [X, Y], amp: 1, shadow: castShadow(20, 8, 6, 3) };
 }
+/** The Greenwood's thorn hedge (td-art thornHedge): a dark bramble, wider than a bush, pale thorns out of its rim. */
+function thornHedgeIso(v: number, low: boolean): Built {
+  const W = 72, H = 60, X = 36, Y = 54;
+  const s = new Sculpt(W, H);
+  const dark: Mat = { ramp: ['#14260f', '#1c3418', '#24421f', '#2e5228', '#3a6232', '#4c763e'], round: 6, gain: .9 };
+  leafCrown(s, X, Y - 20, 30, 19, dark, M.leafDeep, v + 120, low ? 13 : 9, '#6e8a54');
+  for (const [x, y, dx, dy] of [[-28, -22, -3, -2], [-14, -36, -1, -3], [10, -38, 1, -3], [28, -24, 3, -1], [-30, -10, -3, 0], [26, -8, 3, 1], [0, -40, 0, -3]] as const) {
+    if (!s.solid(X + x, Y + y)) continue;
+    s.line([X + x, Y + y], [X + x + dx, Y + y + dy], '#e8dcc0'); s.dot(X + x, Y + y, '#a37a52');
+  }
+  if (v === 1) for (const [x, y] of [[-10, -18], [8, -26], [16, -14]] as const) if (s.solid(X + x, Y + y)) s.dot(X + x, Y + y, '#7a2a3a', 2, 2);
+  return { sway: s, swayFoot: [X, Y], amp: 0, shadow: castShadow(24, 9, 6, 3) };
+}
 function fern(v: number, low: boolean): Built {
   const W = 80, H = 56, X = 40, Y = 50;
   const s = new Sculpt(W, H);
@@ -849,6 +862,7 @@ const MAKERS: readonly [RegExp, Make][] = [
   [/^giant:\d+$/, (k, low) => giant(seedOf(k), low)],
   [/^swamp-tree:\d+$/, (k, low) => cypress(seedOf(k), low)],
   [/^bush-\d+$/, (k, low) => bush(seedOf(k), low)],
+  [/^thorn-hedge-\d+$/, (k, low) => thornHedgeIso(seedOf(k), low)],
   [/^fern-\d+$/, (k, low) => fern(seedOf(k), low)],
   [/^reeds-\d+$/, (k, low) => reeds(seedOf(k), low)],
   [/^gloomcap-\d+$/, k => gloomcap(seedOf(k))],
@@ -871,7 +885,7 @@ const MAKERS: readonly [RegExp, Make][] = [
 export const ISO_PROP_KEYS: readonly string[] = [
   ...['oak', 'fruit', 'pine'].flatMap(k => [0, 1, 2, 3, 4, 5].map(v => `tree:${k}:${v}`)),
   ...[0, 1, 2, 3, 4, 5].map(v => `jungle:${v}`), ...[0, 1, 2].map(v => `giant:${v}`), ...[0, 1, 2, 3, 4, 5].map(v => `swamp-tree:${v}`),
-  ...['bush', 'fern', 'reeds', 'gloomcap', 'boulder', 'stone', 'grave', 'pillar'].flatMap(k => [0, 1, 2].map(v => `${k}-${v}`)),
+  ...['bush', 'thorn-hedge', 'fern', 'reeds', 'gloomcap', 'boulder', 'stone', 'grave', 'pillar'].flatMap(k => [0, 1, 2].map(v => `${k}-${v}`)),
   'flowerbed:2:3', 'fence:3', 'ore-seam', 'barrel', 'crate', 'bench', 'lamp', 'signpost', 'cart', 'waystone', 'beacon', 'torch-post', 'root-lamp',
   'lantern-post', 'great-lantern', 'fountain', 'hearth', 'forge', 'anvil', 'chest', 'bones', 'stump',
   'altar', 'brazier-0', 'brazier-1', 'cage', 'chains', 'statue-broken', 'cobweb-nw', 'cobweb-ne', 'stairs-down', 'stairs-up', 'ladder-up', 'ruin-0', 'ruin-1', 'ruin-2',

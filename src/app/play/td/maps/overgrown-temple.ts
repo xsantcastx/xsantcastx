@@ -46,7 +46,7 @@ const BASE: Readonly<Record<string, LegendEntry>> = {
 export const OVERGROWN_TEMPLE_1: TdMapDef = {
   id: 'overgrown-temple-1', name: 'The Overgrown Temple · Floor 1 · The Sunken Narthex', outside: 'vinewall', dark: true,
   legend: { ...BASE,
-    '^': { ground: 'flagstone', object: 'up', station: TEMPLE_OUT, exit: { to: 'surface', arrive: 'overgrown-temple' } },
+    '^': { ground: 'flagstone', object: 'up', station: TEMPLE_OUT, exit: { to: 'surface', arrive: 'overgrown-temple', continent: 'verdant-wilds-courts' } },
     '>': { ground: 'flagstone', object: 'down', station: T1_DOWN, exit: { to: 'overgrown-temple-2', arrive: 'temple2-up' } },
   },
   rows: [
