@@ -35,7 +35,7 @@ export interface StrikeMark { x: number; y: number; t: number; seed: number }
 /** What the storm did this frame, for the engine: a tell began, a strike landed (near, on screen, or far). */
 export type StormNews = { kind: 'tell'; x: number; y: number } | { kind: 'strike'; x: number; y: number; near: boolean } | { kind: 'far' };
 /** The land specials' motes on screen (Normal; a phone has fewer, Low fewer still). */
-const MOTES = 20, MOTES_PHONE = 12, MOTES_LOW = 8;
+const MOTES = 48, MOTES_PHONE = 28, MOTES_LOW = 16;
 
 export class WeatherFx {
   now: WeatherNow = { state: 'clear', level: 0, window: 0, next: 'clear', leftMs: 0 };
@@ -114,9 +114,15 @@ export class WeatherFx {
     if (!this.rings.length && !this.scorches.length) return;
     for (const g of this.scorches) {
       if (!inView(g.x, g.y)) continue;
-      c.globalAlpha = .5 * (1 - g.t / STRIKE.scorch); c.fillStyle = '#1a1418';
-      c.fillRect(Math.round(g.x) - 6, Math.round(g.y) - 2, 12, 4); c.fillRect(Math.round(g.x) - 4, Math.round(g.y) - 4, 8, 8);
-      c.fillStyle = '#3a3236'; c.fillRect(Math.round(g.x) - 9, Math.round(g.y), 3, 1); c.fillRect(Math.round(g.x) + 6, Math.round(g.y) - 1, 3, 1);
+      // A black burn a tile across, its cracks running out, an ember or two in it early on; it fades in 20 s.
+      const k = 1 - g.t / STRIKE.scorch, x0 = Math.round(g.x), y0 = Math.round(g.y);
+      c.fillStyle = '#140c10';
+      c.globalAlpha = .65 * k;
+      for (let dy = -5; dy < 5; dy += 1) { const ww = Math.round(9 * Math.sqrt(1 - (dy / 5) ** 2)); c.fillRect(x0 - ww, y0 + dy, ww * 2, 1); }
+      c.globalAlpha = .5 * k;
+      c.fillRect(x0 - 14, y0 - 1, 5, 1); c.fillRect(x0 + 9, y0 + 1, 6, 1); c.fillRect(x0 - 2, y0 - 9, 1, 4); c.fillRect(x0 + 3, y0 + 5, 1, 4);
+      c.fillRect(x0 - 11, y0 + 3, 3, 1); c.fillRect(x0 + 7, y0 - 4, 3, 1);
+      if (g.t < 4) { c.globalAlpha = (1 - g.t / 4) * .9; c.fillStyle = '#ff8a3d'; c.fillRect(x0 - 2, y0, 2, 1); c.fillRect(x0 + 3, y0 - 2, 1, 1); }
     }
     const R = STRIKE.radius * TILE;
     for (const g of this.rings) {
@@ -210,8 +216,8 @@ export class WeatherFx {
     if (dim > .01) { c.globalAlpha = dim; c.fillStyle = '#1e2030'; c.fillRect(0, 0, w, h); }
     if ((st === 'fog' || st === 'mistrain') && o.low) { c.globalAlpha = (st === 'fog' ? .2 : .1) * lv; c.fillStyle = '#c8c8d8'; c.fillRect(0, 0, w, h); }
     // The land specials' films: Ashfall's grey on the ground, Spore drift's soft green (kept under Soft and reduced motion).
-    if (st === 'ashfall') { c.globalAlpha = .05 * lv; c.fillStyle = '#8a8288'; c.fillRect(0, 0, w, h); }
-    if (st === 'spores') { c.globalAlpha = .05 * lv; c.fillStyle = '#7fd5a3'; c.fillRect(0, 0, w, h); }
+    if (st === 'ashfall') { c.globalAlpha = .14 * lv; c.fillStyle = '#8a8288'; c.fillRect(0, 0, w, h); }
+    if (st === 'spores') { c.globalAlpha = .08 * lv; c.fillStyle = '#7fd5a3'; c.fillRect(0, 0, w, h); }
     const rain = this.rain;
     if (rain > 0 && this.show === 'full' && !o.still) this.drawRain(c, w, h, s, dt, rain, o, st === 'mistrain');
     if ((st === 'ashfall' || st === 'spores') && this.show === 'full' && !o.still) this.drawMotes(c, w, h, s, dt, lv, st === 'spores', o);
@@ -225,15 +231,18 @@ export class WeatherFx {
     const m = this.motes, px = Math.max(1, Math.round(s));
     if (!this.motesSeeded) { for (let i = 0; i < MOTES; i++) { m[i * 3] = Math.random() * w; m[i * 3 + 1] = Math.random() * h; m[i * 3 + 2] = Math.random(); } this.motesSeeded = true; }
     const n = Math.round((o.low ? MOTES_LOW : o.phone ? MOTES_PHONE : MOTES) * lv);
-    c.fillStyle = up ? '#c8ffe0' : '#b8b0bc';
+    c.fillStyle = up ? '#f0ffc8' : '#d8d0d8';
     for (let i = 0; i < n; i++) {
       const j = i * 3, k = m[j + 2];
       if (up) { m[j + 1] -= (10 + 14 * k) * px * dt; m[j] += Math.sin((m[j + 1] / px) * .05 + k * 6) * 4 * px * dt; }
       else { m[j] -= (8 + 8 * k) * px * dt; m[j + 1] += (14 + 10 * k) * px * dt; }
       if (m[j + 1] > h) m[j + 1] -= h; if (m[j + 1] < 0) m[j + 1] += h;
       if (m[j] < 0) m[j] += w; if (m[j] > w) m[j] -= w;
-      c.globalAlpha = (up ? .5 : .6) * (.6 + .4 * k);
-      c.fillRect(Math.floor(m[j] / px) * px, Math.floor(m[j + 1] / px) * px, px * 2, px * 2);
+      c.globalAlpha = (up ? .7 : .8) * (.6 + .4 * k);
+      const fx = Math.floor(m[j] / px) * px, fy = Math.floor(m[j + 1] / px) * px;
+      // A flake (or a mote) with a darker edge below, so it reads on light ground as well as dark.
+      c.fillRect(fx, fy, px * 2, px * 2);
+      { const a0 = c.globalAlpha; c.globalAlpha = a0 * .6; c.fillStyle = up ? '#2a4a2a' : '#5a545e'; c.fillRect(fx, fy + px * 2, px * 2, px); c.fillStyle = up ? '#f0ffc8' : '#d8d0d8'; c.globalAlpha = a0; }
     }
   }
 

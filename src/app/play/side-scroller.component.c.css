@@ -302,6 +302,13 @@
 .wake-card { position: absolute; z-index: 9; left: 50%; top: 84px; translate: -50% 0; width: min(400px, calc(100% - 32px)); padding: 8px 14px 12px;
   background: var(--px-win-planks), var(--px-win-bg); color: var(--cozy-cream); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
   pointer-events: auto; animation: slip-in .35s steps(4); }
+.sky-card { position: absolute; z-index: 9; left: 50%; top: 84px; translate: -50% 0; width: min(400px, calc(100% - 32px)); padding: 8px 14px 12px;
+  background: var(--px-win-planks), var(--px-win-bg); color: var(--cozy-cream); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
+  pointer-events: auto; animation: slip-in .35s steps(4); }
+.sky-card h2 { margin: 0 44px 6px 0; font: 700 18px/1.2 var(--font-display); color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.sky-card__line { margin: 0; padding: 10px 12px; font: 600 15px/1.4 var(--font-game); }
+.sky-card__x { position: absolute; top: 4px; right: 4px; }
+@media (prefers-reduced-motion: reduce) { .sky-card { animation: none; } }
 .wake-card h2 { margin: 0; font: 700 20px/1.1 var(--font-pixel); color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
 .wake-card ul { display: grid; gap: 3px; margin: 6px 0 8px; padding: 0; list-style: none; font: 13px/1.35 var(--cozy-font-read); color: var(--cozy-cream); }
 .wake-card li:first-child { font-weight: 700; color: var(--cozy-brass-hi); }

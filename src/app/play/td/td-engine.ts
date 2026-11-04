@@ -330,6 +330,8 @@ export class TopDownEngine {
   private nightEventsSeen = '';
   /** Test hook only (`__tdS8.calm`): every creature calm, the Keeper whole. */
   private fxS8Calm = false;
+  /** What the board said last (the e2e reads it). */
+  private boardRead = '';
   private gatherSeen = '';
   private gatherSeq = 0;
   /** The spots in view this frame (the draw's; the tap and the prompt read them). */
@@ -777,7 +779,7 @@ export class TopDownEngine {
         return { t: e.t, c: Math.floor(p.x / TILE), r: Math.floor(p.y / TILE) };
       },
       kiln: () => { if (!this.nightEvents.kilnLive()) return false; this.lightKiln(); return true; },
-      board: () => { this.readBoard(); return this.messageKey; },
+      board: () => { this.boardRead = ''; this.readBoard(); return this.boardRead || this.messageKey; },
       places: () => ({ ...NIGHT_PLACES }),
       barks: () => WEATHER_BARKS.map(b => b.npc),
       state: () => ({
@@ -1359,7 +1361,7 @@ export class TopDownEngine {
       this.weatherFx.drawGround(c, near, this.still);
       this.weatherFx.drawBolts(c, near, this.still, proj?.at);
     }
-    if (this.nightEvents.now.length) { proj?.flat(); this.nightEvents.draw(c, near, this.time, this.still, proj?.at, proj?.flat); }
+    if (this.nightEvents.now.length) { proj?.flat(); this.nightEvents.draw(c, near, this.time, this.still, proj?.at, proj?.flat, envDetail() === 'low'); }
   }
   /** The night events' own clock (seconds; a forced event counts from here). */
   private nightClock(): number { return this.nightEvents.clock; }
@@ -1375,6 +1377,8 @@ export class TopDownEngine {
     const ms = this.skyMs;
     if (ms === null) { this.say('weather.board.none'); return; }
     const [a, b] = forecast(ODETTE_BOARD.land, ms, this.weatherIn?.rolls ?? null);
+    // Its own card (the host's parchment), not the message line; the line stays as a fallback with no host.
+    if (this.options.onSky) { this.options.onSky({ kind: 'board', a, b }); this.boardRead = `${a}|${b}`; return; }
     this.message = 'weather.board'; this.messageKey = 'weather.board'; this.messageVars = { a, b }; this.messageAge = -6;
   }
 
