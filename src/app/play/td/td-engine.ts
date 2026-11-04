@@ -6218,7 +6218,7 @@ export class TopDownEngine {
       // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
       if (m.elite && m.elite.role !== 'minion') {
         if (inView(m.x, m.y) && inBarReach(m.x - this.player.x, m.y - this.player.y, true)) {
-          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h * mobScale(m) - 5));
+          this.at(m.x, m.y); drawElitePlate(c, m, m === this.mobs.target, this.hudCornerPx(), this.hudCornerBottomPx()); if (m.aura || m.bless) drawAuraPip(c, m, Math.round(m.x) + 17, Math.round(m.y - this.vis(m.def).h * mobScale(m) - 5));
           const st = mobStatuses(m, this.statusPeaks);
           if (st.length) { this.badges(st, m.x, m.y - this.vis(m.def).h * mobScale(m) - (m.elite.role === 'leader' ? 24 : 10)); this.noteBadges(`m:${m.key}`, st); }
         }
@@ -6504,6 +6504,8 @@ export class TopDownEngine {
   }
   /** The HUD's top-right corner (the minimap and its clock, ~170 CSS px) in canvas px: a creature's plate stays left of it. */
   private hudCornerPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(170 * this.canvas.width / w); }
+  /** The same corner's foot (the minimap, its clock and the Soul line, ~190 CSS px) in canvas px: below it a plate stays in its own column. */
+  private hudCornerBottomPx(): number { const w = this.canvas.clientWidth || this.canvas.width; return Math.round(190 * this.canvas.width / w); }
   /**
    * S9's air pictures in iso (td-late-fx): drawn in the anchor's upright frame, so a far end (a lightning leap's, a leap's
    * landing) goes where it projects, and a direction (Kiln Breath's cone, Moth Dust's puff) turns as the floor turns.
