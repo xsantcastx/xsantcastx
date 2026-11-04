@@ -27,7 +27,8 @@ async function open(page: Page, extra: Record<string, unknown> = {}): Promise<vo
 async function go(page: Page, place: RegExp, area: RegExp): Promise<void> {
   await page.locator('.places-toggle').first().click();
   await mapFind(page, place);
-  await page.locator('#places-list button', { hasText: place }).first().click();
+  // A result row carries the name and its area · distance (ui-pass-3 §8): match the name line.
+  await page.locator('#places-list [data-map-results] button .mw__rname b', { hasText: place }).first().click();
   await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
 }
 /** Hold a key until `done` (or give up). */
@@ -111,7 +112,9 @@ test('Waystones: touch one a section, then travel to another of the land\'s for 
   await sail(page, /pyrehold/i, /pyrehold/i);
   // Garrick Dross's board: the Verdant ship waits on the Cinder Sovereign (the end of Act I), and says so.
   await canvas(page).focus(); await page.keyboard.press('m');
-  await page.locator('#places-list .mw__pin[data-cat="harbour"][data-name*="garrick" i]').first().click();
+  // A pin's tap opens its card; Walk here goes (ui-pass-3 §8).
+  await page.locator('#places-list .mw__pin[data-cat="harbour"][data-name*="garrick" i]').first().dispatchEvent('click');
+  await page.locator('#places-list [data-map-walk]').click();
   const board = page.locator('.td-harbour');
   await expect(board).toBeVisible({ timeout: 30000 });
   const verdant = board.locator('[data-harbour-row]', { hasText: /mossharbor/i });

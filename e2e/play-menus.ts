@@ -93,8 +93,9 @@ export const MENUS: Menu[] = [
   { id: 'loot', open: placesItem('loot'), root: '.sound-host .ls', close: '.sound-host .ls__done' },
   { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close', primary: '.place .km__keep', noScroll: true },
   { id: 'character', open: placesItem('character'), root: '.place', close: '.place-close' },
-  { ...station('crafting'), noScroll: true }, { ...station('runes'), noScroll: true }, { ...station('enchanting'), noScroll: true }, station('vault', ''),
-  { ...station('vendor'), noScroll: true }, { ...station('gambler'), noScroll: true },
+  { ...station('crafting'), noScroll: true }, { ...station('enchanting'), noScroll: true }, station('vault', ''),
+  // The Rune Forge and the material vendor left the world (runes drop only from monsters; the district shops buy).
+  { ...station('gambler'), noScroll: true },
   shop('shop-general', 2), shop('shop-fishing'), shop('shop-wood'),
   // The Exchange left the world with the game-only shell's deep clean (no station, no ?at=exchange).
   station('market', ''), station('quests', ''), station('codex', ''), station('skills', ''),

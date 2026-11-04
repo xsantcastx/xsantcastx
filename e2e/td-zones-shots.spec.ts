@@ -52,7 +52,12 @@ test('zones: the area card shows the zone\'s fixed band, berry and warned where 
   await expect(zone('The Ashfields').locator('small')).toHaveText(/^Lv 7[-–]10$/);
   await expect(zone('The Ashfields')).toHaveClass(/mw__zone--danger/);
   await expect(page.locator('[data-map-section] option[value="slagstone-cave"]')).toContainText(/Lv 3[-–]5/);
-  await expect(page.locator('[data-map-section] option[value="ember-mine-3"]')).toContainText(/Lv 7[-–]8/);
-  await expect(page.locator('[data-map-section] option[value="ember-mine-3"]')).toHaveAttribute('data-danger', 'true');
+  // Floors live on the floor rail (ui-pass-3 §8): the Ember Mine's third floor carries its band and reads dangerous.
+  const mine = await page.locator('[data-map-section] option').evaluateAll(os => (os as HTMLOptionElement[]).find(o => /ember-mine/.test(o.value))?.value ?? '');
+  await page.locator('[data-map-section]').selectOption(mine);
+  const deep = page.locator('[data-map-floors] [data-floor="ember-mine-3"]');
+  await expect(deep).toHaveAttribute('title', /Lv 7[-–]8/);
+  await expect(deep).toHaveAttribute('data-danger', 'true');
+  await page.locator('[data-map-floors] [data-floor="surface"]').click();
   await page.screenshot({ path: 'docs/handoff/cozy-ui/zones-map.jpg', type: 'jpeg', quality: 80 });
 });

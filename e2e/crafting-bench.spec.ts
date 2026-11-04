@@ -83,7 +83,7 @@ async function openDetails(page: Page) {
 }
 
 const craftButton = (page: Page) => page.locator('.cb-hero .ab__btn');
-const itemCounts = (page: Page) => page.locator('.cb-hero app-requirement-grid').nth(1).locator('.rg__count');
+const itemCounts = (page: Page) => page.locator('.cb-hero app-requirement-grid').last().locator('.rg__count');
 
 test.describe('the crafting bench', () => {
   test('shows the whole catalogue, locked recipes included', async ({ page }) => {

@@ -105,6 +105,11 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.t('look.swatch', { n: value + 1, total: fieldOptions(field).length });
   }
   swatch(field: LookField): string | null { return fieldSwatch(field, this.draft[field]); }
+  /** The value in a narrow window: a swatch as "3/10", a named look as its name. */
+  shortLabel(field: LookField): string {
+    const value = this.draft[field];
+    return typeof value === 'number' ? `${value + 1}/${fieldOptions(field).length}` : this.valueLabel(field);
+  }
 
   step(field: LookField, by: number): void {
     this.draft = stepLook(this.draft, field, by);

@@ -28,6 +28,7 @@
         <!-- The satchel, at the table: drag a rune onto a socketed piece to set it (runes never come out). A phone
              long-presses the rune, then taps the piece. Picking a piece selects it for the button below. -->
         <div class="eb-grid" data-table-grid>
+          @if (!selected) { <p class="eb-pick" data-enchant-pick>{{ t('enchant.pickPiece') }}</p> }
           @if (satchel) {
             <app-item-grid container="b" [view]="satchel" [look]="look" [label]="t('enchant.step.gear')"
                            [pickedKey]="null" (pick)="pickPiece($event)" (socketed)="gridSocketed($event)" />
@@ -50,18 +51,20 @@
           @if (ritual; as r) {
             <app-rune-ritual [runeName]="r.runeName" [runeArt]="r.runeArt" [itemName]="r.itemName" [itemArt]="r.itemArt" [tier]="r.tier"
                              (done)="onRitualDone($event)" (cancel)="closeRitual()" />
-          } @else {
-            <app-action-button
-              [label]="t('enchant.ctaShort')"
-              [costs]="ctaCosts"
-              chips="none"
-              [blocked]="ctaBlocked"
-              [pending]="!hydrated"
-              (act)="addRune()"
-              (refused)="announce = $event" />
           }
-
         </div>
+        <!-- The one action rides the window's foot (sticky) across the grid and the detail, so it is in view on opening
+             (ui-pass-3 K2); until a piece is picked it rests in plain wood and says why. -->
+        @if (!ritual) {
+          <app-action-button class="eb-act"
+            [label]="t('enchant.ctaShort')"
+            [costs]="ctaCosts"
+            chips="none"
+            [blocked]="ctaBlocked"
+            [pending]="!hydrated"
+            (act)="addRune()"
+            (refused)="announce = $event" />
+        }
       </div>
     } @else {
       <app-station-journal>

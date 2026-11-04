@@ -56,6 +56,29 @@ HUD, trade, chat. The satchel grid inside a shop is still `app-item-grid` (Wave 
 - The Slate offer (Lune) and Kael's binding moved from above the window title into the body, under the station, as a
   wood card with a wood button (one brass per window). One-line move in `side-scroller.component.html`.
 
+## Director FIX round (2026-11-03, on d11f25c8)
+
+- **S1/K1** The station's title row (`.ss__head`, station-shell) is sticky at the top of the scroller, opaque plate,
+  z 4; the window's × (`.place-head`, absolute) is lifted to z 5 and stays on that row. Every station (gambler, market,
+  crafting, shops) keeps name · Gold · ? · × together at any scroll.
+- **G1** The skip toggle is projected into the maker's sticky `.km__actions` (`[kmFoot]`), one opaque foot; the lobby
+  window has no foot on phones (× leaves); the scroller has no bottom padding and `scroll-padding-bottom`; shorter
+  chips and a name-less card on phones. Test: the name input's bottom edge hit-tests to the input at 844×390 and 360×640.
+- **G2** Calling names wrap to two 11px lines (hyphenated), never an ellipsis. **G3** Stepper labels have their own
+  14px row; under 420px a swatch reads "3/10".
+- **M1** Rails hold whole chips only (`--rail-max`, snap); a short map folds the filters into one Filters chip.
+  **M2** Filter on = lit wood + full-colour glyph, off = wood-1 + glyph at 40%. **M3** `map-floor-<size>.png` shots.
+- **K2** Enchanting: "Pick a piece to enchant" above the grid (EN + ES) and Add a rune as the sticky foot (wood when
+  blocked).
+- **Decision 1** Station primaries (`.ab__btn` in `.place`) are brass, "Verb · coin N Gold" on one line, no dark pill.
+- **Decision 2** The area picker lists the continent and each cave once (with its band); floors live on the rail only
+  (each floor chip carries its band and `data-danger`). `td-zones-shots` and `play-wave-b` read the rail.
+- Become is 15px.
+- Stale specs fixed: `crafting-bench` (the in-world bench has no tools grid; reads the last grid),
+  `play-menus` drops `runes` and `vendor` (both stations left the world).
+- Still red and out of scope: `play-menus-orientation` "sound: outside the viewport" (the settings sheet, Wave C) and
+  the satchel pockets at 31 px (Wave A); `play-slate-phone` waits for a `factory` app the Slate no longer has.
+
 ## Tests
 
 - New `e2e/play-wave-b.spec.ts` (the Accept checks): prices on every tile; Buy in view at scrollTop 0 at four sizes;
@@ -85,6 +108,3 @@ and the two-Keeper td-world, which passes alone).
 - Satchel dimming of what a shop will not buy (needs a per-piece dim in `app-item-grid`, Wave A's component).
 - Landscape shop as shelf-left / satchel-right needs the satchel at 44–52 px pages (Wave A); it is Shelf | Satchel.
 - Map: long-press the minimap for quest pins; "Sail · 40 Gold" on a harbour card (it says Walk here; the board prices).
-- Station primaries (`.ab__btn`) are still the remapped pale gold, not `--cozy-brass` — a Director call.
-- The floor part of the area picker remains alongside the floor rail (kept for compatibility).
-- At 844×390 the sticky Become row brushes the bottom of the name field (about 10 px); the name stays tappable.

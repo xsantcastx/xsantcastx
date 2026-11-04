@@ -10,6 +10,7 @@ export const ENCHANTING_I18N: Readonly<Record<string, { en: string; es: string }
   'enchant.step.rune':       { en: 'Pick a rune', es: 'Elige una runa' },
   'enchant.cta':             { en: 'Add {{rune}} to {{item}}', es: 'Poner {{rune}} en {{item}}' },
   'enchant.ctaShort':        { en: 'Add a rune', es: 'Poner una runa' },
+  'enchant.pickPiece':       { en: 'Pick a piece to enchant', es: 'Elige una pieza para encantar' },
   'enchant.runeCost':        { en: '{{name}} rune', es: 'runa {{name}}' },
   'enchant.why.noGear':      { en: 'You have no gear with rune slots yet.', es: 'Aun no tienes equipo con huecos para runas.' },
   'enchant.why.noRunes':     { en: 'You have no runes yet. Creatures drop them: the deeper the zone, the heavier the rune.', es: 'Aun no tienes runas. Las sueltan las criaturas: cuanto mas honda la zona, mas pesada la runa.' },

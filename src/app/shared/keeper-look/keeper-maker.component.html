@@ -69,12 +69,12 @@
 
   <ul class="km__fields">
     @for (field of fields; track field) {
-      <li class="km__row" [attr.data-field]="field">
+      <li class="km__row" [attr.data-field]="field" [attr.data-swatch]="swatch(field) ? '' : null">
         <span class="km__label">{{ fieldLabel(field) }}</span>
         <button type="button" class="km__step km__step--prev" (click)="step(field, -1)" [attr.aria-label]="t('look.prev', { field: fieldLabel(field) })"><i aria-hidden="true"></i></button>
         <span class="km__value" aria-live="polite">
           @if (swatch(field); as color) { <i class="km__swatch" [style.--swatch]="color" aria-hidden="true"></i> }
-          {{ valueLabel(field) }}
+          <span class="km__vfull">{{ valueLabel(field) }}</span><span class="km__vshort">{{ shortLabel(field) }}</span>
         </span>
         <button type="button" class="km__step km__step--next" (click)="step(field, 1)" [attr.aria-label]="t('look.next', { field: fieldLabel(field) })"><i aria-hidden="true"></i></button>
       </li>
@@ -84,6 +84,8 @@
   <div class="km__actions">
     <button type="button" class="km__random" (click)="surprise()">{{ t('look.random') }}</button>
     <button type="button" class="km__keep" (click)="keep()">{{ t('look.keep') }}</button>
+    <!-- The host's extras for this foot (the lobby's "played before" toggle): one opaque foot, nothing leaks between. -->
+    <ng-content select="[kmFoot]" />
   </div>
   @if (saved) { <p class="km__saved" role="status">{{ t('look.saved') }}</p> }
 </section>
