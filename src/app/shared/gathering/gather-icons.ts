@@ -102,6 +102,25 @@ const TINDER: Shape = [
   '................',
 ];
 
+/** A torn corner of a page, a line of ink across it (S8: the Margin Note Scrap). */
+const SCRAP: Shape = [
+  '................',
+  '................',
+  '................',
+  '...ooooooooo....',
+  '...obbbbbbbbo...',
+  '...obffffbbbbo..',
+  '...obbbbbbbbbo..',
+  '...obfffffbbbo..',
+  '...obbbbbbbbbbo.',
+  '...obffbbbbbbbo.',
+  '...olllllllllo..',
+  '...oooooolloo...',
+  '.........oo.....',
+  '................',
+  '................',
+  '................',
+];
 const RAW = (b: string, l: string, f: string, t: string): Icon => ({ shape: FISH, palette: { b, l, f, e: '#140a1f', t } });
 const LOGP = (b: string, d: string, l: string, f: string, e: string, glow?: string): Icon => ({ shape: LOG, palette: { b, d, l, f, e }, ...(glow ? { glow } : {}) });
 const MEALP = (b: string, f: string, glow?: string): Icon => ({ shape: MEAL, palette: { b, f, l: '#8a5a32', d: '#6a4424', e: '#e8e4ef' }, ...(glow ? { glow } : {}) });
@@ -124,6 +143,12 @@ export const GATHER_ICONS: Readonly<Record<string, Icon>> = {
   'mire-carp-supper': MEALP('#8a7a4a', '#5a4a24'),
   'lampfish-fry': MEALP('#c89a4a', '#ffd36d', '#ffd36d'),
   'moonbelly-fillet': MEALP('#e8e0f0', '#a8b8ff', '#d8e0ff'),
+  // S8: charcoal from the self-lit kiln, the storm's fish and its cake, the Late Shift's pasty, a Margin Note scrap.
+  'charcoal': LOGP('#2a2226', '#181418', '#5a5058', '#3a3236', '#c4501e'),
+  'stormscale': { shape: FISH, palette: { b: '#a8b4c8', l: '#e8f0ff', f: '#ffe066', e: '#140a1f', t: '#6a7a98' }, glow: '#ffe066' },
+  'thundercake': MEALP('#d8b860', '#ffe066', '#ffe066'),
+  'cold-miners-pasty': MEALP('#c89058', '#8a5a32'),
+  'margin-note-scrap': { shape: SCRAP, palette: { b: '#e8dcc0', f: '#4a3a5a', l: '#c8b890' } },
   'burnt-fish': { shape: FISH, palette: { b: '#2a2024', l: '#3a3034', f: '#1a1418', e: '#c4501e', t: '#1a1418' } },
   'tinderbox': { shape: TINDER, palette: { b: '#6a6470', l: '#a8a2b0', e: '#c8bcb4', f: '#3a3440', d: '#c4501e' } },
 };

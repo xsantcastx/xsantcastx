@@ -47,12 +47,13 @@ names its ticket. Everything else is expected to work as written.
 | Runes | Drop | — | — (no use from the belt) | socket (drag onto gear) | yes (room if online, a pile ×N) | yes (stack ×N, how many) | yes | yes | is the socket filler | **gap** (T2) | bank Drop |
 | Spellstones | Use, Put on belt, Drop | never | F slot (drag or card) | Use | yes (room if tradeable) | yes (a pile ×N, how many) | — | yes | — | — | — |
 | Potions | Put on belt, Put on hotkey, Drop | — | Q / R (drag or card), or an item hotkey 9 / 0 / - (drinks that potion) | drink from the belt | yes (room if online, a pile ×N) | yes (stack ×N, how many) | Edrin never buys them back | yes (Deposit all keeps belt ones) | — | **gap** (T2) | bank Drop |
-| Food / meals | Eat, Put on hotkey, Drop | — | item hotkey 9 / 0 / - (eats one) | Eat | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
+| Food / meals (S8: Thundercake, Cold Miner's Pasty also start a 10-min buff on Eat) | Eat, Put on hotkey, Drop | — | item hotkey 9 / 0 / - (eats one) | Eat | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Raw fish | Cook (at a fire), Put on hotkey, Drop | — | item hotkey (cooks at the fire in reach) | Cook | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Logs | Light, Put on hotkey, Drop | — | item hotkey (lights one at your feet) | Light | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Town Portal scrolls | Read, Put on hotkey, Drop | — | V, or an item hotkey (reads one) | Read | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Crates | Open, Put on hotkey, Drop | — | item hotkey (opens one) | Open | yes (room if online, a pile ×N) | yes (stack ×N, how many) | per shop | yes | — | **gap** (T2) | bank Drop |
 | Materials, Blanks | Drop | — | — (no use from the belt) | benches read the satchel | yes (room if online, a pile ×N) | yes (stack ×N, how many) | buyback floor | yes | — | **gap** (T2) | bank Drop |
+| Night scraps (S8: Margin Note Scrap) | Drop (its card is the read: what it says, Found in, the thread) | — | — (nothing to use) | read on its card | yes (room if online, a pile ×N) | yes (stack ×N, how many) | never (no buyback) | yes | — | **gap** (T2) | bank Drop |
 | Quest items | — | — | — | the quest | never dropped | yes (tagged Quest; the quest follows possession) | never | stay (no cell) | — | — | never |
 | Gold | — | — | — | — | picked up by walking over it | yes (an amount, the window's Gold field) | — | — | — | — | — |
 

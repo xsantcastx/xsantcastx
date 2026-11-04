@@ -11,4 +11,6 @@ export const GATHER_PILE_KEYS: ReadonlySet<string> = new Set([
   'ash-perch', 'mirrorfin', 'rootling-eel', 'mire-carp', 'lampfish', 'moonbelly',
   'baked-ash-perch', 'seared-mirrorfin', 'smoked-rootling-eel', 'mire-carp-supper', 'lampfish-fry', 'moonbelly-fillet',
   'burnt-fish',
+  // S8: charcoal, the storm's fish and its cake, the Late Shift's pasty, a Margin Note scrap.
+  'charcoal', 'stormscale', 'thundercake', 'cold-miners-pasty', 'margin-note-scrap',
 ]);

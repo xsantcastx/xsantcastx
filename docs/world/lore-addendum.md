@@ -1839,6 +1839,27 @@ born). Each section's thing to read and sealed thing are listed in canon §8.5; 
 `play/td/td-reach.i18n.ts` (EN + ES). Garrick Dross's board now holds the Verdant ship: "The captains will not sail
 until the Cinder Sovereign falls."
 
+
+## The storm, the land weathers and the first night events (2026-11-03, S8, branch `s8storm`) — shipped, owner reviews in play
+
+A storm's strike is told by a white ring that hums on the ground for a breath; Glim: "There! Off the ring, quick!" It
+never takes a Keeper below a tenth of his life. Ashfall greys Ember Isle and the Reach, the Wilds' spore drift bursts
+round a fire hit, the Marches' mist-rain is rain at half strength. Odd Tarn, Maud Kiln, Captain Brannoc Vey, Ilsa Fenn
+and Old Corvane speak their weather lines (world-acts §3.6). **Odette Pryor's board** hangs in the Pyre Spire's Study:
+"Ash by the next bell. Then Rain." — the smoke-leans thread (canon §9) pays its first coin. **Stormscale** (a Mirrorfin
+the lightning found first) cooks into the **Thundercake** (lightning bites 5% less for ten minutes).
+
+Night events, each once a night per land, seeded so a party sees the same:
+- **The Late Shift** (Ember Isle, the mine head on the Seamworks' west lane; 1 night in 3): six lamps walk up out of the
+  shaft and go out one by one; on its pillar the beacon's light leans after them (campaign #1 clue). A lunch tin: the
+  **Cold Miner's Pasty** (+10% Mining XP, 10 min) and "Shift done. Nobody signed us out."
+- **The Count Goes On** (the Hushed Barrow's lych-gate; fog): the bell counts to forty, rests, begins again. Stand through
+  a count: Wren's voice, "You counted with me. Nobody does.", and his thanks in Gold.
+- **The Relief Column** (the Bastion Road): ten grey soldiers march to the Ashen Bastion's gate and answer "Present."
+  twenty times. Walk beside them: on the gate in fresh chalk, the last name called — **Ensign Halden Rook** (new name, a
+  soldier of the Bastion's garrison; registered in canon §9) — and a **Margin Note Scrap** (Doors in the dark).
+- **The Kiln That Lights Itself** (the Deep Charwood's cold kiln; Ashfall): it glows two minutes while the burners'
+  shadows work it. Light it: **Charcoal** ×10, a Basalt Blank, and a tenth stroke under the nine: "Ten days. Leave the rest."
 ## The rows to level 50 (2026-11-03, branch `s9rows`) — shipped, owner reviews in play
 
 Every calling's book now runs whole to level 50 (canon §4.2). The Warlock raises the **Ashen Bastion's war-mages**:
