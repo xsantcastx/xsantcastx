@@ -7140,12 +7140,9 @@ export class TopDownEngine {
     if (pl) hole(pl.x, pl.y, 30, 1, 10);
     // The Seam Eater's corona is a light of its own under the eclipse (a fair fight: the whole of it shows, never a silhouette).
     for (const m of this.mobs.mobs) if (m.def.id === SEAM_ID) hole(m.x, m.y, m.def.w * .9, 1, m.def.h / 2);
-    // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
-    if (this.mobs.aura) {
-      d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 6 / Q;
-      ring(this.player.x, this.player.y, this.mobs.auraRadius);
-      hole(this.player.x, this.player.y, this.mobs.auraRadius * 2 + 16, .2);
-    }
+    // A running aura lifts the dark a little over the ground it claims: one wide, even pool with no edge (owner: no
+    // constant ground circles — the opened stroke along its reach read as a ring on the ground at night).
+    if (this.mobs.aura) hole(this.player.x, this.player.y, this.mobs.auraRadius * 2.4 + 16, .3);
     // Spells are their own light: the nova's running ring, a bolt's ember, a burst as it breaks.
     for (const e of this.mobs.effects) {
       const t = e.age / e.life;

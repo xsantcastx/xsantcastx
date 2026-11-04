@@ -86,13 +86,31 @@ const OPEN_LEVELS = [1, .8, .5, LIGHT_RIM[0], LIGHT_RIM[1], 0];
  * and rim as `lightOpen`, but each step's edge and the rim's fade are a fine ordered dither (`t`, bayer4) instead of a
  * hard band edge and a coarse checker — the dungeon's walls fade into the dark a pixel at a time.
  */
-/** The same falloff unquantized (the half-resolution iso light map: its 2-px cells carry the steps without bands). */
-export function isoLightSmooth(f: number): number { return f > 1 ? 0 : curve(ISO_OPEN, f); }
-export function isoLightOpen(f: number, t: number): number { return f > 1 ? 0 : stepDither(curve(ISO_OPEN, f), OPEN_LEVELS, t); }
+/**
+ * The half-resolution iso light map's falloff (phones and Low): one wide, even gradient — a clear core to a third of the
+ * radius, then a smoothstep to nothing at the rim. No plateaus, so no edge reads as a ring on the ground (owner: no
+ * constant ground circles); the core stays as open as before, so the night still reads.
+ */
+export function isoLightSmooth(f: number): number {
+  if (f >= 1) return 0;
+  if (f <= .32) return 1;
+  const k = (f - .32) / .68, e = 1 - k;
+  return e * e * (3 - 2 * e);
+}
+// S8 / owner (no constant ground circles): the iso light map follows the smooth falloff and only dithers between the
+// levels, so the pool fades out evenly instead of reading as rings; `ISO_OPEN` stays for its stepped twin's record.
+export function isoLightOpen(f: number, t: number): number { return f > 1 ? 0 : stepDither(isoLightSmooth(f), OPEN_LEVELS, t); }
+void ISO_OPEN;
 const ISO_WARM: readonly (readonly [number, number])[] = [[0, .26], [.31, .26], [.39, .17], [.56, .17], [.64, .09], [.8, .09], [.9, 0], [1, 0]];
 const WARM_LEVELS = [.26, .17, .09, 0];
 /** The warm wash's bands on the isometric light map, their edges ordered-dithered (`t`, bayer4) like isoLightOpen. */
-export function isoWarmAt(f: number, t: number): number { return f > 1 ? 0 : stepDither(curve(ISO_WARM, f), WARM_LEVELS, t); }
+export function isoWarmAt(f: number, t: number): number {
+  if (f > 1) return 0;
+  // The same even fade for the warm wash: its core, then a smoothstep to nothing at nine-tenths of the radius.
+  const k = Math.max(0, Math.min(1, (f - .3) / .6)), e = 1 - k;
+  return stepDither(.26 * e * e * (3 - 2 * e), WARM_LEVELS, t);
+}
+void ISO_WARM;
 
 /** The warm wash a lamp, hearth or window lays inside its light (alpha by band; the colour is the Hearth palette). */
 export const WARM_STEPS: readonly (readonly [number, number])[] = [[.35, .26], [.6, .17], [.85, .09]];
