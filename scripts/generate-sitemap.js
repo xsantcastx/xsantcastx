@@ -80,6 +80,8 @@ const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml')
 // changefreq follows what actually changes: the rooms whose numbers move every
 // session are weekly, static lore is monthly.
 function metaFor(route) {
+  if (route === '/')             return { changefreq: 'weekly',  priority: '1.0' };
+  if (route.startsWith('/apps/')) return { changefreq: 'monthly', priority: '0.8' };
   if (route === '/play')         return { changefreq: 'daily',   priority: '1.0' };
 
   // The playable rooms — the game's real keyword surface.

@@ -4,6 +4,7 @@ import { Routes, provideRouter, Router } from '@angular/router';
 import { provideLocationMocks } from '@angular/common/testing';
 
 import { APP_ROUTES } from './app-routing.module';
+import { PROJECTS } from './store/projects.data';
 import { CANONICAL_REDIRECTS, INTO_PLAY, intoPlay } from './shared/canonical-routes';
 
 @Component({ standalone: true, template: '' })
@@ -41,7 +42,8 @@ describe('canonical player routing', () => {
     router = TestBed.inject(Router);
   });
 
-  // Game-only shell: every retired page URL lands in the game, at the panel it
+  // The front door is the projects store (2026-11-18); the game lives at /play.
+  // Every retired page URL lands in the game, at the panel it
   // became when there is one, and carries its own query along.
   for (const [path, at] of Object.entries(INTO_PLAY)) {
     if (path.includes(':')) continue;
@@ -53,6 +55,25 @@ describe('canonical player routing', () => {
       expect(leafPath(router)).toBe('play');
     });
   }
+
+  it('/ is the projects store and /home redirects to it', async () => {
+    await router.navigateByUrl('/');
+    expect(router.url).toBe('/');
+    expect(leafPath(router)).toBe('');
+    await router.navigateByUrl('/home');
+    expect(router.url).toBe('/');
+    expect(leafPath(router)).toBe('');
+  });
+
+  it('has a detail route for every project, and nothing else under /apps', async () => {
+    for (const p of PROJECTS) {
+      await router.navigateByUrl(`/apps/${p.id}`);
+      expect(router.url).toBe(`/apps/${p.id}`);
+      expect(leafPath(router)).toBe(`apps/${p.id}`);
+    }
+    await router.navigateByUrl('/apps/no-such-project');
+    expect(router.url.split('?')[0]).toBe('/play');
+  });
 
   it('carries the old page query into the game (/codex?tab=collection)', async () => {
     await router.navigateByUrl('/codex?tab=collection');
@@ -67,9 +88,9 @@ describe('canonical player routing', () => {
     }
   });
 
-  it('routes nothing beside the game but the owner dashboard', () => {
-    const paths = APP_ROUTES.filter(r => !r.redirectTo).map(r => r.path);
-    expect(paths).toEqual(['play', 'admin']);
+  it('routes nothing beside the store, the game and the owner dashboard', () => {
+    const paths = APP_ROUTES.filter(r => r.redirectTo === undefined).map(r => r.path);
+    expect(paths).toEqual(['', ...PROJECTS.map(p => `apps/${p.id}`), 'play', 'admin']);
   });
 
   it('APP_ROUTES consumes the shared redirect table', () => {

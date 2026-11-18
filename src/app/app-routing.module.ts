@@ -3,18 +3,41 @@ import { RouterModule, Routes } from '@angular/router';
 import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
 import { SITE_URL } from './seo.service';
 import { stayInGameGuard } from './play/stay-in-game.guard';
+import { PROJECTS, projectJsonLd, storeJsonLd, STORE_TITLE, STORE_DESCRIPTION } from './store/projects.data';
 
 /**
- * The game-only shell (docs/handoff/game-only-shell.md, docs/handoff/page-audit.md):
- * the game at /play is the only page. Every page that used to stand beside it
- * is either an in-game panel (play/world/panel-registry.ts) or deleted, and its
- * old URL is a redirect into the world in CANONICAL_REDIRECTS. /admin is the
- * owner's dashboard. Anything else lands in the game.
+ * The projects store is the front door (owner's decision, 2026-11-18): `/` is a
+ * prerendered app-store page for xsantcastx's projects and `/apps/<id>` is a
+ * detail page per project (store/projects.data.ts, one entry each). The game
+ * stays fully intact at `/play`. Every other page that used to stand beside the
+ * game is either an in-game panel (play/world/panel-registry.ts) or deleted, and
+ * its old URL is a redirect into the world in CANONICAL_REDIRECTS. /admin is the
+ * owner's dashboard. Anything unknown still lands in the game.
  */
 export const APP_ROUTES: Routes = [
   {
-      // The game is the front door (game-only shell): `/`, `/home` and the
-      // retired `/world` landing all redirect here, and Hosting 301s them.
+      // The projects store: the front door. Standalone, lazy, prerendered.
+      path: '',
+      pathMatch: 'full',
+      loadComponent: () => import('./store/store.component').then(m => m.StoreComponent),
+      title: STORE_TITLE,
+      data: { description: STORE_DESCRIPTION, jsonLd: storeJsonLd() }
+    },
+  // One detail route per project (so each prerenders with its own title, description and JSON-LD).
+  ...PROJECTS.map(project => ({
+      path: `apps/${project.id}`,
+      loadComponent: () => import('./store/project-detail.component').then(m => m.ProjectDetailComponent),
+      title: project.seo.title,
+      data: {
+        projectId: project.id,
+        description: project.seo.description,
+        ...(project.seo.ogImage ? { ogImage: project.seo.ogImage } : {}),
+        jsonLd: projectJsonLd(project)
+      }
+    })),
+  { path: 'home', redirectTo: '', pathMatch: 'full' },
+  {
+      // The game. `/world` and the retired pages redirect here, and Hosting 301s them.
       // Prerendered (prerender-routes.txt) so crawlers get the title, the
       // description, the JSON-LD and the <noscript> intro; the game itself only
       // starts in the browser (afterNextRender).

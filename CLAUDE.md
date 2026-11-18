@@ -1,8 +1,13 @@
 # Eclipse Realms — operating manual
 
-xsantcastx.com is now **one product: the browser RPG Eclipse Realms** (Angular 21 SSR on Firebase
+xsantcastx.com's game is **the browser RPG Eclipse Realms** at `/play` (Angular 21 SSR on Firebase
 Hosting, installable PWA). The old tools website (126 tools, galaxy map, cosmic engine, /live, MCP,
 embeds, ads) was removed in October 2026; its URLs 301 into the game. Do not rebuild any of it.
+
+**Front door (owner's decision, 2026-11-18):** `/` is now a projects store, an app-store page for the
+owner's projects (Eclipse Realms, Decanter, Cronta) at `src/app/store/`, with a detail page per project
+at `/apps/<id>`. It is not the old tools site: one typed catalogue (`store/projects.data.ts`), no cosmic
+theme. The game is unchanged at `/play`.
 
 **Read first, every session:** `docs/roadmap/world-plan.md` — the live build tracker: decisions,
 phases, what's shipped, what's in flight, the watch list, and the working rules. Update it in the

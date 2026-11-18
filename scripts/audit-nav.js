@@ -59,9 +59,9 @@ function loadTs(file, cache = new Map()) {
   return mod.exports;
 }
 
-// ── 1. Only the game is routed ─────────────────────────────────────────────
+// ── 1. Only the store, the game and /admin are routed (the front door is the projects store, 2026-11-18) ─────────────────────────────────────────────
 const routingSrc = fs.readFileSync(path.join(APP, 'app-routing.module.ts'), 'utf8');
-const ALLOWED_PATHS = new Set(['play', 'admin', '**']);
+const ALLOWED_PATHS = new Set(['play', 'admin', '**', '', 'home']);
 const extraRoutes = [...routingSrc.matchAll(/\bpath:\s*'([^']*)'/g)].map(m => m[1]).filter(p => !ALLOWED_PATHS.has(p));
 if (!/\.\.\.CANONICAL_REDIRECTS/.test(routingSrc)) extraRoutes.push('(CANONICAL_REDIRECTS is not spread into APP_ROUTES)');
 const { CANONICAL_REDIRECTS, INTO_PLAY, intoPlay } = loadTs(path.join(APP, 'shared/canonical-routes.ts'));
@@ -144,6 +144,7 @@ for (const [f, targets] of linksIn) {
   for (const t of targets) {
     const p = t.split(/[?#]/)[0].replace(/\/$/, '') || '/';
     if (p === '/play') continue;
+    if (r.startsWith('store/') && (p === '/' || p.startsWith('/apps/'))) continue; // the store links to itself
     if (p === '/admin' && r.startsWith('admin/')) continue;
     if (redirects.has(p)) continue;
     if (/^\/(tools|embed)\//.test(p)) continue; // retired slugs: '/tools/:slug' redirects into /play

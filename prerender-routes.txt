@@ -1,1 +1,5 @@
+/
+/apps/eclipse-realms
+/apps/decanter
+/apps/cronta
 /play

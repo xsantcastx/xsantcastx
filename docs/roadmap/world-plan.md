@@ -4,9 +4,13 @@ The working build tracker for turning Eclipse Realms into one walkable world.
 Update it in the same commit that lands the work; an item is only `[x]` once it
 is merged to `main` **and** checked in a production build.
 
-Last updated: 2026-10-14
+Last updated: 2026-11-18
 
 Legend: `[x]` shipped · `[~]` in progress (branch named) · `[ ]` next · `[-]` later / blocked
+
+> **2026-11-18, owner's decision:** the front door is now a projects store. `/` renders an app-store page
+> for Eclipse Realms, Decanter and Cronta (`src/app/store/`, catalogue in `projects.data.ts`), `/home` redirects
+> to it, and `/apps/<id>` are the detail pages. The game stays fully intact at `/play`; unknown URLs still land there.
 
 ---
 

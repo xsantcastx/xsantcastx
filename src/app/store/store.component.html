@@ -1,0 +1,118 @@
+<div class="store">
+  <app-store-topbar [searchable]="true" [(query)]="query" />
+
+  <div class="store-page">
+    <h1 class="sr-only">Projects by xsantcastx</h1>
+
+    <!-- Featured carousel: one slide per project, each in that project's own design system. -->
+    <section class="hero-carousel" aria-roledescription="carousel" aria-label="Featured projects"
+             (mouseenter)="setHover(true)" (mouseleave)="setHover(false)"
+             (focusin)="setFocus(true)" (focusout)="focusOut($event, carousel)" (keydown)="onKey($event)" #carousel>
+      <div class="track" #track (scroll)="onScroll()" [attr.aria-live]="rotating() ? 'off' : 'polite'" tabindex="-1">
+        @for (p of featured; track p.id; let i = $index) {
+          <article class="slide on-hero" [attr.data-skin]="p.skin" role="group" aria-roledescription="slide"
+                   [attr.aria-label]="(i + 1) + ' of ' + featured.length + ': ' + p.name"
+                   [attr.aria-hidden]="i === index() ? null : 'true'" [attr.inert]="i === index() ? null : ''">
+            @switch (p.skin) {
+              @case ('eclipse') {
+                <img class="slide-bg" [src]="p.art!.src" [alt]="p.art!.alt" width="1200" height="630" [attr.fetchpriority]="i === 0 ? 'high' : null" decoding="async">
+              }
+              @case ('decanter') {
+                <div class="slide-shot"><img [src]="p.art!.src" [alt]="p.art!.alt" [width]="p.art!.width" [height]="p.art!.height" loading="lazy" decoding="async"></div>
+              }
+              @case ('cronta') {
+                <div class="slide-mock"><app-cronta-mock kind="cronta-clock" label="Sample screen: the Cronta clock-in button on a phone." /></div>
+              }
+            }
+            <div class="slide-body">
+              <img class="slide-icon" [src]="p.icon.src" [alt]="p.icon.alt" width="72" height="72">
+              <ul class="tags" aria-label="Status">
+                <li class="tag tag-art tag-status" [class.tag-live]="p.status === 'live'" [class.tag-soon]="p.status === 'soon'">{{ p.status === 'live' ? 'Live' : 'Coming soon' }}</li>
+                <li class="tag tag-art">{{ p.kicker }}</li>
+              </ul>
+              <h2 class="slide-title">{{ p.name }}</h2>
+              <p class="slide-blurb">{{ p.blurb }}</p>
+              <div class="slide-actions">
+                <app-store-cta [project]="p" [large]="true" />
+                <a class="btn btn-ghost btn-lg" [routerLink]="url(p)">Details<span class="sr-only"> about {{ p.name }}</span></a>
+              </div>
+              <p class="slide-note">{{ p.note }}</p>
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="hero-controls">
+        <button type="button" (click)="step(-1)" aria-label="Previous project">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="dots" role="group" aria-label="Choose a project">
+          @for (p of featured; track p.id; let i = $index) {
+            <button type="button" (click)="goTo(i)" [attr.aria-current]="i === index() ? 'true' : null" [attr.aria-label]="'Show ' + p.name">
+              <span class="dot"></span>
+            </button>
+          }
+        </div>
+        <button type="button" (click)="step(1)" aria-label="Next project">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <button type="button" (click)="togglePause()" [attr.aria-label]="userPaused() ? 'Start automatic rotation' : 'Pause automatic rotation'">
+          @if (userPaused()) {
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+          } @else {
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+          }
+        </button>
+      </div>
+    </section>
+
+    <!-- Category chips -->
+    <div class="filters" role="group" aria-label="Filter projects">
+      @for (c of chips; track c.id) {
+        <button type="button" class="chip" [attr.aria-pressed]="category() === c.id" (click)="setCategory(c.id)">{{ c.label }}</button>
+      }
+    </div>
+    <p class="sr-only" aria-live="polite">{{ resultsLabel() }}</p>
+
+    @for (s of shelves(); track s.id) {
+      <section class="shelf" [attr.aria-labelledby]="'shelf-' + s.id">
+        <div class="shelf-head">
+          <h2 class="shelf-title" [id]="'shelf-' + s.id">{{ s.title }}</h2>
+          <p class="shelf-sub">{{ s.subtitle }}</p>
+        </div>
+        <ul class="shelf-row">
+          @for (p of s.items; track p.id) {
+            <li style="display: contents">
+              <article class="card" [attr.data-skin]="p.skin">
+                <div class="card-top">
+                  <img class="card-icon" [src]="p.icon.src" [alt]="p.icon.alt" width="64" height="64" loading="lazy" decoding="async">
+                  <div>
+                    <h3 class="card-name"><a class="card-link" [routerLink]="url(p)">{{ p.name }}</a></h3>
+                    <ul class="tags" aria-label="Status">
+                      <li class="tag tag-status" [class.tag-live]="p.status === 'live'" [class.tag-soon]="p.status === 'soon'"><span class="tag-dot" aria-hidden="true"></span>{{ p.status === 'live' ? 'Live' : 'Coming soon' }}</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="card-pitch">{{ p.pitch }}</p>
+                <ul class="tags" aria-label="Platforms">
+                  @for (t of p.platforms; track t) { <li class="tag">{{ t }}</li> }
+                </ul>
+                <div class="card-foot">
+                  <app-store-cta [project]="p" [block]="true" />
+                </div>
+              </article>
+            </li>
+          }
+        </ul>
+      </section>
+    } @empty {
+      <section class="empty">
+        <h2 class="empty-title">No projects match</h2>
+        <p>Try a different word, or clear the filter.</p>
+        <button type="button" class="btn btn-ghost" (click)="reset()">Reset filters</button>
+      </section>
+    }
+  </div>
+
+  <app-store-footer />
+</div>

@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 
 /** Player destinations after the Product A cleanup. */
 export const CANONICAL = {
-  /** The game is the front door: `/`, `/home` and the retired `/world` landing all open it. */
+  /** The game lives at /play. The front door `/` is the projects store (2026-11-18); `/world` and the retired pages land here. */
   play: '/play',
   character: '/character',
   forge: '/forge/crafting',
@@ -85,8 +85,8 @@ export function rewriteCanonicalPageSet(members: readonly string[]): string[] {
  * quest that said "open the Codex" still means the Codex.
  */
 export const INTO_PLAY: Readonly<Record<string, string>> = {
-  // The front door and the marketing pages.
-  '': '', 'home': '', 'world': '',
+  // The retired landing and marketing pages. (`/` is the projects store; `/home` redirects to it in APP_ROUTES.)
+  'world': '',
   'skills': '', 'projects': '', 'services': '', 'contact': '', 'about': '', 'guestbook': '',
   'tools': '', 'embed': '', 'mission-control': '', 'mcp': '', 'blueprint': '', 'changelog': '',
   'sponsors': '', 'donate': '', 'pro': '', 'play/storyboard': '',

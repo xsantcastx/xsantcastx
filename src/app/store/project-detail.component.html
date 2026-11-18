@@ -1,0 +1,91 @@
+<div class="store" [attr.data-skin]="project.skin">
+  <app-store-topbar [back]="true" />
+
+  <div class="detail-hero on-hero">
+    @if (project.skin === 'eclipse' && project.art) {
+      <img class="detail-art" [src]="project.art.src" alt="" width="1200" height="630" fetchpriority="high">
+    }
+    <div class="detail-hero-in">
+      <img class="detail-icon" [src]="project.icon.src" [alt]="project.icon.alt" width="128" height="128">
+      <div class="detail-text">
+        <ul class="tags" aria-label="Status and platforms">
+          <li class="tag tag-art tag-status" [class.tag-live]="project.status === 'live'" [class.tag-soon]="project.status === 'soon'">{{ project.status === 'live' ? 'Live' : 'Coming soon' }}</li>
+          @for (t of project.platforms; track t) { <li class="tag tag-art">{{ t }}</li> }
+        </ul>
+        <h1 class="detail-title">{{ project.name }}</h1>
+        <p class="detail-pitch">{{ project.blurb }}</p>
+        <div class="detail-actions">
+          <app-store-cta [project]="project" [large]="true" />
+          <p class="detail-note">{{ project.note }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="store-page">
+    <div class="detail-body">
+      <section aria-labelledby="shots-h">
+        <h2 class="section-title" id="shots-h">{{ project.skin === 'cronta' ? 'Sample screens' : 'Screenshots' }}</h2>
+        <ul class="shots">
+          @for (s of project.shots; track s.caption) {
+            <li class="shot-li" style="display: contents">
+              <figure class="shot">
+                @if (s.kind === 'image') {
+                  <img [src]="s.src" [alt]="s.alt" [width]="s.width" [height]="s.height" loading="lazy" decoding="async">
+                } @else {
+                  <div class="shot-mock"><app-cronta-mock [kind]="s.mock" [label]="s.alt" /></div>
+                }
+                <figcaption>{{ s.caption }}</figcaption>
+              </figure>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <div class="cols">
+        <section class="panel" aria-labelledby="can-h">
+          <h2 class="section-title" id="can-h">What you can do</h2>
+          <ul class="checks">
+            @for (f of project.features; track f) {
+              <li>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+                <span>{{ f }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section class="panel" aria-labelledby="req-h">
+          <h2 class="section-title" id="req-h">Platform and requirements</h2>
+          <dl class="facts">
+            @for (r of project.requirements; track r.label) {
+              <dt>{{ r.label }}</dt>
+              <dd>{{ r.value }}</dd>
+            }
+          </dl>
+          <div class="panel-cta">
+            <app-store-cta [project]="project" />
+            <p class="detail-note" style="color: var(--s-text-2)">{{ project.note }}</p>
+          </div>
+        </section>
+      </div>
+
+      <section aria-labelledby="more-h">
+        <h2 class="section-title" id="more-h">More from xsantcastx</h2>
+        <ul class="more">
+          @for (o of others; track o.id) {
+            <li class="more-item" [attr.data-skin]="o.skin">
+              <img [src]="o.icon.src" [alt]="o.icon.alt" width="48" height="48" loading="lazy">
+              <div>
+                <b><a [routerLink]="url(o)">{{ o.name }}</a></b>
+                <span>{{ o.pitch }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <app-store-footer />
+</div>

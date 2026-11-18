@@ -136,14 +136,9 @@
     ],
     "redirects": [
       {
-        "source": "/",
-        "destination": "/play",
-        "type": 301
-      },
-      {
-        "//": "/home is now /play (it was /world until the game-only shell). Same reasoning as /games: the Angular redirectTo only covers in-app navigation, so this entry is what stops indexed /home URLs from hitting the SPA fallback.",
+        "//": "/home is now / (the projects store, owner decision 2026-11-18). The Angular redirectTo only covers in-app navigation, so this entry is what stops indexed /home URLs from hitting the SPA fallback.",
         "source": "/home",
-        "destination": "/play",
+        "destination": "/",
         "type": 301
       },
       {

@@ -1,0 +1,184 @@
+/*
+ * _store.css — the projects store's design-system skins (owner's decision, 2026-11-18).
+ *
+ * Imported ONLY by the store components (src/app/store/store.css), never by the
+ * global stylesheet, and every rule is scoped to `.store` or `[data-skin]`, so
+ * none of it reaches the game. Each project wears its own design system inside
+ * its card, its carousel slide and its detail page by setting data-skin; the
+ * components only ever read the semantic --s-* names below.
+ *
+ *   Base look      Decanter   (tokens.css, Decanter design system v1; dark first, light via prefers-color-scheme)
+ *   data-skin=cronta   Cronta     (tokens.json v2: neutrals, ink default buttons, Marigold = identity and "do this now")
+ *   data-skin=eclipse  Eclipse Realms (design-system tokens: obsidian, interaction violet, gold reward; always dark)
+ *
+ * Every text pair used by the components is >= 4.5:1 (the source tokens are AA-checked).
+ * Marigold is only ever a fill (with ink text) or on dark; never text on a light surface.
+ */
+
+/* ---------------------------------------------------------------- Decanter (base) */
+.store,
+[data-skin="decanter"] {
+  --s-bg: #17121c;
+  --s-surface: #221b2a;
+  --s-surface-2: #2c2435;
+  --s-surface-3: #372e42;
+  --s-toolbar: rgba(23, 18, 28, 0.82);
+  --s-line: rgba(255, 255, 255, 0.085);
+  --s-line-strong: rgba(255, 255, 255, 0.18);
+  --s-text: #f5f0f7;
+  --s-text-2: #ada3b7;
+  --s-text-3: #8f859a;
+  --s-accent: #cf3159;
+  --s-accent-hi: #bd2a50;
+  --s-accent-text: #ff7e9b;
+  --s-accent-soft: rgba(255, 111, 142, 0.14);
+  --s-on-accent: #ffffff;
+  --s-ok: #4dd283;
+  --s-warn: #f2b84b;
+  --s-cta: #cf3159;
+  --s-cta-hi: #bd2a50;
+  --s-cta-fg: #ffffff;
+  --s-cta-ring: transparent;
+  --s-hero: radial-gradient(120% 150% at 88% -10%, #a91f49 0%, #5a1030 42%, #1a0f22 100%);
+  --s-hero-text: #ffffff;
+  --s-hero-text-2: rgba(255, 255, 255, 0.82);
+  --s-art-scrim: linear-gradient(90deg, rgba(14, 6, 18, 0.78) 0%, rgba(14, 6, 18, 0.35) 55%, rgba(14, 6, 18, 0) 100%);
+  --s-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --s-radius: 14px;
+  --s-radius-ctl: 8px;
+  --s-radius-icon: 22%;
+  --s-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif;
+  --s-font-display: var(--s-font);
+  --s-display-weight: 700;
+  --s-display-track: -0.02em;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  .store,
+  [data-skin="decanter"] {
+    --s-bg: #f7f4f6;
+    --s-surface: #ffffff;
+    --s-surface-2: #f0ebee;
+    --s-surface-3: #e7e0e5;
+    --s-toolbar: rgba(247, 244, 246, 0.84);
+    --s-line: rgba(45, 25, 45, 0.11);
+    --s-line-strong: rgba(45, 25, 45, 0.2);
+    --s-text: #1e1620;
+    --s-text-2: #675d6c;
+    --s-text-3: #73697a;
+    --s-accent: #c42b53;
+    --s-accent-hi: #ad2147;
+    --s-accent-text: #b01f47;
+    --s-accent-soft: rgba(196, 43, 83, 0.11);
+    --s-ok: #177a40;
+    --s-warn: #7f5300;
+    --s-cta: #c42b53;
+    --s-cta-hi: #ad2147;
+    --s-shadow: 0 1px 2px rgba(40, 20, 40, 0.1), 0 6px 18px rgba(40, 20, 40, 0.08);
+    color-scheme: light;
+  }
+}
+
+/* ---------------------------------------------------------------- Cronta */
+[data-skin="cronta"] {
+  --s-bg: #0e0e10;
+  --s-surface: #17171a;
+  --s-surface-2: #1e1e22;
+  --s-surface-3: #232328;
+  --s-toolbar: rgba(14, 14, 16, 0.86);
+  --s-line: #2a2a2f;
+  --s-line-strong: #6c6c72;
+  --s-text: #f2f2ef;
+  --s-text-2: #a3a3a8;
+  --s-text-3: #a3a3a8;
+  --s-accent: #ffc21f;
+  --s-accent-hi: #ffd259;
+  --s-accent-text: #ffc21f;
+  --s-accent-soft: rgba(255, 194, 31, 0.14);
+  --s-on-accent: #121212;
+  --s-ok: #4fd18f;
+  --s-warn: #f2b84b;
+  --s-cta: #ffc21f;
+  --s-cta-hi: #ffd259;
+  --s-cta-fg: #121212;
+  --s-cta-ring: transparent;
+  --s-hero: linear-gradient(135deg, #070708 0%, #121212 55%, #1b1b1b 100%);
+  --s-hero-text: #ffffff;
+  --s-hero-text-2: rgba(255, 255, 255, 0.76);
+  --s-art-scrim: none;
+  --s-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+  --s-radius: 12px;
+  --s-radius-ctl: 8px;
+  --s-radius-icon: 22%;
+  --s-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --s-font-display: var(--s-font);
+  --s-display-weight: 700;
+  --s-display-track: -0.02em;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-skin="cronta"] {
+    --s-bg: #f5f5f3;
+    --s-surface: #ffffff;
+    --s-surface-2: #ffffff;
+    --s-surface-3: #ececea;
+    --s-toolbar: rgba(245, 245, 243, 0.88);
+    --s-line: #e4e4e0;
+    --s-line-strong: #8a8a85;
+    --s-text: #121212;
+    --s-text-2: #62625e;
+    --s-text-3: #62625e;
+    --s-accent: #ffc21f;
+    --s-accent-hi: #f0b000;
+    --s-accent-text: #8a5b00;
+    --s-accent-soft: rgba(255, 194, 31, 0.22);
+    --s-ok: #276b4e;
+    --s-warn: #8f5500;
+    --s-cta: #ffc21f;
+    --s-cta-hi: #f0b000;
+    --s-cta-ring: rgba(18, 18, 18, 0.22);
+    --s-shadow: 0 1px 2px rgba(18, 18, 18, 0.08), 0 6px 18px rgba(18, 18, 18, 0.06);
+    color-scheme: light;
+  }
+}
+
+/* ---------------------------------------------------------------- Eclipse Realms (always dark, forged) */
+[data-skin="eclipse"] {
+  --s-bg: #0a0a0f;
+  --s-surface: #16161f;
+  --s-surface-2: #1d1d28;
+  --s-surface-3: #2a2438;
+  --s-toolbar: rgba(10, 10, 15, 0.86);
+  --s-line: rgba(244, 242, 248, 0.1);
+  --s-line-strong: rgba(244, 242, 248, 0.26);
+  --s-text: #f4f1ea;
+  --s-text-2: #c9c4d6;
+  --s-text-3: #8f8a9c;
+  --s-accent: #7c4dea;
+  --s-accent-hi: #6d3fd8;
+  --s-accent-text: #a78bfa;
+  --s-accent-soft: rgba(139, 92, 246, 0.2);
+  --s-on-accent: #ffffff;
+  --s-ok: #34d399;
+  --s-warn: #e8d44d;
+  --s-gold: var(--gold, #e8c898);
+  --s-cta: #7c4dea;
+  --s-cta-hi: #6d3fd8;
+  --s-cta-fg: #ffffff;
+  --s-cta-ring: transparent;
+  --s-hero: #0a0a0f;
+  --s-hero-text: #f4f1ea;
+  --s-hero-text-2: #d9d5e3;
+  --s-art-scrim: linear-gradient(90deg, rgba(10, 10, 15, 0.9) 0%, rgba(10, 10, 15, 0.55) 50%, rgba(10, 10, 15, 0.1) 100%);
+  --s-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 28px rgba(0, 0, 0, 0.45);
+  --s-radius: 6px;
+  --s-radius-ctl: 4px;
+  --s-radius-icon: 12%;
+  --s-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --s-font-display: "Pixelify Sans", "Inter", system-ui, sans-serif;
+  --s-display-weight: 600;
+  --s-display-track: 0.02em;
+  color-scheme: dark;
+}

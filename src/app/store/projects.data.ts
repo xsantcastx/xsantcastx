@@ -1,0 +1,281 @@
+/**
+ * projects.data.ts — the projects store's catalogue (owner's decision, 2026-11-18).
+ *
+ * One entry per project. Adding a project to the store is adding one object to
+ * PROJECTS: the carousel, the shelves, the category chips, search, the
+ * `/apps/<id>` route (app-routing.module.ts), the prerender list and the JSON-LD
+ * all read from here. The only other step is a line in prerender-routes.txt.
+ *
+ * Everything in this file is public copy. No private repository links, no
+ * admin links, no contact addresses, no analytics ids.
+ */
+import { SITE_URL } from '../seo.service';
+
+/** The three design systems the store wears. `skin` selects its token set in styles/tokens/_store.css. */
+export type StoreSkin = 'decanter' | 'cronta' | 'eclipse';
+
+export type ProjectCategory = 'games' | 'mac' | 'web';
+export type ProjectStatus = 'live' | 'soon';
+
+/** A screenshot-strip item: a captured image, or a small drawn sample screen (see project-detail). */
+export type ProjectShot =
+  | { kind: 'image'; src: string; width: number; height: number; alt: string; caption: string }
+  | { kind: 'mock'; mock: 'cronta-clock' | 'cronta-whos-in' | 'cronta-week'; alt: string; caption: string };
+
+export interface ProjectCta {
+  label: string;
+  /** Disabled-looking primary (not yet available): rendered as a non-interactive button. */
+  disabled?: boolean;
+  /** Internal route, e.g. `/play`. */
+  route?: string;
+  /** External URL, opened with rel="noopener". */
+  href?: string;
+}
+
+export interface StoreProject {
+  id: string;
+  name: string;
+  skin: StoreSkin;
+  status: ProjectStatus;
+  /** One-line pitch, shown on cards. */
+  pitch: string;
+  /** Two sentences at most, shown in the carousel and the detail hero. */
+  blurb: string;
+  /** Small label above the title in the carousel. */
+  kicker: string;
+  categories: ProjectCategory[];
+  /** Platform tags on cards. */
+  platforms: string[];
+  /** One line under the CTA, e.g. price and requirements. */
+  note: string;
+  cta: ProjectCta;
+  /** The shelf rows this project appears on (by shelf id). */
+  shelves: string[];
+  /** Square icon: a raster, or the logo symbol svg. */
+  icon: { src: string; alt: string };
+  /** Hero artwork for the carousel slide and the detail hero (optional). */
+  art?: { src: string; alt: string; width: number; height: number };
+  features: string[];
+  /** Label / value rows in "Platform and requirements". */
+  requirements: { label: string; value: string }[];
+  shots: ProjectShot[];
+  seo: { title: string; description: string; ogImage?: string };
+  /** Machine-readable app facts for JSON-LD. */
+  schema: {
+    type: 'VideoGame' | 'SoftwareApplication';
+    applicationCategory: string;
+    operatingSystem: string;
+    free?: boolean;
+    url: string;
+  };
+}
+
+export const STORE_TITLE = 'xsantcastx — projects: a browser RPG, a Mac app and a time clock';
+export const STORE_DESCRIPTION =
+  'Projects by xsantcastx: Eclipse Realms, a pixel-art online RPG you play in your browser; Decanter, a free Mac app for Windows games, coming soon; and Cronta, a time clock for small shops.';
+
+export interface StoreShelf {
+  id: string;
+  title: string;
+  subtitle: string;
+}
+
+export const SHELVES: readonly StoreShelf[] = [
+  { id: 'play', title: 'Play now', subtitle: 'Free, in your browser' },
+  { id: 'apps', title: 'Apps', subtitle: 'Made to be used every day' },
+  { id: 'soon', title: 'Coming soon', subtitle: 'In the works' },
+];
+
+export const CATEGORY_CHIPS: readonly { id: 'all' | ProjectCategory; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'games', label: 'Games' },
+  { id: 'mac', label: 'Mac apps' },
+  { id: 'web', label: 'Web apps' },
+];
+
+const A = '/assets/projects';
+
+export const PROJECTS: readonly StoreProject[] = [
+  {
+    id: 'eclipse-realms',
+    name: 'Eclipse Realms',
+    skin: 'eclipse',
+    status: 'live',
+    pitch: 'A pixel-art online RPG with dark dungeons and loot to chase.',
+    blurb: 'Pick a calling, walk a shared world of hand-made maps and dark dungeons, and hunt for loot with rolled affixes. Free, in your browser.',
+    kicker: 'Play now',
+    categories: ['games', 'web'],
+    platforms: ['Browser', 'Phone', 'Desktop'],
+    note: 'Free to play · Nothing to install',
+    cta: { label: 'Play free in your browser', route: '/play' },
+    shelves: ['play'],
+    icon: { src: '/assets/brand/icon-192.png', alt: 'Eclipse Realms icon' },
+    art: { src: '/assets/og/og-godforge.jpg', alt: 'A violet-lit anvil on a stone altar beneath an eclipse, ringed by broken pillars', width: 1200, height: 630 },
+    features: [
+      'Choose a calling: Warlock, Ashguard, Lanternwright or Thornstrider.',
+      'Explore a shared world of hand-made maps, towns and dark dungeons.',
+      'Hunt monsters for loot with rolled affixes, then craft and enchant your gear.',
+      'Team up in parties and trade with other Keepers.',
+      'Play on your phone or desktop, with nothing to install.',
+    ],
+    requirements: [
+      { label: 'Price', value: 'Free to play' },
+      { label: 'Works on', value: 'Any modern browser, on phone or desktop' },
+      { label: 'Install', value: 'Nothing to install. You can add it to your home screen.' },
+      { label: 'Languages', value: 'English and Spanish' },
+    ],
+    shots: [
+      { kind: 'image', src: '/assets/images/bg-infernal-1280.webp', width: 1280, height: 720, alt: 'Pixel-art painting of the Infernal realm: black stone and rivers of fire.', caption: 'The Infernal realm' },
+      { kind: 'image', src: '/assets/images/bg-umbral-1280.webp', width: 1280, height: 720, alt: 'Pixel-art painting of the Umbral realm: a purple-lit night over dark ground.', caption: 'The Umbral realm' },
+      { kind: 'image', src: '/assets/images/bg-luminous-1280.webp', width: 1280, height: 720, alt: 'Pixel-art painting of the Luminous realm: pale gold light over white stone.', caption: 'The Luminous realm' },
+      { kind: 'image', src: '/assets/images/bg-market-1280.webp', width: 1280, height: 720, alt: 'Painting of the in-game market with stalls under lantern light.', caption: 'The market' },
+    ],
+    seo: {
+      title: 'Eclipse Realms — a pixel-art online RPG in your browser',
+      description: 'Eclipse Realms is a free pixel-art online RPG: pick a calling, explore a shared world and dark dungeons, and hunt for loot. Play in your browser, nothing to install.',
+      ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
+    },
+    schema: { type: 'VideoGame', applicationCategory: 'GameApplication', operatingSystem: 'Any', free: true, url: `${SITE_URL}/play` },
+  },
+  {
+    id: 'decanter',
+    name: 'Decanter',
+    skin: 'decanter',
+    status: 'soon',
+    pitch: 'Play Windows games on your Mac, from a store-style library.',
+    blurb: 'A free Mac app that plays Windows games through Wine. Browse what runs well, get a game in a few steps, and play from your own library.',
+    kicker: 'Free Mac app',
+    categories: ['mac'],
+    platforms: ['macOS', 'Apple silicon'],
+    note: 'Free · Apple silicon · macOS 14+',
+    cta: { label: 'Coming soon for Mac', disabled: true },
+    shelves: ['apps', 'soon'],
+    icon: { src: `${A}/decanter/icon-256.png`, alt: 'Decanter app icon: a white decanter on a claret tile' },
+    art: { src: `${A}/decanter/store.jpg`, alt: 'The Decanter Store: a featured game and a shelf of games rated for Mac.', width: 1600, height: 1000 },
+    features: [
+      'Browse a store of Windows games, each rated for how well it runs on a Mac.',
+      'Get a game in a few steps. Decanter sets up a private Windows space for it.',
+      'Sign in with your own store account. Decanter never sees your password.',
+      'Play from one library, and stop everything with a single button.',
+    ],
+    requirements: [
+      { label: 'Price', value: 'Free and open source' },
+      { label: 'Works on', value: 'Macs with Apple silicon' },
+      { label: 'System', value: 'macOS 14 or later' },
+      { label: 'Games', value: 'Decanter never hosts game files. Games come from the stores you already use.' },
+      { label: 'Status', value: 'Coming soon' },
+    ],
+    shots: [
+      { kind: 'image', src: `${A}/decanter/store.jpg`, width: 1600, height: 1000, alt: 'The Decanter Store with a featured game and a shelf of games that run great on Mac.', caption: 'Store' },
+      { kind: 'image', src: `${A}/decanter/library.jpg`, width: 1600, height: 1000, alt: 'The Decanter Library: your installed games as covers, with filters along the top.', caption: 'Library' },
+      { kind: 'image', src: `${A}/decanter/game.jpg`, width: 1600, height: 1000, alt: 'A game page in Decanter: its rating, a Get button and compatibility details.', caption: 'Game page' },
+      { kind: 'image', src: `${A}/decanter/install.jpg`, width: 1600, height: 1000, alt: 'The Get flow: setting up a private Windows space, installing the launcher, signing in, then downloading.', caption: 'Getting a game' },
+    ],
+    seo: {
+      title: 'Decanter — play Windows games on your Mac (coming soon)',
+      description: 'Decanter is a free Mac app that plays Windows games through Wine. A store-style library with a rating for every game. Apple silicon, macOS 14 or later. Coming soon.',
+      ogImage: `${SITE_URL}${A}/decanter/store.jpg`,
+    },
+    schema: { type: 'SoftwareApplication', applicationCategory: 'GameApplication', operatingSystem: 'macOS 14 or later', free: true, url: `${SITE_URL}/apps/decanter` },
+  },
+  {
+    id: 'cronta',
+    name: 'Cronta',
+    skin: 'cronta',
+    status: 'live',
+    pitch: 'A time clock for small shops: clock in, plan shifts, run payroll.',
+    blurb: 'Staff clock in and out on their phone or a wall kiosk. Owners plan shifts, approve time off and run payroll from one dashboard.',
+    kicker: 'Time clock',
+    categories: ['web'],
+    platforms: ['Web', 'Phone', 'Kiosk'],
+    note: 'Works in any browser · cronta.app',
+    cta: { label: 'Open cronta.app', href: 'https://cronta.app' },
+    shelves: ['apps'],
+    icon: { src: `${A}/cronta/symbol.svg`, alt: 'Cronta symbol' },
+    features: [
+      'Clock in, start a break and clock out from a phone or a wall kiosk.',
+      'See who is in right now, on one screen.',
+      'Plan the week. Drafts stay hidden until you publish.',
+      'Approve time off, and copy last week into this one.',
+      'Run payroll from the hours your team clocked.',
+    ],
+    requirements: [
+      { label: 'Works on', value: 'Any modern browser, on phone, tablet or desktop' },
+      { label: 'Kiosk', value: 'A tablet or wall screen can run the clock for the whole shop' },
+      { label: 'Made for', value: 'Small shops and the people who work in them' },
+      { label: 'Formats', value: 'Dates, times and money follow your own locale' },
+    ],
+    shots: [
+      { kind: 'mock', mock: 'cronta-clock', alt: 'Sample screen: a large Clock in button on a phone, with the time and a Start break option.', caption: 'Clock in' },
+      { kind: 'mock', mock: 'cronta-whos-in', alt: 'Sample screen: a list headed Who is in, with names marked Working or On break.', caption: 'Who is in' },
+      { kind: 'mock', mock: 'cronta-week', alt: 'Sample screen: a week of shifts as a grid, with a Publish button.', caption: 'Plan the week' },
+    ],
+    seo: {
+      title: 'Cronta — a time clock for small shops',
+      description: 'Cronta is a time clock for small shops. Staff clock in and out on a phone or kiosk. Owners plan shifts, approve time off and run payroll. Works in any browser.',
+    },
+    schema: { type: 'SoftwareApplication', applicationCategory: 'BusinessApplication', operatingSystem: 'Any (web)', url: 'https://cronta.app' },
+  },
+];
+
+export function projectById(id: string | null | undefined): StoreProject | undefined {
+  return PROJECTS.find(p => p.id === id);
+}
+
+/** Where a project's CTA goes (for the "More" link row and cards). */
+export function projectUrl(p: StoreProject): string {
+  return `/apps/${p.id}`;
+}
+
+function appNode(p: StoreProject): Record<string, unknown> {
+  return {
+    '@type': p.schema.type,
+    name: p.name,
+    description: p.blurb,
+    url: p.schema.url,
+    applicationCategory: p.schema.applicationCategory,
+    operatingSystem: p.schema.operatingSystem,
+    ...(p.schema.free ? { isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } } : {}),
+    author: { '@id': `${SITE_URL}/#person` },
+  };
+}
+
+const PERSON = { '@type': 'Person', '@id': `${SITE_URL}/#person`, name: 'xsantcastx', url: SITE_URL };
+
+export function storeJsonLd(): object {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'xsantcastx', description: STORE_DESCRIPTION },
+      PERSON,
+      {
+        '@type': 'CollectionPage',
+        '@id': `${SITE_URL}/#projects`,
+        url: SITE_URL,
+        name: 'Projects by xsantcastx',
+        isPartOf: { '@id': `${SITE_URL}/#website` },
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: PROJECTS.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${projectUrl(p)}`, name: p.name })),
+        },
+      },
+    ],
+  };
+}
+
+export function projectJsonLd(p: StoreProject): object {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      appNode(p),
+      PERSON,
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Projects', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: p.name, item: `${SITE_URL}${projectUrl(p)}` },
+        ],
+      },
+    ],
+  };
+}
