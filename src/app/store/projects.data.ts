@@ -173,6 +173,8 @@ export const PROJECTS: readonly StoreProject[] = [
       'Get a game in a few steps. Decanter sets up a private Windows space for it.',
       'Sign in with your own store account. Decanter never sees your password.',
       'Play from one library, and stop everything with a single button.',
+      'One slider per game: Performance, Balanced or Quality, or let Decanter optimize for your Mac.',
+      'Add mods by dragging them onto a game, run mod managers and tools, and undo everything with a snapshot.',
     ],
     requirements: [
       { label: 'Price', value: 'Free, funded by donations' },
@@ -198,7 +200,10 @@ export const PROJECTS: readonly StoreProject[] = [
       { q: 'How is it different from CrossOver or Whisky?', a: 'CrossOver is a paid, general-purpose app from CodeWeavers, whose open-source Wine code Decanter\'s engine is built from. Whisky is no longer developed. Decanter is free and built around games: a store with tested settings for each game, one-click setup, and updates that keep everything working.' },
       { q: 'Why does macOS say it can\'t check Decanter?', a: 'Decanter isn\'t notarized by Apple yet. The first time you open it, go to System Settings › Privacy & Security and click Open Anyway. You only do this once, and Decanter updates itself after that.' },
       { q: 'Can I play online games?', a: 'Many, yes. Games whose anti-cheat needs Windows itself (like Destiny 2, GTA V Online, Valorant or Fall Guys) can\'t run under Wine on a Mac. The games list marks them so you don\'t download them for nothing.' },
-      { q: 'Will my Mac get hot?', a: 'Games work your Mac hard, as they do on any computer. Decanter helps: set a frame-rate limit per game, turn on MetalFX upscaling for games with DLSS, and on battery it caps games at 60 fps by default. Steam starts without its window when you launch a game, which saves a lot of power.' },
+      { q: 'Will my Mac get hot?', a: 'Games work your Mac hard, as they do on any computer. Decanter helps: each game has a graphics slider (Performance, Balanced, Quality) and Optimize for my Mac picks one for your chip; you can set a frame-rate limit, turn on MetalFX upscaling for games with DLSS, and on battery games are capped at 60 fps by default. Steam starts without its window when you launch a game, which saves a lot of power.' },
+      { q: 'Can I install mods?', a: 'Yes. Drag a mod (.zip or folder) onto a game in your Library and Decanter puts it in the right place for games it knows, remembering every file so you can remove it cleanly. Mod managers like Vortex or Mod Organizer 2 run in the game\'s Windows space with one click, and Nexus Mods\' Mod Manager Download links go straight to them. Before your first mod, Decanter takes an instant snapshot of the game, so you can always put it back exactly as it was.' },
+      { q: 'Can I get to the game\'s files?', a: 'Yes. Files shows each game\'s Windows space like a Windows PC: drive C:, your Mac\'s Downloads as M:, Documents, Saved Games and each game\'s folder. Drag files in from Finder, double-click a Windows program to run it there, or copy a Windows path. Anything you download on your Mac is in Windows\' Downloads too.' },
+      { q: 'Can Windows programs see my files?', a: 'Only your Downloads folder, by default. Wine normally shows Windows programs your whole Mac; Decanter limits them to Downloads (as drive M:), and you can allow the whole Mac in Settings if a tool needs it.' },
       { q: 'Where are my games, and how do I remove Decanter?', a: 'Everything lives in ~/Library/Application Support/Decanter. To remove Decanter, delete the app and that folder. Your store accounts and purchases stay with Steam and Battle.net.' },
     ],
     support: {
