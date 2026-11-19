@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "engines": [
+    {
+      "id": "wine-11.0-cx26.3.0",
+      "wine": "11.0",
+      "url": "https://github.com/xsantcastx/decanter-engine/releases/download/wine-11.0-cx26.3.0/wine-11.0-cx26.3.0.tar.xz",
+      "sha256": "1daa9211c04ebcbd94ab6368eeb3d12a450d1e271d6cf02721f3d7c6e8757e43",
+      "size": 133925540,
+      "unpacked_size": 774303744,
+      "min_macos": "14.0"
+    }
+  ]
+}
