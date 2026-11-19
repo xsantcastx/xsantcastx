@@ -30,7 +30,7 @@ describe('StoreComponent (the front door)', () => {
     const titles = Array.from(el.querySelectorAll('.shelf-title')).map(n => n.textContent?.trim());
     expect(titles).toEqual(['Play now', 'Apps']);
     const dl = el.querySelector('.card[data-skin="decanter"] a.btn-primary') as HTMLAnchorElement;
-    expect(dl.getAttribute('href')).toBe('/decanter/Decanter-0.1.1.dmg');
+    expect(dl.getAttribute('href')).toBe('/decanter/Decanter-0.1.2.dmg');
     expect(dl.hasAttribute('download')).toBeTrue();
     expect(dl.getAttribute('target')).toBeNull();
     expect(dl.textContent?.trim()).toBe('Download for Mac');

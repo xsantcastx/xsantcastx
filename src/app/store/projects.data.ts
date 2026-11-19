@@ -30,7 +30,7 @@ export interface ProjectCta {
   route?: string;
   /** External URL, opened with rel="noopener". */
   href?: string;
-  /** A file on this site to download (same tab, with the `download` attribute), e.g. `/decanter/Decanter-0.1.1.dmg`. */
+  /** A file on this site to download (same tab, with the `download` attribute), e.g. `/decanter/Decanter-0.1.2.dmg`. */
   download?: string;
 }
 
@@ -78,7 +78,7 @@ export interface StoreProject {
 }
 
 /** Decanter's Stripe Payment Link (public). Empty hides the donate section. */
-export const DECANTER_DONATE_URL = '';
+export const DECANTER_DONATE_URL = 'https://donate.stripe.com/7sY8wO0PX2DUbNW22x5sA00';
 
 export const STORE_TITLE = 'xsantcastx — projects: a browser RPG, a Mac app and a time clock';
 export const STORE_DESCRIPTION =
@@ -157,8 +157,8 @@ export const PROJECTS: readonly StoreProject[] = [
     kicker: 'Free Mac app',
     categories: ['mac'],
     platforms: ['macOS', 'Apple silicon'],
-    note: 'Free · Version 0.1.1 · 2.8 MB · Apple silicon · macOS 14+',
-    cta: { label: 'Download for Mac', download: '/decanter/Decanter-0.1.1.dmg' },
+    note: 'Free · Version 0.1.2 · 2.5 MB · Apple silicon · macOS 14+',
+    cta: { label: 'Download for Mac', download: '/decanter/Decanter-0.1.2.dmg' },
     shelves: ['apps'],
     icon: { src: `${A}/decanter/icon-256.png`, alt: 'Decanter app icon: a white decanter on a claret tile' },
     art: { src: `${A}/decanter/store.jpg`, alt: 'The Decanter Store: a featured game and a shelf of games rated for Mac.', width: 1600, height: 1000 },
@@ -174,7 +174,7 @@ export const PROJECTS: readonly StoreProject[] = [
       { label: 'System', value: 'macOS 14 or later' },
       { label: 'Games', value: 'Decanter never hosts game files. Games come from the stores you already use.' },
       { label: 'Graphics', value: "Apple's free Game Porting Toolkit. Decanter walks you through adding it on first launch." },
-      { label: 'Version', value: '0.1.1, an early version' },
+      { label: 'Version', value: '0.1.2, an early version' },
       { label: 'First open', value: "Decanter isn't notarized by Apple yet. If macOS says it can't check it, open System Settings › Privacy & Security and click Open Anyway. You only do this once." },
     ],
     shots: [
