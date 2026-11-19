@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.3",
-    "build": 26,
-    "sha256": "4d8095290844e651587725557667f69d69030e93feb58cb8ae9ec39707fd9662",
-    "size": 2632704,
-    "url": "https://xsantcastx.com/decanter/Decanter-0.1.3.dmg",
+    "version": "0.1.4",
+    "build": 31,
+    "sha256": "354393296f4c2d3a22f368bce1a36798e0577e0509aeb53de42ba0dee6fd83fa",
+    "size": 2697216,
+    "url": "https://xsantcastx.com/decanter/Decanter-0.1.4.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Works with Apple's Game Porting Toolkit 4: Decanter now finds D3DMetal inside the new download and installs its DirectX 12 parts."
+    "notes": "From this version on, Decanter updates itself in one click. Also new: add games to your Dock, Support Decanter in the sidebar, a tidier design, and icons for games in Mission Control."
   }
 }
