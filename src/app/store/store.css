@@ -461,3 +461,41 @@
   .card:hover { transform: none; }
   .track { scroll-behavior: auto; }
 }
+
+/* ── Decanter: which games work (/apps/decanter/games) ── */
+.games-page { display: grid; gap: 28px; padding-top: 28px; padding-bottom: 48px; }
+.games-head { display: grid; gap: 10px; max-width: 760px; }
+.games-crumb { color: var(--s-accent-text); font-weight: 600; font-size: 14px; text-decoration: none; }
+.games-crumb:hover { text-decoration: underline; }
+.games-intro, .games-sub { color: var(--s-text-2); font-size: 15px; line-height: 22px; }
+.games-sub { margin: -6px 0 12px; font-size: 14px; }
+.games-search { position: relative; max-width: 420px; margin-top: 6px; }
+.games-list { list-style: none; display: grid; gap: 12px; }
+.game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+.game-name { font-size: 17px; line-height: 22px; font-weight: 600; }
+.game-meta { color: var(--s-text-2); font-size: 13px; margin-top: 2px; }
+.game-notes { font-size: 14px; line-height: 20px; margin-top: 8px; }
+.game-issue { font-size: 13px; line-height: 19px; color: var(--s-text-2); margin-top: 6px; }
+.game-issue span { color: var(--s-text-2); }
+.game-tested { color: var(--s-text-2); font-size: 12px; margin-top: 8px; }
+.rating-chip {
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  background: var(--s-surface-3); color: var(--s-text-2);
+}
+.rating-chip[data-rating="platinum"] { background: color-mix(in srgb, #2bb8a8 22%, transparent); color: var(--s-text); }
+.rating-chip[data-rating="gold"] { background: color-mix(in srgb, #d9a514 22%, transparent); color: var(--s-text); }
+.rating-chip[data-rating="silver"] { background: color-mix(in srgb, #9aa3b5 22%, transparent); color: var(--s-text); }
+.rating-chip[data-rating="bronze"] { background: color-mix(in srgb, #c27a3a 22%, transparent); color: var(--s-text); }
+.rating-chip[data-rating="borked"] { background: color-mix(in srgb, #d64545 22%, transparent); color: var(--s-text); }
+@media (max-width: 600px) { .game-row { grid-template-columns: 1fr; } .rating-chip { justify-self: start; } }
+
+/* ── FAQ ── */
+.faq { display: grid; gap: 10px; }
+.faq details { padding: 14px 18px; }
+.faq summary { cursor: pointer; font-weight: 600; font-size: 15px; line-height: 21px; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::before { content: "+"; display: inline-block; width: 18px; color: var(--s-accent-text); font-weight: 700; }
+.faq details[open] summary::before { content: "–"; }
+.faq p { color: var(--s-text-2); font-size: 14px; line-height: 21px; margin-top: 8px; padding-left: 18px; }
+.games-teaser { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
+.games-teaser p { color: var(--s-text-2); font-size: 14px; }

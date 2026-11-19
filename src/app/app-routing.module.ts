@@ -4,6 +4,7 @@ import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
 import { SITE_URL } from './seo.service';
 import { stayInGameGuard } from './play/stay-in-game.guard';
 import { PROJECTS, projectJsonLd, storeJsonLd, STORE_TITLE, STORE_DESCRIPTION } from './store/projects.data';
+import { decanterGamesJsonLd } from './store/decanter-games.seo';
 
 /**
  * The projects store is the front door (owner's decision, 2026-11-18): `/` is a
@@ -35,6 +36,16 @@ export const APP_ROUTES: Routes = [
         jsonLd: projectJsonLd(project)
       }
     })),
+  {
+      // Which games work in Decanter, generated from its catalog (decanter-games.data.ts).
+      path: 'apps/decanter/games',
+      loadComponent: () => import('./store/decanter-games.component').then(m => m.DecanterGamesComponent),
+      title: 'Which Windows games work on Mac with Decanter',
+      data: {
+        description: 'Tested Windows games for Decanter, the free Mac app: ratings from Platinum to Borked, what each was tested on, known issues, and which games can\'t run because of anti-cheat.',
+        jsonLd: decanterGamesJsonLd(),
+      }
+    },
   { path: 'home', redirectTo: '', pathMatch: 'full' },
   {
       // The game. `/world` and the retired pages redirect here, and Hosting 301s them.

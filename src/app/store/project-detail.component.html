@@ -86,6 +86,27 @@
         </section>
       }
 
+      @if (project.gamesPage; as gp) {
+        <section class="panel games-teaser" aria-label="Games">
+          <div>
+            <h2 class="section-title" style="margin-bottom: 4px">Which games work?</h2>
+            <p>{{ gp.text }}</p>
+          </div>
+          <a class="btn btn-primary" [routerLink]="gp.route">{{ gp.label }}</a>
+        </section>
+      }
+
+      @if (project.faq?.length) {
+        <section aria-labelledby="faq-h">
+          <h2 class="section-title" id="faq-h">Questions</h2>
+          <div class="faq">
+            @for (f of project.faq!; track f.q) {
+              <details class="panel"><summary>{{ f.q }}</summary><p>{{ f.a }}</p></details>
+            }
+          </div>
+        </section>
+      }
+
       <section aria-labelledby="more-h">
         <h2 class="section-title" id="more-h">More from xsantcastx</h2>
         <ul class="more">

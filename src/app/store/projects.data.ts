@@ -68,6 +68,10 @@ export interface StoreProject {
   support?: { title: string; text: string; label: string; note: string; href: string };
   /** A public GitHub repo whose release downloads are counted on the detail page ("Downloaded N times"). */
   downloadsRepo?: string;
+  /** A page listing what works (Decanter's games), linked from the detail page. */
+  gamesPage?: { route: string; text: string; label: string };
+  /** Questions and answers, shown on the detail page and as FAQPage structured data. */
+  faq?: { q: string; a: string }[];
   seo: { title: string; description: string; ogImage?: string };
   /** Machine-readable app facts for JSON-LD. */
   schema: {
@@ -173,7 +177,7 @@ export const PROJECTS: readonly StoreProject[] = [
     requirements: [
       { label: 'Price', value: 'Free, funded by donations' },
       { label: 'Works on', value: 'Macs with Apple silicon' },
-      { label: 'System', value: 'macOS 14 or later' },
+      { label: 'System', value: 'macOS 14 or later (15 or later for DirectX 11 and 12 games)' },
       { label: 'Games', value: 'Decanter never hosts game files. Games come from the stores you already use.' },
       { label: 'Graphics', value: "Apple's free Game Porting Toolkit. Decanter walks you through adding it on first launch." },
       { label: 'Version', value: '0.1.6, an early version' },
@@ -186,6 +190,17 @@ export const PROJECTS: readonly StoreProject[] = [
       { kind: 'image', src: `${A}/decanter/support.jpg`, width: 1600, height: 1000, alt: 'Support Decanter: why donations matter, and a Donate button.', caption: 'Support Decanter' },
     ],
     downloadsRepo: 'xsantcastx/decanter-releases',
+    gamesPage: { route: '/apps/decanter/games', label: 'See which games work', text: 'Real test results for every game Decanter knows, including the ones that can\'t run and why.' },
+    faq: [
+      { q: 'Is Decanter really free?', a: 'Yes. No ads, no account, no subscription and no paid tier. It is made by one person and paid for by donations from people who enjoy it.' },
+      { q: 'Which Macs does it run on?', a: 'Macs with Apple silicon (M1 or later) on macOS 14 or later. Apple\'s current Game Porting Toolkit, which DirectX 11 and 12 games need, requires macOS 15 Sequoia or later.' },
+      { q: 'Do I have to buy my games again?', a: 'No. Decanter runs the Windows versions of Steam and Battle.net, and you sign in with your own accounts. Your games download from those stores; Decanter never sells, hosts or sees them, and never sees your passwords.' },
+      { q: 'How is it different from CrossOver or Whisky?', a: 'CrossOver is a paid, general-purpose app from CodeWeavers, whose open-source Wine code Decanter\'s engine is built from. Whisky is no longer developed. Decanter is free and built around games: a store with tested settings for each game, one-click setup, and updates that keep everything working.' },
+      { q: 'Why does macOS say it can\'t check Decanter?', a: 'Decanter isn\'t notarized by Apple yet. The first time you open it, go to System Settings › Privacy & Security and click Open Anyway. You only do this once, and Decanter updates itself after that.' },
+      { q: 'Can I play online games?', a: 'Many, yes. Games whose anti-cheat needs Windows itself (like Destiny 2, GTA V Online, Valorant or Fall Guys) can\'t run under Wine on a Mac. The games list marks them so you don\'t download them for nothing.' },
+      { q: 'Will my Mac get hot?', a: 'Games work your Mac hard, as they do on any computer. Decanter helps: set a frame-rate limit per game, turn on MetalFX upscaling for games with DLSS, and on battery it caps games at 60 fps by default. Steam starts without its window when you launch a game, which saves a lot of power.' },
+      { q: 'Where are my games, and how do I remove Decanter?', a: 'Everything lives in ~/Library/Application Support/Decanter. To remove Decanter, delete the app and that folder. Your store accounts and purchases stay with Steam and Battle.net.' },
+    ],
     support: {
       title: 'Support Decanter',
       text: 'Decanter is free, with no ads and no account. Donations pay for its development, the engine builds and the downloads.',
@@ -291,6 +306,10 @@ export function projectJsonLd(p: StoreProject): object {
     '@graph': [
       appNode(p),
       PERSON,
+      ...(p.faq?.length ? [{
+        '@type': 'FAQPage',
+        mainEntity: p.faq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+      }] : []),
       {
         '@type': 'BreadcrumbList',
         itemListElement: [

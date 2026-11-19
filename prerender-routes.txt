@@ -3,3 +3,4 @@
 /apps/decanter
 /apps/cronta
 /play
+/apps/decanter/games

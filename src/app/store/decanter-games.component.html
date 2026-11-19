@@ -1,0 +1,67 @@
+<div class="store" data-skin="decanter">
+  <app-store-topbar [back]="true" />
+
+  <div class="store-page games-page">
+    <header class="games-head">
+      <a class="games-crumb" routerLink="/apps/decanter">Decanter</a>
+      <h1 class="detail-title">Which games work?</h1>
+      <p class="games-intro">Every game Decanter knows about, with real test results: how well it runs, what it was tested on, and anything to watch for. Games come from the stores you already use; Decanter never sells or hosts them.</p>
+      <div class="search games-search" role="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <input type="search" autocomplete="off" aria-label="Search games" placeholder="Search {{ total }} games"
+               [value]="query()" (input)="query.set($any($event.target).value)">
+      </div>
+    </header>
+
+    @if (works().length) {
+      <section aria-labelledby="works-h">
+        <h2 class="section-title" id="works-h">Works on Mac</h2>
+        <ul class="games-list">
+          @for (g of works(); track g.id) { <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" /> }
+        </ul>
+      </section>
+    }
+    @if (untested().length) {
+      <section aria-labelledby="untested-h">
+        <h2 class="section-title" id="untested-h">Not tested yet</h2>
+        <p class="games-sub">Nobody has reported on these yet. If you try one, tell us how it runs from Decanter's Help menu: Report a Problem.</p>
+        <ul class="games-list">
+          @for (g of untested(); track g.id) { <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" /> }
+        </ul>
+      </section>
+    }
+    @if (broken().length) {
+      <section aria-labelledby="broken-h">
+        <h2 class="section-title" id="broken-h">Doesn't run</h2>
+        <p class="games-sub">Usually because of anti-cheat that can't run under Wine on a Mac. Listed so you don't download them for nothing.</p>
+        <ul class="games-list">
+          @for (g of broken(); track g.id) { <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" /> }
+        </ul>
+      </section>
+    }
+    @if (!works().length && !untested().length && !broken().length) {
+      <p class="games-sub">No game matches “{{ query() }}”. Decanter may still run it: games not in the list can be added from Steam or Battle.net and tried.</p>
+    }
+
+    <ng-template #row let-g>
+      <li class="game-row panel">
+        <div class="game-main">
+          <h3 class="game-name">{{ g.name }}</h3>
+          <p class="game-meta">{{ g.developer }}@if (g.developer) { · }{{ g.store }}@if (g.free) { · Free }@if (g.sizeGb) { · about {{ g.sizeGb }} GB }</p>
+          @if (g.tested?.notes) { <p class="game-notes">{{ g.tested.notes }}</p> }
+          @if (g.why) { <p class="game-notes">{{ g.why }}</p> }
+          @if (g.antiCheat?.status === 'blocked') { <p class="game-notes">{{ g.antiCheat.notes }}</p> }
+          @for (i of g.knownIssues; track i.summary) {
+            <p class="game-issue">⚠︎ {{ i.summary }}@if (i.workaround) { <span> {{ i.workaround }}</span> }</p>
+          }
+          @if (g.tested?.date) {
+            <p class="game-tested">Tested {{ g.tested.date }}@if (g.tested.macos) { · macOS {{ g.tested.macos }} }@if (g.tested.chip) { · {{ g.tested.chip }} }@if (g.tested.gptk) { · Apple toolkit {{ g.tested.gptk }} }</p>
+          }
+        </div>
+        <span class="rating-chip" [attr.data-rating]="g.rating ?? 'untested'" [title]="g.meaning ?? ''">{{ label(g.rating) }}</span>
+      </li>
+    </ng-template>
+  </div>
+
+  <app-store-footer />
+</div>
