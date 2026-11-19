@@ -367,6 +367,11 @@
 .facts dt { color: var(--s-text-2); }
 .facts dd { color: var(--s-text); }
 .panel-cta { margin-top: 18px; display: grid; gap: 8px; justify-items: start; }
+.support { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px 32px; align-items: center; scroll-margin-top: 80px; }
+.support .section-title { margin-bottom: 6px; }
+.support-text { color: var(--s-text-2); font-size: 14px; line-height: 20px; max-width: 60ch; }
+.support-cta { display: grid; gap: 8px; justify-items: start; max-width: 250px; }
+@media (max-width: 720px) { .support { grid-template-columns: 1fr; } }
 .more { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; list-style: none; }
 .more-item {
   position: relative; display: flex; gap: 12px; align-items: center; padding: 12px;

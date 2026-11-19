@@ -70,6 +70,19 @@
         </section>
       </div>
 
+      @if (project.support?.href) {
+        <section class="panel support" id="support" aria-labelledby="support-h">
+          <div>
+            <h2 class="section-title" id="support-h">{{ project.support!.title }}</h2>
+            <p class="support-text">{{ project.support!.text }}</p>
+          </div>
+          <div class="support-cta">
+            <a class="btn btn-primary" [href]="project.support!.href" target="_blank" rel="noopener">{{ project.support!.label }}</a>
+            <p class="detail-note" style="color: var(--s-text-2)">{{ project.support!.note }}</p>
+          </div>
+        </section>
+      }
+
       <section aria-labelledby="more-h">
         <h2 class="section-title" id="more-h">More from xsantcastx</h2>
         <ul class="more">

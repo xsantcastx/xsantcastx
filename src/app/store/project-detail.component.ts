@@ -32,6 +32,11 @@ export class ProjectDetailComponent {
     }
     this.project = found ?? PROJECTS[0];
     this.others = PROJECTS.filter(p => p.id !== this.project.id);
-    afterNextRender(() => window.scrollTo(0, 0));
+    // A link to a section (e.g. Decanter's Help › Support Decanter opens `#support`) lands on it.
+    afterNextRender(() => {
+      const target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+      if (target) target.scrollIntoView();
+      else window.scrollTo(0, 0);
+    });
   }
 }

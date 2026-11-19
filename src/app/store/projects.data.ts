@@ -61,6 +61,11 @@ export interface StoreProject {
   /** Label / value rows in "Platform and requirements". */
   requirements: { label: string; value: string }[];
   shots: ProjectShot[];
+  /**
+   * The donate section (`#support` on the detail page). Shown only when `href` is set: a Stripe
+   * Payment Link where the donor picks the amount. Decanter's Help › Support Decanter opens it.
+   */
+  support?: { title: string; text: string; label: string; note: string; href: string };
   seo: { title: string; description: string; ogImage?: string };
   /** Machine-readable app facts for JSON-LD. */
   schema: {
@@ -71,6 +76,9 @@ export interface StoreProject {
     url: string;
   };
 }
+
+/** Decanter's Stripe Payment Link (public). Empty hides the donate section. */
+export const DECANTER_DONATE_URL = '';
 
 export const STORE_TITLE = 'xsantcastx — projects: a browser RPG, a Mac app and a time clock';
 export const STORE_DESCRIPTION =
@@ -175,6 +183,13 @@ export const PROJECTS: readonly StoreProject[] = [
       { kind: 'image', src: `${A}/decanter/game.jpg`, width: 1600, height: 1000, alt: 'A game page in Decanter: its rating, a Get button and compatibility details.', caption: 'Game page' },
       { kind: 'image', src: `${A}/decanter/install.jpg`, width: 1600, height: 1000, alt: 'The Get flow: setting up a private Windows space, installing the launcher, signing in, then downloading.', caption: 'Getting a game' },
     ],
+    support: {
+      title: 'Support Decanter',
+      text: 'Decanter is free, with no ads and no account. Donations pay for its development, the engine builds and the downloads.',
+      label: 'Donate',
+      note: 'You choose the amount. A one-off payment on Stripe; nothing repeats.',
+      href: DECANTER_DONATE_URL,
+    },
     seo: {
       title: 'Decanter — play Windows games on your Mac',
       description: 'Decanter is a free Mac app that plays Windows games through Wine. A store-style library with a rating for every game. Free download for Apple silicon, macOS 14 or later.',
