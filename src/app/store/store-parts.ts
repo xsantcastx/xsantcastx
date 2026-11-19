@@ -22,6 +22,11 @@ import { PROJECTS, StoreProject, projectUrl } from './projects.data';
       <a class="btn btn-primary" [class.btn-lg]="large()" [class.btn-block]="block()" [routerLink]="project().cta.route">
         {{ project().cta.label }}
       </a>
+    } @else if (project().cta.download) {
+      <a class="btn btn-primary" [class.btn-lg]="large()" [class.btn-block]="block()" [href]="project().cta.download" download>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+        {{ project().cta.label }}
+      </a>
     } @else {
       <a class="btn btn-primary" [class.btn-lg]="large()" [class.btn-block]="block()" [href]="project().cta.href" target="_blank" rel="noopener">
         {{ project().cta.label }}

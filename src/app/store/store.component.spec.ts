@@ -25,12 +25,15 @@ describe('StoreComponent (the front door)', () => {
     expect(el.querySelector('.slide[data-skin="eclipse"]')).not.toBeNull();
   });
 
-  it('shows the three shelves, and the Decanter CTA is disabled with no link', () => {
+  it('shows the shelves, and Decanter downloads from this site in the same tab', () => {
     const { el } = create();
     const titles = Array.from(el.querySelectorAll('.shelf-title')).map(n => n.textContent?.trim());
-    expect(titles).toEqual(['Play now', 'Apps', 'Coming soon']);
-    const coming = Array.from(el.querySelectorAll('button[aria-disabled="true"]')).map(n => n.textContent?.trim());
-    expect(coming).toContain('Coming soon for Mac');
+    expect(titles).toEqual(['Play now', 'Apps']);
+    const dl = el.querySelector('.card[data-skin="decanter"] a.btn-primary') as HTMLAnchorElement;
+    expect(dl.getAttribute('href')).toBe('/decanter/Decanter-0.1.0.dmg');
+    expect(dl.hasAttribute('download')).toBeTrue();
+    expect(dl.getAttribute('target')).toBeNull();
+    expect(dl.textContent?.trim()).toBe('Download for Mac');
     expect(el.querySelector('a[href*="github"]')).toBeNull();
   });
 
@@ -47,7 +50,7 @@ describe('StoreComponent (the front door)', () => {
     const { fixture, el, cmp } = create();
     cmp.setCategory('mac');
     fixture.detectChanges();
-    expect(Array.from(el.querySelectorAll('.card-name')).map(n => n.textContent?.trim())).toEqual(['Decanter', 'Decanter']);
+    expect(Array.from(el.querySelectorAll('.card-name')).map(n => n.textContent?.trim())).toEqual(['Decanter']);
     cmp.setCategory('all');
     cmp.query.set('time clock');
     fixture.detectChanges();

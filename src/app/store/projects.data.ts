@@ -30,6 +30,8 @@ export interface ProjectCta {
   route?: string;
   /** External URL, opened with rel="noopener". */
   href?: string;
+  /** A file on this site to download (same tab, with the `download` attribute), e.g. `/decanter/Decanter-0.1.0.dmg`. */
+  download?: string;
 }
 
 export interface StoreProject {
@@ -72,7 +74,7 @@ export interface StoreProject {
 
 export const STORE_TITLE = 'xsantcastx — projects: a browser RPG, a Mac app and a time clock';
 export const STORE_DESCRIPTION =
-  'Projects by xsantcastx: Eclipse Realms, a pixel-art online RPG you play in your browser; Decanter, a free Mac app for Windows games, coming soon; and Cronta, a time clock for small shops.';
+  'Projects by xsantcastx: Eclipse Realms, a pixel-art online RPG you play in your browser; Decanter, a free Mac app for Windows games; and Cronta, a time clock for small shops.';
 
 export interface StoreShelf {
   id: string;
@@ -141,15 +143,15 @@ export const PROJECTS: readonly StoreProject[] = [
     id: 'decanter',
     name: 'Decanter',
     skin: 'decanter',
-    status: 'soon',
+    status: 'live',
     pitch: 'Play Windows games on your Mac, from a store-style library.',
     blurb: 'A free Mac app that plays Windows games through Wine. Browse what runs well, get a game in a few steps, and play from your own library.',
     kicker: 'Free Mac app',
     categories: ['mac'],
     platforms: ['macOS', 'Apple silicon'],
-    note: 'Free · Apple silicon · macOS 14+',
-    cta: { label: 'Coming soon for Mac', disabled: true },
-    shelves: ['apps', 'soon'],
+    note: 'Free · Version 0.1.0 · 2.7 MB · Apple silicon · macOS 14+',
+    cta: { label: 'Download for Mac', download: '/decanter/Decanter-0.1.0.dmg' },
+    shelves: ['apps'],
     icon: { src: `${A}/decanter/icon-256.png`, alt: 'Decanter app icon: a white decanter on a claret tile' },
     art: { src: `${A}/decanter/store.jpg`, alt: 'The Decanter Store: a featured game and a shelf of games rated for Mac.', width: 1600, height: 1000 },
     features: [
@@ -159,11 +161,13 @@ export const PROJECTS: readonly StoreProject[] = [
       'Play from one library, and stop everything with a single button.',
     ],
     requirements: [
-      { label: 'Price', value: 'Free and open source' },
+      { label: 'Price', value: 'Free, funded by donations' },
       { label: 'Works on', value: 'Macs with Apple silicon' },
       { label: 'System', value: 'macOS 14 or later' },
       { label: 'Games', value: 'Decanter never hosts game files. Games come from the stores you already use.' },
-      { label: 'Status', value: 'Coming soon' },
+      { label: 'Graphics', value: "Apple's free Game Porting Toolkit. Decanter walks you through adding it on first launch." },
+      { label: 'Version', value: '0.1.0, an early version' },
+      { label: 'First open', value: "Decanter isn't notarized by Apple yet. If macOS says it can't check it, open System Settings › Privacy & Security and click Open Anyway. You only do this once." },
     ],
     shots: [
       { kind: 'image', src: `${A}/decanter/store.jpg`, width: 1600, height: 1000, alt: 'The Decanter Store with a featured game and a shelf of games that run great on Mac.', caption: 'Store' },
@@ -172,8 +176,8 @@ export const PROJECTS: readonly StoreProject[] = [
       { kind: 'image', src: `${A}/decanter/install.jpg`, width: 1600, height: 1000, alt: 'The Get flow: setting up a private Windows space, installing the launcher, signing in, then downloading.', caption: 'Getting a game' },
     ],
     seo: {
-      title: 'Decanter — play Windows games on your Mac (coming soon)',
-      description: 'Decanter is a free Mac app that plays Windows games through Wine. A store-style library with a rating for every game. Apple silicon, macOS 14 or later. Coming soon.',
+      title: 'Decanter — play Windows games on your Mac',
+      description: 'Decanter is a free Mac app that plays Windows games through Wine. A store-style library with a rating for every game. Free download for Apple silicon, macOS 14 or later.',
       ogImage: `${SITE_URL}${A}/decanter/store.jpg`,
     },
     schema: { type: 'SoftwareApplication', applicationCategory: 'GameApplication', operatingSystem: 'macOS 14 or later', free: true, url: `${SITE_URL}/apps/decanter` },
