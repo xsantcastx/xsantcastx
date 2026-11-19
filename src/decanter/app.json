@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.4",
-    "build": 31,
-    "sha256": "354393296f4c2d3a22f368bce1a36798e0577e0509aeb53de42ba0dee6fd83fa",
-    "size": 2697216,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.4/Decanter-0.1.4.dmg",
+    "version": "0.1.5",
+    "build": 36,
+    "sha256": "31a83c4cf50da83a80c58f96f7cad9ab868feb56df775df44055706ac064db1a",
+    "size": 2801664,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.5/Decanter-0.1.5.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "From this version on, Decanter updates itself in one click. Also new: add games to your Dock, Support Decanter in the sidebar, a tidier design, and icons for games in Mission Control."
+    "notes": "New: Help \u203a Report a Problem. The Store now shows only real test results, adds Team Fortress 2, and says which games can't run and why."
   }
 }
