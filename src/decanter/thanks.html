@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Thank you — Decanter</title>
+<style>
+  :root {
+    --bg: #fbf8fc; --card: #ffffff; --text: #17121c; --text2: #5a5063; --accent: #cf3159; --accent-soft: #f7e3ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141018; --card: #1d1823; --text: #f4eff6; --text2: #b7aec0; --accent: #ff6b8e; --accent-soft: #3a1c27; }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  main {
+    position: relative; z-index: 1; max-width: 520px; width: 100%; text-align: center;
+    background: var(--card); border-radius: 22px; padding: 40px 28px 32px;
+    box-shadow: 0 24px 60px rgba(60, 20, 40, .14);
+  }
+  .heart {
+    width: 104px; height: 104px; margin: 0 auto 20px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--accent-soft); color: var(--accent);
+    animation: beat 1.6s ease-in-out infinite;
+  }
+  .heart svg { width: 52px; height: 52px; }
+  h1 { font-size: 34px; line-height: 1.15; letter-spacing: -.02em; margin-bottom: 12px; }
+  p { color: var(--text2); margin-bottom: 12px; }
+  .sign { font-style: italic; font-size: 14px; margin-top: 18px; }
+  .btn {
+    display: inline-block; margin-top: 18px; padding: 11px 22px; border-radius: 12px;
+    background: var(--accent); color: #fff; font-weight: 600; text-decoration: none;
+  }
+  .small { font-size: 13px; margin-top: 14px; }
+  .small a { color: var(--accent); }
+  .float { position: fixed; bottom: -40px; color: var(--accent); opacity: .5; pointer-events: none; animation: up linear forwards; }
+  @keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.12); } 30% { transform: scale(1); } 45% { transform: scale(1.08); } }
+  @keyframes up { to { transform: translateY(-110vh) rotate(18deg); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .heart { animation: none; } .float { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="heart" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.6 2.3 4.5 6.2 4.5c2.3 0 3.9 1.4 5.8 3.6 1.9-2.2 3.5-3.6 5.8-3.6 3.9 0 5.8 4.1 4.2 7.2C19.5 16.4 12 21 12 21z"/></svg>
+  </div>
+  <h1>Thank you!</h1>
+  <p>You just helped keep Decanter free, for you and for everyone who plays with it.</p>
+  <p>Every game someone gets running on their Mac is a little bit thanks to you. Stripe is emailing your receipt.</p>
+  <p class="sign">With love, from the person who makes Decanter</p>
+  <a class="btn" href="decanter://thanks">Back to Decanter</a>
+  <p class="small">Don't have Decanter yet? <a href="/apps/decanter">Get it free</a>.</p>
+</main>
+<script>
+  // Opens Decanter so it can say thank you too (the browser may ask first).
+  setTimeout(function () { location.href = 'decanter://thanks'; }, 900);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    for (var i = 0; i < 16; i++) {
+      var h = document.createElement('div');
+      h.className = 'float';
+      h.textContent = '♥';
+      h.style.left = (Math.random() * 100) + 'vw';
+      h.style.fontSize = (14 + Math.random() * 22) + 'px';
+      h.style.animationDuration = (5 + Math.random() * 4) + 's';
+      h.style.animationDelay = (Math.random() * 2.5) + 's';
+      document.body.appendChild(h);
+    }
+  }
+</script>
+</body>
+</html>
