@@ -30,7 +30,7 @@ export interface ProjectCta {
   route?: string;
   /** External URL, opened with rel="noopener". */
   href?: string;
-  /** A file on this site to download (same tab, with the `download` attribute), e.g. `/decanter/Decanter-0.1.4.dmg`. */
+  /** A file to download in the same tab (with the `download` attribute), e.g. a GitHub release file. */
   download?: string;
 }
 
@@ -158,7 +158,7 @@ export const PROJECTS: readonly StoreProject[] = [
     categories: ['mac'],
     platforms: ['macOS', 'Apple silicon'],
     note: 'Free · Version 0.1.4 · 2.6 MB · Apple silicon · macOS 14+',
-    cta: { label: 'Download for Mac', download: '/decanter/Decanter-0.1.4.dmg' },
+    cta: { label: 'Download for Mac', download: 'https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.4/Decanter-0.1.4.dmg' },
     shelves: ['apps'],
     icon: { src: `${A}/decanter/icon-256.png`, alt: 'Decanter app icon: a white decanter on a claret tile' },
     art: { src: `${A}/decanter/store.jpg`, alt: 'The Decanter Store: a featured game and a shelf of games rated for Mac.', width: 1600, height: 1000 },

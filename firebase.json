@@ -149,6 +149,12 @@
     ],
     "redirects": [
       {
+        "//": "Decanter's disk images are GitHub release files (no download cap); links to the old copies on this site keep working.",
+        "regex": "^/decanter/Decanter-(\\d+\\.\\d+\\.\\d+)\\.dmg$",
+        "destination": "https://github.com/xsantcastx/decanter-releases/releases/download/v:1/Decanter-:1.dmg",
+        "type": 302
+      },
+      {
         "//": "/home is now / (the projects store, owner decision 2026-11-18). The Angular redirectTo only covers in-app navigation, so this entry is what stops indexed /home URLs from hitting the SPA fallback.",
         "source": "/home",
         "destination": "/",
