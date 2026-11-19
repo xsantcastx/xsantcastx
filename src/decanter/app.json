@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "latest": {
+    "version": "0.1.1",
+    "build": 21,
+    "sha256": "c1d3369d8c3e084062d5371acd945f4a48195012f41e08dd48ae800f1641df63",
+    "size": 2902528,
+    "url": "https://xsantcastx.com/decanter/Decanter-0.1.1.dmg",
+    "page": "https://xsantcastx.com/apps/decanter",
+    "min_macos": "14.0",
+    "notes": "Decanter now tells you when a new version or a newer game engine is available (Settings \u2192 Updates)."
+  }
+}
