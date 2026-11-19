@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.5",
-    "build": 36,
-    "sha256": "31a83c4cf50da83a80c58f96f7cad9ab868feb56df775df44055706ac064db1a",
-    "size": 2801664,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.5/Decanter-0.1.5.dmg",
+    "version": "0.1.6",
+    "build": 38,
+    "sha256": "78e6b9aaa4697122e2331972c17781c82893e568abfabbd71577f76b933c1d9a",
+    "size": 2846208,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.6/Decanter-0.1.6.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "New: Help \u203a Report a Problem. The Store now shows only real test results, adds Team Fortress 2, and says which games can't run and why."
+    "notes": "Each game shows its own icon in Mission Control. Settings can update Apple's graphics layer to a newer Game Porting Toolkit. Clearer known issues."
   }
 }
