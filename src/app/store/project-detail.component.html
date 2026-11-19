@@ -17,6 +17,9 @@
         <div class="detail-actions">
           <app-store-cta [project]="project" [large]="true" />
           <p class="detail-note">{{ project.note }}</p>
+          @if (downloads(); as n) {
+            <p class="detail-note detail-downloads">Downloaded {{ n.toLocaleString('en-US') }} {{ n === 1 ? 'time' : 'times' }}</p>
+          }
         </div>
       </div>
     </div>

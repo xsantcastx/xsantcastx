@@ -66,6 +66,8 @@ export interface StoreProject {
    * Payment Link where the donor picks the amount. Decanter's Help › Support Decanter opens it.
    */
   support?: { title: string; text: string; label: string; note: string; href: string };
+  /** A public GitHub repo whose release downloads are counted on the detail page ("Downloaded N times"). */
+  downloadsRepo?: string;
   seo: { title: string; description: string; ogImage?: string };
   /** Machine-readable app facts for JSON-LD. */
   schema: {
@@ -180,9 +182,10 @@ export const PROJECTS: readonly StoreProject[] = [
     shots: [
       { kind: 'image', src: `${A}/decanter/store.jpg`, width: 1600, height: 1000, alt: 'The Decanter Store with a featured game and a shelf of games that run great on Mac.', caption: 'Store' },
       { kind: 'image', src: `${A}/decanter/library.jpg`, width: 1600, height: 1000, alt: 'The Decanter Library: your installed games as covers, with filters along the top.', caption: 'Library' },
-      { kind: 'image', src: `${A}/decanter/game.jpg`, width: 1600, height: 1000, alt: 'A game page in Decanter: its rating, a Get button and compatibility details.', caption: 'Game page' },
-      { kind: 'image', src: `${A}/decanter/install.jpg`, width: 1600, height: 1000, alt: 'The Get flow: setting up a private Windows space, installing the launcher, signing in, then downloading.', caption: 'Getting a game' },
+      { kind: 'image', src: `${A}/decanter/game.jpg`, width: 1600, height: 1000, alt: 'A game page in Decanter: Diablo II: Resurrected rated Gold, with a Play button, its compatibility report and known issues.', caption: 'Game page' },
+      { kind: 'image', src: `${A}/decanter/support.jpg`, width: 1600, height: 1000, alt: 'Support Decanter: why donations matter, and a Donate button.', caption: 'Support Decanter' },
     ],
+    downloadsRepo: 'xsantcastx/decanter-releases',
     support: {
       title: 'Support Decanter',
       text: 'Decanter is free, with no ads and no account. Donations pay for its development, the engine builds and the downloads.',
