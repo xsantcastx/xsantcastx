@@ -173,8 +173,7 @@ export const PROJECTS: readonly StoreProject[] = [
       'Get a game in a few steps. Decanter sets up a private Windows space for it.',
       'Sign in with your own store account. Decanter never sees your password.',
       'Play from one library, and stop everything with a single button.',
-      'One slider per game: Performance, Balanced or Quality, or let Decanter optimize for your Mac.',
-      'Add mods by dragging them onto a game, run mod managers and tools, and undo everything with a snapshot.',
+      'A graphics slider per game, drag-and-drop mods, and snapshots that undo everything.',
     ],
     requirements: [
       { label: 'Price', value: 'Free, funded by donations' },
