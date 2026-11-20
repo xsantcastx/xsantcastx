@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.13",
-    "build": 68,
-    "sha256": "8bd75a96540d19fc7b4ea47f81a98e94db1920344a32e60e922850e5f0c8c8ac",
-    "size": 3078656,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.13/Decanter-0.1.13.dmg",
+    "version": "0.1.14",
+    "build": 71,
+    "sha256": "8d410053cb822c08a49a6d928b08de79d9872ef27b6a6ede9f58e80aabf1b923",
+    "size": 3086848,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.14/Decanter-0.1.14.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Fixes: Retina and keyboard settings are written where Wine reliably reads them, the game page no longer slows down while it redraws, and the search box clears on pages it doesn't search."
+    "notes": "Files: in the icon view, arrow keys move the selection and Return opens it, like Finder. Plus a clearer More menu for VoiceOver."
   }
 }
