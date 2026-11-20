@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "issued": 1795216178,
+  "issued": 1795216848,
   "latest": {
-    "version": "0.2.2",
-    "build": 89,
-    "sha256": "de60761734f24ae800153c619bd5ca748a371192bb8c298523cb7b889548ec95",
-    "size": 3245056,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.2/Decanter-0.2.2.dmg",
+    "version": "0.2.3",
+    "build": 91,
+    "sha256": "76d9ee349994a2bb14065932a57a20a488af7e3173d253dac6a7b6fd29a06f5e",
+    "size": 3248640,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.3/Decanter-0.2.3.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Windows programs now run in a protected space: they can't change files elsewhere on your Mac or open your keychains, keys, browsers or mail. Plus safety fixes for mods, saves and logs."
+    "notes": "Updates are now signed: Decanter only installs updates and engines that provably come from xsantcastx.com, and only from Decanter's own downloads."
   }
 }
