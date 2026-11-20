@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.2.1",
-    "build": 88,
-    "sha256": "a6dd7945e4fb83a51732cd25bd952fe6bc0abde0a76fa7a69686364573cbcfc8",
-    "size": 3294720,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.1/Decanter-0.2.1.dmg",
+    "version": "0.2.2",
+    "build": 89,
+    "sha256": "de60761734f24ae800153c619bd5ca748a371192bb8c298523cb7b889548ec95",
+    "size": 3245056,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.2/Decanter-0.2.2.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Fixes: How it ran now measures processor use correctly, and the My Mac Desktop link Wine puts on the Windows Desktop is removed, so Windows programs only see your Downloads."
+    "notes": "Windows programs now run in a protected space: they can't change files elsewhere on your Mac or open your keychains, keys, browsers or mail. Plus safety fixes for mods, saves and logs."
   }
 }
