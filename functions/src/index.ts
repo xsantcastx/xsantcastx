@@ -21,22 +21,10 @@ import {
   getStripeDonationStats
 } from "./stripe";
 
-// Import contact functions
-import { sendContactEmail } from "./contact";
-
-// Import activity feed pruning trigger
-import { pruneActivityFeed } from "./pruneActivity";
-
 // Eclipse Realms trading and shared ground drops (docs/design/online.md §3.8)
 
 // Set global options for cost control
 setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
-
-// Export contact functions
-export { sendContactEmail };
-
-// Export activity feed pruning (Firestore onCreate trigger)
-export { pruneActivityFeed };
 
 // Export trading (HTTPS, ID-token auth) and the ground sweep (scheduled)
 

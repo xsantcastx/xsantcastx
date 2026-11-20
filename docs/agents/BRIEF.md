@@ -7,7 +7,7 @@ Find files via `docs/agents/SYSTEMS.md` before searching.
 
 ## Setup (once)
 1. If your branch has no commits: `git fetch origin && git reset --hard origin/main` (or the base the task names).
-2. `ln -s "/Users/xsantcastx/Documents/1. Projects/xsantcastx/node_modules" node_modules` if missing.
+2. `ln -s "<path to the main checkout>/node_modules" node_modules` if missing.
 3. Before any gate, move untracked sync duplicates out of the tree (they make local checks lie):
    `find src -name "* [0-9].*" -type f` minus `git ls-files` → move to your scratchpad. Never `git add` "<name> 2.*".
 

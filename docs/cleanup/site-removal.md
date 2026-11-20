@@ -86,7 +86,15 @@ the follow-up pass carried it out (one commit each).
 | **`shared/npc/delve-missions-board.component.ts`** — imported by nothing; the Quest Board's Delve tab replaced it; not in the world plan | **DELETED** | yes |
 | **`/api/send-contact` rewrite** in `firebase.json` | **REMOVED** — no kept code calls it | yes |
 
-### Server-side leftovers (owner; `functions/` and `firestore.rules` untouched)
+### Server-side leftovers: removed (2026-11-20)
+
+The owner asked for these to go. Removed: `sendContactEmail` and `pruneActivityFeed` (code and the
+deployed functions), the dead `seedChangelog.ts` and `test-functions.ts`, the Claude Code hook that
+posted every tool call to the public `claude-activity` collection (`scripts/live-hook.js`,
+`.claude/settings.json`), and the `firestore.rules` blocks listed below (the catch-all now denies
+them). `site-stats` and `changelog` stay.
+
+### Server-side leftovers (as found)
 
 - `functions/src/contact.ts` → **`sendContactEmail`** (exported from `index.ts`): nothing reaches it now that the rewrite is gone; it still needs `BREVO_API_KEY`.
 - `functions/src/pruneActivity.ts` → **`pruneActivityFeed`** (exported): trims `claude-activity`, the old `/live` feed nothing writes.
