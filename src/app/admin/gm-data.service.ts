@@ -48,7 +48,7 @@
  * 3. THE CLIENT-SIDE OWNER CHECK IS NOT THE SECURITY BOUNDARY
  * ─────────────────────────────────────────────────────────────────────────────
  * `firestore.rules` is. Everything this service can do, it can do because
- * `isOwner()` in the rules allows it, and someone who edits ADMIN_EMAIL in the
+ * `isOwner()` in the rules allows it, and someone who edits ADMIN_UID in the
  * bundle gets permission-denied on every call below rather than a working
  * console. Nothing here re-checks identity, because a check the attacker also
  * controls is decoration.

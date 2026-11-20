@@ -10,7 +10,7 @@ import {
   AdminDataService, Panel, EggRow,
   GitCommit, CiRun, BuildStats, loadingPanel, unavailablePanel
 } from './admin-data.service';
-import { isAdminEmail, ADMIN_EMAIL } from './admin.guard';
+import { isAdminUser } from './admin.guard';
 import { GmPanelComponent, GmView } from './gm-panel.component';
 
 /**
@@ -79,7 +79,6 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
   user: User | null = null;
   signInError = '';
-  readonly adminEmail = ADMIN_EMAIL;
 
   // ── 1. Overview ────────────────────────────────────────────────────────
   readonly version = APP_VERSION;
@@ -149,7 +148,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.user = user;
         if (!user) {
           this.gate = 'signed-out';
-        } else if (isAdminEmail(user.email)) {
+        } else if (isAdminUser(user)) {
           this.gate = 'ok';
           this.loadAll();
         } else {
@@ -170,7 +169,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.signInError = '';
     try {
       const cred = await signInWithPopup(this.auth, new GoogleAuthProvider());
-      if (!isAdminEmail(cred.user?.email)) {
+      if (!isAdminUser(cred.user)) {
         // Signing out immediately keeps a non-owner from holding a session
         // that other parts of the site would treat as logged in.
         await signOut(this.auth);

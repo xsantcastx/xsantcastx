@@ -10,15 +10,15 @@ import { of } from 'rxjs';
  *
  * This constant is the *client-side* gate. It is deliberately not the only one:
  * anything sensitive the dashboard reads (blueprint-suggestions) is also gated
- * on the same address in firestore.rules, because a client-side check only
+ * on the same account in firestore.rules, because a client-side check only
  * decides what gets rendered — it cannot decide what the database hands out.
  * Someone who edits this string in devtools gets an empty dashboard, not data.
  */
-export const ADMIN_EMAIL = '43703069+xsantcastx@users.noreply.github.com';
+export const ADMIN_UID = 'vphgDRnTENbN66O4R3w1AmzcgHD3';
 
-/** Case-insensitive match — Firebase preserves the casing the user typed. */
-export function isAdminEmail(email: string | null | undefined): boolean {
-  return !!email && email.toLowerCase() === ADMIN_EMAIL;
+/** The owner's account, by Firebase user ID (stable, and not an email address). */
+export function isAdminUser(user: { uid?: string | null } | null | undefined): boolean {
+  return !!user && user.uid === ADMIN_UID;
 }
 
 /**
@@ -76,7 +76,7 @@ export const adminGuard: CanActivateFn = () => {
       // Not signed in yet — let the component show its sign-in card.
       if (!user) return true;
       // Signed in as someone else — this is the case worth bouncing.
-      return isAdminEmail(user.email) ? true : router.parseUrl('/play');
+      return isAdminUser(user) ? true : router.parseUrl('/play');
     })
   );
 };

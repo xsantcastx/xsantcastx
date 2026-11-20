@@ -4,17 +4,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Owner identity ───────────────────────────────────────────────────────
-    // The /admin dashboard checks this same address client-side, but that check
-    // only decides what renders. This one decides what the database hands out,
-    // which is the check that actually matters: editing the constant in the
-    // bundle gets an attacker an empty dashboard, not somebody's email address.
-    //
-    // email_verified is required so that a provider which lets a user set an
-    // arbitrary unverified address cannot mint a token claiming to be the owner.
+    // The owner's Firebase user ID (not personal data, and not a secret: only
+    // Firebase can issue a token for it). The /admin dashboard checks the same ID
+    // client-side, but that check only decides what renders. This one decides what
+    // the database hands out, which is the check that actually matters.
     function isOwner() {
       return request.auth != null
-             && request.auth.token.email == '43703069+xsantcastx@users.noreply.github.com'
-             && request.auth.token.email_verified == true;
+             && request.auth.uid == 'vphgDRnTENbN66O4R3w1AmzcgHD3';
     }
 
     // ── Bans ─────────────────────────────────────────────────────────────────
