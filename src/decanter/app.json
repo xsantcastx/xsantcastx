@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.14",
-    "build": 71,
-    "sha256": "8d410053cb822c08a49a6d928b08de79d9872ef27b6a6ede9f58e80aabf1b923",
-    "size": 3086848,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.14/Decanter-0.1.14.dmg",
+    "version": "0.2.0",
+    "build": 85,
+    "sha256": "582c3ec58d13145a2c1b19eee9d85e359caa564791d23fc097cdaa426d47fdfd",
+    "size": 3293696,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.0/Decanter-0.2.0.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Files: in the icon view, arrow keys move the selection and Return opens it, like Finder. Plus a clearer More menu for VoiceOver."
+    "notes": "Decanter 0.2: add any Windows game (an installer or a game folder, each in its own Windows space), save backups before every launch with one-click restore, and How it ran: after you play, see how hard your Mac worked and what to change."
   }
 }
