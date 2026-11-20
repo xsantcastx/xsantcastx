@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.11",
-    "build": 62,
-    "sha256": "5bb629c6fe7276a32e94da179b53cba1f2486e2ba1e544855dcfeecfeb567794",
-    "size": 3059712,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.11/Decanter-0.1.11.dmg",
+    "version": "0.1.12",
+    "build": 66,
+    "sha256": "7ed4368f51e6ca63be9ef3d0efd8a204786b850b110396105521e88638a2d91c",
+    "size": 3070464,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.12/Decanter-0.1.12.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Files fixes: Windows' Downloads now shows the files in your Mac's Downloads, Windows programs show their own icons, typed paths open folders by their real names, and a crash while dragging files is fixed."
+    "notes": "Retina: a switch per Windows space (in Bottles) draws games at your screen's full resolution. Diablo II's graphics levels now also set shadows, lighting and effects. Search from any page opens the Store, and the Store's cards and covers are tidier."
   }
 }
