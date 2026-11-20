@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.2.0",
-    "build": 85,
-    "sha256": "582c3ec58d13145a2c1b19eee9d85e359caa564791d23fc097cdaa426d47fdfd",
-    "size": 3293696,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.0/Decanter-0.2.0.dmg",
+    "version": "0.2.1",
+    "build": 88,
+    "sha256": "a6dd7945e4fb83a51732cd25bd952fe6bc0abde0a76fa7a69686364573cbcfc8",
+    "size": 3294720,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.1/Decanter-0.2.1.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Decanter 0.2: add any Windows game (an installer or a game folder, each in its own Windows space), save backups before every launch with one-click restore, and How it ran: after you play, see how hard your Mac worked and what to change."
+    "notes": "Fixes: How it ran now measures processor use correctly, and the My Mac Desktop link Wine puts on the Windows Desktop is removed, so Windows programs only see your Downloads."
   }
 }
