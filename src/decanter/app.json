@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.12",
-    "build": 66,
-    "sha256": "7ed4368f51e6ca63be9ef3d0efd8a204786b850b110396105521e88638a2d91c",
-    "size": 3070464,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.12/Decanter-0.1.12.dmg",
+    "version": "0.1.13",
+    "build": 68,
+    "sha256": "8bd75a96540d19fc7b4ea47f81a98e94db1920344a32e60e922850e5f0c8c8ac",
+    "size": 3078656,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.13/Decanter-0.1.13.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Retina: a switch per Windows space (in Bottles) draws games at your screen's full resolution. Diablo II's graphics levels now also set shadows, lighting and effects. Search from any page opens the Store, and the Store's cards and covers are tidier."
+    "notes": "Fixes: Retina and keyboard settings are written where Wine reliably reads them, the game page no longer slows down while it redraws, and the search box clears on pages it doesn't search."
   }
 }
