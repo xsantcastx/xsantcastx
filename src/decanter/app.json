@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.8",
-    "build": 57,
-    "sha256": "cc34047b0666301af3faddc2b65333c831d878666d806fa7e04b0ac41b8a10b0",
-    "size": 2964992,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.8/Decanter-0.1.8.dmg",
+    "version": "0.1.9",
+    "build": 59,
+    "sha256": "03b662c0381ae7e6c3e51eba50e6b3e2d81655f56e0043713a7761a2e7fa5342",
+    "size": 2970624,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.9/Decanter-0.1.9.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Files: browse each game's Windows space like a Windows PC, drag files in, run Windows programs. Drag-and-drop mods with clean removal and snapshots. A graphics slider per game. Windows programs now see only your Downloads. Clearer messages throughout."
+    "notes": "Fixes \"Bad CPU type in executable\" on Macs without Rosetta: Decanter now offers to install Apple's Rosetta, which Windows games need."
   }
 }
