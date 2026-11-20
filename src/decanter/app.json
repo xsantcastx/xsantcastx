@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "latest": {
-    "version": "0.1.10",
-    "build": 60,
-    "sha256": "876f7c25ff1960da6e6617f26752af2a27ad58cdb4e093f20b4bf60b059ef5aa",
-    "size": 3058688,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.10/Decanter-0.1.10.dmg",
+    "version": "0.1.11",
+    "build": 62,
+    "sha256": "5bb629c6fe7276a32e94da179b53cba1f2486e2ba1e544855dcfeecfeb567794",
+    "size": 3059712,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.1.11/Decanter-0.1.11.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "A new Files: a This PC home with your drives and game folders, back, forward and up that always work (also \u2318[ \u2318] and your mouse's side buttons), an address bar you can type a Windows path into, list and icon views, search, and live refresh when files change."
+    "notes": "Files fixes: Windows' Downloads now shows the files in your Mac's Downloads, Windows programs show their own icons, typed paths open folders by their real names, and a crash while dragging files is fixed."
   }
 }
