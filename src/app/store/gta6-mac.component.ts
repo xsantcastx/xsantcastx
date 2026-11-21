@@ -22,6 +22,7 @@ export class Gta6MacComponent {
   /** The current Decanter download (the same link as the Decanter page). */
   readonly download = PROJECTS.find(p => p.id === 'decanter')?.cta?.download ?? null;
 
+  readonly stateLabel = { done: 'Done', doing: 'In progress', waiting: 'Waiting', no: 'Not expected' } as const;
   readonly status: { label: string; state: 'done' | 'doing' | 'waiting' | 'no'; text: string }[] = [
     { label: 'GTA 6 on PS5 and Xbox', state: 'done', text: 'Out since 19 November 2026.' },
     { label: 'GTA 6 on PC', state: 'waiting', text: 'Not announced yet. Reports point to early 2027.' },

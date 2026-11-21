@@ -18,7 +18,8 @@
         @for (s of status; track s.label) {
           <li class="game-row panel">
             <div class="game-main">
-              <h3 class="game-name">{{ s.state === 'done' ? '✅' : s.state === 'doing' ? '🛠️' : s.state === 'waiting' ? '⏳' : '🚫' }} {{ s.label }}</h3>
+              <p class="game-meta">{{ stateLabel[s.state] }}</p>
+              <h3 class="game-name">{{ s.label }}</h3>
               <p class="game-notes">{{ s.text }}</p>
             </div>
           </li>
