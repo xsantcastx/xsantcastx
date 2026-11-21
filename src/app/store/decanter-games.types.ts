@@ -17,4 +17,6 @@ export interface DecanterGame {
   tested?: { date?: string | null; macos?: string | null; chip?: string | null; gptk?: string | null; notes?: string | null };
   /** Why it can't run (a known limitation, not a test). */
   why?: string | null;
+  /** Not out on PC yet: what's known about when. */
+  coming?: string | null;
 }

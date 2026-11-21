@@ -1,0 +1,56 @@
+<div class="store" data-skin="decanter">
+  <app-store-topbar [back]="true" />
+
+  <div class="store-page games-page">
+    <header class="games-head">
+      <a class="games-crumb" routerLink="/apps/decanter">Decanter</a>
+      <h1 class="detail-title">GTA 6 on Mac? We're getting ready for story mode.</h1>
+      <p class="games-intro">GTA 6 is out on PS5 and Xbox, and the whole internet is asking the same thing: can I play it on my Mac? Not yet, because there's no PC version. But when it lands, Decanter wants your Mac to be ready on day one. Here's exactly what works, what we're building, and what won't work.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px">
+        @if (download) { <a class="btn btn-primary btn-lg" [href]="download">Download Decanter for Mac, free</a> }
+        <a class="btn btn-lg" routerLink="/apps/decanter/games">Which games work today</a>
+      </div>
+    </header>
+
+    <section aria-labelledby="status-h">
+      <h2 class="section-title" id="status-h">The GTA 6 on Mac tracker</h2>
+      <ul class="games-list">
+        @for (s of status; track s.label) {
+          <li class="game-row panel">
+            <div class="game-main">
+              <h3 class="game-name">{{ s.state === 'done' ? '✅' : s.state === 'doing' ? '🛠️' : s.state === 'waiting' ? '⏳' : '🚫' }} {{ s.label }}</h3>
+              <p class="game-notes">{{ s.text }}</p>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section aria-labelledby="what-h">
+      <h2 class="section-title" id="what-h">What to expect on day one</h2>
+      <div class="panel" style="padding: 18px">
+        <p><strong>Story mode: that's the goal.</strong> Decanter runs Windows games on Apple silicon with Wine and Apple's D3DMetal, which turns DirectX 12 into Metal. GTA V's story mode already runs on Mac this way, and GTA 6 on PC will very likely use DirectX 12 too. We'll say "it works" only after we've played it.</p>
+        <p><strong>GTA 6 Online: very likely not.</strong> GTA Online on PC uses BattlEye anti-cheat, which needs Windows itself and doesn't run on Mac or Linux. Expect GTA 6 Online to work the same way. No Mac app can get around that, and we won't pretend.</p>
+        <p><strong>Your Mac:</strong> Apple silicon and macOS 14 or later. GTA 6 is heavy: Pro, Max and Ultra chips will do best, and Decanter's Performance setting, frame-rate limit and MetalFX upscaling help everywhere else.</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="faq-h">
+      <h2 class="section-title" id="faq-h">GTA 6 on Mac: questions</h2>
+      <ul class="games-list">
+        @for (f of faq; track f.q) {
+          <li class="game-row panel">
+            <div class="game-main">
+              <h3 class="game-name">{{ f.q }}</h3>
+              <p class="game-notes">{{ f.a }}</p>
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <p class="games-sub">Grand Theft Auto, GTA and Rockstar Games are trademarks of Take-Two Interactive Software. Decanter is an independent, free app and isn't affiliated with or endorsed by Rockstar Games or Take-Two. You need to buy the game on PC.</p>
+  </div>
+
+  <app-store-footer />
+</div>

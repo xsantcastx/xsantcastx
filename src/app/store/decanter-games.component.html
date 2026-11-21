@@ -50,6 +50,7 @@
           <p class="game-meta">{{ g.developer }}@if (g.developer) { · }{{ g.store }}@if (g.free) { · Free }@if (g.sizeGb) { · about {{ g.sizeGb }} GB }</p>
           @if (g.tested?.notes) { <p class="game-notes">{{ g.tested.notes }}</p> }
           @if (g.why) { <p class="game-notes">{{ g.why }}</p> }
+          @if (g.coming) { <p class="game-notes">Coming to PC: {{ g.coming }} @if (g.id === 'gta-6') { <a routerLink="/apps/decanter/gta-6-mac">How Decanter is getting ready</a> }</p> }
           @if (g.antiCheat?.status === 'blocked') { <p class="game-notes">{{ g.antiCheat.notes }}</p> }
           @for (i of g.knownIssues; track i.summary) {
             <p class="game-issue">⚠︎ {{ i.summary }}@if (i.workaround) { <span> {{ i.workaround }}</span> }</p>

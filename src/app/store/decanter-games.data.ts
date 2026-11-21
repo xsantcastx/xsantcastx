@@ -168,6 +168,43 @@ export const DECANTER_GAMES: DecanterGame[] = [
     "reports": 0
   },
   {
+    "id": "gta-v-enhanced",
+    "name": "Grand Theft Auto V",
+    "developer": "Rockstar Games",
+    "store": "Steam",
+    "free": false,
+    "sizeGb": 105,
+    "blurb": "Open-world crime action.",
+    "rating": null,
+    "meaning": null,
+    "antiCheat": {
+      "status": "unknown",
+      "system": "BattlEye",
+      "notes": "Story mode runs on Mac (players report it through CrossOver, which Decanter's engine is built from). GTA Online needs BattlEye, which doesn't run on Mac."
+    },
+    "knownIssues": [],
+    "reports": 0
+  },
+  {
+    "id": "gta-6",
+    "name": "Grand Theft Auto VI",
+    "developer": "Rockstar Games",
+    "store": "Its own launcher",
+    "free": false,
+    "sizeGb": null,
+    "blurb": "Out on PS5 and Xbox. On PC it isn't announced yet; Decanter is getting ready for its story mode.",
+    "rating": null,
+    "meaning": null,
+    "antiCheat": {
+      "status": "unknown",
+      "system": "Rockstar's anti-cheat (expected)",
+      "notes": "Story mode is what Decanter is getting ready for. GTA Online on PC uses BattlEye, which doesn't run on Mac, and GTA 6 Online will very likely be the same."
+    },
+    "knownIssues": [],
+    "reports": 0,
+    "coming": "Rockstar hasn't announced the PC version; reports point to early 2027."
+  },
+  {
     "id": "overwatch-2",
     "name": "Overwatch 2",
     "developer": "Blizzard Entertainment",
@@ -237,24 +274,6 @@ export const DECANTER_GAMES: DecanterGame[] = [
       "status": "blocked",
       "system": "Easy Anti-Cheat",
       "notes": "Fall Guys needs Easy Anti-Cheat, which does not run under Wine on a Mac."
-    },
-    "knownIssues": [],
-    "reports": 0
-  },
-  {
-    "id": "gta-v-enhanced",
-    "name": "Grand Theft Auto V",
-    "developer": "Rockstar Games",
-    "store": "Steam",
-    "free": false,
-    "sizeGb": 105,
-    "blurb": "Open-world crime action.",
-    "rating": "borked",
-    "meaning": "Does not run on Mac",
-    "antiCheat": {
-      "status": "blocked",
-      "system": "BattlEye",
-      "notes": "GTA V needs BattlEye, even for story mode, and BattlEye does not run under Wine on a Mac."
     },
     "knownIssues": [],
     "reports": 0

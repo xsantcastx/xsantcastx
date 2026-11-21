@@ -96,6 +96,16 @@
         </section>
       }
 
+      @if (project.id === 'decanter') {
+        <section class="panel games-teaser" aria-label="GTA 6 on Mac">
+          <div>
+            <h2 class="section-title" style="margin-bottom: 4px">GTA 6 on Mac?</h2>
+            <p>Not on PC yet. Here's how Decanter is getting ready for its story mode, and what won't work.</p>
+          </div>
+          <a class="btn" routerLink="/apps/decanter/gta-6-mac">The GTA 6 tracker</a>
+        </section>
+      }
+
       @if (project.faq?.length) {
         <section aria-labelledby="faq-h">
           <h2 class="section-title" id="faq-h">Questions</h2>

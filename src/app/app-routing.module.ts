@@ -5,6 +5,7 @@ import { SITE_URL } from './seo.service';
 import { stayInGameGuard } from './play/stay-in-game.guard';
 import { PROJECTS, projectJsonLd, storeJsonLd, STORE_TITLE, STORE_DESCRIPTION } from './store/projects.data';
 import { decanterGamesJsonLd } from './store/decanter-games.seo';
+import { GTA6_DESCRIPTION, GTA6_PATH, GTA6_TITLE, gta6JsonLd } from './store/gta6-mac.seo';
 
 /**
  * The projects store is the front door (owner's decision, 2026-11-18): `/` is a
@@ -45,6 +46,13 @@ export const APP_ROUTES: Routes = [
         description: 'Tested Windows games for Decanter, the free Mac app: ratings from Platinum to Borked, what each was tested on, known issues, and which games can\'t run because of anti-cheat.',
         jsonLd: decanterGamesJsonLd(),
       }
+    },
+  {
+      // GTA 6 on Mac: what Decanter is getting ready for (gta6-mac.seo.ts keeps it honest).
+      path: GTA6_PATH,
+      loadComponent: () => import('./store/gta6-mac.component').then(m => m.Gta6MacComponent),
+      title: GTA6_TITLE,
+      data: { description: GTA6_DESCRIPTION, jsonLd: gta6JsonLd() }
     },
   { path: 'home', redirectTo: '', pathMatch: 'full' },
   {
