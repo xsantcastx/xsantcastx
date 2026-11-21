@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "issued": 1795251658,
+  "issued": 1795276232,
   "latest": {
-    "version": "0.2.4",
-    "build": 107,
-    "sha256": "56d44db77f1a158418ca96afc472c68acc3ae0d9a856d56aca5ecd20cfd56a99",
-    "size": 3269120,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.4/Decanter-0.2.4.dmg",
+    "version": "0.3.0",
+    "build": 139,
+    "sha256": "43a249d277ad29b46b20352f597f8add99913fcfc3d1d062bca1661e1f65cd6e",
+    "size": 3720704,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.3.0/Decanter-0.3.0.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Frame rate and play time for every game, and fixes for two games running at once."
+    "notes": "A built-in Windows browser, working controllers, achievements and play time, with a new engine update."
   }
 }
