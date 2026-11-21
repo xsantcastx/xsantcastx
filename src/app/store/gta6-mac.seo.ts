@@ -27,7 +27,11 @@ export const GTA6_FAQ: Gta6Faq[] = [
   { q: 'Is Decanter free? Do I need Windows?',
     a: 'Decanter is free, with no ads and no account, and you do not need Windows. You buy GTA 6 on PC the normal way (for example on Steam or Rockstar\'s launcher) and play it in Decanter.' },
   { q: 'Can I use a controller?',
-    a: 'Xbox controller support is built and comes with the next Decanter update: games will see your controller and switch to controller mode when you press a button.' },
+    a: 'Yes. Since Decanter 0.3, games see an Xbox controller connected to your Mac and switch to controller mode when you press a button.' },
+  { q: 'Does the Rockstar Games Launcher work on Mac?',
+    a: 'In our tests, yes: on Decanter\'s engine it installs, sets up Social Club and opens its sign-in window. It needs DirectX 10, which Apple\'s D3DMetal lacks, so Decanter 0.4 runs that part on Wine\'s own graphics. The launcher comes to Decanter\'s Launchers page in the next update.' },
+  { q: 'GTA 6 will be huge. What if my Mac is short on space?',
+    a: 'Decanter 0.4 lets games live on an external disk: in Bottles, add a games drive on a disk formatted as APFS or Mac OS Extended, and install or move games there.' },
 ];
 
 export function gta6JsonLd(): object {
