@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "issued": 1795216848,
+  "issued": 1795251658,
   "latest": {
-    "version": "0.2.3",
-    "build": 91,
-    "sha256": "76d9ee349994a2bb14065932a57a20a488af7e3173d253dac6a7b6fd29a06f5e",
-    "size": 3248640,
-    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.3/Decanter-0.2.3.dmg",
+    "version": "0.2.4",
+    "build": 107,
+    "sha256": "56d44db77f1a158418ca96afc472c68acc3ae0d9a856d56aca5ecd20cfd56a99",
+    "size": 3269120,
+    "url": "https://github.com/xsantcastx/decanter-releases/releases/download/v0.2.4/Decanter-0.2.4.dmg",
     "page": "https://xsantcastx.com/apps/decanter",
     "min_macos": "14.0",
-    "notes": "Updates are now signed: Decanter only installs updates and engines that provably come from xsantcastx.com, and only from Decanter's own downloads."
+    "notes": "Frame rate and play time for every game, and fixes for two games running at once."
   }
 }
