@@ -13,6 +13,20 @@ theme. The game is unchanged at `/play`.
 phases, what's shipped, what's in flight, the watch list, and the working rules. Update it in the
 same commit that lands the work.
 
+## 0. At a glance
+
+- **Owner:** internal (the owner's own site). **Status:** live at https://xsantcastx.com.
+- **Stack:** Angular 21 (SSR + prerender, PWA), Firebase (Hosting, Firestore, Auth, App Check; Cloud
+  Functions in `functions/` and `functions-game/`), Node ≥ 24 / npm ≥ 11 (`.nvmrc`), Playwright e2e.
+- **Commands:** `npm ci` · `npm start` (ng serve) · `npm run build` (production; stamps the build id)
+  · `npm run test:ci` (unit) · merge gate in §4 (there is no linter; the gates are the checks).
+- **Branches and deploy:** work on `feature/projects-hub` (or a worktree branch off it). **Pushing
+  `main` deploys** Hosting, plus Firestore rules/indexes when they change (`.github/workflows/ci-cd.yml`).
+  Never push `main` without the owner's OK.
+- **Other projects on this site:** the store (`src/app/store/`) hosts Decanter's pages (games list,
+  GTA 6 on Mac) and its `/decanter/` download and signed feed; Decanter's release skill updates them.
+- **Commits:** what changed in plain words; Decanter release commits read "Decanter 0.x.y: …".
+
 ---
 
 ## 1. What the game is
@@ -91,3 +105,11 @@ e2e/play-*.spec.ts            the playtest suite (run with your own PW_PORT)
 ```
 
 Canon lore lives outside the repo: `~/Documents/1. Projects/Eclipse Realms/docs/03-lore-and-design/`.
+
+## 6. Current focus and decisions
+
+- **Focus:** the projects store front door and Decanter's pages; the game's phases and watch list are
+  in `docs/roadmap/world-plan.md`.
+- **Decisions log:** recorded in `docs/roadmap/world-plan.md` (Decisions table and dated owner notes),
+  not here. Recent: 2026-11-18 projects store becomes `/`; 2026-10 old tools site removed, URLs 301 into
+  the game.
