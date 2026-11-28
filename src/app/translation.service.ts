@@ -205,7 +205,7 @@ export class TranslationService {
 
     // Cookie Banner / GDPR Consent
     'cookies.banner.title': { en: 'Cookie preferences', es: 'Preferencias de cookies' },
-    'cookies.banner.description': { en: 'Tiny analytics breadcrumbs help us see which stars get visited most.', es: 'Pequenas migas de analytics nos ayudan a ver que estrellas se visitan mas.' },
+    'cookies.banner.description': { en: 'Small analytics cookies help us see which pages get visited most.', es: 'Pequeñas cookies de analítica nos ayudan a ver qué páginas se visitan más.' },
     'cookies.banner.details': { en: 'Decline and we still count visits anonymously — no cookies, nothing that identifies you. Nothing is ever sold.', es: 'Si rechazas, solo contamos visitas de forma anonima — sin cookies ni nada que te identifique. Nunca se vende nada.' },
     'cookies.accept': { en: 'Accept Analytics', es: 'Aceptar Analytics' },
     'cookies.deny': { en: 'Essential Only', es: 'Solo Esenciales' },

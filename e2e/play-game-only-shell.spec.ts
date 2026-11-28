@@ -11,7 +11,7 @@
  *   - No two fixed widgets overlap (bounding boxes), at desktop and phone size.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, openPlay, placePanel, seed, openMenu } from './play-helpers';
+import { canvas, openMenu, openPlay, placePanel, seed } from './play-helpers';
 
 const SIZES = [
   { name: 'desktop', width: 1280, height: 800 },
@@ -22,13 +22,6 @@ const SITE_CHROME = [
   'app-header', 'app-footer', '.gftabs', '.gfnav', 'app-command-palette',
   'app-forge-flame', 'app-forged-today', 'app-npc-dialogue', 'app-place-banner-outlet',
 ];
-
-async function openMenu(page: Page): Promise<void> {
-  const list = page.locator('#places-list');
-  if (await list.isVisible()) return;
-  await page.locator('.places-toggle').first().click();
-  await expect(list).toBeVisible();
-}
 
 /** Visible, hit-testable position:fixed boxes, minus full-viewport layers (curtains, the game frame itself). */
 async function fixedBoxes(page: Page) {
@@ -65,13 +58,17 @@ for (const size of SIZES) {
   test.describe(`game-only shell at ${size.name}`, () => {
     test.use({ viewport: { width: size.width, height: size.height } });
 
-    test('/ lands in the game, and so do /home and /world', async ({ page }) => {
+    // Since 2026-11-18 `/` is the projects store (owner's decision); the game is at /play and old URLs still land there.
+    test('/ and /home are the projects store; /world lands in the game', async ({ page }) => {
       await seed(page);
-      for (const from of ['/', '/home', '/world']) {
+      for (const from of ['/', '/home']) {
         await page.goto(from);
-        await expect(page).toHaveURL(/\/play(\?|$)/);
-        await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 20000 });
+        await expect(page).toHaveURL(/^[^?#]*\/\/[^/]+\/$/);
+        await expect(page.locator('app-store')).toBeVisible();
       }
+      await page.goto('/world');
+      await expect(page).toHaveURL(/\/play(\?|$)/);
+      await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 20000 });
     });
 
     test('no site chrome anywhere in /play', async ({ page }) => {

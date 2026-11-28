@@ -434,6 +434,10 @@
 }
 @media (max-width: 640px) {
   .brand-sub { display: none; }
+  .btn { min-height: 44px; }
+  .brand, .topbar-back { min-height: 44px; }
+  .footer nav a { min-height: 44px; }
+  .games-crumb { display: inline-flex; align-items: center; min-height: 44px; justify-self: start; }
   .topbar-in { gap: 10px; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; min-height: 0; }
   .topbar-spacer { display: none; }
   .search { order: 3; flex: 1 0 100%; width: auto; }
